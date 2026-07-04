@@ -19,6 +19,7 @@ import type { Character, Stats, StatusEffect } from "./party";
 import { charRow } from "./party";
 import type { EnemyDef, EnemySpecial, Row } from "../data/enemies";
 import type { SpellDef, SpellEffect, SpellTarget } from "../data/spells";
+import { spellByName } from "../data/spells";
 import type { ItemDef } from "../data/items";
 
 // Re-export types that the combat UI / main.ts needs
@@ -199,7 +200,7 @@ export function resolveCombatRound(
   if (s.ended) return s;
 
   s.round += 1;
-  s.log = [];
+  s.log = [...state.log];
   s.silencedThisRound = [];
   s.defendBuff = {};
 
@@ -274,6 +275,9 @@ export function resolveCombatRound(
   tickStatuses(s, log);
   deathCheck(s, log);
   if (checkTermination(s, log)) return s;
+
+  // Per-round silence from flag-driven bosses (silenceRandom) ends now.
+  s.silencedThisRound = [];
 
   return s;
 }
@@ -381,10 +385,11 @@ function buildEnemyActions(
         );
         const target = wounded.sort((a, b) => a.currentHp - b.currentHp)[0];
         if (target) {
+          const spell = spellByName(healerSpecial.spellName);
           actions.push({
             kind: "cast",
             actor: enemy,
-            spellId: healerSpecial.spellName,
+            spellId: spell?.id ?? healerSpecial.spellName,
             targetId: target.instanceId,
           });
           continue;
@@ -396,7 +401,8 @@ function buildEnemyActions(
         const target = pickRandom(livingParty, rng);
         if (target) {
           const spellName = casterSpecial.element === "cold" ? "Molito" : "Halito";
-          actions.push({ kind: "cast", actor: enemy, spellId: spellName, targetId: target.id });
+          const spell = spellByName(spellName);
+          actions.push({ kind: "cast", actor: enemy, spellId: spell?.id ?? spellName, targetId: target.id });
           continue;
         }
       }
@@ -783,6 +789,7 @@ function resolveEnemyAction(
   log: (m: string) => void
 ): void {
   if (action.kind === "doNothing" || action.kind === "silence") return;
+  if (action.actor.currentHp <= 0) return;
 
   // Enemy spell: either an offensive cast at a party member or a heal on an
   // enemy ally. Distinguished by whether the targetId resolves to a party

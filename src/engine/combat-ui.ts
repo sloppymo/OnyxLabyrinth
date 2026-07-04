@@ -398,10 +398,10 @@ export class CombatController {
     });
     lines.push(`<div class="combat-party">${partyLines.join("<br>")}</div>`);
 
-    // Log (last 6 entries)
+    // Log (scrollable; don't truncate — boss silence and other first-action
+    // messages must remain visible).
     if (s.log.length > 0) {
-      const recent = s.log.slice(-6);
-      lines.push(`<div class="combat-log">${recent.map((l) => `• ${l}`).join("<br>")}</div>`);
+      lines.push(`<div class="combat-log">${s.log.map((l) => `• ${l}`).join("<br>")}</div>`);
     }
 
     // Prompt / instructions
