@@ -1,0 +1,496 @@
+/**
+ * Bestiary and encounter tables for all 15 enemy types across 5 floors.
+ *
+ * Each enemy is a typed constant with floor assignments, row preference,
+ * combat stats, and special-behavior flags. Encounter tables describe
+ * possible formations per floor so the combat resolver can spawn fights
+ * without hardcoding logic.
+ */
+
+import type { DamageElement } from "./spells";
+
+export type Row = "front" | "back";
+
+export type EnemySpecial =
+  | { kind: "flying" }
+  | { kind: "resistPhysical"; percent: number }
+  | { kind: "healer"; spellName: string }
+  | { kind: "caster"; element: DamageElement }
+  | { kind: "undead" }
+  | { kind: "silenceRandom"; target: "party"; duration: "combat" }
+  | { kind: "slowGroup" }
+  | { kind: "evasive" }
+  | { kind: "highDefense" }
+  | { kind: "poisonOnHit" };
+
+export interface EnemyDef {
+  id: string;
+  name: string;
+  floors: number[];
+  rowPreference: Row | "any";
+  hp: number;
+  attack: number; // base physical damage; combat.ts adds variance
+  ac: number; // armor class / damage reduction
+  agi: number; // initiative
+  xp: number;
+  gold: number; // gold dropped on defeat
+  special: EnemySpecial[];
+  isBoss: boolean;
+}
+
+export interface EnemySpawn {
+  enemyId: string;
+  row: Row;
+}
+
+export interface EncounterEntry {
+  weight: number;
+  spawns: EnemySpawn[];
+}
+
+// Floor 1: Entry Halls — tutorial vermin and harmless dummies.
+export const TRAINING_DUMMY: EnemyDef = {
+  id: "training-dummy",
+  name: "Training Dummy",
+  floors: [1],
+  rowPreference: "front",
+  hp: 5,
+  attack: 1,
+  ac: 0,
+  agi: 1,
+  xp: 2,
+  gold: 1,
+  special: [],
+  isBoss: false,
+};
+
+export const GIANT_RAT: EnemyDef = {
+  id: "giant-rat",
+  name: "Giant Rat",
+  floors: [1],
+  rowPreference: "front",
+  hp: 8,
+  attack: 3,
+  ac: 2,
+  agi: 5,
+  xp: 6,
+  gold: 3,
+  special: [],
+  isBoss: false,
+};
+
+export const DUST_SPRITE: EnemyDef = {
+  id: "dust-sprite",
+  name: "Dust Sprite",
+  floors: [1],
+  rowPreference: "any",
+  hp: 6,
+  attack: 2,
+  ac: 1,
+  agi: 8,
+  xp: 5,
+  gold: 2,
+  special: [],
+  isBoss: false,
+};
+
+// Floor 2: The Archives — animated objects and flying pests.
+export const ANIMATED_BOOK: EnemyDef = {
+  id: "animated-book",
+  name: "Animated Book",
+  floors: [2],
+  rowPreference: "front",
+  hp: 12,
+  attack: 5,
+  ac: 3,
+  agi: 4,
+  xp: 10,
+  gold: 8,
+  special: [],
+  isBoss: false,
+};
+
+export const PAPER_WASP: EnemyDef = {
+  id: "paper-wasp",
+  name: "Paper Wasp",
+  floors: [2],
+  rowPreference: "back",
+  hp: 8,
+  attack: 4,
+  ac: 2,
+  agi: 12,
+  xp: 9,
+  gold: 7,
+  special: [{ kind: "flying" }],
+  isBoss: false,
+};
+
+export const COBWEB: EnemyDef = {
+  id: "cobweb",
+  name: "Cobweb",
+  floors: [2],
+  rowPreference: "any",
+  hp: 10,
+  attack: 3,
+  ac: 1,
+  agi: 2,
+  xp: 8,
+  gold: 6,
+  special: [{ kind: "slowGroup" }, { kind: "poisonOnHit" }],
+  isBoss: false,
+};
+
+// Floor 3: The Laboratories — alchemical horrors and enemy healers.
+export const FAILED_EXPERIMENT: EnemyDef = {
+  id: "failed-experiment",
+  name: "Failed Experiment",
+  floors: [3],
+  rowPreference: "front",
+  hp: 25,
+  attack: 8,
+  ac: 5,
+  agi: 3,
+  xp: 18,
+  gold: 15,
+  special: [],
+  isBoss: false,
+};
+
+export const ACID_PUDDLE: EnemyDef = {
+  id: "acid-puddle",
+  name: "Acid Puddle",
+  floors: [3],
+  rowPreference: "front",
+  hp: 18,
+  attack: 5,
+  ac: 6,
+  agi: 2,
+  xp: 15,
+  gold: 12,
+  special: [{ kind: "resistPhysical", percent: 50 }, { kind: "poisonOnHit" }],
+  isBoss: false,
+};
+
+export const LAB_ASSISTANT: EnemyDef = {
+  id: "lab-assistant",
+  name: "Lab Assistant",
+  floors: [3],
+  rowPreference: "back",
+  hp: 15,
+  attack: 4,
+  ac: 3,
+  agi: 6,
+  xp: 16,
+  gold: 14,
+  special: [{ kind: "healer", spellName: "Dios" }],
+  isBoss: false,
+};
+
+// Floor 4: The Summoning Chambers — constructs and casters.
+export const IMP: EnemyDef = {
+  id: "imp",
+  name: "Imp",
+  floors: [4],
+  rowPreference: "back",
+  hp: 22,
+  attack: 6,
+  ac: 4,
+  agi: 10,
+  xp: 22,
+  gold: 20,
+  special: [{ kind: "caster", element: "fire" }],
+  isBoss: false,
+};
+
+export const LESSER_CONSTRUCT: EnemyDef = {
+  id: "lesser-construct",
+  name: "Lesser Construct",
+  floors: [4],
+  rowPreference: "front",
+  hp: 35,
+  attack: 9,
+  ac: 8,
+  agi: 1,
+  xp: 24,
+  gold: 22,
+  special: [],
+  isBoss: false,
+};
+
+export const RIFT_MOTH: EnemyDef = {
+  id: "rift-moth",
+  name: "Rift Moth",
+  floors: [4],
+  rowPreference: "any",
+  hp: 16,
+  attack: 5,
+  ac: 2,
+  agi: 14,
+  xp: 20,
+  gold: 18,
+  special: [{ kind: "evasive" }],
+  isBoss: false,
+};
+
+// Floor 5: The Headmaster's Sanctum — boss floor.
+export const STONE_GUARDIAN: EnemyDef = {
+  id: "stone-guardian",
+  name: "Stone Guardian",
+  floors: [5],
+  rowPreference: "front",
+  hp: 45,
+  attack: 12,
+  ac: 10,
+  agi: 2,
+  xp: 40,
+  gold: 35,
+  special: [],
+  isBoss: false,
+};
+
+export const ANIMATED_ARMOR: EnemyDef = {
+  id: "animated-armor",
+  name: "Animated Armor",
+  floors: [5],
+  rowPreference: "front",
+  hp: 40,
+  attack: 10,
+  ac: 12,
+  agi: 3,
+  xp: 38,
+  gold: 32,
+  special: [{ kind: "highDefense" }],
+  isBoss: false,
+};
+
+export const HEADMASTERS_ECHO: EnemyDef = {
+  id: "headmasters-echo",
+  name: "The Headmaster's Echo",
+  floors: [5],
+  rowPreference: "back",
+  hp: 120,
+  attack: 15,
+  ac: 8,
+  agi: 7,
+  xp: 200,
+  gold: 500,
+  special: [
+    { kind: "undead" },
+    { kind: "silenceRandom", target: "party", duration: "combat" },
+  ],
+  isBoss: true,
+};
+
+export const ALL_ENEMIES: EnemyDef[] = [
+  TRAINING_DUMMY,
+  GIANT_RAT,
+  DUST_SPRITE,
+  ANIMATED_BOOK,
+  PAPER_WASP,
+  COBWEB,
+  FAILED_EXPERIMENT,
+  ACID_PUDDLE,
+  LAB_ASSISTANT,
+  IMP,
+  LESSER_CONSTRUCT,
+  RIFT_MOTH,
+  STONE_GUARDIAN,
+  ANIMATED_ARMOR,
+  HEADMASTERS_ECHO,
+];
+
+export const ENEMIES_BY_ID: Record<string, EnemyDef> = Object.fromEntries(
+  ALL_ENEMIES.map((e) => [e.id, e])
+);
+
+/** Enemies that may appear on a given floor. */
+export function enemiesForFloor(floor: number): EnemyDef[] {
+  return ALL_ENEMIES.filter((e) => e.floors.includes(floor));
+}
+
+/** Weighted encounter table for each floor. Weights do not need to sum to 1. */
+export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
+  1: [
+    { weight: 3, spawns: [{ enemyId: "training-dummy", row: "front" }] },
+    {
+      weight: 4,
+      spawns: [
+        { enemyId: "giant-rat", row: "front" },
+        { enemyId: "giant-rat", row: "front" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "dust-sprite", row: "front" },
+        { enemyId: "dust-sprite", row: "front" },
+        { enemyId: "dust-sprite", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "training-dummy", row: "front" },
+        { enemyId: "giant-rat", row: "front" },
+        { enemyId: "dust-sprite", row: "back" },
+      ],
+    },
+  ],
+  2: [
+    {
+      weight: 4,
+      spawns: [
+        { enemyId: "animated-book", row: "front" },
+        { enemyId: "animated-book", row: "front" },
+      ],
+    },
+    {
+      weight: 4,
+      spawns: [
+        { enemyId: "paper-wasp", row: "back" },
+        { enemyId: "paper-wasp", row: "back" },
+        { enemyId: "paper-wasp", row: "back" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "cobweb", row: "front" },
+        { enemyId: "cobweb", row: "front" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "animated-book", row: "front" },
+        { enemyId: "paper-wasp", row: "back" },
+        { enemyId: "cobweb", row: "front" },
+      ],
+    },
+  ],
+  3: [
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "failed-experiment", row: "front" },
+        { enemyId: "failed-experiment", row: "front" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "acid-puddle", row: "front" },
+        { enemyId: "acid-puddle", row: "front" },
+      ],
+    },
+    {
+      weight: 4,
+      spawns: [
+        { enemyId: "failed-experiment", row: "front" },
+        { enemyId: "lab-assistant", row: "back" },
+        { enemyId: "lab-assistant", row: "back" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "acid-puddle", row: "front" },
+        { enemyId: "failed-experiment", row: "front" },
+        { enemyId: "lab-assistant", row: "back" },
+      ],
+    },
+  ],
+  4: [
+    {
+      weight: 4,
+      spawns: [
+        { enemyId: "imp", row: "back" },
+        { enemyId: "imp", row: "back" },
+        { enemyId: "imp", row: "back" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "lesser-construct", row: "front" },
+        { enemyId: "lesser-construct", row: "front" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "rift-moth", row: "front" },
+        { enemyId: "rift-moth", row: "back" },
+        { enemyId: "rift-moth", row: "back" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "lesser-construct", row: "front" },
+        { enemyId: "imp", row: "back" },
+        { enemyId: "rift-moth", row: "back" },
+      ],
+    },
+  ],
+  5: [
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "stone-guardian", row: "front" },
+        { enemyId: "stone-guardian", row: "front" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "animated-armor", row: "front" },
+        { enemyId: "animated-armor", row: "front" },
+      ],
+    },
+    {
+      weight: 4,
+      spawns: [
+        { enemyId: "animated-armor", row: "front" },
+        { enemyId: "stone-guardian", row: "front" },
+        { enemyId: "animated-armor", row: "front" },
+      ],
+    },
+    {
+      weight: 1,
+      spawns: [
+        { enemyId: "animated-armor", row: "front" },
+        { enemyId: "headmasters-echo", row: "back" },
+        { enemyId: "animated-armor", row: "front" },
+      ],
+    },
+  ],
+};
+
+/** Pick a random encounter for a floor using the weighted table. */
+export function rollEncounter(floor: number): EncounterEntry | null {
+  const table = ENCOUNTER_TABLES[floor];
+  if (!table || table.length === 0) return null;
+
+  const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
+  let roll = Math.random() * totalWeight;
+
+  for (const entry of table) {
+    roll -= entry.weight;
+    if (roll <= 0) return entry;
+  }
+
+  return table[table.length - 1];
+}
+
+/** Resolve an encounter entry into concrete EnemyDef instances in formation order. */
+export function resolveEncounter(
+  entry: EncounterEntry
+): { enemy: EnemyDef; row: Row }[] {
+  return entry.spawns
+    .map((spawn) => {
+      const enemy = ENEMIES_BY_ID[spawn.enemyId];
+      return enemy ? { enemy, row: spawn.row } : null;
+    })
+    .filter((e): e is { enemy: EnemyDef; row: Row } => e !== null);
+}

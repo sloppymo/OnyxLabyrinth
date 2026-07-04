@@ -1,0 +1,13 @@
+node_modules
+dist
+.DS_Store
+
+# Dev/test artifacts
+.playwright-mcp
+logs
+
+# Dev harness files (not part of the shipped game)
+dev-combat-harness.ts
+dev-harness.ts
+dev-combat.html
+dev-party-creation.html
