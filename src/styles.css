@@ -2,6 +2,11 @@
   --bg: #0e0d0a;
   --amber: #e0a458;
   --warm-white: #f5f0e6;
+  --heal-green: #7abf7a;
+  --danger-red: #c06060;
+  --spell-blue: #7a9abf;
+  --text-dim: #a09080;
+  --border-default: #4a4035;
 }
 
 * {
@@ -106,12 +111,34 @@ canvas#map-canvas {
 .combat-log {
   margin-top: 14px;
   font-size: 12px;
-  color: #a8b8a0;
+  color: var(--text-dim);
   line-height: 1.6;
   max-height: 120px;
   overflow-y: auto;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border-default);
   padding-top: 8px;
+}
+
+.combat-log .log-damage-dealt {
+  color: var(--heal-green);
+}
+
+.combat-log .log-damage-taken {
+  color: var(--danger-red);
+}
+
+.combat-log .log-spell {
+  color: var(--spell-blue);
+}
+
+.combat-log .log-victory {
+  color: var(--amber);
+  font-weight: bold;
+}
+
+.combat-log .log-defeat {
+  color: var(--danger-red);
+  font-weight: bold;
 }
 
 .combat-prompt {
@@ -127,7 +154,7 @@ canvas#map-canvas {
 }
 
 .combat-flash {
-  color: #e66;
+  color: var(--danger-red);
   font-size: 13px;
 }
 
@@ -199,11 +226,11 @@ canvas#map-canvas {
 }
 
 .camp-char .cc-bar-fill.hp {
-  background: #4a8;
+  background: var(--heal-green);
 }
 
 .camp-char .cc-bar-fill.sp {
-  background: #48a;
+  background: var(--spell-blue);
 }
 
 .camp-char .cc-num {
@@ -287,7 +314,7 @@ canvas#map-canvas {
   text-align: center;
   margin-top: 16px;
   font-size: 14px;
-  color: #e66;
+  color: var(--danger-red);
 }
 
 .save-help {
@@ -340,6 +367,14 @@ canvas#map-canvas {
   color: var(--amber);
   width: 14px;
   flex-shrink: 0;
+}
+
+.town-menu-item .tm-icon {
+  color: var(--amber);
+  width: 30px;
+  flex-shrink: 0;
+  font-size: 12px;
+  opacity: 0.8;
 }
 
 /* Shop */
@@ -447,13 +482,13 @@ canvas#map-canvas {
 }
 
 .guild-char .gc-hp {
-  color: #e88;
+  color: var(--danger-red);
   min-width: 120px;
   font-size: 12px;
 }
 
 .guild-char .gc-sp {
-  color: #8ae;
+  color: var(--spell-blue);
   min-width: 120px;
   font-size: 12px;
 }
@@ -465,7 +500,7 @@ canvas#map-canvas {
 }
 
 .guild-char .gc-status {
-  color: #e66;
+  color: var(--danger-red);
   font-size: 12px;
 }
 
@@ -572,9 +607,10 @@ canvas#map-canvas {
   width: 50px;
   height: 6px;
   background: #1a1612;
-  border: 1px solid #3a3530;
+  border: 1px solid #4a4035;
   border-radius: 2px;
   overflow: hidden;
+  box-shadow: 0 0 4px rgba(224, 164, 88, 0.25);
 }
 
 .ps-char .ps-bar-fill {
@@ -583,17 +619,90 @@ canvas#map-canvas {
 }
 
 .ps-char .ps-bar-fill.hp {
-  background: #4a8;
+  display: block;
+  height: 100%;
+  transition: width 0.08s linear;
+  background: linear-gradient(90deg, #c06060 0%, #7abf7a 100%);
 }
 
 .ps-char .ps-bar-fill.sp {
-  background: #48a;
+  display: block;
+  height: 100%;
+  transition: width 0.08s linear;
+  background: linear-gradient(90deg, #3a3a50 0%, #7a9abf 100%);
 }
 
 .ps-char .ps-num {
   font-size: 10px;
-  color: #aa9c80;
+  color: var(--text-dim);
   min-width: 36px;
+}
+
+/* --- Compass (dungeon HUD) --------------------------------------------- */
+
+#compass {
+  display: inline-block;
+  font-size: 14px;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  min-width: 40px;
+  text-align: center;
+}
+
+/* --- Quick Start card (party creation) --------------------------------- */
+
+.quick-start-card {
+  margin: 12px auto;
+  max-width: 600px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: #1a1612;
+  font-size: 13px;
+  color: var(--warm-white);
+}
+
+.quick-start-card .qs-title {
+  color: var(--amber);
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.quick-start-card .qs-roster {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* --- Character sheet (camp / guild) ------------------------------------ */
+
+.char-sheet {
+  margin: 8px auto;
+  max-width: 700px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: #1a1612;
+  font-size: 13px;
+  color: var(--warm-white);
+  line-height: 1.7;
+}
+
+.char-sheet .cs-name {
+  color: var(--amber);
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.char-sheet .cs-stats {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.char-sheet .cs-spells {
+  color: var(--spell-blue);
+  font-size: 12px;
+  margin-top: 4px;
 }
 
 
