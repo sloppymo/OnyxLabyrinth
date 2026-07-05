@@ -1,6 +1,10 @@
 import type { GameState } from "../types";
 import type { EdgeType, TileFeature } from "../types";
 import { DX, DY, edgeInDirection } from "../game/dungeon";
+import wallTextureUrl from "../assets/wall_tile_amber_256.png";
+import floorATextureUrl from "../assets/floor_tile_a_256.png";
+import floorBTextureUrl from "../assets/floor_tile_b_256.png";
+import ceilingTextureUrl from "../assets/ceiling_tile_256.png";
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
 const PALETTE = {
@@ -28,6 +32,45 @@ const GLOW_BLUR_FAR = 2;
 
 const SCANLINE_OPACITY = 0.12;
 const SCANLINE_SPACING = 3;
+
+// Texture repeat counts per depth segment (tuneable).
+const WALL_REPEATS_X = [2, 1, 1, 1];
+const WALL_REPEATS_Y = 1;
+const FLOOR_REPEATS_X = [2, 1, 1, 1];
+const FLOOR_REPEATS_Y = 1;
+const CEILING_REPEATS_X = [2, 1, 1, 1];
+const CEILING_REPEATS_Y = 1;
+
+interface TextureSet {
+  wall: HTMLImageElement;
+  floorA: HTMLImageElement;
+  floorB: HTMLImageElement;
+  ceiling: HTMLImageElement;
+}
+
+let textureCache: TextureSet | null = null;
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load texture: ${src}`));
+    img.src = src;
+  });
+}
+
+export function loadTextures(): Promise<TextureSet> {
+  if (textureCache) return Promise.resolve(textureCache);
+  return Promise.all([
+    loadImage(wallTextureUrl),
+    loadImage(floorATextureUrl),
+    loadImage(floorBTextureUrl),
+    loadImage(ceilingTextureUrl),
+  ]).then(([wall, floorA, floorB, ceiling]) => {
+    textureCache = { wall, floorA, floorB, ceiling };
+    return textureCache;
+  });
+}
 
 function opacityForDepth(d: number): number {
   return BASE_OPACITY * Math.pow(FOG_FALLOFF, d);
@@ -140,6 +183,82 @@ function drawQuad(
   ctx.lineWidth = lineWidth;
   ctx.stroke();
   ctx.restore();
+}
+
+/**
+ * Draw a perspective quad filled with a tiled texture, plus an optional fog
+ * overlay, then stroked with the amber edge glow. This replaces the flat
+ * gradient fills with pixel-art textures while keeping the existing depth
+ * fog and outline effects layered on top.
+ */
+function drawTexturedQuad(
+  ctx: CanvasRenderingContext2D,
+  points: [number, number][],
+  img: HTMLImageElement,
+  repeatsX: number,
+  repeatsY: number,
+  strokeStyle: string,
+  lineWidth: number,
+  glowBlur: number,
+  fogStyle?: string | CanvasGradient
+) {
+  const xs = points.map((p) => p[0]);
+  const ys = points.map((p) => p[1]);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  ctx.save();
+
+  // Clip to the quad shape.
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i][0], points[i][1]);
+  }
+  ctx.closePath();
+  ctx.clip();
+
+  // Tile the texture with nearest-neighbor scaling.
+  ctx.imageSmoothingEnabled = false;
+  const pattern = ctx.createPattern(img, "repeat");
+  if (pattern) {
+    const sx = width / (repeatsX * img.width);
+    const sy = height / (repeatsY * img.height);
+    pattern.setTransform(new DOMMatrix([sx, 0, 0, sy, minX, minY]));
+    ctx.fillStyle = pattern;
+    ctx.fillRect(minX, minY, width, height);
+  }
+
+  // Depth fog / tint overlay on top of the texture.
+  if (fogStyle) {
+    ctx.fillStyle = fogStyle;
+    ctx.fillRect(minX, minY, width, height);
+  }
+
+  // Amber edge-glow outline on top of everything.
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i][0], points[i][1]);
+  }
+  ctx.closePath();
+  if (glowBlur > 0) {
+    ctx.shadowColor = PALETTE.amber;
+    ctx.shadowBlur = glowBlur;
+  }
+  ctx.strokeStyle = strokeStyle;
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function repeatsForDepth(arr: number[], d: number): number {
+  return arr[Math.min(d, arr.length - 1)];
 }
 
 function drawDoorMarker(
@@ -258,6 +377,14 @@ function featureGlyph(feature: TileFeature): string {
   }
 }
 
+function floorTextureForGrid(
+  textures: TextureSet,
+  gx: number,
+  gy: number
+): HTMLImageElement {
+  return (gx + gy) % 2 === 0 ? textures.floorA : textures.floorB;
+}
+
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
@@ -277,28 +404,72 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Darkness zones reduce visibility to 1 tile (design doc §6.2).
   const maxDepth = state.inDarkness ? DARKNESS_DEPTH : MAX_DEPTH;
 
-  // Near-plane floor/ceiling gradient fills (depth 0, full opacity).
+  const textures = textureCache;
+
+  // Near-plane floor/ceiling texture fills (depth 0, full opacity).
   const nearRect = getDepthRect(w, h, 0);
+  const floorFillAlpha = opacityForDepth(0) * FILL_OPACITY_MULTIPLIER;
+  const floorImg = textures
+    ? floorTextureForGrid(textures, x, y)
+    : null;
+  if (floorImg) {
+    drawTexturedQuad(
+      ctx,
+      [
+        [0, h],
+        [w, h],
+        [nearRect.right, nearRect.bottom],
+        [nearRect.left, nearRect.bottom],
+      ],
+      floorImg,
+      repeatsForDepth(FLOOR_REPEATS_X, 0),
+      FLOOR_REPEATS_Y,
+      strokeColorForDepth(0),
+      2.0,
+      GLOW_BLUR_NEAR,
+      floorGradient(ctx, nearRect.bottom, h, floorFillAlpha)
+    );
+  } else {
+    const floorGrad = floorGradient(ctx, nearRect.bottom, h, opacityForDepth(0));
+    ctx.fillStyle = floorGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    ctx.lineTo(w, h);
+    ctx.lineTo(nearRect.right, nearRect.bottom);
+    ctx.lineTo(nearRect.left, nearRect.bottom);
+    ctx.closePath();
+    ctx.fill();
+  }
 
-  const floorGrad = floorGradient(ctx, nearRect.bottom, h, opacityForDepth(0));
-  ctx.fillStyle = floorGrad;
-  ctx.beginPath();
-  ctx.moveTo(0, h);
-  ctx.lineTo(w, h);
-  ctx.lineTo(nearRect.right, nearRect.bottom);
-  ctx.lineTo(nearRect.left, nearRect.bottom);
-  ctx.closePath();
-  ctx.fill();
-
-  const ceilGrad = ceilingGradient(ctx, nearRect.top, 0, opacityForDepth(0));
-  ctx.fillStyle = ceilGrad;
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(w, 0);
-  ctx.lineTo(nearRect.right, nearRect.top);
-  ctx.lineTo(nearRect.left, nearRect.top);
-  ctx.closePath();
-  ctx.fill();
+  const ceilImg = textures ? textures.ceiling : null;
+  if (ceilImg) {
+    drawTexturedQuad(
+      ctx,
+      [
+        [0, 0],
+        [w, 0],
+        [nearRect.right, nearRect.top],
+        [nearRect.left, nearRect.top],
+      ],
+      ceilImg,
+      repeatsForDepth(CEILING_REPEATS_X, 0),
+      CEILING_REPEATS_Y,
+      strokeColorForDepth(0),
+      2.0,
+      GLOW_BLUR_NEAR,
+      ceilingGradient(ctx, nearRect.top, 0, floorFillAlpha)
+    );
+  } else {
+    const ceilGrad = ceilingGradient(ctx, nearRect.top, 0, opacityForDepth(0));
+    ctx.fillStyle = ceilGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(w, 0);
+    ctx.lineTo(nearRect.right, nearRect.top);
+    ctx.lineTo(nearRect.left, nearRect.top);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   // Draw tile feature at the player's feet (depth 0).
   const currentCell = grid[player.y]?.[player.x];
@@ -321,63 +492,142 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     const lw = d <= 0 ? 2.0 : d === 1 ? 1.5 : d === 2 ? 1.0 : 0.75;
     const glowBlur = Math.max(GLOW_BLUR_FAR, GLOW_BLUR_NEAR - d * 1.5);
 
+    const wallImg = textures ? textures.wall : null;
+
     // Left wall
     if (leftEdge !== "open") {
-      drawQuad(
-        ctx,
-        [
-          [near.left, near.top],
-          [far.left, far.top],
-          [far.left, far.bottom],
-          [near.left, near.bottom],
-        ],
-        stroke,
-        wallGradient(ctx, near.left, far.left, PALETTE.wallFill, fillAlpha),
-        lw,
-        glowBlur
-      );
+      if (wallImg) {
+        drawTexturedQuad(
+          ctx,
+          [
+            [near.left, near.top],
+            [far.left, far.top],
+            [far.left, far.bottom],
+            [near.left, near.bottom],
+          ],
+          wallImg,
+          repeatsForDepth(WALL_REPEATS_X, d),
+          WALL_REPEATS_Y,
+          stroke,
+          lw,
+          glowBlur,
+          wallGradient(ctx, near.left, far.left, PALETTE.wallFill, fillAlpha)
+        );
+      } else {
+        drawQuad(
+          ctx,
+          [
+            [near.left, near.top],
+            [far.left, far.top],
+            [far.left, far.bottom],
+            [near.left, near.bottom],
+          ],
+          stroke,
+          wallGradient(ctx, near.left, far.left, PALETTE.wallFill, fillAlpha),
+          lw,
+          glowBlur
+        );
+      }
       if (leftEdge === "door") drawDoorMarker(ctx, near, far, "left");
       else if (leftEdge === "locked") drawLockedMarker(ctx, near, far, "left");
     }
 
     // Right wall
     if (rightEdge !== "open") {
-      drawQuad(
-        ctx,
-        [
-          [near.right, near.top],
-          [far.right, far.top],
-          [far.right, far.bottom],
-          [near.right, near.bottom],
-        ],
-        stroke,
-        wallGradient(ctx, near.right, far.right, PALETTE.wallFill, fillAlpha),
-        lw,
-        glowBlur
-      );
+      if (wallImg) {
+        drawTexturedQuad(
+          ctx,
+          [
+            [near.right, near.top],
+            [far.right, far.top],
+            [far.right, far.bottom],
+            [near.right, near.bottom],
+          ],
+          wallImg,
+          repeatsForDepth(WALL_REPEATS_X, d),
+          WALL_REPEATS_Y,
+          stroke,
+          lw,
+          glowBlur,
+          wallGradient(ctx, near.right, far.right, PALETTE.wallFill, fillAlpha)
+        );
+      } else {
+        drawQuad(
+          ctx,
+          [
+            [near.right, near.top],
+            [far.right, far.top],
+            [far.right, far.bottom],
+            [near.right, near.bottom],
+          ],
+          stroke,
+          wallGradient(ctx, near.right, far.right, PALETTE.wallFill, fillAlpha),
+          lw,
+          glowBlur
+        );
+      }
       if (rightEdge === "door") drawDoorMarker(ctx, near, far, "right");
       else if (rightEdge === "locked") drawLockedMarker(ctx, near, far, "right");
     }
 
-    // Ceiling strip fill
-    ctx.fillStyle = ceilingGradient(ctx, near.top, far.top, fillAlpha);
-    ctx.beginPath();
-    ctx.moveTo(near.left, near.top);
-    ctx.lineTo(near.right, near.top);
-    ctx.lineTo(far.right, far.top);
-    ctx.lineTo(far.left, far.top);
-    ctx.closePath();
-    ctx.fill();
+    // Ceiling strip texture fill
+    if (ceilImg) {
+      drawTexturedQuad(
+        ctx,
+        [
+          [near.left, near.top],
+          [near.right, near.top],
+          [far.right, far.top],
+          [far.left, far.top],
+        ],
+        ceilImg,
+        repeatsForDepth(CEILING_REPEATS_X, d),
+        CEILING_REPEATS_Y,
+        stroke,
+        lw,
+        glowBlur,
+        ceilingGradient(ctx, near.top, far.top, fillAlpha)
+      );
+    } else {
+      ctx.fillStyle = ceilingGradient(ctx, near.top, far.top, fillAlpha);
+      ctx.beginPath();
+      ctx.moveTo(near.left, near.top);
+      ctx.lineTo(near.right, near.top);
+      ctx.lineTo(far.right, far.top);
+      ctx.lineTo(far.left, far.top);
+      ctx.closePath();
+      ctx.fill();
+    }
 
-    // Floor strip fill
-    ctx.fillStyle = floorGradient(ctx, near.bottom, far.bottom, fillAlpha);
-    ctx.beginPath();
-    ctx.moveTo(near.left, near.bottom);
-    ctx.lineTo(near.right, near.bottom);
-    ctx.lineTo(far.right, far.bottom);
-    ctx.lineTo(far.left, far.bottom);
-    ctx.closePath();
-    ctx.fill();
+    // Floor strip texture fill (checkerboard keyed to grid position).
+    const floorImg = textures ? floorTextureForGrid(textures, x, y) : null;
+    if (floorImg) {
+      drawTexturedQuad(
+        ctx,
+        [
+          [near.left, near.bottom],
+          [near.right, near.bottom],
+          [far.right, far.bottom],
+          [far.left, far.bottom],
+        ],
+        floorImg,
+        repeatsForDepth(FLOOR_REPEATS_X, d),
+        FLOOR_REPEATS_Y,
+        stroke,
+        lw,
+        glowBlur,
+        floorGradient(ctx, near.bottom, far.bottom, fillAlpha)
+      );
+    } else {
+      ctx.fillStyle = floorGradient(ctx, near.bottom, far.bottom, fillAlpha);
+      ctx.beginPath();
+      ctx.moveTo(near.left, near.bottom);
+      ctx.lineTo(near.right, near.bottom);
+      ctx.lineTo(far.right, far.bottom);
+      ctx.lineTo(far.left, far.bottom);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     // Stroke the ceiling/floor strip edges with glow
     drawQuad(
@@ -415,19 +665,38 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Front wall: closes the corridor at this depth, stop looking further.
     const blocked: EdgeType = frontEdge;
     if (blocked !== "open" || d === maxDepth - 1) {
-      drawQuad(
-        ctx,
-        [
-          [far.left, far.top],
-          [far.right, far.top],
-          [far.right, far.bottom],
-          [far.left, far.bottom],
-        ],
-        stroke,
-        d === 0 ? undefined : rgba(PALETTE.wallFill, fillAlpha),
-        lw,
-        glowBlur
-      );
+      if (wallImg && d > 0) {
+        drawTexturedQuad(
+          ctx,
+          [
+            [far.left, far.top],
+            [far.right, far.top],
+            [far.right, far.bottom],
+            [far.left, far.bottom],
+          ],
+          wallImg,
+          repeatsForDepth(WALL_REPEATS_X, d),
+          WALL_REPEATS_Y,
+          stroke,
+          lw,
+          glowBlur,
+          rgba(PALETTE.wallFill, fillAlpha)
+        );
+      } else {
+        drawQuad(
+          ctx,
+          [
+            [far.left, far.top],
+            [far.right, far.top],
+            [far.right, far.bottom],
+            [far.left, far.bottom],
+          ],
+          stroke,
+          d === 0 ? undefined : rgba(PALETTE.wallFill, fillAlpha),
+          lw,
+          glowBlur
+        );
+      }
       if (blocked === "door") drawDoorMarker(ctx, near, far, "front");
       else if (blocked === "locked") drawLockedMarker(ctx, near, far, "front");
       break;
