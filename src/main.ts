@@ -4,7 +4,7 @@ import { createGameState, setMode } from "./game/state";
 import { moveForward, moveBackward, turnLeft, turnRight, tryUnlock } from "./engine/camera";
 import { handleTileFeature, transitionToFloor } from "./game/features";
 import { DX, DY } from "./game/dungeon";
-import { render } from "./engine/renderer";
+import { render, loadTextures } from "./engine/renderer";
 import { renderAutoMap } from "./engine/automap";
 import { bindInput } from "./engine/input";
 import { CombatController } from "./engine/combat-ui";
@@ -535,14 +535,16 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-// Wait for the custom font to load before starting the render loop, so
-// Canvas text rendering uses FF36 from the first frame instead of the
-// fallback monospace.
+// Wait for the custom font and corridor textures to load before starting the
+// render loop, so Canvas text rendering uses FF36 from the first frame and
+// the dungeon renderer has bitmaps ready.
 if ("fonts" in document) {
-  document.fonts
-    .load('14px "FF36"')
+  Promise.all([
+    document.fonts.load('14px "FF36"'),
+    loadTextures(),
+  ])
     .then(() => loop())
-    .catch(() => loop()); // start anyway if the font fails to load
+    .catch(() => loop()); // start anyway if an asset fails to load
 } else {
-  loop();
+  loadTextures().then(loop).catch(loop);
 }
