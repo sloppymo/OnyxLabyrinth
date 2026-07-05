@@ -36,9 +36,9 @@ const SCANLINE_SPACING = 3;
 // Floor/ceiling are darker base textures than the wall; use a darkening overlay
 // with a lower multiplier so the pixel-art detail remains visible while still
 // fading into the distance.
-const FLOOR_CEILING_DARKEN_MULTIPLIER = 0.9;
-const FLOOR_BRIGHTNESS = 180;
-const CEILING_BRIGHTNESS = 280;
+const FLOOR_CEILING_DARKEN_MULTIPLIER = 0.95;
+const FLOOR_BRIGHTNESS_FACTOR = 2.0;
+const CEILING_BRIGHTNESS_FACTOR = 3.0;
 
 // Texture repeat counts per depth segment (tuneable).
 const WALL_REPEATS_X = [2, 1, 1, 1];
@@ -66,14 +66,21 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-function brightenImage(img: HTMLImageElement, percent: number): HTMLCanvasElement {
+function brightenImage(img: HTMLImageElement, factor: number): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = img.width;
   c.height = img.height;
   const ctx = c.getContext("2d")!;
   ctx.imageSmoothingEnabled = false;
-  ctx.filter = `brightness(${percent}%)`;
   ctx.drawImage(img, 0, 0);
+  const imgData = ctx.getImageData(0, 0, c.width, c.height);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = Math.min(255, data[i] * factor);
+    data[i + 1] = Math.min(255, data[i + 1] * factor);
+    data[i + 2] = Math.min(255, data[i + 2] * factor);
+  }
+  ctx.putImageData(imgData, 0, 0);
   return c;
 }
 
@@ -87,9 +94,9 @@ export function loadTextures(): Promise<TextureSet> {
   ]).then(([wall, floorAImg, floorBImg, ceilingImg]) => {
     textureCache = {
       wall,
-      floorA: brightenImage(floorAImg, FLOOR_BRIGHTNESS),
-      floorB: brightenImage(floorBImg, FLOOR_BRIGHTNESS),
-      ceiling: brightenImage(ceilingImg, CEILING_BRIGHTNESS),
+      floorA: brightenImage(floorAImg, FLOOR_BRIGHTNESS_FACTOR),
+      floorB: brightenImage(floorBImg, FLOOR_BRIGHTNESS_FACTOR),
+      ceiling: brightenImage(ceilingImg, CEILING_BRIGHTNESS_FACTOR),
     };
     return textureCache;
   });
