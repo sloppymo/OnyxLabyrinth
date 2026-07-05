@@ -201,7 +201,7 @@ export class SaveController {
 
   private render(): void {
     const lines: string[] = [];
-    lines.push(`<div class="save-header">💾 SAVE / LOAD</div>`);
+    lines.push(`<div class="save-header">[S] SAVE / LOAD</div>`);
 
     lines.push(`<div class="save-slots">`);
     for (let i = 0; i < SLOT_COUNT; i++) {
@@ -229,6 +229,15 @@ export class SaveController {
       }
     }
     lines.push(`</div>`);
+
+    // Current game state summary (for context when saving)
+    const aliveCount = this.state.party.filter((c) => c.hp > 0).length;
+    const classSummary = this.state.party.map((c) => c.class[0]).join("");
+    lines.push(
+      `<div class="save-flash" style="color:var(--text-dim);font-size:12px">` +
+      `Current: F${this.state.floor.id} ${this.state.floor.name} · ${aliveCount}/${this.state.party.length} alive [${classSummary}] · ${this.state.partyGold}g` +
+      `</div>`
+    );
 
     if (this.flash) {
       lines.push(`<div class="save-flash">${this.flash}</div>`);

@@ -1,5 +1,5 @@
 import type { GameState } from "../types";
-import type { Cell, EdgeType, TileFeature } from "../types";
+import type { EdgeType, TileFeature } from "../types";
 import { DX, DY, edgeInDirection } from "../game/dungeon";
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
@@ -19,7 +19,7 @@ const PALETTE = {
 const MAX_DEPTH = 4;
 const DARKNESS_DEPTH = 1;
 
-const FOG_FALLOFF = 0.55;
+const FOG_FALLOFF = 0.42;
 const BASE_OPACITY = 1.0;
 const FILL_OPACITY_MULTIPLIER = 0.45;
 
@@ -28,35 +28,6 @@ const GLOW_BLUR_FAR = 2;
 
 const SCANLINE_OPACITY = 0.12;
 const SCANLINE_SPACING = 3;
-
-const MAP = {
-  cellSize: 14,
-  pad: 16,
-  bg: "rgba(14,13,10,0.75)",
-  border: "#4a4035",
-  explored: "#2a2620",
-  current: "#3a3226",
-  trail: "rgba(224,164,88,0.25)",
-  wall: "rgba(183,179,166,0.55)",
-  door: "#e0a458",
-  locked: "#c44",
-  player: "#e0a458",
-};
-
-const TRAIL_MAX = 12;
-const positionTrail: { x: number; y: number }[] = [];
-let trailFloorId: number | undefined;
-
-function updateTrail(x: number, y: number, floorId: number): void {
-  if (trailFloorId !== floorId) {
-    positionTrail.length = 0;
-    trailFloorId = floorId;
-  }
-  const last = positionTrail[positionTrail.length - 1];
-  if (last && last.x === x && last.y === y) return;
-  positionTrail.push({ x, y });
-  if (positionTrail.length > TRAIL_MAX) positionTrail.shift();
-}
 
 function opacityForDepth(d: number): number {
   return BASE_OPACITY * Math.pow(FOG_FALLOFF, d);
@@ -265,7 +236,7 @@ function drawFeatureGlyph(
 ): void {
   const glyph = featureGlyph(feature);
   ctx.fillStyle = color;
-  ctx.font = `bold ${size}px monospace`;
+  ctx.font = `bold ${size}px "FF36", "Courier New", monospace`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(glyph, cx, cy);
@@ -466,8 +437,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     y += DY[facing];
   }
 
-  drawMinimap(ctx, state);
-
   // Global vignette: focuses attention on the corridor and softens edges.
   drawVignette(ctx, w, h, 1.0);
 
@@ -478,166 +447,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (state.inDarkness) {
     drawVignette(ctx, w, h, 1.35);
   }
-}
-
-/** Draw a single minimap edge with the color matching its type. */
-function drawMapEdge(
-  ctx: CanvasRenderingContext2D,
-  edge: Cell["n"],
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number
-): void {
-  if (edge === "open") return;
-  const color =
-    edge === "door" ? MAP.door : edge === "locked" ? MAP.locked : MAP.wall;
-  ctx.strokeStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-}
-
-function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
-  const grid = state.floor.grid;
-  const { player } = state;
-  const rows = grid.length;
-  const cols = grid[0].length;
-  const originX = MAP.pad;
-  const originY = MAP.pad;
-  const panelW = cols * MAP.cellSize + 12;
-  const panelH = rows * MAP.cellSize + 12;
-
-  updateTrail(player.x, player.y, state.floor.id);
-
-  ctx.save();
-
-  // Panel background and border
-  ctx.fillStyle = MAP.bg;
-  ctx.strokeStyle = MAP.border;
-  ctx.lineWidth = 1;
-  roundRect(ctx, originX - 6, originY - 6, panelW, panelH, 6);
-
-  // Clip all minimap content (including the player marker) to the rounded
-  // panel so nothing spills outside the border.
-  ctx.save();
-  ctx.clip();
-  ctx.fill();
-
-  const isExplored = (x: number, y: number): boolean =>
-    state.explored.has(`${x},${y}`);
-
-  // Pass 1: explored tile fills
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      if (!isExplored(x, y)) continue;
-      const px = originX + x * MAP.cellSize;
-      const py = originY + y * MAP.cellSize;
-      ctx.fillStyle = x === player.x && y === player.y ? MAP.current : MAP.explored;
-      ctx.fillRect(px, py, MAP.cellSize, MAP.cellSize);
-    }
-  }
-
-  // Pass 2: movement trail (faint dots on explored tiles)
-  ctx.fillStyle = MAP.trail;
-  for (let i = 0; i < positionTrail.length - 1; i++) {
-    const t = positionTrail[i];
-    if (!isExplored(t.x, t.y)) continue;
-    const px = originX + t.x * MAP.cellSize + MAP.cellSize / 2;
-    const py = originY + t.y * MAP.cellSize + MAP.cellSize / 2;
-    ctx.beginPath();
-    ctx.arc(px, py, 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Pass 3: draw walls and doors on explored tile edges, avoiding double draws
-  ctx.lineWidth = 1;
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      if (!isExplored(x, y)) continue;
-      const cell = grid[y][x];
-      const px = originX + x * MAP.cellSize;
-      const py = originY + y * MAP.cellSize;
-
-      const neighborExplored = (nx: number, ny: number): boolean =>
-        nx >= 0 && nx < cols && ny >= 0 && ny < rows && isExplored(nx, ny);
-
-      // N and W edges are owned by this cell.
-      drawMapEdge(ctx, cell.n, px, py, px + MAP.cellSize, py);
-      drawMapEdge(ctx, cell.w, px, py, px, py + MAP.cellSize);
-
-      // S and E edges are drawn only if the neighbor is not explored
-      // (boundary of known area).
-      if (!neighborExplored(x, y + 1)) {
-        drawMapEdge(
-          ctx,
-          cell.s,
-          px,
-          py + MAP.cellSize,
-          px + MAP.cellSize,
-          py + MAP.cellSize
-        );
-      }
-      if (!neighborExplored(x + 1, y)) {
-        drawMapEdge(
-          ctx,
-          cell.e,
-          px + MAP.cellSize,
-          py,
-          px + MAP.cellSize,
-          py + MAP.cellSize
-        );
-      }
-    }
-  }
-
-  // Pass 4: directional player marker with glow
-  const pcx = originX + player.x * MAP.cellSize + MAP.cellSize / 2;
-  const pcy = originY + player.y * MAP.cellSize + MAP.cellSize / 2;
-
-  ctx.save();
-  ctx.translate(pcx, pcy);
-  ctx.rotate((player.facing * Math.PI) / 2);
-
-  ctx.shadowColor = MAP.player;
-  ctx.shadowBlur = 8;
-  ctx.fillStyle = MAP.player;
-  ctx.beginPath();
-  ctx.moveTo(0, -7);
-  ctx.lineTo(5, 5);
-  ctx.lineTo(-5, 5);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  ctx.restore(); // remove clip so the border stroke is not clipped
-  ctx.stroke();
-
-  ctx.restore();
-}
-
-/** Draw a rounded rectangle path (no fill/stroke). */
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number
-): void {
-  const radius = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + w - radius, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-  ctx.lineTo(x + w, y + h - radius);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-  ctx.lineTo(x + radius, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
 }
 
 /** Darken the corners/edges with a radial gradient overlay. */

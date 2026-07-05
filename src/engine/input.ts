@@ -1,17 +1,21 @@
 // Keyboard input handler. Maps keys to game actions and is the single place
 // key bindings live — game logic never touches window.addEventListener.
 //
-// Dungeon bindings (design doc / build prompt §"Input Scheme"):
+// Dungeon bindings (reconciled per RECONCILIATION_CHECKLIST §9.1):
 //   ArrowUp / W      step forward
 //   ArrowDown / S    step backward
 //   ArrowLeft / A    turn left
 //   ArrowRight / D   turn right
-//   C                camp            (Step 7 implements for real)
-//   M                toggle auto-map (Step 12 implements for real)
-//   Esc              system menu     (save/load system, Step 10)
+//   C                camp
+//   M                toggle auto-map
+//   T                return to town
+//   U                unlock (locked door / chest)
+//   Esc              system menu (save/load)
 //
-// At Step 2 camp / map / system are wired to stub handlers that write a
-// message to the bottom message area, so the keys visibly do something.
+// Combat/town/camp/save/creation modes have their own key handlers in their
+// respective UI controllers. The spec's proposed Cast/Drop/Search/Turn-party
+// /Use-item dungeon keys were cut from MVP per design doc §7.2 (5 combat
+// actions only) and §2 (4 MVP classes).
 
 export interface InputHandlers {
   onForward: () => void;

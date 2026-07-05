@@ -28,15 +28,18 @@ import type { GameState, GameMode } from "./types";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
   <div id="game-wrap">
-    <canvas id="view" width="960" height="600"></canvas>
-    <canvas id="map-canvas" width="960" height="600" style="display:none"></canvas>
-    <div id="hint"><span id="compass">N</span> &uarr;/W forward &middot; &darr;/S back &middot; &larr;/A turn left &middot; &rarr;/D turn right &middot; C camp &middot; M map &middot; T town &middot; U unlock &middot; Esc menu</div>
-    <div id="message"></div>
+    <div id="viewport-wrap">
+      <div id="message"></div>
+      <canvas id="view" width="768" height="672"></canvas>
+      <canvas id="map-canvas" width="768" height="672" style="display:none"></canvas>
+    </div>
     <div id="party-strip"></div>
+    <div id="hint"><span id="compass">N</span> &uarr;/W forward &middot; &darr;/S back &middot; &larr;/A turn left &middot; &rarr;/D turn right &middot; C camp &middot; M map &middot; T town &middot; U unlock &middot; Esc menu</div>
     <div id="combat-panel"></div>
   </div>
 `;
 
+const viewportWrap = document.querySelector<HTMLDivElement>("#viewport-wrap")!;
 const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
 const ctx = canvas.getContext("2d")!;
 const mapCanvas = document.querySelector<HTMLCanvasElement>("#map-canvas")!;
@@ -59,6 +62,7 @@ function transitionToMode(newMode: GameMode, showCanvas: boolean): void {
   canvas.style.opacity = "0";
   setTimeout(() => {
     setMode(state, newMode);
+    viewportWrap.style.display = showCanvas ? "" : "none";
     canvas.style.display = showCanvas ? "" : "none";
     canvas.style.opacity = "1";
   }, 150);
@@ -223,6 +227,7 @@ let combatController: CombatController | null = null;
 
 function startCombat(combat: CombatState): void {
   combatPanel.style.display = "block";
+  viewportWrap.style.display = "none";
   canvas.style.display = "none";
   messageEl.textContent = "";
 
@@ -273,6 +278,7 @@ function endCombat(result: CombatState): void {
   state.combat = undefined;
   combatController = null;
   combatPanel.style.display = "none";
+  viewportWrap.style.display = "";
   canvas.style.display = "";
   setMode(state, "dungeon");
 }
@@ -289,6 +295,8 @@ function startCamp(): void {
     return;
   }
   setMode(state, "camp");
+  if (mapVisible) toggleMap();
+  viewportWrap.style.display = "none";
   canvas.style.display = "none";
   messageEl.textContent = "";
 
@@ -300,6 +308,7 @@ function startCamp(): void {
     onEnd: () => {
       campController = null;
       combatPanel.style.display = "none";
+      viewportWrap.style.display = "";
       canvas.style.display = "";
       setMode(state, "dungeon");
       setMessage(`The party rests. Day ${state.dayCount}. HP and SP restored.`);
@@ -333,33 +342,33 @@ function onMove(): void {
 
 bindInput(window, {
   onForward: () => {
-    if (state.mode === "dungeon") {
+    if (state.mode === "dungeon" && !mapVisible) {
       moveForward(state);
       markExplored();
       onMove();
     }
   },
   onBackward: () => {
-    if (state.mode === "dungeon") {
+    if (state.mode === "dungeon" && !mapVisible) {
       moveBackward(state);
       markExplored();
       onMove();
     }
   },
   onTurnLeft: () => {
-    if (state.mode === "dungeon") {
+    if (state.mode === "dungeon" && !mapVisible) {
       turnLeft(state);
       markExplored();
     }
   },
   onTurnRight: () => {
-    if (state.mode === "dungeon") {
+    if (state.mode === "dungeon" && !mapVisible) {
       turnRight(state);
       markExplored();
     }
   },
   onCamp: () => {
-    if (state.mode === "dungeon") startCamp();
+    if (state.mode === "dungeon" && !mapVisible) startCamp();
   },
   onToggleMap: () => {
     if (state.mode === "dungeon") toggleMap();
@@ -367,13 +376,18 @@ bindInput(window, {
   onSystemMenu: () => {
     // In town mode, Esc is handled by the town controller (back from
     // sub-screens). Only open the save menu from the town main menu.
-    if (state.mode === "dungeon") openSaveMenu();
+    if (state.mode !== "dungeon") return;
+    if (mapVisible) {
+      toggleMap();
+      return;
+    }
+    openSaveMenu();
   },
   onTown: () => {
-    if (state.mode === "dungeon") returnToTown();
+    if (state.mode === "dungeon" && !mapVisible) returnToTown();
   },
   onUnlock: () => {
-    if (state.mode === "dungeon") {
+    if (state.mode === "dungeon" && !mapVisible) {
       const msg = tryUnlock(state);
       setMessage(msg);
     }
@@ -521,4 +535,14 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-loop();
+// Wait for the custom font to load before starting the render loop, so
+// Canvas text rendering uses FF36 from the first frame instead of the
+// fallback monospace.
+if ("fonts" in document) {
+  document.fonts
+    .load('14px "FF36"')
+    .then(() => loop())
+    .catch(() => loop()); // start anyway if the font fails to load
+} else {
+  loop();
+}

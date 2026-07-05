@@ -266,11 +266,22 @@ export class PartyCreationController {
     const maxSp = computeMaxSp(d.stats, d.cls);
     const lines: string[] = [];
 
-    lines.push(`<div class="town-header">⚔ Party Creation</div>`);
+    lines.push(`<div class="town-header">[+] Party Creation</div>`);
     lines.push(
       `<div class="town-gold">Slot ${this.slotIndex + 1} of 6 · ` +
       `${this.drafts.filter((_, i) => i < this.slotIndex).length} confirmed</div>`
     );
+
+    // Quick Start card — only shown on slot 1 with no confirmed characters.
+    if (this.slotIndex === 0 && this.drafts.length === 1) {
+      lines.push(`<div class="quick-start-card">`);
+      lines.push(`<div class="qs-title">Quick Start — Press [D] for a ready-made party</div>`);
+      lines.push(`<div class="qs-roster">`);
+      lines.push(`Aria (Human Fighter) · Bram (Dwarf Fighter) · Coda (Hobbit Thief) · `);
+      lines.push(`Dell (Elf Mage) · Eve (Gnome Priest) · Fenn (Elf Mage)`);
+      lines.push(`</div>`);
+      lines.push(`</div>`);
+    }
 
     // Confirmed slots summary
     if (this.slotIndex > 0) {
@@ -318,7 +329,7 @@ export class PartyCreationController {
       `</div>`
     );
     lines.push(
-      `<div class="party-derived">HP ${maxHp} · SP ${maxSp}</div>`
+      `<div class="party-derived">HP ${maxHp} · SP ${maxSp} · ${CLASSES[d.cls].description}</div>`
     );
 
     // Help

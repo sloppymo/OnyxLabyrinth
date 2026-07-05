@@ -148,15 +148,15 @@ export function renderAutoMap(ctx: CanvasRenderingContext2D, state: GameState): 
 
   // --- Pass 5: draw legend / header ---------------------------------------
   ctx.fillStyle = MAP_COLORS.wall;
-  ctx.font = "14px monospace";
+  ctx.font = '28px "FF36", "Courier New", monospace';
   ctx.textAlign = "left";
-  ctx.fillText(`${floor.name} — Floor ${floor.id}`, 16, 24);
+  ctx.fillText(`${floor.name} — Floor ${floor.id}`, 16, 36);
   ctx.textAlign = "right";
-  ctx.fillText(`Pos: ${player.x},${player.y}  Facing: ${["N", "E", "S", "W"][player.facing]}`, cw - 16, 24);
+  ctx.fillText(`Pos: ${player.x},${player.y}  Facing: ${["N", "E", "S", "W"][player.facing]}`, cw - 16, 36);
   ctx.textAlign = "left";
   ctx.fillStyle = MAP_COLORS.wall;
-  ctx.font = "11px monospace";
-  ctx.fillText("Press M to close", 16, ch - 16);
+  ctx.font = '22px "FF36", "Courier New", monospace';
+  ctx.fillText("Press M to close", 16, ch - 24);
 }
 
 // --- Edge drawing ----------------------------------------------------------
@@ -273,7 +273,7 @@ function drawFeatureIcon(
   const cx = px + TILE_PX / 2;
   const cy = py + TILE_PX / 2;
   ctx.fillStyle = MAP_COLORS.feature;
-  ctx.font = "bold 14px monospace";
+  ctx.font = 'bold 22px "FF36", "Courier New", monospace';
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   const icon = featureIcon(feature);

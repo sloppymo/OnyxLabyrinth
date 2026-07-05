@@ -7,7 +7,8 @@
  * animation where each character's HP/SP ticks up from their current value
  * to maximum. When the animation completes, the party is fully restored
  * (HP/SP to max, poison/paralysis cleared, KO'd characters revived to 1 HP)
- * and the onEnd callback fires so main.ts can return to dungeon mode.
+ * and a post-camp menu appears with options to view character sheets,
+ * reorder the party, or continue.
  *
  * Restrictions (§5.2): no camping on hazard tiles or with enemies within 3
  * tiles. Neither system exists yet (no hazard tiles, no on-map enemies), so
@@ -17,6 +18,11 @@
 
 import type { Character } from "../game/party";
 import { charRow } from "../game/party";
+import { ALL_SPELLS } from "../data/spells";
+
+const SPELL_NAME_BY_ID: Record<string, string> = Object.fromEntries(
+  ALL_SPELLS.map((s) => [s.id, s.name])
+);
 
 export interface CampControllerOptions {
   panel: HTMLElement;
@@ -26,6 +32,8 @@ export interface CampControllerOptions {
 }
 
 const CAMP_DURATION_MS = 3000;
+
+type CampPhase = "animating" | "menu" | "charSheet" | "reorder";
 
 interface CharAnim {
   char: Character;
@@ -37,6 +45,12 @@ interface CharAnim {
   revived: boolean;
 }
 
+const CAMP_MENU_ITEMS = [
+  { key: "continue", label: "Continue exploring" },
+  { key: "sheet", label: "View character sheets" },
+  { key: "reorder", label: "Reorder party" },
+] as const;
+
 export class CampController {
   private panel: HTMLElement;
   private party: Character[];
@@ -46,6 +60,10 @@ export class CampController {
   private elapsed = 0;
   private finished = false;
   private timerId: number | undefined;
+  private phase: CampPhase = "animating";
+  private menuIndex = 0;
+  private sheetIndex = 0;
+  private reorderFirst = -1;
 
   constructor(opts: CampControllerOptions) {
     this.panel = opts.panel;
@@ -101,16 +119,99 @@ export class CampController {
   private finish(): void {
     if (this.finished) return;
     this.finished = true;
-    this.render(1);
-    // Show the "press any key" prompt after the animation completes.
-    this.panel.innerHTML += `<div class="camp-done">Day ${this.dayCount}. Press any key to continue.</div>`;
+    this.phase = "menu";
+    this.renderMenu();
   }
 
-  /** Allow main.ts to dismiss the camp screen after the animation. */
-  handleKey(_key: string): void {
-    if (this.finished) {
-      this.dispose();
-      this.onEnd();
+  /** Route keypresses to the current phase. */
+  handleKey(key: string): void {
+    if (!this.finished) return; // ignore keys during animation
+    const lower = key.toLowerCase();
+
+    if (this.phase === "menu") {
+      this.handleMenuKey(lower);
+    } else if (this.phase === "charSheet") {
+      if (lower === "escape" || key === "Enter" || key === " ") {
+        this.phase = "menu";
+        this.renderMenu();
+      } else if (lower === "arrowup" || lower === "w") {
+        this.sheetIndex = (this.sheetIndex - 1 + this.party.length) % this.party.length;
+        this.renderCharSheet();
+      } else if (lower === "arrowdown" || lower === "s") {
+        this.sheetIndex = (this.sheetIndex + 1) % this.party.length;
+        this.renderCharSheet();
+      }
+    } else if (this.phase === "reorder") {
+      this.handleReorderKey(lower, key);
+    }
+  }
+
+  private handleMenuKey(lower: string): void {
+    switch (lower) {
+      case "arrowup":
+      case "w":
+        this.menuIndex = (this.menuIndex - 1 + CAMP_MENU_ITEMS.length) % CAMP_MENU_ITEMS.length;
+        this.renderMenu();
+        break;
+      case "arrowdown":
+      case "s":
+        this.menuIndex = (this.menuIndex + 1) % CAMP_MENU_ITEMS.length;
+        this.renderMenu();
+        break;
+      case "enter":
+      case " ":
+        this.selectMenu();
+        break;
+      case "escape":
+        this.dispose();
+        this.onEnd();
+        break;
+    }
+  }
+
+  private selectMenu(): void {
+    const item = CAMP_MENU_ITEMS[this.menuIndex];
+    switch (item.key) {
+      case "continue":
+        this.dispose();
+        this.onEnd();
+        break;
+      case "sheet":
+        this.phase = "charSheet";
+        this.sheetIndex = 0;
+        this.renderCharSheet();
+        break;
+      case "reorder":
+        this.phase = "reorder";
+        this.reorderFirst = -1;
+        this.renderReorder();
+        break;
+    }
+  }
+
+  private handleReorderKey(lower: string, key: string): void {
+    if (lower === "escape") {
+      this.phase = "menu";
+      this.renderMenu();
+      return;
+    }
+    const idx = parseInt(key, 10);
+    if (isNaN(idx) || idx < 1 || idx > this.party.length) return;
+    const slotIdx = idx - 1;
+    if (this.reorderFirst === -1) {
+      this.reorderFirst = slotIdx;
+      this.renderReorder();
+    } else {
+      // Swap formation slots and array positions.
+      const a = this.party[this.reorderFirst];
+      const b = this.party[slotIdx];
+      const tmpSlot = a.formationSlot;
+      a.formationSlot = b.formationSlot;
+      b.formationSlot = tmpSlot;
+      this.party[this.reorderFirst] = b;
+      this.party[slotIdx] = a;
+      this.reorderFirst = -1;
+      this.renderReorder();
     }
   }
 
@@ -126,11 +227,12 @@ export class CampController {
   // --- Rendering ----------------------------------------------------------
 
   private render(progress: number): void {
+    if (this.phase !== "animating") return;
     // Eased progress so healing starts fast and slows near max — feels cozy.
     const eased = 1 - Math.pow(1 - progress, 2);
 
     const lines: string[] = [];
-    lines.push(`<div class="camp-header">⛺ CAMP — Day ${this.dayCount}</div>`);
+    lines.push(`<div class="camp-header">[C] CAMP — Day ${this.dayCount}</div>`);
 
     // Campfire visual: flickering orange lines. The flicker is driven by
     // progress so it animates during the camp.
@@ -168,6 +270,68 @@ export class CampController {
       lines.push(`<div class="camp-resting">Resting...</div>`);
     }
 
+    this.panel.innerHTML = lines.join("");
+  }
+
+  private renderMenu(): void {
+    const lines: string[] = [];
+    lines.push(`<div class="camp-header">[C] CAMP — Day ${this.dayCount} — Rested</div>`);
+    lines.push(`<div class="camp-party">`);
+    for (let i = 0; i < CAMP_MENU_ITEMS.length; i++) {
+      const item = CAMP_MENU_ITEMS[i];
+      const selected = i === this.menuIndex;
+      const marker = selected ? "▶" : " ";
+      lines.push(
+        `<div class="camp-char">` +
+        `<span class="cc-name">${marker} ${item.label}</span>` +
+        `</div>`
+      );
+    }
+    lines.push(`</div>`);
+    lines.push(`<div class="camp-done">[↑/↓] navigate · [Enter] select · [Esc] continue</div>`);
+    this.panel.innerHTML = lines.join("");
+  }
+
+  private renderCharSheet(): void {
+    const c = this.party[this.sheetIndex];
+    const rowLabel = charRow(c) === "front" ? "Front" : "Back";
+    const s = c.stats;
+    const spellNames = c.knownSpellIds.length > 0
+      ? c.knownSpellIds.map((id) => SPELL_NAME_BY_ID[id] ?? id).join(", ")
+      : "None";
+    const lines: string[] = [];
+    lines.push(`<div class="camp-header">[C] Character Sheet — ${this.sheetIndex + 1}/${this.party.length}</div>`);
+    lines.push(`<div class="char-sheet">`);
+    lines.push(`<div class="cs-name">${c.name} — Level ${c.level} ${c.race} ${c.class} (${c.alignment}, ${rowLabel} Row)</div>`);
+    lines.push(`<div class="cs-stats">STR ${s.str} · INT ${s.int} · PIE ${s.pie} · VIT ${s.vit} · AGI ${s.agi} · LUK ${s.luk}</div>`);
+    lines.push(`<div class="cs-stats">HP ${c.hp}/${c.maxHp} · SP ${c.sp}/${c.maxSp} · XP ${c.xp}</div>`);
+    lines.push(`<div class="cs-spells">Spells: ${spellNames}</div>`);
+    lines.push(`</div>`);
+    lines.push(`<div class="camp-done">[↑/↓] cycle characters · [Enter/Esc] back to menu</div>`);
+    this.panel.innerHTML = lines.join("");
+  }
+
+  private renderReorder(): void {
+    const lines: string[] = [];
+    lines.push(`<div class="camp-header">[C] Reorder Party</div>`);
+    lines.push(`<div class="camp-party">`);
+    for (let i = 0; i < this.party.length; i++) {
+      const c = this.party[i];
+      const rowLabel = charRow(c) === "front" ? "F" : "B";
+      const isFirst = this.reorderFirst === i;
+      const marker = isFirst ? "▶" : `${i + 1}.`;
+      lines.push(
+        `<div class="camp-char">` +
+        `<span class="cc-name">${marker} [${rowLabel}] ${c.name} (${c.class})</span>` +
+        `</div>`
+      );
+    }
+    lines.push(`</div>`);
+    if (this.reorderFirst === -1) {
+      lines.push(`<div class="camp-done">Press 1-6 to select first character to swap · [Esc] back</div>`);
+    } else {
+      lines.push(`<div class="camp-done">Press 1-6 to select second character to swap with ${this.party[this.reorderFirst].name} · [Esc] cancel</div>`);
+    }
     this.panel.innerHTML = lines.join("");
   }
 }
