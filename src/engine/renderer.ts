@@ -26,6 +26,9 @@ const FILL_OPACITY_MULTIPLIER = 0.45;
 const GLOW_BLUR_NEAR = 7;
 const GLOW_BLUR_FAR = 2;
 
+const SCANLINE_OPACITY = 0.12;
+const SCANLINE_SPACING = 3;
+
 function opacityForDepth(d: number): number {
   return BASE_OPACITY * Math.pow(FOG_FALLOFF, d);
 }
@@ -435,6 +438,17 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
 
   drawMinimap(ctx, state);
+
+  // Global vignette: focuses attention on the corridor and softens edges.
+  drawVignette(ctx, w, h, 1.0);
+
+  // Subtle CRT scanline texture.
+  drawScanlines(ctx, w, h);
+
+  // Extra darkness vignette when in a darkness zone (design doc §6.2).
+  if (state.inDarkness) {
+    drawVignette(ctx, w, h, 1.35);
+  }
 }
 
 function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -518,5 +532,40 @@ function strokeEdge(
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
   ctx.stroke();
+}
+
+/** Darken the corners/edges with a radial gradient overlay. */
+function drawVignette(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  strength: number = 1.0
+): void {
+  const cx = w / 2;
+  const cy = h / 2;
+  const radius = Math.max(w, h) / 2;
+  const grad = ctx.createRadialGradient(cx, cy, radius * 0.25, cx, cy, radius);
+  grad.addColorStop(0, "rgba(0,0,0,0)");
+  grad.addColorStop(0.55, `rgba(0,0,0,${0.35 * strength})`);
+  grad.addColorStop(1, `rgba(0,0,0,${0.75 * strength})`);
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+}
+
+/** Subtle horizontal scanline texture across the whole viewport. */
+function drawScanlines(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number
+): void {
+  ctx.save();
+  ctx.fillStyle = `rgba(0,0,0,${SCANLINE_OPACITY})`;
+  for (let y = 0; y < h; y += SCANLINE_SPACING) {
+    ctx.fillRect(0, y, w, 1);
+  }
+  ctx.restore();
 }
 
