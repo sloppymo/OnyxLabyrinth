@@ -29,6 +29,30 @@ const GLOW_BLUR_FAR = 2;
 const SCANLINE_OPACITY = 0.12;
 const SCANLINE_SPACING = 3;
 
+const MAP = {
+  cellSize: 14,
+  pad: 16,
+  bg: "rgba(14,13,10,0.75)",
+  border: "#4a4035",
+  explored: "#2a2620",
+  current: "#3a3226",
+  trail: "rgba(224,164,88,0.25)",
+  wall: "rgba(183,179,166,0.55)",
+  door: "#e0a458",
+  locked: "#c44",
+  player: "#e0a458",
+};
+
+const TRAIL_MAX = 12;
+const positionTrail: { x: number; y: number }[] = [];
+
+function updateTrail(x: number, y: number): void {
+  const last = positionTrail[positionTrail.length - 1];
+  if (last && last.x === x && last.y === y) return;
+  positionTrail.push({ x, y });
+  if (positionTrail.length > TRAIL_MAX) positionTrail.shift();
+}
+
 function opacityForDepth(d: number): number {
   return BASE_OPACITY * Math.pow(FOG_FALLOFF, d);
 }
@@ -454,67 +478,95 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
 function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
   const grid = state.floor.grid;
   const { player } = state;
-  const cellSize = 14;
-  const pad = 16;
   const rows = grid.length;
   const cols = grid[0].length;
-  const originX = pad;
-  const originY = pad;
+  const originX = MAP.pad;
+  const originY = MAP.pad;
+  const panelW = cols * MAP.cellSize + 12;
+  const panelH = rows * MAP.cellSize + 12;
+
+  updateTrail(player.x, player.y);
 
   ctx.save();
-  ctx.globalAlpha = 0.9;
-  ctx.fillStyle = "rgba(14,13,10,0.6)";
-  ctx.fillRect(originX - 6, originY - 6, cols * cellSize + 12, rows * cellSize + 12);
 
+  // Panel background and border
+  ctx.fillStyle = MAP.bg;
+  ctx.strokeStyle = MAP.border;
+  ctx.lineWidth = 1;
+  roundRect(ctx, originX - 6, originY - 6, panelW, panelH, 6);
+  ctx.fill();
+  ctx.stroke();
+
+  const isExplored = (x: number, y: number): boolean =>
+    state.explored.has(`${x},${y}`);
+
+  // Pass 1: explored tile fills
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
-      const cell = grid[y][x];
-      const px = originX + x * cellSize;
-      const py = originY + y * cellSize;
-
-      ctx.strokeStyle = "rgba(245,240,230,0.5)";
-      ctx.lineWidth = 1;
-
-      if (cell.n === "wall") strokeEdge(ctx, px, py, px + cellSize, py);
-      if (cell.s === "wall") strokeEdge(ctx, px, py + cellSize, px + cellSize, py + cellSize);
-      if (cell.w === "wall") strokeEdge(ctx, px, py, px, py + cellSize);
-      if (cell.e === "wall") strokeEdge(ctx, px + cellSize, py, px + cellSize, py + cellSize);
-
-      if (cell.n === "door") strokeEdge(ctx, px, py, px + cellSize, py, PALETTE.doorMarker);
-      if (cell.s === "door")
-        strokeEdge(ctx, px, py + cellSize, px + cellSize, py + cellSize, PALETTE.doorMarker);
-      if (cell.w === "door") strokeEdge(ctx, px, py, px, py + cellSize, PALETTE.doorMarker);
-      if (cell.e === "door")
-        strokeEdge(ctx, px + cellSize, py, px + cellSize, py + cellSize, PALETTE.doorMarker);
-
-      if (cell.n === "locked") strokeEdge(ctx, px, py, px + cellSize, py, PALETTE.lockedMarker);
-      if (cell.s === "locked")
-        strokeEdge(ctx, px, py + cellSize, px + cellSize, py + cellSize, PALETTE.lockedMarker);
-      if (cell.w === "locked") strokeEdge(ctx, px, py, px, py + cellSize, PALETTE.lockedMarker);
-      if (cell.e === "locked")
-        strokeEdge(ctx, px + cellSize, py, px + cellSize, py + cellSize, PALETTE.lockedMarker);
+      if (!isExplored(x, y)) continue;
+      const px = originX + x * MAP.cellSize;
+      const py = originY + y * MAP.cellSize;
+      ctx.fillStyle = x === player.x && y === player.y ? MAP.current : MAP.explored;
+      ctx.fillRect(px, py, MAP.cellSize, MAP.cellSize);
     }
   }
 
-  // Player marker: pulsing dot + facing tick, per Section 12.2 auto-map spec.
-  const pxCenter = originX + player.x * cellSize + cellSize / 2;
-  const pyCenter = originY + player.y * cellSize + cellSize / 2;
-  const pulse = 2.5 + Math.sin(performance.now() / 250) * 1;
-  ctx.fillStyle = "#e0a458";
-  ctx.beginPath();
-  ctx.arc(pxCenter, pyCenter, pulse + 2, 0, Math.PI * 2);
-  ctx.fill();
+  // Pass 2: movement trail (faint dots on explored tiles)
+  ctx.fillStyle = MAP.trail;
+  for (let i = 0; i < positionTrail.length - 1; i++) {
+    const t = positionTrail[i];
+    if (!isExplored(t.x, t.y)) continue;
+    const px = originX + t.x * MAP.cellSize + MAP.cellSize / 2;
+    const py = originY + t.y * MAP.cellSize + MAP.cellSize / 2;
+    ctx.beginPath();
+    ctx.arc(px, py, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  const tickLen = 9;
-  ctx.strokeStyle = "#e0a458";
-  ctx.lineWidth = 2;
+  // Pass 3: walls and doors on explored tiles
+  ctx.lineWidth = 1;
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (!isExplored(x, y)) continue;
+      const cell = grid[y][x];
+      const px = originX + x * MAP.cellSize;
+      const py = originY + y * MAP.cellSize;
+
+      if (cell.n === "wall") strokeEdge(ctx, px, py, px + MAP.cellSize, py, MAP.wall);
+      if (cell.s === "wall") strokeEdge(ctx, px, py + MAP.cellSize, px + MAP.cellSize, py + MAP.cellSize, MAP.wall);
+      if (cell.w === "wall") strokeEdge(ctx, px, py, px, py + MAP.cellSize, MAP.wall);
+      if (cell.e === "wall") strokeEdge(ctx, px + MAP.cellSize, py, px + MAP.cellSize, py + MAP.cellSize, MAP.wall);
+
+      if (cell.n === "door") strokeEdge(ctx, px, py, px + MAP.cellSize, py, MAP.door);
+      if (cell.s === "door") strokeEdge(ctx, px, py + MAP.cellSize, px + MAP.cellSize, py + MAP.cellSize, MAP.door);
+      if (cell.w === "door") strokeEdge(ctx, px, py, px, py + MAP.cellSize, MAP.door);
+      if (cell.e === "door") strokeEdge(ctx, px + MAP.cellSize, py, px + MAP.cellSize, py + MAP.cellSize, MAP.door);
+
+      if (cell.n === "locked") strokeEdge(ctx, px, py, px + MAP.cellSize, py, MAP.locked);
+      if (cell.s === "locked") strokeEdge(ctx, px, py + MAP.cellSize, px + MAP.cellSize, py + MAP.cellSize, MAP.locked);
+      if (cell.w === "locked") strokeEdge(ctx, px, py, px, py + MAP.cellSize, MAP.locked);
+      if (cell.e === "locked") strokeEdge(ctx, px + MAP.cellSize, py, px + MAP.cellSize, py + MAP.cellSize, MAP.locked);
+    }
+  }
+
+  // Pass 4: directional player marker with glow
+  const pcx = originX + player.x * MAP.cellSize + MAP.cellSize / 2;
+  const pcy = originY + player.y * MAP.cellSize + MAP.cellSize / 2;
+
+  ctx.save();
+  ctx.translate(pcx, pcy);
+  ctx.rotate((player.facing * Math.PI) / 2);
+
+  ctx.shadowColor = MAP.player;
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = MAP.player;
   ctx.beginPath();
-  ctx.moveTo(pxCenter, pyCenter);
-  ctx.lineTo(
-    pxCenter + DX[player.facing] * tickLen,
-    pyCenter + DY[player.facing] * tickLen
-  );
-  ctx.stroke();
+  ctx.moveTo(0, -7);
+  ctx.lineTo(5, 5);
+  ctx.lineTo(-5, 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 
   ctx.restore();
 }
@@ -532,6 +584,29 @@ function strokeEdge(
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
   ctx.stroke();
+}
+
+/** Draw a rounded rectangle path (no fill/stroke). */
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+): void {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + w - radius, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+  ctx.lineTo(x + w, y + h - radius);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+  ctx.lineTo(x + radius, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
 }
 
 /** Darken the corners/edges with a radial gradient overlay. */
