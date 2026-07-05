@@ -26,9 +26,6 @@ const FILL_OPACITY_MULTIPLIER = 0.45;
 const GLOW_BLUR_NEAR = 7;
 const GLOW_BLUR_FAR = 2;
 
-const SCANLINE_OPACITY = 0.12;
-const SCANLINE_SPACING = 3;
-
 function opacityForDepth(d: number): number {
   return BASE_OPACITY * Math.pow(FOG_FALLOFF, d);
 }
@@ -76,8 +73,7 @@ function ceilingGradient(
   yFar: number,
   alpha: number
 ): CanvasGradient {
-  void yFar; // reserved for the Task 2 vertical-extent tuning
-  const g = ctx.createLinearGradient(0, 0, 0, yNear);
+  const g = ctx.createLinearGradient(0, yFar, 0, yNear);
   g.addColorStop(0, rgba({ r: 14, g: 13, b: 10 }, 0));
   g.addColorStop(1, rgba({ r: PALETTE.ceilingFill.r + 6, g: PALETTE.ceilingFill.g + 2, b: PALETTE.ceilingFill.b }, alpha));
   return g;
@@ -118,7 +114,7 @@ function drawQuad(
   ctx: CanvasRenderingContext2D,
   points: [number, number][],
   strokeStyle: string,
-  fillStyle?: string,
+  fillStyle?: string | CanvasGradient,
   lineWidth: number = 1.5,
   glowBlur: number = 0
 ) {
@@ -278,11 +274,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Darkness zones reduce visibility to 1 tile (design doc §6.2).
   const maxDepth = state.inDarkness ? DARKNESS_DEPTH : MAX_DEPTH;
 
-  // Floor / ceiling near-plane gradient (soft fill close to viewer, per Section 12.2)
+  // Near-plane floor/ceiling gradient fills (depth 0, full opacity).
   const nearRect = getDepthRect(w, h, 0);
-  const floorGrad = ctx.createLinearGradient(0, nearRect.bottom, 0, h);
-  floorGrad.addColorStop(0, "#3a3226");
-  floorGrad.addColorStop(1, PALETTE.bg);
+
+  const floorGrad = floorGradient(ctx, nearRect.bottom, h, opacityForDepth(0));
   ctx.fillStyle = floorGrad;
   ctx.beginPath();
   ctx.moveTo(0, h);
@@ -292,9 +287,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.closePath();
   ctx.fill();
 
-  const ceilGrad = ctx.createLinearGradient(0, 0, 0, nearRect.top);
-  ceilGrad.addColorStop(0, PALETTE.bg);
-  ceilGrad.addColorStop(1, "#1c1a16");
+  const ceilGrad = ceilingGradient(ctx, nearRect.top, 0, opacityForDepth(0));
   ctx.fillStyle = ceilGrad;
   ctx.beginPath();
   ctx.moveTo(0, 0);
@@ -320,13 +313,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
 
     const near = getDepthRect(w, h, d);
     const far = getDepthRect(w, h, d + 1);
-    const color =
-      d <= 0 ? PALETTE.warmWhite :
-      d === 1 ? "#b7b3a6" :
-      d === 2 ? "#726e64" :
-      "#2c2a24";
+    const stroke = strokeColorForDepth(d);
+    const fillAlpha = opacityForDepth(d) * FILL_OPACITY_MULTIPLIER;
+    const lw = d <= 0 ? 2.0 : d === 1 ? 1.5 : d === 2 ? 1.0 : 0.75;
+    const glowBlur = Math.max(GLOW_BLUR_FAR, GLOW_BLUR_NEAR - d * 1.5);
 
-    // Left wall (wall or locked — both block, locked gets a red marker)
+    // Left wall
     if (leftEdge !== "open") {
       drawQuad(
         ctx,
@@ -336,7 +328,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           [far.left, far.bottom],
           [near.left, near.bottom],
         ],
-        color
+        stroke,
+        wallGradient(ctx, near.left, far.left, PALETTE.wallFill, fillAlpha),
+        lw,
+        glowBlur
       );
       if (leftEdge === "door") drawDoorMarker(ctx, near, far, "left");
       else if (leftEdge === "locked") drawLockedMarker(ctx, near, far, "left");
@@ -352,13 +347,36 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           [far.right, far.bottom],
           [near.right, near.bottom],
         ],
-        color
+        stroke,
+        wallGradient(ctx, near.right, far.right, PALETTE.wallFill, fillAlpha),
+        lw,
+        glowBlur
       );
       if (rightEdge === "door") drawDoorMarker(ctx, near, far, "right");
       else if (rightEdge === "locked") drawLockedMarker(ctx, near, far, "right");
     }
 
-    // Ceiling and floor strip for this segment (connects near/far top and bottom edges)
+    // Ceiling strip fill
+    ctx.fillStyle = ceilingGradient(ctx, near.top, far.top, fillAlpha);
+    ctx.beginPath();
+    ctx.moveTo(near.left, near.top);
+    ctx.lineTo(near.right, near.top);
+    ctx.lineTo(far.right, far.top);
+    ctx.lineTo(far.left, far.top);
+    ctx.closePath();
+    ctx.fill();
+
+    // Floor strip fill
+    ctx.fillStyle = floorGradient(ctx, near.bottom, far.bottom, fillAlpha);
+    ctx.beginPath();
+    ctx.moveTo(near.left, near.bottom);
+    ctx.lineTo(near.right, near.bottom);
+    ctx.lineTo(far.right, far.bottom);
+    ctx.lineTo(far.left, far.bottom);
+    ctx.closePath();
+    ctx.fill();
+
+    // Stroke the ceiling/floor strip edges with glow
     drawQuad(
       ctx,
       [
@@ -367,7 +385,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         [far.right, far.top],
         [far.left, far.top],
       ],
-      color
+      stroke,
+      undefined,
+      lw,
+      glowBlur
     );
     drawQuad(
       ctx,
@@ -377,7 +398,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         [far.right, far.bottom],
         [far.left, far.bottom],
       ],
-      color
+      stroke,
+      undefined,
+      lw,
+      glowBlur
     );
 
     // Draw tile feature at this depth (on the floor between near and far).
@@ -396,8 +420,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           [far.right, far.bottom],
           [far.left, far.bottom],
         ],
-        color,
-        d === 0 ? undefined : `${color}22`
+        stroke,
+        d === 0 ? undefined : rgba(PALETTE.wallFill, fillAlpha),
+        lw,
+        glowBlur
       );
       if (blocked === "door") drawDoorMarker(ctx, near, far, "front");
       else if (blocked === "locked") drawLockedMarker(ctx, near, far, "front");
@@ -494,16 +520,3 @@ function strokeEdge(
   ctx.stroke();
 }
 
-// Satisfy noUnusedLocals for the module-private helpers/constants that are
-// declared here for the Task 2 render-loop upgrade.
-void [
-  GLOW_BLUR_NEAR,
-  GLOW_BLUR_FAR,
-  SCANLINE_OPACITY,
-  SCANLINE_SPACING,
-  FILL_OPACITY_MULTIPLIER,
-  strokeColorForDepth,
-  wallGradient,
-  floorGradient,
-  ceilingGradient,
-];
