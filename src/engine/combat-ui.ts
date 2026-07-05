@@ -55,18 +55,24 @@ export class CombatController {
   private actions: PlayerAction[] = [];
   private currentCharIndex = 0;
   private pending: PendingAction = { actorId: "" };
-  private consumableIds: string[] = [];
 
   constructor(state: CombatState, opts: CombatControllerOptions) {
     this.state = state;
     this.panel = opts.panel;
     this.onEnd = opts.onEnd;
-    // Available consumables for the Item action. For the merge MVP, the party
-    // has infinite healing potions and antidotes. A real inventory system
-    // would track quantities on GameState and decrement on use.
-    this.consumableIds = ["healing-potion", "antidote"];
     this.startActionSelection();
     this.render();
+  }
+
+  /** Consumables currently held by the party, with stack counts. */
+  private availableItems(): { item: ItemDef; count: number }[] {
+    return Object.entries(this.state.inventory)
+      .filter(([, count]) => count > 0)
+      .map(([id, count]) => ({ item: this.state.items[id], count }))
+      .filter(
+        (entry): entry is { item: ItemDef; count: number } =>
+          entry.item !== undefined && entry.item.type === "consumable"
+      );
   }
 
   // --- Public API ---------------------------------------------------------
@@ -205,9 +211,7 @@ export class CombatController {
         this.render();
         break;
       case "i": {
-        const available = this.consumableIds
-          .map((id) => this.state.items[id])
-          .filter((item): item is ItemDef => item !== undefined && item.type === "consumable");
+        const available = this.availableItems();
         if (available.length === 0) {
           this.render(`No items available.`);
           break;
@@ -318,12 +322,10 @@ export class CombatController {
   private handleItemKey(key: string): void {
     const c = this.currentChar();
     if (!c) return;
-    const items = this.consumableIds
-      .map((id) => this.state.items[id])
-      .filter((item): item is ItemDef => item !== undefined && item.type === "consumable");
+    const items = this.availableItems();
     const idx = parseInt(key, 10);
     if (isNaN(idx) || idx < 1 || idx > items.length) return;
-    const item = items[idx - 1];
+    const item = items[idx - 1].item;
     this.pending.itemId = item.id;
 
     // Items that heal or revive need an ally target; cure items also need one.
@@ -364,7 +366,7 @@ export class CombatController {
     const lines: string[] = [];
 
     // Header
-    lines.push(`<div class="combat-header">⚔ COMBAT — Round ${s.round}${s.isBoss ? " (BOSS)" : ""}</div>`);
+    lines.push(`<div class="combat-header">[!] COMBAT — Round ${s.round}${s.isBoss ? " (BOSS)" : ""}</div>`);
 
     // Enemy formation
     lines.push(`<div class="combat-section">ENEMIES:</div>`);
@@ -399,9 +401,18 @@ export class CombatController {
     lines.push(`<div class="combat-party">${partyLines.join("<br>")}</div>`);
 
     // Log (scrollable; don't truncate — boss silence and other first-action
-    // messages must remain visible).
+    // messages must remain visible). Color-coded by content for readability.
     if (s.log.length > 0) {
-      lines.push(`<div class="combat-log">${s.log.map((l) => `• ${l}`).join("<br>")}</div>`);
+      const coloredLog = s.log.map((l) => {
+        let cls = "";
+        if (/victory|defeated|wins/i.test(l)) cls = "log-victory";
+        else if (/wipe|knocked out|falls/i.test(l)) cls = "log-defeat";
+        else if (/casts|spell/i.test(l)) cls = "log-spell";
+        else if (/heals|healed|HP restored/i.test(l)) cls = "log-damage-dealt";
+        else if (/hits|damage|strikes/i.test(l) && !/party|ally/i.test(l)) cls = "log-damage-taken";
+        return `• <span class="${cls}">${l}</span>`;
+      });
+      lines.push(`<div class="combat-log">${coloredLog.join("<br>")}</div>`);
     }
 
     // Prompt / instructions
@@ -440,10 +451,10 @@ export class CombatController {
         break;
       }
       case "selectItem": {
-        const items = this.consumableIds
-          .map((id) => s.items[id])
-          .filter((item): item is ItemDef => item !== undefined && item.type === "consumable");
-        const itemList = items.map((it, i) => `${i + 1}.${it.name}`).join(" ");
+        const items = this.availableItems();
+        const itemList = items
+          .map(({ item, count }, i) => `${i + 1}.${item.name} x${count}`)
+          .join(" ");
         lines.push(`Select item: ${itemList}`);
         break;
       }
@@ -453,9 +464,18 @@ export class CombatController {
       case "roundResult":
         lines.push(`Round ${s.round} resolved. Press [Space] for next round.`);
         break;
-      case "ended":
-        lines.push(`Combat ended: <b>${s.result?.toUpperCase()}</b>. Press [Space] to continue.`);
+      case "ended": {
+        const resultLabel = s.result?.toUpperCase() ?? "ENDED";
+        const resultColor = s.result === "victory" ? "var(--amber)" : "var(--danger-red)";
+        lines.push(`<span style="color:${resultColor};font-size:16px;font-weight:bold">${resultLabel}</span>`);
+        if (s.result === "victory") {
+          lines.push(`<br><span style="color:var(--heal-green)">+${s.goldEarned} gold · +${s.xpEarned} XP each</span>`);
+        } else if (s.result === "wipe") {
+          lines.push(`<br><span style="color:var(--text-dim)">The party retreats to the entrance and revives at 1 HP.</span>`);
+        }
+        lines.push(`<br>Press [Space] to continue.`);
         break;
+      }
     }
     lines.push(`</div>`);
 

@@ -12,7 +12,7 @@ import { CampController } from "./engine/camp-ui";
 import { SaveController } from "./engine/save-ui";
 import { TownController } from "./engine/town-ui";
 import { PartyCreationController } from "./engine/party-ui";
-import { createCombatFromEncounter, type CombatState, type Loadout } from "./game/combat";
+import { createCombatFromEncounter, inventoryFromCounts, type CombatState, type Loadout } from "./game/combat";
 import { rollEncounter, resolveEncounter } from "./data/enemies";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
@@ -24,7 +24,7 @@ app.innerHTML = `
   <div id="game-wrap">
     <canvas id="view" width="960" height="600"></canvas>
     <canvas id="map-canvas" width="960" height="600" style="display:none"></canvas>
-    <div id="hint">&uarr;/W forward &middot; &darr;/S back &middot; &larr;/A turn left &middot; &rarr;/D turn right &middot; C camp &middot; M map &middot; T town &middot; U unlock &middot; Esc menu</div>
+    <div id="hint"><span id="compass">N</span> &uarr;/W forward &middot; &darr;/S back &middot; &larr;/A turn left &middot; &rarr;/D turn right &middot; C camp &middot; M map &middot; T town &middot; U unlock &middot; Esc menu</div>
     <div id="message"></div>
     <div id="party-strip"></div>
     <div id="combat-panel"></div>
@@ -38,11 +38,25 @@ const mapCtx = mapCanvas.getContext("2d")!;
 const messageEl = document.querySelector<HTMLDivElement>("#message")!;
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
 const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+const compassEl = document.querySelector<HTMLSpanElement>("#compass")!;
 
 const state = createGameState(FLOORS[0]);
 
 // Auto-map visibility flag — declared early because openTown() references it.
 let mapVisible = false;
+
+// --- Mode transition with fade -------------------------------------------
+// The canvas has `transition: opacity 0.15s` in CSS. This helper fades out,
+// swaps display + mode, then fades in. Non-canvas panels (combat/town/save)
+// don't need the fade — they appear instantly.
+function transitionToMode(newMode: GameMode, showCanvas: boolean): void {
+  canvas.style.opacity = "0";
+  setTimeout(() => {
+    setMode(state, newMode);
+    canvas.style.display = showCanvas ? "" : "none";
+    canvas.style.opacity = "1";
+  }, 150);
+}
 
 // --- Exploration tracking ------------------------------------------------
 // Mark the current tile and all 4 adjacent tiles as explored. The player
@@ -70,8 +84,7 @@ let townController: TownController | null = null;
 
 function openTown(): void {
   if (mapVisible) toggleMap();
-  setMode(state, "town");
-  canvas.style.display = "none";
+  transitionToMode("town", false);
   messageEl.textContent = "";
   townController = new TownController({
     panel: combatPanel,
@@ -97,7 +110,7 @@ function openTown(): void {
       const saved = state.exploredByFloor[floor.id];
       state.explored = saved ? new Set(saved) : new Set<string>();
       markExplored();
-      setMode(state, "dungeon");
+      transitionToMode("dungeon", true);
       setMessage(last ? "You return to the dungeon..." : "You enter the dungeon...");
     },
     onOpenSave: () => {
@@ -202,6 +215,7 @@ function maybeTriggerEncounter(): boolean {
     SPELLS_BY_ID,
     ITEMS_BY_ID,
     loadout,
+    state.inventory,
     state.inAntimagic
   );
   state.combat = combat;
@@ -237,6 +251,9 @@ function endCombat(result: CombatState): void {
     status: [...c.status],
     knownSpellIds: [...c.knownSpellIds],
   }));
+
+  // Write the (possibly depleted) combat inventory back to GameState.
+  state.inventory = inventoryFromCounts(result.inventory);
 
   if (result.result === "wipe") {
     // Design doc §9.1: party retreats to dungeon entrance, revives at 1 HP.
@@ -494,10 +511,12 @@ function renderPartyStrip(): void {
 }
 
 // --- Render loop ---------------------------------------------------------
+const COMPASS_DIRS = ["N", "E", "S", "W"];
 function loop() {
   if (state.mode === "dungeon") {
     render(ctx, state);
     renderPartyStrip();
+    compassEl.textContent = COMPASS_DIRS[state.player.facing];
     if (mapVisible) {
       renderAutoMap(mapCtx, state);
     }

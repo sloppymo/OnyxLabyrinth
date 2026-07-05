@@ -110,6 +110,11 @@ export interface CombatState {
   loadout: Record<string, Loadout>;
   /** Whether the encounter started in an anti-magic zone (spells fail). */
   inAntimagic: boolean;
+  /**
+   * Per-item inventory counts (id -> count). Snapshot of GameState.inventory
+   * at combat start; decremented when consumables are used in combat.
+   */
+  inventory: Record<string, number>;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,7 +132,8 @@ export function createCombatState(
   spells: Record<string, SpellDef> = {},
   items: Record<string, ItemDef> = {},
   loadout: Record<string, Loadout> = {},
-  inAntimagic = false
+  inAntimagic = false,
+  inventory: Record<string, number> = {}
 ): CombatState {
   return {
     party: party.map(cloneCharacter),
@@ -149,7 +155,28 @@ export function createCombatState(
     items,
     loadout,
     inAntimagic,
+    inventory: { ...inventory },
   };
+}
+
+/** Convert a flat item-id inventory into stack counts. */
+export function inventoryToCounts(inventory: string[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const id of inventory) {
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** Convert stack counts back into a flat item-id inventory. */
+export function inventoryFromCounts(counts: Record<string, number>): string[] {
+  const inventory: string[] = [];
+  for (const [id, count] of Object.entries(counts)) {
+    for (let i = 0; i < count; i++) {
+      inventory.push(id);
+    }
+  }
+  return inventory;
 }
 
 /**
@@ -163,6 +190,7 @@ export function createCombatFromEncounter(
   spells: Record<string, SpellDef>,
   items: Record<string, ItemDef>,
   loadout: Record<string, Loadout>,
+  inventory: string[] = [],
   inAntimagic = false
 ): CombatState {
   const front: EnemyInstance[] = [];
@@ -182,7 +210,7 @@ export function createCombatFromEncounter(
     idx++;
   }
   const isBoss = resolvedEncounter.some((e) => e.enemy.isBoss);
-  return createCombatState(party, { front, back }, isBoss, spells, items, loadout, inAntimagic);
+  return createCombatState(party, { front, back }, isBoss, spells, items, loadout, inAntimagic, inventoryToCounts(inventory));
 }
 
 // ---------------------------------------------------------------------------
@@ -616,6 +644,11 @@ function resolveItem(
     log(`${actor.name} cannot use ${item.name} in combat.`);
     return;
   }
+  const count = s.inventory[action.itemId] ?? 0;
+  if (count <= 0) {
+    log(`${actor.name} tries to use ${item.name} but has none left.`);
+    return;
+  }
   const targetId = action.targetAllyId ?? actor.id;
   const target = s.party.find((c) => c.id === targetId);
   if (!target) {
@@ -645,6 +678,12 @@ function resolveItem(
     } else {
       log(`${item.name} has no effect on ${target.name}.`);
     }
+  }
+
+  // Consume the item from the combat inventory snapshot.
+  s.inventory[action.itemId] = count - 1;
+  if (s.inventory[action.itemId] === 0) {
+    delete s.inventory[action.itemId];
   }
 }
 
