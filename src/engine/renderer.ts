@@ -309,9 +309,16 @@ function drawTexturedQuad(
   if (pattern) {
     const imgW = img.width;
     const imgH = img.height;
-    const sx = width / (repeatsX * imgW);
-    const sy = height / (repeatsY * imgH);
-    pattern.setTransform(new DOMMatrix([sx, 0, 0, sy, minX, minY]));
+    // Use a single uniform scale so tiles stay square regardless of the quad's
+    // aspect ratio — only the number of visible repeats should vary per quad,
+    // never the tile's own proportions.
+    const targetScale = Math.min(
+      width / (repeatsX * imgW),
+      height / (repeatsY * imgH)
+    );
+    pattern.setTransform(
+      new DOMMatrix([targetScale, 0, 0, targetScale, minX, minY])
+    );
     ctx.fillStyle = pattern;
     ctx.fillRect(minX, minY, width, height);
   }
