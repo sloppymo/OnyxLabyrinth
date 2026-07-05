@@ -57,15 +57,6 @@ const RENDER_CONFIG = {
   floorABrightnessFactor: 4.0,
   floorBBrightnessFactor: 2.8,
   ceilingBrightnessFactor: 10.0,
-  // Texture repeat counts per surface. Each floor/ceiling strip is one grid
-  // tile, so it should not be repeated across its own width (that created a
-  // center seam). Walls are one tile wide and benefit from a small tile grid.
-  wallRepeatsX: 3,
-  wallRepeatsY: 3,
-  floorRepeatsX: 1,
-  floorRepeatsY: 1,
-  ceilingRepeatsX: 1,
-  ceilingRepeatsY: 1,
 } as const;
 
 interface TextureSet {
@@ -229,6 +220,24 @@ function lineWidthForDepth(d: number): number {
   return d <= 0 ? 2.0 : d === 1 ? 1.5 : d === 2 ? 1.0 : 0.75;
 }
 
+/**
+ * Returns a single pixel-per-source-pixel scale representing "one grid tile"
+ * at the given depth. Using the depth rect's own height as the reference keeps
+ * wall/floor/ceiling tiles a consistent physical size across every surface at
+ * that depth, instead of each quad computing its own scale from its individual
+ * bounding box (which caused front-wall vs. side-wall tiles to mismatch).
+ */
+function tileScaleForDepth(
+  near: DepthRect,
+  imgSize: number
+): number {
+  // `near.bottom - near.top` is the apparent screen height of one grid unit at
+  // the near edge of this depth slot.
+  const refHeight = near.bottom - near.top;
+  const TILE_WORLD_UNITS = 1; // one texture repeat == one grid tile
+  return refHeight / TILE_WORLD_UNITS / imgSize;
+}
+
 function glowBlurForDepth(d: number): number {
   return Math.max(
     RENDER_CONFIG.glowBlurFar,
@@ -273,8 +282,7 @@ function drawTexturedQuad(
   ctx: CanvasRenderingContext2D,
   points: [number, number][],
   img: HTMLImageElement | HTMLCanvasElement,
-  repeatsX: number,
-  repeatsY: number,
+  scale: number,
   strokeStyle: string,
   lineWidth: number,
   glowBlur: number,
@@ -307,18 +315,7 @@ function drawTexturedQuad(
   ctx.imageSmoothingEnabled = false;
   const pattern = ctx.createPattern(img, "repeat");
   if (pattern) {
-    const imgW = img.width;
-    const imgH = img.height;
-    // Use a single uniform scale so tiles stay square regardless of the quad's
-    // aspect ratio — only the number of visible repeats should vary per quad,
-    // never the tile's own proportions.
-    const targetScale = Math.min(
-      width / (repeatsX * imgW),
-      height / (repeatsY * imgH)
-    );
-    pattern.setTransform(
-      new DOMMatrix([targetScale, 0, 0, targetScale, minX, minY])
-    );
+    pattern.setTransform(new DOMMatrix([scale, 0, 0, scale, minX, minY]));
     ctx.fillStyle = pattern;
     ctx.fillRect(minX, minY, width, height);
   }
@@ -361,6 +358,9 @@ function drawSideOpening(
   floorImg: HTMLCanvasElement | null,
   ceilImg: HTMLCanvasElement | null,
   wallImg: HTMLImageElement | HTMLCanvasElement | null,
+  floorScale: number,
+  ceilScale: number,
+  wallScale: number,
   floorDarkenAlpha: number,
   ceilDarkenAlpha: number,
   depth: number
@@ -385,8 +385,7 @@ function drawSideOpening(
         [xEdge, far.top],
       ],
       ceilImg,
-      RENDER_CONFIG.ceilingRepeatsX,
-      RENDER_CONFIG.ceilingRepeatsY,
+      ceilScale,
       "rgba(0,0,0,0)",
       0,
       0,
@@ -404,8 +403,7 @@ function drawSideOpening(
         [xEdge, far.bottom],
       ],
       floorImg,
-      RENDER_CONFIG.floorRepeatsX,
-      RENDER_CONFIG.floorRepeatsY,
+      floorScale,
       "rgba(0,0,0,0)",
       0,
       0,
@@ -425,8 +423,7 @@ function drawSideOpening(
         [xFar, far.bottom],
       ],
       wallImg,
-      RENDER_CONFIG.wallRepeatsX,
-      RENDER_CONFIG.wallRepeatsY,
+      wallScale,
       "rgba(0,0,0,0)",
       0,
       0,
@@ -601,6 +598,7 @@ function drawFrontWall(
   ctx: CanvasRenderingContext2D,
   far: DepthRect,
   wallImg: HTMLImageElement | HTMLCanvasElement | null,
+  scale: number,
   stroke: string,
   lw: number,
   glowBlur: number,
@@ -618,8 +616,7 @@ function drawFrontWall(
       ctx,
       points,
       wallImg,
-      RENDER_CONFIG.wallRepeatsX,
-      RENDER_CONFIG.wallRepeatsY,
+      scale,
       stroke,
       lw,
       glowBlur,
@@ -645,6 +642,7 @@ function drawSideWall(
   near: DepthRect,
   far: DepthRect,
   wallImg: HTMLImageElement | HTMLCanvasElement | null,
+  scale: number,
   stroke: string,
   lw: number,
   glowBlur: number,
@@ -671,8 +669,7 @@ function drawSideWall(
       ctx,
       points,
       wallImg,
-      RENDER_CONFIG.wallRepeatsX,
-      RENDER_CONFIG.wallRepeatsY,
+      scale,
       stroke,
       lw,
       glowBlur,
@@ -710,6 +707,7 @@ function drawCeilingStrip(
   near: DepthRect,
   far: DepthRect,
   ceilImg: HTMLCanvasElement | null,
+  scale: number,
   stroke: string,
   lw: number,
   glowBlur: number,
@@ -727,8 +725,7 @@ function drawCeilingStrip(
       ctx,
       points,
       ceilImg,
-      RENDER_CONFIG.ceilingRepeatsX,
-      RENDER_CONFIG.ceilingRepeatsY,
+      scale,
       stroke,
       lw,
       glowBlur,
@@ -751,6 +748,7 @@ function drawFloorStrip(
   near: DepthRect,
   far: DepthRect,
   floorImg: HTMLCanvasElement | null,
+  scale: number,
   stroke: string,
   lw: number,
   glowBlur: number,
@@ -768,8 +766,7 @@ function drawFloorStrip(
       ctx,
       points,
       floorImg,
-      RENDER_CONFIG.floorRepeatsX,
-      RENDER_CONFIG.floorRepeatsY,
+      scale,
       stroke,
       lw,
       glowBlur,
@@ -879,6 +876,19 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       RENDER_CONFIG.ceilingDarkenMultiplier
     );
 
+    // One scale per surface type for this depth, so every surface drawn in this
+    // layer shares the same physical tile size. The scale is based on the
+    // apparent screen height of one grid unit at the near edge of the depth slot.
+    const wallScale = wallImg
+      ? tileScaleForDepth(near, wallImg.width)
+      : 1;
+    const floorScale = floorImg
+      ? tileScaleForDepth(near, floorImg.width)
+      : 1;
+    const ceilScale = ceilImg
+      ? tileScaleForDepth(near, ceilImg.width)
+      : 1;
+
     const layer: RenderCmd[] = [];
 
     // Front wall (drawn first within the layer so it sits behind the feature
@@ -891,6 +901,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           ctx,
           far,
           wallImg,
+          wallScale,
           stroke,
           lw,
           glowBlur,
@@ -919,6 +930,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           floorImg,
           ceilImg,
           wallImg,
+          floorScale,
+          ceilScale,
+          wallScale,
           floorDepthDarkenAlpha,
           ceilDepthDarkenAlpha,
           d
@@ -936,6 +950,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           floorImg,
           ceilImg,
           wallImg,
+          floorScale,
+          ceilScale,
+          wallScale,
           floorDepthDarkenAlpha,
           ceilDepthDarkenAlpha,
           d
@@ -952,6 +969,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           near,
           far,
           wallImg,
+          wallScale,
           stroke,
           lw,
           glowBlur,
@@ -968,6 +986,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           near,
           far,
           wallImg,
+          wallScale,
           stroke,
           lw,
           glowBlur,
@@ -984,6 +1003,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         near,
         far,
         ceilImg,
+        ceilScale,
         stroke,
         lw,
         glowBlur,
@@ -997,6 +1017,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         near,
         far,
         floorImg,
+        floorScale,
         stroke,
         lw,
         glowBlur,
@@ -1036,6 +1057,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const floorImgNear = textures
     ? floorTextureForGrid(textures, player.x, player.y)
     : null;
+  const floorNearScale = floorImgNear
+    ? tileScaleForDepth(nearRect, floorImgNear.width)
+    : 1;
+  const ceilNearScale = ceilImg
+    ? tileScaleForDepth(nearRect, ceilImg.width)
+    : 1;
 
   if (floorImgNear) {
     drawTexturedQuad(
@@ -1047,8 +1074,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         [nearRect.left, nearRect.bottom],
       ],
       floorImgNear,
-      RENDER_CONFIG.floorRepeatsX,
-      RENDER_CONFIG.floorRepeatsY,
+      floorNearScale,
       strokeColorForDepth(0),
       2.0,
       RENDER_CONFIG.glowBlurNear,
@@ -1080,8 +1106,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         [nearRect.left, nearRect.top],
       ],
       ceilImg,
-      RENDER_CONFIG.ceilingRepeatsX,
-      RENDER_CONFIG.ceilingRepeatsY,
+      ceilNearScale,
       strokeColorForDepth(0),
       2.0,
       RENDER_CONFIG.glowBlurNear,
