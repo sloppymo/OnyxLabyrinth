@@ -1,5 +1,5 @@
 import type { GameState } from "../types";
-import type { EdgeType, TileFeature } from "../types";
+import type { Cell, EdgeType, TileFeature } from "../types";
 import { DX, DY, edgeInDirection } from "../game/dungeon";
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
@@ -45,8 +45,13 @@ const MAP = {
 
 const TRAIL_MAX = 12;
 const positionTrail: { x: number; y: number }[] = [];
+let trailFloorId: number | undefined;
 
-function updateTrail(x: number, y: number): void {
+function updateTrail(x: number, y: number, floorId: number): void {
+  if (trailFloorId !== floorId) {
+    positionTrail.length = 0;
+    trailFloorId = floorId;
+  }
   const last = positionTrail[positionTrail.length - 1];
   if (last && last.x === x && last.y === y) return;
   positionTrail.push({ x, y });
@@ -475,6 +480,28 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
 }
 
+/** Draw the four edges of a cell using the appropriate edge color. */
+function strokeCellEdge(
+  ctx: CanvasRenderingContext2D,
+  cell: Cell,
+  px: number,
+  py: number
+): void {
+  const edges: { type: EdgeType; x1: number; y1: number; x2: number; y2: number }[] = [
+    { type: cell.n, x1: px, y1: py, x2: px + MAP.cellSize, y2: py },
+    { type: cell.s, x1: px, y1: py + MAP.cellSize, x2: px + MAP.cellSize, y2: py + MAP.cellSize },
+    { type: cell.w, x1: px, y1: py, x2: px, y2: py + MAP.cellSize },
+    { type: cell.e, x1: px + MAP.cellSize, y1: py, x2: px + MAP.cellSize, y2: py + MAP.cellSize },
+  ];
+  for (const { type, x1, y1, x2, y2 } of edges) {
+    let color: string | undefined;
+    if (type === "wall") color = MAP.wall;
+    else if (type === "door") color = MAP.door;
+    else if (type === "locked") color = MAP.locked;
+    if (color) strokeEdge(ctx, x1, y1, x2, y2, color);
+  }
+}
+
 function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
   const grid = state.floor.grid;
   const { player } = state;
@@ -485,7 +512,7 @@ function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
   const panelW = cols * MAP.cellSize + 12;
   const panelH = rows * MAP.cellSize + 12;
 
-  updateTrail(player.x, player.y);
+  updateTrail(player.x, player.y, state.floor.id);
 
   ctx.save();
 
@@ -494,8 +521,12 @@ function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.strokeStyle = MAP.border;
   ctx.lineWidth = 1;
   roundRect(ctx, originX - 6, originY - 6, panelW, panelH, 6);
+
+  // Clip all minimap content (including the player marker) to the rounded
+  // panel so nothing spills outside the border.
+  ctx.save();
+  ctx.clip();
   ctx.fill();
-  ctx.stroke();
 
   const isExplored = (x: number, y: number): boolean =>
     state.explored.has(`${x},${y}`);
@@ -531,21 +562,7 @@ function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
       const cell = grid[y][x];
       const px = originX + x * MAP.cellSize;
       const py = originY + y * MAP.cellSize;
-
-      if (cell.n === "wall") strokeEdge(ctx, px, py, px + MAP.cellSize, py, MAP.wall);
-      if (cell.s === "wall") strokeEdge(ctx, px, py + MAP.cellSize, px + MAP.cellSize, py + MAP.cellSize, MAP.wall);
-      if (cell.w === "wall") strokeEdge(ctx, px, py, px, py + MAP.cellSize, MAP.wall);
-      if (cell.e === "wall") strokeEdge(ctx, px + MAP.cellSize, py, px + MAP.cellSize, py + MAP.cellSize, MAP.wall);
-
-      if (cell.n === "door") strokeEdge(ctx, px, py, px + MAP.cellSize, py, MAP.door);
-      if (cell.s === "door") strokeEdge(ctx, px, py + MAP.cellSize, px + MAP.cellSize, py + MAP.cellSize, MAP.door);
-      if (cell.w === "door") strokeEdge(ctx, px, py, px, py + MAP.cellSize, MAP.door);
-      if (cell.e === "door") strokeEdge(ctx, px + MAP.cellSize, py, px + MAP.cellSize, py + MAP.cellSize, MAP.door);
-
-      if (cell.n === "locked") strokeEdge(ctx, px, py, px + MAP.cellSize, py, MAP.locked);
-      if (cell.s === "locked") strokeEdge(ctx, px, py + MAP.cellSize, px + MAP.cellSize, py + MAP.cellSize, MAP.locked);
-      if (cell.w === "locked") strokeEdge(ctx, px, py, px, py + MAP.cellSize, MAP.locked);
-      if (cell.e === "locked") strokeEdge(ctx, px + MAP.cellSize, py, px + MAP.cellSize, py + MAP.cellSize, MAP.locked);
+      strokeCellEdge(ctx, cell, px, py);
     }
   }
 
@@ -567,6 +584,9 @@ function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.closePath();
   ctx.fill();
   ctx.restore();
+
+  ctx.restore(); // remove clip so the border stroke is not clipped
+  ctx.stroke();
 
   ctx.restore();
 }
