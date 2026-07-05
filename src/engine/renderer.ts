@@ -36,7 +36,9 @@ const SCANLINE_SPACING = 3;
 // Floor/ceiling are darker base textures than the wall; use a darkening overlay
 // with a lower multiplier so the pixel-art detail remains visible while still
 // fading into the distance.
-const FLOOR_CEILING_DARKEN_MULTIPLIER = 0.7;
+const FLOOR_CEILING_DARKEN_MULTIPLIER = 0.9;
+const FLOOR_BRIGHTNESS = 140;
+const CEILING_BRIGHTNESS = 200;
 
 // Texture repeat counts per depth segment (tuneable).
 const WALL_REPEATS_X = [2, 1, 1, 1];
@@ -211,7 +213,8 @@ function drawTexturedQuad(
   strokeStyle: string,
   lineWidth: number,
   glowBlur: number,
-  fogStyle?: string | CanvasGradient
+  fogStyle?: string | CanvasGradient,
+  brightness: number = 100
 ) {
   const xs = points.map((p) => p[0]);
   const ys = points.map((p) => p[1]);
@@ -233,8 +236,11 @@ function drawTexturedQuad(
   ctx.closePath();
   ctx.clip();
 
-  // Tile the texture with nearest-neighbor scaling.
+  // Tile the texture with nearest-neighbor scaling and optional brightness boost.
   ctx.imageSmoothingEnabled = false;
+  if (brightness !== 100) {
+    ctx.filter = `brightness(${brightness}%)`;
+  }
   const pattern = ctx.createPattern(img, "repeat");
   if (pattern) {
     const sx = width / (repeatsX * img.width);
@@ -242,6 +248,9 @@ function drawTexturedQuad(
     pattern.setTransform(new DOMMatrix([sx, 0, 0, sy, minX, minY]));
     ctx.fillStyle = pattern;
     ctx.fillRect(minX, minY, width, height);
+  }
+  if (brightness !== 100) {
+    ctx.filter = "none";
   }
 
   // Depth fog / tint overlay on top of the texture.
@@ -438,7 +447,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       strokeColorForDepth(0),
       2.0,
       GLOW_BLUR_NEAR,
-      rgba(PALETTE.floorFill, floorDarkenAlpha)
+      rgba(PALETTE.floorFill, floorDarkenAlpha),
+      FLOOR_BRIGHTNESS
     );
   } else {
     const floorGrad = floorGradient(ctx, nearRect.bottom, h, opacityForDepth(0));
@@ -468,7 +478,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       strokeColorForDepth(0),
       2.0,
       GLOW_BLUR_NEAR,
-      rgba(PALETTE.ceilingFill, floorDarkenAlpha)
+      rgba(PALETTE.ceilingFill, floorDarkenAlpha),
+      CEILING_BRIGHTNESS
     );
   } else {
     const ceilGrad = ceilingGradient(ctx, nearRect.top, 0, opacityForDepth(0));
@@ -599,7 +610,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         stroke,
         lw,
         glowBlur,
-        rgba(PALETTE.ceilingFill, depthDarkenAlpha)
+        rgba(PALETTE.ceilingFill, depthDarkenAlpha),
+        CEILING_BRIGHTNESS
       );
     } else {
       ctx.fillStyle = ceilingGradient(ctx, near.top, far.top, fillAlpha);
@@ -629,7 +641,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         stroke,
         lw,
         glowBlur,
-        rgba(PALETTE.floorFill, depthDarkenAlpha)
+        rgba(PALETTE.floorFill, depthDarkenAlpha),
+        FLOOR_BRIGHTNESS
       );
     } else {
       ctx.fillStyle = floorGradient(ctx, near.bottom, far.bottom, fillAlpha);
