@@ -19,7 +19,7 @@
 
 @font-face {
   font-family: "FF36";
-  src: url("/wizardry-clone/final-fantasy-36.ttf") format("truetype");
+  src: url("./assets/final-fantasy-36.ttf") format("truetype");
   font-display: swap;
 }
 
