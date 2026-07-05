@@ -292,6 +292,8 @@ function drawTexturedQuad(
   points: [number, number][],
   img: HTMLImageElement | HTMLCanvasElement,
   scale: number,
+  originX: number,
+  originY: number,
   strokeStyle: string,
   lineWidth: number,
   glowBlur: number,
@@ -324,7 +326,10 @@ function drawTexturedQuad(
   ctx.imageSmoothingEnabled = false;
   const pattern = ctx.createPattern(img, "repeat");
   if (pattern) {
-    pattern.setTransform(new DOMMatrix([scale, 0, 0, scale, minX, minY]));
+    // Use the SHARED origin (same for every depth segment of this surface),
+    // not this quad's own minX/minY — this keeps the tile grid continuous
+    // across depth-segment boundaries instead of resetting per quad.
+    pattern.setTransform(new DOMMatrix([scale, 0, 0, scale, originX, originY]));
     ctx.fillStyle = pattern;
     ctx.fillRect(minX, minY, width, height);
   }
@@ -384,16 +389,19 @@ function drawSideOpening(
   const sideCeilAlpha = ceilDarkenAlpha * 0.5;
 
   if (ceilImg) {
+    const ceilPoints: [number, number][] = [
+      [xEdge, near.top],
+      [xNear, near.top],
+      [xFar, far.top],
+      [xEdge, far.top],
+    ];
     drawTexturedQuad(
       ctx,
-      [
-        [xEdge, near.top],
-        [xNear, near.top],
-        [xFar, far.top],
-        [xEdge, far.top],
-      ],
+      ceilPoints,
       ceilImg,
       ceilScale,
+      Math.min(...ceilPoints.map((p) => p[0])),
+      Math.min(...ceilPoints.map((p) => p[1])),
       "rgba(0,0,0,0)",
       0,
       0,
@@ -402,16 +410,19 @@ function drawSideOpening(
   }
 
   if (floorImg) {
+    const floorPoints: [number, number][] = [
+      [xEdge, near.bottom],
+      [xNear, near.bottom],
+      [xFar, far.bottom],
+      [xEdge, far.bottom],
+    ];
     drawTexturedQuad(
       ctx,
-      [
-        [xEdge, near.bottom],
-        [xNear, near.bottom],
-        [xFar, far.bottom],
-        [xEdge, far.bottom],
-      ],
+      floorPoints,
       floorImg,
       floorScale,
+      Math.min(...floorPoints.map((p) => p[0])),
+      Math.min(...floorPoints.map((p) => p[1])),
       "rgba(0,0,0,0)",
       0,
       0,
@@ -433,6 +444,8 @@ function drawSideOpening(
       ],
       wallImg,
       backWallScale,
+      xFar,
+      far.top,
       "rgba(0,0,0,0)",
       0,
       0,
@@ -608,6 +621,8 @@ function drawFrontWall(
   far: DepthRect,
   wallImg: HTMLImageElement | HTMLCanvasElement | null,
   scale: number,
+  originX: number,
+  originY: number,
   stroke: string,
   lw: number,
   glowBlur: number,
@@ -626,6 +641,8 @@ function drawFrontWall(
       points,
       wallImg,
       scale,
+      originX,
+      originY,
       stroke,
       lw,
       glowBlur,
@@ -652,6 +669,8 @@ function drawSideWall(
   far: DepthRect,
   wallImg: HTMLImageElement | HTMLCanvasElement | null,
   scale: number,
+  originX: number,
+  originY: number,
   stroke: string,
   lw: number,
   glowBlur: number,
@@ -679,6 +698,8 @@ function drawSideWall(
       points,
       wallImg,
       scale,
+      originX,
+      originY,
       stroke,
       lw,
       glowBlur,
@@ -717,6 +738,8 @@ function drawCeilingStrip(
   far: DepthRect,
   ceilImg: HTMLCanvasElement | null,
   scale: number,
+  originX: number,
+  originY: number,
   stroke: string,
   lw: number,
   glowBlur: number,
@@ -735,6 +758,8 @@ function drawCeilingStrip(
       points,
       ceilImg,
       scale,
+      originX,
+      originY,
       stroke,
       lw,
       glowBlur,
@@ -758,6 +783,8 @@ function drawFloorStrip(
   far: DepthRect,
   floorImg: HTMLCanvasElement | null,
   scale: number,
+  originX: number,
+  originY: number,
   stroke: string,
   lw: number,
   glowBlur: number,
@@ -776,6 +803,8 @@ function drawFloorStrip(
       points,
       floorImg,
       scale,
+      originX,
+      originY,
       stroke,
       lw,
       glowBlur,
@@ -860,6 +889,19 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   type RenderCmd = () => void;
   const depthLayers: RenderCmd[][] = [];
 
+  // Shared tiling origins for surfaces that span multiple depth segments.
+  // Using one fixed origin per surface keeps the tile grid continuous across
+  // depth-segment boundaries instead of resetting for each individual quad.
+  const depth0 = getDepthRect(w, h, 0);
+  const leftWallOriginX = depth0.left;
+  const leftWallOriginY = depth0.top;
+  const rightWallOriginX = depth0.right;
+  const rightWallOriginY = depth0.top;
+  const floorOriginX = depth0.left;
+  const floorOriginY = depth0.bottom;
+  const ceilingOriginX = depth0.left;
+  const ceilingOriginY = depth0.top;
+
   for (let d = 0; d < maxDepth; d++) {
     if (y < 0 || y >= grid.length || x < 0 || x >= grid[0].length) break;
 
@@ -914,6 +956,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           far,
           wallImg,
           endWallScale,
+          far.left,
+          far.top,
           stroke,
           lw,
           glowBlur,
@@ -980,6 +1024,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           far,
           wallImg,
           wallScale,
+          leftWallOriginX,
+          leftWallOriginY,
           stroke,
           lw,
           glowBlur,
@@ -997,6 +1043,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           far,
           wallImg,
           wallScale,
+          rightWallOriginX,
+          rightWallOriginY,
           stroke,
           lw,
           glowBlur,
@@ -1014,6 +1062,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         far,
         ceilImg,
         ceilScale,
+        ceilingOriginX,
+        ceilingOriginY,
         stroke,
         lw,
         glowBlur,
@@ -1028,6 +1078,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         far,
         floorImg,
         floorScale,
+        floorOriginX,
+        floorOriginY,
         stroke,
         lw,
         glowBlur,
@@ -1085,6 +1137,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       ],
       floorImgNear,
       floorNearScale,
+      floorOriginX,
+      floorOriginY,
       strokeColorForDepth(0),
       2.0,
       RENDER_CONFIG.glowBlurNear,
@@ -1117,6 +1171,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       ],
       ceilImg,
       ceilNearScale,
+      ceilingOriginX,
+      ceilingOriginY,
       strokeColorForDepth(0),
       2.0,
       RENDER_CONFIG.glowBlurNear,
