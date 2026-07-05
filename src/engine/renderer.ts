@@ -57,7 +57,24 @@ const RENDER_CONFIG = {
   floorABrightnessFactor: 4.0,
   floorBBrightnessFactor: 2.8,
   ceilingBrightnessFactor: 10.0,
+  // Raycast renderer tunables (added by Task 1).
+  raycastFov: Math.PI / 3,          // 60 degrees
+  raycastStripWidth: 1,             // one ray per screen column
+  wallRepeatsX: 1,                  // horizontal repeats per wall face
+  wallRepeatsY: 3,                  // vertical repeats per wall face
+  floorRepeats: 1,                  // texture repeats per floor grid tile
+  ceilingRepeats: 1,                // texture repeats per ceiling grid tile
+  darknessMaxDist: 1.5,             // tiles visible in darkness zone
 } as const;
+
+export interface RayHit {
+  side: "ns" | "ew";                // which set of grid lines was hit
+  mapX: number;                     // grid cell hit
+  mapY: number;
+  perpWallDist: number;             // perpendicular distance, no fisheye
+  wallX: number;                    // exact hit position along wall (0..1)
+  edge: EdgeType;                   // "wall" | "door" | "locked" | "open"
+}
 
 interface TextureSet {
   wall: HTMLImageElement | null;
@@ -141,6 +158,24 @@ function rgba(
 function strokeColorForDepth(d: number): string {
   const a = opacityForDepth(d);
   return `rgba(224,164,88,${a})`;
+}
+
+// Direction vectors for N/E/S/W grid facing values.
+const DIR_VECTORS = [
+  { x: 0, y: -1 }, // N
+  { x: 1, y: 0 },  // E
+  { x: 0, y: 1 },  // S
+  { x: -1, y: 0 }, // W
+] as const;
+
+/** Returns the camera plane vector for a grid facing direction (0=N,1=E,2=S,3=W). */
+export function cameraPlaneForFacing(facing: number): { planeX: number; planeY: number } {
+  // Plane is perpendicular to the facing direction, scaled by the FOV tangent.
+  const dir = DIR_VECTORS[facing % 4];
+  return {
+    planeX: -dir.y * Math.tan(RENDER_CONFIG.raycastFov / 2),
+    planeY: dir.x * Math.tan(RENDER_CONFIG.raycastFov / 2),
+  };
 }
 
 function wallGradient(
