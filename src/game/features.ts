@@ -16,8 +16,8 @@
  * bar) and whether a floor transition occurred.
  */
 
-import type { GameState } from "../types";
-import { FLOORS } from "../data/floors";
+import type { Facing, GameState } from "../types";
+import { FLOORS, cloneFloor } from "../data/floors";
 import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
 import { equipItem, findBestEquipTarget } from "./combat";
@@ -201,6 +201,12 @@ function handleTreasure(state: GameState): FeatureResult {
   treasureDef.itemIds = [];
   floor.grid[player.y][player.x].tile = undefined;
 
+  // Record cross-floor so returning later or saving/loading doesn't need to
+  // inspect (or mutate) the global FLOORS definition.
+  const taken = state.lootTaken[state.floor.id] ?? new Set<string>();
+  taken.add(`${player.x},${player.y}`);
+  state.lootTaken[state.floor.id] = taken;
+
   return {
     message: `Treasure! You found: ${itemNames.join(", ")}.`,
     changedFloor: false,
@@ -210,18 +216,29 @@ function handleTreasure(state: GameState): FeatureResult {
 
 /**
  * Transition to a new floor. Saves the current floor's explored tiles and
- * restores the new floor's explored tiles (if any).
+ * restores the new floor's explored tiles (if any). The new floor is cloned
+ * from the global definition, then mutable runtime state (unlocked doors,
+ * looted treasures) is applied so FLOORS itself is never modified.
  */
-export function transitionToFloor(state: GameState, newFloor: typeof FLOORS[number], x: number, y: number): void {
+export function transitionToFloor(
+  state: GameState,
+  newFloor: (typeof FLOORS)[number],
+  x: number,
+  y: number,
+  facing: Facing = 0
+): void {
   // Save current floor's explored tiles
   const currentId = state.floor.id;
   state.exploredByFloor[currentId] = Array.from(state.explored);
 
-  // Switch to the new floor
-  state.floor = newFloor;
+  // Switch to a private mutable copy of the new floor.
+  const floorCopy = cloneFloor(newFloor);
+  applyUnlockedDoors(floorCopy, state.unlockedDoors);
+  applyLootedTreasures(floorCopy, state.lootTaken);
+  state.floor = floorCopy;
   state.player.x = x;
   state.player.y = y;
-  state.player.facing = 0;
+  state.player.facing = facing;
   state.stepsSinceEncounter = 99; // allow encounter on first step
   state.inDarkness = false;
   state.inAntimagic = false;
@@ -232,6 +249,41 @@ export function transitionToFloor(state: GameState, newFloor: typeof FLOORS[numb
 
   // Auto-save on floor transition (design doc §13).
   autoSave(state);
+}
+
+/** Apply previously unlocked doors to a floor copy. */
+function applyUnlockedDoors(floor: (typeof FLOORS)[number], unlockedDoors: Set<string>): void {
+  for (const key of unlockedDoors) {
+    const parts = key.split(":");
+    if (parts.length !== 4 || parseInt(parts[0]) !== floor.id) continue;
+    const x = parseInt(parts[1]);
+    const y = parseInt(parts[2]);
+    const dir = parts[3] as "n" | "e" | "s" | "w";
+    if (floor.grid[y]?.[x]) {
+      floor.grid[y][x][dir] = "door";
+    }
+  }
+}
+
+/** Apply previously looted treasures to a floor copy. */
+function applyLootedTreasures(
+  floor: (typeof FLOORS)[number],
+  lootTaken: Record<number, Set<string>>
+): void {
+  const taken = lootTaken[floor.id];
+  if (!taken) return;
+  for (const pos of taken) {
+    const [xStr, yStr] = pos.split(",");
+    const x = parseInt(xStr);
+    const y = parseInt(yStr);
+    const treasureDef = floor.treasures?.find((t) => t.x === x && t.y === y);
+    if (treasureDef) {
+      treasureDef.itemIds = [];
+    }
+    if (floor.grid[y]?.[x]) {
+      floor.grid[y][x].tile = undefined;
+    }
+  }
 }
 
 /** Check if the party has a key for a given key ID. */

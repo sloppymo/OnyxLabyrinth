@@ -103,6 +103,9 @@ export interface GameState {
   // Set of "floorId:x:y:dir" strings for locked doors that have been unlocked.
   // Prevents re-locking when the player walks back through.
   unlockedDoors: Set<string>;
+  // Which treasures have been looted, keyed by floor ID. Each value is a Set of
+  // "x,y" position strings. This keeps the global FLOORS definitions immutable.
+  lootTaken: Record<number, Set<string>>;
   // Whether the current tile is a darkness zone (affects render depth).
   inDarkness: boolean;
   // Whether the current tile is an anti-magic zone (affects spell casting).

@@ -8,6 +8,7 @@
 // the type.
 
 import type { FloorDef, GameMode, GameState } from "../types";
+import { cloneFloor } from "../data/floors";
 import { createDefaultParty } from "./party";
 import { defaultLoadoutForCharacter } from "./combat";
 
@@ -17,7 +18,7 @@ export function createGameState(floor: FloorDef): GameState {
   const party = createDefaultParty();
   return {
     mode: "town", // start in town; player chooses to enter the dungeon
-    floor,
+    floor: cloneFloor(floor),
     player: { x: floor.startX, y: floor.startY, facing: 0 },
     party,
     equipment: Object.fromEntries(party.map((c) => [c.id, defaultLoadoutForCharacter(c)])),
@@ -29,6 +30,7 @@ export function createGameState(floor: FloorDef): GameState {
     inventory: ["healing-potion", "healing-potion"], // a couple of starter potions
     keys: [],
     unlockedDoors: new Set<string>(),
+    lootTaken: {},
     inDarkness: false,
     inAntimagic: false,
     lastDungeon: null,

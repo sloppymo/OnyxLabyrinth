@@ -443,3 +443,33 @@ function floor5(): FloorDef {
 }
 
 export const FLOORS: readonly FloorDef[] = [floor1(), floor2(), floor3(), floor4(), floor5()];
+
+/** Deep-clone a floor definition so each game session gets its own mutable copy.
+ *  This keeps the module-global FLOORS array as a read-only source of truth. */
+export function cloneFloor(floor: FloorDef): FloorDef {
+  return {
+    id: floor.id,
+    name: floor.name,
+    width: floor.width,
+    height: floor.height,
+    grid: floor.grid.map((row) =>
+      row.map((cell) => ({
+        n: cell.n,
+        e: cell.e,
+        s: cell.s,
+        w: cell.w,
+        tile: cell.tile,
+      }))
+    ),
+    startX: floor.startX,
+    startY: floor.startY,
+    encounterRate: floor.encounterRate,
+    encounterTable: floor.encounterTable ? [...floor.encounterTable] : undefined,
+    teleporters: floor.teleporters ? floor.teleporters.map((t) => ({ ...t })) : undefined,
+    chuteDrops: floor.chuteDrops ? floor.chuteDrops.map((c) => ({ ...c })) : undefined,
+    lockedDoors: floor.lockedDoors ? floor.lockedDoors.map((d) => ({ ...d })) : undefined,
+    treasures: floor.treasures
+      ? floor.treasures.map((t) => ({ x: t.x, y: t.y, itemIds: [...t.itemIds] }))
+      : undefined,
+  };
+}

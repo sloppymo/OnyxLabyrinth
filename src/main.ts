@@ -2,7 +2,7 @@ import "./styles.css";
 import { FLOORS } from "./data/floors";
 import { createGameState, setMode } from "./game/state";
 import { moveForward, moveBackward, turnLeft, turnRight, tryUnlock } from "./engine/camera";
-import { handleTileFeature } from "./game/features";
+import { handleTileFeature, transitionToFloor } from "./game/features";
 import { DX, DY } from "./game/dungeon";
 import { render } from "./engine/renderer";
 import { renderAutoMap } from "./engine/automap";
@@ -100,21 +100,19 @@ function openTown(): void {
       combatPanel.style.display = "none";
       canvas.style.display = "";
       // Resume from the last dungeon position if the player had been in the
-      // dungeon before; otherwise start fresh at Floor 1.
+      // dungeon before; otherwise start fresh at Floor 1. transitionToFloor
+      // clones the floor from the immutable FLOORS definition and restores
+      // unlocked doors / looted treasures from GameState.
       const last = state.lastDungeon;
       const floor = last
         ? FLOORS.find((f) => f.id === last.floorId) ?? FLOORS[0]
         : FLOORS[0];
-      state.floor = floor;
-      state.player.x = last ? last.x : floor.startX;
-      state.player.y = last ? last.y : floor.startY;
-      state.player.facing = last ? last.facing : 0;
-      state.stepsSinceEncounter = 99;
+      const x = last ? last.x : floor.startX;
+      const y = last ? last.y : floor.startY;
+      const facing = last ? last.facing : 0;
+      transitionToFloor(state, floor, x, y, facing);
       state.inDarkness = false;
       state.inAntimagic = false;
-      // Restore explored tiles for this floor if previously visited.
-      const saved = state.exploredByFloor[floor.id];
-      state.explored = saved ? new Set(saved) : new Set<string>();
       markExplored();
       transitionToMode("dungeon", true);
       setMessage(last ? "You return to the dungeon..." : "You enter the dungeon...");

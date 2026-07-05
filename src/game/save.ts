@@ -5,9 +5,11 @@
  * anytime. Including in dungeons, during exploration, even in combat."). 10
  * slots persisted to localStorage. Auto-save on floor transition.
  *
- * Serialization: GameState is mostly JSON-safe except for `explored` (a
- * Set<string>) which is converted to/from an array. The floor grid (Cell[][])
- * and party (Character[]) are plain objects and serialize directly. Combat
+ * Serialization: GameState is mostly JSON-safe except for `explored` and
+ * `lootTaken`/`unlockedDoors` (Sets) which are converted to/from arrays. The
+ * floor grid (Cell[][]) and party (Character[]) are plain objects and serialize
+ * directly, but the floor itself is cloned from the immutable FLOORS definition
+ * on load rather than persisted. Combat
  * state is NOT saved — if the player saves during combat, the mode is
  * converted to "dungeon" and they reload in dungeon mode at their pre-combat
  * position. This satisfies §13's "even in combat" without persisting
@@ -15,7 +17,7 @@
  */
 
 import type { GameState } from "../types";
-import { FLOORS } from "../data/floors";
+import { FLOORS, cloneFloor } from "../data/floors";
 import { defaultLoadoutForCharacter } from "./combat";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
@@ -34,7 +36,7 @@ export interface SaveSlotMeta {
 }
 
 interface SerializedState {
-  version: 3;
+  version: 4;
   mode: GameState["mode"];
   floorId: number;
   player: GameState["player"];
@@ -51,9 +53,10 @@ interface SerializedState {
   inAntimagic: boolean;
   lastDungeon: GameState["lastDungeon"];
   equipment?: GameState["equipment"];
-  // Treasure state: which treasures have been looted (floorId:x:y -> remaining items).
-  // We serialize the floor grid's tile state by storing looted treasure positions.
-  lootedTreasures: { floorId: number; x: number; y: number }[];
+  // Treasure state: which treasures have been looted, keyed by floor ID.
+  // Each value is an array of "x,y" position strings. The floor clone is
+  // restored from the immutable FLOORS definition on load.
+  lootTaken: Record<number, string[]>;
   savedAt: string;
 }
 
@@ -65,20 +68,23 @@ function serialize(state: GameState): string {
   const exploredByFloor = { ...state.exploredByFloor };
   exploredByFloor[state.floor.id] = Array.from(state.explored);
 
-  // Track which treasures have been looted (tile feature cleared).
-  const lootedTreasures: { floorId: number; x: number; y: number }[] = [];
-  for (const floor of FLOORS) {
-    if (floor.treasures) {
-      for (const t of floor.treasures) {
-        if (t.itemIds.length === 0) {
-          lootedTreasures.push({ floorId: floor.id, x: t.x, y: t.y });
-        }
+  // Sync treasures looted on the current floor into the cross-floor record.
+  const lootTaken: Record<number, string[]> = {};
+  for (const [floorId, taken] of Object.entries(state.lootTaken)) {
+    lootTaken[Number(floorId)] = Array.from(taken);
+  }
+  if (state.floor.treasures) {
+    const current = new Set(lootTaken[state.floor.id] ?? []);
+    for (const t of state.floor.treasures) {
+      if (t.itemIds.length === 0) {
+        current.add(`${t.x},${t.y}`);
       }
     }
+    lootTaken[state.floor.id] = Array.from(current);
   }
 
   const ser: SerializedState = {
-    version: 3,
+    version: 4,
     mode: state.mode === "combat" ? "dungeon" : state.mode,
     floorId: state.floor.id,
     player: { ...state.player },
@@ -100,7 +106,7 @@ function serialize(state: GameState): string {
     inAntimagic: state.inAntimagic,
     lastDungeon: state.lastDungeon,
     equipment: { ...state.equipment },
-    lootedTreasures,
+    lootTaken,
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -109,38 +115,41 @@ function serialize(state: GameState): string {
 function deserialize(json: string): GameState | null {
   try {
     const ser = JSON.parse(json) as SerializedState;
-    if (ser.version !== 3) return null;
+    if (ser.version !== 4) return null;
 
-    const floor = FLOORS.find((f) => f.id === ser.floorId);
-    if (!floor) return null;
+    const floorDef = FLOORS.find((f) => f.id === ser.floorId);
+    if (!floorDef) return null;
 
-    // Restore looted treasures (clear tile features and empty item arrays).
-    if (ser.lootedTreasures) {
-      for (const looted of ser.lootedTreasures) {
-        const f = FLOORS.find((fl) => fl.id === looted.floorId);
-        if (!f || !f.treasures) continue;
-        const t = f.treasures.find((tr) => tr.x === looted.x && tr.y === looted.y);
-        if (t) {
-          t.itemIds = [];
-          if (f.grid[looted.y]?.[looted.x]) {
-            f.grid[looted.y][looted.x].tile = undefined;
-          }
-        }
-      }
+    const unlockedDoors = new Set<string>(ser.unlockedDoors ?? []);
+
+    // Rebuild per-floor looted-treasure Sets.
+    const lootTaken: Record<number, Set<string>> = {};
+    for (const [floorIdStr, positions] of Object.entries(ser.lootTaken ?? {})) {
+      lootTaken[Number(floorIdStr)] = new Set(positions);
     }
 
-    // Restore unlocked doors (set edges to "door" on both sides).
-    const unlockedDoors = new Set<string>(ser.unlockedDoors ?? []);
+    // Build a private mutable copy of the floor and restore runtime state.
+    const floor = cloneFloor(floorDef);
     for (const doorKey of unlockedDoors) {
       const parts = doorKey.split(":");
-      if (parts.length !== 4) continue;
-      const fid = parseInt(parts[0]);
+      if (parts.length !== 4 || parseInt(parts[0]) !== floor.id) continue;
       const dx = parseInt(parts[1]);
       const dy = parseInt(parts[2]);
       const dir = parts[3] as "n" | "e" | "s" | "w";
-      const f = FLOORS.find((fl) => fl.id === fid);
-      if (!f || !f.grid[dy]?.[dx]) continue;
-      f.grid[dy][dx][dir] = "door";
+      if (floor.grid[dy]?.[dx]) {
+        floor.grid[dy][dx][dir] = "door";
+      }
+    }
+    const taken = lootTaken[floor.id];
+    if (taken) {
+      for (const pos of taken) {
+        const [xStr, yStr] = pos.split(",");
+        const x = parseInt(xStr);
+        const y = parseInt(yStr);
+        const treasureDef = floor.treasures?.find((t) => t.x === x && t.y === y);
+        if (treasureDef) treasureDef.itemIds = [];
+        if (floor.grid[y]?.[x]) floor.grid[y][x].tile = undefined;
+      }
     }
 
     return {
@@ -161,6 +170,7 @@ function deserialize(json: string): GameState | null {
       inventory: ser.inventory ? [...ser.inventory] : [],
       keys: ser.keys ? [...ser.keys] : [],
       unlockedDoors,
+      lootTaken,
       inDarkness: ser.inDarkness ?? false,
       inAntimagic: ser.inAntimagic ?? false,
       lastDungeon: ser.lastDungeon ?? null,
