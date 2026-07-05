@@ -480,26 +480,23 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
 }
 
-/** Draw the four edges of a cell using the appropriate edge color. */
-function strokeCellEdge(
+/** Draw a single minimap edge with the color matching its type. */
+function drawMapEdge(
   ctx: CanvasRenderingContext2D,
-  cell: Cell,
-  px: number,
-  py: number
+  edge: Cell["n"],
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
 ): void {
-  const edges: { type: EdgeType; x1: number; y1: number; x2: number; y2: number }[] = [
-    { type: cell.n, x1: px, y1: py, x2: px + MAP.cellSize, y2: py },
-    { type: cell.s, x1: px, y1: py + MAP.cellSize, x2: px + MAP.cellSize, y2: py + MAP.cellSize },
-    { type: cell.w, x1: px, y1: py, x2: px, y2: py + MAP.cellSize },
-    { type: cell.e, x1: px + MAP.cellSize, y1: py, x2: px + MAP.cellSize, y2: py + MAP.cellSize },
-  ];
-  for (const { type, x1, y1, x2, y2 } of edges) {
-    let color: string | undefined;
-    if (type === "wall") color = MAP.wall;
-    else if (type === "door") color = MAP.door;
-    else if (type === "locked") color = MAP.locked;
-    if (color) strokeEdge(ctx, x1, y1, x2, y2, color);
-  }
+  if (edge === "open") return;
+  const color =
+    edge === "door" ? MAP.door : edge === "locked" ? MAP.locked : MAP.wall;
+  ctx.strokeStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
 }
 
 function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -554,7 +551,7 @@ function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
     ctx.fill();
   }
 
-  // Pass 3: walls and doors on explored tiles
+  // Pass 3: draw walls and doors on explored tile edges, avoiding double draws
   ctx.lineWidth = 1;
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
@@ -562,7 +559,36 @@ function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
       const cell = grid[y][x];
       const px = originX + x * MAP.cellSize;
       const py = originY + y * MAP.cellSize;
-      strokeCellEdge(ctx, cell, px, py);
+
+      const neighborExplored = (nx: number, ny: number): boolean =>
+        nx >= 0 && nx < cols && ny >= 0 && ny < rows && isExplored(nx, ny);
+
+      // N and W edges are owned by this cell.
+      drawMapEdge(ctx, cell.n, px, py, px + MAP.cellSize, py);
+      drawMapEdge(ctx, cell.w, px, py, px, py + MAP.cellSize);
+
+      // S and E edges are drawn only if the neighbor is not explored
+      // (boundary of known area).
+      if (!neighborExplored(x, y + 1)) {
+        drawMapEdge(
+          ctx,
+          cell.s,
+          px,
+          py + MAP.cellSize,
+          px + MAP.cellSize,
+          py + MAP.cellSize
+        );
+      }
+      if (!neighborExplored(x + 1, y)) {
+        drawMapEdge(
+          ctx,
+          cell.e,
+          px + MAP.cellSize,
+          py,
+          px + MAP.cellSize,
+          py + MAP.cellSize
+        );
+      }
     }
   }
 
@@ -589,21 +615,6 @@ function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.stroke();
 
   ctx.restore();
-}
-
-function strokeEdge(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  color = "rgba(245,240,230,0.5)"
-) {
-  ctx.strokeStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
 }
 
 /** Draw a rounded rectangle path (no fill/stroke). */
