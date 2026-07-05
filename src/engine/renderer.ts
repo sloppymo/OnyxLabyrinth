@@ -53,7 +53,7 @@ function wallGradient(
   alpha: number
 ): CanvasGradient {
   const g = ctx.createLinearGradient(xNear, 0, xFar, 0);
-  g.addColorStop(0, rgba({ r: base.r + 14, g: base.g + 8, b: base.r + 4 }, alpha));
+  g.addColorStop(0, rgba({ r: base.r + 14, g: base.g + 8, b: base.b + 4 }, alpha));
   g.addColorStop(1, rgba({ r: base.r - 6, g: base.g - 6, b: base.b - 8 }, alpha * 0.5));
   return g;
 }
