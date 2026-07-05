@@ -626,11 +626,11 @@ canvas#map-canvas {
 /* --- Dungeon party status strip --------------------------------------- */
 
 #party-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
   max-width: 768px;
+  width: 100%;
   font-family: var(--game-font);
 }
 
@@ -645,7 +645,9 @@ canvas#map-canvas {
   color: var(--warm-white);
   border: 1px solid #3a3530;
   background: #14110d;
-  min-width: 220px;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .ps-char.ko {

@@ -44,6 +44,25 @@ const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
 const ctx = canvas.getContext("2d")!;
 const mapCanvas = document.querySelector<HTMLCanvasElement>("#map-canvas")!;
 const mapCtx = mapCanvas.getContext("2d")!;
+
+// Keep the corridor canvas bitmap resolution locked to the CSS container size
+// so the view always fills the frame and isn't accidentally scaled to a
+// smaller intrinsic size.
+function resizeCorridorCanvas() {
+  const rect = viewportWrap.getBoundingClientRect();
+  const width = Math.max(1, Math.round(rect.width));
+  const height = Math.max(1, Math.round(rect.height));
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  if (mapCanvas.width !== width || mapCanvas.height !== height) {
+    mapCanvas.width = width;
+    mapCanvas.height = height;
+  }
+}
+resizeCorridorCanvas();
+new ResizeObserver(resizeCorridorCanvas).observe(viewportWrap);
 const messageEl = document.querySelector<HTMLDivElement>("#message")!;
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
 const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;

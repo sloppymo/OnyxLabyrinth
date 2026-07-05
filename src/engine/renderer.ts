@@ -37,15 +37,17 @@ const SCANLINE_SPACING = 3;
 // with a lower multiplier so the pixel-art detail remains visible while still
 // fading into the distance.
 const FLOOR_CEILING_DARKEN_MULTIPLIER = 0.95;
-const FLOOR_BRIGHTNESS_FACTOR = 2.0;
-const CEILING_BRIGHTNESS_FACTOR = 3.0;
+const FLOOR_BRIGHTNESS_FACTOR = 3.5;
+const CEILING_BRIGHTNESS_FACTOR = 5.0;
 
-// Texture repeat counts per depth segment (tuneable).
-const WALL_REPEATS_X = [2, 1, 1, 1];
-const WALL_REPEATS_Y = 1;
-const FLOOR_REPEATS_X = [2, 1, 1, 1];
+// Texture repeat counts per surface. Walls are one dungeon tile wide/tall, so
+// tile the texture a few times across each wall segment. Floor and ceiling are
+// drawn one grid tile at a time, so each strip shows exactly one texture repeat.
+const WALL_REPEATS_X = 3;
+const WALL_REPEATS_Y = 3;
+const FLOOR_REPEATS_X = 1;
 const FLOOR_REPEATS_Y = 1;
-const CEILING_REPEATS_X = [2, 1, 1, 1];
+const CEILING_REPEATS_X = 1;
 const CEILING_REPEATS_Y = 1;
 
 interface TextureSet {
@@ -295,10 +297,6 @@ function drawTexturedQuad(
   ctx.restore();
 }
 
-function repeatsForDepth(arr: number[], d: number): number {
-  return arr[Math.min(d, arr.length - 1)];
-}
-
 function drawDoorMarker(
   ctx: CanvasRenderingContext2D,
   near: DepthRect,
@@ -460,7 +458,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         [nearRect.left, nearRect.bottom],
       ],
       floorImg,
-      repeatsForDepth(FLOOR_REPEATS_X, 0),
+      FLOOR_REPEATS_X,
       FLOOR_REPEATS_Y,
       strokeColorForDepth(0),
       2.0,
@@ -490,7 +488,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         [nearRect.left, nearRect.top],
       ],
       ceilImg,
-      repeatsForDepth(CEILING_REPEATS_X, 0),
+      CEILING_REPEATS_X,
       CEILING_REPEATS_Y,
       strokeColorForDepth(0),
       2.0,
@@ -544,7 +542,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
             [near.left, near.bottom],
           ],
           wallImg,
-          repeatsForDepth(WALL_REPEATS_X, d),
+          WALL_REPEATS_X,
           WALL_REPEATS_Y,
           stroke,
           lw,
@@ -582,7 +580,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
             [near.right, near.bottom],
           ],
           wallImg,
-          repeatsForDepth(WALL_REPEATS_X, d),
+          WALL_REPEATS_X,
           WALL_REPEATS_Y,
           stroke,
           lw,
@@ -621,7 +619,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           [far.left, far.top],
         ],
         ceilImg,
-        repeatsForDepth(CEILING_REPEATS_X, d),
+        CEILING_REPEATS_X,
         CEILING_REPEATS_Y,
         stroke,
         lw,
@@ -651,7 +649,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           [far.left, far.bottom],
         ],
         floorImg,
-        repeatsForDepth(FLOOR_REPEATS_X, d),
+        FLOOR_REPEATS_X,
         FLOOR_REPEATS_Y,
         stroke,
         lw,
@@ -715,7 +713,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
             [far.left, far.bottom],
           ],
           wallImg,
-          repeatsForDepth(WALL_REPEATS_X, d),
+          WALL_REPEATS_X,
           WALL_REPEATS_Y,
           stroke,
           lw,
