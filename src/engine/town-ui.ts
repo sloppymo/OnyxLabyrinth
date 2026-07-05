@@ -35,14 +35,14 @@ export interface TownControllerOptions {
 }
 
 const MAIN_MENU_ITEMS = [
-  { key: "inn", label: "Inn — Rest and heal (Free)" },
-  { key: "temple", label: "Temple — Healing and cleansing (Free)" },
-  { key: "shop", label: "Shop — Buy and sell equipment" },
-  { key: "guild", label: "Guild — View party roster" },
-  { key: "training", label: "Training Ground — Level up" },
-  { key: "reform", label: "Reform Party — Create a new party" },
-  { key: "dungeon", label: "Enter Dungeon" },
-  { key: "save", label: "Save / Load" },
+  { key: "inn", label: "Inn — Rest and heal (Free)", icon: "[I]" },
+  { key: "temple", label: "Temple — Healing and cleansing (Free)", icon: "[+]" },
+  { key: "shop", label: "Shop — Buy and sell equipment", icon: "[$]" },
+  { key: "guild", label: "Guild — View party roster", icon: "[G]" },
+  { key: "training", label: "Training Ground — Level up", icon: "[T]" },
+  { key: "reform", label: "Reform Party — Create a new party", icon: "[R]" },
+  { key: "dungeon", label: "Enter Dungeon", icon: "[>]" },
+  { key: "save", label: "Save / Load", icon: "[S]" },
 ] as const;
 
 // XP required to reach the next level. Generous curve so a 30-minute session
@@ -77,6 +77,7 @@ function levelUpChar(c: Character): Character {
     maxSp: newMaxSp,
     hp: newMaxHp,
     sp: newMaxSp,
+    status: [],
     knownSpellIds: [...knownSet],
   };
 }
@@ -320,7 +321,7 @@ export class TownController {
 
   private render(): void {
     const lines: string[] = [];
-    lines.push(`<div class="town-header">🏰 Town of Edgehollow</div>`);
+    lines.push(`<div class="town-header">[T] Town of Edgehollow</div>`);
     lines.push(`<div class="town-gold">Gold: ${this.state.partyGold}g</div>`);
 
     if (this.screen === "main") {
@@ -342,6 +343,15 @@ export class TownController {
   }
 
   private renderMain(lines: string[]): void {
+    // Party status summary (left panel equivalent — shown above menu)
+    const aliveCount = this.state.party.filter((c) => c.hp > 0).length;
+    const avgLevel = Math.round(
+      this.state.party.reduce((sum, c) => sum + c.level, 0) / this.state.party.length
+    );
+    lines.push(
+      `<div class="town-gold">Party: ${aliveCount}/${this.state.party.length} alive · Avg Lv${avgLevel} · Gold: ${this.state.partyGold}g</div>`
+    );
+
     lines.push(`<div class="town-menu">`);
     for (let i = 0; i < MAIN_MENU_ITEMS.length; i++) {
       const item = MAIN_MENU_ITEMS[i];
@@ -350,6 +360,7 @@ export class TownController {
       lines.push(
         `<div class="town-menu-item ${selected ? "selected" : ""}">` +
           `<span class="tm-marker">${marker}</span>` +
+          `<span class="tm-icon">${item.icon}</span>` +
           `<span>${item.label}</span>` +
           `</div>`
       );

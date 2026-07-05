@@ -286,13 +286,13 @@ export function isFrontRow(character: Character): boolean {
   return character.formationSlot >= 0 && character.formationSlot <= 2;
 }
 
-/** Heal the party to full HP/SP and clear non-knocked-out statuses for camping/town. */
+/** Heal the party to full HP/SP and remove all status effects (including knockedOut). */
 export function restoreParty(party: Character[]): Character[] {
   return party.map((c) => ({
     ...c,
     hp: c.maxHp,
     sp: c.maxSp,
-    status: c.status.filter((s) => s === "knockedOut"),
+    status: [],
   }));
 }
 
