@@ -19,6 +19,7 @@
 import type { GameState } from "../types";
 import { FLOORS } from "../data/floors";
 import { ITEMS_BY_ID } from "../data/items";
+import { autoSave } from "./save";
 
 export interface FeatureResult {
   message: string;
@@ -219,6 +220,9 @@ export function transitionToFloor(state: GameState, newFloor: typeof FLOORS[numb
   // Restore explored tiles for the new floor (if previously visited)
   const saved = state.exploredByFloor[newFloor.id];
   state.explored = saved ? new Set(saved) : new Set<string>();
+
+  // Auto-save on floor transition (design doc §13).
+  autoSave(state);
 }
 
 /** Check if the party has a key for a given key ID. */
