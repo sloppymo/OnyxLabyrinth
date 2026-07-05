@@ -16,6 +16,7 @@ const DIR_NAMES = ["n", "e", "s", "w"] as const;
 /** True if the player can step one tile in the given direction. */
 export function canMove(state: GameState, dir: number): boolean {
   const { floor, player } = state;
+  if (!inBounds(floor.grid, player.x, player.y)) return false;
   const cell = floor.grid[player.y][player.x];
   const edge = edgeInDirection(cell, dir);
   if (edge === "wall" || edge === "locked") return false;

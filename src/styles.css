@@ -44,6 +44,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 #game-wrap {
@@ -53,13 +54,17 @@ body {
   gap: 12px;
   width: 100%;
   max-width: 768px;
+  max-height: 100%;
   padding: 0 12px;
 }
 
 /* The viewport frame holds the 3D view, the full-screen map, and the message
-   overlay as one continuous boxy 8:7 unit. */
+   overlay as one continuous boxy 8:7 unit. It shrinks to fit the screen so
+   the HUD and hint below it never push the message box off-screen. */
 #viewport-wrap {
   position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
   aspect-ratio: 8 / 7;
   border: 1px solid var(--amber);
@@ -120,6 +125,10 @@ canvas#map-canvas {
   color: var(--warm-white);
   overflow-y: auto;
   z-index: 10;
+}
+
+#message:empty {
+  display: none;
 }
 
 #combat-panel {

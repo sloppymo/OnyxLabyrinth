@@ -63,7 +63,9 @@ export function edgeInDirection(cell: Cell, dir: number): EdgeType {
     case DIRS.W:
       return cell.w;
     default:
-      throw new Error(`Invalid direction ${dir}`);
+      // Defensive fallback: treat an invalid direction as a wall rather than
+      // crashing the renderer or movement code.
+      return "wall";
   }
 }
 

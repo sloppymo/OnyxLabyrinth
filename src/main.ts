@@ -7,6 +7,16 @@ import { DX, DY } from "./game/dungeon";
 import { render, loadTextures } from "./engine/renderer";
 import { renderAutoMap } from "./engine/automap";
 import { bindInput } from "./engine/input";
+import {
+  canvas,
+  ctx,
+  mapCtx,
+  setMessage,
+  renderPartyStrip,
+  clearPartyStrip,
+  showMode,
+  compassForFacing,
+} from "./engine/shell";
 import { CombatController } from "./engine/combat-ui";
 import { CampController } from "./engine/camp-ui";
 import { SaveController } from "./engine/save-ui";
@@ -25,73 +35,27 @@ import { ITEMS_BY_ID } from "./data/items";
 import { reviveKnockedOut, type Character } from "./game/party";
 import type { GameState, GameMode } from "./types";
 
-const app = document.querySelector<HTMLDivElement>("#app")!;
-app.innerHTML = `
-  <div id="game-wrap">
-    <div id="viewport-wrap">
-      <div id="message"></div>
-      <canvas id="view" width="768" height="672"></canvas>
-      <canvas id="map-canvas" width="768" height="672" style="display:none"></canvas>
-    </div>
-    <div id="party-strip"></div>
-    <div id="hint"><span id="compass">N</span> &uarr;/W forward &middot; &darr;/S back &middot; &larr;/A turn left &middot; &rarr;/D turn right &middot; C camp &middot; M map &middot; T town &middot; U unlock &middot; Esc menu</div>
-    <div id="combat-panel"></div>
-  </div>
-`;
-
-const viewportWrap = document.querySelector<HTMLDivElement>("#viewport-wrap")!;
-const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
-const ctx = canvas.getContext("2d")!;
-const mapCanvas = document.querySelector<HTMLCanvasElement>("#map-canvas")!;
-const mapCtx = mapCanvas.getContext("2d")!;
-
-// Keep the corridor canvas bitmap resolution locked to the CSS container size
-// so the view always fills the frame and isn't accidentally scaled to a
-// smaller intrinsic size.
-function resizeCorridorCanvas() {
-  const rect = viewportWrap.getBoundingClientRect();
-  const width = Math.max(1, Math.round(rect.width));
-  const height = Math.max(1, Math.round(rect.height));
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
-  }
-  if (mapCanvas.width !== width || mapCanvas.height !== height) {
-    mapCanvas.width = width;
-    mapCanvas.height = height;
-  }
-}
-resizeCorridorCanvas();
-new ResizeObserver(resizeCorridorCanvas).observe(viewportWrap);
-const messageEl = document.querySelector<HTMLDivElement>("#message")!;
-const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
-const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
-const compassEl = document.querySelector<HTMLSpanElement>("#compass")!;
-
 const state = createGameState(FLOORS[0]);
 
-// Auto-map visibility flag — declared early because openTown() references it.
+// Auto-map visibility flag.
 let mapVisible = false;
 
 // --- Mode transition with fade -------------------------------------------
 // The canvas has `transition: opacity 0.15s` in CSS. This helper fades out,
-// swaps display + mode, then fades in. Non-canvas panels (combat/town/save)
-// don't need the fade — they appear instantly.
-function transitionToMode(newMode: GameMode, showCanvas: boolean): void {
+// swaps mode + shell visibility, then fades in.
+function transitionToMode(newMode: GameMode): void {
   canvas.style.opacity = "0";
   setTimeout(() => {
     setMode(state, newMode);
-    viewportWrap.style.display = showCanvas ? "" : "none";
-    canvas.style.display = showCanvas ? "" : "none";
+    showMode(newMode, mapVisible);
     canvas.style.opacity = "1";
   }, 150);
 }
 
 // --- Exploration tracking ------------------------------------------------
 // Mark the current tile and all 4 adjacent tiles as explored. The player
-// can see the current tile plus one ahead (wireframe renders 4 tiles deep),
-// so revealing adjacent tiles gives a useful map without spoiling unexplored
-// areas. Tiles are stored as "x,y" keys in the explored Set.
+// can see the current tile plus one ahead, so revealing adjacent tiles gives
+// a useful map without spoiling unexplored areas.
 function markExplored(): void {
   const { player, floor, explored } = state;
   const key = (x: number, y: number) => `${x},${y}`;
@@ -113,19 +77,13 @@ let townController: TownController | null = null;
 
 function openTown(): void {
   if (mapVisible) toggleMap();
-  transitionToMode("town", false);
-  messageEl.textContent = "";
+  transitionToMode("town");
+  setMessage("");
   townController = new TownController({
-    panel: combatPanel,
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
     onEnterDungeon: () => {
       townController = null;
-      combatPanel.style.display = "none";
-      canvas.style.display = "";
-      // Resume from the last dungeon position if the player had been in the
-      // dungeon before; otherwise start fresh at Floor 1. transitionToFloor
-      // clones the floor from the immutable FLOORS definition and restores
-      // unlocked doors / looted treasures from GameState.
       const last = state.lastDungeon;
       const floor = last
         ? FLOORS.find((f) => f.id === last.floorId) ?? FLOORS[0]
@@ -137,7 +95,7 @@ function openTown(): void {
       state.inDarkness = false;
       state.inAntimagic = false;
       markExplored();
-      transitionToMode("dungeon", true);
+      transitionToMode("dungeon");
       setMessage(last ? "You return to the dungeon..." : "You enter the dungeon...");
     },
     onOpenSave: () => {
@@ -170,10 +128,10 @@ let partyCreationController: PartyCreationController | null = null;
 function openPartyCreation(onDone: () => void): void {
   if (mapVisible) toggleMap();
   setMode(state, "party_creation");
-  canvas.style.display = "none";
-  messageEl.textContent = "";
+  showMode("party_creation", mapVisible);
+  setMessage("");
   partyCreationController = new PartyCreationController({
-    panel: combatPanel,
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     onConfirm: (party: Character[]) => {
       partyCreationController = null;
       state.party = party;
@@ -193,7 +151,7 @@ function openPartyCreation(onDone: () => void): void {
 openPartyCreation(() => openTown());
 
 // --- Spell / item / loadout lookups (built once) -------------------------
-const SPELLS_BY_ID: Record<string, typeof ALL_SPELLS[number]> = Object.fromEntries(
+const SPELLS_BY_ID: Record<string, (typeof ALL_SPELLS)[number]> = Object.fromEntries(
   ALL_SPELLS.map((s) => [s.id, s])
 );
 
@@ -245,13 +203,11 @@ function maybeTriggerEncounter(): boolean {
 let combatController: CombatController | null = null;
 
 function startCombat(combat: CombatState): void {
-  combatPanel.style.display = "block";
-  viewportWrap.style.display = "none";
-  canvas.style.display = "none";
-  messageEl.textContent = "";
+  showMode("combat", mapVisible);
+  setMessage("");
 
   combatController = new CombatController(combat, {
-    panel: combatPanel,
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     onEnd: (result: CombatState) => {
       endCombat(result);
     },
@@ -296,10 +252,8 @@ function endCombat(result: CombatState): void {
 
   state.combat = undefined;
   combatController = null;
-  combatPanel.style.display = "none";
-  viewportWrap.style.display = "";
-  canvas.style.display = "";
   setMode(state, "dungeon");
+  showMode("dungeon", mapVisible);
 }
 
 // --- Camp mode -----------------------------------------------------------
@@ -315,31 +269,24 @@ function startCamp(): void {
   }
   setMode(state, "camp");
   if (mapVisible) toggleMap();
-  viewportWrap.style.display = "none";
-  canvas.style.display = "none";
-  messageEl.textContent = "";
+  showMode("camp", mapVisible);
+  setMessage("");
 
   state.dayCount++;
   campController = new CampController({
-    panel: combatPanel, // reuse the same panel element (hidden during dungeon)
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     party: state.party,
     dayCount: state.dayCount,
     onEnd: () => {
       campController = null;
-      combatPanel.style.display = "none";
-      viewportWrap.style.display = "";
-      canvas.style.display = "";
       setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
       setMessage(`The party rests. Day ${state.dayCount}. HP and SP restored.`);
     },
   });
 }
 
 // --- Input ---------------------------------------------------------------
-function setMessage(text: string): void {
-  messageEl.textContent = text;
-}
-
 function onMove(): void {
   if (state.mode !== "dungeon") return;
   state.stepsSinceEncounter++;
@@ -450,17 +397,17 @@ function openSaveMenu(): void {
   if (mapVisible) toggleMap();
   modeBeforeSaveMenu = state.mode;
   setMode(state, "title"); // borrow "title" mode so dungeon input pauses
+  showMode("title", mapVisible);
   canvas.style.opacity = "0.2";
   justOpenedSaveMenu = true;
   saveController = new SaveController({
-    panel: combatPanel,
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
     onLoaded: (loaded: GameState) => {
       // Replace the current game state with the loaded one.
       // We can't reassign `state` (it's const), so we mutate in place.
       Object.assign(state, loaded);
       saveController = null;
-      combatPanel.style.display = "none";
       canvas.style.opacity = "1";
       // Return to the mode from the loaded save, or dungeon if it was combat.
       const targetMode = state.mode === "combat" ? "dungeon" : state.mode;
@@ -468,19 +415,18 @@ function openSaveMenu(): void {
       if (targetMode === "town") {
         openTown();
       } else {
-        canvas.style.display = "";
+        showMode(targetMode, mapVisible);
         setMessage("Game loaded.");
       }
     },
     onClose: () => {
       saveController = null;
-      combatPanel.style.display = "none";
       canvas.style.opacity = "1";
       if (modeBeforeSaveMenu === "town") {
         openTown();
       } else {
         setMode(state, "dungeon");
-        canvas.style.display = "";
+        showMode("dungeon", mapVisible);
         setMessage("");
       }
     },
@@ -503,10 +449,9 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 });
 
 // --- Auto-map toggle -----------------------------------------------------
-
 function toggleMap(): void {
   mapVisible = !mapVisible;
-  mapCanvas.style.display = mapVisible ? "block" : "none";
+  showMode("dungeon", mapVisible);
   canvas.style.opacity = mapVisible ? "0.3" : "1";
   if (mapVisible) {
     setMessage("Auto-map open. Press M to close.");
@@ -515,41 +460,16 @@ function toggleMap(): void {
   }
 }
 
-// --- Party status strip (always visible in dungeon) ----------------------
-function renderPartyStrip(): void {
-  const parts: string[] = [];
-  for (const c of state.party) {
-    const ko = c.status.includes("knockedOut") || c.hp <= 0;
-    const hpPct = c.maxHp > 0 ? (Math.max(0, c.hp) / c.maxHp) * 100 : 0;
-    const spPct = c.maxSp > 0 ? (c.sp / c.maxSp) * 100 : 0;
-    const row = c.formationSlot <= 2 ? "F" : "B";
-    parts.push(
-      `<div class="ps-char ${ko ? "ko" : ""}">` +
-      `<span class="ps-name">${c.name}</span>` +
-      `<span class="ps-bar"><span class="ps-bar-fill hp" style="width:${hpPct}%"></span></span>` +
-      `<span class="ps-num">${Math.max(0, c.hp)}/${c.maxHp}</span>` +
-      (c.maxSp > 0
-        ? `<span class="ps-bar"><span class="ps-bar-fill sp" style="width:${spPct}%"></span></span>` +
-          `<span class="ps-num">${c.sp}/${c.maxSp}</span>`
-        : `<span class="ps-num">${row}</span>`) +
-      `</div>`
-    );
-  }
-  partyStripEl.innerHTML = parts.join("");
-}
-
 // --- Render loop ---------------------------------------------------------
-const COMPASS_DIRS = ["N", "E", "S", "W"];
 function loop() {
   if (state.mode === "dungeon") {
     render(ctx, state);
-    renderPartyStrip();
-    compassEl.textContent = COMPASS_DIRS[state.player.facing];
+    renderPartyStrip(state.party, compassForFacing(state.player.facing));
     if (mapVisible) {
       renderAutoMap(mapCtx, state);
     }
   } else {
-    partyStripEl.innerHTML = "";
+    clearPartyStrip();
   }
   requestAnimationFrame(loop);
 }
