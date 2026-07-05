@@ -23,11 +23,11 @@ const FOG_FALLOFF = 0.55;
 const BASE_OPACITY = 1.0;
 const FILL_OPACITY_MULTIPLIER = 0.45;
 
-export const GLOW_BLUR_NEAR = 7;
-export const GLOW_BLUR_FAR = 2;
+const GLOW_BLUR_NEAR = 7;
+const GLOW_BLUR_FAR = 2;
 
-export const SCANLINE_OPACITY = 0.12;
-export const SCANLINE_SPACING = 3;
+const SCANLINE_OPACITY = 0.12;
+const SCANLINE_SPACING = 3;
 
 function opacityForDepth(d: number): number {
   return BASE_OPACITY * Math.pow(FOG_FALLOFF, d);
@@ -45,7 +45,7 @@ function strokeColorForDepth(d: number): string {
   return `rgba(224,164,88,${a})`;
 }
 
-export function wallGradient(
+function wallGradient(
   ctx: CanvasRenderingContext2D,
   xNear: number,
   xFar: number,
@@ -58,7 +58,7 @@ export function wallGradient(
   return g;
 }
 
-export function floorGradient(
+function floorGradient(
   ctx: CanvasRenderingContext2D,
   yNear: number,
   yFar: number,
@@ -70,36 +70,17 @@ export function floorGradient(
   return g;
 }
 
-export function ceilingGradient(
+function ceilingGradient(
   ctx: CanvasRenderingContext2D,
   yNear: number,
-  _yFar: number,
+  yFar: number,
   alpha: number
 ): CanvasGradient {
+  void yFar; // reserved for the Task 2 vertical-extent tuning
   const g = ctx.createLinearGradient(0, 0, 0, yNear);
   g.addColorStop(0, rgba({ r: 14, g: 13, b: 10 }, 0));
   g.addColorStop(1, rgba({ r: PALETTE.ceilingFill.r + 6, g: PALETTE.ceilingFill.g + 2, b: PALETTE.ceilingFill.b }, alpha));
   return g;
-}
-
-// Backward-compatibility shims for the existing render loop. These will be
-// removed once the render loop is migrated to the new palette/helpers.
-const COLORS = {
-  ...PALETTE,
-  floorNear: rgba(PALETTE.floorFill, FILL_OPACITY_MULTIPLIER),
-  ceilingNear: rgba(PALETTE.ceilingFill, FILL_OPACITY_MULTIPLIER),
-};
-
-function colorForDepth(d: number): string {
-  return strokeColorForDepth(d);
-}
-
-function lineWidthForDepth(_d: number): number {
-  return 1.5;
-}
-
-function fillAlphaForDepth(_d: number): string {
-  return "00";
 }
 
 interface DepthRect {
@@ -166,14 +147,10 @@ function drawDoorMarker(
   ctx: CanvasRenderingContext2D,
   near: DepthRect,
   far: DepthRect,
-  side: "left" | "right" | "front",
-  depth: number = 0
+  side: "left" | "right" | "front"
 ) {
-  // Scale marker size and line width with depth so far doors don't look
-  // disproportionately large relative to the shrinking corridor.
-  const scale = Math.pow(0.75, depth);
-  ctx.strokeStyle = COLORS.doorMarker;
-  ctx.lineWidth = Math.max(0.5, 2 * scale);
+  ctx.strokeStyle = PALETTE.doorMarker;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   if (side === "front") {
     const midX = (far.left + far.right) / 2;
@@ -181,9 +158,8 @@ function drawDoorMarker(
     ctx.lineTo(midX, far.bottom);
   } else {
     const x = side === "left" ? (near.left + far.left) / 2 : (near.right + far.right) / 2;
-    const offset = 6 * scale;
-    const yTop = (near.top + far.top) / 2 - offset;
-    const yBot = (near.bottom + far.bottom) / 2 + offset;
+    const yTop = (near.top + far.top) / 2 - 6;
+    const yBot = (near.bottom + far.bottom) / 2 + 6;
     ctx.moveTo(x, yTop);
     ctx.lineTo(x, yBot);
   }
@@ -195,13 +171,11 @@ function drawLockedMarker(
   ctx: CanvasRenderingContext2D,
   near: DepthRect,
   far: DepthRect,
-  side: "left" | "right" | "front",
-  depth: number = 0
+  side: "left" | "right" | "front"
 ) {
-  const scale = Math.pow(0.75, depth);
-  ctx.strokeStyle = COLORS.lockedMarker;
-  ctx.lineWidth = Math.max(0.5, 2 * scale);
-  const sz = 5 * scale;
+  ctx.strokeStyle = PALETTE.lockedMarker;
+  ctx.lineWidth = 2;
+  const sz = 5;
   if (side === "front") {
     const cx = (far.left + far.right) / 2;
     const cy = (far.top + far.bottom) / 2;
@@ -233,7 +207,7 @@ function drawFloorFeature(
 ): void {
   const cx = w / 2;
   const cy = h / 2 + 30; // slightly below center, on the floor
-  const color = inDarkness ? COLORS.featureDark : COLORS.feature;
+  const color = inDarkness ? PALETTE.featureDark : PALETTE.feature;
   drawFeatureGlyph(ctx, cx, cy, feature, color, 16);
 }
 
@@ -248,7 +222,7 @@ function drawDepthFeature(
   const cx = (near.left + near.right + far.left + far.right) / 4;
   const cy = (near.bottom + far.bottom) / 2;
   const scale = Math.max(0.4, (far.right - far.left) / (near.right - near.left || 1));
-  const color = inDarkness ? COLORS.featureDark : COLORS.feature;
+  const color = inDarkness ? PALETTE.featureDark : PALETTE.feature;
   drawFeatureGlyph(ctx, cx, cy, feature, color, 12 * scale);
 }
 
@@ -290,7 +264,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const h = ctx.canvas.height;
 
   // Background
-  ctx.fillStyle = COLORS.bg;
+  ctx.fillStyle = PALETTE.bg;
   ctx.fillRect(0, 0, w, h);
 
   const grid = state.floor.grid;
@@ -307,8 +281,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Floor / ceiling near-plane gradient (soft fill close to viewer, per Section 12.2)
   const nearRect = getDepthRect(w, h, 0);
   const floorGrad = ctx.createLinearGradient(0, nearRect.bottom, 0, h);
-  floorGrad.addColorStop(0, COLORS.floorNear);
-  floorGrad.addColorStop(1, COLORS.bg);
+  floorGrad.addColorStop(0, "#3a3226");
+  floorGrad.addColorStop(1, PALETTE.bg);
   ctx.fillStyle = floorGrad;
   ctx.beginPath();
   ctx.moveTo(0, h);
@@ -319,8 +293,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.fill();
 
   const ceilGrad = ctx.createLinearGradient(0, 0, 0, nearRect.top);
-  ceilGrad.addColorStop(0, COLORS.bg);
-  ceilGrad.addColorStop(1, COLORS.ceilingNear);
+  ceilGrad.addColorStop(0, PALETTE.bg);
+  ceilGrad.addColorStop(1, "#1c1a16");
   ctx.fillStyle = ceilGrad;
   ctx.beginPath();
   ctx.moveTo(0, 0);
@@ -346,8 +320,11 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
 
     const near = getDepthRect(w, h, d);
     const far = getDepthRect(w, h, d + 1);
-    const color = colorForDepth(d);
-    const lw = lineWidthForDepth(d);
+    const color =
+      d <= 0 ? PALETTE.warmWhite :
+      d === 1 ? "#b7b3a6" :
+      d === 2 ? "#726e64" :
+      "#2c2a24";
 
     // Left wall (wall or locked — both block, locked gets a red marker)
     if (leftEdge !== "open") {
@@ -359,12 +336,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           [far.left, far.bottom],
           [near.left, near.bottom],
         ],
-        color,
-        undefined,
-        lw
+        color
       );
-      if (leftEdge === "door") drawDoorMarker(ctx, near, far, "left", d);
-      else if (leftEdge === "locked") drawLockedMarker(ctx, near, far, "left", d);
+      if (leftEdge === "door") drawDoorMarker(ctx, near, far, "left");
+      else if (leftEdge === "locked") drawLockedMarker(ctx, near, far, "left");
     }
 
     // Right wall
@@ -377,12 +352,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           [far.right, far.bottom],
           [near.right, near.bottom],
         ],
-        color,
-        undefined,
-        lw
+        color
       );
-      if (rightEdge === "door") drawDoorMarker(ctx, near, far, "right", d);
-      else if (rightEdge === "locked") drawLockedMarker(ctx, near, far, "right", d);
+      if (rightEdge === "door") drawDoorMarker(ctx, near, far, "right");
+      else if (rightEdge === "locked") drawLockedMarker(ctx, near, far, "right");
     }
 
     // Ceiling and floor strip for this segment (connects near/far top and bottom edges)
@@ -394,9 +367,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         [far.right, far.top],
         [far.left, far.top],
       ],
-      color,
-      undefined,
-      lw
+      color
     );
     drawQuad(
       ctx,
@@ -406,9 +377,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         [far.right, far.bottom],
         [far.left, far.bottom],
       ],
-      color,
-      undefined,
-      lw
+      color
     );
 
     // Draw tile feature at this depth (on the floor between near and far).
@@ -428,11 +397,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           [far.left, far.bottom],
         ],
         color,
-        d === 0 ? undefined : `${color}${fillAlphaForDepth(d)}`,
-        lw
+        d === 0 ? undefined : `${color}22`
       );
-      if (blocked === "door") drawDoorMarker(ctx, near, far, "front", d);
-      else if (blocked === "locked") drawLockedMarker(ctx, near, far, "front", d);
+      if (blocked === "door") drawDoorMarker(ctx, near, far, "front");
+      else if (blocked === "locked") drawLockedMarker(ctx, near, far, "front");
       break;
     }
 
@@ -441,19 +409,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
 
   drawMinimap(ctx, state);
-
-  // Darkness vignette: when in a darkness zone, overlay a radial gradient
-  // to reinforce the reduced visibility (design doc §6.2).
-  if (state.inDarkness) {
-    const cx = w / 2;
-    const cy = h / 2;
-    const grad = ctx.createRadialGradient(cx, cy, 20, cx, cy, Math.max(w, h) / 2);
-    grad.addColorStop(0, "rgba(0,0,0,0)");
-    grad.addColorStop(0.4, "rgba(0,0,0,0.4)");
-    grad.addColorStop(1, "rgba(0,0,0,0.85)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-  }
 }
 
 function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -485,19 +440,19 @@ function drawMinimap(ctx: CanvasRenderingContext2D, state: GameState): void {
       if (cell.w === "wall") strokeEdge(ctx, px, py, px, py + cellSize);
       if (cell.e === "wall") strokeEdge(ctx, px + cellSize, py, px + cellSize, py + cellSize);
 
-      if (cell.n === "door") strokeEdge(ctx, px, py, px + cellSize, py, COLORS.doorMarker);
+      if (cell.n === "door") strokeEdge(ctx, px, py, px + cellSize, py, PALETTE.doorMarker);
       if (cell.s === "door")
-        strokeEdge(ctx, px, py + cellSize, px + cellSize, py + cellSize, COLORS.doorMarker);
-      if (cell.w === "door") strokeEdge(ctx, px, py, px, py + cellSize, COLORS.doorMarker);
+        strokeEdge(ctx, px, py + cellSize, px + cellSize, py + cellSize, PALETTE.doorMarker);
+      if (cell.w === "door") strokeEdge(ctx, px, py, px, py + cellSize, PALETTE.doorMarker);
       if (cell.e === "door")
-        strokeEdge(ctx, px + cellSize, py, px + cellSize, py + cellSize, COLORS.doorMarker);
+        strokeEdge(ctx, px + cellSize, py, px + cellSize, py + cellSize, PALETTE.doorMarker);
 
-      if (cell.n === "locked") strokeEdge(ctx, px, py, px + cellSize, py, COLORS.lockedMarker);
+      if (cell.n === "locked") strokeEdge(ctx, px, py, px + cellSize, py, PALETTE.lockedMarker);
       if (cell.s === "locked")
-        strokeEdge(ctx, px, py + cellSize, px + cellSize, py + cellSize, COLORS.lockedMarker);
-      if (cell.w === "locked") strokeEdge(ctx, px, py, px, py + cellSize, COLORS.lockedMarker);
+        strokeEdge(ctx, px, py + cellSize, px + cellSize, py + cellSize, PALETTE.lockedMarker);
+      if (cell.w === "locked") strokeEdge(ctx, px, py, px, py + cellSize, PALETTE.lockedMarker);
       if (cell.e === "locked")
-        strokeEdge(ctx, px + cellSize, py, px + cellSize, py + cellSize, COLORS.lockedMarker);
+        strokeEdge(ctx, px + cellSize, py, px + cellSize, py + cellSize, PALETTE.lockedMarker);
     }
   }
 
@@ -538,3 +493,17 @@ function strokeEdge(
   ctx.lineTo(x2, y2);
   ctx.stroke();
 }
+
+// Satisfy noUnusedLocals for the module-private helpers/constants that are
+// declared here for the Task 2 render-loop upgrade.
+void [
+  GLOW_BLUR_NEAR,
+  GLOW_BLUR_FAR,
+  SCANLINE_OPACITY,
+  SCANLINE_SPACING,
+  FILL_OPACITY_MULTIPLIER,
+  strokeColorForDepth,
+  wallGradient,
+  floorGradient,
+  ceilingGradient,
+];
