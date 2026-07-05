@@ -5,6 +5,7 @@ dist
 # Dev/test artifacts
 .playwright-mcp
 logs
+.superpowers
 
 # Dev harness files (not part of the shipped game)
 dev-combat-harness.ts
