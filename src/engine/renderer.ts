@@ -238,6 +238,15 @@ function tileScaleForDepth(
   return refHeight / TILE_WORLD_UNITS / imgSize;
 }
 
+/** Tile scale computed directly from a single rect's own height — use this for
+ * quads that are drawn entirely at one depth plane (e.g. the front/end wall, or
+ * a side-opening's back wall), as opposed to quads that span from near to far
+ * (left/right walls), which should keep using tileScaleForDepth. */
+function tileScaleForRect(rect: DepthRect, imgSize: number): number {
+  const refHeight = rect.bottom - rect.top;
+  return refHeight / imgSize;
+}
+
 function glowBlurForDepth(d: number): number {
   return Math.max(
     RENDER_CONFIG.glowBlurFar,
@@ -360,7 +369,6 @@ function drawSideOpening(
   wallImg: HTMLImageElement | HTMLCanvasElement | null,
   floorScale: number,
   ceilScale: number,
-  wallScale: number,
   floorDarkenAlpha: number,
   ceilDarkenAlpha: number,
   depth: number
@@ -413,6 +421,7 @@ function drawSideOpening(
 
   // Back wall of the side passage (fills the central black void).
   const wallFillAlpha = opacityForDepth(depth) * RENDER_CONFIG.fillOpacityMultiplier;
+  const backWallScale = wallImg ? tileScaleForRect(far, wallImg.width) : 1;
   if (wallImg) {
     drawTexturedQuad(
       ctx,
@@ -423,7 +432,7 @@ function drawSideOpening(
         [xFar, far.bottom],
       ],
       wallImg,
-      wallScale,
+      backWallScale,
       "rgba(0,0,0,0)",
       0,
       0,
@@ -882,6 +891,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     const wallScale = wallImg
       ? tileScaleForDepth(near, wallImg.width)
       : 1;
+    const endWallScale = wallImg
+      ? tileScaleForRect(far, wallImg.width)
+      : 1;
     const floorScale = floorImg
       ? tileScaleForDepth(near, floorImg.width)
       : 1;
@@ -901,7 +913,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           ctx,
           far,
           wallImg,
-          wallScale,
+          endWallScale,
           stroke,
           lw,
           glowBlur,
@@ -932,7 +944,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           wallImg,
           floorScale,
           ceilScale,
-          wallScale,
           floorDepthDarkenAlpha,
           ceilDepthDarkenAlpha,
           d
@@ -952,7 +963,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           wallImg,
           floorScale,
           ceilScale,
-          wallScale,
           floorDepthDarkenAlpha,
           ceilDepthDarkenAlpha,
           d
