@@ -1,19 +1,22 @@
 /**
  * Save/load system — design doc Section 13.
  *
- * Save anywhere, anytime (except during combat). 10 slots persisted to
- * localStorage. Auto-save on floor transition (hooked when multi-floor is
- * added).
+ * Save anywhere, anytime — including during combat (per §13: "Save anywhere,
+ * anytime. Including in dungeons, during exploration, even in combat."). 10
+ * slots persisted to localStorage. Auto-save on floor transition.
  *
  * Serialization: GameState is mostly JSON-safe except for `explored` (a
  * Set<string>) which is converted to/from an array. The floor grid (Cell[][])
  * and party (Character[]) are plain objects and serialize directly. Combat
- * state is NOT saved — if the player saves during combat, the combat is
- * discarded and they reload in dungeon mode at their pre-combat position.
+ * state is NOT saved — if the player saves during combat, the mode is
+ * converted to "dungeon" and they reload in dungeon mode at their pre-combat
+ * position. This satisfies §13's "even in combat" without persisting
+ * mid-round combat state.
  */
 
 import type { GameState } from "../types";
 import { FLOORS } from "../data/floors";
+import { defaultLoadoutForCharacter } from "./combat";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
@@ -47,6 +50,7 @@ interface SerializedState {
   inDarkness: boolean;
   inAntimagic: boolean;
   lastDungeon: GameState["lastDungeon"];
+  equipment?: GameState["equipment"];
   // Treasure state: which treasures have been looted (floorId:x:y -> remaining items).
   // We serialize the floor grid's tile state by storing looted treasure positions.
   lootedTreasures: { floorId: number; x: number; y: number }[];
@@ -95,6 +99,7 @@ function serialize(state: GameState): string {
     inDarkness: state.inDarkness,
     inAntimagic: state.inAntimagic,
     lastDungeon: state.lastDungeon,
+    equipment: { ...state.equipment },
     lootedTreasures,
     savedAt: new Date().toISOString(),
   };
@@ -159,6 +164,11 @@ function deserialize(json: string): GameState | null {
       inDarkness: ser.inDarkness ?? false,
       inAntimagic: ser.inAntimagic ?? false,
       lastDungeon: ser.lastDungeon ?? null,
+      equipment:
+        ser.equipment ??
+        Object.fromEntries(
+          ser.party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
+        ),
     };
   } catch {
     return null;

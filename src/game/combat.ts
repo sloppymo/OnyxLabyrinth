@@ -21,6 +21,7 @@ import type { EnemyDef, EnemySpecial, Row } from "../data/enemies";
 import type { SpellDef, SpellEffect, SpellTarget } from "../data/spells";
 import { spellByName } from "../data/spells";
 import type { ItemDef } from "../data/items";
+import { ITEMS_BY_ID } from "../data/items";
 
 // Re-export types that the combat UI / main.ts needs
 export type { Character, EnemyDef, SpellDef, ItemDef, Row, StatusEffect };
@@ -52,6 +53,80 @@ export interface EnemyFormation {
 export interface Loadout {
   weapon?: ItemDef;
   armor: ItemDef[];
+}
+
+/** Build the starter loadout for a newly created character. */
+export function defaultLoadoutForCharacter(char: Character): Loadout {
+  const loadout: Loadout = { armor: [] };
+  if (char.class === "Fighter") {
+    loadout.weapon = ITEMS_BY_ID["short-sword"];
+  } else if (char.class === "Thief") {
+    loadout.weapon = ITEMS_BY_ID["dagger"];
+  } else if (char.class === "Mage" || char.class === "Priest") {
+    loadout.weapon = ITEMS_BY_ID["staff"];
+  }
+  if (char.formationSlot <= 2) {
+    const leather = ITEMS_BY_ID["leather"];
+    if (leather) loadout.armor = [leather];
+  }
+  return loadout;
+}
+
+/** True if `candidate` is strictly better than `current` for its slot. */
+export function isBetterEquip(current: ItemDef | undefined, candidate: ItemDef): boolean {
+  if (candidate.type === "consumable") return false;
+  if (!current) return true;
+  if (candidate.type === "weapon") {
+    return (candidate.attackBonus ?? 0) > (current.attackBonus ?? 0);
+  }
+  return (candidate.defenseBonus ?? 0) > (current.defenseBonus ?? 0);
+}
+
+/** Return a new loadout with `item` equipped, replacing any same-slot gear only
+ *  if the new item is better. Non-equipment items are ignored. */
+export function equipItem(loadout: Loadout, item: ItemDef): Loadout {
+  if (item.type === "consumable") return loadout;
+  if (item.type === "weapon") {
+    if (!isBetterEquip(loadout.weapon, item)) return loadout;
+    return { ...loadout, weapon: item };
+  }
+  const armor = loadout.armor ? [...loadout.armor] : [];
+  if (item.slot) {
+    const idx = armor.findIndex((a) => a.slot === item.slot);
+    if (idx >= 0) {
+      if (!isBetterEquip(armor[idx], item)) return loadout;
+      armor[idx] = item;
+      return { ...loadout, armor };
+    }
+  }
+  armor.push(item);
+  return { ...loadout, armor };
+}
+
+/** Pick the party member with the weakest item in the slot `item` occupies. */
+export function findBestEquipTarget(
+  party: Character[],
+  equipment: Record<string, Loadout>,
+  item: ItemDef
+): string | undefined {
+  if (item.type === "consumable") return undefined;
+  let bestId: string | undefined;
+  let bestScore = Infinity;
+  for (const c of party) {
+    const loadout = equipment[c.id];
+    if (!loadout) continue;
+    let score = 0;
+    if (item.type === "weapon") {
+      score = loadout.weapon?.attackBonus ?? 0;
+    } else if (item.slot) {
+      score = loadout.armor.find((a) => a.slot === item.slot)?.defenseBonus ?? 0;
+    }
+    if (score < bestScore) {
+      bestId = c.id;
+      bestScore = score;
+    }
+  }
+  return bestId;
 }
 
 export type PlayerAction =

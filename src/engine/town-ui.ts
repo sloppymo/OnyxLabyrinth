@@ -22,6 +22,7 @@ import type { GameState, Character } from "../types";
 import { restoreParty, CLASSES } from "../game/party";
 import { ALL_ITEMS, ITEMS_BY_ID, type ItemDef } from "../data/items";
 import { spellsForClass } from "../data/spells";
+import { equipItem, findBestEquipTarget } from "../game/combat";
 
 type TownScreen = "main" | "inn" | "temple" | "shop" | "guild" | "training";
 type ShopTab = "buy" | "sell";
@@ -297,6 +298,19 @@ export class TownController {
     }
     this.state.partyGold -= item.price;
     this.state.inventory.push(item.id);
+
+    // Auto-equip gear to the party member who needs it most.
+    if (item.type !== "consumable") {
+      const targetId = findBestEquipTarget(this.state.party, this.state.equipment, item);
+      if (targetId) {
+        this.state.equipment[targetId] = equipItem(this.state.equipment[targetId], item);
+        const targetName = this.state.party.find((c) => c.id === targetId)?.name ?? "someone";
+        this.flash = `Bought ${item.name} for ${item.price}g and equipped it on ${targetName}.`;
+        this.render();
+        return;
+      }
+    }
+
     this.flash = `Bought ${item.name} for ${item.price}g.`;
     this.render();
   }
@@ -309,6 +323,22 @@ export class TownController {
     const sellPrice = Math.floor(item.price / 2);
     this.state.inventory.splice(invIndex, 1);
     this.state.partyGold += sellPrice;
+
+    // If this exact item is currently equipped, remove it from that character.
+    for (const c of this.state.party) {
+      const loadout = this.state.equipment[c.id];
+      if (!loadout) continue;
+      if (loadout.weapon?.id === itemId) {
+        this.state.equipment[c.id] = { ...loadout, weapon: undefined };
+      }
+      if (loadout.armor.some((a) => a.id === itemId)) {
+        this.state.equipment[c.id] = {
+          ...loadout,
+          armor: loadout.armor.filter((a) => a.id !== itemId),
+        };
+      }
+    }
+
     // Clamp index
     if (this.shopIndex >= this.state.inventory.length) {
       this.shopIndex = Math.max(0, this.state.inventory.length - 1);

@@ -20,6 +20,7 @@ import type { GameState } from "../types";
 import { FLOORS } from "../data/floors";
 import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
+import { equipItem, findBestEquipTarget } from "./combat";
 
 export interface FeatureResult {
   message: string;
@@ -186,6 +187,14 @@ function handleTreasure(state: GameState): FeatureResult {
     state.inventory.push(itemId);
     const item = ITEMS_BY_ID[itemId];
     itemNames.push(item ? item.name : itemId);
+
+    // Auto-equip found gear to the party member who needs it most.
+    if (item && item.type !== "consumable") {
+      const targetId = findBestEquipTarget(state.party, state.equipment, item);
+      if (targetId) {
+        state.equipment[targetId] = equipItem(state.equipment[targetId], item);
+      }
+    }
   }
 
   // Clear the treasure

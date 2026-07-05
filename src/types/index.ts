@@ -5,10 +5,11 @@
 
 import type { FloorDef } from "../data/floors";
 import type { Character } from "../game/party";
-import type { CombatState } from "../game/combat";
+import type { CombatState, Loadout } from "../game/combat";
 export type { FloorDef };
 export type { Character };
 export type { CombatState };
+export type { Loadout };
 
 // --- Edge-based grid model ---------------------------------------------------
 // Each cell has four edges (N/E/S/W). An edge is open, a wall, or a door.
@@ -109,4 +110,8 @@ export interface GameState {
   // Last dungeon position before returning to town, so re-entering the dungeon
   // resumes where the player left off instead of resetting to Floor 1.
   lastDungeon: { floorId: number; x: number; y: number; facing: Facing } | null;
+  // Per-character equipped gear. Keyed by character id. Initialized from the
+  // default loadout at party creation and updated by shop purchases / treasure
+  // finds / post-combat persistence.
+  equipment: Record<string, Loadout>;
 }

@@ -12,7 +12,13 @@ import { CampController } from "./engine/camp-ui";
 import { SaveController } from "./engine/save-ui";
 import { TownController } from "./engine/town-ui";
 import { PartyCreationController } from "./engine/party-ui";
-import { createCombatFromEncounter, inventoryFromCounts, type CombatState, type Loadout } from "./game/combat";
+import {
+  createCombatFromEncounter,
+  inventoryFromCounts,
+  defaultLoadoutForCharacter,
+  type CombatState,
+  type Loadout,
+} from "./game/combat";
 import { rollEncounter, resolveEncounter } from "./data/enemies";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
@@ -150,6 +156,9 @@ function openPartyCreation(onDone: () => void): void {
     onConfirm: (party: Character[]) => {
       partyCreationController = null;
       state.party = party;
+      state.equipment = Object.fromEntries(
+        party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
+      );
       onDone();
     },
     onCancel: () => {
@@ -167,27 +176,12 @@ const SPELLS_BY_ID: Record<string, typeof ALL_SPELLS[number]> = Object.fromEntri
   ALL_SPELLS.map((s) => [s.id, s])
 );
 
-// Default loadout: basic weapon by class, armor for front-row characters.
-function buildDefaultLoadout(char: Character): Loadout {
-  const loadout: Loadout = { armor: [] };
-  if (char.class === "Fighter") {
-    loadout.weapon = ITEMS_BY_ID["short-sword"];
-  } else if (char.class === "Thief") {
-    loadout.weapon = ITEMS_BY_ID["dagger"];
-  } else if (char.class === "Mage" || char.class === "Priest") {
-    loadout.weapon = ITEMS_BY_ID["staff"];
-  }
-  if (char.formationSlot <= 2) {
-    const leather = ITEMS_BY_ID["leather"];
-    if (leather) loadout.armor = [leather];
-  }
-  return loadout;
-}
-
-function buildLoadoutMap(party: Character[]): Record<string, Loadout> {
+// Build the combat loadout map from the persisted GameState.equipment.
+// Falls back to the default starter gear if a character has no entry.
+function buildLoadoutMap(): Record<string, Loadout> {
   const map: Record<string, Loadout> = {};
-  for (const c of party) {
-    map[c.id] = buildDefaultLoadout(c);
+  for (const c of state.party) {
+    map[c.id] = state.equipment[c.id] ?? defaultLoadoutForCharacter(c);
   }
   return map;
 }
@@ -208,7 +202,7 @@ function maybeTriggerEncounter(): boolean {
   const resolved = resolveEncounter(entry);
   if (resolved.length === 0) return false;
 
-  const loadout = buildLoadoutMap(state.party);
+  const loadout = buildLoadoutMap();
   const combat = createCombatFromEncounter(
     state.party,
     resolved,
@@ -254,6 +248,9 @@ function endCombat(result: CombatState): void {
 
   // Write the (possibly depleted) combat inventory back to GameState.
   state.inventory = inventoryFromCounts(result.inventory);
+
+  // Persist any equipment changes made during this combat back to GameState.
+  state.equipment = { ...result.loadout };
 
   if (result.result === "wipe") {
     // Design doc §9.1: party retreats to dungeon entrance, revives at 1 HP.

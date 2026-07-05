@@ -9,15 +9,18 @@
 
 import type { FloorDef, GameMode, GameState } from "../types";
 import { createDefaultParty } from "./party";
+import { defaultLoadoutForCharacter } from "./combat";
 
 export type { GameMode, GameState } from "../types";
 
 export function createGameState(floor: FloorDef): GameState {
+  const party = createDefaultParty();
   return {
     mode: "town", // start in town; player chooses to enter the dungeon
     floor,
     player: { x: floor.startX, y: floor.startY, facing: 0 },
-    party: createDefaultParty(),
+    party,
+    equipment: Object.fromEntries(party.map((c) => [c.id, defaultLoadoutForCharacter(c)])),
     explored: new Set<string>(),
     exploredByFloor: {},
     stepsSinceEncounter: 99, // allow encounter on first step
@@ -32,9 +35,9 @@ export function createGameState(floor: FloorDef): GameState {
   };
 }
 
-/** Transition to a new game mode. No-op for Step 2 beyond dungeon, but the
- *  helper exists so transition callsites in later steps have one place to
- *  hook validation/logging. */
+/** Transition to a new game mode. The visual fade (150ms opacity transition)
+ *  is handled by main.ts via the canvas CSS `transition: opacity 0.15s` and
+ *  the `transitionToMode` helper — state.ts stays pure. */
 export function setMode(state: GameState, mode: GameMode): void {
   state.mode = mode;
 }
