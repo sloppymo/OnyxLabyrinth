@@ -339,10 +339,12 @@ function drawFloorFeature(
   feature: TileFeature,
   inDarkness: boolean
 ): void {
+  ctx.save();
   const cx = w / 2;
   const cy = h / 2 + 30; // slightly below center, on the floor
   const color = inDarkness ? PALETTE.featureDark : PALETTE.feature;
   drawFeatureGlyph(ctx, cx, cy, feature, color, 16);
+  ctx.restore();
 }
 
 /** Draw a tile feature glyph at the bottom-center of a raycast wall strip. */
@@ -354,12 +356,15 @@ function drawDepthFeature(
   feature: TileFeature,
   inDarkness: boolean
 ): void {
+  ctx.save();
   const h = ctx.canvas.height;
   const lineHeight = Math.floor(h / hit.perpWallDist);
   const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
   const cy = drawEnd + Math.max(4, lineHeight / 8);
   const size = Math.max(6, Math.min(24, lineHeight / 4));
+  ctx.globalAlpha = opacityForDepth(hit.perpWallDist);
   drawFeatureGlyph(ctx, screenX + stripWidth / 2, cy, feature, inDarkness ? PALETTE.featureDark : PALETTE.feature, size);
+  ctx.restore();
 }
 
 /** Draw a feature glyph (text icon) at the given position. */
@@ -371,14 +376,14 @@ function drawFeatureGlyph(
   color: string,
   size: number
 ): void {
+  ctx.save();
   const glyph = featureGlyph(feature);
   ctx.fillStyle = color;
   ctx.font = `bold ${size}px "FF36", "Courier New", monospace`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(glyph, cx, cy);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
+  ctx.restore();
 }
 
 /** Map a tile feature to a display glyph. */
