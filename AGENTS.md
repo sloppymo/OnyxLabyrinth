@@ -19,6 +19,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/engine/renderer.ts` | Corridor 3D view (the most fragile code). |
 | `src/engine/audio.ts` | Procedural Web Audio: ambient drone, footsteps, door sounds. |
 | `src/engine/combat-renderer.ts` | Canvas-based JRPG combat scene (sprites, effects, message box). |
+| `src/engine/combat-ui.ts` | Combat controller: input handling, round resolution, message queue. |
 | `src/engine/shell.ts` | DOM shell: canvas sizing, message overlay, party strip, mode visibility. |
 | `src/engine/input.ts` | Dungeon exploration key bindings. |
 | `src/engine/camera.ts` | Movement, turning, collision, door unlock. |
@@ -27,7 +28,6 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/game/dungeon.ts` | Grid model, edge helpers, carving. |
 | `src/game/party.ts` | Character/party creation. |
 | `src/game/combat.ts` | Combat state/helpers. |
-| `src/engine/combat-ui.ts` | Combat screen controller. |
 | `src/engine/camp-ui.ts` | Camp screen controller. |
 | `src/engine/town-ui.ts` | Town/hub screen controller. |
 | `src/engine/save-ui.ts` | Save/load menu controller. |
@@ -38,6 +38,15 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/data/items.ts` | Item definitions. |
 | `src/styles.css` | All styling. |
 | `docs/` | GitHub Pages target; copied from `dist/`. |
+
+## Git workflow
+
+1. **Build before committing.** Always run `npm run build` and confirm zero TypeScript errors before `git commit`. The build is the minimum verification gate.
+2. **Verify before pushing.** Do not push claims you haven't checked. For renderer/combat changes, run the game in a browser and inspect the relevant screen.
+3. **Refresh `docs/` for GitHub Pages.** After any build that changes hashed assets, copy `dist/` into `docs/` and remove stale `docs/assets/index-*.js` / `docs/assets/index-*.css` files so only the current hashes remain.
+4. **Commit message style.** Use conventional commits: `feat(scope):`, `fix(scope):`, `perf(scope):`, `chore(scope):`, `docs(scope):`. Keep the summary under 72 characters.
+5. **No debug code in commits.** Remove `console.log`, `window.__` exposures, `debugger`, and temporary timing hooks before committing.
+6. **Do not mutate git history unless asked.** No `git rebase`, `git reset --hard`, or force-push without explicit user confirmation.
 
 ## Hard rules
 
@@ -73,9 +82,24 @@ After any change to `src/engine/renderer.ts`, confirm these in-game views before
 
 Use Playwright, Puppeteer, or a manual browser at `http://localhost:5176/OnyxLabyrinth/`.
 
+## Combat renderer verification checklist
+
+After any change to `src/engine/combat-renderer.ts` or `src/engine/combat-ui.ts`:
+
+1. **Combat starts:** entering a fight shows the canvas combat screen (not a blank/black panel).
+2. **Sprites visible:** party members appear on the left, enemies on the right; nobody is invisible on first animation.
+3. **Multi-word names:** enemies with spaces in their names (e.g., "Giant Rat", "Stone Guardian") trigger hit/attack/death animations correctly.
+4. **Defeated fade:** killed enemies rotate and fade instead of vanishing instantly.
+5. **Selection list:** spell/item/target lists are visible and not drawn below the canvas.
+6. **Message advance:** log messages advance on Space/Enter or auto-advance after ~1.6s.
+7. **Combat → dungeon transition:** fleeing or winning returns to the dungeon view with the corridor canvas visible.
+
 ## Conventions
 
 - Prefer `const` and explicit types.
 - Keep renderer constants in `RENDER_CONFIG` at the top of `renderer.ts`.
+- Keep audio constants in the `AudioEngine` `CFG` object at the top of `audio.ts`.
+- Keep combat renderer layout constants near the top of `combat-renderer.ts`.
 - Run `npm run build` before claiming any fix is complete.
+- Verify visually for renderer/combat/audio changes; don't rely only on the build passing.
 - After rebuilding, refresh `docs/` from `dist/` if the user wants the GitHub Pages build updated.
