@@ -12,3 +12,8 @@ dev-combat-harness.ts
 dev-harness.ts
 dev-combat.html
 dev-party-creation.html
+
+# Screenshot / report artifacts generated during visual verification
+/*.png
+/report/
+/competitor-tracker.md
