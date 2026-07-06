@@ -57,18 +57,17 @@ const RENDER_CONFIG = {
   floorABrightnessFactor: 4.0,
   floorBBrightnessFactor: 2.8,
   ceilingBrightnessFactor: 10.0,
-  // Used by the upcoming raycast wall/floor passes.
-  // Raycast renderer tunables (added by Task 1).
+  // Raycast renderer tunables.
   raycastFov: Math.PI / 3,          // 60 degrees
   raycastStripWidth: 1,             // one ray per screen column
   wallRepeatsX: 1,                  // horizontal repeats per wall face
   wallRepeatsY: 3,                  // vertical repeats per wall face
   floorRepeats: 1,                  // texture repeats per floor grid tile
   ceilingRepeats: 1,                // texture repeats per ceiling grid tile
-  darknessMaxDist: 1.5,             // replaces darknessDepth once trapezoid renderer is removed
+  darknessMaxDist: 1.5,
 } as const;
 
-/** Private helper for the upcoming raycast wall/floor passes. */
+/** Raycast hit data for a single ray. */
 interface RayHit {
   side: "x" | "y";                  // "x" = x-step (crossed a vertical grid line / E-W-facing wall); "y" = y-step (crossed a horizontal grid line / N-S-facing wall)
   mapX: number;                     // grid cell hit
@@ -86,6 +85,7 @@ interface TextureSet {
 }
 
 let textureCache: TextureSet | null = null;
+let repeatedWallCanvas: HTMLCanvasElement | null = null;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -114,6 +114,29 @@ function brightenImage(img: HTMLImageElement, factor: number): HTMLCanvasElement
   return c;
 }
 
+/**
+ * Build a canvas containing `img` tiled `repeatsX` times horizontally and
+ * `repeatsY` times vertically. The raycast wall strip pass samples this canvas
+ * so the texture repeats across a wall face instead of being squashed.
+ */
+function prepareRepeatedTexture(
+  img: HTMLImageElement,
+  repeatsX: number,
+  repeatsY: number
+): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = img.width * repeatsX;
+  c.height = img.height * repeatsY;
+  const ctx = c.getContext("2d")!;
+  ctx.imageSmoothingEnabled = false;
+  for (let y = 0; y < repeatsY; y++) {
+    for (let x = 0; x < repeatsX; x++) {
+      ctx.drawImage(img, x * img.width, y * img.height);
+    }
+  }
+  return c;
+}
+
 export function loadTextures(): Promise<TextureSet> {
   if (textureCache) return Promise.resolve(textureCache);
   // Load each texture independently; a single 404 or CORS failure shouldn't
@@ -136,6 +159,13 @@ export function loadTextures(): Promise<TextureSet> {
         ? brightenImage(ceilingImg, RENDER_CONFIG.ceilingBrightnessFactor)
         : null,
     };
+    repeatedWallCanvas = textureCache.wall
+      ? prepareRepeatedTexture(
+          textureCache.wall,
+          RENDER_CONFIG.wallRepeatsX,
+          RENDER_CONFIG.wallRepeatsY
+        )
+      : null;
     return textureCache;
   });
 }
@@ -171,7 +201,6 @@ const DIR_VECTORS = [
 ] as const;
 
 /** Returns the camera plane vector for a grid facing direction (0=N,1=E,2=S,3=W). */
-// @ts-ignore: private helper for the upcoming raycast wall/floor passes.
 function cameraPlaneForFacing(facing: number): { planeX: number; planeY: number } {
   // Plane is perpendicular to the facing direction, scaled by the FOV tangent.
   const dir = DIR_VECTORS[facing % 4];
@@ -182,7 +211,6 @@ function cameraPlaneForFacing(facing: number): { planeX: number; planeY: number 
 }
 
 /** Cast a ray through the grid using DDA and return the first non-open wall hit. */
-// @ts-ignore: private helper for the upcoming raycast wall/floor passes.
 function castRay(
   state: GameState,
   rayDirX: number,
@@ -595,67 +623,6 @@ function drawSideOpening(
   ctx.restore();
 }
 
-/* TODO(Task 3): trapezoid door/locked markers replaced by inline raycast markers.
-function drawDoorMarker(
-  ctx: CanvasRenderingContext2D,
-  near: DepthRect,
-  far: DepthRect,
-  side: "left" | "right" | "front"
-) {
-  ctx.strokeStyle = PALETTE.doorMarker;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  if (side === "front") {
-    const midX = (far.left + far.right) / 2;
-    ctx.moveTo(midX, far.top);
-    ctx.lineTo(midX, far.bottom);
-  } else {
-    const x =
-      side === "left"
-        ? (near.left + far.left) / 2
-        : (near.right + far.right) / 2;
-    const yTop = (near.top + far.top) / 2 - 6;
-    const yBot = (near.bottom + far.bottom) / 2 + 6;
-    ctx.moveTo(x, yTop);
-    ctx.lineTo(x, yBot);
-  }
-  ctx.stroke();
-}
-
-function drawLockedMarker(
-  ctx: CanvasRenderingContext2D,
-  near: DepthRect,
-  far: DepthRect,
-  side: "left" | "right" | "front"
-) {
-  ctx.strokeStyle = PALETTE.lockedMarker;
-  ctx.lineWidth = 2;
-  const sz = 5;
-  if (side === "front") {
-    const cx = (far.left + far.right) / 2;
-    const cy = (far.top + far.bottom) / 2;
-    ctx.beginPath();
-    ctx.moveTo(cx - sz, cy - sz);
-    ctx.lineTo(cx + sz, cy + sz);
-    ctx.moveTo(cx + sz, cy - sz);
-    ctx.lineTo(cx - sz, cy + sz);
-    ctx.stroke();
-  } else {
-    const x =
-      side === "left"
-        ? (near.left + far.left) / 2
-        : (near.right + far.right) / 2;
-    const y = (near.top + far.top) / 2;
-    ctx.beginPath();
-    ctx.moveTo(x, y - sz);
-    ctx.lineTo(x, y + sz);
-    ctx.moveTo(x - sz, y);
-    ctx.lineTo(x + sz, y);
-    ctx.stroke();
-  }
-}
-*/
-
 /** Draw a tile feature icon on the floor at the player's current position. */
 function drawFloorFeature(
   ctx: CanvasRenderingContext2D,
@@ -736,126 +703,6 @@ function floorTextureForGrid(
 ): HTMLCanvasElement | null {
   return (gx + gy) % 2 === 0 ? textures.floorA : textures.floorB;
 }
-
-/* TODO(Task 3): trapezoid front/side walls replaced by raycast strips.
-function drawFrontWall(
-  ctx: CanvasRenderingContext2D,
-  far: DepthRect,
-  wallImg: HTMLImageElement | HTMLCanvasElement | null,
-  scale: number,
-  originX: number,
-  originY: number,
-  stroke: string,
-  lw: number,
-  glowBlur: number,
-  fillAlpha: number,
-  edge: EdgeType
-): void {
-  const points: [number, number][] = [
-    [far.left, far.top],
-    [far.right, far.top],
-    [far.right, far.bottom],
-    [far.left, far.bottom],
-  ];
-  if (wallImg) {
-    drawTexturedQuad(
-      ctx,
-      points,
-      wallImg,
-      scale,
-      originX,
-      originY,
-      stroke,
-      lw,
-      glowBlur,
-      rgba(PALETTE.wallFill, fillAlpha)
-    );
-  } else {
-    drawQuad(
-      ctx,
-      points,
-      stroke,
-      rgba(PALETTE.wallFill, fillAlpha),
-      lw,
-      glowBlur
-    );
-  }
-  if (edge === "door") drawDoorMarker(ctx, far, far, "front");
-  else if (edge === "locked") drawLockedMarker(ctx, far, far, "front");
-}
-*/
-
-/* TODO(Task 3): trapezoid side wall replaced by raycast strips.
-function drawSideWall(
-  ctx: CanvasRenderingContext2D,
-  side: "left" | "right",
-  near: DepthRect,
-  far: DepthRect,
-  wallImg: HTMLImageElement | HTMLCanvasElement | null,
-  scale: number,
-  originX: number,
-  originY: number,
-  stroke: string,
-  lw: number,
-  glowBlur: number,
-  fillAlpha: number,
-  edge: EdgeType
-): void {
-  const isLeft = side === "left";
-  const points: [number, number][] = isLeft
-    ? [
-        [near.left, near.top],
-        [far.left, far.top],
-        [far.left, far.bottom],
-        [near.left, near.bottom],
-      ]
-    : [
-        [near.right, near.top],
-        [far.right, far.top],
-        [far.right, far.bottom],
-        [near.right, near.bottom],
-      ];
-
-  if (wallImg) {
-    drawTexturedQuad(
-      ctx,
-      points,
-      wallImg,
-      scale,
-      originX,
-      originY,
-      stroke,
-      lw,
-      glowBlur,
-      wallGradient(
-        ctx,
-        isLeft ? near.left : near.right,
-        isLeft ? far.left : far.right,
-        PALETTE.wallFill,
-        fillAlpha
-      )
-    );
-  } else {
-    drawQuad(
-      ctx,
-      points,
-      stroke,
-      wallGradient(
-        ctx,
-        isLeft ? near.left : near.right,
-        isLeft ? far.left : far.right,
-        PALETTE.wallFill,
-        fillAlpha
-      ),
-      lw,
-      glowBlur
-    );
-  }
-
-  if (edge === "door") drawDoorMarker(ctx, near, far, side);
-  else if (edge === "locked") drawLockedMarker(ctx, near, far, side);
-}
-*/
 
 function drawCeilingStrip(
   ctx: CanvasRenderingContext2D,
@@ -999,11 +846,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     : RENDER_CONFIG.maxDepth * 2;
 
   const wallImg = textureCache ? textureCache.wall : null;
+  const repeatedWall = repeatedWallCanvas;
   const texWidth = wallImg ? wallImg.width : 1;
-  const texHeight = wallImg ? wallImg.height : 1;
 
   const hits: (RayHit | null)[] = new Array(w).fill(null);
 
+  ctx.save();
   for (let x = 0; x < w; x += RENDER_CONFIG.raycastStripWidth) {
     const cameraX = (2 * x) / w - 1;
     const rayDirX = dir.x + planeX * cameraX;
@@ -1027,14 +875,14 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
 
     const fog = opacityForDepth(hit.perpWallDist);
 
-    if (wallImg) {
+    if (repeatedWall) {
       ctx.globalAlpha = fog;
       ctx.drawImage(
-        wallImg,
+        repeatedWall,
         texX * RENDER_CONFIG.wallRepeatsX,
         0,
         1,
-        texHeight / RENDER_CONFIG.wallRepeatsY,
+        repeatedWall.height,
         x,
         drawStart,
         RENDER_CONFIG.raycastStripWidth,
@@ -1067,14 +915,20 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     } else if (hit.edge === "locked") {
       ctx.strokeStyle = PALETTE.lockedMarker;
       ctx.lineWidth = 1;
-      ctx.strokeRect(
-        x + 1,
-        drawStart + 4,
-        RENDER_CONFIG.raycastStripWidth - 2,
-        drawEnd - drawStart - 8
-      );
+      const cx = x + RENDER_CONFIG.raycastStripWidth / 2;
+      const cy = (drawStart + drawEnd) / 2;
+      const markerSize = Math.max(2, lineHeight / 8);
+      ctx.globalAlpha = fog;
+      ctx.beginPath();
+      ctx.moveTo(cx - markerSize / 2, cy - markerSize / 2);
+      ctx.lineTo(cx + markerSize / 2, cy + markerSize / 2);
+      ctx.moveTo(cx + markerSize / 2, cy - markerSize / 2);
+      ctx.lineTo(cx - markerSize / 2, cy + markerSize / 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
     }
   }
+  ctx.restore();
 
   void hits; // cached for Task 4 glow pass
 
@@ -1104,11 +958,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Using one fixed origin per surface keeps the tile grid continuous across
   // depth-segment boundaries instead of resetting for each individual quad.
   const depth0 = getDepthRect(w, h, 0);
-  // TODO(Task 3): trapezoid side walls removed; restore origins if needed later.
-  // const leftWallOriginX = depth0.left;
-  // const leftWallOriginY = depth0.top;
-  // const rightWallOriginX = depth0.right;
-  // const rightWallOriginY = depth0.top;
   const floorOriginX = depth0.left;
   const floorOriginY = depth0.bottom;
   const ceilingOriginX = depth0.left;
@@ -1139,12 +988,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       RENDER_CONFIG.ceilingDarkenMultiplier
     );
 
-    // One scale per surface type for this depth, so every surface drawn in this
-    // layer shares the same physical tile size. The scale is based on the
-    // apparent screen height of one grid unit at the near edge of the depth slot.
-    // TODO(Task 3): wall scales are only used by the removed trapezoid wall draws.
-    // const wallScale = wallImg ? tileScaleForDepth(near, wallImg.width) : 1;
-    // const endWallScale = wallImg ? tileScaleForRect(far, wallImg.width) : 1;
     const floorScale = floorImg
       ? tileScaleForDepth(near, floorImg.width)
       : 1;
@@ -1158,24 +1001,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     // and side walls if anything overlaps).
     const blocked: EdgeType = frontEdge;
     const isFrontBlocked = blocked !== "open" || d === maxDepth - 1;
-    // TODO(Task 3): trapezoid front wall replaced by raycast wall strips.
-    // if (isFrontBlocked) {
-    //   layer.push(() =>
-    //     drawFrontWall(
-    //       ctx,
-    //       far,
-    //       wallImg,
-    //       endWallScale,
-    //       far.left,
-    //       far.top,
-    //       stroke,
-    //       lw,
-    //       glowBlur,
-    //       fillAlpha,
-    //       blocked
-    //     )
-    //   );
-    // }
 
     // Depth feature on the floor.
     if (cell.tile && d > 0) {
@@ -1223,47 +1048,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         )
       );
     }
-
-    // Side walls.
-    // TODO(Task 3): trapezoid side walls replaced by raycast wall strips.
-    // if (leftEdge !== "open") {
-    //   layer.push(() =>
-    //     drawSideWall(
-    //       ctx,
-    //       "left",
-    //       near,
-    //       far,
-    //       wallImg,
-    //       wallScale,
-    //       leftWallOriginX,
-    //       leftWallOriginY,
-    //       stroke,
-    //       lw,
-    //       glowBlur,
-    //       fillAlpha,
-    //       leftEdge
-    //     )
-    //   );
-    // }
-    // if (rightEdge !== "open") {
-    //   layer.push(() =>
-    //     drawSideWall(
-    //       ctx,
-    //       "right",
-    //       near,
-    //       far,
-    //       wallImg,
-    //       wallScale,
-    //       rightWallOriginX,
-    //       rightWallOriginY,
-    //       stroke,
-    //       lw,
-    //       glowBlur,
-    //       fillAlpha,
-    //       rightEdge
-    //     )
-    //   );
-    // }
 
     // Ceiling and floor strips.
     layer.push(() =>
