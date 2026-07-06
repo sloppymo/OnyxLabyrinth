@@ -24,6 +24,7 @@ app.innerHTML = `
     <div id="party-strip"></div>
     <div id="hint"><span id="compass">N</span> &uarr;/W forward &middot; &darr;/S back &middot; &larr;/A turn left &middot; &rarr;/D turn right &middot; C camp &middot; M map &middot; T town &middot; U unlock &middot; Esc menu</div>
     <div id="combat-panel"></div>
+    <canvas id="combat-canvas" width="768" height="672" style="display:none"></canvas>
   </div>
 `;
 
@@ -35,6 +36,8 @@ export const mapCtx = mapCanvas.getContext("2d")!;
 const messageEl = document.querySelector<HTMLDivElement>("#message")!;
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
 const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+export const combatCanvas = document.querySelector<HTMLCanvasElement>("#combat-canvas")!;
+export const combatCtx = combatCanvas.getContext("2d")!;
 const compassEl = document.querySelector<HTMLSpanElement>("#compass")!;
 
 // Keep the corridor canvas bitmap resolution locked to the CSS container size
@@ -51,6 +54,14 @@ export function resizeCorridorCanvas() {
   if (mapCanvas.width !== width || mapCanvas.height !== height) {
     mapCanvas.width = width;
     mapCanvas.height = height;
+  }
+  // Combat canvas: fixed 768x672 bitmap resolution (matches the corridor
+  // canvas's design size). CSS scales it to fit the container.
+  const combatW = 768;
+  const combatH = 672;
+  if (combatCanvas.width !== combatW || combatCanvas.height !== combatH) {
+    combatCanvas.width = combatW;
+    combatCanvas.height = combatH;
   }
 }
 
@@ -121,8 +132,10 @@ export function compassForFacing(facing: number): string {
 /** Show/hide the top-level shell elements for the current game mode. */
 export function showMode(mode: GameMode, mapVisible: boolean): void {
   const isDungeon = mode === "dungeon";
-  const usesPanel =
-    mode === "combat" ||
+  const isCombat = mode === "combat";
+  // The combat-panel (DOM) is used by town, camp, party creation, and title.
+  // Combat mode uses the combat-canvas instead.
+  const usesDomPanel =
     mode === "town" ||
     mode === "camp" ||
     mode === "title" ||
@@ -130,6 +143,11 @@ export function showMode(mode: GameMode, mapVisible: boolean): void {
 
   viewportWrap.style.display = isDungeon ? "" : "none";
   canvas.style.display = isDungeon ? "" : "none";
-  combatPanel.style.display = usesPanel ? "block" : "none";
+  combatPanel.style.display = usesDomPanel ? "block" : "none";
+  combatCanvas.style.display = isCombat ? "block" : "none";
   mapCanvas.style.display = isDungeon && mapVisible ? "block" : "none";
+
+  // Resize canvases — the combat canvas may not have been sized yet if it
+  // was hidden when the initial resize ran.
+  resizeCorridorCanvas();
 }
