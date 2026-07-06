@@ -84,6 +84,8 @@ interface TextureSet {
   ceiling: HTMLCanvasElement | null;
   floorARepeated: HTMLCanvasElement | null;
   floorBRepeated: HTMLCanvasElement | null;
+  floorAData: ImageData | null;
+  floorBData: ImageData | null;
 }
 
 let textureCache: TextureSet | null = null;
@@ -159,16 +161,29 @@ export function loadTextures(): Promise<TextureSet> {
       ? brightenImage(ceilingImg, RENDER_CONFIG.ceilingBrightnessFactor)
       : null;
 
+    const floorARepeated = floorABright
+      ? prepareRepeatedTexture(floorABright, 1, 1)
+      : null;
+    const floorBRepeated = floorBBright
+      ? prepareRepeatedTexture(floorBBright, 1, 1)
+      : null;
+
     textureCache = {
       wall,
       floorA: floorABright,
       floorB: floorBBright,
       ceiling: ceilingBright,
-      floorARepeated: floorABright
-        ? prepareRepeatedTexture(floorABright, 1, 1)
+      floorARepeated,
+      floorBRepeated,
+      floorAData: floorARepeated
+        ? floorARepeated
+            .getContext("2d")!
+            .getImageData(0, 0, floorARepeated.width, floorARepeated.height)
         : null,
-      floorBRepeated: floorBBright
-        ? prepareRepeatedTexture(floorBBright, 1, 1)
+      floorBData: floorBRepeated
+        ? floorBRepeated
+            .getContext("2d")!
+            .getImageData(0, 0, floorBRepeated.width, floorBRepeated.height)
         : null,
     };
     repeatedWallCanvas = wall
@@ -313,18 +328,6 @@ function wallGradient(
   const g = ctx.createLinearGradient(xNear, 0, xFar, 0);
   g.addColorStop(0, rgba({ r: base.r + 14, g: base.g + 8, b: base.b + 4 }, alpha));
   g.addColorStop(1, rgba({ r: base.r - 6, g: base.g - 6, b: base.b - 8 }, alpha * 0.5));
-  return g;
-}
-
-function floorGradient(
-  ctx: CanvasRenderingContext2D,
-  yNear: number,
-  yFar: number,
-  alpha: number
-): CanvasGradient {
-  const g = ctx.createLinearGradient(0, yNear, 0, Math.max(yFar, yNear + 1));
-  g.addColorStop(0, rgba(PALETTE.floorFill, alpha));
-  g.addColorStop(1, rgba({ r: 14, g: 13, b: 10 }, 0));
   return g;
 }
 
@@ -727,36 +730,54 @@ function drawFloorCast(
   state: GameState,
   textures: TextureSet
 ): void {
+  ctx.save();
+
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
   const dir = DIR_VECTORS[state.player.facing % 4];
   const { planeX, planeY } = cameraPlaneForFacing(state.player.facing);
+  const maxDist = state.inDarkness
+    ? RENDER_CONFIG.darknessMaxDist
+    : RENDER_CONFIG.maxDepth * 2;
 
   const startY = Math.floor(h / 2) + 1;
   for (let y = startY; y < h; y++) {
     const rowDistance = (h / 2) / (y - h / 2);
+    if (rowDistance > maxDist) continue;
+
     const floorStepX = rowDistance * ((planeX * 2) / w);
     const floorStepY = rowDistance * ((planeY * 2) / w);
     let floorX = state.player.x + 0.5 + rowDistance * (dir.x - planeX);
     let floorY = state.player.y + 0.5 + rowDistance * (dir.y - planeY);
 
+    const rowImageData = new ImageData(w, 1);
+    const rowData = rowImageData.data;
+    const fog = opacityForDepth(rowDistance);
+
     for (let x = 0; x < w; x++) {
       const gx = Math.floor(floorX);
       const gy = Math.floor(floorY);
-      const floorImg =
-        (gx + gy) % 2 === 0 ? textures.floorARepeated : textures.floorBRepeated;
-      if (floorImg) {
-        const texSize = floorImg.width;
+      const tex =
+        (gx + gy) % 2 === 0 ? textures.floorAData : textures.floorBData;
+      if (tex) {
+        const texSize = tex.width;
         const texX = Math.floor((floorX - gx) * texSize) % texSize;
         const texY = Math.floor((floorY - gy) * texSize) % texSize;
-        ctx.globalAlpha = opacityForDepth(rowDistance);
-        ctx.drawImage(floorImg, texX, texY, 1, 1, x, y, 1, 1);
-        ctx.globalAlpha = 1.0;
+        const srcIdx = (texY * texSize + texX) * 4;
+        const dstIdx = x * 4;
+        rowData[dstIdx] = Math.min(255, tex.data[srcIdx] * fog);
+        rowData[dstIdx + 1] = Math.min(255, tex.data[srcIdx + 1] * fog);
+        rowData[dstIdx + 2] = Math.min(255, tex.data[srcIdx + 2] * fog);
+        rowData[dstIdx + 3] = 255;
       }
       floorX += floorStepX;
       floorY += floorStepY;
     }
+
+    ctx.putImageData(rowImageData, 0, y);
   }
+
+  ctx.restore();
 }
 
 function drawCeilingStrip(
@@ -794,51 +815,6 @@ function drawCeilingStrip(
     );
   } else {
     ctx.fillStyle = ceilingGradient(ctx, near.top, far.top, fillAlpha);
-    ctx.beginPath();
-    ctx.moveTo(points[0][0], points[0][1]);
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i][0], points[i][1]);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-}
-
-function drawFloorStrip(
-  ctx: CanvasRenderingContext2D,
-  near: DepthRect,
-  far: DepthRect,
-  floorImg: HTMLCanvasElement | null,
-  scale: number,
-  originX: number,
-  originY: number,
-  stroke: string,
-  lw: number,
-  glowBlur: number,
-  fillAlpha: number,
-  darkenAlpha: number
-): void {
-  const points: [number, number][] = [
-    [near.left, near.bottom],
-    [near.right, near.bottom],
-    [far.right, far.bottom],
-    [far.left, far.bottom],
-  ];
-  if (floorImg) {
-    drawTexturedQuad(
-      ctx,
-      points,
-      floorImg,
-      scale,
-      originX,
-      originY,
-      stroke,
-      lw,
-      glowBlur,
-      rgba(PALETTE.floorFill, darkenAlpha)
-    );
-  } else {
-    ctx.fillStyle = floorGradient(ctx, near.bottom, far.bottom, fillAlpha);
     ctx.beginPath();
     ctx.moveTo(points[0][0], points[0][1]);
     for (let i = 1; i < points.length; i++) {
@@ -1046,8 +1022,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Using one fixed origin per surface keeps the tile grid continuous across
   // depth-segment boundaries instead of resetting for each individual quad.
   const depth0 = getDepthRect(w, h, 0);
-  const floorOriginX = depth0.left;
-  const floorOriginY = depth0.bottom;
   const ceilingOriginX = depth0.left;
   const ceilingOriginY = depth0.top;
 
@@ -1154,22 +1128,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         ceilDepthDarkenAlpha
       )
     );
-    layer.push(() =>
-      drawFloorStrip(
-        ctx,
-        near,
-        far,
-        floorImg,
-        floorScale,
-        floorOriginX,
-        floorOriginY,
-        stroke,
-        lw,
-        glowBlur,
-        fillAlpha,
-        floorDepthDarkenAlpha
-      )
-    );
 
     // Amber edge strokes on top of the strips.
     layer.push(() =>
@@ -1189,59 +1147,15 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     for (const cmd of depthLayers[i]) cmd();
   }
 
-  // Near-plane floor/ceiling texture fills (depth 0, closest to the camera).
+  // Near-plane ceiling texture fill (depth 0, closest to the camera).
   const nearRect = getDepthRect(w, h, 0);
-  const floorNearDarkenAlpha = darkeningOverlayAlpha(
-    0,
-    RENDER_CONFIG.floorDarkenMultiplier
-  );
   const ceilNearDarkenAlpha = darkeningOverlayAlpha(
     0,
     RENDER_CONFIG.ceilingDarkenMultiplier
   );
-  const floorImgNear = textures
-    ? floorTextureForGrid(textures, player.x, player.y)
-    : null;
-  const floorNearScale = floorImgNear
-    ? tileScaleForDepth(nearRect, floorImgNear.width)
-    : 1;
   const ceilNearScale = ceilImg
     ? tileScaleForDepth(nearRect, ceilImg.width)
     : 1;
-
-  if (floorImgNear) {
-    drawTexturedQuad(
-      ctx,
-      [
-        [0, h],
-        [w, h],
-        [nearRect.right, nearRect.bottom],
-        [nearRect.left, nearRect.bottom],
-      ],
-      floorImgNear,
-      floorNearScale,
-      floorOriginX,
-      floorOriginY,
-      strokeColorForDepth(0),
-      2.0,
-      RENDER_CONFIG.glowBlurNear,
-      rgba(PALETTE.floorFill, floorNearDarkenAlpha)
-    );
-  } else {
-    ctx.fillStyle = floorGradient(
-      ctx,
-      nearRect.bottom,
-      h,
-      opacityForDepth(0)
-    );
-    ctx.beginPath();
-    ctx.moveTo(0, h);
-    ctx.lineTo(w, h);
-    ctx.lineTo(nearRect.right, nearRect.bottom);
-    ctx.lineTo(nearRect.left, nearRect.bottom);
-    ctx.closePath();
-    ctx.fill();
-  }
 
   if (ceilImg) {
     drawTexturedQuad(
