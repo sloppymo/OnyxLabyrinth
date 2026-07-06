@@ -68,13 +68,13 @@ const RENDER_CONFIG = {
   darknessMaxDist: 1.5,             // replaces darknessDepth once trapezoid renderer is removed
 } as const;
 
-// @ts-ignore: private helper for the upcoming raycast wall/floor passes.
+/** Private helper for the upcoming raycast wall/floor passes. */
 interface RayHit {
-  side: "ns" | "ew";                // which set of grid lines was hit
+  side: "x" | "y";                  // "x" = x-step (crossed a vertical grid line / E-W-facing wall); "y" = y-step (crossed a horizontal grid line / N-S-facing wall)
   mapX: number;                     // grid cell hit
   mapY: number;
   perpWallDist: number;             // perpendicular distance, no fisheye
-  wallX: number;                    // exact hit position along the wall face (0..1); for `ns` hits this is the fractional world x, for `ew` hits the fractional world y
+  wallX: number;                    // exact hit position along the wall face (0..1); for `y` hits this is fractional world x, for `x` hits fractional world y
   edge: EdgeType;                   // "wall" | "door" | "locked" | "open"
 }
 
@@ -189,6 +189,8 @@ function castRay(
   rayDirY: number,
   maxDist: number
 ): RayHit | null {
+  if (rayDirX === 0 && rayDirY === 0) return null;
+
   const grid = state.floor.grid;
   const playerWX = state.player.x + 0.5;
   const playerWY = state.player.y + 0.5;
@@ -217,17 +219,17 @@ function castRay(
     sideDistY = (mapY + 1 - playerWY) * deltaDistY;
   }
 
-  let side: "ns" | "ew" = "ns";
+  let side: "x" | "y" = "y";
 
   while (true) {
     if (sideDistX < sideDistY) {
       sideDistX += deltaDistX;
       mapX += stepX;
-      side = "ew";
+      side = "x";
     } else {
       sideDistY += deltaDistY;
       mapY += stepY;
-      side = "ns";
+      side = "y";
     }
 
     if (mapY < 0 || mapY >= grid.length || mapX < 0 || mapX >= grid[0].length) {
@@ -236,20 +238,20 @@ function castRay(
 
     const cell = grid[mapY][mapX];
     // Determine which edge of this cell the ray crossed.
-    const dir = side === "ns"
+    const dir = side === "y"
       ? (stepY > 0 ? 0 : 2)   // N or S edge
       : (stepX > 0 ? 3 : 1);  // W or E edge
     const edge = edgeInDirection(cell, dir);
 
     if (edge !== "open") {
-      const perpWallDist = side === "ns"
+      const perpWallDist = side === "y"
         ? (mapY - playerWY + (1 - stepY) / 2) / rayDirY
         : (mapX - playerWX + (1 - stepX) / 2) / rayDirX;
 
       if (perpWallDist > maxDist) return null;
 
       let wallX: number;
-      if (side === "ns") {
+      if (side === "y") {
         wallX = playerWX + perpWallDist * rayDirX;
       } else {
         wallX = playerWY + perpWallDist * rayDirY;
