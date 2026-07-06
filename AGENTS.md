@@ -17,6 +17,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | File | Responsibility |
 |------|----------------|
 | `src/engine/renderer.ts` | Corridor 3D view (the most fragile code). |
+| `src/engine/audio.ts` | Procedural Web Audio: ambient drone, footsteps, door sounds. |
 | `src/engine/shell.ts` | DOM shell: canvas sizing, message overlay, party strip, mode visibility. |
 | `src/engine/input.ts` | Dungeon exploration key bindings. |
 | `src/engine/camera.ts` | Movement, turning, collision, door unlock. |

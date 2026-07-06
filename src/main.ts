@@ -5,6 +5,7 @@ import { moveForward, moveBackward, turnLeft, turnRight, tryUnlock } from "./eng
 import { handleTileFeature, transitionToFloor } from "./game/features";
 import { DX, DY } from "./game/dungeon";
 import { render, loadTextures } from "./engine/renderer";
+import { audio } from "./engine/audio";
 import { renderAutoMap } from "./engine/automap";
 import { bindInput } from "./engine/input";
 import {
@@ -287,6 +288,18 @@ function startCamp(): void {
 }
 
 // --- Input ---------------------------------------------------------------
+
+/**
+ * Schedule a footstep sound at the midpoint of the smooth movement
+ * animation. The renderer's move animation is 150ms (RENDER_CONFIG.
+ * moveAnimDuration), so the footstep fires at ~75ms — the moment the
+ * camera is "passing through" the cell boundary.
+ */
+function scheduleFootstep(): void {
+  const MOVE_ANIM_MS = 150;
+  setTimeout(() => audio.footstep(), MOVE_ANIM_MS / 2);
+}
+
 function onMove(): void {
   if (state.mode !== "dungeon") return;
   state.stepsSinceEncounter++;
@@ -309,26 +322,38 @@ function onMove(): void {
 bindInput(window, {
   onForward: () => {
     if (state.mode === "dungeon" && !mapVisible) {
+      audio.resume();
+      const before = { x: state.player.x, y: state.player.y };
       moveForward(state);
-      markExplored();
-      onMove();
+      if (state.player.x !== before.x || state.player.y !== before.y) {
+        markExplored();
+        onMove();
+        scheduleFootstep();
+      }
     }
   },
   onBackward: () => {
     if (state.mode === "dungeon" && !mapVisible) {
+      audio.resume();
+      const before = { x: state.player.x, y: state.player.y };
       moveBackward(state);
-      markExplored();
-      onMove();
+      if (state.player.x !== before.x || state.player.y !== before.y) {
+        markExplored();
+        onMove();
+        scheduleFootstep();
+      }
     }
   },
   onTurnLeft: () => {
     if (state.mode === "dungeon" && !mapVisible) {
+      audio.resume();
       turnLeft(state);
       markExplored();
     }
   },
   onTurnRight: () => {
     if (state.mode === "dungeon" && !mapVisible) {
+      audio.resume();
       turnRight(state);
       markExplored();
     }
@@ -354,11 +379,27 @@ bindInput(window, {
   },
   onUnlock: () => {
     if (state.mode === "dungeon" && !mapVisible) {
+      audio.resume();
       const msg = tryUnlock(state);
       setMessage(msg);
+      // Play the appropriate door sound based on the result.
+      if (msg.includes("unlock") || msg.includes("picks the lock")) {
+        audio.doorOpen();
+      } else if (msg.includes("locked")) {
+        audio.doorLocked();
+      }
     }
   },
 });
+
+// One-shot listener: resume the AudioContext on the first keydown anywhere.
+// Browser autoplay policies require a user gesture before audio can start.
+// This fires once, resumes audio, then removes itself.
+const resumeAudioOnce = () => {
+  audio.resume();
+  window.removeEventListener("keydown", resumeAudioOnce);
+};
+window.addEventListener("keydown", resumeAudioOnce);
 
 // Combat key handler — separate listener that only fires in combat mode.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -461,7 +502,21 @@ function toggleMap(): void {
 }
 
 // --- Render loop ---------------------------------------------------------
+// Track the previous mode so we only start/stop the audio drone on
+// transitions, not every frame.
+let prevMode: GameMode | null = null;
+
 function loop() {
+  // Manage ambient drone on mode transitions.
+  if (state.mode !== prevMode) {
+    if (state.mode === "dungeon") {
+      audio.startDungeon();
+    } else if (prevMode === "dungeon") {
+      audio.stopDungeon();
+    }
+    prevMode = state.mode;
+  }
+
   if (state.mode === "dungeon") {
     render(ctx, state);
     renderPartyStrip(state.party, compassForFacing(state.player.facing));
