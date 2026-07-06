@@ -18,6 +18,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | File | Responsibility |
 |------|----------------|
 | `src/engine/renderer.ts` | Corridor 3D view (the most fragile code). |
+| `src/engine/render-math.ts` | Pure math functions extracted from renderer (geometry, fog, camera interpolation). Unit-tested via `render-math.test.ts`. |
 | `src/engine/audio.ts` | Procedural Web Audio: ambient drone, footsteps, door sounds. |
 | `src/engine/combat-renderer.ts` | Canvas-based JRPG combat scene (sprites, effects, message box). |
 | `src/engine/combat-ui.ts` | Combat controller: input handling, round resolution, message queue. |
@@ -33,6 +34,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/game/save.test.ts` | Unit tests for save serialization (vitest). |
 | `src/game/party.test.ts` | Unit tests for party creation (vitest). |
 | `src/engine/combat-renderer.test.ts` | Unit tests for combat animation triggers (vitest). |
+| `src/engine/render-math.test.ts` | Unit tests for renderer geometry/fog/camera math (vitest, 58 tests). |
 | `src/engine/camp-ui.ts` | Camp screen controller. |
 | `src/engine/town-ui.ts` | Town/hub screen controller. |
 | `src/engine/save-ui.ts` | Save/load menu controller. |
@@ -105,11 +107,20 @@ After any change to `src/engine/combat-renderer.ts` or `src/engine/combat-ui.ts`
 - Keep renderer constants in `RENDER_CONFIG` at the top of `renderer.ts`.
 - Keep audio constants in the `AudioEngine` `CFG` object at the top of `audio.ts`.
 - Keep combat renderer layout constants near the top of `combat-renderer.ts`.
+- Renderer math functions (geometry, fog, camera interpolation) live in `render-math.ts` and are unit-tested. When adding new math to the renderer, extract it to `render-math.ts` and add a test.
 - Run `npm run build` before claiming any fix is complete.
-- Run `npm test` before claiming any combat/save/party change is complete.
+- Run `npm test` before claiming any combat/save/party/renderer-math change is complete.
 - Verify visually for renderer/combat/audio changes; don't rely only on the build passing.
 - After rebuilding, refresh `docs/` from `dist/` if the user wants the GitHub Pages build updated.
 
 ## Combat event system
 
 `combat.ts` emits structured `CombatEvent` entries alongside each log message (1:1 parallel array `s.events`). The combat renderer uses these events as the **primary** source for triggering animations, with regex-based log parsing as a **fallback** for messages that lack a structured event (e.g. silence, item use). When adding new combat actions or log messages, add a corresponding `emit()` call with a `CombatEvent` so the renderer can animate it without regex.
+
+## Renderer performance notes
+
+- The floor/ceiling `ImageData` buffer is reused across frames (allocated once, resized only when canvas dimensions change). Do not call `ctx.createImageData()` in the hot loop.
+- Edge-glow lines are batched into 4 depth-bucketed `Path2D` objects and stroked once per bucket, not per strip. This avoids per-strip `shadowBlur` state changes.
+- Scanlines use a cached `CanvasPattern` instead of per-line `fillRect` calls.
+- Torch flicker is a subtle warm overlay (~±4% alpha) driven by a sine wave with a secondary frequency for organic irregularity. Suppressed in darkness zones.
+- `Math.floor()` in the floor/ceiling hot loop is replaced with `| 0` (bitwise truncation) for performance. This is safe because world coordinates are always non-negative.

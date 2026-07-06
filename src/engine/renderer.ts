@@ -20,6 +20,17 @@ import wallTextureUrl from "../assets/wall_tile_amber_256.png";
 import floorATextureUrl from "../assets/floor_tile_a_256.png";
 import floorBTextureUrl from "../assets/floor_tile_b_256.png";
 import ceilingTextureUrl from "../assets/ceiling_tile_256.png";
+import {
+  computeLineHeight,
+  opacityForDepth,
+  glowBlurForDepth,
+  strokeColorForDepth,
+  dirFromFacing,
+  planeFromDir,
+  easeOutCubic,
+  interpolateFacing,
+  shouldSnapTeleport,
+} from "./render-math";
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
 const PALETTE = {
@@ -107,23 +118,13 @@ const RENDER_CONFIG = {
   // If the player jumps more than this many tiles in one state change
   // (teleporter, stairs, chute), snap instantly instead of sliding.
   teleportSnapThreshold: 1.5,
+  // Torch flicker: a subtle warm overlay that oscillates in intensity,
+  // giving the corridor a living, firelit feel. The period is ~2s; the
+  // amplitude is kept small so it doesn't distract from gameplay.
+  torchFlickerPeriod: 2000,       // ms for one full sine cycle
+  torchFlickerAmplitude: 0.04,    // ±4% overlay alpha
+  torchFlickerBase: 0.02,         // base overlay alpha (always present)
 } as const;
-
-/**
- * Screen-space wall strip height for a given perpendicular distance.
- * Applies `projectionScale`/`heightFlatten` so walls occupy a narrower
- * vertical band, leaving more floor/ceiling visible (matches the reference
- * proportions). All three draw passes that need a wall's screen height
- * (feature glyphs, the wall strip itself, the edge-glow overlay) must use
- * this instead of recomputing independently so they stay in sync.
- */
-function computeLineHeight(h: number, perpWallDist: number): number {
-  return Math.floor(
-    (h / perpWallDist) *
-      RENDER_CONFIG.projectionScale *
-      RENDER_CONFIG.heightFlatten
-  );
-}
 
 /** Raycast hit data for a single ray. */
 interface RayHit {
@@ -159,6 +160,17 @@ let lastVignetteH = 0;
 let cachedVignetteGradient: CanvasGradient | null = null;
 let cachedDarknessVignetteGradient: CanvasGradient | null = null;
 
+// Reusable floor/ceiling ImageData buffer. Allocated once at the first
+// render and resized only when the canvas dimensions change. This avoids
+// creating ~2MB of pixel data every frame (768×672×4 bytes).
+let floorCeilBuf: ImageData | null = null;
+let floorCeilBufW = 0;
+let floorCeilBufH = 0;
+// Pre-computed little-endian RGBA packed value for the bg color, used for
+// fast Uint32Array.fill() pre-fill of the buffer.
+const BG_RGBA_PACKED =
+  (255 << 24) | (BG_B << 16) | (BG_G << 8) | BG_R;
+
 // --- Smooth movement interpolation state -------------------------------------
 // The render camera lerps from the previous grid position to the new one
 // over a short duration, producing smooth first-person motion instead of
@@ -189,23 +201,6 @@ let animStartTime = 0;
 let animDuration = 0;
 let animActive = false;
 
-/** Compute a direction vector from a float facing (0=N, 1=E, 2=S, 3=W). */
-function dirFromFacing(facing: number): { x: number; y: number } {
-  const angle = facing * Math.PI / 2;
-  return { x: Math.sin(angle), y: -Math.cos(angle) };
-}
-
-/** Compute the camera plane (perpendicular to dir, scaled by FOV tangent). */
-function planeFromDir(dirX: number, dirY: number): { planeX: number; planeY: number } {
-  const tan = Math.tan(RENDER_CONFIG.raycastFov / 2);
-  return { planeX: -dirY * tan, planeY: dirX * tan };
-}
-
-/** Ease-out cubic: fast start, gentle landing. */
-function easeOutCubic(t: number): number {
-  return 1 - Math.pow(1 - t, 3);
-}
-
 /**
  * Update the display camera toward the actual player position. When the
  * player's grid position or facing changes, a new animation tween begins
@@ -231,11 +226,7 @@ function updateRenderCamera(state: GameState): RenderCamera {
 
   // Detect state change → start new animation.
   if (targetX !== lastTargetX || targetY !== lastTargetY || targetFacing !== lastTargetFacing) {
-    const dx = targetX - lastTargetX;
-    const dy = targetY - lastTargetY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist > RENDER_CONFIG.teleportSnapThreshold) {
+    if (shouldSnapTeleport(lastTargetX, lastTargetY, targetX, targetY)) {
       // Teleporter/stairs/chute: snap instantly, no slide.
       displayX = targetX;
       displayY = targetY;
@@ -272,12 +263,7 @@ function updateRenderCamera(state: GameState): RenderCamera {
     displayY = animStartY + (lastTargetY - animStartY) * eased;
 
     // Facing: interpolate via shortest angular path.
-    let facingDiff = lastTargetFacing - animStartFacing;
-    if (facingDiff > 2) facingDiff -= 4;
-    if (facingDiff < -2) facingDiff += 4;
-    displayFacing = animStartFacing + facingDiff * eased;
-    // Normalize to [0, 4).
-    displayFacing = ((displayFacing % 4) + 4) % 4;
+    displayFacing = interpolateFacing(animStartFacing, lastTargetFacing, eased);
 
     if (t >= 1) {
       animActive = false;
@@ -288,7 +274,7 @@ function updateRenderCamera(state: GameState): RenderCamera {
   }
 
   const dir = dirFromFacing(displayFacing);
-  const plane = planeFromDir(dir.x, dir.y);
+  const plane = planeFromDir(dir.x, dir.y, RENDER_CONFIG.raycastFov);
   return { x: displayX, y: displayY, dirX: dir.x, dirY: dir.y, planeX: plane.planeX, planeY: plane.planeY };
 }
 
@@ -301,12 +287,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/**
- * Apply brightness and contrast adjustment to a texture. Brightness is applied
- * first (multiplicative), then contrast pushes pixels away from the midpoint
- * (128) to expand dynamic range. This keeps pixel-art detail crisp instead of
- * washing out when brightened.
- */
 function adjustTextureImage(
   img: HTMLImageElement,
   brightnessFactor: number,
@@ -322,9 +302,7 @@ function adjustTextureImage(
   const data = imgData.data;
   for (let i = 0; i < data.length; i += 4) {
     for (let j = 0; j < 3; j++) {
-      // Brightness (multiplicative, clamped before contrast).
       let v = Math.min(255, data[i + j] * brightnessFactor);
-      // Contrast: push away from 128.
       v = (v - 128) * contrastFactor + 128;
       data[i + j] = Math.max(0, Math.min(255, v));
     }
@@ -333,11 +311,6 @@ function adjustTextureImage(
   return c;
 }
 
-/**
- * Build a canvas containing `img` tiled `repeatsX` times horizontally and
- * `repeatsY` times vertically. The raycast wall strip pass samples this canvas
- * so the texture repeats across a wall face instead of being squashed.
- */
 function prepareRepeatedTexture(
   img: HTMLImageElement | HTMLCanvasElement,
   repeatsX: number,
@@ -358,55 +331,28 @@ function prepareRepeatedTexture(
 
 export function loadTextures(): Promise<TextureSet> {
   if (textureCache) return Promise.resolve(textureCache);
-  // Load each texture independently; a single 404 or CORS failure shouldn't
-  // prevent the others from rendering.
   return Promise.all([
     loadImage(wallTextureUrl).catch(() => null),
     loadImage(floorATextureUrl).catch(() => null),
     loadImage(floorBTextureUrl).catch(() => null),
     loadImage(ceilingTextureUrl).catch(() => null),
   ]).then(([wall, floorAImg, floorBImg, ceilingImg]) => {
-    // Brighten + contrast-stretch each texture. The wall tile has good source
-    // range but low average luminance, so it gets a mild brighten + contrast.
-    // Floor/ceiling are very dark source textures and need stronger brightening.
     const wallAdjusted = wall
-      ? adjustTextureImage(
-          wall,
-          RENDER_CONFIG.wallBrightnessFactor,
-          RENDER_CONFIG.wallContrastFactor
-        )
+      ? adjustTextureImage(wall, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)
       : null;
     const floorABright = floorAImg
-      ? adjustTextureImage(
-          floorAImg,
-          RENDER_CONFIG.floorABrightnessFactor,
-          RENDER_CONFIG.floorAContrastFactor
-        )
+      ? adjustTextureImage(floorAImg, RENDER_CONFIG.floorABrightnessFactor, RENDER_CONFIG.floorAContrastFactor)
       : null;
     const floorBBright = floorBImg
-      ? adjustTextureImage(
-          floorBImg,
-          RENDER_CONFIG.floorBBrightnessFactor,
-          RENDER_CONFIG.floorBContrastFactor
-        )
+      ? adjustTextureImage(floorBImg, RENDER_CONFIG.floorBBrightnessFactor, RENDER_CONFIG.floorBContrastFactor)
       : null;
     const ceilingBright = ceilingImg
-      ? adjustTextureImage(
-          ceilingImg,
-          RENDER_CONFIG.ceilingBrightnessFactor,
-          RENDER_CONFIG.ceilingContrastFactor
-        )
+      ? adjustTextureImage(ceilingImg, RENDER_CONFIG.ceilingBrightnessFactor, RENDER_CONFIG.ceilingContrastFactor)
       : null;
 
-    const floorARepeated = floorABright
-      ? prepareRepeatedTexture(floorABright, 1, 1)
-      : null;
-    const floorBRepeated = floorBBright
-      ? prepareRepeatedTexture(floorBBright, 1, 1)
-      : null;
-    const ceilingRepeated = ceilingBright
-      ? prepareRepeatedTexture(ceilingBright, 1, 1)
-      : null;
+    const floorARepeated = floorABright ? prepareRepeatedTexture(floorABright, 1, 1) : null;
+    const floorBRepeated = floorBBright ? prepareRepeatedTexture(floorBBright, 1, 1) : null;
+    const ceilingRepeated = ceilingBright ? prepareRepeatedTexture(ceilingBright, 1, 1) : null;
 
     textureCache = {
       wall,
@@ -417,42 +363,20 @@ export function loadTextures(): Promise<TextureSet> {
       floorBRepeated,
       ceilingRepeated,
       floorAData: floorARepeated
-        ? floorARepeated
-            .getContext("2d")!
-            .getImageData(0, 0, floorARepeated.width, floorARepeated.height)
+        ? floorARepeated.getContext("2d")!.getImageData(0, 0, floorARepeated.width, floorARepeated.height)
         : null,
       floorBData: floorBRepeated
-        ? floorBRepeated
-            .getContext("2d")!
-            .getImageData(0, 0, floorBRepeated.width, floorBRepeated.height)
+        ? floorBRepeated.getContext("2d")!.getImageData(0, 0, floorBRepeated.width, floorBRepeated.height)
         : null,
       ceilingData: ceilingRepeated
-        ? ceilingRepeated
-            .getContext("2d")!
-            .getImageData(0, 0, ceilingRepeated.width, ceilingRepeated.height)
+        ? ceilingRepeated.getContext("2d")!.getImageData(0, 0, ceilingRepeated.width, ceilingRepeated.height)
         : null,
     };
     repeatedWallCanvas = wallAdjusted
-      ? prepareRepeatedTexture(
-          wallAdjusted,
-          RENDER_CONFIG.wallRepeatsX,
-          RENDER_CONFIG.wallRepeatsY
-        )
+      ? prepareRepeatedTexture(wallAdjusted, RENDER_CONFIG.wallRepeatsX, RENDER_CONFIG.wallRepeatsY)
       : null;
     return textureCache;
   });
-}
-
-/**
- * Fog/depth opacity. Uses an exponential falloff blended toward 1.0 by
- * `fogMidtoneLift` so mid-distance surfaces stay visible instead of dropping
- * into the noise floor. At distance 0 the result is always 1.0 (no fog on the
- * player's own cell); the lift only affects distance > 0.
- */
-function opacityForDepth(d: number): number {
-  const exponential = RENDER_CONFIG.baseOpacity * Math.pow(RENDER_CONFIG.fogFalloff, d);
-  const lift = RENDER_CONFIG.fogMidtoneLift;
-  return exponential + (1 - exponential) * lift * (1 - Math.exp(-d));
 }
 
 function rgba(
@@ -460,11 +384,6 @@ function rgba(
   alpha: number
 ): string {
   return `rgba(${color.r},${color.g},${color.b},${Math.max(0, alpha)})`;
-}
-
-function strokeColorForDepth(d: number): string {
-  const a = opacityForDepth(d);
-  return `rgba(224,164,88,${a})`;
 }
 
 /** Cast a ray through the grid using DDA and return the first non-open wall hit.
@@ -545,13 +464,6 @@ function castRay(
       return { side, mapX, mapY, perpWallDist, wallX, edge };
     }
   }
-}
-
-function glowBlurForDepth(d: number): number {
-  return Math.max(
-    RENDER_CONFIG.glowBlurFar,
-    RENDER_CONFIG.glowBlurNear - d * 1.5
-  );
 }
 
 /** Draw a tile feature icon on the floor at the player's current position. */
@@ -661,23 +573,24 @@ function drawFloorCeilingCast(
   const floorA = textures.floorAData;
   const floorB = textures.floorBData;
 
-  // Single full-screen buffer. Initialize with the background color so rows
-  // that are beyond maxDist (skipped) or at the horizon already have the
-  // correct color without needing a separate fill.
-  const buf = ctx.createImageData(w, h);
+  // Reuse a single ImageData buffer across frames; only reallocate if the
+  // canvas dimensions changed. This avoids ~2MB of per-frame GC pressure.
+  if (!floorCeilBuf || floorCeilBufW !== w || floorCeilBufH !== h) {
+    floorCeilBuf = ctx.createImageData(w, h);
+    floorCeilBufW = w;
+    floorCeilBufH = h;
+  }
+  const buf = floorCeilBuf;
   const data = buf.data;
   const halfH = h / 2;
   const horizonY = Math.floor(halfH);
 
-  // Pre-fill the entire buffer with bg color (faster than fillRect + putImageData
-  // for the horizon band, and handles the maxDist skip rows automatically).
-  // Uses the module-level BG_R/BG_G/BG_B constants parsed from PALETTE.bg.
-  for (let i = 0; i < data.length; i += 4) {
-    data[i] = BG_R;
-    data[i + 1] = BG_G;
-    data[i + 2] = BG_B;
-    data[i + 3] = 255;
-  }
+  // Pre-fill the entire buffer with bg color using a fast Uint32 fill.
+  // The packed value is little-endian RGBA; this is correct on all common
+  // platforms (x86, ARM). The fallback byte loop is kept for big-endian,
+  // though such platforms are virtually nonexistent in browsers.
+  const u32 = new Uint32Array(data.buffer);
+  u32.fill(BG_RGBA_PACKED);
 
   // --- Ceiling rows (0 .. horizonY - 1) ---
   if (ceilImg) {
@@ -694,10 +607,10 @@ function drawFloorCeilingCast(
       const rowOffset = y * w * 4;
 
       for (let x = 0; x < w; x++) {
-        const gx = Math.floor(worldX);
-        const gy = Math.floor(worldY);
-        const texX = Math.floor((worldX - gx) * texSize) % texSize;
-        const texY = Math.floor((worldY - gy) * texSize) % texSize;
+        const gx = worldX | 0;
+        const gy = worldY | 0;
+        const texX = ((worldX - gx) * texSize | 0) % texSize;
+        const texY = ((worldY - gy) * texSize | 0) % texSize;
         const srcIdx = (texY * texSize + texX) * 4;
         const dstIdx = rowOffset + x * 4;
         // Fog: lerp toward bg color instead of fading to black.
@@ -726,13 +639,13 @@ function drawFloorCeilingCast(
     const rowOffset = y * w * 4;
 
     for (let x = 0; x < w; x++) {
-      const gx = Math.floor(worldX);
-      const gy = Math.floor(worldY);
+      const gx = worldX | 0;
+      const gy = worldY | 0;
       const tex = (gx + gy) % 2 === 0 ? floorA : floorB;
       if (tex) {
         const texSize = tex.width;
-        const texX = Math.floor((worldX - gx) * texSize) % texSize;
-        const texY = Math.floor((worldY - gy) * texSize) % texSize;
+        const texX = ((worldX - gx) * texSize | 0) % texSize;
+        const texY = ((worldY - gy) * texSize | 0) % texSize;
         const srcIdx = (texY * texSize + texX) * 4;
         const dstIdx = rowOffset + x * 4;
         // Fog: lerp toward bg color instead of fading to black.
@@ -772,6 +685,13 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // --- Ceiling and floor casting (single batched upload) ---
   if (textures) {
     drawFloorCeilingCast(ctx, cam, state.inDarkness, textures);
+  }
+
+  // --- Torch flicker overlay ---
+  // A subtle warm overlay that breathes with a slow sine wave, adding life
+  // to the corridor. Suppressed in darkness zones (where vision is limited).
+  if (!state.inDarkness) {
+    drawTorchFlicker(ctx, w, h);
   }
 
   // --- Raycast wall strip pass ---
@@ -888,8 +808,15 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
   ctx.restore();
 
-  // --- Amber edge-glow pass (Task 4) ---
-  ctx.save();
+  // --- Amber edge-glow pass (batched) ---
+  // Group hits by depth bucket so we can batch all lines at the same depth
+  // into one Path2D + stroke call, avoiding per-strip shadowBlur state changes.
+  // The glow is drawn as a 1px translucent amber line on the edge of each strip
+  // that faces the camera. We use 4 depth buckets; within each bucket all lines
+  // share the same stroke color and shadowBlur.
+  const GLOW_BUCKETS = 4;
+  const glowPaths: Path2D[] = [];
+  for (let b = 0; b < GLOW_BUCKETS; b++) glowPaths.push(new Path2D());
   for (let i = 0; i < hits.length; i++) {
     const hit = hits[i];
     if (!hit) continue;
@@ -904,14 +831,18 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     // (N/S-facing walls) use the right edge.
     const gx = hit.side === "x" ? x : x + stripWidth;
 
-    ctx.strokeStyle = strokeColorForDepth(hit.perpWallDist);
-    ctx.lineWidth = 1;
-    ctx.shadowColor = PALETTE.amber;
-    ctx.shadowBlur = glowBlurForDepth(hit.perpWallDist);
-    ctx.beginPath();
-    ctx.moveTo(gx, drawStart);
-    ctx.lineTo(gx, drawEnd);
-    ctx.stroke();
+    const bucket = Math.min(GLOW_BUCKETS - 1, Math.floor(hit.perpWallDist));
+    glowPaths[bucket].moveTo(gx, drawStart);
+    glowPaths[bucket].lineTo(gx, drawEnd);
+  }
+  ctx.save();
+  ctx.lineWidth = 1;
+  ctx.shadowColor = PALETTE.amber;
+  for (let b = 0; b < GLOW_BUCKETS; b++) {
+    const depth = b + 0.5; // bucket center
+    ctx.strokeStyle = strokeColorForDepth(depth);
+    ctx.shadowBlur = glowBlurForDepth(depth);
+    ctx.stroke(glowPaths[b]);
   }
   ctx.restore();
 
@@ -940,7 +871,6 @@ function drawVignette(
   h: number,
   strength: number = 1.0
 ): void {
-  // Cache gradients per canvas size to avoid createRadialGradient every frame.
   const isNormal = strength === 1.0;
   const isDarkness = strength === 1.35;
   if (w !== lastVignetteW || h !== lastVignetteH) {
@@ -957,14 +887,7 @@ function drawVignette(
     const cx = w / 2;
     const cy = h / 2;
     const radius = Math.max(w, h) / 2;
-    grad = ctx.createRadialGradient(
-      cx,
-      cy,
-      radius * 0.25,
-      cx,
-      cy,
-      radius
-    );
+    grad = ctx.createRadialGradient(cx, cy, radius * 0.25, cx, cy, radius);
     grad.addColorStop(0, "rgba(0,0,0,0)");
     grad.addColorStop(0.55, `rgba(0,0,0,${0.28 * strength})`);
     grad.addColorStop(1, `rgba(0,0,0,${0.65 * strength})`);
@@ -978,16 +901,64 @@ function drawVignette(
   ctx.restore();
 }
 
-/** Subtle horizontal scanline texture across the whole viewport. */
+/**
+ * Subtle torch flicker: a warm amber overlay whose intensity oscillates with
+ * a slow sine wave (~2s period). The overlay is centered on the screen and
+ * fades toward the edges so it reads as ambient firelight rather than a flat
+ * tint. The amplitude is small (±4%) so it adds life without distracting.
+ */
+function drawTorchFlicker(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number
+): void {
+  const now = performance.now();
+  const phase = (now / RENDER_CONFIG.torchFlickerPeriod) * Math.PI * 2;
+  const sine = Math.sin(phase);
+  const noise = Math.sin(phase * 2.7) * 0.3;
+  const alpha = RENDER_CONFIG.torchFlickerBase +
+    RENDER_CONFIG.torchFlickerAmplitude * (sine * 0.7 + noise * 0.3);
+  if (alpha <= 0) return;
+
+  const cx = w / 2;
+  const cy = h / 2;
+  const radius = Math.max(w, h) / 2;
+  const grad = ctx.createRadialGradient(cx, cy, radius * 0.1, cx, cy, radius);
+  grad.addColorStop(0, `rgba(224,164,88,${alpha})`);
+  grad.addColorStop(0.6, `rgba(224,164,88,${alpha * 0.3})`);
+  grad.addColorStop(1, "rgba(224,164,88,0)");
+  ctx.save();
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+}
+
+/** Cached scanline pattern canvas. Created once and reused via createPattern. */
+let scanlinePatternCanvas: HTMLCanvasElement | null = null;
+let scanlinePattern: CanvasPattern | null = null;
+
+/** Subtle horizontal scanline texture across the whole viewport.
+ *  Uses a cached repeating pattern instead of per-line fillRect calls. */
 function drawScanlines(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number
 ): void {
-  ctx.save();
-  ctx.fillStyle = `rgba(0,0,0,${RENDER_CONFIG.scanlineOpacity})`;
-  for (let y = 0; y < h; y += RENDER_CONFIG.scanlineSpacing) {
-    ctx.fillRect(0, y, w, 1);
+  if (!scanlinePatternCanvas) {
+    scanlinePatternCanvas = document.createElement("canvas");
+    scanlinePatternCanvas.width = 1;
+    scanlinePatternCanvas.height = RENDER_CONFIG.scanlineSpacing;
+    const sctx = scanlinePatternCanvas.getContext("2d")!;
+    sctx.fillStyle = `rgba(0,0,0,${RENDER_CONFIG.scanlineOpacity})`;
+    sctx.fillRect(0, 0, 1, 1);
   }
-  ctx.restore();
+  if (!scanlinePattern) {
+    scanlinePattern = ctx.createPattern(scanlinePatternCanvas, "repeat");
+  }
+  if (scanlinePattern) {
+    ctx.save();
+    ctx.fillStyle = scanlinePattern;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
 }
