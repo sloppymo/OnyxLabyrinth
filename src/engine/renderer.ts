@@ -57,6 +57,7 @@ const RENDER_CONFIG = {
   floorABrightnessFactor: 4.0,
   floorBBrightnessFactor: 2.8,
   ceilingBrightnessFactor: 10.0,
+  // Used by the upcoming raycast wall/floor passes.
   // Raycast renderer tunables (added by Task 1).
   raycastFov: Math.PI / 3,          // 60 degrees
   raycastStripWidth: 1,             // one ray per screen column
@@ -64,15 +65,16 @@ const RENDER_CONFIG = {
   wallRepeatsY: 3,                  // vertical repeats per wall face
   floorRepeats: 1,                  // texture repeats per floor grid tile
   ceilingRepeats: 1,                // texture repeats per ceiling grid tile
-  darknessMaxDist: 1.5,             // tiles visible in darkness zone
+  darknessMaxDist: 1.5,             // replaces darknessDepth once trapezoid renderer is removed
 } as const;
 
-export interface RayHit {
+// @ts-ignore: private helper for the upcoming raycast wall/floor passes.
+interface RayHit {
   side: "ns" | "ew";                // which set of grid lines was hit
   mapX: number;                     // grid cell hit
   mapY: number;
   perpWallDist: number;             // perpendicular distance, no fisheye
-  wallX: number;                    // exact hit position along wall (0..1)
+  wallX: number;                    // exact hit position along the wall face (0..1); for `ns` hits this is the fractional world x, for `ew` hits the fractional world y
   edge: EdgeType;                   // "wall" | "door" | "locked" | "open"
 }
 
@@ -169,7 +171,8 @@ const DIR_VECTORS = [
 ] as const;
 
 /** Returns the camera plane vector for a grid facing direction (0=N,1=E,2=S,3=W). */
-export function cameraPlaneForFacing(facing: number): { planeX: number; planeY: number } {
+// @ts-ignore: private helper for the upcoming raycast wall/floor passes.
+function cameraPlaneForFacing(facing: number): { planeX: number; planeY: number } {
   // Plane is perpendicular to the facing direction, scaled by the FOV tangent.
   const dir = DIR_VECTORS[facing % 4];
   return {
