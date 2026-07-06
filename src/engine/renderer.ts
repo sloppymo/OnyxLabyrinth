@@ -324,13 +324,6 @@ function castRay(
   }
 }
 
-interface DepthRect {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-}
-
 function glowBlurForDepth(d: number): number {
   return Math.max(
     RENDER_CONFIG.glowBlurFar,
@@ -350,24 +343,6 @@ function drawFloorFeature(
   const cy = h / 2 + 30; // slightly below center, on the floor
   const color = inDarkness ? PALETTE.featureDark : PALETTE.feature;
   drawFeatureGlyph(ctx, cx, cy, feature, color, 16);
-}
-
-/** Draw a tile feature icon at a depth (further away, smaller). */
-export function drawDepthFeature(
-  ctx: CanvasRenderingContext2D,
-  near: DepthRect,
-  far: DepthRect,
-  feature: TileFeature,
-  inDarkness: boolean
-): void {
-  const cx = (near.left + near.right + far.left + far.right) / 4;
-  const cy = (near.bottom + far.bottom) / 2;
-  const scale = Math.max(
-    0.4,
-    (far.right - far.left) / (near.right - near.left || 1)
-  );
-  const color = inDarkness ? PALETTE.featureDark : PALETTE.feature;
-  drawFeatureGlyph(ctx, cx, cy, feature, color, 12 * scale);
 }
 
 /** Draw a feature glyph (text icon) at the given position. */
