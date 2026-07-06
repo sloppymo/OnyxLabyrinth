@@ -13,7 +13,7 @@
  * cached in `textureCache` / `repeatedWallCanvas` once loaded.
  */
 
-import type { GameState } from "../types";
+import type { GameState, Grid } from "../types";
 import type { EdgeType, TileFeature } from "../types";
 import { edgeInDirection } from "../game/dungeon";
 import wallTextureUrl from "../assets/wall_tile_amber_256.png";
@@ -34,6 +34,13 @@ const PALETTE = {
   feature: "#e0a458",
   featureDark: "#8a6a38",
 };
+
+// Precomputed PALETTE.bg RGB values for fog blending. Distant surfaces fade
+// toward this warm dark amber instead of pure black, giving the depth fog an
+// atmospheric tint that matches the background.
+const BG_R = parseInt(PALETTE.bg.slice(1, 3), 16);
+const BG_G = parseInt(PALETTE.bg.slice(3, 5), 16);
+const BG_B = parseInt(PALETTE.bg.slice(5, 7), 16);
 
 // Centralized renderer tuning. Keep magic numbers here so art passes and
 // debugging don't require hunting through the draw loop.
@@ -91,6 +98,15 @@ const RENDER_CONFIG = {
   floorRepeats: 1,                  // texture repeats per floor grid tile
   ceilingRepeats: 1,                // texture repeats per ceiling grid tile
   darknessMaxDist: 1.5,
+  // Smooth movement interpolation. When the player moves or turns, the render
+  // camera lerps from the old position to the new one over these durations.
+  // This makes the grid-based movement feel like smooth first-person motion
+  // instead of instant snapping. Set to 0 to disable (instant snap).
+  moveAnimDuration: 150,            // ms — forward/back step
+  turnAnimDuration: 100,            // ms — 90-degree turn
+  // If the player jumps more than this many tiles in one state change
+  // (teleporter, stairs, chute), snap instantly instead of sliding.
+  teleportSnapThreshold: 1.5,
 } as const;
 
 /**
@@ -134,6 +150,139 @@ interface TextureSet {
 
 let textureCache: TextureSet | null = null;
 let repeatedWallCanvas: HTMLCanvasElement | null = null;
+
+// --- Smooth movement interpolation state -------------------------------------
+// The render camera lerps from the previous grid position to the new one
+// over a short duration, producing smooth first-person motion instead of
+// instant grid snapping. This state is module-level (not in GameState) because
+// it is purely a render concern — game logic always sees integer grid coords.
+
+/** Float-positioned camera used for rendering. Updated each frame by
+ *  `updateRenderCamera()` toward the actual `state.player` position. */
+interface RenderCamera {
+  x: number;       // world X (float)
+  y: number;       // world Y (float)
+  dirX: number;    // direction vector X (from float facing)
+  dirY: number;    // direction vector Y
+  planeX: number;  // camera plane X (perpendicular to dir, scaled by FOV)
+  planeY: number;  // camera plane Y
+}
+
+let displayX = -1;
+let displayY = -1;
+let displayFacing = -1;       // float facing (0..4, wraps)
+let lastTargetX = -1;
+let lastTargetY = -1;
+let lastTargetFacing = -1;
+let animStartX = 0;
+let animStartY = 0;
+let animStartFacing = 0;
+let animStartTime = 0;
+let animDuration = 0;
+let animActive = false;
+
+/** Compute a direction vector from a float facing (0=N, 1=E, 2=S, 3=W). */
+function dirFromFacing(facing: number): { x: number; y: number } {
+  const angle = facing * Math.PI / 2;
+  return { x: Math.sin(angle), y: -Math.cos(angle) };
+}
+
+/** Compute the camera plane (perpendicular to dir, scaled by FOV tangent). */
+function planeFromDir(dirX: number, dirY: number): { planeX: number; planeY: number } {
+  const tan = Math.tan(RENDER_CONFIG.raycastFov / 2);
+  return { planeX: -dirY * tan, planeY: dirX * tan };
+}
+
+/** Ease-out cubic: fast start, gentle landing. */
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+/**
+ * Update the display camera toward the actual player position. When the
+ * player's grid position or facing changes, a new animation tween begins
+ * from the current display position to the new target. Teleporter/stairs
+ * jumps (distance > threshold) snap instantly.
+ *
+ * Returns the RenderCamera to use for this frame's rendering.
+ */
+function updateRenderCamera(state: GameState): RenderCamera {
+  const targetX = state.player.x;
+  const targetY = state.player.y;
+  const targetFacing = state.player.facing;
+
+  // First-call initialization: snap to current state.
+  if (displayX < 0) {
+    displayX = targetX;
+    displayY = targetY;
+    displayFacing = targetFacing;
+    lastTargetX = targetX;
+    lastTargetY = targetY;
+    lastTargetFacing = targetFacing;
+  }
+
+  // Detect state change → start new animation.
+  if (targetX !== lastTargetX || targetY !== lastTargetY || targetFacing !== lastTargetFacing) {
+    const dx = targetX - lastTargetX;
+    const dy = targetY - lastTargetY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > RENDER_CONFIG.teleportSnapThreshold) {
+      // Teleporter/stairs/chute: snap instantly, no slide.
+      displayX = targetX;
+      displayY = targetY;
+      displayFacing = targetFacing;
+      animActive = false;
+    } else {
+      animStartX = displayX;
+      animStartY = displayY;
+      animStartFacing = displayFacing;
+      animStartTime = performance.now();
+      // Movement and turning can happen in the same step (e.g., a step forward
+      // after turning). Use the longer duration if both occurred.
+      const moved = targetX !== lastTargetX || targetY !== lastTargetY;
+      const turned = targetFacing !== lastTargetFacing;
+      animDuration = moved && turned
+        ? Math.max(RENDER_CONFIG.moveAnimDuration, RENDER_CONFIG.turnAnimDuration)
+        : moved ? RENDER_CONFIG.moveAnimDuration
+        : RENDER_CONFIG.turnAnimDuration;
+      animActive = true;
+    }
+
+    lastTargetX = targetX;
+    lastTargetY = targetY;
+    lastTargetFacing = targetFacing;
+  }
+
+  // Advance animation.
+  if (animActive) {
+    const elapsed = performance.now() - animStartTime;
+    const t = Math.min(1, elapsed / animDuration);
+    const eased = easeOutCubic(t);
+
+    displayX = animStartX + (lastTargetX - animStartX) * eased;
+    displayY = animStartY + (lastTargetY - animStartY) * eased;
+
+    // Facing: interpolate via shortest angular path.
+    let facingDiff = lastTargetFacing - animStartFacing;
+    if (facingDiff > 2) facingDiff -= 4;
+    if (facingDiff < -2) facingDiff += 4;
+    displayFacing = animStartFacing + facingDiff * eased;
+    // Normalize to [0, 4).
+    displayFacing = ((displayFacing % 4) + 4) % 4;
+
+    if (t >= 1) {
+      animActive = false;
+      displayX = lastTargetX;
+      displayY = lastTargetY;
+      displayFacing = lastTargetFacing;
+    }
+  }
+
+  const dir = dirFromFacing(displayFacing);
+  const plane = planeFromDir(dir.x, dir.y);
+  return { x: displayX, y: displayY, dirX: dir.x, dirY: dir.y, planeX: plane.planeX, planeY: plane.planeY };
+}
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -310,36 +459,17 @@ function strokeColorForDepth(d: number): string {
   return `rgba(224,164,88,${a})`;
 }
 
-// Direction vectors for N/E/S/W grid facing values.
-const DIR_VECTORS = [
-  { x: 0, y: -1 }, // N
-  { x: 1, y: 0 },  // E
-  { x: 0, y: 1 },  // S
-  { x: -1, y: 0 }, // W
-] as const;
-
-/** Returns the camera plane vector for a grid facing direction (0=N,1=E,2=S,3=W). */
-function cameraPlaneForFacing(facing: number): { planeX: number; planeY: number } {
-  // Plane is perpendicular to the facing direction, scaled by the FOV tangent.
-  const dir = DIR_VECTORS[facing % 4];
-  return {
-    planeX: -dir.y * Math.tan(RENDER_CONFIG.raycastFov / 2),
-    planeY: dir.x * Math.tan(RENDER_CONFIG.raycastFov / 2),
-  };
-}
-
-/** Cast a ray through the grid using DDA and return the first non-open wall hit. */
+/** Cast a ray through the grid using DDA and return the first non-open wall hit.
+ *  Takes float world coordinates so it works with the interpolated render camera. */
 function castRay(
-  state: GameState,
+  grid: Grid,
+  playerWX: number,
+  playerWY: number,
   rayDirX: number,
   rayDirY: number,
   maxDist: number
 ): RayHit | null {
   if (rayDirX === 0 && rayDirY === 0) return null;
-
-  const grid = state.floor.grid;
-  const playerWX = state.player.x + 0.5;
-  const playerWY = state.player.y + 0.5;
 
   let mapX = Math.floor(playerWX);
   let mapY = Math.floor(playerWY);
@@ -494,127 +624,124 @@ function featureGlyph(feature: TileFeature): string {
 }
 
 /**
- * Perspective-correct floor casting. For each screen row below the horizon,
- * compute the world-floor coordinates across the row and draw the matching
- * checkerboard tile pixel by pixel. Uses the repeated floor canvases cached
- * in `loadTextures` so each grid tile keeps a consistent 1×1 texture.
+ * Perspective-correct floor + ceiling casting, merged into a single
+ * ImageData buffer and uploaded with one putImageData call.
+ *
+ * Previously this was two separate functions each calling putImageData once
+ * per screen row (~650 calls/frame). Building one full-screen buffer and
+ * uploading once eliminates the per-row allocation and GPU upload overhead.
+ *
+ * Floor rows are below the horizon (y > h/2), ceiling rows are above (y < h/2).
+ * The horizon row itself is filled with the background color. Rows beyond
+ * maxDist are also filled with background, since the raycaster leaves them
+ * empty and the walls (drawn after) will occlude most of them anyway.
  */
-function drawFloorCast(
+function drawFloorCeilingCast(
   ctx: CanvasRenderingContext2D,
-  state: GameState,
+  cam: RenderCamera,
+  inDarkness: boolean,
   textures: TextureSet
 ): void {
-  ctx.save();
-
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
-  const dir = DIR_VECTORS[state.player.facing % 4];
-  const { planeX, planeY } = cameraPlaneForFacing(state.player.facing);
-  const maxDist = state.inDarkness
-    ? RENDER_CONFIG.darknessMaxDist
-    : RENDER_CONFIG.maxDepth * 2;
-
-  const startY = Math.floor(h / 2) + 1;
-  for (let y = startY; y < h; y++) {
-    const rowDistance = (h / 2) / (y - h / 2);
-    if (rowDistance > maxDist) continue;
-
-    const floorStepX = rowDistance * ((planeX * 2) / w);
-    const floorStepY = rowDistance * ((planeY * 2) / w);
-    let floorX = state.player.x + 0.5 + rowDistance * (dir.x - planeX);
-    let floorY = state.player.y + 0.5 + rowDistance * (dir.y - planeY);
-
-    const rowImageData = new ImageData(w, 1);
-    const rowData = rowImageData.data;
-    const fog = opacityForDepth(rowDistance);
-
-    for (let x = 0; x < w; x++) {
-      const gx = Math.floor(floorX);
-      const gy = Math.floor(floorY);
-      const tex =
-        (gx + gy) % 2 === 0 ? textures.floorAData : textures.floorBData;
-      if (tex) {
-        const texSize = tex.width;
-        const texX = Math.floor((floorX - gx) * texSize) % texSize;
-        const texY = Math.floor((floorY - gy) * texSize) % texSize;
-        const srcIdx = (texY * texSize + texX) * 4;
-        const dstIdx = x * 4;
-        rowData[dstIdx] = Math.min(255, tex.data[srcIdx] * fog);
-        rowData[dstIdx + 1] = Math.min(255, tex.data[srcIdx + 1] * fog);
-        rowData[dstIdx + 2] = Math.min(255, tex.data[srcIdx + 2] * fog);
-        rowData[dstIdx + 3] = 255;
-      }
-      floorX += floorStepX;
-      floorY += floorStepY;
-    }
-
-    ctx.putImageData(rowImageData, 0, y);
-  }
-
-  ctx.restore();
-}
-
-/**
- * Perspective-correct ceiling casting. Mirrors drawFloorCast for rows above
- * the horizon, sampling the ceiling texture and applying distance fog.
- */
-function drawCeilingCast(
-  ctx: CanvasRenderingContext2D,
-  state: GameState,
-  textures: TextureSet
-): void {
-  ctx.save();
-
-  const w = ctx.canvas.width;
-  const h = ctx.canvas.height;
-  const dir = DIR_VECTORS[state.player.facing % 4];
-  const { planeX, planeY } = cameraPlaneForFacing(state.player.facing);
-  const maxDist = state.inDarkness
+  const { x: camX, y: camY, dirX, dirY, planeX, planeY } = cam;
+  const maxDist = inDarkness
     ? RENDER_CONFIG.darknessMaxDist
     : RENDER_CONFIG.maxDepth * 2;
 
   const ceilImg = textures.ceilingData;
-  if (!ceilImg) {
-    ctx.restore();
-    return;
+  const floorA = textures.floorAData;
+  const floorB = textures.floorBData;
+
+  // Single full-screen buffer. Initialize with the background color so rows
+  // that are beyond maxDist (skipped) or at the horizon already have the
+  // correct color without needing a separate fill.
+  const buf = ctx.createImageData(w, h);
+  const data = buf.data;
+  const halfH = h / 2;
+  const horizonY = Math.floor(halfH);
+
+  // Pre-fill the entire buffer with bg color (faster than fillRect + putImageData
+  // for the horizon band, and handles the maxDist skip rows automatically).
+  const bgR = parseInt(PALETTE.bg.slice(1, 3), 16);
+  const bgG = parseInt(PALETTE.bg.slice(3, 5), 16);
+  const bgB = parseInt(PALETTE.bg.slice(5, 7), 16);
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = bgR;
+    data[i + 1] = bgG;
+    data[i + 2] = bgB;
+    data[i + 3] = 255;
   }
 
-  const texSize = ceilImg.width;
-  const endY = Math.floor(h / 2) - 1;
+  // --- Ceiling rows (0 .. horizonY - 1) ---
+  if (ceilImg) {
+    const texSize = ceilImg.width;
+    for (let y = 0; y < horizonY; y++) {
+      const rowDistance = halfH / (halfH - y);
+      if (rowDistance > maxDist) continue;
 
-  for (let y = 0; y <= endY; y++) {
-    const rowDistance = (h / 2) / (h / 2 - y);
+      const stepX = rowDistance * ((planeX * 2) / w);
+      const stepY = rowDistance * ((planeY * 2) / w);
+      let worldX = camX + 0.5 + rowDistance * (dirX - planeX);
+      let worldY = camY + 0.5 + rowDistance * (dirY - planeY);
+      const fog = opacityForDepth(rowDistance);
+      const rowOffset = y * w * 4;
+
+      for (let x = 0; x < w; x++) {
+        const gx = Math.floor(worldX);
+        const gy = Math.floor(worldY);
+        const texX = Math.floor((worldX - gx) * texSize) % texSize;
+        const texY = Math.floor((worldY - gy) * texSize) % texSize;
+        const srcIdx = (texY * texSize + texX) * 4;
+        const dstIdx = rowOffset + x * 4;
+        // Fog: lerp toward bg color instead of fading to black.
+        const inv = 1 - fog;
+        data[dstIdx] = Math.min(255, ceilImg.data[srcIdx] * fog + BG_R * inv);
+        data[dstIdx + 1] = Math.min(255, ceilImg.data[srcIdx + 1] * fog + BG_G * inv);
+        data[dstIdx + 2] = Math.min(255, ceilImg.data[srcIdx + 2] * fog + BG_B * inv);
+        // alpha already 255 from pre-fill
+
+        worldX += stepX;
+        worldY += stepY;
+      }
+    }
+  }
+
+  // --- Floor rows (horizonY + 1 .. h - 1) ---
+  for (let y = horizonY + 1; y < h; y++) {
+    const rowDistance = halfH / (y - halfH);
     if (rowDistance > maxDist) continue;
 
-    const ceilStepX = rowDistance * ((planeX * 2) / w);
-    const ceilStepY = rowDistance * ((planeY * 2) / w);
-    let ceilX = state.player.x + 0.5 + rowDistance * (dir.x - planeX);
-    let ceilY = state.player.y + 0.5 + rowDistance * (dir.y - planeY);
-
-    const rowImageData = new ImageData(w, 1);
-    const rowData = rowImageData.data;
+    const stepX = rowDistance * ((planeX * 2) / w);
+    const stepY = rowDistance * ((planeY * 2) / w);
+    let worldX = camX + 0.5 + rowDistance * (dirX - planeX);
+    let worldY = camY + 0.5 + rowDistance * (dirY - planeY);
     const fog = opacityForDepth(rowDistance);
+    const rowOffset = y * w * 4;
 
     for (let x = 0; x < w; x++) {
-      const gx = Math.floor(ceilX);
-      const gy = Math.floor(ceilY);
-      const texX = Math.floor((ceilX - gx) * texSize) % texSize;
-      const texY = Math.floor((ceilY - gy) * texSize) % texSize;
-      const srcIdx = (texY * texSize + texX) * 4;
-      const dstIdx = x * 4;
-      rowData[dstIdx] = Math.min(255, ceilImg.data[srcIdx] * fog);
-      rowData[dstIdx + 1] = Math.min(255, ceilImg.data[srcIdx + 1] * fog);
-      rowData[dstIdx + 2] = Math.min(255, ceilImg.data[srcIdx + 2] * fog);
-      rowData[dstIdx + 3] = 255;
-
-      ceilX += ceilStepX;
-      ceilY += ceilStepY;
+      const gx = Math.floor(worldX);
+      const gy = Math.floor(worldY);
+      const tex = (gx + gy) % 2 === 0 ? floorA : floorB;
+      if (tex) {
+        const texSize = tex.width;
+        const texX = Math.floor((worldX - gx) * texSize) % texSize;
+        const texY = Math.floor((worldY - gy) * texSize) % texSize;
+        const srcIdx = (texY * texSize + texX) * 4;
+        const dstIdx = rowOffset + x * 4;
+        // Fog: lerp toward bg color instead of fading to black.
+        const inv = 1 - fog;
+        data[dstIdx] = Math.min(255, tex.data[srcIdx] * fog + BG_R * inv);
+        data[dstIdx + 1] = Math.min(255, tex.data[srcIdx + 1] * fog + BG_G * inv);
+        data[dstIdx + 2] = Math.min(255, tex.data[srcIdx + 2] * fog + BG_B * inv);
+        // alpha already 255 from pre-fill
+      }
+      worldX += stepX;
+      worldY += stepY;
     }
-
-    ctx.putImageData(rowImageData, 0, y);
   }
 
-  ctx.restore();
+  ctx.putImageData(buf, 0, 0);
 }
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -627,21 +754,22 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // per drawImage call) is sufficient.
   ctx.imageSmoothingEnabled = false;
 
+  // Compute the interpolated render camera (smooth movement).
+  const cam = updateRenderCamera(state);
+
   // Background
   ctx.fillStyle = PALETTE.bg;
   ctx.fillRect(0, 0, w, h);
 
   const textures = textureCache;
 
-  // --- Ceiling and floor casting ---
+  // --- Ceiling and floor casting (single batched upload) ---
   if (textures) {
-    drawCeilingCast(ctx, state, textures);
-    drawFloorCast(ctx, state, textures);
+    drawFloorCeilingCast(ctx, cam, state.inDarkness, textures);
   }
 
   // --- Raycast wall strip pass ---
-  const dir = DIR_VECTORS[state.player.facing % 4];
-  const { planeX, planeY } = cameraPlaneForFacing(state.player.facing);
+  const { dirX, dirY, planeX, planeY } = cam;
   const maxDist = state.inDarkness
     ? RENDER_CONFIG.darknessMaxDist
     : RENDER_CONFIG.maxDepth * 2;
@@ -656,10 +784,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   for (let i = 0; i < hits.length; i++) {
     const x = i * stripWidth;
     const cameraX = (2 * x) / w - 1;
-    const rayDirX = dir.x + planeX * cameraX;
-    const rayDirY = dir.y + planeY * cameraX;
+    const rayDirX = dirX + planeX * cameraX;
+    const rayDirY = dirY + planeY * cameraX;
 
-    const hit = castRay(state, rayDirX, rayDirY, maxDist);
+    const hit = castRay(state.floor.grid, cam.x + 0.5, cam.y + 0.5, rayDirX, rayDirY, maxDist);
     hits[i] = hit;
     if (!hit) continue;
 
