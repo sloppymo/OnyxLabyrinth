@@ -1,9 +1,10 @@
 /**
  * Corridor renderer for OnyxLabyrinth.
  *
- * This module draws the first-person dungeon view using a 2D canvas. It walks
- * forward from the player's position, builds a list of per-depth draw commands,
- * then executes them far-to-near for correct occlusion.
+ * This module draws the first-person dungeon view using a 2D canvas raycaster.
+ * One ray is cast per screen column to find the nearest wall, and floor/ceiling
+ * are filled with perspective-correct casting. Open grid edges are treated as
+ * empty space, so side-passage back walls render automatically.
  *
  * Textures are drawn with tiled `CanvasPattern` fills created inside each draw
  * call. Do NOT cache `CanvasPattern` objects at module scope: resetting the
@@ -13,7 +14,7 @@
 
 import type { GameState } from "../types";
 import type { EdgeType, TileFeature } from "../types";
-import { DX, DY, edgeInDirection } from "../game/dungeon";
+import { edgeInDirection } from "../game/dungeon";
 import wallTextureUrl from "../assets/wall_tile_amber_256.png";
 import floorATextureUrl from "../assets/floor_tile_a_256.png";
 import floorBTextureUrl from "../assets/floor_tile_b_256.png";
@@ -212,12 +213,6 @@ function opacityForDepth(d: number): number {
   return RENDER_CONFIG.baseOpacity * Math.pow(RENDER_CONFIG.fogFalloff, d);
 }
 
-/** Darkening overlay alpha for dark base textures (floor/ceiling). Near =
- *  brighter (lower alpha), far = darker (higher alpha). */
-function darkeningOverlayAlpha(d: number, multiplier: number): number {
-  return 1 - opacityForDepth(d) * multiplier;
-}
-
 function rgba(
   color: { r: number; g: number; b: number },
   alpha: number
@@ -329,19 +324,6 @@ function castRay(
   }
 }
 
-function wallGradient(
-  ctx: CanvasRenderingContext2D,
-  xNear: number,
-  xFar: number,
-  base: { r: number; g: number; b: number },
-  alpha: number
-): CanvasGradient {
-  const g = ctx.createLinearGradient(xNear, 0, xFar, 0);
-  g.addColorStop(0, rgba({ r: base.r + 14, g: base.g + 8, b: base.b + 4 }, alpha));
-  g.addColorStop(1, rgba({ r: base.r - 6, g: base.g - 6, b: base.b - 8 }, alpha * 0.5));
-  return g;
-}
-
 interface DepthRect {
   left: number;
   right: number;
@@ -349,249 +331,11 @@ interface DepthRect {
   bottom: number;
 }
 
-/**
- * Returns the screen-space rectangle representing "the opening at depth d"
- * for a 1-point perspective corridor, vanishing point dead-center.
- * Depth 0 = the near plane (right in front of the viewer).
- */
-function getDepthRect(w: number, h: number, d: number): DepthRect {
-  const cx = w / 2;
-  const cy = h / 2;
-  const scale = Math.pow(RENDER_CONFIG.projectionScale, d);
-  const halfW = (w / 2) * scale;
-  const halfH = (h / 2) * scale * RENDER_CONFIG.heightFlatten;
-  return {
-    left: cx - halfW,
-    right: cx + halfW,
-    top: cy - halfH,
-    bottom: cy + halfH,
-  };
-}
-
-/**
- * Returns a single pixel-per-source-pixel scale representing "one grid tile"
- * at the given depth. Using the depth rect's own height as the reference keeps
- * wall/floor/ceiling tiles a consistent physical size across every surface at
- * that depth, instead of each quad computing its own scale from its individual
- * bounding box (which caused front-wall vs. side-wall tiles to mismatch).
- */
-function tileScaleForDepth(
-  near: DepthRect,
-  imgSize: number
-): number {
-  // `near.bottom - near.top` is the apparent screen height of one grid unit at
-  // the near edge of this depth slot.
-  const refHeight = near.bottom - near.top;
-  const TILE_WORLD_UNITS = 1; // one texture repeat == one grid tile
-  return refHeight / TILE_WORLD_UNITS / imgSize;
-}
-
-/** Tile scale computed directly from a single rect's own height — use this for
- * quads that are drawn entirely at one depth plane (e.g. the front/end wall, or
- * a side-opening's back wall), as opposed to quads that span from near to far
- * (left/right walls), which should keep using tileScaleForDepth. */
-function tileScaleForRect(rect: DepthRect, imgSize: number): number {
-  const refHeight = rect.bottom - rect.top;
-  return refHeight / imgSize;
-}
-
 function glowBlurForDepth(d: number): number {
   return Math.max(
     RENDER_CONFIG.glowBlurFar,
     RENDER_CONFIG.glowBlurNear - d * 1.5
   );
-}
-
-/**
- * Draw a perspective quad filled with a tiled texture, plus an optional fog
- * overlay, then stroked with the amber edge glow.
- */
-function drawTexturedQuad(
-  ctx: CanvasRenderingContext2D,
-  points: [number, number][],
-  img: HTMLImageElement | HTMLCanvasElement,
-  scale: number,
-  originX: number,
-  originY: number,
-  strokeStyle: string,
-  lineWidth: number,
-  glowBlur: number,
-  fogStyle?: string | CanvasGradient
-) {
-  const xs = points.map((p) => p[0]);
-  const ys = points.map((p) => p[1]);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const width = maxX - minX;
-  const height = maxY - minY;
-
-  ctx.save();
-
-  // Clip to the quad shape.
-  ctx.beginPath();
-  ctx.moveTo(points[0][0], points[0][1]);
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i][0], points[i][1]);
-  }
-  ctx.closePath();
-  ctx.clip();
-
-  // Create a fresh pattern each frame. Caching patterns across canvas resizes
-  // is unsafe because resetting the canvas bitmap invalidates CanvasPattern
-  // objects, which then draw as black/transparent. The corridor has only a
-  // handful of quads per frame, so the cost is negligible.
-  ctx.imageSmoothingEnabled = false;
-  const pattern = ctx.createPattern(img, "repeat");
-  if (pattern) {
-    // Use the SHARED origin (same for every depth segment of this surface),
-    // not this quad's own minX/minY — this keeps the tile grid continuous
-    // across depth-segment boundaries instead of resetting per quad.
-    pattern.setTransform(new DOMMatrix([scale, 0, 0, scale, originX, originY]));
-    ctx.fillStyle = pattern;
-    ctx.fillRect(minX, minY, width, height);
-  }
-
-  // Depth fog / tint overlay on top of the texture.
-  if (fogStyle) {
-    ctx.fillStyle = fogStyle;
-    ctx.fillRect(minX, minY, width, height);
-  }
-
-  // Amber edge-glow outline on top of everything.
-  ctx.beginPath();
-  ctx.moveTo(points[0][0], points[0][1]);
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i][0], points[i][1]);
-  }
-  ctx.closePath();
-  if (glowBlur > 0) {
-    ctx.shadowColor = PALETTE.amber;
-    ctx.shadowBlur = glowBlur;
-  }
-  ctx.strokeStyle = strokeStyle;
-  ctx.lineWidth = lineWidth;
-  ctx.stroke();
-
-  ctx.restore();
-}
-
-/**
- * Fill the lateral void visible when a side wall is open, so the opening
- * doesn't read as a flat black cut-out. It draws the floor, ceiling, and a
- * shadowed back wall of the side passage so the void has volume.
- */
-function drawSideOpening(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  near: DepthRect,
-  far: DepthRect,
-  side: "left" | "right",
-  floorImg: HTMLCanvasElement | null,
-  ceilImg: HTMLCanvasElement | null,
-  wallImg: HTMLImageElement | HTMLCanvasElement | null,
-  floorScale: number,
-  ceilScale: number,
-  floorDarkenAlpha: number,
-  ceilDarkenAlpha: number,
-  depth: number
-) {
-  const isLeft = side === "left";
-  const xNear = isLeft ? near.left : near.right;
-  const xFar = isLeft ? far.left : far.right;
-  const xEdge = isLeft ? 0 : w;
-  const stroke = strokeColorForDepth(depth);
-  // Side openings are at the viewport edge and heavily darkened by vignette;
-  // use a lighter overlay than the main corridor so they remain readable.
-  const sideFloorAlpha = floorDarkenAlpha * 0.5;
-  const sideCeilAlpha = ceilDarkenAlpha * 0.5;
-
-  if (ceilImg) {
-    const ceilPoints: [number, number][] = [
-      [xEdge, near.top],
-      [xNear, near.top],
-      [xFar, far.top],
-      [xEdge, far.top],
-    ];
-    drawTexturedQuad(
-      ctx,
-      ceilPoints,
-      ceilImg,
-      ceilScale,
-      Math.min(...ceilPoints.map((p) => p[0])),
-      Math.min(...ceilPoints.map((p) => p[1])),
-      "rgba(0,0,0,0)",
-      0,
-      0,
-      rgba(PALETTE.ceilingFill, sideCeilAlpha)
-    );
-  }
-
-  if (floorImg) {
-    const floorPoints: [number, number][] = [
-      [xEdge, near.bottom],
-      [xNear, near.bottom],
-      [xFar, far.bottom],
-      [xEdge, far.bottom],
-    ];
-    drawTexturedQuad(
-      ctx,
-      floorPoints,
-      floorImg,
-      floorScale,
-      Math.min(...floorPoints.map((p) => p[0])),
-      Math.min(...floorPoints.map((p) => p[1])),
-      "rgba(0,0,0,0)",
-      0,
-      0,
-      rgba(PALETTE.floorFill, sideFloorAlpha)
-    );
-  }
-
-  // Back wall of the side passage (fills the central black void).
-  const wallFillAlpha = opacityForDepth(depth) * RENDER_CONFIG.fillOpacityMultiplier;
-  const backWallScale = wallImg ? tileScaleForRect(far, wallImg.width) : 1;
-  if (wallImg) {
-    drawTexturedQuad(
-      ctx,
-      [
-        [xFar, far.top],
-        [xEdge, far.top],
-        [xEdge, far.bottom],
-        [xFar, far.bottom],
-      ],
-      wallImg,
-      backWallScale,
-      xFar,
-      far.top,
-      "rgba(0,0,0,0)",
-      0,
-      0,
-      rgba(PALETTE.wallFill, wallFillAlpha)
-    );
-  } else {
-    ctx.fillStyle = wallGradient(ctx, xFar, xEdge, PALETTE.wallFill, wallFillAlpha);
-    ctx.beginPath();
-    ctx.moveTo(xFar, far.top);
-    ctx.lineTo(xEdge, far.top);
-    ctx.lineTo(xEdge, far.bottom);
-    ctx.lineTo(xFar, far.bottom);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // Subtle amber edges along the opening so the boundary reads.
-  ctx.save();
-  ctx.strokeStyle = stroke;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(xNear, near.top);
-  ctx.lineTo(xFar, far.top);
-  ctx.moveTo(xNear, near.bottom);
-  ctx.lineTo(xFar, far.bottom);
-  ctx.stroke();
-  ctx.restore();
 }
 
 /** Draw a tile feature icon on the floor at the player's current position. */
@@ -609,7 +353,7 @@ function drawFloorFeature(
 }
 
 /** Draw a tile feature icon at a depth (further away, smaller). */
-function drawDepthFeature(
+export function drawDepthFeature(
   ctx: CanvasRenderingContext2D,
   near: DepthRect,
   far: DepthRect,
@@ -665,14 +409,6 @@ function featureGlyph(feature: TileFeature): string {
     default:
       return "?";
   }
-}
-
-function floorTextureForGrid(
-  textures: TextureSet,
-  gx: number,
-  gy: number
-): HTMLCanvasElement | null {
-  return (gx + gy) % 2 === 0 ? textures.floorA : textures.floorB;
 }
 
 /**
@@ -814,9 +550,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     ? RENDER_CONFIG.darknessMaxDist
     : RENDER_CONFIG.maxDepth * 2;
 
-  const wallImg = textureCache ? textureCache.wall : null;
   const repeatedWall = repeatedWallCanvas;
-  const texWidth = wallImg ? wallImg.width : 1;
+  const texWidth = textureCache?.wall ? textureCache.wall.width : 1;
 
   const stripWidth = RENDER_CONFIG.raycastStripWidth;
   const hits: (RayHit | null)[] = new Array(Math.ceil(w / stripWidth)).fill(null);
@@ -936,124 +671,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     drawFloorCast(ctx, state, textures);
   }
 
-  const grid = state.floor.grid;
-  const { player } = state;
-  let x = player.x;
-  let y = player.y;
-  const facing = player.facing;
-  const leftDir = (facing + 3) % 4;
-  const rightDir = (facing + 1) % 4;
-
-  // Darkness zones reduce visibility to 1 tile (design doc §6.2).
-  const maxDepth = state.inDarkness
-    ? RENDER_CONFIG.darknessDepth
-    : RENDER_CONFIG.maxDepth;
-
-  const ceilImg = textures ? textures.ceiling : null;
-
-  // Walk forward and collect per-depth draw commands. We execute them
-  // far-to-near afterwards so occlusion is correct without relying on the
-  // geometry being perfectly nested.
-  type RenderCmd = () => void;
-  const depthLayers: RenderCmd[][] = [];
-
-  for (let d = 0; d < maxDepth; d++) {
-    if (y < 0 || y >= grid.length || x < 0 || x >= grid[0].length) break;
-
-    const cell = grid[y][x];
-    const leftEdge = edgeInDirection(cell, leftDir);
-    const rightEdge = edgeInDirection(cell, rightDir);
-    const frontEdge = edgeInDirection(cell, facing);
-
-    const near = getDepthRect(w, h, d);
-    const far = getDepthRect(w, h, d + 1);
-
-    const floorImg = textures ? floorTextureForGrid(textures, x, y) : null;
-    const floorDepthDarkenAlpha = darkeningOverlayAlpha(
-      d,
-      RENDER_CONFIG.floorDarkenMultiplier
-    );
-    const ceilDepthDarkenAlpha = darkeningOverlayAlpha(
-      d,
-      RENDER_CONFIG.ceilingDarkenMultiplier
-    );
-
-    const floorScale = floorImg
-      ? tileScaleForDepth(near, floorImg.width)
-      : 1;
-    const ceilScale = ceilImg
-      ? tileScaleForDepth(near, ceilImg.width)
-      : 1;
-
-    const layer: RenderCmd[] = [];
-
-    // Front wall (drawn first within the layer so it sits behind the feature
-    // and side walls if anything overlaps).
-    const blocked: EdgeType = frontEdge;
-    const isFrontBlocked = blocked !== "open" || d === maxDepth - 1;
-
-    // Depth feature on the floor.
-    if (cell.tile && d > 0) {
-      layer.push(() =>
-        drawDepthFeature(ctx, near, far, cell.tile!, state.inDarkness)
-      );
-    }
-
-    // Side openings.
-    if (leftEdge === "open") {
-      layer.push(() =>
-        drawSideOpening(
-          ctx,
-          w,
-          near,
-          far,
-          "left",
-          floorImg,
-          ceilImg,
-          wallImg,
-          floorScale,
-          ceilScale,
-          floorDepthDarkenAlpha,
-          ceilDepthDarkenAlpha,
-          d
-        )
-      );
-    }
-    if (rightEdge === "open") {
-      layer.push(() =>
-        drawSideOpening(
-          ctx,
-          w,
-          near,
-          far,
-          "right",
-          floorImg,
-          ceilImg,
-          wallImg,
-          floorScale,
-          ceilScale,
-          floorDepthDarkenAlpha,
-          ceilDepthDarkenAlpha,
-          d
-        )
-      );
-    }
-
-    depthLayers.push(layer);
-
-    if (isFrontBlocked) break;
-
-    x += DX[facing];
-    y += DY[facing];
-  }
-
-  // Execute far-to-near.
-  for (let i = depthLayers.length - 1; i >= 0; i--) {
-    for (const cmd of depthLayers[i]) cmd();
-  }
-
   // Draw tile feature at the player's feet (depth 0).
-  const currentCell = grid[player.y]?.[player.x];
+  const currentCell = state.floor.grid[state.player.y]?.[state.player.x];
   if (currentCell?.tile) {
     drawFloorFeature(ctx, w, h, currentCell.tile, state.inDarkness);
   }
