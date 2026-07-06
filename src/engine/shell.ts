@@ -57,9 +57,23 @@ export function resizeCorridorCanvas() {
 resizeCorridorCanvas();
 new ResizeObserver(resizeCorridorCanvas).observe(viewportWrap);
 
-/** Show or update the message overlay. Empty text hides the overlay via CSS. */
+let messageTimeout: ReturnType<typeof setTimeout> | null = null;
+
+/** Show or update the message overlay. Empty text hides the overlay via CSS.
+ *  Non-empty messages auto-dismiss after a few seconds so the viewport isn't
+ *  permanently covered by stale messages like "You enter the dungeon...". */
 export function setMessage(text: string): void {
+  if (messageTimeout) {
+    clearTimeout(messageTimeout);
+    messageTimeout = null;
+  }
   messageEl.textContent = text;
+  if (text) {
+    messageTimeout = setTimeout(() => {
+      messageEl.textContent = "";
+      messageTimeout = null;
+    }, 3500);
+  }
 }
 
 /** Set the compass direction displayed in the hint bar. */
