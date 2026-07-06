@@ -6,10 +6,11 @@
  * are filled with perspective-correct casting. Open grid edges are treated as
  * empty space, so side-passage back walls render automatically.
  *
- * Textures are drawn with tiled `CanvasPattern` fills created inside each draw
- * call. Do NOT cache `CanvasPattern` objects at module scope: resetting the
- * canvas bitmap (e.g., on resize) invalidates them and causes black surfaces.
- * The texture image set itself is cached in `textureCache` once loaded.
+ * Wall strips are sampled from a repeated source canvas and drawn with
+ * `drawImage`. Floor and ceiling are assembled row-by-row via `ImageData` and
+ * `putImageData`, then walls are rendered on top so they occlude the distant
+ * floor/ceiling correctly. The texture image set and repeated canvases are
+ * cached in `textureCache` / `repeatedWallCanvas` once loaded.
  */
 
 import type { GameState } from "../types";
@@ -540,7 +541,15 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.fillStyle = PALETTE.bg;
   ctx.fillRect(0, 0, w, h);
 
-  // --- Raycast wall strip pass (Task 3) ---
+  const textures = textureCache;
+
+  // --- Ceiling and floor casting ---
+  if (textures) {
+    drawCeilingCast(ctx, state, textures);
+    drawFloorCast(ctx, state, textures);
+  }
+
+  // --- Raycast wall strip pass ---
   const dir = DIR_VECTORS[state.player.facing % 4];
   const { planeX, planeY } = cameraPlaneForFacing(state.player.facing);
   const maxDist = state.inDarkness
@@ -548,10 +557,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     : RENDER_CONFIG.maxDepth * 2;
 
   const repeatedWall = repeatedWallCanvas;
-  const texWidth = textureCache?.wall ? textureCache.wall.width : 1;
 
   const stripWidth = RENDER_CONFIG.raycastStripWidth;
   const hits: (RayHit | null)[] = new Array(Math.ceil(w / stripWidth)).fill(null);
+  const seenFeatureCells = new Set<string>();
 
   ctx.save();
   for (let i = 0; i < hits.length; i++) {
@@ -568,21 +577,34 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2));
     const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
 
-    let texX = Math.floor(hit.wallX * texWidth);
-    if (
-      (hit.side === "x" && rayDirX > 0) ||
-      (hit.side === "y" && rayDirY < 0)
-    ) {
-      texX = texWidth - texX - 1;
+    // Tile feature on this cell (drawn once per visible cell, excluding the
+    // player's current tile, which is rendered at depth 0 below).
+    if (hit.mapX !== state.player.x || hit.mapY !== state.player.y) {
+      const cell = state.floor.grid[hit.mapY]?.[hit.mapX];
+      if (cell?.tile) {
+        const key = `${hit.mapX},${hit.mapY}`;
+        if (!seenFeatureCells.has(key)) {
+          seenFeatureCells.add(key);
+          drawDepthFeature(ctx, hit, x, stripWidth, cell.tile, state.inDarkness);
+        }
+      }
     }
 
     const fog = opacityForDepth(hit.perpWallDist);
 
     if (repeatedWall) {
+      let texX = Math.floor(hit.wallX * repeatedWall.width);
+      if (
+        (hit.side === "x" && rayDirX > 0) ||
+        (hit.side === "y" && rayDirY < 0)
+      ) {
+        texX = repeatedWall.width - texX - 1;
+      }
+
       ctx.globalAlpha = fog;
       ctx.drawImage(
         repeatedWall,
-        texX * RENDER_CONFIG.wallRepeatsX,
+        texX,
         0,
         1,
         repeatedWall.height,
@@ -608,10 +630,11 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     if (hit.edge === "door") {
       ctx.fillStyle = PALETTE.doorMarker;
       ctx.globalAlpha = fog;
+      const markerX = Math.floor(x + stripWidth / 2);
       ctx.fillRect(
-        x + stripWidth / 2 - 1,
+        markerX,
         drawStart,
-        2,
+        1,
         drawEnd - drawStart + 1
       );
       ctx.globalAlpha = 1.0;
@@ -659,26 +682,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     ctx.stroke();
   }
   ctx.restore();
-
-  const textures = textureCache;
-
-  // --- Ceiling and floor casting (Tasks 5-6) ---
-  if (textures) {
-    drawCeilingCast(ctx, state, textures);
-    drawFloorCast(ctx, state, textures);
-  }
-
-  // Draw tile features on visible hit cells (excluding the player's current tile,
-  // which is drawn at depth 0 below).
-  for (let i = 0; i < hits.length; i++) {
-    const hit = hits[i];
-    if (!hit) continue;
-    if (hit.mapX === state.player.x && hit.mapY === state.player.y) continue;
-    const cell = state.floor.grid[hit.mapY]?.[hit.mapX];
-    if (cell?.tile) {
-      drawDepthFeature(ctx, hit, i * stripWidth, stripWidth, cell.tile, state.inDarkness);
-    }
-  }
 
   // Draw tile feature at the player's feet (depth 0).
   const currentCell = state.floor.grid[state.player.y]?.[state.player.x];
