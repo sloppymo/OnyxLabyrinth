@@ -144,6 +144,17 @@ canvas#map-canvas {
   white-space: pre-wrap;
 }
 
+#combat-canvas {
+  display: none;
+  width: 100%;
+  max-width: 768px;
+  height: 672px;
+  border: 1px solid var(--amber);
+  background: #14110d;
+  image-rendering: pixelated;
+  margin: 0 auto;
+}
+
 .combat-header {
   font-size: var(--fs-header);
   color: var(--amber);
