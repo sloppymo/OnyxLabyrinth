@@ -54,7 +54,6 @@ interface PendingAction {
 }
 
 export interface CombatControllerOptions {
-  panel: HTMLElement;
   onEnd: (result: CombatState) => void;
 }
 
@@ -92,7 +91,6 @@ export class CombatController {
       currentMessage: null,
       messageStart: 0,
       messageAdvanceDelay: MESSAGE_AUTO_ADVANCE_MS,
-      messageWaitingForInput: false,
     };
 
     this.startActionSelection();
@@ -169,7 +167,6 @@ export class CombatController {
       const msg = this.scene.messageQueue.shift()!;
       this.scene.currentMessage = msg;
       this.scene.messageStart = now;
-      this.scene.messageWaitingForInput = false;
 
       // Trigger sprite animations for this message.
       triggerAnimationsForMessage(this.scene, msg, now, w, h);

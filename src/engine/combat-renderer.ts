@@ -12,7 +12,7 @@
 // The renderer is driven by CombatController (combat-ui.ts) which sets the
 // scene state each frame and calls render().
 
-import type { Character, CharacterClass } from "../game/party";
+import type { Character } from "../game/party";
 import type { EnemyInstance } from "../game/combat";
 import type { CombatState } from "../game/combat";
 
@@ -96,8 +96,6 @@ export interface CombatScene {
   messageStart: number;
   /** Auto-advance delay for messages (ms). */
   messageAdvanceDelay: number;
-  /** Whether the message is waiting for keypress to advance. */
-  messageWaitingForInput: boolean;
 }
 
 // --- Layout constants ------------------------------------------------------
@@ -181,7 +179,7 @@ function drawPartySprite(
   ctx.fill();
 
   // Body color by class.
-  const cls = char.class as CharacterClass;
+  const cls = char.class;
   let bodyColor: string;
   switch (cls) {
     case "Fighter": bodyColor = COLORS.classFighter; break;
@@ -557,9 +555,12 @@ function drawPrompt(
   h: number,
   scene: CombatScene
 ): void {
-  const y = h - 28;
+  // The prompt bar height adapts to whether there's a selection list.
+  const hasList = !!scene.selectionList;
+  const barH = hasList ? 60 : 28;
+  const y = h - barH;
   ctx.fillStyle = COLORS.bg;
-  ctx.fillRect(0, y, w, 28);
+  ctx.fillRect(0, y, w, barH);
   ctx.strokeStyle = COLORS.border;
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -617,27 +618,35 @@ export function renderCombat(
   ctx.stroke();
 
   // --- Draw enemy sprites ---
+  // Draw all enemies (including defeated ones, so the fade animation is
+  // visible). Only living enemies get target numbers.
   const allEnemies = [...s.enemies.front, ...s.enemies.back];
   const isTargetPhase = scene.phase === "selectEnemyTarget";
 
-  // Assign sequential target numbers to living enemies.
   let targetNum = 0;
   for (const enemy of allEnemies) {
-    if (enemy.currentHp <= 0) continue;
-    targetNum++;
+    const isDead = enemy.currentHp <= 0;
+    // Skip dead enemies that have no anim entry (never animated = died
+    // before any animation was triggered, e.g. from a group spell). This
+    // prevents stale corpses from lingering forever.
+    if (isDead && !scene.enemyAnims.has(enemy.instanceId)) continue;
+
+    if (!isDead) targetNum++;
     const anim = scene.enemyAnims.get(enemy.instanceId) ?? {
       state: "idle" as SpriteState,
       stateStart: now,
       progress: 0,
       opacity: 1,
     };
-    // Compute position: count living enemies in the same row before this one.
+    // Compute position among living enemies in the same row.
     const rowEnemies = (enemy.row === "front" ? s.enemies.front : s.enemies.back)
-      .filter((e) => e.currentHp > 0 || e === enemy);
+      .filter((e) => e.currentHp > 0);
     const idxInRow = rowEnemies.indexOf(enemy);
-    const livingInRow = rowEnemies.filter((e) => e.currentHp > 0);
-    const pos = enemySlotPos(idxInRow, livingInRow.length, enemy.row, w, h);
-    drawEnemySprite(ctx, pos.x, pos.y, enemy, anim, now, isTargetPhase, targetNum);
+    // If the enemy is dead, use its original slot index as fallback.
+    const effectiveIdx = idxInRow >= 0 ? idxInRow :
+      (enemy.row === "front" ? s.enemies.front : s.enemies.back).indexOf(enemy);
+    const pos = enemySlotPos(effectiveIdx, rowEnemies.length || 1, enemy.row, w, h);
+    drawEnemySprite(ctx, pos.x, pos.y, enemy, anim, now, isTargetPhase && !isDead, targetNum);
   }
 
   // --- Draw party sprites ---
@@ -764,6 +773,9 @@ export function updateAnimations(scene: CombatScene, now: number): void {
  * Parse a log entry and trigger the appropriate sprite animations.
  * This is a heuristic approach — it matches patterns in the log strings
  * produced by combat.ts to determine which sprites to animate.
+ *
+ * Names can contain spaces (e.g. "Giant Rat", "Stone Guardian"), so we
+ * use non-greedy `.+?` instead of `\w+` and anchor on the action keywords.
  */
 export function triggerAnimationsForMessage(
   scene: CombatScene,
@@ -773,97 +785,33 @@ export function triggerAnimationsForMessage(
   h: number
 ): void {
   const s = scene.state;
+  const allEnemies = [...s.enemies.front, ...s.enemies.back];
 
-  // "X attacks Y" — party member attacks enemy.
-  let m = message.match(/^(\w+) attacks (.+?)(?:!|\.)/);
-  if (m) {
-    const attackerName = m[1];
-    const targetName = m[2].replace(/[!.]$/, "");
-    // Find party member by name.
-    const attacker = s.party.find((c) => c.name === attackerName);
-    if (attacker) {
-      setAnim(scene.partyAnims, attacker.id, "attacking", now);
+  // Helper: find a combatant (party or enemy) by name.
+  const findParty = (name: string) => s.party.find((c) => c.name === name);
+  const findEnemy = (name: string) => allEnemies.find((e) => e.name === name);
+
+  // Helper: trigger attack animation on attacker + hit/effect on target.
+  const triggerAttack = (attackerName: string, targetName: string) => {
+    const partyAttacker = findParty(attackerName);
+    const enemyAttacker = findEnemy(attackerName);
+    if (partyAttacker) {
+      setAnim(scene.partyAnims, partyAttacker.id, "attacking", now);
     }
-    // Find enemy by name.
-    const target = findEnemyByName(s, targetName);
-    if (target) {
-      setAnim(scene.enemyAnims, target.instanceId, "hit", now);
-      const pos = findEnemyPos(s, target.instanceId, w, h);
+    if (enemyAttacker) {
+      setAnim(scene.enemyAnims, enemyAttacker.instanceId, "attacking", now);
+    }
+
+    const enemyTarget = findEnemy(targetName);
+    const partyTarget = findParty(targetName);
+    if (enemyTarget) {
+      setAnim(scene.enemyAnims, enemyTarget.instanceId, "hit", now);
+      const pos = findEnemyPos(s, enemyTarget.instanceId, w, h);
       scene.effects.push({
         type: "slash", x: pos.x, y: pos.y, color: COLORS.warmWhite,
         start: now, duration: 300,
       });
-    }
-    return;
-  }
-
-  // "X casts Y" — spell effect.
-  m = message.match(/^(\w+) casts (.+)/);
-  if (m) {
-    const casterName = m[1];
-    const caster = s.party.find((c) => c.name === casterName);
-    const enemyCaster = [...s.enemies.front, ...s.enemies.back].find((e) => e.name === casterName);
-    if (caster) {
-      setAnim(scene.partyAnims, caster.id, "attacking", now);
-    }
-    if (enemyCaster) {
-      setAnim(scene.enemyAnims, enemyCaster.instanceId, "attacking", now);
-    }
-    // Spell burst at target (try to find target name in message).
-    const targetMatch = message.match(/on (.+?)(?:!|\.)/);
-    if (targetMatch) {
-      const targetName = targetMatch[1].replace(/[!.]$/, "");
-      const enemyTarget = findEnemyByName(s, targetName);
-      const partyTarget = s.party.find((c) => c.name === targetName);
-      if (enemyTarget) {
-        setAnim(scene.enemyAnims, enemyTarget.instanceId, "hit", now);
-        const pos = findEnemyPos(s, enemyTarget.instanceId, w, h);
-        scene.effects.push({
-          type: "spellBurst", x: pos.x, y: pos.y, color: COLORS.spell,
-          start: now, duration: 400,
-        });
-      } else if (partyTarget) {
-        setAnim(scene.partyAnims, partyTarget.id, "hit", now);
-        const pos = findPartyPos(s, partyTarget.id, w, h);
-        const isHeal = /heal|cure|restore/i.test(message);
-        scene.effects.push({
-          type: isHeal ? "healBurst" : "spellBurst",
-          x: pos.x, y: pos.y,
-          color: isHeal ? COLORS.heal : COLORS.danger,
-          start: now, duration: 400,
-        });
-      }
-    }
-    return;
-  }
-
-  // "X is defeated" / "X is destroyed" — enemy death.
-  m = message.match(/(\w+) (?:is defeated|is destroyed|falls|is knocked out)/);
-  if (m) {
-    const name = m[1];
-    const enemy = findEnemyByName(s, name);
-    const party = s.party.find((c) => c.name === name);
-    if (enemy) {
-      setAnim(scene.enemyAnims, enemy.instanceId, "defeated", now);
-    } else if (party) {
-      setAnim(scene.partyAnims, party.id, "defeated", now);
-    }
-    return;
-  }
-
-  // Enemy attacks party member: "X hits Y for N damage" or "X strikes Y".
-  m = message.match(/^(\w+) hits (\w+)/);
-  if (!m) m = message.match(/^(\w+) strikes (\w+)/);
-  if (!m) m = message.match(/^(\w+) bites (\w+)/);
-  if (m) {
-    const attackerName = m[1];
-    const targetName = m[2];
-    const enemyAttacker = [...s.enemies.front, ...s.enemies.back].find((e) => e.name === attackerName);
-    const partyTarget = s.party.find((c) => c.name === targetName);
-    if (enemyAttacker) {
-      setAnim(scene.enemyAnims, enemyAttacker.instanceId, "attacking", now);
-    }
-    if (partyTarget) {
+    } else if (partyTarget) {
       setAnim(scene.partyAnims, partyTarget.id, "hit", now);
       const pos = findPartyPos(s, partyTarget.id, w, h);
       scene.effects.push({
@@ -871,6 +819,162 @@ export function triggerAnimationsForMessage(
         start: now, duration: 300,
       });
     }
+  };
+
+  // Helper: trigger spell animation on caster + burst on target.
+  const triggerSpell = (casterName: string, targetName: string | null, isHeal: boolean) => {
+    const partyCaster = findParty(casterName);
+    const enemyCaster = findEnemy(casterName);
+    if (partyCaster) {
+      setAnim(scene.partyAnims, partyCaster.id, "attacking", now);
+    }
+    if (enemyCaster) {
+      setAnim(scene.enemyAnims, enemyCaster.instanceId, "attacking", now);
+    }
+    if (!targetName) return;
+
+    const enemyTarget = findEnemy(targetName);
+    const partyTarget = findParty(targetName);
+    if (enemyTarget) {
+      setAnim(scene.enemyAnims, enemyTarget.instanceId, "hit", now);
+      const pos = findEnemyPos(s, enemyTarget.instanceId, w, h);
+      scene.effects.push({
+        type: "spellBurst", x: pos.x, y: pos.y, color: COLORS.spell,
+        start: now, duration: 400,
+      });
+    } else if (partyTarget) {
+      setAnim(scene.partyAnims, partyTarget.id, "hit", now);
+      const pos = findPartyPos(s, partyTarget.id, w, h);
+      scene.effects.push({
+        type: isHeal ? "healBurst" : "spellBurst",
+        x: pos.x, y: pos.y,
+        color: isHeal ? COLORS.heal : COLORS.danger,
+        start: now, duration: 400,
+      });
+    }
+  };
+
+  // Helper: trigger defeated animation.
+  const triggerDefeated = (name: string) => {
+    const enemy = findEnemy(name);
+    const party = findParty(name);
+    if (enemy) {
+      setAnim(scene.enemyAnims, enemy.instanceId, "defeated", now);
+    } else if (party) {
+      setAnim(scene.partyAnims, party.id, "defeated", now);
+    }
+  };
+
+  // --- Pattern matching ---
+
+  // "X attacks Y for N damage." — melee attack (party or enemy).
+  let m = message.match(/^(.+?) attacks (.+?) for \d+ damage\./);
+  if (m) {
+    triggerAttack(m[1], m[2]);
+    return;
+  }
+
+  // "X hits Y for N damage." — enemy melee attack on party.
+  m = message.match(/^(.+?) hits (.+?) for \d+ damage\./);
+  if (m) {
+    triggerAttack(m[1], m[2]);
+    return;
+  }
+
+  // "X casts Y at Z for N damage." — enemy spell with target.
+  m = message.match(/^(.+?) casts .+? at (.+?) for \d+ damage\./);
+  if (m) {
+    triggerSpell(m[1], m[2], false);
+    return;
+  }
+
+  // "X casts Y, healing Z for N HP." — healing spell with target.
+  m = message.match(/^(.+?) casts .+?, healing (.+?) for \d+ HP\./);
+  if (m) {
+    triggerSpell(m[1], m[2], true);
+    return;
+  }
+
+  // "X casts Y." — spell without explicit target (group/all).
+  // Also "X casts Y on Z." for single-target casts.
+  m = message.match(/^(.+?) casts (.+)/);
+  if (m) {
+    const casterName = m[1];
+    const rest = m[2];
+    // Try to extract target from "on Z" or "at Z".
+    const targetMatch = rest.match(/(?:on|at) (.+?)(?:!|\.|,|$)/);
+    const targetName = targetMatch ? targetMatch[1].replace(/[!.]$/, "").trim() : null;
+    const isHeal = /heal|cure|restore|revive|resurrect/i.test(rest);
+    triggerSpell(casterName, targetName, isHeal);
+    return;
+  }
+
+  // "SpellName heals Y for N HP." — healing spell effect.
+  m = message.match(/^(.+?) heals (.+?) for \d+ HP\./);
+  if (m) {
+    const targetName = m[2];
+    const partyTarget = findParty(targetName);
+    const enemyTarget = findEnemy(targetName);
+    if (partyTarget) {
+      const pos = findPartyPos(s, partyTarget.id, w, h);
+      scene.effects.push({
+        type: "healBurst", x: pos.x, y: pos.y, color: COLORS.heal,
+        start: now, duration: 400,
+      });
+    } else if (enemyTarget) {
+      const pos = findEnemyPos(s, enemyTarget.instanceId, w, h);
+      scene.effects.push({
+        type: "healBurst", x: pos.x, y: pos.y, color: COLORS.heal,
+        start: now, duration: 400,
+      });
+    }
+    return;
+  }
+
+  // "X is destroyed." / "X is knocked out!" — death.
+  m = message.match(/^(.+?) is destroyed\./);
+  if (m) {
+    triggerDefeated(m[1]);
+    return;
+  }
+  m = message.match(/^(.+?) is knocked out!/);
+  if (m) {
+    triggerDefeated(m[1]);
+    return;
+  }
+
+  // "X is revived!" — reset defeated animation.
+  m = message.match(/^(.+?) is revived!/);
+  if (m) {
+    const name = m[1];
+    const party = s.party.find((c) => c.name === name);
+    const enemy = allEnemies.find((e) => e.name === name);
+    if (party) {
+      setAnim(scene.partyAnims, party.id, "idle", now);
+    } else if (enemy) {
+      setAnim(scene.enemyAnims, enemy.instanceId, "idle", now);
+    }
+    return;
+  }
+
+  // "X uses Y on Z, curing W." — item use with target.
+  m = message.match(/^(.+?) uses .+? on (.+?),/);
+  if (m) {
+    triggerSpell(m[1], m[2], /cure|heal|revive/i.test(message));
+    return;
+  }
+
+  // "X uses Y to revive Z with N HP!" — revive item.
+  m = message.match(/^(.+?) uses .+? to revive (.+?) with/);
+  if (m) {
+    triggerSpell(m[1], m[2], true);
+    // Also reset the target's defeated animation.
+    const targetName = m[2];
+    const partyTarget = s.party.find((c) => c.name === targetName);
+    if (partyTarget) {
+      setAnim(scene.partyAnims, partyTarget.id, "idle", now);
+    }
+    return;
   }
 }
 
@@ -889,19 +993,18 @@ function setAnim(
     anim.progress = 0;
     if (state === "defeated") {
       anim.opacity = 1; // will fade in update
+    } else {
+      // Reset opacity for non-defeated states (e.g. revived from KO).
+      anim.opacity = 1;
     }
   } else {
     anims.set(id, {
       state,
       stateStart: now,
       progress: 0,
-      opacity: state === "defeated" ? 1 : 0,
+      opacity: 1,
     });
   }
-}
-
-function findEnemyByName(s: CombatState, name: string): EnemyInstance | undefined {
-  return [...s.enemies.front, ...s.enemies.back].find((e) => e.name === name);
 }
 
 function findEnemyPos(
@@ -913,11 +1016,14 @@ function findEnemyPos(
   const all = [...s.enemies.front, ...s.enemies.back];
   for (let i = 0; i < all.length; i++) {
     if (all[i].instanceId === instanceId) {
-      const rowEnemies = (all[i].row === "front" ? s.enemies.front : s.enemies.back)
-        .filter((e) => e.currentHp > 0 || e === all[i]);
-      const idxInRow = rowEnemies.indexOf(all[i]);
-      const livingInRow = rowEnemies.filter((e) => e.currentHp > 0);
-      return enemySlotPos(idxInRow, livingInRow.length, all[i].row, w, h);
+      const enemy = all[i];
+      // Position among living enemies in the same row (matches render logic).
+      const rowEnemies = (enemy.row === "front" ? s.enemies.front : s.enemies.back)
+        .filter((e) => e.currentHp > 0);
+      const idxInRow = rowEnemies.indexOf(enemy);
+      const effectiveIdx = idxInRow >= 0 ? idxInRow :
+        (enemy.row === "front" ? s.enemies.front : s.enemies.back).indexOf(enemy);
+      return enemySlotPos(effectiveIdx, rowEnemies.length || 1, enemy.row, w, h);
     }
   }
   return { x: w / 2, y: h / 2 };

@@ -208,7 +208,6 @@ function startCombat(combat: CombatState): void {
   setMessage("");
 
   combatController = new CombatController(combat, {
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     onEnd: (result: CombatState) => {
       endCombat(result);
     },
