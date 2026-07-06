@@ -181,6 +181,86 @@ function cameraPlaneForFacing(facing: number): { planeX: number; planeY: number 
   };
 }
 
+/** Cast a ray through the grid using DDA and return the first non-open wall hit. */
+// @ts-ignore: private helper for the upcoming raycast wall/floor passes.
+function castRay(
+  state: GameState,
+  rayDirX: number,
+  rayDirY: number,
+  maxDist: number
+): RayHit | null {
+  const grid = state.floor.grid;
+  const playerWX = state.player.x + 0.5;
+  const playerWY = state.player.y + 0.5;
+
+  let mapX = Math.floor(playerWX);
+  let mapY = Math.floor(playerWY);
+
+  const deltaDistX = Math.abs(1 / rayDirX);
+  const deltaDistY = Math.abs(1 / rayDirY);
+
+  let stepX: number, sideDistX: number;
+  let stepY: number, sideDistY: number;
+
+  if (rayDirX < 0) {
+    stepX = -1;
+    sideDistX = (playerWX - mapX) * deltaDistX;
+  } else {
+    stepX = 1;
+    sideDistX = (mapX + 1 - playerWX) * deltaDistX;
+  }
+  if (rayDirY < 0) {
+    stepY = -1;
+    sideDistY = (playerWY - mapY) * deltaDistY;
+  } else {
+    stepY = 1;
+    sideDistY = (mapY + 1 - playerWY) * deltaDistY;
+  }
+
+  let side: "ns" | "ew" = "ns";
+
+  while (true) {
+    if (sideDistX < sideDistY) {
+      sideDistX += deltaDistX;
+      mapX += stepX;
+      side = "ew";
+    } else {
+      sideDistY += deltaDistY;
+      mapY += stepY;
+      side = "ns";
+    }
+
+    if (mapY < 0 || mapY >= grid.length || mapX < 0 || mapX >= grid[0].length) {
+      return null;
+    }
+
+    const cell = grid[mapY][mapX];
+    // Determine which edge of this cell the ray crossed.
+    const dir = side === "ns"
+      ? (stepY > 0 ? 0 : 2)   // N or S edge
+      : (stepX > 0 ? 3 : 1);  // W or E edge
+    const edge = edgeInDirection(cell, dir);
+
+    if (edge !== "open") {
+      const perpWallDist = side === "ns"
+        ? (mapY - playerWY + (1 - stepY) / 2) / rayDirY
+        : (mapX - playerWX + (1 - stepX) / 2) / rayDirX;
+
+      if (perpWallDist > maxDist) return null;
+
+      let wallX: number;
+      if (side === "ns") {
+        wallX = playerWX + perpWallDist * rayDirX;
+      } else {
+        wallX = playerWY + perpWallDist * rayDirY;
+      }
+      wallX -= Math.floor(wallX);
+
+      return { side, mapX, mapY, perpWallDist, wallX, edge };
+    }
+  }
+}
+
 function wallGradient(
   ctx: CanvasRenderingContext2D,
   xNear: number,
