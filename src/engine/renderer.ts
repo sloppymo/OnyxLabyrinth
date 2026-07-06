@@ -84,8 +84,10 @@ interface TextureSet {
   ceiling: HTMLCanvasElement | null;
   floorARepeated: HTMLCanvasElement | null;
   floorBRepeated: HTMLCanvasElement | null;
+  ceilingRepeated: HTMLCanvasElement | null;
   floorAData: ImageData | null;
   floorBData: ImageData | null;
+  ceilingData: ImageData | null;
 }
 
 let textureCache: TextureSet | null = null;
@@ -167,6 +169,9 @@ export function loadTextures(): Promise<TextureSet> {
     const floorBRepeated = floorBBright
       ? prepareRepeatedTexture(floorBBright, 1, 1)
       : null;
+    const ceilingRepeated = ceilingBright
+      ? prepareRepeatedTexture(ceilingBright, 1, 1)
+      : null;
 
     textureCache = {
       wall,
@@ -175,6 +180,7 @@ export function loadTextures(): Promise<TextureSet> {
       ceiling: ceilingBright,
       floorARepeated,
       floorBRepeated,
+      ceilingRepeated,
       floorAData: floorARepeated
         ? floorARepeated
             .getContext("2d")!
@@ -184,6 +190,11 @@ export function loadTextures(): Promise<TextureSet> {
         ? floorBRepeated
             .getContext("2d")!
             .getImageData(0, 0, floorBRepeated.width, floorBRepeated.height)
+        : null,
+      ceilingData: ceilingRepeated
+        ? ceilingRepeated
+            .getContext("2d")!
+            .getImageData(0, 0, ceilingRepeated.width, ceilingRepeated.height)
         : null,
     };
     repeatedWallCanvas = wall
@@ -331,28 +342,6 @@ function wallGradient(
   return g;
 }
 
-function ceilingGradient(
-  ctx: CanvasRenderingContext2D,
-  yNear: number,
-  yFar: number,
-  alpha: number
-): CanvasGradient {
-  const g = ctx.createLinearGradient(0, yFar, 0, yNear);
-  g.addColorStop(0, rgba({ r: 14, g: 13, b: 10 }, 0));
-  g.addColorStop(
-    1,
-    rgba(
-      {
-        r: PALETTE.ceilingFill.r + 6,
-        g: PALETTE.ceilingFill.g + 2,
-        b: PALETTE.ceilingFill.b,
-      },
-      alpha
-    )
-  );
-  return g;
-}
-
 interface DepthRect {
   left: number;
   right: number;
@@ -377,10 +366,6 @@ function getDepthRect(w: number, h: number, d: number): DepthRect {
     top: cy - halfH,
     bottom: cy + halfH,
   };
-}
-
-function lineWidthForDepth(d: number): number {
-  return d <= 0 ? 2.0 : d === 1 ? 1.5 : d === 2 ? 1.0 : 0.75;
 }
 
 /**
@@ -415,35 +400,6 @@ function glowBlurForDepth(d: number): number {
     RENDER_CONFIG.glowBlurFar,
     RENDER_CONFIG.glowBlurNear - d * 1.5
   );
-}
-
-function drawQuad(
-  ctx: CanvasRenderingContext2D,
-  points: [number, number][],
-  strokeStyle: string,
-  fillStyle?: string | CanvasGradient,
-  lineWidth: number = 1.5,
-  glowBlur: number = 0
-) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(points[0][0], points[0][1]);
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i][0], points[i][1]);
-  }
-  ctx.closePath();
-  if (fillStyle) {
-    ctx.fillStyle = fillStyle;
-    ctx.fill();
-  }
-  if (glowBlur > 0) {
-    ctx.shadowColor = PALETTE.amber;
-    ctx.shadowBlur = glowBlur;
-  }
-  ctx.strokeStyle = strokeStyle;
-  ctx.lineWidth = lineWidth;
-  ctx.stroke();
-  ctx.restore();
 }
 
 /**
@@ -780,85 +736,67 @@ function drawFloorCast(
   ctx.restore();
 }
 
-function drawCeilingStrip(
+/**
+ * Perspective-correct ceiling casting. Mirrors drawFloorCast for rows above
+ * the horizon, sampling the ceiling texture and applying distance fog.
+ */
+function drawCeilingCast(
   ctx: CanvasRenderingContext2D,
-  near: DepthRect,
-  far: DepthRect,
-  ceilImg: HTMLCanvasElement | null,
-  scale: number,
-  originX: number,
-  originY: number,
-  stroke: string,
-  lw: number,
-  glowBlur: number,
-  fillAlpha: number,
-  darkenAlpha: number
+  state: GameState,
+  textures: TextureSet
 ): void {
-  const points: [number, number][] = [
-    [near.left, near.top],
-    [near.right, near.top],
-    [far.right, far.top],
-    [far.left, far.top],
-  ];
-  if (ceilImg) {
-    drawTexturedQuad(
-      ctx,
-      points,
-      ceilImg,
-      scale,
-      originX,
-      originY,
-      stroke,
-      lw,
-      glowBlur,
-      rgba(PALETTE.ceilingFill, darkenAlpha)
-    );
-  } else {
-    ctx.fillStyle = ceilingGradient(ctx, near.top, far.top, fillAlpha);
-    ctx.beginPath();
-    ctx.moveTo(points[0][0], points[0][1]);
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i][0], points[i][1]);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-}
+  ctx.save();
 
-function drawCeilingFloorStrokes(
-  ctx: CanvasRenderingContext2D,
-  near: DepthRect,
-  far: DepthRect,
-  stroke: string,
-  lw: number,
-  glowBlur: number
-): void {
-  drawQuad(
-    ctx,
-    [
-      [near.left, near.top],
-      [near.right, near.top],
-      [far.right, far.top],
-      [far.left, far.top],
-    ],
-    stroke,
-    undefined,
-    lw,
-    glowBlur
-  );
-  drawQuad(
-    ctx,
-    [
-      [near.left, near.bottom],
-      [near.right, near.bottom],
-      [far.right, far.bottom],
-      [far.left, far.bottom],
-    ],
-    stroke,
-    undefined,
-    lw,
-    glowBlur
-  );
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const dir = DIR_VECTORS[state.player.facing % 4];
+  const { planeX, planeY } = cameraPlaneForFacing(state.player.facing);
+  const maxDist = state.inDarkness
+    ? RENDER_CONFIG.darknessMaxDist
+    : RENDER_CONFIG.maxDepth * 2;
+
+  const ceilImg = textures.ceilingData;
+  if (!ceilImg) {
+    ctx.restore();
+    return;
+  }
+
+  const texSize = ceilImg.width;
+  const endY = Math.floor(h / 2) - 1;
+
+  for (let y = 0; y <= endY; y++) {
+    const rowDistance = (h / 2) / (h / 2 - y);
+    if (rowDistance > maxDist) continue;
+
+    const ceilStepX = rowDistance * ((planeX * 2) / w);
+    const ceilStepY = rowDistance * ((planeY * 2) / w);
+    let ceilX = state.player.x + 0.5 + rowDistance * (dir.x - planeX);
+    let ceilY = state.player.y + 0.5 + rowDistance * (dir.y - planeY);
+
+    const rowImageData = new ImageData(w, 1);
+    const rowData = rowImageData.data;
+    const fog = opacityForDepth(rowDistance);
+
+    for (let x = 0; x < w; x++) {
+      const gx = Math.floor(ceilX);
+      const gy = Math.floor(ceilY);
+      const texX = Math.floor((ceilX - gx) * texSize) % texSize;
+      const texY = Math.floor((ceilY - gy) * texSize) % texSize;
+      const srcIdx = (texY * texSize + texX) * 4;
+      const dstIdx = x * 4;
+      rowData[dstIdx] = Math.min(255, ceilImg.data[srcIdx] * fog);
+      rowData[dstIdx + 1] = Math.min(255, ceilImg.data[srcIdx + 1] * fog);
+      rowData[dstIdx + 2] = Math.min(255, ceilImg.data[srcIdx + 2] * fog);
+      rowData[dstIdx + 3] = 255;
+
+      ceilX += ceilStepX;
+      ceilY += ceilStepY;
+    }
+
+    ctx.putImageData(rowImageData, 0, y);
+  }
+
+  ctx.restore();
 }
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -992,8 +930,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
 
   const textures = textureCache;
 
-  // --- Floor casting (Task 5) ---
+  // --- Ceiling and floor casting (Tasks 5-6) ---
   if (textures) {
+    drawCeilingCast(ctx, state, textures);
     drawFloorCast(ctx, state, textures);
   }
 
@@ -1018,13 +957,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   type RenderCmd = () => void;
   const depthLayers: RenderCmd[][] = [];
 
-  // Shared tiling origins for surfaces that span multiple depth segments.
-  // Using one fixed origin per surface keeps the tile grid continuous across
-  // depth-segment boundaries instead of resetting for each individual quad.
-  const depth0 = getDepthRect(w, h, 0);
-  const ceilingOriginX = depth0.left;
-  const ceilingOriginY = depth0.top;
-
   for (let d = 0; d < maxDepth; d++) {
     if (y < 0 || y >= grid.length || x < 0 || x >= grid[0].length) break;
 
@@ -1035,10 +967,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
 
     const near = getDepthRect(w, h, d);
     const far = getDepthRect(w, h, d + 1);
-    const stroke = strokeColorForDepth(d);
-    const fillAlpha = opacityForDepth(d) * RENDER_CONFIG.fillOpacityMultiplier;
-    const lw = lineWidthForDepth(d);
-    const glowBlur = glowBlurForDepth(d);
 
     const floorImg = textures ? floorTextureForGrid(textures, x, y) : null;
     const floorDepthDarkenAlpha = darkeningOverlayAlpha(
@@ -1111,29 +1039,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       );
     }
 
-    // Ceiling and floor strips.
-    layer.push(() =>
-      drawCeilingStrip(
-        ctx,
-        near,
-        far,
-        ceilImg,
-        ceilScale,
-        ceilingOriginX,
-        ceilingOriginY,
-        stroke,
-        lw,
-        glowBlur,
-        fillAlpha,
-        ceilDepthDarkenAlpha
-      )
-    );
-
-    // Amber edge strokes on top of the strips.
-    layer.push(() =>
-      drawCeilingFloorStrokes(ctx, near, far, stroke, lw, glowBlur)
-    );
-
     depthLayers.push(layer);
 
     if (isFrontBlocked) break;
@@ -1145,45 +1050,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Execute far-to-near.
   for (let i = depthLayers.length - 1; i >= 0; i--) {
     for (const cmd of depthLayers[i]) cmd();
-  }
-
-  // Near-plane ceiling texture fill (depth 0, closest to the camera).
-  const nearRect = getDepthRect(w, h, 0);
-  const ceilNearDarkenAlpha = darkeningOverlayAlpha(
-    0,
-    RENDER_CONFIG.ceilingDarkenMultiplier
-  );
-  const ceilNearScale = ceilImg
-    ? tileScaleForDepth(nearRect, ceilImg.width)
-    : 1;
-
-  if (ceilImg) {
-    drawTexturedQuad(
-      ctx,
-      [
-        [0, 0],
-        [w, 0],
-        [nearRect.right, nearRect.top],
-        [nearRect.left, nearRect.top],
-      ],
-      ceilImg,
-      ceilNearScale,
-      ceilingOriginX,
-      ceilingOriginY,
-      strokeColorForDepth(0),
-      2.0,
-      RENDER_CONFIG.glowBlurNear,
-      rgba(PALETTE.ceilingFill, ceilNearDarkenAlpha)
-    );
-  } else {
-    ctx.fillStyle = ceilingGradient(ctx, nearRect.top, 0, opacityForDepth(0));
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(w, 0);
-    ctx.lineTo(nearRect.right, nearRect.top);
-    ctx.lineTo(nearRect.left, nearRect.top);
-    ctx.closePath();
-    ctx.fill();
   }
 
   // Draw tile feature at the player's feet (depth 0).
