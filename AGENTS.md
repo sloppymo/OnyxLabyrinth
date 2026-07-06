@@ -9,6 +9,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 - **Entry:** `src/main.ts` bootstraps the app and mounts it into `#app`.
 - **Build:** `npm run build` (runs `tsc && vite build`). The build must pass TypeScript with zero errors.
 - **Dev server:** `npm run dev`.
+- **Tests:** `npm test` (runs Vitest). Test files use `.test.ts` suffix and are excluded from the build tsconfig.
 - **Production preview:** `npx vite preview --port 5176 --base /OnyxLabyrinth/`.
 - **Deployment:** GitHub Pages serves the `docs/` folder. After `npm run build`, copy `dist/` into `docs/` and remove stale hashed JS files in `docs/assets/`.
 
@@ -27,7 +28,11 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/game/state.ts` | `GameState` factory and mode setter. |
 | `src/game/dungeon.ts` | Grid model, edge helpers, carving. |
 | `src/game/party.ts` | Character/party creation. |
-| `src/game/combat.ts` | Combat state/helpers. |
+| `src/game/combat.ts` | Combat state/helpers. Emits structured `CombatEvent`s alongside log messages for the renderer. |
+| `src/game/combat.test.ts` | Unit tests for combat resolver (vitest). |
+| `src/game/save.test.ts` | Unit tests for save serialization (vitest). |
+| `src/game/party.test.ts` | Unit tests for party creation (vitest). |
+| `src/engine/combat-renderer.test.ts` | Unit tests for combat animation triggers (vitest). |
 | `src/engine/camp-ui.ts` | Camp screen controller. |
 | `src/engine/town-ui.ts` | Town/hub screen controller. |
 | `src/engine/save-ui.ts` | Save/load menu controller. |
@@ -101,5 +106,10 @@ After any change to `src/engine/combat-renderer.ts` or `src/engine/combat-ui.ts`
 - Keep audio constants in the `AudioEngine` `CFG` object at the top of `audio.ts`.
 - Keep combat renderer layout constants near the top of `combat-renderer.ts`.
 - Run `npm run build` before claiming any fix is complete.
+- Run `npm test` before claiming any combat/save/party change is complete.
 - Verify visually for renderer/combat/audio changes; don't rely only on the build passing.
 - After rebuilding, refresh `docs/` from `dist/` if the user wants the GitHub Pages build updated.
+
+## Combat event system
+
+`combat.ts` emits structured `CombatEvent` entries alongside each log message (1:1 parallel array `s.events`). The combat renderer uses these events as the **primary** source for triggering animations, with regex-based log parsing as a **fallback** for messages that lack a structured event (e.g. silence, item use). When adding new combat actions or log messages, add a corresponding `emit()` call with a `CombatEvent` so the renderer can animate it without regex.

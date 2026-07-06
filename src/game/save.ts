@@ -22,6 +22,24 @@ import { defaultLoadoutForCharacter } from "./combat";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
+
+/** Current save format version. Bump when the serialized shape changes. */
+const SAVE_VERSION = 4;
+
+/**
+ * Migrate a serialized state from an older version to the current one.
+ * Each step transforms one version to the next. If the save is newer than
+ * the current code, return null (can't downgrade).
+ */
+function migrate(ser: Record<string, unknown>): SerializedState | null {
+  let version = ser.version as number;
+  if (version > SAVE_VERSION) return null;
+  // No migrations needed yet — version 4 is the first version with this
+  // infrastructure. Add `if (version === N) { ...; version = N + 1; }` blocks
+  // here as the format evolves.
+  if (version !== SAVE_VERSION) return null;
+  return ser as unknown as SerializedState;
+}
 const AUTO_SAVE_KEY = "wizardry-clone-autosave";
 
 export interface SaveSlotMeta {
@@ -36,7 +54,7 @@ export interface SaveSlotMeta {
 }
 
 interface SerializedState {
-  version: 4;
+  version: number;
   mode: GameState["mode"];
   floorId: number;
   player: GameState["player"];
@@ -62,7 +80,7 @@ interface SerializedState {
 
 // --- Serialize / deserialize ----------------------------------------------
 
-function serialize(state: GameState): string {
+export function serialize(state: GameState): string {
   // Don't save combat state — reload returns to dungeon mode.
   // Save the current floor's explored tiles into exploredByFloor first.
   const exploredByFloor = { ...state.exploredByFloor };
@@ -84,7 +102,7 @@ function serialize(state: GameState): string {
   }
 
   const ser: SerializedState = {
-    version: 4,
+    version: SAVE_VERSION,
     mode: state.mode === "combat" ? "dungeon" : state.mode,
     floorId: state.floor.id,
     player: { ...state.player },
@@ -112,10 +130,17 @@ function serialize(state: GameState): string {
   return JSON.stringify(ser);
 }
 
-function deserialize(json: string): GameState | null {
+export function deserialize(json: string): GameState | null {
   try {
-    const ser = JSON.parse(json) as SerializedState;
-    if (ser.version !== 4) return null;
+    const raw = JSON.parse(json) as Record<string, unknown>;
+    const ser = migrate(raw);
+    if (!ser) {
+      console.warn(
+        `[save] Rejecting save: version ${raw.version} is incompatible ` +
+        `with current version ${SAVE_VERSION}.`
+      );
+      return null;
+    }
 
     const floorDef = FLOORS.find((f) => f.id === ser.floorId);
     if (!floorDef) return null;

@@ -32,6 +32,7 @@ import {
   renderCombat,
   updateAnimations,
   triggerAnimationsForMessage,
+  setAnim,
   type CombatScene,
 } from "./combat-renderer";
 
@@ -86,8 +87,10 @@ export class CombatController {
       selectionList: null,
       partyAnims: new Map(),
       enemyAnims: new Map(),
+      enemyGraveyard: [],
       effects: [],
       messageQueue: [],
+      eventQueue: [],
       currentMessage: null,
       messageStart: 0,
       messageAdvanceDelay: MESSAGE_AUTO_ADVANCE_MS,
@@ -150,9 +153,12 @@ export class CombatController {
   private startMessageReveal(): void {
     // Extract new log entries (those added since the last round).
     const newEntries = this.state.log.slice(this.prevLogLength);
+    // Extract the corresponding events (parallel array).
+    const newEvents = this.state.events.slice(this.prevLogLength);
     this.prevLogLength = this.state.log.length;
 
     this.scene.messageQueue = [...newEntries];
+    this.scene.eventQueue = [...newEvents];
     this.phase = "messageReveal";
     this.advanceMessage();
   }
@@ -165,11 +171,13 @@ export class CombatController {
 
     if (this.scene.messageQueue.length > 0) {
       const msg = this.scene.messageQueue.shift()!;
+      const evt = this.scene.eventQueue.shift() ?? null;
       this.scene.currentMessage = msg;
       this.scene.messageStart = now;
 
-      // Trigger sprite animations for this message.
-      triggerAnimationsForMessage(this.scene, msg, now, w, h);
+      // Trigger sprite animations for this message (using structured event
+      // if available, falling back to regex matching otherwise).
+      triggerAnimationsForMessage(this.scene, msg, now, w, h, evt);
     } else {
       // All messages revealed — proceed to next phase.
       this.scene.currentMessage = null;
@@ -456,6 +464,18 @@ export class CombatController {
   private resolveRound(): void {
     this.state = resolveCombatRound(this.state, this.actions);
     this.scene.state = this.state;
+
+    // Move enemies that died this round into the graveyard so the renderer
+    // can play the death (rotate + fade) animation. The "defeated" anim is
+    // pre-set here so it starts immediately, even though the "X is
+    // destroyed." log message will be revealed later in the queue.
+    const now = performance.now();
+    for (const enemy of this.state.justDied) {
+      this.scene.enemyGraveyard.push(enemy);
+      setAnim(this.scene.enemyAnims, enemy.instanceId, "defeated", now);
+    }
+    this.state.justDied = [];
+
     // Start sequential message reveal for the new log entries.
     this.startMessageReveal();
   }
