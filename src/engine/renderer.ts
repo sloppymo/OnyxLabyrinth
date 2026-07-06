@@ -82,6 +82,8 @@ interface TextureSet {
   floorA: HTMLCanvasElement | null;
   floorB: HTMLCanvasElement | null;
   ceiling: HTMLCanvasElement | null;
+  floorARepeated: HTMLCanvasElement | null;
+  floorBRepeated: HTMLCanvasElement | null;
 }
 
 let textureCache: TextureSet | null = null;
@@ -120,7 +122,7 @@ function brightenImage(img: HTMLImageElement, factor: number): HTMLCanvasElement
  * so the texture repeats across a wall face instead of being squashed.
  */
 function prepareRepeatedTexture(
-  img: HTMLImageElement,
+  img: HTMLImageElement | HTMLCanvasElement,
   repeatsX: number,
   repeatsY: number
 ): HTMLCanvasElement {
@@ -147,21 +149,31 @@ export function loadTextures(): Promise<TextureSet> {
     loadImage(floorBTextureUrl).catch(() => null),
     loadImage(ceilingTextureUrl).catch(() => null),
   ]).then(([wall, floorAImg, floorBImg, ceilingImg]) => {
+    const floorABright = floorAImg
+      ? brightenImage(floorAImg, RENDER_CONFIG.floorABrightnessFactor)
+      : null;
+    const floorBBright = floorBImg
+      ? brightenImage(floorBImg, RENDER_CONFIG.floorBBrightnessFactor)
+      : null;
+    const ceilingBright = ceilingImg
+      ? brightenImage(ceilingImg, RENDER_CONFIG.ceilingBrightnessFactor)
+      : null;
+
     textureCache = {
       wall,
-      floorA: floorAImg
-        ? brightenImage(floorAImg, RENDER_CONFIG.floorABrightnessFactor)
+      floorA: floorABright,
+      floorB: floorBBright,
+      ceiling: ceilingBright,
+      floorARepeated: floorABright
+        ? prepareRepeatedTexture(floorABright, 1, 1)
         : null,
-      floorB: floorBImg
-        ? brightenImage(floorBImg, RENDER_CONFIG.floorBBrightnessFactor)
-        : null,
-      ceiling: ceilingImg
-        ? brightenImage(ceilingImg, RENDER_CONFIG.ceilingBrightnessFactor)
+      floorBRepeated: floorBBright
+        ? prepareRepeatedTexture(floorBBright, 1, 1)
         : null,
     };
-    repeatedWallCanvas = textureCache.wall
+    repeatedWallCanvas = wall
       ? prepareRepeatedTexture(
-          textureCache.wall,
+          wall,
           RENDER_CONFIG.wallRepeatsX,
           RENDER_CONFIG.wallRepeatsY
         )
@@ -704,6 +716,49 @@ function floorTextureForGrid(
   return (gx + gy) % 2 === 0 ? textures.floorA : textures.floorB;
 }
 
+/**
+ * Perspective-correct floor casting. For each screen row below the horizon,
+ * compute the world-floor coordinates across the row and draw the matching
+ * checkerboard tile pixel by pixel. Uses the repeated floor canvases cached
+ * in `loadTextures` so each grid tile keeps a consistent 1×1 texture.
+ */
+function drawFloorCast(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  textures: TextureSet
+): void {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const dir = DIR_VECTORS[state.player.facing % 4];
+  const { planeX, planeY } = cameraPlaneForFacing(state.player.facing);
+
+  const startY = Math.floor(h / 2) + 1;
+  for (let y = startY; y < h; y++) {
+    const rowDistance = (h / 2) / (y - h / 2);
+    const floorStepX = rowDistance * ((planeX * 2) / w);
+    const floorStepY = rowDistance * ((planeY * 2) / w);
+    let floorX = state.player.x + 0.5 + rowDistance * (dir.x - planeX);
+    let floorY = state.player.y + 0.5 + rowDistance * (dir.y - planeY);
+
+    for (let x = 0; x < w; x++) {
+      const gx = Math.floor(floorX);
+      const gy = Math.floor(floorY);
+      const floorImg =
+        (gx + gy) % 2 === 0 ? textures.floorARepeated : textures.floorBRepeated;
+      if (floorImg) {
+        const texSize = floorImg.width;
+        const texX = Math.floor((floorX - gx) * texSize) % texSize;
+        const texY = Math.floor((floorY - gy) * texSize) % texSize;
+        ctx.globalAlpha = opacityForDepth(rowDistance);
+        ctx.drawImage(floorImg, texX, texY, 1, 1, x, y, 1, 1);
+        ctx.globalAlpha = 1.0;
+      }
+      floorX += floorStepX;
+      floorY += floorStepY;
+    }
+  }
+}
+
 function drawCeilingStrip(
   ctx: CanvasRenderingContext2D,
   near: DepthRect,
@@ -959,6 +1014,13 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
   ctx.restore();
 
+  const textures = textureCache;
+
+  // --- Floor casting (Task 5) ---
+  if (textures) {
+    drawFloorCast(ctx, state, textures);
+  }
+
   const grid = state.floor.grid;
   const { player } = state;
   let x = player.x;
@@ -972,7 +1034,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     ? RENDER_CONFIG.darknessDepth
     : RENDER_CONFIG.maxDepth;
 
-  const textures = textureCache;
   const ceilImg = textures ? textures.ceiling : null;
 
   // Walk forward and collect per-depth draw commands. We execute them
