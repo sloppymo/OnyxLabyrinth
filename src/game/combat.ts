@@ -147,6 +147,27 @@ export type PlayerAction =
     }
   | { kind: "flee"; actorId: string };
 
+/**
+ * Structured combat event emitted alongside log messages. The combat
+ * renderer uses these to trigger animations without parsing log strings.
+ * Each log() call that produces an animatable event also pushes a
+ * CombatEvent. Events are 1:1 with log entries (null if no event).
+ */
+export type CombatEvent =
+  | { type: "attack"; actorId: string; targetId: string; damage: number }
+  | { type: "miss"; actorId: string; targetId: string; reason: "evade" | "blind" | "noTarget" }
+  | { type: "cast"; actorId: string; spellId: string; targetId: string | null; damage?: number; heal?: number }
+  | { type: "spellEffect"; spellId: string; targetId: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean }
+  | { type: "defeated"; targetId: string; wasEnemy: boolean }
+  | { type: "revived"; targetId: string }
+  | { type: "defend"; actorId: string }
+  | { type: "statusTick"; targetId: string; damage: number; status: string }
+  | { type: "statusEnd"; targetId: string; status: string }
+  | { type: "flee"; success: boolean }
+  | { type: "silence"; actorId: string; targetId: string }
+  | { type: "fizzle"; actorId: string }
+  | null;
+
 /** Internal: an enemy's resolved intent for the round. */
 type EnemyAction =
   | {
@@ -190,6 +211,19 @@ export interface CombatState {
    * at combat start; decremented when consumables are used in combat.
    */
   inventory: Record<string, number>;
+  /**
+   * Enemies that died this round (removed from front/back arrays by
+   * deathCheck). The combat UI reads this to populate the renderer's
+   * graveyard so death animations can play after the enemy is gone
+   * from the living arrays. Cleared at the start of each round.
+   */
+  justDied: EnemyInstance[];
+  /**
+   * Structured events emitted alongside log messages this round. Each
+   * entry corresponds 1:1 with a log entry (null if the log message has
+   * no associated event). Cleared at the start of each round.
+   */
+  events: CombatEvent[];
 }
 
 // ---------------------------------------------------------------------------
@@ -231,6 +265,8 @@ export function createCombatState(
     loadout,
     inAntimagic,
     inventory: { ...inventory },
+    justDied: [],
+    events: [],
   };
 }
 
@@ -306,9 +342,17 @@ export function resolveCombatRound(
   s.log = [...state.log];
   s.silencedThisRound = [];
   s.defendBuff = {};
+  s.justDied = [];
+  s.events = [...state.events];
 
   const log = (msg: string): void => {
     s.log.push(msg);
+    s.events.push(null);
+  };
+  /** Log a message with an associated structured event for animations. */
+  const emit = (msg: string, event: CombatEvent): void => {
+    s.log.push(msg);
+    s.events.push(event);
   };
 
   // --- Phase 1: sanitize player actions -----------------------------------
@@ -343,12 +387,12 @@ export function resolveCombatRound(
   if (fleeAction) {
     const success = attemptFlee(s.isBoss, rng);
     if (success) {
-      log("The party flees from combat!");
+      emit("The party flees from combat!", { type: "flee", success: true });
       s.ended = true;
       s.result = "fled";
       return s;
     }
-    log("The party fails to flee!");
+    emit("The party fails to flee!", { type: "flee", success: false });
     for (let i = 0; i < sanitized.length; i++) {
       if (sanitized[i].kind === "flee") {
         sanitized[i] = { kind: "defend", actorId: sanitized[i].actorId };
@@ -366,17 +410,17 @@ export function resolveCombatRound(
   for (const entry of ordered) {
     if (s.ended) break;
     if (entry.kind === "player") {
-      resolvePlayerAction(s, entry.action, rng, log);
+      resolvePlayerAction(s, entry.action, rng, log, emit);
     } else {
-      resolveEnemyAction(s, entry.action, rng, log);
+      resolveEnemyAction(s, entry.action, rng, log, emit);
     }
-    deathCheck(s, log);
+    deathCheck(s, emit);
     if (checkTermination(s, log)) return s;
   }
 
   // --- Phase 5: end-of-round status ticks ---------------------------------
   tickStatuses(s, log);
-  deathCheck(s, log);
+  deathCheck(s, emit);
   if (checkTermination(s, log)) return s;
 
   // Per-round silence from flag-driven bosses (silenceRandom) ends now.
@@ -552,26 +596,27 @@ function resolvePlayerAction(
   s: CombatState,
   action: PlayerAction,
   rng: Rng,
-  log: (m: string) => void
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
 ): void {
   const actor = s.party.find((c) => c.id === action.actorId);
   if (!actor || actor.hp <= 0) return;
 
   switch (action.kind) {
     case "attack":
-      resolveAttack(s, actor, action.targetInstanceId, rng, log);
+      resolveAttack(s, actor, action.targetInstanceId, rng, log, emit);
       break;
     case "cast":
-      resolveCast(s, actor, action, rng, log);
+      resolveCast(s, actor, action, rng, log, emit);
       break;
     case "defend":
-      resolveDefend(s, actor, log);
+      resolveDefend(s, actor, emit);
       break;
     case "item":
       resolveItem(s, actor, action, log);
       break;
     case "flee":
-      resolveDefend(s, actor, log);
+      resolveDefend(s, actor, emit);
       break;
   }
 }
@@ -581,11 +626,15 @@ function resolveAttack(
   actor: Character,
   targetInstanceId: string,
   rng: Rng,
-  log: (m: string) => void
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
 ): void {
   const target = findEnemy(s, targetInstanceId);
   if (!target) {
-    log(`${actor.name} attacks but finds no target.`);
+    emit(
+      `${actor.name} attacks but finds no target.`,
+      { type: "miss", actorId: actor.id, targetId: "", reason: "noTarget" }
+    );
     return;
   }
 
@@ -608,7 +657,10 @@ function resolveAttack(
   // Evasive enemies have a dodge chance.
   if (target.special.some((sp) => sp.kind === "evasive")) {
     if (rng() < 0.2) {
-      log(`${target.name} evades ${actor.name}'s attack!`);
+      emit(
+        `${target.name} evades ${actor.name}'s attack!`,
+        { type: "miss", actorId: actor.id, targetId: target.instanceId, reason: "evade" }
+      );
       return;
     }
   }
@@ -616,7 +668,10 @@ function resolveAttack(
   // Flying enemies are hard to reach with melee (15% melee miss unless ranged).
   if (target.special.some((sp) => sp.kind === "flying") && !isRanged) {
     if (rng() < 0.15) {
-      log(`${target.name} flits away from ${actor.name}'s swing!`);
+      emit(
+        `${target.name} flits away from ${actor.name}'s swing!`,
+        { type: "miss", actorId: actor.id, targetId: target.instanceId, reason: "evade" }
+      );
       return;
     }
   }
@@ -624,7 +679,10 @@ function resolveAttack(
   // Blind: 50% hit rate (Section 7.5).
   if (actor.status.includes("blind")) {
     if (rng() >= 0.5) {
-      log(`${actor.name} is blind and misses ${target.name}.`);
+      emit(
+        `${actor.name} is blind and misses ${target.name}.`,
+        { type: "miss", actorId: actor.id, targetId: target.instanceId, reason: "blind" }
+      );
       return;
     }
   }
@@ -662,7 +720,10 @@ function resolveAttack(
   }
 
   target.currentHp -= damage;
-  log(`${actor.name} attacks ${target.name} for ${damage} damage.`);
+  emit(
+    `${actor.name} attacks ${target.name} for ${damage} damage.`,
+    { type: "attack", actorId: actor.id, targetId: target.instanceId, damage }
+  );
   wakeOnDamage(target, log);
 }
 
@@ -671,14 +732,18 @@ function resolveCast(
   actor: Character,
   action: Extract<PlayerAction, { kind: "cast" }>,
   rng: Rng,
-  log: (m: string) => void
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
 ): void {
   if (s.silencedThisRound.includes(actor.id)) {
     log(`${actor.name} is silenced and cannot cast.`);
     return;
   }
   if (s.inAntimagic) {
-    log(`${actor.name}'s spell fizzles — this is an anti-magic zone.`);
+    emit(
+      `${actor.name}'s spell fizzles — this is an anti-magic zone.`,
+      { type: "fizzle", actorId: actor.id }
+    );
     return;
   }
   const spell = s.spells[action.spellId];
@@ -695,13 +760,24 @@ function resolveCast(
     return;
   }
   actor.sp -= spell.spCost;
-  log(`${actor.name} casts ${spell.name}.`);
-  applySpell(s, actor, spell, action, rng, log);
+  // Determine target id for the cast event (may be null for group spells).
+  let targetId: string | null = null;
+  if (action.targetInstanceId) targetId = action.targetInstanceId;
+  else if (action.targetAllyId) targetId = action.targetAllyId;
+  emit(
+    `${actor.name} casts ${spell.name}.`,
+    { type: "cast", actorId: actor.id, spellId: spell.id, targetId }
+  );
+  applySpell(s, actor, spell, action, rng, log, emit);
 }
 
-function resolveDefend(s: CombatState, actor: Character, log: (m: string) => void): void {
+function resolveDefend(
+  s: CombatState,
+  actor: Character,
+  emit: (m: string, e: CombatEvent) => void
+): void {
   s.defendBuff[actor.id] = 0.5;
-  log(`${actor.name} defends.`);
+  emit(`${actor.name} defends.`, { type: "defend", actorId: actor.id });
 }
 
 function resolveItem(
@@ -772,7 +848,8 @@ function applySpell(
   spell: SpellDef,
   action: Extract<PlayerAction, { kind: "cast" }>,
   rng: Rng,
-  log: (m: string) => void
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
 ): void {
   const eff = spell.effect;
   switch (eff.kind) {
@@ -786,7 +863,10 @@ function applySpell(
         // Enemy AC reduces spell damage too (less than physical — half AC).
         const reduced = Math.max(1, dmg - Math.floor(t.ac / 2));
         t.currentHp -= reduced;
-        log(`${spell.name} hits ${t.name} for ${reduced} damage.`);
+        emit(
+          `${spell.name} hits ${t.name} for ${reduced} damage.`,
+          { type: "spellEffect", spellId: spell.id, targetId: t.instanceId, damage: reduced }
+        );
         wakeOnDamage(t, log);
       }
       break;
@@ -795,10 +875,13 @@ function applySpell(
       for (const t of allyTargets(s, spell, action, caster)) {
         const before = t.hp;
         t.hp = Math.min(t.maxHp, t.hp + eff.power);
-        log(`${spell.name} heals ${t.name} for ${t.hp - before} HP.`);
+        emit(
+          `${spell.name} heals ${t.name} for ${t.hp - before} HP.`,
+          { type: "spellEffect", spellId: spell.id, targetId: t.id, heal: t.hp - before }
+        );
         if (t.status.includes("knockedOut") && t.hp > 0) {
           t.status = t.status.filter((st) => st !== "knockedOut");
-          log(`${t.name} is revived!`);
+          emit(`${t.name} is revived!`, { type: "revived", targetId: t.id });
         }
       }
       break;
@@ -806,14 +889,20 @@ function applySpell(
     case "disable": {
       for (const t of spellTargets(s, spell, action)) {
         addStatus(t, eff.status);
-        log(`${t.name} is afflicted with ${eff.status}.`);
+        emit(
+          `${t.name} is afflicted with ${eff.status}.`,
+          { type: "spellEffect", spellId: spell.id, targetId: t.instanceId, statusInflicted: eff.status }
+        );
       }
       break;
     }
     case "cure": {
       for (const t of allyTargets(s, spell, action, caster)) {
         t.status = t.status.filter((st) => st !== eff.status);
-        log(`${spell.name} cures ${t.name} of ${eff.status}.`);
+        emit(
+          `${spell.name} cures ${t.name} of ${eff.status}.`,
+          { type: "spellEffect", spellId: spell.id, targetId: t.id, statusCured: eff.status }
+        );
       }
       break;
     }
@@ -823,7 +912,10 @@ function applySpell(
       const amount = 3;
       for (const t of allyTargets(s, spell, action, caster)) {
         s.armorBuffs[t.id] = (s.armorBuffs[t.id] ?? 0) + amount;
-        log(`${spell.name} bolsters ${t.name}'s armor by ${amount}.`);
+        emit(
+          `${spell.name} bolsters ${t.name}'s armor by ${amount}.`,
+          { type: "spellEffect", spellId: spell.id, targetId: t.id, isBuff: true }
+        );
       }
       break;
     }
@@ -832,7 +924,10 @@ function applySpell(
         if (!t.status.includes("knockedOut")) continue;
         t.hp = 1;
         t.status = t.status.filter((st) => st !== "knockedOut");
-        log(`${spell.name} resurrects ${t.name} with ${t.hp} HP!`);
+        emit(
+          `${spell.name} resurrects ${t.name} with ${t.hp} HP!`,
+          { type: "revived", targetId: t.id }
+        );
       }
       break;
     }
@@ -900,7 +995,8 @@ function resolveEnemyAction(
   s: CombatState,
   action: EnemyAction,
   rng: Rng,
-  log: (m: string) => void
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
 ): void {
   if (action.kind === "doNothing" || action.kind === "silence") return;
   if (action.actor.currentHp <= 0) return;
@@ -914,7 +1010,10 @@ function resolveEnemyAction(
     if (partyTarget) {
       if (partyTarget.hp <= 0) return;
       if (actor.status.includes("blind") && rng() >= 0.5) {
-        log(`${actor.name} is blind and the spell misses.`);
+        emit(
+          `${actor.name} is blind and the spell misses.`,
+          { type: "miss", actorId: actor.instanceId, targetId: partyTarget.id, reason: "blind" }
+        );
         return;
       }
       const base = actor.attack;
@@ -926,7 +1025,10 @@ function resolveEnemyAction(
       const defendPct = s.defendBuff[partyTarget.id] ?? 0;
       if (defendPct > 0) damage = Math.max(1, Math.round(damage * (1 - defendPct)));
       partyTarget.hp -= damage;
-      log(`${actor.name} casts ${spellId} at ${partyTarget.name} for ${damage} damage.`);
+      emit(
+        `${actor.name} casts ${spellId} at ${partyTarget.name} for ${damage} damage.`,
+        { type: "cast", actorId: actor.instanceId, spellId, targetId: partyTarget.id, damage }
+      );
       return;
     }
     // Healing cast on an enemy ally.
@@ -936,7 +1038,10 @@ function resolveEnemyAction(
     if (ally && ally.currentHp > 0) {
       const before = ally.currentHp;
       ally.currentHp = Math.min(ally.hp, ally.currentHp + 8);
-      log(`${actor.name} casts ${spellId}, healing ${ally.name} for ${ally.currentHp - before} HP.`);
+      emit(
+        `${actor.name} casts ${spellId}, healing ${ally.name} for ${ally.currentHp - before} HP.`,
+        { type: "cast", actorId: actor.instanceId, spellId, targetId: ally.instanceId, heal: ally.currentHp - before }
+      );
     }
     return;
   }
@@ -947,7 +1052,10 @@ function resolveEnemyAction(
 
   if (actor.status.includes("blind")) {
     if (rng() >= 0.5) {
-      log(`${actor.name} is blind and misses ${target.name}.`);
+      emit(
+        `${actor.name} is blind and misses ${target.name}.`,
+        { type: "miss", actorId: actor.instanceId, targetId: target.id, reason: "blind" }
+      );
       return;
     }
   }
@@ -956,7 +1064,10 @@ function resolveEnemyAction(
   let damage = Math.max(1, Math.round(base * variance));
   damage = damageReductionFor(s, target, damage);
   target.hp -= damage;
-  log(`${actor.name} hits ${target.name} for ${damage} damage.`);
+  emit(
+    `${actor.name} hits ${target.name} for ${damage} damage.`,
+    { type: "attack", actorId: actor.instanceId, targetId: target.id, damage }
+  );
   // Poison on hit (Cobweb, Acid Puddle).
   if (actor.special.some((sp) => sp.kind === "poisonOnHit")) {
     if (!target.status.includes("poison")) {
@@ -1009,7 +1120,10 @@ function attemptFlee(isBoss: boolean, rng: Rng): boolean {
 // Death check + termination
 // ---------------------------------------------------------------------------
 
-function deathCheck(s: CombatState, log: (m: string) => void): void {
+function deathCheck(
+  s: CombatState,
+  emit: (m: string, e: CombatEvent) => void
+): void {
   // Party members at 0 HP become knockedOut (revivable; no permanent death).
   for (const c of s.party) {
     if (c.hp <= 0 && !c.status.includes("knockedOut")) {
@@ -1018,23 +1132,25 @@ function deathCheck(s: CombatState, log: (m: string) => void): void {
       // Knocked out is the worst state: clear active combat statuses.
       c.status = c.status.filter((st) => st === "knockedOut");
       delete s.paralysisTimers[c.id];
-      log(`${c.name} is knocked out!`);
+      emit(`${c.name} is knocked out!`, { type: "defeated", targetId: c.id, wasEnemy: false });
     }
   }
   s.enemies.front = s.enemies.front.filter((e) => {
     if (e.currentHp <= 0) {
-      log(`${e.name} is destroyed.`);
+      emit(`${e.name} is destroyed.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
       s.goldEarned += e.gold || 0;
       s.xpEarned += e.xp || 0;
+      s.justDied.push({ ...e, status: [...e.status] });
       return false;
     }
     return true;
   });
   s.enemies.back = s.enemies.back.filter((e) => {
     if (e.currentHp <= 0) {
-      log(`${e.name} is destroyed.`);
+      emit(`${e.name} is destroyed.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
       s.goldEarned += e.gold || 0;
       s.xpEarned += e.xp || 0;
+      s.justDied.push({ ...e, status: [...e.status] });
       return false;
     }
     return true;

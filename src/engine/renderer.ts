@@ -151,6 +151,14 @@ interface TextureSet {
 let textureCache: TextureSet | null = null;
 let repeatedWallCanvas: HTMLCanvasElement | null = null;
 
+// Reusable per-frame buffers (avoid allocation in the hot render loop).
+let hitsBuffer: (RayHit | null)[] = [];
+let seenFeatureCellsBuffer = new Set<string>();
+let lastVignetteW = 0;
+let lastVignetteH = 0;
+let cachedVignetteGradient: CanvasGradient | null = null;
+let cachedDarknessVignetteGradient: CanvasGradient | null = null;
+
 // --- Smooth movement interpolation state -------------------------------------
 // The render camera lerps from the previous grid position to the new one
 // over a short duration, producing smooth first-person motion instead of
@@ -663,13 +671,11 @@ function drawFloorCeilingCast(
 
   // Pre-fill the entire buffer with bg color (faster than fillRect + putImageData
   // for the horizon band, and handles the maxDist skip rows automatically).
-  const bgR = parseInt(PALETTE.bg.slice(1, 3), 16);
-  const bgG = parseInt(PALETTE.bg.slice(3, 5), 16);
-  const bgB = parseInt(PALETTE.bg.slice(5, 7), 16);
+  // Uses the module-level BG_R/BG_G/BG_B constants parsed from PALETTE.bg.
   for (let i = 0; i < data.length; i += 4) {
-    data[i] = bgR;
-    data[i + 1] = bgG;
-    data[i + 2] = bgB;
+    data[i] = BG_R;
+    data[i + 1] = BG_G;
+    data[i + 2] = BG_B;
     data[i + 3] = 255;
   }
 
@@ -777,8 +783,16 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const repeatedWall = repeatedWallCanvas;
 
   const stripWidth = RENDER_CONFIG.raycastStripWidth;
-  const hits: (RayHit | null)[] = new Array(Math.ceil(w / stripWidth)).fill(null);
-  const seenFeatureCells = new Set<string>();
+  const hitCount = Math.ceil(w / stripWidth);
+  // Reuse the hits buffer across frames; only reallocate if the canvas grew.
+  if (hitsBuffer.length < hitCount) {
+    hitsBuffer = new Array(hitCount).fill(null);
+  } else {
+    hitsBuffer.fill(null, 0, hitCount);
+  }
+  const hits = hitsBuffer;
+  seenFeatureCellsBuffer.clear();
+  const seenFeatureCells = seenFeatureCellsBuffer;
 
   ctx.save();
   for (let i = 0; i < hits.length; i++) {
@@ -926,20 +940,37 @@ function drawVignette(
   h: number,
   strength: number = 1.0
 ): void {
-  const cx = w / 2;
-  const cy = h / 2;
-  const radius = Math.max(w, h) / 2;
-  const grad = ctx.createRadialGradient(
-    cx,
-    cy,
-    radius * 0.25,
-    cx,
-    cy,
-    radius
-  );
-  grad.addColorStop(0, "rgba(0,0,0,0)");
-  grad.addColorStop(0.55, `rgba(0,0,0,${0.28 * strength})`);
-  grad.addColorStop(1, `rgba(0,0,0,${0.65 * strength})`);
+  // Cache gradients per canvas size to avoid createRadialGradient every frame.
+  const isNormal = strength === 1.0;
+  const isDarkness = strength === 1.35;
+  if (w !== lastVignetteW || h !== lastVignetteH) {
+    cachedVignetteGradient = null;
+    cachedDarknessVignetteGradient = null;
+    lastVignetteW = w;
+    lastVignetteH = h;
+  }
+  let grad: CanvasGradient | null = null;
+  if (isNormal) grad = cachedVignetteGradient;
+  else if (isDarkness) grad = cachedDarknessVignetteGradient;
+
+  if (!grad) {
+    const cx = w / 2;
+    const cy = h / 2;
+    const radius = Math.max(w, h) / 2;
+    grad = ctx.createRadialGradient(
+      cx,
+      cy,
+      radius * 0.25,
+      cx,
+      cy,
+      radius
+    );
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(0.55, `rgba(0,0,0,${0.28 * strength})`);
+    grad.addColorStop(1, `rgba(0,0,0,${0.65 * strength})`);
+    if (isNormal) cachedVignetteGradient = grad;
+    else if (isDarkness) cachedDarknessVignetteGradient = grad;
+  }
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
   ctx.fillStyle = grad;

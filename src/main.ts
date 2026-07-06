@@ -512,6 +512,7 @@ function loop() {
       audio.startDungeon();
     } else if (prevMode === "dungeon") {
       audio.stopDungeon();
+      clearPartyStrip();
     }
     prevMode = state.mode;
   }
@@ -522,8 +523,6 @@ function loop() {
     if (mapVisible) {
       renderAutoMap(mapCtx, state);
     }
-  } else {
-    clearPartyStrip();
   }
   requestAnimationFrame(loop);
 }
