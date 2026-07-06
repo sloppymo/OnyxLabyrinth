@@ -345,6 +345,23 @@ function drawFloorFeature(
   drawFeatureGlyph(ctx, cx, cy, feature, color, 16);
 }
 
+/** Draw a tile feature glyph at the bottom-center of a raycast wall strip. */
+function drawDepthFeature(
+  ctx: CanvasRenderingContext2D,
+  hit: RayHit,
+  screenX: number,
+  stripWidth: number,
+  feature: TileFeature,
+  inDarkness: boolean
+): void {
+  const h = ctx.canvas.height;
+  const lineHeight = Math.floor(h / hit.perpWallDist);
+  const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
+  const cy = drawEnd + Math.max(4, lineHeight / 8);
+  const size = Math.max(6, Math.min(24, lineHeight / 4));
+  drawFeatureGlyph(ctx, screenX + stripWidth / 2, cy, feature, inDarkness ? PALETTE.featureDark : PALETTE.feature, size);
+}
+
 /** Draw a feature glyph (text icon) at the given position. */
 function drawFeatureGlyph(
   ctx: CanvasRenderingContext2D,
@@ -644,6 +661,18 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (textures) {
     drawCeilingCast(ctx, state, textures);
     drawFloorCast(ctx, state, textures);
+  }
+
+  // Draw tile features on visible hit cells (excluding the player's current tile,
+  // which is drawn at depth 0 below).
+  for (let i = 0; i < hits.length; i++) {
+    const hit = hits[i];
+    if (!hit) continue;
+    if (hit.mapX === state.player.x && hit.mapY === state.player.y) continue;
+    const cell = state.floor.grid[hit.mapY]?.[hit.mapX];
+    if (cell?.tile) {
+      drawDepthFeature(ctx, hit, i * stripWidth, stripWidth, cell.tile, state.inDarkness);
+    }
   }
 
   // Draw tile feature at the player's feet (depth 0).
