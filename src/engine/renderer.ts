@@ -42,12 +42,20 @@ const RENDER_CONFIG = {
   darknessDepth: 1,
   projectionScale: 0.62,
   heightFlatten: 0.85,
-  fogFalloff: 0.42,
+  // Fog falloff per grid unit. 0.42 was too aggressive — at distance 2 walls
+  // dropped to 17% brightness, crushing all mid-range detail. 0.70 keeps
+  // distant walls readable while still providing a clear depth gradient.
+  fogFalloff: 0.70,
+  // Mid-tone lift applied to the fog curve. After computing the exponential
+  // falloff, blend toward 1.0 by this fraction so mid-distance surfaces stay
+  // visible instead of dropping into the noise floor. 0 = pure exponential,
+  // 1 = no falloff at all.
+  fogMidtoneLift: 0.25,
   baseOpacity: 1.0,
   fillOpacityMultiplier: 0.45,
   glowBlurNear: 7,
   glowBlurFar: 2,
-  scanlineOpacity: 0.12,
+  scanlineOpacity: 0.10,
   scanlineSpacing: 3,
   // Floor/ceiling are darker base textures than the wall; brighten them and use
   // a darkening overlay so the pixel-art detail remains visible while still
@@ -59,15 +67,47 @@ const RENDER_CONFIG = {
   floorABrightnessFactor: 4.0,
   floorBBrightnessFactor: 2.8,
   ceilingBrightnessFactor: 10.0,
+  // Wall texture brightness/contrast. The source wall tile has good range
+  // (max ~200) but average luminance is only ~65, so a mild brighten + contrast
+  // stretch pushes the mid-tones up to match the brightened floor/ceiling.
+  wallBrightnessFactor: 1.5,
+  // Contrast stretch applied to all textures after brightness adjustment.
+  // Values >1 push pixels away from the midpoint (128), expanding dynamic range.
+  wallContrastFactor: 1.25,
+  floorAContrastFactor: 1.15,
+  floorBContrastFactor: 1.15,
+  ceilingContrastFactor: 1.15,
   // Raycast renderer tunables.
   raycastFov: Math.PI / 3,          // 60 degrees
   raycastStripWidth: 1,             // one ray per screen column
   wallRepeatsX: 1,                  // horizontal repeats per wall face
-  wallRepeatsY: 3,                  // vertical repeats per wall face
+  // Walls are one grid cell tall; the per-ray height scaling below already
+  // handles perspective (nearer walls draw taller). Baking multiple vertical
+  // copies here and stretching that whole strip into one wall's screen
+  // height just squashes/stretches the tile count incorrectly with distance.
+  // If stacked tiles are wanted on tall walls, sample texY per screen row
+  // instead of pre-baking a repeated strip.
+  wallRepeatsY: 1,
   floorRepeats: 1,                  // texture repeats per floor grid tile
   ceilingRepeats: 1,                // texture repeats per ceiling grid tile
   darknessMaxDist: 1.5,
 } as const;
+
+/**
+ * Screen-space wall strip height for a given perpendicular distance.
+ * Applies `projectionScale`/`heightFlatten` so walls occupy a narrower
+ * vertical band, leaving more floor/ceiling visible (matches the reference
+ * proportions). All three draw passes that need a wall's screen height
+ * (feature glyphs, the wall strip itself, the edge-glow overlay) must use
+ * this instead of recomputing independently so they stay in sync.
+ */
+function computeLineHeight(h: number, perpWallDist: number): number {
+  return Math.floor(
+    (h / perpWallDist) *
+      RENDER_CONFIG.projectionScale *
+      RENDER_CONFIG.heightFlatten
+  );
+}
 
 /** Raycast hit data for a single ray. */
 interface RayHit {
@@ -104,7 +144,17 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-function brightenImage(img: HTMLImageElement, factor: number): HTMLCanvasElement {
+/**
+ * Apply brightness and contrast adjustment to a texture. Brightness is applied
+ * first (multiplicative), then contrast pushes pixels away from the midpoint
+ * (128) to expand dynamic range. This keeps pixel-art detail crisp instead of
+ * washing out when brightened.
+ */
+function adjustTextureImage(
+  img: HTMLImageElement,
+  brightnessFactor: number,
+  contrastFactor: number
+): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = img.width;
   c.height = img.height;
@@ -114,9 +164,13 @@ function brightenImage(img: HTMLImageElement, factor: number): HTMLCanvasElement
   const imgData = ctx.getImageData(0, 0, c.width, c.height);
   const data = imgData.data;
   for (let i = 0; i < data.length; i += 4) {
-    data[i] = Math.min(255, data[i] * factor);
-    data[i + 1] = Math.min(255, data[i + 1] * factor);
-    data[i + 2] = Math.min(255, data[i + 2] * factor);
+    for (let j = 0; j < 3; j++) {
+      // Brightness (multiplicative, clamped before contrast).
+      let v = Math.min(255, data[i + j] * brightnessFactor);
+      // Contrast: push away from 128.
+      v = (v - 128) * contrastFactor + 128;
+      data[i + j] = Math.max(0, Math.min(255, v));
+    }
   }
   ctx.putImageData(imgData, 0, 0);
   return c;
@@ -155,14 +209,36 @@ export function loadTextures(): Promise<TextureSet> {
     loadImage(floorBTextureUrl).catch(() => null),
     loadImage(ceilingTextureUrl).catch(() => null),
   ]).then(([wall, floorAImg, floorBImg, ceilingImg]) => {
+    // Brighten + contrast-stretch each texture. The wall tile has good source
+    // range but low average luminance, so it gets a mild brighten + contrast.
+    // Floor/ceiling are very dark source textures and need stronger brightening.
+    const wallAdjusted = wall
+      ? adjustTextureImage(
+          wall,
+          RENDER_CONFIG.wallBrightnessFactor,
+          RENDER_CONFIG.wallContrastFactor
+        )
+      : null;
     const floorABright = floorAImg
-      ? brightenImage(floorAImg, RENDER_CONFIG.floorABrightnessFactor)
+      ? adjustTextureImage(
+          floorAImg,
+          RENDER_CONFIG.floorABrightnessFactor,
+          RENDER_CONFIG.floorAContrastFactor
+        )
       : null;
     const floorBBright = floorBImg
-      ? brightenImage(floorBImg, RENDER_CONFIG.floorBBrightnessFactor)
+      ? adjustTextureImage(
+          floorBImg,
+          RENDER_CONFIG.floorBBrightnessFactor,
+          RENDER_CONFIG.floorBContrastFactor
+        )
       : null;
     const ceilingBright = ceilingImg
-      ? brightenImage(ceilingImg, RENDER_CONFIG.ceilingBrightnessFactor)
+      ? adjustTextureImage(
+          ceilingImg,
+          RENDER_CONFIG.ceilingBrightnessFactor,
+          RENDER_CONFIG.ceilingContrastFactor
+        )
       : null;
 
     const floorARepeated = floorABright
@@ -199,9 +275,9 @@ export function loadTextures(): Promise<TextureSet> {
             .getImageData(0, 0, ceilingRepeated.width, ceilingRepeated.height)
         : null,
     };
-    repeatedWallCanvas = wall
+    repeatedWallCanvas = wallAdjusted
       ? prepareRepeatedTexture(
-          wall,
+          wallAdjusted,
           RENDER_CONFIG.wallRepeatsX,
           RENDER_CONFIG.wallRepeatsY
         )
@@ -210,8 +286,16 @@ export function loadTextures(): Promise<TextureSet> {
   });
 }
 
+/**
+ * Fog/depth opacity. Uses an exponential falloff blended toward 1.0 by
+ * `fogMidtoneLift` so mid-distance surfaces stay visible instead of dropping
+ * into the noise floor. At distance 0 the result is always 1.0 (no fog on the
+ * player's own cell); the lift only affects distance > 0.
+ */
 function opacityForDepth(d: number): number {
-  return RENDER_CONFIG.baseOpacity * Math.pow(RENDER_CONFIG.fogFalloff, d);
+  const exponential = RENDER_CONFIG.baseOpacity * Math.pow(RENDER_CONFIG.fogFalloff, d);
+  const lift = RENDER_CONFIG.fogMidtoneLift;
+  return exponential + (1 - exponential) * lift * (1 - Math.exp(-d));
 }
 
 function rgba(
@@ -359,7 +443,7 @@ function drawDepthFeature(
 ): void {
   ctx.save();
   const h = ctx.canvas.height;
-  const lineHeight = Math.floor(h / hit.perpWallDist);
+  const lineHeight = computeLineHeight(h, hit.perpWallDist);
   const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
   const cy = drawEnd + Math.max(4, lineHeight / 8);
   const size = Math.max(6, Math.min(24, lineHeight / 4));
@@ -537,6 +621,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
 
+  // Disable bilinear smoothing on the main context so wall strips drawn via
+  // drawImage stay crisp pixel-art instead of blurring/softening. Smoothing
+  // is a persistent context property, so setting it once here (rather than
+  // per drawImage call) is sufficient.
+  ctx.imageSmoothingEnabled = false;
+
   // Background
   ctx.fillStyle = PALETTE.bg;
   ctx.fillRect(0, 0, w, h);
@@ -573,7 +663,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     hits[i] = hit;
     if (!hit) continue;
 
-    const lineHeight = Math.floor(h / hit.perpWallDist);
+    const lineHeight = computeLineHeight(h, hit.perpWallDist);
     const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2));
     const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
 
@@ -663,7 +753,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     if (!hit) continue;
 
     const x = i * stripWidth;
-    const lineHeight = Math.floor(h / hit.perpWallDist);
+    const lineHeight = computeLineHeight(h, hit.perpWallDist);
     const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2));
     const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
 
@@ -720,8 +810,8 @@ function drawVignette(
     radius
   );
   grad.addColorStop(0, "rgba(0,0,0,0)");
-  grad.addColorStop(0.55, `rgba(0,0,0,${0.35 * strength})`);
-  grad.addColorStop(1, `rgba(0,0,0,${0.75 * strength})`);
+  grad.addColorStop(0.55, `rgba(0,0,0,${0.28 * strength})`);
+  grad.addColorStop(1, `rgba(0,0,0,${0.65 * strength})`);
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
   ctx.fillStyle = grad;
