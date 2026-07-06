@@ -849,16 +849,18 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const repeatedWall = repeatedWallCanvas;
   const texWidth = wallImg ? wallImg.width : 1;
 
-  const hits: (RayHit | null)[] = new Array(w).fill(null);
+  const stripWidth = RENDER_CONFIG.raycastStripWidth;
+  const hits: (RayHit | null)[] = new Array(Math.ceil(w / stripWidth)).fill(null);
 
   ctx.save();
-  for (let x = 0; x < w; x += RENDER_CONFIG.raycastStripWidth) {
+  for (let i = 0; i < hits.length; i++) {
+    const x = i * stripWidth;
     const cameraX = (2 * x) / w - 1;
     const rayDirX = dir.x + planeX * cameraX;
     const rayDirY = dir.y + planeY * cameraX;
 
     const hit = castRay(state, rayDirX, rayDirY, maxDist);
-    hits[x] = hit;
+    hits[i] = hit;
     if (!hit) continue;
 
     const lineHeight = Math.floor(h / hit.perpWallDist);
@@ -885,7 +887,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         repeatedWall.height,
         x,
         drawStart,
-        RENDER_CONFIG.raycastStripWidth,
+        stripWidth,
         drawEnd - drawStart + 1
       );
       ctx.globalAlpha = 1.0;
@@ -897,7 +899,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.fillRect(
         x,
         drawStart,
-        RENDER_CONFIG.raycastStripWidth,
+        stripWidth,
         drawEnd - drawStart + 1
       );
     }
@@ -906,7 +908,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       ctx.fillStyle = PALETTE.doorMarker;
       ctx.globalAlpha = fog;
       ctx.fillRect(
-        x + RENDER_CONFIG.raycastStripWidth / 2 - 1,
+        x + stripWidth / 2 - 1,
         drawStart,
         2,
         drawEnd - drawStart + 1
@@ -915,7 +917,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     } else if (hit.edge === "locked") {
       ctx.strokeStyle = PALETTE.lockedMarker;
       ctx.lineWidth = 1;
-      const cx = x + RENDER_CONFIG.raycastStripWidth / 2;
+      const cx = x + stripWidth / 2;
       const cy = (drawStart + drawEnd) / 2;
       const markerSize = Math.max(2, lineHeight / 8);
       ctx.globalAlpha = fog;
@@ -930,7 +932,32 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
   ctx.restore();
 
-  void hits; // cached for Task 4 glow pass
+  // --- Amber edge-glow pass (Task 4) ---
+  ctx.save();
+  for (let i = 0; i < hits.length; i++) {
+    const hit = hits[i];
+    if (!hit) continue;
+
+    const x = i * stripWidth;
+    const lineHeight = Math.floor(h / hit.perpWallDist);
+    const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2));
+    const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
+
+    // Draw the glow on the edge of the strip that faces the camera:
+    // x-step hits (E/W-facing walls) use the left edge; y-step hits
+    // (N/S-facing walls) use the right edge.
+    const gx = hit.side === "x" ? x : x + stripWidth;
+
+    ctx.strokeStyle = strokeColorForDepth(hit.perpWallDist);
+    ctx.lineWidth = 1;
+    ctx.shadowColor = PALETTE.amber;
+    ctx.shadowBlur = glowBlurForDepth(hit.perpWallDist);
+    ctx.beginPath();
+    ctx.moveTo(gx, drawStart);
+    ctx.lineTo(gx, drawEnd);
+    ctx.stroke();
+  }
+  ctx.restore();
 
   const grid = state.floor.grid;
   const { player } = state;
