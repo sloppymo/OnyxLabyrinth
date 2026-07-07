@@ -11,12 +11,14 @@
 
 import type { Character } from "../game/party";
 import type { GameMode } from "../types";
+import { cappedRenderSize } from "./render-math";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
 app.innerHTML = `
   <div id="game-wrap">
     <div id="viewport-wrap">
+      <div id="flash-overlay"></div>
       <div id="message"></div>
       <canvas id="view" width="768" height="672"></canvas>
       <canvas id="map-canvas" width="768" height="672" style="display:none"></canvas>
@@ -34,19 +36,28 @@ export const ctx = canvas.getContext("2d")!;
 const mapCanvas = document.querySelector<HTMLCanvasElement>("#map-canvas")!;
 export const mapCtx = mapCanvas.getContext("2d")!;
 const messageEl = document.querySelector<HTMLDivElement>("#message")!;
+const flashOverlayEl = document.querySelector<HTMLDivElement>("#flash-overlay")!;
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
 const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
 export const combatCanvas = document.querySelector<HTMLCanvasElement>("#combat-canvas")!;
 export const combatCtx = combatCanvas.getContext("2d")!;
 const compassEl = document.querySelector<HTMLSpanElement>("#compass")!;
 
-// Keep the corridor canvas bitmap resolution locked to the CSS container size
-// so the view always fills the frame and isn't accidentally scaled to a
-// smaller intrinsic size.
+// Maximum intrinsic render resolution for the corridor and map canvases.
+// CSS scales the canvas to fill the container, so on large/high-DPI displays
+// we render at a fixed art size instead of allocating a multi-megapixel
+// buffer every frame. Pixelated upscaling preserves the retro look.
+const MAX_RENDER_WIDTH = 768;
+const MAX_RENDER_HEIGHT = 672;
+
 export function resizeCorridorCanvas() {
   const rect = viewportWrap.getBoundingClientRect();
-  const width = Math.max(1, Math.round(rect.width));
-  const height = Math.max(1, Math.round(rect.height));
+  const { width, height } = cappedRenderSize(
+    rect.width,
+    rect.height,
+    MAX_RENDER_WIDTH,
+    MAX_RENDER_HEIGHT
+  );
   if (canvas.width !== width || canvas.height !== height) {
     canvas.width = width;
     canvas.height = height;
@@ -69,6 +80,23 @@ resizeCorridorCanvas();
 new ResizeObserver(resizeCorridorCanvas).observe(viewportWrap);
 
 let messageTimeout: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Trigger a brief combat-encounter flash over the viewport. The flash is a
+ * pseudo-element animation (defined in styles.css) so it does not block the
+ * mode transition or require JS-driven frame loops.
+ */
+export function flashEncounter(): void {
+  if (!flashOverlayEl) return;
+  flashOverlayEl.classList.remove("flash-active");
+  // Force a reflow so removing + re-adding retriggers the animation even if
+  // called again while a previous flash is still running.
+  void flashOverlayEl.offsetWidth;
+  flashOverlayEl.classList.add("flash-active");
+  window.setTimeout(() => {
+    flashOverlayEl.classList.remove("flash-active");
+  }, 350);
+}
 
 /** Show or update the message overlay. Empty text hides the overlay via CSS.
  *  Non-empty messages auto-dismiss after a few seconds so the viewport isn't

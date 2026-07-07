@@ -4,7 +4,12 @@ import { createGameState, setMode } from "./game/state";
 import { moveForward, moveBackward, turnLeft, turnRight, tryUnlock } from "./engine/camera";
 import { handleTileFeature, transitionToFloor } from "./game/features";
 import { DX, DY } from "./game/dungeon";
-import { render, loadTextures } from "./engine/renderer";
+import {
+  render,
+  loadTextures,
+  isRenderCameraAnimating,
+  resetRenderCamera,
+} from "./engine/renderer";
 import { audio } from "./engine/audio";
 import { renderAutoMap } from "./engine/automap";
 import { bindInput } from "./engine/input";
@@ -13,6 +18,7 @@ import {
   ctx,
   mapCtx,
   setMessage,
+  flashEncounter,
   renderPartyStrip,
   clearPartyStrip,
   showMode,
@@ -204,6 +210,7 @@ function maybeTriggerEncounter(): boolean {
 let combatController: CombatController | null = null;
 
 function startCombat(combat: CombatState): void {
+  flashEncounter();
   showMode("combat", mapVisible);
   setMessage("");
 
@@ -308,8 +315,11 @@ function onMove(): void {
   if (result) {
     setMessage(result.message);
     if (result.changedFloor) {
-      // Floor transition happened — mark explored on the new floor.
+      // Floor transition happened — mark explored on the new floor and snap
+      // the render camera instantly to the new position (don't slide across
+      // floors).
       markExplored();
+      resetRenderCamera(state.player.x, state.player.y, state.player.facing);
       // Don't trigger encounters on the same step as a floor transition.
       return;
     }
@@ -320,7 +330,7 @@ function onMove(): void {
 
 bindInput(window, {
   onForward: () => {
-    if (state.mode === "dungeon" && !mapVisible) {
+    if (state.mode === "dungeon" && !mapVisible && !isRenderCameraAnimating()) {
       audio.resume();
       const before = { x: state.player.x, y: state.player.y };
       moveForward(state);
@@ -332,7 +342,7 @@ bindInput(window, {
     }
   },
   onBackward: () => {
-    if (state.mode === "dungeon" && !mapVisible) {
+    if (state.mode === "dungeon" && !mapVisible && !isRenderCameraAnimating()) {
       audio.resume();
       const before = { x: state.player.x, y: state.player.y };
       moveBackward(state);
@@ -344,14 +354,14 @@ bindInput(window, {
     }
   },
   onTurnLeft: () => {
-    if (state.mode === "dungeon" && !mapVisible) {
+    if (state.mode === "dungeon" && !mapVisible && !isRenderCameraAnimating()) {
       audio.resume();
       turnLeft(state);
       markExplored();
     }
   },
   onTurnRight: () => {
-    if (state.mode === "dungeon" && !mapVisible) {
+    if (state.mode === "dungeon" && !mapVisible && !isRenderCameraAnimating()) {
       audio.resume();
       turnRight(state);
       markExplored();

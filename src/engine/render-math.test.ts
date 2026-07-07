@@ -25,6 +25,8 @@ import {
   texelCoords,
   fogBlend,
   MATH_CONFIG,
+  RenderCameraAnimator,
+  cappedRenderSize,
 } from "./render-math";
 
 describe("computeLineHeight", () => {
@@ -389,5 +391,137 @@ describe("fogBlend", () => {
   it("clamps to 255", () => {
     const [r] = fogBlend(300, 0, 0, 0, 0, 0, 1.0);
     expect(r).toBe(255);
+  });
+});
+
+describe("RenderCameraAnimator", () => {
+  it("is not animating after init", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    expect(anim.isAnimating()).toBe(false);
+  });
+
+  it("is animating after a position change", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    anim.update(6, 5, 0, 0);
+    expect(anim.isAnimating()).toBe(true);
+  });
+
+  it("is animating after a facing change", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    anim.update(5, 5, 1, 0);
+    expect(anim.isAnimating()).toBe(true);
+  });
+
+  it("stops animating after the move duration elapses", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    anim.update(6, 5, 0, 0);
+    expect(anim.isAnimating()).toBe(true);
+    anim.update(6, 5, 0, MATH_CONFIG.moveAnimDuration);
+    expect(anim.isAnimating()).toBe(false);
+  });
+
+  it("stops animating after the turn duration elapses", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    anim.update(5, 5, 1, 0);
+    expect(anim.isAnimating()).toBe(true);
+    anim.update(5, 5, 1, MATH_CONFIG.turnAnimDuration);
+    expect(anim.isAnimating()).toBe(false);
+  });
+
+  it("snaps instantly on teleports", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    anim.update(10, 5, 0, 0);
+    expect(anim.isAnimating()).toBe(false);
+    const cam = anim.getCamera(Math.PI / 3);
+    expect(cam.x).toBe(10);
+    expect(cam.y).toBe(5);
+  });
+
+  it("reset stops animation and snaps to the given state", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    anim.update(6, 5, 0, 0);
+    expect(anim.isAnimating()).toBe(true);
+    anim.reset(7, 7, 2);
+    expect(anim.isAnimating()).toBe(false);
+    const cam = anim.getCamera(Math.PI / 3);
+    expect(cam.x).toBe(7);
+    expect(cam.y).toBe(7);
+    expect(cam.dirX).toBeCloseTo(dirFromFacing(2).x, 5);
+  });
+});
+
+describe("RenderCameraAnimator head bob", () => {
+  it("returns zero when not animating", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    expect(anim.getMoveBob(0, 4)).toBe(0);
+  });
+
+  it("returns zero for a turn (no position change)", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    anim.update(5, 5, 1, 0);
+    expect(anim.isAnimating()).toBe(true);
+    expect(anim.getMoveBob(0, 4)).toBe(0);
+  });
+
+  it("returns zero at the start and end of a step", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    anim.update(6, 5, 0, 0);
+    expect(anim.getMoveBob(0, 4)).toBe(0);
+    // sin(PI) is not exactly 0 in floating point; allow tiny epsilon.
+    expect(anim.getMoveBob(MATH_CONFIG.moveAnimDuration, 4)).toBeCloseTo(0, 10);
+  });
+
+  it("returns positive amplitude near the midpoint of a step", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    anim.update(6, 5, 0, 0);
+    const half = MATH_CONFIG.moveAnimDuration / 2;
+    const bob = anim.getMoveBob(half, 4);
+    expect(bob).toBeCloseTo(4, 0);
+  });
+
+  it("returns negative amplitude with a negative sign", () => {
+    const anim = new RenderCameraAnimator();
+    anim.init(5, 5, 0);
+    anim.update(6, 5, 0, 0);
+    const half = MATH_CONFIG.moveAnimDuration / 2;
+    const bob = anim.getMoveBob(half, -3);
+    expect(bob).toBeCloseTo(-3, 0);
+  });
+});
+
+describe("cappedRenderSize", () => {
+  it("returns the container size when it is smaller than the cap", () => {
+    const size = cappedRenderSize(640, 480, 768, 672);
+    expect(size.width).toBe(640);
+    expect(size.height).toBe(480);
+  });
+
+  it("caps width and preserves aspect ratio when width exceeds cap", () => {
+    const size = cappedRenderSize(1536, 1344, 768, 672);
+    expect(size.width).toBe(768);
+    expect(size.height).toBe(672);
+  });
+
+  it("caps height and preserves aspect ratio when height exceeds cap", () => {
+    const size = cappedRenderSize(768, 1344, 768, 672);
+    expect(size.width).toBeLessThan(768);
+    expect(size.height).toBe(672);
+  });
+
+  it("returns at least 1x1", () => {
+    const size = cappedRenderSize(0, 0, 768, 672);
+    expect(size.width).toBe(1);
+    expect(size.height).toBe(1);
   });
 });

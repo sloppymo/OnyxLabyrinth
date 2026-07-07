@@ -25,6 +25,8 @@ export const MATH_CONFIG = {
   maxDepth: 4,
   darknessMaxDist: 1.5,
   teleportSnapThreshold: 1.5,
+  moveAnimDuration: 150,
+  turnAnimDuration: 100,
 };
 
 /**
@@ -211,6 +213,32 @@ export function texelCoords(
 }
 
 /**
+ * Compute a render bitmap size that fits within a maximum width/height while
+ * preserving the container's aspect ratio. Returns at least 1x1.
+ */
+export function cappedRenderSize(
+  containerWidth: number,
+  containerHeight: number,
+  maxWidth: number,
+  maxHeight: number
+): { width: number; height: number } {
+  let width = Math.max(1, containerWidth);
+  let height = Math.max(1, containerHeight);
+
+  if (width <= maxWidth && height <= maxHeight) {
+    return { width, height };
+  }
+
+  const scaleX = maxWidth / width;
+  const scaleY = maxHeight / height;
+  const scale = Math.min(scaleX, scaleY);
+
+  width = Math.max(1, Math.round(width * scale));
+  height = Math.max(1, Math.round(height * scale));
+  return { width, height };
+}
+
+/**
  * Fog-blend a source color toward the background color.
  * Returns the blended [r, g, b] values (0-255, clamped).
  */
@@ -229,4 +257,154 @@ export function fogBlend(
     Math.min(255, srcG * fog + bgG * inv),
     Math.min(255, srcB * fog + bgB * inv),
   ];
+}
+
+/** Float-positioned camera used for rendering. */
+export interface RenderCamera {
+  x: number;       // world X (float)
+  y: number;       // world Y (float)
+  dirX: number;    // direction vector X
+  dirY: number;    // direction vector Y
+  planeX: number;  // camera plane X
+  planeY: number;  // camera plane Y
+}
+
+/**
+ * Stateful render-camera animator. Tracks the display camera position
+ * separately from the integer game-state position and tweens between them
+ * on moves/turns. Teleports/stairs/chutes snap instantly.
+ *
+ * This class is DOM-free and testable with fake timestamps.
+ */
+export class RenderCameraAnimator {
+  private displayX = -1;
+  private displayY = -1;
+  private displayFacing = -1;
+  private lastTargetX = -1;
+  private lastTargetY = -1;
+  private lastTargetFacing = -1;
+  private animStartX = 0;
+  private animStartY = 0;
+  private animStartFacing = 0;
+  private animStartTime = 0;
+  private animDuration = 0;
+  private animActive = false;
+  private animMoved = false;
+
+  /** Initialize (or re-initialize) the animator to the given grid state. */
+  init(x: number, y: number, facing: number): void {
+    this.displayX = x;
+    this.displayY = y;
+    this.displayFacing = facing;
+    this.lastTargetX = x;
+    this.lastTargetY = y;
+    this.lastTargetFacing = facing;
+    this.animActive = false;
+    this.animMoved = false;
+  }
+
+  /** Reset the camera instantly to the given state and stop any animation. */
+  reset(x: number, y: number, facing: number): void {
+    this.init(x, y, facing);
+  }
+
+  /** True if the camera is currently tweening toward a target. */
+  isAnimating(): boolean {
+    return this.animActive;
+  }
+
+  /**
+   * Update the animator toward the new target state. `now` is a timestamp
+   * in milliseconds (e.g. performance.now() or Date.now()).
+   */
+  update(x: number, y: number, facing: number, now: number): void {
+    // First-call initialization: snap to current state.
+    if (this.displayX < 0) {
+      this.init(x, y, facing);
+      return;
+    }
+
+    // Detect state change → start new animation.
+    if (
+      x !== this.lastTargetX ||
+      y !== this.lastTargetY ||
+      facing !== this.lastTargetFacing
+    ) {
+      if (shouldSnapTeleport(this.lastTargetX, this.lastTargetY, x, y)) {
+        this.displayX = x;
+        this.displayY = y;
+        this.displayFacing = facing;
+        this.animActive = false;
+      } else {
+        this.animStartX = this.displayX;
+        this.animStartY = this.displayY;
+        this.animStartFacing = this.displayFacing;
+        this.animStartTime = now;
+        const moved = x !== this.lastTargetX || y !== this.lastTargetY;
+        const turned = facing !== this.lastTargetFacing;
+        this.animMoved = moved;
+        this.animDuration =
+          moved && turned
+            ? Math.max(MATH_CONFIG.moveAnimDuration, MATH_CONFIG.turnAnimDuration)
+            : moved
+            ? MATH_CONFIG.moveAnimDuration
+            : MATH_CONFIG.turnAnimDuration;
+        this.animActive = true;
+      }
+
+      this.lastTargetX = x;
+      this.lastTargetY = y;
+      this.lastTargetFacing = facing;
+    }
+
+    // Advance animation.
+    if (this.animActive) {
+      const elapsed = now - this.animStartTime;
+      const t = Math.min(1, elapsed / this.animDuration);
+      const eased = easeOutCubic(t);
+
+      this.displayX = this.animStartX + (this.lastTargetX - this.animStartX) * eased;
+      this.displayY = this.animStartY + (this.lastTargetY - this.animStartY) * eased;
+      this.displayFacing = interpolateFacing(
+        this.animStartFacing,
+        this.lastTargetFacing,
+        eased
+      );
+
+      if (t >= 1) {
+        this.animActive = false;
+        this.displayX = this.lastTargetX;
+        this.displayY = this.lastTargetY;
+        this.displayFacing = this.lastTargetFacing;
+      }
+    }
+  }
+
+  /**
+   * Compute a screen-space head-bob offset for the current animation.
+   * Returns 0 when not moving (including turns and teleports). During a move,
+   * the offset follows a single sine hump keyed to animation progress so it
+   * starts at 0, reaches `amplitude` near the midpoint, and returns to 0 at
+   * the end of the step.
+   */
+  getMoveBob(now: number, amplitude: number): number {
+    if (!this.animActive || !this.animMoved) return 0;
+    const elapsed = now - this.animStartTime;
+    const t = Math.min(1, elapsed / this.animDuration);
+    return Math.sin(t * Math.PI) * amplitude;
+  }
+
+  /** Return the current interpolated camera for the given FOV. */
+  getCamera(fov: number): RenderCamera {
+    const dir = dirFromFacing(this.displayFacing);
+    const plane = planeFromDir(dir.x, dir.y, fov);
+    return {
+      x: this.displayX,
+      y: this.displayY,
+      dirX: dir.x,
+      dirY: dir.y,
+      planeX: plane.planeX,
+      planeY: plane.planeY,
+    };
+  }
 }
