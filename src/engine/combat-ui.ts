@@ -27,7 +27,7 @@ import {
 import type { Character } from "../game/party";
 import type { SpellDef } from "../data/spells";
 import type { ItemDef } from "../data/items";
-import { combatCtx, combatCanvas } from "./shell";
+import { combatCtx, combatCanvas, combatPanel, showCombatPanel, showCombatCanvas } from "./shell";
 import {
   renderCombat,
   updateAnimations,
@@ -35,6 +35,12 @@ import {
   setAnim,
   type CombatScene,
 } from "./combat-renderer";
+import {
+  renderSelectActionPhase,
+  ACTION_KINDS,
+  type SelectActionView,
+  type SelectActionHandlers,
+} from "./combat-select-action-view";
 
 type Phase =
   | "selectAction"
@@ -72,6 +78,10 @@ export class CombatController {
   private scene: CombatScene;
   private rafId: number | null = null;
   private prevLogLength = 0;
+
+  // DOM-based action selection.
+  private actionMenuIndex = 0;
+  private domViewDirty = true;
 
   constructor(state: CombatState, opts: CombatControllerOptions) {
     this.state = state;
@@ -120,6 +130,18 @@ export class CombatController {
 
   private tick(): void {
     const now = performance.now();
+
+    if (this.phase === "selectAction") {
+      showCombatPanel();
+      if (this.domViewDirty) {
+        this.renderSelectActionDom();
+        this.domViewDirty = false;
+      }
+      return;
+    }
+
+    showCombatCanvas();
+
     const w = combatCanvas.width;
     const h = combatCanvas.height;
 
@@ -269,6 +291,8 @@ export class CombatController {
     this.currentCharIndex = 0;
     this.phase = "selectAction";
     this.pending = { actorId: "" };
+    this.actionMenuIndex = 0;
+    this.domViewDirty = true;
     this.scene.flash = null;
     this.scene.currentMessage = null;
     this.advanceToNextActor();
@@ -276,6 +300,8 @@ export class CombatController {
 
   /** Advance to the next living, non-incapacitated character. */
   private advanceToNextActor(): void {
+    this.actionMenuIndex = 0;
+    this.domViewDirty = true;
     const party = this.state.party;
     while (this.currentCharIndex < party.length) {
       const c = party[this.currentCharIndex];
@@ -296,70 +322,121 @@ export class CombatController {
   private handleActionKey(key: string): void {
     const c = this.currentChar();
     if (!c) return;
-    const lower = key.toLowerCase();
-    // Space = quick-attack the first living enemy (skips target selection).
-    if (key === " " || key === "Enter") {
-      const enemies = this.livingEnemies();
-      if (enemies.length === 0) {
-        this.scene.flash = "No enemies to attack.";
+
+    switch (key) {
+      case "ArrowUp":
+        this.actionMenuIndex =
+          (this.actionMenuIndex - 1 + ACTION_KINDS.length) % ACTION_KINDS.length;
+        this.domViewDirty = true;
         return;
-      }
-      this.actions.push({
-        kind: "attack",
-        actorId: c.id,
-        targetInstanceId: enemies[0].instanceId,
-      });
-      this.currentCharIndex++;
-      this.advanceToNextActor();
-      return;
+      case "ArrowDown":
+        this.actionMenuIndex = (this.actionMenuIndex + 1) % ACTION_KINDS.length;
+        this.domViewDirty = true;
+        return;
+      case " ":
+      case "Enter":
+        this.chooseAction(ACTION_KINDS[this.actionMenuIndex]);
+        return;
     }
-    switch (lower) {
-      case "a":
+
+    const shortcutMap: Record<string, PlayerAction["kind"]> = {
+      a: "attack",
+      c: "cast",
+      d: "defend",
+      i: "item",
+      f: "flee",
+    };
+    const kind = shortcutMap[key.toLowerCase()];
+    if (kind) {
+      this.chooseAction(kind);
+    }
+  }
+
+  /** Confirm the chosen action and advance state. Shared by keyboard and DOM input. */
+  private chooseAction(kind: PlayerAction["kind"]): void {
+    const c = this.currentChar();
+    if (!c) return;
+    this.domViewDirty = true;
+
+    switch (kind) {
+      case "attack": {
+        if (this.livingEnemies().length === 0) {
+          this.scene.flash = "No enemies to attack.";
+          return;
+        }
         this.pending.kind = "attack";
         this.phase = "selectEnemyTarget";
         this.scene.flash = null;
         break;
-      case "c": {
+      }
+      case "cast": {
         const knownSpells = c.knownSpellIds
           .map((id) => this.state.spells[id])
           .filter((s): s is SpellDef => s !== undefined);
         if (knownSpells.length === 0) {
           this.scene.flash = `${c.name} has no spells to cast.`;
-          break;
+          return;
         }
         if (this.state.silencedThisRound.includes(c.id)) {
           this.scene.flash = `${c.name} is silenced and cannot cast.`;
-          break;
+          return;
         }
         this.pending.kind = "cast";
         this.phase = "selectSpell";
         this.scene.flash = null;
         break;
       }
-      case "d":
+      case "defend":
         this.actions.push({ kind: "defend", actorId: c.id });
         this.currentCharIndex++;
         this.advanceToNextActor();
         this.scene.flash = null;
         break;
-      case "i": {
+      case "item": {
         const available = this.availableItems();
         if (available.length === 0) {
           this.scene.flash = "No items available.";
-          break;
+          return;
         }
         this.pending.kind = "item";
         this.phase = "selectItem";
         this.scene.flash = null;
         break;
       }
-      case "f":
+      case "flee":
         this.actions.push({ kind: "flee", actorId: c.id });
         // Flee is a party-level action; skip remaining characters.
         this.phase = "ready";
         this.scene.flash = null;
         break;
     }
+
+    if (this.phase === "selectAction") {
+      this.domViewDirty = true;
+    }
+  }
+
+  /** Render the DOM-based action selection view into #combat-panel. */
+  private renderSelectActionDom(): void {
+    const c = this.currentChar();
+    if (!c) return;
+
+    const view: SelectActionView = {
+      state: this.state,
+      currentCharacter: c,
+      selectedIndex: this.actionMenuIndex,
+      flash: this.scene.flash,
+    };
+    const handlers: SelectActionHandlers = {
+      onSelectIndex: (index) => {
+        this.actionMenuIndex = index;
+        this.domViewDirty = true;
+      },
+      onConfirm: (kind) => {
+        this.chooseAction(kind);
+      },
+    };
+    renderSelectActionPhase(combatPanel, view, handlers);
   }
 
   private handleEnemyTargetKey(key: string): void {
@@ -502,7 +579,7 @@ export class CombatController {
       case "selectAction": {
         const c = this.currentChar();
         if (c) {
-          return `${c.name}: [Space] quick-attack · [A]ttack [C]ast [D]efend [I]tem [F]lee${this.statusLabel(c)}`;
+          return `${c.name}: [↑↓] select · [Enter] confirm · [A]ttack [C]ast [D]efend [I]tem [F]lee${this.statusLabel(c)}`;
         }
         return "";
       }

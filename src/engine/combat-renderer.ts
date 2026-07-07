@@ -272,7 +272,7 @@ function drawPartySprite(
 }
 
 /** Draw an enemy silhouette (shape varies by enemy type). */
-function drawEnemySprite(
+export function drawEnemySprite(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
