@@ -426,7 +426,6 @@ window.addEventListener("keydown", resumeAudioOnce);
 
 // Combat key handler — separate listener that only fires in combat mode.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
-  console.log("[combat-key-listener]", e.key, "mode=", state.mode, "suppress=", suppressNextCombatKey);
   if (state.mode !== "combat" || !combatController) return;
   if (suppressNextCombatKey) {
     // This is the same keydown that just triggered the encounter transition
