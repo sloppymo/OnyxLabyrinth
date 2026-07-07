@@ -209,10 +209,24 @@ function maybeTriggerEncounter(): boolean {
 // --- Combat mode ---------------------------------------------------------
 let combatController: CombatController | null = null;
 
+// When an encounter starts mid-keydown (the same forward-step keypress that
+// triggers maybeTriggerEncounter flips state.mode to "combat" synchronously),
+// the combat key listener below runs later for that *same* event and would
+// otherwise treat the dungeon-movement key as combat-menu input (e.g. the
+// ArrowUp that stepped into the encounter would also nudge the selectAction
+// menu). This flag suppresses exactly that one leaked keypress. It's cleared
+// on a microtask as a fallback in case combat is ever started outside of a
+// keydown handler, so it can never swallow a later, legitimate keypress.
+let suppressNextCombatKey = false;
+
 function startCombat(combat: CombatState): void {
   flashEncounter();
   showMode("combat", mapVisible);
   setMessage("");
+  suppressNextCombatKey = true;
+  setTimeout(() => {
+    suppressNextCombatKey = false;
+  }, 0);
 
   combatController = new CombatController(combat, {
     onEnd: (result: CombatState) => {
@@ -412,7 +426,15 @@ window.addEventListener("keydown", resumeAudioOnce);
 
 // Combat key handler — separate listener that only fires in combat mode.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
+  console.log("[combat-key-listener]", e.key, "mode=", state.mode, "suppress=", suppressNextCombatKey);
   if (state.mode !== "combat" || !combatController) return;
+  if (suppressNextCombatKey) {
+    // This is the same keydown that just triggered the encounter transition
+    // (see startCombat) — don't let it also drive the fresh combat menu.
+    suppressNextCombatKey = false;
+    e.preventDefault();
+    return;
+  }
   combatController.handleKey(e.key);
   e.preventDefault();
 });
