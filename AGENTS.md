@@ -34,7 +34,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/game/save.test.ts` | Unit tests for save serialization (vitest). |
 | `src/game/party.test.ts` | Unit tests for party creation (vitest). |
 | `src/engine/combat-renderer.test.ts` | Unit tests for combat animation triggers (vitest). |
-| `src/engine/render-math.test.ts` | Unit tests for renderer geometry/fog/camera math (vitest, 58 tests). |
+| `src/engine/render-math.test.ts` | Unit tests for renderer geometry/fog/camera math (vitest, 74+ tests). |
 | `src/engine/camp-ui.ts` | Camp screen controller. |
 | `src/engine/town-ui.ts` | Town/hub screen controller. |
 | `src/engine/save-ui.ts` | Save/load menu controller. |
@@ -117,10 +117,15 @@ After any change to `src/engine/combat-renderer.ts` or `src/engine/combat-ui.ts`
 
 `combat.ts` emits structured `CombatEvent` entries alongside each log message (1:1 parallel array `s.events`). The combat renderer uses these events as the **primary** source for triggering animations, with regex-based log parsing as a **fallback** for messages that lack a structured event (e.g. silence, item use). When adding new combat actions or log messages, add a corresponding `emit()` call with a `CombatEvent` so the renderer can animate it without regex.
 
-## Renderer performance notes
+## Renderer performance / feel notes
 
 - The floor/ceiling `ImageData` buffer is reused across frames (allocated once, resized only when canvas dimensions change). Do not call `ctx.createImageData()` in the hot loop.
 - Edge-glow lines are batched into 4 depth-bucketed `Path2D` objects and stroked once per bucket, not per strip. This avoids per-strip `shadowBlur` state changes.
 - Scanlines use a cached `CanvasPattern` instead of per-line `fillRect` calls.
 - Torch flicker is a subtle warm overlay (~±4% alpha) driven by a sine wave with a secondary frequency for organic irregularity. Suppressed in darkness zones.
 - `Math.floor()` in the floor/ceiling hot loop is replaced with `| 0` (bitwise truncation) for performance. This is safe because world coordinates are always non-negative.
+- The render camera animator (`RenderCameraAnimator` in `render-math.ts`) is module-level and DOM-free. It exposes `isAnimating()` for input gating and `reset()` for floor transitions.
+- Dungeon movement input is gated by `isRenderCameraAnimating()` in `main.ts` so rapid key repeats cannot re-target an in-flight tween.
+- Head bob is a screen-space integer-pixel offset applied to the floor/ceiling `putImageData` and the world-space draw pass (walls, edge glow, floor feature). Overlays (vignette, scanlines) are not shifted.
+- The corridor/map canvas intrinsic size is capped at 768×672 by `shell.resizeCorridorCanvas()`; CSS scales the canvas to fill the container. This avoids multi-megapixel buffers on large/high-DPI displays.
+- Combat encounters trigger a brief `#flash-overlay` animation via `shell.flashEncounter()`.

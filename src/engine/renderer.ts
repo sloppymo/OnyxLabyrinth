@@ -25,12 +25,9 @@ import {
   opacityForDepth,
   glowBlurForDepth,
   strokeColorForDepth,
-  dirFromFacing,
-  planeFromDir,
-  easeOutCubic,
-  interpolateFacing,
-  shouldSnapTeleport,
+  RenderCameraAnimator,
 } from "./render-math";
+import type { RenderCamera } from "./render-math";
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
 const PALETTE = {
@@ -124,6 +121,10 @@ const RENDER_CONFIG = {
   torchFlickerPeriod: 2000,       // ms for one full sine cycle
   torchFlickerAmplitude: 0.04,    // ±4% overlay alpha
   torchFlickerBase: 0.02,         // base overlay alpha (always present)
+  // Head bob: vertical screen-space offset applied to the corridor view
+  // during movement steps. A single sine hump synced to the step animation
+  // adds weight to walking without touching perspective math.
+  headBobAmplitude: 2.5,          // px — positive = head dips at mid-step
 } as const;
 
 /** Raycast hit data for a single ray. */
@@ -171,111 +172,39 @@ let floorCeilBufH = 0;
 const BG_RGBA_PACKED =
   (255 << 24) | (BG_B << 16) | (BG_G << 8) | BG_R;
 
-// --- Smooth movement interpolation state -------------------------------------
+// --- Smooth movement interpolation -----------------------------------------
 // The render camera lerps from the previous grid position to the new one
 // over a short duration, producing smooth first-person motion instead of
 // instant grid snapping. This state is module-level (not in GameState) because
 // it is purely a render concern — game logic always sees integer grid coords.
-
-/** Float-positioned camera used for rendering. Updated each frame by
- *  `updateRenderCamera()` toward the actual `state.player` position. */
-interface RenderCamera {
-  x: number;       // world X (float)
-  y: number;       // world Y (float)
-  dirX: number;    // direction vector X (from float facing)
-  dirY: number;    // direction vector Y
-  planeX: number;  // camera plane X (perpendicular to dir, scaled by FOV)
-  planeY: number;  // camera plane Y
-}
-
-let displayX = -1;
-let displayY = -1;
-let displayFacing = -1;       // float facing (0..4, wraps)
-let lastTargetX = -1;
-let lastTargetY = -1;
-let lastTargetFacing = -1;
-let animStartX = 0;
-let animStartY = 0;
-let animStartFacing = 0;
-let animStartTime = 0;
-let animDuration = 0;
-let animActive = false;
+const cameraAnim = new RenderCameraAnimator();
 
 /**
- * Update the display camera toward the actual player position. When the
- * player's grid position or facing changes, a new animation tween begins
- * from the current display position to the new target. Teleporter/stairs
- * jumps (distance > threshold) snap instantly.
- *
- * Returns the RenderCamera to use for this frame's rendering.
+ * Update the display camera toward the actual player position and return the
+ * RenderCamera to use for this frame's rendering.
  */
 function updateRenderCamera(state: GameState): RenderCamera {
-  const targetX = state.player.x;
-  const targetY = state.player.y;
-  const targetFacing = state.player.facing;
+  cameraAnim.update(
+    state.player.x,
+    state.player.y,
+    state.player.facing,
+    performance.now()
+  );
+  return cameraAnim.getCamera(RENDER_CONFIG.raycastFov);
+}
 
-  // First-call initialization: snap to current state.
-  if (displayX < 0) {
-    displayX = targetX;
-    displayY = targetY;
-    displayFacing = targetFacing;
-    lastTargetX = targetX;
-    lastTargetY = targetY;
-    lastTargetFacing = targetFacing;
-  }
+/** True if the render camera is currently tweening toward a target. */
+export function isRenderCameraAnimating(): boolean {
+  return cameraAnim.isAnimating();
+}
 
-  // Detect state change → start new animation.
-  if (targetX !== lastTargetX || targetY !== lastTargetY || targetFacing !== lastTargetFacing) {
-    if (shouldSnapTeleport(lastTargetX, lastTargetY, targetX, targetY)) {
-      // Teleporter/stairs/chute: snap instantly, no slide.
-      displayX = targetX;
-      displayY = targetY;
-      displayFacing = targetFacing;
-      animActive = false;
-    } else {
-      animStartX = displayX;
-      animStartY = displayY;
-      animStartFacing = displayFacing;
-      animStartTime = performance.now();
-      // Movement and turning can happen in the same step (e.g., a step forward
-      // after turning). Use the longer duration if both occurred.
-      const moved = targetX !== lastTargetX || targetY !== lastTargetY;
-      const turned = targetFacing !== lastTargetFacing;
-      animDuration = moved && turned
-        ? Math.max(RENDER_CONFIG.moveAnimDuration, RENDER_CONFIG.turnAnimDuration)
-        : moved ? RENDER_CONFIG.moveAnimDuration
-        : RENDER_CONFIG.turnAnimDuration;
-      animActive = true;
-    }
-
-    lastTargetX = targetX;
-    lastTargetY = targetY;
-    lastTargetFacing = targetFacing;
-  }
-
-  // Advance animation.
-  if (animActive) {
-    const elapsed = performance.now() - animStartTime;
-    const t = Math.min(1, elapsed / animDuration);
-    const eased = easeOutCubic(t);
-
-    displayX = animStartX + (lastTargetX - animStartX) * eased;
-    displayY = animStartY + (lastTargetY - animStartY) * eased;
-
-    // Facing: interpolate via shortest angular path.
-    displayFacing = interpolateFacing(animStartFacing, lastTargetFacing, eased);
-
-    if (t >= 1) {
-      animActive = false;
-      displayX = lastTargetX;
-      displayY = lastTargetY;
-      displayFacing = lastTargetFacing;
-    }
-  }
-
-  const dir = dirFromFacing(displayFacing);
-  const plane = planeFromDir(dir.x, dir.y, RENDER_CONFIG.raycastFov);
-  return { x: displayX, y: displayY, dirX: dir.x, dirY: dir.y, planeX: plane.planeX, planeY: plane.planeY };
+/** Reset the render camera instantly to the given grid state. */
+export function resetRenderCamera(
+  x: number,
+  y: number,
+  facing: number
+): void {
+  cameraAnim.reset(x, y, facing);
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -560,7 +489,8 @@ function drawFloorCeilingCast(
   ctx: CanvasRenderingContext2D,
   cam: RenderCamera,
   inDarkness: boolean,
-  textures: TextureSet
+  textures: TextureSet,
+  bobY: number
 ): void {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
@@ -660,7 +590,7 @@ function drawFloorCeilingCast(
     }
   }
 
-  ctx.putImageData(buf, 0, 0);
+  ctx.putImageData(buf, 0, bobY);
 }
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -676,6 +606,14 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Compute the interpolated render camera (smooth movement).
   const cam = updateRenderCamera(state);
 
+  // Head bob: a subtle screen-space vertical offset synced to the movement
+  // animation. Rounded to integer pixels because putImageData requires integer
+  // coordinates, and the world-space draw passes use the same rounded offset
+  // so walls/features stay aligned with the floor/ceiling image.
+  const bobY = Math.round(
+    cameraAnim.getMoveBob(performance.now(), RENDER_CONFIG.headBobAmplitude)
+  );
+
   // Background
   ctx.fillStyle = PALETTE.bg;
   ctx.fillRect(0, 0, w, h);
@@ -684,7 +622,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
 
   // --- Ceiling and floor casting (single batched upload) ---
   if (textures) {
-    drawFloorCeilingCast(ctx, cam, state.inDarkness, textures);
+    drawFloorCeilingCast(ctx, cam, state.inDarkness, textures, bobY);
   }
 
   // --- Torch flicker overlay ---
@@ -693,6 +631,13 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (!state.inDarkness) {
     drawTorchFlicker(ctx, w, h);
   }
+
+  // --- World-space drawing pass (walls, edge glow, floor feature) ---
+  // All world elements share the same head-bob offset so they remain aligned
+  // with the shifted floor/ceiling image. Post-processing overlays (vignette,
+  // scanlines) are drawn after the restore and stay fixed to the screen.
+  ctx.save();
+  ctx.translate(0, bobY);
 
   // --- Raycast wall strip pass ---
   const { dirX, dirY, planeX, planeY } = cam;
@@ -851,6 +796,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (currentCell?.tile) {
     drawFloorFeature(ctx, w, h, currentCell.tile, state.inDarkness);
   }
+
+  // Restore from the head-bob translate before drawing screen-space overlays.
+  ctx.restore();
 
   // Global vignette: focuses attention on the corridor and softens edges.
   drawVignette(ctx, w, h, 1.0);
