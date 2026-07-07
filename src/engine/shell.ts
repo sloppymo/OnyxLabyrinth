@@ -38,7 +38,7 @@ export const mapCtx = mapCanvas.getContext("2d")!;
 const messageEl = document.querySelector<HTMLDivElement>("#message")!;
 const flashOverlayEl = document.querySelector<HTMLDivElement>("#flash-overlay")!;
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
-const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+export const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
 export const combatCanvas = document.querySelector<HTMLCanvasElement>("#combat-canvas")!;
 export const combatCtx = combatCanvas.getContext("2d")!;
 const compassEl = document.querySelector<HTMLSpanElement>("#compass")!;
@@ -178,4 +178,16 @@ export function showMode(mode: GameMode, mapVisible: boolean): void {
   // Resize canvases — the combat canvas may not have been sized yet if it
   // was hidden when the initial resize ran.
   resizeCorridorCanvas();
+}
+
+/** Show the DOM combat panel and hide the canvas renderer. */
+export function showCombatPanel(): void {
+  combatPanel.style.display = "block";
+  combatCanvas.style.display = "none";
+}
+
+/** Show the canvas combat renderer and hide the DOM panel. */
+export function showCombatCanvas(): void {
+  combatPanel.style.display = "none";
+  combatCanvas.style.display = "block";
 }

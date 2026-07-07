@@ -20,8 +20,9 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/engine/renderer.ts` | Corridor 3D view (the most fragile code). |
 | `src/engine/render-math.ts` | Pure math functions extracted from renderer (geometry, fog, camera interpolation). Unit-tested via `render-math.test.ts`. |
 | `src/engine/audio.ts` | Procedural Web Audio: ambient drone, footsteps, door sounds. |
-| `src/engine/combat-renderer.ts` | Canvas-based JRPG combat scene (sprites, effects, message box). |
-| `src/engine/combat-ui.ts` | Combat controller: input handling, round resolution, message queue. |
+| `src/engine/combat-renderer.ts` | Canvas-based JRPG combat scene (sprites, effects, message box). Also exports `drawEnemySprite` for the DOM selectAction viewport. |
+| `src/engine/combat-ui.ts` | Combat controller: input handling, round resolution, message queue. `selectAction` phase now renders DOM via `combat-select-action-view.ts`; other phases still use `combat-canvas`. |
+| `src/engine/combat-select-action-view.ts` | DOM renderer for the `selectAction` combat phase (status bar, viewport sprite, action menu, party table). |
 | `src/engine/shell.ts` | DOM shell: canvas sizing, message overlay, party strip, mode visibility. |
 | `src/engine/input.ts` | Dungeon exploration key bindings. |
 | `src/engine/camera.ts` | Movement, turning, collision, door unlock. |
@@ -100,6 +101,7 @@ After any change to `src/engine/combat-renderer.ts` or `src/engine/combat-ui.ts`
 5. **Selection list:** spell/item/target lists are visible and not drawn below the canvas.
 6. **Message advance:** log messages advance on Space/Enter or auto-advance after ~1.6s.
 7. **Combat → dungeon transition:** fleeing or winning returns to the dungeon view with the corridor canvas visible.
+8. **DOM selectAction screen:** in the `selectAction` phase, the DOM status bar, viewport sprite, action menu, and party table are visible; keyboard (arrows/Enter) and click input both work.
 
 ## Conventions
 
