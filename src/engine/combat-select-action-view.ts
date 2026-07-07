@@ -241,9 +241,21 @@ function buildPartyTable(state: CombatState): HTMLElement {
   return table;
 }
 
-/** Simplified effective AC: base 10 minus persistent armor buffs. */
-function effectiveAc(state: CombatState, c: Character): number {
-  return 10 - (state.armorBuffs[c.id] ?? 0);
+/**
+ * Effective AC: base 10 minus the flat damage reduction the character
+ * currently benefits from — equipped armor `defenseBonus` (data-driven, from
+ * `state.loadout`) plus persistent spell armor buffs. Mirrors the flat
+ * portion of `damageReductionFor` in game/combat.ts (per-round Defend % is
+ * excluded since it isn't a standing stat). Keep these two in sync if the
+ * damage formula changes.
+ */
+export function effectiveAc(state: CombatState, c: Character): number {
+  const armorBonus = (state.loadout[c.id]?.armor ?? []).reduce(
+    (sum, a) => sum + (a.defenseBonus ?? 0),
+    0
+  );
+  const spellBuff = state.armorBuffs[c.id] ?? 0;
+  return 10 - (armorBonus + spellBuff);
 }
 
 function formatStatus(c: Character): string {
