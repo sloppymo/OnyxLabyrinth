@@ -40,8 +40,9 @@ import {
   ACTION_KINDS,
   type SelectActionView,
   type SelectActionHandlers,
+  type CombatPanelPhase,
 } from "./combat-select-action-view";
-import { enemyHealthDescriptor } from "./combat-display";
+import { enemyHealthDescriptor, type SelectionChoice } from "./combat-display";
 
 type Phase =
   | "selectAction"
@@ -53,6 +54,21 @@ type Phase =
   | "messageReveal"
   | "roundResult"
   | "ended";
+
+const PANEL_PHASES: readonly CombatPanelPhase[] = [
+  "selectAction",
+  "selectEnemyTarget",
+  "selectAllyTarget",
+  "selectSpell",
+  "selectItem",
+  "ready",
+];
+
+function toPanelPhase(phase: Phase): CombatPanelPhase | null {
+  return (PANEL_PHASES as readonly Phase[]).includes(phase)
+    ? (phase as CombatPanelPhase)
+    : null;
+}
 
 interface PendingAction {
   actorId: string;
@@ -427,6 +443,9 @@ export class CombatController {
 
   /** Render the DOM-based combat panel into #combat-panel. */
   private renderSelectActionDom(): void {
+    const panelPhase = toPanelPhase(this.phase);
+    if (!panelPhase) return;
+
     const c =
       this.currentChar() ??
       this.state.party.find((p) => p.hp > 0) ??
@@ -437,7 +456,7 @@ export class CombatController {
       state: this.state,
       currentCharacter: c,
       selectedIndex: this.actionMenuIndex,
-      phase: this.phase,
+      phase: panelPhase,
       prompt: this.buildPrompt(),
       selectionList: this.buildSelectionList(),
       flash: this.scene.flash,
@@ -450,8 +469,29 @@ export class CombatController {
       onConfirm: (kind) => {
         this.chooseAction(kind);
       },
+      onSelectChoice: (index) => {
+        this.handleSelectionChoice(index);
+      },
     };
     renderSelectActionPhase(combatPanel, view, handlers);
+  }
+
+  /** Route a selection-list click (1-based index) to the active phase handler. */
+  private handleSelectionChoice(index: number): void {
+    switch (this.phase) {
+      case "selectEnemyTarget":
+        this.handleEnemyTargetKey(String(index));
+        break;
+      case "selectAllyTarget":
+        this.handleAllyTargetKey(String(index));
+        break;
+      case "selectSpell":
+        this.handleSpellKey(String(index));
+        break;
+      case "selectItem":
+        this.handleItemKey(String(index));
+        break;
+    }
   }
 
   private handleEnemyTargetKey(key: string): void {
@@ -623,7 +663,7 @@ export class CombatController {
     }
   }
 
-  private buildSelectionList(): string | null {
+  private buildSelectionList(): SelectionChoice[] | null {
     const c = this.currentChar();
     if (!c) return null;
 
@@ -631,33 +671,34 @@ export class CombatController {
       const knownSpells = c.knownSpellIds
         .map((id) => this.state.spells[id])
         .filter((sp): sp is SpellDef => sp !== undefined);
-      return knownSpells
-        .map((sp, i) => `${i + 1}.${sp.name}(${sp.spCost}SP)`)
-        .join("  ");
+      return knownSpells.map((sp, i) => ({
+        index: i + 1,
+        label: `${i + 1}.${sp.name}(${sp.spCost}SP)`,
+      }));
     }
 
     if (this.phase === "selectItem") {
       const items = this.availableItems();
-      return items
-        .map(({ item, count }, i) => `${i + 1}.${item.name} x${count}`)
-        .join("  ");
+      return items.map(({ item, count }, i) => ({
+        index: i + 1,
+        label: `${i + 1}.${item.name} x${count}`,
+      }));
     }
 
     if (this.phase === "selectEnemyTarget") {
       const enemies = this.livingEnemies();
-      return enemies
-        .map(
-          (e, i) =>
-            `${i + 1}.${e.name} ${enemyHealthDescriptor(e.currentHp, e.hp)}`
-        )
-        .join("  ");
+      return enemies.map((e, i) => ({
+        index: i + 1,
+        label: `${i + 1}.${e.name} ${enemyHealthDescriptor(e.currentHp, e.hp)}`,
+      }));
     }
 
     if (this.phase === "selectAllyTarget") {
       const allies = this.state.party.filter((p) => p.hp > 0 || p.status.includes("knockedOut"));
-      return allies
-        .map((a, i) => `${i + 1}.${a.name} HP:${a.hp}/${a.maxHp}`)
-        .join("  ");
+      return allies.map((a, i) => ({
+        index: i + 1,
+        label: `${i + 1}.${a.name} HP:${a.hp}/${a.maxHp}`,
+      }));
     }
 
     return null;

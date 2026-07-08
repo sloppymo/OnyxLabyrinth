@@ -19,18 +19,18 @@ import {
   partyStatusText,
   hpRatio,
   hpBarColorClass,
+  COMBAT_LOG_HISTORY,
+  type SelectionChoice,
 } from "./combat-display";
 
+/** Phases rendered by the DOM-based combat selection panel. */
 export type CombatPanelPhase =
   | "selectAction"
   | "selectEnemyTarget"
   | "selectAllyTarget"
   | "selectSpell"
   | "selectItem"
-  | "ready"
-  | "messageReveal"
-  | "roundResult"
-  | "ended";
+  | "ready";
 
 export interface SelectActionView {
   state: CombatState;
@@ -38,13 +38,14 @@ export interface SelectActionView {
   selectedIndex: number;
   phase: CombatPanelPhase;
   prompt: string;
-  selectionList: string | null;
+  selectionList: SelectionChoice[] | null;
   flash: string | null;
 }
 
 export interface SelectActionHandlers {
   onSelectIndex(index: number): void;
   onConfirm(kind: PlayerAction["kind"]): void;
+  onSelectChoice(index: number): void;
 }
 
 export const ACTION_KINDS: PlayerAction["kind"][] = [
@@ -84,7 +85,7 @@ export function renderSelectActionPhase(
   root.appendChild(buildMessageLog(view));
   root.appendChild(buildCombatBody(view, handlers));
   root.appendChild(buildPartyStrip(view.state, view.currentCharacter));
-  root.appendChild(buildHint());
+  root.appendChild(buildHint(view.phase));
 
   container.appendChild(root);
 }
@@ -121,13 +122,13 @@ function formatEnemyLabel(state: CombatState): { left: string; right: string } {
   const count = living.length;
 
   if (count === 0) {
-    return { left: "No enemies", right: "(0)" };
+    return { left: "No enemies", right: "Round " + state.round };
   }
 
   const names = new Set(living.map((e) => e.name));
   const first = living[0];
   const label = names.size === 1 ? pluralize(first.name, count) : "enemies";
-  return { left: `${count} ${label}`, right: `(${count})` };
+  return { left: `${count} ${label}`, right: "Round " + state.round };
 }
 
 function pluralize(name: string, count: number): string {
@@ -145,7 +146,7 @@ function buildMessageLog(view: SelectActionView): HTMLElement {
   log.className = "combat-message-log";
 
   const state = view.state;
-  const lines = state.log.slice(-8);
+  const lines = state.log.slice(-COMBAT_LOG_HISTORY);
   for (const line of lines) {
     const el = document.createElement("div");
     el.className = "log-line";
@@ -166,17 +167,13 @@ function buildMessageLog(view: SelectActionView): HTMLElement {
     log.appendChild(promptEl);
   }
 
-  if (view.selectionList) {
-    const choices = view.selectionList
-      .split("  ")
-      .map((s) => s.trim())
-      .filter(Boolean);
+  if (view.selectionList && view.selectionList.length > 0) {
     const listEl = document.createElement("div");
     listEl.className = "log-line selection-list";
-    for (const choice of choices) {
+    for (const choice of view.selectionList) {
       const item = document.createElement("div");
       item.className = "selection-item";
-      item.textContent = choice;
+      item.textContent = choice.label;
       listEl.appendChild(item);
     }
     log.appendChild(listEl);
@@ -286,15 +283,17 @@ function buildActionPane(
   const pane = document.createElement("div");
   pane.className = "combat-action-menu";
 
-  const actorName = document.createElement("div");
-  actorName.className = "actor-name";
-  actorName.textContent = `${view.currentCharacter.name}'s turn`;
-  pane.appendChild(actorName);
+  if (view.phase !== "ready") {
+    const actorName = document.createElement("div");
+    actorName.className = "actor-name";
+    actorName.textContent = `${view.currentCharacter.name}'s turn`;
+    pane.appendChild(actorName);
+  }
 
   if (view.phase === "selectAction") {
     pane.appendChild(buildActionMenu(view, handlers));
-  } else if (view.selectionList) {
-    pane.appendChild(buildSelectionMenu(view));
+  } else if (view.selectionList && view.selectionList.length > 0) {
+    pane.appendChild(buildSelectionMenu(view, handlers));
   } else if (view.phase === "ready") {
     const readyEl = document.createElement("div");
     readyEl.className = "ready-message";
@@ -340,21 +339,20 @@ function buildActionMenu(
   return menu;
 }
 
-function buildSelectionMenu(view: SelectActionView): HTMLElement {
+function buildSelectionMenu(
+  view: SelectActionView,
+  handlers: SelectActionHandlers
+): HTMLElement {
   const menu = document.createElement("div");
   menu.className = "action-items";
 
-  const choices = view.selectionList
-    ? view.selectionList
-        .split("  ")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : [];
-
-  for (const choice of choices) {
+  for (const choice of view.selectionList ?? []) {
     const item = document.createElement("div");
     item.className = "combat-action-item";
-    item.textContent = choice;
+    item.textContent = choice.label;
+    item.addEventListener("click", () => {
+      handlers.onSelectChoice(choice.index);
+    });
     menu.appendChild(item);
   }
 
@@ -411,10 +409,16 @@ function buildPartyStrip(
   return strip;
 }
 
-function buildHint(): HTMLElement {
+function buildHint(phase: CombatPanelPhase): HTMLElement {
   const el = document.createElement("div");
   el.className = "combat-hint";
-  el.textContent = "▲▼ choose — Enter/Space confirm — click to select";
+  if (phase === "selectAction") {
+    el.textContent = "▲▼ choose — Enter/Space confirm — click to select";
+  } else if (phase === "ready") {
+    el.textContent = "Space/Enter to resolve round";
+  } else {
+    el.textContent = "[1-9] choose — click to select";
+  }
   return el;
 }
 
