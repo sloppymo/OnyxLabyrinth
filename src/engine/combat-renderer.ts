@@ -120,7 +120,8 @@ const MSG_BOX_HEIGHT_RATIO = 0.24;
 export const SPRITE_W = 48;
 export const SPRITE_H = 64;
 const PARTY_SLOT_SPACING = 70;
-const ENEMY_SLOT_SPACING = 70;
+const ENEMY_SLOT_SPACING = 230;
+const ENEMY_SPRITE_SCALE = 4.5;
 
 // --- Sprite position computation -------------------------------------------
 
@@ -409,6 +410,9 @@ export function drawEnemySprite(
   ctx.save();
   ctx.globalAlpha = anim.opacity;
 
+  const w = SPRITE_W * scale;
+  const h = SPRITE_H * scale;
+
   const bob = anim.state === "idle" ? Math.sin(now / 700 + x * 0.02) * 2 : 0;
   // Attack lunge: shift left toward party.
   const lunge = anim.state === "attacking" ? anim.progress * -30 : 0;
@@ -419,7 +423,7 @@ export function drawEnemySprite(
   // Shadow.
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.beginPath();
-  ctx.ellipse(px, py + SPRITE_H / 2 + 4, SPRITE_W / 2.5, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(px, py + h / 2 + 4, w / 2.5, 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Try image sprite first; fall back to procedural shape.
@@ -429,16 +433,16 @@ export function drawEnemySprite(
 
   // Defeated: rotate.
   if (anim.state === "defeated") {
-    ctx.translate(px, py + SPRITE_H / 3);
+    ctx.translate(px, py + h / 3);
     ctx.rotate(Math.PI / 2);
-    ctx.translate(-px, -(py + SPRITE_H / 3));
+    ctx.translate(-px, -(py + h / 3));
   }
 
   if (spriteImg && sw > 0 && sh > 0) {
     // Draw image sprite centered at (px, py), scaled to fit the sprite box.
     ctx.imageSmoothingEnabled = false; // crisp pixel art
-    const maxW = SPRITE_W * scale;
-    const maxH = SPRITE_H * scale;
+    const maxW = w;
+    const maxH = h;
     const imgScale = Math.min(maxW / sw, maxH / sh);
     const dw = sw * imgScale;
     const dh = sh * imgScale;
@@ -451,7 +455,7 @@ export function drawEnemySprite(
       case "blob":
         // Amorphous blob (acid puddle, dust sprite).
         ctx.beginPath();
-        ctx.ellipse(px, py, SPRITE_W / 2.5, SPRITE_H / 3, 0, 0, Math.PI * 2);
+        ctx.ellipse(px, py, w / 2.5, h / 3, 0, 0, Math.PI * 2);
         ctx.fill();
         // Eyes.
         ctx.fillStyle = "#000";
@@ -462,7 +466,7 @@ export function drawEnemySprite(
       case "insect":
         // Insect (giant rat, paper wasp, rift moth).
         ctx.beginPath();
-        ctx.ellipse(px, py, SPRITE_W / 3, SPRITE_H / 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(px, py, w / 3, h / 4, 0, 0, Math.PI * 2);
         ctx.fill();
         // Wings/legs.
         ctx.strokeStyle = color;
@@ -477,7 +481,7 @@ export function drawEnemySprite(
 
       case "construct":
         // Blocky construct (stone guardian, animated armor, lesser construct).
-        roundRect(ctx, px - SPRITE_W / 3, py - SPRITE_H / 3, SPRITE_W * 0.67, SPRITE_H * 0.67, 4);
+        roundRect(ctx, px - w / 3, py - h / 3, w * 0.67, h * 0.67, 4);
         ctx.fill();
         // Glowing eyes.
         ctx.fillStyle = enemy.isBoss ? COLORS.danger : COLORS.amber;
@@ -490,7 +494,7 @@ export function drawEnemySprite(
         ctx.beginPath();
         ctx.arc(px, py - 6, 12, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillRect(px - 6, py + 2, 12, SPRITE_H / 3);
+        ctx.fillRect(px - 6, py + 2, 12, h / 3);
         // Dark eye sockets.
         ctx.fillStyle = "#000";
         ctx.fillRect(px - 6, py - 10, 4, 4);
@@ -502,7 +506,7 @@ export function drawEnemySprite(
         ctx.beginPath();
         ctx.arc(px, py - 12, 9, 0, Math.PI * 2);
         ctx.fill();
-        roundRect(ctx, px - SPRITE_W / 4, py - 4, SPRITE_W / 2, SPRITE_H * 0.5, 4);
+        roundRect(ctx, px - w / 4, py - 4, w / 2, h * 0.5, 4);
         ctx.fill();
         break;
 
@@ -537,7 +541,7 @@ export function drawEnemySprite(
     ctx.globalAlpha = hitFlash * 0.7;
     ctx.fillStyle = "#fff";
     ctx.beginPath();
-    ctx.arc(px, py, SPRITE_W / 2, 0, Math.PI * 2);
+    ctx.arc(px, py, w / 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = anim.opacity;
   }
@@ -547,7 +551,7 @@ export function drawEnemySprite(
     ctx.fillStyle = COLORS.amber;
     ctx.font = 'bold 12px "FF36", monospace';
     ctx.textAlign = "center";
-    ctx.fillText(`${targetIndex}.`, px, py - SPRITE_H / 2 - 6);
+    ctx.fillText(`${targetIndex}.`, px, py - h / 2 - 6);
   }
 
   // Name + qualitative health descriptor.
@@ -556,7 +560,7 @@ export function drawEnemySprite(
   ctx.font = '10px "FF36", monospace';
   ctx.textAlign = "center";
   const hpText = enemyHealthDescriptor(enemy.currentHp, enemy.hp);
-  ctx.fillText(hpText, px, py + SPRITE_H / 2 + 16);
+  ctx.fillText(hpText, px, py + h / 2 + 16);
 
   ctx.restore();
 }
@@ -811,7 +815,7 @@ export function renderCombat(
     const effectiveIdx = idxInRow >= 0 ? idxInRow :
       (enemy.row === "front" ? s.enemies.front : s.enemies.back).indexOf(enemy);
     const pos = enemySlotPos(effectiveIdx, rowEnemies.length || 1, enemy.row, w, h);
-    drawEnemySprite(ctx, pos.x, pos.y, enemy, anim, now, isTargetPhase && !isDead, targetNum);
+    drawEnemySprite(ctx, pos.x, pos.y, enemy, anim, now, isTargetPhase && !isDead, targetNum, ENEMY_SPRITE_SCALE);
   }
 
   // Draw graveyard enemies (defeated this round) so the death animation
@@ -833,7 +837,7 @@ export function renderCombat(
     const totalSlots = livingInRow + graveyardInRow.length;
     const effectiveIdx = livingInRow + idxInRow;
     const pos = enemySlotPos(effectiveIdx, totalSlots || 1, enemy.row, w, h);
-    drawEnemySprite(ctx, pos.x, pos.y, enemy, anim, now, false, 0);
+    drawEnemySprite(ctx, pos.x, pos.y, enemy, anim, now, false, 0, ENEMY_SPRITE_SCALE);
   }
 
   // --- Draw summoned ally sprites ---
