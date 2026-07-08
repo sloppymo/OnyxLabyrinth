@@ -1288,6 +1288,7 @@ function applySpell(
       break;
     }
     case "summon": {
+      const MAX_ALLIES = 3;
       const power = eff.power;
       const ally: SummonedAlly = {
         id: `summon-${s.round}-${s.summonedAllies.length}`,
@@ -1299,6 +1300,9 @@ function applySpell(
         agi: 50,
         row: "front",
       };
+      if (s.summonedAllies.length >= MAX_ALLIES) {
+        s.summonedAllies.shift();
+      }
       s.summonedAllies.push(ally);
       emit(
         `${spell.name} summons a ${ally.name} to fight for the party!`,
@@ -1410,10 +1414,9 @@ function resolveEnemyAction(
       damage = Math.max(1, damage - spellBuff);
       const defendPct = s.defendBuff[partyTarget.id] ?? 0;
       if (defendPct > 0) damage = Math.max(1, Math.round(damage * (1 - defendPct)));
-      // Magic screen reduces spell damage and deteriorates when struck.
+      // Magic screen reduces spell damage. It deteriorates at the end of each round.
       if (s.magicScreen > 0) {
         damage = Math.max(1, Math.round(damage * 0.5));
-        s.magicScreen = Math.max(0, s.magicScreen - 1);
       }
       partyTarget.hp -= damage;
       emit(

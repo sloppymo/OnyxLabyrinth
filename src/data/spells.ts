@@ -126,7 +126,7 @@ export const MAGE_SPELLS: SpellDef[] = [
     id: "mage-cortu",
     name: "Cortu",
     class: "Mage",
-    tier: 3,
+    tier: 5,
     spCost: 12,
     target: "allAllies",
     effect: { kind: "magicScreen", power: 5 },
