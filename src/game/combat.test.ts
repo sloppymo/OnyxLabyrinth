@@ -4,12 +4,13 @@ import {
   resolveCombatRound,
   inventoryToCounts,
   inventoryFromCounts,
+  canReach,
   type CombatState,
   type EnemyInstance,
   type EnemyFormation,
   type PlayerAction,
 } from "./combat";
-import { createDefaultParty, type Character } from "./party";
+import { createDefaultParty, type Character, type CharacterClass } from "./party";
 import { ALL_SPELLS } from "../data/spells";
 import { ALL_ITEMS } from "../data/items";
 import type { EnemyDef } from "../data/enemies";
@@ -219,5 +220,344 @@ describe("inventory helpers", () => {
     const original = ["potion", "potion", "antidote"];
     const roundTrip = inventoryFromCounts(inventoryToCounts(original));
     expect(roundTrip.sort()).toEqual([...original].sort());
+  });
+});
+
+describe("weapon range system", () => {
+  describe("canReach", () => {
+    it("close range: front row can hit front only, back row cannot attack", () => {
+      expect(canReach(0, "close", "front")).toBe(true); // Front row, front target
+      expect(canReach(0, "close", "back")).toBe(false);  // Front row, back target
+      expect(canReach(3, "close", "front")).toBe(false); // Back row, front target
+      expect(canReach(3, "close", "back")).toBe(false);  // Back row, back target
+    });
+
+    it("short range: front row can hit front/back, back row can hit front only", () => {
+      expect(canReach(0, "short", "front")).toBe(true); // Front row, front target
+      expect(canReach(0, "short", "back")).toBe(true);  // Front row, back target
+      expect(canReach(3, "short", "front")).toBe(true);  // Back row, front target
+      expect(canReach(3, "short", "back")).toBe(false); // Back row, back target
+    });
+
+    it("medium range: all positions can hit front/back", () => {
+      expect(canReach(0, "medium", "front")).toBe(true); // Front row, front target
+      expect(canReach(0, "medium", "back")).toBe(true);  // Front row, back target
+      expect(canReach(3, "medium", "front")).toBe(true); // Back row, front target
+      expect(canReach(3, "medium", "back")).toBe(true);  // Back row, back target
+    });
+
+    it("long range: all positions can hit front/back", () => {
+      expect(canReach(0, "long", "front")).toBe(true); // Front row, front target
+      expect(canReach(0, "long", "back")).toBe(true);  // Front row, back target
+      expect(canReach(3, "long", "front")).toBe(true); // Back row, front target
+      expect(canReach(3, "long", "back")).toBe(true);  // Back row, back target
+    });
+
+    it("all front row positions (0-2) behave the same", () => {
+      expect(canReach(0, "short", "back")).toBe(true);
+      expect(canReach(1, "short", "back")).toBe(true);
+      expect(canReach(2, "short", "back")).toBe(true);
+    });
+
+    it("all back row positions (3-5) behave the same", () => {
+      expect(canReach(3, "short", "back")).toBe(false);
+      expect(canReach(4, "short", "back")).toBe(false);
+      expect(canReach(5, "short", "back")).toBe(false);
+    });
+  });
+});
+
+describe("hide/ambush mechanics", () => {
+  it("Thief can hide and gains hidden status", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const thief = state.party.find((c) => c.class === "Thief");
+    if (!thief) throw new Error("No Thief in party");
+    
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === thief.id) return { kind: "hide" as const, actorId: c.id };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+    
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    const updatedThief = result.party.find((c) => c.id === thief.id);
+    expect(updatedThief?.status.includes("hidden")).toBe(true);
+  });
+
+  it("Non-Thief cannot hide", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const fighter = state.party.find((c) => c.class === "Fighter");
+    if (!fighter) throw new Error("No Fighter in party");
+    
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === fighter.id) return { kind: "hide" as const, actorId: c.id };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+    
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    const updatedFighter = result.party.find((c) => c.id === fighter.id);
+    expect(updatedFighter?.status.includes("hidden")).toBe(false);
+  });
+
+  it("Hidden character can ambush for double damage", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const thief = state.party.find((c) => c.class === "Thief");
+    if (!thief) throw new Error("No Thief in party");
+    
+    // First, hide
+    thief.status.push("hidden");
+    
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === thief.id) return { kind: "ambush" as const, actorId: c.id, targetInstanceId: "e1" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+    
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    const updatedThief = result.party.find((c) => c.id === thief.id);
+    expect(updatedThief?.status.includes("hidden")).toBe(false);
+    expect(updatedThief?.status.includes("exposed")).toBe(true);
+    expect(result.enemies.front[0].currentHp).toBeLessThan(100); // Should take damage
+  });
+
+  it("Ambush removes hidden status and adds exposed status", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const thief = state.party.find((c) => c.class === "Thief");
+    if (!thief) throw new Error("No Thief in party");
+    
+    thief.status.push("hidden");
+    
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === thief.id) return { kind: "ambush" as const, actorId: c.id, targetInstanceId: "e1" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+    
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    const updatedThief = result.party.find((c) => c.id === thief.id);
+    expect(updatedThief?.status.includes("hidden")).toBe(false);
+    expect(updatedThief?.status.includes("exposed")).toBe(true);
+  });
+
+  it("Hidden character cannot ambush if not hidden", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const thief = state.party.find((c) => c.class === "Thief");
+    if (!thief) throw new Error("No Thief in party");
+    
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === thief.id) return { kind: "ambush" as const, actorId: c.id, targetInstanceId: "e1" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+    
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    // Ambush should fail (fizzle) since not hidden
+    expect(result.log.some((m) => m.includes("not hidden"))).toBe(true);
+  });
+});
+
+describe("spell defense mechanics", () => {
+  it("CORTU raises the party magic screen", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const mage = state.party.find((c) => c.class === "Mage");
+    if (!mage) throw new Error("No Mage in party");
+    mage.knownSpellIds = ["mage-cortu"];
+    mage.sp = 50;
+    mage.stats.agi = 100; // ensure mage acts first
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-cortu" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    // CORTU adds 5, then end-of-round deterioration removes 1.
+    expect(result.magicScreen).toBe(4);
+    expect(result.log.some((m) => m.includes("Cortu") && m.includes("magic screen"))).toBe(true);
+  });
+
+  it("magic screen halves enemy spell damage and deteriorates when struck", () => {
+    const caster = makeEnemy("e1", "Fire Caster", 100, {
+      attack: 20,
+      agi: 1, // act after party
+      special: [{ kind: "caster", element: "fire" }],
+    });
+    const state = makeCombatState([caster]);
+    state.magicScreen = 5;
+    const partyHpBefore = state.party.reduce((sum, c) => sum + c.hp, 0);
+
+    const actions: PlayerAction[] = state.party.map((c) => ({
+      kind: "defend" as const,
+      actorId: c.id,
+    }));
+
+    const result = resolveCombatRound(state, actions, makeRng(0.99));
+    // Caster base damage ~20; with variance 0.99 -> ~27; defend halves -> ~13; screen halves -> ~6-7.
+    const partyHpAfter = result.party.reduce((sum, c) => sum + c.hp, 0);
+    const damageDealt = partyHpBefore - partyHpAfter;
+    expect(damageDealt).toBeGreaterThan(0);
+    expect(damageDealt).toBeLessThan(15);
+    // Screen loses 1 when struck and 1 at end of round.
+    expect(result.magicScreen).toBe(3);
+  });
+
+  it("BACORTU fizzle field causes enemy spells to fizzle", () => {
+    const caster = makeEnemy("e1", "Fire Caster", 100, {
+      attack: 6, // level estimate = 2, so field strength 4 >= 2 after deterioration
+      agi: 1,
+      special: [{ kind: "caster", element: "fire" }],
+    });
+    const state = makeCombatState([caster]);
+    const mage = state.party.find((c) => c.class === "Mage");
+    if (!mage) throw new Error("No Mage in party");
+    mage.knownSpellIds = ["mage-bacortu"];
+    mage.sp = 50;
+    mage.stats.agi = 100; // ensure mage acts before enemy caster
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-bacortu", targetRow: "front" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    // BACORTU adds 5, then deterioration removes 1 -> 4, still >= enemy level estimate 2.
+    expect(result.enemyFizzleFields.front).toBe(4);
+    expect(result.log.some((m) => m.includes("Bacortu"))).toBe(true);
+    expect(result.log.some((m) => m.includes("fizzles"))).toBe(true);
+  });
+
+  it("PALIOS dispels enemy screens and party fizzle field", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const mage = state.party.find((c) => c.class === "Mage");
+    if (!mage) throw new Error("No Mage in party");
+    mage.knownSpellIds = ["mage-palios"];
+    mage.sp = 50;
+    mage.level = 10; // high enough that partyFizzleField 5 does not fizzle PALIOS
+    mage.stats.agi = 100; // ensure mage acts first
+    state.enemyMagicScreens = { front: 3, back: 2 };
+    state.enemyFizzleFields = { front: 4, back: 1 };
+    state.partyFizzleField = 5;
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-palios" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.enemyMagicScreens.front).toBe(0);
+    expect(result.enemyMagicScreens.back).toBe(0);
+    expect(result.enemyFizzleFields.front).toBe(0);
+    expect(result.enemyFizzleFields.back).toBe(0);
+    expect(result.partyFizzleField).toBe(0);
+  });
+
+  it("party fizzle field causes party spells to fizzle when strong enough", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const mage = state.party.find((c) => c.class === "Mage");
+    if (!mage) throw new Error("No Mage in party");
+    mage.knownSpellIds = ["mage-halito"];
+    mage.sp = 50;
+    state.partyFizzleField = 5; // >= mage.level (1)
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-halito", targetInstanceId: "e1" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.log.some((m) => m.includes("fizzles") && m.includes("anti-magic"))).toBe(true);
+    expect(result.enemies.front[0].currentHp).toBe(100); // no damage dealt
+  });
+});
+
+describe("summoning mechanics", () => {
+  it("BAMORDI creates a summoned ally", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const priest = state.party.find((c) => c.class === "Priest");
+    if (!priest) throw new Error("No Priest in party");
+    priest.knownSpellIds = ["priest-bamordi"];
+    priest.sp = 50;
+    priest.stats.agi = 100;
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === priest.id) return { kind: "cast" as const, actorId: c.id, spellId: "priest-bamordi" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.summonedAllies.length).toBe(1);
+    expect(result.log.some((m) => m.includes("Bamordi") && m.includes("summon"))).toBe(true);
+  });
+
+  it("existing summoned ally attacks an enemy", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    state.summonedAllies = [
+      { id: "ally-1", name: "Elemental", hp: 30, maxHp: 30, attack: 15, ac: 2, agi: 50, row: "front" },
+    ];
+
+    const actions: PlayerAction[] = state.party.map((c) => ({
+      kind: "defend" as const,
+      actorId: c.id,
+    }));
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.enemies.front[0].currentHp).toBeLessThan(100);
+  });
+
+  it("enemies target and destroy summoned allies", () => {
+    const enemy = makeEnemy("e1", "Rat", 100, { attack: 30 });
+    const state = makeCombatState([enemy]);
+    state.summonedAllies = [
+      { id: "ally-1", name: "Elemental", hp: 1, maxHp: 1, attack: 15, ac: 0, agi: 50, row: "front" },
+    ];
+
+    const actions: PlayerAction[] = state.party.map((c) => ({
+      kind: "defend" as const,
+      actorId: c.id,
+    }));
+
+    const result = resolveCombatRound(state, actions, makeRng(0.99));
+    expect(result.summonedAllies.length).toBe(0);
+  });
+
+  it("summoned allies are cleared on victory", () => {
+    const enemy = makeEnemy("e1", "Rat", 1);
+    const state = makeCombatState([enemy]);
+    state.summonedAllies = [
+      { id: "ally-1", name: "Elemental", hp: 30, maxHp: 30, attack: 15, ac: 2, agi: 50, row: "front" },
+    ];
+
+    const actions: PlayerAction[] = state.party.map((c) => ({
+      kind: "attack" as const,
+      actorId: c.id,
+      targetInstanceId: "e1",
+    }));
+
+    const result = resolveCombatRound(state, actions, makeRng(0.99));
+    expect(result.result).toBe("victory");
+    expect(result.summonedAllies.length).toBe(0);
+  });
+
+  it("summoned allies are cleared when the party flees", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    state.summonedAllies = [
+      { id: "ally-1", name: "Elemental", hp: 30, maxHp: 30, attack: 15, ac: 2, agi: 50, row: "front" },
+    ];
+
+    const actions: PlayerAction[] = state.party.map((c) => ({
+      kind: "flee" as const,
+      actorId: c.id,
+    }));
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.result).toBe("fled");
+    expect(result.summonedAllies.length).toBe(0);
   });
 });

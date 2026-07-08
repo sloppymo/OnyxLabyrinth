@@ -28,6 +28,8 @@ export interface ItemDef {
   statBonuses?: Partial<Stats>;
   /** For consumables. */
   effect?: ItemEffect;
+  /** Weapon range for melee targeting (Wizardry V system). */
+  range?: "close" | "short" | "medium" | "long";
   /** Purchase price in gold. Sale price is typically half. */
   price: number;
   /** Floor tier that drops this item (or tier-appropriate versions). */
@@ -38,7 +40,8 @@ function weapon(
   baseId: string,
   baseName: string,
   tier: number,
-  attack: number
+  attack: number,
+  range: "close" | "short" | "medium" | "long"
 ): ItemDef[] {
   const basePrice = tier * 100;
   return [0, 1, 2].map((plus) => ({
@@ -47,6 +50,7 @@ function weapon(
     type: "weapon",
     slot: "hand",
     attackBonus: attack + plus,
+    range,
     price: basePrice * (1 + plus),
     dropFloorTier: tier,
   }));
@@ -72,12 +76,12 @@ function armor(
 }
 
 // Weapons
-export const DAGGERS = weapon("dagger", "Dagger", 1, 2);
-export const SHORT_SWORDS = weapon("short-sword", "Short Sword", 1, 3);
-export const MACES = weapon("mace", "Mace", 2, 4);
-export const LONG_SWORDS = weapon("long-sword", "Long Sword", 2, 5);
-export const GREAT_SWORDS = weapon("great-sword", "Great Sword", 3, 7);
-export const STAFFS = weapon("staff", "Staff", 1, 2);
+export const DAGGERS = weapon("dagger", "Dagger", 1, 2, "short");
+export const SHORT_SWORDS = weapon("short-sword", "Short Sword", 1, 3, "short");
+export const MACES = weapon("mace", "Mace", 2, 4, "close");
+export const LONG_SWORDS = weapon("long-sword", "Long Sword", 2, 5, "medium");
+export const GREAT_SWORDS = weapon("great-sword", "Great Sword", 3, 7, "close");
+export const STAFFS = weapon("staff", "Staff", 1, 2, "medium");
 
 // Armor
 export const ROBES = armor("robe", "Robe", 1, "body", 1);

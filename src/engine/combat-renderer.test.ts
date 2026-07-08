@@ -65,7 +65,9 @@ function makeScene(
     selectionList: null,
     partyAnims: new Map(),
     enemyAnims: new Map(),
+    allyAnims: new Map(),
     enemyGraveyard: [],
+    allyGraveyard: [],
     effects: [],
     messageQueue: [],
     currentMessage: null,
@@ -233,5 +235,54 @@ describe("setAnim", () => {
     const anim = anims.get("test");
     expect(anim!.state).toBe("hit");
     expect(anim!.stateStart).toBe(2000);
+  });
+});
+
+describe("summoned ally animations", () => {
+  it("triggers ally attack animation via structured event", () => {
+    const enemy = makeEnemy("e1", "Rat", 10);
+    const { scene } = makeScene([enemy]);
+    scene.state.summonedAllies = [
+      { id: "ally-1", name: "Elemental", hp: 30, maxHp: 30, attack: 15, ac: 2, agi: 50, row: "front" },
+    ];
+    const event = { type: "attack" as const, actorId: "ally-1", targetId: "e1", damage: 5 };
+    triggerAnimationsForMessage(scene, "Elemental attacks Rat for 5 damage.", NOW, W, H, event);
+    const allyAnim = scene.allyAnims.get("ally-1");
+    const enemyAnim = scene.enemyAnims.get("e1");
+    expect(allyAnim?.state).toBe("attacking");
+    expect(enemyAnim?.state).toBe("hit");
+    expect(scene.effects.some((e) => e.type === "slash")).toBe(true);
+  });
+
+  it("triggers ally hit animation when targeted", () => {
+    const { scene } = makeScene([]);
+    scene.state.summonedAllies = [
+      { id: "ally-1", name: "Elemental", hp: 30, maxHp: 30, attack: 15, ac: 2, agi: 50, row: "front" },
+    ];
+    const event = { type: "attack" as const, actorId: "e1", targetId: "ally-1", damage: 5 };
+    triggerAnimationsForMessage(scene, "Rat hits Elemental for 5 damage.", NOW, W, H, event);
+    const allyAnim = scene.allyAnims.get("ally-1");
+    expect(allyAnim?.state).toBe("hit");
+  });
+
+  it("triggers ally defeated animation", () => {
+    const { scene } = makeScene([]);
+    scene.state.summonedAllies = [
+      { id: "ally-1", name: "Elemental", hp: 0, maxHp: 30, attack: 15, ac: 2, agi: 50, row: "front" },
+    ];
+    const event = { type: "defeated" as const, targetId: "ally-1", wasEnemy: false };
+    triggerAnimationsForMessage(scene, "Elemental is banished.", NOW, W, H, event);
+    const allyAnim = scene.allyAnims.get("ally-1");
+    expect(allyAnim?.state).toBe("defeated");
+  });
+
+  it("triggers spawn burst for summon spell effect", () => {
+    const { scene } = makeScene([]);
+    scene.state.summonedAllies = [
+      { id: "ally-1", name: "Elemental", hp: 30, maxHp: 30, attack: 15, ac: 2, agi: 50, row: "front" },
+    ];
+    const event = { type: "spellEffect" as const, spellId: "priest-bamordi", targetId: "ally-1", isBuff: true };
+    triggerAnimationsForMessage(scene, "Bamordi summons a Elemental to fight for the party!", NOW, W, H, event);
+    expect(scene.effects.some((e) => e.type === "healBurst")).toBe(true);
   });
 });

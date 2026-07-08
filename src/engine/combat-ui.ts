@@ -114,7 +114,9 @@ export class CombatController {
       selectionList: null,
       partyAnims: new Map(),
       enemyAnims: new Map(),
+      allyAnims: new Map(),
       enemyGraveyard: [],
+      allyGraveyard: [],
       effects: [],
       messageQueue: [],
       eventQueue: [],
@@ -607,6 +609,13 @@ export class CombatController {
       setAnim(this.scene.enemyAnims, enemy.instanceId, "defeated", now);
     }
     this.state.justDied = [];
+
+    // Do the same for summoned allies that were banished this round.
+    for (const ally of this.state.justDiedAllies) {
+      this.scene.allyGraveyard.push(ally);
+      setAnim(this.scene.allyAnims, ally.id, "defeated", now);
+    }
+    this.state.justDiedAllies = [];
 
     // Start sequential message reveal for the new log entries.
     this.startMessageReveal();

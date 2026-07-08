@@ -36,6 +36,15 @@ import { spellsForClass } from "../data/spells";
 const RACE_LIST = Object.keys(RACES) as Race[];
 const CLASS_LIST = Object.keys(CLASSES) as CharacterClass[];
 
+// Ninja class requires Evil or Neutral alignment
+const CLASS_ALIGNMENT_RESTRICTIONS: Record<CharacterClass, Alignment[]> = {
+  Fighter: ["Good", "Neutral", "Evil"],
+  Mage: ["Good", "Neutral", "Evil"],
+  Priest: ["Good", "Neutral", "Evil"],
+  Thief: ["Good", "Neutral", "Evil"],
+  Ninja: ["Neutral", "Evil"],
+};
+
 const DEFAULT_NAMES = ["Aria", "Bram", "Coda", "Dell", "Eve", "Fenn"];
 
 type Field = "name" | "race" | "alignment" | "class";
@@ -167,9 +176,17 @@ export class PartyCreationController {
     } else if (field === "alignment") {
       const i = ALIGNMENTS.indexOf(d.alignment);
       d.alignment = ALIGNMENTS[(i + dir + ALIGNMENTS.length) % ALIGNMENTS.length];
+      // If current class is Ninja and new alignment is Good, switch to Thief
+      if (d.cls === "Ninja" && d.alignment === "Good") {
+        d.cls = "Thief";
+      }
     } else if (field === "class") {
       const i = CLASS_LIST.indexOf(d.cls);
       d.cls = CLASS_LIST[(i + dir + CLASS_LIST.length) % CLASS_LIST.length];
+      // If new class is Ninja and current alignment is Good, switch to Neutral
+      if (d.cls === "Ninja" && d.alignment === "Good") {
+        d.alignment = "Neutral";
+      }
     }
     this.flash = "";
     this.render();
@@ -186,6 +203,13 @@ export class PartyCreationController {
     const d = this.currentDraft();
     if (d.name.trim().length === 0) {
       this.flash = "Enter a name first.";
+      this.render();
+      return;
+    }
+    // Validate class alignment restrictions (e.g., Ninja cannot be Good).
+    const allowedAlignments = CLASS_ALIGNMENT_RESTRICTIONS[d.cls];
+    if (!allowedAlignments.includes(d.alignment)) {
+      this.flash = `${d.cls} cannot be ${d.alignment}.`;
       this.render();
       return;
     }
