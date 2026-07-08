@@ -24,13 +24,17 @@ export type SpellEffect =
   | { kind: "buff"; stat: "armor" }
   | { kind: "cure"; status: "poison" | "sleep" | "paralysis" | "blind" }
   | { kind: "disable"; status: "sleep" }
-  | { kind: "resurrect" };
+  | { kind: "resurrect" }
+  | { kind: "magicScreen"; power: number }
+  | { kind: "fizzleField"; power: number }
+  | { kind: "dispelMagic" }
+  | { kind: "summon"; power: number };
 
 export interface SpellDef {
   id: string;
   name: string;
   class: SpellcasterClass;
-  tier: 1 | 2 | 3 | 4;
+  tier: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   spCost: number;
   target: SpellTarget;
   effect: SpellEffect;
@@ -118,6 +122,46 @@ export const MAGE_SPELLS: SpellDef[] = [
     effect: { kind: "damage", element: "cold", power: 16 },
     description: "A blizzard that blankets the entire enemy formation.",
   },
+  {
+    id: "mage-cortu",
+    name: "Cortu",
+    class: "Mage",
+    tier: 3,
+    spCost: 12,
+    target: "allAllies",
+    effect: { kind: "magicScreen", power: 5 },
+    description: "Erects a magic screen that shields the party from spells and breath.",
+  },
+  {
+    id: "mage-bacortu",
+    name: "Bacortu",
+    class: "Mage",
+    tier: 5,
+    spCost: 20,
+    target: "groupEnemies",
+    effect: { kind: "fizzleField", power: 5 },
+    description: "Creates a fizzle field around one enemy group, causing their spells to fail.",
+  },
+  {
+    id: "mage-palios",
+    name: "Palios",
+    class: "Mage",
+    tier: 5,
+    spCost: 18,
+    target: "allEnemies",
+    effect: { kind: "dispelMagic" },
+    description: "Dispels enemy magic screens and fizzle fields while cleansing the party's own fizzle field.",
+  },
+  {
+    id: "mage-socordi",
+    name: "Socordi",
+    class: "Mage",
+    tier: 5,
+    spCost: 25,
+    target: "allAllies",
+    effect: { kind: "summon", power: 5 },
+    description: "Conjures a group of elemental monsters to fight for the party.",
+  },
 ];
 
 export const PRIEST_SPELLS: SpellDef[] = [
@@ -201,6 +245,16 @@ export const PRIEST_SPELLS: SpellDef[] = [
     effect: { kind: "damage", element: "undead", power: 18 },
     description: "A wave of sacred force that smites all undead foes.",
   },
+  {
+    id: "priest-bamordi",
+    name: "Bamordi",
+    class: "Priest",
+    tier: 5,
+    spCost: 25,
+    target: "allAllies",
+    effect: { kind: "summon", power: 5 },
+    description: "Summons a group of monsters from the elemental planes to aid the party.",
+  },
 ];
 
 export const ALL_SPELLS: SpellDef[] = [...MAGE_SPELLS, ...PRIEST_SPELLS];
@@ -212,8 +266,8 @@ export function spellByName(name: string): SpellDef | undefined {
 
 /** Return every spell a character class can learn at their current tier range. */
 export function spellsForClass(
-  cls: "Fighter" | "Mage" | "Priest" | "Thief",
-  maxTier: 1 | 2 | 3 | 4
+  cls: "Fighter" | "Mage" | "Priest" | "Thief" | "Ninja",
+  maxTier: 1 | 2 | 3 | 4 | 5 | 6 | 7
 ): SpellDef[] {
   if (cls === "Mage") return MAGE_SPELLS.filter((s) => s.tier <= maxTier);
   if (cls === "Priest") return PRIEST_SPELLS.filter((s) => s.tier <= maxTier);

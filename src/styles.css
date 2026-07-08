@@ -1077,6 +1077,12 @@ canvas#map-canvas {
   color: var(--danger-red);
 }
 
+.combat-party-range {
+  font-size: 16px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
 .combat-hint {
   font-size: 20px;
   color: var(--text-dim);

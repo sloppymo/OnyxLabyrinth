@@ -53,7 +53,7 @@ function xpForNextLevel(level: number): number {
 }
 
 /** Level up a character: increase level, recompute max HP/SP, full heal,
- *  and grant new spells by tier (Level 1→T1, 3→T2, 5→T3, 7→T4). */
+ *  and grant new spells by tier (Level 1→T1, 3→T2, 5→T3, 7→T4, 9→T5, 11→T6, 13→T7). */
 function levelUpChar(c: Character): Character {
   const newLevel = c.level + 1;
   // HP growth: VIT * 2 + class bonus, +10% per level above 1.
@@ -67,7 +67,7 @@ function levelUpChar(c: Character): Character {
   const newMaxSp = c.maxSp + spGrowth;
 
   // Spell progression: grant every spell up to the tier unlocked by this level.
-  const newTier = Math.min(4, Math.ceil(newLevel / 2)) as 1 | 2 | 3 | 4;
+  const newTier = Math.min(7, Math.ceil(newLevel / 2)) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
   const knownSet = new Set(c.knownSpellIds);
   for (const s of spellsForClass(c.class, newTier)) knownSet.add(s.id);
 

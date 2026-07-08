@@ -93,10 +93,14 @@ export interface CombatScene {
   partyAnims: Map<string, SpriteAnim>;
   /** Per-enemy animation state, keyed by instance id. */
   enemyAnims: Map<string, SpriteAnim>;
+  /** Per-summoned-ally animation state, keyed by ally id. */
+  allyAnims: Map<string, SpriteAnim>;
   /** Enemies that died this round (for death animations). Kept here so the
    *  render loop can draw the fade/rotate animation after the enemy is
    *  removed from the living front/back arrays. */
   enemyGraveyard: EnemyInstance[];
+  /** Summoned allies that died this round (for death animations). */
+  allyGraveyard: { id: string; name: string; hp: number; maxHp: number }[];
   /** Active visual effects (slashes, spell bursts). */
   effects: CombatEffect[];
   /** Message queue: log entries waiting to be revealed. */
@@ -159,6 +163,18 @@ function enemySlotPos(
   };
 }
 
+/** Compute screen positions for summoned allies (left of the party). */
+function allySlotPos(index: number, w: number, h: number): { x: number; y: number } {
+  const arenaTop = h * MSG_BOX_HEIGHT_RATIO + 20;
+  const arenaH = h * (1 - MSG_BOX_HEIGHT_RATIO) - 40;
+  const baseX = w * 0.12 - 70;
+  const baseY = arenaTop + arenaH * 0.55;
+  return {
+    x: baseX,
+    y: baseY - index * (SPRITE_H * 0.8),
+  };
+}
+
 // --- Procedural sprite drawing ---------------------------------------------
 
 /** Draw a party member silhouette (humanoid, class-colored). */
@@ -199,8 +215,17 @@ function drawPartySprite(
     case "Mage": bodyColor = COLORS.classMage; break;
     case "Priest": bodyColor = COLORS.classPriest; break;
     case "Thief": bodyColor = COLORS.classThief; break;
+    case "Ninja": bodyColor = COLORS.classThief; break; // Same color as Thief
     default: bodyColor = COLORS.warmWhite;
   }
+  
+  // Hidden: draw semi-transparent
+  if (char.status.includes("hidden")) {
+    ctx.globalAlpha = 0.3;
+  }
+  
+  // Exposed: draw with red outline
+  const isExposed = char.status.includes("exposed");
 
   // Defeated: draw lying down (rotated 90°).
   if (anim.state === "defeated") {
@@ -248,6 +273,12 @@ function drawPartySprite(
     ctx.beginPath();
     ctx.arc(px, py - SPRITE_H / 4 - 8, 12, Math.PI, 0);
     ctx.stroke();
+  } else if (cls === "Ninja") {
+    // Mask: horizontal line across face.
+    ctx.beginPath();
+    ctx.moveTo(px - 8, py - SPRITE_H / 4 - 4);
+    ctx.lineTo(px + 8, py - SPRITE_H / 4 - 4);
+    ctx.stroke();
   }
 
   // Hit flash overlay.
@@ -258,13 +289,31 @@ function drawPartySprite(
     ctx.fill();
     ctx.globalAlpha = anim.opacity;
   }
-
+  
+  // Exposed indicator: red outline
+  if (isExposed) {
+    ctx.strokeStyle = COLORS.danger;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.8;
+    roundRect(ctx, px - SPRITE_W / 3, py - SPRITE_H / 2, SPRITE_W * 0.67, SPRITE_H, 6);
+    ctx.stroke();
+    ctx.globalAlpha = anim.opacity;
+  }
+  
   // Current-actor marker (▶).
-  if (isCurrent && anim.state !== "defeated") {
+  if (isCurrent && anim.state !== "defeated" && !char.status.includes("hidden")) {
     ctx.fillStyle = COLORS.amber;
     ctx.font = 'bold 14px "FF36", monospace';
     ctx.textAlign = "center";
     ctx.fillText("▶", px, py - SPRITE_H / 2 - 18);
+  }
+  
+  // Hidden indicator (H) - shown even if not current actor
+  if (char.status.includes("hidden")) {
+    ctx.fillStyle = COLORS.amber;
+    ctx.font = 'bold 12px "FF36", monospace';
+    ctx.textAlign = "center";
+    ctx.fillText("H", px, py - SPRITE_H / 2 - 18);
   }
 
   // Name + HP below sprite.
@@ -274,6 +323,73 @@ function drawPartySprite(
   ctx.textAlign = "center";
   const hpText = char.hp <= 0 ? "KO" : `${char.hp}/${char.maxHp}`;
   ctx.fillText(hpText, px, py + SPRITE_H / 2 + 16);
+
+  ctx.restore();
+}
+
+/** Draw a summoned ally as a small elemental silhouette. */
+function drawAllySprite(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  ally: { id: string; name: string; hp: number; maxHp: number },
+  anim: SpriteAnim,
+  now: number
+): void {
+  ctx.save();
+  ctx.globalAlpha = anim.opacity;
+
+  const bob = anim.state === "idle" ? Math.sin(now / 800 + x * 0.01) * 2 : 0;
+  const lunge = anim.state === "attacking" ? anim.progress * 30 : 0;
+  const px = x + lunge;
+  const py = y + bob;
+  const hitFlash = anim.state === "hit" ? 1 - anim.progress : 0;
+
+  // Shadow.
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath();
+  ctx.ellipse(px, py + SPRITE_H / 2 + 4, SPRITE_W / 2.5, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Defeated: rotate and fade.
+  if (anim.state === "defeated") {
+    ctx.translate(px, py + SPRITE_H / 3);
+    ctx.rotate(Math.PI / 2);
+    ctx.translate(-px, -(py + SPRITE_H / 3));
+  }
+
+  // Body: a glowing elemental orb with tendrils.
+  ctx.fillStyle = COLORS.spell;
+  ctx.beginPath();
+  ctx.arc(px, py - 4, 14, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tendrils.
+  ctx.strokeStyle = COLORS.spell;
+  ctx.lineWidth = 2;
+  for (let i = -1; i <= 1; i += 2) {
+    ctx.beginPath();
+    ctx.moveTo(px + i * 8, py);
+    ctx.lineTo(px + i * 18, py - 12);
+    ctx.stroke();
+  }
+
+  // Hit flash.
+  if (hitFlash > 0) {
+    ctx.globalAlpha = hitFlash * 0.7;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(px, py - 4, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = anim.opacity;
+  }
+
+  // Name + HP.
+  ctx.globalAlpha = anim.opacity * 0.9;
+  ctx.fillStyle = ally.hp <= 0 ? COLORS.danger : COLORS.textDim;
+  ctx.font = '10px "FF36", monospace';
+  ctx.textAlign = "center";
+  ctx.fillText(`${ally.hp}/${ally.maxHp}`, px, py + SPRITE_H / 2 + 16);
 
   ctx.restore();
 }
@@ -720,6 +836,28 @@ export function renderCombat(
     drawEnemySprite(ctx, pos.x, pos.y, enemy, anim, now, false, 0);
   }
 
+  // --- Draw summoned ally sprites ---
+  for (let i = 0; i < s.summonedAllies.length; i++) {
+    const ally = s.summonedAllies[i];
+    const anim = scene.allyAnims.get(ally.id) ?? {
+      state: "idle" as SpriteState,
+      stateStart: now,
+      progress: 0,
+      opacity: 1,
+    };
+    const pos = allySlotPos(i, w, h);
+    drawAllySprite(ctx, pos.x, pos.y, ally, anim, now);
+  }
+
+  // Draw ally graveyard (banished this round) so the fade animation is visible.
+  for (let i = 0; i < scene.allyGraveyard.length; i++) {
+    const ally = scene.allyGraveyard[i];
+    const anim = scene.allyAnims.get(ally.id);
+    if (!anim || anim.state !== "defeated") continue;
+    const pos = allySlotPos(i, w, h);
+    drawAllySprite(ctx, pos.x, pos.y, ally, anim, now);
+  }
+
   // --- Draw party sprites ---
   for (let i = 0; i < s.party.length; i++) {
     const char = s.party[i];
@@ -814,6 +952,28 @@ export function updateAnimations(scene: CombatScene, now: number): void {
 
   // Update enemy anims (same logic).
   for (const anim of scene.enemyAnims.values()) {
+    const elapsed = now - anim.stateStart;
+    if (anim.state === "attacking") {
+      anim.progress = Math.min(1, elapsed / 300);
+      if (anim.progress >= 1) {
+        anim.state = "idle";
+        anim.stateStart = now;
+        anim.progress = 0;
+      }
+    } else if (anim.state === "hit") {
+      anim.progress = Math.min(1, elapsed / 250);
+      if (anim.progress >= 1) {
+        anim.state = "idle";
+        anim.stateStart = now;
+        anim.progress = 0;
+      }
+    } else if (anim.state === "defeated") {
+      anim.opacity = Math.max(0.3, 1 - elapsed / 500);
+    }
+  }
+
+  // Update ally anims (same logic).
+  for (const anim of scene.allyAnims.values()) {
     const elapsed = now - anim.stateStart;
     if (anim.state === "attacking") {
       anim.progress = Math.min(1, elapsed / 300);
@@ -1008,15 +1168,19 @@ export function triggerAnimationsForMessage(
   const findPartyById = (id: string) => s.party.find((c) => c.id === id);
   const findEnemyById = (id: string) =>
     allEnemies.find((e) => e.instanceId === id);
+  const findAllyById = (id: string) => s.summonedAllies.find((a) => a.id === id);
 
   const triggerAttackById = (actorId: string, targetId: string) => {
     const partyAttacker = findPartyById(actorId);
     const enemyAttacker = findEnemyById(actorId);
+    const allyAttacker = findAllyById(actorId);
     if (partyAttacker) setAnim(scene.partyAnims, partyAttacker.id, "attacking", now);
     if (enemyAttacker) setAnim(scene.enemyAnims, enemyAttacker.instanceId, "attacking", now);
+    if (allyAttacker) setAnim(scene.allyAnims, allyAttacker.id, "attacking", now);
 
     const enemyTarget = findEnemyById(targetId);
     const partyTarget = findPartyById(targetId);
+    const allyTarget = findAllyById(targetId);
     if (enemyTarget) {
       setAnim(scene.enemyAnims, enemyTarget.instanceId, "hit", now);
       const pos = findEnemyPos(s, enemyTarget.instanceId, w, h, scene.enemyGraveyard);
@@ -1031,14 +1195,23 @@ export function triggerAnimationsForMessage(
         type: "slash", x: pos.x, y: pos.y, color: COLORS.danger,
         start: now, duration: 300,
       });
+    } else if (allyTarget) {
+      setAnim(scene.allyAnims, allyTarget.id, "hit", now);
+      const pos = findAllyPos(s, allyTarget.id, w, h);
+      scene.effects.push({
+        type: "slash", x: pos.x, y: pos.y, color: COLORS.danger,
+        start: now, duration: 300,
+      });
     }
   };
 
   const triggerMissById = (actorId: string, _targetId: string, reason: string) => {
     const partyAttacker = findPartyById(actorId);
     const enemyAttacker = findEnemyById(actorId);
+    const allyAttacker = findAllyById(actorId);
     if (partyAttacker) setAnim(scene.partyAnims, partyAttacker.id, "attacking", now);
     if (enemyAttacker) setAnim(scene.enemyAnims, enemyAttacker.instanceId, "attacking", now);
+    if (allyAttacker) setAnim(scene.allyAnims, allyAttacker.id, "attacking", now);
     // Flash the target if it exists (evade), otherwise just the attacker lunge.
     if (reason === "evade" && _targetId) {
       triggerFlashById(_targetId, COLORS.warmWhite);
@@ -1090,6 +1263,7 @@ export function triggerAnimationsForMessage(
     const isHeal = heal !== undefined || isBuff === true || (statusInflicted === undefined && damage === undefined && isBuff === undefined);
     const enemyTarget = findEnemyById(targetId);
     const partyTarget = findPartyById(targetId);
+    const allyTarget = findAllyById(targetId);
     if (enemyTarget) {
       if (damage !== undefined) setAnim(scene.enemyAnims, enemyTarget.instanceId, "hit", now);
       const pos = findEnemyPos(s, enemyTarget.instanceId, w, h, scene.enemyGraveyard);
@@ -1106,6 +1280,15 @@ export function triggerAnimationsForMessage(
         color: isHeal ? COLORS.heal : COLORS.danger,
         start: now, duration: 400,
       });
+    } else if (allyTarget) {
+      if (damage !== undefined) setAnim(scene.allyAnims, allyTarget.id, "hit", now);
+      const pos = findAllyPos(s, allyTarget.id, w, h);
+      scene.effects.push({
+        type: isHeal ? "healBurst" : "spellBurst",
+        x: pos.x, y: pos.y,
+        color: isHeal ? COLORS.heal : COLORS.danger,
+        start: now, duration: 400,
+      });
     }
   };
 
@@ -1115,7 +1298,12 @@ export function triggerAnimationsForMessage(
       if (enemy) setAnim(scene.enemyAnims, enemy.instanceId, "defeated", now);
     } else {
       const party = findPartyById(targetId);
-      if (party) setAnim(scene.partyAnims, party.id, "defeated", now);
+      if (party) {
+        setAnim(scene.partyAnims, party.id, "defeated", now);
+      } else {
+        const ally = findAllyById(targetId);
+        if (ally) setAnim(scene.allyAnims, ally.id, "defeated", now);
+      }
     }
   };
 
@@ -1133,6 +1321,7 @@ export function triggerAnimationsForMessage(
   const triggerFlashById = (targetId: string, color: string) => {
     const enemyTarget = findEnemyById(targetId);
     const partyTarget = findPartyById(targetId);
+    const allyTarget = findAllyById(targetId);
     if (enemyTarget) {
       const pos = findEnemyPos(s, enemyTarget.instanceId, w, h, scene.enemyGraveyard);
       scene.effects.push({
@@ -1141,6 +1330,12 @@ export function triggerAnimationsForMessage(
       });
     } else if (partyTarget) {
       const pos = findPartyPos(s, partyTarget.id, w, h);
+      scene.effects.push({
+        type: "spellBurst", x: pos.x, y: pos.y, color,
+        start: now, duration: 300,
+      });
+    } else if (allyTarget) {
+      const pos = findAllyPos(s, allyTarget.id, w, h);
       scene.effects.push({
         type: "spellBurst", x: pos.x, y: pos.y, color,
         start: now, duration: 300,
@@ -1161,7 +1356,9 @@ export function triggerAnimationsForMessage(
         triggerCastById(event.actorId, event.spellId, event.targetId, event.damage, event.heal);
         return;
       case "spellEffect":
-        triggerSpellEffectById(event.targetId, event.damage, event.heal, event.statusInflicted, event.isBuff);
+        if (event.targetId) {
+          triggerSpellEffectById(event.targetId, event.damage, event.heal, event.statusInflicted, event.isBuff);
+        }
         return;
       case "defeated":
         triggerDefeatedById(event.targetId, event.wasEnemy);
@@ -1501,5 +1698,16 @@ function findPartyPos(
 ): { x: number; y: number } {
   const idx = s.party.findIndex((c) => c.id === charId);
   if (idx >= 0) return partySlotPos(idx, w, h);
+  return { x: w / 2, y: h / 2 };
+}
+
+function findAllyPos(
+  s: CombatState,
+  allyId: string,
+  w: number,
+  h: number
+): { x: number; y: number } {
+  const idx = s.summonedAllies.findIndex((a) => a.id === allyId);
+  if (idx >= 0) return allySlotPos(idx, w, h);
   return { x: w / 2, y: h / 2 };
 }

@@ -31,6 +31,58 @@ export type { Character, EnemyDef, SpellDef, ItemDef, Row, StatusEffect };
 // ---------------------------------------------------------------------------
 
 /**
+ * Weapon range types for the Wizardry V targeting system.
+ * Maps Wizardry V's four-group encounter grid to OnyxLabyrinth's two-row
+ * formation (front row ≈ groups 1-2, back row ≈ groups 3-4).
+ *
+ * - Close: front-row attackers can hit front-row enemies only.
+ * - Short: front-row attackers can hit any row; back-row attackers can hit
+ *          front-row enemies only.
+ * - Medium: front-row attackers can hit any row; back-row attackers can hit
+ *           any row.
+ * - Long: any position can hit any row.
+ */
+export type WeaponRange = "close" | "short" | "medium" | "long";
+
+/**
+ * Check if an attacker can reach a target based on position and weapon range.
+ * Implements the Wizardry V targeting grid adapted to OnyxLabyrinth's
+ * front/back row system.
+ *
+ * @param attackerPosition - 0-5, where 0-2 are front row and 3-5 are back row
+ * @param weaponRange - The weapon's range type
+ * @param targetRow - The target enemy's row ("front" or "back")
+ * @returns true if the attacker can reach the target
+ */
+export function canReach(
+  attackerPosition: number,
+  weaponRange: WeaponRange,
+  targetRow: "front" | "back"
+): boolean {
+  const isFrontRow = attackerPosition >= 0 && attackerPosition <= 2;
+
+  switch (weaponRange) {
+    case "close":
+      // Slots 1-3 (front row) can reach groups 1-2 (front row enemies).
+      return isFrontRow && targetRow === "front";
+    case "short":
+      // Slots 1-3 reach groups 1-3; slots 4-6 reach groups 1-2.
+      // In a two-row system: front-row reaches all; back-row reaches front only.
+      return isFrontRow || targetRow === "front";
+    case "medium":
+      // Slots 1-3 reach all groups; slots 4-6 reach groups 1-3.
+      // In a two-row system both rows reach everything.
+      return true;
+    case "long":
+      // All positions reach all groups.
+      return true;
+    default:
+      // Fallback: treat unknown as melee-only (close range).
+      return isFrontRow && targetRow === "front";
+  }
+}
+
+/**
  * A runtime enemy instance: the static `EnemyDef` template plus mutable
  * per-instance combat state. `instanceId` is unique per spawn so multiple
  * copies of the same enemy type can be targeted independently. `row` is the
@@ -137,6 +189,7 @@ export type PlayerAction =
       spellId: string;
       targetInstanceId?: string; // enemy instance id for singleEnemy
       targetAllyId?: string; // character id for singleAlly
+      targetRow?: Row; // enemy row for groupEnemies fizzle fields
     }
   | { kind: "defend"; actorId: string }
   | {
@@ -145,7 +198,9 @@ export type PlayerAction =
       itemId: string;
       targetAllyId?: string;
     }
-  | { kind: "flee"; actorId: string };
+  | { kind: "flee"; actorId: string }
+  | { kind: "hide"; actorId: string }
+  | { kind: "ambush"; actorId: string; targetInstanceId: string };
 
 /**
  * Structured combat event emitted alongside log messages. The combat
@@ -157,7 +212,7 @@ export type CombatEvent =
   | { type: "attack"; actorId: string; targetId: string; damage: number }
   | { type: "miss"; actorId: string; targetId: string; reason: "evade" | "blind" | "noTarget" }
   | { type: "cast"; actorId: string; spellId: string; targetId: string | null; damage?: number; heal?: number }
-  | { type: "spellEffect"; spellId: string; targetId: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean }
+  | { type: "spellEffect"; spellId: string; targetId?: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean; isDebuff?: boolean }
   | { type: "defeated"; targetId: string; wasEnemy: boolean }
   | { type: "revived"; targetId: string }
   | { type: "defend"; actorId: string }
@@ -166,18 +221,40 @@ export type CombatEvent =
   | { type: "flee"; success: boolean }
   | { type: "silence"; actorId: string; targetId: string }
   | { type: "fizzle"; actorId: string }
+  | { type: "hide"; actorId: string }
+  | { type: "ambush"; actorId: string; targetId: string; damage: number }
+  | { type: "spotted"; actorId: string }
   | null;
+
+/** Internal: target of an enemy melee attack. */
+type EnemyAttackTarget = { kind: "party"; id: string } | { kind: "ally"; id: string };
 
 /** Internal: an enemy's resolved intent for the round. */
 type EnemyAction =
   | {
       kind: "attack";
       actor: EnemyInstance;
-      targetId: string; // character id
+      target: EnemyAttackTarget;
     }
   | { kind: "cast"; actor: EnemyInstance; spellId: string; targetId: string }
   | { kind: "silence"; actor: EnemyInstance }
   | { kind: "doNothing"; actor: EnemyInstance };
+
+/**
+ * A temporary ally summoned by BAMORDI / SOCORDI. Simple attack-only
+ * combatant that acts before enemies each round and can be targeted
+ * in place of party members.
+ */
+export interface SummonedAlly {
+  id: string;
+  name: string;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  ac: number;
+  agi: number;
+  row: Row;
+}
 
 export interface CombatState {
   party: Character[];
@@ -212,12 +289,40 @@ export interface CombatState {
    */
   inventory: Record<string, number>;
   /**
+   * Party magic screen strength (from CORTU). Reduces spell/breath damage
+   * and deteriorates each round and when hit.
+   */
+  magicScreen: number;
+  /**
+   * Enemy fizzle field strength on the party. Causes party spells to fizzle.
+   */
+  partyFizzleField: number;
+  /**
+   * Per-enemy-row fizzle fields from BACORTU (row -> strength).
+   */
+  enemyFizzleFields: Record<Row, number>;
+  /**
+   * Per-enemy-row magic screens from enemy casters (row -> strength).
+   */
+  enemyMagicScreens: Record<Row, number>;
+  /**
+   * Temporary monsters summoned by BAMORDI / SOCORDI. Act before enemies
+   * each round and can soak enemy attacks.
+   */
+  summonedAllies: SummonedAlly[];
+  /**
    * Enemies that died this round (removed from front/back arrays by
    * deathCheck). The combat UI reads this to populate the renderer's
    * graveyard so death animations can play after the enemy is gone
    * from the living arrays. Cleared at the start of each round.
    */
   justDied: EnemyInstance[];
+  /**
+   * Summoned allies that died this round (removed from summonedAllies by
+   * allyDeathCheck). The combat UI reads this to play death animations.
+   * Cleared at the start of each round.
+   */
+  justDiedAllies: SummonedAlly[];
   /**
    * Structured events emitted alongside log messages this round. Each
    * entry corresponds 1:1 with a log entry (null if the log message has
@@ -265,7 +370,13 @@ export function createCombatState(
     loadout,
     inAntimagic,
     inventory: { ...inventory },
+    magicScreen: 0,
+    partyFizzleField: 0,
+    enemyFizzleFields: { front: 0, back: 0 },
+    enemyMagicScreens: { front: 0, back: 0 },
+    summonedAllies: [],
     justDied: [],
+    justDiedAllies: [],
     events: [],
   };
 }
@@ -343,6 +454,7 @@ export function resolveCombatRound(
   s.silencedThisRound = [];
   s.defendBuff = {};
   s.justDied = [];
+  s.justDiedAllies = [];
   s.events = [...state.events];
 
   const log = (msg: string): void => {
@@ -388,6 +500,7 @@ export function resolveCombatRound(
     const success = attemptFlee(s.isBoss, rng);
     if (success) {
       emit("The party flees from combat!", { type: "flee", success: true });
+      s.summonedAllies = [];
       s.ended = true;
       s.result = "fled";
       return s;
@@ -407,21 +520,60 @@ export function resolveCombatRound(
   const ordered = initiativeOrder(s, sanitized, enemyActions, rng);
 
   // --- Phase 4: resolution ------------------------------------------------
+  // Players act in initiative order, then summoned allies, then enemies.
+  // Allies act as a group before enemies to represent their role as a
+  // temporary front line.
   for (const entry of ordered) {
     if (s.ended) break;
-    if (entry.kind === "player") {
-      resolvePlayerAction(s, entry.action, rng, log, emit);
-    } else {
-      resolveEnemyAction(s, entry.action, rng, log, emit);
-    }
+    if (entry.kind !== "player") continue;
+    resolvePlayerAction(s, entry.action, rng, log, emit);
     deathCheck(s, emit);
+    allyDeathCheck(s, emit);
+    if (checkTermination(s, log)) return s;
+  }
+
+  // Summoned allies act before enemies.
+  for (const ally of s.summonedAllies.filter((a) => a.hp > 0)) {
+    if (s.ended) break;
+    resolveAllyAction(s, ally, rng, log, emit);
+    deathCheck(s, emit);
+    allyDeathCheck(s, emit);
+    if (checkTermination(s, log)) return s;
+  }
+
+  for (const entry of ordered) {
+    if (s.ended) break;
+    if (entry.kind !== "enemy") continue;
+    resolveEnemyAction(s, entry.action, rng, log, emit);
+    deathCheck(s, emit);
+    allyDeathCheck(s, emit);
     if (checkTermination(s, log)) return s;
   }
 
   // --- Phase 5: end-of-round status ticks ---------------------------------
   tickStatuses(s, log);
   deathCheck(s, emit);
+  allyDeathCheck(s, emit);
   if (checkTermination(s, log)) return s;
+
+  // Check for hidden characters being spotted by enemies
+  checkSpotHidden(s, rng, log, emit);
+
+  // Magic screens and fizzle fields deteriorate each round.
+  if (s.magicScreen > 0) {
+    s.magicScreen = Math.max(0, s.magicScreen - 1);
+  }
+  if (s.partyFizzleField > 0) {
+    s.partyFizzleField = Math.max(0, s.partyFizzleField - 1);
+  }
+  for (const row of (["front", "back"] as Row[])) {
+    if (s.enemyFizzleFields[row] > 0) {
+      s.enemyFizzleFields[row] = Math.max(0, s.enemyFizzleFields[row] - 1);
+    }
+    if (s.enemyMagicScreens[row] > 0) {
+      s.enemyMagicScreens[row] = Math.max(0, s.enemyMagicScreens[row] - 1);
+    }
+  }
 
   // Per-round silence from flag-driven bosses (silenceRandom) ends now.
   s.silencedThisRound = [];
@@ -545,7 +697,9 @@ function buildEnemyActions(
 
       // Caster: fling an elemental spell at a random party member.
       if (casterSpecial) {
-        const target = pickRandom(livingParty, rng);
+        // Skip hidden characters for single-target spells
+        const targetable = livingParty.filter((c) => !c.status.includes("hidden"));
+        const target = pickRandom(targetable.length > 0 ? targetable : livingParty, rng);
         if (target) {
           const spellName = casterSpecial.element === "cold" ? "Molito" : "Halito";
           const spell = spellByName(spellName);
@@ -554,14 +708,16 @@ function buildEnemyActions(
         }
       }
 
-      // Fallback: no valid cast — attack instead.
-      const target = pickRandom(livingParty, rng);
-      if (target) actions.push({ kind: "attack", actor: enemy, targetId: target.id });
+      // Fallback: no valid cast — attack instead. Casters ignore summoned allies.
+      const targetable = livingParty.filter((c) => !c.status.includes("hidden"));
+      const target = pickRandom(targetable.length > 0 ? targetable : livingParty, rng);
+      if (target) actions.push({ kind: "attack", actor: enemy, target: { kind: "party", id: target.id } });
       else actions.push({ kind: "doNothing", actor: enemy });
     } else {
-      // Melee: weighted 70% front row.
-      const target = pickMeleeTarget(s.party, rng);
-      if (target) actions.push({ kind: "attack", actor: enemy, targetId: target.id });
+      // Melee: prefer targeting summoned allies (they act as a front line),
+      // then use weighted 70% front row on the party.
+      const target = pickMeleeTarget(s.party, s.summonedAllies, rng);
+      if (target) actions.push({ kind: "attack", actor: enemy, target });
       else actions.push({ kind: "doNothing", actor: enemy });
     }
   }
@@ -569,18 +725,76 @@ function buildEnemyActions(
 }
 
 /**
- * Weighted random selection: 70% chance to pick from the living front row
- * (if any), otherwise fall back to any living party member. Implemented as
- * an actual weighted draw, not a rounded approximation.
+ * Check if any hidden characters should be spotted this round.
+ * Spot chance is based on enemy level vs character level + AGI.
+ * Returns true if a hidden character was spotted.
  */
-function pickMeleeTarget(party: Character[], rng: Rng): Character | undefined {
+function checkSpotHidden(
+  s: CombatState,
+  rng: Rng,
+  _log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): boolean {
+  const hiddenChars = s.party.filter((c) => c.status.includes("hidden"));
+  if (hiddenChars.length === 0) return false;
+  
+  const allEnemies = [...s.enemies.front, ...s.enemies.back].filter((e) => e.currentHp > 0);
+  if (allEnemies.length === 0) return false;
+  
+  let spotted = false;
+  for (const char of hiddenChars) {
+    // Spot chance: (enemy level - char level + 10) * 5%, clamped to 10-50%
+    // Higher level enemies are better at spotting
+    const enemyLevel = Math.max(1, allEnemies[0].hp / 10); // Rough estimate of enemy level
+    const charLevel = char.level;
+    const charAgi = char.stats.agi;
+    
+    // Base spot chance + enemy level advantage - character AGI advantage
+    let spotChance = 0.2 + (enemyLevel - charLevel) * 0.05 - (charAgi - 10) * 0.01;
+    spotChance = Math.max(0.1, Math.min(0.5, spotChance)); // Clamp between 10% and 50%
+    
+    if (rng() < spotChance) {
+      char.status = char.status.filter((st) => st !== "hidden");
+      emit(`${char.name} is spotted by the enemies!`, { type: "spotted", actorId: char.id });
+      spotted = true;
+    }
+  }
+  
+  return spotted;
+}
+
+/**
+ * Weighted random selection for enemy melee targeting.
+ * Summoned allies are preferred as a front line. If no allies are alive,
+ * 70% chance to pick from the living party front row, otherwise any living
+ * party member. Implemented as an actual weighted draw.
+ */
+function pickMeleeTarget(
+  party: Character[],
+  allies: SummonedAlly[],
+  rng: Rng
+): EnemyAttackTarget | undefined {
+  const livingAllies = allies.filter((a) => a.hp > 0);
+  if (livingAllies.length > 0) {
+    const ally = pickRandom(livingAllies, rng);
+    if (ally) return { kind: "ally", id: ally.id };
+  }
+
   const living = party.filter((c) => c.hp > 0);
   if (living.length === 0) return undefined;
-  const frontLiving = living.filter((c) => charRow(c) === "front");
+
+  // Skip hidden characters (they can't be targeted by single-target attacks)
+  // Exposed characters can be targeted from any position
+  const targetable = living.filter((c) => !c.status.includes("hidden"));
+  if (targetable.length === 0) return undefined;
+
+  const frontLiving = targetable.filter((c) => charRow(c) === "front");
   if (frontLiving.length > 0 && rng() < 0.7) {
-    return pickRandom(frontLiving, rng);
+    const target = pickRandom(frontLiving, rng);
+    if (target) return { kind: "party", id: target.id };
   }
-  return pickRandom(living, rng);
+  const target = pickRandom(targetable, rng);
+  return target ? { kind: "party", id: target.id } : undefined;
 }
 
 function pickRandom<T>(arr: T[], rng: Rng): T | undefined {
@@ -618,6 +832,12 @@ function resolvePlayerAction(
     case "flee":
       resolveDefend(s, actor, emit);
       break;
+    case "hide":
+      resolveHide(s, actor, emit);
+      break;
+    case "ambush":
+      resolveAmbush(s, actor, action.targetInstanceId, rng, log, emit);
+      break;
   }
 }
 
@@ -638,20 +858,24 @@ function resolveAttack(
     return;
   }
 
-  // Formation check (Section 7.4): back-row enemies are immune to melee
-  // until the front row is cleared, unless the attacker has a ranged weapon.
+  // Formation check (Section 7.4): weapon range determines reachability.
+  // Back-row enemies are immune to short-range weapons until front row is cleared.
   const loadout = s.loadout[actor.id];
   const weapon = loadout?.weapon;
-  // TODO: confirm ranged flag with Track B — ItemDef.ranged is not in the
-  // frozen contract. Treated as optional; absent means melee-only.
-  const isRanged = (weapon as ItemDef & { ranged?: boolean })?.ranged === true;
-  if (target.row === "back" && s.enemies.front.some((e) => e.currentHp > 0)) {
-    if (!isRanged) {
+  const weaponRange: WeaponRange = weapon?.range ?? "close"; // Default to close range if no weapon
+  
+  // Check if attacker can reach the target based on position and weapon range
+  if (!canReach(actor.formationSlot, weaponRange, target.row)) {
+    if (target.row === "back" && s.enemies.front.some((e) => e.currentHp > 0)) {
       log(
-        `${actor.name} cannot reach ${target.name} in the back row (front row still up).`
+        `${actor.name} cannot reach ${target.name} in the back row with their ${weapon?.name || "weapon"} (front row still up).`
       );
-      return;
+    } else {
+      log(
+        `${actor.name} cannot reach ${target.name} from position ${actor.formationSlot + 1} with their ${weapon?.name || "weapon"}.`
+      );
     }
+    return;
   }
 
   // Evasive enemies have a dodge chance.
@@ -665,8 +889,8 @@ function resolveAttack(
     }
   }
 
-  // Flying enemies are hard to reach with melee (15% melee miss unless ranged).
-  if (target.special.some((sp) => sp.kind === "flying") && !isRanged) {
+  // Flying enemies are hard to reach with true melee weapons (15% miss for close range).
+  if (target.special.some((sp) => sp.kind === "flying") && weaponRange === "close") {
     if (rng() < 0.15) {
       emit(
         `${target.name} flits away from ${actor.name}'s swing!`,
@@ -689,10 +913,12 @@ function resolveAttack(
 
   const weaponBonus = weapon?.attackBonus ?? 0;
   const base = actor.stats.str + actor.level + weaponBonus;
-  // Back-row attackers deal ~40% melee damage (Section 4.3) unless ranged or a
-  // Thief backstabbing (Thief deals full damage from the back row — §4.2).
+  // Back-row attackers deal ~40% melee damage when forced to fight at close
+  // range. A weapon with reach (short/medium/long) lets them strike effectively.
+  // Thieves deal full damage from the back row (§4.2).
   const isThief = actor.class === "Thief";
-  const rowMultiplier = charRow(actor) === "back" && !isRanged && !isThief ? 0.4 : 1;
+  const rowMultiplier =
+    charRow(actor) === "back" && weaponRange === "close" && !isThief ? 0.4 : 1;
   const variance = 0.8 + rng() * 0.4; // +/-20%
   let damage = Math.max(1, Math.round(base * rowMultiplier * variance));
 
@@ -746,6 +972,14 @@ function resolveCast(
     );
     return;
   }
+  // Fizzle field on the party can cause spells to fail.
+  if (s.partyFizzleField > 0 && s.partyFizzleField >= actor.level) {
+    emit(
+      `${actor.name}'s spell fizzles in the enemy's anti-magic field.`,
+      { type: "fizzle", actorId: actor.id }
+    );
+    return;
+  }
   const spell = s.spells[action.spellId];
   if (!spell) {
     log(`${actor.name} tries to cast an unknown spell.`);
@@ -778,6 +1012,94 @@ function resolveDefend(
 ): void {
   s.defendBuff[actor.id] = 0.5;
   emit(`${actor.name} defends.`, { type: "defend", actorId: actor.id });
+}
+
+function resolveHide(
+  _s: CombatState,
+  actor: Character,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  // Only Thief and Ninja classes can hide
+  if (actor.class !== "Thief" && actor.class !== "Ninja") {
+    emit(`${actor.name} cannot hide.`, { type: "fizzle", actorId: actor.id });
+    return;
+  }
+  
+  // Remove exposed status if present
+  if (actor.status.includes("exposed")) {
+    actor.status = actor.status.filter((st) => st !== "exposed");
+  }
+  
+  // Add hidden status
+  if (!actor.status.includes("hidden")) {
+    actor.status.push("hidden");
+    emit(`${actor.name} hides in the shadows.`, { type: "hide", actorId: actor.id });
+  } else {
+    emit(`${actor.name} is already hidden.`, { type: "fizzle", actorId: actor.id });
+  }
+}
+
+function resolveAmbush(
+  s: CombatState,
+  actor: Character,
+  targetInstanceId: string,
+  rng: Rng,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  // Only Thief and Ninja classes can ambush
+  if (actor.class !== "Thief" && actor.class !== "Ninja") {
+    emit(`${actor.name} cannot ambush.`, { type: "fizzle", actorId: actor.id });
+    return;
+  }
+  
+  // Must be hidden to ambush
+  if (!actor.status.includes("hidden")) {
+    emit(`${actor.name} is not hidden and cannot ambush.`, { type: "fizzle", actorId: actor.id });
+    return;
+  }
+  
+  const target = findEnemy(s, targetInstanceId);
+  if (!target) {
+    emit(
+      `${actor.name} ambushes but finds no target.`,
+      { type: "miss", actorId: actor.id, targetId: "", reason: "noTarget" }
+    );
+    return;
+  }
+  
+  // Remove hidden status and add exposed status
+  actor.status = actor.status.filter((st) => st !== "hidden");
+  if (!actor.status.includes("exposed")) {
+    actor.status.push("exposed");
+  }
+  
+  // Ambush ignores weapon range (can target any enemy from any position)
+  // Calculate damage with double damage bonus
+  const loadout = s.loadout[actor.id];
+  const weapon = loadout?.weapon;
+  const weaponBonus = weapon?.attackBonus ?? 0;
+  const base = actor.stats.str + actor.level + weaponBonus;
+  
+  // Ambush always deals full damage regardless of position
+  const variance = 0.8 + rng() * 0.4; // +/-20%
+  let damage = Math.max(1, Math.round(base * variance * 2)); // Double damage
+  
+  // Critical hit: chance based on LUK (Section 4.1). Doubles damage (4x total).
+  if (rng() < actor.stats.luk / 100) {
+    damage *= 2;
+    log(`${actor.name} lands a critical ambush!`);
+  }
+  
+  // Enemy AC reduces physical damage.
+  const reduced = Math.max(1, damage - target.ac);
+  target.currentHp -= reduced;
+  
+  emit(
+    `${actor.name} ambushes ${target.name} for ${reduced} damage!`,
+    { type: "ambush", actorId: actor.id, targetId: target.instanceId, damage: reduced }
+  );
+  wakeOnDamage(target, log);
 }
 
 function resolveItem(
@@ -931,6 +1253,59 @@ function applySpell(
       }
       break;
     }
+    case "magicScreen": {
+      s.magicScreen += eff.power;
+      emit(
+        `${spell.name} raises a magic screen around the party (strength ${s.magicScreen}).`,
+        { type: "spellEffect", spellId: spell.id, targetId: caster.id, isBuff: true }
+      );
+      break;
+    }
+    case "fizzleField": {
+      // Target row is determined by the spell action; default to front.
+      const targetRow = action.targetRow ?? "front";
+      s.enemyFizzleFields[targetRow] += eff.power;
+      emit(
+        `${spell.name} surrounds the enemy ${targetRow} row with a fizzle field (strength ${s.enemyFizzleFields[targetRow]}).`,
+        { type: "spellEffect", spellId: spell.id, isDebuff: true }
+      );
+      break;
+    }
+    case "dispelMagic": {
+      const clearedEnemyScreens = s.enemyMagicScreens.front + s.enemyMagicScreens.back;
+      const clearedEnemyFizzles = s.enemyFizzleFields.front + s.enemyFizzleFields.back;
+      const clearedPartyFizzle = s.partyFizzleField;
+      s.enemyMagicScreens = { front: 0, back: 0 };
+      s.enemyFizzleFields = { front: 0, back: 0 };
+      s.partyFizzleField = 0;
+      const clearedTotal = clearedEnemyScreens + clearedEnemyFizzles + clearedPartyFizzle;
+      emit(
+        clearedTotal > 0
+          ? `${spell.name} dispels enemy screens and fizzle fields.`
+          : `${spell.name} finds no magic to dispel.`,
+        { type: "spellEffect", spellId: spell.id, isBuff: true }
+      );
+      break;
+    }
+    case "summon": {
+      const power = eff.power;
+      const ally: SummonedAlly = {
+        id: `summon-${s.round}-${s.summonedAllies.length}`,
+        name: spell.id === "priest-bamordi" ? "Summoned Elemental" : "Summoned Beast",
+        hp: power * 6,
+        maxHp: power * 6,
+        attack: power * 3,
+        ac: Math.max(1, Math.floor(power / 2)),
+        agi: 50,
+        row: "front",
+      };
+      s.summonedAllies.push(ally);
+      emit(
+        `${spell.name} summons a ${ally.name} to fight for the party!`,
+        { type: "spellEffect", spellId: spell.id, targetId: ally.id, isBuff: true }
+      );
+      break;
+    }
   }
   void rng;
 }
@@ -1006,6 +1381,17 @@ function resolveEnemyAction(
   // member or an enemy instance.
   if (action.kind === "cast") {
     const { actor, spellId, targetId } = action;
+
+    // Enemy fizzle field from BACORTU can cause enemy spells to fizzle.
+    const enemyLevelEstimate = Math.max(1, Math.floor(actor.attack / 3));
+    if (s.enemyFizzleFields[actor.row] >= enemyLevelEstimate) {
+      emit(
+        `${actor.name}'s spell fizzles in the party's anti-magic field.`,
+        { type: "fizzle", actorId: actor.instanceId }
+      );
+      return;
+    }
+
     const partyTarget = s.party.find((c) => c.id === targetId);
     if (partyTarget) {
       if (partyTarget.hp <= 0) return;
@@ -1024,6 +1410,11 @@ function resolveEnemyAction(
       damage = Math.max(1, damage - spellBuff);
       const defendPct = s.defendBuff[partyTarget.id] ?? 0;
       if (defendPct > 0) damage = Math.max(1, Math.round(damage * (1 - defendPct)));
+      // Magic screen reduces spell damage and deteriorates when struck.
+      if (s.magicScreen > 0) {
+        damage = Math.max(1, Math.round(damage * 0.5));
+        s.magicScreen = Math.max(0, s.magicScreen - 1);
+      }
       partyTarget.hp -= damage;
       emit(
         `${actor.name} casts ${spellId} at ${partyTarget.name} for ${damage} damage.`,
@@ -1046,15 +1437,41 @@ function resolveEnemyAction(
     return;
   }
 
-  const { actor, targetId } = action;
-  const target = s.party.find((c) => c.id === targetId);
-  if (!target || target.hp <= 0) return;
+  const { actor, target } = action;
+
+  if (target.kind === "ally") {
+    const allyTarget = s.summonedAllies.find((a) => a.id === target.id);
+    if (!allyTarget || allyTarget.hp <= 0) return;
+
+    if (actor.status.includes("blind")) {
+      if (rng() >= 0.5) {
+        emit(
+          `${actor.name} is blind and misses ${allyTarget.name}.`,
+          { type: "miss", actorId: actor.instanceId, targetId: allyTarget.id, reason: "blind" }
+        );
+        return;
+      }
+    }
+    const base = actor.attack;
+    const variance = 0.8 + rng() * 0.4;
+    let damage = Math.max(1, Math.round(base * variance));
+    damage = Math.max(1, damage - allyTarget.ac);
+    allyTarget.hp -= damage;
+    emit(
+      `${actor.name} hits ${allyTarget.name} for ${damage} damage.`,
+      { type: "attack", actorId: actor.instanceId, targetId: allyTarget.id, damage }
+    );
+    return;
+  }
+
+  const partyTarget = s.party.find((c) => c.id === target.id);
+  if (!partyTarget || partyTarget.hp <= 0) return;
 
   if (actor.status.includes("blind")) {
     if (rng() >= 0.5) {
       emit(
-        `${actor.name} is blind and misses ${target.name}.`,
-        { type: "miss", actorId: actor.instanceId, targetId: target.id, reason: "blind" }
+        `${actor.name} is blind and misses ${partyTarget.name}.`,
+        { type: "miss", actorId: actor.instanceId, targetId: partyTarget.id, reason: "blind" }
       );
       return;
     }
@@ -1062,20 +1479,66 @@ function resolveEnemyAction(
   const base = actor.attack;
   const variance = 0.8 + rng() * 0.4;
   let damage = Math.max(1, Math.round(base * variance));
-  damage = damageReductionFor(s, target, damage);
-  target.hp -= damage;
+  damage = damageReductionFor(s, partyTarget, damage);
+  partyTarget.hp -= damage;
   emit(
-    `${actor.name} hits ${target.name} for ${damage} damage.`,
-    { type: "attack", actorId: actor.instanceId, targetId: target.id, damage }
+    `${actor.name} hits ${partyTarget.name} for ${damage} damage.`,
+    { type: "attack", actorId: actor.instanceId, targetId: partyTarget.id, damage }
   );
   // Poison on hit (Cobweb, Acid Puddle).
   if (actor.special.some((sp) => sp.kind === "poisonOnHit")) {
-    if (!target.status.includes("poison")) {
-      target.status.push("poison");
-      log(`${target.name} is poisoned!`);
+    if (!partyTarget.status.includes("poison")) {
+      partyTarget.status.push("poison");
+      log(`${partyTarget.name} is poisoned!`);
     }
   }
-  wakeOnDamage(target, log);
+  wakeOnDamage(partyTarget, log);
+}
+
+// ---------------------------------------------------------------------------
+// Summoned ally actions
+// ---------------------------------------------------------------------------
+
+/** A summoned ally makes a simple physical attack against a random enemy. */
+function resolveAllyAction(
+  s: CombatState,
+  ally: SummonedAlly,
+  rng: Rng,
+  _log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  const targets = [...s.enemies.front, ...s.enemies.back].filter(
+    (e) => e.currentHp > 0
+  );
+  if (targets.length === 0) return;
+  const target = pickRandom(targets, rng);
+  if (!target) return;
+
+  const base = ally.attack;
+  const variance = 0.8 + rng() * 0.4;
+  let damage = Math.max(1, Math.round(base * variance));
+  damage = Math.max(1, damage - target.ac);
+  target.currentHp -= damage;
+  emit(
+    `${ally.name} attacks ${target.name} for ${damage} damage.`,
+    { type: "attack", actorId: ally.id, targetId: target.instanceId, damage }
+  );
+  wakeOnDamage(target, _log);
+}
+
+/** Remove summoned allies that have been reduced to 0 HP. */
+function allyDeathCheck(
+  s: CombatState,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  s.summonedAllies = s.summonedAllies.filter((ally) => {
+    if (ally.hp <= 0) {
+      emit(`${ally.name} is banished.`, { type: "defeated", targetId: ally.id, wasEnemy: false });
+      s.justDiedAllies.push(ally);
+      return false;
+    }
+    return true;
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1164,6 +1627,7 @@ function checkTermination(s: CombatState, log: (m: string) => void): boolean {
   if (enemiesRemaining === 0 && !s.ended) {
     s.ended = true;
     s.result = "victory";
+    s.summonedAllies = [];
     log("All enemies defeated — victory!");
     return true;
   }
@@ -1171,6 +1635,7 @@ function checkTermination(s: CombatState, log: (m: string) => void): boolean {
   if (partyAlive === 0 && !s.ended) {
     s.ended = true;
     s.result = "wipe";
+    s.summonedAllies = [];
     log("The party has been wiped out!");
     return true;
   }

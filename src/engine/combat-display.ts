@@ -31,7 +31,12 @@ export function enemyHealthDescriptor(currentHp: number, maxHp: number): string 
 /** A single, combat-glanceable status word for a party member. */
 export function partyStatusText(c: Character): string {
   if (c.hp <= 0 || c.status.includes("knockedOut")) return "Fallen";
-  const active = c.status.filter((s) => s !== "knockedOut");
+  
+  // Priority order for status display
+  if (c.status.includes("hidden")) return "Hidden";
+  if (c.status.includes("exposed")) return "Exposed";
+  
+  const active = c.status.filter((s) => s !== "knockedOut" && s !== "hidden" && s !== "exposed");
   if (active.length === 0) return "OK";
   return active[0];
 }

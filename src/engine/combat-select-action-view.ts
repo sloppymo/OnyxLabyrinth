@@ -23,6 +23,19 @@ import {
   type SelectionChoice,
 } from "./combat-display";
 
+const RANGE_LABELS: Record<string, string> = {
+  close: "Close",
+  short: "Short",
+  medium: "Med",
+  long: "Long",
+};
+
+function getWeaponRangeLabel(state: CombatState, char: Character): string {
+  const weapon = state.loadout[char.id]?.weapon;
+  if (!weapon || !weapon.range) return "";
+  return RANGE_LABELS[weapon.range] || "";
+}
+
 /** Phases rendered by the DOM-based combat selection panel. */
 export type CombatPanelPhase =
   | "selectAction"
@@ -48,12 +61,29 @@ export interface SelectActionHandlers {
   onSelectChoice(index: number): void;
 }
 
+export function getActionKindsForCharacter(char: Character): PlayerAction["kind"][] {
+  const baseKinds: PlayerAction["kind"][] = ["attack", "cast", "defend", "item", "flee"];
+  
+  // Thief and Ninja can hide
+  if (char.class === "Thief" || char.class === "Ninja") {
+    // If hidden, show ambush instead of hide
+    if (char.status.includes("hidden")) {
+      return [...baseKinds, "ambush"];
+    } else {
+      return [...baseKinds, "hide"];
+    }
+  }
+  
+  return baseKinds;
+}
+
 export const ACTION_KINDS: PlayerAction["kind"][] = [
   "attack",
   "cast",
   "defend",
   "item",
   "flee",
+  "hide",
 ];
 
 const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
@@ -62,6 +92,8 @@ const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
   defend: "Defend",
   item: "Item",
   flee: "Flee",
+  hide: "Hide",
+  ambush: "Ambush",
 };
 
 const ARENA_W = 520;
@@ -311,7 +343,9 @@ function buildActionMenu(
   const menu = document.createElement("div");
   menu.className = "action-items";
 
-  ACTION_KINDS.forEach((kind, index) => {
+  const actionKinds = getActionKindsForCharacter(view.currentCharacter);
+
+  actionKinds.forEach((kind, index) => {
     const item = document.createElement("div");
     item.className = "combat-action-item";
     if (index === view.selectedIndex) item.classList.add("selected");
@@ -402,6 +436,15 @@ function buildPartyStrip(
     status.className = "combat-party-status";
     status.textContent = partyStatusText(c);
     card.appendChild(status);
+
+    // Add weapon range indicator if character has a weapon with range
+    const rangeLabel = getWeaponRangeLabel(state, c);
+    if (rangeLabel) {
+      const range = document.createElement("div");
+      range.className = "combat-party-range";
+      range.textContent = `Range: ${rangeLabel}`;
+      card.appendChild(range);
+    }
 
     strip.appendChild(card);
   }
