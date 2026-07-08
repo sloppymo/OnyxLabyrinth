@@ -12,7 +12,8 @@
 
 import type { CombatState, PlayerAction } from "../game/combat";
 import type { Character } from "../game/party";
-import { drawEnemySprite, type SpriteAnim } from "./combat-renderer";
+import { drawEnemySprite, SPRITE_W, SPRITE_H } from "./combat-renderer";
+import type { SpriteAnim } from "./combat-renderer";
 
 export interface SelectActionView {
   state: CombatState;
@@ -154,7 +155,13 @@ function buildViewport(state: CombatState): HTMLElement {
     progress: 0,
     opacity: 1,
   };
-  drawEnemySprite(ctx, VIEWPORT_SIZE / 2, VIEWPORT_SIZE / 2, representative, anim, now, false, 0);
+  // Scale the representative sprite to fill ~70% of the viewport while
+  // preserving its aspect ratio relative to the standard sprite box.
+  const viewportScale = Math.min(
+    (VIEWPORT_SIZE * 0.7) / SPRITE_W,
+    (VIEWPORT_SIZE * 0.7) / SPRITE_H
+  );
+  drawEnemySprite(ctx, VIEWPORT_SIZE / 2, VIEWPORT_SIZE / 2, representative, anim, now, false, 0, viewportScale);
 
   return viewport;
 }
