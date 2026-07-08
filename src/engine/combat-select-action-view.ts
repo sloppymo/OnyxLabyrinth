@@ -53,6 +53,7 @@ export interface SelectActionView {
   prompt: string;
   selectionList: SelectionChoice[] | null;
   flash: string | null;
+  plannedActions: PlayerAction[];
 }
 
 export interface SelectActionHandlers {
@@ -98,6 +99,51 @@ const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
 
 const ARENA_W = 520;
 const ARENA_H = 340;
+
+function actorName(state: CombatState, actorId: string): string {
+  return state.party.find((p) => p.id === actorId)?.name ?? "?";
+}
+
+function enemyName(state: CombatState, instanceId: string | undefined): string {
+  if (!instanceId) return "?";
+  const enemy = [...state.enemies.front, ...state.enemies.back].find(
+    (e) => e.instanceId === instanceId
+  );
+  return enemy?.name ?? "?";
+}
+
+function allyName(state: CombatState, allyId: string | undefined): string {
+  if (!allyId) return "?";
+  return state.party.find((p) => p.id === allyId)?.name ?? "?";
+}
+
+/** Human-readable one-liner for a queued player action, used by the Ready panel. */
+function describeAction(state: CombatState, action: PlayerAction): string {
+  switch (action.kind) {
+    case "attack":
+      return `Attack → ${enemyName(state, action.targetInstanceId)}`;
+    case "cast": {
+      const spell = state.spells[action.spellId]?.name ?? action.spellId;
+      if (action.targetInstanceId) return `${spell} → ${enemyName(state, action.targetInstanceId)}`;
+      if (action.targetAllyId) return `${spell} → ${allyName(state, action.targetAllyId)}`;
+      return spell;
+    }
+    case "defend":
+      return "Defend";
+    case "item": {
+      const item = state.items[action.itemId]?.name ?? action.itemId;
+      return `${item} → ${allyName(state, action.targetAllyId)}`;
+    }
+    case "flee":
+      return "Flee";
+    case "hide":
+      return "Hide";
+    case "ambush":
+      return `Ambush → ${enemyName(state, action.targetInstanceId)}`;
+    default:
+      return "";
+  }
+}
 
 /** Build and render the combat selection panel into `container`. */
 export function renderSelectActionPhase(
@@ -297,12 +343,12 @@ function drawEnemyRow(
   scale: number
 ): void {
   if (enemies.length === 0) return;
-  const y = row === "front" ? ARENA_H * 0.7 : ARENA_H * 0.4;
+  const y = row === "front" ? ARENA_H * 0.62 : ARENA_H * 0.32;
   const step = (ARENA_W * 0.76) / (enemies.length + 1);
   const startX = ARENA_W * 0.12 + step;
   for (let i = 0; i < enemies.length; i++) {
     const x = startX + i * step;
-    drawEnemySprite(ctx, x, y, enemies[i], anim, now, false, 0, scale);
+    drawEnemySprite(ctx, x, y, enemies[i], anim, now, false, 0, scale * 1.35);
   }
 }
 
@@ -327,13 +373,44 @@ function buildActionPane(
   } else if (view.selectionList && view.selectionList.length > 0) {
     pane.appendChild(buildSelectionMenu(view, handlers));
   } else if (view.phase === "ready") {
-    const readyEl = document.createElement("div");
-    readyEl.className = "ready-message";
-    readyEl.textContent = "Ready";
-    pane.appendChild(readyEl);
+    pane.appendChild(buildPlannedActionsList(view));
   }
 
   return pane;
+}
+
+function buildPlannedActionsList(view: SelectActionView): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "planned-actions";
+
+  const heading = document.createElement("div");
+  heading.className = "planned-actions-heading";
+  heading.textContent = "Round order";
+  wrap.appendChild(heading);
+
+  const list = document.createElement("div");
+  list.className = "planned-actions-list";
+
+  for (const action of view.plannedActions) {
+    if (!("actorId" in action)) continue;
+    const row = document.createElement("div");
+    row.className = "planned-action-row";
+
+    const name = document.createElement("span");
+    name.className = "planned-action-name";
+    name.textContent = actorName(view.state, action.actorId);
+
+    const desc = document.createElement("span");
+    desc.className = "planned-action-desc";
+    desc.textContent = describeAction(view.state, action);
+
+    row.appendChild(name);
+    row.appendChild(desc);
+    list.appendChild(row);
+  }
+
+  wrap.appendChild(list);
+  return wrap;
 }
 
 function buildActionMenu(
