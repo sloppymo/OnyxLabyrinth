@@ -462,6 +462,7 @@ export class CombatController {
       prompt: this.buildPrompt(),
       selectionList: this.buildSelectionList(),
       flash: this.scene.flash,
+      plannedActions: this.actions,
     };
     const handlers: SelectActionHandlers = {
       onSelectIndex: (index) => {

@@ -68,6 +68,7 @@ function render(view: Partial<SelectActionView> = {}, handlers?: Partial<SelectA
     prompt: "",
     selectionList: null,
     flash: null,
+    plannedActions: [],
     ...view,
   };
   const fullHandlers: SelectActionHandlers = {
@@ -258,6 +259,21 @@ describe("renderSelectActionPhase", () => {
     const { container } = render({ phase: "ready" });
     const actorName = container.querySelector(".actor-name");
     expect(actorName).toBeNull();
+  });
+
+  it("lists queued actions in the ready phase", () => {
+    const actorId = createDefaultParty()[0].id;
+    const { container, state } = render({
+      phase: "ready",
+      plannedActions: [
+        { kind: "attack", actorId, targetInstanceId: "e1" },
+      ],
+    });
+    const rows = container.querySelectorAll(".planned-action-row");
+    expect(rows.length).toBe(1);
+    expect(rows[0].textContent).toContain(state.party[0].name);
+    expect(rows[0].textContent).toContain("Attack");
+    expect(rows[0].textContent).toContain("Rat");
   });
 
   it("keeps labels with internal spaces intact in selection lists", () => {
