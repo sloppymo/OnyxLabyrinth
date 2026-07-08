@@ -41,6 +41,7 @@ import {
   type SelectActionView,
   type SelectActionHandlers,
 } from "./combat-select-action-view";
+import { enemyHealthDescriptor } from "./combat-display";
 
 type Phase =
   | "selectAction"
@@ -131,7 +132,15 @@ export class CombatController {
   private tick(): void {
     const now = performance.now();
 
-    if (this.phase === "selectAction") {
+    const isSelectionPhase =
+      this.phase === "selectAction" ||
+      this.phase === "selectEnemyTarget" ||
+      this.phase === "selectAllyTarget" ||
+      this.phase === "selectSpell" ||
+      this.phase === "selectItem" ||
+      this.phase === "ready";
+
+    if (isSelectionPhase) {
       showCombatPanel();
       if (this.domViewDirty) {
         this.renderSelectActionDom();
@@ -416,15 +425,21 @@ export class CombatController {
     }
   }
 
-  /** Render the DOM-based action selection view into #combat-panel. */
+  /** Render the DOM-based combat panel into #combat-panel. */
   private renderSelectActionDom(): void {
-    const c = this.currentChar();
+    const c =
+      this.currentChar() ??
+      this.state.party.find((p) => p.hp > 0) ??
+      this.state.party[0];
     if (!c) return;
 
     const view: SelectActionView = {
       state: this.state,
       currentCharacter: c,
       selectedIndex: this.actionMenuIndex,
+      phase: this.phase,
+      prompt: this.buildPrompt(),
+      selectionList: this.buildSelectionList(),
       flash: this.scene.flash,
     };
     const handlers: SelectActionHandlers = {
@@ -631,7 +646,10 @@ export class CombatController {
     if (this.phase === "selectEnemyTarget") {
       const enemies = this.livingEnemies();
       return enemies
-        .map((e, i) => `${i + 1}.${e.name} HP:${e.currentHp}/${e.hp}`)
+        .map(
+          (e, i) =>
+            `${i + 1}.${e.name} ${enemyHealthDescriptor(e.currentHp, e.hp)}`
+        )
         .join("  ");
     }
 
