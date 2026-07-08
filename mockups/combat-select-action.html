@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Combat UI Mockup — Wizardry V Style</title>
+    <style>
+      :root {
+        --bg: #0e0d0a;
+        --panel: #14110d;
+        --amber: #e0a458;
+        --amber-dim: #8a6a38;
+        --warm-white: #f5f0e6;
+        --text-dim: #a09080;
+        --border: #4a4035;
+        --heal-green: #7abf7a;
+        --danger-red: #c06060;
+        --spell-blue: #7a9abf;
+      }
+
+      @font-face {
+        font-family: "FF36";
+        src: url("../src/assets/final-fantasy-36.ttf") format("truetype");
+        font-display: swap;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--warm-white);
+        font-family: "FF36", "Courier New", ui-monospace, monospace;
+        -webkit-font-smoothing: none;
+        -moz-osx-font-smoothing: grayscale;
+        font-smooth: never;
+      }
+
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+
+      .mockup-frame {
+        width: 100%;
+        max-width: 768px;
+        min-height: 600px;
+        max-height: 100%;
+        border: 1px solid var(--amber);
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* Status bar */
+      .status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 18px;
+        border-bottom: 1px solid var(--border);
+        font-size: 24px;
+        color: var(--warm-white);
+        background: var(--bg);
+      }
+
+      .status-bar .left {
+        color: var(--amber);
+      }
+
+      .status-bar .right {
+        color: var(--text-dim);
+      }
+
+      /* Message log */
+      .message-log {
+        border-bottom: 1px solid var(--border);
+        background: var(--bg);
+        padding: 14px 18px;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+
+      .message-log .line {
+        font-size: 22px;
+        line-height: 1.4;
+        color: var(--text-dim);
+      }
+
+      .message-log .line.recent {
+        color: var(--warm-white);
+      }
+
+      .message-log .line .actor {
+        color: var(--amber);
+      }
+
+      .message-log .line .damage-dealt {
+        color: var(--heal-green);
+      }
+
+      .message-log .line .damage-taken {
+        color: var(--danger-red);
+      }
+
+      /* Main arena + action menu */
+      .combat-body {
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .arena-wrap {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+        padding: 12px;
+        position: relative;
+      }
+
+      .arena-canvas {
+        width: 100%;
+        height: 100%;
+        max-width: 520px;
+        max-height: 340px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        image-rendering: pixelated;
+      }
+
+      .arena-label {
+        position: absolute;
+        bottom: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 18px;
+        color: var(--text-dim);
+        letter-spacing: 0.08em;
+        pointer-events: none;
+      }
+
+      /* Action menu */
+      .action-menu {
+        width: 180px;
+        flex-shrink: 0;
+        border-left: 1px solid var(--border);
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        padding: 12px 0;
+      }
+
+      .action-menu .actor-name {
+        font-size: 18px;
+        color: var(--amber);
+        text-align: center;
+        padding: 0 12px 10px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 10px;
+      }
+
+      .action-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        font-size: 24px;
+        color: var(--text-dim);
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.08s, color 0.08s;
+      }
+
+      .action-item:hover,
+      .action-item.selected {
+        background: #1f1c16;
+        color: var(--warm-white);
+      }
+
+      .action-item.selected {
+        border-left: 3px solid var(--amber);
+        padding-left: 11px;
+      }
+
+      .action-arrow {
+        width: 20px;
+        color: var(--amber);
+        flex-shrink: 0;
+      }
+
+      .action-label {
+        flex: 1;
+      }
+
+      /* Party strip */
+      .party-strip {
+        display: flex;
+        gap: 10px;
+        padding: 12px 14px;
+        background: var(--bg);
+        overflow-x: auto;
+      }
+
+      .party-member {
+        flex: 1 1 0;
+        min-width: 140px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        padding: 10px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .party-member.current {
+        border-color: var(--amber);
+      }
+
+      .party-member.fallen {
+        opacity: 0.55;
+        border-color: var(--danger-red);
+      }
+
+      .party-name {
+        font-size: 22px;
+        color: var(--amber);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .party-hp-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .party-hp-bar {
+        flex: 1;
+        height: 8px;
+        background: #1a1612;
+        border: 1px solid #3a3530;
+        overflow: hidden;
+      }
+
+      .party-hp-fill {
+        height: 100%;
+        background: var(--heal-green);
+      }
+
+      .party-hp-fill.low {
+        background: var(--danger-red);
+      }
+
+      .party-hp-fill.mid {
+        background: var(--amber);
+      }
+
+      .party-hp-text {
+        font-size: 18px;
+        color: var(--text-dim);
+        min-width: 52px;
+        text-align: right;
+      }
+
+      .party-status {
+        font-size: 18px;
+        color: var(--warm-white);
+      }
+
+      .party-member.fallen .party-status {
+        color: var(--danger-red);
+      }
+
+      /* Hint footer */
+      .hint {
+        font-size: 16px;
+        color: var(--text-dim);
+        text-align: center;
+        padding: 8px 14px;
+        background: var(--panel);
+      }
+
+      @media (max-width: 640px) {
+        .combat-body {
+          flex-direction: column;
+        }
+        .action-menu {
+          width: 100%;
+          border-left: none;
+          border-top: 1px solid var(--border);
+          flex-direction: row;
+          flex-wrap: wrap;
+          padding: 8px;
+        }
+        .action-item {
+          flex: 1 1 auto;
+          justify-content: center;
+        }
+        .actor-name {
+          width: 100%;
+          border-bottom: none;
+          margin-bottom: 0;
+          padding: 4px 12px;
+        }
+        .arena-canvas {
+          max-height: 260px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mockup-frame">
+      <div class="status-bar">
+        <span class="left">3 Lesser Constructs</span>
+        <span class="right">(3)</span>
+      </div>
+
+      <div class="message-log" id="message-log" aria-live="polite">
+        <div class="line">Bram attacks Lesser Construct... a hit! <span class="damage-dealt">6 damage</span>.</div>
+        <div class="line">The construct staggers.</div>
+        <div class="line recent"><span class="actor">Lesser Construct</span> attacks Miri... a hit! <span class="damage-taken">4 damage</span>.</div>
+      </div>
+
+      <div class="combat-body">
+        <div class="arena-wrap">
+          <canvas class="arena-canvas" id="arena" width="520" height="340"></canvas>
+          <div class="arena-label">MONSTER GROUP</div>
+        </div>
+
+        <div class="action-menu" id="action-menu" role="menu" aria-label="Combat actions">
+          <div class="actor-name" id="actor-name">BRAM's turn</div>
+          <div class="action-item selected" data-index="0" role="menuitem" tabindex="0">
+            <span class="action-arrow">▶</span>
+            <span class="action-label">Attack</span>
+          </div>
+          <div class="action-item" data-index="1" role="menuitem" tabindex="0">
+            <span class="action-arrow"></span>
+            <span class="action-label">Cast</span>
+          </div>
+          <div class="action-item" data-index="2" role="menuitem" tabindex="0">
+            <span class="action-arrow"></span>
+            <span class="action-label">Defend</span>
+          </div>
+          <div class="action-item" data-index="3" role="menuitem" tabindex="0">
+            <span class="action-arrow"></span>
+            <span class="action-label">Item</span>
+          </div>
+          <div class="action-item" data-index="4" role="menuitem" tabindex="0">
+            <span class="action-arrow"></span>
+            <span class="action-label">Flee</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="party-strip" id="party-strip">
+        <div class="party-member current">
+          <div class="party-name">Bram</div>
+          <div class="party-hp-row">
+            <div class="party-hp-bar"><div class="party-hp-fill" style="width: 80%"></div></div>
+            <div class="party-hp-text">24/30</div>
+          </div>
+          <div class="party-status">OK</div>
+        </div>
+        <div class="party-member">
+          <div class="party-name">Miri</div>
+          <div class="party-hp-row">
+            <div class="party-hp-bar"><div class="party-hp-fill mid" style="width: 70%"></div></div>
+            <div class="party-hp-text">14/20</div>
+          </div>
+          <div class="party-status">Wounded</div>
+        </div>
+        <div class="party-member">
+          <div class="party-name">Soren</div>
+          <div class="party-hp-row">
+            <div class="party-hp-bar"><div class="party-hp-fill" style="width: 92%"></div></div>
+            <div class="party-hp-text">11/12</div>
+          </div>
+          <div class="party-status">OK</div>
+        </div>
+        <div class="party-member fallen">
+          <div class="party-name">Tessa</div>
+          <div class="party-hp-row">
+            <div class="party-hp-bar"><div class="party-hp-fill low" style="width: 0%"></div></div>
+            <div class="party-hp-text">0/22</div>
+          </div>
+          <div class="party-status">Fallen</div>
+        </div>
+      </div>
+
+      <div class="hint">▲▼ choose action — Enter / Space confirm — click to select</div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("arena");
+      const ctx = canvas.getContext("2d");
+      const menuItems = Array.from(document.querySelectorAll(".action-item"));
+      const labels = ["Attack", "Cast", "Defend", "Item", "Flee"];
+      let selectedIndex = 0;
+      let startTime = performance.now();
+
+      const enemies = [
+        { name: "Lesser Construct", hpText: "Unwounded", x: 0.22, y: 0.55, row: "front", scale: 1 },
+        { name: "Lesser Construct", hpText: "Wounded", x: 0.50, y: 0.55, row: "front", scale: 1 },
+        { name: "Lesser Construct", hpText: "Unwounded", x: 0.78, y: 0.55, row: "front", scale: 1 },
+        { name: "Lesser Construct", hpText: "Unwounded", x: 0.62, y: 0.28, row: "back", scale: 0.82 },
+      ];
+
+      function drawRoundedRect(cx, cy, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(cx - w / 2 + r, cy - h / 2);
+        ctx.lineTo(cx + w / 2 - r, cy - h / 2);
+        ctx.quadraticCurveTo(cx + w / 2, cy - h / 2, cx + w / 2, cy - h / 2 + r);
+        ctx.lineTo(cx + w / 2, cy + h / 2 - r);
+        ctx.quadraticCurveTo(cx + w / 2, cy + h / 2, cx + w / 2 - r, cy + h / 2);
+        ctx.lineTo(cx - w / 2 + r, cy + h / 2);
+        ctx.quadraticCurveTo(cx - w / 2, cy + h / 2, cx - w / 2, cy + h / 2 - r);
+        ctx.lineTo(cx - w / 2, cy - h / 2 + r);
+        ctx.quadraticCurveTo(cx - w / 2, cy - h / 2, cx - w / 2 + r, cy - h / 2);
+        ctx.closePath();
+      }
+
+      function drawConstruct(x, y, scale, now) {
+        const bob = Math.sin(now / 900 + x * 0.02) * 3;
+        const px = x;
+        const py = y + bob;
+        const baseW = 64 * scale;
+        const baseH = 84 * scale;
+
+        // Shadow
+        ctx.fillStyle = "rgba(0,0,0,0.35)";
+        ctx.beginPath();
+        ctx.ellipse(px, py + baseH * 0.48, baseW * 0.45, 5 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body: angular construct
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.fillStyle = "#6a6a6a";
+        ctx.beginPath();
+        ctx.moveTo(-baseW * 0.35, -baseH * 0.45);
+        ctx.lineTo(baseW * 0.35, -baseH * 0.45);
+        ctx.lineTo(baseW * 0.48, baseH * 0.25);
+        ctx.lineTo(baseW * 0.22, baseH * 0.48);
+        ctx.lineTo(-baseW * 0.22, baseH * 0.48);
+        ctx.lineTo(-baseW * 0.48, baseH * 0.25);
+        ctx.closePath();
+        ctx.fill();
+
+        // Inner panel
+        ctx.fillStyle = "#4a4a4a";
+        drawRoundedRect(0, -baseH * 0.08, baseW * 0.55, baseH * 0.42, 4 * scale);
+        ctx.fill();
+
+        // Eyes
+        ctx.fillStyle = "#e0a458";
+        ctx.fillRect(-baseW * 0.14, -baseH * 0.18, baseW * 0.12, baseH * 0.10);
+        ctx.fillRect(baseW * 0.02, -baseH * 0.18, baseW * 0.12, baseH * 0.10);
+
+        // Cracks / detail
+        ctx.strokeStyle = "#3a3a3a";
+        ctx.lineWidth = 2 * scale;
+        ctx.beginPath();
+        ctx.moveTo(-baseW * 0.30, -baseH * 0.35);
+        ctx.lineTo(-baseW * 0.10, -baseH * 0.12);
+        ctx.lineTo(-baseW * 0.20, baseH * 0.05);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      function drawEnemyLabel(enemy, w, h) {
+        const px = enemy.x * w;
+        const py = enemy.y * h;
+        const lineHeight = 22 * enemy.scale;
+
+        ctx.fillStyle = "#f5f0e6";
+        ctx.font = '18px "FF36", "Courier New", monospace';
+        ctx.textAlign = "center";
+        ctx.fillText(enemy.name, px, py + 62 * enemy.scale);
+
+        ctx.fillStyle = "#e0a458";
+        ctx.font = '16px "FF36", "Courier New", monospace';
+        ctx.fillText(enemy.hpText, px, py + 62 * enemy.scale + lineHeight);
+      }
+
+      function drawArena(now) {
+        const w = canvas.width;
+        const h = canvas.height;
+
+        ctx.fillStyle = "#0e0d0a";
+        ctx.fillRect(0, 0, w, h);
+
+        // Subtle ground plane
+        const grad = ctx.createLinearGradient(0, h * 0.45, 0, h);
+        grad.addColorStop(0, "#0e0d0a");
+        grad.addColorStop(1, "#1a1612");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, h * 0.45, w, h * 0.55);
+
+        // Back row indicator line
+        ctx.strokeStyle = "#3a3025";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, h * 0.42);
+        ctx.lineTo(w, h * 0.42);
+        ctx.stroke();
+
+        // Draw back row first, then front row
+        for (const e of enemies.filter((e) => e.row === "back")) {
+          drawConstruct(e.x * w, e.y * h, e.scale, now);
+        }
+        for (const e of enemies.filter((e) => e.row === "front")) {
+          drawConstruct(e.x * w, e.y * h, e.scale, now);
+        }
+
+        // Labels on top so they aren't clipped by overlapping bodies
+        for (const e of enemies) {
+          drawEnemyLabel(e, w, h);
+        }
+      }
+
+      function render(now) {
+        drawArena(now);
+        requestAnimationFrame(render);
+      }
+
+      function updateMenu() {
+        menuItems.forEach((item, index) => {
+          const arrow = item.querySelector(".action-arrow");
+          if (index === selectedIndex) {
+            item.classList.add("selected");
+            arrow.textContent = "▶";
+          } else {
+            item.classList.remove("selected");
+            arrow.textContent = "";
+          }
+        });
+      }
+
+      function selectIndex(index) {
+        selectedIndex = index;
+        updateMenu();
+      }
+
+      function confirmSelection() {
+        const action = labels[selectedIndex];
+        const log = document.getElementById("message-log");
+        const line = document.createElement("div");
+        line.className = "line recent";
+        line.innerHTML = `<span class="actor">Bram</span> chooses ${action}.`;
+        log.appendChild(line);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      menuItems.forEach((item) => {
+        item.addEventListener("click", () => {
+          selectIndex(Number(item.dataset.index));
+          confirmSelection();
+        });
+        item.addEventListener("mouseenter", () => {
+          selectIndex(Number(item.dataset.index));
+        });
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+          e.preventDefault();
+          selectIndex((selectedIndex + 1) % labels.length);
+        } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+          e.preventDefault();
+          selectIndex((selectedIndex - 1 + labels.length) % labels.length);
+        } else if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          confirmSelection();
+        }
+      });
+
+      requestAnimationFrame(render);
+    </script>
+  </body>
+</html>
