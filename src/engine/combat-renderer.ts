@@ -17,6 +17,7 @@ import type { Character } from "../game/party";
 import type { EnemyInstance, CombatEvent } from "../game/combat";
 import type { CombatState } from "../game/combat";
 import { getEnemySprite } from "./enemy-sprite-cache";
+import { enemyHealthDescriptor } from "./combat-display";
 
 // --- Palette ---------------------------------------------------------------
 // Reuse the dungeon palette for visual consistency.
@@ -107,7 +108,7 @@ export interface CombatScene {
 }
 
 // --- Layout constants ------------------------------------------------------
-const MSG_BOX_HEIGHT_RATIO = 0.18;
+const MSG_BOX_HEIGHT_RATIO = 0.24;
 export const SPRITE_W = 48;
 export const SPRITE_H = 64;
 const PARTY_SLOT_SPACING = 70;
@@ -429,12 +430,12 @@ export function drawEnemySprite(
     ctx.fillText(`${targetIndex}.`, px, py - SPRITE_H / 2 - 6);
   }
 
-  // Name + HP.
+  // Name + qualitative health descriptor.
   ctx.globalAlpha = anim.opacity * 0.8;
   ctx.fillStyle = enemy.currentHp <= 0 ? COLORS.danger : COLORS.textDim;
   ctx.font = '10px "FF36", monospace';
   ctx.textAlign = "center";
-  const hpText = enemy.currentHp <= 0 ? "KO" : `${enemy.currentHp}/${enemy.hp}`;
+  const hpText = enemyHealthDescriptor(enemy.currentHp, enemy.hp);
   ctx.fillText(hpText, px, py + SPRITE_H / 2 + 16);
 
   ctx.restore();
@@ -546,28 +547,47 @@ function drawMessageBox(
   const header = `[!] COMBAT — Round ${scene.state.round}${scene.state.isBoss ? " (BOSS)" : ""}`;
   ctx.fillText(header, pad, pad + 11);
 
-  // Current message.
-  if (scene.currentMessage) {
-    ctx.fillStyle = COLORS.warmWhite;
-    ctx.font = '14px "FF36", monospace';
-    ctx.textAlign = "left";
-    // Word-wrap the message to fit the box width.
-    const maxWidth = w - pad * 2 - 20;
-    const lines = wrapText(ctx, scene.currentMessage, maxWidth);
-    for (let i = 0; i < Math.min(lines.length, 2); i++) {
-      ctx.fillText(lines[i], pad, pad + 30 + i * 18);
-    }
+  const maxWidth = w - pad * 2 - 20;
+  const headerY = pad + 11;
+  const startY = headerY + pad + 4;
+  const lineHeight = 16;
 
-    // Advance indicator (blinking arrow).
-    const blink = Math.floor(now / 400) % 2 === 0;
-    if (blink && scene.messageQueue.length > 0) {
-      ctx.fillStyle = COLORS.amber;
-      ctx.fillText("▼", w - pad - 16, boxH - pad - 2);
+  // Persistent log: show the last entries, with the current message highlighted.
+  const logEntries = scene.state.log.slice(-6);
+  let y = startY;
+  for (let idx = 0; idx < logEntries.length; idx++) {
+    const entry = logEntries[idx];
+    const isCurrent =
+      scene.currentMessage !== null && idx === logEntries.length - 1;
+    ctx.fillStyle = isCurrent ? COLORS.warmWhite : COLORS.textDim;
+    ctx.font = isCurrent
+      ? '14px "FF36", monospace'
+      : '12px "FF36", monospace';
+    ctx.textAlign = "left";
+    const lines = wrapText(ctx, entry, maxWidth);
+    for (let i = 0; i < Math.min(lines.length, 2); i++) {
+      ctx.fillText(lines[i], pad, y);
+      y += lineHeight;
+      if (y > boxH - pad) break;
     }
-  } else if (scene.flash) {
+    if (y > boxH - pad) break;
+  }
+
+  // Flash message when no current message is being displayed.
+  if (!scene.currentMessage && scene.flash) {
     ctx.fillStyle = COLORS.danger;
     ctx.font = '13px "FF36", monospace';
-    ctx.fillText(scene.flash, pad, pad + 30);
+    ctx.textAlign = "left";
+    ctx.fillText(scene.flash, pad, startY);
+  }
+
+  // Advance indicator (blinking arrow).
+  const blink = Math.floor(now / 400) % 2 === 0;
+  if (blink && scene.messageQueue.length > 0) {
+    ctx.fillStyle = COLORS.amber;
+    ctx.textAlign = "right";
+    ctx.font = '14px "FF36", monospace';
+    ctx.fillText("▼", w - pad - 4, boxH - pad - 2);
   }
 }
 

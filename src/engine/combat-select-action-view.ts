@@ -1,24 +1,44 @@
 /**
- * DOM-based renderer for the `selectAction` combat phase.
+ * DOM-based renderer for the combat selection panel.
  *
- * Builds a Wizardry/Bard's Tale-style box layout into the provided container:
- *   - Status bar with enemy count/name and living count
- *   - Viewport + action menu row
- *   - Party status table
+ * Presents a Wizardry-style layout:
+ *   - Status bar (enemy group / round)
+ *   - Persistent message log
+ *   - Monster arena (front/back rows) + compact action/selection menu
+ *   - Compact party strip (name, HP, status)
  *
- * The viewport draws the current representative enemy using the existing
- * procedural sprite renderer from combat-renderer.ts.
+ * The panel is used during action selection and target/spell/item selection
+ * phases. Round resolution still plays out on the canvas combat renderer.
  */
 
-import type { CombatState, PlayerAction } from "../game/combat";
+import type { CombatState, PlayerAction, EnemyInstance } from "../game/combat";
 import type { Character } from "../game/party";
-import { drawEnemySprite, SPRITE_W, SPRITE_H } from "./combat-renderer";
+import { drawEnemySprite } from "./combat-renderer";
 import type { SpriteAnim } from "./combat-renderer";
+import {
+  partyStatusText,
+  hpRatio,
+  hpBarColorClass,
+} from "./combat-display";
+
+export type CombatPanelPhase =
+  | "selectAction"
+  | "selectEnemyTarget"
+  | "selectAllyTarget"
+  | "selectSpell"
+  | "selectItem"
+  | "ready"
+  | "messageReveal"
+  | "roundResult"
+  | "ended";
 
 export interface SelectActionView {
   state: CombatState;
   currentCharacter: Character;
   selectedIndex: number;
+  phase: CombatPanelPhase;
+  prompt: string;
+  selectionList: string | null;
   flash: string | null;
 }
 
@@ -27,7 +47,14 @@ export interface SelectActionHandlers {
   onConfirm(kind: PlayerAction["kind"]): void;
 }
 
-export const ACTION_KINDS: PlayerAction["kind"][] = ["attack", "cast", "defend", "item", "flee"];
+export const ACTION_KINDS: PlayerAction["kind"][] = [
+  "attack",
+  "cast",
+  "defend",
+  "item",
+  "flee",
+];
+
 const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
   attack: "Attack",
   cast: "Cast",
@@ -36,9 +63,10 @@ const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
   flee: "Flee",
 };
 
-const VIEWPORT_SIZE = 200;
+const ARENA_W = 520;
+const ARENA_H = 340;
 
-/** Build and render the select-action DOM into `container`. */
+/** Build and render the combat selection panel into `container`. */
 export function renderSelectActionPhase(
   container: HTMLElement,
   view: SelectActionView,
@@ -53,8 +81,10 @@ export function renderSelectActionPhase(
   if (view.flash) {
     root.appendChild(buildFlashMessage(view.flash));
   }
-  root.appendChild(buildRow(view, handlers));
-  root.appendChild(buildPartyTable(view.state));
+  root.appendChild(buildMessageLog(view));
+  root.appendChild(buildCombatBody(view, handlers));
+  root.appendChild(buildPartyStrip(view.state, view.currentCharacter));
+  root.appendChild(buildHint());
 
   container.appendChild(root);
 }
@@ -102,51 +132,114 @@ function formatEnemyLabel(state: CombatState): { left: string; right: string } {
 
 function pluralize(name: string, count: number): string {
   if (count === 1) return name;
-  // Naive pluralization; sufficient for current enemy names.
-  if (name.endsWith("y") && !/[aeiou]y$/i.test(name)) return `${name.slice(0, -1)}ies`;
+  if (name.endsWith("y") && !/[aeiou]y$/i.test(name)) {
+    return `${name.slice(0, -1)}ies`;
+  }
   return `${name}s`;
 }
 
-// --- Viewport + menu row ---------------------------------------------------
+// --- Message log -----------------------------------------------------------
 
-function buildRow(
+function buildMessageLog(view: SelectActionView): HTMLElement {
+  const log = document.createElement("div");
+  log.className = "combat-message-log";
+
+  const state = view.state;
+  const lines = state.log.slice(-8);
+  for (const line of lines) {
+    const el = document.createElement("div");
+    el.className = "log-line";
+    el.textContent = line;
+    log.appendChild(el);
+  }
+
+  const isPromptPhase =
+    view.phase === "selectEnemyTarget" ||
+    view.phase === "selectAllyTarget" ||
+    view.phase === "selectSpell" ||
+    view.phase === "selectItem";
+
+  if (view.prompt) {
+    const promptEl = document.createElement("div");
+    promptEl.className = "log-line prompt";
+    promptEl.textContent = view.prompt;
+    log.appendChild(promptEl);
+  }
+
+  if (view.selectionList) {
+    const choices = view.selectionList
+      .split("  ")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const listEl = document.createElement("div");
+    listEl.className = "log-line selection-list";
+    for (const choice of choices) {
+      const item = document.createElement("div");
+      item.className = "selection-item";
+      item.textContent = choice;
+      listEl.appendChild(item);
+    }
+    log.appendChild(listEl);
+  } else if (isPromptPhase && !view.prompt) {
+    const emptyEl = document.createElement("div");
+    emptyEl.className = "log-line prompt";
+    emptyEl.textContent = "No choices available.";
+    log.appendChild(emptyEl);
+  }
+
+  return log;
+}
+
+// --- Arena + menu body -----------------------------------------------------
+
+function buildCombatBody(
   view: SelectActionView,
   handlers: SelectActionHandlers
 ): HTMLElement {
   const row = document.createElement("div");
-  row.className = "combat-row";
+  row.className = "combat-body";
 
-  row.appendChild(buildViewport(view.state));
-  row.appendChild(buildMenu(view, handlers));
+  row.appendChild(buildArena(view.state));
+  row.appendChild(buildActionPane(view, handlers));
 
   return row;
 }
 
-function buildViewport(state: CombatState): HTMLElement {
-  const viewport = document.createElement("div");
-  viewport.className = "combat-viewport";
-
-  const all = [...state.enemies.front, ...state.enemies.back];
-  const representative = all.find((e) => e.currentHp > 0) ?? all[0];
-
-  if (!representative) {
-    const fallback = document.createElement("div");
-    fallback.className = "combat-viewport-fallback";
-    fallback.textContent = "No enemy";
-    viewport.appendChild(fallback);
-    return viewport;
-  }
+function buildArena(state: CombatState): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "combat-arena";
 
   const canvas = document.createElement("canvas");
-  canvas.width = VIEWPORT_SIZE;
-  canvas.height = VIEWPORT_SIZE;
-  viewport.appendChild(canvas);
+  canvas.width = ARENA_W;
+  canvas.height = ARENA_H;
+  wrap.appendChild(canvas);
+
+  const label = document.createElement("div");
+  label.className = "combat-arena-label";
+  label.textContent = "MONSTER GROUP";
+  wrap.appendChild(label);
 
   const ctx = canvas.getContext("2d");
-  if (!ctx) return viewport;
+  if (!ctx) return wrap;
 
+  // Background.
   ctx.fillStyle = "#0e0d0a";
-  ctx.fillRect(0, 0, VIEWPORT_SIZE, VIEWPORT_SIZE);
+  ctx.fillRect(0, 0, ARENA_W, ARENA_H);
+
+  // Ground gradient.
+  const grad = ctx.createLinearGradient(0, ARENA_H * 0.45, 0, ARENA_H);
+  grad.addColorStop(0, "#0e0d0a");
+  grad.addColorStop(1, "#1a1612");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, ARENA_H * 0.45, ARENA_W, ARENA_H * 0.55);
+
+  // Back-row horizon line.
+  ctx.strokeStyle = "#3a3025";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, ARENA_H * 0.42);
+  ctx.lineTo(ARENA_W, ARENA_H * 0.42);
+  ctx.stroke();
 
   const now = performance.now();
   const anim: SpriteAnim = {
@@ -155,38 +248,82 @@ function buildViewport(state: CombatState): HTMLElement {
     progress: 0,
     opacity: 1,
   };
-  // Scale the representative sprite to fill ~70% of the viewport while
-  // preserving its aspect ratio relative to the standard sprite box.
-  const viewportScale = Math.min(
-    (VIEWPORT_SIZE * 0.7) / SPRITE_W,
-    (VIEWPORT_SIZE * 0.7) / SPRITE_H
-  );
-  drawEnemySprite(ctx, VIEWPORT_SIZE / 2, VIEWPORT_SIZE / 2, representative, anim, now, false, 0, viewportScale);
 
-  return viewport;
+  const livingFront = state.enemies.front.filter((e) => e.currentHp > 0);
+  const livingBack = state.enemies.back.filter((e) => e.currentHp > 0);
+
+  // Draw back row first so the front row overlaps it.
+  drawEnemyRow(ctx, livingBack, "back", now, anim, 0.82);
+  drawEnemyRow(ctx, livingFront, "front", now, anim, 1.15);
+
+  return wrap;
 }
 
-function buildMenu(
+function drawEnemyRow(
+  ctx: CanvasRenderingContext2D,
+  enemies: EnemyInstance[],
+  row: "front" | "back",
+  now: number,
+  anim: SpriteAnim,
+  scale: number
+): void {
+  if (enemies.length === 0) return;
+  const y = row === "front" ? ARENA_H * 0.7 : ARENA_H * 0.4;
+  const step = (ARENA_W * 0.76) / (enemies.length + 1);
+  const startX = ARENA_W * 0.12 + step;
+  for (let i = 0; i < enemies.length; i++) {
+    const x = startX + i * step;
+    drawEnemySprite(ctx, x, y, enemies[i], anim, now, false, 0, scale);
+  }
+}
+
+// --- Action / selection pane ----------------------------------------------
+
+function buildActionPane(
+  view: SelectActionView,
+  handlers: SelectActionHandlers
+): HTMLElement {
+  const pane = document.createElement("div");
+  pane.className = "combat-action-menu";
+
+  const actorName = document.createElement("div");
+  actorName.className = "actor-name";
+  actorName.textContent = `${view.currentCharacter.name}'s turn`;
+  pane.appendChild(actorName);
+
+  if (view.phase === "selectAction") {
+    pane.appendChild(buildActionMenu(view, handlers));
+  } else if (view.selectionList) {
+    pane.appendChild(buildSelectionMenu(view));
+  } else if (view.phase === "ready") {
+    const readyEl = document.createElement("div");
+    readyEl.className = "ready-message";
+    readyEl.textContent = "Ready";
+    pane.appendChild(readyEl);
+  }
+
+  return pane;
+}
+
+function buildActionMenu(
   view: SelectActionView,
   handlers: SelectActionHandlers
 ): HTMLElement {
   const menu = document.createElement("div");
-  menu.className = "combat-menu";
+  menu.className = "action-items";
 
   ACTION_KINDS.forEach((kind, index) => {
     const item = document.createElement("div");
-    item.className = "combat-menu-item";
-    if (index === view.selectedIndex) {
-      item.classList.add("selected");
-    }
+    item.className = "combat-action-item";
+    if (index === view.selectedIndex) item.classList.add("selected");
     item.dataset.kind = kind;
 
     const arrow = document.createElement("span");
-    arrow.className = "combat-menu-arrow";
+    arrow.className = "combat-action-arrow";
     arrow.textContent = index === view.selectedIndex ? "▶" : "";
 
     const label = document.createElement("span");
-    label.className = "combat-menu-label";
+    label.className = "combat-action-label";
     label.textContent = ACTION_LABELS[kind];
 
     item.appendChild(arrow);
@@ -203,49 +340,82 @@ function buildMenu(
   return menu;
 }
 
-// --- Party table -----------------------------------------------------------
+function buildSelectionMenu(view: SelectActionView): HTMLElement {
+  const menu = document.createElement("div");
+  menu.className = "action-items";
 
-function buildPartyTable(state: CombatState): HTMLElement {
-  const table = document.createElement("table");
-  table.className = "combat-party-table";
+  const choices = view.selectionList
+    ? view.selectionList
+        .split("  ")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
 
-  const thead = document.createElement("thead");
-  const headerRow = document.createElement("tr");
-  for (const col of ["Name", "Class", "AC", "Hits", "Status"]) {
-    const th = document.createElement("th");
-    th.textContent = col;
-    headerRow.appendChild(th);
+  for (const choice of choices) {
+    const item = document.createElement("div");
+    item.className = "combat-action-item";
+    item.textContent = choice;
+    menu.appendChild(item);
   }
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
 
-  const tbody = document.createElement("tbody");
+  return menu;
+}
+
+// --- Party strip -----------------------------------------------------------
+
+function buildPartyStrip(
+  state: CombatState,
+  currentCharacter: Character
+): HTMLElement {
+  const strip = document.createElement("div");
+  strip.className = "combat-party-strip";
+
   for (const c of state.party) {
-    const tr = document.createElement("tr");
-    const ko = c.hp <= 0;
-    if (ko) tr.classList.add("fallen");
+    const card = document.createElement("div");
+    card.className = "combat-party-member";
+    if (c.id === currentCharacter.id) card.classList.add("current");
+    if (c.hp <= 0 || c.status.includes("knockedOut")) card.classList.add("fallen");
 
-    const nameTd = document.createElement("td");
-    nameTd.textContent = c.name;
+    const name = document.createElement("div");
+    name.className = "combat-party-name";
+    name.textContent = c.name;
+    card.appendChild(name);
 
-    const classTd = document.createElement("td");
-    classTd.textContent = c.class;
+    const ratio = hpRatio(c);
+    const hpRow = document.createElement("div");
+    hpRow.className = "combat-party-hp-row";
 
-    const acTd = document.createElement("td");
-    acTd.textContent = String(effectiveAc(state, c));
+    const barWrap = document.createElement("div");
+    barWrap.className = "combat-party-hp-bar";
+    const barFill = document.createElement("div");
+    barFill.className = `combat-party-hp-fill ${hpBarColorClass(ratio)}`;
+    barFill.style.width = `${Math.round(ratio * 100)}%`;
+    barWrap.appendChild(barFill);
 
-    const hitsTd = document.createElement("td");
-    hitsTd.textContent = `${Math.max(0, c.hp)}/${c.maxHp}`;
+    const hpText = document.createElement("div");
+    hpText.className = "combat-party-hp-text";
+    hpText.textContent = `${Math.max(0, c.hp)}/${c.maxHp}`;
 
-    const statusTd = document.createElement("td");
-    statusTd.textContent = formatStatus(c);
+    hpRow.appendChild(barWrap);
+    hpRow.appendChild(hpText);
+    card.appendChild(hpRow);
 
-    tr.append(nameTd, classTd, acTd, hitsTd, statusTd);
-    tbody.appendChild(tr);
+    const status = document.createElement("div");
+    status.className = "combat-party-status";
+    status.textContent = partyStatusText(c);
+    card.appendChild(status);
+
+    strip.appendChild(card);
   }
-  table.appendChild(tbody);
 
-  return table;
+  return strip;
+}
+
+function buildHint(): HTMLElement {
+  const el = document.createElement("div");
+  el.className = "combat-hint";
+  el.textContent = "▲▼ choose — Enter/Space confirm — click to select";
+  return el;
 }
 
 /**
@@ -263,11 +433,4 @@ export function effectiveAc(state: CombatState, c: Character): number {
   );
   const spellBuff = state.armorBuffs[c.id] ?? 0;
   return 10 - (armorBonus + spellBuff);
-}
-
-function formatStatus(c: Character): string {
-  if (c.status.length === 0) return "";
-  return c.status
-    .map((s) => (s === "knockedOut" ? "KO" : s))
-    .join(", ");
 }
