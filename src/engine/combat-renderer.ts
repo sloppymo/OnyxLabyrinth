@@ -17,7 +17,11 @@ import type { Character } from "../game/party";
 import type { EnemyInstance, CombatEvent } from "../game/combat";
 import type { CombatState } from "../game/combat";
 import { getEnemySprite } from "./enemy-sprite-cache";
-import { enemyHealthDescriptor } from "./combat-display";
+import {
+  enemyHealthDescriptor,
+  COMBAT_LOG_HISTORY,
+  type SelectionChoice,
+} from "./combat-display";
 
 // --- Palette ---------------------------------------------------------------
 // Reuse the dungeon palette for visual consistency.
@@ -83,8 +87,8 @@ export interface CombatScene {
   flash: string | null;
   /** Prompt text shown at the bottom. */
   prompt: string;
-  /** Available spells/items list for selection phases. */
-  selectionList: string | null;
+  /** Available spells/items/targets list for selection phases. */
+  selectionList: SelectionChoice[] | null;
   /** Per-party-member animation state, keyed by character id. */
   partyAnims: Map<string, SpriteAnim>;
   /** Per-enemy animation state, keyed by instance id. */
@@ -553,7 +557,7 @@ function drawMessageBox(
   const lineHeight = 16;
 
   // Persistent log: show the last entries, with the current message highlighted.
-  const logEntries = scene.state.log.slice(-6);
+  const logEntries = scene.state.log.slice(-COMBAT_LOG_HISTORY);
   let y = startY;
   for (let idx = 0; idx < logEntries.length; idx++) {
     const entry = logEntries[idx];
@@ -600,7 +604,7 @@ function drawPrompt(
   scene: CombatScene
 ): void {
   // The prompt bar height adapts to whether there's a selection list.
-  const hasList = !!scene.selectionList;
+  const hasList = !!(scene.selectionList && scene.selectionList.length > 0);
   const barH = hasList ? 60 : 28;
   const y = h - barH;
   ctx.fillStyle = COLORS.bg;
@@ -617,10 +621,11 @@ function drawPrompt(
   ctx.textAlign = "left";
   ctx.fillText(scene.prompt, 12, y + 18);
 
-  if (scene.selectionList) {
+  if (hasList) {
     ctx.fillStyle = COLORS.warmWhite;
     ctx.font = '11px "FF36", monospace';
-    const lines = wrapText(ctx, scene.selectionList, w - 24);
+    const listText = scene.selectionList!.map((c) => c.label).join("  ");
+    const lines = wrapText(ctx, listText, w - 24);
     for (let i = 0; i < Math.min(lines.length, 2); i++) {
       ctx.fillText(lines[i], 12, y + 18 + 14 + i * 14);
     }

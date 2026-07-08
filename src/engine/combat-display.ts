@@ -7,6 +7,15 @@
 
 import type { Character } from "../game/party";
 
+/** Number of recent log entries shown in the persistent combat message log. */
+export const COMBAT_LOG_HISTORY = 8;
+
+/** A single selectable choice rendered in a combat selection list. */
+export interface SelectionChoice {
+  index: number;
+  label: string;
+}
+
 /** Qualitative health descriptor for an enemy or character. */
 export function enemyHealthDescriptor(currentHp: number, maxHp: number): string {
   if (maxHp <= 0) return "Unknown";

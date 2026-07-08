@@ -6,8 +6,7 @@ export default defineConfig({
     assetsInlineLimit: 10240,
   },
   test: {
-    // Tests run in the default Node environment. The renderer math tests
-    // are pure functions with no DOM dependencies.
+    environment: "jsdom",
     include: ["src/**/*.test.ts"],
     coverage: {
       exclude: ["src/**/*.test.ts"],
