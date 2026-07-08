@@ -4,10 +4,11 @@
 //   - Top ~18%: bordered message box showing one log entry at a time
 //   - Bottom ~82%: battle arena with procedural sprites (party left, enemies right)
 //
-// All sprites are drawn procedurally (no image assets). Party members are
-// humanoid silhouettes color-coded by class; enemies are shape-coded by type.
-// Sprite states: idle (bob), attacking (lunge), hit (flash), defeated (fade).
-// Attack effects: melee slash line, spell particle burst.
+// Party members are humanoid silhouettes color-coded by class. Enemies prefer
+// image sprites when available (enemy-sprite-cache.ts) and fall back to
+// procedural shape-coded silhouettes. Sprite states: idle (bob), attacking
+// (lunge), hit (flash), defeated (fade). Attack effects: melee slash line,
+// spell particle burst.
 //
 // The renderer is driven by CombatController (combat-ui.ts) which sets the
 // scene state each frame and calls render().
@@ -15,6 +16,7 @@
 import type { Character } from "../game/party";
 import type { EnemyInstance, CombatEvent } from "../game/combat";
 import type { CombatState } from "../game/combat";
+import { getEnemySprite } from "./enemy-sprite-cache";
 
 // --- Palette ---------------------------------------------------------------
 // Reuse the dungeon palette for visual consistency.
@@ -106,8 +108,8 @@ export interface CombatScene {
 
 // --- Layout constants ------------------------------------------------------
 const MSG_BOX_HEIGHT_RATIO = 0.18;
-const SPRITE_W = 48;
-const SPRITE_H = 64;
+export const SPRITE_W = 48;
+export const SPRITE_H = 64;
 const PARTY_SLOT_SPACING = 70;
 const ENEMY_SLOT_SPACING = 70;
 
@@ -280,7 +282,8 @@ export function drawEnemySprite(
   anim: SpriteAnim,
   now: number,
   isTargetable: boolean,
-  targetIndex: number
+  targetIndex: number,
+  scale = 1
 ): void {
   ctx.save();
   ctx.globalAlpha = anim.opacity;
@@ -298,9 +301,10 @@ export function drawEnemySprite(
   ctx.ellipse(px, py + SPRITE_H / 2 + 4, SPRITE_W / 2.5, 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Determine enemy shape category from ID.
-  const shape = enemyShape(enemy.id);
-  const color = enemyColor(enemy.id);
+  // Try image sprite first; fall back to procedural shape.
+  const spriteImg = getEnemySprite(enemy.id);
+  const sw = spriteImg?.naturalWidth ?? 0;
+  const sh = spriteImg?.naturalHeight ?? 0;
 
   // Defeated: rotate.
   if (anim.state === "defeated") {
@@ -309,89 +313,102 @@ export function drawEnemySprite(
     ctx.translate(-px, -(py + SPRITE_H / 3));
   }
 
-  ctx.fillStyle = color;
-  switch (shape) {
-    case "blob":
-      // Amorphous blob (acid puddle, dust sprite).
-      ctx.beginPath();
-      ctx.ellipse(px, py, SPRITE_W / 2.5, SPRITE_H / 3, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // Eyes.
-      ctx.fillStyle = "#000";
-      ctx.fillRect(px - 8, py - 4, 3, 3);
-      ctx.fillRect(px + 5, py - 4, 3, 3);
-      break;
-
-    case "insect":
-      // Insect (giant rat, paper wasp, rift moth).
-      ctx.beginPath();
-      ctx.ellipse(px, py, SPRITE_W / 3, SPRITE_H / 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // Wings/legs.
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.5;
-      for (let i = -1; i <= 1; i += 2) {
+  if (spriteImg && sw > 0 && sh > 0) {
+    // Draw image sprite centered at (px, py), scaled to fit the sprite box.
+    ctx.imageSmoothingEnabled = false; // crisp pixel art
+    const maxW = SPRITE_W * scale;
+    const maxH = SPRITE_H * scale;
+    const imgScale = Math.min(maxW / sw, maxH / sh);
+    const dw = sw * imgScale;
+    const dh = sh * imgScale;
+    ctx.drawImage(spriteImg, px - dw / 2, py - dh / 2, dw, dh);
+  } else {
+    const shape = enemyShape(enemy.id);
+    const color = enemyColor(enemy.id);
+    ctx.fillStyle = color;
+    switch (shape) {
+      case "blob":
+        // Amorphous blob (acid puddle, dust sprite).
         ctx.beginPath();
-        ctx.moveTo(px + i * 8, py);
-        ctx.lineTo(px + i * 18, py - 12);
+        ctx.ellipse(px, py, SPRITE_W / 2.5, SPRITE_H / 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Eyes.
+        ctx.fillStyle = "#000";
+        ctx.fillRect(px - 8, py - 4, 3, 3);
+        ctx.fillRect(px + 5, py - 4, 3, 3);
+        break;
+
+      case "insect":
+        // Insect (giant rat, paper wasp, rift moth).
+        ctx.beginPath();
+        ctx.ellipse(px, py, SPRITE_W / 3, SPRITE_H / 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Wings/legs.
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        for (let i = -1; i <= 1; i += 2) {
+          ctx.beginPath();
+          ctx.moveTo(px + i * 8, py);
+          ctx.lineTo(px + i * 18, py - 12);
+          ctx.stroke();
+        }
+        break;
+
+      case "construct":
+        // Blocky construct (stone guardian, animated armor, lesser construct).
+        roundRect(ctx, px - SPRITE_W / 3, py - SPRITE_H / 3, SPRITE_W * 0.67, SPRITE_H * 0.67, 4);
+        ctx.fill();
+        // Glowing eyes.
+        ctx.fillStyle = enemy.isBoss ? COLORS.danger : COLORS.amber;
+        ctx.fillRect(px - 8, py - 8, 4, 4);
+        ctx.fillRect(px + 4, py - 8, 4, 4);
+        break;
+
+      case "undead":
+        // Skeletal/ghostly (failed experiment, headmaster's echo).
+        ctx.beginPath();
+        ctx.arc(px, py - 6, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(px - 6, py + 2, 12, SPRITE_H / 3);
+        // Dark eye sockets.
+        ctx.fillStyle = "#000";
+        ctx.fillRect(px - 6, py - 10, 4, 4);
+        ctx.fillRect(px + 2, py - 10, 4, 4);
+        break;
+
+      case "humanoid":
+        // Humanoid (lab assistant, training dummy, animated book).
+        ctx.beginPath();
+        ctx.arc(px, py - 12, 9, 0, Math.PI * 2);
+        ctx.fill();
+        roundRect(ctx, px - SPRITE_W / 4, py - 4, SPRITE_W / 2, SPRITE_H * 0.5, 4);
+        ctx.fill();
+        break;
+
+      case "demon":
+        // Demon (imp).
+        ctx.beginPath();
+        ctx.arc(px, py - 4, 14, 0, Math.PI * 2);
+        ctx.fill();
+        // Horns.
+        ctx.beginPath();
+        ctx.moveTo(px - 10, py - 16);
+        ctx.lineTo(px - 14, py - 24);
+        ctx.moveTo(px + 10, py - 16);
+        ctx.lineTo(px + 14, py - 24);
         ctx.stroke();
-      }
-      break;
+        // Eyes.
+        ctx.fillStyle = COLORS.amber;
+        ctx.fillRect(px - 7, py - 6, 4, 4);
+        ctx.fillRect(px + 3, py - 6, 4, 4);
+        break;
 
-    case "construct":
-      // Blocky construct (stone guardian, animated armor, lesser construct).
-      roundRect(ctx, px - SPRITE_W / 3, py - SPRITE_H / 3, SPRITE_W * 0.67, SPRITE_H * 0.67, 4);
-      ctx.fill();
-      // Glowing eyes.
-      ctx.fillStyle = enemy.isBoss ? COLORS.danger : COLORS.amber;
-      ctx.fillRect(px - 8, py - 8, 4, 4);
-      ctx.fillRect(px + 4, py - 8, 4, 4);
-      break;
-
-    case "undead":
-      // Skeletal/ghostly (failed experiment, headmaster's echo).
-      ctx.beginPath();
-      ctx.arc(px, py - 6, 12, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillRect(px - 6, py + 2, 12, SPRITE_H / 3);
-      // Dark eye sockets.
-      ctx.fillStyle = "#000";
-      ctx.fillRect(px - 6, py - 10, 4, 4);
-      ctx.fillRect(px + 2, py - 10, 4, 4);
-      break;
-
-    case "humanoid":
-      // Humanoid (lab assistant, training dummy, animated book).
-      ctx.beginPath();
-      ctx.arc(px, py - 12, 9, 0, Math.PI * 2);
-      ctx.fill();
-      roundRect(ctx, px - SPRITE_W / 4, py - 4, SPRITE_W / 2, SPRITE_H * 0.5, 4);
-      ctx.fill();
-      break;
-
-    case "demon":
-      // Demon (imp).
-      ctx.beginPath();
-      ctx.arc(px, py - 4, 14, 0, Math.PI * 2);
-      ctx.fill();
-      // Horns.
-      ctx.beginPath();
-      ctx.moveTo(px - 10, py - 16);
-      ctx.lineTo(px - 14, py - 24);
-      ctx.moveTo(px + 10, py - 16);
-      ctx.lineTo(px + 14, py - 24);
-      ctx.stroke();
-      // Eyes.
-      ctx.fillStyle = COLORS.amber;
-      ctx.fillRect(px - 7, py - 6, 4, 4);
-      ctx.fillRect(px + 3, py - 6, 4, 4);
-      break;
-
-    default:
-      // Generic: simple circle.
-      ctx.beginPath();
-      ctx.arc(px, py, 16, 0, Math.PI * 2);
-      ctx.fill();
+      default:
+        // Generic: simple circle.
+        ctx.beginPath();
+        ctx.arc(px, py, 16, 0, Math.PI * 2);
+        ctx.fill();
+    }
   }
 
   // Hit flash.
@@ -434,6 +451,7 @@ function enemyShape(id: string): EnemyShape {
   if (id.includes("guardian") || id.includes("armor") || id.includes("construct")) return "construct";
   if (id.includes("experiment") || id.includes("echo")) return "undead";
   if (id.includes("imp") || id.includes("demon")) return "demon";
+  if (id.includes("ogre")) return "humanoid";
   return "humanoid";
 }
 

@@ -20,7 +20,8 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/engine/renderer.ts` | Corridor 3D view (the most fragile code). |
 | `src/engine/render-math.ts` | Pure math functions extracted from renderer (geometry, fog, camera interpolation). Unit-tested via `render-math.test.ts`. |
 | `src/engine/audio.ts` | Procedural Web Audio: ambient drone, footsteps, door sounds. |
-| `src/engine/combat-renderer.ts` | Canvas-based JRPG combat scene (sprites, effects, message box). Also exports `drawEnemySprite` for the DOM selectAction viewport. |
+| `src/engine/combat-renderer.ts` | Canvas-based JRPG combat scene (sprites, effects, message box). Also exports `drawEnemySprite` for the DOM selectAction viewport; `drawEnemySprite` prefers image sprites from `enemy-sprite-cache.ts` and falls back to procedural shapes. |
+| `src/engine/enemy-sprite-cache.ts` | Module-level image cache for enemy sprites, mirroring the renderer's texture cache pattern. |
 | `src/engine/combat-ui.ts` | Combat controller: input handling, round resolution, message queue. `selectAction` phase now renders DOM via `combat-select-action-view.ts`; other phases still use `combat-canvas`. |
 | `src/engine/combat-select-action-view.ts` | DOM renderer for the `selectAction` combat phase (status bar, viewport sprite, action menu, party table). |
 | `src/engine/shell.ts` | DOM shell: canvas sizing, message overlay, party strip, mode visibility. |
@@ -35,6 +36,9 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/game/save.test.ts` | Unit tests for save serialization (vitest). |
 | `src/game/party.test.ts` | Unit tests for party creation (vitest). |
 | `src/engine/combat-renderer.test.ts` | Unit tests for combat animation triggers (vitest). |
+| `src/engine/enemy-sprite-cache.test.ts` | Unit tests for enemy sprite image cache (vitest). |
+| `src/engine/draw-enemy-sprite.test.ts` | Unit tests for `drawEnemySprite` image/procedural paths (vitest). |
+| `src/data/enemies.test.ts` | Unit tests for enemy definitions and encounter tables (vitest). |
 | `src/engine/render-math.test.ts` | Unit tests for renderer geometry/fog/camera math (vitest, 74+ tests). |
 | `src/engine/camp-ui.ts` | Camp screen controller. |
 | `src/engine/town-ui.ts` | Town/hub screen controller. |
@@ -102,6 +106,7 @@ After any change to `src/engine/combat-renderer.ts` or `src/engine/combat-ui.ts`
 6. **Message advance:** log messages advance on Space/Enter or auto-advance after ~1.6s.
 7. **Combat → dungeon transition:** fleeing or winning returns to the dungeon view with the corridor canvas visible.
 8. **DOM selectAction screen:** in the `selectAction` phase, the DOM status bar, viewport sprite, action menu, and party table are visible; keyboard (arrows/Enter) and click input both work.
+9. **Image-based enemy sprites:** enemies with image sprite entries (e.g. `big-titty-ogre`) render the PNG, not the procedural fallback shape; hit flash, lunge, bob, and defeated rotation still apply.
 
 ## Conventions
 

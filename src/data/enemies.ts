@@ -232,6 +232,21 @@ export const RIFT_MOTH: EnemyDef = {
   isBoss: false,
 };
 
+export const BIG_TITTY_OGRE: EnemyDef = {
+  id: "big-titty-ogre",
+  name: "Big Titty Ogre",
+  floors: [4],
+  rowPreference: "front",
+  hp: 40,
+  attack: 11,
+  ac: 6,
+  agi: 2,
+  xp: 30,
+  gold: 28,
+  special: [],
+  isBoss: false,
+};
+
 // Floor 5: The Headmaster's Sanctum — boss floor.
 export const STONE_GUARDIAN: EnemyDef = {
   id: "stone-guardian",
@@ -294,6 +309,7 @@ export const ALL_ENEMIES: EnemyDef[] = [
   IMP,
   LESSER_CONSTRUCT,
   RIFT_MOTH,
+  BIG_TITTY_OGRE,
   STONE_GUARDIAN,
   ANIMATED_ARMOR,
   HEADMASTERS_ECHO,
@@ -430,6 +446,13 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "lesser-construct", row: "front" },
         { enemyId: "imp", row: "back" },
         { enemyId: "rift-moth", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "big-titty-ogre", row: "front" },
+        { enemyId: "imp", row: "back" },
       ],
     },
   ],

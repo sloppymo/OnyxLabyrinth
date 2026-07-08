@@ -10,6 +10,7 @@ import {
   isRenderCameraAnimating,
   resetRenderCamera,
 } from "./engine/renderer";
+import { loadEnemySprites } from "./engine/enemy-sprite-cache";
 import { audio } from "./engine/audio";
 import { renderAutoMap } from "./engine/automap";
 import { bindInput } from "./engine/input";
@@ -94,7 +95,7 @@ function openTown(): void {
       const last = state.lastDungeon;
       const floor = last
         ? FLOORS.find((f) => f.id === last.floorId) ?? FLOORS[0]
-        : FLOORS[0];
+        : FLOORS[3]; // TEMP: start at floor 4 for ogre verification
       const x = last ? last.x : floor.startX;
       const y = last ? last.y : floor.startY;
       const facing = last ? last.facing : 0;
@@ -571,3 +572,25 @@ if ("fonts" in document) {
 } else {
   loadTextures().then(loop).catch(loop);
 }
+
+// Prewarm enemy sprite cache without blocking the render loop.
+loadEnemySprites().catch(() => {});
+
+// TEMP: expose a hook for visual verification of the ogre sprite.
+(window as any).__startOgreCombat = () => {
+  const entry = { weight: 1, spawns: [{ enemyId: "big-titty-ogre", row: "front" as const }] };
+  const resolved = resolveEncounter(entry);
+  const loadout = buildLoadoutMap();
+  const combat = createCombatFromEncounter(
+    state.party,
+    resolved,
+    SPELLS_BY_ID,
+    ITEMS_BY_ID,
+    loadout,
+    state.inventory,
+    state.inAntimagic
+  );
+  state.combat = combat;
+  setMode(state, "combat");
+  startCombat(combat);
+};
