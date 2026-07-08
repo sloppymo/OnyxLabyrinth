@@ -167,11 +167,11 @@ function enemySlotPos(
 function allySlotPos(index: number, w: number, h: number): { x: number; y: number } {
   const arenaTop = h * MSG_BOX_HEIGHT_RATIO + 20;
   const arenaH = h * (1 - MSG_BOX_HEIGHT_RATIO) - 40;
-  const baseX = w * 0.12 - 70;
+  const baseX = w * 0.12 - 90;
   const baseY = arenaTop + arenaH * 0.55;
   return {
     x: baseX,
-    y: baseY - index * (SPRITE_H * 0.8),
+    y: baseY - index * (SPRITE_H * 0.55),
   };
 }
 

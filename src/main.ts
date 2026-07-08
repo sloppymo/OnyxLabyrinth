@@ -30,6 +30,7 @@ import { CampController } from "./engine/camp-ui";
 import { SaveController } from "./engine/save-ui";
 import { TownController } from "./engine/town-ui";
 import { PartyCreationController } from "./engine/party-ui";
+import { autoSave, loadAutoSave } from "./game/save";
 import {
   createCombatFromEncounter,
   inventoryFromCounts,
@@ -155,8 +156,21 @@ function openPartyCreation(onDone: () => void): void {
   });
 }
 
-// Start the game with party creation, then go to town.
-openPartyCreation(() => openTown());
+// Start the game: resume an autosave if one exists, otherwise run party
+// creation and drop into town.
+const resumed = loadAutoSave();
+if (resumed) {
+  Object.assign(state, resumed);
+  if (state.mode === "town") {
+    openTown();
+  } else {
+    // Combat is converted to dungeon on save; any other mode resumes directly.
+    showMode(state.mode, mapVisible);
+    setMessage("Welcome back to the labyrinth.");
+  }
+} else {
+  openPartyCreation(() => openTown());
+}
 
 // --- Spell / item / loadout lookups (built once) -------------------------
 const SPELLS_BY_ID: Record<string, (typeof ALL_SPELLS)[number]> = Object.fromEntries(
@@ -424,6 +438,12 @@ const resumeAudioOnce = () => {
   window.removeEventListener("keydown", resumeAudioOnce);
 };
 window.addEventListener("keydown", resumeAudioOnce);
+
+// Auto-save when the player leaves or reloads the page so the next session
+// can resume where they left off.
+window.addEventListener("beforeunload", () => {
+  autoSave(state);
+});
 
 // Combat key handler — separate listener that only fires in combat mode.
 window.addEventListener("keydown", (e: KeyboardEvent) => {

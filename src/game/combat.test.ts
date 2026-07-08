@@ -378,7 +378,7 @@ describe("spell defense mechanics", () => {
     expect(result.log.some((m) => m.includes("Cortu") && m.includes("magic screen"))).toBe(true);
   });
 
-  it("magic screen halves enemy spell damage and deteriorates when struck", () => {
+  it("magic screen halves enemy spell damage and deteriorates at end of round", () => {
     const caster = makeEnemy("e1", "Fire Caster", 100, {
       attack: 20,
       agi: 1, // act after party
@@ -399,8 +399,8 @@ describe("spell defense mechanics", () => {
     const damageDealt = partyHpBefore - partyHpAfter;
     expect(damageDealt).toBeGreaterThan(0);
     expect(damageDealt).toBeLessThan(15);
-    // Screen loses 1 when struck and 1 at end of round.
-    expect(result.magicScreen).toBe(3);
+    // Screen loses 1 at end of round (no decay on hit).
+    expect(result.magicScreen).toBe(4);
   });
 
   it("BACORTU fizzle field causes enemy spells to fizzle", () => {
