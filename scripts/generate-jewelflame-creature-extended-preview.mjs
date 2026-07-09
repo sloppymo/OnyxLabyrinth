@@ -2,13 +2,13 @@
 /**
  * Generates a standalone preview of the side-facing Creature Extended sprites.
  *
- * The pack sheets are 16×16 sprite grids where each row is an animation frame
- * and the four columns are directions: down, left, right, up. This generator
- * reads the matching Godot SpriteFrames (.tres) files to find the state rows
- * (idle, walk, attack, hurt), looks at the second 16×16 column for a side-facing
- * profile, and filters each state's animation so every frame faces the same
- * direction. Flip the sprites horizontally if you need the opposite profile.
- * Effects (fireball, explosions) are previewed as 16×16 grids.
+ * The pack sheets are 16×16 sprite grids. This generator reads the matching
+ * Godot SpriteFrames (.tres) files to find the state rows (idle, walk, attack,
+ * hurt), picks the right-facing column when available, and falls back to the
+ * left-facing column flipped horizontally. Pixel-weighted centroid detection
+ * verifies the visual facing, so every animated frame stays in a consistent
+ * side profile without flipping back and forth. Effects (fireball, explosions)
+ * are previewed as 16×16 grids.
  *
  * Run with:
  *   node scripts/generate-jewelflame-creature-extended-preview.mjs
@@ -17,135 +17,19 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { resolve, join, basename } from "node:path";
+import {
+  pngSize,
+  loadPng,
+  parseCreatureSideStates,
+  inferEffectGrid,
+  safeId,
+} from "./jewelflame-creature-utils.mjs";
 
 const root = resolve(process.cwd());
-const packRoot = "/home/sloppymo/jewelflame/assets/Creature Extended- Supporter Pack";
-const tresRoot = "/home/sloppymo/jewelflame/assets/animations/creatures";
+const packRoot = join(root, "jewelflame/assets/Creature Extended- Supporter Pack");
+const tresRoot = join(root, "jewelflame/assets/animations/creatures");
 const outFile = join(root, "jewelflame-creature-extended-preview.html");
 const indexFile = join(root, "jewelflame-preview-index.html");
-
-const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-const STATE_ORDER = ["idle", "walk", "attack", "hurt", "default"];
-
-function readUint32BE(buf, offset) {
-  return (
-    (buf[offset] << 24) |
-    (buf[offset + 1] << 16) |
-    (buf[offset + 2] << 8) |
-    buf[offset + 3]
-  ) >>> 0;
-}
-
-function pngSize(file) {
-  const buf = new Uint8Array(readFileSync(file));
-  for (let i = 0; i < 8; i++) {
-    if (buf[i] !== PNG_SIGNATURE[i]) throw new Error(`${file}: not a PNG`);
-  }
-  let offset = 8;
-  while (offset < buf.length) {
-    const length = readUint32BE(buf, offset);
-    const type = String.fromCharCode(
-      buf[offset + 4],
-      buf[offset + 5],
-      buf[offset + 6],
-      buf[offset + 7]
-    );
-    if (type === "IHDR") {
-      return {
-        width: readUint32BE(buf, offset + 8),
-        height: readUint32BE(buf, offset + 12),
-      };
-    }
-    offset += 12 + length;
-  }
-  throw new Error(`${file}: IHDR not found`);
-}
-
-function parseCreatureStates(tresPath, size) {
-  const text = readFileSync(tresPath, "utf8");
-  const regions = {};
-
-  const reSub =
-    /\[sub_resource type="AtlasTexture" id="([^"]+)"\]\s*atlas = ExtResource\("[^"]+"\)\s*region = Rect2\((\d+), (\d+), (\d+), (\d+)\)/g;
-  let m;
-  while ((m = reSub.exec(text)) !== null) {
-    regions[m[1]] = { x: +m[2], y: +m[3], w: +m[4], h: +m[5] };
-  }
-
-  const stateMap = new Map();
-  const reAnim =
-    /\{\s*"frames": \[([\s\S]*?)\],\s*"loop": \w+,\s*"name": &"([^"]+)",\s*"speed": ([\d.]+)\s*\}/g;
-  while ((m = reAnim.exec(text)) !== null) {
-    const framesBlock = m[1];
-    const name = m[2];
-    const speed = +m[3];
-    const refs = [
-      ...framesBlock.matchAll(/"texture": SubResource\("([^"]+)"\)/g),
-    ].map((r) => r[1]);
-    const frames = refs
-      .map((id) => regions[id])
-      .filter((f) => f && f.w > 0 && f.h > 0);
-
-    if (frames.length === 0) continue;
-    const stateMatch = name.match(/^(.+)_(down|up|left|right)$/);
-    if (!stateMatch) continue;
-    const state = stateMatch[1];
-    const yValues = [
-      ...new Set(frames.map((f) => f.y)),
-    ].filter((y) => y >= 0 && y + 16 <= size.height);
-    if (yValues.length === 0) continue;
-
-    if (!stateMap.has(state)) {
-      stateMap.set(state, { yValues: new Set(), fps: speed });
-    }
-    const entry = stateMap.get(state);
-    yValues.forEach((y) => entry.yValues.add(y));
-  }
-
-  const states = [];
-  for (const [state, { yValues }] of stateMap) {
-    const rows = [...yValues].sort((a, b) => a - b);
-    if (rows.length === 0) continue;
-
-    // Use a single side-facing frame from the second column. Animating the
-    // original walk/attack cycles makes the sprites alternate between left/right
-    // profiles and appear to spin, so we keep each state static.
-    states.push({
-      state,
-      fps: 1,
-      frameW: 16,
-      frameH: 16,
-      frameCount: 1,
-      sxOffset: 16,
-      syOffset: rows[0],
-      orientation: "v",
-    });
-  }
-
-  states.sort(
-    (a, b) => STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state)
-  );
-  return states;
-}
-
-function inferEffectGrid({ width, height }) {
-  if (width % 16 === 0 && height % 16 === 0) {
-    const cols = width / 16;
-    const rows = height / 16;
-    const frameCount = cols * rows;
-    if (frameCount > 1) {
-      return {
-        orientation: "g",
-        frameW: 16,
-        frameH: 16,
-        cols,
-        rows,
-        frameCount,
-      };
-    }
-  }
-  return { orientation: "h", frameW: width, frameH: height, frameCount: 1 };
-}
 
 async function collectAssets() {
   const entries = (await readdir(packRoot))
@@ -158,13 +42,14 @@ async function collectAssets() {
     const size = pngSize(file);
     const name = basename(f, ".png");
     const src = encodeURI(
-      `../jewelflame/assets/Creature Extended- Supporter Pack/${f}`
+      `./jewelflame/assets/Creature Extended- Supporter Pack/${f}`
     );
     const fileSize = (await stat(file)).size;
     const tresPath = join(tresRoot, `${name.toLowerCase()}.tres`);
 
     if (existsSync(tresPath)) {
-      const states = parseCreatureStates(tresPath, size);
+      const png = loadPng(file);
+      const states = parseCreatureSideStates(tresPath, size, png);
       if (states.length > 0) {
         for (const s of states) {
           assets.push({
@@ -226,7 +111,8 @@ function renderHtml(assets) {
   data-fps="${s.fps}"
   ${s.orientation === "g" ? `data-cols="${s.cols}"` : ""}
   ${s.sxOffset ? `data-sx-offset="${s.sxOffset}"` : ""}
-  ${s.syOffset ? `data-sy-offset="${s.syOffset}"` : ""} />
+  ${s.syOffset ? `data-sy-offset="${s.syOffset}"` : ""}
+  ${s.flipH ? 'data-flip-h="1"' : ""} />
 <div class="meta">
 <strong>${s.name}</strong> · ${s.state}<br>
 ${s.width}x${s.height} · ${s.frameCount} frame${s.frameCount === 1 ? "" : "s"} · ${s.frameW}x${s.frameH} per frame · ${s.fileSize} bytes
@@ -264,7 +150,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </head>
 <body>
 <h1>Creature Extended – Supporter Pack (Side-facing)</h1>
-<div class="hint">Static side-facing preview of each creature state. Each frame is read from the second column of the matching .tres SpriteFrames row and drawn at 240×240. Flip horizontally if you need the opposite direction.</div>
+<div class="hint">Animated side-facing preview of each creature state. Frames are read from the right-facing column of the matching .tres SpriteFrames row and flipped horizontally when only a left-facing column is available. Pixel-weighted facing detection keeps every frame in the same profile.</div>
 ${groupHtml}
 <script>
 const anims = [];
@@ -288,7 +174,8 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const sxOffset = Number(img.dataset.sxOffset || 0);
       const syOffset = Number(img.dataset.syOffset || 0);
       const fps = Number(img.dataset.fps) || 8;
-      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, fps, last: 0, frame: 0 });
+      const flipH = img.dataset.flipH === "1";
+      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, fps, flipH, last: 0, frame: 0 });
     });
     requestAnimationFrame(loop);
   }
@@ -317,7 +204,13 @@ document.fonts.ready.catch(() => {}).finally(() => {
         const dh = a.frameH * scale;
         const x = (240 - dw) / 2;
         const y = (240 - dh) / 2;
+        if (a.flipH) {
+          a.ctx.save();
+          a.ctx.translate(240, 0);
+          a.ctx.scale(-1, 1);
+        }
         a.ctx.drawImage(a.img, sx, sy, a.frameW, a.frameH, x, y, dw, dh);
+        if (a.flipH) a.ctx.restore();
       }
     });
     requestAnimationFrame(loop);
@@ -337,12 +230,6 @@ document.fonts.ready.catch(() => {}).finally(() => {
 </script>
 </body>
 </html>`;
-}
-
-function safeId(str) {
-  return String(str)
-    .replace(/\s/g, "_")
-    .replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
 function renderIndex() {

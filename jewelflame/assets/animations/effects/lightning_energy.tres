@@ -1,0 +1,72 @@
+[gd_resource type="SpriteFrames" format=3 uid="uid://r46c317gbh75"]
+
+[ext_resource type="Texture2D" uid="uid://cliq0eb0rdlgs" path="res://assets/Citizens-Guards-Warriors/Magical Effects/Lightning_Energy_Anti-Alias_glow_48x48.png" id="1_j2lyi"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_da1ge"]
+atlas = ExtResource("1_j2lyi")
+region = Rect2(0, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lpj5n"]
+atlas = ExtResource("1_j2lyi")
+region = Rect2(48, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8u6u2"]
+atlas = ExtResource("1_j2lyi")
+region = Rect2(96, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_cs2g0"]
+atlas = ExtResource("1_j2lyi")
+region = Rect2(144, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tp0sy"]
+atlas = ExtResource("1_j2lyi")
+region = Rect2(192, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_g30au"]
+atlas = ExtResource("1_j2lyi")
+region = Rect2(240, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_olmdc"]
+atlas = ExtResource("1_j2lyi")
+region = Rect2(288, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wdyrq"]
+atlas = ExtResource("1_j2lyi")
+region = Rect2(336, 0, 48, 48)
+
+[resource]
+animations = [{
+"frames": [],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_da1ge")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lpj5n")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8u6u2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_cs2g0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tp0sy")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_g30au")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_olmdc")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wdyrq")
+}],
+"loop": false,
+"name": &"lightning_energy",
+"speed": 12.0
+}]
