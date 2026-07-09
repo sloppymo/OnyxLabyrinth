@@ -1,0 +1,39 @@
+[gd_resource type="SpriteFrames" format=3 uid="uid://dkhydsxlqugtp"]
+
+[ext_resource type="Texture2D" uid="uid://bi4u4kdkprrpw" path="res://assets/Lonesome Forest - Summer and Winter Versions/Animations - Summer & Winter/Sprite Sheet Versions/Lonesome_Forest_ANIM_waterfall_top.png" id="1_pv8cq"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_501te"]
+atlas = ExtResource("1_pv8cq")
+region = Rect2(0, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wnv0q"]
+atlas = ExtResource("1_pv8cq")
+region = Rect2(16, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5w13d"]
+atlas = ExtResource("1_pv8cq")
+region = Rect2(32, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7pxvl"]
+atlas = ExtResource("1_pv8cq")
+region = Rect2(48, 0, 16, 16)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_501te")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wnv0q")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5w13d")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7pxvl")
+}],
+"loop": true,
+"name": &"default",
+"speed": 6.0
+}]

@@ -1,0 +1,72 @@
+[gd_resource type="SpriteFrames" format=3 uid="uid://dndk8yxbhmguj"]
+
+[ext_resource type="Texture2D" uid="uid://udxp3mjvp3xn" path="res://assets/Citizens-Guards-Warriors/Magical Effects/Ice-Burst_crystal_48x48_Anti-Alias_glow.png" id="1_rgu50"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_105yv"]
+atlas = ExtResource("1_rgu50")
+region = Rect2(0, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_vjuh1"]
+atlas = ExtResource("1_rgu50")
+region = Rect2(48, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tbqcg"]
+atlas = ExtResource("1_rgu50")
+region = Rect2(96, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7klub"]
+atlas = ExtResource("1_rgu50")
+region = Rect2(144, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_foq5e"]
+atlas = ExtResource("1_rgu50")
+region = Rect2(192, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ofc7l"]
+atlas = ExtResource("1_rgu50")
+region = Rect2(240, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ldyaj"]
+atlas = ExtResource("1_rgu50")
+region = Rect2(288, 0, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mpsxr"]
+atlas = ExtResource("1_rgu50")
+region = Rect2(336, 0, 48, 48)
+
+[resource]
+animations = [{
+"frames": [],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_105yv")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_vjuh1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tbqcg")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7klub")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_foq5e")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ofc7l")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ldyaj")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mpsxr")
+}],
+"loop": false,
+"name": &"ice_burst",
+"speed": 12.0
+}]

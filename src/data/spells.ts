@@ -264,6 +264,11 @@ export function spellByName(name: string): SpellDef | undefined {
   return ALL_SPELLS.find((s) => s.name === name);
 }
 
+/** Look up a spell by its id. */
+export function spellById(id: string): SpellDef | undefined {
+  return ALL_SPELLS.find((s) => s.id === id);
+}
+
 /** Return every spell a character class can learn at their current tier range. */
 export function spellsForClass(
   cls: "Fighter" | "Mage" | "Priest" | "Thief" | "Ninja",
