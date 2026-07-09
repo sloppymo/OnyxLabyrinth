@@ -19,6 +19,7 @@ import type { CombatState, WeaponRange } from "../game/combat";
 import { getEnemySpriteStrip } from "./enemy-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
 import type { SpriteStrip } from "./sprite-manifest";
+import combatBgUrl from "../assets/combat-bg.png";
 import {
   enemyHealthDescriptor,
   COMBAT_LOG_HISTORY,
@@ -50,6 +51,16 @@ const COLORS = {
   enemyDemon: "#a44",
   enemyHumanoid: "#7a6a4a",
 } as const;
+
+// --- Procedural combat background image ------------------------------------
+let combatBgImage: HTMLImageElement | null = null;
+function getCombatBg(): HTMLImageElement | null {
+  if (!combatBgImage) {
+    combatBgImage = new Image();
+    combatBgImage.src = combatBgUrl;
+  }
+  return combatBgImage;
+}
 
 // --- Sprite state ----------------------------------------------------------
 export type SpriteState = "idle" | "attacking" | "hit" | "defeated";
@@ -832,14 +843,20 @@ export function renderCombat(
   ctx.fillStyle = COLORS.bgArena;
   ctx.fillRect(0, 0, w, h);
 
-  // Arena background gradient (darker at edges).
+  // Arena background: procedural tile background if loaded, otherwise gradient.
   const arenaTop = h * MSG_BOX_HEIGHT_RATIO;
-  const grad = ctx.createLinearGradient(0, arenaTop, 0, h);
-  grad.addColorStop(0, "#1a1612");
-  grad.addColorStop(0.5, "#0e0d0a");
-  grad.addColorStop(1, "#080705");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, arenaTop, w, h - arenaTop);
+  const bg = getCombatBg();
+  if (bg?.complete) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(bg, 0, 0, w, h);
+  } else {
+    const grad = ctx.createLinearGradient(0, arenaTop, 0, h);
+    grad.addColorStop(0, "#1a1612");
+    grad.addColorStop(0.5, "#0e0d0a");
+    grad.addColorStop(1, "#080705");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, arenaTop, w, h - arenaTop);
+  }
 
   // Ground line (horizon of the arena).
   const groundY = arenaTop + (h - arenaTop) * 0.65;

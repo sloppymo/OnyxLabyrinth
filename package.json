@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "sprite-preview:generate": "node scripts/generate-sprite-preview.mjs",
+    "generate:combat-bg": "node scripts/generate-combat-bg.mjs",
     "sprite-preview:serve": "python3 -m http.server 8080",
     "sprite-preview": "npm run sprite-preview:generate && echo 'Open sprite-preview.html in your browser (or run npm run sprite-preview:serve).'"
   },
