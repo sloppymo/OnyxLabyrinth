@@ -20,12 +20,12 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </head>
 <body>
 <h1>Creature Extended – Supporter Pack (Side-facing)</h1>
-<div class="hint">Side-facing creature animations filtered to one direction. Each frame is read from the second column of the matching .tres SpriteFrames row and drawn at 240×240. Flip horizontally if you need the opposite direction.</div>
+<div class="hint">Static side-facing preview of each creature state. Each frame is read from the second column of the matching .tres SpriteFrames row and drawn at 240×240. Flip horizontally if you need the opposite direction.</div>
 
 <div class="group">
 <h2>fire_skull</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-fire_skull-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -34,19 +34,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":16},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>fire_skull</strong> · idle<br>
-64x160 · 4 frames · 16x16 per frame · 2404 bytes
+64x160 · 1 frame · 16x16 per frame · 2404 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-fire_skull-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -55,16 +54,15 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":96},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>fire_skull</strong> · walk<br>
-64x160 · 3 frames · 16x16 per frame · 2404 bytes
+64x160 · 1 frame · 16x16 per frame · 2404 bytes
 </div>
 </div>
 <div class="state single">
@@ -77,12 +75,11 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="10"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>fire_skull</strong> · attack<br>
 64x160 · 1 frame · 16x16 per frame · 2404 bytes
@@ -106,7 +103,6 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-fps="8"
   data-cols="12"
   
-  
    />
 <div class="meta">
 <strong>fire_skull_fireball</strong> · default<br>
@@ -117,7 +113,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <div class="group">
 <h2>goblin</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-goblin-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -126,19 +122,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":32}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>goblin</strong> · idle<br>
-64x224 · 2 frames · 16x16 per frame · 3919 bytes
+64x224 · 1 frame · 16x16 per frame · 3919 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-goblin-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -147,19 +142,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":80},{"sx":16,"sy":96}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>goblin</strong> · walk<br>
-64x224 · 3 frames · 16x16 per frame · 3919 bytes
+64x224 · 1 frame · 16x16 per frame · 3919 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-goblin-attack" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -168,19 +162,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="10"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128},{"sx":16,"sy":176}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>goblin</strong> · attack<br>
-64x224 · 2 frames · 16x16 per frame · 3919 bytes
+64x224 · 1 frame · 16x16 per frame · 3919 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-goblin-hurt" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -189,23 +182,22 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192},{"sx":16,"sy":208}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>goblin</strong> · hurt<br>
-64x224 · 2 frames · 16x16 per frame · 3919 bytes
+64x224 · 1 frame · 16x16 per frame · 3919 bytes
 </div>
 </div></div>
 </div>
 <div class="group">
 <h2>goblin_slinger</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-goblin_slinger-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -214,19 +206,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>goblin_slinger</strong> · idle<br>
-64x224 · 3 frames · 16x16 per frame · 3895 bytes
+64x224 · 1 frame · 16x16 per frame · 3895 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-goblin_slinger-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -235,19 +226,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":96},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>goblin_slinger</strong> · walk<br>
-64x224 · 3 frames · 16x16 per frame · 3895 bytes
+64x224 · 1 frame · 16x16 per frame · 3895 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-goblin_slinger-attack" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -256,16 +246,15 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="10"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128},{"sx":16,"sy":160}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>goblin_slinger</strong> · attack<br>
-64x224 · 2 frames · 16x16 per frame · 3895 bytes
+64x224 · 1 frame · 16x16 per frame · 3895 bytes
 </div>
 </div>
 <div class="state single">
@@ -278,12 +267,11 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="8"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>goblin_slinger</strong> · hurt<br>
 64x224 · 1 frame · 16x16 per frame · 3895 bytes
@@ -303,11 +291,10 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="6"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>mummy</strong> · idle<br>
@@ -324,12 +311,11 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="8"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>mummy</strong> · walk<br>
 64x224 · 1 frame · 16x16 per frame · 3970 bytes
@@ -345,18 +331,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="10"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>mummy</strong> · attack<br>
 64x224 · 1 frame · 16x16 per frame · 3970 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-mummy-hurt" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -365,23 +350,22 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192},{"sx":16,"sy":208}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>mummy</strong> · hurt<br>
-64x224 · 2 frames · 16x16 per frame · 3970 bytes
+64x224 · 1 frame · 16x16 per frame · 3970 bytes
 </div>
 </div></div>
 </div>
 <div class="group">
 <h2>orc</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -390,19 +374,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":16},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>orc</strong> · idle<br>
-64x224 · 4 frames · 16x16 per frame · 4315 bytes
+64x224 · 1 frame · 16x16 per frame · 4315 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -411,19 +394,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":96}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>orc</strong> · walk<br>
-64x224 · 2 frames · 16x16 per frame · 4315 bytes
+64x224 · 1 frame · 16x16 per frame · 4315 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc-attack" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -432,16 +414,15 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="10"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128},{"sx":16,"sy":144},{"sx":16,"sy":160},{"sx":16,"sy":176}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>orc</strong> · attack<br>
-64x224 · 4 frames · 16x16 per frame · 4315 bytes
+64x224 · 1 frame · 16x16 per frame · 4315 bytes
 </div>
 </div>
 <div class="state single">
@@ -454,12 +435,11 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="8"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>orc</strong> · hurt<br>
 64x224 · 1 frame · 16x16 per frame · 4315 bytes
@@ -469,7 +449,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <div class="group">
 <h2>orc_archer</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_archer-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -478,19 +458,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":16},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>orc_archer</strong> · idle<br>
-64x224 · 4 frames · 16x16 per frame · 4835 bytes
+64x224 · 1 frame · 16x16 per frame · 4835 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_archer-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -499,19 +478,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":80},{"sx":16,"sy":96},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>orc_archer</strong> · walk<br>
-64x224 · 4 frames · 16x16 per frame · 4835 bytes
+64x224 · 1 frame · 16x16 per frame · 4835 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_archer-attack" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -520,19 +498,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="10"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128},{"sx":16,"sy":144},{"sx":16,"sy":160},{"sx":16,"sy":176}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>orc_archer</strong> · attack<br>
-64x224 · 4 frames · 16x16 per frame · 4835 bytes
+64x224 · 1 frame · 16x16 per frame · 4835 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_archer-hurt" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -541,23 +518,22 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192},{"sx":16,"sy":208}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>orc_archer</strong> · hurt<br>
-64x224 · 2 frames · 16x16 per frame · 4835 bytes
+64x224 · 1 frame · 16x16 per frame · 4835 bytes
 </div>
 </div></div>
 </div>
 <div class="group">
 <h2>orc_champion</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_champion-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -566,19 +542,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":16},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>orc_champion</strong> · idle<br>
-64x224 · 4 frames · 16x16 per frame · 5945 bytes
+64x224 · 1 frame · 16x16 per frame · 5945 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_champion-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -587,19 +562,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":80},{"sx":16,"sy":96},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>orc_champion</strong> · walk<br>
-64x224 · 4 frames · 16x16 per frame · 5945 bytes
+64x224 · 1 frame · 16x16 per frame · 5945 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_champion-attack" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -608,19 +582,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="10"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128},{"sx":16,"sy":144},{"sx":16,"sy":176}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>orc_champion</strong> · attack<br>
-64x224 · 3 frames · 16x16 per frame · 5945 bytes
+64x224 · 1 frame · 16x16 per frame · 5945 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_champion-hurt" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -629,23 +602,22 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192},{"sx":16,"sy":208}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>orc_champion</strong> · hurt<br>
-64x224 · 2 frames · 16x16 per frame · 5945 bytes
+64x224 · 1 frame · 16x16 per frame · 5945 bytes
 </div>
 </div></div>
 </div>
 <div class="group">
 <h2>orc_soldier</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_soldier-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -654,19 +626,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":16},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>orc_soldier</strong> · idle<br>
-64x224 · 4 frames · 16x16 per frame · 5377 bytes
+64x224 · 1 frame · 16x16 per frame · 5377 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_soldier-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -675,19 +646,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":80},{"sx":16,"sy":96},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>orc_soldier</strong> · walk<br>
-64x224 · 4 frames · 16x16 per frame · 5377 bytes
+64x224 · 1 frame · 16x16 per frame · 5377 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_soldier-attack" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -696,19 +666,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="10"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128},{"sx":16,"sy":144},{"sx":16,"sy":176}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>orc_soldier</strong> · attack<br>
-64x224 · 3 frames · 16x16 per frame · 5377 bytes
+64x224 · 1 frame · 16x16 per frame · 5377 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_soldier-hurt" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -717,23 +686,22 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192},{"sx":16,"sy":208}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>orc_soldier</strong> · hurt<br>
-64x224 · 2 frames · 16x16 per frame · 5377 bytes
+64x224 · 1 frame · 16x16 per frame · 5377 bytes
 </div>
 </div></div>
 </div>
 <div class="group">
 <h2>orc_soldier_unarmoured</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_soldier_unarmoured-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -742,19 +710,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":16},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>orc_soldier_unarmoured</strong> · idle<br>
-64x224 · 4 frames · 16x16 per frame · 4486 bytes
+64x224 · 1 frame · 16x16 per frame · 4486 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_soldier_unarmoured-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -763,19 +730,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":80},{"sx":16,"sy":96},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>orc_soldier_unarmoured</strong> · walk<br>
-64x224 · 4 frames · 16x16 per frame · 4486 bytes
+64x224 · 1 frame · 16x16 per frame · 4486 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-orc_soldier_unarmoured-attack" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -784,16 +750,15 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="10"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128},{"sx":16,"sy":160}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>orc_soldier_unarmoured</strong> · attack<br>
-64x224 · 2 frames · 16x16 per frame · 4486 bytes
+64x224 · 1 frame · 16x16 per frame · 4486 bytes
 </div>
 </div>
 <div class="state single">
@@ -806,12 +771,11 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="8"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>orc_soldier_unarmoured</strong> · hurt<br>
 64x224 · 1 frame · 16x16 per frame · 4486 bytes
@@ -821,7 +785,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <div class="group">
 <h2>skelly</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-skelly-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -830,19 +794,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":16},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>skelly</strong> · idle<br>
-64x224 · 4 frames · 16x16 per frame · 2816 bytes
+64x224 · 1 frame · 16x16 per frame · 2816 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-skelly-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -851,19 +814,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":80},{"sx":16,"sy":96},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>skelly</strong> · walk<br>
-64x224 · 4 frames · 16x16 per frame · 2816 bytes
+64x224 · 1 frame · 16x16 per frame · 2816 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-skelly-attack" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -872,16 +834,15 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="10"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128},{"sx":16,"sy":144},{"sx":16,"sy":160},{"sx":16,"sy":176}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>skelly</strong> · attack<br>
-64x224 · 4 frames · 16x16 per frame · 2816 bytes
+64x224 · 1 frame · 16x16 per frame · 2816 bytes
 </div>
 </div>
 <div class="state single">
@@ -894,12 +855,11 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="8"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>skelly</strong> · hurt<br>
 64x224 · 1 frame · 16x16 per frame · 2816 bytes
@@ -909,7 +869,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <div class="group">
 <h2>skelly_archer</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-skelly_archer-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -918,19 +878,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":16},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>skelly_archer</strong> · idle<br>
-64x224 · 3 frames · 16x16 per frame · 4121 bytes
+64x224 · 1 frame · 16x16 per frame · 4121 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-skelly_archer-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -939,16 +898,15 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":80},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>skelly_archer</strong> · walk<br>
-64x224 · 3 frames · 16x16 per frame · 4121 bytes
+64x224 · 1 frame · 16x16 per frame · 4121 bytes
 </div>
 </div>
 <div class="state single">
@@ -961,18 +919,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="10"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>skelly_archer</strong> · attack<br>
 64x224 · 1 frame · 16x16 per frame · 4121 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-skelly_archer-hurt" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -981,23 +938,22 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192},{"sx":16,"sy":208}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>skelly_archer</strong> · hurt<br>
-64x224 · 2 frames · 16x16 per frame · 4121 bytes
+64x224 · 1 frame · 16x16 per frame · 4121 bytes
 </div>
 </div></div>
 </div>
 <div class="group">
 <h2>skelly_warrior</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-skelly_warrior-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1006,19 +962,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":16},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>skelly_warrior</strong> · idle<br>
-64x224 · 4 frames · 16x16 per frame · 4721 bytes
+64x224 · 1 frame · 16x16 per frame · 4721 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-skelly_warrior-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1027,19 +982,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":80},{"sx":16,"sy":96},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>skelly_warrior</strong> · walk<br>
-64x224 · 4 frames · 16x16 per frame · 4721 bytes
+64x224 · 1 frame · 16x16 per frame · 4721 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-skelly_warrior-attack" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1048,19 +1002,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="10"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128},{"sx":16,"sy":160}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>skelly_warrior</strong> · attack<br>
-64x224 · 2 frames · 16x16 per frame · 4721 bytes
+64x224 · 1 frame · 16x16 per frame · 4721 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-skelly_warrior-hurt" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1069,23 +1022,22 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192},{"sx":16,"sy":208}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>skelly_warrior</strong> · hurt<br>
-64x224 · 2 frames · 16x16 per frame · 4721 bytes
+64x224 · 1 frame · 16x16 per frame · 4721 bytes
 </div>
 </div></div>
 </div>
 <div class="group">
 <h2>slime</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-slime-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1094,19 +1046,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>slime</strong> · idle<br>
-64x128 · 3 frames · 16x16 per frame · 2280 bytes
+64x128 · 1 frame · 16x16 per frame · 2280 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-slime-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1115,23 +1066,22 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":80},{"sx":16,"sy":96},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>slime</strong> · walk<br>
-64x128 · 4 frames · 16x16 per frame · 2280 bytes
+64x128 · 1 frame · 16x16 per frame · 2280 bytes
 </div>
 </div></div>
 </div>
 <div class="group">
 <h2>wraith</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-wraith-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1140,19 +1090,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":16},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>wraith</strong> · idle<br>
-64x224 · 4 frames · 16x16 per frame · 4193 bytes
+64x224 · 1 frame · 16x16 per frame · 4193 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-wraith-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1161,16 +1110,15 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":96},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>wraith</strong> · walk<br>
-64x224 · 3 frames · 16x16 per frame · 4193 bytes
+64x224 · 1 frame · 16x16 per frame · 4193 bytes
 </div>
 </div>
 <div class="state single">
@@ -1183,18 +1131,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="10"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>wraith</strong> · attack<br>
 64x224 · 1 frame · 16x16 per frame · 4193 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-wraith-hurt" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1203,16 +1150,15 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="2"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192},{"sx":16,"sy":208}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>wraith</strong> · hurt<br>
-64x224 · 2 frames · 16x16 per frame · 4193 bytes
+64x224 · 1 frame · 16x16 per frame · 4193 bytes
 </div>
 </div></div>
 </div>
@@ -1229,11 +1175,10 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="6"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>zombie</strong> · idle<br>
@@ -1250,12 +1195,11 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="8"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>zombie</strong> · walk<br>
 64x224 · 1 frame · 16x16 per frame · 3516 bytes
@@ -1271,12 +1215,11 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="10"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>zombie</strong> · attack<br>
 64x224 · 1 frame · 16x16 per frame · 3516 bytes
@@ -1292,12 +1235,11 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="8"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>zombie</strong> · hurt<br>
 64x224 · 1 frame · 16x16 per frame · 3516 bytes
@@ -1307,7 +1249,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <div class="group">
 <h2>zombie_burster</h2>
 <div class="states">
-<div class="state ">
+<div class="state single">
 <canvas id="c-zombie_burster-idle" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1316,19 +1258,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
-  data-orientation="o"
-  data-fps="6"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":0},{"sx":16,"sy":16},{"sx":16,"sy":32},{"sx":16,"sy":48}]'
-  
+  data-sx-offset="16"
    />
 <div class="meta">
 <strong>zombie_burster</strong> · idle<br>
-64x224 · 4 frames · 16x16 per frame · 5537 bytes
+64x224 · 1 frame · 16x16 per frame · 5537 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-zombie_burster-walk" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1337,19 +1278,18 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="8"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":64},{"sx":16,"sy":96},{"sx":16,"sy":112}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="64" />
 <div class="meta">
 <strong>zombie_burster</strong> · walk<br>
-64x224 · 3 frames · 16x16 per frame · 5537 bytes
+64x224 · 1 frame · 16x16 per frame · 5537 bytes
 </div>
 </div>
-<div class="state ">
+<div class="state single">
 <canvas id="c-zombie_burster-attack" width="240" height="240"></canvas>
 <img
   class="strip"
@@ -1358,16 +1298,15 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="3"
-  data-orientation="o"
-  data-fps="10"
+  data-frame-count="1"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":128},{"sx":16,"sy":160},{"sx":16,"sy":176}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="128" />
 <div class="meta">
 <strong>zombie_burster</strong> · attack<br>
-64x224 · 3 frames · 16x16 per frame · 5537 bytes
+64x224 · 1 frame · 16x16 per frame · 5537 bytes
 </div>
 </div>
 <div class="state single">
@@ -1380,12 +1319,11 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="1"
-  data-orientation="o"
-  data-fps="8"
+  data-orientation="v"
+  data-fps="1"
   
-  data-offsets='[{"sx":16,"sy":192}]'
-  
-   />
+  data-sx-offset="16"
+  data-sy-offset="192" />
 <div class="meta">
 <strong>zombie_burster</strong> · hurt<br>
 64x224 · 1 frame · 16x16 per frame · 5537 bytes
@@ -1408,7 +1346,6 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-orientation="g"
   data-fps="8"
   data-cols="18"
-  
   
    />
 <div class="meta">
@@ -1433,7 +1370,6 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-orientation="g"
   data-fps="8"
   data-cols="18"
-  
   
    />
 <div class="meta">
@@ -1464,8 +1400,7 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const sxOffset = Number(img.dataset.sxOffset || 0);
       const syOffset = Number(img.dataset.syOffset || 0);
       const fps = Number(img.dataset.fps) || 8;
-      const offsets = orientation === 'o' ? JSON.parse(img.dataset.offsets || '[]') : undefined;
-      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, offsets, fps, last: 0, frame: 0 });
+      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, fps, last: 0, frame: 0 });
     });
     requestAnimationFrame(loop);
   }
@@ -1484,10 +1419,6 @@ document.fonts.ready.catch(() => {}).finally(() => {
           sx += a.frame * a.frameW;
         } else if (a.orientation === 'v') {
           sy += a.frame * a.frameH;
-        } else if (a.orientation === 'o') {
-          const off = a.offsets[a.frame % a.offsets.length];
-          sx = off.sx;
-          sy = off.sy;
         } else {
           const cols = a.cols || Math.floor(a.img.naturalWidth / a.frameW);
           sx += (a.frame % cols) * a.frameW;

@@ -17,7 +17,6 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { resolve, join, basename } from "node:path";
-import { PNG } from "pngjs";
 
 const root = resolve(process.cwd());
 const packRoot = "/home/sloppymo/jewelflame/assets/Creature Extended- Supporter Pack";
@@ -35,10 +34,6 @@ function readUint32BE(buf, offset) {
     (buf[offset + 2] << 8) |
     buf[offset + 3]
   ) >>> 0;
-}
-
-function readPng(file) {
-  return PNG.sync.read(readFileSync(file));
 }
 
 function pngSize(file) {
@@ -66,27 +61,7 @@ function pngSize(file) {
   throw new Error(`${file}: IHDR not found`);
 }
 
-function sideFacingDirection(png, sx, sy) {
-  const { data, width } = png;
-  let weightedX = 0;
-  let totalAlpha = 0;
-  // Use the upper ~60% of the cell to focus on head/shoulders.
-  for (let y = sy; y < sy + 10; y++) {
-    for (let x = sx; x < sx + 16; x++) {
-      const idx = (y * width + x) * 4;
-      const alpha = data[idx + 3];
-      if (alpha > 30) {
-        weightedX += x * alpha;
-        totalAlpha += alpha;
-      }
-    }
-  }
-  if (totalAlpha === 0) return "none";
-  const avgX = weightedX / totalAlpha;
-  return avgX < sx + 8 ? "left" : "right";
-}
-
-function parseCreatureStates(tresPath, png) {
+function parseCreatureStates(tresPath, size) {
   const text = readFileSync(tresPath, "utf8");
   const regions = {};
 
@@ -117,7 +92,7 @@ function parseCreatureStates(tresPath, png) {
     const state = stateMatch[1];
     const yValues = [
       ...new Set(frames.map((f) => f.y)),
-    ].filter((y) => y >= 0 && y + 16 <= png.height);
+    ].filter((y) => y >= 0 && y + 16 <= size.height);
     if (yValues.length === 0) continue;
 
     if (!stateMap.has(state)) {
@@ -128,27 +103,22 @@ function parseCreatureStates(tresPath, png) {
   }
 
   const states = [];
-  for (const [state, { yValues, fps }] of stateMap) {
+  for (const [state, { yValues }] of stateMap) {
     const rows = [...yValues].sort((a, b) => a - b);
     if (rows.length === 0) continue;
 
-    // Pick the side-facing profile used by the first frame of the state,
-    // then keep only rows that face the same direction. This keeps the
-    // animation from flipping left/right each frame.
-    const firstDir = sideFacingDirection(png, 16, rows[0]);
-    const offsets = rows
-      .filter((y) => sideFacingDirection(png, 16, y) === firstDir)
-      .map((y) => ({ sx: 16, sy: y }));
-
-    if (offsets.length === 0) continue;
+    // Use a single side-facing frame from the second column. Animating the
+    // original walk/attack cycles makes the sprites alternate between left/right
+    // profiles and appear to spin, so we keep each state static.
     states.push({
       state,
-      fps,
+      fps: 1,
       frameW: 16,
       frameH: 16,
-      frameCount: offsets.length,
-      orientation: "o",
-      offsets,
+      frameCount: 1,
+      sxOffset: 16,
+      syOffset: rows[0],
+      orientation: "v",
     });
   }
 
@@ -186,7 +156,6 @@ async function collectAssets() {
   for (const f of entries) {
     const file = join(packRoot, f);
     const size = pngSize(file);
-    const png = readPng(file);
     const name = basename(f, ".png");
     const src = encodeURI(
       `../jewelflame/assets/Creature Extended- Supporter Pack/${f}`
@@ -195,7 +164,7 @@ async function collectAssets() {
     const tresPath = join(tresRoot, `${name.toLowerCase()}.tres`);
 
     if (existsSync(tresPath)) {
-      const states = parseCreatureStates(tresPath, png);
+      const states = parseCreatureStates(tresPath, size);
       if (states.length > 0) {
         for (const s of states) {
           assets.push({
@@ -256,7 +225,6 @@ function renderHtml(assets) {
   data-orientation="${s.orientation}"
   data-fps="${s.fps}"
   ${s.orientation === "g" ? `data-cols="${s.cols}"` : ""}
-  ${s.orientation === "o" ? `data-offsets='${JSON.stringify(s.offsets)}'` : ""}
   ${s.sxOffset ? `data-sx-offset="${s.sxOffset}"` : ""}
   ${s.syOffset ? `data-sy-offset="${s.syOffset}"` : ""} />
 <div class="meta">
@@ -296,7 +264,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </head>
 <body>
 <h1>Creature Extended – Supporter Pack (Side-facing)</h1>
-<div class="hint">Side-facing creature animations filtered to one direction. Each frame is read from the second column of the matching .tres SpriteFrames row and drawn at 240×240. Flip horizontally if you need the opposite direction.</div>
+<div class="hint">Static side-facing preview of each creature state. Each frame is read from the second column of the matching .tres SpriteFrames row and drawn at 240×240. Flip horizontally if you need the opposite direction.</div>
 ${groupHtml}
 <script>
 const anims = [];
@@ -320,8 +288,7 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const sxOffset = Number(img.dataset.sxOffset || 0);
       const syOffset = Number(img.dataset.syOffset || 0);
       const fps = Number(img.dataset.fps) || 8;
-      const offsets = orientation === 'o' ? JSON.parse(img.dataset.offsets || '[]') : undefined;
-      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, offsets, fps, last: 0, frame: 0 });
+      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, fps, last: 0, frame: 0 });
     });
     requestAnimationFrame(loop);
   }
@@ -340,10 +307,6 @@ document.fonts.ready.catch(() => {}).finally(() => {
           sx += a.frame * a.frameW;
         } else if (a.orientation === 'v') {
           sy += a.frame * a.frameH;
-        } else if (a.orientation === 'o') {
-          const off = a.offsets[a.frame % a.offsets.length];
-          sx = off.sx;
-          sy = off.sy;
         } else {
           const cols = a.cols || Math.floor(a.img.naturalWidth / a.frameW);
           sx += (a.frame % cols) * a.frameW;
