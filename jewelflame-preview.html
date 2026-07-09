@@ -22,7 +22,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </head>
 <body>
 <h1>Jewelflame Asset Preview</h1>
-<div class="hint">All sprite strips are auto-detected and drawn at 240×240. Multi-frame strips loop automatically. Creature Extended states animate in a consistent side profile; they are flipped horizontally only when the source sheet provides a left-facing column.</div>
+<div class="hint">All sprite strips are auto-detected and drawn at 240×240. Multi-frame strips loop automatically. Creature Extended states animate in a consistent side profile; frames are read from the side-facing row of the .tres SpriteFrames file and front/back frames are filtered out.</div>
 
 <section>
 <h2>Characters (100×100)</h2>
@@ -3338,7 +3338,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -3348,7 +3348,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>idle</strong><br>
-64x160 · 4 frames · 16x16 per frame · 2404 bytes
+64x160 · 1 frame · 16x16 per frame · 2404 bytes
 
 </div>
 </div>
@@ -3361,7 +3361,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -3371,7 +3371,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x160 · 4 frames · 16x16 per frame · 2404 bytes
+64x160 · 1 frame · 16x16 per frame · 2404 bytes
 
 </div>
 </div>
@@ -3442,7 +3442,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -3452,7 +3452,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 3919 bytes
+64x224 · 1 frame · 16x16 per frame · 3919 bytes
 
 </div>
 </div>
@@ -3465,7 +3465,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -3475,7 +3475,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 3919 bytes
+64x224 · 1 frame · 16x16 per frame · 3919 bytes
 
 </div>
 </div>
@@ -3517,17 +3517,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
-  
+  data-sx-offset="16"
   data-sy-offset="96"
   data-fps="8"
   data-state="walk"
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 3895 bytes
+64x224 · 1 frame · 16x16 per frame · 3895 bytes
 
 </div>
 </div>
@@ -3540,17 +3540,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
-  
+  data-sx-offset="32"
   data-sy-offset="160"
   data-fps="10"
   data-state="attack"
    />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 3895 bytes
+64x224 · 1 frame · 16x16 per frame · 3895 bytes
 
 </div>
 </div>
@@ -3569,7 +3569,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -3579,7 +3579,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>idle</strong><br>
-64x224 · 4 frames · 16x16 per frame · 3970 bytes
+64x224 · 1 frame · 16x16 per frame · 3970 bytes
 
 </div>
 </div>
@@ -3592,7 +3592,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -3602,7 +3602,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 3970 bytes
+64x224 · 1 frame · 16x16 per frame · 3970 bytes
 
 </div>
 </div>
@@ -3615,17 +3615,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
   data-sy-offset="160"
   data-fps="10"
   data-state="attack"
-  data-flip-h="1" />
+   />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 3970 bytes
+64x224 · 1 frame · 16x16 per frame · 3970 bytes
 
 </div>
 </div>
@@ -3644,7 +3644,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -3654,7 +3654,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>idle</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4315 bytes
+64x224 · 1 frame · 16x16 per frame · 4315 bytes
 
 </div>
 </div>
@@ -3667,17 +3667,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
   data-sy-offset="96"
   data-fps="8"
   data-state="walk"
-   />
+  data-flip-h="1" />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4315 bytes
+64x224 · 1 frame · 16x16 per frame · 4315 bytes
 
 </div>
 </div>
@@ -3690,7 +3690,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -3700,7 +3700,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   data-flip-h="1" />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4315 bytes
+64x224 · 1 frame · 16x16 per frame · 4315 bytes
 
 </div>
 </div>
@@ -3719,7 +3719,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -3729,7 +3729,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>idle</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4835 bytes
+64x224 · 1 frame · 16x16 per frame · 4835 bytes
 
 </div>
 </div>
@@ -3742,7 +3742,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -3752,7 +3752,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4835 bytes
+64x224 · 1 frame · 16x16 per frame · 4835 bytes
 
 </div>
 </div>
@@ -3765,17 +3765,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="2"
   data-orientation="h"
   
-  
+  data-sx-offset="16"
   data-sy-offset="160"
   data-fps="10"
   data-state="attack"
-   />
+  data-flip-h="1" />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4835 bytes
+64x224 · 2 frames · 16x16 per frame · 4835 bytes
 
 </div>
 </div>
@@ -3794,7 +3794,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -3804,7 +3804,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>idle</strong><br>
-64x224 · 4 frames · 16x16 per frame · 5945 bytes
+64x224 · 1 frame · 16x16 per frame · 5945 bytes
 
 </div>
 </div>
@@ -3817,17 +3817,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
-  
+  data-sx-offset="32"
   data-sy-offset="96"
   data-fps="8"
   data-state="walk"
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 5945 bytes
+64x224 · 1 frame · 16x16 per frame · 5945 bytes
 
 </div>
 </div>
@@ -3840,17 +3840,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="2"
   data-orientation="h"
   
-  
+  data-sx-offset="16"
   data-sy-offset="160"
   data-fps="10"
   data-state="attack"
    />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 5945 bytes
+64x224 · 2 frames · 16x16 per frame · 5945 bytes
 
 </div>
 </div>
@@ -3892,17 +3892,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="2"
   data-orientation="h"
   
-  
+  data-sx-offset="16"
   data-sy-offset="96"
   data-fps="8"
   data-state="walk"
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 5377 bytes
+64x224 · 2 frames · 16x16 per frame · 5377 bytes
 
 </div>
 </div>
@@ -3915,17 +3915,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="3"
   data-orientation="h"
   
-  
+  data-sx-offset="16"
   data-sy-offset="160"
   data-fps="10"
   data-state="attack"
    />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 5377 bytes
+64x224 · 3 frames · 16x16 per frame · 5377 bytes
 
 </div>
 </div>
@@ -3967,17 +3967,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="2"
   data-orientation="h"
   
-  
+  data-sx-offset="16"
   data-sy-offset="96"
   data-fps="8"
   data-state="walk"
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4486 bytes
+64x224 · 2 frames · 16x16 per frame · 4486 bytes
 
 </div>
 </div>
@@ -3990,17 +3990,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="3"
   data-orientation="h"
   
-  
+  data-sx-offset="16"
   data-sy-offset="160"
   data-fps="10"
   data-state="attack"
    />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4486 bytes
+64x224 · 3 frames · 16x16 per frame · 4486 bytes
 
 </div>
 </div>
@@ -4019,7 +4019,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -4029,7 +4029,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>idle</strong><br>
-64x224 · 4 frames · 16x16 per frame · 2816 bytes
+64x224 · 1 frame · 16x16 per frame · 2816 bytes
 
 </div>
 </div>
@@ -4042,7 +4042,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -4052,7 +4052,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 2816 bytes
+64x224 · 1 frame · 16x16 per frame · 2816 bytes
 
 </div>
 </div>
@@ -4065,17 +4065,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
   data-sy-offset="160"
   data-fps="10"
   data-state="attack"
-  data-flip-h="1" />
+   />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 2816 bytes
+64x224 · 1 frame · 16x16 per frame · 2816 bytes
 
 </div>
 </div>
@@ -4117,17 +4117,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="3"
   data-orientation="h"
   
-  
+  data-sx-offset="16"
   data-sy-offset="96"
   data-fps="8"
   data-state="walk"
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4121 bytes
+64x224 · 3 frames · 16x16 per frame · 4121 bytes
 
 </div>
 </div>
@@ -4140,7 +4140,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -4150,7 +4150,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4121 bytes
+64x224 · 1 frame · 16x16 per frame · 4121 bytes
 
 </div>
 </div>
@@ -4169,17 +4169,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
-  
+  data-sx-offset="16"
   data-sy-offset="32"
   data-fps="6"
   data-state="idle"
    />
 <div class="meta">
 <strong>idle</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4721 bytes
+64x224 · 1 frame · 16x16 per frame · 4721 bytes
 
 </div>
 </div>
@@ -4192,17 +4192,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
-  
+  data-sx-offset="32"
   data-sy-offset="96"
   data-fps="8"
   data-state="walk"
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4721 bytes
+64x224 · 1 frame · 16x16 per frame · 4721 bytes
 
 </div>
 </div>
@@ -4215,17 +4215,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
-  
+  data-sx-offset="48"
   data-sy-offset="160"
   data-fps="10"
   data-state="attack"
    />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4721 bytes
+64x224 · 1 frame · 16x16 per frame · 4721 bytes
 
 </div>
 </div>
@@ -4244,17 +4244,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="2"
   data-orientation="h"
   
-  
+  data-sx-offset="16"
   data-sy-offset="32"
   data-fps="6"
   data-state="idle"
-   />
+  data-flip-h="1" />
 <div class="meta">
 <strong>idle</strong><br>
-64x128 · 4 frames · 16x16 per frame · 2280 bytes
+64x128 · 2 frames · 16x16 per frame · 2280 bytes
 
 </div>
 </div>
@@ -4267,17 +4267,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
   data-sy-offset="96"
   data-fps="8"
   data-state="walk"
-  data-flip-h="1" />
+   />
 <div class="meta">
 <strong>walk</strong><br>
-64x128 · 4 frames · 16x16 per frame · 2280 bytes
+64x128 · 1 frame · 16x16 per frame · 2280 bytes
 
 </div>
 </div>
@@ -4296,7 +4296,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -4306,7 +4306,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>idle</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4193 bytes
+64x224 · 1 frame · 16x16 per frame · 4193 bytes
 
 </div>
 </div>
@@ -4319,7 +4319,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -4329,7 +4329,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4193 bytes
+64x224 · 1 frame · 16x16 per frame · 4193 bytes
 
 </div>
 </div>
@@ -4342,17 +4342,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
   data-sy-offset="160"
   data-fps="10"
   data-state="attack"
-  data-flip-h="1" />
+   />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 4193 bytes
+64x224 · 1 frame · 16x16 per frame · 4193 bytes
 
 </div>
 </div>
@@ -4371,7 +4371,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -4381,7 +4381,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>idle</strong><br>
-64x224 · 4 frames · 16x16 per frame · 3516 bytes
+64x224 · 1 frame · 16x16 per frame · 3516 bytes
 
 </div>
 </div>
@@ -4394,7 +4394,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -4404,7 +4404,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 3516 bytes
+64x224 · 1 frame · 16x16 per frame · 3516 bytes
 
 </div>
 </div>
@@ -4417,17 +4417,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
   data-sy-offset="160"
   data-fps="10"
   data-state="attack"
-  data-flip-h="1" />
+   />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 3516 bytes
+64x224 · 1 frame · 16x16 per frame · 3516 bytes
 
 </div>
 </div>
@@ -4446,7 +4446,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -4456,7 +4456,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>idle</strong><br>
-64x224 · 4 frames · 16x16 per frame · 5537 bytes
+64x224 · 1 frame · 16x16 per frame · 5537 bytes
 
 </div>
 </div>
@@ -4469,7 +4469,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
   
@@ -4479,7 +4479,7 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
    />
 <div class="meta">
 <strong>walk</strong><br>
-64x224 · 4 frames · 16x16 per frame · 5537 bytes
+64x224 · 1 frame · 16x16 per frame · 5537 bytes
 
 </div>
 </div>
@@ -4492,17 +4492,17 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="4"
+  data-frame-count="1"
   data-orientation="h"
   
-  
+  data-sx-offset="48"
   data-sy-offset="160"
   data-fps="10"
   data-state="attack"
-  data-flip-h="1" />
+   />
 <div class="meta">
 <strong>attack</strong><br>
-64x224 · 4 frames · 16x16 per frame · 5537 bytes
+64x224 · 1 frame · 16x16 per frame · 5537 bytes
 
 </div>
 </div>
@@ -4572,8 +4572,34 @@ const anims = [];
 
 document.fonts.ready.catch(() => {}).finally(() => {
   const images = Array.from(document.querySelectorAll('img.strip'));
-  let loaded = 0;
-  const total = images.length;
+
+  function draw(a) {
+    a.ctx.clearRect(0, 0, 240, 240);
+    let sx = a.sxOffset;
+    let sy = a.syOffset;
+    if (a.orientation === 'h') {
+      sx += a.frame * a.frameW;
+    } else if (a.orientation === 'v') {
+      sy += a.frame * a.frameH;
+    } else {
+      // Grid layout (e.g. 2 columns of 32×32 frames)
+      const cols = a.cols || Math.floor(a.img.naturalWidth / a.frameW);
+      sx += (a.frame % cols) * a.frameW;
+      sy += Math.floor(a.frame / cols) * a.frameH;
+    }
+    const scale = Math.min(240 / a.frameW, 240 / a.frameH);
+    const dw = a.frameW * scale;
+    const dh = a.frameH * scale;
+    const x = (240 - dw) / 2;
+    const y = (240 - dh) / 2;
+    if (a.flipH) {
+      a.ctx.save();
+      a.ctx.translate(240, 0);
+      a.ctx.scale(-1, 1);
+    }
+    a.ctx.drawImage(a.img, sx, sy, a.frameW, a.frameH, x, y, dw, dh);
+    if (a.flipH) a.ctx.restore();
+  }
 
   function start() {
     images.forEach((img) => {
@@ -4592,6 +4618,7 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const flipH = img.dataset.flipH === "1";
       anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, fps, flipH, last: 0, frame: 0 });
     });
+    anims.forEach(draw);
     requestAnimationFrame(loop);
   }
 
@@ -4602,46 +4629,13 @@ document.fonts.ready.catch(() => {}).finally(() => {
       if (elapsed >= interval) {
         a.frame = (a.frame + Math.floor(elapsed / interval)) % a.frameCount;
         a.last = now;
-        a.ctx.clearRect(0, 0, 240, 240);
-        let sx = a.sxOffset;
-        let sy = a.syOffset;
-        if (a.orientation === 'h') {
-          sx += a.frame * a.frameW;
-        } else if (a.orientation === 'v') {
-          sy += a.frame * a.frameH;
-        } else {
-          // Grid layout (e.g. 2 columns of 32×32 frames)
-          const cols = a.cols || Math.floor(a.img.naturalWidth / a.frameW);
-          sx += (a.frame % cols) * a.frameW;
-          sy += Math.floor(a.frame / cols) * a.frameH;
-        }
-        const scale = Math.min(240 / a.frameW, 240 / a.frameH);
-        const dw = a.frameW * scale;
-        const dh = a.frameH * scale;
-        const x = (240 - dw) / 2;
-        const y = (240 - dh) / 2;
-        if (a.flipH) {
-          a.ctx.save();
-          a.ctx.translate(240, 0);
-          a.ctx.scale(-1, 1);
-        }
-        a.ctx.drawImage(a.img, sx, sy, a.frameW, a.frameH, x, y, dw, dh);
-        if (a.flipH) a.ctx.restore();
+        draw(a);
       }
     });
     requestAnimationFrame(loop);
   }
 
-  images.forEach((img) => {
-    if (img.complete && img.naturalWidth) onLoad();
-    else img.addEventListener('load', onLoad);
-    img.addEventListener('error', onLoad);
-  });
-
-  function onLoad() {
-    loaded++;
-    if (loaded >= total) start();
-  }
+  Promise.all(images.map((img) => img.decode().catch(() => {}))).then(start);
 });
 </script>
 </body>
