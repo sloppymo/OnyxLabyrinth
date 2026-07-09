@@ -20,10 +20,11 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/engine/renderer.ts` | Corridor 3D view (the most fragile code). |
 | `src/engine/render-math.ts` | Pure math functions extracted from renderer (geometry, fog, camera interpolation). Unit-tested via `render-math.test.ts`. |
 | `src/engine/audio.ts` | Procedural Web Audio: ambient drone, footsteps, door sounds. |
-| `src/engine/combat-renderer.ts` | Canvas-based JRPG combat scene (sprites, effects, message box). Also exports `drawEnemySprite` for the DOM selectAction viewport; `drawEnemySprite` prefers image sprites from `enemy-sprite-cache.ts` and falls back to procedural shapes. |
-| `src/engine/enemy-sprite-cache.ts` | Module-level image cache for enemy sprites, mirroring the renderer's texture cache pattern. |
-| `src/engine/combat-ui.ts` | Combat controller: input handling, round resolution, message queue. `selectAction` phase now renders DOM via `combat-select-action-view.ts`; other phases still use `combat-canvas`. |
-| `src/engine/combat-select-action-view.ts` | DOM renderer for the `selectAction` combat phase (status bar, viewport sprite, action menu, party table). |
+| `src/engine/combat-scene.ts` | FF6-style canvas combat scene: enemies LEFT / party RIGHT, animated sprite strips, turn choreography engine (walk → attack → hurt + bouncing damage popups), spell-name banner. Consumes structured `CombatEvent`s only — null (log-only) events get no animation. |
+| `src/engine/enemy-sprite-cache.ts` | Module-level image cache for enemy sprite strips (enemy art faces RIGHT, drawn unmirrored). Falls back to procedural shapes in `combat-scene.ts`. |
+| `src/engine/party-sprite-cache.ts` | Image cache for party member sprite strips (`public/assets/party/<class>/`). Frame counts derived from strip width / 100 at load. Party art faces RIGHT, drawn mirrored (party faces left). |
+| `src/engine/combat-ui.ts` | FF6 combat controller: per-actor instant resolve. Walks the `beginRound` initiative queue; player turns open the FF6 menu, enemy/ally turns auto-play. No Space-gated message reveal. |
+| `src/engine/combat-select-action-view.ts` | DOM renderer for the FF6 bottom windows (action menu / enemy names / party HP list) overlaid on the combat canvas, plus the victory/defeat result window. |
 | `src/engine/shell.ts` | DOM shell: canvas sizing, message overlay, party strip, mode visibility. |
 | `src/engine/input.ts` | Dungeon exploration key bindings. |
 | `src/engine/camera.ts` | Movement, turning, collision, door unlock. |
@@ -31,13 +32,15 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/game/state.ts` | `GameState` factory and mode setter. |
 | `src/game/dungeon.ts` | Grid model, edge helpers, carving. |
 | `src/game/party.ts` | Character/party creation. |
-| `src/game/combat.ts` | Combat state/helpers. Emits structured `CombatEvent`s alongside log messages for the renderer. |
+| `src/game/combat.ts` | Combat state/helpers. Emits structured `CombatEvent`s alongside log messages for the renderer. Two resolution APIs sharing the same internals: round-based `resolveCombatRound` (legacy/tests) and the per-turn API (`beginRound` / `resolvePlayerTurn` / `resolveEnemyTurn` / `resolveAllyTurn` / `endRound`) used by the FF6 combat UI. |
 | `src/game/combat.test.ts` | Unit tests for combat resolver (vitest). |
+| `src/game/combat-turns.test.ts` | Unit tests for the per-turn combat API (vitest). |
 | `src/game/save.test.ts` | Unit tests for save serialization (vitest). |
 | `src/game/party.test.ts` | Unit tests for party creation (vitest). |
-| `src/engine/combat-renderer.test.ts` | Unit tests for combat animation triggers (vitest). |
+| `src/engine/combat-scene.test.ts` | Unit tests for the combat choreography engine (vitest). |
+| `src/engine/combat-select-action-view.test.ts` | Unit tests for the FF6 windows DOM renderer (vitest). |
 | `src/engine/enemy-sprite-cache.test.ts` | Unit tests for enemy sprite image cache (vitest). |
-| `src/engine/draw-enemy-sprite.test.ts` | Unit tests for `drawEnemySprite` image/procedural paths (vitest). |
+| `src/engine/party-sprite-cache.test.ts` | Unit tests for party sprite cache / frame derivation (vitest). |
 | `src/data/enemies.test.ts` | Unit tests for enemy definitions and encounter tables (vitest). |
 | `src/engine/render-math.test.ts` | Unit tests for renderer geometry/fog/camera math (vitest, 74+ tests). |
 | `src/engine/camp-ui.ts` | Camp screen controller. |
@@ -94,19 +97,21 @@ After any change to `src/engine/renderer.ts`, confirm these in-game views before
 
 Use Playwright, Puppeteer, or a manual browser at `http://localhost:5176/OnyxLabyrinth/`.
 
-## Combat renderer verification checklist
+## Combat (FF6) verification checklist
 
-After any change to `src/engine/combat-renderer.ts` or `src/engine/combat-ui.ts`:
+After any change to `src/engine/combat-scene.ts`, `src/engine/combat-ui.ts`, or `src/engine/combat-select-action-view.ts`:
 
-1. **Combat starts:** entering a fight shows the canvas combat screen (not a blank/black panel).
-2. **Sprites visible:** party members appear on the left, enemies on the right; nobody is invisible on first animation.
-3. **Multi-word names:** enemies with spaces in their names (e.g., "Giant Rat", "Stone Guardian") trigger hit/attack/death animations correctly.
-4. **Defeated fade:** killed enemies rotate and fade instead of vanishing instantly.
-5. **Selection list:** spell/item/target lists are visible and not drawn below the canvas.
-6. **Message advance:** log messages advance on Space/Enter or auto-advance after ~1.6s.
-7. **Combat → dungeon transition:** fleeing or winning returns to the dungeon view with the corridor canvas visible.
-8. **DOM selectAction screen:** in the `selectAction` phase, the DOM status bar, viewport sprite, action menu, and party table are visible; keyboard (arrows/Enter) and click input both work.
-9. **Image-based enemy sprites:** enemies with image sprite entries (e.g. `big-titty-ogre`) render the PNG, not the procedural fallback shape; hit flash, lunge, bob, and defeated rotation still apply.
+1. **Combat starts:** entering a fight shows the FF6 scene (enemies LEFT, party RIGHT) with the three blue bottom windows (action menu / enemy names / party HP list) overlaid on the canvas.
+2. **Party sprites animate:** party members are animated pack sprites (Knight/Wizard/Priest/Archer/Swordsman) facing LEFT, idle-looping; the acting character has a bouncing marker.
+3. **Turn playback:** confirming an action plays immediately — attacker walks forward, attack animation, target hurt animation + white bouncing damage number, walk back. No Space-gating during playback.
+4. **Damage popups:** white = damage, green = heal, purple = poison tick, "MISS" on evades.
+5. **Spell banner:** casting shows the spell name in the top banner window plus a burst effect on targets.
+6. **Target cursor:** in target selection, a blinking marker appears over the highlighted candidate on the scene; the menu window lists names with ▶.
+7. **Image-strip enemies:** enemies with strips (e.g. `failed-experiment`, `lesser-construct`) render the PNG facing RIGHT (toward the party); unmapped enemies use the procedural fallback.
+8. **Defeated fade:** killed enemies play their death strip then fade out; KO'd party members stay in the death pose.
+9. **Result window:** victory shows gold/XP in a centered window; Enter exits.
+10. **Combat → dungeon transition:** fleeing or winning returns to the dungeon view with corridor textures intact.
+11. **Windows never clip sprites:** all six party members and all enemies stay visible above the bottom windows.
 
 ## Conventions
 
@@ -122,7 +127,7 @@ After any change to `src/engine/combat-renderer.ts` or `src/engine/combat-ui.ts`
 
 ## Combat event system
 
-`combat.ts` emits structured `CombatEvent` entries alongside each log message (1:1 parallel array `s.events`). The combat renderer uses these events as the **primary** source for triggering animations, with regex-based log parsing as a **fallback** for messages that lack a structured event (e.g. silence, item use). When adding new combat actions or log messages, add a corresponding `emit()` call with a `CombatEvent` so the renderer can animate it without regex.
+`combat.ts` emits structured `CombatEvent` entries alongside each log message (1:1 parallel array `s.events`). The FF6 combat scene (`combat-scene.ts`) builds its turn choreography **exclusively** from these events — there is no regex log parsing anymore, and `null` events (log-only lines) are silently skipped. Consequence: when adding a new combat action or outcome, you MUST `emit()` a structured `CombatEvent` for it or it will not animate and will show no damage popup. The old round-based `resolveCombatRound` still exists (shared internals, used by tests); the combat UI uses the per-turn API.
 
 ## Renderer performance / feel notes
 

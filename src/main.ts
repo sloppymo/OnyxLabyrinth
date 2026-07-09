@@ -11,6 +11,7 @@ import {
   resetRenderCamera,
 } from "./engine/renderer";
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
+import { loadPartySprites } from "./engine/party-sprite-cache";
 import { loadEffectSprites } from "./engine/effect-sprite-cache";
 import { audio } from "./engine/audio";
 import { renderAutoMap } from "./engine/automap";
@@ -97,7 +98,7 @@ function openTown(): void {
       const last = state.lastDungeon;
       const floor = last
         ? FLOORS.find((f) => f.id === last.floorId) ?? FLOORS[0]
-        : FLOORS[3]; // TEMP: start at floor 4 for ogre verification
+        : FLOORS[0];
       const x = last ? last.x : floor.startX;
       const y = last ? last.y : floor.startY;
       const facing = last ? last.facing : 0;
@@ -594,8 +595,9 @@ if ("fonts" in document) {
   loadTextures().then(loop).catch(loop);
 }
 
-// Prewarm enemy sprite and effect caches without blocking the render loop.
+// Prewarm enemy/party sprite and effect caches without blocking the render loop.
 loadEnemySprites().catch(() => {});
+loadPartySprites().catch(() => {});
 loadEffectSprites().catch(() => {});
 
 

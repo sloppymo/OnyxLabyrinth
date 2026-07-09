@@ -26,7 +26,10 @@ app.innerHTML = `
     <div id="party-strip"></div>
     <div id="hint"><span id="compass">N</span> &uarr;/W forward &middot; &darr;/S back &middot; &larr;/A turn left &middot; &rarr;/D turn right &middot; C camp &middot; M map &middot; T town &middot; U unlock &middot; Esc menu</div>
     <div id="combat-panel"></div>
-    <canvas id="combat-canvas" width="768" height="672" style="display:none"></canvas>
+    <div id="combat-wrap" style="display:none">
+      <canvas id="combat-canvas" width="768" height="672"></canvas>
+      <div id="combat-windows"></div>
+    </div>
   </div>
 `;
 
@@ -39,6 +42,8 @@ const messageEl = document.querySelector<HTMLDivElement>("#message")!;
 const flashOverlayEl = document.querySelector<HTMLDivElement>("#flash-overlay")!;
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
 export const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+const combatWrap = document.querySelector<HTMLDivElement>("#combat-wrap")!;
+export const combatWindows = document.querySelector<HTMLDivElement>("#combat-windows")!;
 export const combatCanvas = document.querySelector<HTMLCanvasElement>("#combat-canvas")!;
 export const combatCtx = combatCanvas.getContext("2d")!;
 const compassEl = document.querySelector<HTMLSpanElement>("#compass")!;
@@ -172,22 +177,12 @@ export function showMode(mode: GameMode, mapVisible: boolean): void {
   viewportWrap.style.display = isDungeon ? "" : "none";
   canvas.style.display = isDungeon ? "" : "none";
   combatPanel.style.display = usesDomPanel ? "block" : "none";
-  combatCanvas.style.display = isCombat ? "block" : "none";
+  // FF6 combat: the scene canvas and the DOM menu windows are both visible
+  // for the entire fight (windows overlay the canvas bottom).
+  combatWrap.style.display = isCombat ? "block" : "none";
   mapCanvas.style.display = isDungeon && mapVisible ? "block" : "none";
 
   // Resize canvases — the combat canvas may not have been sized yet if it
   // was hidden when the initial resize ran.
   resizeCorridorCanvas();
-}
-
-/** Show the DOM combat panel and hide the canvas renderer. */
-export function showCombatPanel(): void {
-  combatPanel.style.display = "block";
-  combatCanvas.style.display = "none";
-}
-
-/** Show the canvas combat renderer and hide the DOM panel. */
-export function showCombatCanvas(): void {
-  combatPanel.style.display = "none";
-  combatCanvas.style.display = "block";
 }

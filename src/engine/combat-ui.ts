@@ -1,78 +1,69 @@
 /**
- * Combat UI controller — keyboard-driven action selection and round
- * resolution for the JRPG-style canvas combat screen.
+ * FF6-style combat controller — per-actor instant resolve.
  *
- * Flow:
- * 1. Action selection: for each living, non-incapacitated character, the
- *    player picks an action (Attack/Cast/Defend/Item/Flee) and any target.
- * 2. Round resolution: the player presses Space to resolve the round via
- *    resolveCombatRound. New log entries are queued for sequential reveal.
- * 3. Message reveal: log entries are shown one at a time in the message box
- *    (auto-advance after ~1.5s, or on Space/Enter). Sprite animations are
- *    triggered per-message.
- * 4. End handling: when combat ends (victory/wipe/fled), the player presses
- *    Space to return to the dungeon.
+ * Flow (hybrid rhythm — Wizardry initiative, FF6 experience):
+ * 1. beginRound builds an AGI-initiative queue over all living combatants
+ *    (party, summoned allies, enemies interleaved).
+ * 2. The controller walks the queue. On a party member's turn the FF6 menu
+ *    windows activate (Attack / Magic / Item / Defend / Run…); the moment an
+ *    action is confirmed it resolves via resolvePlayerTurn and plays out on
+ *    the scene canvas (walk → attack anim → damage popup). Enemy and ally
+ *    turns auto-resolve and play the same way.
+ * 3. When the queue is exhausted, endRound ticks statuses (poison popups)
+ *    and a new round begins. No Space-gated message reveal anywhere.
+ * 4. Victory / defeat / fled shows a centered result window; Enter exits.
  *
- * The controller renders to a canvas (#combat-canvas) via combat-renderer.ts
- * and receives keypresses via handleKey(). main.ts routes keys here when
- * mode==="combat".
+ * The scene canvas (combat-scene.ts) and the DOM windows
+ * (combat-select-action-view.ts) are both visible for the whole fight.
  */
 
 import {
-  resolveCombatRound,
+  beginRound,
+  resolvePlayerTurn,
+  resolveEnemyTurn,
+  resolveAllyTurn,
+  endRound,
+  enqueueNewAllies,
   type CombatState,
   type PlayerAction,
+  type TurnQueueEntry,
   type EnemyInstance,
+  type Row,
 } from "../game/combat";
+import { enemyHealthDescriptor } from "./combat-display";
 import type { Character } from "../game/party";
 import type { SpellDef } from "../data/spells";
 import type { ItemDef } from "../data/items";
-import { combatCtx, combatCanvas, combatPanel, showCombatPanel, showCombatCanvas } from "./shell";
+import { combatCtx, combatCanvas, combatWindows } from "./shell";
 import {
-  renderCombat,
-  updateAnimations,
-  triggerAnimationsForMessage,
-  setAnim,
+  createScene,
+  renderScene,
+  updateScene,
+  playTurn,
+  isPlaybackDone,
+  absorbDeaths,
   type CombatScene,
-} from "./combat-renderer";
+} from "./combat-scene";
 import {
-  renderSelectActionPhase,
-  ACTION_KINDS,
-  type SelectActionView,
-  type SelectActionHandlers,
-  type CombatPanelPhase,
+  renderCombatWindows,
+  menuEntriesForCharacter,
+  type CombatWindowsView,
+  type CombatWindowsHandlers,
+  type MenuEntry,
+  type SelectionEntry,
+  type ResultView,
 } from "./combat-select-action-view";
-import { enemyHealthDescriptor, type SelectionChoice } from "./combat-display";
 
 type Phase =
-  | "selectAction"
-  | "selectEnemyTarget"
-  | "selectAllyTarget"
+  | "menu"
+  | "selectTarget"
   | "selectSpell"
   | "selectItem"
-  | "ready"
-  | "messageReveal"
-  | "roundResult"
-  | "ended";
-
-const PANEL_PHASES: readonly CombatPanelPhase[] = [
-  "selectAction",
-  "selectEnemyTarget",
-  "selectAllyTarget",
-  "selectSpell",
-  "selectItem",
-  "ready",
-];
-
-function toPanelPhase(phase: Phase): CombatPanelPhase | null {
-  return (PANEL_PHASES as readonly Phase[]).includes(phase)
-    ? (phase as CombatPanelPhase)
-    : null;
-}
+  | "playback"
+  | "result";
 
 interface PendingAction {
-  actorId: string;
-  kind?: PlayerAction["kind"];
+  kind: PlayerAction["kind"];
   spellId?: string;
   itemId?: string;
 }
@@ -81,63 +72,51 @@ export interface CombatControllerOptions {
   onEnd: (result: CombatState) => void;
 }
 
-const MESSAGE_AUTO_ADVANCE_MS = 1600;
-
 export class CombatController {
   private state: CombatState;
   private onEnd: (result: CombatState) => void;
-  private phase: Phase = "selectAction";
-  private actions: PlayerAction[] = [];
-  private currentCharIndex = 0;
-  private pending: PendingAction = { actorId: "" };
 
-  // Canvas rendering.
+  private phase: Phase = "playback";
+  private queue: TurnQueueEntry[] = [];
+  private queueIndex = 0;
+  /** Set while the endRound playback is running (next step: new round). */
+  private roundEnding = false;
+
+  private currentActorId: string | null = null;
+  private pending: PendingAction | null = null;
+  private menuEntries: MenuEntry[] = [];
+  private menuIndex = 0;
+  private selectionTitle = "";
+  private selectionEntries: SelectionEntry[] = [];
+  private selectionIndex = 0;
+  /** Ids behind selectionEntries (enemy instance ids / ally ids / spell ids / item ids / rows). */
+  private selectionIds: string[] = [];
+  private targetKind: "enemy" | "ally" | "row" = "enemy";
+  private flash: string | null = null;
+  private result: ResultView | null = null;
+
   private scene: CombatScene;
   private rafId: number | null = null;
-  private prevLogLength = 0;
-
-  // DOM-based action selection.
-  private actionMenuIndex = 0;
-  private domViewDirty = true;
+  private windowsDirty = true;
 
   constructor(state: CombatState, opts: CombatControllerOptions) {
     this.state = state;
     this.onEnd = opts.onEnd;
-
-    // Initialize the scene state for the canvas renderer.
-    this.scene = {
-      state: this.state,
-      phase: this.phase,
-      currentActorIndex: 0,
-      flash: null,
-      prompt: "",
-      selectionList: null,
-      partyAnims: new Map(),
-      enemyAnims: new Map(),
-      allyAnims: new Map(),
-      enemyGraveyard: [],
-      allyGraveyard: [],
-      effects: [],
-      messageQueue: [],
-      eventQueue: [],
-      currentMessage: null,
-      messageStart: 0,
-      messageAdvanceDelay: MESSAGE_AUTO_ADVANCE_MS,
-    };
-
-    this.startActionSelection();
+    this.scene = createScene(state);
+    this.startRound();
     this.startRenderLoop();
   }
 
-  /** Destroy the controller — cancel the render loop. */
+  /** Destroy the controller — cancel the render loop and clear the windows. */
   destroy(): void {
     if (this.rafId !== null) {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
+    combatWindows.innerHTML = "";
   }
 
-  // --- Render loop ---------------------------------------------------------
+  // --- Render loop ----------------------------------------------------------
 
   private startRenderLoop(): void {
     const loop = () => {
@@ -149,98 +128,170 @@ export class CombatController {
 
   private tick(): void {
     const now = performance.now();
+    updateScene(this.scene, now);
 
-    const isSelectionPhase =
-      this.phase === "selectAction" ||
-      this.phase === "selectEnemyTarget" ||
-      this.phase === "selectAllyTarget" ||
-      this.phase === "selectSpell" ||
-      this.phase === "selectItem" ||
-      this.phase === "ready";
+    if (this.phase === "playback" && isPlaybackDone(this.scene, now)) {
+      this.afterPlayback();
+    }
 
-    if (isSelectionPhase) {
-      showCombatPanel();
-      if (this.domViewDirty) {
-        this.renderSelectActionDom();
-        this.domViewDirty = false;
-      }
+    if (this.windowsDirty) {
+      this.renderWindows();
+      this.windowsDirty = false;
+    }
+
+    renderScene(combatCtx, combatCanvas.width, combatCanvas.height, this.scene, now);
+  }
+
+  // --- Round / turn machine ---------------------------------------------------
+
+  private startRound(): void {
+    const { state, queue } = beginRound(this.state);
+    this.state = state;
+    this.scene.state = state;
+    this.queue = queue;
+    this.queueIndex = 0;
+    this.roundEnding = false;
+    this.nextTurn();
+  }
+
+  /** Advance to the next turn in the queue (or end the round). */
+  private nextTurn(): void {
+    if (this.state.ended) {
+      this.showResult();
       return;
     }
 
-    showCombatCanvas();
-
-    const w = combatCanvas.width;
-    const h = combatCanvas.height;
-
-    // Update sprite animations.
-    updateAnimations(this.scene, now);
-
-    // Handle message queue auto-advance.
-    if (this.phase === "messageReveal" && this.scene.currentMessage !== null) {
-      const elapsed = now - this.scene.messageStart;
-      if (elapsed >= this.scene.messageAdvanceDelay) {
-        this.advanceMessage();
-      }
+    if (this.queueIndex >= this.queue.length) {
+      // Round over: run end-of-round ticks and play them out.
+      this.roundEnding = true;
+      this.resolveAndPlay(() => endRound(this.state));
+      return;
     }
 
-    // Sync scene state with controller state.
-    this.scene.state = this.state;
-    this.scene.phase = this.phase;
-    this.scene.currentActorIndex = this.currentCharIndex;
+    const entry = this.queue[this.queueIndex++];
 
-    // Update prompt text based on phase.
-    this.scene.prompt = this.buildPrompt();
-    this.scene.selectionList = this.buildSelectionList();
-
-    // Render.
-    renderCombat(combatCtx, w, h, this.scene, now);
-  }
-
-  // --- Message queue -------------------------------------------------------
-
-  /** Start revealing queued messages one at a time. */
-  private startMessageReveal(): void {
-    // Extract new log entries (those added since the last round).
-    const newEntries = this.state.log.slice(this.prevLogLength);
-    // Extract the corresponding events (parallel array).
-    const newEvents = this.state.events.slice(this.prevLogLength);
-    this.prevLogLength = this.state.log.length;
-
-    this.scene.messageQueue = [...newEntries];
-    this.scene.eventQueue = [...newEvents];
-    this.phase = "messageReveal";
-    this.advanceMessage();
-  }
-
-  /** Advance to the next message in the queue, or finish the reveal. */
-  private advanceMessage(): void {
-    const now = performance.now();
-    const w = combatCanvas.width;
-    const h = combatCanvas.height;
-
-    if (this.scene.messageQueue.length > 0) {
-      const msg = this.scene.messageQueue.shift()!;
-      const evt = this.scene.eventQueue.shift() ?? null;
-      this.scene.currentMessage = msg;
-      this.scene.messageStart = now;
-
-      // Trigger sprite animations for this message (using structured event
-      // if available, falling back to regex matching otherwise).
-      triggerAnimationsForMessage(this.scene, msg, now, w, h, evt);
-    } else {
-      // All messages revealed — proceed to next phase.
-      this.scene.currentMessage = null;
-      if (this.state.ended) {
-        this.phase = "ended";
-      } else {
-        this.phase = "roundResult";
+    if (entry.kind === "player") {
+      const c = this.state.party.find((p) => p.id === entry.id);
+      if (!c || c.hp <= 0) {
+        this.nextTurn();
+        return;
       }
+      if (c.status.includes("sleep") || c.status.includes("paralysis")) {
+        // Incapacitated: auto-resolve (logs the skip) and play it.
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
+        );
+        return;
+      }
+      this.openMenuFor(c);
+      return;
     }
+
+    if (entry.kind === "enemy") {
+      const alive = this.findEnemy(entry.id);
+      if (!alive || alive.currentHp <= 0) {
+        this.nextTurn();
+        return;
+      }
+      this.resolveAndPlay(() => resolveEnemyTurn(this.state, entry.id));
+      return;
+    }
+
+    // Summoned ally.
+    const ally = this.state.summonedAllies.find((a) => a.id === entry.id);
+    if (!ally || ally.hp <= 0) {
+      this.nextTurn();
+      return;
+    }
+    this.resolveAndPlay(() => resolveAllyTurn(this.state, entry.id));
   }
 
-  // --- Consumables ---------------------------------------------------------
+  /** Resolve a turn via `fn`, then play its events on the scene. */
+  private resolveAndPlay(fn: () => CombatState): void {
+    const prevLogLength = this.state.log.length;
+    const next = fn();
+    const events = next.events.slice(prevLogLength);
+    this.state = next;
+    absorbDeaths(this.scene, next);
 
-  /** Consumables currently held by the party, with stack counts. */
+    // Allies summoned by this turn (BAMORDI/SOCORDI) act later this round,
+    // matching the round-based resolver's player → ally → enemy phasing.
+    this.queue = enqueueNewAllies(this.queue, this.queueIndex, next);
+
+    // Clear a stale spell banner from the previous turn.
+    this.scene.banner = null;
+
+    this.currentActorId = null;
+    this.scene.activeActorId = null;
+    this.scene.cursor = null;
+    this.pending = null;
+    this.flash = null;
+    this.phase = "playback";
+    this.windowsDirty = true;
+
+    playTurn(
+      this.scene,
+      events,
+      // Banner name lookup: spells first, then items (item use emits a
+      // "cast" event carrying the item id).
+      (id) => this.state.spells[id]?.name ?? this.state.items[id]?.name ?? id,
+      performance.now(),
+      combatCanvas.width,
+      combatCanvas.height
+    );
+  }
+
+  /** Called when the current playback finishes. */
+  private afterPlayback(): void {
+    if (this.phase !== "playback") return;
+    if (this.state.ended) {
+      this.showResult();
+      return;
+    }
+    if (this.roundEnding) {
+      this.startRound();
+      return;
+    }
+    this.nextTurn();
+  }
+
+  // --- Menu -----------------------------------------------------------------
+
+  private openMenuFor(c: Character): void {
+    this.phase = "menu";
+    this.currentActorId = c.id;
+    this.scene.activeActorId = c.id;
+    this.menuEntries = menuEntriesForCharacter(c);
+    this.menuIndex = 0;
+    this.pending = null;
+    this.flash = null;
+    this.windowsDirty = true;
+  }
+
+  private currentChar(): Character | undefined {
+    return this.state.party.find((p) => p.id === this.currentActorId);
+  }
+
+  private findEnemy(instanceId: string): EnemyInstance | undefined {
+    return (
+      this.state.enemies.front.find((e) => e.instanceId === instanceId) ??
+      this.state.enemies.back.find((e) => e.instanceId === instanceId)
+    );
+  }
+
+  private livingEnemies(): EnemyInstance[] {
+    return [
+      ...this.state.enemies.front.filter((e) => e.currentHp > 0),
+      ...this.state.enemies.back.filter((e) => e.currentHp > 0),
+    ];
+  }
+
+  private targetableAllies(): Character[] {
+    return this.state.party.filter(
+      (p) => p.hp > 0 || p.status.includes("knockedOut")
+    );
+  }
+
   private availableItems(): { item: ItemDef; count: number }[] {
     return Object.entries(this.state.inventory)
       .filter(([, count]) => count > 0)
@@ -251,466 +302,457 @@ export class CombatController {
       );
   }
 
-  // --- Public API ---------------------------------------------------------
+  private knownSpells(c: Character): SpellDef[] {
+    return c.knownSpellIds
+      .map((id) => this.state.spells[id])
+      .filter((s): s is SpellDef => s !== undefined);
+  }
 
-  /** Route a keypress to the controller. Called by main.ts for combat mode. */
-  handleKey(key: string): void {
-    // Message reveal: any of Space/Enter advances to the next message.
-    if (this.phase === "messageReveal") {
-      if (key === " " || key === "Enter") {
-        this.advanceMessage();
+  /** Confirm a top-level menu choice. */
+  private chooseAction(kind: PlayerAction["kind"]): void {
+    const c = this.currentChar();
+    if (!c) return;
+    this.flash = null;
+
+    switch (kind) {
+      case "attack":
+      case "ambush": {
+        const enemies = this.livingEnemies();
+        if (enemies.length === 0) {
+          this.setFlash("No target!");
+          return;
+        }
+        this.pending = { kind };
+        this.openTargetSelect("enemy");
+        return;
       }
-      return;
-    }
-
-    if (this.phase === "roundResult") {
-      if (key === " " || key === "Enter") {
-        this.startActionSelection();
+      case "cast": {
+        const spells = this.knownSpells(c);
+        if (spells.length === 0) {
+          this.setFlash("No magic!");
+          return;
+        }
+        if (this.state.silencedThisRound.includes(c.id)) {
+          this.setFlash("Silenced!");
+          return;
+        }
+        this.pending = { kind };
+        this.openSpellSelect(c);
+        return;
       }
-      return;
-    }
-
-    if (this.phase === "ended") {
-      if (key === " " || key === "Enter") {
-        this.destroy();
-        this.onEnd(this.state);
+      case "item": {
+        const items = this.availableItems();
+        if (items.length === 0) {
+          this.setFlash("No items!");
+          return;
+        }
+        this.pending = { kind };
+        this.openItemSelect();
+        return;
       }
-      return;
+      case "defend":
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
+        );
+        return;
+      case "hide":
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, { kind: "hide", actorId: c.id })
+        );
+        return;
+      case "flee":
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, { kind: "flee", actorId: c.id })
+        );
+        return;
     }
+  }
 
-    if (this.phase === "ready") {
-      if (key === " " || key === "Enter") {
-        this.resolveRound();
-      }
-      return;
-    }
+  private setFlash(text: string): void {
+    this.flash = text;
+    this.windowsDirty = true;
+  }
 
-    if (this.phase === "selectAction") {
-      this.handleActionKey(key);
-      return;
-    }
+  // --- Selection submenus --------------------------------------------------------
 
-    if (this.phase === "selectEnemyTarget") {
-      this.handleEnemyTargetKey(key);
-      return;
+  private openTargetSelect(kind: "enemy" | "ally"): void {
+    this.targetKind = kind;
+    this.phase = "selectTarget";
+    this.selectionTitle = "Target";
+    if (kind === "enemy") {
+      // Names only, FF6-style — the scene cursor marks the candidate, and
+      // the narrow menu window can't fit a health descriptor column.
+      const enemies = this.livingEnemies();
+      this.selectionIds = enemies.map((e) => e.instanceId);
+      this.selectionEntries = enemies.map((e) => ({ label: e.name }));
+    } else {
+      const allies = this.targetableAllies();
+      this.selectionIds = allies.map((a) => a.id);
+      this.selectionEntries = allies.map((a) => ({
+        label: a.name,
+        detail: `${Math.max(0, a.hp)}/${a.maxHp}`,
+      }));
     }
+    this.selectionIndex = 0;
+    this.syncTargetCursor();
+    this.windowsDirty = true;
+  }
 
-    if (this.phase === "selectAllyTarget") {
-      this.handleAllyTargetKey(key);
+  private openSpellSelect(c: Character): void {
+    this.phase = "selectSpell";
+    this.selectionTitle = "Magic";
+    const spells = this.knownSpells(c);
+    this.selectionIds = spells.map((s) => s.id);
+    this.selectionEntries = spells.map((s) => ({
+      label: s.name,
+      detail: `${s.spCost} SP`,
+      disabled: c.sp < s.spCost,
+    }));
+    this.selectionIndex = 0;
+    this.windowsDirty = true;
+  }
+
+  /** Row selection for row-targeted spells (BACORTU fizzle field). */
+  private openRowSelect(): void {
+    this.targetKind = "row";
+    this.phase = "selectTarget";
+    this.selectionTitle = "Target row";
+    const backAlive = this.state.enemies.back.some((e) => e.currentHp > 0);
+    this.selectionIds = backAlive ? ["front", "back"] : ["front"];
+    this.selectionEntries = this.selectionIds.map((r) => ({
+      label: r === "front" ? "Front row" : "Back row",
+    }));
+    this.selectionIndex = 0;
+    this.scene.cursor = null;
+    this.windowsDirty = true;
+  }
+
+  private openItemSelect(): void {
+    this.phase = "selectItem";
+    this.selectionTitle = "Item";
+    const items = this.availableItems();
+    this.selectionIds = items.map(({ item }) => item.id);
+    this.selectionEntries = items.map(({ item, count }) => ({
+      label: item.name,
+      detail: `×${count}`,
+    }));
+    this.selectionIndex = 0;
+    this.windowsDirty = true;
+  }
+
+  /** Keep the scene target cursor in sync with the highlighted candidate. */
+  private syncTargetCursor(): void {
+    if (this.phase !== "selectTarget" || this.targetKind === "row") {
+      this.scene.cursor = null;
       return;
     }
+    const id = this.selectionIds[this.selectionIndex];
+    this.scene.cursor = id
+      ? { kind: this.targetKind === "enemy" ? "enemy" : "party", id }
+      : null;
+  }
+
+  /** Confirm the highlighted selection entry. */
+  private confirmSelection(): void {
+    const c = this.currentChar();
+    if (!c || !this.pending) return;
+    const id = this.selectionIds[this.selectionIndex];
+    if (!id) return;
 
     if (this.phase === "selectSpell") {
-      this.handleSpellKey(key);
+      const entry = this.selectionEntries[this.selectionIndex];
+      if (entry?.disabled) {
+        this.setFlash("Not enough SP!");
+        return;
+      }
+      this.pending.spellId = id;
+      const spell = this.state.spells[id];
+      if (spell?.target === "singleEnemy") {
+        this.openTargetSelect("enemy");
+      } else if (spell?.target === "singleAlly") {
+        this.openTargetSelect("ally");
+      } else if (spell?.effect.kind === "fizzleField") {
+        // BACORTU targets one enemy row — ask which.
+        this.openRowSelect();
+      } else {
+        // Group / self / all spells need no target.
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "cast",
+            actorId: c.id,
+            spellId: id,
+          })
+        );
+      }
       return;
     }
 
     if (this.phase === "selectItem") {
-      this.handleItemKey(key);
+      this.pending.itemId = id;
+      this.openTargetSelect("ally");
       return;
     }
-  }
 
-  // --- Action selection ---------------------------------------------------
-
-  private startActionSelection(): void {
-    this.actions = [];
-    this.currentCharIndex = 0;
-    this.phase = "selectAction";
-    this.pending = { actorId: "" };
-    this.actionMenuIndex = 0;
-    this.domViewDirty = true;
-    this.scene.flash = null;
-    this.scene.currentMessage = null;
-    this.advanceToNextActor();
-  }
-
-  /** Advance to the next living, non-incapacitated character. */
-  private advanceToNextActor(): void {
-    this.actionMenuIndex = 0;
-    this.domViewDirty = true;
-    const party = this.state.party;
-    while (this.currentCharIndex < party.length) {
-      const c = party[this.currentCharIndex];
-      if (c.hp > 0 && !c.status.includes("sleep") && !c.status.includes("paralysis")) {
-        this.pending = { actorId: c.id };
+    if (this.phase === "selectTarget") {
+      const pending = this.pending;
+      if (this.targetKind === "row" && pending.kind === "cast" && pending.spellId) {
+        const spellId = pending.spellId;
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "cast",
+            actorId: c.id,
+            spellId,
+            targetRow: id as Row,
+          })
+        );
         return;
       }
-      this.currentCharIndex++;
+      if (pending.kind === "attack") {
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "attack",
+            actorId: c.id,
+            targetInstanceId: id,
+          })
+        );
+      } else if (pending.kind === "ambush") {
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "ambush",
+            actorId: c.id,
+            targetInstanceId: id,
+          })
+        );
+      } else if (pending.kind === "cast" && pending.spellId) {
+        const action: PlayerAction =
+          this.targetKind === "enemy"
+            ? {
+                kind: "cast",
+                actorId: c.id,
+                spellId: pending.spellId,
+                targetInstanceId: id,
+              }
+            : {
+                kind: "cast",
+                actorId: c.id,
+                spellId: pending.spellId,
+                targetAllyId: id,
+              };
+        this.resolveAndPlay(() => resolvePlayerTurn(this.state, action));
+      } else if (pending.kind === "item" && pending.itemId) {
+        const itemId = pending.itemId;
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "item",
+            actorId: c.id,
+            itemId,
+            targetAllyId: id,
+          })
+        );
+      }
     }
-    // All characters have actions — ready to resolve.
-    this.phase = "ready";
   }
 
-  private currentChar(): Character | undefined {
-    return this.state.party.find((c) => c.id === this.pending.actorId);
-  }
-
-  private handleActionKey(key: string): void {
+  /** Step back from a submenu to the action menu. */
+  private backToMenu(): void {
     const c = this.currentChar();
     if (!c) return;
+    this.scene.cursor = null;
+    if (this.phase === "selectTarget" && this.pending?.kind === "cast") {
+      // Back out of target selection into the spell list.
+      this.openSpellSelect(c);
+      return;
+    }
+    if (this.phase === "selectTarget" && this.pending?.kind === "item") {
+      this.openItemSelect();
+      return;
+    }
+    this.phase = "menu";
+    this.pending = null;
+    this.windowsDirty = true;
+  }
 
+  // --- Result --------------------------------------------------------------------
+
+  private showResult(): void {
+    this.phase = "result";
+    this.currentActorId = null;
+    this.scene.activeActorId = null;
+    this.scene.cursor = null;
+
+    const r = this.state.result;
+    if (r === "victory") {
+      this.result = {
+        title: "Victory!",
+        lines: [
+          `Got ${this.state.goldEarned} gold`,
+          `${this.state.xpEarned} XP each`,
+        ],
+      };
+    } else if (r === "fled") {
+      this.result = { title: "Escaped", lines: [] };
+    } else {
+      this.result = {
+        title: "Annihilated...",
+        lines: ["The party retreats to the entrance."],
+      };
+    }
+    this.windowsDirty = true;
+  }
+
+  // --- Input ----------------------------------------------------------------------
+
+  /** Route a keypress to the controller. Called by main.ts for combat mode. */
+  handleKey(key: string): void {
+    switch (this.phase) {
+      case "playback":
+        return; // playback is auto — nothing to advance
+
+      case "result":
+        if (key === " " || key === "Enter") {
+          this.destroy();
+          this.onEnd(this.state);
+        }
+        return;
+
+      case "menu":
+        this.handleMenuKey(key);
+        return;
+
+      case "selectTarget":
+      case "selectSpell":
+      case "selectItem":
+        this.handleSelectionKey(key);
+        return;
+    }
+  }
+
+  private handleMenuKey(key: string): void {
     switch (key) {
       case "ArrowUp":
-        this.actionMenuIndex =
-          (this.actionMenuIndex - 1 + ACTION_KINDS.length) % ACTION_KINDS.length;
-        this.domViewDirty = true;
+        this.menuIndex =
+          (this.menuIndex - 1 + this.menuEntries.length) % this.menuEntries.length;
+        this.windowsDirty = true;
         return;
       case "ArrowDown":
-        this.actionMenuIndex = (this.actionMenuIndex + 1) % ACTION_KINDS.length;
-        this.domViewDirty = true;
+        this.menuIndex = (this.menuIndex + 1) % this.menuEntries.length;
+        this.windowsDirty = true;
         return;
       case " ":
       case "Enter":
-        this.chooseAction(ACTION_KINDS[this.actionMenuIndex]);
+        this.chooseAction(this.menuEntries[this.menuIndex].kind);
         return;
     }
-
-    const shortcutMap: Record<string, PlayerAction["kind"]> = {
+    const shortcuts: Record<string, PlayerAction["kind"]> = {
       a: "attack",
       c: "cast",
+      m: "cast",
       d: "defend",
       i: "item",
       f: "flee",
+      r: "flee",
+      h: "hide",
     };
-    const kind = shortcutMap[key.toLowerCase()];
-    if (kind) {
+    const kind = shortcuts[key.toLowerCase()];
+    if (kind && this.menuEntries.some((e) => e.kind === kind)) {
       this.chooseAction(kind);
     }
   }
 
-  /** Confirm the chosen action and advance state. Shared by keyboard and DOM input. */
-  private chooseAction(kind: PlayerAction["kind"]): void {
-    const c = this.currentChar();
-    if (!c) return;
-    this.domViewDirty = true;
-
-    switch (kind) {
-      case "attack": {
-        if (this.livingEnemies().length === 0) {
-          this.scene.flash = "No enemies to attack.";
-          return;
-        }
-        this.pending.kind = "attack";
-        this.phase = "selectEnemyTarget";
-        this.scene.flash = null;
-        break;
-      }
-      case "cast": {
-        const knownSpells = c.knownSpellIds
-          .map((id) => this.state.spells[id])
-          .filter((s): s is SpellDef => s !== undefined);
-        if (knownSpells.length === 0) {
-          this.scene.flash = `${c.name} has no spells to cast.`;
-          return;
-        }
-        if (this.state.silencedThisRound.includes(c.id)) {
-          this.scene.flash = `${c.name} is silenced and cannot cast.`;
-          return;
-        }
-        this.pending.kind = "cast";
-        this.phase = "selectSpell";
-        this.scene.flash = null;
-        break;
-      }
-      case "defend":
-        this.actions.push({ kind: "defend", actorId: c.id });
-        this.currentCharIndex++;
-        this.advanceToNextActor();
-        this.scene.flash = null;
-        break;
-      case "item": {
-        const available = this.availableItems();
-        if (available.length === 0) {
-          this.scene.flash = "No items available.";
-          return;
-        }
-        this.pending.kind = "item";
-        this.phase = "selectItem";
-        this.scene.flash = null;
-        break;
-      }
-      case "flee":
-        this.actions.push({ kind: "flee", actorId: c.id });
-        // Flee is a party-level action; skip remaining characters.
-        this.phase = "ready";
-        this.scene.flash = null;
-        break;
+  private handleSelectionKey(key: string): void {
+    const len = this.selectionEntries.length;
+    if (len === 0) {
+      this.backToMenu();
+      return;
     }
-
-    if (this.phase === "selectAction") {
-      this.domViewDirty = true;
+    switch (key) {
+      case "ArrowUp":
+        this.selectionIndex = (this.selectionIndex - 1 + len) % len;
+        this.syncTargetCursor();
+        this.windowsDirty = true;
+        return;
+      case "ArrowDown":
+        this.selectionIndex = (this.selectionIndex + 1) % len;
+        this.syncTargetCursor();
+        this.windowsDirty = true;
+        return;
+      case " ":
+      case "Enter":
+        this.confirmSelection();
+        return;
+      case "Escape":
+      case "Backspace":
+        this.backToMenu();
+        return;
+    }
+    // Number keys jump straight to an entry.
+    const n = parseInt(key, 10);
+    if (!isNaN(n) && n >= 1 && n <= len) {
+      this.selectionIndex = n - 1;
+      this.syncTargetCursor();
+      this.confirmSelection();
     }
   }
 
-  /** Render the DOM-based combat panel into #combat-panel. */
-  private renderSelectActionDom(): void {
-    const panelPhase = toPanelPhase(this.phase);
-    if (!panelPhase) return;
+  // --- Windows -------------------------------------------------------------------
 
-    const c =
-      this.currentChar() ??
-      this.state.party.find((p) => p.hp > 0) ??
-      this.state.party[0];
-    if (!c) return;
+  private renderWindows(): void {
+    const menuMode =
+      this.phase === "menu"
+        ? "menu"
+        : this.phase === "selectTarget" ||
+            this.phase === "selectSpell" ||
+            this.phase === "selectItem"
+          ? "selection"
+          : "none";
 
-    const view: SelectActionView = {
+    // Wizardry-style qualitative health for the highlighted enemy target
+    // (a footer line — the narrow menu window can't fit a detail column).
+    let selectionFooter: string | null = null;
+    if (this.phase === "selectTarget" && this.targetKind === "enemy") {
+      const target = this.findEnemy(this.selectionIds[this.selectionIndex] ?? "");
+      if (target) {
+        selectionFooter = enemyHealthDescriptor(target.currentHp, target.hp);
+      }
+    }
+
+    const view: CombatWindowsView = {
       state: this.state,
-      currentCharacter: c,
-      selectedIndex: this.actionMenuIndex,
-      phase: panelPhase,
-      prompt: this.buildPrompt(),
-      selectionList: this.buildSelectionList(),
-      flash: this.scene.flash,
-      plannedActions: this.actions,
+      currentCharacterId: this.currentActorId,
+      menuMode,
+      menuEntries: this.menuEntries,
+      menuIndex: this.menuIndex,
+      selectionTitle: this.selectionTitle,
+      selectionEntries: this.selectionEntries,
+      selectionIndex: this.selectionIndex,
+      selectionFooter,
+      flash: this.flash,
+      result: this.phase === "result" ? this.result : null,
     };
-    const handlers: SelectActionHandlers = {
-      onSelectIndex: (index) => {
-        this.actionMenuIndex = index;
-        this.domViewDirty = true;
+    const handlers: CombatWindowsHandlers = {
+      onMenuHover: (i) => {
+        if (this.phase !== "menu") return;
+        this.menuIndex = i;
+        this.windowsDirty = true;
       },
-      onConfirm: (kind) => {
-        this.chooseAction(kind);
+      onMenuConfirm: (i) => {
+        if (this.phase !== "menu") return;
+        this.menuIndex = i;
+        this.chooseAction(this.menuEntries[i].kind);
       },
-      onSelectChoice: (index) => {
-        this.handleSelectionChoice(index);
+      onSelectionHover: (i) => {
+        if (this.phase === "menu" || this.phase === "playback") return;
+        this.selectionIndex = i;
+        this.syncTargetCursor();
+        this.windowsDirty = true;
+      },
+      onSelectionConfirm: (i) => {
+        if (this.phase === "menu" || this.phase === "playback") return;
+        this.selectionIndex = i;
+        this.syncTargetCursor();
+        this.confirmSelection();
       },
     };
-    renderSelectActionPhase(combatPanel, view, handlers);
-  }
-
-  /** Route a selection-list click (1-based index) to the active phase handler. */
-  private handleSelectionChoice(index: number): void {
-    switch (this.phase) {
-      case "selectEnemyTarget":
-        this.handleEnemyTargetKey(String(index));
-        break;
-      case "selectAllyTarget":
-        this.handleAllyTargetKey(String(index));
-        break;
-      case "selectSpell":
-        this.handleSpellKey(String(index));
-        break;
-      case "selectItem":
-        this.handleItemKey(String(index));
-        break;
-    }
-  }
-
-  private handleEnemyTargetKey(key: string): void {
-    const c = this.currentChar();
-    if (!c) return;
-    const enemies = this.livingEnemies();
-    const idx = parseInt(key, 10);
-    if (isNaN(idx) || idx < 1 || idx > enemies.length) return;
-    const target = enemies[idx - 1];
-
-    if (this.pending.kind === "cast") {
-      this.actions.push({
-        kind: "cast",
-        actorId: c.id,
-        spellId: this.pending.spellId!,
-        targetInstanceId: target.instanceId,
-      });
-    } else {
-      this.actions.push({
-        kind: "attack",
-        actorId: c.id,
-        targetInstanceId: target.instanceId,
-      });
-    }
-    this.currentCharIndex++;
-    this.advanceToNextActor();
-    this.phase = this.phase === "ready" ? "ready" : "selectAction";
-    this.scene.flash = null;
-  }
-
-  private handleAllyTargetKey(key: string): void {
-    const c = this.currentChar();
-    if (!c) return;
-    const allies = this.state.party.filter((p) => p.hp > 0 || p.status.includes("knockedOut"));
-    const idx = parseInt(key, 10);
-    if (isNaN(idx) || idx < 1 || idx > allies.length) return;
-    const target = allies[idx - 1];
-
-    if (this.pending.kind === "cast") {
-      this.actions.push({
-        kind: "cast",
-        actorId: c.id,
-        spellId: this.pending.spellId!,
-        targetAllyId: target.id,
-      });
-    } else if (this.pending.kind === "item") {
-      this.actions.push({
-        kind: "item",
-        actorId: c.id,
-        itemId: this.pending.itemId!,
-        targetAllyId: target.id,
-      });
-    }
-    this.currentCharIndex++;
-    this.advanceToNextActor();
-    this.phase = this.phase === "ready" ? "ready" : "selectAction";
-    this.scene.flash = null;
-  }
-
-  private handleSpellKey(key: string): void {
-    const c = this.currentChar();
-    if (!c) return;
-    const knownSpells = c.knownSpellIds
-      .map((id) => this.state.spells[id])
-      .filter((s): s is SpellDef => s !== undefined);
-    const idx = parseInt(key, 10);
-    if (isNaN(idx) || idx < 1 || idx > knownSpells.length) return;
-    const spell = knownSpells[idx - 1];
-    this.pending.spellId = spell.id;
-
-    if (spell.target === "singleEnemy") {
-      this.phase = "selectEnemyTarget";
-    } else if (spell.target === "singleAlly") {
-      this.phase = "selectAllyTarget";
-    } else {
-      this.actions.push({
-        kind: "cast",
-        actorId: c.id,
-        spellId: spell.id,
-      });
-      this.currentCharIndex++;
-      this.advanceToNextActor();
-      this.phase = this.phase === "ready" ? "ready" : "selectAction";
-    }
-    this.scene.flash = null;
-  }
-
-  private handleItemKey(key: string): void {
-    const c = this.currentChar();
-    if (!c) return;
-    const items = this.availableItems();
-    const idx = parseInt(key, 10);
-    if (isNaN(idx) || idx < 1 || idx > items.length) return;
-    const item = items[idx - 1].item;
-    this.pending.itemId = item.id;
-    this.phase = "selectAllyTarget";
-    this.scene.flash = null;
-  }
-
-  // --- Round resolution ---------------------------------------------------
-
-  private resolveRound(): void {
-    this.state = resolveCombatRound(this.state, this.actions);
-    this.scene.state = this.state;
-
-    // Move enemies that died this round into the graveyard so the renderer
-    // can play the death (rotate + fade) animation. The "defeated" anim is
-    // pre-set here so it starts immediately, even though the "X is
-    // destroyed." log message will be revealed later in the queue.
-    const now = performance.now();
-    for (const enemy of this.state.justDied) {
-      this.scene.enemyGraveyard.push(enemy);
-      setAnim(this.scene.enemyAnims, enemy.instanceId, "defeated", now);
-    }
-    this.state.justDied = [];
-
-    // Do the same for summoned allies that were banished this round.
-    for (const ally of this.state.justDiedAllies) {
-      this.scene.allyGraveyard.push(ally);
-      setAnim(this.scene.allyAnims, ally.id, "defeated", now);
-    }
-    this.state.justDiedAllies = [];
-
-    // Start sequential message reveal for the new log entries.
-    this.startMessageReveal();
-  }
-
-  // --- Helpers ------------------------------------------------------------
-
-  private livingEnemies(): EnemyInstance[] {
-    return [
-      ...this.state.enemies.front.filter((e) => e.currentHp > 0),
-      ...this.state.enemies.back.filter((e) => e.currentHp > 0),
-    ];
-  }
-
-  private statusLabel(c: Character): string {
-    if (c.status.length === 0) return "";
-    return ` [${c.status.join(",")}]`;
-  }
-
-  // --- Prompt/selection text builders -------------------------------------
-
-  private buildPrompt(): string {
-    const enemies = this.livingEnemies();
-    switch (this.phase) {
-      case "selectAction": {
-        const c = this.currentChar();
-        if (c) {
-          return `${c.name}: [↑↓] select · [Enter] confirm · [A]ttack [C]ast [D]efend [I]tem [F]lee${this.statusLabel(c)}`;
-        }
-        return "";
-      }
-      case "selectEnemyTarget":
-        return `Select target (1-${enemies.length}):`;
-      case "selectAllyTarget": {
-        const allies = this.state.party.filter((p) => p.hp > 0 || p.status.includes("knockedOut"));
-        return `Select ally (1-${allies.length}):`;
-      }
-      case "selectSpell":
-        return "Select spell:";
-      case "selectItem":
-        return "Select item:";
-      case "ready":
-        return "Actions ready. Press [Space] to resolve round.";
-      case "messageReveal":
-        return "Press [Space] to advance...";
-      case "roundResult":
-        return `Round ${this.state.round} resolved. Press [Space] for next round.`;
-      case "ended": {
-        const resultLabel = this.state.result?.toUpperCase() ?? "ENDED";
-        return `${resultLabel}! Press [Space] to continue.`;
-      }
-      default:
-        return "";
-    }
-  }
-
-  private buildSelectionList(): SelectionChoice[] | null {
-    const c = this.currentChar();
-    if (!c) return null;
-
-    if (this.phase === "selectSpell") {
-      const knownSpells = c.knownSpellIds
-        .map((id) => this.state.spells[id])
-        .filter((sp): sp is SpellDef => sp !== undefined);
-      return knownSpells.map((sp, i) => ({
-        index: i + 1,
-        label: `${i + 1}.${sp.name}(${sp.spCost}SP)`,
-      }));
-    }
-
-    if (this.phase === "selectItem") {
-      const items = this.availableItems();
-      return items.map(({ item, count }, i) => ({
-        index: i + 1,
-        label: `${i + 1}.${item.name} x${count}`,
-      }));
-    }
-
-    if (this.phase === "selectEnemyTarget") {
-      const enemies = this.livingEnemies();
-      return enemies.map((e, i) => ({
-        index: i + 1,
-        label: `${i + 1}.${e.name} ${enemyHealthDescriptor(e.currentHp, e.hp)}`,
-      }));
-    }
-
-    if (this.phase === "selectAllyTarget") {
-      const allies = this.state.party.filter((p) => p.hp > 0 || p.status.includes("knockedOut"));
-      return allies.map((a, i) => ({
-        index: i + 1,
-        label: `${i + 1}.${a.name} HP:${a.hp}/${a.maxHp}`,
-      }));
-    }
-
-    return null;
+    renderCombatWindows(combatWindows, view, handlers);
   }
 }

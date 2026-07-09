@@ -23,14 +23,15 @@ The corridor renderer is the most fragile part of the project. After any change 
 4. Check: straight corridor, open side passages, a front wall at depth 0, and the floor A/B checkerboard are all visible and not black.
 5. Trigger a combat, then flee or win, and confirm the dungeon view still renders textures correctly.
 
-### Combat screen
+### Combat screen (FF6-style)
 
-After any change to `src/engine/combat-renderer.ts` or `src/engine/combat-ui.ts`:
+After any change to `src/engine/combat-scene.ts`, `src/engine/combat-ui.ts`, or `src/engine/combat-select-action-view.ts`:
 
 1. Enter a combat encounter.
-2. Confirm party sprites (left) and enemy sprites (right) are visible.
-3. Advance log messages with Space/Enter and check the message box and selection lists render correctly.
-4. Flee or win and confirm the dungeon view returns.
+2. Confirm enemy sprites (left) and animated party sprites (right) are visible, with the three blue menu windows along the bottom.
+3. Confirm an attack plays out: walk forward → attack animation → bouncing damage number over the target.
+4. Cast a spell and confirm the top banner shows the spell name.
+5. Flee or win (result window → Enter) and confirm the dungeon view returns.
 
 See `AGENTS.md` for the full checklists and common pitfalls.
 

@@ -209,7 +209,7 @@ export type PlayerAction =
  * CombatEvent. Events are 1:1 with log entries (null if no event).
  */
 export type CombatEvent =
-  | { type: "attack"; actorId: string; targetId: string; damage: number; range?: WeaponRange }
+  | { type: "attack"; actorId: string; targetId: string; damage: number; range?: WeaponRange; crit?: boolean }
   | { type: "miss"; actorId: string; targetId: string; reason: "evade" | "blind" | "noTarget" }
   | { type: "cast"; actorId: string; spellId: string; targetId: string | null; damage?: number; heal?: number }
   | { type: "spellEffect"; spellId: string; targetId?: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean; isDebuff?: boolean }
@@ -222,7 +222,7 @@ export type CombatEvent =
   | { type: "silence"; actorId: string; targetId: string }
   | { type: "fizzle"; actorId: string }
   | { type: "hide"; actorId: string }
-  | { type: "ambush"; actorId: string; targetId: string; damage: number }
+  | { type: "ambush"; actorId: string; targetId: string; damage: number; crit?: boolean }
   | { type: "spotted"; actorId: string }
   | null;
 
@@ -514,7 +514,7 @@ export function resolveCombatRound(
   }
 
   // --- Phase 2: enemy AI --------------------------------------------------
-  const enemyActions = buildEnemyActions(s, rng, log);
+  const enemyActions = buildEnemyActions(s, rng, emit);
 
   // --- Phase 3: initiative sort -------------------------------------------
   const ordered = initiativeOrder(s, sanitized, enemyActions, rng);
@@ -551,7 +551,7 @@ export function resolveCombatRound(
   }
 
   // --- Phase 5: end-of-round status ticks ---------------------------------
-  tickStatuses(s, log);
+  tickStatuses(s, log, emit);
   deathCheck(s, emit);
   allyDeathCheck(s, emit);
   if (checkTermination(s, log)) return s;
@@ -578,6 +578,249 @@ export function resolveCombatRound(
   // Per-round silence from flag-driven bosses (silenceRandom) ends now.
   s.silencedThisRound = [];
 
+  return s;
+}
+
+// ---------------------------------------------------------------------------
+// Per-turn API (FF6-style hybrid flow)
+// ---------------------------------------------------------------------------
+// The combat UI resolves one actor's action at a time: beginRound builds an
+// initiative queue of all living combatants, then the controller walks the
+// queue — prompting the player on "player" entries and auto-resolving
+// "enemy"/"ally" entries — and calls endRound when the queue is exhausted.
+//
+// All functions are PURE (clone in, new state out) and share the exact same
+// resolution internals as resolveCombatRound, so the combat math is identical;
+// only the sequencing differs. Enemy AI decides its action at its turn (not at
+// round start), so targeting is never stale and initiative order matters.
+//
+// Each per-turn function clears justDied / justDiedAllies at entry, so after
+// the call they contain only that turn's deaths. New log/event entries can be
+// diffed by length (they are append-only).
+
+export interface TurnQueueEntry {
+  kind: "player" | "enemy" | "ally";
+  /** Character id, enemy instanceId, or summoned ally id. */
+  id: string;
+  agi: number;
+  luk: number;
+  roll: number;
+}
+
+/** Per-turn log/emit closures over a cloned state. */
+function turnLoggers(s: CombatState) {
+  const log = (msg: string): void => {
+    s.log.push(msg);
+    s.events.push(null);
+  };
+  const emit = (msg: string, event: CombatEvent): void => {
+    s.log.push(msg);
+    s.events.push(event);
+  };
+  return { log, emit };
+}
+
+/**
+ * Begin a new round: advance the round counter, clear per-round state, and
+ * build the initiative queue (AGI desc -> LUK desc -> d20 desc — the same
+ * fallback chain as the round-based resolver) over all living combatants.
+ */
+export function beginRound(
+  state: CombatState,
+  rng: Rng = Math.random
+): { state: CombatState; queue: TurnQueueEntry[] } {
+  const s = structuredClone(state);
+  if (s.ended) return { state: s, queue: [] };
+
+  s.round += 1;
+  s.silencedThisRound = [];
+  s.defendBuff = {};
+  s.justDied = [];
+  s.justDiedAllies = [];
+
+  const entries: TurnQueueEntry[] = [];
+  for (const c of s.party) {
+    if (c.hp <= 0) continue;
+    entries.push({ kind: "player", id: c.id, agi: c.stats.agi, luk: c.stats.luk, roll: rollD20(rng) });
+  }
+  for (const a of s.summonedAllies) {
+    if (a.hp <= 0) continue;
+    entries.push({ kind: "ally", id: a.id, agi: a.agi, luk: 10, roll: rollD20(rng) });
+  }
+  for (const e of [...s.enemies.front, ...s.enemies.back]) {
+    if (e.currentHp <= 0) continue;
+    // EnemyDef has no luk field; default to average for the tie-breaker.
+    entries.push({ kind: "enemy", id: e.instanceId, agi: e.agi, luk: 10, roll: rollD20(rng) });
+  }
+  entries.sort((x, y) => y.agi - x.agi || y.luk - x.luk || y.roll - x.roll);
+  return { state: s, queue: entries };
+}
+
+/**
+ * Resolve one party member's action immediately. Handles the same
+ * sanitization as the round resolver: incapacitated actors skip, silenced
+ * casters defend, and a failed flee converts to defend. Flee success ends
+ * combat on the spot.
+ */
+export function resolvePlayerTurn(
+  state: CombatState,
+  action: PlayerAction,
+  rng: Rng = Math.random
+): CombatState {
+  const s = structuredClone(state);
+  if (s.ended) return s;
+  s.justDied = [];
+  s.justDiedAllies = [];
+  const { log, emit } = turnLoggers(s);
+
+  const actor = s.party.find((c) => c.id === action.actorId);
+  if (!actor || actor.hp <= 0) return s;
+
+  if (actor.status.includes("sleep") || actor.status.includes("paralysis")) {
+    log(`${actor.name} is incapacitated and skips their action.`);
+    return s;
+  }
+
+  if (action.kind === "flee") {
+    const success = attemptFlee(s.isBoss, rng);
+    if (success) {
+      emit("The party flees from combat!", { type: "flee", success: true });
+      s.summonedAllies = [];
+      s.ended = true;
+      s.result = "fled";
+      return s;
+    }
+    emit("The party fails to flee!", { type: "flee", success: false });
+    resolvePlayerAction(s, { kind: "defend", actorId: actor.id }, rng, log, emit);
+    return s;
+  }
+
+  if (action.kind === "cast" && s.silencedThisRound.includes(actor.id)) {
+    log(`${actor.name} is silenced and cannot cast; defends instead.`);
+    resolvePlayerAction(s, { kind: "defend", actorId: actor.id }, rng, log, emit);
+    return s;
+  }
+
+  resolvePlayerAction(s, action, rng, log, emit);
+  deathCheck(s, emit);
+  allyDeathCheck(s, emit);
+  checkTermination(s, log);
+  return s;
+}
+
+/**
+ * Resolve one enemy's turn: the AI decides its action now (fresh targeting)
+ * and it resolves immediately. Dead / missing enemies are a no-op so the
+ * controller can walk a stale queue safely.
+ */
+export function resolveEnemyTurn(
+  state: CombatState,
+  enemyInstanceId: string,
+  rng: Rng = Math.random
+): CombatState {
+  const s = structuredClone(state);
+  if (s.ended) return s;
+  s.justDied = [];
+  s.justDiedAllies = [];
+  const { log, emit } = turnLoggers(s);
+
+  const enemy = findEnemy(s, enemyInstanceId);
+  if (!enemy || enemy.currentHp <= 0) return s;
+
+  const action = decideEnemyAction(s, enemy, rng, emit);
+  resolveEnemyAction(s, action, rng, log, emit);
+  deathCheck(s, emit);
+  allyDeathCheck(s, emit);
+  checkTermination(s, log);
+  return s;
+}
+
+/** Resolve one summoned ally's turn (simple attack, as in the round path). */
+export function resolveAllyTurn(
+  state: CombatState,
+  allyId: string,
+  rng: Rng = Math.random
+): CombatState {
+  const s = structuredClone(state);
+  if (s.ended) return s;
+  s.justDied = [];
+  s.justDiedAllies = [];
+  const { log, emit } = turnLoggers(s);
+
+  const ally = s.summonedAllies.find((a) => a.id === allyId);
+  if (!ally || ally.hp <= 0) return s;
+
+  resolveAllyAction(s, ally, rng, log, emit);
+  deathCheck(s, emit);
+  allyDeathCheck(s, emit);
+  checkTermination(s, log);
+  return s;
+}
+
+/**
+ * Insert turn entries for summoned allies that joined AFTER the round's
+ * queue was built (e.g. BAMORDI cast this round) so they act this round,
+ * matching the round-based resolver where allies always act between the
+ * player phase and the enemy phase. New allies are inserted before the
+ * first enemy entry at or after `nextIndex` (or appended if none remain).
+ * Pure: returns a new queue; the input is not mutated.
+ */
+export function enqueueNewAllies(
+  queue: TurnQueueEntry[],
+  nextIndex: number,
+  state: CombatState
+): TurnQueueEntry[] {
+  const queuedIds = new Set(queue.map((e) => e.id));
+  const newEntries: TurnQueueEntry[] = state.summonedAllies
+    .filter((a) => a.hp > 0 && !queuedIds.has(a.id))
+    .map((a) => ({ kind: "ally" as const, id: a.id, agi: a.agi, luk: 10, roll: 10 }));
+  if (newEntries.length === 0) return queue;
+
+  let insertAt = queue.length;
+  for (let i = nextIndex; i < queue.length; i++) {
+    if (queue[i].kind === "enemy") {
+      insertAt = i;
+      break;
+    }
+  }
+  return [...queue.slice(0, insertAt), ...newEntries, ...queue.slice(insertAt)];
+}
+
+/**
+ * End-of-round bookkeeping: status ticks (poison, paralysis countdown),
+ * hidden-character spotting, magic screen / fizzle field decay, and per-round
+ * silence expiry. Mirrors Phase 5 of resolveCombatRound exactly.
+ */
+export function endRound(state: CombatState, rng: Rng = Math.random): CombatState {
+  const s = structuredClone(state);
+  if (s.ended) return s;
+  s.justDied = [];
+  s.justDiedAllies = [];
+  const { log, emit } = turnLoggers(s);
+
+  tickStatuses(s, log, emit);
+  deathCheck(s, emit);
+  allyDeathCheck(s, emit);
+  if (checkTermination(s, log)) return s;
+
+  checkSpotHidden(s, rng, log, emit);
+
+  if (s.magicScreen > 0) {
+    s.magicScreen = Math.max(0, s.magicScreen - 1);
+  }
+  if (s.partyFizzleField > 0) {
+    s.partyFizzleField = Math.max(0, s.partyFizzleField - 1);
+  }
+  for (const row of (["front", "back"] as Row[])) {
+    if (s.enemyFizzleFields[row] > 0) {
+      s.enemyFizzleFields[row] = Math.max(0, s.enemyFizzleFields[row] - 1);
+    }
+    if (s.enemyMagicScreens[row] > 0) {
+      s.enemyMagicScreens[row] = Math.max(0, s.enemyMagicScreens[row] - 1);
+    }
+  }
+
+  s.silencedThisRound = [];
   return s;
 }
 
@@ -642,7 +885,7 @@ function isCasterEnemy(enemy: EnemyInstance): boolean {
 function buildEnemyActions(
   s: CombatState,
   rng: Rng,
-  log: (m: string) => void
+  emit: (m: string, e: CombatEvent) => void
 ): EnemyAction[] {
   const actions: EnemyAction[] = [];
   const allEnemies = [...s.enemies.front, ...s.enemies.back].filter(
@@ -652,76 +895,99 @@ function buildEnemyActions(
   if (livingParty.length === 0) return actions;
 
   for (const enemy of allEnemies) {
-    if (enemy.status.includes("sleep") || enemy.status.includes("paralysis")) {
-      actions.push({ kind: "doNothing", actor: enemy });
-      continue;
-    }
-
-    // Boss / special: flag-driven silence (Section 10.2). Generic — any enemy
-    // with a "silenceRandom" special silences a random party member.
-    if (enemy.special.some((sp) => sp.kind === "silenceRandom")) {
-      const target = pickRandom(livingParty, rng);
-      if (target) {
-        s.silencedThisRound.push(target.id);
-        log(`${enemy.name} casts Silence on ${target.name}!`);
-        actions.push({ kind: "silence", actor: enemy });
-        continue;
-      }
-    }
-
-    if (isCasterEnemy(enemy)) {
-      const healerSpecial = enemy.special.find(
-        (sp): sp is Extract<EnemySpecial, { kind: "healer" }> => sp.kind === "healer"
-      );
-      const casterSpecial = enemy.special.find(
-        (sp): sp is Extract<EnemySpecial, { kind: "caster" }> => sp.kind === "caster"
-      );
-
-      // Healer: cast a heal on the most-wounded living ally (if any).
-      if (healerSpecial) {
-        const wounded = [...s.enemies.front, ...s.enemies.back].filter(
-          (e) => e.currentHp > 0 && e.currentHp < e.hp
-        );
-        const target = wounded.sort((a, b) => a.currentHp - b.currentHp)[0];
-        if (target) {
-          const spell = spellByName(healerSpecial.spellName);
-          actions.push({
-            kind: "cast",
-            actor: enemy,
-            spellId: spell?.id ?? healerSpecial.spellName,
-            targetId: target.instanceId,
-          });
-          continue;
-        }
-      }
-
-      // Caster: fling an elemental spell at a random party member.
-      if (casterSpecial) {
-        // Skip hidden characters for single-target spells
-        const targetable = livingParty.filter((c) => !c.status.includes("hidden"));
-        const target = pickRandom(targetable.length > 0 ? targetable : livingParty, rng);
-        if (target) {
-          const spellName = casterSpecial.element === "cold" ? "Molito" : "Halito";
-          const spell = spellByName(spellName);
-          actions.push({ kind: "cast", actor: enemy, spellId: spell?.id ?? spellName, targetId: target.id });
-          continue;
-        }
-      }
-
-      // Fallback: no valid cast — attack instead. Casters ignore summoned allies.
-      const targetable = livingParty.filter((c) => !c.status.includes("hidden"));
-      const target = pickRandom(targetable.length > 0 ? targetable : livingParty, rng);
-      if (target) actions.push({ kind: "attack", actor: enemy, target: { kind: "party", id: target.id } });
-      else actions.push({ kind: "doNothing", actor: enemy });
-    } else {
-      // Melee: prefer targeting summoned allies (they act as a front line),
-      // then use weighted 70% front row on the party.
-      const target = pickMeleeTarget(s.party, s.summonedAllies, rng);
-      if (target) actions.push({ kind: "attack", actor: enemy, target });
-      else actions.push({ kind: "doNothing", actor: enemy });
-    }
+    actions.push(decideEnemyAction(s, enemy, rng, emit));
   }
   return actions;
+}
+
+/**
+ * Decide a single enemy's action for its turn. Shared by the round-based
+ * resolver (which decides all intents at round start) and the per-turn API
+ * (which decides at the moment the enemy acts, so targeting is never stale).
+ *
+ * NOTE: the silenceRandom branch applies its effect (pushes into
+ * silencedThisRound) at decision time — this matches the original
+ * buildEnemyActions behavior in the round path, and in the per-turn path it
+ * means silence lands when the boss acts (initiative matters).
+ */
+function decideEnemyAction(
+  s: CombatState,
+  enemy: EnemyInstance,
+  rng: Rng,
+  emit: (m: string, e: CombatEvent) => void
+): EnemyAction {
+  const livingParty = s.party.filter((c) => c.hp > 0);
+  if (livingParty.length === 0) return { kind: "doNothing", actor: enemy };
+
+  if (enemy.status.includes("sleep") || enemy.status.includes("paralysis")) {
+    return { kind: "doNothing", actor: enemy };
+  }
+
+  // Boss / special: flag-driven silence (Section 10.2). Generic — any enemy
+  // with a "silenceRandom" special silences a random party member. Emits a
+  // structured event so the scene shows the Silence banner + SILENCED popup.
+  if (enemy.special.some((sp) => sp.kind === "silenceRandom")) {
+    const target = pickRandom(livingParty, rng);
+    if (target) {
+      s.silencedThisRound.push(target.id);
+      emit(`${enemy.name} casts Silence on ${target.name}!`, {
+        type: "silence",
+        actorId: enemy.instanceId,
+        targetId: target.id,
+      });
+      return { kind: "silence", actor: enemy };
+    }
+  }
+
+  if (isCasterEnemy(enemy)) {
+    const healerSpecial = enemy.special.find(
+      (sp): sp is Extract<EnemySpecial, { kind: "healer" }> => sp.kind === "healer"
+    );
+    const casterSpecial = enemy.special.find(
+      (sp): sp is Extract<EnemySpecial, { kind: "caster" }> => sp.kind === "caster"
+    );
+
+    // Healer: cast a heal on the most-wounded living ally (if any).
+    if (healerSpecial) {
+      const wounded = [...s.enemies.front, ...s.enemies.back].filter(
+        (e) => e.currentHp > 0 && e.currentHp < e.hp
+      );
+      const target = wounded.sort((a, b) => a.currentHp - b.currentHp)[0];
+      if (target) {
+        const spell = spellByName(healerSpecial.spellName);
+        return {
+          kind: "cast",
+          actor: enemy,
+          spellId: spell?.id ?? healerSpecial.spellName,
+          targetId: target.instanceId,
+        };
+      }
+    }
+
+    // Caster: fling an elemental spell at a random party member.
+    if (casterSpecial) {
+      // Skip hidden characters for single-target spells
+      const targetable = livingParty.filter((c) => !c.status.includes("hidden"));
+      const target = pickRandom(targetable.length > 0 ? targetable : livingParty, rng);
+      if (target) {
+        const spellName = casterSpecial.element === "cold" ? "Molito" : "Halito";
+        const spell = spellByName(spellName);
+        return { kind: "cast", actor: enemy, spellId: spell?.id ?? spellName, targetId: target.id };
+      }
+    }
+
+    // Fallback: no valid cast — attack instead. Casters ignore summoned allies.
+    const targetable = livingParty.filter((c) => !c.status.includes("hidden"));
+    const target = pickRandom(targetable.length > 0 ? targetable : livingParty, rng);
+    if (target) return { kind: "attack", actor: enemy, target: { kind: "party", id: target.id } };
+    return { kind: "doNothing", actor: enemy };
+  }
+
+  // Melee: prefer targeting summoned allies (they act as a front line),
+  // then use weighted 70% front row on the party.
+  const target = pickMeleeTarget(s.party, s.summonedAllies, rng);
+  if (target) return { kind: "attack", actor: enemy, target };
+  return { kind: "doNothing", actor: enemy };
 }
 
 /**
@@ -827,7 +1093,7 @@ function resolvePlayerAction(
       resolveDefend(s, actor, emit);
       break;
     case "item":
-      resolveItem(s, actor, action, log);
+      resolveItem(s, actor, action, log, emit);
       break;
     case "flee":
       resolveDefend(s, actor, emit);
@@ -923,8 +1189,10 @@ function resolveAttack(
   let damage = Math.max(1, Math.round(base * rowMultiplier * variance));
 
   // Critical hit: chance based on LUK (Section 4.1). Doubles damage.
+  let crit = false;
   if (rng() < actor.stats.luk / 100) {
     damage *= 2;
+    crit = true;
     log(`${actor.name} lands a critical hit!`);
   }
 
@@ -948,7 +1216,7 @@ function resolveAttack(
   target.currentHp -= damage;
   emit(
     `${actor.name} attacks ${target.name} for ${damage} damage.`,
-    { type: "attack", actorId: actor.id, targetId: target.instanceId, damage, range: weaponRange }
+    { type: "attack", actorId: actor.id, targetId: target.instanceId, damage, range: weaponRange, crit }
   );
   wakeOnDamage(target, log);
 }
@@ -1084,20 +1352,22 @@ function resolveAmbush(
   // Ambush always deals full damage regardless of position
   const variance = 0.8 + rng() * 0.4; // +/-20%
   let damage = Math.max(1, Math.round(base * variance * 2)); // Double damage
-  
+
   // Critical hit: chance based on LUK (Section 4.1). Doubles damage (4x total).
+  let crit = false;
   if (rng() < actor.stats.luk / 100) {
     damage *= 2;
+    crit = true;
     log(`${actor.name} lands a critical ambush!`);
   }
-  
+
   // Enemy AC reduces physical damage.
   const reduced = Math.max(1, damage - target.ac);
   target.currentHp -= reduced;
-  
+
   emit(
     `${actor.name} ambushes ${target.name} for ${reduced} damage!`,
-    { type: "ambush", actorId: actor.id, targetId: target.instanceId, damage: reduced }
+    { type: "ambush", actorId: actor.id, targetId: target.instanceId, damage: reduced, crit }
   );
   wakeOnDamage(target, log);
 }
@@ -1106,7 +1376,8 @@ function resolveItem(
   s: CombatState,
   actor: Character,
   action: Extract<PlayerAction, { kind: "item" }>,
-  log: (m: string) => void
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
 ): void {
   const item = s.items[action.itemId];
   if (!item) {
@@ -1129,25 +1400,40 @@ function resolveItem(
     return;
   }
   const eff = item.effect;
+  // Items emit a "cast" event carrying the item id, so the scene shows the
+  // item-name banner + use animation exactly like a spell (the controller's
+  // name lookup checks items as well as spells).
   if (eff.kind === "heal") {
     const amount = eff.power;
     const before = target.hp;
     target.hp = Math.min(target.maxHp, target.hp + amount);
-    log(
-      `${actor.name} uses ${item.name} on ${target.name}, restoring ${target.hp - before} HP.`
+    emit(
+      `${actor.name} uses ${item.name} on ${target.name}, restoring ${target.hp - before} HP.`,
+      { type: "cast", actorId: actor.id, spellId: item.id, targetId: target.id, heal: target.hp - before }
     );
     if (target.status.includes("knockedOut") && target.hp > 0) {
       target.status = target.status.filter((st) => st !== "knockedOut");
-      log(`${target.name} is revived!`);
+      emit(`${target.name} is revived!`, { type: "revived", targetId: target.id });
     }
   } else if (eff.kind === "cure") {
     target.status = target.status.filter((st) => st !== eff.status);
-    log(`${actor.name} uses ${item.name} on ${target.name}, curing ${eff.status}.`);
+    emit(
+      `${actor.name} uses ${item.name} on ${target.name}, curing ${eff.status}.`,
+      { type: "cast", actorId: actor.id, spellId: item.id, targetId: target.id }
+    );
+    emit(
+      `${target.name} is cured of ${eff.status}.`,
+      { type: "spellEffect", spellId: item.id, targetId: target.id, statusCured: eff.status }
+    );
   } else if (eff.kind === "revive") {
     if (target.status.includes("knockedOut")) {
       target.hp = Math.max(1, eff.power);
       target.status = target.status.filter((st) => st !== "knockedOut");
-      log(`${actor.name} uses ${item.name} to revive ${target.name} with ${target.hp} HP!`);
+      emit(
+        `${actor.name} uses ${item.name} to revive ${target.name} with ${target.hp} HP!`,
+        { type: "cast", actorId: actor.id, spellId: item.id, targetId: target.id, heal: target.hp }
+      );
+      emit(`${target.name} is revived!`, { type: "revived", targetId: target.id });
     } else {
       log(`${item.name} has no effect on ${target.name}.`);
     }
@@ -1624,6 +1910,18 @@ function deathCheck(
 }
 
 function checkTermination(s: CombatState, log: (m: string) => void): boolean {
+  // Party wipe is checked FIRST so a simultaneous kill (e.g. both sides die
+  // to end-of-round poison) is a wipe, not a victory — a "victory" with an
+  // all-KO'd party would return them to the dungeon at 0 HP without the
+  // wipe path's revive (design doc §9.1).
+  const partyAlive = s.party.filter((c) => c.hp > 0).length;
+  if (partyAlive === 0 && !s.ended) {
+    s.ended = true;
+    s.result = "wipe";
+    s.summonedAllies = [];
+    log("The party has been wiped out!");
+    return true;
+  }
   const enemiesRemaining =
     s.enemies.front.filter((e) => e.currentHp > 0).length +
     s.enemies.back.filter((e) => e.currentHp > 0).length;
@@ -1634,14 +1932,6 @@ function checkTermination(s: CombatState, log: (m: string) => void): boolean {
     log("All enemies defeated — victory!");
     return true;
   }
-  const partyAlive = s.party.filter((c) => c.hp > 0).length;
-  if (partyAlive === 0 && !s.ended) {
-    s.ended = true;
-    s.result = "wipe";
-    s.summonedAllies = [];
-    log("The party has been wiped out!");
-    return true;
-  }
   return false;
 }
 
@@ -1649,13 +1939,23 @@ function checkTermination(s: CombatState, log: (m: string) => void): boolean {
 // Status ticks (end of round)
 // ---------------------------------------------------------------------------
 
-function tickStatuses(s: CombatState, log: (m: string) => void): void {
+function tickStatuses(
+  s: CombatState,
+  log: (m: string) => void,
+  emit?: (m: string, e: CombatEvent) => void
+): void {
+  // Emit a structured statusTick event when an emitter is provided so the
+  // FF6 scene can pop poison damage numbers; falls back to plain log.
+  const tick = (msg: string, targetId: string, damage: number): void => {
+    if (emit) emit(msg, { type: "statusTick", targetId, damage, status: "poison" });
+    else log(msg);
+  };
   // Party poison + paralysis countdown.
   for (const c of s.party) {
     if (c.status.includes("knockedOut")) continue;
     if (c.status.includes("poison")) {
       c.hp = Math.max(0, c.hp - 2);
-      log(`${c.name} suffers 2 poison damage.`);
+      tick(`${c.name} suffers 2 poison damage.`, c.id, 2);
     }
     if (c.status.includes("paralysis")) {
       const remaining = (s.paralysisTimers[c.id] ?? 3) - 1;
@@ -1673,7 +1973,7 @@ function tickStatuses(s: CombatState, log: (m: string) => void): void {
     if (e.currentHp <= 0) continue;
     if (e.status.includes("poison")) {
       e.currentHp = Math.max(0, e.currentHp - 2);
-      log(`${e.name} suffers 2 poison damage.`);
+      tick(`${e.name} suffers 2 poison damage.`, e.instanceId, 2);
     }
     if (e.status.includes("paralysis")) {
       const remaining = (s.paralysisTimers[e.instanceId] ?? 3) - 1;
