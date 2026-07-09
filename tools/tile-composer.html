@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tile Composer - OnyxLabyrinth</title>
+<style>
+  :root {
+    --bg: #1a1612;
+    --panel: #0e0d0a;
+    --border: #3a3025;
+    --text: #d0c0a0;
+    --muted: #a09070;
+    --accent: #e0a458;
+    --accent-light: #f0d080;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 1rem;
+    min-height: 100vh;
+  }
+  h1 { margin: 0 0 1rem; font-size: 1.25rem; color: var(--accent-light); }
+  .toolbar {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--muted); }
+  input, select, button {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 0.3rem 0.5rem;
+    font-family: inherit;
+  }
+  button { cursor: pointer; background: #2a2420; }
+  button:hover { background: #3a3025; }
+  button.active { border-color: var(--accent); color: var(--accent-light); }
+  .main { display: flex; gap: 1rem; align-items: flex-start; }
+  .palette-wrap {
+    width: 220px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 0.5rem;
+    border-radius: 4px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .tile {
+    width: 36px;
+    height: 36px;
+    image-rendering: pixelated;
+    cursor: grab;
+    border: 1px solid transparent;
+    background: #000;
+    border-radius: 2px;
+  }
+  .tile:hover { border-color: var(--accent); }
+  .tile.selected { border-color: var(--accent-light); box-shadow: 0 0 0 1px var(--accent-light); }
+  .canvas-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  #targetCanvas {
+    image-rendering: pixelated;
+    background: #000;
+    border: 1px solid var(--border);
+    cursor: crosshair;
+  }
+  .hint { color: var(--muted); font-size: 0.8rem; max-width: 540px; }
+  .drop-zone {
+    border: 2px dashed var(--border);
+    padding: 1rem;
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    display: none;
+  }
+  .drop-zone.dragover { border-color: var(--accent); background: #2a2420; }
+  #loadFolderInput { display: none; }
+</style>
+</head>
+<body>
+<h1>Tile Composer</h1>
+
+<div class="toolbar">
+  <label>Tile size
+    <input type="number" id="tileSize" value="16" min="1" max="128">
+  </label>
+  <label>Canvas size
+    <input type="number" id="canvasSize" value="256" min="16" max="1024" step="16">
+  </label>
+  <label>Sheet
+    <select id="sheetSelect"><option value="">All</option></select>
+  </label>
+  <label>Grid
+    <input type="checkbox" id="showGrid" checked>
+  </label>
+  <button id="paintBtn" class="active">Paint</button>
+  <button id="eraseBtn">Erase</button>
+  <button id="fillBtn">Fill</button>
+  <button id="clearBtn">Clear</button>
+  <button id="exportBtn">Export PNG</button>
+  <button id="loadFolderBtn">Load folder</button>
+  <input type="file" id="loadFolderInput" webkitdirectory directory multiple>
+</div>
+
+<div class="drop-zone" id="dropZone">
+  Drag a folder of PNGs here, or use the Load folder button.
+</div>
+
+<div class="main">
+  <div class="palette-wrap">
+    <div class="palette" id="palette"></div>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="targetCanvas" width="256" height="256"></canvas>
+    <div class="hint">
+      Drag a tile from the palette onto the canvas, or click a palette tile to select it and click on the canvas. Use Paint/Erase/Fill to modify the canvas. The canvas is sized for the OnyxLabyrinth renderer (default 256×256, tile size 16).
+    </div>
+  </div>
+</div>
+
+<script>
+  // Default asset pack from the OnyxLabyrinth assets folder.
+  const DEFAULT_ASSETS = ["classic_dungeons_WALLS.png", "classic_dungeons_animated_box_chest.png", "classic_dungeons_animated_candles.png", "classic_dungeons_door_exit_enter.png", "classic_dungeons_doors.png", "classic_dungeons_foilage_overgrowth.png", "classic_dungeons_general_detail.png", "classic_dungeons_jail_door.png", "classic_dungeons_sewer_details.png", "classic_dungeons_stagnant_water_blue.png", "classic_dungeons_stagnant_water_green.png", "classic_dungeons_stagnant_water_red.png", "classic_dungeons_stone_floor.png", "classic_dungeons_stone_floor_wall_edges.png", "fog_1.png", "fog_2.png"];
+  const DEFAULT_BASE = new URL('../assets/Classic Dungeons - Files/', window.location.href).href;
+
+  const tileSizeInput = document.getElementById('tileSize');
+  const canvasSizeInput = document.getElementById('canvasSize');
+  const sheetSelect = document.getElementById('sheetSelect');
+  const showGridCheck = document.getElementById('showGrid');
+  const paletteEl = document.getElementById('palette');
+  const targetCanvas = document.getElementById('targetCanvas');
+  const targetCtx = targetCanvas.getContext('2d');
+  const dropZone = document.getElementById('dropZone');
+  const loadFolderInput = document.getElementById('loadFolderInput');
+  const paintBtn = document.getElementById('paintBtn');
+  const eraseBtn = document.getElementById('eraseBtn');
+  const fillBtn = document.getElementById('fillBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const loadFolderBtn = document.getElementById('loadFolderBtn');
+
+  let tool = 'paint'; // 'paint' | 'erase'
+  let tileSize = parseInt(tileSizeInput.value, 10) || 16;
+  let canvasSize = parseInt(canvasSizeInput.value, 10) || 256;
+  let showGrid = showGridCheck.checked;
+  let selectedTileId = null;
+  let dragCell = null;
+  let isPainting = false;
+  let lastCell = null;
+
+  const assets = new Map(); // name -> { img, name, url }
+  const tiles = new Map(); // id -> { img, sx, sy, sw, sh, name, sheet }
+  let tileIdCounter = 0;
+
+  // Off-screen canvas that holds the actual composition.
+  const composition = document.createElement('canvas');
+  const compositionCtx = composition.getContext('2d');
+  composition.width = canvasSize;
+  composition.height = canvasSize;
+
+  function setCanvasSize(size) {
+    canvasSize = size;
+    targetCanvas.width = canvasSize;
+    targetCanvas.height = canvasSize;
+    composition.width = canvasSize;
+    composition.height = canvasSize;
+    compositionCtx.clearRect(0, 0, canvasSize, canvasSize);
+    drawDisplay();
+  }
+
+  function loadImageFromUrl(url, name, sheet) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        assets.set(name, { img, name, url });
+        resolve();
+      };
+      img.onerror = () => {
+        console.warn('Failed to load', url);
+        resolve();
+      };
+      img.src = url;
+    });
+  }
+
+  async function loadDefaultAssets() {
+    const promises = DEFAULT_ASSETS.map((name) => {
+      const url = new URL(name, DEFAULT_BASE).href;
+      return loadImageFromUrl(url, name, 'default');
+    });
+    await Promise.all(promises);
+    rebuildSheets();
+    buildPalette();
+  }
+
+  async function loadFolder(files) {
+    for (const file of files) {
+      if (!file.type.startsWith('image/png') && !file.name.endsWith('.png')) continue;
+      if (file.name.endsWith('.import')) continue;
+      const url = URL.createObjectURL(file);
+      await loadImageFromUrl(url, file.name, 'loaded');
+    }
+    rebuildSheets();
+    buildPalette();
+  }
+
+  function rebuildSheets() {
+    const selected = sheetSelect.value;
+    const names = new Set(['']);
+    for (const name of assets.keys()) {
+      names.add(name);
+    }
+    sheetSelect.innerHTML = '';
+    const all = document.createElement('option');
+    all.value = ''; all.textContent = 'All';
+    sheetSelect.appendChild(all);
+    for (const name of [...names].sort()) {
+      if (name === '') continue;
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      sheetSelect.appendChild(opt);
+    }
+    sheetSelect.value = selected && [...names].includes(selected) ? selected : '';
+  }
+
+  function buildPalette() {
+    paletteEl.innerHTML = '';
+    tiles.clear();
+    tileIdCounter = 0;
+    selectedTileId = null;
+    for (const [name, { img }] of assets) {
+      if (sheetSelect.value && sheetSelect.value !== name) continue;
+      const cols = Math.max(1, Math.floor(img.width / tileSize));
+      const rows = Math.max(1, Math.floor(img.height / tileSize));
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const sx = x * tileSize;
+          const sy = y * tileSize;
+          const id = ++tileIdCounter;
+          const tile = { img, sx, sy, sw: tileSize, sh: tileSize, name, sheet: name };
+          tiles.set(id, tile);
+
+          const canvas = document.createElement('canvas');
+          canvas.width = 36;
+          canvas.height = 36;
+          canvas.className = 'tile';
+          canvas.draggable = true;
+          canvas.dataset.id = String(id);
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = false;
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, 36, 36);
+          ctx.drawImage(img, sx, sy, tileSize, tileSize, 2, 2, 32, 32);
+
+          canvas.addEventListener('click', () => selectTile(id));
+          canvas.addEventListener('dragstart', (e) => {
+            selectTile(id);
+            e.dataTransfer.setData('text/plain', JSON.stringify({ id }));
+            e.dataTransfer.effectAllowed = 'copy';
+          });
+
+          paletteEl.appendChild(canvas);
+        }
+      }
+    }
+  }
+
+  function selectTile(id) {
+    selectedTileId = id;
+    for (const el of paletteEl.children) el.classList.remove('selected');
+    const el = paletteEl.querySelector(`[data-id="${id}"]`);
+    if (el) el.classList.add('selected');
+  }
+
+  function getCell(clientX, clientY) {
+    const rect = targetCanvas.getBoundingClientRect();
+    const scaleX = targetCanvas.width / rect.width;
+    const scaleY = targetCanvas.height / rect.height;
+    const rawX = (clientX - rect.left) * scaleX;
+    const rawY = (clientY - rect.top) * scaleY;
+    const x = Math.floor(rawX / tileSize) * tileSize;
+    const y = Math.floor(rawY / tileSize) * tileSize;
+    return { x, y };
+  }
+
+  function drawTileToComposition(cell) {
+    if (!selectedTileId) return;
+    const tile = tiles.get(selectedTileId);
+    if (!tile) return;
+    compositionCtx.imageSmoothingEnabled = false;
+    compositionCtx.drawImage(tile.img, tile.sx, tile.sy, tile.sw, tile.sh, cell.x, cell.y, tile.sw, tile.sh);
+  }
+
+  function paintAt(cell) {
+    if (tool === 'erase') {
+      compositionCtx.clearRect(cell.x, cell.y, tileSize, tileSize);
+    } else if (selectedTileId) {
+      drawTileToComposition(cell);
+    }
+    drawDisplay();
+  }
+
+  function fillCanvas() {
+    if (!selectedTileId) return;
+    const tile = tiles.get(selectedTileId);
+    if (!tile) return;
+    compositionCtx.imageSmoothingEnabled = false;
+    for (let y = 0; y < canvasSize; y += tile.sh) {
+      for (let x = 0; x < canvasSize; x += tile.sw) {
+        compositionCtx.drawImage(tile.img, tile.sx, tile.sy, tile.sw, tile.sh, x, y, tile.sw, tile.sh);
+      }
+    }
+    drawDisplay();
+  }
+
+  function drawDisplay() {
+    targetCtx.fillStyle = '#000';
+    targetCtx.fillRect(0, 0, canvasSize, canvasSize);
+    targetCtx.imageSmoothingEnabled = false;
+    targetCtx.drawImage(composition, 0, 0);
+
+    if (showGrid) {
+      targetCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+      targetCtx.lineWidth = 1;
+      targetCtx.beginPath();
+      for (let x = 0; x <= canvasSize; x += tileSize) {
+        targetCtx.moveTo(x + 0.5, 0);
+        targetCtx.lineTo(x + 0.5, canvasSize);
+      }
+      for (let y = 0; y <= canvasSize; y += tileSize) {
+        targetCtx.moveTo(0, y + 0.5);
+        targetCtx.lineTo(canvasSize, y + 0.5);
+      }
+      targetCtx.stroke();
+    }
+
+    if (dragCell && selectedTileId) {
+      const tile = tiles.get(selectedTileId);
+      if (tile) {
+        targetCtx.globalAlpha = 0.5;
+        targetCtx.drawImage(tile.img, tile.sx, tile.sy, tile.sw, tile.sh, dragCell.x, dragCell.y, tile.sw, tile.sh);
+        targetCtx.globalAlpha = 1.0;
+      }
+    }
+  }
+
+  // Event wiring: toolbar
+  tileSizeInput.addEventListener('change', () => {
+    tileSize = parseInt(tileSizeInput.value, 10) || 16;
+    buildPalette();
+    drawDisplay();
+  });
+
+  canvasSizeInput.addEventListener('change', () => {
+    const newSize = parseInt(canvasSizeInput.value, 10) || 256;
+    if (newSize > 0) setCanvasSize(newSize);
+  });
+
+  sheetSelect.addEventListener('change', () => buildPalette());
+
+  showGridCheck.addEventListener('change', () => {
+    showGrid = showGridCheck.checked;
+    drawDisplay();
+  });
+
+  function setTool(t) {
+    tool = t;
+    paintBtn.classList.toggle('active', tool === 'paint');
+    eraseBtn.classList.toggle('active', tool === 'erase');
+  }
+  paintBtn.addEventListener('click', () => setTool('paint'));
+  eraseBtn.addEventListener('click', () => setTool('erase'));
+  fillBtn.addEventListener('click', () => fillCanvas());
+  clearBtn.addEventListener('click', () => {
+    compositionCtx.clearRect(0, 0, canvasSize, canvasSize);
+    drawDisplay();
+  });
+  exportBtn.addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.href = composition.toDataURL('image/png');
+    link.download = 'tile-composition.png';
+    link.click();
+  });
+
+  // Event wiring: canvas paint
+  targetCanvas.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    isPainting = true;
+    const cell = getCell(e.clientX, e.clientY);
+    lastCell = cell;
+    paintAt(cell);
+  });
+  targetCanvas.addEventListener('mousemove', (e) => {
+    if (!isPainting) return;
+    const cell = getCell(e.clientX, e.clientY);
+    if (lastCell && lastCell.x === cell.x && lastCell.y === cell.y) return;
+    lastCell = cell;
+    paintAt(cell);
+  });
+  window.addEventListener('mouseup', () => {
+    isPainting = false;
+    lastCell = null;
+  });
+
+  // Drag and drop onto canvas
+  targetCanvas.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    dragCell = getCell(e.clientX, e.clientY);
+    drawDisplay();
+  });
+  targetCanvas.addEventListener('dragleave', () => {
+    dragCell = null;
+    drawDisplay();
+  });
+  targetCanvas.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragCell = null;
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain') || '{}');
+      if (data.id) {
+        selectedTileId = data.id;
+        selectTile(data.id);
+      }
+    } catch (err) { /* ignore */ }
+    const cell = getCell(e.clientX, e.clientY);
+    if (selectedTileId) {
+      drawTileToComposition(cell);
+      drawDisplay();
+    }
+  });
+
+  // File / folder loading
+  loadFolderBtn.addEventListener('click', () => loadFolderInput.click());
+  loadFolderInput.addEventListener('change', () => {
+    if (loadFolderInput.files) loadFolder(loadFolderInput.files).catch(console.error);
+  });
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    dropZone.classList.add('dragover');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const files = [];
+    const items = e.dataTransfer.items;
+    if (items && items.length) {
+      const promises = [];
+      for (const item of items) {
+        const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+        if (entry) {
+          promises.push(traverseEntry(entry, files));
+        } else if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+      await Promise.all(promises);
+    } else if (e.dataTransfer.files) {
+      for (const file of e.dataTransfer.files) files.push(file);
+    }
+    await loadFolder(files);
+    dropZone.style.display = 'none';
+  });
+
+  function traverseEntry(entry, files) {
+    return new Promise((resolve) => {
+      if (entry.isFile) {
+        entry.file((file) => { files.push(file); resolve(); }, () => resolve());
+      } else if (entry.isDirectory) {
+        const reader = entry.createReader();
+        reader.readEntries(async (entries) => {
+          await Promise.all(entries.map((e) => traverseEntry(e, files)));
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+  }
+
+  // Prevent default drag/drop on the whole window so dropping a file doesn't navigate.
+  window.addEventListener('dragover', (e) => e.preventDefault());
+  window.addEventListener('drop', (e) => e.preventDefault());
+
+  // Initialize
+  loadDefaultAssets().then(() => {
+    if (assets.size === 0) {
+      dropZone.style.display = 'block';
+    }
+    drawDisplay();
+  });
+</script>
+</body>
+</html>
