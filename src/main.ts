@@ -237,6 +237,7 @@ let combatController: CombatController | null = null;
 let suppressNextCombatKey = false;
 
 function startCombat(combat: CombatState): void {
+  setMode(state, "combat");
   flashEncounter();
   showMode("combat", mapVisible);
   setMessage("");
@@ -292,6 +293,15 @@ function endCombat(result: CombatState): void {
   combatController = null;
   setMode(state, "dungeon");
   showMode("dungeon", mapVisible);
+}
+
+/** Cleanly exit the current combat for automated visual testing. */
+function exitDebugCombat(result: "victory" | "wipe" | "fled"): void {
+  if (!combatController || !state.combat) return;
+  state.combat.result = result;
+  state.combat.ended = true;
+  combatController.destroy();
+  endCombat(state.combat);
 }
 
 // --- Camp mode -----------------------------------------------------------
@@ -599,5 +609,24 @@ if ("fonts" in document) {
 loadEnemySprites().catch(() => {});
 loadPartySprites().catch(() => {});
 loadEffectSprites().catch(() => {});
+
+// Debug helpers for targeted visual verification; only active when the page
+// is loaded with ?debug=1. Never used in normal play.
+if (new URLSearchParams(window.location.search).has("debug")) {
+  (window as any).__onyxDebug = {
+    state,
+    startCombat,
+    exitDebugCombat,
+    FLOORS,
+    createGameState,
+    createCombatFromEncounter,
+    resolveEncounter,
+    rollEncounter,
+    SPELLS_BY_ID,
+    ITEMS_BY_ID,
+    defaultLoadoutForCharacter,
+    getCombatController: () => combatController,
+  };
+}
 
 
