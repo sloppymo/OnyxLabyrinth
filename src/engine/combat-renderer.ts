@@ -16,7 +16,8 @@
 import type { Character } from "../game/party";
 import type { EnemyInstance, CombatEvent } from "../game/combat";
 import type { CombatState } from "../game/combat";
-import { getEnemySprite } from "./enemy-sprite-cache";
+import { getEnemySpriteStrip } from "./enemy-sprite-cache";
+import type { SpriteStrip } from "./sprite-manifest";
 import {
   enemyHealthDescriptor,
   COMBAT_LOG_HISTORY,
@@ -174,6 +175,33 @@ function allySlotPos(index: number, w: number, h: number): { x: number; y: numbe
     x: baseX,
     y: baseY - index * (SPRITE_H * 0.55),
   };
+}
+
+/** Pick a frame from a horizontal sprite strip based on animation state. */
+function computeFrameIndex(
+  anim: SpriteAnim,
+  strip: SpriteStrip,
+  now: number
+): number {
+  const elapsed = now - anim.stateStart;
+  if (anim.state === "idle") {
+    const msPerFrame = 1000 / strip.fps;
+    return Math.floor(elapsed / msPerFrame) % strip.frameCount;
+  }
+  if (anim.state === "attacking" || anim.state === "hit") {
+    return Math.min(
+      strip.frameCount - 1,
+      Math.floor(anim.progress * strip.frameCount)
+    );
+  }
+  if (anim.state === "defeated") {
+    const msPerFrame = 500 / strip.frameCount;
+    return Math.min(
+      strip.frameCount - 1,
+      Math.floor(elapsed / msPerFrame)
+    );
+  }
+  return 0;
 }
 
 // --- Procedural sprite drawing ---------------------------------------------
@@ -427,9 +455,11 @@ export function drawEnemySprite(
   ctx.fill();
 
   // Try image sprite first; fall back to procedural shape.
-  const spriteImg = getEnemySprite(enemy.id);
-  const sw = spriteImg?.naturalWidth ?? 0;
-  const sh = spriteImg?.naturalHeight ?? 0;
+  const stripInfo = getEnemySpriteStrip(enemy.id, anim.state);
+  const spriteImg = stripInfo?.img;
+  const strip = stripInfo?.strip;
+  const frameW = strip?.frameWidth ?? 0;
+  const frameH = strip?.frameHeight ?? 0;
 
   // Defeated: rotate.
   if (anim.state === "defeated") {
@@ -438,15 +468,26 @@ export function drawEnemySprite(
     ctx.translate(-px, -(py + h / 3));
   }
 
-  if (spriteImg && sw > 0 && sh > 0) {
-    // Draw image sprite centered at (px, py), scaled to fit the sprite box.
+  if (spriteImg && strip && frameW > 0 && frameH > 0 && spriteImg.naturalWidth > 0) {
+    // Draw the current frame from the sprite strip, scaled to fit the box.
     ctx.imageSmoothingEnabled = false; // crisp pixel art
-    const maxW = w;
-    const maxH = h;
-    const imgScale = Math.min(maxW / sw, maxH / sh);
-    const dw = sw * imgScale;
-    const dh = sh * imgScale;
-    ctx.drawImage(spriteImg, px - dw / 2, py - dh / 2, dw, dh);
+    const imgScale = Math.min(w / frameW, h / frameH);
+    const dw = frameW * imgScale;
+    const dh = frameH * imgScale;
+    const frameIndex = computeFrameIndex(anim, strip, now);
+    const sx = frameIndex * frameW;
+    const sy = 0;
+    ctx.drawImage(
+      spriteImg,
+      sx,
+      sy,
+      frameW,
+      frameH,
+      px - dw / 2,
+      py - dh / 2,
+      dw,
+      dh
+    );
   } else {
     const shape = enemyShape(enemy.id);
     const color = enemyColor(enemy.id);

@@ -595,22 +595,3 @@ if ("fonts" in document) {
 
 // Prewarm enemy sprite cache without blocking the render loop.
 loadEnemySprites().catch(() => {});
-
-// TEMP: expose a hook for visual verification of the ogre sprite.
-(window as any).__startOgreCombat = () => {
-  const entry = { weight: 1, spawns: [{ enemyId: "big-titty-ogre", row: "front" as const }] };
-  const resolved = resolveEncounter(entry);
-  const loadout = buildLoadoutMap();
-  const combat = createCombatFromEncounter(
-    state.party,
-    resolved,
-    SPELLS_BY_ID,
-    ITEMS_BY_ID,
-    loadout,
-    state.inventory,
-    state.inAntimagic
-  );
-  state.combat = combat;
-  setMode(state, "combat");
-  startCombat(combat);
-};
