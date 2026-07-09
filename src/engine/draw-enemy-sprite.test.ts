@@ -1,10 +1,31 @@
 import { describe, it, expect, vi } from "vitest";
 import { drawEnemySprite } from "./combat-renderer";
-import { getEnemySprite } from "./enemy-sprite-cache";
+import { getEnemySpriteStrip } from "./enemy-sprite-cache";
 
 vi.mock("./enemy-sprite-cache", () => ({
-  getEnemySprite: vi.fn(),
+  getEnemySpriteStrip: vi.fn(),
 }));
+
+function makeStrip(
+  frameCount = 6,
+  imgW = frameCount * 100,
+  imgH = 100
+): ReturnType<typeof getEnemySpriteStrip> {
+  return {
+    strip: {
+      url: "",
+      frameWidth: 100,
+      frameHeight: 100,
+      frameCount,
+      fps: 6,
+      loop: true,
+    },
+    img: {
+      naturalWidth: imgW,
+      naturalHeight: imgH,
+    } as HTMLImageElement,
+  };
+}
 
 function makeContext(): CanvasRenderingContext2D {
   const methods = [
@@ -73,27 +94,21 @@ function makeAnim() {
 
 describe("drawEnemySprite", () => {
   it("does not throw with an empty cache (procedural fallback)", () => {
-    vi.mocked(getEnemySprite).mockReturnValue(undefined);
+    vi.mocked(getEnemySpriteStrip).mockReturnValue(null);
     const ctx = makeContext();
     const enemy = makeEnemy();
     expect(() => drawEnemySprite(ctx, 100, 100, enemy, makeAnim(), 0, false, 0)).not.toThrow();
   });
 
-  it("does not throw when an image sprite is present", () => {
-    vi.mocked(getEnemySprite).mockReturnValue({
-      naturalWidth: 256,
-      naturalHeight: 256,
-    } as HTMLImageElement);
+  it("does not throw when a sprite strip is present", () => {
+    vi.mocked(getEnemySpriteStrip).mockReturnValue(makeStrip(6, 600, 100));
     const ctx = makeContext();
     const enemy = makeEnemy();
     expect(() => drawEnemySprite(ctx, 100, 100, enemy, makeAnim(), 0, false, 0)).not.toThrow();
   });
 
   it("does not throw when the cached image reports zero size", () => {
-    vi.mocked(getEnemySprite).mockReturnValue({
-      naturalWidth: 0,
-      naturalHeight: 0,
-    } as HTMLImageElement);
+    vi.mocked(getEnemySpriteStrip).mockReturnValue(makeStrip(6, 0, 0));
     const ctx = makeContext();
     const enemy = makeEnemy();
     expect(() => drawEnemySprite(ctx, 100, 100, enemy, makeAnim(), 0, false, 0)).not.toThrow();
