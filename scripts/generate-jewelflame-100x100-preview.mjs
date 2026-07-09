@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Generates a standalone preview of every 100x100 side-view character strip in
- * /home/sloppymo/jewelflame/assets/Characters(100x100)/.
+ * assets/Characters(100x100)/.
  * Run with:
  *   node scripts/generate-jewelflame-100x100-preview.mjs
  * Then open jewelflame-100x100-preview.html in a browser.
@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 
 const root = resolve(process.cwd());
-const charsRoot = "/home/sloppymo/jewelflame/assets/Characters(100x100)";
+const charsRoot = join(root, "assets/Characters(100x100)");
 const outFile = join(root, "jewelflame-100x100-preview.html");
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -73,7 +73,7 @@ async function collectCharacters() {
         const valid = height === 100 && width === frameCount * 100 && frameCount > 0;
         states.push({
           state,
-          src: encodeURI(`../jewelflame/assets/Characters(100x100)/${name}/${name}/${f}`),
+          src: encodeURI(`./assets/Characters(100x100)/${name}/${name}/${f}`),
           width,
           height,
           frameCount,
