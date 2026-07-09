@@ -1023,10 +1023,19 @@ export function playTurn(
             a.opacity = 1;
             a.fadeOutStart = null;
             setAnimState(a, "idle", n);
+            sc.effects.push({
+              type: "burst",
+              x: actor.x, y: actor.y,
+              color: COLORS.heal,
+              effect: "priest_heal",
+              scale: 1.4,
+              start: n, duration: 500,
+            });
+            spawnSparkleParticles(sc, actor.x, actor.y, COLORS.heal, 16);
             pushPopup(sc, evt.targetId, "REVIVED", COLORS.heal, n, w, h);
           })
         );
-        t += 400;
+        t += 500;
         break;
       }
 
