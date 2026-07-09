@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OnyxLabyrinth · Enemy Sprite Preview</title>
+<style>
+body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #0e0d0a; color: #d0c0a0; margin: 0; padding: 1rem; }
+h1 { text-align: center; margin-bottom: 0.5rem; }
+.hint { text-align: center; color: #a09070; margin-bottom: 1.5rem; }
+.enemy { margin-bottom: 2rem; border-bottom: 1px solid #3a3025; padding-bottom: 1.5rem; }
+.enemy h2 { margin: 0 0 0.75rem; color: #f0d080; }
+.states { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.state { background: #1a1612; border: 1px solid #3a3025; border-radius: 4px; padding: 0.75rem; text-align: center; }
+.state.bad { border-color: #c44; }
+canvas { image-rendering: pixelated; background: #000; border-radius: 2px; display: block; margin: 0 auto; }
+.meta { margin-top: 0.5rem; font-size: 0.8rem; color: #b0a080; }
+.meta strong { color: #f0d080; }
+.err { color: #f66; }
+.strip { display: none; }
+</style>
+</head>
+<body>
+<h1>Enemy Sprite Strip Preview</h1>
+<div class="hint">Pixel-art strips are drawn at 240×240. Idle/attack/hurt/death loop automatically.</div>
+
+<div class="enemy">
+<h2>acid-puddle</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-acid-puddle-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-acid-puddle-idle" src="public/assets/enemies/acid-puddle/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1153 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-acid-puddle-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-acid-puddle-attack" src="public/assets/enemies/acid-puddle/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+600x100 · 6 frames · 1380 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-acid-puddle-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-acid-puddle-hurt" src="public/assets/enemies/acid-puddle/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 1174 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-acid-puddle-death" width="240" height="240"></canvas>
+<img class="strip" id="i-acid-puddle-death" src="public/assets/enemies/acid-puddle/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 767 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>animated-armor</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-animated-armor-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-animated-armor-idle" src="public/assets/enemies/animated-armor/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1292 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-animated-armor-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-animated-armor-attack" src="public/assets/enemies/animated-armor/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+600x100 · 6 frames · 2023 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-animated-armor-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-animated-armor-hurt" src="public/assets/enemies/animated-armor/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 1943 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-animated-armor-death" width="240" height="240"></canvas>
+<img class="strip" id="i-animated-armor-death" src="public/assets/enemies/animated-armor/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1396 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>big-titty-ogre</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-big-titty-ogre-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-big-titty-ogre-idle" src="public/assets/enemies/big-titty-ogre/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1410 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-big-titty-ogre-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-big-titty-ogre-attack" src="public/assets/enemies/big-titty-ogre/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+600x100 · 6 frames · 2333 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-big-titty-ogre-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-big-titty-ogre-hurt" src="public/assets/enemies/big-titty-ogre/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2086 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-big-titty-ogre-death" width="240" height="240"></canvas>
+<img class="strip" id="i-big-titty-ogre-death" src="public/assets/enemies/big-titty-ogre/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1757 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>failed-experiment</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-failed-experiment-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-failed-experiment-idle" src="public/assets/enemies/failed-experiment/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1535 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-failed-experiment-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-failed-experiment-attack" src="public/assets/enemies/failed-experiment/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+900x100 · 9 frames · 2742 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-failed-experiment-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-failed-experiment-hurt" src="public/assets/enemies/failed-experiment/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2288 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-failed-experiment-death" width="240" height="240"></canvas>
+<img class="strip" id="i-failed-experiment-death" src="public/assets/enemies/failed-experiment/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1614 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>headmasters-echo</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-headmasters-echo-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-headmasters-echo-idle" src="public/assets/enemies/headmasters-echo/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1658 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-headmasters-echo-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-headmasters-echo-attack" src="public/assets/enemies/headmasters-echo/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+600x100 · 6 frames · 2169 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-headmasters-echo-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-headmasters-echo-hurt" src="public/assets/enemies/headmasters-echo/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2169 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-headmasters-echo-death" width="240" height="240"></canvas>
+<img class="strip" id="i-headmasters-echo-death" src="public/assets/enemies/headmasters-echo/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1641 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>lab-assistant</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-lab-assistant-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-lab-assistant-idle" src="public/assets/enemies/lab-assistant/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1606 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-lab-assistant-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-lab-assistant-attack" src="public/assets/enemies/lab-assistant/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+900x100 · 9 frames · 2094 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-lab-assistant-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-lab-assistant-hurt" src="public/assets/enemies/lab-assistant/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2073 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-lab-assistant-death" width="240" height="240"></canvas>
+<img class="strip" id="i-lab-assistant-death" src="public/assets/enemies/lab-assistant/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1541 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>lesser-construct</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-lesser-construct-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-lesser-construct-idle" src="public/assets/enemies/lesser-construct/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1367 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-lesser-construct-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-lesser-construct-attack" src="public/assets/enemies/lesser-construct/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+600x100 · 6 frames · 1934 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-lesser-construct-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-lesser-construct-hurt" src="public/assets/enemies/lesser-construct/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 1924 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-lesser-construct-death" width="240" height="240"></canvas>
+<img class="strip" id="i-lesser-construct-death" src="public/assets/enemies/lesser-construct/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1526 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>stone-guardian</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-stone-guardian-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-stone-guardian-idle" src="public/assets/enemies/stone-guardian/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1565 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-stone-guardian-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-stone-guardian-attack" src="public/assets/enemies/stone-guardian/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+700x100 · 7 frames · 1803 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-stone-guardian-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-stone-guardian-hurt" src="public/assets/enemies/stone-guardian/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2372 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-stone-guardian-death" width="240" height="240"></canvas>
+<img class="strip" id="i-stone-guardian-death" src="public/assets/enemies/stone-guardian/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1834 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>training-dummy</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-training-dummy-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-training-dummy-idle" src="public/assets/enemies/training-dummy/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1367 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-training-dummy-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-training-dummy-attack" src="public/assets/enemies/training-dummy/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+600x100 · 6 frames · 1934 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-training-dummy-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-training-dummy-hurt" src="public/assets/enemies/training-dummy/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 1924 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-training-dummy-death" width="240" height="240"></canvas>
+<img class="strip" id="i-training-dummy-death" src="public/assets/enemies/training-dummy/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1526 bytes
+
+</div>
+</div>
+</div>
+</div>
+<script>
+const anims = [];
+const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+document.fonts.ready.catch(() => {}).finally(() => {
+  const images = Array.from(document.querySelectorAll('img.strip'));
+  let loaded = 0;
+  const total = images.length;
+
+  function start() {
+    images.forEach((img) => {
+      const id = img.id.slice(2);
+      const canvas = document.getElementById('c-' + id);
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const frameCount = Math.floor(img.naturalWidth / 100) || 1;
+      const fps = id.endsWith('idle') ? 6 : (id.endsWith('death') ? 4 : 8);
+      anims.push({ ctx, img, frameCount, fps, last: 0, frame: 0 });
+    });
+    requestAnimationFrame(loop);
+  }
+
+  function loop(now) {
+    anims.forEach((a) => {
+      const elapsed = now - a.last;
+      const interval = 1000 / a.fps;
+      if (elapsed >= interval) {
+        a.frame = (a.frame + Math.floor(elapsed / interval)) % a.frameCount;
+        a.last = now;
+        a.ctx.clearRect(0, 0, 240, 240);
+        const dw = 240, dh = 240;
+        const sx = a.frame * 100, sy = 0, sw = 100, sh = Math.min(100, a.img.naturalHeight);
+        const x = (240 - dw) / 2, y = (240 - dh) / 2;
+        a.ctx.drawImage(a.img, sx, sy, sw, sh, x, y, dw, dh);
+      }
+    });
+    requestAnimationFrame(loop);
+  }
+
+  images.forEach((img) => {
+    if (img.complete && img.naturalWidth) onLoad();
+    else img.addEventListener('load', onLoad);
+    img.addEventListener('error', onLoad);
+  });
+
+  function onLoad() {
+    loaded++;
+    if (loaded >= total) start();
+  }
+});
+</script>
+</body>
+</html>
