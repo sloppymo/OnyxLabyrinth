@@ -1,30 +1,30 @@
 #!/usr/bin/env node
 /**
- * Generates a standalone preview of the Creature Extended - Supporter Pack
- * sprites in /home/sloppymo/jewelflame/assets/Creature Extended- Supporter Pack/.
+ * Generates a standalone preview of the right-facing Creature Extended sprites.
  *
- * The pack contains mixed sprite layouts:
- *   - 16×16 frame grids for creatures and fireball (e.g. 64×224 = 4×14 cells)
- *   - 32×32 frame grids for explosions (e.g. 288×64 = 9×2 cells)
+ * The pack sheets are 16×16 sprite grids where each row is a direction:
+ *   down, up, right, left, repeating for each state (idle, walk, attack, hurt).
  *
- * The generated page auto-detects frame layout with a 32-px stride heuristic
- * and animates every strip at a fixed rate.
+ * This generator reads the matching Godot SpriteFrames (.tres) files and only
+ * previews the *_right animations. Effects (fireball, explosions) with a
+ * non-directional "default" animation are previewed as 16×16 grids.
  *
  * Run with:
  *   node scripts/generate-jewelflame-creature-extended-preview.mjs
  * Then open jewelflame-creature-extended-preview.html in a browser.
  */
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
-import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, join, basename } from "node:path";
 
 const root = resolve(process.cwd());
 const packRoot = "/home/sloppymo/jewelflame/assets/Creature Extended- Supporter Pack";
+const tresRoot = "/home/sloppymo/jewelflame/assets/animations/creatures";
 const outFile = join(root, "jewelflame-creature-extended-preview.html");
 const indexFile = join(root, "jewelflame-preview-index.html");
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-
+const STATE_ORDER = ["idle", "walk", "attack", "hurt", "default"];
 
 function readUint32BE(buf, offset) {
   return (
@@ -60,36 +60,63 @@ function pngSize(file) {
   throw new Error(`${file}: IHDR not found`);
 }
 
-function inferStrips({ width, height }) {
-  // The pack uses 16×16 grids for creatures (64×N sheets) and fireball (192×16).
-  // Explosion effects are 32×32 grids (288×64 is 9 columns × 2 rows).
-  if (width === 64 && height % 16 === 0) {
-    return {
-      orientation: "g",
-      frameW: 16,
-      frameH: 16,
-      cols: 4,
-      rows: height / 16,
-      frameCount: (height / 16) * 4,
-    };
+function parseTres(tresPath, size) {
+  const text = readFileSync(tresPath, "utf8");
+  const regions = {};
+
+  const reSub =
+    /\[sub_resource type="AtlasTexture" id="([^"]+)"\]\s*atlas = ExtResource\("[^"]+"\)\s*region = Rect2\((\d+), (\d+), (\d+), (\d+)\)/g;
+  let m;
+  while ((m = reSub.exec(text)) !== null) {
+    regions[m[1]] = { x: +m[2], y: +m[3], w: +m[4], h: +m[5] };
   }
 
-  if (width % 32 === 0 && height % 32 === 0) {
-    const cols = width / 32;
-    const rows = height / 32;
-    const frameCount = cols * rows;
-    if (frameCount > 1) {
-      return {
-        orientation: "g",
-        frameW: 32,
-        frameH: 32,
-        cols,
-        rows,
-        frameCount,
-      };
+  const states = [];
+  const reAnim =
+    /\{\s*"frames": \[([\s\S]*?)\],\s*"loop": \w+,\s*"name": &"([^"]+)",\s*"speed": ([\d.]+)\s*\}/g;
+  while ((m = reAnim.exec(text)) !== null) {
+    const framesBlock = m[1];
+    const name = m[2];
+    const speed = +m[3];
+    const refs = [
+      ...framesBlock.matchAll(/"texture": SubResource\("([^"]+)"\)/g),
+    ].map((r) => r[1]);
+    const frames = refs
+      .map((id) => regions[id])
+      .filter((f) => f && f.w > 0 && f.h > 0);
+
+    if (frames.length === 0) continue;
+    const outOfBounds = frames.some(
+      (f) =>
+        f.x < 0 ||
+        f.y < 0 ||
+        f.x + f.w > size.width ||
+        f.y + f.h > size.height
+    );
+    if (outOfBounds) continue;
+
+    if (name.endsWith("_right")) {
+      const state = name.slice(0, -"_right".length);
+      states.push({
+        state,
+        fps: speed,
+        frameW: frames[0].w,
+        frameH: frames[0].h,
+        frameCount: frames.length,
+        sxOffset: frames[0].x,
+        syOffset: frames[0].y,
+        orientation: "h",
+      });
     }
   }
 
+  states.sort(
+    (a, b) => STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state)
+  );
+  return states;
+}
+
+function inferEffectGrid({ width, height }) {
   if (width % 16 === 0 && height % 16 === 0) {
     const cols = width / 16;
     const rows = height / 16;
@@ -105,7 +132,6 @@ function inferStrips({ width, height }) {
       };
     }
   }
-
   return { orientation: "h", frameW: width, frameH: height, frameCount: 1 };
 }
 
@@ -118,17 +144,43 @@ async function collectAssets() {
   for (const f of entries) {
     const file = join(packRoot, f);
     const size = pngSize(file);
-    const strips = inferStrips(size);
     const name = basename(f, ".png");
-    const base = name.split("_")[0];
+    const src = encodeURI(
+      `../jewelflame/assets/Creature Extended- Supporter Pack/${f}`
+    );
+    const fileSize = (await stat(file)).size;
+    const tresPath = join(tresRoot, `${name.toLowerCase()}.tres`);
+
+    if (existsSync(tresPath)) {
+      const states = parseTres(tresPath, size);
+      if (states.length > 0) {
+        for (const s of states) {
+          assets.push({
+            name,
+            group: name,
+            src,
+            width: size.width,
+            height: size.height,
+            fileSize,
+            ...s,
+          });
+        }
+        continue;
+      }
+    }
+
+    // Fallback for effects / missing metadata.
+    const grid = inferEffectGrid(size);
     assets.push({
       name,
-      base,
-      src: encodeURI(`../jewelflame/assets/Creature Extended- Supporter Pack/${f}`),
+      group: name,
+      state: "default",
+      src,
       width: size.width,
       height: size.height,
-      fileSize: (await stat(file)).size,
-      ...strips,
+      fileSize,
+      ...grid,
+      fps: grid.frameCount > 1 ? 8 : 1,
     });
   }
   return assets;
@@ -137,40 +189,42 @@ async function collectAssets() {
 function renderHtml(assets) {
   const groups = new Map();
   for (const a of assets) {
-    if (!groups.has(a.base)) groups.set(a.base, []);
-    groups.get(a.base).push(a);
+    if (!groups.has(a.group)) groups.set(a.group, []);
+    groups.get(a.group).push(a);
   }
 
   const groupHtml = [...groups.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([_, items]) => {
       const cards = items
-        .map(
-          (s) => `
+        .map((s) => {
+          const id = `${safeId(s.name)}-${safeId(s.state)}`;
+          return `
 <div class="state ${s.frameCount > 1 ? "" : "single"}">
-<canvas
-  id="c-${s.name.replace(/\s/g, "_").replace(/[^a-zA-Z0-9_-]/g, "_")}"
-  width="240" height="240"></canvas>
+<canvas id="c-${id}" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-${s.name.replace(/\s/g, "_").replace(/[^a-zA-Z0-9_-]/g, "_")}"
+  id="i-${id}"
   src="${s.src}"
   style="display:none;"
   data-frame-w="${s.frameW}"
   data-frame-h="${s.frameH}"
   data-frame-count="${s.frameCount}"
   data-orientation="${s.orientation}"
-  ${s.orientation === "g" ? `data-cols="${s.cols}"` : ""} />
+  data-fps="${s.fps}"
+  ${s.orientation === "g" ? `data-cols="${s.cols}"` : ""}
+  ${s.sxOffset ? `data-sx-offset="${s.sxOffset}"` : ""}
+  ${s.syOffset ? `data-sy-offset="${s.syOffset}"` : ""} />
 <div class="meta">
-<strong>${s.name}</strong><br>
+<strong>${s.name}</strong> · ${s.state}<br>
 ${s.width}x${s.height} · ${s.frameCount} frame${s.frameCount === 1 ? "" : "s"} · ${s.frameW}x${s.frameH} per frame · ${s.fileSize} bytes
 </div>
-</div>`
-        )
+</div>`;
+        })
         .join("");
       return `
 <div class="group">
-<h2>${items[0].base}</h2>
+<h2>${items[0].group}</h2>
 <div class="states">${cards}</div>
 </div>`;
     })
@@ -180,7 +234,7 @@ ${s.width}x${s.height} · ${s.frameCount} frame${s.frameCount === 1 ? "" : "s"} 
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Jewelflame · Creature Extended - Supporter Pack Preview</title>
+<title>Jewelflame · Creature Extended - Supporter Pack (Right-facing)</title>
 <style>
 body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #0e0d0a; color: #d0c0a0; margin: 0; padding: 1rem; }
 h1 { text-align: center; margin-bottom: 0.5rem; }
@@ -197,8 +251,8 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </style>
 </head>
 <body>
-<h1>Creature Extended - Supporter Pack</h1>
-<div class="hint">Sprite strips are auto-detected and drawn at 240×240. Multi-frame strips loop automatically.</div>
+<h1>Creature Extended – Supporter Pack (Right-facing)</h1>
+<div class="hint">Only right-facing animations are shown. Each state is read from the matching .tres SpriteFrames and drawn at 240×240.</div>
 ${groupHtml}
 <script>
 const anims = [];
@@ -219,8 +273,10 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const frameCount = Number(img.dataset.frameCount);
       const orientation = img.dataset.orientation;
       const cols = orientation === 'g' ? Number(img.dataset.cols) : undefined;
-      const fps = 8;
-      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, fps, last: 0, frame: 0 });
+      const sxOffset = Number(img.dataset.sxOffset || 0);
+      const syOffset = Number(img.dataset.syOffset || 0);
+      const fps = Number(img.dataset.fps) || 8;
+      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, fps, last: 0, frame: 0 });
     });
     requestAnimationFrame(loop);
   }
@@ -233,16 +289,16 @@ document.fonts.ready.catch(() => {}).finally(() => {
         a.frame = (a.frame + Math.floor(elapsed / interval)) % a.frameCount;
         a.last = now;
         a.ctx.clearRect(0, 0, 240, 240);
-        let sx = 0, sy = 0;
+        let sx = a.sxOffset;
+        let sy = a.syOffset;
         if (a.orientation === 'h') {
-          sx = a.frame * a.frameW;
+          sx += a.frame * a.frameW;
         } else if (a.orientation === 'v') {
-          sy = a.frame * a.frameH;
+          sy += a.frame * a.frameH;
         } else {
-          // Grid layout (e.g. 2 columns of 32×32 frames)
           const cols = a.cols || Math.floor(a.img.naturalWidth / a.frameW);
-          sx = (a.frame % cols) * a.frameW;
-          sy = Math.floor(a.frame / cols) * a.frameH;
+          sx += (a.frame % cols) * a.frameW;
+          sy += Math.floor(a.frame / cols) * a.frameH;
         }
         const scale = Math.min(240 / a.frameW, 240 / a.frameH);
         const dw = a.frameW * scale;
@@ -255,20 +311,26 @@ document.fonts.ready.catch(() => {}).finally(() => {
     requestAnimationFrame(loop);
   }
 
+  function onLoad() {
+    loaded++;
+    if (loaded >= total) start();
+  }
+
   images.forEach((img) => {
     if (img.complete && img.naturalWidth) onLoad();
     else img.addEventListener('load', onLoad);
     img.addEventListener('error', onLoad);
   });
-
-  function onLoad() {
-    loaded++;
-    if (loaded >= total) start();
-  }
 });
 </script>
 </body>
 </html>`;
+}
+
+function safeId(str) {
+  return String(str)
+    .replace(/\s/g, "_")
+    .replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
 function renderIndex() {
