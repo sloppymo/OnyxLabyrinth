@@ -19,7 +19,8 @@ const outFile = join(root, "jewelflame-preview.html");
 const indexFile = join(root, "jewelflame-preview-index.html");
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-const CREATURE_STRIDE = 32;
+const CREATURE_GRID_STRIDE = 16;
+const CREATURE_FX_STRIDE = 32;
 const CHAR_STATE_ORDER = ["Idle", "Walk", "Block", "Attack01", "Attack02", "Attack03", "Hurt", "Death", "DEATH"];
 
 function readUint32BE(buf, offset) {
@@ -119,35 +120,32 @@ async function collectCharacters() {
 }
 
 function inferCreatureStrips({ width, height }) {
-  // Most creature sheets are grids of 32×32 frames (e.g. 64×224 is 2 columns × 7 rows).
-  // A few are horizontal strips of 32×16 or 32×64 (e.g. fireball/explosion).
-  // Most creature sheets are tall grids of 32×32 frames (e.g. 64×224 is 2×7).
-  // Wide horizontal strips (fireball/explosion) are handled below.
+  // The pack uses 16×16 grids for creatures (64×N sheets) and 32-wide
+  // horizontal strips for effects (fireball 192×16, explosion 288×64).
+  if (width > height && width >= CREATURE_FX_STRIDE && width % CREATURE_FX_STRIDE === 0) {
+    const frameW = CREATURE_FX_STRIDE;
+    const frameH = height;
+    const frameCount = Math.floor(width / frameW);
+    if (frameCount > 1) return { frameW, frameH, frameCount, orientation: "h" };
+  }
+
   if (
-    width <= height &&
-    width % CREATURE_STRIDE === 0 &&
-    height % CREATURE_STRIDE === 0
+    width % CREATURE_GRID_STRIDE === 0 &&
+    height % CREATURE_GRID_STRIDE === 0
   ) {
-    const cols = width / CREATURE_STRIDE;
-    const rows = height / CREATURE_STRIDE;
+    const cols = width / CREATURE_GRID_STRIDE;
+    const rows = height / CREATURE_GRID_STRIDE;
     const frameCount = cols * rows;
     if (frameCount > 1) {
       return {
         orientation: "g",
-        frameW: CREATURE_STRIDE,
-        frameH: CREATURE_STRIDE,
+        frameW: CREATURE_GRID_STRIDE,
+        frameH: CREATURE_GRID_STRIDE,
         cols,
         rows,
         frameCount,
       };
     }
-  }
-
-  if (width > height && width >= CREATURE_STRIDE && width % CREATURE_STRIDE === 0) {
-    const frameW = CREATURE_STRIDE;
-    const frameH = height;
-    const frameCount = Math.floor(width / frameW);
-    if (frameCount > 1) return { frameW, frameH, frameCount, orientation: "h" };
   }
 
   return { frameW: width, frameH: height, frameCount: 1, orientation: "h" };

@@ -4,7 +4,7 @@
  * sprites in /home/sloppymo/jewelflame/assets/Creature Extended- Supporter Pack/.
  *
  * The pack contains mixed sprite layouts:
- *   - 32×32 frame grids (e.g. 64×224 is 2 columns × 7 rows)
+ *   - 16×16 frame grids (e.g. 64×224 is 4 columns × 14 rows)
  *   - W×16 horizontal fireball strips (frames are 32×16)
  *   - W×64 horizontal explosion strips (frames are 32×64)
  *
@@ -25,7 +25,8 @@ const outFile = join(root, "jewelflame-creature-extended-preview.html");
 const indexFile = join(root, "jewelflame-preview-index.html");
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-const FRAME_STRIDE = 32;
+const GRID_STRIDE = 16;
+const FX_STRIDE = 32;
 
 function readUint32BE(buf, offset) {
   return (
@@ -62,37 +63,30 @@ function pngSize(file) {
 }
 
 function inferStrips({ width, height }) {
-  // Most creature sheets are grids of 32×32 frames (e.g. 64×224 is 2×7 cells).
-  // A few are horizontal strips of 32×16 or 32×64 (e.g. fireball/explosion).
-  // Most creature sheets are tall grids of 32×32 frames (e.g. 64×224 is 2×7).
-  // Wide horizontal strips (fireball/explosion) are handled below.
-  if (
-    width <= height &&
-    width % FRAME_STRIDE === 0 &&
-    height % FRAME_STRIDE === 0
-  ) {
-    const cols = width / FRAME_STRIDE;
-    const rows = height / FRAME_STRIDE;
-    const frameCount = cols * rows;
-    if (frameCount > 1) {
-      return {
-        orientation: "g",
-        frameW: FRAME_STRIDE,
-        frameH: FRAME_STRIDE,
-        cols,
-        rows,
-        frameCount,
-      };
-    }
-  }
-
-  const horizontal = width > height;
-  if (horizontal && width >= FRAME_STRIDE && width % FRAME_STRIDE === 0) {
-    const frameW = FRAME_STRIDE;
+  // The pack uses 16×16 grids for creatures (64×N sheets) and 32-wide
+  // horizontal strips for effects (fireball 192×16, explosion 288×64).
+  if (width > height && width >= FX_STRIDE && width % FX_STRIDE === 0) {
+    const frameW = FX_STRIDE;
     const frameH = height;
     const frameCount = Math.floor(width / frameW);
     if (frameCount > 1) {
       return { orientation: "h", frameW, frameH, frameCount };
+    }
+  }
+
+  if (width % GRID_STRIDE === 0 && height % GRID_STRIDE === 0) {
+    const cols = width / GRID_STRIDE;
+    const rows = height / GRID_STRIDE;
+    const frameCount = cols * rows;
+    if (frameCount > 1) {
+      return {
+        orientation: "g",
+        frameW: GRID_STRIDE,
+        frameH: GRID_STRIDE,
+        cols,
+        rows,
+        frameCount,
+      };
     }
   }
 
