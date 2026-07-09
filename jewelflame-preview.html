@@ -1,0 +1,3248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Jewelflame · Asset Preview</title>
+<style>
+body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #0e0d0a; color: #d0c0a0; margin: 0; padding: 1rem; }
+h1 { text-align: center; margin-bottom: 0.5rem; }
+section h2 { color: #f0d080; border-bottom: 1px solid #3a3025; padding-bottom: 0.5rem; margin-top: 2rem; }
+.hint { text-align: center; color: #a09070; margin-bottom: 1.5rem; }
+.group { margin-bottom: 2rem; border-bottom: 1px solid #3a3025; padding-bottom: 1.5rem; }
+.group > h2 { margin: 0 0 0.75rem; color: #f0d080; text-transform: capitalize; border: none; padding: 0; }
+.states { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.state { background: #1a1612; border: 1px solid #3a3025; border-radius: 4px; padding: 0.75rem; text-align: center; }
+.state.bad { border-color: #c44; }
+canvas { image-rendering: pixelated; background: #000; border-radius: 2px; display: block; margin: 0 auto; }
+.meta { margin-top: 0.5rem; font-size: 0.8rem; color: #b0a080; }
+.meta strong { color: #f0d080; }
+.err { color: #f66; }
+.strip { display: none; }
+</style>
+</head>
+<body>
+<h1>Jewelflame Asset Preview</h1>
+<div class="hint">All sprite strips are auto-detected and drawn at 240×240. Multi-frame strips loop automatically.</div>
+
+<section>
+<h2>Characters (100×100)</h2>
+
+<div class="group">
+<h2>Archer</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Archer-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Archer-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Archer/Archer/Archer-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1555 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Archer-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Archer-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Archer/Archer/Archer-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 1997 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Archer-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Archer-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Archer/Archer/Archer-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+900x100 · 9 frames · 100x100 per frame · 2584 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Archer-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Archer-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Archer/Archer/Archer-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="12"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+1200x100 · 12 frames · 100x100 per frame · 3687 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Archer-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Archer-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Archer/Archer/Archer-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2253 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Archer-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Archer-death"
+  src="../jewelflame/assets/Characters(100x100)/Archer/Archer/Archer-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1748 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Armored Axeman</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Armored_Axeman-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Axeman-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Axeman/Armored%20Axeman/Armored%20Axeman-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1527 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Axeman-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Axeman-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Axeman/Armored%20Axeman/Armored%20Axeman-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 1775 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Axeman-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Axeman-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Axeman/Armored%20Axeman/Armored%20Axeman-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+900x100 · 9 frames · 100x100 per frame · 2799 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Axeman-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Axeman-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Axeman/Armored%20Axeman/Armored%20Axeman-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+900x100 · 9 frames · 100x100 per frame · 3176 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Axeman-Attack03" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Axeman-Attack03"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Axeman/Armored%20Axeman/Armored%20Axeman-Attack03.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="12"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack03" />
+<div class="meta">
+<strong>Attack03</strong><br>
+1200x100 · 12 frames · 100x100 per frame · 3955 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Axeman-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Axeman-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Axeman/Armored%20Axeman/Armored%20Axeman-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1869 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Axeman-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Axeman-death"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Axeman/Armored%20Axeman/Armored%20Axeman-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1847 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Armored Orc</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Armored_Orc-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Orc-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Orc/Armored%20Orc/Armored%20Orc-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1648 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Orc-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Orc-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Orc/Armored%20Orc/Armored%20Orc-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 2178 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Orc-Block" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Orc-Block"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Orc/Armored%20Orc/Armored%20Orc-Block.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Block" />
+<div class="meta">
+<strong>Block</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1413 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Orc-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Orc-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Orc/Armored%20Orc/Armored%20Orc-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="7"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+700x100 · 7 frames · 100x100 per frame · 2644 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Orc-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Orc-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Orc/Armored%20Orc/Armored%20Orc-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+800x100 · 8 frames · 100x100 per frame · 2371 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Orc-Attack03" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Orc-Attack03"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Orc/Armored%20Orc/Armored%20Orc-Attack03.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack03" />
+<div class="meta">
+<strong>Attack03</strong><br>
+900x100 · 9 frames · 100x100 per frame · 2991 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Orc-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Orc-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Orc/Armored%20Orc/Armored%20Orc-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2582 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Orc-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Orc-death"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Orc/Armored%20Orc/Armored%20Orc-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2412 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Armored Skeleton</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Armored_Skeleton-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Skeleton-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Skeleton/Armored%20Skeleton/Armored%20Skeleton-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1522 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Skeleton-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Skeleton-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Skeleton/Armored%20Skeleton/Armored%20Skeleton-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 2004 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Skeleton-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Skeleton-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Skeleton/Armored%20Skeleton/Armored%20Skeleton-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+800x100 · 8 frames · 100x100 per frame · 2127 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Skeleton-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Skeleton-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Skeleton/Armored%20Skeleton/Armored%20Skeleton-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+900x100 · 9 frames · 100x100 per frame · 3524 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Skeleton-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Skeleton-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Skeleton/Armored%20Skeleton/Armored%20Skeleton-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2303 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Armored_Skeleton-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Armored_Skeleton-death"
+  src="../jewelflame/assets/Characters(100x100)/Armored%20Skeleton/Armored%20Skeleton/Armored%20Skeleton-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1723 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Elite Orc</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Elite_Orc-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Elite_Orc-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Elite%20Orc/Elite%20Orc/Elite%20Orc-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 2073 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Elite_Orc-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Elite_Orc-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Elite%20Orc/Elite%20Orc/Elite%20Orc-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 2494 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Elite_Orc-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Elite_Orc-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Elite%20Orc/Elite%20Orc/Elite%20Orc-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="7"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+700x100 · 7 frames · 100x100 per frame · 3209 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Elite_Orc-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Elite_Orc-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Elite%20Orc/Elite%20Orc/Elite%20Orc-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="11"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+1100x100 · 11 frames · 100x100 per frame · 4380 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Elite_Orc-Attack03" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Elite_Orc-Attack03"
+  src="../jewelflame/assets/Characters(100x100)/Elite%20Orc/Elite%20Orc/Elite%20Orc-Attack03.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack03" />
+<div class="meta">
+<strong>Attack03</strong><br>
+900x100 · 9 frames · 100x100 per frame · 4549 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Elite_Orc-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Elite_Orc-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Elite%20Orc/Elite%20Orc/Elite%20Orc-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 3130 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Elite_Orc-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Elite_Orc-death"
+  src="../jewelflame/assets/Characters(100x100)/Elite%20Orc/Elite%20Orc/Elite%20Orc-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2486 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Greatsword Skeleton</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Greatsword_Skeleton-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Greatsword_Skeleton-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Greatsword%20Skeleton/Greatsword%20Skeleton/Greatsword%20Skeleton-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1696 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Greatsword_Skeleton-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Greatsword_Skeleton-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Greatsword%20Skeleton/Greatsword%20Skeleton/Greatsword%20Skeleton-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+900x100 · 9 frames · 100x100 per frame · 1964 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Greatsword_Skeleton-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Greatsword_Skeleton-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Greatsword%20Skeleton/Greatsword%20Skeleton/Greatsword%20Skeleton-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+900x100 · 9 frames · 100x100 per frame · 2921 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Greatsword_Skeleton-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Greatsword_Skeleton-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Greatsword%20Skeleton/Greatsword%20Skeleton/Greatsword%20Skeleton-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="12"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+1200x100 · 12 frames · 100x100 per frame · 4116 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Greatsword_Skeleton-Attack03" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Greatsword_Skeleton-Attack03"
+  src="../jewelflame/assets/Characters(100x100)/Greatsword%20Skeleton/Greatsword%20Skeleton/Greatsword%20Skeleton-Attack03.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack03" />
+<div class="meta">
+<strong>Attack03</strong><br>
+800x100 · 8 frames · 100x100 per frame · 2036 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Greatsword_Skeleton-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Greatsword_Skeleton-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Greatsword%20Skeleton/Greatsword%20Skeleton/Greatsword%20Skeleton-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2365 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Greatsword_Skeleton-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Greatsword_Skeleton-death"
+  src="../jewelflame/assets/Characters(100x100)/Greatsword%20Skeleton/Greatsword%20Skeleton/Greatsword%20Skeleton-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1631 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Knight</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Knight-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Knight/Knight/Knight-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1469 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Knight/Knight/Knight-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 1850 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight-Block" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight-Block"
+  src="../jewelflame/assets/Characters(100x100)/Knight/Knight/Knight-Block.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Block" />
+<div class="meta">
+<strong>Block</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1347 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Knight/Knight/Knight-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="7"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+700x100 · 7 frames · 100x100 per frame · 2163 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Knight/Knight/Knight-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="10"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+1000x100 · 10 frames · 100x100 per frame · 3441 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight-Attack03" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight-Attack03"
+  src="../jewelflame/assets/Characters(100x100)/Knight/Knight/Knight-Attack03.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="11"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack03" />
+<div class="meta">
+<strong>Attack03</strong><br>
+1100x100 · 11 frames · 100x100 per frame · 4780 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Knight/Knight/Knight-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2168 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight-death"
+  src="../jewelflame/assets/Characters(100x100)/Knight/Knight/Knight-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1738 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Knight Templar</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Knight_Templar-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight_Templar-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Knight%20Templar/Knight%20Templar/Knight%20Templar-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1565 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight_Templar-Block" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight_Templar-Block"
+  src="../jewelflame/assets/Characters(100x100)/Knight%20Templar/Knight%20Templar/Knight%20Templar-Block.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Block" />
+<div class="meta">
+<strong>Block</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1414 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight_Templar-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight_Templar-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Knight%20Templar/Knight%20Templar/Knight%20Templar-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="7"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+700x100 · 7 frames · 100x100 per frame · 1803 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight_Templar-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight_Templar-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Knight%20Templar/Knight%20Templar/Knight%20Templar-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+800x100 · 8 frames · 100x100 per frame · 2716 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight_Templar-Attack03" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight_Templar-Attack03"
+  src="../jewelflame/assets/Characters(100x100)/Knight%20Templar/Knight%20Templar/Knight%20Templar-Attack03.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="11"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack03" />
+<div class="meta">
+<strong>Attack03</strong><br>
+1100x100 · 11 frames · 100x100 per frame · 3512 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight_Templar-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight_Templar-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Knight%20Templar/Knight%20Templar/Knight%20Templar-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2372 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight_Templar-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight_Templar-death"
+  src="../jewelflame/assets/Characters(100x100)/Knight%20Templar/Knight%20Templar/Knight%20Templar-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1834 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight_Templar-Walk01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight_Templar-Walk01"
+  src="../jewelflame/assets/Characters(100x100)/Knight%20Templar/Knight%20Templar/Knight%20Templar-Walk01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Walk01" />
+<div class="meta">
+<strong>Walk01</strong><br>
+800x100 · 8 frames · 100x100 per frame · 1995 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Knight_Templar-Walk02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Knight_Templar-Walk02"
+  src="../jewelflame/assets/Characters(100x100)/Knight%20Templar/Knight%20Templar/Knight%20Templar-Walk02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Walk02" />
+<div class="meta">
+<strong>Walk02</strong><br>
+800x100 · 8 frames · 100x100 per frame · 1828 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Lancer</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Lancer-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Lancer-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Lancer/Lancer/Lancer-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 2460 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Lancer-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Lancer-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Lancer/Lancer/Lancer-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+600x100 · 6 frames · 100x100 per frame · 2790 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Lancer-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Lancer-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Lancer/Lancer/Lancer-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+900x100 · 9 frames · 100x100 per frame · 4397 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Lancer-Attack03" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Lancer-Attack03"
+  src="../jewelflame/assets/Characters(100x100)/Lancer/Lancer/Lancer-Attack03.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack03" />
+<div class="meta">
+<strong>Attack03</strong><br>
+800x100 · 8 frames · 100x100 per frame · 3941 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Lancer-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Lancer-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Lancer/Lancer/Lancer-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 4170 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Lancer-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Lancer-death"
+  src="../jewelflame/assets/Characters(100x100)/Lancer/Lancer/Lancer-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2811 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Lancer-Walk01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Lancer-Walk01"
+  src="../jewelflame/assets/Characters(100x100)/Lancer/Lancer/Lancer-Walk01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Walk01" />
+<div class="meta">
+<strong>Walk01</strong><br>
+800x100 · 8 frames · 100x100 per frame · 3150 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Lancer-Walk02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Lancer-Walk02"
+  src="../jewelflame/assets/Characters(100x100)/Lancer/Lancer/Lancer-Walk02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Walk02" />
+<div class="meta">
+<strong>Walk02</strong><br>
+800x100 · 8 frames · 100x100 per frame · 3009 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Orc</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Orc-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Orc/Orc/Orc-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1410 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Orc/Orc/Orc-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 1870 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Orc/Orc/Orc-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+600x100 · 6 frames · 100x100 per frame · 2333 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Orc/Orc/Orc-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+600x100 · 6 frames · 100x100 per frame · 2284 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Orc/Orc/Orc-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2086 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc-death"
+  src="../jewelflame/assets/Characters(100x100)/Orc/Orc/Orc-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1757 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Orc rider</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Orc_rider-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc_rider-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Orc%20rider/Orc%20rider/Orc%20rider-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 2774 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc_rider-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc_rider-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Orc%20rider/Orc%20rider/Orc%20rider-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 3723 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc_rider-Block" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc_rider-Block"
+  src="../jewelflame/assets/Characters(100x100)/Orc%20rider/Orc%20rider/Orc%20rider-Block.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Block" />
+<div class="meta">
+<strong>Block</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2617 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc_rider-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc_rider-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Orc%20rider/Orc%20rider/Orc%20rider-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+800x100 · 8 frames · 100x100 per frame · 4424 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc_rider-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc_rider-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Orc%20rider/Orc%20rider/Orc%20rider-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+900x100 · 9 frames · 100x100 per frame · 5184 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc_rider-Attack03" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc_rider-Attack03"
+  src="../jewelflame/assets/Characters(100x100)/Orc%20rider/Orc%20rider/Orc%20rider-Attack03.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="11"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack03" />
+<div class="meta">
+<strong>Attack03</strong><br>
+1100x100 · 11 frames · 100x100 per frame · 5782 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc_rider-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc_rider-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Orc%20rider/Orc%20rider/Orc%20rider-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 4407 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Orc_rider-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Orc_rider-death"
+  src="../jewelflame/assets/Characters(100x100)/Orc%20rider/Orc%20rider/Orc%20rider-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 3430 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Priest</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Priest-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Priest-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Priest/Priest/Priest-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1606 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Priest-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Priest-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Priest/Priest/Priest-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 1976 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Priest-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Priest-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Priest/Priest/Priest-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2073 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Priest-Attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Priest-Attack"
+  src="../jewelflame/assets/Characters(100x100)/Priest/Priest/Priest-Attack.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack" />
+<div class="meta">
+<strong>Attack</strong><br>
+900x100 · 9 frames · 100x100 per frame · 2094 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Priest-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Priest-death"
+  src="../jewelflame/assets/Characters(100x100)/Priest/Priest/Priest-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1541 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Priest-Heal" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Priest-Heal"
+  src="../jewelflame/assets/Characters(100x100)/Priest/Priest/Priest-Heal.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Heal" />
+<div class="meta">
+<strong>Heal</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1663 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Skeleton</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Skeleton-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton/Skeleton/Skeleton-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1292 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Skeleton-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton/Skeleton/Skeleton-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 1749 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Skeleton-Block" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton-Block"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton/Skeleton/Skeleton-Block.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Block" />
+<div class="meta">
+<strong>Block</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1058 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Skeleton-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton/Skeleton/Skeleton-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+600x100 · 6 frames · 100x100 per frame · 2023 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Skeleton-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton/Skeleton/Skeleton-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="7"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+700x100 · 7 frames · 100x100 per frame · 1962 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Skeleton-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton/Skeleton/Skeleton-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1943 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Skeleton-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton-death"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton/Skeleton/Skeleton-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1396 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Skeleton Archer</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Skeleton_Archer-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton_Archer-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton%20Archer/Skeleton%20Archer/Skeleton%20Archer-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1728 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Skeleton_Archer-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton_Archer-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton%20Archer/Skeleton%20Archer/Skeleton%20Archer-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 2115 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Skeleton_Archer-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton_Archer-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton%20Archer/Skeleton%20Archer/Skeleton%20Archer-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2393 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Skeleton_Archer-Attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton_Archer-Attack"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton%20Archer/Skeleton%20Archer/Skeleton%20Archer-Attack.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack" />
+<div class="meta">
+<strong>Attack</strong><br>
+900x100 · 9 frames · 100x100 per frame · 2766 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Skeleton_Archer-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Skeleton_Archer-death"
+  src="../jewelflame/assets/Characters(100x100)/Skeleton%20Archer/Skeleton%20Archer/Skeleton%20Archer-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1651 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Slime</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Slime-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Slime-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Slime/Slime/Slime-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1153 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Slime-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Slime-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Slime/Slime/Slime-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1111 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Slime-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Slime-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Slime/Slime/Slime-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1380 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Slime-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Slime-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Slime/Slime/Slime-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="12"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+1200x100 · 12 frames · 100x100 per frame · 3429 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Slime-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Slime-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Slime/Slime/Slime-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1174 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Slime-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Slime-death"
+  src="../jewelflame/assets/Characters(100x100)/Slime/Slime/Slime-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 767 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Soldier</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Soldier-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Soldier-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Soldier/Soldier/Soldier-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1367 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Soldier-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Soldier-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Soldier/Soldier/Soldier-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 1806 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Soldier-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Soldier-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Soldier/Soldier/Soldier-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1934 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Soldier-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Soldier-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Soldier/Soldier/Soldier-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+600x100 · 6 frames · 100x100 per frame · 2203 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Soldier-Attack03" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Soldier-Attack03"
+  src="../jewelflame/assets/Characters(100x100)/Soldier/Soldier/Soldier-Attack03.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack03" />
+<div class="meta">
+<strong>Attack03</strong><br>
+900x100 · 9 frames · 100x100 per frame · 2488 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Soldier-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Soldier-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Soldier/Soldier/Soldier-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1924 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Soldier-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Soldier-death"
+  src="../jewelflame/assets/Characters(100x100)/Soldier/Soldier/Soldier-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1526 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Soldier-Shadow_attack2" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Soldier-Shadow_attack2"
+  src="../jewelflame/assets/Characters(100x100)/Soldier/Soldier/Soldier-Shadow_attack2.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Shadow_attack2" />
+<div class="meta">
+<strong>Shadow_attack2</strong><br>
+600x100 · 6 frames · 100x100 per frame · 457 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Swordsman</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Swordsman-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Swordsman-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Swordsman/Swordsman/Swordsman-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1663 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Swordsman-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Swordsman-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Swordsman/Swordsman/Swordsman-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 2200 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Swordsman-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Swordsman-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Swordsman/Swordsman/Swordsman-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="7"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+700x100 · 7 frames · 100x100 per frame · 2449 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Swordsman-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Swordsman-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Swordsman/Swordsman/Swordsman-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="15"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+1500x100 · 15 frames · 100x100 per frame · 4530 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Swordsman-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Swordsman-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Swordsman/Swordsman/Swordsman-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="5"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+500x100 · 5 frames · 100x100 per frame · 2352 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Swordsman-Attack3" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Swordsman-Attack3"
+  src="../jewelflame/assets/Characters(100x100)/Swordsman/Swordsman/Swordsman-Attack3.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="12"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack3" />
+<div class="meta">
+<strong>Attack3</strong><br>
+1200x100 · 12 frames · 100x100 per frame · 3267 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Swordsman-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Swordsman-death"
+  src="../jewelflame/assets/Characters(100x100)/Swordsman/Swordsman/Swordsman-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1692 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Werebear</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Werebear-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werebear-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Werebear/Werebear/Werebear-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1535 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Werebear-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werebear-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Werebear/Werebear/Werebear-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 2223 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Werebear-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werebear-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Werebear/Werebear/Werebear-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+900x100 · 9 frames · 100x100 per frame · 2742 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Werebear-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werebear-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Werebear/Werebear/Werebear-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="13"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+1300x100 · 13 frames · 100x100 per frame · 4200 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Werebear-Attack03" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werebear-Attack03"
+  src="../jewelflame/assets/Characters(100x100)/Werebear/Werebear/Werebear-Attack03.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack03" />
+<div class="meta">
+<strong>Attack03</strong><br>
+900x100 · 9 frames · 100x100 per frame · 3171 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Werebear-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werebear-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Werebear/Werebear/Werebear-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2288 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Werebear-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werebear-death"
+  src="../jewelflame/assets/Characters(100x100)/Werebear/Werebear/Werebear-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1614 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Werewolf</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Werewolf-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werewolf-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Werewolf/Werewolf/Werewolf-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1440 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Werewolf-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werewolf-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Werewolf/Werewolf/Werewolf-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 1903 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Werewolf-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werewolf-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Werewolf/Werewolf/Werewolf-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+900x100 · 9 frames · 100x100 per frame · 2432 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Werewolf-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werewolf-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Werewolf/Werewolf/Werewolf-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="13"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+1300x100 · 13 frames · 100x100 per frame · 3080 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Werewolf-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werewolf-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Werewolf/Werewolf/Werewolf-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2099 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Werewolf-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Werewolf-death"
+  src="../jewelflame/assets/Characters(100x100)/Werewolf/Werewolf/Werewolf-Death.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1742 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>Wizard</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-Wizard-Idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Wizard-Idle"
+  src="../jewelflame/assets/Characters(100x100)/Wizard/Wizard/Wizard-Idle.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Idle" />
+<div class="meta">
+<strong>Idle</strong><br>
+600x100 · 6 frames · 100x100 per frame · 1658 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Wizard-Walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Wizard-Walk"
+  src="../jewelflame/assets/Characters(100x100)/Wizard/Wizard/Wizard-Walk.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="8"
+  data-orientation="h"
+  data-fps="6"
+  data-state="Walk" />
+<div class="meta">
+<strong>Walk</strong><br>
+800x100 · 8 frames · 100x100 per frame · 2054 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Wizard-Attack01" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Wizard-Attack01"
+  src="../jewelflame/assets/Characters(100x100)/Wizard/Wizard/Wizard-Attack01.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack01" />
+<div class="meta">
+<strong>Attack01</strong><br>
+600x100 · 6 frames · 100x100 per frame · 2169 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Wizard-Attack02" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Wizard-Attack02"
+  src="../jewelflame/assets/Characters(100x100)/Wizard/Wizard/Wizard-Attack02.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="10"
+  data-state="Attack02" />
+<div class="meta">
+<strong>Attack02</strong><br>
+600x100 · 6 frames · 100x100 per frame · 2115 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Wizard-Hurt" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Wizard-Hurt"
+  src="../jewelflame/assets/Characters(100x100)/Wizard/Wizard/Wizard-Hurt.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="Hurt" />
+<div class="meta">
+<strong>Hurt</strong><br>
+400x100 · 4 frames · 100x100 per frame · 2169 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-Wizard-death" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-Wizard-death"
+  src="../jewelflame/assets/Characters(100x100)/Wizard/Wizard/Wizard-DEATH.png"
+  style="display:none;"
+  data-frame-w="100"
+  data-frame-h="100"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  data-state="death" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 100x100 per frame · 1641 bytes
+
+</div>
+</div>
+</div>
+</div>
+</section>
+<section>
+<h2>Creature Extended – Supporter Pack</h2>
+
+<div class="group">
+<h2>fire</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-fire_skull-skull" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-fire_skull-skull"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/fire_skull.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="5"
+  data-orientation="v"
+  data-fps="8"
+  data-state="skull" />
+<div class="meta">
+<strong>skull</strong><br>
+64x160 · 5 frames · 64x32 per frame · 2404 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-fire_skull_fireball-skull-fireball" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-fire_skull_fireball-skull-fireball"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/fire_skull_fireball.png"
+  style="display:none;"
+  data-frame-w="32"
+  data-frame-h="16"
+  data-frame-count="6"
+  data-orientation="h"
+  data-fps="8"
+  data-state="skull-fireball" />
+<div class="meta">
+<strong>skull-fireball</strong><br>
+192x16 · 6 frames · 32x16 per frame · 734 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>goblin</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-goblin-default" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-goblin-default"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/goblin.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="default" />
+<div class="meta">
+<strong>default</strong><br>
+64x224 · 7 frames · 64x32 per frame · 3919 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-goblin_slinger-slinger" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-goblin_slinger-slinger"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/goblin_slinger.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="slinger" />
+<div class="meta">
+<strong>slinger</strong><br>
+64x224 · 7 frames · 64x32 per frame · 3895 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>mummy</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-mummy-default" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-mummy-default"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/mummy.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="default" />
+<div class="meta">
+<strong>default</strong><br>
+64x224 · 7 frames · 64x32 per frame · 3970 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>orc</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-orc-default" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc-default"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="default" />
+<div class="meta">
+<strong>default</strong><br>
+64x224 · 7 frames · 64x32 per frame · 4315 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc_archer-archer" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_archer-archer"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_archer.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="archer" />
+<div class="meta">
+<strong>archer</strong><br>
+64x224 · 7 frames · 64x32 per frame · 4835 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc_champion-champion" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_champion-champion"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_champion.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="champion" />
+<div class="meta">
+<strong>champion</strong><br>
+64x224 · 7 frames · 64x32 per frame · 5945 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc_soldier-soldier" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_soldier-soldier"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_soldier.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="soldier" />
+<div class="meta">
+<strong>soldier</strong><br>
+64x224 · 7 frames · 64x32 per frame · 5377 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc_soldier_unarmoured-soldier-unarmoured" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_soldier_unarmoured-soldier-unarmoured"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_soldier_unarmoured.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="soldier-unarmoured" />
+<div class="meta">
+<strong>soldier-unarmoured</strong><br>
+64x224 · 7 frames · 64x32 per frame · 4486 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>skelly</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-skelly-default" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-skelly-default"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="default" />
+<div class="meta">
+<strong>default</strong><br>
+64x224 · 7 frames · 64x32 per frame · 2816 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skelly_archer-archer" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-skelly_archer-archer"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly_archer.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="archer" />
+<div class="meta">
+<strong>archer</strong><br>
+64x224 · 7 frames · 64x32 per frame · 4121 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skelly_warrior-warrior" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-skelly_warrior-warrior"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly_warrior.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="warrior" />
+<div class="meta">
+<strong>warrior</strong><br>
+64x224 · 7 frames · 64x32 per frame · 4721 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>slime</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-slime-default" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-slime-default"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/slime.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="4"
+  data-orientation="v"
+  data-fps="8"
+  data-state="default" />
+<div class="meta">
+<strong>default</strong><br>
+64x128 · 4 frames · 64x32 per frame · 2280 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>wraith</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-wraith-default" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-wraith-default"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/wraith.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="default" />
+<div class="meta">
+<strong>default</strong><br>
+64x224 · 7 frames · 64x32 per frame · 4193 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="group">
+<h2>zombie</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-zombie-default" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-zombie-default"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="default" />
+<div class="meta">
+<strong>default</strong><br>
+64x224 · 7 frames · 64x32 per frame · 3516 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-zombie_burster-burster" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-zombie_burster-burster"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie_burster.png"
+  style="display:none;"
+  data-frame-w="64"
+  data-frame-h="32"
+  data-frame-count="7"
+  data-orientation="v"
+  data-fps="8"
+  data-state="burster" />
+<div class="meta">
+<strong>burster</strong><br>
+64x224 · 7 frames · 64x32 per frame · 5537 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-zombie_burster_Death_Explosion-burster-Death-Explosion" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-zombie_burster_Death_Explosion-burster-Death-Explosion"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie_burster_Death_Explosion.png"
+  style="display:none;"
+  data-frame-w="32"
+  data-frame-h="64"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="burster-Death-Explosion" />
+<div class="meta">
+<strong>burster-Death-Explosion</strong><br>
+288x64 · 9 frames · 32x64 per frame · 2564 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-zombie_burster_Explosion_Attack-burster-Explosion-Attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-zombie_burster_Explosion_Attack-burster-Explosion-Attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie_burster_Explosion_Attack.png"
+  style="display:none;"
+  data-frame-w="32"
+  data-frame-h="64"
+  data-frame-count="9"
+  data-orientation="h"
+  data-fps="10"
+  data-state="burster-Explosion-Attack" />
+<div class="meta">
+<strong>burster-Explosion-Attack</strong><br>
+288x64 · 9 frames · 32x64 per frame · 2983 bytes
+
+</div>
+</div>
+</div>
+</div>
+</section>
+<script>
+const anims = [];
+
+document.fonts.ready.catch(() => {}).finally(() => {
+  const images = Array.from(document.querySelectorAll('img.strip'));
+  let loaded = 0;
+  const total = images.length;
+
+  function start() {
+    images.forEach((img) => {
+      const id = img.id.slice(2);
+      const canvas = document.getElementById('c-' + id);
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      const frameW = Number(img.dataset.frameW);
+      const frameH = Number(img.dataset.frameH);
+      const frameCount = Number(img.dataset.frameCount);
+      const orientation = img.dataset.orientation;
+      const fps = Number(img.dataset.fps) || 8;
+      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, fps, last: 0, frame: 0 });
+    });
+    requestAnimationFrame(loop);
+  }
+
+  function loop(now) {
+    anims.forEach((a) => {
+      const elapsed = now - a.last;
+      const interval = 1000 / a.fps;
+      if (elapsed >= interval) {
+        a.frame = (a.frame + Math.floor(elapsed / interval)) % a.frameCount;
+        a.last = now;
+        a.ctx.clearRect(0, 0, 240, 240);
+        let sx = 0, sy = 0;
+        if (a.orientation === 'h') {
+          sx = a.frame * a.frameW;
+        } else {
+          sy = a.frame * a.frameH;
+        }
+        const scale = Math.min(240 / a.frameW, 240 / a.frameH);
+        const dw = a.frameW * scale;
+        const dh = a.frameH * scale;
+        const x = (240 - dw) / 2;
+        const y = (240 - dh) / 2;
+        a.ctx.drawImage(a.img, sx, sy, a.frameW, a.frameH, x, y, dw, dh);
+      }
+    });
+    requestAnimationFrame(loop);
+  }
+
+  images.forEach((img) => {
+    if (img.complete && img.naturalWidth) onLoad();
+    else img.addEventListener('load', onLoad);
+    img.addEventListener('error', onLoad);
+  });
+
+  function onLoad() {
+    loaded++;
+    if (loaded >= total) start();
+  }
+});
+</script>
+</body>
+</html>
