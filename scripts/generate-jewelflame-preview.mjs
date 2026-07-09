@@ -20,9 +20,9 @@ import {
 } from "./jewelflame-creature-utils.mjs";
 
 const root = resolve(process.cwd());
-const charsRoot = join(root, "jewelflame/assets/Characters(100x100)");
-const packRoot = join(root, "jewelflame/assets/Creature Extended- Supporter Pack");
-const tresRoot = join(root, "jewelflame/assets/animations/creatures");
+const charsRoot = join(root, "assets/Characters(100x100)");
+const packRoot = join(root, "assets/Creature Extended- Supporter Pack");
+const tresRoot = join(root, "assets/animations/creatures");
 const outFile = join(root, "jewelflame-preview.html");
 const indexFile = join(root, "jewelflame-preview-index.html");
 
@@ -58,7 +58,7 @@ async function collectCharacters() {
         states.push({
           name,
           state,
-          src: encodeURI(`./jewelflame/assets/Characters(100x100)/${name}/${name}/${f}`),
+          src: encodeURI(`./assets/Characters(100x100)/${name}/${name}/${f}`),
           width,
           height,
           frameW: 100,
@@ -97,7 +97,7 @@ async function collectCreatures() {
     const size = pngSize(file);
     const name = basename(f, ".png");
     const src = encodeURI(
-      `./jewelflame/assets/Creature Extended- Supporter Pack/${f}`
+      `./assets/Creature Extended- Supporter Pack/${f}`
     );
     const fileSize = (await stat(file)).size;
     const tresPath = join(tresRoot, `${name.toLowerCase()}.tres`);

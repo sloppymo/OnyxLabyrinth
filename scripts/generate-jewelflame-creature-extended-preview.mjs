@@ -26,8 +26,8 @@ import {
 } from "./jewelflame-creature-utils.mjs";
 
 const root = resolve(process.cwd());
-const packRoot = join(root, "jewelflame/assets/Creature Extended- Supporter Pack");
-const tresRoot = join(root, "jewelflame/assets/animations/creatures");
+const packRoot = join(root, "assets/Creature Extended- Supporter Pack");
+const tresRoot = join(root, "assets/animations/creatures");
 const outFile = join(root, "jewelflame-creature-extended-preview.html");
 const indexFile = join(root, "jewelflame-preview-index.html");
 
@@ -42,7 +42,7 @@ async function collectAssets() {
     const size = pngSize(file);
     const name = basename(f, ".png");
     const src = encodeURI(
-      `./jewelflame/assets/Creature Extended- Supporter Pack/${f}`
+      `./assets/Creature Extended- Supporter Pack/${f}`
     );
     const fileSize = (await stat(file)).size;
     const tresPath = join(tresRoot, `${name.toLowerCase()}.tres`);
