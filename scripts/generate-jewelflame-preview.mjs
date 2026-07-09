@@ -119,37 +119,37 @@ async function collectCharacters() {
 }
 
 function inferCreatureStrips({ width, height }) {
-  const horizontal = width > height;
-  const vertical = height > width;
+  // Most creature sheets are grids of 32×32 frames (e.g. 64×224 is 2 columns × 7 rows).
+  // A few are horizontal strips of 32×16 or 32×64 (e.g. fireball/explosion).
+  // Most creature sheets are tall grids of 32×32 frames (e.g. 64×224 is 2×7).
+  // Wide horizontal strips (fireball/explosion) are handled below.
+  if (
+    width <= height &&
+    width % CREATURE_STRIDE === 0 &&
+    height % CREATURE_STRIDE === 0
+  ) {
+    const cols = width / CREATURE_STRIDE;
+    const rows = height / CREATURE_STRIDE;
+    const frameCount = cols * rows;
+    if (frameCount > 1) {
+      return {
+        orientation: "g",
+        frameW: CREATURE_STRIDE,
+        frameH: CREATURE_STRIDE,
+        cols,
+        rows,
+        frameCount,
+      };
+    }
+  }
 
-  if (horizontal) {
+  if (width > height && width >= CREATURE_STRIDE && width % CREATURE_STRIDE === 0) {
+    const frameW = CREATURE_STRIDE;
     const frameH = height;
-    if (width >= CREATURE_STRIDE && width % CREATURE_STRIDE === 0) {
-      const frameW = CREATURE_STRIDE;
-      const frameCount = Math.floor(width / frameW);
-      if (frameCount > 1) return { frameW, frameH, frameCount, orientation: "h" };
-    }
-    return { frameW: width, frameH, frameCount: 1, orientation: "h" };
+    const frameCount = Math.floor(width / frameW);
+    if (frameCount > 1) return { frameW, frameH, frameCount, orientation: "h" };
   }
 
-  if (vertical) {
-    const frameW = width;
-    if (height >= CREATURE_STRIDE && height % CREATURE_STRIDE === 0) {
-      const frameH = CREATURE_STRIDE;
-      const frameCount = Math.floor(height / frameH);
-      if (frameCount > 1) return { frameW, frameH, frameCount, orientation: "v" };
-    }
-    return { frameW, frameH: height, frameCount: 1, orientation: "v" };
-  }
-
-  if (width >= CREATURE_STRIDE && width % CREATURE_STRIDE === 0) {
-    return {
-      frameW: CREATURE_STRIDE,
-      frameH: height,
-      frameCount: Math.floor(width / CREATURE_STRIDE),
-      orientation: "h",
-    };
-  }
   return { frameW: width, frameH: height, frameCount: 1, orientation: "h" };
 }
 
@@ -198,6 +198,7 @@ function renderGroupCard(item, extraClass = "") {
   data-frame-h="${item.frameH}"
   data-frame-count="${item.frameCount}"
   data-orientation="${item.orientation}"
+  ${item.orientation === "g" ? `data-cols="${item.cols}"` : ""}
   data-fps="${item.fps}"
   data-state="${item.state}" />
 <div class="meta">
@@ -298,8 +299,9 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const frameH = Number(img.dataset.frameH);
       const frameCount = Number(img.dataset.frameCount);
       const orientation = img.dataset.orientation;
+      const cols = orientation === "g" ? Number(img.dataset.cols) : undefined;
       const fps = Number(img.dataset.fps) || 8;
-      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, fps, last: 0, frame: 0 });
+      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, fps, last: 0, frame: 0 });
     });
     requestAnimationFrame(loop);
   }
@@ -315,8 +317,13 @@ document.fonts.ready.catch(() => {}).finally(() => {
         let sx = 0, sy = 0;
         if (a.orientation === 'h') {
           sx = a.frame * a.frameW;
-        } else {
+        } else if (a.orientation === 'v') {
           sy = a.frame * a.frameH;
+        } else {
+          // Grid layout (e.g. 2 columns of 32×32 frames)
+          const cols = a.cols || Math.floor(a.img.naturalWidth / a.frameW);
+          sx = (a.frame % cols) * a.frameW;
+          sy = Math.floor(a.frame / cols) * a.frameH;
         }
         const scale = Math.min(240 / a.frameW, 240 / a.frameH);
         const dw = a.frameW * scale;

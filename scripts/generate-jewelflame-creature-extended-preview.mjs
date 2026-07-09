@@ -3,8 +3,8 @@
  * Generates a standalone preview of the Creature Extended - Supporter Pack
  * sprites in /home/sloppymo/jewelflame/assets/Creature Extended- Supporter Pack/.
  *
- * The pack contains mixed sprite strips:
- *   - 64×N vertical side-view creature strips (frames are 64×32)
+ * The pack contains mixed sprite layouts:
+ *   - 32×32 frame grids (e.g. 64×224 is 2 columns × 7 rows)
  *   - W×16 horizontal fireball strips (frames are 32×16)
  *   - W×64 horizontal explosion strips (frames are 32×64)
  *
@@ -62,42 +62,40 @@ function pngSize(file) {
 }
 
 function inferStrips({ width, height }) {
+  // Most creature sheets are grids of 32×32 frames (e.g. 64×224 is 2×7 cells).
+  // A few are horizontal strips of 32×16 or 32×64 (e.g. fireball/explosion).
+  // Most creature sheets are tall grids of 32×32 frames (e.g. 64×224 is 2×7).
+  // Wide horizontal strips (fireball/explosion) are handled below.
+  if (
+    width <= height &&
+    width % FRAME_STRIDE === 0 &&
+    height % FRAME_STRIDE === 0
+  ) {
+    const cols = width / FRAME_STRIDE;
+    const rows = height / FRAME_STRIDE;
+    const frameCount = cols * rows;
+    if (frameCount > 1) {
+      return {
+        orientation: "g",
+        frameW: FRAME_STRIDE,
+        frameH: FRAME_STRIDE,
+        cols,
+        rows,
+        frameCount,
+      };
+    }
+  }
+
   const horizontal = width > height;
-  const vertical = height > width;
-
-  if (horizontal) {
+  if (horizontal && width >= FRAME_STRIDE && width % FRAME_STRIDE === 0) {
+    const frameW = FRAME_STRIDE;
     const frameH = height;
-    if (width >= FRAME_STRIDE && width % FRAME_STRIDE === 0) {
-      const frameW = FRAME_STRIDE;
-      const frameCount = Math.floor(width / frameW);
-      if (frameCount > 1) {
-        return { orientation: "h", frameW, frameH, frameCount };
-      }
+    const frameCount = Math.floor(width / frameW);
+    if (frameCount > 1) {
+      return { orientation: "h", frameW, frameH, frameCount };
     }
-    return { orientation: "h", frameW: width, frameH, frameCount: 1 };
   }
 
-  if (vertical) {
-    const frameW = width;
-    if (height >= FRAME_STRIDE && height % FRAME_STRIDE === 0) {
-      const frameH = FRAME_STRIDE;
-      const frameCount = Math.floor(height / frameH);
-      if (frameCount > 1) {
-        return { orientation: "v", frameW, frameH, frameCount };
-      }
-    }
-    return { orientation: "v", frameW, frameH: height, frameCount: 1 };
-  }
-
-  // Square: treat as a single frame unless it tiles evenly on a 32×32 grid.
-  if (width >= FRAME_STRIDE && width % FRAME_STRIDE === 0) {
-    return {
-      orientation: "h",
-      frameW: FRAME_STRIDE,
-      frameH: height,
-      frameCount: Math.floor(width / FRAME_STRIDE),
-    };
-  }
   return { orientation: "h", frameW: width, frameH: height, frameCount: 1 };
 }
 
@@ -151,7 +149,8 @@ function renderHtml(assets) {
   data-frame-w="${s.frameW}"
   data-frame-h="${s.frameH}"
   data-frame-count="${s.frameCount}"
-  data-orientation="${s.orientation}" />
+  data-orientation="${s.orientation}"
+  ${s.orientation === "g" ? `data-cols="${s.cols}"` : ""} />
 <div class="meta">
 <strong>${s.name}</strong><br>
 ${s.width}x${s.height} · ${s.frameCount} frame${s.frameCount === 1 ? "" : "s"} · ${s.frameW}x${s.frameH} per frame · ${s.fileSize} bytes
@@ -209,8 +208,9 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const frameH = Number(img.dataset.frameH);
       const frameCount = Number(img.dataset.frameCount);
       const orientation = img.dataset.orientation;
+      const cols = orientation === 'g' ? Number(img.dataset.cols) : undefined;
       const fps = 8;
-      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, fps, last: 0, frame: 0 });
+      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, fps, last: 0, frame: 0 });
     });
     requestAnimationFrame(loop);
   }
@@ -226,8 +226,13 @@ document.fonts.ready.catch(() => {}).finally(() => {
         let sx = 0, sy = 0;
         if (a.orientation === 'h') {
           sx = a.frame * a.frameW;
-        } else {
+        } else if (a.orientation === 'v') {
           sy = a.frame * a.frameH;
+        } else {
+          // Grid layout (e.g. 2 columns of 32×32 frames)
+          const cols = a.cols || Math.floor(a.img.naturalWidth / a.frameW);
+          sx = (a.frame % cols) * a.frameW;
+          sy = Math.floor(a.frame / cols) * a.frameH;
         }
         const scale = Math.min(240 / a.frameW, 240 / a.frameH);
         const dw = a.frameW * scale;
