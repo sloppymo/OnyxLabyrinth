@@ -150,15 +150,40 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </head>
 <body>
 <h1>Creature Extended – Supporter Pack (Side-facing)</h1>
-<div class="hint">Animated side-facing preview of each creature state. Frames are read from the right-facing column of the matching .tres SpriteFrames row and flipped horizontally when only a left-facing column is available. Pixel-weighted facing detection keeps every frame in the same profile.</div>
+<div class="hint">Animated side-facing preview of each creature state. Frames are read from the right-facing row of the matching .tres SpriteFrames file and flipped horizontally when only a left-facing row is available. Front/back frames are filtered out so every animated frame stays in a consistent side profile.</div>
 ${groupHtml}
 <script>
 const anims = [];
 
 document.fonts.ready.catch(() => {}).finally(() => {
   const images = Array.from(document.querySelectorAll('img.strip'));
-  let loaded = 0;
-  const total = images.length;
+
+  function draw(a) {
+    a.ctx.clearRect(0, 0, 240, 240);
+    let sx = a.sxOffset;
+    let sy = a.syOffset;
+    if (a.orientation === 'h') {
+      sx += a.frame * a.frameW;
+    } else if (a.orientation === 'v') {
+      sy += a.frame * a.frameH;
+    } else {
+      const cols = a.cols || Math.floor(a.img.naturalWidth / a.frameW);
+      sx += (a.frame % cols) * a.frameW;
+      sy += Math.floor(a.frame / cols) * a.frameH;
+    }
+    const scale = Math.min(240 / a.frameW, 240 / a.frameH);
+    const dw = a.frameW * scale;
+    const dh = a.frameH * scale;
+    const x = (240 - dw) / 2;
+    const y = (240 - dh) / 2;
+    if (a.flipH) {
+      a.ctx.save();
+      a.ctx.translate(240, 0);
+      a.ctx.scale(-1, 1);
+    }
+    a.ctx.drawImage(a.img, sx, sy, a.frameW, a.frameH, x, y, dw, dh);
+    if (a.flipH) a.ctx.restore();
+  }
 
   function start() {
     images.forEach((img) => {
@@ -177,6 +202,7 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const flipH = img.dataset.flipH === "1";
       anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, fps, flipH, last: 0, frame: 0 });
     });
+    anims.forEach(draw);
     requestAnimationFrame(loop);
   }
 
@@ -187,45 +213,13 @@ document.fonts.ready.catch(() => {}).finally(() => {
       if (elapsed >= interval) {
         a.frame = (a.frame + Math.floor(elapsed / interval)) % a.frameCount;
         a.last = now;
-        a.ctx.clearRect(0, 0, 240, 240);
-        let sx = a.sxOffset;
-        let sy = a.syOffset;
-        if (a.orientation === 'h') {
-          sx += a.frame * a.frameW;
-        } else if (a.orientation === 'v') {
-          sy += a.frame * a.frameH;
-        } else {
-          const cols = a.cols || Math.floor(a.img.naturalWidth / a.frameW);
-          sx += (a.frame % cols) * a.frameW;
-          sy += Math.floor(a.frame / cols) * a.frameH;
-        }
-        const scale = Math.min(240 / a.frameW, 240 / a.frameH);
-        const dw = a.frameW * scale;
-        const dh = a.frameH * scale;
-        const x = (240 - dw) / 2;
-        const y = (240 - dh) / 2;
-        if (a.flipH) {
-          a.ctx.save();
-          a.ctx.translate(240, 0);
-          a.ctx.scale(-1, 1);
-        }
-        a.ctx.drawImage(a.img, sx, sy, a.frameW, a.frameH, x, y, dw, dh);
-        if (a.flipH) a.ctx.restore();
+        draw(a);
       }
     });
     requestAnimationFrame(loop);
   }
 
-  function onLoad() {
-    loaded++;
-    if (loaded >= total) start();
-  }
-
-  images.forEach((img) => {
-    if (img.complete && img.naturalWidth) onLoad();
-    else img.addEventListener('load', onLoad);
-    img.addEventListener('error', onLoad);
-  });
+  Promise.all(images.map((img) => img.decode().catch(() => {}))).then(start);
 });
 </script>
 </body>

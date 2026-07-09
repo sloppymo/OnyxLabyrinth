@@ -128,10 +128,28 @@ export function parseCreatureSideStates(tresPath, size, png) {
     }
     if (!chosen) continue;
 
+    let xs = [...chosen.xs];
     if (png) {
-      const visual = detectVisualFacing(png, chosen.y, chosen.xs);
-      if (visual !== "unknown" && visual !== chosenDir) {
-        flipH = !flipH;
+      let rightCount = 0;
+      let leftCount = 0;
+      const facings = chosen.xs.map((x) => {
+        const facing = detectVisualFacing(png, chosen.y, [x]);
+        if (facing === "right") rightCount++;
+        else if (facing === "left") leftCount++;
+        return facing;
+      });
+
+      if (rightCount >= leftCount) {
+        flipH = false;
+        xs = chosen.xs.filter((_, i) => facings[i] === "right");
+      } else {
+        flipH = true;
+        xs = chosen.xs.filter((_, i) => facings[i] === "left");
+      }
+
+      if (xs.length === 0) {
+        xs = [chosen.xs[0]];
+        flipH = false;
       }
     }
 
@@ -140,8 +158,8 @@ export function parseCreatureSideStates(tresPath, size, png) {
       fps: chosen.fps,
       frameW: 16,
       frameH: 16,
-      frameCount: chosen.xs.length,
-      sxOffset: chosen.xs[0],
+      frameCount: xs.length,
+      sxOffset: xs[0],
       syOffset: chosen.y,
       orientation: "h",
       flipH,
