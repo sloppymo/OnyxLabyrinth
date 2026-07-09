@@ -15,8 +15,9 @@
 
 import type { Character } from "../game/party";
 import type { EnemyInstance, CombatEvent } from "../game/combat";
-import type { CombatState } from "../game/combat";
+import type { CombatState, WeaponRange } from "../game/combat";
 import { getEnemySpriteStrip } from "./enemy-sprite-cache";
+import { getEffectSprite } from "./effect-sprite-cache";
 import type { SpriteStrip } from "./sprite-manifest";
 import {
   enemyHealthDescriptor,
@@ -65,12 +66,18 @@ export interface SpriteAnim {
 
 // --- Effect system ---------------------------------------------------------
 export interface CombatEffect {
-  type: "slash" | "spellBurst" | "healBurst";
-  /** Screen position. */
+  type: "slash" | "spellBurst" | "healBurst" | "projectile";
+  /** Screen position (current position for moving effects). */
   x: number;
   y: number;
   /** Element color for spells. */
   color: string;
+  /** Start point for projectile effects. */
+  fromX?: number;
+  fromY?: number;
+  /** End point for projectile effects. */
+  toX?: number;
+  toY?: number;
   /** Timestamp when the effect started. */
   start: number;
   /** Duration in ms. */
@@ -679,6 +686,22 @@ function drawEffect(ctx: CanvasRenderingContext2D, effect: CombatEffect, now: nu
         4, 4
       );
     }
+  } else if (effect.type === "projectile") {
+    const img = getEffectSprite("arrow");
+    if (!img) return;
+    ctx.globalAlpha = 1;
+    const fromX = effect.fromX ?? effect.x;
+    const fromY = effect.fromY ?? effect.y;
+    const toX = effect.toX ?? effect.x;
+    const toY = effect.toY ?? effect.y;
+    const cx = fromX + (toX - fromX) * t;
+    const cy = fromY + (toY - fromY) * t;
+    const angle = Math.atan2(toY - fromY, toX - fromX);
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    ctx.imageSmoothingEnabled = false;
+    const size = 80;
+    ctx.drawImage(img, -size / 2, -size / 2, size, size);
   }
 
   ctx.restore();
@@ -1215,7 +1238,7 @@ export function triggerAnimationsForMessage(
     allEnemies.find((e) => e.instanceId === id);
   const findAllyById = (id: string) => s.summonedAllies.find((a) => a.id === id);
 
-  const triggerAttackById = (actorId: string, targetId: string) => {
+  const triggerAttackById = (actorId: string, targetId: string, range?: WeaponRange) => {
     const partyAttacker = findPartyById(actorId);
     const enemyAttacker = findEnemyById(actorId);
     const allyAttacker = findAllyById(actorId);
@@ -1226,6 +1249,33 @@ export function triggerAnimationsForMessage(
     const enemyTarget = findEnemyById(targetId);
     const partyTarget = findPartyById(targetId);
     const allyTarget = findAllyById(targetId);
+
+    // For true ranged weapons, fire an arrow projectile from attacker to target.
+    if (range === "long") {
+      const fromPos = partyAttacker
+        ? findPartyPos(s, partyAttacker.id, w, h)
+        : enemyAttacker
+          ? findEnemyPos(s, enemyAttacker.instanceId, w, h, scene.enemyGraveyard)
+          : allyAttacker
+            ? findAllyPos(s, allyAttacker.id, w, h)
+            : { x: w / 2, y: h / 2 };
+      const toPos = enemyTarget
+        ? findEnemyPos(s, enemyTarget.instanceId, w, h, scene.enemyGraveyard)
+        : partyTarget
+          ? findPartyPos(s, partyTarget.id, w, h)
+          : allyTarget
+            ? findAllyPos(s, allyTarget.id, w, h)
+            : { x: w / 2, y: h / 2 };
+      scene.effects.push({
+        type: "projectile",
+        x: fromPos.x, y: fromPos.y,
+        fromX: fromPos.x, fromY: fromPos.y,
+        toX: toPos.x, toY: toPos.y,
+        color: COLORS.warmWhite,
+        start: now, duration: 350,
+      });
+    }
+
     if (enemyTarget) {
       setAnim(scene.enemyAnims, enemyTarget.instanceId, "hit", now);
       const pos = findEnemyPos(s, enemyTarget.instanceId, w, h, scene.enemyGraveyard);
@@ -1392,7 +1442,7 @@ export function triggerAnimationsForMessage(
   if (event) {
     switch (event.type) {
       case "attack":
-        triggerAttackById(event.actorId, event.targetId);
+        triggerAttackById(event.actorId, event.targetId, event.range);
         return;
       case "miss":
         triggerMissById(event.actorId, event.targetId, event.reason);

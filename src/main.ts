@@ -11,6 +11,7 @@ import {
   resetRenderCamera,
 } from "./engine/renderer";
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
+import { loadEffectSprites } from "./engine/effect-sprite-cache";
 import { audio } from "./engine/audio";
 import { renderAutoMap } from "./engine/automap";
 import { bindInput } from "./engine/input";
@@ -593,5 +594,8 @@ if ("fonts" in document) {
   loadTextures().then(loop).catch(loop);
 }
 
-// Prewarm enemy sprite cache without blocking the render loop.
+// Prewarm enemy sprite and effect caches without blocking the render loop.
 loadEnemySprites().catch(() => {});
+loadEffectSprites().catch(() => {});
+
+
