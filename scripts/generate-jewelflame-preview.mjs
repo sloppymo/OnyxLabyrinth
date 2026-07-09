@@ -11,6 +11,7 @@
 import { readdir, stat } from "node:fs/promises";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve, join, basename } from "node:path";
+import { PNG } from "pngjs";
 
 const root = resolve(process.cwd());
 const charsRoot = "/home/sloppymo/jewelflame/assets/Characters(100x100)";
@@ -31,6 +32,10 @@ function readUint32BE(buf, offset) {
     (buf[offset + 2] << 8) |
     buf[offset + 3]
   ) >>> 0;
+}
+
+function readPng(file) {
+  return PNG.sync.read(readFileSync(file));
 }
 
 function pngSize(file) {
@@ -120,7 +125,26 @@ async function collectCharacters() {
   return characters;
 }
 
-function parseCreatureStates(tresPath, size) {
+function sideFacingDirection(png, sx, sy) {
+  const { data, width } = png;
+  let weightedX = 0;
+  let totalAlpha = 0;
+  for (let y = sy; y < sy + 10; y++) {
+    for (let x = sx; x < sx + 16; x++) {
+      const idx = (y * width + x) * 4;
+      const alpha = data[idx + 3];
+      if (alpha > 30) {
+        weightedX += x * alpha;
+        totalAlpha += alpha;
+      }
+    }
+  }
+  if (totalAlpha === 0) return "none";
+  const avgX = weightedX / totalAlpha;
+  return avgX < sx + 8 ? "left" : "right";
+}
+
+function parseCreatureStates(tresPath, png) {
   const text = readFileSync(tresPath, "utf8");
   const regions = {};
 
@@ -151,7 +175,7 @@ function parseCreatureStates(tresPath, size) {
     const state = stateMatch[1];
     const yValues = [
       ...new Set(frames.map((f) => f.y)),
-    ].filter((y) => y >= 0 && y + 16 <= size.height);
+    ].filter((y) => y >= 0 && y + 16 <= png.height);
     if (yValues.length === 0) continue;
 
     if (!stateMap.has(state)) {
@@ -165,17 +189,21 @@ function parseCreatureStates(tresPath, size) {
   for (const [state, { yValues, fps }] of stateMap) {
     const rows = [...yValues].sort((a, b) => a - b);
     if (rows.length === 0) continue;
-    // Use only the first side-facing frame so the preview does not alternate
-    // between left/right profiles as the walk cycle plays.
+
+    const firstDir = sideFacingDirection(png, 16, rows[0]);
+    const offsets = rows
+      .filter((y) => sideFacingDirection(png, 16, y) === firstDir)
+      .map((y) => ({ sx: 16, sy: y }));
+
+    if (offsets.length === 0) continue;
     states.push({
       state,
-      fps: 1,
+      fps,
       frameW: 16,
       frameH: 16,
-      frameCount: 1,
-      sxOffset: 16,
-      syOffset: rows[0],
-      orientation: "v",
+      frameCount: offsets.length,
+      orientation: "o",
+      offsets,
     });
   }
 
@@ -215,6 +243,7 @@ async function collectCreatures() {
   for (const f of entries) {
     const file = join(packRoot, f);
     const size = pngSize(file);
+    const png = readPng(file);
     const name = basename(f, ".png");
     const src = encodeURI(
       `../jewelflame/assets/Creature Extended- Supporter Pack/${f}`
@@ -224,7 +253,7 @@ async function collectCreatures() {
 
     const states = [];
     if (existsSync(tresPath)) {
-      const parsed = parseCreatureStates(tresPath, size);
+      const parsed = parseCreatureStates(tresPath, png);
       states.push(...parsed);
     }
 
@@ -266,6 +295,7 @@ function renderGroupCard(item, extraClass = "") {
   data-frame-count="${item.frameCount}"
   data-orientation="${item.orientation}"
   ${item.orientation === "g" ? `data-cols="${item.cols}"` : ""}
+  ${item.orientation === "o" ? `data-offsets='${JSON.stringify(item.offsets)}'` : ""}
   ${item.sxOffset ? `data-sx-offset="${item.sxOffset}"` : ""}
   ${item.syOffset ? `data-sy-offset="${item.syOffset}"` : ""}
   data-fps="${item.fps}"
@@ -367,7 +397,8 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const sxOffset = Number(img.dataset.sxOffset || 0);
       const syOffset = Number(img.dataset.syOffset || 0);
       const fps = Number(img.dataset.fps) || 8;
-      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, fps, last: 0, frame: 0 });
+      const offsets = orientation === 'o' ? JSON.parse(img.dataset.offsets || '[]') : undefined;
+      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, offsets, fps, last: 0, frame: 0 });
     });
     requestAnimationFrame(loop);
   }
@@ -386,6 +417,10 @@ document.fonts.ready.catch(() => {}).finally(() => {
           sx += a.frame * a.frameW;
         } else if (a.orientation === 'v') {
           sy += a.frame * a.frameH;
+        } else if (a.orientation === 'o') {
+          const off = a.offsets[a.frame % a.offsets.length];
+          sx = off.sx;
+          sy = off.sy;
         } else {
           // Grid layout (e.g. 2 columns of 32×32 frames)
           const cols = a.cols || Math.floor(a.img.naturalWidth / a.frameW);
