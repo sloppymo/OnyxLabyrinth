@@ -27,7 +27,8 @@ import type { Character } from "../game/party";
 import type { CombatState, CombatEvent, EnemyInstance, SummonedAlly } from "../game/combat";
 import { getEnemySpriteStrip } from "./enemy-sprite-cache";
 import { getPartySpriteStrip, type PartySpriteState } from "./party-sprite-cache";
-import { getEffectSprite } from "./effect-sprite-cache";
+import { getEffectSprite, type EffectSprite } from "./effect-sprite-cache";
+import { spellById } from "../data/spells";
 import type { SpriteStrip } from "./sprite-manifest";
 import combatBgUrl from "../assets/combat-bg.png";
 
@@ -243,21 +244,48 @@ export interface CombatScene {
   /** The actor whose menu is open (bouncing hand marker). */
   activeActorId: string | null;
   choreo: Choreography | null;
-  /** Simple spell burst / projectile effects. */
+  /** Simple spell burst / projectile / field effects. */
   effects: SceneEffect[];
+  /** Screen-shake amount and expiry. */
+  screenShake: { amount: number; until: number };
+  /** Loose particle effects (sparks, embers, shards). */
+  particles: Particle[];
+  /** Last update timestamp for frame-rate-independent particle updates. */
+  lastUpdate?: number;
 }
 
 export interface SceneEffect {
-  type: "burst" | "projectile";
+  type: "burst" | "projectile" | "field";
   x: number;
   y: number;
   color: string;
+  /** Name of the effect sprite strip to draw (from effect-sprite-cache). */
+  effect?: string;
+  /** Start frame offset for multi-animation sheets (default 0). */
+  frameOffset?: number;
+  /** Scale factor for the drawn effect. */
+  scale?: number;
   fromX?: number;
   fromY?: number;
   toX?: number;
   toY?: number;
   start: number;
   duration: number;
+}
+
+export interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: string;
+  /** Gravity / deceleration. */
+  gravity?: number;
+  /** If true, render with additive blending. */
+  glow?: boolean;
 }
 
 export function createScene(state: CombatState): CombatScene {
@@ -275,6 +303,8 @@ export function createScene(state: CombatState): CombatScene {
     activeActorId: null,
     choreo: null,
     effects: [],
+    screenShake: { amount: 0, until: 0 },
+    particles: [],
   };
 }
 
@@ -304,12 +334,12 @@ export function findActor(
   id: string,
   w: number,
   h: number
-): { kind: SceneCursor["kind"]; x: number; y: number } | null {
+): { kind: SceneCursor["kind"]; x: number; y: number; class?: string } | null {
   const s = scene.state;
   const pi = s.party.findIndex((c) => c.id === id);
   if (pi >= 0) {
     const p = partyPos(pi, w, h);
-    return { kind: "party", ...p };
+    return { kind: "party", ...p, class: s.party[pi].class };
   }
   for (const row of ["front", "back"] as const) {
     const list = s.enemies[row];
@@ -396,7 +426,9 @@ function impactSteps(
   w: number,
   h: number,
   hurt = true,
-  big = false
+  big = false,
+  effect?: string,
+  scale?: number
 ): ChoreoStep[] {
   return [
     step(t, (scene, now) => {
@@ -405,6 +437,24 @@ function impactSteps(
         setAnimState(getAnim(scene, actor.kind, targetId, now), "hurt", now);
       }
       pushPopup(scene, targetId, text, color, now, w, h, big);
+      if (actor) {
+        if (effect) {
+          scene.effects.push({
+            type: "burst",
+            x: actor.x,
+            y: actor.y,
+            color,
+            effect,
+            scale,
+            start: now,
+            duration: 250,
+          });
+        }
+        if (hurt) {
+          addScreenShake(scene, big ? 5 : 2.5, now, big ? 350 : 200);
+          spawnImpactParticles(scene, actor.x, actor.y, color, big);
+        }
+      }
     }),
     // Return the target to idle after the hurt strip finishes (unless dead —
     // a later "defeated" step overrides).
@@ -415,6 +465,147 @@ function impactSteps(
       if (anim.state === "hurt") setAnimState(anim, "idle", now);
     }),
   ];
+}
+
+/** Add (or increase) screen shake. */
+function addScreenShake(scene: CombatScene, amount: number, now: number, duration: number): void {
+  scene.screenShake = {
+    amount: Math.max(scene.screenShake.amount, amount),
+    until: Math.max(scene.screenShake.until, now + duration),
+  };
+}
+
+/** Spawn a burst of impact particles at (x, y). */
+function spawnImpactParticles(
+  scene: CombatScene,
+  x: number,
+  y: number,
+  color: string,
+  big: boolean
+): void {
+  const count = big ? 14 : 8;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.5 + Math.random() * 2.5;
+    scene.particles.push({
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 0.5,
+      life: 0,
+      maxLife: 350 + Math.random() * 250,
+      size: 2 + Math.random() * 2,
+      color,
+      gravity: 0.08,
+      glow: true,
+    });
+  }
+}
+
+/** Spawn a directional spray of particles from a projectile impact. */
+function spawnSparkleParticles(
+  scene: CombatScene,
+  x: number,
+  y: number,
+  color: string,
+  count: number
+): void {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 2;
+    scene.particles.push({
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0,
+      maxLife: 400 + Math.random() * 300,
+      size: 2 + Math.random() * 2,
+      color,
+      gravity: 0.05,
+      glow: true,
+    });
+  }
+}
+
+// --- Spell visual style mapping ------------------------------------------------
+
+interface EffectStyle {
+  color: string;
+  /** Projectile effect name (used for single-target casts). */
+  projectile?: string;
+  /** Burst effect name on impact. */
+  burst: string;
+  /** Field overlay effect for area/row spells. */
+  field?: string;
+  /** Scale for the burst/field effect. */
+  scale?: number;
+}
+
+const ELEMENT_STYLES: Record<string, EffectStyle> = {
+  fire: { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion", field: "large_fire", scale: 2.5 },
+  cold: { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst", scale: 1.2 },
+  physical: { color: "#f5f0e6", burst: "zombie_explosion" },
+  undead: { color: "#c080ff", projectile: "red_energy", burst: "red_energy", field: "red_energy", scale: 1.3 },
+};
+
+const STATUS_STYLES: Record<string, EffectStyle> = {
+  sleep: { color: "#c080ff", burst: "ice_burst_glow" },
+  poison: { color: "#c080ff", burst: "red_energy" },
+  paralysis: { color: "#c8c4b8", burst: "lightning_energy" },
+  blind: { color: "#c8c4b8", burst: "lightning_energy" },
+};
+
+function resolveEffectStyle(
+  spellId: string | undefined,
+  evt?: { isHeal?: boolean; isBuff?: boolean; isDebuff?: boolean; statusInflicted?: string; statusCured?: string; damage?: number; heal?: number }
+): EffectStyle {
+  const spell = spellId ? spellById(spellId) : undefined;
+  if (spell) {
+    const eff = spell.effect;
+    if (eff.kind === "damage" && eff.element) {
+      return ELEMENT_STYLES[eff.element] ?? { color: COLORS.spellBurst, burst: "fire_explosion" };
+    }
+    if (eff.kind === "heal") {
+      return { color: COLORS.heal, projectile: "priest_heal", burst: "priest_heal", scale: 1.2 };
+    }
+    if (eff.kind === "buff" || eff.kind === "magicScreen") {
+      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2 };
+    }
+    if (eff.kind === "cure" || eff.kind === "resurrect") {
+      return { color: COLORS.heal, burst: "priest_heal", scale: 1.2 };
+    }
+    if (eff.kind === "disable" && eff.status) {
+      return STATUS_STYLES[eff.status] ?? { color: COLORS.poison, burst: "red_energy" };
+    }
+    if (eff.kind === "fizzleField" || eff.kind === "dispelMagic") {
+      return { color: COLORS.poison, field: "red_energy", burst: "red_energy" };
+    }
+    if (eff.kind === "summon") {
+      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2 };
+    }
+  }
+
+  // Fallback for items or unknown spell IDs.
+  const e = evt ?? {};
+  if (e.heal !== undefined || e.statusCured || e.isBuff) {
+    return { color: COLORS.heal, burst: "priest_heal", scale: 1.2 };
+  }
+  if (e.statusInflicted) {
+    return STATUS_STYLES[e.statusInflicted] ?? { color: COLORS.poison, burst: "red_energy" };
+  }
+  if (e.isDebuff) {
+    return { color: COLORS.poison, burst: "red_energy" };
+  }
+  if (e.damage !== undefined) {
+    return { color: COLORS.dmg, burst: "fire_explosion" };
+  }
+  return { color: COLORS.spellBurst, burst: "fire_explosion" };
+}
+
+function meleeEffectForActor(className: string | undefined): string {
+  if (className === "Mage" || className === "Priest") return "staff_attack";
+  return "slash_attack";
 }
 
 /**
@@ -518,6 +709,7 @@ export function playTurn(
   // shared impact time with a stagger.
   let pendingImpactBase: number | null = null;
   let pendingImpactCount = 0;
+  let fieldPushed = false;
 
   for (const evt of events) {
     if (!evt) continue;
@@ -526,6 +718,8 @@ export function playTurn(
       case "attack":
       case "ambush": {
         const isRanged = evt.type === "attack" && evt.range === "long";
+        const attacker = findActor(scene, evt.actorId, w, h);
+        const hitEffect = meleeEffectForActor(attacker?.class);
         if (isRanged) {
           // Ranged: no approach; fire a projectile from attacker to target.
           attackAnim(evt.actorId);
@@ -541,6 +735,8 @@ export function playTurn(
                 fromX: from.x, fromY: from.y,
                 toX: to.x, toY: to.y,
                 color: COLORS.dmg,
+                effect: "arrow",
+                scale: 1,
                 start: n,
                 duration: impact - (t + ATTACK_MS * 0.2),
               });
@@ -555,7 +751,9 @@ export function playTurn(
               w,
               h,
               true,
-              evt.crit === true
+              evt.crit === true,
+              hitEffect,
+              1
             )
           );
           t += ATTACK_MS + 200;
@@ -584,7 +782,9 @@ export function playTurn(
               w,
               h,
               true,
-              evt.crit === true
+              evt.crit === true,
+              hitEffect,
+              1
             )
           );
           t = base + APPROACH_MS + ATTACK_MS;
@@ -627,7 +827,34 @@ export function playTurn(
         castAnim(evt.actorId);
         pendingImpactBase = t + CAST_IMPACT;
         pendingImpactCount = 0;
-        // Enemy casts carry their damage/heal directly on the cast event.
+        fieldPushed = false;
+
+        const style = resolveEffectStyle(evt.spellId, evt);
+        // For a single target, launch a projectile from caster to target.
+        if (evt.targetId && style.projectile) {
+          const projectileLaunch = t + 100;
+          const impact = pendingImpactBase;
+          steps.push(
+            step(projectileLaunch, (sc, n) => {
+              const from = findActor(sc, evt.actorId, w, h);
+              const to = findActor(sc, evt.targetId!, w, h);
+              if (!from || !to) return;
+              sc.effects.push({
+                type: "projectile",
+                x: from.x, y: from.y,
+                fromX: from.x, fromY: from.y,
+                toX: to.x, toY: to.y,
+                color: style.color,
+                effect: style.projectile,
+                scale: style.scale,
+                start: n,
+                duration: impact - projectileLaunch,
+              });
+            })
+          );
+        }
+
+        // Enemy casts / items carry their damage/heal directly on the cast event.
         if (evt.targetId && (evt.damage !== undefined || evt.heal !== undefined)) {
           const isHeal = evt.heal !== undefined;
           const text = isHeal ? `${evt.heal}` : `${evt.damage}`;
@@ -638,9 +865,13 @@ export function playTurn(
                 sc.effects.push({
                   type: "burst",
                   x: target.x, y: target.y,
-                  color: isHeal ? COLORS.heal : COLORS.spellBurst,
+                  color: style.color,
+                  effect: style.burst,
+                  scale: style.scale,
                   start: n, duration: 400,
                 });
+                spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
+                if (!isHeal) addScreenShake(sc, isHeal ? 1 : 3, n, 200);
               }
             }),
             ...impactSteps(pendingImpactBase, evt.targetId, text, isHeal ? COLORS.heal : COLORS.dmg, w, h, !isHeal)
@@ -659,7 +890,36 @@ export function playTurn(
             ? pendingImpactBase + pendingImpactCount * MULTI_TARGET_STAGGER
             : t;
         pendingImpactCount++;
+        const style = resolveEffectStyle(evt.spellId, evt);
         const targetId = evt.targetId;
+        const spell = spellById(evt.spellId);
+        const isArea =
+          spell &&
+          (spell.target === "allEnemies" ||
+            spell.target === "allAllies" ||
+            spell.target === "groupEnemies" ||
+            spell.target === "groupAllies");
+        if (targetId && isArea && !fieldPushed) {
+          fieldPushed = true;
+          const fieldX =
+            spell.target === "allEnemies" || spell.target === "groupEnemies" ? w * 0.26 : w * 0.72;
+          steps.push(
+            step(impactAt, (sc, n) => {
+              sc.effects.push({
+                type: "field",
+                x: fieldX,
+                y: h * 0.42,
+                color: style.color,
+                effect: style.field ?? style.burst,
+                scale: (style.scale ?? 1) * 2,
+                start: n,
+                duration: 650,
+              });
+              addScreenShake(sc, fieldX < w * 0.5 ? 4 : 2, n, 300);
+            })
+          );
+        }
+
         if (!targetId) {
           // Field-wide spells (fizzle field, dispel) have no single target:
           // burst over the affected side so the cast is visibly doing
@@ -668,18 +928,22 @@ export function playTurn(
           steps.push(
             step(impactAt, (sc, n) => {
               sc.effects.push({
-                type: "burst",
+                type: "field",
                 x: fieldX,
                 y: h * 0.42,
-                color: evt.isDebuff ? COLORS.poison : COLORS.heal,
+                color: style.color,
+                effect: style.field ?? style.burst,
+                scale: (style.scale ?? 1) * 2,
                 start: n,
-                duration: 500,
+                duration: 650,
               });
+              addScreenShake(sc, evt.isDebuff ? 4 : 2, n, 300);
             })
           );
           t = Math.max(t, impactAt + 300);
           break;
         }
+
         const isHeal = evt.heal !== undefined || evt.isBuff === true || evt.statusCured !== undefined;
         const text =
           evt.damage !== undefined
@@ -702,9 +966,15 @@ export function playTurn(
               sc.effects.push({
                 type: "burst",
                 x: target.x, y: target.y,
-                color: isHeal ? COLORS.heal : COLORS.spellBurst,
+                color: style.color,
+                effect: style.burst,
+                scale: style.scale,
                 start: n, duration: 400,
               });
+              spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
+              if (!isHeal && evt.damage !== undefined) {
+                addScreenShake(sc, evt.damage && evt.damage > 20 ? 5 : 3, n, 200);
+              }
             }
           })
         );
@@ -892,6 +1162,24 @@ export function updateScene(scene: CombatScene, now: number): void {
   // Expire popups and effects.
   scene.popups = scene.popups.filter((p) => now - p.start < POPUP_DURATION);
   scene.effects = scene.effects.filter((e) => now - e.start < e.duration);
+
+  // Update particles.
+  const delta = scene.lastUpdate ? now - scene.lastUpdate : 16;
+  scene.lastUpdate = now;
+  const dt = delta / 16;
+  for (const p of scene.particles) {
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += (p.gravity ?? 0) * dt;
+    p.life += delta;
+  }
+  scene.particles = scene.particles.filter((p) => p.life < p.maxLife);
+
+  // Update screen shake.
+  if (scene.screenShake.until <= now) {
+    scene.screenShake.amount = Math.max(0, scene.screenShake.amount * 0.85);
+    if (scene.screenShake.amount < 0.1) scene.screenShake.amount = 0;
+  }
 
   // Expire banner.
   if (scene.banner && now >= scene.bannerUntil) scene.banner = null;
@@ -1190,45 +1478,102 @@ function drawMarkers(
   ctx.restore();
 }
 
-/** Scene effects: spell bursts and projectiles. */
+/** Compute the current frame index for an effect sprite strip. */
+function effectFrame(sprite: EffectSprite, start: number, now: number, type: SceneEffect["type"]): number {
+  const strip = sprite.strip;
+  if (strip.frameCount <= 1 || strip.fps <= 0) return 0;
+  const elapsed = Math.max(0, now - start);
+  const idx = Math.floor((elapsed / 1000) * strip.fps);
+  const shouldLoop = type === "projectile" || strip.loop === true;
+  return shouldLoop ? idx % strip.frameCount : Math.min(strip.frameCount - 1, idx);
+}
+
+/** Draw a single effect sprite strip centered at the current origin. */
+function drawEffectSprite(
+  ctx: CanvasRenderingContext2D,
+  effect: SceneEffect,
+  type: SceneEffect["type"],
+  t: number,
+  now: number
+): void {
+  if (effect.effect) {
+    const sprite = getEffectSprite(effect.effect);
+    if (sprite && sprite.img) {
+      const strip = sprite.strip;
+      const frame = effectFrame(sprite, effect.start, now, type);
+      const col = frame % sprite.cols;
+      const row = Math.floor(frame / sprite.cols);
+      const sx = col * strip.frameWidth;
+      const sy = row * strip.frameHeight;
+      const scale = effect.scale ?? 1;
+      const dw = strip.frameWidth * scale;
+      const dh = strip.frameHeight * scale;
+      ctx.globalAlpha = type === "burst" ? 1 - t : type === "field" ? 1 - t * 0.5 : 1;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(sprite.img, sx, sy, strip.frameWidth, strip.frameHeight, -dw / 2, -dh / 2, dw, dh);
+      return;
+    }
+  }
+
+  // Procedural fallback.
+  if (type === "projectile") {
+    ctx.fillStyle = effect.color;
+    ctx.fillRect(-3, -1, 6, 2);
+  } else {
+    const radius = 12 + t * 36;
+    ctx.globalAlpha = 1 - t;
+    ctx.strokeStyle = effect.color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2 + t;
+      const r = radius * 0.7;
+      ctx.fillStyle = effect.color;
+      ctx.fillRect(Math.cos(angle) * r - 2, Math.sin(angle) * r - 2, 4, 4);
+    }
+  }
+}
+
+/** Scene effects: spell bursts, projectiles, and field overlays. */
 function drawEffects(ctx: CanvasRenderingContext2D, scene: CombatScene, now: number): void {
   for (const effect of scene.effects) {
     const tRaw = (now - effect.start) / effect.duration;
-    const t = Math.min(1, tRaw);
+    const t = Math.min(1, Math.max(0, tRaw));
     ctx.save();
-    if (effect.type === "burst") {
-      ctx.globalAlpha = 1 - t;
-      const radius = 12 + t * 36;
-      ctx.strokeStyle = effect.color;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
-      ctx.stroke();
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2 + t;
-        const r = radius * 0.7;
-        ctx.fillStyle = effect.color;
-        ctx.fillRect(effect.x + Math.cos(angle) * r - 2, effect.y + Math.sin(angle) * r - 2, 4, 4);
-      }
+    if (effect.type === "burst" || effect.type === "field") {
+      ctx.translate(effect.x, effect.y);
+      drawEffectSprite(ctx, effect, effect.type, t, now);
     } else if (effect.type === "projectile") {
-      const img = getEffectSprite("arrow");
       const fromX = effect.fromX ?? effect.x;
       const fromY = effect.fromY ?? effect.y;
       const toX = effect.toX ?? effect.x;
       const toY = effect.toY ?? effect.y;
       const cx = fromX + (toX - fromX) * t;
       const cy = fromY + (toY - fromY) * t;
-      if (img) {
-        const angle = Math.atan2(toY - fromY, toX - fromX);
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, -40, -40, 80, 80);
-      } else {
-        ctx.fillStyle = effect.color;
-        ctx.fillRect(cx - 3, cy - 1, 6, 2);
-      }
+      const angle = Math.atan2(toY - fromY, toX - fromX);
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+      drawEffectSprite(ctx, effect, "projectile", t, now);
     }
+    ctx.restore();
+  }
+}
+
+/** Draw loose impact particles behind the scene effects. */
+function drawParticles(ctx: CanvasRenderingContext2D, scene: CombatScene): void {
+  for (const p of scene.particles) {
+    const life = p.life / p.maxLife;
+    ctx.save();
+    ctx.globalAlpha = 1 - life;
+    if (p.glow) {
+      ctx.globalCompositeOperation = "lighter";
+    }
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * (1 - life * 0.5), 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 }
@@ -1333,6 +1678,17 @@ export function renderScene(
 ): void {
   const s = scene.state;
 
+  // Apply screen shake.
+  const shakeT =
+    scene.screenShake.until > now
+      ? 1
+      : Math.max(0, 1 - (now - scene.screenShake.until) / 200);
+  const shakeAmount = scene.screenShake.amount * shakeT;
+  const shakeX = shakeAmount > 0 ? (Math.random() - 0.5) * shakeAmount : 0;
+  const shakeY = shakeAmount > 0 ? (Math.random() - 0.5) * shakeAmount : 0;
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
   // Background.
   const bg = getCombatBg();
   if (bg?.complete && bg.naturalWidth > 0) {
@@ -1369,9 +1725,12 @@ export function renderScene(
 
   // Effects + popups on top.
   drawEffects(ctx, scene, now);
+  drawParticles(ctx, scene);
   drawPopups(ctx, scene, now);
 
   // Banner window (top center) + round indicator (top left).
   drawBanner(ctx, w, scene);
   drawRoundIndicator(ctx, scene);
+
+  ctx.restore();
 }
