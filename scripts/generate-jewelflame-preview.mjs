@@ -120,7 +120,7 @@ async function collectCharacters() {
   return characters;
 }
 
-function parseCreatureTres(tresPath, size) {
+function parseCreatureStates(tresPath, size) {
   const text = readFileSync(tresPath, "utf8");
   const regions = {};
 
@@ -131,7 +131,7 @@ function parseCreatureTres(tresPath, size) {
     regions[m[1]] = { x: +m[2], y: +m[3], w: +m[4], h: +m[5] };
   }
 
-  const states = [];
+  const stateMap = new Map();
   const reAnim =
     /\{\s*"frames": \[([\s\S]*?)\],\s*"loop": \w+,\s*"name": &"([^"]+)",\s*"speed": ([\d.]+)\s*\}/g;
   while ((m = reAnim.exec(text)) !== null) {
@@ -146,28 +146,37 @@ function parseCreatureTres(tresPath, size) {
       .filter((f) => f && f.w > 0 && f.h > 0);
 
     if (frames.length === 0) continue;
-    const outOfBounds = frames.some(
-      (f) =>
-        f.x < 0 ||
-        f.y < 0 ||
-        f.x + f.w > size.width ||
-        f.y + f.h > size.height
-    );
-    if (outOfBounds) continue;
+    const stateMatch = name.match(/^(.+)_(down|up|left|right)$/);
+    if (!stateMatch) continue;
+    const state = stateMatch[1];
+    const yValues = [
+      ...new Set(frames.map((f) => f.y)),
+    ].filter((y) => y >= 0 && y + 16 <= size.height);
+    if (yValues.length === 0) continue;
 
-    if (name.endsWith("_right")) {
-      const state = name.slice(0, -"_right".length);
-      states.push({
-        state,
-        fps: speed,
-        frameW: frames[0].w,
-        frameH: frames[0].h,
-        frameCount: frames.length,
-        sxOffset: frames[0].x,
-        syOffset: frames[0].y,
-        orientation: "h",
-      });
+    if (!stateMap.has(state)) {
+      stateMap.set(state, { yValues: new Set(), fps: speed });
     }
+    const entry = stateMap.get(state);
+    yValues.forEach((y) => entry.yValues.add(y));
+  }
+
+  const states = [];
+  for (const [state, { yValues, fps }] of stateMap) {
+    const rows = [...yValues].sort((a, b) => a - b);
+    if (rows.length === 0) continue;
+    states.push({
+      state,
+      fps,
+      frameW: 16,
+      frameH: 16,
+      frameCount: rows.length,
+      // Second column is the first side-facing profile; flip it later if needed.
+      sxOffset: 16,
+      syOffset: rows[0],
+      orientation: "v",
+      rows,
+    });
   }
 
   states.sort(
@@ -215,7 +224,7 @@ async function collectCreatures() {
 
     const states = [];
     if (existsSync(tresPath)) {
-      const parsed = parseCreatureTres(tresPath, size);
+      const parsed = parseCreatureStates(tresPath, size);
       states.push(...parsed);
     }
 

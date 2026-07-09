@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Generates a standalone preview of the right-facing Creature Extended sprites.
+ * Generates a standalone preview of the side-facing Creature Extended sprites.
  *
- * The pack sheets are 16×16 sprite grids where each row is a direction:
- *   down, up, right, left, repeating for each state (idle, walk, attack, hurt).
- *
- * This generator reads the matching Godot SpriteFrames (.tres) files and only
- * previews the *_right animations. Effects (fireball, explosions) with a
- * non-directional "default" animation are previewed as 16×16 grids.
+ * The pack sheets are 16×16 sprite grids where each row is an animation frame
+ * and the four columns are directions: down, left, right, up. This generator
+ * reads the matching Godot SpriteFrames (.tres) files to find the state rows
+ * (idle, walk, attack, hurt) and then previews only the second column, which
+ * is a side-facing profile. Flip the sprites horizontally if you need the
+ * opposite profile. Effects (fireball, explosions) are previewed as 16×16 grids.
  *
  * Run with:
  *   node scripts/generate-jewelflame-creature-extended-preview.mjs
@@ -60,7 +60,7 @@ function pngSize(file) {
   throw new Error(`${file}: IHDR not found`);
 }
 
-function parseTres(tresPath, size) {
+function parseCreatureStates(tresPath, size) {
   const text = readFileSync(tresPath, "utf8");
   const regions = {};
 
@@ -71,7 +71,7 @@ function parseTres(tresPath, size) {
     regions[m[1]] = { x: +m[2], y: +m[3], w: +m[4], h: +m[5] };
   }
 
-  const states = [];
+  const stateMap = new Map();
   const reAnim =
     /\{\s*"frames": \[([\s\S]*?)\],\s*"loop": \w+,\s*"name": &"([^"]+)",\s*"speed": ([\d.]+)\s*\}/g;
   while ((m = reAnim.exec(text)) !== null) {
@@ -86,28 +86,37 @@ function parseTres(tresPath, size) {
       .filter((f) => f && f.w > 0 && f.h > 0);
 
     if (frames.length === 0) continue;
-    const outOfBounds = frames.some(
-      (f) =>
-        f.x < 0 ||
-        f.y < 0 ||
-        f.x + f.w > size.width ||
-        f.y + f.h > size.height
-    );
-    if (outOfBounds) continue;
+    const stateMatch = name.match(/^(.+)_(down|up|left|right)$/);
+    if (!stateMatch) continue;
+    const state = stateMatch[1];
+    const yValues = [
+      ...new Set(frames.map((f) => f.y)),
+    ].filter((y) => y >= 0 && y + 16 <= size.height);
+    if (yValues.length === 0) continue;
 
-    if (name.endsWith("_right")) {
-      const state = name.slice(0, -"_right".length);
-      states.push({
-        state,
-        fps: speed,
-        frameW: frames[0].w,
-        frameH: frames[0].h,
-        frameCount: frames.length,
-        sxOffset: frames[0].x,
-        syOffset: frames[0].y,
-        orientation: "h",
-      });
+    if (!stateMap.has(state)) {
+      stateMap.set(state, { yValues: new Set(), fps: speed });
     }
+    const entry = stateMap.get(state);
+    yValues.forEach((y) => entry.yValues.add(y));
+  }
+
+  const states = [];
+  for (const [state, { yValues, fps }] of stateMap) {
+    const rows = [...yValues].sort((a, b) => a - b);
+    if (rows.length === 0) continue;
+    states.push({
+      state,
+      fps,
+      frameW: 16,
+      frameH: 16,
+      frameCount: rows.length,
+      // Second column is the first side-facing profile; flip it later if needed.
+      sxOffset: 16,
+      syOffset: rows[0],
+      orientation: "v",
+      rows,
+    });
   }
 
   states.sort(
@@ -152,7 +161,7 @@ async function collectAssets() {
     const tresPath = join(tresRoot, `${name.toLowerCase()}.tres`);
 
     if (existsSync(tresPath)) {
-      const states = parseTres(tresPath, size);
+      const states = parseCreatureStates(tresPath, size);
       if (states.length > 0) {
         for (const s of states) {
           assets.push({
@@ -234,7 +243,7 @@ ${s.width}x${s.height} · ${s.frameCount} frame${s.frameCount === 1 ? "" : "s"} 
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Jewelflame · Creature Extended - Supporter Pack (Right-facing)</title>
+<title>Jewelflame · Creature Extended - Supporter Pack (Side-facing)</title>
 <style>
 body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #0e0d0a; color: #d0c0a0; margin: 0; padding: 1rem; }
 h1 { text-align: center; margin-bottom: 0.5rem; }
@@ -251,8 +260,8 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </style>
 </head>
 <body>
-<h1>Creature Extended – Supporter Pack (Right-facing)</h1>
-<div class="hint">Only right-facing animations are shown. Each state is read from the matching .tres SpriteFrames and drawn at 240×240.</div>
+<h1>Creature Extended – Supporter Pack (Side-facing)</h1>
+<div class="hint">Only the side-facing profile column is shown. Each state is read from the matching .tres SpriteFrames and drawn at 240×240. Flip horizontally if you need the opposite direction.</div>
 ${groupHtml}
 <script>
 const anims = [];
