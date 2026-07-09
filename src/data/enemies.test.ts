@@ -25,3 +25,32 @@ describe("enemy data", () => {
     expect(refs).toContain("big-titty-ogre");
   });
 });
+
+describe("encounter table integrity", () => {
+  it("every spawn enemyId in every floor's table resolves to a defined enemy", () => {
+    for (const [floor, entries] of Object.entries(ENCOUNTER_TABLES)) {
+      for (const entry of entries) {
+        for (const spawn of entry.spawns) {
+          expect(
+            ENEMIES_BY_ID[spawn.enemyId],
+            `floor ${floor}: unknown enemyId "${spawn.enemyId}"`
+          ).toBeDefined();
+        }
+      }
+    }
+  });
+
+  it("re-themed bestiary ids are registered (slime/skeleton/orc family)", () => {
+    for (const id of [
+      "slime",
+      "skeleton",
+      "armored-skeleton",
+      "skeleton-archer",
+      "orc",
+      "elite-orc",
+      "werewolf",
+    ]) {
+      expect(ENEMIES_BY_ID[id], `missing ${id}`).toBeDefined();
+    }
+  });
+});

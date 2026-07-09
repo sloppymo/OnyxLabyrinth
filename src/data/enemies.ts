@@ -48,7 +48,7 @@ export interface EncounterEntry {
   spawns: EnemySpawn[];
 }
 
-// Floor 1: Entry Halls — tutorial vermin and harmless dummies.
+// Floor 1: Entry Halls — training dummies, slimes, and shambling skeletons.
 export const TRAINING_DUMMY: EnemyDef = {
   id: "training-dummy",
   name: "Training Dummy",
@@ -64,9 +64,9 @@ export const TRAINING_DUMMY: EnemyDef = {
   isBoss: false,
 };
 
-export const GIANT_RAT: EnemyDef = {
-  id: "giant-rat",
-  name: "Giant Rat",
+export const SLIME: EnemyDef = {
+  id: "slime",
+  name: "Slime",
   floors: [1],
   rowPreference: "front",
   hp: 8,
@@ -79,9 +79,9 @@ export const GIANT_RAT: EnemyDef = {
   isBoss: false,
 };
 
-export const DUST_SPRITE: EnemyDef = {
-  id: "dust-sprite",
-  name: "Dust Sprite",
+export const SKELETON: EnemyDef = {
+  id: "skeleton",
+  name: "Skeleton",
   floors: [1],
   rowPreference: "any",
   hp: 6,
@@ -94,10 +94,10 @@ export const DUST_SPRITE: EnemyDef = {
   isBoss: false,
 };
 
-// Floor 2: The Archives — animated objects and flying pests.
-export const ANIMATED_BOOK: EnemyDef = {
-  id: "animated-book",
-  name: "Animated Book",
+// Floor 2: The Archives — skeletal guardians and orc scavengers.
+export const ARMORED_SKELETON: EnemyDef = {
+  id: "armored-skeleton",
+  name: "Armored Skeleton",
   floors: [2],
   rowPreference: "front",
   hp: 12,
@@ -110,9 +110,9 @@ export const ANIMATED_BOOK: EnemyDef = {
   isBoss: false,
 };
 
-export const PAPER_WASP: EnemyDef = {
-  id: "paper-wasp",
-  name: "Paper Wasp",
+export const SKELETON_ARCHER: EnemyDef = {
+  id: "skeleton-archer",
+  name: "Skeleton Archer",
   floors: [2],
   rowPreference: "back",
   hp: 8,
@@ -125,9 +125,9 @@ export const PAPER_WASP: EnemyDef = {
   isBoss: false,
 };
 
-export const COBWEB: EnemyDef = {
-  id: "cobweb",
-  name: "Cobweb",
+export const ORC: EnemyDef = {
+  id: "orc",
+  name: "Orc",
   floors: [2],
   rowPreference: "any",
   hp: 10,
@@ -186,10 +186,10 @@ export const LAB_ASSISTANT: EnemyDef = {
   isBoss: false,
 };
 
-// Floor 4: The Summoning Chambers — constructs and casters.
-export const IMP: EnemyDef = {
-  id: "imp",
-  name: "Imp",
+// Floor 4: The Summoning Chambers — constructs, orc casters, and feral beasts.
+export const ELITE_ORC: EnemyDef = {
+  id: "elite-orc",
+  name: "Elite Orc",
   floors: [4],
   rowPreference: "back",
   hp: 22,
@@ -217,9 +217,9 @@ export const LESSER_CONSTRUCT: EnemyDef = {
   isBoss: false,
 };
 
-export const RIFT_MOTH: EnemyDef = {
-  id: "rift-moth",
-  name: "Rift Moth",
+export const WEREWOLF: EnemyDef = {
+  id: "werewolf",
+  name: "Werewolf",
   floors: [4],
   rowPreference: "any",
   hp: 16,
@@ -298,17 +298,17 @@ export const HEADMASTERS_ECHO: EnemyDef = {
 
 export const ALL_ENEMIES: EnemyDef[] = [
   TRAINING_DUMMY,
-  GIANT_RAT,
-  DUST_SPRITE,
-  ANIMATED_BOOK,
-  PAPER_WASP,
-  COBWEB,
+  SLIME,
+  SKELETON,
+  ARMORED_SKELETON,
+  SKELETON_ARCHER,
+  ORC,
   FAILED_EXPERIMENT,
   ACID_PUDDLE,
   LAB_ASSISTANT,
-  IMP,
+  ELITE_ORC,
   LESSER_CONSTRUCT,
-  RIFT_MOTH,
+  WEREWOLF,
   BIG_TITTY_OGRE,
   STONE_GUARDIAN,
   ANIMATED_ARMOR,
@@ -331,24 +331,24 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     {
       weight: 4,
       spawns: [
-        { enemyId: "giant-rat", row: "front" },
-        { enemyId: "giant-rat", row: "front" },
+        { enemyId: "slime", row: "front" },
+        { enemyId: "slime", row: "front" },
       ],
     },
     {
       weight: 3,
       spawns: [
-        { enemyId: "dust-sprite", row: "front" },
-        { enemyId: "dust-sprite", row: "front" },
-        { enemyId: "dust-sprite", row: "back" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton", row: "back" },
       ],
     },
     {
       weight: 2,
       spawns: [
         { enemyId: "training-dummy", row: "front" },
-        { enemyId: "giant-rat", row: "front" },
-        { enemyId: "dust-sprite", row: "back" },
+        { enemyId: "slime", row: "front" },
+        { enemyId: "skeleton", row: "back" },
       ],
     },
   ],
@@ -356,31 +356,31 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     {
       weight: 4,
       spawns: [
-        { enemyId: "animated-book", row: "front" },
-        { enemyId: "animated-book", row: "front" },
+        { enemyId: "armored-skeleton", row: "front" },
+        { enemyId: "armored-skeleton", row: "front" },
       ],
     },
     {
       weight: 4,
       spawns: [
-        { enemyId: "paper-wasp", row: "back" },
-        { enemyId: "paper-wasp", row: "back" },
-        { enemyId: "paper-wasp", row: "back" },
+        { enemyId: "skeleton-archer", row: "back" },
+        { enemyId: "skeleton-archer", row: "back" },
+        { enemyId: "skeleton-archer", row: "back" },
       ],
     },
     {
       weight: 3,
       spawns: [
-        { enemyId: "cobweb", row: "front" },
-        { enemyId: "cobweb", row: "front" },
+        { enemyId: "orc", row: "front" },
+        { enemyId: "orc", row: "front" },
       ],
     },
     {
       weight: 3,
       spawns: [
-        { enemyId: "animated-book", row: "front" },
-        { enemyId: "paper-wasp", row: "back" },
-        { enemyId: "cobweb", row: "front" },
+        { enemyId: "armored-skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
+        { enemyId: "orc", row: "front" },
       ],
     },
   ],
@@ -420,9 +420,9 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     {
       weight: 4,
       spawns: [
-        { enemyId: "imp", row: "back" },
-        { enemyId: "imp", row: "back" },
-        { enemyId: "imp", row: "back" },
+        { enemyId: "elite-orc", row: "back" },
+        { enemyId: "elite-orc", row: "back" },
+        { enemyId: "elite-orc", row: "back" },
       ],
     },
     {
@@ -435,24 +435,24 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     {
       weight: 3,
       spawns: [
-        { enemyId: "rift-moth", row: "front" },
-        { enemyId: "rift-moth", row: "back" },
-        { enemyId: "rift-moth", row: "back" },
+        { enemyId: "werewolf", row: "front" },
+        { enemyId: "werewolf", row: "back" },
+        { enemyId: "werewolf", row: "back" },
       ],
     },
     {
       weight: 3,
       spawns: [
         { enemyId: "lesser-construct", row: "front" },
-        { enemyId: "imp", row: "back" },
-        { enemyId: "rift-moth", row: "back" },
+        { enemyId: "elite-orc", row: "back" },
+        { enemyId: "werewolf", row: "back" },
       ],
     },
     {
       weight: 2,
       spawns: [
         { enemyId: "big-titty-ogre", row: "front" },
-        { enemyId: "imp", row: "back" },
+        { enemyId: "elite-orc", row: "back" },
       ],
     },
   ],

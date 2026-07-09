@@ -17,7 +17,7 @@
  *   - Priest       -> lab-assistant
  *
  * Enemies without a matching sprite (vermin, insects, books, moths, imps)
- * fall back to the procedural shapes in combat-renderer.ts.
+ * fall back to the procedural shapes in combat-scene.ts.
  */
 
 export interface SpriteStrip {
@@ -117,6 +117,50 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     attack: strip("lab-assistant", "attack", 9, 10),
     hurt: strip("lab-assistant", "hurt", 4, 8),
     death: strip("lab-assistant", "death", 4, 6),
+  },
+  // Re-themed bestiary (2026-07): the former blob-fallback enemies now map
+  // onto Characters(100x100) pack monsters. Stats unchanged; ids/names/art only.
+  slime: {
+    idle: strip("slime", "idle", 6, 6, true),
+    attack: strip("slime", "attack", 6, 10),
+    hurt: strip("slime", "hurt", 4, 8),
+    death: strip("slime", "death", 4, 6),
+  },
+  skeleton: {
+    idle: strip("skeleton", "idle", 6, 6, true),
+    attack: strip("skeleton", "attack", 6, 10),
+    hurt: strip("skeleton", "hurt", 4, 8),
+    death: strip("skeleton", "death", 4, 6),
+  },
+  "armored-skeleton": {
+    idle: strip("armored-skeleton", "idle", 6, 6, true),
+    attack: strip("armored-skeleton", "attack", 8, 10),
+    hurt: strip("armored-skeleton", "hurt", 4, 8),
+    death: strip("armored-skeleton", "death", 4, 6),
+  },
+  "skeleton-archer": {
+    idle: strip("skeleton-archer", "idle", 6, 6, true),
+    attack: strip("skeleton-archer", "attack", 9, 10),
+    hurt: strip("skeleton-archer", "hurt", 4, 8),
+    death: strip("skeleton-archer", "death", 4, 6),
+  },
+  orc: {
+    idle: strip("orc", "idle", 6, 6, true),
+    attack: strip("orc", "attack", 6, 10),
+    hurt: strip("orc", "hurt", 4, 8),
+    death: strip("orc", "death", 4, 6),
+  },
+  "elite-orc": {
+    idle: strip("elite-orc", "idle", 6, 6, true),
+    attack: strip("elite-orc", "attack", 7, 10),
+    hurt: strip("elite-orc", "hurt", 4, 8),
+    death: strip("elite-orc", "death", 4, 6),
+  },
+  werewolf: {
+    idle: strip("werewolf", "idle", 6, 6, true),
+    attack: strip("werewolf", "attack", 9, 10),
+    hurt: strip("werewolf", "hurt", 4, 8),
+    death: strip("werewolf", "death", 4, 6),
   },
 };
 
