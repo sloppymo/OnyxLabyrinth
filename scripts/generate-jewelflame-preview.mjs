@@ -19,8 +19,7 @@ const outFile = join(root, "jewelflame-preview.html");
 const indexFile = join(root, "jewelflame-preview-index.html");
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-const CREATURE_GRID_STRIDE = 16;
-const CREATURE_FX_STRIDE = 32;
+
 const CHAR_STATE_ORDER = ["Idle", "Walk", "Block", "Attack01", "Attack02", "Attack03", "Hurt", "Death", "DEATH"];
 
 function readUint32BE(buf, offset) {
@@ -120,27 +119,44 @@ async function collectCharacters() {
 }
 
 function inferCreatureStrips({ width, height }) {
-  // The pack uses 16×16 grids for creatures (64×N sheets) and 32-wide
-  // horizontal strips for effects (fireball 192×16, explosion 288×64).
-  if (width > height && width >= CREATURE_FX_STRIDE && width % CREATURE_FX_STRIDE === 0) {
-    const frameW = CREATURE_FX_STRIDE;
-    const frameH = height;
-    const frameCount = Math.floor(width / frameW);
-    if (frameCount > 1) return { frameW, frameH, frameCount, orientation: "h" };
+  // The pack uses 16×16 grids for creatures (64×N sheets) and fireball (192×16).
+  // Explosion effects are 32×32 grids (288×64 is 9 columns × 2 rows).
+  if (width === 64 && height % 16 === 0) {
+    return {
+      orientation: "g",
+      frameW: 16,
+      frameH: 16,
+      cols: 4,
+      rows: height / 16,
+      frameCount: (height / 16) * 4,
+    };
   }
 
-  if (
-    width % CREATURE_GRID_STRIDE === 0 &&
-    height % CREATURE_GRID_STRIDE === 0
-  ) {
-    const cols = width / CREATURE_GRID_STRIDE;
-    const rows = height / CREATURE_GRID_STRIDE;
+  if (width % 32 === 0 && height % 32 === 0) {
+    const cols = width / 32;
+    const rows = height / 32;
     const frameCount = cols * rows;
     if (frameCount > 1) {
       return {
         orientation: "g",
-        frameW: CREATURE_GRID_STRIDE,
-        frameH: CREATURE_GRID_STRIDE,
+        frameW: 32,
+        frameH: 32,
+        cols,
+        rows,
+        frameCount,
+      };
+    }
+  }
+
+  if (width % 16 === 0 && height % 16 === 0) {
+    const cols = width / 16;
+    const rows = height / 16;
+    const frameCount = cols * rows;
+    if (frameCount > 1) {
+      return {
+        orientation: "g",
+        frameW: 16,
+        frameH: 16,
         cols,
         rows,
         frameCount,
