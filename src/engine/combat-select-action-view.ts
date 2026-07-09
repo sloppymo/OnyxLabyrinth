@@ -1,560 +1,256 @@
 /**
- * DOM-based renderer for the combat selection panel.
+ * FF6-style combat menu windows (DOM overlay).
  *
- * Presents a Wizardry-style layout:
- *   - Status bar (enemy group / round)
- *   - Persistent message log
- *   - Monster arena (front/back rows) + compact action/selection menu
- *   - Compact party strip (name, HP, status)
+ * Three blue-gradient windows along the bottom of the combat canvas,
+ * mirroring FF6's battle screen:
+ *   - LEFT:   the action menu for the acting character (Attack / Magic /
+ *             Item / Defend / Run …), or the active selection list
+ *             (spells, items, targets) when a submenu is open.
+ *   - MIDDLE: living enemy names with counts (FF6's monster window).
+ *   - RIGHT:  party status — name, HP / MaxHP, SP — with the acting
+ *             character highlighted.
  *
- * The panel is used during action selection and target/spell/item selection
- * phases. Round resolution still plays out on the canvas combat renderer.
+ * A centered result window appears on victory / defeat / fled.
+ *
+ * The windows stay visible for the whole fight; during turn playback the
+ * menu window simply goes empty (the scene canvas carries the action).
+ * Rendering is stateless: the controller calls renderCombatWindows with a
+ * view model each time something changes.
  */
 
-import type { CombatState, PlayerAction, EnemyInstance } from "../game/combat";
+import type { CombatState, PlayerAction } from "../game/combat";
 import type { Character } from "../game/party";
-import { drawEnemySprite } from "./combat-renderer";
-import type { SpriteAnim } from "./combat-renderer";
-import {
-  partyStatusText,
-  hpRatio,
-  hpBarColorClass,
-  COMBAT_LOG_HISTORY,
-  type SelectionChoice,
-} from "./combat-display";
 
-const RANGE_LABELS: Record<string, string> = {
-  close: "Close",
-  short: "Short",
-  medium: "Med",
-  long: "Long",
-};
+/** What occupies the menu (left) window. */
+export type MenuMode = "menu" | "selection" | "none";
 
-function getWeaponRangeLabel(state: CombatState, char: Character): string {
-  const weapon = state.loadout[char.id]?.weapon;
-  if (!weapon || !weapon.range) return "";
-  return RANGE_LABELS[weapon.range] || "";
+export interface MenuEntry {
+  kind: PlayerAction["kind"];
+  label: string;
+  disabled?: boolean;
 }
 
-/** Phases rendered by the DOM-based combat selection panel. */
-export type CombatPanelPhase =
-  | "selectAction"
-  | "selectEnemyTarget"
-  | "selectAllyTarget"
-  | "selectSpell"
-  | "selectItem"
-  | "ready";
+export interface SelectionEntry {
+  /** Main label (spell name, item name, target name). */
+  label: string;
+  /** Right-aligned detail (SP cost, stack count, health descriptor). */
+  detail?: string;
+  disabled?: boolean;
+}
 
-export interface SelectActionView {
+export interface ResultView {
+  title: string;
+  lines: string[];
+}
+
+export interface CombatWindowsView {
   state: CombatState;
-  currentCharacter: Character;
-  selectedIndex: number;
-  phase: CombatPanelPhase;
-  prompt: string;
-  selectionList: SelectionChoice[] | null;
+  /** The character whose turn it is (menu highlight target). Null during
+   *  enemy turns / playback. */
+  currentCharacterId: string | null;
+  menuMode: MenuMode;
+  menuEntries: MenuEntry[];
+  menuIndex: number;
+  /** Title above a selection list (e.g. "Magic", "Item", "Target"). */
+  selectionTitle: string;
+  selectionEntries: SelectionEntry[];
+  selectionIndex: number;
+  /** Info line under the selection list (e.g. target health descriptor). */
+  selectionFooter?: string | null;
+  /** Transient error line (e.g. "No items!"), shown under the menu. */
   flash: string | null;
-  plannedActions: PlayerAction[];
+  /** End-of-combat window; when set it replaces menu interaction. */
+  result: ResultView | null;
 }
 
-export interface SelectActionHandlers {
-  onSelectIndex(index: number): void;
-  onConfirm(kind: PlayerAction["kind"]): void;
-  onSelectChoice(index: number): void;
+export interface CombatWindowsHandlers {
+  onMenuHover(index: number): void;
+  onMenuConfirm(index: number): void;
+  onSelectionHover(index: number): void;
+  onSelectionConfirm(index: number): void;
 }
 
-export function getActionKindsForCharacter(char: Character): PlayerAction["kind"][] {
-  const baseKinds: PlayerAction["kind"][] = ["attack", "cast", "defend", "item", "flee"];
-  
-  // Thief and Ninja can hide
-  if (char.class === "Thief" || char.class === "Ninja") {
-    // If hidden, show ambush instead of hide
-    if (char.status.includes("hidden")) {
-      return [...baseKinds, "ambush"];
-    } else {
-      return [...baseKinds, "hide"];
-    }
-  }
-  
-  return baseKinds;
-}
-
-export const ACTION_KINDS: PlayerAction["kind"][] = [
-  "attack",
-  "cast",
-  "defend",
-  "item",
-  "flee",
-  "hide",
-];
-
-const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
+/** FF6 labels for player actions. */
+export const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
   attack: "Attack",
-  cast: "Cast",
+  cast: "Magic",
   defend: "Defend",
   item: "Item",
-  flee: "Flee",
+  flee: "Run",
   hide: "Hide",
   ambush: "Ambush",
 };
 
-const ARENA_W = 520;
-const ARENA_H = 340;
-
-function actorName(state: CombatState, actorId: string): string {
-  return state.party.find((p) => p.id === actorId)?.name ?? "?";
-}
-
-function enemyName(state: CombatState, instanceId: string | undefined): string {
-  if (!instanceId) return "?";
-  const enemy = [...state.enemies.front, ...state.enemies.back].find(
-    (e) => e.instanceId === instanceId
-  );
-  return enemy?.name ?? "?";
-}
-
-function allyName(state: CombatState, allyId: string | undefined): string {
-  if (!allyId) return "?";
-  return state.party.find((p) => p.id === allyId)?.name ?? "?";
-}
-
-/** Human-readable one-liner for a queued player action, used by the Ready panel. */
-function describeAction(state: CombatState, action: PlayerAction): string {
-  switch (action.kind) {
-    case "attack":
-      return `Attack → ${enemyName(state, action.targetInstanceId)}`;
-    case "cast": {
-      const spell = state.spells[action.spellId]?.name ?? action.spellId;
-      if (action.targetInstanceId) return `${spell} → ${enemyName(state, action.targetInstanceId)}`;
-      if (action.targetAllyId) return `${spell} → ${allyName(state, action.targetAllyId)}`;
-      return spell;
-    }
-    case "defend":
-      return "Defend";
-    case "item": {
-      const item = state.items[action.itemId]?.name ?? action.itemId;
-      return `${item} → ${allyName(state, action.targetAllyId)}`;
-    }
-    case "flee":
-      return "Flee";
-    case "hide":
-      return "Hide";
-    case "ambush":
-      return `Ambush → ${enemyName(state, action.targetInstanceId)}`;
-    default:
-      return "";
+/** Menu entries available to a character (Thief/Ninja get Hide/Ambush). */
+export function menuEntriesForCharacter(char: Character): MenuEntry[] {
+  const base: PlayerAction["kind"][] = ["attack", "cast", "defend", "item"];
+  if (char.class === "Thief" || char.class === "Ninja") {
+    base.push(char.status.includes("hidden") ? "ambush" : "hide");
   }
+  base.push("flee");
+  return base.map((kind) => ({ kind, label: ACTION_LABELS[kind] }));
 }
 
-/** Build and render the combat selection panel into `container`. */
-export function renderSelectActionPhase(
+// --- Window builders ---------------------------------------------------------
+
+function el(cls: string, text?: string): HTMLDivElement {
+  const d = document.createElement("div");
+  d.className = cls;
+  if (text !== undefined) d.textContent = text;
+  return d;
+}
+
+function buildMenuWindow(
+  view: CombatWindowsView,
+  handlers: CombatWindowsHandlers
+): HTMLElement {
+  const win = el("ff6-window ff6-menu");
+
+  if (view.menuMode === "none") {
+    win.classList.add("empty");
+    return win;
+  }
+
+  if (view.menuMode === "menu") {
+    for (let i = 0; i < view.menuEntries.length; i++) {
+      const entry = view.menuEntries[i];
+      const row = el("ff6-menu-item", entry.label);
+      if (i === view.menuIndex) row.classList.add("selected");
+      if (entry.disabled) row.classList.add("disabled");
+      row.addEventListener("mouseenter", () => handlers.onMenuHover(i));
+      row.addEventListener("click", () => handlers.onMenuConfirm(i));
+      win.appendChild(row);
+    }
+    win.appendChild(el("ff6-hint-row", "↑↓ Enter · A/M/D/I/R"));
+  } else {
+    if (view.selectionTitle) {
+      win.appendChild(el("ff6-menu-title", view.selectionTitle));
+    }
+    const list = el("ff6-selection-list");
+    for (let i = 0; i < view.selectionEntries.length; i++) {
+      const entry = view.selectionEntries[i];
+      const row = el("ff6-menu-item");
+      const label = document.createElement("span");
+      label.className = "ff6-sel-label";
+      label.textContent = entry.label;
+      row.appendChild(label);
+      if (entry.detail) {
+        const detail = document.createElement("span");
+        detail.className = "ff6-sel-detail";
+        detail.textContent = entry.detail;
+        row.appendChild(detail);
+      }
+      if (i === view.selectionIndex) row.classList.add("selected");
+      if (entry.disabled) row.classList.add("disabled");
+      row.addEventListener("mouseenter", () => handlers.onSelectionHover(i));
+      row.addEventListener("click", () => handlers.onSelectionConfirm(i));
+      list.appendChild(row);
+    }
+    win.appendChild(list);
+    if (view.selectionFooter) {
+      win.appendChild(el("ff6-sel-footer", view.selectionFooter));
+    }
+    win.appendChild(el("ff6-hint-row", "↑↓ Enter · Esc back"));
+  }
+
+  if (view.flash) {
+    win.appendChild(el("ff6-flash", view.flash));
+  }
+  return win;
+}
+
+function buildEnemyWindow(state: CombatState): HTMLElement {
+  const win = el("ff6-window ff6-enemies");
+  const living = [...state.enemies.front, ...state.enemies.back].filter(
+    (e) => e.currentHp > 0
+  );
+  // Group by display name with counts, FF6-style.
+  const counts = new Map<string, number>();
+  for (const e of living) counts.set(e.name, (counts.get(e.name) ?? 0) + 1);
+  if (counts.size === 0) {
+    win.appendChild(el("ff6-enemy-row", "—"));
+    return win;
+  }
+  for (const [name, count] of counts) {
+    const row = el("ff6-enemy-row");
+    const nameEl = document.createElement("span");
+    nameEl.textContent = name;
+    row.appendChild(nameEl);
+    if (count > 1) {
+      const countEl = document.createElement("span");
+      countEl.className = "ff6-enemy-count";
+      countEl.textContent = `×${count}`;
+      row.appendChild(countEl);
+    }
+    win.appendChild(row);
+  }
+  return win;
+}
+
+function buildPartyWindow(view: CombatWindowsView): HTMLElement {
+  const win = el("ff6-window ff6-party");
+  for (const c of view.state.party) {
+    const row = el("ff6-party-row");
+    if (c.id === view.currentCharacterId) row.classList.add("current");
+    const ko = c.hp <= 0 || c.status.includes("knockedOut");
+    if (ko) row.classList.add("ko");
+
+    const name = document.createElement("span");
+    name.className = "ff6-p-name";
+    name.textContent = c.name;
+    row.appendChild(name);
+
+    const hp = document.createElement("span");
+    hp.className = "ff6-p-hp";
+    hp.textContent = `${Math.max(0, c.hp)}/${c.maxHp}`;
+    row.appendChild(hp);
+
+    const sp = document.createElement("span");
+    sp.className = "ff6-p-sp";
+    sp.textContent = c.maxSp > 0 ? `${c.sp}` : "";
+    row.appendChild(sp);
+
+    const barWrap = document.createElement("span");
+    barWrap.className = "ff6-p-bar";
+    const fill = document.createElement("span");
+    fill.className = "ff6-p-bar-fill";
+    const ratio = c.maxHp > 0 ? Math.max(0, c.hp) / c.maxHp : 0;
+    fill.style.width = `${Math.round(ratio * 100)}%`;
+    if (ratio <= 0.25) fill.classList.add("critical");
+    else if (ratio <= 0.5) fill.classList.add("wounded");
+    barWrap.appendChild(fill);
+    row.appendChild(barWrap);
+
+    win.appendChild(row);
+  }
+  return win;
+}
+
+function buildResultWindow(result: ResultView): HTMLElement {
+  const win = el("ff6-window ff6-result");
+  win.appendChild(el("ff6-result-title", result.title));
+  for (const line of result.lines) {
+    win.appendChild(el("ff6-result-line", line));
+  }
+  win.appendChild(el("ff6-result-hint", "Press Enter"));
+  return win;
+}
+
+/** Render the FF6 window row (and result overlay) into `container`. */
+export function renderCombatWindows(
   container: HTMLElement,
-  view: SelectActionView,
-  handlers: SelectActionHandlers
+  view: CombatWindowsView,
+  handlers: CombatWindowsHandlers
 ): void {
   container.innerHTML = "";
 
-  const root = document.createElement("div");
-  root.className = "combat-select-action";
+  const row = el("ff6-windows");
+  row.appendChild(buildMenuWindow(view, handlers));
+  row.appendChild(buildEnemyWindow(view.state));
+  row.appendChild(buildPartyWindow(view));
+  container.appendChild(row);
 
-  root.appendChild(buildStatusBar(view.state));
-  if (view.flash) {
-    root.appendChild(buildFlashMessage(view.flash));
+  if (view.result) {
+    container.appendChild(buildResultWindow(view.result));
   }
-  root.appendChild(buildMessageLog(view));
-  root.appendChild(buildCombatBody(view, handlers));
-  root.appendChild(buildPartyStrip(view.state, view.currentCharacter));
-  root.appendChild(buildHint(view.phase));
-
-  container.appendChild(root);
-}
-
-function buildFlashMessage(flash: string): HTMLElement {
-  const el = document.createElement("div");
-  el.className = "combat-flash-message";
-  el.textContent = flash;
-  return el;
-}
-
-// --- Status bar ------------------------------------------------------------
-
-function buildStatusBar(state: CombatState): HTMLElement {
-  const bar = document.createElement("div");
-  bar.className = "combat-status-bar";
-
-  const left = document.createElement("span");
-  left.className = "combat-status-left";
-  left.textContent = formatEnemyLabel(state).left;
-
-  const right = document.createElement("span");
-  right.className = "combat-status-right";
-  right.textContent = formatEnemyLabel(state).right;
-
-  bar.appendChild(left);
-  bar.appendChild(right);
-  return bar;
-}
-
-function formatEnemyLabel(state: CombatState): { left: string; right: string } {
-  const all = [...state.enemies.front, ...state.enemies.back];
-  const living = all.filter((e) => e.currentHp > 0);
-  const count = living.length;
-
-  if (count === 0) {
-    return { left: "No enemies", right: "Round " + state.round };
-  }
-
-  const names = new Set(living.map((e) => e.name));
-  const first = living[0];
-  const label = names.size === 1 ? pluralize(first.name, count) : "enemies";
-  return { left: `${count} ${label}`, right: "Round " + state.round };
-}
-
-function pluralize(name: string, count: number): string {
-  if (count === 1) return name;
-  if (name.endsWith("y") && !/[aeiou]y$/i.test(name)) {
-    return `${name.slice(0, -1)}ies`;
-  }
-  return `${name}s`;
-}
-
-// --- Message log -----------------------------------------------------------
-
-function buildMessageLog(view: SelectActionView): HTMLElement {
-  const log = document.createElement("div");
-  log.className = "combat-message-log";
-
-  const state = view.state;
-  const lines = state.log.slice(-COMBAT_LOG_HISTORY);
-  for (const line of lines) {
-    const el = document.createElement("div");
-    el.className = "log-line";
-    el.textContent = line;
-    log.appendChild(el);
-  }
-
-  const isPromptPhase =
-    view.phase === "selectEnemyTarget" ||
-    view.phase === "selectAllyTarget" ||
-    view.phase === "selectSpell" ||
-    view.phase === "selectItem";
-
-  if (view.prompt) {
-    const promptEl = document.createElement("div");
-    promptEl.className = "log-line prompt";
-    promptEl.textContent = view.prompt;
-    log.appendChild(promptEl);
-  }
-
-  if (view.selectionList && view.selectionList.length > 0) {
-    const listEl = document.createElement("div");
-    listEl.className = "log-line selection-list";
-    for (const choice of view.selectionList) {
-      const item = document.createElement("div");
-      item.className = "selection-item";
-      item.textContent = choice.label;
-      listEl.appendChild(item);
-    }
-    log.appendChild(listEl);
-  } else if (isPromptPhase && !view.prompt) {
-    const emptyEl = document.createElement("div");
-    emptyEl.className = "log-line prompt";
-    emptyEl.textContent = "No choices available.";
-    log.appendChild(emptyEl);
-  }
-
-  return log;
-}
-
-// --- Arena + menu body -----------------------------------------------------
-
-function buildCombatBody(
-  view: SelectActionView,
-  handlers: SelectActionHandlers
-): HTMLElement {
-  const row = document.createElement("div");
-  row.className = "combat-body";
-
-  row.appendChild(buildArena(view.state));
-  row.appendChild(buildActionPane(view, handlers));
-
-  return row;
-}
-
-function buildArena(state: CombatState): HTMLElement {
-  const wrap = document.createElement("div");
-  wrap.className = "combat-arena";
-
-  const canvas = document.createElement("canvas");
-  canvas.width = ARENA_W;
-  canvas.height = ARENA_H;
-  wrap.appendChild(canvas);
-
-  const label = document.createElement("div");
-  label.className = "combat-arena-label";
-  label.textContent = "MONSTER GROUP";
-  wrap.appendChild(label);
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return wrap;
-
-  // Background.
-  ctx.fillStyle = "#0e0d0a";
-  ctx.fillRect(0, 0, ARENA_W, ARENA_H);
-
-  // Ground gradient.
-  const grad = ctx.createLinearGradient(0, ARENA_H * 0.45, 0, ARENA_H);
-  grad.addColorStop(0, "#0e0d0a");
-  grad.addColorStop(1, "#1a1612");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, ARENA_H * 0.45, ARENA_W, ARENA_H * 0.55);
-
-  // Back-row horizon line.
-  ctx.strokeStyle = "#3a3025";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, ARENA_H * 0.42);
-  ctx.lineTo(ARENA_W, ARENA_H * 0.42);
-  ctx.stroke();
-
-  const now = performance.now();
-  const anim: SpriteAnim = {
-    state: "idle",
-    stateStart: now,
-    progress: 0,
-    opacity: 1,
-  };
-
-  const livingFront = state.enemies.front.filter((e) => e.currentHp > 0);
-  const livingBack = state.enemies.back.filter((e) => e.currentHp > 0);
-
-  // Draw back row first so the front row overlaps it.
-  drawEnemyRow(ctx, livingBack, "back", now, anim, 0.82);
-  drawEnemyRow(ctx, livingFront, "front", now, anim, 1.15);
-
-  return wrap;
-}
-
-function drawEnemyRow(
-  ctx: CanvasRenderingContext2D,
-  enemies: EnemyInstance[],
-  row: "front" | "back",
-  now: number,
-  anim: SpriteAnim,
-  scale: number
-): void {
-  if (enemies.length === 0) return;
-  const y = row === "front" ? ARENA_H * 0.62 : ARENA_H * 0.32;
-  const step = (ARENA_W * 0.76) / (enemies.length + 1);
-  const startX = ARENA_W * 0.12 + step;
-  for (let i = 0; i < enemies.length; i++) {
-    const x = startX + i * step;
-    drawEnemySprite(ctx, x, y, enemies[i], anim, now, false, 0, scale * 1.35);
-  }
-}
-
-// --- Action / selection pane ----------------------------------------------
-
-function buildActionPane(
-  view: SelectActionView,
-  handlers: SelectActionHandlers
-): HTMLElement {
-  const pane = document.createElement("div");
-  pane.className = "combat-action-menu";
-
-  if (view.phase !== "ready") {
-    const actorName = document.createElement("div");
-    actorName.className = "actor-name";
-    actorName.textContent = `${view.currentCharacter.name}'s turn`;
-    pane.appendChild(actorName);
-  }
-
-  if (view.phase === "selectAction") {
-    pane.appendChild(buildActionMenu(view, handlers));
-  } else if (view.selectionList && view.selectionList.length > 0) {
-    pane.appendChild(buildSelectionMenu(view, handlers));
-  } else if (view.phase === "ready") {
-    pane.appendChild(buildPlannedActionsList(view));
-  }
-
-  return pane;
-}
-
-function buildPlannedActionsList(view: SelectActionView): HTMLElement {
-  const wrap = document.createElement("div");
-  wrap.className = "planned-actions";
-
-  const heading = document.createElement("div");
-  heading.className = "planned-actions-heading";
-  heading.textContent = "Round order";
-  wrap.appendChild(heading);
-
-  const list = document.createElement("div");
-  list.className = "planned-actions-list";
-
-  for (const action of view.plannedActions) {
-    if (!("actorId" in action)) continue;
-    const row = document.createElement("div");
-    row.className = "planned-action-row";
-
-    const name = document.createElement("span");
-    name.className = "planned-action-name";
-    name.textContent = actorName(view.state, action.actorId);
-
-    const desc = document.createElement("span");
-    desc.className = "planned-action-desc";
-    desc.textContent = describeAction(view.state, action);
-
-    row.appendChild(name);
-    row.appendChild(desc);
-    list.appendChild(row);
-  }
-
-  wrap.appendChild(list);
-  return wrap;
-}
-
-function buildActionMenu(
-  view: SelectActionView,
-  handlers: SelectActionHandlers
-): HTMLElement {
-  const menu = document.createElement("div");
-  menu.className = "action-items";
-
-  const actionKinds = getActionKindsForCharacter(view.currentCharacter);
-
-  actionKinds.forEach((kind, index) => {
-    const item = document.createElement("div");
-    item.className = "combat-action-item";
-    if (index === view.selectedIndex) item.classList.add("selected");
-    item.dataset.kind = kind;
-
-    const arrow = document.createElement("span");
-    arrow.className = "combat-action-arrow";
-    arrow.textContent = index === view.selectedIndex ? "▶" : "";
-
-    const label = document.createElement("span");
-    label.className = "combat-action-label";
-    label.textContent = ACTION_LABELS[kind];
-
-    item.appendChild(arrow);
-    item.appendChild(label);
-
-    item.addEventListener("click", () => {
-      handlers.onSelectIndex(index);
-      handlers.onConfirm(kind);
-    });
-
-    menu.appendChild(item);
-  });
-
-  return menu;
-}
-
-function buildSelectionMenu(
-  view: SelectActionView,
-  handlers: SelectActionHandlers
-): HTMLElement {
-  const menu = document.createElement("div");
-  menu.className = "action-items";
-
-  for (const choice of view.selectionList ?? []) {
-    const item = document.createElement("div");
-    item.className = "combat-action-item";
-    item.textContent = choice.label;
-    item.addEventListener("click", () => {
-      handlers.onSelectChoice(choice.index);
-    });
-    menu.appendChild(item);
-  }
-
-  return menu;
-}
-
-// --- Party strip -----------------------------------------------------------
-
-function buildPartyStrip(
-  state: CombatState,
-  currentCharacter: Character
-): HTMLElement {
-  const strip = document.createElement("div");
-  strip.className = "combat-party-strip";
-
-  for (const c of state.party) {
-    const card = document.createElement("div");
-    card.className = "combat-party-member";
-    if (c.id === currentCharacter.id) card.classList.add("current");
-    if (c.hp <= 0 || c.status.includes("knockedOut")) card.classList.add("fallen");
-
-    const name = document.createElement("div");
-    name.className = "combat-party-name";
-    name.textContent = c.name;
-    card.appendChild(name);
-
-    const ratio = hpRatio(c);
-    const hpRow = document.createElement("div");
-    hpRow.className = "combat-party-hp-row";
-
-    const barWrap = document.createElement("div");
-    barWrap.className = "combat-party-hp-bar";
-    const barFill = document.createElement("div");
-    barFill.className = `combat-party-hp-fill ${hpBarColorClass(ratio)}`;
-    barFill.style.width = `${Math.round(ratio * 100)}%`;
-    barWrap.appendChild(barFill);
-
-    const hpText = document.createElement("div");
-    hpText.className = "combat-party-hp-text";
-    hpText.textContent = `${Math.max(0, c.hp)}/${c.maxHp}`;
-
-    hpRow.appendChild(barWrap);
-    hpRow.appendChild(hpText);
-    card.appendChild(hpRow);
-
-    const status = document.createElement("div");
-    status.className = "combat-party-status";
-    status.textContent = partyStatusText(c);
-    card.appendChild(status);
-
-    // Add weapon range indicator if character has a weapon with range
-    const rangeLabel = getWeaponRangeLabel(state, c);
-    if (rangeLabel) {
-      const range = document.createElement("div");
-      range.className = "combat-party-range";
-      range.textContent = `Range: ${rangeLabel}`;
-      card.appendChild(range);
-    }
-
-    strip.appendChild(card);
-  }
-
-  return strip;
-}
-
-function buildHint(phase: CombatPanelPhase): HTMLElement {
-  const el = document.createElement("div");
-  el.className = "combat-hint";
-  if (phase === "selectAction") {
-    el.textContent = "▲▼ choose — Enter/Space confirm — click to select";
-  } else if (phase === "ready") {
-    el.textContent = "Space/Enter to resolve round";
-  } else {
-    el.textContent = "[1-9] choose — click to select";
-  }
-  return el;
-}
-
-/**
- * Effective AC: base 10 minus the flat damage reduction the character
- * currently benefits from — equipped armor `defenseBonus` (data-driven, from
- * `state.loadout`) plus persistent spell armor buffs. Mirrors the flat
- * portion of `damageReductionFor` in game/combat.ts (per-round Defend % is
- * excluded since it isn't a standing stat). Keep these two in sync if the
- * damage formula changes.
- */
-export function effectiveAc(state: CombatState, c: Character): number {
-  const armorBonus = (state.loadout[c.id]?.armor ?? []).reduce(
-    (sum, a) => sum + (a.defenseBonus ?? 0),
-    0
-  );
-  const spellBuff = state.armorBuffs[c.id] ?? 0;
-  return 10 - (armorBonus + spellBuff);
 }
