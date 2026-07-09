@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Generates a standalone sprite-preview.html from the public enemy sprite
- * strips. Run with:
+ * Generates a standalone sprite-preview.html from the sprite strips the game
+ * actually loads: party classes (public/assets/party/) and enemies
+ * (public/assets/enemies/). Run with:
  *   node scripts/generate-sprite-preview.mjs
  * Then open sprite-preview.html in a browser.
  */
@@ -11,11 +12,13 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
-const assetsDir = join(root, "public", "assets", "enemies");
+const enemiesDir = join(root, "public", "assets", "enemies");
+const partyDir = join(root, "public", "assets", "party");
 const outFile = join(root, "sprite-preview.html");
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-const STATE_ORDER = ["idle", "attack", "hurt", "death"];
+const ENEMY_STATE_ORDER = ["idle", "attack", "hurt", "death"];
+const PARTY_STATE_ORDER = ["idle", "walk", "attack", "cast", "hurt", "death"];
 
 function getPngDimensions(buffer) {
   if (!buffer.slice(0, 8).equals(PNG_SIGNATURE)) {
@@ -38,16 +41,16 @@ function getPngDimensions(buffer) {
   throw new Error("IHDR not found");
 }
 
-async function collectEnemies() {
-  const enemies = [];
-  const dirNames = await readdir(assetsDir);
-  for (const enemyId of dirNames.sort()) {
-    const enemyDir = join(assetsDir, enemyId);
-    const entries = (await readdir(enemyDir))
+async function collectStrips(baseDir, srcPrefix, stateOrder) {
+  const sets = [];
+  const dirNames = await readdir(baseDir);
+  for (const id of dirNames.sort()) {
+    const dir = join(baseDir, id);
+    const entries = (await readdir(dir))
       .filter((f) => f.endsWith(".png"))
-      .map((f) => ({ state: basename(f, ".png"), file: join(enemyDir, f) }))
-      .filter((s) => STATE_ORDER.includes(s.state));
-    entries.sort((a, b) => STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state));
+      .map((f) => ({ state: basename(f, ".png"), file: join(dir, f) }))
+      .filter((s) => stateOrder.includes(s.state));
+    entries.sort((a, b) => stateOrder.indexOf(a.state) - stateOrder.indexOf(b.state));
 
     const states = [];
     for (const s of entries) {
@@ -58,7 +61,7 @@ async function collectEnemies() {
       const valid = height === 100 && width === expectedWidth && frameCount > 0;
       states.push({
         state: s.state,
-        src: `public/assets/enemies/${enemyId}/${s.state}.png`,
+        src: `${srcPrefix}/${id}/${s.state}.png`,
         width,
         height,
         frameCount,
@@ -66,13 +69,13 @@ async function collectEnemies() {
         fileSize: (await stat(s.file)).size,
       });
     }
-    if (states.length) enemies.push({ enemyId, states });
+    if (states.length) sets.push({ enemyId: id, states });
   }
-  return enemies;
+  return sets;
 }
 
-function renderHtml(enemies) {
-  const cards = enemies
+function renderCards(sets) {
+  return sets
     .map(
       (e) => `
 <div class="enemy">
@@ -96,16 +99,19 @@ ${s.valid ? "" : `<br><em class="err">invalid strip (expected height 100, width 
 </div>`
     )
     .join("");
+}
 
+function renderHtml(party, enemies) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>OnyxLabyrinth · Enemy Sprite Preview</title>
+<title>OnyxLabyrinth · In-Game Sprite Preview</title>
 <style>
 body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #0e0d0a; color: #d0c0a0; margin: 0; padding: 1rem; }
 h1 { text-align: center; margin-bottom: 0.5rem; }
 .hint { text-align: center; color: #a09070; margin-bottom: 1.5rem; }
+h1.section { margin-top: 2.5rem; color: #f0d080; border-top: 2px solid #3a3025; padding-top: 1.5rem; }
 .enemy { margin-bottom: 2rem; border-bottom: 1px solid #3a3025; padding-bottom: 1.5rem; }
 .enemy h2 { margin: 0 0 0.75rem; color: #f0d080; }
 .states { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
@@ -119,9 +125,13 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </style>
 </head>
 <body>
-<h1>Enemy Sprite Strip Preview</h1>
-<div class="hint">Pixel-art strips are drawn at 240×240. Idle/attack/hurt/death loop automatically.</div>
-${cards}
+<h1>In-Game Sprite Strip Preview</h1>
+<div class="hint">Every sprite strip the game loads, animating at its combat frame rate. Drawn at 240×240; strips are authored facing right (the party is mirrored in combat).</div>
+<h1 class="section">Party — combat classes</h1>
+<div class="hint">Fighter→Knight · Mage→Wizard · Priest→Priest · Thief→Archer · Ninja→Swordsman (see src/engine/party-sprite-cache.ts)</div>
+${renderCards(party)}
+<h1 class="section">Enemies</h1>
+${renderCards(enemies)}
 <script>
 const anims = [];
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -138,7 +148,13 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = false;
       const frameCount = Math.floor(img.naturalWidth / 100) || 1;
-      const fps = id.endsWith('idle') ? 6 : (id.endsWith('death') ? 4 : 8);
+      // Match in-game frame rates (party-sprite-cache STATE_CONFIG).
+      const fps = id.endsWith('idle') ? 6
+        : id.endsWith('walk') ? 10
+        : id.endsWith('attack') ? 12
+        : id.endsWith('cast') ? 10
+        : id.endsWith('death') ? 4
+        : 8;
       anims.push({ ctx, img, frameCount, fps, last: 0, frame: 0 });
     });
     requestAnimationFrame(loop);
@@ -177,6 +193,9 @@ document.fonts.ready.catch(() => {}).finally(() => {
 </html>`;
 }
 
-const enemies = await collectEnemies();
-await writeFile(outFile, renderHtml(enemies), "utf-8");
-console.log(`Wrote ${outFile} with ${enemies.length} enemy sets.`);
+const party = await collectStrips(partyDir, "public/assets/party", PARTY_STATE_ORDER);
+const enemies = await collectStrips(enemiesDir, "public/assets/enemies", ENEMY_STATE_ORDER);
+await writeFile(outFile, renderHtml(party, enemies), "utf-8");
+console.log(
+  `Wrote ${outFile} with ${party.length} party classes and ${enemies.length} enemy sets.`
+);

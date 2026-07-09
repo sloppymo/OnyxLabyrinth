@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>OnyxLabyrinth · Enemy Sprite Preview</title>
+<title>OnyxLabyrinth · In-Game Sprite Preview</title>
 <style>
 body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #0e0d0a; color: #d0c0a0; margin: 0; padding: 1rem; }
 h1 { text-align: center; margin-bottom: 0.5rem; }
 .hint { text-align: center; color: #a09070; margin-bottom: 1.5rem; }
+h1.section { margin-top: 2.5rem; color: #f0d080; border-top: 2px solid #3a3025; padding-top: 1.5rem; }
 .enemy { margin-bottom: 2rem; border-bottom: 1px solid #3a3025; padding-bottom: 1.5rem; }
 .enemy h2 { margin: 0 0 0.75rem; color: #f0d080; }
 .states { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
@@ -20,8 +21,285 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </style>
 </head>
 <body>
-<h1>Enemy Sprite Strip Preview</h1>
-<div class="hint">Pixel-art strips are drawn at 240×240. Idle/attack/hurt/death loop automatically.</div>
+<h1>In-Game Sprite Strip Preview</h1>
+<div class="hint">Every sprite strip the game loads, animating at its combat frame rate. Drawn at 240×240; strips are authored facing right (the party is mirrored in combat).</div>
+<h1 class="section">Party — combat classes</h1>
+<div class="hint">Fighter→Knight · Mage→Wizard · Priest→Priest · Thief→Archer · Ninja→Swordsman (see src/engine/party-sprite-cache.ts)</div>
+
+<div class="enemy">
+<h2>fighter</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-fighter-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-fighter-idle" src="public/assets/party/fighter/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1469 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-fighter-walk" width="240" height="240"></canvas>
+<img class="strip" id="i-fighter-walk" src="public/assets/party/fighter/walk.png" style="display:none;" />
+<div class="meta">
+<strong>walk</strong><br>
+800x100 · 8 frames · 1850 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-fighter-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-fighter-attack" src="public/assets/party/fighter/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+700x100 · 7 frames · 2163 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-fighter-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-fighter-hurt" src="public/assets/party/fighter/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2168 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-fighter-death" width="240" height="240"></canvas>
+<img class="strip" id="i-fighter-death" src="public/assets/party/fighter/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1738 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>mage</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-mage-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-mage-idle" src="public/assets/party/mage/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1658 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-mage-walk" width="240" height="240"></canvas>
+<img class="strip" id="i-mage-walk" src="public/assets/party/mage/walk.png" style="display:none;" />
+<div class="meta">
+<strong>walk</strong><br>
+800x100 · 8 frames · 2054 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-mage-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-mage-attack" src="public/assets/party/mage/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+600x100 · 6 frames · 2169 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-mage-cast" width="240" height="240"></canvas>
+<img class="strip" id="i-mage-cast" src="public/assets/party/mage/cast.png" style="display:none;" />
+<div class="meta">
+<strong>cast</strong><br>
+600x100 · 6 frames · 2115 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-mage-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-mage-hurt" src="public/assets/party/mage/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2169 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-mage-death" width="240" height="240"></canvas>
+<img class="strip" id="i-mage-death" src="public/assets/party/mage/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1641 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>ninja</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-ninja-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-ninja-idle" src="public/assets/party/ninja/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1663 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-ninja-walk" width="240" height="240"></canvas>
+<img class="strip" id="i-ninja-walk" src="public/assets/party/ninja/walk.png" style="display:none;" />
+<div class="meta">
+<strong>walk</strong><br>
+800x100 · 8 frames · 2200 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-ninja-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-ninja-attack" src="public/assets/party/ninja/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+700x100 · 7 frames · 2449 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-ninja-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-ninja-hurt" src="public/assets/party/ninja/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+500x100 · 5 frames · 2352 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-ninja-death" width="240" height="240"></canvas>
+<img class="strip" id="i-ninja-death" src="public/assets/party/ninja/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1692 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>priest</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-priest-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-priest-idle" src="public/assets/party/priest/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1606 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-priest-walk" width="240" height="240"></canvas>
+<img class="strip" id="i-priest-walk" src="public/assets/party/priest/walk.png" style="display:none;" />
+<div class="meta">
+<strong>walk</strong><br>
+800x100 · 8 frames · 1976 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-priest-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-priest-attack" src="public/assets/party/priest/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+900x100 · 9 frames · 2094 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-priest-cast" width="240" height="240"></canvas>
+<img class="strip" id="i-priest-cast" src="public/assets/party/priest/cast.png" style="display:none;" />
+<div class="meta">
+<strong>cast</strong><br>
+600x100 · 6 frames · 1663 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-priest-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-priest-hurt" src="public/assets/party/priest/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2073 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-priest-death" width="240" height="240"></canvas>
+<img class="strip" id="i-priest-death" src="public/assets/party/priest/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1541 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>thief</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-thief-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-thief-idle" src="public/assets/party/thief/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1555 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-thief-walk" width="240" height="240"></canvas>
+<img class="strip" id="i-thief-walk" src="public/assets/party/thief/walk.png" style="display:none;" />
+<div class="meta">
+<strong>walk</strong><br>
+800x100 · 8 frames · 1997 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-thief-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-thief-attack" src="public/assets/party/thief/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+900x100 · 9 frames · 2584 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-thief-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-thief-hurt" src="public/assets/party/thief/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2253 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-thief-death" width="240" height="240"></canvas>
+<img class="strip" id="i-thief-death" src="public/assets/party/thief/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1748 bytes
+
+</div>
+</div>
+</div>
+</div>
+<h1 class="section">Enemies</h1>
 
 <div class="enemy">
 <h2>acid-puddle</h2>
@@ -108,6 +386,48 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </div>
 </div>
 <div class="enemy">
+<h2>armored-skeleton</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-armored-skeleton-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-armored-skeleton-idle" src="public/assets/enemies/armored-skeleton/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1522 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-armored-skeleton-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-armored-skeleton-attack" src="public/assets/enemies/armored-skeleton/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+800x100 · 8 frames · 2127 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-armored-skeleton-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-armored-skeleton-hurt" src="public/assets/enemies/armored-skeleton/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2303 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-armored-skeleton-death" width="240" height="240"></canvas>
+<img class="strip" id="i-armored-skeleton-death" src="public/assets/enemies/armored-skeleton/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1723 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
 <h2>big-titty-ogre</h2>
 <div class="states">
 
@@ -144,6 +464,48 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <div class="meta">
 <strong>death</strong><br>
 400x100 · 4 frames · 1757 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>elite-orc</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-elite-orc-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-elite-orc-idle" src="public/assets/enemies/elite-orc/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 2073 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-elite-orc-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-elite-orc-attack" src="public/assets/enemies/elite-orc/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+700x100 · 7 frames · 3209 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-elite-orc-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-elite-orc-hurt" src="public/assets/enemies/elite-orc/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 3130 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-elite-orc-death" width="240" height="240"></canvas>
+<img class="strip" id="i-elite-orc-death" src="public/assets/enemies/elite-orc/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 2486 bytes
 
 </div>
 </div>
@@ -318,6 +680,174 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </div>
 </div>
 <div class="enemy">
+<h2>orc</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-orc-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-orc-idle" src="public/assets/enemies/orc/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1410 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-orc-attack" src="public/assets/enemies/orc/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+600x100 · 6 frames · 2333 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-orc-hurt" src="public/assets/enemies/orc/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2086 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc-death" width="240" height="240"></canvas>
+<img class="strip" id="i-orc-death" src="public/assets/enemies/orc/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1757 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>skeleton</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-skeleton-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-skeleton-idle" src="public/assets/enemies/skeleton/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1292 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skeleton-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-skeleton-attack" src="public/assets/enemies/skeleton/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+600x100 · 6 frames · 2023 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skeleton-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-skeleton-hurt" src="public/assets/enemies/skeleton/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 1943 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skeleton-death" width="240" height="240"></canvas>
+<img class="strip" id="i-skeleton-death" src="public/assets/enemies/skeleton/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1396 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>skeleton-archer</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-skeleton-archer-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-skeleton-archer-idle" src="public/assets/enemies/skeleton-archer/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1728 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skeleton-archer-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-skeleton-archer-attack" src="public/assets/enemies/skeleton-archer/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+900x100 · 9 frames · 2766 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skeleton-archer-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-skeleton-archer-hurt" src="public/assets/enemies/skeleton-archer/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2393 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skeleton-archer-death" width="240" height="240"></canvas>
+<img class="strip" id="i-skeleton-archer-death" src="public/assets/enemies/skeleton-archer/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1651 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
+<h2>slime</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-slime-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-slime-idle" src="public/assets/enemies/slime/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1153 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-slime-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-slime-attack" src="public/assets/enemies/slime/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+600x100 · 6 frames · 1380 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-slime-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-slime-hurt" src="public/assets/enemies/slime/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 1174 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-slime-death" width="240" height="240"></canvas>
+<img class="strip" id="i-slime-death" src="public/assets/enemies/slime/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 767 bytes
+
+</div>
+</div>
+</div>
+</div>
+<div class="enemy">
 <h2>stone-guardian</h2>
 <div class="states">
 
@@ -401,6 +931,48 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </div>
 </div>
 </div>
+<div class="enemy">
+<h2>werewolf</h2>
+<div class="states">
+
+<div class="state ">
+<canvas id="c-werewolf-idle" width="240" height="240"></canvas>
+<img class="strip" id="i-werewolf-idle" src="public/assets/enemies/werewolf/idle.png" style="display:none;" />
+<div class="meta">
+<strong>idle</strong><br>
+600x100 · 6 frames · 1440 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-werewolf-attack" width="240" height="240"></canvas>
+<img class="strip" id="i-werewolf-attack" src="public/assets/enemies/werewolf/attack.png" style="display:none;" />
+<div class="meta">
+<strong>attack</strong><br>
+900x100 · 9 frames · 2432 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-werewolf-hurt" width="240" height="240"></canvas>
+<img class="strip" id="i-werewolf-hurt" src="public/assets/enemies/werewolf/hurt.png" style="display:none;" />
+<div class="meta">
+<strong>hurt</strong><br>
+400x100 · 4 frames · 2099 bytes
+
+</div>
+</div>
+<div class="state ">
+<canvas id="c-werewolf-death" width="240" height="240"></canvas>
+<img class="strip" id="i-werewolf-death" src="public/assets/enemies/werewolf/death.png" style="display:none;" />
+<div class="meta">
+<strong>death</strong><br>
+400x100 · 4 frames · 1742 bytes
+
+</div>
+</div>
+</div>
+</div>
 <script>
 const anims = [];
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -417,7 +989,13 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = false;
       const frameCount = Math.floor(img.naturalWidth / 100) || 1;
-      const fps = id.endsWith('idle') ? 6 : (id.endsWith('death') ? 4 : 8);
+      // Match in-game frame rates (party-sprite-cache STATE_CONFIG).
+      const fps = id.endsWith('idle') ? 6
+        : id.endsWith('walk') ? 10
+        : id.endsWith('attack') ? 12
+        : id.endsWith('cast') ? 10
+        : id.endsWith('death') ? 4
+        : 8;
       anims.push({ ctx, img, frameCount, fps, last: 0, frame: 0 });
     });
     requestAnimationFrame(loop);
