@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Jewelflame · Creature Extended - Supporter Pack Preview</title>
+<title>Jewelflame · Creature Extended - Supporter Pack (Right-facing)</title>
 <style>
 body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #0e0d0a; color: #d0c0a0; margin: 0; padding: 1rem; }
 h1 { text-align: center; margin-bottom: 0.5rem; }
@@ -19,47 +19,73 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 </style>
 </head>
 <body>
-<h1>Creature Extended - Supporter Pack</h1>
-<div class="hint">Sprite strips are auto-detected and drawn at 240×240. Multi-frame strips loop automatically.</div>
+<h1>Creature Extended – Supporter Pack (Right-facing)</h1>
+<div class="hint">Only right-facing animations are shown. Each state is read from the matching .tres SpriteFrames and drawn at 240×240.</div>
 
 <div class="group">
-<h2>fire</h2>
+<h2>fire_skull</h2>
 <div class="states">
 <div class="state ">
-<canvas
-  id="c-fire_skull"
-  width="240" height="240"></canvas>
+<canvas id="c-fire_skull-idle" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-fire_skull"
+  id="i-fire_skull-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/fire_skull.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="40"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>fire_skull</strong><br>
-64x160 · 40 frames · 16x16 per frame · 2404 bytes
+<strong>fire_skull</strong> · idle<br>
+64x160 · 4 frames · 16x16 per frame · 2404 bytes
 </div>
 </div>
 <div class="state ">
-<canvas
-  id="c-fire_skull_fireball"
-  width="240" height="240"></canvas>
+<canvas id="c-fire_skull-walk" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-fire_skull_fireball"
+  id="i-fire_skull-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/fire_skull.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>fire_skull</strong> · walk<br>
+64x160 · 4 frames · 16x16 per frame · 2404 bytes
+</div>
+</div></div>
+</div>
+<div class="group">
+<h2>fire_skull_fireball</h2>
+<div class="states">
+<div class="state ">
+<canvas id="c-fire_skull_fireball-default" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-fire_skull_fireball-default"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/fire_skull_fireball.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
   data-frame-count="12"
   data-orientation="g"
-  data-cols="12" />
+  data-fps="8"
+  data-cols="12"
+  
+   />
 <div class="meta">
-<strong>fire_skull_fireball</strong><br>
+<strong>fire_skull_fireball</strong> · default<br>
 192x16 · 12 frames · 16x16 per frame · 734 bytes
 </div>
 </div></div>
@@ -68,41 +94,127 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <h2>goblin</h2>
 <div class="states">
 <div class="state ">
-<canvas
-  id="c-goblin"
-  width="240" height="240"></canvas>
+<canvas id="c-goblin-idle" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-goblin"
+  id="i-goblin-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/goblin.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>goblin</strong><br>
-64x224 · 56 frames · 16x16 per frame · 3919 bytes
+<strong>goblin</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 3919 bytes
 </div>
 </div>
 <div class="state ">
-<canvas
-  id="c-goblin_slinger"
-  width="240" height="240"></canvas>
+<canvas id="c-goblin-walk" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-goblin_slinger"
+  id="i-goblin-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/goblin.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>goblin</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 3919 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-goblin-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-goblin-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/goblin.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>goblin</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 3919 bytes
+</div>
+</div></div>
+</div>
+<div class="group">
+<h2>goblin_slinger</h2>
+<div class="states">
+<div class="state ">
+<canvas id="c-goblin_slinger-idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-goblin_slinger-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/goblin_slinger.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>goblin_slinger</strong><br>
-64x224 · 56 frames · 16x16 per frame · 3895 bytes
+<strong>goblin_slinger</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 3895 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-goblin_slinger-walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-goblin_slinger-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/goblin_slinger.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>goblin_slinger</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 3895 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-goblin_slinger-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-goblin_slinger-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/goblin_slinger.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>goblin_slinger</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 3895 bytes
 </div>
 </div></div>
 </div>
@@ -110,22 +222,63 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <h2>mummy</h2>
 <div class="states">
 <div class="state ">
-<canvas
-  id="c-mummy"
-  width="240" height="240"></canvas>
+<canvas id="c-mummy-idle" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-mummy"
+  id="i-mummy-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/mummy.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>mummy</strong><br>
-64x224 · 56 frames · 16x16 per frame · 3970 bytes
+<strong>mummy</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 3970 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-mummy-walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-mummy-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/mummy.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>mummy</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 3970 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-mummy-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-mummy-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/mummy.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>mummy</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 3970 bytes
 </div>
 </div></div>
 </div>
@@ -133,98 +286,319 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <h2>orc</h2>
 <div class="states">
 <div class="state ">
-<canvas
-  id="c-orc"
-  width="240" height="240"></canvas>
+<canvas id="c-orc-idle" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-orc"
+  id="i-orc-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>orc</strong><br>
-64x224 · 56 frames · 16x16 per frame · 4315 bytes
+<strong>orc</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 4315 bytes
 </div>
 </div>
 <div class="state ">
-<canvas
-  id="c-orc_archer"
-  width="240" height="240"></canvas>
+<canvas id="c-orc-walk" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-orc_archer"
+  id="i-orc-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>orc</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 4315 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>orc</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 4315 bytes
+</div>
+</div></div>
+</div>
+<div class="group">
+<h2>orc_archer</h2>
+<div class="states">
+<div class="state ">
+<canvas id="c-orc_archer-idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_archer-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_archer.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>orc_archer</strong><br>
-64x224 · 56 frames · 16x16 per frame · 4835 bytes
+<strong>orc_archer</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 4835 bytes
 </div>
 </div>
 <div class="state ">
-<canvas
-  id="c-orc_champion"
-  width="240" height="240"></canvas>
+<canvas id="c-orc_archer-walk" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-orc_champion"
+  id="i-orc_archer-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_archer.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>orc_archer</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 4835 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc_archer-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_archer-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_archer.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>orc_archer</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 4835 bytes
+</div>
+</div></div>
+</div>
+<div class="group">
+<h2>orc_champion</h2>
+<div class="states">
+<div class="state ">
+<canvas id="c-orc_champion-idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_champion-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_champion.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>orc_champion</strong><br>
-64x224 · 56 frames · 16x16 per frame · 5945 bytes
+<strong>orc_champion</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 5945 bytes
 </div>
 </div>
 <div class="state ">
-<canvas
-  id="c-orc_soldier"
-  width="240" height="240"></canvas>
+<canvas id="c-orc_champion-walk" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-orc_soldier"
+  id="i-orc_champion-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_champion.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>orc_champion</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 5945 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc_champion-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_champion-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_champion.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>orc_champion</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 5945 bytes
+</div>
+</div></div>
+</div>
+<div class="group">
+<h2>orc_soldier</h2>
+<div class="states">
+<div class="state ">
+<canvas id="c-orc_soldier-idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_soldier-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_soldier.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>orc_soldier</strong><br>
-64x224 · 56 frames · 16x16 per frame · 5377 bytes
+<strong>orc_soldier</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 5377 bytes
 </div>
 </div>
 <div class="state ">
-<canvas
-  id="c-orc_soldier_unarmoured"
-  width="240" height="240"></canvas>
+<canvas id="c-orc_soldier-walk" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-orc_soldier_unarmoured"
+  id="i-orc_soldier-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_soldier.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>orc_soldier</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 5377 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc_soldier-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_soldier-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_soldier.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>orc_soldier</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 5377 bytes
+</div>
+</div></div>
+</div>
+<div class="group">
+<h2>orc_soldier_unarmoured</h2>
+<div class="states">
+<div class="state ">
+<canvas id="c-orc_soldier_unarmoured-idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_soldier_unarmoured-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_soldier_unarmoured.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>orc_soldier_unarmoured</strong><br>
-64x224 · 56 frames · 16x16 per frame · 4486 bytes
+<strong>orc_soldier_unarmoured</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 4486 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc_soldier_unarmoured-walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_soldier_unarmoured-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_soldier_unarmoured.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>orc_soldier_unarmoured</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 4486 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-orc_soldier_unarmoured-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-orc_soldier_unarmoured-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/orc_soldier_unarmoured.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>orc_soldier_unarmoured</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 4486 bytes
 </div>
 </div></div>
 </div>
@@ -232,60 +606,191 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <h2>skelly</h2>
 <div class="states">
 <div class="state ">
-<canvas
-  id="c-skelly"
-  width="240" height="240"></canvas>
+<canvas id="c-skelly-idle" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-skelly"
+  id="i-skelly-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>skelly</strong><br>
-64x224 · 56 frames · 16x16 per frame · 2816 bytes
+<strong>skelly</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 2816 bytes
 </div>
 </div>
 <div class="state ">
-<canvas
-  id="c-skelly_archer"
-  width="240" height="240"></canvas>
+<canvas id="c-skelly-walk" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-skelly_archer"
+  id="i-skelly-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>skelly</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 2816 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skelly-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-skelly-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>skelly</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 2816 bytes
+</div>
+</div></div>
+</div>
+<div class="group">
+<h2>skelly_archer</h2>
+<div class="states">
+<div class="state ">
+<canvas id="c-skelly_archer-idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-skelly_archer-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly_archer.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>skelly_archer</strong><br>
-64x224 · 56 frames · 16x16 per frame · 4121 bytes
+<strong>skelly_archer</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 4121 bytes
 </div>
 </div>
 <div class="state ">
-<canvas
-  id="c-skelly_warrior"
-  width="240" height="240"></canvas>
+<canvas id="c-skelly_archer-walk" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-skelly_warrior"
+  id="i-skelly_archer-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly_archer.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>skelly_archer</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 4121 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skelly_archer-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-skelly_archer-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly_archer.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>skelly_archer</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 4121 bytes
+</div>
+</div></div>
+</div>
+<div class="group">
+<h2>skelly_warrior</h2>
+<div class="states">
+<div class="state ">
+<canvas id="c-skelly_warrior-idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-skelly_warrior-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly_warrior.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>skelly_warrior</strong><br>
-64x224 · 56 frames · 16x16 per frame · 4721 bytes
+<strong>skelly_warrior</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 4721 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skelly_warrior-walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-skelly_warrior-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly_warrior.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>skelly_warrior</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 4721 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-skelly_warrior-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-skelly_warrior-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/skelly_warrior.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>skelly_warrior</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 4721 bytes
 </div>
 </div></div>
 </div>
@@ -293,22 +798,43 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <h2>slime</h2>
 <div class="states">
 <div class="state ">
-<canvas
-  id="c-slime"
-  width="240" height="240"></canvas>
+<canvas id="c-slime-idle" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-slime"
+  id="i-slime-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/slime.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="32"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>slime</strong><br>
-64x128 · 32 frames · 16x16 per frame · 2280 bytes
+<strong>slime</strong> · idle<br>
+64x128 · 4 frames · 16x16 per frame · 2280 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-slime-walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-slime-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/slime.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>slime</strong> · walk<br>
+64x128 · 4 frames · 16x16 per frame · 2280 bytes
 </div>
 </div></div>
 </div>
@@ -316,22 +842,63 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <h2>wraith</h2>
 <div class="states">
 <div class="state ">
-<canvas
-  id="c-wraith"
-  width="240" height="240"></canvas>
+<canvas id="c-wraith-idle" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-wraith"
+  id="i-wraith-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/wraith.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>wraith</strong><br>
-64x224 · 56 frames · 16x16 per frame · 4193 bytes
+<strong>wraith</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 4193 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-wraith-walk" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-wraith-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/wraith.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>wraith</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 4193 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-wraith-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-wraith-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/wraith.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>wraith</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 4193 bytes
 </div>
 </div></div>
 </div>
@@ -339,79 +906,175 @@ canvas { image-rendering: pixelated; background: #000; border-radius: 2px; displ
 <h2>zombie</h2>
 <div class="states">
 <div class="state ">
-<canvas
-  id="c-zombie"
-  width="240" height="240"></canvas>
+<canvas id="c-zombie-idle" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-zombie"
+  id="i-zombie-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>zombie</strong><br>
-64x224 · 56 frames · 16x16 per frame · 3516 bytes
+<strong>zombie</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 3516 bytes
 </div>
 </div>
 <div class="state ">
-<canvas
-  id="c-zombie_burster"
-  width="240" height="240"></canvas>
+<canvas id="c-zombie-walk" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-zombie_burster"
+  id="i-zombie-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>zombie</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 3516 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-zombie-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-zombie-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>zombie</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 3516 bytes
+</div>
+</div></div>
+</div>
+<div class="group">
+<h2>zombie_burster</h2>
+<div class="states">
+<div class="state ">
+<canvas id="c-zombie_burster-idle" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-zombie_burster-idle"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie_burster.png"
   style="display:none;"
   data-frame-w="16"
   data-frame-h="16"
-  data-frame-count="56"
-  data-orientation="g"
-  data-cols="4" />
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="6"
+  
+  
+  data-sy-offset="32" />
 <div class="meta">
-<strong>zombie_burster</strong><br>
-64x224 · 56 frames · 16x16 per frame · 5537 bytes
+<strong>zombie_burster</strong> · idle<br>
+64x224 · 4 frames · 16x16 per frame · 5537 bytes
 </div>
 </div>
 <div class="state ">
-<canvas
-  id="c-zombie_burster_Death_Explosion"
-  width="240" height="240"></canvas>
+<canvas id="c-zombie_burster-walk" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-zombie_burster_Death_Explosion"
+  id="i-zombie_burster-walk"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie_burster.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="8"
+  
+  
+  data-sy-offset="96" />
+<div class="meta">
+<strong>zombie_burster</strong> · walk<br>
+64x224 · 4 frames · 16x16 per frame · 5537 bytes
+</div>
+</div>
+<div class="state ">
+<canvas id="c-zombie_burster-attack" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-zombie_burster-attack"
+  src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie_burster.png"
+  style="display:none;"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="4"
+  data-orientation="h"
+  data-fps="10"
+  
+  
+  data-sy-offset="160" />
+<div class="meta">
+<strong>zombie_burster</strong> · attack<br>
+64x224 · 4 frames · 16x16 per frame · 5537 bytes
+</div>
+</div></div>
+</div>
+<div class="group">
+<h2>zombie_burster_Death_Explosion</h2>
+<div class="states">
+<div class="state ">
+<canvas id="c-zombie_burster_Death_Explosion-default" width="240" height="240"></canvas>
+<img
+  class="strip"
+  id="i-zombie_burster_Death_Explosion-default"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie_burster_Death_Explosion.png"
   style="display:none;"
-  data-frame-w="32"
-  data-frame-h="32"
-  data-frame-count="18"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="72"
   data-orientation="g"
-  data-cols="9" />
+  data-fps="8"
+  data-cols="18"
+  
+   />
 <div class="meta">
-<strong>zombie_burster_Death_Explosion</strong><br>
-288x64 · 18 frames · 32x32 per frame · 2564 bytes
+<strong>zombie_burster_Death_Explosion</strong> · default<br>
+288x64 · 72 frames · 16x16 per frame · 2564 bytes
 </div>
+</div></div>
 </div>
+<div class="group">
+<h2>zombie_burster_Explosion_Attack</h2>
+<div class="states">
 <div class="state ">
-<canvas
-  id="c-zombie_burster_Explosion_Attack"
-  width="240" height="240"></canvas>
+<canvas id="c-zombie_burster_Explosion_Attack-default" width="240" height="240"></canvas>
 <img
   class="strip"
-  id="i-zombie_burster_Explosion_Attack"
+  id="i-zombie_burster_Explosion_Attack-default"
   src="../jewelflame/assets/Creature%20Extended-%20Supporter%20Pack/zombie_burster_Explosion_Attack.png"
   style="display:none;"
-  data-frame-w="32"
-  data-frame-h="32"
-  data-frame-count="18"
+  data-frame-w="16"
+  data-frame-h="16"
+  data-frame-count="72"
   data-orientation="g"
-  data-cols="9" />
+  data-fps="8"
+  data-cols="18"
+  
+   />
 <div class="meta">
-<strong>zombie_burster_Explosion_Attack</strong><br>
-288x64 · 18 frames · 32x32 per frame · 2983 bytes
+<strong>zombie_burster_Explosion_Attack</strong> · default<br>
+288x64 · 72 frames · 16x16 per frame · 2983 bytes
 </div>
 </div></div>
 </div>
@@ -434,8 +1097,10 @@ document.fonts.ready.catch(() => {}).finally(() => {
       const frameCount = Number(img.dataset.frameCount);
       const orientation = img.dataset.orientation;
       const cols = orientation === 'g' ? Number(img.dataset.cols) : undefined;
-      const fps = 8;
-      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, fps, last: 0, frame: 0 });
+      const sxOffset = Number(img.dataset.sxOffset || 0);
+      const syOffset = Number(img.dataset.syOffset || 0);
+      const fps = Number(img.dataset.fps) || 8;
+      anims.push({ ctx, img, frameW, frameH, frameCount, orientation, cols, sxOffset, syOffset, fps, last: 0, frame: 0 });
     });
     requestAnimationFrame(loop);
   }
@@ -448,16 +1113,16 @@ document.fonts.ready.catch(() => {}).finally(() => {
         a.frame = (a.frame + Math.floor(elapsed / interval)) % a.frameCount;
         a.last = now;
         a.ctx.clearRect(0, 0, 240, 240);
-        let sx = 0, sy = 0;
+        let sx = a.sxOffset;
+        let sy = a.syOffset;
         if (a.orientation === 'h') {
-          sx = a.frame * a.frameW;
+          sx += a.frame * a.frameW;
         } else if (a.orientation === 'v') {
-          sy = a.frame * a.frameH;
+          sy += a.frame * a.frameH;
         } else {
-          // Grid layout (e.g. 2 columns of 32×32 frames)
           const cols = a.cols || Math.floor(a.img.naturalWidth / a.frameW);
-          sx = (a.frame % cols) * a.frameW;
-          sy = Math.floor(a.frame / cols) * a.frameH;
+          sx += (a.frame % cols) * a.frameW;
+          sy += Math.floor(a.frame / cols) * a.frameH;
         }
         const scale = Math.min(240 / a.frameW, 240 / a.frameH);
         const dw = a.frameW * scale;
@@ -470,16 +1135,16 @@ document.fonts.ready.catch(() => {}).finally(() => {
     requestAnimationFrame(loop);
   }
 
+  function onLoad() {
+    loaded++;
+    if (loaded >= total) start();
+  }
+
   images.forEach((img) => {
     if (img.complete && img.naturalWidth) onLoad();
     else img.addEventListener('load', onLoad);
     img.addEventListener('error', onLoad);
   });
-
-  function onLoad() {
-    loaded++;
-    if (loaded >= total) start();
-  }
 });
 </script>
 </body>
