@@ -209,7 +209,7 @@ export type PlayerAction =
  * CombatEvent. Events are 1:1 with log entries (null if no event).
  */
 export type CombatEvent =
-  | { type: "attack"; actorId: string; targetId: string; damage: number }
+  | { type: "attack"; actorId: string; targetId: string; damage: number; range?: WeaponRange }
   | { type: "miss"; actorId: string; targetId: string; reason: "evade" | "blind" | "noTarget" }
   | { type: "cast"; actorId: string; spellId: string; targetId: string | null; damage?: number; heal?: number }
   | { type: "spellEffect"; spellId: string; targetId?: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean; isDebuff?: boolean }
@@ -948,7 +948,7 @@ function resolveAttack(
   target.currentHp -= damage;
   emit(
     `${actor.name} attacks ${target.name} for ${damage} damage.`,
-    { type: "attack", actorId: actor.id, targetId: target.instanceId, damage }
+    { type: "attack", actorId: actor.id, targetId: target.instanceId, damage, range: weaponRange }
   );
   wakeOnDamage(target, log);
 }
