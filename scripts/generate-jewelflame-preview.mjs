@@ -165,17 +165,17 @@ function parseCreatureStates(tresPath, size) {
   for (const [state, { yValues, fps }] of stateMap) {
     const rows = [...yValues].sort((a, b) => a - b);
     if (rows.length === 0) continue;
+    // Use only the first side-facing frame so the preview does not alternate
+    // between left/right profiles as the walk cycle plays.
     states.push({
       state,
-      fps,
+      fps: 1,
       frameW: 16,
       frameH: 16,
-      frameCount: rows.length,
-      // Second column is the first side-facing profile; flip it later if needed.
+      frameCount: 1,
       sxOffset: 16,
       syOffset: rows[0],
       orientation: "v",
-      rows,
     });
   }
 
