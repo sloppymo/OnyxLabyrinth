@@ -33,6 +33,7 @@ export function createGameState(floor: FloorDef): GameState {
     lootTaken: {},
     pendingTrap: null,
     persistentBuffs: [],
+    swimSkill: {},
     inDarkness: false,
     inAntimagic: false,
     lastDungeon: null,

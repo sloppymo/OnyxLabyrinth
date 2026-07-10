@@ -62,7 +62,25 @@ export interface FloorDef {
   // `trap` marks the chest as trapped (Inspect/Disarm/Open/Leave prompt on
   // step; see game/features.ts). Untrapped chests loot immediately.
   treasures?: { x: number; y: number; itemIds: string[]; trap?: TrapType }[];
+  // Water tiles (feature "water"). Depth 1-4 sets the swim difficulty; an
+  // optional effect fires on everyone who enters (blessed/cursed pools).
+  // Tiles are never consumed. Levitation or the Ring of Water Walking
+  // crosses without a check.
+  waters?: WaterDef[];
 }
+
+export interface WaterDef {
+  x: number;
+  y: number;
+  /** 1 = ankle-deep (easy) … 4 = a drowning pool (hard). */
+  depth: 1 | 2 | 3 | 4;
+  effect?: WaterEffect;
+}
+
+export type WaterEffect =
+  | { kind: "heal"; power: number }
+  | { kind: "damage"; power: number }
+  | { kind: "cure"; status: "poison" };
 
 export interface TeleporterLink {
   x: number;
@@ -120,6 +138,12 @@ function floor1(): FloorDef {
   // Black floodwater in the east gallery — visibility drops to one tile.
   setTile(grid, 8, 5, "darkness");
   setTile(grid, 9, 5, "darkness");
+  // Floodwater. The gallery threshold is ankle-deep (teaches swimming on the
+  // reliquary route); the west crypt hides a blessed pool; the gallery's
+  // south-east corner drops into a drowning pool.
+  setTile(grid, 7, 5, "water");
+  setTile(grid, 2, 4, "water");
+  setTile(grid, 10, 6, "water");
   // Open chest in the west crypt (holds the crypt-key).
   setTile(grid, 2, 5, "treasure");
   // Locked reliquary chest (holds the lexicon-key for floor 2).
@@ -146,6 +170,11 @@ function floor1(): FloorDef {
       // The first chest of the game is untrapped — it teaches looting safely.
       { x: 2, y: 5, itemIds: ["healing-potion", "healing-potion", "crypt-key"] },
       { x: 10, y: 9, itemIds: ["short-sword+1", "leather", "healing-potion", "lexicon-key"], trap: "gas" },
+    ],
+    waters: [
+      { x: 7, y: 5, depth: 1 },
+      { x: 2, y: 4, depth: 2, effect: { kind: "heal", power: 8 } },
+      { x: 10, y: 6, depth: 4, effect: { kind: "damage", power: 6 } },
     ],
   };
 }
@@ -233,7 +262,7 @@ function floor2(): FloorDef {
     treasures: [
       // A silenced library hates noise — the alarm summons the stacks' keepers.
       { x: 12, y: 3, itemIds: ["mace+1", "chain-mail", "healing-potion", "antidote"], trap: "alarm" },
-      { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "healing-potion", "furnace-key"], trap: "stunner" },
+      { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "ring-of-water-walking", "furnace-key"], trap: "stunner" },
     ],
   };
 }
@@ -374,6 +403,9 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     lockedDoors: floor.lockedDoors ? floor.lockedDoors.map((d) => ({ ...d })) : undefined,
     treasures: floor.treasures
       ? floor.treasures.map((t) => ({ x: t.x, y: t.y, itemIds: [...t.itemIds], trap: t.trap }))
+      : undefined,
+    waters: floor.waters
+      ? floor.waters.map((w) => ({ ...w, effect: w.effect ? { ...w.effect } : undefined }))
       : undefined,
   };
 }

@@ -74,6 +74,8 @@ interface SerializedState {
   // Active utility-spell buffs (light/levitation). Optional: absent in saves
   // from before the buff system, defaulting to none on load.
   persistentBuffs?: GameState["persistentBuffs"];
+  // Per-character swim skill. Optional: absent in older saves, defaults to {}.
+  swimSkill?: GameState["swimSkill"];
   // Treasure state: which treasures have been looted, keyed by floor ID.
   // Each value is an array of "x,y" position strings. The floor clone is
   // restored from the immutable FLOORS definition on load.
@@ -128,6 +130,7 @@ export function serialize(state: GameState): string {
     lastDungeon: state.lastDungeon,
     equipment: { ...state.equipment },
     persistentBuffs: state.persistentBuffs.map((b) => ({ ...b })),
+    swimSkill: { ...state.swimSkill },
     lootTaken,
     savedAt: new Date().toISOString(),
   };
@@ -206,6 +209,7 @@ export function deserialize(json: string): GameState | null {
       // off and back onto the tile re-prompts.
       pendingTrap: null,
       persistentBuffs: ser.persistentBuffs?.map((b) => ({ ...b })) ?? [],
+      swimSkill: ser.swimSkill ? { ...ser.swimSkill } : {},
       inDarkness: ser.inDarkness ?? false,
       inAntimagic: ser.inAntimagic ?? false,
       lastDungeon: ser.lastDungeon ?? null,

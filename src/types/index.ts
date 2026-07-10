@@ -37,7 +37,8 @@ export type TileFeature =
   | "chute"
   | "darkness"
   | "treasure"
-  | "antimagic";
+  | "antimagic"
+  | "water";
 
 export type Grid = Cell[][]; // grid[y][x]
 
@@ -134,6 +135,9 @@ export interface GameState {
   // Active party-wide spell buffs (light, levitation). Ticked per step,
   // cleared by camping. Serialized in saves.
   persistentBuffs: PersistentBuff[];
+  // Per-character swim skill (0-100), learned by doing: stepping through
+  // water tiles raises it. Keyed by character id; absent means 0.
+  swimSkill: Record<string, number>;
   // Set while the party stands on a trapped, unopened chest. While non-null,
   // dungeon movement is blocked and the Inspect/Disarm/Open/Leave keys are
   // live. Never persisted: a save can't be taken while the prompt is open.

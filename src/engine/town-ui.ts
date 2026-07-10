@@ -234,7 +234,10 @@ export class TownController {
 
   private getShopBuyList(): ItemDef[] {
     // Shop sells tier-1 and tier-2 items (appropriate for early game).
-    return ALL_ITEMS.filter((item) => (item.dropFloorTier ?? 1) <= 2);
+    // Trinkets (ring-of-water-walking, …) are dungeon finds, never stock.
+    return ALL_ITEMS.filter(
+      (item) => item.type !== "trinket" && (item.dropFloorTier ?? 1) <= 2
+    );
   }
 
   private handleShopKey(lower: string): void {
