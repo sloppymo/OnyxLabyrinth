@@ -209,6 +209,105 @@ describe("resolvePlayerTurn", () => {
     expect(s.defendBuff[mage.id]).toBe(0.5);
   });
 
+  it("single-target heal can mend a summoned ally", () => {
+    const state = makeState();
+    const healer = state.party[0];
+    healer.knownSpellIds = ["priest-dios"];
+    healer.sp = 99;
+    healer.maxSp = 99;
+    state.summonedAllies.push({
+      id: "summon-1",
+      name: "Summoned Beast",
+      hp: 4,
+      maxHp: 18,
+      attack: 5,
+      ac: 1,
+      agi: 50,
+      row: "front",
+    });
+    const s = resolvePlayerTurn(
+      state,
+      {
+        kind: "cast",
+        actorId: healer.id,
+        spellId: "priest-dios",
+        targetAllyId: "summon-1",
+      },
+      seqRng([0.5])
+    );
+    const summon = s.summonedAllies.find((a) => a.id === "summon-1");
+    expect(summon?.hp).toBe(16); // 4 + Dios 12
+    // The heal went to the summon, not a party member.
+    for (const c of s.party) expect(c.hp).toBe(c.maxHp);
+    expect(
+      s.events.some(
+        (e) => e?.type === "spellEffect" && e.targetId === "summon-1" && e.heal === 12
+      )
+    ).toBe(true);
+  });
+
+  it("summon heals clamp to maxHp and skip dead summons", () => {
+    const state = makeState();
+    const healer = state.party[0];
+    healer.knownSpellIds = ["priest-dios"];
+    healer.sp = 99;
+    healer.maxSp = 99;
+    state.summonedAllies.push({
+      id: "summon-1",
+      name: "Summoned Beast",
+      hp: 15,
+      maxHp: 18,
+      attack: 5,
+      ac: 1,
+      agi: 50,
+      row: "front",
+    });
+    const s = resolvePlayerTurn(
+      state,
+      {
+        kind: "cast",
+        actorId: healer.id,
+        spellId: "priest-dios",
+        targetAllyId: "summon-1",
+      },
+      seqRng([0.5])
+    );
+    expect(s.summonedAllies[0].hp).toBe(18);
+
+    // A dead summon is not a valid heal target — the cast falls through to
+    // the party lookup and finds nothing, and the turn's death check banishes
+    // the 0-HP summon.
+    const state2 = makeState();
+    const healer2 = state2.party[0];
+    healer2.knownSpellIds = ["priest-dios"];
+    healer2.sp = 99;
+    healer2.maxSp = 99;
+    state2.summonedAllies.push({
+      id: "summon-dead",
+      name: "Summoned Beast",
+      hp: 0,
+      maxHp: 18,
+      attack: 5,
+      ac: 1,
+      agi: 50,
+      row: "front",
+    });
+    const s2 = resolvePlayerTurn(
+      state2,
+      {
+        kind: "cast",
+        actorId: healer2.id,
+        spellId: "priest-dios",
+        targetAllyId: "summon-dead",
+      },
+      seqRng([0.5])
+    );
+    expect(s2.summonedAllies).toHaveLength(0);
+    expect(
+      s2.events.some((e) => e?.type === "spellEffect" && e.targetId === "summon-dead")
+    ).toBe(false);
+  });
+
   it("flee success ends combat immediately", () => {
     const state = makeState();
     const s = resolvePlayerTurn(

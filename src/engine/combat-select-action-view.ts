@@ -164,10 +164,11 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
   const living = [...state.enemies.front, ...state.enemies.back].filter(
     (e) => e.currentHp > 0
   );
+  const summons = state.summonedAllies.filter((a) => a.hp > 0);
   // Group by display name with counts, FF6-style.
   const counts = new Map<string, number>();
   for (const e of living) counts.set(e.name, (counts.get(e.name) ?? 0) + 1);
-  if (counts.size === 0) {
+  if (counts.size === 0 && summons.length === 0) {
     win.appendChild(el("ff6-enemy-row", "—"));
     return win;
   }
@@ -182,6 +183,19 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
       countEl.textContent = `×${count}`;
       row.appendChild(countEl);
     }
+    win.appendChild(row);
+  }
+  // Summoned allies fight on the party's side but stand mid-field, so they
+  // list here (with HP — the party window carries their bar).
+  for (const a of summons) {
+    const row = el("ff6-enemy-row summon");
+    const nameEl = document.createElement("span");
+    nameEl.textContent = a.name;
+    row.appendChild(nameEl);
+    const hpEl = document.createElement("span");
+    hpEl.className = "ff6-enemy-count";
+    hpEl.textContent = `${a.hp}/${a.maxHp}`;
+    row.appendChild(hpEl);
     win.appendChild(row);
   }
   return win;
@@ -222,6 +236,41 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
     const fill = document.createElement("span");
     fill.className = "ff6-p-bar-fill";
     const ratio = c.maxHp > 0 ? Math.max(0, c.hp) / c.maxHp : 0;
+    fill.style.width = `${Math.round(ratio * 100)}%`;
+    if (ratio <= 0.25) fill.classList.add("critical");
+    else if (ratio <= 0.5) fill.classList.add("wounded");
+    barWrap.appendChild(fill);
+    row.appendChild(barWrap);
+
+    win.appendChild(row);
+  }
+
+  // Summoned allies get compact rows below the party: name, HP, HP bar
+  // (no SP — they can't cast).
+  for (const a of view.state.summonedAllies) {
+    if (a.hp <= 0) continue;
+    const row = el("ff6-party-row summon");
+
+    const name = document.createElement("span");
+    name.className = "ff6-p-name";
+    name.textContent = a.name;
+    row.appendChild(name);
+
+    const hp = document.createElement("span");
+    hp.className = "ff6-p-hp";
+    hp.textContent = `${a.hp}/${a.maxHp}`;
+    row.appendChild(hp);
+
+    const sp = document.createElement("span");
+    sp.className = "ff6-p-sp none";
+    sp.textContent = "—";
+    row.appendChild(sp);
+
+    const barWrap = document.createElement("span");
+    barWrap.className = "ff6-p-bar";
+    const fill = document.createElement("span");
+    fill.className = "ff6-p-bar-fill";
+    const ratio = a.maxHp > 0 ? a.hp / a.maxHp : 0;
     fill.style.width = `${Math.round(ratio * 100)}%`;
     if (ratio <= 0.25) fill.classList.add("critical");
     else if (ratio <= 0.5) fill.classList.add("wounded");

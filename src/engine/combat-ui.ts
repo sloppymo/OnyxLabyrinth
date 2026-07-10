@@ -29,6 +29,7 @@ import {
   type TurnQueueEntry,
   type EnemyInstance,
   type Row,
+  type SummonedAlly,
 } from "../game/combat";
 import { enemyHealthDescriptor } from "./combat-display";
 import type { Character } from "../game/party";
@@ -292,6 +293,16 @@ export class CombatController {
     );
   }
 
+  /** Living summons, targetable only by single-target heal spells. */
+  private targetableSummons(): SummonedAlly[] {
+    if (this.pending?.kind !== "cast" || !this.pending.spellId) return [];
+    const spell = this.state.spells[this.pending.spellId];
+    if (!spell || spell.target !== "singleAlly" || spell.effect.kind !== "heal") {
+      return [];
+    }
+    return this.state.summonedAllies.filter((a) => a.hp > 0);
+  }
+
   private availableItems(): { item: ItemDef; count: number }[] {
     return Object.entries(this.state.inventory)
       .filter(([, count]) => count > 0)
@@ -392,6 +403,16 @@ export class CombatController {
         label: a.name,
         detail: `${Math.max(0, a.hp)}/${a.maxHp}`,
       }));
+      // Single-target heals can also mend summoned allies; list them after
+      // the party (cure/resurrect/items stay party-only — summons have no
+      // statuses to clear).
+      for (const a of this.targetableSummons()) {
+        this.selectionIds.push(a.id);
+        this.selectionEntries.push({
+          label: a.name,
+          detail: `${Math.max(0, a.hp)}/${a.maxHp}`,
+        });
+      }
     }
     this.selectionIndex = 0;
     this.syncTargetCursor();
@@ -447,9 +468,17 @@ export class CombatController {
       return;
     }
     const id = this.selectionIds[this.selectionIndex];
-    this.scene.cursor = id
-      ? { kind: this.targetKind === "enemy" ? "enemy" : "party", id }
-      : null;
+    if (!id) {
+      this.scene.cursor = null;
+      return;
+    }
+    const kind =
+      this.targetKind === "enemy"
+        ? "enemy"
+        : this.state.summonedAllies.some((a) => a.id === id)
+          ? "ally"
+          : "party";
+    this.scene.cursor = { kind, id };
   }
 
   /** Confirm the highlighted selection entry. */

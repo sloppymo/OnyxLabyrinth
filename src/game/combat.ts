@@ -1490,6 +1490,23 @@ function applySpell(
       break;
     }
     case "heal": {
+      // Single-target heals can also mend a summoned ally (they hold the
+      // front line and soak hits). Summons have no statuses, so cure /
+      // resurrect stay party-only.
+      if (spell.target === "singleAlly" && action.targetAllyId) {
+        const summon = s.summonedAllies.find(
+          (a) => a.id === action.targetAllyId && a.hp > 0
+        );
+        if (summon) {
+          const before = summon.hp;
+          summon.hp = Math.min(summon.maxHp, summon.hp + eff.power);
+          emit(
+            `${spell.name} heals ${summon.name} for ${summon.hp - before} HP.`,
+            { type: "spellEffect", spellId: spell.id, targetId: summon.id, heal: summon.hp - before }
+          );
+          break;
+        }
+      }
       for (const t of allyTargets(s, spell, action, caster)) {
         const before = t.hp;
         t.hp = Math.min(t.maxHp, t.hp + eff.power);

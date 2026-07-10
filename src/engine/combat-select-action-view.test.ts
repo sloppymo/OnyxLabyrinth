@@ -167,6 +167,40 @@ describe("renderCombatWindows", () => {
     expect(rows[1].classList.contains("ko")).toBe(true);
   });
 
+  it("lists living summoned allies in the enemy window with HP", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    state.summonedAllies.push(
+      { id: "s1", name: "Summoned Beast", hp: 12, maxHp: 18, attack: 5, ac: 1, agi: 50, row: "front" },
+      { id: "s2", name: "Summoned Beast", hp: 0, maxHp: 18, attack: 5, ac: 1, agi: 50, row: "front" }
+    );
+    renderCombatWindows(container, baseView(state), noopHandlers());
+    const rows = container.querySelectorAll(".ff6-enemy-row.summon");
+    expect(rows).toHaveLength(1); // dead summon omitted
+    expect(rows[0].textContent).toContain("Summoned Beast");
+    expect(rows[0].textContent).toContain("12/18");
+  });
+
+  it("appends compact summoned ally rows to the party window", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    state.summonedAllies.push({
+      id: "s1",
+      name: "Summoned Elemental",
+      hp: 4,
+      maxHp: 18,
+      attack: 5,
+      ac: 1,
+      agi: 50,
+      row: "front",
+    });
+    renderCombatWindows(container, baseView(state), noopHandlers());
+    const rows = container.querySelectorAll(".ff6-party .ff6-party-row");
+    expect(rows).toHaveLength(3); // 2 party + 1 summon
+    const summonRow = container.querySelector(".ff6-party-row.summon");
+    expect(summonRow?.textContent).toContain("Summoned Elemental");
+    expect(summonRow?.textContent).toContain("4/18");
+    expect(summonRow?.querySelector(".ff6-p-bar-fill.critical")).not.toBeNull();
+  });
+
   it("renders the result window when set", () => {
     const state = makeState([makeEnemy("rat-0")]);
     const view = baseView(state);
