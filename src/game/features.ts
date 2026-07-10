@@ -184,6 +184,13 @@ function handleTreasure(state: GameState): FeatureResult {
   // Give items to the party
   const itemNames: string[] = [];
   for (const itemId of treasureDef.itemIds) {
+    // Key IDs (freeform "*-key" strings, not in ITEMS_BY_ID) go to the key
+    // ring so tryUnlock() can consume them — not to the item inventory.
+    if (itemId.endsWith("-key")) {
+      addKey(state, itemId);
+      itemNames.push(keyDisplayName(itemId));
+      continue;
+    }
     state.inventory.push(itemId);
     const item = ITEMS_BY_ID[itemId];
     itemNames.push(item ? item.name : itemId);
@@ -284,6 +291,14 @@ function applyLootedTreasures(
       floor.grid[y][x].tile = undefined;
     }
   }
+}
+
+/** "crypt-key" → "Crypt Key" for treasure messages. */
+function keyDisplayName(keyId: string): string {
+  return keyId
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 /** Check if the party has a key for a given key ID. */
