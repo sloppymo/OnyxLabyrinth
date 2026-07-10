@@ -41,6 +41,21 @@ export type TileFeature =
 
 export type Grid = Cell[][]; // grid[y][x]
 
+// --- Treasure chest traps ------------------------------------------------------
+// Wizardry-style trapped chests. Stepping onto a trapped treasure tile does
+// not loot it; instead a modal prompt (Inspect / Disarm / Open / Leave) is
+// offered while `GameState.pendingTrap` is set. See game/features.ts.
+
+export type TrapType = "gas" | "teleporter" | "alarm" | "stunner" | "poison";
+
+export interface PendingTrap {
+  x: number;
+  y: number;
+  trapType: TrapType;
+  /** Whether the party has Inspected the chest (reveals the trap type). */
+  inspected: boolean;
+}
+
 // --- Facing / player ---------------------------------------------------------
 
 export type Facing = 0 | 1 | 2 | 3; // 0=N, 1=E, 2=S, 3=W
@@ -106,6 +121,10 @@ export interface GameState {
   // Which treasures have been looted, keyed by floor ID. Each value is a Set of
   // "x,y" position strings. This keeps the global FLOORS definitions immutable.
   lootTaken: Record<number, Set<string>>;
+  // Set while the party stands on a trapped, unopened chest. While non-null,
+  // dungeon movement is blocked and the Inspect/Disarm/Open/Leave keys are
+  // live. Never persisted: a save can't be taken while the prompt is open.
+  pendingTrap: PendingTrap | null;
   // Whether the current tile is a darkness zone (affects render depth).
   inDarkness: boolean;
   // Whether the current tile is an anti-magic zone (affects spell casting).

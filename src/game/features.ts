@@ -16,11 +16,14 @@
  * bar) and whether a floor transition occurred.
  */
 
-import type { Facing, GameState } from "../types";
+import type { Facing, GameState, TrapType } from "../types";
+import type { Character } from "./party";
 import { FLOORS, cloneFloor } from "../data/floors";
 import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
 import { equipItem, findBestEquipTarget } from "./combat";
+
+type Rng = () => number;
 
 export interface FeatureResult {
   message: string;
@@ -168,8 +171,9 @@ function handleChute(state: GameState): FeatureResult {
 }
 
 /**
- * Handle treasure. Gives the party the items defined for this tile, then
- * clears the tile feature so it can't be looted again.
+ * Handle treasure. Untrapped chests are looted immediately. Trapped chests
+ * set `state.pendingTrap` instead — the tile stays, movement is blocked, and
+ * the Inspect/Disarm/Open/Leave keys (main.ts) drive the chest API below.
  */
 function handleTreasure(state: GameState): FeatureResult {
   const { floor, player } = state;
@@ -181,7 +185,30 @@ function handleTreasure(state: GameState): FeatureResult {
     return { message: "This treasure has already been looted.", changedFloor: false, consumed: true };
   }
 
-  // Give items to the party
+  if (treasureDef.trap) {
+    state.pendingTrap = {
+      x: player.x,
+      y: player.y,
+      trapType: treasureDef.trap,
+      inspected: false,
+    };
+    // Keep prompt strings short: the #message overlay shows ~2 lines of
+    // ~30 chars before clipping, and the key hints must stay visible.
+    return {
+      message: "A chest! [I]nspect · [D]isarm · [O]pen · [L]eave",
+      changedFloor: false,
+      consumed: false,
+    };
+  }
+
+  return awardTreasure(state, treasureDef);
+}
+
+/** Loot a treasure definition: give items, auto-equip gear, clear the tile. */
+function awardTreasure(
+  state: GameState,
+  treasureDef: { x: number; y: number; itemIds: string[]; trap?: TrapType }
+): FeatureResult {
   const itemNames: string[] = [];
   for (const itemId of treasureDef.itemIds) {
     // Key IDs (freeform "*-key" strings, not in ITEMS_BY_ID) go to the key
@@ -206,12 +233,12 @@ function handleTreasure(state: GameState): FeatureResult {
 
   // Clear the treasure
   treasureDef.itemIds = [];
-  floor.grid[player.y][player.x].tile = undefined;
+  state.floor.grid[treasureDef.y][treasureDef.x].tile = undefined;
 
   // Record cross-floor so returning later or saving/loading doesn't need to
   // inspect (or mutate) the global FLOORS definition.
   const taken = state.lootTaken[state.floor.id] ?? new Set<string>();
-  taken.add(`${player.x},${player.y}`);
+  taken.add(`${treasureDef.x},${treasureDef.y}`);
   state.lootTaken[state.floor.id] = taken;
 
   return {
@@ -291,6 +318,225 @@ function applyLootedTreasures(
       floor.grid[y][x].tile = undefined;
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Trapped chest interaction (Inspect / Disarm / Open / Leave)
+//
+// While GameState.pendingTrap is set, main.ts blocks dungeon movement and
+// routes the I/D/O/L keys to these functions. All of them are no-ops when no
+// trap prompt is active.
+// ---------------------------------------------------------------------------
+
+/** Result of a chest action, consumed by main.ts. */
+export interface ChestActionResult {
+  message: string;
+  /** The chest was opened (loot awarded) — the prompt is over. */
+  opened: boolean;
+  /** An alarm trap fired: main.ts must start a forced encounter. */
+  alarm: boolean;
+  /** A teleporter trap fired: main.ts must snap the render camera. */
+  relocated: boolean;
+}
+
+const TRAP_NAMES: Record<TrapType, string> = {
+  gas: "Gas Bomb",
+  teleporter: "Teleporter",
+  alarm: "Alarm",
+  stunner: "Stunner",
+  poison: "Poison Needle",
+};
+
+function noChest(): ChestActionResult {
+  return { message: "", opened: false, alarm: false, relocated: false };
+}
+
+/** The treasure definition behind the active trap prompt. */
+function pendingTreasure(state: GameState) {
+  const p = state.pendingTrap;
+  if (!p) return null;
+  return state.floor.treasures?.find((t) => t.x === p.x && t.y === p.y) ?? null;
+}
+
+function aliveMembers(state: GameState): Character[] {
+  return state.party.filter((c) => c.hp > 0 && !c.status.includes("knockedOut"));
+}
+
+/**
+ * Inspect the chest. A living Thief identifies the trap exactly; anyone else
+ * only senses that the mechanism is dangerous.
+ */
+export function inspectChest(state: GameState): string {
+  const p = state.pendingTrap;
+  if (!p) return "";
+  const thief = aliveMembers(state).find((c) => c.class === "Thief");
+  p.inspected = true;
+  if (thief) {
+    return `${thief.name}: a ${TRAP_NAMES[p.trapType]} trap! [D]isarm · [O]pen · [L]eave`;
+  }
+  return "Looks dangerous. [D]isarm · [O]pen · [L]eave";
+}
+
+/**
+ * Attempt to disarm the trap. A Thief uses (level + AGI) / 2 + 10%; anyone
+ * else falls back to LUK / 4 + 5%. On failure there is a 50% chance the trap
+ * fires (the chest still opens — the trap is spent, loot survives) and a 50%
+ * chance nothing happens (the party may retry).
+ */
+export function disarmChest(state: GameState, rng: Rng = Math.random): ChestActionResult {
+  const p = state.pendingTrap;
+  const treasure = pendingTreasure(state);
+  if (!p || !treasure) return noChest();
+
+  const alive = aliveMembers(state);
+  if (alive.length === 0) return noChest();
+  const thieves = alive.filter((c) => c.class === "Thief");
+  const disarmer =
+    thieves.length > 0
+      ? thieves.reduce((a, b) => (a.level + a.stats.agi >= b.level + b.stats.agi ? a : b))
+      : alive.reduce((a, b) => (a.stats.luk >= b.stats.luk ? a : b));
+  const chance =
+    disarmer.class === "Thief"
+      ? Math.min(0.95, ((disarmer.level + disarmer.stats.agi) / 2 + 10) / 100)
+      : Math.min(0.95, (disarmer.stats.luk / 4 + 5) / 100);
+
+  if (rng() < chance) {
+    state.pendingTrap = null;
+    const loot = awardTreasure(state, treasure);
+    return {
+      message: `${disarmer.name} disarms the ${TRAP_NAMES[p.trapType]} trap! ${loot.message}`,
+      opened: true,
+      alarm: false,
+      relocated: false,
+    };
+  }
+
+  if (rng() < 0.5) {
+    // Fumbled — the trap fires. The chest springs open anyway (trap spent).
+    return triggerTrapAndOpen(state, `${disarmer.name} fumbles — the trap goes off!`, rng);
+  }
+
+  return {
+    message: `${disarmer.name} slips… [D]isarm · [O]pen · [L]eave`,
+    opened: false,
+    alarm: false,
+    relocated: false,
+  };
+}
+
+/** Open the chest without disarming: the trap fires, then the loot is taken. */
+export function openChest(state: GameState, rng: Rng = Math.random): ChestActionResult {
+  const p = state.pendingTrap;
+  const treasure = pendingTreasure(state);
+  if (!p || !treasure) return noChest();
+  return triggerTrapAndOpen(state, "You force the lid —", rng);
+}
+
+/** Walk away. The chest stays; stepping onto the tile again re-prompts. */
+export function leaveChest(state: GameState): string {
+  if (!state.pendingTrap) return "";
+  state.pendingTrap = null;
+  return "You leave the chest untouched.";
+}
+
+/** Fire the pending trap's effect, then award the loot and clear the prompt. */
+function triggerTrapAndOpen(state: GameState, prefix: string, rng: Rng): ChestActionResult {
+  const p = state.pendingTrap;
+  const treasure = pendingTreasure(state);
+  if (!p || !treasure) return noChest();
+
+  state.pendingTrap = null;
+  let alarm = false;
+  let relocated = false;
+  let effectMsg = "";
+
+  switch (p.trapType) {
+    case "gas": {
+      // 2d6 to every living member. Chest traps sting but never kill —
+      // wipes belong to combat, so damage floors each member at 1 HP.
+      const dmg = 2 + Math.floor(rng() * 6) + Math.floor(rng() * 6);
+      for (const c of aliveMembers(state)) {
+        c.hp = Math.max(1, c.hp - dmg);
+      }
+      effectMsg = `Gas! The party takes ${dmg} damage.`;
+      break;
+    }
+    case "poison": {
+      for (const c of aliveMembers(state)) {
+        if (!c.status.includes("poison")) c.status.push("poison");
+      }
+      effectMsg = "Needles! The party is poisoned.";
+      break;
+    }
+    case "stunner": {
+      const alive = aliveMembers(state);
+      const count = Math.min(alive.length, 1 + Math.floor(rng() * 3));
+      const pool = [...alive];
+      const stunned: string[] = [];
+      for (let i = 0; i < count; i++) {
+        const idx = Math.floor(rng() * pool.length);
+        const victim = pool.splice(idx, 1)[0];
+        if (!victim.status.includes("paralysis")) victim.status.push("paralysis");
+        stunned.push(victim.name);
+      }
+      effectMsg = `A flash! ${stunned.join(", ")} paralyzed!`;
+      break;
+    }
+    case "teleporter": {
+      const dest = randomCarvedTile(state, p.x, p.y, rng);
+      if (dest) {
+        state.player.x = dest.x;
+        state.player.y = dest.y;
+        relocated = true;
+        effectMsg = "The floor glows — you are hurled away!";
+      } else {
+        effectMsg = "The floor glows, but the magic fizzles.";
+      }
+      break;
+    }
+    case "alarm": {
+      alarm = true;
+      effectMsg = "An alarm shrieks through the halls!";
+      break;
+    }
+  }
+
+  // The trap is spent; the loot survives (design: traps punish, not rob).
+  const loot = awardTreasure(state, treasure);
+
+  // Teleported away from the chest: the loot message still applies (the
+  // party grabbed the contents as the spell took hold).
+  return {
+    message: `${prefix} ${effectMsg} ${loot.message}`,
+    opened: true,
+    alarm,
+    relocated,
+  };
+}
+
+/**
+ * Pick a random carved, feature-free tile (excluding the chest tile) for the
+ * teleporter trap. A tile is "carved" if at least one edge is open or a door.
+ */
+function randomCarvedTile(
+  state: GameState,
+  notX: number,
+  notY: number,
+  rng: Rng
+): { x: number; y: number } | null {
+  const candidates: { x: number; y: number }[] = [];
+  const grid = state.floor.grid;
+  for (let y = 0; y < grid.length; y++) {
+    for (let x = 0; x < grid[y].length; x++) {
+      if (x === notX && y === notY) continue;
+      const cell = grid[y][x];
+      if (cell.tile !== undefined) continue;
+      if (cell.n === "wall" && cell.e === "wall" && cell.s === "wall" && cell.w === "wall") continue;
+      candidates.push({ x, y });
+    }
+  }
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(rng() * candidates.length)];
 }
 
 /** "crypt-key" → "Crypt Key" for treasure messages. */

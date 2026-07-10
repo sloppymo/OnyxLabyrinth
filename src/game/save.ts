@@ -196,6 +196,11 @@ export function deserialize(json: string): GameState | null {
       keys: ser.keys ? [...ser.keys] : [],
       unlockedDoors,
       lootTaken,
+      // Never persisted (the save menu is unreachable while a trap prompt is
+      // open; only the beforeunload autosave can capture one). Loading such a
+      // save stands the party on the unopened chest with no prompt — stepping
+      // off and back onto the tile re-prompts.
+      pendingTrap: null,
       inDarkness: ser.inDarkness ?? false,
       inAntimagic: ser.inAntimagic ?? false,
       lastDungeon: ser.lastDungeon ?? null,

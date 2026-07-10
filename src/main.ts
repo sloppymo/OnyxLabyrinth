@@ -2,7 +2,15 @@ import "./styles.css";
 import { FLOORS } from "./data/floors";
 import { createGameState, setMode } from "./game/state";
 import { moveForward, moveBackward, turnLeft, turnRight, tryUnlock } from "./engine/camera";
-import { handleTileFeature, transitionToFloor } from "./game/features";
+import {
+  handleTileFeature,
+  transitionToFloor,
+  inspectChest,
+  disarmChest,
+  openChest,
+  leaveChest,
+  type ChestActionResult,
+} from "./game/features";
 import { DX, DY } from "./game/dungeon";
 import {
   render,
@@ -371,7 +379,7 @@ function onMove(): void {
 
 bindInput(window, {
   onForward: () => {
-    if (state.mode === "dungeon" && !mapVisible && !isRenderCameraAnimating()) {
+    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       const before = { x: state.player.x, y: state.player.y };
       moveForward(state);
@@ -383,7 +391,7 @@ bindInput(window, {
     }
   },
   onBackward: () => {
-    if (state.mode === "dungeon" && !mapVisible && !isRenderCameraAnimating()) {
+    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       const before = { x: state.player.x, y: state.player.y };
       moveBackward(state);
@@ -395,29 +403,31 @@ bindInput(window, {
     }
   },
   onTurnLeft: () => {
-    if (state.mode === "dungeon" && !mapVisible && !isRenderCameraAnimating()) {
+    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       turnLeft(state);
       markExplored();
     }
   },
   onTurnRight: () => {
-    if (state.mode === "dungeon" && !mapVisible && !isRenderCameraAnimating()) {
+    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       turnRight(state);
       markExplored();
     }
   },
   onCamp: () => {
-    if (state.mode === "dungeon" && !mapVisible) startCamp();
+    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) startCamp();
   },
   onToggleMap: () => {
-    if (state.mode === "dungeon") toggleMap();
+    if (state.mode === "dungeon" && !state.pendingTrap) toggleMap();
   },
   onSystemMenu: () => {
     // In town mode, Esc is handled by the town controller (back from
     // sub-screens). Only open the save menu from the town main menu.
-    if (state.mode !== "dungeon") return;
+    // While a trap prompt is up, Esc means "leave the chest" (handled by the
+    // trap key listener below).
+    if (state.mode !== "dungeon" || state.pendingTrap) return;
     if (mapVisible) {
       toggleMap();
       return;
@@ -425,10 +435,10 @@ bindInput(window, {
     openSaveMenu();
   },
   onTown: () => {
-    if (state.mode === "dungeon" && !mapVisible) returnToTown();
+    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) returnToTown();
   },
   onUnlock: () => {
-    if (state.mode === "dungeon" && !mapVisible) {
+    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
       audio.resume();
       const msg = tryUnlock(state);
       setMessage(msg);
@@ -440,6 +450,65 @@ bindInput(window, {
       }
     }
   },
+});
+
+// --- Trapped chest prompt --------------------------------------------------
+// Active while state.pendingTrap is set (the party is standing on a trapped,
+// unopened chest). Movement/camp/town/save inputs are gated off above; these
+// keys drive the chest interaction from game/features.ts.
+
+/** Route a chest action result: message, camera snap, forced encounter. */
+function applyChestResult(result: ChestActionResult): void {
+  if (!result.message) return;
+  setMessage(result.message);
+  if (result.relocated) {
+    // Teleporter trap moved the party — snap the camera, no slide.
+    markExplored();
+    resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+  }
+  if (result.alarm) {
+    forceEncounter();
+  }
+}
+
+/** Alarm trap: start an encounter immediately, ignoring cooldown and rate. */
+function forceEncounter(): void {
+  const entry = rollEncounter(state.floor.id);
+  if (!entry) return;
+  const resolved = resolveEncounter(entry);
+  if (resolved.length === 0) return;
+
+  const loadout = buildLoadoutMap();
+  const combat = createCombatFromEncounter(
+    state.party,
+    resolved,
+    SPELLS_BY_ID,
+    ITEMS_BY_ID,
+    loadout,
+    state.inventory,
+    state.inAntimagic
+  );
+  state.combat = combat;
+  setMode(state, "combat");
+  state.stepsSinceEncounter = 0;
+  startCombat(combat);
+}
+
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "dungeon" || !state.pendingTrap) return;
+  const key = e.key.toLowerCase();
+  if (key === "i") {
+    setMessage(inspectChest(state));
+  } else if (key === "d") {
+    applyChestResult(disarmChest(state));
+  } else if (key === "o") {
+    applyChestResult(openChest(state));
+  } else if (key === "l" || e.key === "Escape") {
+    setMessage(leaveChest(state));
+  } else {
+    return;
+  }
+  e.preventDefault();
 });
 
 // One-shot listener: resume the AudioContext on the first keydown anywhere.
