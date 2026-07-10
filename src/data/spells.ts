@@ -16,7 +16,7 @@ export type SpellTarget =
   | "allAllies"
   | "allEnemies";
 
-export type DamageElement = "fire" | "cold" | "physical" | "undead";
+export type DamageElement = "fire" | "cold" | "physical" | "undead" | "lightning" | "poison";
 
 export type SpellEffect =
   | { kind: "damage"; element: DamageElement; power: number }
@@ -162,6 +162,117 @@ export const MAGE_SPELLS: SpellDef[] = [
     effect: { kind: "summon", power: 5 },
     description: "Conjures a group of elemental monsters to fight for the party.",
   },
+  // Visual-effect test spells
+  {
+    id: "mage-fulmen",
+    name: "Fulmen",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "lightning", power: 5 },
+    description: "A crackling bolt of lightning that strikes one foe.",
+  },
+  {
+    id: "mage-fulgor",
+    name: "Fulgor",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "lightning", power: 5 },
+    description: "A radiant arc of lightning that sears one foe.",
+  },
+  {
+    id: "mage-fulgur",
+    name: "Fulgur",
+    class: "Mage",
+    tier: 2,
+    spCost: 2,
+    target: "allEnemies",
+    effect: { kind: "damage", element: "lightning", power: 3 },
+    description: "A storm of lightning that strikes every enemy.",
+  },
+  {
+    id: "mage-ignis",
+    name: "Ignis",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "fire", power: 5 },
+    description: "A bright flare that burns one target.",
+  },
+  {
+    id: "mage-immolatus",
+    name: "Immolatus",
+    class: "Mage",
+    tier: 2,
+    spCost: 2,
+    target: "allEnemies",
+    effect: { kind: "damage", element: "fire", power: 3 },
+    description: "A field of roaring flame that engulfs every enemy.",
+  },
+  {
+    id: "mage-pyro",
+    name: "Pyro",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "fire", power: 5 },
+    description: "A large flaming projectile that scorches one foe.",
+  },
+  {
+    id: "mage-glacies",
+    name: "Glacies",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "cold", power: 5 },
+    description: "A glistening shard of ice that pierces one foe.",
+  },
+  {
+    id: "mage-frigus",
+    name: "Frigus",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "cold", power: 5 },
+    description: "A transparent spike of frost that chills one foe.",
+  },
+  {
+    id: "mage-cryo",
+    name: "Cryo",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "cold", power: 5 },
+    description: "A dark, bitter frost that freezes one foe.",
+  },
+  {
+    id: "mage-necro",
+    name: "Necro",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "poison", power: 5 },
+    description: "A venomous bolt that withers one foe.",
+  },
+  {
+    id: "mage-pestis",
+    name: "Pestis",
+    class: "Mage",
+    tier: 2,
+    spCost: 2,
+    target: "groupEnemies",
+    effect: { kind: "damage", element: "poison", power: 3 },
+    description: "A creeping miasma that poisons one enemy group.",
+  },
 ];
 
 export const PRIEST_SPELLS: SpellDef[] = [
@@ -254,6 +365,16 @@ export const PRIEST_SPELLS: SpellDef[] = [
     target: "allAllies",
     effect: { kind: "summon", power: 5 },
     description: "Summons a group of monsters from the elemental planes to aid the party.",
+  },
+  {
+    id: "priest-iride",
+    name: "Iride",
+    class: "Priest",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "lightning", power: 5 },
+    description: "A holy bolt that smites one foe with light.",
   },
 ];
 

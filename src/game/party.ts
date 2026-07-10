@@ -338,10 +338,43 @@ export function createDefaultParty(): Character[] {
   const priest = createCharacter("c5", "Eve", "Gnome", "Good", "Priest", 4);
   const mage2 = createCharacter("c6", "Fenn", "Elf", "Neutral", "Mage", 5);
 
-  // Level-1 casters know all tier-1 spells of their class.
-  mage1.knownSpellIds = ["mage-halito", "mage-mogref"];
-  mage2.knownSpellIds = ["mage-halito", "mage-mogref"];
-  priest.knownSpellIds = ["priest-dios", "priest-badialma"];
+  // Level-1 casters know all tier-1 spells of their class, plus a suite of
+  // visual-effect test spells so the new elemental variants are available.
+  mage1.knownSpellIds = [
+    "mage-fulmen",
+    "mage-fulgor",
+    "mage-ignis",
+    "mage-pyro",
+    "mage-glacies",
+    "mage-frigus",
+    "mage-cryo",
+    "mage-necro",
+    "mage-halito",
+    "mage-mogref",
+    "mage-fulgur",
+    "mage-immolatus",
+    "mage-pestis",
+  ];
+  mage2.knownSpellIds = [
+    "mage-fulmen",
+    "mage-fulgor",
+    "mage-ignis",
+    "mage-pyro",
+    "mage-glacies",
+    "mage-frigus",
+    "mage-cryo",
+    "mage-necro",
+    "mage-halito",
+    "mage-mogref",
+    "mage-fulgur",
+    "mage-immolatus",
+    "mage-pestis",
+  ];
+  priest.knownSpellIds = [
+    "priest-iride",
+    "priest-dios",
+    "priest-badialma",
+  ];
 
   return [fighter1, fighter2, thief, mage1, priest, mage2];
 }
