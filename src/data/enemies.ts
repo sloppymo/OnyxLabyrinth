@@ -1,10 +1,12 @@
 /**
- * Bestiary and encounter tables for all 15 enemy types across 5 floors.
+ * Bestiary and encounter tables for the three-floor campaign
+ * (1: The Flooded Crypt, 2: The Cursed Library, 3: The Forge of Ashes).
  *
  * Each enemy is a typed constant with floor assignments, row preference,
  * combat stats, and special-behavior flags. Encounter tables describe
  * possible formations per floor so the combat resolver can spawn fights
- * without hardcoding logic.
+ * without hardcoding logic. Enemies with an empty `floors` array stay in
+ * the bestiary (sprites/tests/tools) but are out of the encounter rotation.
  */
 
 import type { DamageElement } from "./spells";
@@ -48,11 +50,11 @@ export interface EncounterEntry {
   spawns: EnemySpawn[];
 }
 
-// Floor 1: Entry Halls — training dummies, slimes, and shambling skeletons.
+// Floor 1: The Flooded Crypt — slimes, shambling dead, and things in the water.
 export const TRAINING_DUMMY: EnemyDef = {
   id: "training-dummy",
   name: "Training Dummy",
-  floors: [1],
+  floors: [],
   rowPreference: "front",
   hp: 5,
   attack: 1,
@@ -94,7 +96,7 @@ export const SKELETON: EnemyDef = {
   isBoss: false,
 };
 
-// Floor 2: The Archives — skeletal guardians and orc scavengers.
+// Floor 2: The Cursed Library — armored dead, orc scavengers, cursed scribes.
 export const ARMORED_SKELETON: EnemyDef = {
   id: "armored-skeleton",
   name: "Armored Skeleton",
@@ -113,7 +115,7 @@ export const ARMORED_SKELETON: EnemyDef = {
 export const SKELETON_ARCHER: EnemyDef = {
   id: "skeleton-archer",
   name: "Skeleton Archer",
-  floors: [2],
+  floors: [1, 2],
   rowPreference: "back",
   hp: 8,
   attack: 4,
@@ -140,11 +142,10 @@ export const ORC: EnemyDef = {
   isBoss: false,
 };
 
-// Floor 3: The Laboratories — alchemical horrors and enemy healers.
 export const FAILED_EXPERIMENT: EnemyDef = {
   id: "failed-experiment",
   name: "Failed Experiment",
-  floors: [3],
+  floors: [2],
   rowPreference: "front",
   hp: 25,
   attack: 8,
@@ -159,7 +160,7 @@ export const FAILED_EXPERIMENT: EnemyDef = {
 export const ACID_PUDDLE: EnemyDef = {
   id: "acid-puddle",
   name: "Acid Puddle",
-  floors: [3],
+  floors: [1],
   rowPreference: "front",
   hp: 18,
   attack: 5,
@@ -174,7 +175,7 @@ export const ACID_PUDDLE: EnemyDef = {
 export const LAB_ASSISTANT: EnemyDef = {
   id: "lab-assistant",
   name: "Lab Assistant",
-  floors: [3],
+  floors: [2],
   rowPreference: "back",
   hp: 15,
   attack: 4,
@@ -186,11 +187,11 @@ export const LAB_ASSISTANT: EnemyDef = {
   isBoss: false,
 };
 
-// Floor 4: The Summoning Chambers — constructs, orc casters, and feral beasts.
+// Floor 3: The Forge of Ashes — constructs, fire-casting orcs, and the Echo.
 export const ELITE_ORC: EnemyDef = {
   id: "elite-orc",
   name: "Elite Orc",
-  floors: [4],
+  floors: [3],
   rowPreference: "back",
   hp: 22,
   attack: 6,
@@ -205,7 +206,7 @@ export const ELITE_ORC: EnemyDef = {
 export const LESSER_CONSTRUCT: EnemyDef = {
   id: "lesser-construct",
   name: "Lesser Construct",
-  floors: [4],
+  floors: [3],
   rowPreference: "front",
   hp: 35,
   attack: 9,
@@ -220,7 +221,7 @@ export const LESSER_CONSTRUCT: EnemyDef = {
 export const WEREWOLF: EnemyDef = {
   id: "werewolf",
   name: "Werewolf",
-  floors: [4],
+  floors: [3],
   rowPreference: "any",
   hp: 16,
   attack: 5,
@@ -235,7 +236,7 @@ export const WEREWOLF: EnemyDef = {
 export const BIG_TITTY_OGRE: EnemyDef = {
   id: "big-titty-ogre",
   name: "Big Titty Ogre",
-  floors: [4],
+  floors: [3],
   rowPreference: "front",
   hp: 40,
   attack: 11,
@@ -247,11 +248,10 @@ export const BIG_TITTY_OGRE: EnemyDef = {
   isBoss: false,
 };
 
-// Floor 5: The Headmaster's Sanctum — boss floor.
 export const STONE_GUARDIAN: EnemyDef = {
   id: "stone-guardian",
   name: "Stone Guardian",
-  floors: [5],
+  floors: [3],
   rowPreference: "front",
   hp: 45,
   attack: 12,
@@ -266,7 +266,7 @@ export const STONE_GUARDIAN: EnemyDef = {
 export const ANIMATED_ARMOR: EnemyDef = {
   id: "animated-armor",
   name: "Animated Armor",
-  floors: [5],
+  floors: [3],
   rowPreference: "front",
   hp: 40,
   attack: 10,
@@ -281,7 +281,7 @@ export const ANIMATED_ARMOR: EnemyDef = {
 export const HEADMASTERS_ECHO: EnemyDef = {
   id: "headmasters-echo",
   name: "The Headmaster's Echo",
-  floors: [5],
+  floors: [3],
   rowPreference: "back",
   hp: 120,
   attack: 15,
@@ -326,8 +326,8 @@ export function enemiesForFloor(floor: number): EnemyDef[] {
 
 /** Weighted encounter table for each floor. Weights do not need to sum to 1. */
 export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
+  // Floor 1: The Flooded Crypt.
   1: [
-    { weight: 3, spawns: [{ enemyId: "training-dummy", row: "front" }] },
     {
       weight: 4,
       spawns: [
@@ -340,18 +340,19 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       spawns: [
         { enemyId: "skeleton", row: "front" },
         { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton", row: "back" },
       ],
     },
     {
       weight: 2,
       spawns: [
-        { enemyId: "training-dummy", row: "front" },
-        { enemyId: "slime", row: "front" },
-        { enemyId: "skeleton", row: "back" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
       ],
     },
+    // Something rises out of the floodwater — rare, tough for level 1.
+    { weight: 1, spawns: [{ enemyId: "acid-puddle", row: "front" }] },
   ],
+  // Floor 2: The Cursed Library.
   2: [
     {
       weight: 4,
@@ -361,66 +362,43 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
-      weight: 4,
-      spawns: [
-        { enemyId: "skeleton-archer", row: "back" },
-        { enemyId: "skeleton-archer", row: "back" },
-        { enemyId: "skeleton-archer", row: "back" },
-      ],
-    },
-    {
-      weight: 3,
-      spawns: [
-        { enemyId: "orc", row: "front" },
-        { enemyId: "orc", row: "front" },
-      ],
-    },
-    {
       weight: 3,
       spawns: [
         { enemyId: "armored-skeleton", row: "front" },
         { enemyId: "skeleton-archer", row: "back" },
+        { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "orc", row: "front" },
         { enemyId: "orc", row: "front" },
       ],
     },
+    // Cursed scribe keeps its bound horror standing — teaches focus-firing healers.
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "failed-experiment", row: "front" },
+        { enemyId: "lab-assistant", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "orc", row: "front" },
+        { enemyId: "armored-skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
   ],
+  // Floor 3: The Forge of Ashes.
   3: [
     {
-      weight: 3,
-      spawns: [
-        { enemyId: "failed-experiment", row: "front" },
-        { enemyId: "failed-experiment", row: "front" },
-      ],
-    },
-    {
-      weight: 3,
-      spawns: [
-        { enemyId: "acid-puddle", row: "front" },
-        { enemyId: "acid-puddle", row: "front" },
-      ],
-    },
-    {
       weight: 4,
       spawns: [
-        { enemyId: "failed-experiment", row: "front" },
-        { enemyId: "lab-assistant", row: "back" },
-        { enemyId: "lab-assistant", row: "back" },
-      ],
-    },
-    {
-      weight: 3,
-      spawns: [
-        { enemyId: "acid-puddle", row: "front" },
-        { enemyId: "failed-experiment", row: "front" },
-        { enemyId: "lab-assistant", row: "back" },
-      ],
-    },
-  ],
-  4: [
-    {
-      weight: 4,
-      spawns: [
-        { enemyId: "elite-orc", row: "back" },
+        { enemyId: "lesser-construct", row: "front" },
         { enemyId: "elite-orc", row: "back" },
         { enemyId: "elite-orc", row: "back" },
       ],
@@ -441,44 +419,20 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
-      weight: 3,
-      spawns: [
-        { enemyId: "lesser-construct", row: "front" },
-        { enemyId: "elite-orc", row: "back" },
-        { enemyId: "werewolf", row: "back" },
-      ],
-    },
-    {
       weight: 2,
       spawns: [
         { enemyId: "big-titty-ogre", row: "front" },
         { enemyId: "elite-orc", row: "back" },
       ],
     },
-  ],
-  5: [
     {
-      weight: 3,
+      weight: 2,
       spawns: [
-        { enemyId: "stone-guardian", row: "front" },
-        { enemyId: "stone-guardian", row: "front" },
-      ],
-    },
-    {
-      weight: 3,
-      spawns: [
-        { enemyId: "animated-armor", row: "front" },
-        { enemyId: "animated-armor", row: "front" },
-      ],
-    },
-    {
-      weight: 4,
-      spawns: [
-        { enemyId: "animated-armor", row: "front" },
         { enemyId: "stone-guardian", row: "front" },
         { enemyId: "animated-armor", row: "front" },
       ],
     },
+    // The climax formation — the Echo flanked by its forged honor guard.
     {
       weight: 1,
       spawns: [

@@ -1,18 +1,28 @@
 // Floor definitions. Each spell/enemy/item/floor must be defined as typed
 // data here (or in the sibling data files) — never hardcoded in game logic.
 //
-// Five floors are defined, each with hand-carved corridors, rooms, and tile
-// features (stairs, teleporters, chutes, darkness, treasure, anti-magic,
-// locked doors) per design doc §6.2.
+// The campaign is three hand-carved floors — The Flooded Crypt, The Cursed
+// Library, and The Forge of Ashes — linked linearly by stairs. Floor IDs must
+// stay contiguous (1, 2, 3): handleStairs() in game/features.ts computes the
+// target floor as currentId ± 1.
 //
 // Grid convention: grid[y][x]. Each cell has 4 edges (n/e/s/w). "open" =
 // passable, "wall" = blocked, "door" = passable + visual marker, "locked" =
 // blocked until unlocked with a key or lockpick.
 //
 // All floors use buildSolidGrid() as the starting point (every edge is wall),
-// then corridors and rooms are carved out. This produces proper dungeon
-// corridors with walls between rooms, unlike the open-room approach used
-// earlier for the prototype.
+// then corridors and rooms are carved out. Always carve symmetrically: the
+// carve helpers open both sides of an edge, and doors/locks are set with
+// setEdge on both adjacent cells.
+//
+// Key chain across the campaign:
+//   crypt-key   (floor 1, open chest)  → floor 1 reliquary lock
+//   lexicon-key (floor 1, reliquary)   → floor 2 forbidden wing lock
+//   furnace-key (floor 2, forbidden)   → floor 3 slag vault lock
+//   forge-key   (floor 3, open chest)  → floor 3 boss chamber lock
+//
+// "// EVENT:" comments are design annotations for a future scripted-event /
+// trap system — the engine does not run them yet.
 
 import type { Grid } from "../types";
 import {
@@ -32,17 +42,17 @@ export interface FloorDef {
   grid: Grid;
   startX: number;
   startY: number;
-  // Base encounter rate per step (design doc §6.3: ~5% on Floor 1, scaling
-  // to ~8% on Floor 5). Used by the encounter roller in Step 4.
+  // Base encounter rate per step (~5% on Floor 1, scaling to ~8% on Floor 3).
   encounterRate: number;
-  // Enemy IDs that can appear on this floor. Populated in Step 5.
+  // Enemy IDs that can appear on this floor. Unused by the encounter roller —
+  // the weighted tables in data/enemies.ts are the source of truth.
   encounterTable?: string[];
   // Teleporter links: each entry maps a tile (x,y) on this floor to a
   // destination (floorId, x, y). When the player steps on a teleporter tile,
-  // they are instantly relocated. Design doc §6.2.
+  // they are instantly relocated.
   teleporters?: TeleporterLink[];
   // Chute destinations: tiles with the "chute" feature drop the player to
-  // the given floor at the given position. Design doc §6.2.
+  // the given floor at the given position.
   chuteDrops?: { x: number; y: number; toFloorId: number; toX: number; toY: number }[];
   // Locked door definitions: each entry specifies a tile and direction where
   // a locked door exists, and which key ID unlocks it.
@@ -61,8 +71,14 @@ export interface TeleporterLink {
 }
 
 // ---------------------------------------------------------------------------
-// Floor 1: Entry Halls — tutorial floor, simple layout, minimal features.
-// Theme: Clean corridors, intact architecture. Training Dummies, Giant Rats.
+// Floor 1: The Flooded Crypt — tutorial floor.
+// Theme: green stagnant water seeping through cracked stone, mossy walls,
+// broken sarcophagi. Slimes and shambling dead; a rare acid puddle in the
+// floodwater.
+//
+// Shape: entry hall at the south, a processional corridor north to the
+// sanctum (stairs down), a west crypt row (crypt-key), and a flooded east
+// gallery leading to a locked reliquary (lexicon-key for floor 2).
 // ---------------------------------------------------------------------------
 
 function floor1(): FloorDef {
@@ -70,68 +86,76 @@ function floor1(): FloorDef {
   const height = 12;
   const grid = buildSolidGrid(width, height);
 
-  // Start room (center area)
-  carveRoom(grid, 5, 5, 7, 7);
-  // Corridor north from start room
-  carveVertical(grid, 6, 1, 5);
-  // Corridor south from start room
-  carveVertical(grid, 6, 7, 11);
-  // Corridor east from start room
-  carveHorizontal(grid, 7, 11, 6);
-  // Corridor west from start room
-  carveHorizontal(grid, 0, 5, 6);
+  // Entry hall (south) — the party wakes here; stairs from floor 2 also land here.
+  carveRoom(grid, 4, 8, 7, 10);
+  // Processional corridor north from the entry hall to the sanctum.
+  carveVertical(grid, 5, 2, 8);
+  // North sanctum (stairs down).
+  carveRoom(grid, 3, 1, 7, 2);
+  // West crypt row (open treasure: crypt-key).
+  carveRoom(grid, 1, 4, 3, 6);
+  carveHorizontal(grid, 1, 5, 5);
+  // Flooded east gallery.
+  carveRoom(grid, 7, 4, 10, 6);
+  carveHorizontal(grid, 5, 9, 5);
+  // Reliquary (locked, south of the gallery).
+  carveRoom(grid, 9, 8, 10, 9);
+  carveVertical(grid, 9, 6, 8);
 
-  // North room
-  carveRoom(grid, 4, 1, 8, 3);
-  // South room (has stairs down)
-  carveRoom(grid, 4, 9, 8, 11);
-  // East room (treasure room)
-  carveRoom(grid, 9, 4, 11, 8);
-  // West room (darkness zone)
-  carveRoom(grid, 0, 4, 3, 8);
+  // Sanctum entrance door.
+  setEdge(grid, 5, 3, "n", "door");
+  setEdge(grid, 5, 2, "s", "door");
+  // Gallery entrance door.
+  setEdge(grid, 6, 5, "e", "door");
+  setEdge(grid, 7, 5, "w", "door");
+  // Locked reliquary door (crypt-key, found in the west crypt).
+  setEdge(grid, 9, 7, "s", "locked");
+  setEdge(grid, 9, 8, "n", "locked");
 
-  // Connect corridors to rooms
-  // North corridor connects to north room
-  grid[3][6].n = "open"; grid[4][6].s = "open";
-  // South corridor connects to south room
-  grid[8][6].s = "open"; grid[9][6].n = "open";
-  // East corridor connects to east room
-  grid[6][8].e = "open"; grid[6][9].w = "open";
-  // West corridor connects to west room
-  grid[6][4].w = "open"; grid[6][3].e = "open";
+  // Tile features.
+  // Stairs down in the sanctum.
+  setTile(grid, 5, 1, "stairs_down");
+  // Black floodwater in the east gallery — visibility drops to one tile.
+  setTile(grid, 8, 5, "darkness");
+  setTile(grid, 9, 5, "darkness");
+  // Open chest in the west crypt (holds the crypt-key).
+  setTile(grid, 2, 5, "treasure");
+  // Locked reliquary chest (holds the lexicon-key for floor 2).
+  setTile(grid, 10, 9, "treasure");
 
-  // Door on the east room entrance (visual variety)
-  grid[6][8].e = "door";
-  grid[6][9].w = "door";
-
-  // Tile features
-  // Stairs down in the south room
-  setTile(grid, 6, 10, "stairs_down");
-  // Treasure in the east room
-  setTile(grid, 10, 6, "treasure");
-  // Darkness in the west room
-  setTile(grid, 1, 6, "darkness");
-  setTile(grid, 2, 6, "darkness");
+  // EVENT: (5,7) — message scrawled above the entry arch: "THE WATER REMEMBERS".
+  // EVENT: (5,4) — trap: collapsing flagstone triggers a dart volley (4 dmg to front rank).
+  // EVENT: (1,4) — broken sarcophagus; adventurer's remains clutch a rusted holy symbol.
+  // EVENT: (4,1) — defiled altar in the sanctum; praying here could restore a little HP.
 
   return {
     id: 1,
-    name: "Entry Halls",
+    name: "The Flooded Crypt",
     width,
     height,
     grid,
-    startX: 6,
-    startY: 6,
+    startX: 5,
+    startY: 9,
     encounterRate: 0.05,
+    lockedDoors: [
+      { x: 9, y: 7, dir: "s", keyId: "crypt-key" },
+    ],
     treasures: [
-      { x: 10, y: 6, itemIds: ["healing-potion", "healing-potion", "short-sword+1", "archive-key"] },
+      { x: 2, y: 5, itemIds: ["healing-potion", "healing-potion", "crypt-key"] },
+      { x: 10, y: 9, itemIds: ["short-sword+1", "leather", "healing-potion", "lexicon-key"] },
     ],
   };
 }
 
 // ---------------------------------------------------------------------------
-// Floor 2: The Archives — shelves, scroll racks, reading rooms.
-// Theme: First real fights. Introduction to back-row enemies.
-// Features: locked door, teleporter, treasure, stairs up + down.
+// Floor 2: The Cursed Library — mid floor.
+// Theme: shelves of forbidden books, snuffed candles, floating pages, arcane
+// runes on the floors. Armored dead and cursed scribes who heal their allies.
+//
+// Shape: a full loop — atrium (stairs up) → west stacks → north corridor →
+// grand reading hall → back down to the atrium. Branches: NE scriptorium
+// (open treasure), locked forbidden wing east of the hall (furnace-key for
+// floor 3), and a SE stair room down to the forge.
 // ---------------------------------------------------------------------------
 
 function floor2(): FloorDef {
@@ -139,310 +163,185 @@ function floor2(): FloorDef {
   const height = 14;
   const grid = buildSolidGrid(width, height);
 
-  // Entrance area (stairs up from floor 1 land here)
+  // SW entrance atrium (stairs up; arrivals from floors 1 and 3 land here).
+  carveRoom(grid, 1, 10, 4, 12);
+  // West gallery corridor up to the stacks.
+  carveVertical(grid, 2, 4, 10);
+  // West stacks.
   carveRoom(grid, 1, 1, 4, 4);
-  // Main corridor going east
-  carveHorizontal(grid, 1, 12, 2);
-  // Branch north at x=6
-  carveVertical(grid, 6, 1, 2);
-  carveRoom(grid, 4, 1, 8, 1); // small north alcove
-  // Branch south at x=8
-  carveVertical(grid, 8, 2, 10);
-  // South room (large reading room)
-  carveRoom(grid, 5, 8, 11, 12);
-  // Far east room (locked treasure room)
-  carveRoom(grid, 11, 4, 13, 7);
-  // Connect east corridor to far east room
-  carveVertical(grid, 12, 2, 4);
+  // North corridor east along the top shelves to the scriptorium.
+  carveHorizontal(grid, 4, 12, 2);
+  // NE scriptorium.
+  carveRoom(grid, 10, 1, 12, 4);
+  // Grand reading hall (center).
+  carveRoom(grid, 5, 5, 9, 9);
+  carveVertical(grid, 6, 2, 5);
+  // Forbidden wing (locked, east of the hall).
+  carveRoom(grid, 11, 6, 12, 9);
+  carveHorizontal(grid, 9, 11, 7);
+  // South passage from the hall to the SE stair room.
+  carveVertical(grid, 7, 9, 11);
+  carveHorizontal(grid, 7, 10, 11);
+  carveRoom(grid, 10, 10, 12, 12);
+  // Atrium-to-hall link (closes the central loop).
+  carveHorizontal(grid, 4, 7, 10);
 
-  // Connect branches
-  grid[1][6].s = "open"; grid[2][6].n = "open"; // north branch to alcove
-  grid[2][8].s = "open"; grid[3][8].n = "open"; // south branch start
-  grid[4][12].s = "open"; grid[5][12].n = "open"; // east room connection
+  // Reading hall north entrance door.
+  setEdge(grid, 6, 4, "s", "door");
+  setEdge(grid, 6, 5, "n", "door");
+  // SE stair room door.
+  setEdge(grid, 9, 11, "e", "door");
+  setEdge(grid, 10, 11, "w", "door");
+  // Locked forbidden wing door (lexicon-key, from floor 1's reliquary).
+  setEdge(grid, 10, 7, "e", "locked");
+  setEdge(grid, 11, 7, "w", "locked");
 
-  // Locked door on the treasure room entrance (between (12,4) and (12,5))
-  setEdge(grid, 12, 4, "s", "locked");
-  setEdge(grid, 12, 5, "n", "locked");
+  // Tile features.
+  // Stairs up in the atrium (the arrival tile itself, Wizardry-style).
+  setTile(grid, 2, 11, "stairs_up");
+  // Stairs down in the SE stair room.
+  setTile(grid, 11, 12, "stairs_down");
+  // Snuffed-candle stretch of the north corridor.
+  setTile(grid, 7, 2, "darkness");
+  setTile(grid, 8, 2, "darkness");
+  // Open chest in the scriptorium.
+  setTile(grid, 12, 3, "treasure");
+  // Locked chest in the forbidden wing (holds the furnace-key for floor 3).
+  setTile(grid, 12, 8, "treasure");
 
-  // Door markers on the south reading room entrance (between (8,7) and (8,8))
-  setEdge(grid, 8, 7, "s", "door");
-  setEdge(grid, 8, 8, "n", "door");
-
-  // Tile features
-  // Stairs up in entrance room
-  setTile(grid, 2, 2, "stairs_up");
-  // Stairs down in the south reading room
-  setTile(grid, 8, 11, "stairs_down");
-  // Teleporter in the north alcove → links to floor 3
-  setTile(grid, 6, 1, "teleporter");
-  // Treasure in the locked east room
-  setTile(grid, 12, 5, "treasure");
-  // Darkness in the far west of the main corridor
-  setTile(grid, 1, 2, "darkness");
+  // EVENT: (8,2) — trap: falling bookcase in the dark corridor (6 dmg, party-wide).
+  // EVENT: (7,10) — trap: glyph of warding on the hall's south threshold (silence 1 fight).
+  // EVENT: (3,2) — the shelves whisper; listening reveals a hint about the forbidden wing.
+  // EVENT: (11,4) — the librarian's remains slumped over a lectern; journal names the forge below.
+  // EVENT: (2,9) — message daubed on the wall: "DO NOT FEED THE BOOKS".
 
   return {
     id: 2,
-    name: "The Archives",
+    name: "The Cursed Library",
+    width,
+    height,
+    grid,
+    startX: 2,
+    startY: 11,
+    encounterRate: 0.07,
+    lockedDoors: [
+      { x: 10, y: 7, dir: "e", keyId: "lexicon-key" },
+    ],
+    treasures: [
+      { x: 12, y: 3, itemIds: ["mace+1", "chain-mail", "healing-potion", "antidote"] },
+      { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "healing-potion", "furnace-key"] },
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Floor 3: The Forge of Ashes — final floor.
+// Theme: molten cracks, charred stone, iron grates, ember-lit corridors,
+// anvil altars. Constructs, fire-casting orcs, and the Headmaster's Echo.
+//
+// Shape: two interlocking loops around the central foundry, plus a locked
+// slag vault (furnace-key from floor 2), an ashpit holding the forge-key,
+// and the locked Grand Forge boss chamber on the south wall. A waygate in
+// the foundry teleports back to the entrance as a shortcut.
+// ---------------------------------------------------------------------------
+
+function floor3(): FloorDef {
+  const width = 16;
+  const height = 16;
+  const grid = buildSolidGrid(width, height);
+
+  // NW antechamber (stairs up; arrival from floor 2).
+  carveRoom(grid, 1, 1, 3, 3);
+  // North passage east to the ember gallery.
+  carveHorizontal(grid, 3, 5, 2);
+  carveRoom(grid, 5, 1, 10, 3);
+  // Continue east to the locked slag vault.
+  carveHorizontal(grid, 10, 12, 2);
+  carveRoom(grid, 12, 1, 14, 3);
+  // West descent from the antechamber to the cinder hall.
+  carveVertical(grid, 2, 3, 7);
+  carveRoom(grid, 1, 7, 3, 11);
+  // Central foundry.
+  carveRoom(grid, 6, 6, 9, 9);
+  carveVertical(grid, 7, 3, 6);   // gallery → foundry (north loop)
+  carveHorizontal(grid, 3, 6, 8); // cinder hall → foundry (west loop)
+  // East to the chain hall.
+  carveHorizontal(grid, 9, 12, 8);
+  carveRoom(grid, 12, 6, 14, 9);
+  // South ember corridor closing the outer loop.
+  carveVertical(grid, 13, 9, 11);
+  carveHorizontal(grid, 2, 13, 11);
+  // Ashpit (SW, holds the forge-key).
+  carveVertical(grid, 2, 11, 13);
+  carveRoom(grid, 1, 13, 3, 14);
+  // Grand Forge boss chamber (south, locked).
+  carveRoom(grid, 5, 12, 10, 14);
+  carveVertical(grid, 7, 11, 12);
+
+  // Foundry north entrance door.
+  setEdge(grid, 7, 5, "s", "door");
+  setEdge(grid, 7, 6, "n", "door");
+  // Locked slag vault door (furnace-key, from floor 2's forbidden wing).
+  setEdge(grid, 11, 2, "e", "locked");
+  setEdge(grid, 12, 2, "w", "locked");
+  // Locked Grand Forge door (forge-key, from the ashpit on this floor).
+  setEdge(grid, 7, 11, "s", "locked");
+  setEdge(grid, 7, 12, "n", "locked");
+
+  // Tile features.
+  // Stairs up in the antechamber (the arrival tile itself).
+  setTile(grid, 2, 2, "stairs_up");
+  // Waygate in the foundry — one-way shortcut back to the antechamber.
+  setTile(grid, 9, 6, "teleporter");
+  // Smoke-choked corners of the chain hall.
+  setTile(grid, 13, 7, "darkness");
+  setTile(grid, 13, 8, "darkness");
+  // The Grand Forge suppresses magic — the Echo's arena favors steel.
+  setTile(grid, 6, 13, "antimagic");
+  setTile(grid, 7, 13, "antimagic");
+  setTile(grid, 8, 13, "antimagic");
+  // Locked chest in the slag vault.
+  setTile(grid, 13, 2, "treasure");
+  // Chest in the chain hall (past the smoke).
+  setTile(grid, 14, 8, "treasure");
+  // Open chest in the ashpit (holds the forge-key).
+  setTile(grid, 2, 14, "treasure");
+  // Trophy chest in the Grand Forge.
+  setTile(grid, 9, 13, "treasure");
+
+  // EVENT: (8,2) — trap: pressure plate in the ember gallery vents a flame jet (8 fire dmg).
+  // EVENT: (13,10) — trap: collapsing iron grate over a magma channel (6 dmg + burn).
+  // EVENT: (6,11) — trap: the statue beside the Grand Forge door animates when the lock is tried.
+  // EVENT: (7,7) — anvil altar in the foundry; offering a weapon could temper it (+1 flavor).
+  // EVENT: (14,9) — scorched remains of a smith fused to the wall, hammer still raised.
+  // EVENT: (2,6) — message hammered into a bronze plate: "THE ECHO WEARS HIS FACE".
+
+  return {
+    id: 3,
+    name: "The Forge of Ashes",
     width,
     height,
     grid,
     startX: 2,
     startY: 2,
-    encounterRate: 0.06,
-    teleporters: [
-      { x: 6, y: 1, toFloorId: 3, toX: 7, toY: 7 },
-    ],
-    lockedDoors: [
-      { x: 12, y: 4, dir: "s", keyId: "archive-key" },
-    ],
-    treasures: [
-      { x: 12, y: 5, itemIds: ["mace+1", "leather+1", "healing-potion", "healing-potion", "lab-key"] },
-    ],
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Floor 3: The Laboratories — alchemical horrors, enemy healers.
-// Theme: First floor where enemy Priests appear. Tactical targeting.
-// Features: anti-magic zone, chute, teleporter back, locked door, treasure.
-// ---------------------------------------------------------------------------
-
-function floor3(): FloorDef {
-  const width = 14;
-  const height = 14;
-  const grid = buildSolidGrid(width, height);
-
-  // Entrance room (teleporter from floor 2 lands here, stairs up too)
-  carveRoom(grid, 5, 5, 8, 8);
-  // Corridor north
-  carveVertical(grid, 6, 1, 5);
-  // Corridor east
-  carveHorizontal(grid, 8, 12, 6);
-  // Corridor south
-  carveVertical(grid, 7, 8, 12);
-  // Corridor west
-  carveHorizontal(grid, 1, 5, 7);
-
-  // North room (anti-magic zone)
-  carveRoom(grid, 3, 1, 9, 3);
-  // East room (treasure)
-  carveRoom(grid, 11, 4, 13, 8);
-  // South room (chute down to floor 4)
-  carveRoom(grid, 4, 10, 10, 12);
-  // West room (locked, has stairs down)
-  carveRoom(grid, 0, 9, 3, 12);
-  // Vertical connector from west corridor (y=7) to west room (y=9)
-  carveVertical(grid, 3, 7, 9);
-
-  // Connect corridors to rooms
-  grid[3][6].n = "open"; grid[4][6].s = "open"; // north (redundant with carveVertical, harmless)
-  // Connect east corridor (ends at x=10) to east room (starts at x=11)
-  grid[6][10].e = "open"; grid[6][11].w = "open";
-  grid[8][7].s = "open"; grid[9][7].n = "open"; // south
-
-  // Locked door on west room entrance (between (3,8) and (3,9))
-  setEdge(grid, 3, 8, "s", "locked");
-  setEdge(grid, 3, 9, "n", "locked");
-
-  // Door on east room entrance (between (10,6) and (11,6))
-  setEdge(grid, 10, 6, "e", "door");
-  setEdge(grid, 11, 6, "w", "door");
-
-  // Tile features
-  // Stairs up in entrance room
-  setTile(grid, 7, 7, "stairs_up");
-  // Anti-magic in the north room
-  setTile(grid, 5, 2, "antimagic");
-  setTile(grid, 6, 2, "antimagic");
-  setTile(grid, 7, 2, "antimagic");
-  // Treasure in east room
-  setTile(grid, 12, 6, "treasure");
-  // Chute in south room → drops to floor 4
-  setTile(grid, 7, 11, "chute");
-  // Stairs down in the locked west room
-  setTile(grid, 1, 11, "stairs_down");
-  // Teleporter back to floor 2 (in the north room)
-  setTile(grid, 8, 2, "teleporter");
-
-  return {
-    id: 3,
-    name: "The Laboratories",
-    width,
-    height,
-    grid,
-    startX: 7,
-    startY: 7,
-    encounterRate: 0.07,
-    teleporters: [
-      { x: 8, y: 2, toFloorId: 2, toX: 6, toY: 1 },
-    ],
-    chuteDrops: [
-      { x: 7, y: 11, toFloorId: 4, toX: 7, toY: 2 },
-    ],
-    lockedDoors: [
-      { x: 3, y: 8, dir: "s", keyId: "lab-key" },
-    ],
-    treasures: [
-      { x: 12, y: 6, itemIds: ["long-sword+1", "chain-mail+1", "healing-potion", "antidote", "summon-key"] },
-    ],
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Floor 4: The Summoning Chambers — constructs and casters.
-// Theme: Mages matter here — fire-resistant enemies demand spell variety.
-// Features: darkness zone, teleporter, locked door, treasure, stairs up+down.
-// ---------------------------------------------------------------------------
-
-function floor4(): FloorDef {
-  const width = 14;
-  const height = 14;
-  const grid = buildSolidGrid(width, height);
-
-  // Entrance room (chute from floor 3 lands here)
-  carveRoom(grid, 5, 1, 9, 3);
-  // Main corridor going south
-  carveVertical(grid, 7, 3, 12);
-  // Branch east at y=6
-  carveHorizontal(grid, 7, 12, 6);
-  // Branch west at y=8
-  carveHorizontal(grid, 1, 7, 8);
-
-  // East room (darkness zone with treasure)
-  carveRoom(grid, 10, 4, 13, 8);
-  // West room (has locked door, stairs down behind it)
-  carveRoom(grid, 0, 6, 3, 10);
-  // South room (large summoning chamber)
-  carveRoom(grid, 4, 10, 10, 13);
-
-  // Connect branches
-  grid[6][9].e = "open"; grid[6][10].w = "open"; // east branch to east room
-  grid[8][4].w = "open"; grid[8][3].e = "open"; // west branch to west room
-  grid[9][7].s = "open"; grid[10][7].n = "open"; // south corridor to south room
-
-  // Locked door on west room entrance (between (4,8) and (3,8))
-  setEdge(grid, 4, 8, "w", "locked");
-  setEdge(grid, 3, 8, "e", "locked");
-
-  // Door on east room entrance (between (9,6) and (10,6))
-  setEdge(grid, 9, 6, "e", "door");
-  setEdge(grid, 10, 6, "w", "door");
-
-  // Tile features
-  // Stairs up in entrance room
-  setTile(grid, 7, 2, "stairs_up");
-  // Darkness in the east room
-  setTile(grid, 11, 5, "darkness");
-  setTile(grid, 12, 5, "darkness");
-  setTile(grid, 11, 6, "darkness");
-  setTile(grid, 12, 6, "darkness");
-  setTile(grid, 11, 7, "darkness");
-  setTile(grid, 12, 7, "darkness");
-  // Treasure in the dark east room
-  setTile(grid, 12, 6, "treasure");
-  // Stairs down in the locked west room
-  setTile(grid, 1, 8, "stairs_down");
-  // Teleporter in the south room → links to floor 5 (one-way shortcut)
-  setTile(grid, 7, 12, "teleporter");
-  // Anti-magic in the south room
-  setTile(grid, 5, 11, "antimagic");
-  setTile(grid, 6, 11, "antimagic");
-
-  return {
-    id: 4,
-    name: "The Summoning Chambers",
-    width,
-    height,
-    grid,
-    startX: 7,
-    startY: 2,
     encounterRate: 0.08,
     teleporters: [
-      { x: 7, y: 12, toFloorId: 5, toX: 7, toY: 10 },
+      { x: 9, y: 6, toFloorId: 3, toX: 2, toY: 3 },
     ],
     lockedDoors: [
-      { x: 4, y: 8, dir: "w", keyId: "summon-key" },
+      { x: 11, y: 2, dir: "e", keyId: "furnace-key" },
+      { x: 7, y: 11, dir: "s", keyId: "forge-key" },
     ],
     treasures: [
-      { x: 12, y: 6, itemIds: ["great-sword", "plate-mail", "healing-potion", "healing-potion", "healing-potion", "sanctum-key"] },
+      { x: 13, y: 2, itemIds: ["great-sword+1", "plate-mail", "healing-potion", "healing-potion"] },
+      { x: 14, y: 8, itemIds: ["halberd+1", "shield+1", "healing-potion", "healing-potion"] },
+      { x: 2, y: 14, itemIds: ["forge-key", "healing-potion", "antidote"] },
+      { x: 9, y: 13, itemIds: ["great-sword+2", "plate-mail+2", "healing-potion", "healing-potion"] },
     ],
   };
 }
 
-// ---------------------------------------------------------------------------
-// Floor 5: The Headmaster's Sanctum — boss floor.
-// Theme: Ornate, eerie. Stone Guardians, Animated Armor, The Headmaster's Echo.
-// Features: stairs up, treasure rooms, anti-magic, locked door to boss.
-// ---------------------------------------------------------------------------
-
-function floor5(): FloorDef {
-  const width = 14;
-  const height = 14;
-  const grid = buildSolidGrid(width, height);
-
-  // Entrance room (stairs up + teleporter from floor 4 land here)
-  carveRoom(grid, 5, 9, 8, 12);
-  // Main corridor going north
-  carveVertical(grid, 6, 1, 9);
-  // Branch east at y=5
-  carveHorizontal(grid, 6, 12, 5);
-  // Branch west at y=5
-  carveHorizontal(grid, 1, 6, 5);
-
-  // East treasure room
-  carveRoom(grid, 10, 3, 13, 7);
-  // West treasure room
-  carveRoom(grid, 0, 3, 3, 7);
-  // North boss chamber (locked)
-  carveRoom(grid, 4, 1, 8, 3);
-
-  // Connect branches
-  grid[5][9].e = "open"; grid[5][10].w = "open"; // east branch to east room
-  grid[5][4].w = "open"; grid[5][3].e = "open"; // west branch to west room
-  grid[3][6].n = "open"; grid[4][6].s = "open"; // north corridor to boss chamber
-
-  // Locked door on the boss chamber entrance (between (6,4) and (6,3))
-  setEdge(grid, 6, 4, "n", "locked");
-  setEdge(grid, 6, 3, "s", "locked");
-
-  // Doors on treasure rooms
-  setEdge(grid, 9, 5, "e", "door");
-  setEdge(grid, 10, 5, "w", "door");
-  setEdge(grid, 4, 5, "w", "door");
-  setEdge(grid, 3, 5, "e", "door");
-
-  // Tile features
-  // Stairs up in entrance room
-  setTile(grid, 6, 11, "stairs_up");
-  // Treasure in east room
-  setTile(grid, 12, 5, "treasure");
-  // Treasure in west room
-  setTile(grid, 1, 5, "treasure");
-  // Anti-magic in the boss chamber
-  setTile(grid, 5, 2, "antimagic");
-  setTile(grid, 6, 2, "antimagic");
-  setTile(grid, 7, 2, "antimagic");
-
-  return {
-    id: 5,
-    name: "The Headmaster's Sanctum",
-    width,
-    height,
-    grid,
-    startX: 6,
-    startY: 11,
-    encounterRate: 0.08,
-    lockedDoors: [
-      { x: 6, y: 4, dir: "n", keyId: "sanctum-key" },
-    ],
-    treasures: [
-      { x: 12, y: 5, itemIds: ["great-sword+2", "plate-mail+2", "healing-potion", "healing-potion", "healing-potion"] },
-      { x: 1, y: 5, itemIds: ["great-sword+1", "plate-mail+1", "healing-potion", "antidote", "antidote", "sanctum-key"] },
-    ],
-  };
-}
-
-export const FLOORS: readonly FloorDef[] = [floor1(), floor2(), floor3(), floor4(), floor5()];
+export const FLOORS: readonly FloorDef[] = [floor1(), floor2(), floor3()];
 
 /** Deep-clone a floor definition so each game session gets its own mutable copy.
  *  This keeps the module-global FLOORS array as a read-only source of truth. */
