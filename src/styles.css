@@ -940,10 +940,15 @@ canvas#map-canvas {
 .ff6-enemy-row {
   display: flex;
   justify-content: space-between;
+  gap: 6px;
   font-size: var(--fs-small);
   line-height: 1.4;
   padding: 1px 4px;
   white-space: nowrap;
+}
+
+/* Long names truncate; the count/HP column never gets squeezed. */
+.ff6-enemy-row > span:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -951,6 +956,14 @@ canvas#map-canvas {
 .ff6-enemy-count {
   color: #b8c4f0;
   font-size: var(--fs-small);
+  flex-shrink: 0;
+}
+
+/* Summoned allies (BAMORDI/SOCORDI) — cyan to match their glow on the scene. */
+.ff6-enemy-row.summon,
+.ff6-party-row.summon .ff6-p-name,
+.ff6-party-row.summon .ff6-p-hp {
+  color: #8ee5e0;
 }
 
 .ff6-party {
