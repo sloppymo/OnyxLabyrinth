@@ -9,17 +9,26 @@
  * Wall strips are sampled from a repeated source canvas and drawn with
  * `drawImage`. Floor and ceiling are assembled row-by-row via `ImageData` and
  * `putImageData`, then walls are rendered on top so they occlude the distant
- * floor/ceiling correctly. The texture image set and repeated canvases are
- * cached in `textureCache` / `repeatedWallCanvas` once loaded.
+ * floor/ceiling correctly. Each floor of the campaign has its own tileset
+ * (wall/floorA/floorB/ceiling); all sets are prepared by loadTextures() and
+ * cached in `tilesetCache`, and render() selects by `state.floor.id`.
  */
 
 import type { GameState, Grid } from "../types";
 import type { EdgeType, TileFeature } from "../types";
 import { edgeInDirection } from "../game/dungeon";
-import wallTextureUrl from "../assets/wall_tile_vine_256.png";
-import floorATextureUrl from "../assets/floor_tile_a_256.png";
-import floorBTextureUrl from "../assets/floor_tile_b_256.png";
-import ceilingTextureUrl from "../assets/ceiling_tile_256.png";
+import f1WallUrl from "../assets/f1_wall_256.png";
+import f1FloorAUrl from "../assets/f1_floor_a_256.png";
+import f1FloorBUrl from "../assets/f1_floor_b_256.png";
+import f1CeilingUrl from "../assets/f1_ceiling_256.png";
+import f2WallUrl from "../assets/f2_wall_256.png";
+import f2FloorAUrl from "../assets/f2_floor_a_256.png";
+import f2FloorBUrl from "../assets/f2_floor_b_256.png";
+import f2CeilingUrl from "../assets/f2_ceiling_256.png";
+import f3WallUrl from "../assets/f3_wall_256.png";
+import f3FloorAUrl from "../assets/f3_floor_a_256.png";
+import f3FloorBUrl from "../assets/f3_floor_b_256.png";
+import f3CeilingUrl from "../assets/f3_ceiling_256.png";
 import {
   computeLineHeight,
   opacityForDepth,
@@ -70,6 +79,15 @@ const RENDER_CONFIG = {
   fillOpacityMultiplier: 0.45,
   glowBlurNear: 7,
   glowBlurFar: 2,
+  // The edge-glow pass draws an amber line on every 1px strip. At full
+  // strength that repaints flat walls amber and hides the per-floor wall art,
+  // so flat-wall strips are scaled down to a warm wash; strips at a depth
+  // discontinuity (corners, doorways, passage edges) keep full strength so
+  // the signature glow lines still trace the geometry.
+  glowWashAlphaScale: 0.22,
+  // Minimum perpWallDist jump between adjacent strips that counts as a
+  // depth discontinuity for full-strength glow lines.
+  glowEdgeDepthDelta: 0.12,
   scanlineOpacity: 0.10,
   scanlineSpacing: 3,
   // Floor/ceiling are darker base textures than the wall; brighten them and use
@@ -77,15 +95,18 @@ const RENDER_CONFIG = {
   // fading into the distance.
   floorDarkenMultiplier: 0.55,
   ceilingDarkenMultiplier: 0.3,
-  // The two floor tiles are visually similar; give them different brightness
-  // levels so the grid-coord checkerboard is readable without distorting hue.
-  floorABrightnessFactor: 4.0,
-  floorBBrightnessFactor: 2.8,
-  ceilingBrightnessFactor: 10.0,
-  // Wall texture brightness/contrast. The source wall tile has good range
-  // (max ~200) but average luminance is only ~65, so a mild brighten + contrast
-  // stretch pushes the mid-tones up to match the brightened floor/ceiling.
-  wallBrightnessFactor: 1.5,
+  // The two floor tiles get different brightness levels so the grid-coord
+  // checkerboard is readable without distorting hue. The per-floor campaign
+  // tilesets are authored at mid luminance (means ~50-90, vs ~9-45 for the
+  // legacy tiles), so these factors are close to 1.0 — large factors clip
+  // mid-bright art to white before the darken multipliers pull it back.
+  floorABrightnessFactor: 1.15,
+  floorBBrightnessFactor: 0.85,
+  ceilingBrightnessFactor: 1.4,
+  // Wall texture brightness/contrast. Campaign wall tiles are authored at
+  // their target luminance, so no brighten is needed; the contrast stretch
+  // below still deepens the mortar/shadow detail.
+  wallBrightnessFactor: 1.0,
   // Contrast stretch applied to all textures after brightness adjustment.
   // Values >1 push pixels away from the midpoint (128), expanding dynamic range.
   wallContrastFactor: 1.25,
@@ -150,8 +171,28 @@ interface TextureSet {
   ceilingData: ImageData | null;
 }
 
-let textureCache: TextureSet | null = null;
-let repeatedWallCanvas: HTMLCanvasElement | null = null;
+/** One fully prepared tileset (adjusted textures + pre-repeated wall). */
+interface LoadedTileset {
+  set: TextureSet;
+  repeatedWall: HTMLCanvasElement | null;
+}
+
+/** Per-floor texture URLs. Each floor of the campaign has its own tileset. */
+const TILESET_URLS: Record<
+  number,
+  { wall: string; floorA: string; floorB: string; ceiling: string }
+> = {
+  1: { wall: f1WallUrl, floorA: f1FloorAUrl, floorB: f1FloorBUrl, ceiling: f1CeilingUrl },
+  2: { wall: f2WallUrl, floorA: f2FloorAUrl, floorB: f2FloorBUrl, ceiling: f2CeilingUrl },
+  3: { wall: f3WallUrl, floorA: f3FloorAUrl, floorB: f3FloorBUrl, ceiling: f3CeilingUrl },
+};
+const FALLBACK_TILESET_ID = 1;
+
+// Loaded tilesets keyed by floor id. Populated once by loadTextures();
+// render() picks the active set from state.floor.id each frame. (Cached
+// entries hold images/canvases — never CanvasPattern objects, which die
+// when the target canvas is resized.)
+const tilesetCache = new Map<number, LoadedTileset>();
 
 // Reusable per-frame buffers (avoid allocation in the hot render loop).
 let hitsBuffer: (RayHit | null)[] = [];
@@ -258,13 +299,29 @@ function prepareRepeatedTexture(
   return c;
 }
 
-export function loadTextures(): Promise<TextureSet> {
-  if (textureCache) return Promise.resolve(textureCache);
+/** Load and prepare every floor's tileset. Safe to call more than once. */
+export function loadTextures(): Promise<void> {
+  const pending = Object.entries(TILESET_URLS)
+    .filter(([id]) => !tilesetCache.has(Number(id)))
+    .map(([id, urls]) =>
+      loadTileset(urls).then((tileset) => {
+        tilesetCache.set(Number(id), tileset);
+      })
+    );
+  return Promise.all(pending).then(() => {});
+}
+
+function loadTileset(urls: {
+  wall: string;
+  floorA: string;
+  floorB: string;
+  ceiling: string;
+}): Promise<LoadedTileset> {
   return Promise.all([
-    loadImage(wallTextureUrl).catch(() => null),
-    loadImage(floorATextureUrl).catch(() => null),
-    loadImage(floorBTextureUrl).catch(() => null),
-    loadImage(ceilingTextureUrl).catch(() => null),
+    loadImage(urls.wall).catch(() => null),
+    loadImage(urls.floorA).catch(() => null),
+    loadImage(urls.floorB).catch(() => null),
+    loadImage(urls.ceiling).catch(() => null),
   ]).then(([wall, floorAImg, floorBImg, ceilingImg]) => {
     const wallAdjusted = wall
       ? adjustTextureImage(wall, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)
@@ -283,7 +340,7 @@ export function loadTextures(): Promise<TextureSet> {
     const floorBRepeated = floorBBright ? prepareRepeatedTexture(floorBBright, 1, 1) : null;
     const ceilingRepeated = ceilingBright ? prepareRepeatedTexture(ceilingBright, 1, 1) : null;
 
-    textureCache = {
+    const set: TextureSet = {
       wall,
       floorA: floorABright,
       floorB: floorBBright,
@@ -301,10 +358,10 @@ export function loadTextures(): Promise<TextureSet> {
         ? ceilingRepeated.getContext("2d")!.getImageData(0, 0, ceilingRepeated.width, ceilingRepeated.height)
         : null,
     };
-    repeatedWallCanvas = wallAdjusted
+    const repeatedWall = wallAdjusted
       ? prepareRepeatedTexture(wallAdjusted, RENDER_CONFIG.wallRepeatsX, RENDER_CONFIG.wallRepeatsY)
       : null;
-    return textureCache;
+    return { set, repeatedWall };
   });
 }
 
@@ -618,7 +675,11 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.fillStyle = PALETTE.bg;
   ctx.fillRect(0, 0, w, h);
 
-  const textures = textureCache;
+  // Pick the active tileset for the current floor (fallback covers debug
+  // floors or ids without art so the corridor never renders untextured).
+  const tileset =
+    tilesetCache.get(state.floor.id) ?? tilesetCache.get(FALLBACK_TILESET_ID) ?? null;
+  const textures = tileset ? tileset.set : null;
 
   // --- Ceiling and floor casting (single batched upload) ---
   if (textures) {
@@ -645,7 +706,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     ? RENDER_CONFIG.darknessMaxDist
     : RENDER_CONFIG.maxDepth * 2;
 
-  const repeatedWall = repeatedWallCanvas;
+  const repeatedWall = tileset ? tileset.repeatedWall : null;
 
   const stripWidth = RENDER_CONFIG.raycastStripWidth;
   const hitCount = Math.ceil(w / stripWidth);
@@ -760,8 +821,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // that faces the camera. We use 4 depth buckets; within each bucket all lines
   // share the same stroke color and shadowBlur.
   const GLOW_BUCKETS = 4;
-  const glowPaths: Path2D[] = [];
-  for (let b = 0; b < GLOW_BUCKETS; b++) glowPaths.push(new Path2D());
+  const glowEdgePaths: Path2D[] = [];
+  const glowWashPaths: Path2D[] = [];
+  for (let b = 0; b < GLOW_BUCKETS; b++) {
+    glowEdgePaths.push(new Path2D());
+    glowWashPaths.push(new Path2D());
+  }
   for (let i = 0; i < hits.length; i++) {
     const hit = hits[i];
     if (!hit) continue;
@@ -776,9 +841,24 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     // (N/S-facing walls) use the right edge.
     const gx = hit.side === "x" ? x : x + stripWidth;
 
+    // A strip is an "edge" when the wall geometry breaks against a neighbor
+    // strip: a depth jump, a face-orientation change, or open sky beside it.
+    // Edges keep the full glow line; flat-wall strips get the scaled wash so
+    // the wall texture stays readable underneath.
+    const prev = i > 0 ? hits[i - 1] : null;
+    const next = i < hits.length - 1 ? hits[i + 1] : null;
+    const isEdge =
+      !prev ||
+      !next ||
+      prev.side !== hit.side ||
+      next.side !== hit.side ||
+      Math.abs(prev.perpWallDist - hit.perpWallDist) > RENDER_CONFIG.glowEdgeDepthDelta ||
+      Math.abs(next.perpWallDist - hit.perpWallDist) > RENDER_CONFIG.glowEdgeDepthDelta;
+
     const bucket = Math.min(GLOW_BUCKETS - 1, Math.floor(hit.perpWallDist));
-    glowPaths[bucket].moveTo(gx, drawStart);
-    glowPaths[bucket].lineTo(gx, drawEnd);
+    const path = isEdge ? glowEdgePaths[bucket] : glowWashPaths[bucket];
+    path.moveTo(gx, drawStart);
+    path.lineTo(gx, drawEnd);
   }
   ctx.save();
   ctx.lineWidth = 1;
@@ -787,7 +867,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     const depth = b + 0.5; // bucket center
     ctx.strokeStyle = strokeColorForDepth(depth);
     ctx.shadowBlur = glowBlurForDepth(depth);
-    ctx.stroke(glowPaths[b]);
+    ctx.stroke(glowEdgePaths[b]);
+    ctx.globalAlpha = RENDER_CONFIG.glowWashAlphaScale;
+    ctx.stroke(glowWashPaths[b]);
+    ctx.globalAlpha = 1.0;
   }
   ctx.restore();
 
