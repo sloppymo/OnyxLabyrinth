@@ -541,8 +541,12 @@ interface EffectStyle {
   burst: string;
   /** Field overlay effect for area/row spells. */
   field?: string;
-  /** Scale for the burst/field effect. */
+  /** Default scale for all effect stages. */
   scale?: number;
+  /** Per-stage scale overrides (fall back to `scale` then 1). */
+  projectileScale?: number;
+  burstScale?: number;
+  fieldScale?: number;
 }
 
 const ELEMENT_STYLES: Record<string, EffectStyle> = {
@@ -550,6 +554,27 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
   cold: { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst", scale: 1.2 },
   physical: { color: "#f5f0e6", burst: "zombie_explosion" },
   undead: { color: "#c080ff", projectile: "red_energy", burst: "red_energy", field: "red_energy", scale: 1.3 },
+  lightning: { color: "#ffd769", projectile: "lightning_blast", burst: "lightning_energy", field: "lightning_energy_glow", scale: 1.3 },
+  poison: { color: "#c080ff", projectile: "red_energy", burst: "red_energy_glow", field: "red_energy_glow", scale: 1.3 },
+};
+
+/** Per-spell visual overrides for testing alternate effect variants. */
+const SPELL_OVERRIDES: Record<string, EffectStyle> = {
+  // Fire variants
+  "mage-ignis": { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion_glow", field: "large_fire", scale: 2.5 },
+  "mage-immolatus": { color: "#ff8c42", burst: "fire_explosion_iso_glow", field: "large_fire_glow", scale: 2.5 },
+  "mage-pyro": { color: "#ff8c42", projectile: "wizard_attack1", projectileScale: 1, burst: "fire_explosion", burstScale: 2.5, scale: 1 },
+  // Cold variants
+  "mage-glacies": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_glow", scale: 1.2 },
+  "mage-frigus": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_transparent", scale: 1.2 },
+  "mage-cryo": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_dark", scale: 1.2 },
+  // Lightning variants
+  "mage-fulgor": { color: "#ffd769", projectile: "lightning_blast_glow", burst: "lightning_energy_glow", scale: 1.3 },
+  // Poison/red variants
+  "mage-necro": { color: "#c080ff", projectile: "red_lightning_blast_glow", burst: "red_energy_glow", scale: 1.3 },
+  "mage-pestis": { color: "#c080ff", burst: "red_energy", field: "red_energy_glow", scale: 1.3 },
+  // Priest holy
+  "priest-iride": { color: "#7fb8f0", projectile: "priest_attack", projectileScale: 1, burst: "lightning_energy_glow", burstScale: 1.3, scale: 1 },
 };
 
 const STATUS_STYLES: Record<string, EffectStyle> = {
@@ -563,6 +588,9 @@ function resolveEffectStyle(
   spellId: string | undefined,
   evt?: { isHeal?: boolean; isBuff?: boolean; isDebuff?: boolean; statusInflicted?: string; statusCured?: string; damage?: number; heal?: number }
 ): EffectStyle {
+  if (spellId && SPELL_OVERRIDES[spellId]) {
+    return SPELL_OVERRIDES[spellId];
+  }
   const spell = spellId ? spellById(spellId) : undefined;
   if (spell) {
     const eff = spell.effect;
@@ -609,6 +637,12 @@ function resolveEffectStyle(
 function meleeEffectForActor(className: string | undefined): string {
   if (className === "Mage" || className === "Priest") return "staff_attack";
   return "slash_attack";
+}
+
+function projectileEffectForActor(className: string | undefined): string {
+  if (className === "Ninja") return "arrow_skeleton";
+  if (className === "Thief") return "arrow_archer";
+  return "arrow";
 }
 
 /**
@@ -738,8 +772,8 @@ export function playTurn(
                 fromX: from.x, fromY: from.y,
                 toX: to.x, toY: to.y,
                 color: COLORS.dmg,
-                effect: "arrow",
-                scale: 1,
+                effect: projectileEffectForActor(attacker?.class),
+                scale: 2.5,
                 start: n,
                 duration: impact - (t + ATTACK_MS * 0.2),
               });
@@ -849,7 +883,7 @@ export function playTurn(
                 toX: to.x, toY: to.y,
                 color: style.color,
                 effect: style.projectile,
-                scale: style.scale,
+                scale: style.projectileScale ?? style.scale ?? 1,
                 start: n,
                 duration: impact - projectileLaunch,
               });
@@ -870,7 +904,7 @@ export function playTurn(
                   x: target.x, y: target.y,
                   color: style.color,
                   effect: style.burst,
-                  scale: style.scale,
+                  scale: style.burstScale ?? style.scale ?? 1,
                   start: n, duration: 400,
                 });
                 spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
@@ -914,7 +948,7 @@ export function playTurn(
                 y: h * 0.42,
                 color: style.color,
                 effect: style.field ?? style.burst,
-                scale: (style.scale ?? 1) * 2,
+                scale: (style.fieldScale ?? style.scale ?? 1) * 2,
                 start: n,
                 duration: 650,
               });
@@ -936,7 +970,7 @@ export function playTurn(
                 y: h * 0.42,
                 color: style.color,
                 effect: style.field ?? style.burst,
-                scale: (style.scale ?? 1) * 2,
+                scale: (style.fieldScale ?? style.scale ?? 1) * 2,
                 start: n,
                 duration: 650,
               });
@@ -971,7 +1005,7 @@ export function playTurn(
                 x: target.x, y: target.y,
                 color: style.color,
                 effect: style.burst,
-                scale: style.scale,
+                scale: style.burstScale ?? style.scale ?? 1,
                 start: n, duration: 400,
               });
               spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
