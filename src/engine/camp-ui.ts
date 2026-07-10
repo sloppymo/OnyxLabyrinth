@@ -17,8 +17,14 @@
  */
 
 import type { Character } from "../game/party";
+import type { GameState } from "../types";
 import { charRow } from "../game/party";
 import { ALL_SPELLS } from "../data/spells";
+import {
+  utilityCastOptions,
+  castUtilitySpell,
+  type UtilityCastOption,
+} from "../game/persistent-spells";
 
 const SPELL_NAME_BY_ID: Record<string, string> = Object.fromEntries(
   ALL_SPELLS.map((s) => [s.id, s.name])
@@ -28,12 +34,14 @@ export interface CampControllerOptions {
   panel: HTMLElement;
   party: Character[];
   dayCount: number;
+  /** Full game state — used by the "Cast a spell" utility-spell menu. */
+  state: GameState;
   onEnd: () => void;
 }
 
 const CAMP_DURATION_MS = 3000;
 
-type CampPhase = "animating" | "menu" | "charSheet" | "reorder";
+type CampPhase = "animating" | "menu" | "charSheet" | "reorder" | "castSpell";
 
 interface CharAnim {
   char: Character;
@@ -47,6 +55,7 @@ interface CharAnim {
 
 const CAMP_MENU_ITEMS = [
   { key: "continue", label: "Continue exploring" },
+  { key: "cast", label: "Cast a spell" },
   { key: "sheet", label: "View character sheets" },
   { key: "reorder", label: "Reorder party" },
 ] as const;
@@ -55,6 +64,7 @@ export class CampController {
   private panel: HTMLElement;
   private party: Character[];
   private dayCount: number;
+  private state: GameState;
   private onEnd: () => void;
   private anims: CharAnim[];
   private elapsed = 0;
@@ -64,11 +74,15 @@ export class CampController {
   private menuIndex = 0;
   private sheetIndex = 0;
   private reorderFirst = -1;
+  private castIndex = 0;
+  private castOptions: UtilityCastOption[] = [];
+  private castFlash = "";
 
   constructor(opts: CampControllerOptions) {
     this.panel = opts.panel;
     this.party = opts.party;
     this.dayCount = opts.dayCount;
+    this.state = opts.state;
     this.onEnd = opts.onEnd;
 
     // Snapshot pre-camp HP/SP and compute targets. KO'd characters revive to
@@ -143,6 +157,37 @@ export class CampController {
       }
     } else if (this.phase === "reorder") {
       this.handleReorderKey(lower, key);
+    } else if (this.phase === "castSpell") {
+      this.handleCastKey(lower, key);
+    }
+  }
+
+  private handleCastKey(lower: string, key: string): void {
+    if (lower === "escape") {
+      this.phase = "menu";
+      this.renderMenu();
+      return;
+    }
+    if (this.castOptions.length === 0) return;
+    if (lower === "arrowup" || lower === "w") {
+      this.castIndex = (this.castIndex - 1 + this.castOptions.length) % this.castOptions.length;
+      this.renderCastSpell();
+    } else if (lower === "arrowdown" || lower === "s") {
+      this.castIndex = (this.castIndex + 1) % this.castOptions.length;
+      this.renderCastSpell();
+    } else if (key === "Enter" || key === " ") {
+      const opt = this.castOptions[this.castIndex];
+      if (!opt.affordable) {
+        this.castFlash = "Not enough SP.";
+        this.renderCastSpell();
+        return;
+      }
+      this.castFlash = castUtilitySpell(this.state, opt.casterId, opt.spell.id);
+      // Refresh SP-affordability after the cast; stay in the menu so the
+      // party can layer several utility spells before breaking camp.
+      this.castOptions = utilityCastOptions(this.state);
+      this.castIndex = Math.min(this.castIndex, Math.max(0, this.castOptions.length - 1));
+      this.renderCastSpell();
     }
   }
 
@@ -175,6 +220,13 @@ export class CampController {
       case "continue":
         this.dispose();
         this.onEnd();
+        break;
+      case "cast":
+        this.phase = "castSpell";
+        this.castOptions = utilityCastOptions(this.state);
+        this.castIndex = 0;
+        this.castFlash = "";
+        this.renderCastSpell();
         break;
       case "sheet":
         this.phase = "charSheet";
@@ -308,6 +360,31 @@ export class CampController {
     lines.push(`<div class="cs-spells">Spells: ${spellNames}</div>`);
     lines.push(`</div>`);
     lines.push(`<div class="camp-done">[↑/↓] cycle characters · [Enter/Esc] back to menu</div>`);
+    this.panel.innerHTML = lines.join("");
+  }
+
+  private renderCastSpell(): void {
+    const lines: string[] = [];
+    lines.push(`<div class="camp-header">[C] Cast a Spell</div>`);
+    if (this.castOptions.length === 0) {
+      lines.push(`<div class="camp-party"><div class="camp-char"><span class="cc-name">No one knows a utility spell.</span></div></div>`);
+    } else {
+      lines.push(`<div class="camp-party">`);
+      for (let i = 0; i < this.castOptions.length; i++) {
+        const o = this.castOptions[i];
+        const marker = i === this.castIndex ? "▶" : " ";
+        const dim = o.affordable ? "" : " style='opacity:0.45'";
+        lines.push(
+          `<div class="camp-char"${dim}>` +
+            `<span class="cc-name">${marker} ${o.spell.name} — ${o.casterName} (${o.spell.spCost} SP)</span>` +
+            `<span class="cc-num">${o.spell.description}</span>` +
+            `</div>`
+        );
+      }
+      lines.push(`</div>`);
+    }
+    if (this.castFlash) lines.push(`<div class="camp-resting">${this.castFlash}</div>`);
+    lines.push(`<div class="camp-done">[↑/↓] select · [Enter] cast · [Esc] back to menu</div>`);
     this.panel.innerHTML = lines.join("");
   }
 

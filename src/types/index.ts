@@ -48,6 +48,16 @@ export type Grid = Cell[][]; // grid[y][x]
 
 export type TrapType = "gas" | "teleporter" | "alarm" | "stunner" | "poison";
 
+// --- Persistent spell buffs ---------------------------------------------------
+// Party-wide dungeon buffs from utility spells (Milwa light, Litofit
+// levitation). Ticked down once per dungeon step; cleared by camping.
+// See game/persistent-spells.ts.
+
+export interface PersistentBuff {
+  kind: "light" | "levitation";
+  remainingSteps: number;
+}
+
 export interface PendingTrap {
   x: number;
   y: number;
@@ -121,6 +131,9 @@ export interface GameState {
   // Which treasures have been looted, keyed by floor ID. Each value is a Set of
   // "x,y" position strings. This keeps the global FLOORS definitions immutable.
   lootTaken: Record<number, Set<string>>;
+  // Active party-wide spell buffs (light, levitation). Ticked per step,
+  // cleared by camping. Serialized in saves.
+  persistentBuffs: PersistentBuff[];
   // Set while the party stands on a trapped, unopened chest. While non-null,
   // dungeon movement is blocked and the Inspect/Disarm/Open/Leave keys are
   // live. Never persisted: a save can't be taken while the prompt is open.

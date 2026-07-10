@@ -32,6 +32,7 @@ export function createGameState(floor: FloorDef): GameState {
     unlockedDoors: new Set<string>(),
     lootTaken: {},
     pendingTrap: null,
+    persistentBuffs: [],
     inDarkness: false,
     inAntimagic: false,
     lastDungeon: null,

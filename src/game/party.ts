@@ -377,6 +377,7 @@ export function createDefaultParty(): Character[] {
     "mage-fulgur",
     "mage-immolatus",
     "mage-pestis",
+    "mage-dumapic",
   ];
   mage2.knownSpellIds = [
     "mage-fulmen",
@@ -392,11 +393,13 @@ export function createDefaultParty(): Character[] {
     "mage-fulgur",
     "mage-immolatus",
     "mage-pestis",
+    "mage-dumapic",
   ];
   priest.knownSpellIds = [
     "priest-iride",
     "priest-dios",
     "priest-badialma",
+    "priest-milwa",
   ];
 
   return [fighter1, fighter2, thief, mage1, priest, mage2];
