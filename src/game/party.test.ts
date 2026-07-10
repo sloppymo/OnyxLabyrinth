@@ -180,8 +180,8 @@ describe("RACES and CLASSES", () => {
     expect(Object.keys(RACES).length).toBe(5);
   });
 
-  it("has 5 classes", () => {
-    expect(Object.keys(CLASSES).length).toBe(5);
+  it("has 7 classes", () => {
+    expect(Object.keys(CLASSES).length).toBe(7);
   });
 
   it("all races have modifiers defined", () => {

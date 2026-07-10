@@ -9,7 +9,8 @@
  *
  * Class → pack mapping (done at copy time in public/assets/party/):
  *   Fighter → Knight, Mage → Wizard, Priest → Priest,
- *   Thief → Archer, Halberdier → Armored Axeman.
+ *   Thief → Archer, Halberdier → Armored Axeman,
+ *   Duelist → Swordsman, Crusader → Knight Templar.
  *
  * States: idle / walk / attack / cast / hurt / death. `cast` is optional
  * (only Mage and Priest ship one) and falls back to `attack`.
@@ -40,6 +41,8 @@ export const PARTY_SPRITE_DIRS: Record<CharacterClass, string> = {
   Priest: "priest",
   Thief: "thief",
   Halberdier: "halberdier",
+  Duelist: "duelist",
+  Crusader: "crusader",
 };
 
 /** Per-state playback config. Frame counts come from the loaded image. */

@@ -9,7 +9,14 @@
 
 export type Race = "Human" | "Elf" | "Dwarf" | "Gnome" | "Hobbit";
 export type Alignment = "Good" | "Neutral" | "Evil";
-export type CharacterClass = "Fighter" | "Mage" | "Priest" | "Thief" | "Halberdier";
+export type CharacterClass =
+  | "Fighter"
+  | "Mage"
+  | "Priest"
+  | "Thief"
+  | "Halberdier"
+  | "Duelist"
+  | "Crusader";
 export type StatusEffect =
   | "poison"
   | "sleep"
@@ -147,6 +154,22 @@ export const CLASSES: Record<CharacterClass, ClassDef> = {
     spellClass: null,
     hpBonus: 7,
     description: "Heavily armored polearm fighter; strikes effectively from the back row.",
+  },
+  Duelist: {
+    id: "Duelist",
+    name: "Duelist",
+    allowedAlignments: ["Good", "Neutral", "Evil"],
+    spellClass: null,
+    hpBonus: 6,
+    description: "Swift blade fighter who favors precise lunging strikes.",
+  },
+  Crusader: {
+    id: "Crusader",
+    name: "Crusader",
+    allowedAlignments: ["Good", "Neutral", "Evil"],
+    spellClass: "Priest",
+    hpBonus: 6,
+    description: "Holy warrior who wields steel and casts Priest spells.",
   },
 };
 

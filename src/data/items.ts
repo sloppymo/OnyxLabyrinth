@@ -78,6 +78,7 @@ function armor(
 // Weapons
 export const DAGGERS = weapon("dagger", "Dagger", 1, 2, "short");
 export const SHORT_SWORDS = weapon("short-sword", "Short Sword", 1, 3, "short");
+export const RAPIERS = weapon("rapier", "Rapier", 1, 3, "short");
 export const MACES = weapon("mace", "Mace", 2, 4, "close");
 export const LONG_SWORDS = weapon("long-sword", "Long Sword", 2, 5, "medium");
 export const GREAT_SWORDS = weapon("great-sword", "Great Sword", 3, 7, "close");
@@ -113,6 +114,7 @@ export const ANTIDOTE: ItemDef = {
 export const ALL_WEAPONS: ItemDef[] = [
   ...DAGGERS,
   ...SHORT_SWORDS,
+  ...RAPIERS,
   ...MACES,
   ...LONG_SWORDS,
   ...GREAT_SWORDS,
