@@ -9,7 +9,7 @@
 
 export type Race = "Human" | "Elf" | "Dwarf" | "Gnome" | "Hobbit";
 export type Alignment = "Good" | "Neutral" | "Evil";
-export type CharacterClass = "Fighter" | "Mage" | "Priest" | "Thief" | "Ninja";
+export type CharacterClass = "Fighter" | "Mage" | "Priest" | "Thief" | "Halberdier";
 export type StatusEffect =
   | "poison"
   | "sleep"
@@ -140,13 +140,13 @@ export const CLASSES: Record<CharacterClass, ClassDef> = {
     hpBonus: 4,
     description: "Trap expert and backstabber; effective from the back row.",
   },
-  Ninja: {
-    id: "Ninja",
-    name: "Ninja",
-    allowedAlignments: ["Neutral", "Evil"],
+  Halberdier: {
+    id: "Halberdier",
+    name: "Halberdier",
+    allowedAlignments: ["Good", "Neutral", "Evil"],
     spellClass: null,
-    hpBonus: 5,
-    description: "Stealthy assassin who can hide and ambush from the shadows.",
+    hpBonus: 7,
+    description: "Heavily armored polearm fighter; strikes effectively from the back row.",
   },
 };
 

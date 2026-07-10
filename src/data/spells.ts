@@ -392,7 +392,7 @@ export function spellById(id: string): SpellDef | undefined {
 
 /** Return every spell a character class can learn at their current tier range. */
 export function spellsForClass(
-  cls: "Fighter" | "Mage" | "Priest" | "Thief" | "Ninja",
+  cls: "Fighter" | "Mage" | "Priest" | "Thief" | "Halberdier",
   maxTier: 1 | 2 | 3 | 4 | 5 | 6 | 7
 ): SpellDef[] {
   if (cls === "Mage") return MAGE_SPELLS.filter((s) => s.tier <= maxTier);

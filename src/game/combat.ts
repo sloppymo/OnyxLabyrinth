@@ -116,8 +116,10 @@ export function defaultLoadoutForCharacter(char: Character): Loadout {
     loadout.weapon = ITEMS_BY_ID["dagger"];
   } else if (char.class === "Mage" || char.class === "Priest") {
     loadout.weapon = ITEMS_BY_ID["staff"];
+  } else if (char.class === "Halberdier") {
+    loadout.weapon = ITEMS_BY_ID["halberd"];
   }
-  if (char.formationSlot <= 2) {
+  if (char.formationSlot <= 2 || char.class === "Halberdier") {
     const leather = ITEMS_BY_ID["leather"];
     if (leather) loadout.armor = [leather];
   }
@@ -1287,8 +1289,8 @@ function resolveHide(
   actor: Character,
   emit: (m: string, e: CombatEvent) => void
 ): void {
-  // Only Thief and Ninja classes can hide
-  if (actor.class !== "Thief" && actor.class !== "Ninja") {
+  // Only the Thief class can hide
+  if (actor.class !== "Thief") {
     emit(`${actor.name} cannot hide.`, { type: "fizzle", actorId: actor.id });
     return;
   }
@@ -1315,8 +1317,8 @@ function resolveAmbush(
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): void {
-  // Only Thief and Ninja classes can ambush
-  if (actor.class !== "Thief" && actor.class !== "Ninja") {
+  // Only the Thief class can ambush
+  if (actor.class !== "Thief") {
     emit(`${actor.name} cannot ambush.`, { type: "fizzle", actorId: actor.id });
     return;
   }
