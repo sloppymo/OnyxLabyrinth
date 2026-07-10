@@ -50,6 +50,8 @@ const COLORS = {
   classPriest: "#e0d0a0",
   classThief: "#4a4",
   classHalberdier: "#a55",
+  classDuelist: "#a6c",
+  classCrusader: "#ea4",
   enemyFallback: "#8a7a5a",
   spellBurst: "#48c",
 } as const;
@@ -1344,6 +1346,8 @@ function drawPartyFallback(
     Priest: COLORS.classPriest,
     Thief: COLORS.classThief,
     Halberdier: COLORS.classHalberdier,
+    Duelist: COLORS.classDuelist,
+    Crusader: COLORS.classCrusader,
   };
   ctx.fillStyle = colors[char.class] ?? "#ccc";
   ctx.fillRect(x - 12, y - 44, 24, 36);

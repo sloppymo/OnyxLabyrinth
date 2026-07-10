@@ -118,8 +118,16 @@ export function defaultLoadoutForCharacter(char: Character): Loadout {
     loadout.weapon = ITEMS_BY_ID["staff"];
   } else if (char.class === "Halberdier") {
     loadout.weapon = ITEMS_BY_ID["halberd"];
+  } else if (char.class === "Duelist") {
+    loadout.weapon = ITEMS_BY_ID["rapier"];
+  } else if (char.class === "Crusader") {
+    loadout.weapon = ITEMS_BY_ID["long-sword"];
   }
-  if (char.formationSlot <= 2 || char.class === "Halberdier") {
+  if (
+    char.formationSlot <= 2 ||
+    char.class === "Halberdier" ||
+    char.class === "Crusader"
+  ) {
     const leather = ITEMS_BY_ID["leather"];
     if (leather) loadout.armor = [leather];
   }
