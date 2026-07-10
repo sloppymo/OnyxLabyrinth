@@ -49,6 +49,15 @@ export type Grid = Cell[][]; // grid[y][x]
 
 export type TrapType = "gas" | "teleporter" | "alarm" | "stunner" | "poison";
 
+// --- Inventory ------------------------------------------------------------------
+// One carried item instance. `identified` is per-instance: chest equipment
+// drops unidentified and shows a generic name until appraised in town.
+
+export interface InventoryEntry {
+  itemId: string;
+  identified: boolean;
+}
+
 // --- Persistent spell buffs ---------------------------------------------------
 // Party-wide dungeon buffs from utility spells (Milwa light, Litofit
 // levitation). Ticked down once per dungeon step; cleared by camping.
@@ -119,9 +128,10 @@ export interface GameState {
   // Design doc §8.1: "Carried gold. All gold earned in dungeon is carried
   // by the party." No banking in the MVP.
   partyGold: number;
-  // Inventory of item IDs. Bought at the shop or dropped by enemies.
-  // Each entry is an item ID from data/items.ts; duplicates allowed.
-  inventory: string[];
+  // Party inventory. Duplicates allowed. Shop purchases arrive identified;
+  // chest weapons/armor arrive unidentified ("Unknown Weapon") until
+  // appraised at the shop. Cursed gear reveals itself by clamping on.
+  inventory: InventoryEntry[];
   // Keys collected by the party. Each key ID corresponds to a locked door.
   // When the party attempts to pass a locked door, the key is consumed.
   // Design doc §6.2: "Require keys (found on floor) or Thief lockpick."

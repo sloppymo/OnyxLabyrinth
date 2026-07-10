@@ -21,8 +21,9 @@ import type { Character } from "./party";
 import { FLOORS, cloneFloor } from "../data/floors";
 import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
-import { equipItem, findBestEquipTarget } from "./combat";
+import { equipItem, forceEquip, findBestEquipTarget } from "./combat";
 import { hasBuff } from "./persistent-spells";
+import { displayNameFor } from "../data/items";
 
 type Rng = () => number;
 
@@ -230,13 +231,38 @@ function awardTreasure(
       itemNames.push(keyDisplayName(itemId));
       continue;
     }
-    state.inventory.push(itemId);
     const item = ITEMS_BY_ID[itemId];
-    itemNames.push(item ? item.name : itemId);
+    // Chest weapons/armor drop unidentified (appraise in town to reveal);
+    // consumables and trinkets are self-evident.
+    const identified = !item || !(item.type === "weapon" || item.type === "armor");
+    const entry = { itemId, identified };
+    state.inventory.push(entry);
 
-    // Auto-equip found gear to the party member who needs it most.
-    // (Trinkets are carried, not equipped.)
-    if (item && (item.type === "weapon" || item.type === "armor")) {
+    if (!item) {
+      itemNames.push(itemId);
+      continue;
+    }
+
+    if (item.cursed) {
+      // Cursed gear reveals itself by clamping onto whoever handles it.
+      entry.identified = true;
+      const targetId = findBestEquipTarget(state.party, state.equipment, item);
+      const target = targetId ? state.party.find((c) => c.id === targetId) : undefined;
+      const forced = targetId ? forceEquip(state.equipment[targetId], item) : null;
+      if (target && forced) {
+        state.equipment[target.id] = forced;
+        itemNames.push(`${item.name} — it clamps onto ${target.name}! CURSED!`);
+      } else {
+        itemNames.push(`${item.name} (cursed)`);
+      }
+      continue;
+    }
+
+    itemNames.push(displayNameFor(item, entry.identified));
+
+    // Auto-equip found gear to the party member who needs it most (works
+    // even unidentified — the party tries it on; the name stays unknown).
+    if (item.type === "weapon" || item.type === "armor") {
       const targetId = findBestEquipTarget(state.party, state.equipment, item);
       if (targetId) {
         state.equipment[targetId] = equipItem(state.equipment[targetId], item);
@@ -358,7 +384,7 @@ function handleWater(state: GameState, rng: Rng): FeatureResult {
   if (hasBuff(state, "levitation")) {
     return { message: "You drift above the water.", ...noEvent };
   }
-  if (state.inventory.includes("ring-of-water-walking")) {
+  if (state.inventory.some((e) => e.itemId === "ring-of-water-walking")) {
     return { message: "The ring bears you across the water.", ...noEvent };
   }
 

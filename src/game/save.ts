@@ -24,7 +24,7 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 
 /**
  * Migrate a serialized state from an older version to the current one.
@@ -34,9 +34,13 @@ const SAVE_VERSION = 4;
 function migrate(ser: Record<string, unknown>): SerializedState | null {
   let version = ser.version as number;
   if (version > SAVE_VERSION) return null;
-  // No migrations needed yet — version 4 is the first version with this
-  // infrastructure. Add `if (version === N) { ...; version = N + 1; }` blocks
-  // here as the format evolves.
+  if (version === 4) {
+    // v4 → v5: inventory was string[] of item ids; it becomes
+    // InventoryEntry[] with everything the player already owns identified.
+    const oldInv = (ser.inventory as string[] | undefined) ?? [];
+    ser.inventory = oldInv.map((itemId) => ({ itemId, identified: true }));
+    version = 5;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -64,7 +68,7 @@ interface SerializedState {
   stepsSinceEncounter: number;
   dayCount: number;
   partyGold: number;
-  inventory: string[];
+  inventory: GameState["inventory"];
   keys: string[];
   unlockedDoors: string[];
   inDarkness: boolean;
@@ -122,7 +126,7 @@ export function serialize(state: GameState): string {
     stepsSinceEncounter: state.stepsSinceEncounter,
     dayCount: state.dayCount,
     partyGold: state.partyGold,
-    inventory: [...state.inventory],
+    inventory: state.inventory.map((e) => ({ ...e })),
     keys: [...state.keys],
     unlockedDoors: Array.from(state.unlockedDoors),
     inDarkness: state.inDarkness,
@@ -199,7 +203,7 @@ export function deserialize(json: string): GameState | null {
       stepsSinceEncounter: ser.stepsSinceEncounter,
       dayCount: ser.dayCount,
       partyGold: ser.partyGold ?? 0,
-      inventory: ser.inventory ? [...ser.inventory] : [],
+      inventory: ser.inventory ? ser.inventory.map((e) => ({ ...e })) : [],
       keys: ser.keys ? [...ser.keys] : [],
       unlockedDoors,
       lootTaken,

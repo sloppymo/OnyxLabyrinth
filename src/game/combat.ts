@@ -145,10 +145,12 @@ export function isBetterEquip(current: ItemDef | undefined, candidate: ItemDef):
 }
 
 /** Return a new loadout with `item` equipped, replacing any same-slot gear only
- *  if the new item is better. Non-equipment items are ignored. */
+ *  if the new item is better. Non-equipment items are ignored. Cursed gear
+ *  already in the slot can never be replaced (Remove Curse at the Temple). */
 export function equipItem(loadout: Loadout, item: ItemDef): Loadout {
-  if (item.type === "consumable") return loadout;
+  if (item.type === "consumable" || item.type === "trinket") return loadout;
   if (item.type === "weapon") {
+    if (loadout.weapon?.cursed) return loadout;
     if (!isBetterEquip(loadout.weapon, item)) return loadout;
     return { ...loadout, weapon: item };
   }
@@ -156,7 +158,32 @@ export function equipItem(loadout: Loadout, item: ItemDef): Loadout {
   if (item.slot) {
     const idx = armor.findIndex((a) => a.slot === item.slot);
     if (idx >= 0) {
+      if (armor[idx].cursed) return loadout;
       if (!isBetterEquip(armor[idx], item)) return loadout;
+      armor[idx] = item;
+      return { ...loadout, armor };
+    }
+  }
+  armor.push(item);
+  return { ...loadout, armor };
+}
+
+/**
+ * Force `item` into its slot regardless of quality — the cursed-gear clamp.
+ * Still refuses to displace other cursed gear (one curse per slot).
+ * Returns null if the slot is curse-locked (the item stays in the pack).
+ */
+export function forceEquip(loadout: Loadout, item: ItemDef): Loadout | null {
+  if (item.type === "consumable" || item.type === "trinket") return null;
+  if (item.type === "weapon") {
+    if (loadout.weapon?.cursed) return null;
+    return { ...loadout, weapon: item };
+  }
+  const armor = loadout.armor ? [...loadout.armor] : [];
+  if (item.slot) {
+    const idx = armor.findIndex((a) => a.slot === item.slot);
+    if (idx >= 0) {
+      if (armor[idx].cursed) return null;
       armor[idx] = item;
       return { ...loadout, armor };
     }
@@ -391,10 +418,13 @@ export function createCombatState(
   };
 }
 
-/** Convert a flat item-id inventory into stack counts. */
-export function inventoryToCounts(inventory: string[]): Record<string, number> {
+/** Convert an inventory (id strings or entries) into stack counts. */
+export function inventoryToCounts(
+  inventory: readonly (string | { itemId: string })[]
+): Record<string, number> {
   const counts: Record<string, number> = {};
-  for (const id of inventory) {
+  for (const entry of inventory) {
+    const id = typeof entry === "string" ? entry : entry.itemId;
     counts[id] = (counts[id] ?? 0) + 1;
   }
   return counts;
@@ -412,6 +442,28 @@ export function inventoryFromCounts(counts: Record<string, number>): string[] {
 }
 
 /**
+ * Apply post-combat consumption to the real inventory: keep each entry only
+ * while the combat's count snapshot still has stock for its item id. This
+ * preserves per-instance state (the `identified` flag) that a plain
+ * counts→list rebuild would destroy.
+ */
+export function reconcileInventoryAfterCombat<E extends { itemId: string }>(
+  entries: readonly E[],
+  counts: Record<string, number>
+): E[] {
+  const remaining = { ...counts };
+  const out: E[] = [];
+  for (const e of entries) {
+    const left = remaining[e.itemId] ?? 0;
+    if (left > 0) {
+      out.push(e);
+      remaining[e.itemId] = left - 1;
+    }
+  }
+  return out;
+}
+
+/**
  * Convenience: build a CombatState from a resolved encounter (Track B's
  * resolveEncounter output). Derives isBoss from the enemy defs, assigns
  * unique instanceIds, and pins each enemy's actual row from the spawn data.
@@ -422,7 +474,7 @@ export function createCombatFromEncounter(
   spells: Record<string, SpellDef>,
   items: Record<string, ItemDef>,
   loadout: Record<string, Loadout>,
-  inventory: string[] = [],
+  inventory: readonly (string | { itemId: string })[] = [],
   inAntimagic = false
 ): CombatState {
   const front: EnemyInstance[] = [];
