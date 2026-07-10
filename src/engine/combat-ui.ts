@@ -33,7 +33,7 @@ import {
 } from "../game/combat";
 import { enemyHealthDescriptor } from "./combat-display";
 import type { Character } from "../game/party";
-import type { SpellDef } from "../data/spells";
+import { isUtilitySpell, type SpellDef } from "../data/spells";
 import type { ItemDef } from "../data/items";
 import { combatCtx, combatCanvas, combatWindows } from "./shell";
 import {
@@ -314,9 +314,11 @@ export class CombatController {
   }
 
   private knownSpells(c: Character): SpellDef[] {
+    // Utility spells (light/levitation/detect) are dungeon-only — hidden
+    // here so they can't burn a combat turn with no effect.
     return c.knownSpellIds
       .map((id) => this.state.spells[id])
-      .filter((s): s is SpellDef => s !== undefined);
+      .filter((s): s is SpellDef => s !== undefined && !isUtilitySpell(s));
   }
 
   /** Confirm a top-level menu choice. */

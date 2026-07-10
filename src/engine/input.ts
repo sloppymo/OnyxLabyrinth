@@ -10,7 +10,11 @@
 //   M                toggle auto-map
 //   T                return to town
 //   U                unlock (locked door / chest)
+//   G                grimoire (cast utility spells: light, levitation, …)
 //   Esc              system menu (save/load)
+//
+// While a trapped chest prompt is up (GameState.pendingTrap), main.ts gates
+// all of these off and a dedicated listener owns I/D/O/L (+Esc = leave).
 //
 // Combat/town/camp/save/creation modes have their own key handlers in their
 // respective UI controllers. The spec's proposed Cast/Drop/Search/Turn-party
@@ -27,6 +31,7 @@ export interface InputHandlers {
   onSystemMenu: () => void;
   onTown: () => void;
   onUnlock: () => void;
+  onCastSpell: () => void;
 }
 
 const KEY_MAP: Record<string, keyof InputHandlers> = {
@@ -50,6 +55,8 @@ const KEY_MAP: Record<string, keyof InputHandlers> = {
   T: "onTown",
   u: "onUnlock",
   U: "onUnlock",
+  g: "onCastSpell",
+  G: "onCastSpell",
   Escape: "onSystemMenu",
 };
 

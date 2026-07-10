@@ -71,6 +71,9 @@ interface SerializedState {
   inAntimagic: boolean;
   lastDungeon: GameState["lastDungeon"];
   equipment?: GameState["equipment"];
+  // Active utility-spell buffs (light/levitation). Optional: absent in saves
+  // from before the buff system, defaulting to none on load.
+  persistentBuffs?: GameState["persistentBuffs"];
   // Treasure state: which treasures have been looted, keyed by floor ID.
   // Each value is an array of "x,y" position strings. The floor clone is
   // restored from the immutable FLOORS definition on load.
@@ -124,6 +127,7 @@ export function serialize(state: GameState): string {
     inAntimagic: state.inAntimagic,
     lastDungeon: state.lastDungeon,
     equipment: { ...state.equipment },
+    persistentBuffs: state.persistentBuffs.map((b) => ({ ...b })),
     lootTaken,
     savedAt: new Date().toISOString(),
   };
@@ -201,6 +205,7 @@ export function deserialize(json: string): GameState | null {
       // save stands the party on the unopened chest with no prompt — stepping
       // off and back onto the tile re-prompts.
       pendingTrap: null,
+      persistentBuffs: ser.persistentBuffs?.map((b) => ({ ...b })) ?? [],
       inDarkness: ser.inDarkness ?? false,
       inAntimagic: ser.inAntimagic ?? false,
       lastDungeon: ser.lastDungeon ?? null,

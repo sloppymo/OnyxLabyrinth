@@ -49,6 +49,8 @@ import {
   type Loadout,
 } from "./game/combat";
 import { rollEncounter, resolveEncounter } from "./data/enemies";
+import { tickBuffs, clearBuffs } from "./game/persistent-spells";
+import { SpellMenuController } from "./engine/spell-ui";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
 import { reviveKnockedOut, type Character } from "./game/party";
@@ -329,10 +331,14 @@ function startCamp(): void {
   setMessage("");
 
   state.dayCount++;
+  // A night's rest dispels standing magic (light/levitation) — re-cast after,
+  // from the camp menu or the dungeon G menu.
+  clearBuffs(state);
   campController = new CampController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     party: state.party,
     dayCount: state.dayCount,
+    state,
     onEnd: () => {
       campController = null;
       setMode(state, "dungeon");
@@ -359,10 +365,14 @@ function onMove(): void {
   if (state.mode !== "dungeon") return;
   state.stepsSinceEncounter++;
 
+  // Tick persistent spell buffs (light/levitation) BEFORE processing the
+  // tile, so a light that just expired doesn't still counter this darkness.
+  const expiry = tickBuffs(state);
+
   // Process the tile feature at the player's current position.
   const result = handleTileFeature(state);
   if (result) {
-    setMessage(result.message);
+    setMessage([...expiry, result.message].join(" "));
     if (result.changedFloor) {
       // Floor transition happened — mark explored on the new floor and snap
       // the render camera instantly to the new position (don't slide across
@@ -372,6 +382,8 @@ function onMove(): void {
       // Don't trigger encounters on the same step as a floor transition.
       return;
     }
+  } else if (expiry.length > 0) {
+    setMessage(expiry.join(" "));
   }
 
   maybeTriggerEncounter();
@@ -436,6 +448,11 @@ bindInput(window, {
   },
   onTown: () => {
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) returnToTown();
+  },
+  onCastSpell: () => {
+    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
+      openSpellMenu();
+    }
   },
   onUnlock: () => {
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
@@ -618,6 +635,41 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
     return;
   }
   saveController.handleKey(e.key);
+  e.preventDefault();
+});
+
+// --- Dungeon spell menu (G — grimoire) -------------------------------------
+// Borrows "title" mode like the save menu so dungeon input pauses. The
+// justOpenedSpellMenu flag keeps the G that opened the menu from closing it.
+let spellMenuController: SpellMenuController | null = null;
+let justOpenedSpellMenu = false;
+
+function openSpellMenu(): void {
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  canvas.style.opacity = "0.2";
+  justOpenedSpellMenu = true;
+  spellMenuController = new SpellMenuController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    state,
+    onClose: (message: string) => {
+      spellMenuController = null;
+      canvas.style.opacity = "1";
+      setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
+      setMessage(message);
+    },
+  });
+}
+
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "title" || !spellMenuController) return;
+  if (justOpenedSpellMenu) {
+    justOpenedSpellMenu = false;
+    e.preventDefault();
+    return;
+  }
+  spellMenuController.handleKey(e.key);
   e.preventDefault();
 });
 

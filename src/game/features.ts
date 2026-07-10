@@ -22,6 +22,7 @@ import { FLOORS, cloneFloor } from "../data/floors";
 import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
 import { equipItem, findBestEquipTarget } from "./combat";
+import { hasBuff } from "./persistent-spells";
 
 type Rng = () => number;
 
@@ -58,6 +59,11 @@ export function handleTileFeature(state: GameState): FeatureResult | null {
     case "chute":
       return handleChute(state);
     case "darkness":
+      if (hasBuff(state, "light")) {
+        state.inDarkness = false;
+        state.inAntimagic = false;
+        return { message: "Your magical light holds back the darkness.", changedFloor: false, consumed: false };
+      }
       state.inDarkness = true;
       state.inAntimagic = false;
       return { message: "You are in a darkness zone. Visibility is reduced.", changedFloor: false, consumed: false };
@@ -139,6 +145,10 @@ function handleTeleporter(state: GameState): FeatureResult {
  * Handle chute. Forced descent to a lower floor. One-way — no return chute.
  */
 function handleChute(state: GameState): FeatureResult {
+  // Levitation (Litofit) carries the party safely over chutes.
+  if (hasBuff(state, "levitation")) {
+    return { message: "You float over the chute's mouth.", changedFloor: false, consumed: false };
+  }
   const { floor, player } = state;
   const drop = floor.chuteDrops?.find((c) => c.x === player.x && c.y === player.y);
 

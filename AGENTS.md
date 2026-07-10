@@ -32,6 +32,9 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/game/state.ts` | `GameState` factory and mode setter. |
 | `src/game/features.ts` | Tile-feature handling (stairs, teleporters, chutes, darkness, antimagic, treasure) + trapped-chest interaction (`pendingTrap`, Inspect/Disarm/Open/Leave, trap effects). |
 | `src/game/features.test.ts` | Unit tests for the trap interaction (vitest). |
+| `src/game/persistent-spells.ts` | Utility spells cast outside combat (Milwa light / Litofit levitation / Dumapic detect): buff add/tick/clear, cast validation. |
+| `src/game/persistent-spells.test.ts` | Unit tests for utility spells and buff/feature interplay (vitest). |
+| `src/engine/spell-ui.ts` | Dungeon grimoire menu (G key): lists utility casts, casts via persistent-spells. |
 | `src/game/dungeon.ts` | Grid model, edge helpers, carving. |
 | `src/game/party.ts` | Character/party creation. |
 | `src/game/combat.ts` | Combat state/helpers. Emits structured `CombatEvent`s alongside log messages for the renderer. Two resolution APIs sharing the same internals: round-based `resolveCombatRound` (legacy/tests) and the per-turn API (`beginRound` / `resolvePlayerTurn` / `resolveEnemyTurn` / `resolveAllyTurn` / `endRound`) used by the FF6 combat UI. |
@@ -87,6 +90,8 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 - **Front-wall depth 0:** All front-facing wall quads, including the closest one, are textured. Avoid special-casing `depth === 0` to skip the texture fill; that produces a black hole where the wall should be.
 - **Trap prompt modality:** while `state.pendingTrap` is set (party standing on a trapped chest), every dungeon input handler in `main.ts` is gated off with `!state.pendingTrap` and a dedicated keydown listener owns I/D/O/L (+Esc = leave). Any NEW dungeon key handler must add the same gate or it will fire mid-prompt.
 - **#message length:** the message overlay shows ~2 lines of ~30 characters before clipping (it scrolls, but players won't). Keep interactive prompt strings (key hints) short enough to stay visible.
+- **Borrowed "title" mode:** the save menu (Esc) AND the dungeon spell menu (G) both borrow mode "title" to pause dungeon input. Their key listeners guard on their own controller instance being non-null, so they can't fight — but any new overlay borrowing "title" must follow the same pattern (own controller + justOpened flag).
+- **Utility spells are dungeon-only:** spells whose effect kind is light/levitation/detect must stay out of combat spell lists (`isUtilitySpell` filter in combat-ui.ts `knownSpells`) — the combat resolver has no case for them and would silently waste the turn and SP.
 
 ## Rendering verification checklist
 

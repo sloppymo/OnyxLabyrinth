@@ -28,7 +28,19 @@ export type SpellEffect =
   | { kind: "magicScreen"; power: number }
   | { kind: "fizzleField"; power: number }
   | { kind: "dispelMagic" }
-  | { kind: "summon"; power: number };
+  | { kind: "summon"; power: number }
+  // Utility (dungeon-only) effects — cast from the dungeon G menu or camp,
+  // resolved by game/persistent-spells.ts, hidden from the combat spell list.
+  | { kind: "light"; duration: number }
+  | { kind: "levitation"; duration: number }
+  | { kind: "detect" };
+
+/** Effect kinds castable only outside combat (dungeon / camp menus). */
+export const UTILITY_EFFECT_KINDS = ["light", "levitation", "detect"] as const;
+
+export function isUtilitySpell(spell: SpellDef): boolean {
+  return (UTILITY_EFFECT_KINDS as readonly string[]).includes(spell.effect.kind);
+}
 
 export interface SpellDef {
   id: string;
@@ -42,6 +54,26 @@ export interface SpellDef {
 }
 
 export const MAGE_SPELLS: SpellDef[] = [
+  {
+    id: "mage-dumapic",
+    name: "Dumapic",
+    class: "Mage",
+    tier: 1,
+    spCost: 2,
+    target: "self",
+    effect: { kind: "detect" },
+    description: "Reveals the party's exact position and facing in the maze.",
+  },
+  {
+    id: "mage-litofit",
+    name: "Litofit",
+    class: "Mage",
+    tier: 4,
+    spCost: 8,
+    target: "self",
+    effect: { kind: "levitation", duration: 30 },
+    description: "The party floats above the stone, drifting over chutes and hazards.",
+  },
   {
     id: "mage-halito",
     name: "Halito",
@@ -276,6 +308,16 @@ export const MAGE_SPELLS: SpellDef[] = [
 ];
 
 export const PRIEST_SPELLS: SpellDef[] = [
+  {
+    id: "priest-milwa",
+    name: "Milwa",
+    class: "Priest",
+    tier: 1,
+    spCost: 3,
+    target: "self",
+    effect: { kind: "light", duration: 40 },
+    description: "A soft magical radiance that holds back darkness zones.",
+  },
   {
     id: "priest-dios",
     name: "Dios",
