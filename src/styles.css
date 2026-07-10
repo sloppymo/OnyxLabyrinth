@@ -955,13 +955,15 @@ canvas#map-canvas {
 
 .ff6-party {
   flex: 1 1 auto;
+  /* Extra right padding so the HP bars don't kiss the window border. */
+  padding-right: 12px;
 }
 
 .ff6-party-row {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) auto auto 64px;
   align-items: baseline;
-  gap: 10px;
+  gap: 8px;
   font-size: var(--fs-body);
   line-height: 1.4;
   padding: 1px 4px;
@@ -992,9 +994,14 @@ canvas#map-canvas {
 
 .ff6-p-sp {
   text-align: right;
-  min-width: 42px;
+  min-width: 32px;
   color: #b8c4f0;
   font-variant-numeric: tabular-nums;
+}
+
+/* Non-casters show a dim dash so the SP column reads consistently. */
+.ff6-p-sp.none {
+  color: #4a5aa0;
 }
 
 .ff6-p-bar {
