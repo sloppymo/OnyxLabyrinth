@@ -16,7 +16,7 @@
 import type { GameState, Grid } from "../types";
 import type { EdgeType, TileFeature } from "../types";
 import { edgeInDirection } from "../game/dungeon";
-import wallTextureUrl from "../assets/wall_tile_amber_256.png";
+import wallTextureUrl from "../assets/wall_tile_vine_256.png";
 import floorATextureUrl from "../assets/floor_tile_a_256.png";
 import floorBTextureUrl from "../assets/floor_tile_b_256.png";
 import ceilingTextureUrl from "../assets/ceiling_tile_256.png";
