@@ -81,10 +81,10 @@ export const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
   ambush: "Ambush",
 };
 
-/** Menu entries available to a character (Thief/Ninja get Hide/Ambush). */
+/** Menu entries available to a character (Thief gets Hide/Ambush). */
 export function menuEntriesForCharacter(char: Character): MenuEntry[] {
   const base: PlayerAction["kind"][] = ["attack", "cast", "defend", "item"];
-  if (char.class === "Thief" || char.class === "Ninja") {
+  if (char.class === "Thief") {
     base.push(char.status.includes("hidden") ? "ambush" : "hide");
   }
   base.push("flee");

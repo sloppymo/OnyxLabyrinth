@@ -49,6 +49,7 @@ const COLORS = {
   classMage: "#48c",
   classPriest: "#e0d0a0",
   classThief: "#4a4",
+  classHalberdier: "#a55",
   enemyFallback: "#8a7a5a",
   spellBurst: "#48c",
 } as const;
@@ -640,7 +641,6 @@ function meleeEffectForActor(className: string | undefined): string {
 }
 
 function projectileEffectForActor(className: string | undefined): string {
-  if (className === "Ninja") return "arrow_skeleton";
   if (className === "Thief") return "arrow_archer";
   return "arrow";
 }
@@ -1343,7 +1343,7 @@ function drawPartyFallback(
     Mage: COLORS.classMage,
     Priest: COLORS.classPriest,
     Thief: COLORS.classThief,
-    Ninja: COLORS.classThief,
+    Halberdier: COLORS.classHalberdier,
   };
   ctx.fillStyle = colors[char.class] ?? "#ccc";
   ctx.fillRect(x - 12, y - 44, 24, 36);

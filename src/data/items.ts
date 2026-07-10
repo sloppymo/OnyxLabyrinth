@@ -83,6 +83,7 @@ export const LONG_SWORDS = weapon("long-sword", "Long Sword", 2, 5, "medium");
 export const GREAT_SWORDS = weapon("great-sword", "Great Sword", 3, 7, "close");
 export const STAFFS = weapon("staff", "Staff", 1, 2, "medium");
 export const BOWS = weapon("bow", "Bow", 1, 3, "long");
+export const HALBERDS = weapon("halberd", "Halberd", 1, 3, "medium");
 
 // Armor
 export const ROBES = armor("robe", "Robe", 1, "body", 1);
@@ -117,6 +118,7 @@ export const ALL_WEAPONS: ItemDef[] = [
   ...GREAT_SWORDS,
   ...STAFFS,
   ...BOWS,
+  ...HALBERDS,
 ];
 
 export const ALL_ARMOR: ItemDef[] = [
