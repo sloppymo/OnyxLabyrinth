@@ -112,13 +112,14 @@ After any change to `src/engine/combat-scene.ts`, `src/engine/combat-ui.ts`, or 
 9. **Result window:** victory shows gold/XP in a centered window; Enter exits.
 10. **Combat → dungeon transition:** fleeing or winning returns to the dungeon view with corridor textures intact.
 11. **Windows never clip sprites:** all six party members and all enemies stay visible above the bottom windows.
+12. **Summoned allies in the windows:** living BAMORDI/SOCORDI summons show as cyan rows in the enemy window (name + HP) and as compact cyan rows below the party list; single-target heal spells list them as extra targets (cursor kind "ally" on the scene) and the heal resolves on the summon's HP.
 
 ## Conventions
 
 - Prefer `const` and explicit types.
 - Keep renderer constants in `RENDER_CONFIG` at the top of `renderer.ts`.
 - Keep audio constants in the `AudioEngine` `CFG` object at the top of `audio.ts`.
-- Keep combat renderer layout constants near the top of `combat-renderer.ts`.
+- Keep combat scene layout constants near the top of `combat-scene.ts`. (The old `combat-renderer.ts` was deleted in the FF6 rewrite — do not restore it from git history; `combat-scene.ts` is its replacement.)
 - Renderer math functions (geometry, fog, camera interpolation) live in `render-math.ts` and are unit-tested. When adding new math to the renderer, extract it to `render-math.ts` and add a test.
 - Run `npm run build` before claiming any fix is complete.
 - Run `npm test` before claiming any combat/save/party/renderer-math change is complete.

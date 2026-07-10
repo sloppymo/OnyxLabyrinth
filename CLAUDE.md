@@ -49,7 +49,7 @@ Combat sprites are hybrid: `sprite-manifest.ts` maps enemy IDs to horizontal PNG
 
 ## Asset pipeline (JewelFlame sprite packs)
 
-`assets/` contains large third-party sprite packs (`Characters(100x100)/`, `Creature Extended- Supporter Pack/`, `animations/`, `Classic Dungeons - Files/`) that are source material, not directly consumed by the game — only assets copied/referenced under the `assets/enemies/<id>/` convention (via `sprite-manifest.ts`) are wired into `combat-renderer.ts`.
+`assets/` contains large third-party sprite packs (`Characters(100x100)/`, `Creature Extended- Supporter Pack/`, `animations/`, `Classic Dungeons - Files/`) that are source material, not directly consumed by the game — only assets copied/referenced under the `assets/enemies/<id>/` convention (via `sprite-manifest.ts`) are wired into `combat-scene.ts`.
 
 `scripts/generate-jewelflame-*.mjs` and `scripts/jewelflame-creature-utils.mjs` build static HTML preview pages (`jewelflame-preview.html`, `jewelflame-100x100-preview.html`, `jewelflame-creature-extended-preview.html`) for browsing these packs — they read PNG dimensions directly (via a hand-rolled IHDR parser, no image library needed for sizing) to infer frame counts from strip width, and are dev tooling only, not part of the build. `tools/tile-composer.html` is a standalone drag-and-drop tileset composer, also not part of the build.
 
