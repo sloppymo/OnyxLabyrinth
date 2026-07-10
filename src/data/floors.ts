@@ -24,7 +24,7 @@
 // "// EVENT:" comments are design annotations for a future scripted-event /
 // trap system — the engine does not run them yet.
 
-import type { Grid } from "../types";
+import type { Grid, TrapType } from "../types";
 import {
   buildSolidGrid,
   carveRoom,
@@ -59,7 +59,9 @@ export interface FloorDef {
   lockedDoors?: { x: number; y: number; dir: "n" | "e" | "s" | "w"; keyId: string }[];
   // Treasure room definitions: tiles with the "treasure" feature and what
   // item IDs they contain. Once looted, the tile feature is cleared.
-  treasures?: { x: number; y: number; itemIds: string[] }[];
+  // `trap` marks the chest as trapped (Inspect/Disarm/Open/Leave prompt on
+  // step; see game/features.ts). Untrapped chests loot immediately.
+  treasures?: { x: number; y: number; itemIds: string[]; trap?: TrapType }[];
 }
 
 export interface TeleporterLink {
@@ -141,8 +143,9 @@ function floor1(): FloorDef {
       { x: 9, y: 7, dir: "s", keyId: "crypt-key" },
     ],
     treasures: [
+      // The first chest of the game is untrapped — it teaches looting safely.
       { x: 2, y: 5, itemIds: ["healing-potion", "healing-potion", "crypt-key"] },
-      { x: 10, y: 9, itemIds: ["short-sword+1", "leather", "healing-potion", "lexicon-key"] },
+      { x: 10, y: 9, itemIds: ["short-sword+1", "leather", "healing-potion", "lexicon-key"], trap: "gas" },
     ],
   };
 }
@@ -228,8 +231,9 @@ function floor2(): FloorDef {
       { x: 10, y: 7, dir: "e", keyId: "lexicon-key" },
     ],
     treasures: [
-      { x: 12, y: 3, itemIds: ["mace+1", "chain-mail", "healing-potion", "antidote"] },
-      { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "healing-potion", "furnace-key"] },
+      // A silenced library hates noise — the alarm summons the stacks' keepers.
+      { x: 12, y: 3, itemIds: ["mace+1", "chain-mail", "healing-potion", "antidote"], trap: "alarm" },
+      { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "healing-potion", "furnace-key"], trap: "stunner" },
     ],
   };
 }
@@ -333,10 +337,11 @@ function floor3(): FloorDef {
       { x: 7, y: 11, dir: "s", keyId: "forge-key" },
     ],
     treasures: [
-      { x: 13, y: 2, itemIds: ["great-sword+1", "plate-mail", "healing-potion", "healing-potion"] },
-      { x: 14, y: 8, itemIds: ["halberd+1", "shield+1", "healing-potion", "healing-potion"] },
-      { x: 2, y: 14, itemIds: ["forge-key", "healing-potion", "antidote"] },
-      { x: 9, y: 13, itemIds: ["great-sword+2", "plate-mail+2", "healing-potion", "healing-potion"] },
+      { x: 13, y: 2, itemIds: ["great-sword+1", "plate-mail", "healing-potion", "healing-potion"], trap: "gas" },
+      // The chain hall's chest flings openers across the forge.
+      { x: 14, y: 8, itemIds: ["halberd+1", "shield+1", "healing-potion", "healing-potion"], trap: "teleporter" },
+      { x: 2, y: 14, itemIds: ["forge-key", "healing-potion", "antidote"], trap: "poison" },
+      { x: 9, y: 13, itemIds: ["great-sword+2", "plate-mail+2", "healing-potion", "healing-potion"], trap: "stunner" },
     ],
   };
 }
@@ -368,7 +373,7 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     chuteDrops: floor.chuteDrops ? floor.chuteDrops.map((c) => ({ ...c })) : undefined,
     lockedDoors: floor.lockedDoors ? floor.lockedDoors.map((d) => ({ ...d })) : undefined,
     treasures: floor.treasures
-      ? floor.treasures.map((t) => ({ x: t.x, y: t.y, itemIds: [...t.itemIds] }))
+      ? floor.treasures.map((t) => ({ x: t.x, y: t.y, itemIds: [...t.itemIds], trap: t.trap }))
       : undefined,
   };
 }
