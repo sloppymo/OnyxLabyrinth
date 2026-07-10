@@ -13,7 +13,11 @@ describe("save serialization", () => {
     state.party = createDefaultParty();
     state.partyGold = 100;
     state.dayCount = 3;
-    state.inventory = ["potion", "potion", "antidote"];
+    state.inventory = [
+      { itemId: "potion", identified: true },
+      { itemId: "potion", identified: false },
+      { itemId: "antidote", identified: true },
+    ];
     state.keys = ["iron-key"];
     state.explored = new Set(["1,2", "3,4"]);
     state.unlockedDoors = new Set(["1:5:6:N"]);
@@ -28,10 +32,27 @@ describe("save serialization", () => {
     expect(restored.floor.id).toBe(state.floor.id);
     expect(restored.partyGold).toBe(100);
     expect(restored.dayCount).toBe(3);
-    expect(restored.inventory).toEqual(["potion", "potion", "antidote"]);
+    expect(restored.inventory).toEqual([
+      { itemId: "potion", identified: true },
+      { itemId: "potion", identified: false },
+      { itemId: "antidote", identified: true },
+    ]);
     expect(restored.keys).toEqual(["iron-key"]);
     expect(restored.explored).toEqual(new Set(["1,2", "3,4"]));
     expect(restored.unlockedDoors).toEqual(new Set(["1:5:6:N"]));
+  });
+
+  it("migrates v4 saves: string inventory becomes identified entries", () => {
+    const json = serialize(state);
+    const raw = JSON.parse(json);
+    raw.version = 4;
+    raw.inventory = ["potion", "antidote"]; // old string[] shape
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    expect(restored?.inventory).toEqual([
+      { itemId: "potion", identified: true },
+      { itemId: "antidote", identified: true },
+    ]);
   });
 
   it("preserves party character data", () => {

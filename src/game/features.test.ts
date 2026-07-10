@@ -14,7 +14,13 @@ import {
 } from "./features";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
 import { createDefaultParty } from "./party";
-import { defaultLoadoutForCharacter } from "./combat";
+import {
+  defaultLoadoutForCharacter,
+  equipItem,
+  forceEquip,
+  reconcileInventoryAfterCombat,
+} from "./combat";
+import { ITEMS_BY_ID } from "../data/items";
 import type { FloorDef } from "../data/floors";
 import type { GameState, TrapType } from "../types";
 
@@ -73,7 +79,7 @@ describe("handleTreasure with traps", () => {
     const state = makeState();
     const result = handleTileFeature(state);
     expect(result?.consumed).toBe(true);
-    expect(state.inventory).toContain("healing-potion");
+    expect(state.inventory.map((e) => e.itemId)).toContain("healing-potion");
     expect(state.keys).toContain("test-key");
     expect(state.pendingTrap).toBeNull();
     expect(state.floor.grid[2][2].tile).toBeUndefined();
@@ -120,7 +126,7 @@ describe("disarmChest", () => {
     expect(result.message).toMatch(/disarms/);
     expect(result.message).toMatch(/Treasure!/);
     expect(state.pendingTrap).toBeNull();
-    expect(state.inventory).toContain("healing-potion");
+    expect(state.inventory.map((e) => e.itemId)).toContain("healing-potion");
     // No trap effect fired.
     for (const c of state.party) expect(c.hp).toBe(c.maxHp);
   });
@@ -133,7 +139,7 @@ describe("disarmChest", () => {
     expect(result.opened).toBe(true);
     expect(result.message).toMatch(/fumbles/);
     expect(state.pendingTrap).toBeNull();
-    expect(state.inventory).toContain("healing-potion");
+    expect(state.inventory.map((e) => e.itemId)).toContain("healing-potion");
     for (const c of state.party) expect(c.hp).toBe(c.maxHp - 2);
   });
 
@@ -161,7 +167,7 @@ describe("openChest trap effects", () => {
     expect(result.opened).toBe(true);
     expect(state.party[0].hp).toBe(1);
     expect(state.party[1].hp).toBe(state.party[1].maxHp - 12);
-    expect(state.inventory).toContain("healing-potion");
+    expect(state.inventory.map((e) => e.itemId)).toContain("healing-potion");
   });
 
   it("poison inflicts poison on all living members", () => {
@@ -192,7 +198,7 @@ describe("openChest trap effects", () => {
     const carved = [cell.n, cell.e, cell.s, cell.w].some((e) => e !== "wall");
     expect(carved).toBe(true);
     // Loot was still taken as the spell fired.
-    expect(state.inventory).toContain("healing-potion");
+    expect(state.inventory.map((e) => e.itemId)).toContain("healing-potion");
   });
 
   it("alarm sets the alarm flag for main.ts to force an encounter", () => {
@@ -235,6 +241,65 @@ describe("leaveChest", () => {
     expect(disarmChest(state).opened).toBe(false);
     expect(openChest(state).message).toBe("");
     expect(leaveChest(state)).toBe("");
+  });
+});
+
+// --- Identification & cursed gear --------------------------------------------
+
+describe("identification and cursed gear", () => {
+  it("chest weapons/armor drop unidentified; consumables identified", () => {
+    const state = makeState();
+    state.floor.treasures = [
+      { x: 2, y: 2, itemIds: ["short-sword+1", "healing-potion"] },
+    ];
+    const result = handleTileFeature(state);
+    expect(result?.message).toContain("Unknown Weapon");
+    expect(result?.message).toContain("Healing Potion");
+    const sword = state.inventory.find((e) => e.itemId === "short-sword+1");
+    const potion = state.inventory.find((e) => e.itemId === "healing-potion");
+    expect(sword?.identified).toBe(false);
+    expect(potion?.identified).toBe(true);
+  });
+
+  it("cursed gear clamps onto a party member and reveals itself", () => {
+    const state = makeState();
+    state.floor.treasures = [{ x: 2, y: 2, itemIds: ["cursed-blade"] }];
+    const result = handleTileFeature(state);
+    expect(result?.message).toMatch(/CURSED/);
+    const entry = state.inventory.find((e) => e.itemId === "cursed-blade");
+    expect(entry?.identified).toBe(true); // the curse reveals the item
+    const stuck = state.party.some(
+      (c) => state.equipment[c.id]?.weapon?.id === "cursed-blade"
+    );
+    expect(stuck).toBe(true);
+  });
+
+  it("equipItem never replaces cursed gear; forceEquip respects the lock", () => {
+    const state = makeState();
+    state.floor.treasures = [{ x: 2, y: 2, itemIds: ["cursed-blade"] }];
+    handleTileFeature(state);
+    const victim = state.party.find(
+      (c) => state.equipment[c.id]?.weapon?.id === "cursed-blade"
+    )!;
+    // A strictly better sword must NOT displace the cursed blade.
+    const better = ITEMS_BY_ID["short-sword+2"] ?? ITEMS_BY_ID["short-sword+1"];
+    const after = equipItem(state.equipment[victim.id], better);
+    expect(after.weapon?.id).toBe("cursed-blade");
+    expect(forceEquip(state.equipment[victim.id], better)).toBeNull();
+  });
+
+  it("reconcileInventoryAfterCombat drops consumed items, keeps flags", () => {
+    const entries = [
+      { itemId: "healing-potion", identified: true },
+      { itemId: "healing-potion", identified: true },
+      { itemId: "short-sword+1", identified: false },
+    ];
+    // Combat consumed one potion.
+    const counts = { "healing-potion": 1, "short-sword+1": 1 };
+    const out = reconcileInventoryAfterCombat(entries, counts);
+    expect(out).toHaveLength(2);
+    expect(out.filter((e) => e.itemId === "healing-potion")).toHaveLength(1);
+    expect(out.find((e) => e.itemId === "short-sword+1")?.identified).toBe(false);
   });
 });
 
@@ -295,7 +360,7 @@ describe("water tiles", () => {
 
   it("the Ring of Water Walking crosses without a check", () => {
     const state = makeWaterState(4);
-    state.inventory.push("ring-of-water-walking");
+    state.inventory.push({ itemId: "ring-of-water-walking", identified: true });
     const result = handleTileFeature(state, seqRng([0.99]));
     expect(result?.message).toMatch(/ring bears you/);
     for (const c of state.party) expect(c.hp).toBe(c.maxHp);

@@ -34,6 +34,20 @@ export interface ItemDef {
   price: number;
   /** Floor tier that drops this item (or tier-appropriate versions). */
   dropFloorTier?: number;
+  /**
+   * Cursed gear clamps onto whoever picks it up (ignoring whether it's an
+   * upgrade), can't be unequipped or sold, and is lifted only by the
+   * Temple's Remove Curse service (which destroys the item).
+   */
+  cursed?: boolean;
+}
+
+/** Generic display name for an unidentified item. */
+export function displayNameFor(item: ItemDef, identified: boolean): string {
+  if (identified || item.type === "consumable") return item.name;
+  if (item.type === "weapon") return "Unknown Weapon";
+  if (item.type === "armor") return "Unknown Armor";
+  return "Unknown Trinket";
 }
 
 function weapon(
@@ -145,11 +159,36 @@ export const RING_OF_WATER_WALKING: ItemDef = {
 
 export const ALL_TRINKETS: ItemDef[] = [RING_OF_WATER_WALKING];
 
+// Cursed gear — masquerades as chest loot, clamps on when picked up.
+export const CURSED_BLADE: ItemDef = {
+  id: "cursed-blade",
+  name: "Bloodthirsty Blade",
+  type: "weapon",
+  slot: "hand",
+  attackBonus: -2,
+  range: "close",
+  price: 5,
+  cursed: true,
+};
+
+export const CURSED_HELM: ItemDef = {
+  id: "cursed-helm",
+  name: "Helm of Whispers",
+  type: "armor",
+  slot: "head",
+  defenseBonus: -2,
+  price: 5,
+  cursed: true,
+};
+
+export const ALL_CURSED: ItemDef[] = [CURSED_BLADE, CURSED_HELM];
+
 export const ALL_ITEMS: ItemDef[] = [
   ...ALL_WEAPONS,
   ...ALL_ARMOR,
   ...ALL_CONSUMABLES,
   ...ALL_TRINKETS,
+  ...ALL_CURSED,
 ];
 
 export const ITEMS_BY_ID: Record<string, ItemDef> = Object.fromEntries(

@@ -261,7 +261,8 @@ function floor2(): FloorDef {
     ],
     treasures: [
       // A silenced library hates noise — the alarm summons the stacks' keepers.
-      { x: 12, y: 3, itemIds: ["mace+1", "chain-mail", "healing-potion", "antidote"], trap: "alarm" },
+      // The blade among the loot is cursed: it clamps onto whoever takes it.
+      { x: 12, y: 3, itemIds: ["mace+1", "chain-mail", "cursed-blade", "antidote"], trap: "alarm" },
       { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "ring-of-water-walking", "furnace-key"], trap: "stunner" },
     ],
   };
@@ -367,8 +368,9 @@ function floor3(): FloorDef {
     ],
     treasures: [
       { x: 13, y: 2, itemIds: ["great-sword+1", "plate-mail", "healing-potion", "healing-potion"], trap: "gas" },
-      // The chain hall's chest flings openers across the forge.
-      { x: 14, y: 8, itemIds: ["halberd+1", "shield+1", "healing-potion", "healing-potion"], trap: "teleporter" },
+      // The chain hall's chest flings openers across the forge — and the
+      // helm inside whispers (cursed).
+      { x: 14, y: 8, itemIds: ["halberd+1", "shield+1", "cursed-helm", "healing-potion"], trap: "teleporter" },
       { x: 2, y: 14, itemIds: ["forge-key", "healing-potion", "antidote"], trap: "poison" },
       { x: 9, y: 13, itemIds: ["great-sword+2", "plate-mail+2", "healing-potion", "healing-potion"], trap: "stunner" },
     ],

@@ -43,7 +43,7 @@ import { PartyCreationController } from "./engine/party-ui";
 import { autoSave, loadAutoSave } from "./game/save";
 import {
   createCombatFromEncounter,
-  inventoryFromCounts,
+  reconcileInventoryAfterCombat,
   defaultLoadoutForCharacter,
   type CombatState,
   type Loadout,
@@ -273,8 +273,9 @@ function endCombat(result: CombatState): void {
     knownSpellIds: [...c.knownSpellIds],
   }));
 
-  // Write the (possibly depleted) combat inventory back to GameState.
-  state.inventory = inventoryFromCounts(result.inventory);
+  // Write the (possibly depleted) combat inventory back to GameState,
+  // preserving per-instance identification flags.
+  state.inventory = reconcileInventoryAfterCombat(state.inventory, result.inventory);
 
   // Persist any equipment changes made during this combat back to GameState.
   state.equipment = { ...result.loadout };

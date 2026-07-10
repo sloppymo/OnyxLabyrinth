@@ -27,7 +27,10 @@ export function createGameState(floor: FloorDef): GameState {
     stepsSinceEncounter: 99, // allow encounter on first step
     dayCount: 1,
     partyGold: 100, // starting gold for the shop
-    inventory: ["healing-potion", "healing-potion"], // a couple of starter potions
+    inventory: [
+      { itemId: "healing-potion", identified: true },
+      { itemId: "healing-potion", identified: true },
+    ], // a couple of starter potions
     keys: [],
     unlockedDoors: new Set<string>(),
     lootTaken: {},

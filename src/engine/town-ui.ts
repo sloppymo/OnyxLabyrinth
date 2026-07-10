@@ -20,12 +20,18 @@
 
 import type { GameState, Character } from "../types";
 import { restoreParty, CLASSES } from "../game/party";
-import { ALL_ITEMS, ITEMS_BY_ID, type ItemDef } from "../data/items";
+import { ALL_ITEMS, ITEMS_BY_ID, displayNameFor, type ItemDef } from "../data/items";
 import { spellsForClass } from "../data/spells";
 import { equipItem, findBestEquipTarget } from "../game/combat";
 
 type TownScreen = "main" | "inn" | "temple" | "shop" | "guild" | "training";
-type ShopTab = "buy" | "sell";
+type ShopTab = "buy" | "sell" | "appraise";
+
+/** Temple fee to shatter all equipped cursed gear. */
+const REMOVE_CURSE_COST = 100;
+
+/** Shop fee to identify one unidentified item. */
+const APPRAISE_COST = 50;
 
 export interface TownControllerOptions {
   panel: HTMLElement;
@@ -118,12 +124,62 @@ export class TownController {
       this.handleShopKey(lower);
       return;
     }
+    // Temple: R lifts curses (when any cursed gear is equipped).
+    if (this.screen === "temple" && lower === "r") {
+      this.doRemoveCurse();
+      return;
+    }
     // inn, temple, guild, training — all dismiss with Esc/Enter/Space
     if (lower === "escape" || key === "Enter" || key === " ") {
       this.screen = "main";
       this.flash = "";
       this.render();
     }
+  }
+
+  /** All cursed items currently equipped by anyone. */
+  private equippedCursed(): { charName: string; item: ItemDef }[] {
+    const out: { charName: string; item: ItemDef }[] = [];
+    for (const c of this.state.party) {
+      const loadout = this.state.equipment[c.id];
+      if (!loadout) continue;
+      if (loadout.weapon?.cursed) out.push({ charName: c.name, item: loadout.weapon });
+      for (const a of loadout.armor) {
+        if (a.cursed) out.push({ charName: c.name, item: a });
+      }
+    }
+    return out;
+  }
+
+  private doRemoveCurse(): void {
+    const cursed = this.equippedCursed();
+    if (cursed.length === 0) {
+      this.flash = "No curses afflict the party.";
+      this.render();
+      return;
+    }
+    if (this.state.partyGold < REMOVE_CURSE_COST) {
+      this.flash = `Remove Curse costs ${REMOVE_CURSE_COST}g — you can't afford it.`;
+      this.render();
+      return;
+    }
+    this.state.partyGold -= REMOVE_CURSE_COST;
+    // Strip cursed gear from every loadout and destroy it (inventory too).
+    for (const c of this.state.party) {
+      const loadout = this.state.equipment[c.id];
+      if (!loadout) continue;
+      this.state.equipment[c.id] = {
+        ...loadout,
+        weapon: loadout.weapon?.cursed ? undefined : loadout.weapon,
+        armor: loadout.armor.filter((a) => !a.cursed),
+      };
+    }
+    this.state.inventory = this.state.inventory.filter(
+      (e) => !ITEMS_BY_ID[e.itemId]?.cursed
+    );
+    const names = cursed.map((c) => `${c.item.name} (${c.charName})`).join(", ");
+    this.flash = `The priests shatter the cursed gear: ${names}.`;
+    this.render();
   }
 
   private handleMainKey(lower: string): void {
@@ -234,21 +290,34 @@ export class TownController {
 
   private getShopBuyList(): ItemDef[] {
     // Shop sells tier-1 and tier-2 items (appropriate for early game).
-    // Trinkets (ring-of-water-walking, …) are dungeon finds, never stock.
+    // Trinkets (dungeon finds) and cursed gear are never stock.
     return ALL_ITEMS.filter(
-      (item) => item.type !== "trinket" && (item.dropFloorTier ?? 1) <= 2
+      (item) => item.type !== "trinket" && !item.cursed && (item.dropFloorTier ?? 1) <= 2
     );
+  }
+
+  /** Indices into state.inventory of entries awaiting appraisal. */
+  private getAppraiseList(): number[] {
+    return this.state.inventory
+      .map((e, i) => (e.identified ? -1 : i))
+      .filter((i) => i >= 0);
   }
 
   private handleShopKey(lower: string): void {
     const buyList = this.getShopBuyList();
-    const sellList = this.state.inventory;
-    const listLen = this.shopTab === "buy" ? buyList.length : sellList.length;
+    const appraiseList = this.getAppraiseList();
+    const listLen =
+      this.shopTab === "buy"
+        ? buyList.length
+        : this.shopTab === "sell"
+          ? this.state.inventory.length
+          : appraiseList.length;
 
     switch (lower) {
       case "tab":
-        // Tab toggles buy/sell
-        this.shopTab = this.shopTab === "buy" ? "sell" : "buy";
+        // Tab cycles buy → sell → appraise
+        this.shopTab =
+          this.shopTab === "buy" ? "sell" : this.shopTab === "sell" ? "appraise" : "buy";
         this.shopIndex = 0;
         this.flash = "";
         this.render();
@@ -261,6 +330,12 @@ export class TownController {
         break;
       case "s":
         this.shopTab = "sell";
+        this.shopIndex = 0;
+        this.flash = "";
+        this.render();
+        break;
+      case "a":
+        this.shopTab = "appraise";
         this.shopIndex = 0;
         this.flash = "";
         this.render();
@@ -280,8 +355,10 @@ export class TownController {
       case " ":
         if (this.shopTab === "buy") {
           this.buyItem(buyList[this.shopIndex]);
-        } else {
+        } else if (this.shopTab === "sell") {
           this.sellItem(this.shopIndex);
+        } else {
+          this.appraiseItem(appraiseList[this.shopIndex]);
         }
         break;
       case "escape":
@@ -300,7 +377,8 @@ export class TownController {
       return;
     }
     this.state.partyGold -= item.price;
-    this.state.inventory.push(item.id);
+    // Shop stock is always identified.
+    this.state.inventory.push({ itemId: item.id, identified: true });
 
     // Auto-equip gear to the party member who needs it most.
     if (item.type !== "consumable") {
@@ -319,10 +397,21 @@ export class TownController {
   }
 
   private sellItem(invIndex: number): void {
-    const itemId = this.state.inventory[invIndex];
-    if (!itemId) return;
+    const entry = this.state.inventory[invIndex];
+    if (!entry) return;
+    const itemId = entry.itemId;
     const item = ITEMS_BY_ID[itemId];
     if (!item) return;
+    if (!entry.identified) {
+      this.flash = "The shopkeep won't buy unidentified goods. Appraise it first.";
+      this.render();
+      return;
+    }
+    if (item.cursed) {
+      this.flash = "The shopkeep wants nothing to do with cursed goods.";
+      this.render();
+      return;
+    }
     const sellPrice = Math.floor(item.price / 2);
     this.state.inventory.splice(invIndex, 1);
     this.state.partyGold += sellPrice;
@@ -347,6 +436,28 @@ export class TownController {
       this.shopIndex = Math.max(0, this.state.inventory.length - 1);
     }
     this.flash = `Sold ${item.name} for ${sellPrice}g.`;
+    this.render();
+  }
+
+  private appraiseItem(invIndex: number | undefined): void {
+    if (invIndex === undefined) return;
+    const entry = this.state.inventory[invIndex];
+    if (!entry || entry.identified) return;
+    const item = ITEMS_BY_ID[entry.itemId];
+    if (!item) return;
+    if (this.state.partyGold < APPRAISE_COST) {
+      this.flash = `Appraisal costs ${APPRAISE_COST}g — you can't afford it.`;
+      this.render();
+      return;
+    }
+    this.state.partyGold -= APPRAISE_COST;
+    entry.identified = true;
+    this.flash = item.cursed
+      ? `The appraiser recoils — it's a ${item.name}, and it is CURSED!`
+      : `Appraised: ${item.name} (${this.itemStatsStr(item) || "no bonuses"}).`;
+    // Keep the cursor valid as the unidentified list shrinks.
+    const remaining = this.getAppraiseList().length;
+    if (this.shopIndex >= remaining) this.shopIndex = Math.max(0, remaining - 1);
     this.render();
   }
 
@@ -406,7 +517,34 @@ export class TownController {
     lines.push(`<div class="shop-tabs">`);
     lines.push(`<span class="shop-tab ${this.shopTab === "buy" ? "active" : ""}">Buy [B]</span>`);
     lines.push(`<span class="shop-tab ${this.shopTab === "sell" ? "active" : ""}">Sell [S]</span>`);
+    lines.push(`<span class="shop-tab ${this.shopTab === "appraise" ? "active" : ""}">Appraise [A]</span>`);
     lines.push(`</div>`);
+
+    if (this.shopTab === "appraise") {
+      const list = this.getAppraiseList();
+      lines.push(`<div class="shop-list">`);
+      if (list.length === 0) {
+        lines.push(`<div class="shop-empty">Nothing needs appraising.</div>`);
+      }
+      for (let i = 0; i < list.length; i++) {
+        const entry = this.state.inventory[list[i]];
+        const item = ITEMS_BY_ID[entry.itemId];
+        if (!item) continue;
+        const selected = i === this.shopIndex;
+        const marker = selected ? "▶" : " ";
+        lines.push(
+          `<div class="shop-item ${selected ? "selected" : ""}">` +
+            `<span class="si-marker">${marker}</span>` +
+            `<span class="si-name">${displayNameFor(item, false)}</span>` +
+            `<span class="si-stats">?</span>` +
+            `<span class="si-price">${APPRAISE_COST}g</span>` +
+            `</div>`
+        );
+      }
+      lines.push(`</div>`);
+      lines.push(`<div class="town-help">[↑/↓] navigate · [Enter] appraise · [B/S] other tabs · [Esc] back</div>`);
+      return;
+    }
 
     if (this.shopTab === "buy") {
       const buyList = this.getShopBuyList();
@@ -435,18 +573,20 @@ export class TownController {
         lines.push(`<div class="shop-empty">Your inventory is empty.</div>`);
       }
       for (let i = 0; i < inv.length; i++) {
-        const item = ITEMS_BY_ID[inv[i]];
+        const entry = inv[i];
+        const item = ITEMS_BY_ID[entry.itemId];
         if (!item) continue;
         const selected = i === this.shopIndex;
         const marker = selected ? "▶" : " ";
         const sellPrice = Math.floor(item.price / 2);
-        const stats = this.itemStatsStr(item);
+        const stats = entry.identified ? this.itemStatsStr(item) : "?";
+        const name = displayNameFor(item, entry.identified);
         lines.push(
           `<div class="shop-item ${selected ? "selected" : ""}">` +
             `<span class="si-marker">${marker}</span>` +
-            `<span class="si-name">${item.name}</span>` +
+            `<span class="si-name">${name}</span>` +
             `<span class="si-stats">${stats}</span>` +
-            `<span class="si-price">${sellPrice}g</span>` +
+            `<span class="si-price">${entry.identified ? `${sellPrice}g` : "—"}</span>` +
             `</div>`
         );
       }
@@ -478,6 +618,12 @@ export class TownController {
   }
 
   private renderFacility(lines: string[]): void {
+    // Temple advertises Remove Curse while any cursed gear is equipped.
+    if (this.screen === "temple" && this.equippedCursed().length > 0) {
+      lines.push(
+        `<div class="town-gold">Cursed gear detected! [R] Remove Curse (${REMOVE_CURSE_COST}g)</div>`
+      );
+    }
     // Show party status after inn/temple/training
     lines.push(`<div class="guild-roster">`);
     for (const c of this.state.party) {
