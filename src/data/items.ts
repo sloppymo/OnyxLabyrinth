@@ -7,7 +7,7 @@
 
 import type { Stats } from "../game/party";
 
-export type ItemType = "weapon" | "armor" | "consumable";
+export type ItemType = "weapon" | "armor" | "consumable" | "trinket";
 export type EquipSlot = "hand" | "body" | "shield" | "head";
 
 export type ItemEffect =
@@ -134,10 +134,22 @@ export const ALL_ARMOR: ItemDef[] = [
 
 export const ALL_CONSUMABLES: ItemDef[] = [HEALING_POTION, ANTIDOTE];
 
+// Trinkets: carried (not equipped, not usable in combat) — their presence in
+// the inventory grants a passive effect. Checked by game logic directly.
+export const RING_OF_WATER_WALKING: ItemDef = {
+  id: "ring-of-water-walking",
+  name: "Ring of Water Walking",
+  type: "trinket",
+  price: 500,
+};
+
+export const ALL_TRINKETS: ItemDef[] = [RING_OF_WATER_WALKING];
+
 export const ALL_ITEMS: ItemDef[] = [
   ...ALL_WEAPONS,
   ...ALL_ARMOR,
   ...ALL_CONSUMABLES,
+  ...ALL_TRINKETS,
 ];
 
 export const ITEMS_BY_ID: Record<string, ItemDef> = Object.fromEntries(

@@ -10,6 +10,7 @@ import {
   disarmChest,
   openChest,
   leaveChest,
+  swimChance,
 } from "./features";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
 import { createDefaultParty } from "./party";
@@ -59,6 +60,8 @@ function makeState(trap?: TrapType): GameState {
     unlockedDoors: new Set<string>(),
     lootTaken: {},
     pendingTrap: null,
+    persistentBuffs: [],
+    swimSkill: {},
     inDarkness: false,
     inAntimagic: false,
     lastDungeon: null,
@@ -232,5 +235,89 @@ describe("leaveChest", () => {
     expect(disarmChest(state).opened).toBe(false);
     expect(openChest(state).message).toBe("");
     expect(leaveChest(state)).toBe("");
+  });
+});
+
+// --- Water ------------------------------------------------------------------
+
+/** State standing on a water tile at (3,3) with the given depth/effect. */
+function makeWaterState(
+  depth: 1 | 2 | 3 | 4,
+  effect?: { kind: "heal"; power: number } | { kind: "damage"; power: number } | { kind: "cure"; status: "poison" }
+): GameState {
+  const state = makeState();
+  setTile(state.floor.grid, 3, 3, "water");
+  state.floor.waters = [{ x: 3, y: 3, depth, effect }];
+  state.player = { x: 3, y: 3, facing: 0 };
+  return state;
+}
+
+describe("swimChance", () => {
+  it("scales with skill, drops with depth, and clamps to 5-95%", () => {
+    expect(swimChance(0, 1)).toBeCloseTo(0.6);
+    expect(swimChance(0, 4)).toBeCloseTo(0.05);
+    expect(swimChance(100, 1)).toBeCloseTo(0.95);
+    expect(swimChance(40, 2)).toBeCloseTo(0.6);
+  });
+});
+
+describe("water tiles", () => {
+  it("successful swimmers take no damage and gain skill", () => {
+    const state = makeWaterState(1);
+    const result = handleTileFeature(state, seqRng([0, 0.5])); // roll 0 < chance, gain 1+1
+    expect(result?.message).toMatch(/wade|swim/);
+    expect(result?.consumed).toBe(false);
+    for (const c of state.party) {
+      expect(c.hp).toBe(c.maxHp);
+      expect(state.swimSkill[c.id]).toBeGreaterThan(0);
+    }
+    expect(state.floor.grid[3][3].tile).toBe("water"); // never consumed
+  });
+
+  it("failed swimmers take depth-scaled damage, floored at 1 HP", () => {
+    const state = makeWaterState(4);
+    state.party[0].hp = 2;
+    // Every roll 0.99: all fail (chance 5%), dmg 4×3=12, skill gain floor(0.99*2)=1.
+    const result = handleTileFeature(state, seqRng([0.99]));
+    expect(result?.message).toMatch(/struggle/);
+    expect(state.party[0].hp).toBe(1); // floored
+    expect(state.party[1].hp).toBe(state.party[1].maxHp - 12);
+    expect(state.swimSkill[state.party[1].id]).toBe(1); // learning from failure
+  });
+
+  it("levitation crosses without a check", () => {
+    const state = makeWaterState(4);
+    state.persistentBuffs.push({ kind: "levitation", remainingSteps: 10 });
+    const result = handleTileFeature(state, seqRng([0.99]));
+    expect(result?.message).toMatch(/drift above/);
+    for (const c of state.party) expect(c.hp).toBe(c.maxHp);
+  });
+
+  it("the Ring of Water Walking crosses without a check", () => {
+    const state = makeWaterState(4);
+    state.inventory.push("ring-of-water-walking");
+    const result = handleTileFeature(state, seqRng([0.99]));
+    expect(result?.message).toMatch(/ring bears you/);
+    for (const c of state.party) expect(c.hp).toBe(c.maxHp);
+  });
+
+  it("heal pools restore HP; damage pools burn (floored at 1)", () => {
+    const heal = makeWaterState(1, { kind: "heal", power: 8 });
+    heal.party[0].hp = 5;
+    handleTileFeature(heal, seqRng([0]));
+    expect(heal.party[0].hp).toBe(13);
+
+    const burn = makeWaterState(1, { kind: "damage", power: 6 });
+    burn.party[0].hp = 3;
+    handleTileFeature(burn, seqRng([0]));
+    expect(burn.party[0].hp).toBe(1);
+    expect(burn.party[1].hp).toBe(burn.party[1].maxHp - 6);
+  });
+
+  it("cure pools wash away the status", () => {
+    const state = makeWaterState(1, { kind: "cure", status: "poison" });
+    for (const c of state.party) c.status.push("poison");
+    handleTileFeature(state, seqRng([0]));
+    for (const c of state.party) expect(c.status).not.toContain("poison");
   });
 });

@@ -38,7 +38,7 @@ export interface FeatureResult {
  * Process the tile feature at the player's current position.
  * Returns null if the current tile has no feature.
  */
-export function handleTileFeature(state: GameState): FeatureResult | null {
+export function handleTileFeature(state: GameState, rng: Rng = Math.random): FeatureResult | null {
   const { floor, player } = state;
   const cell = floor.grid[player.y]?.[player.x];
   if (!cell || !cell.tile) {
@@ -73,6 +73,8 @@ export function handleTileFeature(state: GameState): FeatureResult | null {
       return { message: "You are in an anti-magic zone. Spells will fail here.", changedFloor: false, consumed: false };
     case "treasure":
       return handleTreasure(state);
+    case "water":
+      return handleWater(state, rng);
     default:
       return null;
   }
@@ -233,7 +235,8 @@ function awardTreasure(
     itemNames.push(item ? item.name : itemId);
 
     // Auto-equip found gear to the party member who needs it most.
-    if (item && item.type !== "consumable") {
+    // (Trinkets are carried, not equipped.)
+    if (item && (item.type === "weapon" || item.type === "armor")) {
       const targetId = findBestEquipTarget(state.party, state.equipment, item);
       if (targetId) {
         state.equipment[targetId] = equipItem(state.equipment[targetId], item);
@@ -328,6 +331,82 @@ function applyLootedTreasures(
       floor.grid[y][x].tile = undefined;
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Water (design: The Flooded Crypt should actually flood)
+//
+// Water tiles are passable but risky: each living member makes a swim check
+// against the tile's depth. Failures take depth-scaled damage (floored at
+// 1 HP — drowning outside combat would be a cheap death). Swimming is
+// learned by doing: attempts raise swimSkill. Levitation (Litofit) or the
+// Ring of Water Walking crosses without a check. Pool effects (heal /
+// damage / cure) apply to everyone on entry. Tiles are never consumed.
+// ---------------------------------------------------------------------------
+
+/** Success chance for one swim attempt. Exported for balance tests. */
+export function swimChance(skill: number, depth: number): number {
+  return Math.min(0.95, Math.max(0.05, (80 - depth * 20 + skill / 2) / 100));
+}
+
+function handleWater(state: GameState, rng: Rng): FeatureResult {
+  const { floor, player } = state;
+  const def = floor.waters?.find((w) => w.x === player.x && w.y === player.y);
+  const depth = def?.depth ?? 1;
+  const noEvent = { changedFloor: false, consumed: false };
+
+  if (hasBuff(state, "levitation")) {
+    return { message: "You drift above the water.", ...noEvent };
+  }
+  if (state.inventory.includes("ring-of-water-walking")) {
+    return { message: "The ring bears you across the water.", ...noEvent };
+  }
+
+  // Swim checks for every living member.
+  const strugglers: string[] = [];
+  let totalDamage = 0;
+  for (const c of aliveMembers(state)) {
+    const skill = state.swimSkill[c.id] ?? 0;
+    if (rng() < swimChance(skill, depth)) {
+      state.swimSkill[c.id] = Math.min(100, skill + 1 + Math.floor(rng() * 3));
+    } else {
+      const dmg = depth * (1 + Math.floor(rng() * 3));
+      c.hp = Math.max(1, c.hp - dmg);
+      totalDamage += dmg;
+      strugglers.push(c.name);
+      state.swimSkill[c.id] = Math.min(100, skill + Math.floor(rng() * 2));
+    }
+  }
+
+  let message =
+    strugglers.length === 0
+      ? depth >= 3
+        ? "You swim the deep water safely."
+        : "You wade through the water."
+      : `${strugglers.join(", ")} struggle${strugglers.length === 1 ? "s" : ""} in the water (${totalDamage} dmg).`;
+
+  // Pool effect on everyone who entered.
+  if (def?.effect) {
+    const eff = def.effect;
+    if (eff.kind === "heal") {
+      for (const c of aliveMembers(state)) {
+        c.hp = Math.min(c.maxHp, c.hp + eff.power);
+      }
+      message += " The blessed water knits wounds.";
+    } else if (eff.kind === "damage") {
+      for (const c of aliveMembers(state)) {
+        c.hp = Math.max(1, c.hp - eff.power);
+      }
+      message += " The black water burns!";
+    } else {
+      for (const c of aliveMembers(state)) {
+        c.status = c.status.filter((st) => st !== eff.status);
+      }
+      message += ` The clear water washes away ${eff.status}.`;
+    }
+  }
+
+  return { message, ...noEvent };
 }
 
 // ---------------------------------------------------------------------------

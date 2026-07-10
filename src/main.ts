@@ -318,10 +318,11 @@ function exitDebugCombat(result: "victory" | "wipe" | "fled"): void {
 let campController: CampController | null = null;
 
 function startCamp(): void {
-  // Design doc §5.2: cannot camp on hazard tiles (teleporters, chutes, stairs).
+  // Design doc §5.2: cannot camp on hazard tiles (teleporters, chutes,
+  // stairs — or standing in water).
   const cell = state.floor.grid[state.player.y]?.[state.player.x];
   const tile = cell?.tile;
-  if (tile === "teleporter" || tile === "chute" || tile === "stairs_up" || tile === "stairs_down") {
+  if (tile === "teleporter" || tile === "chute" || tile === "stairs_up" || tile === "stairs_down" || tile === "water") {
     setMessage("You can't make camp here — the ground is unstable.");
     return;
   }

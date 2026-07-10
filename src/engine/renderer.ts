@@ -524,6 +524,8 @@ function featureGlyph(feature: TileFeature): string {
       return "$";
     case "antimagic":
       return "∅";
+    case "water":
+      return "≈";
     default:
       return "?";
   }
