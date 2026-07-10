@@ -205,9 +205,16 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
     hp.textContent = `${Math.max(0, c.hp)}/${c.maxHp}`;
     row.appendChild(hp);
 
+    // SP shows for every row (dim dash for non-casters) so the column reads
+    // as a column instead of one row having a mystery number.
     const sp = document.createElement("span");
     sp.className = "ff6-p-sp";
-    sp.textContent = c.maxSp > 0 ? `${c.sp}` : "";
+    if (c.maxSp > 0) {
+      sp.textContent = `${c.sp}`;
+    } else {
+      sp.textContent = "—";
+      sp.classList.add("none");
+    }
     row.appendChild(sp);
 
     const barWrap = document.createElement("span");

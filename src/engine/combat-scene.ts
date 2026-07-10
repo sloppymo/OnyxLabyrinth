@@ -61,19 +61,22 @@ const PARTY_SIZE = 210;
 /** Enemy sprite draw size for image strips. */
 const ENEMY_SIZE = 300;
 /** Vertical spacing between members of a party column. */
-const PARTY_ROW_SPACING = 92;
+const PARTY_ROW_SPACING = 78;
 /** Vertical spacing between enemies in a row. */
-const ENEMY_ROW_SPACING = 96;
+const ENEMY_ROW_SPACING = 78;
 
 /** Screen position (sprite center) of party member at array index i.
- *  The bottom ~175px of the canvas sits under the DOM menu windows, so all
- *  sprite baselines must stay above that. */
+ *  The DOM menu windows overlay the bottom of the canvas starting around
+ *  y≈365 (six-item menu), so the third rank's feet must stay above that. */
 export function partyPos(i: number, w: number, h: number): { x: number; y: number } {
   const front = i < 3;
   const idx = i % 3;
   // FF6 diagonal: each successive member a bit lower and a bit further right.
+  // topY keeps the first rank's feet (anchor + ~7% of sprite size — the pack
+  // art's baseline, see drawShadow callers) clearly on the floor plane, which
+  // starts at h*0.214 in the generated background.
   const colX = front ? w * 0.66 : w * 0.79;
-  const topY = h * 0.23 + (front ? 0 : 26);
+  const topY = h * 0.25 + (front ? 0 : 26);
   return { x: colX + idx * 12, y: topY + idx * PARTY_ROW_SPACING };
 }
 
@@ -85,7 +88,7 @@ export function enemyPos(
   h: number
 ): { x: number; y: number } {
   const colX = row === "front" ? w * 0.31 : w * 0.16;
-  const topY = h * 0.26 + (row === "back" ? 30 : 0);
+  const topY = h * 0.27 + (row === "back" ? 24 : 0);
   return { x: colX + idxInRow * 14, y: topY + idxInRow * ENEMY_ROW_SPACING };
 }
 
@@ -1338,7 +1341,10 @@ function drawPartyMember(
 
   const hidden = char.status.includes("hidden");
 
-  drawShadow(ctx, x, y + PARTY_SIZE * 0.34, PARTY_SIZE * 0.26);
+  // The pack art only fills the middle of the 100px frame: measured feet sit
+  // ~7% of the frame below center and the body spans ~25% of the frame wide,
+  // so the shadow hugs the visible sprite instead of floating detached below.
+  drawShadow(ctx, x, y + PARTY_SIZE * 0.07, PARTY_SIZE * 0.13);
 
   const stripInfo = getPartySpriteStrip(char.class, anim.state);
   const opacity = (hidden ? 0.35 : 1) * anim.opacity;
@@ -1360,9 +1366,10 @@ function drawPartyMember(
     ctx.restore();
   }
 
-  // The character art only fills the middle of the frame, so anchor the
-  // marker just above the visible sprite, not the frame edge.
-  drawMarkers(ctx, scene, "party", char.id, x, y - PARTY_SIZE * 0.26, now);
+  // The character art only fills the middle of the frame (measured art top
+  // ≈11% of sprite size above center), so anchor the marker just above the
+  // visible sprite, not the frame edge.
+  drawMarkers(ctx, scene, "party", char.id, x, y - PARTY_SIZE * 0.16, now);
 }
 
 /** Draw one enemy (living or corpse). */
@@ -1382,7 +1389,9 @@ function drawEnemy(
   const x = slot.x + off.x;
   const y = slot.y + off.y;
 
-  drawShadow(ctx, x, y + ENEMY_SIZE * 0.3, ENEMY_SIZE * 0.24);
+  // Same measured art metrics as the party sprites: feet ~7% below frame
+  // center, body ~25% of the frame wide.
+  drawShadow(ctx, x, y + ENEMY_SIZE * 0.07, ENEMY_SIZE * 0.13);
 
   const stripInfo = getEnemySpriteStrip(enemy.id, enemyStripState(anim.state));
   if (stripInfo?.img && stripInfo.img.naturalWidth > 0) {
@@ -1414,7 +1423,8 @@ function drawEnemy(
     ctx.restore();
   }
 
-  drawMarkers(ctx, scene, "enemy", enemy.instanceId, x, y - ENEMY_SIZE * 0.24, now);
+  // Tallest enemy art tops out ≈16% of sprite size above center.
+  drawMarkers(ctx, scene, "enemy", enemy.instanceId, x, y - ENEMY_SIZE * 0.2, now);
 }
 
 /** Draw a summoned ally (simple glowing elemental). */
@@ -1470,12 +1480,12 @@ function drawMarkers(
   const blink = Math.floor(now / 260) % 2 === 0;
   if (isCursor && !blink) return;
 
-  const bounce = isActive ? Math.sin(now / 180) * 3 : 0;
+  const bounce = Math.sin(now / 180) * 3;
   ctx.save();
   ctx.fillStyle = COLORS.cursor;
   ctx.strokeStyle = "#14110d";
   ctx.lineWidth = 2;
-  const y = topY - 10 + bounce;
+  const y = topY - 14 + bounce;
   // Downward-pointing FF6 hand-ish triangle.
   ctx.beginPath();
   ctx.moveTo(x - 9, y - 12);
