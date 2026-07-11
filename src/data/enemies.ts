@@ -198,7 +198,7 @@ export const LAB_ASSISTANT: EnemyDef = {
   agi: 6,
   xp: 16,
   gold: 14,
-  special: [{ kind: "healer", spellName: "Dios" }],
+  special: [{ kind: "healer", spellName: "Aethel" }],
   isBoss: false,
 };
 

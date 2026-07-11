@@ -488,19 +488,19 @@ describe("spell defense mechanics", () => {
     const state = makeCombatState([enemy]);
     const mage = state.party.find((c) => c.class === "Mage");
     if (!mage) throw new Error("No Mage in party");
-    mage.knownSpellIds = ["mage-cortu"];
+    mage.knownSpellIds = ["mage-velumbra"];
     mage.sp = 50;
     mage.stats.agi = 100; // ensure mage acts first
 
     const actions: PlayerAction[] = state.party.map((c) => {
-      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-cortu" };
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-velumbra" };
       return { kind: "defend" as const, actorId: c.id };
     });
 
     const result = resolveCombatRound(state, actions, makeRng(0.5));
     // CORTU adds 5, then end-of-round deterioration removes 1.
     expect(result.magicScreen).toBe(4);
-    expect(result.log.some((m) => m.includes("Cortu") && m.includes("magic screen"))).toBe(true);
+    expect(result.log.some((m) => m.includes("Velumbra") && m.includes("magic screen"))).toBe(true);
   });
 
   it("magic screen halves enemy spell damage and deteriorates at end of round", () => {
@@ -537,19 +537,19 @@ describe("spell defense mechanics", () => {
     const state = makeCombatState([caster]);
     const mage = state.party.find((c) => c.class === "Mage");
     if (!mage) throw new Error("No Mage in party");
-    mage.knownSpellIds = ["mage-bacortu"];
+    mage.knownSpellIds = ["mage-fracturis"];
     mage.sp = 50;
     mage.stats.agi = 100; // ensure mage acts before enemy caster
 
     const actions: PlayerAction[] = state.party.map((c) => {
-      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-bacortu", targetRow: "front" };
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-fracturis", targetRow: "front" };
       return { kind: "defend" as const, actorId: c.id };
     });
 
     const result = resolveCombatRound(state, actions, makeRng(0.5));
-    // BACORTU adds 5, then deterioration removes 1 -> 4, still >= enemy level estimate 2.
+    // FRACTURIS adds 5, then deterioration removes 1 -> 4, still >= enemy level estimate 2.
     expect(result.enemyFizzleFields.front).toBe(4);
-    expect(result.log.some((m) => m.includes("Bacortu"))).toBe(true);
+    expect(result.log.some((m) => m.includes("Fracturis"))).toBe(true);
     expect(result.log.some((m) => m.includes("fizzles"))).toBe(true);
   });
 
@@ -558,7 +558,7 @@ describe("spell defense mechanics", () => {
     const state = makeCombatState([enemy]);
     const mage = state.party.find((c) => c.class === "Mage");
     if (!mage) throw new Error("No Mage in party");
-    mage.knownSpellIds = ["mage-palios"];
+    mage.knownSpellIds = ["mage-sundrathis"];
     mage.sp = 50;
     mage.level = 10; // high enough that partyFizzleField 5 does not fizzle PALIOS
     mage.stats.agi = 100; // ensure mage acts first
@@ -567,7 +567,7 @@ describe("spell defense mechanics", () => {
     state.partyFizzleField = 5;
 
     const actions: PlayerAction[] = state.party.map((c) => {
-      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-palios" };
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-sundrathis" };
       return { kind: "defend" as const, actorId: c.id };
     });
 
@@ -584,12 +584,12 @@ describe("spell defense mechanics", () => {
     const state = makeCombatState([enemy]);
     const mage = state.party.find((c) => c.class === "Mage");
     if (!mage) throw new Error("No Mage in party");
-    mage.knownSpellIds = ["mage-halito"];
+    mage.knownSpellIds = ["mage-zornyx"];
     mage.sp = 50;
     state.partyFizzleField = 5; // >= mage.level (1)
 
     const actions: PlayerAction[] = state.party.map((c) => {
-      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-halito", targetInstanceId: "e1" };
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-zornyx", targetInstanceId: "e1" };
       return { kind: "defend" as const, actorId: c.id };
     });
 
@@ -605,18 +605,18 @@ describe("summoning mechanics", () => {
     const state = makeCombatState([enemy]);
     const priest = state.party.find((c) => c.class === "Priest");
     if (!priest) throw new Error("No Priest in party");
-    priest.knownSpellIds = ["priest-bamordi"];
+    priest.knownSpellIds = ["priest-convocix"];
     priest.sp = 50;
     priest.stats.agi = 100;
 
     const actions: PlayerAction[] = state.party.map((c) => {
-      if (c.id === priest.id) return { kind: "cast" as const, actorId: c.id, spellId: "priest-bamordi" };
+      if (c.id === priest.id) return { kind: "cast" as const, actorId: c.id, spellId: "priest-convocix" };
       return { kind: "defend" as const, actorId: c.id };
     });
 
     const result = resolveCombatRound(state, actions, makeRng(0.5));
     expect(result.summonedAllies.length).toBe(1);
-    expect(result.log.some((m) => m.includes("Bamordi") && m.includes("summon"))).toBe(true);
+    expect(result.log.some((m) => m.includes("Convocix") && m.includes("summon"))).toBe(true);
   });
 
   it("existing summoned ally attacks an enemy", () => {

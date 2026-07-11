@@ -20,6 +20,8 @@
 
 import type { CombatState, PlayerAction } from "../game/combat";
 import type { Character } from "../game/party";
+import type { SpellDef } from "../data/spells";
+import { spellEffectSummary, spellTargetLabel } from "./combat-display";
 
 /** What occupies the menu (left) window. */
 export type MenuMode = "menu" | "selection" | "none";
@@ -57,6 +59,10 @@ export interface CombatWindowsView {
   selectionIndex: number;
   /** Info line under the selection list (e.g. target health descriptor). */
   selectionFooter?: string | null;
+  /** The spell currently highlighted in the Magic list. When set, this
+   *  replaces the enemy (middle) window with a description panel showing
+   *  its cost, target shape, mechanical effect, and flavor text. */
+  spellDetail?: SpellDef | null;
   /** Transient error line (e.g. "No items!"), shown under the menu. */
   flash: string | null;
   /** End-of-combat window; when set it replaces menu interaction. */
@@ -133,6 +139,7 @@ function buildMenuWindow(
       const label = document.createElement("span");
       label.className = "ff6-sel-label";
       label.textContent = entry.label;
+      label.title = entry.label;
       row.appendChild(label);
       if (entry.detail) {
         const detail = document.createElement("span");
@@ -176,6 +183,7 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
     const row = el("ff6-enemy-row");
     const nameEl = document.createElement("span");
     nameEl.textContent = name;
+    nameEl.title = name;
     row.appendChild(nameEl);
     if (count > 1) {
       const countEl = document.createElement("span");
@@ -191,6 +199,7 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
     const row = el("ff6-enemy-row summon");
     const nameEl = document.createElement("span");
     nameEl.textContent = a.name;
+    nameEl.title = a.name;
     row.appendChild(nameEl);
     const hpEl = document.createElement("span");
     hpEl.className = "ff6-enemy-count";
@@ -198,6 +207,27 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
     row.appendChild(hpEl);
     win.appendChild(row);
   }
+  return win;
+}
+
+/** Replaces the enemy window with a full readout of the highlighted spell
+ *  while the Magic list is open: name, tier/class, SP cost, target shape,
+ *  mechanical effect, and flavor text. */
+function buildSpellDetailWindow(spell: SpellDef): HTMLElement {
+  const win = el("ff6-window ff6-spell-detail");
+  win.appendChild(el("ff6-spell-detail-name", spell.name));
+
+  const meta = el("ff6-spell-detail-meta");
+  const metaBits = [
+    `${spell.class} · Tier ${spell.tier}`,
+    `${spell.spCost} SP`,
+    spellTargetLabel(spell.target),
+  ];
+  meta.textContent = metaBits.join(" · ");
+  win.appendChild(meta);
+
+  win.appendChild(el("ff6-spell-detail-effect", spellEffectSummary(spell.effect)));
+  win.appendChild(el("ff6-spell-detail-desc", spell.description));
   return win;
 }
 
@@ -212,6 +242,7 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
     const name = document.createElement("span");
     name.className = "ff6-p-name";
     name.textContent = c.name;
+    name.title = c.name;
     row.appendChild(name);
 
     const hp = document.createElement("span");
@@ -254,6 +285,7 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
     const name = document.createElement("span");
     name.className = "ff6-p-name";
     name.textContent = a.name;
+    name.title = a.name;
     row.appendChild(name);
 
     const hp = document.createElement("span");
@@ -302,7 +334,9 @@ export function renderCombatWindows(
 
   const row = el("ff6-windows");
   row.appendChild(buildMenuWindow(view, handlers));
-  row.appendChild(buildEnemyWindow(view.state));
+  row.appendChild(
+    view.spellDetail ? buildSpellDetailWindow(view.spellDetail) : buildEnemyWindow(view.state)
+  );
   row.appendChild(buildPartyWindow(view));
   container.appendChild(row);
 

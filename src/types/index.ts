@@ -61,7 +61,7 @@ export interface InventoryEntry {
 }
 
 // --- Persistent spell buffs ---------------------------------------------------
-// Party-wide dungeon buffs from utility spells (Milwa light, Litofit
+// Party-wide dungeon buffs from utility spells (Lucenis light, Aerivex
 // levitation). Ticked down once per dungeon step; cleared by camping.
 // See game/persistent-spells.ts.
 
