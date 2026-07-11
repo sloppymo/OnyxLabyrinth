@@ -5,14 +5,20 @@ import {
   inventoryToCounts,
   inventoryFromCounts,
   canReach,
+  defaultLoadoutForCharacter,
+  equipItem,
+  isBetterEquip,
+  findBestEquipTarget,
+  getDisplacedItem,
   type CombatState,
   type EnemyInstance,
   type EnemyFormation,
+  type Loadout,
   type PlayerAction,
 } from "./combat";
 import { createDefaultParty, type Character, type CharacterClass } from "./party";
 import { ALL_SPELLS } from "../data/spells";
-import { ALL_ITEMS } from "../data/items";
+import { ALL_ITEMS, ITEMS_BY_ID } from "../data/items";
 import type { EnemyDef } from "../data/enemies";
 
 // --- Test helpers -----------------------------------------------------------
@@ -223,6 +229,122 @@ describe("inventory helpers", () => {
     const original = ["potion", "potion", "antidote"];
     const roundTrip = inventoryFromCounts(inventoryToCounts(original));
     expect(roundTrip.sort()).toEqual([...original].sort());
+  });
+});
+
+describe("equipment helpers", () => {
+  const dagger = ITEMS_BY_ID["dagger"];
+  const shortSword = ITEMS_BY_ID["short-sword"];
+  const shortSwordPlus1 = ITEMS_BY_ID["short-sword+1"];
+  const leather = ITEMS_BY_ID["leather"];
+  const chainMail = ITEMS_BY_ID["chain-mail"];
+  const shield = ITEMS_BY_ID["shield"];
+
+  describe("isBetterEquip", () => {
+    it("is true for any equipment when the slot is empty", () => {
+      expect(isBetterEquip(undefined, dagger)).toBe(true);
+    });
+
+    it("compares weapons by attackBonus", () => {
+      expect(isBetterEquip(dagger, shortSword)).toBe(true);
+      expect(isBetterEquip(shortSword, dagger)).toBe(false);
+    });
+
+    it("compares armor by defenseBonus", () => {
+      expect(isBetterEquip(leather, chainMail)).toBe(true);
+      expect(isBetterEquip(chainMail, leather)).toBe(false);
+    });
+
+    it("is false for consumables", () => {
+      const potion = ITEMS_BY_ID["healing-potion"];
+      expect(isBetterEquip(undefined, potion)).toBe(false);
+    });
+  });
+
+  describe("equipItem", () => {
+    it("equips into an empty weapon slot", () => {
+      const loadout: Loadout = { armor: [] };
+      const next = equipItem(loadout, dagger);
+      expect(next.weapon?.id).toBe("dagger");
+    });
+
+    it("replaces a weaker weapon and leaves a strictly-better one alone", () => {
+      const loadout: Loadout = { weapon: dagger, armor: [] };
+      const upgraded = equipItem(loadout, shortSword);
+      expect(upgraded.weapon?.id).toBe("short-sword");
+
+      const alreadyBetter: Loadout = { weapon: shortSwordPlus1, armor: [] };
+      const unchanged = equipItem(alreadyBetter, shortSword);
+      expect(unchanged.weapon?.id).toBe("short-sword+1");
+      expect(unchanged).toBe(alreadyBetter); // no new object when nothing changes
+    });
+
+    it("adds armor to a new slot without disturbing other slots", () => {
+      const loadout: Loadout = { armor: [shield] };
+      const next = equipItem(loadout, leather);
+      expect(next.armor.map((a) => a.id).sort()).toEqual(["leather", "shield"]);
+    });
+
+    it("replaces armor in an occupied slot only when it's an upgrade", () => {
+      const loadout: Loadout = { armor: [leather] };
+      const upgraded = equipItem(loadout, chainMail);
+      expect(upgraded.armor.map((a) => a.id)).toEqual(["chain-mail"]);
+
+      const unchanged = equipItem(upgraded, leather);
+      expect(unchanged.armor.map((a) => a.id)).toEqual(["chain-mail"]);
+    });
+  });
+
+  describe("findBestEquipTarget", () => {
+    it("picks the party member with the weakest gear in that slot", () => {
+      const party = createDefaultParty();
+      const equipment: Record<string, Loadout> = {};
+      for (const c of party) equipment[c.id] = defaultLoadoutForCharacter(c);
+
+      // Give everyone but the first fighter a strong weapon so they're skipped.
+      const [first, ...rest] = party;
+      for (const c of rest) {
+        equipment[c.id] = equipItem(equipment[c.id], shortSwordPlus1);
+      }
+      equipment[first.id] = { armor: [] }; // no weapon at all — weakest possible
+
+      const targetId = findBestEquipTarget(party, equipment, dagger);
+      expect(targetId).toBe(first.id);
+    });
+
+    it("returns undefined for consumables", () => {
+      const party = createDefaultParty();
+      const equipment: Record<string, Loadout> = {};
+      for (const c of party) equipment[c.id] = defaultLoadoutForCharacter(c);
+      const potion = ITEMS_BY_ID["healing-potion"];
+      expect(findBestEquipTarget(party, equipment, potion)).toBeUndefined();
+    });
+  });
+
+  describe("getDisplacedItem", () => {
+    it("returns the old weapon when a better one replaces it", () => {
+      const old: Loadout = { weapon: dagger, armor: [] };
+      const next = equipItem(old, shortSword);
+      expect(getDisplacedItem(old, next, shortSword)?.id).toBe("dagger");
+    });
+
+    it("returns undefined when the slot was empty (nothing to displace)", () => {
+      const old: Loadout = { armor: [] };
+      const next = equipItem(old, dagger);
+      expect(getDisplacedItem(old, next, dagger)).toBeUndefined();
+    });
+
+    it("returns undefined when equipItem left the loadout unchanged", () => {
+      const old: Loadout = { weapon: shortSwordPlus1, armor: [] };
+      const next = equipItem(old, shortSword); // not an upgrade
+      expect(getDisplacedItem(old, next, shortSword)).toBeUndefined();
+    });
+
+    it("returns the old armor piece when a better one replaces it in the same slot", () => {
+      const old: Loadout = { armor: [leather] };
+      const next = equipItem(old, chainMail);
+      expect(getDisplacedItem(old, next, chainMail)?.id).toBe("leather");
+    });
   });
 });
 
