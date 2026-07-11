@@ -14,7 +14,7 @@ import type { GameState } from "../types";
 import { loadAutoSave } from "../game/save";
 
 interface MenuItem {
-  key: "new" | "continue";
+  key: "new" | "continue" | "arena";
   label: string;
   icon: string;
 }
@@ -23,12 +23,14 @@ export interface TitleControllerOptions {
   panel: HTMLElement;
   onNewGame: () => void;
   onContinue: (loaded: GameState) => void;
+  onArena: () => void;
 }
 
 export class TitleController {
   private panel: HTMLElement;
   private onNewGame: () => void;
   private onContinue: (loaded: GameState) => void;
+  private onArena: () => void;
   private items: MenuItem[];
   private selectedIndex = 0;
   private loaded: GameState | null = null;
@@ -37,12 +39,14 @@ export class TitleController {
     this.panel = opts.panel;
     this.onNewGame = opts.onNewGame;
     this.onContinue = opts.onContinue;
+    this.onArena = opts.onArena;
 
     this.loaded = loadAutoSave();
     this.items = [{ key: "new", label: "New Game", icon: "[N]" }];
     if (this.loaded) {
       this.items.push({ key: "continue", label: "Continue", icon: "[C]" });
     }
+    this.items.push({ key: "arena", label: "Arena", icon: "[A]" });
 
     this.panel.style.display = "block";
     this.render();
@@ -58,6 +62,11 @@ export class TitleController {
     }
     if (lower === "c" && this.loaded) {
       this.selectedIndex = this.items.findIndex((i) => i.key === "continue");
+      this.select();
+      return;
+    }
+    if (lower === "a") {
+      this.selectedIndex = this.items.findIndex((i) => i.key === "arena");
       this.select();
       return;
     }
@@ -86,6 +95,8 @@ export class TitleController {
     this.panel.innerHTML = "";
     if (item.key === "continue" && this.loaded) {
       this.onContinue(this.loaded);
+    } else if (item.key === "arena") {
+      this.onArena();
     } else {
       this.onNewGame();
     }
@@ -113,6 +124,7 @@ export class TitleController {
     if (this.loaded) {
       lines.push(`<div class="title-help">[C] continue</div>`);
     }
+    lines.push(`<div class="title-help">[A] arena</div>`);
 
     this.panel.innerHTML = lines.join("");
   }

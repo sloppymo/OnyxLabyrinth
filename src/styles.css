@@ -1277,3 +1277,10 @@ canvas#map-canvas {
   color: #88775a;
   letter-spacing: 0.03em;
 }
+
+.arena-summary {
+  text-align: center;
+  font-size: var(--fs-body);
+  color: var(--warm-white);
+  margin-bottom: 24px;
+}

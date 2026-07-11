@@ -173,7 +173,8 @@ export function showMode(mode: GameMode, mapVisible: boolean): void {
     mode === "camp" ||
     mode === "title" ||
     mode === "party_creation" ||
-    mode === "game_over";
+    mode === "game_over" ||
+    mode === "arena";
 
   viewportWrap.style.display = isDungeon ? "" : "none";
   canvas.style.display = isDungeon ? "" : "none";
