@@ -564,20 +564,20 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
 /** Per-spell visual overrides for testing alternate effect variants. */
 const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   // Fire variants
-  "mage-ignis": { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion_glow", field: "large_fire", scale: 2.5 },
-  "mage-immolatus": { color: "#ff8c42", burst: "fire_explosion_iso_glow", field: "large_fire_glow", scale: 2.5 },
-  "mage-pyro": { color: "#ff8c42", projectile: "wizard_attack1", projectileScale: 1, burst: "fire_explosion", burstScale: 2.5, scale: 1 },
+  "mage-emberik": { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion_glow", field: "large_fire", scale: 2.5 },
+  "mage-flammorum": { color: "#ff8c42", burst: "fire_explosion_iso_glow", field: "large_fire_glow", scale: 2.5 },
+  "mage-cinderis": { color: "#ff8c42", projectile: "wizard_attack1", projectileScale: 1, burst: "fire_explosion", burstScale: 2.5, scale: 1 },
   // Cold variants
-  "mage-glacies": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_glow", scale: 1.2 },
-  "mage-frigus": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_transparent", scale: 1.2 },
-  "mage-cryo": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_dark", scale: 1.2 },
+  "mage-frostik": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_glow", scale: 1.2 },
+  "mage-rimeis": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_transparent", scale: 1.2 },
+  "mage-hoarix": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_dark", scale: 1.2 },
   // Lightning variants
-  "mage-fulgor": { color: "#ffd769", projectile: "lightning_blast_glow", burst: "lightning_energy_glow", scale: 1.3 },
+  "mage-voltis": { color: "#ffd769", projectile: "lightning_blast_glow", burst: "lightning_energy_glow", scale: 1.3 },
   // Poison/red variants
-  "mage-necro": { color: "#c080ff", projectile: "red_lightning_blast_glow", burst: "red_energy_glow", scale: 1.3 },
-  "mage-pestis": { color: "#c080ff", burst: "red_energy", field: "red_energy_glow", scale: 1.3 },
+  "mage-venomik": { color: "#c080ff", projectile: "red_lightning_blast_glow", burst: "red_energy_glow", scale: 1.3 },
+  "mage-miasmorum": { color: "#c080ff", burst: "red_energy", field: "red_energy_glow", scale: 1.3 },
   // Priest holy
-  "priest-iride": { color: "#7fb8f0", projectile: "priest_attack", projectileScale: 1, burst: "lightning_energy_glow", burstScale: 1.3, scale: 1 },
+  "priest-lumenik": { color: "#7fb8f0", projectile: "priest_attack", projectileScale: 1, burst: "lightning_energy_glow", burstScale: 1.3, scale: 1 },
 };
 
 const STATUS_STYLES: Record<string, EffectStyle> = {

@@ -1136,11 +1136,49 @@ canvas#map-canvas {
   flex-shrink: 0;
 }
 
-/* Summoned allies (BAMORDI/SOCORDI) — cyan to match their glow on the scene. */
+/* Summoned allies (CONVOCIX/MAWCALLIX) — cyan to match their glow on the scene. */
 .ff6-enemy-row.summon,
 .ff6-party-row.summon .ff6-p-name,
 .ff6-party-row.summon .ff6-p-hp {
   color: #8ee5e0;
+}
+
+/* Spell detail panel — replaces the enemy window while the Magic list is
+   open, in the same 31% slot, so the overall three-column layout never
+   shifts. */
+.ff6-spell-detail {
+  flex: 0 0 31%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.ff6-spell-detail-name {
+  font-size: var(--fs-body);
+  color: #ffd769;
+  letter-spacing: 0.02em;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(232, 232, 240, 0.35);
+}
+
+.ff6-spell-detail-meta {
+  font-size: var(--fs-small);
+  color: #b8c4f0;
+}
+
+.ff6-spell-detail-effect {
+  font-size: var(--fs-small);
+  color: var(--warm-white);
+  font-weight: bold;
+}
+
+.ff6-spell-detail-desc {
+  font-size: var(--fs-small);
+  color: #c8c4e0;
+  line-height: 1.35;
+  white-space: normal;
 }
 
 .ff6-party {

@@ -1,11 +1,11 @@
 /**
  * Utility spells cast outside combat (dungeon G menu / camp "Cast a spell"):
  *
- *   Milwa   (light)      — party-wide buff; darkness zones don't blind the
+ *   Lucenis (light)      — party-wide buff; darkness zones don't blind the
  *                          party while it lasts (features.ts checks hasBuff).
- *   Litofit (levitation) — party-wide buff; the party floats over chutes
+ *   Aerivex (levitation) — party-wide buff; the party floats over chutes
  *                          (and future hazards like pits/water).
- *   Dumapic (detect)     — instant; reveals exact position and facing.
+ *   Pathrend (detect)    — instant; reveals exact position and facing.
  *
  * Buffs live in GameState.persistentBuffs, tick down one step per dungeon
  * move (tickBuffs is called from main.ts onMove), and are cleared when the

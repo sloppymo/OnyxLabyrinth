@@ -25,7 +25,52 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 7;
+
+/**
+ * v6 → v7: every spell id was renamed (spell rename pass — see
+ * data/spells.ts). Maps each old id to its new counterpart so that
+ * characters' knownSpellIds keep resolving after the rename instead of
+ * silently losing spells on load.
+ */
+const SPELL_ID_MIGRATION_V6_TO_V7: Record<string, string> = {
+  "mage-dumapic": "mage-pathrend",
+  "mage-litofit": "mage-aerivex",
+  "mage-halito": "mage-zornyx",
+  "mage-mogref": "mage-wyrshel",
+  "mage-melito": "mage-zornath",
+  "mage-katino": "mage-somnyx",
+  "mage-mahalito": "mage-zornorum",
+  "mage-molito": "mage-kraelith",
+  "mage-lahalito": "mage-zornyrix",
+  "mage-madalto": "mage-kraelorum",
+  "mage-cortu": "mage-velumbra",
+  "mage-bacortu": "mage-fracturis",
+  "mage-palios": "mage-sundrathis",
+  "mage-socordi": "mage-mawcallix",
+  "mage-fulmen": "mage-sparkyx",
+  "mage-fulgor": "mage-voltis",
+  "mage-fulgur": "mage-vashorum",
+  "mage-ignis": "mage-emberik",
+  "mage-immolatus": "mage-flammorum",
+  "mage-pyro": "mage-cinderis",
+  "mage-glacies": "mage-frostik",
+  "mage-frigus": "mage-rimeis",
+  "mage-cryo": "mage-hoarix",
+  "mage-necro": "mage-venomik",
+  "mage-pestis": "mage-miasmorum",
+  "priest-milwa": "priest-lucenis",
+  "priest-dios": "priest-aethel",
+  "priest-badialma": "priest-sacrumix",
+  "priest-dial": "priest-aethelin",
+  "priest-latumofis": "priest-purgyx",
+  "priest-dialma": "priest-aethralm",
+  "priest-bamatu": "priest-wyrathis",
+  "priest-di": "priest-reviscant",
+  "priest-lorto": "priest-solumorum",
+  "priest-bamordi": "priest-convocix",
+  "priest-iride": "priest-lumenik",
+};
 
 /**
  * Migrate a serialized state from an older version to the current one.
@@ -47,6 +92,17 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     const oldParty = (ser.party as Array<Record<string, unknown>> | undefined) ?? [];
     ser.party = oldParty.map((c) => ({ ...c, perkIds: (c.perkIds as string[] | undefined) ?? [] }));
     version = 6;
+  }
+  if (version === 6) {
+    // v6 → v7: spell ids were renamed; remap each character's knownSpellIds.
+    const oldParty = (ser.party as Array<Record<string, unknown>> | undefined) ?? [];
+    ser.party = oldParty.map((c) => ({
+      ...c,
+      knownSpellIds: ((c.knownSpellIds as string[] | undefined) ?? []).map(
+        (id) => SPELL_ID_MIGRATION_V6_TO_V7[id] ?? id
+      ),
+    }));
+    version = 7;
   }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;

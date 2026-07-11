@@ -218,7 +218,7 @@ describe("resolvePlayerTurn", () => {
   it("single-target heal can mend a summoned ally", () => {
     const state = makeState();
     const healer = state.party[0];
-    healer.knownSpellIds = ["priest-dios"];
+    healer.knownSpellIds = ["priest-aethel"];
     healer.sp = 99;
     healer.maxSp = 99;
     state.summonedAllies.push({
@@ -236,13 +236,13 @@ describe("resolvePlayerTurn", () => {
       {
         kind: "cast",
         actorId: healer.id,
-        spellId: "priest-dios",
+        spellId: "priest-aethel",
         targetAllyId: "summon-1",
       },
       seqRng([0.5])
     );
     const summon = s.summonedAllies.find((a) => a.id === "summon-1");
-    expect(summon?.hp).toBe(16); // 4 + Dios 12
+    expect(summon?.hp).toBe(16); // 4 + Aethel 12
     // The heal went to the summon, not a party member.
     for (const c of s.party) expect(c.hp).toBe(c.maxHp);
     expect(
@@ -255,7 +255,7 @@ describe("resolvePlayerTurn", () => {
   it("summon heals clamp to maxHp and skip dead summons", () => {
     const state = makeState();
     const healer = state.party[0];
-    healer.knownSpellIds = ["priest-dios"];
+    healer.knownSpellIds = ["priest-aethel"];
     healer.sp = 99;
     healer.maxSp = 99;
     state.summonedAllies.push({
@@ -273,7 +273,7 @@ describe("resolvePlayerTurn", () => {
       {
         kind: "cast",
         actorId: healer.id,
-        spellId: "priest-dios",
+        spellId: "priest-aethel",
         targetAllyId: "summon-1",
       },
       seqRng([0.5])
@@ -285,7 +285,7 @@ describe("resolvePlayerTurn", () => {
     // the 0-HP summon.
     const state2 = makeState();
     const healer2 = state2.party[0];
-    healer2.knownSpellIds = ["priest-dios"];
+    healer2.knownSpellIds = ["priest-aethel"];
     healer2.sp = 99;
     healer2.maxSp = 99;
     state2.summonedAllies.push({
@@ -303,7 +303,7 @@ describe("resolvePlayerTurn", () => {
       {
         kind: "cast",
         actorId: healer2.id,
-        spellId: "priest-dios",
+        spellId: "priest-aethel",
         targetAllyId: "summon-dead",
       },
       seqRng([0.5])
@@ -613,17 +613,17 @@ describe("audit fixes: unexercised combat paths", () => {
     const state = makeState();
     const mage = state.party.find((c) => c.class === "Mage");
     if (!mage) throw new Error("No Mage in party");
-    mage.knownSpellIds = ["mage-mogref"];
+    mage.knownSpellIds = ["mage-wyrshel"];
     mage.sp = 99;
     const s = resolvePlayerTurn(
       state,
-      { kind: "cast", actorId: mage.id, spellId: "mage-mogref" },
+      { kind: "cast", actorId: mage.id, spellId: "mage-wyrshel" },
       seqRng([0.5])
     );
     expect(s.armorBuffs[mage.id]).toBe(3);
     const buff = s.events.find((e) => e?.type === "spellEffect" && e.isBuff);
     expect(buff).toBeDefined();
-    if (buff?.type === "spellEffect") expect(buff.spellId).toBe("mage-mogref");
+    if (buff?.type === "spellEffect") expect(buff.spellId).toBe("mage-wyrshel");
   });
 
   it("buff spell uses the effect's power when provided", () => {

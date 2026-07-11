@@ -360,7 +360,7 @@ export interface CombatState {
    */
   inventory: Record<string, number>;
   /**
-   * Party magic screen strength (from CORTU). Reduces spell/breath damage
+   * Party magic screen strength (from VELUMBRA). Reduces spell/breath damage
    * and deteriorates each round and when hit.
    */
   magicScreen: number;
@@ -1096,7 +1096,7 @@ function decideEnemyAction(
       const targetable = livingParty.filter((c) => !c.status.includes("hidden"));
       const target = pickRandom(targetable.length > 0 ? targetable : livingParty, rng);
       if (target) {
-        const spellName = casterSpecial.element === "cold" ? "Molito" : "Halito";
+        const spellName = casterSpecial.element === "cold" ? "Kraelith" : "Zornyx";
         const spell = spellByName(spellName);
         return { kind: "cast", actor: enemy, spellId: spell?.id ?? spellName, targetId: target.id };
       }
@@ -1884,7 +1884,7 @@ function applySpell(
       const power = eff.power;
       const ally: SummonedAlly = {
         id: `summon-${s.round}-${s.summonedAllies.length}`,
-        name: spell.id === "priest-bamordi" ? "Summoned Elemental" : "Summoned Beast",
+        name: spell.id === "priest-convocix" ? "Summoned Elemental" : "Summoned Beast",
         hp: power * 6,
         maxHp: power * 6,
         attack: power * 3,

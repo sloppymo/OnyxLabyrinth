@@ -132,8 +132,8 @@ describe("renderCombatWindows", () => {
     view.menuMode = "selection";
     view.selectionTitle = "Magic";
     view.selectionEntries = [
-      { label: "Halito", detail: "3 SP" },
-      { label: "Dios", detail: "4 SP", disabled: true },
+      { label: "Zornyx", detail: "3 SP" },
+      { label: "Aethel", detail: "4 SP", disabled: true },
     ];
     view.selectionIndex = 0;
     renderCombatWindows(container, view, noopHandlers());

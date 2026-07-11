@@ -435,7 +435,7 @@ export class CombatController {
     this.windowsDirty = true;
   }
 
-  /** Row selection for row-targeted spells (BACORTU fizzle field). */
+  /** Row selection for row-targeted spells (FRACTURIS fizzle field). */
   private openRowSelect(): void {
     this.targetKind = "row";
     this.phase = "selectTarget";
@@ -747,6 +747,14 @@ export class CombatController {
       }
     }
 
+    // While picking a spell, the enemy window is replaced by a description
+    // panel for whichever spell is currently highlighted (see
+    // buildSpellDetailWindow in combat-select-action-view.ts).
+    const spellDetail: SpellDef | null =
+      this.phase === "selectSpell"
+        ? (this.state.spells[this.selectionIds[this.selectionIndex] ?? ""] ?? null)
+        : null;
+
     const view: CombatWindowsView = {
       state: this.state,
       currentCharacterId: this.currentActorId,
@@ -757,6 +765,7 @@ export class CombatController {
       selectionEntries: this.selectionEntries,
       selectionIndex: this.selectionIndex,
       selectionFooter,
+      spellDetail,
       flash: this.flash,
       result: this.phase === "result" ? this.result : null,
     };
