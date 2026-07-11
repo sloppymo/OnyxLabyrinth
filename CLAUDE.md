@@ -47,6 +47,18 @@ Three top-level source areas with a one-way dependency shape — `game/` holds n
 
 Combat sprites are hybrid: `sprite-manifest.ts` maps enemy IDs to horizontal PNG frame-strips (100×100 px/frame) under `public/assets/enemies/<id>/<state>.png`, and `party-sprite-cache.ts` maps character classes to strips under `public/assets/party/<class>/<state>.png` (frame counts derived from strip width at load). `combat-scene.ts` draws the image strip when present and falls back to a procedural shape otherwise. Not every enemy has art — that's expected, not a bug. Combat resolution has two APIs in `game/combat.ts` sharing the same internals: round-based `resolveCombatRound` (kept for tests) and the per-turn API (`beginRound`/`resolvePlayerTurn`/…) that drives the FF6 UI.
 
+Party creation opens on a choice screen (`party-ui.ts`, `PartyCreationController` phase `"choice"`): pick the ready-made Default Party (Aria/Bram/Coda/Dell/Eve/Fenn) or drop into the six-slot custom editor (phase `"edit"`). Esc from the editor's first slot returns to the choice screen rather than cancelling.
+
+### Dungeon depth systems (built incrementally, see AGENTS.md pitfalls for each)
+
+- **Trapped chests** (`game/features.ts`, `state.pendingTrap`): stepping onto a trapped treasure tile gates ALL dungeon input behind a modal Inspect/Disarm/Open/Leave prompt.
+- **Persistent utility spells** (`game/persistent-spells.ts`, `engine/spell-ui.ts`, dungeon `G` key): Milwa (light), Litofit (levitation), Dumapic (detect) are dungeon-only buffs with a tick/clear lifecycle (`state.persistentBuffs`), also castable from the camp menu. Camping clears them.
+- **Water tiles and swimming** (`game/features.ts` `handleWater`/`swimChance`): learn-by-doing per-character `state.swimSkill`; the Ring of Water Walking (a `"trinket"` item) bypasses swim checks entirely.
+- **Item identification and cursed gear** (`data/items.ts`, `engine/town-ui.ts` Appraise tab): inventory is `InventoryEntry[]` (`{ itemId, identified }`), not `string[]`; unidentified chest drops show as "Unknown Weapon/Armor/Trinket" until appraised (50g) or equipped. Cursed items (`ItemDef.cursed`) force-equip on pickup and can't be manually removed — only the Temple's Remove Curse (100g) strips them.
+- **Dungeon NPCs** (`game/npc.ts`, `engine/npc-ui.ts`, tile `"npc"`): additive-only hint/barter/flavor characters with a Talk (menu topics + free-typed hidden keywords) / Barter / Give / Steal / Attack / Leave panel. Attacking (or a botched Steal) starts a real fight against the NPC's formation; killing them persists (`state.killedNPCs`) across floor reloads and saves. NPCs never gate campaign progression — see AGENTS.md's "NPCs are additive content only" pitfall before adding a new one.
+
+All outside-combat dungeon damage (traps, water) floors each character at 1 HP — only combat can wipe the party.
+
 ## Asset pipeline (JewelFlame sprite packs)
 
 `assets/` contains large third-party sprite packs (`Characters(100x100)/`, `Creature Extended- Supporter Pack/`, `animations/`, `Classic Dungeons - Files/`) that are source material, not directly consumed by the game — only assets copied/referenced under the `assets/enemies/<id>/` convention (via `sprite-manifest.ts`) are wired into `combat-scene.ts`.
