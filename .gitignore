@@ -17,3 +17,8 @@ dev-party-creation.html
 /*.png
 /report/
 /competitor-tracker.md
+
+# Repo-root scratch output from manual sprite-preview / visual-verification
+# iteration (see CLAUDE.md) — never part of the build.
+/.tmp*
+/.tmp-*/
