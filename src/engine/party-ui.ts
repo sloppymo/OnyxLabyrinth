@@ -6,14 +6,18 @@
  * confirms. Validates the alignment rule (no Good + Evil mix). On completion
  * calls onConfirm(party) with a full 6-member Character[].
  *
- * Keyboard:
+ * Opens on a choice screen: pick the ready-made default party (Quick Start)
+ * or build a custom one. Esc from slot 1 of the editor returns to the choice
+ * screen; Esc from the choice screen cancels.
+ *
+ * Keyboard (editor):
  *   Up/Down      move field cursor (name / race / alignment / class)
  *   Left/Right   cycle the selected field's value (race / alignment / class)
  *   letters      append to the name (when the name field is selected)
  *   Backspace    delete last name character
  *   R            re-roll stats
  *   Enter        confirm this character and advance to the next slot
- *   Esc          go back one slot (or cancel from slot 1)
+ *   Esc          go back one slot (or return to the choice screen from slot 1)
  *   D            (on slot 1 only) use the default pre-made party
  */
 
@@ -73,6 +77,9 @@ export class PartyCreationController {
   private slotIndex = 0;
   private fieldIndex = 0; // index into FIELDS
   private flash = "";
+  /** Opening screen: pick the default party or the custom editor. */
+  private phase: "choice" | "edit" = "choice";
+  private choiceIndex = 0;
 
   constructor(opts: PartyCreationOptions) {
     this.panel = opts.panel;
@@ -86,6 +93,12 @@ export class PartyCreationController {
 
   handleKey(key: string): void {
     const lower = key.toLowerCase();
+
+    if (this.phase === "choice") {
+      this.handleChoiceKey(key, lower);
+      return;
+    }
+
     // "D" on slot 0 with no confirmed characters → use default party.
     if (this.slotIndex === 0 && this.drafts.length === 1 && lower === "d" && this.fieldIndex !== 0) {
       this.useDefaultParty();
@@ -148,6 +161,36 @@ export class PartyCreationController {
       this.cycleField(field, 1);
       return;
     }
+  }
+
+  private handleChoiceKey(key: string, lower: string): void {
+    if (lower === "escape") {
+      this.onCancel();
+      return;
+    }
+    if (lower === "arrowup" || lower === "w" || lower === "arrowdown" || lower === "s") {
+      this.choiceIndex = this.choiceIndex === 0 ? 1 : 0;
+      this.render();
+      return;
+    }
+    if (lower === "d") {
+      this.useDefaultParty();
+      return;
+    }
+    if (lower === "c") {
+      this.enterEditor();
+      return;
+    }
+    if (key === "Enter" || key === " ") {
+      if (this.choiceIndex === 0) this.useDefaultParty();
+      else this.enterEditor();
+    }
+  }
+
+  private enterEditor(): void {
+    this.phase = "edit";
+    this.flash = "";
+    this.render();
   }
 
   // --- Draft management ---------------------------------------------------
@@ -230,7 +273,10 @@ export class PartyCreationController {
 
   private goBack(): void {
     if (this.slotIndex === 0) {
-      this.onCancel();
+      // Return to the opening choice screen rather than cancelling outright.
+      this.phase = "choice";
+      this.flash = "";
+      this.render();
       return;
     }
     this.drafts.pop();
@@ -278,6 +324,10 @@ export class PartyCreationController {
   // --- Rendering ----------------------------------------------------------
 
   private render(): void {
+    if (this.phase === "choice") {
+      this.renderChoice();
+      return;
+    }
     const d = this.currentDraft();
     const maxHp = computeMaxHp(d.stats, d.cls);
     const maxSp = computeMaxSp(d.stats, d.cls);
@@ -359,6 +409,37 @@ export class PartyCreationController {
       lines.push(`<div class="town-flash">${this.flash}</div>`);
     }
 
+    this.panel.innerHTML = lines.join("");
+  }
+
+  private renderChoice(): void {
+    const lines: string[] = [];
+    lines.push(`<div class="town-header">[+] Assemble Your Party</div>`);
+    lines.push(`<div class="town-gold">Six souls brave the labyrinth. Who will they be?</div>`);
+
+    const defaultSelected = this.choiceIndex === 0;
+    lines.push(
+      `<div class="quick-start-card party-choice ${defaultSelected ? "selected" : ""}">`
+    );
+    lines.push(
+      `<div class="qs-title">${defaultSelected ? "▶" : "&nbsp;"} [D] Default Party — set out at once</div>`
+    );
+    lines.push(`<div class="qs-roster">`);
+    lines.push(`Aria (Human Fighter) · Bram (Dwarf Fighter) · Coda (Hobbit Thief) · `);
+    lines.push(`Dell (Elf Mage) · Eve (Gnome Priest) · Fenn (Elf Mage)`);
+    lines.push(`</div>`);
+    lines.push(`</div>`);
+
+    lines.push(
+      `<div class="quick-start-card party-choice ${defaultSelected ? "" : "selected"}">`
+    );
+    lines.push(
+      `<div class="qs-title">${defaultSelected ? "&nbsp;" : "▶"} [C] Create Your Own — build six adventurers from scratch</div>`
+    );
+    lines.push(`<div class="qs-roster">Name, race, alignment, class, and rolled stats for every slot.</div>`);
+    lines.push(`</div>`);
+
+    lines.push(`<div class="town-help">[↑/↓] select · [Enter] confirm</div>`);
     this.panel.innerHTML = lines.join("");
   }
 }

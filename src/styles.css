@@ -805,6 +805,18 @@ canvas#map-canvas {
   line-height: 1.6;
 }
 
+/* Opening choice screen: the selected card glows amber. */
+.quick-start-card.party-choice {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.quick-start-card.party-choice.selected {
+  opacity: 1;
+  border-color: var(--amber);
+  box-shadow: 0 0 12px rgba(232, 168, 48, 0.15);
+}
+
 /* --- Character sheet (camp / guild) ------------------------------------ */
 
 .char-sheet {
