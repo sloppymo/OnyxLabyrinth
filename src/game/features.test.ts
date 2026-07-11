@@ -316,6 +316,29 @@ describe("identification and cursed gear", () => {
     expect(potion?.identified).toBe(true);
   });
 
+  it("auto-equip on chest loot displaces the old item into inventory without duplicating the new one", () => {
+    const state = makeState();
+    const before = { ...state.equipment };
+    state.floor.treasures = [{ x: 2, y: 2, itemIds: ["short-sword+1"] }];
+    handleTileFeature(state);
+
+    const target = state.party.find(
+      (c) => state.equipment[c.id]?.weapon?.id === "short-sword+1"
+    );
+    expect(target).toBeDefined();
+
+    const oldWeaponId = before[target!.id].weapon?.id;
+    expect(oldWeaponId).toBeDefined();
+
+    // The picked-up item is equipped, not also sitting in the pack.
+    expect(state.inventory.filter((e) => e.itemId === "short-sword+1")).toHaveLength(0);
+
+    // The gear it replaced lands in the pack exactly once.
+    const displaced = state.inventory.filter((e) => e.itemId === oldWeaponId);
+    expect(displaced).toHaveLength(1);
+    expect(displaced[0].identified).toBe(true);
+  });
+
   it("cursed gear clamps onto a party member and reveals itself", () => {
     const state = makeState();
     state.floor.treasures = [{ x: 2, y: 2, itemIds: ["cursed-blade"] }];

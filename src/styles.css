@@ -728,8 +728,9 @@ canvas#map-canvas {
 
 .guild-char {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 8px 14px;
   padding: 10px 14px;
   font-size: var(--fs-body);
   color: var(--warm-white);
@@ -738,30 +739,30 @@ canvas#map-canvas {
 
 .guild-char .gc-name {
   color: var(--amber);
-  min-width: 100px;
+  min-width: 80px;
 }
 
 .guild-char .gc-class {
   color: #aa9c80;
-  min-width: 180px;
+  min-width: 150px;
   font-size: var(--fs-small);
 }
 
 .guild-char .gc-hp {
   color: var(--danger-red);
-  min-width: 150px;
+  min-width: 130px;
   font-size: var(--fs-small);
 }
 
 .guild-char .gc-sp {
   color: var(--spell-blue);
-  min-width: 150px;
+  min-width: 130px;
   font-size: var(--fs-small);
 }
 
 .guild-char .gc-xp {
   color: #aa9c80;
-  min-width: 120px;
+  min-width: 100px;
   font-size: var(--fs-small);
 }
 
