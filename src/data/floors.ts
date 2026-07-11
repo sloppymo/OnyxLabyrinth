@@ -67,6 +67,9 @@ export interface FloorDef {
   // Tiles are never consumed. Levitation or the Ring of Water Walking
   // crosses without a check.
   waters?: WaterDef[];
+  // Dungeon NPCs (feature "npc"). Killed NPCs' tiles are cleared on floor
+  // load via GameState.killedNPCs.
+  npcs?: NPCDef[];
 }
 
 export interface WaterDef {
@@ -81,6 +84,47 @@ export type WaterEffect =
   | { kind: "heal"; power: number }
   | { kind: "damage"; power: number }
   | { kind: "cure"; status: "poison" };
+
+// --- Dungeon NPCs ------------------------------------------------------------
+// Friendly (until provoked) characters on "npc" tiles. Interaction is modal
+// (engine/npc-ui.ts): Talk (topic menu + typed keywords), Barter, Give,
+// Steal, Attack, Leave. NPCs are ADDITIVE content — they hint, trade, and
+// flavor, but never gate campaign progression.
+
+export interface NPCTopicDef {
+  /** Keyword that triggers this topic (also the menu label when visible). */
+  key: string;
+  response: string;
+  /** Hidden topics never show in the menu — only typed keywords reach them. */
+  hidden?: boolean;
+}
+
+export interface NPCTradeDef {
+  giveItemId: string;
+  receiveItemId: string;
+  /** One-time trades are recorded in GameState.npcTradesDone. */
+  once?: boolean;
+}
+
+export interface NPCDef {
+  id: string;
+  name: string;
+  /** Short epithet shown under the name ("masterless swordsman"). */
+  title: string;
+  x: number;
+  y: number;
+  greeting: string;
+  /** Greeting on later visits. */
+  returnGreeting: string;
+  topics: NPCTopicDef[];
+  trades?: NPCTradeDef[];
+  /** Giving this item raises disposition sharply (and may earn the reward). */
+  wantsItemId?: string;
+  /** Handed over once when disposition reaches 80. */
+  rewardItemId?: string;
+  /** Enemy formation if the party attacks (or botches a theft). */
+  combatEnemyIds: string[];
+}
 
 export interface TeleporterLink {
   x: number;
@@ -148,6 +192,8 @@ function floor1(): FloorDef {
   setTile(grid, 2, 5, "treasure");
   // Locked reliquary chest (holds the lexicon-key for floor 2).
   setTile(grid, 10, 9, "treasure");
+  // Maro, a stranded swordsman, shelters in the crypt's south-east corner.
+  setTile(grid, 3, 6, "npc");
 
   // EVENT: (5,7) — message scrawled above the entry arch: "THE WATER REMEMBERS".
   // EVENT: (5,4) — trap: collapsing flagstone triggers a dart volley (4 dmg to front rank).
@@ -175,6 +221,27 @@ function floor1(): FloorDef {
       { x: 7, y: 5, depth: 1 },
       { x: 2, y: 4, depth: 2, effect: { kind: "heal", power: 8 } },
       { x: 10, y: 6, depth: 4, effect: { kind: "damage", power: 6 } },
+    ],
+    npcs: [
+      {
+        id: "maro",
+        name: "Maro",
+        title: "stranded swordsman",
+        x: 3,
+        y: 6,
+        greeting:
+          "A living face at last! I am Maro, once of the eastern guard. The water took my company; only I crawled out.",
+        returnGreeting: "Still breathing, friend? Good. The crypt has taken enough of us.",
+        topics: [
+          { key: "key", response: "The monks buried their key with their dead. Look among the sarcophagi, west of the great corridor." },
+          { key: "water", response: "The black pools drown the careless. The shallow ford by the gallery door is the only safe crossing — or so the dead believed." },
+          { key: "reliquary", response: "South of the flooded gallery, behind the locked door. What the monks sealed there, they meant to keep sealed." },
+          { key: "echo", hidden: true, response: "…so the whispers reach even this floor? Pray you never meet the thing that makes them." },
+        ],
+        wantsItemId: "healing-potion",
+        rewardItemId: "long-sword+1",
+        combatEnemyIds: ["samurai"],
+      },
     ],
   };
 }
@@ -240,6 +307,8 @@ function floor2(): FloorDef {
   setTile(grid, 12, 3, "treasure");
   // Locked chest in the forbidden wing (holds the furnace-key for floor 3).
   setTile(grid, 12, 8, "treasure");
+  // Vestra, an unbound scribe, hides deep in the west stacks.
+  setTile(grid, 1, 1, "npc");
 
   // EVENT: (8,2) — trap: falling bookcase in the dark corridor (6 dmg, party-wide).
   // EVENT: (7,10) — trap: glyph of warding on the hall's south threshold (silence 1 fight).
@@ -264,6 +333,26 @@ function floor2(): FloorDef {
       // The blade among the loot is cursed: it clamps onto whoever takes it.
       { x: 12, y: 3, itemIds: ["mace+1", "chain-mail", "cursed-blade", "antidote"], trap: "alarm" },
       { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "ring-of-water-walking", "furnace-key"], trap: "stunner" },
+    ],
+    npcs: [
+      {
+        id: "vestra",
+        name: "Vestra",
+        title: "unbound scribe",
+        x: 1,
+        y: 1,
+        greeting:
+          "Shhh! Lower your voice — the stacks listen. I am Vestra. I copied for the Headmaster, before. I don't copy anymore.",
+        returnGreeting: "You again. Quietly, quietly. The shelves have been restless.",
+        topics: [
+          { key: "library", response: "The library curses noise, not people. Walk softly, open nothing that hums, and never run in the dark corridor." },
+          { key: "key", response: "The furnace key sits in the wing they forbade — east of the reading hall. Your lexicon opens that door, if you found it below." },
+          { key: "echo", response: "The Headmaster did not die. He diffused. What waits in the forge below wears his face badly." },
+          { key: "books", hidden: true, response: "You read the wall, then. It isn't a joke. DO NOT FEED THEM." },
+        ],
+        trades: [{ giveItemId: "antidote", receiveItemId: "robe+2", once: true }],
+        combatEnemyIds: ["lab-assistant", "animated-armor"],
+      },
     ],
   };
 }
@@ -342,6 +431,8 @@ function floor3(): FloorDef {
   setTile(grid, 2, 14, "treasure");
   // Trophy chest in the Grand Forge.
   setTile(grid, 9, 13, "treasure");
+  // Kazeharu, a masterless duelist, keeps vigil in the cinder hall.
+  setTile(grid, 3, 9, "npc");
 
   // EVENT: (8,2) — trap: pressure plate in the ember gallery vents a flame jet (8 fire dmg).
   // EVENT: (13,10) — trap: collapsing iron grate over a magma channel (6 dmg + burn).
@@ -373,6 +464,24 @@ function floor3(): FloorDef {
       { x: 14, y: 8, itemIds: ["halberd+1", "shield+1", "cursed-helm", "healing-potion"], trap: "teleporter" },
       { x: 2, y: 14, itemIds: ["forge-key", "healing-potion", "antidote"], trap: "poison" },
       { x: 9, y: 13, itemIds: ["great-sword+2", "plate-mail+2", "healing-potion", "healing-potion"], trap: "stunner" },
+    ],
+    npcs: [
+      {
+        id: "kazeharu",
+        name: "Kazeharu",
+        title: "masterless duelist",
+        x: 3,
+        y: 9,
+        greeting:
+          "Stay your hand or draw — I care little which. I am Kazeharu. My master fed this forge. I keep what vigil is left.",
+        returnGreeting: "Back among the cinders. The Echo still waits, and so do I.",
+        topics: [
+          { key: "forge", response: "Beyond the locked door south, the Echo holds court in dead air — no spell will answer you there. Bring steel." },
+          { key: "duel", response: "Draw when ready. I will not strike first, and I will not strike last." },
+          { key: "master", hidden: true, response: "My master built the Grand Forge and burned in it. I stayed to guard his failure. Kill the Echo, and my vigil ends." },
+        ],
+        combatEnemyIds: ["ronin"],
+      },
     ],
   };
 }
@@ -409,5 +518,8 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     waters: floor.waters
       ? floor.waters.map((w) => ({ ...w, effect: w.effect ? { ...w.effect } : undefined }))
       : undefined,
+    // NPC defs are static content (never mutated at runtime); killed NPCs
+    // are tracked in GameState and their tiles cleared on floor load.
+    npcs: floor.npcs ? [...floor.npcs] : undefined,
   };
 }

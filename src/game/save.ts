@@ -19,6 +19,7 @@
 import type { GameState } from "../types";
 import { FLOORS, cloneFloor } from "../data/floors";
 import { defaultLoadoutForCharacter } from "./combat";
+import { applyKilledNPCs } from "./npc";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
@@ -80,6 +81,11 @@ interface SerializedState {
   persistentBuffs?: GameState["persistentBuffs"];
   // Per-character swim skill. Optional: absent in older saves, defaults to {}.
   swimSkill?: GameState["swimSkill"];
+  // Dungeon NPC state. Optional: absent in saves from before NPCs existed.
+  talkedToNPCs?: string[];
+  npcDisposition?: Record<string, number>;
+  killedNPCs?: string[];
+  npcTradesDone?: string[];
   // Treasure state: which treasures have been looted, keyed by floor ID.
   // Each value is an array of "x,y" position strings. The floor clone is
   // restored from the immutable FLOORS definition on load.
@@ -135,6 +141,10 @@ export function serialize(state: GameState): string {
     equipment: { ...state.equipment },
     persistentBuffs: state.persistentBuffs.map((b) => ({ ...b })),
     swimSkill: { ...state.swimSkill },
+    talkedToNPCs: [...state.talkedToNPCs],
+    npcDisposition: { ...state.npcDisposition },
+    killedNPCs: [...state.killedNPCs],
+    npcTradesDone: [...state.npcTradesDone],
     lootTaken,
     savedAt: new Date().toISOString(),
   };
@@ -176,6 +186,9 @@ export function deserialize(json: string): GameState | null {
         floor.grid[dy][dx][dir] = "door";
       }
     }
+    const killedNPCs = ser.killedNPCs ? [...ser.killedNPCs] : [];
+    applyKilledNPCs(floor, killedNPCs);
+
     const taken = lootTaken[floor.id];
     if (taken) {
       for (const pos of taken) {
@@ -214,6 +227,10 @@ export function deserialize(json: string): GameState | null {
       pendingTrap: null,
       persistentBuffs: ser.persistentBuffs?.map((b) => ({ ...b })) ?? [],
       swimSkill: ser.swimSkill ? { ...ser.swimSkill } : {},
+      talkedToNPCs: ser.talkedToNPCs ? [...ser.talkedToNPCs] : [],
+      npcDisposition: ser.npcDisposition ? { ...ser.npcDisposition } : {},
+      killedNPCs,
+      npcTradesDone: ser.npcTradesDone ? [...ser.npcTradesDone] : [],
       inDarkness: ser.inDarkness ?? false,
       inAntimagic: ser.inAntimagic ?? false,
       lastDungeon: ser.lastDungeon ?? null,

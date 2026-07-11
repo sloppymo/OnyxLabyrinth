@@ -23,6 +23,7 @@ import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
 import { equipItem, forceEquip, findBestEquipTarget } from "./combat";
 import { hasBuff } from "./persistent-spells";
+import { npcAt, applyKilledNPCs } from "./npc";
 import { displayNameFor } from "../data/items";
 
 type Rng = () => number;
@@ -33,6 +34,8 @@ export interface FeatureResult {
   changedFloor: boolean;
   /** Whether the tile feature was consumed (treasure looted). */
   consumed: boolean;
+  /** Set when the party stepped onto a living NPC — main.ts opens the panel. */
+  npcId?: string;
 }
 
 /**
@@ -76,6 +79,20 @@ export function handleTileFeature(state: GameState, rng: Rng = Math.random): Fea
       return handleTreasure(state);
     case "water":
       return handleWater(state, rng);
+    case "npc": {
+      const npc = npcAt(state, player.x, player.y);
+      if (!npc) {
+        // Stale tile (NPC killed) — clear it.
+        cell.tile = undefined;
+        return null;
+      }
+      return {
+        message: `${npc.name}, ${npc.title}, stands here.`,
+        changedFloor: false,
+        consumed: false,
+        npcId: npc.id,
+      };
+    }
     default:
       return null;
   }
@@ -308,6 +325,7 @@ export function transitionToFloor(
   const floorCopy = cloneFloor(newFloor);
   applyUnlockedDoors(floorCopy, state.unlockedDoors);
   applyLootedTreasures(floorCopy, state.lootTaken);
+  applyKilledNPCs(floorCopy, state.killedNPCs);
   state.floor = floorCopy;
   state.player.x = x;
   state.player.y = y;
