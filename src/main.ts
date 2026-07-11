@@ -41,7 +41,8 @@ import { SaveController } from "./engine/save-ui";
 import { TownController } from "./engine/town-ui";
 import { PartyCreationController } from "./engine/party-ui";
 import { GameOverController } from "./engine/game-over-ui";
-import { autoSave, loadAutoSave } from "./game/save";
+import { TitleController } from "./engine/title-ui";
+import { autoSave } from "./game/save";
 import {
   createCombatFromEncounter,
   reconcileInventoryAfterCombat,
@@ -176,26 +177,41 @@ function openPartyCreation(onDone: () => void): void {
   });
 }
 
-// Start the game: resume an autosave if one exists, otherwise run party
-// creation and drop into town.
-const resumed = loadAutoSave();
-if (resumed) {
-  Object.assign(state, resumed);
-  // Overlays and party creation are not resumable (no controller is
-  // reconstructed for them). Fall back to town so the player can continue.
-  if (state.mode === "title" || state.mode === "party_creation") {
-    state.mode = "town";
-  }
-  if (state.mode === "town") {
-    openTown();
-  } else {
-    // Combat is converted to dungeon on save; any other mode resumes directly.
-    showMode(state.mode, mapVisible);
-    setMessage("Welcome back to the labyrinth.");
-  }
-} else {
-  openPartyCreation(() => openTown());
+// --- Title screen --------------------------------------------------------
+let titleController: TitleController | null = null;
+
+// Start the game: show the title screen so the player can choose
+// "New Game" or "Continue" (if an auto-save exists).
+function openTitleScreen(): void {
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  setMessage("");
+  titleController = new TitleController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    onNewGame: () => {
+      titleController = null;
+      openPartyCreation(() => openTown());
+    },
+    onContinue: (loaded) => {
+      titleController = null;
+      Object.assign(state, loaded);
+      // Overlays and party creation are not resumable (no controller is
+      // reconstructed for them). Fall back to town so the player can continue.
+      if (state.mode === "title" || state.mode === "party_creation") {
+        state.mode = "town";
+      }
+      if (state.mode === "town") {
+        openTown();
+      } else {
+        // Combat is converted to dungeon on save; any other mode resumes directly.
+        canvas.style.opacity = "1";
+        showMode(state.mode, mapVisible);
+        setMessage("Welcome back to the labyrinth.");
+      }
+    },
+  });
 }
+openTitleScreen();
 
 // --- Spell / item / loadout lookups (built once) -------------------------
 const SPELLS_BY_ID: Record<string, (typeof ALL_SPELLS)[number]> = Object.fromEntries(
@@ -703,6 +719,13 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "party_creation" || !partyCreationController) return;
   partyCreationController.handleKey(e.key);
+  e.preventDefault();
+});
+
+// Title screen key handler — routes keys to the TitleController.
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "title" || !titleController) return;
+  titleController.handleKey(e.key);
   e.preventDefault();
 });
 
