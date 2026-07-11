@@ -42,6 +42,7 @@ import { TownController } from "./engine/town-ui";
 import { PartyCreationController } from "./engine/party-ui";
 import { GameOverController } from "./engine/game-over-ui";
 import { TitleController } from "./engine/title-ui";
+import { ArenaController } from "./engine/arena-ui";
 import { autoSave } from "./game/save";
 import {
   createCombatFromEncounter,
@@ -197,7 +198,7 @@ function openTitleScreen(): void {
       Object.assign(state, loaded);
       // Overlays and party creation are not resumable (no controller is
       // reconstructed for them). Fall back to town so the player can continue.
-      if (state.mode === "title" || state.mode === "party_creation") {
+      if (state.mode === "title" || state.mode === "party_creation" || state.mode === "arena") {
         state.mode = "town";
       }
       if (state.mode === "town") {
@@ -208,6 +209,10 @@ function openTitleScreen(): void {
         showMode(state.mode, mapVisible);
         setMessage("Welcome back to the labyrinth.");
       }
+    },
+    onArena: () => {
+      titleController = null;
+      startArena();
     },
   });
 }
@@ -372,6 +377,18 @@ function endCombat(result: CombatState): void {
   state.combat = undefined;
   combatController = null;
 
+  if (inArena) {
+    const onDone = () => {
+      openArena();
+    };
+    if (pendingPerkChoices.length > 0) {
+      openPerkSelectOverlay(pendingPerkChoices, onDone);
+    } else {
+      onDone();
+    }
+    return;
+  }
+
   // If any characters reached a perk tier, open the perk selection overlay.
   // Otherwise return to the dungeon immediately.
   if (pendingPerkChoices.length > 0) {
@@ -386,7 +403,7 @@ function endCombat(result: CombatState): void {
 let perkSelectController: PerkSelectController | null = null;
 let justOpenedPerkSelect = false;
 
-function openPerkSelectOverlay(queue: PendingPerkChoice[]): void {
+function openPerkSelectOverlay(queue: PendingPerkChoice[], onDone?: () => void): void {
   setMode(state, "title");
   showMode("title", mapVisible);
   canvas.style.opacity = "0.2";
@@ -398,8 +415,12 @@ function openPerkSelectOverlay(queue: PendingPerkChoice[]): void {
     onDone: () => {
       perkSelectController = null;
       canvas.style.opacity = "1";
-      setMode(state, "dungeon");
-      showMode("dungeon", mapVisible);
+      if (onDone) {
+        onDone();
+      } else {
+        setMode(state, "dungeon");
+        showMode("dungeon", mapVisible);
+      }
     },
   });
 }
@@ -428,9 +449,13 @@ function openGameOver(): void {
     floorName: state.floor.name,
     onContinue: () => {
       gameOverController = null;
-      setMode(state, "dungeon");
-      showMode("dungeon", mapVisible);
-      setMessage("You wake at the dungeon entrance, barely alive.");
+      if (inArena) {
+        openArena();
+      } else {
+        setMode(state, "dungeon");
+        showMode("dungeon", mapVisible);
+        setMessage("You wake at the dungeon entrance, barely alive.");
+      }
     },
   });
 }
@@ -722,10 +747,96 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
   e.preventDefault();
 });
 
+// --- Arena mode ----------------------------------------------------------
+let arenaController: ArenaController | null = null;
+let justOpenedArena = false;
+let inArena = false;
+let arenaWave = 1;
+let arenaFloor = 1;
+
+function startArena(): void {
+  // Reset to a fresh default party and the first arena wave.
+  Object.assign(state, createGameState(FLOORS[0]));
+  inArena = true;
+  arenaWave = 1;
+  arenaFloor = 1;
+  openArena();
+}
+
+function openArena(): void {
+  setMode(state, "arena");
+  showMode("arena", mapVisible);
+  setMessage("");
+  justOpenedArena = true;
+  arenaController = new ArenaController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    state,
+    wave: arenaWave,
+    floor: arenaFloor,
+    onNext: () => {
+      arenaController = null;
+      startNextArenaFight();
+    },
+    onExit: () => {
+      arenaController = null;
+      inArena = false;
+      openTitleScreen();
+    },
+  });
+}
+
+function startNextArenaFight(): void {
+  const floor = arenaFloor;
+  arenaWave++;
+  arenaFloor = 1 + ((arenaWave - 1) % 3);
+
+  const entry = rollEncounter(floor);
+  if (!entry) {
+    // No encounters for this floor; start a fresh wave.
+    openArena();
+    return;
+  }
+  const resolved = resolveEncounter(entry);
+  if (resolved.length === 0) {
+    openArena();
+    return;
+  }
+
+  const loadout = buildLoadoutMap();
+  const combat = createCombatFromEncounter(
+    state.party,
+    resolved,
+    SPELLS_BY_ID,
+    ITEMS_BY_ID,
+    loadout,
+    state.inventory,
+    state.inAntimagic
+  );
+  state.combat = combat;
+  setMode(state, "combat");
+  state.stepsSinceEncounter = 0;
+
+  startCombat(combat);
+}
+
 // Title screen key handler — routes keys to the TitleController.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "title" || !titleController) return;
   titleController.handleKey(e.key);
+  e.preventDefault();
+});
+
+// Arena key handler — routes keys to the ArenaController.
+// The `justOpenedArena` flag prevents the same keydown that opened the arena
+// (e.g. the Enter that exits a combat result) from also selecting a menu item.
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "arena" || !arenaController) return;
+  if (justOpenedArena) {
+    justOpenedArena = false;
+    e.preventDefault();
+    return;
+  }
+  arenaController.handleKey(e.key);
   e.preventDefault();
 });
 

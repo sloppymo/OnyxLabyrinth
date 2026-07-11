@@ -100,7 +100,8 @@ export type GameMode =
   | "dungeon"
   | "combat"
   | "camp"
-  | "game_over";
+  | "game_over"
+  | "arena";
 
 export interface GameState {
   mode: GameMode;

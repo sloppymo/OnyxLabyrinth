@@ -348,7 +348,7 @@ export function isSlotEmpty(slot: number): boolean {
 export function autoSave(state: GameState): void {
   // Overlays and party creation cannot be resumed safely: no controller is
   // reconstructed for them on boot. Keep the previous auto-save instead.
-  if (state.mode === "title" || state.mode === "party_creation") return;
+  if (state.mode === "title" || state.mode === "party_creation" || state.mode === "arena") return;
   try {
     localStorage.setItem(AUTO_SAVE_KEY, serialize(state));
   } catch {
