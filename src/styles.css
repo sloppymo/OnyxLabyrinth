@@ -1217,3 +1217,63 @@ canvas#map-canvas {
   font-size: var(--fs-small);
   color: #b8c4f0;
 }
+
+/* --- Title screen (New Game / Continue) ---------------------------------- */
+
+.title-header {
+  font-size: var(--fs-header);
+  color: var(--amber);
+  text-align: center;
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+.title-subtitle {
+  text-align: center;
+  font-size: var(--fs-small);
+  color: var(--text-dim);
+  margin-bottom: 32px;
+}
+
+.title-menu {
+  margin: 0 auto;
+  max-width: 500px;
+}
+
+.title-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  font-size: var(--fs-panel);
+  color: var(--warm-white);
+  border-bottom: 1px solid #2a2620;
+}
+
+.title-menu-item.selected {
+  background: #1f1c16;
+  border-left: 3px solid var(--amber);
+  padding-left: 13px;
+}
+
+.title-menu-item .title-marker {
+  color: var(--amber);
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.title-menu-item .title-icon {
+  color: var(--amber);
+  width: 40px;
+  flex-shrink: 0;
+  font-size: var(--fs-small);
+  opacity: 0.8;
+}
+
+.title-help {
+  text-align: center;
+  margin-top: 20px;
+  font-size: var(--fs-small);
+  color: #88775a;
+  letter-spacing: 0.03em;
+}
