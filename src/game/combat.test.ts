@@ -167,6 +167,9 @@ describe("resolveCombatRound", () => {
   it("flee succeeds against non-boss with high RNG", () => {
     const enemy = makeEnemy("e1", "Rat", 100);
     const state = makeCombatState([enemy]);
+    // Fix the fleer's AGI so the deterministic RNG reliably crosses the
+    // non-boss flee threshold independent of createDefaultParty() rolls.
+    state.party[0].stats.agi = 15;
     const actions: PlayerAction[] = state.party.map((c) => ({
       kind: "flee" as const,
       actorId: c.id,

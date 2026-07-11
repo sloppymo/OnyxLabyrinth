@@ -25,7 +25,7 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 6;
 
 /**
  * Migrate a serialized state from an older version to the current one.
@@ -41,6 +41,12 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     const oldInv = (ser.inventory as string[] | undefined) ?? [];
     ser.inventory = oldInv.map((itemId) => ({ itemId, identified: true }));
     version = 5;
+  }
+  if (version === 5) {
+    // v5 → v6: characters now store chosen perk ids.
+    const oldParty = (ser.party as Array<Record<string, unknown>> | undefined) ?? [];
+    ser.party = oldParty.map((c) => ({ ...c, perkIds: (c.perkIds as string[] | undefined) ?? [] }));
+    version = 6;
   }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
@@ -135,6 +141,7 @@ export function serialize(state: GameState): string {
       stats: { ...c.stats },
       status: [...c.status],
       knownSpellIds: [...c.knownSpellIds],
+      perkIds: [...c.perkIds],
     })),
     explored: Array.from(state.explored),
     exploredByFloor,
@@ -238,6 +245,7 @@ export function deserialize(json: string): GameState | null {
         stats: { ...c.stats },
         status: [...c.status],
         knownSpellIds: [...c.knownSpellIds],
+        perkIds: [...c.perkIds],
       })),
       explored: new Set(ser.explored),
       exploredByFloor: ser.exploredByFloor ?? {},

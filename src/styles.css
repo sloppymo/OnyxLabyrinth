@@ -361,6 +361,78 @@ canvas#map-canvas {
   color: var(--amber);
 }
 
+/* --- Perk selection overlay --------------------------------------------- */
+
+.perk-select-header {
+  font-size: var(--fs-header);
+  color: var(--amber);
+  margin-bottom: 16px;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.perk-select-cards {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin: 0 auto;
+  max-width: 900px;
+}
+
+.perk-select-card {
+  flex: 1;
+  max-width: 420px;
+  min-height: 220px;
+  padding: 20px;
+  background: rgba(20, 16, 12, 0.92);
+  border: 2px solid #3a3530;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.1s, box-shadow 0.1s;
+}
+
+.perk-select-card.selected {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 1px var(--amber), 0 0 18px rgba(232, 176, 80, 0.25);
+}
+
+.perk-select-name {
+  font-size: var(--fs-header);
+  color: var(--warm-white);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.perk-select-desc {
+  font-size: var(--fs-body);
+  color: #aa9c80;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.perk-select-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.perk-select-tag {
+  padding: 2px 8px;
+  border: 1px solid #88775a;
+  border-radius: 3px;
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.perk-select-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: var(--fs-body);
+  color: var(--amber);
+}
+
 /* --- Dungeon NPC panel --------------------------------------------------- */
 
 .npc-dialogue {

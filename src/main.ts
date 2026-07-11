@@ -53,12 +53,15 @@ import { rollEncounter, resolveEncounter } from "./data/enemies";
 import { tickBuffs, clearBuffs } from "./game/persistent-spells";
 import { SpellMenuController } from "./engine/spell-ui";
 import { NPCController } from "./engine/npc-ui";
+import { PerkSelectController } from "./engine/perk-select-ui";
 import { markKilled, adjustDisposition } from "./game/npc";
 import { ENEMIES_BY_ID } from "./data/enemies";
 import type { NPCDef } from "./data/floors";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
 import { reviveKnockedOut, type Character } from "./game/party";
+import { xpForNextLevel, levelUpChar } from "./game/leveling";
+import { isPerkTierLevel, tierForLevel, type PendingPerkChoice } from "./game/perks";
 import type { GameState, GameMode } from "./types";
 
 const state = createGameState(FLOORS[0]);
@@ -281,6 +284,7 @@ function endCombat(result: CombatState): void {
     stats: { ...c.stats },
     status: [...c.status],
     knownSpellIds: [...c.knownSpellIds],
+    perkIds: [...c.perkIds],
   }));
 
   // Write the (possibly depleted) combat inventory back to GameState,
@@ -289,6 +293,10 @@ function endCombat(result: CombatState): void {
 
   // Persist any equipment changes made during this combat back to GameState.
   state.equipment = { ...result.loadout };
+
+  // Perk choices queued by post-combat level-ups. Kept local to this flow; the
+  // overlay in Task 5 will consume it and then return to the dungeon.
+  let pendingPerkChoices: PendingPerkChoice[] = [];
 
   if (result.result === "wipe") {
     // Design doc §9.1: party retreats to dungeon entrance, revives at 1 HP.
@@ -308,7 +316,25 @@ function endCombat(result: CombatState): void {
     for (const c of state.party) {
       if (c.hp > 0) c.xp += xpEarned;
     }
-    setMessage(`Victory! +${goldEarned} gold, +${xpEarned} XP each.`);
+
+    // Process post-combat level-ups for living party members.
+    const levelUpMessages: string[] = [];
+    state.party = state.party.map((c) => {
+      if (c.hp <= 0) return c;
+      let char = c;
+      while (char.xp >= xpForNextLevel(char.level)) {
+        char = levelUpChar(char, state.equipment[char.id]);
+        levelUpMessages.push(`${char.name} reaches Level ${char.level}!`);
+        if (isPerkTierLevel(char.level)) {
+          pendingPerkChoices.push({ charId: char.id, tier: tierForLevel(char.level)! });
+        }
+      }
+      return char;
+    });
+
+    const baseMsg = `Victory! +${goldEarned} gold, +${xpEarned} XP each.`;
+    const levelMsg = levelUpMessages.length > 0 ? ` ${levelUpMessages.join(" ")}` : "";
+    setMessage(baseMsg + levelMsg);
   }
 
   // NPC fights: victory kills the NPC (tile cleared); fleeing leaves them
@@ -329,9 +355,49 @@ function endCombat(result: CombatState): void {
 
   state.combat = undefined;
   combatController = null;
-  setMode(state, "dungeon");
-  showMode("dungeon", mapVisible);
+
+  // If any characters reached a perk tier, open the perk selection overlay.
+  // Otherwise return to the dungeon immediately.
+  if (pendingPerkChoices.length > 0) {
+    openPerkSelectOverlay(pendingPerkChoices);
+  } else {
+    setMode(state, "dungeon");
+    showMode("dungeon", mapVisible);
+  }
 }
+
+// --- Perk selection overlay ----------------------------------------------
+let perkSelectController: PerkSelectController | null = null;
+let justOpenedPerkSelect = false;
+
+function openPerkSelectOverlay(queue: PendingPerkChoice[]): void {
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  canvas.style.opacity = "0.2";
+  justOpenedPerkSelect = true;
+  perkSelectController = new PerkSelectController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    state,
+    queue,
+    onDone: () => {
+      perkSelectController = null;
+      canvas.style.opacity = "1";
+      setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
+    },
+  });
+}
+
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "title" || !perkSelectController) return;
+  if (justOpenedPerkSelect) {
+    justOpenedPerkSelect = false;
+    e.preventDefault();
+    return;
+  }
+  perkSelectController.handleKey(e.key);
+  e.preventDefault();
+});
 
 // --- Game over mode ------------------------------------------------------
 let gameOverController: GameOverController | null = null;

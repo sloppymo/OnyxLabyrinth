@@ -18,11 +18,12 @@
  * onClose() to transition out of town mode.
  */
 
-import type { GameState, Character } from "../types";
-import { restoreParty, CLASSES } from "../game/party";
+import type { GameState } from "../types";
+import { restoreParty } from "../game/party";
 import { ALL_ITEMS, ITEMS_BY_ID, displayNameFor, type ItemDef } from "../data/items";
-import { spellsForClass } from "../data/spells";
 import { equipItem, findBestEquipTarget } from "../game/combat";
+import { xpForNextLevel } from "../game/leveling";
+import { perksForCharacter } from "../game/perks";
 
 type TownScreen = "main" | "inn" | "temple" | "shop" | "guild" | "training";
 type ShopTab = "buy" | "sell" | "appraise";
@@ -46,48 +47,11 @@ const MAIN_MENU_ITEMS = [
   { key: "temple", label: "Temple — Healing and cleansing (Free)", icon: "[+]" },
   { key: "shop", label: "Shop — Buy and sell equipment", icon: "[$]" },
   { key: "guild", label: "Guild — View party roster", icon: "[G]" },
-  { key: "training", label: "Training Ground — Level up", icon: "[T]" },
+  { key: "training", label: "Training Ground — Roster", icon: "[T]" },
   { key: "reform", label: "Reform Party — Create a new party", icon: "[R]" },
   { key: "dungeon", label: "Enter Dungeon", icon: "[>]" },
   { key: "save", label: "Save / Load", icon: "[S]" },
 ] as const;
-
-// XP required to reach the next level. Generous curve so a 30-minute session
-// sees multiple level-ups: roughly 5-8 Floor 1 fights to level 2.
-function xpForNextLevel(level: number): number {
-  return level * 20;
-}
-
-/** Level up a character: increase level, recompute max HP/SP, full heal,
- *  and grant new spells by tier (Level 1→T1, 3→T2, 5→T3, 7→T4, 9→T5, 11→T6, 13→T7). */
-function levelUpChar(c: Character): Character {
-  const newLevel = c.level + 1;
-  // HP growth: VIT * 2 + class bonus, +10% per level above 1.
-  const hpGrowth = Math.floor((c.stats.vit * 2 + CLASSES[c.class].hpBonus) * 0.5);
-  const newMaxHp = c.maxHp + hpGrowth;
-  // SP growth: spellcasters get +50% of their casting stat per level.
-  const spellClass = CLASSES[c.class].spellClass;
-  let spGrowth = 0;
-  if (spellClass === "Mage") spGrowth = Math.floor(c.stats.int * 0.5);
-  if (spellClass === "Priest") spGrowth = Math.floor(c.stats.pie * 0.5);
-  const newMaxSp = c.maxSp + spGrowth;
-
-  // Spell progression: grant every spell up to the tier unlocked by this level.
-  const newTier = Math.min(7, Math.ceil(newLevel / 2)) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
-  const knownSet = new Set(c.knownSpellIds);
-  for (const s of spellsForClass(c.class, newTier)) knownSet.add(s.id);
-
-  return {
-    ...c,
-    level: newLevel,
-    maxHp: newMaxHp,
-    maxSp: newMaxSp,
-    hp: newMaxHp,
-    sp: newMaxSp,
-    status: [],
-    knownSpellIds: [...knownSet],
-  };
-}
 
 export class TownController {
   private panel: HTMLElement;
@@ -265,24 +229,10 @@ export class TownController {
   }
 
   private doTraining(): void {
-    // Process level-ups for all characters who have enough XP.
-    let leveledUp = 0;
-    const results: string[] = [];
-    this.state.party = this.state.party.map((c) => {
-      let char = c;
-      while (char.xp >= xpForNextLevel(char.level)) {
-        char = levelUpChar(char);
-        leveledUp++;
-        results.push(`${char.name} → Level ${char.level}!`);
-      }
-      return char;
-    });
+    // Level-ups now happen automatically after combat victories. The Training
+    // Grounds is a read-only roster showing progress and chosen perks.
     this.screen = "training";
-    if (leveledUp === 0) {
-      this.flash = "No one has enough XP to level up yet.";
-    } else {
-      this.flash = results.join(" ");
-    }
+    this.flash = "Training Grounds — level-ups happen after combat now.";
     this.render();
   }
 
@@ -624,7 +574,11 @@ export class TownController {
         `<div class="town-gold">Cursed gear detected! [R] Remove Curse (${REMOVE_CURSE_COST}g)</div>`
       );
     }
-    // Show party status after inn/temple/training
+    if (this.screen === "training") {
+      this.renderTraining(lines);
+      return;
+    }
+    // Show party status after inn/temple
     lines.push(`<div class="guild-roster">`);
     for (const c of this.state.party) {
       const hpPct = Math.round((c.hp / c.maxHp) * 100);
@@ -637,6 +591,26 @@ export class TownController {
           `<span class="gc-hp">HP ${c.hp}/${c.maxHp} (${hpPct}%)</span>` +
           `<span class="gc-sp">SP ${c.sp}/${c.maxSp} (${spPct}%)</span>` +
           `<span class="gc-xp">XP ${c.xp}/${xpNeeded}</span>` +
+          `</div>`
+      );
+    }
+    lines.push(`</div>`);
+    lines.push(`<div class="town-help">[Esc/Enter] back to menu</div>`);
+  }
+
+  private renderTraining(lines: string[]): void {
+    lines.push(`<div class="guild-roster">`);
+    for (const c of this.state.party) {
+      const xpNeeded = xpForNextLevel(c.level);
+      const xpRemaining = Math.max(0, xpNeeded - c.xp);
+      const perks = perksForCharacter(c);
+      const perksStr = perks.length > 0 ? perks.map((p) => p.name).join(", ") : "None";
+      lines.push(
+        `<div class="guild-char">` +
+          `<span class="gc-name">${c.name}</span>` +
+          `<span class="gc-class">Lv${c.level} ${c.class}</span>` +
+          `<span class="gc-xp">XP ${c.xp} · ${xpRemaining} to next</span>` +
+          `<span class="gc-status">Perks: ${perksStr}</span>` +
           `</div>`
       );
     }

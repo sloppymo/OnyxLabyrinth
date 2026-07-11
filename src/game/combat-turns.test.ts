@@ -12,13 +12,16 @@ import {
   resolveAllyTurn,
   endRound,
   createCombatState,
+  enqueueNewAllies,
   type CombatState,
   type EnemyInstance,
   type Rng,
+  type TurnQueueEntry,
 } from "./combat";
 import { createCharacter, type CharacterClass } from "./party";
 import type { EnemyDef } from "../data/enemies";
 import { ALL_SPELLS } from "../data/spells";
+import { ITEMS_BY_ID } from "../data/items";
 
 // --- Fixtures ---------------------------------------------------------------
 
@@ -490,9 +493,6 @@ describe("per-turn round integration", () => {
 });
 
 // --- Audit fixes (2026-07-09) -------------------------------------------------
-
-import { enqueueNewAllies, type TurnQueueEntry } from "./combat";
-import { ITEMS_BY_ID } from "../data/items";
 
 describe("audit fixes: event emission", () => {
   it("item use emits cast + heal events (not silent)", () => {

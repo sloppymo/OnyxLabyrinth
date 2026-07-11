@@ -148,4 +148,32 @@ describe("save serialization", () => {
     // Floor 2 = preserved from the manual set.
     expect(restored.exploredByFloor[2]).toEqual(["5,6", "7,8"]);
   });
+
+  it("migrates v5 saves: characters gain an empty perkIds array", () => {
+    const json = serialize(state);
+    const raw = JSON.parse(json);
+    raw.version = 5;
+    for (const c of raw.party) {
+      delete c.perkIds;
+    }
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    for (const c of restored.party) {
+      expect(c.perkIds).toEqual([]);
+    }
+  });
+
+  it("round-trips chosen perk ids", () => {
+    state.party[0].perkIds = ["fighter-cleave"];
+    state.party[1].perkIds = ["thief-ambusher", "thief-shadow"];
+    const json = serialize(state);
+    const restored = deserialize(json);
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    expect(restored.party[0].perkIds).toEqual(["fighter-cleave"]);
+    expect(restored.party[1].perkIds).toEqual(["thief-ambusher", "thief-shadow"]);
+    // perkIds should be a copy, not a reference.
+    expect(restored.party[0].perkIds).not.toBe(state.party[0].perkIds);
+  });
 });
