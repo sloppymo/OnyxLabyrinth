@@ -40,6 +40,7 @@ import { CampController } from "./engine/camp-ui";
 import { SaveController } from "./engine/save-ui";
 import { TownController } from "./engine/town-ui";
 import { PartyCreationController } from "./engine/party-ui";
+import { GameOverController } from "./engine/game-over-ui";
 import { autoSave, loadAutoSave } from "./game/save";
 import {
   createCombatFromEncounter,
@@ -177,6 +178,11 @@ function openPartyCreation(onDone: () => void): void {
 const resumed = loadAutoSave();
 if (resumed) {
   Object.assign(state, resumed);
+  // Overlays and party creation are not resumable (no controller is
+  // reconstructed for them). Fall back to town so the player can continue.
+  if (state.mode === "title" || state.mode === "party_creation") {
+    state.mode = "town";
+  }
   if (state.mode === "town") {
     openTown();
   } else {
@@ -289,7 +295,8 @@ function endCombat(result: CombatState): void {
     state.party = reviveKnockedOut(state.party);
     state.player.x = state.floor.startX;
     state.player.y = state.floor.startY;
-    setMessage("The party was wiped out! You retreat to the entrance and revive.");
+    openGameOver();
+    return;
   } else if (result.result === "fled") {
     setMessage("You fled from combat.");
   } else if (result.result === "victory") {
@@ -324,6 +331,26 @@ function endCombat(result: CombatState): void {
   combatController = null;
   setMode(state, "dungeon");
   showMode("dungeon", mapVisible);
+}
+
+// --- Game over mode ------------------------------------------------------
+let gameOverController: GameOverController | null = null;
+
+function openGameOver(): void {
+  setMode(state, "game_over");
+  showMode("game_over", mapVisible);
+  setMessage("");
+  gameOverController = new GameOverController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    party: state.party,
+    floorName: state.floor.name,
+    onContinue: () => {
+      gameOverController = null;
+      setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
+      setMessage("You wake at the dungeon entrance, barely alive.");
+    },
+  });
 }
 
 /** Cleanly exit the current combat for automated visual testing. */
@@ -592,6 +619,13 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
   e.preventDefault();
 });
 
+// Game-over key handler — dismisses the screen and revives the party.
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "game_over" || !gameOverController) return;
+  gameOverController.handleKey(e.key);
+  e.preventDefault();
+});
+
 // Town key handler — routes keys to the TownController.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "town" || !townController) return;
@@ -621,6 +655,7 @@ function openSaveMenu(): void {
   saveController = new SaveController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
+    modeBeforeSave: modeBeforeSaveMenu,
     onLoaded: (loaded: GameState) => {
       // Replace the current game state with the loaded one.
       // We can't reassign `state` (it's const), so we mutate in place.

@@ -22,6 +22,18 @@ import type { SpellDef, SpellEffect, SpellTarget } from "../data/spells";
 import { spellByName } from "../data/spells";
 import type { ItemDef } from "../data/items";
 import { ITEMS_BY_ID } from "../data/items";
+import { effectiveStats } from "./effective-stats";
+import {
+  perksForCharacter,
+  perkModifiers,
+  dispatchHook,
+  freshPerkState,
+} from "./perks";
+
+/** Effective stats for a combatant, reading their loadout and chosen perks. */
+function effStatsFor(s: CombatState, c: Character): Stats {
+  return effectiveStats(c, s.loadout[c.id], perksForCharacter(c));
+}
 
 // Re-export types that the combat UI / main.ts needs
 export type { Character, EnemyDef, SpellDef, ItemDef, Row, StatusEffect };
@@ -366,6 +378,11 @@ export interface CombatState {
    * no associated event). Cleared at the start of each round.
    */
   events: CombatEvent[];
+  /**
+   * Per-character (party only) perk scratch state, persisted across the
+   * whole combat. Reset per combat, not per round.
+   */
+  perkState: Record<string, Record<string, unknown>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -415,6 +432,7 @@ export function createCombatState(
     justDied: [],
     justDiedAllies: [],
     events: [],
+    perkState: Object.fromEntries(party.map((c) => [c.id, freshPerkState()])),
   };
 }
 
@@ -559,7 +577,13 @@ export function resolveCombatRound(
   // --- Flee (party-level, resolved before initiative) ---------------------
   const fleeAction = sanitized.find((a) => a.kind === "flee");
   if (fleeAction) {
-    const success = attemptFlee(s.isBoss, rng);
+    const fleer = s.party.find((c) => c.id === fleeAction.actorId);
+    let success = false;
+    if (fleer) {
+      const eff = effStatsFor(s, fleer);
+      const mods = perkModifiers(perksForCharacter(fleer), eff);
+      success = attemptFlee(s.isBoss, eff.agi, mods.fleeBonusPercent, rng);
+    }
     if (success) {
       emit("The party flees from combat!", { type: "flee", success: true });
       s.summonedAllies = [];
@@ -700,10 +724,25 @@ export function beginRound(
   s.justDied = [];
   s.justDiedAllies = [];
 
+  // First round: run OnCombatStart hooks for living party members (e.g. Shadow).
+  if (s.round === 1) {
+    for (const c of s.party) {
+      if (c.hp <= 0) continue;
+      dispatchHook("OnCombatStart", perksForCharacter(c), {
+        state: s.perkState[c.id],
+        rng,
+        grantHidden: () => {
+          if (!c.status.includes("hidden")) c.status.push("hidden");
+        },
+      });
+    }
+  }
+
   const entries: TurnQueueEntry[] = [];
   for (const c of s.party) {
     if (c.hp <= 0) continue;
-    entries.push({ kind: "player", id: c.id, agi: c.stats.agi, luk: c.stats.luk, roll: rollD20(rng) });
+    const eff = effStatsFor(s, c);
+    entries.push({ kind: "player", id: c.id, agi: eff.agi, luk: eff.luk, roll: rollD20(rng) });
   }
   for (const a of s.summonedAllies) {
     if (a.hp <= 0) continue;
@@ -744,7 +783,9 @@ export function resolvePlayerTurn(
   }
 
   if (action.kind === "flee") {
-    const success = attemptFlee(s.isBoss, rng);
+    const eff = effStatsFor(s, actor);
+    const mods = perkModifiers(perksForCharacter(actor), eff);
+    const success = attemptFlee(s.isBoss, eff.agi, mods.fleeBonusPercent, rng);
     if (success) {
       emit("The party flees from combat!", { type: "flee", success: true });
       s.summonedAllies = [];
@@ -909,11 +950,12 @@ function initiativeOrder(
   for (const a of playerActions) {
     const c = s.party.find((p) => p.id === a.actorId);
     if (!c || c.hp <= 0) continue;
+    const eff = effStatsFor(s, c);
     entries.push({
       kind: "player",
       action: a,
-      agi: c.stats.agi,
-      luk: c.stats.luk,
+      agi: eff.agi,
+      luk: eff.luk,
       roll: rollD20(rng),
     });
   }
@@ -1097,6 +1139,17 @@ function checkSpotHidden(
  * 70% chance to pick from the living party front row, otherwise any living
  * party member. Implemented as an actual weighted draw.
  */
+function protectedFormationSlots(party: Character[]): Set<number> {
+  const protectedSlots = new Set<number>();
+  for (const c of party) {
+    if (c.hp <= 0) continue;
+    if (c.formationSlot > 2) continue;
+    if (!perksForCharacter(c).some((p) => p.id === "fighter-protector")) continue;
+    protectedSlots.add(c.formationSlot + 3);
+  }
+  return protectedSlots;
+}
+
 function pickMeleeTarget(
   party: Character[],
   allies: SummonedAlly[],
@@ -1112,8 +1165,11 @@ function pickMeleeTarget(
   if (living.length === 0) return undefined;
 
   // Skip hidden characters (they can't be targeted by single-target attacks)
-  // Exposed characters can be targeted from any position
-  const targetable = living.filter((c) => !c.status.includes("hidden"));
+  // and slots protected by a living Fighter with Protector.
+  const protectedSlots = protectedFormationSlots(party);
+  const targetable = living.filter(
+    (c) => !c.status.includes("hidden") && !protectedSlots.has(c.formationSlot)
+  );
   if (targetable.length === 0) return undefined;
 
   const frontLiving = targetable.filter((c) => charRow(c) === "front");
@@ -1183,6 +1239,10 @@ function resolveAttack(
       `${actor.name} attacks but finds no target.`,
       { type: "miss", actorId: actor.id, targetId: "", reason: "noTarget" }
     );
+    dispatchHook("OnAttackMiss", perksForCharacter(actor), {
+      state: s.perkState[actor.id],
+      rng,
+    });
     return;
   }
 
@@ -1191,7 +1251,7 @@ function resolveAttack(
   const loadout = s.loadout[actor.id];
   const weapon = loadout?.weapon;
   const weaponRange: WeaponRange = weapon?.range ?? "close"; // Default to close range if no weapon
-  
+
   // Check if attacker can reach the target based on position and weapon range
   if (!canReach(actor.formationSlot, weaponRange, target.row)) {
     if (target.row === "back" && s.enemies.front.some((e) => e.currentHp > 0)) {
@@ -1206,6 +1266,23 @@ function resolveAttack(
     return;
   }
 
+  // BeforeAttack hooks (e.g. Ambusher, Shadow, Momentum).
+  let damageMultiplier = 1;
+  let forcedCrit = false;
+  dispatchHook("BeforeAttack", perksForCharacter(actor), {
+    state: s.perkState[actor.id],
+    rng,
+    targetId: target.instanceId,
+    applyDamageMultiplier: (mult: number) => {
+      damageMultiplier *= mult;
+    },
+    forceCrit: () => {
+      forcedCrit = true;
+    },
+    isFromHide: actor.status.includes("hidden"),
+    round: s.round,
+  });
+
   // Evasive enemies have a dodge chance.
   if (target.special.some((sp) => sp.kind === "evasive")) {
     if (rng() < 0.2) {
@@ -1213,6 +1290,10 @@ function resolveAttack(
         `${target.name} evades ${actor.name}'s attack!`,
         { type: "miss", actorId: actor.id, targetId: target.instanceId, reason: "evade" }
       );
+      dispatchHook("OnAttackMiss", perksForCharacter(actor), {
+        state: s.perkState[actor.id],
+        rng,
+      });
       return;
     }
   }
@@ -1224,6 +1305,10 @@ function resolveAttack(
         `${target.name} flits away from ${actor.name}'s swing!`,
         { type: "miss", actorId: actor.id, targetId: target.instanceId, reason: "evade" }
       );
+      dispatchHook("OnAttackMiss", perksForCharacter(actor), {
+        state: s.perkState[actor.id],
+        rng,
+      });
       return;
     }
   }
@@ -1235,12 +1320,18 @@ function resolveAttack(
         `${actor.name} is blind and misses ${target.name}.`,
         { type: "miss", actorId: actor.id, targetId: target.instanceId, reason: "blind" }
       );
+      dispatchHook("OnAttackMiss", perksForCharacter(actor), {
+        state: s.perkState[actor.id],
+        rng,
+      });
       return;
     }
   }
 
+  const effStats = effStatsFor(s, actor);
+  const mods = perkModifiers(perksForCharacter(actor), effStats);
   const weaponBonus = weapon?.attackBonus ?? 0;
-  const base = actor.stats.str + actor.level + weaponBonus;
+  const base = effStats.str + actor.level + weaponBonus;
   // Back-row attackers deal ~40% melee damage when forced to fight at close
   // range. A weapon with reach (short/medium/long) lets them strike effectively.
   // Thieves deal full damage from the back row (§4.2).
@@ -1248,12 +1339,19 @@ function resolveAttack(
   const rowMultiplier =
     charRow(actor) === "back" && weaponRange === "close" && !isThief ? 0.4 : 1;
   const variance = 0.8 + rng() * 0.4; // +/-20%
-  let damage = Math.max(1, Math.round(base * rowMultiplier * variance));
+  let damage = Math.max(
+    1,
+    Math.round(base * rowMultiplier * variance * mods.meleeDamageMultiplier)
+  ) + mods.meleeBonusDamage;
 
-  // Critical hit: chance based on LUK (Section 4.1). Doubles damage.
+  // Apply reactive multipliers from BeforeAttack hooks before AC reduction.
+  damage = Math.max(1, Math.round(damage * damageMultiplier));
+
+  // Critical hit: chance based on effective LUK, capped at 25%.
   let crit = false;
-  if (rng() < actor.stats.luk / 100) {
-    damage *= 2;
+  const critChance = Math.min(0.25, effStats.luk / 100 + mods.critChanceBonus);
+  if (forcedCrit || rng() < critChance) {
+    damage = Math.max(1, Math.round(damage * mods.critDamageMultiplier));
     crit = true;
     log(`${actor.name} lands a critical hit!`);
   }
@@ -1281,6 +1379,50 @@ function resolveAttack(
     { type: "attack", actorId: actor.id, targetId: target.instanceId, damage, range: weaponRange, crit }
   );
   wakeOnDamage(target, log);
+
+  // OnAttackHit hooks (e.g. Cleave, Warmaster).
+  dispatchHook("OnAttackHit", perksForCharacter(actor), {
+    state: s.perkState[actor.id],
+    rng,
+    damage,
+    dealCleaveDamage: (dmg: number) => {
+      const front = s.enemies.front.filter(
+        (e) => e.currentHp > 0 && e.instanceId !== target.instanceId
+      );
+      const other = pickRandom(front, rng);
+      if (!other) return;
+      other.currentHp -= dmg;
+      emit(
+        `${actor.name} cleaves ${other.name} for ${dmg} damage!`,
+        {
+          type: "attack",
+          actorId: actor.id,
+          targetId: other.instanceId,
+          damage: dmg,
+          range: weaponRange,
+        }
+      );
+      wakeOnDamage(other, log);
+    },
+    hitAllFrontRow: (dmg: number) => {
+      for (const other of s.enemies.front.filter(
+        (e) => e.currentHp > 0 && e.instanceId !== target.instanceId
+      )) {
+        other.currentHp -= dmg;
+        emit(
+          `${actor.name} strikes ${other.name} for ${dmg} damage!`,
+          {
+            type: "attack",
+            actorId: actor.id,
+            targetId: other.instanceId,
+            damage: dmg,
+            range: weaponRange,
+          }
+        );
+        wakeOnDamage(other, log);
+      }
+    },
+  });
 }
 
 function resolveCast(
@@ -1315,15 +1457,43 @@ function resolveCast(
     log(`${actor.name} tries to cast an unknown spell.`);
     return;
   }
-  if (actor.sp < spell.spCost) {
-    log(`${actor.name} lacks the SP to cast ${spell.name}.`);
-    return;
-  }
   if (!actor.knownSpellIds.includes(spell.id)) {
     log(`${actor.name} does not know ${spell.name}.`);
     return;
   }
-  actor.sp -= spell.spCost;
+
+  const effStats = effStatsFor(s, actor);
+  const mods = perkModifiers(perksForCharacter(actor), effStats);
+  const pstate = s.perkState[actor.id];
+
+  // Arcane Surge: next cast after 50 SP spent is free and deals +50% damage.
+  const isSurgeSpell = !!pstate.surgeReady && !pstate.surgeUsed;
+  if (isSurgeSpell) {
+    pstate.surgeUsed = true;
+  }
+
+  const spellKind = spell.effect.kind === "heal" ? "heal" : "damage";
+  let spCost = Math.ceil(spell.spCost * mods.spCostMultiplierFor(spellKind));
+  if (isSurgeSpell) spCost = 0;
+
+  // OnSpellCast hooks (e.g. Archmage free spells, Arcane Surge SP tracking).
+  let spellFree = false;
+  dispatchHook("OnSpellCast", perksForCharacter(actor), {
+    state: pstate,
+    rng,
+    spCost,
+    makeSpellFree: () => {
+      spellFree = true;
+    },
+  });
+  if (spellFree) spCost = 0;
+
+  if (actor.sp < spCost) {
+    log(`${actor.name} lacks the SP to cast ${spell.name}.`);
+    return;
+  }
+  actor.sp -= spCost;
+
   // Determine target id for the cast event (may be null for group spells).
   let targetId: string | null = null;
   if (action.targetInstanceId) targetId = action.targetInstanceId;
@@ -1332,7 +1502,21 @@ function resolveCast(
     `${actor.name} casts ${spell.name}.`,
     { type: "cast", actorId: actor.id, spellId: spell.id, targetId }
   );
-  applySpell(s, actor, spell, action, rng, log, emit);
+
+  const powerMultiplier = isSurgeSpell ? 1.5 : 1;
+  applySpell(s, actor, spell, action, rng, log, emit, powerMultiplier);
+
+  // OnSpellResolve hooks (e.g. Spell Echo). Guard against echo re-triggering.
+  let echoTriggered = false;
+  dispatchHook("OnSpellResolve", perksForCharacter(actor), {
+    state: pstate,
+    rng,
+    repeatSpellFree: () => {
+      if (echoTriggered) return;
+      echoTriggered = true;
+      applySpell(s, actor, spell, action, rng, log, emit, 1);
+    },
+  });
 }
 
 function resolveDefend(
@@ -1519,9 +1703,19 @@ function applySpell(
   action: Extract<PlayerAction, { kind: "cast" }>,
   rng: Rng,
   log: (m: string) => void,
-  emit: (m: string, e: CombatEvent) => void
+  emit: (m: string, e: CombatEvent) => void,
+  powerMultiplier = 1
 ): void {
   const eff = spell.effect;
+  const effStats = effStatsFor(s, caster);
+  const castingStat =
+    caster.class === "Mage"
+      ? effStats.int
+      : caster.class === "Priest" || caster.class === "Crusader"
+      ? effStats.pie
+      : 0;
+  const castingBonus = Math.floor(castingStat / 4);
+
   switch (eff.kind) {
     case "damage": {
       for (const t of spellTargets(s, spell, action)) {
@@ -1529,9 +1723,12 @@ function applySpell(
         if (eff.element === "undead" && !t.special.some((sp) => sp.kind === "undead")) {
           continue;
         }
-        const dmg = Math.max(1, eff.power);
+        const raw = Math.max(
+          1,
+          Math.round((eff.power + castingBonus) * powerMultiplier)
+        );
         // Enemy AC reduces spell damage too (less than physical — half AC).
-        const reduced = Math.max(1, dmg - Math.floor(t.ac / 2));
+        const reduced = Math.max(1, raw - Math.floor(t.ac / 2));
         t.currentHp -= reduced;
         emit(
           `${spell.name} hits ${t.name} for ${reduced} damage.`,
@@ -1542,6 +1739,10 @@ function applySpell(
       break;
     }
     case "heal": {
+      const healPower = Math.max(
+        1,
+        Math.round((eff.power + castingBonus) * powerMultiplier)
+      );
       // Single-target heals can also mend a summoned ally (they hold the
       // front line and soak hits). Summons have no statuses, so cure /
       // resurrect stay party-only.
@@ -1551,7 +1752,7 @@ function applySpell(
         );
         if (summon) {
           const before = summon.hp;
-          summon.hp = Math.min(summon.maxHp, summon.hp + eff.power);
+          summon.hp = Math.min(summon.maxHp, summon.hp + healPower);
           emit(
             `${spell.name} heals ${summon.name} for ${summon.hp - before} HP.`,
             { type: "spellEffect", spellId: spell.id, targetId: summon.id, heal: summon.hp - before }
@@ -1561,7 +1762,7 @@ function applySpell(
       }
       for (const t of allyTargets(s, spell, action, caster)) {
         const before = t.hp;
-        t.hp = Math.min(t.maxHp, t.hp + eff.power);
+        t.hp = Math.min(t.maxHp, t.hp + healPower);
         emit(
           `${spell.name} heals ${t.name} for ${t.hp - before} HP.`,
           { type: "spellEffect", spellId: spell.id, targetId: t.id, heal: t.hp - before }
@@ -1594,9 +1795,7 @@ function applySpell(
       break;
     }
     case "buff": {
-      // TODO: confirm buff amount/duration with Track B. SpellDef's buff
-      // effect has no power field; we use a default of 3, persistent this combat.
-      const amount = 3;
+      const amount = eff.power ?? 3;
       for (const t of allyTargets(s, spell, action, caster)) {
         s.armorBuffs[t.id] = (s.armorBuffs[t.id] ?? 0) + amount;
         emit(
@@ -1844,15 +2043,33 @@ function resolveEnemyAction(
       return;
     }
   }
+
+  // Physical evasion: AGI-based chance plus perk bonuses.
+  const effStats = effStatsFor(s, partyTarget);
+  const mods = perkModifiers(perksForCharacter(partyTarget), effStats);
+  const evasionChance = Math.max(0, Math.min((effStats.agi - 10) * 0.01, 0.15)) + mods.evasionBonusPercent;
+  if (rng() < evasionChance) {
+    emit(
+      `${partyTarget.name} evades ${actor.name}'s attack!`,
+      { type: "miss", actorId: actor.instanceId, targetId: partyTarget.id, reason: "evade" }
+    );
+    return;
+  }
+
   const base = actor.attack;
   const variance = 0.8 + rng() * 0.4;
   let damage = Math.max(1, Math.round(base * variance));
   damage = damageReductionFor(s, partyTarget, damage);
-  partyTarget.hp -= damage;
+
+  const result = applyPartyDamage(s, partyTarget, damage, actor, rng, emit);
   emit(
-    `${actor.name} hits ${partyTarget.name} for ${damage} damage.`,
-    { type: "attack", actorId: actor.instanceId, targetId: partyTarget.id, damage }
+    `${actor.name} hits ${partyTarget.name} for ${result.finalDamage} damage.`,
+    { type: "attack", actorId: actor.instanceId, targetId: partyTarget.id, damage: result.finalDamage }
   );
+  if (result.redirectTarget && result.redirectDamage > 0) {
+    log(`${result.redirectDamage} damage is redirected to ${result.redirectTarget.name}!`);
+  }
+
   // Poison on hit (Cobweb, Acid Puddle).
   if (actor.special.some((sp) => sp.kind === "poisonOnHit")) {
     if (!partyTarget.status.includes("poison")) {
@@ -1942,9 +2159,16 @@ function damageReductionFor(
 // Flee
 // ---------------------------------------------------------------------------
 
-function attemptFlee(isBoss: boolean, rng: Rng): boolean {
+function attemptFlee(
+  isBoss: boolean,
+  effAgi: number,
+  fleeBonusPercent: number,
+  rng: Rng
+): boolean {
   if (isBoss) return false; // 0% vs boss (Section 7.2)
-  return rng() < 0.95; // 95% base success
+  const chance =
+    0.95 + Math.min((effAgi - 10) * 0.02, 0.1) + fleeBonusPercent;
+  return rng() < chance;
 }
 
 // ---------------------------------------------------------------------------
@@ -2093,12 +2317,191 @@ function wakeOnDamage(
   }
 }
 
+function isAdjacentFrontRowAlly(a: Character, b: Character): boolean {
+  if (a.formationSlot > 2 || b.formationSlot > 2) return false;
+  return Math.abs(a.formationSlot - b.formationSlot) === 1;
+}
+
+function isDirectlyBehind(protector: Character, target: Character): boolean {
+  return (
+    protector.formationSlot <= 2 &&
+    target.formationSlot === protector.formationSlot + 3
+  );
+}
+
+/** A plain physical hit for reactive counterattacks (no perks applied). */
+function plainHitDamage(s: CombatState, c: Character, rng: Rng): number {
+  const eff = effStatsFor(s, c);
+  const loadout = s.loadout[c.id];
+  const weaponBonus = loadout?.weapon?.attackBonus ?? 0;
+  const base = eff.str + c.level + weaponBonus;
+  const variance = 0.8 + rng() * 0.4;
+  return Math.max(1, Math.round(base * variance));
+}
+
+/**
+ * Apply damage to a party member, running BeforeDamageTaken / OnAllyWouldDie /
+ * AfterDamageTaken hooks. Handles Martyr redirects and Guardian Angel / Paladin
+ * survive-at-1-HP effects.
+ */
+function applyPartyDamage(
+  s: CombatState,
+  target: Character,
+  damage: number,
+  attacker: EnemyInstance,
+  rng: Rng,
+  emit: (m: string, e: CombatEvent) => void
+): { finalDamage: number; redirectDamage: number; redirectTarget?: Character } {
+  // BeforeDamageTaken hooks may redirect damage (e.g. Martyr).
+  let redirected = false;
+  let redirectTo: Character | undefined;
+  let targetDamage = damage;
+  let redirectDamage = 0;
+
+  for (const c of s.party) {
+    if (c.hp <= 0) continue;
+    dispatchHook("BeforeDamageTaken", perksForCharacter(c), {
+      state: s.perkState[c.id],
+      rng,
+      targetId: target.id,
+      ownId: c.id,
+      isAdjacentFrontAlly: isAdjacentFrontRowAlly(target, c),
+      redirectHalfDamage: () => {
+        if (redirected || c.hp <= 0) return;
+        redirected = true;
+        redirectTo = c;
+        redirectDamage = Math.floor(damage / 2);
+        targetDamage = damage - redirectDamage;
+      },
+    });
+  }
+
+  // OnAllyWouldDie: self-save perks first, then ally-save perks.
+  let deathPrevented = false;
+  const preventDeath = () => {
+    if (deathPrevented) return;
+    target.hp = 1;
+    deathPrevented = true;
+  };
+
+  const prospectiveTargetHp = target.hp - targetDamage;
+  if (prospectiveTargetHp <= 0) {
+    dispatchHook("OnAllyWouldDie", perksForCharacter(target), {
+      state: s.perkState[target.id],
+      rng,
+      targetId: target.id,
+      ownId: target.id,
+      preventDeath,
+    });
+    if (!deathPrevented) {
+      for (const c of s.party) {
+        if (c.hp <= 0 || c.id === target.id) continue;
+        dispatchHook("OnAllyWouldDie", perksForCharacter(c), {
+          state: s.perkState[c.id],
+          rng,
+          targetId: target.id,
+          ownId: c.id,
+          preventDeath,
+        });
+        if (deathPrevented) break;
+      }
+    }
+  }
+
+  if (!deathPrevented) {
+    target.hp = prospectiveTargetHp;
+  }
+
+  // Apply redirected damage to the Martyr Priest.
+  if (redirectTo && redirectDamage > 0) {
+    let redirectDeathPrevented = false;
+    const preventRedirectDeath = () => {
+      if (redirectDeathPrevented || !redirectTo) return;
+      redirectTo.hp = 1;
+      redirectDeathPrevented = true;
+    };
+    const prospectiveRedirectHp = redirectTo.hp - redirectDamage;
+    if (prospectiveRedirectHp <= 0) {
+      dispatchHook("OnAllyWouldDie", perksForCharacter(redirectTo), {
+        state: s.perkState[redirectTo.id],
+        rng,
+        targetId: redirectTo.id,
+        ownId: redirectTo.id,
+        preventDeath: preventRedirectDeath,
+      });
+      if (!redirectDeathPrevented) {
+        for (const c of s.party) {
+          if (c.hp <= 0 || c.id === redirectTo.id) continue;
+          dispatchHook("OnAllyWouldDie", perksForCharacter(c), {
+            state: s.perkState[c.id],
+            rng,
+            targetId: redirectTo.id,
+            ownId: c.id,
+            preventDeath: preventRedirectDeath,
+          });
+          if (redirectDeathPrevented) break;
+        }
+      }
+    }
+    if (!redirectDeathPrevented) {
+      redirectTo.hp = prospectiveRedirectHp;
+    }
+  }
+
+  // AfterDamageTaken hooks (e.g. Last Stand, Hold the Line).
+  for (const c of s.party) {
+    if (c.hp <= 0) continue;
+    dispatchHook("AfterDamageTaken", perksForCharacter(c), {
+      state: s.perkState[c.id],
+      rng,
+      targetId: target.id,
+      ownId: c.id,
+      hpPercentAfter: target.hp / target.maxHp,
+      isAllyBehind: isDirectlyBehind(c, target),
+      counterAttacker: (multiplier: number) => {
+        if (attacker.currentHp <= 0) return;
+        const dmg = plainHitDamage(s, c, rng);
+        const counterDamage = Math.max(1, Math.round(dmg * multiplier));
+        attacker.currentHp -= counterDamage;
+        emit(
+          `${c.name} counter-attacks ${attacker.name} for ${counterDamage} damage!`,
+          {
+            type: "attack",
+            actorId: c.id,
+            targetId: attacker.instanceId,
+            damage: counterDamage,
+          }
+        );
+      },
+      counterAllEnemies: () => {
+        for (const e of s.enemies.front.filter((e) => e.currentHp > 0)) {
+          const dmg = plainHitDamage(s, c, rng);
+          const counterDamage = Math.max(1, Math.round(dmg * 1));
+          e.currentHp -= counterDamage;
+          emit(
+            `${c.name} counter-attacks ${e.name} for ${counterDamage} damage!`,
+            {
+              type: "attack",
+              actorId: c.id,
+              targetId: e.instanceId,
+              damage: counterDamage,
+            }
+          );
+        }
+      },
+    });
+  }
+
+  return { finalDamage: targetDamage, redirectDamage, redirectTarget: redirectTo };
+}
+
 function cloneCharacter(c: Character): Character {
   return {
     ...c,
     stats: { ...c.stats },
     status: [...c.status],
     knownSpellIds: [...c.knownSpellIds],
+    perkIds: [...c.perkIds],
   };
 }
 

@@ -90,6 +90,9 @@ interface SerializedState {
   // Each value is an array of "x,y" position strings. The floor clone is
   // restored from the immutable FLOORS definition on load.
   lootTaken: Record<number, string[]>;
+  // Event state: which one-time floor events have triggered, keyed by floor ID.
+  // Optional: absent in saves from before the event system.
+  eventsTriggered?: Record<number, string[]>;
   savedAt: string;
 }
 
@@ -114,6 +117,12 @@ export function serialize(state: GameState): string {
       }
     }
     lootTaken[state.floor.id] = Array.from(current);
+  }
+
+  // Sync triggered one-time events on the current floor into the cross-floor record.
+  const eventsTriggered: Record<number, string[]> = {};
+  for (const [floorId, triggered] of Object.entries(state.eventsTriggered)) {
+    eventsTriggered[Number(floorId)] = Array.from(triggered);
   }
 
   const ser: SerializedState = {
@@ -146,6 +155,7 @@ export function serialize(state: GameState): string {
     killedNPCs: [...state.killedNPCs],
     npcTradesDone: [...state.npcTradesDone],
     lootTaken,
+    eventsTriggered,
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -172,6 +182,12 @@ export function deserialize(json: string): GameState | null {
     const lootTaken: Record<number, Set<string>> = {};
     for (const [floorIdStr, positions] of Object.entries(ser.lootTaken ?? {})) {
       lootTaken[Number(floorIdStr)] = new Set(positions);
+    }
+
+    // Rebuild per-floor triggered-event Sets.
+    const eventsTriggered: Record<number, Set<string>> = {};
+    for (const [floorIdStr, positions] of Object.entries(ser.eventsTriggered ?? {})) {
+      eventsTriggered[Number(floorIdStr)] = new Set(positions);
     }
 
     // Build a private mutable copy of the floor and restore runtime state.
@@ -201,6 +217,18 @@ export function deserialize(json: string): GameState | null {
       }
     }
 
+    // Clear one-time event tiles that were already triggered.
+    const triggered = eventsTriggered[floor.id];
+    if (triggered) {
+      for (const pos of triggered) {
+        const [xStr, yStr] = pos.split(",");
+        const x = parseInt(xStr);
+        const y = parseInt(yStr);
+        const cell = floor.grid[y]?.[x];
+        if (cell && cell.tile === "event") cell.tile = undefined;
+      }
+    }
+
     return {
       mode: ser.mode,
       floor,
@@ -220,6 +248,7 @@ export function deserialize(json: string): GameState | null {
       keys: ser.keys ? [...ser.keys] : [],
       unlockedDoors,
       lootTaken,
+      eventsTriggered,
       // Never persisted (the save menu is unreachable while a trap prompt is
       // open; only the beforeunload autosave can capture one). Loading such a
       // save stands the party on the unopened chest with no prompt — stepping
@@ -309,6 +338,9 @@ export function isSlotEmpty(slot: number): boolean {
 }
 
 export function autoSave(state: GameState): void {
+  // Overlays and party creation cannot be resumed safely: no controller is
+  // reconstructed for them on boot. Keep the previous auto-save instead.
+  if (state.mode === "title" || state.mode === "party_creation") return;
   try {
     localStorage.setItem(AUTO_SAVE_KEY, serialize(state));
   } catch {

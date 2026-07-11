@@ -21,7 +21,7 @@ export type DamageElement = "fire" | "cold" | "physical" | "undead" | "lightning
 export type SpellEffect =
   | { kind: "damage"; element: DamageElement; power: number }
   | { kind: "heal"; power: number }
-  | { kind: "buff"; stat: "armor" }
+  | { kind: "buff"; stat: "armor"; power?: number }
   | { kind: "cure"; status: "poison" | "sleep" | "paralysis" | "blind" }
   | { kind: "disable"; status: "sleep" }
   | { kind: "resurrect" }
