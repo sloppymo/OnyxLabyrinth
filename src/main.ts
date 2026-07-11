@@ -51,6 +51,10 @@ import {
 import { rollEncounter, resolveEncounter } from "./data/enemies";
 import { tickBuffs, clearBuffs } from "./game/persistent-spells";
 import { SpellMenuController } from "./engine/spell-ui";
+import { NPCController } from "./engine/npc-ui";
+import { markKilled, adjustDisposition } from "./game/npc";
+import { ENEMIES_BY_ID } from "./data/enemies";
+import type { NPCDef } from "./data/floors";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
 import { reviveKnockedOut, type Character } from "./game/party";
@@ -300,6 +304,22 @@ function endCombat(result: CombatState): void {
     setMessage(`Victory! +${goldEarned} gold, +${xpEarned} XP each.`);
   }
 
+  // NPC fights: victory kills the NPC (tile cleared); fleeing leaves them
+  // alive and unforgiving.
+  if (npcFightId) {
+    const npc = state.floor.npcs?.find((n) => n.id === npcFightId);
+    if (npc) {
+      if (result.result === "victory") {
+        markKilled(state, npc);
+        setMessage(`${npc.name} falls. +${result.goldEarned} gold, +${result.xpEarned} XP each.`);
+      } else if (result.result === "fled") {
+        adjustDisposition(state, npc, -20);
+        setMessage(`You flee from ${npc.name}.`);
+      }
+    }
+    npcFightId = null;
+  }
+
   state.combat = undefined;
   combatController = null;
   setMode(state, "dungeon");
@@ -382,6 +402,12 @@ function onMove(): void {
       markExplored();
       resetRenderCamera(state.player.x, state.player.y, state.player.facing);
       // Don't trigger encounters on the same step as a floor transition.
+      return;
+    }
+    if (result.npcId) {
+      // Stepped onto a living NPC — open the interaction panel instead of
+      // rolling an encounter.
+      openNPCPanel(result.npcId);
       return;
     }
   } else if (expiry.length > 0) {
@@ -672,6 +698,75 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
     return;
   }
   spellMenuController.handleKey(e.key);
+  e.preventDefault();
+});
+
+// --- Dungeon NPC panel ------------------------------------------------------
+// Borrows "title" mode like the save/grimoire menus. Opened by stepping onto
+// a living NPC's tile; Attack (or a caught theft) hands off to a real fight.
+let npcController: NPCController | null = null;
+/** NPC the current combat is against (set for Attack/caught-steal fights). */
+let npcFightId: string | null = null;
+
+let justOpenedNPCPanel = false;
+
+function openNPCPanel(npcId: string): void {
+  const npc = state.floor.npcs?.find((n) => n.id === npcId);
+  if (!npc) return;
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  canvas.style.opacity = "0.2";
+  justOpenedNPCPanel = true;
+  npcController = new NPCController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    state,
+    npc,
+    onClose: (message: string) => {
+      npcController = null;
+      if (npcFightId) return; // a fight is taking over the screen
+      canvas.style.opacity = "1";
+      setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
+      setMessage(message);
+    },
+    onFight: (target: NPCDef) => {
+      startNPCFight(target);
+    },
+  });
+}
+
+function startNPCFight(npc: NPCDef): void {
+  const spawns = npc.combatEnemyIds
+    .map((id) => ENEMIES_BY_ID[id])
+    .filter((def) => def !== undefined)
+    .map((def) => ({ enemy: def, row: "front" as const }));
+  if (spawns.length === 0) return;
+  npcFightId = npc.id;
+  canvas.style.opacity = "1";
+  const combat = createCombatFromEncounter(
+    state.party,
+    spawns,
+    SPELLS_BY_ID,
+    ITEMS_BY_ID,
+    buildLoadoutMap(),
+    state.inventory,
+    state.inAntimagic
+  );
+  state.combat = combat;
+  setMode(state, "combat");
+  state.stepsSinceEncounter = 0;
+  startCombat(combat);
+}
+
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "title" || !npcController) return;
+  if (justOpenedNPCPanel) {
+    // The movement key that stepped onto the NPC must not also drive the menu.
+    justOpenedNPCPanel = false;
+    e.preventDefault();
+    return;
+  }
+  npcController.handleKey(e.key);
   e.preventDefault();
 });
 

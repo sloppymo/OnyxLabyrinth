@@ -300,6 +300,8 @@ function featureIcon(feature: TileFeature): string {
       return "∅";
     case "water":
       return "≈";
+    case "npc":
+      return "&";
     default:
       return "?";
   }

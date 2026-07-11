@@ -55,6 +55,40 @@ describe("save serialization", () => {
     ]);
   });
 
+  it("round-trips NPC state and clears killed NPC tiles on load", () => {
+    // Maro stands at (3,6) on floor 1.
+    state.talkedToNPCs = ["maro"];
+    state.npcDisposition = { maro: 80 };
+    state.killedNPCs = ["maro"];
+    state.npcTradesDone = ["vestra:antidote>robe+2"];
+    const json = serialize(state);
+    const restored = deserialize(json);
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+
+    expect(restored.talkedToNPCs).toEqual(["maro"]);
+    expect(restored.npcDisposition).toEqual({ maro: 80 });
+    expect(restored.killedNPCs).toEqual(["maro"]);
+    expect(restored.npcTradesDone).toEqual(["vestra:antidote>robe+2"]);
+    expect(restored.floor.grid[6][3].tile).toBeUndefined();
+  });
+
+  it("defaults NPC state to empty for saves that predate NPCs", () => {
+    const raw = JSON.parse(serialize(state));
+    delete raw.talkedToNPCs;
+    delete raw.npcDisposition;
+    delete raw.killedNPCs;
+    delete raw.npcTradesDone;
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    expect(restored.talkedToNPCs).toEqual([]);
+    expect(restored.npcDisposition).toEqual({});
+    expect(restored.killedNPCs).toEqual([]);
+    expect(restored.npcTradesDone).toEqual([]);
+    expect(restored.floor.grid[6][3].tile).toBe("npc");
+  });
+
   it("preserves party character data", () => {
     state.party[0].hp = 5;
     state.party[0].status = ["poison"];

@@ -38,7 +38,8 @@ export type TileFeature =
   | "darkness"
   | "treasure"
   | "antimagic"
-  | "water";
+  | "water"
+  | "npc";
 
 export type Grid = Cell[][]; // grid[y][x]
 
@@ -148,6 +149,16 @@ export interface GameState {
   // Per-character swim skill (0-100), learned by doing: stepping through
   // water tiles raises it. Keyed by character id; absent means 0.
   swimSkill: Record<string, number>;
+  // --- NPC state (all keyed by NPC id; see game/npc.ts) ---
+  // NPCs already greeted (first-time vs. return greeting).
+  talkedToNPCs: string[];
+  // Disposition 0-100 (absent = 50). Gifts raise it; theft and fleeing
+  // a fight lower it.
+  npcDisposition: Record<string, number>;
+  // NPCs killed by the party. Their tiles are cleared on floor load.
+  killedNPCs: string[];
+  // One-time barters already consumed ("npcId:giveId>receiveId").
+  npcTradesDone: string[];
   // Set while the party stands on a trapped, unopened chest. While non-null,
   // dungeon movement is blocked and the Inspect/Disarm/Open/Leave keys are
   // live. Never persisted: a save can't be taken while the prompt is open.

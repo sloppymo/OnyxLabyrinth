@@ -35,6 +35,9 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/game/persistent-spells.ts` | Utility spells cast outside combat (Milwa light / Litofit levitation / Dumapic detect): buff add/tick/clear, cast validation. |
 | `src/game/persistent-spells.test.ts` | Unit tests for utility spells and buff/feature interplay (vitest). |
 | `src/engine/spell-ui.ts` | Dungeon grimoire menu (G key): lists utility casts, casts via persistent-spells. |
+| `src/game/npc.ts` | Dungeon NPC logic (pure): greeting/topics, disposition/mood, barter, gifts+reward, steal, kill persistence (`markKilled` / `applyKilledNPCs`). |
+| `src/game/npc.test.ts` | Unit tests for NPC logic and the "npc" tile feature (vitest). |
+| `src/engine/npc-ui.ts` | NPC interaction overlay (Talk/Barter/Give/Steal/Attack/Leave + typed-keyword ask phase); borrows "title" mode. |
 | `src/game/dungeon.ts` | Grid model, edge helpers, carving. |
 | `src/game/party.ts` | Character/party creation. |
 | `src/game/combat.ts` | Combat state/helpers. Emits structured `CombatEvent`s alongside log messages for the renderer. Two resolution APIs sharing the same internals: round-based `resolveCombatRound` (legacy/tests) and the per-turn API (`beginRound` / `resolvePlayerTurn` / `resolveEnemyTurn` / `resolveAllyTurn` / `endRound`) used by the FF6 combat UI. |
@@ -96,6 +99,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 - **Inventory is `InventoryEntry[]`** (`{ itemId, identified }`), NOT `string[]`. Chest weapons/armor drop unidentified ("Unknown Weapon", appraise at the shop for 50g); shop purchases are identified. After combat, use `reconcileInventoryAfterCombat` — never rebuild the list from counts, which destroys per-instance flags. Save format v5 migrates v4 string inventories (everything identified).
 - **Cursed gear** (`ItemDef.cursed`) force-equips on pickup (`forceEquip`) and can never be displaced — `equipItem` refuses to replace a cursed item in a slot; the Temple's `[R] Remove Curse` (100g) shatters it from loadouts AND inventory. The shop refuses to buy or stock cursed items.
 - **Outside-combat damage never kills:** trap and water damage floors each character at 1 HP by design — party wipes belong to combat. Keep that invariant for any new dungeon hazard.
+- **NPCs are additive content only:** dungeon NPCs (`FloorDef.npcs`, tile `"npc"`) give hints, barter, and flavor — they must never gate campaign progression (keys, stairs, boss access). Their combat identities (`combatEnemyIds`) must reference enemies with real sprite strips in `sprite-manifest.ts`; NPC-only enemies use `floors: []` to stay out of random encounter tables. Stepping onto an npc tile opens the panel INSTEAD of rolling an encounter (`result.npcId` early-returns in `onMove`). Kills persist via `state.killedNPCs` — both `transitionToFloor` and save-load must run `applyKilledNPCs` on the fresh floor clone.
 
 ## Rendering verification checklist
 

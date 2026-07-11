@@ -361,6 +361,30 @@ canvas#map-canvas {
   color: var(--amber);
 }
 
+/* --- Dungeon NPC panel --------------------------------------------------- */
+
+.npc-dialogue {
+  margin: 0 auto 16px;
+  max-width: 700px;
+  text-align: center;
+  font-size: var(--fs-body);
+  color: var(--warm-white);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.npc-caret {
+  display: inline-block;
+  color: var(--amber);
+  animation: npc-caret-blink 1s steps(1) infinite;
+}
+
+@keyframes npc-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
 /* --- Save/Load menu (Section 13) --------------------------------------- */
 
 .save-header {

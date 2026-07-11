@@ -296,6 +296,39 @@ export const HEADMASTERS_ECHO: EnemyDef = {
   isBoss: true,
 };
 
+// NPC combatants — never in random encounter tables (floors: []); they are
+// fought only when the party attacks (or is caught robbing) a dungeon NPC.
+// Both have full sprite strips under assets/enemies/{samurai,ronin}/.
+export const SAMURAI: EnemyDef = {
+  id: "samurai",
+  name: "Maro the Stranded",
+  floors: [],
+  rowPreference: "front",
+  hp: 24,
+  attack: 6,
+  ac: 4,
+  agi: 14,
+  xp: 20,
+  gold: 30,
+  special: [],
+  isBoss: false,
+};
+
+export const RONIN: EnemyDef = {
+  id: "ronin",
+  name: "Kazeharu the Ronin",
+  floors: [],
+  rowPreference: "front",
+  hp: 44,
+  attack: 9,
+  ac: 7,
+  agi: 20,
+  xp: 60,
+  gold: 90,
+  special: [{ kind: "evasive" }],
+  isBoss: false,
+};
+
 export const ALL_ENEMIES: EnemyDef[] = [
   TRAINING_DUMMY,
   SLIME,
@@ -313,6 +346,8 @@ export const ALL_ENEMIES: EnemyDef[] = [
   STONE_GUARDIAN,
   ANIMATED_ARMOR,
   HEADMASTERS_ECHO,
+  SAMURAI,
+  RONIN,
 ];
 
 export const ENEMIES_BY_ID: Record<string, EnemyDef> = Object.fromEntries(
