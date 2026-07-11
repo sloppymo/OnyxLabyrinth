@@ -23,8 +23,10 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/engine/combat-scene.ts` | FF6-style canvas combat scene: enemies LEFT / party RIGHT, animated sprite strips, turn choreography engine (walk → attack → hurt + bouncing damage popups), spell-name banner. Consumes structured `CombatEvent`s only — null (log-only) events get no animation. |
 | `src/engine/enemy-sprite-cache.ts` | Module-level image cache for enemy sprite strips (enemy art faces RIGHT, drawn unmirrored). Falls back to procedural shapes in `combat-scene.ts`. |
 | `src/engine/party-sprite-cache.ts` | Image cache for party member sprite strips (`public/assets/party/<class>/`). Frame counts derived from strip width / 100 at load. Party art faces RIGHT, drawn mirrored (party faces left). |
+| `src/engine/sprite-manifest.ts` | Maps enemy IDs to their sprite-strip asset paths under `public/assets/enemies/<id>/<state>.png`. `sprite-manifest.test.ts` covers it. |
 | `src/engine/combat-ui.ts` | FF6 combat controller: per-actor instant resolve. Walks the `beginRound` initiative queue; player turns open the FF6 menu, enemy/ally turns auto-play. No Space-gated message reveal. |
 | `src/engine/combat-select-action-view.ts` | DOM renderer for the FF6 bottom windows (action menu / enemy names / party HP list) overlaid on the combat canvas, plus the victory/defeat result window. |
+| `src/engine/combat-display.test.ts` | Unit tests for the combat display/formatting helpers (vitest). |
 | `src/engine/shell.ts` | DOM shell: canvas sizing, message overlay, party strip, mode visibility. |
 | `src/engine/input.ts` | Dungeon exploration key bindings. |
 | `src/engine/camera.ts` | Movement, turning, collision, door unlock. |
@@ -39,23 +41,37 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/game/npc.test.ts` | Unit tests for NPC logic and the "npc" tile feature (vitest). |
 | `src/engine/npc-ui.ts` | NPC interaction overlay (Talk/Barter/Give/Steal/Attack/Leave + typed-keyword ask phase); borrows "title" mode. |
 | `src/game/dungeon.ts` | Grid model, edge helpers, carving. |
-| `src/game/party.ts` | Character/party creation. |
-| `src/game/combat.ts` | Combat state/helpers. Emits structured `CombatEvent`s alongside log messages for the renderer. Two resolution APIs sharing the same internals: round-based `resolveCombatRound` (legacy/tests) and the per-turn API (`beginRound` / `resolvePlayerTurn` / `resolveEnemyTurn` / `resolveAllyTurn` / `endRound`) used by the FF6 combat UI. |
+| `src/game/party.ts` | Character/party creation. `Character.perkIds` holds chosen class perks. |
+| `src/game/combat.ts` | Combat state/helpers. Emits structured `CombatEvent`s alongside log messages for the renderer. Two resolution APIs sharing the same internals: round-based `resolveCombatRound` (legacy/tests) and the per-turn API (`beginRound` / `resolvePlayerTurn` / `resolveEnemyTurn` / `resolveAllyTurn` / `endRound`) used by the FF6 combat UI. Reads `effectiveStats()`/`perkModifiers()`/`dispatchHook()` at every formula and hook site (initiative, melee/crit/evasion/flee, spell power/cost, cleave/counter/echo/etc.); `CombatState.perkState` holds per-character reactive-perk scratch data for one combat. |
+| `src/game/effective-stats.ts` | `effectiveStats(character, loadout?, perks?)` — the single source of truth for a character's final stats: base + equipment `statBonuses` + perk `statModifiers`, each floored at 1. Nothing derived here is ever persisted. |
+| `src/game/perks.ts` | Perk engine: `PerkDef`/`PerkEffect`/`CombatHook` types, `PERKS_BY_ID`, `perksForCharacter`, `perkChoicesFor`, `isPerkTierLevel`/`tierForLevel` (levels 3/6/9/12 ↔ tiers 1-4), `applyPerkSelection` (one-time maxHp/maxSp % bump + full heal + records the id), `perkModifiers` (folds every chosen perk's numeric fields into one struct for cheap passive bonuses), `dispatchHook`/`freshPerkState` (the reactive-hook path for the ~14 stateful perks — see "Class perks" section below). |
+| `src/data/perks.ts` | All 56 `PerkDef`s (design doc §7), 8 per class (2 options × 4 tiers). Perks needing bespoke logic beyond what `perkModifiers` can express are marked `// TODO(v1.1)` in a comment above the entry. |
+| `src/game/leveling.ts` | `xpForNextLevel`/`levelUpChar` — extracted from the old town-only Training Ground flow. `levelUpChar` reads effective VIT/INT/PIE for HP/SP growth (perk `hpGrowthBonusPercent`/`spGrowthBonusPercent` add to it) and fully restores on every level. |
 | `src/game/combat.test.ts` | Unit tests for combat resolver (vitest). |
 | `src/game/combat-turns.test.ts` | Unit tests for the per-turn combat API (vitest). |
-| `src/game/save.test.ts` | Unit tests for save serialization (vitest). |
+| `src/game/effective-stats.test.ts` | Unit tests for `effectiveStats` (base/equipment/perk composition, flooring). |
+| `src/game/perks.test.ts` | Unit tests for the perk engine (hook dispatch/priority, `perkModifiers` aggregation, representative reactive perks). |
+| `src/game/leveling.test.ts` | Unit tests for level-up growth math and perk growth bonuses. |
+| `src/game/save.test.ts` | Unit tests for save serialization, including the v5→v6 `perkIds` migration. |
 | `src/game/party.test.ts` | Unit tests for party creation (vitest). |
 | `src/engine/combat-scene.test.ts` | Unit tests for the combat choreography engine (vitest). |
 | `src/engine/combat-select-action-view.test.ts` | Unit tests for the FF6 windows DOM renderer (vitest). |
 | `src/engine/enemy-sprite-cache.test.ts` | Unit tests for enemy sprite image cache (vitest). |
 | `src/engine/party-sprite-cache.test.ts` | Unit tests for party sprite cache / frame derivation (vitest). |
+| `src/engine/perk-select-ui.test.ts` | Unit tests for the perk selection overlay (renders both cards, arrow nav, Enter stores selection and advances the queue). |
 | `src/data/enemies.test.ts` | Unit tests for enemy definitions and encounter tables (vitest). |
 | `src/engine/render-math.test.ts` | Unit tests for renderer geometry/fog/camera math (vitest, 74+ tests). |
 | `src/engine/camp-ui.ts` | Camp screen controller. |
-| `src/engine/town-ui.ts` | Town/hub screen controller. |
+| `src/engine/town-ui.ts` | Town/hub screen controller. Training Ground is now a read-only roster/perk-review screen — level-ups happen automatically post-combat (see "Class perks" below), not here. |
 | `src/engine/save-ui.ts` | Save/load menu controller. |
 | `src/engine/party-ui.ts` | Party creation controller. Opens on a choice screen (default party vs. custom editor) before the six-slot editor phase. |
-| `src/data/floors.ts` | Floor definitions and cloning. |
+| `src/engine/title-ui.ts` | Title screen controller (`TitleController`) — shown on boot: New Game (always), Continue (if an autosave exists), Arena. Owns the "real" home of mode `"title"`; several other overlays *borrow* the same mode name (see the pitfall below). |
+| `src/engine/arena-ui.ts` | Arena mode controller (`ArenaController`, mode `"arena"`) — repeatable back-to-back combats for fast manual/scripted verification of combat and perk behavior, bypassing the dungeon. |
+| `src/engine/perk-select-ui.ts` | Perk selection overlay (`PerkSelectController`) — modal shown after combat when any character crossed a perk tier (level 3/6/9/12). Borrows mode `"title"`; queue (`PendingPerkChoice[]`) is a **local variable in `main.ts`**, never stored on `GameState` or persisted (mirrors `pendingTrap`'s "never survives a save" policy, simpler since it's not even in the type). |
+| `src/engine/game-over-ui.ts` | Game-over screen controller shown after a party wipe. |
+| `src/engine/combat-display.ts` | Pure display/formatting helpers for the combat UI (e.g. `enemyHealthDescriptor`) — no combat math. |
+| `src/engine/effect-sprite-cache.ts` | Image cache for standalone spell/status VFX sprite strips (`public/assets/effects/`), parallel to `enemy-sprite-cache.ts`/`party-sprite-cache.ts`. |
+| `src/data/floors.ts` | Floor definitions and cloning. Includes `EventDef`/`FloorDef.events` (scripted one-time/repeatable message/damage/heal/reward tile events) — plumbing exists but no floor currently uses it. |
 | `src/data/enemies.ts` | Encounter tables and resolution. |
 | `src/data/spells.ts` | Spell definitions. |
 | `src/data/items.ts` | Item definitions. |
@@ -93,7 +109,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 - **Front-wall depth 0:** All front-facing wall quads, including the closest one, are textured. Avoid special-casing `depth === 0` to skip the texture fill; that produces a black hole where the wall should be.
 - **Trap prompt modality:** while `state.pendingTrap` is set (party standing on a trapped chest), every dungeon input handler in `main.ts` is gated off with `!state.pendingTrap` and a dedicated keydown listener owns I/D/O/L (+Esc = leave). Any NEW dungeon key handler must add the same gate or it will fire mid-prompt.
 - **#message length:** the message overlay shows ~2 lines of ~30 characters before clipping (it scrolls, but players won't). Keep interactive prompt strings (key hints) short enough to stay visible.
-- **Borrowed "title" mode:** the save menu (Esc) AND the dungeon spell menu (G) both borrow mode "title" to pause dungeon input. Their key listeners guard on their own controller instance being non-null, so they can't fight — but any new overlay borrowing "title" must follow the same pattern (own controller + justOpened flag).
+- **Borrowed "title" mode:** the actual title screen (`title-ui.ts`) owns mode `"title"` at boot, but the save menu (Esc), the dungeon spell menu (G), the NPC panel, and the post-combat perk selection overlay all *also* borrow it to pause dungeon/combat input. Every consumer's key listener guards on its own controller instance being non-null, so they can't fight each other — but any NEW overlay borrowing "title" must follow the same pattern (own controller + a `justOpened*` flag so the keypress that opened it doesn't immediately drive it too).
 - **Utility spells are dungeon-only:** spells whose effect kind is light/levitation/detect must stay out of combat spell lists (`isUtilitySpell` filter in combat-ui.ts `knownSpells`) — the combat resolver has no case for them and would silently waste the turn and SP.
 - **Trinket items** (`type: "trinket"`, e.g. ring-of-water-walking) are carried, never equipped and never shop stock. Auto-equip paths must only handle `weapon`/`armor`; the shop buy list filters trinkets out. Their effects are checked directly by game logic (`inventory.some(e => e.itemId === ...)`).
 - **Inventory is `InventoryEntry[]`** (`{ itemId, identified }`), NOT `string[]`. Chest weapons/armor drop unidentified ("Unknown Weapon", appraise at the shop for 50g); shop purchases are identified. After combat, use `reconcileInventoryAfterCombat` — never rebuild the list from counts, which destroys per-instance flags. Save format v5 migrates v4 string inventories (everything identified).
@@ -131,6 +147,11 @@ After any change to `src/engine/combat-scene.ts`, `src/engine/combat-ui.ts`, or 
 11. **Windows never clip sprites:** all six party members and all enemies stay visible above the bottom windows.
 12. **Summoned allies in the windows:** living BAMORDI/SOCORDI summons show as cyan rows in the enemy window (name + HP) and as compact cyan rows below the party list; single-target heal spells list them as extra targets (cursor kind "ally" on the scene) and the heal resolves on the summon's HP.
 
+## Debug/testing aids
+
+- **Arena mode** (`engine/arena-ui.ts`, mode `"arena"`, reachable from the title screen's `[A]` option): fights back-to-back encounters outside the dungeon for fast manual combat/perk verification without navigating floors.
+- **`?debug=1` query param**: exposes `window.__onyxDebug` with the live `state`, `startCombat`, `exitDebugCombat(result)` (force-ends the active combat with a given result — `"victory"`/`"wipe"`/`"fled"` — and runs the real `endCombat` flow, so post-combat level-ups/perk-queue logic still fires), plus encounter/loadout helpers. Useful for scripting a browser session straight to "XP high enough to hit a perk tier, then force victory" instead of manually grinding fights. Never used in normal play; strip nothing here, it's already gated behind the query param.
+
 ## Conventions
 
 - Prefer `const` and explicit types.
@@ -142,7 +163,18 @@ After any change to `src/engine/combat-scene.ts`, `src/engine/combat-ui.ts`, or 
 - Run `npm test` before claiming any combat/save/party/renderer-math change is complete.
 - Verify visually for renderer/combat/audio changes; don't rely only on the build passing.
 - After rebuilding, refresh `docs/` from `dist/` if the user wants the GitHub Pages build updated.
-- **Perk effects:** passive numeric bonuses (stats, crit, flee, evasion, trap, etc.) are folded via `perkModifiers(character, state?)` and applied in `effectiveStats()` / combat formulas. Reactive / event-driven effects use `dispatchHook(state, hook, context)`. When adding a new perk, choose the mechanism that matches the effect shape and keep derived values computed at use-time rather than stored in save data.
+
+## Class perks and effective stats
+
+Design doc: `docs/superpowers/specs/2026-07-11-class-perks-design.md`.
+
+- **`effectiveStats(character, loadout?, perks?)`** (`game/effective-stats.ts`) is the ONLY place combat/leveling math should read a character's stats from. It layers base `character.stats` + every equipped item's `statBonuses` + every chosen perk's `effect.statModifiers`. Nothing it computes is ever persisted — recompute on every use, including after load.
+- **Two perk mechanisms, pick whichever fits a given perk's effect shape:**
+  - **`perkModifiers(perks, effStats)`** (`game/perks.ts`) — for simple always-on numeric passives (damage/crit/evasion/flee multipliers and bonuses, SP cost multipliers, flat bonus damage, trap disarm/damage modifiers, shop discount). Folds every chosen perk into one struct; combat/features/town code reads it fresh each time, never caches it. This covers most of the 56 perks with zero combat-internals changes.
+  - **`dispatchHook(hook, perks, ctx)`** (`game/perks.ts`) — for stateful/reactive perks (once-per-combat triggers, counterattacks, escalating stacks, "every Nth cast"). `CombatState.perkState` (character id → arbitrary bag) holds each character's per-combat scratch data, reset at combat start. Only ~14 perks have a registered handler (see the list at the top of `game/perks.ts`); the rest are numeric-passive or documented `// TODO(v1.1)` stubs in `data/perks.ts`.
+- **Level-ups happen immediately after combat victory**, not at the Training Ground (`main.ts` `endCombat`): `levelUpChar` runs in a loop while banked XP covers the next level, full-restoring each time. Every level 3/6/9/12 crossed queues a `PendingPerkChoice` (kept as a **local variable in `main.ts`**, not on `GameState` — never persisted, mirrors `pendingTrap`'s policy). If the queue is non-empty, `perk-select-ui.ts`'s overlay opens (borrowed `"title"` mode) before returning to the dungeon/arena.
+- **Save v6** added `perkIds: string[]` to serialized characters; `save.ts`'s `migrate()` defaults it to `[]` for older saves.
+- When adding a new perk: give it a `PerkDef` in `data/perks.ts` with the standard numeric `effect` fields wherever they cover it; only reach for a `dispatchHook` registration in `game/perks.ts` if the effect genuinely needs state or can't be expressed as a flat multiplier/bonus.
 
 ## Combat event system
 
