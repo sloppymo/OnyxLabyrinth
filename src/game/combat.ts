@@ -230,6 +230,28 @@ export function findBestEquipTarget(
   return bestId;
 }
 
+/**
+ * Return the item that would be replaced when `equipItem(old, item)` changes
+ * the loadout. Returns `undefined` if the slot was empty, the item is not
+ * equipment, or `equipItem` would return the loadout unchanged.
+ */
+export function getDisplacedItem(
+  old: Loadout,
+  next: Loadout,
+  item: ItemDef
+): ItemDef | undefined {
+  if (next === old) return undefined;
+  if (item.type === "weapon") {
+    return next.weapon !== old.weapon ? old.weapon : undefined;
+  }
+  if (item.slot) {
+    const oldPiece = old.armor.find((a) => a.slot === item.slot);
+    const newPiece = next.armor.find((a) => a.slot === item.slot);
+    return oldPiece !== newPiece ? oldPiece : undefined;
+  }
+  return undefined;
+}
+
 export type PlayerAction =
   | { kind: "attack"; actorId: string; targetInstanceId: string }
   | {

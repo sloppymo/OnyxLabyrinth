@@ -651,6 +651,74 @@ canvas#map-canvas {
   font-style: italic;
 }
 
+.shop-compare {
+  margin: 12px auto 0;
+  max-width: 900px;
+  padding: 12px 14px;
+  font-size: var(--fs-body);
+  color: #aa9c80;
+  background: #1f1c16;
+  border-left: 3px solid var(--amber);
+}
+
+.buy-confirm-header {
+  text-align: center;
+  font-size: var(--fs-header);
+  color: var(--amber);
+  margin-bottom: 8px;
+}
+
+.buy-confirm-sub {
+  text-align: center;
+  font-size: var(--fs-body);
+  color: #aa9c80;
+  margin-bottom: 24px;
+}
+
+.buy-compare-row {
+  display: flex;
+  gap: 12px;
+  margin: 0 auto 10px;
+  max-width: 900px;
+  padding: 8px 14px;
+  font-size: var(--fs-body);
+  color: var(--warm-white);
+  border-bottom: 1px solid #2a2620;
+}
+
+.buy-compare-label {
+  color: #88775a;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.buy-compare-value {
+  color: var(--warm-white);
+}
+
+.buy-compare-current {
+  color: var(--danger-red);
+}
+
+.buy-compare-new {
+  color: var(--amber);
+}
+
+.buy-compare-warning {
+  text-align: center;
+  color: var(--danger-red);
+  margin: 16px auto;
+  font-size: var(--fs-body);
+}
+
+.tradein-on {
+  color: var(--amber);
+}
+
+.tradein-off {
+  color: #665544;
+}
+
 /* Guild / Facility roster */
 
 .guild-roster {

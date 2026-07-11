@@ -305,14 +305,14 @@ describe("identification and cursed gear", () => {
   it("chest weapons/armor drop unidentified; consumables identified", () => {
     const state = makeState();
     state.floor.treasures = [
-      { x: 2, y: 2, itemIds: ["short-sword+1", "healing-potion"] },
+      { x: 2, y: 2, itemIds: ["dagger", "healing-potion"] },
     ];
     const result = handleTileFeature(state);
     expect(result?.message).toContain("Unknown Weapon");
     expect(result?.message).toContain("Healing Potion");
-    const sword = state.inventory.find((e) => e.itemId === "short-sword+1");
+    const dagger = state.inventory.find((e) => e.itemId === "dagger");
     const potion = state.inventory.find((e) => e.itemId === "healing-potion");
-    expect(sword?.identified).toBe(false);
+    expect(dagger?.identified).toBe(false);
     expect(potion?.identified).toBe(true);
   });
 
