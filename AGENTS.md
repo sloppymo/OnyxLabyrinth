@@ -54,7 +54,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/engine/camp-ui.ts` | Camp screen controller. |
 | `src/engine/town-ui.ts` | Town/hub screen controller. |
 | `src/engine/save-ui.ts` | Save/load menu controller. |
-| `src/engine/party-ui.ts` | Party creation controller. |
+| `src/engine/party-ui.ts` | Party creation controller. Opens on a choice screen (default party vs. custom editor) before the six-slot editor phase. |
 | `src/data/floors.ts` | Floor definitions and cloning. |
 | `src/data/enemies.ts` | Encounter tables and resolution. |
 | `src/data/spells.ts` | Spell definitions. |
