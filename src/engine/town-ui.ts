@@ -19,14 +19,14 @@
  */
 
 import type { GameState } from "../types";
-import { restoreParty } from "../game/party";
+import { restoreParty, type Stats } from "../game/party";
 import { ALL_ITEMS, ITEMS_BY_ID, displayNameFor, type ItemDef } from "../data/items";
-import { equipItem, findBestEquipTarget } from "../game/combat";
+import { equipItem, findBestEquipTarget, getDisplacedItem, type Loadout } from "../game/combat";
 import { xpForNextLevel } from "../game/leveling";
 import { perksForCharacter } from "../game/perks";
 
 type TownScreen = "main" | "inn" | "temple" | "shop" | "guild" | "training";
-type ShopTab = "buy" | "sell" | "appraise";
+type ShopTab = "buy" | "sell" | "appraise" | "buyConfirm";
 
 /** Temple fee to shatter all equipped cursed gear. */
 const REMOVE_CURSE_COST = 100;
@@ -66,6 +66,13 @@ export class TownController {
   // Shop state
   private shopTab: ShopTab = "buy";
   private shopIndex = 0;
+  private tradeIn = true;
+
+  // Buy-confirm state
+  private buyConfirmItem?: ItemDef;
+  private buyConfirmTarget?: { id: string; name: string };
+  private buyConfirmOldLoadout?: Loadout;
+  private buyConfirmNextLoadout?: Loadout;
 
   constructor(opts: TownControllerOptions) {
     this.panel = opts.panel;
@@ -254,6 +261,11 @@ export class TownController {
   }
 
   private handleShopKey(lower: string): void {
+    if (this.shopTab === "buyConfirm") {
+      this.handleBuyConfirmKey(lower);
+      return;
+    }
+
     const buyList = this.getShopBuyList();
     const appraiseList = this.getAppraiseList();
     const listLen =
@@ -304,7 +316,7 @@ export class TownController {
       case "enter":
       case " ":
         if (this.shopTab === "buy") {
-          this.buyItem(buyList[this.shopIndex]);
+          this.openBuyConfirm(buyList[this.shopIndex]);
         } else if (this.shopTab === "sell") {
           this.sellItem(this.shopIndex);
         } else {
@@ -319,30 +331,95 @@ export class TownController {
     }
   }
 
-  private buyItem(item: ItemDef | undefined): void {
-    if (!item) return;
-    if (this.state.partyGold < item.price) {
-      this.flash = `Not enough gold for ${item.name} (${item.price}g).`;
-      this.render();
-      return;
+  private handleBuyConfirmKey(lower: string): void {
+    switch (lower) {
+      case "t":
+        this.tradeIn = !this.tradeIn;
+        this.render();
+        break;
+      case "enter":
+      case " ":
+        this.buyConfirmed();
+        break;
+      case "escape":
+        this.shopTab = "buy";
+        this.flash = "";
+        this.render();
+        break;
     }
-    this.state.partyGold -= item.price;
-    // Shop stock is always identified.
-    this.state.inventory.push({ itemId: item.id, identified: true });
+  }
 
-    // Auto-equip gear to the party member who needs it most.
+  private openBuyConfirm(item: ItemDef | undefined): void {
+    if (!item) return;
+    this.buyConfirmItem = item;
+    this.shopTab = "buyConfirm";
+    this.tradeIn = true;
+    this.flash = "";
+
     if (item.type !== "consumable") {
       const targetId = findBestEquipTarget(this.state.party, this.state.equipment, item);
       if (targetId) {
-        this.state.equipment[targetId] = equipItem(this.state.equipment[targetId], item);
-        const targetName = this.state.party.find((c) => c.id === targetId)?.name ?? "someone";
-        this.flash = `Bought ${item.name} for ${item.price}g and equipped it on ${targetName}.`;
-        this.render();
-        return;
+        const target = this.state.party.find((c) => c.id === targetId);
+        this.buyConfirmTarget = target ? { id: targetId, name: target.name } : { id: targetId, name: "someone" };
+        this.buyConfirmOldLoadout = this.state.equipment[targetId];
+        this.buyConfirmNextLoadout = equipItem(this.buyConfirmOldLoadout, item);
+      } else {
+        this.buyConfirmTarget = undefined;
+        this.buyConfirmOldLoadout = undefined;
+        this.buyConfirmNextLoadout = undefined;
       }
+    } else {
+      this.buyConfirmTarget = undefined;
+      this.buyConfirmOldLoadout = undefined;
+      this.buyConfirmNextLoadout = undefined;
     }
 
-    this.flash = `Bought ${item.name} for ${item.price}g.`;
+    this.render();
+  }
+
+  private buyConfirmed(): void {
+    const item = this.buyConfirmItem;
+    if (!item) return;
+
+    const old = this.buyConfirmOldLoadout;
+    const next = this.buyConfirmNextLoadout;
+    const targetId = this.buyConfirmTarget?.id;
+    const willEquip = next !== undefined && next !== old;
+    const displaced = willEquip && old ? getDisplacedItem(old, next, item) : undefined;
+    const tradeInValue = this.tradeIn && displaced ? Math.floor(displaced.price / 2) : 0;
+    const netCost = item.price - tradeInValue;
+
+    if (this.state.partyGold < netCost) {
+      this.flash = `Not enough gold — you need ${netCost}g.`;
+      this.render();
+      return;
+    }
+
+    this.state.partyGold -= netCost;
+
+    if (willEquip && targetId) {
+      this.state.equipment[targetId] = next;
+      if (displaced && !this.tradeIn) {
+        this.state.inventory.push({ itemId: displaced.id, identified: true });
+      }
+      const targetName = this.buyConfirmTarget?.name ?? "someone";
+      if (displaced && this.tradeIn) {
+        this.flash = `Bought ${item.name} for ${item.price}g, trading in ${displaced.name} for ${tradeInValue}g (net ${netCost}g), and equipped it on ${targetName}.`;
+      } else if (displaced) {
+        this.flash = `Bought ${item.name} for ${item.price}g and equipped it on ${targetName}. ${displaced.name} placed in your inventory.`;
+      } else {
+        this.flash = `Bought ${item.name} for ${item.price}g and equipped it on ${targetName}.`;
+      }
+    } else {
+      this.state.inventory.push({ itemId: item.id, identified: true });
+      this.flash = `Bought ${item.name} for ${item.price}g.`;
+    }
+
+    this.shopTab = "buy";
+    this.buyConfirmItem = undefined;
+    this.buyConfirmTarget = undefined;
+    this.buyConfirmOldLoadout = undefined;
+    this.buyConfirmNextLoadout = undefined;
     this.render();
   }
 
@@ -365,21 +442,6 @@ export class TownController {
     const sellPrice = Math.floor(item.price / 2);
     this.state.inventory.splice(invIndex, 1);
     this.state.partyGold += sellPrice;
-
-    // If this exact item is currently equipped, remove it from that character.
-    for (const c of this.state.party) {
-      const loadout = this.state.equipment[c.id];
-      if (!loadout) continue;
-      if (loadout.weapon?.id === itemId) {
-        this.state.equipment[c.id] = { ...loadout, weapon: undefined };
-      }
-      if (loadout.armor.some((a) => a.id === itemId)) {
-        this.state.equipment[c.id] = {
-          ...loadout,
-          armor: loadout.armor.filter((a) => a.id !== itemId),
-        };
-      }
-    }
 
     // Clamp index
     if (this.shopIndex >= this.state.inventory.length) {
@@ -464,6 +526,11 @@ export class TownController {
   }
 
   private renderShop(lines: string[]): void {
+    if (this.shopTab === "buyConfirm") {
+      this.renderBuyConfirm(lines);
+      return;
+    }
+
     lines.push(`<div class="shop-tabs">`);
     lines.push(`<span class="shop-tab ${this.shopTab === "buy" ? "active" : ""}">Buy [B]</span>`);
     lines.push(`<span class="shop-tab ${this.shopTab === "sell" ? "active" : ""}">Sell [S]</span>`);
@@ -503,7 +570,7 @@ export class TownController {
         const item = buyList[i];
         const selected = i === this.shopIndex;
         const marker = selected ? "▶" : " ";
-        const affordable = this.state.partyGold >= item.price;
+        const affordable = this.canAffordWithTradeIn(item);
         const cls = `shop-item ${selected ? "selected" : ""} ${affordable ? "" : "unaffordable"}`;
         const stats = this.itemStatsStr(item);
         lines.push(
@@ -516,6 +583,7 @@ export class TownController {
         );
       }
       lines.push(`</div>`);
+      lines.push(this.renderBuyPreview());
     } else {
       const inv = this.state.inventory;
       lines.push(`<div class="shop-list">`);
@@ -542,7 +610,137 @@ export class TownController {
       }
       lines.push(`</div>`);
     }
-    lines.push(`<div class="town-help">[↑/↓] navigate · [Enter] buy/sell · [B] buy tab · [S] sell tab · [Esc] back</div>`);
+    const help =
+      this.shopTab === "buy"
+        ? `[↑/↓] navigate · [Enter] compare · [B] buy tab · [S] sell tab · [A] appraise tab · [Esc] back`
+        : `[↑/↓] navigate · [Enter] buy/sell · [B] buy tab · [S] sell tab · [A] appraise tab · [Esc] back`;
+    lines.push(`<div class="town-help">${help}</div>`);
+  }
+
+  private renderBuyPreview(): string {
+    const buyList = this.getShopBuyList();
+    const item = buyList[this.shopIndex];
+    if (!item) return "";
+
+    if (item.type === "consumable") {
+      return `<div class="shop-compare">Use in combat (e.g., Healing Potion restores 30 HP).</div>`;
+    }
+
+    const targetId = findBestEquipTarget(this.state.party, this.state.equipment, item);
+    if (!targetId) {
+      return `<div class="shop-compare">No party member can equip this. Will be added to inventory.</div>`;
+    }
+
+    const old = this.state.equipment[targetId];
+    const next = equipItem(old, item);
+    const targetName = this.state.party.find((c) => c.id === targetId)?.name ?? "someone";
+
+    if (next === old) {
+      const current = this.equipmentItemFor(old, item);
+      return `<div class="shop-compare">Not an upgrade for ${targetName} (current: ${this.itemNameFor(current)} ${this.itemStatsStr(current)}). Adds to inventory.</div>`;
+    }
+
+    const displaced = getDisplacedItem(old, next, item);
+    const current = displaced ?? undefined;
+    const tradeInValue = displaced ? Math.floor(displaced.price / 2) : 0;
+    const tradeInText = displaced ? ` · trade-in: ${tradeInValue}g` : "";
+    return (
+      `<div class="shop-compare">` +
+      `Compare: ${targetName} — ` +
+      `Current: ${this.itemNameFor(current)} ${this.itemStatsStr(current)} → ` +
+      `New: ${item.name} ${this.itemStatsStr(item)}` +
+      `${tradeInText}` +
+      `</div>`
+    );
+  }
+
+  private renderBuyConfirm(lines: string[]): void {
+    const item = this.buyConfirmItem;
+    if (!item) return;
+
+    lines.push(`<div class="buy-confirm-header">${item.name}</div>`);
+    lines.push(`<div class="buy-confirm-sub">${this.itemStatsStr(item) || "no bonuses"}</div>`);
+
+    const old = this.buyConfirmOldLoadout;
+    const next = this.buyConfirmNextLoadout;
+    const targetName = this.buyConfirmTarget?.name;
+    const willEquip = next !== undefined && next !== old;
+    const displaced = willEquip && old ? getDisplacedItem(old, next, item) : undefined;
+
+    if (targetName && willEquip) {
+      const current = displaced ?? undefined;
+      lines.push(`<div class="buy-compare-row">`);
+      lines.push(`<span class="buy-compare-label">Target:</span> <span class="buy-compare-value">${targetName}</span>`);
+      lines.push(`</div>`);
+      lines.push(`<div class="buy-compare-row">`);
+      lines.push(`<span class="buy-compare-label">Current:</span> <span class="buy-compare-current">${this.itemNameFor(current)} — ${this.itemStatsStr(current) || "none"}</span>`);
+      lines.push(`</div>`);
+      lines.push(`<div class="buy-compare-row">`);
+      lines.push(`<span class="buy-compare-label">New:</span> <span class="buy-compare-new">${item.name} — ${this.itemStatsStr(item) || "none"}</span>`);
+      lines.push(`</div>`);
+
+      if (displaced) {
+        const tradeInValue = Math.floor(displaced.price / 2);
+        const netCost = item.price - (this.tradeIn ? tradeInValue : 0);
+        const tradeInLabel = this.tradeIn ? "ON" : "OFF";
+        lines.push(`<div class="buy-compare-row">`);
+        lines.push(`<span class="buy-compare-label">Trade-in:</span> <span class="buy-compare-value ${this.tradeIn ? "tradein-on" : "tradein-off"}">${tradeInLabel}</span> (old ${displaced.name} → ${tradeInValue}g)`);
+        lines.push(`</div>`);
+        lines.push(`<div class="buy-compare-row">`);
+        lines.push(`<span class="buy-compare-label">Price:</span> ${item.price}g · <span class="buy-compare-label">Net:</span> ${netCost}g`);
+        lines.push(`</div>`);
+        lines.push(`<div class="buy-compare-row">`);
+        lines.push(`<span class="buy-compare-label">Current gold:</span> ${this.state.partyGold}g`);
+        lines.push(`</div>`);
+        if (this.state.partyGold < netCost) {
+          lines.push(`<div class="buy-compare-warning">Not enough gold — need ${netCost}g.</div>`);
+        }
+      } else {
+        lines.push(`<div class="buy-compare-row">`);
+        lines.push(`<span class="buy-compare-label">No old item to trade in.</span>`);
+        lines.push(`</div>`);
+        lines.push(`<div class="buy-compare-row">`);
+        lines.push(`<span class="buy-compare-label">Price:</span> ${item.price}g · <span class="buy-compare-label">Current gold:</span> ${this.state.partyGold}g`);
+        lines.push(`</div>`);
+        if (this.state.partyGold < item.price) {
+          lines.push(`<div class="buy-compare-warning">Not enough gold — need ${item.price}g.</div>`);
+        }
+      }
+    } else {
+      lines.push(`<div class="buy-compare-row">`);
+      lines.push(`<span class="buy-compare-label">Will be added to inventory.</span>`);
+      lines.push(`</div>`);
+      lines.push(`<div class="buy-compare-row">`);
+      lines.push(`<span class="buy-compare-label">Price:</span> ${item.price}g · <span class="buy-compare-label">Current gold:</span> ${this.state.partyGold}g`);
+      lines.push(`</div>`);
+      if (this.state.partyGold < item.price) {
+        lines.push(`<div class="buy-compare-warning">Not enough gold — need ${item.price}g.</div>`);
+      }
+    }
+
+    lines.push(`<div class="town-help">[Enter] buy · [T] toggle trade-in · [Esc] cancel</div>`);
+  }
+
+  private itemNameFor(item: ItemDef | undefined): string {
+    return item ? item.name : "None";
+  }
+
+  private equipmentItemFor(loadout: Loadout, item: ItemDef): ItemDef | undefined {
+    if (item.type === "weapon") return loadout.weapon;
+    if (item.slot) return loadout.armor.find((a) => a.slot === item.slot);
+    return undefined;
+  }
+
+  private canAffordWithTradeIn(item: ItemDef): boolean {
+    if (item.type === "consumable") return this.state.partyGold >= item.price;
+    const targetId = findBestEquipTarget(this.state.party, this.state.equipment, item);
+    if (!targetId) return this.state.partyGold >= item.price;
+    const old = this.state.equipment[targetId];
+    const next = equipItem(old, item);
+    if (next === old) return this.state.partyGold >= item.price;
+    const displaced = getDisplacedItem(old, next, item);
+    const net = item.price - (displaced ? Math.floor(displaced.price / 2) : 0);
+    return this.state.partyGold >= net;
   }
 
   private renderGuild(lines: string[]): void {
@@ -618,10 +816,30 @@ export class TownController {
     lines.push(`<div class="town-help">[Esc/Enter] back to menu</div>`);
   }
 
-  private itemStatsStr(item: ItemDef): string {
+  private itemStatsStr(item: ItemDef | undefined): string {
+    if (!item) return "";
     const parts: string[] = [];
-    if (item.attackBonus) parts.push(`ATK+${item.attackBonus}`);
-    if (item.defenseBonus) parts.push(`DEF+${item.defenseBonus}`);
+    if (item.cursed) parts.push("Cursed");
+    if (item.attackBonus !== undefined && item.attackBonus !== 0) {
+      parts.push(item.attackBonus > 0 ? `ATK+${item.attackBonus}` : `ATK${item.attackBonus}`);
+    }
+    if (item.defenseBonus !== undefined && item.defenseBonus !== 0) {
+      parts.push(item.defenseBonus > 0 ? `DEF+${item.defenseBonus}` : `DEF${item.defenseBonus}`);
+    }
+    if (item.type === "weapon" && item.range) {
+      parts.push(item.range[0].toUpperCase() + item.range.slice(1));
+    }
+    if (item.type === "armor" && item.slot) {
+      parts.push(item.slot[0].toUpperCase() + item.slot.slice(1));
+    }
+    if (item.statBonuses) {
+      for (const key of ["str", "int", "pie", "vit", "agi", "luk"] as (keyof Stats)[]) {
+        const value = item.statBonuses[key];
+        if (value !== undefined && value !== 0) {
+          parts.push(`${value > 0 ? "+" : ""}${value} ${key.toUpperCase()}`);
+        }
+      }
+    }
     if (item.effect) {
       if (item.effect.kind === "heal") parts.push(`Heal ${item.effect.power}`);
       if (item.effect.kind === "cure") parts.push(`Cure ${item.effect.status}`);

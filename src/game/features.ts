@@ -21,7 +21,7 @@ import type { Character } from "./party";
 import { FLOORS, cloneFloor, type EventDef } from "../data/floors";
 import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
-import { equipItem, forceEquip, findBestEquipTarget } from "./combat";
+import { equipItem, forceEquip, findBestEquipTarget, getDisplacedItem } from "./combat";
 import { hasBuff } from "./persistent-spells";
 import { npcAt, applyKilledNPCs } from "./npc";
 import { displayNameFor } from "../data/items";
@@ -257,9 +257,9 @@ function awardTreasure(
     // consumables and trinkets are self-evident.
     const identified = !item || !(item.type === "weapon" || item.type === "armor");
     const entry = { itemId, identified };
-    state.inventory.push(entry);
 
     if (!item) {
+      state.inventory.push(entry);
       itemNames.push(itemId);
       continue;
     }
@@ -267,6 +267,7 @@ function awardTreasure(
     if (item.cursed) {
       // Cursed gear reveals itself by clamping onto whoever handles it.
       entry.identified = true;
+      state.inventory.push(entry);
       const targetId = findBestEquipTarget(state.party, state.equipment, item);
       const target = targetId ? state.party.find((c) => c.id === targetId) : undefined;
       const forced = targetId ? forceEquip(state.equipment[targetId], item) : null;
@@ -279,16 +280,28 @@ function awardTreasure(
       continue;
     }
 
-    itemNames.push(displayNameFor(item, entry.identified));
-
     // Auto-equip found gear to the party member who needs it most (works
     // even unidentified — the party tries it on; the name stays unknown).
     if (item.type === "weapon" || item.type === "armor") {
       const targetId = findBestEquipTarget(state.party, state.equipment, item);
       if (targetId) {
-        state.equipment[targetId] = equipItem(state.equipment[targetId], item);
+        const old = state.equipment[targetId];
+        const next = equipItem(old, item);
+        if (next !== old) {
+          state.equipment[targetId] = next;
+          const displaced = getDisplacedItem(old, next, item);
+          if (displaced) {
+            state.inventory.push({ itemId: displaced.id, identified: true });
+          }
+          itemNames.push(displayNameFor(item, entry.identified));
+          continue;
+        }
       }
     }
+
+    // Not equipped (consumable, trinket, or not an upgrade): add to inventory.
+    state.inventory.push(entry);
+    itemNames.push(displayNameFor(item, entry.identified));
   }
 
   // Clear the treasure
