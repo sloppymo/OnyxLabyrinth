@@ -107,6 +107,12 @@ export interface PerkDef {
   priority: "normal" | "high";
 }
 
+/** One queued perk choice produced when a character levels past a tier threshold. */
+export interface PendingPerkChoice {
+  charId: string;
+  tier: 1 | 2 | 3 | 4;
+}
+
 /** Levels at which a perk choice is offered, indexed by tier. */
 export const PERK_TIER_LEVELS: Record<1 | 2 | 3 | 4, number> = {
   1: 3,
@@ -114,6 +120,8 @@ export const PERK_TIER_LEVELS: Record<1 | 2 | 3 | 4, number> = {
   3: 9,
   4: 12,
 };
+
+export { ALL_PERKS } from "../data/perks";
 
 export const PERKS_BY_ID: Record<string, PerkDef> = Object.fromEntries(
   ALL_PERKS.map((p) => [p.id, p])
@@ -189,6 +197,8 @@ export interface PerkModifiers {
   trapDisarmBonusPercent: number;
   trapDamageMultiplier: number;
   shopDiscountPercent: number;
+  hpGrowthBonusPercent: number;
+  spGrowthBonusPercent: number;
   spCostMultiplierFor: (spellKind: "heal" | "damage" | "other") => number;
 }
 
@@ -209,6 +219,8 @@ export function perkModifiers(perks: PerkDef[], effStats: Stats): PerkModifiers 
     trapDisarmBonusPercent: 0,
     trapDamageMultiplier: 1,
     shopDiscountPercent: 0,
+    hpGrowthBonusPercent: 0,
+    spGrowthBonusPercent: 0,
     spCostMultiplierFor: () => 1,
   };
 
@@ -226,6 +238,8 @@ export function perkModifiers(perks: PerkDef[], effStats: Stats): PerkModifiers 
     if (eff.trapDisarmBonusPercent) out.trapDisarmBonusPercent += eff.trapDisarmBonusPercent;
     if (eff.trapDamageMultiplier) out.trapDamageMultiplier *= eff.trapDamageMultiplier;
     if (eff.shopDiscountPercent) out.shopDiscountPercent += eff.shopDiscountPercent;
+    if (eff.hpGrowthBonusPercent) out.hpGrowthBonusPercent += eff.hpGrowthBonusPercent;
+    if (eff.spGrowthBonusPercent) out.spGrowthBonusPercent += eff.spGrowthBonusPercent;
     if (eff.spCostMultiplier) spCostRules.push({ mult: eff.spCostMultiplier, appliesTo: eff.spCostAppliesTo });
   }
 

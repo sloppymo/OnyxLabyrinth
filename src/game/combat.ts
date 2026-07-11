@@ -1593,16 +1593,22 @@ function resolveAmbush(
   const loadout = s.loadout[actor.id];
   const weapon = loadout?.weapon;
   const weaponBonus = weapon?.attackBonus ?? 0;
-  const base = actor.stats.str + actor.level + weaponBonus;
-  
+  const effStats = effStatsFor(s, actor);
+  const mods = perkModifiers(perksForCharacter(actor), effStats);
+  const base = effStats.str + actor.level + weaponBonus;
+
   // Ambush always deals full damage regardless of position
   const variance = 0.8 + rng() * 0.4; // +/-20%
-  let damage = Math.max(1, Math.round(base * variance * 2)); // Double damage
+  let damage = Math.max(
+    1,
+    Math.round(base * variance * 2 * mods.meleeDamageMultiplier)
+  ) + mods.meleeBonusDamage;
 
-  // Critical hit: chance based on LUK (Section 4.1). Doubles damage (4x total).
+  // Critical hit: chance based on effective LUK, capped at 25%.
   let crit = false;
-  if (rng() < actor.stats.luk / 100) {
-    damage *= 2;
+  const critChance = Math.min(0.25, effStats.luk / 100 + mods.critChanceBonus);
+  if (rng() < critChance) {
+    damage = Math.max(1, Math.round(damage * mods.critDamageMultiplier));
     crit = true;
     log(`${actor.name} lands a critical ambush!`);
   }
@@ -2456,7 +2462,7 @@ function applyPartyDamage(
       rng,
       targetId: target.id,
       ownId: c.id,
-      hpPercentAfter: target.hp / target.maxHp,
+      hpPercentAfter: c.hp / c.maxHp,
       isAllyBehind: isDirectlyBehind(c, target),
       counterAttacker: (multiplier: number) => {
         if (attacker.currentHp <= 0) return;

@@ -174,6 +174,12 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("ronin", "hurt", 4, 8),
     death: strip("ronin", "death", 4, 6),
   },
+  "lizard-warrior": {
+    idle: strip("lizard-warrior", "idle", 6, 6, true),
+    attack: strip("lizard-warrior", "attack", 9, 10),
+    hurt: strip("lizard-warrior", "hurt", 4, 8),
+    death: strip("lizard-warrior", "death", 4, 6),
+  },
 };
 
 /** Convert the renderer's SpriteState to a strip key. */

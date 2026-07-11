@@ -142,6 +142,7 @@ After any change to `src/engine/combat-scene.ts`, `src/engine/combat-ui.ts`, or 
 - Run `npm test` before claiming any combat/save/party/renderer-math change is complete.
 - Verify visually for renderer/combat/audio changes; don't rely only on the build passing.
 - After rebuilding, refresh `docs/` from `dist/` if the user wants the GitHub Pages build updated.
+- **Perk effects:** passive numeric bonuses (stats, crit, flee, evasion, trap, etc.) are folded via `perkModifiers(character, state?)` and applied in `effectiveStats()` / combat formulas. Reactive / event-driven effects use `dispatchHook(state, hook, context)`. When adding a new perk, choose the mechanism that matches the effect shape and keep derived values computed at use-time rather than stored in save data.
 
 ## Combat event system
 

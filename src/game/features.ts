@@ -25,6 +25,8 @@ import { equipItem, forceEquip, findBestEquipTarget } from "./combat";
 import { hasBuff } from "./persistent-spells";
 import { npcAt, applyKilledNPCs } from "./npc";
 import { displayNameFor } from "../data/items";
+import { effectiveStats } from "./effective-stats";
+import { perksForCharacter, perkModifiers } from "./perks";
 
 type Rng = () => number;
 
@@ -651,12 +653,29 @@ export function disarmChest(state: GameState, rng: Rng = Math.random): ChestActi
   const thieves = alive.filter((c) => c.class === "Thief");
   const disarmer =
     thieves.length > 0
-      ? thieves.reduce((a, b) => (a.level + a.stats.agi >= b.level + b.stats.agi ? a : b))
-      : alive.reduce((a, b) => (a.stats.luk >= b.stats.luk ? a : b));
+      ? thieves.reduce((a, b) => {
+          const aStats = effectiveStats(a, state.equipment[a.id], perksForCharacter(a));
+          const bStats = effectiveStats(b, state.equipment[b.id], perksForCharacter(b));
+          return a.level + aStats.agi + aStats.luk >= b.level + bStats.agi + bStats.luk ? a : b;
+        })
+      : alive.reduce((a, b) => {
+          const aStats = effectiveStats(a, state.equipment[a.id], perksForCharacter(a));
+          const bStats = effectiveStats(b, state.equipment[b.id], perksForCharacter(b));
+          return aStats.luk >= bStats.luk ? a : b;
+        });
+  const disarmerStats = effectiveStats(
+    disarmer,
+    state.equipment[disarmer.id],
+    perksForCharacter(disarmer)
+  );
+  const disarmerMods = perkModifiers(perksForCharacter(disarmer), disarmerStats);
   const chance =
     disarmer.class === "Thief"
-      ? Math.min(0.95, ((disarmer.level + disarmer.stats.agi) / 2 + 10) / 100)
-      : Math.min(0.95, (disarmer.stats.luk / 4 + 5) / 100);
+      ? Math.min(
+          0.95,
+          ((disarmer.level + disarmerStats.agi + disarmerStats.luk) / 3 + 10) / 100
+        ) + disarmerMods.trapDisarmBonusPercent
+      : Math.min(0.95, (disarmerStats.luk / 3 + 5) / 100) + disarmerMods.trapDisarmBonusPercent;
 
   if (rng() < chance) {
     state.pendingTrap = null;
@@ -712,11 +731,16 @@ function triggerTrapAndOpen(state: GameState, prefix: string, rng: Rng): ChestAc
     case "gas": {
       // 2d6 to every living member. Chest traps sting but never kill —
       // wipes belong to combat, so damage floors each member at 1 HP.
-      const dmg = 2 + Math.floor(rng() * 6) + Math.floor(rng() * 6);
+      const baseDmg = 2 + Math.floor(rng() * 6) + Math.floor(rng() * 6);
+      let totalDmg = 0;
       for (const c of aliveMembers(state)) {
+        const effStats = effectiveStats(c, state.equipment[c.id], perksForCharacter(c));
+        const mods = perkModifiers(perksForCharacter(c), effStats);
+        const dmg = Math.max(0, Math.round(baseDmg * mods.trapDamageMultiplier));
         c.hp = Math.max(1, c.hp - dmg);
+        totalDmg += dmg;
       }
-      effectMsg = `Gas! The party takes ${dmg} damage.`;
+      effectMsg = `Gas! The party takes ${totalDmg} damage.`;
       break;
     }
     case "poison": {
