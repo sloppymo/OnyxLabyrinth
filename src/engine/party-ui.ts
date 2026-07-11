@@ -99,11 +99,7 @@ export class PartyCreationController {
       return;
     }
 
-    // "D" on slot 0 with no confirmed characters → use default party.
-    if (this.slotIndex === 0 && this.drafts.length === 1 && lower === "d" && this.fieldIndex !== 0) {
-      this.useDefaultParty();
-      return;
-    }
+
 
     const field = FIELDS[this.fieldIndex];
 
@@ -339,17 +335,6 @@ export class PartyCreationController {
       `${this.drafts.filter((_, i) => i < this.slotIndex).length} confirmed</div>`
     );
 
-    // Quick Start card — only shown on slot 1 with no confirmed characters.
-    if (this.slotIndex === 0 && this.drafts.length === 1) {
-      lines.push(`<div class="quick-start-card">`);
-      lines.push(`<div class="qs-title">Quick Start — Press [D] for a ready-made party</div>`);
-      lines.push(`<div class="qs-roster">`);
-      lines.push(`Aria (Human Fighter) · Bram (Dwarf Fighter) · Coda (Hobbit Thief) · `);
-      lines.push(`Dell (Elf Mage) · Eve (Gnome Priest) · Fenn (Elf Mage)`);
-      lines.push(`</div>`);
-      lines.push(`</div>`);
-    }
-
     // Confirmed slots summary
     if (this.slotIndex > 0) {
       lines.push(`<div class="combat-section">Confirmed</div>`);
@@ -402,7 +387,6 @@ export class PartyCreationController {
     // Help
     lines.push(`<div class="town-help">`);
     lines.push(`[↑/↓] field · [←/→] cycle · type to name · [R] re-roll · [Enter] confirm · [Esc] back`);
-    if (this.slotIndex === 0) lines.push(` · [D] use default party`);
     lines.push(`</div>`);
 
     if (this.flash) {

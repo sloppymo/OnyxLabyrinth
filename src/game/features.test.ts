@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import {
   handleTileFeature,
+  handleEvent,
   inspectChest,
   disarmChest,
   openChest,
@@ -21,7 +22,7 @@ import {
   reconcileInventoryAfterCombat,
 } from "./combat";
 import { ITEMS_BY_ID } from "../data/items";
-import type { FloorDef } from "../data/floors";
+import type { FloorDef, EventDef } from "../data/floors";
 import type { GameState, TrapType } from "../types";
 
 /** Deterministic RNG from a fixed sequence (cycles). */
@@ -72,6 +73,56 @@ function makeState(trap?: TrapType): GameState {
     npcDisposition: {},
     killedNPCs: [],
     npcTradesDone: [],
+    eventsTriggered: {},
+    inDarkness: false,
+    inAntimagic: false,
+    lastDungeon: null,
+  };
+}
+
+function makeEventFloor(event: Omit<EventDef, "x" | "y">): FloorDef {
+  const grid = buildSolidGrid(6, 6);
+  carveRoom(grid, 1, 1, 4, 4);
+  setTile(grid, 2, 2, "event");
+  return {
+    id: 1,
+    name: "Test Vault",
+    width: 6,
+    height: 6,
+    grid,
+    startX: 1,
+    startY: 1,
+    encounterRate: 0,
+    encounterTable: [],
+    events: [{ x: 2, y: 2, ...event }],
+  };
+}
+
+function makeEventState(event: Omit<EventDef, "x" | "y">): GameState {
+  const party = createDefaultParty();
+  return {
+    mode: "dungeon",
+    floor: makeEventFloor(event),
+    player: { x: 2, y: 2, facing: 0 },
+    party,
+    equipment: Object.fromEntries(party.map((c) => [c.id, defaultLoadoutForCharacter(c)])),
+    explored: new Set<string>(),
+    exploredByFloor: {},
+    stepsSinceEncounter: 0,
+    dayCount: 1,
+    partyGold: 0,
+    inventory: [],
+    keys: [],
+    unlockedDoors: new Set<string>(),
+    lootTaken: {},
+    pendingTrap: null,
+    persistentBuffs: [],
+    swimSkill: {},
+    talkedToNPCs: [],
+    npcDisposition: {},
+    killedNPCs: [],
+    npcTradesDone: [],
+    eventsTriggered: {},
     inDarkness: false,
     inAntimagic: false,
     lastDungeon: null,
@@ -388,5 +439,59 @@ describe("water tiles", () => {
     for (const c of state.party) c.status.push("poison");
     handleTileFeature(state, seqRng([0]));
     for (const c of state.party) expect(c.status).not.toContain("poison");
+  });
+});
+
+// --- Floor events -------------------------------------------------------------
+
+describe("handleEvent", () => {
+  it("displays a message event and clears the tile", () => {
+    const state = makeEventState({ kind: "message", message: "A whisper warns you back." });
+    const result = handleEvent(state);
+    expect(result?.message).toBe("A whisper warns you back.");
+    expect(state.floor.grid[2][2].tile).toBeUndefined();
+  });
+
+  it("damage events hurt every living party member but floor at 1 HP", () => {
+    const state = makeEventState({ kind: "damage", message: "Darts fire from the wall.", power: 5 });
+    state.party[0].hp = 3;
+    const result = handleEvent(state);
+    expect(result?.message).toContain("Darts fire from the wall.");
+    expect(state.party[0].hp).toBe(1); // floored
+    expect(state.party[1].hp).toBe(state.party[1].maxHp - 5);
+    expect(state.floor.grid[2][2].tile).toBeUndefined();
+  });
+
+  it("heal events restore HP and clear the tile", () => {
+    const state = makeEventState({ kind: "heal", message: "A soft light mends wounds.", power: 4 });
+    state.party[0].hp = 3;
+    const result = handleEvent(state);
+    expect(result?.message).toContain("A soft light mends wounds.");
+    expect(state.party[0].hp).toBe(7);
+    expect(state.floor.grid[2][2].tile).toBeUndefined();
+  });
+
+  it("reward events add the item to inventory and clear the tile", () => {
+    const state = makeEventState({ kind: "reward", message: "A corpse clutches a trinket.", itemId: "holy-symbol" });
+    const result = handleEvent(state);
+    expect(result?.message).toBe("A corpse clutches a trinket.");
+    expect(state.inventory.map((e) => e.itemId)).toContain("holy-symbol");
+    expect(state.floor.grid[2][2].tile).toBeUndefined();
+  });
+
+  it("once events are tracked and skipped on subsequent calls", () => {
+    const state = makeEventState({ kind: "message", message: "The warning repeats." });
+    handleEvent(state);
+    const second = handleEvent(state);
+    expect(second).toBeNull();
+    expect(state.eventsTriggered[1].has("2,2")).toBe(true);
+  });
+
+  it("repeatable events fire every time", () => {
+    const state = makeEventState({ kind: "heal", message: "A warm glow lingers.", power: 2, once: false });
+    const first = handleEvent(state);
+    const second = handleEvent(state);
+    expect(first?.message).toBe(second?.message);
+    expect(state.floor.grid[2][2].tile).toBe("event");
   });
 });

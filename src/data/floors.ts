@@ -70,6 +70,22 @@ export interface FloorDef {
   // Dungeon NPCs (feature "npc"). Killed NPCs' tiles are cleared on floor
   // load via GameState.killedNPCs.
   npcs?: NPCDef[];
+  // Scripted floor events (feature "event"): one-time or repeatable message/
+  // damage/heal/reward triggers. See game/features.ts handleEvent.
+  events?: EventDef[];
+}
+
+export interface EventDef {
+  x: number;
+  y: number;
+  kind: "message" | "damage" | "heal" | "reward";
+  message: string;
+  /** For "damage"/"heal" kinds: HP applied to every living party member. */
+  power?: number;
+  /** For "reward" kind: item id added to the party's inventory. */
+  itemId?: string;
+  /** Whether the event fires only once (default true). */
+  once?: boolean;
 }
 
 export interface WaterDef {
@@ -195,10 +211,11 @@ function floor1(): FloorDef {
   // Maro, a stranded swordsman, shelters in the crypt's south-east corner.
   setTile(grid, 3, 6, "npc");
 
-  // EVENT: (5,7) — message scrawled above the entry arch: "THE WATER REMEMBERS".
-  // EVENT: (5,4) — trap: collapsing flagstone triggers a dart volley (4 dmg to front rank).
-  // EVENT: (1,4) — broken sarcophagus; adventurer's remains clutch a rusted holy symbol.
-  // EVENT: (4,1) — defiled altar in the sanctum; praying here could restore a little HP.
+  // Scripted events.
+  setTile(grid, 5, 7, "event");
+  setTile(grid, 5, 4, "event");
+  setTile(grid, 1, 4, "event");
+  setTile(grid, 4, 1, "event");
 
   return {
     id: 1,
@@ -242,6 +259,12 @@ function floor1(): FloorDef {
         rewardItemId: "long-sword+1",
         combatEnemyIds: ["samurai"],
       },
+    ],
+    events: [
+      { x: 5, y: 7, kind: "message", message: "Above the arch, words are scrawled in something black: THE WATER REMEMBERS." },
+      { x: 5, y: 4, kind: "damage", message: "A flagstone gives way and darts whistle through the corridor.", power: 4 },
+      { x: 1, y: 4, kind: "reward", message: "A corpse clutches a rusted holy symbol. The dead have no use for it now.", itemId: "holy-symbol" },
+      { x: 4, y: 1, kind: "heal", message: "You kneel at the defiled altar. Something hungry listens — but it gives a little back.", power: 5 },
     ],
   };
 }
@@ -310,11 +333,12 @@ function floor2(): FloorDef {
   // Vestra, an unbound scribe, hides deep in the west stacks.
   setTile(grid, 1, 1, "npc");
 
-  // EVENT: (8,2) — trap: falling bookcase in the dark corridor (6 dmg, party-wide).
-  // EVENT: (7,10) — trap: glyph of warding on the hall's south threshold (silence 1 fight).
-  // EVENT: (3,2) — the shelves whisper; listening reveals a hint about the forbidden wing.
-  // EVENT: (11,4) — the librarian's remains slumped over a lectern; journal names the forge below.
-  // EVENT: (2,9) — message daubed on the wall: "DO NOT FEED THE BOOKS".
+  // Scripted events.
+  setTile(grid, 8, 2, "event");
+  setTile(grid, 7, 10, "event");
+  setTile(grid, 3, 2, "event");
+  setTile(grid, 11, 4, "event");
+  setTile(grid, 2, 9, "event");
 
   return {
     id: 2,
@@ -353,6 +377,13 @@ function floor2(): FloorDef {
         trades: [{ giveItemId: "antidote", receiveItemId: "robe+2", once: true }],
         combatEnemyIds: ["lab-assistant", "animated-armor"],
       },
+    ],
+    events: [
+      { x: 8, y: 2, kind: "damage", message: "A bookcase groans and topples into the dark corridor.", power: 6 },
+      { x: 7, y: 10, kind: "message", message: "A glyph flares on the threshold. For a moment your throat is too dry to speak — but it passes." },
+      { x: 3, y: 2, kind: "message", message: "The shelves whisper. One voice is clear: 'Forbidden wing… key of lexicon… furnace below.'" },
+      { x: 11, y: 4, kind: "message", message: "The librarian's journal names the forge below and the key that opens it. You leave the body where it fell." },
+      { x: 2, y: 9, kind: "message", message: "Something is daubed on the wall: DO NOT FEED THE BOOKS." },
     ],
   };
 }
@@ -434,12 +465,13 @@ function floor3(): FloorDef {
   // Kazeharu, a masterless duelist, keeps vigil in the cinder hall.
   setTile(grid, 3, 9, "npc");
 
-  // EVENT: (8,2) — trap: pressure plate in the ember gallery vents a flame jet (8 fire dmg).
-  // EVENT: (13,10) — trap: collapsing iron grate over a magma channel (6 dmg + burn).
-  // EVENT: (6,11) — trap: the statue beside the Grand Forge door animates when the lock is tried.
-  // EVENT: (7,7) — anvil altar in the foundry; offering a weapon could temper it (+1 flavor).
-  // EVENT: (14,9) — scorched remains of a smith fused to the wall, hammer still raised.
-  // EVENT: (2,6) — message hammered into a bronze plate: "THE ECHO WEARS HIS FACE".
+  // Scripted events.
+  setTile(grid, 8, 2, "event");
+  setTile(grid, 13, 10, "event");
+  setTile(grid, 6, 11, "event");
+  setTile(grid, 7, 7, "event");
+  setTile(grid, 14, 9, "event");
+  setTile(grid, 2, 6, "event");
 
   return {
     id: 3,
@@ -483,6 +515,14 @@ function floor3(): FloorDef {
         combatEnemyIds: ["ronin"],
       },
     ],
+    events: [
+      { x: 8, y: 2, kind: "damage", message: "A pressure plate clicks and a flame jet roars from the wall.", power: 8 },
+      { x: 13, y: 10, kind: "damage", message: "An iron grate gives way over a magma channel. Heat blisters your skin.", power: 6 },
+      { x: 6, y: 11, kind: "message", message: "The statue beside the Grand Forge door twitches as you pass. It will animate when the lock is tried." },
+      { x: 7, y: 7, kind: "heal", message: "You rest your weapon on the anvil altar. The forge-forged steel hums, and a little warmth returns.", power: 6 },
+      { x: 14, y: 9, kind: "message", message: "A smith is fused to the wall, hammer still raised as if warning you back." },
+      { x: 2, y: 6, kind: "message", message: "Hammered into a bronze plate: THE ECHO WEARS HIS FACE." },
+    ],
   };
 }
 
@@ -521,5 +561,8 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     // NPC defs are static content (never mutated at runtime); killed NPCs
     // are tracked in GameState and their tiles cleared on floor load.
     npcs: floor.npcs ? [...floor.npcs] : undefined,
+    // Event defs are static content; fired-once tracking lives in
+    // GameState.eventsTriggered, not on the def itself.
+    events: floor.events ? [...floor.events] : undefined,
   };
 }

@@ -16,7 +16,7 @@ import {
   type EnemyInstance,
   type Rng,
 } from "./combat";
-import { createCharacter } from "./party";
+import { createCharacter, type CharacterClass } from "./party";
 import type { EnemyDef } from "../data/enemies";
 import { ALL_SPELLS } from "../data/spells";
 
@@ -61,7 +61,7 @@ function makeEnemy(
   };
 }
 
-function makeParty(count = 2) {
+function makeParty(count = 2, classes?: CharacterClass[]) {
   const party = [];
   for (let i = 0; i < count; i++) {
     const c = createCharacter(
@@ -69,7 +69,7 @@ function makeParty(count = 2) {
       `Char${i}`,
       "Human",
       "Neutral",
-      i === 0 ? "Fighter" : "Mage",
+      classes?.[i] ?? (i === 0 ? "Fighter" : "Mage"),
       i
     );
     party.push(c);
@@ -77,9 +77,12 @@ function makeParty(count = 2) {
   return party;
 }
 
-function makeState(enemies: EnemyInstance[] = [makeEnemy("rat-0")]): CombatState {
+function makeState(
+  enemies: EnemyInstance[] = [makeEnemy("rat-0")],
+  classes?: CharacterClass[]
+): CombatState {
   return createCombatState(
-    makeParty(),
+    makeParty(2, classes),
     { front: enemies, back: [] },
     false,
     SPELLS_BY_ID
@@ -322,6 +325,7 @@ describe("resolvePlayerTurn", () => {
   it("flee failure converts to defend", () => {
     const state = makeState();
     const actor = state.party[0];
+    actor.stats.agi = 10; // keep base flee chance at 0.95 so 0.99 fails
     const s = resolvePlayerTurn(
       state,
       { kind: "flee", actorId: actor.id },
@@ -575,5 +579,103 @@ describe("audit fixes: termination and queueing", () => {
     expect(enqueueNewAllies(next, 1, state)).toEqual(next);
     // Input not mutated.
     expect(queue).toHaveLength(3);
+  });
+});
+
+// --- Audit fixes (2026-07-10) -------------------------------------------------
+// Cover unexercised playtest paths and close the buff TODO.
+
+describe("audit fixes: unexercised combat paths", () => {
+  it("attack against an evasive enemy emits a miss event and deals no damage", () => {
+    const state = makeState([makeEnemy("rat-0", { special: [{ kind: "evasive" }] })]);
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: "char-0", targetInstanceId: "rat-0" },
+      seqRng([0.1]) // below 0.2 evade threshold
+    );
+    const enemy = s.enemies.front.find((e) => e.instanceId === "rat-0");
+    expect(enemy?.currentHp).toBe(enemy?.hp);
+    const miss = s.events.find((e) => e?.type === "miss");
+    expect(miss).toBeDefined();
+    if (miss?.type === "miss") expect(miss.reason).toBe("evade");
+  });
+
+  it("enemy poisonOnHit inflicts poison on the struck party member", () => {
+    const state = makeState([makeEnemy("rat-0", { special: [{ kind: "poisonOnHit" }] })]);
+    const s = resolveEnemyTurn(state, "rat-0", seqRng([0.9]));
+    const target = s.party.find((c) => c.hp < c.maxHp);
+    expect(target).toBeDefined();
+    expect(target!.status.includes("poison")).toBe(true);
+    expect(s.log.some((m) => m.includes("poisoned"))).toBe(true);
+  });
+
+  it("buff spell adds armorBuff and emits a buff spellEffect", () => {
+    const state = makeState();
+    const mage = state.party.find((c) => c.class === "Mage");
+    if (!mage) throw new Error("No Mage in party");
+    mage.knownSpellIds = ["mage-mogref"];
+    mage.sp = 99;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: mage.id, spellId: "mage-mogref" },
+      seqRng([0.5])
+    );
+    expect(s.armorBuffs[mage.id]).toBe(3);
+    const buff = s.events.find((e) => e?.type === "spellEffect" && e.isBuff);
+    expect(buff).toBeDefined();
+    if (buff?.type === "spellEffect") expect(buff.spellId).toBe("mage-mogref");
+  });
+
+  it("buff spell uses the effect's power when provided", () => {
+    const state = makeState();
+    const mage = state.party.find((c) => c.class === "Mage");
+    if (!mage) throw new Error("No Mage in party");
+    state.spells["test-buff"] = {
+      id: "test-buff",
+      name: "Test Buff",
+      class: "Mage",
+      tier: 1,
+      spCost: 1,
+      target: "self",
+      effect: { kind: "buff", stat: "armor", power: 7 },
+      description: "test",
+    };
+    mage.knownSpellIds = ["test-buff"];
+    mage.sp = 99;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: mage.id, spellId: "test-buff" },
+      seqRng([0.5])
+    );
+    expect(s.armorBuffs[mage.id]).toBe(7);
+  });
+
+  it("Thief hide gives hidden status and ambush emits an ambush event", () => {
+    const state = makeState([makeEnemy("rat-0")], ["Thief", "Mage"]);
+    const thief = state.party.find((c) => c.class === "Thief");
+    if (!thief) throw new Error("No Thief in party");
+
+    const s1 = resolvePlayerTurn(
+      state,
+      { kind: "hide", actorId: thief.id },
+      seqRng([0.5])
+    );
+    expect(s1.party.find((c) => c.id === thief.id)?.status.includes("hidden")).toBe(true);
+
+    const s2 = resolvePlayerTurn(
+      s1,
+      { kind: "ambush", actorId: thief.id, targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+    const updatedThief = s2.party.find((c) => c.id === thief.id);
+    expect(updatedThief?.status.includes("hidden")).toBe(false);
+    expect(updatedThief?.status.includes("exposed")).toBe(true);
+    const ambush = s2.events.find((e) => e?.type === "ambush");
+    expect(ambush).toBeDefined();
+    if (ambush?.type === "ambush") {
+      expect(ambush.actorId).toBe(thief.id);
+      expect(ambush.targetId).toBe("rat-0");
+      expect(ambush.damage).toBeGreaterThan(0);
+    }
   });
 });

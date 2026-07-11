@@ -39,7 +39,8 @@ export type TileFeature =
   | "treasure"
   | "antimagic"
   | "water"
-  | "npc";
+  | "npc"
+  | "event";
 
 export type Grid = Cell[][]; // grid[y][x]
 
@@ -143,6 +144,9 @@ export interface GameState {
   // Which treasures have been looted, keyed by floor ID. Each value is a Set of
   // "x,y" position strings. This keeps the global FLOORS definitions immutable.
   lootTaken: Record<number, Set<string>>;
+  // One-time floor events already triggered, keyed by floor ID. Each value is a
+  // Set of "x,y" position strings. Keeps the global FLOORS definitions immutable.
+  eventsTriggered: Record<number, Set<string>>;
   // Active party-wide spell buffs (light, levitation). Ticked per step,
   // cleared by camping. Serialized in saves.
   persistentBuffs: PersistentBuff[];

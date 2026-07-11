@@ -18,7 +18,7 @@
 
 import type { Facing, GameState, TrapType } from "../types";
 import type { Character } from "./party";
-import { FLOORS, cloneFloor } from "../data/floors";
+import { FLOORS, cloneFloor, type EventDef } from "../data/floors";
 import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
 import { equipItem, forceEquip, findBestEquipTarget } from "./combat";
@@ -79,6 +79,8 @@ export function handleTileFeature(state: GameState, rng: Rng = Math.random): Fea
       return handleTreasure(state);
     case "water":
       return handleWater(state, rng);
+    case "event":
+      return handleEvent(state);
     case "npc": {
       const npc = npcAt(state, player.x, player.y);
       if (!npc) {
@@ -325,6 +327,7 @@ export function transitionToFloor(
   const floorCopy = cloneFloor(newFloor);
   applyUnlockedDoors(floorCopy, state.unlockedDoors);
   applyLootedTreasures(floorCopy, state.lootTaken);
+  applyTriggeredEvents(floorCopy, state.eventsTriggered);
   applyKilledNPCs(floorCopy, state.killedNPCs);
   state.floor = floorCopy;
   state.player.x = x;
@@ -374,6 +377,22 @@ function applyLootedTreasures(
     if (floor.grid[y]?.[x]) {
       floor.grid[y][x].tile = undefined;
     }
+  }
+}
+
+/** Apply previously triggered one-time events to a floor copy. */
+function applyTriggeredEvents(
+  floor: (typeof FLOORS)[number],
+  eventsTriggered: Record<number, Set<string>>
+): void {
+  const triggered = eventsTriggered[floor.id];
+  if (!triggered) return;
+  for (const pos of triggered) {
+    const [xStr, yStr] = pos.split(",");
+    const x = parseInt(xStr);
+    const y = parseInt(yStr);
+    const cell = floor.grid[y]?.[x];
+    if (cell && cell.tile === "event") cell.tile = undefined;
   }
 }
 
@@ -451,6 +470,112 @@ function handleWater(state: GameState, rng: Rng): FeatureResult {
   }
 
   return { message, ...noEvent };
+}
+
+// ---------------------------------------------------------------------------
+// Floor events (scripted traps, messages, altars, rewards)
+// ---------------------------------------------------------------------------
+
+function eventKey(x: number, y: number): string {
+  return `${x},${y}`;
+}
+
+function markEventTriggered(state: GameState, x: number, y: number): void {
+  const floorSet = state.eventsTriggered[state.floor.id] ?? new Set<string>();
+  floorSet.add(eventKey(x, y));
+  state.eventsTriggered[state.floor.id] = floorSet;
+}
+
+function isEventTriggered(state: GameState, x: number, y: number): boolean {
+  return state.eventsTriggered[state.floor.id]?.has(eventKey(x, y)) ?? false;
+}
+
+export function handleEvent(state: GameState): FeatureResult | null {
+  const { floor, player } = state;
+  const cell = floor.grid[player.y]?.[player.x];
+  if (!cell || cell.tile !== "event") return null;
+
+  const event = floor.events?.find((e) => e.x === player.x && e.y === player.y);
+  if (!event) {
+    cell.tile = undefined;
+    return null;
+  }
+
+  const once = event.once ?? true;
+  if (once && isEventTriggered(state, player.x, player.y)) {
+    cell.tile = undefined;
+    return null;
+  }
+
+  state.inDarkness = false;
+  state.inAntimagic = false;
+
+  const result = applyEvent(state, event);
+
+  if (once) {
+    markEventTriggered(state, player.x, player.y);
+    cell.tile = undefined;
+  }
+
+  return result;
+}
+
+function applyEvent(state: GameState, event: EventDef): FeatureResult {
+  const noEvent = { changedFloor: false, consumed: event.once ?? true };
+  switch (event.kind) {
+    case "message":
+      return { message: event.message, ...noEvent };
+    case "damage": {
+      const members = aliveMembers(state);
+      const power = event.power ?? 0;
+      const names: string[] = [];
+      let total = 0;
+      for (const c of members) {
+        const before = c.hp;
+        c.hp = Math.max(1, c.hp - power);
+        const actual = before - c.hp;
+        if (actual > 0) {
+          names.push(c.name);
+          total += actual;
+        }
+      }
+      const dmgMsg =
+        names.length === 0
+          ? ""
+          : ` ${names.join(", ")} ${names.length === 1 ? "takes" : "take"} ${total} damage.`;
+      return { message: `${event.message}${dmgMsg}`, ...noEvent };
+    }
+    case "heal": {
+      const members = aliveMembers(state);
+      const power = event.power ?? 0;
+      const names: string[] = [];
+      let total = 0;
+      for (const c of members) {
+        const before = c.hp;
+        c.hp = Math.min(c.maxHp, c.hp + power);
+        const actual = c.hp - before;
+        if (actual > 0) {
+          names.push(c.name);
+          total += actual;
+        }
+      }
+      const healMsg =
+        names.length === 0
+          ? ""
+          : ` ${names.join(", ")} ${names.length === 1 ? "recovers" : "recover"} ${total} HP.`;
+      return { message: `${event.message}${healMsg}`, ...noEvent };
+    }
+    case "reward": {
+      const itemId = event.itemId ?? "";
+      const item = ITEMS_BY_ID[itemId];
+      if (item) {
+        state.inventory.push({ itemId, identified: true });
+      }
+      return { message: event.message, ...noEvent };
+    }
+    default:
+      return { message: event.message, ...noEvent };
+  }
 }
 
 // ---------------------------------------------------------------------------

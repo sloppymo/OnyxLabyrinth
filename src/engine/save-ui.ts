@@ -19,7 +19,7 @@
  * the player loads a save, or onClose() when they dismiss the menu.
  */
 
-import type { GameState } from "../types";
+import type { GameMode, GameState } from "../types";
 import {
   getAllSlotMetas,
   saveToSlot,
@@ -36,6 +36,10 @@ export interface SaveControllerOptions {
   state: GameState;
   onLoaded: (state: GameState) => void;
   onClose: () => void;
+  /** Mode to write into a save when the controller is running in an overlay
+   *  (title / party_creation). Saves from the save menu should resume the
+   *  mode that was active before the menu opened, not the overlay mode. */
+  modeBeforeSave?: GameMode;
 }
 
 export class SaveController {
@@ -43,6 +47,7 @@ export class SaveController {
   private state: GameState;
   private onLoaded: (state: GameState) => void;
   private onClose: () => void;
+  private modeBeforeSave: GameMode;
   private selectedIndex = 0;
   private phase: MenuPhase = "browsing";
   private metas: SaveSlotMeta[];
@@ -53,6 +58,7 @@ export class SaveController {
     this.state = opts.state;
     this.onLoaded = opts.onLoaded;
     this.onClose = opts.onClose;
+    this.modeBeforeSave = opts.modeBeforeSave ?? "dungeon";
     this.metas = getAllSlotMetas();
     this.panel.style.display = "block";
     this.render();
@@ -136,7 +142,14 @@ export class SaveController {
   }
 
   private doSave(): void {
-    const ok = saveToSlot(this.state, this.selectedIndex);
+    // When saving from an overlay mode, write the actual underlying mode so
+    // the save can be resumed later.
+    const saveMode =
+      this.state.mode === "title" || this.state.mode === "party_creation"
+        ? this.modeBeforeSave
+        : this.state.mode;
+    const saveState = { ...this.state, mode: saveMode };
+    const ok = saveToSlot(saveState, this.selectedIndex);
     if (ok) {
       this.metas = getAllSlotMetas();
       this.phase = "browsing";

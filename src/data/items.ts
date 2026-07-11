@@ -157,7 +157,14 @@ export const RING_OF_WATER_WALKING: ItemDef = {
   price: 500,
 };
 
-export const ALL_TRINKETS: ItemDef[] = [RING_OF_WATER_WALKING];
+export const HOLY_SYMBOL: ItemDef = {
+  id: "holy-symbol",
+  name: "Rusted Holy Symbol",
+  type: "trinket",
+  price: 0,
+};
+
+export const ALL_TRINKETS: ItemDef[] = [RING_OF_WATER_WALKING, HOLY_SYMBOL];
 
 // Cursed gear — masquerades as chest loot, clamps on when picked up.
 export const CURSED_BLADE: ItemDef = {

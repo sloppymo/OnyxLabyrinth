@@ -34,6 +34,7 @@ export function createGameState(floor: FloorDef): GameState {
     keys: [],
     unlockedDoors: new Set<string>(),
     lootTaken: {},
+    eventsTriggered: {},
     pendingTrap: null,
     persistentBuffs: [],
     swimSkill: {},

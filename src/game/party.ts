@@ -61,6 +61,7 @@ export interface Character {
   formationSlot: number; // 0-5, where 0-2 are front row and 3-5 are back row
   status: StatusEffect[];
   knownSpellIds: string[]; // spell IDs this character can cast
+  perkIds: string[]; // class perks chosen at levels 3/6/9/12 (see game/perks.ts)
 }
 
 export interface RaceDef {
@@ -265,6 +266,7 @@ export function createCharacter(
     formationSlot: slot,
     status: [],
     knownSpellIds: [],
+    perkIds: [],
   };
 }
 
