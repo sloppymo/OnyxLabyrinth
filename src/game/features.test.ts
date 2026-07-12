@@ -428,6 +428,14 @@ describe("water tiles", () => {
     expect(state.swimSkill[state.party[1].id]).toBe(1); // learning from failure
   });
 
+  it("applies a wet status to characters who take water damage", () => {
+    const state = makeWaterState(1);
+    handleTileFeature(state, seqRng([0.99]));
+    for (const c of state.party) {
+      expect(c.status).toContain("wet");
+    }
+  });
+
   it("levitation crosses without a check", () => {
     const state = makeWaterState(4);
     state.persistentBuffs.push({ kind: "levitation", remainingSteps: 10 });

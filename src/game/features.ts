@@ -450,6 +450,7 @@ function handleWater(state: GameState, rng: Rng): FeatureResult {
     } else {
       const dmg = depth * (1 + Math.floor(rng() * 3));
       c.hp = Math.max(1, c.hp - dmg);
+      if (!c.status.includes("wet")) c.status.push("wet");
       totalDamage += dmg;
       strugglers.push(c.name);
       state.swimSkill[c.id] = Math.min(100, skill + Math.floor(rng() * 2));
