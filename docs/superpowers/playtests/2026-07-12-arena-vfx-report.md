@@ -5,6 +5,8 @@
 **Build:** `main@45a8249`  
 **Preview:** `npx vite preview --port 5176 --base /OnyxLabyrinth/` (served on `localhost:5177`)
 
+> **Update:** after this report was written, every remaining downloaded asset from `~/Downloads/Spell Effects/` was copied into `public/assets/effects/` and registered in `src/engine/effect-sprite-cache.ts` (see Appendix). The game still ships no spells that use water/wind/earth/plant elements, but the sprites are now available for those future spells.
+
 ---
 
 ## Summary
@@ -16,7 +18,7 @@
 | Visual spot checks performed | Spark, Ember, Frostbite, basic melee attack |
 | New downloaded sprites actually observed in-game | `px_ice_lance` (Frostbite), `fz_explosion` / `px_fireball` (Ember), `mp_` family inferred from static wiring |
 | Critical visual defects | None observed |
-| Unused downloaded assets | ~80% of the downloaded files (water/wind/earth/plant/black-white variants) — expected, no matching spells |
+| Unused downloaded assets | Previously ~80%; now all are incorporated and registered, awaiting future spells |
 
 **Overall verdict:** the new VFX integration is wired correctly and the few spells I could exercise visually rendered without black boxes or missing textures. The main remaining gap is coverage: many downloaded sprites have no corresponding spell/element in the current design.
 
@@ -156,9 +158,9 @@ I entered Arena mode and fought the first wave (`Slime ×2`). I exercised a subs
 
 ### Gaps / Observations
 
-1. **Many downloaded assets are unused by design.** Water, wind, earth, and plant sprites have no corresponding spells. This is expected, not a bug, but they are dead weight in the repo unless future spells use them.
-2. **`px_firebomb` is registered but unused.** The Pixelart fire burst was imported but `fz_explosion` and `mp_fire_bomb` were chosen instead. Could be removed from `EFFECT_STRIPS` to reduce confusion, or swapped in for lower-tier fire bursts.
-3. **`ELEMENT_STYLES` still uses old fallbacks.** Spells without a `SPELL_OVERRIDES` entry (e.g., any new cold/lightning spell added later) fall back to `wizard_attack2`/`ice_burst` or `lightning_blast`/`lightning_energy`. These are functional but generic.
+1. **All downloaded assets are now incorporated and registered.** Water, wind, earth, and plant sprites still have no corresponding spells, but they are no longer dead weight — they can be wired into `SPELL_OVERRIDES` as soon as those spells are designed.
+2. **`px_firebomb` is registered but unused.** The Pixelart fire burst was imported but `fz_explosion` and `mp_fire_bomb` were chosen instead. Could be swapped in for a lower-tier fire burst, or left as-is.
+3. **`ELEMENT_STYLES` still uses old fallbacks.** Spells without a `SPELL_OVERRIDES` entry (e.g., any new water/earth/wind spell added later) fall back to generic placeholders. When new element spells are added, give them `SPELL_OVERRIDES` entries using the newly registered strips.
 4. **Technique spot check was limited.** I confirmed melee attacks resolve and the scene stays intact, but I did not capture distinct technique banners/VFX for every class. The static code shows techniques use `techniqueNameFor` banner + actor cast anim + status/buff VFX.
 5. **Timing is hard to capture.** Visual effects are brief; manual/automated screenshots easily miss the peak frame. A dedicated test harness that pauses on `technique`/`spellHit` events would make auditing faster.
 
@@ -182,6 +184,50 @@ I entered Arena mode and fought the first wave (`Slime ×2`). I exercised a subs
 5. **Run a second pass with a high-level save** (or edit Arena starting level) so group spells and techniques can be exercised before enemies die.
 
 ---
+
+## Appendix: newly incorporated strips (post-report)
+
+All of these are registered in `src/engine/effect-sprite-cache.ts` and have matching PNGs in `public/assets/effects/`.
+
+### Pixelart Spells — future candidates
+
+| Strip | File | Frames | Size |
+|-------|------|--------|------|
+| `px_arcane_bolt` | `pixelart-arcane-bolt.png` | 6 | 16×16 |
+| `px_black_white_ray` | `pixelart-black-white-ray.png` | 8 | 16×16 |
+| `px_black_white_sparks` | `pixelart-black-white-sparks.png` | 6 | 16×16 |
+| `px_darkness_bolt` | `pixelart-darkness-bolt.png` | 6 | 16×16 |
+| `px_magic_orb` | `pixelart-magic-orb.png` | 6 | 16×16 |
+| `px_magic_ray` | `pixelart-magic-ray.png` | 8 | 16×16 |
+| `px_plant_missle` | `pixelart-plant-missle.png` | 6 | 16×16 |
+| `px_pure_bolt_2` | `pixelart-pure-bolt-2.png` | 6 | 16×16 |
+| `px_rock_sling` | `pixelart-rock-sling.png` | 1 | 16×16 |
+| `px_splash` | `pixelart-splash.png` | 6 | 32×32 |
+| `px_water_blast` | `pixelart-water-blast.png` | 6 | 16×16 |
+| `px_water_bolt` | `pixelart-water-bolt.png` | 6 | 16×16 |
+| `px_water_orb` | `pixelart-water-orb.png` | 6 | 16×16 |
+| `px_wind_bolt` | `pixelart-wind-bolt.png` | 6 | 16×16 |
+
+### Magic Pack 9 — full individual-frame variants
+
+| Strip | File | Frames | Size |
+|-------|------|--------|------|
+| `mp_fire_bomb_full` | `magicpack-fire-bomb-full.png` | 15 | 64×64 |
+| `mp_lightning_full` | `magicpack-lightning-full.png` | 11 | 64×128 |
+| `mp_spark_full` | `magicpack-spark-full.png` | 8 | 32×32 |
+| `mp_dark_bolt_full` | `magicpack-dark-bolt-full.png` | 12 | 64×88 |
+
+### Foozle Pixel Magic Effects — future element candidates
+
+| Strip | File | Frames | Size |
+|-------|------|--------|------|
+| `fz_earth_spike` | `foozle-earth_spike.png` | 9 | 64×64 |
+| `fz_rocks` | `foozle-rocks.png` | 10 | 64×64 |
+| `fz_water` | `foozle-water.png` | 10 | 64×64 |
+| `fz_water_geyser` | `foozle-water_geyser.png` | 13 | 64×64 |
+| `fz_wind` | `foozle-wind.png` | 10 | 64×64 |
+| `fz_tornado` | `foozle-tornado.png` | 9 | 64×64 |
+| `fz_icons` | `foozle-icons.png` | 10 | 32×32 |
 
 ## Screenshots
 

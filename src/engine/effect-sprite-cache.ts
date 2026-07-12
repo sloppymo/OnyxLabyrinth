@@ -317,12 +317,32 @@ const EFFECT_STRIPS: Record<string, EffectStrip> = {
   px_shield: { name: "px_shield", url: "pixelart-shield.png", frameWidth: 48, frameHeight: 48, frameCount: 6, fps: 12 },
   px_magic_sparks: { name: "px_magic_sparks", url: "pixelart-magic-sparks.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
   px_darkness_orb: { name: "px_darkness_orb", url: "pixelart-darkness-orb.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  // Future-spell candidates
+  px_arcane_bolt: { name: "px_arcane_bolt", url: "pixelart-arcane-bolt.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_black_white_ray: { name: "px_black_white_ray", url: "pixelart-black-white-ray.png", frameWidth: 16, frameHeight: 16, frameCount: 8, fps: 12 },
+  px_black_white_sparks: { name: "px_black_white_sparks", url: "pixelart-black-white-sparks.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_darkness_bolt: { name: "px_darkness_bolt", url: "pixelart-darkness-bolt.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_magic_orb: { name: "px_magic_orb", url: "pixelart-magic-orb.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_magic_ray: { name: "px_magic_ray", url: "pixelart-magic-ray.png", frameWidth: 16, frameHeight: 16, frameCount: 8, fps: 12 },
+  px_plant_missle: { name: "px_plant_missle", url: "pixelart-plant-missle.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_pure_bolt_2: { name: "px_pure_bolt_2", url: "pixelart-pure-bolt-2.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_rock_sling: { name: "px_rock_sling", url: "pixelart-rock-sling.png", frameWidth: 16, frameHeight: 16, frameCount: 1, fps: 0 },
+  px_splash: { name: "px_splash", url: "pixelart-splash.png", frameWidth: 32, frameHeight: 32, frameCount: 6, fps: 12 },
+  px_water_blast: { name: "px_water_blast", url: "pixelart-water-blast.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_water_bolt: { name: "px_water_bolt", url: "pixelart-water-bolt.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_water_orb: { name: "px_water_orb", url: "pixelart-water-orb.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_wind_bolt: { name: "px_wind_bolt", url: "pixelart-wind-bolt.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
 
   // --- Downloaded pack: Magic Pack 9 (ansimuz, royalty-free) — NON-SQUARE frames ---
   mp_fire_bomb: { name: "mp_fire_bomb", url: "magicpack-fire-bomb.png", frameWidth: 64, frameHeight: 64, frameCount: 14, fps: 14 },
   mp_lightning: { name: "mp_lightning", url: "magicpack-lightning.png", frameWidth: 64, frameHeight: 128, frameCount: 10, fps: 14 },
   mp_spark: { name: "mp_spark", url: "magicpack-spark.png", frameWidth: 32, frameHeight: 32, frameCount: 7, fps: 14 },
   mp_dark_bolt: { name: "mp_dark_bolt", url: "magicpack-dark-bolt.png", frameWidth: 64, frameHeight: 88, frameCount: 11, fps: 14 },
+  // Full individual-frame variants (one extra frame each)
+  mp_fire_bomb_full: { name: "mp_fire_bomb_full", url: "magicpack-fire-bomb-full.png", frameWidth: 64, frameHeight: 64, frameCount: 15, fps: 15 },
+  mp_lightning_full: { name: "mp_lightning_full", url: "magicpack-lightning-full.png", frameWidth: 64, frameHeight: 128, frameCount: 11, fps: 15 },
+  mp_spark_full: { name: "mp_spark_full", url: "magicpack-spark-full.png", frameWidth: 32, frameHeight: 32, frameCount: 8, fps: 16 },
+  mp_dark_bolt_full: { name: "mp_dark_bolt_full", url: "magicpack-dark-bolt-full.png", frameWidth: 64, frameHeight: 88, frameCount: 12, fps: 15 },
 
   // --- Downloaded pack: Foozle Pixel Magic Effects (CC0) — 64x64 strips ---
   fz_fireball: { name: "fz_fireball", url: "foozle-fireball.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
@@ -331,6 +351,14 @@ const EFFECT_STRIPS: Record<string, EffectStrip> = {
   fz_portal: { name: "fz_portal", url: "foozle-portal.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
   fz_portal_gold: { name: "fz_portal_gold", url: "foozle-portal-gold.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
   fz_portal_orange: { name: "fz_portal_orange", url: "foozle-portal-orange.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+  // Future-element candidates
+  fz_earth_spike: { name: "fz_earth_spike", url: "foozle-earth_spike.png", frameWidth: 64, frameHeight: 64, frameCount: 9, fps: 12 },
+  fz_rocks: { name: "fz_rocks", url: "foozle-rocks.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+  fz_water: { name: "fz_water", url: "foozle-water.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+  fz_water_geyser: { name: "fz_water_geyser", url: "foozle-water_geyser.png", frameWidth: 64, frameHeight: 64, frameCount: 13, fps: 12 },
+  fz_wind: { name: "fz_wind", url: "foozle-wind.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+  fz_tornado: { name: "fz_tornado", url: "foozle-tornado.png", frameWidth: 64, frameHeight: 64, frameCount: 9, fps: 12 },
+  fz_icons: { name: "fz_icons", url: "foozle-icons.png", frameWidth: 32, frameHeight: 32, frameCount: 10, fps: 0 },
 
   // --- Baked recolor variants (engine cannot tint strips at runtime) ---
   heal_sparks: { name: "heal_sparks", url: "heal-sparks.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },

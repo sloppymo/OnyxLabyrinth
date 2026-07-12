@@ -1,5 +1,7 @@
 # Prompt for another LLM: Create a comprehensive plan to integrate downloaded spell VFX sprites
 
+> **Status:** this plan has been executed. Every asset listed below has been copied into `public/assets/effects/` and registered in `src/engine/effect-sprite-cache.ts`. The remaining work is to design spells that use the water/wind/earth/plant strips.
+
 ## Project context
 
 You are working on **OnyxLabyrinth**, a Wizardry-style first-person dungeon crawler built with TypeScript + Vite, no framework. The UI is hand-built DOM + a 2D canvas. The code is in `/home/sloppymo/OnyxLabyrinth/`.
