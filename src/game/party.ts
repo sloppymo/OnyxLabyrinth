@@ -24,7 +24,8 @@ export type StatusEffect =
   | "blind"
   | "knockedOut"
   | "hidden"
-  | "exposed";
+  | "exposed"
+  | "wet";
 
 /**
  * Core attributes.
