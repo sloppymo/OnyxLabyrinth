@@ -598,6 +598,9 @@ canvas#map-canvas {
 .shop-list {
   margin: 0 auto;
   max-width: 900px;
+  max-height: 520px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .shop-item {

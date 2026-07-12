@@ -48,6 +48,7 @@ const PALETTE = {
   ceilingFill: { r: 31, g: 27, b: 22 },
   doorMarker: "#e0a458",
   lockedMarker: "#c44",
+  doorFill: { r: 45, g: 35, b: 28 },
   feature: "#e0a458",
   featureDark: "#8a6a38",
 };
@@ -789,31 +790,42 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       );
     }
 
-    if (hit.edge === "door") {
-      ctx.fillStyle = PALETTE.doorMarker;
+    if (hit.edge === "door" || hit.edge === "locked") {
+      const isLocked = hit.edge === "locked";
+      const markerColor = isLocked ? PALETTE.lockedMarker : PALETTE.doorMarker;
+
+      // Darken the door surface so it reads as a distinct wooden/metal panel
+      // rather than a continuation of the surrounding wall.
+      ctx.fillStyle = rgba(PALETTE.doorFill, fog * 0.35);
+      ctx.fillRect(x, drawStart, stripWidth, drawEnd - drawStart + 1);
+
+      // Center seam and horizontal panel crossbars make the door recognizable
+      // even when it fills the entire viewport at point-blank range.
+      ctx.fillStyle = markerColor;
       ctx.globalAlpha = fog;
       const markerX = Math.floor(x + stripWidth / 2);
-      ctx.fillRect(
-        markerX,
-        drawStart,
-        1,
-        drawEnd - drawStart + 1
-      );
+      ctx.fillRect(markerX, drawStart, 1, drawEnd - drawStart + 1);
+      const panelY1 = Math.floor(drawStart + (drawEnd - drawStart) * 0.33);
+      const panelY2 = Math.floor(drawStart + (drawEnd - drawStart) * 0.67);
+      ctx.fillRect(x, panelY1, stripWidth, 1);
+      ctx.fillRect(x, panelY2, stripWidth, 1);
       ctx.globalAlpha = 1.0;
-    } else if (hit.edge === "locked") {
-      ctx.strokeStyle = PALETTE.lockedMarker;
-      ctx.lineWidth = 1;
-      const cx = x + stripWidth / 2;
-      const cy = (drawStart + drawEnd) / 2;
-      const markerSize = Math.max(2, lineHeight / 8);
-      ctx.globalAlpha = fog;
-      ctx.beginPath();
-      ctx.moveTo(cx - markerSize / 2, cy - markerSize / 2);
-      ctx.lineTo(cx + markerSize / 2, cy + markerSize / 2);
-      ctx.moveTo(cx + markerSize / 2, cy - markerSize / 2);
-      ctx.lineTo(cx - markerSize / 2, cy + markerSize / 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1.0;
+
+      if (isLocked) {
+        ctx.strokeStyle = PALETTE.lockedMarker;
+        ctx.lineWidth = 1;
+        const cx = x + stripWidth / 2;
+        const cy = (drawStart + drawEnd) / 2;
+        const markerSize = Math.max(2, lineHeight / 8);
+        ctx.globalAlpha = fog;
+        ctx.beginPath();
+        ctx.moveTo(cx - markerSize / 2, cy - markerSize / 2);
+        ctx.lineTo(cx + markerSize / 2, cy + markerSize / 2);
+        ctx.moveTo(cx + markerSize / 2, cy - markerSize / 2);
+        ctx.lineTo(cx - markerSize / 2, cy + markerSize / 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+      }
     }
   }
   ctx.restore();

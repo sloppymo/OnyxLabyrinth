@@ -187,6 +187,7 @@ function openTitleScreen(): void {
   setMode(state, "title");
   showMode("title", mapVisible);
   setMessage("");
+  window.focus();
   titleController = new TitleController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     onNewGame: () => {
@@ -212,7 +213,7 @@ function openTitleScreen(): void {
     },
     onArena: () => {
       titleController = null;
-      startArena();
+      openArenaSetup();
     },
   });
 }
@@ -284,7 +285,6 @@ function startCombat(combat: CombatState): void {
   setMode(state, "combat");
   flashEncounter();
   showMode("combat", mapVisible);
-  setMessage("");
   suppressNextCombatKey = true;
   setTimeout(() => {
     suppressNextCombatKey = false;
@@ -401,13 +401,11 @@ function endCombat(result: CombatState): void {
 
 // --- Perk selection overlay ----------------------------------------------
 let perkSelectController: PerkSelectController | null = null;
-let justOpenedPerkSelect = false;
 
 function openPerkSelectOverlay(queue: PendingPerkChoice[], onDone?: () => void): void {
   setMode(state, "title");
   showMode("title", mapVisible);
   canvas.style.opacity = "0.2";
-  justOpenedPerkSelect = true;
   perkSelectController = new PerkSelectController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
@@ -427,11 +425,6 @@ function openPerkSelectOverlay(queue: PendingPerkChoice[], onDone?: () => void):
 
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "title" || !perkSelectController) return;
-  if (justOpenedPerkSelect) {
-    justOpenedPerkSelect = false;
-    e.preventDefault();
-    return;
-  }
   perkSelectController.handleKey(e.key);
   e.preventDefault();
 });
@@ -754,12 +747,79 @@ let inArena = false;
 let arenaWave = 1;
 let arenaFloor = 1;
 
-function startArena(): void {
+let arenaSetupController: { handleKey: (key: string) => void } | null = null;
+
+function openArenaSetup(): void {
+  setMode(state, "arena");
+  showMode("arena", mapVisible);
+  setMessage("");
+
+  const levels = [1, 3, 6, 9, 12];
+  let selected = 0;
+
+  const render = () => {
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+    const lines: string[] = [];
+    lines.push(`<div class="title-header">Arena Mode</div>`);
+    lines.push(`<div class="title-subtitle">Choose starting party level</div>`);
+    lines.push(`<div class="title-menu">`);
+    for (let i = 0; i < levels.length; i++) {
+      const isSelected = i === selected;
+      const marker = isSelected ? "▶" : " ";
+      lines.push(
+        `<div class="title-menu-item ${isSelected ? "selected" : ""}">` +
+          `<span class="title-marker">${marker}</span>` +
+          `<span>Level ${levels[i]}</span>` +
+          `</div>`
+      );
+    }
+    lines.push(`</div>`);
+    lines.push(`<div class="title-help">[↑/↓] navigate · [Enter] start · [Esc] title</div>`);
+    panel.innerHTML = lines.join("");
+  };
+
+  arenaSetupController = {
+    handleKey: (key: string) => {
+      const lower = key.toLowerCase();
+      if (lower === "arrowup" || lower === "w") {
+        selected = (selected - 1 + levels.length) % levels.length;
+        render();
+      } else if (lower === "arrowdown" || lower === "s") {
+        selected = (selected + 1) % levels.length;
+        render();
+      } else if (key === "Enter" || key === " ") {
+        arenaSetupController = null;
+        startArena(levels[selected]);
+      } else if (key === "Escape") {
+        arenaSetupController = null;
+        openTitleScreen();
+      }
+    },
+  };
+
+  render();
+}
+
+function startArena(targetLevel: number): void {
   // Reset to a fresh default party and the first arena wave.
   Object.assign(state, createGameState(FLOORS[0]));
   inArena = true;
   arenaWave = 1;
   arenaFloor = 1;
+
+  // Level the starter party up to the selected target level.
+  const equipment: Record<string, Loadout> = Object.fromEntries(
+    state.party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
+  );
+  state.party = state.party.map((c) => {
+    let leveled = c;
+    for (let i = 1; i < targetLevel; i++) {
+      leveled = levelUpChar(leveled, equipment[c.id]);
+    }
+    return leveled;
+  });
+  state.equipment = equipment;
+
   openArena();
 }
 
@@ -822,22 +882,30 @@ function startNextArenaFight(): void {
 // Title screen key handler — routes keys to the TitleController.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "title" || !titleController) return;
-  titleController.handleKey(e.key);
-  e.preventDefault();
+  if (titleController.handleKey(e.key)) {
+    e.preventDefault();
+  }
 });
 
 // Arena key handler — routes keys to the ArenaController.
 // The `justOpenedArena` flag prevents the same keydown that opened the arena
 // (e.g. the Enter that exits a combat result) from also selecting a menu item.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "arena" || !arenaController) return;
+  if (state.mode !== "arena") return;
   if (justOpenedArena) {
     justOpenedArena = false;
     e.preventDefault();
     return;
   }
-  arenaController.handleKey(e.key);
-  e.preventDefault();
+  if (arenaSetupController) {
+    arenaSetupController.handleKey(e.key);
+    e.preventDefault();
+    return;
+  }
+  if (arenaController) {
+    arenaController.handleKey(e.key);
+    e.preventDefault();
+  }
 });
 
 // --- Save/Load menu ------------------------------------------------------

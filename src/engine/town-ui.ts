@@ -25,8 +25,9 @@ import { equipItem, findBestEquipTarget, getDisplacedItem, type Loadout } from "
 import { xpForNextLevel } from "../game/leveling";
 import { perksForCharacter } from "../game/perks";
 
-type TownScreen = "main" | "inn" | "temple" | "shop" | "guild" | "training";
+type TownScreen = "main" | "inn" | "temple" | "shop" | "roster";
 type ShopTab = "buy" | "sell" | "appraise" | "buyConfirm";
+type RosterTab = "status" | "progress";
 
 /** Temple fee to shatter all equipped cursed gear. */
 const REMOVE_CURSE_COST = 100;
@@ -46,8 +47,7 @@ const MAIN_MENU_ITEMS = [
   { key: "inn", label: "Inn — Rest and heal (Free)", icon: "[I]" },
   { key: "temple", label: "Temple — Healing and cleansing (Free)", icon: "[+]" },
   { key: "shop", label: "Shop — Buy and sell equipment", icon: "[$]" },
-  { key: "guild", label: "Guild — View party roster", icon: "[G]" },
-  { key: "training", label: "Training Ground — Roster", icon: "[T]" },
+  { key: "roster", label: "Guild — Party roster", icon: "[G]" },
   { key: "reform", label: "Reform Party — Create a new party", icon: "[R]" },
   { key: "dungeon", label: "Enter Dungeon", icon: "[>]" },
   { key: "save", label: "Save / Load", icon: "[S]" },
@@ -74,6 +74,9 @@ export class TownController {
   private buyConfirmOldLoadout?: Loadout;
   private buyConfirmNextLoadout?: Loadout;
 
+  // Roster state
+  private rosterTab: RosterTab = "status";
+
   constructor(opts: TownControllerOptions) {
     this.panel = opts.panel;
     this.state = opts.state;
@@ -95,12 +98,25 @@ export class TownController {
       this.handleShopKey(lower);
       return;
     }
+    // Roster: S/P switches tabs.
+    if (this.screen === "roster") {
+      if (lower === "s") {
+        this.rosterTab = "status";
+        this.render();
+        return;
+      }
+      if (lower === "p") {
+        this.rosterTab = "progress";
+        this.render();
+        return;
+      }
+    }
     // Temple: R lifts curses (when any cursed gear is equipped).
     if (this.screen === "temple" && lower === "r") {
       this.doRemoveCurse();
       return;
     }
-    // inn, temple, guild, training — all dismiss with Esc/Enter/Space
+    // inn, temple, shop, roster — all dismiss with Esc/Enter/Space
     if (lower === "escape" || key === "Enter" || key === " ") {
       this.screen = "main";
       this.flash = "";
@@ -175,6 +191,16 @@ export class TownController {
         // but that's wired to a separate handler in main.ts.)
         break;
     }
+
+    // Bracketed icon hotkeys (e.g. [I] Inn, [$] Shop, [>] Dungeon).
+    const hotIndex = MAIN_MENU_ITEMS.findIndex(
+      (item) => item.icon[1].toLowerCase() === lower
+    );
+    if (hotIndex !== -1) {
+      this.selectedIndex = hotIndex;
+      this.flash = "";
+      this.selectMain();
+    }
   }
 
   private selectMain(): void {
@@ -193,13 +219,11 @@ export class TownController {
         this.flash = "";
         this.render();
         break;
-      case "guild":
-        this.screen = "guild";
+      case "roster":
+        this.screen = "roster";
+        this.rosterTab = "status";
         this.flash = "";
         this.render();
-        break;
-      case "training":
-        this.doTraining();
         break;
       case "reform":
         this.panel.style.display = "none";
@@ -232,14 +256,6 @@ export class TownController {
     this.state.party = restoreParty(this.state.party);
     this.screen = "temple";
     this.flash = "The Temple's blessing restores the party. HP and SP fully restored!";
-    this.render();
-  }
-
-  private doTraining(): void {
-    // Level-ups now happen automatically after combat victories. The Training
-    // Grounds is a read-only roster showing progress and chosen perks.
-    this.screen = "training";
-    this.flash = "Training Grounds — level-ups happen after combat now.";
     this.render();
   }
 
@@ -484,10 +500,10 @@ export class TownController {
       this.renderMain(lines);
     } else if (this.screen === "shop") {
       this.renderShop(lines);
-    } else if (this.screen === "guild") {
-      this.renderGuild(lines);
+    } else if (this.screen === "roster") {
+      this.renderRoster(lines);
     } else {
-      // inn / temple / training — flash message + party status
+      // inn / temple — flash message + party status
       this.renderFacility(lines);
     }
 
@@ -496,6 +512,16 @@ export class TownController {
     }
 
     this.panel.innerHTML = lines.join("");
+    if (this.screen === "shop") {
+      this.scrollShopSelectionIntoView();
+    }
+  }
+
+  private scrollShopSelectionIntoView(): void {
+    const selected = this.panel.querySelector<HTMLElement>(".shop-item.selected");
+    if (selected) {
+      selected.scrollIntoView({ block: "nearest" });
+    }
   }
 
   private renderMain(lines: string[]): void {
@@ -522,7 +548,7 @@ export class TownController {
       );
     }
     lines.push(`</div>`);
-    lines.push(`<div class="town-help">[↑/↓] navigate · [Enter] select · [Esc] save menu</div>`);
+    lines.push(`<div class="town-help">[↑/↓] navigate · [Enter] select · bracket letter jumps · [Esc] save menu</div>`);
   }
 
   private renderShop(lines: string[]): void {
@@ -743,26 +769,52 @@ export class TownController {
     return this.state.partyGold >= net;
   }
 
-  private renderGuild(lines: string[]): void {
+  private renderRoster(lines: string[]): void {
+    lines.push(`<div class="shop-tabs">`);
+    lines.push(
+      `<span class="shop-tab ${this.rosterTab === "status" ? "active" : ""}">Status [S]</span>`
+    );
+    lines.push(
+      `<span class="shop-tab ${this.rosterTab === "progress" ? "active" : ""}">Progress [P]</span>`
+    );
+    lines.push(`</div>`);
+
     lines.push(`<div class="guild-roster">`);
-    for (const c of this.state.party) {
-      const hpPct = Math.round((c.hp / c.maxHp) * 100);
-      const spPct = c.maxSp > 0 ? Math.round((c.sp / c.maxSp) * 100) : 100;
-      const xpNeeded = xpForNextLevel(c.level);
-      const status = c.status.length > 0 ? ` [${c.status.join(",")}]` : "";
-      lines.push(
-        `<div class="guild-char">` +
-          `<span class="gc-name">${c.name}</span>` +
-          `<span class="gc-class">Lv${c.level} ${c.race} ${c.class}</span>` +
-          `<span class="gc-hp">HP ${c.hp}/${c.maxHp} (${hpPct}%)</span>` +
-          `<span class="gc-sp">SP ${c.sp}/${c.maxSp} (${spPct}%)</span>` +
-          `<span class="gc-xp">XP ${c.xp}/${xpNeeded}</span>` +
-          `<span class="gc-status">${status}</span>` +
-          `</div>`
-      );
+    if (this.rosterTab === "status") {
+      for (const c of this.state.party) {
+        const hpPct = Math.round((c.hp / c.maxHp) * 100);
+        const spPct = c.maxSp > 0 ? Math.round((c.sp / c.maxSp) * 100) : 100;
+        const xpNeeded = xpForNextLevel(c.level);
+        const status = c.status.length > 0 ? ` [${c.status.join(",")}]` : "";
+        lines.push(
+          `<div class="guild-char">` +
+            `<span class="gc-name">${c.name}</span>` +
+            `<span class="gc-class">Lv${c.level} ${c.race} ${c.class}</span>` +
+            `<span class="gc-hp">HP ${c.hp}/${c.maxHp} (${hpPct}%)</span>` +
+            `<span class="gc-sp">SP ${c.sp}/${c.maxSp} (${spPct}%)</span>` +
+            `<span class="gc-xp">XP ${c.xp}/${xpNeeded}</span>` +
+            `<span class="gc-status">${status}</span>` +
+            `</div>`
+        );
+      }
+    } else {
+      for (const c of this.state.party) {
+        const xpNeeded = xpForNextLevel(c.level);
+        const xpRemaining = Math.max(0, xpNeeded - c.xp);
+        const perks = perksForCharacter(c);
+        const perksStr = perks.length > 0 ? perks.map((p) => p.name).join(", ") : "None";
+        lines.push(
+          `<div class="guild-char">` +
+            `<span class="gc-name">${c.name}</span>` +
+            `<span class="gc-class">Lv${c.level} ${c.class}</span>` +
+            `<span class="gc-xp">XP ${c.xp} · ${xpRemaining} to next</span>` +
+            `<span class="gc-status">Perks: ${perksStr}</span>` +
+            `</div>`
+        );
+      }
     }
     lines.push(`</div>`);
-    lines.push(`<div class="town-help">[Esc/Enter] back to menu</div>`);
+    lines.push(`<div class="town-help">[S] status · [P] progress · [Esc/Enter] back</div>`);
   }
 
   private renderFacility(lines: string[]): void {
@@ -771,10 +823,6 @@ export class TownController {
       lines.push(
         `<div class="town-gold">Cursed gear detected! [R] Remove Curse (${REMOVE_CURSE_COST}g)</div>`
       );
-    }
-    if (this.screen === "training") {
-      this.renderTraining(lines);
-      return;
     }
     // Show party status after inn/temple
     lines.push(`<div class="guild-roster">`);
@@ -789,26 +837,6 @@ export class TownController {
           `<span class="gc-hp">HP ${c.hp}/${c.maxHp} (${hpPct}%)</span>` +
           `<span class="gc-sp">SP ${c.sp}/${c.maxSp} (${spPct}%)</span>` +
           `<span class="gc-xp">XP ${c.xp}/${xpNeeded}</span>` +
-          `</div>`
-      );
-    }
-    lines.push(`</div>`);
-    lines.push(`<div class="town-help">[Esc/Enter] back to menu</div>`);
-  }
-
-  private renderTraining(lines: string[]): void {
-    lines.push(`<div class="guild-roster">`);
-    for (const c of this.state.party) {
-      const xpNeeded = xpForNextLevel(c.level);
-      const xpRemaining = Math.max(0, xpNeeded - c.xp);
-      const perks = perksForCharacter(c);
-      const perksStr = perks.length > 0 ? perks.map((p) => p.name).join(", ") : "None";
-      lines.push(
-        `<div class="guild-char">` +
-          `<span class="gc-name">${c.name}</span>` +
-          `<span class="gc-class">Lv${c.level} ${c.class}</span>` +
-          `<span class="gc-xp">XP ${c.xp} · ${xpRemaining} to next</span>` +
-          `<span class="gc-status">Perks: ${perksStr}</span>` +
           `</div>`
       );
     }
