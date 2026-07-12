@@ -189,6 +189,13 @@ describe("floor definitions", () => {
     expect(trapChest!.trap).toBe("poison");
   });
 
+  it("floor 1 NPC is reachable without passing a locked door", () => {
+    const f1Open = reachableCells(FLOORS[0], OPEN);
+    for (const npc of FLOORS[0].npcs ?? []) {
+      expect(f1Open.has(`${npc.x},${npc.y}`), `${npc.name} is unreachable`).toBe(true);
+    }
+  });
+
   it("teleporters and chutes only target existing floors at carved, in-bounds cells", () => {
     for (const floor of FLOORS) {
       const links = [...(floor.teleporters ?? []), ...(floor.chuteDrops ?? [])];

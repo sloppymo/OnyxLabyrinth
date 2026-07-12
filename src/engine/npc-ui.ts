@@ -71,10 +71,9 @@ export class NPCController {
     this.render();
   }
 
-  handleKey(key: string): void {
+  handleKey(key: string): boolean {
     if (this.phase === "ask") {
-      this.handleAskKey(key);
-      return;
+      return this.handleAskKey(key);
     }
     const lower = key.toLowerCase();
     if (lower === "escape") {
@@ -85,22 +84,22 @@ export class NPCController {
         this.index = 0;
         this.render();
       }
-      return;
+      return true;
     }
     const len = this.listLength();
     if (lower === "arrowup" || lower === "w") {
       if (len > 0) this.index = (this.index - 1 + len) % len;
       this.render();
-      return;
+      return true;
     }
     if (lower === "arrowdown" || lower === "s") {
       if (len > 0) this.index = (this.index + 1) % len;
       this.render();
-      return;
+      return true;
     }
     if (key === "Enter" || key === " ") {
       this.confirm();
-      return;
+      return true;
     }
     // Root hotkeys.
     if (this.phase === "root") {
@@ -108,8 +107,10 @@ export class NPCController {
       if (idx >= 0) {
         this.index = idx;
         this.confirm();
+        return true;
       }
     }
+    return false;
   }
 
   private listLength(): number {
@@ -195,29 +196,31 @@ export class NPCController {
     }
   }
 
-  private handleAskKey(key: string): void {
+  private handleAskKey(key: string): boolean {
     if (key === "Escape") {
       this.phase = "talk";
       this.index = 0;
       this.render();
-      return;
+      return true;
     }
     if (key === "Enter") {
       this.dialogue = askTopic(this.npc, this.typed);
       this.phase = "talk";
       this.index = 0;
       this.render();
-      return;
+      return true;
     }
     if (key === "Backspace") {
       this.typed = this.typed.slice(0, -1);
       this.render();
-      return;
+      return true;
     }
     if (key.length === 1 && this.typed.length < 24) {
       this.typed += key;
       this.render();
+      return true;
     }
+    return false;
   }
 
   private applyResult(result: NPCActionResult): void {
@@ -230,9 +233,14 @@ export class NPCController {
     this.render();
   }
 
-  private close(message: string): void {
+  /** Tear down the panel (useful for tests). */
+  destroy(): void {
     this.panel.style.display = "none";
     this.panel.innerHTML = "";
+  }
+
+  private close(message: string): void {
+    this.destroy();
     this.onClose(message);
   }
 

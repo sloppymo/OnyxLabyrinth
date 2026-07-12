@@ -1069,8 +1069,9 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
     e.preventDefault();
     return;
   }
-  npcController.handleKey(e.key);
-  e.preventDefault();
+  if (npcController.handleKey(e.key)) {
+    e.preventDefault();
+  }
 });
 
 // --- Auto-map toggle -----------------------------------------------------
