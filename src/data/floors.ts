@@ -206,6 +206,8 @@ function floor1(): FloorDef {
   setTile(grid, 10, 6, "water");
   // Open chest in the west crypt (holds the crypt-key).
   setTile(grid, 2, 5, "treasure");
+  // Trapped chest in the west crypt — teaches trap inspection/disarming early.
+  setTile(grid, 3, 5, "treasure");
   // Locked reliquary chest (holds the lexicon-key for floor 2).
   setTile(grid, 10, 9, "treasure");
   // Maro, a stranded swordsman, shelters in the crypt's south-east corner.
@@ -232,6 +234,8 @@ function floor1(): FloorDef {
     treasures: [
       // The first chest of the game is untrapped — it teaches looting safely.
       { x: 2, y: 5, itemIds: ["healing-potion", "healing-potion", "crypt-key"] },
+      // A poison-needle chest just steps away: the antidote inside softens the lesson.
+      { x: 3, y: 5, itemIds: ["antidote", "healing-potion"], trap: "poison" },
       { x: 10, y: 9, itemIds: ["short-sword+1", "leather", "healing-potion", "lexicon-key"], trap: "gas" },
     ],
     waters: [
