@@ -169,7 +169,7 @@ function handleTeleporter(state: GameState): FeatureResult {
  * Handle chute. Forced descent to a lower floor. One-way — no return chute.
  */
 function handleChute(state: GameState): FeatureResult {
-  // Levitation (Aerivex) carries the party safely over chutes.
+  // Levitation (Levitate) carries the party safely over chutes.
   if (hasBuff(state, "levitation")) {
     return { message: "You float over the chute's mouth.", changedFloor: false, consumed: false };
   }
@@ -417,7 +417,7 @@ function applyTriggeredEvents(
 // Water tiles are passable but risky: each living member makes a swim check
 // against the tile's depth. Failures take depth-scaled damage (floored at
 // 1 HP — drowning outside combat would be a cheap death). Swimming is
-// learned by doing: attempts raise swimSkill. Levitation (Aerivex) or the
+// learned by doing: attempts raise swimSkill. Levitation (Levitate) or the
 // Ring of Water Walking crosses without a check. Pool effects (heal /
 // damage / cure) apply to everyone on entry. Tiles are never consumed.
 // ---------------------------------------------------------------------------

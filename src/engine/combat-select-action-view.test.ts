@@ -62,19 +62,35 @@ function baseView(state: CombatState): CombatWindowsView {
 }
 
 describe("menuEntriesForCharacter", () => {
-  it("gives base FF6 actions to a Fighter", () => {
+  it("gives base FF6 actions + Technique to a Fighter", () => {
     const c = createCharacter("x", "X", "Human", "Neutral", "Fighter", 0);
     const kinds = menuEntriesForCharacter(c).map((e) => e.kind);
-    expect(kinds).toEqual(["attack", "cast", "defend", "item", "flee"]);
+    expect(kinds).toEqual(["attack", "technique", "cast", "defend", "item", "flee"]);
   });
 
-  it("adds Hide for a Thief, Ambush once hidden", () => {
+  it("adds Technique for Thief alongside Hide/Ambush", () => {
     const c = createCharacter("x", "X", "Human", "Neutral", "Thief", 0);
-    expect(menuEntriesForCharacter(c).map((e) => e.kind)).toContain("hide");
-    c.status.push("hidden");
     const kinds = menuEntriesForCharacter(c).map((e) => e.kind);
-    expect(kinds).toContain("ambush");
-    expect(kinds).not.toContain("hide");
+    expect(kinds).toContain("technique");
+    expect(kinds).toContain("hide");
+    c.status.push("hidden");
+    const kindsHidden = menuEntriesForCharacter(c).map((e) => e.kind);
+    expect(kindsHidden).toContain("ambush");
+    expect(kindsHidden).not.toContain("hide");
+  });
+
+  it("does not give Technique to Mage or Priest", () => {
+    const mage = createCharacter("m", "M", "Elf", "Neutral", "Mage", 0);
+    expect(menuEntriesForCharacter(mage).map((e) => e.kind)).not.toContain("technique");
+    const priest = createCharacter("p", "P", "Gnome", "Good", "Priest", 0);
+    expect(menuEntriesForCharacter(priest).map((e) => e.kind)).not.toContain("technique");
+  });
+
+  it("gives Crusader both Technique and Magic", () => {
+    const c = createCharacter("c", "C", "Human", "Good", "Crusader", 0);
+    const kinds = menuEntriesForCharacter(c).map((e) => e.kind);
+    expect(kinds).toContain("technique");
+    expect(kinds).toContain("cast");
   });
 });
 
@@ -132,8 +148,8 @@ describe("renderCombatWindows", () => {
     view.menuMode = "selection";
     view.selectionTitle = "Magic";
     view.selectionEntries = [
-      { label: "Zornyx", detail: "3 SP" },
-      { label: "Aethel", detail: "4 SP", disabled: true },
+      { label: "Fire Bolt", detail: "3 SP" },
+      { label: "Cure Wounds", detail: "4 SP", disabled: true },
     ];
     view.selectionIndex = 0;
     renderCombatWindows(container, view, noopHandlers());

@@ -34,6 +34,7 @@ import {
 import { enemyHealthDescriptor } from "./combat-display";
 import type { Character } from "../game/party";
 import { isUtilitySpell, type SpellDef } from "../data/spells";
+import { techniquesForClass, techniqueById, type TechniqueDef } from "../data/techniques";
 import type { ItemDef } from "../data/items";
 import { combatCtx, combatCanvas, combatWindows } from "./shell";
 import {
@@ -59,6 +60,7 @@ type Phase =
   | "menu"
   | "selectTarget"
   | "selectSpell"
+  | "selectTechnique"
   | "selectItem"
   | "playback"
   | "result";
@@ -66,6 +68,7 @@ type Phase =
 interface PendingAction {
   kind: PlayerAction["kind"];
   spellId?: string;
+  techniqueId?: string;
   itemId?: string;
 }
 
@@ -238,7 +241,9 @@ export class CombatController {
       (id) => this.state.spells[id]?.name ?? this.state.items[id]?.name ?? id,
       performance.now(),
       combatCanvas.width,
-      combatCanvas.height
+      combatCanvas.height,
+      // Technique name lookup for technique banner.
+      (id) => techniqueById(id)?.name ?? id
     );
   }
 
@@ -321,6 +326,15 @@ export class CombatController {
       .filter((s): s is SpellDef => s !== undefined && !isUtilitySpell(s));
   }
 
+  private knownTechniques(c: Character): TechniqueDef[] {
+    return techniquesForClass(c.class, c.level);
+  }
+
+  /** Current rage for the acting character. */
+  private currentRage(c: Character): number {
+    return this.state.rage[c.id] ?? 0;
+  }
+
   /** Confirm a top-level menu choice. */
   private chooseAction(kind: PlayerAction["kind"]): void {
     const c = this.currentChar();
@@ -351,6 +365,16 @@ export class CombatController {
         }
         this.pending = { kind };
         this.openSpellSelect(c);
+        return;
+      }
+      case "technique": {
+        const techs = this.knownTechniques(c);
+        if (techs.length === 0) {
+          this.setFlash("No techniques!");
+          return;
+        }
+        this.pending = { kind };
+        this.openTechniqueSelect(c);
         return;
       }
       case "item": {
@@ -430,6 +454,21 @@ export class CombatController {
       label: s.name,
       detail: `${s.spCost} SP`,
       disabled: c.sp < s.spCost,
+    }));
+    this.selectionIndex = 0;
+    this.windowsDirty = true;
+  }
+
+  private openTechniqueSelect(c: Character): void {
+    this.phase = "selectTechnique";
+    this.selectionTitle = "Technique";
+    const techs = this.knownTechniques(c);
+    const rage = this.currentRage(c);
+    this.selectionIds = techs.map((t) => t.id);
+    this.selectionEntries = techs.map((t) => ({
+      label: t.name,
+      detail: `${t.rageCost} RG`,
+      disabled: rage < t.rageCost,
     }));
     this.selectionIndex = 0;
     this.windowsDirty = true;
@@ -518,6 +557,38 @@ export class CombatController {
       return;
     }
 
+    if (this.phase === "selectTechnique") {
+      const entry = this.selectionEntries[this.selectionIndex];
+      if (entry?.disabled) {
+        this.setFlash("Not enough rage!");
+        return;
+      }
+      this.pending.techniqueId = id;
+      const tech = this.knownTechniques(c).find((t) => t.id === id);
+      if (!tech) return;
+      // Determine target selection based on technique target type.
+      if (tech.target === "singleEnemy") {
+        this.openTargetSelect("enemy");
+      } else if (tech.target === "singleAlly") {
+        this.openTargetSelect("ally");
+      } else if (tech.target === "rowEnemies") {
+        this.openRowSelect();
+      } else if (tech.target === "columnEnemies") {
+        // Column targeting: pick an enemy, we'll derive the column from its position.
+        this.openTargetSelect("enemy");
+      } else {
+        // self / allEnemies / allFrontEnemies / allAllies / allFrontAllies / randomEnemies
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "technique",
+            actorId: c.id,
+            techniqueId: id,
+          })
+        );
+      }
+      return;
+    }
+
     if (this.phase === "selectItem") {
       this.pending.itemId = id;
       this.openTargetSelect("ally");
@@ -533,6 +604,19 @@ export class CombatController {
             kind: "cast",
             actorId: c.id,
             spellId,
+            targetRow: id as Row,
+          })
+        );
+        return;
+      }
+      // Row selection for row-targeted techniques (Sweep, Phalanx Break).
+      if (this.targetKind === "row" && pending.kind === "technique" && pending.techniqueId) {
+        const techniqueId = pending.techniqueId;
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "technique",
+            actorId: c.id,
+            techniqueId,
             targetRow: id as Row,
           })
         );
@@ -580,6 +664,23 @@ export class CombatController {
             targetAllyId: id,
           })
         );
+      } else if (pending.kind === "technique" && pending.techniqueId) {
+        const techniqueId = pending.techniqueId;
+        const action: PlayerAction =
+          this.targetKind === "enemy"
+            ? {
+                kind: "technique",
+                actorId: c.id,
+                techniqueId,
+                targetInstanceId: id,
+              }
+            : {
+                kind: "technique",
+                actorId: c.id,
+                techniqueId,
+                targetAllyId: id,
+              };
+        this.resolveAndPlay(() => resolvePlayerTurn(this.state, action));
       }
     }
   }
@@ -592,6 +693,18 @@ export class CombatController {
     if (this.phase === "selectTarget" && this.pending?.kind === "cast") {
       // Back out of target selection into the spell list.
       this.openSpellSelect(c);
+      return;
+    }
+    if (this.phase === "selectTarget" && this.pending?.kind === "technique") {
+      // Back out of target selection into the technique list.
+      this.openTechniqueSelect(c);
+      return;
+    }
+    if (this.phase === "selectTechnique") {
+      // Back out of technique list into the action menu.
+      this.phase = "menu";
+      this.pending = null;
+      this.windowsDirty = true;
       return;
     }
     if (this.phase === "selectTarget" && this.pending?.kind === "item") {
@@ -755,6 +868,12 @@ export class CombatController {
         ? (this.state.spells[this.selectionIds[this.selectionIndex] ?? ""] ?? null)
         : null;
 
+    // While picking a technique, show its description in the same panel.
+    const techniqueDetail: TechniqueDef | null =
+      this.phase === "selectTechnique"
+        ? (this.knownTechniques(this.currentChar()!).find((t) => t.id === this.selectionIds[this.selectionIndex]) ?? null)
+        : null;
+
     const view: CombatWindowsView = {
       state: this.state,
       currentCharacterId: this.currentActorId,
@@ -766,6 +885,7 @@ export class CombatController {
       selectionIndex: this.selectionIndex,
       selectionFooter,
       spellDetail,
+      techniqueDetail,
       flash: this.flash,
       result: this.phase === "result" ? this.result : null,
     };

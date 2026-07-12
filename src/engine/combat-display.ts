@@ -7,6 +7,7 @@
 
 import type { Character } from "../game/party";
 import type { DamageElement, SpellEffect, SpellTarget } from "../data/spells";
+import type { TechniqueEffect, TechniqueTarget } from "../data/techniques";
 
 function capitalize(word: string): string {
   return word.length === 0 ? word : word[0].toUpperCase() + word.slice(1);
@@ -19,6 +20,7 @@ const ELEMENT_LABELS: Record<DamageElement, string> = {
   undead: "Holy",
   lightning: "Lightning",
   poison: "Poison",
+  divine: "Divine",
 };
 
 /** Friendly label for a spell's target shape (single/group/all, ally/enemy). */
@@ -47,7 +49,7 @@ export function spellEffectSummary(effect: SpellEffect): string {
     case "damage":
       return `${effect.power} ${ELEMENT_LABELS[effect.element]} damage`;
     case "heal":
-      return `Heals ${effect.power} HP`;
+      return effect.power >= 9999 ? "Fully restores HP" : `Heals ${effect.power} HP`;
     case "buff":
       return "Raises armor";
     case "cure":
@@ -70,6 +72,66 @@ export function spellEffectSummary(effect: SpellEffect): string {
       return "Levitates the party";
     case "detect":
       return "Reveals position";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Technique display helpers
+// ---------------------------------------------------------------------------
+
+/** Friendly label for a technique's target shape. */
+export function techniqueTargetLabel(target: TechniqueTarget): string {
+  switch (target) {
+    case "self":
+      return "Self";
+    case "singleEnemy":
+      return "One enemy";
+    case "singleAlly":
+      return "One ally";
+    case "rowEnemies":
+      return "Enemy row";
+    case "columnEnemies":
+      return "Enemy column";
+    case "allFrontEnemies":
+      return "Front-row enemies";
+    case "allEnemies":
+      return "All enemies";
+    case "allAllies":
+      return "All allies";
+    case "allFrontAllies":
+      return "Front-row allies";
+    case "randomEnemies":
+      return "Random enemies";
+  }
+}
+
+/** One-line mechanical summary of a technique's effect. */
+export function techniqueEffectSummary(effect: TechniqueEffect): string {
+  switch (effect.kind) {
+    case "damage":
+      return `${effect.multiplier}x weapon damage${effect.element ? ` (${ELEMENT_LABELS[effect.element]})` : ""}${effect.armorPen ? `, ignores ${Math.round(effect.armorPen * 100)}% AC` : ""}`;
+    case "multiHit":
+      return `${effect.hits} hits at ${effect.multiplier}x damage${effect.randomTarget ? " (random targets)" : ""}`;
+    case "damageWithStatus":
+      return `${effect.multiplier}x damage + ${Math.round(effect.statusChance * 100)}% ${effect.status}`;
+    case "damageWithExecute":
+      return `${effect.multiplier}x damage, executes below ${Math.round(effect.executeThreshold * 100)}% HP${effect.undeadOnly ? " (undead)" : ""}`;
+    case "buff":
+      return `+${effect.power} armor (${effect.target})`;
+    case "debuff":
+      return `-${effect.power} ${effect.stat} for ${effect.duration} rounds`;
+    case "heal":
+      return "Heals (STR + PIE) × 2 HP";
+    case "counterStance":
+      return `Counter stance: reflects ${effect.multiplier}x damage`;
+    case "taunt":
+      return `Taunt + +${effect.armorBonus} armor for ${effect.duration} rounds`;
+    case "buffNextAttack":
+      return `Next attack: +${Math.round(effect.critChanceBonus * 100)}% crit${effect.hitChanceBonus ? ", guaranteed hit" : ""}`;
+    case "rageGrant":
+      return `+${effect.amount} rage to all allies`;
+    case "damageBuff":
+      return `+${Math.round((effect.multiplier - 1) * 100)}% damage for ${effect.duration} rounds`;
   }
 }
 

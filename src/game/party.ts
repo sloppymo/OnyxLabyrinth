@@ -363,45 +363,31 @@ export function createDefaultParty(): Character[] {
   const priest = createCharacter("c5", "Eve", "Gnome", "Good", "Priest", 4);
   const mage2 = createCharacter("c6", "Fenn", "Elf", "Neutral", "Mage", 5);
 
-  // Level-1 casters know all tier-1 spells of their class, plus a suite of
-  // visual-effect test spells so the new elemental variants are available.
+  // Level-1 casters know all tier-1 spells of their class.
   mage1.knownSpellIds = [
-    "mage-sparkyx",
-    "mage-voltis",
-    "mage-emberik",
-    "mage-cinderis",
-    "mage-frostik",
-    "mage-rimeis",
-    "mage-hoarix",
-    "mage-venomik",
-    "mage-zornyx",
-    "mage-wyrshel",
-    "mage-vashorum",
-    "mage-flammorum",
-    "mage-miasmorum",
-    "mage-pathrend",
+    "mage-spark",
+    "mage-ember",
+    "mage-frostbite",
+    "mage-poison-spray",
+    "mage-fire-bolt",
+    "mage-arcane-ward",
+    "mage-wayfinder",
   ];
   mage2.knownSpellIds = [
-    "mage-sparkyx",
-    "mage-voltis",
-    "mage-emberik",
-    "mage-cinderis",
-    "mage-frostik",
-    "mage-rimeis",
-    "mage-hoarix",
-    "mage-venomik",
-    "mage-zornyx",
-    "mage-wyrshel",
-    "mage-vashorum",
-    "mage-flammorum",
-    "mage-miasmorum",
-    "mage-pathrend",
+    "mage-spark",
+    "mage-ember",
+    "mage-frostbite",
+    "mage-poison-spray",
+    "mage-fire-bolt",
+    "mage-arcane-ward",
+    "mage-wayfinder",
   ];
   priest.knownSpellIds = [
-    "priest-lumenik",
-    "priest-aethel",
-    "priest-sacrumix",
-    "priest-lucenis",
+    "priest-guiding-bolt",
+    "priest-cure-wounds",
+    "priest-sacred-flame",
+    "priest-light",
+    "priest-shield-of-faith",
   ];
 
   return [fighter1, fighter2, thief, mage1, priest, mage2];

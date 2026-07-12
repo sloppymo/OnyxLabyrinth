@@ -34,7 +34,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/game/state.ts` | `GameState` factory and mode setter. |
 | `src/game/features.ts` | Tile-feature handling (stairs, teleporters, chutes, darkness, antimagic, treasure, water) + trapped-chest interaction (`pendingTrap`, Inspect/Disarm/Open/Leave, trap effects) + swim checks (`swimChance`, learn-by-doing `swimSkill`). |
 | `src/game/features.test.ts` | Unit tests for the trap interaction and water/swimming (vitest). |
-| `src/game/persistent-spells.ts` | Utility spells cast outside combat (Milwa light / Litofit levitation / Dumapic detect): buff add/tick/clear, cast validation. |
+| `src/game/persistent-spells.ts` | Utility spells cast outside combat (Light light / Levitate levitation / Wayfinder detect): buff add/tick/clear, cast validation. |
 | `src/game/persistent-spells.test.ts` | Unit tests for utility spells and buff/feature interplay (vitest). |
 | `src/engine/spell-ui.ts` | Dungeon grimoire menu (G key): lists utility casts, casts via persistent-spells. |
 | `src/game/npc.ts` | Dungeon NPC logic (pure): greeting/topics, disposition/mood, barter, gifts+reward, steal, kill persistence (`markKilled` / `applyKilledNPCs`). |
@@ -42,13 +42,14 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/engine/npc-ui.ts` | NPC interaction overlay (Talk/Barter/Give/Steal/Attack/Leave + typed-keyword ask phase); borrows "title" mode. |
 | `src/game/dungeon.ts` | Grid model, edge helpers, carving. |
 | `src/game/party.ts` | Character/party creation. `Character.perkIds` holds chosen class perks. |
-| `src/game/combat.ts` | Combat state/helpers. Emits structured `CombatEvent`s alongside log messages for the renderer. Two resolution APIs sharing the same internals: round-based `resolveCombatRound` (legacy/tests) and the per-turn API (`beginRound` / `resolvePlayerTurn` / `resolveEnemyTurn` / `resolveAllyTurn` / `endRound`) used by the FF6 combat UI. Reads `effectiveStats()`/`perkModifiers()`/`dispatchHook()` at every formula and hook site (initiative, melee/crit/evasion/flee, spell power/cost, cleave/counter/echo/etc.); `CombatState.perkState` holds per-character reactive-perk scratch data for one combat. |
+| `src/game/combat.ts` | Combat state/helpers. Emits structured `CombatEvent`s alongside log messages for the renderer. Two resolution APIs sharing the same internals: round-based `resolveCombatRound` (legacy/tests) and the per-turn API (`beginRound` / `resolvePlayerTurn` / `resolveEnemyTurn` / `resolveAllyTurn` / `endRound`) used by the FF6 combat UI. Reads `effectiveStats()`/`perkModifiers()`/`dispatchHook()` at every formula and hook site (initiative, melee/crit/evasion/flee, spell power/cost, cleave/counter/echo/etc.); `CombatState.perkState` holds per-character reactive-perk scratch data for one combat. Also houses the Rage resource system and `resolveTechnique()` for melee class active abilities (techniques defined in `data/techniques.ts`). |
 | `src/game/effective-stats.ts` | `effectiveStats(character, loadout?, perks?)` — the single source of truth for a character's final stats: base + equipment `statBonuses` + perk `statModifiers`, each floored at 1. Nothing derived here is ever persisted. |
 | `src/game/perks.ts` | Perk engine: `PerkDef`/`PerkEffect`/`CombatHook` types, `PERKS_BY_ID`, `perksForCharacter`, `perkChoicesFor`, `isPerkTierLevel`/`tierForLevel` (levels 3/6/9/12 ↔ tiers 1-4), `applyPerkSelection` (one-time maxHp/maxSp % bump + full heal + records the id), `perkModifiers` (folds every chosen perk's numeric fields into one struct for cheap passive bonuses), `dispatchHook`/`freshPerkState` (the reactive-hook path for the ~14 stateful perks — see "Class perks" section below). |
 | `src/data/perks.ts` | All 56 `PerkDef`s (design doc §7), 8 per class (2 options × 4 tiers). Perks needing bespoke logic beyond what `perkModifiers` can express are marked `// TODO(v1.1)` in a comment above the entry. |
 | `src/game/leveling.ts` | `xpForNextLevel`/`levelUpChar` — extracted from the old town-only Training Ground flow. `levelUpChar` reads effective VIT/INT/PIE for HP/SP growth (perk `hpGrowthBonusPercent`/`spGrowthBonusPercent` add to it) and fully restores on every level. |
 | `src/game/combat.test.ts` | Unit tests for combat resolver (vitest). |
 | `src/game/combat-turns.test.ts` | Unit tests for the per-turn combat API (vitest). |
+| `src/game/techniques.test.ts` | Unit tests for the melee technique/rage system (vitest). |
 | `src/game/effective-stats.test.ts` | Unit tests for `effectiveStats` (base/equipment/perk composition, flooring). |
 | `src/game/perks.test.ts` | Unit tests for the perk engine (hook dispatch/priority, `perkModifiers` aggregation, representative reactive perks). |
 | `src/game/leveling.test.ts` | Unit tests for level-up growth math and perk growth bonuses. |
@@ -74,6 +75,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/data/floors.ts` | Floor definitions and cloning. Includes `EventDef`/`FloorDef.events` (scripted one-time/repeatable message/damage/heal/reward tile events) — plumbing exists but no floor currently uses it. |
 | `src/data/enemies.ts` | Encounter tables and resolution. |
 | `src/data/spells.ts` | Spell definitions. |
+| `src/data/techniques.ts` | Melee class technique definitions (30 techniques, 6 per class × 5 classes). Techniques are active abilities powered by the Rage resource; learned automatically at levels 1/3/5/7/10/12. |
 | `src/data/items.ts` | Item definitions. |
 | `src/styles.css` | All styling. |
 | `docs/` | GitHub Pages target; copied from `dist/`. |

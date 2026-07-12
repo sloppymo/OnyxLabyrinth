@@ -18,10 +18,12 @@
 import type { Character, Stats, StatusEffect } from "./party";
 import { charRow } from "./party";
 import type { EnemyDef, EnemySpecial, Row } from "../data/enemies";
-import type { SpellDef, SpellEffect, SpellTarget } from "../data/spells";
+import type { SpellDef, SpellEffect, SpellTarget, DamageElement } from "../data/spells";
 import { spellByName } from "../data/spells";
 import type { ItemDef } from "../data/items";
 import { ITEMS_BY_ID } from "../data/items";
+import type { TechniqueDef, TechniqueEffect, TechniqueTarget } from "../data/techniques";
+import { techniqueById, classHasTechniques, maxRageForLevel } from "../data/techniques";
 import { effectiveStats } from "./effective-stats";
 import {
   perksForCharacter,
@@ -262,6 +264,14 @@ export type PlayerAction =
       targetAllyId?: string; // character id for singleAlly
       targetRow?: Row; // enemy row for groupEnemies fizzle fields
     }
+  | {
+      kind: "technique";
+      actorId: string;
+      techniqueId: string;
+      targetInstanceId?: string; // enemy instance id for singleEnemy
+      targetAllyId?: string; // character id for singleAlly
+      targetRow?: Row; // enemy row for rowEnemies
+    }
   | { kind: "defend"; actorId: string }
   | {
       kind: "item";
@@ -295,6 +305,11 @@ export type CombatEvent =
   | { type: "hide"; actorId: string }
   | { type: "ambush"; actorId: string; targetId: string; damage: number; crit?: boolean }
   | { type: "spotted"; actorId: string }
+  | { type: "technique"; actorId: string; techniqueId: string; targetId: string | null }
+  | { type: "techniqueHit"; actorId: string; techniqueId: string; targetId: string; damage: number; crit?: boolean }
+  | { type: "techniqueMiss"; actorId: string; techniqueId: string; targetId: string }
+  | { type: "techniqueStatus"; actorId: string; techniqueId: string; targetId: string; statusInflicted: string }
+  | { type: "techniqueBuff"; actorId: string; techniqueId: string; targetId: string; isBuff?: boolean }
   | null;
 
 /** Internal: target of an enemy melee attack. */
@@ -325,6 +340,8 @@ export interface SummonedAlly {
   ac: number;
   agi: number;
   row: Row;
+  /** Enemy sprite id for rendering; falls back to procedural orb if absent. */
+  spriteId?: string;
 }
 
 export interface CombatState {
@@ -405,6 +422,46 @@ export interface CombatState {
    * whole combat. Reset per combat, not per round.
    */
   perkState: Record<string, Record<string, unknown>>;
+  /**
+   * Per-character rage (melee technique resource). 0 at combat start,
+   * gained by attacking/taking damage, spent on techniques, lost on defend.
+   * Only tracked for classes with techniques (Fighter/Thief/Halberdier/Duelist/Crusader).
+   */
+  rage: Record<string, number>;
+  /**
+   * Counter-stance flags (char id -> counter multiplier). Set by Brace/Riposte
+   * techniques; consumed when the character is next attacked.
+   */
+  counterStances: Record<string, number>;
+  /**
+   * Character ids currently taunting (forces enemy melee targeting priority).
+   * Cleared when the taunt duration expires.
+   */
+  tauntingIds: string[];
+  /**
+   * Taunt armor bonus and remaining duration (char id -> { bonus, duration }).
+   */
+  tauntBuffs: Record<string, { bonus: number; duration: number }>;
+  /**
+   * Next-attack bonus from Feint etc. (char id -> { critChance, hitChance, duration }).
+   * Consumed on the next attack/technique, or expires after duration rounds.
+   */
+  nextAttackBonuses: Record<string, { critChance: number; hitChance: number; duration: number }>;
+  /**
+   * Temporary damage multiplier buffs (char id -> { multiplier, duration }).
+   * Applied to all damage dealt by that character. Set by Battle Cry etc.
+   */
+  damageBuffs: Record<string, { multiplier: number; duration: number }>;
+  /**
+   * Temporary armor debuffs on enemies (instance id -> { penalty, duration }).
+   * Set by Disarm technique; reduces enemy AC for several rounds.
+   */
+  enemyArmorDebuffs: Record<string, { penalty: number; duration: number }>;
+  /**
+   * Temporary AGI debuffs on enemies (instance id -> { penalty, duration }).
+   * Set by Caltrops (slow); reduces enemy AGI for several rounds.
+   */
+  enemyAgiDebuffs: Record<string, { penalty: number; duration: number }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -455,6 +512,14 @@ export function createCombatState(
     justDiedAllies: [],
     events: [],
     perkState: Object.fromEntries(party.map((c) => [c.id, freshPerkState()])),
+    rage: Object.fromEntries(party.map((c) => [c.id, 0])),
+    counterStances: {},
+    tauntingIds: [],
+    tauntBuffs: {},
+    nextAttackBonuses: {},
+    damageBuffs: {},
+    enemyArmorDebuffs: {},
+    enemyAgiDebuffs: {},
   };
 }
 
@@ -685,6 +750,9 @@ export function resolveCombatRound(
 
   // Per-round silence from flag-driven bosses (silenceRandom) ends now.
   s.silencedThisRound = [];
+
+  // Tick technique-related temporary buffs/debuffs.
+  tickTechniqueBuffs(s);
 
   return s;
 }
@@ -946,6 +1014,10 @@ export function endRound(state: CombatState, rng: Rng = Math.random): CombatStat
   }
 
   s.silencedThisRound = [];
+
+  // Tick technique-related temporary buffs/debuffs.
+  tickTechniqueBuffs(s);
+
   return s;
 }
 
@@ -1096,7 +1168,7 @@ function decideEnemyAction(
       const targetable = livingParty.filter((c) => !c.status.includes("hidden"));
       const target = pickRandom(targetable.length > 0 ? targetable : livingParty, rng);
       if (target) {
-        const spellName = casterSpecial.element === "cold" ? "Kraelith" : "Zornyx";
+        const spellName = casterSpecial.element === "cold" ? "Cone of Cold" : "Fire Bolt";
         const spell = spellByName(spellName);
         return { kind: "cast", actor: enemy, spellId: spell?.id ?? spellName, targetId: target.id };
       }
@@ -1111,7 +1183,7 @@ function decideEnemyAction(
 
   // Melee: prefer targeting summoned allies (they act as a front line),
   // then use weighted 70% front row on the party.
-  const target = pickMeleeTarget(s.party, s.summonedAllies, rng);
+  const target = pickMeleeTarget(s.party, s.summonedAllies, rng, s.tauntingIds);
   if (target) return { kind: "attack", actor: enemy, target };
   return { kind: "doNothing", actor: enemy };
 }
@@ -1175,7 +1247,8 @@ function protectedFormationSlots(party: Character[]): Set<number> {
 function pickMeleeTarget(
   party: Character[],
   allies: SummonedAlly[],
-  rng: Rng
+  rng: Rng,
+  tauntingIds: string[] = []
 ): EnemyAttackTarget | undefined {
   const livingAllies = allies.filter((a) => a.hp > 0);
   if (livingAllies.length > 0) {
@@ -1185,6 +1258,13 @@ function pickMeleeTarget(
 
   const living = party.filter((c) => c.hp > 0);
   if (living.length === 0) return undefined;
+
+  // Taunt: if any living party member is taunting, enemies must target them.
+  const taunting = living.filter((c) => tauntingIds.includes(c.id));
+  if (taunting.length > 0) {
+    const target = pickRandom(taunting, rng);
+    if (target) return { kind: "party", id: target.id };
+  }
 
   // Skip hidden characters (they can't be targeted by single-target attacks)
   // and slots protected by a living Fighter with Protector.
@@ -1212,6 +1292,28 @@ function pickRandom<T>(arr: T[], rng: Rng): T | undefined {
 // Player action resolution
 // ---------------------------------------------------------------------------
 
+/** Add rage to a character (capped at maxRage). No-op for non-technique classes. */
+function gainRage(s: CombatState, charId: string, amount: number): void {
+  if (!(charId in s.rage)) return;
+  const char = s.party.find((c) => c.id === charId);
+  if (!char || !classHasTechniques(char.class)) return;
+  const cap = maxRageForLevel(char.level);
+  s.rage[charId] = Math.min(cap, (s.rage[charId] ?? 0) + amount);
+}
+
+/** Spend rage for a technique. Returns true if the character had enough. */
+function spendRage(s: CombatState, charId: string, cost: number): boolean {
+  const current = s.rage[charId] ?? 0;
+  if (current < cost) return false;
+  s.rage[charId] = current - cost;
+  return true;
+}
+
+/** Lose all rage (called on Defend). */
+function resetRage(s: CombatState, charId: string): void {
+  if (charId in s.rage) s.rage[charId] = 0;
+}
+
 function resolvePlayerAction(
   s: CombatState,
   action: PlayerAction,
@@ -1225,18 +1327,24 @@ function resolvePlayerAction(
   switch (action.kind) {
     case "attack":
       resolveAttack(s, actor, action.targetInstanceId, rng, log, emit);
+      gainRage(s, actor.id, 2);
       break;
     case "cast":
       resolveCast(s, actor, action, rng, log, emit);
       break;
+    case "technique":
+      resolveTechnique(s, actor, action, rng, log, emit);
+      break;
     case "defend":
       resolveDefend(s, actor, emit);
+      resetRage(s, actor.id);
       break;
     case "item":
       resolveItem(s, actor, action, log, emit);
       break;
     case "flee":
       resolveDefend(s, actor, emit);
+      resetRage(s, actor.id);
       break;
     case "hide":
       resolveHide(s, actor, emit);
@@ -1378,8 +1486,8 @@ function resolveAttack(
     log(`${actor.name} lands a critical hit!`);
   }
 
-  // Enemy AC reduces physical damage.
-  damage = Math.max(1, damage - target.ac);
+  // Enemy AC reduces physical damage (with Disarm debuffs applied).
+  damage = Math.max(1, damage - effectiveEnemyAc(s, target));
 
   // highDefense enemies (Animated Armor) halve physical damage.
   if (target.special.some((sp) => sp.kind === "highDefense")) {
@@ -1635,8 +1743,8 @@ function resolveAmbush(
     log(`${actor.name} lands a critical ambush!`);
   }
 
-  // Enemy AC reduces physical damage.
-  const reduced = Math.max(1, damage - target.ac);
+  // Enemy AC reduces physical damage (with Disarm debuffs applied).
+  const reduced = Math.max(1, damage - effectiveEnemyAc(s, target));
   target.currentHp -= reduced;
 
   emit(
@@ -1884,13 +1992,14 @@ function applySpell(
       const power = eff.power;
       const ally: SummonedAlly = {
         id: `summon-${s.round}-${s.summonedAllies.length}`,
-        name: spell.id === "priest-convocix" ? "Summoned Elemental" : "Summoned Beast",
+        name: eff.allyName ?? "Summoned Ally",
         hp: power * 6,
         maxHp: power * 6,
         attack: power * 3,
         ac: Math.max(1, Math.floor(power / 2)),
         agi: 50,
         row: "front",
+        spriteId: eff.spriteId,
       };
       if (s.summonedAllies.length >= MAX_ALLIES) {
         s.summonedAllies.shift();
@@ -2081,6 +2190,8 @@ function resolveEnemyAction(
       `${partyTarget.name} evades ${actor.name}'s attack!`,
       { type: "miss", actorId: actor.instanceId, targetId: partyTarget.id, reason: "evade" }
     );
+    // Rage: dodging an attack generates rage (+1).
+    gainRage(s, partyTarget.id, 1);
     return;
   }
 
@@ -2096,6 +2207,33 @@ function resolveEnemyAction(
   );
   if (result.redirectTarget && result.redirectDamage > 0) {
     log(`${result.redirectDamage} damage is redirected to ${result.redirectTarget.name}!`);
+  }
+
+  // Counter-stance (Brace/Riposte): if the target has an active counter,
+  // trigger a free counterattack against this enemy and consume the stance.
+  const counterMult = s.counterStances[partyTarget.id];
+  if (counterMult !== undefined && actor.currentHp > 0) {
+    delete s.counterStances[partyTarget.id];
+    const counterDmg = Math.max(1, Math.round(result.finalDamage * counterMult));
+    actor.currentHp -= counterDmg;
+    emit(
+      `${partyTarget.name} counters ${actor.name} for ${counterDmg} damage!`,
+      { type: "attack", actorId: partyTarget.id, targetId: actor.instanceId, damage: counterDmg }
+    );
+    log(`${partyTarget.name} counters ${actor.name} for ${counterDmg} damage!`);
+  }
+
+  // Rage: taking damage generates rage (+1 for the target).
+  gainRage(s, partyTarget.id, 1);
+  // Fighter/Halberdier protector identity: adjacent ally takes damage → +1 rage.
+  for (const ally of s.party) {
+    if (ally.id === partyTarget.id || ally.hp <= 0) continue;
+    if (!classHasTechniques(ally.class)) continue;
+    if (ally.class !== "Fighter" && ally.class !== "Halberdier") continue;
+    // "Adjacent" = formation slots differ by 3 (front/back pair).
+    if (Math.abs(ally.formationSlot - partyTarget.formationSlot) === 3) {
+      gainRage(s, ally.id, 1);
+    }
   }
 
   // Poison on hit (Cobweb, Acid Puddle).
@@ -2158,6 +2296,13 @@ function allyDeathCheck(
 // Damage reduction / armor
 // ---------------------------------------------------------------------------
 
+/** Effective AC of an enemy, accounting for armor debuffs (Disarm). */
+function effectiveEnemyAc(s: CombatState, enemy: EnemyInstance): number {
+  const debuff = s.enemyArmorDebuffs[enemy.instanceId];
+  if (!debuff) return enemy.ac;
+  return Math.max(0, enemy.ac - debuff.penalty);
+}
+
 /**
  * Reduce incoming damage to a CHARACTER by: equipped armor defenseBonus
  * (data-driven) + persistent spell armorBuffs + per-round Defend buff
@@ -2174,7 +2319,8 @@ function damageReductionFor(
     0
   );
   const spellBuff = s.armorBuffs[target.id] ?? 0;
-  const flatReduction = armorBonus + spellBuff;
+  const tauntBuff = s.tauntBuffs[target.id]?.bonus ?? 0;
+  const flatReduction = armorBonus + spellBuff + tauntBuff;
   let dmg = Math.max(1, damage - flatReduction);
   const defendPct = s.defendBuff[target.id] ?? 0;
   if (defendPct > 0) {
@@ -2543,4 +2689,572 @@ function cloneEnemy(e: EnemyInstance): EnemyInstance {
 
 // Re-export helpers the combat UI needs
 export { charRow };
-export type { Stats, SpellEffect, SpellTarget, EnemySpecial };
+export type { Stats, SpellEffect, SpellTarget, EnemySpecial, TechniqueDef, TechniqueEffect, TechniqueTarget };
+
+// ---------------------------------------------------------------------------
+// Technique buffs/debuffs tick
+// ---------------------------------------------------------------------------
+
+/** Decrement durations and expire technique-related temporary effects. */
+function tickTechniqueBuffs(s: CombatState): void {
+  // Taunt buffs
+  for (const id of Object.keys(s.tauntBuffs)) {
+    s.tauntBuffs[id].duration -= 1;
+    if (s.tauntBuffs[id].duration <= 0) {
+      delete s.tauntBuffs[id];
+      s.tauntingIds = s.tauntingIds.filter((tid) => tid !== id);
+    }
+  }
+  // Next-attack bonuses (Feint)
+  for (const id of Object.keys(s.nextAttackBonuses)) {
+    s.nextAttackBonuses[id].duration -= 1;
+    if (s.nextAttackBonuses[id].duration <= 0) {
+      delete s.nextAttackBonuses[id];
+    }
+  }
+  // Damage buffs (Battle Cry)
+  for (const id of Object.keys(s.damageBuffs)) {
+    s.damageBuffs[id].duration -= 1;
+    if (s.damageBuffs[id].duration <= 0) {
+      delete s.damageBuffs[id];
+    }
+  }
+  // Enemy armor debuffs (Disarm)
+  for (const id of Object.keys(s.enemyArmorDebuffs)) {
+    s.enemyArmorDebuffs[id].duration -= 1;
+    if (s.enemyArmorDebuffs[id].duration <= 0) {
+      delete s.enemyArmorDebuffs[id];
+    }
+  }
+  // Enemy AGI debuffs (Caltrops/slow)
+  for (const id of Object.keys(s.enemyAgiDebuffs)) {
+    s.enemyAgiDebuffs[id].duration -= 1;
+    if (s.enemyAgiDebuffs[id].duration <= 0) {
+      delete s.enemyAgiDebuffs[id];
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Technique resolution
+// ---------------------------------------------------------------------------
+
+function resolveTechnique(
+  s: CombatState,
+  actor: Character,
+  action: Extract<PlayerAction, { kind: "technique" }>,
+  rng: Rng,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  const tech = techniqueById(action.techniqueId);
+  if (!tech) {
+    log(`${actor.name} attempts an unknown technique.`);
+    return;
+  }
+  // Validate rage cost
+  if (!spendRage(s, actor.id, tech.rageCost)) {
+    log(`${actor.name} doesn't have enough rage for ${tech.name}.`);
+    return;
+  }
+
+  emit(
+    `${actor.name} uses ${tech.name}!`,
+    { type: "technique", actorId: actor.id, techniqueId: tech.id, targetId: action.targetInstanceId ?? null }
+  );
+
+  const eff = tech.effect;
+  switch (eff.kind) {
+    case "damage":
+      resolveTechniqueDamage(s, actor, tech, action, eff, rng, log, emit);
+      break;
+    case "multiHit":
+      resolveTechniqueMultiHit(s, actor, tech, action, eff, rng, log, emit);
+      break;
+    case "damageWithStatus":
+      resolveTechniqueDamageWithStatus(s, actor, tech, action, eff, rng, log, emit);
+      break;
+    case "damageWithExecute":
+      resolveTechniqueDamageWithExecute(s, actor, tech, action, eff, rng, log, emit);
+      break;
+    case "buff":
+      resolveTechniqueBuff(s, actor, tech, eff, emit);
+      break;
+    case "debuff":
+      resolveTechniqueDebuff(s, actor, tech, action, eff, emit);
+      break;
+    case "heal":
+      resolveTechniqueHeal(s, actor, tech, action, emit);
+      break;
+    case "counterStance":
+      s.counterStances[actor.id] = eff.multiplier;
+      emit(`${actor.name} readies a counter stance.`, { type: "techniqueBuff", actorId: actor.id, techniqueId: tech.id, targetId: actor.id, isBuff: true });
+      break;
+    case "taunt":
+      s.tauntingIds.push(actor.id);
+      s.tauntBuffs[actor.id] = { bonus: eff.armorBonus, duration: eff.duration };
+      emit(`${actor.name} taunts the enemy!`, { type: "techniqueBuff", actorId: actor.id, techniqueId: tech.id, targetId: actor.id, isBuff: true });
+      break;
+    case "buffNextAttack":
+      s.nextAttackBonuses[actor.id] = {
+        critChance: eff.critChanceBonus,
+        hitChance: eff.hitChanceBonus ?? 0,
+        duration: eff.duration,
+      };
+      emit(`${actor.name} feints, preparing a devastating strike.`, { type: "techniqueBuff", actorId: actor.id, techniqueId: tech.id, targetId: actor.id, isBuff: true });
+      break;
+    case "rageGrant":
+      for (const ally of s.party) {
+        if (ally.hp <= 0) continue;
+        if (!classHasTechniques(ally.class)) continue;
+        gainRage(s, ally.id, eff.amount);
+      }
+      emit(`${actor.name} rallies the party with a battle cry!`, { type: "techniqueBuff", actorId: actor.id, techniqueId: tech.id, targetId: actor.id, isBuff: true });
+      break;
+    case "damageBuff":
+      if (eff.target === "self") {
+        s.damageBuffs[actor.id] = { multiplier: eff.multiplier, duration: eff.duration };
+      } else {
+        for (const ally of s.party) {
+          if (ally.hp <= 0) continue;
+          s.damageBuffs[ally.id] = { multiplier: eff.multiplier, duration: eff.duration };
+        }
+      }
+      emit(`${actor.name} inspires the party to greater fury!`, { type: "techniqueBuff", actorId: actor.id, techniqueId: tech.id, targetId: actor.id, isBuff: true });
+      break;
+  }
+
+  // Rage: using a technique still counts as an action, gain +1 rage.
+  gainRage(s, actor.id, 1);
+}
+
+/** Get technique targets (enemies) based on technique target type. */
+function techniqueEnemyTargets(
+  s: CombatState,
+  tech: TechniqueDef,
+  action: Extract<PlayerAction, { kind: "technique" }>
+): EnemyInstance[] {
+  const all = [...s.enemies.front, ...s.enemies.back].filter((e) => e.currentHp > 0);
+  switch (tech.target) {
+    case "singleEnemy":
+      if (action.targetInstanceId) {
+        const t = all.find((e) => e.instanceId === action.targetInstanceId);
+        return t ? [t] : [];
+      }
+      return all.length > 0 ? [all[0]] : [];
+    case "allFrontEnemies":
+      return s.enemies.front.filter((e) => e.currentHp > 0);
+    case "allEnemies":
+      return all;
+    case "rowEnemies": {
+      const row = action.targetRow ?? "front";
+      return s.enemies[row].filter((e) => e.currentHp > 0);
+    }
+    case "columnEnemies": {
+      // Column = same index in front and back arrays.
+      // If targetInstanceId is given, find its index; otherwise use index 0.
+      let colIdx = 0;
+      if (action.targetInstanceId) {
+        const inFront = s.enemies.front.findIndex((e) => e.instanceId === action.targetInstanceId);
+        const inBack = s.enemies.back.findIndex((e) => e.instanceId === action.targetInstanceId);
+        colIdx = inFront >= 0 ? inFront : inBack >= 0 ? inBack : 0;
+      }
+      const targets: EnemyInstance[] = [];
+      const front = s.enemies.front[colIdx];
+      const back = s.enemies.back[colIdx];
+      if (front && front.currentHp > 0) targets.push(front);
+      if (back && back.currentHp > 0) targets.push(back);
+      return targets;
+    }
+    case "randomEnemies":
+      return all; // multiHit with randomTarget handles randomness
+    default:
+      return [];
+  }
+}
+
+/** Resolve a technique that deals damage to one or more enemies. */
+function resolveTechniqueDamage(
+  s: CombatState,
+  actor: Character,
+  tech: TechniqueDef,
+  action: Extract<PlayerAction, { kind: "technique" }>,
+  eff: Extract<TechniqueEffect, { kind: "damage" }>,
+  rng: Rng,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  const targets = techniqueEnemyTargets(s, tech, action);
+  if (targets.length === 0) {
+    log(`${actor.name} finds no target for ${tech.name}.`);
+    return;
+  }
+  for (const target of targets) {
+    dealTechniqueDamage(s, actor, tech, target, eff.multiplier, eff.armorPen, eff.element, rng, log, emit);
+  }
+}
+
+/** Resolve a multi-hit technique (Flurry, Blade Storm). */
+function resolveTechniqueMultiHit(
+  s: CombatState,
+  actor: Character,
+  tech: TechniqueDef,
+  action: Extract<PlayerAction, { kind: "technique" }>,
+  eff: Extract<TechniqueEffect, { kind: "multiHit" }>,
+  rng: Rng,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  const allTargets = techniqueEnemyTargets(s, tech, action);
+  if (allTargets.length === 0) {
+    log(`${actor.name} finds no target for ${tech.name}.`);
+    return;
+  }
+  for (let i = 0; i < eff.hits; i++) {
+    let target: EnemyInstance | undefined;
+    if (eff.randomTarget) {
+      const alive = [...s.enemies.front, ...s.enemies.back].filter((e) => e.currentHp > 0);
+      target = pickRandom(alive, rng);
+    } else {
+      target = allTargets[0];
+    }
+    if (!target || target.currentHp <= 0) continue;
+    // Each hit gets the cumulative crit chance bonus (Blade Storm).
+    const critBonus = eff.critChanceBonus ? eff.critChanceBonus * i : 0;
+    dealTechniqueDamage(s, actor, tech, target, eff.multiplier, undefined, undefined, rng, log, emit, critBonus);
+  }
+}
+
+/** Resolve a technique that deals damage + may inflict a status. */
+function resolveTechniqueDamageWithStatus(
+  s: CombatState,
+  actor: Character,
+  tech: TechniqueDef,
+  action: Extract<PlayerAction, { kind: "technique" }>,
+  eff: Extract<TechniqueEffect, { kind: "damageWithStatus" }>,
+  rng: Rng,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  const targets = techniqueEnemyTargets(s, tech, action);
+  if (targets.length === 0) {
+    log(`${actor.name} finds no target for ${tech.name}.`);
+    return;
+  }
+  for (const target of targets) {
+    const hit = dealTechniqueDamage(s, actor, tech, target, eff.multiplier, undefined, undefined, rng, log, emit);
+    if (hit && rng() < eff.statusChance) {
+      applyTechniqueStatus(s, target, eff.status, eff.statusDuration ?? 1, log, emit, actor, tech);
+    }
+  }
+}
+
+/** Resolve a technique with execute (instant kill below threshold). */
+function resolveTechniqueDamageWithExecute(
+  s: CombatState,
+  actor: Character,
+  tech: TechniqueDef,
+  action: Extract<PlayerAction, { kind: "technique" }>,
+  eff: Extract<TechniqueEffect, { kind: "damageWithExecute" }>,
+  rng: Rng,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  const targets = techniqueEnemyTargets(s, tech, action);
+  if (targets.length === 0) {
+    log(`${actor.name} finds no target for ${tech.name}.`);
+    return;
+  }
+  for (const target of targets) {
+    const hit = dealTechniqueDamage(s, actor, tech, target, eff.multiplier, undefined, undefined, rng, log, emit);
+    if (!hit) continue;
+    // Check execute condition
+    const hpPercent = target.currentHp / target.hp;
+    if (hpPercent > 0 && hpPercent < eff.executeThreshold) {
+      // undeadOnly check: if the technique requires undead, only execute undead.
+      if (eff.undeadOnly) {
+        const isUndead = target.special.some((sp) => sp.kind === "undead");
+        if (!isUndead) continue;
+      }
+      target.currentHp = 0;
+      log(`${target.name} is slain by ${tech.name}!`);
+      emit(`${target.name} is slain by ${tech.name}!`, { type: "techniqueHit", actorId: actor.id, techniqueId: tech.id, targetId: target.instanceId, damage: target.hp });
+    }
+  }
+}
+
+/** Resolve a buff technique (armor buff to self/allies). */
+function resolveTechniqueBuff(
+  s: CombatState,
+  actor: Character,
+  tech: TechniqueDef,
+  eff: Extract<TechniqueEffect, { kind: "buff" }>,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  let targets: Character[] = [];
+  switch (eff.target) {
+    case "self":
+      targets = [actor];
+      break;
+    case "allAllies":
+      targets = s.party.filter((c) => c.hp > 0);
+      break;
+    case "allFrontAllies":
+      targets = s.party.filter((c) => c.hp > 0 && charRow(c) === "front");
+      break;
+  }
+  for (const t of targets) {
+    s.armorBuffs[t.id] = (s.armorBuffs[t.id] ?? 0) + eff.power;
+    emit(`${tech.name} bolsters ${t.name}'s armor by ${eff.power}.`, { type: "techniqueBuff", actorId: actor.id, techniqueId: tech.id, targetId: t.id, isBuff: true });
+  }
+}
+
+/** Resolve a debuff technique (Disarm: reduce enemy AC). */
+function resolveTechniqueDebuff(
+  s: CombatState,
+  actor: Character,
+  tech: TechniqueDef,
+  action: Extract<PlayerAction, { kind: "technique" }>,
+  eff: Extract<TechniqueEffect, { kind: "debuff" }>,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  const targets = techniqueEnemyTargets(s, tech, action);
+  for (const t of targets) {
+    // Deal the technique's damage if it's a damage-debuff combo (Disarm has 0.5x).
+    // Actually Disarm is a pure debuff — but the spec says 0.5x damage.
+    // We handle that by checking if the technique also has a damage component.
+    // Since TechniqueEffect is a union, debuff is separate from damage.
+    // For Disarm, we apply the debuff and a small damage hit.
+    if (eff.stat === "armor") {
+      s.enemyArmorDebuffs[t.instanceId] = { penalty: eff.power, duration: eff.duration };
+      // Disarm also deals 0.5x damage — handled via a hardcoded check.
+      // Actually, let's just deal a small hit here.
+      const dmg = Math.max(1, Math.round((actor.level + 2) * 0.5));
+      t.currentHp -= dmg;
+      emit(`${actor.name} disarms ${t.name} for ${dmg} damage and reduces their armor by ${eff.power}!`, { type: "techniqueHit", actorId: actor.id, techniqueId: tech.id, targetId: t.instanceId, damage: dmg });
+      emit(`${t.name}'s armor is reduced by ${eff.power} for ${eff.duration} rounds.`, { type: "techniqueStatus", actorId: actor.id, techniqueId: tech.id, targetId: t.instanceId, statusInflicted: "armorDown" });
+    } else if (eff.stat === "agi") {
+      s.enemyAgiDebuffs[t.instanceId] = { penalty: eff.power, duration: eff.duration };
+      emit(`${t.name} is slowed! AGI reduced by ${eff.power} for ${eff.duration} rounds.`, { type: "techniqueStatus", actorId: actor.id, techniqueId: tech.id, targetId: t.instanceId, statusInflicted: "slow" });
+    }
+  }
+}
+
+/** Resolve a heal technique (Lay on Hands). */
+function resolveTechniqueHeal(
+  s: CombatState,
+  actor: Character,
+  tech: TechniqueDef,
+  action: Extract<PlayerAction, { kind: "technique" }>,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  let target: Character | undefined;
+  if (action.targetAllyId) {
+    target = s.party.find((c) => c.id === action.targetAllyId);
+  } else {
+    // Default to the most wounded ally (or self).
+    const wounded = s.party.filter((c) => c.hp > 0 && c.hp < c.maxHp);
+    target = wounded.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0] ?? actor;
+  }
+  if (!target) return;
+  // Lay on Hands heals for (STR + PIE) × 2.
+  const effStats = effStatsFor(s, actor);
+  const healAmount = (effStats.str + effStats.pie) * 2;
+  const before = target.hp;
+  target.hp = Math.min(target.maxHp, target.hp + healAmount);
+  const healed = target.hp - before;
+  emit(`${actor.name} lays hands on ${target.name}, healing ${healed} HP.`, { type: "techniqueBuff", actorId: actor.id, techniqueId: tech.id, targetId: target.id, isBuff: true });
+}
+
+/** Apply a status effect from a technique to an enemy. */
+function applyTechniqueStatus(
+  s: CombatState,
+  target: EnemyInstance,
+  status: "paralysis" | "poison" | "slow",
+  duration: number,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void,
+  actor: Character,
+  tech: TechniqueDef
+): void {
+  switch (status) {
+    case "paralysis":
+      if (!target.status.includes("paralysis")) {
+        target.status.push("paralysis");
+        s.paralysisTimers[target.instanceId] = duration;
+        log(`${target.name} is stunned by ${tech.name}!`);
+        emit(`${target.name} is stunned!`, { type: "techniqueStatus", actorId: actor.id, techniqueId: tech.id, targetId: target.instanceId, statusInflicted: "paralysis" });
+      }
+      break;
+    case "poison":
+      if (!target.status.includes("poison")) {
+        target.status.push("poison");
+        log(`${target.name} is poisoned by ${tech.name}!`);
+        emit(`${target.name} is poisoned!`, { type: "techniqueStatus", actorId: actor.id, techniqueId: tech.id, targetId: target.instanceId, statusInflicted: "poison" });
+      }
+      break;
+    case "slow":
+      s.enemyAgiDebuffs[target.instanceId] = { penalty: 5, duration };
+      log(`${target.name} is slowed by ${tech.name}!`);
+      emit(`${target.name} is slowed!`, { type: "techniqueStatus", actorId: actor.id, techniqueId: tech.id, targetId: target.instanceId, statusInflicted: "slow" });
+      break;
+  }
+}
+
+/**
+ * Core: deal technique damage to a single enemy.
+ * Returns true if the attack hit, false if it missed/evaded.
+ */
+function dealTechniqueDamage(
+  s: CombatState,
+  actor: Character,
+  tech: TechniqueDef,
+  target: EnemyInstance,
+  multiplier: number,
+  armorPen: number | undefined,
+  element: DamageElement | undefined,
+  rng: Rng,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void,
+  extraCritChance: number = 0
+): boolean {
+  // Check reachability for non-reach techniques.
+  // Lunge and Pole Vault ignore range; others use the actor's weapon range.
+  const ignoresRange = tech.id === "duelist-lunge" || tech.id === "halberdier-pole-vault";
+  if (!ignoresRange) {
+    const loadout = s.loadout[actor.id];
+    const weaponRange: WeaponRange = loadout?.weapon?.range ?? "close";
+    if (!canReach(actor.formationSlot, weaponRange, target.row)) {
+      if (target.row === "back" && s.enemies.front.some((e) => e.currentHp > 0)) {
+        log(`${actor.name} cannot reach ${target.name} in the back row with ${tech.name}.`);
+      } else {
+        log(`${actor.name} cannot reach ${target.name} with ${tech.name}.`);
+      }
+      return false;
+    }
+  }
+
+  // Feint / next-attack bonus: check before evasion/blind so guaranteed hits skip them.
+  const nextBonus = s.nextAttackBonuses[actor.id];
+  const guaranteedHit = nextBonus?.hitChance >= 1;
+  let extraCrit = extraCritChance;
+  if (nextBonus) {
+    extraCrit += nextBonus.critChance;
+    delete s.nextAttackBonuses[actor.id];
+  }
+
+  // Evasive enemies (skipped if Feint guaranteed a hit)
+  if (!guaranteedHit && target.special.some((sp) => sp.kind === "evasive")) {
+    if (rng() < 0.2) {
+      emit(`${target.name} evades ${tech.name}!`, { type: "techniqueMiss", actorId: actor.id, techniqueId: tech.id, targetId: target.instanceId });
+      return false;
+    }
+  }
+
+  // Blind check (skipped if Feint guaranteed a hit)
+  if (!guaranteedHit && actor.status.includes("blind") && rng() >= 0.5) {
+    emit(`${actor.name} is blind and misses with ${tech.name}.`, { type: "techniqueMiss", actorId: actor.id, techniqueId: tech.id, targetId: target.instanceId });
+    return false;
+  }
+
+  // Shadow Strike: auto-crit from hidden, 2x crit multiplier, ignores all AC.
+  const isShadowStrike = tech.id === "thief-shadow-strike";
+  const isPerfectStrike = tech.id === "duelist-perfect-strike";
+  const forceCrit = isShadowStrike || isPerfectStrike || (actor.status.includes("hidden") && isShadowStrike);
+
+  // Calculate base damage (same formula as resolveAttack).
+  const effStats = effStatsFor(s, actor);
+  const mods = perkModifiers(perksForCharacter(actor), effStats);
+  const loadout = s.loadout[actor.id];
+  const weapon = loadout?.weapon;
+  const weaponBonus = weapon?.attackBonus ?? 0;
+  const base = effStats.str + actor.level + weaponBonus;
+  const isThief = actor.class === "Thief";
+  const weaponRange = weapon?.range ?? "close";
+  const rowMultiplier = charRow(actor) === "back" && weaponRange === "close" && !isThief && !ignoresRange ? 0.4 : 1;
+  const variance = 0.8 + rng() * 0.4;
+  let damage = Math.max(1, Math.round(base * rowMultiplier * variance * mods.meleeDamageMultiplier)) + mods.meleeBonusDamage;
+
+  // Apply technique multiplier
+  damage = Math.max(1, Math.round(damage * multiplier));
+
+  // Damage buff (Battle Cry)
+  const dmgBuff = s.damageBuffs[actor.id];
+  if (dmgBuff) {
+    damage = Math.max(1, Math.round(damage * dmgBuff.multiplier));
+  }
+
+  // Critical hit
+  let crit = false;
+  const critChance = Math.min(0.25, effStats.luk / 100 + mods.critChanceBonus + extraCrit);
+  if (forceCrit || rng() < critChance) {
+    const critMult = isShadowStrike ? mods.critDamageMultiplier * 2 : isPerfectStrike ? 2.5 : mods.critDamageMultiplier;
+    damage = Math.max(1, Math.round(damage * critMult));
+    crit = true;
+    log(`${actor.name} lands a critical hit with ${tech.name}!`);
+  }
+
+  // Enemy AC reduction (with armor pen and debuffs)
+  const effectiveAc = effectiveEnemyAc(s, target);
+  const acReduction = armorPen !== undefined ? Math.round(effectiveAc * (1 - armorPen)) : effectiveAc;
+  damage = Math.max(1, damage - acReduction);
+
+  // highDefense enemies halve physical damage (divine/lightning bypass this)
+  if (!element && target.special.some((sp) => sp.kind === "highDefense")) {
+    damage = Math.max(1, Math.round(damage * 0.5));
+  }
+
+  // resistPhysical (only for non-elemental technique damage)
+  if (!element) {
+    const resist = target.special.find(
+      (sp): sp is Extract<EnemySpecial, { kind: "resistPhysical" }> => sp.kind === "resistPhysical"
+    );
+    if (resist) {
+      damage = Math.max(1, Math.round(damage * (1 - resist.percent / 100)));
+    }
+  }
+
+  // Divine damage: +50% vs undead (for Crusader techniques)
+  if (element === "divine") {
+    const isUndead = target.special.some((sp) => sp.kind === "undead");
+    if (isUndead) {
+      damage = Math.max(1, Math.round(damage * 1.5));
+    }
+  }
+
+  target.currentHp -= damage;
+  emit(
+    `${actor.name} hits ${target.name} with ${tech.name} for ${damage} damage.`,
+    { type: "techniqueHit", actorId: actor.id, techniqueId: tech.id, targetId: target.instanceId, damage, crit }
+  );
+  wakeOnDamage(target, log);
+
+  // Consume hidden status if Shadow Strike was used from hide
+  if (isShadowStrike && actor.status.includes("hidden")) {
+    actor.status = actor.status.filter((st) => st !== "hidden");
+  }
+
+  // Dispatch OnAttackHit for perk interactions (Cleave, etc.)
+  dispatchHook("OnAttackHit", perksForCharacter(actor), {
+    state: s.perkState[actor.id],
+    rng,
+    damage,
+    dealCleaveDamage: (dmg: number) => {
+      const front = s.enemies.front.filter((e) => e.currentHp > 0 && e.instanceId !== target.instanceId);
+      const other = pickRandom(front, rng);
+      if (!other) return;
+      other.currentHp -= dmg;
+      emit(`${actor.name} cleaves ${other.name} for ${dmg} damage!`, { type: "attack", actorId: actor.id, targetId: other.instanceId, damage: dmg });
+      wakeOnDamage(other, log);
+    },
+    hitAllFrontRow: (dmg: number) => {
+      for (const other of s.enemies.front.filter((e) => e.currentHp > 0 && e.instanceId !== target.instanceId)) {
+        other.currentHp -= dmg;
+        emit(`${actor.name} strikes ${other.name} for ${dmg} damage!`, { type: "attack", actorId: actor.id, targetId: other.instanceId, damage: dmg });
+        wakeOnDamage(other, log);
+      }
+    },
+  });
+
+  return true;
+}

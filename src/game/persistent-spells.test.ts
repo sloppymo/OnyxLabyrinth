@@ -1,6 +1,6 @@
 /**
- * Unit tests for utility spells and persistent buffs (Lucenis light, Aerivex
- * levitation, Pathrend detect) and their interplay with tile features.
+ * Unit tests for utility spells and persistent buffs (Light light, Levitate
+ * levitation, Wayfinder detect) and their interplay with tile features.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -40,32 +40,32 @@ function makeState(): GameState {
 }
 
 function priestOf(state: GameState) {
-  const c = state.party.find((p) => p.knownSpellIds.includes("priest-lucenis"));
-  if (!c) throw new Error("no default priest knows Lucenis");
+  const c = state.party.find((p) => p.knownSpellIds.includes("priest-light"));
+  if (!c) throw new Error("no default priest knows Light");
   return c;
 }
 
 function mageOf(state: GameState) {
-  const c = state.party.find((p) => p.knownSpellIds.includes("mage-pathrend"));
-  if (!c) throw new Error("no default mage knows Pathrend");
+  const c = state.party.find((p) => p.knownSpellIds.includes("mage-wayfinder"));
+  if (!c) throw new Error("no default mage knows Wayfinder");
   return c;
 }
 
 describe("utilityCastOptions", () => {
-  it("lists Lucenis and Pathrend for the default level-1 party", () => {
+  it("lists Light and Wayfinder for the default level-1 party", () => {
     const state = makeState();
     const ids = utilityCastOptions(state).map((o) => o.spell.id);
-    expect(ids).toContain("priest-lucenis");
-    expect(ids).toContain("mage-pathrend");
-    // Aerivex is tier 4 — no level-1 caster knows it.
-    expect(ids).not.toContain("mage-aerivex");
+    expect(ids).toContain("priest-light");
+    expect(ids).toContain("mage-wayfinder");
+    // Levitate is tier 4 — no level-1 caster knows it.
+    expect(ids).not.toContain("mage-levitate");
   });
 
   it("omits dead casters and marks unaffordable casts", () => {
     const state = makeState();
     const priest = priestOf(state);
     priest.sp = 0;
-    const opt = utilityCastOptions(state).find((o) => o.spell.id === "priest-lucenis");
+    const opt = utilityCastOptions(state).find((o) => o.spell.id === "priest-light");
     expect(opt?.affordable).toBe(false);
     priest.hp = 0;
     const ids = utilityCastOptions(state).map((o) => o.casterId);
@@ -74,22 +74,22 @@ describe("utilityCastOptions", () => {
 });
 
 describe("castUtilitySpell", () => {
-  it("Lucenis adds a light buff and deducts SP", () => {
+  it("Light adds a light buff and deducts SP", () => {
     const state = makeState();
     const priest = priestOf(state);
     const spBefore = priest.sp;
-    const msg = castUtilitySpell(state, priest.id, "priest-lucenis");
+    const msg = castUtilitySpell(state, priest.id, "priest-light");
     expect(msg).toMatch(/radiance/);
     expect(priest.sp).toBe(spBefore - 3);
     expect(hasBuff(state, "light")).toBe(true);
     expect(state.persistentBuffs[0].remainingSteps).toBe(40);
   });
 
-  it("Pathrend reports position and facing without adding a buff", () => {
+  it("Wayfinder reports position and facing without adding a buff", () => {
     const state = makeState();
     const mage = mageOf(state);
     state.player = { x: 3, y: 4, facing: 1 };
-    const msg = castUtilitySpell(state, mage.id, "mage-pathrend");
+    const msg = castUtilitySpell(state, mage.id, "mage-wayfinder");
     expect(msg).toMatch(/\(3, 4\)/);
     expect(msg).toMatch(/east/);
     expect(state.persistentBuffs).toHaveLength(0);
@@ -98,9 +98,9 @@ describe("castUtilitySpell", () => {
   it("re-casting refreshes the countdown instead of stacking", () => {
     const state = makeState();
     const priest = priestOf(state);
-    castUtilitySpell(state, priest.id, "priest-lucenis");
+    castUtilitySpell(state, priest.id, "priest-light");
     state.persistentBuffs[0].remainingSteps = 5;
-    castUtilitySpell(state, priest.id, "priest-lucenis");
+    castUtilitySpell(state, priest.id, "priest-light");
     expect(state.persistentBuffs).toHaveLength(1);
     expect(state.persistentBuffs[0].remainingSteps).toBe(40);
   });
@@ -109,11 +109,11 @@ describe("castUtilitySpell", () => {
     const state = makeState();
     const priest = priestOf(state);
     state.inAntimagic = true;
-    expect(castUtilitySpell(state, priest.id, "priest-lucenis")).toMatch(/anti-magic/);
+    expect(castUtilitySpell(state, priest.id, "priest-light")).toMatch(/anti-magic/);
     expect(hasBuff(state, "light")).toBe(false);
     state.inAntimagic = false;
     priest.sp = 0;
-    expect(castUtilitySpell(state, priest.id, "priest-lucenis")).toMatch(/lacks the SP/);
+    expect(castUtilitySpell(state, priest.id, "priest-light")).toMatch(/lacks the SP/);
   });
 });
 
@@ -157,12 +157,12 @@ describe("buff interplay with tile features", () => {
     expect(result?.message).toMatch(/darkness zone/);
   });
 
-  it("casting Lucenis while standing in darkness clears it immediately", () => {
+  it("casting Light while standing in darkness clears it immediately", () => {
     const state = makeState();
     state.player = { x: 3, y: 2, facing: 0 };
     handleTileFeature(state);
     expect(state.inDarkness).toBe(true);
-    castUtilitySpell(state, priestOf(state).id, "priest-lucenis");
+    castUtilitySpell(state, priestOf(state).id, "priest-light");
     expect(state.inDarkness).toBe(false);
   });
 
