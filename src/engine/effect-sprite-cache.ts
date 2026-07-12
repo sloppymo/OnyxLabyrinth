@@ -307,6 +307,34 @@ const EFFECT_STRIPS: Record<string, EffectStrip> = {
     frameCount: 4,
     fps: 12,
   },
+
+  // --- Downloaded pack: Pixelart Spells (DevWizard, CC0) — 16x16 strips ---
+  px_fireball: { name: "px_fireball", url: "pixelart-fireball.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_firebomb: { name: "px_firebomb", url: "pixelart-firebomb.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_ice_lance: { name: "px_ice_lance", url: "pixelart-ice-lance.png", frameWidth: 16, frameHeight: 16, frameCount: 4, fps: 12 },
+  px_bolt_purity: { name: "px_bolt_purity", url: "pixelart-bolt-of-purity.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_light_bolt: { name: "px_light_bolt", url: "pixelart-light-bolt.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_shield: { name: "px_shield", url: "pixelart-shield.png", frameWidth: 48, frameHeight: 48, frameCount: 6, fps: 12 },
+  px_magic_sparks: { name: "px_magic_sparks", url: "pixelart-magic-sparks.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  px_darkness_orb: { name: "px_darkness_orb", url: "pixelart-darkness-orb.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+
+  // --- Downloaded pack: Magic Pack 9 (ansimuz, royalty-free) — NON-SQUARE frames ---
+  mp_fire_bomb: { name: "mp_fire_bomb", url: "magicpack-fire-bomb.png", frameWidth: 64, frameHeight: 64, frameCount: 14, fps: 14 },
+  mp_lightning: { name: "mp_lightning", url: "magicpack-lightning.png", frameWidth: 64, frameHeight: 128, frameCount: 10, fps: 14 },
+  mp_spark: { name: "mp_spark", url: "magicpack-spark.png", frameWidth: 32, frameHeight: 32, frameCount: 7, fps: 14 },
+  mp_dark_bolt: { name: "mp_dark_bolt", url: "magicpack-dark-bolt.png", frameWidth: 64, frameHeight: 88, frameCount: 11, fps: 14 },
+
+  // --- Downloaded pack: Foozle Pixel Magic Effects (CC0) — 64x64 strips ---
+  fz_fireball: { name: "fz_fireball", url: "foozle-fireball.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+  fz_explosion: { name: "fz_explosion", url: "foozle-explosion.png", frameWidth: 64, frameHeight: 64, frameCount: 7, fps: 12 },
+  fz_molten_spear: { name: "fz_molten_spear", url: "foozle-molten-spear.png", frameWidth: 64, frameHeight: 64, frameCount: 12, fps: 12 },
+  fz_portal: { name: "fz_portal", url: "foozle-portal.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+  fz_portal_gold: { name: "fz_portal_gold", url: "foozle-portal-gold.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+  fz_portal_orange: { name: "fz_portal_orange", url: "foozle-portal-orange.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+
+  // --- Baked recolor variants (engine cannot tint strips at runtime) ---
+  heal_sparks: { name: "heal_sparks", url: "heal-sparks.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+  dispel_sparks: { name: "dispel_sparks", url: "dispel-sparks.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
 };
 
 const effectCache: Map<string, EffectSprite> = new Map();
