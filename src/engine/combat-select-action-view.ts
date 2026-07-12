@@ -137,7 +137,6 @@ function buildMenuWindow(
       row.addEventListener("click", () => handlers.onMenuConfirm(i));
       win.appendChild(row);
     }
-    win.appendChild(el("ff6-hint-row", "↑↓ Enter · A/M/D/I/R"));
   } else {
     if (view.selectionTitle) {
       win.appendChild(el("ff6-menu-title", view.selectionTitle));
@@ -167,7 +166,6 @@ function buildMenuWindow(
     if (view.selectionFooter) {
       win.appendChild(el("ff6-sel-footer", view.selectionFooter));
     }
-    win.appendChild(el("ff6-hint-row", "↑↓ Enter · Esc back"));
   }
 
   if (view.flash) {
@@ -182,25 +180,27 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
     (e) => e.currentHp > 0
   );
   const summons = state.summonedAllies.filter((a) => a.hp > 0);
-  // Group by display name with counts, FF6-style.
-  const counts = new Map<string, number>();
-  for (const e of living) counts.set(e.name, (counts.get(e.name) ?? 0) + 1);
-  if (counts.size === 0 && summons.length === 0) {
+  if (living.length === 0 && summons.length === 0) {
     win.appendChild(el("ff6-enemy-row", "—"));
     return win;
   }
-  for (const [name, count] of counts) {
+  // One row per living enemy with its own HP total, so a wounded enemy is
+  // distinguishable from a fresh one when targeting.
+  for (const e of living) {
     const row = el("ff6-enemy-row");
     const nameEl = document.createElement("span");
-    nameEl.textContent = name;
-    nameEl.title = name;
+    nameEl.textContent = e.name;
+    nameEl.title = e.name;
     row.appendChild(nameEl);
-    if (count > 1) {
-      const countEl = document.createElement("span");
-      countEl.className = "ff6-enemy-count";
-      countEl.textContent = `×${count}`;
-      row.appendChild(countEl);
-    }
+
+    const hpEl = document.createElement("span");
+    hpEl.className = "ff6-enemy-hp";
+    hpEl.textContent = `${Math.max(0, e.currentHp)}/${e.hp}`;
+    const ratio = e.hp > 0 ? e.currentHp / e.hp : 0;
+    if (ratio <= 0.25) hpEl.classList.add("critical");
+    else if (ratio <= 0.5) hpEl.classList.add("wounded");
+    row.appendChild(hpEl);
+
     win.appendChild(row);
   }
   // Summoned allies fight on the party's side but stand mid-field, so they
@@ -212,7 +212,7 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
     nameEl.title = a.name;
     row.appendChild(nameEl);
     const hpEl = document.createElement("span");
-    hpEl.className = "ff6-enemy-count";
+    hpEl.className = "ff6-enemy-hp";
     hpEl.textContent = `${a.hp}/${a.maxHp}`;
     row.appendChild(hpEl);
     win.appendChild(row);
@@ -368,6 +368,29 @@ function buildResultWindow(result: ResultView): HTMLElement {
   return win;
 }
 
+/** Compact always-on party HUD for narrow screens. Hidden on desktop via
+ *  CSS (.ff6-mobile-hud { display: none; }); shown inside the @media block. */
+function buildMobileHud(view: CombatWindowsView): HTMLElement {
+  const hud = el("ff6-mobile-hud");
+  for (const c of view.state.party) {
+    const cell = el("ff6-hud-cell");
+    if (c.id === view.currentCharacterId) cell.classList.add("current");
+    const name = el("ff6-hud-name", c.name);
+    name.title = c.name;
+    const hp = el("ff6-hud-hp", `${Math.max(0, c.hp)}/${c.maxHp}`);
+    const bar = el("ff6-hud-bar");
+    const fill = el("ff6-hud-fill");
+    const ratio = c.maxHp > 0 ? Math.max(0, c.hp) / c.maxHp : 0;
+    fill.style.width = `${Math.round(ratio * 100)}%`;
+    if (ratio <= 0.25) fill.classList.add("critical");
+    else if (ratio <= 0.5) fill.classList.add("wounded");
+    bar.appendChild(fill);
+    cell.append(name, hp, bar);
+    hud.appendChild(cell);
+  }
+  return hud;
+}
+
 /** Render the FF6 window row (and result overlay) into `container`. */
 export function renderCombatWindows(
   container: HTMLElement,
@@ -375,6 +398,9 @@ export function renderCombatWindows(
   handlers: CombatWindowsHandlers
 ): void {
   container.innerHTML = "";
+
+  // Mobile party HUD — always present in the DOM, hidden on desktop via CSS.
+  container.appendChild(buildMobileHud(view));
 
   const row = el("ff6-windows");
   row.appendChild(buildMenuWindow(view, handlers));
@@ -387,6 +413,16 @@ export function renderCombatWindows(
   );
   row.appendChild(buildPartyWindow(view));
   container.appendChild(row);
+
+  // Single shared footer hint (replaces the old per-window hint rows).
+  // Short text so it never wraps on narrow mobile viewports.
+  const footer = el(
+    "ff6-footer",
+    view.menuMode === "selection"
+      ? "↑↓ · Enter · Esc back"
+      : "↑↓ · Enter · A/M/D/I/R"
+  );
+  container.appendChild(footer);
 
   if (view.result) {
     container.appendChild(buildResultWindow(view.result));
