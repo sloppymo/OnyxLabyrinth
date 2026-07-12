@@ -1,5 +1,7 @@
 # Downloaded VFX Assets — Usage Plan
 
+> **Status:** all assets have been copied into `public/assets/effects/` and registered in `src/engine/effect-sprite-cache.ts`. Spells still need to be created for the water/wind/earth/plant elements; the sprites are ready.
+
 Assets are in `~/Downloads/Spell Effects/` and fall into three packs:
 
 1. **Pixelart Spells** by DevWizard (OpenGameArt, CC0) — 22 horizontal PNG strips, mostly 16×16 projectiles and orbs.
@@ -32,14 +34,14 @@ All files are already horizontal PNG strips. Frame size = height; frame count = 
 | `Magic Ray.png` | 128×16 | 8 | 16×16 | Purple magic ray/beam | Beam projectile for high-tier Mage spells |
 | `Magic Sparks.png` | 96×16 | 6 | 16×16 | Small purple/white sparkle burst | Burst for heals, buffs, or status-clear spells; tintable |
 | `Pixelart Shield.png` | 288×48 | 6 | 48×48 | Blue circular shield that forms and fades | Burst for `priest-shield-of-faith`, `priest-bless`, `mage-arcane-ward`, `mage-spell-shield` |
-| `Plant Missle.png` | 96×16 | 6 | 16×16 | Green leaf/plant projectile | Not currently useful (no nature spells) |
+| `Plant Missle.png` | 96×16 | 6 | 16×16 | Green leaf/plant projectile | Incorporated as `px_plant_missle` — awaiting nature spell |
 | `Pure Bolt 2.png` | 96×16 | 6 | 16×16 | White holy bolt variant | Alternative projectile for `priest-guiding-bolt`, `priest-divine-smite` |
-| `Rock Sling.png` | 16×16 | 1 | 16×16 | Single rock chunk | Not currently useful (no earth spell) |
-| `Splash.png` | 192×32 | 6 | 32×32 | Water splash burst | Not currently useful (no water spells) |
-| `Water Blast.png` | 96×16 | 6 | 16×16 | Water projectile | Not currently useful |
-| `Water Bolt.png` | 96×16 | 6 | 16×16 | Water bolt | Not currently useful |
-| `Water Orb.png` | 96×16 | 6 | 16×16 | Water orb | Not currently useful |
-| `Wind Bolt.png` | 96×16 | 6 | 16×16 | Wind slash | Not currently useful (no wind spells) |
+| `Rock Sling.png` | 16×16 | 1 | 16×16 | Single rock chunk | Incorporated as `px_rock_sling` — awaiting earth spell |
+| `Splash.png` | 192×32 | 6 | 32×32 | Water splash burst | Incorporated as `px_splash` — awaiting water spell |
+| `Water Blast.png` | 96×16 | 6 | 16×16 | Water projectile | Incorporated as `px_water_blast` — awaiting water spell |
+| `Water Bolt.png` | 96×16 | 6 | 16×16 | Water bolt | Incorporated as `px_water_bolt` — awaiting water spell |
+| `Water Orb.png` | 96×16 | 6 | 16×16 | Water orb | Incorporated as `px_water_orb` — awaiting water spell |
+| `Wind Bolt.png` | 96×16 | 6 | 16×16 | Wind slash | Incorporated as `px_wind_bolt` — awaiting wind spell |
 
 ### Magic Pack 9 (ansimuz, royalty-free)
 
@@ -48,13 +50,13 @@ Pre-built spritesheets are single horizontal rows. Individual-frame folders cont
 | Asset | Sheet size | Frames | Frame size | What it looks like | Suggested use in game |
 |-------|------------|--------|------------|--------------------|----------------------|
 | `spritesheets/Fire-bomb.png` | 896×64 | 14 | 64×64 | Full fire bomb: spark → charge → explosion → fade | Burst for `mage-fireball`, `mage-immolate`. Excellent upgrade over the generic `fire_explosion` |
-| `sprites/FireBomb/*.png` (15 frames) | 64×64 each | 15 | 64×64 | Same animation, includes one extra frame at the end | Use if you want the complete 15-frame version instead of the 14-frame sheet |
+| `sprites/FireBomb/*.png` (15 frames) | 64×64 each | 15 | 64×64 | Same animation, includes one extra frame at the end | Incorporated as `mp_fire_bomb_full` |
 | `spritesheets/Lightning.png` | 640×128 | 10 | 64×128 | Lightning bolt descending from top + ground impact burst | Burst/field for `mage-spark`, `priest-guiding-bolt`, or `mage-power-word-stun` |
-| `sprites/Lightning/*.png` (11 frames) | 64×128 each | 11 | 64×128 | Same, includes one extra frame | Use if you want the full 11-frame version |
+| `sprites/Lightning/*.png` (11 frames) | 64×128 each | 11 | 64×128 | Same, includes one extra frame | Incorporated as `mp_lightning_full` |
 | `spritesheets/spark.png` | 224×32 | 7 | 32×32 | Small glowing spark projectile | Projectile for `mage-spark` or low-level lightning spells |
-| `sprites/spark/*.png` (8 frames) | 32×32 each | 8 | 32×32 | Same, includes one extra frame | Use if you want the complete 8-frame version |
+| `sprites/spark/*.png` (8 frames) | 32×32 each | 8 | 32×32 | Same, includes one extra frame | Incorporated as `mp_spark_full` |
 | `spritesheets/Dark-Bolt.png` | 704×88 | 11 | 64×88 | Dark purple bolt with trailing energy | Recolor to green for `mage-poison-spray` projectile, or use for dark/arcane spells |
-| `sprites/DarkBolt/*.png` (12 frames) | 64×88 each | 12 | 64×88 | Same, includes one extra frame | Use if you want the full 12-frame version |
+| `sprites/DarkBolt/*.png` (12 frames) | 64×88 each | 12 | 64×88 | Same, includes one extra frame | Incorporated as `mp_dark_bolt_full` |
 
 ### Foozle Pixel Magic Effects (CC0)
 
@@ -66,13 +68,13 @@ All animation folders contain numbered 64×64 frames. The big sheet `Spell/Pixel
 | `Explosion` | 7 | 64×64 | Circular fire/smoke explosion | Generic fire burst for `mage-fireball`, `mage-immolate`, or `mage-burning-hands` |
 | `Portal` | 10 | 64×64 | Purple swirling magic portal | Cast-flash / burst for summon spells: `mage-lesser-summon`, `mage-summon-fire-elemental`, `mage-conjure-elemental`, `mage-gate`, `priest-summon-guardian`, `priest-summon-celestial-guardian`, `priest-summon-celestial` |
 | `Molten_Spear` | 12 | 64×64 | Red/orange spear-like projectile | Alternative fire projectile for `mage-fire-bolt` or high-tier fire spells |
-| `Rocks` | 10 | 64×64 | Rock chunks falling/launching | Not currently useful (no earth spell) |
-| `Earth_Spike` | 9 | 64×64 | Earth spike erupting from ground | Not currently useful |
-| `Water` | 10 | 64×64 | Water blob/blast | Not currently useful (no water spells) |
-| `Water_Geyser` | 13 | 64×64 | Water column erupting | Not currently useful |
-| `Wind` | 10 | 64×64 | Wind slash/crescent | Not currently useful (no wind spells) |
-| `Tornado` | 9 | 64×64 | Tornado vortex | Not currently useful |
-| `Icons` | 10 | 32×32 | 32×32 spell icons | Not used by the combat VFX engine (could be used for UI icons later) |
+| `Rocks` | 10 | 64×64 | Rock chunks falling/launching | Incorporated as `fz_rocks` — awaiting earth spell |
+| `Earth_Spike` | 9 | 64×64 | Earth spike erupting from ground | Incorporated as `fz_earth_spike` — awaiting earth spell |
+| `Water` | 10 | 64×64 | Water blob/blast | Incorporated as `fz_water` — awaiting water spell |
+| `Water_Geyser` | 13 | 64×64 | Water column erupting | Incorporated as `fz_water_geyser` — awaiting water spell |
+| `Wind` | 10 | 64×64 | Wind slash/crescent | Incorporated as `fz_wind` — awaiting wind spell |
+| `Tornado` | 9 | 64×64 | Tornado vortex | Incorporated as `fz_tornado` — awaiting wind spell |
+| `Icons` | 10 | 32×32 | 32×32 spell icons | Incorporated as `fz_icons` — could be used for UI icons later |
 
 ---
 
