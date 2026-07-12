@@ -25,7 +25,7 @@
 
 import type { Character } from "../game/party";
 import type { CombatState, CombatEvent, EnemyInstance, SummonedAlly } from "../game/combat";
-import { getEnemySpriteStrip } from "./enemy-sprite-cache";
+import { getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache";
 import { getPartySpriteStrip, type PartySpriteState } from "./party-sprite-cache";
 import { getEffectSprite, type EffectSprite } from "./effect-sprite-cache";
 import { spellById } from "../data/spells";
@@ -295,6 +295,11 @@ export interface Particle {
 }
 
 export function createScene(state: CombatState): CombatScene {
+  // Lazy-load any summon sprite bundles that aren't yet cached (e.g. a
+  // summon spell was cast for the first time this session).
+  for (const ally of state.summonedAllies) {
+    if (ally.spriteId) loadEnemySpriteBundle(ally.spriteId).catch(() => {});
+  }
   return {
     state,
     partyAnims: new Map(),
@@ -561,23 +566,18 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
   poison: { color: "#c080ff", projectile: "red_energy", burst: "red_energy_glow", field: "red_energy_glow", scale: 1.3 },
 };
 
-/** Per-spell visual overrides for testing alternate effect variants. */
+/** Per-spell visual overrides for alternate effect variants. */
 const SPELL_OVERRIDES: Record<string, EffectStyle> = {
-  // Fire variants
-  "mage-emberik": { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion_glow", field: "large_fire", scale: 2.5 },
-  "mage-flammorum": { color: "#ff8c42", burst: "fire_explosion_iso_glow", field: "large_fire_glow", scale: 2.5 },
-  "mage-cinderis": { color: "#ff8c42", projectile: "wizard_attack1", projectileScale: 1, burst: "fire_explosion", burstScale: 2.5, scale: 1 },
-  // Cold variants
-  "mage-frostik": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_glow", scale: 1.2 },
-  "mage-rimeis": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_transparent", scale: 1.2 },
-  "mage-hoarix": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_dark", scale: 1.2 },
-  // Lightning variants
-  "mage-voltis": { color: "#ffd769", projectile: "lightning_blast_glow", burst: "lightning_energy_glow", scale: 1.3 },
-  // Poison/red variants
-  "mage-venomik": { color: "#c080ff", projectile: "red_lightning_blast_glow", burst: "red_energy_glow", scale: 1.3 },
-  "mage-miasmorum": { color: "#c080ff", burst: "red_energy", field: "red_energy_glow", scale: 1.3 },
+  // Fire
+  "mage-ember": { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion_glow", field: "large_fire", scale: 2.5 },
+  // Cold
+  "mage-frostbite": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_glow", scale: 1.2 },
+  // Poison
+  "mage-poison-spray": { color: "#c080ff", projectile: "red_lightning_blast_glow", burst: "red_energy_glow", scale: 1.3 },
   // Priest holy
-  "priest-lumenik": { color: "#7fb8f0", projectile: "priest_attack", projectileScale: 1, burst: "lightning_energy_glow", burstScale: 1.3, scale: 1 },
+  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "priest_attack", projectileScale: 1, burst: "lightning_energy_glow", burstScale: 1.3, scale: 1 },
+  // Divine (priest smite)
+  "priest-divine-smite": { color: "#ffe8a0", projectile: "priest_attack", projectileScale: 1.2, burst: "lightning_energy_glow", burstScale: 1.5, scale: 1.2 },
 };
 
 const STATUS_STYLES: Record<string, EffectStyle> = {
@@ -659,7 +659,8 @@ export function playTurn(
   spellNameFor: (spellId: string) => string,
   now: number,
   w: number,
-  h: number
+  h: number,
+  techniqueNameFor: (techniqueId: string) => string = () => "Technique"
 ): number {
   const steps: ChoreoStep[] = [];
   let t = 0;
@@ -755,7 +756,8 @@ export function playTurn(
 
     switch (evt.type) {
       case "attack":
-      case "ambush": {
+      case "ambush":
+      case "techniqueHit": {
         const isRanged = evt.type === "attack" && evt.range === "long";
         const attacker = findActor(scene, evt.actorId, w, h);
         const hitEffect = meleeEffectForActor(attacker?.class);
@@ -832,8 +834,9 @@ export function playTurn(
         break;
       }
 
-      case "miss": {
-        if (evt.reason === "noTarget") break;
+      case "miss":
+      case "techniqueMiss": {
+        if (evt.type === "miss" && evt.reason === "noTarget") break;
         approach(evt.actorId);
         const base = t;
         steps.push(
@@ -858,6 +861,55 @@ export function playTurn(
         );
         t = base + APPROACH_MS + ATTACK_MS;
         returnHome();
+        break;
+      }
+
+      case "technique": {
+        // Show the technique name as a banner (like spell cast banner).
+        showBanner(techniqueNameFor(evt.techniqueId), CAST_MS + 600);
+        castAnim(evt.actorId);
+        t += CAST_MS * 0.6;
+        break;
+      }
+
+      case "techniqueStatus": {
+        // Status VFX on the target.
+        const impactAt = t + 100;
+        const status = evt.statusInflicted;
+        const effectName = status === "paralysis" ? "lightning_energy"
+          : status === "poison" ? "red_energy"
+          : status === "slow" ? "ice_burst_glow"
+          : status === "armorDown" ? "slash"
+          : "lightning_energy_glow";
+        const color = status === "poison" ? COLORS.poison
+          : status === "paralysis" ? COLORS.dmg
+          : COLORS.spellBurst;
+        steps.push(
+          ...impactSteps(
+            impactAt,
+            evt.targetId,
+            status,
+            color,
+            w, h, false, false, effectName, 1.2
+          )
+        );
+        t = impactAt + 200;
+        break;
+      }
+
+      case "techniqueBuff": {
+        // Buff VFX on the target (heal, armor buff, etc.).
+        const impactAt = t + 100;
+        steps.push(
+          ...impactSteps(
+            impactAt,
+            evt.targetId,
+            "Buff",
+            COLORS.heal,
+            w, h, false, false, "lightning_energy_glow", 1.2
+          )
+        );
+        t = impactAt + 200;
         break;
       }
 
@@ -932,6 +984,10 @@ export function playTurn(
         const style = resolveEffectStyle(evt.spellId, evt);
         const targetId = evt.targetId;
         const spell = spellById(evt.spellId);
+        // Lazy-load summon sprite bundle when a summon spell fires mid-combat.
+        if (spell?.effect.kind === "summon" && spell.effect.spriteId) {
+          loadEnemySpriteBundle(spell.effect.spriteId).catch(() => {});
+        }
         const isArea =
           spell &&
           (spell.target === "allEnemies" ||
@@ -1465,7 +1521,7 @@ function drawEnemy(
   drawMarkers(ctx, scene, "enemy", enemy.instanceId, x, y - ENEMY_SIZE * 0.2, now);
 }
 
-/** Draw a summoned ally (simple glowing elemental). */
+/** Draw a summoned ally (sprite if available, otherwise glowing orb). */
 function drawAlly(
   ctx: CanvasRenderingContext2D,
   ally: SummonedAlly,
@@ -1481,6 +1537,40 @@ function drawAlly(
   const off = animOffset(anim, now);
   const x = slot.x + off.x;
   const y = slot.y + off.y;
+
+  // If the ally has a sprite id, try to draw it like an enemy.
+  if (ally.spriteId) {
+    const stripInfo = getEnemySpriteStrip(ally.spriteId, enemyStripState(anim.state));
+    if (stripInfo?.img && stripInfo.img.naturalWidth > 0) {
+      drawShadow(ctx, x, y + ENEMY_SIZE * 0.07, ENEMY_SIZE * 0.13);
+      const { strip, img } = stripInfo;
+      const stateAge = now - anim.stateStart;
+      let frame: number;
+      if (anim.state === "death") {
+        frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 450) * strip.frameCount));
+      } else if (strip.loop || anim.state === "idle") {
+        frame = Math.floor((stateAge / 1000) * strip.fps) % strip.frameCount;
+      } else {
+        frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps));
+      }
+      // Summon sprites face RIGHT (toward enemies), same as enemy art.
+      drawStripFrame(ctx, img, strip, frame, x, y, ENEMY_SIZE, false, anim.opacity);
+      // Hurt flash.
+      if (anim.state === "hurt" && now - anim.stateStart < 200) {
+        ctx.save();
+        ctx.globalAlpha = 0.3 * anim.opacity;
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.ellipse(x, y, ENEMY_SIZE / 2.6, ENEMY_SIZE / 2.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      drawMarkers(ctx, scene, "ally", ally.id, x, y - ENEMY_SIZE * 0.2, now);
+      return;
+    }
+  }
+
+  // Fallback: glowing orb (original procedural ally).
   drawShadow(ctx, x, y + 26, 20);
   ctx.save();
   ctx.globalAlpha = anim.opacity;

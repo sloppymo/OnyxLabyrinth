@@ -483,24 +483,24 @@ describe("hide/ambush mechanics", () => {
 });
 
 describe("spell defense mechanics", () => {
-  it("CORTU raises the party magic screen", () => {
+  it("Spell Shield raises the party magic screen", () => {
     const enemy = makeEnemy("e1", "Rat", 100);
     const state = makeCombatState([enemy]);
     const mage = state.party.find((c) => c.class === "Mage");
     if (!mage) throw new Error("No Mage in party");
-    mage.knownSpellIds = ["mage-velumbra"];
+    mage.knownSpellIds = ["mage-spell-shield"];
     mage.sp = 50;
     mage.stats.agi = 100; // ensure mage acts first
 
     const actions: PlayerAction[] = state.party.map((c) => {
-      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-velumbra" };
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-spell-shield" };
       return { kind: "defend" as const, actorId: c.id };
     });
 
     const result = resolveCombatRound(state, actions, makeRng(0.5));
-    // CORTU adds 5, then end-of-round deterioration removes 1.
+    // Spell Shield adds 5, then end-of-round deterioration removes 1.
     expect(result.magicScreen).toBe(4);
-    expect(result.log.some((m) => m.includes("Velumbra") && m.includes("magic screen"))).toBe(true);
+    expect(result.log.some((m) => m.includes("Spell Shield") && m.includes("magic screen"))).toBe(true);
   });
 
   it("magic screen halves enemy spell damage and deteriorates at end of round", () => {
@@ -528,7 +528,7 @@ describe("spell defense mechanics", () => {
     expect(result.magicScreen).toBe(4);
   });
 
-  it("BACORTU fizzle field causes enemy spells to fizzle", () => {
+  it("Silence fizzle field causes enemy spells to fizzle", () => {
     const caster = makeEnemy("e1", "Fire Caster", 100, {
       attack: 6, // level estimate = 2, so field strength 4 >= 2 after deterioration
       agi: 1,
@@ -537,37 +537,37 @@ describe("spell defense mechanics", () => {
     const state = makeCombatState([caster]);
     const mage = state.party.find((c) => c.class === "Mage");
     if (!mage) throw new Error("No Mage in party");
-    mage.knownSpellIds = ["mage-fracturis"];
+    mage.knownSpellIds = ["mage-silence"];
     mage.sp = 50;
     mage.stats.agi = 100; // ensure mage acts before enemy caster
 
     const actions: PlayerAction[] = state.party.map((c) => {
-      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-fracturis", targetRow: "front" };
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-silence", targetRow: "front" };
       return { kind: "defend" as const, actorId: c.id };
     });
 
     const result = resolveCombatRound(state, actions, makeRng(0.5));
-    // FRACTURIS adds 5, then deterioration removes 1 -> 4, still >= enemy level estimate 2.
+    // Silence adds 5, then deterioration removes 1 -> 4, still >= enemy level estimate 2.
     expect(result.enemyFizzleFields.front).toBe(4);
-    expect(result.log.some((m) => m.includes("Fracturis"))).toBe(true);
+    expect(result.log.some((m) => m.includes("Silence"))).toBe(true);
     expect(result.log.some((m) => m.includes("fizzles"))).toBe(true);
   });
 
-  it("PALIOS dispels enemy screens and party fizzle field", () => {
+  it("Dispel Magic dispels enemy screens and party fizzle field", () => {
     const enemy = makeEnemy("e1", "Rat", 100);
     const state = makeCombatState([enemy]);
     const mage = state.party.find((c) => c.class === "Mage");
     if (!mage) throw new Error("No Mage in party");
-    mage.knownSpellIds = ["mage-sundrathis"];
+    mage.knownSpellIds = ["mage-dispel-magic"];
     mage.sp = 50;
-    mage.level = 10; // high enough that partyFizzleField 5 does not fizzle PALIOS
+    mage.level = 10; // high enough that partyFizzleField 5 does not fizzle Dispel Magic
     mage.stats.agi = 100; // ensure mage acts first
     state.enemyMagicScreens = { front: 3, back: 2 };
     state.enemyFizzleFields = { front: 4, back: 1 };
     state.partyFizzleField = 5;
 
     const actions: PlayerAction[] = state.party.map((c) => {
-      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-sundrathis" };
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-dispel-magic" };
       return { kind: "defend" as const, actorId: c.id };
     });
 
@@ -584,12 +584,12 @@ describe("spell defense mechanics", () => {
     const state = makeCombatState([enemy]);
     const mage = state.party.find((c) => c.class === "Mage");
     if (!mage) throw new Error("No Mage in party");
-    mage.knownSpellIds = ["mage-zornyx"];
+    mage.knownSpellIds = ["mage-fire-bolt"];
     mage.sp = 50;
     state.partyFizzleField = 5; // >= mage.level (1)
 
     const actions: PlayerAction[] = state.party.map((c) => {
-      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-zornyx", targetInstanceId: "e1" };
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-fire-bolt", targetInstanceId: "e1" };
       return { kind: "defend" as const, actorId: c.id };
     });
 
@@ -605,18 +605,99 @@ describe("summoning mechanics", () => {
     const state = makeCombatState([enemy]);
     const priest = state.party.find((c) => c.class === "Priest");
     if (!priest) throw new Error("No Priest in party");
-    priest.knownSpellIds = ["priest-convocix"];
+    priest.knownSpellIds = ["priest-summon-celestial"];
     priest.sp = 50;
     priest.stats.agi = 100;
 
     const actions: PlayerAction[] = state.party.map((c) => {
-      if (c.id === priest.id) return { kind: "cast" as const, actorId: c.id, spellId: "priest-convocix" };
+      if (c.id === priest.id) return { kind: "cast" as const, actorId: c.id, spellId: "priest-summon-celestial" };
       return { kind: "defend" as const, actorId: c.id };
     });
 
     const result = resolveCombatRound(state, actions, makeRng(0.5));
     expect(result.summonedAllies.length).toBe(1);
-    expect(result.log.some((m) => m.includes("Convocix") && m.includes("summon"))).toBe(true);
+    expect(result.log.some((m) => m.includes("Summon Celestial") && m.includes("summon"))).toBe(true);
+  });
+
+  it("summon spells with spriteId set the ally's spriteId field", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const mage = state.party.find((c) => c.class === "Mage");
+    if (!mage) throw new Error("No Mage in party");
+    mage.knownSpellIds = ["mage-lesser-summon"];
+    mage.sp = 50;
+    mage.stats.agi = 100;
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-lesser-summon" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.summonedAllies.length).toBe(1);
+    expect(result.summonedAllies[0].spriteId).toBe("summon-slime");
+    expect(result.summonedAllies[0].name).toBe("Summoned Slime");
+    expect(result.summonedAllies[0].hp).toBe(12); // power 2 * 6
+  });
+
+  it("Hold Person inflicts paralysis on a single enemy", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const mage = state.party.find((c) => c.class === "Mage");
+    if (!mage) throw new Error("No Mage in party");
+    mage.knownSpellIds = ["mage-hold-person"];
+    mage.sp = 50;
+    mage.stats.agi = 100;
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-hold-person", targetInstanceId: "e1" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.enemies.front[0].status).toContain("paralysis");
+  });
+
+  it("Divine Smite deals divine damage to any enemy", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const priest = state.party.find((c) => c.class === "Priest");
+    if (!priest) throw new Error("No Priest in party");
+    priest.knownSpellIds = ["priest-divine-smite"];
+    priest.sp = 50;
+    priest.stats.agi = 100;
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === priest.id) return { kind: "cast" as const, actorId: c.id, spellId: "priest-divine-smite", targetInstanceId: "e1" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.enemies.front[0].currentHp).toBeLessThan(100);
+    expect(result.log.some((m) => m.includes("Divine Smite"))).toBe(true);
+  });
+
+  it("Mass Cure heals all party members", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const priest = state.party.find((c) => c.class === "Priest");
+    if (!priest) throw new Error("No Priest in party");
+    priest.knownSpellIds = ["priest-mass-cure"];
+    priest.sp = 50;
+    priest.stats.agi = 100;
+    // Damage the party first.
+    for (const c of state.party) c.hp = Math.max(1, c.maxHp - 20);
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === priest.id) return { kind: "cast" as const, actorId: c.id, spellId: "priest-mass-cure" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    // Every party member should have been healed (hp increased from the damaged state).
+    for (const c of result.party) {
+      expect(c.hp).toBeGreaterThan(Math.max(1, c.maxHp - 20));
+    }
   });
 
   it("existing summoned ally attacks an enemy", () => {

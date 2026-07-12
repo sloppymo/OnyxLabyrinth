@@ -80,13 +80,13 @@ describe("playTurn choreography", () => {
   it("cast shows the spell banner and bursts on targets", () => {
     const scene = makeScene();
     const events: CombatEvent[] = [
-      { type: "cast", actorId: "c1", spellId: "mage-zornyx", targetId: "rat-0" },
-      { type: "spellEffect", spellId: "mage-zornyx", targetId: "rat-0", damage: 5 },
+      { type: "cast", actorId: "c1", spellId: "mage-fire-bolt", targetId: "rat-0" },
+      { type: "spellEffect", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 5 },
     ];
     const t0 = 0;
     playTurn(scene, events, spellName, t0, W, H);
     updateScene(scene, t0 + 10);
-    expect(scene.banner).toBe("Spell:mage-zornyx");
+    expect(scene.banner).toBe("Spell:mage-fire-bolt");
     expect(scene.partyAnims.get("c1")?.state).toBe("cast");
 
     updateScene(scene, t0 + 500); // past cast impact (~390)

@@ -18,6 +18,7 @@
 
 import type { GameState } from "../types";
 import { FLOORS, cloneFloor } from "../data/floors";
+import { ALL_SPELLS } from "../data/spells";
 import { defaultLoadoutForCharacter } from "./combat";
 import { applyKilledNPCs } from "./npc";
 
@@ -25,13 +26,12 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 7;
+const SAVE_VERSION = 9;
 
 /**
- * v6 → v7: every spell id was renamed (spell rename pass — see
- * data/spells.ts). Maps each old id to its new counterpart so that
- * characters' knownSpellIds keep resolving after the rename instead of
- * silently losing spells on load.
+ * v6 → v7: every spell id was renamed from classic Wizardry names to
+ * pseudo-Latin names. Maps each old id to its pseudo-Latin counterpart.
+ * (The v7 → v8 step below then remaps those to the current D&D-style names.)
  */
 const SPELL_ID_MIGRATION_V6_TO_V7: Record<string, string> = {
   "mage-dumapic": "mage-pathrend",
@@ -73,6 +73,50 @@ const SPELL_ID_MIGRATION_V6_TO_V7: Record<string, string> = {
 };
 
 /**
+ * v7 → v8: spell ids were renamed again from pseudo-Latin to evocative
+ * D&D-style English names (see data/spells.ts). Maps each pseudo-Latin id
+ * to its current counterpart so existing saves keep their spells.
+ */
+const SPELL_ID_MIGRATION_V7_TO_V8: Record<string, string> = {
+  "mage-pathrend": "mage-wayfinder",
+  "mage-aerivex": "mage-levitate",
+  "mage-zornyx": "mage-fire-bolt",
+  "mage-wyrshel": "mage-arcane-ward",
+  "mage-zornath": "mage-burning-hands",
+  "mage-somnyx": "mage-sleep",
+  "mage-zornorum": "mage-fireball",
+  "mage-kraelith": "mage-cone-of-cold",
+  "mage-zornyrix": "mage-immolate",
+  "mage-kraelorum": "mage-ice-storm",
+  "mage-velumbra": "mage-spell-shield",
+  "mage-fracturis": "mage-silence",
+  "mage-sundrathis": "mage-dispel-magic",
+  "mage-mawcallix": "mage-conjure-elemental",
+  "mage-sparkyx": "mage-spark",
+  "mage-voltis": "mage-shock-lance",
+  "mage-vashorum": "mage-chain-lightning",
+  "mage-emberik": "mage-ember",
+  "mage-flammorum": "mage-flame-burst",
+  "mage-cinderis": "mage-cinder-bolt",
+  "mage-frostik": "mage-frostbite",
+  "mage-rimeis": "mage-ray-of-frost",
+  "mage-hoarix": "mage-chill-touch",
+  "mage-venomik": "mage-poison-spray",
+  "mage-miasmorum": "mage-noxious-cloud",
+  "priest-lucenis": "priest-light",
+  "priest-aethel": "priest-cure-wounds",
+  "priest-sacrumix": "priest-sacred-flame",
+  "priest-aethelin": "priest-cure-serious",
+  "priest-purgyx": "priest-neutralize-poison",
+  "priest-aethralm": "priest-cure-critical",
+  "priest-wyrathis": "priest-bless",
+  "priest-reviscant": "priest-raise-dead",
+  "priest-solumorum": "priest-sunburst",
+  "priest-convocix": "priest-summon-celestial",
+  "priest-lumenik": "priest-guiding-bolt",
+};
+
+/**
  * Migrate a serialized state from an older version to the current one.
  * Each step transforms one version to the next. If the save is newer than
  * the current code, return null (can't downgrade).
@@ -103,6 +147,40 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
       ),
     }));
     version = 7;
+  }
+  if (version === 7) {
+    // v7 → v8: spell ids were renamed from pseudo-Latin to D&D-style names.
+    const oldParty = (ser.party as Array<Record<string, unknown>> | undefined) ?? [];
+    ser.party = oldParty.map((c) => ({
+      ...c,
+      knownSpellIds: ((c.knownSpellIds as string[] | undefined) ?? []).map(
+        (id) => SPELL_ID_MIGRATION_V7_TO_V8[id] ?? id
+      ),
+    }));
+    version = 8;
+  }
+  if (version === 8) {
+    // v8 → v9: VFX cantrip consolidation removed 7 duplicate spell ids.
+    // Map removed cantrips to their consolidated equivalents, then filter
+    // out any ids that no longer exist in the spell list.
+    const v8ToV9CantripMap: Record<string, string> = {
+      "mage-shock-lance": "mage-spark",
+      "mage-cinder-bolt": "mage-ember",
+      "mage-ray-of-frost": "mage-frostbite",
+      "mage-chill-touch": "mage-frostbite",
+      "mage-chain-lightning": "mage-spark",
+      "mage-flame-burst": "mage-ember",
+      "mage-noxious-cloud": "mage-poison-spray",
+    };
+    const validIds = new Set(ALL_SPELLS.map((s) => s.id));
+    const oldParty = (ser.party as Array<Record<string, unknown>> | undefined) ?? [];
+    ser.party = oldParty.map((c) => ({
+      ...c,
+      knownSpellIds: ((c.knownSpellIds as string[] | undefined) ?? [])
+        .map((id) => v8ToV9CantripMap[id] ?? id)
+        .filter((id) => validIds.has(id)),
+    }));
+    version = 9;
   }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;

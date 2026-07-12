@@ -164,6 +164,82 @@ describe("save serialization", () => {
     }
   });
 
+  it("migrates v7 saves: pseudo-Latin spell ids remap to D&D-style names", () => {
+    const json = serialize(state);
+    const raw = JSON.parse(json);
+    raw.version = 7;
+    // Simulate a v7 save with pseudo-Latin spell ids.
+    raw.party[0].knownSpellIds = ["mage-zornyx", "mage-wyrshel", "mage-pathrend"];
+    raw.party[1].knownSpellIds = ["priest-aethel", "priest-lucenis"];
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    expect(restored.party[0].knownSpellIds).toEqual([
+      "mage-fire-bolt",
+      "mage-arcane-ward",
+      "mage-wayfinder",
+    ]);
+    expect(restored.party[1].knownSpellIds).toEqual([
+      "priest-cure-wounds",
+      "priest-light",
+    ]);
+  });
+
+  it("migrates v6 saves: classic Wizardry spell ids remap through both steps to D&D names", () => {
+    const json = serialize(state);
+    const raw = JSON.parse(json);
+    raw.version = 6;
+    // Simulate a v6 save with classic Wizardry spell ids.
+    raw.party[0].knownSpellIds = ["mage-halito", "mage-dumapic"];
+    raw.party[1].knownSpellIds = ["priest-dios", "priest-milwa"];
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    // v6→v7 maps halito→zornyx, then v7→v8 maps zornyx→fire-bolt,
+    // then v8→v9 keeps fire-bolt (it survived the cantrip consolidation).
+    expect(restored.party[0].knownSpellIds).toEqual(["mage-fire-bolt", "mage-wayfinder"]);
+    expect(restored.party[1].knownSpellIds).toEqual(["priest-cure-wounds", "priest-light"]);
+  });
+
+  it("migrates v8 saves: removed cantrip ids remap to consolidated equivalents", () => {
+    const json = serialize(state);
+    const raw = JSON.parse(json);
+    raw.version = 8;
+    // v8 had 11 cantrips; 7 were removed in v9. Test that they remap correctly.
+    raw.party[0].knownSpellIds = [
+      "mage-spark",
+      "mage-shock-lance",     // → mage-spark (duplicate)
+      "mage-ember",
+      "mage-cinder-bolt",     // → mage-ember (duplicate)
+      "mage-frostbite",
+      "mage-ray-of-frost",    // → mage-frostbite (duplicate)
+      "mage-chill-touch",     // → mage-frostbite (duplicate)
+      "mage-chain-lightning", // → mage-spark (duplicate)
+      "mage-flame-burst",     // → mage-ember (duplicate)
+      "mage-noxious-cloud",   // → mage-poison-spray
+      "mage-poison-spray",
+      "mage-fire-bolt",
+    ];
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    // Duplicates are preserved (no dedup in migration — just remap + filter).
+    expect(restored.party[0].knownSpellIds).toEqual([
+      "mage-spark",
+      "mage-spark",
+      "mage-ember",
+      "mage-ember",
+      "mage-frostbite",
+      "mage-frostbite",
+      "mage-frostbite",
+      "mage-spark",
+      "mage-ember",
+      "mage-poison-spray",
+      "mage-poison-spray",
+      "mage-fire-bolt",
+    ]);
+  });
+
   it("round-trips chosen perk ids", () => {
     state.party[0].perkIds = ["fighter-cleave"];
     state.party[1].perkIds = ["thief-ambusher", "thief-shadow"];

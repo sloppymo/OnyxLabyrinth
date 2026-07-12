@@ -21,7 +21,8 @@
 import type { CombatState, PlayerAction } from "../game/combat";
 import type { Character } from "../game/party";
 import type { SpellDef } from "../data/spells";
-import { spellEffectSummary, spellTargetLabel } from "./combat-display";
+import { classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
+import { spellEffectSummary, spellTargetLabel, techniqueEffectSummary, techniqueTargetLabel } from "./combat-display";
 
 /** What occupies the menu (left) window. */
 export type MenuMode = "menu" | "selection" | "none";
@@ -63,6 +64,9 @@ export interface CombatWindowsView {
    *  replaces the enemy (middle) window with a description panel showing
    *  its cost, target shape, mechanical effect, and flavor text. */
   spellDetail?: SpellDef | null;
+  /** The technique currently highlighted in the Technique list. When set,
+   *  replaces the enemy window with a description panel (same as spellDetail). */
+  techniqueDetail?: TechniqueDef | null;
   /** Transient error line (e.g. "No items!"), shown under the menu. */
   flash: string | null;
   /** End-of-combat window; when set it replaces menu interaction. */
@@ -80,6 +84,7 @@ export interface CombatWindowsHandlers {
 export const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
   attack: "Attack",
   cast: "Magic",
+  technique: "Tech",
   defend: "Defend",
   item: "Item",
   flee: "Run",
@@ -87,9 +92,14 @@ export const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
   ambush: "Ambush",
 };
 
-/** Menu entries available to a character (Thief gets Hide/Ambush). */
+/** Menu entries available to a character (Thief gets Hide/Ambush, melee gets Technique). */
 export function menuEntriesForCharacter(char: Character): MenuEntry[] {
   const base: PlayerAction["kind"][] = ["attack", "cast", "defend", "item"];
+  // Melee classes (Fighter/Thief/Halberdier/Duelist/Crusader) get Technique.
+  if (classHasTechniques(char.class)) {
+    // Insert Technique after attack, before cast (cast only exists for Crusader).
+    base.splice(1, 0, "technique");
+  }
   if (char.class === "Thief") {
     base.push(char.status.includes("hidden") ? "ambush" : "hide");
   }
@@ -231,6 +241,25 @@ function buildSpellDetailWindow(spell: SpellDef): HTMLElement {
   return win;
 }
 
+/** Replaces the enemy window with a readout of the highlighted technique. */
+function buildTechniqueDetailWindow(tech: TechniqueDef): HTMLElement {
+  const win = el("ff6-window ff6-spell-detail");
+  win.appendChild(el("ff6-spell-detail-name", tech.name));
+
+  const meta = el("ff6-spell-detail-meta");
+  const metaBits = [
+    `${tech.class} · Lv ${tech.level}`,
+    `${tech.rageCost} RG`,
+    techniqueTargetLabel(tech.target),
+  ];
+  meta.textContent = metaBits.join(" · ");
+  win.appendChild(meta);
+
+  win.appendChild(el("ff6-spell-detail-effect", techniqueEffectSummary(tech.effect)));
+  win.appendChild(el("ff6-spell-detail-desc", tech.description));
+  return win;
+}
+
 function buildPartyWindow(view: CombatWindowsView): HTMLElement {
   const win = el("ff6-window ff6-party");
   for (const c of view.state.party) {
@@ -261,6 +290,21 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
       sp.classList.add("none");
     }
     row.appendChild(sp);
+
+    // Rage shows for melee classes (technique users) only.
+    if (classHasTechniques(c.class)) {
+      const rg = document.createElement("span");
+      rg.className = "ff6-p-rg";
+      const rage = view.state.rage[c.id] ?? 0;
+      const maxRage = maxRageForLevel(c.level);
+      rg.textContent = `${rage}/${maxRage}`;
+      row.appendChild(rg);
+    } else {
+      const rg = document.createElement("span");
+      rg.className = "ff6-p-rg none";
+      rg.textContent = "—";
+      row.appendChild(rg);
+    }
 
     const barWrap = document.createElement("span");
     barWrap.className = "ff6-p-bar";
@@ -335,7 +379,11 @@ export function renderCombatWindows(
   const row = el("ff6-windows");
   row.appendChild(buildMenuWindow(view, handlers));
   row.appendChild(
-    view.spellDetail ? buildSpellDetailWindow(view.spellDetail) : buildEnemyWindow(view.state)
+    view.techniqueDetail
+      ? buildTechniqueDetailWindow(view.techniqueDetail)
+      : view.spellDetail
+        ? buildSpellDetailWindow(view.spellDetail)
+        : buildEnemyWindow(view.state)
   );
   row.appendChild(buildPartyWindow(view));
   container.appendChild(row);

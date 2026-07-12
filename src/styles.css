@@ -1232,6 +1232,19 @@ canvas#map-canvas {
   color: #4a5aa0;
 }
 
+/* Rage column for melee technique users. */
+.ff6-p-rg {
+  text-align: right;
+  min-width: 36px;
+  color: #e8a060;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85em;
+}
+
+.ff6-p-rg.none {
+  color: #4a5aa0;
+}
+
 .ff6-p-bar {
   display: inline-block;
   height: 8px;
