@@ -167,6 +167,22 @@ describe("NPCController", () => {
     controller.destroy();
   });
 
+  it("steal without a Thief shows the can't-steal message", () => {
+    const npc = makeNPC();
+    const state = makeState(npc);
+    for (const c of state.party) {
+      if (c.class === "Thief") c.class = "Fighter";
+    }
+    const { controller } = freshController(state, npc);
+
+    controller.handleKey("s");
+
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+    expect(panel.textContent).toContain("Only a living Thief");
+
+    controller.destroy();
+  });
+
   it("closes with Escape", () => {
     const npc = makeNPC();
     const state = makeState(npc);

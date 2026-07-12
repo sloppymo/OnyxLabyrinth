@@ -87,12 +87,12 @@ export class NPCController {
       return true;
     }
     const len = this.listLength();
-    if (lower === "arrowup" || lower === "w") {
+    if (lower === "arrowup") {
       if (len > 0) this.index = (this.index - 1 + len) % len;
       this.render();
       return true;
     }
-    if (lower === "arrowdown" || lower === "s") {
+    if (lower === "arrowdown") {
       if (len > 0) this.index = (this.index + 1) % len;
       this.render();
       return true;
