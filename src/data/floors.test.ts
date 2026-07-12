@@ -182,6 +182,13 @@ describe("floor definitions", () => {
     expect(f3Open.has(`${forgeChest.x},${forgeChest.y}`)).toBe(true);
   });
 
+  it("floor 1 has an accessible trapped chest for the trap tutorial", () => {
+    const f1Open = reachableCells(FLOORS[0], OPEN);
+    const trapChest = FLOORS[0].treasures!.find((t) => t.trap !== undefined && f1Open.has(`${t.x},${t.y}`));
+    expect(trapChest, "no reachable trapped chest on floor 1").toBeDefined();
+    expect(trapChest!.trap).toBe("poison");
+  });
+
   it("teleporters and chutes only target existing floors at carved, in-bounds cells", () => {
     for (const floor of FLOORS) {
       const links = [...(floor.teleporters ?? []), ...(floor.chuteDrops ?? [])];
