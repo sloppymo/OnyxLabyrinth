@@ -52,23 +52,23 @@ export class TitleController {
     this.render();
   }
 
-  handleKey(key: string): void {
+  handleKey(key: string): boolean {
     const lower = key.toLowerCase();
 
     if (lower === "n") {
       this.selectedIndex = this.items.findIndex((i) => i.key === "new");
       this.select();
-      return;
+      return true;
     }
     if (lower === "c" && this.loaded) {
       this.selectedIndex = this.items.findIndex((i) => i.key === "continue");
       this.select();
-      return;
+      return true;
     }
     if (lower === "a") {
       this.selectedIndex = this.items.findIndex((i) => i.key === "arena");
       this.select();
-      return;
+      return true;
     }
 
     switch (lower) {
@@ -76,17 +76,18 @@ export class TitleController {
       case "w":
         this.selectedIndex = (this.selectedIndex - 1 + this.items.length) % this.items.length;
         this.render();
-        break;
+        return true;
       case "arrowdown":
       case "s":
         this.selectedIndex = (this.selectedIndex + 1) % this.items.length;
         this.render();
-        break;
+        return true;
       case "enter":
       case " ":
         this.select();
-        break;
+        return true;
     }
+    return false;
   }
 
   private select(): void {

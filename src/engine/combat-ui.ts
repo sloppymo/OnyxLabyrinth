@@ -766,6 +766,7 @@ export class CombatController {
       case "selectTarget":
       case "selectSpell":
       case "selectItem":
+      case "selectTechnique":
         this.handleSelectionKey(key);
         return;
     }
@@ -846,7 +847,8 @@ export class CombatController {
         ? "menu"
         : this.phase === "selectTarget" ||
             this.phase === "selectSpell" ||
-            this.phase === "selectItem"
+            this.phase === "selectItem" ||
+            this.phase === "selectTechnique"
           ? "selection"
           : "none";
 
