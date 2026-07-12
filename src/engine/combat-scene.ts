@@ -566,18 +566,66 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
   poison: { color: "#c080ff", projectile: "red_energy", burst: "red_energy_glow", field: "red_energy_glow", scale: 1.3 },
 };
 
-/** Per-spell visual overrides for alternate effect variants. */
+/**
+ * Per-spell visual overrides using the downloaded free VFX packs (see
+ * docs/superpowers/specs/2026-07-12-vfx-integration-plan.md). Scales are
+ * native-frame-relative and tuned for on-screen sizes of ~45px projectile,
+ * ~130px burst, ~320px field. NOTE: the engine multiplies fieldScale by 2 at
+ * draw time, so field values here are pre-halved. `color` tints only the
+ * sparkle particles + popup (strips are drawn untinted), so it is set to the
+ * element color to keep the accent consistent.
+ */
 const SPELL_OVERRIDES: Record<string, EffectStyle> = {
-  // Fire
-  "mage-ember": { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion_glow", field: "large_fire", scale: 2.5 },
-  // Cold
-  "mage-frostbite": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_glow", scale: 1.2 },
-  // Poison
-  "mage-poison-spray": { color: "#c080ff", projectile: "red_lightning_blast_glow", burst: "red_energy_glow", scale: 1.3 },
-  // Priest holy
-  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "priest_attack", projectileScale: 1, burst: "lightning_energy_glow", burstScale: 1.3, scale: 1 },
-  // Divine (priest smite)
-  "priest-divine-smite": { color: "#ffe8a0", projectile: "priest_attack", projectileScale: 1.2, burst: "lightning_energy_glow", burstScale: 1.5, scale: 1.2 },
+  // --- Mage: fire ---
+  "mage-ember": { color: "#ff8c42", projectile: "px_fireball", projectileScale: 2.8, burst: "fz_explosion", burstScale: 2.0 },
+  "mage-fire-bolt": { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 0.7, burst: "fz_explosion", burstScale: 2.0 },
+  "mage-burning-hands": { color: "#ff8c42", burst: "mp_fire_bomb", burstScale: 1.6, field: "mp_fire_bomb", fieldScale: 2.4 },
+  "mage-fireball": { color: "#ff8c42", burst: "mp_fire_bomb", burstScale: 2.0, field: "mp_fire_bomb", fieldScale: 2.6 },
+  "mage-immolate": { color: "#ff8c42", projectile: "fz_molten_spear", projectileScale: 0.8, burst: "mp_fire_bomb", burstScale: 2.2 },
+  // --- Mage: cold ---
+  "mage-frostbite": { color: "#80e0ff", projectile: "px_ice_lance", projectileScale: 2.8, burst: "ice_burst_glow", burstScale: 1.2 },
+  "mage-cone-of-cold": { color: "#80e0ff", burst: "ice_burst", burstScale: 1.2, field: "ice_burst", fieldScale: 3.0 },
+  "mage-ice-storm": { color: "#80e0ff", burst: "ice_burst_glow", burstScale: 1.2, field: "ice_burst_glow", fieldScale: 3.0 },
+  // --- Mage: lightning ---
+  "mage-spark": { color: "#ffd769", projectile: "mp_spark", projectileScale: 1.4, burst: "mp_lightning", burstScale: 2.0 },
+  // --- Mage: poison (native purple = this game's poison; no recolor) ---
+  "mage-poison-spray": { color: "#c080ff", projectile: "mp_dark_bolt", projectileScale: 0.7, burst: "red_energy_glow", burstScale: 1.3 },
+  // --- Mage: disable / field ---
+  "mage-sleep": { color: "#c080ff", burst: "px_magic_sparks", burstScale: 4.0 },
+  "mage-hold-person": { color: "#c8c4b8", burst: "mp_lightning", burstScale: 1.5 },
+  "mage-web": { color: "#c8c4b8", burst: "px_magic_sparks", burstScale: 3.0, field: "px_magic_sparks", fieldScale: 7.0 },
+  "mage-power-word-stun": { color: "#c8c4b8", burst: "mp_lightning", burstScale: 1.8 },
+  "mage-silence": { color: "#c080ff", burst: "px_darkness_orb", burstScale: 4.0, field: "px_darkness_orb", fieldScale: 7.0 },
+  "mage-dispel-magic": { color: "#7fb8f0", burst: "dispel_sparks", burstScale: 4.0, field: "dispel_sparks", fieldScale: 7.0 },
+  // --- Mage: buff / shield ---
+  "mage-arcane-ward": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6 },
+  "mage-spell-shield": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6, field: "px_shield", fieldScale: 3.3 },
+  // --- Mage: summon ---
+  "mage-lesser-summon": { color: "#c080ff", burst: "fz_portal", burstScale: 1.6 },
+  "mage-summon-fire-elemental": { color: "#ff8c42", burst: "fz_portal_orange", burstScale: 2.0 },
+  "mage-conjure-elemental": { color: "#c080ff", burst: "fz_portal", burstScale: 2.0, field: "fz_portal", fieldScale: 2.5 },
+  "mage-gate": { color: "#c080ff", burst: "fz_portal", burstScale: 2.6 },
+
+  // --- Priest: damage ---
+  "priest-sacred-flame": { color: "#ffe8a0", projectile: "px_bolt_purity", projectileScale: 2.8, burst: "lightning_energy_glow", burstScale: 1.3 },
+  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "px_light_bolt", projectileScale: 2.8, burst: "lightning_energy_glow", burstScale: 1.3 },
+  "priest-divine-smite": { color: "#ffe8a0", projectile: "px_bolt_purity", projectileScale: 2.8, burst: "mp_lightning", burstScale: 1.8 },
+  "priest-sunburst": { color: "#ffe8a0", burst: "mp_lightning", burstScale: 2.0, field: "mp_lightning", fieldScale: 2.6 },
+  // --- Priest: heal / cure (baked green sparkle) ---
+  "priest-cure-wounds": { color: "#6fe06f", burst: "heal_sparks", burstScale: 3.5 },
+  "priest-cure-serious": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5 },
+  "priest-cure-critical": { color: "#6fe06f", burst: "heal_sparks", burstScale: 5.5 },
+  "priest-heal": { color: "#6fe06f", burst: "heal_sparks", burstScale: 6.0 },
+  "priest-mass-cure": { color: "#6fe06f", burst: "heal_sparks", burstScale: 3.5, field: "heal_sparks", fieldScale: 5.0 },
+  "priest-mass-heal": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5, field: "heal_sparks", fieldScale: 5.0 },
+  "priest-neutralize-poison": { color: "#6fe06f", burst: "heal_sparks", burstScale: 3.5 },
+  // --- Priest: buff / shield ---
+  "priest-shield-of-faith": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6 },
+  "priest-bless": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6, field: "px_shield", fieldScale: 3.3 },
+  // --- Priest: summon (gold portal) ---
+  "priest-summon-guardian": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.0 },
+  "priest-summon-celestial-guardian": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.6 },
+  "priest-summon-celestial": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.0, field: "fz_portal_gold", fieldScale: 2.5 },
 };
 
 const STATUS_STYLES: Record<string, EffectStyle> = {
