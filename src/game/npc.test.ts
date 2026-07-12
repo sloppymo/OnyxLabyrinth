@@ -17,6 +17,7 @@ import {
   doTrade,
   giveItem,
   stealFrom,
+  canSteal,
   markKilled,
   applyKilledNPCs,
 } from "./npc";
@@ -237,6 +238,55 @@ describe("stealFrom", () => {
     expect(result.startFight).toBe(true);
     expect(dispositionOf(state, npc)).toBe(10);
     expect(state.partyGold).toBe(0);
+  });
+
+  it("uses effective AGI so gear/perks affect the chance", () => {
+    const state = makeState();
+    const npc = state.floor.npcs![0];
+    const thief = state.party.find((c) => c.class === "Thief")!;
+    // A roll that fails for a bare Thief but succeeds with a big AGI boost.
+    const roll = 0.3;
+    // Bare Thief has a low chance; with a heavy AGI boost it should succeed.
+    const noGearResult = stealFrom(state, npc, seqRng([roll, 0]));
+    expect(noGearResult.startFight).toBe(true);
+
+    // Restore state and give the Thief a weapon that spikes AGI.
+    thief.hp = thief.maxHp;
+    state.npcDisposition = {};
+    state.partyGold = 0;
+    state.equipment[thief.id] = {
+      weapon: { id: "dagger-of-agi", name: "Dagger of Agi", statBonuses: { agi: 20 } } as any,
+      armor: [],
+    };
+    const gearedResult = stealFrom(state, npc, seqRng([roll, 0]));
+    expect(gearedResult.startFight).toBeUndefined();
+    expect(gearedResult.message).toContain("gold");
+  });
+});
+
+describe("canSteal", () => {
+  it("is true when a living Thief is present", () => {
+    const state = makeState();
+    expect(canSteal(state)).toBe(true);
+  });
+
+  it("is false when the Thief is dead or knocked out", () => {
+    const state = makeState();
+    const thief = state.party.find((c) => c.class === "Thief")!;
+    thief.hp = 0;
+    expect(canSteal(state)).toBe(false);
+
+    thief.hp = thief.maxHp;
+    thief.status.push("knockedOut");
+    expect(canSteal(state)).toBe(false);
+  });
+
+  it("is false with no Thief in the party", () => {
+    const state = makeState();
+    for (const c of state.party) {
+      if (c.class === "Thief") c.class = "Fighter";
+    }
+    expect(canSteal(state)).toBe(false);
   });
 });
 

@@ -10,6 +10,7 @@
 import type { GameState } from "../types";
 import type { NPCDef, NPCTradeDef } from "../data/floors";
 import { ITEMS_BY_ID, displayNameFor } from "../data/items";
+import { effectiveStats } from "./effective-stats";
 
 export interface NPCActionResult {
   message: string;
@@ -128,6 +129,13 @@ export function giveItem(state: GameState, npc: NPCDef, invIndex: number): NPCAc
   return { message };
 }
 
+/** Whether the party has a living Thief available to attempt theft. */
+export function canSteal(state: GameState): boolean {
+  return state.party.some(
+    (c) => c.class === "Thief" && c.hp > 0 && !c.status.includes("knockedOut")
+  );
+}
+
 /**
  * Steal (Thief only). Success skims gold unnoticed; getting caught turns
  * the NPC hostile on the spot.
@@ -141,7 +149,9 @@ export function stealFrom(
     (c) => c.class === "Thief" && c.hp > 0 && !c.status.includes("knockedOut")
   );
   if (!thief) return { message: "Only a living Thief could try that." };
-  const chance = Math.min(0.9, ((thief.level + thief.stats.agi) / 2 + 15) / 100);
+  // Use effective AGI so equipment/perks matter, same as combat formulas.
+  const stats = effectiveStats(thief, state.equipment[thief.id]);
+  const chance = Math.min(0.9, ((thief.level + stats.agi) / 2 + 15) / 100);
   if (rng() < chance) {
     const gold = 10 + Math.floor(rng() * 31); // 10-40
     state.partyGold += gold;
