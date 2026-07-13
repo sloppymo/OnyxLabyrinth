@@ -75,6 +75,9 @@ interface PendingAction {
 
 export interface CombatControllerOptions {
   onEnd: (result: CombatState) => void;
+  /** Optional baked corridor backdrop canvas. When null, the static
+   *  combat-bg.png image is used instead. */
+  backdrop?: HTMLCanvasElement | null;
 }
 
 export class CombatController {
@@ -108,6 +111,7 @@ export class CombatController {
     this.state = state;
     this.onEnd = opts.onEnd;
     this.scene = createScene(state);
+    this.scene.backdrop = opts.backdrop ?? null;
     this.startRound();
     this.startRenderLoop();
   }

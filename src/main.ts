@@ -17,6 +17,7 @@ import {
   loadTextures,
   isRenderCameraAnimating,
   resetRenderCamera,
+  renderCorridorBackdrop,
 } from "./engine/renderer";
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
 import { loadPartySprites } from "./engine/party-sprite-cache";
@@ -294,6 +295,7 @@ function startCombat(combat: CombatState): void {
     onEnd: (result: CombatState) => {
       endCombat(result);
     },
+    backdrop: renderCorridorBackdrop(state, 768, 672),
   });
 }
 
