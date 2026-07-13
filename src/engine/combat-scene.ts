@@ -700,7 +700,7 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   "priest-sacred-flame": { color: "#ffe8a0", projectile: "px_bolt_purity", projectileScale: 3.5, burst: "mp_fire_bomb", burstScale: 1.4, additive: true },
   "priest-guiding-bolt": { color: "#7fb8f0", projectile: "px_light_bolt", projectileScale: 3.5, burst: "lightning_energy_glow", burstScale: 1.3, additive: true },
   "priest-divine-smite": { color: "#ffe8a0", projectile: "px_bolt_purity", projectileScale: 3.5, burst: "mp_lightning", burstScale: 1.8, additive: true },
-  "priest-sunburst": { color: "#ffe8a0", burst: "mp_lightning", burstScale: 2.0, field: "lightning_energy_glow", fieldScale: 3.0, additive: true },
+  "priest-sunburst": { color: "#ffe8a0", burst: "mp_lightning", burstScale: 2.2, field: "fire_explosion_glow", fieldScale: 1.8, additive: true },
   // --- Priest: heal / cure (additive — healing light) ---
   "priest-cure-wounds": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5, additive: true },
   "priest-cure-serious": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5, additive: true },
@@ -1162,8 +1162,11 @@ export function playTurn(
             spell.target === "groupAllies");
         if (targetId && isArea && !fieldPushed) {
           fieldPushed = true;
-          const fieldX =
-            spell.target === "allEnemies" || spell.target === "groupEnemies" ? w * 0.26 : w * 0.72;
+          // Place the field on the side of the actual target, not the spell's
+          // nominal target shape. This is important when enemy casters aim
+          // player-targeting AoEs (or vice versa) in the VFX vignette / chaos mode.
+          const targetActor = findActor(scene, targetId, w, h);
+          const fieldX = targetActor?.kind === "party" || targetActor?.kind === "ally" ? w * 0.72 : w * 0.26;
           steps.push(
             step(impactAt, (sc, n) => {
               sc.effects.push({
@@ -1826,7 +1829,7 @@ function drawEffectSprite(
       const scale = effect.scale ?? 1;
       const dw = strip.frameWidth * scale;
       const dh = strip.frameHeight * scale;
-      ctx.globalAlpha = type === "burst" ? 1 - t : type === "field" ? 1 - t * 0.5 : 1;
+      ctx.globalAlpha = type === "burst" ? 1 - t : type === "field" ? (1 - t) * 0.8 : 1;
       // Additive blending makes glow-type effects (fire, holy, arcane, heal)
       // read as light sources rather than flat decals.
       if (effect.additive) ctx.globalCompositeOperation = "lighter";
