@@ -129,6 +129,8 @@ export interface ActorAnim {
   opacity: number;
   /** For enemies: fade out after death completes. */
   fadeOutStart: number | null;
+  /** Intensity of the hurt flash (0–1), scaled by damage relative to max HP. */
+  hitFlashIntensity: number;
 }
 
 export function newActorAnim(now: number): ActorAnim {
@@ -143,6 +145,7 @@ export function newActorAnim(now: number): ActorAnim {
     moveDuration: 0,
     opacity: 1,
     fadeOutStart: null,
+    hitFlashIntensity: 0,
   };
 }
 
@@ -439,13 +442,18 @@ function impactSteps(
   hurt = true,
   big = false,
   effect?: string,
-  scale?: number
+  scale?: number,
+  damageAmount?: number
 ): ChoreoStep[] {
   return [
     step(t, (scene, now) => {
       const actor = findActor(scene, targetId, w, h);
       if (actor && hurt) {
-        setAnimState(getAnim(scene, actor.kind, targetId, now), "hurt", now);
+        const anim = getAnim(scene, actor.kind, targetId, now);
+        setAnimState(anim, "hurt", now);
+        // Scale flash intensity by damage: 0.15 at small hits → 0.6 at big hits.
+        const dmg = damageAmount ?? 0;
+        anim.hitFlashIntensity = Math.max(0.15, Math.min(0.6, 0.15 + dmg / 200));
       }
       pushPopup(scene, targetId, text, color, now, w, h, big);
       if (actor) {
@@ -802,7 +810,8 @@ export function playTurn(
               true,
               evt.crit === true,
               hitEffect,
-              1
+              1,
+              evt.damage
             )
           );
           t += ATTACK_MS + 200;
@@ -833,7 +842,8 @@ export function playTurn(
               true,
               evt.crit === true,
               hitEffect,
-              1
+              1,
+              evt.damage
             )
           );
           t = base + APPROACH_MS + ATTACK_MS;
@@ -997,7 +1007,7 @@ export function playTurn(
                 if (!isHeal) addScreenShake(sc, isHeal ? 1 : 3, n, 200);
               }
             }),
-            ...impactSteps(pendingImpactBase, evt.targetId, text, isHeal ? COLORS.heal : COLORS.dmg, w, h, !isHeal)
+            ...impactSteps(pendingImpactBase, evt.targetId, text, isHeal ? COLORS.heal : COLORS.dmg, w, h, !isHeal, false, undefined, undefined, evt.damage)
           );
           pendingImpactCount++;
         }
@@ -1114,7 +1124,11 @@ export function playTurn(
               isHeal ? COLORS.heal : evt.damage !== undefined ? COLORS.dmg : COLORS.poison,
               w,
               h,
-              evt.damage !== undefined
+              evt.damage !== undefined,
+              false,
+              undefined,
+              undefined,
+              evt.damage
             )
           );
         }
@@ -1176,7 +1190,7 @@ export function playTurn(
 
       case "statusTick": {
         steps.push(
-          ...impactSteps(t, evt.targetId, `${evt.damage}`, COLORS.poison, w, h, false)
+          ...impactSteps(t, evt.targetId, `${evt.damage}`, COLORS.poison, w, h, false, false, undefined, undefined, evt.damage)
         );
         t += 250;
         break;
@@ -1409,10 +1423,12 @@ function drawEnemyFallback(
   ctx.fillRect(x + 6, py - h * 0.32, 5, 5);
   ctx.fillRect(x + 18, py - h * 0.32, 5, 5);
   if (anim.state === "hurt") {
-    ctx.globalAlpha = 0.6;
-    ctx.fillStyle = "#fff";
+    const intensity = anim.hitFlashIntensity || 0.3;
+    const sz = 1 + intensity * 0.3;
+    ctx.globalAlpha = intensity * 0.5;
+    ctx.fillStyle = "#ff4040";
     ctx.beginPath();
-    ctx.ellipse(x, py - h * 0.25, w / 2.2, h / 2.8, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, py - h * 0.25, (w / 2.2) * sz, (h / 2.8) * sz, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -1485,10 +1501,17 @@ function drawPartyMember(
 
   // Hurt flash overlay.
   if (anim.state === "hurt" && now - anim.stateStart < 200) {
+    const intensity = anim.hitFlashIntensity || 0.3;
+    const sz = 1 + intensity * 0.3;
     ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(x - PARTY_SIZE / 4, y - PARTY_SIZE / 2.4, PARTY_SIZE / 2, PARTY_SIZE * 0.8);
+    ctx.globalAlpha = intensity * 0.4;
+    ctx.fillStyle = "#ff4040";
+    ctx.fillRect(
+      x - (PARTY_SIZE / 4) * sz,
+      y - (PARTY_SIZE / 2.4) * sz,
+      (PARTY_SIZE / 2) * sz,
+      PARTY_SIZE * 0.8 * sz
+    );
     ctx.restore();
   }
 
@@ -1540,11 +1563,13 @@ function drawEnemy(
 
   // Hurt flash.
   if (anim.state === "hurt" && now - anim.stateStart < 200) {
+    const intensity = anim.hitFlashIntensity || 0.3;
+    const sz = 1 + intensity * 0.3;
     ctx.save();
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = "#fff";
+    ctx.globalAlpha = intensity * 0.4;
+    ctx.fillStyle = "#ff4040";
     ctx.beginPath();
-    ctx.ellipse(x, y, ENEMY_SIZE / 2.6, ENEMY_SIZE / 2.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y, (ENEMY_SIZE / 2.6) * sz, (ENEMY_SIZE / 2.4) * sz, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -1589,11 +1614,13 @@ function drawAlly(
       drawStripFrame(ctx, img, strip, frame, x, y, ENEMY_SIZE, false, anim.opacity);
       // Hurt flash.
       if (anim.state === "hurt" && now - anim.stateStart < 200) {
+        const intensity = anim.hitFlashIntensity || 0.3;
+        const sz = 1 + intensity * 0.3;
         ctx.save();
-        ctx.globalAlpha = 0.3 * anim.opacity;
-        ctx.fillStyle = "#fff";
+        ctx.globalAlpha = intensity * 0.4 * anim.opacity;
+        ctx.fillStyle = "#ff4040";
         ctx.beginPath();
-        ctx.ellipse(x, y, ENEMY_SIZE / 2.6, ENEMY_SIZE / 2.4, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, y, (ENEMY_SIZE / 2.6) * sz, (ENEMY_SIZE / 2.4) * sz, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
