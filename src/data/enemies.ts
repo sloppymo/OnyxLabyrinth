@@ -23,7 +23,9 @@ export type EnemySpecial =
   | { kind: "slowGroup" }
   | { kind: "evasive" }
   | { kind: "highDefense" }
-  | { kind: "poisonOnHit" };
+  | { kind: "poisonOnHit" }
+  | { kind: "resistElement"; element: DamageElement }
+  | { kind: "weakElement"; element: DamageElement };
 
 export interface EnemyDef {
   id: string;
@@ -77,7 +79,10 @@ export const SLIME: EnemyDef = {
   agi: 5,
   xp: 6,
   gold: 3,
-  special: [],
+  special: [
+    { kind: "resistElement", element: "water" },
+    { kind: "weakElement", element: "earth" },
+  ],
   isBoss: false,
 };
 
@@ -123,7 +128,11 @@ export const SKELETON_ARCHER: EnemyDef = {
   agi: 12,
   xp: 9,
   gold: 7,
-  special: [{ kind: "flying" }],
+  special: [
+    { kind: "flying" },
+    { kind: "weakElement", element: "earth" },
+    { kind: "resistElement", element: "wind" },
+  ],
   isBoss: false,
 };
 
@@ -138,7 +147,11 @@ export const ORC: EnemyDef = {
   agi: 2,
   xp: 8,
   gold: 6,
-  special: [{ kind: "slowGroup" }, { kind: "poisonOnHit" }],
+  special: [
+    { kind: "slowGroup" },
+    { kind: "poisonOnHit" },
+    { kind: "weakElement", element: "wind" },
+  ],
   isBoss: false,
 };
 
@@ -183,7 +196,11 @@ export const ACID_PUDDLE: EnemyDef = {
   agi: 2,
   xp: 15,
   gold: 12,
-  special: [{ kind: "resistPhysical", percent: 50 }, { kind: "poisonOnHit" }],
+  special: [
+    { kind: "resistPhysical", percent: 50 },
+    { kind: "poisonOnHit" },
+    { kind: "resistElement", element: "water" },
+  ],
   isBoss: false,
 };
 
@@ -214,7 +231,11 @@ export const ELITE_ORC: EnemyDef = {
   agi: 10,
   xp: 22,
   gold: 20,
-  special: [{ kind: "caster", element: "fire" }],
+  special: [
+    { kind: "caster", element: "fire" },
+    { kind: "weakElement", element: "water" },
+    { kind: "resistElement", element: "fire" },
+  ],
   isBoss: false,
 };
 
@@ -229,7 +250,10 @@ export const LESSER_CONSTRUCT: EnemyDef = {
   agi: 1,
   xp: 24,
   gold: 22,
-  special: [],
+  special: [
+    { kind: "weakElement", element: "wind" },
+    { kind: "resistElement", element: "earth" },
+  ],
   isBoss: false,
 };
 
@@ -259,7 +283,7 @@ export const BIG_TITTY_OGRE: EnemyDef = {
   agi: 2,
   xp: 30,
   gold: 28,
-  special: [],
+  special: [{ kind: "weakElement", element: "wind" }],
   isBoss: false,
 };
 
@@ -274,7 +298,10 @@ export const STONE_GUARDIAN: EnemyDef = {
   agi: 2,
   xp: 40,
   gold: 35,
-  special: [],
+  special: [
+    { kind: "weakElement", element: "wind" },
+    { kind: "resistElement", element: "earth" },
+  ],
   isBoss: false,
 };
 
@@ -289,7 +316,11 @@ export const ANIMATED_ARMOR: EnemyDef = {
   agi: 3,
   xp: 38,
   gold: 32,
-  special: [{ kind: "highDefense" }],
+  special: [
+    { kind: "highDefense" },
+    { kind: "weakElement", element: "wind" },
+    { kind: "resistElement", element: "earth" },
+  ],
   isBoss: false,
 };
 

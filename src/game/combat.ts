@@ -1865,10 +1865,20 @@ function applySpell(
         );
         // Enemy AC reduces spell damage too (less than physical — half AC).
         const reduced = Math.max(1, raw - Math.floor(t.ac / 2));
-        t.currentHp -= reduced;
+        // Elemental affinity: resist (x0.5) / weak (x1.5) based on the target's special.
+        let final = reduced;
+        if (eff.element) {
+          const affinity = t.special.find(
+            (sp) => (sp.kind === "resistElement" || sp.kind === "weakElement") && sp.element === eff.element
+          );
+          if (affinity) {
+            final = Math.max(1, Math.round(reduced * (affinity.kind === "weakElement" ? 1.5 : 0.5)));
+          }
+        }
+        t.currentHp -= final;
         emit(
-          `${spell.name} hits ${t.name} for ${reduced} damage.`,
-          { type: "spellEffect", spellId: spell.id, targetId: t.instanceId, damage: reduced }
+          `${spell.name} hits ${t.name} for ${final} damage.`,
+          { type: "spellEffect", spellId: spell.id, targetId: t.instanceId, damage: final }
         );
         wakeOnDamage(t, log);
       }

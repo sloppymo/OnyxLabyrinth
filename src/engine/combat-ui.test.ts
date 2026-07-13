@@ -43,6 +43,14 @@ HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
   rect: vi.fn(),
   clip: vi.fn(),
   setTransform: vi.fn(),
+  createLinearGradient: vi.fn(() => ({
+    addColorStop: vi.fn(),
+  })),
+  globalAlpha: 1,
+  imageSmoothingEnabled: true,
+  fillStyle: "",
+  strokeStyle: "",
+  lineWidth: 1,
 })) as any;
 
 import { CombatController } from "./combat-ui";

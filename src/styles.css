@@ -598,9 +598,6 @@ canvas#map-canvas {
 .shop-list {
   margin: 0 auto;
   max-width: 900px;
-  max-height: 520px;
-  overflow-y: auto;
-  scrollbar-width: thin;
 }
 
 .shop-item {
@@ -1011,9 +1008,6 @@ canvas#map-canvas {
   left: 6px;
   right: 6px;
   bottom: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   pointer-events: none;
 }
 
@@ -1039,10 +1033,9 @@ canvas#map-canvas {
 }
 
 .ff6-menu {
-  flex: 0 0 24%;
+  flex: 0 0 27%;
   display: flex;
   flex-direction: column;
-  padding: 7px 8px;
 }
 
 .ff6-menu.empty {
@@ -1070,8 +1063,8 @@ canvas#map-canvas {
   justify-content: space-between;
   gap: 8px;
   font-size: var(--fs-body);
-  line-height: 1.5;
-  padding: 0 6px 0 26px;
+  line-height: 1.35;
+  padding: 1px 6px 1px 26px;
   position: relative;
   cursor: pointer;
   white-space: nowrap;
@@ -1118,14 +1111,11 @@ canvas#map-canvas {
 }
 
 .ff6-enemies {
-  flex: 0 0 24%;
-  overflow-y: auto;
-  scrollbar-width: none;
+  flex: 0 0 31%;
 }
 
 .ff6-enemy-row {
   display: flex;
-  align-items: baseline;
   justify-content: space-between;
   gap: 6px;
   font-size: var(--fs-small);
@@ -1134,20 +1124,17 @@ canvas#map-canvas {
   white-space: nowrap;
 }
 
-/* Long names truncate; the HP column never gets squeezed. */
+/* Long names truncate; the count/HP column never gets squeezed. */
 .ff6-enemy-row > span:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.ff6-enemy-hp {
+.ff6-enemy-count {
   color: #b8c4f0;
+  font-size: var(--fs-small);
   flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
 }
-
-.ff6-enemy-hp.wounded  { color: #ffc890; }
-.ff6-enemy-hp.critical { color: #ff9090; }
 
 /* Summoned allies (CONVOCIX/MAWCALLIX) — cyan to match their glow on the scene. */
 .ff6-enemy-row.summon,
@@ -1157,10 +1144,10 @@ canvas#map-canvas {
 }
 
 /* Spell detail panel — replaces the enemy window while the Magic list is
-   open, in the same 24% slot, so the overall three-column layout never
+   open, in the same 31% slot, so the overall three-column layout never
    shifts. */
 .ff6-spell-detail {
-  flex: 0 0 24%;
+  flex: 0 0 31%;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1202,22 +1189,13 @@ canvas#map-canvas {
 
 .ff6-party-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) auto auto auto;
-  grid-template-areas:
-    "name hp sp rg"
-    "bar  bar bar bar";
+  grid-template-columns: minmax(0, 1.3fr) auto auto 64px;
   align-items: baseline;
-  gap: 2px 10px;
+  gap: 8px;
   font-size: var(--fs-body);
-  line-height: 1.35;
-  padding: 1px 4px 3px;
+  line-height: 1.4;
+  padding: 1px 4px;
 }
-
-.ff6-p-name { grid-area: name; }
-.ff6-p-hp   { grid-area: hp; }
-.ff6-p-sp   { grid-area: sp; }
-.ff6-p-rg   { grid-area: rg; }
-.ff6-p-bar  { grid-area: bar; width: 100%; }
 
 .ff6-party-row.current .ff6-p-name {
   color: #ffd769;
@@ -1329,124 +1307,29 @@ canvas#map-canvas {
   }
 }
 
-/* Mobile party HUD — hidden on desktop, shown inside the @media block below. */
-.ff6-mobile-hud {
-  display: none;
-}
-
 @media (max-width: 640px) {
-  /* HUD: always-visible compact party status pinned at the top of the overlay. */
-  .ff6-mobile-hud {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 5px 8px;
-    background: rgba(8, 14, 38, 0.9);
-    border: 2px solid #e8e8f0;
-    border-radius: 8px;
-    padding: 8px 9px;
-    box-shadow: inset 0 0 0 1px #5068c8;
-    pointer-events: auto;
-  }
-  .ff6-hud-cell {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    column-gap: 5px;
-    row-gap: 2px;
-    align-items: baseline;
-  }
-  .ff6-hud-cell.current .ff6-hud-name {
-    color: #ffd769;
-  }
-  .ff6-hud-name {
-    font-size: 22px;
-    color: #f5f0e6;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .ff6-hud-hp {
-    font-size: 22px;
-    color: #b8c4f0;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-  .ff6-hud-bar {
-    grid-column: 1 / -1;
-    height: 5px;
-    border-radius: 2px;
-    background: #101c58;
-    overflow: hidden;
-  }
-  .ff6-hud-fill {
-    display: block;
-    height: 100%;
-    background: linear-gradient(180deg, #ffe790, #d8a830);
-  }
-  .ff6-hud-fill.wounded {
-    background: linear-gradient(180deg, #ffc890, #d87830);
-  }
-  .ff6-hud-fill.critical {
-    background: linear-gradient(180deg, #ff9090, #c04040);
-  }
-
-  /* Windows become a bottom sheet. column-reverse puts enemies above the
-     command menu, so the sprite area stays visible while browsing actions. */
   .ff6-windows {
-    flex-direction: column-reverse;
-    gap: 8px;
+    flex-wrap: wrap;
   }
-  .ff6-window {
-    min-height: 0;
+
+  .ff6-menu,
+  .ff6-enemies {
+    flex: 1 1 45%;
   }
+
   .ff6-party {
-    display: none;
-  }
-  .ff6-menu {
-    flex: 0 0 auto;
-    max-height: 38vh;
-    overflow-y: auto;
-    scrollbar-width: none;
-  }
-  .ff6-enemies,
-  .ff6-spell-detail {
-    flex: 0 0 auto;
-  }
-
-  /* Big, comfortable tap targets; slightly trimmed so the menu doesn't
-     swallow the whole scene. */
-  .ff6-menu-item {
-    font-size: var(--fs-panel);
-    line-height: 1.1;
-    padding: 5px 6px 5px 26px;
-  }
-  .ff6-enemy-row {
-    font-size: var(--fs-body);
-    padding: 4px 4px;
-  }
-
-  /* Touch controls don't need keyboard hint bars. */
-  #hint,
-  .ff6-footer {
-    display: none;
-  }
-
-  /* Result window centers over the scene on mobile. */
-  .ff6-result {
-    bottom: 50%;
-    transform: translate(-50%, 50%);
+    flex: 1 1 100%;
   }
 }
 
-.ff6-footer {
-  background: linear-gradient(180deg, #3048b0 0%, #1a2c80 55%, #101c58 100%);
-  border: 2px solid #e8e8f0;
-  border-radius: 8px;
-  padding: 6px 10px;
-  text-align: center;
-  font-size: var(--fs-small);
-  color: #b8c4f0;
-  letter-spacing: 0.02em;
-  pointer-events: auto;
+.ff6-hint-row {
+  margin-top: auto;
+  padding: 4px 6px 0;
+  font-size: 18px;
+  color: #8890b8;
+  border-top: 1px solid rgba(232, 232, 240, 0.18);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .ff6-sel-footer {

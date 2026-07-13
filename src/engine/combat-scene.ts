@@ -245,7 +245,6 @@ export interface CombatScene {
   /** Spell/skill name banner (top window). */
   banner: string | null;
   bannerUntil: number;
-  bannerStart: number;
   /** Blinking cursor over a selection candidate (target phase). */
   cursor: SceneCursor | null;
   /** The actor whose menu is open (bouncing hand marker). */
@@ -255,16 +254,14 @@ export interface CombatScene {
   effects: SceneEffect[];
   /** Screen-shake amount and expiry. */
   screenShake: { amount: number; until: number };
-  /** Loose particle effects (sparks, embers, shards, projectile trails). */
+  /** Loose particle effects (sparks, embers, shards). */
   particles: Particle[];
-  /** Floor illumination glows (additive radial gradients at impact points). */
-  lightGlows: LightGlow[];
   /** Last update timestamp for frame-rate-independent particle updates. */
   lastUpdate?: number;
 }
 
 export interface SceneEffect {
-  type: "burst" | "projectile" | "field";
+  type: "burst" | "projectile" | "field" | "charge";
   x: number;
   y: number;
   color: string;
@@ -274,10 +271,6 @@ export interface SceneEffect {
   frameOffset?: number;
   /** Scale factor for the drawn effect. */
   scale?: number;
-  /** If true, draw with additive (lighter) blending for glow effects. */
-  additive?: boolean;
-  /** If true, leave a particle trail as the projectile travels. */
-  trail?: boolean;
   fromX?: number;
   fromY?: number;
   toX?: number;
@@ -301,16 +294,6 @@ export interface Particle {
   glow?: boolean;
 }
 
-/** Floor illumination glow at an impact point (additive radial gradient). */
-export interface LightGlow {
-  x: number;
-  y: number;
-  color: string;
-  radius: number;
-  start: number;
-  duration: number;
-}
-
 export function createScene(state: CombatState): CombatScene {
   // Lazy-load any summon sprite bundles that aren't yet cached (e.g. a
   // summon spell was cast for the first time this session).
@@ -327,14 +310,12 @@ export function createScene(state: CombatState): CombatScene {
     popups: [],
     banner: null,
     bannerUntil: 0,
-    bannerStart: 0,
     cursor: null,
     activeActorId: null,
     choreo: null,
     effects: [],
     screenShake: { amount: 0, until: 0 },
     particles: [],
-    lightGlows: [],
   };
 }
 
@@ -413,22 +394,6 @@ const CAST_IMPACT = CAST_MS * 0.65;
 const MULTI_TARGET_STAGGER = 90;
 const DEATH_FADE_MS = 700;
 
-/** Screen-shake amount scaled by spell tier. T1=3, T2=4, T3=5, T4=6, T5+=7. Capped at 8. */
-function spellTierShake(spellId: string | undefined): number {
-  if (!spellId) return 3;
-  const spell = spellById(spellId);
-  if (!spell) return 3;
-  return Math.min(8, 3 + (spell.tier - 1));
-}
-
-/** Burst duration scaled by spell tier (ms). T1=300 ... T7=720. */
-function burstDurationFor(spellId: string | undefined): number {
-  if (!spellId) return 400;
-  const spell = spellById(spellId);
-  if (!spell) return 400;
-  return 300 + (spell.tier - 1) * 70;
-}
-
 function step(at: number, run: (scene: CombatScene, now: number) => void): ChoreoStep {
   return { at, run, fired: false };
 }
@@ -480,11 +445,7 @@ function impactSteps(
     step(t, (scene, now) => {
       const actor = findActor(scene, targetId, w, h);
       if (actor && hurt) {
-        const anim = getAnim(scene, actor.kind, targetId, now);
-        setAnimState(anim, "hurt", now);
-        // Recoil: push target away from the impact source, then ease back.
-        const recoilDir = actor.kind === "enemy" ? -1 : 1;
-        startMove(anim, recoilDir * (big ? 10 : 7), 0, 80, now);
+        setAnimState(getAnim(scene, actor.kind, targetId, now), "hurt", now);
       }
       pushPopup(scene, targetId, text, color, now, w, h, big);
       if (actor) {
@@ -501,18 +462,10 @@ function impactSteps(
           });
         }
         if (hurt) {
-          addScreenShake(scene, big ? 7 : 3.5, now, big ? 400 : 250);
+          addScreenShake(scene, big ? 5 : 2.5, now, big ? 350 : 200);
           spawnImpactParticles(scene, actor.x, actor.y, color, big);
-          pushLightGlow(scene, actor.x, actor.y, color, now, big ? 140 : 100, 350);
         }
       }
-    }),
-    // Ease the recoil back to home position.
-    step(t + 80, (scene, now) => {
-      const actor = findActor(scene, targetId, w, h);
-      if (!actor) return;
-      const anim = getAnim(scene, actor.kind, targetId, now);
-      startMove(anim, 0, 0, 150, now);
     }),
     // Return the target to idle after the hurt strip finishes (unless dead —
     // a later "defeated" step overrides).
@@ -531,20 +484,6 @@ function addScreenShake(scene: CombatScene, amount: number, now: number, duratio
     amount: Math.max(scene.screenShake.amount, amount),
     until: Math.max(scene.screenShake.until, now + duration),
   };
-}
-
-/** Push a floor illumination glow at an impact point. */
-function pushLightGlow(
-  scene: CombatScene,
-  x: number,
-  y: number,
-  color: string,
-  now: number,
-  radius = 120,
-  duration = 400
-): void {
-  if (scene.lightGlows.length > 8) return; // cap for mobile perf
-  scene.lightGlows.push({ x, y: y + 20, color, radius, start: now, duration });
 }
 
 /** Spawn a burst of impact particles at (x, y). */
@@ -600,32 +539,6 @@ function spawnSparkleParticles(
   }
 }
 
-/** Spawn a short trailing ember/spark behind a traveling projectile. */
-function spawnProjectileTrail(
-  scene: CombatScene,
-  x: number,
-  y: number,
-  color: string,
-  angle: number,
-  additive: boolean
-): void {
-  const spread = 0.5;
-  const a = angle + Math.PI + (Math.random() - 0.5) * spread;
-  const speed = 0.8 + Math.random() * 1.5;
-  scene.particles.push({
-    x: x + (Math.random() - 0.5) * 6,
-    y: y + (Math.random() - 0.5) * 6,
-    vx: Math.cos(a) * speed,
-    vy: Math.sin(a) * speed,
-    life: 0,
-    maxLife: 220 + Math.random() * 160,
-    size: 2 + Math.random() * 2.5,
-    color,
-    gravity: 0.02,
-    glow: additive,
-  });
-}
-
 // --- Spell visual style mapping ------------------------------------------------
 
 interface EffectStyle {
@@ -642,81 +555,37 @@ interface EffectStyle {
   projectileScale?: number;
   burstScale?: number;
   fieldScale?: number;
-  /** If true, draw effect sprites with additive (lighter) blending so they
-   *  read as light/energy sources rather than flat decals. */
-  additive?: boolean;
+  /** Optional charge sprite drawn above the caster during the cast animation. */
+  charge?: string;
+  chargeScale?: number;
+  /** Number of parallel projectiles for single-target casts (default 1). */
+  projectileCount?: number;
 }
 
 const ELEMENT_STYLES: Record<string, EffectStyle> = {
-  fire: { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion", field: "large_fire", scale: 2.5, additive: true },
-  cold: { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst", scale: 1.2, additive: true },
+  fire: { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion", field: "large_fire", scale: 2.5, charge: "fireball", chargeScale: 0.4, projectileCount: 1 },
+  cold: { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst", field: "ice_burst_glow", scale: 1.2, charge: "ice_burst", chargeScale: 0.4, projectileCount: 1 },
   physical: { color: "#f5f0e6", burst: "zombie_explosion" },
-  undead: { color: "#c080ff", projectile: "red_energy", burst: "red_energy", field: "red_energy", scale: 1.3, additive: true },
-  lightning: { color: "#ffd769", projectile: "lightning_blast", burst: "lightning_energy", field: "lightning_energy_glow", scale: 1.3, additive: true },
-  poison: { color: "#c080ff", projectile: "red_energy", burst: "red_energy_glow", field: "red_energy_glow", scale: 1.3 },
+  undead: { color: "#c080ff", projectile: "red_energy", burst: "red_energy", field: "red_energy", scale: 1.3, charge: "red_energy", chargeScale: 0.4, projectileCount: 1 },
+  lightning: { color: "#ffd769", projectile: "lightning_blast", burst: "lightning_energy", field: "lightning_energy_glow", scale: 1.3, charge: "lightning_blast", chargeScale: 0.4, projectileCount: 1 },
+  poison: { color: "#c080ff", projectile: "red_energy", burst: "red_energy_glow", field: "red_energy_glow", scale: 1.3, charge: "red_energy_glow", chargeScale: 0.4, projectileCount: 1 },
+  water: { color: "#4fd0ff", projectile: "fz_water", burst: "fz_water_geyser", field: "fz_water_geyser", scale: 1.6, charge: "fz_water", chargeScale: 0.5, projectileCount: 1 },
+  earth: { color: "#b8a080", projectile: "fz_earth_spike", burst: "fz_rocks", field: "fz_rocks", scale: 1.5, charge: "fz_earth_spike", chargeScale: 0.5, projectileCount: 1 },
+  wind: { color: "#d0ffe0", projectile: "fz_wind", burst: "fz_tornado", field: "fz_tornado", scale: 1.4, charge: "fz_wind", chargeScale: 0.5, projectileCount: 1 },
 };
 
-/**
- * Per-spell visual overrides using the downloaded free VFX packs (see
- * docs/superpowers/specs/2026-07-12-vfx-integration-plan.md). Scales are
- * native-frame-relative and tuned for on-screen sizes of ~45px projectile,
- * ~130px burst, ~320px field. NOTE: the engine multiplies fieldScale by 2 at
- * draw time, so field values here are pre-halved. `color` tints only the
- * sparkle particles + popup (strips are drawn untinted), so it is set to the
- * element color to keep the accent consistent.
- */
+/** Per-spell visual overrides for alternate effect variants. */
 const SPELL_OVERRIDES: Record<string, EffectStyle> = {
-  // --- Mage: fire (additive — fire is a light source) ---
-  "mage-ember": { color: "#ff8c42", projectile: "px_fireball", projectileScale: 2.8, burst: "fz_explosion", burstScale: 2.0, additive: true },
-  "mage-fire-bolt": { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 1.8, burst: "fz_explosion", burstScale: 2.0, additive: true },
-  "mage-burning-hands": { color: "#ff8c42", burst: "mp_fire_bomb", burstScale: 1.6, field: "mp_fire_bomb", fieldScale: 2.4, additive: true },
-  "mage-fireball": { color: "#ff8c42", burst: "mp_fire_bomb", burstScale: 2.0, field: "mp_fire_bomb", fieldScale: 2.6, additive: true },
-  "mage-immolate": { color: "#ff8c42", projectile: "fz_molten_spear", projectileScale: 1.3, burst: "mp_fire_bomb", burstScale: 2.2, additive: true },
-  // --- Mage: cold (additive — ice glows) ---
-  "mage-frostbite": { color: "#80e0ff", projectile: "px_ice_lance", projectileScale: 2.8, burst: "ice_burst_glow", burstScale: 1.8, additive: true },
-  "mage-cone-of-cold": { color: "#80e0ff", burst: "ice_burst", burstScale: 1.2, field: "ice_burst", fieldScale: 3.0, additive: true },
-  "mage-ice-storm": { color: "#80e0ff", burst: "ice_burst_glow", burstScale: 1.2, field: "ice_burst_glow", fieldScale: 3.0, additive: true },
-  // --- Mage: lightning (additive — energy glow) ---
-  "mage-spark": { color: "#ffd769", projectile: "lightning_blast", projectileScale: 1.6, burst: "lightning_energy_glow", burstScale: 2.0, additive: true },
-  // --- Mage: poison (additive — venomous energy glow) ---
-  "mage-poison-spray": { color: "#c080ff", projectile: "px_plant_missle", projectileScale: 2.0, burst: "red_energy_glow", burstScale: 1.8, additive: true },
-  // --- Mage: disable / field (additive for energy-type, not for cloud-type) ---
-  "mage-sleep": { color: "#c080ff", burst: "px_magic_sparks", burstScale: 4.0, additive: true },
-  "mage-hold-person": { color: "#c8c4b8", burst: "px_shield", burstScale: 2.2, additive: true },
-  "mage-web": { color: "#c8c4b8", burst: "px_magic_sparks", burstScale: 3.0, field: "px_magic_sparks", fieldScale: 7.0, additive: true },
-  "mage-power-word-stun": { color: "#c8c4b8", burst: "px_darkness_orb", burstScale: 3.5, additive: true },
-  "mage-silence": { color: "#c080ff", burst: "px_darkness_orb", burstScale: 4.0, field: "px_darkness_orb", fieldScale: 7.0 },
-  "mage-dispel-magic": { color: "#7fb8f0", burst: "dispel_sparks", burstScale: 4.0, field: "dispel_sparks", fieldScale: 7.0, additive: true },
-  // --- Mage: buff / shield (additive — magical barriers glow) ---
-  "mage-arcane-ward": { color: "#7fb8f0", burst: "px_shield", burstScale: 3.2, additive: true },
-  "mage-spell-shield": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6, field: "px_shield", fieldScale: 3.3, additive: true },
-  // --- Mage: summon (additive — portals are energy) ---
-  "mage-lesser-summon": { color: "#c080ff", burst: "fz_portal", burstScale: 2.2, additive: true },
-  "mage-summon-fire-elemental": { color: "#ff8c42", burst: "fz_portal_orange", burstScale: 2.0, additive: true },
-  "mage-conjure-elemental": { color: "#c080ff", burst: "fz_portal", burstScale: 2.0, field: "fz_portal", fieldScale: 2.5, additive: true },
-  "mage-gate": { color: "#c080ff", burst: "fz_portal", burstScale: 2.6, additive: true },
-
-  // --- Priest: damage (additive — holy/arcane energy) ---
-  "priest-sacred-flame": { color: "#ffe8a0", projectile: "px_bolt_purity", projectileScale: 3.5, burst: "mp_fire_bomb", burstScale: 1.4, additive: true },
-  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "px_light_bolt", projectileScale: 3.5, burst: "lightning_energy_glow", burstScale: 1.3, additive: true },
-  "priest-divine-smite": { color: "#ffe8a0", projectile: "px_bolt_purity", projectileScale: 3.5, burst: "mp_lightning", burstScale: 1.8, additive: true },
-  "priest-sunburst": { color: "#ffe8a0", burst: "mp_lightning", burstScale: 2.2, field: "fire_explosion_glow", fieldScale: 1.8, additive: true },
-  // --- Priest: heal / cure (additive — healing light) ---
-  "priest-cure-wounds": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5, additive: true },
-  "priest-cure-serious": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5, additive: true },
-  "priest-cure-critical": { color: "#6fe06f", burst: "heal_sparks", burstScale: 5.5, additive: true },
-  "priest-heal": { color: "#6fe06f", burst: "heal_sparks", burstScale: 6.0, additive: true },
-  "priest-mass-cure": { color: "#6fe06f", burst: "heal_sparks", burstScale: 3.5, field: "heal_sparks", fieldScale: 5.0, additive: true },
-  "priest-mass-heal": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5, field: "heal_sparks", fieldScale: 5.0, additive: true },
-  "priest-neutralize-poison": { color: "#6fe06f", burst: "heal_sparks", burstScale: 3.5, additive: true },
-  "priest-raise-dead": { color: "#ffe8a0", burst: "heal_sparks", burstScale: 5.5, additive: true },
-  // --- Priest: buff / shield (additive — divine barriers glow) ---
-  "priest-shield-of-faith": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6, additive: true },
-  "priest-bless": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6, field: "px_shield", fieldScale: 3.3, additive: true },
-  // --- Priest: summon (additive — golden portals) ---
-  "priest-summon-guardian": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.0, additive: true },
-  "priest-summon-celestial-guardian": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.6, additive: true },
-  "priest-summon-celestial": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.0, field: "fz_portal_gold", fieldScale: 2.5, additive: true },
+  // Fire
+  "mage-ember": { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion_glow", field: "large_fire", scale: 2.5 },
+  // Cold
+  "mage-frostbite": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_glow", scale: 1.2 },
+  // Poison
+  "mage-poison-spray": { color: "#c080ff", projectile: "red_lightning_blast_glow", burst: "red_energy_glow", scale: 1.3 },
+  // Priest holy
+  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "priest_attack", projectileScale: 1, burst: "lightning_energy_glow", burstScale: 1.3, scale: 1 },
+  // Divine (priest smite)
+  "priest-divine-smite": { color: "#ffe8a0", projectile: "priest_attack", projectileScale: 1.2, burst: "lightning_energy_glow", burstScale: 1.5, scale: 1.2 },
 };
 
 const STATUS_STYLES: Record<string, EffectStyle> = {
@@ -740,13 +609,13 @@ function resolveEffectStyle(
       return ELEMENT_STYLES[eff.element] ?? { color: COLORS.spellBurst, burst: "fire_explosion" };
     }
     if (eff.kind === "heal") {
-      return { color: COLORS.heal, projectile: "priest_heal", burst: "priest_heal", scale: 1.2, additive: true };
+      return { color: COLORS.heal, projectile: "priest_heal", burst: "priest_heal", scale: 1.2 };
     }
     if (eff.kind === "buff" || eff.kind === "magicScreen") {
-      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2, additive: true };
+      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2 };
     }
     if (eff.kind === "cure" || eff.kind === "resurrect") {
-      return { color: COLORS.heal, burst: "priest_heal", scale: 1.2, additive: true };
+      return { color: COLORS.heal, burst: "priest_heal", scale: 1.2 };
     }
     if (eff.kind === "disable" && eff.status) {
       return STATUS_STYLES[eff.status] ?? { color: COLORS.poison, burst: "red_energy" };
@@ -755,14 +624,14 @@ function resolveEffectStyle(
       return { color: COLORS.poison, field: "red_energy", burst: "red_energy" };
     }
     if (eff.kind === "summon") {
-      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2, additive: true };
+      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2 };
     }
   }
 
   // Fallback for items or unknown spell IDs.
   const e = evt ?? {};
   if (e.heal !== undefined || e.statusCured || e.isBuff) {
-    return { color: COLORS.heal, burst: "priest_heal", scale: 1.2, additive: true };
+    return { color: COLORS.heal, burst: "priest_heal", scale: 1.2 };
   }
   if (e.statusInflicted) {
     return STATUS_STYLES[e.statusInflicted] ?? { color: COLORS.poison, burst: "red_energy" };
@@ -880,7 +749,6 @@ export function playTurn(
       step(t, (sc, n) => {
         sc.banner = text;
         sc.bannerUntil = n + durationMs;
-        sc.bannerStart = n;
       })
     );
   };
@@ -918,7 +786,6 @@ export function playTurn(
                 color: COLORS.dmg,
                 effect: projectileEffectForActor(attacker?.class),
                 scale: 2.5,
-                trail: true,
                 start: n,
                 duration: impact - (t + ATTACK_MS * 0.2),
               });
@@ -1055,54 +922,57 @@ export function playTurn(
       }
 
       case "cast": {
-        showBanner(spellNameFor(evt.spellId), CAST_MS + 300);
+        showBanner(spellNameFor(evt.spellId), CAST_MS + 900);
         castAnim(evt.actorId);
         pendingImpactBase = t + CAST_IMPACT;
         pendingImpactCount = 0;
         fieldPushed = false;
 
         const style = resolveEffectStyle(evt.spellId, evt);
-        // Wind-up: a charge glow gathers on the caster for ~280ms before the
-        // projectile launches or the burst lands. This sells the spell as a
-        // deliberate act rather than an instant flash.
-        steps.push(
-          step(t, (sc, n) => {
-            const caster = findActor(sc, evt.actorId, w, h);
-            if (!caster) return;
-            sc.effects.push({
-              type: "burst",
-              x: caster.x, y: caster.y - 8,
-              color: style.color,
-              effect: style.burst,
-              scale: (style.burstScale ?? style.scale ?? 1) * 0.45,
-              additive: style.additive,
-              start: n,
-              duration: 280,
-            });
-          })
-        );
-        // For a single target, launch a projectile from caster to target.
+        // Charge sprite gathers above the caster during the cast.
+        if (style.charge) {
+          steps.push(
+            step(t, (sc, n) => {
+              const actor = findActor(sc, evt.actorId, w, h);
+              if (!actor) return;
+              sc.effects.push({
+                type: "charge",
+                x: actor.x, y: actor.y,
+                color: style.color,
+                effect: style.charge,
+                scale: style.chargeScale ?? style.scale ?? 0.8,
+                start: n,
+                duration: CAST_IMPACT,
+              });
+            })
+          );
+        }
+
+        // For a single target, launch projectile(s) from caster to target.
         if (evt.targetId && style.projectile) {
           const projectileLaunch = t + 100;
           const impact = pendingImpactBase;
+          const count = style.projectileCount ?? 1;
           steps.push(
             step(projectileLaunch, (sc, n) => {
               const from = findActor(sc, evt.actorId, w, h);
               const to = findActor(sc, evt.targetId!, w, h);
               if (!from || !to) return;
-              sc.effects.push({
-                type: "projectile",
-                x: from.x, y: from.y,
-                fromX: from.x, fromY: from.y,
-                toX: to.x, toY: to.y,
-                color: style.color,
-                effect: style.projectile,
-                scale: style.projectileScale ?? style.scale ?? 1,
-                additive: style.additive,
-                trail: true,
-                start: n,
-                duration: impact - projectileLaunch,
-              });
+              for (let i = 0; i < count; i++) {
+                const stagger = i * 60;
+                const offset = (i - (count - 1) / 2) * 18;
+                sc.effects.push({
+                  type: "projectile",
+                  x: from.x, y: from.y,
+                  fromX: from.x, fromY: from.y + offset,
+                  toX: to.x, toY: to.y + offset,
+                  color: style.color,
+                  effect: style.projectile,
+                  scale: style.projectileScale ?? style.scale ?? 1,
+                  start: n + stagger,
+                  duration: impact - projectileLaunch,
+                });
+              }
             })
           );
         }
@@ -1121,14 +991,10 @@ export function playTurn(
                   color: style.color,
                   effect: style.burst,
                   scale: style.burstScale ?? style.scale ?? 1,
-                  additive: style.additive,
-                  start: n, duration: burstDurationFor(evt.spellId),
+                  start: n, duration: 400,
                 });
                 spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
-                if (!isHeal) {
-                  addScreenShake(sc, spellTierShake(evt.spellId), n, 250);
-                  pushLightGlow(sc, target.x, target.y, style.color, n, 130, 400);
-                }
+                if (!isHeal) addScreenShake(sc, isHeal ? 1 : 3, n, 200);
               }
             }),
             ...impactSteps(pendingImpactBase, evt.targetId, text, isHeal ? COLORS.heal : COLORS.dmg, w, h, !isHeal)
@@ -1162,11 +1028,8 @@ export function playTurn(
             spell.target === "groupAllies");
         if (targetId && isArea && !fieldPushed) {
           fieldPushed = true;
-          // Place the field on the side of the actual target, not the spell's
-          // nominal target shape. This is important when enemy casters aim
-          // player-targeting AoEs (or vice versa) in the VFX vignette / chaos mode.
-          const targetActor = findActor(scene, targetId, w, h);
-          const fieldX = targetActor?.kind === "party" || targetActor?.kind === "ally" ? w * 0.72 : w * 0.26;
+          const fieldX =
+            spell.target === "allEnemies" || spell.target === "groupEnemies" ? w * 0.26 : w * 0.72;
           steps.push(
             step(impactAt, (sc, n) => {
               sc.effects.push({
@@ -1176,7 +1039,6 @@ export function playTurn(
                 color: style.color,
                 effect: style.field ?? style.burst,
                 scale: (style.fieldScale ?? style.scale ?? 1) * 2,
-                additive: style.additive,
                 start: n,
                 duration: 650,
               });
@@ -1199,7 +1061,6 @@ export function playTurn(
                 color: style.color,
                 effect: style.field ?? style.burst,
                 scale: (style.fieldScale ?? style.scale ?? 1) * 2,
-                additive: style.additive,
                 start: n,
                 duration: 650,
               });
@@ -1235,13 +1096,11 @@ export function playTurn(
                 color: style.color,
                 effect: style.burst,
                 scale: style.burstScale ?? style.scale ?? 1,
-                additive: style.additive,
-                start: n, duration: burstDurationFor(evt.spellId),
+                start: n, duration: 400,
               });
               spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
               if (!isHeal && evt.damage !== undefined) {
-                addScreenShake(sc, spellTierShake(evt.spellId), n, 250);
-                pushLightGlow(sc, target.x, target.y, style.color, n, 130, 400);
+                addScreenShake(sc, evt.damage && evt.damage > 20 ? 5 : 3, n, 200);
               }
             }
           })
@@ -1439,7 +1298,6 @@ export function updateScene(scene: CombatScene, now: number): void {
   // Expire popups and effects.
   scene.popups = scene.popups.filter((p) => now - p.start < POPUP_DURATION);
   scene.effects = scene.effects.filter((e) => now - e.start < e.duration);
-  scene.lightGlows = scene.lightGlows.filter((g) => now - g.start < g.duration);
 
   // Update particles.
   const delta = scene.lastUpdate ? now - scene.lastUpdate : 16;
@@ -1628,7 +1486,7 @@ function drawPartyMember(
   // Hurt flash overlay.
   if (anim.state === "hurt" && now - anim.stateStart < 200) {
     ctx.save();
-    ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = 0.35;
     ctx.fillStyle = "#fff";
     ctx.fillRect(x - PARTY_SIZE / 4, y - PARTY_SIZE / 2.4, PARTY_SIZE / 2, PARTY_SIZE * 0.8);
     ctx.restore();
@@ -1683,7 +1541,7 @@ function drawEnemy(
   // Hurt flash.
   if (anim.state === "hurt" && now - anim.stateStart < 200) {
     ctx.save();
-    ctx.globalAlpha = 0.55;
+    ctx.globalAlpha = 0.3;
     ctx.fillStyle = "#fff";
     ctx.beginPath();
     ctx.ellipse(x, y, ENEMY_SIZE / 2.6, ENEMY_SIZE / 2.4, 0, 0, Math.PI * 2);
@@ -1732,7 +1590,7 @@ function drawAlly(
       // Hurt flash.
       if (anim.state === "hurt" && now - anim.stateStart < 200) {
         ctx.save();
-        ctx.globalAlpha = 0.55 * anim.opacity;
+        ctx.globalAlpha = 0.3 * anim.opacity;
         ctx.fillStyle = "#fff";
         ctx.beginPath();
         ctx.ellipse(x, y, ENEMY_SIZE / 2.6, ENEMY_SIZE / 2.4, 0, 0, Math.PI * 2);
@@ -1805,7 +1663,7 @@ function effectFrame(sprite: EffectSprite, start: number, now: number, type: Sce
   if (strip.frameCount <= 1 || strip.fps <= 0) return 0;
   const elapsed = Math.max(0, now - start);
   const idx = Math.floor((elapsed / 1000) * strip.fps);
-  const shouldLoop = type === "projectile" || strip.loop === true;
+  const shouldLoop = type === "projectile" || type === "charge" || strip.loop === true;
   return shouldLoop ? idx % strip.frameCount : Math.min(strip.frameCount - 1, idx);
 }
 
@@ -1817,6 +1675,11 @@ function drawEffectSprite(
   t: number,
   now: number
 ): void {
+  if (type === "charge") {
+    drawChargeSprite(ctx, effect, t, now);
+    return;
+  }
+
   if (effect.effect) {
     const sprite = getEffectSprite(effect.effect);
     if (sprite && sprite.img) {
@@ -1829,20 +1692,8 @@ function drawEffectSprite(
       const scale = effect.scale ?? 1;
       const dw = strip.frameWidth * scale;
       const dh = strip.frameHeight * scale;
-      ctx.globalAlpha = type === "burst" ? 1 - t : type === "field" ? (1 - t) * 0.8 : 1;
-      // Additive blending makes glow-type effects (fire, holy, arcane, heal)
-      // read as light sources rather than flat decals.
-      if (effect.additive) ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = type === "burst" ? 1 - t : type === "field" ? 1 - t * 0.5 : 1;
       ctx.imageSmoothingEnabled = false;
-      // Projectiles get a soft aura behind the sprite so they read as glowing
-      // missiles/streaks rather than tiny dots against the dark background.
-      if (type === "projectile") {
-        ctx.save();
-        ctx.globalAlpha = 0.3;
-        ctx.globalCompositeOperation = "lighter";
-        ctx.drawImage(sprite.img, sx, sy, strip.frameWidth, strip.frameHeight, -dw, -dh, dw * 2, dh * 2);
-        ctx.restore();
-      }
       ctx.drawImage(sprite.img, sx, sy, strip.frameWidth, strip.frameHeight, -dw / 2, -dh / 2, dw, dh);
       return;
     }
@@ -1869,6 +1720,40 @@ function drawEffectSprite(
   }
 }
 
+/** Draw a charge sprite pulsing above a caster. */
+function drawChargeSprite(
+  ctx: CanvasRenderingContext2D,
+  effect: SceneEffect,
+  t: number,
+  now: number
+): void {
+  if (effect.effect) {
+    const sprite = getEffectSprite(effect.effect);
+    if (sprite && sprite.img) {
+      const strip = sprite.strip;
+      const frame = effectFrame(sprite, effect.start, now, "charge");
+      const col = frame % sprite.cols;
+      const row = Math.floor(frame / sprite.cols);
+      const sx = col * strip.frameWidth;
+      const sy = row * strip.frameHeight;
+      const scale = (effect.scale ?? 1) * (1 + Math.sin(t * Math.PI * 2) * 0.15);
+      const dw = strip.frameWidth * scale;
+      const dh = strip.frameHeight * scale;
+      ctx.globalAlpha = 0.7 + Math.sin(t * Math.PI * 2) * 0.3;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(sprite.img, sx, sy, strip.frameWidth, strip.frameHeight, -dw / 2, -dh / 2, dw, dh);
+      return;
+    }
+  }
+  // Procedural fallback.
+  const radius = 10 + t * 14;
+  ctx.globalAlpha = 0.7 - t * 0.4;
+  ctx.fillStyle = effect.color;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 /** Scene effects: spell bursts, projectiles, and field overlays. */
 function drawEffects(ctx: CanvasRenderingContext2D, scene: CombatScene, now: number): void {
   for (const effect of scene.effects) {
@@ -1878,6 +1763,9 @@ function drawEffects(ctx: CanvasRenderingContext2D, scene: CombatScene, now: num
     if (effect.type === "burst" || effect.type === "field") {
       ctx.translate(effect.x, effect.y);
       drawEffectSprite(ctx, effect, effect.type, t, now);
+    } else if (effect.type === "charge") {
+      ctx.translate(effect.x, effect.y - 60);
+      drawEffectSprite(ctx, effect, "charge", t, now);
     } else if (effect.type === "projectile") {
       const fromX = effect.fromX ?? effect.x;
       const fromY = effect.fromY ?? effect.y;
@@ -1886,12 +1774,6 @@ function drawEffects(ctx: CanvasRenderingContext2D, scene: CombatScene, now: num
       const cx = fromX + (toX - fromX) * t;
       const cy = fromY + (toY - fromY) * t;
       const angle = Math.atan2(toY - fromY, toX - fromX);
-      if (effect.trail && t > 0.05 && t < 0.95) {
-        const trailCount = 2 + Math.floor(Math.random() * 2);
-        for (let i = 0; i < trailCount; i++) {
-          spawnProjectileTrail(scene, cx, cy, effect.color, angle, !!effect.additive);
-        }
-      }
       ctx.translate(cx, cy);
       ctx.rotate(angle);
       drawEffectSprite(ctx, effect, "projectile", t, now);
@@ -1989,16 +1871,9 @@ function drawRoundIndicator(ctx: CanvasRenderingContext2D, scene: CombatScene): 
   ctx.restore();
 }
 
-function drawBanner(ctx: CanvasRenderingContext2D, w: number, scene: CombatScene, now: number): void {
+function drawBanner(ctx: CanvasRenderingContext2D, w: number, scene: CombatScene): void {
   if (!scene.banner) return;
-  const age = now - scene.bannerStart;
-  const remaining = scene.bannerUntil - now;
-  // Fade in over first 100ms, fade out over last 200ms.
-  let alpha = 0.85;
-  if (age < 100) alpha *= age / 100;
-  else if (remaining < 200) alpha *= Math.max(0, remaining / 200);
   ctx.save();
-  ctx.globalAlpha = alpha;
   ctx.font = '22px "FF36", monospace';
   const textW = ctx.measureText(scene.banner).width;
   const boxW = Math.max(220, textW + 56);
@@ -2011,25 +1886,6 @@ function drawBanner(ctx: CanvasRenderingContext2D, w: number, scene: CombatScene
   ctx.textBaseline = "middle";
   ctx.fillText(scene.banner, w / 2, y + boxH / 2 + 1);
   ctx.restore();
-}
-
-/** Draw additive floor illumination glows (before sprites so they light the scene). */
-function drawLightGlows(ctx: CanvasRenderingContext2D, scene: CombatScene, now: number): void {
-  for (const g of scene.lightGlows) {
-    const t = (now - g.start) / g.duration;
-    if (t >= 1) continue;
-    const alpha = (1 - t) * 0.4;
-    const r = g.radius * (0.6 + t * 0.4);
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = alpha;
-    const grad = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, r);
-    grad.addColorStop(0, g.color);
-    grad.addColorStop(1, "transparent");
-    ctx.fillStyle = grad;
-    ctx.fillRect(g.x - r, g.y - r, r * 2, r * 2);
-    ctx.restore();
-  }
 }
 
 // --- Main render -----------------------------------------------------------------------
@@ -2067,10 +1923,6 @@ export function renderScene(
     ctx.fillRect(0, 0, w, h);
   }
 
-  // Floor illumination from active spell glows (drawn before sprites so they
-  // light the ground and sprite edges).
-  drawLightGlows(ctx, scene, now);
-
   // Enemies: back row first, then front (front overlaps back).
   s.enemies.back.forEach((e, i) => drawEnemy(ctx, e, i, scene, now, w, h));
   s.enemies.front.forEach((e, i) => drawEnemy(ctx, e, i, scene, now, w, h));
@@ -2098,7 +1950,7 @@ export function renderScene(
   drawPopups(ctx, scene, now);
 
   // Banner window (top center) + round indicator (top left).
-  drawBanner(ctx, w, scene, now);
+  drawBanner(ctx, w, scene);
   drawRoundIndicator(ctx, scene);
 
   ctx.restore();

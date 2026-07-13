@@ -16,7 +16,17 @@ export type SpellTarget =
   | "allAllies"
   | "allEnemies";
 
-export type DamageElement = "fire" | "cold" | "physical" | "undead" | "lightning" | "poison" | "divine";
+export type DamageElement =
+  | "fire"
+  | "cold"
+  | "physical"
+  | "undead"
+  | "lightning"
+  | "poison"
+  | "divine"
+  | "water"
+  | "earth"
+  | "wind";
 
 export type SpellEffect =
   | { kind: "damage"; element: DamageElement; power: number }
@@ -302,6 +312,102 @@ export const MAGE_SPELLS: SpellDef[] = [
     target: "self",
     effect: { kind: "summon", power: 8, spriteId: "summon-eldritch-guardian", allyName: "Eldritch Guardian" },
     description: "Tears open a portal to another plane, calling forth a powerful guardian.",
+  },
+
+  // --- Water ---
+  {
+    id: "mage-water-bolt",
+    name: "Water Bolt",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "water", power: 5 },
+    description: "A pressurized jet of water that slams one foe.",
+  },
+  {
+    id: "mage-tidal-wave",
+    name: "Tidal Wave",
+    class: "Mage",
+    tier: 2,
+    spCost: 6,
+    target: "groupEnemies",
+    effect: { kind: "damage", element: "water", power: 8 },
+    description: "A crashing wave that washes over a group of enemies.",
+  },
+  {
+    id: "mage-deluge",
+    name: "Deluge",
+    class: "Mage",
+    tier: 3,
+    spCost: 10,
+    target: "allEnemies",
+    effect: { kind: "damage", element: "water", power: 14 },
+    description: "A torrential downpour that drenches every enemy.",
+  },
+
+  // --- Earth ---
+  {
+    id: "mage-stone-shard",
+    name: "Stone Shard",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "earth", power: 5 },
+    description: "A jagged stone spike that impales one target.",
+  },
+  {
+    id: "mage-rock-slide",
+    name: "Rock Slide",
+    class: "Mage",
+    tier: 2,
+    spCost: 6,
+    target: "groupEnemies",
+    effect: { kind: "damage", element: "earth", power: 8 },
+    description: "Loose boulders tumble down upon an enemy group.",
+  },
+  {
+    id: "mage-quake",
+    name: "Quake",
+    class: "Mage",
+    tier: 3,
+    spCost: 10,
+    target: "allEnemies",
+    effect: { kind: "damage", element: "earth", power: 14 },
+    description: "The ground splits and shakes beneath the enemy formation.",
+  },
+
+  // --- Wind ---
+  {
+    id: "mage-gust",
+    name: "Gust",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "wind", power: 5 },
+    description: "A razor-edged gale that cuts one foe.",
+  },
+  {
+    id: "mage-cyclone",
+    name: "Cyclone",
+    class: "Mage",
+    tier: 2,
+    spCost: 6,
+    target: "groupEnemies",
+    effect: { kind: "damage", element: "wind", power: 8 },
+    description: "A spinning column of wind tears through an enemy group.",
+  },
+  {
+    id: "mage-tempest",
+    name: "Tempest",
+    class: "Mage",
+    tier: 3,
+    spCost: 10,
+    target: "allEnemies",
+    effect: { kind: "damage", element: "wind", power: 14 },
+    description: "Howling storm winds scour the entire enemy line.",
   },
 ];
 

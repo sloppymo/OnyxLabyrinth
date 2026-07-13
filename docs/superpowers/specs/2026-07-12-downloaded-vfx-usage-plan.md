@@ -1,7 +1,5 @@
 # Downloaded VFX Assets — Usage Plan
 
-> **Status:** all assets have been copied into `public/assets/effects/` and registered in `src/engine/effect-sprite-cache.ts`. Spells still need to be created for the water/wind/earth/plant elements; the sprites are ready.
-
 Assets are in `~/Downloads/Spell Effects/` and fall into three packs:
 
 1. **Pixelart Spells** by DevWizard (OpenGameArt, CC0) — 22 horizontal PNG strips, mostly 16×16 projectiles and orbs.
@@ -34,14 +32,14 @@ All files are already horizontal PNG strips. Frame size = height; frame count = 
 | `Magic Ray.png` | 128×16 | 8 | 16×16 | Purple magic ray/beam | Beam projectile for high-tier Mage spells |
 | `Magic Sparks.png` | 96×16 | 6 | 16×16 | Small purple/white sparkle burst | Burst for heals, buffs, or status-clear spells; tintable |
 | `Pixelart Shield.png` | 288×48 | 6 | 48×48 | Blue circular shield that forms and fades | Burst for `priest-shield-of-faith`, `priest-bless`, `mage-arcane-ward`, `mage-spell-shield` |
-| `Plant Missle.png` | 96×16 | 6 | 16×16 | Green leaf/plant projectile | Incorporated as `px_plant_missle` — awaiting nature spell |
+| `Plant Missle.png` | 96×16 | 6 | 16×16 | Green leaf/plant projectile | Not currently useful (no nature spells) |
 | `Pure Bolt 2.png` | 96×16 | 6 | 16×16 | White holy bolt variant | Alternative projectile for `priest-guiding-bolt`, `priest-divine-smite` |
-| `Rock Sling.png` | 16×16 | 1 | 16×16 | Single rock chunk | Incorporated as `px_rock_sling` — awaiting earth spell |
-| `Splash.png` | 192×32 | 6 | 32×32 | Water splash burst | Incorporated as `px_splash` — awaiting water spell |
-| `Water Blast.png` | 96×16 | 6 | 16×16 | Water projectile | Incorporated as `px_water_blast` — awaiting water spell |
-| `Water Bolt.png` | 96×16 | 6 | 16×16 | Water bolt | Incorporated as `px_water_bolt` — awaiting water spell |
-| `Water Orb.png` | 96×16 | 6 | 16×16 | Water orb | Incorporated as `px_water_orb` — awaiting water spell |
-| `Wind Bolt.png` | 96×16 | 6 | 16×16 | Wind slash | Incorporated as `px_wind_bolt` — awaiting wind spell |
+| `Rock Sling.png` | 16×16 | 1 | 16×16 | Single rock chunk | Not currently useful (no earth spell) |
+| `Splash.png` | 192×32 | 6 | 32×32 | Water splash burst | Not currently useful (no water spells) |
+| `Water Blast.png` | 96×16 | 6 | 16×16 | Water projectile | Not currently useful |
+| `Water Bolt.png` | 96×16 | 6 | 16×16 | Water bolt | Not currently useful |
+| `Water Orb.png` | 96×16 | 6 | 16×16 | Water orb | Not currently useful |
+| `Wind Bolt.png` | 96×16 | 6 | 16×16 | Wind slash | Not currently useful (no wind spells) |
 
 ### Magic Pack 9 (ansimuz, royalty-free)
 
@@ -50,13 +48,13 @@ Pre-built spritesheets are single horizontal rows. Individual-frame folders cont
 | Asset | Sheet size | Frames | Frame size | What it looks like | Suggested use in game |
 |-------|------------|--------|------------|--------------------|----------------------|
 | `spritesheets/Fire-bomb.png` | 896×64 | 14 | 64×64 | Full fire bomb: spark → charge → explosion → fade | Burst for `mage-fireball`, `mage-immolate`. Excellent upgrade over the generic `fire_explosion` |
-| `sprites/FireBomb/*.png` (15 frames) | 64×64 each | 15 | 64×64 | Same animation, includes one extra frame at the end | Incorporated as `mp_fire_bomb_full` |
+| `sprites/FireBomb/*.png` (15 frames) | 64×64 each | 15 | 64×64 | Same animation, includes one extra frame at the end | Use if you want the complete 15-frame version instead of the 14-frame sheet |
 | `spritesheets/Lightning.png` | 640×128 | 10 | 64×128 | Lightning bolt descending from top + ground impact burst | Burst/field for `mage-spark`, `priest-guiding-bolt`, or `mage-power-word-stun` |
-| `sprites/Lightning/*.png` (11 frames) | 64×128 each | 11 | 64×128 | Same, includes one extra frame | Incorporated as `mp_lightning_full` |
+| `sprites/Lightning/*.png` (11 frames) | 64×128 each | 11 | 64×128 | Same, includes one extra frame | Use if you want the full 11-frame version |
 | `spritesheets/spark.png` | 224×32 | 7 | 32×32 | Small glowing spark projectile | Projectile for `mage-spark` or low-level lightning spells |
-| `sprites/spark/*.png` (8 frames) | 32×32 each | 8 | 32×32 | Same, includes one extra frame | Incorporated as `mp_spark_full` |
+| `sprites/spark/*.png` (8 frames) | 32×32 each | 8 | 32×32 | Same, includes one extra frame | Use if you want the complete 8-frame version |
 | `spritesheets/Dark-Bolt.png` | 704×88 | 11 | 64×88 | Dark purple bolt with trailing energy | Recolor to green for `mage-poison-spray` projectile, or use for dark/arcane spells |
-| `sprites/DarkBolt/*.png` (12 frames) | 64×88 each | 12 | 64×88 | Same, includes one extra frame | Incorporated as `mp_dark_bolt_full` |
+| `sprites/DarkBolt/*.png` (12 frames) | 64×88 each | 12 | 64×88 | Same, includes one extra frame | Use if you want the full 12-frame version |
 
 ### Foozle Pixel Magic Effects (CC0)
 
@@ -68,13 +66,13 @@ All animation folders contain numbered 64×64 frames. The big sheet `Spell/Pixel
 | `Explosion` | 7 | 64×64 | Circular fire/smoke explosion | Generic fire burst for `mage-fireball`, `mage-immolate`, or `mage-burning-hands` |
 | `Portal` | 10 | 64×64 | Purple swirling magic portal | Cast-flash / burst for summon spells: `mage-lesser-summon`, `mage-summon-fire-elemental`, `mage-conjure-elemental`, `mage-gate`, `priest-summon-guardian`, `priest-summon-celestial-guardian`, `priest-summon-celestial` |
 | `Molten_Spear` | 12 | 64×64 | Red/orange spear-like projectile | Alternative fire projectile for `mage-fire-bolt` or high-tier fire spells |
-| `Rocks` | 10 | 64×64 | Rock chunks falling/launching | Incorporated as `fz_rocks` — awaiting earth spell |
-| `Earth_Spike` | 9 | 64×64 | Earth spike erupting from ground | Incorporated as `fz_earth_spike` — awaiting earth spell |
-| `Water` | 10 | 64×64 | Water blob/blast | Incorporated as `fz_water` — awaiting water spell |
-| `Water_Geyser` | 13 | 64×64 | Water column erupting | Incorporated as `fz_water_geyser` — awaiting water spell |
-| `Wind` | 10 | 64×64 | Wind slash/crescent | Incorporated as `fz_wind` — awaiting wind spell |
-| `Tornado` | 9 | 64×64 | Tornado vortex | Incorporated as `fz_tornado` — awaiting wind spell |
-| `Icons` | 10 | 32×32 | 32×32 spell icons | Incorporated as `fz_icons` — could be used for UI icons later |
+| `Rocks` | 10 | 64×64 | Rock chunks falling/launching | Not currently useful (no earth spell) |
+| `Earth_Spike` | 9 | 64×64 | Earth spike erupting from ground | Not currently useful |
+| `Water` | 10 | 64×64 | Water blob/blast | Not currently useful (no water spells) |
+| `Water_Geyser` | 13 | 64×64 | Water column erupting | Not currently useful |
+| `Wind` | 10 | 64×64 | Wind slash/crescent | Not currently useful (no wind spells) |
+| `Tornado` | 9 | 64×64 | Tornado vortex | Not currently useful |
+| `Icons` | 10 | 32×32 | 32×32 spell icons | Not used by the combat VFX engine (could be used for UI icons later) |
 
 ---
 
@@ -178,55 +176,3 @@ These assets don't map to any current spell but are worth keeping for future wat
 5. **Status/Summons** — `Lightning.png` for stuns, `Portal` (Foozle) for summons, `Darkness Bolt`/`Dark-Bolt` for poison/silence.
 
 After this first pass, every spell in the game will have a unique or semi-unique visual instead of reusing the generic element fallbacks.
-
----
-
-## Appendix — VFX Power & Feel Findings (added after the first pass)
-
-The full analysis is in `VFX-FEEL-ANALYSIS.md` at the repo root. These are the practical findings that affect how the assets above should be wired and scaled.
-
-### Implementation details that affect the top priority fixes
-
-1. **Scene effects do not animate `scale` over time.** `SceneEffect` only stores a fixed `scale` and a duration (`drawEffectSprite`, lines 1756–1786). `t` is used only for alpha fade. If a charge glow should grow, `drawEffectSprite` or `SceneEffect` needs a scale interpolation.
-
-2. **Projectile aura already doubles the visible size.** `drawEffectSprite` draws each projectile at its own scale and then a 2× semi-transparent additive copy behind it (lines 1775–1781). So a `projectileScale` of 1.5 already reads as ~3×. Keep 64×64 projectiles under 2.5× to avoid a distracting halo.
-
-3. **Impact points are not affected by recoil.** `findActor` returns static slot positions (lines 347–388), while `ActorAnim` offsets are only applied at draw time. Burst, popup, and floor glow stay at the original slot position while the sprite shifts. Keep recoil under 10px to avoid disconnect.
-
-4. **Floor glow is hidden by sprites if drawn pre-sprite.** `renderScene` order is background → enemies → allies → party → effects (lines 1968–2004). A pre-sprite glow only lights the ground around the target. To rim-light the target, add a second small glow after the actor with `globalCompositeOperation = "lighter"`.
-
-5. **`impactSteps` is shared by every impact type.** It is used for melee, ranged, technique, and spell `spellEffect` events. Any recoil or flash tweak applies consistently across all damage types, but should be reduced or skipped for heals/buffs.
-
-6. **`screenShake` is pure white noise, not directional.** It uses `Math.random()` per frame (lines 1962–1963). Raising the amount is the quick win; directional bias is more code for marginal benefit.
-
-7. **`combat-scene.test.ts` does not assert on step count.** It checks popup timing, animation states, effect spawn, and death fade. Adding `startMove` calls or `scene.lightGlows` bookkeeping is safe as long as `createScene` initializes new fields.
-
-8. **The banner is drawn on top of everything and has no fade.** `drawBanner` (lines 1928–1943) is called after effects, particles, and popups (line 2007). Moving it before `drawEffects` and adding `globalAlpha` fade-in/out lets the spell effect own the visual moment.
-
-### Useful unused sprite strips for the feel fixes
-
-- `mp_fire_bomb_full` (15 frames, 64×64) — longer explosion for high-tier fire (`mage-fireball`, `mage-immolate`).
-- `fire_explosion_glow` (28×28, 12 frames) — warm, additive-ready fire for holy/divine spells (`priest-sunburst`, `priest-divine-smite`).
-- `lightning_blast_glow` (54×18, 9 frames) — brighter lightning bolt alternative for `mage-spark` or `priest-guiding-bolt`.
-- `px_magic_orb` and `px_magic_ray` (16×16, 6–8 frames) — slow orbs/rays for disable spells (`mage-sleep`, `mage-hold-person`, `mage-power-word-stun`).
-- `zombie_explosion` (72×64, 4 frames) — sickly green impact for `mage-poison-spray`.
-
-### Tier-based helpers are straightforward
-
-`SpellDef` already exposes `tier: 1 | 2 | 3 | 4 | 5 | 6 | 7` (`src/data/spells.ts`, line 49). `resolveEffectStyle` is called with `spellId` at every cast, so a helper like `tierForSpell(spellId)` can drive `burstDurationFor`, `spellTierShake`, and `windupDurationFor` without touching game logic.
-
-### One-line safe wins
-
-- Change `showBanner(spellNameFor(...), CAST_MS + 900)` to `CAST_MS + 300` (line 1000) so the banner disappears before the impact burst peaks.
-- Raise `addScreenShake` in `impactSteps` from `big ? 5 : 2.5` to `big ? 7 : 3.5` (line 469) and in spell damage from `3` to tier-scaled 3–6 (line 1071).
-- Swap `mp_fire_bomb` for `mp_fire_bomb_full` in `mage-immolate` and `mage-fireball` overrides to differentiate tier-3/4 fire.
-
-### Recommended priority order
-
-1. **Target recoil (Point 5)** — largest single "feel" improvement; uses the existing `ActorAnim` tween machinery.
-2. **Tier-scaled screen shake (Point 8)** — ~5 lines of code, huge perceptual payoff.
-3. **Bigger, longer bursts for high-tier spells (Point 2)** — mostly `SPELL_OVERRIDES` tweaks.
-4. **Dimmer, fading banner (Point 10)** — reduces UI stealing attention from the spell effect.
-5. **Floor illumination at impact (Point 4)** — the one medium-effort change that makes spells feel like light sources in the world.
-
-Defer the background/vignette issue (Point 3) until after the code-level changes are in place and evaluated.
