@@ -746,6 +746,7 @@ let justOpenedArena = false;
 let inArena = false;
 let arenaWave = 1;
 let arenaFloor = 1;
+let arenaStartFloor = 1;
 
 let arenaSetupController: { handleKey: (key: string) => void } | null = null;
 
@@ -805,7 +806,10 @@ function startArena(targetLevel: number): void {
   Object.assign(state, createGameState(FLOORS[0]));
   inArena = true;
   arenaWave = 1;
-  arenaFloor = 1;
+  // Scale starting floor with party level so high-level parties don't
+  // waste waves trivially one-shotting floor-1 skeletons.
+  arenaStartFloor = Math.min(3, Math.max(1, Math.ceil(targetLevel / 4)));
+  arenaFloor = arenaStartFloor;
 
   // Level the starter party up to the selected target level.
   const equipment: Record<string, Loadout> = Object.fromEntries(
@@ -848,7 +852,7 @@ function openArena(): void {
 function startNextArenaFight(): void {
   const floor = arenaFloor;
   arenaWave++;
-  arenaFloor = 1 + ((arenaWave - 1) % 3);
+  arenaFloor = arenaStartFloor + ((arenaWave - 1) % (4 - arenaStartFloor));
 
   const entry = rollEncounter(floor);
   if (!entry) {
