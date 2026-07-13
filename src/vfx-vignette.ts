@@ -343,11 +343,17 @@ function chooseRandomAction(): DemoAction | null {
   const canCast = spells.length > 0 && actor.sp > 0;
   const canTech = techs.length > 0 && (state.rage[actor.id] ?? 0) > 0;
 
-  const options: { weight: number; kind: DemoAction["kind"] }[] = [
-    { weight: canCast ? 55 : 0, kind: "cast" },
-    { weight: canTech ? 25 : 0, kind: "technique" },
-    { weight: 20, kind: "attack" },
-  ];
+  const isCaster = spells.length > 0;
+
+  const options: { weight: number; kind: DemoAction["kind"] }[] = isCaster
+    ? [
+        // Casters are in the vignette to show off spells; never fall back to attack.
+        { weight: 100, kind: "cast" },
+      ]
+    : [
+        { weight: canTech ? 55 : 0, kind: "technique" },
+        { weight: canTech ? 45 : 100, kind: "attack" },
+      ];
   const total = options.reduce((sum, o) => sum + o.weight, 0);
   if (total === 0) return null;
 
@@ -387,7 +393,9 @@ let currentAction: DemoAction | null = null;
 function restoreDemoResources(): void {
   for (const c of party) {
     if (c.hp > 0 && !c.status.includes("knockedOut")) {
-      c.sp = Math.min(c.maxSp, c.sp + Math.max(1, Math.floor(c.maxSp * 0.08)));
+      // Casters always get full SP so the spell showcase never stalls.
+      const isCaster = c.knownSpellIds.length > 0;
+      c.sp = isCaster ? c.maxSp : Math.min(c.maxSp, c.sp + Math.max(1, Math.floor(c.maxSp * 0.08)));
     }
   }
   for (const c of party) {
