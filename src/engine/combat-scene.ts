@@ -680,9 +680,37 @@ function meleeEffectForActor(className: string | undefined): string {
   return "slash_attack";
 }
 
-function projectileEffectForActor(className: string | undefined): string {
-  if (className === "Thief") return "arrow_archer";
-  return "arrow";
+function projectileForActor(
+  scene: CombatScene,
+  actorId: string,
+  className: string | undefined
+): { effect: string; scale: number } {
+  if (className === "Thief") return { effect: "arrow_archer", scale: 4 };
+  // Enemy-specific projectiles from Tiny RPG Asset Pack 02.
+  const enemy =
+    scene.state.enemies.front.find((e) => e.instanceId === actorId) ??
+    scene.state.enemies.back.find((e) => e.instanceId === actorId);
+  if (enemy) {
+    switch (enemy.id) {
+      case "ironclad-knight":
+        return { effect: "cannonball", scale: 1.3 };
+      case "rune-knight":
+        return { effect: "rune-beam", scale: 1.3 };
+      case "demon-brawler":
+        return { effect: "demon-arrow", scale: 1.3 };
+      case "eyeball-monster":
+        return { effect: "eye-beam", scale: 1.3 };
+      case "ghostfire":
+        return { effect: "ghostfire-beam", scale: 1.3 };
+      case "skeleton-archer":
+        return { effect: "arrow_skeleton", scale: 4 };
+      case "lava-slime":
+        return { effect: "lava-spike", scale: 1.3 };
+      case "warlock":
+        return { effect: "warlock-magic", scale: 1.3 };
+    }
+  }
+  return { effect: "arrow", scale: 4 };
 }
 
 /**
@@ -816,8 +844,7 @@ export function playTurn(
                 fromX: from.x, fromY: from.y - 20,
                 toX: to.x, toY: to.y,
                 color: COLORS.dmg,
-                effect: projectileEffectForActor(attacker?.class),
-                scale: 4,
+                ...projectileForActor(scene, evt.actorId, attacker?.class),
                 start: n,
                 duration: impact - (t + ATTACK_MS * 0.1),
               });
