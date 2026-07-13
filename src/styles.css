@@ -105,15 +105,19 @@ canvas#map-canvas {
 }
 
 #flash-overlay.flash-active {
-  animation: encounter-flash 0.35s ease-out forwards;
+  /* Photosensitivity: gradual single fade, no fast high-contrast spike.
+     Peaks at 0.35 opacity around the midpoint, then eases back out. Total
+     duration is long enough that this reads as a "glow" rather than a
+     flash. */
+  animation: encounter-flash 0.9s ease-in-out forwards;
 }
 
 @keyframes encounter-flash {
   0% {
     opacity: 0;
   }
-  25% {
-    opacity: 0.85;
+  50% {
+    opacity: 0.35;
   }
   100% {
     opacity: 0;

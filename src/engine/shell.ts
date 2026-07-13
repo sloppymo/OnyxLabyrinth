@@ -100,7 +100,7 @@ export function flashEncounter(): void {
   flashOverlayEl.classList.add("flash-active");
   window.setTimeout(() => {
     flashOverlayEl.classList.remove("flash-active");
-  }, 350);
+  }, 900);
 }
 
 /** Show or update the message overlay. Empty text hides the overlay via CSS.
