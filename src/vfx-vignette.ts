@@ -14,6 +14,7 @@ import type { Character } from "./game/party";
 import type { Row } from "./data/enemies";
 import { loadPartySprites } from "./engine/party-sprite-cache";
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
+import { ENEMY_SPRITE_DEFS } from "./engine/sprite-manifest";
 import { loadEffectSprites } from "./engine/effect-sprite-cache";
 import {
   renderCombatWindows,
@@ -67,13 +68,13 @@ function makeCharacter(id: string, name: string, cls: Character["class"], slot: 
   };
 }
 
-function makeEnemy(id: string, name: string, row: Row): EnemyInstance {
+function makeEnemy(id: string, name: string, row: Row, hp = 40): EnemyInstance {
   return {
     id,
     name,
     floors: [],
     rowPreference: "any",
-    hp: 999,
+    hp,
     attack: 1,
     ac: 10,
     agi: 10,
@@ -81,10 +82,54 @@ function makeEnemy(id: string, name: string, row: Row): EnemyInstance {
     gold: 0,
     special: [],
     isBoss: false,
-    instanceId: id,
-    currentHp: 999,
+    instanceId: `${id}-${enemyCounter++}`,
+    currentHp: hp,
     row,
     status: [],
+  };
+}
+
+// --- Enemy rotation pool -------------------------------------------------------
+// Build a shuffled queue of every enemy sprite id in the manifest so the
+// vignette cycles through all enemy art over time. Summon-* ids are excluded
+// (those are ally sprites, not enemies).
+
+let enemyCounter = 0;
+
+const ENEMY_POOL: string[] = Object.keys(ENEMY_SPRITE_DEFS).filter(
+  (id) => !id.startsWith("summon-")
+);
+
+let enemyQueue: string[] = [];
+
+function refillQueue(): void {
+  enemyQueue = [...ENEMY_POOL];
+  // Fisher-Yates shuffle.
+  for (let i = enemyQueue.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [enemyQueue[i], enemyQueue[j]] = [enemyQueue[j], enemyQueue[i]];
+  }
+}
+
+function nextEnemyId(): string {
+  if (enemyQueue.length === 0) refillQueue();
+  return enemyQueue.shift()!;
+}
+
+function prettyName(id: string): string {
+  return id
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+/** Pick a fresh formation of enemies from the pool. 2 front + 1 back. */
+function pickNextFormation(): EnemyFormation {
+  const frontIds = [nextEnemyId(), nextEnemyId()];
+  const backId = nextEnemyId();
+  return {
+    front: frontIds.map((id) => makeEnemy(id, prettyName(id), "front")),
+    back: [makeEnemy(backId, prettyName(backId), "back")],
   };
 }
 
@@ -116,15 +161,10 @@ party[4].sp = 0; // melee, no SP
 party[5].status.push("hidden");
 
 // Use real enemy IDs from the sprite manifest so actual sprite art loads.
-const enemies: EnemyFormation = {
-  front: [
-    makeEnemy("skeleton", "Skeleton", "front"),
-    makeEnemy("orc", "Orc", "front"),
-  ],
-  back: [
-    makeEnemy("werewolf", "Werewolf", "back"),
-  ],
-};
+// Enemies are drawn from a shuffled pool of every sprite in the manifest so
+// the vignette cycles through all enemy art over time.
+refillQueue();
+const enemies: EnemyFormation = pickNextFormation();
 
 const state: CombatState = {
   party,
@@ -261,9 +301,10 @@ function rollHeal(): number {
   return Math.floor(Math.random() * (HEAL_RANGE.max - HEAL_RANGE.min + 1)) + HEAL_RANGE.min;
 }
 
-function applyDamageToEnemy(enemy: EnemyInstance, amount: number): void {
-  // Keep at least 1 HP so the demo never runs out of targets.
-  enemy.currentHp = Math.max(1, enemy.currentHp - amount);
+function applyDamageToEnemy(enemy: EnemyInstance, amount: number): boolean {
+  const before = enemy.currentHp;
+  enemy.currentHp = Math.max(0, enemy.currentHp - amount);
+  return before > 0 && enemy.currentHp === 0;
 }
 
 function applyHealToAlly(ally: Character, amount: number): void {
@@ -359,13 +400,28 @@ function restoreDemoResources(): void {
 
 function buildTurnEvents(action: DemoAction): CombatEvent[] {
   const events: CombatEvent[] = [];
+  const deaths: string[] = [];
+
+  /** Apply damage and track newly-dead enemies for defeated event emission. */
+  const dmgEnemy = (enemy: EnemyInstance, amount: number): void => {
+    if (applyDamageToEnemy(enemy, amount) && !deaths.includes(enemy.instanceId)) {
+      deaths.push(enemy.instanceId);
+    }
+  };
+
+  /** Append defeated events for all enemies that died this turn. */
+  const appendDefeats = (): void => {
+    for (const id of deaths) {
+      events.push({ type: "defeated", targetId: id, wasEnemy: true });
+      const e = [...enemies.front, ...enemies.back].find((e) => e.instanceId === id);
+      if (e) state.justDied.push(e);
+    }
+  };
 
   if (action.kind === "attack" && action.targetId) {
     const dmg = rollDamage();
-    applyDamageToEnemy(
-      [...enemies.front, ...enemies.back].find((e) => e.instanceId === action.targetId)!,
-      dmg
-    );
+    const enemy = [...enemies.front, ...enemies.back].find((e) => e.instanceId === action.targetId);
+    if (enemy) dmgEnemy(enemy, dmg);
     // Thief attacks from range (bow); everyone else is melee.
     const range = action.actor.class === "Thief" ? "long" : "close";
     events.push({
@@ -375,6 +431,7 @@ function buildTurnEvents(action: DemoAction): CombatEvent[] {
       damage: dmg,
       range,
     });
+    appendDefeats();
     return events;
   }
 
@@ -397,10 +454,8 @@ function buildTurnEvents(action: DemoAction): CombatEvent[] {
     } else if (eff.kind === "damage" || eff.kind === "multiHit" || eff.kind === "damageWithStatus" || eff.kind === "damageWithExecute") {
       if (targetId) {
         const dmg = rollDamage();
-        applyDamageToEnemy(
-          [...enemies.front, ...enemies.back].find((e) => e.instanceId === targetId)!,
-          dmg
-        );
+        const enemy = [...enemies.front, ...enemies.back].find((e) => e.instanceId === targetId);
+        if (enemy) dmgEnemy(enemy, dmg);
         events.push({
           type: "techniqueHit",
           actorId: action.actor.id,
@@ -413,6 +468,7 @@ function buildTurnEvents(action: DemoAction): CombatEvent[] {
       // Generic status/debuff/buff fallback.
       events.push({ type: "techniqueBuff", actorId: action.actor.id, techniqueId: tech.id, targetId });
     }
+    appendDefeats();
     return events;
   }
 
@@ -447,7 +503,7 @@ function buildTurnEvents(action: DemoAction): CombatEvent[] {
 
     if (spell.target === "allEnemies" || spell.target === "groupEnemies") {
       for (const e of [...enemies.front, ...enemies.back]) {
-        if (isDamage) applyDamageToEnemy(e, rollDamage());
+        if (isDamage) dmgEnemy(e, rollDamage());
         pushSpellEffect(e.instanceId, true);
       }
     } else if (spell.target === "allAllies" || spell.target === "groupAllies") {
@@ -458,7 +514,7 @@ function buildTurnEvents(action: DemoAction): CombatEvent[] {
     } else if (targetId) {
       if (isDamage) {
         const enemy = [...enemies.front, ...enemies.back].find((e) => e.instanceId === targetId);
-        if (enemy) applyDamageToEnemy(enemy, rollDamage());
+        if (enemy) dmgEnemy(enemy, rollDamage());
       }
       if (isHeal) {
         const ally = party.find((c) => c.id === targetId);
@@ -470,6 +526,7 @@ function buildTurnEvents(action: DemoAction): CombatEvent[] {
     }
   }
 
+  appendDefeats();
   return events;
 }
 
@@ -530,6 +587,10 @@ function renderDemoCombatWindows(): void {
 }
 
 function startRandomTurn(): void {
+  if (allEnemiesDead()) {
+    // All enemies are dead — swap in a fresh batch before starting.
+    swapEnemies();
+  }
   currentAction = chooseRandomAction();
   if (!currentAction) {
     // Fallback: revive a downed character and try again next frame.
@@ -547,6 +608,13 @@ function startRandomTurn(): void {
 }
 
 function nextTurn(): void {
+  // If all enemies are dead, swap in a fresh batch from the pool instead of
+  // starting a turn with no valid targets.
+  if (allEnemiesDead()) {
+    swapEnemies();
+    startRandomTurn();
+    return;
+  }
   // Clear transient scene state (effects, particles, popups, choreo) but
   // preserve party/enemy/ally animation maps so death poses and other
   // persistent anim states don't reset every turn.
@@ -558,6 +626,22 @@ function nextTurn(): void {
   scene.bannerUntil = 0;
   scene.screenShake = { amount: 0, until: 0 };
   startRandomTurn();
+}
+
+function allEnemiesDead(): boolean {
+  const all = [...enemies.front, ...enemies.back];
+  return all.length > 0 && all.every((e) => e.currentHp <= 0);
+}
+
+/** Replace the current enemy formation with a fresh batch from the pool. */
+function swapEnemies(): void {
+  state.justDied = [];
+  const next = pickNextFormation();
+  enemies.front = next.front;
+  enemies.back = next.back;
+  // Recreate the scene so old death/fade anims are cleared and new enemies
+  // get fresh idle anims.
+  scene = createScene(state);
 }
 
 function restart(): void {
@@ -653,13 +737,22 @@ function loop(): void {
     if (spellPlaying && !scene.choreo && !waitingForNext) {
       waitingForNext = true;
       spellPlaying = false;
-      // Brief pause between spells (800ms) so the viewer can see the result.
+      const dead = allEnemiesDead();
+      // Wait longer after a wipe so death fade-out animations complete
+      // before the new enemies appear. Normal turns get a brief pause.
+      const delay = dead ? 1500 : 800;
       setTimeout(() => {
         if (waitingForNext) {
-          restoreDemoResources();
-          nextTurn();
+          if (dead) {
+            swapEnemies();
+            restoreDemoResources();
+            startRandomTurn();
+          } else {
+            restoreDemoResources();
+            nextTurn();
+          }
         }
-      }, 800);
+      }, delay);
     }
   }
 
@@ -706,6 +799,7 @@ btnSlow.addEventListener("click", () => {
 spellSelect.addEventListener("change", () => {
   const idx = parseInt(spellSelect.value, 10);
   if (!isNaN(idx) && idx >= 0 && idx < VFX_SPELLS.length) {
+    if (allEnemiesDead()) swapEnemies();
     const spell = VFX_SPELLS[idx];
     const actor =
       party.find((c) => c.class === spell.class && c.hp > 0 && !c.status.includes("knockedOut")) ??
