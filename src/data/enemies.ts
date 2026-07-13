@@ -375,6 +375,203 @@ export const RONIN: EnemyDef = {
   isBoss: false,
 };
 
+// Pack 02 demon / forge-themed enemies.
+export const EYEBALL_MONSTER: EnemyDef = {
+  id: "eyeball-monster",
+  name: "Gaze Wraith",
+  floors: [2],
+  rowPreference: "back",
+  hp: 14,
+  attack: 5,
+  ac: 2,
+  agi: 12,
+  xp: 14,
+  gold: 12,
+  special: [
+    { kind: "flying" },
+    { kind: "silenceRandom", target: "party", duration: "combat" },
+  ],
+  isBoss: false,
+};
+
+export const GHOSTFIRE: EnemyDef = {
+  id: "ghostfire",
+  name: "Ghostfire",
+  floors: [2],
+  rowPreference: "back",
+  hp: 10,
+  attack: 4,
+  ac: 0,
+  agi: 14,
+  xp: 12,
+  gold: 10,
+  special: [
+    { kind: "flying" },
+    { kind: "undead" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "cold" },
+  ],
+  isBoss: false,
+};
+
+export const FLAME_GOLEM: EnemyDef = {
+  id: "flame-golem",
+  name: "Flame Golem",
+  floors: [3],
+  rowPreference: "front",
+  hp: 32,
+  attack: 9,
+  ac: 6,
+  agi: 3,
+  xp: 26,
+  gold: 22,
+  special: [
+    { kind: "highDefense" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  isBoss: false,
+};
+
+export const LAVA_SLIME: EnemyDef = {
+  id: "lava-slime",
+  name: "Lava Slime",
+  floors: [3],
+  rowPreference: "front",
+  hp: 16,
+  attack: 5,
+  ac: 4,
+  agi: 3,
+  xp: 13,
+  gold: 10,
+  special: [
+    { kind: "resistElement", element: "fire" },
+    { kind: "poisonOnHit" },
+  ],
+  isBoss: false,
+};
+
+export const HELLHOUND: EnemyDef = {
+  id: "hellhound",
+  name: "Hellhound",
+  floors: [3],
+  rowPreference: "any",
+  hp: 20,
+  attack: 7,
+  ac: 3,
+  agi: 16,
+  xp: 18,
+  gold: 16,
+  special: [{ kind: "evasive" }],
+  isBoss: false,
+};
+
+export const HELLBAT: EnemyDef = {
+  id: "hellbat",
+  name: "Hellbat",
+  floors: [3],
+  rowPreference: "back",
+  hp: 12,
+  attack: 5,
+  ac: 1,
+  agi: 14,
+  xp: 14,
+  gold: 12,
+  special: [
+    { kind: "flying" },
+    { kind: "evasive" },
+  ],
+  isBoss: false,
+};
+
+export const BLACK_KNIGHT: EnemyDef = {
+  id: "black-knight",
+  name: "Black Knight",
+  floors: [3],
+  rowPreference: "front",
+  hp: 38,
+  attack: 10,
+  ac: 10,
+  agi: 2,
+  xp: 32,
+  gold: 28,
+  special: [
+    { kind: "highDefense" },
+    { kind: "resistPhysical", percent: 25 },
+  ],
+  isBoss: false,
+};
+
+export const MINOTAUR: EnemyDef = {
+  id: "minotaur",
+  name: "Minotaur",
+  floors: [3],
+  rowPreference: "front",
+  hp: 36,
+  attack: 11,
+  ac: 5,
+  agi: 5,
+  xp: 28,
+  gold: 24,
+  special: [{ kind: "weakElement", element: "wind" }],
+  isBoss: false,
+};
+
+export const WARLOCK: EnemyDef = {
+  id: "warlock",
+  name: "Warlock",
+  floors: [3],
+  rowPreference: "back",
+  hp: 18,
+  attack: 4,
+  ac: 2,
+  agi: 8,
+  xp: 24,
+  gold: 20,
+  special: [
+    { kind: "caster", element: "fire" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  isBoss: false,
+};
+
+export const DEMON: EnemyDef = {
+  id: "demon",
+  name: "Demon",
+  floors: [3],
+  rowPreference: "front",
+  hp: 26,
+  attack: 8,
+  ac: 4,
+  agi: 8,
+  xp: 22,
+  gold: 18,
+  special: [
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  isBoss: false,
+};
+
+export const DEMONESS: EnemyDef = {
+  id: "demoness",
+  name: "Demoness",
+  floors: [3],
+  rowPreference: "back",
+  hp: 20,
+  attack: 5,
+  ac: 3,
+  agi: 10,
+  xp: 24,
+  gold: 20,
+  special: [
+    { kind: "healer", spellName: "Mass Cure" },
+    { kind: "resistElement", element: "fire" },
+  ],
+  isBoss: false,
+};
+
 export const ALL_ENEMIES: EnemyDef[] = [
   TRAINING_DUMMY,
   SLIME,
@@ -395,6 +592,17 @@ export const ALL_ENEMIES: EnemyDef[] = [
   HEADMASTERS_ECHO,
   SAMURAI,
   RONIN,
+  EYEBALL_MONSTER,
+  GHOSTFIRE,
+  FLAME_GOLEM,
+  LAVA_SLIME,
+  HELLHOUND,
+  HELLBAT,
+  BLACK_KNIGHT,
+  MINOTAUR,
+  WARLOCK,
+  DEMON,
+  DEMONESS,
 ];
 
 export const ENEMIES_BY_ID: Record<string, EnemyDef> = Object.fromEntries(
@@ -474,6 +682,21 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "lab-assistant", row: "back" },
       ],
     },
+    // Pack 02 fliers and cursed constructs drift through the upper shelves.
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "ghostfire", row: "back" },
+        { enemyId: "eyeball-monster", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "failed-experiment", row: "front" },
+        { enemyId: "eyeball-monster", row: "back" },
+      ],
+    },
     {
       weight: 2,
       spawns: [
@@ -527,6 +750,49 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       spawns: [
         { enemyId: "stone-guardian", row: "front" },
         { enemyId: "animated-armor", row: "front" },
+      ],
+    },
+    // Pack 02 forge demons and molten constructs.
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "flame-golem", row: "front" },
+        { enemyId: "warlock", row: "back" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "hellhound", row: "front" },
+        { enemyId: "hellhound", row: "back" },
+        { enemyId: "hellbat", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "black-knight", row: "front" },
+        { enemyId: "demon", row: "front" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "minotaur", row: "front" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "lava-slime", row: "front" },
+        { enemyId: "lava-slime", row: "front" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "demon", row: "front" },
+        { enemyId: "demoness", row: "back" },
       ],
     },
     // The climax formation — the Echo flanked by its forged honor guard.

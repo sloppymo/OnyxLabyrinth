@@ -67,4 +67,22 @@ describe("encounter table integrity", () => {
       expect(ENEMIES_BY_ID[id], `missing ${id}`).toBeDefined();
     }
   });
+
+  it("registers Pack 02 demon / forge enemies", () => {
+    for (const id of [
+      "eyeball-monster",
+      "ghostfire",
+      "flame-golem",
+      "lava-slime",
+      "hellhound",
+      "hellbat",
+      "black-knight",
+      "minotaur",
+      "warlock",
+      "demon",
+      "demoness",
+    ]) {
+      expect(ENEMIES_BY_ID[id], `missing ${id}`).toBeDefined();
+    }
+  });
 });
