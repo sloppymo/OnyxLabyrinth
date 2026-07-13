@@ -2181,6 +2181,12 @@ function resolveEnemyAction(
   const partyTarget = s.party.find((c) => c.id === target.id);
   if (!partyTarget || partyTarget.hp <= 0) return;
 
+  // Flying / back-row enemies read as ranged for the combat animation.
+  const attackRange: WeaponRange =
+    actor.row === "back" || actor.special.some((sp) => sp.kind === "flying")
+      ? "long"
+      : "close";
+
   if (actor.status.includes("blind")) {
     if (rng() >= 0.5) {
       emit(
@@ -2213,7 +2219,7 @@ function resolveEnemyAction(
   const result = applyPartyDamage(s, partyTarget, damage, actor, rng, emit);
   emit(
     `${actor.name} hits ${partyTarget.name} for ${result.finalDamage} damage.`,
-    { type: "attack", actorId: actor.instanceId, targetId: partyTarget.id, damage: result.finalDamage }
+    { type: "attack", actorId: actor.instanceId, targetId: partyTarget.id, damage: result.finalDamage, range: attackRange }
   );
   if (result.redirectTarget && result.redirectDamage > 0) {
     log(`${result.redirectDamage} damage is redirected to ${result.redirectTarget.name}!`);
