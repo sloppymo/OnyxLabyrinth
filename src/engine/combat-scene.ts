@@ -627,8 +627,43 @@ const STATUS_STYLES: Record<string, EffectStyle> = {
 
 export function resolveEffectStyle(
   spellId: string | undefined,
-  evt?: { isHeal?: boolean; isBuff?: boolean; isDebuff?: boolean; statusInflicted?: string; statusCured?: string; damage?: number; heal?: number }
+  evt?: { isHeal?: boolean; isBuff?: boolean; isDebuff?: boolean; statusInflicted?: string; statusCured?: string; damage?: number; heal?: number },
+  casterEnemyId?: string
 ): EffectStyle {
+  // Enemy-specific spell projectiles from Tiny RPG Asset Pack 02.
+  if (casterEnemyId) {
+    switch (casterEnemyId) {
+      case "warlock":
+      case "demon-mage":
+        return {
+          color: "#c080ff",
+          projectile: "warlock-magic",
+          projectileScale: 1.3,
+          burst: "mp_fire_bomb",
+          burstScale: 1.2,
+          scale: 1.3,
+        };
+      case "rune-knight":
+        return {
+          color: "#7fe0e0",
+          projectile: "rune-beam",
+          projectileScale: 1.3,
+          burst: "lightning_energy_glow",
+          burstScale: 1.2,
+          scale: 1.3,
+        };
+      case "succubus":
+        return {
+          color: "#c080ff",
+          projectile: "ghostfire-beam",
+          projectileScale: 1.3,
+          burst: "red_energy_glow",
+          burstScale: 1.2,
+          scale: 1.3,
+        };
+    }
+  }
+
   if (spellId && SPELL_OVERRIDES[spellId]) {
     return SPELL_OVERRIDES[spellId];
   }
@@ -818,6 +853,7 @@ export function playTurn(
   let pendingImpactBase: number | null = null;
   let pendingImpactCount = 0;
   let fieldPushed = false;
+  let pendingCastStyle: EffectStyle | null = null;
 
   for (const evt of events) {
     if (!evt) continue;
@@ -989,7 +1025,15 @@ export function playTurn(
         pendingImpactCount = 0;
         fieldPushed = false;
 
-        const style = resolveEffectStyle(evt.spellId, evt);
+        const casterEnemyId =
+          scene.state.enemies.front.find((e) => e.instanceId === evt.actorId) ??
+          scene.state.enemies.back.find((e) => e.instanceId === evt.actorId);
+        const style = resolveEffectStyle(
+          evt.spellId,
+          evt,
+          casterEnemyId?.id
+        );
+        pendingCastStyle = style;
         // Charge sprite gathers above the caster during the cast.
         if (style.charge) {
           steps.push(
@@ -1074,7 +1118,7 @@ export function playTurn(
             ? pendingImpactBase + pendingImpactCount * MULTI_TARGET_STAGGER
             : t;
         pendingImpactCount++;
-        const style = resolveEffectStyle(evt.spellId, evt);
+        const style = pendingCastStyle ?? resolveEffectStyle(evt.spellId, evt);
         const targetId = evt.targetId;
         const spell = spellById(evt.spellId);
         // Lazy-load summon sprite bundle when a summon spell fires mid-combat.
