@@ -280,6 +280,8 @@ export interface SceneEffect {
   frameOffset?: number;
   /** Scale factor for the drawn effect. */
   scale?: number;
+  /** If true, draw a white additive glow behind the sprite to pop against the blue background. */
+  glow?: boolean;
   fromX?: number;
   fromY?: number;
   toX?: number;
@@ -574,11 +576,13 @@ interface EffectStyle {
   chargeScale?: number;
   /** Number of parallel projectiles for single-target casts (default 1). */
   projectileCount?: number;
+  /** If true, draw a white additive glow behind the burst/field to make it pop against the blue background. */
+  glow?: boolean;
 }
 
 const ELEMENT_STYLES: Record<string, EffectStyle> = {
   fire: { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 0.65, burst: "mp_fire_bomb", burstScale: 1.15, field: "large_fire", scale: 2.5, charge: "fz_fireball", chargeScale: 0.15, projectileCount: 1 },
-  cold: { color: "#80e0ff", projectile: "px_ice_lance", projectileScale: 2.5, burst: "ice_burst_glow", burstScale: 1.2, field: "ice_burst_glow", fieldScale: 1.2, scale: 1.2, charge: "px_ice_lance", chargeScale: 0.4, projectileCount: 1 },
+  cold: { color: "#d6f7ff", projectile: "px_ice_lance", projectileScale: 2.5, burst: "ice_burst_glow", burstScale: 1.2, field: "ice_burst_glow", fieldScale: 1.2, scale: 1.2, charge: "px_ice_lance", chargeScale: 0.4, projectileCount: 1, glow: true },
   // Physical was previously burst-only with no field/charge; the retro2
   // crescent-slash reads as a blade arc, a much better fit than the
   // undead-shared zombie_explosion.
@@ -588,7 +592,7 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
   // Poison burst upgraded from the generic dispel_sparks to the retro2
   // verdant burst — a green toxic bloom reads more clearly as poison.
   poison: { color: "#c080ff", projectile: "red_lightning_blast", burst: "retro2_verdant_burst", burstScale: 1.2, field: "red_energy_glow", scale: 1.6, charge: "red_lightning_blast_glow", chargeScale: 0.4, projectileCount: 1 },
-  water: { color: "#4fd0ff", projectile: "fz_water", burst: "fz_water_geyser", field: "fz_water_geyser", scale: 1.6, charge: "fz_water", chargeScale: 0.5, projectileCount: 1 },
+  water: { color: "#a0f0ff", projectile: "fz_water", burst: "fz_water_geyser", field: "fz_water_geyser", scale: 1.6, charge: "fz_water", chargeScale: 0.5, projectileCount: 1, glow: true },
   earth: { color: "#b8a080", projectile: "fz_earth_spike", burst: "fz_rocks", field: "fz_rocks", scale: 1.5, charge: "fz_earth_spike", chargeScale: 0.5, projectileCount: 1 },
   wind: { color: "#d0ffe0", projectile: "fz_wind", burst: "fz_tornado", field: "fz_tornado", scale: 1.4, charge: "fz_wind", chargeScale: 0.5, projectileCount: 1 },
   // Divine had no entry at all — any damage-element "divine" spell without a
@@ -1132,6 +1136,7 @@ export function playTurn(
                   color: style.color,
                   effect: style.burst,
                   scale: style.burstScale ?? style.scale ?? 1,
+                  glow: style.glow,
                   start: n, duration: 400,
                 });
                 spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
@@ -1180,6 +1185,7 @@ export function playTurn(
                 color: style.color,
                 effect: style.field ?? style.burst,
                 scale: (style.fieldScale ?? style.scale ?? 1) * 2,
+                glow: style.glow,
                 start: n,
                 duration: 650,
               });
@@ -1202,6 +1208,7 @@ export function playTurn(
                 color: style.color,
                 effect: style.field ?? style.burst,
                 scale: (style.fieldScale ?? style.scale ?? 1) * 2,
+                glow: style.glow,
                 start: n,
                 duration: 650,
               });
@@ -1237,6 +1244,7 @@ export function playTurn(
                 color: style.color,
                 effect: style.burst,
                 scale: style.burstScale ?? style.scale ?? 1,
+                glow: style.glow,
                 start: n, duration: 400,
               });
               spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
@@ -1831,7 +1839,24 @@ function drawEffectSprite(
       const scale = effect.scale ?? 1;
       const dw = strip.frameWidth * scale;
       const dh = strip.frameHeight * scale;
-      ctx.globalAlpha = type === "burst" ? 1 - t : type === "field" ? 1 - t * 0.5 : 1;
+      const alpha = type === "burst" ? 1 - t : type === "field" ? 1 - t * 0.5 : 1;
+
+      if (effect.glow && (type === "burst" || type === "field")) {
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = alpha * 0.6;
+        const radius = Math.max(dw, dh) * 0.55;
+        const grad = ctx.createRadialGradient(0, 0, radius * 0.2, 0, 0, radius);
+        grad.addColorStop(0, "rgba(255,255,255,0.85)");
+        grad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.globalAlpha = alpha;
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(sprite.img, sx, sy, strip.frameWidth, strip.frameHeight, -dw / 2, -dh / 2, dw, dh);
       return;
