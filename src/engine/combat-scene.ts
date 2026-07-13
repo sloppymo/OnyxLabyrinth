@@ -790,20 +790,20 @@ export function playTurn(
           attackAnim(evt.actorId);
           const impact = t + ATTACK_MS * 0.55;
           steps.push(
-            step(t + ATTACK_MS * 0.2, (sc, n) => {
+            step(t + ATTACK_MS * 0.1, (sc, n) => {
               const from = findActor(sc, evt.actorId, w, h);
               const to = findActor(sc, evt.targetId, w, h);
               if (!from || !to) return;
               sc.effects.push({
                 type: "projectile",
                 x: from.x, y: from.y,
-                fromX: from.x, fromY: from.y,
+                fromX: from.x, fromY: from.y - 20,
                 toX: to.x, toY: to.y,
                 color: COLORS.dmg,
                 effect: projectileEffectForActor(attacker?.class),
-                scale: 2.5,
+                scale: 4,
                 start: n,
-                duration: impact - (t + ATTACK_MS * 0.2),
+                duration: impact - (t + ATTACK_MS * 0.1),
               });
             })
           );
