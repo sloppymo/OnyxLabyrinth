@@ -602,11 +602,17 @@ function updateInfoDisplay(): void {
   }
   spellInfoEl.textContent = info;
 
-  // Build queue display: show the recent action history and upcoming actors.
+  // Build queue display: show a window of spells around the current one.
+  const spell = action.kind === "cast" ? action.spell : undefined;
+  const currentSpellIdx = spell ? VFX_SPELLS.findIndex((s) => s.id === spell.id) : -1;
+  const windowSize = 12;
+  const start = Math.max(0, currentSpellIdx >= 0 ? currentSpellIdx - 2 : 0);
+  const end = Math.min(VFX_SPELLS.length, start + windowSize);
   const parts: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    const cls = i === 0 ? "current" : "";
-    parts.push(`<span class="${cls}">· · ·</span>`);
+  for (let i = start; i < end; i++) {
+    const s = VFX_SPELLS[i];
+    const cls = i === currentSpellIdx ? "current" : "";
+    parts.push(`<span class="${cls}">${NEW_SPELL_IDS.has(s.id) ? "★ " : ""}${s.name}</span>`);
   }
   spellQueueEl.innerHTML = parts.join(" · ");
 }
