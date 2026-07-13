@@ -45,6 +45,7 @@ export class PerkSelectController {
 
   private currentIndex = 0;
   private selectedCard = 0;
+  private justOpened = true;
 
   constructor(opts: PerkSelectControllerOptions) {
     this.panel = opts.panel;
@@ -56,6 +57,13 @@ export class PerkSelectController {
   }
 
   handleKey(key: string): void {
+    // Ignore the first keypress after opening so the key that triggered
+    // combat end (or rapid auto-Enter from combat) doesn't instantly
+    // dismiss the overlay before the player can read it.
+    if (this.justOpened) {
+      this.justOpened = false;
+      return;
+    }
     const choice = this.currentChoice();
     if (!choice) return;
 

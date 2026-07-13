@@ -218,10 +218,10 @@ const POPUP_DURATION = 1350;
 /** FF6 bounce: quick rise with overshoot, settle, brief hold, fade. */
 function popupOffsetY(t: number): number {
   // t in [0,1]. Rise for first 35%, small bounce, hold.
-  if (t < 0.2) return -38 * (t / 0.2);
-  if (t < 0.35) return -38 + 14 * ((t - 0.2) / 0.15);
-  if (t < 0.5) return -24 - 6 * ((t - 0.35) / 0.15);
-  return -30;
+  if (t < 0.2) return -28 * (t / 0.2);
+  if (t < 0.35) return -28 + 10 * ((t - 0.2) / 0.15);
+  if (t < 0.5) return -18 - 4 * ((t - 0.35) / 0.15);
+  return -22;
 }
 
 // --- Choreography ------------------------------------------------------------------
@@ -435,7 +435,7 @@ function pushPopup(
   scene.popups.push({
     text,
     x: actor.x + jitter,
-    y: actor.y - 55,
+    y: actor.y - 20,
     color,
     start: now,
     big,

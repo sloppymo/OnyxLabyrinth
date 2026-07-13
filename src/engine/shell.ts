@@ -139,16 +139,16 @@ export function renderPartyStrip(party: Character[], compass: string): void {
     const ko = c.status.includes("knockedOut") || c.hp <= 0;
     const hpPct = c.maxHp > 0 ? (Math.max(0, c.hp) / c.maxHp) * 100 : 0;
     const spPct = c.maxSp > 0 ? (c.sp / c.maxSp) * 100 : 0;
-    const row = c.formationSlot <= 2 ? "F" : "B";
+    const row = c.formationSlot <= 2 ? "Front" : "Back";
     parts.push(
-      `<div class="ps-char ${ko ? "ko" : ""}">` +
+      `<div class="ps-char ${ko ? "ko" : ""}" title="${row} row">` +
         `<span class="ps-name">${c.name}</span>` +
         `<span class="ps-bar"><span class="ps-bar-fill hp" style="width:${hpPct}%"></span></span>` +
         `<span class="ps-num">${Math.max(0, c.hp)}/${c.maxHp}</span>` +
         (c.maxSp > 0
           ? `<span class="ps-bar"><span class="ps-bar-fill sp" style="width:${spPct}%"></span></span>` +
             `<span class="ps-num">${c.sp}/${c.maxSp}</span>`
-          : `<span class="ps-num">${row}</span>`) +
+          : `<span class="ps-num">&mdash;</span>`) +
         `</div>`
     );
   }
