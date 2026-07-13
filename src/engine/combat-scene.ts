@@ -595,7 +595,7 @@ const STATUS_STYLES: Record<string, EffectStyle> = {
   blind: { color: "#c8c4b8", burst: "lightning_energy" },
 };
 
-function resolveEffectStyle(
+export function resolveEffectStyle(
   spellId: string | undefined,
   evt?: { isHeal?: boolean; isBuff?: boolean; isDebuff?: boolean; statusInflicted?: string; statusCured?: string; damage?: number; heal?: number }
 ): EffectStyle {

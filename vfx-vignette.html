@@ -57,12 +57,39 @@
       background: #5068c8;
       color: #fff;
     }
+    #controls label {
+      font-size: 12px;
+      color: #b8c4f0;
+    }
+    #controls select {
+      font-family: "FF36", monospace;
+      font-size: 12px;
+      padding: 4px 8px;
+      background: #1a1c44;
+      color: #e8e8f0;
+      border: 1px solid #5068c8;
+      border-radius: 3px;
+    }
+    #controls #btn-new-spells {
+      background: #2a3a2a;
+      border-color: #68a050;
+    }
+    #controls #btn-new-spells:hover {
+      background: #3a5a3a;
+    }
     #spell-info {
       margin-top: 8px;
       font-size: 14px;
       color: #b8c4f0;
       text-align: center;
       min-height: 20px;
+    }
+    #spell-style {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #8a9ac0;
+      text-align: center;
+      min-height: 18px;
     }
     #spell-queue {
       margin-top: 8px;
@@ -90,8 +117,12 @@
     <button id="btn-next">Next Spell</button>
     <button id="btn-restart">Restart</button>
     <button id="btn-slow">Slow Motion</button>
+    <label for="spell-select">Jump to:</label>
+    <select id="spell-select"></select>
+    <button id="btn-new-spells" title="Jump to first new elemental spell">New Spells</button>
   </div>
   <div id="spell-info"></div>
+  <div id="spell-style"></div>
   <div id="spell-queue"></div>
   <script type="module" src="/src/vfx-vignette.ts"></script>
 </body>

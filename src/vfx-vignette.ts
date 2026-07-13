@@ -7,13 +7,14 @@
  * Open: http://localhost:5176/OnyxLabyrinth/vfx-vignette.html
  * (or add --input vfx-vignette.html to the build for a static page)
  */
-import { createScene, playTurn, updateScene, renderScene } from "./engine/combat-scene";
+import { createScene, playTurn, updateScene, renderScene, resolveEffectStyle } from "./engine/combat-scene";
 import { spellById, ALL_SPELLS, isUtilitySpell, type SpellDef } from "./data/spells";
 import type { CombatState, EnemyFormation, EnemyInstance, CombatEvent } from "./game/combat";
 import type { Character } from "./game/party";
 import type { Row } from "./data/enemies";
 import { loadPartySprites } from "./engine/party-sprite-cache";
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
+import { loadEffectSprites } from "./engine/effect-sprite-cache";
 
 // --- Canvas setup --------------------------------------------------------------
 
@@ -130,6 +131,18 @@ const state: CombatState = {
 
 const VFX_SPELLS = ALL_SPELLS.filter((s) => !isUtilitySpell(s));
 
+const NEW_SPELL_IDS = new Set([
+  "mage-water-bolt",
+  "mage-tidal-wave",
+  "mage-deluge",
+  "mage-stone-shard",
+  "mage-rock-slide",
+  "mage-quake",
+  "mage-gust",
+  "mage-cyclone",
+  "mage-tempest",
+]);
+
 // Determine the right target for a spell based on its target type.
 function pickTargetId(spell: SpellDef): string | null {
   switch (spell.target) {
@@ -244,11 +257,14 @@ let spellPlaying = false;
 let waitingForNext = false;
 
 const spellInfoEl = document.getElementById("spell-info")!;
+const spellStyleEl = document.getElementById("spell-style")!;
 const spellQueueEl = document.getElementById("spell-queue")!;
 const btnPlay = document.getElementById("btn-play") as HTMLButtonElement;
 const btnNext = document.getElementById("btn-next") as HTMLButtonElement;
 const btnRestart = document.getElementById("btn-restart") as HTMLButtonElement;
 const btnSlow = document.getElementById("btn-slow") as HTMLButtonElement;
+const spellSelect = document.getElementById("spell-select") as HTMLSelectElement;
+const btnNewSpells = document.getElementById("btn-new-spells") as HTMLButtonElement;
 
 function spellNameFor(id: string): string {
   return spellById(id)?.name ?? id;
@@ -278,6 +294,27 @@ function restart(): void {
   startCurrentSpell();
 }
 
+function populateSpellSelect(): void {
+  for (let i = 0; i < VFX_SPELLS.length; i++) {
+    const s = VFX_SPELLS[i];
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = `${NEW_SPELL_IDS.has(s.id) ? "★ " : ""}${s.name}`;
+    spellSelect.appendChild(opt);
+  }
+}
+
+function styleDetail(spell: SpellDef): string {
+  const style = resolveEffectStyle(spell.id);
+  const parts: string[] = [];
+  if (style.charge) parts.push(`charge:${style.charge}`);
+  if (style.projectile) parts.push(`projectile:${style.projectile}${style.projectileCount && style.projectileCount > 1 ? `×${style.projectileCount}` : ""}`);
+  if (style.burst) parts.push(`burst:${style.burst}`);
+  if (style.field) parts.push(`field:${style.field}`);
+  parts.push(`scale:${style.scale ?? 1}`);
+  return parts.join(" · ");
+}
+
 function updateInfoDisplay(): void {
   const spell = VFX_SPELLS[spellIndex];
   if (!spell) return;
@@ -288,7 +325,10 @@ function updateInfoDisplay(): void {
     : spell.target === "allEnemies" || spell.target === "groupEnemies" ? "All Enemies"
     : spell.target === "allAllies" || spell.target === "groupAllies" ? "All Allies"
     : "?";
-  spellInfoEl.textContent = `[${spellIndex + 1}/${VFX_SPELLS.length}] ${spell.name} — ${spell.class} T${spell.tier} · ${eff.kind} · ${targetDesc}`;
+  const element = eff.kind === "damage" && eff.element ? ` · ${eff.element}` : "";
+  spellInfoEl.textContent = `[${spellIndex + 1}/${VFX_SPELLS.length}] ${spell.name} — ${spell.class} T${spell.tier} · ${eff.kind}${element} · ${targetDesc}`;
+  spellStyleEl.textContent = styleDetail(spell);
+  spellSelect.value = String(spellIndex);
 
   // Build queue display: show a window of spells around the current one.
   const windowSize = 12;
@@ -298,7 +338,7 @@ function updateInfoDisplay(): void {
   for (let i = start; i < end; i++) {
     const s = VFX_SPELLS[i];
     const cls = i === spellIndex ? "current" : i < spellIndex ? "done" : "";
-    parts.push(`<span class="${cls}">${s.name}</span>`);
+    parts.push(`<span class="${cls}">${NEW_SPELL_IDS.has(s.id) ? "★ " : ""}${s.name}</span>`);
   }
   spellQueueEl.innerHTML = parts.join(" · ");
 }
@@ -364,6 +404,24 @@ btnSlow.addEventListener("click", () => {
   }
 });
 
+spellSelect.addEventListener("change", () => {
+  const idx = parseInt(spellSelect.value, 10);
+  if (!isNaN(idx) && idx >= 0 && idx < VFX_SPELLS.length) {
+    spellIndex = idx;
+    scene = createScene(state);
+    startCurrentSpell();
+  }
+});
+
+btnNewSpells.addEventListener("click", () => {
+  const firstNew = VFX_SPELLS.findIndex((s) => NEW_SPELL_IDS.has(s.id));
+  if (firstNew >= 0) {
+    spellIndex = firstNew;
+    scene = createScene(state);
+    startCurrentSpell();
+  }
+});
+
 // Keyboard shortcuts: Space=play/pause, N=next, R=restart.
 window.addEventListener("keydown", (e) => {
   if (e.key === " ") { e.preventDefault(); btnPlay.click(); }
@@ -373,11 +431,13 @@ window.addEventListener("keydown", (e) => {
 
 // --- Start ---------------------------------------------------------------------
 
-// Preload all party and enemy sprites so the vignette shows real art
+// Preload all party, enemy, and effect sprites so the vignette shows real art
 // instead of procedural fallback shapes. The render loop starts immediately;
 // sprites pop in as they load (typically within a frame or two).
 loadPartySprites().catch(() => {});
 loadEnemySprites().catch(() => {});
+loadEffectSprites().catch(() => {});
 
+populateSpellSelect();
 startCurrentSpell();
 loop();
