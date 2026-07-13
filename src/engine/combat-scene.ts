@@ -577,8 +577,8 @@ interface EffectStyle {
 }
 
 const ELEMENT_STYLES: Record<string, EffectStyle> = {
-  fire: { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion", field: "large_fire", scale: 2.5, charge: "fireball", chargeScale: 0.4, projectileCount: 1 },
-  cold: { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst", field: "ice_burst_glow", scale: 1.2, charge: "ice_burst", chargeScale: 0.4, projectileCount: 1 },
+  fire: { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 0.65, burst: "mp_fire_bomb", burstScale: 1.15, field: "large_fire", scale: 2.5, charge: "fz_fireball", chargeScale: 0.15, projectileCount: 1 },
+  cold: { color: "#80e0ff", projectile: "px_ice_lance", projectileScale: 2.5, burst: "ice_burst_glow", burstScale: 1.2, field: "ice_burst_glow", fieldScale: 1.2, scale: 1.2, charge: "px_ice_lance", chargeScale: 0.4, projectileCount: 1 },
   physical: { color: "#f5f0e6", burst: "zombie_explosion" },
   undead: { color: "#c080ff", projectile: "red_lightning_blast", burst: "zombie_explosion", field: "red_energy_glow", scale: 1.3, charge: "red_lightning_blast_glow", chargeScale: 0.4, projectileCount: 1 },
   lightning: { color: "#ffd769", projectile: "lightning_blast", burst: "mp_spark", field: "lightning_energy_glow", scale: 1.8, charge: "lightning_blast", chargeScale: 0.4, projectileCount: 1 },
@@ -590,22 +590,38 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
 
 /** Per-spell visual overrides for alternate effect variants. */
 const SPELL_OVERRIDES: Record<string, EffectStyle> = {
-  // Fire
-  "mage-ember": { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion_glow", field: "large_fire", scale: 2.5 },
-  // Cold
-  "mage-frostbite": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_glow", scale: 1.2 },
-  // Poison
-  "mage-poison-spray": { color: "#c080ff", projectile: "red_lightning_blast_glow", burst: "dispel_sparks", scale: 1.6 },
-  // Priest holy
-  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "priest_attack", projectileScale: 1, burst: "heal_sparks", burstScale: 1.3, scale: 1 },
-  // Divine (priest smite)
-  "priest-divine-smite": { color: "#ffe8a0", projectile: "priest_attack", projectileScale: 1.2, burst: "heal_sparks", burstScale: 1.5, scale: 1.2 },
+  // Fire — stronger/AOE fire spells get a bigger Magic Pack 9 fire-bomb burst;
+  // Burning Hands gets a distinct Pixelart Firebomb burst for variety.
+  "mage-fireball": { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 0.65, burst: "mp_fire_bomb", burstScale: 1.4, field: "mp_fire_bomb", fieldScale: 1.3 },
+  "mage-immolate": { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 0.65, burst: "mp_fire_bomb", burstScale: 1.5 },
+  "mage-burning-hands": { color: "#ff8c42", burst: "px_firebomb", burstScale: 2.2, field: "px_firebomb", fieldScale: 2.2 },
+  // Priest holy — dedicated holy-bolt art instead of the generic priest_attack strip,
+  // one variant per spell so Guiding Bolt / Sacred Flame / Divine Smite read as distinct.
+  "priest-sacred-flame": { color: "#ffe27a", projectile: "px_bolt_purity", projectileScale: 2.2, burst: "heal_sparks", burstScale: 2.2, scale: 1 },
+  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "px_light_bolt", projectileScale: 2.2, burst: "heal_sparks", burstScale: 2.2, scale: 1 },
+  "priest-divine-smite": { color: "#ffe8a0", projectile: "px_pure_bolt_2", projectileScale: 2.6, burst: "heal_sparks", burstScale: 2.6, scale: 1.2 },
+  // Summons — Foozle portal swirl per school (base purple / orange fire / gold holy).
+  "mage-summon-fire-elemental": { color: "#ff9a3a", burst: "fz_portal_orange", burstScale: 1.3, field: "fz_portal_orange", fieldScale: 0.7 },
+  "mage-conjure-elemental": { color: "#c080ff", burst: "fz_portal", burstScale: 1.2, field: "fz_portal", fieldScale: 0.7 },
+  "mage-gate": { color: "#c080ff", burst: "fz_portal", burstScale: 1.6, field: "fz_portal", fieldScale: 0.9 },
+  "priest-summon-guardian": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.2, field: "fz_portal_gold", fieldScale: 0.7 },
+  "priest-summon-celestial-guardian": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.5, field: "fz_portal_gold", fieldScale: 0.8 },
+  "priest-summon-celestial": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.3, field: "fz_portal_gold", fieldScale: 0.7 },
+  // Sunburst — the "Free" pack's flower/pinwheel burst reads as radiant sacred light,
+  // a clear step up from the generic undead-element zombie_explosion.
+  "priest-sunburst": { color: "#ffd76a", burst: "free_sunburst", burstScale: 1.4, field: "free_sunburst", fieldScale: 0.8 },
+  // Web — shares STATUS_STYLES.paralysis's status kind with Hold Person/Power Word
+  // Stun, but needs its own tangled-vine look rather than the shared "stun stars" burst.
+  "mage-web": { color: "#c8c4b8", field: "free_tangle", fieldScale: 1.3, burst: "free_tangle", burstScale: 1.3 },
+  // Silence/Dispel — a ward-ring sigil in place of the generic red_energy field.
+  "mage-silence": { color: "#7fe0e0", field: "free_wardring", fieldScale: 0.7, burst: "free_wardring", burstScale: 1.1 },
+  "mage-dispel-magic": { color: "#7fe0e0", field: "free_wardring", fieldScale: 0.7, burst: "free_wardring", burstScale: 1.1 },
 };
 
 const STATUS_STYLES: Record<string, EffectStyle> = {
-  sleep: { color: "#c080ff", burst: "ice_burst_glow" },
+  sleep: { color: "#8090ff", burst: "free_moon", burstScale: 1.3 },
   poison: { color: "#c080ff", burst: "dispel_sparks" },
-  paralysis: { color: "#c8c4b8", burst: "mp_spark" },
+  paralysis: { color: "#c8c4b8", burst: "free_stunburst", burstScale: 1.2 },
   blind: { color: "#c8c4b8", burst: "mp_spark" },
 };
 
@@ -626,7 +642,7 @@ export function resolveEffectStyle(
       return { color: COLORS.heal, projectile: "priest_heal", burst: "priest_heal", scale: 1.2 };
     }
     if (eff.kind === "buff" || eff.kind === "magicScreen") {
-      return { color: COLORS.sp, burst: "mp_spark", field: "lightning_energy_glow", scale: 1.2 };
+      return { color: COLORS.sp, burst: "px_shield", burstScale: 1.6, field: "px_shield", fieldScale: 0.8, scale: 1.2 };
     }
     if (eff.kind === "cure" || eff.kind === "resurrect") {
       return { color: COLORS.heal, burst: "priest_heal", scale: 1.2 };
@@ -635,10 +651,10 @@ export function resolveEffectStyle(
       return STATUS_STYLES[eff.status] ?? { color: COLORS.poison, burst: "red_energy" };
     }
     if (eff.kind === "fizzleField" || eff.kind === "dispelMagic") {
-      return { color: COLORS.poison, field: "red_energy_glow", burst: "dispel_sparks" };
+      return { color: "#7fe0e0", field: "free_wardring", fieldScale: 0.7, burst: "free_wardring", burstScale: 1.1 };
     }
     if (eff.kind === "summon") {
-      return { color: COLORS.sp, burst: "mp_spark", field: "lightning_energy_glow", scale: 1.2 };
+      return { color: COLORS.sp, burst: "fz_portal", burstScale: 1.1, field: "fz_portal", fieldScale: 0.6, scale: 1.2 };
     }
   }
 
@@ -905,7 +921,7 @@ export function playTurn(
         const effectName = status === "paralysis" ? "lightning_energy"
           : status === "poison" ? "red_energy"
           : status === "slow" ? "ice_burst_glow"
-          : status === "armorDown" ? "slash"
+          : status === "armorDown" ? "free_slash"
           : "lightning_energy_glow";
         const color = status === "poison" ? COLORS.poison
           : status === "paralysis" ? COLORS.dmg
@@ -1505,22 +1521,23 @@ function drawPartyMember(
     drawStripFrame(ctx, stripInfo.img, stripInfo.strip, frame, x, y, PARTY_SIZE, true, opacity);
   } else {
     drawPartyFallback(ctx, x, y, char, anim);
-  }
-
-  // Hurt flash overlay.
-  if (anim.state === "hurt" && now - anim.stateStart < 200) {
-    const intensity = anim.hitFlashIntensity || 0.3;
-    const sz = 1 + intensity * 0.3;
-    ctx.save();
-    ctx.globalAlpha = intensity * 0.4;
-    ctx.fillStyle = "#ff4040";
-    ctx.fillRect(
-      x - (PARTY_SIZE / 4) * sz,
-      y - (PARTY_SIZE / 2.4) * sz,
-      (PARTY_SIZE / 2) * sz,
-      PARTY_SIZE * 0.8 * sz
-    );
-    ctx.restore();
+    // Hurt flash overlay — only for the fallback shape, which has no baked
+    // red hurt frame of its own (the real sprite strips do, see the enemy
+    // branch in drawEnemy).
+    if (anim.state === "hurt" && now - anim.stateStart < 200) {
+      const intensity = anim.hitFlashIntensity || 0.3;
+      const sz = 1 + intensity * 0.3;
+      ctx.save();
+      ctx.globalAlpha = intensity * 0.4;
+      ctx.fillStyle = "#ff4040";
+      ctx.fillRect(
+        x - (PARTY_SIZE / 4) * sz,
+        y - (PARTY_SIZE / 2.4) * sz,
+        (PARTY_SIZE / 2) * sz,
+        PARTY_SIZE * 0.8 * sz
+      );
+      ctx.restore();
+    }
   }
 
   // The character art only fills the middle of the frame (measured art top
@@ -1565,21 +1582,11 @@ function drawEnemy(
     // Enemy strips are authored facing RIGHT — exactly toward the party in
     // the FF6 layout (enemies left, party right) — so no mirroring.
     drawStripFrame(ctx, img, strip, frame, x, y, ENEMY_SIZE, false, anim.opacity);
+    // No extra hurt-flash overlay here: the sprite pack already bakes a red
+    // flash frame into the hurt strip (see e.g. assets/enemies/orc/hurt.png),
+    // so an additional ellipse just doubles up into a harsher red blob.
   } else {
     drawEnemyFallback(ctx, x, y, enemy, anim, now);
-  }
-
-  // Hurt flash.
-  if (anim.state === "hurt" && now - anim.stateStart < 200) {
-    const intensity = anim.hitFlashIntensity || 0.3;
-    const sz = 1 + intensity * 0.3;
-    ctx.save();
-    ctx.globalAlpha = intensity * 0.4;
-    ctx.fillStyle = "#ff4040";
-    ctx.beginPath();
-    ctx.ellipse(x, y, (ENEMY_SIZE / 2.6) * sz, (ENEMY_SIZE / 2.4) * sz, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
   }
 
   // Tallest enemy art tops out ≈16% of sprite size above center.
@@ -1620,18 +1627,8 @@ function drawAlly(
       }
       // Summon sprites face RIGHT (toward enemies), same as enemy art.
       drawStripFrame(ctx, img, strip, frame, x, y, ENEMY_SIZE, false, anim.opacity);
-      // Hurt flash.
-      if (anim.state === "hurt" && now - anim.stateStart < 200) {
-        const intensity = anim.hitFlashIntensity || 0.3;
-        const sz = 1 + intensity * 0.3;
-        ctx.save();
-        ctx.globalAlpha = intensity * 0.4 * anim.opacity;
-        ctx.fillStyle = "#ff4040";
-        ctx.beginPath();
-        ctx.ellipse(x, y, (ENEMY_SIZE / 2.6) * sz, (ENEMY_SIZE / 2.4) * sz, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
+      // No extra hurt-flash overlay: the sprite pack's hurt strip already
+      // bakes in a red flash frame (see the enemy branch above).
       drawMarkers(ctx, scene, "ally", ally.id, x, y - ENEMY_SIZE * 0.2, now);
       return;
     }
