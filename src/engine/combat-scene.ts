@@ -245,6 +245,7 @@ export interface CombatScene {
   /** Spell/skill name banner (top window). */
   banner: string | null;
   bannerUntil: number;
+  bannerStart: number;
   /** Blinking cursor over a selection candidate (target phase). */
   cursor: SceneCursor | null;
   /** The actor whose menu is open (bouncing hand marker). */
@@ -256,6 +257,8 @@ export interface CombatScene {
   screenShake: { amount: number; until: number };
   /** Loose particle effects (sparks, embers, shards, projectile trails). */
   particles: Particle[];
+  /** Floor illumination glows (additive radial gradients at impact points). */
+  lightGlows: LightGlow[];
   /** Last update timestamp for frame-rate-independent particle updates. */
   lastUpdate?: number;
 }
@@ -298,6 +301,16 @@ export interface Particle {
   glow?: boolean;
 }
 
+/** Floor illumination glow at an impact point (additive radial gradient). */
+export interface LightGlow {
+  x: number;
+  y: number;
+  color: string;
+  radius: number;
+  start: number;
+  duration: number;
+}
+
 export function createScene(state: CombatState): CombatScene {
   // Lazy-load any summon sprite bundles that aren't yet cached (e.g. a
   // summon spell was cast for the first time this session).
@@ -314,12 +327,14 @@ export function createScene(state: CombatState): CombatScene {
     popups: [],
     banner: null,
     bannerUntil: 0,
+    bannerStart: 0,
     cursor: null,
     activeActorId: null,
     choreo: null,
     effects: [],
     screenShake: { amount: 0, until: 0 },
     particles: [],
+    lightGlows: [],
   };
 }
 
@@ -398,6 +413,22 @@ const CAST_IMPACT = CAST_MS * 0.65;
 const MULTI_TARGET_STAGGER = 90;
 const DEATH_FADE_MS = 700;
 
+/** Screen-shake amount scaled by spell tier. T1=3, T2=4, T3=5, T4=6, T5+=7. Capped at 8. */
+function spellTierShake(spellId: string | undefined): number {
+  if (!spellId) return 3;
+  const spell = spellById(spellId);
+  if (!spell) return 3;
+  return Math.min(8, 3 + (spell.tier - 1));
+}
+
+/** Burst duration scaled by spell tier (ms). T1=300 ... T7=720. */
+function burstDurationFor(spellId: string | undefined): number {
+  if (!spellId) return 400;
+  const spell = spellById(spellId);
+  if (!spell) return 400;
+  return 300 + (spell.tier - 1) * 70;
+}
+
 function step(at: number, run: (scene: CombatScene, now: number) => void): ChoreoStep {
   return { at, run, fired: false };
 }
@@ -449,7 +480,11 @@ function impactSteps(
     step(t, (scene, now) => {
       const actor = findActor(scene, targetId, w, h);
       if (actor && hurt) {
-        setAnimState(getAnim(scene, actor.kind, targetId, now), "hurt", now);
+        const anim = getAnim(scene, actor.kind, targetId, now);
+        setAnimState(anim, "hurt", now);
+        // Recoil: push target away from the impact source, then ease back.
+        const recoilDir = actor.kind === "enemy" ? -1 : 1;
+        startMove(anim, recoilDir * (big ? 10 : 7), 0, 80, now);
       }
       pushPopup(scene, targetId, text, color, now, w, h, big);
       if (actor) {
@@ -466,10 +501,18 @@ function impactSteps(
           });
         }
         if (hurt) {
-          addScreenShake(scene, big ? 5 : 2.5, now, big ? 350 : 200);
+          addScreenShake(scene, big ? 7 : 3.5, now, big ? 400 : 250);
           spawnImpactParticles(scene, actor.x, actor.y, color, big);
+          pushLightGlow(scene, actor.x, actor.y, color, now, big ? 140 : 100, 350);
         }
       }
+    }),
+    // Ease the recoil back to home position.
+    step(t + 80, (scene, now) => {
+      const actor = findActor(scene, targetId, w, h);
+      if (!actor) return;
+      const anim = getAnim(scene, actor.kind, targetId, now);
+      startMove(anim, 0, 0, 150, now);
     }),
     // Return the target to idle after the hurt strip finishes (unless dead —
     // a later "defeated" step overrides).
@@ -488,6 +531,20 @@ function addScreenShake(scene: CombatScene, amount: number, now: number, duratio
     amount: Math.max(scene.screenShake.amount, amount),
     until: Math.max(scene.screenShake.until, now + duration),
   };
+}
+
+/** Push a floor illumination glow at an impact point. */
+function pushLightGlow(
+  scene: CombatScene,
+  x: number,
+  y: number,
+  color: string,
+  now: number,
+  radius = 120,
+  duration = 400
+): void {
+  if (scene.lightGlows.length > 8) return; // cap for mobile perf
+  scene.lightGlows.push({ x, y: y + 20, color, radius, start: now, duration });
 }
 
 /** Spawn a burst of impact particles at (x, y). */
@@ -823,6 +880,7 @@ export function playTurn(
       step(t, (sc, n) => {
         sc.banner = text;
         sc.bannerUntil = n + durationMs;
+        sc.bannerStart = n;
       })
     );
   };
@@ -997,7 +1055,7 @@ export function playTurn(
       }
 
       case "cast": {
-        showBanner(spellNameFor(evt.spellId), CAST_MS + 900);
+        showBanner(spellNameFor(evt.spellId), CAST_MS + 300);
         castAnim(evt.actorId);
         pendingImpactBase = t + CAST_IMPACT;
         pendingImpactCount = 0;
@@ -1064,11 +1122,12 @@ export function playTurn(
                   effect: style.burst,
                   scale: style.burstScale ?? style.scale ?? 1,
                   additive: style.additive,
-                  start: n, duration: 400,
+                  start: n, duration: burstDurationFor(evt.spellId),
                 });
                 spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
                 if (!isHeal) {
-                  addScreenShake(sc, 3, n, 200);
+                  addScreenShake(sc, spellTierShake(evt.spellId), n, 250);
+                  pushLightGlow(sc, target.x, target.y, style.color, n, 130, 400);
                 }
               }
             }),
@@ -1174,11 +1233,12 @@ export function playTurn(
                 effect: style.burst,
                 scale: style.burstScale ?? style.scale ?? 1,
                 additive: style.additive,
-                start: n, duration: 400,
+                start: n, duration: burstDurationFor(evt.spellId),
               });
               spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
               if (!isHeal && evt.damage !== undefined) {
-                addScreenShake(sc, evt.damage && evt.damage > 20 ? 5 : 3, n, 200);
+                addScreenShake(sc, spellTierShake(evt.spellId), n, 250);
+                pushLightGlow(sc, target.x, target.y, style.color, n, 130, 400);
               }
             }
           })
@@ -1376,6 +1436,7 @@ export function updateScene(scene: CombatScene, now: number): void {
   // Expire popups and effects.
   scene.popups = scene.popups.filter((p) => now - p.start < POPUP_DURATION);
   scene.effects = scene.effects.filter((e) => now - e.start < e.duration);
+  scene.lightGlows = scene.lightGlows.filter((g) => now - g.start < g.duration);
 
   // Update particles.
   const delta = scene.lastUpdate ? now - scene.lastUpdate : 16;
@@ -1564,7 +1625,7 @@ function drawPartyMember(
   // Hurt flash overlay.
   if (anim.state === "hurt" && now - anim.stateStart < 200) {
     ctx.save();
-    ctx.globalAlpha = 0.35;
+    ctx.globalAlpha = 0.55;
     ctx.fillStyle = "#fff";
     ctx.fillRect(x - PARTY_SIZE / 4, y - PARTY_SIZE / 2.4, PARTY_SIZE / 2, PARTY_SIZE * 0.8);
     ctx.restore();
@@ -1619,7 +1680,7 @@ function drawEnemy(
   // Hurt flash.
   if (anim.state === "hurt" && now - anim.stateStart < 200) {
     ctx.save();
-    ctx.globalAlpha = 0.3;
+    ctx.globalAlpha = 0.55;
     ctx.fillStyle = "#fff";
     ctx.beginPath();
     ctx.ellipse(x, y, ENEMY_SIZE / 2.6, ENEMY_SIZE / 2.4, 0, 0, Math.PI * 2);
@@ -1668,7 +1729,7 @@ function drawAlly(
       // Hurt flash.
       if (anim.state === "hurt" && now - anim.stateStart < 200) {
         ctx.save();
-        ctx.globalAlpha = 0.3 * anim.opacity;
+        ctx.globalAlpha = 0.55 * anim.opacity;
         ctx.fillStyle = "#fff";
         ctx.beginPath();
         ctx.ellipse(x, y, ENEMY_SIZE / 2.6, ENEMY_SIZE / 2.4, 0, 0, Math.PI * 2);
@@ -1925,9 +1986,16 @@ function drawRoundIndicator(ctx: CanvasRenderingContext2D, scene: CombatScene): 
   ctx.restore();
 }
 
-function drawBanner(ctx: CanvasRenderingContext2D, w: number, scene: CombatScene): void {
+function drawBanner(ctx: CanvasRenderingContext2D, w: number, scene: CombatScene, now: number): void {
   if (!scene.banner) return;
+  const age = now - scene.bannerStart;
+  const remaining = scene.bannerUntil - now;
+  // Fade in over first 100ms, fade out over last 200ms.
+  let alpha = 0.85;
+  if (age < 100) alpha *= age / 100;
+  else if (remaining < 200) alpha *= Math.max(0, remaining / 200);
   ctx.save();
+  ctx.globalAlpha = alpha;
   ctx.font = '22px "FF36", monospace';
   const textW = ctx.measureText(scene.banner).width;
   const boxW = Math.max(220, textW + 56);
@@ -1940,6 +2008,25 @@ function drawBanner(ctx: CanvasRenderingContext2D, w: number, scene: CombatScene
   ctx.textBaseline = "middle";
   ctx.fillText(scene.banner, w / 2, y + boxH / 2 + 1);
   ctx.restore();
+}
+
+/** Draw additive floor illumination glows (before sprites so they light the scene). */
+function drawLightGlows(ctx: CanvasRenderingContext2D, scene: CombatScene, now: number): void {
+  for (const g of scene.lightGlows) {
+    const t = (now - g.start) / g.duration;
+    if (t >= 1) continue;
+    const alpha = (1 - t) * 0.4;
+    const r = g.radius * (0.6 + t * 0.4);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = alpha;
+    const grad = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, r);
+    grad.addColorStop(0, g.color);
+    grad.addColorStop(1, "transparent");
+    ctx.fillStyle = grad;
+    ctx.fillRect(g.x - r, g.y - r, r * 2, r * 2);
+    ctx.restore();
+  }
 }
 
 // --- Main render -----------------------------------------------------------------------
@@ -1977,6 +2064,10 @@ export function renderScene(
     ctx.fillRect(0, 0, w, h);
   }
 
+  // Floor illumination from active spell glows (drawn before sprites so they
+  // light the ground and sprite edges).
+  drawLightGlows(ctx, scene, now);
+
   // Enemies: back row first, then front (front overlaps back).
   s.enemies.back.forEach((e, i) => drawEnemy(ctx, e, i, scene, now, w, h));
   s.enemies.front.forEach((e, i) => drawEnemy(ctx, e, i, scene, now, w, h));
@@ -2004,7 +2095,7 @@ export function renderScene(
   drawPopups(ctx, scene, now);
 
   // Banner window (top center) + round indicator (top left).
-  drawBanner(ctx, w, scene);
+  drawBanner(ctx, w, scene, now);
   drawRoundIndicator(ctx, scene);
 
   ctx.restore();

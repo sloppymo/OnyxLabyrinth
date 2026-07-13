@@ -178,3 +178,55 @@ These assets don't map to any current spell but are worth keeping for future wat
 5. **Status/Summons** — `Lightning.png` for stuns, `Portal` (Foozle) for summons, `Darkness Bolt`/`Dark-Bolt` for poison/silence.
 
 After this first pass, every spell in the game will have a unique or semi-unique visual instead of reusing the generic element fallbacks.
+
+---
+
+## Appendix — VFX Power & Feel Findings (added after the first pass)
+
+The full analysis is in `VFX-FEEL-ANALYSIS.md` at the repo root. These are the practical findings that affect how the assets above should be wired and scaled.
+
+### Implementation details that affect the top priority fixes
+
+1. **Scene effects do not animate `scale` over time.** `SceneEffect` only stores a fixed `scale` and a duration (`drawEffectSprite`, lines 1756–1786). `t` is used only for alpha fade. If a charge glow should grow, `drawEffectSprite` or `SceneEffect` needs a scale interpolation.
+
+2. **Projectile aura already doubles the visible size.** `drawEffectSprite` draws each projectile at its own scale and then a 2× semi-transparent additive copy behind it (lines 1775–1781). So a `projectileScale` of 1.5 already reads as ~3×. Keep 64×64 projectiles under 2.5× to avoid a distracting halo.
+
+3. **Impact points are not affected by recoil.** `findActor` returns static slot positions (lines 347–388), while `ActorAnim` offsets are only applied at draw time. Burst, popup, and floor glow stay at the original slot position while the sprite shifts. Keep recoil under 10px to avoid disconnect.
+
+4. **Floor glow is hidden by sprites if drawn pre-sprite.** `renderScene` order is background → enemies → allies → party → effects (lines 1968–2004). A pre-sprite glow only lights the ground around the target. To rim-light the target, add a second small glow after the actor with `globalCompositeOperation = "lighter"`.
+
+5. **`impactSteps` is shared by every impact type.** It is used for melee, ranged, technique, and spell `spellEffect` events. Any recoil or flash tweak applies consistently across all damage types, but should be reduced or skipped for heals/buffs.
+
+6. **`screenShake` is pure white noise, not directional.** It uses `Math.random()` per frame (lines 1962–1963). Raising the amount is the quick win; directional bias is more code for marginal benefit.
+
+7. **`combat-scene.test.ts` does not assert on step count.** It checks popup timing, animation states, effect spawn, and death fade. Adding `startMove` calls or `scene.lightGlows` bookkeeping is safe as long as `createScene` initializes new fields.
+
+8. **The banner is drawn on top of everything and has no fade.** `drawBanner` (lines 1928–1943) is called after effects, particles, and popups (line 2007). Moving it before `drawEffects` and adding `globalAlpha` fade-in/out lets the spell effect own the visual moment.
+
+### Useful unused sprite strips for the feel fixes
+
+- `mp_fire_bomb_full` (15 frames, 64×64) — longer explosion for high-tier fire (`mage-fireball`, `mage-immolate`).
+- `fire_explosion_glow` (28×28, 12 frames) — warm, additive-ready fire for holy/divine spells (`priest-sunburst`, `priest-divine-smite`).
+- `lightning_blast_glow` (54×18, 9 frames) — brighter lightning bolt alternative for `mage-spark` or `priest-guiding-bolt`.
+- `px_magic_orb` and `px_magic_ray` (16×16, 6–8 frames) — slow orbs/rays for disable spells (`mage-sleep`, `mage-hold-person`, `mage-power-word-stun`).
+- `zombie_explosion` (72×64, 4 frames) — sickly green impact for `mage-poison-spray`.
+
+### Tier-based helpers are straightforward
+
+`SpellDef` already exposes `tier: 1 | 2 | 3 | 4 | 5 | 6 | 7` (`src/data/spells.ts`, line 49). `resolveEffectStyle` is called with `spellId` at every cast, so a helper like `tierForSpell(spellId)` can drive `burstDurationFor`, `spellTierShake`, and `windupDurationFor` without touching game logic.
+
+### One-line safe wins
+
+- Change `showBanner(spellNameFor(...), CAST_MS + 900)` to `CAST_MS + 300` (line 1000) so the banner disappears before the impact burst peaks.
+- Raise `addScreenShake` in `impactSteps` from `big ? 5 : 2.5` to `big ? 7 : 3.5` (line 469) and in spell damage from `3` to tier-scaled 3–6 (line 1071).
+- Swap `mp_fire_bomb` for `mp_fire_bomb_full` in `mage-immolate` and `mage-fireball` overrides to differentiate tier-3/4 fire.
+
+### Recommended priority order
+
+1. **Target recoil (Point 5)** — largest single "feel" improvement; uses the existing `ActorAnim` tween machinery.
+2. **Tier-scaled screen shake (Point 8)** — ~5 lines of code, huge perceptual payoff.
+3. **Bigger, longer bursts for high-tier spells (Point 2)** — mostly `SPELL_OVERRIDES` tweaks.
+4. **Dimmer, fading banner (Point 10)** — reduces UI stealing attention from the spell effect.
+5. **Floor illumination at impact (Point 4)** — the one medium-effort change that makes spells feel like light sources in the world.
+
+Defer the background/vignette issue (Point 3) until after the code-level changes are in place and evaluated.

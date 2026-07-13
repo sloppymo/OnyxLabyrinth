@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OnyxLabyrinth — VFX Vignette</title>
+  <style>
+    body {
+      margin: 0;
+      background: #050505;
+      color: #e8e8f0;
+      font-family: "FF36", monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 0 0 8px;
+      color: #ffd769;
+      letter-spacing: 2px;
+    }
+    #vignette-canvas {
+      border: 2px solid #e8e8f0;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background: #000;
+      max-width: 100%;
+      height: auto;
+    }
+    #controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    #controls button {
+      font-family: "FF36", monospace;
+      font-size: 14px;
+      padding: 6px 14px;
+      background: #1a1c44;
+      color: #e8e8f0;
+      border: 1px solid #5068c8;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    #controls button:hover {
+      background: #2a2c64;
+    }
+    #controls button.active {
+      background: #5068c8;
+      color: #fff;
+    }
+    #spell-info {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #b8c4f0;
+      text-align: center;
+      min-height: 20px;
+    }
+    #spell-queue {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #6878a8;
+      text-align: center;
+      max-width: 768px;
+      line-height: 1.6;
+    }
+    #spell-queue .current {
+      color: #ffd769;
+      font-weight: bold;
+    }
+    #spell-queue .done {
+      color: #4a5a8a;
+      text-decoration: line-through;
+    }
+  </style>
+  <script type="module" crossorigin src="/OnyxLabyrinth/assets/vignette-M9Ltdceh.js"></script>
+  <link rel="modulepreload" crossorigin href="/OnyxLabyrinth/assets/combat-scene-C8mGdpHs.js">
+  <link rel="stylesheet" crossorigin href="/OnyxLabyrinth/assets/combat-scene-Cs6kneT2.css">
+</head>
+<body>
+  <h1>OnyxLabyrinth — Spell VFX Vignette</h1>
+  <canvas id="vignette-canvas" width="768" height="672"></canvas>
+  <div id="controls">
+    <button id="btn-play">Pause</button>
+    <button id="btn-next">Next Spell</button>
+    <button id="btn-restart">Restart</button>
+    <button id="btn-slow">Slow Motion</button>
+  </div>
+  <div id="spell-info"></div>
+  <div id="spell-queue"></div>
+</body>
+</html>
