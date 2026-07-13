@@ -685,12 +685,26 @@ export function playTurn(
   let approachedId: string | null = null;
   let approachedKind: SceneCursor["kind"] | null = null;
 
-  const approach = (actorId: string): void => {
+  const approach = (actorId: string, targetId?: string): void => {
     const actor = findActor(scene, actorId, w, h);
     if (!actor) return;
     approachedId = actorId;
     approachedKind = actor.kind;
-    const dx = approachDelta(actor.kind);
+    // If we have a target, jump directly toward it; otherwise use the
+    // classic fixed-step approach toward the other side.
+    let dx: number;
+    if (targetId) {
+      const target = findActor(scene, targetId, w, h);
+      if (target) {
+        // Stop just short of the target (offset toward the attacker's side).
+        const offset = actor.kind === "party" ? 40 : -40;
+        dx = target.x + offset - actor.x;
+      } else {
+        dx = approachDelta(actor.kind);
+      }
+    } else {
+      dx = approachDelta(actor.kind);
+    }
     steps.push(
       step(t, (sc, n) => {
         const a = getAnim(sc, actor.kind, actorId, n);
@@ -816,7 +830,7 @@ export function playTurn(
           );
           t += ATTACK_MS + 200;
         } else {
-          approach(evt.actorId);
+          approach(evt.actorId, evt.targetId);
           const base = t;
           steps.push(
             step(base + APPROACH_MS, (sc, n) => {
@@ -855,7 +869,7 @@ export function playTurn(
       case "miss":
       case "techniqueMiss": {
         if (evt.type === "miss" && evt.reason === "noTarget") break;
-        approach(evt.actorId);
+        approach(evt.actorId, evt.targetId);
         const base = t;
         steps.push(
           step(base + APPROACH_MS, (sc, n) => {
