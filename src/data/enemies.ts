@@ -20,7 +20,6 @@ export type EnemySpecial =
   | { kind: "caster"; element: DamageElement }
   | { kind: "undead" }
   | { kind: "silenceRandom"; target: "party"; duration: "combat" }
-  | { kind: "slowGroup" }
   | { kind: "evasive" }
   | { kind: "highDefense" }
   | { kind: "poisonOnHit" }
@@ -156,7 +155,6 @@ export const ORC: EnemyDef = {
   xp: 8,
   gold: 6,
   special: [
-    { kind: "slowGroup" },
     { kind: "poisonOnHit" },
     { kind: "weakElement", element: "wind" },
   ],
