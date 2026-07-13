@@ -996,11 +996,17 @@ canvas#map-canvas {
   position: relative;
   width: 100%;
   max-width: 768px;
+  aspect-ratio: 768 / 672;
   margin: 0 auto;
+  overflow: visible;
 }
 
 #combat-wrap #combat-canvas {
   display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
 }
 
 #combat-windows {
