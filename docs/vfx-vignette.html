@@ -56,6 +56,17 @@
       background: #5068c8;
       color: #fff;
     }
+    #controls button#btn-chaos {
+      border-color: #c85068;
+    }
+    #controls button#btn-chaos:hover {
+      background: #642c34;
+    }
+    #controls button#btn-chaos.active {
+      background: #c85068;
+      color: #fff;
+      border-color: #ff8090;
+    }
     #spell-info {
       margin-top: 8px;
       font-size: 14px;
@@ -80,8 +91,8 @@
       text-decoration: line-through;
     }
   </style>
-  <script type="module" crossorigin src="/OnyxLabyrinth/assets/vignette-M9Ltdceh.js"></script>
-  <link rel="modulepreload" crossorigin href="/OnyxLabyrinth/assets/combat-scene-C8mGdpHs.js">
+  <script type="module" crossorigin src="/OnyxLabyrinth/assets/vignette-t37UV7UF.js"></script>
+  <link rel="modulepreload" crossorigin href="/OnyxLabyrinth/assets/combat-scene-CoUCJgNz.js">
   <link rel="stylesheet" crossorigin href="/OnyxLabyrinth/assets/combat-scene-Cs6kneT2.css">
 </head>
 <body>
@@ -92,6 +103,7 @@
     <button id="btn-next">Next Spell</button>
     <button id="btn-restart">Restart</button>
     <button id="btn-slow">Slow Motion</button>
+    <button id="btn-chaos">Chaos Mode</button>
   </div>
   <div id="spell-info"></div>
   <div id="spell-queue"></div>
