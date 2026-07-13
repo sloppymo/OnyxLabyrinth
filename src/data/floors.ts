@@ -261,7 +261,7 @@ function floor1(): FloorDef {
         ],
         wantsItemId: "healing-potion",
         rewardItemId: "long-sword+1",
-        combatEnemyIds: ["samurai"],
+        combatEnemyIds: ["ronin"],
       },
     ],
     events: [
