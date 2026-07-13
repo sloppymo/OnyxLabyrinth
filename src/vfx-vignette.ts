@@ -544,8 +544,16 @@ function startRandomTurn(): void {
 }
 
 function nextTurn(): void {
-  // Reset scene state for the next turn (clear lingering effects/particles).
-  scene = createScene(state);
+  // Clear transient scene state (effects, particles, popups, choreo) but
+  // preserve party/enemy/ally animation maps so death poses and other
+  // persistent anim states don't reset every turn.
+  scene.effects = [];
+  scene.particles = [];
+  scene.popups = [];
+  scene.choreo = null;
+  scene.banner = null;
+  scene.bannerUntil = 0;
+  scene.screenShake = { amount: 0, until: 0 };
   startRandomTurn();
 }
 
