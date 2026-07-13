@@ -78,6 +78,16 @@ const party: Character[] = [
   makeCharacter("thief-1", "Coda", "Thief", 5),
 ];
 
+// Simulate varied party condition so the status bar looks like real gameplay.
+party[1].hp = 45;
+party[1].sp = 12;
+party[2].status.push("poison");
+party[2].sp = 88;
+party[3].hp = 0;
+party[3].status.push("knockedOut");
+party[4].sp = 0;
+party[5].status.push("hidden");
+
 // Use real enemy IDs from the sprite manifest so actual sprite art loads.
 const enemies: EnemyFormation = {
   front: [
@@ -259,6 +269,7 @@ let waitingForNext = false;
 const spellInfoEl = document.getElementById("spell-info")!;
 const spellStyleEl = document.getElementById("spell-style")!;
 const spellQueueEl = document.getElementById("spell-queue")!;
+const partyStripEl = document.getElementById("vignette-party-strip")!;
 const btnPlay = document.getElementById("btn-play") as HTMLButtonElement;
 const btnNext = document.getElementById("btn-next") as HTMLButtonElement;
 const btnRestart = document.getElementById("btn-restart") as HTMLButtonElement;
@@ -270,6 +281,35 @@ function spellNameFor(id: string): string {
   return spellById(id)?.name ?? id;
 }
 
+function statusText(c: Character): string {
+  if (c.hp <= 0 || c.status.includes("knockedOut")) return "KO";
+  return c.status.join(" ");
+}
+
+function renderPartyStrip(): void {
+  partyStripEl.innerHTML = party
+    .map((c) => {
+      const ko = c.hp <= 0 || c.status.includes("knockedOut");
+      const hpPct = c.maxHp > 0 ? (Math.max(0, c.hp) / c.maxHp) * 100 : 0;
+      const spPct = c.maxSp > 0 ? (c.sp / c.maxSp) * 100 : 0;
+      const row = c.formationSlot <= 2 ? "F" : "B";
+      const status = statusText(c);
+      return (
+        `<div class="vps-char ${ko ? "ko" : ""}">` +
+        `<span class="vps-name">${c.name}</span>` +
+        `<span class="vps-bar"><span class="vps-bar-fill hp" style="width:${hpPct}%"></span></span>` +
+        `<span class="vps-num">${Math.max(0, c.hp)}/${c.maxHp}</span>` +
+        (c.maxSp > 0
+          ? `<span class="vps-bar"><span class="vps-bar-fill sp" style="width:${spPct}%"></span></span>` +
+            `<span class="vps-num">${c.sp}/${c.maxSp}</span>`
+          : `<span class="vps-num">${row}</span>`) +
+        `<span class="vps-status">${status}</span>` +
+        `</div>`
+      );
+    })
+    .join("");
+}
+
 function startCurrentSpell(): void {
   const spell = VFX_SPELLS[spellIndex];
   if (!spell) return;
@@ -279,6 +319,7 @@ function startCurrentSpell(): void {
   spellPlaying = true;
   waitingForNext = false;
   updateInfoDisplay();
+  renderPartyStrip();
 }
 
 function nextSpell(): void {
@@ -366,6 +407,7 @@ function loop(): void {
   }
 
   renderScene(ctx, W, H, scene, now);
+  renderPartyStrip();
   requestAnimationFrame(loop);
 }
 
