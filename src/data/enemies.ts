@@ -327,24 +327,6 @@ export const HEADMASTERS_ECHO: EnemyDef = {
   isBoss: true,
 };
 
-// NPC combatants — never in random encounter tables (floors: []); they are
-// fought only when the party attacks (or is caught robbing) a dungeon NPC.
-// Has a full sprite strip under assets/enemies/ronin/.
-export const RONIN: EnemyDef = {
-  id: "ronin",
-  name: "Kazeharu the Ronin",
-  floors: [],
-  rowPreference: "front",
-  hp: 44,
-  attack: 9,
-  ac: 7,
-  agi: 20,
-  xp: 60,
-  gold: 90,
-  special: [{ kind: "evasive" }],
-  isBoss: false,
-};
-
 // Pack 02 demon / forge-themed enemies.
 export const EYEBALL_MONSTER: EnemyDef = {
   id: "eyeball-monster",
@@ -725,7 +707,6 @@ export const ALL_ENEMIES: EnemyDef[] = [
   STONE_GUARDIAN,
   ANIMATED_ARMOR,
   HEADMASTERS_ECHO,
-  RONIN,
   EYEBALL_MONSTER,
   GHOSTFIRE,
   FLAME_GOLEM,

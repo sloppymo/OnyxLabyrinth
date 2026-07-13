@@ -50,7 +50,7 @@ function makeNPC(overrides: Partial<NPCDef> = {}): NPCDef {
     trades: [{ giveItemId: "antidote", receiveItemId: "robe+2", once: true }],
     wantsItemId: "healing-potion",
     rewardItemId: "long-sword+1",
-    combatEnemyIds: ["ronin"],
+    combatEnemyIds: ["ironclad-knight"],
     ...overrides,
   };
 }
