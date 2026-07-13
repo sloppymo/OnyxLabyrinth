@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { resolve } from "path";
 
 // IMPORTANT: replace 'wizardry-clone' with your actual GitHub repo name
 // before deploying, or asset paths will 404 on GitHub Pages.
@@ -9,5 +10,11 @@ export default defineConfig({
     // works from file:// or any base path and individual PNG 404s can't break
     // the renderer.
     assetsInlineLimit: 10240,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, "index.html"),
+        vignette: resolve(__dirname, "vfx-vignette.html"),
+      },
+    },
   },
 });

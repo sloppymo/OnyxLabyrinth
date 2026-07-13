@@ -254,7 +254,7 @@ export interface CombatScene {
   effects: SceneEffect[];
   /** Screen-shake amount and expiry. */
   screenShake: { amount: number; until: number };
-  /** Loose particle effects (sparks, embers, shards). */
+  /** Loose particle effects (sparks, embers, shards, projectile trails). */
   particles: Particle[];
   /** Last update timestamp for frame-rate-independent particle updates. */
   lastUpdate?: number;
@@ -271,6 +271,10 @@ export interface SceneEffect {
   frameOffset?: number;
   /** Scale factor for the drawn effect. */
   scale?: number;
+  /** If true, draw with additive (lighter) blending for glow effects. */
+  additive?: boolean;
+  /** If true, leave a particle trail as the projectile travels. */
+  trail?: boolean;
   fromX?: number;
   fromY?: number;
   toX?: number;
@@ -539,6 +543,32 @@ function spawnSparkleParticles(
   }
 }
 
+/** Spawn a short trailing ember/spark behind a traveling projectile. */
+function spawnProjectileTrail(
+  scene: CombatScene,
+  x: number,
+  y: number,
+  color: string,
+  angle: number,
+  additive: boolean
+): void {
+  const spread = 0.5;
+  const a = angle + Math.PI + (Math.random() - 0.5) * spread;
+  const speed = 0.8 + Math.random() * 1.5;
+  scene.particles.push({
+    x: x + (Math.random() - 0.5) * 6,
+    y: y + (Math.random() - 0.5) * 6,
+    vx: Math.cos(a) * speed,
+    vy: Math.sin(a) * speed,
+    life: 0,
+    maxLife: 220 + Math.random() * 160,
+    size: 2 + Math.random() * 2.5,
+    color,
+    gravity: 0.02,
+    glow: additive,
+  });
+}
+
 // --- Spell visual style mapping ------------------------------------------------
 
 interface EffectStyle {
@@ -555,14 +585,17 @@ interface EffectStyle {
   projectileScale?: number;
   burstScale?: number;
   fieldScale?: number;
+  /** If true, draw effect sprites with additive (lighter) blending so they
+   *  read as light/energy sources rather than flat decals. */
+  additive?: boolean;
 }
 
 const ELEMENT_STYLES: Record<string, EffectStyle> = {
-  fire: { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion", field: "large_fire", scale: 2.5 },
-  cold: { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst", scale: 1.2 },
+  fire: { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion", field: "large_fire", scale: 2.5, additive: true },
+  cold: { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst", scale: 1.2, additive: true },
   physical: { color: "#f5f0e6", burst: "zombie_explosion" },
-  undead: { color: "#c080ff", projectile: "red_energy", burst: "red_energy", field: "red_energy", scale: 1.3 },
-  lightning: { color: "#ffd769", projectile: "lightning_blast", burst: "lightning_energy", field: "lightning_energy_glow", scale: 1.3 },
+  undead: { color: "#c080ff", projectile: "red_energy", burst: "red_energy", field: "red_energy", scale: 1.3, additive: true },
+  lightning: { color: "#ffd769", projectile: "lightning_blast", burst: "lightning_energy", field: "lightning_energy_glow", scale: 1.3, additive: true },
   poison: { color: "#c080ff", projectile: "red_energy", burst: "red_energy_glow", field: "red_energy_glow", scale: 1.3 },
 };
 
@@ -576,56 +609,57 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
  * element color to keep the accent consistent.
  */
 const SPELL_OVERRIDES: Record<string, EffectStyle> = {
-  // --- Mage: fire ---
-  "mage-ember": { color: "#ff8c42", projectile: "px_fireball", projectileScale: 2.8, burst: "fz_explosion", burstScale: 2.0 },
-  "mage-fire-bolt": { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 0.7, burst: "fz_explosion", burstScale: 2.0 },
-  "mage-burning-hands": { color: "#ff8c42", burst: "mp_fire_bomb", burstScale: 1.6, field: "mp_fire_bomb", fieldScale: 2.4 },
-  "mage-fireball": { color: "#ff8c42", burst: "mp_fire_bomb", burstScale: 2.0, field: "mp_fire_bomb", fieldScale: 2.6 },
-  "mage-immolate": { color: "#ff8c42", projectile: "fz_molten_spear", projectileScale: 0.8, burst: "mp_fire_bomb", burstScale: 2.2 },
-  // --- Mage: cold ---
-  "mage-frostbite": { color: "#80e0ff", projectile: "px_ice_lance", projectileScale: 2.8, burst: "ice_burst_glow", burstScale: 1.2 },
-  "mage-cone-of-cold": { color: "#80e0ff", burst: "ice_burst", burstScale: 1.2, field: "ice_burst", fieldScale: 3.0 },
-  "mage-ice-storm": { color: "#80e0ff", burst: "ice_burst_glow", burstScale: 1.2, field: "ice_burst_glow", fieldScale: 3.0 },
-  // --- Mage: lightning ---
-  "mage-spark": { color: "#ffd769", projectile: "mp_spark", projectileScale: 1.4, burst: "mp_lightning", burstScale: 2.0 },
-  // --- Mage: poison (native purple = this game's poison; no recolor) ---
-  "mage-poison-spray": { color: "#c080ff", projectile: "mp_dark_bolt", projectileScale: 0.7, burst: "red_energy_glow", burstScale: 1.3 },
-  // --- Mage: disable / field ---
-  "mage-sleep": { color: "#c080ff", burst: "px_magic_sparks", burstScale: 4.0 },
-  "mage-hold-person": { color: "#c8c4b8", burst: "mp_lightning", burstScale: 1.5 },
-  "mage-web": { color: "#c8c4b8", burst: "px_magic_sparks", burstScale: 3.0, field: "px_magic_sparks", fieldScale: 7.0 },
-  "mage-power-word-stun": { color: "#c8c4b8", burst: "mp_lightning", burstScale: 1.8 },
+  // --- Mage: fire (additive — fire is a light source) ---
+  "mage-ember": { color: "#ff8c42", projectile: "px_fireball", projectileScale: 2.8, burst: "fz_explosion", burstScale: 2.0, additive: true },
+  "mage-fire-bolt": { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 1.8, burst: "fz_explosion", burstScale: 2.0, additive: true },
+  "mage-burning-hands": { color: "#ff8c42", burst: "mp_fire_bomb", burstScale: 1.6, field: "mp_fire_bomb", fieldScale: 2.4, additive: true },
+  "mage-fireball": { color: "#ff8c42", burst: "mp_fire_bomb", burstScale: 2.0, field: "mp_fire_bomb", fieldScale: 2.6, additive: true },
+  "mage-immolate": { color: "#ff8c42", projectile: "fz_molten_spear", projectileScale: 1.3, burst: "mp_fire_bomb", burstScale: 2.2, additive: true },
+  // --- Mage: cold (additive — ice glows) ---
+  "mage-frostbite": { color: "#80e0ff", projectile: "px_ice_lance", projectileScale: 2.8, burst: "ice_burst_glow", burstScale: 1.8, additive: true },
+  "mage-cone-of-cold": { color: "#80e0ff", burst: "ice_burst", burstScale: 1.2, field: "ice_burst", fieldScale: 3.0, additive: true },
+  "mage-ice-storm": { color: "#80e0ff", burst: "ice_burst_glow", burstScale: 1.2, field: "ice_burst_glow", fieldScale: 3.0, additive: true },
+  // --- Mage: lightning (additive — energy glow) ---
+  "mage-spark": { color: "#ffd769", projectile: "lightning_blast", projectileScale: 1.6, burst: "lightning_energy_glow", burstScale: 2.0, additive: true },
+  // --- Mage: poison (additive — venomous energy glow) ---
+  "mage-poison-spray": { color: "#c080ff", projectile: "px_plant_missle", projectileScale: 2.0, burst: "red_energy_glow", burstScale: 1.8, additive: true },
+  // --- Mage: disable / field (additive for energy-type, not for cloud-type) ---
+  "mage-sleep": { color: "#c080ff", burst: "px_magic_sparks", burstScale: 4.0, additive: true },
+  "mage-hold-person": { color: "#c8c4b8", burst: "px_shield", burstScale: 2.2, additive: true },
+  "mage-web": { color: "#c8c4b8", burst: "px_magic_sparks", burstScale: 3.0, field: "px_magic_sparks", fieldScale: 7.0, additive: true },
+  "mage-power-word-stun": { color: "#c8c4b8", burst: "px_darkness_orb", burstScale: 3.5, additive: true },
   "mage-silence": { color: "#c080ff", burst: "px_darkness_orb", burstScale: 4.0, field: "px_darkness_orb", fieldScale: 7.0 },
-  "mage-dispel-magic": { color: "#7fb8f0", burst: "dispel_sparks", burstScale: 4.0, field: "dispel_sparks", fieldScale: 7.0 },
-  // --- Mage: buff / shield ---
-  "mage-arcane-ward": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6 },
-  "mage-spell-shield": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6, field: "px_shield", fieldScale: 3.3 },
-  // --- Mage: summon ---
-  "mage-lesser-summon": { color: "#c080ff", burst: "fz_portal", burstScale: 1.6 },
-  "mage-summon-fire-elemental": { color: "#ff8c42", burst: "fz_portal_orange", burstScale: 2.0 },
-  "mage-conjure-elemental": { color: "#c080ff", burst: "fz_portal", burstScale: 2.0, field: "fz_portal", fieldScale: 2.5 },
-  "mage-gate": { color: "#c080ff", burst: "fz_portal", burstScale: 2.6 },
+  "mage-dispel-magic": { color: "#7fb8f0", burst: "dispel_sparks", burstScale: 4.0, field: "dispel_sparks", fieldScale: 7.0, additive: true },
+  // --- Mage: buff / shield (additive — magical barriers glow) ---
+  "mage-arcane-ward": { color: "#7fb8f0", burst: "px_shield", burstScale: 3.2, additive: true },
+  "mage-spell-shield": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6, field: "px_shield", fieldScale: 3.3, additive: true },
+  // --- Mage: summon (additive — portals are energy) ---
+  "mage-lesser-summon": { color: "#c080ff", burst: "fz_portal", burstScale: 2.2, additive: true },
+  "mage-summon-fire-elemental": { color: "#ff8c42", burst: "fz_portal_orange", burstScale: 2.0, additive: true },
+  "mage-conjure-elemental": { color: "#c080ff", burst: "fz_portal", burstScale: 2.0, field: "fz_portal", fieldScale: 2.5, additive: true },
+  "mage-gate": { color: "#c080ff", burst: "fz_portal", burstScale: 2.6, additive: true },
 
-  // --- Priest: damage ---
-  "priest-sacred-flame": { color: "#ffe8a0", projectile: "px_bolt_purity", projectileScale: 2.8, burst: "lightning_energy_glow", burstScale: 1.3 },
-  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "px_light_bolt", projectileScale: 2.8, burst: "lightning_energy_glow", burstScale: 1.3 },
-  "priest-divine-smite": { color: "#ffe8a0", projectile: "px_bolt_purity", projectileScale: 2.8, burst: "mp_lightning", burstScale: 1.8 },
-  "priest-sunburst": { color: "#ffe8a0", burst: "mp_lightning", burstScale: 2.0, field: "mp_lightning", fieldScale: 2.6 },
-  // --- Priest: heal / cure (baked green sparkle) ---
-  "priest-cure-wounds": { color: "#6fe06f", burst: "heal_sparks", burstScale: 3.5 },
-  "priest-cure-serious": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5 },
-  "priest-cure-critical": { color: "#6fe06f", burst: "heal_sparks", burstScale: 5.5 },
-  "priest-heal": { color: "#6fe06f", burst: "heal_sparks", burstScale: 6.0 },
-  "priest-mass-cure": { color: "#6fe06f", burst: "heal_sparks", burstScale: 3.5, field: "heal_sparks", fieldScale: 5.0 },
-  "priest-mass-heal": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5, field: "heal_sparks", fieldScale: 5.0 },
-  "priest-neutralize-poison": { color: "#6fe06f", burst: "heal_sparks", burstScale: 3.5 },
-  // --- Priest: buff / shield ---
-  "priest-shield-of-faith": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6 },
-  "priest-bless": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6, field: "px_shield", fieldScale: 3.3 },
-  // --- Priest: summon (gold portal) ---
-  "priest-summon-guardian": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.0 },
-  "priest-summon-celestial-guardian": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.6 },
-  "priest-summon-celestial": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.0, field: "fz_portal_gold", fieldScale: 2.5 },
+  // --- Priest: damage (additive — holy/arcane energy) ---
+  "priest-sacred-flame": { color: "#ffe8a0", projectile: "px_bolt_purity", projectileScale: 3.5, burst: "mp_fire_bomb", burstScale: 1.4, additive: true },
+  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "px_light_bolt", projectileScale: 3.5, burst: "lightning_energy_glow", burstScale: 1.3, additive: true },
+  "priest-divine-smite": { color: "#ffe8a0", projectile: "px_bolt_purity", projectileScale: 3.5, burst: "mp_lightning", burstScale: 1.8, additive: true },
+  "priest-sunburst": { color: "#ffe8a0", burst: "mp_lightning", burstScale: 2.0, field: "lightning_energy_glow", fieldScale: 3.0, additive: true },
+  // --- Priest: heal / cure (additive — healing light) ---
+  "priest-cure-wounds": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5, additive: true },
+  "priest-cure-serious": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5, additive: true },
+  "priest-cure-critical": { color: "#6fe06f", burst: "heal_sparks", burstScale: 5.5, additive: true },
+  "priest-heal": { color: "#6fe06f", burst: "heal_sparks", burstScale: 6.0, additive: true },
+  "priest-mass-cure": { color: "#6fe06f", burst: "heal_sparks", burstScale: 3.5, field: "heal_sparks", fieldScale: 5.0, additive: true },
+  "priest-mass-heal": { color: "#6fe06f", burst: "heal_sparks", burstScale: 4.5, field: "heal_sparks", fieldScale: 5.0, additive: true },
+  "priest-neutralize-poison": { color: "#6fe06f", burst: "heal_sparks", burstScale: 3.5, additive: true },
+  "priest-raise-dead": { color: "#ffe8a0", burst: "heal_sparks", burstScale: 5.5, additive: true },
+  // --- Priest: buff / shield (additive — divine barriers glow) ---
+  "priest-shield-of-faith": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6, additive: true },
+  "priest-bless": { color: "#7fb8f0", burst: "px_shield", burstScale: 2.6, field: "px_shield", fieldScale: 3.3, additive: true },
+  // --- Priest: summon (additive — golden portals) ---
+  "priest-summon-guardian": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.0, additive: true },
+  "priest-summon-celestial-guardian": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.6, additive: true },
+  "priest-summon-celestial": { color: "#ffe8a0", burst: "fz_portal_gold", burstScale: 2.0, field: "fz_portal_gold", fieldScale: 2.5, additive: true },
 };
 
 const STATUS_STYLES: Record<string, EffectStyle> = {
@@ -649,13 +683,13 @@ function resolveEffectStyle(
       return ELEMENT_STYLES[eff.element] ?? { color: COLORS.spellBurst, burst: "fire_explosion" };
     }
     if (eff.kind === "heal") {
-      return { color: COLORS.heal, projectile: "priest_heal", burst: "priest_heal", scale: 1.2 };
+      return { color: COLORS.heal, projectile: "priest_heal", burst: "priest_heal", scale: 1.2, additive: true };
     }
     if (eff.kind === "buff" || eff.kind === "magicScreen") {
-      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2 };
+      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2, additive: true };
     }
     if (eff.kind === "cure" || eff.kind === "resurrect") {
-      return { color: COLORS.heal, burst: "priest_heal", scale: 1.2 };
+      return { color: COLORS.heal, burst: "priest_heal", scale: 1.2, additive: true };
     }
     if (eff.kind === "disable" && eff.status) {
       return STATUS_STYLES[eff.status] ?? { color: COLORS.poison, burst: "red_energy" };
@@ -664,14 +698,14 @@ function resolveEffectStyle(
       return { color: COLORS.poison, field: "red_energy", burst: "red_energy" };
     }
     if (eff.kind === "summon") {
-      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2 };
+      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2, additive: true };
     }
   }
 
   // Fallback for items or unknown spell IDs.
   const e = evt ?? {};
   if (e.heal !== undefined || e.statusCured || e.isBuff) {
-    return { color: COLORS.heal, burst: "priest_heal", scale: 1.2 };
+    return { color: COLORS.heal, burst: "priest_heal", scale: 1.2, additive: true };
   }
   if (e.statusInflicted) {
     return STATUS_STYLES[e.statusInflicted] ?? { color: COLORS.poison, burst: "red_energy" };
@@ -826,6 +860,7 @@ export function playTurn(
                 color: COLORS.dmg,
                 effect: projectileEffectForActor(attacker?.class),
                 scale: 2.5,
+                trail: true,
                 start: n,
                 duration: impact - (t + ATTACK_MS * 0.2),
               });
@@ -969,6 +1004,25 @@ export function playTurn(
         fieldPushed = false;
 
         const style = resolveEffectStyle(evt.spellId, evt);
+        // Wind-up: a charge glow gathers on the caster for ~280ms before the
+        // projectile launches or the burst lands. This sells the spell as a
+        // deliberate act rather than an instant flash.
+        steps.push(
+          step(t, (sc, n) => {
+            const caster = findActor(sc, evt.actorId, w, h);
+            if (!caster) return;
+            sc.effects.push({
+              type: "burst",
+              x: caster.x, y: caster.y - 8,
+              color: style.color,
+              effect: style.burst,
+              scale: (style.burstScale ?? style.scale ?? 1) * 0.45,
+              additive: style.additive,
+              start: n,
+              duration: 280,
+            });
+          })
+        );
         // For a single target, launch a projectile from caster to target.
         if (evt.targetId && style.projectile) {
           const projectileLaunch = t + 100;
@@ -986,6 +1040,8 @@ export function playTurn(
                 color: style.color,
                 effect: style.projectile,
                 scale: style.projectileScale ?? style.scale ?? 1,
+                additive: style.additive,
+                trail: true,
                 start: n,
                 duration: impact - projectileLaunch,
               });
@@ -1007,10 +1063,13 @@ export function playTurn(
                   color: style.color,
                   effect: style.burst,
                   scale: style.burstScale ?? style.scale ?? 1,
+                  additive: style.additive,
                   start: n, duration: 400,
                 });
                 spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
-                if (!isHeal) addScreenShake(sc, isHeal ? 1 : 3, n, 200);
+                if (!isHeal) {
+                  addScreenShake(sc, 3, n, 200);
+                }
               }
             }),
             ...impactSteps(pendingImpactBase, evt.targetId, text, isHeal ? COLORS.heal : COLORS.dmg, w, h, !isHeal)
@@ -1055,6 +1114,7 @@ export function playTurn(
                 color: style.color,
                 effect: style.field ?? style.burst,
                 scale: (style.fieldScale ?? style.scale ?? 1) * 2,
+                additive: style.additive,
                 start: n,
                 duration: 650,
               });
@@ -1077,6 +1137,7 @@ export function playTurn(
                 color: style.color,
                 effect: style.field ?? style.burst,
                 scale: (style.fieldScale ?? style.scale ?? 1) * 2,
+                additive: style.additive,
                 start: n,
                 duration: 650,
               });
@@ -1112,6 +1173,7 @@ export function playTurn(
                 color: style.color,
                 effect: style.burst,
                 scale: style.burstScale ?? style.scale ?? 1,
+                additive: style.additive,
                 start: n, duration: 400,
               });
               spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
@@ -1704,7 +1766,19 @@ function drawEffectSprite(
       const dw = strip.frameWidth * scale;
       const dh = strip.frameHeight * scale;
       ctx.globalAlpha = type === "burst" ? 1 - t : type === "field" ? 1 - t * 0.5 : 1;
+      // Additive blending makes glow-type effects (fire, holy, arcane, heal)
+      // read as light sources rather than flat decals.
+      if (effect.additive) ctx.globalCompositeOperation = "lighter";
       ctx.imageSmoothingEnabled = false;
+      // Projectiles get a soft aura behind the sprite so they read as glowing
+      // missiles/streaks rather than tiny dots against the dark background.
+      if (type === "projectile") {
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        ctx.globalCompositeOperation = "lighter";
+        ctx.drawImage(sprite.img, sx, sy, strip.frameWidth, strip.frameHeight, -dw, -dh, dw * 2, dh * 2);
+        ctx.restore();
+      }
       ctx.drawImage(sprite.img, sx, sy, strip.frameWidth, strip.frameHeight, -dw / 2, -dh / 2, dw, dh);
       return;
     }
@@ -1748,6 +1822,12 @@ function drawEffects(ctx: CanvasRenderingContext2D, scene: CombatScene, now: num
       const cx = fromX + (toX - fromX) * t;
       const cy = fromY + (toY - fromY) * t;
       const angle = Math.atan2(toY - fromY, toX - fromX);
+      if (effect.trail && t > 0.05 && t < 0.95) {
+        const trailCount = 2 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < trailCount; i++) {
+          spawnProjectileTrail(scene, cx, cy, effect.color, angle, !!effect.additive);
+        }
+      }
       ctx.translate(cx, cy);
       ctx.rotate(angle);
       drawEffectSprite(ctx, effect, "projectile", t, now);
