@@ -572,6 +572,172 @@ export const DEMONESS: EnemyDef = {
   isBoss: false,
 };
 
+// Pack 02 remaining variants (knights, blood monsters, demon kin).
+export const IRONCLAD_KNIGHT: EnemyDef = {
+  id: "ironclad-knight",
+  name: "Ironclad Knight",
+  floors: [3],
+  rowPreference: "front",
+  hp: 36,
+  attack: 10,
+  ac: 11,
+  agi: 2,
+  xp: 34,
+  gold: 28,
+  special: [
+    { kind: "highDefense" },
+    { kind: "resistPhysical", percent: 30 },
+  ],
+  isBoss: false,
+};
+
+export const RUNE_KNIGHT: EnemyDef = {
+  id: "rune-knight",
+  name: "Rune Knight",
+  floors: [3],
+  rowPreference: "back",
+  hp: 28,
+  attack: 6,
+  ac: 5,
+  agi: 5,
+  xp: 30,
+  gold: 26,
+  special: [
+    { kind: "caster", element: "lightning" },
+    { kind: "resistElement", element: "lightning" },
+  ],
+  isBoss: false,
+};
+
+export const BLOOD_MONSTER: EnemyDef = {
+  id: "blood-monster",
+  name: "Blood Monster",
+  floors: [2],
+  rowPreference: "front",
+  hp: 22,
+  attack: 6,
+  ac: 3,
+  agi: 6,
+  xp: 16,
+  gold: 14,
+  special: [
+    { kind: "poisonOnHit" },
+    { kind: "weakElement", element: "fire" },
+  ],
+  isBoss: false,
+};
+
+export const BLOOD_WRAITH: EnemyDef = {
+  id: "blood-wraith",
+  name: "Blood Wraith",
+  floors: [2],
+  rowPreference: "back",
+  hp: 14,
+  attack: 5,
+  ac: 1,
+  agi: 13,
+  xp: 15,
+  gold: 13,
+  special: [
+    { kind: "flying" },
+    { kind: "evasive" },
+    { kind: "poisonOnHit" },
+  ],
+  isBoss: false,
+};
+
+export const DEMON_BRAWLER: EnemyDef = {
+  id: "demon-brawler",
+  name: "Demon Brawler",
+  floors: [3],
+  rowPreference: "front",
+  hp: 28,
+  attack: 9,
+  ac: 4,
+  agi: 7,
+  xp: 24,
+  gold: 19,
+  special: [
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  isBoss: false,
+};
+
+export const DEMON_SPAWN: EnemyDef = {
+  id: "demon-spawn",
+  name: "Demon Spawn",
+  floors: [3],
+  rowPreference: "any",
+  hp: 18,
+  attack: 6,
+  ac: 2,
+  agi: 10,
+  xp: 16,
+  gold: 14,
+  special: [
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  isBoss: false,
+};
+
+export const DEMON_CHAMPION: EnemyDef = {
+  id: "demon-champion",
+  name: "Demon Champion",
+  floors: [3],
+  rowPreference: "front",
+  hp: 42,
+  attack: 12,
+  ac: 6,
+  agi: 4,
+  xp: 36,
+  gold: 30,
+  special: [
+    { kind: "highDefense" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  isBoss: false,
+};
+
+export const DEMON_MAGE: EnemyDef = {
+  id: "demon-mage",
+  name: "Demon Mage",
+  floors: [3],
+  rowPreference: "back",
+  hp: 16,
+  attack: 3,
+  ac: 2,
+  agi: 9,
+  xp: 26,
+  gold: 22,
+  special: [
+    { kind: "caster", element: "fire" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  isBoss: false,
+};
+
+export const SUCCUBUS: EnemyDef = {
+  id: "succubus",
+  name: "Succubus",
+  floors: [3],
+  rowPreference: "back",
+  hp: 18,
+  attack: 4,
+  ac: 2,
+  agi: 12,
+  xp: 22,
+  gold: 18,
+  special: [
+    { kind: "caster", element: "undead" },
+    { kind: "silenceRandom", target: "party", duration: "combat" },
+  ],
+  isBoss: false,
+};
+
 export const ALL_ENEMIES: EnemyDef[] = [
   TRAINING_DUMMY,
   SLIME,
@@ -603,6 +769,15 @@ export const ALL_ENEMIES: EnemyDef[] = [
   WARLOCK,
   DEMON,
   DEMONESS,
+  IRONCLAD_KNIGHT,
+  RUNE_KNIGHT,
+  BLOOD_MONSTER,
+  BLOOD_WRAITH,
+  DEMON_BRAWLER,
+  DEMON_SPAWN,
+  DEMON_CHAMPION,
+  DEMON_MAGE,
+  SUCCUBUS,
 ];
 
 export const ENEMIES_BY_ID: Record<string, EnemyDef> = Object.fromEntries(
@@ -695,6 +870,27 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       spawns: [
         { enemyId: "failed-experiment", row: "front" },
         { enemyId: "eyeball-monster", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "blood-monster", row: "front" },
+        { enemyId: "blood-wraith", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "blood-monster", row: "front" },
+        { enemyId: "blood-monster", row: "front" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "failed-experiment", row: "front" },
+        { enemyId: "blood-wraith", row: "back" },
       ],
     },
     {
@@ -793,6 +989,41 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       spawns: [
         { enemyId: "demon", row: "front" },
         { enemyId: "demoness", row: "back" },
+      ],
+    },
+    // Pack 02 remaining forge variants.
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "ironclad-knight", row: "front" },
+        { enemyId: "rune-knight", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "demon-champion", row: "front" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "demon-brawler", row: "front" },
+        { enemyId: "demon-spawn", row: "front" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "demon-mage", row: "back" },
+        { enemyId: "succubus", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "black-knight", row: "front" },
+        { enemyId: "ironclad-knight", row: "front" },
       ],
     },
     // The climax formation — the Echo flanked by its forged honor guard.

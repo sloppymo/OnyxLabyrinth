@@ -81,6 +81,15 @@ describe("encounter table integrity", () => {
       "warlock",
       "demon",
       "demoness",
+      "ironclad-knight",
+      "rune-knight",
+      "blood-monster",
+      "blood-wraith",
+      "demon-brawler",
+      "demon-spawn",
+      "demon-champion",
+      "demon-mage",
+      "succubus",
     ]) {
       expect(ENEMIES_BY_ID[id], `missing ${id}`).toBeDefined();
     }
