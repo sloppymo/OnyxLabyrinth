@@ -123,13 +123,15 @@ function prettyName(id: string): string {
     .join(" ");
 }
 
-/** Pick a fresh formation of enemies from the pool. 2 front + 1 back. */
+/** Pick a fresh formation of enemies from the pool. 3 front + 3 back. */
 function pickNextFormation(): EnemyFormation {
-  const frontIds = [nextEnemyId(), nextEnemyId()];
-  const backId = nextEnemyId();
   return {
-    front: frontIds.map((id) => makeEnemy(id, prettyName(id), "front")),
-    back: [makeEnemy(backId, prettyName(backId), "back")],
+    front: [nextEnemyId(), nextEnemyId(), nextEnemyId()].map((id) =>
+      makeEnemy(id, prettyName(id), "front")
+    ),
+    back: [nextEnemyId(), nextEnemyId(), nextEnemyId()].map((id) =>
+      makeEnemy(id, prettyName(id), "back")
+    ),
   };
 }
 
@@ -644,6 +646,30 @@ function swapEnemies(): void {
   scene = createScene(state);
 }
 
+const RESPAWN_DELAY_MS = 1400;
+
+/** Per-enemy respawn: any enemy whose death animation has run long enough is
+ * replaced by a fresh random monster in the same row/slot. This keeps the
+ * vignette at a full 6 enemies as a continuous monster showcase. */
+function respawnDeadEnemies(now: number): void {
+  for (const row of ["front", "back"] as const) {
+    const list = enemies[row];
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (e.currentHp > 0) continue;
+      const anim = scene.enemyAnims.get(e.instanceId);
+      if (!anim || anim.state !== "death") continue;
+      if (now - anim.stateStart < RESPAWN_DELAY_MS) continue;
+      // Death animation + fade-out have played long enough; swap this slot.
+      const newId = nextEnemyId();
+      const replacement = makeEnemy(newId, prettyName(newId), row);
+      scene.enemyAnims.delete(e.instanceId);
+      list[i] = replacement;
+      state.justDied = state.justDied.filter((d) => d.instanceId !== e.instanceId);
+    }
+  }
+}
+
 function restart(): void {
   scene = createScene(state);
   startRandomTurn();
@@ -731,6 +757,14 @@ function loop(): void {
 
   if (playing) {
     updateScene(scene, now);
+
+    // Respawn individual dead enemies once their death animation has played.
+    // Only do this between turns (when no choreo is running) and only when at
+    // least one enemy is still alive, so a full-party wipe still falls through
+    // to the formation-swap path instead of flickering in partial respawns.
+    if (!scene.choreo && !allEnemiesDead()) {
+      respawnDeadEnemies(now);
+    }
 
     // Auto-advance: when the choreography finishes, updateScene sets
     // scene.choreo to null. We detect that transition via spellPlaying.

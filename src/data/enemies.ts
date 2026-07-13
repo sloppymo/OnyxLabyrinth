@@ -155,21 +155,6 @@ export const ORC: EnemyDef = {
   isBoss: false,
 };
 
-export const LIZARD_WARRIOR: EnemyDef = {
-  id: "lizard-warrior",
-  name: "Lizard Warrior",
-  floors: [2],
-  rowPreference: "front",
-  hp: 14,
-  attack: 4,
-  ac: 3,
-  agi: 6,
-  xp: 10,
-  gold: 7,
-  special: [{ kind: "poisonOnHit" }],
-  isBoss: false,
-};
-
 export const FAILED_EXPERIMENT: EnemyDef = {
   id: "failed-experiment",
   name: "Failed Experiment",
@@ -745,7 +730,6 @@ export const ALL_ENEMIES: EnemyDef[] = [
   ARMORED_SKELETON,
   SKELETON_ARCHER,
   ORC,
-  LIZARD_WARRIOR,
   FAILED_EXPERIMENT,
   ACID_PUDDLE,
   LAB_ASSISTANT,
@@ -842,14 +826,6 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     // Cursed scribe keeps its bound horror standing — teaches focus-firing healers.
-    // Scalebound scavengers from the flooded lower halls.
-    {
-      weight: 3,
-      spawns: [
-        { enemyId: "lizard-warrior", row: "front" },
-        { enemyId: "lizard-warrior", row: "front" },
-      ],
-    },
     {
       weight: 2,
       spawns: [
@@ -891,13 +867,6 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       spawns: [
         { enemyId: "failed-experiment", row: "front" },
         { enemyId: "blood-wraith", row: "back" },
-      ],
-    },
-    {
-      weight: 2,
-      spawns: [
-        { enemyId: "orc", row: "front" },
-        { enemyId: "lizard-warrior", row: "front" },
       ],
     },
     {
