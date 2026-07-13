@@ -270,6 +270,9 @@ export interface CombatScene {
   particles: Particle[];
   /** Last update timestamp for frame-rate-independent particle updates. */
   lastUpdate?: number;
+  /** Baked corridor backdrop (matches current floor's tileset). Null falls
+   *  back to the static combat-bg.png image. */
+  backdrop: HTMLCanvasElement | null;
 }
 
 export interface SceneEffect {
@@ -330,6 +333,7 @@ export function createScene(state: CombatState): CombatScene {
     effects: [],
     screenShake: { amount: 0, until: 0 },
     particles: [],
+    backdrop: null,
   };
 }
 
@@ -2095,17 +2099,24 @@ export function renderScene(
   ctx.save();
   ctx.translate(shakeX, shakeY);
 
-  // Background.
-  const bg = getCombatBg();
-  if (bg?.complete && bg.naturalWidth > 0) {
+  // Background: prefer the baked corridor backdrop (matches the current
+  // floor's tileset), fall back to the static combat-bg.png image, and
+  // finally to a plain gradient if neither is available.
+  if (scene.backdrop) {
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(bg, 0, 0, w, h);
+    ctx.drawImage(scene.backdrop, 0, 0, w, h);
   } else {
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, "#1a1612");
-    grad.addColorStop(1, "#080705");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
+    const bg = getCombatBg();
+    if (bg?.complete && bg.naturalWidth > 0) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(bg, 0, 0, w, h);
+    } else {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, "#1a1612");
+      grad.addColorStop(1, "#080705");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    }
   }
 
   // Enemies: back row first, then front (front overlaps back).

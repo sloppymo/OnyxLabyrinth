@@ -1009,3 +1009,61 @@ function drawScanlines(
     ctx.restore();
   }
 }
+
+/**
+ * Bake a static corridor view into an offscreen canvas for use as a combat
+ * backdrop. Renders the current floor's tileset from the player's position and
+ * facing, producing a perspective dungeon scene that matches the live corridor
+ * renderer. The result is a frozen frame (no torch flicker animation, no head
+ * bob) suitable as a static combat background.
+ *
+ * The corridor renderer places the horizon (floor/ceiling boundary) at 50% of
+ * the canvas height. Combat sprite positions were tuned for a floor plane at
+ * ~21.4% (h*0.214) of the canvas, matching the old static combat-bg.png. To
+ * preserve those positions, the backdrop is rendered at 2× height and the top
+ * portion is cropped so the horizon lands at the same y-coordinate the sprites
+ * expect. This shows more floor and less ceiling — the enclosed-room look from
+ * the mockup.
+ *
+ * After baking, the scanline pattern cache is invalidated so the next live
+ * render recreates it on the main context (CanvasPattern objects can be tied
+ * to the context that created them).
+ */
+export function renderCorridorBackdrop(
+  state: GameState,
+  w: number,
+  h: number
+): HTMLCanvasElement {
+  // Render at 2× height so we can crop the ceiling and shift the horizon up.
+  const renderH = h * 2;
+  const off = document.createElement("canvas");
+  off.width = w;
+  off.height = renderH;
+  const offCtx = off.getContext("2d")!;
+
+  // Snap the camera to the player's current grid position so the render is
+  // static (no interpolation tween, no head bob). The dungeon render loop is
+  // not running during combat, so mutating the shared camera anim is safe —
+  // it will be re-synced when dungeon mode resumes.
+  resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+
+  render(offCtx, state);
+
+  // Invalidate the scanline pattern cache so the next live dungeon render
+  // recreates it on the main corridor context rather than reusing one bound
+  // to this offscreen context.
+  scanlinePattern = null;
+
+  // Crop: the horizon is at renderH/2. We want it at h*0.214 in the output.
+  // Crop from y = renderH/2 - h*0.214, taking h pixels.
+  const FLOOR_PLANE_FRAC = 0.214;
+  const cropStart = Math.floor(renderH / 2 - h * FLOOR_PLANE_FRAC);
+  const result = document.createElement("canvas");
+  result.width = w;
+  result.height = h;
+  const resultCtx = result.getContext("2d")!;
+  resultCtx.imageSmoothingEnabled = false;
+  resultCtx.drawImage(off, 0, cropStart, w, h, 0, 0, w, h);
+
+  return result;
+}
