@@ -396,8 +396,7 @@ export function findActor(
 
 const APPROACH_MS = 525;
 const ATTACK_MS = 840;
-const PAUSE_BEFORE_ATTACK_MS = 450;
-const IMPACT_AT = APPROACH_MS + PAUSE_BEFORE_ATTACK_MS + ATTACK_MS * 0.55;
+const IMPACT_AT = APPROACH_MS + ATTACK_MS * 0.55;
 const RETURN_MS = 420;
 const CAST_MS = 900;
 const CAST_IMPACT = CAST_MS * 0.65;
@@ -410,7 +409,7 @@ function step(at: number, run: (scene: CombatScene, now: number) => void): Chore
 
 /** How far an attacker steps toward the other side (party steps left, enemies right). */
 function approachDelta(kind: SceneCursor["kind"]): number {
-  return kind === "enemy" ? 70 : -70;
+  return kind === "enemy" ? 35 : -35;
 }
 
 /** Push a damage/heal/miss popup over an actor. */
@@ -692,26 +691,14 @@ export function playTurn(
   let approachedId: string | null = null;
   let approachedKind: SceneCursor["kind"] | null = null;
 
-  const approach = (actorId: string, targetId?: string): void => {
+  const approach = (actorId: string): void => {
     const actor = findActor(scene, actorId, w, h);
     if (!actor) return;
     approachedId = actorId;
     approachedKind = actor.kind;
-    // If we have a target, jump directly toward it; otherwise use the
-    // classic fixed-step approach toward the other side.
-    let dx: number;
-    if (targetId) {
-      const target = findActor(scene, targetId, w, h);
-      if (target) {
-        // Stop just short of the target (offset toward the attacker's side).
-        const offset = actor.kind === "party" ? 40 : -40;
-        dx = target.x + offset - actor.x;
-      } else {
-        dx = approachDelta(actor.kind);
-      }
-    } else {
-      dx = approachDelta(actor.kind);
-    }
+    // Symbolic step forward — just enough to read as committing to the
+    // attack. Party steps left toward enemies, enemies step right.
+    const dx = approachDelta(actor.kind);
     steps.push(
       step(t, (sc, n) => {
         const a = getAnim(sc, actor.kind, actorId, n);
@@ -837,23 +824,15 @@ export function playTurn(
           );
           t += ATTACK_MS + 200;
         } else {
-          approach(evt.actorId, evt.targetId);
+          approach(evt.actorId);
           const base = t;
-          // Approach → pause briefly at the target → attack animation.
           steps.push(
             step(base + APPROACH_MS, (sc, n) => {
-              // Arrived — switch to idle for a brief beat before attacking.
-              const actor = findActor(sc, evt.actorId, w, h);
-              if (!actor) return;
-              const a = getAnim(sc, actor.kind, evt.actorId, n);
-              if (a.state === "walk") setAnimState(a, "idle", n);
-            }),
-            step(base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
               if (!actor) return;
               setAnimState(getAnim(sc, actor.kind, evt.actorId, n), "attack", n);
             }),
-            step(base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS + ATTACK_MS, (sc, n) => {
+            step(base + APPROACH_MS + ATTACK_MS, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
               if (!actor) return;
               const a = getAnim(sc, actor.kind, evt.actorId, n);
@@ -875,7 +854,7 @@ export function playTurn(
               evt.damage
             )
           );
-          t = base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS + ATTACK_MS;
+          t = base + APPROACH_MS + ATTACK_MS;
           returnHome();
         }
         break;
@@ -884,16 +863,10 @@ export function playTurn(
       case "miss":
       case "techniqueMiss": {
         if (evt.type === "miss" && evt.reason === "noTarget") break;
-        approach(evt.actorId, evt.targetId);
+        approach(evt.actorId);
         const base = t;
         steps.push(
           step(base + APPROACH_MS, (sc, n) => {
-            const actor = findActor(sc, evt.actorId, w, h);
-            if (!actor) return;
-            const a = getAnim(sc, actor.kind, evt.actorId, n);
-            if (a.state === "walk") setAnimState(a, "idle", n);
-          }),
-          step(base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS, (sc, n) => {
             const actor = findActor(sc, evt.actorId, w, h);
             if (!actor) return;
             setAnimState(getAnim(sc, actor.kind, evt.actorId, n), "attack", n);
@@ -905,14 +878,14 @@ export function playTurn(
           );
         }
         steps.push(
-          step(base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS + ATTACK_MS, (sc, n) => {
+          step(base + APPROACH_MS + ATTACK_MS, (sc, n) => {
             const actor = findActor(sc, evt.actorId, w, h);
             if (!actor) return;
             const a = getAnim(sc, actor.kind, evt.actorId, n);
             if (a.state === "attack") setAnimState(a, "idle", n);
           })
         );
-        t = base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS + ATTACK_MS;
+        t = base + APPROACH_MS + ATTACK_MS;
         returnHome();
         break;
       }

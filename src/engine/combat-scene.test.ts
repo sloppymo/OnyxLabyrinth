@@ -67,7 +67,7 @@ describe("playTurn choreography", () => {
     expect(scene.partyAnims.get("c0")?.state).toBe("walk");
 
     // At impact: popup with the damage number, target hurt.
-    updateScene(scene, t0 + 1500); // past IMPACT_AT (~1437)
+    updateScene(scene, t0 + 1100); // past IMPACT_AT (~987)
     expect(scene.popups.some((p) => p.text === "7")).toBe(true);
     expect(scene.enemyAnims.get("rat-0")?.state).toBe("hurt");
 
@@ -100,7 +100,7 @@ describe("playTurn choreography", () => {
       { type: "miss", actorId: "c0", targetId: "rat-0", reason: "evade" },
     ];
     playTurn(scene, events, spellName, 0, W, H);
-    updateScene(scene, 1500); // past IMPACT_AT (~1437)
+    updateScene(scene, 1100); // past IMPACT_AT (~987)
     expect(scene.popups.some((p) => p.text === "MISS")).toBe(true);
     expect(scene.enemyAnims.get("rat-0")?.state ?? "idle").not.toBe("hurt");
   });
