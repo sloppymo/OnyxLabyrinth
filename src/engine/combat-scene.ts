@@ -183,11 +183,17 @@ function setAnimState(anim: ActorAnim, state: ActorSpriteState, now: number): vo
 }
 
 /**
+ * Global animation speed multiplier (1 = normal, <1 = slower).
+ * Set to ~0.67 for a 50% slowdown of sprite frame playback.
+ */
+const ANIM_SPEED = 0.67;
+
+/**
  * Compute the frame index for a strip given the anim state age.
  * Looping strips cycle; non-looping strips hold their last frame.
  */
 function frameIndexFor(strip: SpriteStrip, stateAge: number): number {
-  const idx = Math.floor((stateAge / 1000) * strip.fps);
+  const idx = Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED);
   if (strip.loop) return idx % strip.frameCount;
   return Math.min(strip.frameCount - 1, idx);
 }
@@ -204,7 +210,7 @@ export interface DamagePopup {
   big?: boolean;
 }
 
-const POPUP_DURATION = 900;
+const POPUP_DURATION = 1350;
 
 /** FF6 bounce: quick rise with overshoot, settle, brief hold, fade. */
 function popupOffsetY(t: number): number {
@@ -388,15 +394,15 @@ export function findActor(
 
 // --- Choreography construction ----------------------------------------------------------
 
-const APPROACH_MS = 350;
-const ATTACK_MS = 560;
-const PAUSE_BEFORE_ATTACK_MS = 300;
+const APPROACH_MS = 525;
+const ATTACK_MS = 840;
+const PAUSE_BEFORE_ATTACK_MS = 450;
 const IMPACT_AT = APPROACH_MS + PAUSE_BEFORE_ATTACK_MS + ATTACK_MS * 0.55;
-const RETURN_MS = 280;
-const CAST_MS = 600;
+const RETURN_MS = 420;
+const CAST_MS = 900;
 const CAST_IMPACT = CAST_MS * 0.65;
-const MULTI_TARGET_STAGGER = 90;
-const DEATH_FADE_MS = 700;
+const MULTI_TARGET_STAGGER = 135;
+const DEATH_FADE_MS = 1050;
 
 function step(at: number, run: (scene: CombatScene, now: number) => void): ChoreoStep {
   return { at, run, fired: false };
@@ -1577,11 +1583,11 @@ function drawEnemy(
     const stateAge = now - anim.stateStart;
     let frame: number;
     if (anim.state === "death") {
-      frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 450) * strip.frameCount));
+      frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 675) * strip.frameCount));
     } else if (strip.loop || anim.state === "idle") {
-      frame = Math.floor((stateAge / 1000) * strip.fps) % strip.frameCount;
+      frame = Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED) % strip.frameCount;
     } else {
-      frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps));
+      frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED));
     }
     // Enemy strips are authored facing RIGHT — exactly toward the party in
     // the FF6 layout (enemies left, party right) — so no mirroring.
@@ -1633,11 +1639,11 @@ function drawAlly(
       const stateAge = now - anim.stateStart;
       let frame: number;
       if (anim.state === "death") {
-        frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 450) * strip.frameCount));
+        frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 675) * strip.frameCount));
       } else if (strip.loop || anim.state === "idle") {
-        frame = Math.floor((stateAge / 1000) * strip.fps) % strip.frameCount;
+        frame = Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED) % strip.frameCount;
       } else {
-        frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps));
+        frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED));
       }
       // Summon sprites face RIGHT (toward enemies), same as enemy art.
       drawStripFrame(ctx, img, strip, frame, x, y, ENEMY_SIZE, false, anim.opacity);
@@ -1718,7 +1724,7 @@ function effectFrame(sprite: EffectSprite, start: number, now: number, type: Sce
   const strip = sprite.strip;
   if (strip.frameCount <= 1 || strip.fps <= 0) return 0;
   const elapsed = Math.max(0, now - start);
-  const idx = Math.floor((elapsed / 1000) * strip.fps);
+  const idx = Math.floor((elapsed / 1000) * strip.fps * ANIM_SPEED);
   const shouldLoop = type === "projectile" || type === "charge" || strip.loop === true;
   return shouldLoop ? idx % strip.frameCount : Math.min(strip.frameCount - 1, idx);
 }

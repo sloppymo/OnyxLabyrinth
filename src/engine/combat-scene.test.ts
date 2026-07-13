@@ -67,7 +67,7 @@ describe("playTurn choreography", () => {
     expect(scene.partyAnims.get("c0")?.state).toBe("walk");
 
     // At impact: popup with the damage number, target hurt.
-    updateScene(scene, t0 + 1000); // past IMPACT_AT (~958)
+    updateScene(scene, t0 + 1500); // past IMPACT_AT (~1437)
     expect(scene.popups.some((p) => p.text === "7")).toBe(true);
     expect(scene.enemyAnims.get("rat-0")?.state).toBe("hurt");
 
@@ -89,7 +89,7 @@ describe("playTurn choreography", () => {
     expect(scene.banner).toBe("Spell:mage-fire-bolt");
     expect(scene.partyAnims.get("c1")?.state).toBe("cast");
 
-    updateScene(scene, t0 + 500); // past cast impact (~390)
+    updateScene(scene, t0 + 700); // past cast impact (~585)
     expect(scene.effects.some((e) => e.type === "burst")).toBe(true);
     expect(scene.popups.some((p) => p.text === "5")).toBe(true);
   });
@@ -100,7 +100,7 @@ describe("playTurn choreography", () => {
       { type: "miss", actorId: "c0", targetId: "rat-0", reason: "evade" },
     ];
     playTurn(scene, events, spellName, 0, W, H);
-    updateScene(scene, 1000); // past IMPACT_AT (~958)
+    updateScene(scene, 1500); // past IMPACT_AT (~1437)
     expect(scene.popups.some((p) => p.text === "MISS")).toBe(true);
     expect(scene.enemyAnims.get("rat-0")?.state ?? "idle").not.toBe("hurt");
   });
