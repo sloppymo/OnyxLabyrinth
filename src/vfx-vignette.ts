@@ -22,6 +22,7 @@ import {
   type CombatWindowsHandlers,
 } from "./engine/combat-select-action-view";
 import { techniquesForClass, techniqueById, maxRageForLevel, classHasTechniques, type TechniqueDef } from "./data/techniques";
+import { CLASSES, computeMaxHp, computeMaxSp, type Stats } from "./game/party";
 
 // --- Canvas setup --------------------------------------------------------------
 
@@ -34,7 +35,18 @@ const H = canvas.height;
 // We don't need real combat math — just enough data for the scene renderer to
 // place sprites and resolve effect styles.
 
-function makeCharacter(id: string, name: string, cls: Character["class"], slot: number): Character {
+function makeCharacter(id: string, name: string, cls: Character["class"], slot: number, stats: Stats): Character {
+  // Simulate leveling from 1 → 12 using the real growth formulas.
+  const classDef = CLASSES[cls];
+  let maxHp = computeMaxHp(stats, cls);
+  let maxSp = computeMaxSp(stats, cls);
+  const hpGrowth = Math.floor((stats.vit * 2 + classDef.hpBonus) * 0.5);
+  const castingStat = classDef.spellClass === "Mage" ? stats.int : classDef.spellClass === "Priest" ? stats.pie : 0;
+  const spGrowth = castingStat > 0 ? Math.floor(castingStat * 0.5) : 0;
+  for (let lvl = 2; lvl <= 12; lvl++) {
+    maxHp += hpGrowth;
+    maxSp += spGrowth;
+  }
   return {
     id,
     name,
@@ -43,11 +55,11 @@ function makeCharacter(id: string, name: string, cls: Character["class"], slot: 
     class: cls,
     level: 12,
     xp: 0,
-    stats: { str: 10, int: 18, pie: 18, vit: 10, agi: 10, luk: 10 },
-    hp: 99,
-    sp: 99,
-    maxHp: 99,
-    maxSp: 99,
+    stats,
+    hp: maxHp,
+    sp: maxSp,
+    maxHp,
+    maxSp,
     formationSlot: slot,
     status: [],
     knownSpellIds: [],
@@ -77,12 +89,12 @@ function makeEnemy(id: string, name: string, row: Row): EnemyInstance {
 }
 
 const party: Character[] = [
-  makeCharacter("mage-1", "Aria", "Mage", 0),
-  makeCharacter("priest-1", "Fenn", "Priest", 1),
-  makeCharacter("mage-2", "Eve", "Mage", 2),
-  makeCharacter("priest-2", "Dell", "Priest", 3),
-  makeCharacter("fighter-1", "Bram", "Fighter", 4),
-  makeCharacter("thief-1", "Coda", "Thief", 5),
+  makeCharacter("mage-1", "Aria", "Mage", 0, { str: 8, int: 18, pie: 12, vit: 10, agi: 12, luk: 10 }),
+  makeCharacter("priest-1", "Fenn", "Priest", 1, { str: 10, int: 12, pie: 18, vit: 12, agi: 10, luk: 10 }),
+  makeCharacter("mage-2", "Eve", "Mage", 2, { str: 8, int: 17, pie: 14, vit: 11, agi: 13, luk: 11 }),
+  makeCharacter("priest-2", "Dell", "Priest", 3, { str: 9, int: 14, pie: 16, vit: 10, agi: 12, luk: 12 }),
+  makeCharacter("fighter-1", "Bram", "Fighter", 4, { str: 17, int: 10, pie: 12, vit: 16, agi: 12, luk: 10 }),
+  makeCharacter("thief-1", "Coda", "Thief", 5, { str: 12, int: 11, pie: 10, vit: 12, agi: 17, luk: 15 }),
 ];
 
 // Give every caster a broad spellbook so the demo can cycle many VFX.
@@ -94,13 +106,13 @@ party[2].knownSpellIds = [...MAGE_SPELLS];
 party[3].knownSpellIds = [...PRIEST_SPELLS];
 
 // Simulate varied party condition so the status bar looks like real gameplay.
-party[1].hp = 45;
-party[1].sp = 12;
+party[1].hp = Math.floor(party[1].maxHp * 0.35); // wounded
+party[1].sp = Math.floor(party[1].maxSp * 0.15); // low SP
 party[2].status.push("poison");
-party[2].sp = 88;
-party[3].hp = 0;
+party[2].sp = Math.floor(party[2].maxSp * 0.75);
+party[3].hp = 0; // knocked out
 party[3].status.push("knockedOut");
-party[4].sp = 0;
+party[4].sp = 0; // melee, no SP
 party[5].status.push("hidden");
 
 // Use real enemy IDs from the sprite manifest so actual sprite art loads.
