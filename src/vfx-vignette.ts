@@ -340,7 +340,6 @@ function chooseRandomAction(): DemoAction | null {
   const spells = knownSpells(actor);
   const techs = knownTechniques(actor);
   const menu = menuEntriesForCharacter(actor);
-  const canCast = spells.length > 0 && actor.sp > 0;
   const canTech = techs.length > 0 && (state.rage[actor.id] ?? 0) > 0;
 
   const isCaster = spells.length > 0;

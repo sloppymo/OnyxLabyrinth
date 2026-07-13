@@ -34,6 +34,7 @@ import {
 import { enemyHealthDescriptor } from "./combat-display";
 import type { Character } from "../game/party";
 import { isUtilitySpell, type SpellDef } from "../data/spells";
+import { enemyAbilityById } from "../data/enemy-abilities";
 import { techniquesForClass, techniqueById, type TechniqueDef } from "../data/techniques";
 import type { ItemDef } from "../data/items";
 import { combatCtx, combatCanvas, combatWindows } from "./shell";
@@ -236,9 +237,12 @@ export class CombatController {
     playTurn(
       this.scene,
       events,
-      // Banner name lookup: spells first, then items (item use emits a
-      // "cast" event carrying the item id).
-      (id) => this.state.spells[id]?.name ?? this.state.items[id]?.name ?? id,
+      // Banner name lookup: spells, items, then enemy abilities.
+      (id) =>
+        this.state.spells[id]?.name ??
+        this.state.items[id]?.name ??
+        enemyAbilityById(id)?.name ??
+        id,
       performance.now(),
       combatCanvas.width,
       combatCanvas.height,
