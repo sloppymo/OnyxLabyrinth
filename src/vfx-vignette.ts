@@ -21,6 +21,7 @@ import {
   type CombatWindowsView,
   type CombatWindowsHandlers,
 } from "./engine/combat-select-action-view";
+import { techniquesForClass, techniqueById, maxRageForLevel, classHasTechniques, type TechniqueDef } from "./data/techniques";
 
 // --- Canvas setup --------------------------------------------------------------
 
@@ -84,6 +85,14 @@ const party: Character[] = [
   makeCharacter("thief-1", "Coda", "Thief", 5),
 ];
 
+// Give every caster a broad spellbook so the demo can cycle many VFX.
+const MAGE_SPELLS = ALL_SPELLS.filter((s) => s.class === "Mage" && !isUtilitySpell(s)).map((s) => s.id);
+const PRIEST_SPELLS = ALL_SPELLS.filter((s) => s.class === "Priest" && !isUtilitySpell(s)).map((s) => s.id);
+party[0].knownSpellIds = [...MAGE_SPELLS];
+party[1].knownSpellIds = [...PRIEST_SPELLS];
+party[2].knownSpellIds = [...MAGE_SPELLS];
+party[3].knownSpellIds = [...PRIEST_SPELLS];
+
 // Simulate varied party condition so the status bar looks like real gameplay.
 party[1].hp = 45;
 party[1].sp = 12;
@@ -142,6 +151,11 @@ const state: CombatState = {
   enemyAgiDebuffs: {},
 };
 
+// Give every character full rage so techniques are always available in the demo.
+for (const c of party) {
+  state.rage[c.id] = maxRageForLevel(c.level);
+}
+
 // --- Spell queue ---------------------------------------------------------------
 // All non-utility spells, ordered by school then tier for a logical progression.
 
@@ -159,104 +173,286 @@ const NEW_SPELL_IDS = new Set([
   "mage-tempest",
 ]);
 
-// Determine the right target for a spell based on its target type.
-function pickTargetId(spell: SpellDef): string | null {
+// --- Random turn helpers ------------------------------------------------------
+
+function randomActor(): Character | null {
+  const living = party.filter(
+    (c) => c.hp > 0 && !c.status.includes("knockedOut")
+  );
+  if (living.length === 0) return null;
+  return living[Math.floor(Math.random() * living.length)];
+}
+
+function randomEnemy(): EnemyInstance | null {
+  const living = [...enemies.front, ...enemies.back].filter(
+    (e) => e.currentHp > 0
+  );
+  if (living.length === 0) return null;
+  return living[Math.floor(Math.random() * living.length)];
+}
+
+function randomAlly(): Character | null {
+  const living = party.filter(
+    (c) => c.hp > 0 && !c.status.includes("knockedOut")
+  );
+  if (living.length === 0) return null;
+  return living[Math.floor(Math.random() * living.length)];
+}
+
+function pickTargetIdForSpell(spell: SpellDef): string | null {
   switch (spell.target) {
     case "singleEnemy":
-      return "skeleton";
+      return randomEnemy()?.instanceId ?? null;
     case "singleAlly":
-      return "mage-1";
+      return randomAlly()?.id ?? null;
     case "groupEnemies":
     case "allEnemies":
-      return "skeleton"; // The first target; the choreography handles area spread.
+      return randomEnemy()?.instanceId ?? null;
     case "groupAllies":
     case "allAllies":
-      return "mage-1";
+      return randomAlly()?.id ?? null;
     case "self":
       return null;
     default:
-      return "skeleton";
+      return null;
   }
 }
 
-// Determine the right caster based on spell class.
-function pickCasterId(spell: SpellDef): string {
-  return spell.class === "Priest" ? "priest-1" : "mage-1";
+function pickTargetIdForTechnique(tech: TechniqueDef): string | null {
+  switch (tech.target) {
+    case "singleEnemy":
+    case "rowEnemies":
+    case "columnEnemies":
+    case "allFrontEnemies":
+    case "allEnemies":
+    case "randomEnemies":
+      return randomEnemy()?.instanceId ?? null;
+    case "singleAlly":
+    case "allAllies":
+    case "allFrontAllies":
+      return randomAlly()?.id ?? null;
+    case "self":
+      return null;
+    default:
+      return null;
+  }
 }
 
-// Build the CombatEvent pair for a spell cast.
-function makeSpellEvents(spell: SpellDef): CombatEvent[] {
-  const casterId = pickCasterId(spell);
-  const targetId = pickTargetId(spell);
+const DAMAGE_RANGE = { min: 12, max: 28 };
+const HEAL_RANGE = { min: 20, max: 40 };
+
+function rollDamage(): number {
+  return Math.floor(Math.random() * (DAMAGE_RANGE.max - DAMAGE_RANGE.min + 1)) + DAMAGE_RANGE.min;
+}
+
+function rollHeal(): number {
+  return Math.floor(Math.random() * (HEAL_RANGE.max - HEAL_RANGE.min + 1)) + HEAL_RANGE.min;
+}
+
+function applyDamageToEnemy(enemy: EnemyInstance, amount: number): void {
+  // Keep at least 1 HP so the demo never runs out of targets.
+  enemy.currentHp = Math.max(1, enemy.currentHp - amount);
+}
+
+function applyHealToAlly(ally: Character, amount: number): void {
+  ally.hp = Math.min(ally.maxHp, ally.hp + amount);
+}
+
+function knownSpells(c: Character): SpellDef[] {
+  return c.knownSpellIds
+    .map((id) => spellById(id))
+    .filter((s): s is SpellDef => s !== undefined && !isUtilitySpell(s));
+}
+
+function knownTechniques(c: Character): TechniqueDef[] {
+  return techniquesForClass(c.class, c.level);
+}
+
+interface DemoAction {
+  actor: Character;
+  kind: "attack" | "cast" | "technique" | "defend";
+  spell?: SpellDef;
+  technique?: TechniqueDef;
+  targetId: string | null;
+  label: string;
+  menuIndex: number;
+}
+
+function chooseRandomAction(): DemoAction | null {
+  const actor = randomActor();
+  if (!actor) return null;
+
+  const spells = knownSpells(actor);
+  const techs = knownTechniques(actor);
+  const menu = menuEntriesForCharacter(actor);
+  const canCast = spells.length > 0 && actor.sp > 0;
+  const canTech = techs.length > 0 && (state.rage[actor.id] ?? 0) > 0;
+
+  const options: { weight: number; kind: DemoAction["kind"] }[] = [
+    { weight: canCast ? 55 : 0, kind: "cast" },
+    { weight: canTech ? 25 : 0, kind: "technique" },
+    { weight: 20, kind: "attack" },
+  ];
+  const total = options.reduce((sum, o) => sum + o.weight, 0);
+  if (total === 0) return null;
+
+  let roll = Math.random() * total;
+  let kind: DemoAction["kind"] = "attack";
+  for (const o of options) {
+    if (o.weight === 0) continue;
+    roll -= o.weight;
+    if (roll <= 0) {
+      kind = o.kind;
+      break;
+    }
+  }
+
+  if (kind === "cast") {
+    const spell = spells[Math.floor(Math.random() * spells.length)];
+    const targetId = pickTargetIdForSpell(spell);
+    const menuIndex = menu.findIndex((m) => m.kind === "cast");
+    return { actor, kind, spell, targetId, label: spell.name, menuIndex };
+  }
+
+  if (kind === "technique") {
+    const tech = techs[Math.floor(Math.random() * techs.length)];
+    const targetId = pickTargetIdForTechnique(tech);
+    const menuIndex = menu.findIndex((m) => m.kind === "technique");
+    return { actor, kind, technique: tech, targetId, label: tech.name, menuIndex };
+  }
+
+  const target = randomEnemy();
+  const targetId = target?.instanceId ?? null;
+  const menuIndex = menu.findIndex((m) => m.kind === "attack");
+  return { actor, kind: "attack", targetId, label: "Attack", menuIndex };
+}
+
+let currentAction: DemoAction | null = null;
+
+function restoreDemoResources(): void {
+  for (const c of party) {
+    if (c.hp > 0 && !c.status.includes("knockedOut")) {
+      c.sp = Math.min(c.maxSp, c.sp + Math.max(1, Math.floor(c.maxSp * 0.08)));
+    }
+  }
+  for (const c of party) {
+    if (classHasTechniques(c.class)) {
+      state.rage[c.id] = Math.min(
+        maxRageForLevel(c.level),
+        (state.rage[c.id] ?? 0) + Math.floor(maxRageForLevel(c.level) * 0.15)
+      );
+    }
+  }
+}
+
+function buildTurnEvents(action: DemoAction): CombatEvent[] {
   const events: CombatEvent[] = [];
 
-  // The cast event triggers the wind-up + projectile + banner.
-  events.push({
-    type: "cast",
-    actorId: casterId,
-    spellId: spell.id,
-    targetId,
-  });
+  if (action.kind === "attack" && action.targetId) {
+    const dmg = rollDamage();
+    applyDamageToEnemy(
+      [...enemies.front, ...enemies.back].find((e) => e.instanceId === action.targetId)!,
+      dmg
+    );
+    events.push({
+      type: "attack",
+      actorId: action.actor.id,
+      targetId: action.targetId,
+      damage: dmg,
+    });
+    return events;
+  }
 
-  // The spellEffect event triggers the burst/field + flash + shake.
-  // For damage spells, include a fake damage value so the flash triggers.
-  const eff = spell.effect;
-  const isDamage = eff.kind === "damage";
-  const isHeal = eff.kind === "heal";
-  const isBuff = eff.kind === "buff" || eff.kind === "magicScreen";
-  const isDisable = eff.kind === "disable";
-  const isSummon = eff.kind === "summon";
-  const isCure = eff.kind === "cure" || eff.kind === "resurrect";
-  const isDispel = eff.kind === "fizzleField" || eff.kind === "dispelMagic";
+  if (action.kind === "technique" && action.technique) {
+    const tech = action.technique;
+    const targetId = action.targetId;
+    events.push({ type: "technique", actorId: action.actor.id, techniqueId: tech.id, targetId });
+    state.rage[action.actor.id] = Math.max(0, (state.rage[action.actor.id] ?? 0) - tech.rageCost);
 
-  if (spell.target === "allEnemies" || spell.target === "groupEnemies") {
-    // Area spell: one spellEffect per enemy.
-    for (const e of [...enemies.front, ...enemies.back]) {
-      events.push({
-        type: "spellEffect",
-        spellId: spell.id,
-        targetId: e.instanceId,
-        damage: isDamage ? 15 : undefined,
-        heal: isHeal ? 10 : undefined,
-        isBuff,
-        isDebuff: isDisable || isDispel,
-        statusInflicted: isDisable ? eff.kind === "disable" ? (eff as { status?: string }).status : undefined : undefined,
-      });
+    const eff = tech.effect;
+    if (eff.kind === "heal" && targetId) {
+      const amount = rollHeal();
+      applyHealToAlly(
+        party.find((c) => c.id === targetId) ?? action.actor,
+        amount
+      );
+      events.push({ type: "techniqueBuff", actorId: action.actor.id, techniqueId: tech.id, targetId });
+    } else if (eff.kind === "buff" && targetId) {
+      events.push({ type: "techniqueBuff", actorId: action.actor.id, techniqueId: tech.id, targetId });
+    } else if (eff.kind === "damage" || eff.kind === "multiHit" || eff.kind === "damageWithStatus" || eff.kind === "damageWithExecute") {
+      if (targetId) {
+        const dmg = rollDamage();
+        applyDamageToEnemy(
+          [...enemies.front, ...enemies.back].find((e) => e.instanceId === targetId)!,
+          dmg
+        );
+        events.push({
+          type: "techniqueHit",
+          actorId: action.actor.id,
+          techniqueId: tech.id,
+          targetId,
+          damage: dmg,
+        });
+      }
+    } else if (targetId) {
+      // Generic status/debuff/buff fallback.
+      events.push({ type: "techniqueBuff", actorId: action.actor.id, techniqueId: tech.id, targetId });
     }
-  } else if (spell.target === "allAllies" || spell.target === "groupAllies") {
-    // Area heal/buff: one spellEffect per party member.
-    for (const c of party) {
+    return events;
+  }
+
+  if (action.kind === "cast" && action.spell) {
+    const spell = action.spell;
+    const targetId = action.targetId;
+    action.actor.sp = Math.max(0, action.actor.sp - spell.spCost);
+    events.push({ type: "cast", actorId: action.actor.id, spellId: spell.id, targetId });
+
+    const eff = spell.effect;
+    const isDamage = eff.kind === "damage";
+    const isHeal = eff.kind === "heal";
+    const isBuff = eff.kind === "buff" || eff.kind === "magicScreen";
+    const isDisable = eff.kind === "disable";
+    const isSummon = eff.kind === "summon";
+    const isCure = eff.kind === "cure" || eff.kind === "resurrect";
+    const isDispel = eff.kind === "fizzleField" || eff.kind === "dispelMagic";
+
+    const pushSpellEffect = (tid: string | undefined, isDebuff = false) => {
       events.push({
         type: "spellEffect",
         spellId: spell.id,
-        targetId: c.id,
-        damage: isDamage ? 15 : undefined,
-        heal: isHeal ? 10 : undefined,
+        targetId: tid,
+        damage: isDamage ? rollDamage() : undefined,
+        heal: isHeal ? rollHeal() : undefined,
         isBuff,
-        isDebuff: false,
+        isDebuff: isDisable || isDispel || isDebuff,
+        statusInflicted: isDisable ? (eff as { status?: string }).status : undefined,
         statusCured: isCure ? "poison" : undefined,
       });
+    };
+
+    if (spell.target === "allEnemies" || spell.target === "groupEnemies") {
+      for (const e of [...enemies.front, ...enemies.back]) {
+        if (isDamage) applyDamageToEnemy(e, rollDamage());
+        pushSpellEffect(e.instanceId, true);
+      }
+    } else if (spell.target === "allAllies" || spell.target === "groupAllies") {
+      for (const c of party) {
+        if (isHeal) applyHealToAlly(c, rollHeal());
+        pushSpellEffect(c.id);
+      }
+    } else if (targetId) {
+      if (isDamage) {
+        const enemy = [...enemies.front, ...enemies.back].find((e) => e.instanceId === targetId);
+        if (enemy) applyDamageToEnemy(enemy, rollDamage());
+      }
+      if (isHeal) {
+        const ally = party.find((c) => c.id === targetId);
+        if (ally) applyHealToAlly(ally, rollHeal());
+      }
+      pushSpellEffect(targetId);
+    } else if (isSummon || isDispel) {
+      pushSpellEffect(undefined, isDispel);
     }
-  } else if (targetId) {
-    // Single target.
-    events.push({
-      type: "spellEffect",
-      spellId: spell.id,
-      targetId,
-      damage: isDamage ? 15 : undefined,
-      heal: isHeal ? 10 : undefined,
-      isBuff,
-      isDebuff: isDisable || isDispel,
-      statusInflicted: isDisable ? (eff as { status?: string }).status : undefined,
-      statusCured: isCure ? "poison" : undefined,
-    });
-  } else if (isSummon || isDispel) {
-    // Self-cast summon/dispel — no targetId, field effect.
-    events.push({
-      type: "spellEffect",
-      spellId: spell.id,
-      isDebuff: isDispel,
-    });
   }
 
   return events;
@@ -265,7 +461,6 @@ function makeSpellEvents(spell: SpellDef): CombatEvent[] {
 // --- Playback state ------------------------------------------------------------
 
 let scene = createScene(state);
-let spellIndex = 0;
 let playing = true;
 let slowMotion = false;
 let turnStartTime = 0;
@@ -287,6 +482,10 @@ function spellNameFor(id: string): string {
   return spellById(id)?.name ?? id;
 }
 
+function techniqueNameFor(id: string): string {
+  return techniqueById(id)?.name ?? id;
+}
+
 const noOpHandlers: CombatWindowsHandlers = {
   onMenuHover: () => {},
   onMenuConfirm: () => {},
@@ -296,13 +495,15 @@ const noOpHandlers: CombatWindowsHandlers = {
 
 /** Render the regular blue FF6 combat menu windows at the bottom. */
 function renderDemoCombatWindows(): void {
-  const currentChar = party[0]; // Aria is the demo caster.
+  const action = currentAction;
+  const currentChar = action?.actor ?? party[0];
+  const menuIndex = action?.menuIndex ?? 1;
   const view: CombatWindowsView = {
     state,
     currentCharacterId: currentChar.id,
     menuMode: "menu",
     menuEntries: menuEntriesForCharacter(currentChar),
-    menuIndex: 1, // Highlight Magic, since the demo is about spell VFX.
+    menuIndex,
     selectionTitle: "",
     selectionEntries: [],
     selectionIndex: 0,
@@ -313,29 +514,32 @@ function renderDemoCombatWindows(): void {
   renderCombatWindows(combatWindowsEl, view, noOpHandlers);
 }
 
-function startCurrentSpell(): void {
-  const spell = VFX_SPELLS[spellIndex];
-  if (!spell) return;
-  const events = makeSpellEvents(spell);
+function startRandomTurn(): void {
+  currentAction = chooseRandomAction();
+  if (!currentAction) {
+    // Fallback: revive a downed character and try again next frame.
+    party[3].hp = 20;
+    party[3].status = party[3].status.filter((s) => s !== "knockedOut");
+    currentAction = chooseRandomAction();
+  }
+  const events = currentAction ? buildTurnEvents(currentAction) : [];
   turnStartTime = performance.now();
-  playTurn(scene, events, spellNameFor, turnStartTime, W, H);
+  playTurn(scene, events, spellNameFor, turnStartTime, W, H, techniqueNameFor);
   spellPlaying = true;
   waitingForNext = false;
   updateInfoDisplay();
   renderDemoCombatWindows();
 }
 
-function nextSpell(): void {
-  spellIndex = (spellIndex + 1) % VFX_SPELLS.length;
-  // Reset scene state for the next spell (clear lingering effects/particles).
+function nextTurn(): void {
+  // Reset scene state for the next turn (clear lingering effects/particles).
   scene = createScene(state);
-  startCurrentSpell();
+  startRandomTurn();
 }
 
 function restart(): void {
-  spellIndex = 0;
   scene = createScene(state);
-  startCurrentSpell();
+  startRandomTurn();
 }
 
 function populateSpellSelect(): void {
@@ -360,29 +564,49 @@ function styleDetail(spell: SpellDef): string {
 }
 
 function updateInfoDisplay(): void {
-  const spell = VFX_SPELLS[spellIndex];
-  if (!spell) return;
-  const eff = spell.effect;
-  const targetDesc = spell.target === "self" ? "Self"
-    : spell.target === "singleEnemy" ? "1 Enemy"
-    : spell.target === "singleAlly" ? "1 Ally"
-    : spell.target === "allEnemies" || spell.target === "groupEnemies" ? "All Enemies"
-    : spell.target === "allAllies" || spell.target === "groupAllies" ? "All Allies"
-    : "?";
-  const element = eff.kind === "damage" && eff.element ? ` · ${eff.element}` : "";
-  spellInfoEl.textContent = `[${spellIndex + 1}/${VFX_SPELLS.length}] ${spell.name} — ${spell.class} T${spell.tier} · ${eff.kind}${element} · ${targetDesc}`;
-  spellStyleEl.textContent = styleDetail(spell);
-  spellSelect.value = String(spellIndex);
+  const action = currentAction;
+  if (!action) {
+    spellInfoEl.textContent = "";
+    spellStyleEl.textContent = "";
+    spellQueueEl.innerHTML = "";
+    spellSelect.value = "";
+    return;
+  }
 
-  // Build queue display: show a window of spells around the current one.
-  const windowSize = 12;
-  const start = Math.max(0, spellIndex - 2);
-  const end = Math.min(VFX_SPELLS.length, start + windowSize);
+  let info = `${action.actor.name} (${action.actor.class}) → ${action.label}`;
+  if (action.kind === "cast" && action.spell) {
+    const spell = action.spell;
+    const eff = spell.effect;
+    const targetDesc =
+      spell.target === "self" ? "Self"
+        : spell.target === "singleEnemy" ? "1 Enemy"
+        : spell.target === "singleAlly" ? "1 Ally"
+        : spell.target === "allEnemies" || spell.target === "groupEnemies" ? "All Enemies"
+        : spell.target === "allAllies" || spell.target === "groupAllies" ? "All Allies"
+        : "?";
+    const element = eff.kind === "damage" && eff.element ? ` · ${eff.element}` : "";
+    info = `${info} — ${spell.class} T${spell.tier} · ${eff.kind}${element} · ${targetDesc}`;
+    spellStyleEl.textContent = styleDetail(spell);
+
+    // Sync the dropdown to the chosen spell when possible.
+    const idx = VFX_SPELLS.findIndex((s) => s.id === spell.id);
+    spellSelect.value = idx >= 0 ? String(idx) : "";
+  } else if (action.kind === "technique" && action.technique) {
+    const tech = action.technique;
+    info = `${info} — ${tech.class} Tech · ${tech.rageCost} RG`;
+    spellStyleEl.textContent = "";
+    spellSelect.value = "";
+  } else {
+    spellStyleEl.textContent = "";
+    spellSelect.value = "";
+  }
+  spellInfoEl.textContent = info;
+
+  // Build queue display: show the recent action history and upcoming actors.
   const parts: string[] = [];
-  for (let i = start; i < end; i++) {
-    const s = VFX_SPELLS[i];
-    const cls = i === spellIndex ? "current" : i < spellIndex ? "done" : "";
-    parts.push(`<span class="${cls}">${NEW_SPELL_IDS.has(s.id) ? "★ " : ""}${s.name}</span>`);
+  for (let i = 0; i < 6; i++) {
+    const cls = i === 0 ? "current" : "";
+    parts.push(`<span class="${cls}">· · ·</span>`);
   }
   spellQueueEl.innerHTML = parts.join(" · ");
 }
@@ -403,7 +627,8 @@ function loop(): void {
       // Brief pause between spells (800ms) so the viewer can see the result.
       setTimeout(() => {
         if (waitingForNext) {
-          nextSpell();
+          restoreDemoResources();
+          nextTurn();
         }
       }, 800);
     }
@@ -423,7 +648,7 @@ btnPlay.addEventListener("click", () => {
 });
 
 btnNext.addEventListener("click", () => {
-  nextSpell();
+  nextTurn();
 });
 
 btnRestart.addEventListener("click", () => {
@@ -452,18 +677,36 @@ btnSlow.addEventListener("click", () => {
 spellSelect.addEventListener("change", () => {
   const idx = parseInt(spellSelect.value, 10);
   if (!isNaN(idx) && idx >= 0 && idx < VFX_SPELLS.length) {
-    spellIndex = idx;
+    const spell = VFX_SPELLS[idx];
+    const actor =
+      party.find((c) => c.class === spell.class && c.hp > 0 && !c.status.includes("knockedOut")) ??
+      randomActor();
+    if (!actor) return;
+    const menu = menuEntriesForCharacter(actor);
+    currentAction = {
+      actor,
+      kind: "cast",
+      spell,
+      targetId: pickTargetIdForSpell(spell),
+      label: spell.name,
+      menuIndex: menu.findIndex((m) => m.kind === "cast"),
+    };
     scene = createScene(state);
-    startCurrentSpell();
+    const events = buildTurnEvents(currentAction);
+    turnStartTime = performance.now();
+    playTurn(scene, events, spellNameFor, turnStartTime, W, H, techniqueNameFor);
+    spellPlaying = true;
+    waitingForNext = false;
+    updateInfoDisplay();
+    renderDemoCombatWindows();
   }
 });
 
 btnNewSpells.addEventListener("click", () => {
   const firstNew = VFX_SPELLS.findIndex((s) => NEW_SPELL_IDS.has(s.id));
   if (firstNew >= 0) {
-    spellIndex = firstNew;
-    scene = createScene(state);
-    startCurrentSpell();
+    spellSelect.value = String(firstNew);
+    spellSelect.dispatchEvent(new Event("change"));
   }
 });
 
@@ -484,5 +727,5 @@ loadEnemySprites().catch(() => {});
 loadEffectSprites().catch(() => {});
 
 populateSpellSelect();
-startCurrentSpell();
+startRandomTurn();
 loop();
