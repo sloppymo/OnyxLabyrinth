@@ -120,6 +120,73 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
   },
   // Re-themed bestiary (2026-07): the former blob-fallback enemies now map
   // onto Characters(100x100) pack monsters. Stats unchanged; ids/names/art only.
+  // Pack 02 additions (demon / forge theme):
+  "flame-golem": {
+    idle: strip("flame-golem", "idle", 6, 6, true),
+    attack: strip("flame-golem", "attack", 9, 10),
+    hurt: strip("flame-golem", "hurt", 4, 8),
+    death: strip("flame-golem", "death", 6, 6),
+  },
+  "lava-slime": {
+    idle: strip("lava-slime", "idle", 6, 6, true),
+    attack: strip("lava-slime", "attack", 6, 10),
+    hurt: strip("lava-slime", "hurt", 4, 8),
+    death: strip("lava-slime", "death", 4, 6),
+  },
+  hellhound: {
+    idle: strip("hellhound", "idle", 6, 8, true),
+    attack: strip("hellhound", "attack", 8, 10),
+    hurt: strip("hellhound", "hurt", 4, 8),
+    death: strip("hellhound", "death", 4, 6),
+  },
+  hellbat: {
+    idle: strip("hellbat", "idle", 6, 8, true),
+    attack: strip("hellbat", "attack", 6, 10),
+    hurt: strip("hellbat", "hurt", 4, 8),
+    death: strip("hellbat", "death", 4, 6),
+  },
+  "black-knight": {
+    idle: strip("black-knight", "idle", 6, 6, true),
+    attack: strip("black-knight", "attack", 16, 12),
+    hurt: strip("black-knight", "hurt", 4, 8),
+    death: strip("black-knight", "death", 4, 6),
+  },
+  minotaur: {
+    idle: strip("minotaur", "idle", 6, 6, true),
+    attack: strip("minotaur", "attack", 8, 10),
+    hurt: strip("minotaur", "hurt", 4, 8),
+    death: strip("minotaur", "death", 4, 6),
+  },
+  warlock: {
+    idle: strip("warlock", "idle", 6, 6, true),
+    attack: strip("warlock", "attack", 7, 10),
+    hurt: strip("warlock", "hurt", 4, 8),
+    death: strip("warlock", "death", 11, 8),
+  },
+  demon: {
+    idle: strip("demon", "idle", 6, 6, true),
+    attack: strip("demon", "attack", 7, 10),
+    hurt: strip("demon", "hurt", 4, 8),
+    death: strip("demon", "death", 4, 6),
+  },
+  demoness: {
+    idle: strip("demoness", "idle", 6, 6, true),
+    attack: strip("demoness", "attack", 9, 10),
+    hurt: strip("demoness", "hurt", 4, 8),
+    death: strip("demoness", "death", 4, 6),
+  },
+  "eyeball-monster": {
+    idle: strip("eyeball-monster", "idle", 6, 6, true),
+    attack: strip("eyeball-monster", "attack", 8, 10),
+    hurt: strip("eyeball-monster", "hurt", 4, 8),
+    death: strip("eyeball-monster", "death", 4, 6),
+  },
+  ghostfire: {
+    idle: strip("ghostfire", "idle", 6, 8, true),
+    attack: strip("ghostfire", "attack", 6, 10),
+    hurt: strip("ghostfire", "hurt", 4, 8),
+    death: strip("ghostfire", "death", 6, 6),
+  },
   slime: {
     idle: strip("slime", "idle", 6, 6, true),
     attack: strip("slime", "attack", 6, 10),

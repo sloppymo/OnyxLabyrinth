@@ -244,6 +244,8 @@ describe("stealFrom", () => {
     const state = makeState();
     const npc = state.floor.npcs![0];
     const thief = state.party.find((c) => c.class === "Thief")!;
+    // Pin AGI so the test is deterministic regardless of random default party rolls.
+    thief.stats.agi = 10;
     // A roll that fails for a bare Thief but succeeds with a big AGI boost.
     const roll = 0.3;
     // Bare Thief has a low chance; with a heavy AGI boost it should succeed.
