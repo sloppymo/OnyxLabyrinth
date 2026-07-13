@@ -187,6 +187,61 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("ghostfire", "hurt", 4, 8),
     death: strip("ghostfire", "death", 6, 6),
   },
+  // Pack 02 remaining variants (knights, blood monsters, demon kin):
+  "ironclad-knight": {
+    idle: strip("ironclad-knight", "idle", 6, 6, true),
+    attack: strip("ironclad-knight", "attack", 7, 10),
+    hurt: strip("ironclad-knight", "hurt", 4, 8),
+    death: strip("ironclad-knight", "death", 4, 6),
+  },
+  "rune-knight": {
+    idle: strip("rune-knight", "idle", 6, 6, true),
+    attack: strip("rune-knight", "attack", 8, 10),
+    hurt: strip("rune-knight", "hurt", 4, 8),
+    death: strip("rune-knight", "death", 10, 8),
+  },
+  "blood-monster": {
+    idle: strip("blood-monster", "idle", 6, 6, true),
+    attack: strip("blood-monster", "attack", 8, 10),
+    hurt: strip("blood-monster", "hurt", 4, 8),
+    death: strip("blood-monster", "death", 4, 6),
+  },
+  "blood-wraith": {
+    idle: strip("blood-wraith", "idle", 6, 8, true),
+    attack: strip("blood-wraith", "attack", 8, 10),
+    hurt: strip("blood-wraith", "hurt", 4, 8),
+    death: strip("blood-wraith", "death", 6, 6),
+  },
+  "demon-brawler": {
+    idle: strip("demon-brawler", "idle", 6, 6, true),
+    attack: strip("demon-brawler", "attack", 9, 10),
+    hurt: strip("demon-brawler", "hurt", 4, 8),
+    death: strip("demon-brawler", "death", 4, 6),
+  },
+  "demon-spawn": {
+    idle: strip("demon-spawn", "idle", 6, 6, true),
+    attack: strip("demon-spawn", "attack", 6, 10),
+    hurt: strip("demon-spawn", "hurt", 4, 8),
+    death: strip("demon-spawn", "death", 4, 6),
+  },
+  "demon-champion": {
+    idle: strip("demon-champion", "idle", 6, 6, true),
+    attack: strip("demon-champion", "attack", 11, 12),
+    hurt: strip("demon-champion", "hurt", 4, 8),
+    death: strip("demon-champion", "death", 4, 6),
+  },
+  "demon-mage": {
+    idle: strip("demon-mage", "idle", 6, 6, true),
+    attack: strip("demon-mage", "attack", 8, 10),
+    hurt: strip("demon-mage", "hurt", 4, 8),
+    death: strip("demon-mage", "death", 4, 6),
+  },
+  succubus: {
+    idle: strip("succubus", "idle", 6, 6, true),
+    attack: strip("succubus", "attack", 8, 10),
+    hurt: strip("succubus", "hurt", 4, 8),
+    death: strip("succubus", "death", 4, 6),
+  },
   slime: {
     idle: strip("slime", "idle", 6, 6, true),
     attack: strip("slime", "attack", 6, 10),
