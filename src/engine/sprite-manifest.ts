@@ -284,12 +284,6 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("werewolf", "hurt", 4, 8),
     death: strip("werewolf", "death", 4, 6),
   },
-  samurai: {
-    idle: strip("samurai", "idle", 6, 6, true),
-    attack: strip("samurai", "attack", 15, 12),
-    hurt: strip("samurai", "hurt", 5, 8),
-    death: strip("samurai", "death", 4, 6),
-  },
   ronin: {
     idle: strip("ronin", "idle", 6, 6, true),
     attack: strip("ronin", "attack", 12, 12),
