@@ -342,6 +342,13 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
     sp.textContent = "—";
     row.appendChild(sp);
 
+    // Empty rage cell keeps the HP bar aligned in the 5th grid column
+    // (summons have no rage).
+    const rg = document.createElement("span");
+    rg.className = "ff6-p-rg none";
+    rg.textContent = "—";
+    row.appendChild(rg);
+
     const barWrap = document.createElement("span");
     barWrap.className = "ff6-p-bar";
     const fill = document.createElement("span");
