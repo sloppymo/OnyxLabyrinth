@@ -334,7 +334,10 @@ const EFFECT_STRIPS: Record<string, EffectStrip> = {
   px_wind_bolt: { name: "px_wind_bolt", url: "pixelart-wind-bolt.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
 
   // --- Downloaded pack: Magic Pack 9 (ansimuz, royalty-free) — NON-SQUARE frames ---
-  mp_fire_bomb: { name: "mp_fire_bomb", url: "magicpack-fire-bomb.png", frameWidth: 64, frameHeight: 64, frameCount: 14, fps: 14 },
+  // mp_fire_bomb is trimmed to the 7 orange-fire frames (source frames 7-13); the
+  // original strip opens with a blue charge-ring telegraph that a fixed 400ms burst
+  // never plays past, so bursts using the full strip never showed fire at all.
+  mp_fire_bomb: { name: "mp_fire_bomb", url: "magicpack-fire-bomb.png", frameWidth: 64, frameHeight: 64, frameCount: 7, fps: 25 },
   mp_lightning: { name: "mp_lightning", url: "magicpack-lightning.png", frameWidth: 64, frameHeight: 128, frameCount: 10, fps: 14 },
   mp_spark: { name: "mp_spark", url: "magicpack-spark.png", frameWidth: 32, frameHeight: 32, frameCount: 7, fps: 14 },
   mp_dark_bolt: { name: "mp_dark_bolt", url: "magicpack-dark-bolt.png", frameWidth: 64, frameHeight: 88, frameCount: 11, fps: 14 },
@@ -362,6 +365,16 @@ const EFFECT_STRIPS: Record<string, EffectStrip> = {
   // --- Baked recolor variants (engine cannot tint strips at runtime) ---
   heal_sparks: { name: "heal_sparks", url: "heal-sparks.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
   dispel_sparks: { name: "dispel_sparks", url: "dispel-sparks.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
+
+  // --- Downloaded pack: "Free" spell-effects sampler (~/Downloads/Spell Effects/Free,
+  // no bundled license file — verify provenance before shipping) — 180 designs, each a
+  // 9-color x 64x64 sheet; single color rows cropped out per use below. ---
+  free_sunburst: { name: "free_sunburst", url: "free-sunburst.png", frameWidth: 64, frameHeight: 64, frameCount: 9, fps: 12 },
+  free_moon: { name: "free_moon", url: "free-moon.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+  free_stunburst: { name: "free_stunburst", url: "free-stunburst.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+  free_wardring: { name: "free_wardring", url: "free-wardring.png", frameWidth: 64, frameHeight: 64, frameCount: 14, fps: 12 },
+  free_tangle: { name: "free_tangle", url: "free-tangle.png", frameWidth: 64, frameHeight: 64, frameCount: 12, fps: 12 },
+  free_slash: { name: "free_slash", url: "free-slash.png", frameWidth: 64, frameHeight: 64, frameCount: 8, fps: 12 },
 };
 
 const effectCache: Map<string, EffectSprite> = new Map();

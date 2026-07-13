@@ -37,10 +37,17 @@ cp "$PX/Magic Sparks.png"    "$OUT/pixelart-magic-sparks.png"
 cp "$PX/Darkness Orb.png"    "$OUT/pixelart-darkness-orb.png"
 
 # --- Pack 2: Magic Pack 9 — copy spritesheets (already horizontal strips) ----
-cp "$MP/Fire-bomb.png" "$OUT/magicpack-fire-bomb.png"
 cp "$MP/Lightning.png" "$OUT/magicpack-lightning.png"
 cp "$MP/spark.png"     "$OUT/magicpack-spark.png"
 cp "$MP/Dark-Bolt.png" "$OUT/magicpack-dark-bolt.png"
+
+# Fire-bomb.png's first 7 frames are a blue charge-ring telegraph, not fire; the
+# engine's burst effects play for a fixed 400ms and never reach the orange frames
+# if the full 14-frame strip is used, so only the 7 payoff frames (7-13) are kept.
+# See mp_fire_bomb's comment in effect-sprite-cache.ts.
+convert "$MP/Fire-bomb.png" -crop 64x64 +repage +adjoin "$OUT/mpfb-frame-%d.png"
+convert +append "$OUT"/mpfb-frame-{7,8,9,10,11,12,13}.png "$OUT/magicpack-fire-bomb.png"
+rm -f "$OUT"/mpfb-frame-*.png
 
 # --- Pack 3: Foozle — concatenate numbered frames into horizontal strips ------
 convert +append "$FZ/Fire_Ball/"*.png    "$OUT/foozle-fireball.png"
@@ -65,4 +72,20 @@ recolor "$OUT/foozle-portal.png"       '#4a1a00' '#ff9a3a' "$OUT/foozle-portal-o
 recolor "$OUT/pixelart-magic-sparks.png" '#0d3a12' '#b8ffb0' "$OUT/heal-sparks.png"
 recolor "$OUT/pixelart-magic-sparks.png" '#0a2c3e' '#a8f0ff' "$OUT/dispel-sparks.png"
 
-echo "Done. Generated $(ls "$OUT"/pixelart-* "$OUT"/magicpack-* "$OUT"/foozle-* "$OUT"/heal-sparks.png "$OUT"/dispel-sparks.png 2>/dev/null | wc -l) files."
+# --- Pack 4: "Free" spell-effects sampler (~/Downloads/Spell Effects/Free) ----
+# 180 numbered PNGs, each a 9-color x 64px-frame sheet (colors: orange, magenta,
+# cyan, green, muted-orange, white/grey, muted-purple, red, blue, top to bottom).
+# No bundled license file was found — verify provenance before shipping.
+# Single color rows are cropped out per effect below (row index * 64 = y offset).
+FR="${SRC}/Free"
+crop_row() { # src_file row(0-8) out_file
+  convert "$1" -crop "$(identify -format '%w' "$1")x64+0+$(( $2 * 64 ))" +repage "$3"
+}
+crop_row "$FR/Part 6/286.png"  0 "$OUT/free-sunburst.png"   # gold flower/pinwheel burst
+crop_row "$FR/Part 9/438.png"  8 "$OUT/free-moon.png"       # blue crescent moon
+crop_row "$FR/Part 9/446.png"  5 "$OUT/free-stunburst.png"  # white star-flower burst
+crop_row "$FR/Part 14/672.png" 2 "$OUT/free-wardring.png"   # cyan ring-around-orb seal
+crop_row "$FR/Part 3/134.png"  5 "$OUT/free-tangle.png"     # white tangled squiggle
+crop_row "$FR/Part 7/324.png"  7 "$OUT/free-slash.png"      # red X-cross slash mark
+
+echo "Done. Generated $(ls "$OUT"/pixelart-* "$OUT"/magicpack-* "$OUT"/foozle-* "$OUT"/free-* "$OUT"/heal-sparks.png "$OUT"/dispel-sparks.png 2>/dev/null | wc -l) files."
