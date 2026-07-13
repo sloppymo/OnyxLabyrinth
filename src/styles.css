@@ -1037,16 +1037,19 @@ canvas#map-canvas {
     inset 0 0 0 2px #202c70,
     0 3px 8px rgba(0, 0, 0, 0.6);
   color: var(--warm-white);
-  padding: 8px 10px;
-  min-height: 150px;
+  padding: 6px 8px;
+  min-height: 110px;
+  /* Cap the windows so they hug the bottom instead of rising over the
+     battlefield; taller content (long spell lists, 6 party members)
+     scrolls internally. */
+  max-height: 240px;
   overflow: hidden;
 }
 
 .ff6-menu {
-  flex: 0 0 33%;
+  flex: 0 0 32%;
   display: flex;
   flex-direction: column;
-  max-height: 230px;
 }
 
 .ff6-menu.empty {
@@ -1124,7 +1127,7 @@ canvas#map-canvas {
 }
 
 .ff6-enemies {
-  flex: 0 0 31%;
+  flex: 0 0 26%;
 }
 
 .ff6-enemy-row {
@@ -1160,7 +1163,7 @@ canvas#map-canvas {
    open, in the same 31% slot, so the overall three-column layout never
    shifts. */
 .ff6-spell-detail {
-  flex: 0 0 31%;
+  flex: 0 0 26%;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1198,15 +1201,21 @@ canvas#map-canvas {
   flex: 1 1 auto;
   /* Extra right padding so the HP bars don't kiss the window border. */
   padding-right: 12px;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
 
 .ff6-party-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) auto auto 64px;
+  /* name · HP · SP · Rage on line 1; a thin full-width HP bar wraps below.
+     Keeping the bar out of the stats line frees horizontal room so 4-char
+     names never truncate at high levels, while thin bars + tight gaps let
+     all six members fit without the window rising over the battlefield. */
+  grid-template-columns: minmax(0, 1.6fr) auto auto auto;
   align-items: baseline;
-  gap: 8px;
-  font-size: var(--fs-body);
-  line-height: 1.4;
+  gap: 1px 8px;
+  font-size: var(--fs-small);
+  line-height: 1.15;
   padding: 1px 4px;
 }
 
@@ -1259,8 +1268,11 @@ canvas#map-canvas {
 }
 
 .ff6-p-bar {
-  display: inline-block;
-  height: 8px;
+  display: block;
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 4px;
+  margin-top: 1px;
   border: 1px solid #e8e8f0;
   border-radius: 3px;
   background: #101c58;
