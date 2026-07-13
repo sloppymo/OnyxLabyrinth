@@ -261,7 +261,7 @@ function floor1(): FloorDef {
         ],
         wantsItemId: "healing-potion",
         rewardItemId: "long-sword+1",
-        combatEnemyIds: ["ronin"],
+        combatEnemyIds: ["ironclad-knight"],
       },
     ],
     events: [
@@ -516,7 +516,7 @@ function floor3(): FloorDef {
           { key: "duel", response: "Draw when ready. I will not strike first, and I will not strike last." },
           { key: "master", hidden: true, response: "My master built the Grand Forge and burned in it. I stayed to guard his failure. Kill the Echo, and my vigil ends." },
         ],
-        combatEnemyIds: ["ronin"],
+        combatEnemyIds: ["black-knight"],
       },
     ],
     events: [
