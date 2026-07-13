@@ -371,6 +371,9 @@ export function createDefaultParty(): Character[] {
     "mage-frostbite",
     "mage-poison-spray",
     "mage-fire-bolt",
+    "mage-water-bolt",
+    "mage-stone-shard",
+    "mage-gust",
     "mage-arcane-ward",
     "mage-wayfinder",
   ];
@@ -380,6 +383,9 @@ export function createDefaultParty(): Character[] {
     "mage-frostbite",
     "mage-poison-spray",
     "mage-fire-bolt",
+    "mage-water-bolt",
+    "mage-stone-shard",
+    "mage-gust",
     "mage-arcane-ward",
     "mage-wayfinder",
   ];

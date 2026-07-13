@@ -121,7 +121,7 @@ describe("renderCombatWindows", () => {
     expect(current?.textContent).toBe("Alice");
   });
 
-  it("renders one row per living enemy with HP totals", () => {
+  it("groups duplicate enemies with a count", () => {
     const state = makeState([
       makeEnemy("rat-0"),
       makeEnemy("rat-1"),
@@ -129,11 +129,9 @@ describe("renderCombatWindows", () => {
     ]);
     renderCombatWindows(container, baseView(state), noopHandlers());
     const rows = container.querySelectorAll(".ff6-enemy-row");
-    expect(rows).toHaveLength(3);
-    for (const row of rows) {
-      expect(row.textContent).toContain("Test Rat");
-      expect(row.textContent).toContain("10/10");
-    }
+    expect(rows).toHaveLength(1);
+    expect(rows[0].textContent).toContain("Test Rat");
+    expect(rows[0].textContent).toContain("×3");
   });
 
   it("omits dead enemies from the enemy window", () => {

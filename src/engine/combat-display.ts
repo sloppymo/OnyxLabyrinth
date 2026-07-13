@@ -21,6 +21,9 @@ const ELEMENT_LABELS: Record<DamageElement, string> = {
   lightning: "Lightning",
   poison: "Poison",
   divine: "Divine",
+  water: "Water",
+  earth: "Earth",
+  wind: "Wind",
 };
 
 /** Friendly label for a spell's target shape (single/group/all, ally/enemy). */

@@ -348,17 +348,16 @@ const EFFECT_STRIPS: Record<string, EffectStrip> = {
   fz_fireball: { name: "fz_fireball", url: "foozle-fireball.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
   fz_explosion: { name: "fz_explosion", url: "foozle-explosion.png", frameWidth: 64, frameHeight: 64, frameCount: 7, fps: 12 },
   fz_molten_spear: { name: "fz_molten_spear", url: "foozle-molten-spear.png", frameWidth: 64, frameHeight: 64, frameCount: 12, fps: 12 },
-  fz_portal: { name: "fz_portal", url: "foozle-portal.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
-  fz_portal_gold: { name: "fz_portal_gold", url: "foozle-portal-gold.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
-  fz_portal_orange: { name: "fz_portal_orange", url: "foozle-portal-orange.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
-  // Future-element candidates
-  fz_earth_spike: { name: "fz_earth_spike", url: "foozle-earth_spike.png", frameWidth: 64, frameHeight: 64, frameCount: 9, fps: 12 },
-  fz_rocks: { name: "fz_rocks", url: "foozle-rocks.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
   fz_water: { name: "fz_water", url: "foozle-water.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
   fz_water_geyser: { name: "fz_water_geyser", url: "foozle-water_geyser.png", frameWidth: 64, frameHeight: 64, frameCount: 13, fps: 12 },
+  fz_earth_spike: { name: "fz_earth_spike", url: "foozle-earth_spike.png", frameWidth: 64, frameHeight: 64, frameCount: 9, fps: 12 },
+  fz_rocks: { name: "fz_rocks", url: "foozle-rocks.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
   fz_wind: { name: "fz_wind", url: "foozle-wind.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
   fz_tornado: { name: "fz_tornado", url: "foozle-tornado.png", frameWidth: 64, frameHeight: 64, frameCount: 9, fps: 12 },
   fz_icons: { name: "fz_icons", url: "foozle-icons.png", frameWidth: 32, frameHeight: 32, frameCount: 10, fps: 0 },
+  fz_portal: { name: "fz_portal", url: "foozle-portal.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+  fz_portal_gold: { name: "fz_portal_gold", url: "foozle-portal-gold.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+  fz_portal_orange: { name: "fz_portal_orange", url: "foozle-portal-orange.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
 
   // --- Baked recolor variants (engine cannot tint strips at runtime) ---
   heal_sparks: { name: "heal_sparks", url: "heal-sparks.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
