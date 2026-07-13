@@ -64,6 +64,8 @@ const COLORS = {
 const PARTY_SIZE = 210;
 /** Enemy sprite draw size for image strips. */
 const ENEMY_SIZE = 300;
+/** Boss sprites are drawn larger to tower over regular enemies. */
+const BOSS_SIZE = 480;
 /** Vertical spacing between members of a party column. */
 const PARTY_ROW_SPACING = 78;
 /** Vertical spacing between enemies in a row. */
@@ -1556,10 +1558,12 @@ function drawEnemyFallback(
   y: number,
   enemy: EnemyInstance,
   anim: ActorAnim,
-  now: number
+  now: number,
+  size: number = ENEMY_SIZE
 ): void {
-  const w = 104;
-  const h = 122;
+  const scale = size / ENEMY_SIZE;
+  const w = 104 * scale;
+  const h = 122 * scale;
   ctx.save();
   ctx.globalAlpha = anim.opacity;
   const bob = anim.state === "idle" ? Math.sin(now / 700 + x * 0.02) * 2 : 0;
@@ -1575,8 +1579,8 @@ function drawEnemyFallback(
   ctx.fill();
   // Eyes face the party (right).
   ctx.fillStyle = "#14110d";
-  ctx.fillRect(x + 6, py - h * 0.32, 5, 5);
-  ctx.fillRect(x + 18, py - h * 0.32, 5, 5);
+  ctx.fillRect(x + 6 * scale, py - h * 0.32, 5 * scale, 5 * scale);
+  ctx.fillRect(x + 18 * scale, py - h * 0.32, 5 * scale, 5 * scale);
   if (anim.state === "hurt") {
     const intensity = anim.hitFlashIntensity || 0.3;
     const sz = 1 + intensity * 0.3;
@@ -1693,10 +1697,11 @@ function drawEnemy(
   const off = animOffset(anim, now);
   const x = slot.x + off.x;
   const y = slot.y + off.y;
+  const size = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
 
   // Same measured art metrics as the party sprites: feet ~7% below frame
   // center, body ~25% of the frame wide.
-  drawShadow(ctx, x, y + ENEMY_SIZE * 0.07, ENEMY_SIZE * 0.13);
+  drawShadow(ctx, x, y + size * 0.07, size * 0.13);
 
   const stripInfo = getEnemySpriteStrip(enemy.id, enemyStripState(anim.state));
   if (stripInfo?.img && stripInfo.img.naturalWidth > 0) {
@@ -1712,16 +1717,16 @@ function drawEnemy(
     }
     // Enemy strips are authored facing RIGHT — exactly toward the party in
     // the FF6 layout (enemies left, party right) — so no mirroring.
-    drawStripFrame(ctx, img, strip, frame, x, y, ENEMY_SIZE, false, anim.opacity);
+    drawStripFrame(ctx, img, strip, frame, x, y, size, false, anim.opacity);
     // No extra hurt-flash overlay here: the sprite pack already bakes a red
     // flash frame into the hurt strip (see e.g. assets/enemies/orc/hurt.png),
     // so an additional ellipse just doubles up into a harsher red blob.
   } else {
-    drawEnemyFallback(ctx, x, y, enemy, anim, now);
+    drawEnemyFallback(ctx, x, y, enemy, anim, now, size);
   }
 
   // Tallest enemy art tops out ≈16% of sprite size above center.
-  drawMarkers(ctx, scene, "enemy", enemy.instanceId, x, y - ENEMY_SIZE * 0.2, now);
+  drawMarkers(ctx, scene, "enemy", enemy.instanceId, x, y - size * 0.2, now);
 }
 
 /** Draw a summoned ally (sprite if available, otherwise glowing orb). */
