@@ -366,11 +366,14 @@ function buildTurnEvents(action: DemoAction): CombatEvent[] {
       [...enemies.front, ...enemies.back].find((e) => e.instanceId === action.targetId)!,
       dmg
     );
+    // Thief attacks from range (bow); everyone else is melee.
+    const range = action.actor.class === "Thief" ? "long" : "close";
     events.push({
       type: "attack",
       actorId: action.actor.id,
       targetId: action.targetId,
       damage: dmg,
+      range,
     });
     return events;
   }
