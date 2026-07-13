@@ -29,6 +29,7 @@ import { getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache
 import { getPartySpriteStrip, type PartySpriteState } from "./party-sprite-cache";
 import { getEffectSprite, type EffectSprite } from "./effect-sprite-cache";
 import { spellById } from "../data/spells";
+import { enemyAbilityById } from "../data/enemy-abilities";
 import type { SpriteStrip } from "./sprite-manifest";
 import combatBgUrl from "../assets/combat-bg.png";
 
@@ -706,6 +707,21 @@ export function resolveEffectStyle(
 
   if (spellId && SPELL_OVERRIDES[spellId]) {
     return SPELL_OVERRIDES[spellId];
+  }
+  // Enemy ability IDs (from data/enemy-abilities.ts) — look up the ability's
+  // element and use the matching ELEMENT_STYLES entry for VFX.
+  const enemyAbility = spellId ? enemyAbilityById(spellId) : undefined;
+  if (enemyAbility) {
+    const el = enemyAbility.element;
+    if (el && ELEMENT_STYLES[el]) return ELEMENT_STYLES[el];
+    // Ability effect kind fallbacks.
+    const eff = enemyAbility.effect;
+    if (eff.kind === "heal") return { color: COLORS.heal, projectile: "priest_heal", burst: "priest_heal", scale: 1.2 };
+    if (eff.kind === "buff" || eff.kind === "magicScreen") return { color: COLORS.sp, burst: "px_shield", burstScale: 1.6, field: "px_shield", fieldScale: 0.8, scale: 1.2 };
+    if (eff.kind === "status") return STATUS_STYLES[eff.status] ?? { color: COLORS.poison, burst: "red_energy" };
+    if (eff.kind === "fizzleField") return { color: "#7fe0e0", field: "free_wardring", fieldScale: 0.7, burst: "free_wardring", burstScale: 1.1 };
+    if (eff.kind === "summon") return { color: COLORS.sp, burst: "fz_portal", burstScale: 1.1, field: "fz_portal", fieldScale: 0.6, scale: 1.2 };
+    return { color: COLORS.spellBurst, burst: "fire_explosion" };
   }
   const spell = spellId ? spellById(spellId) : undefined;
   if (spell) {

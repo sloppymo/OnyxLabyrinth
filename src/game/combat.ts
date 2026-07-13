@@ -18,6 +18,7 @@
 import type { Character, Stats, StatusEffect } from "./party";
 import { charRow } from "./party";
 import type { EnemyDef, EnemySpecial, Row } from "../data/enemies";
+import { ENEMIES_BY_ID } from "../data/enemies";
 import type { SpellDef, SpellEffect, SpellTarget, DamageElement } from "../data/spells";
 import { spellByName } from "../data/spells";
 import type { ItemDef } from "../data/items";
@@ -31,6 +32,8 @@ import {
   dispatchHook,
   freshPerkState,
 } from "./perks";
+import type { EnemyAbilityDef, AbilityCondition } from "../data/enemy-abilities";
+import { enemyAbilityById } from "../data/enemy-abilities";
 
 /** Effective stats for a combatant, reading their loadout and chosen perks. */
 function effStatsFor(s: CombatState, c: Character): Stats {
@@ -108,6 +111,10 @@ export interface EnemyInstance extends EnemyDef {
   currentHp: number;
   row: Row; // actual row in this encounter (from EnemySpawn)
   status: StatusEffect[]; // enemies can be slept / blinded / paralyzed too
+  /** Per-ability cooldown tracker: ability id → rounds remaining. */
+  abilityCooldowns?: Record<string, number>;
+  /** Whether this enemy has acted at least once this combat. */
+  hasActed?: boolean;
 }
 
 export interface EnemyFormation {
@@ -323,6 +330,7 @@ type EnemyAction =
       target: EnemyAttackTarget;
     }
   | { kind: "cast"; actor: EnemyInstance; spellId: string; targetId: string }
+  | { kind: "ability"; actor: EnemyInstance; abilityId: string; targetId: string }
   | { kind: "silence"; actor: EnemyInstance }
   | { kind: "doNothing"; actor: EnemyInstance };
 
@@ -1015,6 +1023,15 @@ export function endRound(state: CombatState, rng: Rng = Math.random): CombatStat
 
   s.silencedThisRound = [];
 
+  // Tick enemy ability cooldowns (decrement by 1 each round).
+  for (const e of [...s.enemies.front, ...s.enemies.back]) {
+    if (e.abilityCooldowns) {
+      for (const id of Object.keys(e.abilityCooldowns)) {
+        if (e.abilityCooldowns[id] > 0) e.abilityCooldowns[id]--;
+      }
+    }
+  }
+
   // Tick technique-related temporary buffs/debuffs.
   tickTechniqueBuffs(s);
 
@@ -1080,6 +1097,112 @@ function isCasterEnemy(enemy: EnemyInstance): boolean {
   );
 }
 
+/** Count living allies (including self). */
+function livingAllyCount(s: CombatState): number {
+  return [...s.enemies.front, ...s.enemies.back].filter((e) => e.currentHp > 0).length;
+}
+
+/** Check if any ally (including self) is below the given HP percentage. */
+function anyAllyHurt(s: CombatState, percent: number): boolean {
+  return [...s.enemies.front, ...s.enemies.back].some(
+    (e) => e.currentHp > 0 && (e.currentHp / e.hp) * 100 < percent
+  );
+}
+
+/** Check if any party member has the given status. */
+function partyHasStatus(s: CombatState, status: string): boolean {
+  return s.party.some((c) => c.hp > 0 && c.status.includes(status as StatusEffect));
+}
+
+/** Evaluate an ability condition against the current combat state. */
+function abilityConditionMet(
+  s: CombatState,
+  enemy: EnemyInstance,
+  cond: AbilityCondition
+): boolean {
+  const hpPct = (enemy.currentHp / enemy.hp) * 100;
+  switch (cond.kind) {
+    case "always": return true;
+    case "hpBelow": return hpPct < cond.percent;
+    case "hpAbove": return hpPct >= cond.percent;
+    case "allyHurt": return anyAllyHurt(s, cond.percent);
+    case "noAllyHurt": return !anyAllyHurt(s, 100);
+    case "turnInterval": return s.round % cond.every === 0;
+    case "minAllies": return livingAllyCount(s) >= cond.count;
+    case "maxAllies": return livingAllyCount(s) <= cond.count;
+    case "partyHasStatus": return partyHasStatus(s, cond.status);
+    case "partyMissingStatus": return !partyHasStatus(s, cond.status);
+    case "firstTurn": return !enemy.hasActed;
+    case "notFirstTurn": return !!enemy.hasActed;
+    default: return false;
+  }
+}
+
+/** Pick a target ID for an ability based on its target pattern. */
+function pickAbilityTargetId(
+  s: CombatState,
+  ability: EnemyAbilityDef,
+  rng: Rng
+): string | null {
+  const livingParty = s.party.filter((c) => c.hp > 0 && !c.status.includes("hidden"));
+  const party = livingParty.length > 0 ? livingParty : s.party.filter((c) => c.hp > 0);
+  const livingAllies = [...s.enemies.front, ...s.enemies.back].filter((e) => e.currentHp > 0);
+
+  switch (ability.target) {
+    case "self":
+      return null;
+    case "singleParty": {
+      const t = pickRandom(party, rng);
+      return t?.id ?? null;
+    }
+    case "singleAlly": {
+      const wounded = livingAllies.filter((e) => e.currentHp < e.hp);
+      const t = wounded.length > 0 ? wounded.sort((a, b) => a.currentHp - b.currentHp)[0] : pickRandom(livingAllies, rng);
+      return t?.instanceId ?? null;
+    }
+    case "groupParty":
+    case "allParty":
+    case "groupAlly":
+    case "allAlly":
+      return party[0]?.id ?? null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Build the list of valid enemy abilities for this turn, filtered by
+ * conditions and cooldowns. Returns a weighted pick or null.
+ */
+function pickEnemyAbility(
+  s: CombatState,
+  enemy: EnemyInstance,
+  rng: Rng
+): { ability: EnemyAbilityDef; targetId: string | null } | null {
+  if (!enemy.abilityIds || enemy.abilityIds.length === 0) return null;
+  const cooldowns = enemy.abilityCooldowns ?? {};
+  const valid: { ability: EnemyAbilityDef; weight: number }[] = [];
+  for (const id of enemy.abilityIds) {
+    const ab = enemyAbilityById(id);
+    if (!ab) continue;
+    if ((cooldowns[id] ?? 0) > 0) continue;
+    if (!abilityConditionMet(s, enemy, ab.condition)) continue;
+    valid.push({ ability: ab, weight: ab.weight });
+  }
+  if (valid.length === 0) return null;
+  const total = valid.reduce((sum, v) => sum + v.weight, 0);
+  let roll = rng() * total;
+  for (const v of valid) {
+    roll -= v.weight;
+    if (roll <= 0) {
+      const targetId = pickAbilityTargetId(s, v.ability, rng);
+      return { ability: v.ability, targetId };
+    }
+  }
+  const fallback = valid[0];
+  return { ability: fallback.ability, targetId: pickAbilityTargetId(s, fallback.ability, rng) };
+}
+
 function buildEnemyActions(
   s: CombatState,
   rng: Rng,
@@ -1124,7 +1247,8 @@ function decideEnemyAction(
   // Boss / special: flag-driven silence (Section 10.2). Generic — any enemy
   // with a "silenceRandom" special silences a random party member. Emits a
   // structured event so the scene shows the Silence banner + SILENCED popup.
-  if (enemy.special.some((sp) => sp.kind === "silenceRandom")) {
+  // Only triggers ~40% of the time so the enemy can also use abilities/attack.
+  if (enemy.special.some((sp) => sp.kind === "silenceRandom") && rng() < 0.4) {
     const target = pickRandom(livingParty, rng);
     if (target) {
       s.silencedThisRound.push(target.id);
@@ -1135,6 +1259,20 @@ function decideEnemyAction(
       });
       return { kind: "silence", actor: enemy };
     }
+  }
+
+  // Enemy abilities: check conditions + cooldowns, weighted random pick.
+  // Abilities are checked BEFORE the legacy caster/melee logic so that
+  // enemies with abilities prioritize them. If no ability is valid this
+  // turn, fall through to the default behavior.
+  const abilityPick = pickEnemyAbility(s, enemy, rng);
+  if (abilityPick) {
+    return {
+      kind: "ability",
+      actor: enemy,
+      abilityId: abilityPick.ability.id,
+      targetId: abilityPick.targetId ?? "",
+    };
   }
 
   if (isCasterEnemy(enemy)) {
@@ -2081,6 +2219,240 @@ function allyTargets(
 // Enemy action resolution
 // ---------------------------------------------------------------------------
 
+/** Apply damage to a party member from an enemy ability, respecting buffs. */
+function abilityDamageParty(
+  s: CombatState,
+  target: Character,
+  baseDamage: number,
+  actor: EnemyInstance,
+  rng: Rng,
+  emit: (m: string, e: CombatEvent) => void
+): number {
+  let damage = Math.max(1, Math.round(baseDamage * (0.8 + rng() * 0.4)));
+  damage = damageReductionFor(s, target, damage);
+  const result = applyPartyDamage(s, target, damage, actor, rng, emit);
+  return result.finalDamage;
+}
+
+/** Resolve an enemy ability action. */
+function resolveEnemyAbility(
+  s: CombatState,
+  action: { kind: "ability"; actor: EnemyInstance; abilityId: string; targetId: string },
+  rng: Rng,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  const { actor, abilityId, targetId } = action;
+  const ability = enemyAbilityById(abilityId);
+  if (!ability) return;
+
+  // Set cooldown.
+  if (ability.cooldown && ability.cooldown > 0) {
+    if (!actor.abilityCooldowns) actor.abilityCooldowns = {};
+    actor.abilityCooldowns[abilityId] = ability.cooldown;
+  }
+
+  const livingParty = s.party.filter((c) => c.hp > 0);
+  const livingAllies = [...s.enemies.front, ...s.enemies.back].filter((e) => e.currentHp > 0);
+  const eff = ability.effect;
+
+  // Determine targets.
+  const partyTargets: Character[] = [];
+  const allyTargets: EnemyInstance[] = [];
+  switch (ability.target) {
+    case "singleParty": {
+      const t = s.party.find((c) => c.id === targetId && c.hp > 0);
+      if (t) partyTargets.push(t);
+      break;
+    }
+    case "groupParty": {
+      const front = livingParty.filter((c) => charRow(c) === "front");
+      partyTargets.push(...(front.length > 0 ? front : livingParty.filter((c) => charRow(c) === "back")));
+      break;
+    }
+    case "allParty":
+      partyTargets.push(...livingParty);
+      break;
+    case "singleAlly": {
+      const t = livingAllies.find((e) => e.instanceId === targetId);
+      if (t) allyTargets.push(t);
+      break;
+    }
+    case "groupAlly": {
+      const front = livingAllies.filter((e) => e.row === "front");
+      allyTargets.push(...(front.length > 0 ? front : livingAllies.filter((e) => e.row === "back")));
+      break;
+    }
+    case "allAlly":
+      allyTargets.push(...livingAllies);
+      break;
+    case "self":
+      allyTargets.push(actor);
+      break;
+  }
+
+  // Resolve effect.
+  switch (eff.kind) {
+    case "damage": {
+      for (const t of partyTargets) {
+        const dmg = abilityDamageParty(s, t, eff.power, actor, rng, emit);
+        emit(`${actor.name} uses ${ability.name} on ${t.name} for ${dmg} damage!`, {
+          type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: dmg,
+        });
+        gainRage(s, t.id, 1);
+      }
+      if (partyTargets.length > 0) addScreenShakeFromAbility(s, ability, partyTargets[0]);
+      break;
+    }
+    case "multiHit": {
+      for (const t of partyTargets) {
+        let totalDmg = 0;
+        for (let h = 0; h < eff.hits; h++) {
+          totalDmg += abilityDamageParty(s, t, eff.powerPerHit, actor, rng, emit);
+        }
+        emit(`${actor.name} uses ${ability.name}, striking ${t.name} ${eff.hits} times for ${totalDmg} total damage!`, {
+          type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: totalDmg,
+        });
+        gainRage(s, t.id, 1);
+      }
+      if (partyTargets.length > 0) addScreenShakeFromAbility(s, ability, partyTargets[0]);
+      break;
+    }
+    case "drain": {
+      let totalDrained = 0;
+      for (const t of partyTargets) {
+        const dmg = abilityDamageParty(s, t, eff.power, actor, rng, emit);
+        totalDrained += Math.round(dmg * 0.5);
+        emit(`${actor.name} uses ${ability.name}, draining ${dmg} from ${t.name}!`, {
+          type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: dmg,
+        });
+        gainRage(s, t.id, 1);
+      }
+      if (totalDrained > 0) {
+        actor.currentHp = Math.min(actor.hp, actor.currentHp + totalDrained);
+        log(`${actor.name} heals itself for ${totalDrained} HP.`);
+      }
+      break;
+    }
+    case "heal": {
+      for (const ally of allyTargets) {
+        const before = ally.currentHp;
+        ally.currentHp = Math.min(ally.hp, ally.currentHp + eff.power);
+        const healed = ally.currentHp - before;
+        if (healed > 0) {
+          emit(`${actor.name} uses ${ability.name}, healing ${ally.name} for ${healed} HP.`, {
+            type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: ally.instanceId, heal: healed,
+          });
+        }
+      }
+      break;
+    }
+    case "status": {
+      for (const t of partyTargets) {
+        if (rng() < eff.chance && !t.status.includes(eff.status)) {
+          t.status.push(eff.status);
+          emit(`${actor.name} uses ${ability.name}, inflicting ${eff.status} on ${t.name}!`, {
+            type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id,
+          });
+          emit(`${t.name} is ${eff.status}!`, {
+            type: "spellEffect", spellId: ability.id, targetId: t.id, statusInflicted: eff.status,
+          });
+        }
+      }
+      break;
+    }
+    case "buff": {
+      for (const ally of allyTargets) {
+        // Enemy buffs are temporary stat boosts stored on the instance.
+        // We modify attack/ac directly; combat is short enough that duration
+        // tracking is simplified to "for the rest of combat" (matches the
+        // existing enemy buff model where armorBuffs persist).
+        if (eff.stat === "attack") {
+          ally.attack += eff.amount;
+        } else if (eff.stat === "ac") {
+          ally.ac += eff.amount;
+        }
+        emit(`${actor.name} uses ${ability.name}, boosting ${ally.name}'s ${eff.stat}!`, {
+          type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: ally.instanceId, heal: 0,
+        });
+        emit(`${ally.name}'s ${eff.stat} rises!`, {
+          type: "spellEffect", spellId: ability.id, targetId: ally.instanceId, isBuff: true,
+        });
+      }
+      break;
+    }
+    case "debuff": {
+      for (const t of partyTargets) {
+        // Debuffs on party: reduce effective stats via armorBuffs for AC,
+        // or track attack reduction via a simple flag.
+        if (eff.stat === "ac") {
+          s.armorBuffs[t.id] = (s.armorBuffs[t.id] ?? 0) - eff.amount;
+        }
+        // Attack debuff: we can't easily reduce Character.attack since it's
+        // derived from effectiveStats. Instead, log the flavor; the -AC is
+        // the mechanical effect.
+        emit(`${actor.name} uses ${ability.name}, weakening ${t.name}'s ${eff.stat}!`, {
+          type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id,
+        });
+        emit(`${t.name}'s ${eff.stat} falls!`, {
+          type: "spellEffect", spellId: ability.id, targetId: t.id, isDebuff: true,
+        });
+      }
+      break;
+    }
+    case "summon": {
+      // Summon enemy allies as temporary combatants. We add them to the
+      // enemy formation in the appropriate row.
+      const enemyDef = ENEMIES_BY_ID[eff.enemyId];
+      if (!enemyDef) break;
+      for (let i = 0; i < eff.count; i++) {
+        const inst: EnemyInstance = {
+          ...enemyDef,
+          special: [...enemyDef.special],
+          instanceId: `${enemyDef.id}-summon-${s.enemies.front.length + s.enemies.back.length + i + 1}`,
+          currentHp: enemyDef.hp,
+          row: enemyDef.rowPreference === "back" ? "back" : "front",
+          status: [],
+        };
+        if (inst.row === "back") {
+          s.enemies.back.push(inst);
+        } else {
+          s.enemies.front.push(inst);
+        }
+        log(`${actor.name} summons ${inst.name}!`);
+      }
+      emit(`${actor.name} uses ${ability.name}!`, {
+        type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: null,
+      });
+      break;
+    }
+    case "fizzleField": {
+      s.partyFizzleField = Math.max(s.partyFizzleField, eff.power);
+      emit(`${actor.name} uses ${ability.name}, suppressing party spellcasting!`, {
+        type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: null,
+      });
+      log(`An anti-magic field descends over the party!`);
+      break;
+    }
+    case "magicScreen": {
+      s.enemyMagicScreens[actor.row] = Math.max(s.enemyMagicScreens[actor.row] ?? 0, eff.power);
+      emit(`${actor.name} uses ${ability.name}, raising a magic barrier!`, {
+        type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: null,
+      });
+      log(`${actor.name} is wreathed in a shimmering barrier.`);
+      break;
+    }
+  }
+}
+
+/** Add screen shake based on ability element/power. */
+function addScreenShakeFromAbility(s: CombatState, ability: EnemyAbilityDef, target: Character): void {
+  // Screen shake is handled by the combat scene renderer based on damage
+  // events, so we don't need to do anything here. This is a placeholder
+  // for future shake-tuning per ability.
+  void s; void ability; void target;
+}
+
 function resolveEnemyAction(
   s: CombatState,
   action: EnemyAction,
@@ -2090,6 +2462,13 @@ function resolveEnemyAction(
 ): void {
   if (action.kind === "doNothing" || action.kind === "silence") return;
   if (action.actor.currentHp <= 0) return;
+  action.actor.hasActed = true;
+
+  // Enemy ability (from data/enemy-abilities.ts).
+  if (action.kind === "ability") {
+    resolveEnemyAbility(s, action, rng, log, emit);
+    return;
+  }
 
   // Enemy spell: either an offensive cast at a party member or a heal on an
   // enemy ally. Distinguished by whether the targetId resolves to a party
@@ -2700,6 +3079,7 @@ function cloneEnemy(e: EnemyInstance): EnemyInstance {
     ...e,
     special: [...e.special],
     status: [...e.status],
+    abilityCooldowns: e.abilityCooldowns ? { ...e.abilityCooldowns } : undefined,
   };
 }
 

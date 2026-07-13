@@ -40,6 +40,10 @@ export interface EnemyDef {
   gold: number; // gold dropped on defeat
   special: EnemySpecial[];
   isBoss: boolean;
+  /** Enemy-only ability IDs from data/enemy-abilities.ts. */
+  abilityIds?: string[];
+  /** Existing spell IDs from data/spells.ts that this enemy can cast. */
+  knownSpells?: string[];
 }
 
 export interface EnemySpawn {
@@ -83,6 +87,7 @@ export const SLIME: EnemyDef = {
     { kind: "resistElement", element: "water" },
     { kind: "weakElement", element: "earth" },
   ],
+  abilityIds: ["acid-spit", "split"],
   isBoss: false,
 };
 
@@ -98,6 +103,7 @@ export const SKELETON: EnemyDef = {
   xp: 5,
   gold: 2,
   special: [],
+  abilityIds: ["bone-shard", "rattle"],
   isBoss: false,
 };
 
@@ -114,6 +120,7 @@ export const ARMORED_SKELETON: EnemyDef = {
   xp: 10,
   gold: 8,
   special: [],
+  abilityIds: ["shield-bash", "iron-fist"],
   isBoss: false,
 };
 
@@ -133,6 +140,7 @@ export const SKELETON_ARCHER: EnemyDef = {
     { kind: "weakElement", element: "earth" },
     { kind: "resistElement", element: "wind" },
   ],
+  abilityIds: ["archer-volley"],
   isBoss: false,
 };
 
@@ -152,6 +160,7 @@ export const ORC: EnemyDef = {
     { kind: "poisonOnHit" },
     { kind: "weakElement", element: "wind" },
   ],
+  abilityIds: ["war-cry", "savage-lunge"],
   isBoss: false,
 };
 
@@ -167,6 +176,7 @@ export const FAILED_EXPERIMENT: EnemyDef = {
   xp: 18,
   gold: 15,
   special: [],
+  abilityIds: ["berserk", "savage-lunge"],
   isBoss: false,
 };
 
@@ -186,6 +196,7 @@ export const ACID_PUDDLE: EnemyDef = {
     { kind: "poisonOnHit" },
     { kind: "resistElement", element: "water" },
   ],
+  abilityIds: ["acid-spit", "rending-claw"],
   isBoss: false,
 };
 
@@ -201,6 +212,7 @@ export const LAB_ASSISTANT: EnemyDef = {
   xp: 16,
   gold: 14,
   special: [{ kind: "healer", spellName: "Cure Wounds" }],
+  abilityIds: ["mass-heal-ability", "ward"],
   isBoss: false,
 };
 
@@ -221,6 +233,7 @@ export const ELITE_ORC: EnemyDef = {
     { kind: "weakElement", element: "water" },
     { kind: "resistElement", element: "fire" },
   ],
+  abilityIds: ["fire-breath", "war-cry"],
   isBoss: false,
 };
 
@@ -239,6 +252,7 @@ export const LESSER_CONSTRUCT: EnemyDef = {
     { kind: "weakElement", element: "wind" },
     { kind: "resistElement", element: "earth" },
   ],
+  abilityIds: ["stone-slam", "repair"],
   isBoss: false,
 };
 
@@ -254,6 +268,7 @@ export const WEREWOLF: EnemyDef = {
   xp: 20,
   gold: 18,
   special: [{ kind: "evasive" }],
+  abilityIds: ["hunting-pounce", "rending-claw"],
   isBoss: false,
 };
 
@@ -269,6 +284,7 @@ export const BIG_TITTY_OGRE: EnemyDef = {
   xp: 30,
   gold: 28,
   special: [{ kind: "weakElement", element: "wind" }],
+  abilityIds: ["stone-slam", "berserk"],
   isBoss: false,
 };
 
@@ -287,6 +303,7 @@ export const STONE_GUARDIAN: EnemyDef = {
     { kind: "weakElement", element: "wind" },
     { kind: "resistElement", element: "earth" },
   ],
+  abilityIds: ["stone-slam", "iron-fist", "phalanx-guard"],
   isBoss: false,
 };
 
@@ -306,6 +323,7 @@ export const ANIMATED_ARMOR: EnemyDef = {
     { kind: "weakElement", element: "wind" },
     { kind: "resistElement", element: "earth" },
   ],
+  abilityIds: ["shield-bash", "charge", "phalanx-guard"],
   isBoss: false,
 };
 
@@ -324,6 +342,7 @@ export const HEADMASTERS_ECHO: EnemyDef = {
     { kind: "undead" },
     { kind: "silenceRandom", target: "party", duration: "combat" },
   ],
+  abilityIds: ["echo-of-silence", "memory-drain", "anti-magic-field", "dark-pulse"],
   isBoss: true,
 };
 
@@ -343,6 +362,7 @@ export const EYEBALL_MONSTER: EnemyDef = {
     { kind: "flying" },
     { kind: "silenceRandom", target: "party", duration: "combat" },
   ],
+  abilityIds: ["blinding-gaze", "curse"],
   isBoss: false,
 };
 
@@ -363,6 +383,7 @@ export const GHOSTFIRE: EnemyDef = {
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "cold" },
   ],
+  abilityIds: ["life-tap", "ghostly-wail", "phase-shift"],
   isBoss: false,
 };
 
@@ -382,6 +403,7 @@ export const FLAME_GOLEM: EnemyDef = {
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
   ],
+  abilityIds: ["magma-burst", "forge-bellows", "repair"],
   isBoss: false,
 };
 
@@ -400,6 +422,7 @@ export const LAVA_SLIME: EnemyDef = {
     { kind: "resistElement", element: "fire" },
     { kind: "poisonOnHit" },
   ],
+  abilityIds: ["acid-spit", "fire-breath"],
   isBoss: false,
 };
 
@@ -415,6 +438,7 @@ export const HELLHOUND: EnemyDef = {
   xp: 18,
   gold: 16,
   special: [{ kind: "evasive" }],
+  abilityIds: ["hunting-pounce", "howl", "fire-breath"],
   isBoss: false,
 };
 
@@ -433,6 +457,7 @@ export const HELLBAT: EnemyDef = {
     { kind: "flying" },
     { kind: "evasive" },
   ],
+  abilityIds: ["howl", "rending-claw"],
   isBoss: false,
 };
 
@@ -451,6 +476,7 @@ export const BLACK_KNIGHT: EnemyDef = {
     { kind: "highDefense" },
     { kind: "resistPhysical", percent: 25 },
   ],
+  abilityIds: ["shield-bash", "charge", "phalanx-guard"],
   isBoss: false,
 };
 
@@ -466,6 +492,7 @@ export const MINOTAUR: EnemyDef = {
   xp: 28,
   gold: 24,
   special: [{ kind: "weakElement", element: "wind" }],
+  abilityIds: ["berserk", "stone-slam", "charge"],
   isBoss: false,
 };
 
@@ -485,6 +512,7 @@ export const WARLOCK: EnemyDef = {
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
   ],
+  abilityIds: ["hellfire", "chaos-bolt", "anti-magic-field"],
   isBoss: false,
 };
 
@@ -503,6 +531,7 @@ export const DEMON: EnemyDef = {
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
   ],
+  abilityIds: ["hellfire", "savage-lunge"],
   isBoss: false,
 };
 
@@ -521,6 +550,7 @@ export const DEMONESS: EnemyDef = {
     { kind: "healer", spellName: "Mass Cure" },
     { kind: "resistElement", element: "fire" },
   ],
+  abilityIds: ["mass-heal-ability", "seduction", "curse"],
   isBoss: false,
 };
 
@@ -540,6 +570,7 @@ export const IRONCLAD_KNIGHT: EnemyDef = {
     { kind: "highDefense" },
     { kind: "resistPhysical", percent: 30 },
   ],
+  abilityIds: ["shield-bash", "charge", "phalanx-guard"],
   isBoss: false,
 };
 
@@ -558,6 +589,7 @@ export const RUNE_KNIGHT: EnemyDef = {
     { kind: "caster", element: "lightning" },
     { kind: "resistElement", element: "lightning" },
   ],
+  abilityIds: ["lightning-strike", "ward"],
   isBoss: false,
 };
 
@@ -576,6 +608,7 @@ export const BLOOD_MONSTER: EnemyDef = {
     { kind: "poisonOnHit" },
     { kind: "weakElement", element: "fire" },
   ],
+  abilityIds: ["rending-claw", "soul-drain"],
   isBoss: false,
 };
 
@@ -595,6 +628,7 @@ export const BLOOD_WRAITH: EnemyDef = {
     { kind: "evasive" },
     { kind: "poisonOnHit" },
   ],
+  abilityIds: ["life-tap", "phase-shift", "ghostly-wail"],
   isBoss: false,
 };
 
@@ -613,6 +647,7 @@ export const DEMON_BRAWLER: EnemyDef = {
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
   ],
+  abilityIds: ["savage-lunge", "hellfire"],
   isBoss: false,
 };
 
@@ -631,6 +666,7 @@ export const DEMON_SPAWN: EnemyDef = {
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
   ],
+  abilityIds: ["hunting-pounce", "rending-claw"],
   isBoss: false,
 };
 
@@ -650,6 +686,7 @@ export const DEMON_CHAMPION: EnemyDef = {
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
   ],
+  abilityIds: ["berserk", "stone-slam", "forge-bellows"],
   isBoss: false,
 };
 
@@ -669,6 +706,7 @@ export const DEMON_MAGE: EnemyDef = {
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
   ],
+  abilityIds: ["hellfire", "summon-imp", "anti-magic-field"],
   isBoss: false,
 };
 
@@ -687,6 +725,7 @@ export const SUCCUBUS: EnemyDef = {
     { kind: "caster", element: "undead" },
     { kind: "silenceRandom", target: "party", duration: "combat" },
   ],
+  abilityIds: ["seduction", "soul-drain", "curse"],
   isBoss: false,
 };
 
