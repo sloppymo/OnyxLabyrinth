@@ -579,13 +579,23 @@ interface EffectStyle {
 const ELEMENT_STYLES: Record<string, EffectStyle> = {
   fire: { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 0.65, burst: "mp_fire_bomb", burstScale: 1.15, field: "large_fire", scale: 2.5, charge: "fz_fireball", chargeScale: 0.15, projectileCount: 1 },
   cold: { color: "#80e0ff", projectile: "px_ice_lance", projectileScale: 2.5, burst: "ice_burst_glow", burstScale: 1.2, field: "ice_burst_glow", fieldScale: 1.2, scale: 1.2, charge: "px_ice_lance", chargeScale: 0.4, projectileCount: 1 },
-  physical: { color: "#f5f0e6", burst: "zombie_explosion" },
+  // Physical was previously burst-only with no field/charge; the retro2
+  // crescent-slash reads as a blade arc, a much better fit than the
+  // undead-shared zombie_explosion.
+  physical: { color: "#f5f0e6", burst: "retro2_crescent_slash", burstScale: 1.3, field: "retro_crescent_arc", fieldScale: 1.1 },
   undead: { color: "#c080ff", projectile: "red_lightning_blast", burst: "zombie_explosion", field: "red_energy_glow", scale: 1.3, charge: "red_lightning_blast_glow", chargeScale: 0.4, projectileCount: 1 },
   lightning: { color: "#ffd769", projectile: "lightning_blast", burst: "mp_spark", field: "lightning_energy_glow", scale: 1.8, charge: "lightning_blast", chargeScale: 0.4, projectileCount: 1 },
-  poison: { color: "#c080ff", projectile: "red_lightning_blast", burst: "dispel_sparks", field: "red_energy_glow", scale: 1.6, charge: "red_lightning_blast_glow", chargeScale: 0.4, projectileCount: 1 },
+  // Poison burst upgraded from the generic dispel_sparks to the retro2
+  // verdant burst — a green toxic bloom reads more clearly as poison.
+  poison: { color: "#c080ff", projectile: "red_lightning_blast", burst: "retro2_verdant_burst", burstScale: 1.2, field: "red_energy_glow", scale: 1.6, charge: "red_lightning_blast_glow", chargeScale: 0.4, projectileCount: 1 },
   water: { color: "#4fd0ff", projectile: "fz_water", burst: "fz_water_geyser", field: "fz_water_geyser", scale: 1.6, charge: "fz_water", chargeScale: 0.5, projectileCount: 1 },
   earth: { color: "#b8a080", projectile: "fz_earth_spike", burst: "fz_rocks", field: "fz_rocks", scale: 1.5, charge: "fz_earth_spike", chargeScale: 0.5, projectileCount: 1 },
   wind: { color: "#d0ffe0", projectile: "fz_wind", burst: "fz_tornado", field: "fz_tornado", scale: 1.4, charge: "fz_wind", chargeScale: 0.5, projectileCount: 1 },
+  // Divine had no entry at all — any damage-element "divine" spell without a
+  // SPELL_OVERRIDE was silently falling back to the generic fire_explosion.
+  // Only priest-divine-smite currently uses this element and it has its own
+  // override below, but this closes the gap for any future divine spell.
+  divine: { color: "#ffe8a0", burst: "retro_starburst", burstScale: 1.6, field: "retro_sun_ring", fieldScale: 1.3, charge: "retro_sun_ring", chargeScale: 0.5 },
 };
 
 /** Per-spell visual overrides for alternate effect variants. */
@@ -599,11 +609,13 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   // one variant per spell so Guiding Bolt / Sacred Flame / Divine Smite read as distinct.
   "priest-sacred-flame": { color: "#ffe27a", projectile: "px_bolt_purity", projectileScale: 2.2, burst: "heal_sparks", burstScale: 2.2, scale: 1 },
   "priest-guiding-bolt": { color: "#7fb8f0", projectile: "px_light_bolt", projectileScale: 2.2, burst: "heal_sparks", burstScale: 2.2, scale: 1 },
-  "priest-divine-smite": { color: "#ffe8a0", projectile: "px_pure_bolt_2", projectileScale: 2.6, burst: "heal_sparks", burstScale: 2.6, scale: 1.2 },
+  // Divine Smite — upgraded from the shared heal_sparks burst to the
+  // dedicated starburst + sun-ring field now that divine has real assets.
+  "priest-divine-smite": { color: "#ffe8a0", projectile: "px_pure_bolt_2", projectileScale: 2.6, burst: "retro_starburst", burstScale: 2.2, field: "retro_sun_ring", fieldScale: 1.4, scale: 1.2 },
   // Summons — Foozle portal swirl per school (base purple / orange fire / gold holy).
   "mage-summon-fire-elemental": { color: "#ff9a3a", burst: "fz_portal_orange", burstScale: 1.3, field: "fz_portal_orange", fieldScale: 0.7 },
   "mage-conjure-elemental": { color: "#c080ff", burst: "fz_portal", burstScale: 1.2, field: "fz_portal", fieldScale: 0.7 },
-  "mage-gate": { color: "#c080ff", burst: "fz_portal", burstScale: 1.6, field: "fz_portal", fieldScale: 0.9 },
+  "mage-gate": { color: "#c080ff", burst: "fz_portal", burstScale: 1.6, field: "fz_portal", fieldScale: 0.9, charge: "retro3_sigil_charge", chargeScale: 0.35 },
   "priest-summon-guardian": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.2, field: "fz_portal_gold", fieldScale: 0.7 },
   "priest-summon-celestial-guardian": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.5, field: "fz_portal_gold", fieldScale: 0.8 },
   "priest-summon-celestial": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.3, field: "fz_portal_gold", fieldScale: 0.7 },
@@ -616,6 +628,30 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   // Silence/Dispel — a ward-ring sigil in place of the generic red_energy field.
   "mage-silence": { color: "#7fe0e0", field: "free_wardring", fieldScale: 0.7, burst: "free_wardring", burstScale: 1.1 },
   "mage-dispel-magic": { color: "#7fe0e0", field: "free_wardring", fieldScale: 0.7, burst: "free_wardring", burstScale: 1.1 },
+
+  // --- New impact-pack overrides (2026 sprite additions) -------------------
+
+  // Tempest — top-tier wind spell gets the long wind-up cyan cross-blade
+  // field plus a pinwheel burst on impact, instead of just the shared fz_tornado.
+  "mage-tempest": { color: "#d0ffe0", projectile: "fz_wind", burst: "retro2_wind_pinwheel", burstScale: 1.6, field: "retro3_wind_cross", fieldScale: 1.2, charge: "fz_wind", chargeScale: 0.5 },
+  // Quake — a horizontal shockwave arc reads as ground rupture far better
+  // than the rock-pile burst shared with lesser earth spells.
+  "mage-quake": { color: "#b8a080", burst: "retro_shockwave", burstScale: 1.9, field: "retro_shockwave", fieldScale: 1.7 },
+  // Deluge — layers the aqua-vortex whirlpool field over the existing water
+  // geyser burst for the AOE-tier water spell.
+  "mage-deluge": { color: "#4fd0ff", projectile: "fz_water", burst: "fz_water_geyser", field: "retro2_aqua_vortex", fieldScale: 1.4, charge: "fz_water", chargeScale: 0.5 },
+  // Spell Shield — a distinct rounded ward-square instead of the generic
+  // px_shield used by every other buff/magicScreen spell.
+  "mage-spell-shield": { color: "#7fe0e0", burst: "retro2_ward_square", burstScale: 1.6, field: "retro2_ward_square", fieldScale: 0.9, scale: 1.2 },
+  // Neutralize Poison — a purifying white sigil burst distinguishes it from
+  // the other "cure" spells, which otherwise all share the plain heal look.
+  "priest-neutralize-poison": { color: "#f5f0e6", burst: "retro2_arcane_sigil", burstScale: 1.5, scale: 1.2 },
+  // Mass Heal — layers a soft radiant bloom field under the existing
+  // priest_heal projectile/burst for the AOE-tier heal.
+  "priest-mass-heal": { color: "#8fffb0", projectile: "priest_heal", burst: "priest_heal", field: "retro3_arcane_bloom", fieldScale: 1.1, scale: 1.2 },
+  // Raise Dead — a radiating dot-flower burst for the moment a fallen ally
+  // returns, distinct from ordinary healing.
+  "priest-raise-dead": { color: "#ffe27a", burst: "retro_dot_flower", burstScale: 1.9, scale: 1.3 },
 };
 
 const STATUS_STYLES: Record<string, EffectStyle> = {

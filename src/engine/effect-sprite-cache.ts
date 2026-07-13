@@ -437,6 +437,36 @@ const EFFECT_STRIPS: Record<string, EffectStrip> = {
   free_wardring: { name: "free_wardring", url: "free-wardring.png", frameWidth: 64, frameHeight: 64, frameCount: 14, fps: 12 },
   free_tangle: { name: "free_tangle", url: "free-tangle.png", frameWidth: 64, frameHeight: 64, frameCount: 12, fps: 12 },
   free_slash: { name: "free_slash", url: "free-slash.png", frameWidth: 64, frameHeight: 64, frameCount: 8, fps: 12 },
+
+  // --- Downloaded pack: "01" impact/burst sampler — 64x64, 8 rows used
+  // (uploaded as 01.png; row 0 and rows 8 of the 9-row sheet were skipped —
+  // row 0 is a faint dissolve variant of arcane_sigil not distinct enough to
+  // keep, row 8 duplicates earth_swirl's silhouette). Frame counts below are
+  // trimmed to each row's actual non-blank frames. ---
+  retro2_arcane_sigil: { name: "retro2_arcane_sigil", url: "retro2-arcane-sigil.png", frameWidth: 64, frameHeight: 64, frameCount: 7, fps: 12 },
+  retro2_verdant_burst: { name: "retro2_verdant_burst", url: "retro2-verdant-burst.png", frameWidth: 64, frameHeight: 64, frameCount: 7, fps: 12 },
+  retro2_ward_square: { name: "retro2_ward_square", url: "retro2-ward-square.png", frameWidth: 64, frameHeight: 64, frameCount: 8, fps: 12 },
+  retro2_crescent_slash: { name: "retro2_crescent_slash", url: "retro2-crescent-slash.png", frameWidth: 64, frameHeight: 64, frameCount: 9, fps: 12 },
+  retro2_wind_pinwheel: { name: "retro2_wind_pinwheel", url: "retro2-wind-pinwheel.png", frameWidth: 64, frameHeight: 64, frameCount: 9, fps: 12 },
+  retro2_solar_ring: { name: "retro2_solar_ring", url: "retro2-solar-ring.png", frameWidth: 64, frameHeight: 64, frameCount: 9, fps: 12 },
+  retro2_aqua_vortex: { name: "retro2_aqua_vortex", url: "retro2-aqua-vortex.png", frameWidth: 64, frameHeight: 64, frameCount: 9, fps: 12 },
+  retro2_earth_swirl: { name: "retro2_earth_swirl", url: "retro2-earth-swirl.png", frameWidth: 64, frameHeight: 64, frameCount: 10, fps: 12 },
+
+  // --- Downloaded pack: "00" long-burst sampler — 64x64, 3 rows, long
+  // wind-up-to-fade animations (15-18 frames). Good for charge sprites and
+  // showcase/ultimate-tier spell fields. ---
+  retro3_arcane_bloom: { name: "retro3_arcane_bloom", url: "retro3-arcane-bloom.png", frameWidth: 64, frameHeight: 64, frameCount: 17, fps: 14 },
+  retro3_sigil_charge: { name: "retro3_sigil_charge", url: "retro3-sigil-charge.png", frameWidth: 64, frameHeight: 64, frameCount: 15, fps: 14 },
+  retro3_wind_cross: { name: "retro3_wind_cross", url: "retro3-wind-cross.png", frameWidth: 64, frameHeight: 64, frameCount: 18, fps: 14 },
+
+  // --- Downloaded pack: Retro Impact Effect Pack 5A — 96x48 non-square
+  // cells. Frame counts trimmed to each row's actual non-blank frames. ---
+  retro_crescent_arc: { name: "retro_crescent_arc", url: "retro-crescent-arc.png", frameWidth: 96, frameHeight: 48, frameCount: 4, fps: 12 },
+  retro_fire_mushroom: { name: "retro_fire_mushroom", url: "retro-fire-mushroom.png", frameWidth: 96, frameHeight: 48, frameCount: 4, fps: 12 },
+  retro_sun_ring: { name: "retro_sun_ring", url: "retro-sun-ring.png", frameWidth: 96, frameHeight: 48, frameCount: 4, fps: 12 },
+  retro_starburst: { name: "retro_starburst", url: "retro-starburst.png", frameWidth: 96, frameHeight: 48, frameCount: 4, fps: 12 },
+  retro_dot_flower: { name: "retro_dot_flower", url: "retro-dot-flower.png", frameWidth: 96, frameHeight: 48, frameCount: 6, fps: 12 },
+  retro_shockwave: { name: "retro_shockwave", url: "retro-shockwave.png", frameWidth: 96, frameHeight: 48, frameCount: 6, fps: 12 },
 };
 
 const effectCache: Map<string, EffectSprite> = new Map();
