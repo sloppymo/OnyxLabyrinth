@@ -580,9 +580,9 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
   fire: { color: "#ff8c42", projectile: "fireball", burst: "fire_explosion", field: "large_fire", scale: 2.5, charge: "fireball", chargeScale: 0.4, projectileCount: 1 },
   cold: { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst", field: "ice_burst_glow", scale: 1.2, charge: "ice_burst", chargeScale: 0.4, projectileCount: 1 },
   physical: { color: "#f5f0e6", burst: "zombie_explosion" },
-  undead: { color: "#c080ff", projectile: "red_energy", burst: "red_energy", field: "red_energy", scale: 1.3, charge: "red_energy", chargeScale: 0.4, projectileCount: 1 },
-  lightning: { color: "#ffd769", projectile: "lightning_blast", burst: "lightning_energy", field: "lightning_energy_glow", scale: 1.3, charge: "lightning_blast", chargeScale: 0.4, projectileCount: 1 },
-  poison: { color: "#c080ff", projectile: "red_energy", burst: "red_energy_glow", field: "red_energy_glow", scale: 1.3, charge: "red_energy_glow", chargeScale: 0.4, projectileCount: 1 },
+  undead: { color: "#c080ff", projectile: "red_lightning_blast", burst: "zombie_explosion", field: "red_energy_glow", scale: 1.3, charge: "red_lightning_blast_glow", chargeScale: 0.4, projectileCount: 1 },
+  lightning: { color: "#ffd769", projectile: "lightning_blast", burst: "mp_spark", field: "lightning_energy_glow", scale: 1.8, charge: "lightning_blast", chargeScale: 0.4, projectileCount: 1 },
+  poison: { color: "#c080ff", projectile: "red_lightning_blast", burst: "dispel_sparks", field: "red_energy_glow", scale: 1.6, charge: "red_lightning_blast_glow", chargeScale: 0.4, projectileCount: 1 },
   water: { color: "#4fd0ff", projectile: "fz_water", burst: "fz_water_geyser", field: "fz_water_geyser", scale: 1.6, charge: "fz_water", chargeScale: 0.5, projectileCount: 1 },
   earth: { color: "#b8a080", projectile: "fz_earth_spike", burst: "fz_rocks", field: "fz_rocks", scale: 1.5, charge: "fz_earth_spike", chargeScale: 0.5, projectileCount: 1 },
   wind: { color: "#d0ffe0", projectile: "fz_wind", burst: "fz_tornado", field: "fz_tornado", scale: 1.4, charge: "fz_wind", chargeScale: 0.5, projectileCount: 1 },
@@ -595,18 +595,18 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   // Cold
   "mage-frostbite": { color: "#80e0ff", projectile: "wizard_attack2", burst: "ice_burst_glow", scale: 1.2 },
   // Poison
-  "mage-poison-spray": { color: "#c080ff", projectile: "red_lightning_blast_glow", burst: "red_energy_glow", scale: 1.3 },
+  "mage-poison-spray": { color: "#c080ff", projectile: "red_lightning_blast_glow", burst: "dispel_sparks", scale: 1.6 },
   // Priest holy
-  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "priest_attack", projectileScale: 1, burst: "lightning_energy_glow", burstScale: 1.3, scale: 1 },
+  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "priest_attack", projectileScale: 1, burst: "heal_sparks", burstScale: 1.3, scale: 1 },
   // Divine (priest smite)
-  "priest-divine-smite": { color: "#ffe8a0", projectile: "priest_attack", projectileScale: 1.2, burst: "lightning_energy_glow", burstScale: 1.5, scale: 1.2 },
+  "priest-divine-smite": { color: "#ffe8a0", projectile: "priest_attack", projectileScale: 1.2, burst: "heal_sparks", burstScale: 1.5, scale: 1.2 },
 };
 
 const STATUS_STYLES: Record<string, EffectStyle> = {
   sleep: { color: "#c080ff", burst: "ice_burst_glow" },
-  poison: { color: "#c080ff", burst: "red_energy" },
-  paralysis: { color: "#c8c4b8", burst: "lightning_energy" },
-  blind: { color: "#c8c4b8", burst: "lightning_energy" },
+  poison: { color: "#c080ff", burst: "dispel_sparks" },
+  paralysis: { color: "#c8c4b8", burst: "mp_spark" },
+  blind: { color: "#c8c4b8", burst: "mp_spark" },
 };
 
 export function resolveEffectStyle(
@@ -626,7 +626,7 @@ export function resolveEffectStyle(
       return { color: COLORS.heal, projectile: "priest_heal", burst: "priest_heal", scale: 1.2 };
     }
     if (eff.kind === "buff" || eff.kind === "magicScreen") {
-      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2 };
+      return { color: COLORS.sp, burst: "mp_spark", field: "lightning_energy_glow", scale: 1.2 };
     }
     if (eff.kind === "cure" || eff.kind === "resurrect") {
       return { color: COLORS.heal, burst: "priest_heal", scale: 1.2 };
@@ -635,10 +635,10 @@ export function resolveEffectStyle(
       return STATUS_STYLES[eff.status] ?? { color: COLORS.poison, burst: "red_energy" };
     }
     if (eff.kind === "fizzleField" || eff.kind === "dispelMagic") {
-      return { color: COLORS.poison, field: "red_energy", burst: "red_energy" };
+      return { color: COLORS.poison, field: "red_energy_glow", burst: "dispel_sparks" };
     }
     if (eff.kind === "summon") {
-      return { color: COLORS.sp, burst: "lightning_energy", field: "lightning_energy", scale: 1.2 };
+      return { color: COLORS.sp, burst: "mp_spark", field: "lightning_energy_glow", scale: 1.2 };
     }
   }
 
@@ -648,10 +648,10 @@ export function resolveEffectStyle(
     return { color: COLORS.heal, burst: "priest_heal", scale: 1.2 };
   }
   if (e.statusInflicted) {
-    return STATUS_STYLES[e.statusInflicted] ?? { color: COLORS.poison, burst: "red_energy" };
+    return STATUS_STYLES[e.statusInflicted] ?? { color: COLORS.poison, burst: "dispel_sparks" };
   }
   if (e.isDebuff) {
-    return { color: COLORS.poison, burst: "red_energy" };
+    return { color: COLORS.poison, burst: "dispel_sparks" };
   }
   if (e.damage !== undefined) {
     return { color: COLORS.dmg, burst: "fire_explosion" };
