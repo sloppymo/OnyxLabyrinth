@@ -388,10 +388,11 @@ export function findActor(
 
 // --- Choreography construction ----------------------------------------------------------
 
-const APPROACH_MS = 220;
+const APPROACH_MS = 350;
 const ATTACK_MS = 560;
-const IMPACT_AT = APPROACH_MS + ATTACK_MS * 0.55;
-const RETURN_MS = 220;
+const PAUSE_BEFORE_ATTACK_MS = 300;
+const IMPACT_AT = APPROACH_MS + PAUSE_BEFORE_ATTACK_MS + ATTACK_MS * 0.55;
+const RETURN_MS = 280;
 const CAST_MS = 600;
 const CAST_IMPACT = CAST_MS * 0.65;
 const MULTI_TARGET_STAGGER = 90;
@@ -832,13 +833,21 @@ export function playTurn(
         } else {
           approach(evt.actorId, evt.targetId);
           const base = t;
+          // Approach → pause briefly at the target → attack animation.
           steps.push(
             step(base + APPROACH_MS, (sc, n) => {
+              // Arrived — switch to idle for a brief beat before attacking.
+              const actor = findActor(sc, evt.actorId, w, h);
+              if (!actor) return;
+              const a = getAnim(sc, actor.kind, evt.actorId, n);
+              if (a.state === "walk") setAnimState(a, "idle", n);
+            }),
+            step(base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
               if (!actor) return;
               setAnimState(getAnim(sc, actor.kind, evt.actorId, n), "attack", n);
             }),
-            step(base + APPROACH_MS + ATTACK_MS, (sc, n) => {
+            step(base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS + ATTACK_MS, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
               if (!actor) return;
               const a = getAnim(sc, actor.kind, evt.actorId, n);
@@ -860,7 +869,7 @@ export function playTurn(
               evt.damage
             )
           );
-          t = base + APPROACH_MS + ATTACK_MS;
+          t = base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS + ATTACK_MS;
           returnHome();
         }
         break;
@@ -875,6 +884,12 @@ export function playTurn(
           step(base + APPROACH_MS, (sc, n) => {
             const actor = findActor(sc, evt.actorId, w, h);
             if (!actor) return;
+            const a = getAnim(sc, actor.kind, evt.actorId, n);
+            if (a.state === "walk") setAnimState(a, "idle", n);
+          }),
+          step(base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS, (sc, n) => {
+            const actor = findActor(sc, evt.actorId, w, h);
+            if (!actor) return;
             setAnimState(getAnim(sc, actor.kind, evt.actorId, n), "attack", n);
           })
         );
@@ -884,14 +899,14 @@ export function playTurn(
           );
         }
         steps.push(
-          step(base + APPROACH_MS + ATTACK_MS, (sc, n) => {
+          step(base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS + ATTACK_MS, (sc, n) => {
             const actor = findActor(sc, evt.actorId, w, h);
             if (!actor) return;
             const a = getAnim(sc, actor.kind, evt.actorId, n);
             if (a.state === "attack") setAnimState(a, "idle", n);
           })
         );
-        t = base + APPROACH_MS + ATTACK_MS;
+        t = base + APPROACH_MS + PAUSE_BEFORE_ATTACK_MS + ATTACK_MS;
         returnHome();
         break;
       }
