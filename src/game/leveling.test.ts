@@ -83,4 +83,32 @@ describe("levelUpChar", () => {
     expect(result.level).toBe(3);
     expect(result.knownSpellIds.length).toBeGreaterThan(c.knownSpellIds.length);
   });
+
+  it("grants T6 spells at level 11 (Meteor Swarm / Disintegrate)", () => {
+    const c = createCharacter("c1", "Dell", "Elf", "Neutral", "Mage", 0);
+    c.level = 10;
+    const result = levelUpChar(c);
+    expect(result.level).toBe(11);
+    expect(result.knownSpellIds).toContain("mage-meteor-swarm");
+    expect(result.knownSpellIds).toContain("mage-disintegrate");
+  });
+
+  it("grants T7 Freezing Sphere at level 13", () => {
+    const c = createCharacter("c1", "Dell", "Elf", "Neutral", "Mage", 0);
+    c.level = 12;
+    const result = levelUpChar(c);
+    expect(result.level).toBe(13);
+    expect(result.knownSpellIds).toContain("mage-freezing-sphere");
+  });
+
+  it("grants Priest Mass Regenerate at level 11 and Holy Aura at 13", () => {
+    const p = createCharacter("c2", "Eve", "Gnome", "Good", "Priest", 0);
+    p.level = 10;
+    const at11 = levelUpChar(p);
+    expect(at11.knownSpellIds).toContain("priest-mass-regenerate");
+
+    at11.level = 12;
+    const at13 = levelUpChar(at11);
+    expect(at13.knownSpellIds).toContain("priest-holy-aura");
+  });
 });

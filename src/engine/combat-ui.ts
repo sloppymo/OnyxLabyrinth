@@ -799,6 +799,7 @@ export class CombatController {
     }
     const shortcuts: Record<string, PlayerAction["kind"]> = {
       a: "attack",
+      t: "technique",
       c: "cast",
       m: "cast",
       d: "defend",

@@ -689,6 +689,56 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   // Raise Dead — a radiating dot-flower burst for the moment a fallen ally
   // returns, distinct from ordinary healing.
   "priest-raise-dead": { color: "#ffe27a", burst: "retro_dot_flower", burstScale: 1.9, scale: 1.3 },
+
+  // --- T6–T7 endgame ---------------------------------------------------------
+  "mage-meteor-swarm": {
+    color: "#ff6a20",
+    projectile: "fz_fireball",
+    projectileScale: 0.8,
+    burst: "mp_fire_bomb",
+    burstScale: 1.8,
+    field: "mp_fire_bomb",
+    fieldScale: 1.6,
+    charge: "fz_fireball",
+    chargeScale: 0.55,
+  },
+  "mage-disintegrate": {
+    color: "#d0c8e0",
+    burst: "retro2_crescent_slash",
+    burstScale: 2.0,
+    field: "retro_crescent_arc",
+    fieldScale: 1.4,
+    charge: "retro3_sigil_charge",
+    chargeScale: 0.45,
+  },
+  "mage-freezing-sphere": {
+    color: "#9ad8ff",
+    projectile: "px_ice_lance",
+    projectileScale: 2.6,
+    burst: "ice_burst_glow",
+    burstScale: 1.8,
+    field: "ice_burst_glow",
+    fieldScale: 1.5,
+    charge: "px_ice_lance",
+    chargeScale: 0.55,
+    glow: true,
+  },
+  "priest-mass-regenerate": {
+    color: "#8fffb0",
+    projectile: "priest_heal",
+    burst: "priest_heal",
+    field: "retro3_arcane_bloom",
+    fieldScale: 1.35,
+    scale: 1.3,
+  },
+  "priest-holy-aura": {
+    color: "#ffe8a0",
+    burst: "retro_sun_ring",
+    burstScale: 1.6,
+    field: "retro_sun_ring",
+    fieldScale: 1.2,
+    scale: 1.3,
+  },
 };
 
 const STATUS_STYLES: Record<string, EffectStyle> = {

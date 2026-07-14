@@ -8,7 +8,7 @@
 import type { Character } from "./party";
 import { CLASSES } from "./party";
 import type { Loadout } from "./combat";
-import { spellsForClass } from "../data/spells";
+import { maxContentSpellTier, spellsForClass } from "../data/spells";
 import { effectiveStats } from "./effective-stats";
 import { perksForCharacter, perkModifiers } from "./perks";
 
@@ -47,7 +47,22 @@ export function levelUpChar(c: Character, loadout?: Loadout): Character {
   const newMaxHp = c.maxHp + hpGrowth;
   const newMaxSp = c.maxSp + spGrowth;
 
-  const newTier = Math.min(7, Math.ceil(newLevel / 2)) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  // Unlock formula opens a tier every 2 levels (ceil(level/2)), capped at the
+  // highest tier that has real spell defs for this class (so empty T6/T7 never
+  // silently inflate knownSpellIds again if content lags).
+  const contentCap =
+    spellClass === "Mage" || spellClass === "Priest"
+      ? maxContentSpellTier(spellClass)
+      : 0;
+  const formulaTier = Math.min(7, Math.ceil(newLevel / 2));
+  const newTier = Math.min(contentCap || formulaTier, formulaTier) as
+    | 1
+    | 2
+    | 3
+    | 4
+    | 5
+    | 6
+    | 7;
   const knownSet = new Set(c.knownSpellIds);
   for (const s of spellsForClass(c.class, newTier)) knownSet.add(s.id);
 

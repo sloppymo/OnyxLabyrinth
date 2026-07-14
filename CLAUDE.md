@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Read `AGENTS.md` before making any change to `src/`.** It contains a detailed file map, hard rules (things not to change without being asked), verification checklists for the renderer/combat screen, and a list of common pitfalls with their fixes. It is the primary source of truth for engine work; this file covers commands and orientation, not repeated here.
 
+**For playtest / balance / combat-UX / perk priorities,** also read [`docs/AGENT-READING-LIST.md`](docs/AGENT-READING-LIST.md) so you do not re-assert stale findings (events, Arena floor scaling, Temple curse UI, perk overlay existence).
+
 ## What this is
 
 OnyxLabyrinth is a Wizardry-style first-person dungeon crawler: TypeScript + Vite, no UI framework. A 2D canvas renders a pseudo-3D corridor view; the rest of the UI (menus, combat, town, camp) is hand-built DOM. Deployed to GitHub Pages from the `docs/` folder.

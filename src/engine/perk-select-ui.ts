@@ -46,6 +46,12 @@ export class PerkSelectController {
   private currentIndex = 0;
   private selectedCard = 0;
   private justOpened = true;
+  /** True once the player has moved the card cursor for the CURRENT choice.
+   *  Enter is inert until then, so stray/held/scripted Enter presses left
+   *  over from combat can never silently burn a perk pick. */
+  private hasInteracted = false;
+  /** Hint shown when Enter is pressed before choosing a card. */
+  private confirmBlockedHint = false;
 
   constructor(opts: PerkSelectControllerOptions) {
     this.panel = opts.panel;
@@ -70,15 +76,26 @@ export class PerkSelectController {
     const lower = key.toLowerCase();
     if (lower === "arrowleft" || lower === "a") {
       this.selectedCard = 0;
+      this.hasInteracted = true;
+      this.confirmBlockedHint = false;
       this.render();
       return;
     }
     if (lower === "arrowright" || lower === "d") {
       this.selectedCard = 1;
+      this.hasInteracted = true;
+      this.confirmBlockedHint = false;
       this.render();
       return;
     }
     if (key === "Enter" || key === " ") {
+      // Explicit confirmation: a card must have been selected with ←/→
+      // first. This is the guard that makes Enter-spam harmless.
+      if (!this.hasInteracted) {
+        this.confirmBlockedHint = true;
+        this.render();
+        return;
+      }
       this.confirm();
       return;
     }
@@ -118,6 +135,9 @@ export class PerkSelectController {
   private advance(): void {
     this.currentIndex++;
     this.selectedCard = 0;
+    // Each queued character needs their own deliberate ←/→ + Enter.
+    this.hasInteracted = false;
+    this.confirmBlockedHint = false;
     if (this.currentIndex >= this.queue.length) {
       this.dispose();
       this.onDone();
@@ -157,9 +177,15 @@ export class PerkSelectController {
     }
     lines.push(`</div>`);
 
-    lines.push(
-      `<div class="perk-select-footer">[←/→] select · [Enter] confirm</div>`
-    );
+    if (this.confirmBlockedHint) {
+      lines.push(
+        `<div class="perk-select-footer perk-select-warn">Pick a card with ←/→ first, then Enter to confirm.</div>`
+      );
+    } else {
+      lines.push(
+        `<div class="perk-select-footer">[←/→] select · [Enter] confirm</div>`
+      );
+    }
 
     this.panel.innerHTML = lines.join("");
   }

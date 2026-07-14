@@ -16,8 +16,15 @@ import {
   type PerkDef,
 } from "./perks";
 import { createCharacter, type Character } from "./party";
-import { createCombatState, resolvePlayerTurn, type CombatState } from "./combat";
+import {
+  createCombatState,
+  resolvePlayerTurn,
+  resolveEnemyTurn,
+  endRound,
+  type CombatState,
+} from "./combat";
 import type { EnemyDef, EnemyInstance } from "../data/enemies";
+import type { SpellDef } from "../data/spells";
 
 const BASE_STATS = { str: 10, int: 10, pie: 10, vit: 10, agi: 10, luk: 10 };
 
@@ -153,6 +160,22 @@ describe("perkModifiers", () => {
     expect(mods.spCostMultiplierFor("heal")).toBeCloseTo(0.8);
     expect(mods.spCostMultiplierFor("damage")).toBe(1);
   });
+
+  it("aggregates spell damage multipliers (Glass Cannon)", () => {
+    const perks = [PERKS_BY_ID["mage-glass-cannon"]!];
+    const mods = perkModifiers(perks, BASE_STATS);
+    expect(mods.spellDamageMultiplier).toBeCloseTo(1.3);
+  });
+
+  it("splits damage-taken multipliers into always vs front-row-only buckets", () => {
+    const berserker = perkModifiers([PERKS_BY_ID["fighter-berserker"]!], BASE_STATS);
+    expect(berserker.damageTakenMultiplier).toBeCloseTo(1 / 0.85);
+    expect(berserker.damageTakenMultiplierFrontRow).toBe(1);
+
+    const phalanx = perkModifiers([PERKS_BY_ID["halberdier-phalanx"]!], BASE_STATS);
+    expect(phalanx.damageTakenMultiplier).toBe(1);
+    expect(phalanx.damageTakenMultiplierFrontRow).toBeCloseTo(0.85);
+  });
 });
 
 describe("dispatchHook", () => {
@@ -188,6 +211,56 @@ describe("dispatchHook", () => {
       },
     });
     expect(dealt).toBe(7);
+  });
+
+  it("halberdier-impale hits a second front-row enemy 25% of the time", () => {
+    const impale = PERKS_BY_ID["halberdier-impale"]!;
+    let dealt = 0;
+    dispatchHook("OnAttackHit", [impale], {
+      state: {},
+      rng: () => 0, // triggers
+      damage: 9,
+      dealCleaveDamage: (dmg: number) => {
+        dealt = dmg;
+      },
+    });
+    expect(dealt).toBe(9);
+
+    dealt = 0;
+    dispatchHook("OnAttackHit", [impale], {
+      state: {},
+      rng: () => 0.9, // above 25% — no trigger
+      damage: 9,
+      dealCleaveDamage: (dmg: number) => {
+        dealt = dmg;
+      },
+    });
+    expect(dealt).toBe(0);
+  });
+
+  it("crusader-retribution retaliates only when an adjacent ally was hit", () => {
+    const retribution = PERKS_BY_ID["crusader-retribution"]!;
+    let retaliated = false;
+    dispatchHook("AfterDamageTaken", [retribution], {
+      state: {},
+      rng: () => 0,
+      isAdjacentAlly: true,
+      retaliateHolyDamage: () => {
+        retaliated = true;
+      },
+    });
+    expect(retaliated).toBe(true);
+
+    retaliated = false;
+    dispatchHook("AfterDamageTaken", [retribution], {
+      state: {},
+      rng: () => 0,
+      isAdjacentAlly: false,
+      retaliateHolyDamage: () => {
+        retaliated = true;
+      },
+    });
+    expect(retaliated).toBe(false);
   });
 });
 
@@ -240,7 +313,6 @@ describe("perk combat integration", () => {
     const party = [makeCharacter("Fighter", ["fighter-cleave"])];
     const state = createCombatState(party, { front: [enemy1, enemy2], back: [] }, false);
 
-    let cleaveDmg = 0;
     const result = resolvePlayerTurn(state, {
       kind: "attack",
       actorId: party[0].id,
@@ -253,5 +325,150 @@ describe("perk combat integration", () => {
       // The cleave target took damage; we just verify the combat resolved cleanly.
       expect(result.ended).toBe(false);
     }
+  });
+
+  const ZAP: SpellDef = {
+    id: "zap",
+    name: "Zap",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "lightning", power: 10 },
+    description: "Test bolt.",
+  };
+
+  function castZap(perks: string[]): CombatState {
+    const enemy = makeEnemy("e1", "Rat A", 100);
+    const mage = makeCharacter("Mage", perks);
+    mage.knownSpellIds = ["zap"];
+    const state = createCombatState(
+      [mage],
+      { front: [enemy], back: [] },
+      false,
+      { zap: ZAP }
+    );
+    return resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: mage.id, spellId: "zap", targetInstanceId: "e1" },
+      () => 0.5
+    );
+  }
+
+  it("mage-glass-cannon boosts spell damage by 30%", () => {
+    // INT 10 → casting bonus 2; power 10 → base 12 damage, ×1.3 → 16.
+    const plain = castZap([]);
+    const boosted = castZap(["mage-glass-cannon"]);
+    const plainHp = plain.enemies.front[0].currentHp;
+    const boostedHp = boosted.enemies.front[0].currentHp;
+    expect(100 - plainHp).toBe(12);
+    expect(100 - boostedHp).toBe(16);
+  });
+
+  function enemyHitsCharacter(perks: string[], formationSlot = 0): number {
+    const enemy = makeEnemy("e1", "Rat A");
+    const c = makeCharacter("Halberdier", perks);
+    c.formationSlot = formationSlot;
+    const state = createCombatState([c], { front: [enemy], back: [] }, false);
+    const before = state.party[0].hp;
+    // Constant rng: no evasion (chance 0 at AGI 10), variance ×1.0.
+    const after = resolveEnemyTurn(state, "e1", () => 0.5);
+    return before - after.party[0].hp;
+  }
+
+  it("halberdier-phalanx reduces physical damage taken in the front row", () => {
+    const plain = enemyHitsCharacter([]);
+    const guarded = enemyHitsCharacter(["halberdier-phalanx"]);
+    expect(plain).toBe(4); // attack 4, variance 1.0, no armor
+    expect(guarded).toBe(3); // ×0.85, rounded
+  });
+
+  it("halberdier-phalanx does nothing from the back row", () => {
+    const guardedBack = enemyHitsCharacter(["halberdier-phalanx"], 3);
+    expect(guardedBack).toBe(4);
+  });
+
+  it("duelist-riposte counters when an enemy attack is evaded", () => {
+    const enemy = makeEnemy("e1", "Rat A", 50);
+    const duelist = makeCharacter("Duelist", ["duelist-riposte"]);
+    duelist.stats.agi = 25; // evasion 15%
+    const state = createCombatState([duelist], { front: [enemy], back: [] }, false);
+    // rng 0.1 < 0.15 → the attack is evaded, riposte fires.
+    const after = resolveEnemyTurn(state, "e1", () => 0.1);
+    expect(after.log.some((m) => m.includes("ripostes"))).toBe(true);
+    expect(after.enemies.front[0].currentHp).toBeLessThan(50);
+    expect(after.party[0].hp).toBe(duelist.maxHp);
+  });
+
+  it("thief-assassin crits statused enemies past the normal cap", () => {
+    const attack = (perks: string[], status: boolean) => {
+      const enemy = makeEnemy("e1", "Rat A", 100);
+      if (status) enemy.status.push("poison");
+      const thief = makeCharacter("Thief", perks);
+      const state = createCombatState([thief], { front: [enemy], back: [] }, false);
+      // rng 0.3: base crit chance is LUK/100 = 0.10 (no crit); with Assassin
+      // vs a statused enemy it's 0.35 (crit).
+      return resolvePlayerTurn(
+        state,
+        { kind: "attack", actorId: thief.id, targetInstanceId: "e1" },
+        () => 0.3
+      );
+    };
+    expect(attack([], true).log.some((m) => m.includes("critical"))).toBe(false);
+    expect(attack(["thief-assassin"], false).log.some((m) => m.includes("critical"))).toBe(false);
+    expect(attack(["thief-assassin"], true).log.some((m) => m.includes("critical"))).toBe(true);
+  });
+
+  it("thief-backstab ignores 25% enemy AC from the back row", () => {
+    const attack = (perks: string[]) => {
+      const enemy = makeEnemy("e1", "Rat A", 100);
+      enemy.ac = 8;
+      const thief = makeCharacter("Thief", perks);
+      thief.formationSlot = 3; // back row (thieves attack at full damage from there)
+      const dagger = {
+        id: "test-dagger",
+        name: "Test Dagger",
+        type: "weapon",
+        attackBonus: 0,
+        range: "short",
+        price: 0,
+      } as const;
+      const state = createCombatState(
+        [thief],
+        { front: [enemy], back: [] },
+        false,
+        {},
+        {},
+        { [thief.id]: { weapon: dagger, armor: [] } }
+      );
+      const after = resolvePlayerTurn(
+        state,
+        { kind: "attack", actorId: thief.id, targetInstanceId: "e1" },
+        () => 0.5
+      );
+      return 100 - after.enemies.front[0].currentHp;
+    };
+    // STR 10 + level 1 = 11 raw. Full AC: 11-8 = 3. Backstab: 11-6 = 5.
+    expect(attack([])).toBe(3);
+    expect(attack(["thief-backstab"])).toBe(5);
+  });
+
+  it("priest-saint regenerates 5% max HP for the party at end of round", () => {
+    const priest = makeCharacter("Priest", ["priest-saint"]);
+    priest.hp = priest.maxHp - 10;
+    const enemy = makeEnemy("e1", "Rat A");
+    const state = createCombatState([priest], { front: [enemy], back: [] }, false);
+    const after = endRound(state, () => 0.5);
+    const expectedHeal = Math.max(1, Math.round(priest.maxHp * 0.05));
+    expect(after.party[0].hp).toBe(priest.maxHp - 10 + expectedHeal);
+  });
+
+  it("no saint regen without the perk", () => {
+    const priest = makeCharacter("Priest", []);
+    priest.hp = priest.maxHp - 10;
+    const enemy = makeEnemy("e1", "Rat A");
+    const state = createCombatState([priest], { front: [enemy], back: [] }, false);
+    const after = endRound(state, () => 0.5);
+    expect(after.party[0].hp).toBe(priest.maxHp - 10);
   });
 });
