@@ -16,7 +16,9 @@
 
 import type { GameState, Grid } from "../types";
 import type { EdgeType, TileFeature } from "../types";
-import { edgeInDirection } from "../game/dungeon";
+import { edgeInDirection, buildOpenRoom } from "../game/dungeon";
+import { cloneFloor } from "../data/floors";
+import type { FloorDef } from "../data/floors";
 import f1WallUrl from "../assets/f1_wall_256.png";
 import f1FloorAUrl from "../assets/f1_floor_a_256.png";
 import f1FloorBUrl from "../assets/f1_floor_b_256.png";
@@ -148,6 +150,15 @@ const RENDER_CONFIG = {
   // adds weight to walking without touching perspective math.
   headBobAmplitude: 2.5,          // px — positive = head dips at mid-step
 } as const;
+
+// --- Battle arena synthetic room dimensions --------------------------------
+const ARENA_WIDTH = 7;
+const ARENA_DEPTH = 9;
+
+/** Fraction of canvas height where the arena horizon (floor/ceiling boundary)
+ *  sits after cropping. Shared between the arena renderer and the combat scene
+ *  projection so character positions always align with the floor plane. */
+export const ARENA_HORIZON_FRAC = 0.30;
 
 /** Raycast hit data for a single ray. */
 interface RayHit {
@@ -1058,6 +1069,70 @@ export function renderCorridorBackdrop(
   // Crop from y = renderH/2 - h*0.214, taking h pixels.
   const FLOOR_PLANE_FRAC = 0.214;
   const cropStart = Math.floor(renderH / 2 - h * FLOOR_PLANE_FRAC);
+  const result = document.createElement("canvas");
+  result.width = w;
+  result.height = h;
+  const resultCtx = result.getContext("2d")!;
+  resultCtx.imageSmoothingEnabled = false;
+  resultCtx.drawImage(off, 0, cropStart, w, h, 0, 0, w, h);
+
+  return result;
+}
+
+/**
+ * Bake a synthetic arena room into an offscreen canvas for use as a combat
+ * backdrop. Builds a small open room from the current floor's tileset, places
+ * the camera at the near edge facing north, and crops the rendered image so
+ * the horizon sits at ARENA_HORIZON_FRAC of the output height. This gives the
+ * battle scene a 3D floor plane with receding walls while leaving the DOM UI
+ * unchanged.
+ *
+ * After baking, the scanline pattern cache is invalidated so the next live
+ * dungeon render recreates it on the main corridor context.
+ */
+export function renderBattleArena(
+  state: GameState,
+  w: number,
+  h: number
+): HTMLCanvasElement {
+  const arenaGrid = buildOpenRoom(ARENA_WIDTH, ARENA_DEPTH);
+  const startX = Math.floor(ARENA_WIDTH / 2);
+  const startY = ARENA_DEPTH - 1;
+
+  const arenaFloor: FloorDef = {
+    ...cloneFloor(state.floor),
+    width: ARENA_WIDTH,
+    height: ARENA_DEPTH,
+    grid: arenaGrid,
+    startX,
+    startY,
+  };
+
+  const arenaState: GameState = {
+    ...state,
+    mode: "dungeon",
+    floor: arenaFloor,
+    player: { x: startX, y: startY, facing: 0 },
+    inDarkness: false,
+    inAntimagic: false,
+  };
+
+  const renderH = h * 2;
+  const off = document.createElement("canvas");
+  off.width = w;
+  off.height = renderH;
+  const offCtx = off.getContext("2d")!;
+
+  resetRenderCamera(startX, startY, 0);
+  render(offCtx, arenaState);
+
+  // Invalidate the scanline pattern cache so the live dungeon renderer does
+  // not reuse a pattern tied to this offscreen context.
+  scanlinePattern = null;
+
+  // Crop: the horizon is at renderH/2. We want it at h*ARENA_HORIZON_FRAC in
+  // the output so characters align with the floor plane in combat-scene.ts.
+  const cropStart = Math.floor(renderH / 2 - h * ARENA_HORIZON_FRAC);
   const result = document.createElement("canvas");
   result.width = w;
   result.height = h;

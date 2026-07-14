@@ -182,10 +182,11 @@ describe("scene bookkeeping", () => {
 });
 
 describe("actor positioning", () => {
-  it("party is on the right, enemies on the left", () => {
+  it("party is on the right, enemies on the left, and back row is deeper", () => {
     expect(partyPos(0, W, H).x).toBeGreaterThan(W / 2);
     expect(enemyPos(0, "front", W, H).x).toBeLessThan(W / 2);
-    expect(enemyPos(0, "back", W, H).x).toBeLessThan(enemyPos(0, "front", W, H).x);
+    expect(enemyPos(0, "back", W, H).y).toBeLessThan(enemyPos(0, "front", W, H).y);
+    expect(enemyPos(0, "back", W, H).scale).toBeLessThan(enemyPos(0, "front", W, H).scale);
   });
 
   it("findActor resolves party, enemies, and corpses", () => {

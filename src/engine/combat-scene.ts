@@ -31,6 +31,7 @@ import { getEffectSprite, type EffectSprite } from "./effect-sprite-cache";
 import { spellById } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import type { SpriteStrip } from "./sprite-manifest";
+import { ARENA_HORIZON_FRAC } from "./renderer";
 import combatBgUrl from "../assets/combat-bg.png";
 
 // --- Palette -----------------------------------------------------------------
@@ -66,24 +67,48 @@ const PARTY_SIZE = 210;
 const ENEMY_SIZE = 300;
 /** Boss sprites are drawn larger to tower over regular enemies. */
 const BOSS_SIZE = 480;
-/** Vertical spacing between members of a party column. */
-const PARTY_ROW_SPACING = 78;
-/** Vertical spacing between enemies in a row. */
-const ENEMY_ROW_SPACING = 78;
 
-/** Screen position (sprite center) of party member at array index i.
- *  The DOM menu windows overlay the bottom of the canvas starting around
- *  y≈365 (six-item menu), so the third rank's feet must stay above that. */
-export function partyPos(i: number, w: number, h: number): { x: number; y: number } {
-  const front = i < 3;
-  const idx = i % 3;
-  // FF6 diagonal: each successive member a bit lower and a bit further right.
-  // topY keeps the first rank's feet (anchor + ~7% of sprite size — the pack
-  // art's baseline, see drawShadow callers) clearly on the floor plane, which
-  // starts at h*0.214 in the generated background.
-  const colX = front ? w * 0.66 : w * 0.79;
-  const topY = h * 0.25 + (front ? 0 : 26);
-  return { x: colX + idx * 12, y: topY + idx * PARTY_ROW_SPACING };
+const ARENA_X_LEFT = -1.0;
+const ARENA_X_RIGHT = 1.2;
+const ARENA_Z_FRONT = 1.2;
+const ARENA_Z_BACK = 1.8;
+const CAM_HEIGHT = 1.7;
+const ARENA_FOCAL = 150;
+const ARENA_SPRITE_SCALE = 1.3;
+
+function arenaSlotWorldPosition(
+  index: number,
+  kind: "party" | "enemy" | "ally",
+  row?: "front" | "back"
+): { x: number; y: number; z: number } {
+  const isFront = kind === "enemy" ? row === "front" : index < 3;
+  const z = isFront ? ARENA_Z_FRONT : ARENA_Z_BACK;
+  const idxInRow = kind === "enemy" ? index : index % 3;
+  const spacing = kind === "enemy" ? 0.6 : kind === "party" ? 0.45 : 0.4;
+  const xOffset = idxInRow * spacing;
+  const x = kind === "party"
+    ? ARENA_X_RIGHT + xOffset
+    : kind === "enemy"
+    ? ARENA_X_LEFT - xOffset
+    : 0 + xOffset;
+  return { x, y: 0, z };
+}
+
+function projectArenaPos(
+  world: { x: number; y: number; z: number },
+  w: number,
+  h: number
+): { x: number; y: number; scale: number } {
+  const horizonY = h * ARENA_HORIZON_FRAC;
+  const scale = ARENA_FOCAL / world.z;
+  const screenX = w / 2 + world.x * scale;
+  const screenY = horizonY + (CAM_HEIGHT / world.z) * scale;
+  return { x: screenX, y: screenY, scale };
+}
+
+/** Screen position (sprite center) of party member at array index i. */
+export function partyPos(i: number, w: number, h: number): { x: number; y: number; scale: number } {
+  return projectArenaPos(arenaSlotWorldPosition(i, "party"), w, h);
 }
 
 /** Screen position (sprite center) of an enemy in its row. */
@@ -92,15 +117,13 @@ export function enemyPos(
   row: "front" | "back",
   w: number,
   h: number
-): { x: number; y: number } {
-  const colX = row === "front" ? w * 0.31 : w * 0.16;
-  const topY = h * 0.27 + (row === "back" ? 24 : 0);
-  return { x: colX + idxInRow * 14, y: topY + idxInRow * ENEMY_ROW_SPACING };
+): { x: number; y: number; scale: number } {
+  return projectArenaPos(arenaSlotWorldPosition(idxInRow, "enemy", row), w, h);
 }
 
 /** Screen position of a summoned ally (between party and enemies). */
-export function allyPos(i: number, w: number, h: number): { x: number; y: number } {
-  return { x: w * 0.55, y: h * 0.32 + i * PARTY_ROW_SPACING };
+export function allyPos(i: number, w: number, h: number): { x: number; y: number; scale: number } {
+  return projectArenaPos(arenaSlotWorldPosition(i, "ally"), w, h);
 }
 
 // --- Background ----------------------------------------------------------------
@@ -363,7 +386,7 @@ export function findActor(
   id: string,
   w: number,
   h: number
-): { kind: SceneCursor["kind"]; x: number; y: number; class?: string } | null {
+): { kind: SceneCursor["kind"]; x: number; y: number; scale: number; class?: string } | null {
   const s = scene.state;
   const pi = s.party.findIndex((c) => c.id === id);
   if (pi >= 0) {
@@ -1603,8 +1626,10 @@ function drawPartyFallback(
   x: number,
   y: number,
   char: Character,
-  anim: ActorAnim
+  anim: ActorAnim,
+  size: number = PARTY_SIZE
 ): void {
+  const scale = size / PARTY_SIZE;
   ctx.save();
   ctx.globalAlpha = anim.opacity;
   const colors: Record<string, string> = {
@@ -1617,9 +1642,9 @@ function drawPartyFallback(
     Crusader: COLORS.classCrusader,
   };
   ctx.fillStyle = colors[char.class] ?? "#ccc";
-  ctx.fillRect(x - 12, y - 44, 24, 36);
+  ctx.fillRect(x - 12 * scale, y - 44 * scale, 24 * scale, 36 * scale);
   ctx.beginPath();
-  ctx.arc(x, y - 52, 9, 0, Math.PI * 2);
+  ctx.arc(x, y - 52 * scale, 9 * scale, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -1639,6 +1664,7 @@ function drawPartyMember(
   const off = animOffset(anim, now);
   const x = slot.x + off.x;
   const y = slot.y + off.y;
+  const drawSize = PARTY_SIZE * slot.scale / ARENA_FOCAL * ARENA_SPRITE_SCALE;
 
   const isDead = char.hp <= 0 || char.status.includes("knockedOut");
   if (isDead && anim.state !== "death") setAnimState(anim, "death", now);
@@ -1649,7 +1675,7 @@ function drawPartyMember(
   // The pack art only fills the middle of the 100px frame: measured feet sit
   // ~7% of the frame below center and the body spans ~25% of the frame wide,
   // so the shadow hugs the visible sprite instead of floating detached below.
-  drawShadow(ctx, x, y + PARTY_SIZE * 0.07, PARTY_SIZE * 0.13);
+  drawShadow(ctx, x, y + drawSize * 0.07, drawSize * 0.13);
 
   const stripInfo = getPartySpriteStrip(char.class, anim.state);
   const opacity = (hidden ? 0.35 : 1) * anim.opacity;
@@ -1657,9 +1683,9 @@ function drawPartyMember(
     const stateAge = now - anim.stateStart;
     const frame = frameIndexFor(stripInfo.strip, stateAge);
     // Pack art faces right; the party faces LEFT toward the enemies.
-    drawStripFrame(ctx, stripInfo.img, stripInfo.strip, frame, x, y, PARTY_SIZE, true, opacity);
+    drawStripFrame(ctx, stripInfo.img, stripInfo.strip, frame, x, y, drawSize, true, opacity);
   } else {
-    drawPartyFallback(ctx, x, y, char, anim);
+    drawPartyFallback(ctx, x, y, char, anim, drawSize);
     // Hurt flash overlay — only for the fallback shape, which has no baked
     // red hurt frame of its own (the real sprite strips do, see the enemy
     // branch in drawEnemy).
@@ -1670,10 +1696,10 @@ function drawPartyMember(
       ctx.globalAlpha = intensity * 0.4;
       ctx.fillStyle = "#ff4040";
       ctx.fillRect(
-        x - (PARTY_SIZE / 4) * sz,
-        y - (PARTY_SIZE / 2.4) * sz,
-        (PARTY_SIZE / 2) * sz,
-        PARTY_SIZE * 0.8 * sz
+        x - (drawSize / 4) * sz,
+        y - (drawSize / 2.4) * sz,
+        (drawSize / 2) * sz,
+        drawSize * 0.8 * sz
       );
       ctx.restore();
     }
@@ -1682,7 +1708,7 @@ function drawPartyMember(
   // The character art only fills the middle of the frame (measured art top
   // ≈11% of sprite size above center), so anchor the marker just above the
   // visible sprite, not the frame edge.
-  drawMarkers(ctx, scene, "party", char.id, x, y - PARTY_SIZE * 0.16, now);
+  drawMarkers(ctx, scene, "party", char.id, x, y - drawSize * 0.16, now);
 }
 
 /** Draw one enemy (living or corpse). */
@@ -1701,11 +1727,12 @@ function drawEnemy(
   const off = animOffset(anim, now);
   const x = slot.x + off.x;
   const y = slot.y + off.y;
-  const size = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
+  const baseSize = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
+  const drawSize = baseSize * slot.scale / ARENA_FOCAL * ARENA_SPRITE_SCALE;
 
   // Same measured art metrics as the party sprites: feet ~7% below frame
   // center, body ~25% of the frame wide.
-  drawShadow(ctx, x, y + size * 0.07, size * 0.13);
+  drawShadow(ctx, x, y + drawSize * 0.07, drawSize * 0.13);
 
   const stripInfo = getEnemySpriteStrip(enemy.id, enemyStripState(anim.state));
   if (stripInfo?.img && stripInfo.img.naturalWidth > 0) {
@@ -1721,16 +1748,16 @@ function drawEnemy(
     }
     // Enemy strips are authored facing RIGHT — exactly toward the party in
     // the FF6 layout (enemies left, party right) — so no mirroring.
-    drawStripFrame(ctx, img, strip, frame, x, y, size, false, anim.opacity);
+    drawStripFrame(ctx, img, strip, frame, x, y, drawSize, false, anim.opacity);
     // No extra hurt-flash overlay here: the sprite pack already bakes a red
     // flash frame into the hurt strip (see e.g. assets/enemies/orc/hurt.png),
     // so an additional ellipse just doubles up into a harsher red blob.
   } else {
-    drawEnemyFallback(ctx, x, y, enemy, anim, now, size);
+    drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize);
   }
 
   // Tallest enemy art tops out ≈16% of sprite size above center.
-  drawMarkers(ctx, scene, "enemy", enemy.instanceId, x, y - size * 0.2, now);
+  drawMarkers(ctx, scene, "enemy", enemy.instanceId, x, y - drawSize * 0.2, now);
 }
 
 /** Draw a summoned ally (sprite if available, otherwise glowing orb). */
@@ -1749,12 +1776,13 @@ function drawAlly(
   const off = animOffset(anim, now);
   const x = slot.x + off.x;
   const y = slot.y + off.y;
+  const drawSize = ENEMY_SIZE * slot.scale / ARENA_FOCAL * ARENA_SPRITE_SCALE;
 
   // If the ally has a sprite id, try to draw it like an enemy.
   if (ally.spriteId) {
     const stripInfo = getEnemySpriteStrip(ally.spriteId, enemyStripState(anim.state));
     if (stripInfo?.img && stripInfo.img.naturalWidth > 0) {
-      drawShadow(ctx, x, y + ENEMY_SIZE * 0.07, ENEMY_SIZE * 0.13);
+      drawShadow(ctx, x, y + drawSize * 0.07, drawSize * 0.13);
       const { strip, img } = stripInfo;
       const stateAge = now - anim.stateStart;
       let frame: number;
@@ -1766,33 +1794,34 @@ function drawAlly(
         frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED));
       }
       // Summon sprites face RIGHT (toward enemies), same as enemy art.
-      drawStripFrame(ctx, img, strip, frame, x, y, ENEMY_SIZE, false, anim.opacity);
+      drawStripFrame(ctx, img, strip, frame, x, y, drawSize, false, anim.opacity);
       // No extra hurt-flash overlay: the sprite pack's hurt strip already
       // bakes in a red flash frame (see the enemy branch above).
-      drawMarkers(ctx, scene, "ally", ally.id, x, y - ENEMY_SIZE * 0.2, now);
+      drawMarkers(ctx, scene, "ally", ally.id, x, y - drawSize * 0.2, now);
       return;
     }
   }
 
   // Fallback: glowing orb (original procedural ally).
-  drawShadow(ctx, x, y + 26, 20);
+  const spriteScale = (slot.scale / ARENA_FOCAL) * ARENA_SPRITE_SCALE;
+  drawShadow(ctx, x, y + 26 * spriteScale, 20 * spriteScale);
   ctx.save();
   ctx.globalAlpha = anim.opacity;
   const bob = Math.sin(now / 500 + index) * 3;
   ctx.fillStyle = COLORS.spellBurst;
   ctx.beginPath();
-  ctx.arc(x, y + bob, 16, 0, Math.PI * 2);
+  ctx.arc(x, y + bob, 16 * spriteScale, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = COLORS.spellBurst;
   ctx.lineWidth = 2;
   for (let i = -1; i <= 1; i += 2) {
     ctx.beginPath();
-    ctx.moveTo(x + i * 9, y + bob);
-    ctx.lineTo(x + i * 20, y + bob - 14);
+    ctx.moveTo(x + i * 9 * spriteScale, y + bob);
+    ctx.lineTo(x + i * 20 * spriteScale, y + bob - 14 * spriteScale);
     ctx.stroke();
   }
   ctx.restore();
-  drawMarkers(ctx, scene, "ally", ally.id, x, y - 32, now);
+  drawMarkers(ctx, scene, "ally", ally.id, x, y - 32 * spriteScale, now);
 }
 
 /** Cursor (target selection) and active-actor hand markers. */
@@ -2088,32 +2117,24 @@ export function renderScene(
 ): void {
   const s = scene.state;
 
-  // Apply screen shake.
-  const shakeT =
-    scene.screenShake.until > now
-      ? 1
-      : Math.max(0, 1 - (now - scene.screenShake.until) / 200);
-  const shakeAmount = scene.screenShake.amount * shakeT;
-  const shakeX = shakeAmount > 0 ? (Math.random() - 0.5) * shakeAmount : 0;
-  const shakeY = shakeAmount > 0 ? (Math.random() - 0.5) * shakeAmount : 0;
   ctx.save();
-  ctx.translate(shakeX, shakeY);
 
   // Background: prefer the baked corridor backdrop (matches the current
   // floor's tileset), fall back to the static combat-bg.png image, and
   // finally to a plain gradient if neither is available.
-  if (scene.backdrop) {
+  const backdrop = scene.backdrop;
+  if (backdrop) {
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(scene.backdrop, 0, 0, w, h);
+    ctx.drawImage(backdrop, 0, 0, w, h);
   } else {
+    // Fall back to the static combat-bg.png gradient image.
     const bg = getCombatBg();
-    if (bg?.complete && bg.naturalWidth > 0) {
-      ctx.imageSmoothingEnabled = false;
+    if (bg && bg.complete && bg.naturalWidth > 0) {
       ctx.drawImage(bg, 0, 0, w, h);
     } else {
       const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, "#1a1612");
-      grad.addColorStop(1, "#080705");
+      grad.addColorStop(0, "#0d0b08");
+      grad.addColorStop(1, "#1f1b14");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
     }

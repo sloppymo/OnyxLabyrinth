@@ -37,7 +37,7 @@ import { isUtilitySpell, type SpellDef } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import { techniquesForClass, techniqueById, type TechniqueDef } from "../data/techniques";
 import type { ItemDef } from "../data/items";
-import { combatCtx, combatCanvas, combatWindows } from "./shell";
+import { combatCanvas, combatWindows } from "./shell";
 import {
   createScene,
   renderScene,
@@ -148,7 +148,8 @@ export class CombatController {
       this.windowsDirty = false;
     }
 
-    renderScene(combatCtx, combatCanvas.width, combatCanvas.height, this.scene, now);
+    const ctx = combatCanvas.getContext("2d")!;
+    renderScene(ctx, combatCanvas.width, combatCanvas.height, this.scene, now);
   }
 
   // --- Round / turn machine ---------------------------------------------------

@@ -17,6 +17,7 @@ import {
   loadTextures,
   isRenderCameraAnimating,
   resetRenderCamera,
+  renderBattleArena,
   renderCorridorBackdrop,
 } from "./engine/renderer";
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
@@ -282,7 +283,7 @@ let combatController: CombatController | null = null;
 // keydown handler, so it can never swallow a later, legitimate keypress.
 let suppressNextCombatKey = false;
 
-function startCombat(combat: CombatState): void {
+async function startCombat(combat: CombatState): Promise<void> {
   setMode(state, "combat");
   flashEncounter();
   showMode("combat", mapVisible);
@@ -291,11 +292,17 @@ function startCombat(combat: CombatState): void {
     suppressNextCombatKey = false;
   }, 0);
 
+  // Ensure renderer tilesets are loaded before baking the arena backdrop.
+  // Textures are loaded at boot, but arena mode can start before that finishes.
+  await loadTextures();
+
+  const bd = renderBattleArena(state, 768, 672);
+
   combatController = new CombatController(combat, {
     onEnd: (result: CombatState) => {
       endCombat(result);
     },
-    backdrop: renderCorridorBackdrop(state, 768, 672),
+    backdrop: bd,
   });
 }
 
@@ -1154,6 +1161,8 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     ITEMS_BY_ID,
     defaultLoadoutForCharacter,
     getCombatController: () => combatController,
+    renderBattleArena,
+    renderCorridorBackdrop,
   };
 }
 
