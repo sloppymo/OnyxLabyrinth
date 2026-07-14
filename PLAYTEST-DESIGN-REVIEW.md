@@ -18,12 +18,12 @@ Read these before treating every P1 below as an open bug. Prefer `docs/AGENT-REA
 | P1 technique name truncation (`Throat…`) | **Fixed 2026-07-13**: list labels wrap instead of truncating; the detail panel always shows the full name. `T` now opens the Tech menu and the footer hint is derived from the actual menu entries. |
 | P1 perk overlay never seen in Arena | **Fixed/proven 2026-07-13**: the path worked, but Enter spam could silently confirm picks. The overlay now requires an explicit ←/→ card pick before Enter (per character). Verified in Arena with scripted victory + 6× Enter spam: overlay stays, warns, no perk burned. |
 | P1 dungeon HUD `F` / mislabeled resource | **Still open** — confirm whether `F` is front-row and whether Inn `HP 0/20` is XP-to-next. |
-| P1 Arena L9 starts on floor-1 trash | **Likely fixed in code:** `arenaStartFloor = min(3, max(1, ceil(level/4)))` → L9 starts floor **3**. Screenshot `28-…` may be pre-fix. Re-play Arena L9 before changing scaling. |
+| P1 Arena L9 starts on floor-1 trash | **Fixed:** `arenaStartFloorForLevel(9) === 3`; Arena auto-starts wave 1 and skips boss formations. |
 | P2 Temple lacks Remove Curse | **UI is conditional:** `[R] Remove Curse (100g)` shows when cursed gear is equipped (`town-ui.ts`). Playtest likely had no cursed items. |
-| P2 encounter rate feels low | Rates are 5% / 7% / 8% by floor — Wizardry-sparse by design; treat bumps as deliberate balance, not a bugfix. |
+| P2 encounter rate feels low | **Retuned 2026-07-14:** 8%/10%/12% + soft pity (force by step 28). Still Wizardry-sparse early; dry spells capped. |
 | Combat footer `A/M/D/I/R` / missing Tech shortcut | **Still open** (see `PLAYTEST-REPORT.md` / `POLISH-ISSUES-PROMPT.md`). Lower priority than L9 menu/perks. |
 
-**Designer priority order (2026-07-13 analysis):** (1) late combat UX, (2) perk overlay prove + stub honesty, (3) caster endgame verbs, (4) encounter/Arena feel after recheck, (5) status/flee levers.
+**Designer priority order (2026-07-13 analysis):** (1)–(6) mostly done; encounter/Arena feel **done 2026-07-14** (see `docs/AGENT-READING-LIST.md`).
 
 ---
 

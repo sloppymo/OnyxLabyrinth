@@ -54,6 +54,12 @@ import {
   type Loadout,
 } from "./game/combat";
 import { rollEncounter, resolveEncounter } from "./data/enemies";
+import {
+  encounterRollChance,
+  arenaStartFloorForLevel,
+  arenaFloorForWave,
+  rollArenaEncounter,
+} from "./game/encounters";
 import { tickBuffs, clearBuffs } from "./game/persistent-spells";
 import { SpellMenuController } from "./engine/spell-ui";
 import { NPCController } from "./engine/npc-ui";
@@ -237,14 +243,17 @@ function buildLoadoutMap(): Record<string, Loadout> {
 }
 
 // --- Encounter trigger ---------------------------------------------------
-const ENCOUNTER_COOLDOWN = 8; // design doc §6.3: no more than 1 per 8 steps
 
 function maybeTriggerEncounter(): boolean {
-  if (state.stepsSinceEncounter < ENCOUNTER_COOLDOWN) return false;
+  const chance = encounterRollChance(
+    state.floor.encounterRate,
+    state.stepsSinceEncounter
+  );
+  if (chance <= 0) return false;
   // Design doc §6.2: treasure rooms are guaranteed empty of enemies.
   const cell = state.floor.grid[state.player.y]?.[state.player.x];
   if (cell?.tile === "treasure") return false;
-  if (Math.random() >= state.floor.encounterRate) return false;
+  if (Math.random() >= chance) return false;
 
   const entry = rollEncounter(state.floor.id);
   if (!entry) return false;
@@ -822,7 +831,7 @@ function startArena(targetLevel: number): void {
   arenaWave = 1;
   // Scale starting floor with party level so high-level parties don't
   // waste waves trivially one-shotting floor-1 skeletons.
-  arenaStartFloor = Math.min(3, Math.max(1, Math.ceil(targetLevel / 4)));
+  arenaStartFloor = arenaStartFloorForLevel(targetLevel);
   arenaFloor = arenaStartFloor;
 
   // Level the starter party up to the selected target level.
@@ -838,7 +847,8 @@ function startArena(targetLevel: number): void {
   });
   state.equipment = equipment;
 
-  openArena();
+  // Wave 1 kicks off immediately — no extra hub click before the first fight.
+  startNextArenaFight();
 }
 
 function openArena(): void {
@@ -865,12 +875,13 @@ function openArena(): void {
 
 function startNextArenaFight(): void {
   const floor = arenaFloor;
+  const wave = arenaWave;
   arenaWave++;
-  arenaFloor = arenaStartFloor + ((arenaWave - 1) % (4 - arenaStartFloor));
+  arenaFloor = arenaFloorForWave(arenaStartFloor, arenaWave);
 
-  const entry = rollEncounter(floor);
+  const entry = rollArenaEncounter(floor, wave);
   if (!entry) {
-    // No encounters for this floor; start a fresh wave.
+    // No encounters for this floor; start a fresh wave hub.
     openArena();
     return;
   }

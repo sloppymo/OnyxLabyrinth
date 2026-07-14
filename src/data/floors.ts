@@ -42,7 +42,9 @@ export interface FloorDef {
   grid: Grid;
   startX: number;
   startY: number;
-  // Base encounter rate per step (~5% on Floor 1, scaling to ~8% on Floor 3).
+  // Base encounter rate per step after the 8-step cooldown
+  // (~8% / ~10% / ~12% on floors 1–3). Soft pity in game/encounters.ts
+  // caps dry spells without changing combat math.
   encounterRate: number;
   // Enemy IDs that can appear on this floor. Unused by the encounter roller —
   // the weighted tables in data/enemies.ts are the source of truth.
@@ -227,7 +229,7 @@ function floor1(): FloorDef {
     grid,
     startX: 5,
     startY: 9,
-    encounterRate: 0.05,
+    encounterRate: 0.08,
     lockedDoors: [
       { x: 9, y: 7, dir: "s", keyId: "crypt-key" },
     ],
@@ -352,7 +354,7 @@ function floor2(): FloorDef {
     grid,
     startX: 2,
     startY: 11,
-    encounterRate: 0.07,
+    encounterRate: 0.10,
     lockedDoors: [
       { x: 10, y: 7, dir: "e", keyId: "lexicon-key" },
     ],
@@ -485,7 +487,7 @@ function floor3(): FloorDef {
     grid,
     startX: 2,
     startY: 2,
-    encounterRate: 0.08,
+    encounterRate: 0.12,
     teleporters: [
       { x: 9, y: 6, toFloorId: 3, toX: 2, toY: 3 },
     ],

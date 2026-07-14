@@ -27,6 +27,7 @@ import { npcAt, applyKilledNPCs } from "./npc";
 import { displayNameFor } from "../data/items";
 import { effectiveStats } from "./effective-stats";
 import { perksForCharacter, perkModifiers } from "./perks";
+import { ENCOUNTER_COOLDOWN } from "./encounters";
 
 type Rng = () => number;
 
@@ -348,7 +349,8 @@ export function transitionToFloor(
   state.player.x = x;
   state.player.y = y;
   state.player.facing = facing;
-  state.stepsSinceEncounter = 99; // allow encounter on first step
+  // Clear cooldown without triggering pity-force (see game/encounters.ts).
+  state.stepsSinceEncounter = ENCOUNTER_COOLDOWN;
   state.inDarkness = false;
   state.inAntimagic = false;
 
