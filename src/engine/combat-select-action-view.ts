@@ -28,7 +28,8 @@ import { spellEffectSummary, spellTargetLabel, techniqueEffectSummary, technique
 export type MenuMode = "menu" | "selection" | "none";
 
 export interface MenuEntry {
-  kind: PlayerAction["kind"];
+  /** Player action, or "repeat" for sticky last Attack. */
+  kind: PlayerAction["kind"] | "repeat";
   label: string;
   disabled?: boolean;
 }
@@ -71,6 +72,10 @@ export interface CombatWindowsView {
   flash: string | null;
   /** End-of-combat window; when set it replaces menu interaction. */
   result: ResultView | null;
+  /** Playback-only hint (Shift/Tab/Esc). Hidden during result. */
+  playbackHint?: string | null;
+  /** Compact resource line under the action menu (e.g. "SP 12/40 · Rage 3"). */
+  menuResourceLine?: string | null;
 }
 
 export interface CombatWindowsHandlers {
@@ -94,7 +99,7 @@ export const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
 
 /** Keyboard shortcut letter per action, for the hint row (ambush reuses
  *  Enter on the highlighted row and has no letter). */
-const ACTION_SHORTCUTS: Partial<Record<PlayerAction["kind"], string>> = {
+const ACTION_SHORTCUTS: Partial<Record<MenuEntry["kind"], string>> = {
   attack: "A",
   technique: "T",
   cast: "M",
@@ -102,6 +107,7 @@ const ACTION_SHORTCUTS: Partial<Record<PlayerAction["kind"], string>> = {
   item: "I",
   flee: "R",
   hide: "H",
+  repeat: "Z",
 };
 
 /** Hint-row text for the action menu, derived from the entries actually
@@ -113,8 +119,12 @@ export function menuHintText(entries: MenuEntry[]): string {
   return `↑↓ Enter · ${letters.join("/")}`;
 }
 
-/** Menu entries available to a character (Thief gets Hide/Ambush, melee gets Technique). */
-export function menuEntriesForCharacter(char: Character): MenuEntry[] {
+/** Menu entries available to a character (Thief gets Hide/Ambush, melee gets Technique).
+ *  When `includeRepeat` is true, inserts Repeat after Attack. */
+export function menuEntriesForCharacter(
+  char: Character,
+  includeRepeat = false
+): MenuEntry[] {
   const base: PlayerAction["kind"][] = ["attack", "cast", "defend", "item"];
   // Melee classes (Fighter/Thief/Halberdier/Duelist/Crusader) get Technique.
   if (classHasTechniques(char.class)) {
@@ -125,7 +135,16 @@ export function menuEntriesForCharacter(char: Character): MenuEntry[] {
     base.push(char.status.includes("hidden") ? "ambush" : "hide");
   }
   base.push("flee");
-  return base.map((kind) => ({ kind, label: ACTION_LABELS[kind] }));
+  const entries: MenuEntry[] = base.map((kind) => ({
+    kind,
+    label: ACTION_LABELS[kind],
+  }));
+  if (includeRepeat) {
+    const attackIdx = entries.findIndex((e) => e.kind === "attack");
+    const at = attackIdx >= 0 ? attackIdx + 1 : 1;
+    entries.splice(at, 0, { kind: "repeat", label: "Repeat" });
+  }
+  return entries;
 }
 
 // --- Window builders ---------------------------------------------------------
@@ -171,6 +190,9 @@ function buildMenuWindow(
 
   if (view.menuMode === "none") {
     win.classList.add("empty");
+    if (view.playbackHint) {
+      win.appendChild(el("ff6-hint-row", view.playbackHint));
+    }
     return win;
   }
 
@@ -183,6 +205,9 @@ function buildMenuWindow(
       row.addEventListener("mouseenter", () => handlers.onMenuHover(i));
       row.addEventListener("click", () => handlers.onMenuConfirm(i));
       win.appendChild(row);
+    }
+    if (view.menuResourceLine) {
+      win.appendChild(el("ff6-hint-row ff6-resource-row", view.menuResourceLine));
     }
     win.appendChild(el("ff6-hint-row", menuHintText(view.menuEntries)));
   } else {

@@ -15,7 +15,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 | [`FOLLOWUP-COMBAT-UX-PERKS-PROMPT.md`](FOLLOWUP-COMBAT-UX-PERKS-PROMPT.md) | Late combat UX + perk delivery | **Done 2026-07-13** |
 | [`FOLLOWUP-CASTER-ENDGAME-PROMPT.md`](FOLLOWUP-CASTER-ENDGAME-PROMPT.md) | T6–T7 caster verbs | **Done 2026-07-13 (Path A)** |
 | [`FOLLOWUP-COMBAT-DEPTH-PROMPT.md`](FOLLOWUP-COMBAT-DEPTH-PROMPT.md) | Status/flee + wireable perks + DoT/regen (art only if needed) | **Done 2026-07-13** (see work-order item 5 for what shipped) |
-| [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md) | Combat tempo: target defaults, playback skip/speed, sticky Repeat | **Next preferred** — A→B→C; optional feel Phase D |
+| [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md) | Combat tempo: target defaults, playback skip/speed, sticky Repeat | **Done 2026-07-13** (A–C + D1/D2/D3 + E party Auto shipped; encounter density still separate) |
 | Design canvas (IDE) | `onyxlabyrinth-design-analysis.canvas.tsx` | Mechanics & balance judgment (2026-07-13) |
 
 ## Specs under `docs/superpowers/specs/`
@@ -48,4 +48,4 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
    - **Spell DoT/regen engine:** `SpellEffect` damage/heal gained optional `followup` (`dot` | `regen`); tracked on `CombatState.enemyDots`/`regenBuffs`, ticked in end-of-round status processing with `statusTick`/`spellEffect` events (burn pops orange, regen pops green). `mage-meteor-swarm` now applies 10/round fire burn ×3; `priest-mass-regenerate` 8/round regen ×3; new single-target `priest-regenerate` (T3). DoT ticks respect elemental resist/weakness.
    - **Remaining honest stubs:** 10 `TODO(v1.1)` markers in `data/perks.ts` (resistance/reflect/silence-immunity/steal-economy/party-wide-aura shapes that need new systems).
    - **No new art generated** — burn reuses the existing `fire_explosion` burst (orange-tinted `STATUS_STYLES.burn`); regen reuses the heal family. Phase D criteria never triggered.
-6. **Combat flow / tempo (next).** Prefer [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md) before encounter-density retunes: **A** party-shared last-hit / lowest-HP% prefocus + single-enemy Attack auto-confirm + Attack as default cursor; **B** hold 2× + sticky FAST toggle + hard-skip (not result Confirm); **C** per-character sticky Attack Repeat; optional **D** feel; stretch **E** Bravely-style party Auto. Research section cites Persona/Bravely/Yanfly patterns. No combat-math changes.
+6. **Combat flow / tempo.** ~~Prefer [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md)~~ **Done 2026-07-13:** A–C tempo UX; Phase D: `incapacitated` event banner, SP/Rage menu line, hit recoil+flash; Phase E: `Q` party Auto (last command, never Flee/Item; Attack/Defend fallback). Encounter density stays #4.

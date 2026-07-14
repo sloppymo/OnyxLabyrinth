@@ -195,7 +195,8 @@ function startMove(
   toX: number,
   toY: number,
   duration: number,
-  now: number
+  now: number,
+  playbackRate = 1
 ): void {
   const cur = animOffset(anim, now);
   anim.moveFromX = cur.x;
@@ -203,7 +204,8 @@ function startMove(
   anim.moveToX = toX;
   anim.moveToY = toY;
   anim.moveStart = now;
-  anim.moveDuration = duration;
+  // Keep walk/return in sync with a turbo'd choreography clock.
+  anim.moveDuration = duration / Math.max(1, playbackRate);
 }
 
 function setAnimState(anim: ActorAnim, state: ActorSpriteState, now: number): void {
@@ -295,6 +297,12 @@ export interface CombatScene {
   /** The actor whose menu is open (bouncing hand marker). */
   activeActorId: string | null;
   choreo: Choreography | null;
+  /** Playback clock multiplier (1 = normal, 2 = hold-Shift / sticky FAST). */
+  playbackRate: number;
+  /** Sticky FAST is on — drawn as an on-canvas cue during playback. */
+  showFastCue: boolean;
+  /** Party Auto is on — drawn as an on-canvas cue. */
+  showAutoCue: boolean;
   /** Simple spell burst / projectile / field effects. */
   effects: SceneEffect[];
   /** Screen-shake amount and expiry. */
@@ -372,6 +380,9 @@ export function createScene(state: CombatState): CombatScene {
     cursor: null,
     activeActorId: null,
     choreo: null,
+    playbackRate: 1,
+    showFastCue: false,
+    showAutoCue: false,
     effects: [],
     screenShake: { amount: 0, until: 0 },
     particles: [],
@@ -518,9 +529,12 @@ function impactSteps(
       if (actor && hurt) {
         const anim = getAnim(scene, actor.kind, targetId, now);
         setAnimState(anim, "hurt", now);
-        // Scale flash intensity by damage: 0.15 at small hits → 0.6 at big hits.
+        // Scale flash intensity by damage: 0.25 at small hits → 0.65 at big hits.
         const dmg = damageAmount ?? 0;
-        anim.hitFlashIntensity = Math.max(0.15, Math.min(0.6, 0.15 + dmg / 200));
+        anim.hitFlashIntensity = Math.max(0.25, Math.min(0.65, 0.25 + dmg / 180));
+        // Brief recoil: enemies kick left (toward party), party/allies kick right.
+        const recoilDir = actor.kind === "enemy" ? -1 : 1;
+        startMove(anim, recoilDir * 8, 0, 80, now, scene.playbackRate);
       }
       pushPopup(scene, targetId, text, color, now, w, h, big);
       if (actor) {
@@ -542,8 +556,13 @@ function impactSteps(
         }
       }
     }),
-    // Return the target to idle after the hurt strip finishes (unless dead —
-    // a later "defeated" step overrides).
+    // Ease recoil home, then return to idle after the hurt strip.
+    step(t + 80, (scene, now) => {
+      const actor = findActor(scene, targetId, w, h);
+      if (!actor || !hurt) return;
+      const anim = getAnim(scene, actor.kind, targetId, now);
+      startMove(anim, 0, 0, 120, now, scene.playbackRate);
+    }),
     step(t + 450, (scene, now) => {
       const actor = findActor(scene, targetId, w, h);
       if (!actor) return;
@@ -1345,7 +1364,7 @@ export function playTurn(
       step(t, (sc, n) => {
         const a = getAnim(sc, actor.kind, actorId, n);
         setAnimState(a, "walk", n);
-        startMove(a, dx, 0, APPROACH_MS, n);
+        startMove(a, dx, 0, APPROACH_MS, n, sc.playbackRate);
       })
     );
   };
@@ -1358,7 +1377,7 @@ export function playTurn(
       step(t, (sc, n) => {
         const a = getAnim(sc, kind, id, n);
         setAnimState(a, "walk", n);
-        startMove(a, 0, 0, RETURN_MS, n);
+        startMove(a, 0, 0, RETURN_MS, n, sc.playbackRate);
       }),
       step(t + RETURN_MS, (sc, n) => {
         const a = getAnim(sc, kind, id, n);
@@ -1936,6 +1955,19 @@ export function playTurn(
         t += 350;
         break;
       }
+
+      case "incapacitated": {
+        const label = evt.reason === "sleep" ? "Asleep" : "Paralyzed";
+        steps.push(
+          step(t, (sc, n) => {
+            sc.banner = label;
+            sc.bannerUntil = n + 700;
+            pushPopup(sc, evt.actorId, label.toUpperCase(), COLORS.miss, n, w, h);
+          })
+        );
+        t += 500;
+        break;
+      }
     }
   }
 
@@ -1951,6 +1983,21 @@ export function playTurn(
 export function isPlaybackDone(scene: CombatScene, now: number): boolean {
   if (!scene.choreo) return true;
   return now - scene.choreo.start >= scene.choreo.duration;
+}
+
+/**
+ * Flush remaining choreography steps immediately (cosmetic skip). Damage
+ * was already applied at resolve time — this only finishes the visuals.
+ */
+export function skipPlaybackToEnd(scene: CombatScene, now: number): void {
+  if (!scene.choreo) return;
+  for (const s of scene.choreo.steps) {
+    if (!s.fired) {
+      s.fired = true;
+      s.run(scene, now);
+    }
+  }
+  scene.choreo = null;
 }
 
 /**
@@ -1975,8 +2022,15 @@ export function absorbDeaths(scene: CombatScene, state: CombatState): void {
 // --- Per-frame update ---------------------------------------------------------------
 
 export function updateScene(scene: CombatScene, now: number): void {
-  // Fire due choreography steps.
+  // Fire due choreography steps. When playbackRate > 1, warp choreo.start
+  // backward so wall-clock jumps and continuous frames both stay in sync
+  // (absolute-time tests with rate=1 are unchanged).
   if (scene.choreo) {
+    const rate = Math.max(1, scene.playbackRate || 1);
+    if (rate > 1 && scene.lastUpdate !== undefined) {
+      const dt = Math.max(0, now - scene.lastUpdate);
+      scene.choreo.start -= dt * (rate - 1);
+    }
     const elapsed = now - scene.choreo.start;
     for (const s of scene.choreo.steps) {
       if (!s.fired && elapsed >= s.at) {
@@ -2690,6 +2744,29 @@ export function renderScene(
   // Banner window (top center) + round indicator (top left).
   drawBanner(ctx, w, scene);
   drawRoundIndicator(ctx, scene);
+
+  // Sticky FAST / AUTO cues (top-right).
+  if (scene.showFastCue || scene.showAutoCue) {
+    ctx.save();
+    ctx.font = "bold 14px monospace";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    let x = w - 16;
+    if (scene.showFastCue) {
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(x - 56, 8, 64, 22);
+      ctx.fillStyle = "#ffe566";
+      ctx.fillText("FAST", x, 12);
+      x -= 72;
+    }
+    if (scene.showAutoCue) {
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(x - 56, 8, 64, 22);
+      ctx.fillStyle = "#7ec8ff";
+      ctx.fillText("AUTO", x, 12);
+    }
+    ctx.restore();
+  }
 
   ctx.restore();
 }

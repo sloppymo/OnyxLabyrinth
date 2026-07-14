@@ -717,8 +717,13 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
     e.preventDefault();
     return;
   }
-  combatController.handleKey(e.key);
+  combatController.handleKey(e.key, e);
   e.preventDefault();
+});
+
+window.addEventListener("keyup", (e: KeyboardEvent) => {
+  if (state.mode !== "combat" || !combatController) return;
+  combatController.handleKeyUp(e.key);
 });
 
 // Camp key handler — dismisses the camp screen after the animation finishes.
