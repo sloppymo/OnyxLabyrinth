@@ -22,10 +22,11 @@ import type { CombatState, PlayerAction } from "../game/combat";
 import type { Character } from "../game/party";
 import type { SpellDef } from "../data/spells";
 import { classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
-import { spellEffectSummary, spellTargetLabel, techniqueEffectSummary, techniqueTargetLabel } from "./combat-display";
+import { spellEffectSummary, spellTargetLabel, techniqueEffectSummary, techniqueTargetLabel, partyStatusText } from "./combat-display";
+import type { CombatPalette, PaletteSlot } from "./combat-action-palette";
 
 /** What occupies the menu (left) window. */
-export type MenuMode = "menu" | "selection" | "none";
+export type MenuMode = "palette" | "menu" | "selection" | "none";
 
 export interface MenuEntry {
   /** Player action, or "repeat" for sticky last Attack. */
@@ -53,6 +54,8 @@ export interface CombatWindowsView {
    *  enemy turns / playback. */
   currentCharacterId: string | null;
   menuMode: MenuMode;
+  /** Controller-first four-slot palette (when menuMode === "palette"). */
+  palette: CombatPalette | null;
   menuEntries: MenuEntry[];
   menuIndex: number;
   /** Title above a selection list (e.g. "Magic", "Item", "Target"). */
@@ -74,13 +77,18 @@ export interface CombatWindowsView {
   result: ResultView | null;
   /** Playback-only hint (Shift/Tab/Esc). Hidden during result. */
   playbackHint?: string | null;
+  /** Party Auto toggle is on (palette hint). */
+  partyAuto?: boolean;
   /** Compact resource line under the action menu (e.g. "SP 12/40 · Rage 3"). */
   menuResourceLine?: string | null;
+  /** Roster inspect highlight (LT/RT) — does not change initiative. */
+  inspectCharacterId?: string | null;
 }
 
 export interface CombatWindowsHandlers {
   onMenuHover(index: number): void;
   onMenuConfirm(index: number): void;
+  onPaletteConfirm(slotIndex: number): void;
   onSelectionHover(index: number): void;
   onSelectionConfirm(index: number): void;
 }
@@ -117,6 +125,35 @@ export function menuHintText(entries: MenuEntry[]): string {
     .map((e) => ACTION_SHORTCUTS[e.kind])
     .filter((l): l is string => l !== undefined);
   return `↑↓ Enter · ${letters.join("/")}`;
+}
+
+const PALETTE_GLYPHS = ["A", "B", "X", "Y"] as const;
+
+const PALETTE_LABELS: Record<PaletteSlot["kind"], string> = {
+  attack: "Atk",
+  defend: "Def",
+  cast: "Magic",
+  skill: "Skill",
+  item: "Item",
+  flee: "Run",
+};
+
+/** Hint row for the controller-first action palette. */
+export function paletteHintText(palette: CombatPalette, partyAuto: boolean): string {
+  const parts = [
+    "A:Atk · B:Def · X:Mag · Y:Skl · Sel:Item · Start:Auto · hold B:Run",
+    "LT/RT: inspect",
+  ];
+  if (partyAuto) parts.push("AUTO on");
+  void palette;
+  return parts.join(" · ");
+}
+
+function paletteSlotLabel(slot: PaletteSlot, char?: Character): string {
+  if (slot.kind === "skill" && char?.class === "Thief") {
+    return char.status.includes("hidden") ? "Ambush" : "Hide";
+  }
+  return PALETTE_LABELS[slot.kind];
 }
 
 /** Menu entries available to a character (Thief gets Hide/Ambush, melee gets Technique).
@@ -196,7 +233,28 @@ function buildMenuWindow(
     return win;
   }
 
-  if (view.menuMode === "menu") {
+  if (view.menuMode === "palette" && view.palette) {
+    const row = el("ff6-palette");
+    const acting = view.currentCharacterId
+      ? view.state.party.find((p) => p.id === view.currentCharacterId)
+      : undefined;
+    for (let i = 0; i < view.palette.slots.length; i++) {
+      const slot = view.palette.slots[i];
+      const slotEl = el("ff6-palette-slot");
+      if ("disabled" in slot && slot.disabled) slotEl.classList.add("disabled");
+      slotEl.appendChild(el("ff6-palette-glyph", PALETTE_GLYPHS[i] ?? "?"));
+      slotEl.appendChild(el("ff6-palette-label", paletteSlotLabel(slot, acting)));
+      slotEl.addEventListener("click", () => handlers.onPaletteConfirm(i));
+      row.appendChild(slotEl);
+    }
+    win.appendChild(row);
+    if (view.menuResourceLine) {
+      win.appendChild(el("ff6-hint-row ff6-resource-row", view.menuResourceLine));
+    }
+    win.appendChild(
+      el("ff6-hint-row", paletteHintText(view.palette, view.partyAuto ?? false))
+    );
+  } else if (view.menuMode === "menu") {
     for (let i = 0; i < view.menuEntries.length; i++) {
       const entry = view.menuEntries[i];
       const row = el("ff6-menu-item", entry.label);
@@ -274,7 +332,7 @@ function buildMenuWindow(
     if (view.selectionFooter) {
       win.appendChild(el("ff6-sel-footer", view.selectionFooter));
     }
-    win.appendChild(el("ff6-hint-row", "↑↓ Enter · Esc back"));
+    win.appendChild(el("ff6-hint-row", "↑↓ Enter · A confirm · B back · LB/RB cycle"));
   }
 
   if (view.flash) {
@@ -382,6 +440,13 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
   for (const c of view.state.party) {
     const row = el("ff6-party-row");
     if (c.id === view.currentCharacterId) row.classList.add("current");
+    if (
+      view.inspectCharacterId &&
+      c.id === view.inspectCharacterId &&
+      c.id !== view.currentCharacterId
+    ) {
+      row.classList.add("inspect");
+    }
     const ko = c.hp <= 0 || c.status.includes("knockedOut");
     if (ko) row.classList.add("ko");
 
@@ -487,6 +552,20 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
 
     win.appendChild(row);
   }
+
+  const inspectId = view.inspectCharacterId;
+  if (inspectId && inspectId !== view.currentCharacterId) {
+    const inspected = view.state.party.find((p) => p.id === inspectId);
+    if (inspected) {
+      win.appendChild(
+        el(
+          "ff6-party-inspect",
+          `Inspect: ${inspected.name} — ${partyStatusText(inspected)}`
+        )
+      );
+    }
+  }
+
   return win;
 }
 

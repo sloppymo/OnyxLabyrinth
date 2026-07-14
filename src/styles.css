@@ -1059,6 +1059,45 @@ canvas#map-canvas {
   flex-direction: column;
 }
 
+.ff6-palette {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.ff6-palette-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 2px solid rgba(232, 232, 240, 0.45);
+  border-radius: 6px;
+  background: rgba(16, 28, 88, 0.55);
+  cursor: pointer;
+  min-height: 52px;
+}
+
+.ff6-palette-slot.disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ff6-palette-glyph {
+  font-size: var(--fs-small);
+  color: #ffd769;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+}
+
+.ff6-palette-label {
+  font-size: var(--fs-small);
+  line-height: 1.1;
+  text-align: center;
+}
+
 .ff6-menu.empty {
   opacity: 0.85;
 }
@@ -1252,6 +1291,26 @@ canvas#map-canvas {
 
 .ff6-party-row.current .ff6-p-name {
   color: #ffd769;
+}
+
+.ff6-party-row.inspect {
+  outline: 1px solid #80d8ff;
+  outline-offset: -1px;
+  border-radius: 4px;
+  background: rgba(32, 72, 140, 0.45);
+}
+
+.ff6-party-row.inspect .ff6-p-name {
+  color: #b8ecff;
+}
+
+.ff6-party-inspect {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(232, 232, 240, 0.25);
+  font-size: var(--fs-small);
+  color: #b8ecff;
+  letter-spacing: 0.02em;
 }
 
 .ff6-party-row.ko {

@@ -50,13 +50,15 @@ import {
 } from "./combat-scene";
 import {
   renderCombatWindows,
-  menuEntriesForCharacter,
   type CombatWindowsView,
   type CombatWindowsHandlers,
   type MenuEntry,
   type SelectionEntry,
   type ResultView,
 } from "./combat-select-action-view";
+import { buildPalette, type CombatPalette } from "./combat-action-palette";
+import type { ControllerInputEvent, ControllerButton } from "./controller-input";
+import { mapKeyboardKey } from "./controller-input";
 import {
   preferredEnemyIndex,
   preferredAllyIndex,
@@ -69,7 +71,7 @@ import {
 } from "./combat-flow";
 
 type Phase =
-  | "menu"
+  | "palette"
   | "selectTarget"
   | "selectSpell"
   | "selectTechnique"
@@ -103,8 +105,7 @@ export class CombatController {
 
   private currentActorId: string | null = null;
   private pending: PendingAction | null = null;
-  private menuEntries: MenuEntry[] = [];
-  private menuIndex = 0;
+  private palette: CombatPalette | null = null;
   private selectionTitle = "";
   private selectionEntries: SelectionEntry[] = [];
   private selectionIndex = 0;
@@ -126,6 +127,8 @@ export class CombatController {
   private partyAuto = false;
   /** Per-character last command for party Auto (never Flee/Item). */
   private lastCommandByActor = new Map<string, LastCommand>();
+  /** LT/RT roster inspect — visual only, never changes initiative. */
+  private inspectCharacterId: string | null = null;
 
   private scene: CombatScene;
   private rafId: number | null = null;
@@ -227,7 +230,7 @@ export class CombatController {
         );
         return;
       }
-      this.openMenuFor(c);
+      this.openPaletteFor(c);
       return;
     }
 
@@ -465,25 +468,52 @@ export class CombatController {
     this.nextTurn();
   }
 
-  private openMenuFor(c: Character): void {
+  private openPaletteFor(c: Character): void {
     this.syncPlaybackRate();
     if (this.tryPartyAuto(c)) return;
 
-    this.phase = "menu";
+    this.phase = "palette";
     this.currentActorId = c.id;
     this.scene.activeActorId = c.id;
-    // Always surface Repeat after Attack for discoverability (disabled until
-    // this character has a sticky Attack/Ambush).
-    this.menuEntries = menuEntriesForCharacter(c, true);
-    const sticky = this.stickyByActor.get(c.id);
-    const livingIds = this.livingEnemies().map((e) => e.instanceId);
-    const can = canRepeatAttack(sticky, c.id, livingIds);
-    const repeatEntry = this.menuEntries.find((e) => e.kind === "repeat");
-    if (repeatEntry) repeatEntry.disabled = !can.ok;
-    // Default cursor on Attack (first entry).
-    this.menuIndex = 0;
+    this.palette = buildPalette(c, this.knownSpells(c), this.availableItems(), {
+      silenced: this.state.silencedThisRound.includes(c.id),
+      currentSp: c.sp,
+      currentRage: classHasTechniques(c.class) ? this.currentRage(c) : undefined,
+    });
     this.pending = null;
     this.flash = null;
+    this.inspectCharacterId = null;
+    this.windowsDirty = true;
+  }
+
+  /** Cycle party-strip inspect highlight (LT/RT). Does not change the actor. */
+  private cycleInspect(dir: -1 | 1): void {
+    if (
+      this.phase !== "palette" &&
+      this.phase !== "selectTarget" &&
+      this.phase !== "selectSpell" &&
+      this.phase !== "selectItem" &&
+      this.phase !== "selectTechnique"
+    ) {
+      return;
+    }
+    const party = this.state.party;
+    if (party.length <= 1) return;
+
+    const ids = party.map((p) => p.id);
+    const actorIdx = this.currentActorId ? ids.indexOf(this.currentActorId) : 0;
+    let idx = actorIdx >= 0 ? actorIdx : 0;
+    if (this.inspectCharacterId) {
+      const found = ids.indexOf(this.inspectCharacterId);
+      if (found >= 0) idx = found;
+    }
+
+    const next = (idx + dir + party.length) % party.length;
+    if (ids[next] === this.currentActorId) {
+      this.inspectCharacterId = null;
+    } else {
+      this.inspectCharacterId = ids[next];
+    }
     this.windowsDirty = true;
   }
 
@@ -994,8 +1024,7 @@ export class CombatController {
       return;
     }
     if (this.phase === "selectTechnique") {
-      // Back out of technique list into the action menu.
-      this.phase = "menu";
+      this.phase = "palette";
       this.pending = null;
       this.windowsDirty = true;
       return;
@@ -1004,7 +1033,7 @@ export class CombatController {
       this.openItemSelect();
       return;
     }
-    this.phase = "menu";
+    this.phase = "palette";
     this.pending = null;
     this.windowsDirty = true;
   }
@@ -1016,6 +1045,7 @@ export class CombatController {
     this.currentActorId = null;
     this.scene.activeActorId = null;
     this.scene.cursor = null;
+    this.inspectCharacterId = null;
     // Victory is sacred — clear turbo affordances so Enter only confirms.
     this.autoFast = false;
     this.shiftHeld = false;
@@ -1044,26 +1074,172 @@ export class CombatController {
 
   // --- Input ----------------------------------------------------------------------
 
+  /** Current phase (for main.ts playback key routing). */
+  getPhase(): Phase {
+    return this.phase;
+  }
+
   /**
-   * Route a keydown to the controller. Called by main.ts for combat mode.
-   * Pass the raw KeyboardEvent when available so Shift/Tab/Esc playback
-   * controls work without colliding with menu Esc.
+   * Primary input path — normalized controller / keyboard face buttons.
    */
-  handleKey(key: string, e?: KeyboardEvent): void {
-    // Party Auto toggle available in menu / playback (never during result).
-    if (this.phase !== "result" && (key === "q" || key === "Q")) {
-      this.partyAuto = !this.partyAuto;
-      this.syncPlaybackRate();
-      this.windowsDirty = true;
-      // If turning Auto on during a live menu, fire immediately for current actor.
-      if (this.partyAuto && this.phase === "menu") {
-        const c = this.currentChar();
-        if (c && this.tryPartyAuto(c)) return;
+  handleInput(event: ControllerInputEvent): void {
+    if (this.phase === "result") {
+      if (event.kind === "press" && event.button === "a") {
+        this.destroy();
+        this.onEnd(this.state);
       }
       return;
     }
 
-    // Playback tempo controls (never burn result Confirm).
+    if (this.phase === "playback") {
+      if (event.kind === "press" && event.button === "start") {
+        this.togglePartyAuto();
+      }
+      return;
+    }
+
+    switch (this.phase) {
+      case "palette":
+        this.handlePaletteInput(event);
+        return;
+      case "selectTarget":
+      case "selectSpell":
+      case "selectItem":
+      case "selectTechnique":
+        if (event.kind === "press") {
+          if (event.button === "lt") {
+            this.cycleInspect(-1);
+            return;
+          }
+          if (event.button === "rt") {
+            this.cycleInspect(1);
+            return;
+          }
+        }
+        this.handleSelectionInput(event);
+        return;
+    }
+  }
+
+  private togglePartyAuto(): void {
+    if (this.phase === "result") return;
+    this.partyAuto = !this.partyAuto;
+    this.syncPlaybackRate();
+    this.windowsDirty = true;
+    if (this.partyAuto && this.phase === "palette") {
+      const c = this.currentChar();
+      if (c && this.tryPartyAuto(c)) return;
+    }
+  }
+
+  private handlePaletteInput(event: ControllerInputEvent): void {
+    const c = this.currentChar();
+    if (!c || !this.palette) return;
+
+    if (event.kind === "hold" && event.button === "b") {
+      this.chooseAction("flee");
+      return;
+    }
+    if (event.kind !== "press") return;
+
+    switch (event.button) {
+      case "a":
+        this.chooseAction("attack");
+        return;
+      case "b":
+        this.chooseAction("defend");
+        return;
+      case "x": {
+        if (this.state.silencedThisRound.includes(c.id)) {
+          this.setFlash("Silenced!");
+          return;
+        }
+        const cast = this.palette.slots.find((s) => s.kind === "cast");
+        if (cast && "disabled" in cast && cast.disabled) {
+          this.setFlash("No magic!");
+        } else {
+          this.chooseAction("cast");
+        }
+        return;
+      }
+      case "y": {
+        const skill = this.palette.slots.find((s) => s.kind === "skill");
+        if (skill && "disabled" in skill && skill.disabled) {
+          this.setFlash("No skills!");
+        } else if (c.class === "Thief") {
+          this.chooseAction(c.status.includes("hidden") ? "ambush" : "hide");
+        } else {
+          this.chooseAction("technique");
+        }
+        return;
+      }
+      case "select":
+        this.chooseAction("item");
+        return;
+      case "start":
+        this.togglePartyAuto();
+        return;
+      case "lt":
+        this.cycleInspect(-1);
+        return;
+      case "rt":
+        this.cycleInspect(1);
+        return;
+    }
+  }
+
+  private handleSelectionInput(event: ControllerInputEvent): void {
+    const len = this.selectionEntries.length;
+    if (len === 0) {
+      this.backToMenu();
+      return;
+    }
+    if (event.kind !== "press") return;
+
+    switch (event.button) {
+      case "up":
+        this.selectionIndex = (this.selectionIndex - 1 + len) % len;
+        this.syncTargetCursor();
+        this.windowsDirty = true;
+        return;
+      case "down":
+        this.selectionIndex = (this.selectionIndex + 1) % len;
+        this.syncTargetCursor();
+        this.windowsDirty = true;
+        return;
+      case "a":
+        this.confirmSelection();
+        return;
+      case "b":
+        this.backToMenu();
+        return;
+      case "lb":
+      case "rb":
+        if (this.phase === "selectTarget") {
+          const dir = event.button === "lb" ? -1 : 1;
+          this.selectionIndex = (this.selectionIndex + dir + len) % len;
+          this.syncTargetCursor();
+          this.windowsDirty = true;
+        }
+        return;
+    }
+  }
+
+  private paletteSlotAction(slotIndex: number): void {
+    const buttons: ControllerButton[] = ["a", "b", "x", "y"];
+    const button = buttons[slotIndex];
+    if (button) this.handleInput({ kind: "press", button });
+  }
+
+  /**
+   * Legacy keydown path — playback/meta keys and keyboard fallbacks.
+   */
+  handleKey(key: string, e?: KeyboardEvent): void {
+    if (this.phase !== "result" && (key === "q" || key === "Q")) {
+      this.togglePartyAuto();
+      return;
+    }
+
     if (this.phase === "playback") {
       if (key === "Shift" || e?.key === "Shift") {
         this.shiftHeld = true;
@@ -1079,31 +1255,63 @@ export class CombatController {
       }
       if (key === "Escape") {
         skipPlaybackToEnd(this.scene, performance.now());
-        // afterPlayback will run on next tick via isPlaybackDone
         this.windowsDirty = true;
         return;
       }
       return;
     }
 
-    switch (this.phase) {
-      case "result":
-        if (key === " " || key === "Enter") {
-          this.destroy();
-          this.onEnd(this.state);
-        }
-        return;
+    if (this.phase === "result") {
+      if (key === " " || key === "Enter") {
+        this.destroy();
+        this.onEnd(this.state);
+      }
+      return;
+    }
 
-      case "menu":
-        this.handleMenuKey(key);
-        return;
+    if ((key === "z" || key === ".") && this.phase === "palette") {
+      const c = this.currentChar();
+      if (c) this.tryRepeat(c);
+      return;
+    }
 
-      case "selectTarget":
-      case "selectSpell":
-      case "selectItem":
-      case "selectTechnique":
-        this.handleSelectionKey(key);
+    // Legacy letter shortcuts (m/t/i/r/h/c) not on the face-button map.
+    if (this.phase === "palette") {
+      const lower = key.toLowerCase();
+      const shortcuts: Record<string, PlayerAction["kind"]> = {
+        t: "technique",
+        c: "cast",
+        m: "cast",
+        i: "item",
+        f: "flee",
+        r: "flee",
+        h: "hide",
+      };
+      const kind = shortcuts[lower];
+      if (kind) {
+        this.chooseAction(kind);
         return;
+      }
+    }
+
+    const button = mapKeyboardKey(key);
+    if (button) {
+      this.handleInput({ kind: "press", button });
+      return;
+    }
+
+    if (
+      this.phase === "selectTarget" ||
+      this.phase === "selectSpell" ||
+      this.phase === "selectItem" ||
+      this.phase === "selectTechnique"
+    ) {
+      const n = parseInt(key, 10);
+      if (!isNaN(n) && n >= 1 && n <= this.selectionEntries.length) {
+        this.selectionIndex = n - 1;
+        this.syncTargetCursor();
+        this.confirmSelection();
+      }
     }
   }
 
@@ -1115,95 +1323,12 @@ export class CombatController {
     }
   }
 
-  private handleMenuKey(key: string): void {
-    switch (key) {
-      case "ArrowUp":
-        this.menuIndex =
-          (this.menuIndex - 1 + this.menuEntries.length) % this.menuEntries.length;
-        this.windowsDirty = true;
-        return;
-      case "ArrowDown":
-        this.menuIndex = (this.menuIndex + 1) % this.menuEntries.length;
-        this.windowsDirty = true;
-        return;
-      case " ":
-      case "Enter": {
-        const entry = this.menuEntries[this.menuIndex];
-        if (entry?.disabled) {
-          if (entry.kind === "repeat") {
-            const c = this.currentChar();
-            if (c) this.tryRepeat(c);
-          }
-          return;
-        }
-        this.chooseAction(entry.kind);
-        return;
-      }
-    }
-    const lower = key.toLowerCase();
-    if (lower === "z" || key === ".") {
-      const c = this.currentChar();
-      if (c) this.tryRepeat(c);
-      return;
-    }
-    const shortcuts: Record<string, PlayerAction["kind"]> = {
-      a: "attack",
-      t: "technique",
-      c: "cast",
-      m: "cast",
-      d: "defend",
-      i: "item",
-      f: "flee",
-      r: "flee",
-      h: "hide",
-    };
-    const kind = shortcuts[lower];
-    if (kind && this.menuEntries.some((e) => e.kind === kind)) {
-      this.chooseAction(kind);
-    }
-  }
-
-  private handleSelectionKey(key: string): void {
-    const len = this.selectionEntries.length;
-    if (len === 0) {
-      this.backToMenu();
-      return;
-    }
-    switch (key) {
-      case "ArrowUp":
-        this.selectionIndex = (this.selectionIndex - 1 + len) % len;
-        this.syncTargetCursor();
-        this.windowsDirty = true;
-        return;
-      case "ArrowDown":
-        this.selectionIndex = (this.selectionIndex + 1) % len;
-        this.syncTargetCursor();
-        this.windowsDirty = true;
-        return;
-      case " ":
-      case "Enter":
-        this.confirmSelection();
-        return;
-      case "Escape":
-      case "Backspace":
-        this.backToMenu();
-        return;
-    }
-    // Number keys jump straight to an entry.
-    const n = parseInt(key, 10);
-    if (!isNaN(n) && n >= 1 && n <= len) {
-      this.selectionIndex = n - 1;
-      this.syncTargetCursor();
-      this.confirmSelection();
-    }
-  }
-
   // --- Windows -------------------------------------------------------------------
 
   private renderWindows(): void {
     const menuMode =
-      this.phase === "menu"
-        ? "menu"
+      this.phase === "palette"
+        ? "palette"
         : this.phase === "selectTarget" ||
             this.phase === "selectSpell" ||
             this.phase === "selectItem" ||
@@ -1221,15 +1346,11 @@ export class CombatController {
       }
     }
 
-    // While picking a spell, the enemy window is replaced by a description
-    // panel for whichever spell is currently highlighted (see
-    // buildSpellDetailWindow in combat-select-action-view.ts).
     const spellDetail: SpellDef | null =
       this.phase === "selectSpell"
         ? (this.state.spells[this.selectionIds[this.selectionIndex] ?? ""] ?? null)
         : null;
 
-    // While picking a technique, show its description in the same panel.
     const techniqueDetail: TechniqueDef | null =
       this.phase === "selectTechnique"
         ? (this.knownTechniques(this.currentChar()!).find((t) => t.id === this.selectionIds[this.selectionIndex]) ?? null)
@@ -1237,7 +1358,7 @@ export class CombatController {
 
     const acting = this.currentChar();
     const resourceLine =
-      this.phase === "menu" && acting
+      this.phase === "palette" && acting
         ? menuResourceLine(
             acting.sp,
             acting.maxSp,
@@ -1249,8 +1370,9 @@ export class CombatController {
       state: this.state,
       currentCharacterId: this.currentActorId,
       menuMode,
-      menuEntries: this.menuEntries,
-      menuIndex: this.menuIndex,
+      palette: this.phase === "palette" ? this.palette : null,
+      menuEntries: [],
+      menuIndex: 0,
       selectionTitle: this.selectionTitle,
       selectionEntries: this.selectionEntries,
       selectionIndex: this.selectionIndex,
@@ -1259,43 +1381,31 @@ export class CombatController {
       techniqueDetail,
       flash: this.flash,
       result: this.phase === "result" ? this.result : null,
+      partyAuto: this.partyAuto,
+      inspectCharacterId: this.inspectCharacterId,
       playbackHint:
         this.phase === "playback"
           ? "Hold Shift: 2× · Tab: FAST · Esc: skip · Q: AUTO"
-          : this.phase === "menu"
-            ? this.partyAuto
-              ? "AUTO on · Q to stop"
-              : null
+          : this.phase === "palette" && this.partyAuto
+            ? "AUTO on · Q to stop"
             : null,
       menuResourceLine: resourceLine,
     };
     const handlers: CombatWindowsHandlers = {
-      onMenuHover: (i) => {
-        if (this.phase !== "menu") return;
-        this.menuIndex = i;
-        this.windowsDirty = true;
-      },
-      onMenuConfirm: (i) => {
-        if (this.phase !== "menu") return;
-        this.menuIndex = i;
-        const entry = this.menuEntries[i];
-        if (entry?.disabled) {
-          if (entry.kind === "repeat") {
-            const c = this.currentChar();
-            if (c) this.tryRepeat(c);
-          }
-          return;
-        }
-        this.chooseAction(entry.kind);
+      onMenuHover: () => {},
+      onMenuConfirm: () => {},
+      onPaletteConfirm: (i) => {
+        if (this.phase !== "palette") return;
+        this.paletteSlotAction(i);
       },
       onSelectionHover: (i) => {
-        if (this.phase === "menu" || this.phase === "playback") return;
+        if (this.phase === "palette" || this.phase === "playback") return;
         this.selectionIndex = i;
         this.syncTargetCursor();
         this.windowsDirty = true;
       },
       onSelectionConfirm: (i) => {
-        if (this.phase === "menu" || this.phase === "playback") return;
+        if (this.phase === "palette" || this.phase === "playback") return;
         this.selectionIndex = i;
         this.syncTargetCursor();
         this.confirmSelection();

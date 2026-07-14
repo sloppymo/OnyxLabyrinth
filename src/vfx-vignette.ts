@@ -572,6 +572,7 @@ function techniqueNameFor(id: string): string {
 const noOpHandlers: CombatWindowsHandlers = {
   onMenuHover: () => {},
   onMenuConfirm: () => {},
+  onPaletteConfirm: () => {},
   onSelectionHover: () => {},
   onSelectionConfirm: () => {},
 };
@@ -585,6 +586,7 @@ function renderDemoCombatWindows(): void {
     state,
     currentCharacterId: currentChar.id,
     menuMode: "menu",
+    palette: null,
     menuEntries: menuEntriesForCharacter(currentChar),
     menuIndex,
     selectionTitle: "",
