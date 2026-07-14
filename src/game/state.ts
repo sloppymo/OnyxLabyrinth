@@ -11,6 +11,7 @@ import type { FloorDef, GameMode, GameState } from "../types";
 import { cloneFloor } from "../data/floors";
 import { createDefaultParty } from "./party";
 import { defaultLoadoutForCharacter } from "./combat";
+import { ENCOUNTER_COOLDOWN } from "./encounters";
 
 export type { GameMode, GameState } from "../types";
 
@@ -24,7 +25,9 @@ export function createGameState(floor: FloorDef): GameState {
     equipment: Object.fromEntries(party.map((c) => [c.id, defaultLoadoutForCharacter(c)])),
     explored: new Set<string>(),
     exploredByFloor: {},
-    stepsSinceEncounter: 99, // allow encounter on first step
+    // Past cooldown so the first eligible step can roll at base rate — not
+    // past pity-force (that would guarantee a fight on step one).
+    stepsSinceEncounter: ENCOUNTER_COOLDOWN,
     dayCount: 1,
     partyGold: 100, // starting gold for the shop
     inventory: [

@@ -121,8 +121,10 @@ export interface GameState {
   // chutes, the explored set for the new floor is restored from here. Keyed
   // by floor ID. The current floor's explored set is always also in `explored`.
   exploredByFloor: Record<number, string[]>;
-  // Steps since the last encounter. Design doc §6.3: no more than one
-  // encounter per 8 steps. Incremented on each move; reset on encounter.
+  // Steps since the last encounter. Design doc §6.3 + soft pity in
+  // game/encounters.ts: cooldown of 8 steps, then floor base rate, then
+  // a ramp that forces a fight by step 28. Incremented on each move;
+  // reset on encounter.
   stepsSinceEncounter: number;
   // In-dungeon day counter, advanced by 1 each time the party camps.
   // Flavor only (design doc §5.1); no mechanical penalty.

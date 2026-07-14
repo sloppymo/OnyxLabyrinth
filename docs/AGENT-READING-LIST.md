@@ -2,7 +2,7 @@
 
 Use this list before acting on playtest, balance, combat UX, or perk work. Prefer these over older one-off prompts when they conflict.
 
-**Last refreshed:** 2026-07-13 (added combat-flow follow-up prompt; combat-depth already shipped)
+**Last refreshed:** 2026-07-14 (encounter density + Arena feel; prior: combat-flow A–E)
 
 | Doc | Role | Status |
 |-----|------|--------|
@@ -15,7 +15,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 | [`FOLLOWUP-COMBAT-UX-PERKS-PROMPT.md`](FOLLOWUP-COMBAT-UX-PERKS-PROMPT.md) | Late combat UX + perk delivery | **Done 2026-07-13** |
 | [`FOLLOWUP-CASTER-ENDGAME-PROMPT.md`](FOLLOWUP-CASTER-ENDGAME-PROMPT.md) | T6–T7 caster verbs | **Done 2026-07-13 (Path A)** |
 | [`FOLLOWUP-COMBAT-DEPTH-PROMPT.md`](FOLLOWUP-COMBAT-DEPTH-PROMPT.md) | Status/flee + wireable perks + DoT/regen (art only if needed) | **Done 2026-07-13** (see work-order item 5 for what shipped) |
-| [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md) | Combat tempo: target defaults, playback skip/speed, sticky Repeat | **Done 2026-07-13** (A–C + D1/D2/D3 + E party Auto shipped; encounter density still separate) |
+| [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md) | Combat tempo: target defaults, playback skip/speed, sticky Repeat | **Done 2026-07-13** (A–C + D1/D2/D3 + E party Auto shipped) |
 | Design canvas (IDE) | `onyxlabyrinth-design-analysis.canvas.tsx` | Mechanics & balance judgment (2026-07-13) |
 
 ## Specs under `docs/superpowers/specs/`
@@ -31,7 +31,8 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 ## Known stale claims (do not re-assert)
 
 - ~~“No floor currently uses `events`”~~ — floors 1–3 all have `events` arrays in `floors.ts`.
-- ~~“Arena L9 always starts on floor-1 trash”~~ — `main.ts` sets `arenaStartFloor = min(3, max(1, ceil(level/4)))` (L9 → floor 3). Re-verify before changing Arena scaling.
+- ~~“Arena L9 always starts on floor-1 trash”~~ — `arenaStartFloorForLevel` → L9/L12 start floor **3**; Arena also skips boss formations and auto-starts wave 1.
+- ~~“Dungeon encounter rate feels empty”~~ — floors 1–3 now 8%/10%/12% after the 8-step cooldown, plus soft pity that forces a fight by step 28 (`game/encounters.ts`).
 - ~~“Temple has no Remove Curse”~~ — `[R] Remove Curse` appears when cursed gear is equipped (`town-ui.ts`).
 - Perk overlay “never implemented for Arena” — **false**; `endCombat` opens it for Arena when `pendingPerkChoices.length > 0`. Playtest likely auto-Enter dismissed it.
 
@@ -40,7 +41,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 1. ~~Late combat UX (L9+ spell scroll + description panel; technique name truncation).~~ **Done 2026-07-13** (scroll-follow + position counter + wrapped names + `T` shortcut).
 2. ~~Perk overlay reliability (prove Arena + dungeon) + wire-or-honestly-stub `TODO(v1.1)` perks.~~ **Done 2026-07-13** (explicit ←/→+Enter confirmation guard; 11 perks gained function: Glass Cannon, Saint regen, Backstab, Assassin, Riposte, Retribution, Impale, plus damage-taken wiring activating Phalanx/Vanguard/Sentinel/Berserker's penalty; still-inert perks now say "(Not yet implemented — v1.1.)" in their UI copy; 22 `TODO(v1.1)` comment markers remain in `data/perks.ts`).
 3. ~~Caster endgame verbs (fill T6–T7 or change unlock curve).~~ **Done 2026-07-13 (Path A):** Mage gains Meteor Swarm + Disintegrate at T6 and Freezing Sphere at T7; Priest gains Mass Regenerate (T6) and Holy Aura (T7) — design-doc verbs on existing effect kinds (DoT / armor-pen / Time Stop deferred). `levelUpChar` also caps unlocks at `maxContentSpellTier()` so empty tiers cannot recur.
-4. Encounter density / Arena feel (only after re-checking current floor scaling).
+4. ~~Encounter density / Arena feel (only after re-checking current floor scaling).~~ **Done 2026-07-14:** base rates 8%/10%/12%; soft pity ramp (force by step 28); Arena L9+ floor-3 start confirmed via `arenaStartFloorForLevel`; Arena auto-starts wave 1, excludes boss packs, biases multi-enemy packs on later waves.
 5. ~~Status / flee as real levers.~~ **Done 2026-07-13** ([`FOLLOWUP-COMBAT-DEPTH-PROMPT.md`](FOLLOWUP-COMBAT-DEPTH-PROMPT.md)):
    - **Flee lever:** `thief-smoke-bomb` wired — flee auto-succeeds while living party HP < 30% (never vs bosses); `smokeBombFleeActive` in `combat.ts`, covered by `perks.test.ts`.
    - **Status readability:** FF6 windows now show compact colored tags (PSN/PAR/SLP/BLD/BRN/RGN) inside the name span of party and enemy rows (`combat-select-action-view.ts`, `.ff6-status-tag` in `styles.css`).
@@ -48,4 +49,4 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
    - **Spell DoT/regen engine:** `SpellEffect` damage/heal gained optional `followup` (`dot` | `regen`); tracked on `CombatState.enemyDots`/`regenBuffs`, ticked in end-of-round status processing with `statusTick`/`spellEffect` events (burn pops orange, regen pops green). `mage-meteor-swarm` now applies 10/round fire burn ×3; `priest-mass-regenerate` 8/round regen ×3; new single-target `priest-regenerate` (T3). DoT ticks respect elemental resist/weakness.
    - **Remaining honest stubs:** 10 `TODO(v1.1)` markers in `data/perks.ts` (resistance/reflect/silence-immunity/steal-economy/party-wide-aura shapes that need new systems).
    - **No new art generated** — burn reuses the existing `fire_explosion` burst (orange-tinted `STATUS_STYLES.burn`); regen reuses the heal family. Phase D criteria never triggered.
-6. **Combat flow / tempo.** ~~Prefer [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md)~~ **Done 2026-07-13:** A–C tempo UX; Phase D: `incapacitated` event banner, SP/Rage menu line, hit recoil+flash; Phase E: `Q` party Auto (last command, never Flee/Item; Attack/Defend fallback). Encounter density stays #4.
+6. **Combat flow / tempo.** ~~Prefer [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md)~~ **Done 2026-07-13:** A–C tempo UX; Phase D: `incapacitated` event banner, SP/Rage menu line, hit recoil+flash; Phase E: `Q` party Auto (last command, never Flee/Item; Attack/Defend fallback).
