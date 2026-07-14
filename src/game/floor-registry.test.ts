@@ -5,10 +5,11 @@ import { floorDefToMap, mapToFloorDef, newFloorMapJSON } from "./floor-map";
 import { carveRoom } from "./dungeon";
 
 describe("floor-registry", () => {
-  it("serves campaign floors plus the floor-4 pack, sorted by id", () => {
+  it("serves campaign floors plus the floor-4 and floor-5 packs, sorted by id", () => {
     const ids = getFloors().map((f) => f.id);
-    expect(ids).toEqual([1, 2, 3, 4]);
+    expect(ids).toEqual([1, 2, 3, 4, 5]);
     expect(findFloor(4)?.name).toBe("The Null Choir");
+    expect(findFloor(5)?.name).toBe("The Weeping Cistern");
   });
 
   it("findFloor resolves campaign floors and misses unknown ids", () => {
@@ -22,7 +23,7 @@ describe("floor-registry", () => {
     registerFloorDef(floor);
     expect(findFloor(77)?.name).toBe("Hot Floor");
     const ids = getFloors().map((f) => f.id);
-    expect(ids).toEqual([1, 2, 3, 4, 77]);
+    expect(ids).toEqual([1, 2, 3, 4, 5, 77]);
   });
 
   it("hot-registering an existing id replaces it (playtest flow)", () => {

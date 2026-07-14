@@ -978,6 +978,205 @@ function f4Ceiling() {
   px.save("f4_ceiling_256.png");
 }
 
+// ===========================================================================
+// FLOOR 5 — THE WEEPING CISTERN: teal-black wet ashlar, aquamarine glow-veins.
+// ===========================================================================
+
+function f5Wall() {
+  const rng = mulberry32(501);
+  const px = new Px();
+  const mottle = makeFbm(mulberry32(502));
+  const stones = [hex("#33454a"), hex("#2c3d42"), hex("#26363a"), hex("#304248")];
+  const mortar = hex("#141d20");
+  const rowH = 16;
+  const blockW = 32;
+
+  const blockTone = new Map();
+  for (let y = 0; y < L; y++) {
+    for (let x = 0; x < L; x++) {
+      const { row, col, lx, ly } = courses(x, y, rowH, blockW);
+      const key = `${row},${col}`;
+      if (!blockTone.has(key)) blockTone.set(key, stones[Math.floor(rng() * stones.length)]);
+      if (ly === 0 || lx === 0) {
+        px.set(x, y, mortar);
+        continue;
+      }
+      let c = blockTone.get(key);
+      const m = mottle(x, y);
+      const lvl = Math.floor(m * 3 + dither(x, y) * 0.999);
+      c = shade(c, [0.86, 1.0, 1.1][Math.max(0, Math.min(2, lvl))]);
+      if (ly === 1) c = shade(c, 1.16); // damp sheen along block tops
+      else if (ly === rowH - 1) c = shade(c, 0.78);
+      // weeping stain trailing down from block seams
+      if (mottle(x + 21, y + 71) > 0.62) c = shade(c, 0.82);
+      px.set(x, y, c);
+    }
+  }
+  // aquamarine glow-veins — the cistern's bioluminescent seep
+  const crackRng = mulberry32(503);
+  const glowCore = hex("#baf7e8");
+  const glowMid = hex("#5fd6bd");
+  const glowDim = hex("#215048");
+  for (let i = 0; i < 6; i++) {
+    const sx = Math.floor(crackRng() * L);
+    const sy = Math.floor(crackRng() * L);
+    crackWalk(crackRng, sx, sy, 10 + Math.floor(crackRng() * 12), [0.2, 1], (x, y) => {
+      px.set(x, y, crackRng() < 0.25 ? glowCore : glowMid);
+      px.blend(x + 1, y, glowDim, 0.55);
+      px.blend(x - 1, y, glowDim, 0.55);
+      px.blend(x, y + 1, glowDim, 0.4);
+      px.blend(x, y - 1, glowDim, 0.3);
+    });
+  }
+  // stray aqua motes
+  for (let i = 0; i < 22; i++) {
+    const x = Math.floor(crackRng() * L);
+    const y = Math.floor(crackRng() * L);
+    px.set(x, y, crackRng() < 0.3 ? glowMid : glowDim);
+  }
+  // carved drain-channel frieze across the middle seam
+  const band = hex("#233c40");
+  const bandHi = hex("#3f5f63");
+  const bandShadow = hex("#0f1a1c");
+  for (const y0 of [62]) {
+    for (let y = y0; y < y0 + 6; y++) {
+      for (let x = 0; x < L; x++) {
+        let c = band;
+        if (y === y0) c = bandHi;
+        if (y === y0 + 5) c = bandShadow;
+        if (mottle(x * 2, y * 2) > 0.68) c = shade(c, 0.88); // wear
+        px.set(x, y, c);
+      }
+    }
+    // ripple notches, one per 16px — the current's endless small pulse
+    const rippleRng = mulberry32(504);
+    for (let x = 5; x < L - 4; x += 16) {
+      px.set(x, y0 + 2, glowDim);
+      px.set(x + 1, y0 + 3, rippleRng() < 0.5 ? glowMid : bandShadow);
+      px.set(x + 2, y0 + 2, glowDim);
+      if (rippleRng() < 0.4) px.set(x + 3, y0 + 1, bandShadow);
+    }
+  }
+  px.save("f5_wall_256.png");
+}
+
+function f5FloorA() {
+  const rng = mulberry32(510);
+  const px = new Px();
+  const mottle = makeFbm(mulberry32(511));
+  const base = hex("#25373b");
+  const gap = hex("#0f1b1d");
+
+  const slabTone = new Map();
+  for (let y = 0; y < L; y++) {
+    for (let x = 0; x < L; x++) {
+      const key = `${Math.floor(y / 32)},${Math.floor(x / 32)}`;
+      if (!slabTone.has(key)) slabTone.set(key, shade(base, 0.89 + rng() * 0.2));
+      if (x % 32 === 0 || y % 32 === 0) {
+        px.set(x, y, gap);
+        continue;
+      }
+      let c = slabTone.get(key);
+      const m = mottle(x, y);
+      const lvl = Math.floor(m * 3 + dither(x, y) * 0.999);
+      c = shade(c, [0.87, 1.0, 1.1][Math.max(0, Math.min(2, lvl))]);
+      px.set(x, y, c);
+    }
+  }
+  // hairline aqua seams where the cistern water has seeped through the slabs
+  const seamRng = mulberry32(512);
+  for (let i = 0; i < 3; i++) {
+    const sx = Math.floor(seamRng() * L);
+    const sy = Math.floor(seamRng() * L);
+    const bias = [seamRng() - 0.5, seamRng() - 0.5];
+    crackWalk(seamRng, sx, sy, 18 + Math.floor(seamRng() * 14), bias, (x, y) => {
+      px.set(x, y, seamRng() < 0.2 ? hex("#5fd6bd") : hex("#215048"));
+      px.blend(x + 1, y, hex("#0f1a1c"), 0.5);
+      px.blend(x, y + 1, hex("#0f1a1c"), 0.4);
+    });
+  }
+  // wet-slab flecks
+  for (let i = 0; i < 120; i++) {
+    px.blend(Math.floor(seamRng() * L), Math.floor(seamRng() * L), hex("#3f5f63"), 0.45);
+  }
+  px.save("f5_floor_a_256.png");
+}
+
+function f5FloorB() {
+  const rng = mulberry32(520);
+  const px = new Px();
+  const mottle = makeFbm(mulberry32(521));
+  const base = hex("#1c2f33");
+  const gap = hex("#0a1517");
+
+  const slabTone = new Map();
+  for (let y = 0; y < L; y++) {
+    for (let x = 0; x < L; x++) {
+      const key = `${Math.floor(y / 32)},${Math.floor(x / 32)}`;
+      if (!slabTone.has(key)) slabTone.set(key, shade(base, 0.87 + rng() * 0.18));
+      if (x % 32 === 0 || y % 32 === 0) {
+        px.set(x, y, gap);
+        continue;
+      }
+      let c = slabTone.get(key);
+      const m = mottle(x, y);
+      const lvl = Math.floor(m * 3 + dither(x, y) * 0.999);
+      c = shade(c, [0.85, 1.0, 1.08][Math.max(0, Math.min(2, lvl))]);
+      px.set(x, y, c);
+    }
+  }
+  // concentric ripple rings on alternating slabs — the undersong's pulse
+  const ringDim = hex("#215048");
+  const ringHi = hex("#5fd6bd");
+  for (let sy = 0; sy < L / 32; sy++) {
+    for (let sx = 0; sx < L / 32; sx++) {
+      if ((sx + sy) % 2 !== 0) continue;
+      const cx = sx * 32 + 16;
+      const cy = sy * 32 + 16;
+      for (const r of [4, 8, 12]) {
+        for (let a = 0; a < 64; a++) {
+          const t = (a / 64) * Math.PI * 2;
+          const x = Math.round(cx + Math.cos(t) * r);
+          const y = Math.round(cy + Math.sin(t) * r);
+          if (rng() < 0.75) px.set(x, y, rng() < 0.2 ? ringHi : ringDim);
+        }
+      }
+      px.set(cx, cy, ringHi);
+    }
+  }
+  px.save("f5_floor_b_256.png");
+}
+
+function f5Ceiling() {
+  const px = new Px();
+  const mottle = makeFbm(mulberry32(530));
+  const base = hex("#1e3236");
+  for (let y = 0; y < L; y++) {
+    for (let x = 0; x < L; x++) {
+      const m = mottle(x, y);
+      const lvl = Math.floor(m * 4 + dither(x, y) * 0.999);
+      px.set(x, y, shade(base, [0.72, 0.86, 1.0, 1.12][Math.max(0, Math.min(3, lvl))]));
+    }
+  }
+  const rng = mulberry32(531);
+  // vertical drip-streak trails
+  for (let i = 0; i < 10; i++) {
+    const sx = Math.floor(rng() * L);
+    const sy = Math.floor(rng() * L);
+    crackWalk(rng, sx, sy, 12 + Math.floor(rng() * 14), [0.1, 1], (x, y) => {
+      px.blend(x, y, hex("#0c1719"), 0.4);
+      px.blend(x + 1, y, hex("#0c1719"), 0.2);
+    });
+  }
+  // faint aqua glints caught in the vault — the undersong's held breath
+  for (let i = 0; i < 40; i++) {
+    const x = Math.floor(rng() * L);
+    const y = Math.floor(rng() * L);
+    px.blend(x, y, rng() < 0.25 ? hex("#5fd6bd") : hex("#215048"), 0.8);
+  }
+  px.save("f5_ceiling_256.png");
+}
+
 // ---------------------------------------------------------------------------
 
 mkdirSync(OUT_DIR, { recursive: true });
@@ -997,4 +1196,8 @@ f4Wall();
 f4FloorA();
 f4FloorB();
 f4Ceiling();
+f5Wall();
+f5FloorA();
+f5FloorB();
+f5Ceiling();
 console.log("done");

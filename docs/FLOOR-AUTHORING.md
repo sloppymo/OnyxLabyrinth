@@ -9,7 +9,7 @@ npm run floor:export-all   # refresh tools/floor-data + public/tools/floor-data
 npm run floor:editor       # WYSIWYG editor (vite dev server)
 ```
 
-A complete example floor ships in `src/content/floors/floor-4-demo.json` ("The Practice Halls") — it exercises every overlay type and is the fastest way to learn the format. Import it into the editor to poke around. Note it is a **format example only** and no longer registered: floor id 4 belongs to the campaign floor "The Null Choir" (`src/content/floors/floor-4.json`), an antimagic chapel beneath the forge where the Headmaster silenced his choir.
+A complete example floor ships in `src/content/floors/floor-4-demo.json` ("The Practice Halls") — it exercises every overlay type and is the fastest way to learn the format. Import it into the editor to poke around. Note it is a **format example only** and no longer registered: floor id 4 belongs to the campaign floor "The Null Choir" (`src/content/floors/floor-4.json`), an antimagic chapel beneath the forge where the Headmaster silenced his choir. Floor id 5 belongs to the campaign floor "The Weeping Cistern" (`src/content/floors/floor-5.json`), the flooded undercroft below the chapel where the Headmaster channels the choir's stolen voices into deep water — water/currents (not antimagic) is the floor's mechanical identity.
 
 ## Engine constraints you MUST know
 
@@ -35,7 +35,7 @@ public/assets/tilesets/<theme>/
   ceiling.png
 ```
 
-Built-in themes: `f1`, `f2`, `f3`, `f4` (campaign). Pick the theme in the editor's Floor panel (or type a custom folder name). The floor's `tilesetTheme` is saved in the JSON; when unset it defaults to `f{id}`. Decor sprite art lives under `public/assets/map-sprites/<id>.png` (manifest: `src/data/map-sprites.ts`).
+Built-in themes: `f1`, `f2`, `f3`, `f4`, `f5` (campaign). Pick the theme in the editor's Floor panel (or type a custom folder name). The floor's `tilesetTheme` is saved in the JSON; when unset it defaults to `f{id}`. Decor sprite art lives under `public/assets/map-sprites/<id>.png` (manifest: `src/data/map-sprites.ts`).
 
 ## Editor tools
 
@@ -83,7 +83,7 @@ export const EXTRA_FLOOR_MAPS: FloorMapJSON[] = [
 
 ### Reaching your floor
 
-Campaign floor 3 has a `stairs_down` in the Grand Forge chamber at (5,14) that descends to floor 4, "The Null Choir" (`src/content/floors/floor-4.json`). A pack with a brand-new id (5+) is unreachable in normal play until you add a connection — e.g. a `stairs_down` on the neighboring floor, or a teleporter. Unconnected packs (like the demo "Practice Halls") are playtest-only.
+Campaign floor 3 has a `stairs_down` in the Grand Forge chamber at (5,14) that descends to floor 4, "The Null Choir" (`src/content/floors/floor-4.json`). Floor 4 in turn has a `stairs_down` at (15,15) in its sanctum-unsung climax chamber, descending to floor 5, "The Weeping Cistern" (`src/content/floors/floor-5.json`). A pack with a brand-new id (6+) is unreachable in normal play until you add a connection — e.g. a `stairs_down` on the neighboring floor, or a teleporter. Unconnected packs (like the demo "Practice Halls") are playtest-only.
 
 ## CLI
 
@@ -130,7 +130,7 @@ npm test && npm run build && npm run floor:validate
 | `src/game/floor-ascii.ts` | ASCII dump for LLM workflows |
 | `src/game/floor-registry.ts` | Campaign + content packs + hot-register |
 | `src/game/encounters.ts` | Zones + pity |
-| `src/content/floors/` | Shipped JSON packs (`floor-4.json` campaign floor, `floor-4-demo.json` format example) |
+| `src/content/floors/` | Shipped JSON packs (`floor-4.json`/`floor-5.json` campaign floors, `floor-4-demo.json` format example) |
 | `src/data/map-sprites.ts` | Decor sprite manifest |
 | `src/engine/map-sprite-cache.ts` | Decor image cache |
 | `tools/floor-editor.*` | WYSIWYG UI |

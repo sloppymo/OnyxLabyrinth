@@ -290,7 +290,7 @@ export const BIG_TITTY_OGRE: EnemyDef = {
 export const STONE_GUARDIAN: EnemyDef = {
   id: "stone-guardian",
   name: "Stone Guardian",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "front",
   hp: 45,
   attack: 12,
@@ -309,7 +309,7 @@ export const STONE_GUARDIAN: EnemyDef = {
 export const ANIMATED_ARMOR: EnemyDef = {
   id: "animated-armor",
   name: "Animated Armor",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "front",
   hp: 40,
   attack: 10,
@@ -329,7 +329,7 @@ export const ANIMATED_ARMOR: EnemyDef = {
 export const HEADMASTERS_ECHO: EnemyDef = {
   id: "headmasters-echo",
   name: "The Headmaster's Echo",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "back",
   hp: 120,
   attack: 15,
@@ -428,7 +428,7 @@ export const LAVA_SLIME: EnemyDef = {
 export const HELLHOUND: EnemyDef = {
   id: "hellhound",
   name: "Hellhound",
-  floors: [3],
+  floors: [3, 5],
   rowPreference: "any",
   hp: 20,
   attack: 7,
@@ -444,7 +444,7 @@ export const HELLHOUND: EnemyDef = {
 export const HELLBAT: EnemyDef = {
   id: "hellbat",
   name: "Hellbat",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "back",
   hp: 12,
   attack: 5,
@@ -463,7 +463,7 @@ export const HELLBAT: EnemyDef = {
 export const BLACK_KNIGHT: EnemyDef = {
   id: "black-knight",
   name: "Black Knight",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "front",
   hp: 38,
   attack: 10,
@@ -482,7 +482,7 @@ export const BLACK_KNIGHT: EnemyDef = {
 export const MINOTAUR: EnemyDef = {
   id: "minotaur",
   name: "Minotaur",
-  floors: [3],
+  floors: [3, 5],
   rowPreference: "front",
   hp: 36,
   attack: 11,
@@ -498,7 +498,7 @@ export const MINOTAUR: EnemyDef = {
 export const WARLOCK: EnemyDef = {
   id: "warlock",
   name: "Warlock",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "back",
   hp: 18,
   attack: 4,
@@ -538,7 +538,7 @@ export const DEMON: EnemyDef = {
 export const DEMONESS: EnemyDef = {
   id: "demoness",
   name: "Demoness",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "back",
   hp: 20,
   attack: 5,
@@ -559,7 +559,7 @@ export const DEMONESS: EnemyDef = {
 export const IRONCLAD_KNIGHT: EnemyDef = {
   id: "ironclad-knight",
   name: "Ironclad Knight",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "front",
   hp: 36,
   attack: 10,
@@ -578,7 +578,7 @@ export const IRONCLAD_KNIGHT: EnemyDef = {
 export const RUNE_KNIGHT: EnemyDef = {
   id: "rune-knight",
   name: "Rune Knight",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "back",
   hp: 28,
   attack: 6,
@@ -636,7 +636,7 @@ export const BLOOD_WRAITH: EnemyDef = {
 export const DEMON_BRAWLER: EnemyDef = {
   id: "demon-brawler",
   name: "Demon Brawler",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "front",
   hp: 28,
   attack: 9,
@@ -656,7 +656,7 @@ export const DEMON_BRAWLER: EnemyDef = {
 export const DEMON_SPAWN: EnemyDef = {
   id: "demon-spawn",
   name: "Demon Spawn",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "any",
   hp: 18,
   attack: 6,
@@ -676,7 +676,7 @@ export const DEMON_SPAWN: EnemyDef = {
 export const DEMON_CHAMPION: EnemyDef = {
   id: "demon-champion",
   name: "Demon Champion",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "front",
   hp: 42,
   attack: 12,
@@ -697,7 +697,7 @@ export const DEMON_CHAMPION: EnemyDef = {
 export const DEMON_MAGE: EnemyDef = {
   id: "demon-mage",
   name: "Demon Mage",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "back",
   hp: 16,
   attack: 3,
@@ -718,7 +718,7 @@ export const DEMON_MAGE: EnemyDef = {
 export const SUCCUBUS: EnemyDef = {
   id: "succubus",
   name: "Succubus",
-  floors: [3, 4],
+  floors: [3, 4, 5],
   rowPreference: "back",
   hp: 18,
   attack: 4,
@@ -1113,6 +1113,109 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "animated-armor", row: "front" },
         { enemyId: "headmasters-echo", row: "back" },
         { enemyId: "demon-champion", row: "front" },
+      ],
+    },
+  ],
+  // Floor 5: The Weeping Cistern — the cisterns beneath the forge, where the
+  // Headmaster channels the choir's stolen voices into deep water.
+  5: [
+    {
+      weight: 4,
+      spawns: [
+        { enemyId: "demon-brawler", row: "front" },
+        { enemyId: "demon-brawler", row: "front" },
+        { enemyId: "demon-mage", row: "back" },
+      ],
+    },
+    {
+      weight: 4,
+      spawns: [
+        { enemyId: "rune-knight", row: "front" },
+        { enemyId: "rune-knight", row: "front" },
+        { enemyId: "warlock", row: "back" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "ironclad-knight", row: "front" },
+        { enemyId: "black-knight", row: "front" },
+        { enemyId: "succubus", row: "back" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "hellbat", row: "front" },
+        { enemyId: "hellbat", row: "front" },
+        { enemyId: "hellbat", row: "front" },
+        { enemyId: "hellhound", row: "front" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "stone-guardian", row: "front" },
+        { enemyId: "stone-guardian", row: "front" },
+        { enemyId: "demon-mage", row: "back" },
+      ],
+    },
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "demon-champion", row: "front" },
+        { enemyId: "demoness", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "animated-armor", row: "front" },
+        { enemyId: "animated-armor", row: "front" },
+        { enemyId: "animated-armor", row: "front" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "demon-spawn", row: "front" },
+        { enemyId: "demon-spawn", row: "front" },
+        { enemyId: "succubus", row: "back" },
+        { enemyId: "succubus", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "black-knight", row: "front" },
+        { enemyId: "ironclad-knight", row: "front" },
+        { enemyId: "demon-mage", row: "back" },
+        { enemyId: "demon-mage", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "minotaur", row: "front" },
+        { enemyId: "demon-brawler", row: "front" },
+      ],
+    },
+    {
+      weight: 1,
+      spawns: [
+        { enemyId: "demon-champion", row: "front" },
+        { enemyId: "rune-knight", row: "front" },
+        { enemyId: "succubus", row: "back" },
+        { enemyId: "demon-mage", row: "back" },
+      ],
+    },
+    // The climax formation — the Echo, still singing through drowned voices.
+    {
+      weight: 1,
+      spawns: [
+        { enemyId: "ironclad-knight", row: "front" },
+        { enemyId: "headmasters-echo", row: "back" },
+        { enemyId: "black-knight", row: "front" },
       ],
     },
   ],

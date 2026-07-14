@@ -13,12 +13,16 @@ import type { FloorMapJSON } from "../../game/floor-map";
 import { mapToFloorDef, parseFloorMapJSON } from "../../game/floor-map";
 import type { FloorDef } from "../../data/floors";
 import floor4 from "./floor-4.json";
+import floor5 from "./floor-5.json";
 
 /**
  * Add editor-exported maps here (imported JSON modules).
  *
  * floor-4.json ("The Null Choir") is the campaign's fourth floor, reached
  * via the stairs_down in Floor 3's Grand Forge chamber.
+ *
+ * floor-5.json ("The Weeping Cistern") is the campaign's fifth floor,
+ * reached via the stairs_down in Floor 4's sanctum-unsung chamber.
  *
  * floor-4-demo.json ("The Practice Halls") remains on disk as the format
  * example pack — it exercises every overlay type (lock+key, trapped chest,
@@ -29,6 +33,7 @@ import floor4 from "./floor-4.json";
  */
 export const EXTRA_FLOOR_MAPS: FloorMapJSON[] = [
   floor4 as unknown as FloorMapJSON,
+  floor5 as unknown as FloorMapJSON,
 ];
 
 export function loadExtraFloors(): FloorDef[] {

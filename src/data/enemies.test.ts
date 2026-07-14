@@ -27,7 +27,7 @@ describe("enemy data", () => {
   });
 
   it("puts the boss on the deep floors' tables", () => {
-    for (const floor of [3, 4]) {
+    for (const floor of [3, 4, 5]) {
       const refs = ENCOUNTER_TABLES[floor].flatMap((entry) =>
         entry.spawns.map((spawn) => spawn.enemyId)
       );
