@@ -72,6 +72,9 @@ const ARENA_X_LEFT = -1.2;
 const ARENA_X_RIGHT = 1.4;
 const ARENA_Z_FRONT = 1.3;
 const ARENA_Z_BACK = 1.9;
+/** Simple orthographic-ish battle layout camera — NOT the arena backdrop's
+ *  ArenaCamera. Sprites share only ARENA_HORIZON_FRAC with the backdrop;
+ *  positions are hand-tuned for readable FF6 layout, not geometric alignment. */
 const CAM_HEIGHT = 0.85;
 const ARENA_FOCAL = 150;
 const ARENA_SPRITE_SCALE = 2.0;
@@ -2119,9 +2122,8 @@ export function renderScene(
 
   ctx.save();
 
-  // Background: prefer the baked corridor backdrop (matches the current
-  // floor's tileset), fall back to the static combat-bg.png image, and
-  // finally to a plain gradient if neither is available.
+  // Background: prefer the baked arena room backdrop (current floor tileset),
+  // fall back to the static combat-bg.png image, then a plain gradient.
   const backdrop = scene.backdrop;
   if (backdrop) {
     ctx.imageSmoothingEnabled = false;

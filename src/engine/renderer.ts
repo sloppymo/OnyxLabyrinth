@@ -1096,7 +1096,11 @@ export function renderBattleArena(
 
   const tileset = getTilesetForFloor(state.floor.id);
   if (tileset) {
-    renderArenaRoom(ctx, w, h, { tileset });
+    renderArenaRoom(ctx, w, h, {
+      tileset,
+      horizonFrac: ARENA_HORIZON_FRAC,
+      voidColor: PALETTE.bg,
+    });
   } else {
     // Fallback when no tileset is loaded (debug floors).
     ctx.fillStyle = PALETTE.bg;

@@ -2,7 +2,9 @@
 
 **Goal:** Replace the corridor-rendered combat backdrop with a dedicated arena renderer that draws a 3/4 top-down room matching the reference mockup: dominant receding floor tiles, textured back wall, receding side walls with a visible top rim, and a fade-to-black void above.
 
-**Architecture:** A new `src/engine/arena-renderer.ts` draws floor and side walls with perspective-correct per-pixel `ImageData` rasterizers and the back wall with a single `drawImage`. The renderer is parameterized so the same code can later render alternate arena perspectives. New pure projection math lives in `src/engine/render-math.ts` with unit tests.
+**Architecture:** A new `src/engine/arena-renderer.ts` draws floor, side walls, and back wall with perspective-correct per-pixel `ImageData` rasterizers (void fill → floor → back wall → side walls, then one `putImageData`). The renderer is parameterized so the same code can later render alternate arena perspectives. New pure projection math lives in `src/engine/render-math.ts` with unit tests.
+
+**Status note (2026-07-13 review):** Shipped defaults and back-wall method diverge from the first draft of this doc. Prefer the Parameter table and Rendering pipeline sections below (updated to match code). Combat sprites still use a separate projection in `combat-scene.ts` sharing only `ARENA_HORIZON_FRAC` — see `ARENA-REVIEW.md` finding W1.
 
 **Tech Stack:** TypeScript, 2D Canvas, no WebGL, no new dependencies.
 
@@ -81,13 +83,14 @@ This is the perspective-correct across-screen mapping for a pitched camera.
 
 ## Rendering pipeline
 
-`renderArenaRoom(ctx, w, h, opts)` draws in this order:
+`renderArenaRoom(ctx, w, h, opts)` bakes into one opaque `ImageData` buffer, then blits once (`putImageData` replaces pixels — earlier `ctx` draws would be wiped):
 
-1. **Void/back-wall band** — fill the top portion of the canvas with `PALETTE.bg`.
-2. **Back wall** — `drawImage` of the wall texture scaled into the projected back-wall rectangle (at `Y = 0`).
-3. **Side walls** — per-pixel `ImageData` rasterizer into the left/right trapezoids.
-4. **Floor** — per-pixel `ImageData` rasterizer for the floor region.
-5. **Fog/darkness overlay** — optional distance-based fade into `PALETTE.bg`.
+1. **Void fill** — fill the buffer with `PALETTE.bg` / `voidColor`.
+2. **Floor** — per-pixel floor caster for rows below the horizon (`Y ∈ (0, roomDepth]`).
+3. **Back wall** — per-pixel ray-plane caster on plane `Y = roomDepth` (trapezoid; with pitch-down, typically **wider at the top**).
+4. **Side walls** — per-pixel ray-plane casters on `X = ±roomWidth/2` (overwrite floor/back edges).
+
+Fog is applied per texel via `arenaOpacityForDepth` while writing (not a separate overlay pass).
 
 All passes use the same camera model so floor, walls, and back wall share a single vanishing point.
 
@@ -108,21 +111,18 @@ For each screen row `y` from `horizonY` to `h - 1`:
 ### Side-wall rasterizer
 
 For each side wall (left at `X = -W/2`, right at `X = +W/2`):
-1. Project the four wall corners to screen:
-   - bottom-near: `(±W/2, D_room, 0)`
-   - top-near: `(±W/2, D_room, wallHeight)`
-   - bottom-far: `(±W/2, 0, 0)`
-   - top-far: `(±W/2, 0, wallHeight)`
-2. For each screen row `y` within the trapezoid's vertical span, compute the horizontal span `[x_left(y), x_right(y)]` by linear interpolation between the corresponding edges.
-3. For each pixel `(x, y)` in the span, solve the camera projection for the world `(Y, Z)` on that wall plane.
-4. Map `(Y, Z)` to wall texture `(u, v)` and sample the wall `ImageData`.
-5. Apply fog and write to the output buffer.
+1. Project the four corners with `arenaProject` and take the screen AABB.
+2. For each pixel in the AABB, cast the pitched camera ray
+   `dir = (dx/f, cosθ+(dy/f)sinθ, −sinθ+(dy/f)cosθ)` and intersect `X = wallX`
+   via `t = wallX·f/dx`.
+3. Accept hits with `Y ∈ [0, roomDepth]`, `Z ∈ [0, wallHeight]`.
+4. Map `(Y, Z)` to wall texel `(u, v)`, fog-blend, write.
 
-Because we solve `(Y, Z)` per pixel, the wall texturing is perspective-correct with no affine seam.
+Because we solve `(Y, Z)` per pixel, the wall texturing is perspective-correct with no affine seam. The AABB over-covers empty pixels; that is acceptable for a one-time bake.
 
 ### Back wall
 
-The back wall at `Y = 0` projects to a rectangle/trapezoid near the horizon. We draw the wall texture with `drawImage` scaled to fit, then draw a black void rectangle above the wall top.
+The back wall at `Y = roomDepth` uses the same ray approach with `t = roomDepth / rayY`, writing into the projected AABB. Void above the wall top remains the initial buffer fill.
 
 ---
 
@@ -193,15 +193,15 @@ export function arenaOpacityForDepth(d: number): number;
 
 Initial guesses based on the mockup (to be adjusted during visual tuning):
 
-| Parameter | Initial value | Notes |
-|-----------|---------------|-------|
-| `ARENA_HORIZON_FRAC` | `0.30` | Existing shared constant; controls how much screen is floor. |
-| `θ` (pitch) | `35°` (~0.61 rad) | High enough to see floor dominate; low enough to keep back wall visible. |
-| `H` (camera height) | `2.5` grid units | Above a 1-grid-unit wall so the top rim is visible. |
-| Room width `W` | `7` grid units | Matches current `ARENA_WIDTH`. |
-| Room depth `D_room` | `9` grid units | Matches current `ARENA_DEPTH`. |
-| Wall height | `1.0` grid units | Standard dungeon wall height. |
-| `maxVisibleDist` | `12` grid units | Far enough to see back wall clearly. |
+| Parameter | Shipped default | Notes |
+|-----------|-----------------|-------|
+| `ARENA_HORIZON_FRAC` | `0.30` | Shared with sprite layout; controls how much screen is floor. |
+| `θ` (pitch) | `30°` | `arena-renderer.ts` `DEFAULTS.pitch`. |
+| `H` (camera height) | `2.5` grid units | Backdrop camera only — sprite `CAM_HEIGHT` is separate (0.85). |
+| Room width `W` | `10` grid units | `DEFAULTS.roomWidth`. |
+| Room depth `D_room` | `18` grid units | `DEFAULTS.roomDepth`; back wall sits here. |
+| Wall height | `5` grid units | Tall enough for a visible top rim under 30° pitch. |
+| `maxVisibleDist` | `28` grid units | Floor rows beyond this fog out. |
 
 Tuning levers:
 - **Floor looks too flat / horizon too low:** increase `θ` (auto-derives larger `f`).

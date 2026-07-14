@@ -31,6 +31,7 @@ import {
   arenaFloorWorldAt,
   arenaProject,
   arenaOpacityForDepth,
+  arenaFloorScreenYForDepth,
 } from "./render-math";
 
 describe("computeLineHeight", () => {
@@ -613,6 +614,67 @@ describe("arena projection math", () => {
       const o = arenaOpacityForDepth(d);
       expect(o).toBeLessThanOrEqual(1.0);
       expect(o).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("arenaFloorScreenYForDepth is the inverse of arenaFloorRowDistance", () => {
+    for (const depth of [1, 3, 5, 9, 18]) {
+      const y = arenaFloorScreenYForDepth(depth, camera, screenH);
+      expect(arenaFloorRowDistance(y, camera, screenH)).toBeCloseTo(depth, 5);
+    }
+  });
+
+  it("arenaFloorScreenYForDepth matches arenaProject on the floor plane", () => {
+    for (const depth of [2, 8, 15]) {
+      const fromInv = arenaFloorScreenYForDepth(depth, camera, screenH);
+      const fromProj = arenaProject(
+        { x: 0, y: depth, z: 0 },
+        camera,
+        screenW,
+        screenH
+      );
+      expect(fromInv).toBeCloseTo(fromProj.y, 5);
+    }
+  });
+
+  it("arenaFloorWorldAt matches arenaProject inverse on the floor", () => {
+    const screenX = screenW / 2 + 80;
+    const screenY = horizonY + 60;
+    const floor = arenaFloorWorldAt(screenX, screenY, camera, screenW, screenH);
+    const projected = arenaProject(
+      { x: floor.x, y: floor.y, z: 0 },
+      camera,
+      screenW,
+      screenH
+    );
+    expect(projected.x).toBeCloseTo(screenX, 4);
+    expect(projected.y).toBeCloseTo(screenY, 4);
+  });
+
+  it("round-trips under production arena DEFAULTS (30° pitch, horizon 0.30)", () => {
+    // Mirrors arena-renderer.ts DEFAULTS + ARENA_HORIZON_FRAC without importing
+    // the canvas module into this DOM-free test file.
+    const prodPitch = (30 * Math.PI) / 180;
+    const prodHorizonFrac = 0.3;
+    const prodHorizonY = screenH * prodHorizonFrac;
+    const prodFocal = ((0.5 - prodHorizonFrac) * screenH) / Math.tan(prodPitch);
+    const prodCam = {
+      camHeight: 2.5,
+      pitch: prodPitch,
+      focalLength: prodFocal,
+      horizonY: prodHorizonY,
+    };
+    expect(arenaFloorRowDistance(prodHorizonY, prodCam, screenH)).toBe(Infinity);
+    for (const depth of [1, 5, 10, 18]) {
+      const y = arenaFloorScreenYForDepth(depth, prodCam, screenH);
+      expect(arenaFloorRowDistance(y, prodCam, screenH)).toBeCloseTo(depth, 5);
+      const projected = arenaProject(
+        { x: 0, y: depth, z: 0 },
+        prodCam,
+        screenW,
+        screenH
+      );
+      expect(projected.y).toBeCloseTo(y, 5);
     }
   });
 });
