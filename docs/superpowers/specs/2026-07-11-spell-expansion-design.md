@@ -511,7 +511,9 @@ if (version === 8) {
 
 ---
 
-## Shipping status note (2026-07-13)
+## Shipping status note (2026-07-13, updated post combat-depth pass)
 
-Consult `src/data/spells.ts` for the live corpus. Combat spells now ship through **tier 7** (T6–T7 are a small endgame set: Meteor Swarm, Disintegrate, Freezing Sphere / Mass Regenerate, Holy Aura — existing effect kinds only; DoT / armor-pen / double-action remain deferred). Unlock via `ceil(level/2)` is also capped by `maxContentSpellTier()` so empty tiers cannot silently reopen. Index: [`docs/AGENT-READING-LIST.md`](../AGENT-READING-LIST.md).
+Consult `src/data/spells.ts` for the live corpus. Combat spells now ship through **tier 7** (T6–T7 are a small endgame set: Meteor Swarm, Disintegrate, Freezing Sphere / Mass Regenerate, Holy Aura). Unlock via `ceil(level/2)` is also capped by `maxContentSpellTier()` so empty tiers cannot silently reopen.
+
+**§5.3 DoT/regen is now live** as an optional `followup` field on `damage`/`heal` effects (rather than standalone `dot`/`regen` kinds): `mage-meteor-swarm` applies its design burn (10/round ×3, respects elemental resist/weakness), `priest-mass-regenerate` its regen (8/round ×3), and single-target `priest-regenerate` (T3, heal 20 + 5/round ×3) shipped as the one extra design spell. Ticks run in end-of-round status processing on `CombatState.enemyDots`/`regenBuffs` and emit structured events. Incinerate, §5.4 cantrip procs, and §5.6 Time Stop remain deferred. Index: [`docs/AGENT-READING-LIST.md`](../AGENT-READING-LIST.md).
 

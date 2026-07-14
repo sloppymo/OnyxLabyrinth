@@ -1,0 +1,10 @@
+=== E. Arena Combat (Desktop) ===
+Arena level select visible: false
+Arena wave screen visible: true
+Combat wrap visible: true
+.ff6-footer visible on desktop: true
+Enemy window visible: true
+=== L. Mobile Combat ===
+#hint hidden on mobile: true
+.ff6-footer hidden on mobile: true
+Mobile HUD visible: true

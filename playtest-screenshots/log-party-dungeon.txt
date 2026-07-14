@@ -1,0 +1,11 @@
+=== B. Party Creation (Default Party) ===
+Default Party option present: true
+Create Your Own option present: true
+After default party, #hint visible: true
+=== C. Town Hub (default party starts in town) ===
+Town of Edgehollow visible: true
+Shop visible (Buy/Sell tabs): true
+Temple visible: true
+Dungeon viewport visible: true
+=== D. Dungeon Exploration ===
+Map canvas visible: false

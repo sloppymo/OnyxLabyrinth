@@ -137,6 +137,32 @@ function el(cls: string, text?: string): HTMLDivElement {
   return d;
 }
 
+/** Compact labels for statuses surfaced as tags in the combat windows. */
+export const STATUS_TAG_LABELS: Record<string, string> = {
+  poison: "PSN",
+  paralysis: "PAR",
+  sleep: "SLP",
+  blind: "BLD",
+  burn: "BRN",
+  regen: "RGN",
+};
+
+/** Statuses read straight off a combatant's `status` array for tag display. */
+const VISIBLE_STATUSES = ["poison", "paralysis", "sleep", "blind"] as const;
+
+/** Small colored status tags (PSN / PAR / SLP / …) appended inside a name
+ *  span, so they never disturb the row's flex/grid column layout. */
+function appendStatusTags(nameEl: HTMLElement, statuses: readonly string[]): void {
+  for (const st of statuses) {
+    const label = STATUS_TAG_LABELS[st];
+    if (!label) continue;
+    const tag = document.createElement("span");
+    tag.className = `ff6-status-tag st-${st}`;
+    tag.textContent = label;
+    nameEl.appendChild(tag);
+  }
+}
+
 function buildMenuWindow(
   view: CombatWindowsView,
   handlers: CombatWindowsHandlers
@@ -238,23 +264,33 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
     (e) => e.currentHp > 0
   );
   const summons = state.summonedAllies.filter((a) => a.hp > 0);
-  // Group by display name with counts, FF6-style.
-  const counts = new Map<string, number>();
-  for (const e of living) counts.set(e.name, (counts.get(e.name) ?? 0) + 1);
-  if (counts.size === 0 && summons.length === 0) {
+  // Group by display name with counts, FF6-style. Each group also unions the
+  // statuses of its members so afflictions stay readable at a glance.
+  const groups = new Map<string, { count: number; statuses: Set<string> }>();
+  for (const e of living) {
+    const group = groups.get(e.name) ?? { count: 0, statuses: new Set<string>() };
+    group.count += 1;
+    for (const st of VISIBLE_STATUSES) {
+      if (e.status.includes(st)) group.statuses.add(st);
+    }
+    if ((state.enemyDots[e.instanceId] ?? []).length > 0) group.statuses.add("burn");
+    groups.set(e.name, group);
+  }
+  if (groups.size === 0 && summons.length === 0) {
     win.appendChild(el("ff6-enemy-row", "—"));
     return win;
   }
-  for (const [name, count] of counts) {
+  for (const [name, group] of groups) {
     const row = el("ff6-enemy-row");
     const nameEl = document.createElement("span");
     nameEl.textContent = name;
     nameEl.title = name;
+    appendStatusTags(nameEl, [...group.statuses]);
     row.appendChild(nameEl);
-    if (count > 1) {
+    if (group.count > 1) {
       const countEl = document.createElement("span");
       countEl.className = "ff6-enemy-count";
-      countEl.textContent = `×${count}`;
+      countEl.textContent = `×${group.count}`;
       row.appendChild(countEl);
     }
     win.appendChild(row);
@@ -328,6 +364,14 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
     name.className = "ff6-p-name";
     name.textContent = c.name;
     name.title = c.name;
+    // Active afflictions / regen as compact colored tags after the name.
+    if (!ko) {
+      const tags = VISIBLE_STATUSES.filter((st) => c.status.includes(st));
+      const withRegen = view.state.regenBuffs[c.id]
+        ? [...tags, "regen"]
+        : [...tags];
+      appendStatusTags(name, withRegen);
+    }
     row.appendChild(name);
 
     const hp = document.createElement("span");

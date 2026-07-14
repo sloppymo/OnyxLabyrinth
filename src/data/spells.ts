@@ -30,9 +30,18 @@ export type DamageElement =
   | "earth"
   | "wind";
 
+/**
+ * Optional over-time followup attached to a damage or heal effect.
+ * DoTs tick on the afflicted enemy and regen ticks on the healed ally at the
+ * end of each round for `duration` rounds (combat.ts `tickStatuses`).
+ */
+export type SpellFollowup =
+  | { kind: "dot"; element: DamageElement; power: number; duration: number }
+  | { kind: "regen"; power: number; duration: number };
+
 export type SpellEffect =
-  | { kind: "damage"; element: DamageElement; power: number }
-  | { kind: "heal"; power: number }
+  | { kind: "damage"; element: DamageElement; power: number; followup?: SpellFollowup }
+  | { kind: "heal"; power: number; followup?: SpellFollowup }
   | { kind: "buff"; stat: "armor"; power?: number }
   | { kind: "cure"; status: "poison" | "sleep" | "paralysis" | "blind" }
   | { kind: "disable"; status: "sleep" | "paralysis" }
@@ -324,8 +333,13 @@ export const MAGE_SPELLS: SpellDef[] = [
     tier: 6,
     spCost: 30,
     target: "allEnemies",
-    effect: { kind: "damage", element: "fire", power: 35 },
-    description: "Calls a rain of meteors that scorches every enemy. Top-tier fire AoE.",
+    effect: {
+      kind: "damage",
+      element: "fire",
+      power: 35,
+      followup: { kind: "dot", element: "fire", power: 10, duration: 3 },
+    },
+    description: "Calls a rain of meteors that scorches every enemy and leaves them burning.",
   },
   {
     id: "mage-disintegrate",
@@ -572,6 +586,20 @@ export const PRIEST_SPELLS: SpellDef[] = [
     description: "Bestows a protective blessing upon the whole party.",
   },
   {
+    id: "priest-regenerate",
+    name: "Regenerate",
+    class: "Priest",
+    tier: 3,
+    spCost: 12,
+    target: "singleAlly",
+    effect: {
+      kind: "heal",
+      power: 20,
+      followup: { kind: "regen", power: 5, duration: 3 },
+    },
+    description: "Mends one ally's wounds and leaves them slowly knitting closed.",
+  },
+  {
     id: "priest-mass-heal",
     name: "Mass Heal",
     class: "Priest",
@@ -644,8 +672,12 @@ export const PRIEST_SPELLS: SpellDef[] = [
     tier: 6,
     spCost: 28,
     target: "allAllies",
-    effect: { kind: "heal", power: 45 },
-    description: "A sustained miracle that restores major wounds across the entire party.",
+    effect: {
+      kind: "heal",
+      power: 45,
+      followup: { kind: "regen", power: 8, duration: 3 },
+    },
+    description: "A sustained miracle that mends the party's wounds and keeps knitting them closed.",
   },
   {
     id: "priest-holy-aura",

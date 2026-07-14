@@ -10,6 +10,8 @@ import {
   isPerkTierLevel,
   tierForLevel,
   applyPerkSelection,
+  partyShopDiscount,
+  discountedShopPrice,
   PERKS_BY_ID,
   ALL_PERKS,
   type CombatHook,
@@ -470,5 +472,302 @@ describe("perk combat integration", () => {
     const state = createCombatState([priest], { front: [enemy], back: [] }, false);
     const after = endRound(state, () => 0.5);
     expect(after.party[0].hp).toBe(priest.maxHp - 10);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase A/B wiring: flee override + newly wired perks
+// ---------------------------------------------------------------------------
+
+function makeNamedCharacter(
+  id: string,
+  cls: Character["class"],
+  perks: string[] = []
+): Character {
+  const c = createCharacter(id, id, "Human", "Neutral", cls, 0);
+  c.stats = { ...BASE_STATS };
+  c.perkIds = perks;
+  c.hp = c.maxHp;
+  c.sp = c.maxSp;
+  return c;
+}
+
+describe("thief-smoke-bomb flee override", () => {
+  // rng 0.99 is above the base flee chance (0.95 at AGI 10), so an
+  // unaided flee attempt fails deterministically.
+  const FLEE_FAIL_RNG = () => 0.99;
+
+  function tryFlee(perks: string[], hpFraction: number, isBoss = false): CombatState {
+    const thief = makeCharacter("Thief", perks);
+    thief.hp = Math.max(1, Math.round(thief.maxHp * hpFraction));
+    const enemy = makeEnemy("e1", "Rat A");
+    const state = createCombatState([thief], { front: [enemy], back: [] }, isBoss);
+    return resolvePlayerTurn(
+      state,
+      { kind: "flee", actorId: thief.id },
+      FLEE_FAIL_RNG
+    );
+  }
+
+  it("without the perk, a bad roll fails to flee", () => {
+    const s = tryFlee([], 0.2);
+    expect(s.ended).toBe(false);
+    expect(s.log.some((m) => m.includes("fails to flee"))).toBe(true);
+  });
+
+  it("with the perk and party HP below 30%, flee always succeeds", () => {
+    const s = tryFlee(["thief-smoke-bomb"], 0.2);
+    expect(s.ended).toBe(true);
+    expect(s.result).toBe("fled");
+  });
+
+  it("with the perk but party HP at or above 30%, no override", () => {
+    const s = tryFlee(["thief-smoke-bomb"], 0.8);
+    expect(s.ended).toBe(false);
+    expect(s.log.some((m) => m.includes("fails to flee"))).toBe(true);
+  });
+
+  it("never overrides against bosses", () => {
+    const s = tryFlee(["thief-smoke-bomb"], 0.2, true);
+    expect(s.ended).toBe(false);
+    expect(s.log.some((m) => m.includes("fails to flee"))).toBe(true);
+  });
+
+  it("a dead holder grants nothing", () => {
+    const thief = makeNamedCharacter("thief", "Thief", ["thief-smoke-bomb"]);
+    thief.hp = 0;
+    thief.status.push("knockedOut");
+    const fighter = makeNamedCharacter("fighter", "Fighter");
+    fighter.hp = Math.round(fighter.maxHp * 0.2);
+    const enemy = makeEnemy("e1", "Rat A");
+    const state = createCombatState([thief, fighter], { front: [enemy], back: [] }, false);
+    const s = resolvePlayerTurn(state, { kind: "flee", actorId: fighter.id }, () => 0.99);
+    expect(s.ended).toBe(false);
+  });
+});
+
+describe("newly wired perks (Phase B)", () => {
+  const MEND: SpellDef = {
+    id: "mend",
+    name: "Mend",
+    class: "Priest",
+    tier: 1,
+    spCost: 1,
+    target: "singleAlly",
+    effect: { kind: "heal", power: 10 },
+    description: "Test heal.",
+  };
+
+  it("priest-healers-touch boosts healing by 30%", () => {
+    const heal = (perks: string[]): number => {
+      const priest = makeCharacter("Priest", perks);
+      priest.maxHp = 100;
+      priest.hp = 1;
+      priest.knownSpellIds = ["mend"];
+      const enemy = makeEnemy("e1", "Rat A");
+      const state = createCombatState(
+        [priest], { front: [enemy], back: [] }, false, { mend: MEND }
+      );
+      const after = resolvePlayerTurn(
+        state,
+        { kind: "cast", actorId: priest.id, spellId: "mend", targetAllyId: priest.id },
+        () => 0.5
+      );
+      return after.party[0].hp - 1;
+    };
+    // PIE 10 → casting bonus 2; power 10 → 12 base, ×1.3 → 16.
+    expect(heal([])).toBe(12);
+    expect(heal(["priest-healers-touch"])).toBe(16);
+  });
+
+  const RAISE: SpellDef = {
+    id: "raise",
+    name: "Raise",
+    class: "Priest",
+    tier: 4,
+    spCost: 1,
+    target: "singleAlly",
+    effect: { kind: "resurrect" },
+    description: "Test resurrect.",
+  };
+
+  it("priest-revival resurrects to 50% max HP instead of 1", () => {
+    const revive = (perks: string[]): number => {
+      const priest = makeNamedCharacter("priest", "Priest", perks);
+      priest.knownSpellIds = ["raise"];
+      const fallen = makeNamedCharacter("fallen", "Fighter");
+      fallen.maxHp = 40;
+      fallen.hp = 0;
+      fallen.status.push("knockedOut");
+      const enemy = makeEnemy("e1", "Rat A");
+      const state = createCombatState(
+        [priest, fallen], { front: [enemy], back: [] }, false, { raise: RAISE }
+      );
+      const after = resolvePlayerTurn(
+        state,
+        { kind: "cast", actorId: priest.id, spellId: "raise", targetAllyId: fallen.id },
+        () => 0.5
+      );
+      return after.party[1].hp;
+    };
+    expect(revive([])).toBe(1);
+    expect(revive(["priest-revival"])).toBe(20); // 50% of the pinned 40 max HP
+  });
+
+  function meleeDamage(perks: string[], enemySpecial: EnemyDef["special"]): number {
+    const enemy = makeEnemy("e1", "Rat A", 100);
+    enemy.special = enemySpecial;
+    const c = makeCharacter("Priest", perks);
+    const state = createCombatState([c], { front: [enemy], back: [] }, false);
+    const after = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: c.id, targetInstanceId: "e1" },
+      () => 0.5
+    );
+    return 100 - after.enemies.front[0].currentHp;
+  }
+
+  it("priest-turn-undead adds +50% damage vs undead only", () => {
+    // STR 10 + level 1 = 11 raw at variance 1.0.
+    expect(meleeDamage([], [{ kind: "undead" }])).toBe(11);
+    expect(meleeDamage(["priest-turn-undead"], [{ kind: "undead" }])).toBe(17);
+    expect(meleeDamage(["priest-turn-undead"], [])).toBe(11);
+  });
+
+  it("crusader-judge boosts damage vs demons", () => {
+    expect(meleeDamage([], [{ kind: "demon" }])).toBe(11);
+    expect(meleeDamage(["crusader-judge"], [{ kind: "demon" }])).toBe(15);
+  });
+
+  it("halberdier-reach-mastery ignores 2 points of enemy AC", () => {
+    const attack = (perks: string[]): number => {
+      const enemy = makeEnemy("e1", "Rat A", 100);
+      enemy.ac = 8;
+      const c = makeCharacter("Halberdier", perks);
+      const state = createCombatState([c], { front: [enemy], back: [] }, false);
+      const after = resolvePlayerTurn(
+        state,
+        { kind: "attack", actorId: c.id, targetInstanceId: "e1" },
+        () => 0.5
+      );
+      return 100 - after.enemies.front[0].currentHp;
+    };
+    // 11 raw − AC 8 = 3 plain; AC 6 with Reach Mastery → 5.
+    expect(attack([])).toBe(3);
+    expect(attack(["halberdier-reach-mastery"])).toBe(5);
+  });
+
+  it("halberdier-brace stores a 60% defend reduction", () => {
+    const brace = makeCharacter("Halberdier", ["halberdier-brace"]);
+    const enemy = makeEnemy("e1", "Rat A");
+    const state = createCombatState([brace], { front: [enemy], back: [] }, false);
+    const after = resolvePlayerTurn(state, { kind: "defend", actorId: brace.id }, () => 0.5);
+    expect(after.defendBuff[brace.id]).toBeCloseTo(0.6);
+
+    const plain = makeCharacter("Halberdier", []);
+    const state2 = createCombatState([plain], { front: [makeEnemy("e1")], back: [] }, false);
+    const after2 = resolvePlayerTurn(state2, { kind: "defend", actorId: plain.id }, () => 0.5);
+    expect(after2.defendBuff[plain.id]).toBeCloseTo(0.5);
+  });
+
+  it("fighter-juggernaut shrugs off poison-on-hit", () => {
+    const hitBy = (perks: string[]): CombatState => {
+      const enemy = makeEnemy("e1", "Cobweb");
+      enemy.special = [{ kind: "poisonOnHit" }];
+      const c = makeCharacter("Fighter", perks);
+      const state = createCombatState([c], { front: [enemy], back: [] }, false);
+      return resolveEnemyTurn(state, "e1", () => 0.5);
+    };
+    expect(hitBy([]).party[0].status).toContain("poison");
+    expect(hitBy(["fighter-juggernaut"]).party[0].status).not.toContain("poison");
+  });
+
+  it("thief-swindler grants a 20% shop discount for the living party", () => {
+    const thief = makeNamedCharacter("thief", "Thief", ["thief-swindler"]);
+    const fighter = makeNamedCharacter("fighter", "Fighter");
+    expect(partyShopDiscount([thief, fighter])).toBeCloseTo(0.2);
+    expect(discountedShopPrice(100, 0.2)).toBe(80);
+    // Dead holder grants nothing.
+    thief.hp = 0;
+    expect(partyShopDiscount([thief, fighter])).toBe(0);
+  });
+
+  it("duelist-perfect-timing arms a guaranteed hit after a crit, once", () => {
+    const perk = PERKS_BY_ID["duelist-perfect-timing"]!;
+    const state: Record<string, unknown> = {};
+    dispatchHook("OnCriticalHit", [perk], { state, rng: () => 0.5 });
+    let guaranteed = 0;
+    const ctx = {
+      state,
+      rng: () => 0.5,
+      guaranteeHit: () => {
+        guaranteed += 1;
+      },
+    };
+    dispatchHook("BeforeAttack", [perk], ctx);
+    expect(guaranteed).toBe(1);
+    // Consumed: the next attack is back to normal.
+    dispatchHook("BeforeAttack", [perk], ctx);
+    expect(guaranteed).toBe(1);
+  });
+
+  it("duelist-swashbuckler strikes the same target again 40% of the time", () => {
+    const perk = PERKS_BY_ID["duelist-swashbuckler"]!;
+    let extra = 0;
+    dispatchHook("OnAttackHit", [perk], {
+      state: {},
+      rng: () => 0.1,
+      damage: 8,
+      strikeSameTarget: (dmg: number) => {
+        extra = dmg;
+      },
+    });
+    expect(extra).toBe(8);
+    extra = 0;
+    dispatchHook("OnAttackHit", [perk], {
+      state: {},
+      rng: () => 0.9,
+      damage: 8,
+      strikeSameTarget: (dmg: number) => {
+        extra = dmg;
+      },
+    });
+    expect(extra).toBe(0);
+  });
+
+  it("crusader-dark-templar heals 15% of melee damage dealt", () => {
+    const perk = PERKS_BY_ID["crusader-dark-templar"]!;
+    let healed = 0;
+    dispatchHook("OnAttackHit", [perk], {
+      state: {},
+      rng: () => 0.5,
+      damage: 20,
+      healSelf: (amount: number) => {
+        healed = amount;
+      },
+    });
+    expect(healed).toBe(3);
+  });
+
+  it("mage-chain-caster jumps to a second target 25% of the time", () => {
+    const perk = PERKS_BY_ID["mage-chain-caster"]!;
+    let chained = false;
+    dispatchHook("OnSpellResolve", [perk], {
+      state: {},
+      rng: () => 0.1,
+      chainToSecondTarget: () => {
+        chained = true;
+      },
+    });
+    expect(chained).toBe(true);
+    chained = false;
+    dispatchHook("OnSpellResolve", [perk], {
+      state: {},
+      rng: () => 0.9,
+      chainToSecondTarget: () => {
+        chained = true;
+      },
+    });
+    expect(chained).toBe(false);
   });
 });

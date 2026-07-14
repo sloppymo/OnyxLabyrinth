@@ -46,13 +46,25 @@ export function spellTargetLabel(target: SpellTarget): string {
   }
 }
 
+/** Suffix describing a damage/heal effect's over-time followup, if any. */
+function followupSummary(effect: Extract<SpellEffect, { kind: "damage" | "heal" }>): string {
+  const f = effect.followup;
+  if (!f) return "";
+  if (f.kind === "dot") {
+    return ` + ${f.power}/round ${ELEMENT_LABELS[f.element].toLowerCase()} burn (${f.duration} rounds)`;
+  }
+  return ` + regen ${f.power}/round (${f.duration} rounds)`;
+}
+
 /** One-line mechanical summary of a spell's effect (damage, heal, buff, …). */
 export function spellEffectSummary(effect: SpellEffect): string {
   switch (effect.kind) {
     case "damage":
-      return `${effect.power} ${ELEMENT_LABELS[effect.element]} damage`;
+      return `${effect.power} ${ELEMENT_LABELS[effect.element]} damage${followupSummary(effect)}`;
     case "heal":
-      return effect.power >= 9999 ? "Fully restores HP" : `Heals ${effect.power} HP`;
+      return effect.power >= 9999
+        ? "Fully restores HP"
+        : `Heals ${effect.power} HP${followupSummary(effect)}`;
     case "buff":
       return "Raises armor";
     case "cure":

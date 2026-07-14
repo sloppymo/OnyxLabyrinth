@@ -1,0 +1,12 @@
+=== E. Debug Combat (Desktop) ===
+Combat wrap visible: true
+Enemy rows present: false
+.ff6-footer visible on desktop: true
+=== L. Mobile Combat (Debug) ===
+#hint hidden: true
+.ff6-footer hidden: true
+Mobile HUD visible: true
+=== J. Save/Load/Continue ===
+Continue appears after save: true
+=== D. Map (debug mode, no encounters) ===
+Map canvas visible: true

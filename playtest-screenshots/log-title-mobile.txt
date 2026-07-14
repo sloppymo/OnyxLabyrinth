@@ -1,0 +1,7 @@
+=== A. Title & Meta-Flow (Desktop) ===
+New Game present: true
+Arena present: true
+Continue present: false (expected false with no autosave)
+#hint visible on desktop: true
+=== L. Mobile Title ===
+#hint hidden on mobile: true

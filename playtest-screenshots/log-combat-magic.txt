@@ -1,0 +1,4 @@
+=== E. Magic Menu ===
+Magic menu visible: true
+Spell target selection visible: true
+After Run attempt: true

@@ -23,7 +23,7 @@ import { restoreParty, type Stats } from "../game/party";
 import { ALL_ITEMS, ITEMS_BY_ID, displayNameFor, type ItemDef } from "../data/items";
 import { equipItem, findBestEquipTarget, getDisplacedItem, type Loadout } from "../game/combat";
 import { xpForNextLevel } from "../game/leveling";
-import { perksForCharacter } from "../game/perks";
+import { perksForCharacter, partyShopDiscount, discountedShopPrice } from "../game/perks";
 
 type TownScreen = "main" | "inn" | "temple" | "shop" | "roster";
 type ShopTab = "buy" | "sell" | "appraise" | "buyConfirm";
@@ -402,8 +402,9 @@ export class TownController {
     const targetId = this.buyConfirmTarget?.id;
     const willEquip = next !== undefined && next !== old;
     const displaced = willEquip && old ? getDisplacedItem(old, next, item) : undefined;
+    const price = this.buyPrice(item);
     const tradeInValue = this.tradeIn && displaced ? Math.floor(displaced.price / 2) : 0;
-    const netCost = item.price - tradeInValue;
+    const netCost = price - tradeInValue;
 
     if (this.state.partyGold < netCost) {
       this.flash = `Not enough gold — you need ${netCost}g.`;
@@ -420,15 +421,15 @@ export class TownController {
       }
       const targetName = this.buyConfirmTarget?.name ?? "someone";
       if (displaced && this.tradeIn) {
-        this.flash = `Bought ${item.name} for ${item.price}g, trading in ${displaced.name} for ${tradeInValue}g (net ${netCost}g), and equipped it on ${targetName}.`;
+        this.flash = `Bought ${item.name} for ${price}g, trading in ${displaced.name} for ${tradeInValue}g (net ${netCost}g), and equipped it on ${targetName}.`;
       } else if (displaced) {
-        this.flash = `Bought ${item.name} for ${item.price}g and equipped it on ${targetName}. ${displaced.name} placed in your inventory.`;
+        this.flash = `Bought ${item.name} for ${price}g and equipped it on ${targetName}. ${displaced.name} placed in your inventory.`;
       } else {
-        this.flash = `Bought ${item.name} for ${item.price}g and equipped it on ${targetName}.`;
+        this.flash = `Bought ${item.name} for ${price}g and equipped it on ${targetName}.`;
       }
     } else {
       this.state.inventory.push({ itemId: item.id, identified: true });
-      this.flash = `Bought ${item.name} for ${item.price}g.`;
+      this.flash = `Bought ${item.name} for ${price}g.`;
     }
 
     this.shopTab = "buy";
@@ -604,7 +605,7 @@ export class TownController {
             `<span class="si-marker">${marker}</span>` +
             `<span class="si-name">${item.name}</span>` +
             `<span class="si-stats">${stats}</span>` +
-            `<span class="si-price">${item.price}g</span>` +
+            `<span class="si-price">${this.buyPrice(item)}g</span>` +
             `</div>`
         );
       }
@@ -705,15 +706,16 @@ export class TownController {
       lines.push(`<span class="buy-compare-label">New:</span> <span class="buy-compare-new">${item.name} — ${this.itemStatsStr(item) || "none"}</span>`);
       lines.push(`</div>`);
 
+      const price = this.buyPrice(item);
       if (displaced) {
         const tradeInValue = Math.floor(displaced.price / 2);
-        const netCost = item.price - (this.tradeIn ? tradeInValue : 0);
+        const netCost = price - (this.tradeIn ? tradeInValue : 0);
         const tradeInLabel = this.tradeIn ? "ON" : "OFF";
         lines.push(`<div class="buy-compare-row">`);
         lines.push(`<span class="buy-compare-label">Trade-in:</span> <span class="buy-compare-value ${this.tradeIn ? "tradein-on" : "tradein-off"}">${tradeInLabel}</span> (old ${displaced.name} → ${tradeInValue}g)`);
         lines.push(`</div>`);
         lines.push(`<div class="buy-compare-row">`);
-        lines.push(`<span class="buy-compare-label">Price:</span> ${item.price}g · <span class="buy-compare-label">Net:</span> ${netCost}g`);
+        lines.push(`<span class="buy-compare-label">Price:</span> ${price}g · <span class="buy-compare-label">Net:</span> ${netCost}g`);
         lines.push(`</div>`);
         lines.push(`<div class="buy-compare-row">`);
         lines.push(`<span class="buy-compare-label">Current gold:</span> ${this.state.partyGold}g`);
@@ -726,21 +728,22 @@ export class TownController {
         lines.push(`<span class="buy-compare-label">No old item to trade in.</span>`);
         lines.push(`</div>`);
         lines.push(`<div class="buy-compare-row">`);
-        lines.push(`<span class="buy-compare-label">Price:</span> ${item.price}g · <span class="buy-compare-label">Current gold:</span> ${this.state.partyGold}g`);
+        lines.push(`<span class="buy-compare-label">Price:</span> ${price}g · <span class="buy-compare-label">Current gold:</span> ${this.state.partyGold}g`);
         lines.push(`</div>`);
-        if (this.state.partyGold < item.price) {
-          lines.push(`<div class="buy-compare-warning">Not enough gold — need ${item.price}g.</div>`);
+        if (this.state.partyGold < price) {
+          lines.push(`<div class="buy-compare-warning">Not enough gold — need ${price}g.</div>`);
         }
       }
     } else {
+      const price = this.buyPrice(item);
       lines.push(`<div class="buy-compare-row">`);
       lines.push(`<span class="buy-compare-label">Will be added to inventory.</span>`);
       lines.push(`</div>`);
       lines.push(`<div class="buy-compare-row">`);
-      lines.push(`<span class="buy-compare-label">Price:</span> ${item.price}g · <span class="buy-compare-label">Current gold:</span> ${this.state.partyGold}g`);
+      lines.push(`<span class="buy-compare-label">Price:</span> ${price}g · <span class="buy-compare-label">Current gold:</span> ${this.state.partyGold}g`);
       lines.push(`</div>`);
-      if (this.state.partyGold < item.price) {
-        lines.push(`<div class="buy-compare-warning">Not enough gold — need ${item.price}g.</div>`);
+      if (this.state.partyGold < price) {
+        lines.push(`<div class="buy-compare-warning">Not enough gold — need ${price}g.</div>`);
       }
     }
 
@@ -757,15 +760,22 @@ export class TownController {
     return undefined;
   }
 
+  /** Buy price after the party's perk discount (thief-swindler). Sell and
+   *  trade-in values stay at base price. */
+  private buyPrice(item: ItemDef): number {
+    return discountedShopPrice(item.price, partyShopDiscount(this.state.party));
+  }
+
   private canAffordWithTradeIn(item: ItemDef): boolean {
-    if (item.type === "consumable") return this.state.partyGold >= item.price;
+    const price = this.buyPrice(item);
+    if (item.type === "consumable") return this.state.partyGold >= price;
     const targetId = findBestEquipTarget(this.state.party, this.state.equipment, item);
-    if (!targetId) return this.state.partyGold >= item.price;
+    if (!targetId) return this.state.partyGold >= price;
     const old = this.state.equipment[targetId];
     const next = equipItem(old, item);
-    if (next === old) return this.state.partyGold >= item.price;
+    if (next === old) return this.state.partyGold >= price;
     const displaced = getDisplacedItem(old, next, item);
-    const net = item.price - (displaced ? Math.floor(displaced.price / 2) : 0);
+    const net = price - (displaced ? Math.floor(displaced.price / 2) : 0);
     return this.state.partyGold >= net;
   }
 

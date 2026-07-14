@@ -19,6 +19,7 @@ export type EnemySpecial =
   | { kind: "healer"; spellName: string }
   | { kind: "caster"; element: DamageElement }
   | { kind: "undead" }
+  | { kind: "demon" }
   | { kind: "silenceRandom"; target: "party"; duration: "combat" }
   | { kind: "evasive" }
   | { kind: "highDefense" }
@@ -526,6 +527,7 @@ export const DEMON: EnemyDef = {
   xp: 22,
   gold: 18,
   special: [
+    { kind: "demon" },
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
   ],
@@ -545,6 +547,7 @@ export const DEMONESS: EnemyDef = {
   xp: 24,
   gold: 20,
   special: [
+    { kind: "demon" },
     { kind: "healer", spellName: "Mass Cure" },
     { kind: "resistElement", element: "fire" },
   ],
@@ -642,6 +645,7 @@ export const DEMON_BRAWLER: EnemyDef = {
   xp: 24,
   gold: 19,
   special: [
+    { kind: "demon" },
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
   ],
@@ -661,6 +665,7 @@ export const DEMON_SPAWN: EnemyDef = {
   xp: 16,
   gold: 14,
   special: [
+    { kind: "demon" },
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
   ],
@@ -680,6 +685,7 @@ export const DEMON_CHAMPION: EnemyDef = {
   xp: 36,
   gold: 30,
   special: [
+    { kind: "demon" },
     { kind: "highDefense" },
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
@@ -700,6 +706,7 @@ export const DEMON_MAGE: EnemyDef = {
   xp: 26,
   gold: 22,
   special: [
+    { kind: "demon" },
     { kind: "caster", element: "fire" },
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
@@ -720,6 +727,7 @@ export const SUCCUBUS: EnemyDef = {
   xp: 22,
   gold: 18,
   special: [
+    { kind: "demon" },
     { kind: "caster", element: "undead" },
     { kind: "silenceRandom", target: "party", duration: "combat" },
   ],

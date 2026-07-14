@@ -381,16 +381,16 @@ After combat, if any characters reached a perk tier, a modal overlay appears ove
 
 **Document status:** v1.0 — Playtest Values. Mechanics are stable; numbers are expected to evolve.
 
-## Implementation status (code vs this doc — 2026-07-13)
+## Implementation status (code vs this doc — 2026-07-13, post combat-depth pass)
 
 | Area | Status |
 |------|--------|
 | Post-combat level-up + perk queue | **Shipped** (`main.ts` `endCombat`) for dungeon **and** Arena |
-| Overlay UI | **Shipped** (`perk-select-ui.ts`); playtest may have missed it due to auto-Enter |
-| `effectiveStats` / `perkModifiers` | **Shipped** |
-| Reactive hooks (`dispatchHook`) | **~14 live** — list at top of `src/game/perks.ts` |
-| Data stubs | **~28 `TODO(v1.1)`** comments in `src/data/perks.ts` — advertised effects may be inert |
-| Final balance numbers | **Not done** — do not trust sheet % for balance passes until stubs are wired or copy is honest |
+| Overlay UI | **Shipped** (`perk-select-ui.ts`); confirm with explicit ←/→ then Enter |
+| `effectiveStats` / `perkModifiers` | **Shipped** (now incl. heal power, resurrect %, undead/demon multipliers, flat AC ignore, defend %, status immunity, shop discount) |
+| Reactive hooks (`dispatchHook`) | **~19 live** — list at top of `src/game/perks.ts` (added Chain Caster, Perfect Timing, Swashbuckler, Dark Templar; Smoke Bomb is wired directly in `combat.ts` flee resolution) |
+| Data stubs | **10 `TODO(v1.1)`** comments in `src/data/perks.ts` — all need genuinely new systems (resistance/reflect/silence immunity/steal economy/party-wide auras); UI copy says so |
+| Final balance numbers | **Not done** — sheet % now mostly live, but no balance pass has tuned them |
 
 Authoritative navigation: [`docs/AGENT-READING-LIST.md`](../AGENT-READING-LIST.md).
 
