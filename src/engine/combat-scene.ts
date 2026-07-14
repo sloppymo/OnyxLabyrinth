@@ -212,10 +212,17 @@ function setAnimState(anim: ActorAnim, state: ActorSpriteState, now: number): vo
 }
 
 /**
- * Global animation speed multiplier (1 = normal, <1 = slower).
- * Set to ~0.67 for a 50% slowdown of sprite frame playback.
+ * Actor sprite strip speed (1 = normal, <1 = slower).
+ * Kept separate from effect playback so spell VFX can linger without
+ * dragging walk/attack choreography as hard.
  */
 const ANIM_SPEED = 0.67;
+
+/**
+ * Spell/projectile/burst/field strip speed. Lower than ANIM_SPEED so
+ * impact FX read a beat longer instead of flashing through their frames.
+ */
+const EFFECT_ANIM_SPEED = 0.42;
 
 /**
  * Compute the frame index for a strip given the anim state age.
@@ -318,6 +325,15 @@ export interface SceneEffect {
   fromY?: number;
   toX?: number;
   toY?: number;
+  /**
+   * Optional hover apex for rise→dash projectiles. When set with
+   * `riseFrac`, the missile eases up to this point then rockets to the
+   * target so the player can read the sprite before the strike.
+   */
+  apexX?: number;
+  apexY?: number;
+  /** Fraction of duration spent rising/hovering (rest is the dash). */
+  riseFrac?: number;
   start: number;
   duration: number;
 }
@@ -433,10 +449,20 @@ const APPROACH_MS = 525;
 const ATTACK_MS = 840;
 const IMPACT_AT = APPROACH_MS + ATTACK_MS * 0.55;
 const RETURN_MS = 420;
-const CAST_MS = 900;
+/** Slightly longer cast window so multishot volleys and charge sprites can breathe. */
+const CAST_MS = 1100;
 const CAST_IMPACT = CAST_MS * 0.65;
-const MULTI_TARGET_STAGGER = 135;
+const MULTI_TARGET_STAGGER = 150;
 const DEATH_FADE_MS = 1050;
+const BURST_MS = 620;
+const FIELD_MS = 920;
+const PROJECTILE_STAGGER_MS = 90;
+
+/** Scale with a small random ±jitter so identical FX don't stamp perfectly. */
+function varyScale(base: number, jitter = 0.16): number {
+  if (jitter <= 0) return base;
+  return base * (1 + (Math.random() * 2 - 1) * jitter);
+}
 
 function step(at: number, run: (scene: CombatScene, now: number) => void): ChoreoStep {
   return { at, run, fired: false };
@@ -607,15 +633,237 @@ interface EffectStyle {
   /** Optional charge sprite drawn above the caster during the cast animation. */
   charge?: string;
   chargeScale?: number;
-  /** Number of parallel projectiles for single-target casts (default 1). */
+  /** Number of parallel / raining projectiles (default 1). Higher for big spells. */
   projectileCount?: number;
+  /** ±fraction applied to each projectile's scale (default 0.14 when count>1). */
+  projectileScaleJitter?: number;
+  /** Extra burst copies around the impact point (default 1). */
+  burstCount?: number;
+  /** Override linger for burst / field (defaults BURST_MS / FIELD_MS). */
+  burstDurationMs?: number;
+  fieldDurationMs?: number;
+  /**
+   * `riseDash` (default when set): projectile rises slowly above the caster
+   * so the sprite can be read, then snaps toward the target. Omitted /
+   * `straight` keeps the old linear fly-to.
+   */
+  projectilePath?: "straight" | "riseDash";
+  /** Rise phase fraction of total flight (default 0.58 for riseDash). */
+  riseFrac?: number;
+  /** How far above the caster the hover apex sits, in px (default 72). */
+  riseLift?: number;
   /** If true, draw a white additive glow behind the burst/field to make it pop against the blue background. */
   glow?: boolean;
 }
 
+/** Push one or more bursts around (x,y) with mild scale/position variety. */
+function pushBursts(
+  scene: CombatScene,
+  x: number,
+  y: number,
+  style: EffectStyle,
+  now: number
+): void {
+  const count = Math.max(1, style.burstCount ?? 1);
+  const duration = style.burstDurationMs ?? BURST_MS;
+  const base = style.burstScale ?? style.scale ?? 1;
+  for (let i = 0; i < count; i++) {
+    const ox = count > 1 ? (i - (count - 1) / 2) * 24 + (Math.random() * 12 - 6) : 0;
+    const oy = count > 1 ? Math.random() * 18 - 9 : 0;
+    scene.effects.push({
+      type: "burst",
+      x: x + ox,
+      y: y + oy,
+      color: style.color,
+      effect: style.burst,
+      scale: varyScale(base, count > 1 ? 0.22 : 0.1),
+      glow: style.glow,
+      start: now + i * 45,
+      duration: duration + i * 40,
+    });
+  }
+}
+
+/** Launch a volley of projectiles from → to with stagger and scale jitter. */
+function pushProjectileVolley(
+  scene: CombatScene,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  style: EffectStyle,
+  now: number,
+  duration: number,
+  count: number
+): void {
+  const base = style.projectileScale ?? style.scale ?? 1;
+  const jitter = style.projectileScaleJitter ?? (count > 1 ? 0.18 : 0.08);
+  const riseDash = style.projectilePath === "riseDash";
+  const riseFrac = style.riseFrac ?? 0.58;
+  const riseLift = style.riseLift ?? 72;
+  // Rise→dash needs a longer flight window so the hover is readable; also
+  // stagger less so the last missile still has time to dash before impact.
+  const staggerMs = riseDash ? Math.min(PROJECTILE_STAGGER_MS, 55) : PROJECTILE_STAGGER_MS;
+  const flight = riseDash ? Math.max(560, duration) : Math.max(220, duration);
+  for (let i = 0; i < count; i++) {
+    const stagger = i * staggerMs;
+    const offset = (i - (count - 1) / 2) * 18;
+    const drift = count > 1 ? Math.random() * 14 - 7 : 0;
+    const startX = fromX;
+    const startY = fromY + offset + drift;
+    scene.effects.push({
+      type: "projectile",
+      x: startX,
+      y: startY,
+      fromX: startX,
+      fromY: startY,
+      toX: toX,
+      toY: toY + offset * 0.6 + drift * 0.5,
+      apexX: riseDash ? startX + offset * 0.35 + drift * 0.4 : undefined,
+      apexY: riseDash ? startY - riseLift - Math.abs(offset) * 0.15 : undefined,
+      riseFrac: riseDash ? riseFrac : undefined,
+      color: style.color,
+      effect: style.projectile,
+      scale: varyScale(base, jitter),
+      start: now + stagger,
+      duration: Math.max(riseDash ? 480 : 220, flight - stagger * 0.35),
+    });
+  }
+}
+
+/**
+ * Sample a projectile's screen position / facing at normalized time t∈[0,1].
+ * Exported for unit tests — rise→dash spends `riseFrac` floating up to the
+ * apex, then eases hard into the strike so the sprite is readable first.
+ */
+export function sampleProjectilePose(
+  t: number,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  opts?: { apexX?: number; apexY?: number; riseFrac?: number }
+): { x: number; y: number; angle: number; phase: "rise" | "dash" | "straight" } {
+  const clamped = Math.min(1, Math.max(0, t));
+  const apexX = opts?.apexX;
+  const apexY = opts?.apexY;
+  const riseFrac = opts?.riseFrac;
+  if (
+    apexX !== undefined &&
+    apexY !== undefined &&
+    riseFrac !== undefined &&
+    riseFrac > 0.05 &&
+    riseFrac < 0.95
+  ) {
+    if (clamped < riseFrac) {
+      const u = clamped / riseFrac;
+      // Ease-out: leave the hand quickly, settle into a hover above the head.
+      const e = 1 - Math.pow(1 - u, 2.4);
+      return {
+        x: fromX + (apexX - fromX) * e,
+        y: fromY + (apexY - fromY) * e,
+        // Face mostly upward while rising so the sprite reads as an icon.
+        angle: -Math.PI / 2 + Math.atan2(apexX - fromX, fromY - apexY) * 0.25,
+        phase: "rise",
+      };
+    }
+    const u = (clamped - riseFrac) / (1 - riseFrac);
+    // Brief hang at the apex, then accelerate hard so most of the travel
+    // packs into the final beat (read the sprite → whip to the target).
+    const hold = 0.18;
+    let e: number;
+    if (u <= hold) {
+      e = (u / hold) * 0.04;
+    } else {
+      const v = (u - hold) / (1 - hold);
+      e = 0.04 + Math.pow(v, 1.65) * 0.96;
+    }
+    return {
+      x: apexX + (toX - apexX) * e,
+      y: apexY + (toY - apexY) * e,
+      angle: Math.atan2(toY - apexY, toX - apexX),
+      phase: "dash",
+    };
+  }
+  return {
+    x: fromX + (toX - fromX) * clamped,
+    y: fromY + (toY - fromY) * clamped,
+    angle: Math.atan2(toY - fromY, toX - fromX),
+    phase: "straight",
+  };
+}
+
+/** Sky-rain volley used by AOE nukes that declare a projectile + count>1. */
+function pushAreaProjectileRain(
+  scene: CombatScene,
+  style: EffectStyle,
+  now: number,
+  duration: number,
+  enemySide: boolean,
+  w: number,
+  h: number
+): void {
+  if (!style.projectile) return;
+  const count = Math.max(1, style.projectileCount ?? 1);
+  const baseX = enemySide ? w * 0.14 : w * 0.58;
+  const spanX = w * 0.28;
+  const base = style.projectileScale ?? style.scale ?? 1;
+  const jitter = style.projectileScaleJitter ?? 0.22;
+  for (let i = 0; i < count; i++) {
+    const tx = baseX + Math.random() * spanX;
+    const ty = h * 0.28 + Math.random() * h * 0.22;
+    const fx = tx + (Math.random() * 40 - 20);
+    const fy = h * 0.04 + Math.random() * 20;
+    scene.effects.push({
+      type: "projectile",
+      x: fx,
+      y: fy,
+      fromX: fx,
+      fromY: fy,
+      toX: tx,
+      toY: ty,
+      color: style.color,
+      effect: style.projectile,
+      scale: varyScale(base * (0.75 + Math.random() * 0.45), jitter),
+      start: now + i * PROJECTILE_STAGGER_MS,
+      duration: Math.max(260, duration - i * 35),
+    });
+  }
+}
+
 const ELEMENT_STYLES: Record<string, EffectStyle> = {
-  fire: { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 0.65, burst: "mp_fire_bomb", burstScale: 1.15, field: "large_fire", scale: 2.5, charge: "fz_fireball", chargeScale: 0.15, projectileCount: 1 },
-  cold: { color: "#d6f7ff", projectile: "px_ice_lance", projectileScale: 2.5, burst: "ice_burst_glow", burstScale: 1.2, field: "ice_burst_glow", fieldScale: 1.2, scale: 1.2, charge: "px_ice_lance", chargeScale: 0.4, projectileCount: 1, glow: true },
+  fire: {
+    color: "#ff8c42",
+    projectile: "fz_fireball",
+    projectileScale: 0.7,
+    burst: "mp_fire_bomb",
+    burstScale: 1.15,
+    field: "large_fire",
+    scale: 2.5,
+    charge: "fz_fireball",
+    chargeScale: 0.15,
+    projectileCount: 1,
+    projectilePath: "riseDash",
+    riseFrac: 0.56,
+    riseLift: 68,
+  },
+  cold: {
+    color: "#d6f7ff",
+    projectile: "px_ice_lance",
+    projectileScale: 2.5,
+    burst: "ice_burst_glow",
+    burstScale: 1.2,
+    field: "ice_burst_glow",
+    fieldScale: 1.2,
+    scale: 1.2,
+    charge: "px_ice_lance",
+    chargeScale: 0.4,
+    projectileCount: 1,
+    glow: true,
+    projectilePath: "riseDash",
+    riseFrac: 0.55,
+    riseLift: 70,
+  },
   // Physical was previously burst-only with no field/charge; the retro2
   // crescent-slash reads as a blade arc, a much better fit than the
   // undead-shared zombie_explosion.
@@ -625,8 +873,34 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
   // Poison burst upgraded from the generic dispel_sparks to the retro2
   // verdant burst — a green toxic bloom reads more clearly as poison.
   poison: { color: "#c080ff", projectile: "red_lightning_blast", burst: "retro2_verdant_burst", burstScale: 1.2, field: "red_energy_glow", scale: 1.6, charge: "red_lightning_blast_glow", chargeScale: 0.4, projectileCount: 1 },
-  water: { color: "#a0f0ff", projectile: "fz_water", burst: "fz_water_geyser", field: "fz_water_geyser", scale: 1.6, charge: "fz_water", chargeScale: 0.5, projectileCount: 1, glow: true },
-  earth: { color: "#b8a080", projectile: "fz_earth_spike", burst: "fz_rocks", field: "fz_rocks", scale: 1.5, charge: "fz_earth_spike", chargeScale: 0.5, projectileCount: 1 },
+  water: {
+    color: "#a0f0ff",
+    projectile: "fz_water",
+    burst: "fz_water_geyser",
+    field: "fz_water_geyser",
+    scale: 1.6,
+    charge: "fz_water",
+    chargeScale: 0.5,
+    projectileCount: 1,
+    glow: true,
+    projectilePath: "riseDash",
+    riseFrac: 0.54,
+    riseLift: 64,
+  },
+  earth: {
+    color: "#b8a080",
+    projectile: "fz_earth_spike",
+    burst: "fz_rocks",
+    field: "retro2_earth_swirl",
+    fieldScale: 1.4,
+    scale: 1.5,
+    charge: "retro2_earth_swirl",
+    chargeScale: 0.45,
+    projectileCount: 1,
+    projectilePath: "riseDash",
+    riseFrac: 0.52,
+    riseLift: 58,
+  },
   wind: { color: "#d0ffe0", projectile: "fz_wind", burst: "fz_tornado", field: "fz_tornado", scale: 1.4, charge: "fz_wind", chargeScale: 0.5, projectileCount: 1 },
   // Divine had no entry at all — any damage-element "divine" spell without a
   // SPELL_OVERRIDE was silently falling back to the generic fire_explosion.
@@ -637,18 +911,78 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
 
 /** Per-spell visual overrides for alternate effect variants. */
 const SPELL_OVERRIDES: Record<string, EffectStyle> = {
-  // Fire — stronger/AOE fire spells get a bigger Magic Pack 9 fire-bomb burst;
-  // Burning Hands gets a distinct Pixelart Firebomb burst for variety.
-  "mage-fireball": { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 0.65, burst: "mp_fire_bomb", burstScale: 1.4, field: "mp_fire_bomb", fieldScale: 1.3 },
-  "mage-immolate": { color: "#ff8c42", projectile: "fz_fireball", projectileScale: 0.65, burst: "mp_fire_bomb", burstScale: 1.5 },
-  "mage-burning-hands": { color: "#ff8c42", burst: "px_firebomb", burstScale: 2.2, field: "px_firebomb", fieldScale: 2.2 },
+  // Fire — mid/high fire spells get multishot + bigger uneven bursts.
+  "mage-fireball": {
+    color: "#ff8c42",
+    projectile: "fz_fireball",
+    projectileScale: 0.78,
+    projectileCount: 2,
+    projectilePath: "riseDash",
+    riseFrac: 0.6,
+    riseLift: 76,
+    burst: "mp_fire_bomb",
+    burstScale: 1.55,
+    burstCount: 2,
+    field: "mp_fire_bomb",
+    fieldScale: 1.4,
+  },
+  // Immolate — mushroom-cloud column + 3 staggered fireballs.
+  "mage-immolate": {
+    color: "#ff8c42",
+    projectile: "fz_fireball",
+    projectileScale: 0.72,
+    projectileCount: 3,
+    projectilePath: "riseDash",
+    riseFrac: 0.62,
+    riseLift: 80,
+    burst: "retro_fire_mushroom",
+    burstScale: 1.95,
+    burstCount: 2,
+    field: "retro_fire_mushroom",
+    fieldScale: 1.55,
+  },
+  "mage-burning-hands": { color: "#ff8c42", burst: "px_firebomb", burstScale: 2.4, burstCount: 2, field: "px_firebomb", fieldScale: 2.2 },
   // Priest holy — dedicated holy-bolt art instead of the generic priest_attack strip,
   // one variant per spell so Guiding Bolt / Sacred Flame / Divine Smite read as distinct.
-  "priest-sacred-flame": { color: "#ffe27a", projectile: "px_bolt_purity", projectileScale: 2.2, burst: "heal_sparks", burstScale: 2.2, scale: 1 },
-  "priest-guiding-bolt": { color: "#7fb8f0", projectile: "px_light_bolt", projectileScale: 2.2, burst: "heal_sparks", burstScale: 2.2, scale: 1 },
-  // Divine Smite — upgraded from the shared heal_sparks burst to the
-  // dedicated starburst + sun-ring field now that divine has real assets.
-  "priest-divine-smite": { color: "#ffe8a0", projectile: "px_pure_bolt_2", projectileScale: 2.6, burst: "retro_starburst", burstScale: 2.2, field: "retro_sun_ring", fieldScale: 1.4, scale: 1.2 },
+  "priest-sacred-flame": {
+    color: "#ffe27a",
+    projectile: "px_bolt_purity",
+    projectileScale: 2.5,
+    projectilePath: "riseDash",
+    riseFrac: 0.6,
+    riseLift: 74,
+    burst: "heal_sparks",
+    burstScale: 2.4,
+    scale: 1,
+  },
+  "priest-guiding-bolt": {
+    color: "#7fb8f0",
+    projectile: "px_light_bolt",
+    projectileScale: 2.4,
+    projectileCount: 2,
+    projectilePath: "riseDash",
+    riseFrac: 0.58,
+    riseLift: 72,
+    burst: "heal_sparks",
+    burstScale: 2.3,
+    scale: 1,
+  },
+  // Divine Smite — dual purity bolts into a bigger corona.
+  "priest-divine-smite": {
+    color: "#ffe8a0",
+    projectile: "px_pure_bolt_2",
+    projectileScale: 2.55,
+    projectileCount: 2,
+    projectilePath: "riseDash",
+    riseFrac: 0.62,
+    riseLift: 82,
+    burst: "retro_starburst",
+    burstScale: 2.35,
+    burstCount: 2,
+    field: "retro_sun_ring",
+    fieldScale: 1.5,
+    scale: 1.2,
+  },
   // Summons — Foozle portal swirl per school (base purple / orange fire / gold holy).
   "mage-summon-fire-elemental": { color: "#ff9a3a", burst: "fz_portal_orange", burstScale: 1.3, field: "fz_portal_orange", fieldScale: 0.7 },
   "mage-conjure-elemental": { color: "#c080ff", burst: "fz_portal", burstScale: 1.2, field: "fz_portal", fieldScale: 0.7 },
@@ -656,9 +990,41 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   "priest-summon-guardian": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.2, field: "fz_portal_gold", fieldScale: 0.7 },
   "priest-summon-celestial-guardian": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.5, field: "fz_portal_gold", fieldScale: 0.8 },
   "priest-summon-celestial": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.3, field: "fz_portal_gold", fieldScale: 0.7 },
-  // Sunburst — the "Free" pack's flower/pinwheel burst reads as radiant sacred light,
-  // a clear step up from the generic undead-element zombie_explosion.
-  "priest-sunburst": { color: "#ffd76a", burst: "free_sunburst", burstScale: 1.4, field: "free_sunburst", fieldScale: 0.8 },
+  // Sunburst — Free pack flower burst for the flash, retro2 solar-ring field
+  // for the lingering sacred corona (was the same burst twice).
+  "priest-sunburst": {
+    color: "#ffd76a",
+    burst: "free_sunburst",
+    burstScale: 1.55,
+    burstCount: 2,
+    field: "retro2_solar_ring",
+    fieldScale: 1.5,
+  },
+  // Cold AOEs — ice lances rain before the field lands.
+  "mage-cone-of-cold": {
+    color: "#d6f7ff",
+    projectile: "px_ice_lance",
+    projectileScale: 2.2,
+    projectileCount: 2,
+    burst: "ice_burst_glow",
+    burstScale: 1.35,
+    burstCount: 2,
+    field: "ice_burst_glow",
+    fieldScale: 1.3,
+    glow: true,
+  },
+  "mage-ice-storm": {
+    color: "#d6f7ff",
+    projectile: "px_ice_lance",
+    projectileScale: 2.0,
+    projectileCount: 4,
+    burst: "ice_burst_glow",
+    burstScale: 1.5,
+    burstCount: 2,
+    field: "ice_burst_glow",
+    fieldScale: 1.45,
+    glow: true,
+  },
   // Web — shares STATUS_STYLES.paralysis's status kind with Hold Person/Power Word
   // Stun, but needs its own tangled-vine look rather than the shared "stun stars" burst.
   "mage-web": { color: "#c8c4b8", field: "free_tangle", fieldScale: 1.3, burst: "free_tangle", burstScale: 1.3 },
@@ -668,15 +1034,58 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
 
   // --- New impact-pack overrides (2026 sprite additions) -------------------
 
-  // Tempest — top-tier wind spell gets the long wind-up cyan cross-blade
-  // field plus a pinwheel burst on impact, instead of just the shared fz_tornado.
-  "mage-tempest": { color: "#d0ffe0", projectile: "fz_wind", burst: "retro2_wind_pinwheel", burstScale: 1.6, field: "retro3_wind_cross", fieldScale: 1.2, charge: "fz_wind", chargeScale: 0.5 },
-  // Quake — a horizontal shockwave arc reads as ground rupture far better
-  // than the rock-pile burst shared with lesser earth spells.
-  "mage-quake": { color: "#b8a080", burst: "retro_shockwave", burstScale: 1.9, field: "retro_shockwave", fieldScale: 1.7 },
-  // Deluge — layers the aqua-vortex whirlpool field over the existing water
-  // geyser burst for the AOE-tier water spell.
-  "mage-deluge": { color: "#4fd0ff", projectile: "fz_water", burst: "fz_water_geyser", field: "retro2_aqua_vortex", fieldScale: 1.4, charge: "fz_water", chargeScale: 0.5 },
+  // Tempest — wind rain + long cross field.
+  "mage-tempest": {
+    color: "#d0ffe0",
+    projectile: "fz_wind",
+    projectileScale: 1.1,
+    projectileCount: 3,
+    burst: "retro2_wind_pinwheel",
+    burstScale: 1.7,
+    burstCount: 2,
+    field: "retro3_wind_cross",
+    fieldScale: 1.3,
+    charge: "fz_wind",
+    chargeScale: 0.5,
+  },
+  // Rock Slide — mid-tier earth AOE keeps rock bursts but layers the
+  // earth-swirl field so it sits between Stone Shard (element default) and Quake.
+  "mage-rock-slide": {
+    color: "#b8a080",
+    projectile: "fz_earth_spike",
+    projectileScale: 1.15,
+    projectileCount: 3,
+    burst: "fz_rocks",
+    burstScale: 1.4,
+    burstCount: 2,
+    field: "retro2_earth_swirl",
+    fieldScale: 1.6,
+    charge: "retro2_earth_swirl",
+    chargeScale: 0.4,
+  },
+  // Quake — horizontal shockwave; twin bursts sell the ground rupture.
+  "mage-quake": {
+    color: "#b8a080",
+    burst: "retro_shockwave",
+    burstScale: 2.05,
+    burstCount: 2,
+    field: "retro_shockwave",
+    fieldScale: 1.85,
+  },
+  // Deluge — geyser rain into aqua-vortex field.
+  "mage-deluge": {
+    color: "#4fd0ff",
+    projectile: "fz_water",
+    projectileScale: 1.05,
+    projectileCount: 3,
+    burst: "fz_water_geyser",
+    burstScale: 1.45,
+    burstCount: 2,
+    field: "retro2_aqua_vortex",
+    fieldScale: 1.5,
+    charge: "fz_water",
+    chargeScale: 0.5,
+  },
   // Spell Shield — a distinct rounded ward-square instead of the generic
   // px_shield used by every other buff/magicScreen spell.
   "mage-spell-shield": { color: "#7fe0e0", burst: "retro2_ward_square", burstScale: 1.6, field: "retro2_ward_square", fieldScale: 0.9, scale: 1.2 },
@@ -685,40 +1094,49 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   "priest-neutralize-poison": { color: "#f5f0e6", burst: "retro2_arcane_sigil", burstScale: 1.5, scale: 1.2 },
   // Mass Heal — layers a soft radiant bloom field under the existing
   // priest_heal projectile/burst for the AOE-tier heal.
-  "priest-mass-heal": { color: "#8fffb0", projectile: "priest_heal", burst: "priest_heal", field: "retro3_arcane_bloom", fieldScale: 1.1, scale: 1.2 },
+  "priest-mass-heal": { color: "#8fffb0", projectile: "priest_heal", burst: "priest_heal", burstCount: 2, field: "retro3_arcane_bloom", fieldScale: 1.2, scale: 1.25 },
   // Raise Dead — a radiating dot-flower burst for the moment a fallen ally
   // returns, distinct from ordinary healing.
-  "priest-raise-dead": { color: "#ffe27a", burst: "retro_dot_flower", burstScale: 1.9, scale: 1.3 },
+  "priest-raise-dead": { color: "#ffe27a", burst: "retro_dot_flower", burstScale: 2.0, burstCount: 2, scale: 1.3 },
 
   // --- T6–T7 endgame ---------------------------------------------------------
   "mage-meteor-swarm": {
     color: "#ff6a20",
     projectile: "fz_fireball",
-    projectileScale: 0.8,
-    burst: "mp_fire_bomb",
-    burstScale: 1.8,
+    projectileScale: 0.55,
+    // Rain of variously-sized meteors before the mushroom/bomb field.
+    projectileCount: 5,
+    projectileScaleJitter: 0.35,
+    burst: "retro_fire_mushroom",
+    burstScale: 2.35,
+    burstCount: 3,
     field: "mp_fire_bomb",
-    fieldScale: 1.6,
+    fieldScale: 1.75,
+    fieldDurationMs: 1100,
     charge: "fz_fireball",
     chargeScale: 0.55,
   },
   "mage-disintegrate": {
     color: "#d0c8e0",
     burst: "retro2_crescent_slash",
-    burstScale: 2.0,
+    burstScale: 2.15,
+    burstCount: 2,
     field: "retro_crescent_arc",
-    fieldScale: 1.4,
+    fieldScale: 1.55,
     charge: "retro3_sigil_charge",
     chargeScale: 0.45,
   },
   "mage-freezing-sphere": {
     color: "#9ad8ff",
     projectile: "px_ice_lance",
-    projectileScale: 2.6,
+    projectileScale: 2.2,
+    projectileCount: 4,
+    projectileScaleJitter: 0.25,
     burst: "ice_burst_glow",
-    burstScale: 1.8,
+    burstScale: 1.9,
+    burstCount: 2,
     field: "ice_burst_glow",
-    fieldScale: 1.5,
+    fieldScale: 1.65,
     charge: "px_ice_lance",
     chargeScale: 0.55,
     glow: true,
@@ -727,17 +1145,21 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
     color: "#8fffb0",
     projectile: "priest_heal",
     burst: "priest_heal",
+    burstCount: 2,
     field: "retro3_arcane_bloom",
-    fieldScale: 1.35,
-    scale: 1.3,
+    fieldScale: 1.45,
+    scale: 1.35,
   },
   "priest-holy-aura": {
     color: "#ffe8a0",
-    burst: "retro_sun_ring",
-    burstScale: 1.6,
-    field: "retro_sun_ring",
-    fieldScale: 1.2,
-    scale: 1.3,
+    // T7 aura: fuller 64×64 solar vortex; twin layers via field rain above.
+    burst: "retro2_solar_ring",
+    burstScale: 1.85,
+    burstCount: 2,
+    field: "retro2_solar_ring",
+    fieldScale: 1.55,
+    fieldDurationMs: 1100,
+    scale: 1.35,
   },
 };
 
@@ -1175,6 +1597,24 @@ export function playTurn(
           casterEnemyId?.id
         );
         pendingCastStyle = style;
+
+        const castSpell = spellById(evt.spellId);
+        const castIsArea =
+          !!castSpell &&
+          (castSpell.target === "allEnemies" ||
+            castSpell.target === "allAllies" ||
+            castSpell.target === "groupEnemies" ||
+            castSpell.target === "groupAllies");
+        const riseDash =
+          style.projectilePath === "riseDash" &&
+          !!style.projectile &&
+          !castIsArea;
+        // Rise→dash needs a longer hover window before impact lands.
+        if (riseDash) {
+          pendingImpactBase = t + Math.max(CAST_IMPACT, 920);
+        }
+        const castHold = riseDash ? Math.max(CAST_MS, 1280) : CAST_MS;
+
         // Charge sprite gathers above the caster during the cast.
         if (style.charge) {
           steps.push(
@@ -1186,39 +1626,56 @@ export function playTurn(
                 x: actor.x, y: actor.y,
                 color: style.color,
                 effect: style.charge,
-                scale: style.chargeScale ?? style.scale ?? 0.8,
+                scale: varyScale(style.chargeScale ?? style.scale ?? 0.8, 0.08),
                 start: n,
-                duration: CAST_IMPACT,
+                duration: (pendingImpactBase ?? CAST_IMPACT) - t + 80,
               });
             })
           );
         }
 
-        // For a single target, launch projectile(s) from caster to target.
-        if (evt.targetId && style.projectile) {
-          const projectileLaunch = t + 100;
-          const impact = pendingImpactBase;
-          const count = style.projectileCount ?? 1;
+        // AOE nukes with a declared projectile rain from above the affected
+        // side (Meteor Swarm, Ice Storm, etc.) instead of a single beam.
+        if (castIsArea && style.projectile && (style.projectileCount ?? 1) > 1) {
+          const enemySide =
+            castSpell!.target === "allEnemies" || castSpell!.target === "groupEnemies";
+          steps.push(
+            step(t + 80, (sc, n) => {
+              pushAreaProjectileRain(
+                sc,
+                style,
+                n,
+                CAST_IMPACT - 80,
+                enemySide,
+                w,
+                h
+              );
+            })
+          );
+        }
+
+        // Single-target: launch a volley from caster toward the target.
+        // Rise→dash launches earlier so the hover phase has room to breathe.
+        if (evt.targetId && style.projectile && !castIsArea) {
+          const projectileLaunch = t + (riseDash ? 40 : 100);
+          const impact = pendingImpactBase!;
+          const count = Math.max(1, style.projectileCount ?? 1);
           steps.push(
             step(projectileLaunch, (sc, n) => {
               const from = findActor(sc, evt.actorId, w, h);
               const to = findActor(sc, evt.targetId!, w, h);
               if (!from || !to) return;
-              for (let i = 0; i < count; i++) {
-                const stagger = i * 60;
-                const offset = (i - (count - 1) / 2) * 18;
-                sc.effects.push({
-                  type: "projectile",
-                  x: from.x, y: from.y,
-                  fromX: from.x, fromY: from.y + offset,
-                  toX: to.x, toY: to.y + offset,
-                  color: style.color,
-                  effect: style.projectile,
-                  scale: style.projectileScale ?? style.scale ?? 1,
-                  start: n + stagger,
-                  duration: impact - projectileLaunch,
-                });
-              }
+              pushProjectileVolley(
+                sc,
+                from.x,
+                from.y,
+                to.x,
+                to.y,
+                style,
+                n,
+                impact - projectileLaunch,
+                count
+              );
             })
           );
         }
@@ -1228,27 +1685,19 @@ export function playTurn(
           const isHeal = evt.heal !== undefined;
           const text = isHeal ? `${evt.heal}` : `${evt.damage}`;
           steps.push(
-            step(pendingImpactBase, (sc, n) => {
+            step(pendingImpactBase!, (sc, n) => {
               const target = findActor(sc, evt.targetId!, w, h);
               if (target) {
-                sc.effects.push({
-                  type: "burst",
-                  x: target.x, y: target.y,
-                  color: style.color,
-                  effect: style.burst,
-                  scale: style.burstScale ?? style.scale ?? 1,
-                  glow: style.glow,
-                  start: n, duration: 400,
-                });
+                pushBursts(sc, target.x, target.y, style, n);
                 spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
                 if (!isHeal) addScreenShake(sc, isHeal ? 1 : 3, n, 200);
               }
             }),
-            ...impactSteps(pendingImpactBase, evt.targetId, text, isHeal ? COLORS.heal : COLORS.dmg, w, h, !isHeal, false, undefined, undefined, evt.damage)
+            ...impactSteps(pendingImpactBase!, evt.targetId, text, isHeal ? COLORS.heal : COLORS.dmg, w, h, !isHeal, false, undefined, undefined, evt.damage)
           );
           pendingImpactCount++;
         }
-        t += CAST_MS;
+        t += castHold;
         break;
       }
 
@@ -1277,18 +1726,33 @@ export function playTurn(
           fieldPushed = true;
           const fieldX =
             spell.target === "allEnemies" || spell.target === "groupEnemies" ? w * 0.26 : w * 0.72;
+          const fieldDuration = style.fieldDurationMs ?? FIELD_MS;
+          const fieldBase = (style.fieldScale ?? style.scale ?? 1) * 2;
           steps.push(
             step(impactAt, (sc, n) => {
+              // Twin field layers at slightly different scales read as depth
+              // instead of one flat stamp.
               sc.effects.push({
                 type: "field",
                 x: fieldX,
                 y: h * 0.42,
                 color: style.color,
                 effect: style.field ?? style.burst,
-                scale: (style.fieldScale ?? style.scale ?? 1) * 2,
+                scale: varyScale(fieldBase, 0.06),
                 glow: style.glow,
                 start: n,
-                duration: 650,
+                duration: fieldDuration,
+              });
+              sc.effects.push({
+                type: "field",
+                x: fieldX + 18,
+                y: h * 0.46,
+                color: style.color,
+                effect: style.field ?? style.burst,
+                scale: varyScale(fieldBase * 0.72, 0.1),
+                glow: style.glow,
+                start: n + 70,
+                duration: fieldDuration - 80,
               });
               addScreenShake(sc, fieldX < w * 0.5 ? 4 : 2, n, 300);
             })
@@ -1300,6 +1764,8 @@ export function playTurn(
           // burst over the affected side so the cast is visibly doing
           // something. Debuffs land on the enemy side, buffs on the party.
           const fieldX = evt.isDebuff ? w * 0.26 : w * 0.72;
+          const fieldDuration = style.fieldDurationMs ?? FIELD_MS;
+          const fieldBase = (style.fieldScale ?? style.scale ?? 1) * 2;
           steps.push(
             step(impactAt, (sc, n) => {
               sc.effects.push({
@@ -1308,10 +1774,10 @@ export function playTurn(
                 y: h * 0.42,
                 color: style.color,
                 effect: style.field ?? style.burst,
-                scale: (style.fieldScale ?? style.scale ?? 1) * 2,
+                scale: varyScale(fieldBase, 0.08),
                 glow: style.glow,
                 start: n,
-                duration: 650,
+                duration: fieldDuration,
               });
               addScreenShake(sc, evt.isDebuff ? 4 : 2, n, 300);
             })
@@ -1339,15 +1805,7 @@ export function playTurn(
           step(impactAt, (sc, n) => {
             const target = findActor(sc, targetId, w, h);
             if (target) {
-              sc.effects.push({
-                type: "burst",
-                x: target.x, y: target.y,
-                color: style.color,
-                effect: style.burst,
-                scale: style.burstScale ?? style.scale ?? 1,
-                glow: style.glow,
-                start: n, duration: 400,
-              });
+              pushBursts(sc, target.x, target.y, style, n);
               spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
               if (!isHeal && evt.damage !== undefined) {
                 addScreenShake(sc, evt.damage && evt.damage > 20 ? 5 : 3, n, 200);
@@ -1920,7 +2378,7 @@ function effectFrame(sprite: EffectSprite, start: number, now: number, type: Sce
   const strip = sprite.strip;
   if (strip.frameCount <= 1 || strip.fps <= 0) return 0;
   const elapsed = Math.max(0, now - start);
-  const idx = Math.floor((elapsed / 1000) * strip.fps * ANIM_SPEED);
+  const idx = Math.floor((elapsed / 1000) * strip.fps * EFFECT_ANIM_SPEED);
   const shouldLoop = type === "projectile" || type === "charge" || strip.loop === true;
   return shouldLoop ? idx % strip.frameCount : Math.min(strip.frameCount - 1, idx);
 }
@@ -2046,12 +2504,19 @@ function drawEffects(ctx: CanvasRenderingContext2D, scene: CombatScene, now: num
       const fromY = effect.fromY ?? effect.y;
       const toX = effect.toX ?? effect.x;
       const toY = effect.toY ?? effect.y;
-      const cx = fromX + (toX - fromX) * t;
-      const cy = fromY + (toY - fromY) * t;
-      const angle = Math.atan2(toY - fromY, toX - fromX);
-      ctx.translate(cx, cy);
-      ctx.rotate(angle);
-      drawEffectSprite(ctx, effect, "projectile", t, now);
+      const pose = sampleProjectilePose(t, fromX, fromY, toX, toY, {
+        apexX: effect.apexX,
+        apexY: effect.apexY,
+        riseFrac: effect.riseFrac,
+      });
+      // Slight scale-up while hovering so the sprite is easier to read.
+      const drawScale =
+        pose.phase === "rise" && effect.riseFrac
+          ? (effect.scale ?? 1) * (1 + 0.18 * Math.min(1, t / effect.riseFrac))
+          : effect.scale;
+      ctx.translate(pose.x, pose.y);
+      ctx.rotate(pose.angle);
+      drawEffectSprite(ctx, { ...effect, scale: drawScale }, "projectile", t, now);
     }
     ctx.restore();
   }
