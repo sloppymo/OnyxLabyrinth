@@ -68,13 +68,13 @@ const ENEMY_SIZE = 300;
 /** Boss sprites are drawn larger to tower over regular enemies. */
 const BOSS_SIZE = 480;
 
-const ARENA_X_LEFT = -1.0;
-const ARENA_X_RIGHT = 1.2;
-const ARENA_Z_FRONT = 1.2;
-const ARENA_Z_BACK = 1.8;
-const CAM_HEIGHT = 1.7;
+const ARENA_X_LEFT = -1.2;
+const ARENA_X_RIGHT = 1.4;
+const ARENA_Z_FRONT = 1.3;
+const ARENA_Z_BACK = 1.9;
+const CAM_HEIGHT = 0.85;
 const ARENA_FOCAL = 150;
-const ARENA_SPRITE_SCALE = 1.3;
+const ARENA_SPRITE_SCALE = 2.0;
 
 function arenaSlotWorldPosition(
   index: number,
