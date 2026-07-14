@@ -11,7 +11,8 @@
  * `putImageData`, then walls are rendered on top so they occlude the distant
  * floor/ceiling correctly. Each floor of the campaign has its own tileset
  * (wall/floorA/floorB/ceiling); all sets are prepared by loadTextures() and
- * cached in `tilesetCache`, and render() selects by `state.floor.id`.
+ * cached in `tilesetCache` keyed by **theme name** (`floor.tilesetTheme` or
+ * `f{id}`). Themes live under `public/assets/tilesets/<theme>/`.
  */
 
 import type { GameState, Grid } from "../types";
@@ -37,6 +38,11 @@ import {
   RenderCameraAnimator,
 } from "./render-math";
 import type { RenderCamera } from "./render-math";
+import { resolveTilesetTheme } from "../game/floor-map";
+import {
+  getMapSpriteDef,
+  getMapSpriteImage,
+} from "./map-sprite-cache";
 import { renderArenaRoom } from "./arena-renderer";
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
@@ -184,23 +190,48 @@ export interface LoadedTileset {
   repeatedWall: HTMLCanvasElement | null;
 }
 
-/** Per-floor texture URLs. Each floor of the campaign has its own tileset. */
-const TILESET_URLS: Record<
-  number,
+/** Bundled Vite-import fallbacks for campaign themes (also mirrored in public/). */
+const BUNDLED_THEME_URLS: Record<
+  string,
   { wall: string; floorA: string; floorB: string; ceiling: string }
 > = {
-  1: { wall: f1WallUrl, floorA: f1FloorAUrl, floorB: f1FloorBUrl, ceiling: f1CeilingUrl },
-  2: { wall: f2WallUrl, floorA: f2FloorAUrl, floorB: f2FloorBUrl, ceiling: f2CeilingUrl },
-  3: { wall: f3WallUrl, floorA: f3FloorAUrl, floorB: f3FloorBUrl, ceiling: f3CeilingUrl },
+  f1: { wall: f1WallUrl, floorA: f1FloorAUrl, floorB: f1FloorBUrl, ceiling: f1CeilingUrl },
+  f2: { wall: f2WallUrl, floorA: f2FloorAUrl, floorB: f2FloorBUrl, ceiling: f2CeilingUrl },
+  f3: { wall: f3WallUrl, floorA: f3FloorAUrl, floorB: f3FloorBUrl, ceiling: f3CeilingUrl },
 };
-const FALLBACK_TILESET_ID = 1;
 
-// Loaded tilesets keyed by floor id. Populated once by loadTextures();
-// render() picks the active set from state.floor.id each frame. (Cached
-// entries hold images/canvases — never CanvasPattern objects, which die
+const FALLBACK_THEME = "f1";
+
+function publicThemeUrls(theme: string): {
+  wall: string;
+  floorA: string;
+  floorB: string;
+  ceiling: string;
+} {
+  const base = `${import.meta.env.BASE_URL}assets/tilesets/${theme}`;
+  return {
+    wall: `${base}/wall.png`,
+    floorA: `${base}/floorA.png`,
+    floorB: `${base}/floorB.png`,
+    ceiling: `${base}/ceiling.png`,
+  };
+}
+
+function urlsForTheme(theme: string): {
+  wall: string;
+  floorA: string;
+  floorB: string;
+  ceiling: string;
+} {
+  return BUNDLED_THEME_URLS[theme] ?? publicThemeUrls(theme);
+}
+
+// Loaded tilesets keyed by theme id. Populated by loadTextures() /
+// ensureThemeLoaded(); render() picks the active set from the floor's theme.
+// (Cached entries hold images/canvases — never CanvasPattern objects, which die
 // when the target canvas is resized.)
-const tilesetCache = new Map<number, LoadedTileset>();
-
+const tilesetCache = new Map<string, LoadedTileset>();
+const themeLoadPromises = new Map<string, Promise<LoadedTileset>>();
 // Reusable per-frame buffers (avoid allocation in the hot render loop).
 let hitsBuffer: (RayHit | null)[] = [];
 let seenFeatureCellsBuffer = new Set<string>();
@@ -306,16 +337,27 @@ function prepareRepeatedTexture(
   return c;
 }
 
-/** Load and prepare every floor's tileset. Safe to call more than once. */
+/** Load and prepare campaign themes (f1–f3). Safe to call more than once. */
 export function loadTextures(): Promise<void> {
-  const pending = Object.entries(TILESET_URLS)
-    .filter(([id]) => !tilesetCache.has(Number(id)))
-    .map(([id, urls]) =>
-      loadTileset(urls).then((tileset) => {
-        tilesetCache.set(Number(id), tileset);
-      })
-    );
-  return Promise.all(pending).then(() => {});
+  return Promise.all(
+    Object.keys(BUNDLED_THEME_URLS).map((theme) => ensureThemeLoaded(theme))
+  ).then(() => {});
+}
+
+/** Ensure a tileset theme is in the cache (no-op if already loaded). */
+export function ensureThemeLoaded(theme: string): Promise<LoadedTileset> {
+  const cached = tilesetCache.get(theme);
+  if (cached) return Promise.resolve(cached);
+  let pending = themeLoadPromises.get(theme);
+  if (!pending) {
+    pending = loadTileset(urlsForTheme(theme)).then((tileset) => {
+      tilesetCache.set(theme, tileset);
+      themeLoadPromises.delete(theme);
+      return tileset;
+    });
+    themeLoadPromises.set(theme, pending);
+  }
+  return pending;
 }
 
 function loadTileset(urls: {
@@ -456,6 +498,69 @@ function castRay(
 
       return { side, mapX, mapY, perpWallDist, wallX, edge };
     }
+  }
+}
+
+/** Draw static map decor sprites (Wolf3D-style billboards). */
+function drawMapSprites(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  cam: RenderCamera,
+  hits: (RayHit | null)[],
+  stripWidth: number,
+  inDarkness: boolean
+): void {
+  const sprites = state.floor.mapSprites;
+  if (!sprites?.length) return;
+
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const camWX = cam.x + 0.5;
+  const camWY = cam.y + 0.5;
+  const invDet = 1.0 / (cam.planeX * cam.dirY - cam.dirX * cam.planeY);
+
+  type Proj = {
+    spriteId: string;
+    transformX: number;
+    transformY: number;
+  };
+  const projected: Proj[] = [];
+  for (const s of sprites) {
+    const dx = s.x + 0.5 - camWX;
+    const dy = s.y + 0.5 - camWY;
+    const transformX = invDet * (cam.dirY * dx - cam.dirX * dy);
+    const transformY = invDet * (-cam.planeY * dx + cam.planeX * dy);
+    if (transformY <= 0.2) continue;
+    projected.push({ spriteId: s.spriteId, transformX, transformY });
+  }
+  projected.sort((a, b) => b.transformY - a.transformY);
+
+  for (const p of projected) {
+    const img = getMapSpriteImage(p.spriteId);
+    const def = getMapSpriteDef(p.spriteId);
+    if (!img || !def) continue;
+
+    const spriteScreenX = Math.floor((w / 2) * (1 + p.transformX / p.transformY));
+    const spriteH = Math.max(
+      8,
+      Math.abs(Math.floor((h / p.transformY) * (def.baseSize / 56)))
+    );
+    const spriteW = spriteH;
+    const lineHeight = computeLineHeight(h, p.transformY);
+    const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
+    const drawY = drawEnd - spriteH;
+
+    const stripIdx = Math.floor(spriteScreenX / stripWidth);
+    if (stripIdx >= 0 && stripIdx < hits.length) {
+      const hit = hits[stripIdx];
+      if (hit && hit.perpWallDist < p.transformY - 0.05) continue;
+    }
+
+    ctx.save();
+    ctx.globalAlpha = opacityForDepth(p.transformY) * (inDarkness ? 0.5 : 1);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, spriteScreenX - spriteW / 2, drawY, spriteW, spriteH);
+    ctx.restore();
   }
 }
 
@@ -661,9 +766,14 @@ function drawFloorCeilingCast(
   ctx.putImageData(buf, 0, bobY);
 }
 
-/** Return the loaded tileset for a floor id, or null if none is cached. */
+/** Return the loaded tileset for a theme id, or null if none is cached. */
+export function getTilesetForTheme(theme: string): LoadedTileset | null {
+  return tilesetCache.get(theme) ?? tilesetCache.get(FALLBACK_THEME) ?? null;
+}
+
+/** @deprecated Prefer getTilesetForTheme / floor.tilesetTheme. */
 export function getTilesetForFloor(floorId: number): LoadedTileset | null {
-  return tilesetCache.get(floorId) ?? tilesetCache.get(FALLBACK_TILESET_ID) ?? null;
+  return getTilesetForTheme(resolveTilesetTheme({ id: floorId }));
 }
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -691,10 +801,13 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.fillStyle = PALETTE.bg;
   ctx.fillRect(0, 0, w, h);
 
-  // Pick the active tileset for the current floor (fallback covers debug
-  // floors or ids without art so the corridor never renders untextured).
+  // Pick the active tileset for the current floor theme.
+  const theme = resolveTilesetTheme(state.floor);
+  if (!tilesetCache.has(theme)) {
+    void ensureThemeLoaded(theme);
+  }
   const tileset =
-    tilesetCache.get(state.floor.id) ?? tilesetCache.get(FALLBACK_TILESET_ID) ?? null;
+    tilesetCache.get(theme) ?? tilesetCache.get(FALLBACK_THEME) ?? null;
   const textures = tileset ? tileset.set : null;
 
   // --- Ceiling and floor casting (single batched upload) ---
@@ -907,6 +1020,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     drawFloorFeature(ctx, w, h, currentCell.tile, state.inDarkness);
   }
 
+  // Decor sprites (after walls so Z-test uses the hit buffer).
+  drawMapSprites(ctx, state, cam, hits, stripWidth, state.inDarkness);
+
   // Restore from the head-bob translate before drawing screen-space overlays.
   ctx.restore();
 
@@ -1094,7 +1210,7 @@ export function renderBattleArena(
   off.height = h;
   const ctx = off.getContext("2d")!;
 
-  const tileset = getTilesetForFloor(state.floor.id);
+  const tileset = getTilesetForTheme(resolveTilesetTheme(state.floor));
   if (tileset) {
     renderArenaRoom(ctx, w, h, {
       tileset,

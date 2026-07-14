@@ -1,0 +1,220 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sloppymo.github.io/OnyxLabyrinth/floor-map.schema.json",
+  "title": "OnyxLabyrinth FloorMapJSON",
+  "description": "Portable floor map (formatVersion 1). Source of truth: src/game/floor-map.ts (parseFloorMapJSON) and src/game/floor-validate.ts. Grid is row-major: grid[y][x]. Edges must be symmetric with the adjacent cell; boundary edges must be walls.",
+  "type": "object",
+  "required": ["formatVersion", "id", "name", "width", "height", "startX", "startY", "encounterRate", "grid"],
+  "additionalProperties": false,
+  "properties": {
+    "formatVersion": { "const": 1 },
+    "id": { "type": "integer", "description": "Floor id. Stairs implicitly link id-1 (up) and id+1 (down). Ids 1-3 replace campaign floors when shipped in a pack." },
+    "name": { "type": "string", "minLength": 1 },
+    "width": { "type": "integer", "minimum": 3 },
+    "height": { "type": "integer", "minimum": 3 },
+    "startX": { "type": "integer", "description": "Party entry cell; also where stairs from adjacent floors land." },
+    "startY": { "type": "integer" },
+    "encounterRate": { "type": "number", "minimum": 0, "maximum": 1, "description": "Base random-encounter chance per step (after cooldown). Only effective when ENCOUNTER_TABLES has this floor id, or inside zones with tableFloorId." },
+    "tilesetTheme": { "type": "string", "description": "Folder under public/assets/tilesets/<theme>/ with wall.png, floorA.png, floorB.png, ceiling.png. Defaults to f{id}." },
+    "grid": {
+      "type": "array",
+      "description": "height rows of width cells",
+      "items": {
+        "type": "array",
+        "items": { "$ref": "#/definitions/cell" }
+      }
+    },
+    "encounterTable": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "DEPRECATED — ignored by the engine. Tables come from ENCOUNTER_TABLES in src/data/enemies.ts."
+    },
+    "encounterZones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "x1", "y1", "x2", "y2", "rateMul"],
+        "properties": {
+          "id": { "type": "string" },
+          "x1": { "type": "integer" },
+          "y1": { "type": "integer" },
+          "x2": { "type": "integer" },
+          "y2": { "type": "integer" },
+          "rateMul": { "type": "number", "minimum": 0, "description": "Multiplies encounterRate inside the rectangle. 0 = safe zone." },
+          "tableFloorId": { "type": "integer", "description": "Use ENCOUNTER_TABLES[tableFloorId] inside the zone. Required for encounters on floor ids without their own table." }
+        }
+      }
+    },
+    "mapSprites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["x", "y", "spriteId"],
+        "properties": {
+          "x": { "type": "integer" },
+          "y": { "type": "integer" },
+          "spriteId": { "type": "string", "description": "Id from src/data/map-sprites.ts (torch, crate, bones, barrel)." }
+        }
+      }
+    },
+    "teleporters": {
+      "type": "array",
+      "description": "Cell tile must be \"teleporter\". Lands exactly at toX/toY (may be another floor).",
+      "items": { "$ref": "#/definitions/link" }
+    },
+    "chuteDrops": {
+      "type": "array",
+      "description": "Cell tile must be \"chute\". One-way forced descent; Levitate floats over it.",
+      "items": { "$ref": "#/definitions/link" }
+    },
+    "lockedDoors": {
+      "type": "array",
+      "description": "One entry per locked edge (either side of the edge). keyId must end in -key and be delivered by some treasure chest's itemIds.",
+      "items": {
+        "type": "object",
+        "required": ["x", "y", "dir", "keyId"],
+        "properties": {
+          "x": { "type": "integer" },
+          "y": { "type": "integer" },
+          "dir": { "enum": ["n", "e", "s", "w"] },
+          "keyId": { "type": "string", "pattern": "-key$" }
+        }
+      }
+    },
+    "treasures": {
+      "type": "array",
+      "description": "Cell tile must be \"treasure\". itemIds are item ids from src/data/items.ts, or *-key strings (go to the key ring).",
+      "items": {
+        "type": "object",
+        "required": ["x", "y", "itemIds"],
+        "properties": {
+          "x": { "type": "integer" },
+          "y": { "type": "integer" },
+          "itemIds": { "type": "array", "items": { "type": "string" } },
+          "trap": { "enum": ["gas", "teleporter", "alarm", "stunner", "poison"] }
+        }
+      }
+    },
+    "waters": {
+      "type": "array",
+      "description": "Cell tile must be \"water\". Depth 1-4 sets swim difficulty.",
+      "items": {
+        "type": "object",
+        "required": ["x", "y", "depth"],
+        "properties": {
+          "x": { "type": "integer" },
+          "y": { "type": "integer" },
+          "depth": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "effect": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": ["kind", "power"],
+                "properties": {
+                  "kind": { "enum": ["heal", "damage"] },
+                  "power": { "type": "number" }
+                }
+              },
+              {
+                "type": "object",
+                "required": ["kind", "status"],
+                "properties": {
+                  "kind": { "const": "cure" },
+                  "status": { "const": "poison" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "npcs": {
+      "type": "array",
+      "description": "Cell tile must be \"npc\". NPCs are additive flavor — never gate progression. combatEnemyIds must be real enemy ids.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "title", "x", "y", "greeting", "returnGreeting", "topics", "combatEnemyIds"],
+        "properties": {
+          "id": { "type": "string", "description": "Unique — kill persistence is keyed by this." },
+          "name": { "type": "string" },
+          "title": { "type": "string" },
+          "x": { "type": "integer" },
+          "y": { "type": "integer" },
+          "greeting": { "type": "string" },
+          "returnGreeting": { "type": "string" },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["key", "response"],
+              "properties": {
+                "key": { "type": "string" },
+                "response": { "type": "string" },
+                "hidden": { "type": "boolean", "description": "Only reachable by typing the keyword." }
+              }
+            }
+          },
+          "trades": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["giveItemId", "receiveItemId"],
+              "properties": {
+                "giveItemId": { "type": "string" },
+                "receiveItemId": { "type": "string" },
+                "once": { "type": "boolean" }
+              }
+            }
+          },
+          "wantsItemId": { "type": "string" },
+          "rewardItemId": { "type": "string" },
+          "combatEnemyIds": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "description": "Cell tile must be \"event\".",
+      "items": {
+        "type": "object",
+        "required": ["x", "y", "kind", "message"],
+        "properties": {
+          "x": { "type": "integer" },
+          "y": { "type": "integer" },
+          "kind": { "enum": ["message", "damage", "heal", "reward"] },
+          "message": { "type": "string" },
+          "power": { "type": "number", "description": "HP for damage/heal kinds (damage floors party HP at 1)." },
+          "itemId": { "type": "string", "description": "Required for reward kind." },
+          "once": { "type": "boolean", "description": "Default true." }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "cell": {
+      "type": "object",
+      "required": ["n", "e", "s", "w"],
+      "properties": {
+        "n": { "$ref": "#/definitions/edge" },
+        "e": { "$ref": "#/definitions/edge" },
+        "s": { "$ref": "#/definitions/edge" },
+        "w": { "$ref": "#/definitions/edge" },
+        "tile": {
+          "enum": ["stairs_up", "stairs_down", "teleporter", "chute", "darkness", "treasure", "antimagic", "water", "npc", "event"]
+        }
+      }
+    },
+    "edge": { "enum": ["open", "wall", "door", "locked"] },
+    "link": {
+      "type": "object",
+      "required": ["x", "y", "toFloorId", "toX", "toY"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "toFloorId": { "type": "integer" },
+        "toX": { "type": "integer" },
+        "toY": { "type": "integer" }
+      }
+    }
+  }
+}

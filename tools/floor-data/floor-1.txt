@@ -1,0 +1,31 @@
+# The Flooded Crypt (id=1, 12x12)
+# start=(5,9) encounter=0.08
+# . floor  # solid  @ start  ^v stairs  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic
+
+   012345678901
+ 0 ############
+ 1 ###.!v..####
+ 2 ###.....####
+ 3 #####.######
+ 4 #!~.#!#....#
+ 5 #.TT...~DD.#
+ 6 #..N#.#...~#
+ 7 #####!###.##
+ 8 ####....#..#
+ 9 ####.@..#.T#
+10 ####....####
+11 ############
+
+# Overlays:
+#   lock (9,7) s key=crypt-key
+#   treasure (2,5) items=[healing-potion, healing-potion, crypt-key]
+#   treasure (3,5) items=[antidote, healing-potion] trap=poison
+#   treasure (10,9) items=[short-sword+1, leather, healing-potion, lexicon-key] trap=gas
+#   water (7,5) depth=1
+#   water (2,4) depth=2
+#   water (10,6) depth=4
+#   npc (3,6) id=maro name=Maro
+#   event (5,7) kind=message
+#   event (5,4) kind=damage
+#   event (1,4) kind=reward
+#   event (4,1) kind=heal

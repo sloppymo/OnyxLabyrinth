@@ -1,0 +1,922 @@
+{
+  "formatVersion": 1,
+  "id": 4,
+  "name": "The Practice Halls",
+  "width": 12,
+  "height": 10,
+  "startX": 5,
+  "startY": 8,
+  "encounterRate": 0.08,
+  "tilesetTheme": "f1",
+  "grid": [
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "tile": "event"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "tile": "stairs_up"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "door",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "wall",
+        "w": "open",
+        "tile": "event"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "door",
+        "e": "wall",
+        "s": "open",
+        "w": "wall",
+        "tile": "darkness"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "tile": "treasure"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "tile": "npc"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "locked",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "locked"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "tile": "treasure"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "wall",
+        "tile": "treasure"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "wall",
+        "tile": "teleporter"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "wall",
+        "tile": "event"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "tile": "water"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ]
+  ],
+  "encounterZones": [
+    {
+      "id": "gallery-hot",
+      "x1": 1,
+      "y1": 4,
+      "x2": 3,
+      "y2": 5,
+      "rateMul": 2,
+      "tableFloorId": 1
+    },
+    {
+      "id": "entry-safe",
+      "x1": 4,
+      "y1": 7,
+      "x2": 7,
+      "y2": 8,
+      "rateMul": 0
+    }
+  ],
+  "mapSprites": [
+    {
+      "x": 4,
+      "y": 1,
+      "spriteId": "torch"
+    },
+    {
+      "x": 7,
+      "y": 8,
+      "spriteId": "crate"
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "spriteId": "bones"
+    },
+    {
+      "x": 10,
+      "y": 5,
+      "spriteId": "barrel"
+    }
+  ],
+  "teleporters": [
+    {
+      "x": 8,
+      "y": 5,
+      "toFloorId": 4,
+      "toX": 4,
+      "toY": 7
+    }
+  ],
+  "lockedDoors": [
+    {
+      "x": 7,
+      "y": 4,
+      "dir": "e",
+      "keyId": "brass-key"
+    }
+  ],
+  "treasures": [
+    {
+      "x": 1,
+      "y": 5,
+      "itemIds": [
+        "brass-key"
+      ]
+    },
+    {
+      "x": 1,
+      "y": 4,
+      "itemIds": [
+        "long-sword+1"
+      ],
+      "trap": "poison"
+    },
+    {
+      "x": 10,
+      "y": 4,
+      "itemIds": [
+        "holy-symbol",
+        "antidote"
+      ]
+    }
+  ],
+  "waters": [
+    {
+      "x": 7,
+      "y": 7,
+      "depth": 2,
+      "effect": {
+        "kind": "heal",
+        "power": 4
+      }
+    }
+  ],
+  "npcs": [
+    {
+      "id": "drill-sergeant",
+      "name": "Old Marta",
+      "title": "retired drill sergeant",
+      "x": 3,
+      "y": 4,
+      "greeting": "Hah! Fresh meat for the practice halls. Mind the dart wall.",
+      "returnGreeting": "Still standing? Good.",
+      "topics": [
+        {
+          "key": "halls",
+          "response": "These halls were carved to train crypt delvers. The east wing is locked — the brass key sits with the old bones in the gallery."
+        },
+        {
+          "key": "water",
+          "response": "That pool by the entry is blessed. Take a dip if you're hurting."
+        },
+        {
+          "key": "marta",
+          "response": "Thirty years of drills. Now I just haunt the place.",
+          "hidden": true
+        }
+      ],
+      "trades": [
+        {
+          "giveItemId": "healing-potion",
+          "receiveItemId": "antidote",
+          "once": true
+        }
+      ],
+      "wantsItemId": "holy-symbol",
+      "rewardItemId": "long-sword+1",
+      "combatEnemyIds": [
+        "skeleton",
+        "skeleton-archer"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "x": 5,
+      "y": 6,
+      "kind": "message",
+      "message": "Chalk tallies cover the wall — someone counted their laps here.",
+      "once": false
+    },
+    {
+      "x": 8,
+      "y": 2,
+      "kind": "damage",
+      "message": "Practice darts whistle from the wall!",
+      "power": 3,
+      "once": true
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "kind": "reward",
+      "message": "A fallen trainee's pack still holds a potion.",
+      "itemId": "healing-potion",
+      "once": true
+    }
+  ]
+}

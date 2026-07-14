@@ -34,6 +34,22 @@ import {
   setEdge,
 } from "../game/dungeon";
 
+/** Soft combat-density / table override painted as a rectangle on the map. */
+export interface EncounterZoneDef {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  /** Multiplier on the floor's encounterRate (0 = safe, 1 = normal, 2 = hot). */
+  rateMul: number;
+  /**
+   * Optional encounter table floor id (keys `ENCOUNTER_TABLES`).
+   * When omitted, uses this floor's own id.
+   */
+  tableFloorId?: number;
+}
+
 export interface FloorDef {
   id: number;
   name: string;
@@ -46,9 +62,24 @@ export interface FloorDef {
   // (~8% / ~10% / ~12% on floors 1–3). Soft pity in game/encounters.ts
   // caps dry spells without changing combat math.
   encounterRate: number;
-  // Enemy IDs that can appear on this floor. Unused by the encounter roller —
-  // the weighted tables in data/enemies.ts are the source of truth.
+  /**
+   * Texture theme folder under `public/assets/tilesets/<theme>/`
+   * (wall.png, floorA.png, floorB.png, ceiling.png). Defaults to `f{id}`.
+   */
+  tilesetTheme?: string;
+  /**
+   * @deprecated Ignored by the encounter roller — the weighted
+   * ENCOUNTER_TABLES in data/enemies.ts (keyed by floor id) are the source
+   * of truth. Kept only so old JSON exports still parse.
+   */
   encounterTable?: string[];
+  /** Optional regional encounter rate / table overrides. */
+  encounterZones?: EncounterZoneDef[];
+  /**
+   * Static decor sprites (visual only — no collision / triggers).
+   * Drawn in the corridor view using `public/assets/map-sprites/`.
+   */
+  mapSprites?: { x: number; y: number; spriteId: string }[];
   // Teleporter links: each entry maps a tile (x,y) on this floor to a
   // destination (floorId, x, y). When the player steps on a teleporter tile,
   // they are instantly relocated.
@@ -230,6 +261,7 @@ function floor1(): FloorDef {
     startX: 5,
     startY: 9,
     encounterRate: 0.08,
+    tilesetTheme: "f1",
     lockedDoors: [
       { x: 9, y: 7, dir: "s", keyId: "crypt-key" },
     ],
@@ -355,6 +387,7 @@ function floor2(): FloorDef {
     startX: 2,
     startY: 11,
     encounterRate: 0.10,
+    tilesetTheme: "f2",
     lockedDoors: [
       { x: 10, y: 7, dir: "e", keyId: "lexicon-key" },
     ],
@@ -488,6 +521,7 @@ function floor3(): FloorDef {
     startX: 2,
     startY: 2,
     encounterRate: 0.12,
+    tilesetTheme: "f3",
     teleporters: [
       { x: 9, y: 6, toFloorId: 3, toX: 2, toY: 3 },
     ],
@@ -554,7 +588,12 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     startX: floor.startX,
     startY: floor.startY,
     encounterRate: floor.encounterRate,
+    tilesetTheme: floor.tilesetTheme,
     encounterTable: floor.encounterTable ? [...floor.encounterTable] : undefined,
+    encounterZones: floor.encounterZones
+      ? floor.encounterZones.map((z) => ({ ...z }))
+      : undefined,
+    mapSprites: floor.mapSprites ? floor.mapSprites.map((s) => ({ ...s })) : undefined,
     teleporters: floor.teleporters ? floor.teleporters.map((t) => ({ ...t })) : undefined,
     chuteDrops: floor.chuteDrops ? floor.chuteDrops.map((c) => ({ ...c })) : undefined,
     lockedDoors: floor.lockedDoors ? floor.lockedDoors.map((d) => ({ ...d })) : undefined,

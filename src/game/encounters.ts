@@ -11,6 +11,7 @@ import {
   ENEMIES_BY_ID,
   type EncounterEntry,
 } from "../data/enemies";
+import type { EncounterZoneDef, FloorDef } from "../data/floors";
 
 /** Design doc §6.3: no more than one encounter per this many steps. */
 export const ENCOUNTER_COOLDOWN = 8;
@@ -122,4 +123,47 @@ export function rollArenaEncounter(
     if (roll <= 0) return entry;
   }
   return weighted[weighted.length - 1]?.entry ?? null;
+}
+
+/** Find the first encounter zone covering (x,y), if any. */
+export function encounterZoneAt(
+  floor: Pick<FloorDef, "encounterZones">,
+  x: number,
+  y: number
+): EncounterZoneDef | undefined {
+  const zones = floor.encounterZones;
+  if (!zones?.length) return undefined;
+  for (const z of zones) {
+    const loX = Math.min(z.x1, z.x2);
+    const hiX = Math.max(z.x1, z.x2);
+    const loY = Math.min(z.y1, z.y2);
+    const hiY = Math.max(z.y1, z.y2);
+    if (x >= loX && x <= hiX && y >= loY && y <= hiY) return z;
+  }
+  return undefined;
+}
+
+/**
+ * Effective encounter base rate for a step at (x,y).
+ * Safe zones (rateMul 0) still respect cooldown/pity math via chance 0 when
+ * the caller multiplies — we return 0 so rolls never fire in the zone.
+ */
+export function encounterRateAt(
+  floor: Pick<FloorDef, "encounterRate" | "encounterZones">,
+  x: number,
+  y: number
+): number {
+  const zone = encounterZoneAt(floor, x, y);
+  if (!zone) return floor.encounterRate;
+  return Math.max(0, floor.encounterRate * zone.rateMul);
+}
+
+/** Encounter table floor id for the current cell. */
+export function encounterTableFloorId(
+  floor: Pick<FloorDef, "id" | "encounterZones">,
+  x: number,
+  y: number
+): number {
+  const zone = encounterZoneAt(floor, x, y);
+  return zone?.tableFloorId ?? floor.id;
 }

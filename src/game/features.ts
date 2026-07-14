@@ -18,7 +18,8 @@
 
 import type { Facing, GameState, TrapType } from "../types";
 import type { Character } from "./party";
-import { FLOORS, cloneFloor, type EventDef } from "../data/floors";
+import { cloneFloor, type EventDef, type FloorDef } from "../data/floors";
+import { findFloor } from "./floor-registry";
 import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
 import { equipItem, forceEquip, findBestEquipTarget, getDisplacedItem } from "./combat";
@@ -110,7 +111,7 @@ export function handleTileFeature(state: GameState, rng: Rng = Math.random): Fea
 function handleStairs(state: GameState, goingUp: boolean): FeatureResult {
   const currentId = state.floor.id;
   const targetId = goingUp ? currentId - 1 : currentId + 1;
-  const targetFloor = FLOORS.find((f) => f.id === targetId);
+  const targetFloor = findFloor(targetId);
 
   if (!targetFloor) {
     return {
@@ -144,7 +145,7 @@ function handleTeleporter(state: GameState): FeatureResult {
     return { message: "You feel a strange tingling, but nothing happens.", changedFloor: false, consumed: false };
   }
 
-  const targetFloor = FLOORS.find((f) => f.id === link.toFloorId);
+  const targetFloor = findFloor(link.toFloorId);
   if (!targetFloor) {
     return { message: "The teleporter hums, but its destination is unknown.", changedFloor: false, consumed: false };
   }
@@ -180,7 +181,7 @@ function handleChute(state: GameState): FeatureResult {
   if (!drop) {
     // Fallback: go to the next floor down
     const targetId = floor.id + 1;
-    const targetFloor = FLOORS.find((f) => f.id === targetId);
+    const targetFloor = findFloor(targetId);
     if (!targetFloor) {
       return { message: "The chute is blocked. You can't go down here.", changedFloor: false, consumed: false };
     }
@@ -192,7 +193,7 @@ function handleChute(state: GameState): FeatureResult {
     };
   }
 
-  const targetFloor = FLOORS.find((f) => f.id === drop.toFloorId);
+  const targetFloor = findFloor(drop.toFloorId);
   if (!targetFloor) {
     return { message: "The chute is blocked. You can't go down here.", changedFloor: false, consumed: false };
   }
@@ -330,7 +331,7 @@ function awardTreasure(
  */
 export function transitionToFloor(
   state: GameState,
-  newFloor: (typeof FLOORS)[number],
+  newFloor: FloorDef,
   x: number,
   y: number,
   facing: Facing = 0
@@ -363,7 +364,7 @@ export function transitionToFloor(
 }
 
 /** Apply previously unlocked doors to a floor copy. */
-function applyUnlockedDoors(floor: (typeof FLOORS)[number], unlockedDoors: Set<string>): void {
+function applyUnlockedDoors(floor: FloorDef, unlockedDoors: Set<string>): void {
   for (const key of unlockedDoors) {
     const parts = key.split(":");
     if (parts.length !== 4 || parseInt(parts[0]) !== floor.id) continue;
@@ -378,7 +379,7 @@ function applyUnlockedDoors(floor: (typeof FLOORS)[number], unlockedDoors: Set<s
 
 /** Apply previously looted treasures to a floor copy. */
 function applyLootedTreasures(
-  floor: (typeof FLOORS)[number],
+  floor: FloorDef,
   lootTaken: Record<number, Set<string>>
 ): void {
   const taken = lootTaken[floor.id];
@@ -399,7 +400,7 @@ function applyLootedTreasures(
 
 /** Apply previously triggered one-time events to a floor copy. */
 function applyTriggeredEvents(
-  floor: (typeof FLOORS)[number],
+  floor: FloorDef,
   eventsTriggered: Record<number, Set<string>>
 ): void {
   const triggered = eventsTriggered[floor.id];

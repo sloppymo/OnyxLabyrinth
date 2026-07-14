@@ -73,7 +73,11 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/engine/game-over-ui.ts` | Game-over screen controller shown after a party wipe. |
 | `src/engine/combat-display.ts` | Pure display/formatting helpers for the combat UI (e.g. `enemyHealthDescriptor`) — no combat math. |
 | `src/engine/effect-sprite-cache.ts` | Image cache for standalone spell/status VFX sprite strips (`public/assets/effects/`), parallel to `enemy-sprite-cache.ts`/`party-sprite-cache.ts`. |
-| `src/data/floors.ts` | Floor definitions and cloning. Includes `EventDef`/`FloorDef.events` (scripted one-time/repeatable message/damage/heal/reward tile events). **All three campaign floors ship populated `events` arrays** — treat events as live content, not unused plumbing. |
+| `src/data/floors.ts` | Floor definitions and cloning. Includes `EventDef`/`FloorDef.events` (scripted one-time/repeatable message/damage/heal/reward tile events). **All three campaign floors ship populated `events` arrays** — treat events as live content, not unused plumbing. `FloorDef.encounterTable` is deprecated/ignored. |
+| `src/game/floor-map.ts` | Portable `FloorMapJSON` (formatVersion 1) ↔ `FloorDef`, strict `parseFloorMapJSON`. |
+| `src/game/floor-validate.ts` | Floor linter — geometry, overlays, reachability, item/enemy/key refs, links, encounter tables. Mirrors `floors.test.ts` invariants for custom maps. |
+| `src/game/floor-registry.ts` | Runtime floor list: campaign + `src/content/floors/` packs + hot-register (`?playtestFloor=1`). Resolve floors through this, not `FLOORS`, in runtime code. |
+| `tools/floor-editor.ts` / `scripts/floor-tool.ts` | WYSIWYG floor editor + CLI (`floor:validate` / `floor:check` / `floor:export-all`). Type-checked via `tsconfig.tools.json` (`npm run check:tools`, part of `npm run build`). See [`docs/FLOOR-AUTHORING.md`](docs/FLOOR-AUTHORING.md) for the authoring workflow and engine constraints (stairs use floorId ± 1 and land at the target's start; keys are `*-key` chest strings). |
 | `src/data/enemies.ts` | Encounter tables and resolution. |
 | `src/data/spells.ts` | Spell definitions. |
 | `src/data/techniques.ts` | Melee class technique definitions (30 techniques, 6 per class × 5 classes). Techniques are active abilities powered by the Rage resource; learned automatically at levels 1/3/5/7/10/12. |

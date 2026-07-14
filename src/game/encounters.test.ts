@@ -4,6 +4,8 @@ import {
   ENCOUNTER_PITY_FORCE,
   ENCOUNTER_PITY_START,
   encounterRollChance,
+  encounterRateAt,
+  encounterTableFloorId,
   arenaStartFloorForLevel,
   arenaFloorForWave,
   rollArenaEncounter,
@@ -80,5 +82,33 @@ describe("rollArenaEncounter", () => {
     for (const floor of [1, 2, 3]) {
       expect(rollArenaEncounter(floor, 1, () => 0)).not.toBeNull();
     }
+  });
+});
+
+describe("encounter zones", () => {
+  const floor = {
+    id: 1,
+    encounterRate: 0.1,
+    encounterZones: [
+      { id: "safe", x1: 0, y1: 0, x2: 2, y2: 2, rateMul: 0 },
+      { id: "hot", x1: 5, y1: 5, x2: 7, y2: 7, rateMul: 2, tableFloorId: 3 },
+    ],
+  };
+
+  it("zeros rate in safe zones", () => {
+    expect(encounterRateAt(floor, 1, 1)).toBe(0);
+  });
+
+  it("multiplies rate in hot zones", () => {
+    expect(encounterRateAt(floor, 6, 6)).toBeCloseTo(0.2);
+  });
+
+  it("uses base rate outside zones", () => {
+    expect(encounterRateAt(floor, 3, 3)).toBe(0.1);
+  });
+
+  it("overrides table floor id", () => {
+    expect(encounterTableFloorId(floor, 6, 6)).toBe(3);
+    expect(encounterTableFloorId(floor, 3, 3)).toBe(1);
   });
 });

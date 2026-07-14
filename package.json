@@ -5,18 +5,27 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && tsc -p tsconfig.tools.json && vite build",
+    "check:tools": "tsc -p tsconfig.tools.json",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "floor:validate": "tsx scripts/floor-tool.ts validate",
+    "floor:dump": "tsx scripts/floor-tool.ts dump",
+    "floor:export-all": "tsx scripts/floor-tool.ts export-all && mkdir -p public/tools && rm -rf public/tools/floor-data && cp -r tools/floor-data public/tools/floor-data",
+    "floor:check": "tsx scripts/floor-tool.ts check",
+    "floor:editor": "vite --open /tools/floor-editor.html",
     "sprite-preview:generate": "node scripts/generate-sprite-preview.mjs",
     "generate:combat-bg": "node scripts/generate-combat-bg.mjs",
     "sprite-preview:serve": "python3 -m http.server 8080",
     "sprite-preview": "npm run sprite-preview:generate && echo 'Open sprite-preview.html in your browser (or run npm run sprite-preview:serve).'"
   },
   "devDependencies": {
+    "@types/node": "^26.1.1",
     "jsdom": "^29.1.1",
+    "playwright": "^1.55.0",
     "pngjs": "^7.0.0",
+    "tsx": "^4.20.3",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vitest": "^4.1.10"

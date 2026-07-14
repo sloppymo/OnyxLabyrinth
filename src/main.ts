@@ -1,5 +1,5 @@
 import "./styles.css";
-import { FLOORS } from "./data/floors";
+import { getFloors, findFloor, registerFloorMap } from "./game/floor-registry";
 import { createGameState, setMode } from "./game/state";
 import { moveForward, moveBackward, turnLeft, turnRight, tryUnlock } from "./engine/camera";
 import {
@@ -23,6 +23,7 @@ import {
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
 import { loadPartySprites } from "./engine/party-sprite-cache";
 import { loadEffectSprites } from "./engine/effect-sprite-cache";
+import { loadMapSprites } from "./engine/map-sprite-cache";
 import { audio } from "./engine/audio";
 import { renderAutoMap } from "./engine/automap";
 import { bindInput } from "./engine/input";
@@ -60,6 +61,8 @@ import {
 import { rollEncounter, resolveEncounter } from "./data/enemies";
 import {
   encounterRollChance,
+  encounterRateAt,
+  encounterTableFloorId,
   arenaStartFloorForLevel,
   arenaFloorForWave,
   rollArenaEncounter,
@@ -77,8 +80,30 @@ import { reviveKnockedOut, type Character } from "./game/party";
 import { xpForNextLevel, levelUpChar } from "./game/leveling";
 import { isPerkTierLevel, tierForLevel, type PendingPerkChoice } from "./game/perks";
 import type { GameState, GameMode } from "./types";
+import { parseFloorMapJSON } from "./game/floor-map";
 
-const state = createGameState(FLOORS[0]);
+const PLAYTEST_STORAGE_KEY = "onyx-floor-playtest";
+
+/** Load editor playtest floor from localStorage when ?playtestFloor=1. */
+function tryBootPlaytestFloor(): ReturnType<typeof registerFloorMap> | null {
+  if (!new URLSearchParams(window.location.search).has("playtestFloor")) {
+    return null;
+  }
+  try {
+    const raw = localStorage.getItem(PLAYTEST_STORAGE_KEY);
+    if (!raw) {
+      console.warn("[playtest] playtestFloor=1 but no localStorage map");
+      return null;
+    }
+    return registerFloorMap(parseFloorMapJSON(JSON.parse(raw)));
+  } catch (err) {
+    console.error("[playtest] failed to load floor map", err);
+    return null;
+  }
+}
+
+const playtestFloor = tryBootPlaytestFloor();
+const state = createGameState(playtestFloor ?? getFloors()[0]!);
 
 // Auto-map visibility flag.
 let mapVisible = false;
@@ -129,8 +154,8 @@ function openTown(): void {
       townController = null;
       const last = state.lastDungeon;
       const floor = last
-        ? FLOORS.find((f) => f.id === last.floorId) ?? FLOORS[0]
-        : FLOORS[0];
+        ? findFloor(last.floorId) ?? getFloors()[0]!
+        : getFloors()[0]!;
       const x = last ? last.x : floor.startX;
       const y = last ? last.y : floor.startY;
       const facing = last ? last.facing : 0;
@@ -229,7 +254,17 @@ function openTitleScreen(): void {
     },
   });
 }
-openTitleScreen();
+
+if (playtestFloor) {
+  setMode(state, "dungeon");
+  showMode("dungeon", false);
+  canvas.style.opacity = "1";
+  resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+  setMessage(`Playtesting: ${playtestFloor.name}`);
+  window.focus();
+} else {
+  openTitleScreen();
+}
 
 // --- Spell / item / loadout lookups (built once) -------------------------
 const SPELLS_BY_ID: Record<string, (typeof ALL_SPELLS)[number]> = Object.fromEntries(
@@ -249,17 +284,24 @@ function buildLoadoutMap(): Record<string, Loadout> {
 // --- Encounter trigger ---------------------------------------------------
 
 function maybeTriggerEncounter(): boolean {
-  const chance = encounterRollChance(
-    state.floor.encounterRate,
-    state.stepsSinceEncounter
+  const baseRate = encounterRateAt(
+    state.floor,
+    state.player.x,
+    state.player.y
   );
+  const chance = encounterRollChance(baseRate, state.stepsSinceEncounter);
   if (chance <= 0) return false;
   // Design doc §6.2: treasure rooms are guaranteed empty of enemies.
   const cell = state.floor.grid[state.player.y]?.[state.player.x];
   if (cell?.tile === "treasure") return false;
   if (Math.random() >= chance) return false;
 
-  const entry = rollEncounter(state.floor.id);
+  const tableId = encounterTableFloorId(
+    state.floor,
+    state.player.x,
+    state.player.y
+  );
+  const entry = rollEncounter(tableId);
   if (!entry) return false;
 
   const resolved = resolveEncounter(entry);
@@ -677,7 +719,12 @@ function applyChestResult(result: ChestActionResult): void {
 
 /** Alarm trap: start an encounter immediately, ignoring cooldown and rate. */
 function forceEncounter(): void {
-  const entry = rollEncounter(state.floor.id);
+  const tableId = encounterTableFloorId(
+    state.floor,
+    state.player.x,
+    state.player.y
+  );
+  const entry = rollEncounter(tableId);
   if (!entry) return;
   const resolved = resolveEncounter(entry);
   if (resolved.length === 0) return;
@@ -871,7 +918,7 @@ function openArenaSetup(): void {
 
 function startArena(targetLevel: number): void {
   // Reset to a fresh default party and the first arena wave.
-  Object.assign(state, createGameState(FLOORS[0]));
+  Object.assign(state, createGameState(getFloors()[0]!));
   inArena = true;
   arenaWave = 1;
   // Scale starting floor with party level so high-level parties don't
@@ -1205,6 +1252,7 @@ if ("fonts" in document) {
 loadEnemySprites().catch(() => {});
 loadPartySprites().catch(() => {});
 loadEffectSprites().catch(() => {});
+loadMapSprites().catch(() => {});
 
 // Debug helpers for targeted visual verification; only active when the page
 // is loaded with ?debug=1. Never used in normal play.
@@ -1213,7 +1261,9 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     state,
     startCombat,
     exitDebugCombat,
-    FLOORS,
+    FLOORS: getFloors(),
+    findFloor,
+    registerFloorMap,
     createGameState,
     createCombatFromEncounter,
     resolveEncounter,

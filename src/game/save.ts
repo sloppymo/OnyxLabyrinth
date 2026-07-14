@@ -17,7 +17,8 @@
  */
 
 import type { GameState } from "../types";
-import { FLOORS, cloneFloor } from "../data/floors";
+import { cloneFloor } from "../data/floors";
+import { findFloor } from "./floor-registry";
 import { ALL_SPELLS } from "../data/spells";
 import { defaultLoadoutForCharacter } from "./combat";
 import { applyKilledNPCs } from "./npc";
@@ -314,7 +315,7 @@ export function deserialize(json: string): GameState | null {
       return null;
     }
 
-    const floorDef = FLOORS.find((f) => f.id === ser.floorId);
+    const floorDef = findFloor(ser.floorId);
     if (!floorDef) return null;
 
     const unlockedDoors = new Set<string>(ser.unlockedDoors ?? []);
@@ -426,7 +427,7 @@ function getSlotMeta(slot: number): SaveSlotMeta {
   }
   try {
     const ser = JSON.parse(raw) as SerializedState;
-    const floor = FLOORS.find((f) => f.id === ser.floorId);
+    const floor = findFloor(ser.floorId);
     const livingCount = ser.party.filter((c) => c.hp > 0).length;
     return {
       slot,
