@@ -493,6 +493,8 @@ function floor3(): FloorDef {
   setTile(grid, 6, 13, "antimagic");
   setTile(grid, 7, 13, "antimagic");
   setTile(grid, 8, 13, "antimagic");
+  // Descent to the Null Choir (floor 4), unsealed in the boss chamber's west corner.
+  setTile(grid, 5, 14, "stairs_down");
   // Locked chest in the slag vault.
   setTile(grid, 13, 2, "treasure");
   // Chest in the chain hall (past the smoke).

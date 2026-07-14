@@ -9,7 +9,7 @@ npm run floor:export-all   # refresh tools/floor-data + public/tools/floor-data
 npm run floor:editor       # WYSIWYG editor (vite dev server)
 ```
 
-A complete example floor ships in `src/content/floors/floor-4-demo.json` ("The Practice Halls") — it exercises every overlay type and is the fastest way to learn the format. Import it into the editor to poke around.
+A complete example floor ships in `src/content/floors/floor-4-demo.json` ("The Practice Halls") — it exercises every overlay type and is the fastest way to learn the format. Import it into the editor to poke around. Note it is a **format example only** and no longer registered: floor id 4 belongs to the campaign floor "The Null Choir" (`src/content/floors/floor-4.json`), an antimagic chapel beneath the forge where the Headmaster silenced his choir.
 
 ## Engine constraints you MUST know
 
@@ -17,7 +17,7 @@ These are how the engine actually behaves. The validator flags most of them, but
 
 1. **Stairs always use `floorId ± 1`.** `stairs_down` on floor N goes to floor N+1; `stairs_up` goes to N−1 (`handleStairs` in `src/game/features.ts`). There are no explicit stair links. If the implied neighbor doesn't exist, stepping on the stairs shows "there is nothing above/below". For non-contiguous floor ids, use **teleporters** (or chutes for one-way descents).
 2. **Stairs land at the target floor's `startX/startY`** — not at the coordinates of any stair tile. If you want "matching stairwells", set the target floor's start under its stairs. Teleporters and chutes land at their explicit `toX/toY`.
-3. **`encounterTable` is dead.** The field is deprecated and ignored. Combat encounter tables live in `ENCOUNTER_TABLES` in `src/data/enemies.ts`, keyed by floor id (currently 1–3). A custom floor id with no table gets **no random encounters** — unless you paint encounter zones with `tableFloorId` pointing at an existing table (this is what the demo floor does). Packs cannot yet define their own tables.
+3. **`encounterTable` is dead.** The field is deprecated and ignored. Combat encounter tables live in `ENCOUNTER_TABLES` in `src/data/enemies.ts`, keyed by floor id (currently 1–4). A custom floor id with no table gets **no random encounters** — unless you paint encounter zones with `tableFloorId` pointing at an existing table (this is what the demo floor does). Packs cannot yet define their own tables.
 4. **Keys are not items.** A `lockedDoors.keyId` must be a freeform id ending in `-key` (e.g. `brass-key`), delivered via a treasure chest's `itemIds`. Chest loot ending in `-key` goes to the party's key ring (`src/game/features.ts`); everything else must be a real item id from `src/data/items.ts`. Every `locked` edge needs a `lockedDoors` entry on one side of the edge or it can never be opened.
 5. **NPCs are additive flavor only.** They must never gate keys, stairs, or boss access. `combatEnemyIds` must be real enemy ids (see `src/data/enemies.ts`); enemies with sprite strips in `src/engine/sprite-manifest.ts` look best. Killed NPCs stay dead (persisted by NPC `id` — keep ids unique).
 6. **Outside-combat damage floors HP at 1.** Trap/water/event damage can never wipe the party; only combat can.
@@ -35,7 +35,7 @@ public/assets/tilesets/<theme>/
   ceiling.png
 ```
 
-Built-in themes: `f1`, `f2`, `f3` (campaign). Pick the theme in the editor's Floor panel (or type a custom folder name). The floor's `tilesetTheme` is saved in the JSON; when unset it defaults to `f{id}`. Decor sprite art lives under `public/assets/map-sprites/<id>.png` (manifest: `src/data/map-sprites.ts`).
+Built-in themes: `f1`, `f2`, `f3`, `f4` (campaign). Pick the theme in the editor's Floor panel (or type a custom folder name). The floor's `tilesetTheme` is saved in the JSON; when unset it defaults to `f{id}`. Decor sprite art lives under `public/assets/map-sprites/<id>.png` (manifest: `src/data/map-sprites.ts`).
 
 ## Editor tools
 
@@ -77,13 +77,13 @@ export const EXTRA_FLOOR_MAPS: FloorMapJSON[] = [
 ];
 ```
 
-4. Every JSON pack is run through `parseFloorMapJSON` at load — malformed files fail fast with a precise error. Stairs / saves / transitions resolve floors through `src/game/floor-registry.ts`, so a pack floor with a campaign id (1–3) **replaces** that campaign floor; new ids extend the list.
+4. Every JSON pack is run through `parseFloorMapJSON` at load — malformed files fail fast with a precise error. Stairs / saves / transitions resolve floors through `src/game/floor-registry.ts`, so a pack floor with a campaign id (1–4) **replaces** that campaign floor; new ids extend the list.
 5. `npm run floor:check -- --file src/content/floors/<your-floor>.json`
 6. `npm test && npm run build`
 
 ### Reaching your floor
 
-Campaign floor 3 has no `stairs_down`, so a floor 4 pack is unreachable in normal play until you add a connection — e.g. replace floor 3 with a variant that has `stairs_down`, or add a teleporter. The shipped demo floor 4 is deliberately left unconnected (playtest-only).
+Campaign floor 3 has a `stairs_down` in the Grand Forge chamber at (5,14) that descends to floor 4, "The Null Choir" (`src/content/floors/floor-4.json`). A pack with a brand-new id (5+) is unreachable in normal play until you add a connection — e.g. a `stairs_down` on the neighboring floor, or a teleporter. Unconnected packs (like the demo "Practice Halls") are playtest-only.
 
 ## CLI
 
@@ -130,7 +130,7 @@ npm test && npm run build && npm run floor:validate
 | `src/game/floor-ascii.ts` | ASCII dump for LLM workflows |
 | `src/game/floor-registry.ts` | Campaign + content packs + hot-register |
 | `src/game/encounters.ts` | Zones + pity |
-| `src/content/floors/` | Shipped JSON packs (`floor-4-demo.json` example) |
+| `src/content/floors/` | Shipped JSON packs (`floor-4.json` campaign floor, `floor-4-demo.json` format example) |
 | `src/data/map-sprites.ts` | Decor sprite manifest |
 | `src/engine/map-sprite-cache.ts` | Decor image cache |
 | `tools/floor-editor.*` | WYSIWYG UI |

@@ -12,20 +12,23 @@
 import type { FloorMapJSON } from "../../game/floor-map";
 import { mapToFloorDef, parseFloorMapJSON } from "../../game/floor-map";
 import type { FloorDef } from "../../data/floors";
-import floor4Demo from "./floor-4-demo.json";
+import floor4 from "./floor-4.json";
 
 /**
  * Add editor-exported maps here (imported JSON modules).
  *
- * floor-4-demo.json ("The Practice Halls") is the shipped example pack: it
- * exercises every overlay type (lock+key, trapped chest, water effect, NPC
- * with trades/gifts, events, teleporter, encounter zones, map sprites). It is
- * campaign-inert — floor 3 has no stairs_down, so players can only reach it
- * via its own stairs_up... which means in practice via the editor's Playtest
- * Floor button or `?debug=1` registerFloorMap. Delete the import to drop it.
+ * floor-4.json ("The Null Choir") is the campaign's fourth floor, reached
+ * via the stairs_down in Floor 3's Grand Forge chamber.
+ *
+ * floor-4-demo.json ("The Practice Halls") remains on disk as the format
+ * example pack — it exercises every overlay type (lock+key, trapped chest,
+ * water effect, NPC with trades/gifts, events, teleporter, encounter zones,
+ * map sprites) and is imported directly by floor-validate.test.ts. It is no
+ * longer registered here (id 4 now belongs to the campaign floor); load it
+ * via the editor's Playtest Floor button or `?debug=1` registerFloorMap.
  */
 export const EXTRA_FLOOR_MAPS: FloorMapJSON[] = [
-  floor4Demo as unknown as FloorMapJSON,
+  floor4 as unknown as FloorMapJSON,
 ];
 
 export function loadExtraFloors(): FloorDef[] {

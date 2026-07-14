@@ -85,7 +85,9 @@ describe("floor definitions", () => {
     expect(tiles(FLOORS[1])).toContain("stairs_up");
     expect(tiles(FLOORS[1])).toContain("stairs_down");
     expect(tiles(FLOORS[2])).toContain("stairs_up");
-    expect(tiles(FLOORS[2])).not.toContain("stairs_down");
+    // Floor 3 descends to the Null Choir, which ships as a JSON pack
+    // (src/content/floors/floor-4.json) rather than a FLOORS entry.
+    expect(tiles(FLOORS[2])).toContain("stairs_down");
   });
 
   it("every tile feature is reachable from the start (locked doors openable by key/thief)", () => {

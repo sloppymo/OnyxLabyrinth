@@ -8,6 +8,7 @@ import {
   type FloorMapJSON,
 } from "./floor-map";
 import { validateFloorMap, validateFloorDef } from "./floor-validate";
+import { getFloors } from "./floor-registry";
 import { carveRoom, setTile, setEdge } from "./dungeon";
 import demoFloorRaw from "../content/floors/floor-4-demo.json";
 
@@ -30,8 +31,11 @@ function codes(floor: FloorDef): string[] {
 
 describe("floor-validate content checks", () => {
   it("campaign floors validate with zero errors and zero warnings", () => {
+    // Registry context so floor 3's stairs_down resolves to the floor-4 pack.
     for (const floor of FLOORS) {
-      const issues = validateFloorDef(floor).filter((i) => i.severity !== "info");
+      const issues = validateFloorDef(floor, { floors: getFloors() }).filter(
+        (i) => i.severity !== "info"
+      );
       expect(issues, `floor ${floor.id}: ${issues.map((e) => e.message).join("; ")}`).toEqual([]);
     }
   });

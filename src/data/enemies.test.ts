@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ENEMIES_BY_ID, enemiesForFloor, ENCOUNTER_TABLES, BIG_TITTY_OGRE } from "./enemies";
-import { FLOORS } from "./floors";
+import { getFloors } from "../game/floor-registry";
 
 describe("enemy data", () => {
   it("registers big-titty-ogre", () => {
@@ -26,11 +26,13 @@ describe("enemy data", () => {
     expect(refs).toContain("big-titty-ogre");
   });
 
-  it("puts the boss on the final floor's table", () => {
-    const refs = ENCOUNTER_TABLES[3].flatMap((entry) =>
-      entry.spawns.map((spawn) => spawn.enemyId)
-    );
-    expect(refs).toContain("headmasters-echo");
+  it("puts the boss on the deep floors' tables", () => {
+    for (const floor of [3, 4]) {
+      const refs = ENCOUNTER_TABLES[floor].flatMap((entry) =>
+        entry.spawns.map((spawn) => spawn.enemyId)
+      );
+      expect(refs, `floor ${floor}`).toContain("headmasters-echo");
+    }
   });
 });
 
@@ -48,8 +50,9 @@ describe("encounter table integrity", () => {
     }
   });
 
-  it("has a table for every defined floor and no orphan tables", () => {
-    const floorIds = FLOORS.map((f) => f.id).sort();
+  it("has a table for every registered floor and no orphan tables", () => {
+    // Registry = campaign FLOORS merged with content/floors packs (floor 4).
+    const floorIds = getFloors().map((f) => f.id).sort();
     const tableIds = Object.keys(ENCOUNTER_TABLES).map(Number).sort();
     expect(tableIds).toEqual(floorIds);
   });

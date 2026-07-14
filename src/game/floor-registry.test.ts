@@ -5,10 +5,10 @@ import { floorDefToMap, mapToFloorDef, newFloorMapJSON } from "./floor-map";
 import { carveRoom } from "./dungeon";
 
 describe("floor-registry", () => {
-  it("serves campaign floors plus the shipped demo pack, sorted by id", () => {
+  it("serves campaign floors plus the floor-4 pack, sorted by id", () => {
     const ids = getFloors().map((f) => f.id);
     expect(ids).toEqual([1, 2, 3, 4]);
-    expect(findFloor(4)?.name).toBe("The Practice Halls");
+    expect(findFloor(4)?.name).toBe("The Null Choir");
   });
 
   it("findFloor resolves campaign floors and misses unknown ids", () => {

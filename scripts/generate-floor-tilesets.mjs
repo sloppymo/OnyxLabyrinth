@@ -772,6 +772,212 @@ function f3Ceiling() {
   px.save("f3_ceiling_256.png");
 }
 
+// ===========================================================================
+// FLOOR 4 — THE NULL CHOIR: slate-violet ashlar, silver rune-glow, mute runes.
+// ===========================================================================
+
+function f4Wall() {
+  const rng = mulberry32(401);
+  const px = new Px();
+  const mottle = makeFbm(mulberry32(402));
+  const stones = [hex("#5a5666"), hex("#524e5e"), hex("#4a4757"), hex("#565064")];
+  const mortar = hex("#2a2733");
+  const rowH = 16;
+  const blockW = 32;
+
+  const blockTone = new Map();
+  for (let y = 0; y < L; y++) {
+    for (let x = 0; x < L; x++) {
+      const { row, col, lx, ly } = courses(x, y, rowH, blockW);
+      const key = `${row},${col}`;
+      if (!blockTone.has(key)) blockTone.set(key, stones[Math.floor(rng() * stones.length)]);
+      if (ly === 0 || lx === 0) {
+        px.set(x, y, mortar);
+        continue;
+      }
+      let c = blockTone.get(key);
+      const m = mottle(x, y);
+      const lvl = Math.floor(m * 3 + dither(x, y) * 0.999);
+      c = shade(c, [0.88, 1.0, 1.08][Math.max(0, Math.min(2, lvl))]);
+      if (ly === 1) c = shade(c, 1.14);
+      else if (ly === rowH - 1) c = shade(c, 0.8);
+      // cold damp bloom toward block bottoms
+      if (mottle(x + 53, y + 37) > 0.64) c = shade(c, 0.86);
+      px.set(x, y, c);
+    }
+  }
+  // silver rune-glow veins seeping between the stones
+  const crackRng = mulberry32(403);
+  const runeCore = hex("#e8e6f2");
+  const runeMid = hex("#a9a4c9");
+  const runeDim = hex("#5f5a80");
+  for (let i = 0; i < 6; i++) {
+    const sx = Math.floor(crackRng() * L);
+    const sy = Math.floor(crackRng() * L);
+    crackWalk(crackRng, sx, sy, 10 + Math.floor(crackRng() * 12), [0.3, 1], (x, y) => {
+      px.set(x, y, crackRng() < 0.25 ? runeCore : runeMid);
+      px.blend(x + 1, y, runeDim, 0.55);
+      px.blend(x - 1, y, runeDim, 0.55);
+      px.blend(x, y + 1, runeDim, 0.35);
+      px.blend(x, y - 1, runeDim, 0.35);
+    });
+  }
+  // stray silver motes
+  for (let i = 0; i < 22; i++) {
+    const x = Math.floor(crackRng() * L);
+    const y = Math.floor(crackRng() * L);
+    px.set(x, y, crackRng() < 0.3 ? runeMid : runeDim);
+  }
+  // carved choir-script frieze across the middle seam
+  const band = hex("#6e6a80");
+  const bandHi = hex("#8f8ba6");
+  const bandShadow = hex("#3a3748");
+  for (const y0 of [62]) {
+    for (let y = y0; y < y0 + 6; y++) {
+      for (let x = 0; x < L; x++) {
+        let c = band;
+        if (y === y0) c = bandHi;
+        if (y === y0 + 5) c = bandShadow;
+        if (mottle(x * 2, y * 2) > 0.68) c = shade(c, 0.88); // wear
+        px.set(x, y, c);
+      }
+    }
+    // struck-out hymn glyphs, one per 16px — every voice notched, then cancelled
+    const glyphRng = mulberry32(404);
+    for (let x = 5; x < L - 4; x += 16) {
+      const tall = glyphRng() < 0.5;
+      px.set(x, y0 + 1, bandShadow);
+      px.set(x, y0 + 2, bandShadow);
+      px.set(x, y0 + 3, tall ? bandShadow : bandHi);
+      px.set(x + 2, y0 + 2, bandShadow);
+      px.set(x + 2, y0 + 3, bandShadow);
+      if (glyphRng() < 0.6) px.set(x + 1, y0 + 2, runeDim); // cancel stroke
+      if (glyphRng() < 0.35) px.set(x + 3, y0 + 1, bandShadow);
+    }
+  }
+  px.save("f4_wall_256.png");
+}
+
+function f4FloorA() {
+  const rng = mulberry32(410);
+  const px = new Px();
+  const mottle = makeFbm(mulberry32(411));
+  const base = hex("#46424f");
+  const gap = hex("#201d28");
+
+  const slabTone = new Map();
+  for (let y = 0; y < L; y++) {
+    for (let x = 0; x < L; x++) {
+      const key = `${Math.floor(y / 32)},${Math.floor(x / 32)}`;
+      if (!slabTone.has(key)) slabTone.set(key, shade(base, 0.9 + rng() * 0.2));
+      if (x % 32 === 0 || y % 32 === 0) {
+        px.set(x, y, gap);
+        continue;
+      }
+      let c = slabTone.get(key);
+      const m = mottle(x, y);
+      const lvl = Math.floor(m * 3 + dither(x, y) * 0.999);
+      c = shade(c, [0.87, 1.0, 1.09][Math.max(0, Math.min(2, lvl))]);
+      px.set(x, y, c);
+    }
+  }
+  // hairline silver seams where the wardwork bleeds through
+  const seamRng = mulberry32(412);
+  for (let i = 0; i < 3; i++) {
+    const sx = Math.floor(seamRng() * L);
+    const sy = Math.floor(seamRng() * L);
+    const bias = [seamRng() - 0.5, seamRng() - 0.5];
+    crackWalk(seamRng, sx, sy, 18 + Math.floor(seamRng() * 14), bias, (x, y) => {
+      px.set(x, y, seamRng() < 0.2 ? hex("#a9a4c9") : hex("#5f5a80"));
+      px.blend(x + 1, y, hex("#3a3748"), 0.5);
+      px.blend(x, y + 1, hex("#3a3748"), 0.4);
+    });
+  }
+  // sparse silver flecks — dust of ground-down voices
+  for (let i = 0; i < 120; i++) {
+    px.blend(Math.floor(seamRng() * L), Math.floor(seamRng() * L), hex("#8f8ba6"), 0.45);
+  }
+  px.save("f4_floor_a_256.png");
+}
+
+function f4FloorB() {
+  const rng = mulberry32(420);
+  const px = new Px();
+  const mottle = makeFbm(mulberry32(421));
+  const base = hex("#413d4b");
+  const gap = hex("#1c1923");
+
+  const slabTone = new Map();
+  for (let y = 0; y < L; y++) {
+    for (let x = 0; x < L; x++) {
+      const key = `${Math.floor(y / 32)},${Math.floor(x / 32)}`;
+      if (!slabTone.has(key)) slabTone.set(key, shade(base, 0.88 + rng() * 0.18));
+      if (x % 32 === 0 || y % 32 === 0) {
+        px.set(x, y, gap);
+        continue;
+      }
+      let c = slabTone.get(key);
+      const m = mottle(x, y);
+      const lvl = Math.floor(m * 3 + dither(x, y) * 0.999);
+      c = shade(c, [0.86, 1.0, 1.07][Math.max(0, Math.min(2, lvl))]);
+      px.set(x, y, c);
+    }
+  }
+  // inlaid mute-rune rings on alternating slabs — the circles that eat sound
+  const ringDim = hex("#5f5a80");
+  const ringHi = hex("#8f8ba6");
+  for (let sy = 0; sy < L / 32; sy++) {
+    for (let sx = 0; sx < L / 32; sx++) {
+      if ((sx + sy) % 2 !== 0) continue;
+      const cx = sx * 32 + 16;
+      const cy = sy * 32 + 16;
+      const r = 9 + Math.floor(rng() * 3);
+      for (let a = 0; a < 64; a++) {
+        const t = (a / 64) * Math.PI * 2;
+        const x = Math.round(cx + Math.cos(t) * r);
+        const y = Math.round(cy + Math.sin(t) * r);
+        px.set(x, y, rng() < 0.18 ? ringHi : ringDim);
+      }
+      // the bar of silence struck diagonally through the ring
+      for (let dx = -r + 2; dx <= r - 2; dx++) {
+        if (rng() < 0.8) px.set(cx + dx, cy + Math.round(dx * 0.4), ringDim);
+      }
+      px.set(cx, cy, ringHi);
+    }
+  }
+  px.save("f4_floor_b_256.png");
+}
+
+function f4Ceiling() {
+  const px = new Px();
+  const mottle = makeFbm(mulberry32(430));
+  const base = hex("#3a3644");
+  for (let y = 0; y < L; y++) {
+    for (let x = 0; x < L; x++) {
+      const m = mottle(x, y);
+      const lvl = Math.floor(m * 4 + dither(x, y) * 0.999);
+      px.set(x, y, shade(base, [0.74, 0.88, 1.0, 1.1][Math.max(0, Math.min(3, lvl))]));
+    }
+  }
+  const rng = mulberry32(431);
+  // hairline silver cracks in the vault
+  for (let i = 0; i < 8; i++) {
+    const sx = Math.floor(rng() * L);
+    const sy = Math.floor(rng() * L);
+    crackWalk(rng, sx, sy, 12 + Math.floor(rng() * 14), [1, 0.15], (x, y) => {
+      px.blend(x, y, hex("#8f8ba6"), 0.45);
+      px.blend(x, y + 1, hex("#26232f"), 0.3);
+    });
+  }
+  // dim violet glints — the choir's held breath
+  for (let i = 0; i < 36; i++) {
+    const x = Math.floor(rng() * L);
+    const y = Math.floor(rng() * L);
+    px.blend(x, y, rng() < 0.25 ? hex("#7a6fa0") : hex("#4a4468"), 0.8);
+  }
+  px.save("f4_ceiling_256.png");
+}
+
 // ---------------------------------------------------------------------------
 
 mkdirSync(OUT_DIR, { recursive: true });
@@ -787,4 +993,8 @@ f3Wall();
 f3FloorA();
 f3FloorB();
 f3Ceiling();
+f4Wall();
+f4FloorA();
+f4FloorB();
+f4Ceiling();
 console.log("done");

@@ -30,6 +30,10 @@ import f3WallUrl from "../assets/f3_wall_256.png";
 import f3FloorAUrl from "../assets/f3_floor_a_256.png";
 import f3FloorBUrl from "../assets/f3_floor_b_256.png";
 import f3CeilingUrl from "../assets/f3_ceiling_256.png";
+import f4WallUrl from "../assets/f4_wall_256.png";
+import f4FloorAUrl from "../assets/f4_floor_a_256.png";
+import f4FloorBUrl from "../assets/f4_floor_b_256.png";
+import f4CeilingUrl from "../assets/f4_ceiling_256.png";
 import {
   computeLineHeight,
   opacityForDepth,
@@ -198,6 +202,7 @@ const BUNDLED_THEME_URLS: Record<
   f1: { wall: f1WallUrl, floorA: f1FloorAUrl, floorB: f1FloorBUrl, ceiling: f1CeilingUrl },
   f2: { wall: f2WallUrl, floorA: f2FloorAUrl, floorB: f2FloorBUrl, ceiling: f2CeilingUrl },
   f3: { wall: f3WallUrl, floorA: f3FloorAUrl, floorB: f3FloorBUrl, ceiling: f3CeilingUrl },
+  f4: { wall: f4WallUrl, floorA: f4FloorAUrl, floorB: f4FloorBUrl, ceiling: f4CeilingUrl },
 };
 
 const FALLBACK_THEME = "f1";

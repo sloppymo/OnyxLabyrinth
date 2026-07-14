@@ -11,6 +11,7 @@
 import { writeFileSync, mkdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { FLOORS } from "../src/data/floors";
+import { getFloors } from "../src/game/floor-registry";
 import { floorDefToMap, parseFloorMapJSON, mapToFloorDef } from "../src/game/floor-map";
 import { floorToAscii } from "../src/game/floor-ascii";
 import { validateFloorDef, hasValidationErrors } from "../src/game/floor-validate";
@@ -28,17 +29,19 @@ function opt(name: string): string | undefined {
 }
 
 function floorById(id: number) {
-  const f = FLOORS.find((x) => x.id === id);
+  const f = getFloors().find((x) => x.id === id);
   if (!f) throw new Error(`No floor with id ${id}`);
   return f;
 }
 
 function runValidate(): void {
   const idStr = opt("floor");
-  const floors = idStr ? [floorById(Number(idStr))] : [...FLOORS];
+  // Validate the full runtime list (campaign + content packs) so cross-floor
+  // links (stairs, teleporters) resolve against everything that ships.
+  const floors = idStr ? [floorById(Number(idStr))] : [...getFloors()];
   let anyError = false;
   for (const floor of floors) {
-    const issues = validateFloorDef(floor);
+    const issues = validateFloorDef(floor, { floors: getFloors() });
     const errors = issues.filter((i) => i.severity === "error");
     const warnings = issues.filter((i) => i.severity === "warning");
     console.log(`\n=== Floor ${floor.id}: ${floor.name} ===`);
@@ -88,7 +91,7 @@ function runCheckImport(): void {
   }
   const raw = JSON.parse(readFileSync(file, "utf8"));
   const map = parseFloorMapJSON(raw);
-  const issues = validateFloorDef(mapToFloorDef(map));
+  const issues = validateFloorDef(mapToFloorDef(map), { floors: getFloors() });
   for (const i of issues) {
     console.log(`${i.severity.toUpperCase()} [${i.code}] ${i.message}`);
   }
