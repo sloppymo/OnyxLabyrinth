@@ -380,3 +380,17 @@ After combat, if any characters reached a perk tier, a modal overlay appears ove
 ---
 
 **Document status:** v1.0 — Playtest Values. Mechanics are stable; numbers are expected to evolve.
+
+## Implementation status (code vs this doc — 2026-07-13)
+
+| Area | Status |
+|------|--------|
+| Post-combat level-up + perk queue | **Shipped** (`main.ts` `endCombat`) for dungeon **and** Arena |
+| Overlay UI | **Shipped** (`perk-select-ui.ts`); playtest may have missed it due to auto-Enter |
+| `effectiveStats` / `perkModifiers` | **Shipped** |
+| Reactive hooks (`dispatchHook`) | **~14 live** — list at top of `src/game/perks.ts` |
+| Data stubs | **~28 `TODO(v1.1)`** comments in `src/data/perks.ts` — advertised effects may be inert |
+| Final balance numbers | **Not done** — do not trust sheet % for balance passes until stubs are wired or copy is honest |
+
+Authoritative navigation: [`docs/AGENT-READING-LIST.md`](../AGENT-READING-LIST.md).
+

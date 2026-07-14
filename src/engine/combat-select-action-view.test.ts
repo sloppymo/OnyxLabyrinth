@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   renderCombatWindows,
   menuEntriesForCharacter,
+  menuHintText,
   type CombatWindowsView,
   type CombatWindowsHandlers,
 } from "./combat-select-action-view";
@@ -94,6 +95,23 @@ describe("menuEntriesForCharacter", () => {
   });
 });
 
+describe("menuHintText", () => {
+  it("includes T for technique users", () => {
+    const c = createCharacter("x", "X", "Human", "Neutral", "Fighter", 0);
+    expect(menuHintText(menuEntriesForCharacter(c))).toBe("↑↓ Enter · A/T/M/D/I/R");
+  });
+
+  it("omits T for pure casters", () => {
+    const c = createCharacter("m", "M", "Elf", "Neutral", "Mage", 0);
+    expect(menuHintText(menuEntriesForCharacter(c))).toBe("↑↓ Enter · A/M/D/I/R");
+  });
+
+  it("includes H for an unhidden Thief", () => {
+    const c = createCharacter("t", "T", "Human", "Neutral", "Thief", 0);
+    expect(menuHintText(menuEntriesForCharacter(c))).toContain("/H/");
+  });
+});
+
 describe("renderCombatWindows", () => {
   let container: HTMLDivElement;
 
@@ -159,6 +177,44 @@ describe("renderCombatWindows", () => {
     expect(rows[0].classList.contains("selected")).toBe(true);
     expect(rows[1].classList.contains("disabled")).toBe(true);
     expect(rows[1].textContent).toContain("4 SP");
+  });
+
+  it("renders every row of a long (L9+) spell list and shows a position counter", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    const view = baseView(state);
+    view.menuMode = "selection";
+    view.selectionTitle = "Magic";
+    view.selectionEntries = Array.from({ length: 29 }, (_, i) => ({
+      label: `Spell ${i + 1}`,
+      detail: `${i + 1} SP`,
+    }));
+    view.selectionIndex = 12;
+    renderCombatWindows(container, view, noopHandlers());
+    const rows = container.querySelectorAll(".ff6-selection-list .ff6-menu-item");
+    expect(rows).toHaveLength(29);
+    expect(rows[12].classList.contains("selected")).toBe(true);
+    // Counter tells the player where the cursor is in the scrolling list.
+    expect(container.querySelector(".ff6-menu-title")?.textContent).toBe("Magic 13/29");
+  });
+
+  it("keeps a plain title for short selection lists", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    const view = baseView(state);
+    view.menuMode = "selection";
+    view.selectionTitle = "Target";
+    view.selectionEntries = [{ label: "Rat A" }, { label: "Rat B" }];
+    view.selectionIndex = 0;
+    renderCombatWindows(container, view, noopHandlers());
+    expect(container.querySelector(".ff6-menu-title")?.textContent).toBe("Target");
+  });
+
+  it("uses the derived hint row for the action menu", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    renderCombatWindows(container, baseView(state), noopHandlers());
+    // Party member 0 is a Fighter — technique users get the T shortcut.
+    expect(container.querySelector(".ff6-hint-row")?.textContent).toBe(
+      "↑↓ Enter · A/T/M/D/I/R"
+    );
   });
 
   it("clicking a menu row fires onMenuConfirm with its index", () => {

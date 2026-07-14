@@ -766,4 +766,69 @@ describe("summoning mechanics", () => {
     expect(result.result).toBe("fled");
     expect(result.summonedAllies.length).toBe(0);
   });
+
+  it("Meteor Swarm damages every enemy and emits spellEffect events", () => {
+    const enemies = [
+      makeEnemy("e1", "Rat", 200),
+      makeEnemy("e2", "Bat", 200, { rowPreference: "back" }),
+    ];
+    enemies[1].row = "back";
+    const state = makeCombatState(enemies);
+    const mage = state.party.find((c) => c.class === "Mage");
+    if (!mage) throw new Error("No Mage in party");
+    mage.knownSpellIds = ["mage-meteor-swarm"];
+    mage.sp = 50;
+    mage.stats.agi = 100;
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === mage.id) return { kind: "cast" as const, actorId: c.id, spellId: "mage-meteor-swarm" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.enemies.front[0].currentHp).toBeLessThan(200);
+    expect(result.enemies.back[0].currentHp).toBeLessThan(200);
+    expect(result.log.some((m) => m.includes("Meteor Swarm"))).toBe(true);
+    expect(result.events.some((e) => e?.type === "spellEffect" && e.spellId === "mage-meteor-swarm")).toBe(true);
+  });
+
+  it("Mass Regenerate heals the whole party", () => {
+    const state = makeCombatState([makeEnemy("e1", "Rat", 100)]);
+    const priest = state.party.find((c) => c.class === "Priest");
+    if (!priest) throw new Error("No Priest in party");
+    priest.knownSpellIds = ["priest-mass-regenerate"];
+    priest.sp = 50;
+    priest.stats.agi = 100;
+    for (const c of state.party) c.hp = Math.max(1, c.maxHp - 40);
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === priest.id) return { kind: "cast" as const, actorId: c.id, spellId: "priest-mass-regenerate" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    for (const c of result.party) {
+      expect(c.hp).toBeGreaterThan(Math.max(1, c.maxHp - 40));
+    }
+    expect(result.events.some((e) => e?.type === "spellEffect" && e.spellId === "priest-mass-regenerate" && (e.heal ?? 0) > 0)).toBe(true);
+  });
+
+  it("Holy Aura buffs party armor", () => {
+    const state = makeCombatState([makeEnemy("e1", "Rat", 100)]);
+    const priest = state.party.find((c) => c.class === "Priest");
+    if (!priest) throw new Error("No Priest in party");
+    priest.knownSpellIds = ["priest-holy-aura"];
+    priest.sp = 50;
+    priest.stats.agi = 100;
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === priest.id) return { kind: "cast" as const, actorId: c.id, spellId: "priest-holy-aura" };
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    for (const c of result.party) {
+      expect(result.armorBuffs[c.id] ?? 0).toBeGreaterThanOrEqual(5);
+    }
+  });
 });

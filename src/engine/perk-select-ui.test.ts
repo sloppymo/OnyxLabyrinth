@@ -93,6 +93,38 @@ describe("PerkSelectController", () => {
     expect(panel.innerHTML).toBe("");
   });
 
+  it("ignores Enter until a card is chosen with the arrows (anti key-spam)", () => {
+    const panel = makePanel();
+    const state = makeStateWithLevel3Fighter();
+    const queue: PendingPerkChoice[] = [{ charId: "c1", tier: 1 }];
+    let done = false;
+
+    const ctrl = new PerkSelectController({
+      panel,
+      state,
+      queue,
+      onDone: () => {
+        done = true;
+      },
+    });
+
+    // Simulate leftover Enter spam from combat: none of these may confirm.
+    ctrl.handleKey("Enter"); // swallowed by justOpened
+    ctrl.handleKey("Enter");
+    ctrl.handleKey("Enter");
+    ctrl.handleKey("Enter");
+
+    expect(state.party[0].perkIds).toHaveLength(0);
+    expect(done).toBe(false);
+    expect(panel.innerHTML).toContain("Pick a card");
+
+    // A deliberate arrow press unlocks Enter.
+    ctrl.handleKey("ArrowLeft");
+    ctrl.handleKey("Enter");
+    expect(state.party[0].perkIds).toContain("fighter-cleave");
+    expect(done).toBe(true);
+  });
+
   it("handles multiple queued characters one at a time", () => {
     const panel = makePanel();
     const state = makeStateWithLevel3Fighter();
@@ -116,13 +148,17 @@ describe("PerkSelectController", () => {
 
     // Clear the justOpened guard.
     ctrl.handleKey("");
-    // Confirm Aria's choice.
+    // Confirm Aria's choice (arrow first — Enter needs a deliberate pick).
+    ctrl.handleKey("ArrowLeft");
     ctrl.handleKey("Enter");
     expect(state.party[0].perkIds).toHaveLength(1);
     expect(done).toBe(false);
     expect(panel.innerHTML).toContain("Bram");
 
-    // Confirm Bram's choice.
+    // Bram's Enter is inert until he picks a card too.
+    ctrl.handleKey("Enter");
+    expect(state.party[1].perkIds).toHaveLength(0);
+    ctrl.handleKey("ArrowRight");
     ctrl.handleKey("Enter");
     expect(state.party[1].perkIds).toHaveLength(1);
     expect(done).toBe(true);

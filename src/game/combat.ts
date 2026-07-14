@@ -1006,6 +1006,24 @@ export function endRound(state: CombatState, rng: Rng = Math.random): CombatStat
 
   checkSpotHidden(s, rng, log, emit);
 
+  // priest-saint: while a living Saint stands, the whole party regains 5%
+  // max HP at the end of every round. (The revive-targeting clause of the
+  // perk is still TODO(v1.1).)
+  const saintActive = s.party.some(
+    (c) => c.hp > 0 && perksForCharacter(c).some((p) => p.id === "priest-saint")
+  );
+  if (saintActive) {
+    for (const c of s.party) {
+      if (c.hp <= 0 || c.hp >= c.maxHp) continue;
+      const before = c.hp;
+      c.hp = Math.min(c.maxHp, c.hp + Math.max(1, Math.round(c.maxHp * 0.05)));
+      emit(
+        `${c.name} regains ${c.hp - before} HP.`,
+        { type: "spellEffect", spellId: "priest-saint", targetId: c.id, heal: c.hp - before }
+      );
+    }
+  }
+
   if (s.magicScreen > 0) {
     s.magicScreen = Math.max(0, s.magicScreen - 1);
   }
@@ -1616,8 +1634,16 @@ function resolveAttack(
   damage = Math.max(1, Math.round(damage * damageMultiplier));
 
   // Critical hit: chance based on effective LUK, capped at 25%.
+  // thief-assassin: +25% crit vs enemies suffering any status effect,
+  // deliberately allowed to exceed the base cap.
   let crit = false;
-  const critChance = Math.min(0.25, effStats.luk / 100 + mods.critChanceBonus);
+  let critChance = Math.min(0.25, effStats.luk / 100 + mods.critChanceBonus);
+  if (
+    target.status.length > 0 &&
+    perksForCharacter(actor).some((p) => p.id === "thief-assassin")
+  ) {
+    critChance += 0.25;
+  }
   if (forcedCrit || rng() < critChance) {
     damage = Math.max(1, Math.round(damage * mods.critDamageMultiplier));
     crit = true;
@@ -1625,7 +1651,16 @@ function resolveAttack(
   }
 
   // Enemy AC reduces physical damage (with Disarm debuffs applied).
-  damage = Math.max(1, damage - effectiveEnemyAc(s, target));
+  // thief-backstab: attacks made from the back row ignore 25% of enemy AC.
+  const acIgnoreFactor =
+    charRow(actor) === "back" &&
+    perksForCharacter(actor).some((p) => p.id === "thief-backstab")
+      ? 0.75
+      : 1;
+  damage = Math.max(
+    1,
+    damage - Math.round(effectiveEnemyAc(s, target) * acIgnoreFactor)
+  );
 
   // highDefense enemies (Animated Armor) halve physical damage.
   if (target.special.some((sp) => sp.kind === "highDefense")) {
@@ -1992,6 +2027,11 @@ function applySpell(
 
   switch (eff.kind) {
     case "damage": {
+      // Perk spell-damage multiplier (Glass Cannon +30%).
+      const spellMult = perkModifiers(
+        perksForCharacter(caster),
+        effStats
+      ).spellDamageMultiplier;
       for (const t of spellTargets(s, spell, action)) {
         // "undead" element only damages undead enemies.
         if (eff.element === "undead" && !t.special.some((sp) => sp.kind === "undead")) {
@@ -1999,7 +2039,7 @@ function applySpell(
         }
         const raw = Math.max(
           1,
-          Math.round((eff.power + castingBonus) * powerMultiplier)
+          Math.round((eff.power + castingBonus) * powerMultiplier * spellMult)
         );
         // Enemy AC reduces spell damage too (less than physical — half AC).
         const reduced = Math.max(1, raw - Math.floor(t.ac / 2));
@@ -2587,6 +2627,26 @@ function resolveEnemyAction(
     );
     // Rage: dodging an attack generates rage (+1).
     gainRage(s, partyTarget.id, 1);
+    // duelist-riposte: counter-attack for 75% damage when an enemy misses you.
+    if (
+      actor.currentHp > 0 &&
+      perksForCharacter(partyTarget).some((p) => p.id === "duelist-riposte")
+    ) {
+      const counterDmg = Math.max(
+        1,
+        Math.round(plainHitDamage(s, partyTarget, rng) * 0.75)
+      );
+      actor.currentHp -= counterDmg;
+      emit(
+        `${partyTarget.name} ripostes ${actor.name} for ${counterDmg} damage!`,
+        {
+          type: "attack",
+          actorId: partyTarget.id,
+          targetId: actor.instanceId,
+          damage: counterDmg,
+        }
+      );
+    }
     return;
   }
 
@@ -2701,7 +2761,8 @@ function effectiveEnemyAc(s: CombatState, enemy: EnemyInstance): number {
 /**
  * Reduce incoming damage to a CHARACTER by: equipped armor defenseBonus
  * (data-driven) + persistent spell armorBuffs + per-round Defend buff
- * (percentage).
+ * (percentage) + perk damage-taken multipliers (Phalanx/Vanguard/Sentinel
+ * reduce it; Berserker's armor penalty increases it).
  */
 function damageReductionFor(
   s: CombatState,
@@ -2720,6 +2781,13 @@ function damageReductionFor(
   const defendPct = s.defendBuff[target.id] ?? 0;
   if (defendPct > 0) {
     dmg = Math.max(1, Math.round(dmg * (1 - defendPct)));
+  }
+  const mods = perkModifiers(perksForCharacter(target), effStatsFor(s, target));
+  const perkMult =
+    mods.damageTakenMultiplier *
+    (charRow(target) === "front" ? mods.damageTakenMultiplierFrontRow : 1);
+  if (perkMult !== 1) {
+    dmg = Math.max(1, Math.round(dmg * perkMult));
   }
   return dmg;
 }
@@ -2898,6 +2966,15 @@ function isDirectlyBehind(protector: Character, target: Character): boolean {
   );
 }
 
+/** Adjacent = side-by-side in the same row, or the front/back pair
+ *  (formation slots 0-2 front, 3-5 back). Never true for the same character. */
+function isAdjacentAlly(a: Character, b: Character): boolean {
+  if (a.id === b.id) return false;
+  const diff = Math.abs(a.formationSlot - b.formationSlot);
+  const sameRow = (a.formationSlot <= 2) === (b.formationSlot <= 2);
+  return (sameRow && diff === 1) || diff === 3;
+}
+
 /** A plain physical hit for reactive counterattacks (no perks applied). */
 function plainHitDamage(s: CombatState, c: Character, rng: Rng): number {
   const eff = effStatsFor(s, c);
@@ -3027,6 +3104,23 @@ function applyPartyDamage(
       ownId: c.id,
       hpPercentAfter: c.hp / c.maxHp,
       isAllyBehind: isDirectlyBehind(c, target),
+      isAdjacentAlly: isAdjacentAlly(c, target),
+      retaliateHolyDamage: () => {
+        // crusader-retribution: the attacker takes the Crusader's effective
+        // PIE as holy damage when an adjacent ally is struck.
+        if (attacker.currentHp <= 0) return;
+        const holy = Math.max(1, effStatsFor(s, c).pie);
+        attacker.currentHp -= holy;
+        emit(
+          `${c.name}'s retribution sears ${attacker.name} for ${holy} holy damage!`,
+          {
+            type: "attack",
+            actorId: c.id,
+            targetId: attacker.instanceId,
+            damage: holy,
+          }
+        );
+      },
       counterAttacker: (multiplier: number) => {
         if (attacker.currentHp <= 0) return;
         const dmg = plainHitDamage(s, c, rng);

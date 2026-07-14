@@ -508,3 +508,10 @@ if (version === 8) {
   ignores AC. Test conditional kill threshold. Test Death Ward triggers once.
 - **Phase 5:** Test Haste is a stat buff only (no extra turn). Test Time Stop
   gives exactly one extra action to the Mage only.
+
+---
+
+## Shipping status note (2026-07-13)
+
+Consult `src/data/spells.ts` for the live corpus. Combat spells now ship through **tier 7** (T6–T7 are a small endgame set: Meteor Swarm, Disintegrate, Freezing Sphere / Mass Regenerate, Holy Aura — existing effect kinds only; DoT / armor-pen / double-action remain deferred). Unlock via `ceil(level/2)` is also capped by `maxContentSpellTier()` so empty tiers cannot silently reopen. Index: [`docs/AGENT-READING-LIST.md`](../AGENT-READING-LIST.md).
+

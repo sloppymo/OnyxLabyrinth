@@ -1,8 +1,10 @@
 /**
- * Spell data for all Mage and Priest spells, tiers 1-5.
+ * Spell data for all Mage and Priest spells, tiers 1–7.
  *
  * Each spell is a typed constant. The combat system consumes these defs
  * to resolve damage, healing, buffs, disables, and resurrection.
+ * T6–T7 are a small endgame set adapted from the spell-expansion design
+ * using existing effect kinds only (no DoT / armor-pen / double-action yet).
  */
 
 export type SpellcasterClass = "Mage" | "Priest";
@@ -314,6 +316,38 @@ export const MAGE_SPELLS: SpellDef[] = [
     description: "Tears open a portal to another plane, calling forth a powerful guardian.",
   },
 
+  // --- Tier 6–7 (endgame; design verbs, existing effect kinds) ---
+  {
+    id: "mage-meteor-swarm",
+    name: "Meteor Swarm",
+    class: "Mage",
+    tier: 6,
+    spCost: 30,
+    target: "allEnemies",
+    effect: { kind: "damage", element: "fire", power: 35 },
+    description: "Calls a rain of meteors that scorches every enemy. Top-tier fire AoE.",
+  },
+  {
+    id: "mage-disintegrate",
+    name: "Disintegrate",
+    class: "Mage",
+    tier: 6,
+    spCost: 22,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "physical", power: 50 },
+    description: "Unravels a single foe with raw destructive force. Extreme single-target damage.",
+  },
+  {
+    id: "mage-freezing-sphere",
+    name: "Freezing Sphere",
+    class: "Mage",
+    tier: 7,
+    spCost: 24,
+    target: "allEnemies",
+    effect: { kind: "damage", element: "cold", power: 24 },
+    description: "Hurls a sphere of absolute cold that freezes the entire enemy line.",
+  },
+
   // --- Water ---
   {
     id: "mage-water-bolt",
@@ -601,6 +635,28 @@ export const PRIEST_SPELLS: SpellDef[] = [
     effect: { kind: "heal", power: 9999 },
     description: "A miracle of healing that fully restores one ally to peak health.",
   },
+
+  // --- Tier 6–7 (endgame; design verbs, existing effect kinds) ---
+  {
+    id: "priest-mass-regenerate",
+    name: "Mass Regenerate",
+    class: "Priest",
+    tier: 6,
+    spCost: 28,
+    target: "allAllies",
+    effect: { kind: "heal", power: 45 },
+    description: "A sustained miracle that restores major wounds across the entire party.",
+  },
+  {
+    id: "priest-holy-aura",
+    name: "Holy Aura",
+    class: "Priest",
+    tier: 7,
+    spCost: 18,
+    target: "allAllies",
+    effect: { kind: "buff", stat: "armor", power: 5 },
+    description: "Wreaths the party in sacred light, greatly hardening their defenses.",
+  },
 ];
 
 export const ALL_SPELLS: SpellDef[] = [...MAGE_SPELLS, ...PRIEST_SPELLS];
@@ -632,4 +688,14 @@ export function spellsForClass(
     return PRIEST_SPELLS.filter((s) => s.tier <= maxTier);
   }
   return [];
+}
+
+/** Highest tier that has real spell definitions for a casting class (or 0). */
+export function maxContentSpellTier(
+  cls: "Mage" | "Priest" | "Crusader" | "Fighter" | "Thief" | "Halberdier" | "Duelist"
+): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 {
+  const pool =
+    cls === "Mage" ? MAGE_SPELLS : cls === "Priest" || cls === "Crusader" ? PRIEST_SPELLS : [];
+  if (pool.length === 0) return 0;
+  return Math.max(...pool.map((s) => s.tier)) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
 }

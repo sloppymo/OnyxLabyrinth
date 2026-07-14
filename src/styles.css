@@ -439,6 +439,11 @@ canvas#map-canvas {
   color: var(--amber);
 }
 
+/* Shown when Enter is pressed before a card was chosen with the arrows. */
+.perk-select-footer.perk-select-warn {
+  color: #ff9a9a;
+}
+
 /* --- Dungeon NPC panel --------------------------------------------------- */
 
 .npc-dialogue {
@@ -1105,18 +1110,23 @@ canvas#map-canvas {
 
 .ff6-sel-label {
   flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Long names (Throat Slash, Summon Fire Elemental) wrap to a second line
+     instead of truncating — every name must be fully readable in the list. */
+  white-space: normal;
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 
 .ff6-selection-list .ff6-menu-item {
   font-size: var(--fs-small);
+  white-space: normal;
 }
 
 .ff6-sel-detail {
   font-size: var(--fs-small);
   color: #b8c4f0;
-  flex-shrink: 1;
+  /* The cost column (SP/RG/count) never gets squeezed by a long name. */
+  flex-shrink: 0;
   min-width: 2.5em;
   text-align: right;
 }

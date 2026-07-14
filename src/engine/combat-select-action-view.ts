@@ -92,6 +92,27 @@ export const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
   ambush: "Ambush",
 };
 
+/** Keyboard shortcut letter per action, for the hint row (ambush reuses
+ *  Enter on the highlighted row and has no letter). */
+const ACTION_SHORTCUTS: Partial<Record<PlayerAction["kind"], string>> = {
+  attack: "A",
+  technique: "T",
+  cast: "M",
+  defend: "D",
+  item: "I",
+  flee: "R",
+  hide: "H",
+};
+
+/** Hint-row text for the action menu, derived from the entries actually
+ *  shown so the footer never advertises a dead key. */
+export function menuHintText(entries: MenuEntry[]): string {
+  const letters = entries
+    .map((e) => ACTION_SHORTCUTS[e.kind])
+    .filter((l): l is string => l !== undefined);
+  return `↑↓ Enter · ${letters.join("/")}`;
+}
+
 /** Menu entries available to a character (Thief gets Hide/Ambush, melee gets Technique). */
 export function menuEntriesForCharacter(char: Character): MenuEntry[] {
   const base: PlayerAction["kind"][] = ["attack", "cast", "defend", "item"];
@@ -137,12 +158,20 @@ function buildMenuWindow(
       row.addEventListener("click", () => handlers.onMenuConfirm(i));
       win.appendChild(row);
     }
-    win.appendChild(el("ff6-hint-row", "↑↓ Enter · A/M/D/I/R"));
+    win.appendChild(el("ff6-hint-row", menuHintText(view.menuEntries)));
   } else {
     if (view.selectionTitle) {
-      win.appendChild(el("ff6-menu-title", view.selectionTitle));
+      // Long lists (high-level spell books) scroll inside the window; a
+      // position counter tells the player where the cursor is in the list.
+      const total = view.selectionEntries.length;
+      const title =
+        total > 6
+          ? `${view.selectionTitle} ${view.selectionIndex + 1}/${total}`
+          : view.selectionTitle;
+      win.appendChild(el("ff6-menu-title", title));
     }
     const list = el("ff6-selection-list");
+    let selectedRow: HTMLElement | null = null;
     for (let i = 0; i < view.selectionEntries.length; i++) {
       const entry = view.selectionEntries[i];
       const row = el("ff6-menu-item");
@@ -157,13 +186,40 @@ function buildMenuWindow(
         detail.textContent = entry.detail;
         row.appendChild(detail);
       }
-      if (i === view.selectionIndex) row.classList.add("selected");
+      if (i === view.selectionIndex) {
+        row.classList.add("selected");
+        selectedRow = row;
+      }
       if (entry.disabled) row.classList.add("disabled");
       row.addEventListener("mouseenter", () => handlers.onSelectionHover(i));
       row.addEventListener("click", () => handlers.onSelectionConfirm(i));
       list.appendChild(row);
     }
     win.appendChild(list);
+    // Keep the keyboard cursor visible in long lists (L9+ spell books).
+    // The windows are re-rendered on every change, which resets scrollTop,
+    // so re-center the selected row after layout. rAF because the window
+    // isn't attached to the document (and has no heights) until
+    // renderCombatWindows appends it.
+    if (selectedRow) {
+      const target = selectedRow;
+      const followCursor = () => {
+        if (!list.isConnected) return;
+        const above = target.offsetTop;
+        const below = target.offsetTop + target.offsetHeight;
+        if (above < list.scrollTop) {
+          list.scrollTop = above;
+        } else if (below > list.scrollTop + list.clientHeight) {
+          list.scrollTop = below - list.clientHeight;
+        }
+      };
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(followCursor);
+      } else {
+        // jsdom test environment: no rAF, layout is synchronous anyway.
+        followCursor();
+      }
+    }
     if (view.selectionFooter) {
       win.appendChild(el("ff6-sel-footer", view.selectionFooter));
     }

@@ -5,6 +5,8 @@
 **Verdict:** No blockers. Projection math and pitched-camera raycasting are algebraically correct. Highest real risk is the **intentional dual-camera** between backdrop and sprites, plus **design-doc drift** from the shipped code.
 
 > Note: The review prompt described an earlier snapshot (flat `drawImage` back wall, unused `xSign`, `arenaFloorRowDistanceForWorldY` in `arena-renderer.ts`). The live code already evolved past that — findings below are against **current** sources.
+>
+> **Related docs:** [`docs/AGENT-READING-LIST.md`](docs/AGENT-READING-LIST.md) · design doc synced in `docs/superpowers/specs/2026-07-14-arena-renderer-design.md`.
 
 ---
 

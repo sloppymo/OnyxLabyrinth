@@ -69,8 +69,8 @@ const FIGHTER_PERKS: PerkDef[] = [
   ),
   perk(
     "fighter-vanguard", "Fighter", 3, "Vanguard",
-    "Front-row allies take 10% less physical damage.",
-    [], { damageTakenMultiplier: 0.9 }, ["defense", "support", "passive"]
+    "You take 10% less physical damage in the front row. (v1.1: extends to front-row allies.)",
+    [], { damageTakenMultiplier: 0.9, damageTakenFrontRowOnly: true }, ["defense", "support", "passive"]
   ),
   perk(
     "fighter-last-stand", "Fighter", 3, "Last Stand",
@@ -79,7 +79,7 @@ const FIGHTER_PERKS: PerkDef[] = [
   ),
   perk(
     "fighter-juggernaut", "Fighter", 4, "Juggernaut",
-    "Immune to status effects; +20% max HP.",
+    "+20% max HP. (Status immunity not yet implemented — v1.1.)",
     ["OnStatusApplied"], { maxHpPercent: 0.2 }, ["defense", "passive"]
     // TODO(v1.1): status immunity is not enforced yet — the OnStatusApplied
     // hook has no registered handler; only the max HP bump applies.
@@ -109,19 +109,17 @@ const MAGE_PERKS: PerkDef[] = [
   perk(
     "mage-glass-cannon", "Mage", 2, "Glass Cannon",
     "+30% spell damage, -15% max HP.",
-    // TODO(v1.1): the +30% spell damage side is not wired into spell
-    // resolution yet; only the max HP penalty applies.
-    [], { maxHpPercent: -0.15 }, ["offense", "passive"]
+    [], { spellDamageMultiplier: 1.3, maxHpPercent: -0.15 }, ["offense", "passive"]
   ),
   perk(
     "mage-mana-shield", "Mage", 2, "Mana Shield",
-    "20% of incoming damage is deducted from SP instead of HP.",
+    "20% of incoming damage is deducted from SP instead of HP. (Not yet implemented — v1.1.)",
     ["BeforeDamageTaken"], {}, ["defense", "reactive"]
     // TODO(v1.1): no registered handler yet.
   ),
   perk(
     "mage-chain-caster", "Mage", 3, "Chain Caster",
-    "25% chance a damaging spell jumps to a second random target.",
+    "25% chance a damaging spell jumps to a second random target. (Not yet implemented — v1.1.)",
     ["OnSpellResolve"], { chance: 0.25 }, ["offense", "aoe", "reactive"]
     // TODO(v1.1): no registered handler yet.
   ),
@@ -137,7 +135,7 @@ const MAGE_PERKS: PerkDef[] = [
   ),
   perk(
     "mage-spellbreaker", "Mage", 4, "Spellbreaker",
-    "Spells ignore 50% resistance, cannot be reflected, immune to Silence.",
+    "Spells ignore 50% resistance, cannot be reflected, immune to Silence. (Not yet implemented — v1.1.)",
     [], {}, ["offense", "passive"]
     // TODO(v1.1): no resistance/reflect/silence-immunity system to hook into yet.
   ),
@@ -150,7 +148,7 @@ const MAGE_PERKS: PerkDef[] = [
 const PRIEST_PERKS: PerkDef[] = [
   perk(
     "priest-healers-touch", "Priest", 1, "Healer's Touch",
-    "Healing spells restore 30% more HP.",
+    "Healing spells restore 30% more HP. (Not yet implemented — v1.1.)",
     [], {}, ["support", "passive"]
     // TODO(v1.1): heal power bonus not wired into spell resolution yet.
   ),
@@ -166,13 +164,13 @@ const PRIEST_PERKS: PerkDef[] = [
   ),
   perk(
     "priest-turn-undead", "Priest", 2, "Turn Undead",
-    "+50% damage vs undead.",
+    "+50% damage vs undead. (Not yet implemented — v1.1.)",
     [], {}, ["offense", "passive"]
     // TODO(v1.1): undead-damage-bonus not wired into spell/attack resolution yet.
   ),
   perk(
     "priest-revival", "Priest", 3, "Revival",
-    "Revive spells restore target to 50% HP.",
+    "Revive spells restore target to 50% HP. (Not yet implemented — v1.1.)",
     [], {}, ["support", "passive"]
     // TODO(v1.1): resurrect-power bonus not wired into spell resolution yet.
   ),
@@ -184,13 +182,14 @@ const PRIEST_PERKS: PerkDef[] = [
   ),
   perk(
     "priest-saint", "Priest", 4, "Saint",
-    "Party regains 5% max HP per round; healing spells can target KO'd allies as revives.",
+    "Party regains 5% max HP per round. (Healing KO'd allies as revives is v1.1.)",
     ["OnTurnEnd"], {}, ["support", "passive"]
-    // TODO(v1.1): no registered handler yet.
+    // Regen is wired directly in combat.ts endRound (no hook needed).
+    // TODO(v1.1): heal-as-revive targeting.
   ),
   perk(
     "priest-inquisitor", "Priest", 4, "Inquisitor",
-    "Offensive spells have 35% chance to stun for 1 round; +30% damage vs undead/demons.",
+    "Offensive spells have 35% chance to stun for 1 round; +30% damage vs undead/demons. (Not yet implemented — v1.1.)",
     ["OnSpellResolve"], { chance: 0.35 }, ["offense", "reactive"]
     // TODO(v1.1): no registered handler yet.
   ),
@@ -215,11 +214,11 @@ const THIEF_PERKS: PerkDef[] = [
     "thief-backstab", "Thief", 2, "Backstab",
     "Back-row attacks ignore 25% enemy AC.",
     [], {}, ["offense", "passive"]
-    // TODO(v1.1): AC-ignore not wired into attack resolution yet.
+    // Wired directly in combat.ts resolveAttack's AC-reduction step.
   ),
   perk(
     "thief-smoke-bomb", "Thief", 2, "Smoke Bomb",
-    "Flee always succeeds if HP is below 30%.",
+    "Flee always succeeds if HP is below 30%. (Not yet implemented — v1.1.)",
     [], {}, ["utility", "passive"]
     // TODO(v1.1): conditional flee override not wired in yet.
   ),
@@ -227,11 +226,12 @@ const THIEF_PERKS: PerkDef[] = [
     "thief-assassin", "Thief", 3, "Assassin",
     "+25% crit chance vs enemies with status effects.",
     [], {}, ["offense", "passive"]
-    // TODO(v1.1): status-conditional crit bonus not wired in yet.
+    // Wired directly in combat.ts resolveAttack's crit step (allowed to
+    // exceed the normal 25% crit cap).
   ),
   perk(
     "thief-shadow-dance", "Thief", 3, "Shadow Dance",
-    "After using Hide twice in one combat, next Hide attack ignores 50% defense.",
+    "After using Hide twice in one combat, next Hide attack ignores 50% defense. (Not yet implemented — v1.1.)",
     ["OnHide"], {}, ["offense", "reactive"]
     // TODO(v1.1): no registered handler yet.
   ),
@@ -242,10 +242,11 @@ const THIEF_PERKS: PerkDef[] = [
   ),
   perk(
     "thief-swindler", "Thief", 4, "Swindler",
-    "35% chance to steal consumables/materials/rare drops on attack; shops 20% cheaper.",
+    "35% chance to steal on attack; shops 20% cheaper. (Not yet implemented — v1.1.)",
     ["OnAttackHit"], { chance: 0.35, shopDiscountPercent: 0.2 }, ["offense", "utility"]
-    // TODO(v1.1): the steal-on-attack side has no registered handler; only
-    // the shop discount applies.
+    // TODO(v1.1): the steal-on-attack side has no registered handler, and
+    // nothing in town-ui.ts reads shopDiscountPercent yet — both halves of
+    // this perk are inert.
   ),
 ];
 
@@ -256,31 +257,30 @@ const THIEF_PERKS: PerkDef[] = [
 const HALBERDIER_PERKS: PerkDef[] = [
   perk(
     "halberdier-reach-mastery", "Halberdier", 1, "Reach Mastery",
-    "Polearm attacks ignore 2 points of enemy AC.",
+    "Polearm attacks ignore 2 points of enemy AC. (Not yet implemented — v1.1.)",
     [], {}, ["offense", "passive"]
     // TODO(v1.1): AC-ignore not wired into attack resolution yet.
   ),
   perk(
     "halberdier-phalanx", "Halberdier", 1, "Phalanx",
     "+15% defense while in front row.",
-    [], { damageTakenMultiplier: 0.85 }, ["defense", "passive"]
+    [], { damageTakenMultiplier: 0.85, damageTakenFrontRowOnly: true }, ["defense", "passive"]
   ),
   perk(
     "halberdier-impale", "Halberdier", 2, "Impale",
     "25% chance attacks hit both front-row enemies.",
     ["OnAttackHit"], { chance: 0.25 }, ["offense", "aoe"]
-    // TODO(v1.1): no registered handler yet (see fighter-cleave for the pattern).
   ),
   perk(
     "halberdier-brace", "Halberdier", 2, "Brace",
-    "Defending reduces next hit by 60% instead of 30%.",
+    "Defending reduces next hit by 60% instead of 30%. (Not yet implemented — v1.1.)",
     [], {}, ["defense", "passive"]
     // TODO(v1.1): Defend's reduction is a fixed 50% in combat.ts; making this
     // configurable per-character is deferred to v1.1.
   ),
   perk(
     "halberdier-sweep", "Halberdier", 3, "Sweep",
-    "Back-row polearm attacks reach any row at full damage.",
+    "Back-row polearm attacks reach any row at full damage. (Not yet implemented — v1.1.)",
     [], {}, ["offense", "passive"]
     // TODO(v1.1): weapon-range override not wired into canReach/row-multiplier yet.
   ),
@@ -291,12 +291,12 @@ const HALBERDIER_PERKS: PerkDef[] = [
   ),
   perk(
     "halberdier-sentinel", "Halberdier", 4, "Sentinel",
-    "Enemies deal -20% damage while you are alive in the front row.",
-    [], { damageTakenMultiplier: 0.8 }, ["defense", "passive"]
+    "You take 20% less physical damage in the front row. (v1.1: extends to the whole party.)",
+    [], { damageTakenMultiplier: 0.8, damageTakenFrontRowOnly: true }, ["defense", "passive"]
   ),
   perk(
     "halberdier-warlord", "Halberdier", 4, "Warlord",
-    "Allies adjacent to you gain +20% damage.",
+    "Allies adjacent to you gain +20% damage. (Not yet implemented — v1.1.)",
     [], {}, ["support", "passive"]
     // TODO(v1.1): adjacency-based party buff not wired in yet.
   ),
@@ -321,17 +321,17 @@ const DUELIST_PERKS: PerkDef[] = [
     "duelist-riposte", "Duelist", 2, "Riposte",
     "When an enemy misses you, counter-attack for 75% damage.",
     ["OnAttackMiss"], {}, ["defense", "reactive"]
-    // TODO(v1.1): no registered handler yet.
+    // Wired directly in combat.ts's enemy-attack evade branch.
   ),
   perk(
     "duelist-perfect-timing", "Duelist", 2, "Perfect Timing",
-    "If your previous attack crit, your next attack cannot miss.",
+    "If your previous attack crit, your next attack cannot miss. (Not yet implemented — v1.1.)",
     ["OnCriticalHit"], {}, ["offense", "reactive"]
     // TODO(v1.1): no registered handler yet.
   ),
   perk(
     "duelist-lunge", "Duelist", 3, "Lunge",
-    "Short-range weapons reach any row without penalty.",
+    "Short-range weapons reach any row without penalty. (Not yet implemented — v1.1.)",
     [], {}, ["offense", "passive"]
     // TODO(v1.1): weapon-range override not wired into canReach yet.
   ),
@@ -347,7 +347,7 @@ const DUELIST_PERKS: PerkDef[] = [
   ),
   perk(
     "duelist-swashbuckler", "Duelist", 4, "Swashbuckler",
-    "Attacks have 40% chance to strike twice; +15% flee/evasion.",
+    "+15% flee/evasion. (40% double-strike not yet implemented — v1.1.)",
     ["OnAttackHit"], { chance: 0.4, evasionBonusPercent: 0.15, fleeBonusPercent: 0.15 },
     ["offense", "defense"]
     // TODO(v1.1): the double-strike side has no registered handler; the
@@ -372,7 +372,7 @@ const CRUSADER_PERKS: PerkDef[] = [
   ),
   perk(
     "crusader-holy-shield", "Crusader", 2, "Holy Shield",
-    "Defending grants +20% defense for 2 rounds.",
+    "Defending grants +20% defense for 2 rounds. (Not yet implemented — v1.1.)",
     ["OnDefend"], {}, ["defense", "reactive"]
     // TODO(v1.1): no registered handler yet.
   ),
@@ -383,25 +383,24 @@ const CRUSADER_PERKS: PerkDef[] = [
   ),
   perk(
     "crusader-retribution", "Crusader", 3, "Retribution",
-    "When an adjacent ally is attacked, attacker takes PIE holy damage.",
+    "When an adjacent ally is attacked, the attacker takes your PIE as holy damage.",
     ["AfterDamageTaken"], {}, ["defense", "reactive"]
-    // TODO(v1.1): no registered handler yet.
   ),
   perk(
     "crusader-judge", "Crusader", 3, "Judge",
-    "+35% damage vs undead/demon enemies.",
+    "+35% damage vs undead/demon enemies. (Not yet implemented — v1.1.)",
     [], {}, ["offense", "passive"]
     // TODO(v1.1): undead/demon-damage-bonus not wired into attack resolution yet.
   ),
   perk(
     "crusader-paladin", "Crusader", 4, "Paladin",
-    "Once per combat, survive a lethal blow at 1 HP; party takes 10% less damage while you live.",
+    "Once per combat, survive a lethal blow at 1 HP. (Party-wide 10% damage reduction is v1.1.)",
     ["AfterDamageTaken"], {}, ["defense", "support", "reactive"],
     { oncePerCombat: true, priority: "high" }
   ),
   perk(
     "crusader-dark-templar", "Crusader", 4, "Dark Templar",
-    "Melee attacks heal you for 15% of damage; +25% damage, but healing spells cost 30% more SP.",
+    "+25% melee damage, but healing spells cost 30% more SP. (15% lifesteal not yet implemented — v1.1.)",
     [], { meleeDamageMultiplier: 1.25, spCostMultiplier: 1.3, spCostAppliesTo: "heal" },
     ["offense", "passive"]
     // TODO(v1.1): the lifesteal side has no registered handler; the damage

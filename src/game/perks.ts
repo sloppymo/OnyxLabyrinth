@@ -14,9 +14,11 @@
  * at fixed points. Per-character/per-combat scratch state for these lives in
  * `CombatState.perkState` (character id -> arbitrary bag), reset each combat.
  *
- * v1.0 — Playtest Values: only 14 perks (marked below) have full reactive
- * hook behavior; the rest are numeric passives via `perkModifiers()` or,
- * where neither applies, documented no-op stubs (`// TODO(v1.1)`).
+ * v1.0 — Playtest Values: only the perks registered below have reactive
+ * hook behavior (plus a few wired directly in combat.ts: fighter-protector,
+ * thief-backstab, thief-assassin, duelist-riposte, priest-saint); the rest
+ * are numeric passives via `perkModifiers()` or, where neither applies,
+ * documented no-op stubs (`// TODO(v1.1)`) flagged in their UI description.
  */
 
 import type { Character, CharacterClass, Stats } from "./party";
@@ -68,8 +70,12 @@ export interface PerkEffect {
   spGrowthBonusPercent?: number;
   /** Multiplies melee physical damage dealt (>1 buffs, <1 nerfs). */
   meleeDamageMultiplier?: number;
-  /** Multiplies damage taken (>1 = more damage taken, <1 = less). */
+  /** Multiplies damage-spell power dealt (>1 buffs, <1 nerfs). */
+  spellDamageMultiplier?: number;
+  /** Multiplies physical damage taken (>1 = more damage taken, <1 = less). */
   damageTakenMultiplier?: number;
+  /** Restricts damageTakenMultiplier to when the character is in the front row. */
+  damageTakenFrontRowOnly?: boolean;
   /** Flat additive bonus to crit chance (0-1 scale). */
   critChanceBonus?: number;
   /** Multiplies crit damage (default 2x in combat.ts). */
@@ -188,7 +194,11 @@ export function applyPerkSelection(character: Character, perkId: string): Charac
 
 export interface PerkModifiers {
   meleeDamageMultiplier: number;
+  spellDamageMultiplier: number;
+  /** Physical damage-taken multiplier that always applies. */
   damageTakenMultiplier: number;
+  /** Physical damage-taken multiplier that applies only in the front row. */
+  damageTakenMultiplierFrontRow: number;
   critChanceBonus: number;
   critDamageMultiplier: number;
   evasionBonusPercent: number;
@@ -210,7 +220,9 @@ export interface PerkModifiers {
 export function perkModifiers(perks: PerkDef[], effStats: Stats): PerkModifiers {
   const out: PerkModifiers = {
     meleeDamageMultiplier: 1,
+    spellDamageMultiplier: 1,
     damageTakenMultiplier: 1,
+    damageTakenMultiplierFrontRow: 1,
     critChanceBonus: 0,
     critDamageMultiplier: 2,
     evasionBonusPercent: 0,
@@ -229,7 +241,14 @@ export function perkModifiers(perks: PerkDef[], effStats: Stats): PerkModifiers 
   for (const perk of perks) {
     const eff = perk.effect;
     if (eff.meleeDamageMultiplier) out.meleeDamageMultiplier *= eff.meleeDamageMultiplier;
-    if (eff.damageTakenMultiplier) out.damageTakenMultiplier *= eff.damageTakenMultiplier;
+    if (eff.spellDamageMultiplier) out.spellDamageMultiplier *= eff.spellDamageMultiplier;
+    if (eff.damageTakenMultiplier) {
+      if (eff.damageTakenFrontRowOnly) {
+        out.damageTakenMultiplierFrontRow *= eff.damageTakenMultiplier;
+      } else {
+        out.damageTakenMultiplier *= eff.damageTakenMultiplier;
+      }
+    }
     if (eff.critChanceBonus) out.critChanceBonus += eff.critChanceBonus;
     if (eff.critDamageMultiplier) out.critDamageMultiplier = Math.max(out.critDamageMultiplier, eff.critDamageMultiplier);
     if (eff.evasionBonusPercent) out.evasionBonusPercent += eff.evasionBonusPercent;
@@ -444,6 +463,18 @@ register("thief-shadow", "BeforeAttack", (ctx) => {
 
 // --- Halberdier ---------------------------------------------------------
 
+// halberdier-impale: 25% chance melee attacks also hit a second front-row
+// enemy at full damage (same shape as fighter-cleave — the attack sites
+// already provide the dealCleaveDamage callback).
+register("halberdier-impale", "OnAttackHit", (ctx) => {
+  const chance = 0.25;
+  const dealCleave = ctx.dealCleaveDamage as ((dmg: number) => void) | undefined;
+  const damage = ctx.damage as number | undefined;
+  if (dealCleave && damage !== undefined && ctx.rng() < chance) {
+    dealCleave(damage);
+  }
+});
+
 // halberdier-hold-the-line: when an ally directly behind this character is
 // attacked, counterattack the attacker for 50% damage.
 register("halberdier-hold-the-line", "AfterDamageTaken", (ctx) => {
@@ -477,9 +508,19 @@ register("duelist-momentum", "OnAttackMiss", (ctx) => {
 
 // --- Crusader -----------------------------------------------------------
 
+// crusader-retribution: when an adjacent ally is hit by an enemy attack, the
+// attacker takes the Crusader's effective PIE as holy damage. The damage
+// callback is provided by applyPartyDamage in combat.ts.
+register("crusader-retribution", "AfterDamageTaken", (ctx) => {
+  const isAdjacentAlly = ctx.isAdjacentAlly as boolean | undefined;
+  if (!isAdjacentAlly) return;
+  const retaliate = ctx.retaliateHolyDamage as (() => void) | undefined;
+  if (retaliate) retaliate();
+});
+
 // crusader-paladin: once per combat, survive a lethal blow at 1 HP. The
-// party-wide 10% damage reduction is intended to apply via
-// damageTakenMultiplier but is not yet wired into combat.ts (TODO(v1.1)).
+// party-wide 10% damage reduction is still TODO(v1.1) — damageTakenMultiplier
+// only applies to the perk holder, not the whole party.
 register("crusader-paladin", "OnAllyWouldDie", (ctx) => {
   const state = ctx.state as { used?: boolean };
   if (state.used) return;
