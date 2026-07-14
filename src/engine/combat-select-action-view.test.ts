@@ -9,6 +9,7 @@ import {
   type CombatWindowsView,
   type CombatWindowsHandlers,
 } from "./combat-select-action-view";
+import { buildPalette } from "./combat-action-palette";
 import { createCombatState, type CombatState, type EnemyInstance } from "../game/combat";
 import { createCharacter, type Character } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
@@ -42,6 +43,7 @@ function noopHandlers(): CombatWindowsHandlers {
   return {
     onMenuHover: () => {},
     onMenuConfirm: () => {},
+    onPaletteConfirm: () => {},
     onSelectionHover: () => {},
     onSelectionConfirm: () => {},
   };
@@ -51,8 +53,9 @@ function baseView(state: CombatState): CombatWindowsView {
   return {
     state,
     currentCharacterId: "c0",
-    menuMode: "menu",
-    menuEntries: menuEntriesForCharacter(state.party[0]),
+    menuMode: "palette",
+    palette: null,
+    menuEntries: [],
     menuIndex: 0,
     selectionTitle: "",
     selectionEntries: [],
@@ -139,12 +142,38 @@ describe("renderCombatWindows", () => {
   it("marks the selected menu row and highlights the current actor", () => {
     const state = makeState([makeEnemy("rat-0")]);
     const view = baseView(state);
+    view.menuMode = "menu";
+    view.menuEntries = menuEntriesForCharacter(state.party[0]);
     view.menuIndex = 1;
     renderCombatWindows(container, view, noopHandlers());
     const items = container.querySelectorAll(".ff6-menu .ff6-menu-item");
     expect(items[1].classList.contains("selected")).toBe(true);
     const current = container.querySelector(".ff6-party-row.current .ff6-p-name");
     expect(current?.textContent).toBe("Alice");
+  });
+
+  it("renders the controller palette with four face slots", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    const fighter = state.party[0];
+    const view = baseView(state);
+    view.menuMode = "palette";
+    view.palette = buildPalette(fighter, [], []);
+    renderCombatWindows(container, view, noopHandlers());
+    expect(container.querySelectorAll(".ff6-palette-slot")).toHaveLength(4);
+    expect(container.textContent).toContain("Atk");
+    expect(container.textContent).toContain("Magic");
+    const disabled = container.querySelector(".ff6-palette-slot.disabled");
+    expect(disabled?.textContent).toContain("Magic");
+  });
+
+  it("highlights an inspected party member in the roster", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    const view = baseView(state);
+    view.currentCharacterId = "c0";
+    view.inspectCharacterId = "c1";
+    renderCombatWindows(container, view, noopHandlers());
+    expect(container.querySelector(".ff6-party-row.inspect")).not.toBeNull();
+    expect(container.querySelector(".ff6-party-inspect")?.textContent).toContain("Bob");
   });
 
   it("groups duplicate enemies with a count", () => {
@@ -218,8 +247,10 @@ describe("renderCombatWindows", () => {
 
   it("uses the derived hint row for the action menu", () => {
     const state = makeState([makeEnemy("rat-0")]);
-    renderCombatWindows(container, baseView(state), noopHandlers());
-    // Party member 0 is a Fighter — technique users get the T shortcut.
+    const view = baseView(state);
+    view.menuMode = "menu";
+    view.menuEntries = menuEntriesForCharacter(state.party[0]);
+    renderCombatWindows(container, view, noopHandlers());
     expect(container.querySelector(".ff6-hint-row")?.textContent).toBe(
       "↑↓ Enter · A/T/M/D/I/R"
     );
@@ -232,7 +263,10 @@ describe("renderCombatWindows", () => {
     handlers.onMenuConfirm = (i) => {
       confirmed = i;
     };
-    renderCombatWindows(container, baseView(state), handlers);
+    const view = baseView(state);
+    view.menuMode = "menu";
+    view.menuEntries = menuEntriesForCharacter(state.party[0]);
+    renderCombatWindows(container, view, handlers);
     const rows = container.querySelectorAll<HTMLElement>(".ff6-menu .ff6-menu-item");
     rows[2].click();
     expect(confirmed).toBe(2);

@@ -2,7 +2,7 @@
 
 Use this list before acting on playtest, balance, combat UX, or perk work. Prefer these over older one-off prompts when they conflict.
 
-**Last refreshed:** 2026-07-14 (encounter density + Arena feel; prior: combat-flow A–E)
+**Last refreshed:** 2026-07-14 (controller-first combat palette; prior: encounter density)
 
 | Doc | Role | Status |
 |-----|------|--------|
@@ -16,6 +16,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 | [`FOLLOWUP-CASTER-ENDGAME-PROMPT.md`](FOLLOWUP-CASTER-ENDGAME-PROMPT.md) | T6–T7 caster verbs | **Done 2026-07-13 (Path A)** |
 | [`FOLLOWUP-COMBAT-DEPTH-PROMPT.md`](FOLLOWUP-COMBAT-DEPTH-PROMPT.md) | Status/flee + wireable perks + DoT/regen (art only if needed) | **Done 2026-07-13** (see work-order item 5 for what shipped) |
 | [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md) | Combat tempo: target defaults, playback skip/speed, sticky Repeat | **Done 2026-07-13** (A–C + D1/D2/D3 + E party Auto shipped) |
+| `docs/superpowers/specs/2026-07-14-controller-first-combat-design.md` | Controller-first action palette (face buttons, gamepad) | **Done 2026-07-14** — palette phase, `controller-input`, `combat-action-palette`; keyboard fallback preserved |
 | Design canvas (IDE) | `onyxlabyrinth-design-analysis.canvas.tsx` | Mechanics & balance judgment (2026-07-13) |
 
 ## Specs under `docs/superpowers/specs/`
@@ -50,3 +51,4 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
    - **Remaining honest stubs:** 10 `TODO(v1.1)` markers in `data/perks.ts` (resistance/reflect/silence-immunity/steal-economy/party-wide-aura shapes that need new systems).
    - **No new art generated** — burn reuses the existing `fire_explosion` burst (orange-tinted `STATUS_STYLES.burn`); regen reuses the heal family. Phase D criteria never triggered.
 6. **Combat flow / tempo.** ~~Prefer [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md)~~ **Done 2026-07-13:** A–C tempo UX; Phase D: `incapacitated` event banner, SP/Rage menu line, hit recoil+flash; Phase E: `Q` party Auto (last command, never Flee/Item; Attack/Defend fallback).
+7. **Controller-first combat.** ~~`2026-07-14-controller-first-combat-design.md`~~ **Done 2026-07-14:** horizontal A/B/X/Y palette, `handleInput` + Gamepad polling, hold-B flee, LB/RB target cycle, LT/RT party inspect, legacy `t/m/i/r` shortcuts + `Z` Repeat.

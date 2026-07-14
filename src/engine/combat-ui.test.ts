@@ -42,6 +42,7 @@ HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
   arc: vi.fn(),
   rect: vi.fn(),
   clip: vi.fn(),
+  quadraticCurveTo: vi.fn(),
   setTransform: vi.fn(),
   createLinearGradient: vi.fn(() => ({
     addColorStop: vi.fn(),
@@ -111,34 +112,35 @@ describe("CombatController input routing", () => {
     ["selectSpell"],
     ["selectItem"],
     ["selectTechnique"],
-  ] as const)("routes %s keys to handleSelectionKey", (phase) => {
+  ] as const)("routes %s keys via controller input", (phase) => {
     const controller = freshController();
     const c = setSelectionPhase(controller, phase);
-    const spy = vi.spyOn(controller as any, "handleSelectionKey");
+    const before = c.selectionIndex;
 
     controller.handleKey("ArrowDown");
 
-    expect(spy).toHaveBeenCalledWith("ArrowDown");
+    expect(c.selectionIndex).toBe((before + 1) % c.selectionEntries.length);
     controller.destroy();
   });
 
-  it("opens technique selection from the action menu", () => {
+  it("opens technique selection from the action palette", () => {
     const controller = freshController();
     const c = controller as any;
-    c.phase = "menu";
+    c.phase = "palette";
     c.currentActorId = "c0";
-    c.menuEntries = [
-      { kind: "attack", label: "Attack" },
-      { kind: "technique", label: "Tech" },
-      { kind: "cast", label: "Magic" },
-      { kind: "defend", label: "Defend" },
-      { kind: "item", label: "Item" },
-      { kind: "flee", label: "Run" },
-    ];
-    c.menuIndex = 1; // Technique
+    c.palette = {
+      slots: [
+        { kind: "attack" },
+        { kind: "defend" },
+        { kind: "cast", disabled: true },
+        { kind: "skill", disabled: false },
+      ],
+      itemButton: "select",
+      autoButton: "start",
+    };
     c.pending = null;
 
-    controller.handleKey("Enter");
+    controller.handleInput({ kind: "press", button: "y" });
 
     expect(c.phase).toBe("selectTechnique");
     expect(c.selectionTitle).toBe("Technique");
@@ -152,7 +154,7 @@ describe("CombatController input routing", () => {
 
     controller.handleKey("Escape");
 
-    expect(c.phase).toBe("menu");
+    expect(c.phase).toBe("palette");
     expect(c.pending).toBeNull();
     controller.destroy();
   });
@@ -160,17 +162,19 @@ describe("CombatController input routing", () => {
   it("auto-confirms Attack when exactly one living enemy", () => {
     const controller = freshController();
     const c = controller as any;
-    c.phase = "menu";
+    c.phase = "palette";
     c.currentActorId = "c0";
     c.scene.activeActorId = "c0";
-    c.menuEntries = [
-      { kind: "attack", label: "Attack" },
-      { kind: "repeat", label: "Repeat", disabled: true },
-      { kind: "technique", label: "Tech" },
-      { kind: "defend", label: "Defend" },
-      { kind: "flee", label: "Run" },
-    ];
-    c.menuIndex = 0;
+    c.palette = {
+      slots: [
+        { kind: "attack" },
+        { kind: "defend" },
+        { kind: "cast", disabled: true },
+        { kind: "skill", disabled: false },
+      ],
+      itemButton: "select",
+      autoButton: "start",
+    };
 
     controller.handleKey("a");
 
@@ -186,17 +190,13 @@ describe("CombatController input routing", () => {
   it("Repeat re-fires sticky Attack on the same target", () => {
     const controller = freshController();
     const c = controller as any;
-    c.phase = "menu";
+    c.phase = "palette";
     c.currentActorId = "c0";
     c.stickyByActor.set("c0", {
       kind: "attack",
       actorId: "c0",
       targetId: "rat-0",
     });
-    c.menuEntries = [
-      { kind: "attack", label: "Attack" },
-      { kind: "repeat", label: "Repeat" },
-    ];
 
     controller.handleKey("z");
 
@@ -208,21 +208,17 @@ describe("CombatController input routing", () => {
   it("Repeat flashes when sticky target is dead", () => {
     const controller = freshController();
     const c = controller as any;
-    c.phase = "menu";
+    c.phase = "palette";
     c.currentActorId = "c0";
     c.stickyByActor.set("c0", {
       kind: "attack",
       actorId: "c0",
       targetId: "gone",
     });
-    c.menuEntries = [
-      { kind: "attack", label: "Attack" },
-      { kind: "repeat", label: "Repeat" },
-    ];
 
     controller.handleKey("z");
 
-    expect(c.phase).toBe("menu");
+    expect(c.phase).toBe("palette");
     expect(c.flash).toBe("No target!");
     controller.destroy();
   });
@@ -244,7 +240,7 @@ describe("CombatController input routing", () => {
     state.enemies.front[0].currentHp = 2;
     const controller = new CombatControllerCtor(state, { onEnd: () => {} });
     const c = controller as any;
-    c.phase = "menu";
+    c.phase = "palette";
     c.currentActorId = "c0";
     c.lastHitEnemyId = "rat-1";
     c.pending = { kind: "attack" };
@@ -275,8 +271,18 @@ describe("CombatController input routing", () => {
   it("Q toggles party Auto and Q again disables without fleeing", () => {
     const controller = freshController();
     const c = controller as any;
-    c.phase = "menu";
+    c.phase = "palette";
     c.currentActorId = "c0";
+    c.palette = {
+      slots: [
+        { kind: "attack" },
+        { kind: "defend" },
+        { kind: "cast", disabled: true },
+        { kind: "skill", disabled: false },
+      ],
+      itemButton: "select",
+      autoButton: "start",
+    };
     c.lastCommandByActor.set("c0", {
       kind: "attack",
       targetId: "rat-0",
@@ -284,11 +290,8 @@ describe("CombatController input routing", () => {
 
     controller.handleKey("q");
     expect(c.partyAuto).toBe(true);
-    // Turning Auto on mid-menu should resolve Attack and enter playback
     expect(c.phase).toBe("playback");
 
-    // Simulate returning to menu with Auto still on is covered by tryPartyAuto;
-    // toggle off during playback must not end combat.
     c.phase = "playback";
     controller.handleKey("q");
     expect(c.partyAuto).toBe(false);
@@ -299,14 +302,66 @@ describe("CombatController input routing", () => {
   it("party Auto never stores or fires Flee", () => {
     const controller = freshController();
     const c = controller as any;
-    c.phase = "menu";
+    c.phase = "palette";
     c.currentActorId = "c0";
-    c.menuEntries = [
-      { kind: "attack", label: "Attack" },
-      { kind: "flee", label: "Run" },
-    ];
     c.chooseAction("flee");
     expect(c.lastCommandByActor.has("c0")).toBe(false);
+    controller.destroy();
+  });
+
+  it("LT/RT cycles party inspect without changing the actor", () => {
+    const controller = freshController();
+    const c = controller as any;
+    c.phase = "palette";
+    c.currentActorId = "c0";
+    c.palette = {
+      slots: [
+        { kind: "attack" },
+        { kind: "defend" },
+        { kind: "cast", disabled: true },
+        { kind: "skill", disabled: false },
+      ],
+      itemButton: "select",
+      autoButton: "start",
+    };
+
+    controller.handleInput({ kind: "press", button: "rt" });
+    expect(c.inspectCharacterId).toBe("c1");
+    expect(c.currentActorId).toBe("c0");
+
+    controller.handleInput({ kind: "press", button: "lt" });
+    expect(c.inspectCharacterId).toBeNull();
+
+    controller.destroy();
+  });
+
+  it("Mage palette disables Magic when silenced", () => {
+    const party = [
+      createCharacter("c0", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    party[0].knownSpellIds = ["mage-spark"];
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
+    state.silencedThisRound = ["c0"];
+    const controller = new CombatControllerCtor(state, { onEnd: () => {} });
+    const c = controller as any;
+    c.state.silencedThisRound = ["c0"];
+    c.phase = "palette";
+    c.currentActorId = "c0";
+    c.palette = {
+      slots: [
+        { kind: "attack" },
+        { kind: "defend" },
+        { kind: "cast", disabled: true },
+        { kind: "skill", disabled: true },
+      ],
+      itemButton: "select",
+      autoButton: "start",
+    };
+
+    controller.handleInput({ kind: "press", button: "x" });
+
+    expect(c.flash).toBe("Silenced!");
+    expect(c.phase).toBe("palette");
     controller.destroy();
   });
 });

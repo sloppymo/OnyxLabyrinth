@@ -38,6 +38,10 @@ import {
   compassForFacing,
 } from "./engine/shell";
 import { CombatController } from "./engine/combat-ui";
+import {
+  createControllerInput,
+  type ControllerInputHandle,
+} from "./engine/controller-input";
 import { CampController } from "./engine/camp-ui";
 import { SaveController } from "./engine/save-ui";
 import { TownController } from "./engine/town-ui";
@@ -281,6 +285,7 @@ function maybeTriggerEncounter(): boolean {
 
 // --- Combat mode ---------------------------------------------------------
 let combatController: CombatController | null = null;
+let combatInput: ControllerInputHandle | null = null;
 
 // When an encounter starts mid-keydown (the same forward-step keypress that
 // triggers maybeTriggerEncounter flips state.mode to "combat" synchronously),
@@ -313,6 +318,13 @@ async function startCombat(combat: CombatState): Promise<void> {
     },
     backdrop: bd,
   });
+
+  combatInput = createControllerInput(
+    (event) => {
+      combatController?.handleInput(event);
+    },
+    { attachListeners: false }
+  );
 }
 
 function endCombat(result: CombatState): void {
@@ -393,6 +405,8 @@ function endCombat(result: CombatState): void {
   }
 
   state.combat = undefined;
+  combatInput?.destroy();
+  combatInput = null;
   combatController = null;
 
   if (inArena) {
@@ -718,21 +732,52 @@ window.addEventListener("beforeunload", () => {
 
 // Combat key handler — separate listener that only fires in combat mode.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "combat" || !combatController) return;
+  if (state.mode !== "combat" || !combatController || !combatInput) return;
   if (suppressNextCombatKey) {
-    // This is the same keydown that just triggered the encounter transition
-    // (see startCombat) — don't let it also drive the fresh combat menu.
     suppressNextCombatKey = false;
     e.preventDefault();
     return;
   }
-  combatController.handleKey(e.key, e);
+
+  // Playback/meta keys and Repeat (not face-button mapped).
+  const phase = combatController.getPhase();
+  if (
+    phase === "playback" &&
+    (e.key === "Shift" || e.key === "Tab" || e.key === "Escape")
+  ) {
+    combatController.handleKey(e.key, e);
+    e.preventDefault();
+    return;
+  }
+  if (e.key === "q" || e.key === "Q" || e.key === "z" || e.key === ".") {
+    combatController.handleKey(e.key, e);
+    e.preventDefault();
+    return;
+  }
+  if (phase === "palette") {
+    const lower = e.key.toLowerCase();
+    if ("tcmifr".includes(lower)) {
+      combatController.handleKey(e.key, e);
+      e.preventDefault();
+      return;
+    }
+  }
+  if (phase === "result" && (e.key === "Enter" || e.key === " ")) {
+    combatController.handleKey(e.key, e);
+    e.preventDefault();
+    return;
+  }
+
+  combatInput.handleKeyboardDown(e);
   e.preventDefault();
 });
 
 window.addEventListener("keyup", (e: KeyboardEvent) => {
-  if (state.mode !== "combat" || !combatController) return;
-  combatController.handleKeyUp(e.key);
+  if (state.mode !== "combat" || !combatController || !combatInput) return;
+  if (e.key === "Shift") {
+    combatController.handleKeyUp(e.key);
+  }
+  combatInput.handleKeyboardUp(e);
 });
 
 // Camp key handler — dismisses the camp screen after the animation finishes.
