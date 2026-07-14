@@ -746,6 +746,9 @@ const STATUS_STYLES: Record<string, EffectStyle> = {
   poison: { color: "#c080ff", burst: "dispel_sparks" },
   paralysis: { color: "#c8c4b8", burst: "free_stunburst", burstScale: 1.2 },
   blind: { color: "#c8c4b8", burst: "mp_spark" },
+  // Burn DoT (Meteor Swarm followup) — reuses the existing fire burst so the
+  // "is burning!" beat reads as fire, not the generic purple status sparks.
+  burn: { color: "#ff9a50", burst: "fire_explosion", burstScale: 1.1 },
 };
 
 export function resolveEffectStyle(
@@ -1426,8 +1429,9 @@ export function playTurn(
       }
 
       case "statusTick": {
+        const tickColor = evt.status === "burn" ? "#ff9a50" : COLORS.poison;
         steps.push(
-          ...impactSteps(t, evt.targetId, `${evt.damage}`, COLORS.poison, w, h, false, false, undefined, undefined, evt.damage)
+          ...impactSteps(t, evt.targetId, `${evt.damage}`, tickColor, w, h, false, false, undefined, undefined, evt.damage)
         );
         t += 250;
         break;

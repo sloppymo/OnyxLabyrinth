@@ -1164,6 +1164,25 @@ canvas#map-canvas {
   flex-shrink: 0;
 }
 
+/* Compact status tags (PSN / PAR / SLP / BLD / BRN / RGN) rendered inside
+   the name span of enemy and party rows. */
+.ff6-status-tag {
+  margin-left: 4px;
+  padding: 0 2px;
+  font-size: calc(var(--fs-small) * 0.85);
+  letter-spacing: 0.04em;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.35);
+  vertical-align: 1px;
+}
+
+.ff6-status-tag.st-poison { color: #c080ff; }
+.ff6-status-tag.st-paralysis { color: #e8e0c0; }
+.ff6-status-tag.st-sleep { color: #8090ff; }
+.ff6-status-tag.st-blind { color: #c8c4b8; }
+.ff6-status-tag.st-burn { color: #ff9a50; }
+.ff6-status-tag.st-regen { color: #6fe06f; }
+
 /* Summoned allies (CONVOCIX/MAWCALLIX) — cyan to match their glow on the scene. */
 .ff6-enemy-row.summon,
 .ff6-party-row.summon .ff6-p-name,

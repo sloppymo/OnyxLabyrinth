@@ -679,3 +679,178 @@ describe("audit fixes: unexercised combat paths", () => {
     }
   });
 });
+
+// --- Spell DoT / regen followups (Phase C) -----------------------------------
+
+describe("spell DoT followups", () => {
+  const SCORCH = {
+    id: "scorch",
+    name: "Scorch",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: {
+      kind: "damage",
+      element: "fire",
+      power: 10,
+      followup: { kind: "dot", element: "fire", power: 5, duration: 2 },
+    },
+    description: "Test burn.",
+  } as const;
+
+  function castScorch(enemyOverrides: Partial<EnemyDef> = {}): CombatState {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, ...enemyOverrides })]);
+    const mage = state.party.find((c) => c.class === "Mage")!;
+    state.spells["scorch"] = SCORCH;
+    mage.knownSpellIds = ["scorch"];
+    mage.sp = 99;
+    return resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: mage.id, spellId: "scorch", targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+  }
+
+  it("cast records the DoT and emits a burn statusInflicted event", () => {
+    const s = castScorch();
+    expect(s.enemyDots["rat-0"]).toHaveLength(1);
+    expect(s.enemyDots["rat-0"][0]).toMatchObject({ element: "fire", power: 5, duration: 2 });
+    const burned = s.events.find(
+      (e) => e?.type === "spellEffect" && e.statusInflicted === "burn"
+    );
+    expect(burned).toBeDefined();
+  });
+
+  it("ticks at end of round, emits statusTick, and expires after its duration", () => {
+    let s = castScorch();
+    const hpAfterCast = s.enemies.front[0].currentHp;
+
+    s = endRound(s, seqRng([0.5]));
+    expect(s.enemies.front[0].currentHp).toBe(hpAfterCast - 5);
+    expect(s.enemyDots["rat-0"][0].duration).toBe(1);
+    const tick = s.events.find((e) => e?.type === "statusTick" && e.status === "burn");
+    expect(tick).toBeDefined();
+    if (tick?.type === "statusTick") expect(tick.damage).toBe(5);
+
+    s = endRound(s, seqRng([0.5]));
+    expect(s.enemies.front[0].currentHp).toBe(hpAfterCast - 10);
+    expect(s.enemyDots["rat-0"]).toBeUndefined();
+    const ended = s.events.find((e) => e?.type === "statusEnd" && e.status === "burn");
+    expect(ended).toBeDefined();
+
+    const hpBefore = s.enemies.front[0].currentHp;
+    s = endRound(s, seqRng([0.5]));
+    expect(s.enemies.front[0].currentHp).toBe(hpBefore);
+  });
+
+  it("respects elemental affinity on ticks", () => {
+    let s = castScorch({ special: [{ kind: "weakElement", element: "fire" }] });
+    const hpAfterCast = s.enemies.front[0].currentHp;
+    s = endRound(s, seqRng([0.5]));
+    // 5 × 1.5 = 7.5 → 8.
+    expect(s.enemies.front[0].currentHp).toBe(hpAfterCast - 8);
+  });
+
+  it("recasting refreshes the existing DoT instead of stacking it", () => {
+    let s = castScorch();
+    s = endRound(s, seqRng([0.5])); // duration now 1
+    const mage = s.party.find((c) => c.class === "Mage")!;
+    s = resolvePlayerTurn(
+      s,
+      { kind: "cast", actorId: mage.id, spellId: "scorch", targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+    expect(s.enemyDots["rat-0"]).toHaveLength(1);
+    expect(s.enemyDots["rat-0"][0].duration).toBe(2);
+  });
+
+  it("real data: mage-meteor-swarm carries a fire DoT followup", () => {
+    const meteor = SPELLS_BY_ID["mage-meteor-swarm"];
+    expect(meteor.effect.kind).toBe("damage");
+    if (meteor.effect.kind === "damage") {
+      expect(meteor.effect.followup).toMatchObject({ kind: "dot", element: "fire" });
+    }
+  });
+});
+
+describe("spell regen followups", () => {
+  const KNIT = {
+    id: "knit",
+    name: "Knit",
+    class: "Priest",
+    tier: 1,
+    spCost: 1,
+    target: "singleAlly",
+    effect: {
+      kind: "heal",
+      power: 5,
+      followup: { kind: "regen", power: 4, duration: 2 },
+    },
+    description: "Test regen.",
+  } as const;
+
+  function castKnit(): CombatState {
+    const state = makeState([makeEnemy("rat-0")], ["Priest", "Mage"]);
+    const priest = state.party.find((c) => c.class === "Priest")!;
+    priest.maxHp = 100;
+    priest.hp = 10;
+    state.spells["knit"] = KNIT;
+    priest.knownSpellIds = ["knit"];
+    priest.sp = 99;
+    return resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: priest.id, spellId: "knit", targetAllyId: priest.id },
+      seqRng([0.5])
+    );
+  }
+
+  it("cast records the regen buff and emits a buff event", () => {
+    const s = castKnit();
+    const priest = s.party.find((c) => c.class === "Priest")!;
+    expect(s.regenBuffs[priest.id]).toMatchObject({ power: 4, duration: 2 });
+    const buff = s.events.find(
+      (e) => e?.type === "spellEffect" && e.spellId === "knit" && e.isBuff
+    );
+    expect(buff).toBeDefined();
+  });
+
+  it("heals each end of round and expires after its duration", () => {
+    let s = castKnit();
+    const priest = () => s.party.find((c) => c.class === "Priest")!;
+    const hpAfterCast = priest().hp;
+
+    s = endRound(s, seqRng([0.5]));
+    expect(priest().hp).toBe(hpAfterCast + 4);
+    expect(s.regenBuffs[priest().id].duration).toBe(1);
+
+    s = endRound(s, seqRng([0.5]));
+    expect(priest().hp).toBe(hpAfterCast + 8);
+    expect(s.regenBuffs[priest().id]).toBeUndefined();
+
+    const hpBefore = priest().hp;
+    s = endRound(s, seqRng([0.5]));
+    expect(priest().hp).toBe(hpBefore);
+  });
+
+  it("a KO'd character loses the regen buff without healing", () => {
+    let s = castKnit();
+    const priest = s.party.find((c) => c.class === "Priest")!;
+    priest.hp = 0;
+    priest.status.push("knockedOut");
+    s = endRound(s, seqRng([0.5]));
+    expect(s.regenBuffs[priest.id]).toBeUndefined();
+    expect(s.party.find((c) => c.class === "Priest")!.hp).toBe(0);
+  });
+
+  it("real data: priest-mass-regenerate and priest-regenerate carry regen followups", () => {
+    for (const id of ["priest-mass-regenerate", "priest-regenerate"]) {
+      const spell = SPELLS_BY_ID[id];
+      expect(spell, id).toBeDefined();
+      expect(spell.effect.kind).toBe("heal");
+      if (spell.effect.kind === "heal") {
+        expect(spell.effect.followup?.kind).toBe("regen");
+      }
+    }
+  });
+});

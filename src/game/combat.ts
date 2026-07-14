@@ -31,6 +31,7 @@ import {
   perkModifiers,
   dispatchHook,
   freshPerkState,
+  type PerkModifiers,
 } from "./perks";
 import type { EnemyAbilityDef, AbilityCondition } from "../data/enemy-abilities";
 import { enemyAbilityById } from "../data/enemy-abilities";
@@ -38,6 +39,21 @@ import { enemyAbilityById } from "../data/enemy-abilities";
 /** Effective stats for a combatant, reading their loadout and chosen perks. */
 function effStatsFor(s: CombatState, c: Character): Stats {
   return effectiveStats(c, s.loadout[c.id], perksForCharacter(c));
+}
+
+/**
+ * Perk damage multiplier against tagged enemies (Turn Undead, Judge,
+ * Inquisitor). Reads the target's `special` tags; 1 when no tag matches.
+ */
+function tagDamageMultiplier(mods: PerkModifiers, target: EnemyInstance): number {
+  let mult = 1;
+  if (mods.undeadDamageMultiplier !== 1 && target.special.some((sp) => sp.kind === "undead")) {
+    mult *= mods.undeadDamageMultiplier;
+  }
+  if (mods.demonDamageMultiplier !== 1 && target.special.some((sp) => sp.kind === "demon")) {
+    mult *= mods.demonDamageMultiplier;
+  }
+  return mult;
 }
 
 // Re-export types that the combat UI / main.ts needs
@@ -470,6 +486,21 @@ export interface CombatState {
    * Set by Caltrops (slow); reduces enemy AGI for several rounds.
    */
   enemyAgiDebuffs: Record<string, { penalty: number; duration: number }>;
+  /**
+   * Active damage-over-time effects on enemies (instance id -> list), from
+   * spell followups (e.g. Meteor Swarm burn). Ticked in end-of-round status
+   * processing; entries expire when duration reaches 0.
+   */
+  enemyDots: Record<
+    string,
+    { element: DamageElement; power: number; duration: number; spellId: string }[]
+  >;
+  /**
+   * Active regen buffs on party members (char id -> entry), from spell
+   * followups (e.g. Mass Regenerate). Ticked in end-of-round status
+   * processing; recasting refreshes the entry.
+   */
+  regenBuffs: Record<string, { power: number; duration: number; spellId: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -528,6 +559,8 @@ export function createCombatState(
     damageBuffs: {},
     enemyArmorDebuffs: {},
     enemyAgiDebuffs: {},
+    enemyDots: {},
+    regenBuffs: {},
   };
 }
 
@@ -677,7 +710,9 @@ export function resolveCombatRound(
     if (fleer) {
       const eff = effStatsFor(s, fleer);
       const mods = perkModifiers(perksForCharacter(fleer), eff);
-      success = attemptFlee(s.isBoss, eff.agi, mods.fleeBonusPercent, rng);
+      success = attemptFlee(
+        s.isBoss, eff.agi, mods.fleeBonusPercent, rng, smokeBombFleeActive(s)
+      );
     }
     if (success) {
       emit("The party flees from combat!", { type: "flee", success: true });
@@ -883,7 +918,9 @@ export function resolvePlayerTurn(
   if (action.kind === "flee") {
     const eff = effStatsFor(s, actor);
     const mods = perkModifiers(perksForCharacter(actor), eff);
-    const success = attemptFlee(s.isBoss, eff.agi, mods.fleeBonusPercent, rng);
+    const success = attemptFlee(
+      s.isBoss, eff.agi, mods.fleeBonusPercent, rng, smokeBombFleeActive(s)
+    );
     if (success) {
       emit("The party flees from combat!", { type: "flee", success: true });
       s.summonedAllies = [];
@@ -1552,9 +1589,10 @@ function resolveAttack(
     return;
   }
 
-  // BeforeAttack hooks (e.g. Ambusher, Shadow, Momentum).
+  // BeforeAttack hooks (e.g. Ambusher, Shadow, Momentum, Perfect Timing).
   let damageMultiplier = 1;
   let forcedCrit = false;
+  let forcedHit = false;
   dispatchHook("BeforeAttack", perksForCharacter(actor), {
     state: s.perkState[actor.id],
     rng,
@@ -1565,12 +1603,15 @@ function resolveAttack(
     forceCrit: () => {
       forcedCrit = true;
     },
+    guaranteeHit: () => {
+      forcedHit = true;
+    },
     isFromHide: actor.status.includes("hidden"),
     round: s.round,
   });
 
-  // Evasive enemies have a dodge chance.
-  if (target.special.some((sp) => sp.kind === "evasive")) {
+  // Evasive enemies have a dodge chance (skipped by guaranteed hits).
+  if (!forcedHit && target.special.some((sp) => sp.kind === "evasive")) {
     if (rng() < 0.2) {
       emit(
         `${target.name} evades ${actor.name}'s attack!`,
@@ -1585,7 +1626,7 @@ function resolveAttack(
   }
 
   // Flying enemies are hard to reach with true melee weapons (15% miss for close range).
-  if (target.special.some((sp) => sp.kind === "flying") && weaponRange === "close") {
+  if (!forcedHit && target.special.some((sp) => sp.kind === "flying") && weaponRange === "close") {
     if (rng() < 0.15) {
       emit(
         `${target.name} flits away from ${actor.name}'s swing!`,
@@ -1599,8 +1640,8 @@ function resolveAttack(
     }
   }
 
-  // Blind: 50% hit rate (Section 7.5).
-  if (actor.status.includes("blind")) {
+  // Blind: 50% hit rate (Section 7.5). Guaranteed hits ignore it.
+  if (!forcedHit && actor.status.includes("blind")) {
     if (rng() >= 0.5) {
       emit(
         `${actor.name} is blind and misses ${target.name}.`,
@@ -1630,6 +1671,9 @@ function resolveAttack(
     Math.round(base * rowMultiplier * variance * mods.meleeDamageMultiplier)
   ) + mods.meleeBonusDamage;
 
+  // Undead / demon damage bonuses (Turn Undead, Judge, Inquisitor).
+  damageMultiplier *= tagDamageMultiplier(mods, target);
+
   // Apply reactive multipliers from BeforeAttack hooks before AC reduction.
   damage = Math.max(1, Math.round(damage * damageMultiplier));
 
@@ -1648,19 +1692,24 @@ function resolveAttack(
     damage = Math.max(1, Math.round(damage * mods.critDamageMultiplier));
     crit = true;
     log(`${actor.name} lands a critical hit!`);
+    // OnCriticalHit hooks (e.g. Perfect Timing arming its next attack).
+    dispatchHook("OnCriticalHit", perksForCharacter(actor), {
+      state: s.perkState[actor.id],
+      rng,
+      targetId: target.instanceId,
+    });
   }
 
   // Enemy AC reduces physical damage (with Disarm debuffs applied).
   // thief-backstab: attacks made from the back row ignore 25% of enemy AC.
+  // halberdier-reach-mastery: flat AC points ignored (acFlatIgnore).
   const acIgnoreFactor =
     charRow(actor) === "back" &&
     perksForCharacter(actor).some((p) => p.id === "thief-backstab")
       ? 0.75
       : 1;
-  damage = Math.max(
-    1,
-    damage - Math.round(effectiveEnemyAc(s, target) * acIgnoreFactor)
-  );
+  const attackAc = Math.max(0, effectiveEnemyAc(s, target) - mods.acFlatIgnore);
+  damage = Math.max(1, damage - Math.round(attackAc * acIgnoreFactor));
 
   // highDefense enemies (Animated Armor) halve physical damage.
   if (target.special.some((sp) => sp.kind === "highDefense")) {
@@ -1683,11 +1732,35 @@ function resolveAttack(
   );
   wakeOnDamage(target, log);
 
-  // OnAttackHit hooks (e.g. Cleave, Warmaster).
+  // OnAttackHit hooks (e.g. Cleave, Warmaster, Swashbuckler, Dark Templar).
   dispatchHook("OnAttackHit", perksForCharacter(actor), {
     state: s.perkState[actor.id],
     rng,
     damage,
+    strikeSameTarget: (dmg: number) => {
+      if (target.currentHp <= 0) return;
+      target.currentHp -= dmg;
+      emit(
+        `${actor.name} strikes ${target.name} again for ${dmg} damage!`,
+        {
+          type: "attack",
+          actorId: actor.id,
+          targetId: target.instanceId,
+          damage: dmg,
+          range: weaponRange,
+        }
+      );
+      wakeOnDamage(target, log);
+    },
+    healSelf: (amount: number) => {
+      if (actor.hp <= 0 || actor.hp >= actor.maxHp) return;
+      const before = actor.hp;
+      actor.hp = Math.min(actor.maxHp, actor.hp + amount);
+      emit(
+        `${actor.name} drains ${actor.hp - before} HP.`,
+        { type: "spellEffect", spellId: "lifesteal", targetId: actor.id, heal: actor.hp - before }
+      );
+    },
     dealCleaveDamage: (dmg: number) => {
       const front = s.enemies.front.filter(
         (e) => e.currentHp > 0 && e.instanceId !== target.instanceId
@@ -1809,8 +1882,10 @@ function resolveCast(
   const powerMultiplier = isSurgeSpell ? 1.5 : 1;
   applySpell(s, actor, spell, action, rng, log, emit, powerMultiplier);
 
-  // OnSpellResolve hooks (e.g. Spell Echo). Guard against echo re-triggering.
+  // OnSpellResolve hooks (e.g. Spell Echo, Chain Caster). Guards prevent
+  // either effect from re-triggering off its own extra cast.
   let echoTriggered = false;
+  let chainTriggered = false;
   dispatchHook("OnSpellResolve", perksForCharacter(actor), {
     state: pstate,
     rng,
@@ -1819,6 +1894,29 @@ function resolveCast(
       echoTriggered = true;
       applySpell(s, actor, spell, action, rng, log, emit, 1);
     },
+    chainToSecondTarget:
+      spell.effect.kind === "damage" && spell.target === "singleEnemy"
+        ? () => {
+            if (chainTriggered) return;
+            chainTriggered = true;
+            const others = [...s.enemies.front, ...s.enemies.back].filter(
+              (e) => e.currentHp > 0 && e.instanceId !== action.targetInstanceId
+            );
+            const second = pickRandom(others, rng);
+            if (!second) return;
+            log(`${spell.name} arcs to ${second.name}!`);
+            applySpell(
+              s,
+              actor,
+              spell,
+              { ...action, targetInstanceId: second.instanceId },
+              rng,
+              log,
+              emit,
+              powerMultiplier
+            );
+          }
+        : undefined,
   });
 }
 
@@ -1827,7 +1925,9 @@ function resolveDefend(
   actor: Character,
   emit: (m: string, e: CombatEvent) => void
 ): void {
-  s.defendBuff[actor.id] = 0.5;
+  // halberdier-brace: Defend reduces damage by 60% instead of the base 50%.
+  const mods = perkModifiers(perksForCharacter(actor), effStatsFor(s, actor));
+  s.defendBuff[actor.id] = mods.defendReduction;
   emit(`${actor.name} defends.`, { type: "defend", actorId: actor.id });
 }
 
@@ -2028,18 +2128,18 @@ function applySpell(
   switch (eff.kind) {
     case "damage": {
       // Perk spell-damage multiplier (Glass Cannon +30%).
-      const spellMult = perkModifiers(
-        perksForCharacter(caster),
-        effStats
-      ).spellDamageMultiplier;
+      const casterMods = perkModifiers(perksForCharacter(caster), effStats);
+      const spellMult = casterMods.spellDamageMultiplier;
       for (const t of spellTargets(s, spell, action)) {
         // "undead" element only damages undead enemies.
         if (eff.element === "undead" && !t.special.some((sp) => sp.kind === "undead")) {
           continue;
         }
+        // Undead / demon damage bonuses (Turn Undead, Judge, Inquisitor).
+        const tagMult = tagDamageMultiplier(casterMods, t);
         const raw = Math.max(
           1,
-          Math.round((eff.power + castingBonus) * powerMultiplier * spellMult)
+          Math.round((eff.power + castingBonus) * powerMultiplier * spellMult * tagMult)
         );
         // Enemy AC reduces spell damage too (less than physical — half AC).
         const reduced = Math.max(1, raw - Math.floor(t.ac / 2));
@@ -2059,13 +2159,39 @@ function applySpell(
           { type: "spellEffect", spellId: spell.id, targetId: t.instanceId, damage: final }
         );
         wakeOnDamage(t, log);
+        // Over-time followup (e.g. Meteor Swarm burn): recorded per enemy
+        // instance and ticked at the end of each round.
+        if (eff.followup?.kind === "dot" && t.currentHp > 0) {
+          const dots = (s.enemyDots[t.instanceId] ??= []);
+          const existing = dots.find((d) => d.spellId === spell.id);
+          if (existing) {
+            existing.duration = eff.followup.duration;
+            existing.power = eff.followup.power;
+          } else {
+            dots.push({
+              element: eff.followup.element,
+              power: eff.followup.power,
+              duration: eff.followup.duration,
+              spellId: spell.id,
+            });
+          }
+          emit(
+            `${t.name} is burning!`,
+            { type: "spellEffect", spellId: spell.id, targetId: t.instanceId, statusInflicted: "burn" }
+          );
+        }
       }
       break;
     }
     case "heal": {
+      // priest-healers-touch: healing spells restore 30% more HP.
+      const healMult = perkModifiers(
+        perksForCharacter(caster),
+        effStats
+      ).healPowerMultiplier;
       const healPower = Math.max(
         1,
-        Math.round((eff.power + castingBonus) * powerMultiplier)
+        Math.round((eff.power + castingBonus) * powerMultiplier * healMult)
       );
       // Single-target heals can also mend a summoned ally (they hold the
       // front line and soak hits). Summons have no statuses, so cure /
@@ -2094,6 +2220,19 @@ function applySpell(
         if (t.status.includes("knockedOut") && t.hp > 0) {
           t.status = t.status.filter((st) => st !== "knockedOut");
           emit(`${t.name} is revived!`, { type: "revived", targetId: t.id });
+        }
+        // Over-time followup (e.g. Mass Regenerate): flat per-round healing,
+        // deliberately unaffected by casting stat (design doc §5.3).
+        if (eff.followup?.kind === "regen" && t.hp > 0) {
+          s.regenBuffs[t.id] = {
+            power: eff.followup.power,
+            duration: eff.followup.duration,
+            spellId: spell.id,
+          };
+          emit(
+            `${t.name} is regenerating.`,
+            { type: "spellEffect", spellId: spell.id, targetId: t.id, isBuff: true }
+          );
         }
       }
       break;
@@ -2130,9 +2269,15 @@ function applySpell(
       break;
     }
     case "resurrect": {
+      // priest-revival: revive spells restore the target to 50% max HP
+      // instead of the base 1 HP.
+      const revivePct = perkModifiers(
+        perksForCharacter(caster),
+        effStats
+      ).resurrectHpPercent;
       for (const t of allyTargets(s, spell, action, caster)) {
         if (!t.status.includes("knockedOut")) continue;
-        t.hp = 1;
+        t.hp = Math.max(1, Math.round(t.maxHp * revivePct));
         t.status = t.status.filter((st) => st !== "knockedOut");
         emit(
           `${spell.name} resurrects ${t.name} with ${t.hp} HP!`,
@@ -2390,6 +2535,11 @@ function resolveEnemyAbility(
     case "status": {
       for (const t of partyTargets) {
         if (rng() < eff.chance && !t.status.includes(eff.status)) {
+          // fighter-juggernaut: immune to enemy-inflicted status effects.
+          if (isStatusImmune(s, t)) {
+            log(`${t.name} shrugs off the effect!`);
+            continue;
+          }
           t.status.push(eff.status);
           emit(`${actor.name} uses ${ability.name}, inflicting ${eff.status} on ${t.name}!`, {
             type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id,
@@ -2691,11 +2841,15 @@ function resolveEnemyAction(
     }
   }
 
-  // Poison on hit (Cobweb, Acid Puddle).
+  // Poison on hit (Cobweb, Acid Puddle). Juggernaut is immune.
   if (actor.special.some((sp) => sp.kind === "poisonOnHit")) {
     if (!partyTarget.status.includes("poison")) {
-      partyTarget.status.push("poison");
-      log(`${partyTarget.name} is poisoned!`);
+      if (isStatusImmune(s, partyTarget)) {
+        log(`${partyTarget.name} shrugs off the poison!`);
+      } else {
+        partyTarget.status.push("poison");
+        log(`${partyTarget.name} is poisoned!`);
+      }
     }
   }
   wakeOnDamage(partyTarget, log);
@@ -2800,12 +2954,30 @@ function attemptFlee(
   isBoss: boolean,
   effAgi: number,
   fleeBonusPercent: number,
-  rng: Rng
+  rng: Rng,
+  guaranteed = false
 ): boolean {
-  if (isBoss) return false; // 0% vs boss (Section 7.2)
+  if (isBoss) return false; // 0% vs boss (Section 7.2) — even Smoke Bomb can't override
+  if (guaranteed) return true;
   const chance =
     0.95 + Math.min((effAgi - 10) * 0.02, 0.1) + fleeBonusPercent;
   return rng() < chance;
+}
+
+/**
+ * thief-smoke-bomb: flee always succeeds (except vs bosses) while the party's
+ * living HP is below 30% and a living Smoke Bomb holder is present.
+ */
+function smokeBombFleeActive(s: CombatState): boolean {
+  const living = s.party.filter((c) => c.hp > 0);
+  if (living.length === 0) return false;
+  const holderAlive = living.some((c) =>
+    perksForCharacter(c).some((p) => p.id === "thief-smoke-bomb")
+  );
+  if (!holderAlive) return false;
+  const hp = living.reduce((sum, c) => sum + c.hp, 0);
+  const maxHp = living.reduce((sum, c) => sum + c.maxHp, 0);
+  return maxHp > 0 && hp / maxHp < 0.3;
 }
 
 // ---------------------------------------------------------------------------
@@ -2926,6 +3098,87 @@ function tickStatuses(
       }
     }
   }
+
+  // Spell DoTs on enemies (e.g. Meteor Swarm burn). Elemental affinity
+  // applies to ticks the same way it does to the impact hit.
+  for (const instanceId of Object.keys(s.enemyDots)) {
+    const enemy = findEnemy(s, instanceId);
+    if (!enemy || enemy.currentHp <= 0) {
+      delete s.enemyDots[instanceId];
+      continue;
+    }
+    const remaining: typeof s.enemyDots[string] = [];
+    for (const dot of s.enemyDots[instanceId]) {
+      let dmg = dot.power;
+      const affinity = enemy.special.find(
+        (sp) =>
+          (sp.kind === "resistElement" || sp.kind === "weakElement") &&
+          sp.element === dot.element
+      );
+      if (affinity) {
+        dmg = Math.max(1, Math.round(dmg * (affinity.kind === "weakElement" ? 1.5 : 0.5)));
+      }
+      enemy.currentHp = Math.max(0, enemy.currentHp - dmg);
+      const label = dot.element === "fire" ? "burns" : "withers";
+      if (emit) {
+        emit(`${enemy.name} ${label} for ${dmg} damage.`, {
+          type: "statusTick",
+          targetId: instanceId,
+          damage: dmg,
+          status: "burn",
+        });
+      } else {
+        log(`${enemy.name} ${label} for ${dmg} damage.`);
+      }
+      dot.duration -= 1;
+      if (dot.duration > 0) {
+        remaining.push(dot);
+      } else if (emit) {
+        emit(`The flames on ${enemy.name} die down.`, {
+          type: "statusEnd",
+          targetId: instanceId,
+          status: "burn",
+        });
+      } else {
+        log(`The flames on ${enemy.name} die down.`);
+      }
+      if (enemy.currentHp <= 0) break;
+    }
+    if (remaining.length > 0 && enemy.currentHp > 0) {
+      s.enemyDots[instanceId] = remaining;
+    } else {
+      delete s.enemyDots[instanceId];
+    }
+  }
+
+  // Spell regen on party members (e.g. Mass Regenerate). Flat per-round
+  // healing; never revives — KO clears the buff.
+  for (const charId of Object.keys(s.regenBuffs)) {
+    const c = s.party.find((ch) => ch.id === charId);
+    if (!c || c.hp <= 0 || c.status.includes("knockedOut")) {
+      delete s.regenBuffs[charId];
+      continue;
+    }
+    const buff = s.regenBuffs[charId];
+    const before = c.hp;
+    c.hp = Math.min(c.maxHp, c.hp + buff.power);
+    if (c.hp > before) {
+      if (emit) {
+        emit(`${c.name} regenerates ${c.hp - before} HP.`, {
+          type: "spellEffect",
+          spellId: buff.spellId,
+          targetId: c.id,
+          heal: c.hp - before,
+        });
+      } else {
+        log(`${c.name} regenerates ${c.hp - before} HP.`);
+      }
+    }
+    buff.duration -= 1;
+    if (buff.duration <= 0) {
+      delete s.regenBuffs[charId];
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -2941,6 +3194,11 @@ function findEnemy(s: CombatState, instanceId: string): EnemyInstance | undefine
 
 function addStatus(target: { status: StatusEffect[] }, st: StatusEffect): void {
   if (!target.status.includes(st)) target.status.push(st);
+}
+
+/** fighter-juggernaut: immune to enemy-inflicted status effects. */
+function isStatusImmune(s: CombatState, c: Character): boolean {
+  return perkModifiers(perksForCharacter(c), effStatsFor(s, c)).statusImmune;
 }
 
 /** Physical damage wakes a sleeping target (Section 7.5). */
@@ -3665,8 +3923,8 @@ function dealTechniqueDamage(
   const variance = 0.8 + rng() * 0.4;
   let damage = Math.max(1, Math.round(base * rowMultiplier * variance * mods.meleeDamageMultiplier)) + mods.meleeBonusDamage;
 
-  // Apply technique multiplier
-  damage = Math.max(1, Math.round(damage * multiplier));
+  // Apply technique multiplier (plus undead/demon perk bonuses).
+  damage = Math.max(1, Math.round(damage * multiplier * tagDamageMultiplier(mods, target)));
 
   // Damage buff (Battle Cry)
   const dmgBuff = s.damageBuffs[actor.id];
@@ -3684,8 +3942,8 @@ function dealTechniqueDamage(
     log(`${actor.name} lands a critical hit with ${tech.name}!`);
   }
 
-  // Enemy AC reduction (with armor pen and debuffs)
-  const effectiveAc = effectiveEnemyAc(s, target);
+  // Enemy AC reduction (with armor pen, debuffs, and Reach Mastery's flat ignore)
+  const effectiveAc = Math.max(0, effectiveEnemyAc(s, target) - mods.acFlatIgnore);
   const acReduction = armorPen !== undefined ? Math.round(effectiveAc * (1 - armorPen)) : effectiveAc;
   damage = Math.max(1, damage - acReduction);
 

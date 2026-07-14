@@ -79,10 +79,10 @@ const FIGHTER_PERKS: PerkDef[] = [
   ),
   perk(
     "fighter-juggernaut", "Fighter", 4, "Juggernaut",
-    "+20% max HP. (Status immunity not yet implemented — v1.1.)",
-    ["OnStatusApplied"], { maxHpPercent: 0.2 }, ["defense", "passive"]
-    // TODO(v1.1): status immunity is not enforced yet — the OnStatusApplied
-    // hook has no registered handler; only the max HP bump applies.
+    "+20% max HP; immune to enemy-inflicted status effects.",
+    [], { maxHpPercent: 0.2, statusImmune: true }, ["defense", "passive"]
+    // statusImmune is enforced at the enemy status-application sites in
+    // combat.ts (abilities and poison-on-hit).
   ),
   perk(
     "fighter-warmaster", "Fighter", 4, "Warmaster",
@@ -119,9 +119,8 @@ const MAGE_PERKS: PerkDef[] = [
   ),
   perk(
     "mage-chain-caster", "Mage", 3, "Chain Caster",
-    "25% chance a damaging spell jumps to a second random target. (Not yet implemented — v1.1.)",
+    "25% chance a single-target damage spell jumps to a second random target.",
     ["OnSpellResolve"], { chance: 0.25 }, ["offense", "aoe", "reactive"]
-    // TODO(v1.1): no registered handler yet.
   ),
   perk(
     "mage-arcane-surge", "Mage", 3, "Arcane Surge",
@@ -148,9 +147,8 @@ const MAGE_PERKS: PerkDef[] = [
 const PRIEST_PERKS: PerkDef[] = [
   perk(
     "priest-healers-touch", "Priest", 1, "Healer's Touch",
-    "Healing spells restore 30% more HP. (Not yet implemented — v1.1.)",
-    [], {}, ["support", "passive"]
-    // TODO(v1.1): heal power bonus not wired into spell resolution yet.
+    "Healing spells restore 30% more HP.",
+    [], { healPowerMultiplier: 1.3 }, ["support", "passive"]
   ),
   perk(
     "priest-divine-hammer", "Priest", 1, "Divine Hammer",
@@ -164,15 +162,13 @@ const PRIEST_PERKS: PerkDef[] = [
   ),
   perk(
     "priest-turn-undead", "Priest", 2, "Turn Undead",
-    "+50% damage vs undead. (Not yet implemented — v1.1.)",
-    [], {}, ["offense", "passive"]
-    // TODO(v1.1): undead-damage-bonus not wired into spell/attack resolution yet.
+    "+50% damage vs undead enemies.",
+    [], { undeadDamageMultiplier: 1.5 }, ["offense", "passive"]
   ),
   perk(
     "priest-revival", "Priest", 3, "Revival",
-    "Revive spells restore target to 50% HP. (Not yet implemented — v1.1.)",
-    [], {}, ["support", "passive"]
-    // TODO(v1.1): resurrect-power bonus not wired into spell resolution yet.
+    "Revive spells restore the target to 50% max HP.",
+    [], { resurrectHpPercent: 0.5 }, ["support", "passive"]
   ),
   perk(
     "priest-guardian-angel", "Priest", 3, "Guardian Angel",
@@ -189,9 +185,12 @@ const PRIEST_PERKS: PerkDef[] = [
   ),
   perk(
     "priest-inquisitor", "Priest", 4, "Inquisitor",
-    "Offensive spells have 35% chance to stun for 1 round; +30% damage vs undead/demons. (Not yet implemented — v1.1.)",
-    ["OnSpellResolve"], { chance: 0.35 }, ["offense", "reactive"]
-    // TODO(v1.1): no registered handler yet.
+    "+30% damage vs undead/demons. (35% stun on offensive spells is v1.1.)",
+    ["OnSpellResolve"],
+    { chance: 0.35, undeadDamageMultiplier: 1.3, demonDamageMultiplier: 1.3 },
+    ["offense", "reactive"]
+    // TODO(v1.1): the 35% stun-on-spell half has no registered handler yet;
+    // the undead/demon damage bonus applies via perkModifiers.
   ),
 ];
 
@@ -218,9 +217,9 @@ const THIEF_PERKS: PerkDef[] = [
   ),
   perk(
     "thief-smoke-bomb", "Thief", 2, "Smoke Bomb",
-    "Flee always succeeds if HP is below 30%. (Not yet implemented — v1.1.)",
+    "Flee always succeeds while the party's HP is below 30% (bosses excepted).",
     [], {}, ["utility", "passive"]
-    // TODO(v1.1): conditional flee override not wired in yet.
+    // Wired directly in combat.ts's flee resolution (smokeBombFleeActive).
   ),
   perk(
     "thief-assassin", "Thief", 3, "Assassin",
@@ -242,11 +241,10 @@ const THIEF_PERKS: PerkDef[] = [
   ),
   perk(
     "thief-swindler", "Thief", 4, "Swindler",
-    "35% chance to steal on attack; shops 20% cheaper. (Not yet implemented — v1.1.)",
+    "Shop buy prices are 20% cheaper. (35% steal-on-attack is v1.1.)",
     ["OnAttackHit"], { chance: 0.35, shopDiscountPercent: 0.2 }, ["offense", "utility"]
-    // TODO(v1.1): the steal-on-attack side has no registered handler, and
-    // nothing in town-ui.ts reads shopDiscountPercent yet — both halves of
-    // this perk are inert.
+    // TODO(v1.1): the steal-on-attack side has no registered handler (no
+    // steal economy exists); the shop discount applies via town-ui.ts.
   ),
 ];
 
@@ -257,9 +255,8 @@ const THIEF_PERKS: PerkDef[] = [
 const HALBERDIER_PERKS: PerkDef[] = [
   perk(
     "halberdier-reach-mastery", "Halberdier", 1, "Reach Mastery",
-    "Polearm attacks ignore 2 points of enemy AC. (Not yet implemented — v1.1.)",
-    [], {}, ["offense", "passive"]
-    // TODO(v1.1): AC-ignore not wired into attack resolution yet.
+    "Melee attacks ignore 2 points of enemy AC.",
+    [], { acFlatIgnore: 2 }, ["offense", "passive"]
   ),
   perk(
     "halberdier-phalanx", "Halberdier", 1, "Phalanx",
@@ -273,10 +270,8 @@ const HALBERDIER_PERKS: PerkDef[] = [
   ),
   perk(
     "halberdier-brace", "Halberdier", 2, "Brace",
-    "Defending reduces next hit by 60% instead of 30%. (Not yet implemented — v1.1.)",
-    [], {}, ["defense", "passive"]
-    // TODO(v1.1): Defend's reduction is a fixed 50% in combat.ts; making this
-    // configurable per-character is deferred to v1.1.
+    "Defending reduces incoming damage by 60% instead of the usual 50%.",
+    [], { defendReduction: 0.6 }, ["defense", "passive"]
   ),
   perk(
     "halberdier-sweep", "Halberdier", 3, "Sweep",
@@ -325,9 +320,8 @@ const DUELIST_PERKS: PerkDef[] = [
   ),
   perk(
     "duelist-perfect-timing", "Duelist", 2, "Perfect Timing",
-    "If your previous attack crit, your next attack cannot miss. (Not yet implemented — v1.1.)",
-    ["OnCriticalHit"], {}, ["offense", "reactive"]
-    // TODO(v1.1): no registered handler yet.
+    "After landing a critical hit, your next attack cannot miss.",
+    ["OnCriticalHit", "BeforeAttack"], {}, ["offense", "reactive"]
   ),
   perk(
     "duelist-lunge", "Duelist", 3, "Lunge",
@@ -347,11 +341,9 @@ const DUELIST_PERKS: PerkDef[] = [
   ),
   perk(
     "duelist-swashbuckler", "Duelist", 4, "Swashbuckler",
-    "+15% flee/evasion. (40% double-strike not yet implemented — v1.1.)",
+    "+15% flee/evasion; 40% chance melee attacks strike twice.",
     ["OnAttackHit"], { chance: 0.4, evasionBonusPercent: 0.15, fleeBonusPercent: 0.15 },
     ["offense", "defense"]
-    // TODO(v1.1): the double-strike side has no registered handler; the
-    // evasion/flee bonuses apply via perkModifiers.
   ),
 ];
 
@@ -388,9 +380,9 @@ const CRUSADER_PERKS: PerkDef[] = [
   ),
   perk(
     "crusader-judge", "Crusader", 3, "Judge",
-    "+35% damage vs undead/demon enemies. (Not yet implemented — v1.1.)",
-    [], {}, ["offense", "passive"]
-    // TODO(v1.1): undead/demon-damage-bonus not wired into attack resolution yet.
+    "+35% damage vs undead/demon enemies.",
+    [], { undeadDamageMultiplier: 1.35, demonDamageMultiplier: 1.35 },
+    ["offense", "passive"]
   ),
   perk(
     "crusader-paladin", "Crusader", 4, "Paladin",
@@ -400,11 +392,10 @@ const CRUSADER_PERKS: PerkDef[] = [
   ),
   perk(
     "crusader-dark-templar", "Crusader", 4, "Dark Templar",
-    "+25% melee damage, but healing spells cost 30% more SP. (15% lifesteal not yet implemented — v1.1.)",
-    [], { meleeDamageMultiplier: 1.25, spCostMultiplier: 1.3, spCostAppliesTo: "heal" },
+    "+25% melee damage; melee hits heal you for 15% of damage dealt. Healing spells cost 30% more SP.",
+    ["OnAttackHit"],
+    { meleeDamageMultiplier: 1.25, spCostMultiplier: 1.3, spCostAppliesTo: "heal" },
     ["offense", "passive"]
-    // TODO(v1.1): the lifesteal side has no registered handler; the damage
-    // and heal-SP-cost modifiers apply via perkModifiers.
   ),
 ];
 

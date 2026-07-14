@@ -16,9 +16,10 @@
  *
  * v1.0 — Playtest Values: only the perks registered below have reactive
  * hook behavior (plus a few wired directly in combat.ts: fighter-protector,
- * thief-backstab, thief-assassin, duelist-riposte, priest-saint); the rest
- * are numeric passives via `perkModifiers()` or, where neither applies,
- * documented no-op stubs (`// TODO(v1.1)`) flagged in their UI description.
+ * thief-backstab, thief-assassin, thief-smoke-bomb, duelist-riposte,
+ * priest-saint); the rest are numeric passives via `perkModifiers()` or,
+ * where neither applies, documented no-op stubs (`// TODO(v1.1)`) flagged
+ * in their UI description.
  */
 
 import type { Character, CharacterClass, Stats } from "./party";
@@ -96,6 +97,20 @@ export interface PerkEffect {
   trapDamageMultiplier?: number;
   /** Shop price multiplier for this character's party (Swindler). */
   shopDiscountPercent?: number;
+  /** Multiplies healing-spell power (Healer's Touch). */
+  healPowerMultiplier?: number;
+  /** Resurrect spells restore this fraction of max HP instead of 1 HP (Revival). */
+  resurrectHpPercent?: number;
+  /** Multiplies all damage this character deals to undead-tagged enemies. */
+  undeadDamageMultiplier?: number;
+  /** Multiplies all damage this character deals to demon-tagged enemies. */
+  demonDamageMultiplier?: number;
+  /** Flat enemy-AC points ignored by this character's melee attacks (Reach Mastery). */
+  acFlatIgnore?: number;
+  /** Defend action reduces incoming damage by this fraction instead of the base 50% (Brace). */
+  defendReduction?: number;
+  /** Immune to status effects inflicted by enemies (Juggernaut). */
+  statusImmune?: boolean;
   [key: string]: unknown;
 }
 
@@ -209,6 +224,13 @@ export interface PerkModifiers {
   shopDiscountPercent: number;
   hpGrowthBonusPercent: number;
   spGrowthBonusPercent: number;
+  healPowerMultiplier: number;
+  resurrectHpPercent: number;
+  undeadDamageMultiplier: number;
+  demonDamageMultiplier: number;
+  acFlatIgnore: number;
+  defendReduction: number;
+  statusImmune: boolean;
   spCostMultiplierFor: (spellKind: "heal" | "damage" | "other") => number;
 }
 
@@ -233,6 +255,13 @@ export function perkModifiers(perks: PerkDef[], effStats: Stats): PerkModifiers 
     shopDiscountPercent: 0,
     hpGrowthBonusPercent: 0,
     spGrowthBonusPercent: 0,
+    healPowerMultiplier: 1,
+    resurrectHpPercent: 0,
+    undeadDamageMultiplier: 1,
+    demonDamageMultiplier: 1,
+    acFlatIgnore: 0,
+    defendReduction: 0.5,
+    statusImmune: false,
     spCostMultiplierFor: () => 1,
   };
 
@@ -259,6 +288,13 @@ export function perkModifiers(perks: PerkDef[], effStats: Stats): PerkModifiers 
     if (eff.shopDiscountPercent) out.shopDiscountPercent += eff.shopDiscountPercent;
     if (eff.hpGrowthBonusPercent) out.hpGrowthBonusPercent += eff.hpGrowthBonusPercent;
     if (eff.spGrowthBonusPercent) out.spGrowthBonusPercent += eff.spGrowthBonusPercent;
+    if (eff.healPowerMultiplier) out.healPowerMultiplier *= eff.healPowerMultiplier;
+    if (eff.resurrectHpPercent) out.resurrectHpPercent = Math.max(out.resurrectHpPercent, eff.resurrectHpPercent);
+    if (eff.undeadDamageMultiplier) out.undeadDamageMultiplier *= eff.undeadDamageMultiplier;
+    if (eff.demonDamageMultiplier) out.demonDamageMultiplier *= eff.demonDamageMultiplier;
+    if (eff.acFlatIgnore) out.acFlatIgnore += eff.acFlatIgnore;
+    if (eff.defendReduction) out.defendReduction = Math.max(out.defendReduction, eff.defendReduction);
+    if (eff.statusImmune) out.statusImmune = true;
     if (eff.spCostMultiplier) spCostRules.push({ mult: eff.spCostMultiplier, appliesTo: eff.spCostAppliesTo });
   }
 
@@ -278,7 +314,7 @@ export function perkModifiers(perks: PerkDef[], effStats: Stats): PerkModifiers 
 // ---------------------------------------------------------------------------
 // Reactive hook dispatcher
 // ---------------------------------------------------------------------------
-// The 14 fully-implemented perks below need per-combat scratch state and/or
+// The ~19 fully-implemented perks below need per-combat scratch state and/or
 // to run at a specific moment the generic aggregator can't express (e.g.
 // "once per combat", "every Nth cast", "counterattack the attacker").
 // `PerkHookContext` carries the minimum each handler needs; combat.ts builds
@@ -484,7 +520,49 @@ register("halberdier-hold-the-line", "AfterDamageTaken", (ctx) => {
   if (counter) counter(0.5);
 });
 
+// --- Thief (reactive additions) ------------------------------------------
+
+// (thief-smoke-bomb is wired directly in combat.ts's flee resolution —
+// smokeBombFleeActive — because flee is a party-level pre-initiative check.)
+
+// --- Mage (reactive additions) --------------------------------------------
+
+// mage-chain-caster: 25% chance a damaging single-target spell jumps to a
+// second random enemy. resolveCast provides the chain callback.
+register("mage-chain-caster", "OnSpellResolve", (ctx) => {
+  const chain = ctx.chainToSecondTarget as (() => void) | undefined;
+  if (chain && ctx.rng() < 0.25) {
+    chain();
+  }
+});
+
 // --- Duelist --------------------------------------------------------------
+
+// duelist-perfect-timing: after landing a critical hit, the next attack
+// cannot miss (evasion / flying / blind checks are skipped).
+register("duelist-perfect-timing", "OnCriticalHit", (ctx) => {
+  const state = ctx.state as { guaranteeNextHit?: boolean };
+  state.guaranteeNextHit = true;
+});
+register("duelist-perfect-timing", "BeforeAttack", (ctx) => {
+  const state = ctx.state as { guaranteeNextHit?: boolean };
+  if (!state.guaranteeNextHit) return;
+  const guarantee = ctx.guaranteeHit as (() => void) | undefined;
+  if (guarantee) {
+    state.guaranteeNextHit = false;
+    guarantee();
+  }
+});
+
+// duelist-swashbuckler: 40% chance melee attacks strike the same target a
+// second time for the same damage.
+register("duelist-swashbuckler", "OnAttackHit", (ctx) => {
+  const strikeAgain = ctx.strikeSameTarget as ((dmg: number) => void) | undefined;
+  const damage = ctx.damage as number | undefined;
+  if (strikeAgain && damage !== undefined && ctx.rng() < 0.4) {
+    strikeAgain(damage);
+  }
+});
 
 // duelist-momentum: each consecutive hit on the same target grants +5%
 // damage, resetting on a miss or target switch.
@@ -518,6 +596,17 @@ register("crusader-retribution", "AfterDamageTaken", (ctx) => {
   if (retaliate) retaliate();
 });
 
+// crusader-dark-templar: melee hits heal the Crusader for 15% of the damage
+// dealt (lifesteal). The damage / heal-SP-cost halves apply via perkModifiers.
+register("crusader-dark-templar", "OnAttackHit", (ctx) => {
+  const damage = ctx.damage as number | undefined;
+  const healSelf = ctx.healSelf as ((amount: number) => void) | undefined;
+  if (healSelf && damage !== undefined) {
+    const amount = Math.round(damage * 0.15);
+    if (amount > 0) healSelf(amount);
+  }
+});
+
 // crusader-paladin: once per combat, survive a lethal blow at 1 HP. The
 // party-wide 10% damage reduction is still TODO(v1.1) — damageTakenMultiplier
 // only applies to the perk holder, not the whole party.
@@ -533,3 +622,29 @@ register("crusader-paladin", "OnAllyWouldDie", (ctx) => {
     preventDeath();
   }
 });
+
+// ---------------------------------------------------------------------------
+// Out-of-combat helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * The best shop discount fraction any living party member's perks grant
+ * (thief-swindler). Town shop buy prices multiply by (1 - discount).
+ */
+export function partyShopDiscount(party: Pick<Character, "hp" | "perkIds">[]): number {
+  let best = 0;
+  for (const c of party) {
+    if (c.hp <= 0) continue;
+    for (const perk of perksForCharacter(c)) {
+      const d = perk.effect.shopDiscountPercent;
+      if (typeof d === "number" && d > best) best = d;
+    }
+  }
+  return best;
+}
+
+/** A shop buy price after the party's perk discount, floored at 1g. */
+export function discountedShopPrice(price: number, discount: number): number {
+  if (discount <= 0) return price;
+  return Math.max(1, Math.round(price * (1 - discount)));
+}
