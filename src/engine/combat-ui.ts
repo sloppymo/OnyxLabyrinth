@@ -35,7 +35,7 @@ import { enemyHealthDescriptor } from "./combat-display";
 import type { Character } from "../game/party";
 import { isUtilitySpell, type SpellDef } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
-import { techniquesForClass, techniqueById, type TechniqueDef } from "../data/techniques";
+import { techniquesForClass, techniqueById, classHasTechniques, type TechniqueDef } from "../data/techniques";
 import type { ItemDef } from "../data/items";
 import { combatCanvas, combatWindows } from "./shell";
 import {
@@ -45,6 +45,7 @@ import {
   playTurn,
   isPlaybackDone,
   absorbDeaths,
+  skipPlaybackToEnd,
   type CombatScene,
 } from "./combat-scene";
 import {
@@ -56,6 +57,16 @@ import {
   type SelectionEntry,
   type ResultView,
 } from "./combat-select-action-view";
+import {
+  preferredEnemyIndex,
+  preferredAllyIndex,
+  canRepeatAttack,
+  lastHitEnemyIdFromEvents,
+  repeatFailFlash,
+  menuResourceLine,
+  type StickyAction,
+  type LastCommand,
+} from "./combat-flow";
 
 type Phase =
   | "menu"
@@ -103,6 +114,19 @@ export class CombatController {
   private flash: string | null = null;
   private result: ResultView | null = null;
 
+  /** Party-shared last enemy hit/missed this combat (for target prefocus). */
+  private lastHitEnemyId: string | null = null;
+  /** Per-character sticky Attack/Ambush for Repeat. */
+  private stickyByActor = new Map<string, StickyAction>();
+  /** Hold-Shift 2× playback. */
+  private shiftHeld = false;
+  /** Sticky Auto-Fast for the rest of this combat. */
+  private autoFast = false;
+  /** Bravely-style party Auto — replay last commands. */
+  private partyAuto = false;
+  /** Per-character last command for party Auto (never Flee/Item). */
+  private lastCommandByActor = new Map<string, LastCommand>();
+
   private scene: CombatScene;
   private rafId: number | null = null;
   private windowsDirty = true;
@@ -137,6 +161,7 @@ export class CombatController {
 
   private tick(): void {
     const now = performance.now();
+    this.syncPlaybackRate();
     updateScene(this.scene, now);
 
     if (this.phase === "playback" && isPlaybackDone(this.scene, now)) {
@@ -150,6 +175,15 @@ export class CombatController {
 
     const ctx = combatCanvas.getContext("2d")!;
     renderScene(ctx, combatCanvas.width, combatCanvas.height, this.scene, now);
+  }
+
+  /** Apply hold-Shift / sticky FAST to the scene clock (playback only). */
+  private syncPlaybackRate(): void {
+    const turbo =
+      this.phase === "playback" && (this.shiftHeld || this.autoFast);
+    this.scene.playbackRate = turbo ? 2 : 1;
+    this.scene.showFastCue = this.phase !== "result" && this.autoFast;
+    this.scene.showAutoCue = this.phase !== "result" && this.partyAuto;
   }
 
   // --- Round / turn machine ---------------------------------------------------
@@ -228,6 +262,11 @@ export class CombatController {
     // matching the round-based resolver's player → ally → enemy phasing.
     this.queue = enqueueNewAllies(this.queue, this.queueIndex, next);
 
+    // Party-shared last-hit memory for target prefocus.
+    const partyIds = new Set(this.state.party.map((p) => p.id));
+    const hitId = lastHitEnemyIdFromEvents(events, partyIds);
+    if (hitId) this.lastHitEnemyId = hitId;
+
     // Clear a stale spell banner from the previous turn.
     this.scene.banner = null;
 
@@ -237,6 +276,7 @@ export class CombatController {
     this.pending = null;
     this.flash = null;
     this.phase = "playback";
+    this.syncPlaybackRate();
     this.windowsDirty = true;
 
     playTurn(
@@ -256,6 +296,161 @@ export class CombatController {
     );
   }
 
+  private rememberStickyAttack(
+    kind: "attack" | "ambush",
+    actorId: string,
+    targetId: string
+  ): void {
+    this.stickyByActor.set(actorId, { kind, actorId, targetId });
+    this.lastCommandByActor.set(actorId, { kind, targetId });
+  }
+
+  private rememberLastCommand(actorId: string, cmd: LastCommand): void {
+    this.lastCommandByActor.set(actorId, cmd);
+  }
+
+  private fireAttackLike(
+    kind: "attack" | "ambush",
+    actorId: string,
+    targetInstanceId: string
+  ): void {
+    this.rememberStickyAttack(kind, actorId, targetInstanceId);
+    this.resolveAndPlay(() =>
+      resolvePlayerTurn(this.state, { kind, actorId, targetInstanceId })
+    );
+  }
+
+  /**
+   * Bravely Auto: replay last command for this character. Falls back to
+   * Attack (preferred target) or Defend. Never Flee. Returns true if an
+   * action was resolved (skip opening the menu).
+   */
+  private tryPartyAuto(c: Character): boolean {
+    if (!this.partyAuto) return false;
+
+    const cmd = this.lastCommandByActor.get(c.id);
+    const living = this.livingEnemies();
+    const fallbackAttack = (): void => {
+      if (living.length === 0) {
+        this.rememberLastCommand(c.id, { kind: "defend" });
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
+        );
+        return;
+      }
+      const idx = preferredEnemyIndex(living, this.lastHitEnemyId);
+      this.fireAttackLike("attack", c.id, living[idx].instanceId);
+    };
+
+    if (!cmd) {
+      fallbackAttack();
+      return true;
+    }
+
+    switch (cmd.kind) {
+      case "attack":
+      case "ambush": {
+        if (living.some((e) => e.instanceId === cmd.targetId)) {
+          this.fireAttackLike(cmd.kind, c.id, cmd.targetId);
+        } else {
+          fallbackAttack();
+        }
+        return true;
+      }
+      case "defend":
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
+        );
+        return true;
+      case "hide":
+        if (c.class === "Thief" && !c.status.includes("hidden")) {
+          this.rememberLastCommand(c.id, { kind: "hide" });
+          this.resolveAndPlay(() =>
+            resolvePlayerTurn(this.state, { kind: "hide", actorId: c.id })
+          );
+        } else if (
+          c.class === "Thief" &&
+          c.status.includes("hidden") &&
+          living.length > 0
+        ) {
+          const idx = preferredEnemyIndex(living, this.lastHitEnemyId);
+          this.fireAttackLike("ambush", c.id, living[idx].instanceId);
+        } else {
+          fallbackAttack();
+        }
+        return true;
+      case "cast": {
+        const spell = this.state.spells[cmd.spellId];
+        if (
+          !spell ||
+          c.sp < spell.spCost ||
+          this.state.silencedThisRound.includes(c.id) ||
+          !c.knownSpellIds.includes(cmd.spellId)
+        ) {
+          fallbackAttack();
+          return true;
+        }
+        if (
+          cmd.targetInstanceId &&
+          !living.some((e) => e.instanceId === cmd.targetInstanceId)
+        ) {
+          fallbackAttack();
+          return true;
+        }
+        if (cmd.targetAllyId) {
+          const allyOk = this.state.party.some(
+            (p) =>
+              p.id === cmd.targetAllyId &&
+              (p.hp > 0 || p.status.includes("knockedOut"))
+          );
+          if (!allyOk) {
+            fallbackAttack();
+            return true;
+          }
+        }
+        this.rememberLastCommand(c.id, cmd);
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "cast",
+            actorId: c.id,
+            spellId: cmd.spellId,
+            targetInstanceId: cmd.targetInstanceId,
+            targetAllyId: cmd.targetAllyId,
+            targetRow: cmd.targetRow,
+          })
+        );
+        return true;
+      }
+      case "technique": {
+        const tech = techniqueById(cmd.techniqueId);
+        const rage = this.currentRage(c);
+        if (!tech || rage < tech.rageCost) {
+          fallbackAttack();
+          return true;
+        }
+        if (
+          cmd.targetInstanceId &&
+          !living.some((e) => e.instanceId === cmd.targetInstanceId)
+        ) {
+          fallbackAttack();
+          return true;
+        }
+        this.rememberLastCommand(c.id, cmd);
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "technique",
+            actorId: c.id,
+            techniqueId: cmd.techniqueId,
+            targetInstanceId: cmd.targetInstanceId,
+            targetAllyId: cmd.targetAllyId,
+            targetRow: cmd.targetRow,
+          })
+        );
+        return true;
+      }
+    }
+  }
+
   /** Called when the current playback finishes. */
   private afterPlayback(): void {
     if (this.phase !== "playback") return;
@@ -270,13 +465,22 @@ export class CombatController {
     this.nextTurn();
   }
 
-  // --- Menu -----------------------------------------------------------------
-
   private openMenuFor(c: Character): void {
+    this.syncPlaybackRate();
+    if (this.tryPartyAuto(c)) return;
+
     this.phase = "menu";
     this.currentActorId = c.id;
     this.scene.activeActorId = c.id;
-    this.menuEntries = menuEntriesForCharacter(c);
+    // Always surface Repeat after Attack for discoverability (disabled until
+    // this character has a sticky Attack/Ambush).
+    this.menuEntries = menuEntriesForCharacter(c, true);
+    const sticky = this.stickyByActor.get(c.id);
+    const livingIds = this.livingEnemies().map((e) => e.instanceId);
+    const can = canRepeatAttack(sticky, c.id, livingIds);
+    const repeatEntry = this.menuEntries.find((e) => e.kind === "repeat");
+    if (repeatEntry) repeatEntry.disabled = !can.ok;
+    // Default cursor on Attack (first entry).
     this.menuIndex = 0;
     this.pending = null;
     this.flash = null;
@@ -345,10 +549,15 @@ export class CombatController {
   }
 
   /** Confirm a top-level menu choice. */
-  private chooseAction(kind: PlayerAction["kind"]): void {
+  private chooseAction(kind: MenuEntry["kind"]): void {
     const c = this.currentChar();
     if (!c) return;
     this.flash = null;
+
+    if (kind === "repeat") {
+      this.tryRepeat(c);
+      return;
+    }
 
     switch (kind) {
       case "attack":
@@ -359,6 +568,11 @@ export class CombatController {
           return;
         }
         this.pending = { kind };
+        // Single living enemy: skip target tourism.
+        if (enemies.length === 1) {
+          this.fireAttackLike(kind, c.id, enemies[0].instanceId);
+          return;
+        }
         this.openTargetSelect("enemy");
         return;
       }
@@ -397,21 +611,40 @@ export class CombatController {
         return;
       }
       case "defend":
+        this.rememberLastCommand(c.id, { kind: "defend" });
         this.resolveAndPlay(() =>
           resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
         );
         return;
       case "hide":
+        this.rememberLastCommand(c.id, { kind: "hide" });
         this.resolveAndPlay(() =>
           resolvePlayerTurn(this.state, { kind: "hide", actorId: c.id })
         );
         return;
       case "flee":
+        // Never store Flee for Auto — intentional escape only.
         this.resolveAndPlay(() =>
           resolvePlayerTurn(this.state, { kind: "flee", actorId: c.id })
         );
         return;
     }
+  }
+
+  private tryRepeat(c: Character): void {
+    const sticky = this.stickyByActor.get(c.id);
+    const living = this.livingEnemies();
+    const check = canRepeatAttack(
+      sticky,
+      c.id,
+      living.map((e) => e.instanceId)
+    );
+    if (!check.ok) {
+      this.setFlash(repeatFailFlash(check.reason));
+      return;
+    }
+    // sticky is defined when ok
+    this.fireAttackLike(sticky!.kind, c.id, sticky!.targetId);
   }
 
   private setFlash(text: string): void {
@@ -431,6 +664,7 @@ export class CombatController {
       const enemies = this.livingEnemies();
       this.selectionIds = enemies.map((e) => e.instanceId);
       this.selectionEntries = enemies.map((e) => ({ label: e.name }));
+      this.selectionIndex = preferredEnemyIndex(enemies, this.lastHitEnemyId);
     } else {
       const allies = this.targetableAllies();
       this.selectionIds = allies.map((a) => a.id);
@@ -448,8 +682,11 @@ export class CombatController {
           detail: `${Math.max(0, a.hp)}/${a.maxHp}`,
         });
       }
+      // Prefocus among party allies only (summons appended after).
+      this.selectionIndex = preferredAllyIndex(
+        allies.map((a) => ({ id: a.id, hp: a.hp, maxHp: a.maxHp }))
+      );
     }
-    this.selectionIndex = 0;
     this.syncTargetCursor();
     this.windowsDirty = true;
   }
@@ -547,7 +784,24 @@ export class CombatController {
       this.pending.spellId = id;
       const spell = this.state.spells[id];
       if (spell?.target === "singleEnemy") {
-        this.openTargetSelect("enemy");
+        const enemies = this.livingEnemies();
+        if (enemies.length === 1) {
+          this.rememberLastCommand(c.id, {
+            kind: "cast",
+            spellId: id,
+            targetInstanceId: enemies[0].instanceId,
+          });
+          this.resolveAndPlay(() =>
+            resolvePlayerTurn(this.state, {
+              kind: "cast",
+              actorId: c.id,
+              spellId: id,
+              targetInstanceId: enemies[0].instanceId,
+            })
+          );
+        } else {
+          this.openTargetSelect("enemy");
+        }
       } else if (spell?.target === "singleAlly") {
         this.openTargetSelect("ally");
       } else if (spell?.effect.kind === "fizzleField") {
@@ -555,6 +809,7 @@ export class CombatController {
         this.openRowSelect();
       } else {
         // Group / self / all spells need no target.
+        this.rememberLastCommand(c.id, { kind: "cast", spellId: id });
         this.resolveAndPlay(() =>
           resolvePlayerTurn(this.state, {
             kind: "cast",
@@ -577,7 +832,24 @@ export class CombatController {
       if (!tech) return;
       // Determine target selection based on technique target type.
       if (tech.target === "singleEnemy") {
-        this.openTargetSelect("enemy");
+        const enemies = this.livingEnemies();
+        if (enemies.length === 1) {
+          this.rememberLastCommand(c.id, {
+            kind: "technique",
+            techniqueId: id,
+            targetInstanceId: enemies[0].instanceId,
+          });
+          this.resolveAndPlay(() =>
+            resolvePlayerTurn(this.state, {
+              kind: "technique",
+              actorId: c.id,
+              techniqueId: id,
+              targetInstanceId: enemies[0].instanceId,
+            })
+          );
+        } else {
+          this.openTargetSelect("enemy");
+        }
       } else if (tech.target === "singleAlly") {
         this.openTargetSelect("ally");
       } else if (tech.target === "rowEnemies") {
@@ -587,6 +859,7 @@ export class CombatController {
         this.openTargetSelect("enemy");
       } else {
         // self / allEnemies / allFrontEnemies / allAllies / allFrontAllies / randomEnemies
+        this.rememberLastCommand(c.id, { kind: "technique", techniqueId: id });
         this.resolveAndPlay(() =>
           resolvePlayerTurn(this.state, {
             kind: "technique",
@@ -608,6 +881,11 @@ export class CombatController {
       const pending = this.pending;
       if (this.targetKind === "row" && pending.kind === "cast" && pending.spellId) {
         const spellId = pending.spellId;
+        this.rememberLastCommand(c.id, {
+          kind: "cast",
+          spellId,
+          targetRow: id as Row,
+        });
         this.resolveAndPlay(() =>
           resolvePlayerTurn(this.state, {
             kind: "cast",
@@ -621,6 +899,11 @@ export class CombatController {
       // Row selection for row-targeted techniques (Sweep, Phalanx Break).
       if (this.targetKind === "row" && pending.kind === "technique" && pending.techniqueId) {
         const techniqueId = pending.techniqueId;
+        this.rememberLastCommand(c.id, {
+          kind: "technique",
+          techniqueId,
+          targetRow: id as Row,
+        });
         this.resolveAndPlay(() =>
           resolvePlayerTurn(this.state, {
             kind: "technique",
@@ -632,21 +915,9 @@ export class CombatController {
         return;
       }
       if (pending.kind === "attack") {
-        this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
-            kind: "attack",
-            actorId: c.id,
-            targetInstanceId: id,
-          })
-        );
+        this.fireAttackLike("attack", c.id, id);
       } else if (pending.kind === "ambush") {
-        this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
-            kind: "ambush",
-            actorId: c.id,
-            targetInstanceId: id,
-          })
-        );
+        this.fireAttackLike("ambush", c.id, id);
       } else if (pending.kind === "cast" && pending.spellId) {
         const action: PlayerAction =
           this.targetKind === "enemy"
@@ -662,8 +933,15 @@ export class CombatController {
                 spellId: pending.spellId,
                 targetAllyId: id,
               };
+        this.rememberLastCommand(c.id, {
+          kind: "cast",
+          spellId: pending.spellId,
+          targetInstanceId: action.targetInstanceId,
+          targetAllyId: action.targetAllyId,
+        });
         this.resolveAndPlay(() => resolvePlayerTurn(this.state, action));
       } else if (pending.kind === "item" && pending.itemId) {
+        // Items are never stored for Auto (consumables).
         const itemId = pending.itemId;
         this.resolveAndPlay(() =>
           resolvePlayerTurn(this.state, {
@@ -689,6 +967,12 @@ export class CombatController {
                 techniqueId,
                 targetAllyId: id,
               };
+        this.rememberLastCommand(c.id, {
+          kind: "technique",
+          techniqueId,
+          targetInstanceId: action.targetInstanceId,
+          targetAllyId: action.targetAllyId,
+        });
         this.resolveAndPlay(() => resolvePlayerTurn(this.state, action));
       }
     }
@@ -732,6 +1016,11 @@ export class CombatController {
     this.currentActorId = null;
     this.scene.activeActorId = null;
     this.scene.cursor = null;
+    // Victory is sacred — clear turbo affordances so Enter only confirms.
+    this.autoFast = false;
+    this.shiftHeld = false;
+    this.partyAuto = false;
+    this.syncPlaybackRate();
 
     const r = this.state.result;
     if (r === "victory") {
@@ -755,12 +1044,49 @@ export class CombatController {
 
   // --- Input ----------------------------------------------------------------------
 
-  /** Route a keypress to the controller. Called by main.ts for combat mode. */
-  handleKey(key: string): void {
-    switch (this.phase) {
-      case "playback":
-        return; // playback is auto — nothing to advance
+  /**
+   * Route a keydown to the controller. Called by main.ts for combat mode.
+   * Pass the raw KeyboardEvent when available so Shift/Tab/Esc playback
+   * controls work without colliding with menu Esc.
+   */
+  handleKey(key: string, e?: KeyboardEvent): void {
+    // Party Auto toggle available in menu / playback (never during result).
+    if (this.phase !== "result" && (key === "q" || key === "Q")) {
+      this.partyAuto = !this.partyAuto;
+      this.syncPlaybackRate();
+      this.windowsDirty = true;
+      // If turning Auto on during a live menu, fire immediately for current actor.
+      if (this.partyAuto && this.phase === "menu") {
+        const c = this.currentChar();
+        if (c && this.tryPartyAuto(c)) return;
+      }
+      return;
+    }
 
+    // Playback tempo controls (never burn result Confirm).
+    if (this.phase === "playback") {
+      if (key === "Shift" || e?.key === "Shift") {
+        this.shiftHeld = true;
+        this.syncPlaybackRate();
+        return;
+      }
+      if (key === "Tab") {
+        e?.preventDefault();
+        this.autoFast = !this.autoFast;
+        this.syncPlaybackRate();
+        this.windowsDirty = true;
+        return;
+      }
+      if (key === "Escape") {
+        skipPlaybackToEnd(this.scene, performance.now());
+        // afterPlayback will run on next tick via isPlaybackDone
+        this.windowsDirty = true;
+        return;
+      }
+      return;
+    }
+
+    switch (this.phase) {
       case "result":
         if (key === " " || key === "Enter") {
           this.destroy();
@@ -781,6 +1107,14 @@ export class CombatController {
     }
   }
 
+  /** Keyup — release hold-Shift 2×. */
+  handleKeyUp(key: string): void {
+    if (key === "Shift") {
+      this.shiftHeld = false;
+      this.syncPlaybackRate();
+    }
+  }
+
   private handleMenuKey(key: string): void {
     switch (key) {
       case "ArrowUp":
@@ -793,9 +1127,24 @@ export class CombatController {
         this.windowsDirty = true;
         return;
       case " ":
-      case "Enter":
-        this.chooseAction(this.menuEntries[this.menuIndex].kind);
+      case "Enter": {
+        const entry = this.menuEntries[this.menuIndex];
+        if (entry?.disabled) {
+          if (entry.kind === "repeat") {
+            const c = this.currentChar();
+            if (c) this.tryRepeat(c);
+          }
+          return;
+        }
+        this.chooseAction(entry.kind);
         return;
+      }
+    }
+    const lower = key.toLowerCase();
+    if (lower === "z" || key === ".") {
+      const c = this.currentChar();
+      if (c) this.tryRepeat(c);
+      return;
     }
     const shortcuts: Record<string, PlayerAction["kind"]> = {
       a: "attack",
@@ -808,7 +1157,7 @@ export class CombatController {
       r: "flee",
       h: "hide",
     };
-    const kind = shortcuts[key.toLowerCase()];
+    const kind = shortcuts[lower];
     if (kind && this.menuEntries.some((e) => e.kind === kind)) {
       this.chooseAction(kind);
     }
@@ -886,6 +1235,16 @@ export class CombatController {
         ? (this.knownTechniques(this.currentChar()!).find((t) => t.id === this.selectionIds[this.selectionIndex]) ?? null)
         : null;
 
+    const acting = this.currentChar();
+    const resourceLine =
+      this.phase === "menu" && acting
+        ? menuResourceLine(
+            acting.sp,
+            acting.maxSp,
+            classHasTechniques(acting.class) ? this.currentRage(acting) : null
+          )
+        : null;
+
     const view: CombatWindowsView = {
       state: this.state,
       currentCharacterId: this.currentActorId,
@@ -900,6 +1259,15 @@ export class CombatController {
       techniqueDetail,
       flash: this.flash,
       result: this.phase === "result" ? this.result : null,
+      playbackHint:
+        this.phase === "playback"
+          ? "Hold Shift: 2× · Tab: FAST · Esc: skip · Q: AUTO"
+          : this.phase === "menu"
+            ? this.partyAuto
+              ? "AUTO on · Q to stop"
+              : null
+            : null,
+      menuResourceLine: resourceLine,
     };
     const handlers: CombatWindowsHandlers = {
       onMenuHover: (i) => {
@@ -910,7 +1278,15 @@ export class CombatController {
       onMenuConfirm: (i) => {
         if (this.phase !== "menu") return;
         this.menuIndex = i;
-        this.chooseAction(this.menuEntries[i].kind);
+        const entry = this.menuEntries[i];
+        if (entry?.disabled) {
+          if (entry.kind === "repeat") {
+            const c = this.currentChar();
+            if (c) this.tryRepeat(c);
+          }
+          return;
+        }
+        this.chooseAction(entry.kind);
       },
       onSelectionHover: (i) => {
         if (this.phase === "menu" || this.phase === "playback") return;

@@ -93,6 +93,14 @@ describe("menuEntriesForCharacter", () => {
     expect(kinds).toContain("technique");
     expect(kinds).toContain("cast");
   });
+
+  it("inserts Repeat after Attack when requested", () => {
+    const c = createCharacter("x", "X", "Human", "Neutral", "Fighter", 0);
+    const kinds = menuEntriesForCharacter(c, true).map((e) => e.kind);
+    expect(kinds[0]).toBe("attack");
+    expect(kinds[1]).toBe("repeat");
+    expect(menuHintText(menuEntriesForCharacter(c, true))).toContain("Z");
+  });
 });
 
 describe("menuHintText", () => {

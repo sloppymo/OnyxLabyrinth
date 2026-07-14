@@ -328,6 +328,7 @@ export type CombatEvent =
   | { type: "hide"; actorId: string }
   | { type: "ambush"; actorId: string; targetId: string; damage: number; crit?: boolean }
   | { type: "spotted"; actorId: string }
+  | { type: "incapacitated"; actorId: string; reason: "sleep" | "paralysis" }
   | { type: "technique"; actorId: string; techniqueId: string; targetId: string | null }
   | { type: "techniqueHit"; actorId: string; techniqueId: string; targetId: string; damage: number; crit?: boolean }
   | { type: "techniqueMiss"; actorId: string; techniqueId: string; targetId: string }
@@ -690,7 +691,13 @@ export function resolveCombatRound(
       continue;
     }
     if (c.status.includes("sleep") || c.status.includes("paralysis")) {
-      log(`${c.name} is incapacitated and skips their action.`);
+      const reason = c.status.includes("sleep") ? "sleep" : "paralysis";
+      const label = reason === "sleep" ? "asleep" : "paralyzed";
+      emit(`${c.name} is ${label} and cannot act!`, {
+        type: "incapacitated",
+        actorId: c.id,
+        reason,
+      });
       continue;
     }
     // Silenced characters cannot Cast; convert to Defend.
@@ -911,7 +918,13 @@ export function resolvePlayerTurn(
   if (!actor || actor.hp <= 0) return s;
 
   if (actor.status.includes("sleep") || actor.status.includes("paralysis")) {
-    log(`${actor.name} is incapacitated and skips their action.`);
+    const reason = actor.status.includes("sleep") ? "sleep" : "paralysis";
+    const label = reason === "sleep" ? "asleep" : "paralyzed";
+    emit(`${actor.name} is ${label} and cannot act!`, {
+      type: "incapacitated",
+      actorId: actor.id,
+      reason,
+    });
     return s;
   }
 

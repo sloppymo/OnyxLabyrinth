@@ -197,7 +197,8 @@ describe("resolvePlayerTurn", () => {
       { kind: "attack", actorId: state.party[0].id, targetInstanceId: "rat-0" },
       seqRng([0.5])
     );
-    expect(s.log.at(-1)).toMatch(/incapacitated/);
+    expect(s.log.at(-1)).toMatch(/cannot act/);
+    expect(s.events.some((e) => e?.type === "incapacitated")).toBe(true);
     expect(s.enemies.front[0].currentHp).toBe(s.enemies.front[0].hp);
   });
 

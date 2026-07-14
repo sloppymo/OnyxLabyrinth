@@ -10,6 +10,7 @@ import {
   updateScene,
   isPlaybackDone,
   absorbDeaths,
+  skipPlaybackToEnd,
   findActor,
   partyPos,
   enemyPos,
@@ -138,6 +139,34 @@ describe("playTurn choreography", () => {
     updateScene(scene, 10);
     expect(scene.popups).toHaveLength(0);
     expect(duration).toBeLessThanOrEqual(400); // just the trailing beat
+  });
+
+  it("skipPlaybackToEnd fires remaining steps and completes", () => {
+    const scene = makeScene();
+    const events: CombatEvent[] = [
+      { type: "attack", actorId: "c0", targetId: "rat-0", damage: 7, range: "close" },
+    ];
+    const t0 = 500;
+    playTurn(scene, events, spellName, t0, W, H);
+    expect(isPlaybackDone(scene, t0)).toBe(false);
+    skipPlaybackToEnd(scene, t0 + 20);
+    expect(isPlaybackDone(scene, t0 + 20)).toBe(true);
+    expect(scene.popups.some((p) => p.text === "7")).toBe(true);
+  });
+
+  it("playbackRate 2 advances choreography twice as fast", () => {
+    const scene = makeScene();
+    const events: CombatEvent[] = [
+      { type: "attack", actorId: "c0", targetId: "rat-0", damage: 4, range: "close" },
+    ];
+    const t0 = 0;
+    const duration = playTurn(scene, events, spellName, t0, W, H);
+    scene.playbackRate = 2;
+    // Seed lastUpdate so warping has a prior frame.
+    updateScene(scene, t0 + 1);
+    // Half wall duration should finish under 2×.
+    updateScene(scene, t0 + duration / 2 + 30);
+    expect(isPlaybackDone(scene, t0 + duration / 2 + 30)).toBe(true);
   });
 });
 
