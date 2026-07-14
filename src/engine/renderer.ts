@@ -16,9 +16,7 @@
 
 import type { GameState, Grid } from "../types";
 import type { EdgeType, TileFeature } from "../types";
-import { edgeInDirection, buildOpenRoom } from "../game/dungeon";
-import { cloneFloor } from "../data/floors";
-import type { FloorDef } from "../data/floors";
+import { edgeInDirection } from "../game/dungeon";
 import f1WallUrl from "../assets/f1_wall_256.png";
 import f1FloorAUrl from "../assets/f1_floor_a_256.png";
 import f1FloorBUrl from "../assets/f1_floor_b_256.png";
@@ -39,9 +37,10 @@ import {
   RenderCameraAnimator,
 } from "./render-math";
 import type { RenderCamera } from "./render-math";
+import { renderArenaRoom } from "./arena-renderer";
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
-const PALETTE = {
+export const PALETTE = {
   bg: "#0e0d0a",
   amber: "#e0a458",
   warmWhite: "#f5f0e6",
@@ -151,10 +150,6 @@ const RENDER_CONFIG = {
   headBobAmplitude: 2.5,          // px — positive = head dips at mid-step
 } as const;
 
-// --- Battle arena synthetic room dimensions --------------------------------
-const ARENA_WIDTH = 7;
-const ARENA_DEPTH = 9;
-
 /** Fraction of canvas height where the arena horizon (floor/ceiling boundary)
  *  sits after cropping. Shared between the arena renderer and the combat scene
  *  projection so character positions always align with the floor plane. */
@@ -170,7 +165,7 @@ interface RayHit {
   edge: EdgeType;                   // "wall" | "door" | "locked" | "open"
 }
 
-interface TextureSet {
+export interface TextureSet {
   wall: HTMLImageElement | null;
   floorA: HTMLCanvasElement | null;
   floorB: HTMLCanvasElement | null;
@@ -184,7 +179,7 @@ interface TextureSet {
 }
 
 /** One fully prepared tileset (adjusted textures + pre-repeated wall). */
-interface LoadedTileset {
+export interface LoadedTileset {
   set: TextureSet;
   repeatedWall: HTMLCanvasElement | null;
 }
@@ -666,6 +661,11 @@ function drawFloorCeilingCast(
   ctx.putImageData(buf, 0, bobY);
 }
 
+/** Return the loaded tileset for a floor id, or null if none is cached. */
+export function getTilesetForFloor(floorId: number): LoadedTileset | null {
+  return tilesetCache.get(floorId) ?? tilesetCache.get(FALLBACK_TILESET_ID) ?? null;
+}
+
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
@@ -1080,65 +1080,28 @@ export function renderCorridorBackdrop(
 }
 
 /**
- * Bake a synthetic arena room into an offscreen canvas for use as a combat
- * backdrop. Builds a small open room from the current floor's tileset, places
- * the camera at the near edge facing north, and crops the rendered image so
- * the horizon sits at ARENA_HORIZON_FRAC of the output height. This gives the
- * battle scene a 3D floor plane with receding walls while leaving the DOM UI
- * unchanged.
- *
- * After baking, the scanline pattern cache is invalidated so the next live
- * dungeon render recreates it on the main corridor context.
+ * Bake a 3/4 top-down arena room into an offscreen canvas for use as a combat
+ * backdrop. Uses the dedicated arena renderer so the corridor raycaster is not
+ * involved and no scanline-pattern invalidation is needed.
  */
 export function renderBattleArena(
   state: GameState,
   w: number,
   h: number
 ): HTMLCanvasElement {
-  const arenaGrid = buildOpenRoom(ARENA_WIDTH, ARENA_DEPTH);
-  const startX = Math.floor(ARENA_WIDTH / 2);
-  const startY = ARENA_DEPTH - 1;
-
-  const arenaFloor: FloorDef = {
-    ...cloneFloor(state.floor),
-    width: ARENA_WIDTH,
-    height: ARENA_DEPTH,
-    grid: arenaGrid,
-    startX,
-    startY,
-  };
-
-  const arenaState: GameState = {
-    ...state,
-    mode: "dungeon",
-    floor: arenaFloor,
-    player: { x: startX, y: startY, facing: 0 },
-    inDarkness: false,
-    inAntimagic: false,
-  };
-
-  const renderH = h * 2;
   const off = document.createElement("canvas");
   off.width = w;
-  off.height = renderH;
-  const offCtx = off.getContext("2d")!;
+  off.height = h;
+  const ctx = off.getContext("2d")!;
 
-  resetRenderCamera(startX, startY, 0);
-  render(offCtx, arenaState);
+  const tileset = getTilesetForFloor(state.floor.id);
+  if (tileset) {
+    renderArenaRoom(ctx, w, h, { tileset });
+  } else {
+    // Fallback when no tileset is loaded (debug floors).
+    ctx.fillStyle = PALETTE.bg;
+    ctx.fillRect(0, 0, w, h);
+  }
 
-  // Invalidate the scanline pattern cache so the live dungeon renderer does
-  // not reuse a pattern tied to this offscreen context.
-  scanlinePattern = null;
-
-  // Crop: the horizon is at renderH/2. We want it at h*ARENA_HORIZON_FRAC in
-  // the output so characters align with the floor plane in combat-scene.ts.
-  const cropStart = Math.floor(renderH / 2 - h * ARENA_HORIZON_FRAC);
-  const result = document.createElement("canvas");
-  result.width = w;
-  result.height = h;
-  const resultCtx = result.getContext("2d")!;
-  resultCtx.imageSmoothingEnabled = false;
-  resultCtx.drawImage(off, 0, cropStart, w, h, 0, 0, w, h);
-
-  return result;
+  return off;
 }

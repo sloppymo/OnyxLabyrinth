@@ -27,6 +27,10 @@ import {
   MATH_CONFIG,
   RenderCameraAnimator,
   cappedRenderSize,
+  arenaFloorRowDistance,
+  arenaFloorWorldAt,
+  arenaProject,
+  arenaOpacityForDepth,
 } from "./render-math";
 
 describe("computeLineHeight", () => {
@@ -523,5 +527,92 @@ describe("cappedRenderSize", () => {
     const size = cappedRenderSize(0, 0, 768, 672);
     expect(size.width).toBe(1);
     expect(size.height).toBe(1);
+  });
+});
+
+describe("arena projection math", () => {
+  const screenW = 768;
+  const screenH = 672;
+  const horizonFrac = 0.3;
+  const horizonY = screenH * horizonFrac;
+  const pitch = (35 * Math.PI) / 180;
+  const focalLength = (0.2 * screenH) / Math.tan(pitch);
+  const camHeight = 2.5;
+  const camera = { camHeight, pitch, focalLength, horizonY };
+
+  it("arenaFloorRowDistance returns Infinity at the horizon", () => {
+    const d = arenaFloorRowDistance(horizonY, camera, screenH);
+    expect(d).toBe(Infinity);
+  });
+
+  it("arenaFloorRowDistance is only valid below the horizon", () => {
+    // Rows above the horizon correspond to rays pointing upward, so the
+    // intersection with the floor plane is behind the camera (negative).
+    expect(arenaFloorRowDistance(horizonY - 10, camera, screenH)).toBeLessThan(0);
+  });
+
+  it("arenaFloorRowDistance decreases as y moves below the horizon", () => {
+    const atHorizonPlus10 = arenaFloorRowDistance(horizonY + 10, camera, screenH);
+    const atHorizonPlus40 = arenaFloorRowDistance(horizonY + 40, camera, screenH);
+    expect(atHorizonPlus40).toBeGreaterThan(0);
+    expect(atHorizonPlus10).toBeGreaterThan(atHorizonPlus40);
+  });
+
+  it("arenaFloorWorldAt returns worldX = 0 at screen center", () => {
+    const p = arenaFloorWorldAt(screenW / 2, horizonY + 50, camera, screenW, screenH);
+    expect(p.x).toBeCloseTo(0, 5);
+    expect(p.y).toBeGreaterThan(0);
+    expect(Number.isFinite(p.y)).toBe(true);
+  });
+
+  it("arenaFloorWorldAt maps left/right of center to negative/positive worldX", () => {
+    const left = arenaFloorWorldAt(screenW / 2 - 100, horizonY + 50, camera, screenW, screenH);
+    const right = arenaFloorWorldAt(screenW / 2 + 100, horizonY + 50, camera, screenW, screenH);
+    expect(left.x).toBeLessThan(0);
+    expect(right.x).toBeGreaterThan(0);
+  });
+
+  it("arenaProject maps a far point on the optical axis to screen center", () => {
+    // Optical axis direction: D = (0, cos θ, -sin θ). A point far along it
+    // from the camera should project close to the screen center.
+    const t = 1000;
+    const p = arenaProject(
+      {
+        x: 0,
+        y: t * Math.cos(pitch),
+        z: camHeight - t * Math.sin(pitch),
+      },
+      camera,
+      screenW,
+      screenH
+    );
+    expect(p.x).toBeCloseTo(screenW / 2, 0);
+    expect(p.y).toBeCloseTo(screenH / 2, 0);
+  });
+
+  it("arenaProject of a far floor point approaches the horizon", () => {
+    const p = arenaProject({ x: 0, y: 1000, z: 0 }, camera, screenW, screenH);
+    expect(p.x).toBeCloseTo(screenW / 2, 0);
+    expect(p.y).toBeLessThanOrEqual(horizonY + 1);
+  });
+
+  it("arenaOpacityForDepth returns 1.0 at distance 0", () => {
+    expect(arenaOpacityForDepth(0)).toBeCloseTo(1.0, 5);
+  });
+
+  it("arenaOpacityForDepth decreases monotonically", () => {
+    const a = arenaOpacityForDepth(1);
+    const b = arenaOpacityForDepth(5);
+    const c = arenaOpacityForDepth(10);
+    expect(a).toBeGreaterThan(b);
+    expect(b).toBeGreaterThan(c);
+  });
+
+  it("arenaOpacityForDepth never exceeds 1.0 or drops below 0", () => {
+    for (let d = 0; d <= 20; d += 0.5) {
+      const o = arenaOpacityForDepth(d);
+      expect(o).toBeLessThanOrEqual(1.0);
+      expect(o).toBeGreaterThanOrEqual(0);
+    }
   });
 });

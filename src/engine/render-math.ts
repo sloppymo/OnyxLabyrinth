@@ -27,6 +27,10 @@ export const MATH_CONFIG = {
   teleportSnapThreshold: 1.5,
   moveAnimDuration: 150,
   turnAnimDuration: 100,
+  // Arena room is smaller and viewed from a steeper angle than the corridor,
+  // so the fog curve is tuned separately. Keep walls and far floor readable.
+  arenaFogFalloff: 0.88,
+  arenaFogMidtoneLift: 0.22,
 };
 
 /**
@@ -407,4 +411,94 @@ export class RenderCameraAnimator {
       planeY: plane.planeY,
     };
   }
+}
+
+// --- Arena renderer math -----------------------------------------------------
+// Pure projection functions for the 3/4 top-down battle arena backdrop. These
+// have no canvas dependencies and are unit-tested in render-math.test.ts.
+
+/** Parameters for the arena camera. All angles are radians. */
+export interface ArenaCamera {
+  /** Camera height above the floor, in world/grid units. */
+  camHeight: number;
+  /** Pitch down from horizontal (θ > 0 means looking down). */
+  pitch: number;
+  /** Focal length in pixels. */
+  focalLength: number;
+  /** Screen y-coordinate of the horizon line. */
+  horizonY: number;
+}
+
+/**
+ * Compute the world depth Y for a given screen row y on the arena floor plane
+ * Z = 0. Returns Infinity at the horizon row.
+ *
+ * Derivation: camera at (0,0,H), optical axis pitched down by θ. For a screen
+ * row y, the ray intersects the floor at depth:
+ *   Y = H * (1 + (dy/f) * tan θ) / (tan θ - dy/f)
+ * where dy = (screenH/2) - y.
+ */
+export function arenaFloorRowDistance(
+  y: number,
+  camera: ArenaCamera,
+  screenH: number
+): number {
+  const halfH = screenH / 2;
+  const dy = halfH - y;
+  const tanPitch = Math.tan(camera.pitch);
+  const dyOverF = dy / camera.focalLength;
+  const denom = tanPitch - dyOverF;
+  if (Math.abs(denom) < 1e-9) return Infinity;
+  return camera.camHeight * (1 + dyOverF * tanPitch) / denom;
+}
+
+/**
+ * Compute the world-space point on the floor plane Z=0 that projects to screen
+ * pixel (x, y).
+ */
+export function arenaFloorWorldAt(
+  x: number,
+  y: number,
+  camera: ArenaCamera,
+  screenW: number,
+  screenH: number
+): { x: number; y: number } {
+  const d = arenaFloorRowDistance(y, camera, screenH);
+  if (!isFinite(d)) return { x: 0, y: Infinity };
+  const dx = x - screenW / 2;
+  const sinPitch = Math.sin(camera.pitch);
+  const cosPitch = Math.cos(camera.pitch);
+  const worldX =
+    (dx * (d * cosPitch + camera.camHeight * sinPitch)) /
+    camera.focalLength;
+  return { x: worldX, y: d };
+}
+
+/**
+ * Project a world point (X, Y, Z) to screen coordinates using the arena camera.
+ */
+export function arenaProject(
+  world: { x: number; y: number; z: number },
+  camera: ArenaCamera,
+  screenW: number,
+  screenH: number
+): { x: number; y: number } {
+  const halfH = screenH / 2;
+  const sinPitch = Math.sin(camera.pitch);
+  const cosPitch = Math.cos(camera.pitch);
+  const a = world.x;
+  const b = world.y * sinPitch + (world.z - camera.camHeight) * cosPitch;
+  const c = world.y * cosPitch - (world.z - camera.camHeight) * sinPitch;
+  if (Math.abs(c) < 1e-9) return { x: screenW / 2, y: halfH };
+  return {
+    x: screenW / 2 + (camera.focalLength * a) / c,
+    y: halfH - (camera.focalLength * b) / c,
+  };
+}
+
+/** Fog/depth opacity tuned for the smaller, steeper arena view. */
+export function arenaOpacityForDepth(d: number): number {
+  const exponential = Math.pow(MATH_CONFIG.arenaFogFalloff, d);
+  const lift = MATH_CONFIG.arenaFogMidtoneLift;
+  return exponential + (1 - exponential) * lift * (1 - Math.exp(-d));
 }
