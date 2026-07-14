@@ -13,6 +13,8 @@ import {
   findActor,
   partyPos,
   enemyPos,
+  resolveEffectStyle,
+  sampleProjectilePose,
 } from "./combat-scene";
 import { createCombatState, type CombatEvent, type EnemyInstance } from "../game/combat";
 import { createCharacter } from "../game/party";
@@ -89,7 +91,7 @@ describe("playTurn choreography", () => {
     expect(scene.banner).toBe("Spell:mage-fire-bolt");
     expect(scene.partyAnims.get("c1")?.state).toBe("cast");
 
-    updateScene(scene, t0 + 700); // past cast impact (~585)
+    updateScene(scene, t0 + 1000); // past rise→dash impact (~920 for fire-bolt)
     expect(scene.effects.some((e) => e.type === "burst")).toBe(true);
     expect(scene.popups.some((p) => p.text === "5")).toBe(true);
   });
@@ -178,6 +180,84 @@ describe("scene bookkeeping", () => {
     expect(scene.enemyCorpses).toHaveLength(1);
     updateScene(scene, 5000); // long past fade
     expect(scene.enemyCorpses).toHaveLength(0);
+  });
+});
+
+describe("sampleProjectilePose rise→dash", () => {
+  it("lingers near the apex during the rise phase, then snaps to the target", () => {
+    const fromX = 600;
+    const fromY = 400;
+    const toX = 200;
+    const toY = 300;
+    const apexX = 600;
+    const apexY = 320;
+    const riseFrac = 0.6;
+
+    const midRise = sampleProjectilePose(0.3, fromX, fromY, toX, toY, {
+      apexX,
+      apexY,
+      riseFrac,
+    });
+    expect(midRise.phase).toBe("rise");
+    expect(midRise.y).toBeLessThan(fromY);
+    expect(midRise.y).toBeGreaterThan(apexY);
+
+    const atApex = sampleProjectilePose(0.6, fromX, fromY, toX, toY, {
+      apexX,
+      apexY,
+      riseFrac,
+    });
+    expect(atApex.x).toBeCloseTo(apexX, 0);
+    expect(atApex.y).toBeCloseTo(apexY, 0);
+
+    const earlyDash = sampleProjectilePose(0.68, fromX, fromY, toX, toY, {
+      apexX,
+      apexY,
+      riseFrac,
+    });
+    expect(earlyDash.phase).toBe("dash");
+    // Still hanging near the apex early in the dash hold.
+    expect(Math.abs(earlyDash.x - apexX)).toBeLessThan(Math.abs(toX - apexX) * 0.1);
+
+    const lateDash = sampleProjectilePose(0.97, fromX, fromY, toX, toY, {
+      apexX,
+      apexY,
+      riseFrac,
+    });
+    expect(Math.abs(lateDash.x - toX)).toBeLessThan(Math.abs(toX - apexX) * 0.2);
+  });
+
+  it("marks showcase projectile spells as riseDash", () => {
+    expect(resolveEffectStyle("mage-fireball").projectilePath).toBe("riseDash");
+    expect(resolveEffectStyle("mage-immolate").projectilePath).toBe("riseDash");
+    expect(resolveEffectStyle("priest-sacred-flame").projectilePath).toBe("riseDash");
+    expect(resolveEffectStyle("priest-divine-smite").projectilePath).toBe("riseDash");
+    expect(resolveEffectStyle("mage-fire-bolt").projectilePath).toBe("riseDash");
+  });
+});
+
+describe("resolveEffectStyle impact-pack wiring", () => {
+  it("wires the three leftover impact strips into spell/element styles", () => {
+    expect(resolveEffectStyle("priest-holy-aura").burst).toBe("retro2_solar_ring");
+    expect(resolveEffectStyle("priest-holy-aura").field).toBe("retro2_solar_ring");
+    expect(resolveEffectStyle("priest-sunburst").field).toBe("retro2_solar_ring");
+
+    expect(resolveEffectStyle("mage-rock-slide").field).toBe("retro2_earth_swirl");
+    expect(resolveEffectStyle("mage-stone-shard").field).toBe("retro2_earth_swirl");
+    expect(resolveEffectStyle("mage-stone-shard").charge).toBe("retro2_earth_swirl");
+
+    expect(resolveEffectStyle("mage-meteor-swarm").burst).toBe("retro_fire_mushroom");
+    expect(resolveEffectStyle("mage-immolate").burst).toBe("retro_fire_mushroom");
+  });
+
+  it("gives higher-tier spells multishot and burst variety knobs", () => {
+    expect(resolveEffectStyle("mage-fireball").projectileCount).toBe(2);
+    expect(resolveEffectStyle("mage-immolate").projectileCount).toBe(3);
+    expect(resolveEffectStyle("mage-meteor-swarm").projectileCount).toBe(5);
+    expect(resolveEffectStyle("mage-meteor-swarm").burstCount).toBe(3);
+    expect(resolveEffectStyle("mage-freezing-sphere").projectileCount).toBe(4);
+    expect(resolveEffectStyle("priest-divine-smite").projectileCount).toBe(2);
+    expect(resolveEffectStyle("mage-ice-storm").projectileCount).toBe(4);
   });
 });
 
