@@ -502,3 +502,23 @@ export function arenaOpacityForDepth(d: number): number {
   const lift = MATH_CONFIG.arenaFogMidtoneLift;
   return exponential + (1 - exponential) * lift * (1 - Math.exp(-d));
 }
+
+/**
+ * Inverse of arenaFloorRowDistance: given a world depth Y on the floor plane
+ * Z=0, return the screen row that projects to it.
+ *
+ * From Y = H * (1 + (dy/f)*tanθ) / (tanθ - dy/f):
+ *   dy/f = (Y·tanθ - H) / (Y + H·tanθ)
+ */
+export function arenaFloorScreenYForDepth(
+  worldY: number,
+  camera: ArenaCamera,
+  screenH: number
+): number {
+  const halfH = screenH / 2;
+  const tanPitch = Math.tan(camera.pitch);
+  const denom = worldY + camera.camHeight * tanPitch;
+  if (Math.abs(denom) < 1e-9) return halfH;
+  const dyOverF = (worldY * tanPitch - camera.camHeight) / denom;
+  return halfH - dyOverF * camera.focalLength;
+}
