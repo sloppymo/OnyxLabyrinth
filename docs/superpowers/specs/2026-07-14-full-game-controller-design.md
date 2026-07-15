@@ -83,6 +83,7 @@ Adapter maps pad → synthetic keys consumed by existing `handleKey`:
 | Up / Down / Left / Right | `ArrowUp` / `ArrowDown` / `ArrowLeft` / `ArrowRight` |
 | A | `Enter` |
 | B | `Escape` |
+| Select | `Escape` (same as B for menus — town main Esc opens save; sub-screens Esc backs out) |
 
 Covered surfaces: title, party creation (choice screen + field/slot navigation — **not** name character insert), town main + shop/inn/temple/roster lists, save/load, camp, game-over, arena setup, spell grimoire, perk select, NPC root / talk / barter / give.
 
