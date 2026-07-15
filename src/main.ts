@@ -26,7 +26,7 @@ import { loadEffectSprites } from "./engine/effect-sprite-cache";
 import { loadMapSprites } from "./engine/map-sprite-cache";
 import { audio } from "./engine/audio";
 import { renderAutoMap } from "./engine/automap";
-import { bindInput } from "./engine/input";
+import { bindInput, type InputHandlers } from "./engine/input";
 import {
   canvas,
   ctx,
@@ -41,8 +41,11 @@ import {
 import { CombatController } from "./engine/combat-ui";
 import {
   createControllerInput,
-  type ControllerInputHandle,
+  type ControllerInputEvent,
 } from "./engine/controller-input";
+import { controllerEventToMenuKey } from "./engine/menu-controller-adapter";
+import { DungeonActionRingController } from "./engine/dungeon-action-ring-ui";
+import { TrapPromptController } from "./engine/trap-prompt-ui";
 import { CampController } from "./engine/camp-ui";
 import { SaveController } from "./engine/save-ui";
 import { TownController } from "./engine/town-ui";
@@ -107,6 +110,13 @@ const state = createGameState(playtestFloor ?? getFloors()[0]!);
 
 // Auto-map visibility flag.
 let mapVisible = false;
+
+// Session-wide gamepad/keyboard poller (combat keyboard path feeds this too).
+let actionRingController: DungeonActionRingController | null = null;
+let justOpenedActionRing = false;
+let trapPrompt: TrapPromptController | null = null;
+type RingActionId = "camp" | "map" | "grimoire" | "unlock" | "town";
+let pendingRingAction: RingActionId | null = null;
 
 // --- Mode transition with fade -------------------------------------------
 // The canvas has `transition: opacity 0.15s` in CSS. This helper fades out,
@@ -327,7 +337,6 @@ function maybeTriggerEncounter(): boolean {
 
 // --- Combat mode ---------------------------------------------------------
 let combatController: CombatController | null = null;
-let combatInput: ControllerInputHandle | null = null;
 
 // When an encounter starts mid-keydown (the same forward-step keypress that
 // triggers maybeTriggerEncounter flips state.mode to "combat" synchronously),
@@ -360,13 +369,6 @@ async function startCombat(combat: CombatState): Promise<void> {
     },
     backdrop: bd,
   });
-
-  combatInput = createControllerInput(
-    (event) => {
-      combatController?.handleInput(event);
-    },
-    { attachListeners: false }
-  );
 }
 
 function endCombat(result: CombatState): void {
@@ -447,8 +449,6 @@ function endCombat(result: CombatState): void {
   }
 
   state.combat = undefined;
-  combatInput?.destroy();
-  combatInput = null;
   combatController = null;
 
   if (inArena) {
@@ -595,7 +595,9 @@ function onMove(): void {
   // Process the tile feature at the player's current position.
   const result = handleTileFeature(state);
   if (result) {
-    setMessage([...expiry, result.message].join(" "));
+    if (!state.pendingTrap) {
+      setMessage([...expiry, result.message].join(" "));
+    }
     if (result.changedFloor) {
       // Floor transition happened — mark explored on the new floor and snap
       // the render camera instantly to the new position (don't slide across
@@ -615,10 +617,17 @@ function onMove(): void {
     setMessage(expiry.join(" "));
   }
 
+  if (state.pendingTrap) {
+    if (!trapPrompt) trapPrompt = new TrapPromptController();
+    setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected));
+  } else {
+    trapPrompt = null;
+  }
+
   maybeTriggerEncounter();
 }
 
-bindInput(window, {
+const dungeonHandlers: InputHandlers = {
   onForward: () => {
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
@@ -696,7 +705,9 @@ bindInput(window, {
       }
     }
   },
-});
+};
+
+bindInput(window, dungeonHandlers);
 
 // --- Trapped chest prompt --------------------------------------------------
 // Active while state.pendingTrap is set (the party is standing on a trapped,
@@ -745,20 +756,237 @@ function forceEncounter(): void {
   startCombat(combat);
 }
 
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "dungeon" || !state.pendingTrap) return;
-  const key = e.key.toLowerCase();
-  if (key === "i") {
-    setMessage(inspectChest(state));
-  } else if (key === "d") {
-    applyChestResult(disarmChest(state));
-  } else if (key === "o") {
-    applyChestResult(openChest(state));
-  } else if (key === "l" || e.key === "Escape") {
-    setMessage(leaveChest(state));
-  } else {
+/** Route trap prompt keys (keyboard or adapter) to features.ts chest APIs. */
+function handleTrapInput(key: string): boolean {
+  if (state.mode !== "dungeon" || !state.pendingTrap || !trapPrompt) return false;
+  const action = trapPrompt.handleKey(key);
+  if (action === null) {
+    setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected));
+    return true;
+  }
+  switch (action) {
+    case "inspect":
+      inspectChest(state);
+      setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected));
+      break;
+    case "disarm":
+      applyChestResult(disarmChest(state));
+      if (state.pendingTrap && trapPrompt) {
+        setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected));
+      } else {
+        trapPrompt = null;
+      }
+      break;
+    case "open":
+      applyChestResult(openChest(state));
+      trapPrompt = null;
+      break;
+    case "leave":
+      setMessage(leaveChest(state));
+      trapPrompt = null;
+      break;
+  }
+  return true;
+}
+
+function openActionRing(): void {
+  if (
+    perkSelectController ||
+    saveController ||
+    spellMenuController ||
+    npcController ||
+    actionRingController
+  ) {
     return;
   }
+  if (state.mode !== "dungeon" || state.pendingTrap || mapVisible || isRenderCameraAnimating()) {
+    return;
+  }
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  canvas.style.opacity = "0.2";
+  justOpenedActionRing = true;
+  pendingRingAction = null;
+  actionRingController = new DungeonActionRingController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    onCamp: () => {
+      pendingRingAction = "camp";
+    },
+    onToggleMap: () => {
+      pendingRingAction = "map";
+    },
+    onCastSpell: () => {
+      pendingRingAction = "grimoire";
+    },
+    onUnlock: () => {
+      pendingRingAction = "unlock";
+    },
+    onTown: () => {
+      pendingRingAction = "town";
+    },
+    onClose: () => {
+      actionRingController = null;
+      canvas.style.opacity = "1";
+      setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
+      setMessage("");
+      const action = pendingRingAction;
+      pendingRingAction = null;
+      if (action === "camp") dungeonHandlers.onCamp();
+      else if (action === "map") dungeonHandlers.onToggleMap();
+      else if (action === "grimoire") dungeonHandlers.onCastSpell();
+      else if (action === "unlock") dungeonHandlers.onUnlock();
+      else if (action === "town") dungeonHandlers.onTown();
+    },
+  });
+}
+
+function routeControllerEvent(event: ControllerInputEvent): void {
+  // 1. Perk select overlay
+  if (state.mode === "title" && perkSelectController) {
+    const key = controllerEventToMenuKey(event);
+    if (key) perkSelectController.handleKey(key);
+    return;
+  }
+
+  // 2. Combat (all event kinds)
+  if (state.mode === "combat" && combatController) {
+    combatController.handleInput(event);
+    return;
+  }
+
+  // 3. Overlays borrowing title mode
+  if (state.mode === "title" && saveController) {
+    if (justOpenedSaveMenu) {
+      if (event.kind === "press") justOpenedSaveMenu = false;
+      return;
+    }
+    const key = controllerEventToMenuKey(event);
+    if (key) saveController.handleKey(key);
+    return;
+  }
+  if (state.mode === "title" && spellMenuController) {
+    if (justOpenedSpellMenu) {
+      if (event.kind === "press") justOpenedSpellMenu = false;
+      return;
+    }
+    const key = controllerEventToMenuKey(event);
+    if (key) spellMenuController.handleKey(key);
+    return;
+  }
+  if (state.mode === "title" && npcController) {
+    if (justOpenedNPCPanel) {
+      if (event.kind === "press") justOpenedNPCPanel = false;
+      return;
+    }
+    const key = controllerEventToMenuKey(event);
+    if (key) npcController.handleKey(key);
+    return;
+  }
+  if (actionRingController) {
+    if (justOpenedActionRing) {
+      if (event.kind === "press") justOpenedActionRing = false;
+      return;
+    }
+    const key = controllerEventToMenuKey(event);
+    if (key) actionRingController.handleKey(key);
+    return;
+  }
+
+  // 4. Mode UIs (press-only via adapter)
+  if (state.mode === "town" && townController) {
+    const key = controllerEventToMenuKey(event);
+    if (key) townController.handleKey(key);
+    return;
+  }
+  if (state.mode === "camp" && campController) {
+    const key = controllerEventToMenuKey(event);
+    if (key) campController.handleKey(key);
+    return;
+  }
+  if (state.mode === "game_over" && gameOverController) {
+    const key = controllerEventToMenuKey(event);
+    if (key) gameOverController.handleKey(key);
+    return;
+  }
+  if (state.mode === "party_creation" && partyCreationController) {
+    const key = controllerEventToMenuKey(event);
+    if (key) partyCreationController.handleKey(key);
+    return;
+  }
+  if (state.mode === "title" && titleController) {
+    const key = controllerEventToMenuKey(event);
+    if (key) titleController.handleKey(key);
+    return;
+  }
+  if (state.mode === "arena") {
+    if (justOpenedArena) {
+      if (event.kind === "press") justOpenedArena = false;
+      return;
+    }
+    const key = controllerEventToMenuKey(event);
+    if (!key) return;
+    if (arenaSetupController) {
+      arenaSetupController.handleKey(key);
+      return;
+    }
+    if (arenaController) {
+      arenaController.handleKey(key);
+    }
+    return;
+  }
+
+  // 5. Trap prompt
+  if (state.mode === "dungeon" && state.pendingTrap && trapPrompt) {
+    const key = controllerEventToMenuKey(event);
+    if (key) handleTrapInput(key);
+    return;
+  }
+
+  // 6. Dungeon exploration (press-only)
+  if (state.mode !== "dungeon") return;
+  if (event.kind !== "press") return;
+
+  switch (event.button) {
+    case "up":
+      if (!mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
+        dungeonHandlers.onForward();
+      }
+      break;
+    case "down":
+      if (!mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
+        dungeonHandlers.onBackward();
+      }
+      break;
+    case "left":
+      if (!mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
+        dungeonHandlers.onTurnLeft();
+      }
+      break;
+    case "right":
+      if (!mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
+        dungeonHandlers.onTurnRight();
+      }
+      break;
+    case "select":
+      dungeonHandlers.onSystemMenu();
+      break;
+    case "start":
+      if (!mapVisible && !isRenderCameraAnimating()) {
+        openActionRing();
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+const globalInput = createControllerInput((event) => {
+  routeControllerEvent(event);
+}, { attachListeners: false });
+
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (!handleTrapInput(e.key)) return;
   e.preventDefault();
 });
 
@@ -779,7 +1007,7 @@ window.addEventListener("beforeunload", () => {
 
 // Combat key handler — separate listener that only fires in combat mode.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "combat" || !combatController || !combatInput) return;
+  if (state.mode !== "combat" || !combatController) return;
   if (suppressNextCombatKey) {
     suppressNextCombatKey = false;
     e.preventDefault();
@@ -815,16 +1043,16 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
     return;
   }
 
-  combatInput.handleKeyboardDown(e);
+  globalInput.handleKeyboardDown(e);
   e.preventDefault();
 });
 
 window.addEventListener("keyup", (e: KeyboardEvent) => {
-  if (state.mode !== "combat" || !combatController || !combatInput) return;
+  if (state.mode !== "combat" || !combatController) return;
   if (e.key === "Shift") {
     combatController.handleKeyUp(e.key);
   }
-  combatInput.handleKeyboardUp(e);
+  globalInput.handleKeyboardUp(e);
 });
 
 // Camp key handler — dismisses the camp screen after the animation finishes.
