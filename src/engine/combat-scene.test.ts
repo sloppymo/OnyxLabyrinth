@@ -275,7 +275,8 @@ describe("resolveEffectStyle impact-pack wiring", () => {
     expect(resolveEffectStyle("mage-stone-shard").field).toBe("retro2_earth_swirl");
     expect(resolveEffectStyle("mage-stone-shard").charge).toBe("retro2_earth_swirl");
 
-    expect(resolveEffectStyle("mage-meteor-swarm").burst).toBe("retro_fire_mushroom");
+    expect(resolveEffectStyle("mage-meteor-swarm").burst).toBe("fz_explosion");
+    expect(resolveEffectStyle("mage-meteor-swarm").field).toBe("retro_fire_mushroom");
     expect(resolveEffectStyle("mage-immolate").burst).toBe("retro_fire_mushroom");
   });
 
