@@ -45,4 +45,12 @@ describe("DungeonActionRingController", () => {
     expect(onToggleMap).toHaveBeenCalledOnce();
     c.destroy();
   });
+
+  it("footer shows Start and A/B pad hints", () => {
+    const { c, panel } = mount();
+    expect(panel.innerHTML).toMatch(/\[A\] confirm/);
+    expect(panel.innerHTML).toMatch(/\[B\/Esc\]/);
+    expect(panel.innerHTML).toMatch(/Start/);
+    c.destroy();
+  });
 });

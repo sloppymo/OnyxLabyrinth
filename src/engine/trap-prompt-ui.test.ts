@@ -60,15 +60,25 @@ describe("TrapPromptController", () => {
     t.handleKey("ArrowDown");
     const msg = t.renderMessage(false);
     expect(msg).toContain("▶");
-    expect(msg).toContain("[D]isarm");
+    expect(msg).toContain("[D]ism");
   });
 
   it("renderMessage stays compact for #message overlay", () => {
+    for (const inspected of [false, true]) {
+      for (let i = 0; i < 4; i++) {
+        const t = new TrapPromptController();
+        for (let j = 0; j < i; j++) t.handleKey("ArrowDown");
+        const lines = t.renderMessage(inspected).split("\n");
+        expect(lines).toHaveLength(2);
+        for (const line of lines) {
+          expect(line.length).toBeLessThanOrEqual(30);
+        }
+      }
+    }
     const t = new TrapPromptController();
     const msg = t.renderMessage(false);
-    expect(msg.length).toBeLessThanOrEqual(80);
-    expect(msg).toContain("[I]nspect");
-    expect(msg).toContain("[L]eave");
+    expect(msg).toContain("[I]nsp");
+    expect(msg).toContain("[L]ve");
     expect(msg).toMatch(/↑↓\+A/);
     expect(msg).toMatch(/B leave/);
   });

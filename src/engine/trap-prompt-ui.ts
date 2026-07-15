@@ -7,10 +7,10 @@
 export type TrapActionId = "inspect" | "disarm" | "open" | "leave";
 
 const ACTIONS: ReadonlyArray<{ id: TrapActionId; label: string; key: string }> = [
-  { id: "inspect", label: "[I]nspect", key: "i" },
-  { id: "disarm", label: "[D]isarm", key: "d" },
+  { id: "inspect", label: "[I]nsp", key: "i" },
+  { id: "disarm", label: "[D]ism", key: "d" },
   { id: "open", label: "[O]pen", key: "o" },
-  { id: "leave", label: "[L]eave", key: "l" },
+  { id: "leave", label: "[L]ve", key: "l" },
 ];
 
 export class TrapPromptController {
@@ -53,7 +53,7 @@ export class TrapPromptController {
   /** Compact two-line menu for `#message` (~2×30 chars). */
   renderMessage(inspected: boolean): string {
     const head = inspected ? "↑↓+A sel · B leave" : "Trapped! ↑↓+A · B leave";
-    const opts = ACTIONS.map((_, i) => this.formatOption(i)).join(" · ");
+    const opts = ACTIONS.map((_, i) => this.formatOption(i)).join("·");
     return `${head}\n${opts}`;
   }
 
