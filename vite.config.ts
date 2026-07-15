@@ -14,6 +14,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, "index.html"),
         vignette: resolve(__dirname, "vfx-vignette.html"),
+        dungeonHudPreview: resolve(__dirname, "dungeon-hud-preview.html"),
         floorEditor: resolve(__dirname, "tools/floor-editor.html"),
       },
     },

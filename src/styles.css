@@ -68,7 +68,10 @@ body {
   width: 100%;
   aspect-ratio: 8 / 7;
   border: 1px solid var(--amber);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(224, 164, 88, 0.15), 0 12px 28px rgba(0, 0, 0, 0.45);
   background: var(--bg);
+  overflow: hidden;
 }
 
 canvas#view {
@@ -125,16 +128,51 @@ canvas#map-canvas {
 }
 
 #hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
   font-family: var(--game-font);
   font-size: var(--fs-small);
-  letter-spacing: 0.04em;
-  color: var(--amber);
-  opacity: 0.85;
-  text-align: center;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
 }
 
-#compass {
+.hint-compass {
   font-family: var(--game-font);
+  font-size: var(--fs-body);
+  color: var(--bg);
+  background: var(--amber);
+  min-width: 1.6em;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.1em;
+  margin-right: 4px;
+}
+
+.hint-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 6px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  background: rgba(224, 164, 88, 0.06);
+  white-space: nowrap;
+}
+
+.hint-pill kbd {
+  font-family: var(--game-font);
+  font-size: 0.9em;
+  color: var(--amber);
+  background: #1a1612;
+  border: 1px solid #4a4035;
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 0 5px;
+  line-height: 1.5;
 }
 
 /* Message overlay: sits on top of the corridor viewport, growing downward to
@@ -859,23 +897,61 @@ canvas#map-canvas {
 }
 
 .ps-char {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 6px 10px 6px 12px;
   font-family: var(--game-font);
   font-size: var(--fs-body);
   font-weight: normal;
   color: var(--warm-white);
   border: 1px solid #3a3530;
-  background: #14110d;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #17130e 0%, #100d09 100%);
   min-width: 0;
   width: 100%;
   overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ps-char.low {
+  border-color: var(--danger-red);
+  box-shadow: 0 0 6px rgba(192, 96, 96, 0.35);
+  animation: ps-low-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes ps-low-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 6px rgba(192, 96, 96, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(192, 96, 96, 0.55);
+  }
 }
 
 .ps-char.ko {
   opacity: 0.45;
+}
+
+.ps-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--amber);
+  opacity: 0.7;
+}
+
+.ps-char.low .ps-accent {
+  background: var(--danger-red);
+  opacity: 1;
+}
+
+.ps-char.ko .ps-accent {
+  background: var(--text-dim);
 }
 
 .ps-char .ps-name {
@@ -884,6 +960,19 @@ canvas#map-canvas {
   font-size: var(--fs-panel);
   font-weight: normal;
   min-width: 80px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ps-badge {
+  font-size: 0.6em;
+  line-height: 1;
+  color: var(--warm-white);
+  background: #2a241c;
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  padding: 2px 3px;
 }
 
 .ps-char .ps-bar {
@@ -892,6 +981,7 @@ canvas#map-canvas {
   height: 12px;
   background: #1a1612;
   border: 1px solid #4a4035;
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -922,16 +1012,6 @@ canvas#map-canvas {
   min-width: 64px;
 }
 
-/* --- Compass (dungeon HUD) --------------------------------------------- */
-
-#compass {
-  display: inline-block;
-  font-size: var(--fs-body);
-  color: var(--amber);
-  letter-spacing: 0.1em;
-  min-width: 50px;
-  text-align: center;
-}
 
 /* --- Quick Start card (party creation) --------------------------------- */
 

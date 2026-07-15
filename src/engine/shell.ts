@@ -24,7 +24,18 @@ app.innerHTML = `
       <canvas id="map-canvas" width="768" height="672" style="display:none"></canvas>
     </div>
     <div id="party-strip"></div>
-    <div id="hint"><span id="compass">N</span> &uarr;/W forward &middot; &darr;/S back &middot; &larr;/A turn left &middot; &rarr;/D turn right &middot; C camp &middot; M map &middot; T town &middot; U unlock &middot; Esc menu</div>
+    <div id="hint">
+      <span id="compass" class="hint-compass">N</span>
+      <span class="hint-pill"><kbd>&uarr;</kbd><kbd>W</kbd>Forward</span>
+      <span class="hint-pill"><kbd>&darr;</kbd><kbd>S</kbd>Back</span>
+      <span class="hint-pill"><kbd>&larr;</kbd><kbd>A</kbd>Turn</span>
+      <span class="hint-pill"><kbd>&rarr;</kbd><kbd>D</kbd>Turn</span>
+      <span class="hint-pill"><kbd>C</kbd>Camp</span>
+      <span class="hint-pill"><kbd>M</kbd>Map</span>
+      <span class="hint-pill"><kbd>T</kbd>Town</span>
+      <span class="hint-pill"><kbd>U</kbd>Unlock</span>
+      <span class="hint-pill"><kbd>Esc</kbd>Menu</span>
+    </div>
     <div id="combat-panel"></div>
     <div id="combat-wrap" style="display:none">
       <canvas id="combat-canvas" width="768" height="672"></canvas>
@@ -43,6 +54,7 @@ const flashOverlayEl = document.querySelector<HTMLDivElement>("#flash-overlay")!
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
 export const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
 const combatWrap = document.querySelector<HTMLDivElement>("#combat-wrap")!;
+const hintEl = document.querySelector<HTMLDivElement>("#hint")!;
 export const combatWindows = document.querySelector<HTMLDivElement>("#combat-windows")!;
 export const combatCanvas = document.querySelector<HTMLCanvasElement>("#combat-canvas")!;
 export const combatCtx = combatCanvas.getContext("2d")!;
@@ -130,6 +142,14 @@ export function clearPartyStrip(): void {
   partyStripEl.innerHTML = "";
 }
 
+const STATUS_BADGES: Partial<Record<Character["status"][number], string>> = {
+  poison: "☠",
+  sleep: "☾",
+  paralysis: "⚡",
+  blind: "◌",
+  wet: "≈",
+};
+
 /** Render the 3x2 party status grid and update the compass. */
 export function renderPartyStrip(party: Character[], compass: string): void {
   setCompass(compass);
@@ -140,9 +160,16 @@ export function renderPartyStrip(party: Character[], compass: string): void {
     const hpPct = c.maxHp > 0 ? (Math.max(0, c.hp) / c.maxHp) * 100 : 0;
     const spPct = c.maxSp > 0 ? (c.sp / c.maxSp) * 100 : 0;
     const row = c.formationSlot <= 2 ? "Front" : "Back";
+    const low = !ko && hpPct <= 25;
+    const badges = c.status
+      .map((s) => STATUS_BADGES[s])
+      .filter((b): b is string => !!b)
+      .map((b) => `<span class="ps-badge">${b}</span>`)
+      .join("");
     parts.push(
-      `<div class="ps-char ${ko ? "ko" : ""}" title="${row} row">` +
-        `<span class="ps-name">${c.name}</span>` +
+      `<div class="ps-char ${ko ? "ko" : ""} ${low ? "low" : ""}" title="${row} row">` +
+        `<span class="ps-accent"></span>` +
+        `<span class="ps-name">${c.name}${badges}</span>` +
         `<span class="ps-bar"><span class="ps-bar-fill hp" style="width:${hpPct}%"></span></span>` +
         `<span class="ps-num">${Math.max(0, c.hp)}/${c.maxHp}</span>` +
         (c.maxSp > 0
@@ -178,6 +205,7 @@ export function showMode(mode: GameMode, mapVisible: boolean): void {
 
   viewportWrap.style.display = isDungeon ? "" : "none";
   canvas.style.display = isDungeon ? "" : "none";
+  hintEl.style.display = isDungeon ? "flex" : "none";
   combatPanel.style.display = usesDomPanel ? "block" : "none";
   // FF6 combat: the scene canvas and the DOM menu windows are both visible
   // for the entire fight (windows overlay the canvas bottom).
