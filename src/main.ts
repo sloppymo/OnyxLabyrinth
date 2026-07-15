@@ -44,6 +44,7 @@ import {
   type ControllerInputEvent,
 } from "./engine/controller-input";
 import { controllerEventToMenuKey } from "./engine/menu-controller-adapter";
+import { resolveControllerRoute } from "./engine/controller-route";
 import { DungeonActionRingController } from "./engine/dungeon-action-ring-ui";
 import { TrapPromptController } from "./engine/trap-prompt-ui";
 import { CampController } from "./engine/camp-ui";
@@ -842,109 +843,121 @@ function openActionRing(): void {
 }
 
 function routeControllerEvent(event: ControllerInputEvent): void {
-  // 1. Perk select overlay
-  if (state.mode === "title" && perkSelectController) {
-    const key = controllerEventToMenuKey(event);
-    if (key) perkSelectController.handleKey(key);
-    return;
+  const route = resolveControllerRoute({
+    mode: state.mode,
+    hasPerkSelect: !!perkSelectController,
+    hasCombat: !!combatController,
+    hasSave: !!saveController,
+    hasSpellMenu: !!spellMenuController,
+    hasNpc: !!npcController,
+    hasActionRing: !!actionRingController,
+    hasTown: !!townController,
+    hasCamp: !!campController,
+    hasGameOver: !!gameOverController,
+    hasPartyCreation: !!partyCreationController,
+    hasTitle: !!titleController,
+    hasPendingTrap: !!state.pendingTrap,
+    hasTrapPrompt: !!trapPrompt,
+  });
+
+  switch (route) {
+    case "perk": {
+      const key = controllerEventToMenuKey(event);
+      if (key) perkSelectController!.handleKey(key);
+      return;
+    }
+    case "combat":
+      combatController!.handleInput(event);
+      return;
+    case "save": {
+      if (justOpenedSaveMenu) {
+        if (event.kind === "press") justOpenedSaveMenu = false;
+        return;
+      }
+      const key = controllerEventToMenuKey(event);
+      if (key) saveController!.handleKey(key);
+      return;
+    }
+    case "spell": {
+      if (justOpenedSpellMenu) {
+        if (event.kind === "press") justOpenedSpellMenu = false;
+        return;
+      }
+      const key = controllerEventToMenuKey(event);
+      if (key) spellMenuController!.handleKey(key);
+      return;
+    }
+    case "npc": {
+      if (justOpenedNPCPanel) {
+        if (event.kind === "press") justOpenedNPCPanel = false;
+        return;
+      }
+      const key = controllerEventToMenuKey(event);
+      if (key) npcController!.handleKey(key);
+      return;
+    }
+    case "action_ring": {
+      if (justOpenedActionRing) {
+        if (event.kind === "press") justOpenedActionRing = false;
+        return;
+      }
+      const key = controllerEventToMenuKey(event);
+      if (key) actionRingController!.handleKey(key);
+      return;
+    }
+    case "town": {
+      const key = controllerEventToMenuKey(event);
+      if (key) townController!.handleKey(key);
+      return;
+    }
+    case "camp": {
+      const key = controllerEventToMenuKey(event);
+      if (key) campController!.handleKey(key);
+      return;
+    }
+    case "game_over": {
+      const key = controllerEventToMenuKey(event);
+      if (key) gameOverController!.handleKey(key);
+      return;
+    }
+    case "party_creation": {
+      const key = controllerEventToMenuKey(event);
+      if (key) partyCreationController!.handleKey(key);
+      return;
+    }
+    case "title": {
+      const key = controllerEventToMenuKey(event);
+      if (key) titleController!.handleKey(key);
+      return;
+    }
+    case "arena": {
+      if (justOpenedArena) {
+        if (event.kind === "press") justOpenedArena = false;
+        return;
+      }
+      const key = controllerEventToMenuKey(event);
+      if (!key) return;
+      if (arenaSetupController) {
+        arenaSetupController.handleKey(key);
+        return;
+      }
+      if (arenaController) {
+        arenaController.handleKey(key);
+      }
+      return;
+    }
+    case "trap": {
+      const key = controllerEventToMenuKey(event);
+      if (key) handleTrapInput(key);
+      return;
+    }
+    case "dungeon":
+      break;
+    default:
+      return;
   }
 
-  // 2. Combat (all event kinds)
-  if (state.mode === "combat" && combatController) {
-    combatController.handleInput(event);
-    return;
-  }
-
-  // 3. Overlays borrowing title mode
-  if (state.mode === "title" && saveController) {
-    if (justOpenedSaveMenu) {
-      if (event.kind === "press") justOpenedSaveMenu = false;
-      return;
-    }
-    const key = controllerEventToMenuKey(event);
-    if (key) saveController.handleKey(key);
-    return;
-  }
-  if (state.mode === "title" && spellMenuController) {
-    if (justOpenedSpellMenu) {
-      if (event.kind === "press") justOpenedSpellMenu = false;
-      return;
-    }
-    const key = controllerEventToMenuKey(event);
-    if (key) spellMenuController.handleKey(key);
-    return;
-  }
-  if (state.mode === "title" && npcController) {
-    if (justOpenedNPCPanel) {
-      if (event.kind === "press") justOpenedNPCPanel = false;
-      return;
-    }
-    const key = controllerEventToMenuKey(event);
-    if (key) npcController.handleKey(key);
-    return;
-  }
-  if (actionRingController) {
-    if (justOpenedActionRing) {
-      if (event.kind === "press") justOpenedActionRing = false;
-      return;
-    }
-    const key = controllerEventToMenuKey(event);
-    if (key) actionRingController.handleKey(key);
-    return;
-  }
-
-  // 4. Mode UIs (press-only via adapter)
-  if (state.mode === "town" && townController) {
-    const key = controllerEventToMenuKey(event);
-    if (key) townController.handleKey(key);
-    return;
-  }
-  if (state.mode === "camp" && campController) {
-    const key = controllerEventToMenuKey(event);
-    if (key) campController.handleKey(key);
-    return;
-  }
-  if (state.mode === "game_over" && gameOverController) {
-    const key = controllerEventToMenuKey(event);
-    if (key) gameOverController.handleKey(key);
-    return;
-  }
-  if (state.mode === "party_creation" && partyCreationController) {
-    const key = controllerEventToMenuKey(event);
-    if (key) partyCreationController.handleKey(key);
-    return;
-  }
-  if (state.mode === "title" && titleController) {
-    const key = controllerEventToMenuKey(event);
-    if (key) titleController.handleKey(key);
-    return;
-  }
-  if (state.mode === "arena") {
-    if (justOpenedArena) {
-      if (event.kind === "press") justOpenedArena = false;
-      return;
-    }
-    const key = controllerEventToMenuKey(event);
-    if (!key) return;
-    if (arenaSetupController) {
-      arenaSetupController.handleKey(key);
-      return;
-    }
-    if (arenaController) {
-      arenaController.handleKey(key);
-    }
-    return;
-  }
-
-  // 5. Trap prompt
-  if (state.mode === "dungeon" && state.pendingTrap && trapPrompt) {
-    const key = controllerEventToMenuKey(event);
-    if (key) handleTrapInput(key);
-    return;
-  }
-
-  // 6. Dungeon exploration (press-only)
-  if (state.mode !== "dungeon") return;
+  // Dungeon exploration (press-only)
   if (event.kind !== "press") return;
 
   switch (event.button) {
@@ -985,6 +998,7 @@ const globalInput = createControllerInput((event) => {
   routeControllerEvent(event);
 }, { attachListeners: false });
 
+// handleTrapInput returns false when no trap is active — let other listeners run.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (!handleTrapInput(e.key)) return;
   e.preventDefault();
