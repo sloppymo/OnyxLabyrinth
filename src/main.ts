@@ -114,7 +114,6 @@ let mapVisible = false;
 
 // Session-wide gamepad/keyboard poller (combat keyboard path feeds this too).
 let actionRingController: DungeonActionRingController | null = null;
-let justOpenedActionRing = false;
 let trapPrompt: TrapPromptController | null = null;
 type RingActionId = "camp" | "map" | "grimoire" | "unlock" | "town";
 let pendingRingAction: RingActionId | null = null;
@@ -807,7 +806,9 @@ function openActionRing(): void {
   setMode(state, "title");
   showMode("title", mapVisible);
   canvas.style.opacity = "0.2";
-  justOpenedActionRing = true;
+  // No justOpened* guard: Start opens the ring on the dungeon route and is
+  // never fed into the ring's handleKey (unlike Esc→save), so the first A/B
+  // must confirm/cancel immediately.
   pendingRingAction = null;
   actionRingController = new DungeonActionRingController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
@@ -898,10 +899,6 @@ function routeControllerEvent(event: ControllerInputEvent): void {
       return;
     }
     case "action_ring": {
-      if (justOpenedActionRing) {
-        if (event.kind === "press") justOpenedActionRing = false;
-        return;
-      }
       const key = controllerEventToMenuKey(event);
       if (key) actionRingController!.handleKey(key);
       return;
