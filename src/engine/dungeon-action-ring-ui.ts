@@ -123,7 +123,7 @@ export class DungeonActionRingController {
     }
     lines.push(`</div>`);
     lines.push(
-      `<div class="camp-done">[↑/↓] · [A/Enter] · [B/Esc] · Start opens this menu</div>`
+      `<div class="camp-done">[↑/↓] · [A] confirm · [B/Esc] cancel · Start</div>`
     );
     this.panel.innerHTML = lines.join("");
   }

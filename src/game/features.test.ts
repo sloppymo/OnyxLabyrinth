@@ -144,7 +144,7 @@ describe("handleTreasure with traps", () => {
     const state = makeState("gas");
     const result = handleTileFeature(state);
     expect(result?.consumed).toBe(false);
-    expect(result?.message).toMatch(/\[I\]nspect/);
+    expect(result?.message).toMatch(/Chest!.*\[I\/D\/O\/L\]/);
     expect(state.pendingTrap).toEqual({ x: 2, y: 2, trapType: "gas", inspected: false });
     expect(state.inventory).toHaveLength(0);
     expect(state.floor.grid[2][2].tile).toBe("treasure");

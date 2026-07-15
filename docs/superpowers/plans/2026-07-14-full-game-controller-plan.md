@@ -1,6 +1,6 @@
 # Full-Game Controller Support Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Make every interactive game surface playable on a standard gamepad by routing a session-wide `createControllerInput` stream through a menu-key adapter, a dungeon Start action ring, and a trap prompt list — without breaking keyboard or combat-first controls.
 
@@ -37,7 +37,7 @@
 - Create: `src/engine/menu-controller-adapter.ts`
 - Create: `src/engine/menu-controller-adapter.test.ts`
 
-- [ ] **Step 1.1: Write the failing tests**
+- [x] **Step 1.1: Write the failing tests**
 
 ```typescript
 import { describe, expect, it } from "vitest";
@@ -68,12 +68,12 @@ describe("controllerEventToMenuKey", () => {
 });
 ```
 
-- [ ] **Step 1.2: Run test — expect FAIL**
+- [x] **Step 1.2: Run test — expect FAIL**
 
 Run: `npx vitest run src/engine/menu-controller-adapter.test.ts`  
 Expected: FAIL (module not found)
 
-- [ ] **Step 1.3: Implement adapter**
+- [x] **Step 1.3: Implement adapter**
 
 ```typescript
 import type { ControllerInputEvent } from "./controller-input";
@@ -95,7 +95,7 @@ export function controllerEventToMenuKey(event: ControllerInputEvent): string | 
 }
 ```
 
-- [ ] **Step 1.4: Run test — expect PASS**
+- [x] **Step 1.4: Run test — expect PASS**
 
 Run: `npx vitest run src/engine/menu-controller-adapter.test.ts`  
 Expected: PASS
@@ -110,7 +110,7 @@ Expected: PASS
 - Modify: `src/engine/save-ui.ts`
 - Create or extend: `src/engine/save-ui.test.ts` (create if missing)
 
-- [ ] **Step 2.1: Add tests for Enter flow**
+- [x] **Step 2.1: Add tests for Enter flow**
 
 Extend / create tests that construct `SaveController` with a stub panel + state (mirror patterns in `perk-select-ui.test.ts` / `npc-ui.test.ts`):
 
@@ -119,9 +119,9 @@ Extend / create tests that construct `SaveController` with a stub panel + state 
 3. Confirm phase + `Enter` acts like `Y`; `Escape` acts like `N`.
 4. Action pick + `Escape` returns to browsing.
 
-- [ ] **Step 2.2: Run tests — expect FAIL**
+- [x] **Step 2.2: Run tests — expect FAIL**
 
-- [ ] **Step 2.3: Implement**
+- [x] **Step 2.3: Implement**
 
 In `save-ui.ts`:
 
@@ -132,7 +132,7 @@ In `save-ui.ts`:
 - `confirmOverwrite` / `confirmLoad` / `confirmDelete`: treat `Enter` / ` ` as `Y`.
 - Update help footer: `[↑/↓] slot · [Enter] actions · [S/L/D] · [Esc] close`.
 
-- [ ] **Step 2.4: Run tests — expect PASS**
+- [x] **Step 2.4: Run tests — expect PASS**
 
 ---
 
@@ -142,7 +142,7 @@ In `save-ui.ts`:
 - Modify: `src/engine/town-ui.ts`
 - Extend or add: `src/engine/town-ui.test.ts` if present; otherwise add focused tests for the three behaviors below (minimal DOM stub).
 
-- [ ] **Step 3.1: Shop tabs via ←/→**
+- [x] **Step 3.1: Shop tabs via ←/→**
 
 In `handleShopKey`, add:
 
@@ -165,11 +165,11 @@ case "arrowright": {
 
 Update shop help to mention `[←/→] tabs`.
 
-- [ ] **Step 3.2: Roster tabs via ←/→**
+- [x] **Step 3.2: Roster tabs via ←/→**
 
 In roster branch of `handleKey`, treat `arrowleft` / `arrowright` as toggle status ↔ progress (same as S/P).
 
-- [ ] **Step 3.3: Temple Remove Curse as a selectable row**
+- [x] **Step 3.3: Temple Remove Curse as a selectable row**
 
 When `screen === "temple"` and cursed gear exists:
 
@@ -178,7 +178,7 @@ When `screen === "temple"` and cursed gear exists:
 - If no cursed gear, keep today’s “any Enter/Esc backs out” behavior.
 - Update temple help text accordingly.
 
-- [ ] **Step 3.4: Run town-related tests + `npx vitest run src/engine/town-ui.test.ts` if file exists**
+- [x] **Step 3.4: Run town-related tests + `npx vitest run src/engine/town-ui.test.ts` if file exists**
 
 ---
 
@@ -188,7 +188,7 @@ When `screen === "temple"` and cursed gear exists:
 - Create: `src/engine/dungeon-action-ring-ui.ts`
 - Create: `src/engine/dungeon-action-ring-ui.test.ts`
 
-- [ ] **Step 4.1: Write failing tests**
+- [x] **Step 4.1: Write failing tests**
 
 ```typescript
 import { describe, expect, it, vi } from "vitest";
@@ -241,9 +241,9 @@ describe("DungeonActionRingController", () => {
 });
 ```
 
-- [ ] **Step 4.2: Run — expect FAIL**
+- [x] **Step 4.2: Run — expect FAIL**
 
-- [ ] **Step 4.3: Implement controller**
+- [x] **Step 4.3: Implement controller**
 
 Mirror `SpellMenuController` style (camp CSS classes are fine):
 
@@ -273,7 +273,7 @@ const ENTRIES = [
 - `destroy()` / dispose clears panel.
 - Footer: `[↑/↓] · [A/Enter] · [B/Esc] · Start opens this menu`
 
-- [ ] **Step 4.4: Run — expect PASS**
+- [x] **Step 4.4: Run — expect PASS**
 
 ---
 
@@ -284,7 +284,7 @@ const ENTRIES = [
 - Create: `src/engine/trap-prompt-ui.test.ts`
 - Modify: `src/main.ts` (wiring in Task 6; here only the module)
 
-- [ ] **Step 5.1: Write failing tests**
+- [x] **Step 5.1: Write failing tests**
 
 Pure / lightweight controller that:
 
@@ -324,11 +324,11 @@ describe("TrapPromptController", () => {
 
 Refine tests to the actual API you implement (return `null` for pure navigation keys).
 
-- [ ] **Step 5.2: Implement `TrapPromptController`**
+- [x] **Step 5.2: Implement `TrapPromptController`**
 
 No DOM required — returns action or null; `main.ts` applies `inspectChest` / `disarmChest` / `openChest` / `leaveChest` and `setMessage(controller.renderMessage(...))`.
 
-- [ ] **Step 5.3: Run — expect PASS**
+- [x] **Step 5.3: Run — expect PASS**
 
 ---
 
@@ -337,7 +337,7 @@ No DOM required — returns action or null; `main.ts` applies `inspectChest` / `
 **Files:**
 - Modify: `src/main.ts`
 
-- [ ] **Step 6.1: Lift dungeon handlers to a named object**
+- [x] **Step 6.1: Lift dungeon handlers to a named object**
 
 Replace the inline `bindInput(window, { ... })` with:
 
@@ -351,7 +351,7 @@ bindInput(window, dungeonHandlers);
 
 Import `InputHandlers` from `./engine/input`.
 
-- [ ] **Step 6.2: Session-wide controller input**
+- [x] **Step 6.2: Session-wide controller input**
 
 Near boot (after state exists), create:
 
@@ -372,7 +372,7 @@ Remove `combatInput = createControllerInput(...)` inside `startCombat`. In `endC
 
 Guard combat keyboard listener: `if (state.mode !== "combat" || !combatController) return;` then `globalInput.handleKeyboardDown(e)`.
 
-- [ ] **Step 6.3: Implement `routeControllerEvent`**
+- [x] **Step 6.3: Implement `routeControllerEvent`**
 
 Priority (mirror keydown guards; **press-only** for menus/dungeon; combat gets all kinds):
 
@@ -441,7 +441,7 @@ Implement `openActionRing()` like `openSpellMenu`: set mode `"title"`, dim canva
 
 Do **not** open the ring if save/spell/NPC/perk already owns title mode.
 
-- [ ] **Step 6.4: Trap prompt lifecycle**
+- [x] **Step 6.4: Trap prompt lifecycle**
 
 When `onMove` / feature handling results in `state.pendingTrap` becoming non-null, construct `trapPrompt = new TrapPromptController()` and `setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected))`.
 
@@ -449,11 +449,11 @@ When trap clears, `trapPrompt = null`.
 
 Replace the dedicated trap keydown body to delegate to `trapPrompt.handleKey` + `applyChestResult` / `inspectChest` / etc., and refresh the message after inspect.
 
-- [ ] **Step 6.5: Wire mode UIs listed in the spec**
+- [x] **Step 6.5: Wire mode UIs listed in the spec**
 
 Ensure the router covers: `titleController`, `partyCreationController`, `townController`, `campController`, `gameOverController`, `arenaSetupController`, `arenaController`, `saveController`, `spellMenuController`, `npcController`, `perkSelectController`.
 
-- [ ] **Step 6.6: Build + test**
+- [x] **Step 6.6: Build + test**
 
 Run:
 
@@ -476,13 +476,13 @@ Expected: all green, zero TS errors.
 **Files:**
 - Modify hint strings in `dungeon-action-ring-ui.ts`, trap `renderMessage`, optionally `features.ts` trapped-chest message (keep short), town help if needed.
 
-- [ ] **Step 7.1: Update trapped-chest initial message** in `features.ts` to something like:
+- [x] **Step 7.1: Update trapped-chest initial message** in `features.ts` to something like:
 
 `Chest! ↑↓+A · [I/D/O/L]`
 
 (or keep letter hints and rely on trap controller message refresh on first move — prefer controller `renderMessage` as source of truth once trap is pending; `main` can overwrite the feature message immediately when trap is detected).
 
-- [ ] **Step 7.2: Manual / Playwright checklist** (inject events via debug hook if available, or mock `getGamepads`):
+- [x] **Step 7.2: Manual / Playwright checklist** (inject events via debug hook if available, or mock `getGamepads`):
 
 1. Title → Default Party → Town: stick/↓ + A opens Inn/Dungeon.
 2. Town Save row / save overlay: A opens actions; save a slot; Escape closes.
@@ -491,7 +491,7 @@ Expected: all green, zero TS errors.
 5. Combat: A/B/X/Y palette still works after global poller change.
 6. Keyboard: WASD / Esc / G / letter hotkeys still work.
 
-- [ ] **Step 7.3: Mark plan tasks complete in this file’s checkboxes when done**
+- [x] **Step 7.3: Mark plan tasks complete in this file’s checkboxes when done**
 
 ---
 

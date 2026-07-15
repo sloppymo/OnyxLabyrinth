@@ -52,10 +52,9 @@ export class TrapPromptController {
 
   /** Compact two-line menu for `#message` (~2×30 chars). */
   renderMessage(inspected: boolean): string {
-    const prefix = inspected ? "" : "Trapped chest! ";
-    const row = (a: number, b: number) =>
-      `${this.formatOption(a)} · ${this.formatOption(b)}`;
-    return `${prefix}${row(0, 1)}\n${row(2, 3)}`;
+    const head = inspected ? "↑↓+A sel · B leave" : "Trapped! ↑↓+A · B leave";
+    const opts = ACTIONS.map((_, i) => this.formatOption(i)).join(" · ");
+    return `${head}\n${opts}`;
   }
 
   private formatOption(i: number): string {

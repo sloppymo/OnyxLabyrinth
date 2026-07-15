@@ -609,7 +609,7 @@ export class TownController {
       );
     }
     lines.push(`</div>`);
-    lines.push(`<div class="town-help">[↑/↓] navigate · [Enter] select · bracket letter jumps · [Esc] save menu</div>`);
+    lines.push(`<div class="town-help">[↑/↓] navigate · [A/Enter] select · letter jumps · [Select/Esc] save</div>`);
   }
 
   private renderShop(lines: string[]): void {

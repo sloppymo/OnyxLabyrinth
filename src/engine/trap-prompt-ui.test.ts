@@ -66,14 +66,17 @@ describe("TrapPromptController", () => {
   it("renderMessage stays compact for #message overlay", () => {
     const t = new TrapPromptController();
     const msg = t.renderMessage(false);
-    expect(msg.length).toBeLessThanOrEqual(70);
+    expect(msg.length).toBeLessThanOrEqual(80);
     expect(msg).toContain("[I]nspect");
     expect(msg).toContain("[L]eave");
+    expect(msg).toMatch(/↑↓\+A/);
+    expect(msg).toMatch(/B leave/);
   });
 
   it("renderMessage notes un-inspected chest", () => {
     const t = new TrapPromptController();
     expect(t.renderMessage(false)).toMatch(/trap/i);
-    expect(t.renderMessage(true)).not.toMatch(/inspect first/i);
+    expect(t.renderMessage(true)).not.toMatch(/Trapped!/);
+    expect(t.renderMessage(true)).toMatch(/↑↓\+A/);
   });
 });

@@ -334,9 +334,9 @@ export class SaveController {
 
     lines.push(`<div class="save-help">`);
     if (this.phase === "browsing") {
-      lines.push(`[↑/↓] slot · [Enter] actions · [S/L/D] · [Esc] close`);
+      lines.push(`[↑/↓] slot · [A/Enter] actions · [S/L/D] · [B/Esc] close`);
     } else if (this.phase === "actionPick") {
-      lines.push(`[↑/↓] action · [Enter] confirm · [Esc] back`);
+      lines.push(`[↑/↓] action · [A/Enter] confirm · [B/Esc] back`);
     }
     lines.push(`</div>`);
 

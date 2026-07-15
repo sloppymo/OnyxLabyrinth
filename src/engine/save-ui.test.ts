@@ -30,7 +30,7 @@ describe("SaveController action pick", () => {
     expect(panel.innerHTML).toContain("Load");
     expect(panel.innerHTML).toContain("Delete");
     expect(panel.innerHTML).toContain("Cancel");
-    expect(panel.innerHTML).toContain("[↑/↓] action · [Enter] confirm");
+    expect(panel.innerHTML).toContain("[↑/↓] action · [A/Enter] confirm");
   });
 
   it("browsing Space opens action pick menu", () => {
@@ -103,7 +103,7 @@ describe("SaveController action pick", () => {
     ctrl.handleKey("Escape");
 
     expect(panel.innerHTML).not.toContain("save-actions");
-    expect(panel.innerHTML).toContain("[↑/↓] slot · [Enter] actions");
+    expect(panel.innerHTML).toContain("[↑/↓] slot · [A/Enter] actions");
     expect(panel.querySelector(".save-slot.selected")).not.toBeNull();
   });
 
@@ -146,7 +146,7 @@ describe("SaveController action pick", () => {
 
     ctrl.handleKey("Escape");
     expect(panel.innerHTML).not.toContain("Overwrite?");
-    expect(panel.innerHTML).toContain("[↑/↓] slot · [Enter] actions");
+    expect(panel.innerHTML).toContain("[↑/↓] slot · [A/Enter] actions");
   });
 
   it("confirmLoad Enter confirms like Y", () => {

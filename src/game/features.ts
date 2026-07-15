@@ -231,7 +231,7 @@ function handleTreasure(state: GameState): FeatureResult {
     // Keep prompt strings short: the #message overlay shows ~2 lines of
     // ~30 chars before clipping, and the key hints must stay visible.
     return {
-      message: "A chest! [I]nspect · [D]isarm · [O]pen · [L]eave",
+      message: "Chest! ↑↓+A · [I/D/O/L]",
       changedFloor: false,
       consumed: false,
     };
