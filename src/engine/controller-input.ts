@@ -64,6 +64,12 @@ const GAMEPAD_BUTTON_MAP: Readonly<Record<number, ControllerButton>> = {
   7: "rt",
   8: "select",
   9: "start",
+  // Standard mapping D-pad (Chrome / Chromium / Steam Deck / most Xbox pads).
+  // Axes 6/7 below cover Firefox-style hat reporting.
+  12: "up",
+  13: "down",
+  14: "left",
+  15: "right",
 };
 
 const DEFAULT_DEADZONE = 0.5;
@@ -240,9 +246,11 @@ export function createControllerInput(
         const physicalId = `btn:${b}`;
         const key = sourceKey(source, button);
         const isPressed = gp.buttons[b].pressed;
-        if (isPressed && !held.has(key)) {
+        // Always call press() when down so a second physical (e.g. D-pad
+        // while stick is held) joins physicalIds; press() dedupes.
+        if (isPressed) {
           press(button, source, now, physicalId);
-        } else if (!isPressed && held.has(key)) {
+        } else if (held.has(key)) {
           release(button, source, physicalId);
         }
       }

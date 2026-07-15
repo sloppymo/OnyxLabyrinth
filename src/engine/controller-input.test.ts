@@ -215,6 +215,77 @@ describe("createControllerInput", () => {
     input.destroy();
   });
 
+  it("gamepad dpad buttons (12-15) emit press and release events", () => {
+    useRafTimers();
+    const buttons = Array.from({ length: 16 }, () => ({
+      pressed: false,
+      value: 0,
+    }));
+    const gp = makeGamepad(buttons, [0, 0]);
+    stubGamepads([gp]);
+
+    const events: ControllerInputEvent[] = [];
+    const input = createControllerInput((e) => events.push(e));
+    vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    expect(events).toHaveLength(0);
+
+    buttons[12] = { pressed: true, value: 1 };
+    vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    expect(events).toContainEqual({ kind: "press", button: "up" });
+
+    buttons[12] = { pressed: false, value: 0 };
+    buttons[13] = { pressed: true, value: 1 };
+    vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    expect(events).toContainEqual({ kind: "release", button: "up" });
+    expect(events).toContainEqual({ kind: "press", button: "down" });
+
+    buttons[13] = { pressed: false, value: 0 };
+    buttons[14] = { pressed: true, value: 1 };
+    vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    expect(events).toContainEqual({ kind: "press", button: "left" });
+
+    buttons[14] = { pressed: false, value: 0 };
+    buttons[15] = { pressed: true, value: 1 };
+    vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    expect(events).toContainEqual({ kind: "press", button: "right" });
+
+    input.destroy();
+  });
+
+  it("gamepad dpad button and stick for the same direction share one logical hold", () => {
+    useRafTimers();
+    const buttons = Array.from({ length: 16 }, () => ({
+      pressed: false,
+      value: 0,
+    }));
+    const gp = makeGamepad(buttons, Array(8).fill(0));
+    stubGamepads([gp]);
+
+    const events: ControllerInputEvent[] = [];
+    const input = createControllerInput((e) => events.push(e));
+    vi.advanceTimersByTime(POLL_INTERVAL_MS);
+
+    // Stick up
+    gp.axes[1] = -0.8;
+    vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    expect(events.filter((e) => e.kind === "press" && e.button === "up")).toHaveLength(1);
+
+    // D-pad up (button 12) while stick still held — no second press
+    buttons[12] = { pressed: true, value: 1 };
+    vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    expect(events.filter((e) => e.kind === "press" && e.button === "up")).toHaveLength(1);
+
+    gp.axes[1] = 0;
+    vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    expect(events.filter((e) => e.kind === "release" && e.button === "up")).toHaveLength(0);
+
+    buttons[12] = { pressed: false, value: 0 };
+    vi.advanceTimersByTime(POLL_INTERVAL_MS);
+    expect(events).toContainEqual({ kind: "release", button: "up" });
+
+    input.destroy();
+  });
+
   it("hold event fires once after threshold", () => {
     useRafTimers();
     const events: ControllerInputEvent[] = [];
