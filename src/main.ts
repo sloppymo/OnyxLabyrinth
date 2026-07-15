@@ -766,10 +766,11 @@ function handleTrapInput(key: string): boolean {
     return true;
   }
   switch (action) {
-    case "inspect":
-      inspectChest(state);
-      setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected));
+    case "inspect": {
+      const msg = inspectChest(state);
+      setMessage(msg);
       break;
+    }
     case "disarm":
       applyChestResult(disarmChest(state));
       if (state.pendingTrap && trapPrompt) {

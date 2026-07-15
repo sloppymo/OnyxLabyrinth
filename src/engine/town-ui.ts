@@ -234,8 +234,9 @@ export class TownController {
         this.selectMain();
         break;
       case "escape":
-        // Esc in town does nothing — town is the hub. (Could open save menu
-        // but that's wired to a separate handler in main.ts.)
+        this.panel.style.display = "none";
+        this.panel.innerHTML = "";
+        this.onOpenSave();
         break;
     }
 
