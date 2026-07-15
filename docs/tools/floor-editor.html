@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Floor Editor — OnyxLabyrinth</title>
+  <script type="module" crossorigin src="/OnyxLabyrinth/assets/floorEditor-CTd0zf_7.js"></script>
+  <link rel="modulepreload" crossorigin href="/OnyxLabyrinth/assets/map-sprites-9-JaPOMu.js">
+  <link rel="modulepreload" crossorigin href="/OnyxLabyrinth/assets/items-BSq_8mVk.js">
+  <link rel="stylesheet" crossorigin href="/OnyxLabyrinth/assets/floorEditor-BPBUnvAQ.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>OnyxLabyrinth Floor Editor</h1>
+    <div class="topbar-actions">
+      <button type="button" id="btn-new">New</button>
+      <button type="button" id="btn-import">Import JSON</button>
+      <input type="file" id="file-import" accept="application/json,.json" hidden />
+      <button type="button" id="btn-export">Export JSON</button>
+      <button type="button" id="btn-playtest">Playtest Floor</button>
+      <button type="button" id="btn-validate">Validate</button>
+      <select id="load-campaign">
+        <option value="">Load campaign…</option>
+        <option value="1">Floor 1 — Flooded Crypt</option>
+        <option value="2">Floor 2 — Cursed Library</option>
+        <option value="3">Floor 3 — Forge of Ashes</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="tools">
+      <h2>Tools</h2>
+      <div class="tool-grid" id="tool-buttons"></div>
+
+      <h2>Edge paint</h2>
+      <div class="edge-modes" id="edge-modes"></div>
+
+      <h2>Features</h2>
+      <div class="feature-grid" id="feature-buttons"></div>
+
+      <h2>Event templates</h2>
+      <div class="feature-grid" id="event-templates"></div>
+
+      <h2>Map sprites</h2>
+      <div class="feature-grid" id="sprite-buttons"></div>
+
+      <h2>Encounter zone</h2>
+      <label>rateMul <input type="number" id="zone-rate" value="1" min="0" max="5" step="0.1" /></label>
+      <label>table floor <input type="number" id="zone-table" value="" min="1" max="3" placeholder="same" /></label>
+      <p class="hint">Drag a rectangle with Zone tool. rateMul 0 = safe.</p>
+
+      <h2>Floor</h2>
+      <label>Name <input type="text" id="meta-name" /></label>
+      <label>ID <input type="number" id="meta-id" min="1" /></label>
+      <label>Theme
+        <select id="meta-theme">
+          <option value="f1">f1 — Crypt</option>
+          <option value="f2">f2 — Library</option>
+          <option value="f3">f3 — Forge</option>
+          <option value="custom">custom…</option>
+        </select>
+      </label>
+      <label id="meta-theme-custom-wrap" class="hidden">Custom theme <input type="text" id="meta-theme-custom" placeholder="my-theme" /></label>
+      <div id="theme-preview" class="theme-preview"></div>
+      <label>Width <input type="number" id="meta-width" min="3" max="64" /></label>
+      <label>Height <input type="number" id="meta-height" min="3" max="64" /></label>
+      <label>Start X <input type="number" id="meta-start-x" min="0" /></label>
+      <label>Start Y <input type="number" id="meta-start-y" min="0" /></label>
+      <label>Encounter rate <input type="number" id="meta-encounter" min="0" max="1" step="0.01" /></label>
+      <button type="button" id="btn-resize">Apply size</button>
+
+      <h2>Cell <span id="cell-coords">—</span></h2>
+      <div id="cell-panel" class="cell-panel muted">Click a cell</div>
+    </aside>
+
+    <main class="canvas-area">
+      <canvas id="map-canvas"></canvas>
+      <p class="hint">Room/Zone: drag · Edge: border · Feature/Event: center · textures: public/assets/tilesets/&lt;theme&gt;/</p>
+    </main>
+
+    <aside class="inspector">
+      <h2>Validation</h2>
+      <ul id="validation-list" class="validation-list"></ul>
+      <h2>Zones</h2>
+      <ul id="zone-list" class="validation-list"></ul>
+      <h2>ASCII preview</h2>
+      <pre id="ascii-preview" class="ascii-preview"></pre>
+    </aside>
+  </div>
+
+</body>
+</html>

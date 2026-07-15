@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OnyxLabyrinth — Dungeon HUD Preview</title>
+  <style>
+    body {
+      margin: 0;
+      background: #050505;
+      color: #e8e8f0;
+      font-family: "FF36", monospace;
+      display: flex;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    #stage {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+    }
+    #controls {
+      flex: 0 0 300px;
+      max-width: 300px;
+      padding: 16px;
+      background: #14110d;
+      border-left: 1px solid #4a4035;
+      overflow-y: auto;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    #controls h1 {
+      font-size: 15px;
+      color: #e0a458;
+      margin: 0 0 12px;
+    }
+    #controls h2 {
+      font-size: 12px;
+      color: #e0a458;
+      margin: 18px 0 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #3a3530;
+      padding-bottom: 4px;
+    }
+    .char-block {
+      border: 1px solid #3a3530;
+      border-radius: 3px;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+    .char-block .name {
+      color: #e0a458;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 3px 0;
+    }
+    .row label {
+      width: 60px;
+      color: #a09080;
+    }
+    .row input[type="range"] {
+      flex: 1 1 auto;
+    }
+    .row .val {
+      width: 44px;
+      text-align: right;
+      color: #f5f0e6;
+    }
+    .statuses {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .statuses label {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: #1a1612;
+      border: 1px solid #3a3530;
+      border-radius: 3px;
+      padding: 2px 5px;
+      cursor: pointer;
+    }
+    button, select, input[type="text"] {
+      font-family: "FF36", monospace;
+      font-size: 12px;
+      padding: 5px 8px;
+      background: #1a1612;
+      color: #e8e8f0;
+      border: 1px solid #4a4035;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    button.active {
+      background: #e0a458;
+      color: #14110d;
+    }
+    #compass-buttons {
+      display: flex;
+      gap: 4px;
+    }
+    input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      cursor: text;
+    }
+    .hint {
+      color: #6a5f50;
+      font-size: 11px;
+      margin-top: 4px;
+    }
+  </style>
+  <script type="module" crossorigin src="/OnyxLabyrinth/assets/dungeonHudPreview-CNDUMxaN.js"></script>
+  <link rel="modulepreload" crossorigin href="/OnyxLabyrinth/assets/map-sprites-9-JaPOMu.js">
+  <link rel="modulepreload" crossorigin href="/OnyxLabyrinth/assets/renderer-CNKV6Tnb.js">
+  <link rel="modulepreload" crossorigin href="/OnyxLabyrinth/assets/items-BSq_8mVk.js">
+  <link rel="modulepreload" crossorigin href="/OnyxLabyrinth/assets/shell-BINKIGN1.js">
+  <link rel="stylesheet" crossorigin href="/OnyxLabyrinth/assets/renderer-_GqOSVpC.css">
+</head>
+<body>
+  <div id="stage"><div id="app"></div></div>
+  <div id="controls">
+    <h1>Dungeon HUD Preview</h1>
+    <div class="hint">Renders the real dungeon shell (viewport chrome + party strip + hint bar) via a live floor, so HUD CSS changes reload instantly here — no playthrough needed.</div>
+
+    <h2>Compass / Message</h2>
+    <div id="compass-buttons"></div>
+    <div class="row" style="margin-top:8px;">
+      <input type="text" id="message-input" placeholder="Message overlay text…" />
+    </div>
+    <div class="row">
+      <button id="btn-map">Toggle Map</button>
+    </div>
+
+    <h2>Party</h2>
+    <div id="party-controls"></div>
+  </div>
+</body>
+</html>
