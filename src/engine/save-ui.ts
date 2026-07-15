@@ -9,11 +9,12 @@
  *   - Return to the game (Esc or Q)
  *
  * Keyboard controls:
- *   Up/Down or W/S — navigate slots
+ *   Up/Down or W/S — navigate slots (browsing) or actions (action pick)
+ *   Enter / Space — open action pick (browsing) or confirm action / Y on prompts
  *   S — save to selected slot
  *   L — load from selected slot
  *   D — delete selected slot
- *   Esc / Q — close menu
+ *   Esc / Q — close menu (browsing) or cancel back (action pick / confirms)
  *
  * The controller renders to a DOM element and calls onLoaded(state) when
  * the player loads a save, or onClose() when they dismiss the menu.
@@ -29,7 +30,9 @@ import {
   type SaveSlotMeta,
 } from "../game/save";
 
-type MenuPhase = "browsing" | "confirmOverwrite" | "confirmLoad" | "confirmDelete";
+type MenuPhase = "browsing" | "actionPick" | "confirmOverwrite" | "confirmLoad" | "confirmDelete";
+
+const ACTIONS = ["Save", "Load", "Delete", "Cancel"] as const;
 
 export interface SaveControllerOptions {
   panel: HTMLElement;
@@ -49,6 +52,7 @@ export class SaveController {
   private onClose: () => void;
   private modeBeforeSave: GameMode;
   private selectedIndex = 0;
+  private actionIndex = 0;
   private phase: MenuPhase = "browsing";
   private metas: SaveSlotMeta[];
   private flash = "";
@@ -68,7 +72,7 @@ export class SaveController {
     const lower = key.toLowerCase();
 
     if (this.phase === "confirmOverwrite") {
-      if (lower === "y") {
+      if (lower === "y" || key === "Enter" || key === " ") {
         this.doSave();
       } else if (lower === "n" || key === "Escape") {
         this.phase = "browsing";
@@ -79,7 +83,7 @@ export class SaveController {
     }
 
     if (this.phase === "confirmLoad") {
-      if (lower === "y") {
+      if (lower === "y" || key === "Enter" || key === " ") {
         this.doLoad();
       } else if (lower === "n" || key === "Escape") {
         this.phase = "browsing";
@@ -90,12 +94,36 @@ export class SaveController {
     }
 
     if (this.phase === "confirmDelete") {
-      if (lower === "y") {
+      if (lower === "y" || key === "Enter" || key === " ") {
         this.doDelete();
       } else if (lower === "n" || key === "Escape") {
         this.phase = "browsing";
         this.flash = "";
         this.render();
+      }
+      return;
+    }
+
+    if (this.phase === "actionPick") {
+      switch (lower) {
+        case "arrowup":
+        case "w":
+          this.actionIndex = (this.actionIndex - 1 + ACTIONS.length) % ACTIONS.length;
+          this.render();
+          break;
+        case "arrowdown":
+          this.actionIndex = (this.actionIndex + 1) % ACTIONS.length;
+          this.render();
+          break;
+        case "enter":
+        case " ":
+          this.executeAction();
+          break;
+        case "escape":
+          this.phase = "browsing";
+          this.flash = "";
+          this.render();
+          break;
       }
       return;
     }
@@ -113,6 +141,13 @@ export class SaveController {
         this.flash = "";
         this.render();
         break;
+      case "enter":
+      case " ":
+        this.phase = "actionPick";
+        this.actionIndex = 0;
+        this.flash = "";
+        this.render();
+        break;
       case "s":
         this.trySave();
         break;
@@ -126,6 +161,26 @@ export class SaveController {
       case "q":
         this.dispose();
         this.onClose();
+        break;
+    }
+  }
+
+  private executeAction(): void {
+    const action = ACTIONS[this.actionIndex];
+    switch (action) {
+      case "Save":
+        this.trySave();
+        break;
+      case "Load":
+        this.tryLoad();
+        break;
+      case "Delete":
+        this.tryDelete();
+        break;
+      case "Cancel":
+        this.phase = "browsing";
+        this.flash = "";
+        this.render();
         break;
     }
   }
@@ -216,10 +271,12 @@ export class SaveController {
     const lines: string[] = [];
     lines.push(`<div class="save-header">[S] SAVE / LOAD</div>`);
 
+    const slotHighlighted = this.phase === "browsing" || this.phase === "actionPick";
+
     lines.push(`<div class="save-slots">`);
     for (let i = 0; i < SLOT_COUNT; i++) {
       const meta = this.metas[i];
-      const isSelected = i === this.selectedIndex && this.phase === "browsing";
+      const isSelected = i === this.selectedIndex && slotHighlighted;
       const marker = isSelected ? "▶" : " ";
       if (meta.empty) {
         lines.push(
@@ -243,6 +300,25 @@ export class SaveController {
     }
     lines.push(`</div>`);
 
+    if (this.phase === "actionPick") {
+      const slotEmpty = this.metas[this.selectedIndex].empty;
+      lines.push(`<div class="save-actions">`);
+      for (let i = 0; i < ACTIONS.length; i++) {
+        const label = ACTIONS[i];
+        const isActionSelected = i === this.actionIndex;
+        const disabled = (label === "Load" || label === "Delete") && slotEmpty;
+        const marker = isActionSelected ? "▶" : " ";
+        lines.push(
+          `<div class="save-action ${isActionSelected ? "selected" : ""} ${disabled ? "disabled" : ""}">` +
+            `<span class="sa-marker">${marker}</span>` +
+            `<span class="sa-label">${label}</span>` +
+            (disabled ? `<span class="sa-hint">(empty slot)</span>` : "") +
+            `</div>`
+        );
+      }
+      lines.push(`</div>`);
+    }
+
     // Current game state summary (for context when saving)
     const aliveCount = this.state.party.filter((c) => c.hp > 0).length;
     const classSummary = this.state.party.map((c) => c.class[0]).join("");
@@ -258,7 +334,9 @@ export class SaveController {
 
     lines.push(`<div class="save-help">`);
     if (this.phase === "browsing") {
-      lines.push(`[↑/↓] navigate · [S] save · [L] load · [D] delete · [Esc] close`);
+      lines.push(`[↑/↓] slot · [Enter] actions · [S/L/D] · [Esc] close`);
+    } else if (this.phase === "actionPick") {
+      lines.push(`[↑/↓] action · [Enter] confirm · [Esc] back`);
     }
     lines.push(`</div>`);
 
