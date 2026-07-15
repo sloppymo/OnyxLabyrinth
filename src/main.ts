@@ -115,6 +115,8 @@ let mapVisible = false;
 // Session-wide gamepad/keyboard poller (combat keyboard path feeds this too).
 let actionRingController: DungeonActionRingController | null = null;
 let trapPrompt: TrapPromptController | null = null;
+/** Swallow the step key that opened the trap so it cannot wrap the cursor. */
+let justOpenedTrapPrompt = false;
 type RingActionId = "camp" | "map" | "grimoire" | "unlock" | "town";
 let pendingRingAction: RingActionId | null = null;
 
@@ -618,10 +620,20 @@ function onMove(): void {
   }
 
   if (state.pendingTrap) {
-    if (!trapPrompt) trapPrompt = new TrapPromptController();
+    if (!trapPrompt) {
+      trapPrompt = new TrapPromptController();
+      // Swallow the opening step key (same keydown may reach the trap
+      // listener and wrap Inspect→Leave). Clear on next macrotask so the
+      // player's first intentional A/B is not also swallowed.
+      justOpenedTrapPrompt = true;
+      setTimeout(() => {
+        justOpenedTrapPrompt = false;
+      }, 0);
+    }
     setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected));
   } else {
     trapPrompt = null;
+    justOpenedTrapPrompt = false;
   }
 
   maybeTriggerEncounter();
@@ -759,6 +771,10 @@ function forceEncounter(): void {
 /** Route trap prompt keys (keyboard or adapter) to features.ts chest APIs. */
 function handleTrapInput(key: string): boolean {
   if (state.mode !== "dungeon" || !state.pendingTrap || !trapPrompt) return false;
+  if (justOpenedTrapPrompt) {
+    justOpenedTrapPrompt = false;
+    return true;
+  }
   const action = trapPrompt.handleKey(key);
   if (action === null) {
     setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected));
