@@ -38,6 +38,7 @@ import f5WallUrl from "../assets/f5_wall_256.png";
 import f5FloorAUrl from "../assets/f5_floor_a_256.png";
 import f5FloorBUrl from "../assets/f5_floor_b_256.png";
 import f5CeilingUrl from "../assets/f5_ceiling_256.png";
+import doorPlaceholderUrl from "../assets/door_placeholder_256.png";
 import {
   computeLineHeight,
   opacityForDepth,
@@ -242,6 +243,9 @@ function urlsForTheme(theme: string): {
 // when the target canvas is resized.)
 const tilesetCache = new Map<string, LoadedTileset>();
 const themeLoadPromises = new Map<string, Promise<LoadedTileset>>();
+/** Placeholder door panel texture (shared across themes). Null until loaded. */
+let doorTexture: HTMLCanvasElement | null = null;
+let doorLoadPromise: Promise<void> | null = null;
 // Reusable per-frame buffers (avoid allocation in the hot render loop).
 let hitsBuffer: (RayHit | null)[] = [];
 let seenFeatureCellsBuffer = new Set<string>();
@@ -347,11 +351,30 @@ function prepareRepeatedTexture(
   return c;
 }
 
-/** Load and prepare campaign themes (f1–f3). Safe to call more than once. */
+/** Load and prepare campaign themes (f1–f5) plus the shared door placeholder. */
 export function loadTextures(): Promise<void> {
-  return Promise.all(
-    Object.keys(BUNDLED_THEME_URLS).map((theme) => ensureThemeLoaded(theme))
-  ).then(() => {});
+  return Promise.all([
+    ...Object.keys(BUNDLED_THEME_URLS).map((theme) => ensureThemeLoaded(theme)),
+    ensureDoorTextureLoaded(),
+  ]).then(() => {});
+}
+
+function ensureDoorTextureLoaded(): Promise<void> {
+  if (doorTexture) return Promise.resolve();
+  if (doorLoadPromise) return doorLoadPromise;
+  doorLoadPromise = loadImage(doorPlaceholderUrl)
+    .then((img) => {
+      // Mild darkening so the panel sits in the corridor fog like wall art.
+      const adjusted = adjustTextureImage(img, 0.92, 1.05);
+      doorTexture = prepareRepeatedTexture(adjusted, 1, 1);
+    })
+    .catch(() => {
+      doorTexture = null;
+    })
+    .then(() => {
+      doorLoadPromise = null;
+    });
+  return doorLoadPromise;
 }
 
 /** Ensure a tileset theme is in the cache (no-op if already loaded). */
@@ -926,24 +949,45 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
 
     if (hit.edge === "door" || hit.edge === "locked") {
       const isLocked = hit.edge === "locked";
-      const markerColor = isLocked ? PALETTE.lockedMarker : PALETTE.doorMarker;
+      const fogDoor = opacityForDepth(hit.perpWallDist);
 
-      // Darken the door surface so it reads as a distinct wooden/metal panel
-      // rather than a continuation of the surrounding wall.
-      ctx.fillStyle = rgba(PALETTE.doorFill, fog * 0.35);
-      ctx.fillRect(x, drawStart, stripWidth, drawEnd - drawStart + 1);
-
-      // Center seam and horizontal panel crossbars make the door recognizable
-      // even when it fills the entire viewport at point-blank range.
-      ctx.fillStyle = markerColor;
-      ctx.globalAlpha = fog;
-      const markerX = Math.floor(x + stripWidth / 2);
-      ctx.fillRect(markerX, drawStart, 1, drawEnd - drawStart + 1);
-      const panelY1 = Math.floor(drawStart + (drawEnd - drawStart) * 0.33);
-      const panelY2 = Math.floor(drawStart + (drawEnd - drawStart) * 0.67);
-      ctx.fillRect(x, panelY1, stripWidth, 1);
-      ctx.fillRect(x, panelY2, stripWidth, 1);
-      ctx.globalAlpha = 1.0;
+      if (doorTexture) {
+        // Sample the placeholder door panel the same way as wall strips.
+        let texX = Math.floor(hit.wallX * doorTexture.width);
+        if (
+          (hit.side === "x" && rayDirX > 0) ||
+          (hit.side === "y" && rayDirY < 0)
+        ) {
+          texX = doorTexture.width - texX - 1;
+        }
+        ctx.globalAlpha = fogDoor;
+        ctx.drawImage(
+          doorTexture,
+          texX,
+          0,
+          1,
+          doorTexture.height,
+          x,
+          drawStart,
+          stripWidth,
+          drawEnd - drawStart + 1
+        );
+        ctx.globalAlpha = 1.0;
+      } else {
+        // Procedural fallback until the texture loads (or if it failed).
+        const markerColor = isLocked ? PALETTE.lockedMarker : PALETTE.doorMarker;
+        ctx.fillStyle = rgba(PALETTE.doorFill, fogDoor * 0.35);
+        ctx.fillRect(x, drawStart, stripWidth, drawEnd - drawStart + 1);
+        ctx.fillStyle = markerColor;
+        ctx.globalAlpha = fogDoor;
+        const markerX = Math.floor(x + stripWidth / 2);
+        ctx.fillRect(markerX, drawStart, 1, drawEnd - drawStart + 1);
+        const panelY1 = Math.floor(drawStart + (drawEnd - drawStart) * 0.33);
+        const panelY2 = Math.floor(drawStart + (drawEnd - drawStart) * 0.67);
+        ctx.fillRect(x, panelY1, stripWidth, 1);
+        ctx.fillRect(x, panelY2, stripWidth, 1);
+        ctx.globalAlpha = 1.0;
+      }
 
       if (isLocked) {
         ctx.strokeStyle = PALETTE.lockedMarker;
@@ -951,7 +995,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         const cx = x + stripWidth / 2;
         const cy = (drawStart + drawEnd) / 2;
         const markerSize = Math.max(2, lineHeight / 8);
-        ctx.globalAlpha = fog;
+        ctx.globalAlpha = fogDoor;
         ctx.beginPath();
         ctx.moveTo(cx - markerSize / 2, cy - markerSize / 2);
         ctx.lineTo(cx + markerSize / 2, cy + markerSize / 2);
