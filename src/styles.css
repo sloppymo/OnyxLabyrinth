@@ -1600,6 +1600,12 @@ canvas#map-canvas {
   margin-bottom: 24px;
 }
 
+.ff6-window.standalone .ff6-arena-meta {
+  color: #b8c4f0;
+  font-size: var(--fs-small);
+  padding: 0 4px 6px;
+}
+
 /* ==========================================================================
    FF6Window library (ff6-window-library.ts) — unified out-of-combat menus.
    `.standalone` scopes every rule here so the combat scene's own

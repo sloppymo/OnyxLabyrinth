@@ -54,6 +54,7 @@ import { PartyCreationController } from "./engine/party-ui";
 import { GameOverController } from "./engine/game-over-ui";
 import { TitleController } from "./engine/title-ui";
 import { ArenaController } from "./engine/arena-ui";
+import { FF6Window } from "./engine/ff6-window-library";
 import { autoSave } from "./game/save";
 import {
   createCombatFromEncounter,
@@ -1128,26 +1129,38 @@ function openArenaSetup(): void {
 
   const levels = [1, 3, 6, 9, 12];
   let selected = 0;
+  let hasRendered = false;
 
   const render = () => {
     const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
-    const lines: string[] = [];
-    lines.push(`<div class="title-header">Arena Mode</div>`);
-    lines.push(`<div class="title-subtitle">Choose starting party level</div>`);
-    lines.push(`<div class="title-menu">`);
-    for (let i = 0; i < levels.length; i++) {
-      const isSelected = i === selected;
-      const marker = isSelected ? "▶" : " ";
-      lines.push(
-        `<div class="title-menu-item ${isSelected ? "selected" : ""}">` +
-          `<span class="title-marker">${marker}</span>` +
-          `<span>Level ${levels[i]}</span>` +
-          `</div>`
-      );
-    }
-    lines.push(`</div>`);
-    lines.push(`<div class="title-help">[↑/↓] navigate · [Enter] start · [Esc] title</div>`);
-    panel.innerHTML = lines.join("");
+    const animated = !hasRendered;
+    hasRendered = true;
+    const win = new FF6Window({
+      title: "Arena Mode",
+      contentHtml: `<div class="ff6-arena-meta">Choose starting party level</div>`,
+      items: levels.map((lv) => ({
+        label: `Level ${lv}`,
+        metadata: lv,
+      })),
+      selectedIndex: selected,
+      mode: "menu",
+      footer: "[↑/↓] navigate · [Enter] start · [Esc] title",
+      animated,
+      onHover: (i) => {
+        selected = i;
+      },
+      onConfirm: (i) => {
+        selected = i;
+        arenaSetupController = null;
+        startArena(levels[selected]);
+      },
+      onBack: () => {
+        arenaSetupController = null;
+        openTitleScreen();
+      },
+    });
+    panel.innerHTML = "";
+    panel.appendChild(win.render());
   };
 
   arenaSetupController = {

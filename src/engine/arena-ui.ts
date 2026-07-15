@@ -12,6 +12,7 @@
  */
 
 import type { GameState } from "../types";
+import { FF6Window } from "./ff6-window-library";
 
 interface ArenaOption {
   key: "next" | "exit";
@@ -37,6 +38,8 @@ export class ArenaController {
   private onExit: () => void;
   private options: ArenaOption[];
   private selectedIndex = 0;
+  /** Open animation only on first paint — re-renders must not replay it. */
+  private hasRendered = false;
 
   constructor(opts: ArenaControllerOptions) {
     this.panel = opts.panel;
@@ -99,36 +102,39 @@ export class ArenaController {
   }
 
   private render(): void {
+    const animated = !this.hasRendered;
+    this.hasRendered = true;
+
     const alive = this.state.party.filter((c) => c.hp > 0).length;
     const avgLevel = Math.round(
       this.state.party.reduce((sum, c) => sum + c.level, 0) / this.state.party.length
     );
 
-    const lines: string[] = [];
-    lines.push(`<div class="title-header">Arena Mode</div>`);
-    lines.push(`<div class="title-subtitle">Wave ${this.wave} · Floor ${this.floor}</div>`);
-    lines.push(
-      `<div class="arena-summary">` +
-        `Party: ${alive}/${this.state.party.length} alive · Avg Lv${avgLevel} · ${this.state.partyGold}g` +
-        `</div>`
-    );
-
-    lines.push(`<div class="title-menu">`);
-    for (let i = 0; i < this.options.length; i++) {
-      const option = this.options[i];
-      const selected = i === this.selectedIndex;
-      const marker = selected ? "▶" : " ";
-      lines.push(
-        `<div class="title-menu-item ${selected ? "selected" : ""}">` +
-          `<span class="title-marker">${marker}</span>` +
-          `<span class="title-icon">${option.icon}</span>` +
-          `<span>${option.label}</span>` +
-          `</div>`
-      );
-    }
-    lines.push(`</div>`);
-    lines.push(`<div class="title-help">[↑/↓] navigate · [Enter] select · [N] next · [Esc] exit</div>`);
-
-    this.panel.innerHTML = lines.join("");
+    const win = new FF6Window({
+      title: "Arena Mode",
+      contentHtml: `<div class="ff6-arena-meta">Wave ${this.wave} · Floor ${this.floor}</div>`,
+      items: this.options.map((option) => ({
+        label: `${option.icon} ${option.label}`,
+        metadata: option.key,
+      })),
+      selectedIndex: this.selectedIndex,
+      mode: "menu",
+      footer: "[↑/↓] navigate · [Enter] select · [N] next · [Esc] exit",
+      footer2: `Party: ${alive}/${this.state.party.length} alive · Avg Lv${avgLevel} · ${this.state.partyGold}g`,
+      animated,
+      onHover: (i) => {
+        this.selectedIndex = i;
+      },
+      onConfirm: (i) => {
+        this.selectedIndex = i;
+        this.select();
+      },
+      onBack: () => {
+        this.selectedIndex = this.options.findIndex((o) => o.key === "exit");
+        this.select();
+      },
+    });
+    this.panel.innerHTML = "";
+    this.panel.appendChild(win.render());
   }
 }
