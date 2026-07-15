@@ -129,7 +129,8 @@ describe("TownController temple Remove Curse", () => {
 
     const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
     expect(panel.innerHTML).toContain("Remove Curse");
-    expect(panel.querySelectorAll(".temple-menu-item").length).toBe(2);
+    // Temple options now render as FF6Window menu rows.
+    expect(panel.querySelectorAll(".ff6-menu-item").length).toBe(2);
   });
 
   it("removes curse on Enter when Remove Curse row is selected", () => {

@@ -29,6 +29,7 @@ import {
   SLOT_COUNT,
   type SaveSlotMeta,
 } from "../game/save";
+import { FF6Window } from "./ff6-window-library";
 
 type MenuPhase = "browsing" | "actionPick" | "confirmOverwrite" | "confirmLoad" | "confirmDelete";
 
@@ -56,6 +57,9 @@ export class SaveController {
   private phase: MenuPhase = "browsing";
   private metas: SaveSlotMeta[];
   private flash = "";
+  /** The FF6 open animation plays only on the first render — the menu
+   *  re-renders on every keystroke and must not replay it. */
+  private hasRendered = false;
 
   constructor(opts: SaveControllerOptions) {
     this.panel = opts.panel;
@@ -268,9 +272,10 @@ export class SaveController {
   // --- Rendering ----------------------------------------------------------
 
   private render(): void {
-    const lines: string[] = [];
-    lines.push(`<div class="save-header">[S] SAVE / LOAD</div>`);
+    const animated = !this.hasRendered;
+    this.hasRendered = true;
 
+    const lines: string[] = [];
     const slotHighlighted = this.phase === "browsing" || this.phase === "actionPick";
 
     lines.push(`<div class="save-slots">`);
@@ -323,23 +328,28 @@ export class SaveController {
     const aliveCount = this.state.party.filter((c) => c.hp > 0).length;
     const classSummary = this.state.party.map((c) => c.class[0]).join("");
     lines.push(
-      `<div class="save-flash" style="color:var(--text-dim);font-size:12px">` +
+      `<div class="save-current" style="color:var(--text-dim);font-size:12px">` +
       `Current: F${this.state.floor.id} ${this.state.floor.name} · ${aliveCount}/${this.state.party.length} alive [${classSummary}] · ${this.state.partyGold}g` +
       `</div>`
     );
 
-    if (this.flash) {
-      lines.push(`<div class="save-flash">${this.flash}</div>`);
-    }
-
-    lines.push(`<div class="save-help">`);
+    let footer: string | undefined;
     if (this.phase === "browsing") {
-      lines.push(`[↑/↓] slot · [A/Enter] actions · [S/L/D] · [B/Esc] close`);
+      footer = "[↑/↓] slot · [A/Enter] actions · [S/L/D] · [B/Esc] close";
     } else if (this.phase === "actionPick") {
-      lines.push(`[↑/↓] action · [A/Enter] confirm · [B/Esc] back`);
+      footer = "[↑/↓] action · [A/Enter] confirm · [B/Esc] back";
     }
-    lines.push(`</div>`);
 
-    this.panel.innerHTML = lines.join("");
+    this.panel.innerHTML = "";
+    this.panel.appendChild(
+      FF6Window.frame({
+        title: "Save / Load",
+        contentHtml: lines.join(""),
+        flash: this.flash || undefined,
+        footer,
+        mode: "selection",
+        animated,
+      })
+    );
   }
 }

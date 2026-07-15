@@ -24,6 +24,7 @@ import { ALL_ITEMS, ITEMS_BY_ID, displayNameFor, type ItemDef } from "../data/it
 import { equipItem, findBestEquipTarget, getDisplacedItem, type Loadout } from "../game/combat";
 import { xpForNextLevel } from "../game/leveling";
 import { perksForCharacter, partyShopDiscount, discountedShopPrice } from "../game/perks";
+import { FF6Window, type FF6WindowItem } from "./ff6-window-library";
 
 type TownScreen = "main" | "inn" | "temple" | "shop" | "roster";
 type ShopTab = "buy" | "sell" | "appraise" | "buyConfirm";
@@ -79,6 +80,10 @@ export class TownController {
 
   // Temple state (when cursed gear is equipped)
   private templeIndex = 0;
+
+  /** Last rendered screen key — the FF6 window open animation plays only
+   *  when the screen actually changes, not on every cursor move. */
+  private lastScreenKey = "";
 
   constructor(opts: TownControllerOptions) {
     this.panel = opts.panel;
@@ -552,157 +557,170 @@ export class TownController {
   }
 
   // --- Rendering ----------------------------------------------------------
+  //
+  // All town screens render through the FF6Window library so the town shares
+  // the combat scene's blue window aesthetic. FF6Window is used statelessly:
+  // the controller's own fields (selectedIndex/shopIndex/templeIndex/…)
+  // remain the single source of truth and every keyboard handler above is
+  // unchanged — the windows are rebuilt on state change, and their
+  // onHover/onConfirm callbacks add mouse support by mirroring the same
+  // actions the keys trigger.
 
   private render(): void {
-    const lines: string[] = [];
-    lines.push(`<div class="town-header">[T] Town of Edgehollow</div>`);
-    lines.push(`<div class="town-gold">Gold: ${this.state.partyGold}g</div>`);
+    const screenKey = this.screen === "shop" ? `shop:${this.shopTab}` : this.screen;
+    const animated = screenKey !== this.lastScreenKey;
+    this.lastScreenKey = screenKey;
+    this.panel.innerHTML = "";
 
     if (this.screen === "main") {
-      this.renderMain(lines);
+      this.renderMain(animated);
     } else if (this.screen === "shop") {
-      this.renderShop(lines);
+      this.renderShop(animated);
     } else if (this.screen === "roster") {
-      this.renderRoster(lines);
+      this.renderRoster(animated);
     } else {
       // inn / temple — flash message + party status
-      this.renderFacility(lines);
-    }
-
-    if (this.flash) {
-      lines.push(`<div class="town-flash">${this.flash}</div>`);
-    }
-
-    this.panel.innerHTML = lines.join("");
-    if (this.screen === "shop") {
-      this.scrollShopSelectionIntoView();
+      this.renderFacility(animated);
     }
   }
 
-  private scrollShopSelectionIntoView(): void {
-    const selected = this.panel.querySelector<HTMLElement>(".shop-item.selected");
-    if (selected) {
-      selected.scrollIntoView({ block: "nearest" });
-    }
-  }
-
-  private renderMain(lines: string[]): void {
-    // Party status summary (left panel equivalent — shown above menu)
+  private renderMain(animated: boolean): void {
     const aliveCount = this.state.party.filter((c) => c.hp > 0).length;
     const avgLevel = Math.round(
       this.state.party.reduce((sum, c) => sum + c.level, 0) / this.state.party.length
     );
-    lines.push(
-      `<div class="town-gold">Party: ${aliveCount}/${this.state.party.length} alive · Avg Lv${avgLevel} · Gold: ${this.state.partyGold}g</div>`
-    );
 
-    lines.push(`<div class="town-menu">`);
-    for (let i = 0; i < MAIN_MENU_ITEMS.length; i++) {
-      const item = MAIN_MENU_ITEMS[i];
-      const selected = i === this.selectedIndex;
-      const marker = selected ? "▶" : " ";
-      lines.push(
-        `<div class="town-menu-item ${selected ? "selected" : ""}">` +
-          `<span class="tm-marker">${marker}</span>` +
-          `<span class="tm-icon">${item.icon}</span>` +
-          `<span>${item.label}</span>` +
-          `</div>`
-      );
-    }
-    lines.push(`</div>`);
-    lines.push(`<div class="town-help">[↑/↓] navigate · [A/Enter] select · letter jumps · [Select/Esc] save</div>`);
+    const win = new FF6Window({
+      title: "Town of Edgehollow",
+      items: MAIN_MENU_ITEMS.map((item) => ({
+        label: `${item.icon} ${item.label}`,
+        metadata: item.key,
+      })),
+      selectedIndex: this.selectedIndex,
+      mode: "menu",
+      flash: this.flash || null,
+      footer: "[↑/↓] navigate · [A/Enter] select · letter jumps · [Select/Esc] save",
+      footer2: `Party: ${aliveCount}/${this.state.party.length} alive · Avg Lv${avgLevel} · Gold: ${this.state.partyGold}g`,
+      animated,
+      onHover: (i) => {
+        this.selectedIndex = i;
+      },
+      onConfirm: (i) => {
+        this.selectedIndex = i;
+        this.flash = "";
+        this.selectMain();
+      },
+      onBack: () => {
+        this.panel.style.display = "none";
+        this.panel.innerHTML = "";
+        this.onOpenSave();
+      },
+    });
+    this.panel.appendChild(win.render());
   }
 
-  private renderShop(lines: string[]): void {
+  private renderShop(animated: boolean): void {
     if (this.shopTab === "buyConfirm") {
-      this.renderBuyConfirm(lines);
+      this.renderBuyConfirm(animated);
       return;
     }
 
-    lines.push(`<div class="shop-tabs">`);
-    lines.push(`<span class="shop-tab ${this.shopTab === "buy" ? "active" : ""}">Buy [B]</span>`);
-    lines.push(`<span class="shop-tab ${this.shopTab === "sell" ? "active" : ""}">Sell [S]</span>`);
-    lines.push(`<span class="shop-tab ${this.shopTab === "appraise" ? "active" : ""}">Appraise [A]</span>`);
-    lines.push(`</div>`);
+    const tabsHtml =
+      `<div class="shop-tabs">` +
+      `<span class="shop-tab ${this.shopTab === "buy" ? "active" : ""}">Buy [B]</span>` +
+      `<span class="shop-tab ${this.shopTab === "sell" ? "active" : ""}">Sell [S]</span>` +
+      `<span class="shop-tab ${this.shopTab === "appraise" ? "active" : ""}">Appraise [A]</span>` +
+      `</div>`;
+
+    let items: FF6WindowItem[] = [];
+    let emptyHtml = "";
+    let help: string;
+    let confirm: (i: number) => void;
 
     if (this.shopTab === "appraise") {
       const list = this.getAppraiseList();
-      lines.push(`<div class="shop-list">`);
-      if (list.length === 0) {
-        lines.push(`<div class="shop-empty">Nothing needs appraising.</div>`);
-      }
-      for (let i = 0; i < list.length; i++) {
-        const entry = this.state.inventory[list[i]];
+      if (list.length === 0) emptyHtml = `<div class="shop-empty">Nothing needs appraising.</div>`;
+      items = list.map((invIndex) => {
+        const entry = this.state.inventory[invIndex];
         const item = ITEMS_BY_ID[entry.itemId];
-        if (!item) continue;
-        const selected = i === this.shopIndex;
-        const marker = selected ? "▶" : " ";
-        lines.push(
-          `<div class="shop-item ${selected ? "selected" : ""}">` +
-            `<span class="si-marker">${marker}</span>` +
-            `<span class="si-name">${displayNameFor(item, false)}</span>` +
-            `<span class="si-stats">?</span>` +
-            `<span class="si-price">${APPRAISE_COST}g</span>` +
-            `</div>`
-        );
-      }
-      lines.push(`</div>`);
-      lines.push(`<div class="town-help">[↑/↓] navigate · [Enter] appraise · [←/→] tabs · [B/S/A] jump · [Esc] back</div>`);
-      return;
-    }
-
-    if (this.shopTab === "buy") {
+        if (!item) return { label: "???", detail: `${APPRAISE_COST}g`, metadata: invIndex };
+        return {
+          label: `${displayNameFor(item, false)} — ?`,
+          detail: `${APPRAISE_COST}g`,
+          metadata: invIndex,
+        };
+      });
+      help = `[↑/↓] navigate · [Enter] appraise · [←/→] tabs · [B/S/A] jump · [Esc] back`;
+      confirm = (i) => this.appraiseItem(this.getAppraiseList()[i]);
+    } else if (this.shopTab === "buy") {
       const buyList = this.getShopBuyList();
-      lines.push(`<div class="shop-list">`);
-      for (let i = 0; i < buyList.length; i++) {
-        const item = buyList[i];
-        const selected = i === this.shopIndex;
-        const marker = selected ? "▶" : " ";
-        const affordable = this.canAffordWithTradeIn(item);
-        const cls = `shop-item ${selected ? "selected" : ""} ${affordable ? "" : "unaffordable"}`;
+      items = buyList.map((item) => {
         const stats = this.itemStatsStr(item);
-        lines.push(
-          `<div class="${cls}">` +
-            `<span class="si-marker">${marker}</span>` +
-            `<span class="si-name">${item.name}</span>` +
-            `<span class="si-stats">${stats}</span>` +
-            `<span class="si-price">${this.buyPrice(item)}g</span>` +
-            `</div>`
-        );
-      }
-      lines.push(`</div>`);
-      lines.push(this.renderBuyPreview());
+        return {
+          label: stats ? `${item.name} — ${stats}` : item.name,
+          detail: `${this.buyPrice(item)}g`,
+          className: this.canAffordWithTradeIn(item) ? undefined : "unaffordable",
+          metadata: item.id,
+        };
+      });
+      help = `[↑/↓] navigate · [Enter] compare · [←/→] tabs · [B/S/A] jump · [Esc] back`;
+      confirm = (i) => this.openBuyConfirm(this.getShopBuyList()[i]);
     } else {
       const inv = this.state.inventory;
-      lines.push(`<div class="shop-list">`);
-      if (inv.length === 0) {
-        lines.push(`<div class="shop-empty">Your inventory is empty.</div>`);
-      }
-      for (let i = 0; i < inv.length; i++) {
-        const entry = inv[i];
+      if (inv.length === 0) emptyHtml = `<div class="shop-empty">Your inventory is empty.</div>`;
+      items = inv.map((entry) => {
         const item = ITEMS_BY_ID[entry.itemId];
-        if (!item) continue;
-        const selected = i === this.shopIndex;
-        const marker = selected ? "▶" : " ";
-        const sellPrice = Math.floor(item.price / 2);
+        if (!item) return { label: "???", detail: "—", metadata: entry.itemId };
         const stats = entry.identified ? this.itemStatsStr(item) : "?";
         const name = displayNameFor(item, entry.identified);
-        lines.push(
-          `<div class="shop-item ${selected ? "selected" : ""}">` +
-            `<span class="si-marker">${marker}</span>` +
-            `<span class="si-name">${name}</span>` +
-            `<span class="si-stats">${stats}</span>` +
-            `<span class="si-price">${entry.identified ? `${sellPrice}g` : "—"}</span>` +
-            `</div>`
+        return {
+          label: stats ? `${name} — ${stats}` : name,
+          detail: entry.identified ? `${Math.floor(item.price / 2)}g` : "—",
+          metadata: entry.itemId,
+        };
+      });
+      help = `[↑/↓] navigate · [Enter] buy/sell · [←/→] tabs · [B/S/A] jump · [Esc] back`;
+      confirm = (i) => this.sellItem(i);
+    }
+
+    const win = new FF6Window({
+      title: "Shop",
+      contentHtml: tabsHtml + emptyHtml,
+      items,
+      selectedIndex: this.shopIndex,
+      mode: "selection",
+      allowMultilineLabels: true,
+      flash: this.flash || null,
+      footer: help,
+      footer2: `Gold: ${this.state.partyGold}g`,
+      animated,
+      onHover: (i) => {
+        if (i !== this.shopIndex) {
+          this.shopIndex = i;
+          this.flash = "";
+          this.render(); // buy preview tracks the cursor
+        }
+      },
+      onConfirm: (i) => {
+        this.shopIndex = i;
+        confirm(i);
+      },
+      onBack: () => {
+        this.screen = "main";
+        this.flash = "";
+        this.render();
+      },
+    });
+    this.panel.appendChild(win.render());
+
+    if (this.shopTab === "buy") {
+      const previewHtml = this.renderBuyPreview();
+      if (previewHtml) {
+        this.panel.appendChild(
+          FF6Window.frame({ contentHtml: previewHtml, mode: "description", animated })
         );
       }
-      lines.push(`</div>`);
     }
-    const help =
-      this.shopTab === "buy"
-        ? `[↑/↓] navigate · [Enter] compare · [←/→] tabs · [B/S/A] jump · [Esc] back`
-        : `[↑/↓] navigate · [Enter] buy/sell · [←/→] tabs · [B/S/A] jump · [Esc] back`;
-    lines.push(`<div class="town-help">${help}</div>`);
   }
 
   private renderBuyPreview(): string {
@@ -742,10 +760,11 @@ export class TownController {
     );
   }
 
-  private renderBuyConfirm(lines: string[]): void {
+  private renderBuyConfirm(animated: boolean): void {
     const item = this.buyConfirmItem;
     if (!item) return;
 
+    const lines: string[] = [];
     lines.push(`<div class="buy-confirm-header">${item.name}</div>`);
     lines.push(`<div class="buy-confirm-sub">${this.itemStatsStr(item) || "no bonuses"}</div>`);
 
@@ -808,7 +827,16 @@ export class TownController {
       }
     }
 
-    lines.push(`<div class="town-help">[Enter] buy · [T] toggle trade-in · [Esc] cancel</div>`);
+    this.panel.appendChild(
+      FF6Window.frame({
+        title: "Shop — Purchase",
+        contentHtml: lines.join(""),
+        flash: this.flash || null,
+        footer: "[Enter] buy · [T] toggle trade-in · [Esc] cancel",
+        mode: "description",
+        animated,
+      })
+    );
   }
 
   private itemNameFor(item: ItemDef | undefined): string {
@@ -840,7 +868,8 @@ export class TownController {
     return this.state.partyGold >= net;
   }
 
-  private renderRoster(lines: string[]): void {
+  private renderRoster(animated: boolean): void {
+    const lines: string[] = [];
     lines.push(`<div class="shop-tabs">`);
     lines.push(
       `<span class="shop-tab ${this.rosterTab === "status" ? "active" : ""}">Status [S]</span>`
@@ -885,29 +914,58 @@ export class TownController {
       }
     }
     lines.push(`</div>`);
-    lines.push(`<div class="town-help">[←/→] tabs · [S/P] jump · [Esc/Enter] back</div>`);
+    this.panel.appendChild(
+      FF6Window.frame({
+        title: "Guild — Party Roster",
+        contentHtml: lines.join(""),
+        flash: this.flash || null,
+        footer: "[←/→] tabs · [S/P] jump · [Esc/Enter] back",
+        mode: "status",
+        animated,
+      })
+    );
   }
 
-  private renderFacility(lines: string[]): void {
-    if (this.screen === "temple" && this.equippedCursed().length > 0) {
-      lines.push(`<div class="temple-menu">`);
-      const backSelected = this.templeIndex === 0;
-      lines.push(
-        `<div class="temple-menu-item ${backSelected ? "selected" : ""}">` +
-          `<span class="tm-marker">${backSelected ? "▶" : " "}</span>` +
-          `<span>Back to menu</span>` +
-          `</div>`
-      );
-      const curseSelected = this.templeIndex === 1;
-      lines.push(
-        `<div class="temple-menu-item ${curseSelected ? "selected" : ""}">` +
-          `<span class="tm-marker">${curseSelected ? "▶" : " "}</span>` +
-          `<span>Remove Curse (${REMOVE_CURSE_COST}g) [R]</span>` +
-          `</div>`
-      );
-      lines.push(`</div>`);
+  private renderFacility(animated: boolean): void {
+    const title = this.screen === "temple" ? "Temple" : "Inn";
+    const templeCurse = this.screen === "temple" && this.equippedCursed().length > 0;
+
+    if (templeCurse) {
+      const win = new FF6Window({
+        title,
+        items: [
+          { label: "Back to menu", metadata: "back" },
+          { label: `Remove Curse (${REMOVE_CURSE_COST}g) [R]`, metadata: "curse" },
+        ],
+        selectedIndex: this.templeIndex,
+        mode: "menu",
+        flash: this.flash || null,
+        footer: "[↑/↓] navigate · [Enter] select · [R] remove curse · [Esc] back",
+        animated,
+        onHover: (i) => {
+          this.templeIndex = i;
+        },
+        onConfirm: (i) => {
+          this.templeIndex = i;
+          if (i === 1) {
+            this.doRemoveCurse();
+          } else {
+            this.screen = "main";
+            this.flash = "";
+            this.render();
+          }
+        },
+        onBack: () => {
+          this.screen = "main";
+          this.flash = "";
+          this.render();
+        },
+      });
+      this.panel.appendChild(win.render());
     }
-    // Show party status after inn/temple
+
+    // Party status after inn/temple
+    const lines: string[] = [];
     lines.push(`<div class="guild-roster">`);
     for (const c of this.state.party) {
       const hpPct = Math.round((c.hp / c.maxHp) * 100);
@@ -924,11 +982,17 @@ export class TownController {
       );
     }
     lines.push(`</div>`);
-    const templeHelp =
-      this.screen === "temple" && this.equippedCursed().length > 0
-        ? `[↑/↓] navigate · [Enter] select · [R] remove curse · [Esc] back`
-        : `[Esc/Enter] back to menu`;
-    lines.push(`<div class="town-help">${templeHelp}</div>`);
+
+    this.panel.appendChild(
+      FF6Window.frame({
+        title: templeCurse ? undefined : title,
+        contentHtml: lines.join(""),
+        flash: templeCurse ? null : this.flash || null,
+        footer: templeCurse ? undefined : "[Esc/Enter] back to menu",
+        mode: "status",
+        animated,
+      })
+    );
   }
 
   private itemStatsStr(item: ItemDef | undefined): string {

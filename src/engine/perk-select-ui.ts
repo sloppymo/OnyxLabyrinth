@@ -18,6 +18,7 @@ import {
   type PendingPerkChoice,
   type PerkDef,
 } from "../game/perks";
+import { FF6Window } from "./ff6-window-library";
 
 export interface PerkSelectControllerOptions {
   panel: HTMLElement;
@@ -52,6 +53,10 @@ export class PerkSelectController {
   private hasInteracted = false;
   /** Hint shown when Enter is pressed before choosing a card. */
   private confirmBlockedHint = false;
+  /** Queue index of the last rendered choice — the FF6 window open animation
+   *  plays only when the overlay first opens or advances to the next
+   *  character, never on ←/→ cursor re-renders. */
+  private lastRenderedChoice = -1;
 
   constructor(opts: PerkSelectControllerOptions) {
     this.panel = opts.panel;
@@ -163,31 +168,31 @@ export class PerkSelectController {
 
     const { character, tier } = current;
     const choices = perkChoicesFor(character.class, tier);
+    const animated = this.lastRenderedChoice !== this.currentIndex;
+    this.lastRenderedChoice = this.currentIndex;
 
-    const lines: string[] = [];
-    lines.push(
-      `<div class="perk-select-header">` +
-        `${character.name} — Level ${character.level} ${character.class} — Choose a Tier ${tier} Perk` +
-        `</div>`
-    );
-
-    lines.push(`<div class="perk-select-cards">`);
+    const cards: string[] = [];
+    cards.push(`<div class="perk-select-cards">`);
     for (let i = 0; i < choices.length; i++) {
-      lines.push(this.renderCard(choices[i], i === this.selectedCard));
+      cards.push(this.renderCard(choices[i], i === this.selectedCard));
     }
-    lines.push(`</div>`);
+    cards.push(`</div>`);
 
-    if (this.confirmBlockedHint) {
-      lines.push(
-        `<div class="perk-select-footer perk-select-warn">Pick a card with ←/→ first, then Enter to confirm.</div>`
-      );
-    } else {
-      lines.push(
-        `<div class="perk-select-footer">[←/→] select · [Enter] confirm</div>`
-      );
-    }
-
-    this.panel.innerHTML = lines.join("");
+    this.panel.innerHTML = "";
+    this.panel.appendChild(
+      FF6Window.frame({
+        title:
+          `${character.name} — Level ${character.level} ${character.class}` +
+          ` — Choose a Tier ${tier} Perk`,
+        contentHtml: cards.join(""),
+        flash: this.confirmBlockedHint
+          ? "Pick a card with ←/→ first, then Enter to confirm."
+          : undefined,
+        footer: "[←/→] select · [Enter] confirm",
+        mode: "description",
+        animated,
+      })
+    );
   }
 
   private renderCard(perk: PerkDef, selected: boolean): string {

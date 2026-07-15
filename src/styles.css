@@ -1599,3 +1599,139 @@ canvas#map-canvas {
   color: var(--warm-white);
   margin-bottom: 24px;
 }
+
+/* ==========================================================================
+   FF6Window library (ff6-window-library.ts) — unified out-of-combat menus.
+   `.standalone` scopes every rule here so the combat scene's own
+   `.ff6-window` bottom windows keep their exact current sizing/behavior.
+   ========================================================================== */
+
+.ff6-window.standalone {
+  /* Standalone menus size to content instead of hugging the combat canvas
+     bottom edge; long lists scroll internally. */
+  min-height: 0;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto 8px;
+}
+
+.ff6-window.standalone .ff6-selection-list {
+  overflow-y: auto;
+  scrollbar-width: none;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ff6-window.standalone .ff6-content {
+  overflow-y: auto;
+  scrollbar-width: none;
+  min-height: 0;
+}
+
+.ff6-window.standalone .ff6-menu-item.multiline {
+  white-space: normal;
+}
+
+.ff6-window.standalone .ff6-footer {
+  font-size: var(--fs-small);
+  color: #b8c4f0;
+  padding: 3px 6px 0;
+  border-top: 1px solid rgba(232, 232, 240, 0.25);
+  margin-top: 4px;
+}
+
+.ff6-window.standalone .ff6-footer2 {
+  border-top: none;
+  margin-top: 0;
+  color: #ffd769;
+}
+
+/* Rows flagged by callers (e.g. shop items the party can't afford). */
+.ff6-window.standalone .ff6-menu-item.unaffordable {
+  color: #8890b8;
+}
+
+/* NPC panel content lines inside the FF6 frame. */
+.ff6-window.standalone .npc-ask-line {
+  padding: 4px 6px;
+  color: var(--text-bright, #eef);
+}
+.ff6-window.standalone .npc-empty-line {
+  padding: 4px 6px;
+  color: var(--text-dim, #99a);
+}
+
+/* Width variants (spec: narrow/medium/wide/full). In a flex row they set
+   the basis; standalone-in-column they cap the width. */
+.ff6-window.width-narrow { flex: 0 0 20%; max-width: 240px; }
+.ff6-window.width-medium { flex: 0 0 35%; max-width: 420px; }
+.ff6-window.width-wide { flex: 0 0 60%; max-width: 720px; }
+.ff6-window.width-full { flex: 0 0 100%; }
+
+/* Mode variants. */
+.ff6-window.mode-status .ff6-content {
+  display: block; /* grid content (guild-roster etc.) styles itself */
+}
+
+.ff6-window.mode-description {
+  /* Detail panels: list + description side by side when both present. */
+  gap: 6px;
+}
+
+/* --- Phase 2: menu animations --------------------------------------------
+   Scoped to `.animated` (added only by the library) so combat's frequently
+   re-rendered windows never replay an open animation mid-fight. */
+
+@keyframes ff6-window-open {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ff6-window-close {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(20px) scale(0.95); }
+}
+
+@keyframes ff6-menu-item-confirm {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.ff6-window.animated {
+  animation: ff6-window-open 150ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.ff6-window.animated.closing {
+  animation: ff6-window-close 100ms ease-out forwards;
+}
+
+.ff6-window.standalone .ff6-menu-item {
+  transition: transform 100ms ease-out;
+}
+
+.ff6-window.standalone .ff6-menu-item.selected {
+  transform: translateX(4px);
+}
+
+.ff6-window.standalone .ff6-menu-item.confirming {
+  animation: ff6-menu-item-confirm 80ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ff6-window.animated,
+  .ff6-window.animated.closing,
+  .ff6-window.standalone .ff6-menu-item.confirming {
+    animation: none;
+  }
+  .ff6-window.standalone .ff6-menu-item {
+    transition: none;
+  }
+}

@@ -24,6 +24,7 @@ import {
   stealFrom,
   type NPCActionResult,
 } from "../game/npc";
+import { FF6Window } from "./ff6-window-library";
 
 type Phase = "root" | "talk" | "ask" | "barter" | "give";
 
@@ -59,6 +60,9 @@ export class NPCController {
   private dialogue: string;
   /** Typed keyword buffer for the ask phase. */
   private typed = "";
+  /** Last rendered phase — the FF6 open animation plays only on phase
+   *  changes, never on cursor/typing re-renders. */
+  private lastPhaseKey = "";
 
   constructor(opts: NPCControllerOptions) {
     this.panel = opts.panel;
@@ -248,75 +252,74 @@ export class NPCController {
 
   private render(): void {
     const npc = this.npc;
-    const lines: string[] = [];
-    lines.push(
-      `<div class="camp-header">${npc.name} — ${npc.title} (${moodOf(this.state, npc)})</div>`
-    );
-    lines.push(`<div class="npc-dialogue">“${this.dialogue}”</div>`);
+    const animated = this.lastPhaseKey !== this.phase;
+    this.lastPhaseKey = this.phase;
+    const title = `${npc.name} — ${npc.title} (${moodOf(this.state, npc)})`;
+    const dialogueHtml = `<div class="npc-dialogue">“${this.dialogue}”</div>`;
+    this.panel.innerHTML = "";
 
-    if (this.phase === "root") {
-      lines.push(`<div class="camp-party">`);
-      for (let i = 0; i < ROOT_ITEMS.length; i++) {
-        const marker = i === this.index ? "▶" : " ";
-        lines.push(
-          `<div class="camp-char"><span class="cc-name">${marker} [${ROOT_ITEMS[i].label[0]}] ${ROOT_ITEMS[i].label}</span></div>`
-        );
-      }
-      lines.push(`</div>`);
-      lines.push(`<div class="camp-done">[↑/↓] select · [Enter] confirm · [Esc] leave</div>`);
-    } else if (this.phase === "talk") {
-      const topics = visibleTopics(npc);
-      lines.push(`<div class="camp-party">`);
-      for (let i = 0; i < topics.length; i++) {
-        const marker = i === this.index ? "▶" : " ";
-        lines.push(
-          `<div class="camp-char"><span class="cc-name">${marker} ${topics[i]}</span></div>`
-        );
-      }
-      const askMarker = this.index === topics.length ? "▶" : " ";
-      lines.push(
-        `<div class="camp-char"><span class="cc-name">${askMarker} Ask about… (type a word)</span></div>`
+    if (this.phase === "ask") {
+      this.panel.appendChild(
+        FF6Window.frame({
+          title,
+          contentHtml:
+            dialogueHtml +
+            `<div class="npc-ask-line">Ask about: ${escapeText(this.typed)}` +
+            `<span class="npc-caret">_</span></div>`,
+          footer: "[Enter] ask · [Esc] back",
+          mode: "description",
+          animated,
+        })
       );
-      lines.push(`</div>`);
-      lines.push(`<div class="camp-done">[↑/↓] topic · [Enter] ask · [Esc] back</div>`);
-    } else if (this.phase === "ask") {
-      lines.push(
-        `<div class="camp-party"><div class="camp-char"><span class="cc-name">Ask about: ${this.typed}<span class="npc-caret">_</span></span></div></div>`
-      );
-      lines.push(`<div class="camp-done">[Enter] ask · [Esc] back</div>`);
-    } else if (this.phase === "barter") {
-      const trades = availableTrades(this.state, npc);
-      lines.push(`<div class="camp-party">`);
-      if (trades.length === 0) {
-        lines.push(`<div class="camp-char"><span class="cc-name">Nothing on offer.</span></div>`);
-      }
-      for (let i = 0; i < trades.length; i++) {
-        const marker = i === this.index ? "▶" : " ";
-        lines.push(
-          `<div class="camp-char"><span class="cc-name">${marker} ${this.tradeLabel(trades[i])}</span></div>`
-        );
-      }
-      lines.push(`</div>`);
-      lines.push(`<div class="camp-done">[Enter] trade · [Esc] back</div>`);
-    } else if (this.phase === "give") {
-      const inv = this.state.inventory;
-      lines.push(`<div class="camp-party">`);
-      if (inv.length === 0) {
-        lines.push(`<div class="camp-char"><span class="cc-name">Your pack is empty.</span></div>`);
-      }
-      for (let i = 0; i < inv.length; i++) {
-        const item = ITEMS_BY_ID[inv[i].itemId];
-        const name = item ? displayNameFor(item, inv[i].identified) : inv[i].itemId;
-        const marker = i === this.index ? "▶" : " ";
-        lines.push(
-          `<div class="camp-char"><span class="cc-name">${marker} ${name}</span></div>`
-        );
-      }
-      lines.push(`</div>`);
-      lines.push(`<div class="camp-done">[Enter] give · [Esc] back</div>`);
+      return;
     }
 
-    this.panel.innerHTML = lines.join("");
+    let items: { label: string }[] = [];
+    let footer = "";
+    let emptyLine = "";
+    if (this.phase === "root") {
+      items = ROOT_ITEMS.map((it) => ({ label: `[${it.label[0]}] ${it.label}` }));
+      footer = "[↑/↓] select · [Enter] confirm · [Esc] leave";
+    } else if (this.phase === "talk") {
+      items = [
+        ...visibleTopics(npc).map((t) => ({ label: t })),
+        { label: "Ask about… (type a word)" },
+      ];
+      footer = "[↑/↓] topic · [Enter] ask · [Esc] back";
+    } else if (this.phase === "barter") {
+      const trades = availableTrades(this.state, npc);
+      items = trades.map((t) => ({ label: this.tradeLabel(t) }));
+      if (trades.length === 0) emptyLine = "Nothing on offer.";
+      footer = "[Enter] trade · [Esc] back";
+    } else if (this.phase === "give") {
+      const inv = this.state.inventory;
+      items = inv.map((entry) => {
+        const item = ITEMS_BY_ID[entry.itemId];
+        return { label: item ? displayNameFor(item, entry.identified) : entry.itemId };
+      });
+      if (inv.length === 0) emptyLine = "Your pack is empty.";
+      footer = "[Enter] give · [Esc] back";
+    }
+
+    const win = new FF6Window({
+      title,
+      contentHtml:
+        dialogueHtml +
+        (emptyLine ? `<div class="npc-empty-line">${emptyLine}</div>` : ""),
+      items,
+      selectedIndex: this.index,
+      mode: "menu",
+      footer,
+      animated,
+      onHover: (i) => {
+        this.index = i;
+      },
+      onConfirm: (i) => {
+        this.index = i;
+        this.confirm();
+      },
+    });
+    this.panel.appendChild(win.render());
   }
 
   private tradeLabel(trade: NPCTradeDef): string {
@@ -324,4 +327,13 @@ export class NPCController {
     const receive = ITEMS_BY_ID[trade.receiveItemId]?.name ?? trade.receiveItemId;
     return `Your ${give} for ${receive}${trade.once ? " (one-time)" : ""}`;
   }
+}
+
+/** Escape free-typed player text before it goes into contentHtml. */
+function escapeText(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

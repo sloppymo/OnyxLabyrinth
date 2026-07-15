@@ -25,6 +25,7 @@ import {
   castUtilitySpell,
   type UtilityCastOption,
 } from "../game/persistent-spells";
+import { FF6Window } from "./ff6-window-library";
 
 const SPELL_NAME_BY_ID: Record<string, string> = Object.fromEntries(
   ALL_SPELLS.map((s) => [s.id, s.name])
@@ -77,6 +78,10 @@ export class CampController {
   private castIndex = 0;
   private castOptions: UtilityCastOption[] = [];
   private castFlash = "";
+
+  /** Last rendered phase — FF6 window open animation plays only on phase
+   *  changes, never on per-frame or per-cursor re-renders. */
+  private lastPhaseKey = "";
 
   constructor(opts: CampControllerOptions) {
     this.panel = opts.panel;
@@ -280,11 +285,11 @@ export class CampController {
 
   private render(progress: number): void {
     if (this.phase !== "animating") return;
+    this.lastPhaseKey = "animating";
     // Eased progress so healing starts fast and slows near max — feels cozy.
     const eased = 1 - Math.pow(1 - progress, 2);
 
     const lines: string[] = [];
-    lines.push(`<div class="camp-header">[C] CAMP — Day ${this.dayCount}</div>`);
 
     // Campfire visual: flickering orange lines. The flicker is driven by
     // progress so it animates during the camp.
@@ -318,33 +323,47 @@ export class CampController {
     });
     lines.push(`<div class="camp-party">${partyLines.join("")}</div>`);
 
-    if (progress < 1) {
-      lines.push(`<div class="camp-resting">Resting...</div>`);
-    }
-
-    this.panel.innerHTML = lines.join("");
+    this.panel.innerHTML = "";
+    this.panel.appendChild(
+      FF6Window.frame({
+        title: `Camp — Day ${this.dayCount}`,
+        contentHtml: lines.join(""),
+        footer: progress < 1 ? "Resting..." : undefined,
+        mode: "status",
+        animated: false, // re-rendered every frame; never replay the open anim
+      })
+    );
   }
 
   private renderMenu(): void {
-    const lines: string[] = [];
-    lines.push(`<div class="camp-header">[C] CAMP — Day ${this.dayCount} — Rested</div>`);
-    lines.push(`<div class="camp-party">`);
-    for (let i = 0; i < CAMP_MENU_ITEMS.length; i++) {
-      const item = CAMP_MENU_ITEMS[i];
-      const selected = i === this.menuIndex;
-      const marker = selected ? "▶" : " ";
-      lines.push(
-        `<div class="camp-char">` +
-        `<span class="cc-name">${marker} ${item.label}</span>` +
-        `</div>`
-      );
-    }
-    lines.push(`</div>`);
-    lines.push(`<div class="camp-done">[↑/↓] navigate · [Enter] select · [Esc] continue</div>`);
-    this.panel.innerHTML = lines.join("");
+    const animated = this.lastPhaseKey !== "menu";
+    this.lastPhaseKey = "menu";
+    const win = new FF6Window({
+      title: `Camp — Day ${this.dayCount} — Rested`,
+      items: CAMP_MENU_ITEMS.map((item) => ({ label: item.label, metadata: item.key })),
+      selectedIndex: this.menuIndex,
+      mode: "menu",
+      footer: "[↑/↓] navigate · [Enter] select · [Esc] continue",
+      animated,
+      onHover: (i) => {
+        this.menuIndex = i;
+      },
+      onConfirm: (i) => {
+        this.menuIndex = i;
+        this.selectMenu();
+      },
+      onBack: () => {
+        this.dispose();
+        this.onEnd();
+      },
+    });
+    this.panel.innerHTML = "";
+    this.panel.appendChild(win.render());
   }
 
   private renderCharSheet(): void {
+    const animated = this.lastPhaseKey !== "charSheet";
+    this.lastPhaseKey = "charSheet";
     const c = this.party[this.sheetIndex];
     const rowLabel = charRow(c) === "front" ? "Front" : "Back";
     const s = c.stats;
@@ -352,45 +371,65 @@ export class CampController {
       ? c.knownSpellIds.map((id) => SPELL_NAME_BY_ID[id] ?? id).join(", ")
       : "None";
     const lines: string[] = [];
-    lines.push(`<div class="camp-header">[C] Character Sheet — ${this.sheetIndex + 1}/${this.party.length}</div>`);
     lines.push(`<div class="char-sheet">`);
     lines.push(`<div class="cs-name">${c.name} — Level ${c.level} ${c.race} ${c.class} (${c.alignment}, ${rowLabel} Row)</div>`);
     lines.push(`<div class="cs-stats">STR ${s.str} · INT ${s.int} · PIE ${s.pie} · VIT ${s.vit} · AGI ${s.agi} · LUK ${s.luk}</div>`);
     lines.push(`<div class="cs-stats">HP ${c.hp}/${c.maxHp} · SP ${c.sp}/${c.maxSp} · XP ${c.xp}</div>`);
     lines.push(`<div class="cs-spells">Spells: ${spellNames}</div>`);
     lines.push(`</div>`);
-    lines.push(`<div class="camp-done">[↑/↓] cycle characters · [Enter/Esc] back to menu</div>`);
-    this.panel.innerHTML = lines.join("");
+    this.panel.innerHTML = "";
+    this.panel.appendChild(
+      FF6Window.frame({
+        title: `Character Sheet — ${this.sheetIndex + 1}/${this.party.length}`,
+        contentHtml: lines.join(""),
+        footer: "[↑/↓] cycle characters · [Enter/Esc] back to menu",
+        mode: "description",
+        animated,
+      })
+    );
   }
 
   private renderCastSpell(): void {
-    const lines: string[] = [];
-    lines.push(`<div class="camp-header">[C] Cast a Spell</div>`);
-    if (this.castOptions.length === 0) {
-      lines.push(`<div class="camp-party"><div class="camp-char"><span class="cc-name">No one knows a utility spell.</span></div></div>`);
-    } else {
-      lines.push(`<div class="camp-party">`);
-      for (let i = 0; i < this.castOptions.length; i++) {
-        const o = this.castOptions[i];
-        const marker = i === this.castIndex ? "▶" : " ";
-        const dim = o.affordable ? "" : " style='opacity:0.45'";
-        lines.push(
-          `<div class="camp-char"${dim}>` +
-            `<span class="cc-name">${marker} ${o.spell.name} — ${o.casterName} (${o.spell.spCost} SP)</span>` +
-            `<span class="cc-num">${o.spell.description}</span>` +
-            `</div>`
-        );
-      }
-      lines.push(`</div>`);
-    }
-    if (this.castFlash) lines.push(`<div class="camp-resting">${this.castFlash}</div>`);
-    lines.push(`<div class="camp-done">[↑/↓] select · [Enter] cast · [Esc] back to menu</div>`);
-    this.panel.innerHTML = lines.join("");
+    const animated = this.lastPhaseKey !== "castSpell";
+    this.lastPhaseKey = "castSpell";
+    const win = new FF6Window({
+      title: "Cast a Spell",
+      contentHtml:
+        this.castOptions.length === 0
+          ? `<div class="camp-party"><div class="camp-char"><span class="cc-name">No one knows a utility spell.</span></div></div>`
+          : undefined,
+      items: this.castOptions.map((o) => ({
+        label: `${o.spell.name} — ${o.casterName} (${o.spell.spCost} SP) · ${o.spell.description}`,
+        className: o.affordable ? undefined : "unaffordable",
+        metadata: o.spell.id,
+      })),
+      selectedIndex: this.castIndex,
+      mode: "selection",
+      allowMultilineLabels: true,
+      flash: this.castFlash || null,
+      footer: "[↑/↓] select · [Enter] cast · [Esc] back to menu",
+      animated,
+      onHover: (i) => {
+        this.castIndex = i;
+      },
+      onConfirm: (i) => {
+        this.castIndex = i;
+        // Mirror the Enter branch of handleCastKey exactly.
+        this.handleCastKey("enter", "Enter");
+      },
+      onBack: () => {
+        this.phase = "menu";
+        this.renderMenu();
+      },
+    });
+    this.panel.innerHTML = "";
+    this.panel.appendChild(win.render());
   }
 
   private renderReorder(): void {
+    const animated = this.lastPhaseKey !== "reorder";
+    this.lastPhaseKey = "reorder";
     const lines: string[] = [];
-    lines.push(`<div class="camp-header">[C] Reorder Party</div>`);
     lines.push(`<div class="camp-party">`);
     for (let i = 0; i < this.party.length; i++) {
       const c = this.party[i];
@@ -404,11 +443,19 @@ export class CampController {
       );
     }
     lines.push(`</div>`);
-    if (this.reorderFirst === -1) {
-      lines.push(`<div class="camp-done">Press 1-6 to select first character to swap · [Esc] back</div>`);
-    } else {
-      lines.push(`<div class="camp-done">Press 1-6 to select second character to swap with ${this.party[this.reorderFirst].name} · [Esc] cancel</div>`);
-    }
-    this.panel.innerHTML = lines.join("");
+    const footer =
+      this.reorderFirst === -1
+        ? "Press 1-6 to select first character to swap · [Esc] back"
+        : `Press 1-6 to select second character to swap with ${this.party[this.reorderFirst].name} · [Esc] cancel`;
+    this.panel.innerHTML = "";
+    this.panel.appendChild(
+      FF6Window.frame({
+        title: "Reorder Party",
+        contentHtml: lines.join(""),
+        footer,
+        mode: "status",
+        animated,
+      })
+    );
   }
 }
