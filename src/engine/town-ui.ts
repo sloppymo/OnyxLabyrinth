@@ -77,6 +77,9 @@ export class TownController {
   // Roster state
   private rosterTab: RosterTab = "status";
 
+  // Temple state (when cursed gear is equipped)
+  private templeIndex = 0;
+
   constructor(opts: TownControllerOptions) {
     this.panel = opts.panel;
     this.state = opts.state;
@@ -98,25 +101,24 @@ export class TownController {
       this.handleShopKey(lower);
       return;
     }
-    // Roster: S/P switches tabs.
+    // Roster: S/P and ←/→ switch tabs.
     if (this.screen === "roster") {
-      if (lower === "s") {
+      if (lower === "s" || lower === "arrowleft") {
         this.rosterTab = "status";
         this.render();
         return;
       }
-      if (lower === "p") {
+      if (lower === "p" || lower === "arrowright") {
         this.rosterTab = "progress";
         this.render();
         return;
       }
     }
-    // Temple: R lifts curses (when any cursed gear is equipped).
-    if (this.screen === "temple" && lower === "r") {
-      this.doRemoveCurse();
+    if (this.screen === "temple") {
+      this.handleTempleKey(lower, key);
       return;
     }
-    // inn, temple, shop, roster — all dismiss with Esc/Enter/Space
+    // inn, roster — dismiss with Esc/Enter/Space
     if (lower === "escape" || key === "Enter" || key === " ") {
       this.screen = "main";
       this.flash = "";
@@ -136,6 +138,51 @@ export class TownController {
       }
     }
     return out;
+  }
+
+  private handleTempleKey(lower: string, key: string): void {
+    if (lower === "r") {
+      this.doRemoveCurse();
+      return;
+    }
+
+    const hasCursed = this.equippedCursed().length > 0;
+    if (hasCursed) {
+      switch (lower) {
+        case "arrowup":
+        case "w":
+          this.templeIndex = 0;
+          this.render();
+          break;
+        case "arrowdown":
+        case "s":
+          this.templeIndex = 1;
+          this.render();
+          break;
+        case "enter":
+        case " ":
+          if (this.templeIndex === 1) {
+            this.doRemoveCurse();
+          } else {
+            this.screen = "main";
+            this.flash = "";
+            this.render();
+          }
+          break;
+        case "escape":
+          this.screen = "main";
+          this.flash = "";
+          this.render();
+          break;
+      }
+      return;
+    }
+
+    if (lower === "escape" || key === "Enter" || key === " ") {
+      this.screen = "main";
+      this.flash = "";
+      this.render();
+    }
   }
 
   private doRemoveCurse(): void {
@@ -187,8 +234,9 @@ export class TownController {
         this.selectMain();
         break;
       case "escape":
-        // Esc in town does nothing — town is the hub. (Could open save menu
-        // but that's wired to a separate handler in main.ts.)
+        this.panel.style.display = "none";
+        this.panel.innerHTML = "";
+        this.onOpenSave();
         break;
     }
 
@@ -255,6 +303,7 @@ export class TownController {
   private doTemple(): void {
     this.state.party = restoreParty(this.state.party);
     this.screen = "temple";
+    this.templeIndex = 0;
     this.flash = "The Temple's blessing restores the party. HP and SP fully restored!";
     this.render();
   }
@@ -300,6 +349,18 @@ export class TownController {
         this.flash = "";
         this.render();
         break;
+      case "arrowleft":
+      case "arrowright": {
+        const order = ["buy", "sell", "appraise"] as const;
+        const i = order.indexOf(this.shopTab);
+        if (i < 0) break;
+        const dir = lower === "arrowleft" ? -1 : 1;
+        this.shopTab = order[(i + dir + order.length) % order.length];
+        this.shopIndex = 0;
+        this.flash = "";
+        this.render();
+        break;
+      }
       case "b":
         this.shopTab = "buy";
         this.shopIndex = 0;
@@ -549,7 +610,7 @@ export class TownController {
       );
     }
     lines.push(`</div>`);
-    lines.push(`<div class="town-help">[↑/↓] navigate · [Enter] select · bracket letter jumps · [Esc] save menu</div>`);
+    lines.push(`<div class="town-help">[↑/↓] navigate · [A/Enter] select · letter jumps · [Select/Esc] save</div>`);
   }
 
   private renderShop(lines: string[]): void {
@@ -586,7 +647,7 @@ export class TownController {
         );
       }
       lines.push(`</div>`);
-      lines.push(`<div class="town-help">[↑/↓] navigate · [Enter] appraise · [B/S] other tabs · [Esc] back</div>`);
+      lines.push(`<div class="town-help">[↑/↓] navigate · [Enter] appraise · [←/→] tabs · [B/S/A] jump · [Esc] back</div>`);
       return;
     }
 
@@ -639,8 +700,8 @@ export class TownController {
     }
     const help =
       this.shopTab === "buy"
-        ? `[↑/↓] navigate · [Enter] compare · [B] buy tab · [S] sell tab · [A] appraise tab · [Esc] back`
-        : `[↑/↓] navigate · [Enter] buy/sell · [B] buy tab · [S] sell tab · [A] appraise tab · [Esc] back`;
+        ? `[↑/↓] navigate · [Enter] compare · [←/→] tabs · [B/S/A] jump · [Esc] back`
+        : `[↑/↓] navigate · [Enter] buy/sell · [←/→] tabs · [B/S/A] jump · [Esc] back`;
     lines.push(`<div class="town-help">${help}</div>`);
   }
 
@@ -824,15 +885,27 @@ export class TownController {
       }
     }
     lines.push(`</div>`);
-    lines.push(`<div class="town-help">[S] status · [P] progress · [Esc/Enter] back</div>`);
+    lines.push(`<div class="town-help">[←/→] tabs · [S/P] jump · [Esc/Enter] back</div>`);
   }
 
   private renderFacility(lines: string[]): void {
-    // Temple advertises Remove Curse while any cursed gear is equipped.
     if (this.screen === "temple" && this.equippedCursed().length > 0) {
+      lines.push(`<div class="temple-menu">`);
+      const backSelected = this.templeIndex === 0;
       lines.push(
-        `<div class="town-gold">Cursed gear detected! [R] Remove Curse (${REMOVE_CURSE_COST}g)</div>`
+        `<div class="temple-menu-item ${backSelected ? "selected" : ""}">` +
+          `<span class="tm-marker">${backSelected ? "▶" : " "}</span>` +
+          `<span>Back to menu</span>` +
+          `</div>`
       );
+      const curseSelected = this.templeIndex === 1;
+      lines.push(
+        `<div class="temple-menu-item ${curseSelected ? "selected" : ""}">` +
+          `<span class="tm-marker">${curseSelected ? "▶" : " "}</span>` +
+          `<span>Remove Curse (${REMOVE_CURSE_COST}g) [R]</span>` +
+          `</div>`
+      );
+      lines.push(`</div>`);
     }
     // Show party status after inn/temple
     lines.push(`<div class="guild-roster">`);
@@ -851,7 +924,11 @@ export class TownController {
       );
     }
     lines.push(`</div>`);
-    lines.push(`<div class="town-help">[Esc/Enter] back to menu</div>`);
+    const templeHelp =
+      this.screen === "temple" && this.equippedCursed().length > 0
+        ? `[↑/↓] navigate · [Enter] select · [R] remove curse · [Esc] back`
+        : `[Esc/Enter] back to menu`;
+    lines.push(`<div class="town-help">${templeHelp}</div>`);
   }
 
   private itemStatsStr(item: ItemDef | undefined): string {

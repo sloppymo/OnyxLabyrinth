@@ -22,3 +22,4 @@ dev-party-creation.html
 # iteration (see CLAUDE.md) — never part of the build.
 /.tmp*
 /.tmp-*/
+.worktrees/
