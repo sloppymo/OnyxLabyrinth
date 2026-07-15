@@ -87,10 +87,10 @@ export function renderArenaRoom(
 
   // Bake everything into one opaque ImageData buffer, then blit once.
   // putImageData replaces pixels (it does not composite), so the buffer must
-  // include the void fill — drawing the back wall onto ctx before putImageData
-  // would be wiped.
+  // include the ceiling fill — drawing the back wall onto ctx before
+  // putImageData would be wiped.
   const buf = ctx.createImageData(w, h);
-  fillBuffer(buf, bg);
+  fillCeilingGradient(buf, w, h, camera.horizonY, bg);
 
   const wallData = getWallData(options.tileset);
   drawFloor(buf, w, h, camera, params, options.tileset, bg);
@@ -122,28 +122,60 @@ function parseBg(hex: string): Rgb {
   };
 }
 
-function fillBuffer(buf: ImageData, bg: Rgb): void {
+// Dark stone ceiling, tinted with a warm amber bounce near the horizon so the
+// area above the walls reads as an enclosed room instead of empty canvas.
+const CEILING_DARK: Rgb = { r: 12, g: 10, b: 9 };
+const CEILING_GLOW: Rgb = { r: 96, g: 71, b: 40 };
+
+/** Fills above-horizon rows with a vertical gradient (torchlit ceiling) and
+ *  at-or-below-horizon rows with flat void — floor/walls overwrite those. */
+function fillCeilingGradient(
+  buf: ImageData,
+  w: number,
+  h: number,
+  horizonY: number,
+  bg: Rgb
+): void {
   const data = buf.data;
-  for (let i = 0; i < data.length; i += 4) {
-    data[i] = bg.r;
-    data[i + 1] = bg.g;
-    data[i + 2] = bg.b;
-    data[i + 3] = 255;
+  const glowBand = Math.max(1, horizonY * 0.95);
+  for (let y = 0; y < h; y++) {
+    let r: number, g: number, b: number;
+    if (y >= horizonY) {
+      r = bg.r;
+      g = bg.g;
+      b = bg.b;
+    } else {
+      const t = Math.min(1, (horizonY - y) / glowBand);
+      r = CEILING_GLOW.r + (CEILING_DARK.r - CEILING_GLOW.r) * t;
+      g = CEILING_GLOW.g + (CEILING_DARK.g - CEILING_GLOW.g) * t;
+      b = CEILING_GLOW.b + (CEILING_DARK.b - CEILING_GLOW.b) * t;
+    }
+    const rowOffset = y * w * 4;
+    for (let x = 0; x < w; x++) {
+      const idx = rowOffset + x * 4;
+      data[idx] = r;
+      data[idx + 1] = g;
+      data[idx + 2] = b;
+      data[idx + 3] = 255;
+    }
   }
 }
 
+/** @param shade Optional brightness multiplier applied before fog blend —
+ *  used for wall top-lighting and floor contact AO near walls. */
 function writeFoggedTexel(
   buf: ImageData,
   dstIdx: number,
   tex: ImageData,
   srcIdx: number,
   fog: number,
-  bg: Rgb
+  bg: Rgb,
+  shade = 1
 ): void {
   const inv = 1 - fog;
-  buf.data[dstIdx] = Math.min(255, tex.data[srcIdx] * fog + bg.r * inv);
-  buf.data[dstIdx + 1] = Math.min(255, tex.data[srcIdx + 1] * fog + bg.g * inv);
-  buf.data[dstIdx + 2] = Math.min(255, tex.data[srcIdx + 2] * fog + bg.b * inv);
+  buf.data[dstIdx] = Math.min(255, tex.data[srcIdx] * shade * fog + bg.r * inv);
+  buf.data[dstIdx + 1] = Math.min(255, tex.data[srcIdx + 1] * shade * fog + bg.g * inv);
+  buf.data[dstIdx + 2] = Math.min(255, tex.data[srcIdx + 2] * shade * fog + bg.b * inv);
   buf.data[dstIdx + 3] = 255;
 }
 
@@ -270,10 +302,15 @@ function drawBackWall(
         Math.floor(((worldX + halfW) / params.wallHeight) * texSize) % texSize;
       if (texX < 0) texX += texSize;
       const srcIdx = (texY * texSize + texX) * 4;
-      writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg);
+      const shade = 0.62 + 0.68 * (worldZ / params.wallHeight);
+      writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg, shade);
     }
   }
 }
+
+/** World-unit distance from a side wall within which the floor darkens
+ *  (contact ambient occlusion), so walls read as standing in the room. */
+const FLOOR_AO_RANGE = 2.2;
 
 function drawFloor(
   buf: ImageData,
@@ -317,7 +354,12 @@ function drawFloor(
       const { gx, gy, texX, texY } = floorTexel(worldX, worldY, texSize);
       const tex = checkerIsA(gx, gy) ? floorA : floorB;
       const srcIdx = (texY * texSize + texX) * 4;
-      writeFoggedTexel(buf, rowOffset + x * 4, tex, srcIdx, fog, bg);
+      const distToWall = halfW - Math.abs(worldX);
+      const shade =
+        distToWall < FLOOR_AO_RANGE
+          ? 0.45 + 0.55 * Math.max(0, distToWall / FLOOR_AO_RANGE)
+          : 1;
+      writeFoggedTexel(buf, rowOffset + x * 4, tex, srcIdx, fog, bg, shade);
     }
   }
 }
@@ -402,7 +444,8 @@ function drawSideWalls(
           )
         );
         const srcIdx = (texY * texSize + texX) * 4;
-        writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg);
+        const shade = 0.62 + 0.68 * (worldZ / params.wallHeight);
+        writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg, shade);
       }
     }
   }

@@ -69,9 +69,9 @@ const ENEMY_SIZE = 300;
 const BOSS_SIZE = 480;
 
 const ARENA_X_LEFT = -1.2;
-const ARENA_X_RIGHT = 1.4;
+const ARENA_X_RIGHT = 0.9;
 const ARENA_Z_FRONT = 1.3;
-const ARENA_Z_BACK = 1.9;
+const ARENA_Z_BACK = 2.2;
 /** Simple orthographic-ish battle layout camera — NOT the arena backdrop's
  *  ArenaCamera. Sprites share only ARENA_HORIZON_FRAC with the backdrop;
  *  positions are hand-tuned for readable FF6 layout, not geometric alignment. */
@@ -87,7 +87,7 @@ function arenaSlotWorldPosition(
   const isFront = kind === "enemy" ? row === "front" : index < 3;
   const z = isFront ? ARENA_Z_FRONT : ARENA_Z_BACK;
   const idxInRow = kind === "enemy" ? index : index % 3;
-  const spacing = kind === "enemy" ? 0.6 : kind === "party" ? 0.45 : 0.4;
+  const spacing = kind === "enemy" ? 0.6 : kind === "party" ? 0.85 : 0.4;
   const xOffset = idxInRow * spacing;
   const x = kind === "party"
     ? ARENA_X_RIGHT + xOffset
