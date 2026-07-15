@@ -312,3 +312,122 @@ describe("actor positioning", () => {
     expect(findActor(scene, "rat-9", W, H)?.kind).toBe("enemy");
   });
 });
+
+describe("impact feedback (shake / floor glow / banner)", () => {
+  it("screen shake scales with spell tier", () => {
+    const t0 = 1000;
+
+    const low = makeScene();
+    playTurn(
+      low,
+      [{ type: "spellEffect", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 5 }],
+      spellName,
+      t0,
+      W,
+      H
+    );
+    updateScene(low, t0 + 10);
+    const lowShake = low.screenShake.amount;
+
+    const high = makeScene();
+    playTurn(
+      high,
+      [{ type: "spellEffect", spellId: "mage-disintegrate", targetId: "rat-0", damage: 50 }],
+      spellName,
+      t0,
+      W,
+      H
+    );
+    updateScene(high, t0 + 10);
+    const highShake = high.screenShake.amount;
+
+    expect(lowShake).toBeGreaterThan(0);
+    expect(highShake).toBeGreaterThan(lowShake);
+    expect(highShake).toBeLessThanOrEqual(8); // hard cap
+  });
+
+  it("high-tier bursts linger longer than low-tier bursts", () => {
+    const t0 = 1000;
+
+    const low = makeScene();
+    playTurn(
+      low,
+      [{ type: "spellEffect", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 5 }],
+      spellName,
+      t0,
+      W,
+      H
+    );
+    updateScene(low, t0 + 10);
+    const lowBurst = low.effects.find((e) => e.type === "burst");
+
+    const high = makeScene();
+    playTurn(
+      high,
+      [{ type: "spellEffect", spellId: "mage-disintegrate", targetId: "rat-0", damage: 50 }],
+      spellName,
+      t0,
+      W,
+      H
+    );
+    updateScene(high, t0 + 10);
+    const highBurst = high.effects.find((e) => e.type === "burst");
+
+    expect(lowBurst).toBeDefined();
+    expect(highBurst).toBeDefined();
+    expect(highBurst!.duration).toBeGreaterThan(lowBurst!.duration);
+  });
+
+  it("impacts spawn floor light glows that expire", () => {
+    const scene = makeScene();
+    const t0 = 1000;
+    playTurn(
+      scene,
+      [{ type: "spellEffect", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 5 }],
+      spellName,
+      t0,
+      W,
+      H
+    );
+    updateScene(scene, t0 + 10);
+    expect(scene.lightGlows.length).toBeGreaterThan(0);
+
+    updateScene(scene, t0 + 10000);
+    expect(scene.lightGlows.length).toBe(0);
+  });
+
+  it("melee hits also light the floor", () => {
+    const scene = makeScene();
+    const t0 = 1000;
+    playTurn(
+      scene,
+      [{ type: "attack", actorId: "c0", targetId: "rat-0", damage: 7, range: "close" }],
+      spellName,
+      t0,
+      W,
+      H
+    );
+    updateScene(scene, t0 + 1100); // past melee IMPACT_AT
+    expect(scene.lightGlows.length).toBeGreaterThan(0);
+  });
+
+  it("banner records its start time for fade math", () => {
+    const scene = makeScene();
+    const t0 = 1000;
+    playTurn(
+      scene,
+      [
+        { type: "cast", actorId: "c1", spellId: "mage-fire-bolt" },
+        { type: "spellEffect", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 5 },
+      ],
+      spellName,
+      t0,
+      W,
+      H
+    );
+    updateScene(scene, t0 + 10);
+    expect(scene.banner).toBe("Spell:mage-fire-bolt");
+    expect(scene.bannerStart).toBeGreaterThanOrEqual(t0);
+    expect(scene.bannerUntil).toBeGreaterThan(scene.bannerStart);
+  });
+});

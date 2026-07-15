@@ -292,6 +292,8 @@ export interface CombatScene {
   /** Spell/skill name banner (top window). */
   banner: string | null;
   bannerUntil: number;
+  /** When the current banner appeared — drives its fade-in/out. */
+  bannerStart: number;
   /** Blinking cursor over a selection candidate (target phase). */
   cursor: SceneCursor | null;
   /** The actor whose menu is open (bouncing hand marker). */
@@ -309,6 +311,9 @@ export interface CombatScene {
   screenShake: { amount: number; until: number };
   /** Loose particle effects (sparks, embers, shards). */
   particles: Particle[];
+  /** Short-lived additive radial glows drawn on the floor beneath impacts,
+   *  under the sprites, so bursts read as light sources in the room. */
+  lightGlows: LightGlow[];
   /** Last update timestamp for frame-rate-independent particle updates. */
   lastUpdate?: number;
   /** Baked corridor backdrop (matches current floor's tileset). Null falls
@@ -361,6 +366,16 @@ export interface Particle {
   glow?: boolean;
 }
 
+/** Additive radial floor glow at an impact point, drawn before sprites. */
+export interface LightGlow {
+  x: number;
+  y: number;
+  color: string;
+  radius: number;
+  start: number;
+  duration: number;
+}
+
 export function createScene(state: CombatState): CombatScene {
   // Lazy-load any summon sprite bundles that aren't yet cached (e.g. a
   // summon spell was cast for the first time this session).
@@ -377,6 +392,7 @@ export function createScene(state: CombatState): CombatScene {
     popups: [],
     banner: null,
     bannerUntil: 0,
+    bannerStart: 0,
     cursor: null,
     activeActorId: null,
     choreo: null,
@@ -386,6 +402,7 @@ export function createScene(state: CombatState): CombatScene {
     effects: [],
     screenShake: { amount: 0, until: 0 },
     particles: [],
+    lightGlows: [],
     backdrop: null,
   };
 }
@@ -553,6 +570,7 @@ function impactSteps(
         if (hurt) {
           addScreenShake(scene, big ? 5 : 2.5, now, big ? 350 : 200);
           spawnImpactParticles(scene, actor.x, actor.y, color, big);
+          pushLightGlow(scene, actor.x, actor.y, color, big ? 110 : 80, now, 320);
         }
       }
     }),
@@ -572,12 +590,55 @@ function impactSteps(
   ];
 }
 
-/** Add (or increase) screen shake. */
+/** Add (or increase) screen shake. Capped so big spells never nauseate. */
 function addScreenShake(scene: CombatScene, amount: number, now: number, duration: number): void {
   scene.screenShake = {
-    amount: Math.max(scene.screenShake.amount, amount),
+    amount: Math.min(8, Math.max(scene.screenShake.amount, amount)),
     until: Math.max(scene.screenShake.until, now + duration),
   };
+}
+
+/**
+ * Screen-shake amount for a spell impact, scaled by spell tier so a T1 Spark
+ * taps the camera while a T6 Meteor Swarm rattles it. Falls back to the old
+ * damage heuristic for unknown IDs (items, enemy abilities), and never
+ * shakes *less* than that heuristic did.
+ */
+function spellShakeAmount(spellId: string | undefined, damage?: number): number {
+  const dmgAmount = damage !== undefined && damage > 20 ? 5 : 3;
+  const spell = spellId ? spellById(spellId) : undefined;
+  if (!spell) return dmgAmount;
+  const tierAmount = Math.min(6.5, 2.5 + (spell.tier - 1) * 0.8);
+  return Math.max(tierAmount, dmgAmount);
+}
+
+/**
+ * Burst linger scaled by spell tier: T1–T3 keep the standard BURST_MS,
+ * higher tiers hold the explosion on screen longer (T4 +90ms … capped ~980ms)
+ * so endgame nukes briefly dominate the battlefield.
+ */
+function burstDurationFor(spellId: string | undefined): number | undefined {
+  const spell = spellId ? spellById(spellId) : undefined;
+  if (!spell) return undefined;
+  return Math.min(BURST_MS + 360, BURST_MS + Math.max(0, spell.tier - 3) * 90);
+}
+
+/**
+ * Push a short-lived additive floor glow beneath an impact so the burst
+ * reads as a light source in the room, not an overlay. Drawn before sprites
+ * in renderScene; capped so stacked multi-hits can't blow the frame out.
+ */
+function pushLightGlow(
+  scene: CombatScene,
+  x: number,
+  y: number,
+  color: string,
+  radius: number,
+  now: number,
+  duration: number
+): void {
+  if (scene.lightGlows.length >= 6) scene.lightGlows.shift();
+  scene.lightGlows.push({ x, y: y + 24, color, radius, start: now, duration });
 }
 
 /** Spawn a burst of impact particles at (x, y). */
@@ -675,16 +736,19 @@ interface EffectStyle {
   glow?: boolean;
 }
 
-/** Push one or more bursts around (x,y) with mild scale/position variety. */
+/** Push one or more bursts around (x,y) with mild scale/position variety.
+ *  `durationOverride` (tier-scaled) applies when the style has no explicit
+ *  `burstDurationMs`. */
 function pushBursts(
   scene: CombatScene,
   x: number,
   y: number,
   style: EffectStyle,
-  now: number
+  now: number,
+  durationOverride?: number
 ): void {
   const count = Math.max(1, style.burstCount ?? 1);
-  const duration = style.burstDurationMs ?? BURST_MS;
+  const duration = style.burstDurationMs ?? durationOverride ?? BURST_MS;
   const base = style.burstScale ?? style.scale ?? 1;
   for (let i = 0; i < count; i++) {
     const ox = count > 1 ? (i - (count - 1) / 2) * 24 + (Math.random() * 12 - 6) : 0;
@@ -701,6 +765,9 @@ function pushBursts(
       duration: duration + i * 40,
     });
   }
+  // Light the floor under the burst so the spell illuminates the room.
+  const glowRadius = Math.min(190, 60 + base * 28);
+  pushLightGlow(scene, x, y, style.color, glowRadius, now, Math.max(320, duration * 0.7));
 }
 
 /** Launch a volley of projectiles from → to with stagger and scale jitter. */
@@ -1560,6 +1627,7 @@ export function playTurn(
     steps.push(
       step(t, (sc, n) => {
         sc.banner = text;
+        sc.bannerStart = n;
         sc.bannerUntil = n + durationMs;
       })
     );
@@ -1736,7 +1804,7 @@ export function playTurn(
       }
 
       case "cast": {
-        showBanner(spellNameFor(evt.spellId), CAST_MS + 900);
+        showBanner(spellNameFor(evt.spellId), CAST_MS + 400);
         castAnim(evt.actorId);
         pendingImpactBase = t + CAST_IMPACT;
         pendingImpactCount = 0;
@@ -1842,9 +1910,11 @@ export function playTurn(
             step(pendingImpactBase!, (sc, n) => {
               const target = findActor(sc, evt.targetId!, w, h);
               if (target) {
-                pushBursts(sc, target.x, target.y, style, n);
+                pushBursts(sc, target.x, target.y, style, n, burstDurationFor(evt.spellId));
                 spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
-                if (!isHeal) addScreenShake(sc, isHeal ? 1 : 3, n, 200);
+                if (!isHeal) {
+                  addScreenShake(sc, spellShakeAmount(evt.spellId, evt.damage), n, 250);
+                }
               }
             }),
             ...impactSteps(pendingImpactBase!, evt.targetId, text, isHeal ? COLORS.heal : COLORS.dmg, w, h, !isHeal, false, undefined, undefined, evt.damage)
@@ -1959,10 +2029,10 @@ export function playTurn(
           step(impactAt, (sc, n) => {
             const target = findActor(sc, targetId, w, h);
             if (target) {
-              pushBursts(sc, target.x, target.y, style, n);
+              pushBursts(sc, target.x, target.y, style, n, burstDurationFor(evt.spellId));
               spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
               if (!isHeal && evt.damage !== undefined) {
-                addScreenShake(sc, evt.damage && evt.damage > 20 ? 5 : 3, n, 200);
+                addScreenShake(sc, spellShakeAmount(evt.spellId, evt.damage), n, 250);
               }
             }
           })
@@ -2096,6 +2166,7 @@ export function playTurn(
         steps.push(
           step(t, (sc, n) => {
             sc.banner = label;
+            sc.bannerStart = n;
             sc.bannerUntil = n + 700;
             pushPopup(sc, evt.actorId, label.toUpperCase(), COLORS.miss, n, w, h);
           })
@@ -2218,6 +2289,9 @@ export function updateScene(scene: CombatScene, now: number): void {
     scene.screenShake.amount = Math.max(0, scene.screenShake.amount * 0.85);
     if (scene.screenShake.amount < 0.1) scene.screenShake.amount = 0;
   }
+
+  // Expire floor glows.
+  scene.lightGlows = scene.lightGlows.filter((g) => now - g.start < g.duration);
 
   // Expire banner.
   if (scene.banner && now >= scene.bannerUntil) scene.banner = null;
@@ -2800,9 +2874,23 @@ function drawRoundIndicator(ctx: CanvasRenderingContext2D, scene: CombatScene): 
   ctx.restore();
 }
 
-function drawBanner(ctx: CanvasRenderingContext2D, w: number, scene: CombatScene): void {
+function drawBanner(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  scene: CombatScene,
+  now: number
+): void {
   if (!scene.banner) return;
+  // Fade in over the first 120ms, out over the last 220ms, and hold slightly
+  // under full opacity so the spell effect — not the label — owns the moment.
+  const age = now - scene.bannerStart;
+  const remaining = scene.bannerUntil - now;
+  let alpha = 0.88;
+  if (age < 120) alpha *= Math.max(0, age / 120);
+  else if (remaining < 220) alpha *= Math.max(0, remaining / 220);
+  if (alpha <= 0.01) return;
   ctx.save();
+  ctx.globalAlpha = alpha;
   ctx.font = '22px "FF36", monospace';
   const textW = ctx.measureText(scene.banner).width;
   const boxW = Math.max(220, textW + 56);
@@ -2830,6 +2918,13 @@ export function renderScene(
 
   ctx.save();
 
+  // Apply screen shake as a whole-scene jitter. The amount decays in
+  // updateScene; ±amount/2 keeps even the max (8) comfortable.
+  if (scene.screenShake.amount > 0) {
+    const a = scene.screenShake.amount;
+    ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
+  }
+
   // Background: prefer the baked arena room backdrop (current floor tileset),
   // fall back to the static combat-bg.png image, then a plain gradient.
   const backdrop = scene.backdrop;
@@ -2848,6 +2943,26 @@ export function renderScene(
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
     }
+  }
+
+  // Floor illumination: additive radial glows under impacts, drawn before
+  // sprites so bursts light the ground and sprite bottoms.
+  if (scene.lightGlows.length > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const g of scene.lightGlows) {
+      const p = (now - g.start) / g.duration;
+      if (p < 0 || p >= 1) continue;
+      const alpha = (1 - p) * 0.35;
+      const r = g.radius * (0.6 + p * 0.5);
+      const grad = ctx.createRadialGradient(g.x, g.y, 0, g.x, g.y, r);
+      grad.addColorStop(0, g.color);
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = grad;
+      ctx.fillRect(g.x - r, g.y - r, r * 2, r * 2);
+    }
+    ctx.restore();
   }
 
   // Enemies: back row first, then front (front overlaps back).
@@ -2877,7 +2992,7 @@ export function renderScene(
   drawPopups(ctx, scene, now);
 
   // Banner window (top center) + round indicator (top left).
-  drawBanner(ctx, w, scene);
+  drawBanner(ctx, w, scene, now);
   drawRoundIndicator(ctx, scene);
 
   // Sticky FAST / AUTO cues (top-right).
