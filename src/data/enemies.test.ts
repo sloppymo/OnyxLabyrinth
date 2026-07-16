@@ -71,6 +71,76 @@ describe("encounter table integrity", () => {
     }
   });
 
+  it("skeleton and ghost undead family carry the undead special", () => {
+    for (const id of [
+      "skeleton",
+      "armored-skeleton",
+      "skeleton-archer",
+      "ghostfire",
+      "blood-wraith",
+      "headmasters-echo",
+      "eyeball-monster",
+    ]) {
+      const enemy = ENEMIES_BY_ID[id];
+      expect(enemy, `missing ${id}`).toBeDefined();
+      expect(
+        enemy.special.some((sp) => sp.kind === "undead"),
+        `${id} should be tagged undead`
+      ).toBe(true);
+    }
+  });
+
+  it("fixes hell/lab identity tags from the hardness pass", () => {
+    const hellhound = ENEMIES_BY_ID["hellhound"];
+    const hellbat = ENEMIES_BY_ID["hellbat"];
+    const archer = ENEMIES_BY_ID["skeleton-archer"];
+    const experiment = ENEMIES_BY_ID["failed-experiment"];
+
+    for (const e of [hellhound, hellbat]) {
+      expect(e.special.some((sp) => sp.kind === "demon")).toBe(true);
+      expect(
+        e.special.some((sp) => sp.kind === "resistElement" && sp.element === "fire")
+      ).toBe(true);
+      expect(
+        e.special.some((sp) => sp.kind === "weakElement" && sp.element === "water")
+      ).toBe(true);
+    }
+    expect(archer.special.some((sp) => sp.kind === "flying")).toBe(false);
+    expect(experiment.special.some((sp) => sp.kind === "poisonOnHit")).toBe(true);
+  });
+
+  it("applies ~60% combat stat scale (slime / skeleton floor)", () => {
+    // Pre-pass: slime HP 8 / skeleton ATK 2. After ×1.6: 13 / 3.
+    expect(ENEMIES_BY_ID["slime"].hp).toBeGreaterThanOrEqual(12);
+    expect(ENEMIES_BY_ID["skeleton"].attack).toBeGreaterThanOrEqual(3);
+    expect(ENEMIES_BY_ID["training-dummy"].hp).toBe(5);
+  });
+
+  it("encounter packs are dense enough that enemies can act", () => {
+    const minAvg: Record<number, number> = {
+      1: 3,
+      2: 3.5,
+      3: 3.5,
+      4: 3.5,
+      5: 3.5,
+    };
+    for (const [floorStr, entries] of Object.entries(ENCOUNTER_TABLES)) {
+      const floor = Number(floorStr);
+      const totalWeight = entries.reduce((s, e) => s + e.weight, 0);
+      const weightedSize =
+        entries.reduce((s, e) => s + e.weight * e.spawns.length, 0) / totalWeight;
+      expect(
+        weightedSize,
+        `floor ${floor} weighted avg pack size ${weightedSize.toFixed(2)}`
+      ).toBeGreaterThanOrEqual(minAvg[floor] ?? 3);
+    }
+    // Acid puddle is no longer a lone Floor-1 soft solo.
+    const soloAcid = ENCOUNTER_TABLES[1].some(
+      (e) => e.spawns.length === 1 && e.spawns[0].enemyId === "acid-puddle"
+    );
+    expect(soloAcid).toBe(false);
+  });
+
   it("registers Pack 02 demon / forge enemies", () => {
     for (const id of [
       "eyeball-monster",

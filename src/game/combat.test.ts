@@ -19,7 +19,7 @@ import {
 import { createDefaultParty, type Character, type CharacterClass } from "./party";
 import { ALL_SPELLS } from "../data/spells";
 import { ALL_ITEMS, ITEMS_BY_ID } from "../data/items";
-import type { EnemyDef } from "../data/enemies";
+import { ENEMIES_BY_ID, type EnemyDef } from "../data/enemies";
 
 // --- Test helpers -----------------------------------------------------------
 
@@ -675,6 +675,110 @@ describe("summoning mechanics", () => {
     const result = resolveCombatRound(state, actions, makeRng(0.5));
     expect(result.enemies.front[0].currentHp).toBeLessThan(100);
     expect(result.log.some((m) => m.includes("Divine Smite"))).toBe(true);
+  });
+
+  it("Sacred Flame reports no effect on living enemies and leaves HP unchanged", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const priest = state.party.find((c) => c.class === "Priest");
+    if (!priest) throw new Error("No Priest in party");
+    priest.knownSpellIds = ["priest-sacred-flame"];
+    priest.sp = 50;
+    priest.stats.agi = 100;
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === priest.id) {
+        return {
+          kind: "cast" as const,
+          actorId: c.id,
+          spellId: "priest-sacred-flame",
+          targetInstanceId: "e1",
+        };
+      }
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.enemies.front[0].currentHp).toBe(100);
+    expect(result.log.some((m) => /no effect.*not undead/i.test(m))).toBe(true);
+    expect(
+      result.events.some(
+        (e) =>
+          e !== null &&
+          e.type === "spellEffect" &&
+          e.targetId === "e1" &&
+          e.statusInflicted === "no effect"
+      )
+    ).toBe(true);
+  });
+
+  it("Sacred Flame damages undead enemies", () => {
+    const enemy = makeEnemy("e1", "Skeleton", 100, {
+      special: [{ kind: "undead" }],
+    });
+    const state = makeCombatState([enemy]);
+    const priest = state.party.find((c) => c.class === "Priest");
+    if (!priest) throw new Error("No Priest in party");
+    priest.knownSpellIds = ["priest-sacred-flame"];
+    priest.sp = 50;
+    priest.stats.agi = 100;
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === priest.id) {
+        return {
+          kind: "cast" as const,
+          actorId: c.id,
+          spellId: "priest-sacred-flame",
+          targetInstanceId: "e1",
+        };
+      }
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.enemies.front[0].currentHp).toBeLessThan(100);
+    expect(result.log.some((m) => m.includes("Sacred Flame hits"))).toBe(true);
+  });
+
+  it("Sacred Flame damages the catalog Skeleton enemy", () => {
+    const def = ENEMIES_BY_ID["skeleton"];
+    const enemy: EnemyInstance = {
+      ...def,
+      instanceId: "skel-0",
+      currentHp: def.hp,
+      row: "front",
+      status: [],
+    };
+    const state = makeCombatState([enemy]);
+    const priest = state.party.find((c) => c.class === "Priest");
+    if (!priest) throw new Error("No Priest in party");
+    priest.knownSpellIds = ["priest-sacred-flame"];
+    priest.sp = 50;
+    priest.stats.agi = 100;
+
+    const actions: PlayerAction[] = state.party.map((c) => {
+      if (c.id === priest.id) {
+        return {
+          kind: "cast" as const,
+          actorId: c.id,
+          spellId: "priest-sacred-flame",
+          targetInstanceId: "skel-0",
+        };
+      }
+      return { kind: "defend" as const, actorId: c.id };
+    });
+
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.log.some((m) => m.includes("Sacred Flame hits"))).toBe(true);
+    expect(
+      result.events.some(
+        (e) =>
+          e !== null &&
+          e.type === "spellEffect" &&
+          e.targetId === "skel-0" &&
+          (e.damage ?? 0) > 0
+      )
+    ).toBe(true);
   });
 
   it("Mass Cure heals all party members", () => {

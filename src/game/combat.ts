@@ -2144,8 +2144,17 @@ function applySpell(
       const casterMods = perkModifiers(perksForCharacter(caster), effStats);
       const spellMult = casterMods.spellDamageMultiplier;
       for (const t of spellTargets(s, spell, action)) {
-        // "undead" element only damages undead enemies.
+        // "undead" element only damages undead enemies (Sacred Flame, Sunburst).
         if (eff.element === "undead" && !t.special.some((sp) => sp.kind === "undead")) {
+          emit(
+            `${spell.name} has no effect on ${t.name} — not undead.`,
+            {
+              type: "spellEffect",
+              spellId: spell.id,
+              targetId: t.instanceId,
+              statusInflicted: "no effect",
+            }
+          );
           continue;
         }
         // Undead / demon damage bonuses (Turn Undead, Judge, Inquisitor).
