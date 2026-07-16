@@ -34,19 +34,37 @@ export interface ArenaRenderOptions {
   maxVisibleDist?: number;
   /** Void/fog blend color. Must match PALETTE.bg. */
   voidColor?: string;
+  /** 0 = perspective floor X, 1 = orthographic floor X. */
+  obliqueBlend?: number;
+  /** Minimum world depth for side-wall texels (near floor stays open). */
+  sideWallMinDepth?: number;
 }
 
 const DEFAULTS = {
-  roomWidth: 10,
-  roomDepth: 18,
-  wallHeight: 5,
-  camHeight: 2.5,
-  pitch: (30 * Math.PI) / 180,
-  // Keep in sync with ARENA_HORIZON_FRAC / PALETTE.bg in renderer.ts.
-  horizonFrac: 0.3,
+  roomWidth: 12,
+  /** Deep enough that the floor plane reaches the horizon (no mid-frame void gap). */
+  roomDepth: 20,
+  /** Tall enough in world units that the back wall reads as a 15–20% screen band. */
+  wallHeight: 7,
+  /** Raised vs the old 2.5 corridor-ish height; paired with pitch for high-cam. */
+  camHeight: 3.8,
+  /** ~35° down — high-camera oblique. */
+  pitch: (35 * Math.PI) / 180,
+  // Keep in sync with ARENA_HORIZON_FRAC in renderer.ts.
+  /** Optical horizon ≈ 24% — usable seam target 25–35%. */
+  horizonFrac: 0.24,
   maxVisibleDist: 28,
   voidColor: "#0e0d0a",
+  /**
+   * Blend floor lateral mapping toward orthographic (0 = pure perspective,
+   * 1 = screen-x → world-x linear). True high-camera perspective splays hard
+   * at the bottom corners; FF6 fakes a gentle converge — so do we.
+   */
+  obliqueBlend: 0.62,
+  /** Side walls stop short of the camera so near floor stays open. */
+  sideWallMinDepth: 5.5,
 } as const;
+
 
 interface Rgb {
   r: number;
@@ -63,6 +81,8 @@ interface ArenaParams {
   horizonFrac: number;
   maxVisibleDist: number;
   voidColor: string;
+  obliqueBlend: number;
+  sideWallMinDepth: number;
 }
 
 /** Render a 3/4 top-down arena room into the provided canvas context. */
@@ -81,6 +101,8 @@ export function renderArenaRoom(
     horizonFrac: options.horizonFrac ?? DEFAULTS.horizonFrac,
     maxVisibleDist: options.maxVisibleDist ?? DEFAULTS.maxVisibleDist,
     voidColor: options.voidColor ?? DEFAULTS.voidColor,
+    obliqueBlend: options.obliqueBlend ?? DEFAULTS.obliqueBlend,
+    sideWallMinDepth: options.sideWallMinDepth ?? DEFAULTS.sideWallMinDepth,
   };
   const camera = buildArenaCamera(h, params);
   const bg = parseBg(params.voidColor);
@@ -97,6 +119,7 @@ export function renderArenaRoom(
   if (wallData) {
     // Far surfaces first, then nearer side walls overwrite shared edges.
     drawBackWall(buf, w, h, camera, params, wallData, bg);
+    extendBackWallIntoVoid(buf, w, h, camera, params, wallData, bg);
     drawSideWalls(buf, w, h, camera, params, wallData, bg);
   }
   ctx.putImageData(buf, 0, 0);
@@ -122,12 +145,12 @@ function parseBg(hex: string): Rgb {
   };
 }
 
-// Dark stone ceiling, tinted with a warm amber bounce near the horizon so the
-// area above the walls reads as an enclosed room instead of empty canvas.
-const CEILING_DARK: Rgb = { r: 12, g: 10, b: 9 };
-const CEILING_GLOW: Rgb = { r: 96, g: 71, b: 40 };
+// Flat dark ceiling — no amber void band. Above the back wall the room
+// falls into near-black (fog-falloff style), not a torchlit amber gradient.
+const CEILING_NEAR: Rgb = { r: 18, g: 16, b: 14 };
+const CEILING_FAR: Rgb = { r: 8, g: 7, b: 6 };
 
-/** Fills above-horizon rows with a vertical gradient (torchlit ceiling) and
+/** Fills above-horizon rows with a near→far dark ceiling strip and
  *  at-or-below-horizon rows with flat void — floor/walls overwrite those. */
 function fillCeilingGradient(
   buf: ImageData,
@@ -137,7 +160,7 @@ function fillCeilingGradient(
   bg: Rgb
 ): void {
   const data = buf.data;
-  const glowBand = Math.max(1, horizonY * 0.95);
+  const band = Math.max(1, horizonY);
   for (let y = 0; y < h; y++) {
     let r: number, g: number, b: number;
     if (y >= horizonY) {
@@ -145,10 +168,11 @@ function fillCeilingGradient(
       g = bg.g;
       b = bg.b;
     } else {
-      const t = Math.min(1, (horizonY - y) / glowBand);
-      r = CEILING_GLOW.r + (CEILING_DARK.r - CEILING_GLOW.r) * t;
-      g = CEILING_GLOW.g + (CEILING_DARK.g - CEILING_GLOW.g) * t;
-      b = CEILING_GLOW.b + (CEILING_DARK.b - CEILING_GLOW.b) * t;
+      // y=0 (top) → FAR dark; y→horizon → slightly lighter brick-adjacent dark
+      const t = Math.min(1, y / band);
+      r = CEILING_FAR.r + (CEILING_NEAR.r - CEILING_FAR.r) * t;
+      g = CEILING_FAR.g + (CEILING_NEAR.g - CEILING_FAR.g) * t;
+      b = CEILING_FAR.b + (CEILING_NEAR.b - CEILING_FAR.b) * t;
     }
     const rowOffset = y * w * 4;
     for (let x = 0; x < w; x++) {
@@ -232,6 +256,52 @@ function projectBBox(
   maxY = Math.min(h - 1, Math.ceil(maxY));
   if (minX > maxX || minY > maxY) return null;
   return { minX, maxX, minY, maxY };
+}
+
+/**
+ * Fill the canvas above the projected wall top with fogged brick columns so
+ * there is no empty void band — bricks darken into flat black toward y=0.
+ * Does not change the geometric seam; only paints the above-wall region.
+ */
+function extendBackWallIntoVoid(
+  buf: ImageData,
+  w: number,
+  h: number,
+  camera: ArenaCamera,
+  params: ArenaParams,
+  wallData: ImageData,
+  bg: Rgb
+): void {
+  const halfW = params.roomWidth / 2;
+  const texSize = wallData.width;
+  const wallTop = arenaProject(
+    { x: 0, y: params.roomDepth, z: params.wallHeight },
+    camera,
+    w,
+    h
+  ).y;
+  const maxY = Math.max(0, Math.min(h - 1, Math.floor(wallTop)));
+  if (maxY <= 0) return;
+
+  const fogBase = arenaOpacityForDepth(params.roomDepth) * 0.55;
+
+  for (let y = 0; y < maxY; y++) {
+    const t = 1 - y / maxY; // 1 at top → 0 at wall lip
+    const fog = fogBase * (0.15 + 0.85 * (1 - t)); // darker toward top
+    const shade = 0.35 + 0.25 * (1 - t);
+    const texY = Math.min(texSize - 1, Math.floor(t * texSize * 0.35));
+    const rowOffset = y * w * 4;
+    for (let x = 0; x < w; x++) {
+      const u = x / Math.max(1, w - 1);
+      const worldX = -halfW + u * params.roomWidth;
+      if (worldX < -halfW || worldX > halfW) continue;
+      let texX =
+        Math.floor(((worldX + halfW) / params.wallHeight) * texSize) % texSize;
+      if (texX < 0) texX += texSize;
+      const srcIdx = (texY * texSize + texX) * 4;
+      writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg, shade);
+    }
+  }
 }
 
 /**
@@ -342,11 +412,16 @@ function drawFloor(
     const depthScale = d * cosPitch + camera.camHeight * sinPitch;
     const worldXStart = (-w / 2) * (depthScale / camera.focalLength);
     const worldXStep = depthScale / camera.focalLength;
+    const halfRoom = params.roomWidth / 2;
+    const blend = params.obliqueBlend;
 
     const rowOffset = y * w * 4;
 
     for (let x = 0; x < w; x++) {
-      const worldX = worldXStart + x * worldXStep;
+      const perspectiveX = worldXStart + x * worldXStep;
+      // Orthographic lateral: screen x maps linearly across room width.
+      const orthoX = -halfRoom + (x / Math.max(1, w - 1)) * params.roomWidth;
+      const worldX = perspectiveX + (orthoX - perspectiveX) * blend;
       const worldY = d;
 
       if (worldX < -halfW || worldX > halfW) continue;
@@ -422,7 +497,7 @@ function drawSideWalls(
         const worldZ = camera.camHeight + t * rayZ;
 
         if (
-          worldY < 0 ||
+          worldY < params.sideWallMinDepth ||
           worldY > params.roomDepth ||
           worldZ < 0 ||
           worldZ > params.wallHeight

@@ -1158,16 +1158,17 @@ canvas#map-canvas {
 }
 
 .ff6-menu {
-  /* Narrower face-button pane; party roster needs the width. */
-  flex: 0 0 26%;
+  /* Face-button pane: wide enough for 4× Skl labels without clipping. */
+  flex: 0 0 28%;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .ff6-palette {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
   margin-bottom: 4px;
 }
 
@@ -1177,12 +1178,14 @@ canvas#map-canvas {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 4px 2px;
+  padding: 4px 1px;
   border: 2px solid rgba(232, 232, 240, 0.45);
   border-radius: 6px;
   background: rgba(16, 28, 88, 0.55);
   cursor: pointer;
   min-height: 52px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .ff6-palette-slot.disabled {
@@ -1198,9 +1201,12 @@ canvas#map-canvas {
 }
 
 .ff6-palette-label {
-  font-size: var(--fs-small);
+  font-size: 14px;
   line-height: 1.1;
   text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .ff6-menu.empty {
@@ -1300,7 +1306,7 @@ canvas#map-canvas {
 }
 
 .ff6-enemies {
-  flex: 0 0 28%;
+  flex: 0 0 24%;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -1411,15 +1417,13 @@ canvas#map-canvas {
 .ff6-party-row {
   display: grid;
   /*
-   * party-resource-row token (see docs/superpowers/specs/2026-07-15-combat-roster-tokens.md):
-   * name | 48px HP bar | 7ch HP nums | 10ch resource (SP/RG or dash).
-   * No header row. Acting = inverted name plate (not ▶ — ▶ = menu selection only).
-   *
-   * Numeral columns are sized in `ch` at this row's font-size. --fs-small (26px)
-   * made 7ch+10ch+48px exceed the ~300px party pane and crushed names to 0 width;
-   * 18px keeps the token ceilings (999/999, SP 999/999) while leaving ~90px for names.
+   * party-resource-row token:
+   * name | status(2.6em) | 48px HP bar | 7ch HP nums | 10ch resource.
+   * Status is its OWN column — never nested inside the name cell. Nesting
+   * reserved 2.6em of name width even when empty, so 4-letter names with
+   * wide glyphs (Bram/Coda/Fenn) ellipsized to "B…" while Dell/Eve fit.
    */
-  grid-template-columns: minmax(56px, 1fr) 48px 7ch 10ch;
+  grid-template-columns: minmax(0, 1fr) 2.6em 48px 7ch 10ch;
   align-items: center;
   gap: 1px 6px;
   font-size: 18px;
@@ -1470,31 +1474,31 @@ canvas#map-canvas {
 }
 
 .ff6-p-name {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  display: block;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-/* Tags survive; name text ellipsizes first. */
+/* Name text is the sole child of .ff6-p-name now (status is a sibling column). */
 .ff6-p-name-text {
+  display: block;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1 1 auto;
 }
 
-/* Fixed status slot — identical geometry when empty (RES-column rule). */
+/* Fixed status column — identical geometry when empty (RES-column rule). */
 .ff6-p-status {
-  flex: 0 0 2.6em;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 2px;
   min-height: 1em;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .ff6-p-status .ff6-status-tag {

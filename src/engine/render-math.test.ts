@@ -651,15 +651,15 @@ describe("arena projection math", () => {
     expect(projected.y).toBeCloseTo(screenY, 4);
   });
 
-  it("round-trips under production arena DEFAULTS (30° pitch, horizon 0.30)", () => {
+  it("round-trips under production arena DEFAULTS (35° pitch, horizon 0.24)", () => {
     // Mirrors arena-renderer.ts DEFAULTS + ARENA_HORIZON_FRAC without importing
     // the canvas module into this DOM-free test file.
-    const prodPitch = (30 * Math.PI) / 180;
-    const prodHorizonFrac = 0.3;
+    const prodPitch = (35 * Math.PI) / 180;
+    const prodHorizonFrac = 0.24;
     const prodHorizonY = screenH * prodHorizonFrac;
     const prodFocal = ((0.5 - prodHorizonFrac) * screenH) / Math.tan(prodPitch);
     const prodCam = {
-      camHeight: 2.5,
+      camHeight: 3.8,
       pitch: prodPitch,
       focalLength: prodFocal,
       horizonY: prodHorizonY,

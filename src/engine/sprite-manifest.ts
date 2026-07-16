@@ -56,7 +56,8 @@ function strip(
   state: EnemySpriteState,
   frameCount: number,
   fps = 8,
-  loop = false
+  loop = false,
+  artFootFromTop?: number
 ): SpriteStrip {
   return {
     url: `${ASSET_BASE}assets/enemies/${enemyId}/${state}.png`,
@@ -65,6 +66,17 @@ function strip(
     frameCount,
     fps,
     loop,
+    ...(artFootFromTop !== undefined ? { artFootFromTop } : {}),
+  };
+}
+
+/** Apply the same foot inset to every state strip (squat / floater packs). */
+function withFoot(def: EnemySpriteDef, artFootFromTop: number): EnemySpriteDef {
+  return {
+    idle: { ...def.idle, artFootFromTop },
+    attack: { ...def.attack, artFootFromTop },
+    hurt: { ...def.hurt, artFootFromTop },
+    death: { ...def.death, artFootFromTop },
   };
 }
 
@@ -93,12 +105,17 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("animated-armor", "hurt", 4, 8),
     death: strip("animated-armor", "death", 4, 6),
   },
-  "acid-puddle": {
-    idle: strip("acid-puddle", "idle", 6, 6, true),
-    attack: strip("acid-puddle", "attack", 6, 10),
-    hurt: strip("acid-puddle", "hurt", 4, 8),
-    death: strip("acid-puddle", "death", 4, 6),
-  },
+  "acid-puddle": withFoot(
+    {
+      idle: strip("acid-puddle", "idle", 6, 6, true),
+      attack: strip("acid-puddle", "attack", 6, 10),
+      hurt: strip("acid-puddle", "hurt", 4, 8),
+      death: strip("acid-puddle", "death", 4, 6),
+    },
+    // Squat puddle: pack opaque ends ~0.57 but shadow core hangs below footY —
+    // plant lower so the blob nests into the ellipse (no daylight gap).
+    0.5
+  ),
   "failed-experiment": {
     idle: strip("failed-experiment", "idle", 6, 6, true),
     attack: strip("failed-experiment", "attack", 9, 10),
@@ -132,24 +149,31 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("flame-golem", "hurt", 4, 8),
     death: strip("flame-golem", "death", 6, 6),
   },
-  "lava-slime": {
-    idle: strip("lava-slime", "idle", 6, 6, true),
-    attack: strip("lava-slime", "attack", 6, 10),
-    hurt: strip("lava-slime", "hurt", 4, 8),
-    death: strip("lava-slime", "death", 4, 6),
-  },
+  "lava-slime": withFoot(
+    {
+      idle: strip("lava-slime", "idle", 6, 6, true),
+      attack: strip("lava-slime", "attack", 6, 10),
+      hurt: strip("lava-slime", "hurt", 4, 8),
+      death: strip("lava-slime", "death", 4, 6),
+    },
+    0.5
+  ),
   hellhound: {
     idle: strip("hellhound", "idle", 6, 8, true),
     attack: strip("hellhound", "attack", 8, 10),
     hurt: strip("hellhound", "hurt", 4, 8),
     death: strip("hellhound", "death", 4, 6),
   },
-  hellbat: {
-    idle: strip("hellbat", "idle", 6, 8, true),
-    attack: strip("hellbat", "attack", 6, 10),
-    hurt: strip("hellbat", "hurt", 4, 8),
-    death: strip("hellbat", "death", 4, 6),
-  },
+  hellbat: withFoot(
+    {
+      idle: strip("hellbat", "idle", 6, 8, true),
+      attack: strip("hellbat", "attack", 6, 10),
+      hurt: strip("hellbat", "hurt", 4, 8),
+      death: strip("hellbat", "death", 4, 6),
+    },
+    // Measured opaque bottom ~0.50 (short flyer); pack default 0.57 floats it.
+    0.5
+  ),
   "black-knight": {
     idle: strip("black-knight", "idle", 6, 6, true),
     attack: strip("black-knight", "attack", 16, 12),
@@ -180,12 +204,15 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("demoness", "hurt", 4, 8),
     death: strip("demoness", "death", 4, 6),
   },
-  "eyeball-monster": {
-    idle: strip("eyeball-monster", "idle", 6, 6, true),
-    attack: strip("eyeball-monster", "attack", 8, 10),
-    hurt: strip("eyeball-monster", "hurt", 4, 8),
-    death: strip("eyeball-monster", "death", 4, 6),
-  },
+  "eyeball-monster": withFoot(
+    {
+      idle: strip("eyeball-monster", "idle", 6, 6, true),
+      attack: strip("eyeball-monster", "attack", 8, 10),
+      hurt: strip("eyeball-monster", "hurt", 4, 8),
+      death: strip("eyeball-monster", "death", 4, 6),
+    },
+    0.52
+  ),
   ghostfire: {
     idle: strip("ghostfire", "idle", 6, 8, true),
     attack: strip("ghostfire", "attack", 6, 10),
@@ -247,12 +274,15 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("succubus", "hurt", 4, 8),
     death: strip("succubus", "death", 4, 6),
   },
-  slime: {
-    idle: strip("slime", "idle", 6, 6, true),
-    attack: strip("slime", "attack", 6, 10),
-    hurt: strip("slime", "hurt", 4, 8),
-    death: strip("slime", "death", 4, 6),
-  },
+  slime: withFoot(
+    {
+      idle: strip("slime", "idle", 6, 6, true),
+      attack: strip("slime", "attack", 6, 10),
+      hurt: strip("slime", "hurt", 4, 8),
+      death: strip("slime", "death", 4, 6),
+    },
+    0.5
+  ),
   skeleton: {
     idle: strip("skeleton", "idle", 6, 6, true),
     attack: strip("skeleton", "attack", 6, 10),
@@ -291,18 +321,24 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
   },
   // Summoned ally sprites — recolored enemy strips generated by
   // scripts/recolor-sprites.mjs. Same frame counts as their base sprites.
-  "summon-slime": {
-    idle: strip("summon-slime", "idle", 6, 6, true),
-    attack: strip("summon-slime", "attack", 6, 10),
-    hurt: strip("summon-slime", "hurt", 4, 8),
-    death: strip("summon-slime", "death", 4, 6),
-  },
-  "summon-fire-elemental": {
-    idle: strip("summon-fire-elemental", "idle", 6, 6, true),
-    attack: strip("summon-fire-elemental", "attack", 6, 10),
-    hurt: strip("summon-fire-elemental", "hurt", 4, 8),
-    death: strip("summon-fire-elemental", "death", 4, 6),
-  },
+  "summon-slime": withFoot(
+    {
+      idle: strip("summon-slime", "idle", 6, 6, true),
+      attack: strip("summon-slime", "attack", 6, 10),
+      hurt: strip("summon-slime", "hurt", 4, 8),
+      death: strip("summon-slime", "death", 4, 6),
+    },
+    0.5
+  ),
+  "summon-fire-elemental": withFoot(
+    {
+      idle: strip("summon-fire-elemental", "idle", 6, 6, true),
+      attack: strip("summon-fire-elemental", "attack", 6, 10),
+      hurt: strip("summon-fire-elemental", "hurt", 4, 8),
+      death: strip("summon-fire-elemental", "death", 4, 6),
+    },
+    0.5
+  ),
   "summon-eldritch-guardian": {
     idle: strip("summon-eldritch-guardian", "idle", 6, 6, true),
     attack: strip("summon-eldritch-guardian", "attack", 7, 10),

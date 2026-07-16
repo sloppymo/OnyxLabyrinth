@@ -47,6 +47,22 @@ function resolveAsset(url: string): string {
 }
 
 describe("sprite-manifest", () => {
+  it("squat / short-frame packs override artFootFromTop below pack default", () => {
+    for (const id of [
+      "slime",
+      "lava-slime",
+      "acid-puddle",
+      "summon-slime",
+      "summon-fire-elemental",
+      "hellbat",
+      "eyeball-monster",
+    ]) {
+      const foot = ENEMY_SPRITE_DEFS[id]?.idle.artFootFromTop;
+      expect(foot, id).toBeDefined();
+      expect(foot!, id).toBeLessThan(0.57);
+    }
+  });
+
   for (const [enemyId, def] of Object.entries(ENEMY_SPRITE_DEFS)) {
     describe(enemyId, () => {
       for (const [state, strip] of Object.entries(def)) {

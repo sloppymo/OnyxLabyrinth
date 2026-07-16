@@ -18,6 +18,13 @@ import {
   resolveSlot,
   depthScale,
   assertFormationOnFloor,
+  assertFloorBottomClearOfWindows,
+  assertSlotsInXBounds,
+  maxAllowedFloorBottomY,
+  COMBAT_WINDOW_OVERLAP_PX,
+  FLOOR_BOTTOM_SAFE_MARGIN_PX,
+  CONTACT_SHADOW_BELOW_FOOT_PX,
+  COMBAT_NEAR_SPRITE_SIZE,
   allBackdropIds,
   artFootFromTopFor,
   ART_FOOT_FROM_TOP,
@@ -104,14 +111,13 @@ describe("formation floor invariant (all backdrops × full formation)", () => {
   const maxEnemyFront = ENEMY_FRONT_SLOTS.length;
   const maxEnemyBack = ENEMY_BACK_SLOTS.length;
 
-  it("every backdrop declares seam in a usable band and floor owns the majority", () => {
+  it("every backdrop declares seam in the high-camera band and floor owns the majority", () => {
     for (const id of allBackdropIds()) {
-      const geo = BACKDROP_GEOMETRY[id];
-      // Usable foot plane is below optical horizon; may sit ~45–55% for
-      // perspective rooms whose side joins eat the upper floor band.
+      const geo = BACKDROP_GEOMETRY[id]!;
+      // High-camera target: usable seam ~25–38% (optical ~24–34%).
       expect(geo.seamY / LOGICAL_H).toBeGreaterThanOrEqual(0.25);
-      expect(geo.seamY / LOGICAL_H).toBeLessThanOrEqual(0.55);
-      expect(geo.floorBottomY - geo.seamY).toBeGreaterThan(LOGICAL_H * 0.22);
+      expect(geo.seamY / LOGICAL_H).toBeLessThanOrEqual(0.38);
+      expect(geo.floorBottomY - geo.seamY).toBeGreaterThan(LOGICAL_H * 0.28);
       expect(geo.floorBottomY).toBeLessThanOrEqual(LOGICAL_H);
     }
   });
@@ -148,6 +154,64 @@ describe("formation floor invariant (all backdrops × full formation)", () => {
     }
     for (const s of [...ENEMY_FRONT_SLOTS, ...ENEMY_BACK_SLOTS]) {
       expect(s.x).toBeLessThan(LOGICAL_W / 2);
+    }
+  });
+});
+
+describe("occlusion invariant (floorBottomY vs DOM windows)", () => {
+  it("maxAllowedFloorBottomY clears windows + contact-shadow footprint", () => {
+    expect(maxAllowedFloorBottomY(LOGICAL_H)).toBe(
+      LOGICAL_H -
+        COMBAT_WINDOW_OVERLAP_PX -
+        FLOOR_BOTTOM_SAFE_MARGIN_PX -
+        CONTACT_SHADOW_BELOW_FOOT_PX
+    );
+    expect(CONTACT_SHADOW_BELOW_FOOT_PX).toBeGreaterThanOrEqual(8);
+    expect(maxAllowedFloorBottomY()).toBeGreaterThanOrEqual(448);
+    expect(maxAllowedFloorBottomY()).toBeLessThanOrEqual(460);
+  });
+
+  it("every backdrop floorBottomY clears the window overlap band", () => {
+    for (const id of allBackdropIds()) {
+      const geo = BACKDROP_GEOMETRY[id]!;
+      expect(() => assertFloorBottomClearOfWindows(geo)).not.toThrow();
+      expect(geo.floorBottomY).toBeLessThanOrEqual(maxAllowedFloorBottomY());
+    }
+  });
+});
+
+describe("x-bounds invariant (sprites stay on canvas)", () => {
+  const margin = 4;
+
+  it("assertSlotsInXBounds throws when a near-scale slot hangs off the edge", () => {
+    const geo: BackdropGeometry = {
+      seamY: 200,
+      floorBottomY: 400,
+      scaleFar: 0.875,
+      scaleNear: 1.0,
+    };
+    const bad: FormationSlot[] = [{ x: 760, footYFrac: 1.0 }];
+    expect(() =>
+      assertSlotsInXBounds(bad, geo, { spriteWidth: 300, margin })
+    ).toThrow(/x-bounds/);
+  });
+
+  it("full formation stays in x-bounds on every backdrop", () => {
+    for (const id of allBackdropIds()) {
+      const geo = BACKDROP_GEOMETRY[id]!;
+      expect(() =>
+        assertSlotsInXBounds(PARTY_FORMATION_SLOTS, geo, {
+          spriteWidth: 300,
+          margin,
+        })
+      ).not.toThrow();
+      expect(() =>
+        assertSlotsInXBounds(
+          [...ENEMY_FRONT_SLOTS, ...ENEMY_BACK_SLOTS, ...ALLY_FORMATION_SLOTS],
+          geo,
+          { spriteWidth: 340, margin }
+        )
+      ).not.toThrow();
     }
   });
 });

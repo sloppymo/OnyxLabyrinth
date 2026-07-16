@@ -155,22 +155,33 @@ const PALETTE_LABELS: Record<PaletteSlot["kind"], string> = {
  */
 export function paletteHintText(palette: CombatPalette, partyAuto: boolean): string {
   void palette;
-  return joinHintParts([
-    "Sel:Item",
-    "hold B:Run",
-    "Start:Auto",
-    partyAuto ? "AUTO on" : "",
-  ]);
+  // Menu column is ~26% of the playfield (~170px usable). At 16px FF36 that
+  // is ~22–24 glyphs — NOT the default joinHintParts budget of 42. Without a
+  // tight maxLen, CSS overflow:hidden clips mid-token ("Start:A").
+  return joinHintParts(
+    ["Sel:Item", "hold B:Run", "Start:Auto", partyAuto ? "AUTO on" : ""],
+    24
+  );
 }
 
 /** Playback meta hints — input-adaptive; never clip mid-token.
- *  Priority: tempo → skip → auto (auto drops first when tight). */
+ *  Priority: tempo → skip → auto (auto drops first when tight).
+ *  maxLen mirrors the menu column (~28% / ~24 glyphs), NOT the default 42 —
+ *  otherwise CSS overflow cuts "Esc:skip" to "Esc:". */
 export function playbackHintText(inputKind: "keyboard" | "gamepad"): string {
   if (inputKind === "gamepad") {
-    return joinHintParts(["LT:2×", "Y:FAST", "B:skip", "Start:AUTO"], 40);
+    return joinHintParts(["LT:2×", "Y:FAST", "B:skip", "Start:AUTO"], 24);
   }
-  return joinHintParts(["Shift:2×", "Tab:FAST", "Q:AUTO", "Esc:skip"], 40);
+  return joinHintParts(["Shift:2×", "Tab:FAST", "Q:AUTO", "Esc:skip"], 24);
 }
+
+/** Every combat-window footer string must come from here (or joinHintParts
+ *  directly). Used by tests / verify scripts as the producer registry. */
+export const FOOTER_HINT_PRODUCERS = {
+  palette: paletteHintText,
+  playback: playbackHintText,
+  menu: menuHintText,
+} as const;
 
 function paletteSlotLabel(slot: PaletteSlot, char?: Character): string {
   if (slot.kind === "skill" && char?.class === "Thief") {
@@ -523,7 +534,7 @@ function buildResCell(opts: {
 function buildNameCell(
   name: string,
   statuses: readonly string[]
-): HTMLElement {
+): { name: HTMLElement; status: HTMLElement } {
   const cell = document.createElement("span");
   cell.className = "ff6-p-name";
   cell.title = name;
@@ -531,14 +542,14 @@ function buildNameCell(
   text.className = "ff6-p-name-text";
   text.textContent = name;
   cell.appendChild(text);
-  // Fixed status slot — same geometry with or without tags (RES-column rule).
+  // Status is a SIBLING grid column (not nested in name) so the empty slot
+  // cannot tax name width — see roster truncation bug (B…/C…/F…).
   const slot = document.createElement("span");
   slot.className = "ff6-p-status";
   if (statuses.length > 0) {
     appendStatusTags(slot, statuses);
   }
-  cell.appendChild(slot);
-  return cell;
+  return { name: cell, status: slot };
 }
 
 function buildPartyWindow(view: CombatWindowsView): HTMLElement {
@@ -563,7 +574,9 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
           const tags = VISIBLE_STATUSES.filter((st) => c.status.includes(st));
           return view.state.regenBuffs[c.id] ? [...tags, "regen"] : [...tags];
         })();
-    row.appendChild(buildNameCell(c.name, statuses));
+    const { name, status } = buildNameCell(c.name, statuses);
+    row.appendChild(name);
+    row.appendChild(status);
     row.appendChild(buildHpBar(c.hp, c.maxHp));
 
     const hp = document.createElement("span");
@@ -588,7 +601,9 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
   for (const a of view.state.summonedAllies) {
     if (a.hp <= 0) continue;
     const row = el("ff6-party-row summon");
-    row.appendChild(buildNameCell(a.name, []));
+    const { name, status } = buildNameCell(a.name, []);
+    row.appendChild(name);
+    row.appendChild(status);
     row.appendChild(buildHpBar(a.hp, a.maxHp));
 
     const hp = document.createElement("span");

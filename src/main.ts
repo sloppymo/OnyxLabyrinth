@@ -21,7 +21,7 @@ import {
   renderCorridorBackdrop,
 } from "./engine/renderer";
 import { partyPos, enemyPos } from "./engine/combat-scene";
-import { geometryForBackdrop } from "./engine/combat-scene-math";
+import { geometryForBackdrop, assertFloorBottomClearOfWindows } from "./engine/combat-scene-math";
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
 import { loadPartySprites } from "./engine/party-sprite-cache";
 import { loadEffectSprites } from "./engine/effect-sprite-cache";
@@ -368,6 +368,7 @@ let combatController: CombatController | null = null;
 let suppressNextCombatKey = false;
 
 async function startCombat(combat: CombatState): Promise<void> {
+  state.combat = combat;
   setMode(state, "combat");
   flashEncounter();
   showMode("combat", mapVisible);
@@ -1618,15 +1619,34 @@ if (new URLSearchParams(window.location.search).has("debug")) {
         ...scene.state.enemies.front.map((_, i) => enemyPos(i, "front", w, h, bd)),
         ...scene.state.enemies.back.map((_, i) => enemyPos(i, "back", w, h, bd)),
       ];
-      const feetOk = [...party, ...enemies].every(
+      const all = [...party, ...enemies];
+      const feetOk = all.every(
         (p) => p.footY >= geo.seamY && p.footY <= geo.floorBottomY
       );
+      let occlusionOk = true;
+      try {
+        assertFloorBottomClearOfWindows(geo, h);
+      } catch {
+        occlusionOk = false;
+      }
+      const partyXOk = party.every((p) => {
+        const half = (300 * p.scale) / 2;
+        return p.x >= half + 4 && p.x <= w - half - 4;
+      });
+      const enemyXOk = enemies.every((p) => {
+        const half = (340 * p.scale) / 2;
+        return p.x >= half + 4 && p.x <= w - half - 4;
+      });
+      const xBoundsOk = partyXOk && enemyXOk;
       return {
         backdropId: bd,
         geo,
-        party: party.map((p) => ({ footY: p.footY, scale: p.scale, y: p.y })),
-        enemies: enemies.map((p) => ({ footY: p.footY, scale: p.scale, y: p.y })),
+        party: party.map((p) => ({ footY: p.footY, scale: p.scale, y: p.y, x: p.x })),
+        enemies: enemies.map((p) => ({ footY: p.footY, scale: p.scale, y: p.y, x: p.x })),
         feetOk,
+        occlusionOk,
+        xBoundsOk,
+        ok: feetOk && occlusionOk && xBoundsOk,
       };
     },
   };

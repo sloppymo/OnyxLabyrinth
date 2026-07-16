@@ -166,9 +166,9 @@ const RENDER_CONFIG = {
 } as const;
 
 /** Fraction of canvas height where the arena horizon (floor/ceiling boundary)
- *  sits after cropping. Shared between the arena renderer and the combat scene
- *  projection so character positions always align with the floor plane. */
-export const ARENA_HORIZON_FRAC = 0.30;
+ *  sits. Shared with arena-renderer DEFAULTS.horizonFrac so character foot
+ *  planes stay aligned with the baked floor. High-camera oblique target ~0.28. */
+export const ARENA_HORIZON_FRAC = 0.24;
 
 /** Raycast hit data for a single ray. */
 interface RayHit {

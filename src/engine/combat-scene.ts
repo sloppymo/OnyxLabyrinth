@@ -2325,7 +2325,9 @@ export function updateScene(scene: CombatScene, now: number): void {
 
 // --- Drawing ---------------------------------------------------------------------------
 
-/** Soft contact shadow at the foot baseline — plants the sprite on the floor. */
+/** Soft contact shadow at the foot baseline — plants the sprite on the floor.
+ * Ellipse ry must stay in sync with CONTACT_SHADOW_BELOW_FOOT_PX in combat-scene-math.
+ */
 function drawContactShadow(
   ctx: CanvasRenderingContext2D,
   footX: number,
@@ -2337,7 +2339,9 @@ function drawContactShadow(
   ctx.save();
   ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
   ctx.beginPath();
-  ctx.ellipse(footX, footY, rx, ry, 0, 0, Math.PI * 2);
+  // Bias the ellipse slightly upward so the dark core sits under the foot
+  // plant (half-below centering left squat blobs floating over daylight).
+  ctx.ellipse(footX, footY - ry * 0.35, rx, ry, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }

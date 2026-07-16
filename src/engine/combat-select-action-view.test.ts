@@ -130,8 +130,26 @@ describe("joinHintParts / playbackHintText", () => {
   it("drops whole trailing segments instead of mid-word clipping", () => {
     expect(joinHintParts(["A", "B", "CDEFGHIJKLMNOP"], 12)).toBe("A · B");
     expect(playbackHintText("keyboard")).not.toMatch(/\w…$/);
-    expect(playbackHintText("gamepad")).toContain("Start:AUTO");
-    expect(paletteHintText({ slots: [] } as never, false)).not.toContain("A:Atk");
+    expect(playbackHintText("keyboard")).not.toMatch(/Esc:$/);
+    expect(playbackHintText("keyboard").length).toBeLessThanOrEqual(24);
+    expect(playbackHintText("gamepad").length).toBeLessThanOrEqual(24);
+    const paletteHint = paletteHintText({ slots: [] } as never, false);
+    expect(paletteHint).not.toContain("A:Atk");
+    expect(paletteHint.length).toBeLessThanOrEqual(24);
+    expect(paletteHint === "Sel:Item" || /(?:Run|Auto|Item)$/.test(paletteHint)).toBe(
+      true
+    );
+  });
+
+  it("registers every footer producer through FOOTER_HINT_PRODUCERS", async () => {
+    const { FOOTER_HINT_PRODUCERS } = await import("./combat-select-action-view");
+    expect(Object.keys(FOOTER_HINT_PRODUCERS).sort()).toEqual(
+      ["menu", "palette", "playback"].sort()
+    );
+    for (const [id, fn] of Object.entries(FOOTER_HINT_PRODUCERS)) {
+      expect(typeof fn).toBe("function");
+      expect(id.length).toBeGreaterThan(0);
+    }
   });
 
   it("drops least-important (tail) segments first", () => {

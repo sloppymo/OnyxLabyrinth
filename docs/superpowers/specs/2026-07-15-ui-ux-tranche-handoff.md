@@ -21,6 +21,8 @@ An external LLM reviewed five screenshots and ranked five fixes. We did **not** 
 
 **Do not start town before the Deck check.** If 18px fails on device, remediation (bigger type in-box or reopen C toward buffer widen) touches every screen including a freshly polished town window.
 
+**2026-07-15 status:** Deck check still not run — no physical device available this session. Checklist prepared at `2026-07-15-deck-gate-checklist.md`; next agent/human must fill the six answers on real hardware before lighting or town work starts.
+
 ---
 
 ## C — Letterbox / scale
@@ -121,7 +123,10 @@ Screenshot: `…/assets/onyx-ux-shots/08-combat-flex-check.png`
 2. 48px bars help triage?  
 3. Inverted acting plate clear vs scene marker?  
 4. Letterbox Fine / Annoying?  
-5. If Annoying: Mush OK / Widen later?
+5. If Annoying: Mush OK / Widen later?  
+6. **Can you identify a back-row enemy type at arm’s length?** (0.75-scale; covers ground-plane)
+
+Full protocol: `docs/superpowers/specs/2026-07-15-letterbox-scale-spike.md` § Deck hardware check.
 
 ---
 

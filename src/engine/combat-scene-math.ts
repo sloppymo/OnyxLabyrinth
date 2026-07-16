@@ -71,69 +71,138 @@ export const COMBAT_DESIGN_W = 768;
 export const COMBAT_DESIGN_H = 672;
 
 /**
+ * Logical px from canvas bottom occupied by `#combat-windows` at typical
+ * 6-row roster density. Measured window top ≈ logical y 490–500 → overlap
+ * ≈ 172–182. Use 200 for a small cushion; do NOT also subtract the full
+ * below-foot draw-square extent (transparent padding) — that left a 160px
+ * dead apron. Occlusion clears foot plant + contact-shadow half-height below
+ * footY (see CONTACT_SHADOW_BELOW_FOOT_PX).
+ */
+export const COMBAT_WINDOW_OVERLAP_PX = 200;
+/** Extra gap between last foot baseline and the window top. */
+export const FLOOR_BOTTOM_SAFE_MARGIN_PX = 8;
+/**
+ * Near-row party draw size (must match `PARTY_SIZE` in combat-scene.ts).
+ * Used by x-bounds checks and contact-shadow extent.
+ */
+export const COMBAT_NEAR_SPRITE_SIZE = 300;
+/**
+ * Contact-shadow ellipse half-height below footY (matches `drawContactShadow`:
+ * rx = (size * 0.45) * 0.28, ry = rx * 0.28, size = near party draw size).
+ * Shadows are part of the ground footprint — occlusion must clear them.
+ */
+export const CONTACT_SHADOW_BELOW_FOOT_PX = Math.ceil(
+  COMBAT_NEAR_SPRITE_SIZE * 0.45 * 0.28 * 0.28
+);
+
+/** Highest legal floorBottomY for a canvas height (default design 672). */
+export function maxAllowedFloorBottomY(canvasH = COMBAT_DESIGN_H): number {
+  return (
+    canvasH -
+    COMBAT_WINDOW_OVERLAP_PX -
+    FLOOR_BOTTOM_SAFE_MARGIN_PX -
+    CONTACT_SHADOW_BELOW_FOOT_PX
+  );
+}
+
+/** Throws if floorBottomY sits inside the DOM window overlap. */
+export function assertFloorBottomClearOfWindows(
+  geo: BackdropGeometry,
+  canvasH = COMBAT_DESIGN_H
+): void {
+  const maxY = maxAllowedFloorBottomY(canvasH);
+  if (geo.floorBottomY > maxY + 1e-6) {
+    throw new Error(
+      `floorBottomY ${geo.floorBottomY} exceeds window-safe max ${maxY} (overlap ${COMBAT_WINDOW_OVERLAP_PX}px)`
+    );
+  }
+}
+
+/** Throws if any resolved slot places the sprite half off the canvas. */
+export function assertSlotsInXBounds(
+  slots: readonly FormationSlot[],
+  geo: BackdropGeometry,
+  opts: {
+    spriteWidth: number;
+    margin?: number;
+    canvasWidth?: number;
+    designWidth?: number;
+  }
+): void {
+  const margin = opts.margin ?? 4;
+  const canvasW = opts.canvasWidth ?? COMBAT_DESIGN_W;
+  for (const slot of slots) {
+    const r = resolveSlot(slot, geo, {
+      spriteHeight: opts.spriteWidth,
+      canvasWidth: canvasW,
+      designWidth: opts.designWidth,
+    });
+    const half = (opts.spriteWidth * r.scale) / 2;
+    const minX = half + margin;
+    const maxX = canvasW - half - margin;
+    if (r.x < minX - 1e-6 || r.x > maxX + 1e-6) {
+      throw new Error(
+        `x-bounds: slot x=${slot.x} → ${r.x.toFixed(1)} outside [${minX.toFixed(1)}, ${maxX.toFixed(1)}] at scale ${r.scale}`
+      );
+    }
+  }
+}
+
+/**
  * Backdrop geometries — keyed by bake path / theme.
- * Code reality: backdrops are not a data table; arena rooms share one horizon
- * (ARENA_HORIZON_FRAC = 0.30); combat-bg.png / corridor crop use ~0.214.
- * scaleFar/scaleNear are per-backdrop (same defaults today; corridor/combat-bg
- * use a slightly deeper far endpoint so the taller band still reads as a
- * bigger room rather than identical-size sprites floating higher).
+ * High-camera arena bake (ARENA_HORIZON_FRAC = 0.24): optical seam ~32–34%;
+ * floorBottomY ≈ 453 (window top ~500 − margin − shadow). scaleFar 0.875 → scaleNear 1.0.
  */
 export const BACKDROP_GEOMETRY: Record<string, BackdropGeometry> = {
-  /**
-   * Arena bake (renderBattleArena). Geometric horizon is ARENA_HORIZON_FRAC
-   * (0.30), but side-wall floor joins sit lower on screen than the back-wall
-   * horizon — seamY is the *usable* foot plane (below side joins), not the
-   * optical horizon line.
-   */
   arena: {
-    seamY: Math.round(COMBAT_DESIGN_H * 0.48), // 323
-    floorBottomY: 545,
-    scaleFar: 0.78,
+    seamY: Math.round(COMBAT_DESIGN_H * 0.32), // 215
+    floorBottomY: maxAllowedFloorBottomY(),
+    scaleFar: 0.875,
     scaleNear: 1.0,
   },
   "theme:f1": {
-    seamY: Math.round(COMBAT_DESIGN_H * 0.48),
-    floorBottomY: 545,
-    scaleFar: 0.78,
+    seamY: Math.round(COMBAT_DESIGN_H * 0.32),
+    floorBottomY: maxAllowedFloorBottomY(),
+    scaleFar: 0.875,
     scaleNear: 1.0,
   },
-  /** Library — side shelves eat the most vertical; most conservative seam. */
+  /** Library — shelves eat a little upper floor; seam slightly lower. */
   "theme:f2": {
-    seamY: Math.round(COMBAT_DESIGN_H * 0.52), // 349
-    floorBottomY: 550,
-    scaleFar: 0.78,
+    seamY: Math.round(COMBAT_DESIGN_H * 0.34), // 228
+    floorBottomY: maxAllowedFloorBottomY(),
+    scaleFar: 0.875,
     scaleNear: 1.0,
   },
   "theme:f3": {
-    seamY: Math.round(COMBAT_DESIGN_H * 0.48),
-    floorBottomY: 545,
-    scaleFar: 0.78,
+    seamY: Math.round(COMBAT_DESIGN_H * 0.32),
+    floorBottomY: maxAllowedFloorBottomY(),
+    scaleFar: 0.875,
     scaleNear: 1.0,
   },
   "theme:f4": {
-    seamY: Math.round(COMBAT_DESIGN_H * 0.48),
-    floorBottomY: 545,
-    scaleFar: 0.78,
+    seamY: Math.round(COMBAT_DESIGN_H * 0.32),
+    floorBottomY: maxAllowedFloorBottomY(),
+    scaleFar: 0.875,
     scaleNear: 1.0,
   },
   "theme:f5": {
-    seamY: Math.round(COMBAT_DESIGN_H * 0.48),
-    floorBottomY: 545,
-    scaleFar: 0.78,
+    seamY: Math.round(COMBAT_DESIGN_H * 0.32),
+    floorBottomY: maxAllowedFloorBottomY(),
+    scaleFar: 0.875,
     scaleNear: 1.0,
   },
-  /** Static combat-bg.png — taller usable band; slightly deeper far scale. */
+  /** Static combat-bg.png — legacy taller-horizon art; floorBottom still window-safe. */
   "combat-bg": {
-    seamY: Math.round(COMBAT_DESIGN_H * 0.36),
-    floorBottomY: 545,
-    scaleFar: 0.72,
+    seamY: Math.round(COMBAT_DESIGN_H * 0.30),
+    floorBottomY: maxAllowedFloorBottomY(),
+    scaleFar: 0.875,
     scaleNear: 1.0,
   },
   /** renderCorridorBackdrop crop — same family as combat-bg. */
   corridor: {
-    seamY: Math.round(COMBAT_DESIGN_H * 0.36),
-    floorBottomY: 545,
-    scaleFar: 0.72,
+    seamY: Math.round(COMBAT_DESIGN_H * 0.30),
+    floorBottomY: maxAllowedFloorBottomY(),
+    scaleFar: 0.875,
     scaleNear: 1.0,
   },
 };
@@ -150,33 +219,38 @@ export function geometryForBackdrop(id: string | null | undefined): BackdropGeom
 /**
  * Party: FF6 diagonal stagger — indices 0–2 front (near), 3–5 back (far).
  * Enemies mirrored on the left. Fixed slots only (no free scatter).
+ * footYFrac uses the recovered band (floorBottomY ≈ 464): front nearer,
+ * back still a shallow diagonal — not two disconnected squads.
+ * X span widened so back-row casters aren't buried behind front knights;
+ * back row fans ~12px further left for one more click of separation;
+ * near x clamped for 300px half-width bounds (max ≈ 614).
  */
 export const PARTY_FORMATION_SLOTS: FormationSlot[] = [
-  { x: 520, footYFrac: 0.72 },
-  { x: 605, footYFrac: 0.80 },
-  { x: 690, footYFrac: 0.88 },
-  { x: 470, footYFrac: 0.10 },
-  { x: 545, footYFrac: 0.14 },
-  { x: 620, footYFrac: 0.18 },
+  { x: 495, footYFrac: 0.62 },
+  { x: 555, footYFrac: 0.72 },
+  { x: 610, footYFrac: 0.82 },
+  { x: 408, footYFrac: 0.22 },
+  { x: 472, footYFrac: 0.3 },
+  { x: 532, footYFrac: 0.38 },
 ];
 
 export const ENEMY_FRONT_SLOTS: FormationSlot[] = [
-  { x: 250, footYFrac: 0.72 },
-  { x: 165, footYFrac: 0.80 },
-  { x: 80, footYFrac: 0.88 },
+  { x: 275, footYFrac: 0.62 },
+  { x: 210, footYFrac: 0.72 },
+  { x: 175, footYFrac: 0.82 },
 ];
 
 export const ENEMY_BACK_SLOTS: FormationSlot[] = [
-  { x: 310, footYFrac: 0.10 },
-  { x: 245, footYFrac: 0.14 },
-  { x: 180, footYFrac: 0.18 },
+  { x: 340, footYFrac: 0.22 },
+  { x: 270, footYFrac: 0.3 },
+  { x: 210, footYFrac: 0.38 },
 ];
 
 /** Summons stand mid-field between rows. */
 export const ALLY_FORMATION_SLOTS: FormationSlot[] = [
   { x: 384, footYFrac: 0.48 },
-  { x: 340, footYFrac: 0.42 },
-  { x: 428, footYFrac: 0.54 },
+  { x: 330, footYFrac: 0.42 },
+  { x: 438, footYFrac: 0.54 },
 ];
 
 export function lerp(a: number, b: number, t: number): number {
