@@ -167,8 +167,8 @@ const RENDER_CONFIG = {
 
 /** Fraction of canvas height where the arena horizon (floor/ceiling boundary)
  *  sits. Shared with arena-renderer DEFAULTS.horizonFrac so character foot
- *  planes stay aligned with the baked floor. High-camera oblique target ~0.28. */
-export const ARENA_HORIZON_FRAC = 0.24;
+ *  planes stay aligned with the baked floor. Near-ortho high-cam target ~0.20. */
+export const ARENA_HORIZON_FRAC = 0.2;
 
 /** Raycast hit data for a single ray. */
 interface RayHit {

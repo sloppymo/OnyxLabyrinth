@@ -2,19 +2,17 @@
  * Dedicated 3/4 top-down arena backdrop renderer for combat scenes.
  *
  * This module draws a synthetic room (floor + side walls + back wall + void)
- * using perspective-correct per-pixel rasterizers. It does not reuse the
- * corridor raycaster, so it cannot accidentally break the dungeon view.
+ * using a *screen-space silhouette* with mild rake — near-orthographic oblique,
+ * not true wide-angle perspective. Floor tile columns and wall edges share the
+ * same left/right insets so they never disagree. It does not reuse the corridor
+ * raycaster, so it cannot accidentally break the dungeon view.
  *
  * Deliberately imports only a type from renderer.ts (no runtime cycle).
  */
 
 import type { LoadedTileset } from "./renderer";
 import type { ArenaCamera } from "./render-math";
-import {
-  arenaFloorRowDistance,
-  arenaOpacityForDepth,
-  arenaProject,
-} from "./render-math";
+import { arenaOpacityForDepth, arenaProject } from "./render-math";
 
 export interface ArenaRenderOptions {
   tileset: LoadedTileset;
@@ -34,37 +32,54 @@ export interface ArenaRenderOptions {
   maxVisibleDist?: number;
   /** Void/fog blend color. Must match PALETTE.bg. */
   voidColor?: string;
-  /** 0 = perspective floor X, 1 = orthographic floor X. */
-  obliqueBlend?: number;
-  /** Minimum world depth for side-wall texels (near floor stays open). */
-  sideWallMinDepth?: number;
+  /**
+   * Back wall width as a fraction of frame (centered). Side walls occupy the
+   * remaining inset on each side. Target ~0.70–0.80.
+   */
+  backWallWidthFrac?: number;
+  /**
+   * Side-wall inset at the bottom edge (near / viewer). Slightly larger than
+   * the far inset → gentle outward rake; difference is only a few % of width
+   * so walls read as near-vertical strips, not perspective wedges.
+   */
+  sideWallNearInsetFrac?: number;
+  /**
+   * Floor row foreshortening power. worldY = lerp(far, near, t^rowCompressPower)
+   * with t 0 at seam → 1 at bottom. Depth range is kept modest so compression
+   * reads across the whole apron (not only the top strip near the seam).
+   * Target front/back tile height ≈ 1.8–2.2× with a visible mid-floor gradient.
+   */
+  rowCompressPower?: number;
+  /** Near-field world depth at the bottom edge (front tile row). */
+  floorNearDepth?: number;
 }
 
 const DEFAULTS = {
   roomWidth: 12,
-  /** Deep enough that the floor plane reaches the horizon (no mid-frame void gap). */
-  roomDepth: 20,
-  /** Tall enough in world units that the back wall reads as a 15–20% screen band. */
+  /**
+   * Far depth at the seam — kept modest (~14) so row compression graduates
+   * across the visible floor instead of burning into a few tiny seam rows.
+   */
+  roomDepth: 14,
   wallHeight: 7,
-  /** Raised vs the old 2.5 corridor-ish height; paired with pitch for high-cam. */
-  camHeight: 3.8,
-  /** ~35° down — high-camera oblique. */
-  pitch: (35 * Math.PI) / 180,
+  /** High camera — depth mostly from Y foreshortening, not lateral splay. */
+  camHeight: 4.5,
+  /** Mild pitch; wall silhouette (not FOV wedges) carries the room read. */
+  pitch: (28 * Math.PI) / 180,
   // Keep in sync with ARENA_HORIZON_FRAC in renderer.ts.
-  /** Optical horizon ≈ 24% — usable seam target 25–35%. */
-  horizonFrac: 0.24,
+  /** Optical horizon ≈ 20% → usable seam target ~22–28%. */
+  horizonFrac: 0.2,
   maxVisibleDist: 28,
   voidColor: "#0e0d0a",
-  /**
-   * Blend floor lateral mapping toward orthographic (0 = pure perspective,
-   * 1 = screen-x → world-x linear). True high-camera perspective splays hard
-   * at the bottom corners; FF6 fakes a gentle converge — so do we.
-   */
-  obliqueBlend: 0.62,
-  /** Side walls stop short of the camera so near floor stays open. */
-  sideWallMinDepth: 5.5,
+  /** Back wall ~78% of frame → each side wall ~11% at the seam. */
+  backWallWidthFrac: 0.78,
+  /** Near inset ~14% → ~3pp outward rake (near-vertical drop, few degrees). */
+  sideWallNearInsetFrac: 0.14,
+  /** front/back tile-height ratio ≈ 2.0× (verified via arenaFloorScreenYForDepth
+   * at roomDepth=14/floorNearDepth=3); 0.7 measured ~3.9×, overshooting target. */
+  rowCompressPower: 0.82,
+  floorNearDepth: 3.0,
 } as const;
-
 
 interface Rgb {
   r: number;
@@ -81,8 +96,10 @@ interface ArenaParams {
   horizonFrac: number;
   maxVisibleDist: number;
   voidColor: string;
-  obliqueBlend: number;
-  sideWallMinDepth: number;
+  backWallWidthFrac: number;
+  sideWallNearInsetFrac: number;
+  rowCompressPower: number;
+  floorNearDepth: number;
 }
 
 /** Render a 3/4 top-down arena room into the provided canvas context. */
@@ -101,16 +118,16 @@ export function renderArenaRoom(
     horizonFrac: options.horizonFrac ?? DEFAULTS.horizonFrac,
     maxVisibleDist: options.maxVisibleDist ?? DEFAULTS.maxVisibleDist,
     voidColor: options.voidColor ?? DEFAULTS.voidColor,
-    obliqueBlend: options.obliqueBlend ?? DEFAULTS.obliqueBlend,
-    sideWallMinDepth: options.sideWallMinDepth ?? DEFAULTS.sideWallMinDepth,
+    backWallWidthFrac: options.backWallWidthFrac ?? DEFAULTS.backWallWidthFrac,
+    sideWallNearInsetFrac:
+      options.sideWallNearInsetFrac ?? DEFAULTS.sideWallNearInsetFrac,
+    rowCompressPower: options.rowCompressPower ?? DEFAULTS.rowCompressPower,
+    floorNearDepth: options.floorNearDepth ?? DEFAULTS.floorNearDepth,
   };
   const camera = buildArenaCamera(h, params);
   const bg = parseBg(params.voidColor);
 
   // Bake everything into one opaque ImageData buffer, then blit once.
-  // putImageData replaces pixels (it does not composite), so the buffer must
-  // include the ceiling fill — drawing the back wall onto ctx before
-  // putImageData would be wiped.
   const buf = ctx.createImageData(w, h);
   fillCeilingGradient(buf, w, h, camera.horizonY, bg);
 
@@ -127,7 +144,6 @@ export function renderArenaRoom(
 
 function buildArenaCamera(h: number, params: ArenaParams): ArenaCamera {
   const horizonY = h * params.horizonFrac;
-  // horizonY = h/2 - f * tan(θ)  =>  f = (h/2 - horizonY) / tan(θ)
   const focalLength = ((0.5 - params.horizonFrac) * h) / Math.tan(params.pitch);
   return {
     camHeight: params.camHeight,
@@ -145,13 +161,10 @@ function parseBg(hex: string): Rgb {
   };
 }
 
-// Flat dark ceiling — no amber void band. Above the back wall the room
-// falls into near-black (fog-falloff style), not a torchlit amber gradient.
+// Flat dark ceiling — no amber void band.
 const CEILING_NEAR: Rgb = { r: 18, g: 16, b: 14 };
 const CEILING_FAR: Rgb = { r: 8, g: 7, b: 6 };
 
-/** Fills above-horizon rows with a near→far dark ceiling strip and
- *  at-or-below-horizon rows with flat void — floor/walls overwrite those. */
 function fillCeilingGradient(
   buf: ImageData,
   w: number,
@@ -168,7 +181,6 @@ function fillCeilingGradient(
       g = bg.g;
       b = bg.b;
     } else {
-      // y=0 (top) → FAR dark; y→horizon → slightly lighter brick-adjacent dark
       const t = Math.min(1, y / band);
       r = CEILING_FAR.r + (CEILING_NEAR.r - CEILING_FAR.r) * t;
       g = CEILING_FAR.g + (CEILING_NEAR.g - CEILING_FAR.g) * t;
@@ -185,8 +197,6 @@ function fillCeilingGradient(
   }
 }
 
-/** @param shade Optional brightness multiplier applied before fog blend —
- *  used for wall top-lighting and floor contact AO near walls. */
 function writeFoggedTexel(
   buf: ImageData,
   dstIdx: number,
@@ -198,33 +208,15 @@ function writeFoggedTexel(
 ): void {
   const inv = 1 - fog;
   buf.data[dstIdx] = Math.min(255, tex.data[srcIdx] * shade * fog + bg.r * inv);
-  buf.data[dstIdx + 1] = Math.min(255, tex.data[srcIdx + 1] * shade * fog + bg.g * inv);
-  buf.data[dstIdx + 2] = Math.min(255, tex.data[srcIdx + 2] * shade * fog + bg.b * inv);
+  buf.data[dstIdx + 1] = Math.min(
+    255,
+    tex.data[srcIdx + 1] * shade * fog + bg.g * inv
+  );
+  buf.data[dstIdx + 2] = Math.min(
+    255,
+    tex.data[srcIdx + 2] * shade * fog + bg.b * inv
+  );
   buf.data[dstIdx + 3] = 255;
-}
-
-/** Floor texel indices. Uses Math.floor so negative worldX (left half of the
- *  room) wraps correctly — bitwise truncation toward zero breaks there. */
-function floorTexel(
-  worldX: number,
-  worldY: number,
-  texSize: number
-): { gx: number; gy: number; texX: number; texY: number } {
-  const gx = Math.floor(worldX);
-  const gy = Math.floor(worldY);
-  const texX = Math.floor((worldX - gx) * texSize) % texSize;
-  const texY = Math.floor((worldY - gy) * texSize) % texSize;
-  return {
-    gx,
-    gy,
-    texX: texX < 0 ? texX + texSize : texX,
-    texY: texY < 0 ? texY + texSize : texY,
-  };
-}
-
-function checkerIsA(gx: number, gy: number): boolean {
-  // JS `%` is signed; use bit parity so negative tiles still checkerboard.
-  return ((gx + gy) & 1) === 0;
 }
 
 function getWallData(tileset: LoadedTileset): ImageData | null {
@@ -235,33 +227,185 @@ function getWallData(tileset: LoadedTileset): ImageData | null {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
-function projectBBox(
-  points: Array<{ x: number; y: number }>,
-  w: number,
-  h: number
-): { minX: number; maxX: number; minY: number; maxY: number } | null {
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-  for (const p of points) {
-    minX = Math.min(minX, p.x);
-    maxX = Math.max(maxX, p.x);
-    minY = Math.min(minY, p.y);
-    maxY = Math.max(maxY, p.y);
-  }
-  minX = Math.max(0, Math.floor(minX));
-  maxX = Math.min(w - 1, Math.ceil(maxX));
-  minY = Math.max(0, Math.floor(minY));
-  maxY = Math.min(h - 1, Math.ceil(maxY));
-  if (minX > maxX || minY > maxY) return null;
-  return { minX, maxX, minY, maxY };
+function floorTexel(
+  worldX: number,
+  worldY: number,
+  texSize: number
+): { gx: number; gy: number; texX: number; texY: number } {
+  const gx = Math.floor(worldX);
+  const gy = Math.floor(worldY);
+  let texX = Math.floor((worldX - gx) * texSize);
+  let texY = Math.floor((worldY - gy) * texSize);
+  if (texX < 0) texX += texSize;
+  if (texY < 0) texY += texSize;
+  texX = Math.min(texSize - 1, texX);
+  texY = Math.min(texSize - 1, texY);
+  return { gx, gy, texX, texY };
+}
+
+function checkerIsA(gx: number, gy: number): boolean {
+  return ((gx + gy) & 1) === 0;
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
 }
 
 /**
- * Fill the canvas above the projected wall top with fogged brick columns so
- * there is no empty void band — bricks darken into flat black toward y=0.
- * Does not change the geometric seam; only paints the above-wall region.
+ * Screen-space room silhouette — shared by floor and walls so they never
+ * disagree. Far inset from backWallWidthFrac; near inset slightly wider for a
+ * gentle outward rake (side walls ≈ near-vertical strips).
+ */
+function roomInsets(
+  y: number,
+  w: number,
+  h: number,
+  camera: ArenaCamera,
+  params: ArenaParams
+): { left: number; right: number } {
+  const seamY = camera.horizonY;
+  const farInset = ((1 - params.backWallWidthFrac) / 2) * w;
+  const nearInset = params.sideWallNearInsetFrac * w;
+  const t =
+    y <= seamY ? 0 : Math.min(1, (y - seamY) / Math.max(1, h - 1 - seamY));
+  const inset = lerp(farInset, nearInset, t);
+  return { left: inset, right: w - 1 - inset };
+}
+
+/** World-unit distance from a side wall within which the floor darkens. */
+const FLOOR_AO_RANGE = 2.2;
+
+/**
+ * Floor between the silhouette edges.
+ * - X: screen-linear across the floor span → parallel columns.
+ * - Y: power-compressed depth (t^rowCompressPower) → short back rows, tall
+ *   front rows (oblique floor read). Fog still uses world depth.
+ */
+function drawFloor(
+  buf: ImageData,
+  w: number,
+  h: number,
+  camera: ArenaCamera,
+  params: ArenaParams,
+  tileset: LoadedTileset,
+  bg: Rgb
+): void {
+  const floorA = tileset.set.floorAData;
+  const floorB = tileset.set.floorBData;
+  if (!floorA || !floorB) return;
+
+  const halfW = params.roomWidth / 2;
+  const texSize = floorA.width;
+  const startY = Math.max(0, Math.floor(camera.horizonY) + 1);
+  const seamY = camera.horizonY;
+  const yNear = params.floorNearDepth;
+  const yFar = params.roomDepth;
+  const power = params.rowCompressPower;
+
+  for (let y = startY; y < h; y++) {
+    const t = Math.min(1, Math.max(0, (y - seamY) / Math.max(1, h - 1 - seamY)));
+    const worldY = lerp(yFar, yNear, Math.pow(t, power));
+    if (worldY <= 0 || worldY > params.maxVisibleDist) continue;
+
+    // Mild fog from depth — keep the floor readable (not crushed).
+    const fog = Math.min(1, Math.max(0.55, arenaOpacityForDepth(worldY) + 0.25));
+    const { left, right } = roomInsets(y, w, h, camera, params);
+    const span = Math.max(1, right - left);
+    const rowOffset = y * w * 4;
+
+    for (let x = Math.ceil(left); x <= Math.floor(right); x++) {
+      const u = (x - left) / span;
+      const worldX = -halfW + u * params.roomWidth;
+
+      const { gx, gy, texX, texY } = floorTexel(worldX, worldY, texSize);
+      const tex = checkerIsA(gx, gy) ? floorA : floorB;
+      const srcIdx = (texY * texSize + texX) * 4;
+      const distToWall = halfW - Math.abs(worldX);
+      const shade =
+        distToWall < FLOOR_AO_RANGE
+          ? 0.55 + 0.45 * Math.max(0, distToWall / FLOOR_AO_RANGE)
+          : 1;
+      writeFoggedTexel(buf, rowOffset + x * 4, tex, srcIdx, fog, bg, shade);
+    }
+  }
+}
+
+/**
+ * Back wall spans the far silhouette width (~70–80% of frame). Height still
+ * from pitched projection so the wall band stays short under the void.
+ */
+function drawBackWall(
+  buf: ImageData,
+  w: number,
+  h: number,
+  camera: ArenaCamera,
+  params: ArenaParams,
+  wallData: ImageData,
+  bg: Rgb
+): void {
+  const halfW = params.roomWidth / 2;
+  const roomDepth = params.roomDepth;
+  const texSize = wallData.width;
+  const halfH = h / 2;
+  const f = camera.focalLength;
+  const sinPitch = Math.sin(camera.pitch);
+  const cosPitch = Math.cos(camera.pitch);
+
+  const { left: farLeft, right: farRight } = roomInsets(
+    camera.horizonY,
+    w,
+    h,
+    camera,
+    params
+  );
+
+  const footY = arenaProject({ x: 0, y: roomDepth, z: 0 }, camera, w, h).y;
+  const topY = arenaProject(
+    { x: 0, y: roomDepth, z: params.wallHeight },
+    camera,
+    w,
+    h
+  ).y;
+  const minY = Math.max(0, Math.floor(Math.min(footY, topY)));
+  const maxY = Math.min(h - 1, Math.ceil(Math.max(footY, topY)));
+  const fog = arenaOpacityForDepth(roomDepth);
+
+  for (let y = minY; y <= maxY; y++) {
+    const dy = halfH - y;
+    const rayY = cosPitch + (dy / f) * sinPitch;
+    const rayZ = -sinPitch + (dy / f) * cosPitch;
+    if (Math.abs(rayY) < 1e-9) continue;
+    const t = roomDepth / rayY;
+    if (t <= 0) continue;
+    const worldZ = camera.camHeight + t * rayZ;
+    if (worldZ < 0 || worldZ > params.wallHeight) continue;
+
+    const texY = Math.max(
+      0,
+      Math.min(
+        texSize - 1,
+        Math.floor((1 - worldZ / params.wallHeight) * texSize)
+      )
+    );
+    const rowOffset = y * w * 4;
+    const shade = 0.62 + 0.68 * (worldZ / params.wallHeight);
+    const span = Math.max(1, farRight - farLeft);
+
+    for (let x = Math.ceil(farLeft); x <= Math.floor(farRight); x++) {
+      const u = (x - farLeft) / span;
+      const worldX = -halfW + u * params.roomWidth;
+      let texX =
+        Math.floor(((worldX + halfW) / params.wallHeight) * texSize) % texSize;
+      if (texX < 0) texX += texSize;
+      const srcIdx = (texY * texSize + texX) * 4;
+      writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg, shade);
+    }
+  }
+}
+
+/**
+ * Fill above the projected wall top with fogged brick columns (no amber void).
+ * Only within the far silhouette so side strips stay clear for side walls.
  */
 function extendBackWallIntoVoid(
   buf: ImageData,
@@ -283,18 +427,25 @@ function extendBackWallIntoVoid(
   const maxY = Math.max(0, Math.min(h - 1, Math.floor(wallTop)));
   if (maxY <= 0) return;
 
+  const { left: farLeft, right: farRight } = roomInsets(
+    camera.horizonY,
+    w,
+    h,
+    camera,
+    params
+  );
   const fogBase = arenaOpacityForDepth(params.roomDepth) * 0.55;
+  const span = Math.max(1, farRight - farLeft);
 
   for (let y = 0; y < maxY; y++) {
-    const t = 1 - y / maxY; // 1 at top → 0 at wall lip
-    const fog = fogBase * (0.15 + 0.85 * (1 - t)); // darker toward top
+    const t = 1 - y / maxY;
+    const fog = fogBase * (0.15 + 0.85 * (1 - t));
     const shade = 0.35 + 0.25 * (1 - t);
     const texY = Math.min(texSize - 1, Math.floor(t * texSize * 0.35));
     const rowOffset = y * w * 4;
-    for (let x = 0; x < w; x++) {
-      const u = x / Math.max(1, w - 1);
+    for (let x = Math.ceil(farLeft); x <= Math.floor(farRight); x++) {
+      const u = (x - farLeft) / span;
       const worldX = -halfW + u * params.roomWidth;
-      if (worldX < -halfW || worldX > halfW) continue;
       let texX =
         Math.floor(((worldX + halfW) / params.wallHeight) * texSize) % texSize;
       if (texX < 0) texX += texSize;
@@ -305,140 +456,10 @@ function extendBackWallIntoVoid(
 }
 
 /**
- * Perspective-correct back wall at Y = roomDepth (plane parallel to XZ).
- * Projects to a trapezoid because camera pitch makes c vary with Z.
+ * Side walls = the silhouette insets themselves. Near segments *are* the
+ * shoulder stubs — continuous with the wall, not bolt-on patches. Each strip
+ * is ~12–16% of frame width with only a few degrees of outward rake.
  */
-function drawBackWall(
-  buf: ImageData,
-  w: number,
-  h: number,
-  camera: ArenaCamera,
-  params: ArenaParams,
-  wallData: ImageData,
-  bg: Rgb
-): void {
-  const halfW = params.roomWidth / 2;
-  const roomDepth = params.roomDepth;
-  const texSize = wallData.width;
-  const halfH = h / 2;
-  const halfWScreen = w / 2;
-  const sinPitch = Math.sin(camera.pitch);
-  const cosPitch = Math.cos(camera.pitch);
-  const f = camera.focalLength;
-
-  const bbox = projectBBox(
-    [
-      arenaProject({ x: -halfW, y: roomDepth, z: 0 }, camera, w, h),
-      arenaProject({ x: halfW, y: roomDepth, z: 0 }, camera, w, h),
-      arenaProject({ x: -halfW, y: roomDepth, z: params.wallHeight }, camera, w, h),
-      arenaProject({ x: halfW, y: roomDepth, z: params.wallHeight }, camera, w, h),
-    ],
-    w,
-    h
-  );
-  if (!bbox) return;
-
-  const fog = arenaOpacityForDepth(roomDepth);
-  const { minX, maxX, minY, maxY } = bbox;
-
-  for (let y = minY; y <= maxY; y++) {
-    const dy = halfH - y;
-    // Unnormalized ray dirs matching arenaProject / arenaFloorRowDistance.
-    const rayY = cosPitch + (dy / f) * sinPitch;
-    const rayZ = -sinPitch + (dy / f) * cosPitch;
-    if (Math.abs(rayY) < 1e-9) continue;
-    const t = roomDepth / rayY;
-    if (t <= 0) continue;
-
-    const worldZ = camera.camHeight + t * rayZ;
-    if (worldZ < 0 || worldZ > params.wallHeight) continue;
-
-    const rowOffset = y * w * 4;
-    const texY = Math.max(
-      0,
-      Math.min(
-        texSize - 1,
-        Math.floor((1 - worldZ / params.wallHeight) * texSize)
-      )
-    );
-
-    for (let x = minX; x <= maxX; x++) {
-      const dx = x - halfWScreen;
-      const worldX = (t * dx) / f;
-      if (worldX < -halfW || worldX > halfW) continue;
-
-      // Horizontal U wraps once per wallHeight units of X (matches side walls).
-      let texX =
-        Math.floor(((worldX + halfW) / params.wallHeight) * texSize) % texSize;
-      if (texX < 0) texX += texSize;
-      const srcIdx = (texY * texSize + texX) * 4;
-      const shade = 0.62 + 0.68 * (worldZ / params.wallHeight);
-      writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg, shade);
-    }
-  }
-}
-
-/** World-unit distance from a side wall within which the floor darkens
- *  (contact ambient occlusion), so walls read as standing in the room. */
-const FLOOR_AO_RANGE = 2.2;
-
-function drawFloor(
-  buf: ImageData,
-  w: number,
-  h: number,
-  camera: ArenaCamera,
-  params: ArenaParams,
-  tileset: LoadedTileset,
-  bg: Rgb
-): void {
-  const floorA = tileset.set.floorAData;
-  const floorB = tileset.set.floorBData;
-  if (!floorA || !floorB) return;
-
-  const halfW = params.roomWidth / 2;
-  const texSize = floorA.width;
-  const startY = Math.max(0, Math.floor(camera.horizonY) + 1);
-
-  const sinPitch = Math.sin(camera.pitch);
-  const cosPitch = Math.cos(camera.pitch);
-
-  for (let y = startY; y < h; y++) {
-    const d = arenaFloorRowDistance(y, camera, h);
-    if (d <= 0 || d > params.maxVisibleDist || d > params.roomDepth) continue;
-
-    const fog = arenaOpacityForDepth(d);
-
-    // Perspective-correct across-screen step for this row (matches arenaFloorWorldAt).
-    const depthScale = d * cosPitch + camera.camHeight * sinPitch;
-    const worldXStart = (-w / 2) * (depthScale / camera.focalLength);
-    const worldXStep = depthScale / camera.focalLength;
-    const halfRoom = params.roomWidth / 2;
-    const blend = params.obliqueBlend;
-
-    const rowOffset = y * w * 4;
-
-    for (let x = 0; x < w; x++) {
-      const perspectiveX = worldXStart + x * worldXStep;
-      // Orthographic lateral: screen x maps linearly across room width.
-      const orthoX = -halfRoom + (x / Math.max(1, w - 1)) * params.roomWidth;
-      const worldX = perspectiveX + (orthoX - perspectiveX) * blend;
-      const worldY = d;
-
-      if (worldX < -halfW || worldX > halfW) continue;
-
-      const { gx, gy, texX, texY } = floorTexel(worldX, worldY, texSize);
-      const tex = checkerIsA(gx, gy) ? floorA : floorB;
-      const srcIdx = (texY * texSize + texX) * 4;
-      const distToWall = halfW - Math.abs(worldX);
-      const shade =
-        distToWall < FLOOR_AO_RANGE
-          ? 0.45 + 0.55 * Math.max(0, distToWall / FLOOR_AO_RANGE)
-          : 1;
-      writeFoggedTexel(buf, rowOffset + x * 4, tex, srcIdx, fog, bg, shade);
-    }
-  }
-}
-
 function drawSideWalls(
   buf: ImageData,
   w: number,
@@ -448,69 +469,50 @@ function drawSideWalls(
   wallData: ImageData,
   bg: Rgb
 ): void {
-  const halfW = params.roomWidth / 2;
   const texSize = wallData.width;
-  const halfH = h / 2;
-  const halfWScreen = w / 2;
-  const sinPitch = Math.sin(camera.pitch);
-  const cosPitch = Math.cos(camera.pitch);
-  const f = camera.focalLength;
+  const seamY = camera.horizonY;
+  const wallTopY = arenaProject(
+    { x: 0, y: params.roomDepth, z: params.wallHeight },
+    camera,
+    w,
+    h
+  ).y;
+  const minY = Math.max(0, Math.floor(wallTopY));
 
-  const wallXs = [-halfW, halfW] as const;
+  for (let y = minY; y < h; y++) {
+    const { left, right } = roomInsets(y, w, h, camera, params);
+    const tFloor =
+      y <= seamY ? 0 : Math.min(1, (y - seamY) / Math.max(1, h - 1 - seamY));
+    // Depth along the wall only for texture scroll — NOT for fog (depth fog
+    // crushed side walls to black gutters; framing walls must stay readable).
+    const worldY = lerp(params.roomDepth, 0.8, tFloor);
+    // No depth fog on side walls — full texture, lit framing.
+    const fog = 1;
 
-  for (const wallX of wallXs) {
-    const bbox = projectBBox(
-      [
-        arenaProject({ x: wallX, y: 0, z: 0 }, camera, w, h),
-        arenaProject({ x: wallX, y: params.roomDepth, z: 0 }, camera, w, h),
-        arenaProject({ x: wallX, y: 0, z: params.wallHeight }, camera, w, h),
-        arenaProject(
-          { x: wallX, y: params.roomDepth, z: params.wallHeight },
-          camera,
-          w,
-          h
-        ),
-      ],
-      w,
-      h
-    );
-    if (!bbox) continue;
+    // Wall height: keep a solid strip to the bottom so the near end reads as
+    // the continuous shoulder of the wall (not a tapered floating patch).
+    const heightFrac = y <= seamY ? 1 : lerp(1, 0.78, tFloor);
+    const wallH = params.wallHeight * heightFrac;
+    const topAtY = lerp(wallTopY, h * 0.48, Math.min(1, tFloor * 0.85));
 
-    const { minX, maxX, minY, maxY } = bbox;
+    // Depth-driven coursing offset (varies per row) layered under a
+    // per-pixel horizontal component below — a texX derived from worldY
+    // alone is constant across the whole strip width, which paints each
+    // scanline as one flat texel (the "wallpaper band" defect).
+    const depthTexX = Math.floor((worldY / params.wallHeight) * texSize);
+    const rowOffset = y * w * 4;
 
-    for (let y = minY; y <= maxY; y++) {
-      const dy = halfH - y;
-      // Correct unnormalized ray for pitched camera (see arenaFloorRowDistance
-      // derivation): V = t * (dx/f, cos+(dy/f)*sin, -sin+(dy/f)*cos).
-      const rayY = cosPitch + (dy / f) * sinPitch;
-      const rayZ = -sinPitch + (dy / f) * cosPitch;
-      const rowOffset = y * w * 4;
-
-      for (let x = minX; x <= maxX; x++) {
-        const dx = x - halfWScreen;
-        // t such that V.x = t * (dx/f) = wallX
-        if (Math.abs(dx) < 1e-6) continue;
-        const t = (wallX * f) / dx;
-        if (t <= 0) continue;
-
-        const worldY = t * rayY;
-        const worldZ = camera.camHeight + t * rayZ;
-
-        if (
-          worldY < params.sideWallMinDepth ||
-          worldY > params.roomDepth ||
-          worldZ < 0 ||
-          worldZ > params.wallHeight
-        ) {
-          continue;
-        }
-
-        const fog = arenaOpacityForDepth(worldY);
-
-        const texX =
-          ((Math.floor((worldY / params.wallHeight) * texSize) % texSize) +
-            texSize) %
-          texSize;
+    // refX anchors the horizontal texture coordinate to the strip's inner
+    // (room-facing) edge so brick coursing stays put as the strip's screen
+    // position drifts row to row, instead of sliding with absolute x.
+    const paintStrip = (x0: number, x1: number, refX: number) => {
+      for (let x = Math.floor(x0); x < Math.ceil(x1); x++) {
+        if (x < 0 || x >= w) continue;
+        const v =
+          y >= topAtY
+            ? Math.max(0, 1 - (y - topAtY) / Math.max(1, h - 1 - topAtY))
+            : 1;
+        const worldZ = wallH * Math.min(1, v);
         const texY = Math.max(
           0,
           Math.min(
@@ -518,10 +520,21 @@ function drawSideWalls(
             Math.floor((1 - worldZ / params.wallHeight) * texSize)
           )
         );
+        const texX =
+          ((Math.floor(Math.abs(x - refX) * 2) + depthTexX) % texSize +
+            texSize) %
+          texSize;
         const srcIdx = (texY * texSize + texX) * 4;
-        const shade = 0.62 + 0.68 * (worldZ / params.wallHeight);
+        // Mild brighten so bricks read at the frame edge without washing
+        // out the texture's own contrast (kept close to the back wall's
+        // 0.62–1.30 range rather than the previous 1.4–1.65 overbrighten).
+        const shade = 0.95 + 0.35 * (worldZ / params.wallHeight);
         writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg, shade);
       }
-    }
+    };
+
+    // Left strip [0, left), right strip (right, w).
+    paintStrip(0, left, left);
+    paintStrip(right + 1, w, right + 1);
   }
 }
