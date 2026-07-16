@@ -205,6 +205,9 @@ const state: CombatState = {
   enemyAgiDebuffs: {},
   enemyDots: {},
   regenBuffs: {},
+  attackDebuffs: {},
+  sleepTimers: {},
+  disableStacks: {},
 };
 
 // Give every character full rage so techniques are always available in the demo.

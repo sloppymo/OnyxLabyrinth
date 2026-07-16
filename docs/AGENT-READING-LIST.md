@@ -2,13 +2,13 @@
 
 Use this list before acting on playtest, balance, combat UX, or perk work. Prefer these over older one-off prompts when they conflict.
 
-**Last refreshed:** 2026-07-14 (controller-first combat palette; prior: encounter density)
+**Last refreshed:** 2026-07-16 (combat stage rebalance: camera tuple in `arena-camera.ts`, derived seam, 3-tier sprite scales, center aisle, fixed FF6 window band; prior: controller-first combat palette)
 
 | Doc | Role | Status |
 |-----|------|--------|
 | [`AGENTS.md`](../AGENTS.md) | Hard engine rules, file map, pitfalls | **Authoritative** for code constraints |
 | [`CLAUDE.md`](../CLAUDE.md) | Commands, architecture orientation | Authoritative; defers to AGENTS.md for `src/` rules |
-| [`ARENA-REVIEW.md`](../ARENA-REVIEW.md) | Arena backdrop math/architecture review | Current (2026-07-13). W1 (dual camera) still open |
+| [`ARENA-REVIEW.md`](../ARENA-REVIEW.md) | Arena backdrop math/architecture review | Current (2026-07-13; addendum 2026-07-16). W4 horizon-sync closed; W1 partially addressed — seam now derives from `arena-camera.ts`, slots still screen-space |
 | [`PLAYTEST-DESIGN-REVIEW.md`](../PLAYTEST-DESIGN-REVIEW.md) | Design-facing playtest (Arena + town + dungeon) | Findings kept; **Status notes** section flags what code already changed |
 | [`PLAYTEST-REPORT.md`](../PLAYTEST-REPORT.md) | Earlier E2E polish report | Footer/`T` claims are **stale** (dynamic `menuHintText` + `t` shortcut shipped); mobile map still lower priority |
 | [`POLISH-ISSUES-PROMPT.md`](../POLISH-ISSUES-PROMPT.md) | Prompt for footer + mobile map | Footer/`T` part obsolete; mobile map still lower priority than combat flow |
@@ -18,6 +18,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 | [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md) | Combat tempo: target defaults, playback skip/speed, sticky Repeat | **Done 2026-07-13** (A–C + D1/D2/D3 + E party Auto shipped) |
 | `docs/superpowers/specs/2026-07-14-controller-first-combat-design.md` | Controller-first action palette (face buttons, gamepad) | **Done 2026-07-14** — palette phase, `controller-input`, `combat-action-palette`; keyboard fallback preserved |
 | Design canvas (IDE) | `onyxlabyrinth-design-analysis.canvas.tsx` | Mechanics & balance judgment (2026-07-13) |
+| [`COMBAT-ENGAGEMENT-AUDIT.md`](../COMBAT-ENGAGEMENT-AUDIT.md) | Combat depth audit: placebo verbs, disable/summon/counter-magic gaps | **Current** (2026-07-16); Direction A truth pass underway |
 
 ## Specs under `docs/superpowers/specs/`
 

@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   createCombatState,
   resolveCombatRound,
+  resolvePlayerTurn,
+  resolveEnemyTurn,
   inventoryToCounts,
   inventoryFromCounts,
   canReach,
@@ -656,6 +658,61 @@ describe("summoning mechanics", () => {
 
     const result = resolveCombatRound(state, actions, makeRng(0.5));
     expect(result.enemies.front[0].status).toContain("paralysis");
+    expect(result.disableStacks["e1"]).toBe(1);
+    // End-of-round tick decrements the 3-round timer once.
+    expect(result.paralysisTimers["e1"]).toBe(2);
+  });
+
+  it("repeated disables on the same enemy shorten then resist", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    let state = makeCombatState([enemy]);
+    const mage = state.party.find((c) => c.class === "Mage");
+    if (!mage) throw new Error("No Mage in party");
+    mage.knownSpellIds = ["mage-hold-person"];
+    mage.sp = 200;
+    mage.stats.agi = 100;
+
+    const castHold = (): PlayerAction => ({
+      kind: "cast",
+      actorId: mage.id,
+      spellId: "mage-hold-person",
+      targetInstanceId: "e1",
+    });
+
+    state = resolvePlayerTurn(state, castHold(), makeRng(0.5));
+    expect(state.paralysisTimers["e1"]).toBe(3);
+
+    state = resolvePlayerTurn(state, castHold(), makeRng(0.5));
+    expect(state.paralysisTimers["e1"]).toBe(2);
+
+    state = resolvePlayerTurn(state, castHold(), makeRng(0.5));
+    expect(state.paralysisTimers["e1"]).toBe(1);
+
+    state = resolvePlayerTurn(state, castHold(), makeRng(0.5));
+    expect(state.log.some((m) => /resist/i.test(m))).toBe(true);
+  });
+
+  it("party magic screen halves scaled enemy ability damage", () => {
+    const enemy = makeEnemy("e1", "Brute", 100, {
+      abilityIds: ["bone-shard"],
+      attack: 1,
+    });
+
+    const damageTaken = (magicScreen: number): number => {
+      const state = makeCombatState([enemy]);
+      state.round = 2; // bone-shard fires on even rounds
+      state.party = [state.party[0]]; // single target for deterministic chip
+      state.magicScreen = magicScreen;
+      const beforeHp = state.party[0].hp;
+      const after = resolveEnemyTurn(state, "e1", makeRng(0.2));
+      return beforeHp - after.party[0].hp;
+    };
+
+    const lossWithout = damageTaken(0);
+    const lossWith = damageTaken(5);
+    expect(lossWithout).toBeGreaterThan(0);
+    expect(lossWith).toBeGreaterThan(0);
+    expect(lossWith).toBeLessThan(lossWithout);
   });
 
   it("Divine Smite deals divine damage to any enemy", () => {
@@ -832,7 +889,8 @@ describe("summoning mechanics", () => {
       actorId: c.id,
     }));
 
-    const result = resolveCombatRound(state, actions, makeRng(0.99));
+    // Low rng favors summon soak (55% chance) over party targeting.
+    const result = resolveCombatRound(state, actions, makeRng(0.1));
     expect(result.summonedAllies.length).toBe(0);
   });
 

@@ -36,6 +36,11 @@ import {
 import type { EnemyAbilityDef, AbilityCondition } from "../data/enemy-abilities";
 import { enemyAbilityById } from "../data/enemy-abilities";
 
+/** Enemy ability/heal powers were not part of the 2026-07 stat pass — scale at resolve time. */
+const ENEMY_ABILITY_POWER_SCALE = 1.6;
+/** Summoned allies draw melee fire often, but no longer soak 100% of enemy attacks. */
+const SUMMON_MELEE_SOAK_CHANCE = 0.55;
+
 /** Effective stats for a combatant, reading their loadout and chosen perks. */
 function effStatsFor(s: CombatState, c: Character): Stats {
   return effectiveStats(c, s.loadout[c.id], perksForCharacter(c));
@@ -488,6 +493,18 @@ export interface CombatState {
    */
   enemyAgiDebuffs: Record<string, { penalty: number; duration: number }>;
   /**
+   * Temporary attack debuffs on party members (char id -> penalty/duration).
+   * Set by enemy Curse and similar abilities.
+   */
+  attackDebuffs: Record<string, { penalty: number; duration: number }>;
+  /** Sleep countdown for party members and enemies (actor id -> rounds left). */
+  sleepTimers: Record<string, number>;
+  /**
+   * Successful disable lands per enemy instance (Web/Sleep/Hold stacking).
+   * Fourth+ land is resisted until combat ends.
+   */
+  disableStacks: Record<string, number>;
+  /**
    * Active damage-over-time effects on enemies (instance id -> list), from
    * spell followups (e.g. Meteor Swarm burn). Ticked in end-of-round status
    * processing; entries expire when duration reaches 0.
@@ -560,6 +577,9 @@ export function createCombatState(
     damageBuffs: {},
     enemyArmorDebuffs: {},
     enemyAgiDebuffs: {},
+    attackDebuffs: {},
+    sleepTimers: {},
+    disableStacks: {},
     enemyDots: {},
     regenBuffs: {},
   };
@@ -890,8 +910,15 @@ export function beginRound(
   }
   for (const e of [...s.enemies.front, ...s.enemies.back]) {
     if (e.currentHp <= 0) continue;
+    const agiPenalty = s.enemyAgiDebuffs[e.instanceId]?.penalty ?? 0;
     // EnemyDef has no luk field; default to average for the tie-breaker.
-    entries.push({ kind: "enemy", id: e.instanceId, agi: e.agi, luk: 10, roll: rollD20(rng) });
+    entries.push({
+      kind: "enemy",
+      id: e.instanceId,
+      agi: Math.max(1, e.agi - agiPenalty),
+      luk: 10,
+      roll: rollD20(rng),
+    });
   }
   entries.sort((x, y) => y.agi - x.agi || y.luk - x.luk || y.roll - x.roll);
   return { state: s, queue: entries };
@@ -1335,12 +1362,16 @@ function decideEnemyAction(
   // turn, fall through to the default behavior.
   const abilityPick = pickEnemyAbility(s, enemy, rng);
   if (abilityPick) {
-    return {
-      kind: "ability",
-      actor: enemy,
-      abilityId: abilityPick.ability.id,
-      targetId: abilityPick.targetId ?? "",
-    };
+    // Weighted mix with basic attacks so scaled melee stays threatening.
+    const useAbility = rng() < abilityPick.ability.weight / (abilityPick.ability.weight + 2);
+    if (useAbility) {
+      return {
+        kind: "ability",
+        actor: enemy,
+        abilityId: abilityPick.ability.id,
+        targetId: abilityPick.targetId ?? "",
+      };
+    }
   }
 
   if (isCasterEnemy(enemy)) {
@@ -1457,7 +1488,7 @@ function pickMeleeTarget(
   tauntingIds: string[] = []
 ): EnemyAttackTarget | undefined {
   const livingAllies = allies.filter((a) => a.hp > 0);
-  if (livingAllies.length > 0) {
+  if (livingAllies.length > 0 && rng() < SUMMON_MELEE_SOAK_CHANCE) {
     const ally = pickRandom(livingAllies, rng);
     if (ally) return { kind: "ally", id: ally.id };
   }
@@ -1590,22 +1621,31 @@ function resolveAttack(
 
   // Check if attacker can reach the target based on position and weapon range
   if (!canReach(actor.formationSlot, weaponRange, target.row)) {
-    if (target.row === "back" && s.enemies.front.some((e) => e.currentHp > 0)) {
-      log(
-        `${actor.name} cannot reach ${target.name} in the back row with their ${weapon?.name || "weapon"} (front row still up).`
-      );
-    } else {
-      log(
-        `${actor.name} cannot reach ${target.name} from position ${actor.formationSlot + 1} with their ${weapon?.name || "weapon"}.`
-      );
-    }
+    const reason =
+      target.row === "back" && s.enemies.front.some((e) => e.currentHp > 0)
+        ? `cannot reach ${target.name} in the back row (front row still up)`
+        : `cannot reach ${target.name} from this position`;
+    log(`${actor.name} ${reason} with their ${weapon?.name || "weapon"}.`);
+    emit(
+      `${actor.name} ${reason}.`,
+      { type: "miss", actorId: actor.id, targetId: target.instanceId, reason: "noTarget" }
+    );
     return;
+  }
+
+  // Feint / next-attack bonus applies to basic attacks too.
+  const nextBonus = s.nextAttackBonuses[actor.id];
+  const guaranteedHit = nextBonus?.hitChance !== undefined && nextBonus.hitChance >= 1;
+  let feintCritBonus = 0;
+  if (nextBonus) {
+    feintCritBonus = nextBonus.critChance;
+    delete s.nextAttackBonuses[actor.id];
   }
 
   // BeforeAttack hooks (e.g. Ambusher, Shadow, Momentum, Perfect Timing).
   let damageMultiplier = 1;
   let forcedCrit = false;
-  let forcedHit = false;
+  let forcedHit = guaranteedHit;
   dispatchHook("BeforeAttack", perksForCharacter(actor), {
     state: s.perkState[actor.id],
     rng,
@@ -1671,7 +1711,8 @@ function resolveAttack(
   const effStats = effStatsFor(s, actor);
   const mods = perkModifiers(perksForCharacter(actor), effStats);
   const weaponBonus = weapon?.attackBonus ?? 0;
-  const base = effStats.str + actor.level + weaponBonus;
+  const attackDebuff = s.attackDebuffs[actor.id]?.penalty ?? 0;
+  const base = Math.max(1, effStats.str + actor.level + weaponBonus - attackDebuff);
   // Back-row attackers deal ~40% melee damage when forced to fight at close
   // range. A weapon with reach (short/medium/long) lets them strike effectively.
   // Thieves deal full damage from the back row (§4.2).
@@ -1694,7 +1735,11 @@ function resolveAttack(
   // thief-assassin: +25% crit vs enemies suffering any status effect,
   // deliberately allowed to exceed the base cap.
   let crit = false;
-  let critChance = Math.min(0.25, effStats.luk / 100 + mods.critChanceBonus);
+  let critChance = critChanceFromLukAndBonuses(
+    effStats.luk,
+    mods.critChanceBonus,
+    feintCritBonus
+  );
   if (
     target.status.length > 0 &&
     perksForCharacter(actor).some((p) => p.id === "thief-assassin")
@@ -1834,12 +1879,15 @@ function resolveCast(
     return;
   }
   // Fizzle field on the party can cause spells to fail.
-  if (s.partyFizzleField > 0 && s.partyFizzleField >= actor.level) {
-    emit(
-      `${actor.name}'s spell fizzles in the enemy's anti-magic field.`,
-      { type: "fizzle", actorId: actor.id }
-    );
-    return;
+  if (s.partyFizzleField > 0) {
+    const fizzleChance = s.partyFizzleField / (s.partyFizzleField + actor.level);
+    if (rng() < fizzleChance) {
+      emit(
+        `${actor.name}'s spell fizzles in the enemy's anti-magic field.`,
+        { type: "fizzle", actorId: actor.id }
+      );
+      return;
+    }
   }
   const spell = s.spells[action.spellId];
   if (!spell) {
@@ -2175,6 +2223,9 @@ function applySpell(
             final = Math.max(1, Math.round(reduced * (affinity.kind === "weakElement" ? 1.5 : 0.5)));
           }
         }
+        if (s.enemyMagicScreens[t.row] > 0) {
+          final = Math.max(1, Math.round(final * 0.5));
+        }
         t.currentHp -= final;
         emit(
           `${spell.name} hits ${t.name} for ${final} damage.`,
@@ -2261,11 +2312,7 @@ function applySpell(
     }
     case "disable": {
       for (const t of spellTargets(s, spell, action)) {
-        addStatus(t, eff.status);
-        emit(
-          `${t.name} is afflicted with ${eff.status}.`,
-          { type: "spellEffect", spellId: spell.id, targetId: t.instanceId, statusInflicted: eff.status }
-        );
+        applyDisableToEnemy(s, t, eff.status, spell, emit);
       }
       break;
     }
@@ -2352,7 +2399,7 @@ function applySpell(
         maxHp: power * 6,
         attack: power * 3,
         ac: Math.max(1, Math.floor(power / 2)),
-        agi: 50,
+        agi: 8 + power * 3,
         row: "front",
         spriteId: eff.spriteId,
       };
@@ -2436,6 +2483,9 @@ function abilityDamageParty(
   emit: (m: string, e: CombatEvent) => void
 ): number {
   let damage = Math.max(1, Math.round(baseDamage * (0.8 + rng() * 0.4)));
+  if (s.magicScreen > 0) {
+    damage = Math.max(1, Math.round(damage * 0.5));
+  }
   damage = damageReductionFor(s, target, damage);
   const result = applyPartyDamage(s, target, damage, actor, rng, emit);
   return result.finalDamage;
@@ -2462,6 +2512,22 @@ function resolveEnemyAbility(
   const livingParty = s.party.filter((c) => c.hp > 0);
   const livingAllies = [...s.enemies.front, ...s.enemies.back].filter((e) => e.currentHp > 0);
   const eff = ability.effect;
+
+  // Arcane abilities can fizzle in the party's anti-magic field.
+  if (isArcaneEnemyAbility(ability) && s.partyFizzleField > 0) {
+    const maxLevel = Math.max(
+      1,
+      ...s.party.filter((c) => c.hp > 0).map((c) => c.level)
+    );
+    const fizzleChance = s.partyFizzleField / (s.partyFizzleField + maxLevel);
+    if (rng() < fizzleChance) {
+      emit(
+        `${actor.name}'s ${ability.name} fizzles in the party's anti-magic field.`,
+        { type: "fizzle", actorId: actor.instanceId }
+      );
+      return;
+    }
+  }
 
   // Determine targets.
   const partyTargets: Character[] = [];
@@ -2502,7 +2568,7 @@ function resolveEnemyAbility(
   switch (eff.kind) {
     case "damage": {
       for (const t of partyTargets) {
-        const dmg = abilityDamageParty(s, t, eff.power, actor, rng, emit);
+        const dmg = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit);
         emit(`${actor.name} uses ${ability.name} on ${t.name} for ${dmg} damage!`, {
           type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: dmg,
         });
@@ -2514,8 +2580,9 @@ function resolveEnemyAbility(
     case "multiHit": {
       for (const t of partyTargets) {
         let totalDmg = 0;
+        const hitPower = scaledAbilityPower(eff.powerPerHit);
         for (let h = 0; h < eff.hits; h++) {
-          totalDmg += abilityDamageParty(s, t, eff.powerPerHit, actor, rng, emit);
+          totalDmg += abilityDamageParty(s, t, hitPower, actor, rng, emit);
         }
         emit(`${actor.name} uses ${ability.name}, striking ${t.name} ${eff.hits} times for ${totalDmg} total damage!`, {
           type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: totalDmg,
@@ -2528,7 +2595,7 @@ function resolveEnemyAbility(
     case "drain": {
       let totalDrained = 0;
       for (const t of partyTargets) {
-        const dmg = abilityDamageParty(s, t, eff.power, actor, rng, emit);
+        const dmg = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit);
         totalDrained += Math.round(dmg * 0.5);
         emit(`${actor.name} uses ${ability.name}, draining ${dmg} from ${t.name}!`, {
           type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: dmg,
@@ -2544,7 +2611,7 @@ function resolveEnemyAbility(
     case "heal": {
       for (const ally of allyTargets) {
         const before = ally.currentHp;
-        ally.currentHp = Math.min(ally.hp, ally.currentHp + eff.power);
+        ally.currentHp = Math.min(ally.hp, ally.currentHp + scaledAbilityPower(eff.power));
         const healed = ally.currentHp - before;
         if (healed > 0) {
           emit(`${actor.name} uses ${ability.name}, healing ${ally.name} for ${healed} HP.`, {
@@ -2555,6 +2622,7 @@ function resolveEnemyAbility(
       break;
     }
     case "status": {
+      const duration = eff.duration ?? 3;
       for (const t of partyTargets) {
         if (rng() < eff.chance && !t.status.includes(eff.status)) {
           // fighter-juggernaut: immune to enemy-inflicted status effects.
@@ -2563,6 +2631,11 @@ function resolveEnemyAbility(
             continue;
           }
           t.status.push(eff.status);
+          if (eff.status === "paralysis") {
+            s.paralysisTimers[t.id] = duration;
+          } else if (eff.status === "sleep") {
+            s.sleepTimers[t.id] = Math.min(3, duration);
+          }
           emit(`${actor.name} uses ${ability.name}, inflicting ${eff.status} on ${t.name}!`, {
             type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id,
           });
@@ -2595,14 +2668,11 @@ function resolveEnemyAbility(
     }
     case "debuff": {
       for (const t of partyTargets) {
-        // Debuffs on party: reduce effective stats via armorBuffs for AC,
-        // or track attack reduction via a simple flag.
         if (eff.stat === "ac") {
           s.armorBuffs[t.id] = (s.armorBuffs[t.id] ?? 0) - eff.amount;
+        } else if (eff.stat === "attack") {
+          s.attackDebuffs[t.id] = { penalty: eff.amount, duration: eff.duration };
         }
-        // Attack debuff: we can't easily reduce Character.attack since it's
-        // derived from effectiveStats. Instead, log the flavor; the -AC is
-        // the mechanical effect.
         emit(`${actor.name} uses ${ability.name}, weakening ${t.name}'s ${eff.stat}!`, {
           type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id,
         });
@@ -3101,6 +3171,16 @@ function tickStatuses(
         s.paralysisTimers[c.id] = remaining;
       }
     }
+    if (c.status.includes("sleep")) {
+      const remaining = (s.sleepTimers[c.id] ?? 3) - 1;
+      if (remaining <= 0) {
+        c.status = c.status.filter((st) => st !== "sleep");
+        delete s.sleepTimers[c.id];
+        log(`${c.name} wakes up.`);
+      } else {
+        s.sleepTimers[c.id] = remaining;
+      }
+    }
   }
   // Enemy poison + paralysis countdown.
   for (const e of [...s.enemies.front, ...s.enemies.back]) {
@@ -3117,6 +3197,16 @@ function tickStatuses(
         log(`${e.name} is no longer paralyzed.`);
       } else {
         s.paralysisTimers[e.instanceId] = remaining;
+      }
+    }
+    if (e.status.includes("sleep")) {
+      const remaining = (s.sleepTimers[e.instanceId] ?? 3) - 1;
+      if (remaining <= 0) {
+        e.status = e.status.filter((st) => st !== "sleep");
+        delete s.sleepTimers[e.instanceId];
+        log(`${e.name} wakes up.`);
+      } else {
+        s.sleepTimers[e.instanceId] = remaining;
       }
     }
   }
@@ -3211,6 +3301,104 @@ function findEnemy(s: CombatState, instanceId: string): EnemyInstance | undefine
   return (
     s.enemies.front.find((e) => e.instanceId === instanceId) ??
     s.enemies.back.find((e) => e.instanceId === instanceId)
+  );
+}
+
+/** Scale static ability power values to match the post-2026 enemy stat pass. */
+function scaledAbilityPower(power: number): number {
+  return Math.max(1, Math.round(power * ENEMY_ABILITY_POWER_SCALE));
+}
+
+/** True for enemy abilities that should respect party magic screen / fizzle fields. */
+function isArcaneEnemyAbility(ability: EnemyAbilityDef): boolean {
+  const eff = ability.effect;
+  if (eff.kind === "fizzleField" || eff.kind === "magicScreen" || eff.kind === "status") {
+    return true;
+  }
+  if (eff.kind === "drain") return true;
+  if (eff.kind === "damage" || eff.kind === "multiHit") {
+    return !!eff.element && eff.element !== "physical";
+  }
+  return false;
+}
+
+/** LUK contributes up to 25%; perk/technique bonuses stack on top uncapped. */
+function critChanceFromLukAndBonuses(
+  luk: number,
+  bonus: number,
+  extra = 0
+): number {
+  return Math.min(0.95, Math.min(0.25, luk / 100) + bonus + extra);
+}
+
+/**
+ * Apply a player disable spell to an enemy with diminishing returns.
+ * Bosses stagger (1-round paralysis) instead of full lockdown.
+ */
+function applyDisableToEnemy(
+  s: CombatState,
+  target: EnemyInstance,
+  status: "sleep" | "paralysis",
+  spell: SpellDef,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  const stacks = s.disableStacks[target.instanceId] ?? 0;
+  if (stacks >= 3) {
+    emit(
+      `${spell.name} has no effect on ${target.name} — they resist.`,
+      {
+        type: "spellEffect",
+        spellId: spell.id,
+        targetId: target.instanceId,
+        statusInflicted: "no effect",
+      }
+    );
+    return;
+  }
+
+  const duration = Math.max(1, 3 - stacks);
+  s.disableStacks[target.instanceId] = stacks + 1;
+
+  if (target.isBoss) {
+    if (!target.status.includes("paralysis")) target.status.push("paralysis");
+    s.paralysisTimers[target.instanceId] = 1;
+    emit(
+      `${spell.name} staggers ${target.name} for a moment.`,
+      {
+        type: "spellEffect",
+        spellId: spell.id,
+        targetId: target.instanceId,
+        statusInflicted: "paralysis",
+      }
+    );
+    return;
+  }
+
+  if (status === "sleep") {
+    if (!target.status.includes("sleep")) target.status.push("sleep");
+    s.sleepTimers[target.instanceId] = Math.min(3, duration);
+    emit(
+      `${spell.name} puts ${target.name} to sleep.`,
+      {
+        type: "spellEffect",
+        spellId: spell.id,
+        targetId: target.instanceId,
+        statusInflicted: "sleep",
+      }
+    );
+    return;
+  }
+
+  if (!target.status.includes("paralysis")) target.status.push("paralysis");
+  s.paralysisTimers[target.instanceId] = duration;
+  emit(
+    `${spell.name} afflicts ${target.name} with paralysis.`,
+    {
+      type: "spellEffect",
+      spellId: spell.id,
+      targetId: target.instanceId,
+      statusInflicted: "paralysis",
+    }
   );
 }
 
@@ -3503,11 +3691,43 @@ function tickTechniqueBuffs(s: CombatState): void {
       delete s.enemyAgiDebuffs[id];
     }
   }
+  // Party attack debuffs (Curse)
+  for (const id of Object.keys(s.attackDebuffs)) {
+    s.attackDebuffs[id].duration -= 1;
+    if (s.attackDebuffs[id].duration <= 0) {
+      delete s.attackDebuffs[id];
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Technique resolution
 // ---------------------------------------------------------------------------
+
+function techniqueNeedsEnemyReach(tech: TechniqueDef): boolean {
+  const eff = tech.effect;
+  return (
+    eff.kind === "damage" ||
+    eff.kind === "multiHit" ||
+    eff.kind === "damageWithStatus" ||
+    eff.kind === "damageWithExecute" ||
+    eff.kind === "debuff"
+  );
+}
+
+function techniqueCanReach(
+  s: CombatState,
+  actor: Character,
+  tech: TechniqueDef,
+  target: EnemyInstance
+): boolean {
+  const ignoresRange =
+    tech.id === "duelist-lunge" || tech.id === "halberdier-pole-vault";
+  if (ignoresRange) return true;
+  const loadout = s.loadout[actor.id];
+  const weaponRange: WeaponRange = loadout?.weapon?.range ?? "close";
+  return canReach(actor.formationSlot, weaponRange, target.row);
+}
 
 function resolveTechnique(
   s: CombatState,
@@ -3522,6 +3742,19 @@ function resolveTechnique(
     log(`${actor.name} attempts an unknown technique.`);
     return;
   }
+
+  if (action.targetInstanceId && techniqueNeedsEnemyReach(tech)) {
+    const target = findEnemy(s, action.targetInstanceId);
+    if (target && !techniqueCanReach(s, actor, tech, target)) {
+      if (target.row === "back" && s.enemies.front.some((e) => e.currentHp > 0)) {
+        log(`${actor.name} cannot reach ${target.name} in the back row with ${tech.name}.`);
+      } else {
+        log(`${actor.name} cannot reach ${target.name} with ${tech.name}.`);
+      }
+      return;
+    }
+  }
+
   // Validate rage cost
   if (!spendRage(s, actor.id, tech.rageCost)) {
     log(`${actor.name} doesn't have enough rage for ${tech.name}.`);
@@ -3927,10 +4160,10 @@ function dealTechniqueDamage(
     return false;
   }
 
-  // Shadow Strike: auto-crit from hidden, 2x crit multiplier, ignores all AC.
   const isShadowStrike = tech.id === "thief-shadow-strike";
   const isPerfectStrike = tech.id === "duelist-perfect-strike";
-  const forceCrit = isShadowStrike || isPerfectStrike || (actor.status.includes("hidden") && isShadowStrike);
+  const forceCrit =
+    isPerfectStrike || (isShadowStrike && actor.status.includes("hidden"));
 
   // Calculate base damage (same formula as resolveAttack).
   const effStats = effStatsFor(s, actor);
@@ -3956,7 +4189,11 @@ function dealTechniqueDamage(
 
   // Critical hit
   let crit = false;
-  const critChance = Math.min(0.25, effStats.luk / 100 + mods.critChanceBonus + extraCrit);
+  const critChance = critChanceFromLukAndBonuses(
+    effStats.luk,
+    mods.critChanceBonus,
+    extraCrit
+  );
   if (forceCrit || rng() < critChance) {
     const critMult = isShadowStrike ? mods.critDamageMultiplier * 2 : isPerfectStrike ? 2.5 : mods.critDamageMultiplier;
     damage = Math.max(1, Math.round(damage * critMult));
