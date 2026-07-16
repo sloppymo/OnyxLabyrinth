@@ -13,6 +13,7 @@
 
 import type { GameState } from "../types";
 import { FF6Window } from "./ff6-window-library";
+import { audio } from "./audio";
 
 interface ArenaOption {
   key: "next" | "exit";
@@ -54,20 +55,24 @@ export class ArenaController {
       { key: "exit", label: "Exit to Title", icon: "[Esc]" },
     ];
 
-    this.panel.style.display = "block";
+    this.panel.style.display = "flex";
     this.render();
   }
 
   handleKey(key: string): void {
+    audio.uiForMenuKey(key);
     const lower = key.toLowerCase();
 
     if (lower === "n") {
       this.selectedIndex = this.options.findIndex((o) => o.key === "next");
+      audio.uiConfirm();
       this.select();
       return;
     }
     if (lower === "e" || key === "Escape") {
       this.selectedIndex = this.options.findIndex((o) => o.key === "exit");
+      // Escape already played cancel via uiForMenuKey; E needs explicit cancel.
+      if (lower === "e") audio.uiCancel();
       this.select();
       return;
     }
@@ -76,11 +81,13 @@ export class ArenaController {
       case "arrowup":
       case "w":
         this.selectedIndex = (this.selectedIndex - 1 + this.options.length) % this.options.length;
+        if (lower === "w") audio.uiCursor();
         this.render();
         break;
       case "arrowdown":
       case "s":
         this.selectedIndex = (this.selectedIndex + 1) % this.options.length;
+        if (lower === "s") audio.uiCursor();
         this.render();
         break;
       case "enter":
@@ -114,12 +121,12 @@ export class ArenaController {
       title: "Arena Mode",
       contentHtml: `<div class="ff6-arena-meta">Wave ${this.wave} · Floor ${this.floor}</div>`,
       items: this.options.map((option) => ({
-        label: `${option.icon} ${option.label}`,
+        label: option.label,
         metadata: option.key,
       })),
       selectedIndex: this.selectedIndex,
       mode: "menu",
-      footer: "[↑/↓] navigate · [Enter] select · [N] next · [Esc] exit",
+      footer: "D-pad navigate · A select · B exit",
       footer2: `Party: ${alive}/${this.state.party.length} alive · Avg Lv${avgLevel} · ${this.state.partyGold}g`,
       animated,
       onHover: (i) => {

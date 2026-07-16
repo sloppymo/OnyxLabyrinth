@@ -30,6 +30,7 @@ import {
   type SaveSlotMeta,
 } from "../game/save";
 import { FF6Window } from "./ff6-window-library";
+import { audio } from "./audio";
 
 type MenuPhase = "browsing" | "actionPick" | "confirmOverwrite" | "confirmLoad" | "confirmDelete";
 
@@ -68,11 +69,12 @@ export class SaveController {
     this.onClose = opts.onClose;
     this.modeBeforeSave = opts.modeBeforeSave ?? "dungeon";
     this.metas = getAllSlotMetas();
-    this.panel.style.display = "block";
+    this.panel.style.display = "flex";
     this.render();
   }
 
   handleKey(key: string): void {
+    audio.uiForMenuKey(key);
     const lower = key.toLowerCase();
 
     if (this.phase === "confirmOverwrite") {
@@ -113,6 +115,7 @@ export class SaveController {
         case "arrowup":
         case "w":
           this.actionIndex = (this.actionIndex - 1 + ACTIONS.length) % ACTIONS.length;
+          if (lower === "w") audio.uiCursor();
           this.render();
           break;
         case "arrowdown":
@@ -138,6 +141,7 @@ export class SaveController {
       case "w":
         this.selectedIndex = (this.selectedIndex - 1 + SLOT_COUNT) % SLOT_COUNT;
         this.flash = "";
+        if (lower === "w") audio.uiCursor();
         this.render();
         break;
       case "arrowdown":
@@ -213,6 +217,7 @@ export class SaveController {
       this.metas = getAllSlotMetas();
       this.phase = "browsing";
       this.flash = `Saved to slot ${this.selectedIndex + 1}.`;
+      audio.uiSave();
     } else {
       this.phase = "browsing";
       this.flash = `Save failed (storage error?).`;
@@ -335,9 +340,9 @@ export class SaveController {
 
     let footer: string | undefined;
     if (this.phase === "browsing") {
-      footer = "[↑/↓] slot · [A/Enter] actions · [S/L/D] · [B/Esc] close";
+      footer = "D-pad slot · A actions · B close";
     } else if (this.phase === "actionPick") {
-      footer = "[↑/↓] action · [A/Enter] confirm · [B/Esc] back";
+      footer = "D-pad action · A confirm · B back";
     }
 
     this.panel.innerHTML = "";

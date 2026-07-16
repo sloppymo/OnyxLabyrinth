@@ -19,6 +19,7 @@ import {
   type PerkDef,
 } from "../game/perks";
 import { FF6Window } from "./ff6-window-library";
+import { audio } from "./audio";
 
 export interface PerkSelectControllerOptions {
   panel: HTMLElement;
@@ -63,7 +64,7 @@ export class PerkSelectController {
     this.state = opts.state;
     this.queue = opts.queue;
     this.onDone = opts.onDone;
-    this.panel.style.display = "block";
+    this.panel.style.display = "flex";
     this.render();
   }
 
@@ -83,6 +84,7 @@ export class PerkSelectController {
       this.selectedCard = 0;
       this.hasInteracted = true;
       this.confirmBlockedHint = false;
+      audio.uiCursor();
       this.render();
       return;
     }
@@ -90,6 +92,7 @@ export class PerkSelectController {
       this.selectedCard = 1;
       this.hasInteracted = true;
       this.confirmBlockedHint = false;
+      audio.uiCursor();
       this.render();
       return;
     }
@@ -101,6 +104,7 @@ export class PerkSelectController {
         this.render();
         return;
       }
+      audio.uiConfirm();
       this.confirm();
       return;
     }

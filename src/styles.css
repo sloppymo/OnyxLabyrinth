@@ -51,25 +51,27 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 0;
   width: 100%;
   max-width: 768px;
   max-height: 100%;
   padding: 0 12px;
 }
 
-/* The viewport frame holds the 3D view, the full-screen map, and the message
-   overlay as one continuous boxy 8:7 unit. It shrinks to fit the screen so
-   the HUD and hint below it never push the message box off-screen. */
+/* Viewport = entire dungeon playfield (tranche B). Party/message/prompt overlay
+   inside; no sibling legend or party band. */
 #viewport-wrap {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   aspect-ratio: 8 / 7;
-  border: 1px solid var(--amber);
-  border-radius: 3px;
-  box-shadow: 0 0 0 1px rgba(224, 164, 88, 0.15), 0 12px 28px rgba(0, 0, 0, 0.45);
+  border: 3px solid #e8e8f0;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 0 1px #5068c8,
+    inset 0 0 0 2px #202c70,
+    0 3px 8px rgba(0, 0, 0, 0.6);
   background: var(--bg);
   overflow: hidden;
 }
@@ -127,80 +129,78 @@ canvas#map-canvas {
   }
 }
 
-#hint {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 6px 8px;
-  font-family: var(--game-font);
-  font-size: var(--fs-small);
-  letter-spacing: 0.02em;
-  color: var(--text-dim);
-}
-
-.hint-compass {
-  font-family: var(--game-font);
-  font-size: var(--fs-body);
-  color: var(--bg);
-  background: var(--amber);
-  min-width: 1.6em;
-  text-align: center;
-  padding: 2px 6px;
-  border-radius: 3px;
-  letter-spacing: 0.1em;
-  margin-right: 4px;
-}
-
-.hint-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px 3px 6px;
-  border: 1px solid var(--border-default);
-  border-radius: 4px;
-  background: rgba(224, 164, 88, 0.06);
-  white-space: nowrap;
-}
-
-.hint-pill kbd {
-  font-family: var(--game-font);
-  font-size: 0.9em;
-  color: var(--amber);
-  background: #1a1612;
-  border: 1px solid #4a4035;
-  border-bottom-width: 2px;
-  border-radius: 3px;
-  padding: 0 5px;
-  line-height: 1.5;
-}
-
-/* Message overlay: sits on top of the corridor viewport, growing downward to
-   fit its text (up to a cap) so multi-line events/victory readouts aren't
-   clipped. Auto-dismisses, so briefly covering more of the view is fine. */
-#message {
+/* Message band: absolute top over ceiling/fog — never reflows the canvas.
+   Message text left; floor·facing chrome right (finding 5). */
+#message-band {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: auto;
-  min-height: 120px;
-  max-height: 85%;
-  box-sizing: border-box;
-  border-bottom: 1px solid var(--amber);
-  background: var(--bg);
-  padding: 18px 24px;
-  font-family: var(--game-font);
-  font-size: var(--fs-message);
-  line-height: 1.4;
-  text-align: center;
-  color: var(--warm-white);
-  overflow-y: auto;
+  right: 0;
   z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(26, 44, 128, 0.88) 0%,
+    rgba(16, 28, 88, 0.72) 100%
+  );
+  border-bottom: 1px solid rgba(232, 232, 240, 0.35);
+  font-family: var(--game-font);
+}
+
+#message-band[hidden] {
+  display: none !important;
+}
+
+#message {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-height: 3.2em;
+  overflow: hidden;
+  font-size: 18px;
+  line-height: 1.35;
+  text-align: left;
+  color: var(--warm-white);
+  white-space: pre-wrap;
 }
 
 #message:empty {
   display: none;
+}
+
+#hud-chrome {
+  flex: 0 0 auto;
+  font-size: 16px;
+  color: #ffd769;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  padding-top: 1px;
+}
+
+#context-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 58px;
+  transform: translateX(-50%);
+  z-index: 12;
+  padding: 4px 12px;
+  font-family: var(--game-font);
+  font-size: 18px;
+  color: #ffd769;
+  background: rgba(16, 28, 88, 0.88);
+  border: 2px solid #e8e8f0;
+  border-radius: 6px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+#context-prompt[hidden] {
+  display: none !important;
 }
 
 #combat-panel {
@@ -214,6 +214,32 @@ canvas#map-canvas {
   font-size: var(--fs-body);
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+/* Out-of-combat menus (title / town / camp / arena / party / game over):
+   fill the same 8:7 stage as the corridor, speak FF6 chrome, and center the
+   blue window so short menus don't leave a dead amber void. */
+#combat-panel.ff6-menu-host {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  box-sizing: border-box;
+  min-height: 0;
+  aspect-ratio: 8 / 7;
+  padding: 32px 36px;
+  border: 3px solid #e8e8f0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #101a48 0%, #0a1234 45%, #060a20 100%);
+  box-shadow:
+    inset 0 0 0 1px #5068c8,
+    inset 0 0 0 2px #1a2458,
+    0 0 0 1px rgba(80, 104, 200, 0.25),
+    0 12px 28px rgba(0, 0, 0, 0.5);
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  white-space: normal;
+  overflow: auto;
 }
 
 #combat-canvas {
@@ -885,132 +911,130 @@ canvas#map-canvas {
   color: #aa9c80;
 }
 
-/* --- Dungeon party status strip --------------------------------------- */
+/* --- Dungeon party overlay (tranche B — A token sibling) ---------------- */
 
 #party-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 11;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  max-width: 768px;
-  width: 100%;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  padding: 6px 8px 8px;
+  box-sizing: border-box;
+  background: linear-gradient(
+    0deg,
+    rgba(16, 28, 88, 0.92) 0%,
+    rgba(16, 28, 88, 0.72) 70%,
+    rgba(16, 28, 88, 0) 100%
+  );
   font-family: var(--game-font);
+  pointer-events: none;
 }
 
 .ps-char {
   position: relative;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px 6px 12px;
-  font-family: var(--game-font);
-  font-size: var(--fs-body);
-  font-weight: normal;
-  color: var(--warm-white);
-  border: 1px solid #3a3530;
-  border-radius: 3px;
-  background: linear-gradient(180deg, #17130e 0%, #100d09 100%);
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
-  width: 100%;
-  overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  padding: 2px 4px 3px;
+  font-size: 14px;
+  line-height: 1.1;
+  color: var(--warm-white);
+  border-radius: 4px;
+  background: rgba(10, 16, 48, 0.55);
 }
 
 .ps-char.low {
-  border-color: var(--danger-red);
-  box-shadow: 0 0 6px rgba(192, 96, 96, 0.35);
-  animation: ps-low-pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes ps-low-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 6px rgba(192, 96, 96, 0.25);
-  }
-  50% {
-    box-shadow: 0 0 10px rgba(192, 96, 96, 0.55);
-  }
+  box-shadow: inset 0 0 0 1px rgba(240, 112, 112, 0.7);
 }
 
 .ps-char.ko {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
-.ps-accent {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 3px;
-  height: 100%;
-  background: var(--amber);
-  opacity: 0.7;
+.ps-name-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
 }
 
-.ps-char.low .ps-accent {
-  background: var(--danger-red);
-  opacity: 1;
+.ps-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #ffd769;
+  font-size: 14px;
 }
 
-.ps-char.ko .ps-accent {
-  background: var(--text-dim);
+.ps-notch {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 3px;
+  border-radius: 1px;
 }
+.ps-notch.st-poison { background: #6fe06f; }
+.ps-notch.st-paralysis { background: #e8e0c0; }
+.ps-notch.st-sleep { background: #8090ff; }
+.ps-notch.st-blind { background: #c8c4b8; }
+.ps-notch.st-wet { background: #5aa0e0; }
 
-.ps-char .ps-name {
-  font-family: var(--game-font);
-  color: var(--amber);
-  font-size: var(--fs-panel);
-  font-weight: normal;
-  min-width: 80px;
-  display: inline-flex;
+.ps-stat-row {
+  display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
 }
 
-.ps-badge {
-  font-size: 0.6em;
-  line-height: 1;
-  color: var(--warm-white);
-  background: #2a241c;
-  border: 1px solid var(--border-default);
+.ps-bar {
+  display: block;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 6px;
+  border: 1px solid #e8e8f0;
   border-radius: 3px;
-  padding: 2px 3px;
-}
-
-.ps-char .ps-bar {
-  display: inline-block;
-  width: 100px;
-  height: 12px;
-  background: #1a1612;
-  border: 1px solid #4a4035;
-  border-radius: 2px;
+  background: #101c58;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
-.ps-char .ps-bar-fill {
+.ps-bar-fill {
   display: block;
   height: 100%;
+  max-width: 100%;
+  background: linear-gradient(180deg, #ffe790, #d8a830);
 }
 
-.ps-char .ps-bar-fill.hp {
-  display: block;
-  height: 100%;
-  transition: width 0.08s linear;
-  background: var(--heal-green);
+.ps-bar-fill.wounded {
+  background: linear-gradient(180deg, #ffc890, #d87830);
 }
 
-.ps-char .ps-bar-fill.sp {
-  display: block;
-  height: 100%;
-  transition: width 0.08s linear;
-  background: var(--spell-blue);
+.ps-bar-fill.critical {
+  background: linear-gradient(180deg, #ff9090, #c04040);
 }
 
-.ps-char .ps-num {
-  font-family: var(--game-font);
-  font-size: var(--fs-body);
-  font-weight: normal;
-  color: var(--text-dim);
-  min-width: 64px;
+.ps-bar-fill.empty {
+  width: 0 !important;
 }
+
+.ps-num {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ps-num.wounded { color: #e8a060; }
+.ps-num.critical { color: #f07070; }
 
 
 /* --- Quick Start card (party creation) --------------------------------- */
@@ -1134,7 +1158,8 @@ canvas#map-canvas {
 }
 
 .ff6-menu {
-  flex: 0 0 32%;
+  /* Slightly narrower so the party-resource-row token has room for names. */
+  flex: 0 0 28%;
   display: flex;
   flex-direction: column;
 }
@@ -1258,7 +1283,7 @@ canvas#map-canvas {
 }
 
 .ff6-enemies {
-  flex: 0 0 26%;
+  flex: 0 0 22%;
 }
 
 .ff6-enemy-row {
@@ -1349,28 +1374,42 @@ canvas#map-canvas {
 
 .ff6-party {
   flex: 1 1 auto;
-  /* Extra right padding so the HP bars don't kiss the window border. */
-  padding-right: 12px;
+  /* Extra right padding so the resource column doesn't kiss the border. */
+  padding-right: 10px;
   overflow-y: auto;
   scrollbar-width: none;
+  font-family: var(--game-font);
 }
 
 .ff6-party-row {
   display: grid;
-  /* name · HP · SP · Rage on line 1; a thin full-width HP bar wraps below.
-     Keeping the bar out of the stats line frees horizontal room so 4-char
-     names never truncate at high levels, while thin bars + tight gaps let
-     all six members fit without the window rising over the battlefield. */
-  grid-template-columns: minmax(0, 1.6fr) auto auto auto;
-  align-items: baseline;
-  gap: 1px 8px;
-  font-size: var(--fs-small);
+  /*
+   * party-resource-row token (see docs/superpowers/specs/2026-07-15-combat-roster-tokens.md):
+   * name | 48px HP bar | 7ch HP nums | 10ch resource (SP/RG or dash).
+   * No header row. Acting = inverted name plate (not ▶ — ▶ = menu selection only).
+   *
+   * Numeral columns are sized in `ch` at this row's font-size. --fs-small (26px)
+   * made 7ch+10ch+48px exceed the ~300px party pane and crushed names to 0 width;
+   * 18px keeps the token ceilings (999/999, SP 999/999) while leaving ~90px for names.
+   */
+  grid-template-columns: minmax(56px, 1fr) 48px 7ch 10ch;
+  align-items: center;
+  gap: 1px 6px;
+  font-size: 18px;
   line-height: 1.15;
-  padding: 1px 4px;
+  padding: 2px 4px;
 }
 
+/* Acting character: inverted plate. ▶ is reserved for menu selection. */
 .ff6-party-row.current .ff6-p-name {
-  color: #ffd769;
+  background: #ffd769;
+  color: #101c58;
+  border-radius: 3px;
+  padding: 0 3px;
+}
+
+.ff6-party-row.current .ff6-p-name-text {
+  color: #101c58;
 }
 
 .ff6-party-row.inspect {
@@ -1382,6 +1421,7 @@ canvas#map-canvas {
 
 .ff6-party-row.inspect .ff6-p-name {
   color: #b8ecff;
+  background: transparent;
 }
 
 .ff6-party-inspect {
@@ -1399,60 +1439,81 @@ canvas#map-canvas {
 
 .ff6-party-row.ko .ff6-p-name {
   color: #c06060;
+  background: transparent;
 }
 
 .ff6-p-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Tags survive; name text ellipsizes first. */
+.ff6-p-name-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+.ff6-p-name .ff6-status-tag {
+  flex: 0 0 auto;
 }
 
 .ff6-p-hp {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
-.ff6-p-sp {
-  text-align: right;
-  min-width: 32px;
-  color: #b8c4f0;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Non-casters show a dim dash so the SP column reads consistently. */
-.ff6-p-sp.none {
-  color: #4a5aa0;
-}
-
-/* Rage column for melee technique users. */
-.ff6-p-rg {
-  text-align: right;
-  min-width: 36px;
+.ff6-p-hp.wounded {
   color: #e8a060;
-  font-variant-numeric: tabular-nums;
-  font-size: 0.85em;
 }
 
-.ff6-p-rg.none {
+.ff6-p-hp.critical {
+  color: #f07070;
+}
+
+/* Single resource column: SP cur/max, RG cur/max, or dim positional dash. */
+.ff6-p-res {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+}
+
+.ff6-p-res.sp {
+  color: #b8c4f0;
+}
+
+.ff6-p-res.rg {
+  color: #e8a060;
+}
+
+.ff6-p-res.none {
   color: #4a5aa0;
 }
 
 .ff6-p-bar {
   display: block;
-  grid-column: 1 / -1;
-  width: 100%;
-  height: 4px;
-  margin-top: 1px;
+  width: 48px;
+  height: 6px;
   border: 1px solid #e8e8f0;
   border-radius: 3px;
   background: #101c58;
   overflow: hidden;
   align-self: center;
+  box-sizing: border-box;
 }
 
 .ff6-p-bar-fill {
   display: block;
   height: 100%;
+  max-width: 100%;
   background: linear-gradient(180deg, #ffe790, #d8a830);
   transition: width 0.25s ease-out;
 }
@@ -1463,6 +1524,10 @@ canvas#map-canvas {
 
 .ff6-p-bar-fill.critical {
   background: linear-gradient(180deg, #ff9090, #c04040);
+}
+
+.ff6-p-bar-fill.empty {
+  width: 0 !important;
 }
 
 .ff6-result {
@@ -1613,13 +1678,18 @@ canvas#map-canvas {
    ========================================================================== */
 
 .ff6-window.standalone {
-  /* Standalone menus size to content instead of hugging the combat canvas
-     bottom edge; long lists scroll internally. */
+  /* Centered by #combat-panel.ff6-menu-host; size to content with a readable
+     max width so short menus (title / party) don't look like a stamp. */
   min-height: 0;
-  max-height: 70vh;
+  max-height: min(70vh, 100%);
+  width: 100%;
+  max-width: min(640px, 100%);
   display: flex;
   flex-direction: column;
-  margin: 0 auto 8px;
+  margin: 0;
+  /* Override `.width-full { flex: 0 0 100% }` — that basis is meant for the
+     combat bottom row, not a centered host panel (it stretched windows tall). */
+  flex: 0 0 auto !important;
 }
 
 .ff6-window.standalone .ff6-selection-list {

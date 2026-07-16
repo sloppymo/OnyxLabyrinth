@@ -148,8 +148,12 @@ describe("renderCombatWindows", () => {
     renderCombatWindows(container, view, noopHandlers());
     const items = container.querySelectorAll(".ff6-menu .ff6-menu-item");
     expect(items[1].classList.contains("selected")).toBe(true);
-    const current = container.querySelector(".ff6-party-row.current .ff6-p-name");
+    const current = container.querySelector(
+      ".ff6-party-row.current .ff6-p-name-text"
+    );
     expect(current?.textContent).toBe("Alice");
+    // Acting uses an inverted plate — ▶ is menu-selection only.
+    expect(container.querySelector(".ff6-party")?.textContent).not.toContain("▶");
   });
 
   it("renders the controller palette with four face slots", () => {
@@ -313,6 +317,41 @@ describe("renderCombatWindows", () => {
     expect(summonRow?.textContent).toContain("Summoned Elemental");
     expect(summonRow?.textContent).toContain("4/18");
     expect(summonRow?.querySelector(".ff6-p-bar-fill.critical")).not.toBeNull();
+    expect(summonRow?.querySelector(".ff6-p-res.none")?.textContent).toBe("—");
+  });
+
+  it("formats the party resource column as SP/RG cur/max with a positional dash", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
+    state.rage[party[0].id] = 3;
+    renderCombatWindows(container, baseView(state), noopHandlers());
+    const rows = container.querySelectorAll(".ff6-party-row");
+    expect(rows[0].querySelector(".ff6-p-res.rg")?.textContent).toMatch(
+      /^RG \d+\/\d+$/
+    );
+    expect(rows[1].querySelector(".ff6-p-res.sp")?.textContent).toBe(
+      `SP ${party[1].sp}/${party[1].maxSp}`
+    );
+    // Exactly one resource cell per row — no orphan SP/Rage pair.
+    expect(rows[0].querySelectorAll(".ff6-p-res")).toHaveLength(1);
+    expect(rows[1].querySelectorAll(".ff6-p-res")).toHaveLength(1);
+  });
+
+  it("keeps a ≥1px HP bar fill whenever the character is alive", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    state.party[0].hp = 1;
+    state.party[0].maxHp = 200;
+    renderCombatWindows(container, baseView(state), noopHandlers());
+    const fill = container.querySelector(
+      ".ff6-party-row.current .ff6-p-bar-fill"
+    ) as HTMLElement | null;
+    expect(fill).not.toBeNull();
+    expect(fill!.classList.contains("critical")).toBe(true);
+    expect(fill!.classList.contains("empty")).toBe(false);
+    expect(parseInt(fill!.style.width, 10)).toBeGreaterThanOrEqual(1);
   });
 
   it("renders the result window when set", () => {

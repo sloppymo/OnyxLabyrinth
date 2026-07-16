@@ -7,8 +7,8 @@
  *             Item / Defend / Run …), or the active selection list
  *             (spells, items, targets) when a submenu is open.
  *   - MIDDLE: living enemy names with counts (FF6's monster window).
- *   - RIGHT:  party status — name, HP / MaxHP, SP — with the acting
- *             character highlighted.
+ *   - RIGHT:  party-resource-row token — name (acting = inverted plate),
+ *             fixed HP bar, HP cur/max, single SP|RG resource column.
  *
  * A centered result window appears on victory / defeat / fled.
  *
@@ -435,6 +435,79 @@ function buildTechniqueDetailWindow(tech: TechniqueDef): HTMLElement {
   return win;
 }
 
+/** Inner fill track of `.ff6-p-bar` (48px outer − 1px border × 2). */
+const HP_BAR_TRACK_PX = 46;
+
+/**
+ * Fixed-width HP bar for the party-resource-row token.
+ * Fill ≥ 1px whenever hp > 0; 0px only at KO — color stops carry triage.
+ */
+function buildHpBar(hp: number, maxHp: number): HTMLElement {
+  const barWrap = document.createElement("span");
+  barWrap.className = "ff6-p-bar";
+  const fill = document.createElement("span");
+  fill.className = "ff6-p-bar-fill";
+  const safeHp = Math.max(0, hp);
+  const ratio = maxHp > 0 ? safeHp / maxHp : 0;
+  const fillPx =
+    safeHp <= 0 ? 0 : Math.max(1, Math.round(ratio * HP_BAR_TRACK_PX));
+  fill.style.width = `${fillPx}px`;
+  if (safeHp <= 0) fill.classList.add("empty");
+  else if (ratio <= 0.25) fill.classList.add("critical");
+  else if (ratio <= 0.5) fill.classList.add("wounded");
+  barWrap.appendChild(fill);
+  return barWrap;
+}
+
+function hpNumeralClass(hp: number, maxHp: number): string {
+  if (hp <= 0) return "ff6-p-hp";
+  const ratio = maxHp > 0 ? hp / maxHp : 0;
+  if (ratio <= 0.25) return "ff6-p-hp critical";
+  if (ratio <= 0.5) return "ff6-p-hp wounded";
+  return "ff6-p-hp";
+}
+
+/**
+ * Single resource column: `SP cur/max`, `RG cur/max`, or a dim positional dash.
+ * Never both SP and Rage on one row (engine invariant).
+ */
+function buildResCell(opts: {
+  maxSp: number;
+  sp: number;
+  hasTechniques: boolean;
+  rage: number;
+  maxRage: number;
+}): HTMLElement {
+  const res = document.createElement("span");
+  res.className = "ff6-p-res";
+  if (opts.maxSp > 0) {
+    res.classList.add("sp");
+    res.textContent = `SP ${opts.sp}/${opts.maxSp}`;
+  } else if (opts.hasTechniques) {
+    res.classList.add("rg");
+    res.textContent = `RG ${opts.rage}/${opts.maxRage}`;
+  } else {
+    res.classList.add("none");
+    res.textContent = "—";
+  }
+  return res;
+}
+
+function buildNameCell(
+  name: string,
+  statuses: readonly string[]
+): HTMLElement {
+  const cell = document.createElement("span");
+  cell.className = "ff6-p-name";
+  cell.title = name;
+  const text = document.createElement("span");
+  text.className = "ff6-p-name-text";
+  text.textContent = name;
+  cell.appendChild(text);
+  appendStatusTags(cell, statuses);
+  return cell;
+}
+
 function buildPartyWindow(view: CombatWindowsView): HTMLElement {
   const win = el("ff6-window ff6-party");
   for (const c of view.state.party) {
@@ -450,105 +523,55 @@ function buildPartyWindow(view: CombatWindowsView): HTMLElement {
     const ko = c.hp <= 0 || c.status.includes("knockedOut");
     if (ko) row.classList.add("ko");
 
-    const name = document.createElement("span");
-    name.className = "ff6-p-name";
-    name.textContent = c.name;
-    name.title = c.name;
-    // Active afflictions / regen as compact colored tags after the name.
-    if (!ko) {
-      const tags = VISIBLE_STATUSES.filter((st) => c.status.includes(st));
-      const withRegen = view.state.regenBuffs[c.id]
-        ? [...tags, "regen"]
-        : [...tags];
-      appendStatusTags(name, withRegen);
-    }
-    row.appendChild(name);
+    // Tags survive ellipsis; name text truncates first (see tokens addendum).
+    const statuses = ko
+      ? ([] as string[])
+      : (() => {
+          const tags = VISIBLE_STATUSES.filter((st) => c.status.includes(st));
+          return view.state.regenBuffs[c.id] ? [...tags, "regen"] : [...tags];
+        })();
+    row.appendChild(buildNameCell(c.name, statuses));
+    row.appendChild(buildHpBar(c.hp, c.maxHp));
 
     const hp = document.createElement("span");
-    hp.className = "ff6-p-hp";
+    hp.className = hpNumeralClass(Math.max(0, c.hp), c.maxHp);
     hp.textContent = `${Math.max(0, c.hp)}/${c.maxHp}`;
     row.appendChild(hp);
 
-    // SP shows for every row (dim dash for non-casters) so the column reads
-    // as a column instead of one row having a mystery number.
-    const sp = document.createElement("span");
-    sp.className = "ff6-p-sp";
-    if (c.maxSp > 0) {
-      sp.textContent = `${c.sp}`;
-    } else {
-      sp.textContent = "—";
-      sp.classList.add("none");
-    }
-    row.appendChild(sp);
-
-    // Rage shows for melee classes (technique users) only.
-    if (classHasTechniques(c.class)) {
-      const rg = document.createElement("span");
-      rg.className = "ff6-p-rg";
-      const rage = view.state.rage[c.id] ?? 0;
-      const maxRage = maxRageForLevel(c.level);
-      rg.textContent = `${rage}/${maxRage}`;
-      row.appendChild(rg);
-    } else {
-      const rg = document.createElement("span");
-      rg.className = "ff6-p-rg none";
-      rg.textContent = "—";
-      row.appendChild(rg);
-    }
-
-    const barWrap = document.createElement("span");
-    barWrap.className = "ff6-p-bar";
-    const fill = document.createElement("span");
-    fill.className = "ff6-p-bar-fill";
-    const ratio = c.maxHp > 0 ? Math.max(0, c.hp) / c.maxHp : 0;
-    fill.style.width = `${Math.round(ratio * 100)}%`;
-    if (ratio <= 0.25) fill.classList.add("critical");
-    else if (ratio <= 0.5) fill.classList.add("wounded");
-    barWrap.appendChild(fill);
-    row.appendChild(barWrap);
+    row.appendChild(
+      buildResCell({
+        maxSp: c.maxSp,
+        sp: c.sp,
+        hasTechniques: classHasTechniques(c.class),
+        rage: view.state.rage[c.id] ?? 0,
+        maxRage: maxRageForLevel(c.level),
+      })
+    );
 
     win.appendChild(row);
   }
 
-  // Summoned allies get compact rows below the party: name, HP, HP bar
-  // (no SP — they can't cast).
+  // Summons: same token columns; resource is always a dim dash.
   for (const a of view.state.summonedAllies) {
     if (a.hp <= 0) continue;
     const row = el("ff6-party-row summon");
-
-    const name = document.createElement("span");
-    name.className = "ff6-p-name";
-    name.textContent = a.name;
-    name.title = a.name;
-    row.appendChild(name);
+    row.appendChild(buildNameCell(a.name, []));
+    row.appendChild(buildHpBar(a.hp, a.maxHp));
 
     const hp = document.createElement("span");
-    hp.className = "ff6-p-hp";
+    hp.className = hpNumeralClass(a.hp, a.maxHp);
     hp.textContent = `${a.hp}/${a.maxHp}`;
     row.appendChild(hp);
 
-    const sp = document.createElement("span");
-    sp.className = "ff6-p-sp none";
-    sp.textContent = "—";
-    row.appendChild(sp);
-
-    // Empty rage cell keeps the HP bar aligned in the 5th grid column
-    // (summons have no rage).
-    const rg = document.createElement("span");
-    rg.className = "ff6-p-rg none";
-    rg.textContent = "—";
-    row.appendChild(rg);
-
-    const barWrap = document.createElement("span");
-    barWrap.className = "ff6-p-bar";
-    const fill = document.createElement("span");
-    fill.className = "ff6-p-bar-fill";
-    const ratio = a.maxHp > 0 ? a.hp / a.maxHp : 0;
-    fill.style.width = `${Math.round(ratio * 100)}%`;
-    if (ratio <= 0.25) fill.classList.add("critical");
-    else if (ratio <= 0.5) fill.classList.add("wounded");
-    barWrap.appendChild(fill);
-    row.appendChild(barWrap);
+    row.appendChild(
+      buildResCell({
+        maxSp: 0,
+        sp: 0,
+        hasTechniques: false,
+        rage: 0,
+        maxRage: 0,
+      })
+    );
 
     win.appendChild(row);
   }

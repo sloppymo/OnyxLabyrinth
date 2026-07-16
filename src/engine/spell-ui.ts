@@ -34,7 +34,7 @@ export class SpellMenuController {
     this.state = opts.state;
     this.onClose = opts.onClose;
     this.options = utilityCastOptions(this.state);
-    this.panel.style.display = "block";
+    this.panel.style.display = "flex";
     this.render();
   }
 

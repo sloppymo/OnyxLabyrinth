@@ -36,6 +36,8 @@ import {
   type Stats,
 } from "../game/party";
 import { spellsForClass } from "../data/spells";
+import { FF6Window } from "./ff6-window-library";
+import { audio } from "./audio";
 
 const RACE_LIST = Object.keys(RACES) as Race[];
 const CLASS_LIST = Object.keys(CLASSES) as CharacterClass[];
@@ -80,12 +82,13 @@ export class PartyCreationController {
   /** Opening screen: pick the default party or the custom editor. */
   private phase: "choice" | "edit" = "choice";
   private choiceIndex = 0;
+  private choiceHasRendered = false;
 
   constructor(opts: PartyCreationOptions) {
     this.panel = opts.panel;
     this.onConfirm = opts.onConfirm;
     this.onCancel = opts.onCancel;
-    this.panel.style.display = "block";
+    this.panel.style.display = "flex";
     // Start with a fresh draft for slot 0 using a random name + Human/Neutral/Fighter.
     this.drafts.push(this.freshDraft(0));
     this.render();
@@ -161,23 +164,28 @@ export class PartyCreationController {
 
   private handleChoiceKey(key: string, lower: string): void {
     if (lower === "escape") {
+      audio.uiCancel();
       this.onCancel();
       return;
     }
     if (lower === "arrowup" || lower === "w" || lower === "arrowdown" || lower === "s") {
       this.choiceIndex = this.choiceIndex === 0 ? 1 : 0;
+      audio.uiCursor();
       this.render();
       return;
     }
     if (lower === "d") {
+      audio.uiConfirm();
       this.useDefaultParty();
       return;
     }
     if (lower === "c") {
+      audio.uiConfirm();
       this.enterEditor();
       return;
     }
     if (key === "Enter" || key === " ") {
+      audio.uiConfirm();
       if (this.choiceIndex === 0) this.useDefaultParty();
       else this.enterEditor();
     }
@@ -397,33 +405,41 @@ export class PartyCreationController {
   }
 
   private renderChoice(): void {
-    const lines: string[] = [];
-    lines.push(`<div class="town-header">[+] Assemble Your Party</div>`);
-    lines.push(`<div class="town-gold">Six souls brave the labyrinth. Who will they be?</div>`);
+    const animated = !this.choiceHasRendered;
+    this.choiceHasRendered = true;
 
-    const defaultSelected = this.choiceIndex === 0;
-    lines.push(
-      `<div class="quick-start-card party-choice ${defaultSelected ? "selected" : ""}">`
-    );
-    lines.push(
-      `<div class="qs-title">${defaultSelected ? "▶" : "&nbsp;"} [D] Default Party — set out at once</div>`
-    );
-    lines.push(`<div class="qs-roster">`);
-    lines.push(`Aria (Human Fighter) · Bram (Dwarf Fighter) · Coda (Hobbit Thief) · `);
-    lines.push(`Dell (Elf Mage) · Eve (Gnome Priest) · Fenn (Elf Mage)`);
-    lines.push(`</div>`);
-    lines.push(`</div>`);
-
-    lines.push(
-      `<div class="quick-start-card party-choice ${defaultSelected ? "" : "selected"}">`
-    );
-    lines.push(
-      `<div class="qs-title">${defaultSelected ? "&nbsp;" : "▶"} [C] Create Your Own — build six adventurers from scratch</div>`
-    );
-    lines.push(`<div class="qs-roster">Name, race, alignment, class, and rolled stats for every slot.</div>`);
-    lines.push(`</div>`);
-
-    lines.push(`<div class="town-help">[↑/↓] select · [Enter] confirm</div>`);
-    this.panel.innerHTML = lines.join("");
+    const win = new FF6Window({
+      title: "Assemble Your Party",
+      contentHtml: `<div class="ff6-arena-meta">Six souls brave the labyrinth. Who will they be?</div>`,
+      items: [
+        {
+          label: "Default Party",
+          detail: "Aria · Bram · Coda · Dell · Eve · Fenn",
+          metadata: "default",
+        },
+        {
+          label: "Create Your Own",
+          detail: "Build six adventurers from scratch",
+          metadata: "custom",
+        },
+      ],
+      selectedIndex: this.choiceIndex,
+      mode: "menu",
+      footer: "D-pad navigate · A confirm · B back",
+      animated,
+      onHover: (i) => {
+        this.choiceIndex = i;
+      },
+      onConfirm: (i) => {
+        this.choiceIndex = i;
+        if (i === 0) this.useDefaultParty();
+        else this.enterEditor();
+      },
+      onBack: () => {
+        this.onCancel();
+      },
+    });
+    this.panel.innerHTML = "";
+    this.panel.appendChild(win.render());
   }
 }

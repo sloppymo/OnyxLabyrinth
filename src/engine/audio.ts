@@ -1,9 +1,10 @@
 // Procedural audio engine for OnyxLabyrinth.
 //
-// All sounds are synthesized via the Web Audio API — no asset files needed,
-// keeping the bundle tiny and avoiding load-time delays. The engine is
-// lazy-initialized on the first user interaction (browser autoplay policy
-// requires a user gesture before AudioContext can start).
+// Ambient / dungeon sounds are synthesized via the Web Audio API. Menu UI
+// SFX are short WAV samples (FF6 system tings, licensed — see
+// public/assets/sfx/ui/README.md). The engine is lazy-initialized on the
+// first user interaction (browser autoplay policy requires a user gesture
+// before AudioContext can start).
 //
 // Sound design:
 //   - Ambient drone: two detuned low oscillators through a lowpass filter,
@@ -14,6 +15,7 @@
 //     per step for variety.
 //   - Door open: low wooden creak (sawtooth pitch sweep + bandpass).
 //   - Door locked: dull thud + metallic rattle (noise burst + low sine).
+//   - Menu UI: cursor / confirm / cancel / save / buy-sell / cure samples.
 //
 // Usage:
 //   audio.startDungeon();    // begin drone
@@ -21,9 +23,38 @@
 //   audio.footstep();        // play a footstep
 //   audio.doorOpen();        // door unlocked/opened
 //   audio.doorLocked();      // door remains locked
+//   audio.uiCursor();        // menu highlight move
+//   audio.uiConfirm();       // menu confirm
+//   audio.uiCancel();        // menu cancel / close
 //   audio.resume();          // call on first user gesture
 
 type Maybe<T> = T | null;
+
+export type UiSfxId =
+  | "cursor"
+  | "confirm"
+  | "cancel"
+  | "save"
+  | "buySell"
+  | "cureMenu";
+
+const UI_SFX_FILES: Record<UiSfxId, string> = {
+  cursor: "cursor.wav",
+  confirm: "confirm.wav",
+  cancel: "cancel.wav",
+  save: "save.wav",
+  buySell: "buy-sell.wav",
+  cureMenu: "cure-menu.wav",
+};
+
+const UI_SFX_GAIN: Record<UiSfxId, number> = {
+  cursor: 0.32,
+  confirm: 0.38,
+  cancel: 0.34,
+  save: 0.4,
+  buySell: 0.4,
+  cureMenu: 0.36,
+};
 
 class AudioEngine {
   private ctx: Maybe<AudioContext> = null;
@@ -42,6 +73,12 @@ class AudioEngine {
 
   // Noise buffer cache (footsteps reuse it).
   private noiseBuffer: Maybe<AudioBuffer> = null;
+
+  /** Decoded FF6 UI SFX buffers (empty until loadUiSounds resolves). */
+  private uiBuffers: Partial<Record<UiSfxId, AudioBuffer>> = {};
+  private uiLoadPromise: Promise<void> | null = null;
+  /** Throttle rapid cursor moves (gamepad held / key-repeat). */
+  private lastCursorAt = 0;
 
   // Config — exposed for tuning. Keep magic numbers here.
   private readonly CFG = {
@@ -100,6 +137,114 @@ class AudioEngine {
     this.masterGain.connect(this.ctx.destination);
     // Pre-render the noise buffer for footsteps.
     this.noiseBuffer = this.createNoiseBuffer(0.5);
+    // Kick off UI sample decode (non-blocking).
+    void this.loadUiSounds();
+  }
+
+  /**
+   * Fetch + decode menu UI WAVs under public/assets/sfx/ui/. Safe to call
+   * repeatedly — shares one in-flight promise. Missing files fail quietly
+   * so builds without assets still run (procedural dungeon audio only).
+   */
+  loadUiSounds(): Promise<void> {
+    if (this.uiLoadPromise) return this.uiLoadPromise;
+    if (!this.ctx) {
+      this.resume();
+    }
+    const ctx = this.ctx;
+    if (!ctx) return Promise.resolve();
+
+    const base = `${import.meta.env.BASE_URL ?? "/"}assets/sfx/ui/`;
+    this.uiLoadPromise = (async () => {
+      await Promise.all(
+        (Object.keys(UI_SFX_FILES) as UiSfxId[]).map(async (id) => {
+          try {
+            const res = await fetch(base + UI_SFX_FILES[id]);
+            if (!res.ok) return;
+            const raw = await res.arrayBuffer();
+            this.uiBuffers[id] = await ctx.decodeAudioData(raw.slice(0));
+          } catch {
+            // Missing/corrupt asset — leave that slot empty.
+          }
+        })
+      );
+    })();
+    return this.uiLoadPromise;
+  }
+
+  /** Menu cursor tick (highlight move). Rate-limited for key-repeat. */
+  uiCursor(): void {
+    const now = typeof performance !== "undefined" ? performance.now() : 0;
+    if (now - this.lastCursorAt < 45) return;
+    this.lastCursorAt = now;
+    this.playUi("cursor");
+  }
+
+  /** Menu confirm / select. */
+  uiConfirm(): void {
+    this.playUi("confirm");
+  }
+
+  /** Menu cancel / close / back. */
+  uiCancel(): void {
+    this.playUi("cancel");
+  }
+
+  /** Save success chime. */
+  uiSave(): void {
+    this.playUi("save");
+  }
+
+  /** Shop buy / sell chime. */
+  uiBuySell(): void {
+    this.playUi("buySell");
+  }
+
+  /** Soft menu heal ting (inn / cure / temple). */
+  uiCureMenu(): void {
+    this.playUi("cureMenu");
+  }
+
+  /**
+   * Play UI SFX for common menu navigation keys. Letter hotkeys (including
+   * W/S when used as shortcuts) are left to callers so they don't steal
+   * cursor ticks from branded keys like [S] Save.
+   */
+  uiForMenuKey(key: string): void {
+    const lower = key.toLowerCase();
+    if (
+      lower === "arrowup" ||
+      lower === "arrowdown" ||
+      lower === "arrowleft" ||
+      lower === "arrowright"
+    ) {
+      this.uiCursor();
+      return;
+    }
+    if (key === "Enter" || key === " ") {
+      this.uiConfirm();
+      return;
+    }
+    if (lower === "escape") {
+      this.uiCancel();
+    }
+  }
+
+  private playUi(id: UiSfxId): void {
+    if (!this.ctx || !this.masterGain) return;
+    const buf = this.uiBuffers[id];
+    if (!buf) {
+      // Samples may still be loading — kick a load and skip this hit.
+      void this.loadUiSounds();
+      return;
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = this.ctx.createGain();
+    gain.gain.value = UI_SFX_GAIN[id];
+    src.connect(gain);
+    gain.connect(this.masterGain);
+    src.start();
   }
 
   /** Start the ambient dungeon drone. No-op if already playing. */

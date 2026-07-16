@@ -29,6 +29,7 @@
 
 import type { ControllerInputEvent } from "./controller-input";
 import { controllerEventToMenuKey } from "./menu-controller-adapter";
+import { audio } from "./audio";
 
 export type FF6WindowMode = "menu" | "selection" | "status" | "description";
 export type FF6WindowWidth = "narrow" | "medium" | "wide" | "full";
@@ -149,6 +150,7 @@ export class FF6Window {
     if (lower === "arrowup" || lower === "w") {
       if (count > 0) {
         this.updateSelectedIndex((this.opts.selectedIndex - 1 + count) % count);
+        audio.uiCursor();
         this.opts.onHover?.(this.opts.selectedIndex);
       }
       return true;
@@ -156,6 +158,7 @@ export class FF6Window {
     if (lower === "arrowdown") {
       if (count > 0) {
         this.updateSelectedIndex((this.opts.selectedIndex + 1) % count);
+        audio.uiCursor();
         this.opts.onHover?.(this.opts.selectedIndex);
       }
       return true;
@@ -163,11 +166,13 @@ export class FF6Window {
     if (key === "Enter" || key === " ") {
       const item = this.opts.items[this.opts.selectedIndex];
       if (item && !item.disabled) {
+        audio.uiConfirm();
         this.opts.onConfirm?.(this.opts.selectedIndex);
       }
       return true;
     }
     if (lower === "escape") {
+      audio.uiCancel();
       this.opts.onBack?.();
       return true;
     }
@@ -328,13 +333,17 @@ export class FF6Window {
       row.onmouseenter = () => {
         if (index !== this.opts.selectedIndex) {
           this.updateSelectedIndex(index);
+          audio.uiCursor();
           this.opts.onHover?.(index);
         }
       };
       row.onclick = () => {
         this.updateSelectedIndex(index);
         const item = this.opts.items[index];
-        if (item && !item.disabled) this.opts.onConfirm?.(index);
+        if (item && !item.disabled) {
+          audio.uiConfirm();
+          this.opts.onConfirm?.(index);
+        }
       };
     });
   }

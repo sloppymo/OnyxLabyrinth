@@ -98,10 +98,14 @@ export interface CreateControllerInputOptions {
   attachListeners?: boolean;
 }
 
+export type LastInputKind = "keyboard" | "gamepad";
+
 export interface ControllerInputHandle {
   destroy(): void;
   handleKeyboardDown(event: KeyboardEvent): void;
   handleKeyboardUp(event: KeyboardEvent): void;
+  /** Most recent physical device class that drove a press (for HUD glyphs). */
+  getLastInputKind(): LastInputKind;
 }
 
 /** Map a keyboard key to a logical controller button, or null if unmapped. */
@@ -134,6 +138,7 @@ export function createControllerInput(
   const held = new Map<string, ButtonTracking>();
   let rafId: number | null = null;
   let destroyed = false;
+  let lastInputKind: LastInputKind = "keyboard";
 
   function emit(event: ControllerInputEvent): void {
     if (!destroyed) {
@@ -153,6 +158,7 @@ export function createControllerInput(
       existing.physicalIds.add(physicalId);
       return;
     }
+    lastInputKind = source === "keyboard" ? "keyboard" : "gamepad";
     held.set(key, {
       button,
       source,
@@ -297,6 +303,7 @@ export function createControllerInput(
   return {
     handleKeyboardDown: onKeyDown,
     handleKeyboardUp: onKeyUp,
+    getLastInputKind: () => lastInputKind,
     destroy() {
       if (destroyed) return;
       destroyed = true;

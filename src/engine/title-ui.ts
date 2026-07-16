@@ -4,6 +4,7 @@
  * Shown on boot. Presents:
  *   - New Game (always)
  *   - Continue (only when an auto-save exists)
+ *   - Arena
  *
  * Keyboard controls:
  *   Up/Down — navigate menu items
@@ -12,6 +13,8 @@
 
 import type { GameState } from "../types";
 import { loadAutoSave } from "../game/save";
+import { audio } from "./audio";
+import { FF6Window } from "./ff6-window-library";
 
 interface MenuItem {
   key: "new" | "continue" | "arena";
@@ -34,6 +37,8 @@ export class TitleController {
   private items: MenuItem[];
   private selectedIndex = 0;
   private loaded: GameState | null = null;
+  /** Open animation only on first paint — re-renders must not replay it. */
+  private hasRendered = false;
 
   constructor(opts: TitleControllerOptions) {
     this.panel = opts.panel;
@@ -48,7 +53,7 @@ export class TitleController {
     }
     this.items.push({ key: "arena", label: "Arena", icon: "[A]" });
 
-    this.panel.style.display = "block";
+    this.panel.style.display = "flex";
     this.render();
   }
 
@@ -57,16 +62,19 @@ export class TitleController {
 
     if (lower === "n") {
       this.selectedIndex = this.items.findIndex((i) => i.key === "new");
+      audio.uiConfirm();
       this.select();
       return true;
     }
     if (lower === "c" && this.loaded) {
       this.selectedIndex = this.items.findIndex((i) => i.key === "continue");
+      audio.uiConfirm();
       this.select();
       return true;
     }
     if (lower === "a") {
       this.selectedIndex = this.items.findIndex((i) => i.key === "arena");
+      audio.uiConfirm();
       this.select();
       return true;
     }
@@ -75,15 +83,18 @@ export class TitleController {
       case "arrowup":
       case "w":
         this.selectedIndex = (this.selectedIndex - 1 + this.items.length) % this.items.length;
+        audio.uiCursor();
         this.render();
         return true;
       case "arrowdown":
       case "s":
         this.selectedIndex = (this.selectedIndex + 1) % this.items.length;
+        audio.uiCursor();
         this.render();
         return true;
       case "enter":
       case " ":
+        audio.uiConfirm();
         this.select();
         return true;
     }
@@ -104,29 +115,30 @@ export class TitleController {
   }
 
   private render(): void {
-    const lines: string[] = [];
-    lines.push(`<div class="title-header">Heart of the Maelstrom</div>`);
-    lines.push(`<div class="title-subtitle">— Vertical Slice —</div>`);
-    lines.push(`<div class="title-menu">`);
-    for (let i = 0; i < this.items.length; i++) {
-      const item = this.items[i];
-      const selected = i === this.selectedIndex;
-      const marker = selected ? "▶" : " ";
-      lines.push(
-        `<div class="title-menu-item ${selected ? "selected" : ""}">` +
-          `<span class="title-marker">${marker}</span>` +
-          `<span class="title-icon">${item.icon}</span>` +
-          `<span>${item.label}</span>` +
-          `</div>`
-      );
-    }
-    lines.push(`</div>`);
-    lines.push(`<div class="title-help">[↑/↓] navigate · [Enter] select · [N] new game</div>`);
-    if (this.loaded) {
-      lines.push(`<div class="title-help">[C] continue</div>`);
-    }
-    lines.push(`<div class="title-help">[A] arena</div>`);
+    const animated = !this.hasRendered;
+    this.hasRendered = true;
 
-    this.panel.innerHTML = lines.join("");
+    const footer = "D-pad navigate · A select";
+
+    const win = new FF6Window({
+      title: "ONYX LABYRINTH",
+      items: this.items.map((item) => ({
+        label: item.label,
+        metadata: item.key,
+      })),
+      selectedIndex: this.selectedIndex,
+      mode: "menu",
+      footer,
+      animated,
+      onHover: (i) => {
+        this.selectedIndex = i;
+      },
+      onConfirm: (i) => {
+        this.selectedIndex = i;
+        this.select();
+      },
+    });
+    this.panel.innerHTML = "";
+    this.panel.appendChild(win.render());
   }
 }

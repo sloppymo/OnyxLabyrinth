@@ -25,6 +25,7 @@ import { equipItem, findBestEquipTarget, getDisplacedItem, type Loadout } from "
 import { xpForNextLevel } from "../game/leveling";
 import { perksForCharacter, partyShopDiscount, discountedShopPrice } from "../game/perks";
 import { FF6Window, type FF6WindowItem } from "./ff6-window-library";
+import { audio } from "./audio";
 
 type TownScreen = "main" | "inn" | "temple" | "shop" | "roster";
 type ShopTab = "buy" | "sell" | "appraise" | "buyConfirm";
@@ -91,11 +92,12 @@ export class TownController {
     this.onEnterDungeon = opts.onEnterDungeon;
     this.onOpenSave = opts.onOpenSave;
     this.onReformParty = opts.onReformParty;
-    this.panel.style.display = "block";
+    this.panel.style.display = "flex";
     this.render();
   }
 
   handleKey(key: string): void {
+    audio.uiForMenuKey(key);
     const lower = key.toLowerCase();
 
     if (this.screen === "main") {
@@ -227,6 +229,7 @@ export class TownController {
       case "w":
         this.selectedIndex = (this.selectedIndex - 1 + MAIN_MENU_ITEMS.length) % MAIN_MENU_ITEMS.length;
         this.flash = "";
+        if (lower === "w") audio.uiCursor();
         this.render();
         break;
       case "arrowdown":
@@ -252,6 +255,7 @@ export class TownController {
     if (hotIndex !== -1) {
       this.selectedIndex = hotIndex;
       this.flash = "";
+      audio.uiConfirm();
       this.selectMain();
     }
   }
@@ -299,6 +303,7 @@ export class TownController {
   // --- Facility actions ---------------------------------------------------
 
   private doInn(): void {
+    audio.uiCureMenu();
     this.state.party = restoreParty(this.state.party);
     this.screen = "inn";
     this.flash = "The party rests at the Inn. HP and SP fully restored!";
@@ -306,6 +311,7 @@ export class TownController {
   }
 
   private doTemple(): void {
+    audio.uiCureMenu();
     this.state.party = restoreParty(this.state.party);
     this.screen = "temple";
     this.templeIndex = 0;
@@ -416,6 +422,7 @@ export class TownController {
   private handleBuyConfirmKey(lower: string): void {
     switch (lower) {
       case "t":
+      case "y":
         this.tradeIn = !this.tradeIn;
         this.render();
         break;
@@ -479,6 +486,7 @@ export class TownController {
     }
 
     this.state.partyGold -= netCost;
+    audio.uiBuySell();
 
     if (willEquip && targetId) {
       this.state.equipment[targetId] = next;
@@ -525,6 +533,7 @@ export class TownController {
     const sellPrice = Math.floor(item.price / 2);
     this.state.inventory.splice(invIndex, 1);
     this.state.partyGold += sellPrice;
+    audio.uiBuySell();
 
     // Clamp index
     if (this.shopIndex >= this.state.inventory.length) {
@@ -593,13 +602,13 @@ export class TownController {
     const win = new FF6Window({
       title: "Town of Edgehollow",
       items: MAIN_MENU_ITEMS.map((item) => ({
-        label: `${item.icon} ${item.label}`,
+        label: item.label,
         metadata: item.key,
       })),
       selectedIndex: this.selectedIndex,
       mode: "menu",
       flash: this.flash || null,
-      footer: "[↑/↓] navigate · [A/Enter] select · letter jumps · [Select/Esc] save",
+      footer: "D-pad navigate · A select · Select save",
       footer2: `Party: ${aliveCount}/${this.state.party.length} alive · Avg Lv${avgLevel} · Gold: ${this.state.partyGold}g`,
       animated,
       onHover: (i) => {
@@ -627,9 +636,9 @@ export class TownController {
 
     const tabsHtml =
       `<div class="shop-tabs">` +
-      `<span class="shop-tab ${this.shopTab === "buy" ? "active" : ""}">Buy [B]</span>` +
-      `<span class="shop-tab ${this.shopTab === "sell" ? "active" : ""}">Sell [S]</span>` +
-      `<span class="shop-tab ${this.shopTab === "appraise" ? "active" : ""}">Appraise [A]</span>` +
+      `<span class="shop-tab ${this.shopTab === "buy" ? "active" : ""}">Buy</span>` +
+      `<span class="shop-tab ${this.shopTab === "sell" ? "active" : ""}">Sell</span>` +
+      `<span class="shop-tab ${this.shopTab === "appraise" ? "active" : ""}">Appraise</span>` +
       `</div>`;
 
     let items: FF6WindowItem[] = [];
@@ -650,7 +659,7 @@ export class TownController {
           metadata: invIndex,
         };
       });
-      help = `[↑/↓] navigate · [Enter] appraise · [←/→] tabs · [B/S/A] jump · [Esc] back`;
+      help = `D-pad navigate · A appraise · ←→ tabs · B back`;
       confirm = (i) => this.appraiseItem(this.getAppraiseList()[i]);
     } else if (this.shopTab === "buy") {
       const buyList = this.getShopBuyList();
@@ -663,7 +672,7 @@ export class TownController {
           metadata: item.id,
         };
       });
-      help = `[↑/↓] navigate · [Enter] compare · [←/→] tabs · [B/S/A] jump · [Esc] back`;
+      help = `D-pad navigate · A compare · ←→ tabs · B back`;
       confirm = (i) => this.openBuyConfirm(this.getShopBuyList()[i]);
     } else {
       const inv = this.state.inventory;
@@ -679,7 +688,7 @@ export class TownController {
           metadata: entry.itemId,
         };
       });
-      help = `[↑/↓] navigate · [Enter] buy/sell · [←/→] tabs · [B/S/A] jump · [Esc] back`;
+      help = `D-pad navigate · A sell · ←→ tabs · B back`;
       confirm = (i) => this.sellItem(i);
     }
 
@@ -832,7 +841,7 @@ export class TownController {
         title: "Shop — Purchase",
         contentHtml: lines.join(""),
         flash: this.flash || null,
-        footer: "[Enter] buy · [T] toggle trade-in · [Esc] cancel",
+        footer: "A buy · Y trade-in · B cancel",
         mode: "description",
         animated,
       })
@@ -919,7 +928,7 @@ export class TownController {
         title: "Guild — Party Roster",
         contentHtml: lines.join(""),
         flash: this.flash || null,
-        footer: "[←/→] tabs · [S/P] jump · [Esc/Enter] back",
+        footer: "←→ tabs · B back",
         mode: "status",
         animated,
       })
@@ -935,12 +944,12 @@ export class TownController {
         title,
         items: [
           { label: "Back to menu", metadata: "back" },
-          { label: `Remove Curse (${REMOVE_CURSE_COST}g) [R]`, metadata: "curse" },
+          { label: `Remove Curse (${REMOVE_CURSE_COST}g)`, metadata: "curse" },
         ],
         selectedIndex: this.templeIndex,
         mode: "menu",
         flash: this.flash || null,
-        footer: "[↑/↓] navigate · [Enter] select · [R] remove curse · [Esc] back",
+        footer: "D-pad navigate · A select · B back",
         animated,
         onHover: (i) => {
           this.templeIndex = i;
@@ -988,7 +997,7 @@ export class TownController {
         title: templeCurse ? undefined : title,
         contentHtml: lines.join(""),
         flash: templeCurse ? null : this.flash || null,
-        footer: templeCurse ? undefined : "[Esc/Enter] back to menu",
+        footer: templeCurse ? undefined : "A / B back to menu",
         mode: "status",
         animated,
       })

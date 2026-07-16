@@ -25,6 +25,7 @@ import {
   type NPCActionResult,
 } from "../game/npc";
 import { FF6Window } from "./ff6-window-library";
+import { audio } from "./audio";
 
 type Phase = "root" | "talk" | "ask" | "barter" | "give";
 
@@ -71,7 +72,7 @@ export class NPCController {
     this.onClose = opts.onClose;
     this.onFight = opts.onFight;
     this.dialogue = greet(this.state, this.npc);
-    this.panel.style.display = "block";
+    this.panel.style.display = "flex";
     this.render();
   }
 
@@ -79,6 +80,7 @@ export class NPCController {
     if (this.phase === "ask") {
       return this.handleAskKey(key);
     }
+    audio.uiForMenuKey(key);
     const lower = key.toLowerCase();
     if (lower === "escape") {
       if (this.phase === "root") {

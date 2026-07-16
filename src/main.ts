@@ -32,12 +32,15 @@ import {
   ctx,
   mapCtx,
   setMessage,
+  clearMessageOnPlayerAction,
   flashEncounter,
   renderPartyStrip,
   clearPartyStrip,
   showMode,
   compassForFacing,
+  setContextualPrompt,
 } from "./engine/shell";
+import { resolveContextualPrompt } from "./engine/contextual-prompt";
 import { CombatController } from "./engine/combat-ui";
 import {
   createControllerInput,
@@ -113,6 +116,9 @@ const state = createGameState(playtestFloor ?? getFloors()[0]!);
 // Auto-map visibility flag.
 let mapVisible = false;
 
+/** First dungeon entry this page session — keyboard discoverability door hint. */
+let shownDungeonKeyboardHint = false;
+
 // Session-wide gamepad/keyboard poller (combat keyboard path feeds this too).
 let actionRingController: DungeonActionRingController | null = null;
 let trapPrompt: TrapPromptController | null = null;
@@ -177,7 +183,15 @@ function openTown(): void {
       state.inAntimagic = false;
       markExplored();
       transitionToMode("dungeon");
-      setMessage(last ? "You return to the dungeon..." : "You enter the dungeon...");
+      const entry = last ? "You return to the dungeon..." : "You enter the dungeon...";
+      if (!shownDungeonKeyboardHint) {
+        shownDungeonKeyboardHint = true;
+        // Line 2 teaches the keyboard *door* (action ring), not every verb —
+        // Esc is Save only; pad Start / Tab opens Camp·Map·Town·Unlock·Grimoire.
+        setMessage(`${entry}\nTab: Actions · Esc: Save`);
+      } else {
+        setMessage(entry);
+      }
     },
     onOpenSave: () => {
       townController = null;
@@ -644,6 +658,7 @@ const dungeonHandlers: InputHandlers = {
   onForward: () => {
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
+      clearMessageOnPlayerAction();
       const before = { x: state.player.x, y: state.player.y };
       moveForward(state);
       if (state.player.x !== before.x || state.player.y !== before.y) {
@@ -656,6 +671,7 @@ const dungeonHandlers: InputHandlers = {
   onBackward: () => {
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
+      clearMessageOnPlayerAction();
       const before = { x: state.player.x, y: state.player.y };
       moveBackward(state);
       if (state.player.x !== before.x || state.player.y !== before.y) {
@@ -668,6 +684,7 @@ const dungeonHandlers: InputHandlers = {
   onTurnLeft: () => {
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
+      clearMessageOnPlayerAction();
       turnLeft(state);
       markExplored();
     }
@@ -675,15 +692,22 @@ const dungeonHandlers: InputHandlers = {
   onTurnRight: () => {
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
+      clearMessageOnPlayerAction();
       turnRight(state);
       markExplored();
     }
   },
   onCamp: () => {
-    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) startCamp();
+    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
+      clearMessageOnPlayerAction();
+      startCamp();
+    }
   },
   onToggleMap: () => {
-    if (state.mode === "dungeon" && !state.pendingTrap) toggleMap();
+    if (state.mode === "dungeon" && !state.pendingTrap) {
+      clearMessageOnPlayerAction();
+      toggleMap();
+    }
   },
   onSystemMenu: () => {
     // In town mode, Esc is handled by the town controller (back from
@@ -695,19 +719,31 @@ const dungeonHandlers: InputHandlers = {
       toggleMap();
       return;
     }
+    clearMessageOnPlayerAction();
     openSaveMenu();
   },
   onTown: () => {
-    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) returnToTown();
+    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
+      clearMessageOnPlayerAction();
+      returnToTown();
+    }
   },
   onCastSpell: () => {
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
+      clearMessageOnPlayerAction();
       openSpellMenu();
+    }
+  },
+  onActionRing: () => {
+    if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
+      clearMessageOnPlayerAction();
+      openActionRing();
     }
   },
   onUnlock: () => {
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
       audio.resume();
+      clearMessageOnPlayerAction();
       const msg = tryUnlock(state);
       setMessage(msg);
       // Play the appropriate door sound based on the result.
@@ -1001,9 +1037,19 @@ function routeControllerEvent(event: ControllerInputEvent): void {
       break;
     case "start":
       if (!mapVisible && !isRenderCameraAnimating()) {
+        clearMessageOnPlayerAction();
         openActionRing();
       }
       break;
+    case "a": {
+      // Contextual A = Unlock when facing a locked door (input-adaptive glyph).
+      const kind = globalInput.getLastInputKind();
+      const prompt = resolveContextualPrompt(state, kind);
+      if (prompt?.action === "unlock") {
+        dungeonHandlers.onUnlock();
+      }
+      break;
+    }
     default:
       break;
   }
@@ -1144,7 +1190,7 @@ function openArenaSetup(): void {
       })),
       selectedIndex: selected,
       mode: "menu",
-      footer: "[↑/↓] navigate · [Enter] start · [Esc] title",
+      footer: "D-pad navigate · A start · B title",
       animated,
       onHover: (i) => {
         selected = i;
@@ -1165,6 +1211,7 @@ function openArenaSetup(): void {
 
   arenaSetupController = {
     handleKey: (key: string) => {
+      audio.uiForMenuKey(key);
       const lower = key.toLowerCase();
       if (lower === "arrowup" || lower === "w") {
         selected = (selected - 1 + levels.length) % levels.length;
@@ -1495,7 +1542,14 @@ function loop() {
 
   if (state.mode === "dungeon") {
     render(ctx, state);
-    renderPartyStrip(state.party, compassForFacing(state.player.facing));
+    const floorLabel = `F${state.floor.id}`;
+    renderPartyStrip(
+      state.party,
+      compassForFacing(state.player.facing),
+      floorLabel
+    );
+    const kind = globalInput.getLastInputKind();
+    setContextualPrompt(resolveContextualPrompt(state, kind));
     if (mapVisible) {
       renderAutoMap(mapCtx, state);
     }

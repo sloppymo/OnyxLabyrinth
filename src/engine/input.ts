@@ -12,6 +12,8 @@
 //   U                unlock (locked door / chest)
 //   G                grimoire (cast utility spells: light, levitation, …)
 //   Esc              system menu (save/load)
+//   Tab              action ring (Camp / Map / Town / Unlock / Grimoire) — keyboard
+//                    door matching pad Start after legend removal
 //
 // While a trapped chest prompt is up (GameState.pendingTrap), main.ts gates
 // all of these off and a dedicated listener owns I/D/O/L (+Esc = leave).
@@ -32,6 +34,8 @@ export interface InputHandlers {
   onTown: () => void;
   onUnlock: () => void;
   onCastSpell: () => void;
+  /** Open the dungeon action ring (keyboard counterpart to pad Start). */
+  onActionRing: () => void;
 }
 
 const KEY_MAP: Record<string, keyof InputHandlers> = {
@@ -58,6 +62,7 @@ const KEY_MAP: Record<string, keyof InputHandlers> = {
   g: "onCastSpell",
   G: "onCastSpell",
   Escape: "onSystemMenu",
+  Tab: "onActionRing",
 };
 
 export function bindInput(target: Window, handlers: InputHandlers): () => void {

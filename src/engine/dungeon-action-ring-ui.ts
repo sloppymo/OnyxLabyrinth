@@ -40,7 +40,7 @@ export class DungeonActionRingController {
       onTown: opts.onTown,
       onClose: opts.onClose,
     };
-    this.panel.style.display = "block";
+    this.panel.style.display = "flex";
     this.render();
   }
 

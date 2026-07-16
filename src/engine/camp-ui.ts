@@ -26,6 +26,7 @@ import {
   type UtilityCastOption,
 } from "../game/persistent-spells";
 import { FF6Window } from "./ff6-window-library";
+import { audio } from "./audio";
 
 const SPELL_NAME_BY_ID: Record<string, string> = Object.fromEntries(
   ALL_SPELLS.map((s) => [s.id, s.name])
@@ -115,7 +116,7 @@ export class CampController {
       c.status = []; // clear all statuses including knockedOut, poison, paralysis
     }
 
-    this.panel.style.display = "block";
+    this.panel.style.display = "flex";
     this.render(0);
     this.startAnimation();
   }
@@ -145,6 +146,7 @@ export class CampController {
   /** Route keypresses to the current phase. */
   handleKey(key: string): void {
     if (!this.finished) return; // ignore keys during animation
+    audio.uiForMenuKey(key);
     const lower = key.toLowerCase();
 
     if (this.phase === "menu") {
@@ -201,11 +203,13 @@ export class CampController {
       case "arrowup":
       case "w":
         this.menuIndex = (this.menuIndex - 1 + CAMP_MENU_ITEMS.length) % CAMP_MENU_ITEMS.length;
+        if (lower === "w") audio.uiCursor();
         this.renderMenu();
         break;
       case "arrowdown":
       case "s":
         this.menuIndex = (this.menuIndex + 1) % CAMP_MENU_ITEMS.length;
+        if (lower === "s") audio.uiCursor();
         this.renderMenu();
         break;
       case "enter":
@@ -343,7 +347,7 @@ export class CampController {
       items: CAMP_MENU_ITEMS.map((item) => ({ label: item.label, metadata: item.key })),
       selectedIndex: this.menuIndex,
       mode: "menu",
-      footer: "[↑/↓] navigate · [Enter] select · [Esc] continue",
+      footer: "D-pad navigate · A select · B continue",
       animated,
       onHover: (i) => {
         this.menuIndex = i;
@@ -382,7 +386,7 @@ export class CampController {
       FF6Window.frame({
         title: `Character Sheet — ${this.sheetIndex + 1}/${this.party.length}`,
         contentHtml: lines.join(""),
-        footer: "[↑/↓] cycle characters · [Enter/Esc] back to menu",
+        footer: "D-pad cycle · A / B back",
         mode: "description",
         animated,
       })
@@ -407,7 +411,7 @@ export class CampController {
       mode: "selection",
       allowMultilineLabels: true,
       flash: this.castFlash || null,
-      footer: "[↑/↓] select · [Enter] cast · [Esc] back to menu",
+      footer: "D-pad select · A cast · B back",
       animated,
       onHover: (i) => {
         this.castIndex = i;

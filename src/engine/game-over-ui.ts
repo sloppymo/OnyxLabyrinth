@@ -14,7 +14,7 @@ export class GameOverController {
   constructor(opts: GameOverControllerOptions) {
     this.panel = opts.panel;
     this.onContinue = opts.onContinue;
-    this.panel.style.display = "block";
+    this.panel.style.display = "flex";
     this.render(opts.party, opts.floorName);
   }
 
