@@ -33,6 +33,11 @@ export interface SpriteStrip {
   fps: number;
   /** Whether the strip loops (idle) or plays once and holds (others). */
   loop: boolean;
+  /**
+   * Optional foot inset (0–1 from top of frame). Defaults to pack norm 0.57
+   * in the ground-plane resolver; set when art feet aren't at the pack locus.
+   */
+  artFootFromTop?: number;
 }
 
 export interface EnemySpriteDef {

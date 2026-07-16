@@ -31,8 +31,18 @@ import { getEffectSprite, type EffectSprite } from "./effect-sprite-cache";
 import { spellById } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import type { SpriteStrip } from "./sprite-manifest";
-import { ARENA_HORIZON_FRAC } from "./renderer";
 import combatBgUrl from "../assets/combat-bg.png";
+import {
+  geometryForBackdrop,
+  partySlot,
+  enemySlot,
+  allySlot,
+  resolveSlot,
+  ART_FOOT_FROM_TOP,
+  artFootFromTopFor,
+  type BackdropGeometry,
+  type ResolvedSlot,
+} from "./combat-scene-math";
 
 // --- Palette -----------------------------------------------------------------
 
@@ -60,73 +70,86 @@ const COLORS = {
 
 // --- Layout ------------------------------------------------------------------
 
-/** Party sprite draw size (px, square). Frames are 100×100 but the character
- *  art only fills ~40% of the frame, so draw large. */
-const PARTY_SIZE = 210;
-/** Enemy sprite draw size for image strips. */
-const ENEMY_SIZE = 300;
-/** Boss sprites are drawn larger to tower over regular enemies. */
+/** Party sprite draw size at scale 1.0 (near row). Frames are 100×100 but
+ *  character art only fills ~40% of the frame, so draw large. */
+const PARTY_SIZE = 300;
+/** Enemy sprite draw size at scale 1.0. */
+const ENEMY_SIZE = 340;
+/** Boss sprites tower over regular enemies (at scale 1.0). */
 const BOSS_SIZE = 480;
 
-const ARENA_X_LEFT = -1.2;
-const ARENA_X_RIGHT = 0.9;
-const ARENA_Z_FRONT = 1.3;
-const ARENA_Z_BACK = 2.2;
-/** Simple orthographic-ish battle layout camera — NOT the arena backdrop's
- *  ArenaCamera. Sprites share only ARENA_HORIZON_FRAC with the backdrop;
- *  positions are hand-tuned for readable FF6 layout, not geometric alignment. */
-const CAM_HEIGHT = 0.85;
-const ARENA_FOCAL = 150;
-const ARENA_SPRITE_SCALE = 2.0;
+export type ActorScreenPos = {
+  x: number;
+  /** Visual center (popups / projectiles / markers). */
+  y: number;
+  /** Quantized depth scale (0.75 / 0.875 / 1.0). */
+  scale: number;
+  footY: number;
+  drawY: number;
+};
 
-function arenaSlotWorldPosition(
-  index: number,
-  kind: "party" | "enemy" | "ally",
-  row?: "front" | "back"
-): { x: number; y: number; z: number } {
-  const isFront = kind === "enemy" ? row === "front" : index < 3;
-  const z = isFront ? ARENA_Z_FRONT : ARENA_Z_BACK;
-  const idxInRow = kind === "enemy" ? index : index % 3;
-  const spacing = kind === "enemy" ? 0.6 : kind === "party" ? 0.85 : 0.4;
-  const xOffset = idxInRow * spacing;
-  const x = kind === "party"
-    ? ARENA_X_RIGHT + xOffset
-    : kind === "enemy"
-    ? ARENA_X_LEFT - xOffset
-    : 0 + xOffset;
-  return { x, y: 0, z };
+function geoFor(backdropId?: string | null): BackdropGeometry {
+  return geometryForBackdrop(backdropId);
 }
 
-function projectArenaPos(
-  world: { x: number; y: number; z: number },
+function toScreenPos(r: ResolvedSlot): ActorScreenPos {
+  return {
+    x: r.x,
+    y: r.centerY,
+    scale: r.scale,
+    footY: r.footY,
+    drawY: r.drawY,
+  };
+}
+
+/** Screen position of party member at array index i (foot-anchored contract). */
+export function partyPos(
+  i: number,
   w: number,
-  h: number
-): { x: number; y: number; scale: number } {
-  const horizonY = h * ARENA_HORIZON_FRAC;
-  const scale = ARENA_FOCAL / world.z;
-  const screenX = w / 2 + world.x * scale;
-  const screenY = horizonY + (CAM_HEIGHT / world.z) * scale;
-  return { x: screenX, y: screenY, scale };
+  _h: number,
+  backdropId?: string | null
+): ActorScreenPos {
+  return toScreenPos(
+    resolveSlot(partySlot(i), geoFor(backdropId), {
+      spriteHeight: PARTY_SIZE,
+      canvasWidth: w,
+      artFootFromTop: ART_FOOT_FROM_TOP,
+    })
+  );
 }
 
-/** Screen position (sprite center) of party member at array index i. */
-export function partyPos(i: number, w: number, h: number): { x: number; y: number; scale: number } {
-  return projectArenaPos(arenaSlotWorldPosition(i, "party"), w, h);
-}
-
-/** Screen position (sprite center) of an enemy in its row. */
+/** Screen position of an enemy in its row. */
 export function enemyPos(
   idxInRow: number,
   row: "front" | "back",
   w: number,
-  h: number
-): { x: number; y: number; scale: number } {
-  return projectArenaPos(arenaSlotWorldPosition(idxInRow, "enemy", row), w, h);
+  _h: number,
+  backdropId?: string | null,
+  baseSize: number = ENEMY_SIZE
+): ActorScreenPos {
+  return toScreenPos(
+    resolveSlot(enemySlot(idxInRow, row), geoFor(backdropId), {
+      spriteHeight: baseSize,
+      canvasWidth: w,
+      artFootFromTop: ART_FOOT_FROM_TOP,
+    })
+  );
 }
 
 /** Screen position of a summoned ally (between party and enemies). */
-export function allyPos(i: number, w: number, h: number): { x: number; y: number; scale: number } {
-  return projectArenaPos(arenaSlotWorldPosition(i, "ally"), w, h);
+export function allyPos(
+  i: number,
+  w: number,
+  _h: number,
+  backdropId?: string | null
+): ActorScreenPos {
+  return toScreenPos(
+    resolveSlot(allySlot(i), geoFor(backdropId), {
+      spriteHeight: ENEMY_SIZE,
+      canvasWidth: w,
+      artFootFromTop: ART_FOOT_FROM_TOP,
+    })
+  );
 }
 
 // --- Background ----------------------------------------------------------------
@@ -316,9 +339,10 @@ export interface CombatScene {
   lightGlows: LightGlow[];
   /** Last update timestamp for frame-rate-independent particle updates. */
   lastUpdate?: number;
-  /** Baked corridor backdrop (matches current floor's tileset). Null falls
-   *  back to the static combat-bg.png image. */
+  /** Baked corridor / arena backdrop. Null falls back to combat-bg.png. */
   backdrop: HTMLCanvasElement | null;
+  /** Ground-plane geometry key (arena | theme:fN | combat-bg | corridor). */
+  backdropId: string;
 }
 
 export interface SceneEffect {
@@ -404,6 +428,7 @@ export function createScene(state: CombatState): CombatScene {
     particles: [],
     lightGlows: [],
     backdrop: null,
+    backdropId: "arena",
   };
 }
 
@@ -433,39 +458,39 @@ export function findActor(
   id: string,
   w: number,
   h: number
-): { kind: SceneCursor["kind"]; x: number; y: number; scale: number; class?: string } | null {
+): { kind: SceneCursor["kind"]; x: number; y: number; scale: number; footY: number; class?: string } | null {
   const s = scene.state;
+  const bd = scene.backdropId;
   const pi = s.party.findIndex((c) => c.id === id);
   if (pi >= 0) {
-    const p = partyPos(pi, w, h);
+    const p = partyPos(pi, w, h, bd);
     return { kind: "party", ...p, class: s.party[pi].class };
   }
   for (const row of ["front", "back"] as const) {
     const list = s.enemies[row];
     const idx = list.findIndex((e) => e.instanceId === id);
     if (idx >= 0) {
-      const p = enemyPos(idx, row, w, h);
+      const base = list[idx]!.isBoss ? BOSS_SIZE : ENEMY_SIZE;
+      const p = enemyPos(idx, row, w, h, bd, base);
       return { kind: "enemy", ...p };
     }
   }
   const corpseIdx = scene.enemyCorpses.findIndex((e) => e.instanceId === id);
   if (corpseIdx >= 0) {
     const e = scene.enemyCorpses[corpseIdx];
-    // Corpses keep their last row slot (end of row).
     const living = scene.state.enemies[e.row].length;
-    const p = enemyPos(living + corpseIdx, e.row, w, h);
+    const base = e.isBoss ? BOSS_SIZE : ENEMY_SIZE;
+    const p = enemyPos(living + corpseIdx, e.row, w, h, bd, base);
     return { kind: "enemy", ...p };
   }
   const ai = s.summonedAllies.findIndex((a) => a.id === id);
   if (ai >= 0) {
-    const p = allyPos(ai, w, h);
+    const p = allyPos(ai, w, h, bd);
     return { kind: "ally", ...p };
   }
-  // Ally corpses keep drawing after removal from summonedAllies (matching
-  // how they're rendered: at slots after the living allies).
   const allyCorpseIdx = scene.allyCorpses.findIndex((a) => a.id === id);
   if (allyCorpseIdx >= 0) {
-    const p = allyPos(s.summonedAllies.length + allyCorpseIdx, w, h);
+    const p = allyPos(s.summonedAllies.length + allyCorpseIdx, w, h, bd);
     return { kind: "ally", ...p };
   }
   return null;
@@ -496,9 +521,10 @@ function step(at: number, run: (scene: CombatScene, now: number) => void): Chore
   return { at, run, fired: false };
 }
 
-/** How far an attacker steps toward the other side (party steps left, enemies right). */
-function approachDelta(kind: SceneCursor["kind"]): number {
-  return kind === "enemy" ? 35 : -35;
+/** How far an attacker steps toward the other side (party steps left, enemies right).
+ *  Distances multiply by the actor's depth scale so far-row lunges don't overshoot. */
+function approachDelta(kind: SceneCursor["kind"], scale = 1): number {
+  return (kind === "enemy" ? 35 : -35) * scale;
 }
 
 /** Push a damage/heal/miss popup over an actor. */
@@ -519,7 +545,7 @@ function pushPopup(
   scene.popups.push({
     text,
     x: actor.x + jitter,
-    y: actor.y - 20,
+    y: actor.y - 20 * actor.scale,
     color,
     start: now,
     big,
@@ -551,7 +577,7 @@ function impactSteps(
         anim.hitFlashIntensity = Math.max(0.25, Math.min(0.65, 0.25 + dmg / 180));
         // Brief recoil: enemies kick left (toward party), party/allies kick right.
         const recoilDir = actor.kind === "enemy" ? -1 : 1;
-        startMove(anim, recoilDir * 8, 0, 80, now, scene.playbackRate);
+        startMove(anim, recoilDir * 8 * actor.scale, 0, 80, now, scene.playbackRate);
       }
       pushPopup(scene, targetId, text, color, now, w, h, big);
       if (actor) {
@@ -1561,7 +1587,7 @@ export function playTurn(
     approachedKind = actor.kind;
     // Symbolic step forward — just enough to read as committing to the
     // attack. Party steps left toward enemies, enemies step right.
-    const dx = approachDelta(actor.kind);
+    const dx = approachDelta(actor.kind, actor.scale);
     steps.push(
       step(t, (sc, n) => {
         const a = getAnim(sc, actor.kind, actorId, n);
@@ -1662,7 +1688,7 @@ export function playTurn(
               sc.effects.push({
                 type: "projectile",
                 x: from.x, y: from.y,
-                fromX: from.x, fromY: from.y - 20,
+                fromX: from.x, fromY: from.y - 20 * from.scale,
                 toX: to.x, toY: to.y,
                 color: COLORS.dmg,
                 ...projectileForActor(scene, evt.actorId, attacker?.class),
@@ -2299,11 +2325,21 @@ export function updateScene(scene: CombatScene, now: number): void {
 
 // --- Drawing ---------------------------------------------------------------------------
 
-function drawShadow(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number): void {
-  ctx.fillStyle = COLORS.shadow;
+/** Soft contact shadow at the foot baseline — plants the sprite on the floor. */
+function drawContactShadow(
+  ctx: CanvasRenderingContext2D,
+  footX: number,
+  footY: number,
+  spriteWidth: number
+): void {
+  const rx = Math.max(8, spriteWidth * 0.28);
+  const ry = rx * 0.28;
+  ctx.save();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
   ctx.beginPath();
-  ctx.ellipse(x, y, rx, rx * 0.22, 0, 0, Math.PI * 2);
+  ctx.ellipse(footX, footY, rx, ry, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
 }
 
 /**
@@ -2435,14 +2471,26 @@ function drawPartyMember(
   scene: CombatScene,
   now: number,
   w: number,
-  h: number
+  _h: number
 ): void {
   const anim = getAnim(scene, "party", char.id, now);
-  const slot = partyPos(index, w, h);
+  const stripInfo = getPartySpriteStrip(char.class, anim.state);
+  const artFoot = artFootFromTopFor({
+    hasStrip: !!stripInfo,
+    stripArtFootFromTop: stripInfo?.strip.artFootFromTop,
+  });
+  const slot = toScreenPos(
+    resolveSlot(partySlot(index), geoFor(scene.backdropId), {
+      spriteHeight: PARTY_SIZE,
+      canvasWidth: w,
+      artFootFromTop: artFoot,
+    })
+  );
   const off = animOffset(anim, now);
   const x = slot.x + off.x;
   const y = slot.y + off.y;
-  const drawSize = PARTY_SIZE * slot.scale / ARENA_FOCAL * ARENA_SPRITE_SCALE;
+  const footY = slot.footY + off.y;
+  const drawSize = PARTY_SIZE * slot.scale;
 
   const isDead = char.hp <= 0 || char.status.includes("knockedOut");
   if (isDead && anim.state !== "death") setAnimState(anim, "death", now);
@@ -2450,23 +2498,15 @@ function drawPartyMember(
 
   const hidden = char.status.includes("hidden");
 
-  // The pack art only fills the middle of the 100px frame: measured feet sit
-  // ~7% of the frame below center and the body spans ~25% of the frame wide,
-  // so the shadow hugs the visible sprite instead of floating detached below.
-  drawShadow(ctx, x, y + drawSize * 0.07, drawSize * 0.13);
+  drawContactShadow(ctx, x, footY, drawSize * 0.45);
 
-  const stripInfo = getPartySpriteStrip(char.class, anim.state);
   const opacity = (hidden ? 0.35 : 1) * anim.opacity;
   if (stripInfo) {
     const stateAge = now - anim.stateStart;
     const frame = frameIndexFor(stripInfo.strip, stateAge);
-    // Pack art faces right; the party faces LEFT toward the enemies.
     drawStripFrame(ctx, stripInfo.img, stripInfo.strip, frame, x, y, drawSize, true, opacity);
   } else {
     drawPartyFallback(ctx, x, y, char, anim, drawSize);
-    // Hurt flash overlay — only for the fallback shape, which has no baked
-    // red hurt frame of its own (the real sprite strips do, see the enemy
-    // branch in drawEnemy).
     if (anim.state === "hurt" && now - anim.stateStart < 200) {
       const intensity = anim.hitFlashIntensity || 0.3;
       const sz = 1 + intensity * 0.3;
@@ -2483,9 +2523,6 @@ function drawPartyMember(
     }
   }
 
-  // The character art only fills the middle of the frame (measured art top
-  // ≈11% of sprite size above center), so anchor the marker just above the
-  // visible sprite, not the frame edge.
   drawMarkers(ctx, scene, "party", char.id, x, y - drawSize * 0.16, now);
 }
 
@@ -2497,23 +2534,33 @@ function drawEnemy(
   scene: CombatScene,
   now: number,
   w: number,
-  h: number
+  _h: number
 ): void {
   const anim = getAnim(scene, "enemy", enemy.instanceId, now);
   if (anim.opacity <= 0) return;
-  const slot = enemyPos(idxInRow, enemy.row, w, h);
+  const baseSize = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
+  const stripInfo = getEnemySpriteStrip(enemy.id, enemyStripState(anim.state));
+  const hasStrip = !!(stripInfo?.img && stripInfo.img.naturalWidth > 0);
+  const artFoot = artFootFromTopFor({
+    hasStrip,
+    stripArtFootFromTop: stripInfo?.strip.artFootFromTop,
+  });
+  const slot = toScreenPos(
+    resolveSlot(enemySlot(idxInRow, enemy.row), geoFor(scene.backdropId), {
+      spriteHeight: baseSize,
+      canvasWidth: w,
+      artFootFromTop: artFoot,
+    })
+  );
   const off = animOffset(anim, now);
   const x = slot.x + off.x;
   const y = slot.y + off.y;
-  const baseSize = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
-  const drawSize = baseSize * slot.scale / ARENA_FOCAL * ARENA_SPRITE_SCALE;
+  const footY = slot.footY + off.y;
+  const drawSize = baseSize * slot.scale;
 
-  // Same measured art metrics as the party sprites: feet ~7% below frame
-  // center, body ~25% of the frame wide.
-  drawShadow(ctx, x, y + drawSize * 0.07, drawSize * 0.13);
+  drawContactShadow(ctx, x, footY, drawSize * 0.45);
 
-  const stripInfo = getEnemySpriteStrip(enemy.id, enemyStripState(anim.state));
-  if (stripInfo?.img && stripInfo.img.naturalWidth > 0) {
+  if (hasStrip && stripInfo) {
     const { strip, img } = stripInfo;
     const stateAge = now - anim.stateStart;
     let frame: number;
@@ -2524,17 +2571,11 @@ function drawEnemy(
     } else {
       frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED));
     }
-    // Enemy strips are authored facing RIGHT — exactly toward the party in
-    // the FF6 layout (enemies left, party right) — so no mirroring.
-    drawStripFrame(ctx, img, strip, frame, x, y, drawSize, false, anim.opacity);
-    // No extra hurt-flash overlay here: the sprite pack already bakes a red
-    // flash frame into the hurt strip (see e.g. assets/enemies/orc/hurt.png),
-    // so an additional ellipse just doubles up into a harsher red blob.
+    drawStripFrame(ctx, img!, strip, frame, x, y, drawSize, false, anim.opacity);
   } else {
     drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize);
   }
 
-  // Tallest enemy art tops out ≈16% of sprite size above center.
   drawMarkers(ctx, scene, "enemy", enemy.instanceId, x, y - drawSize * 0.2, now);
 }
 
@@ -2550,17 +2591,17 @@ function drawAlly(
 ): void {
   const anim = getAnim(scene, "ally", ally.id, now);
   if (anim.opacity <= 0) return;
-  const slot = allyPos(index, w, h);
+  const slot = allyPos(index, w, h, scene.backdropId);
   const off = animOffset(anim, now);
   const x = slot.x + off.x;
   const y = slot.y + off.y;
-  const drawSize = ENEMY_SIZE * slot.scale / ARENA_FOCAL * ARENA_SPRITE_SCALE;
+  const footY = slot.footY + off.y;
+  const drawSize = ENEMY_SIZE * slot.scale;
 
-  // If the ally has a sprite id, try to draw it like an enemy.
   if (ally.spriteId) {
     const stripInfo = getEnemySpriteStrip(ally.spriteId, enemyStripState(anim.state));
     if (stripInfo?.img && stripInfo.img.naturalWidth > 0) {
-      drawShadow(ctx, x, y + drawSize * 0.07, drawSize * 0.13);
+      drawContactShadow(ctx, x, footY, drawSize * 0.45);
       const { strip, img } = stripInfo;
       const stateAge = now - anim.stateStart;
       let frame: number;
@@ -2571,35 +2612,30 @@ function drawAlly(
       } else {
         frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED));
       }
-      // Summon sprites face RIGHT (toward enemies), same as enemy art.
       drawStripFrame(ctx, img, strip, frame, x, y, drawSize, false, anim.opacity);
-      // No extra hurt-flash overlay: the sprite pack's hurt strip already
-      // bakes in a red flash frame (see the enemy branch above).
       drawMarkers(ctx, scene, "ally", ally.id, x, y - drawSize * 0.2, now);
       return;
     }
   }
 
-  // Fallback: glowing orb (original procedural ally).
-  const spriteScale = (slot.scale / ARENA_FOCAL) * ARENA_SPRITE_SCALE;
-  drawShadow(ctx, x, y + 26 * spriteScale, 20 * spriteScale);
+  drawContactShadow(ctx, x, footY, drawSize * 0.35);
   ctx.save();
   ctx.globalAlpha = anim.opacity;
-  const bob = Math.sin(now / 500 + index) * 3;
+  const bob = Math.sin(now / 500 + index) * 3 * slot.scale;
   ctx.fillStyle = COLORS.spellBurst;
   ctx.beginPath();
-  ctx.arc(x, y + bob, 16 * spriteScale, 0, Math.PI * 2);
+  ctx.arc(x, y + bob, 16 * slot.scale, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = COLORS.spellBurst;
   ctx.lineWidth = 2;
   for (let i = -1; i <= 1; i += 2) {
     ctx.beginPath();
-    ctx.moveTo(x + i * 9 * spriteScale, y + bob);
-    ctx.lineTo(x + i * 20 * spriteScale, y + bob - 14 * spriteScale);
+    ctx.moveTo(x + i * 9 * slot.scale, y + bob);
+    ctx.lineTo(x + i * 20 * slot.scale, y + bob - 14 * slot.scale);
     ctx.stroke();
   }
   ctx.restore();
-  drawMarkers(ctx, scene, "ally", ally.id, x, y - 32 * spriteScale, now);
+  drawMarkers(ctx, scene, "ally", ally.id, x, y - 32 * slot.scale, now);
 }
 
 /** Cursor (target selection) and active-actor hand markers. */
@@ -2965,28 +3001,62 @@ export function renderScene(
     ctx.restore();
   }
 
-  // Enemies: back row first, then front (front overlaps back).
-  s.enemies.back.forEach((e, i) => drawEnemy(ctx, e, i, scene, now, w, h));
-  s.enemies.front.forEach((e, i) => drawEnemy(ctx, e, i, scene, now, w, h));
-  // Corpses still fading out (kept at end-of-row slots).
+  // Combatants sorted by footY ascending (farther first). Contact shadows
+  // draw inside each draw* call immediately before the sprite.
+  type DrawCmd = { footY: number; draw: () => void };
+  const cmds: DrawCmd[] = [];
+
+  s.enemies.back.forEach((e, i) => {
+    const pos = enemyPos(i, "back", w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
+    cmds.push({
+      footY: pos.footY,
+      draw: () => drawEnemy(ctx, e, i, scene, now, w, h),
+    });
+  });
+  s.enemies.front.forEach((e, i) => {
+    const pos = enemyPos(i, "front", w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
+    cmds.push({
+      footY: pos.footY,
+      draw: () => drawEnemy(ctx, e, i, scene, now, w, h),
+    });
+  });
   scene.enemyCorpses.forEach((e, i) => {
     const living = e.row === "front" ? s.enemies.front.length : s.enemies.back.length;
-    drawEnemy(ctx, e, living + i, scene, now, w, h);
+    const idx = living + i;
+    const pos = enemyPos(idx, e.row, w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
+    cmds.push({
+      footY: pos.footY,
+      draw: () => drawEnemy(ctx, e, idx, scene, now, w, h),
+    });
   });
-
-  // Summoned allies.
-  s.summonedAllies.forEach((a, i) => drawAlly(ctx, a, i, scene, now, w, h));
-  scene.allyCorpses.forEach((a, i) =>
-    drawAlly(ctx, a, s.summonedAllies.length + i, scene, now, w, h)
-  );
-
-  // Party: back column first.
-  for (let i = 3; i < s.party.length; i++) drawPartyMember(ctx, s.party[i], i, scene, now, w, h);
-  for (let i = 0; i < Math.min(3, s.party.length); i++) {
-    drawPartyMember(ctx, s.party[i], i, scene, now, w, h);
+  s.summonedAllies.forEach((a, i) => {
+    const pos = allyPos(i, w, h, scene.backdropId);
+    cmds.push({
+      footY: pos.footY,
+      draw: () => drawAlly(ctx, a, i, scene, now, w, h),
+    });
+  });
+  scene.allyCorpses.forEach((a, i) => {
+    const idx = s.summonedAllies.length + i;
+    const pos = allyPos(idx, w, h, scene.backdropId);
+    cmds.push({
+      footY: pos.footY,
+      draw: () => drawAlly(ctx, a, idx, scene, now, w, h),
+    });
+  });
+  for (let i = 0; i < s.party.length; i++) {
+    const pos = partyPos(i, w, h, scene.backdropId);
+    const char = s.party[i]!;
+    cmds.push({
+      footY: pos.footY,
+      draw: () => drawPartyMember(ctx, char, i, scene, now, w, h),
+    });
   }
 
-  // Effects + popups on top.
+  cmds.sort((a, b) => a.footY - b.footY);
+  for (const c of cmds) c.draw();
+
+  // Overlay VFX (effects, particles, popups, banners) stay above combatants.
   drawEffects(ctx, scene, now);
   drawParticles(ctx, scene);
   drawPopups(ctx, scene, now);

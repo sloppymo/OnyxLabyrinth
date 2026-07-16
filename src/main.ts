@@ -20,6 +20,8 @@ import {
   renderBattleArena,
   renderCorridorBackdrop,
 } from "./engine/renderer";
+import { partyPos, enemyPos } from "./engine/combat-scene";
+import { geometryForBackdrop } from "./engine/combat-scene-math";
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
 import { loadPartySprites } from "./engine/party-sprite-cache";
 import { loadEffectSprites } from "./engine/effect-sprite-cache";
@@ -88,7 +90,7 @@ import { reviveKnockedOut, type Character } from "./game/party";
 import { xpForNextLevel, levelUpChar } from "./game/leveling";
 import { isPerkTierLevel, tierForLevel, type PendingPerkChoice } from "./game/perks";
 import type { GameState, GameMode } from "./types";
-import { parseFloorMapJSON } from "./game/floor-map";
+import { parseFloorMapJSON, resolveTilesetTheme } from "./game/floor-map";
 
 const PLAYTEST_STORAGE_KEY = "onyx-floor-playtest";
 
@@ -379,12 +381,15 @@ async function startCombat(combat: CombatState): Promise<void> {
   await loadTextures();
 
   const bd = renderBattleArena(state, 768, 672);
+  const theme = resolveTilesetTheme(state.floor);
+  const backdropId = `theme:${theme}`;
 
   combatController = new CombatController(combat, {
     onEnd: (result: CombatState) => {
       endCombat(result);
     },
     backdrop: bd,
+    backdropId,
     getLastInputKind: () => globalInput.getLastInputKind(),
   });
 }
@@ -1598,6 +1603,32 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     getCombatController: () => combatController,
     renderBattleArena,
     renderCorridorBackdrop,
+    groundPlaneProbe: () => {
+      const cc = combatController;
+      if (!cc) return null;
+      const scene = (cc as unknown as { scene: { backdropId: string; state: { party: { length: number }; enemies: { front: unknown[]; back: unknown[] } } } }).scene;
+      const bd = scene.backdropId;
+      const geo = geometryForBackdrop(bd);
+      const w = 768;
+      const h = 672;
+      const party = Array.from({ length: scene.state.party.length }, (_, i) =>
+        partyPos(i, w, h, bd)
+      );
+      const enemies = [
+        ...scene.state.enemies.front.map((_, i) => enemyPos(i, "front", w, h, bd)),
+        ...scene.state.enemies.back.map((_, i) => enemyPos(i, "back", w, h, bd)),
+      ];
+      const feetOk = [...party, ...enemies].every(
+        (p) => p.footY >= geo.seamY && p.footY <= geo.floorBottomY
+      );
+      return {
+        backdropId: bd,
+        geo,
+        party: party.map((p) => ({ footY: p.footY, scale: p.scale, y: p.y })),
+        enemies: enemies.map((p) => ({ footY: p.footY, scale: p.scale, y: p.y })),
+        feetOk,
+      };
+    },
   };
 }
 

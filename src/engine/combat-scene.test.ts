@@ -297,6 +297,9 @@ describe("actor positioning", () => {
     expect(enemyPos(0, "front", W, H).x).toBeLessThan(W / 2);
     expect(enemyPos(0, "back", W, H).y).toBeLessThan(enemyPos(0, "front", W, H).y);
     expect(enemyPos(0, "back", W, H).scale).toBeLessThan(enemyPos(0, "front", W, H).scale);
+    const seam = 323; // theme:f1 / arena seamY
+    expect(enemyPos(0, "back", W, H).footY).toBeGreaterThanOrEqual(seam);
+    expect(partyPos(5, W, H).footY).toBeGreaterThanOrEqual(seam);
   });
 
   it("findActor resolves party, enemies, and corpses", () => {

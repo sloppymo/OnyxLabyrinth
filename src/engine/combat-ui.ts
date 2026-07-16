@@ -92,6 +92,8 @@ export interface CombatControllerOptions {
   /** Optional baked corridor backdrop canvas. When null, the static
    *  combat-bg.png image is used instead. */
   backdrop?: HTMLCanvasElement | null;
+  /** Ground-plane geometry key (arena | theme:fN | combat-bg | corridor). */
+  backdropId?: string;
   /** Last-used device class for input-adaptive HUD hints. */
   getLastInputKind?: () => "keyboard" | "gamepad";
 }
@@ -144,6 +146,7 @@ export class CombatController {
     this.getLastInputKind = opts.getLastInputKind ?? (() => "keyboard");
     this.scene = createScene(state);
     this.scene.backdrop = opts.backdrop ?? null;
+    this.scene.backdropId = opts.backdropId ?? (opts.backdrop ? "arena" : "combat-bg");
     this.startRound();
     this.startRenderLoop();
   }
