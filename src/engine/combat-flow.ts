@@ -147,14 +147,22 @@ export type LastCommand =
       targetRow?: "front" | "back";
     };
 
-/** Compact SP / Rage line for the acting character's menu. */
+/**
+ * Compact resource line for the acting character's menu.
+ * One live resource only (engine invariant: no class has both SP and Rage).
+ * Format matches the roster RES column: `SP cur/max` or `RG cur/max`.
+ */
 export function menuResourceLine(
   sp: number,
   maxSp: number,
-  rage: number | null
+  rage: number | null,
+  maxRage?: number
 ): string {
-  const parts = [`SP ${sp}/${maxSp}`];
-  if (rage !== null) parts.push(`Rage ${rage}`);
-  return parts.join(" · ");
+  if (rage !== null) {
+    const cap = maxRage ?? rage;
+    return `RG ${rage}/${cap}`;
+  }
+  if (maxSp > 0) return `SP ${sp}/${maxSp}`;
+  return "";
 }
 

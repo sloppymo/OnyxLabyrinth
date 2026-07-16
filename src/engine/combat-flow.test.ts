@@ -73,9 +73,11 @@ describe("canRepeatAttack", () => {
 });
 
 describe("menuResourceLine", () => {
-  it("formats SP and optional Rage", () => {
+  it("shows only the live resource in roster format", () => {
     expect(menuResourceLine(12, 40, null)).toBe("SP 12/40");
-    expect(menuResourceLine(12, 40, 3)).toBe("SP 12/40 · Rage 3");
+    expect(menuResourceLine(0, 0, 3, 12)).toBe("RG 3/12");
+    expect(menuResourceLine(12, 40, 3, 12)).toBe("RG 3/12");
+    expect(menuResourceLine(0, 0, null)).toBe("");
   });
 });
 

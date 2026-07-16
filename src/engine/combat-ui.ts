@@ -35,7 +35,7 @@ import { enemyHealthDescriptor } from "./combat-display";
 import type { Character } from "../game/party";
 import { isUtilitySpell, type SpellDef } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
-import { techniquesForClass, techniqueById, classHasTechniques, type TechniqueDef } from "../data/techniques";
+import { techniquesForClass, techniqueById, classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
 import type { ItemDef } from "../data/items";
 import { combatCanvas, combatWindows } from "./shell";
 import {
@@ -50,6 +50,7 @@ import {
 } from "./combat-scene";
 import {
   renderCombatWindows,
+  playbackHintText,
   type CombatWindowsView,
   type CombatWindowsHandlers,
   type MenuEntry,
@@ -91,6 +92,8 @@ export interface CombatControllerOptions {
   /** Optional baked corridor backdrop canvas. When null, the static
    *  combat-bg.png image is used instead. */
   backdrop?: HTMLCanvasElement | null;
+  /** Last-used device class for input-adaptive HUD hints. */
+  getLastInputKind?: () => "keyboard" | "gamepad";
 }
 
 export class CombatController {
@@ -133,10 +136,12 @@ export class CombatController {
   private scene: CombatScene;
   private rafId: number | null = null;
   private windowsDirty = true;
+  private getLastInputKind: () => "keyboard" | "gamepad";
 
   constructor(state: CombatState, opts: CombatControllerOptions) {
     this.state = state;
     this.onEnd = opts.onEnd;
+    this.getLastInputKind = opts.getLastInputKind ?? (() => "keyboard");
     this.scene = createScene(state);
     this.scene.backdrop = opts.backdrop ?? null;
     this.startRound();
@@ -1092,8 +1097,31 @@ export class CombatController {
     }
 
     if (this.phase === "playback") {
-      if (event.kind === "press" && event.button === "start") {
+      if (event.kind === "hold" && event.button === "lt") {
+        this.shiftHeld = true;
+        this.syncPlaybackRate();
+        return;
+      }
+      if (event.kind === "release" && event.button === "lt") {
+        this.shiftHeld = false;
+        this.syncPlaybackRate();
+        return;
+      }
+      if (event.kind !== "press") return;
+      if (event.button === "start") {
         this.togglePartyAuto();
+        return;
+      }
+      if (event.button === "y") {
+        this.autoFast = !this.autoFast;
+        this.syncPlaybackRate();
+        this.windowsDirty = true;
+        return;
+      }
+      if (event.button === "b") {
+        skipPlaybackToEnd(this.scene, performance.now());
+        this.windowsDirty = true;
+        return;
       }
       return;
     }
@@ -1362,7 +1390,10 @@ export class CombatController {
         ? menuResourceLine(
             acting.sp,
             acting.maxSp,
-            classHasTechniques(acting.class) ? this.currentRage(acting) : null
+            classHasTechniques(acting.class) ? this.currentRage(acting) : null,
+            classHasTechniques(acting.class)
+              ? maxRageForLevel(acting.level)
+              : undefined
           )
         : null;
 
@@ -1385,11 +1416,11 @@ export class CombatController {
       inspectCharacterId: this.inspectCharacterId,
       playbackHint:
         this.phase === "playback"
-          ? "Hold Shift: 2× · Tab: FAST · Esc: skip · Q: AUTO"
+          ? playbackHintText(this.getLastInputKind())
           : this.phase === "palette" && this.partyAuto
-            ? "AUTO on · Q to stop"
+            ? "AUTO on · Start/Q stop"
             : null,
-      menuResourceLine: resourceLine,
+      menuResourceLine: resourceLine || null,
     };
     const handlers: CombatWindowsHandlers = {
       onMenuHover: () => {},

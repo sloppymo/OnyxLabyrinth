@@ -79,7 +79,7 @@ export interface CombatWindowsView {
   playbackHint?: string | null;
   /** Party Auto toggle is on (palette hint). */
   partyAuto?: boolean;
-  /** Compact resource line under the action menu (e.g. "SP 12/40 · Rage 3"). */
+  /** Compact resource line under the action menu (e.g. "SP 12/40" or "RG 3/12"). */
   menuResourceLine?: string | null;
   /** Roster inspect highlight (LT/RT) — does not change initiative. */
   inspectCharacterId?: string | null;
@@ -118,13 +118,24 @@ const ACTION_SHORTCUTS: Partial<Record<MenuEntry["kind"], string>> = {
   repeat: "Z",
 };
 
+/** Join hint segments with · ; drop whole trailing entries until it fits. */
+export function joinHintParts(parts: string[], maxLen = 42): string {
+  const clean = parts.map((p) => p.trim()).filter(Boolean);
+  while (clean.length > 1 && clean.join(" · ").length > maxLen) {
+    clean.pop();
+  }
+  const joined = clean.join(" · ");
+  return joined.length <= maxLen ? joined : clean[0] ?? "";
+}
+
 /** Hint-row text for the action menu, derived from the entries actually
  *  shown so the footer never advertises a dead key. */
 export function menuHintText(entries: MenuEntry[]): string {
   const letters = entries
     .map((e) => ACTION_SHORTCUTS[e.kind])
     .filter((l): l is string => l !== undefined);
-  return `↑↓ Enter · ${letters.join("/")}`;
+  // Priority: confirm + letter shortcuts survive; nav glyph drops first.
+  return joinHintParts([`Enter · ${letters.join("/")}`, "↑↓"]);
 }
 
 const PALETTE_GLYPHS = ["A", "B", "X", "Y"] as const;
@@ -133,20 +144,32 @@ const PALETTE_LABELS: Record<PaletteSlot["kind"], string> = {
   attack: "Atk",
   defend: "Def",
   cast: "Magic",
-  skill: "Skill",
+  skill: "Skl",
   item: "Item",
   flee: "Run",
 };
 
-/** Hint row for the controller-first action palette. */
+/**
+ * Palette footer — no A/B/X/Y dupes (already on the face buttons).
+ * Order = priority: drop from the tail first (least important last).
+ */
 export function paletteHintText(palette: CombatPalette, partyAuto: boolean): string {
-  const parts = [
-    "A:Atk · B:Def · X:Mag · Y:Skl · Sel:Item · Start:Auto · hold B:Run",
-    "LT/RT: inspect",
-  ];
-  if (partyAuto) parts.push("AUTO on");
   void palette;
-  return parts.join(" · ");
+  return joinHintParts([
+    "Sel:Item",
+    "hold B:Run",
+    "Start:Auto",
+    partyAuto ? "AUTO on" : "",
+  ]);
+}
+
+/** Playback meta hints — input-adaptive; never clip mid-token.
+ *  Priority: tempo → skip → auto (auto drops first when tight). */
+export function playbackHintText(inputKind: "keyboard" | "gamepad"): string {
+  if (inputKind === "gamepad") {
+    return joinHintParts(["LT:2×", "Y:FAST", "B:skip", "Start:AUTO"], 40);
+  }
+  return joinHintParts(["Shift:2×", "Tab:FAST", "Q:AUTO", "Esc:skip"], 40);
 }
 
 function paletteSlotLabel(slot: PaletteSlot, char?: Character): string {
@@ -228,7 +251,11 @@ function buildMenuWindow(
   if (view.menuMode === "none") {
     win.classList.add("empty");
     if (view.playbackHint) {
+      win.classList.add("playback-compact");
       win.appendChild(el("ff6-hint-row", view.playbackHint));
+    } else {
+      // Nothing to say — avoid a big blue void.
+      win.classList.add("playback-idle");
     }
     return win;
   }
@@ -332,7 +359,7 @@ function buildMenuWindow(
     if (view.selectionFooter) {
       win.appendChild(el("ff6-sel-footer", view.selectionFooter));
     }
-    win.appendChild(el("ff6-hint-row", "↑↓ Enter · A confirm · B back · LB/RB cycle"));
+    win.appendChild(el("ff6-hint-row", joinHintParts(["A confirm", "B back", "↑↓"])));
   }
 
   if (view.flash) {
@@ -504,7 +531,13 @@ function buildNameCell(
   text.className = "ff6-p-name-text";
   text.textContent = name;
   cell.appendChild(text);
-  appendStatusTags(cell, statuses);
+  // Fixed status slot — same geometry with or without tags (RES-column rule).
+  const slot = document.createElement("span");
+  slot.className = "ff6-p-status";
+  if (statuses.length > 0) {
+    appendStatusTags(slot, statuses);
+  }
+  cell.appendChild(slot);
   return cell;
 }
 

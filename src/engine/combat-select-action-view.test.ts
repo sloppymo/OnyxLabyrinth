@@ -6,6 +6,9 @@ import {
   renderCombatWindows,
   menuEntriesForCharacter,
   menuHintText,
+  joinHintParts,
+  playbackHintText,
+  paletteHintText,
   type CombatWindowsView,
   type CombatWindowsHandlers,
 } from "./combat-select-action-view";
@@ -109,17 +112,31 @@ describe("menuEntriesForCharacter", () => {
 describe("menuHintText", () => {
   it("includes T for technique users", () => {
     const c = createCharacter("x", "X", "Human", "Neutral", "Fighter", 0);
-    expect(menuHintText(menuEntriesForCharacter(c))).toBe("↑↓ Enter · A/T/M/D/I/R");
+    expect(menuHintText(menuEntriesForCharacter(c))).toBe("Enter · A/T/M/D/I/R · ↑↓");
   });
 
   it("omits T for pure casters", () => {
     const c = createCharacter("m", "M", "Elf", "Neutral", "Mage", 0);
-    expect(menuHintText(menuEntriesForCharacter(c))).toBe("↑↓ Enter · A/M/D/I/R");
+    expect(menuHintText(menuEntriesForCharacter(c))).toBe("Enter · A/M/D/I/R · ↑↓");
   });
 
   it("includes H for an unhidden Thief", () => {
     const c = createCharacter("t", "T", "Human", "Neutral", "Thief", 0);
     expect(menuHintText(menuEntriesForCharacter(c))).toContain("/H/");
+  });
+});
+
+describe("joinHintParts / playbackHintText", () => {
+  it("drops whole trailing segments instead of mid-word clipping", () => {
+    expect(joinHintParts(["A", "B", "CDEFGHIJKLMNOP"], 12)).toBe("A · B");
+    expect(playbackHintText("keyboard")).not.toMatch(/\w…$/);
+    expect(playbackHintText("gamepad")).toContain("Start:AUTO");
+    expect(paletteHintText({ slots: [] } as never, false)).not.toContain("A:Atk");
+  });
+
+  it("drops least-important (tail) segments first", () => {
+    expect(joinHintParts(["A confirm", "B back", "↑↓"], 20)).toBe("A confirm · B back");
+    expect(playbackHintText("keyboard")).toMatch(/Shift:2×/);
   });
 });
 
@@ -256,7 +273,7 @@ describe("renderCombatWindows", () => {
     view.menuEntries = menuEntriesForCharacter(state.party[0]);
     renderCombatWindows(container, view, noopHandlers());
     expect(container.querySelector(".ff6-hint-row")?.textContent).toBe(
-      "↑↓ Enter · A/T/M/D/I/R"
+      "Enter · A/T/M/D/I/R · ↑↓"
     );
   });
 

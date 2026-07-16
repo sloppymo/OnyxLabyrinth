@@ -385,6 +385,7 @@ async function startCombat(combat: CombatState): Promise<void> {
       endCombat(result);
     },
     backdrop: bd,
+    getLastInputKind: () => globalInput.getLastInputKind(),
   });
 }
 
