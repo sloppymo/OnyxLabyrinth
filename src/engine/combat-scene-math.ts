@@ -282,7 +282,7 @@ export function geometryForBackdrop(id: string | null | undefined): BackdropGeom
  * row lands on one clean pixel-art step:
  *   back rows  0.06/0.13/0.20 → 0.75   (small, high on the floor)
  *   summons    0.42/0.48/0.54 → 0.875  (mid-field)
- *   front rows 0.78/0.87/0.96 → 1.0    (large, near the windows)
+ *   front rows 0.78–0.96      → 1.0    (large, near the windows)
  *
  * X values respect the center aisle (see CENTER_AISLE_MIN_GAP_PX): all enemy
  * slots ≤ 336, all party slots ≥ 432 around design center 384. Back-row
