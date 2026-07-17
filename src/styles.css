@@ -1148,7 +1148,7 @@ canvas#map-canvas {
     inset 0 0 0 2px #202c70,
     0 3px 8px rgba(0, 0, 0, 0.6);
   color: var(--warm-white);
-  padding: 6px 8px;
+  padding: 4px 8px;
   /* Content-driven caps apply on mobile only — desktop overrides below with
      a fixed band so the windows never grow over the battlefield. */
   min-height: 110px;
@@ -1158,7 +1158,7 @@ canvas#map-canvas {
 
 /*
  * Fixed window band — the ground-plane occlusion contract made law.
- * Height = COMBAT_WINDOW_OVERLAP_PX (200) of the 672 design height, minus
+ * Height = COMBAT_WINDOW_OVERLAP_PX (150) of the 672 design height, minus
  * the 6px bottom gap, expressed as a fraction of the aspect-locked
  * #combat-wrap so it tracks the canvas at any size. Every combat state
  * (command palette, magic/tech lists, detail panes) shares ONE band height;
@@ -1166,12 +1166,16 @@ canvas#map-canvas {
  * floorBottomY guarantee that sprite feet and contact shadows are never
  * occluded, even with the tallest menus open. Change it together with
  * COMBAT_WINDOW_OVERLAP_PX or the invariant is fiction.
+ * Shrunk from 200 (~30% of frame) to 150 (~22%) as part of the unified-
+ * footer redesign — the requested 18-20% would crush the 6-row roster below
+ * its 18px readability floor (see combat-roster-tokens.md); this is the
+ * lowest value that still fits six rows with zero inter-row gap.
  * Mobile (≤640px) wraps the panes into two rows and keeps content-driven
  * heights — the wrapped layout can't share one fixed band.
  */
 @media (min-width: 641px) {
   #combat-windows {
-    height: calc((200 - 6) / 672 * 100%);
+    height: calc((150 - 6) / 672 * 100%);
   }
 
   .ff6-windows {
@@ -1186,12 +1190,58 @@ canvas#map-canvas {
   }
 }
 
-.ff6-menu {
-  /* Face-button pane: wide enough for 4× Skl labels without clipping. */
-  flex: 0 0 28%;
+/*
+ * Command popup — replaces the old permanent left command window. Floats
+ * above the footer (near the party sprites/column) instead of taking a
+ * fixed slot, so it only occupies space while the player is actually
+ * choosing an action. `-wrap` carries the positioning (and stays
+ * click-through outside the box); `.ff6-command-popup` is the visible box.
+ */
+.ff6-command-popup-wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+/*
+ * Height-capped so a long list (Target/Magic with 5+ entries) can't grow
+ * upward into the party sprites and cover the very targeting cursor/turn
+ * marker the unified footer is supposed to keep visible — it scrolls
+ * internally instead (`.ff6-selection-list` already does).
+ */
+.ff6-command-popup {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  width: 46%;
+  min-width: 220px;
+  max-width: 360px;
+  max-height: 150px;
+  pointer-events: auto;
+}
+
+/* Playback hint / flash only — no header, no palette, minimal footprint. */
+.ff6-command-popup.compact {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.ff6-popup-header {
+  font-size: 16px;
+  color: #ffd769;
+  letter-spacing: 0.02em;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(232, 232, 240, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ff6-palette {
@@ -1222,39 +1272,23 @@ canvas#map-canvas {
   cursor: default;
 }
 
+/* Glyph is now a small accent badge — the action label is the readable
+   element (was reversed: 26px glyph vs 14px label). */
 .ff6-palette-glyph {
-  font-size: var(--fs-small);
+  font-size: 11px;
   color: #ffd769;
   font-weight: bold;
   letter-spacing: 0.02em;
+  opacity: 0.8;
 }
 
 .ff6-palette-label {
-  font-size: 14px;
-  line-height: 1.1;
+  font-size: 16px;
+  line-height: 1.15;
   text-align: center;
   max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
-}
-
-.ff6-menu.empty {
-  opacity: 0.85;
-  min-height: 48px;
-}
-
-/* Playback with tempo hints — strip the empty pane down to one hint row. */
-.ff6-menu.empty.playback-compact {
-  min-height: 0;
-  justify-content: flex-end;
-  padding-top: 4px;
-  padding-bottom: 4px;
-}
-
-.ff6-menu.empty.playback-idle {
-  opacity: 0;
-  min-height: 0;
-  pointer-events: none;
 }
 
 .ff6-menu-title {
@@ -1270,6 +1304,7 @@ canvas#map-canvas {
   overflow-y: auto;
   scrollbar-width: none;
   flex: 1;
+  min-height: 0;
 }
 
 .ff6-menu-item {
@@ -1343,19 +1378,60 @@ canvas#map-canvas {
   padding: 2px 6px;
 }
 
-.ff6-enemies {
-  flex: 0 0 24%;
+/* Unified footer window: enemy column (left) + party roster (right),
+ * separated by an internal divider — not two bordered boxes. Replaces the
+ * old three-window row (menu / enemies / party). */
+.ff6-battle {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  gap: 0;
+}
+
+.ff6-battle-enemies {
+  flex: 0 0 26%;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  padding-right: 8px;
+  border-right: 1px solid rgba(232, 232, 240, 0.25);
   overflow-y: auto;
   scrollbar-width: none;
 }
 
+.ff6-battle-round {
+  font-size: 14px;
+  color: #b8c4f0;
+  letter-spacing: 0.04em;
+  padding-bottom: 3px;
+  margin-bottom: 3px;
+  border-bottom: 1px solid rgba(232, 232, 240, 0.25);
+}
+
+.ff6-battle-enemy-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.ff6-bow-tag {
+  color: #d8c890;
+}
+
+/*
+ * Column layout (name above, count below) rather than a side-by-side flex
+ * row: a two-word name ("Skeleton Archer") wrapping to 2 lines used to
+ * leave the ×N count floating next to line 1 only, reading as if "Skeleton"
+ * and "Archer" were two different unrelated entries. Stacking removes the
+ * ambiguity regardless of how many lines the name takes.
+ */
 .ff6-enemy-row {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 6px;
+  flex-direction: column;
+  gap: 0;
   font-size: 18px;
   line-height: 1.25;
   padding: 2px 4px;
@@ -1364,7 +1440,6 @@ canvas#map-canvas {
 /* Prefer wrapping to two lines over mid-word ellipsis — names are the job. */
 .ff6-enemy-row > span:first-child {
   min-width: 0;
-  flex: 1 1 auto;
   white-space: normal;
   overflow-wrap: anywhere;
   display: -webkit-box;
@@ -1374,6 +1449,8 @@ canvas#map-canvas {
 }
 
 .ff6-enemy-count {
+  align-self: flex-end;
+  margin-top: -2px;
   color: #b8c4f0;
   font-size: var(--fs-small);
   flex-shrink: 0;
@@ -1405,25 +1482,26 @@ canvas#map-canvas {
   color: #8ee5e0;
 }
 
-/* Spell detail panel — replaces the enemy window while the Magic list is
-   open, in the same 31% slot, so the overall three-column layout never
-   shifts. */
+/* Spell/technique detail panel — replaces the enemy list in the enemy
+   column while the Magic/Tech list is open, so the battle window's overall
+   two-column layout never shifts. */
 /* Detail pane typography is compacted to fit the fixed window band —
  * controller users cannot scroll an unfocused pane, so the whole card
  * (name / meta / effect / description) must fit at once. Sizes follow the
  * roster's 18px precedent rather than --fs-small (26px), which needed
  * ~285px of height and forced the old band to swell over the stage. */
 .ff6-spell-detail {
-  flex: 0 0 26%;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   gap: 6px;
   overflow-y: auto;
   scrollbar-width: none;
 }
 
 .ff6-spell-detail-name {
-  font-size: 24px;
+  font-size: 20px;
   color: #ffd769;
   letter-spacing: 0.02em;
   padding-bottom: 4px;
@@ -1431,7 +1509,7 @@ canvas#map-canvas {
 }
 
 .ff6-spell-detail-meta {
-  font-size: 18px;
+  font-size: 16px;
   color: #b8c4f0;
 }
 
@@ -1452,8 +1530,11 @@ canvas#map-canvas {
 
 .ff6-party {
   flex: 1 1 auto;
-  /* Extra right padding so the resource column doesn't kiss the border. */
+  min-width: 0;
+  /* Extra right padding so the resource column doesn't kiss the border;
+     left padding clears the enemy-column divider. */
   padding-right: 10px;
+  padding-left: 8px;
   overflow-y: auto;
   scrollbar-width: none;
   font-family: var(--game-font);
@@ -1467,13 +1548,23 @@ canvas#map-canvas {
    * Status is its OWN column — never nested inside the name cell. Nesting
    * reserved 2.6em of name width even when empty, so 4-letter names with
    * wide glyphs (Bram/Coda/Fenn) ellipsized to "B…" while Dell/Eve fit.
+   * Row chrome (not font-size — 18px is the readability floor) is trimmed
+   * to fit the shrunk footer band: gap/padding/line-height only.
    */
   grid-template-columns: minmax(0, 1fr) 2.6em 48px 7ch 10ch;
   align-items: center;
-  gap: 1px 6px;
+  gap: 0 6px;
   font-size: 18px;
-  line-height: 1.15;
-  padding: 2px 4px;
+  line-height: 1.05;
+  padding: 1px 4px;
+}
+
+/* Ally-targeting selection highlight — distinct from the acting plate. */
+.ff6-party-row.targeted {
+  outline: 1px solid #ffd769;
+  outline-offset: -1px;
+  border-radius: 4px;
+  background: rgba(255, 215, 105, 0.12);
 }
 
 /* Acting character: inverted plate. ▶ is reserved for menu selection. */
@@ -1663,13 +1754,34 @@ canvas#map-canvas {
     flex-wrap: wrap;
   }
 
-  .ff6-menu,
-  .ff6-enemies {
-    flex: 1 1 45%;
+  .ff6-battle {
+    flex-wrap: wrap;
+  }
+
+  .ff6-battle-enemies {
+    flex: 1 1 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(232, 232, 240, 0.25);
+    padding-right: 0;
+    padding-bottom: 6px;
+    margin-bottom: 4px;
   }
 
   .ff6-party {
     flex: 1 1 100%;
+    padding-left: 0;
+  }
+
+  /* Absolute popup can't anchor sensibly over a tiny viewport — stack it
+     inline above the battle window instead. */
+  .ff6-command-popup-wrap {
+    position: static;
+    margin-bottom: 6px;
+  }
+
+  .ff6-command-popup {
+    width: 100%;
+    max-width: none;
   }
 }
 

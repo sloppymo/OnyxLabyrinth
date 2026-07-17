@@ -174,8 +174,8 @@ describe("renderCombatWindows", () => {
   it("renders the three FF6 windows", () => {
     const state = makeState([makeEnemy("rat-0")]);
     renderCombatWindows(container, baseView(state), noopHandlers());
-    expect(container.querySelector(".ff6-menu")).not.toBeNull();
-    expect(container.querySelector(".ff6-enemies")).not.toBeNull();
+    expect(container.querySelector(".ff6-command-popup")).not.toBeNull();
+    expect(container.querySelector(".ff6-battle-enemies")).not.toBeNull();
     expect(container.querySelector(".ff6-party")).not.toBeNull();
   });
 
@@ -186,7 +186,7 @@ describe("renderCombatWindows", () => {
     view.menuEntries = menuEntriesForCharacter(state.party[0]);
     view.menuIndex = 1;
     renderCombatWindows(container, view, noopHandlers());
-    const items = container.querySelectorAll(".ff6-menu .ff6-menu-item");
+    const items = container.querySelectorAll(".ff6-command-popup .ff6-menu-item");
     expect(items[1].classList.contains("selected")).toBe(true);
     const current = container.querySelector(
       ".ff6-party-row.current .ff6-p-name-text"
@@ -293,7 +293,7 @@ describe("renderCombatWindows", () => {
     view.selectionIndex = 0;
     renderCombatWindows(container, view, noopHandlers());
     expect(container.querySelector(".ff6-menu-title")?.textContent).toBe("Magic");
-    const rows = container.querySelectorAll(".ff6-menu .ff6-menu-item");
+    const rows = container.querySelectorAll(".ff6-command-popup .ff6-menu-item");
     expect(rows).toHaveLength(2);
     expect(rows[0].classList.contains("selected")).toBe(true);
     expect(rows[1].classList.contains("disabled")).toBe(true);
@@ -351,7 +351,7 @@ describe("renderCombatWindows", () => {
     view.menuMode = "menu";
     view.menuEntries = menuEntriesForCharacter(state.party[0]);
     renderCombatWindows(container, view, handlers);
-    const rows = container.querySelectorAll<HTMLElement>(".ff6-menu .ff6-menu-item");
+    const rows = container.querySelectorAll<HTMLElement>(".ff6-command-popup .ff6-menu-item");
     rows[2].click();
     expect(confirmed).toBe(2);
   });

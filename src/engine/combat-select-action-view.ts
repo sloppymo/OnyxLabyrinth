@@ -85,6 +85,8 @@ export interface CombatWindowsView {
   menuResourceLine?: string | null;
   /** Roster inspect highlight (LT/RT) — does not change initiative. */
   inspectCharacterId?: string | null;
+  /** Party/ally member currently highlighted as a heal/buff target. */
+  targetCharacterId?: string | null;
 }
 
 export interface CombatWindowsHandlers {
@@ -282,23 +284,41 @@ function appendStatusTags(nameEl: HTMLElement, statuses: readonly string[]): voi
   }
 }
 
-function buildMenuWindow(
+/** Acting character's resource header for the command popup: "▼ Dell · SP 24/24". */
+function buildPopupHeader(view: CombatWindowsView): HTMLElement | null {
+  if (!view.currentCharacterId) return null;
+  const acting = view.state.party.find((p) => p.id === view.currentCharacterId);
+  if (!acting) return null;
+  const parts = [`▼ ${acting.name}`];
+  if (view.menuResourceLine) parts.push(view.menuResourceLine);
+  return el("ff6-popup-header", parts.join(" · "));
+}
+
+/**
+ * Contextual popup replacing the old permanent command window. Anchored
+ * above the party column (near the acting character's sprites) rather than
+ * over a specific row — row-level anchoring would have to survive KO,
+ * scrolling, and mid-turn reordering, which is fragile for no real gain
+ * since the popup already names the actor in its header.
+ */
+function buildCommandPopup(
   view: CombatWindowsView,
   handlers: CombatWindowsHandlers
-): HTMLElement {
-  const win = el("ff6-window ff6-menu");
-
+): HTMLElement | null {
   if (view.menuMode === "none") {
-    win.classList.add("empty");
-    if (view.playbackHint) {
-      win.classList.add("playback-compact");
-      win.appendChild(el("ff6-hint-row", view.playbackHint));
-    } else {
-      // Nothing to say — avoid a big blue void.
-      win.classList.add("playback-idle");
-    }
-    return win;
+    if (!view.playbackHint && !view.flash) return null;
+    const wrap = el("ff6-command-popup-wrap");
+    const box = el("ff6-window ff6-command-popup compact");
+    if (view.playbackHint) box.appendChild(el("ff6-hint-row", view.playbackHint));
+    if (view.flash) box.appendChild(el("ff6-flash", view.flash));
+    wrap.appendChild(box);
+    return wrap;
   }
+
+  const wrap = el("ff6-command-popup-wrap");
+  const win = el("ff6-window ff6-command-popup");
+  const header = buildPopupHeader(view);
+  if (header) win.appendChild(header);
 
   if (view.menuMode === "palette" && view.palette) {
     const row = el("ff6-palette");
@@ -406,11 +426,12 @@ function buildMenuWindow(
   if (view.flash) {
     win.appendChild(el("ff6-flash", view.flash));
   }
-  return win;
+  wrap.appendChild(win);
+  return wrap;
 }
 
-function buildEnemyWindow(state: CombatState): HTMLElement {
-  const win = el("ff6-window ff6-enemies");
+function buildEnemyListBody(state: CombatState): HTMLElement {
+  const win = el("ff6-battle-enemy-list");
   const living = [...state.enemies.front, ...state.enemies.back].filter(
     (e) => e.currentHp > 0
   );
@@ -465,13 +486,19 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
       chargeTag.textContent = `⚡${group.windUp}`;
       nameEl.appendChild(chargeTag);
     }
-    row.appendChild(nameEl);
-    if (group.count > 1) {
-      const countEl = document.createElement("span");
-      countEl.className = "ff6-enemy-count";
-      countEl.textContent = `×${group.count}`;
-      row.appendChild(countEl);
+    if (/archer/i.test(name)) {
+      const bowTag = document.createElement("span");
+      bowTag.className = "ff6-status-tag ff6-bow-tag";
+      bowTag.textContent = "BOW";
+      nameEl.appendChild(bowTag);
     }
+    row.appendChild(nameEl);
+    // Always show the count (FF6-style "×N"), including ×1, so a lone
+    // archer reads the same as any other group instead of looking uncounted.
+    const countEl = document.createElement("span");
+    countEl.className = "ff6-enemy-count";
+    countEl.textContent = `×${group.count}`;
+    row.appendChild(countEl);
     win.appendChild(row);
   }
   // Summoned allies fight on the party's side but stand mid-field, so they
@@ -491,11 +518,11 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
   return win;
 }
 
-/** Replaces the enemy window with a full readout of the highlighted spell
+/** Replaces the enemy list with a full readout of the highlighted spell
  *  while the Magic list is open: name, tier/class, SP cost, target shape,
  *  mechanical effect, and flavor text. */
-function buildSpellDetailWindow(spell: SpellDef): HTMLElement {
-  const win = el("ff6-window ff6-spell-detail");
+function buildSpellDetailBody(spell: SpellDef): HTMLElement {
+  const win = el("ff6-spell-detail");
   win.appendChild(el("ff6-spell-detail-name", spell.name));
 
   const meta = el("ff6-spell-detail-meta");
@@ -512,9 +539,9 @@ function buildSpellDetailWindow(spell: SpellDef): HTMLElement {
   return win;
 }
 
-/** Replaces the enemy window with a readout of the highlighted technique. */
-function buildTechniqueDetailWindow(tech: TechniqueDef): HTMLElement {
-  const win = el("ff6-window ff6-spell-detail");
+/** Replaces the enemy list with a readout of the highlighted technique. */
+function buildTechniqueDetailBody(tech: TechniqueDef): HTMLElement {
+  const win = el("ff6-spell-detail");
   win.appendChild(el("ff6-spell-detail-name", tech.name));
 
   const meta = el("ff6-spell-detail-meta");
@@ -534,6 +561,19 @@ function buildTechniqueDetailWindow(tech: TechniqueDef): HTMLElement {
 /** Inner fill track of `.ff6-p-bar` (48px outer − 1px border × 2). */
 const HP_BAR_TRACK_PX = 46;
 
+/** HP danger-state thresholds (fraction of maxHp), shared by the bar fill
+ *  and the numeral so both always agree. */
+const HP_CRITICAL_RATIO = 0.25;
+const HP_WOUNDED_RATIO = 0.8;
+
+function hpDangerClass(hp: number, maxHp: number): "" | "wounded" | "critical" {
+  if (hp <= 0) return "";
+  const ratio = maxHp > 0 ? hp / maxHp : 0;
+  if (ratio <= HP_CRITICAL_RATIO) return "critical";
+  if (ratio < HP_WOUNDED_RATIO) return "wounded";
+  return "";
+}
+
 /**
  * Fixed-width HP bar for the party-resource-row token.
  * Fill ≥ 1px whenever hp > 0; 0px only at KO — color stops carry triage.
@@ -549,18 +589,17 @@ function buildHpBar(hp: number, maxHp: number): HTMLElement {
     safeHp <= 0 ? 0 : Math.max(1, Math.round(ratio * HP_BAR_TRACK_PX));
   fill.style.width = `${fillPx}px`;
   if (safeHp <= 0) fill.classList.add("empty");
-  else if (ratio <= 0.25) fill.classList.add("critical");
-  else if (ratio <= 0.5) fill.classList.add("wounded");
+  else {
+    const danger = hpDangerClass(safeHp, maxHp);
+    if (danger) fill.classList.add(danger);
+  }
   barWrap.appendChild(fill);
   return barWrap;
 }
 
 function hpNumeralClass(hp: number, maxHp: number): string {
-  if (hp <= 0) return "ff6-p-hp";
-  const ratio = maxHp > 0 ? hp / maxHp : 0;
-  if (ratio <= 0.25) return "ff6-p-hp critical";
-  if (ratio <= 0.5) return "ff6-p-hp wounded";
-  return "ff6-p-hp";
+  const danger = hpDangerClass(hp, maxHp);
+  return danger ? `ff6-p-hp ${danger}` : "ff6-p-hp";
 }
 
 /**
@@ -610,11 +649,16 @@ function buildNameCell(
   return { name: cell, status: slot };
 }
 
-function buildPartyWindow(view: CombatWindowsView): HTMLElement {
-  const win = el("ff6-window ff6-party");
+function buildPartyColumn(view: CombatWindowsView): HTMLElement {
+  const win = el("ff6-party");
   for (const c of view.state.party) {
     const row = el("ff6-party-row");
     if (c.id === view.currentCharacterId) row.classList.add("current");
+    // Ally-targeting selection: distinct from the acting plate (never both
+    // meanings on one glyph) — see roster-tokens spec's glyph rule.
+    if (view.targetCharacterId && c.id === view.targetCharacterId) {
+      row.classList.add("targeted");
+    }
     if (
       view.inspectCharacterId &&
       c.id === view.inspectCharacterId &&
@@ -708,6 +752,26 @@ function buildResultWindow(result: ResultView): HTMLElement {
   return win;
 }
 
+/** Single merged footer window: enemy column (Round header + enemy/spell/
+ *  technique detail) on the left, party roster filling the rest. Replaces
+ *  the old separate enemy + party windows. */
+function buildBattleWindow(view: CombatWindowsView): HTMLElement {
+  const win = el("ff6-window ff6-battle");
+
+  const enemyCol = el("ff6-battle-enemies");
+  enemyCol.appendChild(el("ff6-battle-round", `Round ${view.state.round}`));
+  enemyCol.appendChild(
+    view.techniqueDetail
+      ? buildTechniqueDetailBody(view.techniqueDetail)
+      : view.spellDetail
+        ? buildSpellDetailBody(view.spellDetail)
+        : buildEnemyListBody(view.state)
+  );
+  win.appendChild(enemyCol);
+  win.appendChild(buildPartyColumn(view));
+  return win;
+}
+
 /** Render the FF6 window row (and result overlay) into `container`. */
 export function renderCombatWindows(
   container: HTMLElement,
@@ -716,16 +780,11 @@ export function renderCombatWindows(
 ): void {
   container.innerHTML = "";
 
+  const popup = buildCommandPopup(view, handlers);
+  if (popup) container.appendChild(popup);
+
   const row = el("ff6-windows");
-  row.appendChild(buildMenuWindow(view, handlers));
-  row.appendChild(
-    view.techniqueDetail
-      ? buildTechniqueDetailWindow(view.techniqueDetail)
-      : view.spellDetail
-        ? buildSpellDetailWindow(view.spellDetail)
-        : buildEnemyWindow(view.state)
-  );
-  row.appendChild(buildPartyWindow(view));
+  row.appendChild(buildBattleWindow(view));
   container.appendChild(row);
 
   if (view.result) {

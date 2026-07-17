@@ -201,8 +201,10 @@ describe("occlusion invariant (floorBottomY vs DOM windows)", () => {
         CONTACT_SHADOW_BELOW_FOOT_PX
     );
     expect(CONTACT_SHADOW_BELOW_FOOT_PX).toBeGreaterThanOrEqual(8);
-    expect(maxAllowedFloorBottomY()).toBeGreaterThanOrEqual(448);
-    expect(maxAllowedFloorBottomY()).toBeLessThanOrEqual(460);
+    // Raised alongside the unified-footer shrink (COMBAT_WINDOW_OVERLAP_PX
+    // 200 → 150): the battlefield floor moves down as the footer shrinks.
+    expect(maxAllowedFloorBottomY()).toBeGreaterThanOrEqual(498);
+    expect(maxAllowedFloorBottomY()).toBeLessThanOrEqual(510);
   });
 
   it("every backdrop floorBottomY clears the window overlap band", () => {

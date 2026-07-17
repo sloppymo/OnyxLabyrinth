@@ -105,15 +105,22 @@ export const COMBAT_DESIGN_H = 672;
 /**
  * Logical px from canvas bottom occupied by `#combat-windows`. This is now
  * GUARANTEED by CSS, not measured: styles.css fixes the window band at
- * calc(200/672 * 100%) of #combat-wrap in every combat state (lists scroll
+ * calc(150/672 * 100%) of #combat-wrap in every combat state (lists scroll
  * internally), so tall menus can never rise above this line and occlude
  * feet. Do NOT also subtract the full below-foot draw-square extent
  * (transparent padding) — that left a 160px dead apron. Occlusion clears
  * foot plant + contact-shadow half-height below footY (see
  * CONTACT_SHADOW_BELOW_FOOT_PX). If you change this value, change the CSS
  * height together with it.
+ * Lowered from 200 (unified-footer redesign, 2026-07-17): the enemy+party
+ * windows merged into one column pair and the command window became a
+ * popup, so the footer no longer needs ~30% of the frame. Every
+ * `BACKDROP_GEOMETRY` entry below calls `maxAllowedFloorBottomY()` rather
+ * than a literal number, so this single constant is what actually moves
+ * the battlefield floor for every theme — verified by
+ * `combat-scene-math.test.ts`'s occlusion-invariant suite.
  */
-export const COMBAT_WINDOW_OVERLAP_PX = 200;
+export const COMBAT_WINDOW_OVERLAP_PX = 150;
 /** Extra gap between last foot baseline and the window top. */
 export const FLOOR_BOTTOM_SAFE_MARGIN_PX = 8;
 /**

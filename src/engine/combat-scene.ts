@@ -2386,6 +2386,45 @@ function drawContactShadow(
   ctx.restore();
 }
 
+const HP_PIP_COUNT = 4;
+
+/**
+ * Small HP-tick readout under an enemy's feet — 4 pips, lit proportionally
+ * to currentHp/maxHp. Only drawn once the enemy has taken damage (reads
+ * straight off the live EnemyInstance; no separate "damaged" event/state
+ * needed since currentHp < maxHp already means "hit at least once").
+ */
+function drawEnemyHpPips(
+  ctx: CanvasRenderingContext2D,
+  enemy: EnemyInstance,
+  footX: number,
+  footY: number,
+  spriteWidth: number
+): void {
+  if (enemy.currentHp >= enemy.hp || enemy.currentHp <= 0) return;
+  const lit = Math.max(
+    1,
+    Math.ceil((enemy.currentHp / enemy.hp) * HP_PIP_COUNT)
+  );
+  const pipW = 6;
+  const gap = 2;
+  const totalW = HP_PIP_COUNT * pipW + (HP_PIP_COUNT - 1) * gap;
+  const startX = footX - totalW / 2;
+  const y = footY + Math.max(4, spriteWidth * 0.08);
+  const color =
+    enemy.currentHp / enemy.hp <= 0.25
+      ? "#f07070"
+      : enemy.currentHp / enemy.hp <= 0.5
+        ? "#e8a060"
+        : "#ffe790";
+  ctx.save();
+  for (let i = 0; i < HP_PIP_COUNT; i++) {
+    ctx.fillStyle = i < lit ? color : "rgba(16, 28, 88, 0.55)";
+    ctx.fillRect(startX + i * (pipW + gap), y, pipW, 3);
+  }
+  ctx.restore();
+}
+
 /**
  * Draw one frame of a sprite strip centered at (x, y-baseline), optionally
  * mirrored horizontally. `size` is the square draw size.
@@ -2635,6 +2674,8 @@ function drawEnemy(
   } else {
     drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize);
   }
+
+  drawEnemyHpPips(ctx, enemy, x, footY, drawSize);
 
   drawMarkers(
     ctx,
@@ -2978,23 +3019,6 @@ export function drawFF6Window(
   ctx.restore();
 }
 
-/** Small FF6 window in the top-left showing the current round. */
-function drawRoundIndicator(ctx: CanvasRenderingContext2D, scene: CombatScene): void {
-  const round = scene.state.round;
-  if (round <= 0) return;
-  ctx.save();
-  ctx.font = '14px "FF36", monospace';
-  const text = `Round ${round}`;
-  const boxW = ctx.measureText(text).width + 28;
-  const boxH = 28;
-  drawFF6Window(ctx, 8, 8, boxW, boxH);
-  ctx.fillStyle = COLORS.banner;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, 8 + boxW / 2, 8 + boxH / 2 + 1);
-  ctx.restore();
-}
-
 function drawBanner(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -3146,9 +3170,9 @@ export function renderScene(
   drawParticles(ctx, scene);
   drawPopups(ctx, scene, now);
 
-  // Banner window (top center) + round indicator (top left).
+  // Banner window (top center). Round number now lives in the enemy-column
+  // header of the unified footer window, not a separate canvas pill.
   drawBanner(ctx, w, scene, now);
-  drawRoundIndicator(ctx, scene);
 
   // Sticky FAST / AUTO cues (top-right).
   if (scene.showFastCue || scene.showAutoCue) {

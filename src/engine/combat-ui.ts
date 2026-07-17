@@ -1632,6 +1632,10 @@ export class CombatController {
       result: this.phase === "result" ? this.result : null,
       partyAuto: this.partyAuto,
       inspectCharacterId: this.inspectCharacterId,
+      targetCharacterId:
+        this.phase === "selectTarget" && this.targetKind === "ally"
+          ? (this.selectionIds[this.selectionIndex] ?? null)
+          : null,
       playbackHint:
         this.phase === "playback"
           ? playbackHintText(this.getLastInputKind())
