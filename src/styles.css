@@ -160,7 +160,9 @@ canvas#map-canvas {
 #message {
   flex: 1 1 auto;
   min-width: 0;
-  max-height: 3.2em;
+  /* 4 lines — full-party level-up recaps can run long; see setMessage's
+     truncation cap in shell.ts. */
+  max-height: 6.4em;
   overflow: hidden;
   font-size: 18px;
   line-height: 1.35;
@@ -1318,6 +1320,9 @@ canvas#map-canvas {
   position: relative;
   cursor: pointer;
   white-space: nowrap;
+  /* Pale cream/blue text on the saturated blue window gradient reads as
+     low-contrast (esp. long shop lists) without a dark outline to pop it. */
+  text-shadow: 1px 1px 1px rgba(8, 10, 32, 0.75);
 }
 
 .ff6-menu-item.selected::before {
@@ -1332,6 +1337,10 @@ canvas#map-canvas {
 
 .ff6-menu-item.selected {
   color: #b8ecff;
+  /* Row fill so the current pick is obvious at a glance, not just the
+     small arrow glyph (was easy to lose track of in long spell lists). */
+  background: rgba(184, 236, 255, 0.16);
+  border-radius: 3px;
 }
 
 .ff6-menu-item.disabled {

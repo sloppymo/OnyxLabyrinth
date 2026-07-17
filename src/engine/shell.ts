@@ -122,10 +122,10 @@ export function setMessage(text: string): void {
   if (!trimmed) {
     messageEl.textContent = "";
   } else {
-    const lines = trimmed.split(/\n/).slice(0, 2);
+    const lines = trimmed.split(/\n/).slice(0, 4);
     let body = lines.join("\n");
-    if (trimmed.split(/\n/).length > 2 || body.length > 90) {
-      body = body.slice(0, 88).replace(/\s+\S*$/, "") + "…";
+    if (trimmed.split(/\n/).length > 4 || body.length > 220) {
+      body = body.slice(0, 218).replace(/\s+\S*$/, "") + "…";
     }
     messageEl.textContent = body;
   }

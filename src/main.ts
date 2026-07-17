@@ -441,12 +441,18 @@ function endCombat(result: CombatState): void {
     state.party = state.party.map((c) => {
       if (c.hp <= 0) return c;
       let char = c;
+      const startLevel = char.level;
       while (char.xp >= xpForNextLevel(char.level)) {
         char = levelUpChar(char, state.equipment[char.id]);
-        levelUpMessages.push(`${char.name} reaches Level ${char.level}!`);
         if (isPerkTierLevel(char.level)) {
           pendingPerkChoices.push({ charId: char.id, tier: tierForLevel(char.level)! });
         }
+      }
+      // One line per character even across multiple level-ups in a single
+      // fight — "X reaches 14! X reaches 15!" was unreadable with a full
+      // party leveling at once (see message-band truncation).
+      if (char.level > startLevel) {
+        levelUpMessages.push(`${char.name} reaches Level ${char.level}!`);
       }
       return char;
     });
