@@ -230,6 +230,31 @@ describe("x-bounds invariant (sprites stay on canvas)", () => {
     ).toThrow(/x-bounds/);
   });
 
+  it("BOSS_SIZE (480, see combat-scene.ts) fits the back row but not the front row", () => {
+    // Bosses always draw at BOSS_SIZE regardless of which slot table
+    // resolves their position (enemySlot() is size-unaware). Encounter
+    // data guards bosses into the back row only (see enemies.test.ts
+    // "never places a boss-flagged enemy in the front row") — this test
+    // proves that guard is actually load-bearing: the back row is wide
+    // enough for a boss-sized sprite, the front row is not.
+    const BOSS_SIZE = 480;
+    for (const id of allBackdropIds()) {
+      const geo = BACKDROP_GEOMETRY[id]!;
+      expect(() =>
+        assertSlotsInXBounds(ENEMY_BACK_SLOTS, geo, {
+          spriteWidth: BOSS_SIZE,
+          margin,
+        })
+      ).not.toThrow();
+      expect(() =>
+        assertSlotsInXBounds(ENEMY_FRONT_SLOTS, geo, {
+          spriteWidth: BOSS_SIZE,
+          margin,
+        })
+      ).toThrow(/x-bounds/);
+    }
+  });
+
   it("full formation stays in x-bounds on every backdrop", () => {
     for (const id of allBackdropIds()) {
       const geo = BACKDROP_GEOMETRY[id]!;

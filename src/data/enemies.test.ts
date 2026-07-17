@@ -50,6 +50,27 @@ describe("encounter table integrity", () => {
     }
   });
 
+  it("never places a boss-flagged enemy in the front row", () => {
+    // Boss sprites draw at BOSS_SIZE (480px, see combat-scene.ts) but every
+    // encounter spawn still resolves through the regular front/back slot
+    // tables (see combat-scene-math.ts ENEMY_FRONT_SLOTS/ENEMY_BACK_SLOTS).
+    // The front row is only wide enough for ENEMY_SIZE (340px) sprites — a
+    // boss placed there would draw off the left edge of the canvas. Back
+    // row is verified boss-safe in combat-scene-math.test.ts.
+    for (const [floor, entries] of Object.entries(ENCOUNTER_TABLES)) {
+      for (const entry of entries) {
+        for (const spawn of entry.spawns) {
+          if (ENEMIES_BY_ID[spawn.enemyId]?.isBoss) {
+            expect(
+              spawn.row,
+              `floor ${floor}: boss "${spawn.enemyId}" must spawn in the back row`
+            ).toBe("back");
+          }
+        }
+      }
+    }
+  });
+
   it("has a table for every registered floor and no orphan tables", () => {
     // Registry = campaign FLOORS merged with content/floors packs (floor 4).
     const floorIds = getFloors().map((f) => f.id).sort();
