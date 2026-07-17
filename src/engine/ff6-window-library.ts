@@ -359,9 +359,20 @@ export class FF6Window {
   }
 
   private scrollSelectionIntoView(): void {
-    const selected = this.element?.querySelector<HTMLElement>(".ff6-menu-item.selected");
-    // jsdom lacks scrollIntoView; guard for tests.
-    selected?.scrollIntoView?.({ block: "nearest" });
+    const list = this.element?.querySelector<HTMLElement>(".ff6-selection-list");
+    const selected = list?.querySelector<HTMLElement>(".ff6-menu-item.selected");
+    if (!list || !selected) return;
+    // Adjust the internal list's scrollTop directly rather than
+    // Element.scrollIntoView(), which walks *every* scrollable ancestor —
+    // including the document — and was scrolling the whole page down,
+    // clipping the Buy/Sell/Appraise tab row off the top of the shop window.
+    const above = selected.offsetTop;
+    const below = selected.offsetTop + selected.offsetHeight;
+    if (above < list.scrollTop) {
+      list.scrollTop = above;
+    } else if (below > list.scrollTop + list.clientHeight) {
+      list.scrollTop = below - list.clientHeight;
+    }
   }
 }
 
