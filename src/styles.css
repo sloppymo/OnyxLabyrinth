@@ -224,7 +224,12 @@ canvas#map-canvas {
 #combat-panel.ff6-menu-host {
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* `safe center`: centers when the window fits, but falls back to
+     start-alignment when a long list (shop weapons, big spell books)
+     makes the window taller than the panel — plain `center` let the
+     overflow above the vertical midpoint clip unreachably (scrollTop
+     can't go negative), hiding the title/tab row with no way to see it. */
+  justify-content: safe center;
   gap: 14px;
   box-sizing: border-box;
   min-height: 0;
@@ -1916,6 +1921,26 @@ canvas#map-canvas {
   overflow-y: auto;
   scrollbar-width: none;
   min-height: 0;
+  /* Without flex-shrink:0, this competes for space with the sibling
+     .ff6-selection-list (flex:1) and loses when a long list (shop
+     weapons) needs room — squeezing the Buy/Sell/Appraise tab row down
+     to an unreadable sliver. The list already scrolls; this shouldn't. */
+  flex: 0 0 auto;
+}
+
+/* .shop-tabs/.shop-tab still carry the old full-page town sizing
+   (--fs-body, 30px) from before the shop moved into this compact window.
+   At that size each tab label is ~61px tall but only gets a ~21px flex
+   slot here, so the text was rendering as an unreadable sliver. */
+.ff6-window.standalone .shop-tabs {
+  gap: 12px;
+  margin: 0 0 4px;
+  max-width: none;
+}
+
+.ff6-window.standalone .shop-tab {
+  font-size: 18px;
+  padding: 4px 10px;
 }
 
 .ff6-window.standalone .ff6-menu-item.multiline {
