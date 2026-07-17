@@ -38,6 +38,12 @@ export interface SpriteStrip {
    * in the ground-plane resolver; set when art feet aren't at the pack locus.
    */
   artFootFromTop?: number;
+  /**
+   * Optional head-top inset (0–1 from top of frame). Defaults to pack norm
+   * 0.38 in the marker/cursor anchor; set when art heads aren't at the pack
+   * locus (tall knights, floaters, squat blobs).
+   */
+  artTopFromTop?: number;
 }
 
 export interface EnemySpriteDef {
@@ -77,6 +83,16 @@ function withFoot(def: EnemySpriteDef, artFootFromTop: number): EnemySpriteDef {
     attack: { ...def.attack, artFootFromTop },
     hurt: { ...def.hurt, artFootFromTop },
     death: { ...def.death, artFootFromTop },
+  };
+}
+
+/** Apply the same head-top inset to every state strip (tall / squat packs). */
+function withTop(def: EnemySpriteDef, artTopFromTop: number): EnemySpriteDef {
+  return {
+    idle: { ...def.idle, artTopFromTop },
+    attack: { ...def.attack, artTopFromTop },
+    hurt: { ...def.hurt, artTopFromTop },
+    death: { ...def.death, artTopFromTop },
   };
 }
 
@@ -143,12 +159,16 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
   // Re-themed bestiary (2026-07): the former blob-fallback enemies now map
   // onto Characters(100x100) pack monsters. Stats unchanged; ids/names/art only.
   // Pack 02 additions (demon / forge theme):
-  "flame-golem": {
-    idle: strip("flame-golem", "idle", 6, 6, true),
-    attack: strip("flame-golem", "attack", 9, 10),
-    hurt: strip("flame-golem", "hurt", 4, 8),
-    death: strip("flame-golem", "death", 6, 6),
-  },
+  "flame-golem": withTop(
+    {
+      idle: strip("flame-golem", "idle", 6, 6, true),
+      attack: strip("flame-golem", "attack", 9, 10),
+      hurt: strip("flame-golem", "hurt", 4, 8),
+      death: strip("flame-golem", "death", 6, 6),
+    },
+    // Measured idle art top 0.29 (tall golem); pack default 0.38 sinks the cursor.
+    0.29
+  ),
   "lava-slime": withFoot(
     {
       idle: strip("lava-slime", "idle", 6, 6, true),
@@ -164,61 +184,85 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("hellhound", "hurt", 4, 8),
     death: strip("hellhound", "death", 4, 6),
   },
-  hellbat: withFoot(
-    {
-      idle: strip("hellbat", "idle", 6, 8, true),
-      attack: strip("hellbat", "attack", 6, 10),
-      hurt: strip("hellbat", "hurt", 4, 8),
-      death: strip("hellbat", "death", 4, 6),
-    },
-    // Measured opaque bottom ~0.50 (short flyer); pack default 0.57 floats it.
-    0.5
+  hellbat: withTop(
+    withFoot(
+      {
+        idle: strip("hellbat", "idle", 6, 8, true),
+        attack: strip("hellbat", "attack", 6, 10),
+        hurt: strip("hellbat", "hurt", 4, 8),
+        death: strip("hellbat", "death", 4, 6),
+      },
+      // Measured opaque bottom ~0.50 (short flyer); pack default 0.57 floats it.
+      0.5
+    ),
+    // Measured idle art top 0.32.
+    0.32
   ),
-  "black-knight": {
-    idle: strip("black-knight", "idle", 6, 6, true),
-    attack: strip("black-knight", "attack", 16, 12),
-    hurt: strip("black-knight", "hurt", 4, 8),
-    death: strip("black-knight", "death", 4, 6),
-  },
+  "black-knight": withTop(
+    {
+      idle: strip("black-knight", "idle", 6, 6, true),
+      attack: strip("black-knight", "attack", 16, 12),
+      hurt: strip("black-knight", "hurt", 4, 8),
+      death: strip("black-knight", "death", 4, 6),
+    },
+    // Measured idle art top 0.27 (tall knight); pack default 0.38 sinks the cursor.
+    0.27
+  ),
   minotaur: {
     idle: strip("minotaur", "idle", 6, 6, true),
     attack: strip("minotaur", "attack", 8, 10),
     hurt: strip("minotaur", "hurt", 4, 8),
     death: strip("minotaur", "death", 4, 6),
   },
-  warlock: {
-    idle: strip("warlock", "idle", 6, 6, true),
-    attack: strip("warlock", "attack", 7, 10),
-    hurt: strip("warlock", "hurt", 4, 8),
-    death: strip("warlock", "death", 11, 8),
-  },
+  warlock: withTop(
+    {
+      idle: strip("warlock", "idle", 6, 6, true),
+      attack: strip("warlock", "attack", 7, 10),
+      hurt: strip("warlock", "hurt", 4, 8),
+      death: strip("warlock", "death", 11, 8),
+    },
+    // Measured idle art top 0.33.
+    0.33
+  ),
   demon: {
     idle: strip("demon", "idle", 6, 6, true),
     attack: strip("demon", "attack", 7, 10),
     hurt: strip("demon", "hurt", 4, 8),
     death: strip("demon", "death", 4, 6),
   },
-  demoness: {
-    idle: strip("demoness", "idle", 6, 6, true),
-    attack: strip("demoness", "attack", 9, 10),
-    hurt: strip("demoness", "hurt", 4, 8),
-    death: strip("demoness", "death", 4, 6),
-  },
-  "eyeball-monster": withFoot(
+  demoness: withTop(
     {
-      idle: strip("eyeball-monster", "idle", 6, 6, true),
-      attack: strip("eyeball-monster", "attack", 8, 10),
-      hurt: strip("eyeball-monster", "hurt", 4, 8),
-      death: strip("eyeball-monster", "death", 4, 6),
+      idle: strip("demoness", "idle", 6, 6, true),
+      attack: strip("demoness", "attack", 9, 10),
+      hurt: strip("demoness", "hurt", 4, 8),
+      death: strip("demoness", "death", 4, 6),
     },
-    0.52
+    // Measured idle art top 0.31.
+    0.31
   ),
-  ghostfire: {
-    idle: strip("ghostfire", "idle", 6, 8, true),
-    attack: strip("ghostfire", "attack", 6, 10),
-    hurt: strip("ghostfire", "hurt", 4, 8),
-    death: strip("ghostfire", "death", 6, 6),
-  },
+  "eyeball-monster": withTop(
+    withFoot(
+      {
+        idle: strip("eyeball-monster", "idle", 6, 6, true),
+        attack: strip("eyeball-monster", "attack", 8, 10),
+        hurt: strip("eyeball-monster", "hurt", 4, 8),
+        death: strip("eyeball-monster", "death", 4, 6),
+      },
+      0.52
+    ),
+    // Measured idle art top 0.44 (squat eye); pack default 0.38 floats the cursor.
+    0.44
+  ),
+  ghostfire: withTop(
+    {
+      idle: strip("ghostfire", "idle", 6, 8, true),
+      attack: strip("ghostfire", "attack", 6, 10),
+      hurt: strip("ghostfire", "hurt", 4, 8),
+      death: strip("ghostfire", "death", 6, 6),
+    },
+    // Measured idle art top 0.26 (tall flame); pack default 0.38 sinks the cursor.
+    0.26
+  ),
   // Pack 02 remaining variants (knights, blood monsters, demon kin):
   "ironclad-knight": {
     idle: strip("ironclad-knight", "idle", 6, 6, true),
@@ -226,12 +270,16 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("ironclad-knight", "hurt", 4, 8),
     death: strip("ironclad-knight", "death", 4, 6),
   },
-  "rune-knight": {
-    idle: strip("rune-knight", "idle", 6, 6, true),
-    attack: strip("rune-knight", "attack", 8, 10),
-    hurt: strip("rune-knight", "hurt", 4, 8),
-    death: strip("rune-knight", "death", 10, 8),
-  },
+  "rune-knight": withTop(
+    {
+      idle: strip("rune-knight", "idle", 6, 6, true),
+      attack: strip("rune-knight", "attack", 8, 10),
+      hurt: strip("rune-knight", "hurt", 4, 8),
+      death: strip("rune-knight", "death", 10, 8),
+    },
+    // Measured idle art top 0.29 (tall knight); pack default 0.38 sinks the cursor.
+    0.29
+  ),
   "blood-monster": {
     idle: strip("blood-monster", "idle", 6, 6, true),
     attack: strip("blood-monster", "attack", 8, 10),
@@ -250,12 +298,16 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("demon-brawler", "hurt", 4, 8),
     death: strip("demon-brawler", "death", 4, 6),
   },
-  "demon-spawn": {
-    idle: strip("demon-spawn", "idle", 6, 6, true),
-    attack: strip("demon-spawn", "attack", 6, 10),
-    hurt: strip("demon-spawn", "hurt", 4, 8),
-    death: strip("demon-spawn", "death", 4, 6),
-  },
+  "demon-spawn": withTop(
+    {
+      idle: strip("demon-spawn", "idle", 6, 6, true),
+      attack: strip("demon-spawn", "attack", 6, 10),
+      hurt: strip("demon-spawn", "hurt", 4, 8),
+      death: strip("demon-spawn", "death", 4, 6),
+    },
+    // Measured idle art top 0.32.
+    0.32
+  ),
   "demon-champion": {
     idle: strip("demon-champion", "idle", 6, 6, true),
     attack: strip("demon-champion", "attack", 11, 12),
@@ -307,12 +359,16 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("orc", "hurt", 4, 8),
     death: strip("orc", "death", 4, 6),
   },
-  "elite-orc": {
-    idle: strip("elite-orc", "idle", 6, 6, true),
-    attack: strip("elite-orc", "attack", 7, 10),
-    hurt: strip("elite-orc", "hurt", 4, 8),
-    death: strip("elite-orc", "death", 4, 6),
-  },
+  "elite-orc": withTop(
+    {
+      idle: strip("elite-orc", "idle", 6, 6, true),
+      attack: strip("elite-orc", "attack", 7, 10),
+      hurt: strip("elite-orc", "hurt", 4, 8),
+      death: strip("elite-orc", "death", 4, 6),
+    },
+    // Measured idle art top 0.33.
+    0.33
+  ),
   werewolf: {
     idle: strip("werewolf", "idle", 6, 6, true),
     attack: strip("werewolf", "attack", 9, 10),

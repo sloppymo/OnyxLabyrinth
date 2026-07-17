@@ -32,6 +32,11 @@ import {
   artFootFromTopFor,
   ART_FOOT_FROM_TOP,
   ART_FOOT_FROM_TOP_FALLBACK,
+  artTopFromTopFor,
+  ART_TOP_FROM_TOP,
+  ART_TOP_FROM_TOP_FALLBACK,
+  visualHeadY,
+  MARKER_TIP_GAP_PX,
 } from "./combat-scene-math";
 import { arenaSeamFrac } from "./arena-camera";
 
@@ -43,6 +48,31 @@ describe("artFootFromTopFor", () => {
     expect(artFootFromTopFor({ hasStrip: true })).toBe(ART_FOOT_FROM_TOP);
     expect(artFootFromTopFor({ hasStrip: false })).toBe(ART_FOOT_FROM_TOP_FALLBACK);
     expect(artFootFromTopFor({ hasStrip: true, stripArtFootFromTop: 0.8 })).toBe(0.8);
+  });
+});
+
+describe("artTopFromTopFor", () => {
+  it("uses pack default for strips, fallback for procedural, override when set", () => {
+    expect(artTopFromTopFor({ hasStrip: true })).toBe(ART_TOP_FROM_TOP);
+    expect(artTopFromTopFor({ hasStrip: false })).toBe(ART_TOP_FROM_TOP_FALLBACK);
+    expect(artTopFromTopFor({ hasStrip: true, stripArtTopFromTop: 0.27 })).toBe(0.27);
+  });
+
+  it("pack default matches measured strip art (idle tops: party 0.37–0.39, most enemies 0.38–0.42)", () => {
+    expect(ART_TOP_FROM_TOP).toBeGreaterThanOrEqual(0.36);
+    expect(ART_TOP_FROM_TOP).toBeLessThanOrEqual(0.4);
+  });
+});
+
+describe("visualHeadY / MARKER_TIP_GAP_PX", () => {
+  it("anchors the marker at the art top of the draw square, not a drawSize fraction of centerY", () => {
+    expect(visualHeadY(100, 200, 0.38)).toBeCloseTo(176);
+    expect(visualHeadY(100, 200, ART_TOP_FROM_TOP_FALLBACK)).toBeCloseTo(160);
+  });
+
+  it("tip gap hugs the head — tighter than the old 14px float", () => {
+    expect(MARKER_TIP_GAP_PX).toBeGreaterThan(0);
+    expect(MARKER_TIP_GAP_PX).toBeLessThan(14);
   });
 });
 

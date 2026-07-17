@@ -40,6 +40,9 @@ import {
   resolveSlot,
   ART_FOOT_FROM_TOP,
   artFootFromTopFor,
+  artTopFromTopFor,
+  visualHeadY,
+  MARKER_TIP_GAP_PX,
   type BackdropGeometry,
   type ResolvedSlot,
 } from "./combat-scene-math";
@@ -2520,6 +2523,10 @@ function drawPartyMember(
     hasStrip: !!stripInfo,
     stripArtFootFromTop: stripInfo?.strip.artFootFromTop,
   });
+  const artTop = artTopFromTopFor({
+    hasStrip: !!stripInfo,
+    stripArtTopFromTop: stripInfo?.strip.artTopFromTop,
+  });
   const slot = toScreenPos(
     resolveSlot(partySlot(index), geoFor(scene.backdropId), {
       spriteHeight: PARTY_SIZE,
@@ -2564,7 +2571,15 @@ function drawPartyMember(
     }
   }
 
-  drawMarkers(ctx, scene, "party", char.id, x, y - drawSize * 0.16, now);
+  drawMarkers(
+    ctx,
+    scene,
+    "party",
+    char.id,
+    x,
+    visualHeadY(slot.drawY + off.y, drawSize, artTop),
+    now
+  );
 }
 
 /** Draw one enemy (living or corpse). */
@@ -2585,6 +2600,10 @@ function drawEnemy(
   const artFoot = artFootFromTopFor({
     hasStrip,
     stripArtFootFromTop: stripInfo?.strip.artFootFromTop,
+  });
+  const artTop = artTopFromTopFor({
+    hasStrip,
+    stripArtTopFromTop: stripInfo?.strip.artTopFromTop,
   });
   const slot = toScreenPos(
     resolveSlot(enemySlot(idxInRow, enemy.row), geoFor(scene.backdropId), {
@@ -2617,7 +2636,15 @@ function drawEnemy(
     drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize);
   }
 
-  drawMarkers(ctx, scene, "enemy", enemy.instanceId, x, y - drawSize * 0.2, now);
+  drawMarkers(
+    ctx,
+    scene,
+    "enemy",
+    enemy.instanceId,
+    x,
+    visualHeadY(slot.drawY + off.y, drawSize, artTop),
+    now
+  );
 }
 
 /** Draw a summoned ally (sprite if available, otherwise glowing orb). */
@@ -2654,7 +2681,19 @@ function drawAlly(
         frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED));
       }
       drawStripFrame(ctx, img, strip, frame, x, y, drawSize, false, anim.opacity);
-      drawMarkers(ctx, scene, "ally", ally.id, x, y - drawSize * 0.2, now);
+      const artTop = artTopFromTopFor({
+        hasStrip: true,
+        stripArtTopFromTop: strip.artTopFromTop,
+      });
+      drawMarkers(
+        ctx,
+        scene,
+        "ally",
+        ally.id,
+        x,
+        visualHeadY(slot.drawY + off.y, drawSize, artTop),
+        now
+      );
       return;
     }
   }
@@ -2676,10 +2715,14 @@ function drawAlly(
     ctx.stroke();
   }
   ctx.restore();
-  drawMarkers(ctx, scene, "ally", ally.id, x, y - 32 * slot.scale, now);
+  drawMarkers(ctx, scene, "ally", ally.id, x, y - 16 * slot.scale, now);
 }
 
-/** Cursor (target selection) and active-actor hand markers. */
+/**
+ * Cursor (target selection) and active-actor hand markers.
+ * `topY` is the sprite's VISUAL HEAD y (art top, not a drawSize fraction) —
+ * the triangle tip hovers MARKER_TIP_GAP_PX above it, FF6-tight.
+ */
 function drawMarkers(
   ctx: CanvasRenderingContext2D,
   scene: CombatScene,
@@ -2702,7 +2745,7 @@ function drawMarkers(
     isCursor && scene.cursor?.kill ? COLORS.cursorKill : COLORS.cursor;
   ctx.strokeStyle = "#14110d";
   ctx.lineWidth = 2;
-  const y = topY - 14 + bounce;
+  const y = topY - MARKER_TIP_GAP_PX + bounce;
   // Downward-pointing FF6 hand-ish triangle.
   ctx.beginPath();
   ctx.moveTo(x - 9, y - 12);

@@ -69,6 +69,36 @@ export function artFootFromTopFor(opts: {
   return opts.stripArtFootFromTop ?? ART_FOOT_FROM_TOP;
 }
 
+/**
+ * Pack 100×100 strips: visual head top ~0.38 from frame top (measured across
+ * idle strips: party 0.37–0.39, most enemies 0.38–0.42). Override per strip
+ * via SpriteStrip.artTopFromTop for tall/squat art (black-knight, ghostfire…).
+ */
+export const ART_TOP_FROM_TOP = 0.38;
+/** Procedural fallback shapes: head top ~0.30 of the draw square. */
+export const ART_TOP_FROM_TOP_FALLBACK = 0.3;
+
+/** Resolve which head-top inset to use (pack default, strip override, or fallback). */
+export function artTopFromTopFor(opts: {
+  hasStrip: boolean;
+  stripArtTopFromTop?: number;
+}): number {
+  if (!opts.hasStrip) return ART_TOP_FROM_TOP_FALLBACK;
+  return opts.stripArtTopFromTop ?? ART_TOP_FROM_TOP;
+}
+
+/** Screen y of the art's visual head top inside the foot-anchored draw square. */
+export function visualHeadY(
+  drawY: number,
+  drawH: number,
+  artTopFromTop: number
+): number {
+  return drawY + artTopFromTop * drawH;
+}
+
+/** Marker/cursor tip clearance above the visual head — FF6-tight, not floating. */
+export const MARKER_TIP_GAP_PX = 6;
+
 export const COMBAT_DESIGN_W = 768;
 export const COMBAT_DESIGN_H = 672;
 
@@ -159,8 +189,12 @@ export function assertSlotsInXBounds(
  * 2026-07-16 stage-rebalance tuple.
  */
 const BAKED_SEAM_FRAC = arenaSeamFrac();
-/** Feet sit a hair below the seam line so heels never touch the wall base. */
-export const SEAM_INSET_FRAC = 0.01;
+/**
+ * Feet sit below the seam line so heels never touch the wall base. 0.01 was a
+ * "hair" and read as standing ON the wall; ~20px of visible floor under the
+ * back rows grounds them (front rows barely move — the shift is (1−frac)·Δ).
+ */
+export const SEAM_INSET_FRAC = 0.03;
 
 function bakedSeamY(extraInsetFrac = 0): number {
   return Math.round(
@@ -268,7 +302,9 @@ export const PARTY_FORMATION_SLOTS: FormationSlot[] = [
 export const ENEMY_FRONT_SLOTS: FormationSlot[] = [
   { x: 275, footYFrac: 0.78 },
   { x: 210, footYFrac: 0.87 },
-  { x: 175, footYFrac: 0.96 },
+  // Edge slot lifted off the window band and pulled in from the screen edge
+  // (was 175/0.96 — flush with both); keeps ≥0.03 clear of the 0.75 step.
+  { x: 190, footYFrac: 0.9 },
 ];
 
 export const ENEMY_BACK_SLOTS: FormationSlot[] = [
