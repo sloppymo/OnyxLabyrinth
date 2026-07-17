@@ -71,6 +71,9 @@ export interface EnemyAbilityDef {
   element?: DamageElement;
   /** If true, this ability replaces the enemy's normal attack (no attack roll). */
   replacesAttack?: boolean;
+  /** If true, using this ability spends one turn charging (telegraph) and it
+   *  fires on the enemy's next turn. Paralysis/sleep cancels the wind-up. */
+  windUp?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -264,6 +267,7 @@ const DARK_PULSE: EnemyAbilityDef = {
   weight: 3,
   cooldown: 2,
   element: "undead",
+  windUp: true,
 };
 
 const MASS_HEAL: EnemyAbilityDef = {
@@ -312,6 +316,7 @@ const ANTI_MAGIC_FIELD: EnemyAbilityDef = {
   weight: 10,
   cooldown: 4,
   element: "divine",
+  windUp: true,
 };
 
 const WARD: EnemyAbilityDef = {
@@ -375,6 +380,7 @@ const HELLFIRE: EnemyAbilityDef = {
   weight: 4,
   cooldown: 2,
   element: "fire",
+  windUp: true,
 };
 
 const SOUL_DRAIN: EnemyAbilityDef = {
@@ -437,6 +443,7 @@ const ECHO_OF_SILENCE: EnemyAbilityDef = {
   weight: 6,
   cooldown: 2,
   element: "undead",
+  windUp: true,
 };
 
 const MEMORY_DRAIN: EnemyAbilityDef = {
@@ -449,6 +456,32 @@ const MEMORY_DRAIN: EnemyAbilityDef = {
   weight: 5,
   cooldown: 2,
   element: "undead",
+  windUp: true,
+};
+
+const MEMORY_SHATTER: EnemyAbilityDef = {
+  id: "memory-shatter",
+  name: "Memory Shatter",
+  description: "Rips a single mind apart, healing the Echo. Phase 2+.",
+  target: "singleParty",
+  effect: { kind: "drain", power: 8, element: "undead" },
+  condition: { kind: "hpBelow", percent: 66 },
+  weight: 4,
+  cooldown: 1,
+  element: "undead",
+};
+
+const TOTAL_ECLIPSE: EnemyAbilityDef = {
+  id: "total-eclipse",
+  name: "Total Eclipse",
+  description: "The Echo's desperation: a wave of oblivion over the party. Phase 3.",
+  target: "allParty",
+  effect: { kind: "damage", power: 10, element: "undead" },
+  condition: { kind: "hpBelow", percent: 33 },
+  weight: 5,
+  cooldown: 3,
+  element: "undead",
+  windUp: true,
 };
 
 const FORGE_BELLOWS: EnemyAbilityDef = {
@@ -473,6 +506,7 @@ const MAGMA_BURST: EnemyAbilityDef = {
   weight: 8,
   cooldown: 2,
   element: "fire",
+  windUp: true,
 };
 
 // --- Knight / armored abilities ---------------------------------------------
@@ -549,6 +583,7 @@ const GHOSTLY_WAIL: EnemyAbilityDef = {
   weight: 5,
   cooldown: 3,
   element: "undead",
+  windUp: true,
 };
 
 // ---------------------------------------------------------------------------
@@ -586,6 +621,8 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   SEDUCTION,
   ECHO_OF_SILENCE,
   MEMORY_DRAIN,
+  MEMORY_SHATTER,
+  TOTAL_ECLIPSE,
   FORGE_BELLOWS,
   MAGMA_BURST,
   SHIELD_BASH,

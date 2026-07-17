@@ -2163,6 +2163,40 @@ export function playTurn(
         break;
       }
 
+      case "telegraph": {
+        showBanner(spellNameFor(evt.abilityId), CAST_MS + 800);
+        t += 600;
+        break;
+      }
+
+      case "telegraphBreak": {
+        showBanner("Interrupted!", 900);
+        t += 500;
+        break;
+      }
+
+      case "affinityDiscovered": {
+        const label = evt.kind === "weak" ? "WEAK!" : "RESIST";
+        const color = evt.kind === "weak" ? "#ffd24a" : COLORS.miss;
+        steps.push(
+          step(t, (sc, n) => pushPopup(sc, evt.targetId, label, color, n, w, h))
+        );
+        t += 400;
+        break;
+      }
+
+      case "analyze": {
+        showBanner("Analyze", 900);
+        t += 500;
+        break;
+      }
+
+      case "phaseChange": {
+        showBanner(`${evt.name} grows stronger!`, 1200);
+        t += 600;
+        break;
+      }
+
       case "fizzle": {
         steps.push(
           step(t, (sc, n) => pushPopup(sc, evt.actorId, "FIZZLE", COLORS.miss, n, w, h))

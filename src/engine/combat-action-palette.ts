@@ -1,6 +1,5 @@
 import type { Character } from "../game/party";
 import { isUtilitySpell, type SpellDef } from "../data/spells";
-import { classHasTechniques, techniquesForClass } from "../data/techniques";
 import type { ItemDef } from "../data/items";
 
 export type PaletteSlot =
@@ -24,9 +23,8 @@ export interface CombatPalette {
  * - Cast is disabled when the character has no usable combat spells, is
  *   silenced, or (when the caller supplies `currentSp`) cannot afford the
  *   cheapest known spell.
- * - Skill is disabled when the class has no skill actions. Thieves always
- *   have Hide/Ambush; melee classes with rage techniques have Skill if any
- *   technique is available at their level.
+ * - Skill is never disabled: every class gets Analyze, with techniques
+ *   (melee) or Hide/Ambush (Thief) listed above it.
  * - Items are not a face slot; they are opened with the Select button.
  */
 export function buildPalette(
@@ -50,15 +48,16 @@ export function buildPalette(
     castDisabled = (options.currentSp ?? 0) < cheapest;
   }
 
-  const hasSkillActions =
-    c.class === "Thief" ||
-    (classHasTechniques(c.class) &&
-      techniquesForClass(c.class, c.level).length > 0);
-  const skillDisabled = !hasSkillActions;
+  // The skill list always contains Analyze (universal intel verb), so the
+  // slot is never disabled. Techniques (melee) and Hide/Ambush (Thief) sit
+  // above it for the classes that have them.
+  const skillDisabled = false;
 
   // `items` is accepted so future cost/durability checks can live here, but
   // for now the item button is always available and merely opens the item menu.
+  // `c` is likewise currently unused — the skill slot no longer checks class.
   void items;
+  void c;
   void options?.currentRage;
 
   const slots: PaletteSlot[] = [

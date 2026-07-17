@@ -72,7 +72,12 @@ describe("menuEntriesForCharacter", () => {
   it("gives base FF6 actions + Technique to a Fighter", () => {
     const c = createCharacter("x", "X", "Human", "Neutral", "Fighter", 0);
     const kinds = menuEntriesForCharacter(c).map((e) => e.kind);
-    expect(kinds).toEqual(["attack", "technique", "cast", "defend", "item", "flee"]);
+    expect(kinds).toEqual(["attack", "technique", "cast", "defend", "item", "analyze", "move", "flee"]);
+  });
+
+  it("gives every class Analyze", () => {
+    const mage = createCharacter("m", "M", "Elf", "Neutral", "Mage", 0);
+    expect(menuEntriesForCharacter(mage).map((e) => e.kind)).toContain("analyze");
   });
 
   it("adds Technique for Thief alongside Hide/Ambush", () => {
@@ -112,12 +117,12 @@ describe("menuEntriesForCharacter", () => {
 describe("menuHintText", () => {
   it("includes T for technique users", () => {
     const c = createCharacter("x", "X", "Human", "Neutral", "Fighter", 0);
-    expect(menuHintText(menuEntriesForCharacter(c))).toBe("Enter · A/T/M/D/I/R · ↑↓");
+    expect(menuHintText(menuEntriesForCharacter(c))).toBe("Enter · A/T/M/D/I/N/V/R · ↑↓");
   });
 
   it("omits T for pure casters", () => {
     const c = createCharacter("m", "M", "Elf", "Neutral", "Mage", 0);
-    expect(menuHintText(menuEntriesForCharacter(c))).toBe("Enter · A/M/D/I/R · ↑↓");
+    expect(menuHintText(menuEntriesForCharacter(c))).toBe("Enter · A/M/D/I/N/V/R · ↑↓");
   });
 
   it("includes H for an unhidden Thief", () => {
@@ -236,6 +241,46 @@ describe("renderCombatWindows", () => {
     expect(container.querySelectorAll(".ff6-enemy-row")).toHaveLength(1);
   });
 
+  it("shows a charging tag for winding-up enemies", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    state.windUps["rat-0"] = { abilityId: "hellfire", name: "Hellfire", targetId: null };
+    renderCombatWindows(container, baseView(state), noopHandlers());
+    const row = container.querySelector(".ff6-enemy-row");
+    expect(row?.textContent).toContain("Hellfire");
+  });
+
+  it("shows discovered affinity tags on the enemy row", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    state.observedAffinity["Test Rat"] = { weak: ["fire"], resist: ["water"] };
+    renderCombatWindows(container, baseView(state), noopHandlers());
+    const row = container.querySelector(".ff6-enemy-row");
+    expect(row?.textContent).toContain("WK fire");
+    expect(row?.textContent).toContain("RES water");
+  });
+
+  it("shows trait tags only for analyzed species", () => {
+    const enemy = makeEnemy("rat-0");
+    enemy.special = [{ kind: "flying" }, { kind: "evasive" }];
+    const state = makeState([enemy]);
+    renderCombatWindows(container, baseView(state), noopHandlers());
+    expect(container.querySelector(".ff6-enemy-row")?.textContent).not.toContain("FLY");
+
+    state.analyzedEnemies["Test Rat"] = true;
+    renderCombatWindows(container, baseView(state), noopHandlers());
+    const text = container.querySelector(".ff6-enemy-row")?.textContent;
+    expect(text).toContain("FLY");
+    expect(text).toContain("EVA");
+  });
+
+  it("renders resistPhysical with its percent", () => {
+    const enemy = makeEnemy("rat-0");
+    enemy.special = [{ kind: "resistPhysical", percent: 50 }];
+    const state = makeState([enemy]);
+    state.analyzedEnemies["Test Rat"] = true;
+    renderCombatWindows(container, baseView(state), noopHandlers());
+    expect(container.querySelector(".ff6-enemy-row")?.textContent).toContain("PHYS50");
+  });
+
   it("renders a selection list with details when menuMode is selection", () => {
     const state = makeState([makeEnemy("rat-0")]);
     const view = baseView(state);
@@ -291,7 +336,7 @@ describe("renderCombatWindows", () => {
     view.menuEntries = menuEntriesForCharacter(state.party[0]);
     renderCombatWindows(container, view, noopHandlers());
     expect(container.querySelector(".ff6-hint-row")?.textContent).toBe(
-      "Enter · A/T/M/D/I/R · ↑↓"
+      "Enter · A/T/M/D/I/N/V/R · ↑↓"
     );
   });
 

@@ -24,6 +24,7 @@ import {
   resolveAllyTurn,
   endRound,
   enqueueNewAllies,
+  charRow,
   type CombatState,
   type PlayerAction,
   type TurnQueueEntry,
@@ -76,6 +77,7 @@ type Phase =
   | "selectTarget"
   | "selectSpell"
   | "selectTechnique"
+  | "selectSkill"
   | "selectItem"
   | "playback"
   | "result";
@@ -614,6 +616,56 @@ export class CombatController {
         this.openTargetSelect("enemy");
         return;
       }
+      case "analyze": {
+        const enemies = this.livingEnemies();
+        if (enemies.length === 0) {
+          this.setFlash("No target!");
+          return;
+        }
+        this.pending = { kind: "analyze" };
+        if (enemies.length === 1) {
+          this.resolveAndPlay(() =>
+            resolvePlayerTurn(this.state, {
+              kind: "analyze",
+              actorId: c.id,
+              targetInstanceId: enemies[0].instanceId,
+            })
+          );
+          return;
+        }
+        this.openTargetSelect("enemy");
+        return;
+      }
+      case "move": {
+        const toRow = charRow(c) === "front" ? "back" : "front";
+        const others = this.state.party.filter((p) => p.id !== c.id);
+        const inRow = others.filter((p) => charRow(p) === toRow).length;
+        // A free slot (and an array that can reach it) means an instant slide.
+        if (inRow < 3 && (toRow === "front" || others.length >= 3)) {
+          this.resolveAndPlay(() =>
+            resolvePlayerTurn(this.state, { kind: "move", actorId: c.id })
+          );
+          return;
+        }
+        const partners = others.filter((p) => charRow(p) === toRow && p.hp > 0);
+        if (partners.length === 0) {
+          this.setFlash("No one to swap with!");
+          return;
+        }
+        this.pending = { kind: "move" };
+        this.targetKind = "ally";
+        this.phase = "selectTarget";
+        this.selectionTitle = "Swap with";
+        this.selectionIds = partners.map((p) => p.id);
+        this.selectionEntries = partners.map((p) => ({
+          label: p.name,
+          detail: `${Math.max(0, p.hp)}/${p.maxHp}`,
+        }));
+        this.selectionIndex = 0;
+        this.syncTargetCursor();
+        this.windowsDirty = true;
+        return;
+      }
       case "cast": {
         const spells = this.knownSpells(c);
         if (spells.length === 0) {
@@ -758,6 +810,40 @@ export class CombatController {
     this.windowsDirty = true;
   }
 
+  /**
+   * Y/skill menu: class skills (Hide/Ambush for Thief, techniques for melee)
+   * followed by the universal Analyze entry. Open to every class — casters
+   * get Analyze even though they have no other skills.
+   */
+  private openSkillSelect(c: Character): void {
+    this.phase = "selectSkill";
+    this.selectionTitle = "Skill";
+    const ids: string[] = [];
+    const entries: { label: string; detail?: string; disabled?: boolean }[] = [];
+    if (c.class === "Thief") {
+      const hidden = c.status.includes("hidden");
+      ids.push(hidden ? "ambush" : "hide");
+      entries.push({ label: hidden ? "Ambush" : "Hide" });
+    }
+    const rage = this.currentRage(c);
+    for (const t of this.knownTechniques(c)) {
+      ids.push(t.id);
+      entries.push({
+        label: t.name,
+        detail: `${t.rageCost} RG`,
+        disabled: rage < t.rageCost,
+      });
+    }
+    ids.push("analyze");
+    entries.push({ label: "Analyze" });
+    ids.push("move");
+    entries.push({ label: "Move" });
+    this.selectionIds = ids;
+    this.selectionEntries = entries;
+    this.selectionIndex = 0;
+    this.windowsDirty = true;
+  }
+
   /** Row selection for row-targeted spells (FRACTURIS fizzle field). */
   private openRowSelect(): void {
     this.targetKind = "row";
@@ -809,9 +895,48 @@ export class CombatController {
   /** Confirm the highlighted selection entry. */
   private confirmSelection(): void {
     const c = this.currentChar();
-    if (!c || !this.pending) return;
+    if (!c) return;
     const id = this.selectionIds[this.selectionIndex];
     if (!id) return;
+
+    if (this.phase === "selectSkill") {
+      if (id === "analyze") {
+        this.chooseAction("analyze");
+        return;
+      }
+      if (id === "move") {
+        this.chooseAction("move");
+        return;
+      }
+      if (id === "hide") {
+        this.chooseAction("hide");
+        return;
+      }
+      if (id === "ambush") {
+        this.pending = { kind: "ambush" };
+        const enemies = this.livingEnemies();
+        if (enemies.length === 1) {
+          this.fireAttackLike("ambush", c.id, enemies[0].instanceId);
+        } else {
+          this.openTargetSelect("enemy");
+        }
+        return;
+      }
+      // Technique entry — same flow as the Technique menu.
+      const skillEntry = this.selectionEntries[this.selectionIndex];
+      if (skillEntry?.disabled) {
+        this.setFlash("Not enough rage!");
+        return;
+      }
+      this.pending = { kind: "technique", techniqueId: id };
+      this.confirmTechniqueChoice(c, id);
+      return;
+    }
+
+    // selectSkill returns on every path above; the remaining phases always
+    // carry a pending action (set when their submenu was opened).
+    const pendingAction = this.pending;
+    if (!pendingAction) return;
 
     if (this.phase === "selectSpell") {
       const entry = this.selectionEntries[this.selectionIndex];
@@ -819,7 +944,7 @@ export class CombatController {
         this.setFlash("Not enough SP!");
         return;
       }
-      this.pending.spellId = id;
+      pendingAction.spellId = id;
       const spell = this.state.spells[id];
       if (spell?.target === "singleEnemy") {
         const enemies = this.livingEnemies();
@@ -865,58 +990,20 @@ export class CombatController {
         this.setFlash("Not enough rage!");
         return;
       }
-      this.pending.techniqueId = id;
-      const tech = this.knownTechniques(c).find((t) => t.id === id);
-      if (!tech) return;
-      // Determine target selection based on technique target type.
-      if (tech.target === "singleEnemy") {
-        const enemies = this.livingEnemies();
-        if (enemies.length === 1) {
-          this.rememberLastCommand(c.id, {
-            kind: "technique",
-            techniqueId: id,
-            targetInstanceId: enemies[0].instanceId,
-          });
-          this.resolveAndPlay(() =>
-            resolvePlayerTurn(this.state, {
-              kind: "technique",
-              actorId: c.id,
-              techniqueId: id,
-              targetInstanceId: enemies[0].instanceId,
-            })
-          );
-        } else {
-          this.openTargetSelect("enemy");
-        }
-      } else if (tech.target === "singleAlly") {
-        this.openTargetSelect("ally");
-      } else if (tech.target === "rowEnemies") {
-        this.openRowSelect();
-      } else if (tech.target === "columnEnemies") {
-        // Column targeting: pick an enemy, we'll derive the column from its position.
-        this.openTargetSelect("enemy");
-      } else {
-        // self / allEnemies / allFrontEnemies / allAllies / allFrontAllies / randomEnemies
-        this.rememberLastCommand(c.id, { kind: "technique", techniqueId: id });
-        this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
-            kind: "technique",
-            actorId: c.id,
-            techniqueId: id,
-          })
-        );
-      }
+      pendingAction.techniqueId = id;
+      this.confirmTechniqueChoice(c, id);
       return;
     }
 
     if (this.phase === "selectItem") {
-      this.pending.itemId = id;
+      pendingAction.itemId = id;
       this.openTargetSelect("ally");
       return;
     }
 
     if (this.phase === "selectTarget") {
       const pending = this.pending;
+      if (!pending) return; // selectTarget is only reachable with a pending action
       if (this.targetKind === "row" && pending.kind === "cast" && pending.spellId) {
         const spellId = pending.spellId;
         this.rememberLastCommand(c.id, {
@@ -956,6 +1043,24 @@ export class CombatController {
         this.fireAttackLike("attack", c.id, id);
       } else if (pending.kind === "ambush") {
         this.fireAttackLike("ambush", c.id, id);
+      } else if (pending.kind === "analyze") {
+        // Analyze is never stored for Repeat — intel, not an attack.
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "analyze",
+            actorId: c.id,
+            targetInstanceId: id,
+          })
+        );
+      } else if (pending.kind === "move") {
+        // Move is never stored for Repeat — repositioning is a per-turn call.
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "move",
+            actorId: c.id,
+            targetAllyId: id,
+          })
+        );
       } else if (pending.kind === "cast" && pending.spellId) {
         const action: PlayerAction =
           this.targetKind === "enemy"
@@ -1013,6 +1118,49 @@ export class CombatController {
         });
         this.resolveAndPlay(() => resolvePlayerTurn(this.state, action));
       }
+    }
+  }
+
+  /** Route a confirmed technique to its target-selection or direct-fire flow. */
+  private confirmTechniqueChoice(c: Character, id: string): void {
+    const tech = this.knownTechniques(c).find((t) => t.id === id);
+    if (!tech) return;
+    if (tech.target === "singleEnemy") {
+      const enemies = this.livingEnemies();
+      if (enemies.length === 1) {
+        this.rememberLastCommand(c.id, {
+          kind: "technique",
+          techniqueId: id,
+          targetInstanceId: enemies[0].instanceId,
+        });
+        this.resolveAndPlay(() =>
+          resolvePlayerTurn(this.state, {
+            kind: "technique",
+            actorId: c.id,
+            techniqueId: id,
+            targetInstanceId: enemies[0].instanceId,
+          })
+        );
+      } else {
+        this.openTargetSelect("enemy");
+      }
+    } else if (tech.target === "singleAlly") {
+      this.openTargetSelect("ally");
+    } else if (tech.target === "rowEnemies") {
+      this.openRowSelect();
+    } else if (tech.target === "columnEnemies") {
+      // Column targeting: pick an enemy, we'll derive the column from its position.
+      this.openTargetSelect("enemy");
+    } else {
+      // self / allEnemies / allFrontEnemies / allAllies / allFrontAllies / randomEnemies
+      this.rememberLastCommand(c.id, { kind: "technique", techniqueId: id });
+      this.resolveAndPlay(() =>
+        resolvePlayerTurn(this.state, {
+          kind: "technique",
+          actorId: c.id,
+          techniqueId: id,
+        })
+      );
     }
   }
 
@@ -1136,6 +1284,7 @@ export class CombatController {
       case "selectTarget":
       case "selectSpell":
       case "selectItem":
+      case "selectSkill":
       case "selectTechnique":
         if (event.kind === "press") {
           if (event.button === "lt") {
@@ -1197,11 +1346,9 @@ export class CombatController {
         const skill = this.palette.slots.find((s) => s.kind === "skill");
         if (skill && "disabled" in skill && skill.disabled) {
           this.setFlash("No skills!");
-        } else if (c.class === "Thief") {
-          this.chooseAction(c.status.includes("hidden") ? "ambush" : "hide");
-        } else {
-          this.chooseAction("technique");
+          return;
         }
+        this.openSkillSelect(c);
         return;
       }
       case "select":
@@ -1306,7 +1453,7 @@ export class CombatController {
       return;
     }
 
-    // Legacy letter shortcuts (m/t/i/r/h/c) not on the face-button map.
+    // Legacy letter shortcuts (m/t/i/r/h/c/n) not on the face-button map.
     if (this.phase === "palette") {
       const lower = key.toLowerCase();
       const shortcuts: Record<string, PlayerAction["kind"]> = {
@@ -1317,6 +1464,8 @@ export class CombatController {
         f: "flee",
         r: "flee",
         h: "hide",
+        n: "analyze",
+        v: "move",
       };
       const kind = shortcuts[lower];
       if (kind) {
@@ -1335,6 +1484,7 @@ export class CombatController {
       this.phase === "selectTarget" ||
       this.phase === "selectSpell" ||
       this.phase === "selectItem" ||
+      this.phase === "selectSkill" ||
       this.phase === "selectTechnique"
     ) {
       const n = parseInt(key, 10);
@@ -1363,6 +1513,7 @@ export class CombatController {
         : this.phase === "selectTarget" ||
             this.phase === "selectSpell" ||
             this.phase === "selectItem" ||
+            this.phase === "selectSkill" ||
             this.phase === "selectTechnique"
           ? "selection"
           : "none";

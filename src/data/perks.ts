@@ -275,9 +275,9 @@ const HALBERDIER_PERKS: PerkDef[] = [
   ),
   perk(
     "halberdier-sweep", "Halberdier", 3, "Sweep",
-    "Back-row polearm attacks reach any row at full damage. (Not yet implemented — v1.1.)",
+    "Your melee attacks have polearm reach: any row from any row, at full damage.",
     [], {}, ["offense", "passive"]
-    // TODO(v1.1): weapon-range override not wired into canReach/row-multiplier yet.
+    // Wired: effectiveWeaponRange in combat.ts treats all weapons as medium.
   ),
   perk(
     "halberdier-hold-the-line", "Halberdier", 3, "Hold the Line",
@@ -325,9 +325,9 @@ const DUELIST_PERKS: PerkDef[] = [
   ),
   perk(
     "duelist-lunge", "Duelist", 3, "Lunge",
-    "Short-range weapons reach any row without penalty. (Not yet implemented — v1.1.)",
+    "Short-range weapons reach any row without penalty.",
     [], {}, ["offense", "passive"]
-    // TODO(v1.1): weapon-range override not wired into canReach yet.
+    // Wired: effectiveWeaponRange in combat.ts treats short weapons as medium.
   ),
   perk(
     "duelist-momentum", "Duelist", 3, "Momentum",

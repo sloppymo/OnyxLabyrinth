@@ -53,10 +53,10 @@ describe("buildPalette", () => {
     expect(findSlot(p, "skill")).toEqual({ kind: "skill", disabled: false });
   });
 
-  it("Mage: cast enabled (spells exist), skill disabled (no techniques)", () => {
+  it("Mage: cast enabled (spells exist), skill enabled (Analyze is universal)", () => {
     const p = buildPalette(makeChar("Mage"), MAGE_SPELLS, items);
     expect(findSlot(p, "cast")).toEqual({ kind: "cast", disabled: false });
-    expect(findSlot(p, "skill")).toEqual({ kind: "skill", disabled: true });
+    expect(findSlot(p, "skill")).toEqual({ kind: "skill", disabled: false });
   });
 
   it("Thief: cast enabled if spells, skill enabled for Hide/Ambush", () => {
@@ -87,10 +87,10 @@ describe("buildPalette", () => {
     expect(findSlot(p, "cast")).toEqual({ kind: "cast", disabled: true });
   });
 
-  it("melee class with no available techniques: skill disabled", () => {
-    // Level 0 Fighter has no techniques learned yet.
+  it("melee class with no available techniques: skill still enabled (Analyze is universal)", () => {
+    // Level 0 Fighter has no techniques learned yet, but Analyze is always there.
     const p = buildPalette(makeChar("Fighter", { level: 0 }), [], items);
-    expect(findSlot(p, "skill")).toEqual({ kind: "skill", disabled: true });
+    expect(findSlot(p, "skill")).toEqual({ kind: "skill", disabled: false });
   });
 
   it("disables cast when provided currentSp is below the cheapest spell", () => {

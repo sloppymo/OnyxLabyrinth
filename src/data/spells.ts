@@ -534,6 +534,16 @@ export const PRIEST_SPELLS: SpellDef[] = [
     description: "Purges poison from a single ally.",
   },
   {
+    id: "priest-cure-blind",
+    name: "Cure Blindness",
+    class: "Priest",
+    tier: 2,
+    spCost: 5,
+    target: "singleAlly",
+    effect: { kind: "cure", status: "blind" },
+    description: "Restores sight to a blinded ally.",
+  },
+  {
     id: "priest-mass-cure",
     name: "Mass Cure",
     class: "Priest",

@@ -97,6 +97,44 @@ describe("playTurn choreography", () => {
     expect(scene.popups.some((p) => p.text === "5")).toBe(true);
   });
 
+  it("telegraph shows the ability-name banner; break shows Interrupted!", () => {
+    const scene = makeScene();
+    playTurn(scene, [{ type: "telegraph", actorId: "rat-0", abilityId: "hellfire" }], spellName, 0, W, H);
+    updateScene(scene, 10);
+    expect(scene.banner).toBe("Spell:hellfire");
+
+    const scene2 = makeScene();
+    playTurn(scene2, [{ type: "telegraphBreak", actorId: "rat-0", abilityId: "hellfire" }], spellName, 0, W, H);
+    updateScene(scene2, 10);
+    expect(scene2.banner).toBe("Interrupted!");
+  });
+
+  it("affinityDiscovered pops WEAK! / RESIST over the target", () => {
+    const scene = makeScene();
+    playTurn(scene, [{ type: "affinityDiscovered", targetId: "rat-0", element: "fire", kind: "weak" }], spellName, 0, W, H);
+    updateScene(scene, 50);
+    expect(scene.popups.some((p) => p.text === "WEAK!")).toBe(true);
+
+    const scene2 = makeScene();
+    playTurn(scene2, [{ type: "affinityDiscovered", targetId: "rat-0", element: "water", kind: "resist" }], spellName, 0, W, H);
+    updateScene(scene2, 50);
+    expect(scene2.popups.some((p) => p.text === "RESIST")).toBe(true);
+  });
+
+  it("analyze event shows the Analyze banner", () => {
+    const scene = makeScene();
+    playTurn(scene, [{ type: "analyze", actorId: "c0", targetId: "rat-0" }], spellName, 0, W, H);
+    updateScene(scene, 10);
+    expect(scene.banner).toBe("Analyze");
+  });
+
+  it("phaseChange event shows the grows-stronger banner", () => {
+    const scene = makeScene();
+    playTurn(scene, [{ type: "phaseChange", actorId: "rat-0", phase: 2, name: "The Headmaster's Echo" }], spellName, 0, W, H);
+    updateScene(scene, 10);
+    expect(scene.banner).toBe("The Headmaster's Echo grows stronger!");
+  });
+
   it("miss pops MISS without a hurt animation", () => {
     const scene = makeScene();
     const events: CombatEvent[] = [

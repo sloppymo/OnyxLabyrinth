@@ -18,7 +18,7 @@
  * view model each time something changes.
  */
 
-import type { CombatState, PlayerAction } from "../game/combat";
+import type { CombatState, PlayerAction, EnemyInstance } from "../game/combat";
 import type { Character } from "../game/party";
 import type { SpellDef } from "../data/spells";
 import { classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
@@ -103,6 +103,8 @@ export const ACTION_LABELS: Record<PlayerAction["kind"], string> = {
   flee: "Run",
   hide: "Hide",
   ambush: "Ambush",
+  analyze: "Analyze",
+  move: "Move",
 };
 
 /** Keyboard shortcut letter per action, for the hint row (ambush reuses
@@ -116,6 +118,8 @@ const ACTION_SHORTCUTS: Partial<Record<MenuEntry["kind"], string>> = {
   flee: "R",
   hide: "H",
   repeat: "Z",
+  analyze: "N",
+  move: "V",
 };
 
 /** Join hint segments with · ; drop whole trailing entries until it fits. */
@@ -205,6 +209,8 @@ export function menuEntriesForCharacter(
   if (char.class === "Thief") {
     base.push(char.status.includes("hidden") ? "ambush" : "hide");
   }
+  base.push("analyze");
+  base.push("move");
   base.push("flee");
   const entries: MenuEntry[] = base.map((kind) => ({
     kind,
@@ -236,6 +242,27 @@ export const STATUS_TAG_LABELS: Record<string, string> = {
   burn: "BRN",
   regen: "RGN",
 };
+
+/** Trait tags revealed by Analyze, derived from an enemy's specials. */
+function traitLabelsFor(enemy: EnemyInstance): string[] {
+  const labels: string[] = [];
+  for (const sp of enemy.special) {
+    switch (sp.kind) {
+      case "flying": labels.push("FLY"); break;
+      case "evasive": labels.push("EVA"); break;
+      case "highDefense": labels.push("DEF"); break;
+      case "resistPhysical": labels.push(`PHYS${sp.percent}`); break;
+      case "poisonOnHit": labels.push("PSN+"); break;
+      case "undead": labels.push("UND"); break;
+      case "demon": labels.push("DMN"); break;
+      case "caster": labels.push("CST"); break;
+      case "healer": labels.push("HLH"); break;
+      case "silenceRandom": labels.push("SIL"); break;
+      default: break;
+    }
+  }
+  return labels;
+}
 
 /** Statuses read straight off a combatant's `status` array for tag display. */
 const VISIBLE_STATUSES = ["poison", "paralysis", "sleep", "blind"] as const;
@@ -387,14 +414,24 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
   const summons = state.summonedAllies.filter((a) => a.hp > 0);
   // Group by display name with counts, FF6-style. Each group also unions the
   // statuses of its members so afflictions stay readable at a glance.
-  const groups = new Map<string, { count: number; statuses: Set<string> }>();
+  const groups = new Map<string, { count: number; statuses: Set<string>; affinity: Set<string>; traits: Set<string>; windUp?: string }>();
   for (const e of living) {
-    const group = groups.get(e.name) ?? { count: 0, statuses: new Set<string>() };
+    const group = groups.get(e.name) ?? { count: 0, statuses: new Set<string>(), affinity: new Set<string>(), traits: new Set<string>() };
     group.count += 1;
     for (const st of VISIBLE_STATUSES) {
       if (e.status.includes(st)) group.statuses.add(st);
     }
     if ((state.enemyDots[e.instanceId] ?? []).length > 0) group.statuses.add("burn");
+    const observed = state.observedAffinity[e.name];
+    if (observed) {
+      for (const elem of observed.weak) group.affinity.add(`WK ${elem}`);
+      for (const elem of observed.resist) group.affinity.add(`RES ${elem}`);
+    }
+    if (state.analyzedEnemies[e.name]) {
+      for (const label of traitLabelsFor(e)) group.traits.add(label);
+    }
+    const windUp = state.windUps[e.instanceId];
+    if (windUp) group.windUp = windUp.name;
     groups.set(e.name, group);
   }
   if (groups.size === 0 && summons.length === 0) {
@@ -407,6 +444,24 @@ function buildEnemyWindow(state: CombatState): HTMLElement {
     nameEl.textContent = name;
     nameEl.title = name;
     appendStatusTags(nameEl, [...group.statuses]);
+    for (const aff of group.affinity) {
+      const affTag = document.createElement("span");
+      affTag.className = "ff6-status-tag";
+      affTag.textContent = aff;
+      nameEl.appendChild(affTag);
+    }
+    for (const trait of group.traits) {
+      const traitTag = document.createElement("span");
+      traitTag.className = "ff6-status-tag";
+      traitTag.textContent = trait;
+      nameEl.appendChild(traitTag);
+    }
+    if (group.windUp) {
+      const chargeTag = document.createElement("span");
+      chargeTag.className = "ff6-status-tag st-charging";
+      chargeTag.textContent = `⚡${group.windUp}`;
+      nameEl.appendChild(chargeTag);
+    }
     row.appendChild(nameEl);
     if (group.count > 1) {
       const countEl = document.createElement("span");

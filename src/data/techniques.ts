@@ -451,5 +451,5 @@ export function techniqueById(id: string): TechniqueDef | undefined {
 
 /** Maximum rage for a character of the given level. */
 export function maxRageForLevel(level: number): number {
-  return 10 + level;
+  return 15 + level;
 }

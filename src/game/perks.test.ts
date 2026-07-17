@@ -450,9 +450,11 @@ describe("perk combat integration", () => {
       );
       return 100 - after.enemies.front[0].currentHp;
     };
-    // STR 10 + level 1 = 11 raw. Full AC: 11-8 = 3. Backstab: 11-6 = 5.
-    expect(attack([])).toBe(3);
-    expect(attack(["thief-backstab"])).toBe(5);
+    // STR 10 + level 1 = 11 raw. AC 8 vs an 11 swing hits the P2-8 floor
+    // (AC capped at 5): plain 11-5 = 6. Backstab pierces the floor:
+    // 5×0.75 → 4, so 11-4 = 7.
+    expect(attack([])).toBe(6);
+    expect(attack(["thief-backstab"])).toBe(7);
   });
 
   it("priest-saint regenerates 5% max HP for the party at end of round", () => {
@@ -652,9 +654,10 @@ describe("newly wired perks (Phase B)", () => {
       );
       return 100 - after.enemies.front[0].currentHp;
     };
-    // 11 raw − AC 8 = 3 plain; AC 6 with Reach Mastery → 5.
-    expect(attack([])).toBe(3);
-    expect(attack(["halberdier-reach-mastery"])).toBe(5);
+    // 11 raw − AC 8. P2-8 floor caps AC at 5 (half the swing): plain 11-5 = 6.
+    // Reach Mastery pierces the floor: 5−2 = 3, so 11-3 = 8.
+    expect(attack([])).toBe(6);
+    expect(attack(["halberdier-reach-mastery"])).toBe(8);
   });
 
   it("halberdier-brace stores a 60% defend reduction", () => {
@@ -769,5 +772,51 @@ describe("newly wired perks (Phase B)", () => {
       },
     });
     expect(chained).toBe(false);
+  });
+});
+
+// --- Reach perks: duelist-lunge / halberdier-sweep ----------------------------
+
+describe("reach perks (Lunge/Sweep)", () => {
+  const CLOSE_MACE = { id: "mace", name: "Mace", type: "weapon", slot: "hand", attackBonus: 4, range: "close", price: 0 } as const;
+  const SHORT_SWORD = { id: "short-sword", name: "Short Sword", type: "weapon", slot: "hand", attackBonus: 3, range: "short", price: 0 } as const;
+
+  function backRowRig(cls: Character["class"], perks: string[], weapon: typeof CLOSE_MACE | typeof SHORT_SWORD, perksOn = true) {
+    const c = makeCharacter(cls, perksOn ? perks : []);
+    c.formationSlot = 3; // back row
+    const enemy = makeEnemy("e1");
+    enemy.row = "back";
+    const state = createCombatState([c], { front: [], back: [enemy] }, false, {}, {}, { [c.id]: { weapon, armor: [] } });
+    return { c, state };
+  }
+
+  it("duelist-lunge: short weapons reach back-row enemies from the back row", () => {
+    const { c, state } = backRowRig("Duelist", ["duelist-lunge"], SHORT_SWORD);
+    const s = resolvePlayerTurn(state, { kind: "attack", actorId: c.id, targetInstanceId: "e1" }, () => 0.5);
+    expect(s.events.some((e) => e?.type === "miss")).toBe(false);
+    // STR 10 + level 1 + 3 = 14 full damage (no back-row penalty).
+    expect(s.enemies.back[0].currentHp).toBe(6);
+  });
+
+  it("without Lunge, a back-row short weapon cannot reach the back row", () => {
+    const { c, state } = backRowRig("Duelist", [], SHORT_SWORD, false);
+    const s = resolvePlayerTurn(state, { kind: "attack", actorId: c.id, targetInstanceId: "e1" }, () => 0.5);
+    expect(s.enemies.back[0].currentHp).toBe(20); // no damage
+    expect(s.events.some((e) => e?.type === "miss")).toBe(true);
+  });
+
+  it("halberdier-sweep: back-row melee reaches any row at full damage, any weapon", () => {
+    const { c, state } = backRowRig("Halberdier", ["halberdier-sweep"], CLOSE_MACE);
+    const s = resolvePlayerTurn(state, { kind: "attack", actorId: c.id, targetInstanceId: "e1" }, () => 0.5);
+    expect(s.events.some((e) => e?.type === "miss")).toBe(false);
+    // STR 10 + level 1 + 4 = 15 full damage (reach granted, 0.4 penalty waived).
+    expect(s.enemies.back[0].currentHp).toBe(5);
+  });
+
+  it("halberdier-sweep does not grant reach to other classes", () => {
+    const { c, state } = backRowRig("Duelist", ["halberdier-sweep"], CLOSE_MACE, false);
+    const s = resolvePlayerTurn(state, { kind: "attack", actorId: c.id, targetInstanceId: "e1" }, () => 0.5);
+    expect(s.enemies.back[0].currentHp).toBe(20);
+    expect(s.events.some((e) => e?.type === "miss")).toBe(true);
   });
 });

@@ -44,6 +44,12 @@ export interface EnemyDef {
   abilityIds?: string[];
   /** Existing spell IDs from data/spells.ts that this enemy can cast. */
   knownSpells?: string[];
+  /**
+   * Boss phase thresholds as descending HP percents (e.g. [66, 33] = three
+   * phases). Crossing one fires a phaseChange event and +4 attack per phase.
+   * Boss-only; ignored for regular enemies.
+   */
+  phaseThresholds?: number[];
 }
 
 export interface EnemySpawn {
@@ -273,7 +279,7 @@ export const WEREWOLF: EnemyDef = {
 
 export const BIG_TITTY_OGRE: EnemyDef = {
   id: "big-titty-ogre",
-  name: "Big Titty Ogre",
+  name: "Hill Ogre",
   floors: [3],
   rowPreference: "front",
   hp: 64,
@@ -341,8 +347,9 @@ export const HEADMASTERS_ECHO: EnemyDef = {
     { kind: "undead" },
     { kind: "silenceRandom", target: "party", duration: "combat" },
   ],
-  abilityIds: ["echo-of-silence", "memory-drain", "anti-magic-field", "dark-pulse"],
+  abilityIds: ["echo-of-silence", "memory-drain", "anti-magic-field", "dark-pulse", "memory-shatter", "total-eclipse"],
   isBoss: true,
+  phaseThresholds: [66, 33],
 };
 
 // Pack 02 demon / forge-themed enemies.

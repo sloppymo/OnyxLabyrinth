@@ -18,7 +18,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 | [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md) | Combat tempo: target defaults, playback skip/speed, sticky Repeat | **Done 2026-07-13** (A–C + D1/D2/D3 + E party Auto shipped) |
 | `docs/superpowers/specs/2026-07-14-controller-first-combat-design.md` | Controller-first action palette (face buttons, gamepad) | **Done 2026-07-14** — palette phase, `controller-input`, `combat-action-palette`; keyboard fallback preserved |
 | Design canvas (IDE) | `onyxlabyrinth-design-analysis.canvas.tsx` | Mechanics & balance judgment (2026-07-13) |
-| [`COMBAT-ENGAGEMENT-AUDIT.md`](../COMBAT-ENGAGEMENT-AUDIT.md) | Combat depth audit: placebo verbs, disable/summon/counter-magic gaps | **Current** (2026-07-16); Direction A truth pass underway |
+| [`COMBAT-ENGAGEMENT-AUDIT.md`](../COMBAT-ENGAGEMENT-AUDIT.md) | Combat depth audit: placebo verbs, disable/summon/counter-magic gaps | **Current** (2026-07-16); Direction A truth pass **shipped** (`0dd91ee`); Direction B rage economy retune **shipped** (start at half pool, Defend keeps rage, L12 capstones usable); P1-7 **shipped** (blind/poison durations + Cure Blindness; slow confirmed fully wired); Direction B telegraph wind-ups **shipped** (7 big abilities, disable-cancels interrupt) |
 
 ## Specs under `docs/superpowers/specs/`
 
@@ -28,6 +28,14 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 | `2026-07-11-melee-techniques-design.md` | Rage / technique identity | Check `src/data/techniques.ts` for shipped kit |
 | `2026-07-11-spell-expansion-design.md` | Spell corpus intent | Live spells stop at **tier 5**; unlock formula can open T6–T7 with no content |
 | `2026-07-14-arena-renderer-design.md` | Arena room camera & rasterizers | Synced to shipped defaults 2026-07-13 |
+| `2026-07-16-rage-economy-design.md` | Rage economy retune (P1-5) | Shipped 2026-07-16; supersedes the start-at-0 / Defend-wipe lines in the melee-techniques spec |
+| `2026-07-16-telegraph-windups-design.md` | Telegraph wind-ups (Direction B step 2) | Shipped 2026-07-16; disable-cancels interrupt model |
+| `2026-07-16-ac-damage-floor-design.md` | AC damage floor (P2-8) | Shipped 2026-07-16; AC floored at 50% of swing, penetration pierces |
+| `2026-07-16-affinity-surfacing-design.md` | Discovered-affinity surfacing (P2-9) | Shipped 2026-07-16; WK/RES discovery tags + popup; ladders kept (q8) |
+| `2026-07-16-consumables-answers-pack-design.md` | Combat consumables expansion (q7) | Shipped 2026-07-16; 4 items incl. only paralysis cure + revive; revive = 25% max HP |
+| `2026-07-16-analyze-verb-design.md` | Analyze verb (Direction C step 1) | Shipped 2026-07-16; Y skill list / `n`; affinity + trait tags; palette skill slot always enabled |
+| `2026-07-16-echo-boss-phases-design.md` | Echo boss phases (Direction C step 2) | Shipped 2026-07-16; `EnemyDef.phaseThresholds` generic; Echo 66/33 + memory-shatter/total-eclipse |
+| `2026-07-16-row-swap-design.md` | In-combat row swap (Direction C final) | Shipped 2026-07-16; Move verb, turn-cost; party array reorder + formationSlot normalize |
 | `2026-07-07-combat-select-action-dom-design.md` | FF6 windows DOM | Older; verify against `combat-select-action-view.ts` |
 
 ## Known stale claims (do not re-assert)
@@ -49,7 +57,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
    - **Status readability:** FF6 windows now show compact colored tags (PSN/PAR/SLP/BLD/BRN/RGN) inside the name span of party and enemy rows (`combat-select-action-view.ts`, `.ff6-status-tag` in `styles.css`).
    - **Perks wired this pass (13):** Healer's Touch (+30% heal), Revival (res to 50% HP), Turn Undead / Judge / Inquisitor-damage-half (undead/demon multipliers via new `{ kind: "demon" }` enemy tag), Reach Mastery (flat 2 AC ignore), Brace (60% Defend), Juggernaut status immunity, Swindler shop discount (applied in `town-ui.ts` `buyPrice`), Chain Caster, Perfect Timing, Swashbuckler double-strike, Dark Templar lifesteal, Smoke Bomb. Descriptions updated; partial perks say which half works.
    - **Spell DoT/regen engine:** `SpellEffect` damage/heal gained optional `followup` (`dot` | `regen`); tracked on `CombatState.enemyDots`/`regenBuffs`, ticked in end-of-round status processing with `statusTick`/`spellEffect` events (burn pops orange, regen pops green). `mage-meteor-swarm` now applies 10/round fire burn ×3; `priest-mass-regenerate` 8/round regen ×3; new single-target `priest-regenerate` (T3). DoT ticks respect elemental resist/weakness.
-   - **Remaining honest stubs:** 10 `TODO(v1.1)` markers in `data/perks.ts` (resistance/reflect/silence-immunity/steal-economy/party-wide-aura shapes that need new systems).
+   - **Remaining honest stubs:** 8 `TODO(v1.1)` markers in `data/perks.ts` (resistance/reflect/silence-immunity/steal-economy/party-wide-aura shapes that need new systems). The two reach stubs were wired 2026-07-16 (`effectiveWeaponRange`: Sweep = all weapons at polearm reach, Lunge = short weapons at medium reach).
    - **No new art generated** — burn reuses the existing `fire_explosion` burst (orange-tinted `STATUS_STYLES.burn`); regen reuses the heal family. Phase D criteria never triggered.
 6. **Combat flow / tempo.** ~~Prefer [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md)~~ **Done 2026-07-13:** A–C tempo UX; Phase D: `incapacitated` event banner, SP/Rage menu line, hit recoil+flash; Phase E: `Q` party Auto (last command, never Flee/Item; Attack/Defend fallback).
 7. **Controller-first combat.** ~~`2026-07-14-controller-first-combat-design.md`~~ **Done 2026-07-14:** horizontal A/B/X/Y palette, `handleInput` + Gamepad polling, hold-B flee, LB/RB target cycle, LT/RT party inspect, legacy `t/m/i/r` shortcuts + `Z` Repeat.

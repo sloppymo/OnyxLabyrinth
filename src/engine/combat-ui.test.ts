@@ -123,7 +123,7 @@ describe("CombatController input routing", () => {
     controller.destroy();
   });
 
-  it("opens technique selection from the action palette", () => {
+  it("opens the skill list (techniques + Analyze) from the action palette", () => {
     const controller = freshController();
     const c = controller as any;
     c.phase = "palette";
@@ -142,9 +142,163 @@ describe("CombatController input routing", () => {
 
     controller.handleInput({ kind: "press", button: "y" });
 
-    expect(c.phase).toBe("selectTechnique");
-    expect(c.selectionTitle).toBe("Technique");
-    expect(c.selectionEntries.length).toBeGreaterThan(0);
+    expect(c.phase).toBe("selectSkill");
+    expect(c.selectionTitle).toBe("Skill");
+    expect(c.selectionEntries.length).toBeGreaterThan(1);
+    const labels = c.selectionEntries.map((e: { label: string }) => e.label);
+    expect(labels).toContain("Analyze");
+    expect(labels[labels.length - 1]).toBe("Move");
+    controller.destroy();
+  });
+
+  it("Mage skill list contains Analyze and Move", () => {
+    const controller = freshController();
+    const c = controller as any;
+    c.phase = "palette";
+    c.currentActorId = "c1"; // Bob the Mage
+    c.palette = {
+      slots: [
+        { kind: "attack" },
+        { kind: "defend" },
+        { kind: "cast", disabled: false },
+        { kind: "skill", disabled: false },
+      ],
+      itemButton: "select",
+      autoButton: "start",
+    };
+    c.pending = null;
+
+    controller.handleInput({ kind: "press", button: "y" });
+
+    expect(c.phase).toBe("selectSkill");
+    expect(c.selectionEntries.map((e: { label: string }) => e.label)).toEqual(["Analyze", "Move"]);
+    controller.destroy();
+  });
+
+  it("Move slides immediately when the back row has room", () => {
+    const party = [
+      createCharacter("c0", "A", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "B", "Human", "Neutral", "Mage", 1),
+      createCharacter("c2", "C", "Human", "Neutral", "Thief", 2),
+      createCharacter("c3", "D", "Human", "Neutral", "Priest", 3),
+    ];
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
+    const controller = new CombatControllerCtor(state, { onEnd: () => {} });
+    const c = controller as any;
+    c.phase = "palette";
+    c.currentActorId = "c0";
+    c.scene.activeActorId = "c0";
+    c.palette = {
+      slots: [
+        { kind: "attack" },
+        { kind: "defend" },
+        { kind: "cast", disabled: true },
+        { kind: "skill", disabled: false },
+      ],
+      itemButton: "select",
+      autoButton: "start",
+    };
+    c.pending = null;
+
+    controller.handleInput({ kind: "press", button: "y" });
+    c.selectionIndex = c.selectionEntries.length - 1; // Move
+    controller.handleInput({ kind: "press", button: "a" });
+
+    expect(c.phase).toBe("playback");
+    expect(c.state.party.find((p: { id: string }) => p.id === "c0").formationSlot).toBe(3);
+    expect(c.lastCommandByActor.has("c0")).toBe(false);
+    controller.destroy();
+  });
+
+  it("Move opens a swap selection when the other row is full, then swaps", () => {
+    const party = Array.from({ length: 6 }, (_, i) =>
+      createCharacter(`c${i}`, `P${i}`, "Human", "Neutral", i < 3 ? "Fighter" : "Mage", i)
+    );
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
+    const controller = new CombatControllerCtor(state, { onEnd: () => {} });
+    const c = controller as any;
+    c.phase = "palette";
+    c.currentActorId = "c0";
+    c.scene.activeActorId = "c0";
+    c.pending = null;
+
+    controller.handleInput({ kind: "press", button: "y" });
+    c.selectionIndex = c.selectionEntries.length - 1; // Move
+    controller.handleInput({ kind: "press", button: "a" });
+
+    expect(c.phase).toBe("selectTarget");
+    expect(c.selectionIds).toEqual(["c3", "c4", "c5"]);
+
+    c.selectionIndex = 0; // swap with c3
+    controller.handleInput({ kind: "press", button: "a" });
+
+    expect(c.phase).toBe("playback");
+    expect(c.state.party.find((p: { id: string }) => p.id === "c0").formationSlot).toBe(3);
+    expect(c.state.party.find((p: { id: string }) => p.id === "c3").formationSlot).toBe(0);
+    controller.destroy();
+  });
+
+  it("the v shortcut fires Move", () => {
+    const party = [
+      createCharacter("c0", "A", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "B", "Human", "Neutral", "Mage", 1),
+      createCharacter("c2", "C", "Human", "Neutral", "Thief", 2),
+      createCharacter("c3", "D", "Human", "Neutral", "Priest", 3),
+    ];
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
+    const controller = new CombatControllerCtor(state, { onEnd: () => {} });
+    const c = controller as any;
+    c.phase = "palette";
+    c.currentActorId = "c0";
+    c.scene.activeActorId = "c0";
+
+    controller.handleKey("v");
+
+    expect(c.phase).toBe("playback");
+    expect(c.state.party.find((p: { id: string }) => p.id === "c0").formationSlot).toBe(3);
+    controller.destroy();
+  });
+
+  it("confirming Analyze with one enemy fires immediately and is not remembered for Repeat", () => {
+    const controller = freshController();
+    const c = controller as any;
+    c.phase = "palette";
+    c.currentActorId = "c0";
+    c.scene.activeActorId = "c0";
+    c.palette = {
+      slots: [
+        { kind: "attack" },
+        { kind: "defend" },
+        { kind: "cast", disabled: true },
+        { kind: "skill", disabled: false },
+      ],
+      itemButton: "select",
+      autoButton: "start",
+    };
+    c.pending = null;
+
+    controller.handleInput({ kind: "press", button: "y" }); // open skill list
+    // Move selection to the Analyze entry and confirm.
+    c.selectionIndex = c.selectionEntries.findIndex((e: { label: string }) => e.label === "Analyze");
+    controller.handleInput({ kind: "press", button: "a" });
+
+    expect(c.phase).toBe("playback");
+    expect(c.state.analyzedEnemies["Test Rat"]).toBe(true);
+    expect(c.lastCommandByActor.has("c0")).toBe(false);
+    controller.destroy();
+  });
+
+  it("the n shortcut fires Analyze directly", () => {
+    const controller = freshController();
+    const c = controller as any;
+    c.phase = "palette";
+    c.currentActorId = "c0";
+    c.scene.activeActorId = "c0";
+
+    controller.handleKey("n");
+
+    expect(c.phase).toBe("playback");
+    expect(c.state.analyzedEnemies["Test Rat"]).toBe(true);
     controller.destroy();
   });
 

@@ -50,8 +50,8 @@ Each melee character has a **Rage** value tracked in combat state:
 rageByCharacterId: Record<string, number>;
 ```
 
-- **Max rage** = `10 + level` (level 1 = 11 max, level 12 = 22 max)
-- **Rage starts at 0** at the beginning of each combat.
+- **Max rage** = `15 + level` (level 1 = 16 max, level 12 = 27 max) — retuned 2026-07-16, see `2026-07-16-rage-economy-design.md`
+- **Rage starts at half max** (`floor(maxRage / 2)`) at the beginning of each combat — retuned 2026-07-16, see `2026-07-16-rage-economy-design.md`
 - Rage is **not persisted** — it resets to 0 when combat ends. No save
   migration needed.
 - Crusader tracks rage separately from SP. They can use both resources in
@@ -74,13 +74,14 @@ Rage is capped at `maxRage`. Overflow is discarded.
 | Trigger | Rage lost |
 |---------|-----------|
 | Spending it on a technique | Technique's rage cost |
-| Defending | All rage (defending = calming down, resetting) |
+| Defending | None (retuned 2026-07-16: Defend no longer costs rage — the lost turn is the price) |
 | Combat ends | All rage (reset for next fight) |
 
-> **Design intent:** Defending is the "I need to survive" option, and it
-> costs you your built-up rage. This creates a tension: do you defend to
-> survive a big hit, or do you keep your rage and eat the damage so you can
-> unleash a technique next turn?
+> **Design intent (retuned 2026-07-16):** Defending originally also wiped all
+> rage, which double-punished the choice (lost turn + lost resource) and
+> griefed the Halberdier's Brace identity. Defend now costs only the turn
+> itself — the opportunity cost of not gaining +2 rage that round is the
+> tension. See `2026-07-16-rage-economy-design.md`.
 
 ### 4.4 Rage display
 

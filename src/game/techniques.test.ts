@@ -120,6 +120,21 @@ describe("technique data", () => {
     expect(maxRageForLevel(10)).toBeGreaterThan(maxRageForLevel(1));
   });
 
+  it("maxRageForLevel returns 15 + level", () => {
+    expect(maxRageForLevel(1)).toBe(16);
+    expect(maxRageForLevel(5)).toBe(20);
+    expect(maxRageForLevel(10)).toBe(25);
+    expect(maxRageForLevel(12)).toBe(27);
+  });
+
+  it("level-12 capstones are affordable at level 12", () => {
+    const classes: CharacterClass[] = ["Fighter", "Thief", "Halberdier", "Duelist", "Crusader"];
+    for (const cls of classes) {
+      const capstone = techniquesForClass(cls, 12).find((t) => t.level === 12)!;
+      expect(capstone.rageCost).toBeLessThanOrEqual(maxRageForLevel(12));
+    }
+  });
+
   it("techniqueById finds techniques by id", () => {
     const tech = techniqueById("fighter-power-attack");
     expect(tech).toBeDefined();
@@ -135,14 +150,16 @@ describe("technique data", () => {
 // --- Rage system tests ------------------------------------------------------
 
 describe("rage system", () => {
-  it("initializes rage to 0 for all party members", () => {
+  it("starts technique classes at half their max rage; casters at 0", () => {
     const state = makeState([makeEnemy("e0")], ["Fighter", "Mage"]);
-    expect(state.rage["char-0"]).toBe(0);
+    // Test characters are level 1: maxRage = 15 + 1 = 16, start = floor(16 / 2) = 8.
+    expect(state.rage["char-0"]).toBe(8);
     expect(state.rage["char-1"]).toBe(0);
   });
 
   it("gains rage on attack (+2)", () => {
     const state = makeState([makeEnemy("e0")], ["Fighter", "Mage"]);
+    state.rage["char-0"] = 0; // zero out start rage to measure the +2 delta
     const { state: s } = beginRound(state, seqRng([0.5]));
     const s2 = resolvePlayerTurn(s, {
       kind: "attack",
@@ -163,7 +180,7 @@ describe("rage system", () => {
     expect(s2.rage["char-1"]).toBe(0); // Mage doesn't gain rage
   });
 
-  it("defend resets rage to 0", () => {
+  it("defend preserves rage", () => {
     const state = makeState([makeEnemy("e0")], ["Fighter", "Mage"]);
     state.rage["char-0"] = 5;
     const { state: s } = beginRound(state, seqRng([0.5]));
@@ -171,7 +188,32 @@ describe("rage system", () => {
       kind: "defend",
       actorId: "char-0",
     }, seqRng([0.5]));
-    expect(s2.rage["char-0"]).toBe(0);
+    expect(s2.rage["char-0"]).toBe(5);
+  });
+
+  it("a failed flee attempt preserves rage", () => {
+    const state = makeState([makeEnemy("e0")], ["Fighter", "Mage"]);
+    state.rage["char-0"] = 5;
+    state.party[0].stats.agi = 10; // keep base flee chance at 0.95 so 0.99 fails
+    const s2 = resolvePlayerTurn(state, {
+      kind: "flee",
+      actorId: "char-0",
+    }, seqRng([0.99]));
+    expect(s2.ended).toBe(false); // flee failed -> converts to defend
+    expect(s2.rage["char-0"]).toBe(5);
+  });
+
+  it("ambush grants +2 rage like a basic attack", () => {
+    const state = makeState([makeEnemy("e0", { hp: 100 })], ["Thief", "Mage"]);
+    state.rage["char-0"] = 0; // zero out start rage to measure the +2 delta
+    state.party[0].status.push("hidden"); // ambush requires hidden
+    const { state: s } = beginRound(state, seqRng([0.5]));
+    const s2 = resolvePlayerTurn(s, {
+      kind: "ambush",
+      actorId: "char-0",
+      targetInstanceId: "e0",
+    }, seqRng([0.5]));
+    expect(s2.rage["char-0"]).toBe(2);
   });
 });
 

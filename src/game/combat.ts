@@ -121,6 +121,19 @@ export function canReach(
 }
 
 /**
+ * Effective weapon range after perk overrides (the reach perks):
+ * - halberdier-sweep: every melee weapon behaves at polearm reach (medium) —
+ *   any row from any row, no back-row damage penalty.
+ * - duelist-lunge: short weapons behave as medium.
+ */
+function effectiveWeaponRange(actor: Character, weaponRange: WeaponRange): WeaponRange {
+  const perks = perksForCharacter(actor);
+  if (perks.some((p) => p.id === "halberdier-sweep")) return "medium";
+  if (weaponRange === "short" && perks.some((p) => p.id === "duelist-lunge")) return "medium";
+  return weaponRange;
+}
+
+/**
  * A runtime enemy instance: the static `EnemyDef` template plus mutable
  * per-instance combat state. `instanceId` is unique per spawn so multiple
  * copies of the same enemy type can be targeted independently. `row` is the
@@ -309,7 +322,9 @@ export type PlayerAction =
     }
   | { kind: "flee"; actorId: string }
   | { kind: "hide"; actorId: string }
-  | { kind: "ambush"; actorId: string; targetInstanceId: string };
+  | { kind: "ambush"; actorId: string; targetInstanceId: string }
+  | { kind: "analyze"; actorId: string; targetInstanceId: string }
+  | { kind: "move"; actorId: string; targetAllyId?: string };
 
 /**
  * Structured combat event emitted alongside log messages. The combat
@@ -339,6 +354,11 @@ export type CombatEvent =
   | { type: "techniqueMiss"; actorId: string; techniqueId: string; targetId: string }
   | { type: "techniqueStatus"; actorId: string; techniqueId: string; targetId: string; statusInflicted: string }
   | { type: "techniqueBuff"; actorId: string; techniqueId: string; targetId: string; isBuff?: boolean }
+  | { type: "telegraph"; actorId: string; abilityId: string }
+  | { type: "telegraphBreak"; actorId: string; abilityId: string }
+  | { type: "affinityDiscovered"; targetId: string; element: string; kind: "weak" | "resist" }
+  | { type: "analyze"; actorId: string; targetId: string }
+  | { type: "phaseChange"; actorId: string; phase: number; name: string }
   | null;
 
 /** Internal: target of an enemy melee attack. */
@@ -453,8 +473,9 @@ export interface CombatState {
    */
   perkState: Record<string, Record<string, unknown>>;
   /**
-   * Per-character rage (melee technique resource). 0 at combat start,
-   * gained by attacking/taking damage, spent on techniques, lost on defend.
+   * Per-character rage (melee technique resource). Technique classes start at
+   * half their max (floor), casters at 0; gained by attacking/taking damage,
+   * spent on techniques. Defend no longer clears it.
    * Only tracked for classes with techniques (Fighter/Thief/Halberdier/Duelist/Crusader).
    */
   rage: Record<string, number>;
@@ -499,6 +520,35 @@ export interface CombatState {
   attackDebuffs: Record<string, { penalty: number; duration: number }>;
   /** Sleep countdown for party members and enemies (actor id -> rounds left). */
   sleepTimers: Record<string, number>;
+  /** Blind countdown for party members (char id -> rounds left). */
+  blindTimers: Record<string, number>;
+  /**
+   * Poison state per actor (char id or enemy instance id -> damage/round and
+   * rounds left). Poison ticks its recorded damage at end of round and the
+   * status is removed when the duration runs out. Poison Blade poisons at
+   * 3/round; enemy poisonOnHit at 2/round (both 3 rounds).
+   */
+  poisonState: Record<string, { damage: number; duration: number }>;
+  /**
+   * Wind-up telegraphs: enemy instance id -> the big ability it is charging.
+   * Set when the AI picks a windUp-flagged ability; fires on the enemy's next
+   * turn; cleared if the enemy is incapacitated (disable = interrupt) or dies.
+   */
+  windUps: Record<string, { abilityId: string; name: string; targetId: string | null }>;
+  /**
+   * Species-level elemental affinity the party has discovered this combat
+   * (enemy name -> discovered elements). First proc of a (name, element,
+   * kind) triple logs + emits affinityDiscovered; the enemy window renders
+   * WK/RES tags from it. Combat-scoped, never persisted.
+   */
+  observedAffinity: Record<string, { weak: string[]; resist: string[] }>;
+  /** Species the party has Analyzed this combat (enemy name -> true). Gates trait tags. */
+  analyzedEnemies: Record<string, true>;
+  /**
+   * Current phase per boss instance (1-based; missing = phase 1). Advanced by
+   * checkBossPhases when the boss's HP% crosses a phaseThresholds entry.
+   */
+  bossPhases: Record<string, number>;
   /**
    * Successful disable lands per enemy instance (Web/Sleep/Hold stacking).
    * Fourth+ land is resisted until combat ends.
@@ -569,7 +619,7 @@ export function createCombatState(
     justDiedAllies: [],
     events: [],
     perkState: Object.fromEntries(party.map((c) => [c.id, freshPerkState()])),
-    rage: Object.fromEntries(party.map((c) => [c.id, 0])),
+    rage: Object.fromEntries(party.map((c) => [c.id, startingRageFor(c)])),
     counterStances: {},
     tauntingIds: [],
     tauntBuffs: {},
@@ -579,6 +629,12 @@ export function createCombatState(
     enemyAgiDebuffs: {},
     attackDebuffs: {},
     sleepTimers: {},
+    blindTimers: {},
+    poisonState: {},
+    windUps: {},
+    observedAffinity: {},
+    analyzedEnemies: {},
+    bossPhases: {},
     disableStacks: {},
     enemyDots: {},
     regenBuffs: {},
@@ -1336,7 +1392,31 @@ function decideEnemyAction(
   if (livingParty.length === 0) return { kind: "doNothing", actor: enemy };
 
   if (enemy.status.includes("sleep") || enemy.status.includes("paralysis")) {
+    // Disable = interrupt: an incapacitated enemy loses its wind-up.
+    const broken = s.windUps[enemy.instanceId];
+    if (broken) {
+      delete s.windUps[enemy.instanceId];
+      emit(`${enemy.name}'s ${broken.name} is broken!`, {
+        type: "telegraphBreak", actorId: enemy.instanceId, abilityId: broken.abilityId,
+      });
+    }
     return { kind: "doNothing", actor: enemy };
+  }
+
+  // A stored wind-up fires now — commitment: no new decision, no weighted roll.
+  const windUp = s.windUps[enemy.instanceId];
+  if (windUp) {
+    const ability = enemyAbilityById(windUp.abilityId);
+    if (!ability) {
+      delete s.windUps[enemy.instanceId];
+      return { kind: "doNothing", actor: enemy };
+    }
+    return {
+      kind: "ability",
+      actor: enemy,
+      abilityId: ability.id,
+      targetId: pickAbilityTargetId(s, ability, rng) ?? "",
+    };
   }
 
   // Boss / special: flag-driven silence (Section 10.2). Generic — any enemy
@@ -1365,6 +1445,19 @@ function decideEnemyAction(
     // Weighted mix with basic attacks so scaled melee stays threatening.
     const useAbility = rng() < abilityPick.ability.weight / (abilityPick.ability.weight + 2);
     if (useAbility) {
+      // Wind-up abilities telegraph instead of resolving: the party gets a
+      // full round to answer (disable, Defend, blind, or kill).
+      if (abilityPick.ability.windUp) {
+        s.windUps[enemy.instanceId] = {
+          abilityId: abilityPick.ability.id,
+          name: abilityPick.ability.name,
+          targetId: abilityPick.targetId,
+        };
+        emit(`${enemy.name} begins charging ${abilityPick.ability.name}!`, {
+          type: "telegraph", actorId: enemy.instanceId, abilityId: abilityPick.ability.id,
+        });
+        return { kind: "doNothing", actor: enemy };
+      }
       return {
         kind: "ability",
         actor: enemy,
@@ -1529,6 +1622,12 @@ function pickRandom<T>(arr: T[], rng: Rng): T | undefined {
 // Player action resolution
 // ---------------------------------------------------------------------------
 
+/** Rage a character starts combat with: half their pool for technique classes, 0 for casters. */
+function startingRageFor(char: Character): number {
+  if (!classHasTechniques(char.class)) return 0;
+  return Math.floor(maxRageForLevel(char.level) / 2);
+}
+
 /** Add rage to a character (capped at maxRage). No-op for non-technique classes. */
 function gainRage(s: CombatState, charId: string, amount: number): void {
   if (!(charId in s.rage)) return;
@@ -1544,11 +1643,6 @@ function spendRage(s: CombatState, charId: string, cost: number): boolean {
   if (current < cost) return false;
   s.rage[charId] = current - cost;
   return true;
-}
-
-/** Lose all rage (called on Defend). */
-function resetRage(s: CombatState, charId: string): void {
-  if (charId in s.rage) s.rage[charId] = 0;
 }
 
 function resolvePlayerAction(
@@ -1574,20 +1668,25 @@ function resolvePlayerAction(
       break;
     case "defend":
       resolveDefend(s, actor, emit);
-      resetRage(s, actor.id);
       break;
     case "item":
       resolveItem(s, actor, action, log, emit);
       break;
     case "flee":
       resolveDefend(s, actor, emit);
-      resetRage(s, actor.id);
       break;
     case "hide":
       resolveHide(s, actor, emit);
       break;
     case "ambush":
       resolveAmbush(s, actor, action.targetInstanceId, rng, log, emit);
+      gainRage(s, actor.id, 2);
+      break;
+    case "analyze":
+      resolveAnalyze(s, actor, action.targetInstanceId, log, emit);
+      break;
+    case "move":
+      resolveMove(s, actor, action.targetAllyId, log);
       break;
   }
 }
@@ -1617,7 +1716,7 @@ function resolveAttack(
   // Back-row enemies are immune to short-range weapons until front row is cleared.
   const loadout = s.loadout[actor.id];
   const weapon = loadout?.weapon;
-  const weaponRange: WeaponRange = weapon?.range ?? "close"; // Default to close range if no weapon
+  const weaponRange: WeaponRange = effectiveWeaponRange(actor, weapon?.range ?? "close"); // Default to close range if no weapon
 
   // Check if attacker can reach the target based on position and weapon range
   if (!canReach(actor.formationSlot, weaponRange, target.row)) {
@@ -1766,8 +1865,12 @@ function resolveAttack(
     perksForCharacter(actor).some((p) => p.id === "thief-backstab")
       ? 0.75
       : 1;
-  const attackAc = Math.max(0, effectiveEnemyAc(s, target) - mods.acFlatIgnore);
-  damage = Math.max(1, damage - Math.round(attackAc * acIgnoreFactor));
+  // Flat AC reduction is capped at 50% of the incoming swing (P2-8); perk
+  // penetration (Reach Mastery's flat ignore, backstab's factor) applies on
+  // top of the floored value so it still pierces high-AC walls.
+  const flooredAc = Math.min(effectiveEnemyAc(s, target), Math.floor(damage / 2));
+  const acReduction = Math.max(0, Math.round((flooredAc - mods.acFlatIgnore) * acIgnoreFactor));
+  damage = Math.max(1, damage - acReduction);
 
   // highDefense enemies (Animated Armor) halve physical damage.
   if (target.special.some((sp) => sp.kind === "highDefense")) {
@@ -2077,8 +2180,9 @@ function resolveAmbush(
     log(`${actor.name} lands a critical ambush!`);
   }
 
-  // Enemy AC reduces physical damage (with Disarm debuffs applied).
-  const reduced = Math.max(1, damage - effectiveEnemyAc(s, target));
+  // Enemy AC reduces physical damage (with Disarm debuffs applied), capped at
+  // 50% of the incoming swing (P2-8).
+  const reduced = Math.max(1, damage - Math.min(effectiveEnemyAc(s, target), Math.floor(damage / 2)));
   target.currentHp -= reduced;
 
   emit(
@@ -2086,6 +2190,84 @@ function resolveAmbush(
     { type: "ambush", actorId: actor.id, targetId: target.instanceId, damage: reduced, crit }
   );
   wakeOnDamage(target, log);
+}
+
+/**
+ * Analyze: spend the turn to reveal a species' intel for the rest of the
+ * fight — its elemental affinities (into observedAffinity for WK/RES tags)
+ * and its trait specials (enemy-window trait tags read analyzedEnemies).
+ */
+function resolveAnalyze(
+  s: CombatState,
+  actor: Character,
+  targetInstanceId: string,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  const target = findEnemy(s, targetInstanceId);
+  if (!target) {
+    log(`${actor.name} analyzes but finds no target.`);
+    return;
+  }
+  s.analyzedEnemies[target.name] = true;
+  const entry = s.observedAffinity[target.name] ?? { weak: [], resist: [] };
+  for (const sp of target.special) {
+    if (sp.kind === "weakElement" && !entry.weak.includes(sp.element)) entry.weak.push(sp.element);
+    if (sp.kind === "resistElement" && !entry.resist.includes(sp.element)) entry.resist.push(sp.element);
+  }
+  s.observedAffinity[target.name] = entry;
+  emit(`${actor.name} analyzes ${target.name}!`, {
+    type: "analyze", actorId: actor.id, targetId: target.instanceId,
+  });
+}
+
+/**
+ * Move (row swap): the actor trades rows with a living ally (targetAllyId)
+ * or slides into the opposite row's first empty slot. Implemented as a
+ * reorder of s.party plus formationSlot normalization — the combat scene
+ * reads party positions from the array per frame, and reach / front-first
+ * targeting / protector slots all recompute from the same invariant.
+ * Log-only: the reposition is its own visible feedback.
+ */
+function resolveMove(
+  s: CombatState,
+  actor: Character,
+  targetAllyId: string | undefined,
+  log: (m: string) => void
+): void {
+  const toRow = charRow(actor) === "front" ? "back" : "front";
+
+  if (targetAllyId) {
+    const ally = s.party.find((c) => c.id === targetAllyId);
+    if (!ally || ally.id === actor.id || ally.hp <= 0 || charRow(ally) !== toRow) {
+      log(`${actor.name} can't swap rows with that ally.`);
+      return;
+    }
+    const ai = s.party.findIndex((c) => c.id === actor.id);
+    const bi = s.party.findIndex((c) => c.id === ally.id);
+    [s.party[ai], s.party[bi]] = [s.party[bi], s.party[ai]];
+    s.party.forEach((c, i) => (c.formationSlot = i));
+    log(`${actor.name} and ${ally.name} swap rows!`);
+    return;
+  }
+
+  // Slide into the opposite row's first empty slot.
+  const others = s.party.filter((c) => c.id !== actor.id);
+  const inRow = others.filter((c) => charRow(c) === toRow).length;
+  if (inRow >= 3) {
+    log(`${actor.name} has no room to move to the ${toRow} row.`);
+    return;
+  }
+  if (toRow === "back" && others.length < 3) {
+    log(`${actor.name} has no back row to fall back to.`);
+    return;
+  }
+  others.forEach((c, i) => (c.formationSlot = i));
+  const boundary = Math.min(toRow === "front" ? inRow : 3 + inRow, others.length);
+  others.splice(boundary, 0, actor);
+  s.party = others;
+  s.party.forEach((c, i) => (c.formationSlot = i));
+  log(toRow === "back" ? `${actor.name} falls back!` : `${actor.name} steps forward!`);
 }
 
 function resolveItem(
@@ -2133,6 +2315,10 @@ function resolveItem(
     }
   } else if (eff.kind === "cure") {
     target.status = target.status.filter((st) => st !== eff.status);
+    if (eff.status === "poison") delete s.poisonState[target.id];
+    else if (eff.status === "blind") delete s.blindTimers[target.id];
+    else if (eff.status === "paralysis") delete s.paralysisTimers[target.id];
+    else if (eff.status === "sleep") delete s.sleepTimers[target.id];
     emit(
       `${actor.name} uses ${item.name} on ${target.name}, curing ${eff.status}.`,
       { type: "cast", actorId: actor.id, spellId: item.id, targetId: target.id }
@@ -2143,7 +2329,8 @@ function resolveItem(
     );
   } else if (eff.kind === "revive") {
     if (target.status.includes("knockedOut")) {
-      target.hp = Math.max(1, eff.power);
+      // Revive power is a percent of max HP (Phoenix Feather: 25%).
+      target.hp = Math.max(1, Math.round(target.maxHp * (eff.power / 100)));
       target.status = target.status.filter((st) => st !== "knockedOut");
       emit(
         `${actor.name} uses ${item.name} to revive ${target.name} with ${target.hp} HP!`,
@@ -2221,6 +2408,7 @@ function applySpell(
           );
           if (affinity) {
             final = Math.max(1, Math.round(reduced * (affinity.kind === "weakElement" ? 1.5 : 0.5)));
+            observeAffinity(s, t, affinity.kind === "weakElement" ? "weak" : "resist", eff.element, log, emit);
           }
         }
         if (s.enemyMagicScreens[t.row] > 0) {
@@ -2319,6 +2507,10 @@ function applySpell(
     case "cure": {
       for (const t of allyTargets(s, spell, action, caster)) {
         t.status = t.status.filter((st) => st !== eff.status);
+        if (eff.status === "poison") delete s.poisonState[t.id];
+        else if (eff.status === "blind") delete s.blindTimers[t.id];
+        else if (eff.status === "paralysis") delete s.paralysisTimers[t.id];
+        else if (eff.status === "sleep") delete s.sleepTimers[t.id];
         emit(
           `${spell.name} cures ${t.name} of ${eff.status}.`,
           { type: "spellEffect", spellId: spell.id, targetId: t.id, statusCured: eff.status }
@@ -2635,6 +2827,8 @@ function resolveEnemyAbility(
             s.paralysisTimers[t.id] = duration;
           } else if (eff.status === "sleep") {
             s.sleepTimers[t.id] = Math.min(3, duration);
+          } else if (eff.status === "blind") {
+            s.blindTimers[t.id] = duration;
           }
           emit(`${actor.name} uses ${ability.name}, inflicting ${eff.status} on ${t.name}!`, {
             type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id,
@@ -2748,6 +2942,19 @@ function resolveEnemyAction(
 
   // Enemy ability (from data/enemy-abilities.ts).
   if (action.kind === "ability") {
+    // A wind-up firing clears its entry. A disable landed mid-round (round
+    // path: player phase runs before enemy resolution) breaks the fire here —
+    // scoped to wind-up firings; normal decided actions keep their behavior.
+    const windUp = s.windUps[action.actor.instanceId];
+    if (windUp && windUp.abilityId === action.abilityId) {
+      delete s.windUps[action.actor.instanceId];
+      if (action.actor.status.includes("paralysis") || action.actor.status.includes("sleep")) {
+        emit(`${action.actor.name}'s ${windUp.name} is broken!`, {
+          type: "telegraphBreak", actorId: action.actor.instanceId, abilityId: windUp.abilityId,
+        });
+        return;
+      }
+    }
     resolveEnemyAbility(s, action, rng, log, emit);
     return;
   }
@@ -2940,6 +3147,7 @@ function resolveEnemyAction(
         log(`${partyTarget.name} shrugs off the poison!`);
       } else {
         partyTarget.status.push("poison");
+        s.poisonState[partyTarget.id] = { damage: 2, duration: 3 };
         log(`${partyTarget.name} is poisoned!`);
       }
     }
@@ -3002,6 +3210,35 @@ function effectiveEnemyAc(s: CombatState, enemy: EnemyInstance): number {
   const debuff = s.enemyArmorDebuffs[enemy.instanceId];
   if (!debuff) return enemy.ac;
   return Math.max(0, enemy.ac - debuff.penalty);
+}
+
+/**
+ * Record a discovered elemental affinity for the target's species (P2-9).
+ * The first proc of a (name, element, kind) triple logs + emits an
+ * affinityDiscovered event so the FF6 scene can pop it (combat log lines
+ * are never displayed); repeat procs stay silent.
+ */
+function observeAffinity(
+  s: CombatState,
+  enemy: EnemyInstance,
+  kind: "weak" | "resist",
+  element: string,
+  log: (m: string) => void,
+  emit?: (m: string, e: CombatEvent) => void
+): void {
+  const entry = s.observedAffinity[enemy.name] ?? { weak: [], resist: [] };
+  const bucket = kind === "weak" ? entry.weak : entry.resist;
+  if (bucket.includes(element)) return;
+  bucket.push(element);
+  s.observedAffinity[enemy.name] = entry;
+  const msg = kind === "weak"
+    ? `${enemy.name} is weak to ${element}!`
+    : `${enemy.name} resists ${element}.`;
+  if (emit) {
+    emit(msg, { type: "affinityDiscovered", targetId: enemy.instanceId, element, kind });
+  } else {
+    log(msg);
+  }
 }
 
 /**
@@ -3111,6 +3348,34 @@ function deathCheck(
     }
     return true;
   });
+  checkBossPhases(s, emit);
+}
+
+/**
+ * Advance boss phases (Direction C). For each living boss with
+ * phaseThresholds, when its HP% crosses below a threshold it gains a phase
+ * and +4 attack per crossing, and a phaseChange event announces it. A hit
+ * that skips a threshold fires one event at the final phase with the
+ * cumulative bump.
+ */
+function checkBossPhases(s: CombatState, emit: (m: string, e: CombatEvent) => void): void {
+  for (const e of [...s.enemies.front, ...s.enemies.back]) {
+    if (!e.isBoss || e.currentHp <= 0 || !e.phaseThresholds?.length) continue;
+    const current = s.bossPhases[e.instanceId] ?? 1;
+    const hpPct = (e.currentHp / e.hp) * 100;
+    let phase = 1;
+    for (const threshold of e.phaseThresholds) {
+      if (hpPct <= threshold) phase += 1;
+    }
+    if (phase > current) {
+      const bump = 4 * (phase - current);
+      e.attack += bump;
+      s.bossPhases[e.instanceId] = phase;
+      emit(`${e.name} grows stronger! (attack +${bump})`, {
+        type: "phaseChange", actorId: e.instanceId, phase, name: e.name,
+      });
+    }
+  }
 }
 
 function checkTermination(s: CombatState, log: (m: string) => void): boolean {
@@ -3158,8 +3423,16 @@ function tickStatuses(
   for (const c of s.party) {
     if (c.status.includes("knockedOut")) continue;
     if (c.status.includes("poison")) {
-      c.hp = Math.max(0, c.hp - 2);
-      tick(`${c.name} suffers 2 poison damage.`, c.id, 2);
+      const ps = s.poisonState[c.id] ?? { damage: 2, duration: 3 };
+      c.hp = Math.max(0, c.hp - ps.damage);
+      tick(`${c.name} suffers ${ps.damage} poison damage.`, c.id, ps.damage);
+      if (ps.duration - 1 <= 0) {
+        c.status = c.status.filter((st) => st !== "poison");
+        delete s.poisonState[c.id];
+        log(`${c.name} is no longer poisoned.`);
+      } else {
+        s.poisonState[c.id] = { damage: ps.damage, duration: ps.duration - 1 };
+      }
     }
     if (c.status.includes("paralysis")) {
       const remaining = (s.paralysisTimers[c.id] ?? 3) - 1;
@@ -3181,13 +3454,31 @@ function tickStatuses(
         s.sleepTimers[c.id] = remaining;
       }
     }
+    if (c.status.includes("blind")) {
+      const remaining = (s.blindTimers[c.id] ?? 3) - 1;
+      if (remaining <= 0) {
+        c.status = c.status.filter((st) => st !== "blind");
+        delete s.blindTimers[c.id];
+        log(`${c.name} can see again.`);
+      } else {
+        s.blindTimers[c.id] = remaining;
+      }
+    }
   }
   // Enemy poison + paralysis countdown.
   for (const e of [...s.enemies.front, ...s.enemies.back]) {
     if (e.currentHp <= 0) continue;
     if (e.status.includes("poison")) {
-      e.currentHp = Math.max(0, e.currentHp - 2);
-      tick(`${e.name} suffers 2 poison damage.`, e.instanceId, 2);
+      const ps = s.poisonState[e.instanceId] ?? { damage: 2, duration: 3 };
+      e.currentHp = Math.max(0, e.currentHp - ps.damage);
+      tick(`${e.name} suffers ${ps.damage} poison damage.`, e.instanceId, ps.damage);
+      if (ps.duration - 1 <= 0) {
+        e.status = e.status.filter((st) => st !== "poison");
+        delete s.poisonState[e.instanceId];
+        log(`${e.name} is no longer poisoned.`);
+      } else {
+        s.poisonState[e.instanceId] = { damage: ps.damage, duration: ps.duration - 1 };
+      }
     }
     if (e.status.includes("paralysis")) {
       const remaining = (s.paralysisTimers[e.instanceId] ?? 3) - 1;
@@ -3229,6 +3520,7 @@ function tickStatuses(
       );
       if (affinity) {
         dmg = Math.max(1, Math.round(dmg * (affinity.kind === "weakElement" ? 1.5 : 0.5)));
+        observeAffinity(s, enemy, affinity.kind === "weakElement" ? "weak" : "resist", dot.element, log, emit);
       }
       enemy.currentHp = Math.max(0, enemy.currentHp - dmg);
       const label = dot.element === "fire" ? "burns" : "withers";
@@ -3725,7 +4017,7 @@ function techniqueCanReach(
     tech.id === "duelist-lunge" || tech.id === "halberdier-pole-vault";
   if (ignoresRange) return true;
   const loadout = s.loadout[actor.id];
-  const weaponRange: WeaponRange = loadout?.weapon?.range ?? "close";
+  const weaponRange: WeaponRange = effectiveWeaponRange(actor, loadout?.weapon?.range ?? "close");
   return canReach(actor.formationSlot, weaponRange, target.row);
 }
 
@@ -4092,6 +4384,8 @@ function applyTechniqueStatus(
     case "poison":
       if (!target.status.includes("poison")) {
         target.status.push("poison");
+        // Technique poison (Poison Blade): 3 damage/round for the status duration.
+        s.poisonState[target.instanceId] = { damage: 3, duration };
         log(`${target.name} is poisoned by ${tech.name}!`);
         emit(`${target.name} is poisoned!`, { type: "techniqueStatus", actorId: actor.id, techniqueId: tech.id, targetId: target.instanceId, statusInflicted: "poison" });
       }
@@ -4126,7 +4420,7 @@ function dealTechniqueDamage(
   const ignoresRange = tech.id === "duelist-lunge" || tech.id === "halberdier-pole-vault";
   if (!ignoresRange) {
     const loadout = s.loadout[actor.id];
-    const weaponRange: WeaponRange = loadout?.weapon?.range ?? "close";
+    const weaponRange: WeaponRange = effectiveWeaponRange(actor, loadout?.weapon?.range ?? "close");
     if (!canReach(actor.formationSlot, weaponRange, target.row)) {
       if (target.row === "back" && s.enemies.front.some((e) => e.currentHp > 0)) {
         log(`${actor.name} cannot reach ${target.name} in the back row with ${tech.name}.`);
@@ -4173,7 +4467,7 @@ function dealTechniqueDamage(
   const weaponBonus = weapon?.attackBonus ?? 0;
   const base = effStats.str + actor.level + weaponBonus;
   const isThief = actor.class === "Thief";
-  const weaponRange = weapon?.range ?? "close";
+  const weaponRange = effectiveWeaponRange(actor, weapon?.range ?? "close");
   const rowMultiplier = charRow(actor) === "back" && weaponRange === "close" && !isThief && !ignoresRange ? 0.4 : 1;
   const variance = 0.8 + rng() * 0.4;
   let damage = Math.max(1, Math.round(base * rowMultiplier * variance * mods.meleeDamageMultiplier)) + mods.meleeBonusDamage;
@@ -4201,9 +4495,11 @@ function dealTechniqueDamage(
     log(`${actor.name} lands a critical hit with ${tech.name}!`);
   }
 
-  // Enemy AC reduction (with armor pen, debuffs, and Reach Mastery's flat ignore)
-  const effectiveAc = Math.max(0, effectiveEnemyAc(s, target) - mods.acFlatIgnore);
-  const acReduction = armorPen !== undefined ? Math.round(effectiveAc * (1 - armorPen)) : effectiveAc;
+  // Enemy AC reduction (debuffs applied), floored at 50% of the swing (P2-8);
+  // technique armor pen and Reach Mastery pierce the floor.
+  const flooredAc = Math.min(effectiveEnemyAc(s, target), Math.floor(damage / 2));
+  const penAc = Math.max(0, flooredAc - mods.acFlatIgnore);
+  const acReduction = armorPen !== undefined ? Math.round(penAc * (1 - armorPen)) : penAc;
   damage = Math.max(1, damage - acReduction);
 
   // highDefense enemies halve physical damage (divine/lightning bypass this)

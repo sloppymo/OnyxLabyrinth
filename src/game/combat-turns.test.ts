@@ -10,6 +10,7 @@ import {
   resolvePlayerTurn,
   resolveEnemyTurn,
   resolveAllyTurn,
+  resolveCombatRound,
   endRound,
   createCombatState,
   enqueueNewAllies,
@@ -19,9 +20,10 @@ import {
   type TurnQueueEntry,
 } from "./combat";
 import { createCharacter, type CharacterClass } from "./party";
-import type { EnemyDef } from "../data/enemies";
+import { ENEMIES_BY_ID, type EnemyDef } from "../data/enemies";
 import { ALL_SPELLS } from "../data/spells";
-import { ITEMS_BY_ID } from "../data/items";
+import { ITEMS_BY_ID, shopInventory } from "../data/items";
+import { enemyAbilityById } from "../data/enemy-abilities";
 
 // --- Fixtures ---------------------------------------------------------------
 
@@ -853,5 +855,717 @@ describe("spell regen followups", () => {
         expect(spell.effect.followup?.kind).toBe("regen");
       }
     }
+  });
+});
+
+// --- Poison duration and scaling (P1-7) --------------------------------------
+
+describe("poison state (P1-7)", () => {
+  it("Poison Blade applies poison at 3 damage for 3 rounds", () => {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, ac: 0 })], ["Thief", "Mage"]);
+    const thief = state.party[0];
+    state.rage[thief.id] = 20;
+    const s1 = resolvePlayerTurn(
+      state,
+      { kind: "technique", actorId: thief.id, techniqueId: "thief-poison-blade", targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+    expect(s1.enemies.front[0].status.includes("poison")).toBe(true);
+    expect(s1.poisonState["rat-0"]).toEqual({ damage: 3, duration: 3 });
+
+    const hpAfterHit = s1.enemies.front[0].currentHp;
+    const s2 = endRound(s1, seqRng([0.5]));
+    expect(s2.enemies.front[0].currentHp).toBe(hpAfterHit - 3);
+    expect(s2.poisonState["rat-0"]).toEqual({ damage: 3, duration: 2 });
+  });
+
+  it("poison expires after its duration and stops ticking", () => {
+    const state = makeState();
+    state.enemies.front[0].status.push("poison");
+    state.poisonState["rat-0"] = { damage: 2, duration: 1 };
+    const hpBefore = state.enemies.front[0].currentHp;
+    const s1 = endRound(state, seqRng([0.5]));
+    expect(s1.enemies.front[0].currentHp).toBe(hpBefore - 2);
+    expect(s1.enemies.front[0].status.includes("poison")).toBe(false);
+    expect(s1.poisonState["rat-0"]).toBeUndefined();
+    expect(s1.log.some((m) => m.includes("no longer poisoned"))).toBe(true);
+
+    const s2 = endRound(s1, seqRng([0.5]));
+    expect(s2.enemies.front[0].currentHp).toBe(hpBefore - 2); // no further ticks
+  });
+
+  it("enemy poisonOnHit records poison state (2 damage, 3 rounds)", () => {
+    const state = makeState([makeEnemy("rat-0", { special: [{ kind: "poisonOnHit" }] })]);
+    const s = resolveEnemyTurn(state, "rat-0", seqRng([0.9]));
+    const target = s.party.find((c) => c.status.includes("poison"))!;
+    expect(target).toBeDefined();
+    expect(s.poisonState[target.id]).toEqual({ damage: 2, duration: 3 });
+  });
+
+  it("party poison ticks its recorded damage and counts down", () => {
+    const state = makeState();
+    state.party[0].status.push("poison");
+    state.poisonState["char-0"] = { damage: 2, duration: 3 };
+    const hpBefore = state.party[0].hp;
+    const s = endRound(state, seqRng([0.5]));
+    expect(s.party[0].hp).toBe(hpBefore - 2);
+    expect(s.poisonState["char-0"]).toEqual({ damage: 2, duration: 2 });
+  });
+
+  it("Neutralize Poison clears the poison state as well as the status", () => {
+    const state = makeState([makeEnemy("rat-0")], ["Priest", "Mage"]);
+    const priest = state.party[0];
+    priest.knownSpellIds = ["priest-neutralize-poison"];
+    priest.sp = 99;
+    state.party[1].status.push("poison");
+    state.poisonState["char-1"] = { damage: 2, duration: 3 };
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: "char-0", spellId: "priest-neutralize-poison", targetAllyId: "char-1" },
+      seqRng([0.5])
+    );
+    expect(s.party[1].status.includes("poison")).toBe(false);
+    expect(s.poisonState["char-1"]).toBeUndefined();
+  });
+});
+
+// --- Blind duration and cure (P1-7) ------------------------------------------
+
+describe("blind state (P1-7)", () => {
+  it("enemy blind ability applies blind with a duration timer", () => {
+    const state = makeState([makeEnemy("rat-0", { abilityIds: ["blinding-gaze"] })]);
+    const s = resolveEnemyTurn(state, "rat-0", seqRng([0.1]));
+    const blinded = s.party.find((c) => c.status.includes("blind"));
+    expect(blinded).toBeDefined();
+    expect(s.blindTimers[blinded!.id]).toBe(3); // blinding-gaze duration
+  });
+
+  it("blind counts down and expires at end of round", () => {
+    const state = makeState();
+    state.party[0].status.push("blind");
+    state.blindTimers["char-0"] = 2;
+    const s1 = endRound(state, seqRng([0.5]));
+    expect(s1.party[0].status.includes("blind")).toBe(true);
+    expect(s1.blindTimers["char-0"]).toBe(1);
+
+    const s2 = endRound(s1, seqRng([0.5]));
+    expect(s2.party[0].status.includes("blind")).toBe(false);
+    expect(s2.blindTimers["char-0"]).toBeUndefined();
+    expect(s2.log.some((m) => m.includes("can see again"))).toBe(true);
+  });
+
+  it("Cure Blindness removes blind and its timer", () => {
+    const state = makeState([makeEnemy("rat-0")], ["Priest", "Mage"]);
+    const priest = state.party[0];
+    priest.knownSpellIds = ["priest-cure-blind"];
+    priest.sp = 99;
+    state.party[1].status.push("blind");
+    state.blindTimers["char-1"] = 3;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: "char-0", spellId: "priest-cure-blind", targetAllyId: "char-1" },
+      seqRng([0.5])
+    );
+    expect(s.party[1].status.includes("blind")).toBe(false);
+    expect(s.blindTimers["char-1"]).toBeUndefined();
+  });
+
+  it("real data: priest-cure-blind is a tier-2 single-ally blind cure", () => {
+    const spell = SPELLS_BY_ID["priest-cure-blind"];
+    expect(spell).toBeDefined();
+    expect(spell.class).toBe("Priest");
+    expect(spell.tier).toBe(2);
+    expect(spell.target).toBe("singleAlly");
+    expect(spell.effect).toEqual({ kind: "cure", status: "blind" });
+  });
+});
+
+// --- Telegraph wind-ups (Direction B) -----------------------------------------
+
+describe("telegraph wind-ups", () => {
+  it("a wind-up flagged ability telegraphs instead of resolving", () => {
+    const state = makeState([makeEnemy("rat-0", { abilityIds: ["hellfire"] })]);
+    const hpBefore = state.party.map((c) => c.hp);
+    const s = resolveEnemyTurn(state, "rat-0", seqRng([0.1]));
+    expect(s.windUps["rat-0"]).toMatchObject({ abilityId: "hellfire", name: "Hellfire" });
+    expect(s.party.map((c) => c.hp)).toEqual(hpBefore); // no damage yet
+    const evt = s.events.find((e) => e?.type === "telegraph");
+    expect(evt).toBeDefined();
+    if (evt?.type === "telegraph") expect(evt.abilityId).toBe("hellfire");
+    expect(s.log.some((m) => m.includes("begins charging Hellfire"))).toBe(true);
+  });
+
+  it("a winding-up enemy fires the ability on its next turn", () => {
+    const state = makeState([makeEnemy("rat-0", { abilityIds: ["hellfire"] })]);
+    state.windUps["rat-0"] = { abilityId: "hellfire", name: "Hellfire", targetId: null };
+    const s = resolveEnemyTurn(state, "rat-0", seqRng([0.5]));
+    expect(s.windUps["rat-0"]).toBeUndefined();
+    expect(s.party.every((c) => c.hp < c.maxHp)).toBe(true); // hellfire hit everyone
+  });
+
+  it("paralysis breaks a wind-up (disable = interrupt)", () => {
+    const state = makeState([makeEnemy("rat-0", { abilityIds: ["hellfire"] })]);
+    state.windUps["rat-0"] = { abilityId: "hellfire", name: "Hellfire", targetId: null };
+    state.enemies.front[0].status.push("paralysis");
+    state.paralysisTimers["rat-0"] = 2;
+    const s = resolveEnemyTurn(state, "rat-0", seqRng([0.5]));
+    expect(s.windUps["rat-0"]).toBeUndefined();
+    expect(s.party.every((c) => c.hp === c.maxHp)).toBe(true); // never fired
+    expect(s.events.some((e) => e?.type === "telegraphBreak")).toBe(true);
+    expect(s.log.some((m) => m.includes("is broken"))).toBe(true);
+  });
+
+  it("sleep breaks a wind-up too", () => {
+    const state = makeState([makeEnemy("rat-0", { abilityIds: ["hellfire"] })]);
+    state.windUps["rat-0"] = { abilityId: "hellfire", name: "Hellfire", targetId: null };
+    state.enemies.front[0].status.push("sleep");
+    state.sleepTimers["rat-0"] = 2;
+    const s = resolveEnemyTurn(state, "rat-0", seqRng([0.5]));
+    expect(s.windUps["rat-0"]).toBeUndefined();
+    expect(s.party.every((c) => c.hp === c.maxHp)).toBe(true);
+    expect(s.events.some((e) => e?.type === "telegraphBreak")).toBe(true);
+  });
+
+  it("killing a winding-up enemy cancels the fire", () => {
+    const state = makeState([makeEnemy("rat-0", { abilityIds: ["hellfire"], hp: 5 })]);
+    state.windUps["rat-0"] = { abilityId: "hellfire", name: "Hellfire", targetId: null };
+    state.enemies.front[0].currentHp = 0; // killed before its next turn
+    const s = resolveEnemyTurn(state, "rat-0", seqRng([0.5]));
+    expect(s.party.every((c) => c.hp === c.maxHp)).toBe(true);
+  });
+
+  it("round path: a mid-round disable breaks the wind-up before it fires", () => {
+    const state = makeState([makeEnemy("rat-0", { abilityIds: ["hellfire"] })]);
+    state.windUps["rat-0"] = { abilityId: "hellfire", name: "Hellfire", targetId: null };
+    const mage = state.party.find((c) => c.class === "Mage")!;
+    mage.knownSpellIds = ["mage-web"];
+    mage.sp = 99;
+    const s = resolveCombatRound(
+      state,
+      [
+        { kind: "cast", actorId: mage.id, spellId: "mage-web" },
+        { kind: "defend", actorId: state.party[0].id },
+      ],
+      seqRng([0.1])
+    );
+    expect(s.windUps["rat-0"]).toBeUndefined();
+    expect(s.party.every((c) => c.hp === c.maxHp)).toBe(true); // hellfire never fired
+    expect(s.events.some((e) => e?.type === "telegraphBreak")).toBe(true);
+  });
+
+  it("real data: the big party-wide abilities are wind-up flagged", () => {
+    for (const id of ["hellfire", "magma-burst", "dark-pulse", "memory-drain", "echo-of-silence", "ghostly-wail", "anti-magic-field"]) {
+      expect(enemyAbilityById(id)?.windUp, id).toBe(true);
+    }
+  });
+
+  it("anti-magic-field telegraphs on its first turn and lands on the second", () => {
+    const state = makeState([makeEnemy("rat-0", { abilityIds: ["anti-magic-field"] })]);
+    const s1 = resolveEnemyTurn(state, "rat-0", seqRng([0.1]));
+    expect(s1.windUps["rat-0"]?.abilityId).toBe("anti-magic-field");
+    expect(s1.partyFizzleField).toBe(0); // not yet
+    const s2 = resolveEnemyTurn(s1, "rat-0", seqRng([0.5]));
+    expect(s2.partyFizzleField).toBe(3);
+    expect(s2.windUps["rat-0"]).toBeUndefined();
+  });
+});
+
+// --- AC damage floor (P2-8) ---------------------------------------------------
+
+describe("AC damage floor (P2-8)", () => {
+  it("caps flat AC reduction at 50% of the incoming swing", () => {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, ac: 19 })], ["Fighter", "Mage"]);
+    const fighter = state.party[0];
+    fighter.stats.str = 20;
+    fighter.stats.luk = 0;
+    const s = resolvePlayerTurn(state, { kind: "attack", actorId: "char-0", targetInstanceId: "rat-0" }, seqRng([0.5]));
+    // 21 base, AC 19 -> capped to 10 reduction -> 11 damage (was 2).
+    expect(s.enemies.front[0].currentHp).toBe(89);
+  });
+
+  it("does not change damage when AC is below half the swing", () => {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, ac: 5 })], ["Fighter", "Mage"]);
+    const fighter = state.party[0];
+    fighter.stats.str = 20;
+    fighter.stats.luk = 0;
+    const s = resolvePlayerTurn(state, { kind: "attack", actorId: "char-0", targetInstanceId: "rat-0" }, seqRng([0.5]));
+    // 21 base, AC 5 (below the 10 cap) -> 16 damage, unchanged.
+    expect(s.enemies.front[0].currentHp).toBe(84);
+  });
+
+  it("highDefense still halves after the capped AC reduction", () => {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, ac: 19, special: [{ kind: "highDefense" }] })], ["Fighter", "Mage"]);
+    const fighter = state.party[0];
+    fighter.stats.str = 20;
+    fighter.stats.luk = 0;
+    const s = resolvePlayerTurn(state, { kind: "attack", actorId: "char-0", targetInstanceId: "rat-0" }, seqRng([0.5]));
+    // 21 -> 11 after capped AC -> 6 after the halve.
+    expect(s.enemies.front[0].currentHp).toBe(94);
+  });
+
+  it("caps AC reduction for techniques too (Poison Blade)", () => {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, ac: 19 })], ["Thief", "Mage"]);
+    const thief = state.party[0];
+    thief.stats.str = 20;
+    thief.stats.luk = 0;
+    state.rage["char-0"] = 20;
+    const s = resolvePlayerTurn(state, { kind: "technique", actorId: "char-0", techniqueId: "thief-poison-blade", targetInstanceId: "rat-0" }, seqRng([0.5]));
+    // 21 base (x1 multiplier), AC 19 -> capped to 10 -> 11 damage.
+    expect(s.enemies.front[0].currentHp).toBe(89);
+  });
+
+  it("caps AC reduction for ambush", () => {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, ac: 19 })], ["Thief", "Mage"]);
+    const thief = state.party[0];
+    thief.stats.str = 10;
+    thief.stats.luk = 0;
+    thief.status.push("hidden");
+    const s = resolvePlayerTurn(state, { kind: "ambush", actorId: "char-0", targetInstanceId: "rat-0" }, seqRng([0.5]));
+    // 11 base x2 = 22, AC 19 -> capped to 11 -> 11 damage (was 3).
+    expect(s.enemies.front[0].currentHp).toBe(89);
+  });
+});
+
+// --- Affinity discovery (P2-9) ------------------------------------------------
+
+describe("affinity discovery (P2-9)", () => {
+  it("discovers a weakness when a spell procs it, once per species/element", () => {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, special: [{ kind: "weakElement", element: "fire" }] })]);
+    const mage = state.party.find((c) => c.class === "Mage")!;
+    mage.knownSpellIds = ["mage-fire-bolt"];
+    mage.sp = 99;
+    const s1 = resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: mage.id, spellId: "mage-fire-bolt", targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+    expect(s1.observedAffinity["Test Rat"]?.weak).toEqual(["fire"]);
+    expect(s1.events.filter((e) => e?.type === "affinityDiscovered")).toHaveLength(1);
+    expect(s1.log.some((m) => m.includes("weak to fire"))).toBe(true);
+
+    // Second cast of the same element: no new event, no duplicate entry.
+    const s2 = resolvePlayerTurn(
+      s1,
+      { kind: "cast", actorId: mage.id, spellId: "mage-fire-bolt", targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+    expect(s2.events.filter((e) => e?.type === "affinityDiscovered")).toHaveLength(1); // still just the first
+    expect(s2.observedAffinity["Test Rat"]?.weak).toEqual(["fire"]);
+  });
+
+  it("discovers a resistance when a spell procs it", () => {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, special: [{ kind: "resistElement", element: "water" }] })]);
+    const mage = state.party.find((c) => c.class === "Mage")!;
+    mage.knownSpellIds = ["mage-water-bolt"];
+    mage.sp = 99;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: mage.id, spellId: "mage-water-bolt", targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+    expect(s.observedAffinity["Test Rat"]?.resist).toEqual(["water"]);
+    const evt = s.events.find((e) => e?.type === "affinityDiscovered");
+    expect(evt).toBeDefined();
+    if (evt?.type === "affinityDiscovered") expect(evt.kind).toBe("resist");
+    expect(s.log.some((m) => m.includes("resists water"))).toBe(true);
+  });
+
+  it("records nothing when the target has no matching affinity", () => {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, special: [{ kind: "weakElement", element: "cold" }] })]);
+    const mage = state.party.find((c) => c.class === "Mage")!;
+    mage.knownSpellIds = ["mage-fire-bolt"];
+    mage.sp = 99;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: mage.id, spellId: "mage-fire-bolt", targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+    expect(s.observedAffinity["Test Rat"]).toBeUndefined();
+    expect(s.events.some((e) => e?.type === "affinityDiscovered")).toBe(false);
+  });
+
+  it("DoT ticks discover affinity too", () => {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, special: [{ kind: "weakElement", element: "fire" }] })]);
+    state.enemyDots["rat-0"] = [{ element: "fire", power: 5, duration: 2 }];
+    const s = endRound(state, seqRng([0.5]));
+    expect(s.observedAffinity["Test Rat"]?.weak).toEqual(["fire"]);
+    expect(s.events.some((e) => e?.type === "affinityDiscovered")).toBe(true);
+  });
+});
+
+// --- Combat consumables: answers pack (Direction B) ---------------------------
+
+describe("combat consumables (answers pack)", () => {
+  it("Eye Drops cure blind and clear its timer", () => {
+    const state = makeState();
+    state.items = ITEMS_BY_ID;
+    state.inventory = { "eye-drops": 1 };
+    state.party[1].status.push("blind");
+    state.blindTimers["char-1"] = 3;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "item", actorId: "char-0", itemId: "eye-drops", targetAllyId: "char-1" },
+      seqRng([0.5])
+    );
+    expect(s.party[1].status.includes("blind")).toBe(false);
+    expect(s.blindTimers["char-1"]).toBeUndefined();
+    expect(s.inventory["eye-drops"] ?? 0).toBe(0); // consumed
+  });
+
+  it("Smelling Salts cure paralysis and clear its timer", () => {
+    const state = makeState();
+    state.items = ITEMS_BY_ID;
+    state.inventory = { "smelling-salts": 1 };
+    state.party[1].status.push("paralysis");
+    state.paralysisTimers["char-1"] = 2;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "item", actorId: "char-0", itemId: "smelling-salts", targetAllyId: "char-1" },
+      seqRng([0.5])
+    );
+    expect(s.party[1].status.includes("paralysis")).toBe(false);
+    expect(s.paralysisTimers["char-1"]).toBeUndefined();
+    expect(s.inventory["smelling-salts"] ?? 0).toBe(0);
+  });
+
+  it("Greater Healing Potion restores 75 HP", () => {
+    const state = makeState();
+    state.items = ITEMS_BY_ID;
+    state.inventory = { "greater-healing-potion": 1 };
+    state.party[1].maxHp = 100;
+    state.party[1].hp = 10;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "item", actorId: "char-0", itemId: "greater-healing-potion", targetAllyId: "char-1" },
+      seqRng([0.5])
+    );
+    expect(s.party[1].hp).toBe(85);
+    expect(s.inventory["greater-healing-potion"] ?? 0).toBe(0);
+  });
+
+  it("Phoenix Feather revives a KO'd ally at 25% max HP", () => {
+    const state = makeState();
+    state.items = ITEMS_BY_ID;
+    state.inventory = { "phoenix-feather": 1 };
+    state.party[1].maxHp = 40;
+    state.party[1].hp = 0;
+    state.party[1].status.push("knockedOut");
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "item", actorId: "char-0", itemId: "phoenix-feather", targetAllyId: "char-1" },
+      seqRng([0.5])
+    );
+    const revived = s.party[1];
+    expect(revived.status.includes("knockedOut")).toBe(false);
+    expect(revived.hp).toBe(10); // 25% of 40
+    expect(s.events.some((e) => e?.type === "revived")).toBe(true);
+    expect(s.inventory["phoenix-feather"] ?? 0).toBe(0);
+  });
+
+  it("the shop stocks the answers pack", () => {
+    const shop = shopInventory().map((i) => i.id);
+    for (const id of ["eye-drops", "smelling-salts", "greater-healing-potion", "phoenix-feather"]) {
+      expect(shop).toContain(id);
+    }
+  });
+});
+
+// --- Analyze verb (Direction C) ------------------------------------------------
+
+describe("analyze verb", () => {
+  it("marks the species analyzed and records its affinities", () => {
+    const state = makeState([makeEnemy("rat-0", {
+      special: [{ kind: "weakElement", element: "fire" }, { kind: "resistElement", element: "water" }],
+    })]);
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "analyze", actorId: "char-0", targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+    expect(s.analyzedEnemies["Test Rat"]).toBe(true);
+    expect(s.observedAffinity["Test Rat"]).toEqual({ weak: ["fire"], resist: ["water"] });
+    expect(s.events.some((e) => e?.type === "analyze" && e.targetId === "rat-0")).toBe(true);
+    expect(s.party.map((c) => c.hp)).toEqual(state.party.map((c) => c.hp)); // no self-harm
+  });
+
+  it("is idempotent and harmless to re-analyze", () => {
+    const state = makeState([makeEnemy("rat-0", { special: [{ kind: "weakElement", element: "fire" }] })]);
+    state.analyzedEnemies["Test Rat"] = true;
+    state.observedAffinity["Test Rat"] = { weak: ["fire"], resist: [] };
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "analyze", actorId: "char-0", targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+    expect(s.observedAffinity["Test Rat"].weak).toEqual(["fire"]); // no duplicate
+  });
+
+  it("does nothing against a missing target", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "analyze", actorId: "char-0", targetInstanceId: "nope" },
+      seqRng([0.5])
+    );
+    expect(Object.keys(s.analyzedEnemies)).toHaveLength(0);
+    expect(s.events.some((e) => e?.type === "analyze")).toBe(false);
+  });
+
+  it("works in the round-based resolver too", () => {
+    const state = makeState([makeEnemy("rat-0", { special: [{ kind: "evasive" }] })]);
+    const s = resolveCombatRound(
+      state,
+      [
+        { kind: "analyze", actorId: "char-0", targetInstanceId: "rat-0" },
+        { kind: "defend", actorId: "char-1" },
+      ],
+      seqRng([0.9])
+    );
+    expect(s.analyzedEnemies["Test Rat"]).toBe(true);
+  });
+});
+
+// --- Boss phases (Direction C: Echo) ------------------------------------------
+
+describe("boss phases", () => {
+  function bossState(overrides: Partial<EnemyDef> = {}) {
+    return makeState([makeEnemy("boss-0", {
+      hp: 100, attack: 10, isBoss: true,
+      phaseThresholds: [66, 33],
+      ...overrides,
+    } as Partial<EnemyDef>)]);
+  }
+
+  it("crossing a threshold fires phaseChange and bumps attack", () => {
+    const state = bossState();
+    state.enemies.front[0].currentHp = 65; // below 66%
+    const fighter = state.party[0];
+    fighter.stats.str = 20;
+    fighter.stats.luk = 0;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: "char-0", targetInstanceId: "boss-0" },
+      seqRng([0.5])
+    );
+    expect(s.bossPhases["boss-0"]).toBe(2);
+    expect(s.enemies.front[0].attack).toBe(14); // 10 + 4
+    const evt = s.events.find((e) => e?.type === "phaseChange");
+    expect(evt).toBeDefined();
+    if (evt?.type === "phaseChange") {
+      expect(evt.phase).toBe(2);
+      expect(evt.name).toBe("Test Rat");
+    }
+  });
+
+  it("does not refire within the same phase", () => {
+    const state = bossState();
+    state.enemies.front[0].currentHp = 60;
+    state.bossPhases["boss-0"] = 2;
+    const fighter = state.party[0];
+    fighter.stats.str = 1;
+    fighter.stats.luk = 0;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: "char-0", targetInstanceId: "boss-0" },
+      seqRng([0.5])
+    );
+    expect(s.events.filter((e) => e?.type === "phaseChange")).toHaveLength(0);
+    expect(s.enemies.front[0].attack).toBe(10); // unchanged
+  });
+
+  it("crossing the second threshold fires phase 3", () => {
+    const state = bossState();
+    state.enemies.front[0].currentHp = 32;
+    state.bossPhases["boss-0"] = 2;
+    state.enemies.front[0].attack = 14;
+    const fighter = state.party[0];
+    fighter.stats.str = 1;
+    fighter.stats.luk = 0;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: "char-0", targetInstanceId: "boss-0" },
+      seqRng([0.5])
+    );
+    expect(s.bossPhases["boss-0"]).toBe(3);
+    expect(s.enemies.front[0].attack).toBe(18); // 14 + 4
+  });
+
+  it("a hit that skips a threshold fires once with the cumulative bump", () => {
+    const state = bossState();
+    state.enemies.front[0].currentHp = 30; // below both thresholds, still phase 1
+    const fighter = state.party[0];
+    fighter.stats.str = 1;
+    fighter.stats.luk = 0;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: "char-0", targetInstanceId: "boss-0" },
+      seqRng([0.5])
+    );
+    expect(s.bossPhases["boss-0"]).toBe(3);
+    expect(s.enemies.front[0].attack).toBe(18); // 10 + 8 (two crossings)
+    expect(s.events.filter((e) => e?.type === "phaseChange")).toHaveLength(1);
+  });
+
+  it("non-bosses with thresholds and bosses without thresholds stay silent", () => {
+    const state = makeState([makeEnemy("rat-0", { hp: 100, phaseThresholds: [66] } as Partial<EnemyDef>)]);
+    state.enemies.front[0].currentHp = 50;
+    const fighter = state.party[0];
+    fighter.stats.str = 1;
+    fighter.stats.luk = 0;
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: "char-0", targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+    expect(s.events.some((e) => e?.type === "phaseChange")).toBe(false);
+    expect(Object.keys(s.bossPhases)).toHaveLength(0);
+  });
+
+  it("works in the round-based resolver too", () => {
+    const state = bossState();
+    state.enemies.front[0].currentHp = 65;
+    const fighter = state.party[0];
+    fighter.stats.str = 20;
+    fighter.stats.luk = 0;
+    const s = resolveCombatRound(
+      state,
+      [
+        { kind: "attack", actorId: "char-0", targetInstanceId: "boss-0" },
+        { kind: "defend", actorId: "char-1" },
+      ],
+      seqRng([0.5])
+    );
+    expect(s.bossPhases["boss-0"]).toBe(2);
+    expect(s.events.some((e) => e?.type === "phaseChange")).toBe(true);
+  });
+});
+
+describe("Echo phase content (real data)", () => {
+  it("the Echo has phase thresholds and both phase abilities", () => {
+    const echo = ENEMIES_BY_ID["headmasters-echo"];
+    expect(echo.phaseThresholds).toEqual([66, 33]);
+    expect(echo.abilityIds).toContain("memory-shatter");
+    expect(echo.abilityIds).toContain("total-eclipse");
+  });
+
+  it("memory-shatter is a phase-2 single-target drain", () => {
+    const ab = enemyAbilityById("memory-shatter");
+    expect(ab).toBeDefined();
+    expect(ab!.target).toBe("singleParty");
+    expect(ab!.condition).toEqual({ kind: "hpBelow", percent: 66 });
+    expect(ab!.effect).toMatchObject({ kind: "drain", power: 8 });
+    expect(ab!.windUp).toBeFalsy();
+  });
+
+  it("total-eclipse is a telegraphed phase-3 party nuke", () => {
+    const ab = enemyAbilityById("total-eclipse");
+    expect(ab).toBeDefined();
+    expect(ab!.target).toBe("allParty");
+    expect(ab!.condition).toEqual({ kind: "hpBelow", percent: 33 });
+    expect(ab!.effect).toMatchObject({ kind: "damage", power: 10, element: "undead" });
+    expect(ab!.windUp).toBe(true);
+  });
+});
+
+// --- Row swap (Direction C) ---------------------------------------------------
+
+describe("row swap", () => {
+  function fourPartyState() {
+    const party = makeParty(4, ["Fighter", "Mage", "Thief", "Priest"]);
+    return createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false, SPELLS_BY_ID);
+  }
+
+  it("swap trades rows with a living ally and normalizes slots", () => {
+    const state = fourPartyState();
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "move", actorId: "char-0", targetAllyId: "char-3" },
+      seqRng([0.5])
+    );
+    const fighter = s.party.find((c) => c.id === "char-0")!;
+    const priest = s.party.find((c) => c.id === "char-3")!;
+    expect(fighter.formationSlot).toBe(3);
+    expect(priest.formationSlot).toBe(0);
+    // Array order swapped too — the scene reads positions from the array.
+    expect(s.party[0].id).toBe("char-3");
+    expect(s.party[3].id).toBe("char-0");
+    expect(s.log.some((m) => m.includes("swap rows"))).toBe(true);
+  });
+
+  it("a fighter moved to the back row can no longer reach with a close weapon", () => {
+    const state = fourPartyState();
+    const s1 = resolvePlayerTurn(
+      state,
+      { kind: "move", actorId: "char-0", targetAllyId: "char-3" },
+      seqRng([0.5])
+    );
+    const s2 = resolvePlayerTurn(
+      s1,
+      { kind: "attack", actorId: "char-0", targetInstanceId: "rat-0" },
+      seqRng([0.5])
+    );
+    // Close-range weapon from the back row cannot reach the front-row enemy.
+    expect(s2.enemies.front[0].currentHp).toBe(s2.enemies.front[0].hp);
+  });
+
+  it("rejects a KO'd swap partner", () => {
+    const state = fourPartyState();
+    state.party[3].hp = 0;
+    state.party[3].status.push("knockedOut");
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "move", actorId: "char-0", targetAllyId: "char-3" },
+      seqRng([0.5])
+    );
+    expect(s.party.find((c) => c.id === "char-0")!.formationSlot).toBe(0);
+    expect(s.party.find((c) => c.id === "char-3")!.formationSlot).toBe(3);
+  });
+
+  it("rejects a same-row partner", () => {
+    const state = fourPartyState();
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "move", actorId: "char-0", targetAllyId: "char-1" },
+      seqRng([0.5])
+    );
+    expect(s.party.find((c) => c.id === "char-0")!.formationSlot).toBe(0);
+    expect(s.party.find((c) => c.id === "char-1")!.formationSlot).toBe(1);
+  });
+
+  it("slides into an empty back-row slot", () => {
+    const state = fourPartyState(); // back row has only char-3
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "move", actorId: "char-0" },
+      seqRng([0.5])
+    );
+    expect(s.party.find((c) => c.id === "char-0")!.formationSlot).toBe(3); // first vacated back slot (dense packing)
+    expect(s.log.some((m) => m.includes("falls back"))).toBe(true);
+  });
+
+  it("rejects a slide when the target row is full", () => {
+    const party = makeParty(6);
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false, SPELLS_BY_ID);
+    const s = resolvePlayerTurn(
+      state,
+      { kind: "move", actorId: "char-0" },
+      seqRng([0.5])
+    );
+    expect(s.party.find((c) => c.id === "char-0")!.formationSlot).toBe(0);
+  });
+
+  it("works in the round-based resolver too", () => {
+    const state = fourPartyState();
+    const s = resolveCombatRound(
+      state,
+      [
+        { kind: "move", actorId: "char-0", targetAllyId: "char-3" },
+        { kind: "defend", actorId: "char-1" },
+        { kind: "defend", actorId: "char-2" },
+        { kind: "defend", actorId: "char-3" },
+      ],
+      seqRng([0.9])
+    );
+    expect(s.party.find((c) => c.id === "char-0")!.formationSlot).toBe(3);
   });
 });

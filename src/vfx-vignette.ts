@@ -207,6 +207,12 @@ const state: CombatState = {
   regenBuffs: {},
   attackDebuffs: {},
   sleepTimers: {},
+  blindTimers: {},
+  poisonState: {},
+  windUps: {},
+  observedAffinity: {},
+  analyzedEnemies: {},
+  bossPhases: {},
   disableStacks: {},
 };
 
