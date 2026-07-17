@@ -1149,12 +1149,41 @@ canvas#map-canvas {
     0 3px 8px rgba(0, 0, 0, 0.6);
   color: var(--warm-white);
   padding: 6px 8px;
+  /* Content-driven caps apply on mobile only — desktop overrides below with
+     a fixed band so the windows never grow over the battlefield. */
   min-height: 110px;
-  /* Cap the windows so they hug the bottom instead of rising over the
-     battlefield; taller content (long spell lists, 6 party members)
-     scrolls internally. Tall enough for the 6-item action menu + hint row. */
   max-height: 268px;
   overflow: hidden;
+}
+
+/*
+ * Fixed window band — the ground-plane occlusion contract made law.
+ * Height = COMBAT_WINDOW_OVERLAP_PX (200) of the 672 design height, minus
+ * the 6px bottom gap, expressed as a fraction of the aspect-locked
+ * #combat-wrap so it tracks the canvas at any size. Every combat state
+ * (command palette, magic/tech lists, detail panes) shares ONE band height;
+ * taller content scrolls internally. This is what lets combat-scene-math's
+ * floorBottomY guarantee that sprite feet and contact shadows are never
+ * occluded, even with the tallest menus open. Change it together with
+ * COMBAT_WINDOW_OVERLAP_PX or the invariant is fiction.
+ * Mobile (≤640px) wraps the panes into two rows and keeps content-driven
+ * heights — the wrapped layout can't share one fixed band.
+ */
+@media (min-width: 641px) {
+  #combat-windows {
+    height: calc((200 - 6) / 672 * 100%);
+  }
+
+  .ff6-windows {
+    height: 100%;
+  }
+
+  .ff6-windows > .ff6-window {
+    box-sizing: border-box;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+  }
 }
 
 .ff6-menu {
@@ -1370,6 +1399,11 @@ canvas#map-canvas {
 /* Spell detail panel — replaces the enemy window while the Magic list is
    open, in the same 31% slot, so the overall three-column layout never
    shifts. */
+/* Detail pane typography is compacted to fit the fixed window band —
+ * controller users cannot scroll an unfocused pane, so the whole card
+ * (name / meta / effect / description) must fit at once. Sizes follow the
+ * roster's 18px precedent rather than --fs-small (26px), which needed
+ * ~285px of height and forced the old band to swell over the stage. */
 .ff6-spell-detail {
   flex: 0 0 26%;
   display: flex;
@@ -1380,7 +1414,7 @@ canvas#map-canvas {
 }
 
 .ff6-spell-detail-name {
-  font-size: var(--fs-body);
+  font-size: 24px;
   color: #ffd769;
   letter-spacing: 0.02em;
   padding-bottom: 4px;
@@ -1388,21 +1422,23 @@ canvas#map-canvas {
 }
 
 .ff6-spell-detail-meta {
-  font-size: var(--fs-small);
+  font-size: 18px;
   color: #b8c4f0;
 }
 
 .ff6-spell-detail-effect {
-  font-size: var(--fs-small);
+  font-size: 20px;
   color: var(--warm-white);
   font-weight: bold;
 }
 
 .ff6-spell-detail-desc {
-  font-size: var(--fs-small);
+  font-size: 18px;
   color: #c8c4e0;
-  line-height: 1.35;
+  line-height: 1.3;
   white-space: normal;
+  flex: 1;
+  min-height: 0;
 }
 
 .ff6-party {

@@ -15,10 +15,10 @@
 | Severity | ID | Finding | Status |
 |----------|-----|---------|--------|
 | blocker | — | *(none)* | — |
-| warning | W1 | Backdrop `ArenaCamera` and combat `projectArenaPos` are unrelated models; sprites do not geometrically stand on the baked floor | open (needs layout pass) |
+| warning | W1 | Backdrop `ArenaCamera` and combat `projectArenaPos` are unrelated models; sprites do not geometrically stand on the baked floor | **partially addressed 2026-07-16** — the ground-plane contract's seam now DERIVES from the camera (`arenaSeamFrac` in `arena-camera.ts`), so a camera retune can no longer strand sprite feet on the wall; slots remain screen-space (full geometric unification still open) |
 | warning | W2 | Design doc disagreed with implementation on pipeline, back wall, params, pitch | **doc patched** |
 | warning | W3 | Side-wall bbox walk over-covers ~400k px/wall; fine for one-time bake, fragile if per-frame | open (accept) |
-| warning | W4 | Horizon / void color sync between `DEFAULTS` and `ARENA_HORIZON_FRAC` / `PALETTE.bg` is comment-enforced only | open (accept) |
+| warning | W4 | Horizon / void color sync between `DEFAULTS` and `ARENA_HORIZON_FRAC` / `PALETTE.bg` is comment-enforced only | **horizon half closed 2026-07-16** — single-sourced in `arena-camera.ts` (`ARENA_HORIZON_FRAC` removed from renderer.ts; tests import the tuple). Void color remains an explicit `PALETTE.bg` argument at the bake call site |
 | nit | N1 | Stale comment in `combat-scene.ts` still said “baked corridor backdrop” | **fixed** |
 | nit | N2 | `getWallData` re-`getImageData`s every bake; acceptable once-per-combat | open (accept) |
 | nit | N3 | No rasterizer smoke/integration tests (math-only coverage) | open |
@@ -146,6 +146,17 @@ Empirical mismatch: sprite “front” `z=1.3` → screenY ≈ **277**. The true
 **Unifying with `arenaProject`:** doable — place feet at `{x, y:depth, z:0}` and size by `∂screen/∂world` — but it **will move every combat actor** and needs a layout pass. Not a silent fix.
 
 **Recommended (not done in this pass):** keep dual systems for now; treat W1 as a known hazard; any arena camera retune must include sprite screenshot checks.
+
+> **Addendum 2026-07-16 (stage-rebalance layout pass):** the retune this section
+> warned about happened, with the recommended screenshot checks
+> (`playtest-screenshots/2026-07-16-stage-rebalance/`). The camera tuple moved
+> to `arena-camera.ts` (pitch 33°, wall 5.5, depth 18, horizon 0.16) and the
+> sprite contract's `seamY` is now computed from it via `arenaSeamFrac()` —
+> the "characters float or sink after a retune" failure mode is structurally
+> gone. Note the sprite model described above (CAM_HEIGHT/ARENA_FOCAL) predates
+> the ground-plane contract in `combat-scene-math.ts`; slots are screen-space
+> `footYFrac` values today. Full geometric unification (slots as world
+> positions through `arenaProject`) remains open.
 
 ---
 

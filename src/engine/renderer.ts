@@ -165,10 +165,9 @@ const RENDER_CONFIG = {
   headBobAmplitude: 2.5,          // px — positive = head dips at mid-step
 } as const;
 
-/** Fraction of canvas height where the arena horizon (floor/ceiling boundary)
- *  sits. Shared with arena-renderer DEFAULTS.horizonFrac so character foot
- *  planes stay aligned with the baked floor. Near-ortho high-cam target ~0.20. */
-export const ARENA_HORIZON_FRAC = 0.2;
+// The arena backdrop camera (horizon fraction included) lives in
+// arena-camera.ts — renderBattleArena relies on arena-renderer DEFAULTS,
+// and the sprite ground-plane contract derives its seam from the same tuple.
 
 /** Raycast hit data for a single ray. */
 interface RayHit {
@@ -1268,7 +1267,6 @@ export function renderBattleArena(
   if (tileset) {
     renderArenaRoom(ctx, w, h, {
       tileset,
-      horizonFrac: ARENA_HORIZON_FRAC,
       voidColor: PALETTE.bg,
     });
   } else {

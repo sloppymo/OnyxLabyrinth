@@ -12,6 +12,8 @@ import {
   ENEMY_BACK_SLOTS,
   ALLY_FORMATION_SLOTS,
   SCALE_STEPS,
+  SEAM_INSET_FRAC,
+  CENTER_AISLE_MIN_GAP_PX,
   lerp,
   quantizeScale,
   resolveFootY,
@@ -20,6 +22,7 @@ import {
   assertFormationOnFloor,
   assertFloorBottomClearOfWindows,
   assertSlotsInXBounds,
+  assertCenterAisle,
   maxAllowedFloorBottomY,
   COMBAT_WINDOW_OVERLAP_PX,
   FLOOR_BOTTOM_SAFE_MARGIN_PX,
@@ -30,6 +33,7 @@ import {
   ART_FOOT_FROM_TOP,
   ART_FOOT_FROM_TOP_FALLBACK,
 } from "./combat-scene-math";
+import { arenaSeamFrac } from "./arena-camera";
 
 const LOGICAL_H = 672;
 const LOGICAL_W = 768;
@@ -213,5 +217,74 @@ describe("x-bounds invariant (sprites stay on canvas)", () => {
         )
       ).not.toThrow();
     }
+  });
+});
+
+describe("seam derivation (baked themes track the arena camera)", () => {
+  it("baked-theme seams derive from arenaSeamFrac + inset", () => {
+    const base = Math.round(LOGICAL_H * (arenaSeamFrac() + SEAM_INSET_FRAC));
+    for (const id of ["arena", "theme:f1", "theme:f3", "theme:f4", "theme:f5"]) {
+      expect(BACKDROP_GEOMETRY[id]!.seamY).toBe(base);
+    }
+    // Library keeps its +0.02 content inset (shelves eat upper floor).
+    expect(BACKDROP_GEOMETRY["theme:f2"]!.seamY).toBe(
+      Math.round(LOGICAL_H * (arenaSeamFrac() + SEAM_INSET_FRAC + 0.02))
+    );
+  });
+
+  it("camera seam sits in the floor-dominant band (upper third of frame)", () => {
+    expect(arenaSeamFrac()).toBeGreaterThan(0.24);
+    expect(arenaSeamFrac()).toBeLessThanOrEqual(0.34);
+  });
+});
+
+describe("scale tiers (rows land on clean pixel-art steps)", () => {
+  it("back rows 0.75, summons 0.875, front rows 1.0 on baked geometry", () => {
+    const geo = BACKDROP_GEOMETRY.arena;
+    const scaleOf = (s: FormationSlot) =>
+      quantizeScale(depthScale(s.footYFrac, geo));
+    for (const s of [...PARTY_FORMATION_SLOTS.slice(3), ...ENEMY_BACK_SLOTS]) {
+      expect(scaleOf(s)).toBe(0.75);
+    }
+    for (const s of ALLY_FORMATION_SLOTS) {
+      expect(scaleOf(s)).toBe(0.875);
+    }
+    for (const s of [...PARTY_FORMATION_SLOTS.slice(0, 3), ...ENEMY_FRONT_SLOTS]) {
+      expect(scaleOf(s)).toBe(1.0);
+    }
+  });
+
+  it("every frac keeps ≥0.03 margin from a quantize boundary (t=0.25 / 0.75)", () => {
+    const all = [
+      ...PARTY_FORMATION_SLOTS,
+      ...ENEMY_FRONT_SLOTS,
+      ...ENEMY_BACK_SLOTS,
+      ...ALLY_FORMATION_SLOTS,
+    ];
+    for (const s of all) {
+      expect(Math.abs(s.footYFrac - 0.25)).toBeGreaterThanOrEqual(0.03);
+      expect(Math.abs(s.footYFrac - 0.75)).toBeGreaterThanOrEqual(0.03);
+    }
+  });
+});
+
+describe("center aisle invariant (no-man's-land between battle lines)", () => {
+  it("battle lines keep the minimum aisle (summons exempt by design)", () => {
+    expect(() =>
+      assertCenterAisle(
+        [...ENEMY_FRONT_SLOTS, ...ENEMY_BACK_SLOTS],
+        PARTY_FORMATION_SLOTS
+      )
+    ).not.toThrow();
+    expect(CENTER_AISLE_MIN_GAP_PX).toBeGreaterThanOrEqual(96);
+  });
+
+  it("throws when the lines interleave (pre-rebalance slot values)", () => {
+    expect(() =>
+      assertCenterAisle(
+        [{ x: 340, footYFrac: 0.22 }],
+        [{ x: 408, footYFrac: 0.22 }]
+      )
+    ).toThrow(/center-aisle/);
   });
 });

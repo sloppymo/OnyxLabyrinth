@@ -51,13 +51,16 @@ Pinhole screen projection (screen `y` increases downward, focal length `f` in px
 Horizon line (floor plane at infinity):
 - `horizonY = h/2 - f · tan θ`
 
-We pin the horizon to the existing shared constant:
-- `horizonY = h · ARENA_HORIZON_FRAC`
+We pin the horizon to the shared camera tuple (`ARENA_CAMERA.horizonFrac` in
+`arena-camera.ts`):
+- `horizonY = h · horizonFrac`
 
-With `ARENA_HORIZON_FRAC = 0.30`:
-- `f · tan θ = 0.20 · h`
+With `horizonFrac = 0.16` (shipped 2026-07-16):
+- `f · tan θ = 0.34 · h`
 
-So `f` and `θ` are not independent; once `θ` is chosen, `f = (0.20 · h) / tan θ`.
+So `f` and `θ` are not independent; once `θ` is chosen,
+`f = ((0.5 − horizonFrac) · h) / tan θ` — `buildArenaCamera` in
+`arena-camera.ts` is the one implementation of this rearrangement.
 
 ### Floor row distance
 
@@ -191,16 +194,22 @@ export function arenaOpacityForDepth(d: number): number;
 
 ## Parameters and tuning
 
-Initial guesses based on the mockup (to be adjusted during visual tuning):
+**Source of truth: `src/engine/arena-camera.ts` (`ARENA_CAMERA`).** This table
+mirrored the code twice and drifted twice; the module now owns the tuple and
+`combat-scene-math.ts` derives its seam from it (`arenaSeamFrac`), so the
+numbers below are documentation, not a second copy to keep in sync.
+
+Shipped tuple (2026-07-16 stage-rebalance — floor-dominant composition, wall
+band ≈ 20% of frame, projected seam ≈ 32%):
 
 | Parameter | Shipped default | Notes |
 |-----------|-----------------|-------|
-| `ARENA_HORIZON_FRAC` | `0.30` | Shared with sprite layout; controls how much screen is floor. |
-| `θ` (pitch) | `30°` | `arena-renderer.ts` `DEFAULTS.pitch`. |
-| `H` (camera height) | `2.5` grid units | Backdrop camera only — sprite `CAM_HEIGHT` is separate (0.85). |
-| Room width `W` | `10` grid units | `DEFAULTS.roomWidth`. |
-| Room depth `D_room` | `18` grid units | `DEFAULTS.roomDepth`; back wall sits here. |
-| Wall height | `5` grid units | Tall enough for a visible top rim under 30° pitch. |
+| `horizonFrac` | `0.16` | `ARENA_CAMERA.horizonFrac`; shared with sprite layout via `arenaSeamFrac`. |
+| `θ` (pitch) | `33°` | Steeper look-down raises the seam (more floor, less wall). |
+| `H` (camera height) | `4.5` grid units | Backdrop camera only. |
+| Room width `W` | `12` grid units | `ARENA_CAMERA.roomWidth`. |
+| Room depth `D_room` | `18` grid units | Back wall sits here; deeper room pulls the seam toward the horizon. |
+| Wall height | `5.5` grid units | Short frieze behind the fight, not a slab. |
 | `maxVisibleDist` | `28` grid units | Floor rows beyond this fog out. |
 
 Tuning levers:
@@ -226,8 +235,7 @@ export function renderBattleArena(state, w, h) {
 
   renderArenaRoom(ctx, w, h, {
     tileset,
-    horizonFrac: ARENA_HORIZON_FRAC,
-    // other arena parameters
+    // camera params default to ARENA_CAMERA (arena-camera.ts)
   });
 
   return off;

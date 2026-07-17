@@ -33,6 +33,11 @@ import {
   arenaOpacityForDepth,
   arenaFloorScreenYForDepth,
 } from "./render-math";
+import {
+  ARENA_CAMERA,
+  arenaSeamFrac,
+  buildArenaCamera,
+} from "./arena-camera";
 
 describe("computeLineHeight", () => {
   it("returns a positive height for valid distances", () => {
@@ -651,20 +656,14 @@ describe("arena projection math", () => {
     expect(projected.y).toBeCloseTo(screenY, 4);
   });
 
-  it("round-trips under production arena DEFAULTS (28° pitch, horizon 0.20)", () => {
-    // Mirrors arena-renderer.ts DEFAULTS + ARENA_HORIZON_FRAC without importing
-    // the canvas module into this DOM-free test file.
-    const prodPitch = (28 * Math.PI) / 180;
-    const prodHorizonFrac = 0.2;
-    const prodHorizonY = screenH * prodHorizonFrac;
-    const prodFocal = ((0.5 - prodHorizonFrac) * screenH) / Math.tan(prodPitch);
-    const prodCam = {
-      camHeight: 3.8,
-      pitch: prodPitch,
-      focalLength: prodFocal,
-      horizonY: prodHorizonY,
-    };
-    expect(arenaFloorRowDistance(prodHorizonY, prodCam, screenH)).toBe(Infinity);
+  it("round-trips under the production ARENA_CAMERA tuple", () => {
+    // Imports the real tuple instead of mirroring literals — the old mirrored
+    // copy drifted (camHeight 3.8 vs production 4.5). arena-camera.ts is pure,
+    // so this file stays DOM-free.
+    const prodCam = buildArenaCamera(screenH);
+    expect(arenaFloorRowDistance(prodCam.horizonY, prodCam, screenH)).toBe(
+      Infinity
+    );
     for (const depth of [1, 5, 10, 18]) {
       const y = arenaFloorScreenYForDepth(depth, prodCam, screenH);
       expect(arenaFloorRowDistance(y, prodCam, screenH)).toBeCloseTo(depth, 5);
@@ -676,5 +675,19 @@ describe("arena projection math", () => {
       );
       expect(projected.y).toBeCloseTo(y, 5);
     }
+  });
+
+  it("arenaSeamFrac matches a direct projection of the wall base", () => {
+    const cam = buildArenaCamera(screenH);
+    const seamY = arenaProject(
+      { x: 0, y: ARENA_CAMERA.roomDepth, z: 0 },
+      cam,
+      screenW,
+      screenH
+    ).y;
+    expect(arenaSeamFrac()).toBeCloseTo(seamY / screenH, 10);
+    // Floor-dominant composition target: seam in the upper third of the frame.
+    expect(arenaSeamFrac()).toBeGreaterThan(0.24);
+    expect(arenaSeamFrac()).toBeLessThanOrEqual(0.34);
   });
 });

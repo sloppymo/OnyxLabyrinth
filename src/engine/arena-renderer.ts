@@ -13,6 +13,7 @@
 import type { LoadedTileset } from "./renderer";
 import type { ArenaCamera } from "./render-math";
 import { arenaOpacityForDepth, arenaProject } from "./render-math";
+import { ARENA_CAMERA, buildArenaCamera } from "./arena-camera";
 
 export interface ArenaRenderOptions {
   tileset: LoadedTileset;
@@ -26,7 +27,7 @@ export interface ArenaRenderOptions {
   camHeight?: number;
   /** Camera pitch down from horizontal, in radians. */
   pitch?: number;
-  /** Horizon as a fraction of canvas height (< 0.5). Must match ARENA_HORIZON_FRAC. */
+  /** Horizon as a fraction of canvas height (< 0.5). Defaults to ARENA_CAMERA.horizonFrac. */
   horizonFrac?: number;
   /** Distance beyond which surfaces are fully fogged. */
   maxVisibleDist?: number;
@@ -55,21 +56,9 @@ export interface ArenaRenderOptions {
 }
 
 const DEFAULTS = {
-  roomWidth: 12,
-  /**
-   * Far depth at the seam — kept modest (~14) so row compression graduates
-   * across the visible floor instead of burning into a few tiny seam rows.
-   */
-  roomDepth: 14,
-  wallHeight: 7,
-  /** High camera — depth mostly from Y foreshortening, not lateral splay. */
-  camHeight: 4.5,
-  /** Mild pitch; wall silhouette (not FOV wedges) carries the room read. */
-  pitch: (28 * Math.PI) / 180,
-  // Keep in sync with ARENA_HORIZON_FRAC in renderer.ts.
-  /** Optical horizon ≈ 20% → usable seam target ~22–28%. */
-  horizonFrac: 0.2,
-  maxVisibleDist: 28,
+  // Camera tuple lives in arena-camera.ts (single source of truth, also
+  // consumed by the sprite ground-plane contract and the tests).
+  ...ARENA_CAMERA,
   voidColor: "#0e0d0a",
   /** Back wall ~78% of frame → each side wall ~11% at the seam. */
   backWallWidthFrac: 0.78,
@@ -140,17 +129,6 @@ export function renderArenaRoom(
     drawSideWalls(buf, w, h, camera, params, wallData, bg);
   }
   ctx.putImageData(buf, 0, 0);
-}
-
-function buildArenaCamera(h: number, params: ArenaParams): ArenaCamera {
-  const horizonY = h * params.horizonFrac;
-  const focalLength = ((0.5 - params.horizonFrac) * h) / Math.tan(params.pitch);
-  return {
-    camHeight: params.camHeight,
-    pitch: params.pitch,
-    focalLength,
-    horizonY,
-  };
 }
 
 function parseBg(hex: string): Rgb {
