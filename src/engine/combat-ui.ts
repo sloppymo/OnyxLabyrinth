@@ -25,14 +25,17 @@ import {
   endRound,
   enqueueNewAllies,
   charRow,
+  previewAttack,
+  previewSpellDamage,
   type CombatState,
   type PlayerAction,
   type TurnQueueEntry,
   type EnemyInstance,
   type Row,
   type SummonedAlly,
+  type ActionPreview,
 } from "../game/combat";
-import { enemyHealthDescriptor } from "./combat-display";
+import { enemyHealthDescriptor, formatActionPreview } from "./combat-display";
 import type { Character } from "../game/party";
 import { isUtilitySpell, type SpellDef } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
@@ -749,12 +752,11 @@ export class CombatController {
     this.phase = "selectTarget";
     this.selectionTitle = "Target";
     if (kind === "enemy") {
-      // Names only, FF6-style — the scene cursor marks the candidate, and
-      // the narrow menu window can't fit a health descriptor column.
       const enemies = this.livingEnemies();
       this.selectionIds = enemies.map((e) => e.instanceId);
       this.selectionEntries = enemies.map((e) => ({ label: e.name }));
       this.selectionIndex = preferredEnemyIndex(enemies, this.lastHitEnemyId);
+      this.applyEnemyTargetForecasts();
     } else {
       const allies = this.targetableAllies();
       this.selectionIds = allies.map((a) => a.id);
@@ -779,6 +781,46 @@ export class CombatController {
     }
     this.syncTargetCursor();
     this.windowsDirty = true;
+  }
+
+  /**
+   * Forecast for the pending Attack / Ambush / single-enemy damage spell.
+   * Returns null for Analyze, heals, techniques (follow-up), etc.
+   */
+  private previewFor(c: Character, enemy: EnemyInstance): ActionPreview | null {
+    const pending = this.pending;
+    if (!pending) return null;
+    if (pending.kind === "attack" || pending.kind === "ambush") {
+      return previewAttack(this.state, c, enemy);
+    }
+    if (pending.kind === "cast" && pending.spellId) {
+      const spell = this.state.spells[pending.spellId];
+      if (!spell || spell.effect.kind !== "damage") return null;
+      if (spell.target !== "singleEnemy") return null;
+      return previewSpellDamage(this.state, c, spell, enemy);
+    }
+    return null;
+  }
+
+  /** Fill the target list's detail column with compact damage forecasts. */
+  private applyEnemyTargetForecasts(): void {
+    if (this.phase !== "selectTarget" || this.targetKind !== "enemy") return;
+    const c = this.currentChar();
+    if (!c) return;
+    for (let i = 0; i < this.selectionIds.length; i++) {
+      const enemy = this.findEnemy(this.selectionIds[i] ?? "");
+      if (!enemy) continue;
+      const preview = this.previewFor(c, enemy);
+      if (!preview) {
+        this.selectionEntries[i] = { label: enemy.name };
+        continue;
+      }
+      this.selectionEntries[i] = {
+        label: enemy.name,
+        detail: formatActionPreview(preview),
+        kill: preview.guaranteedKill,
+      };
+    }
   }
 
   private openSpellSelect(c: Character): void {
@@ -889,7 +931,15 @@ export class CombatController {
         : this.state.summonedAllies.some((a) => a.id === id)
           ? "ally"
           : "party";
-    this.scene.cursor = { kind, id };
+    let kill = false;
+    if (kind === "enemy") {
+      const c = this.currentChar();
+      const enemy = this.findEnemy(id);
+      if (c && enemy) {
+        kill = this.previewFor(c, enemy)?.guaranteedKill === true;
+      }
+    }
+    this.scene.cursor = { kind, id, kill };
   }
 
   /** Confirm the highlighted selection entry. */
@@ -1518,13 +1568,27 @@ export class CombatController {
           ? "selection"
           : "none";
 
-    // Wizardry-style qualitative health for the highlighted enemy target
-    // (a footer line — the narrow menu window can't fit a detail column).
+    // Wizardry-style qualitative health for the highlighted enemy target,
+    // plus hit%/KO forecast for Attack / Ambush / single-target damage spells.
     let selectionFooter: string | null = null;
     if (this.phase === "selectTarget" && this.targetKind === "enemy") {
+      this.applyEnemyTargetForecasts();
       const target = this.findEnemy(this.selectionIds[this.selectionIndex] ?? "");
       if (target) {
         selectionFooter = enemyHealthDescriptor(target.currentHp, target.hp);
+        const c = this.currentChar();
+        const preview = c ? this.previewFor(c, target) : null;
+        if (preview?.guaranteedKill) {
+          selectionFooter += " · Guaranteed KO";
+        } else if (
+          preview &&
+          !preview.unreachable &&
+          !preview.noEffect &&
+          preview.hitChance > 0 &&
+          preview.hitChance < 1
+        ) {
+          selectionFooter += ` · ${Math.round(preview.hitChance * 100)}% to hit`;
+        }
       }
     }
 

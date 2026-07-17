@@ -1321,10 +1321,19 @@ canvas#map-canvas {
 .ff6-sel-detail {
   font-size: var(--fs-small);
   color: #b8c4f0;
-  /* The cost column (SP/RG/count) never gets squeezed by a long name. */
+  /* Forecast / cost column stays readable; long names ellipsize on the left. */
   flex-shrink: 0;
-  min-width: 3.2em;
+  min-width: 2.8em;
+  max-width: 7.5em;
   text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ff6-sel-detail.kill {
+  color: #ff6b6b;
+  font-weight: 700;
 }
 
 .ff6-flash {

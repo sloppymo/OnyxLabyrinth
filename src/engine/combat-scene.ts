@@ -55,6 +55,7 @@ const COLORS = {
   sp: "#7fb8f0",
   banner: "#f5f0e6",
   cursor: "#ffd700",
+  cursorKill: "#e05050",
   shadow: "rgba(0,0,0,0.35)",
   // Procedural fallback colors (same family as the old renderer).
   classFighter: "#c44",
@@ -301,6 +302,8 @@ interface Choreography {
 export interface SceneCursor {
   kind: "enemy" | "party" | "ally";
   id: string;
+  /** Guaranteed-kill target — draw the hand cursor red. */
+  kill?: boolean;
 }
 
 export interface CombatScene {
@@ -2695,7 +2698,8 @@ function drawMarkers(
 
   const bounce = Math.sin(now / 180) * 3;
   ctx.save();
-  ctx.fillStyle = COLORS.cursor;
+  ctx.fillStyle =
+    isCursor && scene.cursor?.kill ? COLORS.cursorKill : COLORS.cursor;
   ctx.strokeStyle = "#14110d";
   ctx.lineWidth = 2;
   const y = topY - 14 + bounce;

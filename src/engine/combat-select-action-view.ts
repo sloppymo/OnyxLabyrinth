@@ -41,6 +41,8 @@ export interface SelectionEntry {
   /** Right-aligned detail (SP cost, stack count, health descriptor). */
   detail?: string;
   disabled?: boolean;
+  /** Guaranteed-kill forecast — styles the detail column red. */
+  kill?: boolean;
 }
 
 export interface ResultView {
@@ -357,6 +359,7 @@ function buildMenuWindow(
       if (entry.detail) {
         const detail = document.createElement("span");
         detail.className = "ff6-sel-detail";
+        if (entry.kill) detail.classList.add("kill");
         detail.textContent = entry.detail;
         row.appendChild(detail);
       }

@@ -6,6 +6,7 @@
  */
 
 import type { Character } from "../game/party";
+import type { ActionPreview } from "../game/combat";
 import type { DamageElement, SpellEffect, SpellTarget } from "../data/spells";
 import type { TechniqueEffect, TechniqueTarget } from "../data/techniques";
 
@@ -169,6 +170,21 @@ export function enemyHealthDescriptor(currentHp: number, maxHp: number): string 
   if (ratio > 0.35) return "Wounded";
   if (ratio > 0.15) return "Badly wounded";
   return "Near death";
+}
+
+/** Compact target-menu forecast: `24-31`, `80% 24-31`, `38`, `24-31 KO`, or `—`. */
+export function formatActionPreview(preview: ActionPreview): string {
+  if (preview.unreachable || preview.noEffect) return "—";
+  if (preview.minDamage <= 0 && preview.maxDamage <= 0) return "—";
+  const band =
+    preview.minDamage === preview.maxDamage
+      ? `${preview.minDamage}`
+      : `${preview.minDamage}-${preview.maxDamage}`;
+  const withKo = preview.guaranteedKill ? `${band} KO` : band;
+  if (preview.hitChance < 1) {
+    return `${Math.round(preview.hitChance * 100)}% ${withKo}`;
+  }
+  return withKo;
 }
 
 /** A single, combat-glanceable status word for a party member. */
