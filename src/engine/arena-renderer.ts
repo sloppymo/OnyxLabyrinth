@@ -19,6 +19,7 @@ import {
   arenaFloorRowDistance,
   arenaOpacityForDepth,
   arenaProject,
+  arenaSideWallWorldAt,
 } from "./render-math";
 import { ARENA_CAMERA, buildArenaCamera } from "./arena-camera";
 
@@ -198,10 +199,6 @@ function floorTexel(
 
 function checkerIsA(gx: number, gy: number): boolean {
   return ((gx + gy) & 1) === 0;
-}
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
 }
 
 /**
@@ -412,9 +409,21 @@ function extendBackWallIntoVoid(
 }
 
 /**
- * Side walls = the silhouette insets themselves. Near segments *are* the
- * shoulder stubs — continuous with the wall, not bolt-on patches. Each strip
- * is ~12–16% of frame width with only a few degrees of outward rake.
+ * Side walls = the silhouette insets themselves. Every pixel is inverse-
+ * projected onto its wall's vertical plane X = ±roomWidth/2 via
+ * arenaSideWallWorldAt — the same rigor drawBackWall applies to the
+ * Y = roomDepth plane — and the texture is sampled at the true
+ * (depth-along-wall, height-on-wall) point. That is what makes brick
+ * coursing compress toward the far corner and the top edge slant down
+ * toward the vanishing point like real receding geometry, instead of the
+ * old flat screen-space strip.
+ *
+ * Strip pixels whose ray passes the far corner (worldY > roomDepth) actually
+ * see the back wall first, not the side wall: drawBackWall's rectangle stops
+ * at the fixed far-floor span, but the wall's true screen footprint widens
+ * above its base. Those pixels continue drawBackWall's own row math (with
+ * its span mapping extrapolated) so back and side walls meet at the corner
+ * without a void gap or a texture seam.
  */
 function drawSideWalls(
   buf: ImageData,
@@ -426,71 +435,108 @@ function drawSideWalls(
   bg: Rgb
 ): void {
   const texSize = wallData.width;
-  const seamY = camera.horizonY;
-  const wallTopY = arenaProject(
-    { x: 0, y: params.roomDepth, z: params.wallHeight },
-    camera,
+  const halfW = params.roomWidth / 2;
+  const f = camera.focalLength;
+  const sinPitch = Math.sin(camera.pitch);
+  const cosPitch = Math.cos(camera.pitch);
+
+  const { left: farLeft, right: farRight } = roomInsets(
+    camera.horizonY,
     w,
-    h
-  ).y;
-  const minY = Math.max(0, Math.floor(wallTopY));
+    h,
+    camera,
+    params
+  );
+  const farSpan = Math.max(1, farRight - farLeft);
+  const backFog = arenaOpacityForDepth(params.roomDepth);
 
-  for (let y = minY; y < h; y++) {
+  for (let y = 0; y < h; y++) {
     const { left, right } = roomInsets(y, w, h, camera, params);
-    const tFloor =
-      y <= seamY ? 0 : Math.min(1, (y - seamY) / Math.max(1, h - 1 - seamY));
-    // Depth along the wall only for texture scroll — NOT for fog (depth fog
-    // crushed side walls to black gutters; framing walls must stay readable).
-    const worldY = lerp(params.roomDepth, 0.8, tFloor);
-    // No depth fog on side walls — full texture, lit framing.
-    const fog = 1;
-
-    // Wall height: keep a solid strip to the bottom so the near end reads as
-    // the continuous shoulder of the wall (not a tapered floating patch).
-    const heightFrac = y <= seamY ? 1 : lerp(1, 0.78, tFloor);
-    const wallH = params.wallHeight * heightFrac;
-    const topAtY = lerp(wallTopY, h * 0.48, Math.min(1, tFloor * 0.85));
-
-    // Depth-driven coursing offset (varies per row) layered under a
-    // per-pixel horizontal component below — a texX derived from worldY
-    // alone is constant across the whole strip width, which paints each
-    // scanline as one flat texel (the "wallpaper band" defect).
-    const depthTexX = Math.floor((worldY / params.wallHeight) * texSize);
+    // Same pitched-ray row terms drawBackWall derives for its plane.
+    const dyOverF = (h / 2 - y) / f;
+    const rayY = cosPitch + dyOverF * sinPitch;
+    const rayZ = -sinPitch + dyOverF * cosPitch;
     const rowOffset = y * w * 4;
 
-    // refX anchors the horizontal texture coordinate to the strip's inner
-    // (room-facing) edge so brick coursing stays put as the strip's screen
-    // position drifts row to row, instead of sliding with absolute x.
-    const paintStrip = (x0: number, x1: number, refX: number) => {
-      for (let x = Math.floor(x0); x < Math.ceil(x1); x++) {
-        if (x < 0 || x >= w) continue;
-        const v =
-          y >= topAtY
-            ? Math.max(0, 1 - (y - topAtY) / Math.max(1, h - 1 - topAtY))
-            : 1;
-        const worldZ = wallH * Math.min(1, v);
-        const texY = Math.max(
-          0,
-          Math.min(
-            texSize - 1,
-            Math.floor((1 - worldZ / params.wallHeight) * texSize)
-          )
-        );
-        const texX =
-          ((Math.floor(Math.abs(x - refX) * 2) + depthTexX) % texSize +
-            texSize) %
-          texSize;
-        const srcIdx = (texY * texSize + texX) * 4;
-        // Mild brighten so bricks read at the frame edge without washing
-        // out the texture's own contrast (kept close to the back wall's
-        // 0.62–1.30 range rather than the previous 1.4–1.65 overbrighten).
-        const shade = 0.95 + 0.35 * (worldZ / params.wallHeight);
-        writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg, shade);
+    const paintStrip = (x0: number, x1: number, wallX: number) => {
+      for (let x = x0; x < x1; x++) {
+        const hit = arenaSideWallWorldAt(x, y, wallX, camera, w, h);
+        if (!hit || hit.y <= 0) continue;
+
+        if (hit.y <= params.roomDepth) {
+          // On the side wall proper. Outside [0, wallHeight] the ray passes
+          // under the base (floor territory) or over the top edge — skipping
+          // those pixels is what draws the slanted top silhouette.
+          const worldZ = hit.z;
+          if (worldZ < 0 || worldZ > params.wallHeight) continue;
+          const texY = Math.max(
+            0,
+            Math.min(
+              texSize - 1,
+              Math.floor((1 - worldZ / params.wallHeight) * texSize)
+            )
+          );
+          // Coursing advances with true depth along the wall, on the same
+          // world scale drawBackWall uses across its width.
+          let texX =
+            Math.floor((hit.y / params.wallHeight) * texSize) % texSize;
+          if (texX < 0) texX += texSize;
+          const srcIdx = (texY * texSize + texX) * 4;
+          // Depth fog on the floor's own curve so the wall base darkens in
+          // step with the floor row it stands on; the 0.55 floor keeps the
+          // deliberate "never crush the side walls to black gutters" fix.
+          const fog = Math.min(
+            1,
+            Math.max(0.55, arenaOpacityForDepth(hit.y) + 0.25)
+          );
+          const shade = 0.95 + 0.35 * (worldZ / params.wallHeight);
+          writeFoggedTexel(
+            buf,
+            rowOffset + x * 4,
+            wallData,
+            srcIdx,
+            fog,
+            bg,
+            shade
+          );
+        } else {
+          // Corner wedge: the ray reaches Y = roomDepth while still inside
+          // the room's width, so it lands on the back wall.
+          if (rayY < 1e-9) continue;
+          const tBack = params.roomDepth / rayY;
+          const worldZ = camera.camHeight + tBack * rayZ;
+          if (worldZ < 0 || worldZ > params.wallHeight) continue;
+          const worldX =
+            -halfW + ((x - farLeft) / farSpan) * params.roomWidth;
+          const texY = Math.max(
+            0,
+            Math.min(
+              texSize - 1,
+              Math.floor((1 - worldZ / params.wallHeight) * texSize)
+            )
+          );
+          let texX =
+            Math.floor(((worldX + halfW) / params.wallHeight) * texSize) %
+            texSize;
+          if (texX < 0) texX += texSize;
+          const srcIdx = (texY * texSize + texX) * 4;
+          const shade = 0.62 + 0.68 * (worldZ / params.wallHeight);
+          writeFoggedTexel(
+            buf,
+            rowOffset + x * 4,
+            wallData,
+            srcIdx,
+            backFog,
+            bg,
+            shade
+          );
+        }
       }
     };
 
-    // Left strip [0, left), right strip (right, w).
-    paintStrip(0, left, left);
-    paintStrip(right + 1, w, right + 1);
+    // Left strip [0, left), right strip (right, w) — the exact bounds the
+    // floor pass leaves unpainted, so wall and floor tile each row.
+    paintStrip(0, Math.min(w, Math.ceil(left)), -halfW);
+    paintStrip(Math.max(0, Math.floor(right) + 1), w, halfW);
   }
 }

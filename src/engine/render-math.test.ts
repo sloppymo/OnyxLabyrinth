@@ -32,6 +32,7 @@ import {
   arenaProject,
   arenaOpacityForDepth,
   arenaFloorScreenYForDepth,
+  arenaSideWallWorldAt,
 } from "./render-math";
 import {
   ARENA_CAMERA,
@@ -675,6 +676,92 @@ describe("arena projection math", () => {
       );
       expect(projected.y).toBeCloseTo(y, 5);
     }
+  });
+
+  it("arenaSideWallWorldAt round-trips arenaProject on both wall planes", () => {
+    // Project known points on the plane X = wallX, then recover (y, z) from
+    // the resulting screen pixel. This is the exact inverse the side-wall
+    // rasterizer relies on, so it must hold to floating-point precision.
+    // worldY starts at 3: shallower points at z = 5.5 sit behind this pitched
+    // camera's image plane (c < 0), where a null is the correct answer.
+    for (const wallX of [-6, 6]) {
+      for (const worldY of [3, 6.5, 11, 18]) {
+        for (const worldZ of [0, 1.3, 4.2, 5.5]) {
+          const p = arenaProject(
+            { x: wallX, y: worldY, z: worldZ },
+            camera,
+            screenW,
+            screenH
+          );
+          const hit = arenaSideWallWorldAt(p.x, p.y, wallX, camera, screenW, screenH);
+          expect(hit).not.toBeNull();
+          expect(hit!.y).toBeCloseTo(worldY, 6);
+          expect(hit!.z).toBeCloseTo(worldZ, 6);
+        }
+      }
+    }
+  });
+
+  it("arenaSideWallWorldAt round-trips under the production ARENA_CAMERA tuple", () => {
+    const prodCam = buildArenaCamera(screenH);
+    const halfW = ARENA_CAMERA.roomWidth / 2;
+    for (const worldY of [3, 9, ARENA_CAMERA.roomDepth]) {
+      for (const worldZ of [0, 2.5, ARENA_CAMERA.wallHeight]) {
+        const p = arenaProject(
+          { x: -halfW, y: worldY, z: worldZ },
+          prodCam,
+          screenW,
+          screenH
+        );
+        const hit = arenaSideWallWorldAt(p.x, p.y, -halfW, prodCam, screenW, screenH);
+        expect(hit).not.toBeNull();
+        expect(hit!.y).toBeCloseTo(worldY, 6);
+        expect(hit!.z).toBeCloseTo(worldZ, 6);
+      }
+    }
+  });
+
+  it("arenaSideWallWorldAt recovers z = 0 along the wall-base silhouette", () => {
+    // The floor/wall silhouette edge at a row is the projected wall base, so
+    // inverting that pixel must land back on the base (z = 0) at the same
+    // depth arenaFloorRowDistance reports for the row.
+    const prodCam = buildArenaCamera(screenH);
+    const halfW = ARENA_CAMERA.roomWidth / 2;
+    for (const worldY of [4, 10, 16]) {
+      const p = arenaProject({ x: halfW, y: worldY, z: 0 }, prodCam, screenW, screenH);
+      const hit = arenaSideWallWorldAt(p.x, p.y, halfW, prodCam, screenW, screenH);
+      expect(hit).not.toBeNull();
+      expect(hit!.z).toBeCloseTo(0, 6);
+      expect(hit!.y).toBeCloseTo(arenaFloorRowDistance(p.y, prodCam, screenH), 5);
+    }
+  });
+
+  it("arenaSideWallWorldAt rejects the center column and the wrong screen half", () => {
+    // Center column: the plane is parallel to the ray (vanishing line).
+    expect(
+      arenaSideWallWorldAt(screenW / 2, 400, -6, camera, screenW, screenH)
+    ).toBeNull();
+    // A pixel right of center can only see the +X plane in front of the
+    // camera; the -X plane intersection lies behind it (t < 0).
+    expect(
+      arenaSideWallWorldAt(screenW / 2 + 120, 400, -6, camera, screenW, screenH)
+    ).toBeNull();
+    expect(
+      arenaSideWallWorldAt(screenW / 2 - 120, 400, 6, camera, screenW, screenH)
+    ).toBeNull();
+  });
+
+  it("arenaSideWallWorldAt depth increases toward the silhouette edge", () => {
+    // Moving inward (toward screen center) along a row, side-wall pixels sit
+    // deeper into the room — this is the coursing compression that makes the
+    // wall visibly recede.
+    const prodCam = buildArenaCamera(screenH);
+    const row = Math.round(prodCam.horizonY) + 30;
+    const outer = arenaSideWallWorldAt(40, row, -6, prodCam, screenW, screenH);
+    const inner = arenaSideWallWorldAt(200, row, -6, prodCam, screenW, screenH);
+    expect(outer).not.toBeNull();
+    expect(inner).not.toBeNull();
+    expect(inner!.y).toBeGreaterThan(outer!.y);
   });
 
   it("arenaSeamFrac matches a direct projection of the wall base", () => {

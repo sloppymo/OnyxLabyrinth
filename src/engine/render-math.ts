@@ -475,6 +475,40 @@ export function arenaFloorWorldAt(
 }
 
 /**
+ * Compute the world-space point on the vertical side-wall plane X = wallX
+ * that projects to screen pixel (x, y) — the side-wall analogue of
+ * arenaFloorWorldAt, and an exact inverse of arenaProject restricted to that
+ * plane.
+ *
+ * Derivation: the pixel's camera ray from (0, 0, camHeight) has direction
+ *   (rayX, rayY, rayZ) = ((x - W/2)/f, cosθ + (dy/f)·sinθ, -sinθ + (dy/f)·cosθ)
+ * with dy = H/2 - y (the same row construction the back-wall rasterizer
+ * uses). Intersecting X = wallX gives t = wallX / rayX, then
+ *   worldY = t·rayY,  worldZ = camHeight + t·rayZ.
+ * Returns null when the pixel column contains the vanishing line (rayX ≈ 0)
+ * or the plane is only hit behind the camera (t ≤ 0).
+ */
+export function arenaSideWallWorldAt(
+  x: number,
+  y: number,
+  wallX: number,
+  camera: ArenaCamera,
+  screenW: number,
+  screenH: number
+): { y: number; z: number } | null {
+  const dx = x - screenW / 2;
+  if (Math.abs(dx) < 1e-9) return null;
+  const t = (camera.focalLength * wallX) / dx;
+  if (t <= 0) return null;
+  const dyOverF = (screenH / 2 - y) / camera.focalLength;
+  const sinPitch = Math.sin(camera.pitch);
+  const cosPitch = Math.cos(camera.pitch);
+  const rayY = cosPitch + dyOverF * sinPitch;
+  const rayZ = -sinPitch + dyOverF * cosPitch;
+  return { y: t * rayY, z: camera.camHeight + t * rayZ };
+}
+
+/**
  * Project a world point (X, Y, Z) to screen coordinates using the arena camera.
  */
 export function arenaProject(
