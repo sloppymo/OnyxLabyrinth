@@ -860,6 +860,96 @@ canvas#map-canvas {
   color: var(--amber);
 }
 
+/* --- Equip screen (FF6-style, town) ------------------------------------ */
+
+.equip-compare {
+  margin: 0 auto;
+  max-width: 900px;
+  padding: 8px 14px;
+  font-size: var(--fs-body);
+  color: var(--warm-white);
+}
+
+.equip-stat-line {
+  display: flex;
+  gap: 28px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #2a2620;
+}
+
+.equip-stat-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  font-size: var(--fs-small);
+  color: #aa9c80;
+}
+
+.equip-stat {
+  white-space: nowrap;
+}
+
+.equip-stat-label {
+  color: #88775a;
+  margin-right: 4px;
+}
+
+.equip-delta-up {
+  color: #7dff9a;
+}
+
+.equip-delta-down {
+  color: var(--danger-red);
+}
+
+.equip-cursed,
+.ff6-window.standalone .ff6-menu-item.equip-cursed .ff6-sel-detail {
+  color: var(--danger-red);
+}
+
+.equip-warning {
+  margin-top: 8px;
+  color: var(--danger-red);
+  font-size: var(--fs-body);
+}
+
+.equip-note {
+  margin-top: 8px;
+  color: #aa9c80;
+  font-size: var(--fs-small);
+}
+
+.equip-summary {
+  margin: 0 auto;
+  max-width: 900px;
+  padding: 4px 14px;
+}
+
+.equip-row {
+  display: flex;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: var(--fs-body);
+  border-bottom: 1px solid #2a2620;
+}
+
+.equip-row-label {
+  color: #88775a;
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.equip-row-value {
+  color: var(--warm-white);
+}
+
+.equip-trinkets {
+  margin-top: 8px;
+  font-size: var(--fs-small);
+  color: #aa9c80;
+}
+
 /* --- Party Creation (Section 4) ---------------------------------------- */
 
 .party-edit {

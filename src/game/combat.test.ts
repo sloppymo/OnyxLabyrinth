@@ -12,6 +12,8 @@ import {
   isBetterEquip,
   findBestEquipTarget,
   getDisplacedItem,
+  manualEquip,
+  manualUnequip,
   type CombatState,
   type EnemyInstance,
   type EnemyFormation,
@@ -320,6 +322,65 @@ describe("equipment helpers", () => {
       for (const c of party) equipment[c.id] = defaultLoadoutForCharacter(c);
       const potion = ITEMS_BY_ID["healing-potion"];
       expect(findBestEquipTarget(party, equipment, potion)).toBeUndefined();
+    });
+  });
+
+  describe("manualEquip (Equip screen)", () => {
+    const cursedBlade = ITEMS_BY_ID["cursed-blade"];
+    const cursedHelm = ITEMS_BY_ID["cursed-helm"];
+    const helm = ITEMS_BY_ID["helm"];
+
+    it("swaps in a strictly worse weapon (downgrades are the player's call)", () => {
+      const loadout: Loadout = { weapon: shortSwordPlus1, armor: [] };
+      const res = manualEquip(loadout, dagger);
+      expect(res).not.toBeNull();
+      expect(res!.loadout.weapon?.id).toBe("dagger");
+      expect(res!.displaced?.id).toBe("short-sword+1");
+    });
+
+    it("equips into an empty slot with nothing displaced", () => {
+      const res = manualEquip({ armor: [] }, leather);
+      expect(res!.loadout.armor.map((a) => a.id)).toEqual(["leather"]);
+      expect(res!.displaced).toBeUndefined();
+    });
+
+    it("swaps armor within the same slot and leaves other slots alone", () => {
+      const loadout: Loadout = { armor: [chainMail, shield] };
+      const res = manualEquip(loadout, leather);
+      expect(res!.loadout.armor.map((a) => a.id).sort()).toEqual(["leather", "shield"]);
+      expect(res!.displaced?.id).toBe("chain-mail");
+    });
+
+    it("refuses to displace cursed gear from the slot", () => {
+      expect(manualEquip({ weapon: cursedBlade, armor: [] }, dagger)).toBeNull();
+      expect(manualEquip({ armor: [cursedHelm] }, helm)).toBeNull();
+    });
+
+    it("refuses consumables and trinkets", () => {
+      expect(manualEquip({ armor: [] }, ITEMS_BY_ID["healing-potion"])).toBeNull();
+      expect(manualEquip({ armor: [] }, ITEMS_BY_ID["ring-of-water-walking"])).toBeNull();
+    });
+  });
+
+  describe("manualUnequip (Equip screen)", () => {
+    const cursedBlade = ITEMS_BY_ID["cursed-blade"];
+
+    it("empties the weapon slot and returns the removed item", () => {
+      const res = manualUnequip({ weapon: dagger, armor: [] }, "hand");
+      expect(res!.loadout.weapon).toBeUndefined();
+      expect(res!.removed.id).toBe("dagger");
+    });
+
+    it("removes an armor piece by slot", () => {
+      const res = manualUnequip({ armor: [leather, shield] }, "shield");
+      expect(res!.loadout.armor.map((a) => a.id)).toEqual(["leather"]);
+      expect(res!.removed.id).toBe("shield");
+    });
+
+    it("returns null for an empty slot or cursed gear", () => {
+      expect(manualUnequip({ armor: [] }, "hand")).toBeNull();
+      expect(manualUnequip({ weapon: cursedBlade, armor: [] }, "hand")).toBeNull();
+      expect(manualUnequip({ armor: [leather] }, "head")).toBeNull();
     });
   });
 

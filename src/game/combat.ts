@@ -21,7 +21,7 @@ import type { EnemyDef, EnemySpecial, Row } from "../data/enemies";
 import { ENEMIES_BY_ID } from "../data/enemies";
 import type { SpellDef, SpellEffect, SpellTarget, DamageElement } from "../data/spells";
 import { spellByName } from "../data/spells";
-import type { ItemDef } from "../data/items";
+import type { EquipSlot, ItemDef } from "../data/items";
 import { ITEMS_BY_ID } from "../data/items";
 import type { TechniqueDef, TechniqueEffect, TechniqueTarget } from "../data/techniques";
 import { techniqueById, classHasTechniques, maxRageForLevel } from "../data/techniques";
@@ -126,7 +126,7 @@ export function canReach(
  *   any row from any row, no back-row damage penalty.
  * - duelist-lunge: short weapons behave as medium.
  */
-function effectiveWeaponRange(actor: Character, weaponRange: WeaponRange): WeaponRange {
+export function effectiveWeaponRange(actor: Character, weaponRange: WeaponRange): WeaponRange {
   const perks = perksForCharacter(actor);
   if (perks.some((p) => p.id === "halberdier-sweep")) return "medium";
   if (weaponRange === "short" && perks.some((p) => p.id === "duelist-lunge")) return "medium";
@@ -404,6 +404,55 @@ export function forceEquip(loadout: Loadout, item: ItemDef): Loadout | null {
   }
   armor.push(item);
   return { ...loadout, armor };
+}
+
+/**
+ * Player-directed equip for the town Equip screen: swap `item` into its slot
+ * unconditionally — downgrades and sidegrades are the player's call, unlike
+ * `equipItem`'s strictly-better auto-equip rule. Returns the new loadout and
+ * whatever the swap displaced, or null if the item isn't equippable or the
+ * slot holds cursed gear (only the Temple's Remove Curse frees it).
+ */
+export function manualEquip(
+  loadout: Loadout,
+  item: ItemDef
+): { loadout: Loadout; displaced?: ItemDef } | null {
+  if (item.type === "consumable" || item.type === "trinket") return null;
+  if (item.type === "weapon") {
+    if (loadout.weapon?.cursed) return null;
+    return { loadout: { ...loadout, weapon: item }, displaced: loadout.weapon };
+  }
+  if (!item.slot) return null;
+  const armor = loadout.armor ? [...loadout.armor] : [];
+  const idx = armor.findIndex((a) => a.slot === item.slot);
+  if (idx >= 0) {
+    if (armor[idx].cursed) return null;
+    const displaced = armor[idx];
+    armor[idx] = item;
+    return { loadout: { ...loadout, armor }, displaced };
+  }
+  armor.push(item);
+  return { loadout: { ...loadout, armor } };
+}
+
+/**
+ * Player-directed unequip for the town Equip screen: empty a slot, returning
+ * the removed item so the caller can put it back in the inventory. Returns
+ * null if the slot is already empty or holds cursed gear.
+ */
+export function manualUnequip(
+  loadout: Loadout,
+  slot: EquipSlot
+): { loadout: Loadout; removed: ItemDef } | null {
+  if (slot === "hand") {
+    if (!loadout.weapon || loadout.weapon.cursed) return null;
+    return { loadout: { ...loadout, weapon: undefined }, removed: loadout.weapon };
+  }
+  const idx = loadout.armor.findIndex((a) => a.slot === slot);
+  if (idx < 0 || loadout.armor[idx].cursed) return null;
+  const armor = [...loadout.armor];
+  const [removed] = armor.splice(idx, 1);
+  return { loadout: { ...loadout, armor }, removed };
 }
 
 /** Pick the party member with the weakest item in the slot `item` occupies. */

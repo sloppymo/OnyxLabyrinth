@@ -19,15 +19,26 @@
  */
 
 import type { GameState } from "../types";
-import { restoreParty, type Stats } from "../game/party";
-import { ALL_ITEMS, ITEMS_BY_ID, displayNameFor, type ItemDef } from "../data/items";
-import { equipItem, findBestEquipTarget, getDisplacedItem, type Loadout } from "../game/combat";
+import { restoreParty, charRow, type Character, type Stats } from "../game/party";
+import { ALL_ITEMS, ITEMS_BY_ID, displayNameFor, type EquipSlot, type ItemDef } from "../data/items";
+import {
+  equipItem,
+  findBestEquipTarget,
+  getDisplacedItem,
+  manualEquip,
+  manualUnequip,
+  canReach,
+  effectiveWeaponRange,
+  type Loadout,
+} from "../game/combat";
+import { effectiveStats } from "../game/effective-stats";
 import { xpForNextLevel } from "../game/leveling";
 import { perksForCharacter, partyShopDiscount, discountedShopPrice } from "../game/perks";
 import { FF6Window, type FF6WindowItem } from "./ff6-window-library";
 import { audio } from "./audio";
 
-type TownScreen = "main" | "inn" | "temple" | "shop" | "roster";
+type TownScreen = "main" | "inn" | "temple" | "shop" | "roster" | "equip";
+type EquipPhase = "char" | "slot" | "item";
 type ShopTab = "buy" | "sell" | "appraise" | "buyConfirm";
 type RosterTab = "status" | "progress";
 
@@ -50,10 +61,19 @@ const MAIN_MENU_ITEMS = [
   { key: "temple", label: "Temple — Healing and cleansing (Free)", icon: "[+]" },
   { key: "shop", label: "Shop — Buy and sell equipment", icon: "[$]" },
   { key: "roster", label: "Guild — Party roster", icon: "[G]" },
+  { key: "equip", label: "Equip — Outfit party members", icon: "[E]" },
   { key: "reform", label: "Reform Party — Create a new party", icon: "[R]" },
   { key: "dungeon", label: "Enter Dungeon", icon: "[>]" },
   { key: "save", label: "Save / Load", icon: "[S]" },
 ] as const;
+
+/** The four fixed equip-slot rows on the Equip screen, FF6-style. */
+const EQUIP_SLOTS: { slot: EquipSlot; label: string }[] = [
+  { slot: "hand", label: "Weapon" },
+  { slot: "body", label: "Body" },
+  { slot: "shield", label: "Shield" },
+  { slot: "head", label: "Head" },
+];
 
 export class TownController {
   private panel: HTMLElement;
@@ -78,6 +98,12 @@ export class TownController {
 
   // Roster state
   private rosterTab: RosterTab = "status";
+
+  // Equip screen state
+  private equipPhase: EquipPhase = "char";
+  private equipCharIndex = 0;
+  private equipSlotIndex = 0;
+  private equipItemIndex = 0;
 
   // Temple state (when cursed gear is equipped)
   private templeIndex = 0;
@@ -108,7 +134,11 @@ export class TownController {
       this.handleShopKey(lower);
       return;
     }
-    // Roster: S/P and ←/→ switch tabs.
+    if (this.screen === "equip") {
+      this.handleEquipKey(lower);
+      return;
+    }
+    // Roster: S/P and ←/→ switch tabs; E jumps to the Equip screen.
     if (this.screen === "roster") {
       if (lower === "s" || lower === "arrowleft") {
         this.rosterTab = "status";
@@ -118,6 +148,10 @@ export class TownController {
       if (lower === "p" || lower === "arrowright") {
         this.rosterTab = "progress";
         this.render();
+        return;
+      }
+      if (lower === "e") {
+        this.openEquipScreen();
         return;
       }
     }
@@ -281,6 +315,9 @@ export class TownController {
         this.rosterTab = "status";
         this.flash = "";
         this.render();
+        break;
+      case "equip":
+        this.openEquipScreen();
         break;
       case "reform":
         this.panel.style.display = "none";
@@ -576,7 +613,12 @@ export class TownController {
   // actions the keys trigger.
 
   private render(): void {
-    const screenKey = this.screen === "shop" ? `shop:${this.shopTab}` : this.screen;
+    const screenKey =
+      this.screen === "shop"
+        ? `shop:${this.shopTab}`
+        : this.screen === "equip"
+          ? `equip:${this.equipPhase}`
+          : this.screen;
     const animated = screenKey !== this.lastScreenKey;
     this.lastScreenKey = screenKey;
     this.panel.innerHTML = "";
@@ -587,6 +629,8 @@ export class TownController {
       this.renderShop(animated);
     } else if (this.screen === "roster") {
       this.renderRoster(animated);
+    } else if (this.screen === "equip") {
+      this.renderEquip(animated);
     } else {
       // inn / temple — flash message + party status
       this.renderFacility(animated);
@@ -928,11 +972,569 @@ export class TownController {
         title: "Guild — Party Roster",
         contentHtml: lines.join(""),
         flash: this.flash || null,
-        footer: "←→ tabs · B back",
+        footer: "←→ tabs · E equip · B back",
         mode: "status",
         animated,
       })
     );
+  }
+
+  // --- Equip screen -------------------------------------------------------
+  //
+  // FF6-style equipment management: pick a character → pick a slot (Weapon /
+  // Body / Shield / Head, plus an Optimum command) → browse owned compatible
+  // gear with a live stat-delta preview → confirm to swap. Manual swaps use
+  // manualEquip/manualUnequip (downgrades allowed — the player's call);
+  // Optimum reuses the shop's strictly-better equipItem semantics. Trinkets
+  // stay carried (never slotted) and are shown read-only.
+
+  private openEquipScreen(): void {
+    this.screen = "equip";
+    this.equipPhase = "char";
+    this.equipCharIndex = Math.min(this.equipCharIndex, Math.max(0, this.state.party.length - 1));
+    this.equipSlotIndex = 0;
+    this.equipItemIndex = 0;
+    this.flash = "";
+    this.render();
+  }
+
+  private equipChar(): Character {
+    return this.state.party[this.equipCharIndex];
+  }
+
+  private equipLoadout(): Loadout {
+    return this.state.equipment[this.equipChar().id] ?? { armor: [] };
+  }
+
+  private equippedInSlot(loadout: Loadout, slot: EquipSlot): ItemDef | undefined {
+    if (slot === "hand") return loadout.weapon;
+    return loadout.armor.find((a) => a.slot === slot);
+  }
+
+  /** Inventory indices holding gear that fits `slot`. */
+  private equipCandidateIndices(slot: EquipSlot): number[] {
+    const out: number[] = [];
+    for (let i = 0; i < this.state.inventory.length; i++) {
+      const item = ITEMS_BY_ID[this.state.inventory[i].itemId];
+      if (!item) continue;
+      const fits =
+        slot === "hand" ? item.type === "weapon" : item.type === "armor" && item.slot === slot;
+      if (fits) out.push(i);
+    }
+    return out;
+  }
+
+  /** Rows of the item-browse list: "(Remove)" followed by owned candidates. */
+  private equipItemRows(): { kind: "remove" | "candidate"; invIndex?: number }[] {
+    const slotIndex = Math.min(this.equipSlotIndex, EQUIP_SLOTS.length - 1);
+    const rows: { kind: "remove" | "candidate"; invIndex?: number }[] = [{ kind: "remove" }];
+    for (const invIndex of this.equipCandidateIndices(EQUIP_SLOTS[slotIndex].slot)) {
+      rows.push({ kind: "candidate", invIndex });
+    }
+    return rows;
+  }
+
+  private cycleEquipChar(dir: number): void {
+    const len = this.state.party.length;
+    if (len === 0) return;
+    this.equipCharIndex = (this.equipCharIndex + dir + len) % len;
+    this.flash = "";
+    this.render();
+  }
+
+  private handleEquipKey(lower: string): void {
+    if (this.equipPhase === "char") {
+      const len = this.state.party.length;
+      switch (lower) {
+        case "arrowup":
+        case "w":
+          if (len > 0) this.equipCharIndex = (this.equipCharIndex - 1 + len) % len;
+          this.flash = "";
+          this.render();
+          break;
+        case "arrowdown":
+          if (len > 0) this.equipCharIndex = (this.equipCharIndex + 1) % len;
+          this.flash = "";
+          this.render();
+          break;
+        case "enter":
+        case " ":
+          this.equipPhase = "slot";
+          this.equipSlotIndex = 0;
+          this.flash = "";
+          this.render();
+          break;
+        case "escape":
+          this.screen = "main";
+          this.flash = "";
+          this.render();
+          break;
+      }
+      return;
+    }
+
+    if (this.equipPhase === "slot") {
+      const rows = EQUIP_SLOTS.length + 1; // + Optimum
+      switch (lower) {
+        case "arrowup":
+        case "w":
+          this.equipSlotIndex = (this.equipSlotIndex - 1 + rows) % rows;
+          this.flash = "";
+          this.render();
+          break;
+        case "arrowdown":
+          this.equipSlotIndex = (this.equipSlotIndex + 1) % rows;
+          this.flash = "";
+          this.render();
+          break;
+        case "arrowleft":
+          this.cycleEquipChar(-1);
+          break;
+        case "arrowright":
+          this.cycleEquipChar(1);
+          break;
+        case "o":
+          this.doOptimum();
+          break;
+        case "enter":
+        case " ":
+          this.confirmEquipSlotRow();
+          break;
+        case "escape":
+          this.equipPhase = "char";
+          this.flash = "";
+          this.render();
+          break;
+      }
+      return;
+    }
+
+    // item phase
+    const len = this.equipItemRows().length;
+    switch (lower) {
+      case "arrowup":
+      case "w":
+        if (len > 0) this.equipItemIndex = (this.equipItemIndex - 1 + len) % len;
+        this.flash = "";
+        this.render();
+        break;
+      case "arrowdown":
+        if (len > 0) this.equipItemIndex = (this.equipItemIndex + 1) % len;
+        this.flash = "";
+        this.render();
+        break;
+      case "enter":
+      case " ":
+        this.confirmEquipItemRow();
+        break;
+      case "escape":
+        this.equipPhase = "slot";
+        this.flash = "";
+        this.render();
+        break;
+    }
+  }
+
+  private confirmEquipSlotRow(): void {
+    if (this.equipSlotIndex >= EQUIP_SLOTS.length) {
+      this.doOptimum();
+      return;
+    }
+    const { slot, label } = EQUIP_SLOTS[this.equipSlotIndex];
+    const current = this.equippedInSlot(this.equipLoadout(), slot);
+    if (current?.cursed) {
+      this.flash = `${current.name} is CURSED and cannot be removed — the Temple's Remove Curse (${REMOVE_CURSE_COST}g) can shatter it.`;
+      this.render();
+      return;
+    }
+    if (!current && this.equipCandidateIndices(slot).length === 0) {
+      this.flash = `No ${label.toLowerCase()} gear in the inventory.`;
+      this.render();
+      return;
+    }
+    this.equipPhase = "item";
+    this.equipItemIndex = 0;
+    this.flash = "";
+    this.render();
+  }
+
+  private confirmEquipItemRow(): void {
+    const { slot, label } = EQUIP_SLOTS[this.equipSlotIndex];
+    const c = this.equipChar();
+    const loadout = this.equipLoadout();
+    const row = this.equipItemRows()[this.equipItemIndex];
+    if (!row) return;
+
+    if (row.kind === "remove") {
+      const res = manualUnequip(loadout, slot);
+      if (!res) {
+        const current = this.equippedInSlot(loadout, slot);
+        this.flash = current?.cursed
+          ? `${current.name} is CURSED and cannot be removed.`
+          : `Nothing equipped in the ${label.toLowerCase()} slot.`;
+        this.render();
+        return;
+      }
+      this.state.equipment[c.id] = res.loadout;
+      this.state.inventory.push({ itemId: res.removed.id, identified: true });
+      audio.uiBuySell();
+      this.flash = `Removed ${res.removed.name} from ${c.name} — returned to inventory.`;
+      this.equipPhase = "slot";
+      this.render();
+      return;
+    }
+
+    const entry = this.state.inventory[row.invIndex!];
+    const item = entry ? ITEMS_BY_ID[entry.itemId] : undefined;
+    if (!entry || !item) return;
+    if (item.cursed && entry.identified) {
+      this.flash = `${item.name} is CURSED — equipping it would clamp it on forever. It stays in the pack.`;
+      this.render();
+      return;
+    }
+    const res = manualEquip(loadout, item);
+    if (!res) {
+      const current = this.equippedInSlot(loadout, slot);
+      this.flash = current?.cursed
+        ? `${current.name} is CURSED — the slot is locked until the Temple removes it.`
+        : `${c.name} cannot equip that.`;
+      this.render();
+      return;
+    }
+    const wasUnidentified = !entry.identified;
+    this.state.inventory.splice(row.invIndex!, 1);
+    if (res.displaced) {
+      this.state.inventory.push({ itemId: res.displaced.id, identified: true });
+    }
+    this.state.equipment[c.id] = res.loadout;
+    audio.uiBuySell();
+    const revealed = wasUnidentified
+      ? ` It is a ${item.name}${item.cursed ? " — CURSED! It clamps on!" : "!"}`
+      : "";
+    const displacedNote = res.displaced ? ` ${res.displaced.name} returned to inventory.` : "";
+    this.flash = wasUnidentified
+      ? `${c.name} tries on the unknown item.${revealed}${displacedNote}`
+      : `${c.name} equips ${item.name}.${displacedNote}`;
+    this.equipPhase = "slot";
+    this.render();
+  }
+
+  /** FF6 "Optimum": auto-equip the best owned gear for the selected character
+   *  using the shop's strictly-better equipItem rule. Skips unappraised gear
+   *  (unknown quality) and cursed gear (never a deliberate pick). */
+  private doOptimum(): void {
+    const c = this.equipChar();
+    let loadout = this.equipLoadout();
+    const equippedNames: string[] = [];
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let i = 0; i < this.state.inventory.length; i++) {
+        const entry = this.state.inventory[i];
+        const item = ITEMS_BY_ID[entry.itemId];
+        if (!item || (item.type !== "weapon" && item.type !== "armor")) continue;
+        if (!entry.identified || item.cursed) continue;
+        const next = equipItem(loadout, item);
+        if (next === loadout) continue;
+        const displaced = getDisplacedItem(loadout, next, item);
+        this.state.inventory.splice(i, 1);
+        if (displaced) {
+          this.state.inventory.push({ itemId: displaced.id, identified: true });
+        }
+        loadout = next;
+        equippedNames.push(item.name);
+        changed = true;
+        break; // inventory indices shifted — restart the scan
+      }
+    }
+    this.state.equipment[c.id] = loadout;
+    if (equippedNames.length > 0) audio.uiBuySell();
+    this.flash =
+      equippedNames.length > 0
+        ? `Optimum: equipped ${equippedNames.join(", ")} on ${c.name}.`
+        : `${c.name}'s gear is already optimal (of what's owned and appraised).`;
+    this.render();
+  }
+
+  private renderEquip(animated: boolean): void {
+    if (this.equipPhase === "char") {
+      this.renderEquipCharPhase(animated);
+    } else if (this.equipPhase === "slot") {
+      this.renderEquipSlotPhase(animated);
+    } else {
+      this.renderEquipItemPhase(animated);
+    }
+  }
+
+  private renderEquipCharPhase(animated: boolean): void {
+    const items: FF6WindowItem[] = this.state.party.map((c) => ({
+      label: c.name,
+      detail: `Lv${c.level} ${c.class} · ${charRow(c)} row`,
+      metadata: c.id,
+    }));
+    const win = new FF6Window({
+      title: "Equip — Choose a character",
+      items,
+      selectedIndex: this.equipCharIndex,
+      mode: "selection",
+      flash: this.flash || null,
+      footer: "D-pad navigate · A select · B back",
+      animated,
+      onHover: (i) => {
+        if (i !== this.equipCharIndex) {
+          this.equipCharIndex = i;
+          this.render(); // gear summary tracks the cursor
+        }
+      },
+      onConfirm: (i) => {
+        this.equipCharIndex = i;
+        this.equipPhase = "slot";
+        this.equipSlotIndex = 0;
+        this.flash = "";
+        this.render();
+      },
+      onBack: () => {
+        this.screen = "main";
+        this.flash = "";
+        this.render();
+      },
+    });
+    this.panel.appendChild(win.render());
+    this.panel.appendChild(
+      FF6Window.frame({ contentHtml: this.equipLoadoutSummaryHtml(), mode: "description", animated })
+    );
+  }
+
+  private renderEquipSlotPhase(animated: boolean): void {
+    const c = this.equipChar();
+    const loadout = this.equipLoadout();
+    const items: FF6WindowItem[] = EQUIP_SLOTS.map(({ slot, label }) => {
+      const item = this.equippedInSlot(loadout, slot);
+      return {
+        label,
+        detail: item ? `${item.name}${item.cursed ? " (CURSED)" : ""}` : "—",
+        className: item?.cursed ? "equip-cursed" : undefined,
+        metadata: slot,
+      };
+    });
+    items.push({ label: "Optimum", detail: "auto-equip best owned gear", metadata: "optimum" });
+
+    const win = new FF6Window({
+      title: `Equip — ${c.name} (Lv${c.level} ${c.class}, ${charRow(c)} row)`,
+      items,
+      selectedIndex: this.equipSlotIndex,
+      mode: "selection",
+      allowMultilineLabels: true,
+      flash: this.flash || null,
+      footer: "A choose · ←→ character · O optimum · B back",
+      animated,
+      onHover: (i) => {
+        this.equipSlotIndex = i;
+      },
+      onConfirm: (i) => {
+        this.equipSlotIndex = i;
+        this.confirmEquipSlotRow();
+      },
+      onBack: () => {
+        this.equipPhase = "char";
+        this.flash = "";
+        this.render();
+      },
+    });
+    this.panel.appendChild(win.render());
+    this.panel.appendChild(
+      FF6Window.frame({
+        contentHtml: this.equipStatsHtml(c, loadout, null) + this.equipTrinketsHtml(),
+        mode: "description",
+        animated,
+      })
+    );
+  }
+
+  private renderEquipItemPhase(animated: boolean): void {
+    const c = this.equipChar();
+    const loadout = this.equipLoadout();
+    const { slot, label } = EQUIP_SLOTS[this.equipSlotIndex];
+    const current = this.equippedInSlot(loadout, slot);
+    const rows = this.equipItemRows();
+
+    const items: FF6WindowItem[] = rows.map((row) => {
+      if (row.kind === "remove") {
+        return {
+          label: "(Remove)",
+          detail: current ? `unequip ${current.name}` : "—",
+          disabled: !current || current.cursed,
+          metadata: "remove",
+        };
+      }
+      const entry = this.state.inventory[row.invIndex!];
+      const item = ITEMS_BY_ID[entry.itemId];
+      const name = displayNameFor(item, entry.identified);
+      const knownCursed = entry.identified && !!item.cursed;
+      return {
+        label: knownCursed ? `${name} (CURSED)` : name,
+        detail: entry.identified ? this.itemStatsStr(item) || "no bonuses" : "unappraised — ?",
+        disabled: knownCursed,
+        className: knownCursed ? "equip-cursed" : undefined,
+        metadata: row.invIndex,
+      };
+    });
+
+    const win = new FF6Window({
+      title: `Equip ${c.name} — ${label}`,
+      items,
+      selectedIndex: this.equipItemIndex,
+      mode: "selection",
+      allowMultilineLabels: true,
+      flash: this.flash || null,
+      footer: "D-pad navigate · A equip · B back",
+      animated,
+      onHover: (i) => {
+        if (i !== this.equipItemIndex) {
+          this.equipItemIndex = i;
+          this.flash = "";
+          this.render(); // delta preview tracks the cursor
+        }
+      },
+      onConfirm: (i) => {
+        this.equipItemIndex = i;
+        this.confirmEquipItemRow();
+      },
+      onBack: () => {
+        this.equipPhase = "slot";
+        this.flash = "";
+        this.render();
+      },
+    });
+    this.panel.appendChild(win.render());
+
+    const previewHtml = this.equipItemPreviewHtml(c, loadout, slot, rows[this.equipItemIndex]);
+    this.panel.appendChild(
+      FF6Window.frame({ contentHtml: previewHtml, mode: "description", animated })
+    );
+  }
+
+  /** Delta panel for the highlighted browse row. */
+  private equipItemPreviewHtml(
+    c: Character,
+    loadout: Loadout,
+    slot: EquipSlot,
+    row: { kind: "remove" | "candidate"; invIndex?: number } | undefined
+  ): string {
+    if (!row) {
+      return `<div class="shop-compare">No compatible gear in the inventory.</div>`;
+    }
+    if (row.kind === "remove") {
+      const res = manualUnequip(loadout, slot);
+      if (!res) return this.equipStatsHtml(c, loadout, null);
+      return this.equipStatsHtml(c, loadout, res.loadout);
+    }
+    const entry = this.state.inventory[row.invIndex!];
+    const item = ITEMS_BY_ID[entry.itemId];
+    if (!entry.identified) {
+      return this.equipStatsHtml(
+        c,
+        loadout,
+        null,
+        `Unappraised — its true nature is unknown. Equipping identifies it (the shop appraises for ${APPRAISE_COST}g).`
+      );
+    }
+    const res = manualEquip(loadout, item);
+    if (!res) {
+      const current = this.equippedInSlot(loadout, slot);
+      return (
+        `<div class="shop-compare equip-warning">` +
+        `${current?.name ?? "This slot"} is CURSED — locked until the Temple's Remove Curse (${REMOVE_CURSE_COST}g).` +
+        `</div>`
+      );
+    }
+    let warning: string | undefined;
+    if (item.type === "weapon") {
+      const range = effectiveWeaponRange(c, item.range ?? "close");
+      const reachable =
+        canReach(c.formationSlot, range, "front") || canReach(c.formationSlot, range, "back");
+      if (!reachable) {
+        warning = `⚠ ${item.name} is ${item.range ?? "close"}-range — ${c.name} could not attack anything from the ${charRow(c)} row!`;
+      }
+    }
+    return this.equipStatsHtml(c, loadout, res.loadout, warning, warning ? "warning" : "info");
+  }
+
+  /** Stat panel: ATK/DEF plus the six core stats, with ▲/▼ deltas when a
+   *  preview loadout is supplied. ATK mirrors the melee base formula
+   *  (effSTR + level + weapon attackBonus); DEF is total flat armor. */
+  private equipStatsHtml(
+    c: Character,
+    oldLoadout: Loadout,
+    nextLoadout: Loadout | null,
+    note?: string,
+    noteKind: "info" | "warning" = "info"
+  ): string {
+    const perks = perksForCharacter(c);
+    const summarize = (l: Loadout) => {
+      const eff = effectiveStats(c, l, perks);
+      return {
+        eff,
+        atk: eff.str + c.level + (l.weapon?.attackBonus ?? 0),
+        def: l.armor.reduce((sum, a) => sum + (a.defenseBonus ?? 0), 0),
+      };
+    };
+    const before = summarize(oldLoadout);
+    const after = nextLoadout ? summarize(nextLoadout) : null;
+
+    const delta = (statLabel: string, a: number, b: number | null): string => {
+      if (b === null || b === a) {
+        return `<span class="equip-stat"><span class="equip-stat-label">${statLabel}</span> ${a}</span>`;
+      }
+      const cls = b > a ? "equip-delta-up" : "equip-delta-down";
+      const arrow = b > a ? "▲" : "▼";
+      return (
+        `<span class="equip-stat"><span class="equip-stat-label">${statLabel}</span> ` +
+        `${a} → <span class="${cls}">${b} ${arrow}</span></span>`
+      );
+    };
+
+    const statKeys: (keyof Stats)[] = ["str", "int", "pie", "vit", "agi", "luk"];
+    const coreCells = statKeys
+      .map((k) => delta(k.toUpperCase(), before.eff[k], after ? after.eff[k] : null))
+      .join("");
+    const noteHtml = note
+      ? `<div class="${noteKind === "warning" ? "equip-warning" : "equip-note"}">${note}</div>`
+      : "";
+
+    return (
+      `<div class="equip-compare">` +
+      `<div class="equip-stat-line">${delta("ATK", before.atk, after ? after.atk : null)}` +
+      `${delta("DEF", before.def, after ? after.def : null)}</div>` +
+      `<div class="equip-stat-grid">${coreCells}</div>` +
+      noteHtml +
+      `</div>`
+    );
+  }
+
+  /** Gear summary for the character-select phase's lower panel. */
+  private equipLoadoutSummaryHtml(): string {
+    const loadout = this.equipLoadout();
+    const rows = EQUIP_SLOTS.map(({ slot, label }) => {
+      const item = this.equippedInSlot(loadout, slot);
+      const name = item ? `${item.name}${item.cursed ? " (CURSED)" : ""}` : "—";
+      const cls = item?.cursed ? " equip-cursed" : "";
+      return (
+        `<div class="equip-row"><span class="equip-row-label">${label}</span>` +
+        `<span class="equip-row-value${cls}">${name}</span></div>`
+      );
+    }).join("");
+    return `<div class="equip-summary">${rows}${this.equipTrinketsHtml()}</div>`;
+  }
+
+  /** Trinkets are carried party-wide, never slotted — shown read-only. */
+  private equipTrinketsHtml(): string {
+    const names = this.state.inventory
+      .map((e) => ITEMS_BY_ID[e.itemId])
+      .filter((i): i is ItemDef => !!i && i.type === "trinket")
+      .map((i) => i.name);
+    if (names.length === 0) return "";
+    return `<div class="equip-trinkets">Trinkets (carried by the party): ${names.join(", ")}</div>`;
   }
 
   private renderFacility(animated: boolean): void {
