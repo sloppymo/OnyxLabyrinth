@@ -64,7 +64,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/data/enemies.test.ts` | Unit tests for enemy definitions and encounter tables (vitest). |
 | `src/engine/render-math.test.ts` | Unit tests for renderer geometry/fog/camera math (vitest, 74+ tests). |
 | `src/engine/camp-ui.ts` | Camp screen controller. |
-| `src/engine/town-ui.ts` | Town/hub screen controller. Training Ground is now a read-only roster/perk-review screen — level-ups happen automatically post-combat (see "Class perks" below), not here. |
+| `src/engine/town-ui.ts` | Town/hub screen controller. Training Ground is now a read-only roster/perk-review screen — level-ups happen automatically post-combat (see "Class perks" below), not here. Also owns the FF6-style Equip screen (`[E]` from the main menu or roster): character → slot → item browse with live stat-delta arrows; manual swaps use `manualEquip`/`manualUnequip` (combat.ts — downgrades allowed, cursed slots refused), the Optimum row reuses `equipItem`'s strictly-better rule; shop buy-time auto-equip is unchanged. |
 | `src/engine/save-ui.ts` | Save/load menu controller. |
 | `src/engine/party-ui.ts` | Party creation controller. Opens on a choice screen (default party vs. custom editor) before the six-slot editor phase. |
 | `src/engine/title-ui.ts` | Title screen controller (`TitleController`) — shown on boot: New Game (always), Continue (if an autosave exists), Arena. Owns the "real" home of mode `"title"`; several other overlays *borrow* the same mode name (see the pitfall below). |
