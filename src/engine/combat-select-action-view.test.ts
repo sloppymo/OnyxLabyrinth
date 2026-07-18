@@ -16,6 +16,7 @@ import { buildPalette } from "./combat-action-palette";
 import { createCombatState, type CombatState, type EnemyInstance } from "../game/combat";
 import { createCharacter, type Character } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
+import { MAGE_SPELLS } from "../data/spells";
 
 function makeEnemy(instanceId: string, name = "Test Rat"): EnemyInstance {
   const def = {
@@ -158,7 +159,7 @@ describe("joinHintParts / playbackHintText", () => {
   });
 
   it("drops least-important (tail) segments first", () => {
-    expect(joinHintParts(["A confirm", "B back", "↑↓"], 20)).toBe("A confirm · B back");
+    expect(joinHintParts(["A:confirm", "B:back", "↑↓"], 20)).toBe("A:confirm · B:back");
     expect(playbackHintText("keyboard")).toMatch(/Shift:2×/);
   });
 });
@@ -202,12 +203,34 @@ describe("renderCombatWindows", () => {
     const view = baseView(state);
     view.menuMode = "palette";
     view.palette = buildPalette(fighter, [], []);
+    view.menuResourceLine = "RG 3/12";
     renderCombatWindows(container, view, noopHandlers());
     expect(container.querySelectorAll(".ff6-palette-slot")).toHaveLength(4);
     expect(container.textContent).toContain("Atk");
     expect(container.textContent).toContain("Magic");
+    expect(container.textContent).toContain("Tech");
+    expect(container.textContent).not.toContain("Skl");
+    // Resource belongs in the popup header only — not duplicated under slots.
+    expect(container.querySelector(".ff6-resource-row")).toBeNull();
+    expect(container.querySelector(".ff6-popup-header")?.textContent).toContain("RG 3/12");
     const disabled = container.querySelector(".ff6-palette-slot.disabled");
     expect(disabled?.textContent).toContain("Magic");
+  });
+
+  it("puts full spell description on title when the detail pane clamps", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    const spell = MAGE_SPELLS.find((s) => s.id === "mage-arcane-ward")!;
+    const view = baseView(state);
+    view.menuMode = "selection";
+    view.selectionTitle = "Magic";
+    view.selectionEntries = [{ label: spell.name, detail: `${spell.spCost} SP` }];
+    view.spellDetail = spell;
+    renderCombatWindows(container, view, noopHandlers());
+    const desc = container.querySelector(".ff6-spell-detail-desc") as HTMLElement;
+    expect(desc?.title).toBe(spell.description);
+    expect(container.querySelector(".ff6-hint-row")?.textContent).toBe(
+      "A:confirm · B:back · ↑↓"
+    );
   });
 
   it("highlights an inspected party member in the roster", () => {

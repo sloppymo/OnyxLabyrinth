@@ -582,8 +582,11 @@ function impactSteps(
         const dmg = damageAmount ?? 0;
         anim.hitFlashIntensity = Math.max(0.25, Math.min(0.65, 0.25 + dmg / 180));
         // Brief recoil: enemies kick left (toward party), party/allies kick right.
+        // Distance scales with damage so a heavy hit reads as a stagger and a
+        // scratch barely registers.
         const recoilDir = actor.kind === "enemy" ? -1 : 1;
-        startMove(anim, recoilDir * 8 * actor.scale, 0, 80, now, scene.playbackRate);
+        const recoilPx = Math.max(5, Math.min(16, 5 + dmg / 25));
+        startMove(anim, recoilDir * recoilPx * actor.scale, 0, 80, now, scene.playbackRate);
       }
       pushPopup(scene, targetId, text, color, now, w, h, big);
       if (actor) {
@@ -1594,11 +1597,19 @@ export function playTurn(
     // Symbolic step forward — just enough to read as committing to the
     // attack. Party steps left toward enemies, enemies step right.
     const dx = approachDelta(actor.kind, actor.scale);
+    // Brief backward coil before the lunge, so the approach reads as a
+    // wind-up rather than an instant snap toward the target. Total time
+    // still adds up to APPROACH_MS, so downstream step timing is untouched.
+    const coilMs = Math.min(90, APPROACH_MS * 0.35);
     steps.push(
       step(t, (sc, n) => {
         const a = getAnim(sc, actor.kind, actorId, n);
         setAnimState(a, "walk", n);
-        startMove(a, dx, 0, APPROACH_MS, n, sc.playbackRate);
+        startMove(a, dx * -0.18, 0, coilMs, n, sc.playbackRate);
+      }),
+      step(t + coilMs, (sc, n) => {
+        const a = getAnim(sc, actor.kind, actorId, n);
+        startMove(a, dx, 0, APPROACH_MS - coilMs, n, sc.playbackRate);
       })
     );
   };
@@ -1624,11 +1635,23 @@ export function playTurn(
   };
 
   const attackAnim = (actorId: string): void => {
+    // Same coil-then-strike telegraph as approach(), for actors that don't
+    // physically step forward (ranged attackers, the miss path).
+    const coilMs = Math.min(70, ATTACK_MS * 0.3);
     steps.push(
       step(t, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
-        setAnimState(getAnim(sc, actor.kind, actorId, n), "attack", n);
+        const a = getAnim(sc, actor.kind, actorId, n);
+        const coilDx = -approachDelta(actor.kind, actor.scale) * 0.12;
+        startMove(a, coilDx, 0, coilMs, n, sc.playbackRate);
+      }),
+      step(t + coilMs, (sc, n) => {
+        const actor = findActor(sc, actorId, w, h);
+        if (!actor) return;
+        const a = getAnim(sc, actor.kind, actorId, n);
+        setAnimState(a, "attack", n);
+        startMove(a, 0, 0, ATTACK_MS - coilMs, n, sc.playbackRate);
       }),
       step(t + ATTACK_MS, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
@@ -1672,7 +1695,8 @@ export function playTurn(
   let fieldPushed = false;
   let pendingCastStyle: EffectStyle | null = null;
 
-  for (const evt of events) {
+  for (let evtIndex = 0; evtIndex < events.length; evtIndex++) {
+    const evt = events[evtIndex];
     if (!evt) continue;
 
     switch (evt.type) {
@@ -2105,7 +2129,14 @@ export function playTurn(
             }
           })
         );
-        t += evt.wasEnemy ? DEATH_FADE_MS : 450;
+        // Consecutive "defeated" events (e.g. an AoE wiping several enemies
+        // at once) should all play their death animations together instead
+        // of staggering — only advance the clock after the last one in the
+        // run so they share the same start time.
+        const nextEvt = events[evtIndex + 1];
+        if (!nextEvt || nextEvt.type !== "defeated") {
+          t += evt.wasEnemy ? DEATH_FADE_MS : 450;
+        }
         break;
       }
 
@@ -2777,16 +2808,31 @@ function drawMarkers(
   const isActive = kind === "party" && scene.activeActorId === id;
   if (!isCursor && !isActive) return;
 
-  const blink = Math.floor(now / 260) % 2 === 0;
-  if (isCursor && !blink) return;
-
+  // Bounce + soft opacity pulse (never fully off — hard blink was easy to
+  // miss against busy floor art at Deck scale).
   const bounce = Math.sin(now / 180) * 3;
-  ctx.save();
-  ctx.fillStyle =
+  const pulse = isCursor
+    ? 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(now / 200))
+    : 1;
+  const fill =
     isCursor && scene.cursor?.kill ? COLORS.cursorKill : COLORS.cursor;
-  ctx.strokeStyle = "#14110d";
-  ctx.lineWidth = 2;
   const y = topY - MARKER_TIP_GAP_PX + bounce;
+
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  // Soft halo under the triangle for contrast on textured floors.
+  if (isCursor) {
+    ctx.fillStyle = "rgba(255, 236, 140, 0.45)";
+    ctx.beginPath();
+    ctx.moveTo(x - 12, y - 14);
+    ctx.lineTo(x + 12, y - 14);
+    ctx.lineTo(x, y + 3);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = "#14110d";
+  ctx.lineWidth = 2.5;
   // Downward-pointing FF6 hand-ish triangle.
   ctx.beginPath();
   ctx.moveTo(x - 9, y - 12);

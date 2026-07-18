@@ -152,7 +152,7 @@ const PALETTE_LABELS: Record<PaletteSlot["kind"], string> = {
   attack: "Atk",
   defend: "Def",
   cast: "Magic",
-  skill: "Skl",
+  skill: "Tech",
   item: "Item",
   flee: "Run",
 };
@@ -334,9 +334,8 @@ function buildCommandPopup(
       row.appendChild(slotEl);
     }
     win.appendChild(row);
-    if (view.menuResourceLine) {
-      win.appendChild(el("ff6-hint-row ff6-resource-row", view.menuResourceLine));
-    }
+    // Resource lives in the popup header only — a second SP/RG line under
+    // the face buttons read as a layout leftover when identical.
     win.appendChild(
       el("ff6-hint-row", paletteHintText(view.palette, view.partyAuto ?? false))
     );
@@ -349,9 +348,6 @@ function buildCommandPopup(
       row.addEventListener("mouseenter", () => handlers.onMenuHover(i));
       row.addEventListener("click", () => handlers.onMenuConfirm(i));
       win.appendChild(row);
-    }
-    if (view.menuResourceLine) {
-      win.appendChild(el("ff6-hint-row ff6-resource-row", view.menuResourceLine));
     }
     win.appendChild(el("ff6-hint-row", menuHintText(view.menuEntries)));
   } else {
@@ -419,7 +415,7 @@ function buildCommandPopup(
     if (view.selectionFooter) {
       win.appendChild(el("ff6-sel-footer", view.selectionFooter));
     }
-    win.appendChild(el("ff6-hint-row", joinHintParts(["A confirm", "B back", "↑↓"])));
+    win.appendChild(el("ff6-hint-row", joinHintParts(["A:confirm", "B:back", "↑↓"])));
   }
 
   if (view.flash) {
@@ -534,7 +530,9 @@ function buildSpellDetailBody(spell: SpellDef): HTMLElement {
   win.appendChild(meta);
 
   win.appendChild(el("ff6-spell-detail-effect", spellEffectSummary(spell.effect)));
-  win.appendChild(el("ff6-spell-detail-desc", spell.description));
+  const desc = el("ff6-spell-detail-desc", spell.description);
+  desc.title = spell.description;
+  win.appendChild(desc);
   return win;
 }
 
@@ -553,7 +551,9 @@ function buildTechniqueDetailBody(tech: TechniqueDef): HTMLElement {
   win.appendChild(meta);
 
   win.appendChild(el("ff6-spell-detail-effect", techniqueEffectSummary(tech.effect)));
-  win.appendChild(el("ff6-spell-detail-desc", tech.description));
+  const desc = el("ff6-spell-detail-desc", tech.description);
+  desc.title = tech.description;
+  win.appendChild(desc);
   return win;
 }
 
@@ -758,7 +758,12 @@ function buildBattleWindow(view: CombatWindowsView): HTMLElement {
   const win = el("ff6-window ff6-battle");
 
   const enemyCol = el("ff6-battle-enemies");
-  enemyCol.appendChild(el("ff6-battle-round", `Round ${view.state.round}`));
+  const showingDetail = !!(view.techniqueDetail || view.spellDetail);
+  // Round stays on the enemy list; hide it while the column is a spell/tech
+  // card so the 2-line description isn't mid-glyph clipped by the band.
+  if (!showingDetail) {
+    enemyCol.appendChild(el("ff6-battle-round", `Round ${view.state.round}`));
+  }
   enemyCol.appendChild(
     view.techniqueDetail
       ? buildTechniqueDetailBody(view.techniqueDetail)

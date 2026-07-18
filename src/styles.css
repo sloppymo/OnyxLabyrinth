@@ -1558,8 +1558,14 @@ canvas#map-canvas {
   color: #c8c4e0;
   line-height: 1.3;
   white-space: normal;
-  flex: 1;
-  min-height: 0;
+  /* Fixed footer band — show at most 2 lines; full text is on title. */
+  flex: 0 0 auto;
+  max-height: calc(1.3em * 2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ff6-party {
