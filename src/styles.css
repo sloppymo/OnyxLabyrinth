@@ -1198,37 +1198,49 @@ canvas#map-canvas {
 }
 
 /*
- * Command popup — replaces the old permanent left command window. Floats
- * above the footer (near the party sprites/column) instead of taking a
- * fixed slot, so it only occupies space while the player is actually
- * choosing an action. `-wrap` carries the positioning (and stays
- * click-through outside the box); `.ff6-command-popup` is the visible box.
+ * Command popup — replaces the old permanent left command window. Docked in
+ * the upper-left corner, the one part of the battlefield formation slots
+ * never reach (enemies sit lower-left, party lower/mid-right — see
+ * PARTY_FORMATION_SLOTS / ENEMY_*_SLOTS in combat-scene-math.ts), so it
+ * never covers a combatant regardless of who's acting or how tall the list
+ * gets. `-wrap` carries the positioning (and stays click-through outside the
+ * box); `.ff6-command-popup` is the visible box. Lives in
+ * `#combat-popup-anchor`, a full-canvas sibling of `#combat-windows`, so
+ * `left`/`top` here are design-space percentages (0–100% = the whole
+ * 768×672 canvas) — NOT percentages of the footer band.
  */
+#combat-popup-anchor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .ff6-command-popup-wrap {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  margin-bottom: 6px;
+  left: 2%;
+  top: 2%;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   pointer-events: none;
 }
 
 /*
- * Height-capped so a long list (Target/Magic with 5+ entries) can't grow
- * upward into the party sprites and cover the very targeting cursor/turn
- * marker the unified footer is supposed to keep visible — it scrolls
- * internally instead (`.ff6-selection-list` already does).
+ * Height-capped so a long list (Target/Magic with many entries) can't grow
+ * past the enemy front row below it — it scrolls internally instead
+ * (`.ff6-selection-list` already does). Taller and wider than the old
+ * bottom-right dock since the upper-left corner has the room to spare, and
+ * a min-height so short menus (the root command palette) read as a
+ * substantial window rather than a shrink-wrapped sliver.
  */
 .ff6-command-popup {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  width: 46%;
-  min-width: 220px;
-  max-width: 360px;
-  max-height: 150px;
+  width: 50%;
+  min-width: 260px;
+  max-width: 420px;
+  min-height: 170px;
+  max-height: 260px;
   pointer-events: auto;
 }
 
@@ -1237,10 +1249,11 @@ canvas#map-canvas {
   width: auto;
   min-width: 0;
   max-width: none;
+  min-height: 0;
 }
 
 .ff6-popup-header {
-  font-size: 16px;
+  font-size: 19px;
   color: #ffd769;
   letter-spacing: 0.02em;
   padding-bottom: 4px;
@@ -1264,12 +1277,12 @@ canvas#map-canvas {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 4px 1px;
+  padding: 6px 1px;
   border: 2px solid rgba(232, 232, 240, 0.45);
   border-radius: 6px;
   background: rgba(16, 28, 88, 0.55);
   cursor: pointer;
-  min-height: 52px;
+  min-height: 60px;
   min-width: 0;
   overflow: hidden;
 }
@@ -1282,7 +1295,7 @@ canvas#map-canvas {
 /* Glyph is now a small accent badge — the action label is the readable
    element (was reversed: 26px glyph vs 14px label). */
 .ff6-palette-glyph {
-  font-size: 11px;
+  font-size: 13px;
   color: #ffd769;
   font-weight: bold;
   letter-spacing: 0.02em;
@@ -1290,7 +1303,7 @@ canvas#map-canvas {
 }
 
 .ff6-palette-label {
-  font-size: 16px;
+  font-size: 19px;
   line-height: 1.15;
   text-align: center;
   max-width: 100%;
@@ -1362,8 +1375,10 @@ canvas#map-canvas {
 }
 
 .ff6-selection-list .ff6-menu-item {
-  /* Match roster 18px — --fs-small (26px) crushed 4-letter names to "Co…". */
-  font-size: 18px;
+  /* Bumped from the roster's 18px floor now that the popup is wider
+     (260–420px, was 220–360px) — --fs-small (26px) still crushes 4-letter
+     names to "Co…" at this width, so this stays its own smaller step. */
+  font-size: 21px;
   white-space: nowrap;
 }
 
@@ -1403,7 +1418,12 @@ canvas#map-canvas {
 }
 
 .ff6-battle-enemies {
-  flex: 0 0 26%;
+  /* Widened from 26% (party column shrinks to compensate, see .ff6-party) —
+     spell/technique descriptions were wrapping to 4+ lines and clipping
+     against the fixed footer band; the party roster's grid columns
+     (name | status | HP bar | HP text | resource text) never used all of
+     its old 74% share, leaving dead space between names and stat bars. */
+  flex: 0 0 44%;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1543,6 +1563,9 @@ canvas#map-canvas {
 }
 
 .ff6-party {
+  /* Takes whatever .ff6-battle-enemies doesn't (now ~56%, was ~74%) — the
+     grid's fixed-width columns (status/HP bar/HP text/resource text) don't
+     scale with it, so the name column just reclaims less unused space. */
   flex: 1 1 auto;
   min-width: 0;
   /* Extra right padding so the resource column doesn't kiss the border;
@@ -1802,7 +1825,7 @@ canvas#map-canvas {
 .ff6-hint-row {
   margin-top: auto;
   padding: 4px 6px 0;
-  font-size: 16px;
+  font-size: 17px;
   color: #8890b8;
   border-top: 1px solid rgba(232, 232, 240, 0.18);
   white-space: nowrap;

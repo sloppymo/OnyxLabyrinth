@@ -295,11 +295,10 @@ function buildPopupHeader(view: CombatWindowsView): HTMLElement | null {
 }
 
 /**
- * Contextual popup replacing the old permanent command window. Anchored
- * above the party column (near the acting character's sprites) rather than
- * over a specific row — row-level anchoring would have to survive KO,
- * scrolling, and mid-turn reordering, which is fragile for no real gain
- * since the popup already names the actor in its header.
+ * Contextual popup replacing the old permanent command window. Docked in the
+ * upper-left corner (see `.ff6-command-popup-wrap` in styles.css) — the one
+ * part of the battlefield formation slots never reach, so it never covers a
+ * combatant regardless of who's acting or how tall the list gets.
  */
 function buildCommandPopup(
   view: CombatWindowsView,
@@ -772,16 +771,26 @@ function buildBattleWindow(view: CombatWindowsView): HTMLElement {
   return win;
 }
 
-/** Render the FF6 window row (and result overlay) into `container`. */
+/**
+ * Render the FF6 window row (and result overlay) into `container`.
+ *
+ * `popupContainer` (default: `container`) is where the command popup goes.
+ * Pass a full-canvas sibling of the footer (see `combatPopupAnchor` in
+ * shell.ts) so the popup's upper-left dock is positioned against the whole
+ * 768×672 design space, not just the ~144px footer band. Callers that don't
+ * care (tests, vfx-vignette) can omit it.
+ */
 export function renderCombatWindows(
   container: HTMLElement,
   view: CombatWindowsView,
-  handlers: CombatWindowsHandlers
+  handlers: CombatWindowsHandlers,
+  popupContainer: HTMLElement = container
 ): void {
   container.innerHTML = "";
+  if (popupContainer !== container) popupContainer.innerHTML = "";
 
   const popup = buildCommandPopup(view, handlers);
-  if (popup) container.appendChild(popup);
+  if (popup) popupContainer.appendChild(popup);
 
   const row = el("ff6-windows");
   row.appendChild(buildBattleWindow(view));

@@ -41,7 +41,7 @@ import { isUtilitySpell, type SpellDef } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import { techniquesForClass, techniqueById, classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
 import type { ItemDef } from "../data/items";
-import { combatCanvas, combatWindows } from "./shell";
+import { combatCanvas, combatWindows, combatPopupAnchor } from "./shell";
 import {
   createScene,
   renderScene,
@@ -1664,6 +1664,6 @@ export class CombatController {
         this.confirmSelection();
       },
     };
-    renderCombatWindows(combatWindows, view, handlers);
+    renderCombatWindows(combatWindows, view, handlers, combatPopupAnchor);
   }
 }

@@ -2,9 +2,12 @@
  * Dedicated 3/4 top-down arena backdrop renderer for combat scenes.
  *
  * This module draws a synthetic room (floor + side walls + back wall + void)
- * using a *screen-space silhouette* with mild rake — near-orthographic oblique,
- * not true wide-angle perspective. Floor tile columns and wall edges share the
- * same left/right insets so they never disagree. It does not reuse the corridor
+ * using true perspective projection: the room silhouette (where floor meets
+ * side wall at each screen row) is derived by projecting the actual world-
+ * space room corners (±roomWidth/2, worldDepth, 0) through the camera, so
+ * near rows are wide and far rows converge toward the horizon at the same
+ * rate real geometry would. Floor tile columns and wall edges share the same
+ * left/right insets so they never disagree. It does not reuse the corridor
  * raycaster, so it cannot accidentally break the dungeon view.
  *
  * Deliberately imports only a type from renderer.ts (no runtime cycle).
@@ -12,7 +15,11 @@
 
 import type { LoadedTileset } from "./renderer";
 import type { ArenaCamera } from "./render-math";
-import { arenaOpacityForDepth, arenaProject } from "./render-math";
+import {
+  arenaFloorRowDistance,
+  arenaOpacityForDepth,
+  arenaProject,
+} from "./render-math";
 import { ARENA_CAMERA, buildArenaCamera } from "./arena-camera";
 
 export interface ArenaRenderOptions {
@@ -33,24 +40,6 @@ export interface ArenaRenderOptions {
   maxVisibleDist?: number;
   /** Void/fog blend color. Must match PALETTE.bg. */
   voidColor?: string;
-  /**
-   * Back wall width as a fraction of frame (centered). Side walls occupy the
-   * remaining inset on each side. Target ~0.70–0.80.
-   */
-  backWallWidthFrac?: number;
-  /**
-   * Side-wall inset at the bottom edge (near / viewer). Slightly larger than
-   * the far inset → gentle outward rake; difference is only a few % of width
-   * so walls read as near-vertical strips, not perspective wedges.
-   */
-  sideWallNearInsetFrac?: number;
-  /**
-   * Floor row foreshortening power. worldY = lerp(far, near, t^rowCompressPower)
-   * with t 0 at seam → 1 at bottom. Depth range is kept modest so compression
-   * reads across the whole apron (not only the top strip near the seam).
-   * Target front/back tile height ≈ 1.8–2.2× with a visible mid-floor gradient.
-   */
-  rowCompressPower?: number;
   /** Near-field world depth at the bottom edge (front tile row). */
   floorNearDepth?: number;
 }
@@ -60,13 +49,6 @@ const DEFAULTS = {
   // consumed by the sprite ground-plane contract and the tests).
   ...ARENA_CAMERA,
   voidColor: "#0e0d0a",
-  /** Back wall ~78% of frame → each side wall ~11% at the seam. */
-  backWallWidthFrac: 0.78,
-  /** Near inset ~14% → ~3pp outward rake (near-vertical drop, few degrees). */
-  sideWallNearInsetFrac: 0.14,
-  /** front/back tile-height ratio ≈ 2.0× (verified via arenaFloorScreenYForDepth
-   * at roomDepth=14/floorNearDepth=3); 0.7 measured ~3.9×, overshooting target. */
-  rowCompressPower: 0.82,
   floorNearDepth: 3.0,
 } as const;
 
@@ -85,9 +67,6 @@ interface ArenaParams {
   horizonFrac: number;
   maxVisibleDist: number;
   voidColor: string;
-  backWallWidthFrac: number;
-  sideWallNearInsetFrac: number;
-  rowCompressPower: number;
   floorNearDepth: number;
 }
 
@@ -107,10 +86,6 @@ export function renderArenaRoom(
     horizonFrac: options.horizonFrac ?? DEFAULTS.horizonFrac,
     maxVisibleDist: options.maxVisibleDist ?? DEFAULTS.maxVisibleDist,
     voidColor: options.voidColor ?? DEFAULTS.voidColor,
-    backWallWidthFrac: options.backWallWidthFrac ?? DEFAULTS.backWallWidthFrac,
-    sideWallNearInsetFrac:
-      options.sideWallNearInsetFrac ?? DEFAULTS.sideWallNearInsetFrac,
-    rowCompressPower: options.rowCompressPower ?? DEFAULTS.rowCompressPower,
     floorNearDepth: options.floorNearDepth ?? DEFAULTS.floorNearDepth,
   };
   const camera = buildArenaCamera(h, params);
@@ -231,8 +206,10 @@ function lerp(a: number, b: number, t: number): number {
 
 /**
  * Screen-space room silhouette — shared by floor and walls so they never
- * disagree. Far inset from backWallWidthFrac; near inset slightly wider for a
- * gentle outward rake (side walls ≈ near-vertical strips).
+ * disagree. Derived by projecting the true world-space room edges
+ * (x = ±roomWidth/2, z = 0) at this row's floor depth through the camera, so
+ * the walls converge toward the horizon at the same rate real geometry does
+ * (a genuine vanishing point) instead of a hand-tuned near/far blend.
  */
 function roomInsets(
   y: number,
@@ -241,13 +218,18 @@ function roomInsets(
   camera: ArenaCamera,
   params: ArenaParams
 ): { left: number; right: number } {
+  const halfW = params.roomWidth / 2;
   const seamY = camera.horizonY;
-  const farInset = ((1 - params.backWallWidthFrac) / 2) * w;
-  const nearInset = params.sideWallNearInsetFrac * w;
-  const t =
-    y <= seamY ? 0 : Math.min(1, (y - seamY) / Math.max(1, h - 1 - seamY));
-  const inset = lerp(farInset, nearInset, t);
-  return { left: inset, right: w - 1 - inset };
+  const worldY =
+    y <= seamY
+      ? params.roomDepth
+      : Math.min(
+          params.roomDepth,
+          Math.max(params.floorNearDepth * 0.3, arenaFloorRowDistance(y, camera, h))
+        );
+  const left = arenaProject({ x: -halfW, y: worldY, z: 0 }, camera, w, h).x;
+  const right = arenaProject({ x: halfW, y: worldY, z: 0 }, camera, w, h).x;
+  return { left, right };
 }
 
 /** World-unit distance from a side wall within which the floor darkens. */
@@ -255,9 +237,10 @@ const FLOOR_AO_RANGE = 2.2;
 
 /**
  * Floor between the silhouette edges.
- * - X: screen-linear across the floor span → parallel columns.
- * - Y: power-compressed depth (t^rowCompressPower) → short back rows, tall
- *   front rows (oblique floor read). Fog still uses world depth.
+ * - X: linear across the floor span at this row (exact for a fixed-depth
+ *   perspective row — see roomInsets).
+ * - Y: true camera-space floor depth via arenaFloorRowDistance, so rows
+ *   converge toward the horizon exactly like the wall silhouette does.
  */
 function drawFloor(
   buf: ImageData,
@@ -275,15 +258,10 @@ function drawFloor(
   const halfW = params.roomWidth / 2;
   const texSize = floorA.width;
   const startY = Math.max(0, Math.floor(camera.horizonY) + 1);
-  const seamY = camera.horizonY;
-  const yNear = params.floorNearDepth;
-  const yFar = params.roomDepth;
-  const power = params.rowCompressPower;
 
   for (let y = startY; y < h; y++) {
-    const t = Math.min(1, Math.max(0, (y - seamY) / Math.max(1, h - 1 - seamY)));
-    const worldY = lerp(yFar, yNear, Math.pow(t, power));
-    if (worldY <= 0 || worldY > params.maxVisibleDist) continue;
+    const worldY = arenaFloorRowDistance(y, camera, h);
+    if (!isFinite(worldY) || worldY <= 0 || worldY > params.maxVisibleDist) continue;
 
     // Mild fog from depth — keep the floor readable (not crushed).
     const fog = Math.min(1, Math.max(0.55, arenaOpacityForDepth(worldY) + 0.25));

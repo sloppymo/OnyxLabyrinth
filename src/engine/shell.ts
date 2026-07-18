@@ -35,6 +35,7 @@ app.innerHTML = `
     <div id="combat-panel"></div>
     <div id="combat-wrap" style="display:none">
       <canvas id="combat-canvas" width="768" height="672"></canvas>
+      <div id="combat-popup-anchor"></div>
       <div id="combat-windows"></div>
     </div>
   </div>
@@ -54,6 +55,17 @@ const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
 export const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
 const combatWrap = document.querySelector<HTMLDivElement>("#combat-wrap")!;
 export const combatWindows = document.querySelector<HTMLDivElement>("#combat-windows")!;
+/**
+ * Full-canvas-sized sibling of `#combat-windows` — the command popup renders
+ * here instead of inside the footer band, so its `position: absolute`
+ * containing block is the whole 768×672 design space (matching
+ * combat-scene-math's sprite coordinates) rather than the ~144px footer.
+ * That lets the popup anchor next to the acting character's actual sprite
+ * position instead of always docking over the same fixed area.
+ */
+export const combatPopupAnchor = document.querySelector<HTMLDivElement>(
+  "#combat-popup-anchor"
+)!;
 export const combatCanvas = document.querySelector<HTMLCanvasElement>("#combat-canvas")!;
 export const combatCtx = combatCanvas.getContext("2d")!;
 
