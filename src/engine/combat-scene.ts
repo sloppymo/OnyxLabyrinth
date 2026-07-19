@@ -2469,7 +2469,8 @@ function drawStripFrame(
   y: number,
   size: number,
   mirror: boolean,
-  opacity: number
+  opacity: number,
+  tint?: string
 ): void {
   ctx.save();
   ctx.globalAlpha = opacity;
@@ -2487,8 +2488,21 @@ function drawStripFrame(
     size,
     size
   );
+  if (tint) {
+    // Wash color onto only the pixels just drawn, so the sprite's alpha
+    // shape (not a bounding box) gets tinted.
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = tint;
+    ctx.fillRect(-size / 2, -size / 2, size, size);
+  }
   ctx.restore();
 }
+
+/** Poison status wash applied to sprites and fallback shapes alike. */
+const POISON_TINT = "rgba(70, 220, 90, 0.4)";
+
+/** Burning (DoT) status wash — enemy-only, tracked in `CombatState.enemyDots`. */
+const BURN_TINT = "rgba(255, 130, 40, 0.4)";
 
 /** Map an actor sprite state onto the enemy strip keys (no walk/cast strips). */
 function enemyStripState(state: ActorSpriteState): "idle" | "attacking" | "hit" | "defeated" {
@@ -2514,14 +2528,16 @@ function drawEnemyFallback(
   enemy: EnemyInstance,
   anim: ActorAnim,
   now: number,
-  size: number = ENEMY_SIZE
+  size: number = ENEMY_SIZE,
+  frozen = false,
+  tint?: string
 ): void {
   const scale = size / ENEMY_SIZE;
   const w = 104 * scale;
   const h = 122 * scale;
   ctx.save();
   ctx.globalAlpha = anim.opacity;
-  const bob = anim.state === "idle" ? Math.sin(now / 700 + x * 0.02) * 2 : 0;
+  const bob = anim.state === "idle" && !frozen ? Math.sin(now / 700 + x * 0.02) * 2 : 0;
   const py = y + bob;
   if (anim.state === "death") {
     ctx.translate(x, py);
@@ -2536,6 +2552,12 @@ function drawEnemyFallback(
   ctx.fillStyle = "#14110d";
   ctx.fillRect(x + 6 * scale, py - h * 0.32, 5 * scale, 5 * scale);
   ctx.fillRect(x + 18 * scale, py - h * 0.32, 5 * scale, 5 * scale);
+  if (tint) {
+    ctx.fillStyle = tint;
+    ctx.beginPath();
+    ctx.ellipse(x, py - h * 0.25, w / 2.4, h / 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
   if (anim.state === "hurt") {
     const intensity = anim.hitFlashIntensity || 0.3;
     const sz = 1 + intensity * 0.3;
@@ -2555,7 +2577,8 @@ function drawPartyFallback(
   y: number,
   char: Character,
   anim: ActorAnim,
-  size: number = PARTY_SIZE
+  size: number = PARTY_SIZE,
+  tint?: string
 ): void {
   const scale = size / PARTY_SIZE;
   ctx.save();
@@ -2574,6 +2597,13 @@ function drawPartyFallback(
   ctx.beginPath();
   ctx.arc(x, y - 52 * scale, 9 * scale, 0, Math.PI * 2);
   ctx.fill();
+  if (tint) {
+    ctx.fillStyle = tint;
+    ctx.fillRect(x - 12 * scale, y - 44 * scale, 24 * scale, 36 * scale);
+    ctx.beginPath();
+    ctx.arc(x, y - 52 * scale, 9 * scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -2618,13 +2648,17 @@ function drawPartyMember(
 
   drawContactShadow(ctx, x, footY, drawSize * 0.45);
 
+  const frozen = char.status.includes("sleep") || char.status.includes("paralysis");
+  const poisoned = char.status.includes("poison");
+  const tint = poisoned ? POISON_TINT : undefined;
+
   const opacity = (hidden ? 0.35 : 1) * anim.opacity;
   if (stripInfo) {
     const stateAge = now - anim.stateStart;
-    const frame = frameIndexFor(stripInfo.strip, stateAge);
-    drawStripFrame(ctx, stripInfo.img, stripInfo.strip, frame, x, y, drawSize, true, opacity);
+    const frame = frozen && anim.state === "idle" ? 0 : frameIndexFor(stripInfo.strip, stateAge);
+    drawStripFrame(ctx, stripInfo.img, stripInfo.strip, frame, x, y, drawSize, true, opacity, tint);
   } else {
-    drawPartyFallback(ctx, x, y, char, anim, drawSize);
+    drawPartyFallback(ctx, x, y, char, anim, drawSize, tint);
     if (anim.state === "hurt" && now - anim.stateStart < 200) {
       const intensity = anim.hitFlashIntensity || 0.3;
       const sz = 1 + intensity * 0.3;
@@ -2688,6 +2722,10 @@ function drawEnemy(
   const footY = slot.footY + off.y;
   const drawSize = baseSize * slot.scale;
 
+  const frozen = enemy.status.includes("sleep") || enemy.status.includes("paralysis");
+  const burning = (scene.state.enemyDots[enemy.instanceId]?.length ?? 0) > 0;
+  const tint = burning ? BURN_TINT : enemy.status.includes("poison") ? POISON_TINT : undefined;
+
   drawContactShadow(ctx, x, footY, drawSize * 0.45);
 
   if (hasStrip && stripInfo) {
@@ -2696,14 +2734,16 @@ function drawEnemy(
     let frame: number;
     if (anim.state === "death") {
       frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 675) * strip.frameCount));
+    } else if (frozen && anim.state === "idle") {
+      frame = 0;
     } else if (strip.loop || anim.state === "idle") {
       frame = Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED) % strip.frameCount;
     } else {
       frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED));
     }
-    drawStripFrame(ctx, img!, strip, frame, x, y, drawSize, false, anim.opacity);
+    drawStripFrame(ctx, img!, strip, frame, x, y, drawSize, false, anim.opacity, tint);
   } else {
-    drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize);
+    drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize, frozen, tint);
   }
 
   drawEnemyHpPips(ctx, enemy, x, footY, drawSize);
