@@ -14,12 +14,14 @@ import {
   getDisplacedItem,
   manualEquip,
   manualUnequip,
-  type CombatState,
-  type EnemyInstance,
-  type EnemyFormation,
-  type Loadout,
-  type PlayerAction,
 } from "./combat";
+import type {
+  CombatState,
+  EnemyInstance,
+  EnemyFormation,
+  Loadout,
+  PlayerAction,
+} from "./combat-types";
 import { createDefaultParty, type Character, type CharacterClass } from "./party";
 import { ALL_SPELLS } from "../data/spells";
 import { ALL_ITEMS, ITEMS_BY_ID } from "../data/items";

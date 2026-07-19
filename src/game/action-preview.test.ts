@@ -4,11 +4,8 @@ import {
   previewAttack,
   previewSpellDamage,
   resolvePlayerTurn,
-  type CombatState,
-  type EnemyInstance,
-  type EnemyFormation,
-  type ActionPreview,
 } from "./combat";
+import type { CombatState, EnemyInstance, EnemyFormation, ActionPreview } from "./combat-types";
 import { createDefaultParty } from "./party";
 import { ALL_SPELLS } from "../data/spells";
 import { ALL_ITEMS } from "../data/items";

@@ -65,9 +65,8 @@ import {
   createCombatFromEncounter,
   reconcileInventoryAfterCombat,
   defaultLoadoutForCharacter,
-  type CombatState,
-  type Loadout,
 } from "./game/combat";
+import type { CombatState, Loadout } from "./game/combat-types";
 import { rollEncounter, resolveEncounter } from "./data/enemies";
 import {
   encounterRollChance,

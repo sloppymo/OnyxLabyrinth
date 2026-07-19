@@ -4,7 +4,7 @@
 import { describe, it, expect } from "vitest";
 import { effectiveStats } from "./effective-stats";
 import { createCharacter } from "./party";
-import type { Loadout } from "./combat";
+import type { Loadout } from "./combat-types";
 import type { ItemDef } from "../data/items";
 import type { PerkDef } from "./perks";
 

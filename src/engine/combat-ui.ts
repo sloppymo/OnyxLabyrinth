@@ -27,14 +27,16 @@ import {
   charRow,
   previewAttack,
   previewSpellDamage,
-  type CombatState,
-  type PlayerAction,
-  type TurnQueueEntry,
-  type EnemyInstance,
-  type Row,
-  type SummonedAlly,
-  type ActionPreview,
 } from "../game/combat";
+import type {
+  CombatState,
+  PlayerAction,
+  TurnQueueEntry,
+  EnemyInstance,
+  Row,
+  SummonedAlly,
+  ActionPreview,
+} from "../game/combat-types";
 import { enemyHealthDescriptor, formatActionPreview } from "./combat-display";
 import type { Character } from "../game/party";
 import { isUtilitySpell, type SpellDef } from "../data/spells";

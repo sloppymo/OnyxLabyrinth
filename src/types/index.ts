@@ -5,7 +5,7 @@
 
 import type { FloorDef } from "../data/floors";
 import type { Character } from "../game/party";
-import type { CombatState, Loadout } from "../game/combat";
+import type { CombatState, Loadout } from "../game/combat-types";
 export type { FloorDef };
 export type { Character };
 export type { CombatState };

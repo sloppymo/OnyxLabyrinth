@@ -9,7 +9,7 @@
  */
 import { createScene, playTurn, updateScene, renderScene, resolveEffectStyle } from "./engine/combat-scene";
 import { spellById, ALL_SPELLS, isUtilitySpell, type SpellDef } from "./data/spells";
-import type { CombatState, EnemyFormation, EnemyInstance, CombatEvent } from "./game/combat";
+import type { CombatState, EnemyFormation, EnemyInstance, CombatEvent } from "./game/combat-types";
 import type { Character } from "./game/party";
 import type { Row } from "./data/enemies";
 import { loadPartySprites } from "./engine/party-sprite-cache";

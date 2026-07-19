@@ -6,7 +6,7 @@
  */
 
 import type { Character } from "../game/party";
-import type { ActionPreview } from "../game/combat";
+import type { ActionPreview } from "../game/combat-types";
 import type { DamageElement, SpellEffect, SpellTarget } from "../data/spells";
 import type { TechniqueEffect, TechniqueTarget } from "../data/techniques";
 

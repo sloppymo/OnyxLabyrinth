@@ -17,7 +17,8 @@ import {
   resolveEffectStyle,
   sampleProjectilePose,
 } from "./combat-scene";
-import { createCombatState, type CombatEvent, type EnemyInstance } from "../game/combat";
+import { createCombatState } from "../game/combat";
+import type { CombatEvent, EnemyInstance } from "../game/combat-types";
 import { createCharacter } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
 

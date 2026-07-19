@@ -9,11 +9,8 @@ import {
   resolveEnemyTurn,
   endRound,
   createCombatState,
-  type CombatState,
-  type EnemyInstance,
-  type Rng,
-  type TurnQueueEntry,
 } from "./combat";
+import type { CombatState, EnemyInstance, Rng, TurnQueueEntry } from "./combat-types";
 import { createCharacter, type CharacterClass } from "./party";
 import type { EnemyDef } from "../data/enemies";
 import { ALL_SPELLS } from "../data/spells";

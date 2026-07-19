@@ -4,7 +4,7 @@
 import { describe, it, expect } from "vitest";
 import { xpForNextLevel, levelUpChar } from "./leveling";
 import { createCharacter } from "./party";
-import type { Loadout } from "./combat";
+import type { Loadout } from "./combat-types";
 import type { ItemDef } from "../data/items";
 
 function mockItem(statBonuses: Partial<Record<"str" | "int" | "pie" | "vit" | "agi" | "luk", number>>): ItemDef {

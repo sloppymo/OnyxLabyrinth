@@ -24,7 +24,7 @@
  */
 
 import type { Character } from "../game/party";
-import type { CombatState, CombatEvent, EnemyInstance, SummonedAlly } from "../game/combat";
+import type { CombatState, CombatEvent, EnemyInstance, SummonedAlly } from "../game/combat-types";
 import { getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache";
 import { getPartySpriteStrip, type PartySpriteState } from "./party-sprite-cache";
 import { getEffectSprite, type EffectSprite } from "./effect-sprite-cache";

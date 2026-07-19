@@ -7,7 +7,7 @@
  * source files, including the honest note that some mappings are
  * filename-only best-guesses).
  */
-import type { CombatEvent, CombatState } from "../game/combat";
+import type { CombatEvent, CombatState } from "../game/combat-types";
 import { spellById, type DamageElement } from "../data/spells";
 import { audio, type CombatSfxId } from "./audio";
 

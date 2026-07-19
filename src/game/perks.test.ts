@@ -23,8 +23,8 @@ import {
   resolvePlayerTurn,
   resolveEnemyTurn,
   endRound,
-  type CombatState,
 } from "./combat";
+import type { CombatState } from "./combat-types";
 import type { EnemyDef, EnemyInstance } from "../data/enemies";
 import type { SpellDef } from "../data/spells";
 

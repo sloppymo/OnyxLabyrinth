@@ -29,8 +29,8 @@ import {
   manualUnequip,
   canReach,
   effectiveWeaponRange,
-  type Loadout,
 } from "../game/combat";
+import type { Loadout } from "../game/combat-types";
 import { effectiveStats } from "../game/effective-stats";
 import { xpForNextLevel } from "../game/leveling";
 import { perksForCharacter, partyShopDiscount, discountedShopPrice } from "../game/perks";

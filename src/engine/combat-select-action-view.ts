@@ -18,7 +18,7 @@
  * view model each time something changes.
  */
 
-import type { CombatState, PlayerAction, EnemyInstance } from "../game/combat";
+import type { CombatState, PlayerAction, EnemyInstance } from "../game/combat-types";
 import type { Character } from "../game/party";
 import type { SpellDef } from "../data/spells";
 import { classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";

@@ -14,7 +14,7 @@
  */
 
 import type { Character, Stats } from "./party";
-import type { Loadout } from "./combat";
+import type { Loadout } from "./combat-types";
 import type { PerkDef } from "./perks";
 
 const STAT_KEYS: (keyof Stats)[] = ["str", "int", "pie", "vit", "agi", "luk"];

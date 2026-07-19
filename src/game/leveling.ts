@@ -7,7 +7,7 @@
 
 import type { Character } from "./party";
 import { CLASSES } from "./party";
-import type { Loadout } from "./combat";
+import type { Loadout } from "./combat-types";
 import { maxContentSpellTier, spellsForClass } from "../data/spells";
 import { effectiveStats } from "./effective-stats";
 import { perksForCharacter, perkModifiers } from "./perks";
