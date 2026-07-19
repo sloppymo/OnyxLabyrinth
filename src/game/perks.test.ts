@@ -310,8 +310,11 @@ describe("ALL_PERKS data integrity", () => {
 
 describe("perk combat integration", () => {
   it("fighter-cleave can deal cleave damage on a hit", () => {
-    const enemy1 = makeEnemy("e1", "Rat A");
-    const enemy2 = makeEnemy("e2", "Rat B");
+    // Beefy rats: an unseeded crit+cleave must never be able to end the
+    // combat here — the assertion below is about resolving cleanly, and a
+    // combat-ending roll made this test flaky.
+    const enemy1 = makeEnemy("e1", "Rat A", 500);
+    const enemy2 = makeEnemy("e2", "Rat B", 500);
     const party = [makeCharacter("Fighter", ["fighter-cleave"])];
     const state = createCombatState(party, { front: [enemy1, enemy2], back: [] }, false);
 
@@ -459,6 +462,9 @@ describe("perk combat integration", () => {
 
   it("priest-saint regenerates 5% max HP for the party at end of round", () => {
     const priest = makeCharacter("Priest", ["priest-saint"]);
+    // Pin maxHp: createCharacter rolls HP on a d6, and a 10 roll would put
+    // the priest at 0 HP here (knockedOut -> regen skips -> flaky failure).
+    priest.maxHp = 30;
     priest.hp = priest.maxHp - 10;
     const enemy = makeEnemy("e1", "Rat A");
     const state = createCombatState([priest], { front: [enemy], back: [] }, false);
