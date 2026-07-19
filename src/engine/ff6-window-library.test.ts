@@ -279,6 +279,32 @@ describe("FF6Window", () => {
     expect(el.querySelector(".ff6-footer")?.textContent).toBe("[Esc] back");
   });
 
+  it("static frame() marks its window content-only (no sibling selection list to clip against)", () => {
+    // Regression test: Guild/Temple/Save-Load roster screens render via
+    // frame() with a long contentHtml grid and no items[]. The CSS relies
+    // on this class to let .ff6-content shrink and scroll internally
+    // instead of overflowing past the window's max-height and getting
+    // hard-clipped with no scrollbar.
+    const el = FF6Window.frame({ title: "Guild — Party Roster", contentHtml: "<p>roster</p>" });
+    expect(el.classList.contains("content-only")).toBe(true);
+  });
+
+  it("marks the instance render() window content-only only when there is no item list", () => {
+    const withoutItems = new FF6Window(
+      makeOptions({ mode: "status", items: [], contentHtml: "<p>roster</p>" })
+    );
+    expect(withoutItems.render().classList.contains("content-only")).toBe(true);
+
+    const withItems = new FF6Window(
+      makeOptions({
+        mode: "selection",
+        items: [{ label: "Dagger" }],
+        contentHtml: "<div class='shop-tabs'></div>",
+      })
+    );
+    expect(withItems.render().classList.contains("content-only")).toBe(false);
+  });
+
   it("handles an empty item list without crashing", () => {
     const opts = makeOptions({ items: [], selectedIndex: 0 });
     const win = new FF6Window(opts);

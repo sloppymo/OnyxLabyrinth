@@ -341,6 +341,23 @@ describe("renderCombatWindows", () => {
     expect(container.querySelector(".ff6-menu-title")?.textContent).toBe("Magic 13/29");
   });
 
+  it("shows a position counter for a full 6-member target list", () => {
+    // Regression test: the fixed footer band only fits 5 rows of a
+    // selection list at once, so a 6th entry (e.g. the last party member in
+    // a full-party heal target list) used to be reachable by scrolling but
+    // invisible, with no on-screen hint a 6th option existed.
+    const state = makeState([makeEnemy("rat-0")]);
+    const view = baseView(state);
+    view.menuMode = "selection";
+    view.selectionTitle = "Cure Wounds";
+    view.selectionEntries = ["Aria", "Bram", "Coda", "Dell", "Eve", "Fenn"].map((label) => ({
+      label,
+    }));
+    view.selectionIndex = 5;
+    renderCombatWindows(container, view, noopHandlers());
+    expect(container.querySelector(".ff6-menu-title")?.textContent).toBe("Cure Wounds 6/6");
+  });
+
   it("keeps a plain title for short selection lists", () => {
     const state = makeState([makeEnemy("rat-0")]);
     const view = baseView(state);

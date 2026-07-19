@@ -105,6 +105,10 @@ export class FF6Window {
     const el = document.createElement("div");
     const classes = ["ff6-window", "standalone", `mode-${this.opts.mode}`];
     classes.push(`width-${this.opts.width ?? "full"}`);
+    // No items means no sibling .ff6-selection-list, so .ff6-content is the
+    // window's only content — see the `content-only` CSS rule for why that
+    // needs different flex/scroll behavior than when a list is present.
+    if (this.opts.items.length === 0) classes.push("content-only");
     if (this.opts.animated !== false) classes.push("animated");
     el.className = classes.join(" ");
     if (this.opts.maxHeight !== undefined) {
@@ -279,6 +283,10 @@ export class FF6Window {
     const classes = [
       "ff6-window",
       "standalone",
+      // `.frame()` never renders a sibling `.ff6-selection-list`, so unlike
+      // the instance render() path, its `.ff6-content` is always the only
+      // scrollable content in the window — see the `content-only` CSS rule.
+      "content-only",
       `mode-${opts.mode ?? "status"}`,
       `width-${opts.width ?? "full"}`,
     ];

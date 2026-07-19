@@ -352,11 +352,16 @@ function buildCommandPopup(
     win.appendChild(el("ff6-hint-row", menuHintText(view.menuEntries)));
   } else {
     if (view.selectionTitle) {
-      // Long lists (high-level spell books) scroll inside the window; a
-      // position counter tells the player where the cursor is in the list.
+      // Long lists (high-level spell books, a 6-member target list) scroll
+      // inside the window; a position counter tells the player where the
+      // cursor is and — just as importantly — that there's more below.
+      // The fixed footer band only ever fits 5 rows of a selection list at
+      // once (see COMBAT_WINDOW_OVERLAP_PX above), so a 6th entry (e.g. the
+      // last party member in a full-party heal target list) was silently
+      // scrollable-but-invisible with no on-screen hint it existed.
       const total = view.selectionEntries.length;
       const title =
-        total > 6
+        total > 5
           ? `${view.selectionTitle} ${view.selectionIndex + 1}/${total}`
           : view.selectionTitle;
       win.appendChild(el("ff6-menu-title", title));

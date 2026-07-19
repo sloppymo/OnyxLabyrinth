@@ -1538,7 +1538,27 @@ canvas#map-canvas {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  scrollbar-width: none;
+  /* Unlike .ff6-selection-list, this list has no selection cursor to follow
+     it into view (it's a passive status readout, not something the player
+     navigates) — a large multi-type pull (e.g. Flame Golem + Lava Slime x2 +
+     Warlock x2) can push a later group below the fixed footer band with
+     nothing on screen to show it's there. A visible thumb is the only cue
+     available without changing the band height (COMBAT_WINDOW_OVERLAP_PX). */
+  scrollbar-width: thin;
+  scrollbar-color: #6878c0 transparent;
+}
+
+.ff6-battle-enemy-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ff6-battle-enemy-list::-webkit-scrollbar-thumb {
+  background: #6878c0;
+  border-radius: 3px;
+}
+
+.ff6-battle-enemy-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .ff6-bow-tag {
@@ -2045,6 +2065,33 @@ canvas#map-canvas {
      weapons) needs room — squeezing the Buy/Sell/Appraise tab row down
      to an unreadable sliver. The list already scrolls; this shouldn't. */
   flex: 0 0 auto;
+}
+
+/* `.content-only` windows (built via FF6Window.frame(): Guild/Temple roster,
+   Save/Load) have no sibling .ff6-selection-list to protect, so the rule
+   above's flex:0 0 auto was actively wrong for them — content taller than
+   the window's max-height just overflowed and got hard-clipped by
+   .ff6-window's own `overflow: hidden`, with nothing to scroll since the
+   box never shrank below its intrinsic content size. Letting it shrink and
+   scroll here fixes that with zero effect on windows that do have a list.
+   These screens also render a plain HTML grid rather than a keyboard-driven
+   .ff6-menu-item list, so there's no cursor to auto-scroll into view —
+   unlike .ff6-selection-list/.ff6-party, this one needs a visible thumb or
+   the overflow is undiscoverable (mouse-wheel-only, no on-screen hint). */
+.ff6-window.standalone.content-only .ff6-content {
+  flex: 1 1 auto;
+  scrollbar-width: thin;
+  scrollbar-color: #6878c0 transparent;
+}
+.ff6-window.standalone.content-only .ff6-content::-webkit-scrollbar {
+  width: 6px;
+}
+.ff6-window.standalone.content-only .ff6-content::-webkit-scrollbar-thumb {
+  background: #6878c0;
+  border-radius: 3px;
+}
+.ff6-window.standalone.content-only .ff6-content::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* .shop-tabs/.shop-tab still carry the old full-page town sizing
