@@ -539,6 +539,29 @@ export function handleEvent(state: GameState): FeatureResult | null {
   return result;
 }
 
+/**
+ * Build the "X, Y take N damage." clause for a party-wide event. Reports the
+ * amount each named member actually gained/lost, not the sum across the
+ * group — a flat `power` value can still land differently per member (e.g.
+ * someone floored at 1 HP loses less than `power`), so a single summed
+ * number would misreport what any one of them experienced.
+ */
+function describePerMemberAmounts(
+  names: string[],
+  amounts: number[],
+  verbSingular: string,
+  verbPlural: string,
+  noun: string
+): string {
+  if (names.length === 0) return "";
+  const uniform = amounts.every((a) => a === amounts[0]);
+  if (uniform) {
+    const verb = names.length === 1 ? verbSingular : verbPlural;
+    return ` ${names.join(", ")} ${verb} ${amounts[0]} ${noun}.`;
+  }
+  return ` ${names.map((n, i) => `${n} ${verbSingular} ${amounts[i]} ${noun}`).join(", ")}.`;
+}
+
 function applyEvent(state: GameState, event: EventDef): FeatureResult {
   const noEvent = { changedFloor: false, consumed: event.once ?? true };
   switch (event.kind) {
@@ -548,40 +571,34 @@ function applyEvent(state: GameState, event: EventDef): FeatureResult {
       const members = aliveMembers(state);
       const power = event.power ?? 0;
       const names: string[] = [];
-      let total = 0;
+      const amounts: number[] = [];
       for (const c of members) {
         const before = c.hp;
         c.hp = Math.max(1, c.hp - power);
         const actual = before - c.hp;
         if (actual > 0) {
           names.push(c.name);
-          total += actual;
+          amounts.push(actual);
         }
       }
-      const dmgMsg =
-        names.length === 0
-          ? ""
-          : ` ${names.join(", ")} ${names.length === 1 ? "takes" : "take"} ${total} damage.`;
+      const dmgMsg = describePerMemberAmounts(names, amounts, "takes", "take", "damage");
       return { message: `${event.message}${dmgMsg}`, ...noEvent };
     }
     case "heal": {
       const members = aliveMembers(state);
       const power = event.power ?? 0;
       const names: string[] = [];
-      let total = 0;
+      const amounts: number[] = [];
       for (const c of members) {
         const before = c.hp;
         c.hp = Math.min(c.maxHp, c.hp + power);
         const actual = c.hp - before;
         if (actual > 0) {
           names.push(c.name);
-          total += actual;
+          amounts.push(actual);
         }
       }
-      const healMsg =
-        names.length === 0
-          ? ""
-          : ` ${names.join(", ")} ${names.length === 1 ? "recovers" : "recover"} ${total} HP.`;
+      const healMsg = describePerMemberAmounts(names, amounts, "recovers", "recover", "HP");
       return { message: `${event.message}${healMsg}`, ...noEvent };
     }
     case "reward": {

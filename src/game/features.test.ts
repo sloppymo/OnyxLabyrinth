@@ -491,6 +491,30 @@ describe("handleEvent", () => {
     expect(state.party[0].hp).toBe(1); // floored
     expect(state.party[1].hp).toBe(state.party[1].maxHp - 5);
     expect(state.floor.grid[2][2].tile).toBeUndefined();
+    // party[0] only actually lost 2 HP (floored), everyone else lost the
+    // full 5 — the message must report each member's real amount, not a
+    // single number for all of them.
+    expect(result?.message).toContain(`${state.party[0].name} takes 2 damage`);
+    expect(result?.message).toContain("takes 5 damage");
+  });
+
+  it("damage event message reports the per-character amount, not the party-wide sum", () => {
+    // Regression test: every member had plenty of HP, so all six take the
+    // same 4 damage. The message used to report 24 (4 x 6 members) instead
+    // of 4 for each named character. Party stats are randomly rolled, so
+    // hp is pinned well above the trap's power to keep the "uniform" case
+    // deterministic regardless of the roll.
+    const state = makeEventState({
+      kind: "damage",
+      message: "A flagstone gives way and darts whistle through the corridor.",
+      power: 4,
+    });
+    for (const c of state.party) c.hp = 50;
+    const result = handleEvent(state);
+    const names = state.party.map((c) => c.name).join(", ");
+    expect(result?.message).toBe(
+      `A flagstone gives way and darts whistle through the corridor. ${names} take 4 damage.`
+    );
   });
 
   it("heal events restore HP and clear the tile", () => {
@@ -500,6 +524,19 @@ describe("handleEvent", () => {
     expect(result?.message).toContain("A soft light mends wounds.");
     expect(state.party[0].hp).toBe(7);
     expect(state.floor.grid[2][2].tile).toBeUndefined();
+  });
+
+  it("heal event message reports the per-character amount, not the party-wide sum", () => {
+    const state = makeEventState({ kind: "heal", message: "A warm light mends wounds.", power: 4 });
+    // Pin maxHp/hp so every member has identical headroom, regardless of
+    // the randomly rolled stats, keeping the "uniform" case deterministic.
+    for (const c of state.party) {
+      c.maxHp = 50;
+      c.hp = 10;
+    }
+    const result = handleEvent(state);
+    const names = state.party.map((c) => c.name).join(", ");
+    expect(result?.message).toBe(`A warm light mends wounds. ${names} recover 4 HP.`);
   });
 
   it("reward events add the item to inventory and clear the tile", () => {
