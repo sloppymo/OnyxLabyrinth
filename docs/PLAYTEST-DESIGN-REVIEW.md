@@ -21,7 +21,7 @@ Read these before treating every P1 below as an open bug. Prefer `docs/AGENT-REA
 | P1 Arena L9 starts on floor-1 trash | **Fixed:** `arenaStartFloorForLevel(9) === 3`; Arena auto-starts wave 1 and skips boss formations. |
 | P2 Temple lacks Remove Curse | **UI is conditional:** `[R] Remove Curse (100g)` shows when cursed gear is equipped (`town-ui.ts`). Playtest likely had no cursed items. |
 | P2 encounter rate feels low | **Retuned 2026-07-14:** 8%/10%/12% + soft pity (force by step 28). Still Wizardry-sparse early; dry spells capped. |
-| Combat footer `A/M/D/I/R` / missing Tech shortcut | **Still open** (see `PLAYTEST-REPORT.md` / `POLISH-ISSUES-PROMPT.md`). Lower priority than L9 menu/perks. |
+| Combat footer `A/M/D/I/R` / missing Tech shortcut | **Still open** (see `PLAYTEST-REPORT.md`; `POLISH-ISSUES-PROMPT.md` removed from tree 2026-07-19). Lower priority than L9 menu/perks. |
 
 **Designer priority order (2026-07-13 analysis):** (1)–(6) mostly done; encounter/Arena feel **done 2026-07-14** (see `docs/AGENT-READING-LIST.md`).
 

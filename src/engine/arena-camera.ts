@@ -8,7 +8,7 @@
  *   `arenaSeamFrac()` so sprite foot planes track the baked wall/floor seam;
  * - tests import the tuple rather than mirroring literals (mirrored copies
  *   drifted twice before this module existed: camHeight 3.8 vs 4.5 in
- *   render-math.test.ts, pitch 30° vs 28° in ARENA-REVIEW.md).
+ *   render-math.test.ts, pitch 30° vs 28° in docs/ARENA-REVIEW.md).
  *
  * Pure module — no DOM/canvas. Projection math lives in render-math.ts.
  */
