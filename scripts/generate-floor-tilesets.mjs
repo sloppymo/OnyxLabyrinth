@@ -276,16 +276,12 @@ function f1Wall() {
   px.save("f1_wall_256.png");
 }
 
-function f1Floor(name, seed, waterThreshold, baseHex) {
+function f1Floor(name, seed, baseHex) {
   const rng = mulberry32(seed);
   const px = new Px();
   const mottle = makeFbm(mulberry32(seed + 1));
-  const waterN = makeFbm(mulberry32(seed + 2), [4, 8, 16]);
   const base = hex(baseHex);
   const gap = hex("#262b22");
-  const deep = hex("#2c4a34");
-  const shallow = hex("#3f6044");
-  const rim = hex("#6f8262");
 
   const slabTone = new Map();
   for (let y = 0; y < L; y++) {
@@ -317,21 +313,9 @@ function f1Floor(name, seed, waterThreshold, baseHex) {
       (x, y) => px.blend(x, y, hex("#20261e"), 0.75)
     );
   }
-  // stagnant puddles sit over slabs and gaps alike
-  for (let y = 0; y < L; y++) {
-    for (let x = 0; x < L; x++) {
-      const w = waterN(x, y);
-      if (w > waterThreshold) {
-        const depth = Math.min(1, (w - waterThreshold) * 6);
-        let c = mix(shallow, deep, depth);
-        // faint scummy sheen
-        if ((x + y * 2) % 16 === 0 && depth < 0.6) c = shade(c, 1.12);
-        px.set(x, y, c);
-      } else if (w > waterThreshold - 0.03) {
-        px.set(x, y, mix(px.get(x, y), rim, 0.7)); // wet rim
-      }
-    }
-  }
+  // Puddles are no longer baked here — they're drawn at render time in
+  // world space (arena-renderer.ts) so they span tile boundaries instead of
+  // resetting at every grid cell.
   px.save(name);
 }
 
@@ -1181,8 +1165,8 @@ function f5Ceiling() {
 
 mkdirSync(OUT_DIR, { recursive: true });
 f1Wall();
-f1Floor("f1_floor_a_256.png", 110, 0.66, "#4c5245");
-f1Floor("f1_floor_b_256.png", 115, 0.6, "#454c40");
+f1Floor("f1_floor_a_256.png", 110, "#4c5245");
+f1Floor("f1_floor_b_256.png", 115, "#454c40");
 f1Ceiling();
 f2Wall();
 f2Floor("f2_floor_a_256.png", 210, false, "#4e3620");

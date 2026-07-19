@@ -1263,11 +1263,13 @@ export function renderBattleArena(
   off.height = h;
   const ctx = off.getContext("2d")!;
 
-  const tileset = getTilesetForTheme(resolveTilesetTheme(state.floor));
+  const theme = resolveTilesetTheme(state.floor);
+  const tileset = getTilesetForTheme(theme);
   if (tileset) {
     renderArenaRoom(ctx, w, h, {
       tileset,
       voidColor: PALETTE.bg,
+      floorPuddles: theme === "f1",
     });
   } else {
     // Fallback when no tileset is loaded (debug floors).

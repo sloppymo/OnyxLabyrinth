@@ -43,6 +43,8 @@ export interface ArenaRenderOptions {
   voidColor?: string;
   /** Near-field world depth at the bottom edge (front tile row). */
   floorNearDepth?: number;
+  /** Draw a world-space-continuous stagnant-puddle overlay (Flooded Crypt theme only). */
+  floorPuddles?: boolean;
 }
 
 const DEFAULTS = {
@@ -69,6 +71,7 @@ interface ArenaParams {
   maxVisibleDist: number;
   voidColor: string;
   floorNearDepth: number;
+  floorPuddles: boolean;
 }
 
 /** Render a 3/4 top-down arena room into the provided canvas context. */
@@ -88,6 +91,7 @@ export function renderArenaRoom(
     maxVisibleDist: options.maxVisibleDist ?? DEFAULTS.maxVisibleDist,
     voidColor: options.voidColor ?? DEFAULTS.voidColor,
     floorNearDepth: options.floorNearDepth ?? DEFAULTS.floorNearDepth,
+    floorPuddles: options.floorPuddles ?? false,
   };
   const camera = buildArenaCamera(h, params);
   const bg = parseBg(params.voidColor);
@@ -160,17 +164,84 @@ function writeFoggedTexel(
   bg: Rgb,
   shade = 1
 ): void {
+  writeFoggedColor(buf, dstIdx, tex.data[srcIdx], tex.data[srcIdx + 1], tex.data[srcIdx + 2], fog, bg, shade);
+}
+
+function writeFoggedColor(
+  buf: ImageData,
+  dstIdx: number,
+  r: number,
+  g: number,
+  b: number,
+  fog: number,
+  bg: Rgb,
+  shade = 1
+): void {
   const inv = 1 - fog;
-  buf.data[dstIdx] = Math.min(255, tex.data[srcIdx] * shade * fog + bg.r * inv);
-  buf.data[dstIdx + 1] = Math.min(
-    255,
-    tex.data[srcIdx + 1] * shade * fog + bg.g * inv
-  );
-  buf.data[dstIdx + 2] = Math.min(
-    255,
-    tex.data[srcIdx + 2] * shade * fog + bg.b * inv
-  );
+  buf.data[dstIdx] = Math.min(255, r * shade * fog + bg.r * inv);
+  buf.data[dstIdx + 1] = Math.min(255, g * shade * fog + bg.g * inv);
+  buf.data[dstIdx + 2] = Math.min(255, b * shade * fog + bg.b * inv);
   buf.data[dstIdx + 3] = 255;
+}
+
+// --- World-space puddle overlay ---------------------------------------------
+//
+// Baked floor tiles alternate two independently-seeded 256px textures in a
+// checkerboard, each wrapped only within itself — any decorative feature
+// baked into those textures resets at every grid-cell boundary, which reads
+// as a hard, obviously-repeating stamp for large features like puddles.
+// Puddles are instead evaluated directly on continuous (worldX, worldY), so
+// they span cell boundaries the same way real terrain would.
+
+function hash2(ix: number, iy: number): number {
+  let h = ix * 374761393 + iy * 668265263;
+  h = (h ^ (h >>> 13)) * 1274126177;
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967295;
+}
+
+function smoothstep(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
+function valueNoise2D(x: number, y: number): number {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const sx = smoothstep(x - x0);
+  const sy = smoothstep(y - y0);
+  const n00 = hash2(x0, y0);
+  const n10 = hash2(x0 + 1, y0);
+  const n01 = hash2(x0, y0 + 1);
+  const n11 = hash2(x0 + 1, y0 + 1);
+  const ix0 = n00 + (n10 - n00) * sx;
+  const ix1 = n01 + (n11 - n01) * sx;
+  return ix0 + (ix1 - ix0) * sy;
+}
+
+/** Two-octave organic blob field so puddle edges aren't perfect circles. */
+function puddleField(worldX: number, worldY: number): number {
+  return (
+    valueNoise2D(worldX * 0.55, worldY * 0.55) * 0.7 +
+    valueNoise2D(worldX * 1.4 + 19.3, worldY * 1.4 + 7.1) * 0.3
+  );
+}
+
+const PUDDLE_THRESHOLD = 0.58;
+const PUDDLE_EDGE_BAND = 0.05;
+const PUDDLE_DEEP_BAND = 0.16;
+const PUDDLE_SHALLOW: Rgb = { r: 0x3f, g: 0x60, b: 0x44 };
+const PUDDLE_DEEP: Rgb = { r: 0x2c, g: 0x4a, b: 0x34 };
+
+/** Blend a stagnant-puddle tint into a base floor color at world (x, y). */
+function applyPuddleTint(worldX: number, worldY: number, r: number, g: number, b: number): [number, number, number] {
+  const n = puddleField(worldX, worldY);
+  if (n <= PUDDLE_THRESHOLD) return [r, g, b];
+  const edgeT = smoothstep(Math.min(1, (n - PUDDLE_THRESHOLD) / PUDDLE_EDGE_BAND));
+  const depthT = Math.min(1, Math.max(0, (n - PUDDLE_THRESHOLD - PUDDLE_EDGE_BAND) / PUDDLE_DEEP_BAND));
+  const pr = PUDDLE_SHALLOW.r + (PUDDLE_DEEP.r - PUDDLE_SHALLOW.r) * depthT;
+  const pg = PUDDLE_SHALLOW.g + (PUDDLE_DEEP.g - PUDDLE_SHALLOW.g) * depthT;
+  const pb = PUDDLE_SHALLOW.b + (PUDDLE_DEEP.b - PUDDLE_SHALLOW.b) * depthT;
+  return [r + (pr - r) * edgeT, g + (pg - g) * edgeT, b + (pb - b) * edgeT];
 }
 
 function getWallData(tileset: LoadedTileset): ImageData | null {
@@ -278,7 +349,12 @@ function drawFloor(
         distToWall < FLOOR_AO_RANGE
           ? 0.55 + 0.45 * Math.max(0, distToWall / FLOOR_AO_RANGE)
           : 1;
-      writeFoggedTexel(buf, rowOffset + x * 4, tex, srcIdx, fog, bg, shade);
+      if (params.floorPuddles) {
+        const [r, g, b] = applyPuddleTint(worldX, worldY, tex.data[srcIdx], tex.data[srcIdx + 1], tex.data[srcIdx + 2]);
+        writeFoggedColor(buf, rowOffset + x * 4, r, g, b, fog, bg, shade);
+      } else {
+        writeFoggedTexel(buf, rowOffset + x * 4, tex, srcIdx, fog, bg, shade);
+      }
     }
   }
 }
