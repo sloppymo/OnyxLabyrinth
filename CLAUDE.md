@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-OnyxLabyrinth is a Wizardry-style first-person dungeon crawler: TypeScript + Vite, no UI framework. A 2D canvas renders a pseudo-3D corridor view; the rest of the UI (menus, combat, town, camp) is hand-built DOM. Deployed to GitHub Pages from the `docs/` folder.
+OnyxLabyrinth is a Wizardry-style first-person dungeon crawler: TypeScript + Vite, no UI framework. A 2D canvas renders a pseudo-3D corridor view; the rest of the UI (menus, combat, town, camp) is hand-built DOM. Deployed to GitHub Pages by GitHub Actions on every push to `main` (`docs/` is documentation-only).
 
 ## Commands
 
@@ -26,15 +26,9 @@ There is no separate lint script; `tsc` (via `npm run build`) is the type-checki
 
 Test files use the `.test.ts` suffix, live next to the code they test, and are excluded from the build (`tsconfig.json` excludes `src/**/*.test.ts`; Vitest's `include` is `src/**/*.test.ts`).
 
-### Deployment (GitHub Pages from `docs/`)
+### Deployment (GitHub Actions)
 
-```bash
-npm run build
-cp -r dist/* docs/
-rm -f docs/assets/index-*.js docs/assets/index-*.css   # drop stale hashed bundles first
-cp dist/assets/* docs/assets/
-```
-Commit and push `docs/` for the change to go live at https://sloppymo.github.io/OnyxLabyrinth/.
+Every push to `main` runs `.github/workflows/deploy.yml`: `npm ci` → `npm run build` → deploy `dist/` to Pages. There is no manual copy step; `docs/` holds documentation only. Verify a deploy with `gh run list --workflow=deploy.yml --limit 1`.
 
 ## Architecture
 

@@ -39,21 +39,9 @@ See `AGENTS.md` for the full checklists and common pitfalls.
 
 ## Deployment
 
-GitHub Pages serves the `docs/` directory.
+GitHub Actions builds and deploys `dist/` to Pages on every push to `main` (`.github/workflows/deploy.yml`).
 
-```bash
-npm run build
-# Copy the production build into docs/
-cp -r dist/* docs/
-# Remove any stale hashed JS/CSS files from docs/assets/ so only the
-# current index-*.js and index-*.css remain.
-rm -f docs/assets/index-*.js docs/assets/index-*.css
-cp dist/assets/* docs/assets/
-```
-
-Commit and push the refreshed `docs/` folder.
-
-After pushing, the live game is available at:
+The live game is available at:
 
 - **GitHub Pages:** https://sloppymo.github.io/OnyxLabyrinth/
 - **Local preview:** http://localhost:5176/OnyxLabyrinth/
