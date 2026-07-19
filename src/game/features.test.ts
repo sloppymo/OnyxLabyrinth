@@ -19,8 +19,8 @@ import {
   defaultLoadoutForCharacter,
   equipItem,
   forceEquip,
-  reconcileInventoryAfterCombat,
 } from "./combat";
+import { reconcileInventoryAfterCombat } from "./combat-inventory";
 import { ITEMS_BY_ID } from "../data/items";
 import type { FloorDef, EventDef } from "../data/floors";
 import type { GameState, TrapType } from "../types";

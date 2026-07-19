@@ -4,8 +4,6 @@ import {
   resolveCombatRound,
   resolvePlayerTurn,
   resolveEnemyTurn,
-  inventoryToCounts,
-  inventoryFromCounts,
   canReach,
   defaultLoadoutForCharacter,
   equipItem,
@@ -15,6 +13,7 @@ import {
   manualEquip,
   manualUnequip,
 } from "./combat";
+import { inventoryToCounts, inventoryFromCounts } from "./combat-inventory";
 import type {
   CombatState,
   EnemyInstance,

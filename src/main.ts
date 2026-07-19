@@ -63,9 +63,9 @@ import { FF6Window } from "./engine/ff6-window-library";
 import { autoSave } from "./game/save";
 import {
   createCombatFromEncounter,
-  reconcileInventoryAfterCombat,
   defaultLoadoutForCharacter,
 } from "./game/combat";
+import { reconcileInventoryAfterCombat } from "./game/combat-inventory";
 import type { CombatState, Loadout } from "./game/combat-types";
 import { rollEncounter, resolveEncounter } from "./data/enemies";
 import {
