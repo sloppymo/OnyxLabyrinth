@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { serialize, deserialize } from "./save";
+import { serialize, deserialize, autoSave, loadAutoSave } from "./save";
 import { createGameState } from "./state";
 import { FLOORS } from "../data/floors";
 import { createDefaultParty } from "./party";
@@ -251,5 +251,52 @@ describe("save serialization", () => {
     expect(restored.party[1].perkIds).toEqual(["thief-ambusher", "thief-shadow"]);
     // perkIds should be a copy, not a reference.
     expect(restored.party[0].perkIds).not.toBe(state.party[0].perkIds);
+  });
+});
+
+describe("autoSave", () => {
+  let state: GameState;
+
+  beforeEach(() => {
+    localStorage.clear();
+    state = createGameState(FLOORS[0]);
+    state.party = createDefaultParty();
+    state.partyGold = 42;
+  });
+
+  it("writes to the auto-save slot in dungeon mode", () => {
+    state.mode = "dungeon";
+    autoSave(state);
+    const loaded = loadAutoSave();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.partyGold).toBe(42);
+  });
+
+  it("does not overwrite the auto-save while an Arena session is active, even mid-fight", () => {
+    // Seed a real campaign auto-save first.
+    state.mode = "dungeon";
+    autoSave(state);
+
+    // Simulate Arena mutating the shared state in place and switching to
+    // "combat" for a wave fight, then an autosave (e.g. beforeunload)
+    // firing while inArenaSession is still true.
+    state.mode = "combat";
+    state.partyGold = 9999;
+    autoSave(state, /* inArenaSession */ true);
+
+    const loaded = loadAutoSave();
+    expect(loaded?.partyGold).toBe(42);
+  });
+
+  it("does not write while state.mode is 'arena' even without the explicit flag", () => {
+    state.mode = "dungeon";
+    autoSave(state);
+
+    state.mode = "arena";
+    state.partyGold = 9999;
+    autoSave(state);
+
+    const loaded = loadAutoSave();
+    expect(loaded?.partyGold).toBe(42);
   });
 });

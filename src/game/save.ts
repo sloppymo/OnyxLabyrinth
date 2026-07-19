@@ -480,10 +480,23 @@ export function isSlotEmpty(slot: number): boolean {
   return localStorage.getItem(`${STORAGE_PREFIX}${slot}`) === null;
 }
 
-export function autoSave(state: GameState): void {
+export function autoSave(state: GameState, inArenaSession = false): void {
   // Overlays and party creation cannot be resumed safely: no controller is
   // reconstructed for them on boot. Keep the previous auto-save instead.
-  if (state.mode === "title" || state.mode === "party_creation" || state.mode === "arena") return;
+  // `inArenaSession` covers the whole Arena session, not just `state.mode
+  // === "arena"`: Arena mutates the shared GameState in place and switches
+  // it to mode "combat" for each wave fight, which the mode check alone
+  // would not catch — without this flag, an autosave firing mid-fight (or
+  // between waves) would silently overwrite the player's real campaign
+  // progress with the throwaway Arena party/floor.
+  if (
+    inArenaSession ||
+    state.mode === "title" ||
+    state.mode === "party_creation" ||
+    state.mode === "arena"
+  ) {
+    return;
+  }
   try {
     localStorage.setItem(AUTO_SAVE_KEY, serialize(state));
   } catch {

@@ -1088,7 +1088,7 @@ window.addEventListener("keydown", resumeAudioOnce);
 // Auto-save when the player leaves or reloads the page so the next session
 // can resume where they left off.
 window.addEventListener("beforeunload", () => {
-  autoSave(state);
+  autoSave(state, inArena);
 });
 
 // Combat key handler — separate listener that only fires in combat mode.
