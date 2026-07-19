@@ -24,7 +24,6 @@ import {
   resolveAllyTurn,
   endRound,
   enqueueNewAllies,
-  charRow,
 } from "../game/combat";
 import { previewAttack, previewSpellDamage } from "../game/combat-preview";
 import type {
@@ -38,6 +37,7 @@ import type {
 } from "../game/combat-types";
 import { enemyHealthDescriptor, formatActionPreview } from "./combat-display";
 import type { Character } from "../game/party";
+import { charRow } from "../game/party";
 import { isUtilitySpell, type SpellDef } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import { techniquesForClass, techniqueById, classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
