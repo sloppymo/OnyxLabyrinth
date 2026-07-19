@@ -86,6 +86,15 @@ describe("TownController shop tabs", () => {
     ctrl.handleKey("b");
     expect(activeShopTab(ctrl)).toContain("Buy");
   });
+
+  it("Buy tab hint says 'A buy', matching what A actually opens (a purchase dialog, not a compare view)", () => {
+    const ctrl = makeTown();
+    ctrl.handleKey("$");
+    const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
+    expect(panel.querySelector(".ff6-footer")?.textContent).toBe(
+      "D-pad navigate · A buy · ←→ tabs · B back"
+    );
+  });
 });
 
 describe("TownController roster tabs", () => {

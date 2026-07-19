@@ -21,6 +21,11 @@ export interface NPCActionResult {
 const DEFAULT_DISPOSITION = 50;
 const REWARD_THRESHOLD = 80;
 
+/** "a"/"an" for an item name, e.g. articleFor("Antidote") -> "an". */
+function articleFor(name: string): "a" | "an" {
+  return /^[aeiou]/i.test(name) ? "an" : "a";
+}
+
 /** The living NPC on the given tile, if any. */
 export function npcAt(state: GameState, x: number, y: number): NPCDef | null {
   const npc = state.floor.npcs?.find((n) => n.x === x && n.y === y) ?? null;
@@ -87,14 +92,16 @@ export function doTrade(state: GameState, npc: NPCDef, trade: NPCTradeDef): NPCA
   const receive = ITEMS_BY_ID[trade.receiveItemId];
   if (!give || !receive) return { message: `${npc.name} shakes their head.` };
   if (idx < 0) {
-    return { message: `You don't carry a ${give.name}.` };
+    return { message: `You don't carry ${articleFor(give.name)} ${give.name}.` };
   }
   state.inventory.splice(idx, 1);
   // Goods from an NPC's own hands are identified.
   state.inventory.push({ itemId: trade.receiveItemId, identified: true });
   if (trade.once) state.npcTradesDone.push(tradeKey(npc, trade));
   adjustDisposition(state, npc, 5);
-  return { message: `${npc.name} takes the ${give.name} and hands over a ${receive.name}.` };
+  return {
+    message: `${npc.name} takes the ${give.name} and hands over ${articleFor(receive.name)} ${receive.name}.`,
+  };
 }
 
 /**

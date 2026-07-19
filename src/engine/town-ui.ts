@@ -715,7 +715,7 @@ export class TownController {
           metadata: item.id,
         };
       });
-      help = `D-pad navigate · A compare · ←→ tabs · B back`;
+      help = `D-pad navigate · A buy · ←→ tabs · B back`;
       confirm = (i) => this.openBuyConfirm(this.getShopBuyList()[i]);
     } else {
       const inv = this.state.inventory;

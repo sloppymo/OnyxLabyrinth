@@ -168,12 +168,23 @@ describe("doTrade", () => {
     expect(availableTrades(state, npc)).toHaveLength(0);
   });
 
-  it("refuses when the give-item is not carried", () => {
+  it("refuses when the give-item is not carried, with correct a/an grammar", () => {
+    // Regression test: this used to read "You don't carry a Antidote." —
+    // missing the "an" before a vowel-initial item name.
     const state = makeState();
     const npc = state.floor.npcs![0];
     const result = doTrade(state, npc, npc.trades![0]);
-    expect(result.message).toContain("don't carry");
+    expect(result.message).toBe("You don't carry an Antidote.");
     expect(state.inventory).toHaveLength(0);
+  });
+
+  it("uses 'a' before a consonant-initial item name", () => {
+    const npc = makeNPC({
+      trades: [{ giveItemId: "healing-potion", receiveItemId: "robe+2", once: true }],
+    });
+    const state = makeState(npc);
+    const result = doTrade(state, npc, npc.trades![0]);
+    expect(result.message).toBe("You don't carry a Healing Potion.");
   });
 });
 
