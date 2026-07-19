@@ -23,3 +23,16 @@ dev-party-creation.html
 /.tmp*
 /.tmp-*/
 .worktrees/
+
+# Repo-hygiene purge (2026-07-19): large local-only dirs — never track
+/assets/
+/playtest-screenshots/
+/vfx-audit/
+
+# Generated preview HTML (outputs of scripts/generate-*.mjs — regenerated on demand)
+/jewelflame-preview.html
+/jewelflame-preview-index.html
+/jewelflame-100x100-preview.html
+/jewelflame-creature-extended-preview.html
+/sprite-preview.html
+/sprite-preview-standalone.html
