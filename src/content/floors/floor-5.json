@@ -2149,6 +2149,7 @@
       "y": 13,
       "itemIds": [
         "bow+2",
+        "focus-ward",
         "healing-potion"
       ],
       "trap": "poison"
@@ -2157,8 +2158,8 @@
       "x": 14,
       "y": 17,
       "itemIds": [
-        "great-sword+2",
-        "plate-mail+2",
+        "voidblade+2",
+        "dragonscale-mail+2",
         "healing-potion",
         "healing-potion"
       ],

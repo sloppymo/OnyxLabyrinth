@@ -19,10 +19,10 @@ function mockItem(statBonuses: Partial<Record<"str" | "int" | "pie" | "vit" | "a
 }
 
 describe("xpForNextLevel", () => {
-  it("returns level * 20", () => {
-    expect(xpForNextLevel(1)).toBe(20);
-    expect(xpForNextLevel(5)).toBe(100);
-    expect(xpForNextLevel(10)).toBe(200);
+  it("returns level * 120", () => {
+    expect(xpForNextLevel(1)).toBe(120);
+    expect(xpForNextLevel(5)).toBe(600);
+    expect(xpForNextLevel(10)).toBe(1200);
   });
 });
 

@@ -60,28 +60,30 @@ export function encounterRollChance(
 
 /**
  * Arena starting floor for a party level.
- * L1–L3 → floor 1, L4–L6 → floor 2, L7+ → floor 3.
- * Matches the discrete Arena chooser (1/3/6/9/12) so L9 never opens on
- * floor-1 skeletons.
+ * Maps each of the discrete Arena chooser levels (1/3/6/9/12) onto its own
+ * floor across the full 5-floor campaign, so higher-level parties reach the
+ * denser floor 4/5 encounter tables instead of looping on floor 3 forever.
  */
 export function arenaStartFloorForLevel(level: number): number {
   const lv = Math.max(1, Math.floor(level));
-  if (lv <= 3) return 1;
-  if (lv <= 6) return 2;
-  return 3;
+  if (lv <= 2) return 1;
+  if (lv <= 4) return 2;
+  if (lv <= 7) return 3;
+  if (lv <= 10) return 4;
+  return 5;
 }
 
 /**
  * Floor used for Arena wave `wave` (1-based), cycling from `startFloor`
- * through floor 3 (inclusive).
+ * through floor 5 (inclusive).
  *
- * Examples (start=1): wave 1→1, 2→2, 3→3, 4→1…
- * start=3: every wave stays on floor 3.
+ * Examples (start=1): wave 1→1, 2→2, 3→3, 4→4, 5→5, 6→1…
+ * start=5: every wave stays on floor 5.
  */
 export function arenaFloorForWave(startFloor: number, wave: number): number {
-  const start = Math.min(3, Math.max(1, Math.floor(startFloor)));
+  const start = Math.min(5, Math.max(1, Math.floor(startFloor)));
   const w = Math.max(1, Math.floor(wave));
-  const span = 4 - start; // 3,2, or 1
+  const span = 6 - start; // 5,4,3,2, or 1
   return start + ((w - 1) % span);
 }
 

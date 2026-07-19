@@ -113,9 +113,10 @@ const MAGE_PERKS: PerkDef[] = [
   ),
   perk(
     "mage-mana-shield", "Mage", 2, "Mana Shield",
-    "20% of incoming damage is deducted from SP instead of HP. (Not yet implemented — v1.1.)",
+    "20% of incoming damage is deducted from SP instead of HP.",
     ["BeforeDamageTaken"], {}, ["defense", "reactive"]
-    // TODO(v1.1): no registered handler yet.
+    // Wired directly via a registered handler in game/perks.ts + the
+    // absorbToSp callback in combat.ts's applyPartyDamage.
   ),
   perk(
     "mage-chain-caster", "Mage", 3, "Chain Caster",
@@ -134,9 +135,14 @@ const MAGE_PERKS: PerkDef[] = [
   ),
   perk(
     "mage-spellbreaker", "Mage", 4, "Spellbreaker",
-    "Spells ignore 50% resistance, cannot be reflected, immune to Silence. (Not yet implemented — v1.1.)",
+    "Spells ignore half their elemental resistance penalty and the caster is immune to Silence.",
     [], {}, ["offense", "passive"]
-    // TODO(v1.1): no resistance/reflect/silence-immunity system to hook into yet.
+    // Wired directly in combat.ts: applySpell/previewSpellDamage soften the
+    // resist multiplier (x0.5 -> x0.75) for this caster's spells, and
+    // decideEnemyAction excludes Spellbreaker holders from silenceRandom's
+    // target pool. No reflect mechanic exists anywhere in the game, so the
+    // design doc's "cannot be reflected" clause is dropped rather than kept
+    // as a phantom promise for a system that isn't there to protect against.
   ),
 ];
 
@@ -230,9 +236,11 @@ const THIEF_PERKS: PerkDef[] = [
   ),
   perk(
     "thief-shadow-dance", "Thief", 3, "Shadow Dance",
-    "After using Hide twice in one combat, next Hide attack ignores 50% defense. (Not yet implemented — v1.1.)",
+    "After using Hide twice in one combat, next Hide attack ignores 50% defense.",
     ["OnHide"], {}, ["offense", "reactive"]
-    // TODO(v1.1): no registered handler yet.
+    // Registered handler tracks Hide uses; the "danceReady" flag it sets is
+    // consumed directly by resolveAmbush in combat.ts (Ambush is definitionally
+    // "the next Hide attack" — it requires the hidden status to fire at all).
   ),
   perk(
     "thief-shadow", "Thief", 4, "Shadow",
@@ -291,9 +299,13 @@ const HALBERDIER_PERKS: PerkDef[] = [
   ),
   perk(
     "halberdier-warlord", "Halberdier", 4, "Warlord",
-    "Allies adjacent to you gain +20% damage. (Not yet implemented — v1.1.)",
+    "Allies adjacent to you gain +20% damage.",
     [], {}, ["support", "passive"]
-    // TODO(v1.1): adjacency-based party buff not wired in yet.
+    // Wired directly in combat.ts: warlordDamageMultiplier() checks for a
+    // living, adjacent Warlord holder and is applied at every damage-dealing
+    // site (resolveAttack, resolveAmbush, applySpell's damage case,
+    // dealTechniqueDamage) since it modifies OTHER characters' output, not
+    // the holder's own — no triggers/hook needed, no self-buff.
   ),
 ];
 
@@ -364,9 +376,11 @@ const CRUSADER_PERKS: PerkDef[] = [
   ),
   perk(
     "crusader-holy-shield", "Crusader", 2, "Holy Shield",
-    "Defending grants +20% defense for 2 rounds. (Not yet implemented — v1.1.)",
+    "Defending grants +20% defense for 2 rounds.",
     ["OnDefend"], {}, ["defense", "reactive"]
-    // TODO(v1.1): no registered handler yet.
+    // Registered handler grants a duration-tracked damage-taken multiplier
+    // (CombatState.holyShieldBuffs) applied in damageReductionFor, on top of
+    // the base Defend reduction.
   ),
   perk(
     "crusader-zealot", "Crusader", 2, "Zealot",

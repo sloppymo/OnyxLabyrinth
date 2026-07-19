@@ -12,9 +12,18 @@ import { maxContentSpellTier, spellsForClass } from "../data/spells";
 import { effectiveStats } from "./effective-stats";
 import { perksForCharacter, perkModifiers } from "./perks";
 
-/** XP required to reach the next level. Generous curve: ~5-8 Floor 1 fights to level 2. */
+/**
+ * XP required to reach the next level.
+ *
+ * The base curve (`level * 20`) was tuned assuming XP was split six ways
+ * across the party. `main.ts` `endCombat` now gives every living member the
+ * full encounter XP ("no 6-way split") without the curve being adjusted to
+ * compensate, which let a party blow through all 12 levels in ~7-8 fights.
+ * The ×6 multiplier restores the originally-intended pacing (~5-8 Floor 1
+ * fights to level 2) under the new full-XP-per-member rule.
+ */
 export function xpForNextLevel(level: number): number {
-  return level * 20;
+  return level * 120;
 }
 
 /**

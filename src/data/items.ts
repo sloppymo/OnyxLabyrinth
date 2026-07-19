@@ -99,6 +99,11 @@ export const GREAT_SWORDS = weapon("great-sword", "Great Sword", 3, 7, "close");
 export const STAFFS = weapon("staff", "Staff", 1, 2, "medium");
 export const BOWS = weapon("bow", "Bow", 1, 3, "long");
 export const HALBERDS = weapon("halberd", "Halberd", 1, 3, "medium");
+// Floor 4-5 top-tier weapons — the Great Sword line (tier 3) was previously
+// the campaign's ceiling, so floors 4-5 could only re-drop the same +2 gear
+// floor 3's boss chest already gives. These give the new floors their own loot.
+export const RUNEBLADES = weapon("runeblade", "Runeblade", 4, 9, "close");
+export const VOIDBLADES = weapon("voidblade", "Voidblade", 5, 11, "close");
 
 // Armor
 export const ROBES = armor("robe", "Robe", 1, "body", 1);
@@ -107,6 +112,35 @@ export const CHAIN_MAILS = armor("chain-mail", "Chain Mail", 2, "body", 4);
 export const PLATE_MAILS = armor("plate-mail", "Plate Mail", 3, "body", 6);
 export const SHIELDS = armor("shield", "Shield", 1, "shield", 2);
 export const HELMS = armor("helm", "Helm", 2, "head", 1);
+// Floor 4-5 top-tier armor (see RUNEBLADES/VOIDBLADES above).
+export const MYTHRIL_PLATES = armor("mythril-plate", "Mythril Plate", 4, "body", 8);
+export const DRAGONSCALE_MAILS = armor("dragonscale-mail", "Dragonscale Mail", 5, "body", 10);
+
+// Named accessories with real statBonuses — the equipment layer in
+// effectiveStats() (base + equipment.statBonuses + perk.statModifiers) had
+// no item exercising the statBonuses field until these, so gear choice was
+// a single scalar (attack or defense) with no stat-tradeoff decisions.
+export const SAGES_CIRCLET: ItemDef = {
+  id: "sages-circlet",
+  name: "Sage's Circlet",
+  type: "armor",
+  slot: "head",
+  defenseBonus: 2,
+  statBonuses: { int: 1, pie: 1 },
+  price: 300,
+  dropFloorTier: 4,
+};
+
+export const FOCUS_WARD: ItemDef = {
+  id: "focus-ward",
+  name: "Focus Ward",
+  type: "armor",
+  slot: "shield",
+  defenseBonus: 3,
+  statBonuses: { luk: 1, agi: 1 },
+  price: 320,
+  dropFloorTier: 5,
+};
 
 // Consumables
 export const HEALING_POTION: ItemDef = {
@@ -167,6 +201,8 @@ export const ALL_WEAPONS: ItemDef[] = [
   ...STAFFS,
   ...BOWS,
   ...HALBERDS,
+  ...RUNEBLADES,
+  ...VOIDBLADES,
 ];
 
 export const ALL_ARMOR: ItemDef[] = [
@@ -176,6 +212,10 @@ export const ALL_ARMOR: ItemDef[] = [
   ...PLATE_MAILS,
   ...SHIELDS,
   ...HELMS,
+  ...MYTHRIL_PLATES,
+  ...DRAGONSCALE_MAILS,
+  SAGES_CIRCLET,
+  FOCUS_WARD,
 ];
 
 export const ALL_CONSUMABLES: ItemDef[] = [

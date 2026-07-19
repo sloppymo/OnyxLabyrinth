@@ -371,6 +371,7 @@ async function startCombat(combat: CombatState): Promise<void> {
   state.combat = combat;
   setMode(state, "combat");
   flashEncounter();
+  audio.playCombatSfx(combat.isBoss ? "bossAppear" : "encounterStart");
   showMode("combat", mapVisible);
   suppressNextCombatKey = true;
   setTimeout(() => {

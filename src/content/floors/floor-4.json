@@ -2146,6 +2146,7 @@
       "y": 7,
       "itemIds": [
         "chain-mail+2",
+        "sages-circlet",
         "healing-potion"
       ]
     },
@@ -2153,8 +2154,8 @@
       "x": 15,
       "y": 16,
       "itemIds": [
-        "great-sword+2",
-        "plate-mail+2",
+        "runeblade+2",
+        "mythril-plate+2",
         "healing-potion",
         "healing-potion"
       ],

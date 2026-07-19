@@ -1,6 +1,8 @@
 /**
- * Bestiary and encounter tables for the three-floor campaign
- * (1: The Flooded Crypt, 2: The Cursed Library, 3: The Forge of Ashes).
+ * Bestiary and encounter tables for the five-floor campaign
+ * (1: The Flooded Crypt, 2: The Cursed Library, 3: The Forge of Ashes,
+ * 4: The Null Choir, 5: The Weeping Cistern — floors 4-5 are JSON-authored
+ * content registered by src/content/floors/index.ts, not hand-carved here).
  *
  * Each enemy is a typed constant with floor assignments, row preference,
  * combat stats, and special-behavior flags. Encounter tables describe

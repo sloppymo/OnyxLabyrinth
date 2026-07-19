@@ -1,10 +1,13 @@
 // Floor definitions. Each spell/enemy/item/floor must be defined as typed
 // data here (or in the sibling data files) — never hardcoded in game logic.
 //
-// The campaign is three hand-carved floors — The Flooded Crypt, The Cursed
-// Library, and The Forge of Ashes — linked linearly by stairs. Floor IDs must
-// stay contiguous (1, 2, 3): handleStairs() in game/features.ts computes the
-// target floor as currentId ± 1.
+// This file hand-carves the first three campaign floors — The Flooded Crypt,
+// The Cursed Library, and The Forge of Ashes — linked linearly by stairs.
+// Floors 4 and 5 (The Null Choir, The Weeping Cistern) are authored as
+// editor-exported JSON and registered by src/content/floors/index.ts; the
+// full campaign is floors 1-5. Floor IDs must stay contiguous across all
+// five: handleStairs() in game/features.ts computes the target floor as
+// currentId ± 1.
 //
 // Grid convention: grid[y][x]. Each cell has 4 edges (n/e/s/w). "open" =
 // passable, "wall" = blocked, "door" = passable + visual marker, "locked" =

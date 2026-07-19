@@ -2,9 +2,13 @@
 //
 // Ambient / dungeon sounds are synthesized via the Web Audio API. Menu UI
 // SFX are short WAV samples (FF6 system tings, licensed — see
-// public/assets/sfx/ui/README.md). The engine is lazy-initialized on the
-// first user interaction (browser autoplay policy requires a user gesture
-// before AudioContext can start).
+// public/assets/sfx/ui/README.md). Combat SFX are also WAV samples (FF6
+// sound-effect rip, unlicensed — see public/assets/sfx/combat/README.md,
+// which is explicit about that difference). The "which sound for which
+// combat event" mapping lives in combat-audio.ts, not here — this file only
+// knows how to load and play named sample ids. The engine is lazy-
+// initialized on the first user interaction (browser autoplay policy
+// requires a user gesture before AudioContext can start).
 //
 // Sound design:
 //   - Ambient drone: two detuned low oscillators through a lowpass filter,
@@ -56,6 +60,121 @@ const UI_SFX_GAIN: Record<UiSfxId, number> = {
   cureMenu: 0.36,
 };
 
+/** Combat SFX ids — see public/assets/sfx/combat/README.md for source notes. */
+export type CombatSfxId =
+  | "attackHit"
+  | "criticalHit"
+  | "miss"
+  | "defend"
+  | "enemyDefeated"
+  | "bossDefeated"
+  | "partyKnockedOut"
+  | "revived"
+  | "flee"
+  | "fizzle"
+  | "poisonTick"
+  | "burnTick"
+  | "healCast"
+  | "buffCast"
+  | "summonCast"
+  | "debuffCast"
+  | "statusSleep"
+  | "statusParalysis"
+  | "statusBlind"
+  | "statusPoison"
+  | "elementFire"
+  | "elementCold"
+  | "elementLightning"
+  | "elementWater"
+  | "elementEarth"
+  | "elementWind"
+  | "elementDivine"
+  | "elementPhysical"
+  | "technique"
+  | "bossAppear"
+  | "bossPhase"
+  | "silence"
+  | "analyze"
+  | "encounterStart"
+  | "itemUse";
+
+const COMBAT_SFX_FILES: Record<CombatSfxId, string> = {
+  attackHit: "attack-hit.wav",
+  criticalHit: "critical-hit.wav",
+  miss: "miss.wav",
+  defend: "defend.wav",
+  enemyDefeated: "enemy-defeated.wav",
+  bossDefeated: "boss-defeated.wav",
+  partyKnockedOut: "party-knocked-out.wav",
+  revived: "revived.wav",
+  flee: "flee.wav",
+  fizzle: "fizzle.wav",
+  poisonTick: "poison-tick.wav",
+  burnTick: "burn-tick.wav",
+  healCast: "heal-cast.wav",
+  buffCast: "buff-cast.wav",
+  summonCast: "summon-cast.wav",
+  debuffCast: "debuff-cast.wav",
+  statusSleep: "status-sleep.wav",
+  statusParalysis: "status-paralysis.wav",
+  statusBlind: "status-blind.wav",
+  statusPoison: "status-poison.wav",
+  elementFire: "element-fire.wav",
+  elementCold: "element-cold.wav",
+  elementLightning: "element-lightning.wav",
+  elementWater: "element-water.wav",
+  elementEarth: "element-earth.wav",
+  elementWind: "element-wind.wav",
+  elementDivine: "element-divine.wav",
+  elementPhysical: "element-physical.wav",
+  technique: "technique.wav",
+  bossAppear: "boss-appear.wav",
+  bossPhase: "boss-phase.wav",
+  silence: "silence.wav",
+  analyze: "analyze.wav",
+  encounterStart: "encounter-start.wav",
+  itemUse: "item-use.wav",
+};
+
+/** Default per-sound gain. Frequent/ticking sounds sit lower to avoid ear fatigue. */
+const COMBAT_SFX_GAIN: Record<CombatSfxId, number> = {
+  attackHit: 0.4,
+  criticalHit: 0.5,
+  miss: 0.3,
+  defend: 0.35,
+  enemyDefeated: 0.42,
+  bossDefeated: 0.55,
+  partyKnockedOut: 0.45,
+  revived: 0.42,
+  flee: 0.4,
+  fizzle: 0.35,
+  poisonTick: 0.22,
+  burnTick: 0.22,
+  healCast: 0.4,
+  buffCast: 0.35,
+  summonCast: 0.42,
+  debuffCast: 0.35,
+  statusSleep: 0.35,
+  statusParalysis: 0.35,
+  statusBlind: 0.35,
+  statusPoison: 0.32,
+  elementFire: 0.38,
+  elementCold: 0.38,
+  elementLightning: 0.38,
+  elementWater: 0.38,
+  elementEarth: 0.38,
+  elementWind: 0.38,
+  elementDivine: 0.38,
+  elementPhysical: 0.38,
+  technique: 0.42,
+  bossAppear: 0.5,
+  bossPhase: 0.5,
+  silence: 0.38,
+  analyze: 0.32,
+  encounterStart: 0.4,
+  itemUse: 0.4,
+};
+
 class AudioEngine {
   private ctx: Maybe<AudioContext> = null;
   private masterGain: Maybe<GainNode> = null;
@@ -79,6 +198,10 @@ class AudioEngine {
   private uiLoadPromise: Promise<void> | null = null;
   /** Throttle rapid cursor moves (gamepad held / key-repeat). */
   private lastCursorAt = 0;
+
+  /** Decoded combat SFX buffers (empty until loadCombatSounds resolves). */
+  private combatBuffers: Partial<Record<CombatSfxId, AudioBuffer>> = {};
+  private combatLoadPromise: Promise<void> | null = null;
 
   // Config — exposed for tuning. Keep magic numbers here.
   private readonly CFG = {
@@ -137,8 +260,9 @@ class AudioEngine {
     this.masterGain.connect(this.ctx.destination);
     // Pre-render the noise buffer for footsteps.
     this.noiseBuffer = this.createNoiseBuffer(0.5);
-    // Kick off UI sample decode (non-blocking).
+    // Kick off UI + combat sample decode (non-blocking).
     void this.loadUiSounds();
+    void this.loadCombatSounds();
   }
 
   /**
@@ -170,6 +294,58 @@ class AudioEngine {
       );
     })();
     return this.uiLoadPromise;
+  }
+
+  /**
+   * Fetch + decode combat SFX WAVs under public/assets/sfx/combat/. Same
+   * shape as loadUiSounds — shares one in-flight promise, missing files
+   * fail quietly.
+   */
+  loadCombatSounds(): Promise<void> {
+    if (this.combatLoadPromise) return this.combatLoadPromise;
+    if (!this.ctx) {
+      this.resume();
+    }
+    const ctx = this.ctx;
+    if (!ctx) return Promise.resolve();
+
+    const base = `${import.meta.env.BASE_URL ?? "/"}assets/sfx/combat/`;
+    this.combatLoadPromise = (async () => {
+      await Promise.all(
+        (Object.keys(COMBAT_SFX_FILES) as CombatSfxId[]).map(async (id) => {
+          try {
+            const res = await fetch(base + COMBAT_SFX_FILES[id]);
+            if (!res.ok) return;
+            const raw = await res.arrayBuffer();
+            this.combatBuffers[id] = await ctx.decodeAudioData(raw.slice(0));
+          } catch {
+            // Missing/corrupt asset — leave that slot empty.
+          }
+        })
+      );
+    })();
+    return this.combatLoadPromise;
+  }
+
+  /**
+   * Play a combat SFX sample by id. Silently no-ops if the sample hasn't
+   * finished loading yet (kicks a load for next time) or Web Audio isn't
+   * available. The event->id mapping lives in combat-audio.ts, not here.
+   */
+  playCombatSfx(id: CombatSfxId): void {
+    if (!this.ctx || !this.masterGain) return;
+    const buf = this.combatBuffers[id];
+    if (!buf) {
+      void this.loadCombatSounds();
+      return;
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = this.ctx.createGain();
+    gain.gain.value = COMBAT_SFX_GAIN[id];
+    src.connect(gain);
+    gain.connect(this.masterGain);
+    src.start();
   }
 
   /** Menu cursor tick (highlight move). Rate-limited for key-repeat. */

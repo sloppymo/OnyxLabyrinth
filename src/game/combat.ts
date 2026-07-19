@@ -281,7 +281,11 @@ export function previewSpellDamage(
         (sp.kind === "resistElement" || sp.kind === "weakElement") && sp.element === eff.element
     );
     if (affinity) {
-      final = Math.max(1, Math.round(final * (affinity.kind === "weakElement" ? 1.5 : 0.5)));
+      const isResist = affinity.kind !== "weakElement";
+      const hasSpellbreaker =
+        isResist && perksForCharacter(caster).some((p) => p.id === "mage-spellbreaker");
+      const affinityMult = isResist ? (hasSpellbreaker ? 0.75 : 0.5) : 1.5;
+      final = Math.max(1, Math.round(final * affinityMult));
     }
   }
   if (s.enemyMagicScreens[target.row] > 0) {
@@ -777,6 +781,21 @@ export interface CombatState {
    * processing; recasting refreshes the entry.
    */
   regenBuffs: Record<string, { power: number; duration: number; spellId: string }>;
+  /**
+   * Monotonic counter for unique summoned-ally / enemy-summon instance ids
+   * for the whole combat. Prevents id collisions from length/round-based
+   * naming when multiple summons land in the same round or the roster
+   * shrinks between summons (deaths reduce enemies.front/back length).
+   */
+  summonCounter: number;
+  /**
+   * Damage-taken reduction buffs with duration (char id -> entry), set by
+   * crusader-holy-shield's OnDefend hook (+20% defense for 2 rounds on top
+   * of the base Defend reduction). Applied as an extra multiplier in
+   * damageReductionFor; ticked down in tickTechniqueBuffs like the other
+   * duration-based buff maps.
+   */
+  holyShieldBuffs: Record<string, { multiplier: number; duration: number }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -846,6 +865,8 @@ export function createCombatState(
     disableStacks: {},
     enemyDots: {},
     regenBuffs: {},
+    summonCounter: 0,
+    holyShieldBuffs: {},
   };
 }
 
@@ -1058,36 +1079,7 @@ export function resolveCombatRound(
   }
 
   // --- Phase 5: end-of-round status ticks ---------------------------------
-  tickStatuses(s, log, emit);
-  deathCheck(s, emit);
-  allyDeathCheck(s, emit);
-  if (checkTermination(s, log)) return s;
-
-  // Check for hidden characters being spotted by enemies
-  checkSpotHidden(s, rng, log, emit);
-
-  // Magic screens and fizzle fields deteriorate each round.
-  if (s.magicScreen > 0) {
-    s.magicScreen = Math.max(0, s.magicScreen - 1);
-  }
-  if (s.partyFizzleField > 0) {
-    s.partyFizzleField = Math.max(0, s.partyFizzleField - 1);
-  }
-  for (const row of (["front", "back"] as Row[])) {
-    if (s.enemyFizzleFields[row] > 0) {
-      s.enemyFizzleFields[row] = Math.max(0, s.enemyFizzleFields[row] - 1);
-    }
-    if (s.enemyMagicScreens[row] > 0) {
-      s.enemyMagicScreens[row] = Math.max(0, s.enemyMagicScreens[row] - 1);
-    }
-  }
-
-  // Per-round silence from flag-driven bosses (silenceRandom) ends now.
-  s.silencedThisRound = [];
-
-  // Tick technique-related temporary buffs/debuffs.
-  tickTechniqueBuffs(s);
-
+  runEndOfRound(s, rng, log, emit);
   return s;
 }
 
@@ -1340,60 +1332,7 @@ export function endRound(state: CombatState, rng: Rng = Math.random): CombatStat
   s.justDiedAllies = [];
   const { log, emit } = turnLoggers(s);
 
-  tickStatuses(s, log, emit);
-  deathCheck(s, emit);
-  allyDeathCheck(s, emit);
-  if (checkTermination(s, log)) return s;
-
-  checkSpotHidden(s, rng, log, emit);
-
-  // priest-saint: while a living Saint stands, the whole party regains 5%
-  // max HP at the end of every round. (The revive-targeting clause of the
-  // perk is still TODO(v1.1).)
-  const saintActive = s.party.some(
-    (c) => c.hp > 0 && perksForCharacter(c).some((p) => p.id === "priest-saint")
-  );
-  if (saintActive) {
-    for (const c of s.party) {
-      if (c.hp <= 0 || c.hp >= c.maxHp) continue;
-      const before = c.hp;
-      c.hp = Math.min(c.maxHp, c.hp + Math.max(1, Math.round(c.maxHp * 0.05)));
-      emit(
-        `${c.name} regains ${c.hp - before} HP.`,
-        { type: "spellEffect", spellId: "priest-saint", targetId: c.id, heal: c.hp - before }
-      );
-    }
-  }
-
-  if (s.magicScreen > 0) {
-    s.magicScreen = Math.max(0, s.magicScreen - 1);
-  }
-  if (s.partyFizzleField > 0) {
-    s.partyFizzleField = Math.max(0, s.partyFizzleField - 1);
-  }
-  for (const row of (["front", "back"] as Row[])) {
-    if (s.enemyFizzleFields[row] > 0) {
-      s.enemyFizzleFields[row] = Math.max(0, s.enemyFizzleFields[row] - 1);
-    }
-    if (s.enemyMagicScreens[row] > 0) {
-      s.enemyMagicScreens[row] = Math.max(0, s.enemyMagicScreens[row] - 1);
-    }
-  }
-
-  s.silencedThisRound = [];
-
-  // Tick enemy ability cooldowns (decrement by 1 each round).
-  for (const e of [...s.enemies.front, ...s.enemies.back]) {
-    if (e.abilityCooldowns) {
-      for (const id of Object.keys(e.abilityCooldowns)) {
-        if (e.abilityCooldowns[id] > 0) e.abilityCooldowns[id]--;
-      }
-    }
-  }
-
-  // Tick technique-related temporary buffs/debuffs.
-  tickTechniqueBuffs(s);
-
+  runEndOfRound(s, rng, log, emit);
   return s;
 }
 
@@ -1631,9 +1570,13 @@ function decideEnemyAction(
   // with a "silenceRandom" special silences a random party member. Emits a
   // structured event so the scene shows the Silence banner + SILENCED popup.
   // Only triggers ~40% of the time so the enemy can also use abilities/attack.
+  // mage-spellbreaker holders are immune and excluded from the target pool.
   if (enemy.special.some((sp) => sp.kind === "silenceRandom") && rng() < 0.4) {
-    const target = pickRandom(livingParty, rng);
-    if (target) {
+    const silenceable = livingParty.filter(
+      (c) => !perksForCharacter(c).some((p) => p.id === "mage-spellbreaker")
+    );
+    const target = pickRandom(silenceable.length > 0 ? silenceable : livingParty, rng);
+    if (target && !perksForCharacter(target).some((p) => p.id === "mage-spellbreaker")) {
       s.silencedThisRound.push(target.id);
       emit(`${enemy.name} casts Silence on ${target.name}!`, {
         type: "silence",
@@ -1749,7 +1692,7 @@ function checkSpotHidden(
     // Higher level enemies are better at spotting
     const enemyLevel = Math.max(1, allEnemies[0].hp / 10); // Rough estimate of enemy level
     const charLevel = char.level;
-    const charAgi = char.stats.agi;
+    const charAgi = effStatsFor(s, char).agi;
     
     // Base spot chance + enemy level advantage - character AGI advantage
     let spotChance = 0.2 + (enemyLevel - charLevel) * 0.05 - (charAgi - 10) * 0.01;
@@ -1875,16 +1818,16 @@ function resolvePlayerAction(
       resolveTechnique(s, actor, action, rng, log, emit);
       break;
     case "defend":
-      resolveDefend(s, actor, emit);
+      resolveDefend(s, actor, rng, emit);
       break;
     case "item":
       resolveItem(s, actor, action, log, emit);
       break;
     case "flee":
-      resolveDefend(s, actor, emit);
+      resolveDefend(s, actor, rng, emit);
       break;
     case "hide":
-      resolveHide(s, actor, emit);
+      resolveHide(s, actor, rng, emit);
       break;
     case "ambush":
       resolveAmbush(s, actor, action.targetInstanceId, rng, log, emit);
@@ -2037,6 +1980,16 @@ function resolveAttack(
 
   // Apply reactive multipliers from BeforeAttack hooks before AC reduction.
   damage = Math.max(1, Math.round(damage * damageMultiplier));
+
+  // Damage buff (Battle Cry) — same timing as technique damage, so a Fighter
+  // who used Battle Cry then falls back to basic Attacks still benefits.
+  const dmgBuff = s.damageBuffs[actor.id];
+  if (dmgBuff) {
+    damage = Math.max(1, Math.round(damage * dmgBuff.multiplier));
+  }
+
+  // halberdier-warlord: +20% damage while adjacent to a living Warlord holder.
+  damage = Math.max(1, Math.round(damage * warlordDamageMultiplier(s, actor)));
 
   // Critical hit: chance based on effective LUK, capped at 25%.
   // thief-assassin: +25% crit vs enemies suffering any status effect,
@@ -2295,17 +2248,29 @@ function resolveCast(
 function resolveDefend(
   s: CombatState,
   actor: Character,
+  rng: Rng,
   emit: (m: string, e: CombatEvent) => void
 ): void {
   // halberdier-brace: Defend reduces damage by 60% instead of the base 50%.
   const mods = perkModifiers(perksForCharacter(actor), effStatsFor(s, actor));
   s.defendBuff[actor.id] = mods.defendReduction;
   emit(`${actor.name} defends.`, { type: "defend", actorId: actor.id });
+
+  // crusader-holy-shield: Defending also grants +20% defense for 2 rounds,
+  // on top of the base Defend reduction above.
+  dispatchHook("OnDefend", perksForCharacter(actor), {
+    state: s.perkState[actor.id],
+    rng,
+    grantDefenseBuff: (multiplier: number, duration: number) => {
+      s.holyShieldBuffs[actor.id] = { multiplier, duration };
+    },
+  });
 }
 
 function resolveHide(
-  _s: CombatState,
+  s: CombatState,
   actor: Character,
+  rng: Rng,
   emit: (m: string, e: CombatEvent) => void
 ): void {
   // Only the Thief class can hide
@@ -2313,16 +2278,22 @@ function resolveHide(
     emit(`${actor.name} cannot hide.`, { type: "fizzle", actorId: actor.id });
     return;
   }
-  
+
   // Remove exposed status if present
   if (actor.status.includes("exposed")) {
     actor.status = actor.status.filter((st) => st !== "exposed");
   }
-  
+
   // Add hidden status
   if (!actor.status.includes("hidden")) {
     actor.status.push("hidden");
     emit(`${actor.name} hides in the shadows.`, { type: "hide", actorId: actor.id });
+    // thief-shadow-dance: track Hide uses this combat; the handler flags
+    // "danceReady" on the second use, consumed by the next Ambush.
+    dispatchHook("OnHide", perksForCharacter(actor), {
+      state: s.perkState[actor.id],
+      rng,
+    });
   } else {
     emit(`${actor.name} is already hidden.`, { type: "fizzle", actorId: actor.id });
   }
@@ -2362,7 +2333,7 @@ function resolveAmbush(
   if (!actor.status.includes("exposed")) {
     actor.status.push("exposed");
   }
-  
+
   // Ambush ignores weapon range (can target any enemy from any position)
   // Calculate damage with double damage bonus
   const loadout = s.loadout[actor.id];
@@ -2378,19 +2349,82 @@ function resolveAmbush(
     1,
     Math.round(base * variance * 2 * mods.meleeDamageMultiplier)
   ) + mods.meleeBonusDamage;
+  damage = Math.max(1, Math.round(damage * tagDamageMultiplier(mods, target)));
+  // halberdier-warlord: +20% damage while adjacent to a living Warlord holder.
+  damage = Math.max(1, Math.round(damage * warlordDamageMultiplier(s, actor)));
 
-  // Critical hit: chance based on effective LUK, capped at 25%.
+  // BeforeAttack hooks (e.g. Ambusher's forced crit on the first attack of
+  // combat, which Ambush frequently is). Same dispatch shape as resolveAttack.
+  let forcedCrit = false;
+  dispatchHook("BeforeAttack", perksForCharacter(actor), {
+    state: s.perkState[actor.id],
+    rng,
+    targetId: target.instanceId,
+    applyDamageMultiplier: (mult: number) => {
+      damage = Math.max(1, Math.round(damage * mult));
+    },
+    forceCrit: () => {
+      forcedCrit = true;
+    },
+    guaranteeHit: () => {},
+    isFromHide: true,
+    round: s.round,
+  });
+
+  // Critical hit: same LUK/bonus formula and thief-assassin status bonus as
+  // resolveAttack, so a Thief's own class perks apply to their signature verb.
   let crit = false;
-  const critChance = Math.min(0.25, effStats.luk / 100 + mods.critChanceBonus);
-  if (rng() < critChance) {
+  let critChance = critChanceFromLukAndBonuses(effStats.luk, mods.critChanceBonus);
+  if (
+    target.status.length > 0 &&
+    perksForCharacter(actor).some((p) => p.id === "thief-assassin")
+  ) {
+    critChance += 0.25;
+  }
+  if (forcedCrit || rng() < critChance) {
     damage = Math.max(1, Math.round(damage * mods.critDamageMultiplier));
     crit = true;
     log(`${actor.name} lands a critical ambush!`);
+    dispatchHook("OnCriticalHit", perksForCharacter(actor), {
+      state: s.perkState[actor.id],
+      rng,
+      targetId: target.instanceId,
+    });
+  }
+
+  // thief-shadow-dance: after 2 Hides this combat, the next Ambush ignores
+  // an extra 50% of the AC reduction. Read+consumed directly off perkState
+  // (set by the OnHide handler in perks.ts) rather than a second hook.
+  const ambushPerkState = s.perkState[actor.id] as { danceReady?: boolean } | undefined;
+  const shadowDanceActive = !!ambushPerkState?.danceReady;
+  if (shadowDanceActive && ambushPerkState) {
+    ambushPerkState.danceReady = false;
   }
 
   // Enemy AC reduces physical damage (with Disarm debuffs applied), capped at
-  // 50% of the incoming swing (P2-8).
-  const reduced = Math.max(1, damage - Math.min(effectiveEnemyAc(s, target), Math.floor(damage / 2)));
+  // 50% of the incoming swing (P2-8); Reach Mastery's flat ignore, thief-
+  // backstab's back-row 25% ignore, and thief-shadow-dance's 50% ignore all
+  // apply on top, matching resolveAttack (backstab) and stacking with it.
+  const acIgnoreFactor =
+    (charRow(actor) === "back" &&
+    perksForCharacter(actor).some((p) => p.id === "thief-backstab")
+      ? 0.75
+      : 1) * (shadowDanceActive ? 0.5 : 1);
+  const flooredAc = Math.min(effectiveEnemyAc(s, target), Math.floor(damage / 2));
+  const acReduction = Math.max(0, Math.round((flooredAc - mods.acFlatIgnore) * acIgnoreFactor));
+  let reduced = Math.max(1, damage - acReduction);
+
+  // highDefense / resistPhysical specials, same as resolveAttack.
+  if (target.special.some((sp) => sp.kind === "highDefense")) {
+    reduced = Math.max(1, Math.round(reduced * 0.5));
+  }
+  const resist = target.special.find(
+    (sp): sp is Extract<EnemySpecial, { kind: "resistPhysical" }> => sp.kind === "resistPhysical"
+  );
+  if (resist) {
+    reduced = Math.max(1, Math.round(reduced * (1 - resist.percent / 100)));
+  }
+
   target.currentHp -= reduced;
 
   emit(
@@ -2398,6 +2432,58 @@ function resolveAmbush(
     { type: "ambush", actorId: actor.id, targetId: target.instanceId, damage: reduced, crit }
   );
   wakeOnDamage(target, log);
+
+  // OnAttackHit hooks (e.g. Cleave, Warmaster, Dark Templar lifesteal),
+  // same callback shapes as resolveAttack, so Ambush isn't a blind spot for
+  // reactive on-hit perks.
+  dispatchHook("OnAttackHit", perksForCharacter(actor), {
+    state: s.perkState[actor.id],
+    rng,
+    damage: reduced,
+    strikeSameTarget: (dmg: number) => {
+      if (target.currentHp <= 0) return;
+      target.currentHp -= dmg;
+      emit(
+        `${actor.name} strikes ${target.name} again for ${dmg} damage!`,
+        { type: "attack", actorId: actor.id, targetId: target.instanceId, damage: dmg }
+      );
+      wakeOnDamage(target, log);
+    },
+    healSelf: (amount: number) => {
+      if (actor.hp <= 0 || actor.hp >= actor.maxHp) return;
+      const before = actor.hp;
+      actor.hp = Math.min(actor.maxHp, actor.hp + amount);
+      emit(
+        `${actor.name} drains ${actor.hp - before} HP.`,
+        { type: "spellEffect", spellId: "lifesteal", targetId: actor.id, heal: actor.hp - before }
+      );
+    },
+    dealCleaveDamage: (dmg: number) => {
+      const front = s.enemies.front.filter(
+        (e) => e.currentHp > 0 && e.instanceId !== target.instanceId
+      );
+      const other = pickRandom(front, rng);
+      if (!other) return;
+      other.currentHp -= dmg;
+      emit(
+        `${actor.name} cleaves ${other.name} for ${dmg} damage!`,
+        { type: "attack", actorId: actor.id, targetId: other.instanceId, damage: dmg }
+      );
+      wakeOnDamage(other, log);
+    },
+    hitAllFrontRow: (dmg: number) => {
+      for (const other of s.enemies.front.filter(
+        (e) => e.currentHp > 0 && e.instanceId !== target.instanceId
+      )) {
+        other.currentHp -= dmg;
+        emit(
+          `${actor.name} strikes ${other.name} for ${dmg} damage!`,
+          { type: "attack", actorId: actor.id, targetId: other.instanceId, damage: dmg }
+        );
+        wakeOnDamage(other, log);
+      }
+    },
+  });
 }
 
 /**
@@ -2586,6 +2672,9 @@ function applySpell(
       // Perk spell-damage multiplier (Glass Cannon +30%).
       const casterMods = perkModifiers(perksForCharacter(caster), effStats);
       const spellMult = casterMods.spellDamageMultiplier;
+      // halberdier-warlord: +20% damage while adjacent to a living Warlord
+      // holder — applies to spell damage too, not just melee.
+      const warlordMult = warlordDamageMultiplier(s, caster);
       for (const t of spellTargets(s, spell, action)) {
         // "undead" element only damages undead enemies (Sacred Flame, Sunburst).
         if (eff.element === "undead" && !t.special.some((sp) => sp.kind === "undead")) {
@@ -2604,18 +2693,24 @@ function applySpell(
         const tagMult = tagDamageMultiplier(casterMods, t);
         const raw = Math.max(
           1,
-          Math.round((eff.power + castingBonus) * powerMultiplier * spellMult * tagMult)
+          Math.round((eff.power + castingBonus) * powerMultiplier * spellMult * tagMult * warlordMult)
         );
         // Enemy AC reduces spell damage too (less than physical — half AC).
         const reduced = Math.max(1, raw - Math.floor(t.ac / 2));
         // Elemental affinity: resist (x0.5) / weak (x1.5) based on the target's special.
+        // mage-spellbreaker: spells ignore half of the resistance penalty
+        // (x0.5 -> x0.75); weakness bonuses are untouched.
         let final = reduced;
         if (eff.element) {
           const affinity = t.special.find(
             (sp) => (sp.kind === "resistElement" || sp.kind === "weakElement") && sp.element === eff.element
           );
           if (affinity) {
-            final = Math.max(1, Math.round(reduced * (affinity.kind === "weakElement" ? 1.5 : 0.5)));
+            const isResist = affinity.kind !== "weakElement";
+            const hasSpellbreaker =
+              isResist && perksForCharacter(caster).some((p) => p.id === "mage-spellbreaker");
+            const affinityMult = isResist ? (hasSpellbreaker ? 0.75 : 0.5) : 1.5;
+            final = Math.max(1, Math.round(reduced * affinityMult));
             observeAffinity(s, t, affinity.kind === "weakElement" ? "weak" : "resist", eff.element, log, emit);
           }
         }
@@ -2792,8 +2887,9 @@ function applySpell(
     case "summon": {
       const MAX_ALLIES = 3;
       const power = eff.power;
+      s.summonCounter += 1;
       const ally: SummonedAlly = {
-        id: `summon-${s.round}-${s.summonedAllies.length}`,
+        id: `summon-${s.summonCounter}`,
         name: eff.allyName ?? "Summoned Ally",
         hp: power * 6,
         maxHp: power * 6,
@@ -3090,10 +3186,11 @@ function resolveEnemyAbility(
       const enemyDef = ENEMIES_BY_ID[eff.enemyId];
       if (!enemyDef) break;
       for (let i = 0; i < eff.count; i++) {
+        s.summonCounter += 1;
         const inst: EnemyInstance = {
           ...enemyDef,
           special: [...enemyDef.special],
-          instanceId: `${enemyDef.id}-summon-${s.enemies.front.length + s.enemies.back.length + i + 1}`,
+          instanceId: `${enemyDef.id}-summon-${s.summonCounter}`,
           currentHp: enemyDef.hp,
           row: enemyDef.rowPreference === "back" ? "back" : "front",
           status: [],
@@ -3318,7 +3415,10 @@ function resolveEnemyAction(
     { type: "attack", actorId: actor.instanceId, targetId: partyTarget.id, damage: result.finalDamage, range: attackRange }
   );
   if (result.redirectTarget && result.redirectDamage > 0) {
-    log(`${result.redirectDamage} damage is redirected to ${result.redirectTarget.name}!`);
+    emit(
+      `${result.redirectDamage} damage is redirected to ${result.redirectTarget.name}!`,
+      { type: "spellEffect", spellId: "priest-martyr", targetId: result.redirectTarget.id, damage: result.redirectDamage }
+    );
   }
 
   // Counter-stance (Brace/Riposte): if the target has an active counter,
@@ -3356,7 +3456,10 @@ function resolveEnemyAction(
       } else {
         partyTarget.status.push("poison");
         s.poisonState[partyTarget.id] = { damage: 2, duration: 3 };
-        log(`${partyTarget.name} is poisoned!`);
+        emit(
+          `${partyTarget.name} is poisoned!`,
+          { type: "spellEffect", spellId: "poison-on-hit", targetId: partyTarget.id, statusInflicted: "poison" }
+        );
       }
     }
   }
@@ -3472,6 +3575,11 @@ function damageReductionFor(
   const defendPct = s.defendBuff[target.id] ?? 0;
   if (defendPct > 0) {
     dmg = Math.max(1, Math.round(dmg * (1 - defendPct)));
+  }
+  // crusader-holy-shield: lingering +20% defense from a recent Defend.
+  const holyShieldMult = s.holyShieldBuffs[target.id]?.multiplier ?? 1;
+  if (holyShieldMult !== 1) {
+    dmg = Math.max(1, Math.round(dmg * holyShieldMult));
   }
   const mods = perkModifiers(perksForCharacter(target), effStatsFor(s, target));
   const perkMult =
@@ -3609,6 +3717,80 @@ function checkTermination(s: CombatState, log: (m: string) => void): boolean {
     log("All enemies defeated — victory!");
     return true;
   }
+  return false;
+}
+
+/**
+ * End-of-round bookkeeping shared by `resolveCombatRound` (Phase 5) and the
+ * per-turn API's `endRound`: status ticks, hidden-spotting, Saint's regen,
+ * magic-screen/fizzle-field decay, per-round silence expiry, enemy ability
+ * cooldown tick, and technique buff/debuff decay. Both callers previously
+ * duplicated this block, and the round-based path was missing the Saint
+ * regen and ability cooldown tick entirely — tests written against the
+ * legacy resolver silently didn't exercise those systems. Returns true if
+ * combat ended (callers just `return s` either way; the boolean lets a
+ * caller short-circuit remaining per-round work if it has any).
+ */
+function runEndOfRound(
+  s: CombatState,
+  rng: Rng,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): boolean {
+  tickStatuses(s, log, emit);
+  deathCheck(s, emit);
+  allyDeathCheck(s, emit);
+  if (checkTermination(s, log)) return true;
+
+  checkSpotHidden(s, rng, log, emit);
+
+  // priest-saint: while a living Saint stands, the whole party regains 5%
+  // max HP at the end of every round. (The revive-targeting clause of the
+  // perk is still TODO(v1.1).)
+  const saintActive = s.party.some(
+    (c) => c.hp > 0 && perksForCharacter(c).some((p) => p.id === "priest-saint")
+  );
+  if (saintActive) {
+    for (const c of s.party) {
+      if (c.hp <= 0 || c.hp >= c.maxHp) continue;
+      const before = c.hp;
+      c.hp = Math.min(c.maxHp, c.hp + Math.max(1, Math.round(c.maxHp * 0.05)));
+      emit(
+        `${c.name} regains ${c.hp - before} HP.`,
+        { type: "spellEffect", spellId: "priest-saint", targetId: c.id, heal: c.hp - before }
+      );
+    }
+  }
+
+  if (s.magicScreen > 0) {
+    s.magicScreen = Math.max(0, s.magicScreen - 1);
+  }
+  if (s.partyFizzleField > 0) {
+    s.partyFizzleField = Math.max(0, s.partyFizzleField - 1);
+  }
+  for (const row of (["front", "back"] as Row[])) {
+    if (s.enemyFizzleFields[row] > 0) {
+      s.enemyFizzleFields[row] = Math.max(0, s.enemyFizzleFields[row] - 1);
+    }
+    if (s.enemyMagicScreens[row] > 0) {
+      s.enemyMagicScreens[row] = Math.max(0, s.enemyMagicScreens[row] - 1);
+    }
+  }
+
+  // Per-round silence from flag-driven bosses (silenceRandom) ends now.
+  s.silencedThisRound = [];
+
+  // Tick enemy ability cooldowns (decrement by 1 each round).
+  for (const e of [...s.enemies.front, ...s.enemies.back]) {
+    if (e.abilityCooldowns) {
+      for (const id of Object.keys(e.abilityCooldowns)) {
+        if (e.abilityCooldowns[id] > 0) e.abilityCooldowns[id]--;
+      }
+    }
+  }
+
+  // Tick technique-related temporary buffs/debuffs.
+  tickTechniqueBuffs(s);
   return false;
 }
 
@@ -3943,6 +4125,26 @@ function isAdjacentAlly(a: Character, b: Character): boolean {
   return (sameRow && diff === 1) || diff === 3;
 }
 
+/**
+ * halberdier-warlord: allies adjacent to a living Warlord holder deal +20%
+ * damage. This modifies OTHER characters' damage output based on proximity
+ * to the holder, so — unlike most perks — it can't live in perkModifiers()
+ * (which only ever sees the acting character's own perks); it needs full
+ * party context and is applied at each damage-dealing site instead
+ * (resolveAttack, resolveAmbush, applySpell's damage case, dealTechniqueDamage).
+ * Not stacking: only the first adjacent holder found counts.
+ */
+function warlordDamageMultiplier(s: CombatState, actor: Character): number {
+  const holder = s.party.find(
+    (c) =>
+      c.hp > 0 &&
+      c.id !== actor.id &&
+      isAdjacentAlly(c, actor) &&
+      perksForCharacter(c).some((p) => p.id === "halberdier-warlord")
+  );
+  return holder ? 1.2 : 1;
+}
+
 /** A plain physical hit for reactive counterattacks (no perks applied). */
 function plainHitDamage(s: CombatState, c: Character, rng: Rng): number {
   const eff = effStatsFor(s, c);
@@ -3986,6 +4188,18 @@ function applyPartyDamage(
         redirectTo = c;
         redirectDamage = Math.floor(damage / 2);
         targetDamage = damage - redirectDamage;
+      },
+      // mage-mana-shield: divert up to `fraction` of the remaining damage to
+      // the target's own SP instead of HP. Only fires for self (c === target,
+      // enforced by the handler's targetId===ownId check); partial if SP
+      // can't cover the full share.
+      absorbToSp: (fraction: number) => {
+        if (c.id !== target.id) return;
+        const want = Math.round(targetDamage * fraction);
+        const spend = Math.min(want, target.sp);
+        if (spend <= 0) return;
+        target.sp -= spend;
+        targetDamage = Math.max(0, targetDamage - spend);
       },
     });
   }
@@ -4196,6 +4410,13 @@ function tickTechniqueBuffs(s: CombatState): void {
     s.attackDebuffs[id].duration -= 1;
     if (s.attackDebuffs[id].duration <= 0) {
       delete s.attackDebuffs[id];
+    }
+  }
+  // Holy Shield buffs (+20% defense for 2 rounds after Defending)
+  for (const id of Object.keys(s.holyShieldBuffs)) {
+    s.holyShieldBuffs[id].duration -= 1;
+    if (s.holyShieldBuffs[id].duration <= 0) {
+      delete s.holyShieldBuffs[id];
     }
   }
 }
@@ -4688,6 +4909,9 @@ function dealTechniqueDamage(
   if (dmgBuff) {
     damage = Math.max(1, Math.round(damage * dmgBuff.multiplier));
   }
+
+  // halberdier-warlord: +20% damage while adjacent to a living Warlord holder.
+  damage = Math.max(1, Math.round(damage * warlordDamageMultiplier(s, actor)));
 
   // Critical hit
   let crit = false;

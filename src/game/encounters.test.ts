@@ -37,33 +37,37 @@ describe("encounterRollChance", () => {
 });
 
 describe("arenaStartFloorForLevel", () => {
-  it("maps Arena chooser levels to the intended floors", () => {
+  it("maps each Arena chooser level (1/3/6/9/12) to its own floor (1-5)", () => {
     expect(arenaStartFloorForLevel(1)).toBe(1);
-    expect(arenaStartFloorForLevel(3)).toBe(1);
-    expect(arenaStartFloorForLevel(6)).toBe(2);
-    expect(arenaStartFloorForLevel(9)).toBe(3);
-    expect(arenaStartFloorForLevel(12)).toBe(3);
+    expect(arenaStartFloorForLevel(3)).toBe(2);
+    expect(arenaStartFloorForLevel(6)).toBe(3);
+    expect(arenaStartFloorForLevel(9)).toBe(4);
+    expect(arenaStartFloorForLevel(12)).toBe(5);
   });
 });
 
 describe("arenaFloorForWave", () => {
-  it("cycles 1→2→3 from a floor-1 start", () => {
+  it("cycles 1→2→3→4→5 from a floor-1 start", () => {
     expect(arenaFloorForWave(1, 1)).toBe(1);
     expect(arenaFloorForWave(1, 2)).toBe(2);
     expect(arenaFloorForWave(1, 3)).toBe(3);
-    expect(arenaFloorForWave(1, 4)).toBe(1);
+    expect(arenaFloorForWave(1, 4)).toBe(4);
+    expect(arenaFloorForWave(1, 5)).toBe(5);
+    expect(arenaFloorForWave(1, 6)).toBe(1);
   });
 
-  it("cycles 2↔3 from a floor-2 start", () => {
+  it("cycles 2↔3↔4↔5 from a floor-2 start", () => {
     expect(arenaFloorForWave(2, 1)).toBe(2);
     expect(arenaFloorForWave(2, 2)).toBe(3);
-    expect(arenaFloorForWave(2, 3)).toBe(2);
+    expect(arenaFloorForWave(2, 3)).toBe(4);
+    expect(arenaFloorForWave(2, 4)).toBe(5);
+    expect(arenaFloorForWave(2, 5)).toBe(2);
   });
 
-  it("stays on floor 3 when started there (L9+)", () => {
-    expect(arenaFloorForWave(3, 1)).toBe(3);
-    expect(arenaFloorForWave(3, 2)).toBe(3);
-    expect(arenaFloorForWave(3, 9)).toBe(3);
+  it("stays on floor 5 when started there (L12)", () => {
+    expect(arenaFloorForWave(5, 1)).toBe(5);
+    expect(arenaFloorForWave(5, 2)).toBe(5);
+    expect(arenaFloorForWave(5, 9)).toBe(5);
   });
 });
 

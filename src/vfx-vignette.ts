@@ -214,6 +214,8 @@ const state: CombatState = {
   analyzedEnemies: {},
   bossPhases: {},
   disableStacks: {},
+  summonCounter: 0,
+  holyShieldBuffs: {},
 };
 
 // Give every character full rage so techniques are always available in the demo.

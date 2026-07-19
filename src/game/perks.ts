@@ -17,9 +17,9 @@
  * v1.0 — Playtest Values: only the perks registered below have reactive
  * hook behavior (plus a few wired directly in combat.ts: fighter-protector,
  * thief-backstab, thief-assassin, thief-smoke-bomb, duelist-riposte,
- * priest-saint); the rest are numeric passives via `perkModifiers()` or,
- * where neither applies, documented no-op stubs (`// TODO(v1.1)`) flagged
- * in their UI description.
+ * priest-saint, mage-spellbreaker, halberdier-warlord); the rest are
+ * numeric passives via `perkModifiers()` or, where neither applies,
+ * documented no-op stubs (`// TODO(v1.1)`) flagged in their UI description.
  */
 
 import type { Character, CharacterClass, Stats } from "./party";
@@ -99,7 +99,10 @@ export interface PerkEffect {
   shopDiscountPercent?: number;
   /** Multiplies healing-spell power (Healer's Touch). */
   healPowerMultiplier?: number;
-  /** Resurrect spells restore this fraction of max HP instead of 1 HP (Revival). */
+  /**
+   * Resurrect spells restore this fraction of max HP (Revival raises the
+   * baseline further; see `perkModifiers`' default for the no-perk floor).
+   */
   resurrectHpPercent?: number;
   /** Multiplies all damage this character deals to undead-tagged enemies. */
   undeadDamageMultiplier?: number;
@@ -256,7 +259,12 @@ export function perkModifiers(perks: PerkDef[], effStats: Stats): PerkModifiers 
     hpGrowthBonusPercent: 0,
     spGrowthBonusPercent: 0,
     healPowerMultiplier: 1,
-    resurrectHpPercent: 0,
+    // Baseline floor even without the Revival perk (was 0, i.e. a 1-HP
+    // revive) — at 0, Raise Dead was strictly dominated by any heal spell
+    // targeting allAllies, which revives every KO'd member for a full heal
+    // roll. 25% matches Phoenix Feather's revive power; Revival still raises
+    // it further to 50% via the Math.max below.
+    resurrectHpPercent: 0.25,
     undeadDamageMultiplier: 1,
     demonDamageMultiplier: 1,
     acFlatIgnore: 0,
@@ -439,6 +447,18 @@ register("mage-archmage", "OnSpellCast", (ctx) => {
   }
 });
 
+// mage-mana-shield: 20% of incoming damage is deducted from the caster's own
+// SP instead of HP (self-hook only; ctx.targetId === ctx.ownId identifies
+// the character being hit is the perk holder). Partial absorption if SP is
+// insufficient to cover the full 20% share; never goes negative.
+register("mage-mana-shield", "BeforeDamageTaken", (ctx) => {
+  const targetId = ctx.targetId as string | undefined;
+  const ownId = ctx.ownId as string | undefined;
+  if (targetId === undefined || ownId === undefined || targetId !== ownId) return;
+  const absorbToSp = ctx.absorbToSp as ((fraction: number) => void) | undefined;
+  if (absorbToSp) absorbToSp(0.2);
+});
+
 // --- Priest -----------------------------------------------------------------
 
 // priest-guardian-angel: the first ally (not self) who would die each combat
@@ -494,6 +514,19 @@ register("thief-shadow", "BeforeAttack", (ctx) => {
   if (forceCrit) {
     state.critUsedThisRound = round;
     forceCrit();
+  }
+});
+
+// thief-shadow-dance: after using Hide twice in one combat, the character's
+// next Ambush ignores 50% of the target's effective AC. The "danceReady"
+// flag is read directly off perkState by resolveAmbush in combat.ts (same
+// direct-read pattern as mage-arcane-surge's surgeReady) rather than via a
+// second hook, since Ambush already implies "the next Hide attack".
+register("thief-shadow-dance", "OnHide", (ctx) => {
+  const state = ctx.state as { hideCount?: number; danceReady?: boolean };
+  state.hideCount = (state.hideCount ?? 0) + 1;
+  if (state.hideCount >= 2) {
+    state.danceReady = true;
   }
 });
 
@@ -585,6 +618,17 @@ register("duelist-momentum", "OnAttackMiss", (ctx) => {
 });
 
 // --- Crusader -----------------------------------------------------------
+
+// crusader-holy-shield: Defending grants +20% defense for 2 rounds (on top
+// of the base Defend reduction). combat.ts's resolveDefend provides
+// grantDefenseBuff, which sets a duration-tracked entry read by
+// damageReductionFor and ticked in tickTechniqueBuffs.
+register("crusader-holy-shield", "OnDefend", (ctx) => {
+  const grantDefenseBuff = ctx.grantDefenseBuff as
+    | ((multiplier: number, duration: number) => void)
+    | undefined;
+  if (grantDefenseBuff) grantDefenseBuff(0.8, 2);
+});
 
 // crusader-retribution: when an adjacent ally is hit by an enemy attack, the
 // attacker takes the Crusader's effective PIE as holy damage. The damage

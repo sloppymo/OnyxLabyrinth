@@ -593,7 +593,7 @@ describe("newly wired perks (Phase B)", () => {
     description: "Test resurrect.",
   };
 
-  it("priest-revival resurrects to 50% max HP instead of 1", () => {
+  it("priest-revival resurrects to 50% max HP instead of the 25% baseline", () => {
     const revive = (perks: string[]): number => {
       const priest = makeNamedCharacter("priest", "Priest", perks);
       priest.knownSpellIds = ["raise"];
@@ -612,7 +612,7 @@ describe("newly wired perks (Phase B)", () => {
       );
       return after.party[1].hp;
     };
-    expect(revive([])).toBe(1);
+    expect(revive([])).toBe(10); // 25% baseline of the pinned 40 max HP
     expect(revive(["priest-revival"])).toBe(20); // 50% of the pinned 40 max HP
   });
 
@@ -818,5 +818,165 @@ describe("reach perks (Lunge/Sweep)", () => {
     const s = resolvePlayerTurn(state, { kind: "attack", actorId: c.id, targetInstanceId: "e1" }, () => 0.5);
     expect(s.enemies.back[0].currentHp).toBe(20);
     expect(s.events.some((e) => e?.type === "miss")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2026-07-18: the last four fully-inert perk stubs (Spellbreaker, Shadow
+// Dance, Holy Shield, Warlord) wired to real behavior.
+// ---------------------------------------------------------------------------
+
+describe("mage-spellbreaker", () => {
+  const FIRE_ZAP: SpellDef = {
+    id: "fire-zap",
+    name: "Fire Zap",
+    class: "Mage",
+    tier: 1,
+    spCost: 1,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "fire", power: 10 },
+    description: "Test fire bolt.",
+  };
+
+  function castFireZap(perks: string[]): CombatState {
+    const enemy = makeEnemy("e1", "Rat A", 100);
+    enemy.special = [{ kind: "resistElement", element: "fire" }];
+    const mage = makeCharacter("Mage", perks);
+    mage.knownSpellIds = ["fire-zap"];
+    const state = createCombatState(
+      [mage],
+      { front: [enemy], back: [] },
+      false,
+      { "fire-zap": FIRE_ZAP }
+    );
+    return resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: mage.id, spellId: "fire-zap", targetInstanceId: "e1" },
+      () => 0.5
+    );
+  }
+
+  it("softens elemental resistance from x0.5 to x0.75", () => {
+    // INT 10 -> casting bonus 2; power 10 -> base 12 damage.
+    const resisted = castFireZap([]);
+    const pierced = castFireZap(["mage-spellbreaker"]);
+    expect(100 - resisted.enemies.front[0].currentHp).toBe(6); // 12 x 0.5
+    expect(100 - pierced.enemies.front[0].currentHp).toBe(9); // 12 x 0.75
+  });
+
+  it("holders are excluded from enemy silenceRandom targeting", () => {
+    const mage = makeNamedCharacter("mage", "Mage", ["mage-spellbreaker"]);
+    const fighter = makeNamedCharacter("fighter", "Fighter");
+    const enemy = makeEnemy("e1");
+    enemy.special = [{ kind: "silenceRandom", target: "party", duration: "combat" }];
+    const state = createCombatState([mage, fighter], { front: [enemy], back: [] }, false);
+    // rng < 0.4 triggers the silenceRandom branch deterministically.
+    const after = resolveEnemyTurn(state, "e1", () => 0.1);
+    expect(after.silencedThisRound).toEqual([fighter.id]);
+  });
+});
+
+describe("thief-shadow-dance", () => {
+  function hideTwiceThenAmbush(perks: string[]): CombatState {
+    const thief = makeCharacter("Thief", perks);
+    // Enemy AC high enough that the 50% ignore is visible in the outcome.
+    const enemy = makeEnemy("e1", "Rat A", 1000);
+    enemy.ac = 20;
+    let state = createCombatState([thief], { front: [enemy], back: [] }, false);
+    state = resolvePlayerTurn(state, { kind: "hide", actorId: thief.id }, () => 0.5);
+    // Ambush consumes hidden status, so hide again before the second Hide.
+    state = resolvePlayerTurn(state, { kind: "ambush", actorId: thief.id, targetInstanceId: "e1" }, () => 0.5);
+    state = resolvePlayerTurn(state, { kind: "hide", actorId: thief.id }, () => 0.5);
+    return resolvePlayerTurn(
+      state,
+      { kind: "ambush", actorId: thief.id, targetInstanceId: "e1" },
+      () => 0.5
+    );
+  }
+
+  it("after two Hides this combat, the next Ambush ignores 50% of the AC reduction", () => {
+    const plain = hideTwiceThenAmbush([]);
+    const danced = hideTwiceThenAmbush(["thief-shadow-dance"]);
+    const plainDamage = 1000 - plain.enemies.front[0].currentHp;
+    const dancedDamage = 1000 - danced.enemies.front[0].currentHp;
+    expect(dancedDamage).toBeGreaterThan(plainDamage);
+  });
+});
+
+describe("crusader-holy-shield", () => {
+  function makeAttackerEnemy(instanceId: string, attack: number): EnemyInstance {
+    const def = {
+      id: "test-brute",
+      name: "Test Brute",
+      hp: 100,
+      attack,
+      ac: 0,
+      agi: 5,
+      xp: 3,
+      gold: 2,
+      rowPreference: "front",
+      special: [],
+      isBoss: false,
+    } as EnemyDef;
+    return { ...def, instanceId, currentHp: def.hp, row: "front", status: [] };
+  }
+
+  function defendThenGetHit(perks: string[]): number {
+    const crusader = makeCharacter("Crusader", perks);
+    const enemy = makeAttackerEnemy("e1", 20);
+    const state = createCombatState([crusader], { front: [enemy], back: [] }, false);
+    const defended = resolvePlayerTurn(state, { kind: "defend", actorId: crusader.id }, () => 0.5);
+    const before = defended.party[0].hp;
+    // Constant rng: no evasion (chance 0 at AGI 10), variance x1.0.
+    const after = resolveEnemyTurn(defended, "e1", () => 0.5);
+    return before - after.party[0].hp;
+  }
+
+  it("adds +20% defense on top of the base Defend reduction", () => {
+    expect(defendThenGetHit([])).toBe(10); // 20 dmg, Defend 50% -> 10
+    expect(defendThenGetHit(["crusader-holy-shield"])).toBe(8); // extra x0.8 -> 8
+  });
+});
+
+describe("halberdier-warlord", () => {
+  function fighterHitsWithWarlord(warlordAdjacent: boolean): number {
+    const fighter = makeNamedCharacter("fighter", "Fighter");
+    fighter.formationSlot = 1;
+    const halberdier = makeNamedCharacter(
+      "halberdier",
+      "Halberdier",
+      warlordAdjacent ? ["halberdier-warlord"] : []
+    );
+    halberdier.formationSlot = 0; // adjacent front-row slot to the Fighter
+    const enemy = makeEnemy("e1", "Rat A", 100);
+    const state = createCombatState([fighter, halberdier], { front: [enemy], back: [] }, false);
+    const after = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: fighter.id, targetInstanceId: "e1" },
+      () => 0.5
+    );
+    return 100 - after.enemies.front[0].currentHp;
+  }
+
+  it("grants allies adjacent to a living holder +20% damage", () => {
+    // STR 10 + level 1 = 11 base damage, no crit (LUK 10 -> 10% chance, rng 0.5).
+    expect(fighterHitsWithWarlord(false)).toBe(11);
+    expect(fighterHitsWithWarlord(true)).toBe(13); // 11 x 1.2 rounded
+  });
+
+  it("does not buff the holder's own damage", () => {
+    const halberdier = makeNamedCharacter("halberdier", "Halberdier", ["halberdier-warlord"]);
+    halberdier.formationSlot = 0;
+    const ally = makeNamedCharacter("ally", "Fighter");
+    ally.formationSlot = 1;
+    const enemy = makeEnemy("e1", "Rat A", 100);
+    const state = createCombatState([halberdier, ally], { front: [enemy], back: [] }, false);
+    const after = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: halberdier.id, targetInstanceId: "e1" },
+      () => 0.5
+    );
+    // Halberdier's own base attack: STR 10 + level 1 = 11, unbuffed.
+    expect(100 - after.enemies.front[0].currentHp).toBe(11);
   });
 });

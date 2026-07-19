@@ -42,6 +42,7 @@ import { enemyAbilityById } from "../data/enemy-abilities";
 import { techniquesForClass, techniqueById, classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
 import type { ItemDef } from "../data/items";
 import { combatCanvas, combatWindows, combatPopupAnchor } from "./shell";
+import { playCombatEventSounds } from "./combat-audio";
 import {
   createScene,
   renderScene,
@@ -271,6 +272,7 @@ export class CombatController {
     const prevLogLength = this.state.log.length;
     const next = fn();
     const events = next.events.slice(prevLogLength);
+    playCombatEventSounds(events, next);
     this.state = next;
     absorbDeaths(this.scene, next);
 
