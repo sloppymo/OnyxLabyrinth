@@ -24,7 +24,7 @@ import {
 import { handleTileFeature } from "./features";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
 import { createDefaultParty } from "./party";
-import { defaultLoadoutForCharacter } from "./combat";
+import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { cloneFloor, type FloorDef, type NPCDef } from "../data/floors";
 import type { GameState } from "../types";
 

@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 import { createDefaultParty } from "../game/party";
-import { defaultLoadoutForCharacter } from "../game/combat";
+import { defaultLoadoutForCharacter } from "../game/combat-equipment";
 import type { GameState } from "../types";
 import type { NPCDef } from "../data/floors";
 

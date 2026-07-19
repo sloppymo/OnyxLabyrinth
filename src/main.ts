@@ -61,10 +61,8 @@ import { TitleController } from "./engine/title-ui";
 import { ArenaController } from "./engine/arena-ui";
 import { FF6Window } from "./engine/ff6-window-library";
 import { autoSave } from "./game/save";
-import {
-  createCombatFromEncounter,
-  defaultLoadoutForCharacter,
-} from "./game/combat";
+import { createCombatFromEncounter } from "./game/combat";
+import { defaultLoadoutForCharacter } from "./game/combat-equipment";
 import { reconcileInventoryAfterCombat } from "./game/combat-inventory";
 import type { CombatState, Loadout } from "./game/combat-types";
 import { rollEncounter, resolveEncounter } from "./data/enemies";

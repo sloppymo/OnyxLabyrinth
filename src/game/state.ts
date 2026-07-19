@@ -10,7 +10,7 @@
 import type { FloorDef, GameMode, GameState } from "../types";
 import { cloneFloor } from "../data/floors";
 import { createDefaultParty } from "./party";
-import { defaultLoadoutForCharacter } from "./combat";
+import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { ENCOUNTER_COOLDOWN } from "./encounters";
 
 export type { GameMode, GameState } from "../types";

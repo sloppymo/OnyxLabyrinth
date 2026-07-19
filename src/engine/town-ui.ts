@@ -27,9 +27,8 @@ import {
   getDisplacedItem,
   manualEquip,
   manualUnequip,
-  canReach,
-  effectiveWeaponRange,
-} from "../game/combat";
+} from "../game/combat-equipment";
+import { canReach, effectiveWeaponRange } from "../game/combat";
 import type { Loadout } from "../game/combat-types";
 import { effectiveStats } from "../game/effective-stats";
 import { xpForNextLevel } from "../game/leveling";

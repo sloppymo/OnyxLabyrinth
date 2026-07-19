@@ -22,7 +22,7 @@ import { cloneFloor, type EventDef, type FloorDef } from "../data/floors";
 import { findFloor } from "./floor-registry";
 import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
-import { equipItem, forceEquip, findBestEquipTarget, getDisplacedItem } from "./combat";
+import { equipItem, forceEquip, findBestEquipTarget, getDisplacedItem } from "./combat-equipment";
 import { hasBuff } from "./persistent-spells";
 import { npcAt, applyKilledNPCs } from "./npc";
 import { displayNameFor } from "../data/items";

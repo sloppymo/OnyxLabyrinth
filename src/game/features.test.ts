@@ -19,7 +19,7 @@ import {
   defaultLoadoutForCharacter,
   equipItem,
   forceEquip,
-} from "./combat";
+} from "./combat-equipment";
 import { reconcileInventoryAfterCombat } from "./combat-inventory";
 import { ITEMS_BY_ID } from "../data/items";
 import type { FloorDef, EventDef } from "../data/floors";

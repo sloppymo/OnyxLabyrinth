@@ -5,6 +5,8 @@ import {
   resolvePlayerTurn,
   resolveEnemyTurn,
   canReach,
+} from "./combat";
+import {
   defaultLoadoutForCharacter,
   equipItem,
   isBetterEquip,
@@ -12,7 +14,7 @@ import {
   getDisplacedItem,
   manualEquip,
   manualUnequip,
-} from "./combat";
+} from "./combat-equipment";
 import { inventoryToCounts, inventoryFromCounts } from "./combat-inventory";
 import type {
   CombatState,

@@ -20,7 +20,7 @@ import type { GameState } from "../types";
 import { cloneFloor } from "../data/floors";
 import { findFloor } from "./floor-registry";
 import { ALL_SPELLS } from "../data/spells";
-import { defaultLoadoutForCharacter } from "./combat";
+import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { applyKilledNPCs } from "./npc";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
