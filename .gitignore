@@ -36,3 +36,7 @@ dev-party-creation.html
 /jewelflame-creature-extended-preview.html
 /sprite-preview.html
 /sprite-preview-standalone.html
+
+# Local research/tool scratch (kept on disk, never tracked)
+.firecrawl/
+.playwright-cli/
