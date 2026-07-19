@@ -110,14 +110,18 @@ Notes:
 
 3. Commit A: re-add current `docs/assets/` + the `.gitignore` update
    (`chore(repo): untrack asset packs and screenshot archives, purge history`).
-4. Commit B (best-effort, defer if tangled): move the five stray root preview
-   HTMLs — `jewelflame-preview.html`,
-   `jewelflame-creature-extended-preview.html`,
-   `jewelflame-100x100-preview.html`, `sprite-preview.html`,
-   `sprite-preview-standalone.html` — into `tools/`. First grep
-   `vite.config.ts`, `scripts/`, and `tools/` for references and update them.
-   If any reference can't be cleanly updated, skip the move entirely and leave
-   it for sub-project 2 (layout). Do not half-move.
+4. Commit B: untrack the six generated/stale root preview HTMLs —
+   `jewelflame-preview.html`, `jewelflame-preview-index.html`,
+   `jewelflame-100x100-preview.html`,
+   `jewelflame-creature-extended-preview.html`, `sprite-preview.html`,
+   `sprite-preview-standalone.html` (a stale hand-copy of the generated
+   `sprite-preview.html`; only this spec references it). These are outputs of
+   `scripts/generate-*.mjs` regenerated on demand — `git rm --cached` +
+   root-anchored `.gitignore` entries, files stay on disk, no script edits.
+   (Supersedes the earlier "move to tools/" idea: the generators rewrite
+   them at root, so moving would require script surgery for no gain.)
+   `vfx-vignette.html` and `dungeon-hud-preview.html` stay tracked — they are
+   `vite.config.ts` build inputs.
 
 ### Phase 4 — Verification gate (before any push)
 
