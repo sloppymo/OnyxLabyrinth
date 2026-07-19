@@ -492,3 +492,8 @@ export function cloneEnemy(e: EnemyInstance): EnemyInstance {
     abilityCooldowns: e.abilityCooldowns ? { ...e.abilityCooldowns } : undefined,
   };
 }
+
+export function pickRandom<T>(arr: T[], rng: Rng): T | undefined {
+  if (arr.length === 0) return undefined;
+  return arr[Math.floor(rng() * arr.length)];
+}
