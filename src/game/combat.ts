@@ -15,7 +15,7 @@
  * fields during the merge to support combat targeting and cast validation.
  */
 
-import type { Character, Stats, StatusEffect } from "./party";
+import type { Character, StatusEffect } from "./party";
 import { charRow } from "./party";
 import type { EnemyDef, EnemySpecial, Row } from "../data/enemies";
 import { ENEMIES_BY_ID } from "../data/enemies";
@@ -24,13 +24,11 @@ import { spellByName } from "../data/spells";
 import type { ItemDef } from "../data/items";
 import type { TechniqueDef, TechniqueEffect } from "../data/techniques";
 import { techniqueById, classHasTechniques, maxRageForLevel } from "../data/techniques";
-import { effectiveStats } from "./effective-stats";
 import {
   perksForCharacter,
   perkModifiers,
   dispatchHook,
   freshPerkState,
-  type PerkModifiers,
 } from "./perks";
 import type { EnemyAbilityDef, AbilityCondition } from "../data/enemy-abilities";
 import { enemyAbilityById } from "../data/enemy-abilities";
@@ -50,31 +48,12 @@ import type {
   TurnQueueEntry,
 } from "./combat-types";
 import { inventoryToCounts } from "./combat-inventory";
+import { effStatsFor, tagDamageMultiplier } from "./combat-shared";
 
 /** Enemy ability/heal powers were not part of the 2026-07 stat pass — scale at resolve time. */
 const ENEMY_ABILITY_POWER_SCALE = 1.6;
 /** Summoned allies draw melee fire often, but no longer soak 100% of enemy attacks. */
 const SUMMON_MELEE_SOAK_CHANCE = 0.55;
-
-/** Effective stats for a combatant, reading their loadout and chosen perks. */
-function effStatsFor(s: CombatState, c: Character): Stats {
-  return effectiveStats(c, s.loadout[c.id], perksForCharacter(c));
-}
-
-/**
- * Perk damage multiplier against tagged enemies (Turn Undead, Judge,
- * Inquisitor). Reads the target's `special` tags; 1 when no tag matches.
- */
-function tagDamageMultiplier(mods: PerkModifiers, target: EnemyInstance): number {
-  let mult = 1;
-  if (mods.undeadDamageMultiplier !== 1 && target.special.some((sp) => sp.kind === "undead")) {
-    mult *= mods.undeadDamageMultiplier;
-  }
-  if (mods.demonDamageMultiplier !== 1 && target.special.some((sp) => sp.kind === "demon")) {
-    mult *= mods.demonDamageMultiplier;
-  }
-  return mult;
-}
 
 // ---------------------------------------------------------------------------
 // Combat-internal types
