@@ -4,8 +4,8 @@ import {
   resolveCombatRound,
   resolvePlayerTurn,
   resolveEnemyTurn,
-  canReach,
 } from "./combat";
+import { canReach } from "./combat-reach";
 import {
   defaultLoadoutForCharacter,
   equipItem,

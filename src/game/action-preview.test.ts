@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   createCombatState,
-  previewAttack,
-  previewSpellDamage,
   resolvePlayerTurn,
 } from "./combat";
+import { previewAttack, previewSpellDamage } from "./combat-preview";
 import type { CombatState, EnemyInstance, EnemyFormation, ActionPreview } from "./combat-types";
 import { createDefaultParty } from "./party";
 import { ALL_SPELLS } from "../data/spells";

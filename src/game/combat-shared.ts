@@ -29,3 +29,10 @@ export function tagDamageMultiplier(mods: PerkModifiers, target: EnemyInstance):
   }
   return mult;
 }
+
+/** Effective AC of an enemy, accounting for armor debuffs (Disarm). */
+export function effectiveEnemyAc(s: CombatState, enemy: EnemyInstance): number {
+  const debuff = s.enemyArmorDebuffs[enemy.instanceId];
+  if (!debuff) return enemy.ac;
+  return Math.max(0, enemy.ac - debuff.penalty);
+}

@@ -25,9 +25,8 @@ import {
   endRound,
   enqueueNewAllies,
   charRow,
-  previewAttack,
-  previewSpellDamage,
 } from "../game/combat";
+import { previewAttack, previewSpellDamage } from "../game/combat-preview";
 import type {
   CombatState,
   PlayerAction,

@@ -28,7 +28,7 @@ import {
   manualEquip,
   manualUnequip,
 } from "../game/combat-equipment";
-import { canReach, effectiveWeaponRange } from "../game/combat";
+import { canReach, effectiveWeaponRange } from "../game/combat-reach";
 import type { Loadout } from "../game/combat-types";
 import { effectiveStats } from "../game/effective-stats";
 import { xpForNextLevel } from "../game/leveling";
