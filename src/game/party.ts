@@ -365,7 +365,18 @@ export function createDefaultParty(): Character[] {
   const mage2 = createCharacter("c6", "Fenn", "Elf", "Neutral", "Mage", 5);
 
   // Level-1 casters know all tier-1 spells of their class.
-  mage1.knownSpellIds = [
+  grantMageStarterSpells(mage1);
+  grantMageStarterSpells(mage2);
+  grantPriestStarterSpells(priest);
+
+  return [fighter1, fighter2, thief, mage1, priest, mage2];
+}
+
+/** Arena experiment roster — four roles, no duplicate fighters/mages. */
+export const CLASSIC_FOUR_PARTY_SIZE = 4;
+
+function grantMageStarterSpells(c: Character): void {
+  c.knownSpellIds = [
     "mage-spark",
     "mage-ember",
     "mage-frostbite",
@@ -377,25 +388,28 @@ export function createDefaultParty(): Character[] {
     "mage-arcane-ward",
     "mage-wayfinder",
   ];
-  mage2.knownSpellIds = [
-    "mage-spark",
-    "mage-ember",
-    "mage-frostbite",
-    "mage-poison-spray",
-    "mage-fire-bolt",
-    "mage-water-bolt",
-    "mage-stone-shard",
-    "mage-gust",
-    "mage-arcane-ward",
-    "mage-wayfinder",
-  ];
-  priest.knownSpellIds = [
+}
+
+function grantPriestStarterSpells(c: Character): void {
+  c.knownSpellIds = [
     "priest-guiding-bolt",
     "priest-cure-wounds",
     "priest-sacred-flame",
     "priest-light",
     "priest-shield-of-faith",
   ];
+}
 
-  return [fighter1, fighter2, thief, mage1, priest, mage2];
+/**
+ * Classic Four — Fighter / Thief / Mage / Priest for Arena party-size experiments.
+ * Front row: Aria + Coda. Back row: Dell + Eve.
+ */
+export function createClassicFourParty(): Character[] {
+  const fighter = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+  const thief = createCharacter("c2", "Coda", "Hobbit", "Neutral", "Thief", 1);
+  const mage = createCharacter("c3", "Dell", "Elf", "Neutral", "Mage", 3);
+  const priest = createCharacter("c4", "Eve", "Gnome", "Good", "Priest", 4);
+  grantMageStarterSpells(mage);
+  grantPriestStarterSpells(priest);
+  return [fighter, thief, mage, priest];
 }

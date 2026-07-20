@@ -73,6 +73,7 @@ import {
   arenaStartFloorForLevel,
   arenaFloorForWave,
   rollArenaEncounter,
+  adjustArenaEncounterForSmallParty,
 } from "./game/encounters";
 import { tickBuffs, clearBuffs } from "./game/persistent-spells";
 import { SpellMenuController } from "./engine/spell-ui";
@@ -83,7 +84,7 @@ import { ENEMIES_BY_ID } from "./data/enemies";
 import type { NPCDef } from "./data/floors";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
-import { reviveKnockedOut, type Character } from "./game/party";
+import { reviveKnockedOut, createClassicFourParty, CLASSIC_FOUR_PARTY_SIZE, type Character } from "./game/party";
 import { xpForNextLevel, levelUpChar } from "./game/leveling";
 import { isPerkTierLevel, tierForLevel, type PendingPerkChoice } from "./game/perks";
 import type { GameState, GameMode } from "./types";
@@ -1182,6 +1183,8 @@ let inArena = false;
 let arenaWave = 1;
 let arenaFloor = 1;
 let arenaStartFloor = 1;
+/** Arena-only roster experiment: 6 = default, 4 = Classic Four preset. */
+let arenaRosterSize = 6;
 
 let arenaSetupController: { handleKey: (key: string) => void } | null = null;
 
@@ -1191,23 +1194,70 @@ function openArenaSetup(): void {
   setMessage("");
 
   const levels = [1, 3, 6, 9, 12];
+  const rosters: { size: number; label: string; detail: string }[] = [
+    { size: 6, label: "Full Six", detail: "Default 6-member party" },
+    {
+      size: CLASSIC_FOUR_PARTY_SIZE,
+      label: "Classic Four",
+      detail: "Fighter · Thief · Mage · Priest",
+    },
+  ];
+
+  type SetupPhase = "level" | "roster";
+  let phase: SetupPhase = "level";
   let selected = 0;
+  let pickedLevel = levels[0]!;
   let hasRendered = false;
 
   const render = () => {
     const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
     const animated = !hasRendered;
     hasRendered = true;
+
+    if (phase === "level") {
+      const win = new FF6Window({
+        title: "Arena Mode",
+        contentHtml: `<div class="ff6-arena-meta">Choose starting party level</div>`,
+        items: levels.map((lv) => ({
+          label: `Level ${lv}`,
+          metadata: lv,
+        })),
+        selectedIndex: selected,
+        mode: "menu",
+        footer: "D-pad navigate · A next · B title",
+        animated,
+        onHover: (i) => {
+          selected = i;
+        },
+        onConfirm: (i) => {
+          selected = i;
+          pickedLevel = levels[selected]!;
+          phase = "roster";
+          selected = 0;
+          hasRendered = false;
+          render();
+        },
+        onBack: () => {
+          arenaSetupController = null;
+          openTitleScreen();
+        },
+      });
+      panel.innerHTML = "";
+      panel.appendChild(win.render());
+      return;
+    }
+
     const win = new FF6Window({
       title: "Arena Mode",
-      contentHtml: `<div class="ff6-arena-meta">Choose starting party level</div>`,
-      items: levels.map((lv) => ({
-        label: `Level ${lv}`,
-        metadata: lv,
+      contentHtml: `<div class="ff6-arena-meta">Level ${pickedLevel} · choose roster</div>`,
+      items: rosters.map((r) => ({
+        label: r.label,
+        detail: r.detail,
+        metadata: r.size,
       })),
       selectedIndex: selected,
       mode: "menu",
-      footer: "D-pad navigate · A start · B title",
+      footer: "D-pad navigate · A start · B back",
       animated,
       onHover: (i) => {
         selected = i;
@@ -1215,11 +1265,14 @@ function openArenaSetup(): void {
       onConfirm: (i) => {
         selected = i;
         arenaSetupController = null;
-        startArena(levels[selected]);
+        startArena(pickedLevel, rosters[selected]!.size);
       },
       onBack: () => {
-        arenaSetupController = null;
-        openTitleScreen();
+        phase = "level";
+        selected = levels.indexOf(pickedLevel);
+        if (selected < 0) selected = 0;
+        hasRendered = false;
+        render();
       },
     });
     panel.innerHTML = "";
@@ -1230,18 +1283,35 @@ function openArenaSetup(): void {
     handleKey: (key: string) => {
       audio.uiForMenuKey(key);
       const lower = key.toLowerCase();
+      const items = phase === "level" ? levels : rosters;
       if (lower === "arrowup" || lower === "w") {
-        selected = (selected - 1 + levels.length) % levels.length;
+        selected = (selected - 1 + items.length) % items.length;
         render();
       } else if (lower === "arrowdown" || lower === "s") {
-        selected = (selected + 1) % levels.length;
+        selected = (selected + 1) % items.length;
         render();
       } else if (key === "Enter" || key === " ") {
-        arenaSetupController = null;
-        startArena(levels[selected]);
+        if (phase === "level") {
+          pickedLevel = levels[selected]!;
+          phase = "roster";
+          selected = 0;
+          hasRendered = false;
+          render();
+        } else {
+          arenaSetupController = null;
+          startArena(pickedLevel, rosters[selected]!.size);
+        }
       } else if (key === "Escape") {
-        arenaSetupController = null;
-        openTitleScreen();
+        if (phase === "roster") {
+          phase = "level";
+          selected = levels.indexOf(pickedLevel);
+          if (selected < 0) selected = 0;
+          hasRendered = false;
+          render();
+        } else {
+          arenaSetupController = null;
+          openTitleScreen();
+        }
       }
     },
   };
@@ -1249,11 +1319,20 @@ function openArenaSetup(): void {
   render();
 }
 
-function startArena(targetLevel: number): void {
+function startArena(targetLevel: number, rosterSize: number): void {
   // Reset to a fresh default party and the first arena wave.
   Object.assign(state, createGameState(getFloors()[0]!));
   inArena = true;
   arenaWave = 1;
+  arenaRosterSize = rosterSize;
+
+  if (rosterSize === CLASSIC_FOUR_PARTY_SIZE) {
+    state.party = createClassicFourParty();
+    state.equipment = Object.fromEntries(
+      state.party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
+    );
+  }
+
   // Scale starting floor with party level so high-level parties don't
   // waste waves trivially one-shotting floor-1 skeletons.
   arenaStartFloor = arenaStartFloorForLevel(targetLevel);
@@ -1286,6 +1365,7 @@ function openArena(): void {
     state,
     wave: arenaWave,
     floor: arenaFloor,
+    rosterLabel: arenaRosterSize === CLASSIC_FOUR_PARTY_SIZE ? "Classic Four" : "Full Six",
     onNext: () => {
       arenaController = null;
       startNextArenaFight();
@@ -1310,7 +1390,8 @@ function startNextArenaFight(): void {
     openArena();
     return;
   }
-  const resolved = resolveEncounter(entry);
+  const sized = adjustArenaEncounterForSmallParty(entry, arenaRosterSize);
+  const resolved = resolveEncounter(sized);
   if (resolved.length === 0) {
     openArena();
     return;

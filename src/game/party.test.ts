@@ -8,6 +8,8 @@ import {
   computeMaxSp,
   createCharacter,
   createDefaultParty,
+  createClassicFourParty,
+  CLASSIC_FOUR_PARTY_SIZE,
   isFrontRow,
   charRow,
   isPartyAlignmentValid,
@@ -126,6 +128,24 @@ describe("createDefaultParty", () => {
     const party = createDefaultParty();
     const slots = party.map((c) => c.formationSlot).sort((a, b) => a - b);
     expect(slots).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+});
+
+describe("createClassicFourParty", () => {
+  it("creates four role-distinct members for Arena experiments", () => {
+    const party = createClassicFourParty();
+    expect(party).toHaveLength(CLASSIC_FOUR_PARTY_SIZE);
+    expect(party.map((c) => c.class)).toEqual(["Fighter", "Thief", "Mage", "Priest"]);
+    expect(party[2]!.knownSpellIds.length).toBeGreaterThan(0);
+    expect(party[3]!.knownSpellIds.length).toBeGreaterThan(0);
+  });
+
+  it("places casters in the back row", () => {
+    const party = createClassicFourParty();
+    expect(isFrontRow(party[0]!)).toBe(true);
+    expect(isFrontRow(party[1]!)).toBe(true);
+    expect(isFrontRow(party[2]!)).toBe(false);
+    expect(isFrontRow(party[3]!)).toBe(false);
   });
 });
 

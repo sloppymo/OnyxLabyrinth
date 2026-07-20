@@ -26,6 +26,8 @@ export interface ArenaControllerOptions {
   state: GameState;
   wave: number;
   floor: number;
+  /** Arena roster experiment label shown in the hub footer. */
+  rosterLabel?: string;
   onNext: () => void;
   onExit: () => void;
 }
@@ -35,6 +37,7 @@ export class ArenaController {
   private state: GameState;
   private wave: number;
   private floor: number;
+  private rosterLabel: string;
   private onNext: () => void;
   private onExit: () => void;
   private options: ArenaOption[];
@@ -47,6 +50,7 @@ export class ArenaController {
     this.state = opts.state;
     this.wave = opts.wave;
     this.floor = opts.floor;
+    this.rosterLabel = opts.rosterLabel ?? "Full Six";
     this.onNext = opts.onNext;
     this.onExit = opts.onExit;
 
@@ -127,7 +131,7 @@ export class ArenaController {
       selectedIndex: this.selectedIndex,
       mode: "menu",
       footer: "D-pad navigate · A select · B exit",
-      footer2: `Party: ${alive}/${this.state.party.length} alive · Avg Lv${avgLevel} · ${this.state.partyGold}g`,
+      footer2: `${this.rosterLabel} · ${alive}/${this.state.party.length} alive · Avg Lv${avgLevel} · ${this.state.partyGold}g`,
       animated,
       onHover: (i) => {
         this.selectedIndex = i;
