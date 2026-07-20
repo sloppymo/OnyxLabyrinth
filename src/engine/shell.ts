@@ -36,6 +36,7 @@ app.innerHTML = `
     <div id="combat-wrap" style="display:none">
       <canvas id="combat-canvas" width="768" height="672"></canvas>
       <div id="combat-popup-anchor"></div>
+      <div id="combat-turn-order"></div>
       <div id="combat-windows"></div>
     </div>
   </div>
@@ -65,6 +66,10 @@ export const combatWindows = document.querySelector<HTMLDivElement>("#combat-win
  */
 export const combatPopupAnchor = document.querySelector<HTMLDivElement>(
   "#combat-popup-anchor"
+)!;
+/** Upper-right turn-order strip — sibling of the command popup anchor. */
+export const combatTurnOrder = document.querySelector<HTMLDivElement>(
+  "#combat-turn-order"
 )!;
 export const combatCanvas = document.querySelector<HTMLCanvasElement>("#combat-canvas")!;
 export const combatCtx = combatCanvas.getContext("2d")!;

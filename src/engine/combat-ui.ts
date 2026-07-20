@@ -42,7 +42,7 @@ import { isUtilitySpell, type SpellDef } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import { techniquesForClass, techniqueById, classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
 import type { ItemDef } from "../data/items";
-import { combatCanvas, combatWindows, combatPopupAnchor } from "./shell";
+import { combatCanvas, combatWindows, combatPopupAnchor, combatTurnOrder } from "./shell";
 import { playCombatEventSounds } from "./combat-audio";
 import {
   createScene,
@@ -63,6 +63,8 @@ import {
   type SelectionEntry,
   type ResultView,
 } from "./combat-select-action-view";
+import { renderTurnOrderStrip } from "./combat-turn-order-view";
+import { remainingTurnOrder } from "../game/combat-turn-order";
 import { buildPalette, type CombatPalette } from "./combat-action-palette";
 import type { ControllerInputEvent, ControllerButton } from "./controller-input";
 import { mapKeyboardKey } from "./controller-input";
@@ -116,6 +118,8 @@ export class CombatController {
   private roundEnding = false;
 
   private currentActorId: string | null = null;
+  /** Id of the queue entry whose turn is open or playing (party/enemy/ally). */
+  private actingTurnId: string | null = null;
   private pending: PendingAction | null = null;
   private palette: CombatPalette | null = null;
   private selectionTitle = "";
@@ -165,6 +169,7 @@ export class CombatController {
       this.rafId = null;
     }
     combatWindows.innerHTML = "";
+    combatTurnOrder.innerHTML = "";
   }
 
   // --- Render loop ----------------------------------------------------------
@@ -213,11 +218,15 @@ export class CombatController {
     this.queue = queue;
     this.queueIndex = 0;
     this.roundEnding = false;
+    this.actingTurnId = null;
     this.nextTurn();
   }
 
   /** Advance to the next turn in the queue (or end the round). */
   private nextTurn(): void {
+    // Drop the previous actor from the turn-order strip before advancing.
+    this.actingTurnId = null;
+
     if (this.state.ended) {
       this.showResult();
       return;
@@ -226,6 +235,7 @@ export class CombatController {
     if (this.queueIndex >= this.queue.length) {
       // Round over: run end-of-round ticks and play them out.
       this.roundEnding = true;
+      this.windowsDirty = true;
       this.resolveAndPlay(() => endRound(this.state));
       return;
     }
@@ -238,6 +248,8 @@ export class CombatController {
         this.nextTurn();
         return;
       }
+      this.actingTurnId = entry.id;
+      this.windowsDirty = true;
       if (c.status.includes("sleep") || c.status.includes("paralysis")) {
         // Incapacitated: auto-resolve (logs the skip) and play it.
         this.resolveAndPlay(() =>
@@ -255,6 +267,8 @@ export class CombatController {
         this.nextTurn();
         return;
       }
+      this.actingTurnId = entry.id;
+      this.windowsDirty = true;
       this.resolveAndPlay(() => resolveEnemyTurn(this.state, entry.id));
       return;
     }
@@ -265,6 +279,8 @@ export class CombatController {
       this.nextTurn();
       return;
     }
+    this.actingTurnId = entry.id;
+    this.windowsDirty = true;
     this.resolveAndPlay(() => resolveAllyTurn(this.state, entry.id));
   }
 
@@ -1252,6 +1268,7 @@ export class CombatController {
   private showResult(): void {
     this.phase = "result";
     this.currentActorId = null;
+    this.actingTurnId = null;
     this.scene.activeActorId = null;
     this.scene.cursor = null;
     this.inspectCharacterId = null;
@@ -1669,5 +1686,15 @@ export class CombatController {
       },
     };
     renderCombatWindows(combatWindows, view, handlers, combatPopupAnchor);
+
+    // Turn-order strip: hide on result; otherwise remaining queue (drop acted).
+    if (this.phase === "result") {
+      renderTurnOrderStrip(combatTurnOrder, []);
+    } else {
+      renderTurnOrderStrip(
+        combatTurnOrder,
+        remainingTurnOrder(this.queue, this.queueIndex, this.state, this.actingTurnId)
+      );
+    }
   }
 }

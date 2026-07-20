@@ -1352,6 +1352,85 @@ canvas#map-canvas {
   pointer-events: none;
 }
 
+/* Turn-order strip — upper-right, opposite the command popup. Compact
+ * vertical list; never takes pointer events. */
+#combat-turn-order {
+  position: absolute;
+  top: 2%;
+  right: 2%;
+  max-width: 28%;
+  max-height: 42%;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.ff6-turn-order {
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 4px 6px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ff6-turn-order-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 1.25;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.ff6-turn-order-row .ff6-to-marker {
+  width: 12px;
+  flex-shrink: 0;
+  color: #ffd769;
+  font-size: 12px;
+}
+
+.ff6-turn-order-row .ff6-to-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.ff6-turn-order-row.side-player .ff6-to-name,
+.ff6-turn-order-row.side-ally .ff6-to-name {
+  color: var(--warm-white);
+}
+
+.ff6-turn-order-row.side-enemy .ff6-to-name {
+  color: #ffb0b0;
+}
+
+.ff6-turn-order-row.side-ally .ff6-to-name {
+  color: #a0f0ff;
+}
+
+.ff6-turn-order-row.current .ff6-to-name {
+  background: #ffd769;
+  color: #1a2c80;
+  font-weight: 700;
+  padding: 0 3px;
+  border-radius: 2px;
+}
+
+.ff6-turn-order-row.will-skip {
+  opacity: 0.45;
+}
+
+.ff6-turn-order-row .ff6-status-tag {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: #5a3a8a;
+  color: #e8d0ff;
+}
+
 .ff6-command-popup-wrap {
   position: absolute;
   left: 2%;
