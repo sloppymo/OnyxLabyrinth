@@ -2457,8 +2457,22 @@ function drawEnemyHpPips(
 }
 
 /**
+ * Status tints for strip sprites. Do NOT use source-atop + fillRect on the
+ * live combat canvas — party draw size is ~300px, so that paints huge green/
+ * orange slabs over floor + neighbors. Canvas `filter` only recolors the
+ * pixels of this drawImage (transparent padding stays transparent).
+ */
+const POISON_FILTER = "sepia(0.18) hue-rotate(80deg) saturate(1.25)";
+const BURN_FILTER = "sepia(0.22) hue-rotate(-30deg) saturate(1.35)";
+
+/** Fallback-shape washes (procedural ellipses/rects — same geometry, safe). */
+const POISON_TINT = "rgba(60, 190, 80, 0.28)";
+const BURN_TINT = "rgba(255, 130, 40, 0.28)";
+
+/**
  * Draw one frame of a sprite strip centered at (x, y-baseline), optionally
  * mirrored horizontally. `size` is the square draw size.
+ * `tint` is POISON_TINT / BURN_TINT (or undefined).
  */
 function drawStripFrame(
   ctx: CanvasRenderingContext2D,
@@ -2477,6 +2491,8 @@ function drawStripFrame(
   ctx.imageSmoothingEnabled = false;
   ctx.translate(x, y);
   if (mirror) ctx.scale(-1, 1);
+  if (tint === POISON_TINT) ctx.filter = POISON_FILTER;
+  else if (tint === BURN_TINT) ctx.filter = BURN_FILTER;
   ctx.drawImage(
     img,
     frame * strip.frameWidth,
@@ -2488,21 +2504,8 @@ function drawStripFrame(
     size,
     size
   );
-  if (tint) {
-    // Wash color onto only the pixels just drawn, so the sprite's alpha
-    // shape (not a bounding box) gets tinted.
-    ctx.globalCompositeOperation = "source-atop";
-    ctx.fillStyle = tint;
-    ctx.fillRect(-size / 2, -size / 2, size, size);
-  }
   ctx.restore();
 }
-
-/** Poison status wash applied to sprites and fallback shapes alike. */
-const POISON_TINT = "rgba(70, 220, 90, 0.4)";
-
-/** Burning (DoT) status wash — enemy-only, tracked in `CombatState.enemyDots`. */
-const BURN_TINT = "rgba(255, 130, 40, 0.4)";
 
 /** Map an actor sprite state onto the enemy strip keys (no walk/cast strips). */
 function enemyStripState(state: ActorSpriteState): "idle" | "attacking" | "hit" | "defeated" {
