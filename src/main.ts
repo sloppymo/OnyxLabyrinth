@@ -255,6 +255,12 @@ function openTitleScreen(): void {
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     onNewGame: () => {
       titleController = null;
+      // Reset the shared state to defaults so a leftover Arena session (or
+      // an abandoned prior campaign) doesn't leak gold/inventory/progress
+      // into the new campaign. Reform Party (townController.onReformParty)
+      // reuses openPartyCreation without this reset, since it's meant to
+      // keep the ongoing campaign's progress.
+      Object.assign(state, createGameState(getFloors()[0]!));
       openPartyCreation(() => openTown());
     },
     onContinue: (loaded) => {

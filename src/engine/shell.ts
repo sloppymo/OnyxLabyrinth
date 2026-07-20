@@ -184,7 +184,10 @@ export function renderPartyStrip(
   compass: string,
   floorLabel = "F?"
 ): void {
-  hudChromeEl.textContent = `${floorLabel} · ${compass}`;
+  // Keyboard players have no gamepad glyphs to fall back on, so keep the
+  // dungeon key legend visible at all times rather than only on first entry
+  // (playtest finding: Camp/Map/Grimoire/Actions were "secret keys").
+  hudChromeEl.textContent = `${floorLabel} · ${compass} · Tab:Actions · Esc:Save`;
   hudChromeEl.hidden = false;
   syncMessageBandVisibility();
 

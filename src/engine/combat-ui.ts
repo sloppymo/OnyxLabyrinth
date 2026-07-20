@@ -1634,6 +1634,7 @@ export class CombatController {
       flash: this.flash,
       result: this.phase === "result" ? this.result : null,
       partyAuto: this.partyAuto,
+      inputKind: this.getLastInputKind(),
       inspectCharacterId: this.inspectCharacterId,
       targetCharacterId:
         this.phase === "selectTarget" && this.targetKind === "ally"

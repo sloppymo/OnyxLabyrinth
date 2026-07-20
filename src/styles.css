@@ -589,6 +589,53 @@ canvas#map-canvas {
   font-size: var(--fs-small);
 }
 
+.save-actions {
+  margin: 8px auto 0;
+  max-width: 900px;
+}
+
+.save-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  font-size: var(--fs-body);
+  color: var(--warm-white);
+  border-bottom: 1px solid #2a2620;
+  line-height: 1.4;
+}
+
+.save-action.selected {
+  background: #1f1c16;
+  border-left: 3px solid var(--amber);
+  padding-left: 11px;
+}
+
+.save-action.disabled {
+  color: #6a6254;
+}
+
+.save-action .sa-marker {
+  color: var(--amber);
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.save-action .sa-label {
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.save-action .sa-hint {
+  color: #aa9c80;
+  font-size: var(--fs-small);
+}
+
+.save-current {
+  text-align: center;
+  margin-top: 10px;
+}
+
 .save-flash {
   text-align: center;
   margin-top: 16px;

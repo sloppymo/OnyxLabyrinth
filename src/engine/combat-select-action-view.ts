@@ -81,6 +81,9 @@ export interface CombatWindowsView {
   playbackHint?: string | null;
   /** Party Auto toggle is on (palette hint). */
   partyAuto?: boolean;
+  /** Last input device used — palette hint switches A/B/X/Y glyphs for
+   *  keyboard letters when the player is clearly on keyboard. */
+  inputKind?: "keyboard" | "gamepad";
   /** Compact resource line under the action menu (e.g. "SP 12/40" or "RG 3/12"). */
   menuResourceLine?: string | null;
   /** Roster inspect highlight (LT/RT) — does not change initiative. */
@@ -161,11 +164,21 @@ const PALETTE_LABELS: Record<PaletteSlot["kind"], string> = {
  * Palette footer — no A/B/X/Y dupes (already on the face buttons).
  * Order = priority: drop from the tail first (least important last).
  */
-export function paletteHintText(palette: CombatPalette, partyAuto: boolean): string {
+export function paletteHintText(
+  palette: CombatPalette,
+  partyAuto: boolean,
+  inputKind: "keyboard" | "gamepad" = "gamepad"
+): string {
   void palette;
   // Menu column is ~26% of the playfield (~170px usable). At 16px FF36 that
   // is ~22–24 glyphs — NOT the default joinHintParts budget of 42. Without a
   // tight maxLen, CSS overflow:hidden clips mid-token ("Start:A").
+  if (inputKind === "keyboard") {
+    return joinHintParts(
+      ["I:Item", "R:Run", "Q:Auto", partyAuto ? "AUTO on" : ""],
+      24
+    );
+  }
   return joinHintParts(
     ["Sel:Item", "hold B:Run", "Start:Auto", partyAuto ? "AUTO on" : ""],
     24
@@ -337,7 +350,10 @@ function buildCommandPopup(
     // Resource lives in the popup header only — a second SP/RG line under
     // the face buttons read as a layout leftover when identical.
     win.appendChild(
-      el("ff6-hint-row", paletteHintText(view.palette, view.partyAuto ?? false))
+      el(
+        "ff6-hint-row",
+        paletteHintText(view.palette, view.partyAuto ?? false, view.inputKind ?? "gamepad")
+      )
     );
   } else if (view.menuMode === "menu") {
     for (let i = 0; i < view.menuEntries.length; i++) {

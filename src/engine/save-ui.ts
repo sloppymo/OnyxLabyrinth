@@ -282,9 +282,14 @@ export class SaveController {
 
     const lines: string[] = [];
     const slotHighlighted = this.phase === "browsing" || this.phase === "actionPick";
+    // During actionPick, only render the acted-on slot so the action menu
+    // (Save/Load/Delete/Cancel) always fits on screen without scrolling —
+    // rendering all SLOT_COUNT rows pushed it below the window's max-height.
+    const compactSlots = this.phase === "actionPick";
 
     lines.push(`<div class="save-slots">`);
     for (let i = 0; i < SLOT_COUNT; i++) {
+      if (compactSlots && i !== this.selectedIndex) continue;
       const meta = this.metas[i];
       const isSelected = i === this.selectedIndex && slotHighlighted;
       const marker = isSelected ? "▶" : " ";
@@ -333,7 +338,7 @@ export class SaveController {
     const aliveCount = this.state.party.filter((c) => c.hp > 0).length;
     const classSummary = this.state.party.map((c) => c.class[0]).join("");
     lines.push(
-      `<div class="save-current" style="color:var(--text-dim);font-size:12px">` +
+      `<div class="save-current">` +
       `Current: F${this.state.floor.id} ${this.state.floor.name} · ${aliveCount}/${this.state.party.length} alive [${classSummary}] · ${this.state.partyGold}g` +
       `</div>`
     );
