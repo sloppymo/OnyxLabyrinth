@@ -83,6 +83,8 @@ export class PartyCreationController {
   private phase: "choice" | "edit" = "choice";
   private choiceIndex = 0;
   private choiceHasRendered = false;
+  /** Reset panel scroll when advancing slots so the header stays visible. */
+  private scrollResetPending = false;
 
   constructor(opts: PartyCreationOptions) {
     this.panel = opts.panel;
@@ -194,7 +196,21 @@ export class PartyCreationController {
   private enterEditor(): void {
     this.phase = "edit";
     this.flash = "";
+    this.scrollResetPending = true;
     this.render();
+  }
+
+  private fieldHint(field: Field, d: SlotDraft): string {
+    switch (field) {
+      case "name":
+        return "Type to edit · max 12 characters";
+      case "race":
+        return RACES[d.race].description;
+      case "alignment":
+        return "Good and Evil cannot party together.";
+      case "class":
+        return CLASSES[d.cls].description;
+    }
   }
 
   // --- Draft management ---------------------------------------------------
@@ -272,6 +288,7 @@ export class PartyCreationController {
     this.drafts.push(this.freshDraft(this.slotIndex));
     this.fieldIndex = 0;
     this.flash = "";
+    this.scrollResetPending = true;
     this.render();
   }
 
@@ -286,6 +303,7 @@ export class PartyCreationController {
     this.drafts.pop();
     this.slotIndex--;
     this.flash = "";
+    this.scrollResetPending = true;
     this.render();
   }
 
@@ -336,40 +354,25 @@ export class PartyCreationController {
     const maxHp = computeMaxHp(d.stats, d.cls);
     const maxSp = computeMaxSp(d.stats, d.cls);
     const lines: string[] = [];
+    const confirmedCount = this.slotIndex;
+    const field = FIELDS[this.fieldIndex];
 
-    lines.push(`<div class="town-header">[+] Party Creation</div>`);
+    lines.push(`<div class="party-create">`);
+    lines.push(`<div class="party-create-header">[+] Party Creation</div>`);
     lines.push(
-      `<div class="town-gold">Slot ${this.slotIndex + 1} of 6 · ` +
-      `${this.drafts.filter((_, i) => i < this.slotIndex).length} confirmed</div>`
+      `<div class="party-create-meta">Slot ${this.slotIndex + 1} of 6 · ${confirmedCount} confirmed</div>`
     );
 
-    // Confirmed slots summary
-    if (this.slotIndex > 0) {
-      lines.push(`<div class="combat-section">Confirmed</div>`);
-      lines.push(`<div class="combat-party">`);
-      for (let i = 0; i < this.slotIndex; i++) {
-        const c = this.drafts[i];
-        lines.push(
-          `<div>${i + 1}. <b style="color:var(--amber)">${c.name}</b> — ` +
-          `${c.race} ${c.alignment} ${c.cls}</div>`
-        );
-      }
-      lines.push(`</div>`);
-    }
-
-    // Current slot editor
-    lines.push(`<div class="combat-section">Editing Slot ${this.slotIndex + 1}</div>`);
     lines.push(`<div class="party-edit">`);
-
     for (let fi = 0; fi < FIELDS.length; fi++) {
       const f = FIELDS[fi];
       const selected = fi === this.fieldIndex;
       const marker = selected ? "▶" : " ";
       let value: string;
       if (f === "name") value = d.name || "(empty)";
-      else if (f === "race") value = `${d.race} — ${RACES[d.race].description}`;
+      else if (f === "race") value = d.race;
       else if (f === "alignment") value = d.alignment;
-      else value = `${d.cls} — ${CLASSES[d.cls].description}`;
+      else value = d.cls;
       lines.push(
         `<div class="party-field ${selected ? "selected" : ""}">` +
         `<span class="tm-marker">${marker}</span>` +
@@ -380,28 +383,56 @@ export class PartyCreationController {
     }
     lines.push(`</div>`);
 
-    // Stats display
+    lines.push(`<div class="party-hint">${this.fieldHint(field, d)}</div>`);
+
     const s = d.stats;
-    lines.push(`<div class="combat-section">Stats (3d6 + racial)</div>`);
     lines.push(
       `<div class="party-stats">` +
-      `STR ${s.str} · INT ${s.int} · PIE ${s.pie} · VIT ${s.vit} · AGI ${s.agi} · LUK ${s.luk}` +
+      `STR ${s.str} · INT ${s.int} · PIE ${s.pie} · VIT ${s.vit} · AGI ${s.agi} · LUK ${s.luk} · ` +
+      `HP ${maxHp} · SP ${maxSp}` +
       `</div>`
     );
+
     lines.push(
-      `<div class="party-derived">HP ${maxHp} · SP ${maxSp} · ${CLASSES[d.cls].description}</div>`
+      `<div class="party-help">[↑↓] field · [←→] cycle · [R] reroll · [Enter] confirm · [Esc] back</div>`
     );
 
-    // Help
-    lines.push(`<div class="town-help">`);
-    lines.push(`[↑/↓] field · [←/→] cycle · type to name · [R] re-roll · [Enter] confirm · [Esc] back`);
-    lines.push(`</div>`);
+    if (confirmedCount > 0) {
+      lines.push(`<div class="party-confirmed">`);
+      for (let i = 0; i < confirmedCount; i++) {
+        const c = this.drafts[i];
+        lines.push(
+          `<span class="party-confirmed-chip" title="${c.race} ${c.alignment} ${c.cls}">` +
+          `<b>${i + 1}.${c.name}</b> ${c.cls}` +
+          `</span>`
+        );
+      }
+      lines.push(`</div>`);
+    }
 
     if (this.flash) {
       lines.push(`<div class="town-flash">${this.flash}</div>`);
     }
+    lines.push(`</div>`);
 
     this.panel.innerHTML = lines.join("");
+
+    if (this.scrollResetPending) {
+      this.panel.scrollTop = 0;
+      this.scrollResetPending = false;
+      return;
+    }
+
+    const selectedEl = this.panel.querySelector<HTMLElement>(".party-field.selected");
+    if (selectedEl) {
+      const above = selectedEl.offsetTop;
+      const below = above + selectedEl.offsetHeight;
+      if (above < this.panel.scrollTop) {
+        this.panel.scrollTop = above;
+      } else if (below > this.panel.scrollTop + this.panel.clientHeight) {
+        this.panel.scrollTop = below - this.panel.clientHeight;
+      }
+    }
   }
 
   private renderChoice(): void {
