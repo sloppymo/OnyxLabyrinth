@@ -75,6 +75,20 @@ describe("TownController shop tabs", () => {
     expect((ctrl as unknown as { shopTab: string }).shopTab).toBe("buyConfirm");
   });
 
+  it("cycles buy-confirm target with ArrowDown through party members", () => {
+    const ctrl = makeTown();
+    ctrl.handleKey("$");
+    ctrl.handleKey("Enter");
+
+    const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
+    const targetBefore = panel.querySelector(".buy-compare-value")?.textContent;
+    ctrl.handleKey("ArrowDown");
+    const targetAfter = panel.querySelector(".buy-compare-value")?.textContent;
+    expect(targetAfter).toBeTruthy();
+    expect(targetAfter).not.toBe(targetBefore);
+    expect(panel.querySelector(".ff6-footer")?.textContent).toContain("↑↓ target");
+  });
+
   it("still switches tabs with B/S/A letter hotkeys", () => {
     const ctrl = makeTown();
     ctrl.handleKey("$");

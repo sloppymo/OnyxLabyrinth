@@ -825,6 +825,11 @@ canvas#map-canvas {
   color: var(--warm-white);
 }
 
+.buy-compare-hint {
+  color: #88775a;
+  font-size: var(--fs-small);
+}
+
 .buy-compare-current {
   color: var(--danger-red);
 }

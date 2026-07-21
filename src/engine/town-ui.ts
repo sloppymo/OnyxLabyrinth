@@ -91,6 +91,7 @@ export class TownController {
 
   // Buy-confirm state
   private buyConfirmItem?: ItemDef;
+  private buyConfirmPartyIndex = 0;
   private buyConfirmTarget?: { id: string; name: string };
   private buyConfirmOldLoadout?: Loadout;
   private buyConfirmNextLoadout?: Loadout;
@@ -457,6 +458,16 @@ export class TownController {
 
   private handleBuyConfirmKey(lower: string): void {
     switch (lower) {
+      case "arrowup":
+      case "w":
+      case "arrowdown":
+      case "s":
+        if (this.buyConfirmItem?.type !== "consumable" && this.state.party.length > 0) {
+          const dir = lower === "arrowup" || lower === "w" ? -1 : 1;
+          this.setBuyConfirmTargetForIndex(this.buyConfirmPartyIndex + dir);
+          this.render();
+        }
+        break;
       case "t":
       case "y":
         this.tradeIn = !this.tradeIn;
@@ -474,6 +485,20 @@ export class TownController {
     }
   }
 
+  /** Refresh buy-confirm preview for the party member at `index`. */
+  private setBuyConfirmTargetForIndex(index: number): void {
+    const item = this.buyConfirmItem;
+    if (!item || item.type === "consumable") return;
+    const len = this.state.party.length;
+    if (len === 0) return;
+
+    this.buyConfirmPartyIndex = ((index % len) + len) % len;
+    const target = this.state.party[this.buyConfirmPartyIndex]!;
+    this.buyConfirmTarget = { id: target.id, name: target.name };
+    this.buyConfirmOldLoadout = this.state.equipment[target.id];
+    this.buyConfirmNextLoadout = equipItem(this.buyConfirmOldLoadout, item);
+  }
+
   private openBuyConfirm(item: ItemDef | undefined): void {
     if (!item) return;
     this.buyConfirmItem = item;
@@ -482,17 +507,12 @@ export class TownController {
     this.flash = "";
 
     if (item.type !== "consumable") {
-      const targetId = findBestEquipTarget(this.state.party, this.state.equipment, item);
-      if (targetId) {
-        const target = this.state.party.find((c) => c.id === targetId);
-        this.buyConfirmTarget = target ? { id: targetId, name: target.name } : { id: targetId, name: "someone" };
-        this.buyConfirmOldLoadout = this.state.equipment[targetId];
-        this.buyConfirmNextLoadout = equipItem(this.buyConfirmOldLoadout, item);
-      } else {
-        this.buyConfirmTarget = undefined;
-        this.buyConfirmOldLoadout = undefined;
-        this.buyConfirmNextLoadout = undefined;
-      }
+      const bestId = findBestEquipTarget(this.state.party, this.state.equipment, item);
+      const startIndex =
+        bestId !== undefined
+          ? Math.max(0, this.state.party.findIndex((c) => c.id === bestId))
+          : 0;
+      this.setBuyConfirmTargetForIndex(startIndex);
     } else {
       this.buyConfirmTarget = undefined;
       this.buyConfirmOldLoadout = undefined;
@@ -829,7 +849,7 @@ export class TownController {
     if (targetName && willEquip) {
       const current = displaced ?? undefined;
       lines.push(`<div class="buy-compare-row">`);
-      lines.push(`<span class="buy-compare-label">Target:</span> <span class="buy-compare-value">${targetName}</span>`);
+      lines.push(`<span class="buy-compare-label">Target:</span> <span class="buy-compare-value">${targetName}</span> <span class="buy-compare-hint">(↑↓ change)</span>`);
       lines.push(`</div>`);
       lines.push(`<div class="buy-compare-row">`);
       lines.push(`<span class="buy-compare-label">Current:</span> <span class="buy-compare-current">${this.itemNameFor(current)} — ${this.itemStatsStr(current) || "none"}</span>`);
@@ -866,6 +886,28 @@ export class TownController {
           lines.push(`<div class="buy-compare-warning">Not enough gold — need ${price}g.</div>`);
         }
       }
+    } else if (targetName) {
+      const old = this.buyConfirmOldLoadout;
+      const current = old ? this.equipmentItemFor(old, item) : undefined;
+      const price = this.buyPrice(item);
+      lines.push(`<div class="buy-compare-row">`);
+      lines.push(`<span class="buy-compare-label">Target:</span> <span class="buy-compare-value">${targetName}</span> <span class="buy-compare-hint">(↑↓ change)</span>`);
+      lines.push(`</div>`);
+      lines.push(`<div class="buy-compare-row">`);
+      lines.push(
+        `<span class="buy-compare-label">Not an upgrade for ${targetName}</span> ` +
+          `(current: ${this.itemNameFor(current)} ${this.itemStatsStr(current) || "none"}).`
+      );
+      lines.push(`</div>`);
+      lines.push(`<div class="buy-compare-row">`);
+      lines.push(`<span class="buy-compare-label">Will be added to inventory.</span>`);
+      lines.push(`</div>`);
+      lines.push(`<div class="buy-compare-row">`);
+      lines.push(`<span class="buy-compare-label">Price:</span> ${price}g · <span class="buy-compare-label">Current gold:</span> ${this.state.partyGold}g`);
+      lines.push(`</div>`);
+      if (this.state.partyGold < price) {
+        lines.push(`<div class="buy-compare-warning">Not enough gold — need ${price}g.</div>`);
+      }
     } else {
       const price = this.buyPrice(item);
       lines.push(`<div class="buy-compare-row">`);
@@ -879,12 +921,15 @@ export class TownController {
       }
     }
 
+    const targetFooter =
+      item.type === "consumable" ? "A buy · B cancel" : "↑↓ target · A buy · Y trade-in · B cancel";
+
     this.panel.appendChild(
       FF6Window.frame({
         title: "Shop — Purchase",
         contentHtml: lines.join(""),
         flash: this.flash || null,
-        footer: "A buy · Y trade-in · B cancel",
+        footer: targetFooter,
         mode: "description",
         animated,
       })
