@@ -204,13 +204,19 @@ function floor1(): FloorDef {
 
   // Entry hall (south) — the party wakes here; stairs from floor 2 also land here.
   carveRoom(grid, 4, 8, 7, 10);
-  // Processional corridor north from the entry hall to the sanctum.
-  carveVertical(grid, 5, 2, 8);
+  // Processional corridor north from the entry hall to the crossroads only —
+  // the direct shot to the sanctum is gone. Everyone must jog west through
+  // the crypt row (loot + trap tutorial) to continue north.
+  carveVertical(grid, 5, 5, 8);
   // North sanctum (stairs down).
   carveRoom(grid, 3, 1, 7, 2);
   // West crypt row (open treasure: crypt-key).
   carveRoom(grid, 1, 4, 3, 6);
   carveHorizontal(grid, 1, 5, 5);
+  // New route from the crypt's north row up to the sanctum, entering from
+  // the west (the crypt is now the only way north from the crossroads).
+  carveVertical(grid, 2, 1, 4);
+  carveHorizontal(grid, 2, 3, 1);
   // Flooded east gallery.
   carveRoom(grid, 7, 4, 10, 6);
   carveHorizontal(grid, 5, 9, 5);
@@ -218,9 +224,9 @@ function floor1(): FloorDef {
   carveRoom(grid, 9, 8, 10, 9);
   carveVertical(grid, 9, 6, 8);
 
-  // Sanctum entrance door.
-  setEdge(grid, 5, 3, "n", "door");
-  setEdge(grid, 5, 2, "s", "door");
+  // Sanctum entrance door (west side, off the new crypt route).
+  setEdge(grid, 3, 1, "w", "door");
+  setEdge(grid, 2, 1, "e", "door");
   // Gallery entrance door.
   setEdge(grid, 6, 5, "e", "door");
   setEdge(grid, 7, 5, "w", "door");
@@ -240,10 +246,12 @@ function floor1(): FloorDef {
   setTile(grid, 7, 5, "water");
   setTile(grid, 2, 4, "water");
   setTile(grid, 10, 6, "water");
-  // Open chest in the west crypt (holds the crypt-key).
-  setTile(grid, 2, 5, "treasure");
-  // Trapped chest in the west crypt — teaches trap inspection/disarming early.
+  // Open chest in the west crypt (holds the crypt-key) — first chest reached
+  // coming from the crossroads, teaches looting safely.
   setTile(grid, 3, 5, "treasure");
+  // Trapped chest just beyond it — teaches trap inspection/disarming right
+  // after the safe chest, both now unavoidable on the route north.
+  setTile(grid, 2, 5, "treasure");
   // Locked reliquary chest (holds the lexicon-key for floor 2).
   setTile(grid, 10, 9, "treasure");
   // Maro, a stranded swordsman, shelters in the crypt's south-east corner.
@@ -251,7 +259,7 @@ function floor1(): FloorDef {
 
   // Scripted events.
   setTile(grid, 5, 7, "event");
-  setTile(grid, 5, 4, "event");
+  setTile(grid, 2, 3, "event");
   setTile(grid, 1, 4, "event");
   setTile(grid, 4, 1, "event");
 
@@ -269,10 +277,12 @@ function floor1(): FloorDef {
       { x: 9, y: 7, dir: "s", keyId: "crypt-key" },
     ],
     treasures: [
-      // The first chest of the game is untrapped — it teaches looting safely.
-      { x: 2, y: 5, itemIds: ["healing-potion", "healing-potion", "crypt-key"] },
-      // A poison-needle chest just steps away: the antidote inside softens the lesson.
-      { x: 3, y: 5, itemIds: ["antidote", "healing-potion"], trap: "poison" },
+      // The first chest reached from the crossroads is untrapped — it
+      // teaches looting safely.
+      { x: 3, y: 5, itemIds: ["healing-potion", "healing-potion", "crypt-key"] },
+      // A poison-needle chest just steps beyond it: the antidote inside
+      // softens the lesson, and it's now unavoidable on the route north.
+      { x: 2, y: 5, itemIds: ["antidote", "healing-potion"], trap: "poison" },
       { x: 10, y: 9, itemIds: ["short-sword+1", "leather", "healing-potion", "lexicon-key"], trap: "gas" },
     ],
     waters: [
@@ -303,9 +313,20 @@ function floor1(): FloorDef {
     ],
     events: [
       { x: 5, y: 7, kind: "message", message: "Above the arch, words are scrawled in something black: THE WATER REMEMBERS." },
-      { x: 5, y: 4, kind: "damage", message: "A flagstone gives way and darts whistle through the corridor.", power: 4 },
+      { x: 2, y: 3, kind: "damage", message: "A flagstone gives way and darts whistle through the corridor.", power: 4 },
       { x: 1, y: 4, kind: "reward", message: "A corpse clutches a rusted holy symbol. The dead have no use for it now.", itemId: "holy-symbol" },
       { x: 4, y: 1, kind: "heal", message: "You kneel at the defiled altar. Something hungry listens — but it gives a little back.", power: 5 },
+    ],
+    mapSprites: [
+      { x: 6, y: 9, spriteId: "torch" },
+      { x: 1, y: 6, spriteId: "bones" },
+      { x: 9, y: 9, spriteId: "barrel" },
+      { x: 2, y: 2, spriteId: "torch" },
+      { x: 9, y: 4, spriteId: "bones" },
+    ],
+    encounterZones: [
+      { id: "crypt-tutorial-safe", x1: 1, y1: 4, x2: 7, y2: 9, rateMul: 0.5 },
+      { id: "flooded-gallery-risk", x1: 7, y1: 4, x2: 10, y2: 6, rateMul: 1.5 },
     ],
   };
 }
@@ -336,8 +357,17 @@ function floor2(): FloorDef {
   carveHorizontal(grid, 4, 12, 2);
   // NE scriptorium.
   carveRoom(grid, 10, 1, 12, 4);
-  // Grand reading hall (center).
-  carveRoom(grid, 5, 5, 9, 9);
+  // Grand reading hall (center) — two shelf islands at (6,6) and (8,6) break
+  // up the open rectangle into aisles; y=5/7/8/9 stay full-width cross-aisles.
+  carveHorizontal(grid, 5, 9, 5);
+  carveHorizontal(grid, 5, 9, 7);
+  carveHorizontal(grid, 5, 9, 8);
+  carveHorizontal(grid, 5, 9, 9);
+  carveVertical(grid, 5, 5, 9);
+  carveVertical(grid, 7, 5, 9);
+  carveVertical(grid, 9, 5, 9);
+  carveVertical(grid, 6, 7, 9);
+  carveVertical(grid, 8, 7, 9);
   carveVertical(grid, 6, 2, 5);
   // Forbidden wing (locked, east of the hall).
   carveRoom(grid, 11, 6, 12, 9);
@@ -369,7 +399,9 @@ function floor2(): FloorDef {
   setTile(grid, 8, 2, "darkness");
   // Open chest in the scriptorium.
   setTile(grid, 12, 3, "treasure");
-  // Locked chest in the forbidden wing (holds the furnace-key for floor 3).
+  // Locked chest in the forbidden wing (holds the furnace-key for floor 3) —
+  // sits in darkness, making the wing's best loot genuinely hard to see.
+  setTile(grid, 11, 8, "darkness");
   setTile(grid, 12, 8, "treasure");
   // Vestra, an unbound scribe, hides deep in the west stacks.
   setTile(grid, 1, 1, "npc");
@@ -380,6 +412,9 @@ function floor2(): FloorDef {
   setTile(grid, 3, 2, "event");
   setTile(grid, 11, 4, "event");
   setTile(grid, 2, 9, "event");
+  setTile(grid, 7, 8, "event");
+  setTile(grid, 3, 11, "event");
+  setTile(grid, 11, 10, "event");
 
   return {
     id: 2,
@@ -426,6 +461,20 @@ function floor2(): FloorDef {
       { x: 3, y: 2, kind: "message", message: "The shelves whisper. One voice is clear: 'Forbidden wing… key of lexicon… furnace below.'" },
       { x: 11, y: 4, kind: "message", message: "The librarian's journal names the forge below and the key that opens it. You leave the body where it fell." },
       { x: 2, y: 9, kind: "message", message: "Something is daubed on the wall: DO NOT FEED THE BOOKS." },
+      { x: 7, y: 8, kind: "reward", message: "A cracked lens catches the candlelight — tucked into a false-bottomed drawer between the stacks.", itemId: "eye-drops" },
+      { x: 3, y: 11, kind: "heal", message: "A brazier long left burning warms this corner of the atrium.", power: 5 },
+      { x: 11, y: 10, kind: "message", message: "A brass plate, half-melted: MIND THE STEP — TO THE FORGE BELOW." },
+    ],
+    mapSprites: [
+      { x: 2, y: 2, spriteId: "torch" },
+      { x: 11, y: 2, spriteId: "crate" },
+      { x: 11, y: 11, spriteId: "torch" },
+      { x: 7, y: 9, spriteId: "crate" },
+    ],
+    encounterZones: [
+      { id: "library-loop-safe", x1: 1, y1: 4, x2: 4, y2: 12, rateMul: 0.6 },
+      { id: "forbidden-wing-hot", x1: 11, y1: 6, x2: 12, y2: 9, rateMul: 1.6 },
+      { id: "scriptorium-hot", x1: 10, y1: 1, x2: 12, y2: 4, rateMul: 1.4 },
     ],
   };
 }
@@ -457,8 +506,15 @@ function floor3(): FloorDef {
   // West descent from the antechamber to the cinder hall.
   carveVertical(grid, 2, 3, 7);
   carveRoom(grid, 1, 7, 3, 11);
-  // Central foundry.
-  carveRoom(grid, 6, 6, 9, 9);
+  // Central foundry — a furnace-stack block at (8,7)-(8,8) nestles the
+  // anvil-altar event at (7,7) into an alcove instead of an empty box.
+  carveHorizontal(grid, 6, 9, 6);
+  carveHorizontal(grid, 6, 7, 7);
+  carveHorizontal(grid, 6, 7, 8);
+  carveHorizontal(grid, 6, 9, 9);
+  carveVertical(grid, 6, 6, 9);
+  carveVertical(grid, 7, 6, 9);
+  carveVertical(grid, 9, 6, 9);
   carveVertical(grid, 7, 3, 6);   // gallery → foundry (north loop)
   carveHorizontal(grid, 3, 6, 8); // cinder hall → foundry (west loop)
   // East to the chain hall.
@@ -500,6 +556,9 @@ function floor3(): FloorDef {
   setTile(grid, 5, 14, "stairs_down");
   // Locked chest in the slag vault.
   setTile(grid, 13, 2, "treasure");
+  // A second, unguarded chest tucked in the vault's far corner — a small
+  // bonus for coming back with the furnace-key.
+  setTile(grid, 14, 1, "treasure");
   // Chest in the chain hall (past the smoke).
   setTile(grid, 14, 8, "treasure");
   // Open chest in the ashpit (holds the forge-key).
@@ -516,6 +575,7 @@ function floor3(): FloorDef {
   setTile(grid, 7, 7, "event");
   setTile(grid, 14, 9, "event");
   setTile(grid, 2, 6, "event");
+  setTile(grid, 1, 9, "event");
 
   return {
     id: 3,
@@ -536,6 +596,8 @@ function floor3(): FloorDef {
     ],
     treasures: [
       { x: 13, y: 2, itemIds: ["great-sword+1", "plate-mail", "healing-potion", "healing-potion"], trap: "gas" },
+      // Unguarded bonus chest in the same vault — no trap, rewards backtracking.
+      { x: 14, y: 1, itemIds: ["greater-healing-potion"] },
       // The chain hall's chest flings openers across the forge — and the
       // helm inside whispers (cursed).
       { x: 14, y: 8, itemIds: ["halberd+1", "shield+1", "cursed-helm", "healing-potion"], trap: "teleporter" },
@@ -567,6 +629,20 @@ function floor3(): FloorDef {
       { x: 7, y: 7, kind: "heal", message: "You rest your weapon on the anvil altar. The forge-forged steel hums, and a little warmth returns.", power: 6 },
       { x: 14, y: 9, kind: "message", message: "A smith is fused to the wall, hammer still raised as if warning you back." },
       { x: 2, y: 6, kind: "message", message: "Hammered into a bronze plate: THE ECHO WEARS HIS FACE." },
+      { x: 1, y: 9, kind: "reward", message: "A guard's satchel, forgotten against the wall. Something rattles inside.", itemId: "smelling-salts" },
+    ],
+    mapSprites: [
+      { x: 2, y: 2, spriteId: "torch" },
+      { x: 1, y: 14, spriteId: "bones" },
+      { x: 3, y: 13, spriteId: "crate" },
+      { x: 5, y: 13, spriteId: "bones" },
+      { x: 10, y: 13, spriteId: "bones" },
+      { x: 12, y: 7, spriteId: "barrel" },
+    ],
+    encounterZones: [
+      { id: "foundry-crossroads-safe", x1: 6, y1: 6, x2: 9, y2: 9, rateMul: 0.7 },
+      { id: "chain-hall-hot", x1: 12, y1: 6, x2: 14, y2: 9, rateMul: 1.5 },
+      { id: "slag-vault-hot", x1: 12, y1: 1, x2: 14, y2: 3, rateMul: 1.3 },
     ],
   };
 }

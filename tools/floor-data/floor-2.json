@@ -485,7 +485,7 @@
       {
         "n": "door",
         "e": "open",
-        "s": "open",
+        "s": "wall",
         "w": "open"
       },
       {
@@ -497,7 +497,7 @@
       {
         "n": "wall",
         "e": "open",
-        "s": "open",
+        "s": "wall",
         "w": "open"
       },
       {
@@ -564,33 +564,33 @@
       },
       {
         "n": "open",
-        "e": "open",
+        "e": "wall",
         "s": "open",
         "w": "wall"
       },
       {
-        "n": "open",
-        "e": "open",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "open",
-        "e": "open",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "open",
-        "e": "open",
-        "s": "open",
-        "w": "open"
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       },
       {
         "n": "open",
         "e": "wall",
         "s": "open",
-        "w": "open"
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "wall"
       },
       {
         "n": "wall",
@@ -655,7 +655,7 @@
         "w": "wall"
       },
       {
-        "n": "open",
+        "n": "wall",
         "e": "open",
         "s": "open",
         "w": "open"
@@ -667,7 +667,7 @@
         "w": "open"
       },
       {
-        "n": "open",
+        "n": "wall",
         "e": "open",
         "s": "open",
         "w": "open"
@@ -750,7 +750,8 @@
         "n": "open",
         "e": "open",
         "s": "open",
-        "w": "open"
+        "w": "open",
+        "tile": "event"
       },
       {
         "n": "open",
@@ -774,7 +775,8 @@
         "n": "open",
         "e": "open",
         "s": "open",
-        "w": "wall"
+        "w": "wall",
+        "tile": "darkness"
       },
       {
         "n": "open",
@@ -949,7 +951,8 @@
         "n": "wall",
         "e": "open",
         "s": "open",
-        "w": "open"
+        "w": "open",
+        "tile": "event"
       },
       {
         "n": "wall",
@@ -988,7 +991,8 @@
         "n": "open",
         "e": "open",
         "s": "open",
-        "w": "open"
+        "w": "open",
+        "tile": "event"
       },
       {
         "n": "open",
@@ -1225,6 +1229,54 @@
       }
     ]
   ],
+  "encounterZones": [
+    {
+      "id": "library-loop-safe",
+      "x1": 1,
+      "y1": 4,
+      "x2": 4,
+      "y2": 12,
+      "rateMul": 0.6
+    },
+    {
+      "id": "forbidden-wing-hot",
+      "x1": 11,
+      "y1": 6,
+      "x2": 12,
+      "y2": 9,
+      "rateMul": 1.6
+    },
+    {
+      "id": "scriptorium-hot",
+      "x1": 10,
+      "y1": 1,
+      "x2": 12,
+      "y2": 4,
+      "rateMul": 1.4
+    }
+  ],
+  "mapSprites": [
+    {
+      "x": 2,
+      "y": 2,
+      "spriteId": "torch"
+    },
+    {
+      "x": 11,
+      "y": 2,
+      "spriteId": "crate"
+    },
+    {
+      "x": 11,
+      "y": 11,
+      "spriteId": "torch"
+    },
+    {
+      "x": 7,
+      "y": 9,
+      "spriteId": "crate"
+    }
+  ],
   "lockedDoors": [
     {
       "x": 10,
@@ -1329,6 +1381,26 @@
       "y": 9,
       "kind": "message",
       "message": "Something is daubed on the wall: DO NOT FEED THE BOOKS."
+    },
+    {
+      "x": 7,
+      "y": 8,
+      "kind": "reward",
+      "message": "A cracked lens catches the candlelight — tucked into a false-bottomed drawer between the stacks.",
+      "itemId": "eye-drops"
+    },
+    {
+      "x": 3,
+      "y": 11,
+      "kind": "heal",
+      "message": "A brazier long left burning warms this corner of the atrium.",
+      "power": 5
+    },
+    {
+      "x": 11,
+      "y": 10,
+      "kind": "message",
+      "message": "A brass plate, half-melted: MIND THE STEP — TO THE FORGE BELOW."
     }
   ]
 }

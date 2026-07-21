@@ -4,26 +4,27 @@
 
    0123456789012345
  0 ################
- 1 #...#......#...#
+ 1 #...#......#..T#
  2 #.@.....!....T.#
  3 #...#......#...#
  4 ##.####.########
  5 ##.####.########
  6 ##!###...P##...#
- 7 #...##.!..##.D.#
- 8 #............DT#
- 9 #..N##....##..!#
+ 7 #...##.!#.##.D.#
+ 8 #.......#....DT#
+ 9 #!.N##....##..!#
 10 #...#########!##
 11 #.....!.......##
 12 ##.##......#####
 13 #...#.MMMT.#####
-14 #.T.#......#####
+14 #.T.#v.....#####
 15 ################
 
 # Overlays:
 #   lock (11,2) e key=furnace-key
 #   lock (7,11) s key=forge-key
 #   treasure (13,2) items=[great-sword+1, plate-mail, healing-potion, healing-potion] trap=gas
+#   treasure (14,1) items=[greater-healing-potion]
 #   treasure (14,8) items=[halberd+1, shield+1, cursed-helm, healing-potion] trap=teleporter
 #   treasure (2,14) items=[forge-key, healing-potion, antidote] trap=poison
 #   treasure (9,13) items=[great-sword+2, plate-mail+2, healing-potion, healing-potion] trap=stunner
@@ -34,4 +35,5 @@
 #   event (7,7) kind=heal
 #   event (14,9) kind=message
 #   event (2,6) kind=message
+#   event (1,9) kind=reward
 #   teleporter (9,6) -> floor 3 (2,3)

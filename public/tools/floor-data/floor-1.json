@@ -98,15 +98,15 @@
       },
       {
         "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "e": "door",
+        "s": "open",
         "w": "wall"
       },
       {
         "n": "wall",
         "e": "open",
         "s": "open",
-        "w": "wall"
+        "w": "door"
       },
       {
         "n": "wall",
@@ -173,9 +173,9 @@
         "w": "wall"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
-        "s": "wall",
+        "s": "open",
         "w": "wall"
       },
       {
@@ -193,7 +193,7 @@
       {
         "n": "open",
         "e": "open",
-        "s": "door",
+        "s": "wall",
         "w": "open"
       },
       {
@@ -247,27 +247,28 @@
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "door",
+        "n": "open",
         "e": "wall",
         "s": "open",
+        "w": "wall",
+        "tile": "event"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
         "w": "wall"
       },
       {
@@ -322,7 +323,7 @@
         "tile": "event"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "open",
         "s": "open",
         "w": "open",
@@ -341,11 +342,10 @@
         "w": "wall"
       },
       {
-        "n": "open",
+        "n": "wall",
         "e": "wall",
-        "s": "open",
-        "w": "wall",
-        "tile": "event"
+        "s": "wall",
+        "w": "wall"
       },
       {
         "n": "wall",
@@ -418,7 +418,7 @@
         "w": "open"
       },
       {
-        "n": "open",
+        "n": "wall",
         "e": "open",
         "s": "open",
         "w": "open"
@@ -912,6 +912,51 @@
       }
     ]
   ],
+  "encounterZones": [
+    {
+      "id": "crypt-tutorial-safe",
+      "x1": 1,
+      "y1": 4,
+      "x2": 7,
+      "y2": 9,
+      "rateMul": 0.5
+    },
+    {
+      "id": "flooded-gallery-risk",
+      "x1": 7,
+      "y1": 4,
+      "x2": 10,
+      "y2": 6,
+      "rateMul": 1.5
+    }
+  ],
+  "mapSprites": [
+    {
+      "x": 6,
+      "y": 9,
+      "spriteId": "torch"
+    },
+    {
+      "x": 1,
+      "y": 6,
+      "spriteId": "bones"
+    },
+    {
+      "x": 9,
+      "y": 9,
+      "spriteId": "barrel"
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "spriteId": "torch"
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "spriteId": "bones"
+    }
+  ],
   "lockedDoors": [
     {
       "x": 9,
@@ -922,7 +967,7 @@
   ],
   "treasures": [
     {
-      "x": 2,
+      "x": 3,
       "y": 5,
       "itemIds": [
         "healing-potion",
@@ -931,7 +976,7 @@
       ]
     },
     {
-      "x": 3,
+      "x": 2,
       "y": 5,
       "itemIds": [
         "antidote",
@@ -1019,8 +1064,8 @@
       "message": "Above the arch, words are scrawled in something black: THE WATER REMEMBERS."
     },
     {
-      "x": 5,
-      "y": 4,
+      "x": 2,
+      "y": 3,
       "kind": "damage",
       "message": "A flagstone gives way and darts whistle through the corridor.",
       "power": 4
