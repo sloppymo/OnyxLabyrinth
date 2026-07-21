@@ -252,6 +252,27 @@ describe("save serialization", () => {
     // perkIds should be a copy, not a reference.
     expect(restored.party[0].perkIds).not.toBe(state.party[0].perkIds);
   });
+
+  it("round-trips active battle roster ids", () => {
+    state.activeCharIds = ["c2", "c3", "c5", "c6"];
+    const json = serialize(state);
+    const restored = deserialize(json);
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    expect(restored.activeCharIds).toEqual(["c2", "c3", "c5", "c6"]);
+    expect(restored.activeCharIds).not.toBe(state.activeCharIds);
+  });
+
+  it("migrates v9 saves with default first-four active roster", () => {
+    const json = serialize(state);
+    const raw = JSON.parse(json) as Record<string, unknown>;
+    raw.version = 9;
+    delete raw.activeCharIds;
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    expect(restored.activeCharIds).toEqual(["c1", "c2", "c3", "c4"]);
+  });
 });
 
 describe("autoSave", () => {

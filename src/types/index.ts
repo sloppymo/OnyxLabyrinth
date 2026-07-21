@@ -181,4 +181,8 @@ export interface GameState {
   // default loadout at party creation and updated by shop purchases / treasure
   // finds / post-combat persistence.
   equipment: Record<string, Loadout>;
+  // Exactly four character ids who fight in combat (camp-only changes).
+  // Independent of formationSlot (front/back reach). When the roster has
+  // fewer than four members, all ids are active.
+  activeCharIds: string[];
 }

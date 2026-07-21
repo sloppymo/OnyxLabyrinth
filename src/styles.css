@@ -1151,6 +1151,16 @@ canvas#map-canvas {
   pointer-events: none;
 }
 
+.ps-char.bench {
+  opacity: 0.45;
+}
+
+.ps-char.bench .ps-name::after {
+  content: " · bench";
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+
 .ps-char {
   position: relative;
   display: flex;

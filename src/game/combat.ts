@@ -48,6 +48,7 @@ import type {
   TurnQueueEntry,
 } from "./combat-types";
 import { inventoryToCounts } from "./combat-inventory";
+import { activePartyForCombat } from "./active-roster";
 import {
   effStatsFor,
   findEnemy,
@@ -152,8 +153,16 @@ export function createCombatFromEncounter(
   items: Record<string, ItemDef>,
   loadout: Record<string, Loadout>,
   inventory: readonly (string | { itemId: string })[] = [],
-  inAntimagic = false
+  inAntimagic = false,
+  activeCharIds?: readonly string[]
 ): CombatState {
+  const fighters = activePartyForCombat(
+    party,
+    activeCharIds ?? party.map((c) => c.id)
+  );
+  const fighterLoadout = Object.fromEntries(
+    fighters.map((c) => [c.id, loadout[c.id] ?? { weapon: null, armor: [] }])
+  );
   const front: EnemyInstance[] = [];
   const back: EnemyInstance[] = [];
   let idx = 0;
@@ -171,7 +180,16 @@ export function createCombatFromEncounter(
     idx++;
   }
   const isBoss = resolvedEncounter.some((e) => e.enemy.isBoss);
-  return createCombatState(party, { front, back }, isBoss, spells, items, loadout, inAntimagic, inventoryToCounts(inventory));
+  return createCombatState(
+    fighters,
+    { front, back },
+    isBoss,
+    spells,
+    items,
+    fighterLoadout,
+    inAntimagic,
+    inventoryToCounts(inventory)
+  );
 }
 
 // ---------------------------------------------------------------------------

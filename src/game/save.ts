@@ -22,12 +22,14 @@ import { findFloor } from "./floor-registry";
 import { ALL_SPELLS } from "../data/spells";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { applyKilledNPCs } from "./npc";
+import { defaultActiveCharIds, normalizeActiveCharIds } from "./active-roster";
+import type { Character } from "./party";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 9;
+const SAVE_VERSION = 10;
 
 /**
  * v6 → v7: every spell id was renamed from classic Wizardry names to
@@ -183,6 +185,12 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     }));
     version = 9;
   }
+  if (version === 9) {
+    // v9 → v10: four active battle roster ids (first four by formation).
+    const oldParty = (ser.party as Character[] | undefined) ?? [];
+    ser.activeCharIds = defaultActiveCharIds(oldParty);
+    version = 10;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -234,6 +242,8 @@ interface SerializedState {
   // Event state: which one-time floor events have triggered, keyed by floor ID.
   // Optional: absent in saves from before the event system.
   eventsTriggered?: Record<number, string[]>;
+  /** Active battle roster (exactly four ids when party size >= 4). v10+. */
+  activeCharIds?: string[];
   savedAt: string;
 }
 
@@ -298,6 +308,7 @@ export function serialize(state: GameState): string {
     npcTradesDone: [...state.npcTradesDone],
     lootTaken,
     eventsTriggered,
+    activeCharIds: [...state.activeCharIds],
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -382,6 +393,10 @@ export function deserialize(json: string): GameState | null {
         knownSpellIds: [...c.knownSpellIds],
         perkIds: [...c.perkIds],
       })),
+      activeCharIds: normalizeActiveCharIds(
+        ser.party,
+        ser.activeCharIds ?? defaultActiveCharIds(ser.party)
+      ),
       explored: new Set(ser.explored),
       exploredByFloor: ser.exploredByFloor ?? {},
       stepsSinceEncounter: ser.stepsSinceEncounter,

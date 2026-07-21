@@ -85,6 +85,13 @@ import type { NPCDef } from "./data/floors";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
 import { reviveKnockedOut, createClassicFourParty, CLASSIC_FOUR_PARTY_SIZE, type Character } from "./game/party";
+import {
+  applyCombatPartyResult,
+  awardCombatXp,
+  combatXpVictoryMessage,
+  defaultActiveCharIds,
+  normalizeActiveCharIds,
+} from "./game/active-roster";
 import { xpForNextLevel, levelUpChar } from "./game/leveling";
 import { isPerkTierLevel, tierForLevel, type PendingPerkChoice } from "./game/perks";
 import type { GameState, GameMode } from "./types";
@@ -230,6 +237,7 @@ function openPartyCreation(onDone: () => void): void {
     onConfirm: (party: Character[]) => {
       partyCreationController = null;
       state.party = party;
+      state.activeCharIds = defaultActiveCharIds(party);
       state.equipment = Object.fromEntries(
         party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
       );
@@ -348,7 +356,8 @@ function maybeTriggerEncounter(): boolean {
     ITEMS_BY_ID,
     loadout,
     state.inventory,
-    state.inAntimagic
+    state.inAntimagic,
+    state.activeCharIds
   );
   state.combat = combat;
   setMode(state, "combat");
@@ -401,22 +410,16 @@ async function startCombat(combat: CombatState): Promise<void> {
 }
 
 function endCombat(result: CombatState): void {
-  // Apply post-combat party state back to GameState.
-  // The combat state's party has the current HP/SP/status after all rounds.
-  state.party = result.party.map((c) => ({
-    ...c,
-    stats: { ...c.stats },
-    status: [...c.status],
-    knownSpellIds: [...c.knownSpellIds],
-    perkIds: [...c.perkIds],
-  }));
+  // Apply post-combat party state back to GameState. Only active fighters
+  // were cloned into combat; bench HP/SP/status stay as-is on the roster.
+  state.party = applyCombatPartyResult(state.party, result.party);
 
   // Write the (possibly depleted) combat inventory back to GameState,
   // preserving per-instance identification flags.
   state.inventory = reconcileInventoryAfterCombat(state.inventory, result.inventory);
 
-  // Persist any equipment changes made during this combat back to GameState.
-  state.equipment = { ...result.loadout };
+  // Persist equipment changes from fighters; bench slots were not in combat.
+  state.equipment = { ...state.equipment, ...result.loadout };
 
   // Perk choices queued by post-combat level-ups. Kept local to this flow; the
   // overlay in Task 5 will consume it and then return to the dungeon.
@@ -436,10 +439,10 @@ function endCombat(result: CombatState): void {
     const goldEarned = result.goldEarned;
     const xpEarned = result.xpEarned;
     state.partyGold += goldEarned;
-    // Generous XP: each living member gets the full enemy XP (no 6-way split).
-    for (const c of state.party) {
-      if (c.hp > 0) c.xp += xpEarned;
-    }
+    const hasBench = state.party.some(
+      (c) => c.hp > 0 && !state.activeCharIds.includes(c.id)
+    );
+    awardCombatXp(state.party, state.activeCharIds, xpEarned);
 
     // Process post-combat level-ups for living party members.
     const levelUpMessages: string[] = [];
@@ -462,7 +465,7 @@ function endCombat(result: CombatState): void {
       return char;
     });
 
-    const baseMsg = `Victory! +${goldEarned} gold, +${xpEarned} XP each.`;
+    const baseMsg = `Victory! +${goldEarned} gold, ${combatXpVictoryMessage(xpEarned, hasBench)}.`;
     const levelMsg = levelUpMessages.length > 0 ? ` ${levelUpMessages.join(" ")}` : "";
     setMessage(baseMsg + levelMsg);
   }
@@ -474,7 +477,12 @@ function endCombat(result: CombatState): void {
     if (npc) {
       if (result.result === "victory") {
         markKilled(state, npc);
-        setMessage(`${npc.name} falls. +${result.goldEarned} gold, +${result.xpEarned} XP each.`);
+        const benchOnVictory = state.party.some(
+          (c) => c.hp > 0 && !state.activeCharIds.includes(c.id)
+        );
+        setMessage(
+          `${npc.name} falls. +${result.goldEarned} gold, ${combatXpVictoryMessage(result.xpEarned, benchOnVictory)}.`
+        );
       } else if (result.result === "fled") {
         adjustDisposition(state, npc, -20);
         setMessage(`You flee from ${npc.name}.`);
@@ -815,7 +823,8 @@ function forceEncounter(): void {
     ITEMS_BY_ID,
     loadout,
     state.inventory,
-    state.inAntimagic
+    state.inAntimagic,
+    state.activeCharIds
   );
   state.combat = combat;
   setMode(state, "combat");
@@ -1332,6 +1341,7 @@ function startArena(targetLevel: number, rosterSize: number): void {
       state.party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
     );
   }
+  state.activeCharIds = normalizeActiveCharIds(state.party, state.activeCharIds);
 
   // Scale starting floor with party level so high-level parties don't
   // waste waves trivially one-shotting floor-1 skeletons.
@@ -1405,7 +1415,8 @@ function startNextArenaFight(): void {
     ITEMS_BY_ID,
     loadout,
     state.inventory,
-    state.inAntimagic
+    state.inAntimagic,
+    state.activeCharIds
   );
   state.combat = combat;
   setMode(state, "combat");
@@ -1588,7 +1599,8 @@ function startNPCFight(npc: NPCDef): void {
     ITEMS_BY_ID,
     buildLoadoutMap(),
     state.inventory,
-    state.inAntimagic
+    state.inAntimagic,
+    state.activeCharIds
   );
   state.combat = combat;
   setMode(state, "combat");
@@ -1644,7 +1656,8 @@ function loop() {
     renderPartyStrip(
       state.party,
       compassForFacing(state.player.facing),
-      floorLabel
+      floorLabel,
+      state.activeCharIds
     );
     const kind = globalInput.getLastInputKind();
     setContextualPrompt(resolveContextualPrompt(state, kind));
