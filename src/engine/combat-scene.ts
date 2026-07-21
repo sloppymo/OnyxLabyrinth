@@ -3244,7 +3244,11 @@ export function renderScene(
   });
   for (let i = 0; i < s.party.length; i++) {
     const char = s.party[i]!;
-    const pos = partyPos(char.formationSlot, w, h, scene.backdropId);
+    // Visual stand position keys off the dense in-combat rank (i), not the
+    // roster's original formationSlot (0-5, sparse once bench members drop
+    // out) — matches findActor's convention and keeps the on-field cascade
+    // gap-free regardless of which two roster slots got benched this fight.
+    const pos = partyPos(i, w, h, scene.backdropId);
     cmds.push({
       footY: pos.footY,
       draw: () => drawPartyMember(ctx, char, i, scene, now, w, h),

@@ -156,7 +156,7 @@ describe("formation floor invariant (all backdrops × full formation)", () => {
     }
   });
 
-  it("all resolved footY stay in [seamY, floorBottomY] for 6 party + max enemies + allies", () => {
+  it("all resolved footY stay in [seamY, floorBottomY] for full party + max enemies + allies", () => {
     for (const id of allBackdropIds()) {
       const geo = BACKDROP_GEOMETRY[id];
       const slots: FormationSlot[] = [
@@ -174,12 +174,18 @@ describe("formation floor invariant (all backdrops × full formation)", () => {
     }
   });
 
-  it("party front row is nearer (higher footYFrac) than back row", () => {
-    const frontAvg =
-      PARTY_FORMATION_SLOTS.slice(0, 3).reduce((s, p) => s + p.footYFrac, 0) / 3;
-    const backAvg =
-      PARTY_FORMATION_SLOTS.slice(3, 6).reduce((s, p) => s + p.footYFrac, 0) / 3;
-    expect(frontAvg).toBeGreaterThan(backAvg);
+  it("party formation is one continuous cascade, not two disconnected pockets", () => {
+    // Only 4 characters ever fight at once (ACTIVE_ROSTER_SIZE); each rank
+    // should sit strictly nearer/farther-right than the last so the queue
+    // reads as a single FF6-style diagonal line with no dead gap.
+    for (let i = 1; i < PARTY_FORMATION_SLOTS.length; i++) {
+      expect(PARTY_FORMATION_SLOTS[i]!.footYFrac).toBeGreaterThan(
+        PARTY_FORMATION_SLOTS[i - 1]!.footYFrac
+      );
+      expect(PARTY_FORMATION_SLOTS[i]!.x).toBeGreaterThan(
+        PARTY_FORMATION_SLOTS[i - 1]!.x
+      );
+    }
   });
 
   it("party is on the right half, enemies on the left (logical width)", () => {
@@ -300,15 +306,24 @@ describe("scale tiers (rows land on clean pixel-art steps)", () => {
     const geo = BACKDROP_GEOMETRY.arena;
     const scaleOf = (s: FormationSlot) =>
       quantizeScale(depthScale(s.footYFrac, geo));
-    for (const s of [...PARTY_FORMATION_SLOTS.slice(3), ...ENEMY_BACK_SLOTS]) {
+    for (const s of ENEMY_BACK_SLOTS) {
       expect(scaleOf(s)).toBe(0.75);
     }
     for (const s of ALLY_FORMATION_SLOTS) {
       expect(scaleOf(s)).toBe(0.875);
     }
-    for (const s of [...PARTY_FORMATION_SLOTS.slice(0, 3), ...ENEMY_FRONT_SLOTS]) {
+    for (const s of ENEMY_FRONT_SLOTS) {
       expect(scaleOf(s)).toBe(1.0);
     }
+  });
+
+  it("party cascade steps through all three pixel-art scale tiers", () => {
+    // Rank 0 farthest/smallest → rank 3 nearest/largest, with the two middle
+    // ranks sharing the mid-field tier — a graduated line, not a binary split.
+    const geo = BACKDROP_GEOMETRY.arena;
+    const scaleOf = (s: FormationSlot) =>
+      quantizeScale(depthScale(s.footYFrac, geo));
+    expect(PARTY_FORMATION_SLOTS.map(scaleOf)).toEqual([0.75, 0.875, 0.875, 1.0]);
   });
 
   it("every frac keeps ≥0.03 margin from a quantize boundary (t=0.25 / 0.75)", () => {

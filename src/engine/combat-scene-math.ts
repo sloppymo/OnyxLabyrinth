@@ -280,30 +280,38 @@ export function geometryForBackdrop(id: string | null | undefined): BackdropGeom
 }
 
 /**
- * Party: FF6 diagonal stagger — indices 0–2 front (near), 3–5 back (far).
- * Enemies mirrored on the left. Fixed slots only (no free scatter).
+ * Party: one cohesive FF6-style diagonal queue, keyed by dense in-combat
+ * rank (0..3) — NOT the roster's formationSlot (0-5, sparse once bench
+ * members drop out). Only 4 characters ever fight at once (see
+ * ACTIVE_ROSTER_SIZE in active-roster.ts), so this table has 4 slots, and
+ * combat-scene.ts resolves each fighter's stand position from their index
+ * in the (formation-sorted) in-combat party array, so the queue is always
+ * gap-free regardless of which two roster slots got benched this fight.
+ * Rank 0 stands farthest/smallest, rank 3 nearest/largest — a single
+ * unbroken line rather than two disconnected front/back pockets. The
+ * front/back row split still exists for game mechanics (reach, protector,
+ * enemy targeting) via Character.formationSlot — this table is cosmetic
+ * only and doesn't need to agree with it.
  *
  * footYFrac values are QUANTIZE-AWARE: with scaleFar 0.75 → scaleNear 1.0,
  * quantizeScale's step boundaries fall at t = 0.25 (0.75↔0.875) and t = 0.75
- * (0.875↔1.0). Each row's fracs keep ≥0.03 margin from a boundary so a whole
- * row lands on one clean pixel-art step:
- *   back rows  0.06/0.13/0.20 → 0.75   (small, high on the floor)
- *   summons    0.42/0.48/0.54 → 0.875  (mid-field)
- *   front rows 0.78–0.96      → 1.0    (large, near the windows)
+ * (0.875↔1.0). Each frac keeps ≥0.03 margin from a boundary so it lands
+ * cleanly on one pixel-art step, stepping through all three tiers instead
+ * of jumping straight from far to near:
+ *   rank 0  0.18 → 0.75   (farthest, smallest)
+ *   rank 1  0.40 → 0.875  (mid-field)
+ *   rank 2  0.62 → 0.875  (mid-field)
+ *   rank 3  0.90 → 1.0    (nearest, largest)
  *
  * X values respect the center aisle (see CENTER_AISLE_MIN_GAP_PX): all enemy
- * slots ≤ 336, all party slots ≥ 432 around design center 384. Back-row
- * casters clear the front knights vertically (fracs 30px higher at 0.75
- * scale), so the old fan-left-toward-center trick is no longer needed.
- * Near x clamped for 300px half-width bounds (max ≈ 614).
+ * slots ≤ 336, all party slots ≥ 384 (design center) with a comfortable
+ * margin. Near x clamped for 300px half-width bounds (max ≈ 614).
  */
 export const PARTY_FORMATION_SLOTS: FormationSlot[] = [
-  { x: 495, footYFrac: 0.78 },
-  { x: 555, footYFrac: 0.87 },
-  { x: 610, footYFrac: 0.96 },
-  { x: 432, footYFrac: 0.06 },
-  { x: 490, footYFrac: 0.13 },
-  { x: 548, footYFrac: 0.2 },
+  { x: 445, footYFrac: 0.18 },
+  { x: 500, footYFrac: 0.4 },
+  { x: 555, footYFrac: 0.62 },
+  { x: 610, footYFrac: 0.9 },
 ];
 
 export const ENEMY_FRONT_SLOTS: FormationSlot[] = [
