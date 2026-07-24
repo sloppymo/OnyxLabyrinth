@@ -15,7 +15,7 @@ import {
   createCombatState,
   enqueueNewAllies,
 } from "./combat";
-import type { CombatState, EnemyInstance, Rng, TurnQueueEntry } from "./combat-types";
+import type { CombatState, EnemyInstance, PlayerAction, Rng, TurnQueueEntry } from "./combat-types";
 import { createCharacter, type CharacterClass } from "./party";
 import { ENEMIES_BY_ID, type EnemyDef } from "../data/enemies";
 import { ALL_SPELLS } from "../data/spells";
@@ -1461,6 +1461,120 @@ describe("Echo phase content (real data)", () => {
     expect(ab!.condition).toEqual({ kind: "hpBelow", percent: 33 });
     expect(ab!.effect).toMatchObject({ kind: "damage", power: 10, element: "undead" });
     expect(ab!.windUp).toBe(true);
+  });
+});
+
+// --- New floor 4-5 enemy tier — combat smoke (campaign progression sprint) --
+//
+// build/floor:validate/data-shape tests can't catch a crash inside actual
+// combat resolution. These run real rounds against every new EnemyDef (built
+// from the live ENEMIES_BY_ID data, not a synthetic fixture) so a broken
+// ability wiring or a boss with an unusual phase count fails loudly here
+// instead of surfacing for the first time in a browser playtest.
+describe("new floor 4-5 enemy tier — combat smoke", () => {
+  const NEW_REGULAR_IDS = [
+    "choir-warden",
+    "discordant-cantor",
+    "null-acolyte",
+    "iron-chorister",
+    "choir-magus",
+    "drowned-sentinel",
+    "cistern-wraith",
+    "weeping-revenant",
+    "flood-brute",
+    "undertow-caller",
+  ];
+
+  function realEnemyInstance(id: string): EnemyInstance {
+    const def = ENEMIES_BY_ID[id];
+    const row = def.rowPreference === "back" ? "back" : "front";
+    return { ...def, instanceId: id, currentHp: def.hp, row, status: [] };
+  }
+
+  function soakRounds(state: CombatState, rng: Rng, rounds: number): CombatState {
+    let s = state;
+    for (let i = 0; i < rounds; i++) {
+      if (s.ended) break;
+      const target = [...s.enemies.front, ...s.enemies.back].find((e) => e.currentHp > 0);
+      const actions: PlayerAction[] = s.party.map((c, idx) =>
+        idx === 0 && target
+          ? { kind: "attack", actorId: c.id, targetInstanceId: target.instanceId }
+          : { kind: "defend", actorId: c.id }
+      );
+      s = resolveCombatRound(s, actions, rng);
+    }
+    return s;
+  }
+
+  function assertNoInvalidState(s: CombatState): void {
+    for (const c of s.party) {
+      expect(Number.isFinite(c.hp)).toBe(true);
+      expect(c.hp).toBeGreaterThanOrEqual(0);
+    }
+    for (const e of [...s.enemies.front, ...s.enemies.back]) {
+      expect(Number.isFinite(e.currentHp)).toBe(true);
+    }
+  }
+
+  it.each(NEW_REGULAR_IDS)(
+    "runs 8 rounds of real combat against %s without throwing or producing invalid HP",
+    (id) => {
+      const state = makeState([realEnemyInstance(id)]);
+      const rng = seqRng([0.1, 0.35, 0.6, 0.85, 0.2, 0.5, 0.75, 0.05, 0.4, 0.9]);
+      const s = soakRounds(state, rng, 8);
+      assertNoInvalidState(s);
+    }
+  );
+
+  it("the ice-shards ability (first used by this tier — previously wired but never assigned to any enemy) actually fires in combat", () => {
+    // cistern-wraith carries ice-shards (turnInterval: every 2, cooldown 1)
+    // alongside two other back-row abilities; a long-enough soak makes it
+    // overwhelmingly likely to be picked at least once if the wiring works.
+    const state = makeState([realEnemyInstance("cistern-wraith")]);
+    const rng = seqRng([0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 0.5, 0.3]);
+    const s = soakRounds(state, rng, 24);
+    assertNoInvalidState(s);
+    const firedIceShards = s.events.some(
+      (e) => e?.type === "cast" && e.spellId === "ice-shards"
+    );
+    expect(firedIceShards).toBe(true);
+  });
+
+  it("headmasters-echo-remnant (floor 4) runs real combat rounds without throwing", () => {
+    const state = makeState([realEnemyInstance("headmasters-echo-remnant")]);
+    const rng = seqRng([0.1, 0.3, 0.5, 0.7, 0.9, 0.2, 0.6, 0.4]);
+    const s = soakRounds(state, rng, 10);
+    assertNoInvalidState(s);
+  });
+
+  it("headmasters-echo-ascendant's 4-phase threshold set (a new max — every prior boss had 3) crosses all phases without throwing", () => {
+    // Direct HP manipulation, same pattern as the "boss phases" describe
+    // block above, but against the real ascendant def and its real 3-entry
+    // phaseThresholds (4 phases total) rather than a synthetic 2-entry boss.
+    const ascendant = ENEMIES_BY_ID["headmasters-echo-ascendant"];
+    expect(ascendant.phaseThresholds).toEqual([70, 45, 20]);
+    let state = makeState([realEnemyInstance("headmasters-echo-ascendant")]);
+    const fighter = state.party[0];
+    fighter.stats.str = 1;
+    fighter.stats.luk = 0;
+    const startingAttack = state.enemies.front[0].attack;
+
+    // Drive currentHp down through every threshold in turn, attacking once
+    // per crossing (mirrors the existing single-crossing tests above).
+    const hpCheckpoints = [65, 40, 15]; // below 70%, 45%, 20% of hp285
+    let s = state;
+    for (const pctHp of hpCheckpoints) {
+      s.enemies.front[0].currentHp = Math.round((ascendant.hp * pctHp) / 100);
+      s = resolvePlayerTurn(
+        s,
+        { kind: "attack", actorId: "char-0", targetInstanceId: "headmasters-echo-ascendant" },
+        seqRng([0.5])
+      );
+    }
+
+    expect(s.bossPhases["headmasters-echo-ascendant"]).toBe(4);
+    expect(s.enemies.front[0].attack).toBe(startingAttack + 12); // 3 crossings × +4
+    assertNoInvalidState(s);
   });
 });
 

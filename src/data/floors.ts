@@ -262,6 +262,12 @@ function floor1(): FloorDef {
   setTile(grid, 2, 3, "event");
   setTile(grid, 1, 4, "event");
   setTile(grid, 4, 1, "event");
+  // Pre-entry tell for the depth-4 drowning pool at (10,6): both of its open
+  // approach tiles (north and west — the room's south/east walls are solid)
+  // carry a warning so a player can't step into the deep water blind, no
+  // matter which direction they entered the gallery from.
+  setTile(grid, 9, 6, "event");
+  setTile(grid, 10, 5, "event");
 
   return {
     id: 1,
@@ -316,6 +322,8 @@ function floor1(): FloorDef {
       { x: 2, y: 3, kind: "damage", message: "A flagstone gives way and darts whistle through the corridor.", power: 4 },
       { x: 1, y: 4, kind: "reward", message: "A corpse clutches a rusted holy symbol. The dead have no use for it now.", itemId: "holy-symbol" },
       { x: 4, y: 1, kind: "heal", message: "You kneel at the defiled altar. Something hungry listens — but it gives a little back.", power: 5 },
+      { x: 9, y: 6, kind: "message", message: "Ahead, the water turns black and bottomless. This is no ford — brace yourself, or turn back." },
+      { x: 10, y: 5, kind: "message", message: "Ahead, the water turns black and bottomless. This is no ford — brace yourself, or turn back." },
     ],
     mapSprites: [
       { x: 6, y: 9, spriteId: "torch" },

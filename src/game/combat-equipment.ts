@@ -9,6 +9,7 @@ import type { Character } from "./party";
 import type { Loadout } from "./combat-types";
 import type { EquipSlot, ItemDef } from "../data/items";
 import { ITEMS_BY_ID } from "../data/items";
+import { canReach, effectiveWeaponRange } from "./combat-reach";
 
 /** Build the starter loadout for a newly created character. */
 export function defaultLoadoutForCharacter(char: Character): Loadout {
@@ -37,9 +38,28 @@ export function defaultLoadoutForCharacter(char: Character): Loadout {
   return loadout;
 }
 
-/** True if `candidate` is strictly better than `current` for its slot. */
-export function isBetterEquip(current: ItemDef | undefined, candidate: ItemDef): boolean {
+/** True if `weapon` can hit at least one enemy row from `holder`'s formation
+ *  slot (accounting for reach-modifying perks, e.g. Sweep/Lunge). Non-weapons
+ *  and weapons with no declared range are always considered reachable. */
+export function weaponIsReachable(holder: Character, weapon: ItemDef): boolean {
+  if (weapon.type !== "weapon" || !weapon.range) return true;
+  const range = effectiveWeaponRange(holder, weapon.range);
+  return canReach(holder.formationSlot, range, "front") || canReach(holder.formationSlot, range, "back");
+}
+
+/**
+ * True if `candidate` is strictly better than `current` for its slot. A
+ * weapon `holder` could never actually attack with (unreachable from their
+ * formation row) is never "better," regardless of its raw attack bonus —
+ * see the back-row-Mage-offered-a-Mace case this guards against.
+ */
+export function isBetterEquip(
+  current: ItemDef | undefined,
+  candidate: ItemDef,
+  holder?: Character
+): boolean {
   if (candidate.type === "consumable") return false;
+  if (candidate.type === "weapon" && holder && !weaponIsReachable(holder, candidate)) return false;
   if (!current) return true;
   if (candidate.type === "weapon") {
     return (candidate.attackBonus ?? 0) > (current.attackBonus ?? 0);
@@ -49,12 +69,14 @@ export function isBetterEquip(current: ItemDef | undefined, candidate: ItemDef):
 
 /** Return a new loadout with `item` equipped, replacing any same-slot gear only
  *  if the new item is better. Non-equipment items are ignored. Cursed gear
- *  already in the slot can never be replaced (Remove Curse at the Temple). */
-export function equipItem(loadout: Loadout, item: ItemDef): Loadout {
+ *  already in the slot can never be replaced (Remove Curse at the Temple).
+ *  `holder`, when passed, vetoes weapons the holder couldn't actually attack
+ *  with from their formation row (see `isBetterEquip`). */
+export function equipItem(loadout: Loadout, item: ItemDef, holder?: Character): Loadout {
   if (item.type === "consumable" || item.type === "trinket") return loadout;
   if (item.type === "weapon") {
     if (loadout.weapon?.cursed) return loadout;
-    if (!isBetterEquip(loadout.weapon, item)) return loadout;
+    if (!isBetterEquip(loadout.weapon, item, holder)) return loadout;
     return { ...loadout, weapon: item };
   }
   const armor = loadout.armor ? [...loadout.armor] : [];
@@ -62,7 +84,7 @@ export function equipItem(loadout: Loadout, item: ItemDef): Loadout {
     const idx = armor.findIndex((a) => a.slot === item.slot);
     if (idx >= 0) {
       if (armor[idx].cursed) return loadout;
-      if (!isBetterEquip(armor[idx], item)) return loadout;
+      if (!isBetterEquip(armor[idx], item, holder)) return loadout;
       armor[idx] = item;
       return { ...loadout, armor };
     }
@@ -144,7 +166,10 @@ export function manualUnequip(
   return { loadout: { ...loadout, armor }, removed };
 }
 
-/** Pick the party member with the weakest item in the slot `item` occupies. */
+/** Pick the party member with the weakest item in the slot `item` occupies.
+ *  For weapons, candidates who couldn't actually attack with `item` from
+ *  their formation row are skipped entirely — a weapon nobody could use is
+ *  never the "best" target, no matter how weak their current weapon is. */
 export function findBestEquipTarget(
   party: Character[],
   equipment: Record<string, Loadout>,
@@ -156,6 +181,7 @@ export function findBestEquipTarget(
   for (const c of party) {
     const loadout = equipment[c.id];
     if (!loadout) continue;
+    if (item.type === "weapon" && !weaponIsReachable(c, item)) continue;
     let score = 0;
     if (item.type === "weapon") {
       score = loadout.weapon?.attackBonus ?? 0;

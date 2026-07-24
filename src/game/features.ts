@@ -287,8 +287,9 @@ function awardTreasure(
     if (item.type === "weapon" || item.type === "armor") {
       const targetId = findBestEquipTarget(state.party, state.equipment, item);
       if (targetId) {
+        const targetChar = state.party.find((c) => c.id === targetId);
         const old = state.equipment[targetId];
-        const next = equipItem(old, item);
+        const next = equipItem(old, item, targetChar);
         if (next !== old) {
           state.equipment[targetId] = next;
           const displaced = getDisplacedItem(old, next, item);
@@ -350,6 +351,7 @@ export function transitionToFloor(
   state.player.x = x;
   state.player.y = y;
   state.player.facing = facing;
+  state.deepestFloorReached = Math.max(state.deepestFloorReached, floorCopy.id);
   // Clear cooldown without triggering pity-force (see game/encounters.ts).
   state.stepsSinceEncounter = ENCOUNTER_COOLDOWN;
   state.inDarkness = false;

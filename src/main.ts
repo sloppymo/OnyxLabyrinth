@@ -92,8 +92,8 @@ import {
   defaultActiveCharIds,
   normalizeActiveCharIds,
 } from "./game/active-roster";
-import { xpForNextLevel, levelUpChar } from "./game/leveling";
-import { isPerkTierLevel, tierForLevel, type PendingPerkChoice } from "./game/perks";
+import { levelUpChar, applyLevelUps } from "./game/leveling";
+import type { PendingPerkChoice } from "./game/perks";
 import type { GameState, GameMode } from "./types";
 import { parseFloorMapJSON, resolveTilesetTheme } from "./game/floor-map";
 
@@ -448,14 +448,9 @@ function endCombat(result: CombatState): void {
     const levelUpMessages: string[] = [];
     state.party = state.party.map((c) => {
       if (c.hp <= 0) return c;
-      let char = c;
-      const startLevel = char.level;
-      while (char.xp >= xpForNextLevel(char.level)) {
-        char = levelUpChar(char, state.equipment[char.id]);
-        if (isPerkTierLevel(char.level)) {
-          pendingPerkChoices.push({ charId: char.id, tier: tierForLevel(char.level)! });
-        }
-      }
+      const startLevel = c.level;
+      const { character: char, tiersCrossed } = applyLevelUps(c, state.equipment[c.id]);
+      pendingPerkChoices.push(...tiersCrossed);
       // One line per character even across multiple level-ups in a single
       // fight — "X reaches 14! X reaches 15!" was unreadable with a full
       // party leveling at once (see message-band truncation).
@@ -1348,7 +1343,10 @@ function startArena(targetLevel: number, rosterSize: number): void {
   arenaStartFloor = arenaStartFloorForLevel(targetLevel);
   arenaFloor = arenaStartFloor;
 
-  // Level the starter party up to the selected target level.
+  // Level the starter party up to the selected target level directly (not
+  // via applyLevelUps/xp) — Arena setup wants an exact target level, not a
+  // banked-xp simulation, and never touches char.xp, so it's unaffected by
+  // the level-up-spends-xp semantics used by real combat victories below.
   const equipment: Record<string, Loadout> = Object.fromEntries(
     state.party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
   );

@@ -193,3 +193,66 @@ describe("TownController temple Remove Curse", () => {
     expect(screenOf(ctrl)).toBe("main");
   });
 });
+
+describe("TownController shop depth gate", () => {
+  function buyListIds(ctrl: TownController): string[] {
+    const list = (ctrl as unknown as { getShopBuyList(): { id: string; dropFloorTier?: number }[] })
+      .getShopBuyList();
+    return list.map((i) => i.id);
+  }
+
+  it("defaults to today's tier ≤2 stock when deepestFloorReached is 1 (no regression)", () => {
+    const ctrl = makeTown();
+    const ids = buyListIds(ctrl);
+    expect(ids).toContain("mace"); // tier 2
+    expect(ids).not.toContain("great-sword"); // tier 3
+    expect(ids).not.toContain("runeblade"); // tier 4
+    expect(ids).not.toContain("focus-ward"); // tier 5
+  });
+
+  it("stays capped at tier 2 on floor 2 (unlock starts at floor 3)", () => {
+    const state = createGameState(FLOORS[0]);
+    state.deepestFloorReached = 2;
+    const ctrl = makeTown(state);
+    expect(buyListIds(ctrl)).not.toContain("great-sword");
+  });
+
+  it("unlocks tier 3 once floor 3 has been reached", () => {
+    const state = createGameState(FLOORS[0]);
+    state.deepestFloorReached = 3;
+    const ctrl = makeTown(state);
+    const ids = buyListIds(ctrl);
+    expect(ids).toContain("great-sword"); // tier 3
+    expect(ids).not.toContain("runeblade"); // tier 4 still locked
+  });
+
+  it("unlocks tier 4 (runeblade/mythril-plate/sages-circlet) once floor 4 has been reached", () => {
+    const state = createGameState(FLOORS[0]);
+    state.deepestFloorReached = 4;
+    const ctrl = makeTown(state);
+    const ids = buyListIds(ctrl);
+    expect(ids).toContain("runeblade");
+    expect(ids).toContain("mythril-plate");
+    expect(ids).toContain("sages-circlet");
+    expect(ids).not.toContain("voidblade"); // tier 5 still locked
+    expect(ids).not.toContain("focus-ward");
+  });
+
+  it("unlocks tier 5 (voidblade/dragonscale-mail/focus-ward) once floor 5 has been reached", () => {
+    const state = createGameState(FLOORS[0]);
+    state.deepestFloorReached = 5;
+    const ctrl = makeTown(state);
+    const ids = buyListIds(ctrl);
+    expect(ids).toContain("voidblade");
+    expect(ids).toContain("dragonscale-mail");
+    expect(ids).toContain("focus-ward");
+  });
+
+  it("shop stock depends on deepestFloorReached, not the current floor (backtracking doesn't re-lock)", () => {
+    const state = createGameState(FLOORS[0]);
+    state.deepestFloorReached = 5;
+    state.floor = FLOORS[0]; // player backtracked to floor 1's town
+    const ctrl = makeTown(state);
+    expect(buyListIds(ctrl)).toContain("focus-ward");
+  });
+});

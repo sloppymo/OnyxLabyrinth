@@ -10,20 +10,30 @@ import { CLASSES } from "./party";
 import type { Loadout } from "./combat-types";
 import { maxContentSpellTier, spellsForClass } from "../data/spells";
 import { effectiveStats } from "./effective-stats";
-import { perksForCharacter, perkModifiers } from "./perks";
+import {
+  perksForCharacter,
+  perkModifiers,
+  isPerkTierLevel,
+  tierForLevel,
+  type PendingPerkChoice,
+} from "./perks";
 
 /**
- * XP required to reach the next level.
- *
- * The base curve (`level * 20`) was tuned assuming XP was split six ways
- * across the party. `main.ts` `endCombat` now gives every living member the
- * full encounter XP ("no 6-way split") without the curve being adjusted to
- * compensate, which let a party blow through all 12 levels in ~7-8 fights.
- * The ×6 multiplier restores the originally-intended pacing (~5-8 Floor 1
- * fights to level 2) under the new full-XP-per-member rule.
+ * XP required to advance past `level` (i.e. the cost of leaving `level`).
+ * `xp` is spent on level-up (see `applyLevelUps`), so the *cumulative* cost
+ * to reach a given level is triangular — see `cumulativeXpToReachLevel`.
  */
 export function xpForNextLevel(level: number): number {
   return level * 120;
+}
+
+/** Total XP a character needs to have earned (and spent) to reach `level`
+ *  from level 1, under the current curve. Used for save migration and for
+ *  reasoning about pacing — not read on the level-up hot path itself. */
+export function cumulativeXpToReachLevel(level: number): number {
+  let total = 0;
+  for (let lv = 1; lv < level; lv++) total += xpForNextLevel(lv);
+  return total;
 }
 
 /**
@@ -85,4 +95,30 @@ export function levelUpChar(c: Character, loadout?: Loadout): Character {
     status: [],
     knownSpellIds: [...knownSet],
   };
+}
+
+export interface LevelUpsResult {
+  character: Character;
+  /** Perk-tier choices crossed, in level order, ready to append to a queue. */
+  tiersCrossed: PendingPerkChoice[];
+}
+
+/**
+ * Apply every level-up a character's currently-banked `xp` covers, spending
+ * each level's cost as it's crossed (so `xp` always reflects progress toward
+ * the *next* level only, never a lifetime total) and collecting any perk-tier
+ * choices crossed along the way. Pure — call sites own persisting the result.
+ */
+export function applyLevelUps(c: Character, loadout?: Loadout): LevelUpsResult {
+  let char = c;
+  const tiersCrossed: PendingPerkChoice[] = [];
+  while (char.xp >= xpForNextLevel(char.level)) {
+    const cost = xpForNextLevel(char.level);
+    char = levelUpChar(char, loadout);
+    char = { ...char, xp: Math.max(0, char.xp - cost) };
+    if (isPerkTierLevel(char.level)) {
+      tiersCrossed.push({ charId: char.id, tier: tierForLevel(char.level)! });
+    }
+  }
+  return { character: char, tiersCrossed };
 }

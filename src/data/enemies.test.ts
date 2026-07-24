@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ENEMIES_BY_ID, enemiesForFloor, ENCOUNTER_TABLES, BIG_TITTY_OGRE } from "./enemies";
+import { ENEMIES_BY_ID, enemiesForFloor, ENCOUNTER_TABLES, BIG_TITTY_OGRE, ALL_ENEMIES } from "./enemies";
 import { getFloors } from "../game/floor-registry";
 
 describe("enemy data", () => {
@@ -26,13 +26,56 @@ describe("enemy data", () => {
     expect(refs).toContain("big-titty-ogre");
   });
 
-  it("puts the boss on the deep floors' tables", () => {
-    for (const floor of [3, 4, 5]) {
+  it("puts an escalating Echo variant on each deep floor's table (not the same boss reused)", () => {
+    const expectedBossByFloor: Record<number, string> = {
+      3: "headmasters-echo",
+      4: "headmasters-echo-remnant",
+      5: "headmasters-echo-ascendant",
+    };
+    for (const [floorStr, expectedBoss] of Object.entries(expectedBossByFloor)) {
+      const floor = Number(floorStr);
       const refs = ENCOUNTER_TABLES[floor].flatMap((entry) =>
         entry.spawns.map((spawn) => spawn.enemyId)
       );
-      expect(refs, `floor ${floor}`).toContain("headmasters-echo");
+      expect(refs, `floor ${floor}`).toContain(expectedBoss);
     }
+  });
+
+  it("escalates the Echo's stats floor-to-floor instead of reusing the same boss", () => {
+    const echo = ENEMIES_BY_ID["headmasters-echo"];
+    const remnant = ENEMIES_BY_ID["headmasters-echo-remnant"];
+    const ascendant = ENEMIES_BY_ID["headmasters-echo-ascendant"];
+    expect(echo.hp).toBeLessThan(remnant.hp);
+    expect(remnant.hp).toBeLessThan(ascendant.hp);
+    expect(echo.attack).toBeLessThan(remnant.attack);
+    expect(remnant.attack).toBeLessThan(ascendant.attack);
+    // Floor 3's Echo is exclusive to floor 3 now — the escalated variants
+    // took over floors 4/5 rather than the identical object appearing thrice.
+    expect(echo.floors).toEqual([3]);
+    expect(remnant.floors).toEqual([4]);
+    expect(ascendant.floors).toEqual([5]);
+  });
+
+  it("gives floors 4-5 their own exclusive enemy tier, not just denser floor-3 remixes", () => {
+    const nonFloor3Exclusive = ALL_ENEMIES.filter(
+      (e) => e.floors.length > 0 && !e.floors.includes(3)
+    );
+    // 10 new elites (5 per floor) + 2 escalated Echo variants.
+    expect(nonFloor3Exclusive.length).toBeGreaterThanOrEqual(10);
+    const floor4Exclusive = nonFloor3Exclusive.filter((e) => e.floors.includes(4));
+    const floor5Exclusive = nonFloor3Exclusive.filter((e) => e.floors.includes(5));
+    expect(floor4Exclusive.length).toBeGreaterThanOrEqual(5);
+    expect(floor5Exclusive.length).toBeGreaterThanOrEqual(5);
+    // The new tier raises the ceiling floor 3 set (Stone Guardian
+    // hp72/atk19/ac16) on every axis — casters in the new roster are
+    // intentionally squishier than the tanks (mirroring floor 3's own
+    // warlock/demon-mage being far weaker than Stone Guardian), so this
+    // checks the roster's peak, not every individual member.
+    const stoneGuardian = ENEMIES_BY_ID["stone-guardian"];
+    const regulars = nonFloor3Exclusive.filter((e) => !e.isBoss);
+    expect(Math.max(...regulars.map((e) => e.hp))).toBeGreaterThan(stoneGuardian.hp);
+    expect(Math.max(...regulars.map((e) => e.attack))).toBeGreaterThan(stoneGuardian.attack);
+    expect(Math.max(...regulars.map((e) => e.ac))).toBeGreaterThan(stoneGuardian.ac);
   });
 });
 

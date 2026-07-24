@@ -185,4 +185,9 @@ export interface GameState {
   // Independent of formationSlot (front/back reach). When the roster has
   // fewer than four members, all ids are active.
   activeCharIds: string[];
+  // Highest floor id the party has ever reached (never decreases, even after
+  // backtracking to a shallower floor). Gates shop stock by campaign depth
+  // (town-ui.ts getShopBuyList) — deliberately independent of `floor.id`,
+  // which tracks only the *current* floor.
+  deepestFloorReached: number;
 }

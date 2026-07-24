@@ -2,7 +2,12 @@
  * Tests for leveling math and character level-up logic.
  */
 import { describe, it, expect } from "vitest";
-import { xpForNextLevel, levelUpChar } from "./leveling";
+import {
+  xpForNextLevel,
+  levelUpChar,
+  cumulativeXpToReachLevel,
+  applyLevelUps,
+} from "./leveling";
 import { createCharacter } from "./party";
 import type { Loadout } from "./combat-types";
 import type { ItemDef } from "../data/items";
@@ -23,6 +28,73 @@ describe("xpForNextLevel", () => {
     expect(xpForNextLevel(1)).toBe(120);
     expect(xpForNextLevel(5)).toBe(600);
     expect(xpForNextLevel(10)).toBe(1200);
+  });
+});
+
+describe("cumulativeXpToReachLevel", () => {
+  it("sums xpForNextLevel across every level below the target (triangular)", () => {
+    expect(cumulativeXpToReachLevel(1)).toBe(0);
+    expect(cumulativeXpToReachLevel(2)).toBe(120);
+    expect(cumulativeXpToReachLevel(3)).toBe(360);
+    expect(cumulativeXpToReachLevel(6)).toBe(1800);
+    expect(cumulativeXpToReachLevel(9)).toBe(4320);
+    expect(cumulativeXpToReachLevel(12)).toBe(7920);
+  });
+});
+
+describe("applyLevelUps", () => {
+  it("spends xp on level-up instead of leaving it as a lifetime total", () => {
+    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    c.xp = xpForNextLevel(1); // exactly enough for one level
+    const { character } = applyLevelUps(c);
+    expect(character.level).toBe(2);
+    expect(character.xp).toBe(0);
+  });
+
+  it("carries the remainder forward after spending a level's cost", () => {
+    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    c.xp = xpForNextLevel(1) + 50;
+    const { character } = applyLevelUps(c);
+    expect(character.level).toBe(2);
+    expect(character.xp).toBe(50);
+  });
+
+  it("does not over-level a big single-fight XP award (Echo's 320 XP stops at L2, not L3+)", () => {
+    // Regression guard for the pre-fix lifetime-cumulative bug: under the
+    // old (never-spent) semantics this same award would have blown past
+    // level 3. Under the triangular curve, L2 costs 120 and L3 costs a
+    // further 240 (360 cumulative) — 320 total XP covers L2 with 200 left
+    // over, short of L3.
+    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    c.xp = 320;
+    const { character } = applyLevelUps(c);
+    expect(character.level).toBe(2);
+    expect(character.xp).toBe(320 - xpForNextLevel(1));
+  });
+
+  it("chains multiple level-ups in one call when banked xp covers several", () => {
+    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    c.xp = cumulativeXpToReachLevel(4) + 10; // enough for L2, L3, and L4
+    const { character } = applyLevelUps(c);
+    expect(character.level).toBe(4);
+    expect(character.xp).toBe(10);
+  });
+
+  it("collects perk-tier choices crossed during the level-ups", () => {
+    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    c.xp = cumulativeXpToReachLevel(3); // exactly enough to hit level 3, a perk tier
+    const { character, tiersCrossed } = applyLevelUps(c);
+    expect(character.level).toBe(3);
+    expect(tiersCrossed).toEqual([{ charId: c.id, tier: 1 }]);
+  });
+
+  it("is a no-op when banked xp is short of the next level's cost", () => {
+    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    c.xp = xpForNextLevel(1) - 1;
+    const { character, tiersCrossed } = applyLevelUps(c);
+    expect(character.level).toBe(1);
+    expect(character.xp).toBe(xpForNextLevel(1) - 1);
+    expect(tiersCrossed).toEqual([]);
   });
 });
 

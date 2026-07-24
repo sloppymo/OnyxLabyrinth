@@ -358,11 +358,20 @@ export class TownController {
 
   // --- Shop ---------------------------------------------------------------
 
+  /** Stock gates by campaign depth: tier ≤2 until floor 3 is reached, then
+   *  tier N unlocks the moment floor N is reached (tier 3 at floor 3, tier 4
+   *  at floor 4, tier 5 at floor 5) — floors 1-2 keep today's early-game cap.
+   *  Gated on `deepestFloorReached`, not the current floor, so backtracking
+   *  to town from a deeper floor never re-locks stock already unlocked. */
+  private maxShopTier(): number {
+    return Math.max(2, Math.min(5, this.state.deepestFloorReached));
+  }
+
   private getShopBuyList(): ItemDef[] {
-    // Shop sells tier-1 and tier-2 items (appropriate for early game).
     // Trinkets (dungeon finds) and cursed gear are never stock.
+    const maxTier = this.maxShopTier();
     return ALL_ITEMS.filter(
-      (item) => item.type !== "trinket" && !item.cursed && (item.dropFloorTier ?? 1) <= 2
+      (item) => item.type !== "trinket" && !item.cursed && (item.dropFloorTier ?? 1) <= maxTier
     );
   }
 
@@ -496,7 +505,7 @@ export class TownController {
     const target = this.state.party[this.buyConfirmPartyIndex]!;
     this.buyConfirmTarget = { id: target.id, name: target.name };
     this.buyConfirmOldLoadout = this.state.equipment[target.id];
-    this.buyConfirmNextLoadout = equipItem(this.buyConfirmOldLoadout, item);
+    this.buyConfirmNextLoadout = equipItem(this.buyConfirmOldLoadout, item, target);
   }
 
   private openBuyConfirm(item: ItemDef | undefined): void {
@@ -809,9 +818,10 @@ export class TownController {
       return `<div class="shop-compare">No party member can equip this. Will be added to inventory.</div>`;
     }
 
+    const targetChar = this.state.party.find((c) => c.id === targetId);
     const old = this.state.equipment[targetId];
-    const next = equipItem(old, item);
-    const targetName = this.state.party.find((c) => c.id === targetId)?.name ?? "someone";
+    const next = equipItem(old, item, targetChar);
+    const targetName = targetChar?.name ?? "someone";
 
     if (next === old) {
       const current = this.equipmentItemFor(old, item);
@@ -957,8 +967,9 @@ export class TownController {
     if (item.type === "consumable") return this.state.partyGold >= price;
     const targetId = findBestEquipTarget(this.state.party, this.state.equipment, item);
     if (!targetId) return this.state.partyGold >= price;
+    const targetChar = this.state.party.find((c) => c.id === targetId);
     const old = this.state.equipment[targetId];
-    const next = equipItem(old, item);
+    const next = equipItem(old, item, targetChar);
     if (next === old) return this.state.partyGold >= price;
     const displaced = getDisplacedItem(old, next, item);
     const net = price - (displaced ? Math.floor(displaced.price / 2) : 0);
@@ -1278,7 +1289,7 @@ export class TownController {
         const item = ITEMS_BY_ID[entry.itemId];
         if (!item || (item.type !== "weapon" && item.type !== "armor")) continue;
         if (!entry.identified || item.cursed) continue;
-        const next = equipItem(loadout, item);
+        const next = equipItem(loadout, item, c);
         if (next === loadout) continue;
         const displaced = getDisplacedItem(loadout, next, item);
         this.state.inventory.splice(i, 1);

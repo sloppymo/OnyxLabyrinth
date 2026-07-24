@@ -50,6 +50,7 @@ export function createGameState(floor: FloorDef): GameState {
     inAntimagic: false,
     lastDungeon: null,
     activeCharIds: defaultActiveCharIds(party),
+    deepestFloorReached: floor.id,
   };
 }
 

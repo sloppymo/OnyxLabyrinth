@@ -23,13 +23,14 @@ import { ALL_SPELLS } from "../data/spells";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { applyKilledNPCs } from "./npc";
 import { defaultActiveCharIds, normalizeActiveCharIds } from "./active-roster";
+import { cumulativeXpToReachLevel } from "./leveling";
 import type { Character } from "./party";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 10;
+const SAVE_VERSION = 11;
 
 /**
  * v6 → v7: every spell id was renamed from classic Wizardry names to
@@ -191,6 +192,38 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     ser.activeCharIds = defaultActiveCharIds(oldParty);
     version = 10;
   }
+  if (version === 10) {
+    // v10 → v11: level-ups now spend xp instead of leaving it as a lifetime
+    // total (game/leveling.ts applyLevelUps), and the shop gates stock on a
+    // new deepestFloorReached field.
+    //
+    // XP: under the old (flat, never-spent) curve, `level` and `xp` were
+    // always in sync after every combat — a real level-L character's xp
+    // sits in [xpForNextLevel(L-1), xpForNextLevel(L)). Under the new
+    // triangular curve, "progress toward next level" is a much bigger
+    // number (cumulativeXpToReachLevel(L) can be ~2.5x the old per-level
+    // threshold by L6, and the gap grows with level). Recomputing
+    // `xp - cumulativeXpToReachLevel(level)` clamps to 0 for effectively
+    // every character above level 1 — this IS a reset of in-level progress,
+    // not a proportional carry-over. That's intentional: it keeps the
+    // level itself (already earned) but doesn't let cheap old-economy xp
+    // buy free progress under the new, steeper economy. Left un-migrated,
+    // real saves wouldn't cascade either (old and new share the same
+    // per-level cost formula for the *current* level), so this is a
+    // one-time fairness choice, not a bug workaround.
+    //
+    // deepestFloorReached backfills from the save's current floor — an
+    // approximation for parties that have backtracked below their deepest
+    // floor; it self-corrects the next time they reach that depth again.
+    const oldParty = (ser.party as Array<Record<string, unknown>> | undefined) ?? [];
+    ser.party = oldParty.map((c) => {
+      const level = (c.level as number | undefined) ?? 1;
+      const xp = (c.xp as number | undefined) ?? 0;
+      return { ...c, xp: Math.max(0, xp - cumulativeXpToReachLevel(level)) };
+    });
+    ser.deepestFloorReached = (ser.floorId as number | undefined) ?? 1;
+    version = 11;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -244,6 +277,8 @@ interface SerializedState {
   eventsTriggered?: Record<number, string[]>;
   /** Active battle roster (exactly four ids when party size >= 4). v10+. */
   activeCharIds?: string[];
+  /** Highest floor id ever reached; gates shop stock by depth. v11+. */
+  deepestFloorReached?: number;
   savedAt: string;
 }
 
@@ -309,6 +344,7 @@ export function serialize(state: GameState): string {
     lootTaken,
     eventsTriggered,
     activeCharIds: [...state.activeCharIds],
+    deepestFloorReached: state.deepestFloorReached,
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -426,6 +462,7 @@ export function deserialize(json: string): GameState | null {
         Object.fromEntries(
           ser.party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
         ),
+      deepestFloorReached: ser.deepestFloorReached ?? floor.id,
     };
   } catch {
     return null;

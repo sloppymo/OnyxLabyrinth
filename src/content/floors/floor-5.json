@@ -2122,7 +2122,7 @@
       "x": 13,
       "y": 4,
       "itemIds": [
-        "rapier+1",
+        "great-sword+1",
         "antidote"
       ],
       "trap": "alarm"
@@ -2131,7 +2131,7 @@
       "x": 4,
       "y": 6,
       "itemIds": [
-        "dagger+1",
+        "plate-mail+1",
         "healing-potion"
       ]
     },

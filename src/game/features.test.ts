@@ -12,6 +12,7 @@ import {
   openChest,
   leaveChest,
   swimChance,
+  transitionToFloor,
 } from "./features";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
 import { createDefaultParty } from "./party";
@@ -22,6 +23,9 @@ import {
 } from "./combat-equipment";
 import { reconcileInventoryAfterCombat } from "./combat-inventory";
 import { ITEMS_BY_ID } from "../data/items";
+import { FLOORS } from "../data/floors";
+import { getFloors } from "./floor-registry";
+import { createGameState } from "./state";
 import type { FloorDef, EventDef } from "../data/floors";
 import type { GameState, TrapType } from "../types";
 
@@ -561,5 +565,37 @@ describe("handleEvent", () => {
     const second = handleEvent(state);
     expect(first?.message).toBe(second?.message);
     expect(state.floor.grid[2][2].tile).toBe("event");
+  });
+});
+
+describe("transitionToFloor and deepestFloorReached", () => {
+  // Campaign progression sprint (Workstream C): the shop gates stock on
+  // deepestFloorReached, and this is the one write site that actually makes
+  // it advance in play — unit-tested directly because a wrong wire here
+  // would leave the shop gate silently inert while every other test (which
+  // sets deepestFloorReached by hand) kept passing.
+  function floorById(id: number): FloorDef {
+    // Floors 4-5 live in the runtime registry (content packs), not the
+    // static FLOORS[] campaign array — resolve through it, per AGENTS.md.
+    const floor = getFloors().find((f) => f.id === id);
+    if (!floor) throw new Error(`no floor with id ${id}`);
+    return floor;
+  }
+
+  it("advances deepestFloorReached on descent past the previous value", () => {
+    const state = createGameState(FLOORS[0]);
+    expect(state.deepestFloorReached).toBe(1);
+    transitionToFloor(state, floorById(4), 2, 2);
+    expect(state.floor.id).toBe(4);
+    expect(state.deepestFloorReached).toBe(4);
+  });
+
+  it("does not lower deepestFloorReached when backtracking to a shallower floor", () => {
+    const state = createGameState(FLOORS[0]);
+    transitionToFloor(state, floorById(4), 2, 2);
+    expect(state.deepestFloorReached).toBe(4);
+    transitionToFloor(state, floorById(3), 2, 2);
+    expect(state.floor.id).toBe(3); // current floor did move back
+    expect(state.deepestFloorReached).toBe(4); // deepest did not
   });
 });

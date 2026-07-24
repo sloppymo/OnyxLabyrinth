@@ -337,7 +337,10 @@ export const ANIMATED_ARMOR: EnemyDef = {
 export const HEADMASTERS_ECHO: EnemyDef = {
   id: "headmasters-echo",
   name: "The Headmaster's Echo",
-  floors: [3, 4, 5],
+  // Floor-3-exclusive: floors 4/5 now fight HEADMASTERS_ECHO_REMNANT /
+  // HEADMASTERS_ECHO_ASCENDANT, escalating stats/kit instead of the same
+  // byte-identical boss reused three floors running.
+  floors: [3],
   rowPreference: "back",
   hp: 192,
   attack: 24,
@@ -754,6 +757,280 @@ export const SUCCUBUS: EnemyDef = {
   isBoss: false,
 };
 
+// ---------------------------------------------------------------------------
+// Floor 4 exclusives — "The Null Choir": disciplined ranks built around the
+// silence/anti-magic theme the floor's name promises. Exceed the floor-3
+// ceiling (Stone Guardian hp72/atk19/ac16) so floors 4-5 stop being denser
+// floor-3 remixes (progression sprint, campaign-progression-design.md §1/§4).
+// ---------------------------------------------------------------------------
+
+export const CHOIR_WARDEN: EnemyDef = {
+  id: "choir-warden",
+  name: "Choir Warden",
+  floors: [4],
+  rowPreference: "front",
+  hp: 105,
+  attack: 22,
+  ac: 20,
+  agi: 5,
+  xp: 78,
+  gold: 62,
+  special: [
+    { kind: "highDefense" },
+    { kind: "resistPhysical", percent: 25 },
+    { kind: "resistElement", element: "lightning" },
+  ],
+  abilityIds: ["shield-bash", "phalanx-guard", "ward"],
+  isBoss: false,
+};
+
+export const DISCORDANT_CANTOR: EnemyDef = {
+  id: "discordant-cantor",
+  name: "Discordant Cantor",
+  floors: [4],
+  rowPreference: "back",
+  hp: 54,
+  attack: 11,
+  ac: 9,
+  agi: 12,
+  xp: 66,
+  gold: 50,
+  special: [
+    { kind: "caster", element: "lightning" },
+    { kind: "resistElement", element: "lightning" },
+    { kind: "weakElement", element: "earth" },
+  ],
+  abilityIds: ["lightning-strike", "chaos-bolt", "anti-magic-field"],
+  isBoss: false,
+};
+
+export const NULL_ACOLYTE: EnemyDef = {
+  id: "null-acolyte",
+  name: "Null Acolyte",
+  floors: [4],
+  rowPreference: "back",
+  hp: 48,
+  attack: 9,
+  ac: 7,
+  agi: 14,
+  xp: 60,
+  gold: 46,
+  special: [
+    { kind: "undead" },
+    { kind: "silenceRandom", target: "party", duration: "combat" },
+  ],
+  abilityIds: ["blinding-gaze", "curse", "ward"],
+  isBoss: false,
+};
+
+export const IRON_CHORISTER: EnemyDef = {
+  id: "iron-chorister",
+  name: "Iron Chorister",
+  floors: [4],
+  rowPreference: "front",
+  hp: 82,
+  attack: 26,
+  ac: 15,
+  agi: 8,
+  xp: 82,
+  gold: 64,
+  special: [
+    { kind: "undead" },
+    { kind: "resistPhysical", percent: 15 },
+  ],
+  abilityIds: ["charge", "savage-lunge", "shield-bash"],
+  isBoss: false,
+};
+
+export const CHOIR_MAGUS: EnemyDef = {
+  id: "choir-magus",
+  name: "Choir Magus",
+  floors: [4],
+  rowPreference: "back",
+  hp: 60,
+  attack: 13,
+  ac: 9,
+  agi: 11,
+  xp: 74,
+  gold: 58,
+  special: [
+    { kind: "caster", element: "fire" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  abilityIds: ["magma-burst", "hellfire", "anti-magic-field"],
+  isBoss: false,
+};
+
+// ---------------------------------------------------------------------------
+// Floor 5 exclusives — "The Weeping Cistern": drowning, cold water pressure.
+// ---------------------------------------------------------------------------
+
+export const DROWNED_SENTINEL: EnemyDef = {
+  id: "drowned-sentinel",
+  name: "Drowned Sentinel",
+  floors: [5],
+  rowPreference: "front",
+  hp: 120,
+  attack: 25,
+  ac: 21,
+  agi: 4,
+  xp: 88,
+  gold: 68,
+  special: [
+    { kind: "highDefense" },
+    { kind: "resistPhysical", percent: 30 },
+    { kind: "weakElement", element: "fire" },
+  ],
+  abilityIds: ["shield-bash", "phalanx-guard", "charge"],
+  isBoss: false,
+};
+
+export const CISTERN_WRAITH: EnemyDef = {
+  id: "cistern-wraith",
+  name: "Cistern Wraith",
+  floors: [5],
+  rowPreference: "back",
+  hp: 52,
+  attack: 10,
+  ac: 8,
+  agi: 16,
+  xp: 70,
+  gold: 54,
+  special: [
+    { kind: "undead" },
+    { kind: "flying" },
+    { kind: "caster", element: "cold" },
+  ],
+  abilityIds: ["ice-shards", "blinding-gaze", "ghostly-wail"],
+  isBoss: false,
+};
+
+export const WEEPING_REVENANT: EnemyDef = {
+  id: "weeping-revenant",
+  name: "Weeping Revenant",
+  floors: [5],
+  rowPreference: "back",
+  hp: 50,
+  attack: 10,
+  ac: 6,
+  agi: 13,
+  xp: 64,
+  gold: 50,
+  special: [
+    { kind: "undead" },
+    { kind: "resistElement", element: "cold" },
+    { kind: "weakElement", element: "fire" },
+  ],
+  abilityIds: ["life-tap", "ghostly-wail", "curse"],
+  isBoss: false,
+};
+
+export const FLOOD_BRUTE: EnemyDef = {
+  id: "flood-brute",
+  name: "Flood Brute",
+  floors: [5],
+  rowPreference: "front",
+  hp: 92,
+  attack: 28,
+  ac: 13,
+  agi: 7,
+  xp: 84,
+  gold: 66,
+  special: [
+    { kind: "weakElement", element: "fire" },
+    { kind: "resistElement", element: "cold" },
+  ],
+  abilityIds: ["savage-lunge", "berserk", "charge"],
+  isBoss: false,
+};
+
+export const UNDERTOW_CALLER: EnemyDef = {
+  id: "undertow-caller",
+  name: "Undertow Caller",
+  floors: [5],
+  rowPreference: "back",
+  hp: 56,
+  attack: 11,
+  ac: 9,
+  agi: 12,
+  xp: 72,
+  gold: 56,
+  special: [
+    { kind: "caster", element: "cold" },
+    { kind: "resistElement", element: "cold" },
+    { kind: "weakElement", element: "fire" },
+  ],
+  abilityIds: ["ice-shards", "blinding-gaze", "curse"],
+  isBoss: false,
+};
+
+// ---------------------------------------------------------------------------
+// Echo escalation — the same nemesis reappearing on floors 4 and 5, stats and
+// kit genuinely escalating rather than the byte-identical stat block the
+// original three-floor reuse had (progression sprint design note §3b/§1).
+// Floor 3's HEADMASTERS_ECHO is unchanged and now floor-3-exclusive.
+// ---------------------------------------------------------------------------
+
+export const HEADMASTERS_ECHO_REMNANT: EnemyDef = {
+  id: "headmasters-echo-remnant",
+  name: "The Choir's Echo",
+  floors: [4],
+  rowPreference: "back",
+  hp: 235,
+  attack: 27,
+  ac: 15,
+  agi: 10,
+  xp: 380,
+  gold: 900,
+  special: [
+    { kind: "undead" },
+    { kind: "silenceRandom", target: "party", duration: "combat" },
+  ],
+  abilityIds: [
+    "echo-of-silence",
+    "memory-drain",
+    "anti-magic-field",
+    "dark-pulse",
+    "memory-shatter",
+    "total-eclipse",
+    "curse",
+  ],
+  isBoss: true,
+  phaseThresholds: [66, 33],
+};
+
+export const HEADMASTERS_ECHO_ASCENDANT: EnemyDef = {
+  id: "headmasters-echo-ascendant",
+  name: "The Drowned Echo",
+  floors: [5],
+  rowPreference: "back",
+  hp: 285,
+  attack: 31,
+  ac: 17,
+  agi: 11,
+  xp: 460,
+  gold: 1050,
+  special: [
+    { kind: "undead" },
+    { kind: "silenceRandom", target: "party", duration: "combat" },
+  ],
+  abilityIds: [
+    "echo-of-silence",
+    "memory-drain",
+    "anti-magic-field",
+    "dark-pulse",
+    "memory-shatter",
+    "total-eclipse",
+    "curse",
+    "ice-shards",
+  ],
+  isBoss: true,
+  // A true four-phase campaign climax (+4 attack per phase crossed, up to
+  // +16) — the true final boss, not just a bigger repeat of floor 3's fight.
+  phaseThresholds: [70, 45, 20],
+};
+
 export const ALL_ENEMIES: EnemyDef[] = [
   TRAINING_DUMMY,
   SLIME,
@@ -791,6 +1068,18 @@ export const ALL_ENEMIES: EnemyDef[] = [
   DEMON_CHAMPION,
   DEMON_MAGE,
   SUCCUBUS,
+  CHOIR_WARDEN,
+  DISCORDANT_CANTOR,
+  NULL_ACOLYTE,
+  IRON_CHORISTER,
+  CHOIR_MAGUS,
+  DROWNED_SENTINEL,
+  CISTERN_WRAITH,
+  WEEPING_REVENANT,
+  FLOOD_BRUTE,
+  UNDERTOW_CALLER,
+  HEADMASTERS_ECHO_REMNANT,
+  HEADMASTERS_ECHO_ASCENDANT,
 ];
 
 export const ENEMIES_BY_ID: Record<string, EnemyDef> = Object.fromEntries(
@@ -1046,14 +1335,16 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
   ],
-  // Floor 4: The Null Choir — typical 4–6, denser casters.
+  // Floor 4: The Null Choir — typical 4–6, denser casters. Roughly half the
+  // packs now draw from the floor's own elite roster (Choir Warden/Cantor/
+  // Acolyte/Chorister/Magus); the rest stay floor-3 remixes as seasoning.
   4: [
     {
       weight: 4,
       spawns: [
+        { enemyId: "choir-warden", row: "front" },
         { enemyId: "animated-armor", row: "front" },
-        { enemyId: "animated-armor", row: "front" },
-        { enemyId: "rune-knight", row: "back" },
+        { enemyId: "discordant-cantor", row: "back" },
         { enemyId: "demon-mage", row: "back" },
       ],
     },
@@ -1074,14 +1365,14 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "hellbat", row: "front" },
         { enemyId: "hellbat", row: "front" },
         { enemyId: "hellbat", row: "back" },
-        { enemyId: "warlock", row: "back" },
-        { enemyId: "warlock", row: "back" },
+        { enemyId: "choir-magus", row: "back" },
+        { enemyId: "null-acolyte", row: "back" },
       ],
     },
     {
       weight: 3,
       spawns: [
-        { enemyId: "ironclad-knight", row: "front" },
+        { enemyId: "iron-chorister", row: "front" },
         { enemyId: "black-knight", row: "front" },
         { enemyId: "demon-spawn", row: "front" },
         { enemyId: "demoness", row: "back" },
@@ -1100,10 +1391,10 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     {
       weight: 2,
       spawns: [
-        { enemyId: "animated-armor", row: "front" },
+        { enemyId: "choir-warden", row: "front" },
         { enemyId: "animated-armor", row: "front" },
         { enemyId: "stone-guardian", row: "front" },
-        { enemyId: "demoness", row: "back" },
+        { enemyId: "discordant-cantor", row: "back" },
         { enemyId: "demon-mage", row: "back" },
         { enemyId: "warlock", row: "back" },
       ],
@@ -1121,40 +1412,44 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     {
       weight: 1,
       spawns: [
-        { enemyId: "rune-knight", row: "front" },
-        { enemyId: "rune-knight", row: "front" },
-        { enemyId: "succubus", row: "back" },
+        { enemyId: "iron-chorister", row: "front" },
+        { enemyId: "choir-magus", row: "back" },
+        { enemyId: "null-acolyte", row: "back" },
       ],
     },
-    // The climax formation — the Echo sings through the choir it silenced.
+    // The climax formation — the Choir's Echo, a genuine escalation over
+    // floor 3's Headmaster's Echo, not the same boss reused.
     {
       weight: 1,
       spawns: [
         { enemyId: "animated-armor", row: "front" },
         { enemyId: "demon-champion", row: "front" },
         { enemyId: "ironclad-knight", row: "front" },
-        { enemyId: "headmasters-echo", row: "back" },
+        { enemyId: "headmasters-echo-remnant", row: "back" },
         { enemyId: "demon-mage", row: "back" },
       ],
     },
   ],
-  // Floor 5: The Weeping Cistern — typical 4–6, heavy pressure.
+  // Floor 5: The Weeping Cistern — typical 4–6, heavy pressure. Roughly half
+  // the packs draw from the floor's own elite roster (Drowned Sentinel/
+  // Cistern Wraith/Weeping Revenant/Flood Brute/Undertow Caller); the rest
+  // stay floor-3/4 remixes as seasoning.
   5: [
     {
       weight: 4,
       spawns: [
-        { enemyId: "demon-brawler", row: "front" },
+        { enemyId: "flood-brute", row: "front" },
         { enemyId: "demon-brawler", row: "front" },
         { enemyId: "demon-spawn", row: "front" },
-        { enemyId: "demon-mage", row: "back" },
+        { enemyId: "undertow-caller", row: "back" },
         { enemyId: "demon-mage", row: "back" },
       ],
     },
     {
       weight: 4,
       spawns: [
+        { enemyId: "drowned-sentinel", row: "front" },
         { enemyId: "rune-knight", row: "front" },
-        { enemyId: "ironclad-knight", row: "front" },
         { enemyId: "black-knight", row: "front" },
         { enemyId: "warlock", row: "back" },
         { enemyId: "succubus", row: "back" },
@@ -1168,7 +1463,7 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "hellbat", row: "front" },
         { enemyId: "hellhound", row: "front" },
         { enemyId: "hellhound", row: "back" },
-        { enemyId: "warlock", row: "back" },
+        { enemyId: "cistern-wraith", row: "back" },
       ],
     },
     {
@@ -1187,7 +1482,7 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "demon-champion", row: "front" },
         { enemyId: "minotaur", row: "front" },
         { enemyId: "demon-brawler", row: "front" },
-        { enemyId: "demoness", row: "back" },
+        { enemyId: "weeping-revenant", row: "back" },
         { enemyId: "succubus", row: "back" },
       ],
     },
@@ -1206,7 +1501,7 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       spawns: [
         { enemyId: "demon-spawn", row: "front" },
         { enemyId: "demon-spawn", row: "front" },
-        { enemyId: "black-knight", row: "front" },
+        { enemyId: "flood-brute", row: "front" },
         { enemyId: "succubus", row: "back" },
         { enemyId: "succubus", row: "back" },
         { enemyId: "demon-mage", row: "back" },
@@ -1217,17 +1512,18 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       spawns: [
         { enemyId: "minotaur", row: "front" },
         { enemyId: "demon-brawler", row: "front" },
-        { enemyId: "warlock", row: "back" },
+        { enemyId: "undertow-caller", row: "back" },
       ],
     },
-    // The climax formation — the Echo, still singing through drowned voices.
+    // The climax formation — the Drowned Echo, a true four-phase campaign
+    // climax escalating over the Choir's Echo on floor 4.
     {
       weight: 1,
       spawns: [
         { enemyId: "ironclad-knight", row: "front" },
         { enemyId: "black-knight", row: "front" },
         { enemyId: "demon-champion", row: "front" },
-        { enemyId: "headmasters-echo", row: "back" },
+        { enemyId: "headmasters-echo-ascendant", row: "back" },
         { enemyId: "demon-mage", row: "back" },
         { enemyId: "succubus", row: "back" },
       ],

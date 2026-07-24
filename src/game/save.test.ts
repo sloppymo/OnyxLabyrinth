@@ -273,6 +273,61 @@ describe("save serialization", () => {
     if (!restored) return;
     expect(restored.activeCharIds).toEqual(["c1", "c2", "c3", "c4"]);
   });
+
+  it("round-trips deepestFloorReached", () => {
+    state.deepestFloorReached = 4;
+    const json = serialize(state);
+    const restored = deserialize(json);
+    expect(restored).not.toBeNull();
+    expect(restored?.deepestFloorReached).toBe(4);
+  });
+
+  it("migrates v10 saves: a realistic level-6 save resets in-level progress to 0", () => {
+    // Under the OLD (flat, never-spent) curve, level and xp are always in
+    // sync after combat: a real level-6 character's lifetime xp sits in
+    // [xpForNextLevel(5), xpForNextLevel(6)) = [600, 720). This is the
+    // realistic case — see the save.ts v10->v11 comment for why the new
+    // triangular curve's cumulativeXpToReachLevel(6) = 1800 clamps this to 0
+    // rather than preserving a proportional residual.
+    state.party[0].level = 6;
+    state.party[0].xp = 650;
+    const json = serialize(state);
+    const raw = JSON.parse(json) as Record<string, unknown>;
+    raw.version = 10;
+    delete raw.deepestFloorReached;
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    expect(restored.party[0].level).toBe(6); // level itself is preserved
+    expect(restored.party[0].xp).toBe(0); // in-level progress is not
+  });
+
+  it("migrates v10 saves: xp above a character's current-level cost clamps to 0, never negative", () => {
+    state.party[0].level = 6;
+    state.party[0].xp = 2000; // higher than any real old save could produce at L6
+    const json = serialize(state);
+    const raw = JSON.parse(json) as Record<string, unknown>;
+    raw.version = 10;
+    delete raw.deepestFloorReached;
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    // cumulativeXpToReachLevel(6) = 1800; 2000 - 1800 = 200, still short of
+    // the 720 needed to reach level 7 — no runaway level-up cascade either way.
+    expect(restored.party[0].xp).toBe(200);
+    expect(restored.party[0].xp).toBeLessThan(720);
+  });
+
+  it("migrates v10 saves: deepestFloorReached backfills from the save's floor", () => {
+    const json = serialize(state);
+    const raw = JSON.parse(json) as Record<string, unknown>;
+    raw.version = 10;
+    raw.floorId = 3;
+    delete raw.deepestFloorReached;
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    expect(restored?.deepestFloorReached).toBe(3);
+  });
 });
 
 describe("autoSave", () => {

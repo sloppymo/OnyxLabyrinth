@@ -4,6 +4,8 @@
 
 Companion deliverable: the FF6-style Equip screen (Part B of `FOLLOWUP-PROGRESSION-GEAR-AUDIT-PROMPT.md`) shipped alongside this audit; finding **A7** motivates it directly.
 
+> **⚠️ Findings table superseded 2026-07-24.** The campaign progression sprint fixed A1, A4, A5, and A7 below (status column updated accordingly) — see [`docs/superpowers/specs/2026-07-24-campaign-progression-design.md`](superpowers/specs/2026-07-24-campaign-progression-design.md) for the re-derived numbers and [`docs/playtests/2026-07-24-progression-sprint-notes.md`](playtests/2026-07-24-progression-sprint-notes.md) for measured (not estimated) floor 4-5 pacing data. A2, A3, and A6 remain open — this sprint did not touch perk-tier cadence, the stat-inflation ceiling, or the gold economy. Kept below as historical record; do not re-cite A1/A4/A5/A7 as current defects.
+
 ---
 
 ## Summary — the three biggest risks to campaign pacing
@@ -20,13 +22,13 @@ Companion deliverable: the FF6-style Equip screen (Part B of `FOLLOWUP-PROGRESSI
 
 | # | Finding | Severity | Status |
 |---|---------|----------|--------|
-| A1 | XP thresholds are lifetime totals; marginal level cost is a constant 20 XP | **Critical** | Not implemented — recommendation only |
-| A2 | Perk cadence collapses with A1; 4 tiers may be thin for 5 floors even after fixing it | High (blocked on A1) | Not implemented |
+| A1 | XP thresholds are lifetime totals; marginal level cost is a constant 20 XP | **Critical** | **Fixed 2026-07-24** — `applyLevelUps` spends XP on level-up (triangular curve restored); see design note §2 |
+| A2 | Perk cadence collapses with A1; 4 tiers may be thin for 5 floors even after fixing it | High (blocked on A1) | Not implemented — A1 unblocked this, still open |
 | A3 | Stat inflation: perk stacking is bounded (~×1.5-1.9); the real inflation lever is uncapped `level` | Medium | Not implemented |
-| A4 | Floors 4-5 reuse the floor-3 bestiary at higher density — content gap | High | Not implemented |
-| A5 | Gear hard-stops at tier 3; shop stops at tier 2; floors 4-5 balanced around gear that doesn't exist | High | Not implemented |
+| A4 | Floors 4-5 reuse the floor-3 bestiary at higher density — content gap | High | **Fixed 2026-07-24** — 10 new floor-exclusive elites + 2 escalating Echo boss variants (was one boss reused 3 floors); see design note §1/§4 |
+| A5 | Gear hard-stops at tier 3; shop stops at tier 2; floors 4-5 balanced around gear that doesn't exist | High | **Fixed 2026-07-24** — shop unlocks tiers 3-5 via `deepestFloorReached`; tier-4/5 gear (Runeblade/Voidblade lines) added |
 | A6 | Gold economy: scarcity early, dead stat by floor 3 | Medium-High | Not implemented |
-| A7 | Auto-equip makes objectively worse-than-human choices (range/row-blind) | Medium | UI mitigation shipped (Part B); logic fix not implemented |
+| A7 | Auto-equip makes objectively worse-than-human choices (range/row-blind) | Medium | **Fixed 2026-07-24** — `isBetterEquip`/`findBestEquipTarget` now veto unreachable weapons by formation row; see design note Workstream B |
 
 ### A1 — XP curve (Critical)
 

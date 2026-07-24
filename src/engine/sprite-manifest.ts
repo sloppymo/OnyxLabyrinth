@@ -109,13 +109,42 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("stone-guardian", "hurt", 4, 8),
     death: strip("stone-guardian", "death", 4, 6),
   },
+  // Floor 5 elite (campaign progression sprint) — reuses the Stone Guardian
+  // strip; a tougher variant of the same silhouette, not new art.
+  "drowned-sentinel": {
+    idle: strip("stone-guardian", "idle", 6, 6, true),
+    attack: strip("stone-guardian", "attack", 7, 10),
+    hurt: strip("stone-guardian", "hurt", 4, 8),
+    death: strip("stone-guardian", "death", 4, 6),
+  },
   "headmasters-echo": {
     idle: strip("headmasters-echo", "idle", 6, 6, true),
     attack: strip("headmasters-echo", "attack", 6, 10),
     hurt: strip("headmasters-echo", "hurt", 4, 8),
     death: strip("headmasters-echo", "death", 4, 6),
   },
+  // Floor 4/5 Echo escalation (campaign progression sprint) — same character
+  // reappearing, deliberately identical art; only stats/kit escalate.
+  "headmasters-echo-remnant": {
+    idle: strip("headmasters-echo", "idle", 6, 6, true),
+    attack: strip("headmasters-echo", "attack", 6, 10),
+    hurt: strip("headmasters-echo", "hurt", 4, 8),
+    death: strip("headmasters-echo", "death", 4, 6),
+  },
+  "headmasters-echo-ascendant": {
+    idle: strip("headmasters-echo", "idle", 6, 6, true),
+    attack: strip("headmasters-echo", "attack", 6, 10),
+    hurt: strip("headmasters-echo", "hurt", 4, 8),
+    death: strip("headmasters-echo", "death", 4, 6),
+  },
   "animated-armor": {
+    idle: strip("animated-armor", "idle", 6, 6, true),
+    attack: strip("animated-armor", "attack", 6, 10),
+    hurt: strip("animated-armor", "hurt", 4, 8),
+    death: strip("animated-armor", "death", 4, 6),
+  },
+  // Floor 5 elite (campaign progression sprint) — reuses Animated Armor's strip.
+  "flood-brute": {
     idle: strip("animated-armor", "idle", 6, 6, true),
     attack: strip("animated-armor", "attack", 6, 10),
     hurt: strip("animated-armor", "hurt", 4, 8),
@@ -208,6 +237,16 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     // Measured idle art top 0.27 (tall knight); pack default 0.38 sinks the cursor.
     0.27
   ),
+  // Floor 4 elite (campaign progression sprint) — reuses Black Knight's strip.
+  "iron-chorister": withTop(
+    {
+      idle: strip("black-knight", "idle", 6, 6, true),
+      attack: strip("black-knight", "attack", 16, 12),
+      hurt: strip("black-knight", "hurt", 4, 8),
+      death: strip("black-knight", "death", 4, 6),
+    },
+    0.27
+  ),
   minotaur: {
     idle: strip("minotaur", "idle", 6, 6, true),
     attack: strip("minotaur", "attack", 8, 10),
@@ -265,6 +304,13 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
   ),
   // Pack 02 remaining variants (knights, blood monsters, demon kin):
   "ironclad-knight": {
+    idle: strip("ironclad-knight", "idle", 6, 6, true),
+    attack: strip("ironclad-knight", "attack", 7, 10),
+    hurt: strip("ironclad-knight", "hurt", 4, 8),
+    death: strip("ironclad-knight", "death", 4, 6),
+  },
+  // Floor 4 elite (campaign progression sprint) — reuses Ironclad Knight's strip.
+  "choir-warden": {
     idle: strip("ironclad-knight", "idle", 6, 6, true),
     attack: strip("ironclad-knight", "attack", 7, 10),
     hurt: strip("ironclad-knight", "hurt", 4, 8),

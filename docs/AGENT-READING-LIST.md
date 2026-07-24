@@ -2,12 +2,15 @@
 
 Use this list before acting on playtest, balance, combat UX, or perk work. Prefer these over older one-off prompts when they conflict.
 
-**Last refreshed:** 2026-07-19 (repo layout rationalization: root process docs culled; kept docs moved into docs/)
+**Last refreshed:** 2026-07-24 (campaign progression sprint: XP curve fix, shop depth unlock, floor 4-5 new enemy tier, playtest verification — see new rows below)
 
 | Doc | Role | Status |
 |-----|------|--------|
 | [`AGENTS.md`](../AGENTS.md) | Hard engine rules, file map, pitfalls | **Authoritative** for code constraints |
 | [`CLAUDE.md`](../CLAUDE.md) | Commands, architecture orientation | Authoritative; defers to AGENTS.md for `src/` rules |
+| [`superpowers/specs/2026-07-24-campaign-progression-design.md`](superpowers/specs/2026-07-24-campaign-progression-design.md) | XP curve, shop tiers, floor 4-5 content, pacing arithmetic | **Current** — authoritative for progression/gear/floor-4-5 topics; **supersedes [`PROGRESSION-GEAR-AUDIT.md`](PROGRESSION-GEAR-AUDIT.md)'s findings table** (see that doc's own banner) |
+| [`superpowers/plans/2026-07-24-campaign-progression.md`](superpowers/plans/2026-07-24-campaign-progression.md) | Workstreams A-F task breakdown + completion notes | **Done 2026-07-24** — all six workstreams shipped and playtest-verified |
+| [`playtests/2026-07-24-progression-sprint-notes.md`](playtests/2026-07-24-progression-sprint-notes.md) | Measured floor 4-5 pacing data (real, not the audit's 6-15 estimate) | **Current** — closes the design note's biggest uncertainty; confirms no XP-multiplier retune needed |
 | [`ARENA-REVIEW.md`](ARENA-REVIEW.md) | Arena backdrop math/architecture review | Current (2026-07-13; addendum 2026-07-16). W4 horizon-sync closed; W1 partially addressed — seam now derives from `arena-camera.ts`, slots still screen-space |
 | [`PLAYTEST-DESIGN-REVIEW.md`](PLAYTEST-DESIGN-REVIEW.md) | Design-facing playtest (Arena + town + dungeon) | Findings kept; **Status notes** section flags what code already changed |
 | [`PLAYTEST-REPORT.md`](PLAYTEST-REPORT.md) | Earlier E2E polish report | Footer/`T` claims are **stale** (dynamic `menuHintText` + `t` shortcut shipped); mobile map still lower priority |
@@ -44,6 +47,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 - ~~“Dungeon encounter rate feels empty”~~ — floors 1–3 now 8%/10%/12% after the 8-step cooldown, plus soft pity that forces a fight by step 28 (`game/encounters.ts`).
 - ~~“Temple has no Remove Curse”~~ — `[R] Remove Curse` appears when cursed gear is equipped (`town-ui.ts`).
 - Perk overlay “never implemented for Arena” — **false**; `endCombat` opens it for Arena when `pendingPerkChoices.length > 0`. Playtest likely auto-Enter dismissed it.
+- `PROGRESSION-GEAR-AUDIT.md`'s A1 (XP never spent), A4 (floors 4-5 reuse floor-3 bestiary), A5 (shop capped at tier 2), and A7 (auto-equip logic ignores range) — **all fixed 2026-07-24**, see the campaign-progression design note and plan above. A2/A3/A6 (perk-tier cadence, stat-inflation ceiling, gold-economy retune) remain open/not implemented — out of scope for this sprint.
 
 ## Recommended work order (from design analysis)
 
