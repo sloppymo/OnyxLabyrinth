@@ -345,31 +345,23 @@ AGENTS.md "Debug/testing aids" section updated.
 - Risk: don't tighten `isIdle` into a lie (e.g., FF6Window open animation is cosmetic — keys
   work; excluded deliberately).
 
-### PR-3 — `jumpTo` + save injection
-- `__onyxDebug.jumpTo({ floorId, x, y, facing?, partyLevel?, gold?, keys?, items?, roster?,
-  autosave? })`: refuses while combat/overlay controllers are live (clear error); otherwise
-  resets/normalizes via existing paths — `transitionToFloor` (real bookkeeping incl.
-  `applyKilledNPCs`, `deepestFloorReached`), `markExplored`, `resetRenderCamera`,
-  `setMode`/`showMode`. Party leveling copies Arena's `startArena` pattern (`levelUpChar` loop,
-  never XP banking). **`autosave` defaults to `true`** (matches `transitionToFloor`'s existing
-  behavior — debug jumps overwrite the autosave slot, same as normal floor transitions) but can
-  be passed `false` so a script that does `loadSave()` → `jumpTo()` → later wants to exercise the
-  real Continue path doesn't have its loaded save silently clobbered by the jump. Implementation:
-  thread an optional `autosave` param through `transitionToFloor` itself (defaults `true`, so
-  every other caller is unaffected) rather than duplicating its bookkeeping in the debug layer.
-- `dumpSave()` → `serialize(state)`; `loadSave(json)` → `deserialize` + `Object.assign` + the
-  Continue-path mode normalization (extract that ~6-line normalization from `openTitleScreen`'s
-  `onContinue` into a helper both use).
-- Lib: `boot(page, { scenario })` → title → `jumpTo`, skipping prologue/party-creation.
-- Migrate **both** `playtest-floors-1-3.mjs`'s and `playtest-floors-4-5.mjs`'s `warp()` calls to
-  `jumpTo`; delete `warp()` from both. Floors-4-5 is the priority migration here — it's the
-  script most exposed to `warp()`'s NPC-resurrection and door/loot desync bug.
-- Tests: smoke — jump to F4, verify snapshot floor/pos/`deepestFloorReached`; kill an NPC, jump
-  away and back, NPC stays dead (the exact bug `warp()` has today); `dumpSave`→`loadSave`
-  round-trip; `jumpTo({..., autosave: false})` leaves the autosave slot untouched. Vitest for the
-  mode-normalization helper and the `autosave` param default.
-- Risks: fixtures discouraged while SAVE_VERSION is churning (v12 bump currently uncommitted) —
-  prefer `dumpSave()` regenerated against the current build over checked-in fixture JSON.
+### PR-3 — `jumpTo` + save injection — **SHIPPED**
+- `__onyxDebug.jumpTo({ floorId, x, y, facing?, partyLevel?, gold?, keys?, items?,
+  autosave?, stepsSinceEncounter?, clearUnlockedDoors? })`: refuses while combat/overlay
+  controllers are live (clear error); otherwise resets/normalizes via existing paths —
+  `transitionToFloor` (real bookkeeping incl. `applyKilledNPCs`, `deepestFloorReached`),
+  `markExplored`, `resetRenderCamera`, `setMode`/`showMode`. Party leveling copies Arena's
+  `startArena` pattern (`levelUpChar` loop via `applyJumpPartyOptions`, never XP banking).
+  **`autosave` defaults to `true`** (matches `transitionToFloor`'s existing behavior) with an
+  explicit `false` opt-out threaded through `transitionToFloor` itself. `clearUnlockedDoors`
+  supports lockpick→key-open playtest sequences that need a fresh session lock set.
+- `dumpSave()` → `serialize(state)`; `loadSave(json)` → `deserialize` + `applyLoadedGameState`
+  (shared with Continue — `normalizeLoadedMode` in `src/debug/load-normalize.ts`).
+- Lib: `boot(page, url, { scenario })` → title → `jumpTo`; `jumpTo(page, opts)` helper.
+- Migrated **both** `playtest-floors-1-3.mjs` and `playtest-floors-4-5.mjs` off private `warp()`.
+- Tests: Vitest for `normalizeLoadedMode`, `applyJumpPartyOptions`, and `autosave` default/false;
+  smoke — jump F4 + deepestFloorReached, killed-NPC persistence, dump→load round-trip,
+  `autosave: false` sentinel, title→jumpTo boot scenario.
 
 ### PR-4 — Event buffer, audio spy, error capture, invariants, failure bundles
 - `src/debug/event-buffer.ts`: capped ring (~500) + `log(n)`; event kinds: `modeChange`, `route`,

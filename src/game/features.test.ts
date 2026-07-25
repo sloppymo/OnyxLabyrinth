@@ -26,6 +26,7 @@ import { ITEMS_BY_ID } from "../data/items";
 import { FLOORS } from "../data/floors";
 import { getFloors } from "./floor-registry";
 import { createGameState } from "./state";
+import { loadAutoSave } from "./save";
 import type { FloorDef, EventDef } from "../data/floors";
 import type { GameState, TrapType } from "../types";
 
@@ -609,5 +610,21 @@ describe("transitionToFloor and deepestFloorReached", () => {
     transitionToFloor(state, floorById(3), 2, 2);
     expect(state.floor.id).toBe(3); // current floor did move back
     expect(state.deepestFloorReached).toBe(4); // deepest did not
+  });
+
+  it("autosaves by default on floor transition", () => {
+    localStorage.clear();
+    const state = createGameState(FLOORS[0]);
+    state.mode = "dungeon";
+    transitionToFloor(state, floorById(2), 2, 2);
+    expect(loadAutoSave()?.floor.id).toBe(2);
+  });
+
+  it("skips autosave when opts.autosave is false", () => {
+    localStorage.clear();
+    const state = createGameState(FLOORS[0]);
+    state.mode = "dungeon";
+    transitionToFloor(state, floorById(2), 2, 2, 0, { autosave: false });
+    expect(loadAutoSave()).toBeNull();
   });
 });

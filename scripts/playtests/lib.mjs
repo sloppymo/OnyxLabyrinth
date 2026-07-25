@@ -167,3 +167,30 @@ export async function bootToDungeon(page, url, { maxSteps = 40 } = {}) {
   }
   return st;
 }
+
+/**
+ * Jump to a dungeon cell via `__onyxDebug.jumpTo` (real transitionToFloor).
+ * Replaces the old hand-rolled `warp()` that cloned floors without applying
+ * killed-NPC / loot / unlocked-door bookkeeping.
+ */
+export async function jumpTo(page, opts) {
+  await page.evaluate((o) => window.__onyxDebug.jumpTo(o), opts);
+  await waitForIdle(page);
+  return snap(page);
+}
+
+/**
+ * Boot to title, then jumpTo a scenario — skips prologue/party-creation.
+ * `scenario` is passed straight to jumpTo (floorId/x/y required).
+ */
+export async function boot(page, url, { scenario } = {}) {
+  if (scenario == null || scenario.floorId == null || scenario.x == null || scenario.y == null) {
+    throw new Error("boot({ scenario }) requires scenario.{ floorId, x, y }");
+  }
+  await page.goto(url, { waitUntil: "networkidle" });
+  await wait(400);
+  // Title is idle; jumpTo closes the title controller and lands in dungeon.
+  await page.evaluate((o) => window.__onyxDebug.jumpTo(o), scenario);
+  await waitForIdle(page);
+  return snap(page);
+}

@@ -46,6 +46,8 @@ import {
 import { resolveContextualPrompt } from "./engine/contextual-prompt";
 import { buildSnapshot } from "./debug/snapshot";
 import { computeIdle } from "./debug/idle";
+import { normalizeLoadedMode } from "./debug/load-normalize";
+import { applyJumpPartyOptions, type JumpToOptions } from "./debug/jump-to";
 import { CombatController } from "./engine/combat-ui";
 import {
   createControllerInput,
@@ -67,7 +69,7 @@ import { TitleController } from "./engine/title-ui";
 import { PrologueController } from "./engine/prologue-ui";
 import { ArenaController } from "./engine/arena-ui";
 import { FF6Window } from "./engine/ff6-window-library";
-import { autoSave } from "./game/save";
+import { autoSave, serialize, deserialize } from "./game/save";
 import { createCombatFromEncounter } from "./game/combat";
 import { defaultLoadoutForCharacter } from "./game/combat-equipment";
 import { reconcileInventoryAfterCombat } from "./game/combat-inventory";
@@ -307,6 +309,28 @@ function openPrologue(onDone: () => void): void {
 // --- Title screen --------------------------------------------------------
 let titleController: TitleController | null = null;
 
+/**
+ * Apply a deserialized save into the live session (Continue path + debug
+ * loadSave). Overlays / party creation / arena are not resumable — see
+ * normalizeLoadedMode.
+ */
+function applyLoadedGameState(loaded: GameState): void {
+  Object.assign(state, loaded);
+  state.mode = normalizeLoadedMode(state.mode);
+  if (state.mode === "town") {
+    openTown();
+  } else {
+    // Combat is converted to dungeon on save; any other mode resumes directly.
+    canvas.style.opacity = "1";
+    showMode(state.mode, mapVisible);
+    setMessage("Welcome back to the labyrinth.");
+    if (state.mode === "dungeon") {
+      markExplored();
+      resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+    }
+  }
+}
+
 // Start the game: show the title screen so the player can choose
 // "New Game" or "Continue" (if an auto-save exists).
 function openTitleScreen(): void {
@@ -328,20 +352,7 @@ function openTitleScreen(): void {
     },
     onContinue: (loaded) => {
       titleController = null;
-      Object.assign(state, loaded);
-      // Overlays and party creation are not resumable (no controller is
-      // reconstructed for them). Fall back to town so the player can continue.
-      if (state.mode === "title" || state.mode === "party_creation" || state.mode === "arena") {
-        state.mode = "town";
-      }
-      if (state.mode === "town") {
-        openTown();
-      } else {
-        // Combat is converted to dungeon on save; any other mode resumes directly.
-        canvas.style.opacity = "1";
-        showMode(state.mode, mapVisible);
-        setMessage("Welcome back to the labyrinth.");
-      }
+      applyLoadedGameState(loaded);
     },
     onArena: () => {
       titleController = null;
@@ -602,10 +613,6 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 let gameOverController: GameOverController | null = null;
 
 function openGameOver(): void {
-  // Century cycle (docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md
-  // §7.1/§7.2): a campaign wipe advances the world 100 years; Arena wipes are
-  // a testing loop, not a in-fiction death, so they never touch the year.
-  if (!inArena) state.worldYear += 100;
   setMode(state, "game_over");
   showMode("game_over", mapVisible);
   setMessage("");
@@ -613,7 +620,6 @@ function openGameOver(): void {
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     party: state.party,
     floorName: state.floor.name,
-    worldYear: state.worldYear,
     onContinue: () => {
       gameOverController = null;
       if (inArena) {
@@ -1914,6 +1920,90 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       mapRadius: opts?.mapRadius,
     });
 
+  /**
+   * Teleport via the real transitionToFloor path (applies killed NPCs, loot,
+   * unlocked doors, deepestFloorReached, explored-by-floor). Refuses while
+   * combat or a borrowed-title overlay is live.
+   */
+  const jumpTo = (opts: JumpToOptions): void => {
+    if (combatController) {
+      throw new Error("jumpTo: refuse while combat is active — exitDebugCombat first");
+    }
+    if (
+      saveController ||
+      spellMenuController ||
+      npcController ||
+      perkSelectController ||
+      prologueController
+    ) {
+      throw new Error("jumpTo: refuse while an overlay controller is open");
+    }
+    if (campController || gameOverController || arenaController || partyCreationController) {
+      throw new Error("jumpTo: refuse while camp/game-over/arena/party-creation is live");
+    }
+
+    const floor = findFloor(opts.floorId);
+    if (!floor) throw new Error(`jumpTo: no floor ${opts.floorId}`);
+
+    // Close hub controllers that boot/jump may leave behind; clear their DOM.
+    if (titleController) titleController = null;
+    if (townController) townController = null;
+    if (actionRingController) {
+      actionRingController.destroy();
+      actionRingController = null;
+    }
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel");
+    if (panel) {
+      panel.innerHTML = "";
+      panel.style.display = "none";
+    }
+
+    if (opts.clearUnlockedDoors) state.unlockedDoors.clear();
+    state.pendingTrap = null;
+    inArena = false;
+
+    applyJumpPartyOptions(state, opts);
+    transitionToFloor(state, floor, opts.x, opts.y, (opts.facing ?? 0) as 0 | 1 | 2 | 3, {
+      autosave: opts.autosave !== false,
+    });
+    if (opts.stepsSinceEncounter !== undefined) {
+      state.stepsSinceEncounter = opts.stepsSinceEncounter;
+    }
+
+    markExplored();
+    resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+    setMode(state, "dungeon");
+    showMode("dungeon", mapVisible);
+    canvas.style.opacity = "1";
+    setMessage("");
+  };
+
+  const dumpSave = (): string => serialize(state);
+
+  const loadSave = (json: string): void => {
+    if (combatController) {
+      throw new Error("loadSave: refuse while combat is active");
+    }
+    if (
+      saveController ||
+      spellMenuController ||
+      npcController ||
+      perkSelectController ||
+      prologueController ||
+      campController ||
+      gameOverController ||
+      arenaController ||
+      partyCreationController
+    ) {
+      throw new Error("loadSave: refuse while an overlay/hub controller is open");
+    }
+    const loaded = deserialize(json);
+    if (!loaded) throw new Error("loadSave: deserialize failed");
+    if (titleController) titleController = null;
+    if (townController) townController = null;
+    applyLoadedGameState(loaded);
+  };
+
   (window as any).render_game_to_text = () => JSON.stringify(debugSnapshot());
 
   (window as any).__onyxDebug = {
@@ -1921,6 +2011,9 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     snapshot: debugSnapshot,
     isIdle,
     readiness,
+    jumpTo,
+    dumpSave,
+    loadSave,
     startCombat,
     exitDebugCombat,
     FLOORS: getFloors(),

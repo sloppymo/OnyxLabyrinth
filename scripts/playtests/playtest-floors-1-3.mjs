@@ -11,6 +11,7 @@ import {
   snap,
   waitForIdle,
   bootToDungeon as libBootToDungeon,
+  jumpTo,
   shot as libShot,
   createFindings,
   ensureOutDir,
@@ -75,26 +76,6 @@ async function bootToDungeon(page) {
 async function unlockFacing(page) {
   await press(page, "u");
   await waitForIdle(page, 500);
-}
-
-async function warp(page, floorId, x, y, facing = 0) {
-  await page.evaluate(
-    ({ floorId, x, y, facing }) => {
-      const d = window.__onyxDebug;
-      const src = d.findFloor(floorId);
-      if (!src) throw new Error(`no floor ${floorId}`);
-      d.state.floor = JSON.parse(JSON.stringify(src));
-      d.state.player = { x, y, facing };
-      d.state.explored = new Set();
-      d.state.inDarkness = false;
-      d.state.inAntimagic = false;
-      d.state.pendingTrap = null;
-      d.state.stepsSinceEncounter = 8;
-      d.state.mode = "dungeon";
-    },
-    { floorId, x, y, facing }
-  );
-  await wait(200);
 }
 
 async function stepForward(page) {
@@ -206,14 +187,14 @@ if (st.floorId !== 1 || st.x !== 5 || st.y !== 9) {
 // ============================================================================
 const f1t0 = Date.now();
 log("\n=== FLOOR 1: crossroads -> crypt row (safe chest, trap chest, water, NPC) ===");
-await warp(page, 1, 5, 8, 0);
+await jumpTo(page, { floorId: 1, x: 5, y: 8, facing: 0 });
 await walkDirs(page, ["n", "n", "n"], 1); // (5,9)->(5,8)->(5,7)->(5,6): crossroads corridor
 st = await state(page);
 await shot(page, "01-f1-crossroads.png");
 log("crossroads", st.x, st.y, st.tile);
 
 // Walk west along row 5 to the safe chest at (3,5)
-await warp(page, 1, 4, 5, 3);
+await jumpTo(page, { floorId: 1, x: 4, y: 5, facing: 3 });
 await walkDirs(page, ["w"], 1); // step onto (3,5)
 st = await state(page);
 await shot(page, "02-f1-safe-chest.png");
@@ -249,7 +230,7 @@ if (!st.pendingTrap) {
 }
 
 // Water crossing at (2,4) — heal effect per floors.ts
-await warp(page, 1, 2, 5, 0);
+await jumpTo(page, { floorId: 1, x: 2, y: 5, facing: 0 });
 st = await state(page);
 await walkDirs(page, ["n"], 1); // onto (2,4) water
 st = await state(page);
@@ -262,7 +243,7 @@ if (st.tile !== "water" && !/water|wade|swim/i.test(st.msg)) {
 }
 
 // NPC Maro at (3,6)
-await warp(page, 1, 3, 5, 2);
+await jumpTo(page, { floorId: 1, x: 3, y: 5, facing: 2 });
 await walkDirs(page, ["s"], 1);
 st = await state(page);
 await shot(page, "06-f1-npc-maro-panel.png");
@@ -277,7 +258,7 @@ if (!maroOpen) {
 
 // New north corridor: crypt -> (2,3) damage event -> sanctum door -> stairs
 log("=== FLOOR 1: crypt -> north corridor -> sanctum (events, stairs down) ===");
-await warp(page, 1, 2, 4, 0);
+await jumpTo(page, { floorId: 1, x: 2, y: 4, facing: 0 });
 await walkDirs(page, ["n"], 1); // (2,4)->(2,3) damage event
 st = await state(page);
 await shot(page, "07-f1-event-damage.png");
@@ -288,7 +269,7 @@ if (!/flagstone|darts/i.test(st.msg)) {
   log("OK damage event (2,3)");
 }
 
-await warp(page, 1, 1, 5, 0);
+await jumpTo(page, { floorId: 1, x: 1, y: 5, facing: 0 });
 await walkDirs(page, ["n"], 1); // (1,5)->(1,4) reward event
 st = await state(page);
 await shot(page, "08-f1-event-reward.png");
@@ -299,7 +280,7 @@ if (!st.inv.includes("holy-symbol") && !/holy symbol|corpse/i.test(st.msg)) {
   log("OK reward event (1,4) — holy-symbol");
 }
 
-await warp(page, 1, 3, 1, 3);
+await jumpTo(page, { floorId: 1, x: 3, y: 1, facing: 3 });
 await walkDirs(page, ["e"], 1); // onto (4,1) heal event
 st = await state(page);
 await shot(page, "09-f1-event-heal-sanctum.png");
@@ -311,7 +292,7 @@ if (!/altar|forge-forged|hungry|kneel/i.test(st.msg)) {
 }
 
 // Stairs down at (5,1)
-await warp(page, 1, 5, 2, 0);
+await jumpTo(page, { floorId: 1, x: 5, y: 2, facing: 0 });
 await shot(page, "10-f1-above-stairs.png");
 await walkDirs(page, ["n"], 1);
 st = await state(page);
@@ -329,13 +310,13 @@ timings.f1_critical_path_ms = Date.now() - f1t0;
 // ---- Floor 1 side content: flooded gallery, lock, vault ----
 const f1SideT0 = Date.now();
 log("\n=== FLOOR 1 side content: gallery water/darkness, lock+vault (lexicon-key) ===");
-await warp(page, 1, 6, 5, 1);
+await jumpTo(page, { floorId: 1, x: 6, y: 5, facing: 1 });
 await walkDirs(page, ["e"], 1); // through gallery door onto (7,5) shallow water
 st = await state(page);
 await shot(page, "12-f1-gallery-shallow-water.png");
 log("gallery water(7,5)", st.tile, st.msg);
 
-await warp(page, 1, 7, 5, 1);
+await jumpTo(page, { floorId: 1, x: 7, y: 5, facing: 1 });
 await walkDirs(page, ["e", "e"], 1); // (7,5)->(8,5)->(9,5) darkness
 st = await state(page);
 await shot(page, "13-f1-gallery-darkness.png");
@@ -346,7 +327,7 @@ if (!st.inDarkness && st.tile !== "darkness") {
   log("OK gallery darkness flag");
 }
 
-await warp(page, 1, 9, 6, 1);
+await jumpTo(page, { floorId: 1, x: 9, y: 6, facing: 1 });
 await walkDirs(page, ["e"], 1); // onto (10,6) deep water, damage effect
 st = await state(page);
 await shot(page, "14-f1-gallery-deep-water.png");
@@ -358,7 +339,7 @@ if (!/water|drown|current/i.test(st.msg) && st.tile !== "water") {
 }
 
 // Try the vault lock WITHOUT the key first (should hold, modulo Thief lockpick)
-await warp(page, 1, 9, 8, 0);
+await jumpTo(page, { floorId: 1, x: 9, y: 8, facing: 0 });
 await page.evaluate(() => {
   const k = window.__onyxDebug.state.keys;
   const idx = k.indexOf("crypt-key");
@@ -391,7 +372,7 @@ if (f1PickClass !== "lockpick") {
   log("OK Coda (Thief) can pick this lock without the key — by design, doors never hard-soft-lock while she's alive");
 }
 // Reset the door back to locked for the "with key" test below.
-await warp(page, 1, 9, 8, 0);
+await jumpTo(page, { floorId: 1, x: 9, y: 8, facing: 0 });
 // Now with the key (should already be on ring from the safe chest loot above,
 // but grant defensively in case an earlier finding broke that path)
 await grantKey(page, "crypt-key");
@@ -404,7 +385,7 @@ if (classifyUnlock(st.msg) !== "key") {
 } else {
   log("OK crypt-key opens vault lock");
 }
-await warp(page, 1, 10, 8, 2);
+await jumpTo(page, { floorId: 1, x: 10, y: 8, facing: 2 });
 await walkDirs(page, ["s"], 1); // onto (10,9) trapped chest (gas)
 st = await state(page);
 await shot(page, "17-f1-vault-chest-trap.png");
@@ -435,7 +416,7 @@ timings.f1_side_content_ms = Date.now() - f1SideT0;
 // ============================================================================
 const f2t0 = Date.now();
 log("\n=== FLOOR 2: arrival, reading-hall aisles, NPC, events ===");
-await warp(page, 2, 2, 11, 0);
+await jumpTo(page, { floorId: 2, x: 2, y: 11, facing: 0 });
 st = await state(page);
 await shot(page, "20-f2-arrival.png");
 log("F2 arrival", st.floorId, st.x, st.y, st.tile);
@@ -444,14 +425,14 @@ if (st.floorId !== 2 || st.tile !== "stairs_up") {
 }
 
 // Walk the reading-hall aisle obstacles (new shelf islands at (6,6)/(8,6))
-await warp(page, 2, 5, 5, 1);
+await jumpTo(page, { floorId: 2, x: 5, y: 5, facing: 1 });
 await walkDirs(page, ["e", "e", "e", "e"], 2); // across the top cross-aisle y=5
 st = await state(page);
 await shot(page, "21-f2-reading-hall-aisle.png");
 log("reading hall aisle walk", st.x, st.y, st.tile);
 
 // NPC Vestra at (1,1)
-await warp(page, 2, 1, 2, 0);
+await jumpTo(page, { floorId: 2, x: 1, y: 2, facing: 0 });
 await walkDirs(page, ["n"], 2);
 st = await state(page);
 await shot(page, "22-f2-npc-vestra-panel.png");
@@ -465,7 +446,7 @@ if (!vestraOpen) {
 }
 
 // Darkness stretch of the north corridor (7,2)/(8,2), and its damage event at (8,2)
-await warp(page, 2, 6, 2, 1);
+await jumpTo(page, { floorId: 2, x: 6, y: 2, facing: 1 });
 await walkDirs(page, ["e"], 2); // (6,2)->(7,2) darkness
 st = await state(page);
 await shot(page, "23-f2-corridor-darkness.png");
@@ -487,7 +468,7 @@ if (!/bookcase|topples/i.test(st.msg)) {
 
 // Scriptorium open chest (12,3), alarm trap
 log("=== FLOOR 2: scriptorium chest, forbidden wing lock + furnace-key ===");
-await warp(page, 2, 12, 4, 0);
+await jumpTo(page, { floorId: 2, x: 12, y: 4, facing: 0 });
 await walkDirs(page, ["n"], 2);
 st = await state(page);
 await shot(page, "25-f2-scriptorium-chest.png");
@@ -501,7 +482,7 @@ if (st.pendingTrap) {
 }
 
 // Forbidden wing lock (10,7)e — try WITHOUT lexicon-key (Thief disabled)
-await warp(page, 2, 9, 7, 1);
+await jumpTo(page, { floorId: 2, x: 9, y: 7, facing: 1 });
 await walkDirs(page, ["e"], 2); // up to (10,7) facing east into the lock
 await page.evaluate(() => {
   const k = window.__onyxDebug.state.keys;
@@ -523,7 +504,7 @@ if (f2LockClass === "key") {
   find("P2", 2, "Unexpected unlock message for held forbidden wing lock", st.msg);
 }
 // Reset the door back to locked, then test the intended key path.
-await warp(page, 2, 9, 7, 1);
+await jumpTo(page, { floorId: 2, x: 9, y: 7, facing: 1 });
 await walkDirs(page, ["e"], 2);
 await grantKey(page, "lexicon-key");
 await unlockFacing(page);
@@ -538,7 +519,7 @@ if (classifyUnlock(st.msg) !== "key") {
 await walkDirs(page, ["e"], 2); // into the wing, (11,7)
 st = await state(page);
 log("inside wing", st.x, st.y, st.tile, st.inDarkness);
-await warp(page, 2, 11, 7, 2);
+await jumpTo(page, { floorId: 2, x: 11, y: 7, facing: 2 });
 await walkDirs(page, ["s"], 2); // (11,7)->(11,8) darkness over the lock chest's approach
 st = await state(page);
 await shot(page, "28-f2-forbidden-wing-darkness.png");
@@ -564,7 +545,7 @@ if (!st.pendingTrap) {
 }
 
 // Remaining new events: reward (7,8), heal (3,11), message (11,10)
-await warp(page, 2, 6, 8, 1);
+await jumpTo(page, { floorId: 2, x: 6, y: 8, facing: 1 });
 await walkDirs(page, ["e"], 2);
 st = await state(page);
 await shot(page, "31-f2-event-reward.png");
@@ -574,7 +555,7 @@ if (!st.inv.includes("eye-drops") && !/lens|drawer/i.test(st.msg)) {
 } else {
   log("OK reward event (7,8) — eye-drops");
 }
-await warp(page, 2, 2, 11, 1);
+await jumpTo(page, { floorId: 2, x: 2, y: 11, facing: 1 });
 await walkDirs(page, ["e"], 2);
 st = await state(page);
 await shot(page, "32-f2-event-heal-atrium.png");
@@ -587,7 +568,7 @@ if (!/brazier|warm/i.test(st.msg)) {
 
 // Stairs down at (11,12)
 log("=== FLOOR 2: stairs down -> F3 ===");
-await warp(page, 2, 11, 11, 2);
+await jumpTo(page, { floorId: 2, x: 11, y: 11, facing: 2 });
 await shot(page, "33-f2-above-stairs.png");
 await walkDirs(page, ["s"], 2);
 st = await state(page);
@@ -607,13 +588,13 @@ timings.f2_ms = Date.now() - f2t0;
 // ============================================================================
 const f3t0 = Date.now();
 log("\n=== FLOOR 3: arrival, slag vault lock+chests, NPC ===");
-await warp(page, 3, 2, 2, 0);
+await jumpTo(page, { floorId: 3, x: 2, y: 2, facing: 0 });
 st = await state(page);
 await shot(page, "35-f3-arrival.png");
 log("F3 arrival", st.floorId, st.x, st.y, st.tile);
 
 // Ember gallery east to slag vault lock (11,2)e — try WITHOUT furnace-key (Thief disabled)
-await warp(page, 3, 10, 2, 1);
+await jumpTo(page, { floorId: 3, x: 10, y: 2, facing: 1 });
 await page.evaluate(() => {
   const k = window.__onyxDebug.state.keys;
   const idx = k.indexOf("furnace-key");
@@ -635,7 +616,7 @@ if (f3VaultLockClass === "key") {
   find("P2", 3, "Unexpected unlock message for held slag vault lock", st.msg);
 }
 // Reset the door back to locked, then test the intended key path.
-await warp(page, 3, 10, 2, 1);
+await jumpTo(page, { floorId: 3, x: 10, y: 2, facing: 1 });
 await walkDirs(page, ["e"], 3);
 await grantKey(page, "furnace-key");
 await unlockFacing(page);
@@ -649,7 +630,7 @@ if (classifyUnlock(st.msg) !== "key") {
 }
 await walkDirs(page, ["e"], 3); // into vault (12,2)
 st = await state(page);
-await warp(page, 3, 13, 1, 2);
+await jumpTo(page, { floorId: 3, x: 13, y: 1, facing: 2 });
 await walkDirs(page, ["s"], 3); // onto (13,2) trapped chest
 st = await state(page);
 await shot(page, "38-f3-vault-chest-trap.png");
@@ -663,7 +644,7 @@ if (!st.pendingTrap) {
   log("looted", st.inv, st.partyHp);
 }
 // Bonus unguarded chest (14,1)
-await warp(page, 3, 13, 1, 1);
+await jumpTo(page, { floorId: 3, x: 13, y: 1, facing: 1 });
 await walkDirs(page, ["e"], 3);
 st = await state(page);
 await shot(page, "40-f3-vault-bonus-chest.png");
@@ -678,7 +659,7 @@ if (st.pendingTrap) {
 
 // NPC Kazeharu at (3,9)
 log("=== FLOOR 3: cinder hall NPC, foundry heal event, teleporter ===");
-await warp(page, 3, 3, 8, 2);
+await jumpTo(page, { floorId: 3, x: 3, y: 8, facing: 2 });
 await walkDirs(page, ["s"], 3);
 st = await state(page);
 await shot(page, "41-f3-npc-kazeharu-panel.png");
@@ -692,7 +673,7 @@ if (!kazeOpen) {
 }
 
 // Foundry heal event at anvil altar (7,7), nestled by the new furnace-stack obstacle
-await warp(page, 3, 6, 7, 1);
+await jumpTo(page, { floorId: 3, x: 6, y: 7, facing: 1 });
 await walkDirs(page, ["e"], 3);
 st = await state(page);
 await shot(page, "42-f3-foundry-heal-event.png");
@@ -704,7 +685,7 @@ if (!/anvil|altar|forge-forged/i.test(st.msg)) {
 }
 
 // Waygate teleporter (9,6) -> (2,3)
-await warp(page, 3, 9, 5, 2);
+await jumpTo(page, { floorId: 3, x: 9, y: 5, facing: 2 });
 await walkDirs(page, ["s"], 3); // onto (9,6) teleporter
 st = await state(page);
 await shot(page, "43-f3-after-teleporter.png");
@@ -717,7 +698,7 @@ if (st.x !== 2 || st.y !== 3) {
 
 // Ashpit chest (2,14) -> forge-key, poison trap
 log("=== FLOOR 3: ashpit forge-key, Grand Forge lock, antimagic, boss chamber ===");
-await warp(page, 3, 2, 13, 2);
+await jumpTo(page, { floorId: 3, x: 2, y: 13, facing: 2 });
 await walkDirs(page, ["s"], 3);
 st = await state(page);
 await shot(page, "44-f3-ashpit-forgekey-trap.png");
@@ -736,7 +717,7 @@ if (!st.pendingTrap) {
 }
 
 // Grand Forge lock (7,11)s — try WITHOUT forge-key (Thief disabled)
-await warp(page, 3, 7, 10, 2);
+await jumpTo(page, { floorId: 3, x: 7, y: 10, facing: 2 });
 await page.evaluate(() => {
   const k = window.__onyxDebug.state.keys;
   const idx = k.indexOf("forge-key");
@@ -757,7 +738,7 @@ if (f3BossLockClass === "key") {
   find("P2", 3, "Unexpected unlock message for held Grand Forge lock", st.msg);
 }
 // Reset the door back to locked, then test the intended key path.
-await warp(page, 3, 7, 10, 2);
+await jumpTo(page, { floorId: 3, x: 7, y: 10, facing: 2 });
 await grantKey(page, "forge-key");
 await unlockFacing(page);
 st = await state(page);
@@ -771,7 +752,7 @@ if (classifyUnlock(st.msg) !== "key") {
 await walkDirs(page, ["s"], 3); // into chamber (7,12)
 
 // Antimagic zone (6-8,13)
-await warp(page, 3, 7, 12, 2);
+await jumpTo(page, { floorId: 3, x: 7, y: 12, facing: 2 });
 await walkDirs(page, ["s"], 3); // onto (7,13) antimagic
 st = await state(page);
 await shot(page, "48-f3-antimagic-zone.png");
@@ -803,7 +784,7 @@ if (!st.inAntimagic && st.tile !== "antimagic") {
 }
 
 // Trophy chest (9,13), stunner trap
-await warp(page, 3, 8, 13, 1);
+await jumpTo(page, { floorId: 3, x: 8, y: 13, facing: 1 });
 await walkDirs(page, ["e"], 3);
 st = await state(page);
 await shot(page, "50-f3-boss-trophy-chest.png");
@@ -818,7 +799,7 @@ if (!st.pendingTrap) {
 
 // Stairs down (5,14) -> confirm F4 descent works (do not fully play F4)
 log("=== FLOOR 3: stairs down -> F4 (confirm descent only) ===");
-await warp(page, 3, 5, 13, 2);
+await jumpTo(page, { floorId: 3, x: 5, y: 13, facing: 2 });
 await shot(page, "51-f3-above-stairs.png");
 await walkDirs(page, ["s"], 3);
 st = await state(page);
@@ -836,7 +817,7 @@ timings.f3_ms = Date.now() - f3t0;
 // ============================================================================
 log("\n=== Pacing sample: encounter frequency in F1 safe vs risk zones ===");
 async function pacingSample(floorId, x, y, facing, dirs, label) {
-  await warp(page, floorId, x, y, facing);
+  await jumpTo(page, { floorId, x, y, facing });
   let combats = 0;
   const map = { n: 0, e: 1, s: 2, w: 3 };
   for (const d of dirs) {

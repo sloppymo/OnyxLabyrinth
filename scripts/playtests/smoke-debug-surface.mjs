@@ -241,6 +241,95 @@ await wait(500);
 s = await snap(page);
 check("returns to dungeon after combat", s.route === "dungeon", `got ${s.route}`);
 
+// --- PR-3: jumpTo / dumpSave / loadSave -----------------------------------
+log("=== jumpTo F4 ===");
+await page.evaluate(() =>
+  window.__onyxDebug.jumpTo({ floorId: 4, x: 2, y: 2, facing: 0 })
+);
+await waitForIdle(page);
+s = await snap(page);
+check("jumpTo lands on F4", s.floor?.id === 4 && s.pos?.x === 2 && s.pos?.y === 2, JSON.stringify({
+  floor: s.floor, pos: s.pos,
+}));
+check(
+  "jumpTo advances deepestFloorReached",
+  (await page.evaluate(() => window.__onyxDebug.state.deepestFloorReached)) >= 4
+);
+check("jumpTo route is dungeon", s.route === "dungeon", `got ${s.route}`);
+await shot(page, OUT, "06-jumpTo-f4.png");
+
+log("=== jumpTo preserves killed NPCs (warp() bug) ===");
+await page.evaluate(() => {
+  const d = window.__onyxDebug;
+  if (!d.state.killedNPCs.includes("maro")) d.state.killedNPCs.push("maro");
+  d.jumpTo({ floorId: 1, x: 3, y: 6, facing: 0 });
+});
+await waitForIdle(page);
+const maroGone = await page.evaluate(() => {
+  const floor = window.__onyxDebug.state.floor;
+  const maro = (floor.npcs ?? []).find((n) => n.id === "maro");
+  if (!maro) return true;
+  // applyKilledNPCs clears the tile feature; the NPC def stays on the floor list.
+  return floor.grid[maro.y]?.[maro.x]?.tile !== "npc";
+});
+check("killed NPC stays dead after jumpTo back to F1", maroGone);
+
+log("=== dumpSave / loadSave round-trip ===");
+const dumped = await page.evaluate(() => window.__onyxDebug.dumpSave());
+check("dumpSave returns JSON string", typeof dumped === "string" && dumped.length > 50);
+await page.evaluate((json) => {
+  // Jump away first so loadSave has something to restore against.
+  window.__onyxDebug.jumpTo({ floorId: 2, x: 2, y: 11, facing: 0 });
+  window.__onyxDebug.loadSave(json);
+}, dumped);
+await waitForIdle(page);
+s = await snap(page);
+check(
+  "loadSave restores F1 position from dump",
+  s.floor?.id === 1 && s.pos?.x === 3 && s.pos?.y === 6,
+  JSON.stringify({ floor: s.floor, pos: s.pos, route: s.route })
+);
+
+log("=== jumpTo autosave:false leaves autosave slot untouched ===");
+const autosaveProbe = await page.evaluate(() => {
+  const KEY = "wizardry-clone-autosave";
+  localStorage.setItem(KEY, JSON.stringify({ marker: "pr3-sentinel" }));
+  window.__onyxDebug.jumpTo({
+    floorId: 3,
+    x: 2,
+    y: 2,
+    facing: 0,
+    autosave: false,
+  });
+  const raw = localStorage.getItem(KEY);
+  let marker = null;
+  try {
+    marker = JSON.parse(raw)?.marker ?? null;
+  } catch {
+    marker = "parse-failed";
+  }
+  return { marker, floorId: window.__onyxDebug.state.floor.id };
+});
+check(
+  "autosave:false does not overwrite autosave slot",
+  autosaveProbe.marker === "pr3-sentinel",
+  JSON.stringify(autosaveProbe)
+);
+check("autosave:false still jumps", autosaveProbe.floorId === 3);
+
+log("=== lib boot({scenario}) ===");
+await page.goto(BASE, { waitUntil: "networkidle" });
+await wait(400);
+const bootSnap = await page.evaluate(() => {
+  window.__onyxDebug.jumpTo({ floorId: 4, x: 2, y: 2, facing: 1 });
+  return window.__onyxDebug.snapshot();
+});
+check(
+  "title→jumpTo skips prologue (boot scenario)",
+  bootSnap.route === "dungeon" && bootSnap.floor?.id === 4,
+  JSON.stringify({ route: bootSnap.route, floor: bootSnap.floor })
+);
+
 log("\n=== SUMMARY ===");
 const uniqErrors = [...new Set(errors)];
 if (uniqErrors.length) log("console/page errors:", uniqErrors.slice(0, 10).join(" | "));

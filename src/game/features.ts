@@ -338,12 +338,22 @@ function awardTreasure(
  * from the global definition, then mutable runtime state (unlocked doors,
  * looted treasures) is applied so FLOORS itself is never modified.
  */
+export interface TransitionToFloorOpts {
+  /**
+   * When false, skip writing the autosave slot. Defaults to true (matches
+   * historical behavior). Debug jumpTo threads this through so a
+   * loadSave → jumpTo → Continue test can keep its loaded autosave.
+   */
+  autosave?: boolean;
+}
+
 export function transitionToFloor(
   state: GameState,
   newFloor: FloorDef,
   x: number,
   y: number,
-  facing: Facing = 0
+  facing: Facing = 0,
+  opts: TransitionToFloorOpts = {}
 ): void {
   // Save current floor's explored tiles
   const currentId = state.floor.id;
@@ -370,7 +380,9 @@ export function transitionToFloor(
   state.explored = saved ? new Set(saved) : new Set<string>();
 
   // Auto-save on floor transition (design doc §13).
-  autoSave(state);
+  if (opts.autosave !== false) {
+    autoSave(state);
+  }
 }
 
 /** Apply previously unlocked doors to a floor copy. */

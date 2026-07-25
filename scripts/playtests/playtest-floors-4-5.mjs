@@ -17,6 +17,7 @@
 import { chromium } from "playwright";
 import fs from "fs";
 import path from "path";
+import { jumpTo as libJumpTo, waitForIdle } from "./lib.mjs";
 
 const BASE = "http://127.0.0.1:5230/OnyxLabyrinth/?debug=1";
 const OUT = "playtest-screenshots/2026-07-24-floors-4-5";
@@ -76,16 +77,25 @@ async function snap(page) {
 async function bootToTown(page) {
   await page.goto(BASE, { waitUntil: "networkidle" });
   await wait(400);
-  await press(page, "n");
-  await wait(350);
-  await press(page, "d");
-  await wait(500);
-  let st = await snap(page);
-  if (st.mode === "party_creation") {
-    await press(page, "Enter");
-    await wait(400);
-    st = await snap(page);
+  // Route-driven: prologue (Escape), party_creation (Enter default), stop at town.
+  for (let i = 0; i < 40; i++) {
+    const route = await page.evaluate(() => window.__onyxDebug.snapshot().route);
+    if (route === "town") break;
+    if (route === "title") {
+      await press(page, "n");
+      await wait(250);
+    } else if (route === "prologue") {
+      await press(page, "Escape");
+      await wait(220);
+    } else if (route === "party_creation") {
+      await press(page, "Enter");
+      await waitForIdle(page);
+    } else {
+      await press(page, "Enter");
+      await wait(300);
+    }
   }
+  let st = await snap(page);
   if (st.mode !== "town") {
     find("P0", 0, "Failed to reach town from boot", JSON.stringify(st));
   }
@@ -95,35 +105,23 @@ async function bootToTown(page) {
 /**
  * stepsSinceEncounter defaults to 0 (full 8-step cooldown ahead), not 8
  * (exactly at the cooldown threshold) — the latter lets combat roll on the
- * very first post-warp step, which then overwrites #message and masks the
+ * very first post-jump step, which then overwrites #message and masks the
  * single-step event/darkness/NPC checks used throughout this script. The
  * two dedicated pacing samples pass 8 explicitly since they want encounters
  * eligible immediately.
+ *
+ * clearUnlockedDoors mirrors the old warp(): lockpick then key-open tests
+ * on the same door need a fresh unlockedDoors set between attempts.
  */
-async function warp(page, floorId, x, y, facing = 0, stepsSinceEncounter = 0) {
-  await page.evaluate(
-    ({ floorId, x, y, facing, stepsSinceEncounter }) => {
-      const d = window.__onyxDebug;
-      const src = d.findFloor(floorId);
-      if (!src) throw new Error(`no floor ${floorId}`);
-      d.state.floor = JSON.parse(JSON.stringify(src));
-      d.state.player = { x, y, facing };
-      d.state.explored = new Set();
-      d.state.inDarkness = false;
-      d.state.inAntimagic = false;
-      d.state.pendingTrap = null;
-      d.state.stepsSinceEncounter = stepsSinceEncounter;
-      d.state.mode = "dungeon";
-      // unlockedDoors is a session-persistent Set (game/state.ts), separate
-      // from the floor's grid data — a "fresh" warp doesn't reset it on its
-      // own, so a lockpick test earlier in the run would otherwise leave a
-      // later "confirm the key opens it" check finding the door already
-      // unlocked (see camera.ts tryUnlock's doorKey format).
-      d.state.unlockedDoors.clear();
-    },
-    { floorId, x, y, facing, stepsSinceEncounter }
-  );
-  await wait(200);
+async function jumpTo(page, floorId, x, y, facing = 0, stepsSinceEncounter = 0) {
+  await libJumpTo(page, {
+    floorId,
+    x,
+    y,
+    facing,
+    stepsSinceEncounter,
+    clearUnlockedDoors: true,
+  });
 }
 
 async function stepForward(page) {
@@ -221,7 +219,7 @@ function classifyUnlock(msg) {
  * approach = {x,y,facing} standing next to the door, already facing it.
  */
 async function testLockedDoor(page, floorId, approach, keyId, label) {
-  await warp(page, floorId, approach.x, approach.y, approach.facing);
+  await jumpTo(page, floorId, approach.x, approach.y, approach.facing);
   await removeKey(page, keyId);
   await withThiefDisabled(page, async () => {
     await press(page, "u");
@@ -248,7 +246,7 @@ async function testLockedDoor(page, floorId, approach, keyId, label) {
     log(`OK Coda (Thief) can pick ${label} without the key`);
   }
   // Reset, then confirm the intended key path.
-  await warp(page, floorId, approach.x, approach.y, approach.facing);
+  await jumpTo(page, floorId, approach.x, approach.y, approach.facing);
   await grantKey(page, keyId);
   await press(page, "u");
   await wait(350);
@@ -379,7 +377,7 @@ if (st.mode !== "dungeon") {
 // ============================================================================
 const f4t0 = Date.now();
 log("\n=== FLOOR 4: arrival, events, keys, antimagic nave, teleporter, NPC ===");
-await warp(page, 4, 2, 2, 0);
+await jumpTo(page, 4, 2, 2, 0);
 st = await snap(page);
 await shot(page, "10-f4-arrival.png");
 log("F4 arrival", st.floorId, st.x, st.y, st.tile);
@@ -388,7 +386,7 @@ if (st.floorId !== 4 || st.tile !== "stairs_up") {
 }
 
 // Entry message event (3,2) — real on-foot step off the start tile.
-await warp(page, 4, 2, 2, 1);
+await jumpTo(page, 4, 2, 2, 1);
 await walkDirs(page, ["e"], 4);
 st = await snap(page);
 await shot(page, "11-f4-event-message.png");
@@ -400,7 +398,7 @@ if (!/forge's roar|air holds its breath/i.test(st.msg)) {
 }
 
 // Damage event (10,2)
-await warp(page, 4, 9, 2, 1);
+await jumpTo(page, 4, 9, 2, 1);
 await walkDirs(page, ["e"], 4);
 st = await snap(page);
 await shot(page, "12-f4-event-damage.png");
@@ -413,7 +411,7 @@ if (!/cracked bells|blood beads/i.test(st.msg)) {
 
 // Reward event (13,5) + darkness pair (14,5)/(15,5)
 // (13,5)'s only open approach is from the south — its w/n edges are walls.
-await warp(page, 4, 13, 6, 0);
+await jumpTo(page, 4, 13, 6, 0);
 await walkDirs(page, ["n"], 4);
 st = await snap(page);
 await shot(page, "13-f4-event-reward.png");
@@ -434,7 +432,7 @@ if (!st.inDarkness && st.tile !== "darkness") {
 }
 
 // NPC Vesper (2,10)
-await warp(page, 4, 2, 9, 2);
+await jumpTo(page, 4, 2, 9, 2);
 await walkDirs(page, ["s"], 4);
 st = await snap(page);
 await shot(page, "15-f4-npc-vesper.png");
@@ -449,7 +447,7 @@ if (!vesperOpen) {
 
 // Antimagic nave corridor (8,7)-(8,10)
 log("=== FLOOR 4: antimagic nave, choir-key + sanctum-key gates ===");
-await warp(page, 4, 8, 6, 2);
+await jumpTo(page, 4, 8, 6, 2);
 await walkDirs(page, ["s"], 4);
 st = await snap(page);
 await shot(page, "16-f4-antimagic-nave.png");
@@ -461,7 +459,7 @@ if (!st.inAntimagic && st.tile !== "antimagic") {
 }
 
 // Teleporter (16,9) -> (13,13) same floor
-await warp(page, 4, 15, 9, 1);
+await jumpTo(page, 4, 15, 9, 1);
 await walkDirs(page, ["e"], 4);
 st = await snap(page);
 await shot(page, "17-f4-teleporter.png");
@@ -473,7 +471,7 @@ if (st.x !== 13 || st.y !== 13) {
 }
 
 // choir-key trapped chest (3,15), gas trap
-await warp(page, 4, 3, 14, 2);
+await jumpTo(page, 4, 3, 14, 2);
 await walkDirs(page, ["s"], 4);
 st = await snap(page);
 await shot(page, "18-f4-choirkey-chest-trap.png");
@@ -492,7 +490,7 @@ if (!st.pendingTrap) {
 }
 
 // sanctum-key chest (16,5), stunner trap
-await warp(page, 4, 15, 5, 1);
+await jumpTo(page, 4, 15, 5, 1);
 await walkDirs(page, ["e"], 4);
 st = await snap(page);
 await shot(page, "20-f4-sanctumkey-chest-trap.png");
@@ -515,11 +513,11 @@ if (!st.pendingTrap) {
 await testLockedDoor(page, 4, { x: 12, y: 8, facing: 1 }, "choir-key", "choir door (12,8)e");
 await testLockedDoor(page, 4, { x: 13, y: 13, facing: 2 }, "sanctum-key", "sanctum door (13,13)s");
 
-// Beyond the sanctum door — climax-reveal message (13,14). warp() reloads a
+// Beyond the sanctum door — climax-reveal message (13,14). jumpTo() reloads a
 // fresh floor copy, discarding testLockedDoor's earlier unlock, and canMove()
 // blocks "locked" edges outright (camera.ts) — the key alone doesn't open
 // it, the door has to actually be unlocked via 'u' first.
-await warp(page, 4, 13, 13, 2);
+await jumpTo(page, 4, 13, 13, 2);
 await grantKey(page, "sanctum-key");
 await press(page, "u");
 await wait(350);
@@ -535,7 +533,7 @@ if (!/Choir turns to face you/i.test(st.msg)) {
 
 // Stairs down (15,15) -> F5
 log("=== FLOOR 4: stairs down -> F5 ===");
-await warp(page, 4, 15, 14, 2);
+await jumpTo(page, 4, 15, 14, 2);
 await shot(page, "23-f4-above-stairs.png");
 await walkDirs(page, ["s"], 4);
 st = await snap(page);
@@ -566,7 +564,7 @@ function withTimeout(promise, ms, label) {
 }
 
 async function pacingSample(floorId, x, y, facing, dirs, label) {
-  await warp(page, floorId, x, y, facing, 8);
+  await jumpTo(page, floorId, x, y, facing, 8);
   let combats = 0;
   let stepsCompleted = 0;
   const map = { n: 0, e: 1, s: 2, w: 3 };
@@ -609,7 +607,7 @@ log(`F4 pacing: quiet=${f4QuietCombats}/32 hot=${f4HotCombats}/32`);
 // ============================================================================
 const f5t0 = Date.now();
 log("\n=== FLOOR 5: arrival, events, keys, water hazard, teleporter, NPC ===");
-await warp(page, 5, 2, 2, 0);
+await jumpTo(page, 5, 2, 2, 0);
 st = await snap(page);
 await shot(page, "30-f5-arrival.png");
 log("F5 arrival", st.floorId, st.x, st.y, st.tile);
@@ -618,7 +616,7 @@ if (st.floorId !== 5 || st.tile !== "stairs_up") {
 }
 
 // Entry message event (2,3)
-await warp(page, 5, 2, 2, 2);
+await jumpTo(page, 5, 2, 2, 2);
 await walkDirs(page, ["s"], 5);
 st = await snap(page);
 await shot(page, "31-f5-event-message.png");
@@ -630,7 +628,7 @@ if (!/forge-heat gives way|water is mov/i.test(st.msg)) {
 }
 
 // NPC Ossian (2,7)
-await warp(page, 5, 2, 6, 2);
+await jumpTo(page, 5, 2, 6, 2);
 await walkDirs(page, ["s"], 5);
 st = await snap(page);
 await shot(page, "32-f5-npc-ossian.png");
@@ -644,7 +642,7 @@ if (!ossianOpen) {
 }
 
 // Reward event (3,8) -> holy-symbol
-await warp(page, 5, 2, 8, 1);
+await jumpTo(page, 5, 2, 8, 1);
 await walkDirs(page, ["e"], 5);
 st = await snap(page);
 await shot(page, "33-f5-event-reward.png");
@@ -658,7 +656,7 @@ if (!st.inv.includes("holy-symbol") && !/holy symbol/i.test(st.msg)) {
 // Damage event (9,9) and heal event (9,12), darkness pair (11,11)/(11,12)
 // (9,9)'s only open approach is from the south — its e/w edges are walls
 // and its n edge is the sluice gate (locked until later in this floor).
-await warp(page, 5, 9, 10, 0);
+await jumpTo(page, 5, 9, 10, 0);
 await walkDirs(page, ["n"], 5);
 st = await snap(page);
 await shot(page, "34-f5-event-damage.png");
@@ -668,7 +666,7 @@ if (!/current through the choke/i.test(st.msg)) {
 } else {
   log("OK damage event (9,9)");
 }
-await warp(page, 5, 9, 11, 2);
+await jumpTo(page, 5, 9, 11, 2);
 await walkDirs(page, ["s"], 5);
 st = await snap(page);
 await shot(page, "35-f5-event-heal.png");
@@ -678,7 +676,7 @@ if (!/quiet eddy/i.test(st.msg)) {
 } else {
   log("OK heal event (9,12)");
 }
-await warp(page, 5, 11, 10, 2);
+await jumpTo(page, 5, 11, 10, 2);
 await walkDirs(page, ["s"], 5);
 st = await snap(page);
 await shot(page, "36-f5-darkness.png");
@@ -690,7 +688,7 @@ if (!st.inDarkness && st.tile !== "darkness") {
 }
 
 // Deep-water damage pair (13,13)/(14,13), depth 2
-await warp(page, 5, 12, 13, 1);
+await jumpTo(page, 5, 12, 13, 1);
 await walkDirs(page, ["e"], 5);
 st = await snap(page);
 await shot(page, "37-f5-deepwater.png");
@@ -702,7 +700,7 @@ if (st.tile !== "water" && !/water|current|drag/i.test(st.msg)) {
 }
 
 // Teleporter (15,14) -> (3,6) same floor
-await warp(page, 5, 14, 14, 1);
+await jumpTo(page, 5, 14, 14, 1);
 await walkDirs(page, ["e"], 5);
 st = await snap(page);
 await shot(page, "38-f5-teleporter.png");
@@ -715,7 +713,7 @@ if (st.x !== 3 || st.y !== 6) {
 
 // sluice-key chest (12,1), gas trap
 log("=== FLOOR 5: sluice-key + undersong-key gates, boss-vault reveal ===");
-await warp(page, 5, 11, 1, 1);
+await jumpTo(page, 5, 11, 1, 1);
 await walkDirs(page, ["e"], 5);
 st = await snap(page);
 await shot(page, "39-f5-sluicekey-chest-trap.png");
@@ -734,7 +732,7 @@ if (!st.pendingTrap) {
 }
 
 // undersong-key chest (15,10), stunner trap
-await warp(page, 5, 14, 10, 1);
+await jumpTo(page, 5, 14, 10, 1);
 await walkDirs(page, ["e"], 5);
 st = await snap(page);
 await shot(page, "41-f5-undersongkey-chest-trap.png");
@@ -757,7 +755,7 @@ await testLockedDoor(page, 5, { x: 11, y: 14, facing: 2 }, "undersong-key", "und
 
 // Beyond the undersong door — climax-reveal message (11,15). Same
 // unlock-before-walk requirement as the F4 sanctum reveal above.
-await warp(page, 5, 11, 14, 2);
+await jumpTo(page, 5, 11, 14, 2);
 await grantKey(page, "undersong-key");
 await press(page, "u");
 await wait(350);
