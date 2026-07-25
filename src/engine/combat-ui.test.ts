@@ -463,6 +463,77 @@ describe("CombatController input routing", () => {
     controller.destroy();
   });
 
+  it("Auto falls back to Defend instead of repeating an unreachable Attack forever", () => {
+    // Regression: a close-range weapon can never reach the back row
+    // (combat-reach.ts). Before the fix, replaying a remembered attack
+    // against a still-alive-but-unreachable target no-op'd every turn under
+    // Auto instead of falling back — a real floor-4/5 death spiral.
+    const closeRangeWeapon = {
+      id: "test-close-blade",
+      name: "Test Close Blade",
+      type: "weapon",
+      slot: "hand",
+      attackBonus: 5,
+      range: "close",
+      price: 0,
+    } as any;
+    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const backEnemy = { ...makeEnemy("boss-0"), row: "back" };
+    const state = createCombatState(
+      party,
+      { front: [], back: [backEnemy] },
+      true,
+      {},
+      {},
+      { c0: { weapon: closeRangeWeapon, armor: [] } }
+    );
+    const controller = new CombatControllerCtor(state, { onEnd: () => {} });
+    const c = controller as any;
+    c.partyAuto = true;
+    c.lastCommandByActor.set("c0", { kind: "attack", targetId: "boss-0" });
+
+    c.openPaletteFor(state.party[0]);
+
+    expect(c.lastCommandByActor.get("c0")).toEqual({ kind: "defend" });
+    expect(c.phase).toBe("playback");
+    controller.destroy();
+  });
+
+  it("Auto falls back to a reachable enemy when the remembered target is unreachable", () => {
+    const closeRangeWeapon = {
+      id: "test-close-blade",
+      name: "Test Close Blade",
+      type: "weapon",
+      slot: "hand",
+      attackBonus: 5,
+      range: "close",
+      price: 0,
+    } as any;
+    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const backEnemy = { ...makeEnemy("boss-0"), row: "back" };
+    const frontEnemy = makeEnemy("grunt-0");
+    const state = createCombatState(
+      party,
+      { front: [frontEnemy], back: [backEnemy] },
+      true,
+      {},
+      {},
+      { c0: { weapon: closeRangeWeapon, armor: [] } }
+    );
+    const controller = new CombatControllerCtor(state, { onEnd: () => {} });
+    const c = controller as any;
+    c.partyAuto = true;
+    c.lastCommandByActor.set("c0", { kind: "attack", targetId: "boss-0" });
+
+    c.openPaletteFor(state.party[0]);
+
+    expect(c.lastCommandByActor.get("c0")).toEqual({
+      kind: "attack",
+      targetId: "grunt-0",
+    });
+    controller.destroy();
+  });
+
   it("LT/RT cycles party inspect without changing the actor", () => {
     const controller = freshController();
     const c = controller as any;

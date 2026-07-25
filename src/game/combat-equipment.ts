@@ -47,11 +47,41 @@ export function weaponIsReachable(holder: Character, weapon: ItemDef): boolean {
   return canReach(holder.formationSlot, range, "front") || canReach(holder.formationSlot, range, "back");
 }
 
+/** True if swapping from `current` to `candidate` would cost `holder` the
+ *  ability to hit the back row at all (e.g. trading a Thief's dagger,
+ *  `short` range, for a Voidblade, `close` range) — a real tactical loss no
+ *  raw attack-bonus number captures. Front-row-only weapons swapping for
+ *  another front-row-only weapon lose nothing, so this only fires on an
+ *  actual reach regression. */
+export function losesBackRowReach(
+  current: ItemDef | undefined,
+  candidate: ItemDef,
+  holder: Character
+): boolean {
+  if (!current || current.type !== "weapon" || !current.range) return false;
+  if (candidate.type !== "weapon" || !candidate.range) return false;
+  const currentReachesBack = canReach(
+    holder.formationSlot,
+    effectiveWeaponRange(holder, current.range),
+    "back"
+  );
+  const candidateReachesBack = canReach(
+    holder.formationSlot,
+    effectiveWeaponRange(holder, candidate.range),
+    "back"
+  );
+  return currentReachesBack && !candidateReachesBack;
+}
+
 /**
  * True if `candidate` is strictly better than `current` for its slot. A
  * weapon `holder` could never actually attack with (unreachable from their
  * formation row) is never "better," regardless of its raw attack bonus —
- * see the back-row-Mage-offered-a-Mace case this guards against.
+ * see the back-row-Mage-offered-a-Mace case this guards against. Nor is a
+ * weapon that would cost `holder` their current back-row reach: raw attack
+ * bonus alone can't see that tradeoff, so a strictly-better-by-the-numbers
+ * upgrade that also silently removes the only way a character could ever
+ * hit a back-row boss is not auto-equipped — see `losesBackRowReach`.
  */
 export function isBetterEquip(
   current: ItemDef | undefined,
@@ -60,6 +90,9 @@ export function isBetterEquip(
 ): boolean {
   if (candidate.type === "consumable") return false;
   if (candidate.type === "weapon" && holder && !weaponIsReachable(holder, candidate)) return false;
+  if (candidate.type === "weapon" && holder && losesBackRowReach(current, candidate, holder)) {
+    return false;
+  }
   if (!current) return true;
   if (candidate.type === "weapon") {
     return (candidate.attackBonus ?? 0) > (current.attackBonus ?? 0);

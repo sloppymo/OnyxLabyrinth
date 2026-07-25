@@ -270,6 +270,28 @@ describe("formatActionPreview", () => {
       guaranteedKill: false,
       unreachable: true,
     };
-    expect(formatActionPreview(unreachable)).toBe("—");
+    expect(formatActionPreview(unreachable)).toBe("Out of reach");
+  });
+
+  it("keeps 'unreachable' and 'no data yet' visually distinct", () => {
+    // Regression: these two used to render identically as "—", so a player
+    // couldn't tell "I can't hit this" from "I haven't scouted this yet".
+    const unreachable: ActionPreview = {
+      hitChance: 0,
+      minDamage: 0,
+      maxDamage: 0,
+      guaranteedKill: false,
+      unreachable: true,
+    };
+    const noEffect: ActionPreview = {
+      hitChance: 0,
+      minDamage: 0,
+      maxDamage: 0,
+      guaranteedKill: false,
+      noEffect: true,
+    };
+    expect(formatActionPreview(unreachable)).toBe("Out of reach");
+    expect(formatActionPreview(noEffect)).toBe("—");
+    expect(formatActionPreview(unreachable)).not.toBe(formatActionPreview(noEffect));
   });
 });

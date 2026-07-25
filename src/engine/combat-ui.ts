@@ -357,8 +357,15 @@ export class CombatController {
 
   /**
    * Bravely Auto: replay last command for this character. Falls back to
-   * Attack (preferred target) or Defend. Never Flee. Returns true if an
-   * action was resolved (skip opening the menu).
+   * Attack (preferred *reachable* target — see `previewAttack`'s
+   * `unreachable` flag) or Defend. Never Flee. Returns true if an action was
+   * resolved (skip opening the menu).
+   *
+   * Attack is weapon-range-gated (close-range weapons can never hit the back
+   * row — see `combat-reach.ts`); Ambush ignores range entirely, so only the
+   * Attack path needs the reachability filter. Without it, replaying a
+   * still-alive-but-unreachable target (e.g. a boss behind an intact front
+   * row) no-ops every turn under Auto instead of falling back.
    */
   private tryPartyAuto(c: Character): boolean {
     if (!this.partyAuto) return false;
@@ -366,15 +373,18 @@ export class CombatController {
     const cmd = this.lastCommandByActor.get(c.id);
     const living = this.livingEnemies();
     const fallbackAttack = (): void => {
-      if (living.length === 0) {
+      const reachable = living.filter(
+        (e) => !previewAttack(this.state, c, e).unreachable
+      );
+      if (reachable.length === 0) {
         this.rememberLastCommand(c.id, { kind: "defend" });
         this.resolveAndPlay(() =>
           resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
         );
         return;
       }
-      const idx = preferredEnemyIndex(living, this.lastHitEnemyId);
-      this.fireAttackLike("attack", c.id, living[idx].instanceId);
+      const idx = preferredEnemyIndex(reachable, this.lastHitEnemyId);
+      this.fireAttackLike("attack", c.id, reachable[idx].instanceId);
     };
 
     if (!cmd) {
@@ -383,7 +393,15 @@ export class CombatController {
     }
 
     switch (cmd.kind) {
-      case "attack":
+      case "attack": {
+        const target = living.find((e) => e.instanceId === cmd.targetId);
+        if (target && !previewAttack(this.state, c, target).unreachable) {
+          this.fireAttackLike(cmd.kind, c.id, cmd.targetId);
+        } else {
+          fallbackAttack();
+        }
+        return true;
+      }
       case "ambush": {
         if (living.some((e) => e.instanceId === cmd.targetId)) {
           this.fireAttackLike(cmd.kind, c.id, cmd.targetId);
@@ -1598,11 +1616,12 @@ export class CombatController {
         selectionFooter = enemyHealthDescriptor(target.currentHp, target.hp);
         const c = this.currentChar();
         const preview = c ? this.previewFor(c, target) : null;
-        if (preview?.guaranteedKill) {
+        if (preview?.unreachable) {
+          selectionFooter += " · Out of reach";
+        } else if (preview?.guaranteedKill) {
           selectionFooter += " · Guaranteed KO";
         } else if (
           preview &&
-          !preview.unreachable &&
           !preview.noEffect &&
           preview.hitChance > 0 &&
           preview.hitChance < 1

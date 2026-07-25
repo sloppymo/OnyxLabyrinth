@@ -25,6 +25,7 @@ import {
   equipItem,
   findBestEquipTarget,
   getDisplacedItem,
+  losesBackRowReach,
   manualEquip,
   manualUnequip,
 } from "../game/combat-equipment";
@@ -899,15 +900,26 @@ export class TownController {
     } else if (targetName) {
       const old = this.buyConfirmOldLoadout;
       const current = old ? this.equipmentItemFor(old, item) : undefined;
+      const targetChar = this.state.party.find((p) => p.id === this.buyConfirmTarget?.id);
+      const reachLoss =
+        item.type === "weapon" && targetChar && losesBackRowReach(current, item, targetChar);
       const price = this.buyPrice(item);
       lines.push(`<div class="buy-compare-row">`);
       lines.push(`<span class="buy-compare-label">Target:</span> <span class="buy-compare-value">${targetName}</span> <span class="buy-compare-hint">(↑↓ change)</span>`);
       lines.push(`</div>`);
       lines.push(`<div class="buy-compare-row">`);
-      lines.push(
-        `<span class="buy-compare-label">Not an upgrade for ${targetName}</span> ` +
-          `(current: ${this.itemNameFor(current)} ${this.itemStatsStr(current) || "none"}).`
-      );
+      if (reachLoss) {
+        lines.push(
+          `<span class="buy-compare-label">Not auto-equipped:</span> despite higher attack, ` +
+            `${item.name} would cost ${targetName} the ability to hit back-row enemies ` +
+            `(current: ${this.itemNameFor(current)}). Equip manually from the Equip screen if you want the tradeoff.`
+        );
+      } else {
+        lines.push(
+          `<span class="buy-compare-label">Not an upgrade for ${targetName}</span> ` +
+            `(current: ${this.itemNameFor(current)} ${this.itemStatsStr(current) || "none"}).`
+        );
+      }
       lines.push(`</div>`);
       lines.push(`<div class="buy-compare-row">`);
       lines.push(`<span class="buy-compare-label">Will be added to inventory.</span>`);
@@ -1508,8 +1520,11 @@ export class TownController {
       const range = effectiveWeaponRange(c, item.range ?? "close");
       const reachable =
         canReach(c.formationSlot, range, "front") || canReach(c.formationSlot, range, "back");
+      const current = this.equippedInSlot(loadout, slot);
       if (!reachable) {
         warning = `⚠ ${item.name} is ${item.range ?? "close"}-range — ${c.name} could not attack anything from the ${charRow(c)} row!`;
+      } else if (losesBackRowReach(current, item, c)) {
+        warning = `⚠ ${item.name} is ${item.range ?? "close"}-range — ${c.name} would no longer be able to hit back-row enemies (${current?.name} currently can).`;
       }
     }
     return this.equipStatsHtml(c, loadout, res.loadout, warning, warning ? "warning" : "info");

@@ -172,9 +172,14 @@ export function enemyHealthDescriptor(currentHp: number, maxHp: number): string 
   return "Near death";
 }
 
-/** Compact target-menu forecast: `24-31`, `80% 24-31`, `38`, `24-31 KO`, or `—`. */
+/** Compact target-menu forecast: `24-31`, `80% 24-31`, `38`, `24-31 KO`,
+ *  `Out of reach` (weapon range can't hit that row from here), or `—` (no
+ *  effect / no forecastable damage — a genuinely different reason than
+ *  reach, kept visually distinct so a player never mistakes "I can't
+ *  target this" for "I don't have data on this yet"). */
 export function formatActionPreview(preview: ActionPreview): string {
-  if (preview.unreachable || preview.noEffect) return "—";
+  if (preview.unreachable) return "Out of reach";
+  if (preview.noEffect) return "—";
   if (preview.minDamage <= 0 && preview.maxDamage <= 0) return "—";
   const band =
     preview.minDamage === preview.maxDamage
