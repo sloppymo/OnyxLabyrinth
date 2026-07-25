@@ -290,6 +290,20 @@ export function isRenderCameraAnimating(): boolean {
   return cameraAnim.isAnimating();
 }
 
+/**
+ * True when the render camera has fully settled on the given grid state.
+ * Unlike `isRenderCameraAnimating()`, this also covers the pending-tween
+ * window between a movement keydown and the next frame's camera update —
+ * see RenderCameraAnimator.isSettledAt. Debug quiescence probe only.
+ */
+export function isRenderCameraSettledFor(
+  x: number,
+  y: number,
+  facing: number
+): boolean {
+  return cameraAnim.isSettledAt(x, y, facing);
+}
+
 /** Reset the render camera instantly to the given grid state. */
 export function resetRenderCamera(
   x: number,

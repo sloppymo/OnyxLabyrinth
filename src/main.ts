@@ -16,6 +16,7 @@ import {
   render,
   loadTextures,
   isRenderCameraAnimating,
+  isRenderCameraSettledFor,
   resetRenderCamera,
   renderBattleArena,
   renderCorridorBackdrop,
@@ -1960,7 +1961,20 @@ if (new URLSearchParams(window.location.search).has("debug")) {
   const isIdle = (): boolean =>
     computeIdle({
       modeTransitionPending,
-      cameraAnimating: isRenderCameraAnimating(),
+      // isRenderCameraAnimating() alone misses the window between a movement
+      // keydown and the next frame's camera update (the tween starts in the
+      // render loop, not the key handler) — a waitForIdle poll landing there
+      // saw "idle" and the follow-up scripted press was swallowed by the
+      // dungeon input gate. The settled probe closes that window; scoped to
+      // dungeon mode because only dungeon input is camera-gated.
+      cameraAnimating:
+        isRenderCameraAnimating() ||
+        (state.mode === "dungeon" &&
+          !isRenderCameraSettledFor(
+            state.player.x,
+            state.player.y,
+            state.player.facing
+          )),
       prologueActive: !!prologueController,
       combat: combatController
         ? {

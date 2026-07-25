@@ -467,6 +467,68 @@ describe("RenderCameraAnimator", () => {
     expect(cam.y).toBe(7);
     expect(cam.dirX).toBeCloseTo(dirFromFacing(2).x, 5);
   });
+
+  describe("isSettledAt (pending-tween quiescence probe)", () => {
+    it("reports settled before any frame has initialized the animator", () => {
+      const anim = new RenderCameraAnimator();
+      expect(anim.isSettledAt(5, 5, 0)).toBe(true);
+    });
+
+    it("reports settled at the initialized state", () => {
+      const anim = new RenderCameraAnimator();
+      anim.init(5, 5, 0);
+      expect(anim.isSettledAt(5, 5, 0)).toBe(true);
+    });
+
+    it("is NOT settled when the game state moved but no frame ran yet", () => {
+      // The false-idle window: keydown mutated the player position, the
+      // render loop has not called update() yet, so isAnimating() is still
+      // false — but a tween is pending and input will be gated once it
+      // starts. isSettledAt must report false here.
+      const anim = new RenderCameraAnimator();
+      anim.init(5, 5, 0);
+      expect(anim.isAnimating()).toBe(false);
+      expect(anim.isSettledAt(6, 5, 0)).toBe(false);
+    });
+
+    it("is NOT settled for a pending turn either", () => {
+      const anim = new RenderCameraAnimator();
+      anim.init(5, 5, 0);
+      expect(anim.isSettledAt(5, 5, 1)).toBe(false);
+    });
+
+    it("is NOT settled mid-tween", () => {
+      const anim = new RenderCameraAnimator();
+      anim.init(5, 5, 0);
+      anim.update(6, 5, 0, 0);
+      anim.update(6, 5, 0, MATH_CONFIG.moveAnimDuration / 2);
+      expect(anim.isSettledAt(6, 5, 0)).toBe(false);
+    });
+
+    it("settles once the tween completes", () => {
+      const anim = new RenderCameraAnimator();
+      anim.init(5, 5, 0);
+      anim.update(6, 5, 0, 0);
+      anim.update(6, 5, 0, MATH_CONFIG.moveAnimDuration);
+      expect(anim.isSettledAt(6, 5, 0)).toBe(true);
+    });
+
+    it("settles immediately on teleport snaps", () => {
+      const anim = new RenderCameraAnimator();
+      anim.init(5, 5, 0);
+      anim.update(10, 5, 0, 0);
+      expect(anim.isSettledAt(10, 5, 0)).toBe(true);
+    });
+
+    it("settles immediately after reset", () => {
+      const anim = new RenderCameraAnimator();
+      anim.init(5, 5, 0);
+      anim.update(6, 5, 0, 0);
+      anim.reset(7, 7, 2);
+      expect(anim.isSettledAt(7, 7, 2)).toBe(true);
+      expect(anim.isSettledAt(5, 5, 0)).toBe(false);
+    });
+  });
 });
 
 describe("RenderCameraAnimator head bob", () => {

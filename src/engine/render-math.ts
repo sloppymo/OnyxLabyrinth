@@ -342,6 +342,28 @@ export class RenderCameraAnimator {
   }
 
   /**
+   * True when the display camera has fully settled on the given grid state:
+   * no tween in flight AND that state is the last target this animator has
+   * observed. `isAnimating()` alone cannot see the window between a movement
+   * keydown (which mutates the game-state position) and the next render
+   * frame (whose `update()` actually starts the tween) — during that window
+   * it still returns false while a tween is pending, which made the debug
+   * `isIdle()` probe report idle one press too early and let the dungeon
+   * input gate silently swallow the next scripted keypress. An uninitialized
+   * animator (no frame rendered yet) reports settled, since there is nothing
+   * pending to wait out.
+   */
+  isSettledAt(x: number, y: number, facing: number): boolean {
+    if (this.displayX < 0) return true;
+    if (this.animActive) return false;
+    return (
+      this.lastTargetX === x &&
+      this.lastTargetY === y &&
+      this.lastTargetFacing === facing
+    );
+  }
+
+  /**
    * Update the animator toward the new target state. `now` is a timestamp
    * in milliseconds (e.g. performance.now() or Date.now()).
    */
