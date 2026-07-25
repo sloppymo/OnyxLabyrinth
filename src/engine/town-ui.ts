@@ -419,20 +419,12 @@ export class TownController {
         this.render();
         break;
       }
-      case "b":
-        this.shopTab = "buy";
-        this.shopIndex = 0;
-        this.flash = "";
-        this.render();
-        break;
       case "s":
+        // Letter hotkey for Sell only. Do NOT bind A/B here — the footer
+        // promises "A buy · B back", and controller A/B map to Enter/Escape.
+        // Binding letter a→Appraise / b→Buy made keyboard users who followed
+        // the on-screen hint jump tabs instead of buying / backing out.
         this.shopTab = "sell";
-        this.shopIndex = 0;
-        this.flash = "";
-        this.render();
-        break;
-      case "a":
-        this.shopTab = "appraise";
         this.shopIndex = 0;
         this.flash = "";
         this.render();
@@ -780,7 +772,11 @@ export class TownController {
         if (i !== this.shopIndex) {
           this.shopIndex = i;
           this.flash = "";
-          this.render(); // buy preview tracks the cursor
+          // Refresh only the compare pane. A full render() rebuilds the item
+          // list under the cursor, which shifts hit-targets and makes the
+          // selection leap through the catalog (often off-screen) — the shop
+          // looked like it had no cursor and "didn't work."
+          this.refreshBuyPreview();
         }
       },
       onConfirm: (i) => {
@@ -796,13 +792,56 @@ export class TownController {
     this.panel.appendChild(win.render());
 
     if (this.shopTab === "buy") {
-      const previewHtml = this.renderBuyPreview();
-      if (previewHtml) {
-        this.panel.appendChild(
-          FF6Window.frame({ contentHtml: previewHtml, mode: "description", animated })
-        );
-      }
+      this.refreshBuyPreview(animated);
     }
+  }
+
+  /** Replace the buy-compare side pane without rebuilding the item list. */
+  private refreshBuyPreview(animated = false): void {
+    for (const el of [
+      ...this.panel.querySelectorAll<HTMLElement>(".ff6-window.standalone.shop-buy-preview"),
+    ]) {
+      el.remove();
+    }
+    if (this.shopTab !== "buy") return;
+    const previewHtml = this.renderBuyPreview();
+    if (!previewHtml) {
+      this.fitShopWithPreview();
+      return;
+    }
+    const frame = FF6Window.frame({
+      contentHtml: previewHtml,
+      mode: "description",
+      animated,
+    });
+    frame.classList.add("shop-buy-preview");
+    this.panel.appendChild(frame);
+    this.fitShopWithPreview();
+  }
+
+  /**
+   * Keep the shop list + compare pane on-screen together. Without this, the
+   * compare window sits below the panel fold (only its top border peeks out)
+   * and the long weapon list eats the whole stage.
+   *
+   * Uses a *fixed* reserved band for the preview (not the preview's live
+   * height) so hover-driven compare-text changes don't resize the list under
+   * the cursor and jump the selection.
+   */
+  private fitShopWithPreview(): void {
+    const shop = this.panel.querySelector<HTMLElement>(
+      ".ff6-window.standalone:not(.shop-buy-preview)"
+    );
+    const preview = this.panel.querySelector<HTMLElement>(".ff6-window.standalone.shop-buy-preview");
+    if (!shop) return;
+    if (!preview) {
+      shop.style.maxHeight = "";
+      return;
+    }
+    const gap = 14;
+    const panelH = this.panel.clientHeight;
+    const reserved = Math.min(170, Math.max(110, Math.floor(panelH * 0.28)));
+    shop.style.maxHeight = `${Math.max(220, panelH - reserved - gap)}px`;
   }
 
   private renderBuyPreview(): string {

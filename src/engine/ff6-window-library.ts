@@ -139,7 +139,11 @@ export class FF6Window {
     el.innerHTML = parts.join("");
     this.element = el;
     this.attachPointerHandlers();
-    this.scrollSelectionIntoView();
+    // scrollSelectionIntoView needs layout (clientHeight). When the caller
+    // appends us synchronously after render(), a microtask runs after that
+    // append — measuring while still detached left long lists unscrolled so
+    // the selected row could sit off-screen with no visible cursor.
+    queueMicrotask(() => this.scrollSelectionIntoView());
     return el;
   }
 

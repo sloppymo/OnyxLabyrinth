@@ -56,7 +56,8 @@ describe("TownController shop tabs", () => {
   it("cycles appraise → sell → buy with ArrowLeft", () => {
     const ctrl = makeTown();
     ctrl.handleKey("$");
-    ctrl.handleKey("a");
+    ctrl.handleKey("ArrowRight");
+    ctrl.handleKey("ArrowRight");
 
     expect(activeShopTab(ctrl)).toContain("Appraise");
     ctrl.handleKey("ArrowLeft");
@@ -89,15 +90,20 @@ describe("TownController shop tabs", () => {
     expect(panel.querySelector(".ff6-footer")?.textContent).toContain("↑↓ target");
   });
 
-  it("still switches tabs with B/S/A letter hotkeys", () => {
+  it("letter S still jumps to Sell; A/B are reserved for buy/back actions", () => {
     const ctrl = makeTown();
     ctrl.handleKey("$");
 
     ctrl.handleKey("s");
     expect(activeShopTab(ctrl)).toContain("Sell");
+
+    // Letter a/b must NOT steal the footer actions (A buy · B back).
     ctrl.handleKey("a");
-    expect(activeShopTab(ctrl)).toContain("Appraise");
+    expect(activeShopTab(ctrl)).toContain("Sell");
     ctrl.handleKey("b");
+    expect(activeShopTab(ctrl)).toContain("Sell");
+
+    ctrl.handleKey("ArrowLeft");
     expect(activeShopTab(ctrl)).toContain("Buy");
   });
 
@@ -108,6 +114,23 @@ describe("TownController shop tabs", () => {
     expect(panel.querySelector(".ff6-footer")?.textContent).toBe(
       "D-pad navigate · A buy · ←→ tabs · B back"
     );
+  });
+
+  it("mouse hover updates the buy preview without rebuilding the item list", () => {
+    const ctrl = makeTown();
+    ctrl.handleKey("$");
+    const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
+    const listBefore = panel.querySelector(".ff6-selection-list");
+    const rows = panel.querySelectorAll<HTMLElement>(".ff6-menu-item");
+    expect(rows.length).toBeGreaterThan(3);
+    expect(rows[0]!.classList.contains("selected")).toBe(true);
+
+    rows[3]!.dispatchEvent(new Event("mouseenter"));
+
+    expect(panel.querySelector(".ff6-selection-list")).toBe(listBefore);
+    expect((ctrl as unknown as { shopIndex: number }).shopIndex).toBe(3);
+    expect(rows[3]!.classList.contains("selected")).toBe(true);
+    expect(panel.querySelector(".shop-buy-preview")).toBeTruthy();
   });
 });
 
