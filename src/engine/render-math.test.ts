@@ -27,7 +27,7 @@ import {
   MATH_CONFIG,
   RenderCameraAnimator,
   cappedRenderSize,
-  integerScaleToFit,
+  pixelScaleToFit,
   arenaFloorRowDistance,
   arenaFloorWorldAt,
   arenaProject,
@@ -538,35 +538,43 @@ describe("cappedRenderSize", () => {
   });
 });
 
-describe("integerScaleToFit", () => {
+describe("pixelScaleToFit", () => {
   const W = 768;
   const H = 672;
 
   it("returns 1 when the design box only just fits (no room to grow)", () => {
-    expect(integerScaleToFit(W, H, W, H)).toBe(1);
-    expect(integerScaleToFit(1000, 900, W, H)).toBe(1);
+    expect(pixelScaleToFit(W, H, W, H)).toBe(1);
+    expect(pixelScaleToFit(1000, 900, W, H)).toBe(1);
   });
 
   it("never shrinks below 1 on undersized viewports", () => {
-    expect(integerScaleToFit(400, 300, W, H)).toBe(1);
+    expect(pixelScaleToFit(400, 300, W, H)).toBe(1);
   });
 
-  it("floors to the largest whole factor that fits both axes", () => {
+  it("uses a half-step when 2× doesn't fit but 1.5× does (1080p case)", () => {
+    // 1.5x needs 1152x1008; a typical 1080p content area fits that on height.
+    expect(pixelScaleToFit(1920, 1008, W, H)).toBe(1.5);
+    expect(pixelScaleToFit(1920, 1080, W, H)).toBe(1.5);
+  });
+
+  it("floors to the largest half-integer factor that fits both axes", () => {
     // 2x needs 1536x1344; plenty of width but height is the binding axis.
-    expect(integerScaleToFit(3000, 1400, W, H)).toBe(2);
-    expect(integerScaleToFit(2560, 1440, W, H)).toBe(2);
-    expect(integerScaleToFit(4000, 2100, W, H)).toBe(3);
+    expect(pixelScaleToFit(3000, 1400, W, H)).toBe(2);
+    expect(pixelScaleToFit(2560, 1440, W, H)).toBe(2);
+    expect(pixelScaleToFit(4000, 2100, W, H)).toBe(3);
+    // Between 2 and 3: 2.5x needs 1920x1680.
+    expect(pixelScaleToFit(4000, 1700, W, H)).toBe(2.5);
   });
 
   it("is bound by the tighter axis, not the looser one", () => {
     // Loads of width, but height only allows 1x.
-    expect(integerScaleToFit(10000, 1000, W, H)).toBe(1);
+    expect(pixelScaleToFit(10000, 1000, W, H)).toBe(1);
   });
 
   it("clamps degenerate inputs to 1", () => {
-    expect(integerScaleToFit(1920, 1080, 0, H)).toBe(1);
-    expect(integerScaleToFit(1920, 1080, W, 0)).toBe(1);
-    expect(integerScaleToFit(Number.NaN, 1080, W, H)).toBe(1);
+    expect(pixelScaleToFit(1920, 1080, 0, H)).toBe(1);
+    expect(pixelScaleToFit(1920, 1080, W, 0)).toBe(1);
+    expect(pixelScaleToFit(Number.NaN, 1080, W, H)).toBe(1);
   });
 });
 

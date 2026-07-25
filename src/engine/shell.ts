@@ -11,7 +11,7 @@
 
 import type { Character } from "../game/party";
 import type { GameMode } from "../types";
-import { cappedRenderSize, integerScaleToFit } from "./render-math";
+import { cappedRenderSize, pixelScaleToFit } from "./render-math";
 import {
   formatContextualPrompt,
   type ContextualPrompt,
@@ -105,7 +105,7 @@ export function resizeCorridorCanvas() {
 }
 
 /**
- * Integer-scale the whole game up to fill roomy desktop viewports while keeping
+ * Pixel-scale the whole game up to fill desktop viewports while keeping
  * pixels crisp. Purely a display-layer transform on `#game-wrap` — the single
  * common ancestor of the dungeon viewport, the DOM menu panel, and the combat
  * canvas+windows — so canvases and every (percentage/absolute) overlay scale in
@@ -115,11 +115,12 @@ export function resizeCorridorCanvas() {
  *
  * Measures the live footprint via `offsetWidth/Height` (transform-independent,
  * so re-running never feeds back on itself) against the `#app` content box.
- * Scale is clamped to `>= 1`, so small screens keep their existing
- * `max-width` responsive-down behaviour untouched.
+ * Scale snaps to half-integers `>= 1` (1 / 1.5 / 2 / …) so 1080p laptops get
+ * 1.5× instead of sitting at 1× with empty margin, while small screens keep
+ * their existing `max-width` responsive-down behaviour untouched.
  */
 export function resizeGameScale(): void {
-  const scale = integerScaleToFit(
+  const scale = pixelScaleToFit(
     app.clientWidth,
     app.clientHeight,
     gameWrap.offsetWidth,
@@ -133,7 +134,7 @@ new ResizeObserver(resizeCorridorCanvas).observe(viewportWrap);
 // The ResizeObserver above only fires when #viewport-wrap's *layout* box
 // changes; on wide screens #game-wrap stays capped at its max-width, so window
 // resizes that only change surrounding margin never reach it. Handle the app
-// viewport directly for the integer scale (and refresh canvas sizing too).
+// viewport directly for the pixel scale (and refresh canvas sizing too).
 window.addEventListener("resize", () => {
   resizeGameScale();
   resizeCorridorCanvas();

@@ -243,16 +243,18 @@ export function cappedRenderSize(
 }
 
 /**
- * Largest *integer* factor by which a `baseW × baseH` design box can be scaled
- * up to fit inside `availW × availH` while preserving crisp pixels.
+ * Largest half-integer factor (1, 1.5, 2, 2.5, …) by which a `baseW × baseH`
+ * design box can be scaled up to fit inside `availW × availH`.
  *
- * Returns an integer `>= 1`: never below 1, so it only ever grows the game on
- * roomy screens and never fights the existing `max-width` responsive-down
- * behaviour on small ones. Integer-only keeps the CSS `transform: scale()` in
- * lockstep with `image-rendering: pixelated` (no fractional blur). Degenerate
- * inputs (zero/NaN base, sub-1 fit) clamp to 1.
+ * Whole integers stay preferred when they fit; half-steps fill the gap on
+ * typical 1080p laptops where 2× needs ~1344px of height and otherwise leaves
+ * the game stuck at 1× with empty margin. Half-integers keep nearest-neighbor
+ * (`image-rendering: pixelated`) reasonably crisp — every source pixel maps to
+ * either N or N+1 screen pixels, never a blurry interpolate. Degenerate inputs
+ * and undersized viewports clamp to 1 so we never fight the existing
+ * `max-width` responsive-down behaviour.
  */
-export function integerScaleToFit(
+export function pixelScaleToFit(
   availW: number,
   availH: number,
   baseW: number,
@@ -261,7 +263,7 @@ export function integerScaleToFit(
   if (baseW <= 0 || baseH <= 0) return 1;
   const fit = Math.min(availW / baseW, availH / baseH);
   if (!Number.isFinite(fit) || fit < 1) return 1;
-  return Math.floor(fit);
+  return Math.max(1, Math.floor(fit * 2) / 2);
 }
 
 /**
