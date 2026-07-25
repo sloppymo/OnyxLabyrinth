@@ -47,7 +47,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 - ~~“Dungeon encounter rate feels empty”~~ — floors 1–3 now 8%/10%/12% after the 8-step cooldown, plus soft pity that forces a fight by step 28 (`game/encounters.ts`).
 - ~~“Temple has no Remove Curse”~~ — `[R] Remove Curse` appears when cursed gear is equipped (`town-ui.ts`).
 - Perk overlay “never implemented for Arena” — **false**; `endCombat` opens it for Arena when `pendingPerkChoices.length > 0`. Playtest likely auto-Enter dismissed it.
-- `PROGRESSION-GEAR-AUDIT.md`'s A1 (XP never spent), A4 (floors 4-5 reuse floor-3 bestiary), A5 (shop capped at tier 2), and A7 (auto-equip logic ignores range) — **all fixed 2026-07-24**, see the campaign-progression design note and plan above. A2/A3/A6 (perk-tier cadence, stat-inflation ceiling, gold-economy retune) remain open/not implemented — out of scope for this sprint.
+- `PROGRESSION-GEAR-AUDIT.md`'s A1 (XP never spent), A4 (floors 4-5 reuse floor-3 bestiary), A5 (shop capped at tier 2), A6 (gold economy dead by floor 3), and A7 (auto-equip logic ignores range) — **all fixed 2026-07-24**, see the campaign-progression design note (§5 for A6's gold-sink sizing check) and plan above. A2/A3 (perk-tier cadence, stat-inflation ceiling) remain open/not implemented — out of scope for this sprint.
 
 ## Recommended work order (from design analysis)
 

@@ -126,3 +126,35 @@ No `deepestFloorReached` (or equivalent) field exists on `GameState` today — `
 - **D (floor 4-5 enemy tier):** **unchanged size, now the largest remaining workstream.** New/elite `EnemyDef`s per §1, plus the Echo-escalation fix per §3b. Must be sequenced after A lands (tune against the triangular curve's expected levels, not today's L37-L92 inflation) and ideally alongside C (new gear should matter against the new enemies).
 - **E (deep-water tell):** unchanged from the original brief; not re-touched in this pass. F1-3 playtest (2026-07-20) confirms the mechanic and design intent are sound, only the pre-entry warning is missing.
 - **F (verification/docs):** unchanged, plus: this design note's arithmetic should be re-run against **actual** measured fight counts from a scripted floor-4/5 playtest (extending `scripts/playtests/playtest-floors-1-3.mjs`) rather than the 6-15 estimate, since that estimate is the single biggest source of uncertainty in this whole document.
+
+---
+
+## 5. Workstream C follow-up — gold sink sizing check (2026-07-24, post-ship)
+
+§4's Workstream C note flagged one open item: "a pricing sanity check against real per-floor gold income... don't reuse the audit's gold estimates blindly." The plan's checkbox pass did a coarse version (per-item prices vs. a rough income range, "reasonable, not grossly mismatched"). This is the fuller version — full party kit cost, not just per-item price, and it also closes `PROGRESSION-GEAR-AUDIT.md`'s **A6 (gold economy)**, whose status was never updated after the shop-tier-unlock work shipped.
+
+**Expected gold income**, computed by weighting `ENCOUNTER_TABLES`/`ENEMIES_BY_ID` gold fields by real spawn weight (not eyeballed ranges), split into steady trash income and the rare boss-pack encounter (weight 1 in each table, ~3-6% chance per fight, worth 979-1,252g when it lands):
+
+| Floor | Trash EV/fight | Boss pack gold | P(≥1 boss over 8.5 fights) | Expected floor income |
+|---|---|---|---|---|
+| 1 | 20g | 8g | 40% | ~172g |
+| 2 | 64g | 46g | 33% | ~559g |
+| 3 | 138g | 979g | 25% | ~1,417g |
+| 4 | 188g | 1,079g | 31% | ~1,937g |
+| 5 | 202g | 1,252g | 31% | ~2,115g |
+
+Cumulative (start 100g, 8.5 fights/floor — the mid of Workstream F's measured 7-10/floor range): **~272g by end of F1, ~832g by F2, ~2,249g by F3, ~4,186g by F4, ~6,300g by F5.**
+
+**Full 6-member kit cost**, weapon + body + shield + helm, from real `ItemDef.price` fields:
+
+| | Per character | ×6 |
+|---|---|---|
+| Tier-3 ceiling (pre-sprint max), all +2 | 2,340g | 14,040g |
+| Tier-5 ceiling (new), all +2 | 3,320g | 19,920g |
+| Realistic staircase (buy base tier, trade in previous for 50%, tier 1→5, weapon+body only) | 1,800g | 10,800g |
+
+Even the cheapest realistic path to fully re-gear the party (~10,800g, ignoring shield/helm/accessories) exceeds total campaign income through floor 5 (~6,300g) by ~1.7×; the maxed ceiling exceeds it by ~3×. Before this sprint the problem ran the other way — gold income (4-7k by floor 3-5, per the original audit) outran the tier-2 shop ceiling (~6,480g full kit) with nothing left to buy. Now there is always a further upgrade in reach and full BiS is realistically a multi-playthrough goal, not a floor-5 guarantee — the intended shape for a shop-tier-unlock sink.
+
+Two mitigating details worth keeping in mind, not follow-up work: the floor-4 and floor-5 boss chests each hand out one free maxed weapon+armor+accessory set (`runeblade+2`/`mythril-plate+2`/`sages-circlet` on F4; `voidblade+2`/`dragonscale-mail+2`/`focus-ward` on F5), so players aren't buying their *first* BiS piece, only backfilling the other five characters or a second copy. And `SAGES_CIRCLET`/`FOCUS_WARD` are flat-priced one-offs (300g/320g) rather than a scaling `+0/+1/+2` line like every other slot — a minor, likely-intentional asymmetry.
+
+**Decision: no price changes. Mark A6 fixed** — resolved as a byproduct of the shop-tier-unlock work (A5/Workstream C), not a change made in this pass.
