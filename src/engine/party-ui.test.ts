@@ -11,7 +11,13 @@ function makePanel(): HTMLElement {
   return panel;
 }
 
+/** Clear the post-open key swallow before driving the controller in tests. */
+function clearJustOpened(ctrl: PartyCreationController): void {
+  ctrl.handleKey("ArrowUp");
+}
+
 function openEditor(ctrl: PartyCreationController): void {
+  clearJustOpened(ctrl);
   // Choice screen → Create Your Own
   ctrl.handleKey("ArrowDown");
   ctrl.handleKey("Enter");
@@ -20,6 +26,42 @@ function openEditor(ctrl: PartyCreationController): void {
 function confirmSlot(ctrl: PartyCreationController): void {
   ctrl.handleKey("Enter");
 }
+
+describe("PartyCreationController open guard", () => {
+  it("ignores the first Enter so a prologue confirm cannot auto-pick Default Party", () => {
+    let confirmed = 0;
+    const panel = makePanel();
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: () => {
+        confirmed += 1;
+      },
+      onCancel: () => {},
+    });
+    expect(panel.textContent).toMatch(/Default Party|Quick Start|Create/i);
+    ctrl.handleKey("Enter"); // swallowed — still on choice
+    expect(confirmed).toBe(0);
+    expect(panel.textContent).not.toContain("Slot 1 of 6");
+    ctrl.handleKey("Enter"); // now selects Default Party (choiceIndex 0)
+    expect(confirmed).toBe(1);
+  });
+
+  it("ignores the first Escape so open cannot instantly cancel", () => {
+    let cancelled = 0;
+    const panel = makePanel();
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: () => {},
+      onCancel: () => {
+        cancelled += 1;
+      },
+    });
+    ctrl.handleKey("Escape");
+    expect(cancelled).toBe(0);
+    ctrl.handleKey("Escape");
+    expect(cancelled).toBe(1);
+  });
+});
 
 describe("PartyCreationController editor layout", () => {
   it("keeps the active editor above the confirmed roster after several confirms", () => {

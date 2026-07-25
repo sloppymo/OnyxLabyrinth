@@ -12,6 +12,7 @@ export type ControllerRouteKind =
   | "camp"
   | "game_over"
   | "party_creation"
+  | "prologue"
   | "title"
   | "arena"
   | "trap"
@@ -30,6 +31,7 @@ export interface ControllerRouteContext {
   hasCamp: boolean;
   hasGameOver: boolean;
   hasPartyCreation: boolean;
+  hasPrologue: boolean;
   hasTitle: boolean;
   hasPendingTrap: boolean;
   hasTrapPrompt: boolean;
@@ -47,6 +49,7 @@ export function resolveControllerRoute(ctx: ControllerRouteContext): ControllerR
   if (ctx.mode === "camp" && ctx.hasCamp) return "camp";
   if (ctx.mode === "game_over" && ctx.hasGameOver) return "game_over";
   if (ctx.mode === "party_creation" && ctx.hasPartyCreation) return "party_creation";
+  if (ctx.mode === "title" && ctx.hasPrologue) return "prologue";
   if (ctx.mode === "title" && ctx.hasTitle) return "title";
   if (ctx.mode === "arena") return "arena";
   if (ctx.mode === "dungeon" && ctx.hasPendingTrap && ctx.hasTrapPrompt) return "trap";

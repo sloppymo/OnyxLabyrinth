@@ -58,6 +58,7 @@ import { TownController } from "./engine/town-ui";
 import { PartyCreationController } from "./engine/party-ui";
 import { GameOverController } from "./engine/game-over-ui";
 import { TitleController } from "./engine/title-ui";
+import { PrologueController } from "./engine/prologue-ui";
 import { ArenaController } from "./engine/arena-ui";
 import { FF6Window } from "./engine/ff6-window-library";
 import { autoSave } from "./game/save";
@@ -250,6 +251,37 @@ function openPartyCreation(onDone: () => void): void {
   });
 }
 
+// --- New Game prologue -----------------------------------------------------
+// Skippable SNES-style black-field narration shown once, between New Game's
+// state reset and party creation. Never shown by Continue / Arena / Reform
+// Party. Borrows "title" mode like the perk/save/NPC overlays.
+let prologueController: PrologueController | null = null;
+// The prologue is opened *from inside* the title screen's own keydown
+// handler (title's onNewGame), not from a separate trigger the way
+// perk-select/save/NPC are. The same "New Game" keydown that constructs
+// prologueController keeps dispatching to every window "keydown" listener
+// in registration order within that one event — so this flag is set
+// unconditionally at open time (mirroring justOpenedSaveMenu) AND the
+// listener below is registered after the title screen's own listener,
+// so it observes prologueController already non-null for that same
+// keydown and correctly swallows it there, not one event later.
+let justOpenedPrologue = false;
+
+function openPrologue(onDone: () => void): void {
+  if (mapVisible) toggleMap();
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  setMessage(""); // critical: empty #message so it cannot cover the black field
+  justOpenedPrologue = true;
+  prologueController = new PrologueController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    onDone: () => {
+      prologueController = null;
+      onDone();
+    },
+  });
+}
+
 // --- Title screen --------------------------------------------------------
 let titleController: TitleController | null = null;
 
@@ -270,7 +302,7 @@ function openTitleScreen(): void {
       // reuses openPartyCreation without this reset, since it's meant to
       // keep the ongoing campaign's progress.
       Object.assign(state, createGameState(getFloors()[0]!));
-      openPartyCreation(() => openTown());
+      openPrologue(() => openPartyCreation(() => openTown()));
     },
     onContinue: (loaded) => {
       titleController = null;
@@ -932,6 +964,7 @@ function routeControllerEvent(event: ControllerInputEvent): void {
     hasCamp: !!campController,
     hasGameOver: !!gameOverController,
     hasPartyCreation: !!partyCreationController,
+    hasPrologue: !!prologueController,
     hasTitle: !!titleController,
     hasPendingTrap: !!state.pendingTrap,
     hasTrapPrompt: !!trapPrompt,
@@ -996,6 +1029,15 @@ function routeControllerEvent(event: ControllerInputEvent): void {
     case "party_creation": {
       const key = controllerEventToMenuKey(event);
       if (key) partyCreationController!.handleKey(key);
+      return;
+    }
+    case "prologue": {
+      if (justOpenedPrologue) {
+        if (event.kind === "press") justOpenedPrologue = false;
+        return;
+      }
+      const key = controllerEventToMenuKey(event);
+      if (key) prologueController!.handleKey(key);
       return;
     }
     case "title": {
@@ -1429,6 +1471,23 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (titleController.handleKey(e.key)) {
     e.preventDefault();
   }
+});
+
+// Prologue key handler — routes keys to the PrologueController. Registered
+// after the title screen's own listener above (load-bearing — see the
+// justOpenedPrologue comment near openPrologue): title's onNewGame can
+// construct prologueController synchronously from within its own keydown
+// listener, and this listener must run afterward, in the same dispatch, to
+// see it and correctly swallow that keypress.
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "title" || !prologueController) return;
+  if (justOpenedPrologue) {
+    justOpenedPrologue = false;
+    e.preventDefault();
+    return;
+  }
+  prologueController.handleKey(e.key);
+  e.preventDefault();
 });
 
 // Arena key handler — routes keys to the ArenaController.

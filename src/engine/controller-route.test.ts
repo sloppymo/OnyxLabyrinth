@@ -17,6 +17,7 @@ function ctx(overrides: Partial<ControllerRouteContext> = {}): ControllerRouteCo
     hasCamp: false,
     hasGameOver: false,
     hasPartyCreation: false,
+    hasPrologue: false,
     hasTitle: false,
     hasPendingTrap: false,
     hasTrapPrompt: false,
@@ -86,5 +87,19 @@ describe("resolveControllerRoute", () => {
 
   it("returns none for unhandled modes", () => {
     expect(resolveControllerRoute(ctx({ mode: "town" }))).toBe("none");
+  });
+
+  it("prefers prologue over the title menu while both could be set", () => {
+    expect(
+      resolveControllerRoute(
+        ctx({ mode: "title", hasPrologue: true, hasTitle: true }),
+      ),
+    ).toBe("prologue");
+  });
+
+  it("requires title mode for prologue", () => {
+    expect(
+      resolveControllerRoute(ctx({ mode: "dungeon", hasPrologue: true })),
+    ).toBe("dungeon");
   });
 });
