@@ -18,7 +18,7 @@ import {
   writeReport,
 } from "./lib.mjs";
 
-const BASE = "http://127.0.0.1:5230/OnyxLabyrinth/?debug=1";
+const BASE = process.env.ONYX_URL ?? "http://127.0.0.1:5176/OnyxLabyrinth/?debug=1";
 const OUT = ensureOutDir("playtest-screenshots/2026-07-20-floors-1-3");
 
 const log = (...a) => console.log(...a);
@@ -371,10 +371,11 @@ if (f1PickClass !== "lockpick") {
 } else {
   log("OK Coda (Thief) can pick this lock without the key — by design, doors never hard-soft-lock while she's alive");
 }
-// Reset the door back to locked for the "with key" test below.
-await jumpTo(page, { floorId: 1, x: 9, y: 8, facing: 0 });
-// Now with the key (should already be on ring from the safe chest loot above,
-// but grant defensively in case an earlier finding broke that path)
+// Reset the door: clearUnlockedDoors is required because the pick above
+// persisted into state.unlockedDoors (jumpTo alone re-applies that set).
+// Stand on the lockedDoors approach cell (9,7) facing south — tryUnlock's
+// key lookup matches (x,y,dir), so (9,8) facing north can only lockpick.
+await jumpTo(page, { floorId: 1, x: 9, y: 7, facing: 2, clearUnlockedDoors: true });
 await grantKey(page, "crypt-key");
 await unlockFacing(page);
 st = await state(page);
@@ -466,19 +467,35 @@ if (!/bookcase|topples/i.test(st.msg)) {
   log("OK damage event (8,2)");
 }
 
-// Scriptorium open chest (12,3), alarm trap
+// Scriptorium chest (12,3) — floors.ts authors trap: "alarm"; the Inspect/Open
+// modal is expected (alarm is not a silent auto-resolve).
 log("=== FLOOR 2: scriptorium chest, forbidden wing lock + furnace-key ===");
 await jumpTo(page, { floorId: 2, x: 12, y: 4, facing: 0 });
 await walkDirs(page, ["n"], 2);
 st = await state(page);
 await shot(page, "25-f2-scriptorium-chest.png");
 log("scriptorium chest(12,3)", st.pendingTrap, st.msg, st.inv);
-if (st.pendingTrap) {
-  find("P1", 2, "Scriptorium chest (12,3) is untrapped in floors.ts but pendingTrap fired", JSON.stringify(st.pendingTrap));
-} else if (!/mace|chain-mail|cursed-blade|alarm/i.test(st.msg) && !st.inv.some((i) => /mace|chain-mail|cursed-blade/.test(i))) {
-  find("P2", 2, "Scriptorium chest (12,3) loot message unclear", st.msg);
+if (!st.pendingTrap) {
+  find("P1", 2, "Scriptorium chest (12,3) alarm trap prompt did not open", JSON.stringify(st));
+} else if (st.pendingTrap.trapType !== "alarm") {
+  find("P1", 2, "Scriptorium chest (12,3) expected alarm trap", JSON.stringify(st.pendingTrap));
 } else {
-  log("OK scriptorium chest looted (alarm trap type auto-resolves without a modal per floor-authoring rules)");
+  await openTrap(page);
+  st = await state(page);
+  // Alarm traps force an encounter on Open — clear it before the next jumpTo.
+  const mode = await page.evaluate(() => window.__onyxDebug.state.mode);
+  if (mode === "combat") {
+    await page.evaluate(() => window.__onyxDebug.exitDebugCombat("fled"));
+    await wait(500);
+    await press(page, "Enter");
+    await wait(300);
+    st = await state(page);
+  }
+  if (!/mace|chain-mail|cursed-blade|alarm/i.test(st.msg) && !st.inv.some((i) => /mace|chain-mail|cursed-blade/.test(i))) {
+    find("P2", 2, "Scriptorium chest (12,3) loot message unclear after open", st.msg);
+  } else {
+    log("OK scriptorium chest alarm trap → Inspect/Open loot");
+  }
 }
 
 // Forbidden wing lock (10,7)e — try WITHOUT lexicon-key (Thief disabled)
@@ -684,9 +701,11 @@ if (!/anvil|altar|forge-forged/i.test(st.msg)) {
   log("OK anvil-altar heal event, alcove obstacle in place");
 }
 
-// Waygate teleporter (9,6) -> (2,3)
-await jumpTo(page, { floorId: 3, x: 9, y: 5, facing: 2 });
-await walkDirs(page, ["s"], 3); // onto (9,6) teleporter
+// Waygate teleporter (9,6) -> (2,3). Approach from inside the carved foundry
+// corridor at (9,7) facing north — (9,5) is outside the carved room, so a
+// south step from there never moves and never touches the teleporter tile.
+await jumpTo(page, { floorId: 3, x: 9, y: 7, facing: 0 });
+await walkDirs(page, ["n"], 3); // onto (9,6) teleporter
 st = await state(page);
 await shot(page, "43-f3-after-teleporter.png");
 log("teleporter land", st.x, st.y, st.msg);
@@ -716,8 +735,9 @@ if (!st.pendingTrap) {
   }
 }
 
-// Grand Forge lock (7,11)s — try WITHOUT forge-key (Thief disabled)
-await jumpTo(page, { floorId: 3, x: 7, y: 10, facing: 2 });
+// Grand Forge lock (7,11)s — stand ON the lockedDoors cell facing south.
+// (7,10) is one cell short and yields "There is no locked door here."
+await jumpTo(page, { floorId: 3, x: 7, y: 11, facing: 2 });
 await page.evaluate(() => {
   const k = window.__onyxDebug.state.keys;
   const idx = k.indexOf("forge-key");
@@ -737,8 +757,7 @@ if (f3BossLockClass === "key") {
 } else {
   find("P2", 3, "Unexpected unlock message for held Grand Forge lock", st.msg);
 }
-// Reset the door back to locked, then test the intended key path.
-await jumpTo(page, { floorId: 3, x: 7, y: 10, facing: 2 });
+await jumpTo(page, { floorId: 3, x: 7, y: 11, facing: 2, clearUnlockedDoors: true });
 await grantKey(page, "forge-key");
 await unlockFacing(page);
 st = await state(page);
