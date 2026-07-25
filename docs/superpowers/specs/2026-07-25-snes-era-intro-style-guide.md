@@ -80,9 +80,9 @@ point. Author `\n` breaks are intentional (`white-space: pre-line`).
 | # | Text | Notes |
 |---|------|-------|
 | 1 | We made war on the gods. We lost. | |
-| 2 | They did not destroy us. They left, and took Death with them. Nothing here ends. | |
-| 3a | They buried one thing before they went: / a labyrinth, and at the bottom of it a lamp, | Split from original beat 3 |
-| 3b | and in the lamp the last thing in existence / that can still grant a wish. | Split from original beat 3 |
+| 2 | They did not destroy us. / They left… / Nothing here ends. | Author breaks; ≤42 |
+| 3a | They buried…went: / a labyrinth, / and at the bottom of it a lamp, | Split; ≤42 chars/line |
+| 3b | and in the lamp the last thing in / existence that can still grant a wish. | Split; ≤42 chars/line |
 | 4 | It has one left. | Pivot — extra hold |
 | 5 | Edgehollow… (author line breaks) | |
 

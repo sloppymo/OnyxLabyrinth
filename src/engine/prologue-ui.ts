@@ -30,9 +30,9 @@ import { audio } from "./audio";
  */
 export const PROLOGUE_BEATS: readonly string[] = [
   "We made war on the gods. We lost.",
-  "They did not destroy us. They left, and took Death with them. Nothing here ends.",
-  "They buried one thing before they went:\na labyrinth, and at the bottom of it a lamp,",
-  "and in the lamp the last thing in existence\nthat can still grant a wish.",
+  "They did not destroy us.\nThey left, and took Death with them.\nNothing here ends.",
+  "They buried one thing before they went:\na labyrinth,\nand at the bottom of it a lamp,",
+  "and in the lamp the last thing in\nexistence that can still grant a wish.",
   "It has one left.",
   "Edgehollow is the last town at the mouth\nof the hole. Everyone here is going down.\nEveryone here has been going down for a\nvery long time.",
 ] as const;

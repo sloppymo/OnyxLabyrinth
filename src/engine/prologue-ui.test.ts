@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { audio } from "./audio";
 import {
   PROLOGUE_BEATS,
   INTRO_STYLE,
@@ -13,12 +14,20 @@ describe("PROLOGUE_BEATS", () => {
   it("is the locked six-beat intro copy (beat 3 split), verbatim and in order", () => {
     expect([...PROLOGUE_BEATS]).toEqual([
       "We made war on the gods. We lost.",
-      "They did not destroy us. They left, and took Death with them. Nothing here ends.",
-      "They buried one thing before they went:\na labyrinth, and at the bottom of it a lamp,",
-      "and in the lamp the last thing in existence\nthat can still grant a wish.",
+      "They did not destroy us.\nThey left, and took Death with them.\nNothing here ends.",
+      "They buried one thing before they went:\na labyrinth,\nand at the bottom of it a lamp,",
+      "and in the lamp the last thing in\nexistence that can still grant a wish.",
       "It has one left.",
       "Edgehollow is the last town at the mouth\nof the hole. Everyone here is going down.\nEveryone here has been going down for a\nvery long time.",
     ]);
+  });
+
+  it("keeps every authored line at ≤42 characters (style guide hard cap)", () => {
+    for (const beat of PROLOGUE_BEATS) {
+      for (const line of beat.split("\n")) {
+        expect(line.length, JSON.stringify(line)).toBeLessThanOrEqual(42);
+      }
+    }
   });
 });
 
@@ -210,6 +219,44 @@ describe("PrologueController", () => {
     expect(panel.querySelector(".prologue-root.is-fading")).toBeTruthy();
     tickPastFinish(c);
     expect(done).toBe(1);
+  });
+
+  it("confirm mid-typing on the final beat completes without finishing; second confirm fades", () => {
+    let done = 0;
+    const c = mount(() => {
+      done += 1;
+    });
+    for (let b = 0; b < PROLOGUE_BEATS.length - 1; b++) {
+      revealFully(c, PROLOGUE_BEATS[b]!);
+      c.handleKey("Enter");
+      tickPastAdvance(c);
+    }
+    const last = PROLOGUE_BEATS[PROLOGUE_BEATS.length - 1]!;
+    time += 400;
+    c.tickForTests(time);
+    expect(text().length).toBeGreaterThan(0);
+    expect(text()).not.toBe(last);
+    c.handleKey("Enter"); // complete only — must not finish
+    expect(text()).toBe(last);
+    expect(done).toBe(0);
+    expect(panel.querySelector(".prologue-root.is-fading")).toBeNull();
+    c.handleKey("Enter"); // now finish with fade
+    expect(done).toBe(0);
+    expect(panel.querySelector(".prologue-root.is-fading")).toBeTruthy();
+    tickPastFinish(c);
+    expect(done).toBe(1);
+  });
+
+  it("calls uiTextTick (not uiCursor) while revealing characters", () => {
+    const tick = vi.spyOn(audio, "uiTextTick").mockImplementation(() => {});
+    const cursor = vi.spyOn(audio, "uiCursor").mockImplementation(() => {});
+    const c = mount();
+    time += 400;
+    c.tickForTests(time);
+    expect(tick).toHaveBeenCalled();
+    expect(cursor).not.toHaveBeenCalled();
+    tick.mockRestore();
+    cursor.mockRestore();
   });
 
   it("dispose cancels the pending animation frame", () => {
