@@ -491,6 +491,7 @@ function endCombat(result: CombatState): void {
       }
       return char;
     });
+    if (levelUpMessages.length > 0) audio.levelUp();
 
     const baseMsg = `Victory! +${goldEarned} gold, ${combatXpVictoryMessage(xpEarned, hasBench)}.`;
     const levelMsg = levelUpMessages.length > 0 ? ` ${levelUpMessages.join(" ")}` : "";
@@ -665,6 +666,7 @@ function onMove(): void {
   // Process the tile feature at the player's current position.
   const result = handleTileFeature(state);
   if (result) {
+    if (result.looted) audio.playDungeonSfx("chestOpen");
     if (!state.pendingTrap) {
       setMessage([...expiry, result.message].join(" "));
     }
@@ -819,6 +821,7 @@ bindInput(window, dungeonHandlers);
 /** Route a chest action result: message, camera snap, forced encounter. */
 function applyChestResult(result: ChestActionResult): void {
   if (!result.message) return;
+  if (result.opened && !result.alarm) audio.playDungeonSfx("chestOpen");
   setMessage(result.message);
   if (result.relocated) {
     // Teleporter trap moved the party — snap the camera, no slide.

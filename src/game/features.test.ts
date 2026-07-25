@@ -138,10 +138,19 @@ describe("handleTreasure with traps", () => {
     const state = makeState();
     const result = handleTileFeature(state);
     expect(result?.consumed).toBe(true);
+    expect(result?.looted).toBe(true);
     expect(state.inventory.map((e) => e.itemId)).toContain("healing-potion");
     expect(state.keys).toContain("test-key");
     expect(state.pendingTrap).toBeNull();
     expect(state.floor.grid[2][2].tile).toBeUndefined();
+  });
+
+  it("does not mark an already-looted chest as newly looted", () => {
+    const state = makeState();
+    state.floor.treasures![0]!.itemIds = [];
+    const result = handleTileFeature(state);
+    expect(result?.consumed).toBe(true);
+    expect(result?.looted).toBe(false);
   });
 
   it("sets pendingTrap for a trapped chest and does not loot", () => {
@@ -182,6 +191,7 @@ describe("disarmChest", () => {
     handleTileFeature(state);
     const result = disarmChest(state, seqRng([0])); // roll 0 < any chance
     expect(result.opened).toBe(true);
+    expect(result.trapType).toBe("gas");
     expect(result.message).toMatch(/disarms/);
     expect(result.message).toMatch(/Treasure!/);
     expect(state.pendingTrap).toBeNull();
@@ -224,6 +234,7 @@ describe("openChest trap effects", () => {
     // Rolls: 2d6 max (0.99, 0.99) = 12 damage.
     const result = openChest(state, seqRng([0.99]));
     expect(result.opened).toBe(true);
+    expect(result.trapType).toBe("gas");
     expect(state.party[0].hp).toBe(1);
     expect(state.party[1].hp).toBe(state.party[1].maxHp - 12);
     expect(state.inventory.map((e) => e.itemId)).toContain("healing-potion");
@@ -266,6 +277,7 @@ describe("openChest trap effects", () => {
     const result = openChest(state, seqRng([0.5]));
     expect(result.alarm).toBe(true);
     expect(result.opened).toBe(true);
+    expect(result.trapType).toBe("alarm");
   });
 
   it("records the loot in lootTaken after a triggered open", () => {

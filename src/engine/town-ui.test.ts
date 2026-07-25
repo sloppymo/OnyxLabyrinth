@@ -1,11 +1,12 @@
 /**
  * Tests for town hub keyboard navigation — pad-friendly paths alongside letter hotkeys.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { TownController } from "./town-ui";
 import { createGameState } from "../game/state";
 import { FLOORS } from "../data/floors";
 import { CURSED_BLADE } from "../data/items";
+import { audio } from "./audio";
 
 function makePanel(): HTMLElement {
   const panel = document.createElement("div");
@@ -214,6 +215,15 @@ describe("TownController temple Remove Curse", () => {
     expect(screenOf(ctrl)).toBe("temple");
     ctrl.handleKey("Enter");
     expect(screenOf(ctrl)).toBe("main");
+  });
+
+  it("plays the cancel cue when Remove Curse has nothing to remove", () => {
+    const cue = vi.spyOn(audio, "uiCancel").mockImplementation(() => {});
+    const ctrl = makeTown();
+    ctrl.handleKey("+");
+    ctrl.handleKey("r");
+    expect(cue).toHaveBeenCalledTimes(1);
+    cue.mockRestore();
   });
 });
 

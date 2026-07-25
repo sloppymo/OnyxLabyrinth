@@ -60,6 +60,19 @@ const UI_SFX_GAIN: Record<UiSfxId, number> = {
   cureMenu: 0.36,
 };
 
+/** Swappable non-combat world/NPC cues. */
+export type DungeonSfxId = "chestOpen" | "npcSteal";
+
+const DUNGEON_SFX_FILES: Record<DungeonSfxId, string> = {
+  chestOpen: "chest-open.wav",
+  npcSteal: "npc-steal.wav",
+};
+
+const DUNGEON_SFX_GAIN: Record<DungeonSfxId, number> = {
+  chestOpen: 0.34,
+  npcSteal: 0.32,
+};
+
 /** Combat SFX ids — see public/assets/sfx/combat/README.md for source notes. */
 export type CombatSfxId =
   | "attackHit"
@@ -203,6 +216,9 @@ class AudioEngine {
   /** Decoded combat SFX buffers (empty until loadCombatSounds resolves). */
   private combatBuffers: Partial<Record<CombatSfxId, AudioBuffer>> = {};
   private combatLoadPromise: Promise<void> | null = null;
+  /** Decoded world/NPC placeholder buffers. */
+  private dungeonBuffers: Partial<Record<DungeonSfxId, AudioBuffer>> = {};
+  private dungeonLoadPromise: Promise<void> | null = null;
 
   // Config — exposed for tuning. Keep magic numbers here.
   private readonly CFG = {
@@ -261,9 +277,10 @@ class AudioEngine {
     this.masterGain.connect(this.ctx.destination);
     // Pre-render the noise buffer for footsteps.
     this.noiseBuffer = this.createNoiseBuffer(0.5);
-    // Kick off UI + combat sample decode (non-blocking).
+    // Kick off sample decode (non-blocking).
     void this.loadUiSounds();
     void this.loadCombatSounds();
+    void this.loadDungeonSounds();
   }
 
   /**
@@ -326,6 +343,51 @@ class AudioEngine {
       );
     })();
     return this.combatLoadPromise;
+  }
+
+  /**
+   * Fetch + decode swappable non-combat WAVs under assets/sfx/dungeon/.
+   * Missing placeholders fail quietly like the UI/combat buckets.
+   */
+  loadDungeonSounds(): Promise<void> {
+    if (this.dungeonLoadPromise) return this.dungeonLoadPromise;
+    if (!this.ctx) this.resume();
+    const ctx = this.ctx;
+    if (!ctx) return Promise.resolve();
+
+    const base = `${import.meta.env.BASE_URL ?? "/"}assets/sfx/dungeon/`;
+    this.dungeonLoadPromise = (async () => {
+      await Promise.all(
+        (Object.keys(DUNGEON_SFX_FILES) as DungeonSfxId[]).map(async (id) => {
+          try {
+            const res = await fetch(base + DUNGEON_SFX_FILES[id]);
+            if (!res.ok) return;
+            const raw = await res.arrayBuffer();
+            this.dungeonBuffers[id] = await ctx.decodeAudioData(raw.slice(0));
+          } catch {
+            // Missing/corrupt asset — leave that slot empty.
+          }
+        })
+      );
+    })();
+    return this.dungeonLoadPromise;
+  }
+
+  /** Play a swappable non-combat world/NPC cue. */
+  playDungeonSfx(id: DungeonSfxId): void {
+    if (!this.ctx || !this.masterGain) return;
+    const buf = this.dungeonBuffers[id];
+    if (!buf) {
+      void this.loadDungeonSounds();
+      return;
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = this.ctx.createGain();
+    gain.gain.value = DUNGEON_SFX_GAIN[id];
+    src.connect(gain);
+    gain.connect(this.masterGain);
+    src.start();
   }
 
   /**
@@ -409,6 +471,28 @@ class AudioEngine {
   /** Soft menu heal ting (inn / cure / temple). */
   uiCureMenu(): void {
     this.playUi("cureMenu");
+  }
+
+  /** Short synthesized major arpeggio, played once per post-combat level-up batch. */
+  levelUp(): void {
+    if (!this.ctx || !this.masterGain) return;
+    const ctx = this.ctx;
+    const start = ctx.currentTime;
+    const frequencies = [523.25, 659.25, 783.99] as const;
+    frequencies.forEach((frequency, index) => {
+      const t = start + index * 0.09;
+      const osc = ctx.createOscillator();
+      osc.type = "square";
+      osc.frequency.value = frequency;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.001, t);
+      env.gain.linearRampToValueAtTime(0.08, t + 0.01);
+      env.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      osc.connect(env);
+      env.connect(this.masterGain!);
+      osc.start(t);
+      osc.stop(t + 0.21);
+    });
   }
 
   /**

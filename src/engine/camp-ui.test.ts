@@ -7,6 +7,7 @@ import { CampController } from "./camp-ui";
 import { createGameState } from "../game/state";
 import { createDefaultParty } from "../game/party";
 import { FLOORS } from "../data/floors";
+import { audio } from "./audio";
 
 function flushCampAnim(): void {
   let now = 0;
@@ -88,6 +89,14 @@ describe("CampController reorder (controller-friendly)", () => {
     openReorder(ctrl);
     ctrl.handleKey("Escape");
     expect(panel.textContent).toMatch(/Continue exploring/);
+  });
+});
+
+describe("CampController rest audio", () => {
+  it("plays the cure cue when rest finishes", () => {
+    const cue = vi.spyOn(audio, "uiCureMenu").mockImplementation(() => {});
+    openCamp();
+    expect(cue).toHaveBeenCalledTimes(1);
   });
 });
 

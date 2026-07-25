@@ -162,7 +162,14 @@ export class NPCController {
           this.render();
           return;
         case "steal":
-          this.applyResult(stealFrom(this.state, this.npc));
+          {
+            const goldBefore = this.state.partyGold;
+            const result = stealFrom(this.state, this.npc);
+            if (this.state.partyGold > goldBefore) {
+              audio.playDungeonSfx("npcSteal");
+            }
+            this.applyResult(result);
+          }
           return;
         case "attack":
           this.close("");
@@ -190,13 +197,32 @@ export class NPCController {
     if (this.phase === "barter") {
       const trades = availableTrades(this.state, this.npc);
       const trade = trades[this.index];
-      if (trade) this.applyResult(doTrade(this.state, this.npc, trade));
+      if (trade) {
+        const receiveBefore = this.state.inventory.filter(
+          (entry) => entry.itemId === trade.receiveItemId
+        ).length;
+        const result = doTrade(this.state, this.npc, trade);
+        const receiveAfter = this.state.inventory.filter(
+          (entry) => entry.itemId === trade.receiveItemId
+        ).length;
+        if (receiveAfter > receiveBefore) audio.uiBuySell();
+        this.applyResult(result);
+      }
       return;
     }
 
     if (this.phase === "give") {
       if (this.state.inventory.length === 0) return;
-      this.applyResult(giveItem(this.state, this.npc, this.index));
+      const offeredItemId = this.state.inventory[this.index]?.itemId;
+      const offeredBefore = offeredItemId
+        ? this.state.inventory.filter((entry) => entry.itemId === offeredItemId).length
+        : 0;
+      const result = giveItem(this.state, this.npc, this.index);
+      const offeredAfter = offeredItemId
+        ? this.state.inventory.filter((entry) => entry.itemId === offeredItemId).length
+        : 0;
+      if (offeredAfter < offeredBefore) audio.uiBuySell();
+      this.applyResult(result);
       // The list may have shrunk.
       this.index = Math.min(this.index, Math.max(0, this.state.inventory.length - 1));
     }

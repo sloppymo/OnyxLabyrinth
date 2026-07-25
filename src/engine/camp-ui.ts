@@ -152,6 +152,7 @@ export class CampController {
   private finish(): void {
     if (this.finished) return;
     this.finished = true;
+    audio.uiCureMenu();
     this.phase = "menu";
     this.renderMenu();
   }

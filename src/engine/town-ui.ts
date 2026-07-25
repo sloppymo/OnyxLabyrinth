@@ -230,11 +230,13 @@ export class TownController {
   private doRemoveCurse(): void {
     const cursed = this.equippedCursed();
     if (cursed.length === 0) {
+      audio.uiCancel();
       this.flash = "No curses afflict the party.";
       this.render();
       return;
     }
     if (this.state.partyGold < REMOVE_CURSE_COST) {
+      audio.uiCancel();
       this.flash = `Remove Curse costs ${REMOVE_CURSE_COST}g — you can't afford it.`;
       this.render();
       return;
@@ -584,6 +586,7 @@ export class TownController {
       return;
     }
     if (item.cursed) {
+      audio.uiCancel();
       this.flash = "The shopkeep wants nothing to do with cursed goods.";
       this.render();
       return;
@@ -608,6 +611,7 @@ export class TownController {
     const item = ITEMS_BY_ID[entry.itemId];
     if (!item) return;
     if (this.state.partyGold < APPRAISE_COST) {
+      audio.uiCancel();
       this.flash = `Appraisal costs ${APPRAISE_COST}g — you can't afford it.`;
       this.render();
       return;
@@ -1249,6 +1253,7 @@ export class TownController {
     const { slot, label } = EQUIP_SLOTS[this.equipSlotIndex];
     const current = this.equippedInSlot(this.equipLoadout(), slot);
     if (current?.cursed) {
+      audio.uiCancel();
       this.flash = `${current.name} is CURSED and cannot be removed — the Temple's Remove Curse (${REMOVE_CURSE_COST}g) can shatter it.`;
       this.render();
       return;
@@ -1294,6 +1299,7 @@ export class TownController {
     const item = entry ? ITEMS_BY_ID[entry.itemId] : undefined;
     if (!entry || !item) return;
     if (item.cursed && entry.identified) {
+      audio.uiCancel();
       this.flash = `${item.name} is CURSED — equipping it would clamp it on forever. It stays in the pack.`;
       this.render();
       return;
@@ -1301,6 +1307,7 @@ export class TownController {
     const res = manualEquip(loadout, item);
     if (!res) {
       const current = this.equippedInSlot(loadout, slot);
+      audio.uiCancel();
       this.flash = current?.cursed
         ? `${current.name} is CURSED — the slot is locked until the Temple removes it.`
         : `${c.name} cannot equip that.`;

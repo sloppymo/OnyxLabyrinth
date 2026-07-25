@@ -38,6 +38,8 @@ export interface FeatureResult {
   changedFloor: boolean;
   /** Whether the tile feature was consumed (treasure looted). */
   consumed: boolean;
+  /** True only when this interaction awarded fresh treasure. */
+  looted?: boolean;
   /** Set when the party stepped onto a living NPC — main.ts opens the panel. */
   npcId?: string;
 }
@@ -218,7 +220,12 @@ function handleTreasure(state: GameState): FeatureResult {
   if (!treasureDef || treasureDef.itemIds.length === 0) {
     // Already looted — clear the feature
     floor.grid[player.y][player.x].tile = undefined;
-    return { message: "This treasure has already been looted.", changedFloor: false, consumed: true };
+    return {
+      message: "This treasure has already been looted.",
+      changedFloor: false,
+      consumed: true,
+      looted: false,
+    };
   }
 
   if (treasureDef.trap) {
@@ -321,6 +328,7 @@ function awardTreasure(
     message: `Treasure! You found: ${itemNames.join(", ")}.`,
     changedFloor: false,
     consumed: true,
+    looted: true,
   };
 }
 
@@ -633,6 +641,8 @@ export interface ChestActionResult {
   alarm: boolean;
   /** A teleporter trap fired: main.ts must snap the render camera. */
   relocated: boolean;
+  /** Trap involved in this action; omitted when no chest prompt exists. */
+  trapType?: TrapType;
 }
 
 const TRAP_NAMES: Record<TrapType, string> = {
@@ -721,6 +731,7 @@ export function disarmChest(state: GameState, rng: Rng = Math.random): ChestActi
       opened: true,
       alarm: false,
       relocated: false,
+      trapType: p.trapType,
     };
   }
 
@@ -734,6 +745,7 @@ export function disarmChest(state: GameState, rng: Rng = Math.random): ChestActi
     opened: false,
     alarm: false,
     relocated: false,
+    trapType: p.trapType,
   };
 }
 
@@ -829,6 +841,7 @@ function triggerTrapAndOpen(state: GameState, prefix: string, rng: Rng): ChestAc
     opened: true,
     alarm,
     relocated,
+    trapType: p.trapType,
   };
 }
 

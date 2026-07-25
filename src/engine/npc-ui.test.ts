@@ -6,11 +6,12 @@
  * guard on their own controller instance.
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
 import { createDefaultParty } from "../game/party";
 import { defaultLoadoutForCharacter } from "../game/combat-equipment";
 import type { GameState } from "../types";
 import type { NPCDef } from "../data/floors";
+import { audio } from "./audio";
 
 let NPCControllerCtor: typeof import("./npc-ui").NPCController;
 
@@ -181,6 +182,35 @@ describe("NPCController", () => {
     expect(panel.textContent).toContain("Only a living Thief");
 
     controller.destroy();
+  });
+
+  it("plays the steal cue only on a successful theft", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const cue = vi.spyOn(audio, "playDungeonSfx").mockImplementation(() => {});
+    const npc = makeNPC();
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+
+    controller.handleKey("s");
+
+    expect(cue).toHaveBeenCalledWith("npcSteal");
+    controller.destroy();
+    vi.restoreAllMocks();
+  });
+
+  it("plays the transaction cue after a successful barter", () => {
+    const cue = vi.spyOn(audio, "uiBuySell").mockImplementation(() => {});
+    const npc = makeNPC();
+    const state = makeState(npc);
+    state.inventory.push({ itemId: "antidote", identified: true });
+    const { controller } = freshController(state, npc);
+
+    controller.handleKey("b");
+    controller.handleKey("Enter");
+
+    expect(cue).toHaveBeenCalledTimes(1);
+    controller.destroy();
+    vi.restoreAllMocks();
   });
 
   it("closes with Escape", () => {
