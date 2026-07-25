@@ -162,11 +162,23 @@ function syncMessageBandVisibility(): void {
 }
 
 /**
+ * Debug-only observer for message writes (?debug=1 event buffer). Null in
+ * normal play; this is the single seam so the debug layer doesn't have to
+ * patch or poll `#message`.
+ */
+let debugMessageHook: ((text: string) => void) | null = null;
+
+export function setDebugMessageHook(fn: ((text: string) => void) | null): void {
+  debugMessageHook = fn;
+}
+
+/**
  * Show or update the message overlay. Empty text hides the text node.
  * Messages clear on the next player action via `clearMessageOnPlayerAction`
  * (not on a timer) — crawler contract: text waits, but never blocks.
  */
 export function setMessage(text: string): void {
+  debugMessageHook?.(text);
   // Trap prompts / multi-line HTML-free copy: plain text only. Truncate for
   // strip density; full transcript belongs in the grimoire when wired.
   const trimmed = text.trim();

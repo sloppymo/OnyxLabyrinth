@@ -23,6 +23,31 @@ import path from "path";
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// --- Action transcript -------------------------------------------------------
+// Every input this library drives is recorded per page, so a failure bundle can
+// answer "what did the script actually do before this broke?" without the
+// script having to log by hand. PR-5 adds a seed + per-step state hash on top
+// of these entries to make them replayable; today they are evidence only.
+const transcripts = new WeakMap();
+
+function transcriptFor(page) {
+  let entries = transcripts.get(page);
+  if (!entries) {
+    entries = [];
+    transcripts.set(page, entries);
+  }
+  return entries;
+}
+
+function recordAction(page, kind, detail) {
+  transcriptFor(page).push({ t: Date.now(), kind, ...detail });
+}
+
+/** Actions driven through this library so far, oldest-first. */
+export function getTranscript(page) {
+  return [...transcriptFor(page)];
+}
+
 /** Launch a headless browser + page with console/pageerror capture attached. */
 export async function launch({ viewport = { width: 1280, height: 800 } } = {}) {
   const browser = await chromium.launch({ headless: true });
@@ -41,6 +66,7 @@ export async function launch({ viewport = { width: 1280, height: 800 } } = {}) {
 
 /** Press a key n times with a small settle delay between presses. */
 export async function press(page, key, n = 1, delay = 90) {
+  recordAction(page, "press", { key, n });
   for (let i = 0; i < n; i++) {
     await page.keyboard.press(key);
     await wait(delay);
@@ -68,8 +94,19 @@ export async function waitForIdle(page, timeout = 3000, interval = 30) {
 
 /** Press a key, then wait for the game to settle instead of a fixed sleep. */
 export async function act(page, key, timeout = 3000) {
+  recordAction(page, "act", { key });
   await page.keyboard.press(key);
   return waitForIdle(page, timeout);
+}
+
+/** Recent in-page debug events (mode/route/message/feature/audio/error). */
+export async function debugLog(page, n = 200, kind) {
+  return page.evaluate(([count, k]) => window.__onyxDebug.log(count, k), [n, kind]);
+}
+
+/** Audio cue records: id, firedAt, durationMs, endsAt, bufferMissing. */
+export async function sounds(page, n) {
+  return page.evaluate((count) => window.__onyxDebug.sounds(count), n);
 }
 
 /** Snapshot including the ASCII map render. */
@@ -83,14 +120,94 @@ export async function shot(page, outDir, name) {
   return p;
 }
 
-/** Findings collector shared by the report writers. */
-export function createFindings({ log = console.log } = {}) {
+const slug = (s) =>
+  String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+
+/**
+ * Everything needed to diagnose a failure after the run: screenshot, full
+ * snapshot (with map), the in-page event log, audio cue history, asset
+ * readiness, browser console/network errors, and the action transcript.
+ *
+ * Written as `<name>.png` + `<name>.json` in `outDir`. Never throws — a
+ * capture failing must not mask the finding that triggered it.
+ */
+export async function captureFailureBundle(page, name, { outDir, errors = [] } = {}) {
+  const base = `bundle-${slug(name)}-${Date.now()}`;
+  const bundle = {
+    name,
+    capturedAt: new Date().toISOString(),
+    transcript: getTranscript(page),
+    consoleErrors: [...errors],
+  };
+  try {
+    bundle.screenshot = await shot(page, outDir, `${base}.png`);
+  } catch (e) {
+    bundle.screenshotError = String(e);
+  }
+  try {
+    Object.assign(
+      bundle,
+      await page.evaluate(() => ({
+        snapshot: window.__onyxDebug.snapshot({ map: true }),
+        log: window.__onyxDebug.log(300),
+        sounds: window.__onyxDebug.sounds(80),
+        readiness: window.__onyxDebug.readiness(),
+        url: window.location.href,
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+      }))
+    );
+  } catch (e) {
+    bundle.pageError = String(e);
+  }
+  const p = path.join(outDir, `${base}.json`);
+  try {
+    fs.writeFileSync(p, JSON.stringify(bundle, null, 2));
+  } catch {
+    return null;
+  }
+  return p;
+}
+
+/**
+ * Findings collector shared by the report writers.
+ *
+ * Pass `page`/`outDir` to auto-capture a failure bundle for each severe
+ * finding. `find()` stays synchronous so existing call sites are unchanged;
+ * the capture runs on a serialized queue that the caller drains with
+ * `await flush()` before writing the report. Because the script keeps running
+ * during a capture, a bundle may reflect state a beat later than the finding.
+ */
+export function createFindings({
+  log = console.log,
+  page = null,
+  outDir = null,
+  errors = [],
+  captureSeverities = ["P0", "P1"],
+} = {}) {
   const findings = [];
+  const bundles = [];
+  let queue = Promise.resolve();
+
   return {
     findings,
+    bundles,
     find(sev, floor, title, body = "") {
       findings.push({ sev, floor, title, body });
       log(`[${sev}] F${floor} ${title}${body ? ` — ${body}` : ""}`);
+      if (page && outDir && captureSeverities.includes(sev)) {
+        queue = queue.then(async () => {
+          const p = await captureFailureBundle(page, `f${floor}-${sev}-${title}`, {
+            outDir,
+            errors,
+          });
+          if (p) bundles.push(p);
+        });
+      }
+    },
+    /** Await all queued captures. Call before writing the report. */
+    async flush() {
+      await queue;
+      return bundles;
     },
   };
 }
@@ -117,6 +234,7 @@ export function writeReport(outDir, report) {
  * Returns the final snapshot; callers should assert `route === "dungeon"`.
  */
 export async function bootToDungeon(page, url, { maxSteps = 40 } = {}) {
+  recordAction(page, "bootToDungeon", { url });
   await page.goto(url, { waitUntil: "networkidle" });
   await wait(400); // initial page-load settle; isIdle() has nothing to poll before __onyxDebug attaches
 
@@ -174,6 +292,7 @@ export async function bootToDungeon(page, url, { maxSteps = 40 } = {}) {
  * killed-NPC / loot / unlocked-door bookkeeping.
  */
 export async function jumpTo(page, opts) {
+  recordAction(page, "jumpTo", { opts });
   await page.evaluate((o) => window.__onyxDebug.jumpTo(o), opts);
   await waitForIdle(page);
   return snap(page);
@@ -187,6 +306,7 @@ export async function boot(page, url, { scenario } = {}) {
   if (scenario == null || scenario.floorId == null || scenario.x == null || scenario.y == null) {
     throw new Error("boot({ scenario }) requires scenario.{ floorId, x, y }");
   }
+  recordAction(page, "boot", { url, scenario });
   await page.goto(url, { waitUntil: "networkidle" });
   await wait(400);
   // Title is idle; jumpTo closes the title controller and lands in dungeon.

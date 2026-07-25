@@ -14,6 +14,7 @@
  * Run: node scripts/playtests/smoke-debug-surface.mjs
  * Expects: npx vite preview --port 5176 --base /OnyxLabyrinth/
  */
+import fs from "fs";
 import {
   launch,
   wait,
@@ -23,6 +24,10 @@ import {
   waitForIdle,
   ensureOutDir,
   shot,
+  jumpTo,
+  debugLog,
+  sounds,
+  captureFailureBundle,
 } from "./lib.mjs";
 
 const BASE = process.env.ONYX_URL ?? "http://127.0.0.1:5176/OnyxLabyrinth/?debug=1";
@@ -330,8 +335,126 @@ check(
   JSON.stringify({ route: bootSnap.route, floor: bootSnap.floor })
 );
 
+// --- PR-4: evidence layer ---------------------------------------------------
+
+log("=== event log records mode/route/message history ===");
+await page.goto(BASE, { waitUntil: "networkidle" });
+await wait(400);
+await jumpTo(page, { floorId: 1, x: 5, y: 8, facing: 0 });
+const bootLog = await debugLog(page, 300);
+check("log() returns events", Array.isArray(bootLog) && bootLog.length > 0, `len ${bootLog?.length}`);
+check(
+  "log has a route change into dungeon",
+  bootLog.some((e) => e.kind === "route" && e.data.to === "dungeon"),
+  JSON.stringify(bootLog.filter((e) => e.kind === "route").slice(-3))
+);
+check(
+  "log entries carry seq + t + kind",
+  bootLog.every((e) => typeof e.seq === "number" && typeof e.t === "number" && !!e.kind)
+);
+check(
+  "log(n, kind) filters",
+  (await debugLog(page, 50, "route")).every((e) => e.kind === "route")
+);
+
+log("=== audio spy records cues with durations ===");
+await press(page, "ArrowUp");
+await waitForIdle(page);
+const cues = await sounds(page, 50);
+check("sounds() records a footstep cue", cues.some((c) => c.id === "proc:footstep"), JSON.stringify(cues.slice(-4)));
+const footstep = cues.find((c) => c.id === "proc:footstep");
+check(
+  "cue carries firedAt/durationMs/endsAt",
+  !!footstep && typeof footstep.firedAt === "number" && footstep.durationMs > 0 &&
+    footstep.endsAt === footstep.firedAt + footstep.durationMs,
+  JSON.stringify(footstep)
+);
+check(
+  "audioCue events land in the event log",
+  (await debugLog(page, 200, "audioCue")).some((e) => e.data.id === "proc:footstep")
+);
+
+log("=== message + feature events ===");
+const msgEvents = await debugLog(page, 300, "message");
+check("message writes are recorded", msgEvents.length > 0, `len ${msgEvents.length}`);
+
+log("=== invariant warnings ===");
+s = await snap(page);
+check("clean state has no warnings", Array.isArray(s.warnings) && s.warnings.length === 0, JSON.stringify(s.warnings));
+const injectedWarn = await page.evaluate(() => {
+  const st = window.__onyxDebug.state;
+  const c = st.party[0];
+  const original = c.hp;
+  c.hp = c.maxHp + 5;
+  const warnings = window.__onyxDebug.snapshot().warnings;
+  c.hp = original;
+  return { warnings, afterRestore: window.__onyxDebug.snapshot().warnings };
+});
+check(
+  "hp>maxHp surfaces as a warning",
+  injectedWarn.warnings.some((w) => /exceeds maxHp/.test(w)),
+  JSON.stringify(injectedWarn.warnings)
+);
+check("warning clears when state is repaired", injectedWarn.afterRestore.length === 0);
+
+log("=== uncaught errors are captured ===");
+await page.evaluate(() => {
+  setTimeout(() => {
+    throw new Error("onyx-smoke-injected-error");
+  }, 0);
+});
+await wait(150);
+const errEvents = await debugLog(page, 300, "error");
+check(
+  "thrown error lands in log()",
+  errEvents.some((e) => String(e.data.message).includes("onyx-smoke-injected-error")),
+  JSON.stringify(errEvents.slice(-2))
+);
+
+log("=== failed audio sample becomes an assetFailed event ===");
+{
+  const { browser: b2, page: p2 } = await launch();
+  await p2.route("**/assets/sfx/dungeon/chest-open.wav", (r) =>
+    r.fulfill({ status: 404, body: "" })
+  );
+  await p2.goto(BASE, { waitUntil: "networkidle" });
+  await wait(400);
+  await p2.keyboard.press("ArrowDown"); // first keydown resumes audio -> starts sample loads
+  await wait(600);
+  const probe = await p2.evaluate(() => ({
+    readiness: window.__onyxDebug.readiness(),
+    assetFailed: window.__onyxDebug.log(300, "assetFailed"),
+  }));
+  check(
+    "404 sample reported in readiness().failed",
+    probe.readiness.failed.includes("dungeon:chestOpen"),
+    JSON.stringify(probe.readiness.failed)
+  );
+  check(
+    "404 sample emits an assetFailed event",
+    probe.assetFailed.some((e) => e.data.asset === "dungeon:chestOpen"),
+    JSON.stringify(probe.assetFailed)
+  );
+  await b2.close();
+}
+
+log("=== failure bundle capture ===");
+const bundlePath = await captureFailureBundle(page, "smoke-selftest", { outDir: OUT, errors });
+check("captureFailureBundle wrote a file", !!bundlePath && fs.existsSync(bundlePath), String(bundlePath));
+if (bundlePath) {
+  const bundle = JSON.parse(fs.readFileSync(bundlePath, "utf8"));
+  check("bundle has snapshot + log + sounds", !!bundle.snapshot && !!bundle.log && !!bundle.sounds);
+  check(
+    "bundle transcript recorded presses and jumps",
+    bundle.transcript.some((t) => t.kind === "jumpTo") && bundle.transcript.some((t) => t.kind === "press"),
+    JSON.stringify(bundle.transcript.slice(0, 3))
+  );
+  check("bundle references a screenshot", !!bundle.screenshot && fs.existsSync(bundle.screenshot));
+}
+
 log("\n=== SUMMARY ===");
-const uniqErrors = [...new Set(errors)];
+// The injected throw above is expected; it must not read as a real failure.
+const uniqErrors = [...new Set(errors)].filter((e) => !e.includes("onyx-smoke-injected-error"));
 if (uniqErrors.length) log("console/page errors:", uniqErrors.slice(0, 10).join(" | "));
 else log("zero console/page errors");
 

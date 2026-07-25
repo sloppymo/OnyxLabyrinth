@@ -363,7 +363,34 @@ AGENTS.md "Debug/testing aids" section updated.
   smoke — jump F4 + deepestFloorReached, killed-NPC persistence, dump→load round-trip,
   `autosave: false` sentinel, title→jumpTo boot scenario.
 
-### PR-4 — Event buffer, audio spy, error capture, invariants, failure bundles
+### PR-4 — Event buffer, audio spy, error capture, invariants, failure bundles — **SHIPPED**
+
+Delivered as specced, with these decisions worth recording:
+- **Route events are sampled, not instrumented.** Controllers are constructed in ~10 places, so
+  instead of a call-site edit per overlay, the debug block samples
+  `resolveControllerRoute(currentRouteFlags())` after every keydown (listener registered last, so
+  it observes the post-dispatch route) and on every `snapshot()`, emitting a `route` event only on
+  change. One seam, no drift risk with the input router.
+- **Audio spy patches leaf emitters only** (`playUi`/`playCombatSfx`/`playDungeonSfx` +
+  procedural `footstep`/`doorOpen`/`doorLocked`/`levelUp`/`uiTextTick`). The friendly wrappers all
+  delegate to `playUi`, so patching both would double-count. Sample durations come from the
+  decoded `AudioBuffer`; procedural ones from a `PROCEDURAL_CUE_MS` catalog that must be kept in
+  sync with `audio.ts`'s envelopes. Known limitation: `proc:` cues log the invocation, and
+  `uiTextTick`/`uiCursor` rate-limit internally, so a suppressed repeat still appears.
+- **Feature events snapshot the tile before `handleTileFeature`,** which can change floors and
+  leave `state.player` pointing at the destination.
+- **Bundle captures are queued, not awaited, inside `find()`** so existing synchronous call sites
+  are unchanged; scripts must `await findings.flush()` before `browser.close()`, and a bundle may
+  lag the finding by a beat.
+- Verified: 1,225 Vitest tests green; smoke asserts the full evidence layer (event log + filters,
+  footstep cue with `durationMs`/`endsAt`, `audioCue` in the log, message events, injected
+  `hp > maxHp` producing and then clearing a warning, an injected uncaught throw reaching
+  `log()`, a Playwright-404'd `chest-open.wav` producing `assetFailed` + `readiness().failed`
+  instead of silence, and a self-test bundle containing snapshot/log/sounds/transcript/screenshot).
+  Floors 1-3 and 4-5 playtests re-run: 4-5 clean; 1-3's 5 findings reproduce **identically** on
+  the pre-PR-4 baseline (A/B'd by stashing), i.e. pre-existing content bugs, not regressions.
+
+Original scope:
 - `src/debug/event-buffer.ts`: capped ring (~500) + `log(n)`; event kinds: `modeChange`, `route`,
   `message`, `feature`, `audioCue`, `error`, `assetFailed`.
 - Chokepoints (all no-op unless debug): `shell.ts` gains `setDebugMessageHook(fn)` (single seam);

@@ -52,6 +52,10 @@ export interface SnapshotInput {
    *  ship a snapshot asserting "idle" that nothing actually computed. */
   idle: boolean;
   combat?: CombatDebugView | null;
+  /** Invariant violations for the current state (debug/invariants.ts). */
+  warnings?: string[];
+  /** Cue ids whose envelope has not elapsed yet (debug/audio-spy.ts). */
+  soundsPlaying?: string[];
   /** Include an ASCII map render (omitted by default — the grid is large). */
   map?: boolean;
   mapRadius?: number;
@@ -95,6 +99,10 @@ export interface Snapshot {
   message: { text: string; visible: boolean };
   idle: boolean;
   combat: CombatDebugView | null;
+  /** Invariant violations — empty when the state is self-consistent. */
+  warnings: string[];
+  /** Audio cues still sounding at snapshot time. */
+  soundsPlaying: string[];
   availableActions: string[];
   map: string[] | null;
 }
@@ -198,6 +206,8 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
     message: { ...input.message },
     idle: input.idle,
     combat: input.combat ? cloneCombatView(input.combat) : null,
+    warnings: [...(input.warnings ?? [])],
+    soundsPlaying: [...(input.soundsPlaying ?? [])],
     availableActions: availableActionsFor(input.route, state, input.combat),
     map: input.map
       ? asciiMap(state.floor, state.player, state.explored, input.mapRadius)

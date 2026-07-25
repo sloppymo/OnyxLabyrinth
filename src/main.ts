@@ -42,12 +42,16 @@ import {
   compassForFacing,
   setContextualPrompt,
   getMessageText,
+  setDebugMessageHook,
 } from "./engine/shell";
 import { resolveContextualPrompt } from "./engine/contextual-prompt";
 import { buildSnapshot } from "./debug/snapshot";
 import { computeIdle } from "./debug/idle";
 import { normalizeLoadedMode } from "./debug/load-normalize";
 import { applyJumpPartyOptions, type JumpToOptions } from "./debug/jump-to";
+import { DebugEventBuffer, type DebugEventKind } from "./debug/event-buffer";
+import { checkInvariants } from "./debug/invariants";
+import { installAudioSpy } from "./debug/audio-spy";
 import { CombatController } from "./engine/combat-ui";
 import {
   createControllerInput,
@@ -57,6 +61,7 @@ import { controllerEventToMenuKey } from "./engine/menu-controller-adapter";
 import {
   resolveControllerRoute,
   type ControllerRouteContext,
+  type ControllerRouteKind,
 } from "./engine/controller-route";
 import { DungeonActionRingController } from "./engine/dungeon-action-ring-ui";
 import { TrapPromptController } from "./engine/trap-prompt-ui";
@@ -158,7 +163,19 @@ let pendingRingAction: RingActionId | null = null;
  */
 let modeTransitionPending = false;
 
+/**
+ * Event ring buffer for the ?debug=1 evidence layer. Null in normal play, so
+ * every `recordDebugEvent` call below is a single null check. Assigned in the
+ * debug block at the bottom of this file.
+ */
+let debugEvents: DebugEventBuffer | null = null;
+
+function recordDebugEvent(kind: DebugEventKind, data: Record<string, unknown>): void {
+  debugEvents?.push(kind, data);
+}
+
 function transitionToMode(newMode: GameMode): void {
+  recordDebugEvent("modeChange", { from: state.mode, to: newMode });
   modeTransitionPending = true;
   canvas.style.opacity = "0";
   setTimeout(() => {
@@ -705,9 +722,25 @@ function onMove(): void {
   // tile, so a light that just expired doesn't still counter this darkness.
   const expiry = tickBuffs(state);
 
+  // Snapshotted before handleTileFeature, which may move the party to another
+  // floor and leave state.player pointing at the destination tile.
+  const steppedOn = {
+    tile: state.floor.grid[state.player.y]?.[state.player.x]?.tile ?? null,
+    x: state.player.x,
+    y: state.player.y,
+    floorId: state.floor.id,
+  };
+
   // Process the tile feature at the player's current position.
   const result = handleTileFeature(state);
   if (result) {
+    recordDebugEvent("feature", {
+      ...steppedOn,
+      message: result.message,
+      looted: result.looted ?? false,
+      changedFloor: result.changedFloor ?? false,
+      npcId: result.npcId ?? null,
+    });
     if (result.looted) audio.playDungeonSfx("chestOpen");
     if (!state.pendingTrap) {
       setMessage([...expiry, result.message].join(" "));
@@ -1865,6 +1898,59 @@ loadMapSprites()
 // Debug helpers for targeted visual verification; only active when the page
 // is loaded with ?debug=1. Never used in normal play.
 if (new URLSearchParams(window.location.search).has("debug")) {
+  // --- Evidence layer ----------------------------------------------------
+  // Everything below records *why* the game got where it is: mode/route
+  // changes, messages, tile features, audio cues, errors, and asset
+  // failures. Combat is already covered by CombatState.events.
+  const events = new DebugEventBuffer();
+  debugEvents = events;
+
+  const audioSpy = installAudioSpy(audio, {
+    onCue: (rec) => {
+      events.push("audioCue", { ...rec });
+    },
+  });
+
+  setDebugMessageHook((text) => {
+    const trimmed = text.trim();
+    events.push("message", { text: trimmed, cleared: trimmed.length === 0 });
+  });
+
+  // Route changes have no single call site (controllers are constructed all
+  // over), so sample instead of instrumenting each one: after every keydown
+  // has been dispatched, and on every snapshot read.
+  let lastRoute: ControllerRouteKind | null = null;
+  const sampleRoute = (trigger: string): ControllerRouteKind => {
+    const route = resolveControllerRoute(currentRouteFlags());
+    if (route !== lastRoute) {
+      events.push("route", { from: lastRoute, to: route, mode: state.mode, trigger });
+      lastRoute = route;
+    }
+    return route;
+  };
+  // Registered last, so it runs after every controller's own listener in the
+  // same dispatch and observes the post-key route.
+  window.addEventListener("keydown", (e: KeyboardEvent) => {
+    sampleRoute(`key:${e.key}`);
+  });
+
+  window.addEventListener("error", (e: ErrorEvent) => {
+    events.push("error", {
+      kind: "error",
+      message: e.message,
+      source: `${e.filename}:${e.lineno}:${e.colno}`,
+      stack: e.error instanceof Error ? e.error.stack : undefined,
+    });
+  });
+  window.addEventListener("unhandledrejection", (e: PromiseRejectionEvent) => {
+    const reason: unknown = e.reason;
+    events.push("error", {
+      kind: "unhandledrejection",
+      message: reason instanceof Error ? reason.message : String(reason),
+      stack: reason instanceof Error ? reason.stack : undefined,
+    });
+  });
+
   /**
    * Quiescent = no pending mode fade, no render-camera tween, no prologue
    * auto-play, no unfinished combat playback. Decision logic lives in the
@@ -1891,8 +1977,24 @@ if (new URLSearchParams(window.location.search).has("debug")) {
    * sample families are tri-state because they only start on the first
    * user keydown, so "not-started" must stay distinct from "failed."
    */
+  /**
+   * Turn newly-failed assets into `assetFailed` events. A failed WAV is
+   * otherwise invisible — the play call just returns (AGENTS.md) — so this is
+   * what lets a bundle say "cue fired, sample never loaded" instead of
+   * showing silence indistinguishable from "no cue fired."
+   */
+  const reportedAssetFailures = new Set<string>();
+  const syncAssetFailures = (failed: string[]): void => {
+    for (const name of failed) {
+      if (reportedAssetFailures.has(name)) continue;
+      reportedAssetFailures.add(name);
+      events.push("assetFailed", { asset: name });
+    }
+  };
+
   const readiness = () => {
     const audioStatus = audio.getSampleLoadStatus();
+    syncAssetFailures([...failedAssets, ...audioStatus.failed]);
     return {
       fonts: fontsReady,
       textures: texturesReady,
@@ -1907,18 +2009,24 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     };
   };
 
-  const debugSnapshot = (opts?: { map?: boolean; mapRadius?: number }) =>
-    buildSnapshot({
+  const debugSnapshot = (opts?: { map?: boolean; mapRadius?: number }) => {
+    const route = sampleRoute("snapshot");
+    syncAssetFailures([...failedAssets, ...audio.getSampleLoadStatus().failed]);
+    const combat = combatController ? combatController.debugView() : null;
+    return buildSnapshot({
       state,
-      route: resolveControllerRoute(currentRouteFlags()),
+      route,
       message: getMessageText(),
       mapVisible,
       inArena,
       idle: isIdle(),
-      combat: combatController ? combatController.debugView() : null,
+      combat,
+      warnings: checkInvariants({ state, route, combat }),
+      soundsPlaying: audioSpy.log.playingNow(),
       map: opts?.map,
       mapRadius: opts?.mapRadius,
     });
+  };
 
   /**
    * Teleport via the real transitionToFloor path (applies killed NPCs, loot,
@@ -2011,6 +2119,12 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     snapshot: debugSnapshot,
     isIdle,
     readiness,
+    /** Recent debug events, oldest-first. `log(50, "audioCue")` to filter. */
+    log: (n?: number, kind?: DebugEventKind) => events.log(n, kind),
+    clearLog: () => events.clear(),
+    /** Audio cue records (id, firedAt, durationMs, endsAt, bufferMissing). */
+    sounds: (n?: number) => audioSpy.log.recent(n),
+    soundsPlaying: () => audioSpy.log.playingNow(),
     jumpTo,
     dumpSave,
     loadSave,
