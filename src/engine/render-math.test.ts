@@ -27,6 +27,7 @@ import {
   MATH_CONFIG,
   RenderCameraAnimator,
   cappedRenderSize,
+  integerScaleToFit,
   arenaFloorRowDistance,
   arenaFloorWorldAt,
   arenaProject,
@@ -534,6 +535,38 @@ describe("cappedRenderSize", () => {
     const size = cappedRenderSize(0, 0, 768, 672);
     expect(size.width).toBe(1);
     expect(size.height).toBe(1);
+  });
+});
+
+describe("integerScaleToFit", () => {
+  const W = 768;
+  const H = 672;
+
+  it("returns 1 when the design box only just fits (no room to grow)", () => {
+    expect(integerScaleToFit(W, H, W, H)).toBe(1);
+    expect(integerScaleToFit(1000, 900, W, H)).toBe(1);
+  });
+
+  it("never shrinks below 1 on undersized viewports", () => {
+    expect(integerScaleToFit(400, 300, W, H)).toBe(1);
+  });
+
+  it("floors to the largest whole factor that fits both axes", () => {
+    // 2x needs 1536x1344; plenty of width but height is the binding axis.
+    expect(integerScaleToFit(3000, 1400, W, H)).toBe(2);
+    expect(integerScaleToFit(2560, 1440, W, H)).toBe(2);
+    expect(integerScaleToFit(4000, 2100, W, H)).toBe(3);
+  });
+
+  it("is bound by the tighter axis, not the looser one", () => {
+    // Loads of width, but height only allows 1x.
+    expect(integerScaleToFit(10000, 1000, W, H)).toBe(1);
+  });
+
+  it("clamps degenerate inputs to 1", () => {
+    expect(integerScaleToFit(1920, 1080, 0, H)).toBe(1);
+    expect(integerScaleToFit(1920, 1080, W, 0)).toBe(1);
+    expect(integerScaleToFit(Number.NaN, 1080, W, H)).toBe(1);
   });
 });
 

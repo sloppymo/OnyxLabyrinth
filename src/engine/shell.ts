@@ -11,7 +11,7 @@
 
 import type { Character } from "../game/party";
 import type { GameMode } from "../types";
-import { cappedRenderSize } from "./render-math";
+import { cappedRenderSize, integerScaleToFit } from "./render-math";
 import {
   formatContextualPrompt,
   type ContextualPrompt,
@@ -42,6 +42,7 @@ app.innerHTML = `
   </div>
 `;
 
+const gameWrap = document.querySelector<HTMLDivElement>("#game-wrap")!;
 const viewportWrap = document.querySelector<HTMLDivElement>("#viewport-wrap")!;
 export const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
 export const ctx = canvas.getContext("2d")!;
@@ -103,8 +104,40 @@ export function resizeCorridorCanvas() {
   }
 }
 
+/**
+ * Integer-scale the whole game up to fill roomy desktop viewports while keeping
+ * pixels crisp. Purely a display-layer transform on `#game-wrap` — the single
+ * common ancestor of the dungeon viewport, the DOM menu panel, and the combat
+ * canvas+windows — so canvases and every (percentage/absolute) overlay scale in
+ * lockstep. Touches no renderer maths and no canvas internal resolution: the
+ * corridor canvas stays clamped at 768×672 by `resizeCorridorCanvas`, and this
+ * transform simply upscales that crisp bitmap (`image-rendering: pixelated`).
+ *
+ * Measures the live footprint via `offsetWidth/Height` (transform-independent,
+ * so re-running never feeds back on itself) against the `#app` content box.
+ * Scale is clamped to `>= 1`, so small screens keep their existing
+ * `max-width` responsive-down behaviour untouched.
+ */
+export function resizeGameScale(): void {
+  const scale = integerScaleToFit(
+    app.clientWidth,
+    app.clientHeight,
+    gameWrap.offsetWidth,
+    gameWrap.offsetHeight
+  );
+  gameWrap.style.transform = scale > 1 ? `scale(${scale})` : "";
+}
+
 resizeCorridorCanvas();
 new ResizeObserver(resizeCorridorCanvas).observe(viewportWrap);
+// The ResizeObserver above only fires when #viewport-wrap's *layout* box
+// changes; on wide screens #game-wrap stays capped at its max-width, so window
+// resizes that only change surrounding margin never reach it. Handle the app
+// viewport directly for the integer scale (and refresh canvas sizing too).
+window.addEventListener("resize", () => {
+  resizeGameScale();
+  resizeCorridorCanvas();
+});
 
 /**
  * Trigger a brief combat-encounter flash over the viewport.
@@ -267,5 +300,11 @@ export function showMode(mode: GameMode, mapVisible: boolean): void {
   combatWrap.style.display = isCombat ? "block" : "none";
   mapCanvas.style.display = isDungeon && mapVisible ? "block" : "none";
 
+  // Measure the footprint *after* the per-mode display toggles above so the
+  // active pane (viewport / DOM panel / combat) is the one being sized. All
+  // three panes share the 8/7 design box, so the scale stays stable across
+  // modes; this call keeps it correct on the first transition and if the
+  // viewport changed while in a mode that doesn't fire a resize.
+  resizeGameScale();
   resizeCorridorCanvas();
 }

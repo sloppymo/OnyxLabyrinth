@@ -243,6 +243,28 @@ export function cappedRenderSize(
 }
 
 /**
+ * Largest *integer* factor by which a `baseW × baseH` design box can be scaled
+ * up to fit inside `availW × availH` while preserving crisp pixels.
+ *
+ * Returns an integer `>= 1`: never below 1, so it only ever grows the game on
+ * roomy screens and never fights the existing `max-width` responsive-down
+ * behaviour on small ones. Integer-only keeps the CSS `transform: scale()` in
+ * lockstep with `image-rendering: pixelated` (no fractional blur). Degenerate
+ * inputs (zero/NaN base, sub-1 fit) clamp to 1.
+ */
+export function integerScaleToFit(
+  availW: number,
+  availH: number,
+  baseW: number,
+  baseH: number
+): number {
+  if (baseW <= 0 || baseH <= 0) return 1;
+  const fit = Math.min(availW / baseW, availH / baseH);
+  if (!Number.isFinite(fit) || fit < 1) return 1;
+  return Math.floor(fit);
+}
+
+/**
  * Fog-blend a source color toward the background color.
  * Returns the blended [r, g, b] values (0-255, clamped).
  */
