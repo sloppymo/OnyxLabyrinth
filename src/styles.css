@@ -376,6 +376,12 @@ canvas#map-canvas {
   border-bottom: 1px solid #2a2620;
 }
 
+.camp-char.selected {
+  background: rgba(255, 220, 120, 0.12);
+  outline: 1px solid rgba(255, 220, 120, 0.35);
+  border-radius: 2px;
+}
+
 .camp-char .cc-name {
   min-width: 220px;
   color: var(--amber);
