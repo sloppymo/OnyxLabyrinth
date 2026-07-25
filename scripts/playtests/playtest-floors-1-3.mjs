@@ -9,6 +9,7 @@ import {
   wait,
   press,
   snap,
+  waitForIdle,
   bootToDungeon as libBootToDungeon,
   shot as libShot,
   createFindings,
@@ -73,7 +74,7 @@ async function bootToDungeon(page) {
 
 async function unlockFacing(page) {
   await press(page, "u");
-  await wait(350);
+  await waitForIdle(page, 500);
 }
 
 async function warp(page, floorId, x, y, facing = 0) {
@@ -98,7 +99,7 @@ async function warp(page, floorId, x, y, facing = 0) {
 
 async function stepForward(page) {
   await press(page, "ArrowUp");
-  await wait(320);
+  await waitForIdle(page);
 }
 
 async function face(page, target) {
@@ -109,7 +110,7 @@ async function face(page, target) {
   } else {
     for (let i = 0; i < delta; i++) await press(page, "ArrowRight");
   }
-  await wait(280);
+  await waitForIdle(page);
 }
 
 async function walkDirs(page, dirs, floorLabel) {

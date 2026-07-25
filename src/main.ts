@@ -45,6 +45,7 @@ import {
 } from "./engine/shell";
 import { resolveContextualPrompt } from "./engine/contextual-prompt";
 import { buildSnapshot } from "./debug/snapshot";
+import { computeIdle } from "./debug/idle";
 import { CombatController } from "./engine/combat-ui";
 import {
   createControllerInput,
@@ -143,12 +144,28 @@ let pendingRingAction: RingActionId | null = null;
 // --- Mode transition with fade -------------------------------------------
 // The canvas has `transition: opacity 0.15s` in CSS. This helper fades out,
 // swaps mode + shell visibility, then fades in.
+
+/**
+ * True from the moment a fade starts until the new mode's frame has actually
+ * painted. `state.mode` flips synchronously inside the setTimeout below, so
+ * it alone can't tell a caller "the fade is still in flight" — this flag is
+ * what `isIdle()` (debug/idle.ts) reads instead. Cleared one rAF after the
+ * opacity is restored, not in the same tick, so a poller checking
+ * immediately after the timeout fires still sees the fade as pending until
+ * the browser has actually committed the restored frame.
+ */
+let modeTransitionPending = false;
+
 function transitionToMode(newMode: GameMode): void {
+  modeTransitionPending = true;
   canvas.style.opacity = "0";
   setTimeout(() => {
     setMode(state, newMode);
     showMode(newMode, mapVisible);
     canvas.style.opacity = "1";
+    requestAnimationFrame(() => {
+      modeTransitionPending = false;
+    });
   }, 150);
 }
 
@@ -463,7 +480,9 @@ function endCombat(result: CombatState): void {
   let pendingPerkChoices: PendingPerkChoice[] = [];
 
   if (result.result === "wipe") {
-    // Design doc §9.1: party retreats to dungeon entrance, revives at 1 HP.
+    // Century cycle §7.3 (supersedes the old design doc §9.1 entrance-retreat
+    // for campaign wipes): the party revives, and openGameOver()'s Continue
+    // sends them to town, not back into the dungeon.
     state.party = reviveKnockedOut(state.party);
     state.player.x = state.floor.startX;
     state.player.y = state.floor.startY;
@@ -583,6 +602,10 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 let gameOverController: GameOverController | null = null;
 
 function openGameOver(): void {
+  // Century cycle (docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md
+  // §7.1/§7.2): a campaign wipe advances the world 100 years; Arena wipes are
+  // a testing loop, not a in-fiction death, so they never touch the year.
+  if (!inArena) state.worldYear += 100;
   setMode(state, "game_over");
   showMode("game_over", mapVisible);
   setMessage("");
@@ -590,14 +613,22 @@ function openGameOver(): void {
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     party: state.party,
     floorName: state.floor.name,
+    worldYear: state.worldYear,
     onContinue: () => {
       gameOverController = null;
       if (inArena) {
         openArena();
       } else {
-        setMode(state, "dungeon");
-        showMode("dungeon", mapVisible);
-        setMessage("You wake at the dungeon entrance, barely alive.");
+        // §7.3: wipe returns the party to town, not the dungeon entrance.
+        // Keep the deepest floor reached (no soft-reset) but land on that
+        // floor's start tile for a clean next Enter Dungeon.
+        state.lastDungeon = {
+          floorId: state.floor.id,
+          x: state.floor.startX,
+          y: state.floor.startY,
+          facing: 0,
+        };
+        openTown();
       }
     },
   });
@@ -1742,29 +1773,134 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
+// --- Boot readiness tracking (feeds the ?debug=1 readiness() probe) -------
+// Each of these already tolerates failure by design — the game starts either
+// way, falling back to gradients/procedural shapes. The flags below just make
+// that outcome observable (booleans mean "settled", success or fail; the
+// specific asset name lands in failedAssets on failure) instead of the
+// previous bare `.catch(() => {})` swallowing it.
+let fontsReady = false;
+let texturesReady = false;
+let enemySpritesReady = false;
+let partySpritesReady = false;
+let effectSpritesReady = false;
+let mapSpritesReady = false;
+const failedAssets: string[] = [];
+
 // Wait for the custom font and corridor textures to load before starting the
 // render loop, so Canvas text rendering uses FF36 from the first frame and
 // the dungeon renderer has bitmaps ready.
 if ("fonts" in document) {
   Promise.all([
-    document.fonts.load('14px "FF36"'),
-    loadTextures(),
-  ])
-    .then(() => loop())
-    .catch(() => loop()); // start anyway if an asset fails to load
+    document.fonts
+      .load('14px "FF36"')
+      .then(() => {
+        fontsReady = true;
+      })
+      .catch(() => {
+        fontsReady = true;
+        failedAssets.push("fonts");
+      }),
+    loadTextures()
+      .then(() => {
+        texturesReady = true;
+      })
+      .catch(() => {
+        texturesReady = true;
+        failedAssets.push("textures");
+      }),
+  ]).then(() => loop()); // both branches above resolve — this never rejects
 } else {
-  loadTextures().then(loop).catch(loop);
+  loadTextures()
+    .then(() => {
+      texturesReady = true;
+    })
+    .catch(() => {
+      texturesReady = true;
+      failedAssets.push("textures");
+    })
+    .then(loop);
 }
 
 // Prewarm enemy/party sprite and effect caches without blocking the render loop.
-loadEnemySprites().catch(() => {});
-loadPartySprites().catch(() => {});
-loadEffectSprites().catch(() => {});
-loadMapSprites().catch(() => {});
+loadEnemySprites()
+  .then(() => {
+    enemySpritesReady = true;
+  })
+  .catch(() => {
+    enemySpritesReady = true;
+    failedAssets.push("enemySprites");
+  });
+loadPartySprites()
+  .then(() => {
+    partySpritesReady = true;
+  })
+  .catch(() => {
+    partySpritesReady = true;
+    failedAssets.push("partySprites");
+  });
+loadEffectSprites()
+  .then(() => {
+    effectSpritesReady = true;
+  })
+  .catch(() => {
+    effectSpritesReady = true;
+    failedAssets.push("effectSprites");
+  });
+loadMapSprites()
+  .then(() => {
+    mapSpritesReady = true;
+  })
+  .catch(() => {
+    mapSpritesReady = true;
+    failedAssets.push("mapSprites");
+  });
 
 // Debug helpers for targeted visual verification; only active when the page
 // is loaded with ?debug=1. Never used in normal play.
 if (new URLSearchParams(window.location.search).has("debug")) {
+  /**
+   * Quiescent = no pending mode fade, no render-camera tween, no prologue
+   * auto-play, no unfinished combat playback. Decision logic lives in the
+   * pure, unit-tested debug/idle.ts so this stays a thin call with live
+   * values — see AGENTS.md's Debug/testing aids section.
+   */
+  const isIdle = (): boolean =>
+    computeIdle({
+      modeTransitionPending,
+      cameraAnimating: isRenderCameraAnimating(),
+      prologueActive: !!prologueController,
+      combat: combatController
+        ? {
+            phase: combatController.getPhase(),
+            playbackDone: combatController.isChoreographyDone(),
+          }
+        : null,
+    });
+
+  /**
+   * Boot/asset readiness for scripts that want to wait past the first
+   * splash before driving input. Fonts/textures/sprite fields are booleans
+   * (settled, success or fail — see the boot section above); the audio
+   * sample families are tri-state because they only start on the first
+   * user keydown, so "not-started" must stay distinct from "failed."
+   */
+  const readiness = () => {
+    const audioStatus = audio.getSampleLoadStatus();
+    return {
+      fonts: fontsReady,
+      textures: texturesReady,
+      enemySprites: enemySpritesReady,
+      partySprites: partySpritesReady,
+      effectSprites: effectSpritesReady,
+      mapSprites: mapSpritesReady,
+      audioUi: audioStatus.ui,
+      audioCombat: audioStatus.combat,
+      audioDungeon: audioStatus.dungeon,
+      failed: [...failedAssets, ...audioStatus.failed],
+    };
+  };
+
   const debugSnapshot = (opts?: { map?: boolean; mapRadius?: number }) =>
     buildSnapshot({
       state,
@@ -1772,6 +1908,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       message: getMessageText(),
       mapVisible,
       inArena,
+      idle: isIdle(),
       combat: combatController ? combatController.debugView() : null,
       map: opts?.map,
       mapRadius: opts?.mapRadius,
@@ -1782,6 +1919,8 @@ if (new URLSearchParams(window.location.search).has("debug")) {
   (window as any).__onyxDebug = {
     state,
     snapshot: debugSnapshot,
+    isIdle,
+    readiness,
     startCombat,
     exitDebugCombat,
     FLOORS: getFloors(),

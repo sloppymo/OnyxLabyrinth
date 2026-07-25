@@ -188,6 +188,17 @@ const COMBAT_SFX_GAIN: Record<CombatSfxId, number> = {
   itemUse: 0.4,
 };
 
+/** Lazy-load status for a sample family — only becomes "loading" once `resume()` fires. */
+export type SampleLoadState = "not-started" | "loading" | "done";
+
+export interface SampleLoadStatus {
+  ui: SampleLoadState;
+  combat: SampleLoadState;
+  dungeon: SampleLoadState;
+  /** e.g. "ui:cursor" — ids that 404'd or failed to decode. */
+  failed: string[];
+}
+
 class AudioEngine {
   private ctx: Maybe<AudioContext> = null;
   private masterGain: Maybe<GainNode> = null;
@@ -209,6 +220,7 @@ class AudioEngine {
   /** Decoded FF6 UI SFX buffers (empty until loadUiSounds resolves). */
   private uiBuffers: Partial<Record<UiSfxId, AudioBuffer>> = {};
   private uiLoadPromise: Promise<void> | null = null;
+  private uiLoadStatus: SampleLoadState = "not-started";
   /** Throttle rapid cursor moves (gamepad held / key-repeat). */
   private lastCursorAt = 0;
   private lastTextTickAt = 0;
@@ -216,9 +228,13 @@ class AudioEngine {
   /** Decoded combat SFX buffers (empty until loadCombatSounds resolves). */
   private combatBuffers: Partial<Record<CombatSfxId, AudioBuffer>> = {};
   private combatLoadPromise: Promise<void> | null = null;
+  private combatLoadStatus: SampleLoadState = "not-started";
   /** Decoded world/NPC placeholder buffers. */
   private dungeonBuffers: Partial<Record<DungeonSfxId, AudioBuffer>> = {};
   private dungeonLoadPromise: Promise<void> | null = null;
+  private dungeonLoadStatus: SampleLoadState = "not-started";
+  /** ids (e.g. "ui:cursor") that 404'd or failed to decode — never thrown. */
+  private failedSampleIds: string[] = [];
 
   // Config — exposed for tuning. Keep magic numbers here.
   private readonly CFG = {
@@ -297,19 +313,25 @@ class AudioEngine {
     if (!ctx) return Promise.resolve();
 
     const base = `${import.meta.env.BASE_URL ?? "/"}assets/sfx/ui/`;
+    this.uiLoadStatus = "loading";
     this.uiLoadPromise = (async () => {
       await Promise.all(
         (Object.keys(UI_SFX_FILES) as UiSfxId[]).map(async (id) => {
           try {
             const res = await fetch(base + UI_SFX_FILES[id]);
-            if (!res.ok) return;
+            if (!res.ok) {
+              this.failedSampleIds.push(`ui:${id}`);
+              return;
+            }
             const raw = await res.arrayBuffer();
             this.uiBuffers[id] = await ctx.decodeAudioData(raw.slice(0));
           } catch {
             // Missing/corrupt asset — leave that slot empty.
+            this.failedSampleIds.push(`ui:${id}`);
           }
         })
       );
+      this.uiLoadStatus = "done";
     })();
     return this.uiLoadPromise;
   }
@@ -328,19 +350,25 @@ class AudioEngine {
     if (!ctx) return Promise.resolve();
 
     const base = `${import.meta.env.BASE_URL ?? "/"}assets/sfx/combat/`;
+    this.combatLoadStatus = "loading";
     this.combatLoadPromise = (async () => {
       await Promise.all(
         (Object.keys(COMBAT_SFX_FILES) as CombatSfxId[]).map(async (id) => {
           try {
             const res = await fetch(base + COMBAT_SFX_FILES[id]);
-            if (!res.ok) return;
+            if (!res.ok) {
+              this.failedSampleIds.push(`combat:${id}`);
+              return;
+            }
             const raw = await res.arrayBuffer();
             this.combatBuffers[id] = await ctx.decodeAudioData(raw.slice(0));
           } catch {
             // Missing/corrupt asset — leave that slot empty.
+            this.failedSampleIds.push(`combat:${id}`);
           }
         })
       );
+      this.combatLoadStatus = "done";
     })();
     return this.combatLoadPromise;
   }
@@ -356,21 +384,42 @@ class AudioEngine {
     if (!ctx) return Promise.resolve();
 
     const base = `${import.meta.env.BASE_URL ?? "/"}assets/sfx/dungeon/`;
+    this.dungeonLoadStatus = "loading";
     this.dungeonLoadPromise = (async () => {
       await Promise.all(
         (Object.keys(DUNGEON_SFX_FILES) as DungeonSfxId[]).map(async (id) => {
           try {
             const res = await fetch(base + DUNGEON_SFX_FILES[id]);
-            if (!res.ok) return;
+            if (!res.ok) {
+              this.failedSampleIds.push(`dungeon:${id}`);
+              return;
+            }
             const raw = await res.arrayBuffer();
             this.dungeonBuffers[id] = await ctx.decodeAudioData(raw.slice(0));
           } catch {
             // Missing/corrupt asset — leave that slot empty.
+            this.failedSampleIds.push(`dungeon:${id}`);
           }
         })
       );
+      this.dungeonLoadStatus = "done";
     })();
     return this.dungeonLoadPromise;
+  }
+
+  /**
+   * Read-only status of the three lazily-started sample-load families, for
+   * the ?debug=1 readiness probe. Never triggers loading itself — `resume()`
+   * does that on the first user keydown — so a script that never presses a
+   * key correctly sees "not-started", not a failure.
+   */
+  getSampleLoadStatus(): SampleLoadStatus {
+    return {
+      ui: this.uiLoadStatus,
+      combat: this.combatLoadStatus,
+      dungeon: this.dungeonLoadStatus,
+      failed: [...this.failedSampleIds],
+    };
   }
 
   /** Play a swappable non-combat world/NPC cue. */

@@ -56,6 +56,7 @@ describe("buildSnapshot", () => {
       message: NO_MESSAGE,
       mapVisible: false,
       inArena: false,
+      idle: true,
     });
 
     expect(snap.mode).toBe("title");
@@ -72,6 +73,7 @@ describe("buildSnapshot", () => {
       message: NO_MESSAGE,
       mapVisible: false,
       inArena: false,
+      idle: true,
     });
 
     expect(snap.floor).toEqual({ id: 1, name: "Test Floor", theme: "f1" });
@@ -90,6 +92,7 @@ describe("buildSnapshot", () => {
       message: NO_MESSAGE,
       mapVisible: false,
       inArena: false,
+      idle: true,
     });
 
     expect(JSON.stringify(snap)).not.toContain("{}");
@@ -106,6 +109,7 @@ describe("buildSnapshot", () => {
       message: NO_MESSAGE,
       mapVisible: false,
       inArena: false,
+      idle: true,
     });
     const withMap = buildSnapshot({
       state,
@@ -113,11 +117,36 @@ describe("buildSnapshot", () => {
       message: NO_MESSAGE,
       mapVisible: false,
       inArena: false,
+      idle: false,
       map: true,
     });
 
     expect(withoutMap.map).toBeNull();
     expect(Array.isArray(withMap.map)).toBe(true);
+  });
+
+  it("threads the idle flag through unchanged", () => {
+    const state = stateOnTestFloor();
+
+    const idleSnap = buildSnapshot({
+      state,
+      route: "dungeon",
+      message: NO_MESSAGE,
+      mapVisible: false,
+      inArena: false,
+      idle: true,
+    });
+    const busySnap = buildSnapshot({
+      state,
+      route: "dungeon",
+      message: NO_MESSAGE,
+      mapVisible: false,
+      inArena: false,
+      idle: false,
+    });
+
+    expect(idleSnap.idle).toBe(true);
+    expect(busySnap.idle).toBe(false);
   });
 
   it("summarizes the party without leaking character references", () => {
@@ -130,6 +159,7 @@ describe("buildSnapshot", () => {
       message: NO_MESSAGE,
       mapVisible: false,
       inArena: false,
+      idle: true,
     });
 
     expect(snap.party).toHaveLength(state.party.length);
@@ -153,6 +183,7 @@ describe("buildSnapshot", () => {
       message: NO_MESSAGE,
       mapVisible: false,
       inArena: false,
+      idle: false,
       combat: {
         phase: "palette",
         actingCharId: "c1",
@@ -186,6 +217,7 @@ describe("buildSnapshot", () => {
       message: NO_MESSAGE,
       mapVisible: false,
       inArena: false,
+      idle: true,
     });
 
     expect(snap.combat).toBeNull();
@@ -205,6 +237,7 @@ describe("buildSnapshot", () => {
       message: NO_MESSAGE,
       mapVisible: false,
       inArena: false,
+      idle: true,
       map: true,
     });
 

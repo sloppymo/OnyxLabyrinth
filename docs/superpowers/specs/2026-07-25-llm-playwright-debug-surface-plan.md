@@ -188,7 +188,7 @@ it.
 | 9 | Event ring buffer | **Keep, slimmed** | Combat events already exist on `CombatState.events`. Buffer only needs: mode/route changes, messages, feature results, audio cues, errors. Minimal chokepoints (one shell hook + 2–3 main.ts emit calls + audio patch). |
 | 10 | Error capture | **Keep, split** | In-page: `error`/`unhandledrejection` listeners + asset-failure notes into the buffer (debug-gated). Network-level: script-side via Playwright events in the lib (zero engine change). "Missing WAVs" premise **reinstated, corrected**: the three sample-backed SFX families (`ui`/`combat`/`dungeon` WAVs) are real assets that can 404/fail-decode; a failure is invisible today (silent no-op, no console error — see §2.6) and is exactly what a readiness probe + `assetFailed` event exists to catch. |
 | 11 | Invariant checker | **Keep, small** | Pure `checkInvariants(state)` → `snapshot().warnings`. HP bounds, `activeCharIds ⊆ party`, inventory shape, `pendingTrap` only in dungeon, cursed-slot rule, mode-vs-DOM visibility probe. |
-| 12 | Audio cue spy | **Keep** | Monkey-patch the `audio` singleton's methods **from the debug module** (records name/id/timestamp into the ring buffer). Zero changes to `audio.ts`. Because a missing sample is a silent no-op (§2.6), the spy alone can't distinguish "cue fired and played" from "cue fired and produced no sound" — pair it with the readiness probe's per-family failed-id list (PR-5) rather than trying to infer playback success from the call alone. |
+| 12 | Audio cue spy | **Keep** | Monkey-patch the `audio` singleton's methods **from the debug module** (records name/id/timestamp into the ring buffer). Zero *further* changes to `audio.ts` for the spy itself — PR-2 already added a small, real seam there (`getSampleLoadStatus()` + `*LoadStatus`/`failedSampleIds` fields) for the readiness probe, so "zero changes" describes the spy's own footprint, not the file's total diff across the sequence. Because a missing sample is a silent no-op (§2.6), the spy alone can't distinguish "cue fired and played" from "cue fired and produced no sound" — pair it with the readiness probe's per-family failed-id list (now **PR-4**, after the PR-4/PR-5 swap) rather than trying to infer playback success from the call alone. |
 | 13 | `?noflicker` determinism flags | **Defer** | Torch flicker is a pure time function (stable enough); the real screenshot instability is combat **formation jitter** (`combat-scene.ts:789/832/934`). Only worth touching if screenshot-diffing becomes a workflow; then route that jitter through the seeded cosmetic-safe path. |
 | 14 | Playwright Clock / frame stepping | **Reject for now** | `page.clock` stalls the rAF loop and desyncs AudioContext time; `isIdle()` covers the actual need. |
 | 15 | Coverage report | **Defer** | Derivable offline from ring buffer + transcripts; no engine feature needed. |
@@ -326,12 +326,17 @@ AGENTS.md "Debug/testing aids" section updated.
   "playback" || playbackDone) && !prologueController` (camp/menus are idle-awaiting-input).
   Exposed on `__onyxDebug` and folded into `snapshot().idle`.
 - `readiness()` = `{ fonts, textures, enemySprites, partySprites, effectSprites, mapSprites,
-  audioUi, audioCombat, audioDungeon, failed: string[] }` — main.ts records the prewarm promise
-  outcomes it already owns (`main.ts:1760–1763` `.catch` handlers record instead of swallowing);
-  the three `audio*` fields track `loadUiSounds`/`loadCombatSounds`/`loadDungeonSounds`
-  (`"not-started" | "loading" | "done"`, since they only start after the first keydown — a script
-  that never presses a key should see `"not-started"`, not treat it as a failure) and their
-  per-id misses feed `failed` (`"audio:ui:cursor"` etc.) once actually attempted.
+  audioUi, audioCombat, audioDungeon, failed: string[] }`. The fonts/textures/sprite fields are
+  outcomes main.ts already owns (`main.ts`'s `.catch` handlers around the boot/prewarm promises
+  record instead of swallowing). The three `audio*` fields are different: `resume()`, not
+  main.ts, kicks off `loadUiSounds`/`loadCombatSounds`/`loadDungeonSounds`, and only on the first
+  user keydown — so this PR adds a small, real seam to `audio.ts` itself: a read-only
+  `getSampleLoadStatus()` accessor over three new private `*LoadStatus` fields
+  (`"not-started" | "loading" | "done"`) plus a `failedSampleIds: string[]` pushed to inside the
+  existing per-sample catch/failure branches. `readiness()` just wraps that accessor — it never
+  calls `load*Sounds()` itself (that would call `resume()` on a cold context, both creating an
+  `AudioContext` outside a user gesture and racing a second fetch against an in-flight one). A
+  script that never presses a key correctly sees `"not-started"`, not a failure.
 - Lib: `waitForIdle(page, timeout)` (poll ~30 ms), `act(page, key) = press → waitForIdle`;
   replace sleeps in migrated script; report runtime delta in the PR description.
 - Document (not code): combat fast/skip already exist — hold Shift / press Escape in playback.
@@ -479,3 +484,22 @@ commitment to migrate `playtest-floors-4-5.mjs` in that same PR rather than leav
 Nothing else in the original audit (RNG call-site inventory, `warp()`/`transitionToFloor`
 bypass diagnosis, quiescence sources, route/overlay handling, `@playwright/test` verdict) changed
 under review.
+
+**Addendum (PR-2 implementation, 2026-07-25):** PR-2 shipped as designed (`computeIdle()` extracted
+to a pure `src/debug/idle.ts` for exhaustive Vitest coverage rather than living inline in
+`main.ts`; `idle` made a **required** `SnapshotInput` field, not optional-defaulting-true, so a
+caller can't silently ship an unasserted liveness value; `CombatController.isChoreographyDone()`
+added as a cheap poll seam distinct from the heavier `debugView()`). Verified against a live
+build: three consecutive runs each of `smoke-debug-surface.mjs` and the migrated
+`playtest-floors-1-3.mjs` all reach `route === "dungeon"`, and a side-by-side run of the pre-PR-2
+script against the same build confirmed the same 4 core findings plus a ~33% wall-clock drop
+(93-97s vs. 139s) — proving the fixed-sleep-vs-idle-poll swap is a pure speedup, not a source of
+the findings. Two corrections landed on this doc during that pass: the `readiness()` design above
+(§6) previously claimed audio's promise outcomes were something "main.ts already owns," true only
+for fonts/textures/sprites — audio needed a real (small) accessor added to `audio.ts` itself,
+`getSampleLoadStatus()`, since `resume()`, not main.ts, owns the three sample loaders; and triage
+#12's "zero changes to `audio.ts`" claim is now scoped to the cue-spy's own footprint, since PR-2
+already touched the file for the accessor. The `not-started` state (audio hasn't loaded because
+no keydown has fired) and the failure-recording path (`failedSampleIds`) are both now covered —
+by a live-browser smoke assertion and by injected-failure Vitest tests in `audio.test.ts`
+respectively — rather than shipped with either claim untested.

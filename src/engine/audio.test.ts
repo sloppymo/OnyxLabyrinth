@@ -122,3 +122,118 @@ describe("AudioEngine dungeon cues", () => {
     expect(oscillators.every((osc) => osc.start.mock.calls.length === 1)).toBe(true);
   });
 });
+
+describe("AudioEngine sample load status (?debug=1 readiness probe)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+  });
+
+  function stubAudioContext() {
+    const ctx = {
+      state: "running",
+      currentTime: 0,
+      sampleRate: 44100,
+      destination: fakeNode(),
+      createGain: () => fakeNode(),
+      createBufferSource: () => fakeNode(),
+      createOscillator: () => fakeNode(),
+      createBiquadFilter: () => fakeNode(),
+      createBuffer: () => ({ getChannelData: () => new Float32Array(1) }),
+      decodeAudioData: async () => ({ decoded: true }),
+    };
+    Object.defineProperty(window, "AudioContext", {
+      configurable: true,
+      value: class {
+        constructor() {
+          return ctx;
+        }
+      },
+    });
+  }
+
+  it("reports not-started before resume() has ever run (no user gesture yet)", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    const { audio } = await import("./audio");
+
+    expect(audio.getSampleLoadStatus()).toEqual({
+      ui: "not-started",
+      combat: "not-started",
+      dungeon: "not-started",
+      failed: [],
+    });
+  });
+
+  it("flips to loading synchronously, then done once the fetches settle", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
+    );
+    stubAudioContext();
+
+    const { audio } = await import("./audio");
+    audio.resume();
+    expect(audio.getSampleLoadStatus().ui).toBe("loading");
+
+    await audio.loadUiSounds(); // returns the same in-flight promise resume() kicked off
+    expect(audio.getSampleLoadStatus().ui).toBe("done");
+  });
+
+  it("records a failed id (by family:id) when a sample 404s, without throwing", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (String(url).endsWith("chest-open.wav")) return { ok: false };
+      return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    stubAudioContext();
+
+    const { audio } = await import("./audio");
+    audio.resume();
+    await audio.loadDungeonSounds();
+
+    const status = audio.getSampleLoadStatus();
+    expect(status.dungeon).toBe("done");
+    expect(status.failed).toContain("dungeon:chestOpen");
+  });
+
+  it("records a failed id when decodeAudioData rejects (corrupt asset)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
+    );
+    const ctx = {
+      state: "running",
+      currentTime: 0,
+      sampleRate: 44100,
+      destination: fakeNode(),
+      createGain: () => fakeNode(),
+      createBufferSource: () => fakeNode(),
+      createOscillator: () => fakeNode(),
+      createBiquadFilter: () => fakeNode(),
+      createBuffer: () => ({ getChannelData: () => new Float32Array(1) }),
+      decodeAudioData: async () => {
+        throw new Error("corrupt");
+      },
+    };
+    Object.defineProperty(window, "AudioContext", {
+      configurable: true,
+      value: class {
+        constructor() {
+          return ctx;
+        }
+      },
+    });
+
+    const { audio } = await import("./audio");
+    audio.resume();
+    await audio.loadCombatSounds();
+
+    // resume() also kicks off the ui/dungeon families in the background with
+    // the same always-throwing decodeAudioData, so they fail too — that's
+    // consistent, not a leak. The claim under test is just that combat's own
+    // failures were recorded.
+    const status = audio.getSampleLoadStatus();
+    expect(status.combat).toBe("done");
+    expect(status.failed.some((id) => id.startsWith("combat:"))).toBe(true);
+  });
+});

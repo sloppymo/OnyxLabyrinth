@@ -1325,6 +1325,16 @@ export class CombatController {
   }
 
   /**
+   * Whether the current playback choreography (if any) has finished. Cheap —
+   * used by main.ts's isIdle() polling (~30ms), which cannot afford
+   * debugView()'s enemy/log array copies every tick. Raw fact, not
+   * phase-gated; pair with getPhase() (see debug/idle.ts computeIdle).
+   */
+  isChoreographyDone(): boolean {
+    return isPlaybackDone(this.scene, performance.now());
+  }
+
+  /**
    * Read-only view for the ?debug=1 snapshot surface (src/debug/snapshot.ts).
    * Returns copies so callers can never mutate controller internals.
    */
@@ -1334,8 +1344,7 @@ export class CombatController {
       phase: this.phase,
       actingCharId: this.currentActorId,
       roundEnding: this.roundEnding,
-      playbackDone:
-        this.phase !== "playback" || isPlaybackDone(this.scene, performance.now()),
+      playbackDone: this.phase !== "playback" || this.isChoreographyDone(),
       selection:
         this.selectionEntries.length > 0
           ? {

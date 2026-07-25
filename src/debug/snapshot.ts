@@ -47,6 +47,10 @@ export interface SnapshotInput {
   message: { text: string; visible: boolean };
   mapVisible: boolean;
   inArena: boolean;
+  /** Quiescence — no pending mode fade, camera tween, prologue, or unfinished
+   *  combat playback. Required (not defaulted) so a caller can't accidentally
+   *  ship a snapshot asserting "idle" that nothing actually computed. */
+  idle: boolean;
   combat?: CombatDebugView | null;
   /** Include an ASCII map render (omitted by default — the grid is large). */
   map?: boolean;
@@ -89,6 +93,7 @@ export interface Snapshot {
   explored: string[];
   unlockedDoors: string[];
   message: { text: string; visible: boolean };
+  idle: boolean;
   combat: CombatDebugView | null;
   availableActions: string[];
   map: string[] | null;
@@ -191,6 +196,7 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
     explored: [...state.explored],
     unlockedDoors: [...state.unlockedDoors],
     message: { ...input.message },
+    idle: input.idle,
     combat: input.combat ? cloneCombatView(input.combat) : null,
     availableActions: availableActionsFor(input.route, state, input.combat),
     map: input.map

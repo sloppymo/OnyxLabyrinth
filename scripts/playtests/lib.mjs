@@ -10,8 +10,12 @@
  *
  * Requires the page to be loaded with `?debug=1`.
  *
- * Timing note: waits here are fixed sleeps, same as before. PR-2 adds
- * `isIdle()` and will replace them with real quiescence polling.
+ * Timing note: `waitForIdle`/`act` poll `__onyxDebug.isIdle()` (mode fade,
+ * render-camera tween, prologue, combat playback) instead of a fixed sleep.
+ * `bootToDungeon` and this script's own step/turn/unlock helpers use them;
+ * a few waits remain fixed on purpose — trap-prompt/menu opens and the
+ * initial page-load settle don't go through `transitionToMode`, so
+ * `isIdle()` has nothing to poll there.
  */
 import { chromium } from "playwright";
 import fs from "fs";
@@ -46,6 +50,26 @@ export async function press(page, key, n = 1, delay = 90) {
 /** Structured game state via the in-page debug snapshot. */
 export async function snap(page, opts) {
   return page.evaluate((o) => window.__onyxDebug.snapshot(o), opts);
+}
+
+/**
+ * Poll `__onyxDebug.isIdle()` until it's true or `timeout` elapses. Returns
+ * whether it settled in time (callers decide whether that's fatal).
+ */
+export async function waitForIdle(page, timeout = 3000, interval = 30) {
+  const deadline = Date.now() + timeout;
+  for (;;) {
+    const idle = await page.evaluate(() => window.__onyxDebug.isIdle());
+    if (idle) return true;
+    if (Date.now() >= deadline) return false;
+    await wait(interval);
+  }
+}
+
+/** Press a key, then wait for the game to settle instead of a fixed sleep. */
+export async function act(page, key, timeout = 3000) {
+  await page.keyboard.press(key);
+  return waitForIdle(page, timeout);
 }
 
 /** Snapshot including the ASCII map render. */
@@ -94,37 +118,49 @@ export function writeReport(outDir, report) {
  */
 export async function bootToDungeon(page, url, { maxSteps = 40 } = {}) {
   await page.goto(url, { waitUntil: "networkidle" });
-  await wait(400);
+  await wait(400); // initial page-load settle; isIdle() has nothing to poll before __onyxDebug attaches
 
   let st = await snap(page);
   for (let i = 0; i < maxSteps && st.route !== "dungeon"; i++) {
     switch (st.route) {
       case "title":
+        // "n" opens the prologue, which auto-plays and is never idle by
+        // design (isIdle() would spin the full timeout) — a short settle
+        // is the correct wait here, not idle-polling.
         await press(page, "n");
-        await wait(350);
+        await wait(250);
         break;
       case "prologue":
+        // A single Escape may only advance one beat of the two-stage skip
+        // rather than close it, so bound the poll well under the default
+        // timeout — a non-closing press still falls through to the next
+        // loop iteration's Escape instead of stalling here for 3s.
         await press(page, "Escape");
-        await wait(220);
+        await waitForIdle(page, 500);
         break;
       case "party_creation":
+        // Confirms the default party -> openTown(), which uses the real
+        // transitionToMode fade tracked by modeTransitionPending.
         await press(page, "Enter");
-        await wait(400);
+        await waitForIdle(page);
         break;
       case "town": {
         const body = await page.evaluate(() => document.body.innerText);
         if (/▶.*Enter Dungeon/i.test(body)) {
+          // onEnterDungeon -> transitionToFloor + transitionToMode("dungeon").
           await press(page, "Enter");
-          await wait(600);
+          await waitForIdle(page);
         } else {
+          // Menu-cursor move only; nothing blocks isIdle() here, so this
+          // settles as fast as the poll interval instead of a fixed 250ms.
           await press(page, ">");
-          await wait(250);
+          await waitForIdle(page, 500);
         }
         break;
       }
       default:
         await press(page, "Enter");
-        await wait(300);
+        await waitForIdle(page, 500);
         break;
     }
     st = await snap(page);
