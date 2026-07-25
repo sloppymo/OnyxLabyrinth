@@ -41,15 +41,20 @@ import {
   showMode,
   compassForFacing,
   setContextualPrompt,
+  getMessageText,
 } from "./engine/shell";
 import { resolveContextualPrompt } from "./engine/contextual-prompt";
+import { buildSnapshot } from "./debug/snapshot";
 import { CombatController } from "./engine/combat-ui";
 import {
   createControllerInput,
   type ControllerInputEvent,
 } from "./engine/controller-input";
 import { controllerEventToMenuKey } from "./engine/menu-controller-adapter";
-import { resolveControllerRoute } from "./engine/controller-route";
+import {
+  resolveControllerRoute,
+  type ControllerRouteContext,
+} from "./engine/controller-route";
 import { DungeonActionRingController } from "./engine/dungeon-action-ring-ui";
 import { TrapPromptController } from "./engine/trap-prompt-ui";
 import { CampController } from "./engine/camp-ui";
@@ -954,8 +959,13 @@ function openActionRing(): void {
   });
 }
 
-function routeControllerEvent(event: ControllerInputEvent): void {
-  const route = resolveControllerRoute({
+/**
+ * Live controller flags for `resolveControllerRoute`. Shared by the input
+ * router and the ?debug=1 snapshot so the two can never disagree about which
+ * overlay actually owns input (four of them borrow mode "title").
+ */
+function currentRouteFlags(): ControllerRouteContext {
+  return {
     mode: state.mode,
     hasPerkSelect: !!perkSelectController,
     hasCombat: !!combatController,
@@ -971,7 +981,11 @@ function routeControllerEvent(event: ControllerInputEvent): void {
     hasTitle: !!titleController,
     hasPendingTrap: !!state.pendingTrap,
     hasTrapPrompt: !!trapPrompt,
-  });
+  };
+}
+
+function routeControllerEvent(event: ControllerInputEvent): void {
+  const route = resolveControllerRoute(currentRouteFlags());
 
   switch (route) {
     case "perk": {
@@ -1751,8 +1765,23 @@ loadMapSprites().catch(() => {});
 // Debug helpers for targeted visual verification; only active when the page
 // is loaded with ?debug=1. Never used in normal play.
 if (new URLSearchParams(window.location.search).has("debug")) {
+  const debugSnapshot = (opts?: { map?: boolean; mapRadius?: number }) =>
+    buildSnapshot({
+      state,
+      route: resolveControllerRoute(currentRouteFlags()),
+      message: getMessageText(),
+      mapVisible,
+      inArena,
+      combat: combatController ? combatController.debugView() : null,
+      map: opts?.map,
+      mapRadius: opts?.mapRadius,
+    });
+
+  (window as any).render_game_to_text = () => JSON.stringify(debugSnapshot());
+
   (window as any).__onyxDebug = {
     state,
+    snapshot: debugSnapshot,
     startCombat,
     exitDebugCombat,
     FLOORS: getFloors(),

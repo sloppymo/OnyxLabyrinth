@@ -183,6 +183,16 @@ export function setMessage(text: string): void {
   syncMessageBandVisibility();
 }
 
+/**
+ * Current message-overlay text plus whether the band is actually showing it.
+ * Exposed for the ?debug=1 snapshot so the debug layer doesn't re-derive the
+ * visibility rule that `syncMessageBandVisibility` already owns.
+ */
+export function getMessageText(): { text: string; visible: boolean } {
+  const text = messageEl.textContent ?? "";
+  return { text: text.trim(), visible: messageBandEl.classList.contains("has-message") };
+}
+
 /** Clear informational message text after a player dungeon action. */
 export function clearMessageOnPlayerAction(): void {
   if (!messageEl.textContent) return;

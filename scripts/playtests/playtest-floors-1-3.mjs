@@ -4,106 +4,71 @@
  * Run: node scripts/playtests/playtest-floors-1-3.mjs
  * Expects: npx vite preview --port 5230 --base /OnyxLabyrinth/
  */
-import { chromium } from "playwright";
-import fs from "fs";
-import path from "path";
+import {
+  launch,
+  wait,
+  press,
+  snap,
+  bootToDungeon as libBootToDungeon,
+  shot as libShot,
+  createFindings,
+  ensureOutDir,
+  writeReport,
+} from "./lib.mjs";
 
 const BASE = "http://127.0.0.1:5230/OnyxLabyrinth/?debug=1";
-const OUT = "playtest-screenshots/2026-07-20-floors-1-3";
-fs.mkdirSync(OUT, { recursive: true });
+const OUT = ensureOutDir("playtest-screenshots/2026-07-20-floors-1-3");
 
-const findings = [];
 const log = (...a) => console.log(...a);
-const find = (sev, floor, title, body = "") => {
-  findings.push({ sev, floor, title, body });
-  log(`[${sev}] F${floor} ${title}${body ? ` — ${body}` : ""}`);
-};
+const { findings, find } = createFindings({ log });
 
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-async function press(page, key, n = 1) {
-  for (let i = 0; i < n; i++) {
-    await page.keyboard.press(key);
-    await wait(90);
-  }
-}
 async function shot(page, name) {
-  const p = path.join(OUT, name);
-  await page.screenshot({ path: p, fullPage: false });
+  const p = await libShot(page, OUT, name);
   log("SHOT", name);
   return p;
 }
 
-async function snap(page) {
-  return page.evaluate(() => {
-    const d = window.__onyxDebug;
-    const s = d.state;
-    const msg = document.querySelector("#message");
-    const msgText = msg
-      ? (msg.textContent || "").replace(/\s+/g, " ").trim()
-      : "";
-    const msgVis =
-      msg &&
-      getComputedStyle(msg).display !== "none" &&
-      getComputedStyle(msg).visibility !== "hidden" &&
-      Number(getComputedStyle(msg).opacity) > 0.05;
-    return {
-      mode: s.mode,
-      floorId: s.floor?.id,
-      floorName: s.floor?.name,
-      theme: s.floor?.tilesetTheme,
-      x: s.player.x,
-      y: s.player.y,
-      facing: s.player.facing,
-      keys: [...(s.keys || [])],
-      inAntimagic: s.inAntimagic,
-      inDarkness: s.inDarkness,
-      pendingTrap: s.pendingTrap,
-      tile: s.floor.grid[s.player.y]?.[s.player.x]?.tile,
-      msg: msgText,
-      msgVis,
-      body: document.body.innerText.replace(/\s+/g, " ").slice(0, 900),
-      gold: s.partyGold,
-      inv: (s.inventory || []).map((e) => e.itemId),
-      partyHp: s.party.map((c) => ({ n: c.name, hp: c.hp, max: c.maxHp })),
-    };
-  });
+/**
+ * Flatten the engine snapshot (src/debug/snapshot.ts) into the field names
+ * this script was written against, and attach `body` (page innerText), which
+ * the snapshot deliberately doesn't carry. `route` is passed through so
+ * assertions can tell borrowed-"title" overlays apart.
+ */
+async function state(page) {
+  const [s, body] = await Promise.all([
+    snap(page),
+    page.evaluate(() => document.body.innerText.replace(/\s+/g, " ").slice(0, 900)),
+  ]);
+  return {
+    mode: s.mode,
+    route: s.route,
+    floorId: s.floor.id,
+    floorName: s.floor.name,
+    theme: s.floor.theme,
+    x: s.pos.x,
+    y: s.pos.y,
+    facing: s.pos.facing,
+    keys: s.keys,
+    inAntimagic: s.flags.inAntimagic,
+    inDarkness: s.flags.inDarkness,
+    pendingTrap: s.flags.pendingTrap,
+    tile: s.tile ?? undefined,
+    msg: s.message.text.replace(/\s+/g, " ").trim(),
+    msgVis: s.message.visible,
+    body,
+    gold: s.gold,
+    inv: s.inventory.map((e) => e.itemId),
+    partyHp: s.party.map((c) => ({ n: c.name, hp: c.hp, max: c.maxHp })),
+    availableActions: s.availableActions,
+  };
 }
 
 async function bootToDungeon(page) {
-  await page.goto(BASE, { waitUntil: "networkidle" });
-  await wait(400);
-  await press(page, "n");
-  await wait(350);
-  await press(page, "d");
-  await wait(500);
-  let st = await snap(page);
-  if (st.mode === "party_creation") {
-    await press(page, "Enter");
-    await wait(400);
-    st = await snap(page);
+  const booted = await libBootToDungeon(page, BASE);
+  if (booted.route !== "dungeon") {
+    find("P0", 1, "Failed to reach dungeon from boot", JSON.stringify(booted));
   }
-  if (st.mode === "town") {
-    await press(page, ">");
-    await wait(150);
-    st = await snap(page);
-    if (st.mode !== "dungeon") {
-      for (let i = 0; i < 8; i++) {
-        const body = await page.evaluate(() => document.body.innerText);
-        if (/▶\s*\[>\]\s*Enter Dungeon|▶.*Enter Dungeon/i.test(body)) {
-          await press(page, "Enter");
-          await wait(500);
-          break;
-        }
-        await press(page, "ArrowDown");
-        await wait(80);
-      }
-    }
-  }
-  st = await snap(page);
-  if (st.mode !== "dungeon") {
-    find("P0", 1, "Failed to reach dungeon from boot", JSON.stringify(st));
-  }
-  return st;
+  return state(page);
 }
 
 async function unlockFacing(page) {
@@ -217,15 +182,7 @@ function classifyUnlock(msg) {
   return "unknown";
 }
 
-const browser = await chromium.launch({ headless: true });
-const page = await (
-  await browser.newContext({ viewport: { width: 1280, height: 800 } })
-).newPage();
-const errors = [];
-page.on("pageerror", (e) => errors.push(`pageerror: ${e}`));
-page.on("console", (m) => {
-  if (m.type() === "error") errors.push(`console: ${m.text()}`);
-});
+const { browser, page, errors } = await launch();
 
 const t0 = Date.now();
 const timings = {};
@@ -250,14 +207,14 @@ const f1t0 = Date.now();
 log("\n=== FLOOR 1: crossroads -> crypt row (safe chest, trap chest, water, NPC) ===");
 await warp(page, 1, 5, 8, 0);
 await walkDirs(page, ["n", "n", "n"], 1); // (5,9)->(5,8)->(5,7)->(5,6): crossroads corridor
-st = await snap(page);
+st = await state(page);
 await shot(page, "01-f1-crossroads.png");
 log("crossroads", st.x, st.y, st.tile);
 
 // Walk west along row 5 to the safe chest at (3,5)
 await warp(page, 1, 4, 5, 3);
 await walkDirs(page, ["w"], 1); // step onto (3,5)
-st = await snap(page);
+st = await state(page);
 await shot(page, "02-f1-safe-chest.png");
 log("safe chest", st.x, st.y, st.tile, st.msg, st.inv);
 if (!st.keys.includes("crypt-key")) {
@@ -271,14 +228,14 @@ if (st.pendingTrap) {
 
 // Continue west onto the trapped chest at (2,5)
 await walkDirs(page, ["w"], 1);
-st = await snap(page);
+st = await state(page);
 await shot(page, "03-f1-trapped-chest-prompt.png");
 log("trapped chest", st.x, st.y, st.pendingTrap, st.msg);
 if (!st.pendingTrap) {
   find("P1", 1, "Trap prompt did not open on (2,5) poison chest", JSON.stringify(st));
 } else {
   await openTrap(page);
-  st = await snap(page);
+  st = await state(page);
   await shot(page, "04-f1-trapped-chest-looted.png");
   log("after open", st.pendingTrap, st.inv, st.partyHp);
   if (st.pendingTrap) {
@@ -292,9 +249,9 @@ if (!st.pendingTrap) {
 
 // Water crossing at (2,4) — heal effect per floors.ts
 await warp(page, 1, 2, 5, 0);
-st = await snap(page);
+st = await state(page);
 await walkDirs(page, ["n"], 1); // onto (2,4) water
-st = await snap(page);
+st = await state(page);
 await shot(page, "05-f1-water-heal.png");
 log("water(2,4)", st.tile, st.msg, st.partyHp);
 if (st.tile !== "water" && !/water|wade|swim/i.test(st.msg)) {
@@ -306,7 +263,7 @@ if (st.tile !== "water" && !/water|wade|swim/i.test(st.msg)) {
 // NPC Maro at (3,6)
 await warp(page, 1, 3, 5, 2);
 await walkDirs(page, ["s"], 1);
-st = await snap(page);
+st = await state(page);
 await shot(page, "06-f1-npc-maro-panel.png");
 const maroOpen = st.mode === "title" || /Maro/i.test(st.body + st.msg);
 if (!maroOpen) {
@@ -321,7 +278,7 @@ if (!maroOpen) {
 log("=== FLOOR 1: crypt -> north corridor -> sanctum (events, stairs down) ===");
 await warp(page, 1, 2, 4, 0);
 await walkDirs(page, ["n"], 1); // (2,4)->(2,3) damage event
-st = await snap(page);
+st = await state(page);
 await shot(page, "07-f1-event-damage.png");
 log("event(2,3)", st.msg, st.partyHp);
 if (!/flagstone|darts/i.test(st.msg)) {
@@ -332,7 +289,7 @@ if (!/flagstone|darts/i.test(st.msg)) {
 
 await warp(page, 1, 1, 5, 0);
 await walkDirs(page, ["n"], 1); // (1,5)->(1,4) reward event
-st = await snap(page);
+st = await state(page);
 await shot(page, "08-f1-event-reward.png");
 log("event(1,4) reward", st.msg, st.inv);
 if (!st.inv.includes("holy-symbol") && !/holy symbol|corpse/i.test(st.msg)) {
@@ -343,7 +300,7 @@ if (!st.inv.includes("holy-symbol") && !/holy symbol|corpse/i.test(st.msg)) {
 
 await warp(page, 1, 3, 1, 3);
 await walkDirs(page, ["e"], 1); // onto (4,1) heal event
-st = await snap(page);
+st = await state(page);
 await shot(page, "09-f1-event-heal-sanctum.png");
 log("event(4,1) heal + sanctum", st.x, st.y, st.msg, st.partyHp);
 if (!/altar|forge-forged|hungry|kneel/i.test(st.msg)) {
@@ -356,7 +313,7 @@ if (!/altar|forge-forged|hungry|kneel/i.test(st.msg)) {
 await warp(page, 1, 5, 2, 0);
 await shot(page, "10-f1-above-stairs.png");
 await walkDirs(page, ["n"], 1);
-st = await snap(page);
+st = await state(page);
 await shot(page, "11-f1-after-stairs-to-f2.png");
 log("stairs f1->f2", JSON.stringify({ ...st, body: undefined }));
 if (st.floorId !== 2) {
@@ -373,13 +330,13 @@ const f1SideT0 = Date.now();
 log("\n=== FLOOR 1 side content: gallery water/darkness, lock+vault (lexicon-key) ===");
 await warp(page, 1, 6, 5, 1);
 await walkDirs(page, ["e"], 1); // through gallery door onto (7,5) shallow water
-st = await snap(page);
+st = await state(page);
 await shot(page, "12-f1-gallery-shallow-water.png");
 log("gallery water(7,5)", st.tile, st.msg);
 
 await warp(page, 1, 7, 5, 1);
 await walkDirs(page, ["e", "e"], 1); // (7,5)->(8,5)->(9,5) darkness
-st = await snap(page);
+st = await state(page);
 await shot(page, "13-f1-gallery-darkness.png");
 log("gallery darkness", st.inDarkness, st.tile, st.x, st.y);
 if (!st.inDarkness && st.tile !== "darkness") {
@@ -390,7 +347,7 @@ if (!st.inDarkness && st.tile !== "darkness") {
 
 await warp(page, 1, 9, 6, 1);
 await walkDirs(page, ["e"], 1); // onto (10,6) deep water, damage effect
-st = await snap(page);
+st = await state(page);
 await shot(page, "14-f1-gallery-deep-water.png");
 log("deep water(10,6)", st.tile, st.msg, st.partyHp);
 if (!/water|drown|current/i.test(st.msg) && st.tile !== "water") {
@@ -409,7 +366,7 @@ await page.evaluate(() => {
 await withThiefDisabled(page, async () => {
   await unlockFacing(page);
 });
-st = await snap(page);
+st = await state(page);
 await shot(page, "15-f1-vault-lock-no-key.png");
 const f1LockClass = classifyUnlock(st.msg);
 log("lock attempt no key, Thief disabled", f1LockClass, st.msg, st.keys);
@@ -424,7 +381,7 @@ if (f1LockClass === "key") {
 // pickable with no key at all — confirms lockpicking is live, not a soft-lock
 // escape hatch that's silently broken.
 await unlockFacing(page);
-st = await snap(page);
+st = await state(page);
 const f1PickClass = classifyUnlock(st.msg);
 log("lock attempt no key, Thief active", f1PickClass, st.msg);
 if (f1PickClass !== "lockpick") {
@@ -438,7 +395,7 @@ await warp(page, 1, 9, 8, 0);
 // but grant defensively in case an earlier finding broke that path)
 await grantKey(page, "crypt-key");
 await unlockFacing(page);
-st = await snap(page);
+st = await state(page);
 await shot(page, "16-f1-vault-lock-with-key.png");
 log("lock attempt with key", st.msg, st.keys);
 if (classifyUnlock(st.msg) !== "key") {
@@ -448,14 +405,14 @@ if (classifyUnlock(st.msg) !== "key") {
 }
 await warp(page, 1, 10, 8, 2);
 await walkDirs(page, ["s"], 1); // onto (10,9) trapped chest (gas)
-st = await snap(page);
+st = await state(page);
 await shot(page, "17-f1-vault-chest-trap.png");
 log("vault chest", st.pendingTrap, st.msg);
 if (!st.pendingTrap) {
   find("P1", 1, "Reliquary chest (10,9) trap prompt did not open", JSON.stringify(st));
 } else {
   await openTrap(page);
-  st = await snap(page);
+  st = await state(page);
   await shot(page, "18-f1-vault-chest-looted.png");
   if (!st.keys.includes("lexicon-key")) {
     find("P0", 1, "lexicon-key not acquired from reliquary chest (10,9) — blocks F2 forbidden wing", JSON.stringify(st.keys));
@@ -478,7 +435,7 @@ timings.f1_side_content_ms = Date.now() - f1SideT0;
 const f2t0 = Date.now();
 log("\n=== FLOOR 2: arrival, reading-hall aisles, NPC, events ===");
 await warp(page, 2, 2, 11, 0);
-st = await snap(page);
+st = await state(page);
 await shot(page, "20-f2-arrival.png");
 log("F2 arrival", st.floorId, st.x, st.y, st.tile);
 if (st.floorId !== 2 || st.tile !== "stairs_up") {
@@ -488,14 +445,14 @@ if (st.floorId !== 2 || st.tile !== "stairs_up") {
 // Walk the reading-hall aisle obstacles (new shelf islands at (6,6)/(8,6))
 await warp(page, 2, 5, 5, 1);
 await walkDirs(page, ["e", "e", "e", "e"], 2); // across the top cross-aisle y=5
-st = await snap(page);
+st = await state(page);
 await shot(page, "21-f2-reading-hall-aisle.png");
 log("reading hall aisle walk", st.x, st.y, st.tile);
 
 // NPC Vestra at (1,1)
 await warp(page, 2, 1, 2, 0);
 await walkDirs(page, ["n"], 2);
-st = await snap(page);
+st = await state(page);
 await shot(page, "22-f2-npc-vestra-panel.png");
 const vestraOpen = st.mode === "title" || /Vestra/i.test(st.body + st.msg);
 if (!vestraOpen) {
@@ -509,7 +466,7 @@ if (!vestraOpen) {
 // Darkness stretch of the north corridor (7,2)/(8,2), and its damage event at (8,2)
 await warp(page, 2, 6, 2, 1);
 await walkDirs(page, ["e"], 2); // (6,2)->(7,2) darkness
-st = await snap(page);
+st = await state(page);
 await shot(page, "23-f2-corridor-darkness.png");
 log("corridor darkness(7,2)", st.inDarkness, st.tile);
 if (!st.inDarkness && st.tile !== "darkness") {
@@ -518,7 +475,7 @@ if (!st.inDarkness && st.tile !== "darkness") {
   log("OK north corridor darkness");
 }
 await walkDirs(page, ["e"], 2); // (7,2)->(8,2) darkness + damage event
-st = await snap(page);
+st = await state(page);
 await shot(page, "24-f2-corridor-damage-event.png");
 log("event(8,2) damage", st.msg, st.partyHp);
 if (!/bookcase|topples/i.test(st.msg)) {
@@ -531,7 +488,7 @@ if (!/bookcase|topples/i.test(st.msg)) {
 log("=== FLOOR 2: scriptorium chest, forbidden wing lock + furnace-key ===");
 await warp(page, 2, 12, 4, 0);
 await walkDirs(page, ["n"], 2);
-st = await snap(page);
+st = await state(page);
 await shot(page, "25-f2-scriptorium-chest.png");
 log("scriptorium chest(12,3)", st.pendingTrap, st.msg, st.inv);
 if (st.pendingTrap) {
@@ -553,7 +510,7 @@ await page.evaluate(() => {
 await withThiefDisabled(page, async () => {
   await unlockFacing(page);
 });
-st = await snap(page);
+st = await state(page);
 await shot(page, "26-f2-forbidden-wing-lock-no-key.png");
 const f2LockClass = classifyUnlock(st.msg);
 log("forbidden wing lock no key, Thief disabled", f2LockClass, st.msg, st.keys);
@@ -569,7 +526,7 @@ await warp(page, 2, 9, 7, 1);
 await walkDirs(page, ["e"], 2);
 await grantKey(page, "lexicon-key");
 await unlockFacing(page);
-st = await snap(page);
+st = await state(page);
 await shot(page, "27-f2-forbidden-wing-lock-with-key.png");
 log("forbidden wing lock with key", st.msg, st.keys);
 if (classifyUnlock(st.msg) !== "key") {
@@ -578,25 +535,25 @@ if (classifyUnlock(st.msg) !== "key") {
   log("OK lexicon-key opens forbidden wing");
 }
 await walkDirs(page, ["e"], 2); // into the wing, (11,7)
-st = await snap(page);
+st = await state(page);
 log("inside wing", st.x, st.y, st.tile, st.inDarkness);
 await warp(page, 2, 11, 7, 2);
 await walkDirs(page, ["s"], 2); // (11,7)->(11,8) darkness over the lock chest's approach
-st = await snap(page);
+st = await state(page);
 await shot(page, "28-f2-forbidden-wing-darkness.png");
 log("wing darkness(11,8)", st.inDarkness, st.tile);
 if (!st.inDarkness && st.tile !== "darkness") {
   find("P2", 2, "Forbidden wing darkness (11,8) not observed guarding the furnace-key chest", JSON.stringify(st));
 }
 await walkDirs(page, ["e"], 2); // (11,8)->(12,8) chest
-st = await snap(page);
+st = await state(page);
 await shot(page, "29-f2-furnace-key-chest.png");
 log("furnace-key chest(12,8)", st.pendingTrap, st.msg);
 if (!st.pendingTrap) {
   find("P1", 2, "Furnace-key chest (12,8) stunner trap prompt did not open", JSON.stringify(st));
 } else {
   await openTrap(page);
-  st = await snap(page);
+  st = await state(page);
   await shot(page, "30-f2-furnace-key-looted.png");
   if (!st.keys.includes("furnace-key")) {
     find("P0", 2, "furnace-key not acquired from (12,8) — blocks F3 slag vault", JSON.stringify(st.keys));
@@ -608,7 +565,7 @@ if (!st.pendingTrap) {
 // Remaining new events: reward (7,8), heal (3,11), message (11,10)
 await warp(page, 2, 6, 8, 1);
 await walkDirs(page, ["e"], 2);
-st = await snap(page);
+st = await state(page);
 await shot(page, "31-f2-event-reward.png");
 log("event(7,8) reward", st.msg, st.inv);
 if (!st.inv.includes("eye-drops") && !/lens|drawer/i.test(st.msg)) {
@@ -618,7 +575,7 @@ if (!st.inv.includes("eye-drops") && !/lens|drawer/i.test(st.msg)) {
 }
 await warp(page, 2, 2, 11, 1);
 await walkDirs(page, ["e"], 2);
-st = await snap(page);
+st = await state(page);
 await shot(page, "32-f2-event-heal-atrium.png");
 log("event(3,11) heal", st.msg, st.partyHp);
 if (!/brazier|warm/i.test(st.msg)) {
@@ -632,7 +589,7 @@ log("=== FLOOR 2: stairs down -> F3 ===");
 await warp(page, 2, 11, 11, 2);
 await shot(page, "33-f2-above-stairs.png");
 await walkDirs(page, ["s"], 2);
-st = await snap(page);
+st = await state(page);
 await shot(page, "34-f2-after-stairs-to-f3.png");
 log("stairs f2->f3", JSON.stringify({ ...st, body: undefined }));
 if (st.floorId !== 3) {
@@ -650,7 +607,7 @@ timings.f2_ms = Date.now() - f2t0;
 const f3t0 = Date.now();
 log("\n=== FLOOR 3: arrival, slag vault lock+chests, NPC ===");
 await warp(page, 3, 2, 2, 0);
-st = await snap(page);
+st = await state(page);
 await shot(page, "35-f3-arrival.png");
 log("F3 arrival", st.floorId, st.x, st.y, st.tile);
 
@@ -665,7 +622,7 @@ await walkDirs(page, ["e"], 3); // (10,2)->(11,2)
 await withThiefDisabled(page, async () => {
   await unlockFacing(page);
 });
-st = await snap(page);
+st = await state(page);
 await shot(page, "36-f3-vault-lock-no-key.png");
 const f3VaultLockClass = classifyUnlock(st.msg);
 log("vault lock no furnace-key, Thief disabled", f3VaultLockClass, st.msg, st.keys);
@@ -681,7 +638,7 @@ await warp(page, 3, 10, 2, 1);
 await walkDirs(page, ["e"], 3);
 await grantKey(page, "furnace-key");
 await unlockFacing(page);
-st = await snap(page);
+st = await state(page);
 await shot(page, "37-f3-vault-lock-with-key.png");
 log("vault lock with furnace-key", st.msg, st.keys);
 if (classifyUnlock(st.msg) !== "key") {
@@ -690,24 +647,24 @@ if (classifyUnlock(st.msg) !== "key") {
   log("OK furnace-key opens slag vault");
 }
 await walkDirs(page, ["e"], 3); // into vault (12,2)
-st = await snap(page);
+st = await state(page);
 await warp(page, 3, 13, 1, 2);
 await walkDirs(page, ["s"], 3); // onto (13,2) trapped chest
-st = await snap(page);
+st = await state(page);
 await shot(page, "38-f3-vault-chest-trap.png");
 log("vault chest(13,2)", st.pendingTrap, st.msg);
 if (!st.pendingTrap) {
   find("P1", 3, "Slag vault chest (13,2) gas trap prompt did not open", JSON.stringify(st));
 } else {
   await openTrap(page);
-  st = await snap(page);
+  st = await state(page);
   await shot(page, "39-f3-vault-chest-looted.png");
   log("looted", st.inv, st.partyHp);
 }
 // Bonus unguarded chest (14,1)
 await warp(page, 3, 13, 1, 1);
 await walkDirs(page, ["e"], 3);
-st = await snap(page);
+st = await state(page);
 await shot(page, "40-f3-vault-bonus-chest.png");
 log("bonus chest(14,1)", st.pendingTrap, st.msg, st.inv);
 if (st.pendingTrap) {
@@ -722,7 +679,7 @@ if (st.pendingTrap) {
 log("=== FLOOR 3: cinder hall NPC, foundry heal event, teleporter ===");
 await warp(page, 3, 3, 8, 2);
 await walkDirs(page, ["s"], 3);
-st = await snap(page);
+st = await state(page);
 await shot(page, "41-f3-npc-kazeharu-panel.png");
 const kazeOpen = st.mode === "title" || /Kazeharu/i.test(st.body + st.msg);
 if (!kazeOpen) {
@@ -736,7 +693,7 @@ if (!kazeOpen) {
 // Foundry heal event at anvil altar (7,7), nestled by the new furnace-stack obstacle
 await warp(page, 3, 6, 7, 1);
 await walkDirs(page, ["e"], 3);
-st = await snap(page);
+st = await state(page);
 await shot(page, "42-f3-foundry-heal-event.png");
 log("event(7,7) heal", st.msg, st.partyHp);
 if (!/anvil|altar|forge-forged/i.test(st.msg)) {
@@ -748,7 +705,7 @@ if (!/anvil|altar|forge-forged/i.test(st.msg)) {
 // Waygate teleporter (9,6) -> (2,3)
 await warp(page, 3, 9, 5, 2);
 await walkDirs(page, ["s"], 3); // onto (9,6) teleporter
-st = await snap(page);
+st = await state(page);
 await shot(page, "43-f3-after-teleporter.png");
 log("teleporter land", st.x, st.y, st.msg);
 if (st.x !== 2 || st.y !== 3) {
@@ -761,14 +718,14 @@ if (st.x !== 2 || st.y !== 3) {
 log("=== FLOOR 3: ashpit forge-key, Grand Forge lock, antimagic, boss chamber ===");
 await warp(page, 3, 2, 13, 2);
 await walkDirs(page, ["s"], 3);
-st = await snap(page);
+st = await state(page);
 await shot(page, "44-f3-ashpit-forgekey-trap.png");
 log("ashpit chest(2,14)", st.pendingTrap, st.msg);
 if (!st.pendingTrap) {
   find("P1", 3, "Ashpit chest (2,14) poison trap prompt did not open", JSON.stringify(st));
 } else {
   await openTrap(page);
-  st = await snap(page);
+  st = await state(page);
   await shot(page, "45-f3-ashpit-forgekey-looted.png");
   if (!st.keys.includes("forge-key")) {
     find("P0", 3, "forge-key not acquired from ashpit chest (2,14) — blocks Grand Forge / stairs down", JSON.stringify(st.keys));
@@ -787,7 +744,7 @@ await page.evaluate(() => {
 await withThiefDisabled(page, async () => {
   await unlockFacing(page);
 });
-st = await snap(page);
+st = await state(page);
 await shot(page, "46-f3-boss-lock-no-key.png");
 const f3BossLockClass = classifyUnlock(st.msg);
 log("boss lock no forge-key, Thief disabled", f3BossLockClass, st.msg, st.keys);
@@ -802,7 +759,7 @@ if (f3BossLockClass === "key") {
 await warp(page, 3, 7, 10, 2);
 await grantKey(page, "forge-key");
 await unlockFacing(page);
-st = await snap(page);
+st = await state(page);
 await shot(page, "47-f3-boss-lock-with-key.png");
 log("boss lock with forge-key", st.msg, st.keys);
 if (classifyUnlock(st.msg) !== "key") {
@@ -815,7 +772,7 @@ await walkDirs(page, ["s"], 3); // into chamber (7,12)
 // Antimagic zone (6-8,13)
 await warp(page, 3, 7, 12, 2);
 await walkDirs(page, ["s"], 3); // onto (7,13) antimagic
-st = await snap(page);
+st = await state(page);
 await shot(page, "48-f3-antimagic-zone.png");
 log("antimagic", st.inAntimagic, st.tile, st.x, st.y);
 if (!st.inAntimagic && st.tile !== "antimagic") {
@@ -833,7 +790,7 @@ if (!st.inAntimagic && st.tile !== "antimagic") {
   } else {
     await press(page, "Enter");
     await wait(300);
-    st = await snap(page);
+    st = await state(page);
     await shot(page, "49-f3-antimagic-cast-fizzle.png");
     log("antimagic cast attempt", st.msg);
     if (!/anti-magic|drinks the spell/i.test(st.msg)) {
@@ -847,14 +804,14 @@ if (!st.inAntimagic && st.tile !== "antimagic") {
 // Trophy chest (9,13), stunner trap
 await warp(page, 3, 8, 13, 1);
 await walkDirs(page, ["e"], 3);
-st = await snap(page);
+st = await state(page);
 await shot(page, "50-f3-boss-trophy-chest.png");
 log("trophy chest(9,13)", st.pendingTrap, st.msg);
 if (!st.pendingTrap) {
   find("P1", 3, "Trophy chest (9,13) stunner trap prompt did not open", JSON.stringify(st));
 } else {
   await openTrap(page);
-  st = await snap(page);
+  st = await state(page);
   log("looted trophy chest", st.inv);
 }
 
@@ -863,7 +820,7 @@ log("=== FLOOR 3: stairs down -> F4 (confirm descent only) ===");
 await warp(page, 3, 5, 13, 2);
 await shot(page, "51-f3-above-stairs.png");
 await walkDirs(page, ["s"], 3);
-st = await snap(page);
+st = await state(page);
 await shot(page, "52-f3-after-stairs-to-f4.png");
 log("stairs f3->f4", JSON.stringify({ ...st, body: undefined }));
 if (st.floorId !== 4) {
@@ -921,7 +878,7 @@ const report = {
   pacing: { safeCombats, riskCombats },
   outDir: OUT,
 };
-fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify(report, null, 2));
+writeReport(OUT, report);
 log("\n=== SUMMARY ===");
 log("findings:", findings.length);
 for (const f of findings) log(`  [${f.sev}] F${f.floor} ${f.title}`);

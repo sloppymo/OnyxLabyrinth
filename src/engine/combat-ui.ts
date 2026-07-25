@@ -63,6 +63,7 @@ import {
   type SelectionEntry,
   type ResultView,
 } from "./combat-select-action-view";
+import type { CombatDebugView } from "../debug/snapshot";
 import { renderTurnOrderStrip } from "./combat-turn-order-view";
 import { remainingTurnOrder } from "../game/combat-turn-order";
 import { buildPalette, type CombatPalette } from "./combat-action-palette";
@@ -1321,6 +1322,42 @@ export class CombatController {
   /** Current phase (for main.ts playback key routing). */
   getPhase(): Phase {
     return this.phase;
+  }
+
+  /**
+   * Read-only view for the ?debug=1 snapshot surface (src/debug/snapshot.ts).
+   * Returns copies so callers can never mutate controller internals.
+   */
+  debugView(): CombatDebugView {
+    const enemies = [...this.state.enemies.front, ...this.state.enemies.back];
+    return {
+      phase: this.phase,
+      actingCharId: this.currentActorId,
+      roundEnding: this.roundEnding,
+      playbackDone:
+        this.phase !== "playback" || isPlaybackDone(this.scene, performance.now()),
+      selection:
+        this.selectionEntries.length > 0
+          ? {
+              title: this.selectionTitle,
+              entries: this.selectionEntries.map((e) =>
+                e.detail ? `${e.label} (${e.detail})` : e.label
+              ),
+              index: this.selectionIndex,
+            }
+          : null,
+      round: this.state.round,
+      enemies: enemies.map((e) => ({
+        id: e.instanceId,
+        name: e.name,
+        hp: e.currentHp,
+        maxHp: e.hp,
+        row: e.row,
+        status: [...e.status],
+      })),
+      recentLog: this.state.log.slice(-10),
+      result: this.state.result ?? null,
+    };
   }
 
   /**
