@@ -7,7 +7,8 @@
  * full black panel, soft white FF36 text, one beat at a time (replace, not
  * stack), typewriter reveal with punctuation-aware pauses, and a two-stage
  * confirm (complete-then-advance, never both on one press). No FF6Window
- * chrome — this is myth text, not a menu.
+ * chrome — this is myth text, not a menu. Intentionally silent of music —
+ * cold typewriter ticks only.
  *
  * The keypress that opens this controller (e.g. the Enter that selected New
  * Game on the title screen) is dispatched to *every* window "keydown"
@@ -21,24 +22,30 @@
 
 import { audio } from "./audio";
 
-/** Locked prologue copy — verbatim, do not paraphrase or reorder. */
+/**
+ * Locked prologue copy — same words as the approved myth text. Beat 3 of the
+ * original five-beat draft is split across two screens (same wording) so the
+ * densest passage does not sit at the fatigue point as a single long type.
+ * `\n` are author line breaks (CSS `white-space: pre-line`).
+ */
 export const PROLOGUE_BEATS: readonly string[] = [
   "We made war on the gods. We lost.",
   "They did not destroy us. They left, and took Death with them. Nothing here ends.",
-  "They buried one thing before they went: a labyrinth, and at the bottom of it a lamp, and in the lamp the last thing in existence that can still grant a wish.",
+  "They buried one thing before they went:\na labyrinth, and at the bottom of it a lamp,",
+  "and in the lamp the last thing in existence\nthat can still grant a wish.",
   "It has one left.",
-  "Edgehollow is the last town at the mouth of the hole. Everyone here is going down. Everyone here has been going down for a very long time.",
+  "Edgehollow is the last town at the mouth\nof the hole. Everyone here is going down.\nEveryone here has been going down for a\nvery long time.",
 ] as const;
 
 /** Index of the pivot beat ("It has one left.") that gets an extra hold. */
-const PIVOT_BEAT_INDEX = 3;
+const PIVOT_BEAT_INDEX = 4;
 
 export const INTRO_STYLE = {
   charsPerSec: 32,
   pauseFullMs: 350, // . ? !
   pauseHalfMs: 120, // , ; :
   holdAfterRevealMs: 1600,
-  holdPivotExtraMs: 800, // beat index 3 — "It has one left."
+  holdPivotExtraMs: 1400, // beat "It has one left." — clearly outlast neighbors
   fadeMs: 180,
   gapMs: 200,
   caretBlinkMs: 250,
@@ -103,7 +110,7 @@ export interface PrologueControllerOptions {
   now?: () => number;
 }
 
-type Phase = "reveal" | "hold" | "advancing";
+type Phase = "reveal" | "hold" | "advancing" | "finishing";
 
 export class PrologueController {
   private panel: HTMLElement;
@@ -119,6 +126,7 @@ export class PrologueController {
   private phase: Phase = "reveal";
   private holdUntil = 0;
   private advanceAt = 0;
+  private finishAt = 0;
 
   private disposed = false;
   private rafId: number | null = null;
@@ -153,10 +161,11 @@ export class PrologueController {
 
   handleKey(key: string): void {
     if (this.disposed) return;
+    if (this.phase === "finishing") return;
     const lower = key.toLowerCase();
     if (lower === "escape") {
       audio.uiCancel();
-      this.finish();
+      this.finishImmediate();
       return;
     }
     if (key !== "Enter" && key !== " ") return;
@@ -171,7 +180,7 @@ export class PrologueController {
     }
     if (this.beatIndex >= PROLOGUE_BEATS.length - 1) {
       audio.uiConfirm();
-      this.finish();
+      this.finishWithFade();
       return;
     }
     audio.uiConfirm();
@@ -195,9 +204,18 @@ export class PrologueController {
     this.panel.innerHTML = "";
   }
 
-  private finish(): void {
+  /** Esc / cancel — abrupt exit is correct. */
+  private finishImmediate(): void {
     this.dispose();
     this.onDone();
+  }
+
+  /** Confirm on last beat — fade out before handing off to party creation. */
+  private finishWithFade(): void {
+    this.phase = "finishing";
+    this.caretEl.classList.remove("is-visible");
+    this.root.classList.add("is-fading");
+    this.finishAt = this.nowFn() + INTRO_STYLE.fadeMs;
   }
 
   private enterHold(): void {
@@ -230,12 +248,19 @@ export class PrologueController {
 
   private onFrame(now: number): void {
     if (this.disposed) return;
+    if (this.phase === "finishing") {
+      if (now >= this.finishAt) {
+        this.dispose();
+        this.onDone();
+      }
+      return;
+    }
     if (this.phase === "reveal") {
       const before = this.reveal.visible;
       this.reveal = stepReveal(this.reveal, now);
       if (this.reveal.visible !== before) {
         const ch = this.reveal.full[this.reveal.visible - 1];
-        if (ch && ch !== " " && ch !== "\n") audio.uiCursor();
+        if (ch && ch !== " " && ch !== "\n") audio.uiTextTick();
         this.paint();
       }
       if (this.reveal.done) this.enterHold();
@@ -256,7 +281,7 @@ export class PrologueController {
     this.textEl.textContent = this.reveal.full.slice(0, this.reveal.visible);
     this.caretEl.classList.toggle(
       "is-visible",
-      this.reveal.done && this.phase !== "advancing",
+      this.reveal.done && this.phase !== "advancing" && this.phase !== "finishing",
     );
   }
 }

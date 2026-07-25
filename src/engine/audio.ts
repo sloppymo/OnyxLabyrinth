@@ -198,6 +198,7 @@ class AudioEngine {
   private uiLoadPromise: Promise<void> | null = null;
   /** Throttle rapid cursor moves (gamepad held / key-repeat). */
   private lastCursorAt = 0;
+  private lastTextTickAt = 0;
 
   /** Decoded combat SFX buffers (empty until loadCombatSounds resolves). */
   private combatBuffers: Partial<Record<CombatSfxId, AudioBuffer>> = {};
@@ -359,6 +360,35 @@ class AudioEngine {
   /** Menu confirm / select. */
   uiConfirm(): void {
     this.playUi("confirm");
+  }
+
+  /**
+   * Soft per-glyph tick for prologue / narration typewriter. Procedural —
+   * not the menu cursor sample — so myth text does not sound like browsing
+   * the shop. Rate-limited to keep up with ~32 cps without stacking mush.
+   */
+  uiTextTick(): void {
+    if (!this.ctx || !this.masterGain) return;
+    const now = typeof performance !== "undefined" ? performance.now() : 0;
+    if (now - this.lastTextTickAt < 28) return;
+    this.lastTextTickAt = now;
+
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    // Soft high tick; slight pitch jitter so a long beat does not drone.
+    osc.frequency.value = 880 + (Math.random() * 2 - 1) * 40;
+
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(0.045, t + 0.004);
+    env.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+
+    osc.connect(env);
+    env.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.04);
   }
 
   /** Menu cancel / close / back. */

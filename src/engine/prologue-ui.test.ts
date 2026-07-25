@@ -10,13 +10,14 @@ import {
 } from "./prologue-ui";
 
 describe("PROLOGUE_BEATS", () => {
-  it("is the locked five-beat intro copy, verbatim and in order", () => {
+  it("is the locked six-beat intro copy (beat 3 split), verbatim and in order", () => {
     expect([...PROLOGUE_BEATS]).toEqual([
       "We made war on the gods. We lost.",
       "They did not destroy us. They left, and took Death with them. Nothing here ends.",
-      "They buried one thing before they went: a labyrinth, and at the bottom of it a lamp, and in the lamp the last thing in existence that can still grant a wish.",
+      "They buried one thing before they went:\na labyrinth, and at the bottom of it a lamp,",
+      "and in the lamp the last thing in existence\nthat can still grant a wish.",
       "It has one left.",
-      "Edgehollow is the last town at the mouth of the hole. Everyone here is going down. Everyone here has been going down for a very long time.",
+      "Edgehollow is the last town at the mouth\nof the hole. Everyone here is going down.\nEveryone here has been going down for a\nvery long time.",
     ]);
   });
 });
@@ -55,20 +56,21 @@ describe("stepReveal", () => {
   });
 
   it("completeReveal shows the full string immediately", () => {
-    let s = createReveal(PROLOGUE_BEATS[3]!, 0);
+    let s = createReveal(PROLOGUE_BEATS[4]!, 0);
     s = completeReveal(s);
-    expect(s.visible).toBe(PROLOGUE_BEATS[3]!.length);
+    expect(s.visible).toBe(PROLOGUE_BEATS[4]!.length);
     expect(s.done).toBe(true);
   });
 });
 
 describe("holdDurationMs", () => {
-  it("adds pivot extra on beat index 3", () => {
-    expect(holdDurationMs(3)).toBe(
+  it("adds pivot extra on beat index 4 (It has one left.)", () => {
+    expect(holdDurationMs(4)).toBe(
       INTRO_STYLE.holdAfterRevealMs + INTRO_STYLE.holdPivotExtraMs,
     );
     expect(holdDurationMs(0)).toBe(INTRO_STYLE.holdAfterRevealMs);
-    expect(holdDurationMs(4)).toBe(INTRO_STYLE.holdAfterRevealMs);
+    expect(holdDurationMs(3)).toBe(INTRO_STYLE.holdAfterRevealMs);
+    expect(INTRO_STYLE.holdPivotExtraMs).toBe(1400);
   });
 });
 
@@ -102,6 +104,12 @@ describe("PrologueController", () => {
   /** Drive past the fade+gap window that follows a confirmed advance. */
   function tickPastAdvance(c: PrologueController): void {
     time += INTRO_STYLE.fadeMs + INTRO_STYLE.gapMs + 50;
+    c.tickForTests(time);
+  }
+
+  /** Drive past the terminal fade before party creation. */
+  function tickPastFinish(c: PrologueController): void {
+    time += INTRO_STYLE.fadeMs + 50;
     c.tickForTests(time);
   }
 
@@ -161,23 +169,22 @@ describe("PrologueController", () => {
     expect(panel.querySelectorAll(".prologue-text").length).toBe(1);
   });
 
-  it("holds the pivot beat (index 3) longer before auto-advancing", () => {
+  it("holds the pivot beat (index 4) longer before auto-advancing", () => {
     const c = mount();
-    for (let b = 0; b < 3; b++) {
+    for (let b = 0; b < 4; b++) {
       revealFully(c, PROLOGUE_BEATS[b]!);
       c.handleKey("Enter");
       tickPastAdvance(c);
     }
-    // Now on beat 3 ("It has one left."); reveal it, then check the shorter
-    // hold does NOT yet trigger auto-advance, but the longer pivot hold does.
-    revealFully(c, PROLOGUE_BEATS[3]!);
+    // Now on beat 4 ("It has one left.");
+    revealFully(c, PROLOGUE_BEATS[4]!);
     time += INTRO_STYLE.holdAfterRevealMs + 50; // ordinary hold would have fired
     c.tickForTests(time);
-    expect(text()).toBe(PROLOGUE_BEATS[3]); // still on beat 3 — pivot extra hold
+    expect(text()).toBe(PROLOGUE_BEATS[4]); // still on pivot — extra hold
     time += INTRO_STYLE.holdPivotExtraMs + INTRO_STYLE.fadeMs + INTRO_STYLE.gapMs + 50;
     c.tickForTests(time);
-    revealFully(c, PROLOGUE_BEATS[4]!);
-    expect(text()).toBe(PROLOGUE_BEATS[4]);
+    revealFully(c, PROLOGUE_BEATS[5]!);
+    expect(text()).toBe(PROLOGUE_BEATS[5]);
   });
 
   it("Escape immediately skips the whole intro", () => {
@@ -189,7 +196,7 @@ describe("PrologueController", () => {
     expect(done).toBe(1);
   });
 
-  it("confirming the final beat after full reveal finishes the intro", () => {
+  it("confirming the final beat fades out then finishes the intro", () => {
     let done = 0;
     const c = mount(() => {
       done += 1;
@@ -199,6 +206,9 @@ describe("PrologueController", () => {
       c.handleKey("Enter");
       if (b < PROLOGUE_BEATS.length - 1) tickPastAdvance(c);
     }
+    expect(done).toBe(0); // fade still in progress
+    expect(panel.querySelector(".prologue-root.is-fading")).toBeTruthy();
+    tickPastFinish(c);
     expect(done).toBe(1);
   });
 

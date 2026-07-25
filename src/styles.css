@@ -1084,6 +1084,18 @@ canvas#map-canvas {
   transition: opacity 0.18s linear;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .prologue-caret.is-visible {
+    animation: none;
+    opacity: 1;
+  }
+
+  .prologue-root.is-fading .prologue-text,
+  .prologue-root.is-fading .prologue-caret {
+    transition: none;
+  }
+}
+
 .party-create {
   width: 100%;
   max-width: 900px;

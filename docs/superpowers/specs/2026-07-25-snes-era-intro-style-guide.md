@@ -73,28 +73,26 @@ title, and combat windows. Canvas text is not used for this screen.
 
 ### Locked Onyx prologue beats (already within limits)
 
-| # | Text | ≈chars | Lines @42 |
-|---|------|--------|-----------|
-| 1 | We made war on the gods. We lost. | 33 | 1 |
-| 2 | They did not destroy us. They left, and took Death with them. Nothing here ends. | 79 | 2 |
-| 3 | They buried one thing before they went: a labyrinth, and at the bottom of it a lamp, and in the lamp the last thing in existence that can still grant a wish. | 155 | 4 |
-| 4 | It has one left. | 16 | 1 |
-| 5 | Edgehollow is the last town at the mouth of the hole. Everyone here is going down. Everyone here has been going down for a very long time. | 137 | 4 |
+Beat 3 of the original five-beat draft is **split across two screens** (same
+words, no paraphrase) so the densest passage is not one long type at the fatigue
+point. Author `\n` breaks are intentional (`white-space: pre-line`).
 
-**Do not paraphrase these.** Soft-wrap only; never split a beat mid-sentence unless a future edit is explicitly approved.
+| # | Text | Notes |
+|---|------|-------|
+| 1 | We made war on the gods. We lost. | |
+| 2 | They did not destroy us. They left, and took Death with them. Nothing here ends. | |
+| 3a | They buried one thing before they went: / a labyrinth, and at the bottom of it a lamp, | Split from original beat 3 |
+| 3b | and in the lamp the last thing in existence / that can still grant a wish. | Split from original beat 3 |
+| 4 | It has one left. | Pivot — extra hold |
+| 5 | Edgehollow… (author line breaks) | |
 
-### Manual line breaks (optional polish)
+**Do not paraphrase these.** Soft-wrap only; never rewrite mid-sentence unless a future edit is explicitly approved.
 
-For beats 3 and 5, prefer author-chosen breaks over CSS wrap so the cadence matches spoken rhythm:
+### Manual line breaks
 
-```
-They buried one thing before they went:
-a labyrinth, and at the bottom of it a lamp,
-and in the lamp the last thing in existence
-that can still grant a wish.
-```
-
-Use `\n` in the beat string + `white-space: pre-line` in CSS.
+Author-chosen `\n` in beat strings + `white-space: pre-line` in CSS. Escaped
+silence (no BGM under the prologue) is intentional — cold typewriter ticks only
+(`audio.uiTextTick()`, not the menu cursor sample).
 
 ---
 
@@ -121,9 +119,9 @@ Industry consensus (TMP `maxVisibleCharacters`, Godot `visible_characters` / `vi
 | Pause on `,;:` | **+80–150 ms** | Breath, not a halt |
 | No pause after | `Mr.` / `…` / `!!` edge cases | Skip pause when `.` is followed by another `.` or letter in abbreviation tables if needed |
 | Beat hold after reveal | **1.2–2.0 s** then auto-advance | Subtitle rule of thumb: ~2–2.5 s per line for timed media; interactive games can be shorter if confirm is available |
-| Extra hold on beat 4 | **+0.6–1.0 s** | Pivot line: “It has one left.” |
+| Extra hold on pivot | **+1.4 s** | Pivot line: “It has one left.” (beat index 4 after the 3a/3b split) |
 | Inter-beat gap | **150–250 ms** | Black frame between beats |
-| Fade duration | **180 ms** | Keep total sequence under ~45 s if the player never presses |
+| Fade duration | **180 ms** | Keep total sequence under ~45 s if the player never presses; terminal fade also runs before party creation (Esc stays instant) |
 
 ### Pseudocode (DOM / rAF)
 
@@ -244,7 +242,7 @@ Pure helpers (unit-testable, no DOM):
 - [ ] Confirm while typing → full beat, stays on same beat
 - [ ] Confirm while holding → next beat
 - [ ] Esc after open → party creation
-- [ ] Beat 4 (“It has one left.”) held longer than others
+- [ ] Pivot beat (“It has one left.”, index 4) held longer than others
 - [ ] Full unattended run finishes in ≤ ~45 s
 - [ ] Readable at 1× / 1.5× / 2× `pixelScaleToFit`
 - [ ] New Game only — Continue / Arena / Reform Party never enter this screen
@@ -275,7 +273,7 @@ export const INTRO_STYLE = {
   pauseFullMs: 350,      // . ? !
   pauseHalfMs: 120,      // , ; :
   holdAfterRevealMs: 1600,
-  holdPivotExtraMs: 800, // add on beat index 3 ("It has one left.")
+  holdPivotExtraMs: 1400, // add on beat index 4 ("It has one left.")
   fadeMs: 180,
   gapMs: 200,
   caretBlinkMs: 250,

@@ -198,7 +198,9 @@ intro style guide: black field, FF36 (`--game-font` / `final-fantasy-36.ttf`),
 typewriter, one beat at a time — **not** an `FF6Window` menu chrome. See the
 intro plan for wiring.
 
-Draft copy (locked):
+Draft copy (locked). Presentation splits the long “buried…wish” sentence across
+two screens and uses author line breaks — same words, see `PROLOGUE_BEATS` in
+`prologue-ui.ts`:
 
 > We made war on the gods. We lost.
 >
