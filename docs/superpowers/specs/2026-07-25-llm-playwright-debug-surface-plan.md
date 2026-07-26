@@ -1,6 +1,6 @@
 # LLM Playwright Debug Surface — Review & Implementation Plan
 
-**Date:** 2026-07-25 · **Status:** Proposed (awaiting approval of PR-1)
+**Date:** 2026-07-25 · **Status:** PR-1–4 **SHIPPED**; PR-5 (seeded RNG + transcript replay) **not started**
 **Scope:** Debug-only observability/setup seams for Playwright-driven LLM playtesting. No gameplay changes.
 **Revision note (2026-07-25, post-review):** corrected an audio-loading claim in §2.4/§2.6/triage
 #10/#12 (audio is *not* fully procedural — three WAV sample families load via `fetch` and can
@@ -418,7 +418,11 @@ Original scope:
   `*_SFX_FILES` entry at a 404 in a test-only fixture, or stub `fetch`) producing an
   `assetFailed` entry instead of silence.
 
-### PR-5 — Seeded gameplay RNG + transcript replay
+### PR-5 — Seeded gameplay RNG + transcript replay — **NOT STARTED** (next tooling PR)
+
+Highest-value remaining gap for reproducible Playwright playtests after the 2026-07-25
+invariants/pacing session (all pacing numbers are directional under unseeded `Math.random`).
+Scope unchanged:
 - `src/game/rng.ts`: `createSeededRng(seed): () => number` (mulberry32), Vitest-tested.
 - Wiring seam (defaults preserved — behavior identical without a seed):
   `main.ts` holds `gameplayRng` (from `?seed=` when `?debug=1`, else `Math.random`;

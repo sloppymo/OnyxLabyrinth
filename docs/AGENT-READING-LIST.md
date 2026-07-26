@@ -2,7 +2,7 @@
 
 Use this list before acting on playtest, balance, combat UX, or perk work. Prefer these over older one-off prompts when they conflict.
 
-**Last refreshed:** 2026-07-25 (New Game prologue shipped; Headmaster→First Descent lore scrub + century wipe→town cycle shipped; wish/ending scene still not implemented)
+**Last refreshed:** 2026-07-25 (prologue; century wipe→town + lore scrub; debug surface PR-1–4; zone-flavor = frequency-only addendum; F1/F2 closed; wish/ending still open; PR-5 not built)
 
 | Doc | Role | Status |
 |-----|------|--------|
@@ -13,6 +13,10 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 | [`superpowers/plans/2026-07-25-prologue-intro-sequence.md`](superpowers/plans/2026-07-25-prologue-intro-sequence.md) | New Game prologue implementation | **Done 2026-07-25** — shipped (`prologue-ui.ts`) |
 | [`superpowers/specs/2026-07-24-campaign-progression-design.md`](superpowers/specs/2026-07-24-campaign-progression-design.md) | XP curve, shop tiers, floor 4-5 content, pacing arithmetic | **Current** — authoritative for progression/gear/floor-4-5 topics; **supersedes [`PROGRESSION-GEAR-AUDIT.md`](PROGRESSION-GEAR-AUDIT.md)'s findings table** (see that doc's own banner) |
 | [`superpowers/plans/2026-07-24-campaign-progression.md`](superpowers/plans/2026-07-24-campaign-progression.md) | Workstreams A-F task breakdown + completion notes | **Done 2026-07-24** — all six workstreams shipped and playtest-verified |
+| [`playtests/2026-07-25-invariants-pacing-playtest.md`](playtests/2026-07-25-invariants-pacing-playtest.md) | Hostile wipe sequences + 190-gap encounter pacing; **F1/F2 fixed same day**; **zone-flavor addendum** (campaign zones never set `tableFloorId` — safe/hot = frequency only) | **Current** for pacing / wipe / zone-table claims |
+| [`superpowers/plans/2026-07-25-per-floor-combat-difficulty-probe.md`](superpowers/plans/2026-07-25-per-floor-combat-difficulty-probe.md) | Proposed sequel: TTK/HP-lost **per floor** at fixed party level (not per-zone) | **Proposed** — not started |
+| [`superpowers/specs/2026-07-25-llm-playwright-debug-surface-plan.md`](superpowers/specs/2026-07-25-llm-playwright-debug-surface-plan.md) | `?debug=1` Playwright surface: snapshot → idle → jumpTo → evidence → (PR-5 seed) | **PR-1–4 shipped**; **PR-5 open** |
+| [`FOLLOWUP-2026-07-25-SESSION-HANDOFF-PROMPT.md`](FOLLOWUP-2026-07-25-SESSION-HANDOFF-PROMPT.md) | Full session handoff for the next agent | **Current** as of end of 2026-07-25 |
 | [`playtests/2026-07-24-progression-sprint-notes.md`](playtests/2026-07-24-progression-sprint-notes.md) | Measured floor 4-5 pacing data (real, not the audit's 6-15 estimate) | **Current** — closes the design note's biggest uncertainty; confirms no XP-multiplier retune needed |
 | [`TILESET-ART-STYLE-GUIDE.md`](TILESET-ART-STYLE-GUIDE.md) | Corridor wall/floor/ceiling art rules + AI/human recipes | Current (2026-07-24); measured from shipping `f1`–`f5` tilesets |
 | [`ARENA-REVIEW.md`](ARENA-REVIEW.md) | Arena backdrop math/architecture review | Current (2026-07-13; addendum 2026-07-16). W4 horizon-sync closed; W1 partially addressed — seam now derives from `arena-camera.ts`, slots still screen-space |
@@ -49,7 +53,9 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 ## Known stale claims (do not re-assert)
 
 - ~~Headmaster / academy as campaign lore~~ — superseded 2026-07-25 by `superpowers/specs/2026-07-25-labyrinth-narrative-design.md` (gods left, Death left, lamp/djinn, First Descent). Boss *mechanics* in the Echo phases spec still apply; display names/strings rewritten 2026-07-25 (internal `headmasters-echo*` IDs kept stable for saves/tests — see historical-ID comments at each definition site).
-- ~~"Wipe returns the party to the dungeon entrance"~~ — superseded 2026-07-25; a campaign wipe now advances `worldYear` by 100 and returns the party to town (`openTown()`), per the century-cycle design. Arena wipes are unaffected (no year advance, no town redirect).
+- ~~"Wipe returns the party to the dungeon entrance"~~ — superseded 2026-07-25; a campaign wipe now advances `worldYear` by 100 and returns the party to town (`openTown()`), per the century-cycle design. Arena wipes are unaffected (no year advance, no town redirect). Arena game-over copy also omits the century / wake-in-town lines (`a5bdd5e`).
+- ~~"Hot zones have harder enemies" / "safe vs hot is combat-difficulty flavor"~~ — **false for campaign floors as authored.** Zones only change `rateMul` unless they set `tableFloorId`; no campaign zone sets it, so safe/hot share `ENCOUNTER_TABLES[floor.id]`. Frequency (and thus attrition) still differs. See playtest addendum 2026-07-25. Do not spend a session rediscovering this with TTK sampling.
+- ~~"`rateMul: 0` means zero encounters forever"~~ — **false.** Pity still forces a fight by step 28 even when effective rate is 0 (`encounterRollChance`); F4/F5 quiet-zone pacing samples observe this. Comment on `encounterRateAt` is optimistic relative to the pity path.
 - ~~“No floor currently uses `events`”~~ — floors 1–3 all have `events` arrays in `floors.ts`.
 - ~~“Arena L9 always starts on floor-1 trash”~~ — `arenaStartFloorForLevel` maps each chooser level onto its own floor across the full 5-floor campaign (L1→1, L3→2, L6→3, L9→4, L12→5, updated 2026-07-18 when floors 4-5 shipped); Arena also skips boss formations and auto-starts wave 1.
 - ~~“Dungeon encounter rate feels empty”~~ — floors 1–3 now 8%/10%/12% after the 8-step cooldown, plus soft pity that forces a fight by step 28 (`game/encounters.ts`).

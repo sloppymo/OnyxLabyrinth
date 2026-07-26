@@ -73,6 +73,24 @@ async function bootToDungeon(page) {
   return state(page);
 }
 
+/**
+ * Text of the last `n` message-band writes, joined. `onMove` sets the tile
+ * feature's message before rolling an encounter, so a random fight on the same
+ * step (and the debug-flee message that follows) overwrites `state().msg` even
+ * though the event did fire. The debug event log keeps both, so assert against
+ * this rather than the live message band for step-on event tiles.
+ */
+async function recentMessages(page, n = 6) {
+  const events = await page.evaluate(
+    (count) => window.__onyxDebug.log(count, "message"),
+    n
+  );
+  return events
+    .map((e) => String(e.data.text ?? ""))
+    .join(" | ")
+    .replace(/\s+/g, " ");
+}
+
 async function unlockFacing(page) {
   await press(page, "u");
   await waitForIdle(page, 500);
@@ -236,8 +254,8 @@ await walkDirs(page, ["n"], 1); // onto (2,4) water
 st = await state(page);
 await shot(page, "05-f1-water-heal.png");
 log("water(2,4)", st.tile, st.msg, st.partyHp);
-if (st.tile !== "water" && !/water|wade|swim/i.test(st.msg)) {
-  find("P2", 1, "Water crossing (2,4) message/tile not clearly observed", JSON.stringify({ tile: st.tile, msg: st.msg }));
+if (st.tile !== "water" && !/water|wade|swim/i.test(await recentMessages(page))) {
+  find("P2", 1, "Water crossing (2,4) message/tile not clearly observed", JSON.stringify({ tile: st.tile, msg: await recentMessages(page) }));
 } else {
   log("OK water tile (2,4) reached");
 }
@@ -263,8 +281,8 @@ await walkDirs(page, ["n"], 1); // (2,4)->(2,3) damage event
 st = await state(page);
 await shot(page, "07-f1-event-damage.png");
 log("event(2,3)", st.msg, st.partyHp);
-if (!/flagstone|darts/i.test(st.msg)) {
-  find("P2", 1, "Damage event message not observed at (2,3)", st.msg);
+if (!/flagstone|darts/i.test(await recentMessages(page))) {
+  find("P2", 1, "Damage event message not observed at (2,3)", await recentMessages(page));
 } else {
   log("OK damage event (2,3)");
 }
@@ -274,8 +292,8 @@ await walkDirs(page, ["n"], 1); // (1,5)->(1,4) reward event
 st = await state(page);
 await shot(page, "08-f1-event-reward.png");
 log("event(1,4) reward", st.msg, st.inv);
-if (!st.inv.includes("holy-symbol") && !/holy symbol|corpse/i.test(st.msg)) {
-  find("P2", 1, "Reward event (1,4) holy-symbol not confirmed", JSON.stringify({ msg: st.msg, inv: st.inv }));
+if (!st.inv.includes("holy-symbol") && !/holy symbol|corpse/i.test(await recentMessages(page))) {
+  find("P2", 1, "Reward event (1,4) holy-symbol not confirmed", JSON.stringify({ msg: await recentMessages(page), inv: st.inv }));
 } else {
   log("OK reward event (1,4) — holy-symbol");
 }
@@ -285,8 +303,8 @@ await walkDirs(page, ["e"], 1); // onto (4,1) heal event
 st = await state(page);
 await shot(page, "09-f1-event-heal-sanctum.png");
 log("event(4,1) heal + sanctum", st.x, st.y, st.msg, st.partyHp);
-if (!/altar|forge-forged|hungry|kneel/i.test(st.msg)) {
-  find("P2", 1, "Heal event (4,1) message not observed", st.msg);
+if (!/altar|forge-forged|hungry|kneel/i.test(await recentMessages(page))) {
+  find("P2", 1, "Heal event (4,1) message not observed", await recentMessages(page));
 } else {
   log("OK heal event (4,1) in sanctum room");
 }
@@ -332,8 +350,8 @@ await walkDirs(page, ["e"], 1); // onto (10,6) deep water, damage effect
 st = await state(page);
 await shot(page, "14-f1-gallery-deep-water.png");
 log("deep water(10,6)", st.tile, st.msg, st.partyHp);
-if (!/water|drown|current/i.test(st.msg) && st.tile !== "water") {
-  find("P2", 1, "Deep water (10,6) message/tile not clearly observed", JSON.stringify({ tile: st.tile, msg: st.msg }));
+if (!/water|drown|current/i.test(await recentMessages(page)) && st.tile !== "water") {
+  find("P2", 1, "Deep water (10,6) message/tile not clearly observed", JSON.stringify({ tile: st.tile, msg: await recentMessages(page) }));
 } else {
   log("OK deep water (10,6) — depth 4 damage tile");
 }
@@ -461,8 +479,8 @@ await walkDirs(page, ["e"], 2); // (7,2)->(8,2) darkness + damage event
 st = await state(page);
 await shot(page, "24-f2-corridor-damage-event.png");
 log("event(8,2) damage", st.msg, st.partyHp);
-if (!/bookcase|topples/i.test(st.msg)) {
-  find("P2", 2, "Damage event (8,2) message not observed", st.msg);
+if (!/bookcase|topples/i.test(await recentMessages(page))) {
+  find("P2", 2, "Damage event (8,2) message not observed", await recentMessages(page));
 } else {
   log("OK damage event (8,2)");
 }
@@ -567,8 +585,8 @@ await walkDirs(page, ["e"], 2);
 st = await state(page);
 await shot(page, "31-f2-event-reward.png");
 log("event(7,8) reward", st.msg, st.inv);
-if (!st.inv.includes("eye-drops") && !/lens|drawer/i.test(st.msg)) {
-  find("P2", 2, "Reward event (7,8) eye-drops not confirmed", JSON.stringify({ msg: st.msg, inv: st.inv }));
+if (!st.inv.includes("eye-drops") && !/lens|drawer/i.test(await recentMessages(page))) {
+  find("P2", 2, "Reward event (7,8) eye-drops not confirmed", JSON.stringify({ msg: await recentMessages(page), inv: st.inv }));
 } else {
   log("OK reward event (7,8) — eye-drops");
 }
@@ -577,8 +595,8 @@ await walkDirs(page, ["e"], 2);
 st = await state(page);
 await shot(page, "32-f2-event-heal-atrium.png");
 log("event(3,11) heal", st.msg, st.partyHp);
-if (!/brazier|warm/i.test(st.msg)) {
-  find("P2", 2, "Heal event (3,11) message not observed", st.msg);
+if (!/brazier|warm/i.test(await recentMessages(page))) {
+  find("P2", 2, "Heal event (3,11) message not observed", await recentMessages(page));
 } else {
   log("OK heal event (3,11)");
 }
@@ -695,8 +713,8 @@ await walkDirs(page, ["e"], 3);
 st = await state(page);
 await shot(page, "42-f3-foundry-heal-event.png");
 log("event(7,7) heal", st.msg, st.partyHp);
-if (!/anvil|altar|forge-forged/i.test(st.msg)) {
-  find("P2", 3, "Heal event (7,7) anvil-altar message not observed", st.msg);
+if (!/anvil|altar|forge-forged/i.test(await recentMessages(page))) {
+  find("P2", 3, "Heal event (7,7) anvil-altar message not observed", await recentMessages(page));
 } else {
   log("OK anvil-altar heal event, alcove obstacle in place");
 }

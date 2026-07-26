@@ -2,21 +2,18 @@
 
 ## Headline
 
-Every campaign **and** Arena wipe leaks a stale, already-ended combat reference —
-`endCombat`'s wipe branch early-returns before the `state.combat = undefined; combatController =
-null` cleanup two sibling branches (`fled`/`victory`) both reach. Investigated the blast radius
-directly: `save.ts`'s `serialize()` never reads `state.combat` at all, and `resolveControllerRoute`
-requires `mode === "combat"` (not just the stale flag) before it routes there — so **no
-player-facing consequence was found**; the practical cost is confined to the `?debug=1` surface,
-where `loadSave`/`jumpTo` refuse until a real combat overwrites the stale reference. Still real,
-still worth fixing (a maintenance hazard for the next change to that cleanup block), but P2 not
-P0/P1. Everything else the hostile-sequence run threw at the game held: the in-flight century-cycle
-plumbing (worldYear +100, save v12 migration, wipe→town) is correct end-to-end, and encounter
-pacing respects its cooldown/pity bounds in 190 measured fights with zero violations. One pacing
-design note: floor 1's three encounter-zone tiers (safe/default/hot) order correctly in both theory
-and practice, but the *authored* theoretical contrast (rateMul 0.5–1.5× → a 4.83-step spread) is
-already close to a session's perceptual noise floor before any sampling error is even considered —
-n=30 can't resolve it either.
+**Post-report status (same day):** F1 (stale combat on wipe) fixed in `e40d52b`; F2 (Arena
+game-over copy) and the century-cycle WIP shipped in `a5bdd5e`. Re-verified 2026-07-25 via
+`stress-invariants.mjs` (0 findings), floors 1–5 playtests (0 findings), smoke (all checks),
+1237 unit tests. See [Follow-ups closed the same day](#follow-ups-closed-the-same-day) and the
+[zone-flavor addendum](#addendum-zone-flavor-is-frequency-only) below.
+
+Original headline (kept for provenance): every campaign **and** Arena wipe leaked a stale,
+already-ended combat reference — `endCombat`'s wipe branch early-returned before the
+`state.combat = undefined; combatController = null` cleanup two sibling branches
+(`fled`/`victory`) both reach. Blast radius was debug-surface only (`loadSave`/`jumpTo` refuse).
+Century-cycle plumbing and encounter cooldown/pity bounds held. Floor 1's three zone tiers order
+correctly, but authored contrast is near the perceptual noise floor.
 
 ## Method and confidence
 
@@ -71,8 +68,8 @@ n=30 can't resolve it either.
 
 | id | sev | floor | location | system | repro | expected | actual | evidence (local) |
 |----|-----|-------|----------|--------|-------|----------|--------|------------------|
-| F1 | P2 | any | wipe → game_over → town/arena | combat lifecycle (debug-surface impact only — see below) | any party wipe (campaign or Arena); scripted: force encounter, `exitDebugCombat("wipe")`, Enter through game-over | `state.combat`/`combatController` cleared when combat ends, `snapshot().warnings` empty | `snapshot().warnings` = `["combat view present while route is \"game_over\""]`, then the same for routes `"town"` and (Arena path) `"arena"`; probe `state.combat != null` → true after reaching town. Root cause: `src/main.ts` `endCombat` wipe branch (`openGameOver(); return;`) exits before the `state.combat = undefined; combatController = null;` cleanup ~55 lines below; `fled`/`victory` fall through and reach it. Present at HEAD `c422060`. **Blast radius checked directly, not assumed:** `save.ts`'s `serialize()` never reads `state.combat` (grepped — zero references), and `resolveControllerRoute()` requires `mode === "combat"` before honoring the `hasCombat` flag, so the stale reference cannot mis-route real input; `mode` itself is set correctly to `game_over`/`town`/`arena` throughout. No player-facing symptom found. The one confirmed cost: debug `loadSave`/`jumpTo` refuse with "refuse while combat is active" until the next real combat overwrites the stale reference — a scripted session that tests wipes must fresh-boot to keep testing afterward. | playtest-screenshots/2026-07-25-stress-invariants/bundle-f1-p1-stale-state-combat-…json, …game-over…json, …town-after-wipe…json, bundle-f0-p1-…arena-game-over…json, …arena-after-wipe…json (two timestamps each = original + verification run) |
-| F2 | P2 | arena | Arena wipe game-over screen | UX copy (`game-over-ui.ts`, currently open in the user's working tree) | enter Arena from title, wipe | Arena wipe messaging matches what actually happens (return to Arena, no century passes) | Screen shows the campaign century copy verbatim — "Year 3847. A hundred years in the dark. Edgehollow is still waiting." and "Press [Enter] to wake in town." — while `worldYear` correctly does **not** advance and Enter correctly returns to the **Arena** chooser, not town. `render()` in `game-over-ui.ts` emits the §7.1 strings unconditionally, with no branch on an Arena flag. Recommend: pass an `inArena: boolean` into `GameOverControllerOptions` and swap the last two lines for something Arena-appropriate (e.g. drop the year/Edgehollow beat entirely, keep "The labyrinth does not keep the dead." and change the prompt to "[Enter] to continue."). Two lines, cheap while the file is already open. | playtest-screenshots/2026-07-25-stress-invariants/bundle-f0-p1-invariant-warnings-at-arena-game-over-…json (screenshot shows the copy) |
+| F1 | P2 → **fixed `e40d52b`** | any | wipe → game_over → town/arena | combat lifecycle (debug-surface impact only — see below) | any party wipe (campaign or Arena); scripted: force encounter, `exitDebugCombat("wipe")`, Enter through game-over | `state.combat`/`combatController` cleared when combat ends, `snapshot().warnings` empty | `snapshot().warnings` = `["combat view present while route is \"game_over\""]` … Root cause: `endCombat` wipe branch exited before combat cleanup. **Fixed:** wipe branch now clears `state.combat` / `combatController` before `openGameOver()`. Re-verified: `jumpTo` works immediately after wipe; no invariant warning. | playtest-screenshots/2026-07-25-stress-invariants/… |
+| F2 | P2 → **fixed `a5bdd5e`** | arena | Arena wipe game-over screen | UX copy (`game-over-ui.ts`) | enter Arena from title, wipe | Arena wipe messaging matches what actually happens (return to Arena, no century passes) | Screen showed campaign century copy while year correctly did not advance. **Fixed:** `GameOverController` takes `inArena`; Arena omits century / wake-in-town lines. | playtest-screenshots/2026-07-25-stress-invariants/… |
 
 No cooldown violation (gap < 8) and no pity violation (gap > 28) occurred in any of the 190
 measured encounter gaps across five floors/seven zones — every gap fell in [8, 28] on plain cells.
@@ -171,15 +168,13 @@ budget; flag as a follow-up if zone legibility is a priority elsewhere.)
   flavor/wayfinding rather than a felt difficulty signal and concentrate real rateMul contrast on
   higher-base-rate floors (3+) where the multiplier has more room before pity dominates.
 
-### Wipe flow (century cycle — in-flight work)
+### Wipe flow (century cycle — **shipped `a5bdd5e`**)
 
 - Interesting: the whole cycle holds under hostile probing — +100 exactly once per campaign wipe,
   never for Arena; the new year is on the game-over screen and the town header; a v11 save
   migrates to 3847; a v12 save round-trips 3947; missing-field fallback lands 3847.
-- Flat / confusing: the Arena wipe shows the campaign's century copy and "wake in town" prompt
-  (F2). For the audience Arena serves (fast combat iteration), a lying prompt is friction.
-- Suggested change: branch the two bottom lines of the game-over screen on the Arena flag the
-  caller already has. Two strings; the file is already open in the working tree.
+- Flat / confusing (at report time): the Arena wipe showed the campaign's century copy and
+  "wake in town" prompt (F2). **Fixed same day** — Arena game-over no longer lies.
 
 ### Perk / progression plumbing
 
@@ -212,7 +207,38 @@ budget; flag as a follow-up if zone legibility is a priority elsewhere.)
   message snapshot made both script-bug diagnoses (trap chest, swallow pattern) five-minute jobs
   instead of an afternoon.
 - Highest-value next addition: **PR-5 (seeded RNG + transcript replay)** remains the top gap — all
-  pacing numbers here are directional because every run rolls fresh. Second: `jumpTo`/`loadSave`'s
-  "refuse while combat is active" check should distinguish a *live* combat from an *ended* one
-  (`state.combat.ended`), so a leaked-but-finished combat (F1) doesn't lock the setup accelerators
-  for the rest of a scripted session — today a wipe-testing script must fresh-boot to keep working.
+  pacing numbers here are directional because every run rolls fresh. (F1's "refuse while combat is
+  active after wipe" path is gone — wipe cleanup now matches fled/victory.)
+
+## Follow-ups closed the same day
+
+| item | commit | verification |
+|------|--------|--------------|
+| F1 wipe clears combat | `e40d52b` | `stress-invariants.mjs` 0 findings; `jumpTo` after wipe works |
+| Century cycle + F2 Arena copy | `a5bdd5e` | campaign year 3847→3947; Arena year stays; town header; save v12 |
+| Floors 1–3 false P2 on event messages | uncommitted script fix in `playtest-floors-1-3.mjs` | assert against `__onyxDebug.log(n,"message")` — flee text no longer masks step-on events |
+
+## Addendum: zone flavor is frequency-only
+
+**Checked 2026-07-25 by static config, not by combat sampling.** Cell table selection is
+`encounterTableFloorId()` → `zone?.tableFloorId ?? floor.id` (`src/game/encounters.ts`). A zone
+only changes which enemies spawn if it sets `tableFloorId`. **No campaign floor zone does**
+(floors 1–3 in `src/data/floors.ts`; floors 4–5 JSON under `src/content/floors/`). `ENCOUNTER_TABLES`
+is one table per floor id 1–5. Therefore:
+
+- Within a floor, "safe" / "hot" zones draw **identical** enemy packs.
+- The only mechanical difference is `rateMul` (encounter frequency), on top of shared cooldown/pity.
+- Per-*fight* difficulty across zones on the same floor is equal; per-*distance* difficulty still
+  scales with rate (more attrition, less heal room) — so "hot" is not purely cosmetic, but it is
+  **not** "worse fights."
+
+Do **not** run a per-zone TTK experiment to rediscover this — it is a grep. The open product
+question is whether hot zones *should* pull a harder table (e.g. `tableFloorId: id + 1`). That is
+a design call, not a measurement. The right measurement sequel is **per-floor** difficulty at a
+fixed party level — see
+[`../superpowers/plans/2026-07-25-per-floor-combat-difficulty-probe.md`](../superpowers/plans/2026-07-25-per-floor-combat-difficulty-probe.md).
+
+**Related comment/code mismatch (pre-existing, not from this session):** `encounterRateAt` docs
+say rateMul 0 zones "so rolls never fire," but `encounterRollChance` still forces a fight at
+pity step 28 even when base rate is 0. Observed in F4/F5 pacing samples (`rateMul: 0` → 1 fight
+per 32-step loiter). Decide whether safe zones should suppress pity or the comment should change.

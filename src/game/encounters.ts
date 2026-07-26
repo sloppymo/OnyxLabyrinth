@@ -161,8 +161,12 @@ export function encounterZoneAt(
 
 /**
  * Effective encounter base rate for a step at (x,y).
- * Safe zones (rateMul 0) still respect cooldown/pity math via chance 0 when
- * the caller multiplies — we return 0 so rolls never fire in the zone.
+ * Multiplies floor.encounterRate by the covering zone's rateMul (or returns
+ * the floor rate when no zone covers the cell). A rateMul of 0 yields 0 here,
+ * so the *flat* roll band after cooldown contributes nothing — but
+ * {@link encounterRollChance} still forces a fight at the pity step even when
+ * baseRate is 0. Safe pockets therefore delay fights; they do not suppress
+ * pity. Campaign zones do not set tableFloorId; pack difficulty is per-floor.
  */
 export function encounterRateAt(
   floor: Pick<FloorDef, "encounterRate" | "encounterZones">,

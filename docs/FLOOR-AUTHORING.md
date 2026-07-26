@@ -9,7 +9,7 @@ npm run floor:export-all   # refresh tools/floor-data + public/tools/floor-data
 npm run floor:editor       # WYSIWYG editor (vite dev server)
 ```
 
-A complete example floor ships in `src/content/floors/floor-4-demo.json` ("The Practice Halls") — it exercises every overlay type and is the fastest way to learn the format. Import it into the editor to poke around. Note it is a **format example only** and no longer registered: floor id 4 belongs to the campaign floor "The Null Choir" (`src/content/floors/floor-4.json`), an antimagic chapel beneath the forge where the Headmaster silenced his choir. Floor id 5 belongs to the campaign floor "The Weeping Cistern" (`src/content/floors/floor-5.json`), the flooded undercroft below the chapel where the Headmaster channels the choir's stolen voices into deep water — water/currents (not antimagic) is the floor's mechanical identity.
+A complete example floor ships in `src/content/floors/floor-4-demo.json` ("The Practice Halls") — it exercises every overlay type and is the fastest way to learn the format. Import it into the editor to poke around. Note it is a **format example only** and no longer registered: floor id 4 belongs to the campaign floor "The Null Choir" (`src/content/floors/floor-4.json`), an antimagic chapel beneath the forge. Floor id 5 belongs to the campaign floor "The Weeping Cistern" (`src/content/floors/floor-5.json`), the flooded undercroft below — water/currents (not antimagic) is the floor's mechanical identity. Lore framing: First Descent / century cycle (see `docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md`); do not reintroduce Headmaster/academy copy.
 
 ## Engine constraints you MUST know
 
@@ -17,7 +17,7 @@ These are how the engine actually behaves. The validator flags most of them, but
 
 1. **Stairs always use `floorId ± 1`.** `stairs_down` on floor N goes to floor N+1; `stairs_up` goes to N−1 (`handleStairs` in `src/game/features.ts`). There are no explicit stair links. If the implied neighbor doesn't exist, stepping on the stairs shows "there is nothing above/below". For non-contiguous floor ids, use **teleporters** (or chutes for one-way descents).
 2. **Stairs land at the target floor's `startX/startY`** — not at the coordinates of any stair tile. If you want "matching stairwells", set the target floor's start under its stairs. Teleporters and chutes land at their explicit `toX/toY`.
-3. **`encounterTable` is dead.** The field is deprecated and ignored. Combat encounter tables live in `ENCOUNTER_TABLES` in `src/data/enemies.ts`, keyed by floor id (currently 1–4). A custom floor id with no table gets **no random encounters** — unless you paint encounter zones with `tableFloorId` pointing at an existing table (this is what the demo floor does). Packs cannot yet define their own tables.
+3. **`encounterTable` is dead.** The field is deprecated and ignored. Combat encounter tables live in `ENCOUNTER_TABLES` in `src/data/enemies.ts`, keyed by floor id (**1–5** for the campaign). A custom floor id with no table gets **no random encounters** — unless you paint encounter zones with `tableFloorId` pointing at an existing table (this is what the demo floor does). Packs cannot yet define their own tables. **Campaign zones today only set `rateMul`** — none set `tableFloorId`, so safe/hot zones on a floor share that floor's enemy table (frequency differs; pack difficulty does not). Pity still forces a fight by step 28 even when `rateMul` is 0.
 4. **Keys are not items.** A `lockedDoors.keyId` must be a freeform id ending in `-key` (e.g. `brass-key`), delivered via a treasure chest's `itemIds`. Chest loot ending in `-key` goes to the party's key ring (`src/game/features.ts`); everything else must be a real item id from `src/data/items.ts`. Every `locked` edge needs a `lockedDoors` entry on one side of the edge or it can never be opened.
 5. **NPCs are additive flavor only.** They must never gate keys, stairs, or boss access. `combatEnemyIds` must be real enemy ids (see `src/data/enemies.ts`); enemies with sprite strips in `src/engine/sprite-manifest.ts` look best. Killed NPCs stay dead (persisted by NPC `id` — keep ids unique).
 6. **Outside-combat damage floors HP at 1.** Trap/water/event damage can never wipe the party; only combat can.
@@ -108,8 +108,8 @@ npm run check:tools                       # typecheck the editor + CLI
 }
 ```
 
-- `rateMul` multiplies the floor's `encounterRate` at those cells (0 = safe zone).
-- `tableFloorId` pulls `ENCOUNTER_TABLES[n]` (from `src/data/enemies.ts`) instead of this floor's table. **This is the only way a custom-id floor gets random encounters** (constraint 3 above).
+- `rateMul` multiplies the floor's `encounterRate` at those cells (0 = safe zone for the *flat* roll band; pity can still force a fight by step 28 — see `encounterRollChance`).
+- `tableFloorId` pulls `ENCOUNTER_TABLES[n]` (from `src/data/enemies.ts`) instead of this floor's table. **This is the only way a custom-id floor gets random encounters** (constraint 3 above). Campaign floors 1–5 currently omit `tableFloorId` on all zones, so safe/hot only change frequency, not pack composition.
 
 ## Gating changes (no CI configured)
 
