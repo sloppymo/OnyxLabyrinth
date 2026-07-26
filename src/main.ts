@@ -515,6 +515,12 @@ function endCombat(result: CombatState): void {
     state.party = reviveKnockedOut(state.party);
     state.player.x = state.floor.startX;
     state.player.y = state.floor.startY;
+    // Same cleanup fled/victory reach below. Wipe early-returns for
+    // openGameOver and previously skipped this, leaving a stale ended
+    // combat that tripped snapshot().warnings and blocked debug jumpTo/
+    // loadSave until the next real fight overwrote the reference.
+    state.combat = undefined;
+    combatController = null;
     openGameOver();
     return;
   } else if (result.result === "fled") {
