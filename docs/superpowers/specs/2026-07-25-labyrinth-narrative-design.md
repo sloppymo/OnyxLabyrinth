@@ -1,7 +1,7 @@
 # Labyrinth Narrative Rewrite — Design
 
-**Date:** 2026-07-25
-**Status:** Approved premise + external review incorporated — ready to plan
+**Date:** 2026-07-25 (revised same day after the boss-naming pass)
+**Status:** **Current lore canon.** Mostly shipped — see the status table below.
 **Supersedes:** all Headmaster / academy lore, including the framing in
 `docs/wizardry_v_clone_design_doc.md` and the boss fiction in
 `docs/superpowers/specs/2026-07-16-echo-boss-phases-design.md`
@@ -11,6 +11,21 @@ they are; only its fiction is replaced).
 **Related:**
 - Intro presentation: `docs/superpowers/specs/2026-07-25-snes-era-intro-style-guide.md`
 - Intro plan: `docs/superpowers/plans/2026-07-25-prologue-intro-sequence.md`
+
+## Implementation status
+
+| § | Piece | Status |
+|---|---|---|
+| §4.1 | Boss names — Dead Boy / Lonely Girl / Crying Man | **Shipped** `7f89fcd` |
+| §4.1.1 | Boss sprites, intro nameplate, procedural boss bed | **Shipped** `7f89fcd` |
+| §4.2 | String scrub (Headmaster, then Echo / First Descent) | **Shipped** `a5bdd5e` + `7f89fcd` |
+| §5 | Prologue screen | **Shipped** (`prologue-ui.ts`) |
+| §6 | **Wish scene / ending** | **Not implemented** — the only significant gap. Floor-5 boss victory still falls through the generic victory branch in `endCombat` |
+| §7 | Century cycle: `worldYear`, wipe → town, game-over copy | **Shipped** `a5bdd5e` (+ `c213af2` wipe-confirm fix) |
+| §8 | Edgehollow town-header year | **Shipped** `a5bdd5e` |
+
+Everything in this doc except §6 is now describing code that exists. Read §6 as
+a spec; read the rest as documentation.
 
 ---
 
@@ -89,31 +104,40 @@ progress and returns you somewhere safe. Echo-fate never happens to the player's
 party. Presentation (game-over beat, town year, ending) must carry the stakes.
 That is accepted, not accidental.
 
-### 2.2 What "Echo" means now
+### 2.2 The kept (formerly "Echo") — revised 2026-07-25
 
-An **Echo** is what the labyrinth leaves of someone it *kept*. Not a ghost and
-not undead — and not a wiped party.
+**"Echo" is dead as player-facing vocabulary.** It was retained in the first
+draft purely to avoid churn on `echo-of-silence` / sprite keys / floor 4's boss
+name. That trade was rejected on review: the word explained nothing to a player
+and read as leftover academy vocabulary.
+
+The *fate* it named is unchanged and still canon:
 
 | Fate | What happens |
 |------|--------------|
 | **Wipe** | The labyrinth does **not** keep you. You wake in Edgehollow ~100 years later. |
-| **Kept** | You got too deep. The prison retained you. You stop remembering what you came down for. You become an Echo. |
+| **Kept** | You got too deep. The prison retained you. You stop remembering what you came down for. |
 
-Echoes are the most common human-shaped thing in the deep floors. Retaining
-"Echo" as the in-world term is deliberate: it keeps the `echo-of-silence`
-ability name, the sprite manifest keys, and floor 4's existing boss name working
-without churn, while giving the word a meaning that fits the new myth better
-than it fit the old one.
+The kept are the most common human-shaped thing in the deep floors. They are
+not ghosts, not undead, and not wiped parties. Refer to them in copy as *the
+kept*, or — better — not as a category at all. Name the individual instead
+(see §4.1). Internal ids (`echo-of-silence`, `headmasters-echo*`) are
+historical and stay stable; do not reconstruct lore from them.
 
-### 2.3 The First Descent
+### 2.3 The ones who went before
 
-The First Descent is the expedition that got closest, centuries ago. One member
-**turned back before the deep** and carried the rumor of the lamp up to the
-surface; they never went down again. The rest pressed on.
+Centuries ago an expedition got closest. One member **turned back before the
+deep** and carried the rumor of the lamp up to the surface; they never went
+down again. The rest pressed on.
 
 Those who stayed did not wipe. The prison kept them. Death never came for them
 either. What is left of them holds **the last floor** and no longer remembers
 what it came to wish for, only that it was nearly there.
+
+**"The First Descent" is no longer a display name** — it was the floor-5 boss
+name in the first draft and is now **The Crying Man** (§4.1). The phrase may
+still be used in design prose for the expedition itself, but it must not
+appear in player-facing strings.
 
 ---
 
@@ -123,7 +147,8 @@ Reskin plus bookends plus the century cycle. Specifically:
 
 - Replace every Headmaster / academy-faculty string with new-canon text
   (including `master`-topic residue and floor plaques — see §4.2).
-- Rename the floor-3 boss; floors 4 and 5 keep their names, which already work.
+- Rename the floor-3 boss. *(Revised 2026-07-25: **all three** bosses were
+  renamed — see §4.1. The floor-4/5 draft names did not survive review.)*
 - Add a **prologue screen** on New Game (SNES-style black narration — see intro
   style guide / plan; not a blue menu window).
 - Add a **wish scene** after the floor-5 boss — the game's first ending.
@@ -153,41 +178,68 @@ ending compensates.
 
 ## 4. Text changes
 
-### 4.1 Boss identities
+### 4.1 Boss identities — **final, shipped 2026-07-25** (`7f89fcd`)
 
-| ID (unchanged) | Floor | Old name | New name |
-|---|---|---|---|
-| `headmasters-echo` | 3 | The Headmaster's Echo | **The Vanguard's Echo** |
-| `headmasters-echo-remnant` | 4 | The Choir's Echo | *unchanged* |
-| `headmasters-echo-ascendant` | 5 | The Drowned Echo | **The First Descent** |
+The first-draft names below the "superseded" column were never good: they were
+noun-phrase titles ("The Vanguard's Echo") that told the player a faction
+existed and nothing else. Replaced with plain, quiet, human names. A player who
+reads "The Dead Boy" on a nameplate needs no glossary, and the flatness of the
+words does more work than any title.
 
-The escalation now reads as meeting the First Descent three times in
-progressively worse condition. Floor 4's Choir's Echo needs no rename — under
-the new canon it reads as the Null Choir's kept singers.
+| ID (unchanged) | Floor | Superseded draft name | **Shipped name** | Sprite |
+|---|---|---|---|---|
+| `headmasters-echo` | 3 | The Vanguard's Echo | **The Dead Boy** | `flame-golem` (top-anchored 0.29) |
+| `headmasters-echo-remnant` | 4 | The Choir's Echo | **The Lonely Girl** | `warlock` (top-anchored 0.33) |
+| `headmasters-echo-ascendant` | 5 | The First Descent | **The Crying Man** | `summon-holy-guardian` |
+
+Reading: three of the kept, encountered deepest-last. The game never explains
+who they were, and **must not** — no journal, no NPC exposition dump, no
+death-quote reveal. The floor NPCs gesture at them obliquely and in the wrong
+tense (Vestra on floor 2 hints at the dead boy; Vesper on floor 4 says *she*
+took her voice; Ossian on floor 5 says something is still crying). That is the
+whole budget.
 
 **Decision: internal IDs stay as-is.** Historical-ID comments at each definition
 site so agents do not reconstruct dead lore from `headmasters-echo*`.
 
-### 4.2 Strings to rewrite
+**Sprites are remapped, not new art.** All three reuse existing enemy strips via
+`sprite-manifest.ts` at `BOSS_SIZE`. No boss art was generated.
 
-| Location | Current | Direction |
+### 4.1.1 Boss presentation (shipped same pass)
+
+| Piece | Where | Notes |
 |---|---|---|
-| `src/data/enemies.ts` ~339 | `name: "The Headmaster's Echo"` | → The Vanguard's Echo |
-| `src/data/enemies.ts` ~1005 | `name: "The Drowned Echo"` | → The First Descent |
-| `src/data/enemies.ts` ~340, ~972 | Comments naming the Headmaster | First Descent / last-floor framing |
-| `src/data/enemy-abilities.ts` ~439 | "The Headmaster's Echo silences…" | Attribute to the Echo, not the Headmaster |
-| `src/data/floors.ts` ~454 | Vestra: "I copied for the Headmaster" | She copied the First Descent's records |
-| `src/data/floors.ts` ~459 | Vestra: "The Headmaster did not die…" | The ones who went before are still down there, and were kept |
-| `src/data/floors.ts` ~493 | Floor 3 header comment | Drop Headmaster |
-| `src/data/floors.ts` ~623 | Kazeharu: "My master fed this forge." | His master was a descender who burned trying to reach the deep |
-| `src/data/floors.ts` ~628 | Kazeharu hidden `master`: "My master built the Grand Forge…" | Same reframe — descender, not faculty; vigil ends when the deep is cleared |
-| `src/content/floors/floor-4.json` ~2197 | Vesper: Headmaster took choir voices | The Choir sang to gods who had already gone |
-| `src/content/floors/floor-4.json` ~2240 | Plaque: `THE HEADMASTER TOOK OUR VOICES…` | e.g. `THE GODS TOOK OUR VOICES. WE KEPT THE WORDS.` (or First-Descent-facing equivalent) |
-| `src/game/encounters.ts` ~97 | Comment: Headmaster's Echo | New boss names |
-| `src/engine/game-over-ui.ts` ~39 | Bundled joke + "wake at the entrance" | Split per §7.1 |
-| test fixtures | Old display strings | Update assertions only |
+| Intro nameplate | `setBossIntroNameplate` in `combat-scene.ts`; called from the `CombatController` ctor when `state.isBoss` | Takes priority over the normal banner for its duration |
+| Procedural boss bed | `audio.startBossCombat()` / `stopBossCombat()`; `CFG.bossBed` | F#1/C2/F#2 drone, tritone-ish tension, 0.28 Hz LFO. **No boss BGM asset exists** — this is synthesis, deliberately |
+| Wiring | `main.ts` starts the bed on boss combat, stops it on **any** `endCombat` | Stop is unconditional so a non-boss fight can never inherit the bed |
 
-Maro (floor 1) needs no change — already First-Descent-adjacent.
+Pitfall worth keeping: a lowpass `BiquadFilterNode` has no usable `Q`; setting
+`filter.Q.value` threw in tests. Do not re-add it.
+
+### 4.2 Strings to rewrite — **all shipped** (`a5bdd5e`, then `7f89fcd`)
+
+The Headmaster pass landed in `a5bdd5e`. The second scrub in `7f89fcd` removed
+the *replacement* vocabulary too, once "Echo" and "First Descent" were retired
+as display terms.
+
+| Location | Became |
+|---|---|
+| `src/data/enemies.ts` | Three boss names per §4.1; comments reframed to the kept / last-floor framing |
+| `src/data/enemy-abilities.ts` | `echo-of-silence` displays as **"Stolen Quiet"**; Memory Drain / Memory Shatter / Total Eclipse descriptions attribute to "the caster", not "the Echo" |
+| `src/data/floors.ts` — Vestra | "I used to copy what came up from below. I don't copy anymore." — no First Descent, no "kept" |
+| `src/data/floors.ts` — Kazeharu | Refers to *the dead boy*, not "the Echo" / "my master" |
+| `src/data/floors.ts` — floor 3 desc + event | Names The Dead Boy; plaque now `HE IS STILL WARM.` (was `THE ECHO WEARS HIS FACE`) |
+| `src/content/floors/floor-4.json` — Vesper | "She took my voice" / *the lonely girl*; plaque `SHE IS STILL WRITING.` |
+| `src/content/floors/floor-5.json` — Ossian | "something is still crying"; valve plate carries `THE CRYING NEVER STOPS.` |
+| `src/game/encounters.ts` | Comment names The Dead Boy |
+| `src/engine/game-over-ui.ts` | Split per §7.1; "wake at the entrance" deleted |
+| test fixtures | `enemies.test.ts`, `combat-turns.test.ts`, `combat-scene.test.ts` assert new names |
+
+Maro (floor 1) needed no change.
+
+**Tense rule for future copy:** the bosses are referred to in the present tense
+and lowercase by NPCs ("the dead boy"), and in title case only on the combat
+nameplate. Keep that split — it is why the nameplate lands.
 
 ---
 
@@ -219,9 +271,14 @@ Skippable. New Game only.
 
 ---
 
-## 6. New screen: the wish
+## 6. New screen: the wish — **NOT IMPLEMENTED**
 
-On **the last floor**, you fight the First Descent. Then you enter **the
+> This is the one part of this document that is still a proposal. There is no
+> `EndingController`. Beating the floor-5 boss currently returns you to the
+> dungeon like any other victory. This is the largest remaining narrative gap
+> in the game.
+
+On **the last floor**, you fight **The Crying Man**. Then you enter **the
 bottom** — a separate, empty, quiet lamp room. No fight, no guardian, no menu.
 One wish, one wording, spoken because it is what humanity sent the party down
 to say.
@@ -318,21 +375,33 @@ No shop/inn/temple **mechanics** change.
 rg -i 'headmaster' src/
 rg -n '\b[Mm]asters?\b' src/data/floors.ts src/content/floors/
 rg -n 'wake at the entrance' src/
+rg -i "vanguard's echo|choir's echo|drowned echo|first descent" src/
+rg -n 'the Echo' src/data/ src/content/
 ```
 
 `headmaster` hits must be historical-ID comments only. `master` / `masters`
-hits must be intentional new-canon (e.g. "masterless duelist" title is fine;
-Kazeharu's `master` topic must be rewritten). `wake at the entrance` must be
-zero hits.
+hits must be intentional new-canon (e.g. "masterless duelist" title is fine).
+`wake at the entrance`, the four draft boss names, and `the Echo` as a
+player-facing noun must all be **zero hits**.
 
 ---
 
 ## 10. Deferred follow-ups
 
-- Found journals (First Descent foreshadowing with real weight).
+- **The wish/ending scene (§6)** — no longer "deferred" so much as *the*
+  outstanding item. Everything else in this doc is code.
+- Found journals (foreshadowing with real weight). Note the §4.1 constraint:
+  journals must not explain who the three bosses were.
 - Rival parties as human encounters — **also** the home for NPC Attack/Steal
   tonal rewrite (fellow descenders, not hostile faculty).
-- Soft-reset / Echo-of-player-party (explicitly rejected for this pass).
+- Soft-reset / kept-version-of-your-own-party (explicitly rejected).
+- **Reincarnation on KO** (parked, 2026-07-25): a downed party member returns as
+  a new randomly-rolled character, stronger each time they die. Fits the canon
+  almost too well — nothing ends, so a body failing is not an exit. Rejected for
+  *this* scope because it rewrites death, party identity, progression, and the
+  save format at once, and because it would undercut §2.1's honest admission
+  that wipes are cheap by making them *rewarding*. Revisit only as a deliberate
+  mode, not a default.
 
 ---
 
@@ -352,3 +421,14 @@ External review verdict: ship with fixes. Incorporated:
 | Wish/closing draft | Full draft §6 |
 | Residue grep | Broadened §9; plaque + Kazeharu `master` in §4.2 |
 | Prologue chrome | Points at SNES style guide (black / FF36), not FF6Window |
+
+### 11.1 Second round (post-implementation, same day)
+
+| Item | Resolution |
+|------|------------|
+| Draft boss names were titles, not names | Replaced with The Dead Boy / The Lonely Girl / The Crying Man (§4.1) |
+| "Echo" survived only to avoid churn | Rejected — retired as display vocabulary; internal ids kept (§2.2) |
+| "The First Descent" as a boss display name | Retired; phrase is design prose only (§2.3) |
+| Bosses shared one generic wizard sprite | Remapped to three distinct existing strips at `BOSS_SIZE` (§4.1) |
+| Boss fights had no presentation beat | Intro nameplate + procedural audio bed (§4.1.1) |
+| Reincarnation-on-KO pitch | **Rejected** for this scope — kept in §10 as a parked idea |

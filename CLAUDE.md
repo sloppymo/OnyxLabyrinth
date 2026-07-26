@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Read `AGENTS.md` before making any change to `src/`.** It contains a detailed file map, hard rules (things not to change without being asked), verification checklists for the renderer/combat screen, and a list of common pitfalls with their fixes. It is the primary source of truth for engine work; this file covers commands and orientation, not repeated here.
 
-**For playtest / balance / combat-UX / perk priorities,** also read [`docs/AGENT-READING-LIST.md`](docs/AGENT-READING-LIST.md) so you do not re-assert stale findings (events, Arena floor scaling, Temple curse UI, perk overlay existence, wipe→dungeon entrance, Headmaster lore, "hot zones have harder enemies"). Session handoff for late 2026-07-25 work: [`docs/FOLLOWUP-2026-07-25-SESSION-HANDOFF-PROMPT.md`](docs/FOLLOWUP-2026-07-25-SESSION-HANDOFF-PROMPT.md).
+**For playtest / balance / combat-UX / perk priorities,** also read [`docs/AGENT-READING-LIST.md`](docs/AGENT-READING-LIST.md) so you do not re-assert stale findings (events, Arena floor scaling, Temple curse UI, perk overlay existence, wipe→dungeon entrance, Headmaster lore, retired boss names / "Echo" vocabulary, "hot zones have harder enemies"). Session handoff for late 2026-07-25 work: [`docs/FOLLOWUP-2026-07-25-SESSION-HANDOFF-PROMPT.md`](docs/FOLLOWUP-2026-07-25-SESSION-HANDOFF-PROMPT.md).
 
 ## What this is
 

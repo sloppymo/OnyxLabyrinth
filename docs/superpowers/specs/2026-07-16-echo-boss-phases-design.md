@@ -3,6 +3,15 @@
 **Date:** 2026-07-16
 **Context:** `docs/COMBAT-ENGAGEMENT-AUDIT.md`, Direction C step 2 ("Echo phase system"). Designer decision 2026-07-16: **abilities + attack bump** escalation (not stat-only, not scripted phases).
 
+> **Read this doc for mechanics only. Every proper noun in it is dead.**
+> The phase machinery below (`phaseThresholds`, 66/33, memory-shatter,
+> total-eclipse, banner transitions) shipped and is unchanged. The fiction has
+> been superseded twice — first by the Headmaster scrub, then by the 2026-07-25
+> boss rename. "The Headmaster's Echo" here means the **F3 boss**, which is now
+> **The Dead Boy** (`headmasters-echo`, an internal id, not lore). F4/F5 are
+> **The Lonely Girl** and **The Crying Man**. Current canon:
+> [`2026-07-25-labyrinth-narrative-design.md`](2026-07-25-labyrinth-narrative-design.md).
+
 ## 1. Problem
 
 The Headmaster's Echo (F3 boss) plays identically from full HP to zero. Its whole kit is already telegraphed (Direction B), but the fight has no escalation curve — no moment where the party must change plans.

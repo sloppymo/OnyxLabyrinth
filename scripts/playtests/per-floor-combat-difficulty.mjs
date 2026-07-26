@@ -23,6 +23,11 @@
  *
  * Run: node scripts/playtests/per-floor-combat-difficulty.mjs
  * Expects: npx vite preview --port 5240 --base /OnyxLabyrinth/
+ *
+ * Env overrides (for follow-up matrices without editing the script):
+ *   FLOORS=3 LEVELS=6,8,9 N=10 OUT_SUBDIR=f3-level-matrix
+ *   FLOORS defaults to 1,2,3,4,5; LEVELS defaults to a single L (default 8).
+ *   When LEVELS lists multiple values, each (floor × level) cell is sampled.
  */
 import fs from "fs";
 import path from "path";
@@ -37,11 +42,24 @@ import {
 } from "./lib.mjs";
 
 const BASE = process.env.ONYX_URL ?? "http://127.0.0.1:5240/OnyxLabyrinth/?debug=1";
-const OUT = ensureOutDir("playtest-screenshots/2026-07-25-per-floor-combat-difficulty");
+const OUT_SUBDIR =
+  process.env.OUT_SUBDIR ?? "2026-07-25-per-floor-combat-difficulty";
+const OUT = ensureOutDir(`playtest-screenshots/${OUT_SUBDIR}`);
 
-const FLOORS = [1, 2, 3, 4, 5];
-const L = 8; // mid-campaign fixed level, per plan (recommend L6 or L8)
-const N = 15; // forced non-boss encounters per floor
+function parseIntList(raw, fallback) {
+  if (!raw || !String(raw).trim()) return fallback;
+  return String(raw)
+    .split(",")
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isFinite(n) && n > 0);
+}
+
+const FLOORS = parseIntList(process.env.FLOORS, [1, 2, 3, 4, 5]);
+const LEVELS = parseIntList(
+  process.env.LEVELS,
+  [Number(process.env.L) || 8]
+);
+const N = Number(process.env.N) || 15; // forced non-boss encounters per (floor, level)
 const MAX_ATTEMPTS_PER_FLOOR = N * 4; // guard against runaway boss-reroll / stall loops
 const COMBAT_TIMEOUT_MS = 120000; // floor 5 at a below-target level can run many rounds
 const MAX_STALE_RECOVERIES_PER_FLOOR = 5; // beyond this, a stall looks structural, not flaky
@@ -173,6 +191,10 @@ async function run() {
   const { browser, page, errors } = await launch();
   const floorReports = [];
 
+  log(
+    `Config: floors=[${FLOORS.join(",")}] levels=[${LEVELS.join(",")}] N=${N} out=${OUT_SUBDIR}`
+  );
+
   const FLOOR_DEFS = await (async () => {
     await page.goto(BASE, { waitUntil: "networkidle" });
     await wait(400);
@@ -181,200 +203,236 @@ async function run() {
     );
   })();
 
-  for (const floorId of FLOORS) {
-    const fdef = FLOOR_DEFS.find((f) => f.id === floorId);
-    if (!fdef) {
-      log(`[SKIP] floor ${floorId} not found in FLOORS`);
-      continue;
-    }
-    log(`\n=== Floor ${floorId} (${fdef.name}) — L${L}, target N=${N} ===`);
-
-    let st = await jumpTo(page, { floorId, x: fdef.startX, y: fdef.startY, facing: 0, partyLevel: L });
-    if (st.route !== "dungeon") {
-      log(`[ABORT] floor ${floorId}: jumpTo landed on route=${st.route}, expected dungeon`);
-      floorReports.push({ floorId, name: fdef.name, insufficientSample: true, reason: `post-jumpTo route=${st.route}`, encounters: [] });
-      continue;
-    }
-
-    const encounters = [];
-    let attempts = 0;
-    let bossSkips = 0;
-    let staleRecoveries = 0;
-    let floorAborted = false;
-    let abortReason = null;
-
-    while (encounters.length < N && attempts < MAX_ATTEMPTS_PER_FLOOR) {
-      attempts++;
-      await resetParty(page);
-
-      const forced = await forceEncounter(page);
-      if (!forced.ok) {
-        if (forced.isBossOnly) {
-          bossSkips++;
-          continue;
-        }
-        abortReason = "forceEncounter failed (no table entries)";
-        floorAborted = true;
-        break;
+  for (const L of LEVELS) {
+    for (const floorId of FLOORS) {
+      const fdef = FLOOR_DEFS.find((f) => f.id === floorId);
+      if (!fdef) {
+        log(`[SKIP] floor ${floorId} not found in FLOORS`);
+        continue;
       }
+      log(`\n=== Floor ${floorId} (${fdef.name}) — L${L}, target N=${N} ===`);
 
-      const autoOn = await enableAutoAndVerify(page);
-      if (!autoOn) {
-        abortReason = "party Auto never registered (combatController.partyAuto stayed false)";
-        await captureFailureBundle(page, `f${floorId}-auto-failed-${encounters.length}`, { outDir: OUT, errors });
-        floorAborted = true;
-        break;
-      }
-      await enableFastAndVerify(page); // best-effort 2x speedup; see doc comment
-
-      // Poll for the fight to reach the result screen in bounded chunks
-      // rather than one long waitForIdle: isIdle() also reads true for a
-      // genuinely-open manual palette, so a single call can't distinguish
-      // "the fight is over" from "Auto somehow didn't resolve this turn".
-      let sAfter = await snap(page);
-      let waited = 0;
-      while (sAfter.combat && sAfter.combat.phase !== "result" && waited < COMBAT_TIMEOUT_MS) {
-        await waitForIdle(page, 2000);
-        waited += 2000;
-        sAfter = await snap(page);
-        if (sAfter.combat && sAfter.combat.phase === "palette" && !(await page.evaluate(() => window.__onyxDebug.getCombatController()?.partyAuto))) {
-          await page.keyboard.press("q"); // defensive re-toggle; should be unreachable, see tryPartyAuto
-        }
-      }
-
-      if (!sAfter.combat || sAfter.combat.phase !== "result") {
-        // Rare Playwright/CDP timing flake (confirmed non-deterministic across
-        // repeated runs, not a reproducible game stall — see probe dev notes),
-        // not a structural bug: recover via exitDebugCombat("fled") and retry
-        // rather than losing the whole floor's sample to one bad roll. fled
-        // skips the visual result screen and calls the real endCombat() path
-        // directly, so it lands cleanly back in the dungeon; this attempt's
-        // data is discarded (not counted toward N) since mid-fight HP/round
-        // tracking can't be trusted once we bail out early.
-        staleRecoveries++;
-        await captureFailureBundle(page, `f${floorId}-timeout-${encounters.length}`, { outDir: OUT, errors });
-        if (staleRecoveries > MAX_STALE_RECOVERIES_PER_FLOOR) {
-          abortReason = `combat repeatedly failed to reach result phase (${staleRecoveries} recoveries) — looks structural, not flaky`;
-          floorAborted = true;
-          break;
-        }
-        await page.evaluate(() => window.__onyxDebug.exitDebugCombat("fled"));
-        const recovered = await waitForIdle(page, 5000);
-        const sRecovered = await snap(page);
-        if (!recovered || sRecovered.route !== "dungeon") {
-          abortReason = `exitDebugCombat recovery failed to reach dungeon (route=${sRecovered.route})`;
-          floorAborted = true;
-          break;
-        }
-        log(`  [recovered] fight stalled in phase=playback, forced-exit via exitDebugCombat("fled"), retrying`);
+      let st = await jumpTo(page, { floorId, x: fdef.startX, y: fdef.startY, facing: 0, partyLevel: L });
+      if (st.route !== "dungeon") {
+        log(`[ABORT] floor ${floorId} L${L}: jumpTo landed on route=${st.route}, expected dungeon`);
+        floorReports.push({
+          floorId,
+          name: fdef.name,
+          level: L,
+          insufficientSample: true,
+          reason: `post-jumpTo route=${st.route}`,
+          encounters: [],
+        });
         continue;
       }
 
-      const outcome = await readCombatOutcome(page);
-      if (!outcome) {
-        abortReason = "combat state vanished before result could be read";
-        floorAborted = true;
-        break;
-      }
+      const encounters = [];
+      let attempts = 0;
+      let bossSkips = 0;
+      let staleRecoveries = 0;
+      let floorAborted = false;
+      let abortReason = null;
 
-      const preTotalMaxHp = outcome.fighters.reduce((sum, f) => sum + f.maxHp, 0);
-      const postTotalHp = outcome.fighters.reduce((sum, f) => sum + Math.max(0, f.hp), 0);
-      const hpLost = preTotalMaxHp - postTotalHp;
-      const hpLostPct = preTotalMaxHp > 0 ? hpLost / preTotalMaxHp : 0;
-      const anyKO = outcome.fighters.some((f) => f.hp <= 0);
-      const nearWipe = anyKO || outcome.fighters.some((f) => f.hp > 0 && f.hp < 0.25 * f.maxHp);
-      const wipe = outcome.result === "wipe";
+      while (encounters.length < N && attempts < MAX_ATTEMPTS_PER_FLOOR) {
+        attempts++;
+        await resetParty(page);
 
-      encounters.push({
-        idx: encounters.length + 1,
-        enemyCount: forced.enemyCount,
-        round: outcome.round,
-        result: outcome.result,
-        hpLost,
-        hpLostPct,
-        anyKO,
-        nearWipe,
-        wipe,
-      });
-      log(
-        `  [${encounters.length}/${N}] enemies=${forced.enemyCount} round=${outcome.round} result=${outcome.result} ` +
-        `hpLost=${hpLost}(${(hpLostPct * 100).toFixed(0)}%) nearWipe=${nearWipe}`
-      );
+        const forced = await forceEncounter(page);
+        if (!forced.ok) {
+          if (forced.isBossOnly) {
+            bossSkips++;
+            continue;
+          }
+          abortReason = "forceEncounter failed (no table entries)";
+          floorAborted = true;
+          break;
+        }
 
-      // Confirm the result screen -> real endCombat().
-      await page.keyboard.press("Enter");
-      await waitForIdle(page, 5000);
-      let sConfirmed = await snap(page);
+        const autoOn = await enableAutoAndVerify(page);
+        if (!autoOn) {
+          abortReason = "party Auto never registered (combatController.partyAuto stayed false)";
+          await captureFailureBundle(page, `f${floorId}-L${L}-auto-failed-${encounters.length}`, {
+            outDir: OUT,
+            errors,
+          });
+          floorAborted = true;
+          break;
+        }
+        await enableFastAndVerify(page); // best-effort 2x speedup; see doc comment
 
-      const landedOnGameOver = sConfirmed.route === "game_over";
-      if (landedOnGameOver) {
-        // Wipe path: Continue -> openTown(). GameOverController arms after a
-        // macrotask so the wipe-confirm Enter cannot dismiss it in the same
-        // dispatch (fixed 2026-07-25 in game-over-ui.ts).
+        // Poll for the fight to reach the result screen in bounded chunks
+        // rather than one long waitForIdle: isIdle() also reads true for a
+        // genuinely-open manual palette, so a single call can't distinguish
+        // "the fight is over" from "Auto somehow didn't resolve this turn".
+        let sAfter = await snap(page);
+        let waited = 0;
+        while (sAfter.combat && sAfter.combat.phase !== "result" && waited < COMBAT_TIMEOUT_MS) {
+          await waitForIdle(page, 2000);
+          waited += 2000;
+          sAfter = await snap(page);
+          if (
+            sAfter.combat &&
+            sAfter.combat.phase === "palette" &&
+            !(await page.evaluate(() => window.__onyxDebug.getCombatController()?.partyAuto))
+          ) {
+            await page.keyboard.press("q"); // defensive re-toggle; should be unreachable, see tryPartyAuto
+          }
+        }
+
+        if (!sAfter.combat || sAfter.combat.phase !== "result") {
+          // Rare Playwright/CDP timing flake (confirmed non-deterministic across
+          // repeated runs, not a reproducible game stall — see probe dev notes),
+          // not a structural bug: recover via exitDebugCombat("fled") and retry
+          // rather than losing the whole floor's sample to one bad roll. fled
+          // skips the visual result screen and calls the real endCombat() path
+          // directly, so it lands cleanly back in the dungeon; this attempt's
+          // data is discarded (not counted toward N) since mid-fight HP/round
+          // tracking can't be trusted once we bail out early.
+          staleRecoveries++;
+          await captureFailureBundle(page, `f${floorId}-L${L}-timeout-${encounters.length}`, {
+            outDir: OUT,
+            errors,
+          });
+          if (staleRecoveries > MAX_STALE_RECOVERIES_PER_FLOOR) {
+            abortReason = `combat repeatedly failed to reach result phase (${staleRecoveries} recoveries) — looks structural, not flaky`;
+            floorAborted = true;
+            break;
+          }
+          await page.evaluate(() => window.__onyxDebug.exitDebugCombat("fled"));
+          const recovered = await waitForIdle(page, 5000);
+          const sRecovered = await snap(page);
+          if (!recovered || sRecovered.route !== "dungeon") {
+            abortReason = `exitDebugCombat recovery failed to reach dungeon (route=${sRecovered.route})`;
+            floorAborted = true;
+            break;
+          }
+          log(
+            `  [recovered] fight stalled in phase=playback, forced-exit via exitDebugCombat("fled"), retrying`
+          );
+          continue;
+        }
+
+        const outcome = await readCombatOutcome(page);
+        if (!outcome) {
+          abortReason = "combat state vanished before result could be read";
+          floorAborted = true;
+          break;
+        }
+
+        const preTotalMaxHp = outcome.fighters.reduce((sum, f) => sum + f.maxHp, 0);
+        const postTotalHp = outcome.fighters.reduce((sum, f) => sum + Math.max(0, f.hp), 0);
+        const hpLost = preTotalMaxHp - postTotalHp;
+        const hpLostPct = preTotalMaxHp > 0 ? hpLost / preTotalMaxHp : 0;
+        const anyKO = outcome.fighters.some((f) => f.hp <= 0);
+        const nearWipe =
+          anyKO || outcome.fighters.some((f) => f.hp > 0 && f.hp < 0.25 * f.maxHp);
+        const wipe = outcome.result === "wipe";
+
+        encounters.push({
+          idx: encounters.length + 1,
+          enemyCount: forced.enemyCount,
+          round: outcome.round,
+          result: outcome.result,
+          hpLost,
+          hpLostPct,
+          anyKO,
+          nearWipe,
+          wipe,
+        });
+        log(
+          `  [${encounters.length}/${N}] enemies=${forced.enemyCount} round=${outcome.round} result=${outcome.result} ` +
+            `hpLost=${hpLost}(${(hpLostPct * 100).toFixed(0)}%) nearWipe=${nearWipe}`
+        );
+
+        // Confirm the result screen -> real endCombat().
         await page.keyboard.press("Enter");
         await waitForIdle(page, 5000);
-        sConfirmed = await snap(page);
-      }
-      if (sConfirmed.route === "town") {
-        if (!landedOnGameOver) {
-          // Pre-fix: one Enter cascaded combat→game_over→town in one keydown.
-          abortReason =
-            "wipe skipped game_over (landed on town) — cascade bug regression?";
+        let sConfirmed = await snap(page);
+
+        const landedOnGameOver = sConfirmed.route === "game_over";
+        if (landedOnGameOver) {
+          // Wipe path: Continue -> openTown(). GameOverController arms after a
+          // macrotask so the wipe-confirm Enter cannot dismiss it in the same
+          // dispatch (fixed 2026-07-25 in game-over-ui.ts).
+          await page.keyboard.press("Enter");
+          await waitForIdle(page, 5000);
+          sConfirmed = await snap(page);
+        }
+        if (sConfirmed.route === "town") {
+          if (!landedOnGameOver) {
+            // Pre-fix: one Enter cascaded combat→game_over→town in one keydown.
+            abortReason =
+              "wipe skipped game_over (landed on town) — cascade bug regression?";
+            floorAborted = true;
+            break;
+          }
+          // Jump straight back to this floor to keep sampling.
+          const rejump = await jumpTo(page, {
+            floorId,
+            x: fdef.startX,
+            y: fdef.startY,
+            facing: 0,
+            partyLevel: L,
+          });
+          if (rejump.route !== "dungeon") {
+            abortReason = `re-jumpTo after wipe landed on route=${rejump.route}`;
+            floorAborted = true;
+            break;
+          }
+        } else if (sConfirmed.route !== "dungeon") {
+          abortReason = `unexpected route after confirming result: ${sConfirmed.route}`;
+          await captureFailureBundle(page, `f${floorId}-L${L}-unexpected-route-${encounters.length}`, {
+            outDir: OUT,
+            errors,
+          });
           floorAborted = true;
           break;
         }
-        // Jump straight back to this floor to keep sampling.
-        const rejump = await jumpTo(page, { floorId, x: fdef.startX, y: fdef.startY, facing: 0, partyLevel: L });
-        if (rejump.route !== "dungeon") {
-          abortReason = `re-jumpTo after wipe landed on route=${rejump.route}`;
-          floorAborted = true;
-          break;
-        }
-      } else if (sConfirmed.route !== "dungeon") {
-        abortReason = `unexpected route after confirming result: ${sConfirmed.route}`;
-        await captureFailureBundle(page, `f${floorId}-unexpected-route-${encounters.length}`, { outDir: OUT, errors });
-        floorAborted = true;
-        break;
       }
+
+      const insufficientSample = encounters.length < N;
+      const n = encounters.length;
+      const mean = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
+
+      const summary = {
+        floorId,
+        name: fdef.name,
+        level: L,
+        n,
+        targetN: N,
+        insufficientSample,
+        abortReason: floorAborted ? abortReason : null,
+        attempts,
+        bossSkips,
+        staleRecoveries,
+        meanRounds: mean(encounters.map((e) => e.round)),
+        meanHpLost: mean(encounters.map((e) => e.hpLost)),
+        meanHpLostPct: mean(encounters.map((e) => e.hpLostPct)),
+        nearWipeRate: n ? encounters.filter((e) => e.nearWipe).length / n : null,
+        wipeRate: n ? encounters.filter((e) => e.wipe).length / n : null,
+        meanEnemyCount: mean(encounters.map((e) => e.enemyCount)),
+        encounters,
+      };
+      floorReports.push(summary);
+
+      log(
+        `  -> F${floorId} L${L} summary: n=${n}/${N} meanRounds=${summary.meanRounds?.toFixed(2)} ` +
+          `meanHpLostPct=${summary.meanHpLostPct !== null ? (summary.meanHpLostPct * 100).toFixed(1) + "%" : "n/a"} ` +
+          `nearWipeRate=${summary.nearWipeRate !== null ? (summary.nearWipeRate * 100).toFixed(0) + "%" : "n/a"} ` +
+          `wipeRate=${summary.wipeRate !== null ? (summary.wipeRate * 100).toFixed(0) + "%" : "n/a"}` +
+          (staleRecoveries > 0 ? `  (${staleRecoveries} stale-fight recoveries)` : "") +
+          (insufficientSample
+            ? `  [INSUFFICIENT SAMPLE: ${abortReason ?? "attempts exhausted"}]`
+            : "")
+      );
     }
-
-    const insufficientSample = encounters.length < N;
-    const n = encounters.length;
-    const mean = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
-
-    const summary = {
-      floorId,
-      name: fdef.name,
-      level: L,
-      n,
-      targetN: N,
-      insufficientSample,
-      abortReason: floorAborted ? abortReason : null,
-      attempts,
-      bossSkips,
-      staleRecoveries,
-      meanRounds: mean(encounters.map((e) => e.round)),
-      meanHpLost: mean(encounters.map((e) => e.hpLost)),
-      meanHpLostPct: mean(encounters.map((e) => e.hpLostPct)),
-      nearWipeRate: n ? encounters.filter((e) => e.nearWipe).length / n : null,
-      wipeRate: n ? encounters.filter((e) => e.wipe).length / n : null,
-      meanEnemyCount: mean(encounters.map((e) => e.enemyCount)),
-      encounters,
-    };
-    floorReports.push(summary);
-
-    log(
-      `  -> F${floorId} summary: n=${n}/${N} meanRounds=${summary.meanRounds?.toFixed(2)} ` +
-      `meanHpLostPct=${summary.meanHpLostPct !== null ? (summary.meanHpLostPct * 100).toFixed(1) + "%" : "n/a"} ` +
-      `nearWipeRate=${summary.nearWipeRate !== null ? (summary.nearWipeRate * 100).toFixed(0) + "%" : "n/a"} ` +
-      `wipeRate=${summary.wipeRate !== null ? (summary.wipeRate * 100).toFixed(0) + "%" : "n/a"}` +
-      (staleRecoveries > 0 ? `  (${staleRecoveries} stale-fight recoveries)` : "") +
-      (insufficientSample ? `  [INSUFFICIENT SAMPLE: ${abortReason ?? "attempts exhausted"}]` : "")
-    );
   }
 
   const reportPath = path.join(OUT, "report.json");
-  fs.writeFileSync(reportPath, JSON.stringify({ level: L, targetN: N, floors: floorReports }, null, 2));
+  fs.writeFileSync(
+    reportPath,
+    JSON.stringify({ levels: LEVELS, floors: FLOORS, targetN: N, cells: floorReports }, null, 2)
+  );
   log(`\nWrote ${reportPath}`);
 
   const uniqErrors = [...new Set(errors)];

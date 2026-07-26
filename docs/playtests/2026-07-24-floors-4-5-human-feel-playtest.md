@@ -1,5 +1,11 @@
 # Floors 4-5 human-feel playtest (2026-07-24)
 
+> **Naming (2026-07-25):** log excerpts below quote the boss display names in
+> use that day. "The Choir's Echo" is the **floor-4 boss, now The Lonely Girl**;
+> "The Drowned Echo" is the **floor-5 boss, now The Crying Man**. Ids
+> (`headmasters-echo-remnant` / `-ascendant`) are unchanged, so the reach
+> finding below is unaffected — both bosses still sit in the back row.
+
 Follow-up to [`2026-07-24-progression-sprint-notes.md`](2026-07-24-progression-sprint-notes.md), which explicitly flagged its own gap: *"Floors 4-5 are still not feel-verified by a human in an actual browser session at realistic post-Workstream-A party levels — this script drives a fresh L1 default party through debug warps, which is representative for structural/functional checks but not for a genuine difficulty read."* This session closes that gap by hand-playing real combat turns through the actual FF6-style UI (Playwright-driven keyboard/mouse input against a running preview build, not a scripted battle-skip) rather than reading state and moving on.
 
 ## Methodology — what this run verifies vs. doesn't

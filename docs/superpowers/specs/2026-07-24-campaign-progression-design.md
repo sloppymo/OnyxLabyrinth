@@ -6,6 +6,14 @@
 
 This is a decisions document, not a task list — see the companion plan `docs/superpowers/plans/2026-07-24-campaign-progression.md` for the checkbox breakdown.
 
+> **Naming note (2026-07-25):** this doc calls the three floor bosses "the Echo",
+> "The Choir's Echo", and "The Drowned Echo". Those names are dead. The
+> `EnemyDef` ids are unchanged (`headmasters-echo`, `-remnant`, `-ascendant`) and
+> **all the stat/phase reasoning below still holds** — only the display names
+> changed, to **The Dead Boy** (F3), **The Lonely Girl** (F4), and **The Crying
+> Man** (F5). They also no longer share a sprite. See
+> [`2026-07-25-labyrinth-narrative-design.md`](2026-07-25-labyrinth-narrative-design.md) §4.1.
+
 ---
 
 ## 1. What's changed since the 2026-07-18 audit (re-verified against live code)

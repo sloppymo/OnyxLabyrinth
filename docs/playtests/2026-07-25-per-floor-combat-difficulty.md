@@ -114,6 +114,11 @@ signal, not an artifact of under/over-leveling. **This alone doesn't call for
 a balance change** (out of scope for this pass per the plan) but is worth a
 follow-up look if floor 3 gets human playtest attention.
 
+**Follow-up (same day):** [`2026-07-25-f3-level-matrix.md`](2026-07-25-f3-level-matrix.md)
+remeasured F3 at L6/L8/L9 (N=10). Yellow flag **cleared** — L8 40% near-wipe
+did not reproduce (0%); at intended entry L6 the floor is spicy but zero
+wipes. No table retune.
+
 ## Static table baseline (companion, no combat run)
 
 4000 weighted `rollEncounter`/`resolveEncounter` samples per floor (non-boss

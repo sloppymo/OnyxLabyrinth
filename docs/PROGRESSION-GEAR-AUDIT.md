@@ -5,6 +5,8 @@
 Companion deliverable: the FF6-style Equip screen (Part B of `FOLLOWUP-PROGRESSION-GEAR-AUDIT-PROMPT.md`) shipped alongside this audit; finding **A7** motivates it directly.
 
 > **⚠️ Findings table superseded 2026-07-24.** The campaign progression sprint fixed A1, A4, A5, A6, and A7 below (status column updated accordingly) — see [`docs/superpowers/specs/2026-07-24-campaign-progression-design.md`](superpowers/specs/2026-07-24-campaign-progression-design.md) for the re-derived numbers (§5 for A6's gold-sink sizing check) and [`docs/playtests/2026-07-24-progression-sprint-notes.md`](playtests/2026-07-24-progression-sprint-notes.md) for measured (not estimated) floor 4-5 pacing data. A2 and A3 remain open — this sprint did not touch perk-tier cadence or the stat-inflation ceiling. Kept below as historical record; do not re-cite A1/A4/A5/A6/A7 as current defects.
+>
+> **Naming (2026-07-25):** "The Headmaster's Echo" / `headmasters-echo` here is the **floor-3 boss, now The Dead Boy**. F4/F5 are The Lonely Girl and The Crying Man, and they are no longer the same object or the same sprite. Ids unchanged. See [`docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md`](superpowers/specs/2026-07-25-labyrinth-narrative-design.md) §4.1.
 
 ---
 

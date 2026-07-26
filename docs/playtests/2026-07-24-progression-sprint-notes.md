@@ -1,5 +1,10 @@
 # Campaign progression sprint — playtest notes (2026-07-24)
 
+> **Naming (2026-07-25):** the F4/F5 bosses are recorded here by id-derived
+> labels ("Headmaster's Echo Remnant/Ascendant"). Their display names are now
+> **The Lonely Girl** (F4) and **The Crying Man** (F5); F3 is **The Dead Boy**.
+> Ids and every measurement below are unchanged.
+
 Companion to [`docs/superpowers/plans/2026-07-24-campaign-progression.md`](../superpowers/plans/2026-07-24-campaign-progression.md) and [`docs/superpowers/specs/2026-07-24-campaign-progression-design.md`](../superpowers/specs/2026-07-24-campaign-progression-design.md). This is Workstream F: the scripted playtest that replaces the design note's unverified "6-15 fights/floor" estimate with real browser-driven measurements, run against `scripts/playtests/playtest-floors-4-5.mjs` (twin of the 2026-07-20 floors-1-3 script).
 
 ## What was run

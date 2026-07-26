@@ -1,6 +1,28 @@
 Design Document: [Working Title]
 Reference: Wizardry V: Heart of the Maelstrom (SNES) — Relaxed Party Crawl
 
+---
+
+> **⚠ HISTORICAL — original design doc. Its lore is entirely superseded.**
+>
+> Kept for the feel target, the MVP scoping, and the systems reasoning, which
+> are still useful. **Do not take any narrative content from this file.**
+>
+> - There is no Headmaster, no academy, and no "Headmaster's Sanctum" (§10.2,
+>   floor-5 table in §9). The campaign floor 5 is **The Weeping Cistern**, and
+>   its boss is **The Crying Man**.
+> - Current canon:
+>   [`superpowers/specs/2026-07-25-labyrinth-narrative-design.md`](superpowers/specs/2026-07-25-labyrinth-narrative-design.md)
+>   — the gods left and took Death with them; the labyrinth is a prison built
+>   around a lamp holding the last wish.
+> - The "death is a nuisance, not a catastrophe" feel target in §1 survived and
+>   is now *diegetic*: a party wipe advances the world year by 100 and returns
+>   you to town, because nothing on the plane can end.
+> - Orientation for current work:
+>   [`AGENT-READING-LIST.md`](AGENT-READING-LIST.md).
+
+---
+
 1. FEEL TARGET
 
 The player should feel cozy, curious, and in control. This is a low-stakes dungeon crawl you pick up after work, map a few rooms, win a couple fights, make camp, and put down. Progress is steady. Death is a nuisance, not a catastrophe. The wireframe dungeon feels like a warm retro screensaver you happen to be playing.

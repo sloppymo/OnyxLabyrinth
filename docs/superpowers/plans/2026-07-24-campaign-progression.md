@@ -6,6 +6,14 @@
 
 **Tech stack:** TypeScript + Vite, Vitest, `tsx` floor-tool CLI. No new dependencies.
 
+> **Completed 2026-07-24 — historical record.** Two things in Workstream D have
+> since changed: the boss display names ("The Choir's Echo" / "The Drowned Echo"
+> → **The Lonely Girl** / **The Crying Man**, with F3 becoming **The Dead Boy**),
+> and the note that the new bosses reuse "the Echo's own strip — same character,
+> not new art." As of `7f89fcd` all three use **different** existing strips
+> (`flame-golem` / `warlock` / `summon-holy-guardian`). Ids and every stat/phase
+> value recorded below are unchanged and still accurate.
+
 **Baseline (2026-07-24, commit `a633583`):** build clean, 1038/1038 tests, floor:validate clean on floors 1-5.
 
 **Global constraints (from `AGENTS.md`, do not violate):**

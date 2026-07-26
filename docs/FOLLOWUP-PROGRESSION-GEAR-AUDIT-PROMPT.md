@@ -1,5 +1,12 @@
 # Prompt: Progression/Scaling/Perk/Gear Audit + FF6-Style Equip Screen
 
+> **⚠ Completed 2026-07-18 — historical prompt.** Both parts were delivered
+> (report: [`PROGRESSION-GEAR-AUDIT.md`](PROGRESSION-GEAR-AUDIT.md); Equip screen
+> shipped). Most of its findings were then fixed by the 2026-07-24 campaign
+> progression sprint. The stat figures below are a 2026-07-18 snapshot and have
+> since moved. "The Headmaster's Echo" is the floor-3 boss, now **The Dead Boy**.
+> Do not run this prompt again as-is.
+
 You are a senior gameplay-systems + UI engineer brought in to review **OnyxLabyrinth** (`/home/sloppymo/OnyxLabyrinth`), a Wizardry-style first-person dungeon crawler (TypeScript + Vite, no UI framework, hand-built DOM + canvas). You were not part of building this system — read before judging.
 
 This prompt has **two parts that must stay separate in your output**:

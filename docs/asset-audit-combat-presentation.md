@@ -6,6 +6,27 @@
 
 ---
 
+> **⚠ Boss sprite recommendations in this audit are superseded (2026-07-25).**
+>
+> This file repeatedly suggests mapping `headmasters-echo` to a wizard sprite or
+> to the Green Dragon boss kit (§4 item 4, §6 table, §9 items). That never
+> happened and is no longer wanted. `headmasters-echo` is an **internal id, not
+> a character** — it is the floor-3 boss, **The Dead Boy**.
+>
+> Shipped boss mapping (`sprite-manifest.ts`, commit `7f89fcd`):
+>
+> | Floor | Boss | Strip |
+> |---|---|---|
+> | 3 | The Dead Boy | `flame-golem` |
+> | 4 | The Lonely Girl | `warlock` |
+> | 5 | The Crying Man | `summon-holy-guardian` |
+>
+> The rest of the audit — inventory, scaling, presentation gaps — is still
+> useful. The Green Dragon kit remains genuinely unused if someone wants a
+> *new* encounter, but it is not earmarked for an existing boss.
+
+---
+
 ## 1. Complete Asset Inventory
 
 The external asset library contains **~1,383 raster/image files** totalling **~46 MB**. After de-duplication, the useful unique set is considerably smaller because several packs are copied/embedded inside one another.
