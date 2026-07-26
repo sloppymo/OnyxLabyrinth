@@ -310,7 +310,7 @@ function floor1(): FloorDef {
           { key: "key", response: "The monks buried their key with their dead. Look among the sarcophagi, west of the great corridor." },
           { key: "water", response: "The black pools drown the careless. The shallow ford by the gallery door is the only safe crossing — or so the dead believed." },
           { key: "reliquary", response: "South of the flooded gallery, behind the locked door. What the monks sealed there, they meant to keep sealed." },
-          { key: "echo", hidden: true, response: "…so the whispers reach even this floor? Pray you never meet the thing that makes them." },
+          { key: "echo", hidden: true, response: "…so the whispers reach even this floor? Pray you never meet the boy they talk about." },
         ],
         wantsItemId: "healing-potion",
         rewardItemId: "long-sword+1",
@@ -451,12 +451,12 @@ function floor2(): FloorDef {
         x: 1,
         y: 1,
         greeting:
-          "Shhh! Lower your voice — the stacks listen. I am Vestra. I copied for the First Descent's records, before. I don't copy anymore.",
+          "Shhh! Lower your voice — the stacks listen. I am Vestra. I used to copy what came up from below. I don't copy anymore.",
         returnGreeting: "You again. Quietly, quietly. The shelves have been restless.",
         topics: [
           { key: "library", response: "The library curses noise, not people. Walk softly, open nothing that hums, and never run in the dark corridor." },
           { key: "key", response: "The furnace key sits in the wing they forbade — east of the reading hall. Your lexicon opens that door, if you found it below." },
-          { key: "echo", response: "The First Descent passed through here, long before me. The ones who stayed were kept — the labyrinth doesn't let go. What waits in the forge below is what's left of them." },
+          { key: "echo", response: "Something warm waits in the forge. People call it a boy. People who go looking don't come back the same." },
           { key: "books", hidden: true, response: "You read the wall, then. It isn't a joke. DO NOT FEED THEM." },
         ],
         trades: [{ giveItemId: "antidote", receiveItemId: "robe+2", once: true }],
@@ -490,7 +490,7 @@ function floor2(): FloorDef {
 // ---------------------------------------------------------------------------
 // Floor 3: The Forge of Ashes — final floor.
 // Theme: molten cracks, charred stone, iron grates, ember-lit corridors,
-// anvil altars. Constructs, fire-casting orcs, and the Vanguard's Echo.
+// anvil altars. Constructs, fire-casting orcs, and The Dead Boy.
 //
 // Shape: two interlocking loops around the central foundry, plus a locked
 // slag vault (furnace-key from floor 2), an ashpit holding the forge-key,
@@ -556,7 +556,7 @@ function floor3(): FloorDef {
   // Smoke-choked corners of the chain hall.
   setTile(grid, 13, 7, "darkness");
   setTile(grid, 13, 8, "darkness");
-  // The Grand Forge suppresses magic — the Echo's arena favors steel.
+  // The Grand Forge suppresses magic — The Dead Boy's arena favors steel.
   setTile(grid, 6, 13, "antimagic");
   setTile(grid, 7, 13, "antimagic");
   setTile(grid, 8, 13, "antimagic");
@@ -620,12 +620,12 @@ function floor3(): FloorDef {
         x: 3,
         y: 9,
         greeting:
-          "Stay your hand or draw — I care little which. I am Kazeharu. My master went down chasing the deep, and the forge took her. I keep what vigil is left.",
-        returnGreeting: "Back among the cinders. The Echo still waits, and so do I.",
+          "Stay your hand or draw — I care little which. I am Kazeharu. Someone went down into the heat and did not come back. I keep what vigil is left.",
+        returnGreeting: "Back among the cinders. The boy still waits, and so do I.",
         topics: [
-          { key: "forge", response: "Beyond the locked door south, the Echo holds court in dead air — no spell will answer you there. Bring steel." },
+          { key: "forge", response: "Beyond the locked door south, the dead boy holds court in dead air — no spell will answer you there. Bring steel." },
           { key: "duel", response: "Draw when ready. I will not strike first, and I will not strike last." },
-          { key: "master", hidden: true, response: "She was no builder. She came down chasing the deep, same as anyone, and burned trying to reach it. I stayed to guard what she couldn't finish. Kill the Echo, and my vigil ends." },
+          { key: "master", hidden: true, response: "They were no smith. They came down chasing the deep, same as anyone, and burned trying to reach it. I stayed to guard what they couldn't finish. Put the boy down, and my vigil ends." },
         ],
         combatEnemyIds: ["black-knight"],
       },
@@ -636,7 +636,7 @@ function floor3(): FloorDef {
       { x: 6, y: 11, kind: "message", message: "The statue beside the Grand Forge door twitches as you pass. It will animate when the lock is tried." },
       { x: 7, y: 7, kind: "heal", message: "You rest your weapon on the anvil altar. The forge-forged steel hums, and a little warmth returns.", power: 6 },
       { x: 14, y: 9, kind: "message", message: "A smith is fused to the wall, hammer still raised as if warning you back." },
-      { x: 2, y: 6, kind: "message", message: "Hammered into a bronze plate: THE ECHO WEARS HIS FACE." },
+      { x: 2, y: 6, kind: "message", message: "Hammered into a bronze plate: HE IS STILL WARM." },
       { x: 1, y: 9, kind: "reward", message: "A guard's satchel, forgotten against the wall. Something rattles inside.", itemId: "smelling-salts" },
     ],
     mapSprites: [

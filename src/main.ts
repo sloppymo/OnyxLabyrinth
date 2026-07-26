@@ -468,6 +468,9 @@ async function startCombat(combat: CombatState): Promise<void> {
   setMode(state, "combat");
   flashEncounter();
   audio.playCombatSfx(combat.isBoss ? "bossAppear" : "encounterStart");
+  if (combat.isBoss) {
+    audio.startBossCombat();
+  }
   showMode("combat", mapVisible);
   suppressNextCombatKey = true;
   setTimeout(() => {
@@ -493,6 +496,10 @@ async function startCombat(combat: CombatState): Promise<void> {
 }
 
 function endCombat(result: CombatState): void {
+  // Boss bed is exclusive to isBoss fights; always stop so a wipe/flee/victory
+  // can't leave the tense bed looping under town/dungeon.
+  audio.stopBossCombat();
+
   // Apply post-combat party state back to GameState. Only active fighters
   // were cloned into combat; bench HP/SP/status stay as-is on the roster.
   state.party = applyCombatPartyResult(state.party, result.party);

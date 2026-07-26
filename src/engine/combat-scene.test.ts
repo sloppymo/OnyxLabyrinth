@@ -16,6 +16,7 @@ import {
   enemyPos,
   resolveEffectStyle,
   sampleProjectilePose,
+  setBossIntroNameplate,
 } from "./combat-scene";
 import { createCombatState } from "../game/combat";
 import type { CombatEvent, EnemyInstance } from "../game/combat-types";
@@ -131,9 +132,9 @@ describe("playTurn choreography", () => {
 
   it("phaseChange event shows the grows-stronger banner", () => {
     const scene = makeScene();
-    playTurn(scene, [{ type: "phaseChange", actorId: "rat-0", phase: 2, name: "The Vanguard's Echo" }], spellName, 0, W, H);
+    playTurn(scene, [{ type: "phaseChange", actorId: "rat-0", phase: 2, name: "The Dead Boy" }], spellName, 0, W, H);
     updateScene(scene, 10);
-    expect(scene.banner).toBe("The Vanguard's Echo grows stronger!");
+    expect(scene.banner).toBe("The Dead Boy grows stronger!");
   });
 
   it("miss pops MISS without a hurt animation", () => {
@@ -471,5 +472,18 @@ describe("impact feedback (shake / floor glow / banner)", () => {
     expect(scene.banner).toBe("Spell:mage-fire-bolt");
     expect(scene.bannerStart).toBeGreaterThanOrEqual(t0);
     expect(scene.bannerUntil).toBeGreaterThan(scene.bannerStart);
+  });
+
+  it("setBossIntroNameplate arms a plate that expires via updateScene", () => {
+    const scene = makeScene();
+    const t0 = 500;
+    setBossIntroNameplate(scene, "The Dead Boy", t0, 1000);
+    expect(scene.introNameplate).toBe("The Dead Boy");
+    expect(scene.introNameplateStart).toBe(t0);
+    expect(scene.introNameplateUntil).toBe(1500);
+    updateScene(scene, t0 + 500);
+    expect(scene.introNameplate).toBe("The Dead Boy");
+    updateScene(scene, t0 + 1000);
+    expect(scene.introNameplate).toBeNull();
   });
 });

@@ -323,6 +323,13 @@ export interface CombatScene {
   bannerUntil: number;
   /** When the current banner appeared — drives its fade-in/out. */
   bannerStart: number;
+  /**
+   * Boss intro nameplate — separate from the spell banner so the first enemy
+   * turn's resolveAndPlay clear doesn't wipe the reveal.
+   */
+  introNameplate: string | null;
+  introNameplateUntil: number;
+  introNameplateStart: number;
   /** Blinking cursor over a selection candidate (target phase). */
   cursor: SceneCursor | null;
   /** The actor whose menu is open (bouncing hand marker). */
@@ -423,6 +430,9 @@ export function createScene(state: CombatState): CombatScene {
     banner: null,
     bannerUntil: 0,
     bannerStart: 0,
+    introNameplate: null,
+    introNameplateUntil: 0,
+    introNameplateStart: 0,
     cursor: null,
     activeActorId: null,
     choreo: null,
@@ -2392,6 +2402,9 @@ export function updateScene(scene: CombatScene, now: number): void {
 
   // Expire banner.
   if (scene.banner && now >= scene.bannerUntil) scene.banner = null;
+  if (scene.introNameplate && now >= scene.introNameplateUntil) {
+    scene.introNameplate = null;
+  }
 }
 
 // --- Drawing ---------------------------------------------------------------------------
@@ -3139,6 +3152,59 @@ function drawBanner(
   ctx.restore();
 }
 
+/** Larger top plate for boss reveal — lives above the spell banner slot. */
+function drawIntroNameplate(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  scene: CombatScene,
+  now: number
+): void {
+  if (!scene.introNameplate) return;
+  const age = now - scene.introNameplateStart;
+  const remaining = scene.introNameplateUntil - now;
+  let alpha = 0.95;
+  if (age < 180) alpha *= Math.max(0, age / 180);
+  else if (remaining < 320) alpha *= Math.max(0, remaining / 320);
+  if (alpha <= 0.01) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = '16px "FF36", monospace';
+  const tag = "BOSS";
+  ctx.font = '28px "FF36", monospace';
+  const nameW = ctx.measureText(scene.introNameplate).width;
+  ctx.font = '16px "FF36", monospace';
+  const tagW = ctx.measureText(tag).width;
+  const boxW = Math.max(280, Math.max(nameW, tagW) + 72);
+  const boxH = 64;
+  const x = (w - boxW) / 2;
+  const y = 12;
+  drawFF6Window(ctx, x, y, boxW, boxH);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#e07070";
+  ctx.font = '16px "FF36", monospace';
+  ctx.fillText(tag, w / 2, y + 18);
+  ctx.fillStyle = COLORS.banner;
+  ctx.font = '28px "FF36", monospace';
+  ctx.fillText(scene.introNameplate, w / 2, y + 42);
+  ctx.restore();
+}
+
+/**
+ * Arm the boss intro nameplate. Call once when a boss fight opens — separate
+ * from the spell banner so resolveAndPlay's banner clear can't wipe it.
+ */
+export function setBossIntroNameplate(
+  scene: CombatScene,
+  name: string,
+  now: number,
+  durationMs = 2600
+): void {
+  scene.introNameplate = name;
+  scene.introNameplateStart = now;
+  scene.introNameplateUntil = now + durationMs;
+}
+
 // --- Main render -----------------------------------------------------------------------
 
 export function renderScene(
@@ -3265,7 +3331,13 @@ export function renderScene(
 
   // Banner window (top center). Round number now lives in the enemy-column
   // header of the unified footer window, not a separate canvas pill.
-  drawBanner(ctx, w, scene, now);
+  // Intro nameplate owns the top slot while it's up so spell banners don't
+  // stack on top of the boss reveal.
+  if (scene.introNameplate) {
+    drawIntroNameplate(ctx, w, scene, now);
+  } else {
+    drawBanner(ctx, w, scene, now);
+  }
 
   // Sticky FAST / AUTO cues (top-right).
   if (scene.showFastCue || scene.showAutoCue) {

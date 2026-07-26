@@ -117,25 +117,33 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("stone-guardian", "hurt", 4, 8),
     death: strip("stone-guardian", "death", 4, 6),
   },
-  "headmasters-echo": {
-    idle: strip("headmasters-echo", "idle", 6, 6, true),
-    attack: strip("headmasters-echo", "attack", 6, 10),
-    hurt: strip("headmasters-echo", "hurt", 4, 8),
-    death: strip("headmasters-echo", "death", 4, 6),
-  },
-  // Floor 4/5 Echo escalation (campaign progression sprint) — same character
-  // reappearing, deliberately identical art; only stats/kit escalate.
-  "headmasters-echo-remnant": {
-    idle: strip("headmasters-echo", "idle", 6, 6, true),
-    attack: strip("headmasters-echo", "attack", 6, 10),
-    hurt: strip("headmasters-echo", "hurt", 4, 8),
-    death: strip("headmasters-echo", "death", 4, 6),
-  },
+  // Floor-3 boss "The Dead Boy" — forge golem pack (same strips as
+  // flame-golem trash). Boss draw size + intro nameplate sell the gatekeeper.
+  "headmasters-echo": withTop(
+    {
+      idle: strip("flame-golem", "idle", 6, 6, true),
+      attack: strip("flame-golem", "attack", 9, 10),
+      hurt: strip("flame-golem", "hurt", 4, 8),
+      death: strip("flame-golem", "death", 6, 6),
+    },
+    0.29
+  ),
+  // Floor-4 boss "The Lonely Girl" — warlock pack (hooded, liturgical).
+  "headmasters-echo-remnant": withTop(
+    {
+      idle: strip("warlock", "idle", 6, 6, true),
+      attack: strip("warlock", "attack", 7, 10),
+      hurt: strip("warlock", "hurt", 4, 8),
+      death: strip("warlock", "death", 11, 8),
+    },
+    0.33
+  ),
+  // Floor-5 boss "The Crying Man" — holy-guardian skeleton (summon pack).
   "headmasters-echo-ascendant": {
-    idle: strip("headmasters-echo", "idle", 6, 6, true),
-    attack: strip("headmasters-echo", "attack", 6, 10),
-    hurt: strip("headmasters-echo", "hurt", 4, 8),
-    death: strip("headmasters-echo", "death", 4, 6),
+    idle: strip("summon-holy-guardian", "idle", 6, 6, true),
+    attack: strip("summon-holy-guardian", "attack", 6, 10),
+    hurt: strip("summon-holy-guardian", "hurt", 4, 8),
+    death: strip("summon-holy-guardian", "death", 4, 6),
   },
   "animated-armor": {
     idle: strip("animated-armor", "idle", 6, 6, true),

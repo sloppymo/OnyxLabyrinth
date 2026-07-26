@@ -223,7 +223,7 @@ export const LAB_ASSISTANT: EnemyDef = {
   isBoss: false,
 };
 
-// Floor 3: The Forge of Ashes — constructs, fire-casting orcs, and the Echo.
+// Floor 3: The Forge of Ashes — constructs, fire-casting orcs, and The Dead Boy.
 export const ELITE_ORC: EnemyDef = {
   id: "elite-orc",
   name: "Elite Orc",
@@ -334,12 +334,11 @@ export const ANIMATED_ARMOR: EnemyDef = {
   isBoss: false,
 };
 
-// Historical ID — this is "The Vanguard's Echo" in current canon (Headmaster
-// lore superseded, see docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md);
-// id kept stable for saves/tests.
+// Historical ID — display name is "The Dead Boy" (Forge of Ashes boss).
+// Internal id kept stable for saves/tests/assets.
 export const HEADMASTERS_ECHO: EnemyDef = {
   id: "headmasters-echo",
-  name: "The Vanguard's Echo",
+  name: "The Dead Boy",
   // Floor-3-exclusive: floors 4/5 now fight HEADMASTERS_ECHO_REMNANT /
   // HEADMASTERS_ECHO_ASCENDANT, escalating stats/kit instead of the same
   // byte-identical boss reused three floors running.
@@ -969,17 +968,15 @@ export const UNDERTOW_CALLER: EnemyDef = {
 };
 
 // ---------------------------------------------------------------------------
-// Echo escalation — the same nemesis reappearing on floors 4 and 5, stats and
-// kit genuinely escalating rather than the byte-identical stat block the
-// original three-floor reuse had (progression sprint design note §3b/§1).
-// Floor 3's HEADMASTERS_ECHO is unchanged and now floor-3-exclusive.
+// Boss escalation — The Dead Boy / The Lonely Girl / The Crying Man on floors
+// 3–5. Stats and kit escalate; internal headmasters-echo* ids stay stable.
 // ---------------------------------------------------------------------------
 
-// Historical ID — name unchanged under new canon (reads as the Null Choir's
-// kept singers); id kept stable for saves/tests.
+// Historical ID — display name is "The Lonely Girl" (Null Choir boss).
+// Internal id kept stable for saves/tests/assets.
 export const HEADMASTERS_ECHO_REMNANT: EnemyDef = {
   id: "headmasters-echo-remnant",
-  name: "The Choir's Echo",
+  name: "The Lonely Girl",
   floors: [4],
   rowPreference: "back",
   hp: 235,
@@ -1005,11 +1002,11 @@ export const HEADMASTERS_ECHO_REMNANT: EnemyDef = {
   phaseThresholds: [66, 33],
 };
 
-// Historical ID — this is "The First Descent" in current canon; id kept
-// stable for saves/tests.
+// Historical ID — display name is "The Crying Man" (Weeping Cistern boss).
+// Internal id kept stable for saves/tests/assets.
 export const HEADMASTERS_ECHO_ASCENDANT: EnemyDef = {
   id: "headmasters-echo-ascendant",
-  name: "The First Descent",
+  name: "The Crying Man",
   floors: [5],
   rowPreference: "back",
   hp: 285,
@@ -1330,7 +1327,7 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "elite-orc", row: "back" },
       ],
     },
-    // The climax formation — the Echo flanked by its forged honor guard.
+    // The climax formation — The Dead Boy flanked by its forged honor guard.
     {
       weight: 1,
       spawns: [
@@ -1424,8 +1421,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "null-acolyte", row: "back" },
       ],
     },
-    // The climax formation — the Choir's Echo, a genuine escalation over
-    // floor 3's Vanguard's Echo, not the same boss reused.
+    // The climax formation — The Lonely Girl, a genuine escalation over
+    // floor 3's Dead Boy, not the same boss reused.
     {
       weight: 1,
       spawns: [
@@ -1522,8 +1519,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "undertow-caller", row: "back" },
       ],
     },
-    // The climax formation — the First Descent, a true four-phase campaign
-    // climax escalating over the Choir's Echo on floor 4.
+    // The climax formation — The Crying Man, a true four-phase campaign
+    // climax escalating over The Lonely Girl on floor 4.
     {
       weight: 1,
       spawns: [

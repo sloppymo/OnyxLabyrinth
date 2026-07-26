@@ -435,8 +435,8 @@ const SEDUCTION: EnemyAbilityDef = {
 
 const ECHO_OF_SILENCE: EnemyAbilityDef = {
   id: "echo-of-silence",
-  name: "Echo of Silence",
-  description: "The Echo silences the entire party.",
+  name: "Stolen Quiet",
+  description: "Silences the entire party.",
   target: "allParty",
   effect: { kind: "status", status: "blind", chance: 0.5, duration: 2 },
   condition: { kind: "turnInterval", every: 3 },
@@ -449,7 +449,7 @@ const ECHO_OF_SILENCE: EnemyAbilityDef = {
 const MEMORY_DRAIN: EnemyAbilityDef = {
   id: "memory-drain",
   name: "Memory Drain",
-  description: "Drains the memories of the entire party, healing the Echo.",
+  description: "Drains the memories of the entire party, healing the caster.",
   target: "allParty",
   effect: { kind: "drain", power: 6, element: "undead" },
   condition: { kind: "turnInterval", every: 3 },
@@ -462,7 +462,7 @@ const MEMORY_DRAIN: EnemyAbilityDef = {
 const MEMORY_SHATTER: EnemyAbilityDef = {
   id: "memory-shatter",
   name: "Memory Shatter",
-  description: "Rips a single mind apart, healing the Echo. Phase 2+.",
+  description: "Rips a single mind apart, healing the caster. Phase 2+.",
   target: "singleParty",
   effect: { kind: "drain", power: 8, element: "undead" },
   condition: { kind: "hpBelow", percent: 66 },
@@ -474,7 +474,7 @@ const MEMORY_SHATTER: EnemyAbilityDef = {
 const TOTAL_ECLIPSE: EnemyAbilityDef = {
   id: "total-eclipse",
   name: "Total Eclipse",
-  description: "The Echo's desperation: a wave of oblivion over the party. Phase 3.",
+  description: "A wave of oblivion over the party. Phase 3.",
   target: "allParty",
   effect: { kind: "damage", power: 10, element: "undead" },
   condition: { kind: "hpBelow", percent: 33 },

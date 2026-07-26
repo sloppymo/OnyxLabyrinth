@@ -2189,16 +2189,16 @@
       "title": "the last cantor",
       "x": 2,
       "y": 10,
-      "greeting": "A pale woman in choir vestments raises a slate and writes: 'I am Vesper. He took my voice for the choir. I stayed to keep the quiet honest.'",
+      "greeting": "A pale woman in choir vestments raises a slate and writes: 'I am Vesper. She took my voice. I stayed to keep the quiet honest.'",
       "returnGreeting": "Vesper looks up from her slate and taps it twice — her way of saying you are still welcome.",
       "topics": [
         {
           "key": "choir",
-          "response": "She writes: 'Forty of us sang here, calling to gods who had already gone. The labyrinth kept our voices, one hymn at a time. What is left of the choir walks the nave in armor now.'"
+          "response": "She writes: 'Forty of us sang here, calling to gods who had already gone. One of us is still writing. She does not look up.'"
         },
         {
           "key": "silence",
-          "response": "She writes: 'The silence is not empty. Down the nave's center aisle, and on the altar below, he carved runes that swallow spellcraft whole. Keep your casters off the marked stones.'"
+          "response": "She writes: 'The silence is not empty. Down the nave's center aisle, and on the altar below, she carved runes that swallow spellcraft whole. Keep your casters off the marked stones.'"
         },
         {
           "key": "sanctum",
@@ -2206,7 +2206,7 @@
         },
         {
           "key": "voice",
-          "response": "Her hand shakes as she writes: 'You have heard it already. The thing below sings with forty throats, and one of them is mine. When you face it — do not stop your ears. That is all my voice can still do for you.'",
+          "response": "Her hand shakes as she writes: 'The lonely girl is waiting in the sanctum. She does not sing anymore. When you face her — listen anyway. That is all my voice can still do for you.'",
           "hidden": true
         }
       ],
@@ -2237,7 +2237,7 @@
       "x": 2,
       "y": 6,
       "kind": "message",
-      "message": "A plaque, scratched over with a nail: THE GODS TOOK OUR VOICES. WE KEPT THE WORDS.",
+      "message": "A plaque, scratched over with a nail: SHE IS STILL WRITING.",
       "once": false
     },
     {

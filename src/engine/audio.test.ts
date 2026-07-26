@@ -121,6 +121,50 @@ describe("AudioEngine dungeon cues", () => {
     expect(oscillators.map((osc) => osc.frequency.value)).toEqual([523.25, 659.25, 783.99]);
     expect(oscillators.every((osc) => osc.start.mock.calls.length === 1)).toBe(true);
   });
+
+  it("starts and stops the procedural boss combat bed", async () => {
+    const oscillators: FakeNode[] = [];
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+    const ctx = {
+      state: "running",
+      currentTime: 2,
+      sampleRate: 44100,
+      destination: fakeNode(),
+      createGain: () => fakeNode(),
+      createBufferSource: () => fakeNode(),
+      createOscillator: () => {
+        const node = fakeNode();
+        oscillators.push(node);
+        return node;
+      },
+      createBiquadFilter: () => fakeNode(),
+      createBuffer: () => ({ getChannelData: () => new Float32Array(1) }),
+      decodeAudioData: async () => ({ decoded: true }),
+    };
+    Object.defineProperty(window, "AudioContext", {
+      configurable: true,
+      value: class {
+        constructor() {
+          return ctx;
+        }
+      },
+    });
+
+    const { audio } = await import("./audio");
+    audio.resume();
+    audio.startBossCombat();
+    // 3 voice oscs + 1 LFO
+    expect(oscillators).toHaveLength(4);
+    expect(oscillators[0]!.frequency.value).toBe(46.25);
+    expect(oscillators[1]!.frequency.value).toBe(65.4);
+    expect(oscillators[2]!.frequency.value).toBe(92.5);
+
+    audio.stopBossCombat();
+    expect(oscillators.every((osc) => osc.stop.mock.calls.length === 1)).toBe(true);
+
+    // Idempotent: second stop is a no-op.
+    audio.stopBossCombat();
+  });
 });
 
 describe("AudioEngine sample load status (?debug=1 readiness probe)", () => {

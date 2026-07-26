@@ -52,6 +52,7 @@ import {
   isPlaybackDone,
   absorbDeaths,
   skipPlaybackToEnd,
+  setBossIntroNameplate,
   type CombatScene,
 } from "./combat-scene";
 import {
@@ -160,6 +161,14 @@ export class CombatController {
     this.scene.backdrop = opts.backdrop ?? null;
     this.scene.backdropId = opts.backdropId ?? (opts.backdrop ? "arena" : "combat-bg");
     this.startRound();
+    if (state.isBoss) {
+      const boss = [...state.enemies.front, ...state.enemies.back].find(
+        (e) => e.isBoss
+      );
+      if (boss) {
+        setBossIntroNameplate(this.scene, boss.name, performance.now());
+      }
+    }
     this.startRenderLoop();
   }
 

@@ -2219,7 +2219,7 @@
         },
         {
           "key": "echo",
-          "response": "'The choir upstairs lost their voices to him. Down here, I think he's still listening — feeding them back through the water so they never quite stop singing. If it starts singing while you're in the water, get out.'",
+          "response": "'Upstairs they lost their voices. Down here something is still crying into the water. If it starts sounding like a person, get out.'",
           "hidden": true
         }
       ],
@@ -2242,7 +2242,7 @@
       "x": 2,
       "y": 6,
       "kind": "message",
-      "message": "A rusted valve plate reads: THIS CISTERN NEVER RUNS DRY. NEITHER DOES HE.",
+      "message": "A rusted valve plate reads: THIS CISTERN NEVER RUNS DRY. NEITHER DOES HE. THE CRYING NEVER STOPS.",
       "once": false
     },
     {

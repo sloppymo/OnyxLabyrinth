@@ -94,7 +94,7 @@ function entryHasBoss(entry: EncounterEntry): boolean {
 
 /**
  * Weighted Arena encounter pick.
- * - Drops boss formations (the Vanguard's Echo etc.) — dungeon-only climax.
+ * - Drops boss formations (The Dead Boy etc.) — dungeon-only climax.
  * - Higher waves bias weight toward multi-enemy packs so L9+ Arena stays spicy
  *   even when locked to floor 3.
  */

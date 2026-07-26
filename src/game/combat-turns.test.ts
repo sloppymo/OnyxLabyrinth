@@ -1438,7 +1438,7 @@ describe("boss phases", () => {
 });
 
 describe("Echo phase content (real data)", () => {
-  it("the Echo has phase thresholds and both phase abilities", () => {
+  it("the floor-3 boss has phase thresholds and both phase abilities", () => {
     const echo = ENEMIES_BY_ID["headmasters-echo"];
     expect(echo.phaseThresholds).toEqual([66, 33]);
     expect(echo.abilityIds).toContain("memory-shatter");

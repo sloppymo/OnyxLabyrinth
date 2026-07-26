@@ -26,7 +26,7 @@ describe("enemy data", () => {
     expect(refs).toContain("big-titty-ogre");
   });
 
-  it("puts an escalating Echo variant on each deep floor's table (not the same boss reused)", () => {
+  it("puts an escalating boss variant on each deep floor's table (not the same boss reused)", () => {
     const expectedBossByFloor: Record<number, string> = {
       3: "headmasters-echo",
       4: "headmasters-echo-remnant",
@@ -41,7 +41,7 @@ describe("enemy data", () => {
     }
   });
 
-  it("escalates the Echo's stats floor-to-floor instead of reusing the same boss", () => {
+  it("escalates boss stats floor-to-floor instead of reusing the same boss", () => {
     const echo = ENEMIES_BY_ID["headmasters-echo"];
     const remnant = ENEMIES_BY_ID["headmasters-echo-remnant"];
     const ascendant = ENEMIES_BY_ID["headmasters-echo-ascendant"];

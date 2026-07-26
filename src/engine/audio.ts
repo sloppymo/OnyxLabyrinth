@@ -24,6 +24,8 @@
 // Usage:
 //   audio.startDungeon();    // begin drone
 //   audio.stopDungeon();     // stop drone
+//   audio.startBossCombat(); // exclusive boss bed (procedural BGM stand-in)
+//   audio.stopBossCombat();  // end boss bed
 //   audio.footstep();        // play a footstep
 //   audio.doorOpen();        // door unlocked/opened
 //   audio.doorLocked();      // door remains locked
@@ -214,6 +216,19 @@ class AudioEngine {
   }> = null;
   private dronePlaying = false;
 
+  // Boss combat bed — tenser procedural bed while a floor boss is up.
+  // There is no shipped BGM asset; this is the exclusive "boss music" stand-in.
+  private bossBedNodes: Maybe<{
+    osc1: OscillatorNode;
+    osc2: OscillatorNode;
+    osc3: OscillatorNode;
+    lfo: OscillatorNode;
+    lfoGain: GainNode;
+    filter: BiquadFilterNode;
+    gain: GainNode;
+  }> = null;
+  private bossBedPlaying = false;
+
   // Noise buffer cache (footsteps reuse it).
   private noiseBuffer: Maybe<AudioBuffer> = null;
 
@@ -246,6 +261,16 @@ class AudioEngine {
       lfoFreq: 0.08,       // Hz — ~12s breathing cycle
       lfoDepth: 0.015,     // gain wobble depth (subtle)
       gain: 0.06,          // master drone level (quiet — ambient bed)
+    },
+    bossBed: {
+      freq1: 46.25,        // F#1 — darker root than the dungeon drone
+      freq2: 65.4,         // C2 — tritone-ish tension against F#
+      freq3: 92.5,         // F#2 — pulse octave
+      detune: 18,
+      filterFreq: 340,
+      lfoFreq: 0.28,       // faster breathing — unease
+      lfoDepth: 0.035,
+      gain: 0.085,
     },
     footstep: {
       duration: 0.12,      // seconds — short burst
@@ -646,6 +671,76 @@ class AudioEngine {
     lfo.stop(t + 0.16);
     this.droneNodes = null;
     this.dronePlaying = false;
+  }
+
+  /**
+   * Start the exclusive boss combat bed (procedural stand-in for boss BGM).
+   * No-op if already playing. Safe to call when Web Audio isn't ready.
+   */
+  startBossCombat(): void {
+    if (!this.ctx || !this.masterGain || this.bossBedPlaying) return;
+    const ctx = this.ctx;
+    const cfg = this.CFG.bossBed;
+
+    const osc1 = ctx.createOscillator();
+    osc1.type = "sawtooth";
+    osc1.frequency.value = cfg.freq1;
+
+    const osc2 = ctx.createOscillator();
+    osc2.type = "square";
+    osc2.frequency.value = cfg.freq2;
+    osc2.detune.value = cfg.detune;
+
+    const osc3 = ctx.createOscillator();
+    osc3.type = "triangle";
+    osc3.frequency.value = cfg.freq3;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = cfg.filterFreq;
+
+    const gain = ctx.createGain();
+    gain.gain.value = cfg.gain;
+
+    const lfo = ctx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.value = cfg.lfoFreq;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = cfg.lfoDepth;
+    lfo.connect(lfoGain);
+    lfoGain.connect(gain.gain);
+
+    osc1.connect(filter);
+    osc2.connect(filter);
+    osc3.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc1.start();
+    osc2.start();
+    osc3.start();
+    lfo.start();
+
+    this.bossBedNodes = { osc1, osc2, osc3, lfo, lfoGain, filter, gain };
+    this.bossBedPlaying = true;
+  }
+
+  /** Stop the boss combat bed. No-op if not playing. */
+  stopBossCombat(): void {
+    if (!this.ctx || !this.bossBedNodes) return;
+    const { osc1, osc2, osc3, lfo } = this.bossBedNodes;
+    const t = this.ctx.currentTime;
+    this.bossBedNodes.gain.gain.setValueAtTime(
+      this.bossBedNodes.gain.gain.value,
+      t
+    );
+    this.bossBedNodes.gain.gain.linearRampToValueAtTime(0, t + 0.2);
+    osc1.stop(t + 0.22);
+    osc2.stop(t + 0.22);
+    osc3.stop(t + 0.22);
+    lfo.stop(t + 0.22);
+    this.bossBedNodes = null;
+    this.bossBedPlaying = false;
   }
 
   /**
