@@ -2,7 +2,7 @@
 
 Use this list before acting on playtest, balance, combat UX, or perk work. Prefer these over older one-off prompts when they conflict.
 
-**Last refreshed:** 2026-07-25 (prologue; century wipe→town + lore scrub; debug surface PR-1–4; zone-flavor = frequency-only addendum; F1/F2 closed; wish/ending still open; PR-5 not built)
+**Last refreshed:** 2026-07-25 (prologue; century wipe→town + lore scrub; debug surface PR-1–4; zone-flavor = frequency-only addendum; F1/F2 closed; wish/ending still open; PR-5 not built; per-floor combat-difficulty probe done; wipe→game-over-screen-skip **fixed** in `game-over-ui.ts`)
 
 | Doc | Role | Status |
 |-----|------|--------|
@@ -14,7 +14,8 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 | [`superpowers/specs/2026-07-24-campaign-progression-design.md`](superpowers/specs/2026-07-24-campaign-progression-design.md) | XP curve, shop tiers, floor 4-5 content, pacing arithmetic | **Current** — authoritative for progression/gear/floor-4-5 topics; **supersedes [`PROGRESSION-GEAR-AUDIT.md`](PROGRESSION-GEAR-AUDIT.md)'s findings table** (see that doc's own banner) |
 | [`superpowers/plans/2026-07-24-campaign-progression.md`](superpowers/plans/2026-07-24-campaign-progression.md) | Workstreams A-F task breakdown + completion notes | **Done 2026-07-24** — all six workstreams shipped and playtest-verified |
 | [`playtests/2026-07-25-invariants-pacing-playtest.md`](playtests/2026-07-25-invariants-pacing-playtest.md) | Hostile wipe sequences + 190-gap encounter pacing; **F1/F2 fixed same day**; **zone-flavor addendum** (campaign zones never set `tableFloorId` — safe/hot = frequency only) | **Current** for pacing / wipe / zone-table claims |
-| [`superpowers/plans/2026-07-25-per-floor-combat-difficulty-probe.md`](superpowers/plans/2026-07-25-per-floor-combat-difficulty-probe.md) | Proposed sequel: TTK/HP-lost **per floor** at fixed party level (not per-zone) | **Proposed** — not started |
+| [`superpowers/plans/2026-07-25-per-floor-combat-difficulty-probe.md`](superpowers/plans/2026-07-25-per-floor-combat-difficulty-probe.md) | Sequel: TTK/HP-lost **per floor** at fixed party level (not per-zone) | **Done 2026-07-25** — see report below |
+| [`playtests/2026-07-25-per-floor-combat-difficulty.md`](playtests/2026-07-25-per-floor-combat-difficulty.md) | N=15/floor, L=8: F1→F3 difficulty ramp is steep, F3→F5 per-round lethality plateaus (~4-5%/round, fights just run longer); near-wipe rate ≠ mean HP lost (F5 highest HP lost, lowest near-wipe of F3-5). Wipe→Game Over skip was found here; **fixed** same day (`GameOverController` macrotask arming) | **Current** for combat-difficulty-per-floor claims |
 | [`superpowers/specs/2026-07-25-llm-playwright-debug-surface-plan.md`](superpowers/specs/2026-07-25-llm-playwright-debug-surface-plan.md) | `?debug=1` Playwright surface: snapshot → idle → jumpTo → evidence → (PR-5 seed) | **PR-1–4 shipped**; **PR-5 open** |
 | [`FOLLOWUP-2026-07-25-SESSION-HANDOFF-PROMPT.md`](FOLLOWUP-2026-07-25-SESSION-HANDOFF-PROMPT.md) | Full session handoff for the next agent | **Current** as of end of 2026-07-25 |
 | [`playtests/2026-07-24-progression-sprint-notes.md`](playtests/2026-07-24-progression-sprint-notes.md) | Measured floor 4-5 pacing data (real, not the audit's 6-15 estimate) | **Current** — closes the design note's biggest uncertainty; confirms no XP-multiplier retune needed |

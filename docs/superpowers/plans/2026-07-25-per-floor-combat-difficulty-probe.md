@@ -1,6 +1,7 @@
 # Plan: per-floor combat difficulty probe (sequel to encounter-pacing)
 
-**Status:** proposed — not started  
+**Status:** done — see [`docs/playtests/2026-07-25-per-floor-combat-difficulty.md`](../../playtests/2026-07-25-per-floor-combat-difficulty.md)
+(N=15/floor, L=8; also surfaced wipe→game-over-screen-skip — **fixed** same day in `game-over-ui.ts`)  
 **Depends on:** `?debug=1` surface through PR-4 (shipped); zone-flavor addendum in
 [`docs/playtests/2026-07-25-invariants-pacing-playtest.md`](../../playtests/2026-07-25-invariants-pacing-playtest.md)
 
