@@ -30,7 +30,7 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 11;
+const SAVE_VERSION = 12;
 
 /**
  * v6 → v7: every spell id was renamed from classic Wizardry names to
@@ -224,6 +224,13 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     ser.deepestFloorReached = (ser.floorId as number | undefined) ?? 1;
     version = 11;
   }
+  if (version === 11) {
+    // v11 → v12: century cycle (docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md
+    // §7.2). Pre-existing saves predate the cycle entirely, so they start at
+    // the same year New Game does.
+    ser.worldYear = 3847;
+    version = 12;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -237,6 +244,7 @@ export interface SaveSlotMeta {
   dayCount: number;
   partySummary: string;
   gold: number;
+  worldYear: number;
   savedAt: string; // ISO timestamp
 }
 
@@ -279,6 +287,8 @@ interface SerializedState {
   activeCharIds?: string[];
   /** Highest floor id ever reached; gates shop stock by depth. v11+. */
   deepestFloorReached?: number;
+  /** Century cycle year; advances by 100 on a campaign party wipe. v12+. */
+  worldYear?: number;
   savedAt: string;
 }
 
@@ -327,6 +337,7 @@ export function serialize(state: GameState): string {
     exploredByFloor,
     stepsSinceEncounter: state.stepsSinceEncounter,
     dayCount: state.dayCount,
+    worldYear: state.worldYear,
     partyGold: state.partyGold,
     inventory: state.inventory.map((e) => ({ ...e })),
     keys: [...state.keys],
@@ -437,6 +448,7 @@ export function deserialize(json: string): GameState | null {
       exploredByFloor: ser.exploredByFloor ?? {},
       stepsSinceEncounter: ser.stepsSinceEncounter,
       dayCount: ser.dayCount,
+      worldYear: ser.worldYear ?? 3847,
       partyGold: ser.partyGold ?? 0,
       inventory: ser.inventory ? ser.inventory.map((e) => ({ ...e })) : [],
       keys: ser.keys ? [...ser.keys] : [],
@@ -475,7 +487,7 @@ function getSlotMeta(slot: number): SaveSlotMeta {
   const key = `${STORAGE_PREFIX}${slot}`;
   const raw = localStorage.getItem(key);
   if (!raw) {
-    return { slot, empty: true, floorId: 0, floorName: "", dayCount: 0, partySummary: "", gold: 0, savedAt: "" };
+    return { slot, empty: true, floorId: 0, floorName: "", dayCount: 0, partySummary: "", gold: 0, worldYear: 0, savedAt: "" };
   }
   try {
     const ser = JSON.parse(raw) as SerializedState;
@@ -489,10 +501,11 @@ function getSlotMeta(slot: number): SaveSlotMeta {
       dayCount: ser.dayCount,
       partySummary: `${livingCount}/${ser.party.length} alive`,
       gold: ser.partyGold ?? 0,
+      worldYear: ser.worldYear ?? 3847,
       savedAt: ser.savedAt,
     };
   } catch {
-    return { slot, empty: true, floorId: 0, floorName: "", dayCount: 0, partySummary: "", gold: 0, savedAt: "" };
+    return { slot, empty: true, floorId: 0, floorName: "", dayCount: 0, partySummary: "", gold: 0, worldYear: 0, savedAt: "" };
   }
 }
 

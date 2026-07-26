@@ -85,6 +85,7 @@ function makeState(npc: NPCDef = makeNPC()): GameState {
     exploredByFloor: {},
     stepsSinceEncounter: 0,
     dayCount: 1,
+    worldYear: 3847,
     partyGold: 0,
     inventory: [],
     keys: [],

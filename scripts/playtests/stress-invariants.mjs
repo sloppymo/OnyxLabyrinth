@@ -150,25 +150,21 @@ try {
   ok(townText.includes(`Year ${year0 + 100}`), 1, "town header missing advanced year", `wanted "Year ${year0 + 100}"`);
   note(`town header shows Year ${year0 + 100}: ${townText.includes(`Year ${year0 + 100}`)}`);
 
-  // The invariant warnings above have a single root cause worth its own
-  // finding: endCombat's wipe branch early-returns before the
-  // `state.combat = undefined; combatController = null;` cleanup, so a stale
-  // ended combat survives into game_over/town. Probe it explicitly.
+  // Regression guard for the wipe-path cleanup (e40d52b): combat must be
+  // cleared before openGameOver, same as fled/victory.
   const staleCombat = await evalState("state.combat != null");
-  if (!ok(!staleCombat, 1, "stale state.combat after campaign wipe reaches town", "endCombat wipe branch returns before combat cleanup; loadSave/jumpTo refuse until the next combat starts")) {
+  if (!ok(!staleCombat, 1, "stale state.combat after campaign wipe reaches town", "endCombat wipe branch must clear combat before openGameOver")) {
     note("stale state.combat persists through game_over -> town after campaign wipe");
   }
 
   // --- Phase 3: save/load + migration fixtures ------------------------------
   console.log("--- phase 3: save/load round-trip + migration");
-  // dumpSave still works post-wipe; loadSave refuses while the stale combat is
-  // present (consequence of the finding above), so the load probes run on a
-  // fresh boot.
   const dump = await page.evaluate(() => window.__onyxDebug.dumpSave());
   const parsed = JSON.parse(dump);
   ok(parsed.worldYear === year0 + 100, 1, "dumpSave worldYear wrong", `got ${parsed.worldYear}`);
   note(`dumpSave: version=${parsed.version} worldYear=${parsed.worldYear}`);
 
+  // Fresh boot so the town controller from Continue does not fight loadSave.
   await freshBoot();
   await page.evaluate((j) => window.__onyxDebug.loadSave(j), dump);
   await waitForIdle(page, 6000);
@@ -230,6 +226,13 @@ try {
   ok(yearArenaAfter === yearArenaBefore, 0, "ARENA wipe advanced worldYear", `before=${yearArenaBefore} after=${yearArenaAfter}`);
   const arenaGoText = await page.evaluate(() => document.body.innerText);
   note(`arena wipe: worldYear ${yearArenaBefore} -> ${yearArenaAfter}; game-over shows century copy: ${arenaGoText.includes("A hundred years in the dark")}, "wake in town" prompt: ${arenaGoText.includes("wake in town")}`);
+  ok(
+    !arenaGoText.includes("A hundred years in the dark") && !arenaGoText.includes("wake in town"),
+    0,
+    "Arena wipe still shows campaign century / wake-in-town copy",
+    "pass inArena into GameOverController and branch the bottom two lines"
+  );
+  ok(arenaGoText.includes("to continue") || arenaGoText.includes("[Enter]"), 0, "Arena wipe missing continue prompt", arenaGoText.slice(0, 200));
   await press(page, "Enter");
   await waitForIdle(page, 6000);
   st = await checkClean("arena-after-wipe", 0);

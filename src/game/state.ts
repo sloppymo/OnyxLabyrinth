@@ -30,6 +30,7 @@ export function createGameState(floor: FloorDef): GameState {
     // past pity-force (that would guarantee a fight on step one).
     stepsSinceEncounter: ENCOUNTER_COOLDOWN,
     dayCount: 1,
+    worldYear: 3847,
     partyGold: 100, // starting gold for the shop
     inventory: [
       { itemId: "healing-potion", identified: true },

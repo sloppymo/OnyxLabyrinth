@@ -669,7 +669,7 @@ export class TownController {
     );
 
     const win = new FF6Window({
-      title: "Town of Edgehollow",
+      title: `Town of Edgehollow — Year ${this.state.worldYear}`,
       items: MAIN_MENU_ITEMS.map((item) => ({
         label: item.label,
         metadata: item.key,
@@ -1693,6 +1693,11 @@ export class TownController {
 
     // Party status after inn/temple
     const lines: string[] = [];
+    if (this.screen === "inn") {
+      // Century cycle §8: at least one flavor line making Death's absence
+      // town-scale, not just a dungeon mechanic.
+      lines.push(`<div class="town-help">Nobody here gets older. Nobody here leaves for good.</div>`);
+    }
     lines.push(`<div class="guild-roster">`);
     for (const c of this.state.party) {
       const hpPct = Math.round((c.hp / c.maxHp) * 100);

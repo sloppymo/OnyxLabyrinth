@@ -334,9 +334,12 @@ export const ANIMATED_ARMOR: EnemyDef = {
   isBoss: false,
 };
 
+// Historical ID — this is "The Vanguard's Echo" in current canon (Headmaster
+// lore superseded, see docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md);
+// id kept stable for saves/tests.
 export const HEADMASTERS_ECHO: EnemyDef = {
   id: "headmasters-echo",
-  name: "The Headmaster's Echo",
+  name: "The Vanguard's Echo",
   // Floor-3-exclusive: floors 4/5 now fight HEADMASTERS_ECHO_REMNANT /
   // HEADMASTERS_ECHO_ASCENDANT, escalating stats/kit instead of the same
   // byte-identical boss reused three floors running.
@@ -972,6 +975,8 @@ export const UNDERTOW_CALLER: EnemyDef = {
 // Floor 3's HEADMASTERS_ECHO is unchanged and now floor-3-exclusive.
 // ---------------------------------------------------------------------------
 
+// Historical ID — name unchanged under new canon (reads as the Null Choir's
+// kept singers); id kept stable for saves/tests.
 export const HEADMASTERS_ECHO_REMNANT: EnemyDef = {
   id: "headmasters-echo-remnant",
   name: "The Choir's Echo",
@@ -1000,9 +1005,11 @@ export const HEADMASTERS_ECHO_REMNANT: EnemyDef = {
   phaseThresholds: [66, 33],
 };
 
+// Historical ID — this is "The First Descent" in current canon; id kept
+// stable for saves/tests.
 export const HEADMASTERS_ECHO_ASCENDANT: EnemyDef = {
   id: "headmasters-echo-ascendant",
-  name: "The Drowned Echo",
+  name: "The First Descent",
   floors: [5],
   rowPreference: "back",
   hp: 285,
@@ -1418,7 +1425,7 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     // The climax formation — the Choir's Echo, a genuine escalation over
-    // floor 3's Headmaster's Echo, not the same boss reused.
+    // floor 3's Vanguard's Echo, not the same boss reused.
     {
       weight: 1,
       spawns: [
@@ -1515,7 +1522,7 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "undertow-caller", row: "back" },
       ],
     },
-    // The climax formation — the Drowned Echo, a true four-phase campaign
+    // The climax formation — the First Descent, a true four-phase campaign
     // climax escalating over the Choir's Echo on floor 4.
     {
       weight: 1,

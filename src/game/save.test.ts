@@ -282,6 +282,24 @@ describe("save serialization", () => {
     expect(restored?.deepestFloorReached).toBe(4);
   });
 
+  it("round-trips worldYear", () => {
+    state.worldYear = 4047;
+    const json = serialize(state);
+    const restored = deserialize(json);
+    expect(restored).not.toBeNull();
+    expect(restored?.worldYear).toBe(4047);
+  });
+
+  it("migrates v11 saves: worldYear backfills to 3847 (pre-cycle saves start at New Game's year)", () => {
+    const json = serialize(state);
+    const raw = JSON.parse(json) as Record<string, unknown>;
+    raw.version = 11;
+    delete raw.worldYear;
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    expect(restored?.worldYear).toBe(3847);
+  });
+
   it("migrates v10 saves: a realistic level-6 save resets in-level progress to 0", () => {
     // Under the OLD (flat, never-spent) curve, level and xp are always in
     // sync after combat: a real level-6 character's lifetime xp sits in

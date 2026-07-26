@@ -2,13 +2,13 @@
 
 Use this list before acting on playtest, balance, combat UX, or perk work. Prefer these over older one-off prompts when they conflict.
 
-**Last refreshed:** 2026-07-25 (New Game prologue shipped; labyrinth narrative rewrite designed — Headmaster lore superseded)
+**Last refreshed:** 2026-07-25 (New Game prologue shipped; Headmaster→First Descent lore scrub + century wipe→town cycle shipped; wish/ending scene still not implemented)
 
 | Doc | Role | Status |
 |-----|------|--------|
 | [`AGENTS.md`](../AGENTS.md) | Hard engine rules, file map, pitfalls | **Authoritative** for code constraints |
 | [`CLAUDE.md`](../CLAUDE.md) | Commands, architecture orientation | Authoritative; defers to AGENTS.md for `src/` rules |
-| [`superpowers/specs/2026-07-25-labyrinth-narrative-design.md`](superpowers/specs/2026-07-25-labyrinth-narrative-design.md) | Canon: gods left / Death left / lamp / First Descent / century cycle | **Current lore** — supersedes Headmaster/academy framing in `wizardry_v_clone_design_doc.md` and Echo-boss *fiction* (mechanics stay) |
+| [`superpowers/specs/2026-07-25-labyrinth-narrative-design.md`](superpowers/specs/2026-07-25-labyrinth-narrative-design.md) | Canon: gods left / Death left / lamp / First Descent / century cycle | **Current lore** — supersedes Headmaster/academy framing in `wizardry_v_clone_design_doc.md` and Echo-boss *fiction* (mechanics stay). §4 (string scrub) and §7-§8 (worldYear, wipe→town, game-over copy, town header) **shipped**; §6 (wish/ending scene) **not yet implemented** — floor-5 boss victory still falls through the generic victory branch |
 | [`superpowers/specs/2026-07-25-snes-era-intro-style-guide.md`](superpowers/specs/2026-07-25-snes-era-intro-style-guide.md) | Black-field narration, typewriter, FF36, two-stage skip | **Current** for prologue / future attract text |
 | [`superpowers/plans/2026-07-25-prologue-intro-sequence.md`](superpowers/plans/2026-07-25-prologue-intro-sequence.md) | New Game prologue implementation | **Done 2026-07-25** — shipped (`prologue-ui.ts`) |
 | [`superpowers/specs/2026-07-24-campaign-progression-design.md`](superpowers/specs/2026-07-24-campaign-progression-design.md) | XP curve, shop tiers, floor 4-5 content, pacing arithmetic | **Current** — authoritative for progression/gear/floor-4-5 topics; **supersedes [`PROGRESSION-GEAR-AUDIT.md`](PROGRESSION-GEAR-AUDIT.md)'s findings table** (see that doc's own banner) |
@@ -41,14 +41,15 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 | `2026-07-16-consumables-answers-pack-design.md` | Combat consumables expansion (q7) | Shipped 2026-07-16; 4 items incl. only paralysis cure + revive; revive = 25% max HP |
 | `2026-07-16-analyze-verb-design.md` | Analyze verb (Direction C step 1) | Shipped 2026-07-16; Y skill list / `n`; affinity + trait tags; palette skill slot always enabled |
 | `2026-07-16-echo-boss-phases-design.md` | Echo boss phases (Direction C step 2) | Shipped 2026-07-16; `EnemyDef.phaseThresholds` generic; Echo 66/33 + memory-shatter/total-eclipse. **Fiction superseded** by `2026-07-25-labyrinth-narrative-design.md` (Headmaster → First Descent); phase mechanics unchanged |
-| `2026-07-25-labyrinth-narrative-design.md` | Labyrinth myth, century wipe, wish ending | **Current lore** — Headmaster/academy dead; wipe→town + year counter + ending still to implement |
+| `2026-07-25-labyrinth-narrative-design.md` | Labyrinth myth, century wipe, wish ending | **Current lore** — Headmaster/academy dead, string scrub + wipe→town + year counter shipped 2026-07-25; wish ending still to implement |
 | `2026-07-25-snes-era-intro-style-guide.md` | Prologue / narration presentation | Companion to prologue plan; FF36 black-field rules |
 | `2026-07-16-row-swap-design.md` | In-combat row swap (Direction C final) | Shipped 2026-07-16; Move verb, turn-cost; party array reorder + formationSlot normalize |
 | `2026-07-07-combat-select-action-dom-design.md` | FF6 windows DOM | Older; verify against `combat-select-action-view.ts` |
 
 ## Known stale claims (do not re-assert)
 
-- ~~Headmaster / academy as campaign lore~~ — superseded 2026-07-25 by `superpowers/specs/2026-07-25-labyrinth-narrative-design.md` (gods left, Death left, lamp/djinn, First Descent). Boss *mechanics* in the Echo phases spec still apply; display names/strings still pending rewrite.
+- ~~Headmaster / academy as campaign lore~~ — superseded 2026-07-25 by `superpowers/specs/2026-07-25-labyrinth-narrative-design.md` (gods left, Death left, lamp/djinn, First Descent). Boss *mechanics* in the Echo phases spec still apply; display names/strings rewritten 2026-07-25 (internal `headmasters-echo*` IDs kept stable for saves/tests — see historical-ID comments at each definition site).
+- ~~"Wipe returns the party to the dungeon entrance"~~ — superseded 2026-07-25; a campaign wipe now advances `worldYear` by 100 and returns the party to town (`openTown()`), per the century-cycle design. Arena wipes are unaffected (no year advance, no town redirect).
 - ~~“No floor currently uses `events`”~~ — floors 1–3 all have `events` arrays in `floors.ts`.
 - ~~“Arena L9 always starts on floor-1 trash”~~ — `arenaStartFloorForLevel` maps each chooser level onto its own floor across the full 5-floor campaign (L1→1, L3→2, L6→3, L9→4, L12→5, updated 2026-07-18 when floors 4-5 shipped); Arena also skips boss formations and auto-starts wave 1.
 - ~~“Dungeon encounter rate feels empty”~~ — floors 1–3 now 8%/10%/12% after the 8-step cooldown, plus soft pity that forces a fight by step 28 (`game/encounters.ts`).

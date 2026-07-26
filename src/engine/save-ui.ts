@@ -308,7 +308,7 @@ export class SaveController {
           `<div class="save-slot ${isSelected ? "selected" : ""}">` +
             `<span class="ss-marker">${marker}</span>` +
             `<span class="ss-num">Slot ${i + 1}</span>` +
-            `<span class="ss-info">F${meta.floorId} ${meta.floorName} · Day ${meta.dayCount} · ${meta.partySummary} · ${meta.gold}g · ${dateStr}</span>` +
+            `<span class="ss-info">Year ${meta.worldYear} · F${meta.floorId} ${meta.floorName} · Day ${meta.dayCount} · ${meta.partySummary} · ${meta.gold}g · ${dateStr}</span>` +
             `</div>`
         );
       }

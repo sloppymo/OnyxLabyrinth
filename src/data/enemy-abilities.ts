@@ -436,7 +436,7 @@ const SEDUCTION: EnemyAbilityDef = {
 const ECHO_OF_SILENCE: EnemyAbilityDef = {
   id: "echo-of-silence",
   name: "Echo of Silence",
-  description: "The Headmaster's Echo silences the entire party.",
+  description: "The Echo silences the entire party.",
   target: "allParty",
   effect: { kind: "status", status: "blind", chance: 0.5, duration: 2 },
   condition: { kind: "turnInterval", every: 3 },

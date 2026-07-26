@@ -640,10 +640,17 @@ function openGameOver(): void {
   setMode(state, "game_over");
   showMode("game_over", mapVisible);
   setMessage("");
+  // §7.1: campaign wipes advance the century cycle before the screen renders
+  // so the player reads the *new* year; Arena wipes never advance it.
+  if (!inArena) {
+    state.worldYear += 100;
+  }
   gameOverController = new GameOverController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     party: state.party,
     floorName: state.floor.name,
+    worldYear: state.worldYear,
+    inArena,
     onContinue: () => {
       gameOverController = null;
       if (inArena) {

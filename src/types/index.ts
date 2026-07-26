@@ -129,6 +129,10 @@ export interface GameState {
   // In-dungeon day counter, advanced by 1 each time the party camps.
   // Flavor only (design doc §5.1); no mechanical penalty.
   dayCount: number;
+  // Century cycle (docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md
+  // §7.2). New Game starts at 3847; a campaign party wipe advances it by 100.
+  // Arena wipes never touch it.
+  worldYear: number;
   // Party gold. Earned from combat, spent at the town shop.
   // Design doc §8.1: "Carried gold. All gold earned in dungeon is carried
   // by the party." No banking in the MVP.

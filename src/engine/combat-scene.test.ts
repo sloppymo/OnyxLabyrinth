@@ -131,9 +131,9 @@ describe("playTurn choreography", () => {
 
   it("phaseChange event shows the grows-stronger banner", () => {
     const scene = makeScene();
-    playTurn(scene, [{ type: "phaseChange", actorId: "rat-0", phase: 2, name: "The Headmaster's Echo" }], spellName, 0, W, H);
+    playTurn(scene, [{ type: "phaseChange", actorId: "rat-0", phase: 2, name: "The Vanguard's Echo" }], spellName, 0, W, H);
     updateScene(scene, 10);
-    expect(scene.banner).toBe("The Headmaster's Echo grows stronger!");
+    expect(scene.banner).toBe("The Vanguard's Echo grows stronger!");
   });
 
   it("miss pops MISS without a hurt animation", () => {

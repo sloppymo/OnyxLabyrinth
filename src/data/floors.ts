@@ -451,12 +451,12 @@ function floor2(): FloorDef {
         x: 1,
         y: 1,
         greeting:
-          "Shhh! Lower your voice — the stacks listen. I am Vestra. I copied for the Headmaster, before. I don't copy anymore.",
+          "Shhh! Lower your voice — the stacks listen. I am Vestra. I copied for the First Descent's records, before. I don't copy anymore.",
         returnGreeting: "You again. Quietly, quietly. The shelves have been restless.",
         topics: [
           { key: "library", response: "The library curses noise, not people. Walk softly, open nothing that hums, and never run in the dark corridor." },
           { key: "key", response: "The furnace key sits in the wing they forbade — east of the reading hall. Your lexicon opens that door, if you found it below." },
-          { key: "echo", response: "The Headmaster did not die. He diffused. What waits in the forge below wears his face badly." },
+          { key: "echo", response: "The First Descent passed through here, long before me. The ones who stayed were kept — the labyrinth doesn't let go. What waits in the forge below is what's left of them." },
           { key: "books", hidden: true, response: "You read the wall, then. It isn't a joke. DO NOT FEED THEM." },
         ],
         trades: [{ giveItemId: "antidote", receiveItemId: "robe+2", once: true }],
@@ -490,7 +490,7 @@ function floor2(): FloorDef {
 // ---------------------------------------------------------------------------
 // Floor 3: The Forge of Ashes — final floor.
 // Theme: molten cracks, charred stone, iron grates, ember-lit corridors,
-// anvil altars. Constructs, fire-casting orcs, and the Headmaster's Echo.
+// anvil altars. Constructs, fire-casting orcs, and the Vanguard's Echo.
 //
 // Shape: two interlocking loops around the central foundry, plus a locked
 // slag vault (furnace-key from floor 2), an ashpit holding the forge-key,
@@ -620,12 +620,12 @@ function floor3(): FloorDef {
         x: 3,
         y: 9,
         greeting:
-          "Stay your hand or draw — I care little which. I am Kazeharu. My master fed this forge. I keep what vigil is left.",
+          "Stay your hand or draw — I care little which. I am Kazeharu. My master went down chasing the deep, and the forge took her. I keep what vigil is left.",
         returnGreeting: "Back among the cinders. The Echo still waits, and so do I.",
         topics: [
           { key: "forge", response: "Beyond the locked door south, the Echo holds court in dead air — no spell will answer you there. Bring steel." },
           { key: "duel", response: "Draw when ready. I will not strike first, and I will not strike last." },
-          { key: "master", hidden: true, response: "My master built the Grand Forge and burned in it. I stayed to guard his failure. Kill the Echo, and my vigil ends." },
+          { key: "master", hidden: true, response: "She was no builder. She came down chasing the deep, same as anyone, and burned trying to reach it. I stayed to guard what she couldn't finish. Kill the Echo, and my vigil ends." },
         ],
         combatEnemyIds: ["black-knight"],
       },

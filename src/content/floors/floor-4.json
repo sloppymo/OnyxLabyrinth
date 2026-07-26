@@ -2194,7 +2194,7 @@
       "topics": [
         {
           "key": "choir",
-          "response": "She writes: 'Forty of us sang here. The Headmaster wanted our voices for his Echo — so he took them, one hymn at a time. What is left of the choir walks the nave in armor now.'"
+          "response": "She writes: 'Forty of us sang here, calling to gods who had already gone. The labyrinth kept our voices, one hymn at a time. What is left of the choir walks the nave in armor now.'"
         },
         {
           "key": "silence",
@@ -2237,7 +2237,7 @@
       "x": 2,
       "y": 6,
       "kind": "message",
-      "message": "A plaque, scratched over with a nail: THE HEADMASTER TOOK OUR VOICES. WE KEPT THE WORDS.",
+      "message": "A plaque, scratched over with a nail: THE GODS TOOK OUR VOICES. WE KEPT THE WORDS.",
       "once": false
     },
     {
