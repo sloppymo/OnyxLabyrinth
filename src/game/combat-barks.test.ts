@@ -349,6 +349,153 @@ describe("enemy melee/ability heavyHit bark ordering", () => {
   });
 });
 
+describe("Martyr redirect heavyHit bark", () => {
+  beforeEach(() => {
+    resetBarkRngForCombat(1);
+    setBarkRngForTests(() => 0);
+  });
+
+  // priest-martyr redirects half of an adjacent front-row ally's damage to
+  // the Priest — formationSlot 0/1 are adjacent front row (combat-shared.ts
+  // isAdjacentFrontRowAlly).
+  function martyrParty() {
+    const target = createCharacter("t1", "Frontliner", "Human", "Neutral", "Fighter", 0);
+    target.maxHp = 100;
+    target.hp = 100;
+    const martyr = createCharacter("m2", "Martyr", "Human", "Neutral", "Priest", 1);
+    martyr.perkIds = ["priest-martyr"];
+    return [target, martyr];
+  }
+
+  it("emits a heavyHit bark for the Martyr when the redirected half is itself heavy (melee)", () => {
+    const party = martyrParty();
+    party[1]!.maxHp = 40; // redirect half must clear ceil(40 * 0.35) = 14
+    party[1]!.hp = 40;
+    const s = createCombatState(party, { front: [makeEnemy("slime-0")], back: [] }, false, SPELLS);
+    const enemy = s.enemies.front[0]!;
+    // Half of ~40 damage (20) clears the Martyr's ceil(40*0.35)=14 threshold
+    // without being lethal to her — a redirect that kills outright emits
+    // no heavyHit bark at all (death supersedes it; see combat-eor.ts, not
+    // exercised by this direct resolveEnemyAction call).
+    enemy.attack = 40;
+
+    const events: CombatEvent[] = [];
+    const emit = (_m: string, e: CombatEvent) => {
+      events.push(e);
+    };
+
+    resolveEnemyAction(
+      s,
+      { kind: "attack", actor: enemy, target: { kind: "party", id: "t1" } },
+      () => 0.5,
+      () => {},
+      emit
+    );
+
+    const redirectIdx = events.findIndex(
+      (e) => e?.type === "spellEffect" && e.spellId === "priest-martyr"
+    );
+    expect(redirectIdx).toBeGreaterThanOrEqual(0);
+    expect(events[redirectIdx + 1]).toMatchObject({
+      type: "bark",
+      trigger: "heavyHit",
+      actorId: "m2",
+    });
+  });
+
+  it("emits a heavyHit bark for the Martyr when the redirected half of an ability hit is itself heavy", () => {
+    const party = martyrParty();
+    party[1]!.maxHp = 10; // memory-shatter's redirect half easily clears ceil(10 * 0.35) = 4
+    party[1]!.hp = 10;
+    const s = createCombatState(party, { front: [makeEnemy("slime-0")], back: [] }, false, SPELLS);
+    const enemy = s.enemies.front[0]!;
+
+    const events: CombatEvent[] = [];
+    const emit = (_m: string, e: CombatEvent) => {
+      events.push(e);
+    };
+
+    resolveEnemyAction(
+      s,
+      { kind: "ability", actor: enemy, abilityId: "memory-shatter", targetId: "t1" },
+      () => 0.9,
+      () => {},
+      emit
+    );
+
+    const castIdx = events.findIndex((e) => e?.type === "cast" && e.spellId === "memory-shatter");
+    expect(castIdx).toBeGreaterThanOrEqual(0);
+    expect(events.slice(castIdx + 1)).toContainEqual(
+      expect.objectContaining({ type: "bark", trigger: "heavyHit", actorId: "m2" })
+    );
+  });
+});
+
+describe("multiHit heavyHit bark uses per-hit, not cumulative, eligibility", () => {
+  beforeEach(() => {
+    resetBarkRngForCombat(1);
+    setBarkRngForTests(() => 0);
+  });
+
+  it("does not bark when no single hit clears 35%, even though the total does", () => {
+    // hunting-pounce: 2 hits, powerPerHit 4 -> scaledAbilityPower(4) = 6.
+    // At variance 1.0 (rng 0.5) each hit deals 6 damage, total 12.
+    // maxHp 20 -> ceil(20 * 0.35) = 7: no single hit (6) clears it, but the
+    // cumulative total (12) would if eligibility were wrongly summed.
+    const party = mageParty();
+    party[0]!.maxHp = 20;
+    party[0]!.hp = 20;
+    const s = createCombatState(party, { front: [makeEnemy("slime-0")], back: [] }, false, SPELLS);
+    const enemy = s.enemies.front[0]!;
+
+    const events: CombatEvent[] = [];
+    const emit = (_m: string, e: CombatEvent) => {
+      events.push(e);
+    };
+
+    resolveEnemyAction(
+      s,
+      { kind: "ability", actor: enemy, abilityId: "hunting-pounce", targetId: "m1" },
+      () => 0.5,
+      () => {},
+      emit
+    );
+
+    const totalDamage = events.reduce(
+      (sum, e) => (e?.type === "cast" && e.spellId === "hunting-pounce" ? sum + (e.damage ?? 0) : sum),
+      0
+    );
+    expect(totalDamage).toBeGreaterThanOrEqual(7); // confirms the cumulative total would have qualified
+    expect(events.some((e) => e?.type === "bark")).toBe(false);
+  });
+
+  it("barks when at least one individual hit clears 35%, even if others don't", () => {
+    // Same ability, but a lower maxHp (13) puts each 6-damage hit at or
+    // above ceil(13 * 0.35) = 5 individually, while still surviving both
+    // hits (13 -> 7 -> 1).
+    const party = mageParty();
+    party[0]!.maxHp = 13;
+    party[0]!.hp = 13;
+    const s = createCombatState(party, { front: [makeEnemy("slime-0")], back: [] }, false, SPELLS);
+    const enemy = s.enemies.front[0]!;
+
+    const events: CombatEvent[] = [];
+    const emit = (_m: string, e: CombatEvent) => {
+      events.push(e);
+    };
+
+    resolveEnemyAction(
+      s,
+      { kind: "ability", actor: enemy, abilityId: "hunting-pounce", targetId: "m1" },
+      () => 0.5,
+      () => {},
+      emit
+    );
+
+    expect(events.some((e) => e?.type === "bark" && e.trigger === "heavyHit")).toBe(true);
+  });
+});
+
 describe("enemyDefIdFromInstance", () => {
   it("strips the instance suffix", () => {
     expect(enemyDefIdFromInstance(makeEnemy("headmasters-echo-ascendant-0"))).toBe(
