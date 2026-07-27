@@ -347,6 +347,17 @@ export interface CombatScene {
   /** Enemies removed from the living arrays but still animating death. */
   enemyCorpses: EnemyInstance[];
   allyCorpses: SummonedAlly[];
+  /**
+   * Stable visual formation slot per enemy instance id, assigned once (lowest
+   * free slot in that enemy's row) and kept for the rest of combat — even
+   * after death — so a mid-row kill doesn't make survivors teleport to fill
+   * the gap or make the corpse's death animation play in the wrong spot.
+   * Without this, position was `list.findIndex(...)` into the live
+   * (post-death, compacted) array, recomputed fresh every frame.
+   */
+  enemySlots: Map<string, number>;
+  /** Same stable-slot treatment as `enemySlots`, for summoned allies. */
+  allySlots: Map<string, number>;
   popups: DamagePopup[];
   /** Dialog barks (sibling channel — not damage popups). */
   barks: CombatBark[];
@@ -456,13 +467,15 @@ export function createScene(state: CombatState): CombatScene {
   for (const ally of state.summonedAllies) {
     if (ally.spriteId) loadEnemySpriteBundle(ally.spriteId).catch(() => {});
   }
-  return {
+  const scene: CombatScene = {
     state,
     partyAnims: new Map(),
     enemyAnims: new Map(),
     allyAnims: new Map(),
     enemyCorpses: [],
     allyCorpses: [],
+    enemySlots: new Map(),
+    allySlots: new Map(),
     popups: [],
     barks: [],
     barkWindow: [],
@@ -485,6 +498,19 @@ export function createScene(state: CombatState): CombatScene {
     backdrop: null,
     backdropId: "arena",
   };
+  // Pre-seed slots in encounter / array order so the leftmost sprite matches
+  // the target-select menu (which walks the same arrays). Without this,
+  // whichever actor findActor touches first (highest initiative) claimed
+  // slot 0 and scrambled visual order vs. menu order.
+  for (const row of ["front", "back"] as const) {
+    for (const e of state.enemies[row]) {
+      enemySlotIndex(scene, row, e.instanceId);
+    }
+  }
+  for (const a of state.summonedAllies) {
+    allySlotIndex(scene, a.id);
+  }
+  return scene;
 }
 
 // --- Actor lookup helpers -------------------------------------------------------------
@@ -507,6 +533,52 @@ function getAnim(scene: CombatScene, kind: SceneCursor["kind"], id: string, now:
   return a;
 }
 
+/**
+ * Assign (or recall) a stable slot number for `id` within `occupyingIds`: the
+ * lowest non-negative integer not already claimed by another occupant of the
+ * group. Occupants are currently-living members *and* same-row fading corpses
+ * — a death frees the number only after the corpse is purged from the scene,
+ * so a same-turn / next-turn summon can't render full-opacity on top of a
+ * still-fading body. Once assigned, an id keeps its slot for the rest of
+ * combat (callers look it up directly rather than re-deriving it).
+ */
+function assignSlot(
+  slots: Map<string, number>,
+  occupyingIds: readonly string[],
+  id: string
+): number {
+  const cached = slots.get(id);
+  if (cached !== undefined) return cached;
+  const used = new Set<number>();
+  for (const otherId of occupyingIds) {
+    if (otherId === id) continue;
+    const s = slots.get(otherId);
+    if (s !== undefined) used.add(s);
+  }
+  let n = 0;
+  while (used.has(n)) n++;
+  slots.set(id, n);
+  return n;
+}
+
+function enemyOccupyingIds(scene: CombatScene, row: "front" | "back"): string[] {
+  const living = scene.state.enemies[row].map((e) => e.instanceId);
+  const corpses = scene.enemyCorpses
+    .filter((e) => e.row === row)
+    .map((e) => e.instanceId);
+  return [...living, ...corpses];
+}
+
+function enemySlotIndex(scene: CombatScene, row: "front" | "back", instanceId: string): number {
+  return assignSlot(scene.enemySlots, enemyOccupyingIds(scene, row), instanceId);
+}
+
+function allySlotIndex(scene: CombatScene, id: string): number {
+  const livingIds = scene.state.summonedAllies.map((a) => a.id);
+  const corpseIds = scene.allyCorpses.map((a) => a.id);
+  return assignSlot(scene.allySlots, [...livingIds, ...corpseIds], id);
+}
+
 /** Resolve an actor id (character / enemy instance / summon) to kind + position. */
 export function findActor(
   scene: CombatScene,
@@ -526,26 +598,30 @@ export function findActor(
     const idx = list.findIndex((e) => e.instanceId === id);
     if (idx >= 0) {
       const base = list[idx]!.isBoss ? BOSS_SIZE : ENEMY_SIZE;
-      const p = enemyPos(idx, row, w, h, bd, base);
+      const slot = enemySlotIndex(scene, row, id);
+      const p = enemyPos(slot, row, w, h, bd, base);
       return { kind: "enemy", ...p };
     }
   }
   const corpseIdx = scene.enemyCorpses.findIndex((e) => e.instanceId === id);
   if (corpseIdx >= 0) {
     const e = scene.enemyCorpses[corpseIdx];
-    const living = scene.state.enemies[e.row].length;
     const base = e.isBoss ? BOSS_SIZE : ENEMY_SIZE;
-    const p = enemyPos(living + corpseIdx, e.row, w, h, bd, base);
+    const slot = scene.enemySlots.get(id) ?? enemySlotIndex(scene, e.row, id);
+    const p = enemyPos(slot, e.row, w, h, bd, base);
     return { kind: "enemy", ...p };
   }
   const ai = s.summonedAllies.findIndex((a) => a.id === id);
   if (ai >= 0) {
-    const p = allyPos(ai, w, h, bd);
+    const slot = allySlotIndex(scene, id);
+    const p = allyPos(slot, w, h, bd);
     return { kind: "ally", ...p };
   }
   const allyCorpseIdx = scene.allyCorpses.findIndex((a) => a.id === id);
   if (allyCorpseIdx >= 0) {
-    const p = allyPos(s.summonedAllies.length + allyCorpseIdx, w, h, bd);
+    const a = scene.allyCorpses[allyCorpseIdx]!;
+    const slot = scene.allySlots.get(id) ?? allySlotIndex(scene, a.id);
+    const p = allyPos(slot, w, h, bd);
     return { kind: "ally", ...p };
   }
   return null;
@@ -2455,12 +2531,20 @@ export function absorbDeaths(scene: CombatScene, state: CombatState): void {
   scene.state = state;
   for (const e of state.justDied) {
     if (!scene.enemyCorpses.some((c) => c.instanceId === e.instanceId)) {
+      // Push first so same-turn multi-kills see each other as occupants
+      // when claiming a never-assigned slot (turn-1 riposte etc.).
       scene.enemyCorpses.push(e);
+      if (!scene.enemySlots.has(e.instanceId)) {
+        enemySlotIndex(scene, e.row, e.instanceId);
+      }
     }
   }
   for (const a of state.justDiedAllies) {
     if (!scene.allyCorpses.some((c) => c.id === a.id)) {
       scene.allyCorpses.push(a);
+      if (!scene.allySlots.has(a.id)) {
+        allySlotIndex(scene, a.id);
+      }
     }
   }
 }
@@ -3440,38 +3524,40 @@ export function renderScene(
   type DrawCmd = { footY: number; draw: () => void };
   const cmds: DrawCmd[] = [];
 
-  s.enemies.back.forEach((e, i) => {
-    const pos = enemyPos(i, "back", w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
+  s.enemies.back.forEach((e) => {
+    const slot = enemySlotIndex(scene, "back", e.instanceId);
+    const pos = enemyPos(slot, "back", w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
     cmds.push({
       footY: pos.footY,
-      draw: () => drawEnemy(ctx, e, i, scene, now, w, h),
+      draw: () => drawEnemy(ctx, e, slot, scene, now, w, h),
     });
   });
-  s.enemies.front.forEach((e, i) => {
-    const pos = enemyPos(i, "front", w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
+  s.enemies.front.forEach((e) => {
+    const slot = enemySlotIndex(scene, "front", e.instanceId);
+    const pos = enemyPos(slot, "front", w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
     cmds.push({
       footY: pos.footY,
-      draw: () => drawEnemy(ctx, e, i, scene, now, w, h),
+      draw: () => drawEnemy(ctx, e, slot, scene, now, w, h),
     });
   });
-  scene.enemyCorpses.forEach((e, i) => {
-    const living = e.row === "front" ? s.enemies.front.length : s.enemies.back.length;
-    const idx = living + i;
-    const pos = enemyPos(idx, e.row, w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
+  scene.enemyCorpses.forEach((e) => {
+    const slot = scene.enemySlots.get(e.instanceId) ?? enemySlotIndex(scene, e.row, e.instanceId);
+    const pos = enemyPos(slot, e.row, w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
     cmds.push({
       footY: pos.footY,
-      draw: () => drawEnemy(ctx, e, idx, scene, now, w, h),
+      draw: () => drawEnemy(ctx, e, slot, scene, now, w, h),
     });
   });
-  s.summonedAllies.forEach((a, i) => {
-    const pos = allyPos(i, w, h, scene.backdropId);
+  s.summonedAllies.forEach((a) => {
+    const slot = allySlotIndex(scene, a.id);
+    const pos = allyPos(slot, w, h, scene.backdropId);
     cmds.push({
       footY: pos.footY,
-      draw: () => drawAlly(ctx, a, i, scene, now, w, h),
+      draw: () => drawAlly(ctx, a, slot, scene, now, w, h),
     });
   });
-  scene.allyCorpses.forEach((a, i) => {
-    const idx = s.summonedAllies.length + i;
+  scene.allyCorpses.forEach((a) => {
+    const idx = scene.allySlots.get(a.id) ?? allySlotIndex(scene, a.id);
     const pos = allyPos(idx, w, h, scene.backdropId);
     cmds.push({
       footY: pos.footY,

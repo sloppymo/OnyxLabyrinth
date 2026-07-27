@@ -312,30 +312,43 @@ function resolveEnemyAbility(
       break;
     }
     case "summon": {
-      // Summon enemy allies as temporary combatants. We add them to the
-      // enemy formation in the appropriate row.
+      // Summon enemy allies as temporary combatants. Cap each row at the
+      // visual slot count (combat-scene-math.ts ENEMY_FRONT_SLOTS / BACK_SLOTS
+      // — both length 3). Uncapped pushes (e.g. slime Split into a full
+      // 3-slime front row) used to land a 4th+ living enemy on the same
+      // pixels as slot 2 because enemySlot() clamps idx≥3 down to 2.
+      const MAX_ENEMIES_PER_ROW = 3;
       const enemyDef = ENEMIES_BY_ID[eff.enemyId];
       if (!enemyDef) break;
+      let summoned = 0;
       for (let i = 0; i < eff.count; i++) {
+        const row: "front" | "back" =
+          enemyDef.rowPreference === "back" ? "back" : "front";
+        if (s.enemies[row].length >= MAX_ENEMIES_PER_ROW) {
+          continue;
+        }
         s.summonCounter += 1;
         const inst: EnemyInstance = {
           ...enemyDef,
           special: [...enemyDef.special],
           instanceId: `${enemyDef.id}-summon-${s.summonCounter}`,
           currentHp: enemyDef.hp,
-          row: enemyDef.rowPreference === "back" ? "back" : "front",
+          row,
           status: [],
         };
-        if (inst.row === "back") {
-          s.enemies.back.push(inst);
-        } else {
-          s.enemies.front.push(inst);
-        }
+        s.enemies[row].push(inst);
+        summoned += 1;
         log(`${actor.name} summons ${inst.name}!`);
       }
-      emit(`${actor.name} uses ${ability.name}!`, {
-        type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: null,
-      });
+      if (summoned > 0) {
+        emit(`${actor.name} uses ${ability.name}!`, {
+          type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: null,
+        });
+      } else {
+        // Row full — don't pretend the ability landed. Log so the turn
+        // still reads as an attempted Split / Summon Imp.
+        log(`${actor.name} tries to ${ability.name.toLowerCase()}, but there's no room!`);
+      }
       break;
     }
     case "fizzleField": {

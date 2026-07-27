@@ -360,6 +360,106 @@ describe("actor positioning", () => {
     absorbDeaths(scene, next);
     expect(findActor(scene, "rat-9", W, H)?.kind).toBe("enemy");
   });
+
+  it("a mid-row death does not teleport its surviving row-mate or misplace the corpse", () => {
+    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const a = makeEnemy("a");
+    const b = makeEnemy("b");
+    const c = makeEnemy("c");
+    const state = createCombatState(party, { front: [a, b, c], back: [] }, false);
+    const scene = createScene(state);
+
+    // Seed slots in spawn order, same as the first render frame would.
+    const bPosBefore = findActor(scene, "b", W, H)!;
+    const cPosBefore = findActor(scene, "c", W, H)!;
+    findActor(scene, "a", W, H);
+
+    // Kill B the way the engine does (combat-eor.ts's row filter): removed
+    // from the live array, recorded in justDied for absorbDeaths to pick up.
+    const next = structuredClone(scene.state);
+    next.enemies.front = next.enemies.front.filter((e) => e.instanceId !== "b");
+    next.justDied = [{ ...b }];
+    absorbDeaths(scene, next);
+
+    // C never died and never moved — it must stay exactly where it was,
+    // not slide into B's now-empty slot.
+    const cPosAfter = findActor(scene, "c", W, H)!;
+    expect(cPosAfter.x).toBe(cPosBefore.x);
+    expect(cPosAfter.footY).toBe(cPosBefore.footY);
+
+    // B's corpse plays its death animation in B's own original spot, not a
+    // synthetic trailing slot borrowed from C's old position.
+    const corpsePos = findActor(scene, "b", W, H)!;
+    expect(corpsePos.x).toBe(bPosBefore.x);
+    expect(corpsePos.footY).toBe(bPosBefore.footY);
+  });
+
+  it("createScene preseeds slots in encounter-array order (not first-touched order)", () => {
+    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const state = createCombatState(
+      party,
+      { front: [makeEnemy("first"), makeEnemy("second"), makeEnemy("third")], back: [] },
+      false
+    );
+    const scene = createScene(state);
+    // Touch in reverse initiative order — slots must still match array order
+    // (ENEMY_FRONT_SLOTS[i], not "whichever findActor touched first").
+    const third = findActor(scene, "third", W, H)!;
+    const first = findActor(scene, "first", W, H)!;
+    const second = findActor(scene, "second", W, H)!;
+    expect(first.x).toBe(enemyPos(0, "front", W, H).x);
+    expect(second.x).toBe(enemyPos(1, "front", W, H).x);
+    expect(third.x).toBe(enemyPos(2, "front", W, H).x);
+  });
+
+  it("a same-row summon does not claim a fading corpse's slot", () => {
+    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const a = makeEnemy("a");
+    const b = makeEnemy("b");
+    const state = createCombatState(party, { front: [a, b], back: [] }, false);
+    const scene = createScene(state);
+    const aPos = findActor(scene, "a", W, H)!;
+    const bPosBefore = findActor(scene, "b", W, H)!;
+
+    // Kill B; corpse still occupies its slot while fading.
+    const next = structuredClone(scene.state);
+    next.enemies.front = next.enemies.front.filter((e) => e.instanceId !== "b");
+    next.justDied = [{ ...b }];
+    absorbDeaths(scene, next);
+
+    // A new same-row summon arrives while B's corpse is still listed.
+    // With live-only occupancy it would steal B's slot; with corpse
+    // reservation it must take the next free slot (2), not B's (1).
+    const summon = makeEnemy("summon-new");
+    scene.state.enemies.front.push(summon);
+    const summonPos = findActor(scene, "summon-new", W, H)!;
+    const corpsePos = findActor(scene, "b", W, H)!;
+    expect(corpsePos.x).toBe(bPosBefore.x);
+    expect(summonPos.x).not.toBe(corpsePos.x);
+    expect(summonPos.x).not.toBe(aPos.x);
+  });
+
+  it("a never-rendered turn-1 death still claims a distinct slot from survivors", () => {
+    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const a = makeEnemy("a");
+    const b = makeEnemy("b");
+    const state = createCombatState(party, { front: [a, b], back: [] }, false);
+    const scene = createScene(state);
+    // createScene preseeds both; clear maps to simulate the pre-preseed
+    // turn-1 path where findActor never ran before absorbDeaths.
+    scene.enemySlots.clear();
+
+    const next = structuredClone(scene.state);
+    next.enemies.front = next.enemies.front.filter((e) => e.instanceId !== "b");
+    next.justDied = [{ ...b }];
+    absorbDeaths(scene, next);
+
+    // Survivor A is first touched after death absorption — must not collide
+    // with the corpse that claimed a slot from an empty map.
+    const aPos = findActor(scene, "a", W, H)!;
+    const corpsePos = findActor(scene, "b", W, H)!;
+    expect(aPos.x).not.toBe(corpsePos.x);
+  });
 });
 
 describe("impact feedback (shake / floor glow / banner)", () => {

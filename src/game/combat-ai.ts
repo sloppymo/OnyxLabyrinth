@@ -8,6 +8,7 @@
 import type { Character, StatusEffect } from "./party";
 import { charRow } from "./party";
 import type { EnemySpecial } from "../data/enemies";
+import { ENEMIES_BY_ID } from "../data/enemies";
 import { spellByName } from "../data/spells";
 import type { EnemyAbilityDef, AbilityCondition } from "../data/enemy-abilities";
 import { enemyAbilityById } from "../data/enemy-abilities";
@@ -62,7 +63,10 @@ function abilityConditionMet(
     case "noAllyHurt": return !anyAllyHurt(s, 100);
     case "turnInterval": return s.round % cond.every === 0;
     case "minAllies": return livingAllyCount(s) >= cond.count;
-    case "maxAllies": return livingAllyCount(s) <= cond.count;
+    case "maxAllies":
+      // "at most N allies alive" — must leave room for the summon itself.
+      // Was `<=`, which let SUMMON_IMP fire at N=3 living and push a 4th.
+      return livingAllyCount(s) < cond.count;
     case "partyHasStatus": return partyHasStatus(s, cond.status);
     case "partyMissingStatus": return !partyHasStatus(s, cond.status);
     case "firstTurn": return !enemy.hasActed;
@@ -120,6 +124,14 @@ function pickEnemyAbility(
     if (!ab) continue;
     if ((cooldowns[id] ?? 0) > 0) continue;
     if (!abilityConditionMet(s, enemy, ab.condition)) continue;
+    // Don't pick a summon into a row that's already at the visual slot
+    // cap (combat-scene-math ENEMY_*_SLOTS length 3). The resolve path
+    // hard-caps too; skipping here avoids wasting the turn on a no-op.
+    if (ab.effect.kind === "summon") {
+      const def = ENEMIES_BY_ID[ab.effect.enemyId];
+      const row = def?.rowPreference === "back" ? "back" : "front";
+      if (s.enemies[row].length >= 3) continue;
+    }
     valid.push({ ability: ab, weight: ab.weight });
   }
   if (valid.length === 0) return null;

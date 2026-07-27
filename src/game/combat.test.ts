@@ -5,6 +5,7 @@ import {
   resolvePlayerTurn,
   resolveEnemyTurn,
 } from "./combat";
+import { resolveEnemyAction } from "./combat-enemy";
 import { canReach } from "./combat-reach";
 import {
   defaultLoadoutForCharacter,
@@ -683,6 +684,31 @@ describe("summoning mechanics", () => {
     const result = resolveCombatRound(state, actions, makeRng(0.5));
     expect(result.summonedAllies.length).toBe(1);
     expect(result.log.some((m) => m.includes("Summon Celestial") && m.includes("summon"))).toBe(true);
+  });
+
+  it("enemy Split does not push a 4th living enemy into a full front row", () => {
+    // Mirrors the shipped 3-slime encounter + uncapped Split path: without
+    // the row cap, a 4th living slime would land on the same pixels as slot 2.
+    const slime = (id: string): EnemyInstance => ({
+      ...ENEMIES_BY_ID.slime!,
+      special: [...ENEMIES_BY_ID.slime!.special],
+      instanceId: id,
+      currentHp: 5, // below 50% so Split's condition would pass in AI
+      row: "front",
+      status: [],
+    });
+    const state = makeCombatState([slime("s0"), slime("s1"), slime("s2")]);
+    const actor = state.enemies.front[0]!;
+    const log: string[] = [];
+    resolveEnemyAction(
+      state,
+      { kind: "ability", actor, abilityId: "split", targetId: "" },
+      makeRng(0.5),
+      (m) => log.push(m),
+      () => {}
+    );
+    expect(state.enemies.front.length).toBe(3);
+    expect(log.some((m) => /no room/i.test(m))).toBe(true);
   });
 
   it("summon spells with spriteId set the ally's spriteId field", () => {
