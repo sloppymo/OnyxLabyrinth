@@ -362,10 +362,11 @@ function openEnding(): void {
       // hasCompletedEnding regardless of which path opened the screen.
       // "dungeon" is also the semantically correct resume state: Continue
       // after the ending should drop the party back in the dungeon, same
-      // as any other post-boss-victory save.
+      // as any other post-boss-victory save (main.ts's plain post-combat
+      // branch does the same setMode+showMode pair, no openTitleScreen()).
       setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
       autoSave(state);
-      openTitleScreen();
     },
   });
 }
