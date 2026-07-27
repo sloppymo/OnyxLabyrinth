@@ -30,7 +30,7 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 12;
+const SAVE_VERSION = 13;
 
 /**
  * v6 → v7: every spell id was renamed from classic Wizardry names to
@@ -231,6 +231,12 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     ser.worldYear = 3847;
     version = 12;
   }
+  if (version === 12) {
+    // v12 → v13: the wish/ending sequence (§6). Every pre-existing save
+    // predates it, so none of them have "used" the wish yet.
+    ser.hasCompletedEnding = false;
+    version = 13;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -289,6 +295,8 @@ interface SerializedState {
   deepestFloorReached?: number;
   /** Century cycle year; advances by 100 on a campaign party wipe. v12+. */
   worldYear?: number;
+  /** Whether the wish/ending sequence has already played. v13+. */
+  hasCompletedEnding?: boolean;
   savedAt: string;
 }
 
@@ -356,6 +364,7 @@ export function serialize(state: GameState): string {
     eventsTriggered,
     activeCharIds: [...state.activeCharIds],
     deepestFloorReached: state.deepestFloorReached,
+    hasCompletedEnding: state.hasCompletedEnding,
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -475,6 +484,7 @@ export function deserialize(json: string): GameState | null {
           ser.party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
         ),
       deepestFloorReached: ser.deepestFloorReached ?? floor.id,
+      hasCompletedEnding: ser.hasCompletedEnding ?? false,
     };
   } catch {
     return null;

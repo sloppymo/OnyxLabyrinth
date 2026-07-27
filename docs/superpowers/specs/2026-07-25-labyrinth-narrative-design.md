@@ -20,12 +20,11 @@ they are; only its fiction is replaced).
 | §4.1.1 | Boss sprites, intro nameplate, procedural boss bed | **Shipped** `7f89fcd` |
 | §4.2 | String scrub (Headmaster, then Echo / First Descent) | **Shipped** `a5bdd5e` + `7f89fcd` |
 | §5 | Prologue screen | **Shipped** (`prologue-ui.ts`) |
-| §6 | **Wish scene / ending** | **Not implemented** — the only significant gap. Floor-5 boss victory still falls through the generic victory branch in `endCombat` |
+| §6 | **Wish scene / ending** | **Shipped 2026-07-26** (`ending-ui.ts` + save v13 `hasCompletedEnding`) |
 | §7 | Century cycle: `worldYear`, wipe → town, game-over copy | **Shipped** `a5bdd5e` (+ `c213af2` wipe-confirm fix) |
 | §8 | Edgehollow town-header year | **Shipped** `a5bdd5e` |
 
-Everything in this doc except §6 is now describing code that exists. Read §6 as
-a spec; read the rest as documentation.
+Everything in this doc is now describing code that exists.
 
 ---
 
@@ -251,8 +250,8 @@ typewriter, one beat at a time — **not** an `FF6Window` menu chrome. See the
 intro plan for wiring.
 
 Draft copy (locked). Presentation splits the long “buried…wish” sentence across
-two screens and uses author line breaks — same words, see `PROLOGUE_BEATS` in
-`prologue-ui.ts`:
+two screens and the final Edgehollow passage across three (same words, beat
+pauses between sentences) — see `PROLOGUE_BEATS` in `prologue-ui.ts`:
 
 > We made war on the gods. We lost.
 >
@@ -264,19 +263,39 @@ two screens and uses author line breaks — same words, see `PROLOGUE_BEATS` in
 >
 > It has one left.
 >
-> Edgehollow is the last town at the mouth of the hole. Everyone here is going
-> down. Everyone here has been going down for a very long time.
+> Edgehollow is the last town at the mouth of the hole.
+>
+> Everyone here is going down.
+>
+> Everyone here has been going down for a very long time.
 
 Skippable. New Game only.
 
 ---
 
-## 6. New screen: the wish — **NOT IMPLEMENTED**
+## 6. New screen: the wish — **shipped 2026-07-26**
 
-> This is the one part of this document that is still a proposal. There is no
-> `EndingController`. Beating the floor-5 boss currently returns you to the
-> dungeon like any other victory. This is the largest remaining narrative gap
-> in the game.
+> `EndingController` (`src/engine/ending-ui.ts`) is wired into `endCombat`'s
+> victory branch in `main.ts`, gated on `result.isBoss && state.floor.id ===
+> 5 && !state.hasCompletedEnding`. The floor-5 boss is a re-rollable random
+> encounter (`ENCOUNTER_TABLES[5]`, `weight: 1`), not a one-time scripted
+> fight, so a second win is possible — `hasCompletedEnding` (save format
+> v13, `game/save.ts`) is what stops it from re-opening this screen. It's
+> set in memory the moment the screen opens, but `autoSave()` refuses to
+> write while `state.mode === "title"` (see its comment — borrowed-title
+> overlays aren't resumable), which the ending screen is for its entire
+> lifetime. The one call site guaranteed to persist it on both entry paths
+> (direct from combat, or chained after the perk overlay) is the screen's
+> own `onDone`: it flips `state.mode` to `"dungeon"` and autosaves *before*
+> calling `openTitleScreen()`, which is also the semantically correct
+> resume state (Continue drops the party back in the dungeon, same as any
+> other post-boss-victory save). After the ending plays (confirm-through or
+> Escape-skip), the player lands back at the title screen. Presentation
+> reuses the prologue's exact `.prologue-*`
+> CSS and beat-agnostic reveal primitives (`createReveal`/`stepReveal`/
+> `completeReveal` from `prologue-ui.ts`) — a deliberate bookend, not
+> duplicated code. Never triggered from Arena (the `inArena` branch in
+> `endCombat` returns before the ending gate is even evaluated).
 
 On **the last floor**, you fight **The Crying Man**. Then you enter **the
 bottom** — a separate, empty, quiet lamp room. No fight, no guardian, no menu.
@@ -287,15 +306,19 @@ to say.
 
 > Bring the gods back.
 
-**Closing beat (lands at Edgehollow scale — no cosmic editorial):**
+**Closing beats (lands at Edgehollow scale — no cosmic editorial):**
 
 > The gods return.
 >
 > Death returns with them.
 >
-> In Edgehollow, someone finally stops.
+> When the news reaches the town, the people make sure.
 >
 > The hole is still there. The lamp is empty.
+>
+> But now we rest.
+>
+> The gods are alone.
 
 **Wiring.** Floor-5 boss victory in `endCombat` → `EndingController` after
 level-up / perk queue; never in Arena.

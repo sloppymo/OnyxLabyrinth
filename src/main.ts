@@ -21,7 +21,7 @@ import {
   renderBattleArena,
   renderCorridorBackdrop,
 } from "./engine/renderer";
-import { partyPos, enemyPos } from "./engine/combat-scene";
+import { partyPos, enemyPos, setBarksEnabled, getBarksEnabled } from "./engine/combat-scene";
 import { geometryForBackdrop, assertFloorBottomClearOfWindows } from "./engine/combat-scene-math";
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
 import { loadPartySprites } from "./engine/party-sprite-cache";
@@ -73,6 +73,7 @@ import { PartyCreationController } from "./engine/party-ui";
 import { GameOverController } from "./engine/game-over-ui";
 import { TitleController } from "./engine/title-ui";
 import { PrologueController } from "./engine/prologue-ui";
+import { EndingController } from "./engine/ending-ui";
 import { ArenaController } from "./engine/arena-ui";
 import { FF6Window } from "./engine/ff6-window-library";
 import { autoSave, serialize, deserialize } from "./game/save";
@@ -320,6 +321,51 @@ function openPrologue(onDone: () => void): void {
     onDone: () => {
       prologueController = null;
       onDone();
+    },
+  });
+}
+
+// --- The wish (ending) -----------------------------------------------------
+// Design doc §6. Opened from endCombat's victory branch after the level-up/
+// perk queue, once per campaign — see the hasCompletedEnding comment at the
+// call site for why "boss defeated" alone can't gate this (the floor-5 boss
+// is a re-rollable random encounter, not a one-time scripted fight). Never
+// opened from Arena. Borrows "title" mode like the prologue; same
+// justOpenedX same-keydown-dispatch hazard (see openPrologue's comment) —
+// this one has two possible synchronous-open call sites (the combat result
+// confirm, and the perk overlay's onDone), so the listener below is
+// registered after both.
+let endingController: EndingController | null = null;
+let justOpenedEnding = false;
+
+function openEnding(): void {
+  if (mapVisible) toggleMap();
+  // Set the flag and try to persist it before the mode flip. autoSave()
+  // refuses to write while state.mode === "title" (overlays aren't
+  // resumable — see its comment), so this only actually reaches disk on
+  // the direct-from-combat path (mode is still "combat" here); the
+  // perk-overlay-chained path already has mode === "title" by the time
+  // this runs. Either way, onDone below is the call that's guaranteed to
+  // persist it, on both paths and both exits (confirm-through or Escape).
+  state.hasCompletedEnding = true;
+  autoSave(state);
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  setMessage(""); // critical: empty #message so it cannot cover the black field
+  justOpenedEnding = true;
+  endingController = new EndingController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    onDone: () => {
+      endingController = null;
+      // Flip out of "title" before saving — autoSave() no-ops in that mode
+      // (see above), and this is the one guaranteed persist point for
+      // hasCompletedEnding regardless of which path opened the screen.
+      // "dungeon" is also the semantically correct resume state: Continue
+      // after the ending should drop the party back in the dungeon, same
+      // as any other post-boss-victory save.
+      setMode(state, "dungeon");
+      autoSave(state);
+      openTitleScreen();
     },
   });
 }
@@ -600,10 +646,24 @@ function endCombat(result: CombatState): void {
     return;
   }
 
+  // The wish (§6): floor-5 boss victory, once per campaign. The floor-5 boss
+  // pack is a re-rollable random encounter (data/enemies.ts ENCOUNTER_TABLES,
+  // weight: 1 like any other pack), not a one-time scripted fight — so a
+  // second win is fully possible, and hasCompletedEnding (not "isBoss won"
+  // alone) is what stops it from re-opening this screen.
+  const triggersEnding =
+    result.result === "victory" &&
+    result.isBoss &&
+    state.floor.id === 5 &&
+    !state.hasCompletedEnding;
+
   // If any characters reached a perk tier, open the perk selection overlay.
-  // Otherwise return to the dungeon immediately.
+  // Otherwise return to the dungeon immediately (or, on the ending trigger,
+  // straight to the wish).
   if (pendingPerkChoices.length > 0) {
-    openPerkSelectOverlay(pendingPerkChoices);
+    openPerkSelectOverlay(pendingPerkChoices, triggersEnding ? openEnding : undefined);
+  } else if (triggersEnding) {
+    openEnding();
   } else {
     setMode(state, "dungeon");
     showMode("dungeon", mapVisible);
@@ -1069,6 +1129,7 @@ function currentRouteFlags(): ControllerRouteContext {
     hasGameOver: !!gameOverController,
     hasPartyCreation: !!partyCreationController,
     hasPrologue: !!prologueController,
+    hasEnding: !!endingController,
     hasTitle: !!titleController,
     hasPendingTrap: !!state.pendingTrap,
     hasTrapPrompt: !!trapPrompt,
@@ -1146,6 +1207,15 @@ function routeControllerEvent(event: ControllerInputEvent): void {
       }
       const key = controllerEventToMenuKey(event);
       if (key) prologueController!.handleKey(key);
+      return;
+    }
+    case "ending": {
+      if (justOpenedEnding) {
+        if (event.kind === "press") justOpenedEnding = false;
+        return;
+      }
+      const key = controllerEventToMenuKey(event);
+      if (key) endingController!.handleKey(key);
       return;
     }
     case "title": {
@@ -1598,6 +1668,23 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
   e.preventDefault();
 });
 
+// Ending key handler — routes keys to the EndingController. Registered after
+// both of this controller's possible synchronous-open sources (the combat
+// key handler above, and the perk-select listener further up), so it always
+// observes endingController already non-null within the same dispatch and
+// correctly swallows that keypress via justOpenedEnding — see openEnding's
+// comment.
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "title" || !endingController) return;
+  if (justOpenedEnding) {
+    justOpenedEnding = false;
+    e.preventDefault();
+    return;
+  }
+  endingController.handleKey(e.key);
+  e.preventDefault();
+});
+
 // Arena key handler — routes keys to the ArenaController.
 // The `justOpenedArena` flag prevents the same keydown that opened the arena
 // (e.g. the Enter that exits a combat result) from also selecting a menu item.
@@ -1996,6 +2083,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
             state.player.facing
           )),
       prologueActive: !!prologueController,
+      endingActive: !!endingController,
       combat: combatController
         ? {
             phase: combatController.getPhase(),
@@ -2076,7 +2164,8 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       spellMenuController ||
       npcController ||
       perkSelectController ||
-      prologueController
+      prologueController ||
+      endingController
     ) {
       throw new Error("jumpTo: refuse while an overlay controller is open");
     }
@@ -2132,6 +2221,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       npcController ||
       perkSelectController ||
       prologueController ||
+      endingController ||
       campController ||
       gameOverController ||
       arenaController ||
@@ -2175,6 +2265,8 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     ITEMS_BY_ID,
     defaultLoadoutForCharacter,
     getCombatController: () => combatController,
+    setBarksEnabled,
+    getBarksEnabled,
     renderBattleArena,
     renderCorridorBackdrop,
     groundPlaneProbe: () => {

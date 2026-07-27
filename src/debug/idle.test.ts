@@ -6,6 +6,7 @@ function base(overrides: Partial<IdleInput> = {}): IdleInput {
     modeTransitionPending: false,
     cameraAnimating: false,
     prologueActive: false,
+    endingActive: false,
     combat: null,
     ...overrides,
   };
@@ -26,6 +27,10 @@ describe("computeIdle", () => {
 
   it("is not idle while the prologue is auto-playing", () => {
     expect(computeIdle(base({ prologueActive: true }))).toBe(false);
+  });
+
+  it("is not idle while the ending is auto-playing", () => {
+    expect(computeIdle(base({ endingActive: true }))).toBe(false);
   });
 
   it("is not idle mid-playback with choreography unfinished", () => {

@@ -194,4 +194,9 @@ export interface GameState {
   // (town-ui.ts getShopBuyList) — deliberately independent of `floor.id`,
   // which tracks only the *current* floor.
   deepestFloorReached: number;
+  // Whether the party has played the wish/ending sequence (design doc §6).
+  // The floor-5 boss is a re-rollable random encounter, not a one-time
+  // scripted fight, so this flag — not "boss defeated" — is what gates a
+  // repeat victory from re-triggering EndingController.
+  hasCompletedEnding: boolean;
 }

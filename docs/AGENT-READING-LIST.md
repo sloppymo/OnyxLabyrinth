@@ -2,15 +2,18 @@
 
 Use this list before acting on playtest, balance, combat UX, or perk work. Prefer these over older one-off prompts when they conflict.
 
-**Last refreshed:** 2026-07-25 (prologue; century wipe→town + lore scrub; debug surface PR-1–4; zone-flavor = frequency-only addendum; F1/F2 closed; PR-5 not built; per-floor combat-difficulty probe + F3 L6/L8/L9 matrix; wipe→game-over-screen-skip **fixed**; **boss rename + presentation stack shipped** `7f89fcd`; **wish/ending still the one open narrative item**)
+**Last refreshed:** 2026-07-26 (prologue; century wipe→town + lore scrub; debug surface PR-1–4; zone-flavor = frequency-only addendum; F1/F2 closed; PR-5 not built; per-floor combat-difficulty probe + F3 L6/L8/L9 matrix; wipe→game-over-screen-skip **fixed**; **boss rename + presentation stack shipped** `7f89fcd`; **wish/ending scene shipped** — the largest remaining narrative gap is now closed)
 
-**Health at last refresh:** `npm run build` clean, **1240** tests passing (59 files).
+**Health at last refresh:** `npm run build` clean. **1258/1258** tests passing (60 files) in a
+full-suite run — the previously-flagged `combat-turns.test.ts` order-dependent flake (ice-shards
+test) did not reproduce this run; still unfixed/unroot-caused if it resurfaces (cross-test state
+leakage within that file, predates the boss-rename work).
 
 | Doc | Role | Status |
 |-----|------|--------|
 | [`AGENTS.md`](../AGENTS.md) | Hard engine rules, file map, pitfalls | **Authoritative** for code constraints |
 | [`CLAUDE.md`](../CLAUDE.md) | Commands, architecture orientation | Authoritative; defers to AGENTS.md for `src/` rules |
-| [`superpowers/specs/2026-07-25-labyrinth-narrative-design.md`](superpowers/specs/2026-07-25-labyrinth-narrative-design.md) | Canon: gods left / Death left / lamp / the kept / century cycle / **boss names + presentation** | **Current lore** — supersedes Headmaster/academy framing in `wizardry_v_clone_design_doc.md` and Echo-boss *fiction* (mechanics stay). Has an **Implementation status** table at the top. §4 (names, sprites, nameplate, boss bed, string scrub) and §7-§8 (worldYear, wipe→town, game-over copy, town header) **shipped**; §6 (wish/ending scene) **not yet implemented** — floor-5 boss victory still falls through the generic victory branch |
+| [`superpowers/specs/2026-07-25-labyrinth-narrative-design.md`](superpowers/specs/2026-07-25-labyrinth-narrative-design.md) | Canon: gods left / Death left / lamp / the kept / century cycle / **boss names + presentation** / **wish ending** | **Current lore** — supersedes Headmaster/academy framing in `wizardry_v_clone_design_doc.md` and Echo-boss *fiction* (mechanics stay). Has an **Implementation status** table at the top. Every section now describes shipped code, including §6 (wish/ending scene, `ending-ui.ts`, shipped 2026-07-26) |
 | [`superpowers/specs/2026-07-25-snes-era-intro-style-guide.md`](superpowers/specs/2026-07-25-snes-era-intro-style-guide.md) | Black-field narration, typewriter, FF36, two-stage skip | **Current** for prologue / future attract text |
 | [`superpowers/plans/2026-07-25-prologue-intro-sequence.md`](superpowers/plans/2026-07-25-prologue-intro-sequence.md) | New Game prologue implementation | **Done 2026-07-25** — shipped (`prologue-ui.ts`) |
 | [`superpowers/specs/2026-07-24-campaign-progression-design.md`](superpowers/specs/2026-07-24-campaign-progression-design.md) | XP curve, shop tiers, floor 4-5 content, pacing arithmetic | **Current** — authoritative for progression/gear/floor-4-5 topics; **supersedes [`PROGRESSION-GEAR-AUDIT.md`](PROGRESSION-GEAR-AUDIT.md)'s findings table** (see that doc's own banner) |
@@ -33,6 +36,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 | `docs/superpowers/specs/2026-07-14-controller-first-combat-design.md` | Controller-first action palette (face buttons, gamepad) | **Done 2026-07-14** — palette phase, `controller-input`, `combat-action-palette`; keyboard fallback preserved |
 | Design canvas (IDE) | `onyxlabyrinth-design-analysis.canvas.tsx` | Mechanics & balance judgment (2026-07-13) |
 | [`COMBAT-ENGAGEMENT-AUDIT.md`](COMBAT-ENGAGEMENT-AUDIT.md) | Combat depth audit: placebo verbs, disable/summon/counter-magic gaps | **Current** (2026-07-16); Direction A truth pass **shipped** (`0dd91ee`); Direction B rage economy retune **shipped** (start at half pool, Defend keeps rage, L12 capstones usable); P1-7 **shipped** (blind/poison durations + Cure Blindness; slow confirmed fully wired); Direction B telegraph wind-ups **shipped** (7 big abilities, disable-cancels interrupt) |
+| [`superpowers/specs/2026-07-26-combat-dialog-barks.md`](superpowers/specs/2026-07-26-combat-dialog-barks.md) | Combat dialog barks (sibling popup channel) | **Shipped 2026-07-26** — beforeSpell / party heavyHit / death; isolated bark RNG; filtered from on-screen recentLog; `?debug=1` → `__onyxDebug.setBarksEnabled` |
 
 ## Specs under `docs/superpowers/specs/`
 
@@ -49,7 +53,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 | `2026-07-16-consumables-answers-pack-design.md` | Combat consumables expansion (q7) | Shipped 2026-07-16; 4 items incl. only paralysis cure + revive; revive = 25% max HP |
 | `2026-07-16-analyze-verb-design.md` | Analyze verb (Direction C step 1) | Shipped 2026-07-16; Y skill list / `n`; affinity + trait tags; palette skill slot always enabled |
 | `2026-07-16-echo-boss-phases-design.md` | Boss phase mechanics (Direction C step 2) | Shipped 2026-07-16; `EnemyDef.phaseThresholds` generic; 66/33 + memory-shatter/total-eclipse. **Read for mechanics only — every name in it is dead.** Fiction superseded twice by `2026-07-25-labyrinth-narrative-design.md`; phase mechanics unchanged |
-| `2026-07-25-labyrinth-narrative-design.md` | Labyrinth myth, century wipe, boss identities, wish ending | **Current lore** — Headmaster/academy dead; string scrub + wipe→town + year counter + boss rename/presentation shipped 2026-07-25; wish ending still to implement |
+| `2026-07-25-labyrinth-narrative-design.md` | Labyrinth myth, century wipe, boss identities, wish ending | **Current lore** — Headmaster/academy dead; string scrub + wipe→town + year counter + boss rename/presentation shipped 2026-07-25; wish/ending scene shipped 2026-07-26 |
 | `2026-07-25-snes-era-intro-style-guide.md` | Prologue / narration presentation | Companion to prologue plan; FF36 black-field rules |
 | `2026-07-16-row-swap-design.md` | In-combat row swap (Direction C final) | Shipped 2026-07-16; Move verb, turn-cost; party array reorder + formationSlot normalize |
 | `2026-07-07-combat-select-action-dom-design.md` | FF6 windows DOM | Older; verify against `combat-select-action-view.ts` |
@@ -68,6 +72,7 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 - ~~“Dungeon encounter rate feels empty”~~ — floors 1–3 now 8%/10%/12% after the 8-step cooldown, plus soft pity that forces a fight by step 28 (`game/encounters.ts`).
 - ~~“Temple has no Remove Curse”~~ — `[R] Remove Curse` appears when cursed gear is equipped (`town-ui.ts`).
 - Perk overlay “never implemented for Arena” — **false**; `endCombat` opens it for Arena when `pendingPerkChoices.length > 0`. Playtest likely auto-Enter dismissed it.
+- ~~“The game has no ending / floor-5 boss victory falls through the generic victory branch”~~ — superseded 2026-07-26. `EndingController` (`src/engine/ending-ui.ts`) plays §6's locked wish/ending copy on floor-5 boss victory, gated on a new `hasCompletedEnding` save field (v13 migration) so a re-rolled boss pack can't re-trigger it. Never fires from Arena.
 - `PROGRESSION-GEAR-AUDIT.md`'s A1 (XP never spent), A4 (floors 4-5 reuse floor-3 bestiary), A5 (shop capped at tier 2), A6 (gold economy dead by floor 3), and A7 (auto-equip logic ignores range) — **all fixed 2026-07-24**, see the campaign-progression design note (§5 for A6's gold-sink sizing check) and plan above. A2/A3 (perk-tier cadence, stat-inflation ceiling) remain open/not implemented — out of scope for this sprint.
 
 ## Recommended work order (from design analysis)
@@ -85,5 +90,5 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
    - **No new art generated** — burn reuses the existing `fire_explosion` burst (orange-tinted `STATUS_STYLES.burn`); regen reuses the heal family. Phase D criteria never triggered.
 6. **Combat flow / tempo.** ~~Prefer [`FOLLOWUP-COMBAT-FLOW-PROMPT.md`](FOLLOWUP-COMBAT-FLOW-PROMPT.md)~~ **Done 2026-07-13:** A–C tempo UX; Phase D: `incapacitated` event banner, SP/Rage menu line, hit recoil+flash; Phase E: `Q` party Auto (last command, never Flee/Item; Attack/Defend fallback).
 7. **Controller-first combat.** ~~`2026-07-14-controller-first-combat-design.md`~~ **Done 2026-07-14:** horizontal A/B/X/Y palette, `handleInput` + Gamepad polling, hold-B flee, LB/RB target cycle, LT/RT party inspect, legacy `t/m/i/r` shortcuts + `Z` Repeat.
-8. **The wish / ending scene — `2026-07-25-labyrinth-narrative-design.md` §6. OPEN, and now the top narrative gap.** The prologue, the century cycle, the boss identities, and the whole string scrub all landed; the game still has no ending. Beating The Crying Man on floor 5 returns you to the dungeon through the generic victory branch in `endCombat`. Copy is drafted and locked in §6. Wiring: floor-5 boss victory → `EndingController` **after** the level-up / perk queue drains, never in Arena.
-9. **PR-5 — seeded gameplay RNG + transcript replay.** Still the top *tooling* gap; spec in the debug-surface plan §PR-5. Every playtest number in `docs/playtests/` is unseeded and therefore directional only.
+8. ~~The wish / ending scene — `2026-07-25-labyrinth-narrative-design.md` §6.~~ **Done 2026-07-26.** `EndingController` (`src/engine/ending-ui.ts`) plays the locked §6 copy on floor-5 boss victory, wired into `endCombat` after the level-up/perk queue drains, gated by the new `hasCompletedEnding` save field (v13) so a re-rolled boss pack can't replay it; never fires from Arena. Lands back at the title screen when done.
+9. **PR-5 — seeded gameplay RNG + transcript replay.** Now the top open item, tooling not narrative; spec in the debug-surface plan §PR-5. Every playtest number in `docs/playtests/` is unseeded and therefore directional only.

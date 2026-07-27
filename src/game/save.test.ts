@@ -300,6 +300,24 @@ describe("save serialization", () => {
     expect(restored?.worldYear).toBe(3847);
   });
 
+  it("round-trips hasCompletedEnding", () => {
+    state.hasCompletedEnding = true;
+    const json = serialize(state);
+    const restored = deserialize(json);
+    expect(restored).not.toBeNull();
+    expect(restored?.hasCompletedEnding).toBe(true);
+  });
+
+  it("migrates v12 saves: hasCompletedEnding backfills to false (no pre-existing save has used the wish)", () => {
+    const json = serialize(state);
+    const raw = JSON.parse(json) as Record<string, unknown>;
+    raw.version = 12;
+    delete raw.hasCompletedEnding;
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    expect(restored?.hasCompletedEnding).toBe(false);
+  });
+
   it("migrates v10 saves: a realistic level-6 save resets in-level progress to 0", () => {
     // Under the OLD (flat, never-spent) curve, level and xp are always in
     // sync after combat: a real level-6 character's lifetime xp sits in

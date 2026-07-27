@@ -1,113 +1,67 @@
 /**
- * New Game prologue — SNES-style black-field world narration shown once,
- * before party creation. Borrows mode "title" (same pattern as the perk/
- * save/NPC overlays) so dungeon/title input pauses while it plays.
+ * The wish — design doc §6. Floor-5 boss victory, once per campaign, opens
+ * this screen after the level-up/perk queue. Same SNES-style black-field
+ * presentation as the prologue (reuses its `.prologue-*` CSS and its
+ * beat-agnostic reveal primitives) — a deliberate narrative bookend, not a
+ * coincidence of implementation. No fight, no guardian, no menu: this is
+ * myth text, not a menu screen.
  *
- * Presentation follows docs/superpowers/specs/2026-07-25-snes-era-intro-style-guide.md:
- * full black panel, soft white FF36 text, one beat at a time (replace, not
- * stack), typewriter reveal with punctuation-aware pauses, and a two-stage
- * confirm (complete-then-advance, never both on one press). No FF6Window
- * chrome — this is myth text, not a menu. Intentionally silent of music —
- * cold typewriter ticks only.
+ * Borrows mode "title" like the prologue/perk/save/NPC overlays, so dungeon/
+ * combat input pauses while it plays. `state.hasCompletedEnding` (set by the
+ * caller, not this class) is what stops a later re-roll of the same
+ * re-rollable boss pack from re-opening this screen — see save.ts v13.
  *
- * The keypress that opens this controller (e.g. the Enter that selected New
- * Game on the title screen) is dispatched to *every* window "keydown"
- * listener in registration order within the same event — including this
- * controller's, if it were registered before the title screen's own
- * listener finishes creating it. Because of that ordering hazard, the
- * "swallow the opening keypress" responsibility lives in main.ts as an
- * external flag (mirroring justOpenedSaveMenu/justOpenedNPCPanel), not here
- * — this class assumes every handleKey() call is a real, intentional press.
+ * The keypress that opens this controller (the "a" that confirmed the
+ * combat result screen, or the keypress that closed the perk overlay) is
+ * dispatched to every window "keydown" listener registered after the one
+ * that constructed it, within that same event — so, exactly like
+ * justOpenedPrologue/justOpenedSaveMenu, the caller in main.ts is
+ * responsible for swallowing that first keypress via justOpenedEnding. This
+ * class assumes every handleKey() call is a real, intentional press.
  */
 
 import { audio } from "./audio";
+import { createReveal, completeReveal, stepReveal, type RevealState } from "./prologue-ui";
 
 /**
- * Locked prologue copy — same words as the approved myth text. Beat 3 of the
- * original five-beat draft is split across two screens (same wording) so the
- * densest passage does not sit at the fatigue point as a single long type.
- * `\n` are author line breaks (CSS `white-space: pre-line`).
+ * Ending copy — design doc §6, "the wish". The wish wording is its own beat;
+ * closing sentences are one-per-beat (same convention as PROLOGUE_BEATS).
  */
-export const PROLOGUE_BEATS: readonly string[] = [
-  "We made war on the gods. We lost.",
-  "They did not destroy us.\nThey left, and took Death with them.\nNothing here ends.",
-  "They buried one thing before they went:\na labyrinth,\nand at the bottom of it a lamp,",
-  "and in the lamp the last thing in\nexistence that can still grant a wish.",
-  "It has one left.",
-  // Final Edgehollow passage split across three screens (same words) so each
-  // sentence gets a full beat pause — same treatment as the lamp-sentence split.
-  "Edgehollow is the last town at the mouth\nof the hole.",
-  "Everyone here is going down.",
-  "Everyone here has been going down for a\nvery long time.",
+export const ENDING_BEATS: readonly string[] = [
+  "Bring the gods back.",
+  "The gods return.",
+  "Death returns with them.",
+  "When the news reaches the town,\nthe people make sure.",
+  "The hole is still there.\nThe lamp is empty.",
+  "But now we rest.",
+  "The gods are alone.",
 ] as const;
 
-/** Index of the pivot beat ("It has one left.") that gets an extra hold. */
-const PIVOT_BEAT_INDEX = 4;
+/** The wish line gets an extra hold before the closing beats, mirroring the
+ *  prologue's pivot-beat treatment of "It has one left." */
+const PIVOT_BEAT_INDEX = 0;
 
-export const INTRO_STYLE = {
+export const ENDING_STYLE = {
   charsPerSec: 32,
   pauseFullMs: 350, // . ? !
   pauseHalfMs: 120, // , ; :
   holdAfterRevealMs: 1600,
-  holdPivotExtraMs: 1400, // beat "It has one left." — clearly outlast neighbors
+  holdPivotExtraMs: 1400,
   fadeMs: 180,
   gapMs: 200,
   caretBlinkMs: 250,
 } as const;
 
-export type RevealState = {
-  full: string;
-  visible: number;
-  done: boolean;
-  pauseUntil: number;
-};
-
-/** Start a fresh reveal of `full` at time `now` (nothing visible yet). */
-export function createReveal(full: string, now: number): RevealState {
-  return { full, visible: 0, done: full.length === 0, pauseUntil: now };
-}
-
-/** Show the full string immediately — used when confirm completes a reveal. */
-export function completeReveal(state: RevealState): RevealState {
-  return { ...state, visible: state.full.length, done: true, pauseUntil: 0 };
-}
-
 /** How long a fully-revealed beat holds before auto-advancing. */
 export function holdDurationMs(
   beatIndex: number,
-  style: typeof INTRO_STYLE = INTRO_STYLE,
+  style: typeof ENDING_STYLE = ENDING_STYLE,
 ): number {
   const extra = beatIndex === PIVOT_BEAT_INDEX ? style.holdPivotExtraMs : 0;
   return style.holdAfterRevealMs + extra;
 }
 
-/**
- * Advance the reveal by one visible character if the pause window has
- * elapsed. Punctuation-aware: full stops get a longer pause, commas/
- * semicolons/colons a shorter one. Never advances more than one character
- * per call regardless of how far `now` has moved past `pauseUntil`.
- */
-export function stepReveal(
-  state: RevealState,
-  now: number,
-  style: typeof INTRO_STYLE = INTRO_STYLE,
-): RevealState {
-  if (state.done || now < state.pauseUntil) return state;
-  const visible = Math.min(state.full.length, state.visible + 1);
-  const ch = state.full[visible - 1] ?? "";
-  let pauseMs = 1000 / style.charsPerSec;
-  if (".?!".includes(ch)) pauseMs = style.pauseFullMs;
-  else if (",;:".includes(ch)) pauseMs = style.pauseHalfMs;
-  else if (ch === " " || ch === "\n") pauseMs = Math.min(pauseMs, 20);
-  return {
-    full: state.full,
-    visible,
-    done: visible >= state.full.length,
-    pauseUntil: now + pauseMs,
-  };
-}
-
-export interface PrologueControllerOptions {
+export interface EndingControllerOptions {
   panel: HTMLElement;
   onDone: () => void;
   /** Injectable clock for deterministic tests; defaults to performance.now(). */
@@ -116,7 +70,7 @@ export interface PrologueControllerOptions {
 
 type Phase = "reveal" | "hold" | "advancing" | "finishing";
 
-export class PrologueController {
+export class EndingController {
   private panel: HTMLElement;
   private onDone: () => void;
   private nowFn: () => number;
@@ -135,7 +89,7 @@ export class PrologueController {
   private disposed = false;
   private rafId: number | null = null;
 
-  constructor(opts: PrologueControllerOptions) {
+  constructor(opts: EndingControllerOptions) {
     this.panel = opts.panel;
     this.onDone = opts.onDone;
     this.nowFn = opts.now ?? (() => performance.now());
@@ -158,7 +112,7 @@ export class PrologueController {
     this.root.appendChild(this.caretEl);
     this.panel.appendChild(this.root);
 
-    this.reveal = createReveal(PROLOGUE_BEATS[0]!, this.nowFn());
+    this.reveal = createReveal(ENDING_BEATS[0]!, this.nowFn());
     this.paint();
     this.scheduleFrame();
   }
@@ -182,7 +136,7 @@ export class PrologueController {
       this.enterHold();
       return;
     }
-    if (this.beatIndex >= PROLOGUE_BEATS.length - 1) {
+    if (this.beatIndex >= ENDING_BEATS.length - 1) {
       audio.uiConfirm();
       this.finishWithFade();
       return;
@@ -214,12 +168,12 @@ export class PrologueController {
     this.onDone();
   }
 
-  /** Confirm on last beat — fade out before handing off to party creation. */
+  /** Confirm on last beat — fade out before handing off to the caller. */
   private finishWithFade(): void {
     this.phase = "finishing";
     this.caretEl.classList.remove("is-visible");
     this.root.classList.add("is-fading");
-    this.finishAt = this.nowFn() + INTRO_STYLE.fadeMs;
+    this.finishAt = this.nowFn() + ENDING_STYLE.fadeMs;
   }
 
   private enterHold(): void {
@@ -231,13 +185,13 @@ export class PrologueController {
     this.phase = "advancing";
     this.caretEl.classList.remove("is-visible");
     this.root.classList.add("is-fading");
-    this.advanceAt = this.nowFn() + INTRO_STYLE.fadeMs + INTRO_STYLE.gapMs;
+    this.advanceAt = this.nowFn() + ENDING_STYLE.fadeMs + ENDING_STYLE.gapMs;
   }
 
   private advanceToNextBeat(): void {
     this.beatIndex += 1;
     this.root.classList.remove("is-fading");
-    this.reveal = createReveal(PROLOGUE_BEATS[this.beatIndex]!, this.nowFn());
+    this.reveal = createReveal(ENDING_BEATS[this.beatIndex]!, this.nowFn());
     this.phase = "reveal";
     this.paint();
   }
@@ -261,7 +215,7 @@ export class PrologueController {
     }
     if (this.phase === "reveal") {
       const before = this.reveal.visible;
-      this.reveal = stepReveal(this.reveal, now);
+      this.reveal = stepReveal(this.reveal, now, ENDING_STYLE);
       if (this.reveal.visible !== before) {
         const ch = this.reveal.full[this.reveal.visible - 1];
         if (ch && ch !== " " && ch !== "\n") audio.uiTextTick();
@@ -271,7 +225,7 @@ export class PrologueController {
       return;
     }
     if (this.phase === "hold") {
-      if (now >= this.holdUntil && this.beatIndex < PROLOGUE_BEATS.length - 1) {
+      if (now >= this.holdUntil && this.beatIndex < ENDING_BEATS.length - 1) {
         this.beginAdvance();
       }
       return;

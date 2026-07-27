@@ -73,9 +73,10 @@ title, and combat windows. Canvas text is not used for this screen.
 
 ### Locked Onyx prologue beats (already within limits)
 
-Beat 3 of the original five-beat draft is **split across two screens** (same
-words, no paraphrase) so the densest passage is not one long type at the fatigue
-point. Author `\n` breaks are intentional (`white-space: pre-line`).
+Beat 3 of the original five-beat draft is **split across two screens**, and the
+final Edgehollow passage across **three** (same words, no paraphrase) so each
+sentence gets a full beat pause. Author `\n` breaks are intentional
+(`white-space: pre-line`).
 
 | # | Text | Notes |
 |---|------|-------|
@@ -84,9 +85,14 @@ point. Author `\n` breaks are intentional (`white-space: pre-line`).
 | 3a | They buried…went: / a labyrinth, / and at the bottom of it a lamp, | Split; ≤42 chars/line |
 | 3b | and in the lamp the last thing in / existence that can still grant a wish. | Split; ≤42 chars/line |
 | 4 | It has one left. | Pivot — extra hold |
-| 5 | Edgehollow… (author line breaks) | |
+| 5a | Edgehollow is the last town at the mouth / of the hole. | Edgehollow split |
+| 5b | Everyone here is going down. | Edgehollow split |
+| 5c | Everyone here has been going down for a / very long time. | Edgehollow split |
 
 **Do not paraphrase these.** Soft-wrap only; never rewrite mid-sentence unless a future edit is explicitly approved.
+
+Note: eight screens exceeds the §3 “3–6 beats” comfort band; the Edgehollow
+split is an intentional exception so the closing sentences land separately.
 
 ### Manual line breaks
 

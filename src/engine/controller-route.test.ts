@@ -18,6 +18,7 @@ function ctx(overrides: Partial<ControllerRouteContext> = {}): ControllerRouteCo
     hasGameOver: false,
     hasPartyCreation: false,
     hasPrologue: false,
+    hasEnding: false,
     hasTitle: false,
     hasPendingTrap: false,
     hasTrapPrompt: false,
@@ -100,6 +101,28 @@ describe("resolveControllerRoute", () => {
   it("requires title mode for prologue", () => {
     expect(
       resolveControllerRoute(ctx({ mode: "dungeon", hasPrologue: true })),
+    ).toBe("dungeon");
+  });
+
+  it("prefers ending over prologue and the title menu while both could be set", () => {
+    expect(
+      resolveControllerRoute(
+        ctx({ mode: "title", hasEnding: true, hasPrologue: true, hasTitle: true }),
+      ),
+    ).toBe("ending");
+  });
+
+  it("prefers perk select over ending", () => {
+    expect(
+      resolveControllerRoute(
+        ctx({ mode: "title", hasPerkSelect: true, hasEnding: true }),
+      ),
+    ).toBe("perk");
+  });
+
+  it("requires title mode for ending", () => {
+    expect(
+      resolveControllerRoute(ctx({ mode: "dungeon", hasEnding: true })),
     ).toBe("dungeon");
   });
 });

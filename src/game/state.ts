@@ -52,6 +52,7 @@ export function createGameState(floor: FloorDef): GameState {
     lastDungeon: null,
     activeCharIds: defaultActiveCharIds(party),
     deepestFloorReached: floor.id,
+    hasCompletedEnding: false,
   };
 }
 

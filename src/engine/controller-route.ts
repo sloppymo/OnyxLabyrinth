@@ -13,6 +13,7 @@ export type ControllerRouteKind =
   | "game_over"
   | "party_creation"
   | "prologue"
+  | "ending"
   | "title"
   | "arena"
   | "trap"
@@ -32,6 +33,7 @@ export interface ControllerRouteContext {
   hasGameOver: boolean;
   hasPartyCreation: boolean;
   hasPrologue: boolean;
+  hasEnding: boolean;
   hasTitle: boolean;
   hasPendingTrap: boolean;
   hasTrapPrompt: boolean;
@@ -40,6 +42,7 @@ export interface ControllerRouteContext {
 /** Pick the highest-priority input consumer for the current session flags. */
 export function resolveControllerRoute(ctx: ControllerRouteContext): ControllerRouteKind {
   if (ctx.mode === "title" && ctx.hasPerkSelect) return "perk";
+  if (ctx.mode === "title" && ctx.hasEnding) return "ending";
   if (ctx.mode === "combat" && ctx.hasCombat) return "combat";
   if (ctx.mode === "title" && ctx.hasSave) return "save";
   if (ctx.mode === "title" && ctx.hasSpellMenu) return "spell";
