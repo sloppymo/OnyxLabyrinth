@@ -36,7 +36,6 @@ import {
   mapCtx,
   setMessage,
   clearMessageOnPlayerAction,
-  flashEncounter,
   renderPartyStrip,
   clearPartyStrip,
   showMode,
@@ -44,7 +43,13 @@ import {
   setContextualPrompt,
   getMessageText,
   setDebugMessageHook,
+  combatCanvas,
 } from "./engine/shell";
+import {
+  playEncounterTransition,
+  playReturnTransition,
+  revealAfterTransition,
+} from "./engine/battle-transition";
 import { resolveContextualPrompt } from "./engine/contextual-prompt";
 import { buildSnapshot } from "./debug/snapshot";
 import { computeIdle } from "./debug/idle";
@@ -500,45 +505,87 @@ function maybeTriggerEncounter(): boolean {
 // --- Combat mode ---------------------------------------------------------
 let combatController: CombatController | null = null;
 
-// When an encounter starts mid-keydown (the same forward-step keypress that
-// triggers maybeTriggerEncounter flips state.mode to "combat" synchronously),
-// the combat key listener below runs later for that *same* event and would
-// otherwise treat the dungeon-movement key as combat-menu input (e.g. the
-// ArrowUp that stepped into the encounter would also nudge the selectAction
-// menu). This flag suppresses exactly that one leaked keypress. It's cleared
-// on a microtask as a fallback in case combat is ever started outside of a
-// keydown handler, so it can never swallow a later, legitimate keypress.
-let suppressNextCombatKey = false;
+// True for the whole encounter swirl / leave dissolve (including reveal).
+// Key + controller handlers no-op while set — duration tracks boss / reduced-
+// motion; no fixed setTimeout heuristic. Destination screens opened by
+// leaveCombat's next() (game_over / perk / ending / arena) also check this.
+let combatTransitionActive = false;
+
+/**
+ * Serialize startCombat / leaveCombat so a second wipe cannot begin while a
+ * prior reveal still owns `#battle-transition` (Arena double-Enter race).
+ * Failures in one job do not stall the chain.
+ */
+let combatTransitionTail: Promise<void> = Promise.resolve();
+
+function withCombatTransition<T>(fn: () => Promise<T>): Promise<T> {
+  const run = combatTransitionTail.then(async () => {
+    combatTransitionActive = true;
+    try {
+      return await fn();
+    } finally {
+      combatTransitionActive = false;
+    }
+  });
+  combatTransitionTail = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
 
 async function startCombat(combat: CombatState): Promise<void> {
-  state.combat = combat;
-  setMode(state, "combat");
-  flashEncounter();
-  audio.playCombatSfx(combat.isBoss ? "bossAppear" : "encounterStart");
-  if (combat.isBoss) {
-    audio.startBossCombat();
-  }
-  showMode("combat", mapVisible);
-  suppressNextCombatKey = true;
-  setTimeout(() => {
-    suppressNextCombatKey = false;
-  }, 0);
+  return withCombatTransition(async () => {
+    state.combat = combat;
+    // Mode flag only — keep dungeon painted until the swirl finishes.
+    setMode(state, "combat");
+    audio.playCombatSfx(combat.isBoss ? "bossAppear" : "encounterStart");
+    if (combat.isBoss) {
+      audio.startBossCombat();
+    }
 
-  // Ensure renderer tilesets are loaded before baking the arena backdrop.
-  // Textures are loaded at boot, but arena mode can start before that finishes.
-  await loadTextures();
+    // Corridor canvas is 1×1 when coming from title/arena (viewport hidden).
+    // snapshotSource treats tiny sources as a dark field so the wipe still
+    // reads; dungeon encounters get the live corridor pixels.
+    await playEncounterTransition({ source: canvas, isBoss: combat.isBoss });
 
-  const bd = renderBattleArena(state, 768, 672);
-  const theme = resolveTilesetTheme(state.floor);
-  const backdropId = `theme:${theme}`;
+    showMode("combat", mapVisible);
 
-  combatController = new CombatController(combat, {
-    onEnd: (result: CombatState) => {
-      endCombat(result);
-    },
-    backdrop: bd,
-    backdropId,
-    getLastInputKind: () => globalInput.getLastInputKind(),
+    // Ensure renderer tilesets are loaded before baking the arena backdrop.
+    // Textures are loaded at boot, but arena mode can start before that finishes.
+    await loadTextures();
+
+    const bd = renderBattleArena(state, 768, 672);
+    const theme = resolveTilesetTheme(state.floor);
+    const backdropId = `theme:${theme}`;
+
+    combatController = new CombatController(combat, {
+      onEnd: (result: CombatState) => {
+        endCombat(result);
+      },
+      backdrop: bd,
+      backdropId,
+      getLastInputKind: () => globalInput.getLastInputKind(),
+    });
+
+    await revealAfterTransition();
+  });
+}
+
+/**
+ * Snapshot → dissolve to black → clear combat → run `next` (any of the five
+ * post-combat destinations) → reveal. Owns teardown so wipe / arena / perk /
+ * ending / dungeon all share one exit path.
+ */
+async function leaveCombat(next: () => void): Promise<void> {
+  return withCombatTransition(async () => {
+    const source =
+      combatCanvas.width >= 16 && combatCanvas.height >= 16 ? combatCanvas : null;
+    await playReturnTransition({ source });
+    state.combat = undefined;
+    combatController = null;
+    next();
+    await revealAfterTransition();
   });
 }
 
@@ -559,7 +606,7 @@ function endCombat(result: CombatState): void {
   state.equipment = { ...state.equipment, ...result.loadout };
 
   // Perk choices queued by post-combat level-ups. Kept local to this flow; the
-  // overlay in Task 5 will consume it and then return to the dungeon.
+  // overlay consumes it and then returns to the dungeon / arena / ending.
   let pendingPerkChoices: PendingPerkChoice[] = [];
 
   if (result.result === "wipe") {
@@ -569,13 +616,9 @@ function endCombat(result: CombatState): void {
     state.party = reviveKnockedOut(state.party);
     state.player.x = state.floor.startX;
     state.player.y = state.floor.startY;
-    // Same cleanup fled/victory reach below. Wipe early-returns for
-    // openGameOver and previously skipped this, leaving a stale ended
-    // combat that tripped snapshot().warnings and blocked debug jumpTo/
-    // loadSave until the next real fight overwrote the reference.
-    state.combat = undefined;
-    combatController = null;
-    openGameOver();
+    void leaveCombat(() => {
+      openGameOver();
+    });
     return;
   } else if (result.result === "fled") {
     setMessage("You fled from combat.");
@@ -632,21 +675,6 @@ function endCombat(result: CombatState): void {
     npcFightId = null;
   }
 
-  state.combat = undefined;
-  combatController = null;
-
-  if (inArena) {
-    const onDone = () => {
-      openArena();
-    };
-    if (pendingPerkChoices.length > 0) {
-      openPerkSelectOverlay(pendingPerkChoices, onDone);
-    } else {
-      onDone();
-    }
-    return;
-  }
-
   // The wish (§6): floor-5 boss victory, once per campaign. The floor-5 boss
   // pack is a re-rollable random encounter (data/enemies.ts ENCOUNTER_TABLES,
   // weight: 1 like any other pack), not a one-time scripted fight — so a
@@ -658,17 +686,28 @@ function endCombat(result: CombatState): void {
     state.floor.id === 5 &&
     !state.hasCompletedEnding;
 
-  // If any characters reached a perk tier, open the perk selection overlay.
-  // Otherwise return to the dungeon immediately (or, on the ending trigger,
-  // straight to the wish).
-  if (pendingPerkChoices.length > 0) {
-    openPerkSelectOverlay(pendingPerkChoices, triggersEnding ? openEnding : undefined);
-  } else if (triggersEnding) {
-    openEnding();
-  } else {
-    setMode(state, "dungeon");
-    showMode("dungeon", mapVisible);
-  }
+  void leaveCombat(() => {
+    if (inArena) {
+      const onDone = () => {
+        openArena();
+      };
+      if (pendingPerkChoices.length > 0) {
+        openPerkSelectOverlay(pendingPerkChoices, onDone);
+      } else {
+        onDone();
+      }
+      return;
+    }
+
+    if (pendingPerkChoices.length > 0) {
+      openPerkSelectOverlay(pendingPerkChoices, triggersEnding ? openEnding : undefined);
+    } else if (triggersEnding) {
+      openEnding();
+    } else {
+      setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
+    }
+  });
 }
 
 // --- Perk selection overlay ----------------------------------------------
@@ -697,6 +736,10 @@ function openPerkSelectOverlay(queue: PendingPerkChoice[], onDone?: () => void):
 
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "title" || !perkSelectController) return;
+  if (combatTransitionActive) {
+    e.preventDefault();
+    return;
+  }
   perkSelectController.handleKey(e.key);
   e.preventDefault();
 });
@@ -868,6 +911,7 @@ function onMove(): void {
 
 const dungeonHandlers: InputHandlers = {
   onForward: () => {
+    if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       clearMessageOnPlayerAction();
@@ -881,6 +925,7 @@ const dungeonHandlers: InputHandlers = {
     }
   },
   onBackward: () => {
+    if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       clearMessageOnPlayerAction();
@@ -894,6 +939,7 @@ const dungeonHandlers: InputHandlers = {
     }
   },
   onTurnLeft: () => {
+    if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       clearMessageOnPlayerAction();
@@ -902,6 +948,7 @@ const dungeonHandlers: InputHandlers = {
     }
   },
   onTurnRight: () => {
+    if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       clearMessageOnPlayerAction();
@@ -910,18 +957,21 @@ const dungeonHandlers: InputHandlers = {
     }
   },
   onCamp: () => {
+    if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
       clearMessageOnPlayerAction();
       startCamp();
     }
   },
   onToggleMap: () => {
+    if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !state.pendingTrap) {
       clearMessageOnPlayerAction();
       toggleMap();
     }
   },
   onSystemMenu: () => {
+    if (combatTransitionActive) return;
     // In town mode, Esc is handled by the town controller (back from
     // sub-screens). Only open the save menu from the town main menu.
     // While a trap prompt is up, Esc means "leave the chest" (handled by the
@@ -935,24 +985,28 @@ const dungeonHandlers: InputHandlers = {
     openSaveMenu();
   },
   onTown: () => {
+    if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
       clearMessageOnPlayerAction();
       returnToTown();
     }
   },
   onCastSpell: () => {
+    if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
       clearMessageOnPlayerAction();
       openSpellMenu();
     }
   },
   onActionRing: () => {
+    if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
       clearMessageOnPlayerAction();
       openActionRing();
     }
   },
   onUnlock: () => {
+    if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
       audio.resume();
       clearMessageOnPlayerAction();
@@ -1138,6 +1192,7 @@ function currentRouteFlags(): ControllerRouteContext {
 }
 
 function routeControllerEvent(event: ControllerInputEvent): void {
+  if (combatTransitionActive) return;
   const route = resolveControllerRoute(currentRouteFlags());
 
   switch (route) {
@@ -1326,8 +1381,7 @@ window.addEventListener("beforeunload", () => {
 // Combat key handler — separate listener that only fires in combat mode.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "combat" || !combatController) return;
-  if (suppressNextCombatKey) {
-    suppressNextCombatKey = false;
+  if (combatTransitionActive) {
     e.preventDefault();
     return;
   }
@@ -1367,6 +1421,7 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 
 window.addEventListener("keyup", (e: KeyboardEvent) => {
   if (state.mode !== "combat" || !combatController) return;
+  if (combatTransitionActive) return;
   if (e.key === "Shift") {
     combatController.handleKeyUp(e.key);
   }
@@ -1383,6 +1438,10 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 // Game-over key handler — dismisses the screen and revives the party.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "game_over" || !gameOverController) return;
+  if (combatTransitionActive) {
+    e.preventDefault();
+    return;
+  }
   gameOverController.handleKey(e.key);
   e.preventDefault();
 });
@@ -1677,6 +1736,10 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 // comment.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "title" || !endingController) return;
+  if (combatTransitionActive) {
+    e.preventDefault();
+    return;
+  }
   if (justOpenedEnding) {
     justOpenedEnding = false;
     e.preventDefault();
@@ -1689,8 +1752,15 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 // Arena key handler — routes keys to the ArenaController.
 // The `justOpenedArena` flag prevents the same keydown that opened the arena
 // (e.g. the Enter that exits a combat result) from also selecting a menu item.
+// combatTransitionActive covers the full leave-reveal window (much longer
+// than justOpenedArena's single swallow) so "Next Fight" can't start a second
+// startCombat under an in-flight reveal.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "arena") return;
+  if (combatTransitionActive) {
+    e.preventDefault();
+    return;
+  }
   if (justOpenedArena) {
     justOpenedArena = false;
     e.preventDefault();

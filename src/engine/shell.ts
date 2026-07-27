@@ -22,7 +22,6 @@ const app = document.querySelector<HTMLDivElement>("#app")!;
 app.innerHTML = `
   <div id="game-wrap">
     <div id="viewport-wrap">
-      <div id="flash-overlay"></div>
       <div id="message-band">
         <div id="message"></div>
         <div id="hud-chrome" hidden>F1 · N</div>
@@ -52,7 +51,6 @@ const messageBandEl = document.querySelector<HTMLDivElement>("#message-band")!;
 const messageEl = document.querySelector<HTMLDivElement>("#message")!;
 const hudChromeEl = document.querySelector<HTMLDivElement>("#hud-chrome")!;
 const contextPromptEl = document.querySelector<HTMLDivElement>("#context-prompt")!;
-const flashOverlayEl = document.querySelector<HTMLDivElement>("#flash-overlay")!;
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
 export const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
 const combatWrap = document.querySelector<HTMLDivElement>("#combat-wrap")!;
@@ -139,19 +137,6 @@ window.addEventListener("resize", () => {
   resizeGameScale();
   resizeCorridorCanvas();
 });
-
-/**
- * Trigger a brief combat-encounter flash over the viewport.
- */
-export function flashEncounter(): void {
-  if (!flashOverlayEl) return;
-  flashOverlayEl.classList.remove("flash-active");
-  void flashOverlayEl.offsetWidth;
-  flashOverlayEl.classList.add("flash-active");
-  window.setTimeout(() => {
-    flashOverlayEl.classList.remove("flash-active");
-  }, 900);
-}
 
 function syncMessageBandVisibility(): void {
   const hasMsg = messageEl.textContent.trim().length > 0;
