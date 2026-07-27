@@ -41,14 +41,20 @@ export const PROLOGUE_BEATS: readonly string[] = [
   "Everyone here has been going down for a\nvery long time.",
 ] as const;
 
+/** Index of the opening beat — short line, needs breathing room. */
+const OPENING_BEAT_INDEX = 0;
 /** Index of the pivot beat ("It has one left.") that gets an extra hold. */
 const PIVOT_BEAT_INDEX = 4;
 
 export const INTRO_STYLE = {
-  charsPerSec: 32,
-  pauseFullMs: 350, // . ? !
+  // 20 cps: the opening beat is only ~34 chars; at 32 cps it finished in ~1.7s
+  // and felt like a flash. Slower typing + opening hold lets the first page land.
+  // (20 also keeps 1000/charsPerSec exact in float — avoids flaky pause asserts.)
+  charsPerSec: 20,
+  pauseFullMs: 420, // . ? ! — slightly longer so "gods." / "lost." breathe
   pauseHalfMs: 120, // , ; :
   holdAfterRevealMs: 1600,
+  holdOpeningExtraMs: 1200, // beat 0 — linger on the war/gods line
   holdPivotExtraMs: 1400, // beat "It has one left." — clearly outlast neighbors
   fadeMs: 180,
   gapMs: 200,
@@ -60,6 +66,13 @@ export type RevealState = {
   visible: number;
   done: boolean;
   pauseUntil: number;
+};
+
+/** Fields `stepReveal` actually reads — shared by prologue + ending styles. */
+export type RevealTimingStyle = {
+  charsPerSec: number;
+  pauseFullMs: number;
+  pauseHalfMs: number;
 };
 
 /** Start a fresh reveal of `full` at time `now` (nothing visible yet). */
@@ -77,7 +90,9 @@ export function holdDurationMs(
   beatIndex: number,
   style: typeof INTRO_STYLE = INTRO_STYLE,
 ): number {
-  const extra = beatIndex === PIVOT_BEAT_INDEX ? style.holdPivotExtraMs : 0;
+  let extra = 0;
+  if (beatIndex === OPENING_BEAT_INDEX) extra = style.holdOpeningExtraMs;
+  else if (beatIndex === PIVOT_BEAT_INDEX) extra = style.holdPivotExtraMs;
   return style.holdAfterRevealMs + extra;
 }
 
@@ -90,7 +105,7 @@ export function holdDurationMs(
 export function stepReveal(
   state: RevealState,
   now: number,
-  style: typeof INTRO_STYLE = INTRO_STYLE,
+  style: RevealTimingStyle = INTRO_STYLE,
 ): RevealState {
   if (state.done || now < state.pauseUntil) return state;
   const visible = Math.min(state.full.length, state.visible + 1);

@@ -275,10 +275,11 @@ Pure helpers (unit-testable, no DOM):
 
 ```ts
 export const INTRO_STYLE = {
-  charsPerSec: 32,
-  pauseFullMs: 350,      // . ? !
+  charsPerSec: 20,
+  pauseFullMs: 420,      // . ? !
   pauseHalfMs: 120,      // , ; :
   holdAfterRevealMs: 1600,
+  holdOpeningExtraMs: 1200, // beat 0 — short opening line needs breathing room
   holdPivotExtraMs: 1400, // add on beat index 4 ("It has one left.")
   fadeMs: 180,
   gapMs: 200,

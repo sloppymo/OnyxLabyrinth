@@ -75,12 +75,15 @@ describe("stepReveal", () => {
 });
 
 describe("holdDurationMs", () => {
-  it("adds pivot extra on beat index 4 (It has one left.)", () => {
+  it("adds opening extra on beat 0 and pivot extra on beat 4", () => {
+    expect(holdDurationMs(0)).toBe(
+      INTRO_STYLE.holdAfterRevealMs + INTRO_STYLE.holdOpeningExtraMs,
+    );
     expect(holdDurationMs(4)).toBe(
       INTRO_STYLE.holdAfterRevealMs + INTRO_STYLE.holdPivotExtraMs,
     );
-    expect(holdDurationMs(0)).toBe(INTRO_STYLE.holdAfterRevealMs);
     expect(holdDurationMs(3)).toBe(INTRO_STYLE.holdAfterRevealMs);
+    expect(INTRO_STYLE.holdOpeningExtraMs).toBe(1200);
     expect(INTRO_STYLE.holdPivotExtraMs).toBe(1400);
   });
 });
@@ -107,7 +110,7 @@ describe("PrologueController", () => {
   function revealFully(c: PrologueController, beat: string): void {
     for (let i = 0; i < beat.length + 5; i++) {
       if (text() === beat) return;
-      time += 400; // comfortably exceeds any single pause (max pauseFullMs=350)
+      time += INTRO_STYLE.pauseFullMs + 50; // exceeds any single pause
       c.tickForTests(time);
     }
   }
