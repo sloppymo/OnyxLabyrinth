@@ -17,8 +17,14 @@ import {
   resolveEffectStyle,
   sampleProjectilePose,
   setBossIntroNameplate,
+  pushBark,
+  setBarksEnabled,
+  getBarksEnabled,
+  BARK_DURATION_BASE,
 } from "./combat-scene";
 import { createCombatState } from "../game/combat";
+import { pickBark, resetBarkRngForCombat, setBarkRngForTests } from "../game/combat-barks";
+import { BARK_PRIORITY } from "../data/combat-barks";
 import type { CombatEvent, EnemyInstance } from "../game/combat-types";
 import { createCharacter } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
@@ -485,5 +491,194 @@ describe("impact feedback (shake / floor glow / banner)", () => {
     expect(scene.introNameplate).toBe("The Dead Boy");
     updateScene(scene, t0 + 1000);
     expect(scene.introNameplate).toBeNull();
+  });
+});
+
+describe("dialog barks (spec 2026-07-26)", () => {
+  it("replaces a live bark on the same actor only when priority is strictly higher", () => {
+    const scene = makeScene();
+    expect(pushBark(scene, { actorId: "c0", trigger: "beforeSpell", text: "Burn, fiend!" }, 0)).toBe(true);
+    expect(scene.barks).toHaveLength(1);
+    expect(scene.barks[0]!.text).toBe("Burn, fiend!");
+
+    // Equal/lower priority on the same actor: drop, keep the live one.
+    expect(pushBark(scene, { actorId: "c0", trigger: "beforeSpell", text: "Take this!" }, 10)).toBe(false);
+    expect(scene.barks).toHaveLength(1);
+    expect(scene.barks[0]!.text).toBe("Burn, fiend!");
+
+    // Strictly higher priority: replace.
+    expect(pushBark(scene, { actorId: "c0", trigger: "heavyHit", text: "Gyaaah!" }, 20)).toBe(true);
+    expect(scene.barks).toHaveLength(1);
+    expect(scene.barks[0]!.text).toBe("Gyaaah!");
+    expect(scene.barks[0]!.priority).toBe(BARK_PRIORITY.heavyHit);
+  });
+
+  it("keeps the two highest-priority non-death requests in the ~100ms window and drops the rest", () => {
+    const scene = makeScene();
+    expect(pushBark(scene, { actorId: "e1", trigger: "beforeSpell", text: "A" }, 0)).toBe(true);
+    expect(pushBark(scene, { actorId: "e2", trigger: "heavyHit", text: "B" }, 10)).toBe(true);
+    // Window already holds priorities [1,2]; a third priority-1 request is dropped.
+    expect(pushBark(scene, { actorId: "e3", trigger: "beforeSpell", text: "C" }, 20)).toBe(false);
+    // A higher-priority request evicts the lowest window slot and lands
+    // (different actor, so the per-actor replace rule doesn't block it).
+    expect(pushBark(scene, { actorId: "e4", trigger: "heavyHit", text: "D" }, 30)).toBe(true);
+    expect(scene.barkWindow.map((e) => e.priority).sort((a, b) => a - b)).toEqual([2, 2]);
+  });
+
+  it("exempts death barks from the global window cap", () => {
+    const scene = makeScene();
+    pushBark(scene, { actorId: "e1", trigger: "heavyHit", text: "A" }, 0);
+    pushBark(scene, { actorId: "e2", trigger: "heavyHit", text: "B" }, 10);
+    // Window already holds 2 non-death entries; three more death barks
+    // (different actors) must all land regardless — a wipe can show
+    // several death lines at once (intentional payoff, spec §6.3).
+    expect(pushBark(scene, { actorId: "e3", trigger: "death", text: "C" }, 20)).toBe(true);
+    expect(pushBark(scene, { actorId: "e4", trigger: "death", text: "D" }, 25)).toBe(true);
+    expect(pushBark(scene, { actorId: "e5", trigger: "death", text: "E" }, 30)).toBe(true);
+    expect(scene.barks.map((b) => b.actorId).sort()).toEqual(["e1", "e2", "e3", "e4", "e5"]);
+  });
+
+  it("respects the module mute flag", () => {
+    const scene = makeScene();
+    setBarksEnabled(false);
+    try {
+      expect(pushBark(scene, { actorId: "c0", trigger: "death", text: "Nope" }, 0)).toBe(false);
+      expect(scene.barks).toHaveLength(0);
+    } finally {
+      setBarksEnabled(true);
+    }
+    expect(getBarksEnabled()).toBe(true);
+  });
+
+  it("schedules a bark for an actor with no dedicated preceding event (e.g. an ability's Martyr-redirect target) after the cast's impact, not before", () => {
+    // Shape produced by an enemy ability heavy-hitting c0 with the damage
+    // redirected to c1 (Martyr): one "cast" event carrying the damage, then
+    // two heavyHit barks riding off it with no event of their own.
+    const scene = makeScene();
+    const events: CombatEvent[] = [
+      { type: "cast", actorId: "rat-0", spellId: "iron-fist", targetId: "c0", damage: 10 },
+      { type: "bark", actorId: "c0", trigger: "heavyHit", text: "Gyaaah!" },
+      { type: "bark", actorId: "c1", trigger: "heavyHit", text: "Nnngh!" },
+    ];
+    const t0 = 0;
+    playTurn(scene, events, spellName, t0, W, H);
+
+    // Well before the cast's impact (~715ms): neither bark has landed yet.
+    updateScene(scene, t0 + 100);
+    expect(scene.barks).toHaveLength(0);
+
+    // Past the cast's full hold (~1100ms) plus the 180ms heavyHit delay:
+    // both barks — including the one with no dedicated event — have landed.
+    updateScene(scene, t0 + 1400);
+    expect(scene.barks.map((b) => b.actorId).sort()).toEqual(["c0", "c1"]);
+  });
+
+  it("rejects pathologically long text via the char-based width guard", () => {
+    const scene = makeScene();
+    const longText = "x".repeat(40); // well past the §3.2 340px safety clamp
+    expect(pushBark(scene, { actorId: "c0", trigger: "death", text: longText }, 0)).toBe(false);
+    expect(scene.barks).toHaveLength(0);
+  });
+
+  it("skipPlaybackToEnd clears scene.barks and the priority window immediately", () => {
+    const scene = makeScene();
+    const events: CombatEvent[] = [
+      { type: "defeated", targetId: "rat-0", wasEnemy: true },
+      { type: "bark", actorId: "rat-0", trigger: "death", text: "The crying stops." },
+    ];
+    const t0 = 0;
+    playTurn(scene, events, spellName, t0, W, H);
+    skipPlaybackToEnd(scene, t0 + 20);
+    expect(scene.barks).toHaveLength(0);
+    expect(scene.barkWindow).toHaveLength(0);
+  });
+
+  it("extends choreography duration to cover a trailing death bark", () => {
+    const scene = makeScene();
+    const events: CombatEvent[] = [
+      { type: "defeated", targetId: "rat-0", wasEnemy: true },
+      { type: "bark", actorId: "rat-0", trigger: "death", text: "The crying stops." },
+    ];
+    const t0 = 0;
+    const duration = playTurn(scene, events, spellName, t0, W, H);
+    // Pre-fix this was ~t+260 (~1310ms here); a trailing death bark must
+    // now hold the choreography open for most of its own ~1900ms lifetime.
+    expect(duration).toBeGreaterThan(2000);
+  });
+
+  it("holds an enemy corpse's fade window when a death bark is attached, vs. a bare death", () => {
+    const withBark = makeScene();
+    playTurn(
+      withBark,
+      [
+        { type: "defeated", targetId: "rat-0", wasEnemy: true },
+        { type: "bark", actorId: "rat-0", trigger: "death", text: "The crying stops." },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(withBark, 10);
+    const withBarkFade = withBark.enemyAnims.get("rat-0")?.fadeOutStart ?? 0;
+
+    const withoutBark = makeScene();
+    playTurn(
+      withoutBark,
+      [{ type: "defeated", targetId: "rat-0", wasEnemy: true }],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(withoutBark, 10);
+    const withoutBarkFade = withoutBark.enemyAnims.get("rat-0")?.fadeOutStart ?? 0;
+
+    expect(withBarkFade - withoutBarkFade).toBe(BARK_DURATION_BASE);
+  });
+
+  it("keeps two AoE-killed enemies' death animations synchronized when the first has a death bark", () => {
+    const scene = makeScene();
+    const events: CombatEvent[] = [
+      { type: "defeated", targetId: "rat-0", wasEnemy: true },
+      { type: "bark", actorId: "rat-0", trigger: "death", text: "The crying stops." },
+      { type: "defeated", targetId: "rat-1", wasEnemy: true },
+    ];
+    playTurn(scene, events, spellName, 0, W, H);
+    updateScene(scene, 10);
+    // Without skipping the interposed bark event when scanning for the next
+    // "defeated", rat-1's death would stagger ~1s behind rat-0's instead of
+    // firing together (the AoE-kill grouping this comment already covers).
+    expect(scene.enemyAnims.get("rat-0")?.state).toBe("death");
+    expect(scene.enemyAnims.get("rat-1")?.state).toBe("death");
+  });
+});
+
+describe("bark ledger survives a scene-level drop (spec §5.1)", () => {
+  it("keeps barkSaid true even when the engine-level window drops the push", () => {
+    resetBarkRngForCombat(1);
+    setBarkRngForTests(() => 0);
+    const party = [createCharacter("m1", "Dell", "Human", "Neutral", "Mage", 0)];
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
+
+    const text = pickBark(state, {
+      trigger: "heavyHit",
+      actorId: "m1",
+      classId: "Mage",
+      isParty: true,
+    });
+    expect(text).toMatch(/Gyaaah|Nnngh/);
+    expect(state.barkSaid.m1?.heavyHit).toBe(true);
+
+    // Fill the scene's ~100ms global window so this push gets dropped.
+    const scene = makeScene();
+    pushBark(scene, { actorId: "e1", trigger: "heavyHit", text: "A" }, 0);
+    pushBark(scene, { actorId: "e2", trigger: "heavyHit", text: "B" }, 10);
+    const pushed = pushBark(scene, { actorId: "m1", trigger: "heavyHit", text: text! }, 20);
+    expect(pushed).toBe(false);
+
+    // Locked behavior: the ledger entry stays burned even though the scene
+    // dropped the line — "accept the loss" (spec §5.1).
+    expect(state.barkSaid.m1?.heavyHit).toBe(true);
   });
 });

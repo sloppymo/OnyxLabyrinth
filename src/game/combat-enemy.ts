@@ -22,8 +22,10 @@ import {
   plainHitDamage,
   wakeOnDamage,
   pickRandom,
+  heavyHitBarkEligible,
 } from "./combat-shared";
 import { gainRage } from "./combat-techniques";
+import { isHeavyHit, maybeEmitBark } from "./combat-barks";
 import type {
   CombatEvent,
   CombatState,
@@ -34,6 +36,17 @@ import type {
   WeaponRange,
 } from "./combat-types";
 
+/** Result of a single ability hit against a party member, including whether
+ *  it (or a Martyr redirect of it) is eligible for a heavyHit bark — the
+ *  caller emits the bark itself, after its own damage log line, so the
+ *  choreography schedules it post-impact (spec 2026-07-26). */
+interface AbilityDamageResult {
+  finalDamage: number;
+  heavy: boolean;
+  redirectTarget?: Character;
+  redirectHeavy: boolean;
+}
+
 /** Apply damage to a party member from an enemy ability, respecting buffs. */
 function abilityDamageParty(
   s: CombatState,
@@ -42,14 +55,42 @@ function abilityDamageParty(
   actor: EnemyInstance,
   rng: Rng,
   emit: (m: string, e: CombatEvent) => void
-): number {
+): AbilityDamageResult {
   let damage = Math.max(1, Math.round(baseDamage * (0.8 + rng() * 0.4)));
   if (s.magicScreen > 0) {
     damage = Math.max(1, Math.round(damage * 0.5));
   }
   damage = damageReductionFor(s, target, damage);
   const result = applyPartyDamage(s, target, damage, actor, rng, emit);
-  return result.finalDamage;
+  return {
+    finalDamage: result.finalDamage,
+    heavy: heavyHitBarkEligible(target, result.finalDamage),
+    redirectTarget: result.redirectTarget,
+    redirectHeavy:
+      !!result.redirectTarget &&
+      heavyHitBarkEligible(result.redirectTarget, result.redirectDamage),
+  };
+}
+
+/** Emit heavyHit barks for a single-hit ability result (damage/drain), after
+ *  the caller's own damage log line. */
+function emitAbilityHeavyHitBarks(
+  s: CombatState,
+  target: Character,
+  hit: AbilityDamageResult,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  if (hit.heavy) {
+    maybeEmitBark(s, emit, { trigger: "heavyHit", actorId: target.id, classId: target.class, isParty: true });
+  }
+  if (hit.redirectHeavy && hit.redirectTarget) {
+    maybeEmitBark(s, emit, {
+      trigger: "heavyHit",
+      actorId: hit.redirectTarget.id,
+      classId: hit.redirectTarget.class,
+      isParty: true,
+    });
+  }
 }
 
 /** Resolve an enemy ability action. */
@@ -129,10 +170,11 @@ function resolveEnemyAbility(
   switch (eff.kind) {
     case "damage": {
       for (const t of partyTargets) {
-        const dmg = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit);
-        emit(`${actor.name} uses ${ability.name} on ${t.name} for ${dmg} damage!`, {
-          type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: dmg,
+        const hit = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit);
+        emit(`${actor.name} uses ${ability.name} on ${t.name} for ${hit.finalDamage} damage!`, {
+          type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: hit.finalDamage,
         });
+        emitAbilityHeavyHitBarks(s, t, hit, emit);
         gainRage(s, t.id, 1);
       }
       if (partyTargets.length > 0) addScreenShakeFromAbility(s, ability, partyTargets[0]);
@@ -141,13 +183,36 @@ function resolveEnemyAbility(
     case "multiHit": {
       for (const t of partyTargets) {
         let totalDmg = 0;
+        let anyHeavy = false;
+        let redirectHeavyTarget: Character | undefined;
         const hitPower = scaledAbilityPower(eff.powerPerHit);
         for (let h = 0; h < eff.hits; h++) {
-          totalDmg += abilityDamageParty(s, t, hitPower, actor, rng, emit);
+          const hit = abilityDamageParty(s, t, hitPower, actor, rng, emit);
+          totalDmg += hit.finalDamage;
+          if (hit.heavy) anyHeavy = true;
+          if (hit.redirectHeavy) redirectHeavyTarget = hit.redirectTarget;
         }
         emit(`${actor.name} uses ${ability.name}, striking ${t.name} ${eff.hits} times for ${totalDmg} total damage!`, {
           type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: totalDmg,
         });
+        // Eligibility is checked per hit inside abilityDamageParty (each hit's
+        // own damage against the target's hp/maxHp *at that moment*), then
+        // OR'd here — the cumulative total is never compared to the 35%
+        // threshold, matching the "single hit ≥35%, not DoT" rule used by
+        // every other heavyHit path. The once-per-(actor,trigger) ledger
+        // means at most one bark fires regardless, but that's a separate
+        // concern from which damage number is being tested.
+        if (anyHeavy) {
+          maybeEmitBark(s, emit, { trigger: "heavyHit", actorId: t.id, classId: t.class, isParty: true });
+        }
+        if (redirectHeavyTarget) {
+          maybeEmitBark(s, emit, {
+            trigger: "heavyHit",
+            actorId: redirectHeavyTarget.id,
+            classId: redirectHeavyTarget.class,
+            isParty: true,
+          });
+        }
         gainRage(s, t.id, 1);
       }
       if (partyTargets.length > 0) addScreenShakeFromAbility(s, ability, partyTargets[0]);
@@ -156,11 +221,12 @@ function resolveEnemyAbility(
     case "drain": {
       let totalDrained = 0;
       for (const t of partyTargets) {
-        const dmg = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit);
-        totalDrained += Math.round(dmg * 0.5);
-        emit(`${actor.name} uses ${ability.name}, draining ${dmg} from ${t.name}!`, {
-          type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: dmg,
+        const hit = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit);
+        totalDrained += Math.round(hit.finalDamage * 0.5);
+        emit(`${actor.name} uses ${ability.name}, draining ${hit.finalDamage} from ${t.name}!`, {
+          type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: hit.finalDamage,
         });
+        emitAbilityHeavyHitBarks(s, t, hit, emit);
         gainRage(s, t.id, 1);
       }
       if (totalDrained > 0) {
@@ -372,6 +438,16 @@ export function resolveEnemyAction(
         `${actor.name} casts ${spellId} at ${partyTarget.name} for ${damage} damage.`,
         { type: "cast", actorId: actor.instanceId, spellId, targetId: partyTarget.id, damage }
       );
+      // Party heavy-hit bark (v1) — emitted after the cast's own event so
+      // the choreography schedules it post-impact, not before (spec 2026-07-26).
+      if (partyTarget.hp > 0 && isHeavyHit(damage, partyTarget.maxHp)) {
+        maybeEmitBark(s, emit, {
+          trigger: "heavyHit",
+          actorId: partyTarget.id,
+          classId: partyTarget.class,
+          isParty: true,
+        });
+      }
       return;
     }
     // Healing cast on an enemy ally.
@@ -479,11 +555,29 @@ export function resolveEnemyAction(
     `${actor.name} hits ${partyTarget.name} for ${result.finalDamage} damage.`,
     { type: "attack", actorId: actor.instanceId, targetId: partyTarget.id, damage: result.finalDamage, range: attackRange }
   );
+  // Party heavy-hit bark (v1) — emitted after the attack's own event so the
+  // choreography schedules it post-impact, not before (spec 2026-07-26).
+  if (heavyHitBarkEligible(partyTarget, result.finalDamage)) {
+    maybeEmitBark(s, emit, {
+      trigger: "heavyHit",
+      actorId: partyTarget.id,
+      classId: partyTarget.class,
+      isParty: true,
+    });
+  }
   if (result.redirectTarget && result.redirectDamage > 0) {
     emit(
       `${result.redirectDamage} damage is redirected to ${result.redirectTarget.name}!`,
       { type: "spellEffect", spellId: "priest-martyr", targetId: result.redirectTarget.id, damage: result.redirectDamage }
     );
+    if (heavyHitBarkEligible(result.redirectTarget, result.redirectDamage)) {
+      maybeEmitBark(s, emit, {
+        trigger: "heavyHit",
+        actorId: result.redirectTarget.id,
+        classId: result.redirectTarget.class,
+        isParty: true,
+      });
+    }
   }
 
   // Counter-stance (Brace/Riposte): if the target has an active counter,

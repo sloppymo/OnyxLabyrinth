@@ -49,6 +49,7 @@ import type {
 } from "./combat-types";
 import { inventoryToCounts } from "./combat-inventory";
 import { activePartyForCombat } from "./active-roster";
+import { resetBarkRngForCombat } from "./combat-barks";
 import {
   effStatsFor,
   findEnemy,
@@ -87,6 +88,7 @@ export function createCombatState(
   inAntimagic = false,
   inventory: Record<string, number> = {}
 ): CombatState {
+  resetBarkRngForCombat();
   return {
     party: party.map(cloneCharacter),
     enemies: {
@@ -138,6 +140,7 @@ export function createCombatState(
     regenBuffs: {},
     summonCounter: 0,
     holyShieldBuffs: {},
+    barkSaid: {},
   };
 }
 

@@ -216,6 +216,7 @@ const state: CombatState = {
   disableStacks: {},
   summonCounter: 0,
   holyShieldBuffs: {},
+  barkSaid: {},
 };
 
 // Give every character full rage so techniques are always available in the demo.

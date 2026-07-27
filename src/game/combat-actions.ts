@@ -23,6 +23,7 @@ import {
 import { canReach, effectiveWeaponRange } from "./combat-reach";
 import { resolveTechnique, gainRage } from "./combat-techniques";
 import { applySpell } from "./combat-spells";
+import { maybeEmitBark } from "./combat-barks";
 import type {
   CombatEvent,
   CombatState,
@@ -442,6 +443,13 @@ function resolveCast(
     `${actor.name} casts ${spell.name}.`,
     { type: "cast", actorId: actor.id, spellId: spell.id, targetId }
   );
+  maybeEmitBark(s, emit, {
+    trigger: "beforeSpell",
+    actorId: actor.id,
+    classId: actor.class,
+    isParty: true,
+    spell,
+  });
 
   const powerMultiplier = isSurgeSpell ? 1.5 : 1;
   applySpell(s, actor, spell, action, rng, log, emit, powerMultiplier);

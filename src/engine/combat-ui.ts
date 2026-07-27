@@ -26,6 +26,7 @@ import {
   enqueueNewAllies,
 } from "../game/combat";
 import { previewAttack, previewSpellDamage } from "../game/combat-preview";
+import { visibleCombatLogLines } from "../game/combat-barks";
 import type {
   CombatState,
   PlayerAction,
@@ -1373,7 +1374,7 @@ export class CombatController {
         row: e.row,
         status: [...e.status],
       })),
-      recentLog: this.state.log.slice(-10),
+      recentLog: visibleCombatLogLines(this.state.log, this.state.events, 10),
       result: this.state.result ?? null,
     };
   }

@@ -12,6 +12,7 @@ import { dispatchHook, perkModifiers, perksForCharacter, type PerkModifiers } fr
 import type { SpellDef } from "../data/spells";
 import type { EnemyAbilityDef } from "../data/enemy-abilities";
 import type { CombatEvent, CombatState, EnemyInstance, Rng } from "./combat-types";
+import { isHeavyHit } from "./combat-barks";
 
 /** Enemy ability/heal powers were not part of the 2026-07 stat pass — scale at resolve time. */
 export const ENEMY_ABILITY_POWER_SCALE = 1.6;
@@ -471,7 +472,21 @@ export function applyPartyDamage(
     });
   }
 
+  // Heavy-hit bark eligibility is reported to the caller (see
+  // heavyHitBarkEligible below), not emitted here — the choreography needs
+  // the bark to land *after* the caller's own damage log line, and this
+  // function typically returns before that line is written.
   return { finalDamage: targetDamage, redirectDamage, redirectTarget: redirectTo };
+}
+
+/**
+ * Whether a hit qualifies for the party heavyHit bark (v1: single hit,
+ * ≥35% maxHp, not a lethal blow — deathCheck emits death instead, not DoT).
+ * Presentation only; callers should emit *after* their own damage log line
+ * so the choreography schedules the bark post-impact (spec 2026-07-26).
+ */
+export function heavyHitBarkEligible(target: Character, finalDamage: number): boolean {
+  return target.hp > 0 && isHeavyHit(finalDamage, target.maxHp);
 }
 
 export function cloneCharacter(c: Character): Character {

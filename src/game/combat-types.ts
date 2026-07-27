@@ -139,6 +139,7 @@ export type CombatEvent =
   | { type: "affinityDiscovered"; targetId: string; element: string; kind: "weak" | "resist" }
   | { type: "analyze"; actorId: string; targetId: string }
   | { type: "phaseChange"; actorId: string; phase: number; name: string }
+  | { type: "bark"; actorId: string; trigger: "beforeSpell" | "heavyHit" | "death"; text: string }
   | null;
 
 /** Internal: target of an enemy melee attack. */
@@ -364,6 +365,11 @@ export interface CombatState {
    * duration-based buff maps.
    */
   holyShieldBuffs: Record<string, { multiplier: number; duration: number }>;
+  /**
+   * Once-per-(actor, trigger) bark ledger for this combat only. Never saved.
+   * A dropped scene bark still leaves the entry burned (presentation cap).
+   */
+  barkSaid: Record<string, Partial<Record<"beforeSpell" | "heavyHit" | "death", true>>>;
 }
 
 export type Rng = () => number;

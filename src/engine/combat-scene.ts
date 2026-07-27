@@ -30,6 +30,7 @@ import { getPartySpriteStrip, type PartySpriteState } from "./party-sprite-cache
 import { getEffectSprite, type EffectSprite } from "./effect-sprite-cache";
 import { spellById } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
+import { BARK_PRIORITY, type BarkTrigger } from "../data/combat-barks";
 import type { SpriteStrip } from "./sprite-manifest";
 import combatBgUrl from "../assets/combat-bg.png";
 import {
@@ -277,6 +278,35 @@ export interface DamagePopup {
 
 const POPUP_DURATION = 1350;
 
+/** Dialog bark — sibling channel to damage popups (spec 2026-07-26). */
+export interface CombatBark {
+  text: string;
+  actorId: string;
+  start: number;
+  color: string;
+  priority: number;
+  /** Wall-clock lifetime; already scaled by playbackRate at push. */
+  durationMs: number;
+}
+
+export const BARK_DURATION_BASE = 1900;
+const BARK_COLOR = "#f0e0c0";
+/** Pathological safety only — shipping death line is ~300px at 19px FF36. */
+const BARK_MAX_WIDTH_PX = 340;
+const BARK_WINDOW_MS = 100;
+const BARK_GLOBAL_CAP = 2;
+
+let barksEnabled = true;
+
+/** Module mute (no settings bag in v1). Also exposed via debug. */
+export function setBarksEnabled(on: boolean): void {
+  barksEnabled = on;
+}
+
+export function getBarksEnabled(): boolean {
+  return barksEnabled;
+}
+
 /** FF6 bounce: quick rise with overshoot, settle, brief hold, fade. */
 function popupOffsetY(t: number): number {
   // t in [0,1]. Rise for first 35%, small bounce, hold.
@@ -318,6 +348,13 @@ export interface CombatScene {
   enemyCorpses: EnemyInstance[];
   allyCorpses: SummonedAlly[];
   popups: DamagePopup[];
+  /** Dialog barks (sibling channel — not damage popups). */
+  barks: CombatBark[];
+  /**
+   * Recent non-death bark pushes for the ~100ms global window
+   * ({ start, priority } kept so we can keep top-2 by priority).
+   */
+  barkWindow: { at: number; priority: number }[];
   /** Spell/skill name banner (top window). */
   banner: string | null;
   bannerUntil: number;
@@ -427,6 +464,8 @@ export function createScene(state: CombatState): CombatScene {
     enemyCorpses: [],
     allyCorpses: [],
     popups: [],
+    barks: [],
+    barkWindow: [],
     banner: null,
     bannerUntil: 0,
     bannerStart: 0,
@@ -566,6 +605,51 @@ function pushPopup(
     start: now,
     big,
   });
+}
+
+/**
+ * Push a dialog bark above an actor. Live-anchored by actorId at draw time.
+ * Respects mute, per-actor replace/drop, death-exempt global window.
+ */
+export function pushBark(
+  scene: CombatScene,
+  opts: { actorId: string; trigger: BarkTrigger; text: string },
+  now: number
+): boolean {
+  if (!barksEnabled) return false;
+  // Char-based pathological guard (draw also clamps). ~11px/char at 19px FF36.
+  if (opts.text.length * 11 > BARK_MAX_WIDTH_PX + 40) return false;
+
+  const priority = BARK_PRIORITY[opts.trigger];
+  const existing = scene.barks.find((b) => b.actorId === opts.actorId);
+  if (existing) {
+    if (priority <= existing.priority) return false;
+    scene.barks = scene.barks.filter((b) => b.actorId !== opts.actorId);
+  }
+
+  if (opts.trigger !== "death") {
+    scene.barkWindow = scene.barkWindow.filter((e) => now - e.at <= BARK_WINDOW_MS);
+    const inWindow = scene.barkWindow.length;
+    if (inWindow >= BARK_GLOBAL_CAP) {
+      const minPri = Math.min(...scene.barkWindow.map((e) => e.priority));
+      if (priority <= minPri) return false;
+      // Drop one lowest-priority window slot to make room.
+      const dropAt = scene.barkWindow.findIndex((e) => e.priority === minPri);
+      if (dropAt >= 0) scene.barkWindow.splice(dropAt, 1);
+    }
+    scene.barkWindow.push({ at: now, priority });
+  }
+
+  const rate = Math.max(1, scene.playbackRate || 1);
+  scene.barks.push({
+    text: opts.text,
+    actorId: opts.actorId,
+    start: now,
+    color: BARK_COLOR,
+    priority,
+    durationMs: BARK_DURATION_BASE / rate,
+  });
+  return true;
 }
 
 /** Trigger hurt anim + popup on a target at impact. */
@@ -1599,6 +1683,12 @@ export function playTurn(
   let approachedId: string | null = null;
   let approachedKind: SceneCursor["kind"] | null = null;
 
+  // Reserve enough tail time for a killing-blow death bark to actually be
+  // read, even when it's the last event of the turn — otherwise playback
+  // completes (and the round/turn advances, or the victory screen appears)
+  // while the line is still mid-bounce (spec 2026-07-26 §10).
+  let lastDeathBarkVisibleUntil = 0;
+
   const approach = (actorId: string): void => {
     const actor = findActor(scene, actorId, w, h);
     if (!actor) return;
@@ -2126,6 +2216,14 @@ export function playTurn(
 
       case "defeated": {
         const targetId = evt.targetId;
+        // A death bark for this actor (if picked) is always the very next
+        // event — combat-eor.ts emits it immediately after "defeated".
+        const barkEvt = events[evtIndex + 1];
+        const hasDeathBark =
+          !!barkEvt &&
+          barkEvt.type === "bark" &&
+          barkEvt.trigger === "death" &&
+          barkEvt.actorId === targetId;
         steps.push(
           step(t, (sc, n) => {
             const actor = findActor(sc, targetId, w, h);
@@ -2133,17 +2231,24 @@ export function playTurn(
             const a = getAnim(sc, kind, targetId, n);
             setAnimState(a, "death", n);
             // Enemies and summoned allies fade out after the death plays;
-            // KO'd party members hold the death pose.
+            // KO'd party members hold the death pose. A death bark on this
+            // actor holds the fade so the corpse (and its live anchor) stay
+            // available until the line has had time to read (spec 2026-07-26).
             if (kind !== "party") {
-              a.fadeOutStart = n + 450;
+              a.fadeOutStart = n + 450 + (hasDeathBark ? BARK_DURATION_BASE : 0);
             }
           })
         );
         // Consecutive "defeated" events (e.g. an AoE wiping several enemies
         // at once) should all play their death animations together instead
         // of staggering — only advance the clock after the last one in the
-        // run so they share the same start time.
-        const nextEvt = events[evtIndex + 1];
+        // run so they share the same start time. A death bark for this actor
+        // sits between this "defeated" and the next one in the array; skip
+        // over it when checking whether the run continues, or a bark on the
+        // first of several simultaneous deaths would stagger the rest.
+        let peek = evtIndex + 1;
+        while (events[peek]?.type === "bark") peek++;
+        const nextEvt = events[peek];
         if (!nextEvt || nextEvt.type !== "defeated") {
           t += evt.wasEnemy ? DEATH_FADE_MS : 450;
         }
@@ -2281,13 +2386,39 @@ export function playTurn(
         t += 500;
         break;
       }
+
+      case "bark": {
+        const delay = evt.trigger === "heavyHit" ? 180 : 0;
+        const barkEvt = evt;
+        const startAt = t + delay;
+        steps.push(
+          step(startAt, (sc, n) => {
+            pushBark(
+              sc,
+              { actorId: barkEvt.actorId, trigger: barkEvt.trigger, text: barkEvt.text },
+              n
+            );
+          })
+        );
+        if (barkEvt.trigger === "death") {
+          // Reserve time up to roughly where the bark's own fade begins
+          // (t≈0.8 of its duration) so a killing-blow line reads even when
+          // it's the last event of the turn.
+          lastDeathBarkVisibleUntil = Math.max(
+            lastDeathBarkVisibleUntil,
+            startAt + Math.round(BARK_DURATION_BASE * 0.8)
+          );
+        }
+        break;
+      }
     }
   }
 
   returnHome();
 
-  // Give trailing popups a beat to play out.
-  const duration = t + 260;
+  // Give trailing popups a beat to play out. A trailing death bark can push
+  // this further out than the default 260ms tail (see lastDeathBarkVisibleUntil).
+  const duration = Math.max(t + 260, lastDeathBarkVisibleUntil);
   scene.choreo = { start: now, duration, steps };
   return duration;
 }
@@ -2311,6 +2442,8 @@ export function skipPlaybackToEnd(scene: CombatScene, now: number): void {
     }
   }
   scene.choreo = null;
+  scene.barks = [];
+  scene.barkWindow = [];
 }
 
 /**
@@ -2377,6 +2510,7 @@ export function updateScene(scene: CombatScene, now: number): void {
 
   // Expire popups and effects.
   scene.popups = scene.popups.filter((p) => now - p.start < POPUP_DURATION);
+  scene.barks = scene.barks.filter((b) => now - b.start < b.durationMs);
   scene.effects = scene.effects.filter((e) => now - e.start < e.duration);
 
   // Update particles.
@@ -3066,6 +3200,42 @@ function drawParticles(ctx: CanvasRenderingContext2D, scene: CombatScene): void 
   }
 }
 
+/** Dialog barks — live-anchored above the speaker, drawn last. */
+function drawBarks(
+  ctx: CanvasRenderingContext2D,
+  scene: CombatScene,
+  now: number,
+  w: number,
+  h: number
+): void {
+  if (!barksEnabled) return;
+  ctx.font = `19px "FF36", monospace`;
+  for (const b of scene.barks) {
+    const actor = findActor(scene, b.actorId, w, h);
+    if (!actor) continue;
+    const anim = getAnim(scene, actor.kind, b.actorId, now);
+    if (anim.opacity <= 0) continue;
+    const off = animOffset(anim, now);
+    const x = actor.x + off.x;
+    const y = actor.y + off.y - 36 * actor.scale;
+    const metrics = ctx.measureText(b.text);
+    if (metrics.width > BARK_MAX_WIDTH_PX) continue;
+
+    const t = Math.min(1, (now - b.start) / b.durationMs);
+    const alpha = t > 0.8 ? 1 - (t - 0.8) / 0.2 : 1;
+    const dy = popupOffsetY(t);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = "center";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#14110d";
+    ctx.strokeText(b.text, x, y + dy);
+    ctx.fillStyle = b.color;
+    ctx.fillText(b.text, x, y + dy);
+    ctx.restore();
+  }
+}
+
 /** FF6-style bouncing damage popups. */
 function drawPopups(ctx: CanvasRenderingContext2D, scene: CombatScene, now: number): void {
   for (const p of scene.popups) {
@@ -3328,6 +3498,7 @@ export function renderScene(
   drawEffects(ctx, scene, now);
   drawParticles(ctx, scene);
   drawPopups(ctx, scene, now);
+  drawBarks(ctx, scene, now, w, h);
 
   // Banner window (top center). Round number now lives in the enemy-column
   // header of the unified footer window, not a separate canvas pill.

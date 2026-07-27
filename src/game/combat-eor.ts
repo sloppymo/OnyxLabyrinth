@@ -12,6 +12,7 @@ import { perksForCharacter } from "./perks";
 import { addStatus, findEnemy, observeAffinity } from "./combat-shared";
 import { checkSpotHidden } from "./combat-ai";
 import { tickTechniqueBuffs } from "./combat-techniques";
+import { maybeEmitBark, enemyDefIdFromInstance } from "./combat-barks";
 import type { CombatEvent, CombatState, Rng, Row } from "./combat-types";
 
 /** Remove summoned allies that have been reduced to 0 HP. */
@@ -42,11 +43,23 @@ export function deathCheck(
       c.status = c.status.filter((st) => st === "knockedOut");
       delete s.paralysisTimers[c.id];
       emit(`${c.name} is knocked out!`, { type: "defeated", targetId: c.id, wasEnemy: false });
+      maybeEmitBark(s, emit, {
+        trigger: "death",
+        actorId: c.id,
+        classId: c.class,
+        isParty: true,
+      });
     }
   }
   s.enemies.front = s.enemies.front.filter((e) => {
     if (e.currentHp <= 0) {
       emit(`${e.name} is destroyed.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
+      maybeEmitBark(s, emit, {
+        trigger: "death",
+        actorId: e.instanceId,
+        enemyDefId: enemyDefIdFromInstance(e),
+        isParty: false,
+      });
       s.goldEarned += e.gold || 0;
       s.xpEarned += e.xp || 0;
       s.justDied.push({ ...e, status: [...e.status] });
@@ -57,6 +70,12 @@ export function deathCheck(
   s.enemies.back = s.enemies.back.filter((e) => {
     if (e.currentHp <= 0) {
       emit(`${e.name} is destroyed.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
+      maybeEmitBark(s, emit, {
+        trigger: "death",
+        actorId: e.instanceId,
+        enemyDefId: enemyDefIdFromInstance(e),
+        isParty: false,
+      });
       s.goldEarned += e.gold || 0;
       s.xpEarned += e.xp || 0;
       s.justDied.push({ ...e, status: [...e.status] });
