@@ -4,7 +4,7 @@
  * endRound. The underlying math is shared with resolveCombatRound (covered
  * by combat.test.ts); these tests cover the per-turn sequencing contracts.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   beginRound,
   resolvePlayerTurn,
@@ -1531,6 +1531,22 @@ describe("new floor 4-5 enemy tier — combat smoke", () => {
     // alongside two other back-row abilities; a long-enough soak makes it
     // overwhelmingly likely to be picked at least once if the wiring works.
     const state = makeState([realEnemyInstance("cistern-wraith")]);
+    // makeParty rolls stats with unseeded Math.random() (3d6, no injectable
+    // rng), making this soak's outcome depend on global Math.random() state
+    // shared with unrelated tests in the same process — both because a low
+    // VIT roll could let the party wipe before ice-shards' turnInterval
+    // condition and weighted selection line up within 24 rounds, and
+    // because AGI feeds initiative order, which can shift how many of the
+    // scripted rng() values below land on enemy-AI decisions vs. player
+    // actions each round. Pin every stat so the only remaining randomness
+    // is the scripted seqRng. Confirmed mechanism: at makeParty's Math.random
+    // floor (see the regression test below), the party wipes by round 6 —
+    // it's the early-wipe path, not the initiative one, that manifests.
+    for (const c of state.party) {
+      c.stats = { str: 10, vit: 20, agi: 10, int: 10, pie: 10, luk: 10 };
+      c.maxHp = 500;
+      c.hp = 500;
+    }
     const rng = seqRng([0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 0.5, 0.3]);
     const s = soakRounds(state, rng, 24);
     assertNoInvalidState(s);
@@ -1538,6 +1554,31 @@ describe("new floor 4-5 enemy tier — combat smoke", () => {
       (e) => e?.type === "cast" && e.spellId === "ice-shards"
     );
     expect(firedIceShards).toBe(true);
+  });
+
+  it("ice-shards still fires even at makeParty's Math.random floor (minimum 3d6 rolls)", () => {
+    // Regression guard for the fix above: forces Math.random() to 0 for the
+    // whole scenario — the worst case pre-fix (VIT 3, maxHp ~= class hpBonus
+    // + 6) that wiped the party by round 6, well before ice-shards' every-2
+    // condition and weighted selection had enough rounds to line up.
+    // combat resolution itself never calls Math.random (only the injected
+    // rng), so this isolates makeParty's stat rolls as the only thing being
+    // stressed; the pin below makes the outcome unaffected either way.
+    const spy = vi.spyOn(Math, "random").mockReturnValue(0);
+    try {
+      const state = makeState([realEnemyInstance("cistern-wraith")]);
+      for (const c of state.party) {
+        c.stats = { str: 10, vit: 20, agi: 10, int: 10, pie: 10, luk: 10 };
+        c.maxHp = 500;
+        c.hp = 500;
+      }
+      const rng = seqRng([0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 0.5, 0.3]);
+      const s = soakRounds(state, rng, 24);
+      assertNoInvalidState(s);
+      expect(s.events.some((e) => e?.type === "cast" && e.spellId === "ice-shards")).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("headmasters-echo-remnant (floor 4) runs real combat rounds without throwing", () => {
