@@ -81,10 +81,12 @@ const COLORS = {
 /** Party sprite draw size at scale 1.0 (near row). Frames are 100×100 but
  *  character art only fills ~40% of the frame, so draw large. */
 const PARTY_SIZE = 300;
-/** Enemy sprite draw size at scale 1.0. */
-const ENEMY_SIZE = 340;
-/** Boss sprites tower over regular enemies (at scale 1.0). */
-const BOSS_SIZE = 480;
+/** Enemy sprite draw size at scale 1.0. Matched to PARTY_SIZE so dense
+ *  packs overlap less in the left cascade (visual-design-pass follow-up). */
+const ENEMY_SIZE = 300;
+/** Boss sprites still tower over trash (~33% larger), but smaller than the
+ *  old 480 so a zipper neighbor remains readable. */
+const BOSS_SIZE = 400;
 
 export type ActorScreenPos = {
   x: number;
@@ -1403,8 +1405,15 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   },
   "mage-spark": {
     color: "#d0e8ff",
-    projectile: "px_magic_ray",
-    projectileScale: 2.8,
+    // px_magic_ray (visual-design-pass 2026-07-27 item 5) is wired correctly
+    // but the source asset itself is a flat gradient band with no bolt
+    // silhouette — it reads as a color swatch, not lightning, at any scale.
+    // lightning_blast is a real jagged-fork bolt strip, already horizontal
+    // (54x18 native, vs. px_ sprites' 16x16 square), already used as the
+    // generic "lightning" element's projectile — reused here instead of
+    // authoring new art.
+    projectile: "lightning_blast",
+    projectileScale: 1.8,
     projectilePath: "riseDash",
     riseFrac: 0.54,
     riseLift: 62,

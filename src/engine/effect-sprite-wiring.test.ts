@@ -137,7 +137,9 @@ describe("effect sprite wiring", () => {
   it("mp_*_full charges and ray projectiles are wired", () => {
     expect(resolveEffectStyle("mage-fireball").charge).toBe("mp_fire_bomb_full");
     expect(resolveEffectStyle("mage-spark").charge).toBe("mp_spark_full");
-    expect(resolveEffectStyle("mage-spark").projectile).toBe("px_magic_ray");
+    // lightning_blast (a real jagged-bolt strip), not px_magic_ray (a flat
+    // gradient band with no silhouette — visual-design-pass 2026-07-27).
+    expect(resolveEffectStyle("mage-spark").projectile).toBe("lightning_blast");
     expect(resolveEffectStyle("mage-disintegrate").charge).toBe("mp_dark_bolt_full");
     expect(resolveEffectStyle("mage-disintegrate").projectile).toBe("px_black_white_ray");
     expect(resolveEffectStyle("mage-ember").projectile).toBe("fireball");

@@ -263,7 +263,7 @@ describe("x-bounds invariant (sprites stay on canvas)", () => {
     ).toThrow(/x-bounds/);
   });
 
-  it("BOSS_SIZE (480, see combat-scene.ts) fits the back row; nearest front slot does not", () => {
+  it("BOSS_SIZE (400, see combat-scene.ts) fits the back row; nearest front slot does not", () => {
     // Bosses always draw at BOSS_SIZE regardless of which slot table
     // resolves their position (enemySlot() is size-unaware). Encounter
     // data guards bosses into the back row only (see enemies.test.ts
@@ -271,7 +271,7 @@ describe("x-bounds invariant (sprites stay on canvas)", () => {
     // proves that guard is load-bearing for the nearest cascade slot.
     // Mid-cascade front slots may still clear BOSS_SIZE after the zipper
     // redesign (they share the same left column); the near end does not.
-    const BOSS_SIZE = 480;
+    const BOSS_SIZE = 400;
     for (const id of allBackdropIds()) {
       const geo = BACKDROP_GEOMETRY[id]!;
       expect(() =>
@@ -302,7 +302,7 @@ describe("x-bounds invariant (sprites stay on canvas)", () => {
         assertSlotsInXBounds(
           [...ENEMY_FORMATION_SLOTS, ...ALLY_FORMATION_SLOTS],
           geo,
-          { spriteWidth: 340, margin }
+          { spriteWidth: 300, margin }
         )
       ).not.toThrow();
     }

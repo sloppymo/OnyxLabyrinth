@@ -387,7 +387,9 @@ const EFFECT_STRIPS: Record<string, EffectStrip> = {
   px_black_white_sparks: { name: "px_black_white_sparks", url: "pixelart-black-white-sparks.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
   px_darkness_bolt: { name: "px_darkness_bolt", url: "pixelart-darkness-bolt.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
   px_magic_orb: { name: "px_magic_orb", url: "pixelart-magic-orb.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
-  px_magic_ray: { name: "px_magic_ray", url: "pixelart-magic-ray.png", frameWidth: 16, frameHeight: 16, frameCount: 8, fps: 12 },
+  // px_magic_ray (pixelart-magic-ray.png) removed 2026-07-27: the source
+  // asset is a flat gradient band, not a bolt — see mage-spark's override
+  // in combat-scene.ts for the lightning_blast replacement.
   px_plant_missle: { name: "px_plant_missle", url: "pixelart-plant-missle.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
   px_pure_bolt_2: { name: "px_pure_bolt_2", url: "pixelart-pure-bolt-2.png", frameWidth: 16, frameHeight: 16, frameCount: 6, fps: 12 },
   px_rock_sling: { name: "px_rock_sling", url: "pixelart-rock-sling.png", frameWidth: 16, frameHeight: 16, frameCount: 1, fps: 0 },

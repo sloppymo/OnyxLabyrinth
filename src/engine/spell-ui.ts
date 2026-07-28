@@ -35,6 +35,7 @@ export class SpellMenuController {
     this.onClose = opts.onClose;
     this.options = utilityCastOptions(this.state);
     this.panel.style.display = "flex";
+    this.panel.classList.add("bg-overlay-dim");
     this.render();
   }
 
@@ -68,6 +69,7 @@ export class SpellMenuController {
 
   private close(message: string): void {
     this.panel.style.display = "none";
+    this.panel.classList.remove("bg-overlay-dim");
     this.panel.innerHTML = "";
     this.onClose(message);
   }

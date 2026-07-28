@@ -248,6 +248,39 @@ describe("TownController temple Remove Curse", () => {
   });
 });
 
+describe("TownController inn/temple roster summary", () => {
+  // visual-design-pass 2026-07-27: a 5th per-character field (XP) pushed
+  // guild-char rows past the standalone window's width, wrapping onto an
+  // orphan line that read as a stray duplicate stat. Inn/Temple only need to
+  // confirm rest worked — Guild -> Status/Progress already covers XP.
+  it("Inn roster shows name/class/HP/SP but no XP field", () => {
+    const state = createGameState(FLOORS[0]);
+    const ctrl = makeTown(state);
+    ctrl.handleKey("i");
+
+    const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
+    const cards = panel.querySelectorAll(".guild-char");
+    expect(cards.length).toBe(state.party.length);
+    for (const card of cards) {
+      expect(card.querySelector(".gc-hp")).not.toBeNull();
+      expect(card.querySelector(".gc-sp")).not.toBeNull();
+      expect(card.querySelector(".gc-xp")).toBeNull();
+    }
+  });
+
+  it("Temple roster shows name/class/HP/SP but no XP field", () => {
+    const ctrl = makeTown();
+    ctrl.handleKey("+");
+
+    const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
+    const cards = panel.querySelectorAll(".guild-char");
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      expect(card.querySelector(".gc-xp")).toBeNull();
+    }
+  });
+});
+
 describe("TownController shop depth gate", () => {
   function buyListIds(ctrl: TownController): string[] {
     const list = (ctrl as unknown as { getShopBuyList(): { id: string; dropFloorTier?: number }[] })

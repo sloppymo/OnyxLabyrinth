@@ -94,8 +94,8 @@ describe("encounter table integrity", () => {
   });
 
   it("never places a boss-flagged enemy in the front row", () => {
-    // Boss sprites draw at BOSS_SIZE (480px, see combat-scene.ts). The
-    // nearest enemy cascade slot is only wide enough for ENEMY_SIZE (340px)
+    // Boss sprites draw at BOSS_SIZE (400px, see combat-scene.ts). The
+    // nearest enemy cascade slot is only wide enough for ENEMY_SIZE (300px)
     // — a boss planted there would draw off the left edge. Back-row slots
     // are verified boss-safe in combat-scene-math.test.ts; keep bosses in
     // the back row so they land on those far/mid cascade positions.

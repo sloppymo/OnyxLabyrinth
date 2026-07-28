@@ -1702,14 +1702,17 @@ export class TownController {
     for (const c of this.state.party) {
       const hpPct = Math.round((c.hp / c.maxHp) * 100);
       const spPct = c.maxSp > 0 ? Math.round((c.sp / c.maxSp) * 100) : 100;
-      const xpNeeded = xpForNextLevel(c.level);
+      // No XP field here (unlike the Guild roster): this row only needs to
+      // confirm rest worked, and a 5th field pushed rows past the standalone
+      // window's width, wrapping onto an orphan line that read as a stray
+      // duplicate stat (visual-design-pass 2026-07-27 finding). XP is still
+      // fully visible on Guild -> Status/Progress, one click from town main.
       lines.push(
         `<div class="guild-char">` +
           `<span class="gc-name">${c.name}</span>` +
           `<span class="gc-class">Lv${c.level} ${c.class}</span>` +
           `<span class="gc-hp">HP ${c.hp}/${c.maxHp} (${hpPct}%)</span>` +
           `<span class="gc-sp">SP ${c.sp}/${c.maxSp} (${spPct}%)</span>` +
-          `<span class="gc-xp">XP ${c.xp}/${xpNeeded}</span>` +
           `</div>`
       );
     }

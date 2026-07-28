@@ -302,6 +302,8 @@ export function showMode(mode: GameMode, mapVisible: boolean): void {
   combatPanel.style.display = usesDomPanel ? "flex" : "none";
   combatPanel.classList.toggle("ff6-menu-host", usesDomPanel);
   combatPanel.classList.toggle("party-create-host", mode === "party_creation");
+  combatPanel.classList.toggle("bg-town", mode === "town");
+  combatPanel.classList.toggle("bg-arena", mode === "arena");
   combatWrap.style.display = isCombat ? "block" : "none";
   mapCanvas.style.display = isDungeon && mapVisible ? "block" : "none";
 

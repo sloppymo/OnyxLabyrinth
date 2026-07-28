@@ -223,7 +223,6 @@ canvas#map-canvas {
   padding: 32px 36px;
   border: 3px solid #e8e8f0;
   border-radius: 8px;
-  background: linear-gradient(180deg, #101a48 0%, #0a1234 45%, #060a20 100%);
   box-shadow:
     inset 0 0 0 1px #5068c8,
     inset 0 0 0 2px #1a2458,
@@ -233,6 +232,91 @@ canvas#map-canvas {
   line-height: 1.45;
   white-space: normal;
   overflow: auto;
+
+  /* Shared "field behind the window" backdrop (visual-design-pass 2026-07-27
+     item 1): every out-of-combat screen used to be this same blue window on
+     pure black. Base is a muted ochre-umber-slate torch-lit chamber; per-mode
+     modifier classes below just retint the three custom properties rather
+     than repeating the gradient stack. Only background-position is animated
+     (never opacity/filter), so the drift can never dim the FF6Window content
+     stacked on top of it. */
+  --field-glow-1: rgba(224, 164, 88, 0.24);
+  --field-glow-2: rgba(120, 90, 50, 0.16);
+  --field-glow-3: rgba(90, 80, 70, 0.12);
+  --field-top: #241e17;
+  --field-mid: #16120c;
+  --field-bottom: #0b0906;
+  background-color: var(--field-bottom);
+  background-repeat: no-repeat;
+  background-image:
+    radial-gradient(ellipse 70% 40% at 50% 0%, var(--field-glow-1), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 10% 100%, var(--field-glow-2), transparent 65%),
+    radial-gradient(ellipse 90% 60% at 90% 100%, var(--field-glow-3), transparent 65%),
+    linear-gradient(180deg, var(--field-top) 0%, var(--field-mid) 55%, var(--field-bottom) 100%);
+  animation: field-torch-drift 10s ease-in-out infinite;
+}
+
+@keyframes field-torch-drift {
+  0%,
+  100% {
+    background-position:
+      50% 0%,
+      10% 100%,
+      90% 100%,
+      0 0;
+  }
+  50% {
+    background-position:
+      50% 3%,
+      13% 97%,
+      87% 97%,
+      0 0;
+  }
+}
+
+/* Title: darkest/most vignetted variant — first frame a player sees, sells
+   mood without needing the window text. */
+#combat-panel.bg-title {
+  --field-glow-1: rgba(200, 140, 70, 0.16);
+  --field-glow-2: rgba(40, 30, 22, 0.4);
+  --field-glow-3: rgba(18, 15, 12, 0.5);
+  --field-top: #17130e;
+  --field-mid: #0d0a07;
+  --field-bottom: #050403;
+}
+
+/* Town (Edgehollow): warmer, brighter hearth-glow — a place, not a void. */
+#combat-panel.bg-town {
+  --field-glow-1: rgba(232, 178, 100, 0.3);
+  --field-glow-2: rgba(150, 110, 60, 0.2);
+  --field-glow-3: rgba(110, 95, 80, 0.14);
+  --field-top: #2f2419;
+  --field-mid: #1c150e;
+  --field-bottom: #100b07;
+}
+
+/* Arena: cool cyan-slate, echoing the boss arena's sparkle backdrop instead
+   of the amber town/dungeon palette — same field language, different room. */
+#combat-panel.bg-arena {
+  --field-glow-1: rgba(120, 200, 210, 0.2);
+  --field-glow-2: rgba(60, 130, 140, 0.14);
+  --field-glow-3: rgba(30, 60, 70, 0.16);
+  --field-top: #12211f;
+  --field-mid: #0b1614;
+  --field-bottom: #05100e;
+}
+
+/* Save menu / grimoire: a dimmer, frozen read of whatever field is already
+   behind them — these overlays borrow the current place, they don't invent
+   a new one, so no drift and a much quieter glow. */
+#combat-panel.bg-overlay-dim {
+  --field-glow-1: rgba(180, 140, 90, 0.1);
+  --field-glow-2: rgba(80, 70, 60, 0.08);
+  --field-glow-3: rgba(60, 55, 50, 0.08);
+  --field-top: #17130f;
+  --field-mid: #0f0c09;
+  --field-bottom: #080604;
+  animation: none;
 }
 
 #combat-canvas {
@@ -1002,6 +1086,30 @@ canvas#map-canvas {
   align-items: stretch;
   padding: 16px 20px;
   gap: 0;
+}
+
+/* Party-choice items ("Default Party" / "Create Your Own") pair a short
+   label with a full descriptive sentence, not a stat value — the shared
+   .ff6-sel-detail sizing (built for combat forecasts / spell-cost columns)
+   clipped it mid-word ("Build four adventu…") with visible room to spare.
+   Stack label/detail instead of squeezing both onto one row. */
+#combat-panel.party-create-host .ff6-selection-list .ff6-menu-item {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  white-space: normal;
+}
+
+#combat-panel.party-create-host .ff6-sel-detail {
+  max-width: none;
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: left;
 }
 
 /* --- New Game prologue (SNES-style black narration) -------------------- */

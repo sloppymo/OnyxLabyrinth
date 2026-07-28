@@ -70,6 +70,7 @@ export class SaveController {
     this.modeBeforeSave = opts.modeBeforeSave ?? "dungeon";
     this.metas = getAllSlotMetas();
     this.panel.style.display = "flex";
+    this.panel.classList.add("bg-overlay-dim");
     this.render();
   }
 
@@ -271,6 +272,7 @@ export class SaveController {
 
   private dispose(): void {
     this.panel.style.display = "none";
+    this.panel.classList.remove("bg-overlay-dim");
     this.panel.innerHTML = "";
   }
 

@@ -2299,7 +2299,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
         return p.x >= half + 4 && p.x <= w - half - 4;
       });
       const enemyXOk = enemies.every((p) => {
-        const half = (340 * p.scale) / 2;
+        const half = (300 * p.scale) / 2;
         return p.x >= half + 4 && p.x <= w - half - 4;
       });
       const xBoundsOk = partyXOk && enemyXOk;

@@ -54,6 +54,7 @@ export class TitleController {
     this.items.push({ key: "arena", label: "Arena", icon: "[A]" });
 
     this.panel.style.display = "flex";
+    this.panel.classList.add("bg-title");
     this.render();
   }
 
@@ -104,6 +105,7 @@ export class TitleController {
   private select(): void {
     const item = this.items[this.selectedIndex];
     this.panel.style.display = "none";
+    this.panel.classList.remove("bg-title");
     this.panel.innerHTML = "";
     if (item.key === "continue" && this.loaded) {
       this.onContinue(this.loaded);
