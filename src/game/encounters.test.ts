@@ -12,7 +12,6 @@ import {
   adjustArenaEncounterForSmallParty,
 } from "./encounters";
 import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
-import { CLASSIC_FOUR_PARTY_SIZE } from "./party";
 
 describe("encounterRollChance", () => {
   it("returns 0 during cooldown", () => {
@@ -92,17 +91,10 @@ describe("rollArenaEncounter", () => {
 });
 
 describe("adjustArenaEncounterForSmallParty", () => {
-  it("leaves six-member packs unchanged", () => {
-    const entry = ENCOUNTER_TABLES[3]![0]!;
-    expect(entry.spawns.length).toBeGreaterThanOrEqual(3);
-    const adjusted = adjustArenaEncounterForSmallParty(entry, 6);
-    expect(adjusted.spawns).toEqual(entry.spawns);
-  });
-
-  it("drops one spawn from packs of 3+ for Classic Four", () => {
+  it("drops one spawn from packs of 3+ for Arena's 4-person party", () => {
     const entry = ENCOUNTER_TABLES[5]![0]!;
     expect(entry.spawns.length).toBeGreaterThanOrEqual(3);
-    const adjusted = adjustArenaEncounterForSmallParty(entry, CLASSIC_FOUR_PARTY_SIZE);
+    const adjusted = adjustArenaEncounterForSmallParty(entry);
     expect(adjusted.spawns).toHaveLength(entry.spawns.length - 1);
     expect(adjusted.spawns).toEqual(entry.spawns.slice(0, -1));
   });
@@ -110,7 +102,7 @@ describe("adjustArenaEncounterForSmallParty", () => {
   it("does not trim two-enemy packs", () => {
     const twoPack = ENCOUNTER_TABLES[1]!.find((e) => e.spawns.length === 2);
     expect(twoPack).toBeDefined();
-    const adjusted = adjustArenaEncounterForSmallParty(twoPack!, CLASSIC_FOUR_PARTY_SIZE);
+    const adjusted = adjustArenaEncounterForSmallParty(twoPack!);
     expect(adjusted.spawns).toEqual(twoPack!.spawns);
   });
 });

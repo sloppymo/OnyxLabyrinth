@@ -445,16 +445,14 @@ describe("weapon range system", () => {
       expect(canReach(3, "long", "back")).toBe(true);  // Back row, back target
     });
 
-    it("all front row positions (0-2) behave the same", () => {
+    it("all front row positions (0-1) behave the same", () => {
       expect(canReach(0, "short", "back")).toBe(true);
       expect(canReach(1, "short", "back")).toBe(true);
-      expect(canReach(2, "short", "back")).toBe(true);
     });
 
-    it("all back row positions (3-5) behave the same", () => {
+    it("all back row positions (2-3) behave the same", () => {
+      expect(canReach(2, "short", "back")).toBe(false);
       expect(canReach(3, "short", "back")).toBe(false);
-      expect(canReach(4, "short", "back")).toBe(false);
-      expect(canReach(5, "short", "back")).toBe(false);
     });
   });
 });

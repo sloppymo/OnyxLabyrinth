@@ -175,7 +175,10 @@ describe("CombatController input routing", () => {
     controller.destroy();
   });
 
-  it("Move slides immediately when the back row has room", () => {
+  it("Move opens a swap selection in a standard 4-person party (no row ever has room)", () => {
+    // Front and back are always exactly 2/2 for the game's fixed 4-person
+    // party, so Move can never slide into an empty slot — it always offers
+    // a swap with a living ally in the opposite row.
     const party = [
       createCharacter("c0", "A", "Human", "Neutral", "Fighter", 0),
       createCharacter("c1", "B", "Human", "Neutral", "Mage", 1),
@@ -204,13 +207,20 @@ describe("CombatController input routing", () => {
     c.selectionIndex = c.selectionEntries.length - 1; // Move
     controller.handleInput({ kind: "press", button: "a" });
 
+    expect(c.phase).toBe("selectTarget");
+    expect(c.selectionIds).toEqual(["c2", "c3"]);
+
+    c.selectionIndex = 0; // swap with c2
+    controller.handleInput({ kind: "press", button: "a" });
+
     expect(c.phase).toBe("playback");
-    expect(c.state.party.find((p: { id: string }) => p.id === "c0").formationSlot).toBe(3);
+    expect(c.state.party.find((p: { id: string }) => p.id === "c0").formationSlot).toBe(2);
+    expect(c.state.party.find((p: { id: string }) => p.id === "c2").formationSlot).toBe(0);
     expect(c.lastCommandByActor.has("c0")).toBe(false);
     controller.destroy();
   });
 
-  it("Move opens a swap selection when the other row is full, then swaps", () => {
+  it("Move offers every living back-row ally as a swap target in a larger party", () => {
     const party = Array.from({ length: 6 }, (_, i) =>
       createCharacter(`c${i}`, `P${i}`, "Human", "Neutral", i < 3 ? "Fighter" : "Mage", i)
     );
@@ -227,14 +237,14 @@ describe("CombatController input routing", () => {
     controller.handleInput({ kind: "press", button: "a" });
 
     expect(c.phase).toBe("selectTarget");
-    expect(c.selectionIds).toEqual(["c3", "c4", "c5"]);
+    expect(c.selectionIds).toEqual(["c2", "c3", "c4", "c5"]);
 
-    c.selectionIndex = 0; // swap with c3
+    c.selectionIndex = 0; // swap with c2
     controller.handleInput({ kind: "press", button: "a" });
 
     expect(c.phase).toBe("playback");
-    expect(c.state.party.find((p: { id: string }) => p.id === "c0").formationSlot).toBe(3);
-    expect(c.state.party.find((p: { id: string }) => p.id === "c3").formationSlot).toBe(0);
+    expect(c.state.party.find((p: { id: string }) => p.id === "c0").formationSlot).toBe(2);
+    expect(c.state.party.find((p: { id: string }) => p.id === "c2").formationSlot).toBe(0);
     controller.destroy();
   });
 
@@ -254,8 +264,10 @@ describe("CombatController input routing", () => {
 
     controller.handleKey("v");
 
-    expect(c.phase).toBe("playback");
-    expect(c.state.party.find((p: { id: string }) => p.id === "c0").formationSlot).toBe(3);
+    // Standard 4-person party: both rows are already full, so the shortcut
+    // opens the swap picker rather than sliding immediately.
+    expect(c.phase).toBe("selectTarget");
+    expect(c.selectionIds).toEqual(["c2", "c3"]);
     controller.destroy();
   });
 

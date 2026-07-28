@@ -27,6 +27,7 @@
  */
 
 import type { Character } from "./party";
+import { sortPartyByFormation } from "./party";
 import type { EnemyDef, Row } from "../data/enemies";
 import type { SpellDef } from "../data/spells";
 import type { ItemDef } from "../data/items";
@@ -48,7 +49,6 @@ import type {
   TurnQueueEntry,
 } from "./combat-types";
 import { inventoryToCounts } from "./combat-inventory";
-import { activePartyForCombat } from "./active-roster";
 import { resetBarkRngForCombat } from "./combat-barks";
 import {
   effStatsFor,
@@ -156,13 +156,9 @@ export function createCombatFromEncounter(
   items: Record<string, ItemDef>,
   loadout: Record<string, Loadout>,
   inventory: readonly (string | { itemId: string })[] = [],
-  inAntimagic = false,
-  activeCharIds?: readonly string[]
+  inAntimagic = false
 ): CombatState {
-  const fighters = activePartyForCombat(
-    party,
-    activeCharIds ?? party.map((c) => c.id)
-  );
+  const fighters = sortPartyByFormation(party);
   const fighterLoadout = Object.fromEntries(
     fighters.map((c) => [c.id, loadout[c.id] ?? { weapon: null, armor: [] }])
   );

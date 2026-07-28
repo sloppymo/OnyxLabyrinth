@@ -1207,7 +1207,7 @@ canvas#map-canvas {
   bottom: 0;
   z-index: 11;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   padding: 6px 8px 8px;
   box-sizing: border-box;
@@ -1219,16 +1219,6 @@ canvas#map-canvas {
   );
   font-family: var(--game-font);
   pointer-events: none;
-}
-
-.ps-char.bench {
-  opacity: 0.45;
-}
-
-.ps-char.bench .ps-name::after {
-  content: " · bench";
-  font-size: 0.85em;
-  opacity: 0.85;
 }
 
 .ps-char {

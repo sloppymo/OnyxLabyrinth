@@ -89,7 +89,6 @@ export interface Snapshot {
     pendingTrap: PendingTrap | null;
   };
   party: SnapshotParty[];
-  activeCharIds: string[];
   gold: number;
   keys: string[];
   inventory: { itemId: string; identified: boolean }[];
@@ -196,7 +195,6 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
       status: [...c.status],
       perkIds: [...c.perkIds],
     })),
-    activeCharIds: [...state.activeCharIds],
     gold: state.partyGold,
     keys: [...state.keys],
     inventory: state.inventory.map((e) => ({ ...e })),

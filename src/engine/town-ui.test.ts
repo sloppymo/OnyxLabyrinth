@@ -158,6 +158,27 @@ describe("TownController roster tabs", () => {
   });
 });
 
+describe("TownController main footer party count", () => {
+  it("shows alive/total from actual party length, not a hardcoded 6", () => {
+    const state = createGameState(FLOORS[0]);
+    expect(state.party).toHaveLength(4);
+    const ctrl = makeTown(state);
+    const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
+    const footer2 = panel.querySelector(".ff6-footer2")?.textContent ?? "";
+    expect(footer2).toMatch(/^Party: 4\/4 alive/);
+    expect(footer2).not.toMatch(/6\/6/);
+  });
+
+  it("reflects a smaller party if one is somehow present", () => {
+    const state = createGameState(FLOORS[0]);
+    state.party = state.party.slice(0, 3);
+    state.party[0]!.hp = 0;
+    const ctrl = makeTown(state);
+    const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
+    expect(panel.querySelector(".ff6-footer2")?.textContent).toMatch(/^Party: 2\/3 alive/);
+  });
+});
+
 describe("TownController temple Remove Curse", () => {
   function stateWithCursedWeapon() {
     const state = createGameState(FLOORS[0]);

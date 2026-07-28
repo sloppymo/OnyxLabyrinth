@@ -7,6 +7,7 @@
 
 import type { ControllerRouteKind } from "../engine/controller-route";
 import type { GameState } from "../types";
+import { PARTY_SIZE } from "../game/party";
 import type { CombatDebugView } from "./snapshot";
 
 export interface InvariantInput {
@@ -14,9 +15,6 @@ export interface InvariantInput {
   route: ControllerRouteKind;
   combat?: CombatDebugView | null;
 }
-
-/** Party size at which the active battle roster must be exactly four. */
-const ACTIVE_ROSTER_SIZE = 4;
 
 export function checkInvariants(input: InvariantInput): string[] {
   const { state, route, combat } = input;
@@ -29,17 +27,8 @@ export function checkInvariants(input: InvariantInput): string[] {
     if (c.sp < 0) warnings.push(`${c.name}: sp ${c.sp} is negative`);
   }
 
-  const partyIds = new Set(state.party.map((c) => c.id));
-  const seen = new Set<string>();
-  for (const id of state.activeCharIds) {
-    if (!partyIds.has(id)) warnings.push(`activeCharIds references unknown character ${id}`);
-    if (seen.has(id)) warnings.push(`activeCharIds has duplicate entry ${id}`);
-    seen.add(id);
-  }
-  if (state.party.length >= ACTIVE_ROSTER_SIZE && state.activeCharIds.length !== ACTIVE_ROSTER_SIZE) {
-    warnings.push(
-      `activeCharIds has ${state.activeCharIds.length} entries; expected ${ACTIVE_ROSTER_SIZE} for a party of ${state.party.length}`
-    );
+  if (state.party.length !== PARTY_SIZE) {
+    warnings.push(`party has ${state.party.length} members; expected ${PARTY_SIZE}`);
   }
 
   // pendingTrap gates every dungeon input handler; it is meaningless (and a

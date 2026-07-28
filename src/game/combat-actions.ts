@@ -792,10 +792,11 @@ function resolveMove(
     return;
   }
 
-  // Slide into the opposite row's first empty slot.
+  // Slide into the opposite row's first empty slot. Each row holds at most
+  // 2 of the party's 4 members (formationSlot 0-1 front, 2-3 back).
   const others = s.party.filter((c) => c.id !== actor.id);
   const inRow = others.filter((c) => charRow(c) === toRow).length;
-  if (inRow >= 3) {
+  if (inRow >= 2) {
     log(`${actor.name} has no room to move to the ${toRow} row.`);
     return;
   }
@@ -804,7 +805,7 @@ function resolveMove(
     return;
   }
   others.forEach((c, i) => (c.formationSlot = i));
-  const boundary = Math.min(toRow === "front" ? inRow : 3 + inRow, others.length);
+  const boundary = Math.min(toRow === "front" ? inRow : 2 + inRow, others.length);
   others.splice(boundary, 0, actor);
   s.party = others;
   s.party.forEach((c, i) => (c.formationSlot = i));

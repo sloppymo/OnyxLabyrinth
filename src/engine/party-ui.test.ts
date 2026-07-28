@@ -1,6 +1,6 @@
 /**
  * Party creation UI — layout must keep the active editor usable as the
- * confirmed roster grows (slots 4–6 used to push fields below the fold).
+ * confirmed roster grows (later slots used to push fields below the fold).
  */
 import { describe, it, expect } from "vitest";
 import { PartyCreationController } from "./party-ui";
@@ -41,7 +41,7 @@ describe("PartyCreationController open guard", () => {
     expect(panel.textContent).toMatch(/Default Party|Quick Start|Create/i);
     ctrl.handleKey("Enter"); // swallowed — still on choice
     expect(confirmed).toBe(0);
-    expect(panel.textContent).not.toContain("Slot 1 of 6");
+    expect(panel.textContent).not.toContain("Slot 1 of 4");
     ctrl.handleKey("Enter"); // now selects Default Party (choiceIndex 0)
     expect(confirmed).toBe(1);
   });
@@ -74,11 +74,12 @@ describe("PartyCreationController editor layout", () => {
     });
     openEditor(ctrl);
 
-    // Confirm slots 1–4 so we are editing slot 5 with a long confirmed list.
-    for (let i = 0; i < 4; i++) confirmSlot(ctrl);
+    // Confirm slots 1–3 so we are editing slot 4 (the last slot) with a
+    // confirmed list already showing.
+    for (let i = 0; i < 3; i++) confirmSlot(ctrl);
 
-    expect(panel.textContent).toContain("Slot 5 of 6");
-    expect(panel.textContent).toContain("4 confirmed");
+    expect(panel.textContent).toContain("Slot 4 of 4");
+    expect(panel.textContent).toContain("3 confirmed");
 
     const editor = panel.querySelector(".party-edit");
     const confirmed = panel.querySelector(".party-confirmed");
@@ -136,11 +137,11 @@ describe("PartyCreationController editor layout", () => {
       onCancel: () => {},
     });
     openEditor(ctrl);
-    for (let i = 0; i < 4; i++) confirmSlot(ctrl);
+    for (let i = 0; i < 3; i++) confirmSlot(ctrl);
 
     const confirmed = panel.querySelector(".party-confirmed");
     expect(confirmed).not.toBeNull();
-    expect(confirmed!.querySelectorAll(".party-confirmed-chip")).toHaveLength(4);
+    expect(confirmed!.querySelectorAll(".party-confirmed-chip")).toHaveLength(3);
   });
 });
 

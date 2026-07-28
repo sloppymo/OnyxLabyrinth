@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { serialize, deserialize, autoSave, loadAutoSave } from "./save";
 import { createGameState } from "./state";
 import { FLOORS } from "../data/floors";
-import { createDefaultParty } from "./party";
+import { createDefaultParty, createCharacter } from "./party";
 import type { GameState } from "../types";
 
 describe("save serialization", () => {
@@ -253,25 +253,48 @@ describe("save serialization", () => {
     expect(restored.party[0].perkIds).not.toBe(state.party[0].perkIds);
   });
 
-  it("round-trips active battle roster ids", () => {
-    state.activeCharIds = ["c2", "c3", "c5", "c6"];
-    const json = serialize(state);
-    const restored = deserialize(json);
-    expect(restored).not.toBeNull();
-    if (!restored) return;
-    expect(restored.activeCharIds).toEqual(["c2", "c3", "c5", "c6"]);
-    expect(restored.activeCharIds).not.toBe(state.activeCharIds);
-  });
-
-  it("migrates v9 saves with default first-four active roster", () => {
+  it("migrates v13 saves: trims a 6-person roster to the 4 active members and densifies formationSlot", () => {
+    const extra1 = createCharacter("c5", "Extra1", "Human", "Neutral", "Fighter", 4);
+    const extra2 = createCharacter("c6", "Extra2", "Human", "Neutral", "Mage", 5);
     const json = serialize(state);
     const raw = JSON.parse(json) as Record<string, unknown>;
-    raw.version = 9;
-    delete raw.activeCharIds;
+    raw.version = 13;
+    const rawParty = raw.party as Array<Record<string, unknown>>;
+    rawParty.push(extra1 as unknown as Record<string, unknown>, extra2 as unknown as Record<string, unknown>);
+    raw.activeCharIds = ["c1", "c2", "c3", "c4"];
+    const rawEquipment = raw.equipment as Record<string, unknown>;
+    rawEquipment.c5 = { weapon: { id: "dagger", name: "Dagger" }, armor: [] };
+    rawEquipment.c6 = {
+      weapon: { id: "staff", name: "Staff" },
+      armor: [{ id: "robe", name: "Robe" }],
+    };
+
     const restored = deserialize(JSON.stringify(raw));
     expect(restored).not.toBeNull();
     if (!restored) return;
-    expect(restored.activeCharIds).toEqual(["c1", "c2", "c3", "c4"]);
+
+    expect(restored.party.map((c) => c.id)).toEqual(["c1", "c2", "c3", "c4"]);
+    expect(restored.party.map((c) => c.formationSlot)).toEqual([0, 1, 2, 3]);
+    expect(restored.equipment.c5).toBeUndefined();
+    expect(restored.equipment.c6).toBeUndefined();
+    const inventoryIds = restored.inventory.map((e) => e.itemId);
+    expect(inventoryIds).toContain("dagger");
+    expect(inventoryIds).toContain("staff");
+    expect(inventoryIds).toContain("robe");
+  });
+
+  it("keeps a party of 4 unchanged when migrating through v13→v14", () => {
+    const json = serialize(state);
+    const raw = JSON.parse(json) as Record<string, unknown>;
+    raw.version = 13;
+    raw.activeCharIds = (raw.party as Array<{ id: string }>).map((c) => c.id);
+    const restored = deserialize(JSON.stringify(raw));
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    expect(restored.party.map((c) => c.id)).toEqual(state.party.map((c) => c.id));
+    expect(restored.party.map((c) => c.formationSlot)).toEqual(
+      state.party.map((c) => c.formationSlot)
+    );
   });
 
   it("round-trips deepestFloorReached", () => {

@@ -10,7 +10,6 @@
 import type { FloorDef, GameMode, GameState } from "../types";
 import { cloneFloor } from "../data/floors";
 import { createDefaultParty } from "./party";
-import { defaultActiveCharIds } from "./active-roster";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { ENCOUNTER_COOLDOWN } from "./encounters";
 
@@ -50,7 +49,6 @@ export function createGameState(floor: FloorDef): GameState {
     inDarkness: false,
     inAntimagic: false,
     lastDungeon: null,
-    activeCharIds: defaultActiveCharIds(party),
     deepestFloorReached: floor.id,
     hasCompletedEnding: false,
   };

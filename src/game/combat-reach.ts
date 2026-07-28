@@ -1,7 +1,7 @@
 /**
  * Weapon-range / reach rules for the Wizardry V targeting system adapted to
- * OnyxLabyrinth's two-row formation (front row ≈ groups 1-2, back row ≈
- * groups 3-4). Pure functions — no CombatState knowledge.
+ * OnyxLabyrinth's two-row formation (front row = slots 0-1, back row =
+ * slots 2-3). Pure functions — no CombatState knowledge.
  */
 
 import type { Character } from "./party";
@@ -13,7 +13,7 @@ import type { WeaponRange } from "./combat-types";
  * Implements the Wizardry V targeting grid adapted to OnyxLabyrinth's
  * front/back row system.
  *
- * @param attackerPosition - 0-5, where 0-2 are front row and 3-5 are back row
+ * @param attackerPosition - 0-3, where 0-1 are front row and 2-3 are back row
  * @param weaponRange - The weapon's range type
  * @param targetRow - The target enemy's row ("front" or "back")
  * @returns true if the attacker can reach the target
@@ -23,7 +23,7 @@ export function canReach(
   weaponRange: WeaponRange,
   targetRow: "front" | "back"
 ): boolean {
-  const isFrontRow = attackerPosition >= 0 && attackerPosition <= 2;
+  const isFrontRow = attackerPosition >= 0 && attackerPosition <= 1;
 
   switch (weaponRange) {
     case "close":

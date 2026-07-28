@@ -107,9 +107,9 @@ export interface GameState {
   mode: GameMode;
   floor: FloorDef;
   player: PlayerState;
-  // The party of 6 characters. Created at game start (Step 3) and persisted
-  // across combat/camp/dungeon transitions. Combat mutates a clone inside
-  // `combat`; post-combat, the result is applied back here.
+  // The party of 4 characters (no bench). Created at game start (Step 3) and
+  // persisted across combat/camp/dungeon transitions. Combat mutates a clone
+  // inside `combat`; post-combat, the result is applied back here.
   party: Character[];
   // Active combat state. Present only when mode === "combat".
   combat?: CombatState;
@@ -185,10 +185,6 @@ export interface GameState {
   // default loadout at party creation and updated by shop purchases / treasure
   // finds / post-combat persistence.
   equipment: Record<string, Loadout>;
-  // Exactly four character ids who fight in combat (camp-only changes).
-  // Independent of formationSlot (front/back reach). When the roster has
-  // fewer than four members, all ids are active.
-  activeCharIds: string[];
   // Highest floor id the party has ever reached (never decreases, even after
   // backtracking to a shallower floor). Gates shop stock by campaign depth
   // (town-ui.ts getShopBuyList) — deliberately independent of `floor.id`,

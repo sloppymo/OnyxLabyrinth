@@ -614,8 +614,8 @@ export function resolveEnemyAction(
     if (ally.id === partyTarget.id || ally.hp <= 0) continue;
     if (!classHasTechniques(ally.class)) continue;
     if (ally.class !== "Fighter" && ally.class !== "Halberdier") continue;
-    // "Adjacent" = formation slots differ by 3 (front/back pair).
-    if (Math.abs(ally.formationSlot - partyTarget.formationSlot) === 3) {
+    // "Adjacent" = formation slots differ by 2 (front/back pair).
+    if (Math.abs(ally.formationSlot - partyTarget.formationSlot) === 2) {
       gainRage(s, ally.id, 1);
     }
   }

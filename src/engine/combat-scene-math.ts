@@ -281,12 +281,10 @@ export function geometryForBackdrop(id: string | null | undefined): BackdropGeom
 
 /**
  * Party: one cohesive FF6-style diagonal queue, keyed by dense in-combat
- * rank (0..3) — NOT the roster's formationSlot (0-5, sparse once bench
- * members drop out). Only 4 characters ever fight at once (see
- * ACTIVE_ROSTER_SIZE in active-roster.ts), so this table has 4 slots, and
+ * rank (0..3) — NOT the roster's formationSlot (0-3, front 0-1 / back 2-3).
+ * The whole 4-person party always fights, so this table has 4 slots, and
  * combat-scene.ts resolves each fighter's stand position from their index
- * in the (formation-sorted) in-combat party array, so the queue is always
- * gap-free regardless of which two roster slots got benched this fight.
+ * in the (formation-sorted) in-combat party array.
  * Rank 0 stands farthest/smallest, rank 3 nearest/largest — a single
  * unbroken line rather than two disconnected front/back pockets. The
  * front/back row split still exists for game mechanics (reach, protector,

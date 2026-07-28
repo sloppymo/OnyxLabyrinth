@@ -22,15 +22,22 @@ import { findFloor } from "./floor-registry";
 import { ALL_SPELLS } from "../data/spells";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { applyKilledNPCs } from "./npc";
-import { defaultActiveCharIds, normalizeActiveCharIds } from "./active-roster";
 import { cumulativeXpToReachLevel } from "./leveling";
-import type { Character } from "./party";
+import { PARTY_SIZE, sortPartyByFormation, type Character } from "./party";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 13;
+const SAVE_VERSION = 14;
+
+/** v9 → v10 historical helper: first PARTY_SIZE characters by formation order —
+ *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
+function firstFourIdsByFormation(party: Character[]): string[] {
+  return sortPartyByFormation(party)
+    .slice(0, Math.min(PARTY_SIZE, party.length))
+    .map((c) => c.id);
+}
 
 /**
  * v6 → v7: every spell id was renamed from classic Wizardry names to
@@ -189,7 +196,7 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
   if (version === 9) {
     // v9 → v10: four active battle roster ids (first four by formation).
     const oldParty = (ser.party as Character[] | undefined) ?? [];
-    ser.activeCharIds = defaultActiveCharIds(oldParty);
+    ser.activeCharIds = firstFourIdsByFormation(oldParty);
     version = 10;
   }
   if (version === 10) {
@@ -236,6 +243,50 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     // predates it, so none of them have "used" the wish yet.
     ser.hasCompletedEnding = false;
     version = 13;
+  }
+  if (version === 13) {
+    // v13 → v14: the party is capped at PARTY_SIZE — no 6-person roster, no bench.
+    // Every save reaching this step already has activeCharIds (set natively
+    // in v10+ saves, or backfilled by the v9→v10 step above), so trim the
+    // roster down to those members. The other characters' equipped gear comes
+    // back to inventory rather than vanishing; their formationSlot is
+    // renumbered densely (0..PARTY_SIZE-1) in their prior formation order.
+    const oldParty = (ser.party as Character[] | undefined) ?? [];
+    if (oldParty.length > PARTY_SIZE) {
+      const partyIds = new Set(oldParty.map((c) => c.id));
+      const rawActive = ((ser.activeCharIds as string[] | undefined) ?? []).filter((id) =>
+        partyIds.has(id)
+      );
+      const keepIds = new Set(rawActive.slice(0, PARTY_SIZE));
+      if (keepIds.size < PARTY_SIZE) {
+        for (const c of sortPartyByFormation(oldParty)) {
+          if (keepIds.size >= PARTY_SIZE) break;
+          keepIds.add(c.id);
+        }
+      }
+
+      const equipment = (ser.equipment as GameState["equipment"] | undefined) ?? {};
+      const inventory = (ser.inventory as GameState["inventory"] | undefined) ?? [];
+      for (const c of oldParty) {
+        if (keepIds.has(c.id)) continue;
+        const loadout = equipment[c.id];
+        if (loadout?.weapon) inventory.push({ itemId: loadout.weapon.id, identified: true });
+        for (const piece of loadout?.armor ?? []) {
+          inventory.push({ itemId: piece.id, identified: true });
+        }
+        delete equipment[c.id];
+      }
+      ser.equipment = equipment;
+      ser.inventory = inventory;
+
+      const kept = sortPartyByFormation(oldParty.filter((c) => keepIds.has(c.id)));
+      kept.forEach((c, i) => {
+        c.formationSlot = i;
+      });
+      ser.party = kept;
+    }
+    delete ser.activeCharIds;
+    version = 14;
   }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
@@ -289,8 +340,6 @@ interface SerializedState {
   // Event state: which one-time floor events have triggered, keyed by floor ID.
   // Optional: absent in saves from before the event system.
   eventsTriggered?: Record<number, string[]>;
-  /** Active battle roster (exactly four ids when party size >= 4). v10+. */
-  activeCharIds?: string[];
   /** Highest floor id ever reached; gates shop stock by depth. v11+. */
   deepestFloorReached?: number;
   /** Century cycle year; advances by 100 on a campaign party wipe. v12+. */
@@ -362,7 +411,6 @@ export function serialize(state: GameState): string {
     npcTradesDone: [...state.npcTradesDone],
     lootTaken,
     eventsTriggered,
-    activeCharIds: [...state.activeCharIds],
     deepestFloorReached: state.deepestFloorReached,
     hasCompletedEnding: state.hasCompletedEnding,
     savedAt: new Date().toISOString(),
@@ -449,10 +497,6 @@ export function deserialize(json: string): GameState | null {
         knownSpellIds: [...c.knownSpellIds],
         perkIds: [...c.perkIds],
       })),
-      activeCharIds: normalizeActiveCharIds(
-        ser.party,
-        ser.activeCharIds ?? defaultActiveCharIds(ser.party)
-      ),
       explored: new Set(ser.explored),
       exploredByFloor: ser.exploredByFloor ?? {},
       stepsSinceEncounter: ser.stepsSinceEncounter,

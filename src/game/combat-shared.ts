@@ -240,24 +240,24 @@ export function wakeOnDamage(
 }
 
 export function isAdjacentFrontRowAlly(a: Character, b: Character): boolean {
-  if (a.formationSlot > 2 || b.formationSlot > 2) return false;
+  if (a.formationSlot > 1 || b.formationSlot > 1) return false;
   return Math.abs(a.formationSlot - b.formationSlot) === 1;
 }
 
 export function isDirectlyBehind(protector: Character, target: Character): boolean {
   return (
-    protector.formationSlot <= 2 &&
-    target.formationSlot === protector.formationSlot + 3
+    protector.formationSlot <= 1 &&
+    target.formationSlot === protector.formationSlot + 2
   );
 }
 
 /** Adjacent = side-by-side in the same row, or the front/back pair
- *  (formation slots 0-2 front, 3-5 back). Never true for the same character. */
+ *  (formation slots 0-1 front, 2-3 back). Never true for the same character. */
 export function isAdjacentAlly(a: Character, b: Character): boolean {
   if (a.id === b.id) return false;
   const diff = Math.abs(a.formationSlot - b.formationSlot);
-  const sameRow = (a.formationSlot <= 2) === (b.formationSlot <= 2);
-  return (sameRow && diff === 1) || diff === 3;
+  const sameRow = (a.formationSlot <= 1) === (b.formationSlot <= 1);
+  return (sameRow && diff === 1) || diff === 2;
 }
 
 /**

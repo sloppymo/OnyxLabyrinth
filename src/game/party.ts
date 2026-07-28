@@ -3,7 +3,7 @@
  *
  * Defines races, alignments, classes, stats, and the Character type,
  * plus pure helper functions for rolling attributes and assembling a
- * 6-character party. Status-effect functions are left as comments for
+ * 4-character party. Status-effect functions are left as comments for
  * the combat system to wire up later.
  */
 
@@ -26,6 +26,9 @@ export type StatusEffect =
   | "hidden"
   | "exposed"
   | "wet";
+
+/** Fixed party size — no bench. Formation slots are densely 0..PARTY_SIZE-1. */
+export const PARTY_SIZE = 4;
 
 /**
  * Core attributes.
@@ -59,7 +62,7 @@ export interface Character {
   sp: number;
   maxHp: number;
   maxSp: number;
-  formationSlot: number; // 0-5, where 0-2 are front row and 3-5 are back row
+  formationSlot: number; // 0-3, where 0-1 are front row and 2-3 are back row
   status: StatusEffect[];
   knownSpellIds: string[]; // spell IDs this character can cast
   perkIds: string[]; // class perks chosen at levels 3/6/9/12 (see game/perks.ts)
@@ -282,7 +285,7 @@ export function isPartyAlignmentValid(party: Character[]): boolean {
 /** Return the first empty formation slot, preferring front row then back row. */
 export function suggestFormationSlot(party: Character[]): number {
   const used = new Set(party.map((c) => c.formationSlot));
-  for (let slot = 0; slot < 6; slot++) {
+  for (let slot = 0; slot < PARTY_SIZE; slot++) {
     if (!used.has(slot)) return slot;
   }
   return -1;
@@ -297,7 +300,7 @@ export function addCharacterToParty(
   alignment: Alignment,
   cls: CharacterClass
 ): { party: Character[]; error: string | null } {
-  if (party.length >= 6) {
+  if (party.length >= PARTY_SIZE) {
     return { party, error: "Party is already full." };
   }
 
@@ -317,9 +320,9 @@ export function sortPartyByFormation(party: Character[]): Character[] {
   return [...party].sort((a, b) => a.formationSlot - b.formationSlot);
 }
 
-/** True if the character is in the front row (slots 0-2). */
+/** True if the character is in the front row (slots 0-1). */
 export function isFrontRow(character: Character): boolean {
-  return character.formationSlot >= 0 && character.formationSlot <= 2;
+  return character.formationSlot >= 0 && character.formationSlot <= 1;
 }
 
 /** Heal the party to full HP/SP and remove all status effects (including knockedOut). */
@@ -346,34 +349,49 @@ export function reviveKnockedOut(party: Character[]): Character[] {
   });
 }
 
-/** Derive a character's combat row from their formation slot (0-2 front, 3-5 back). */
+/** Derive a character's combat row from their formation slot (0-1 front, 2-3 back). */
 export function charRow(c: Character): "front" | "back" {
-  return c.formationSlot <= 2 ? "front" : "back";
+  return c.formationSlot <= 1 ? "front" : "back";
 }
 
 /**
- * Create a balanced default level-1 party of 6 for the merged game.
+ * Create the balanced default level-1 party of 4 for the merged game.
  * Used when starting a new game without going through party creation.
- * Spell IDs match the names in data/spells.ts.
+ * Front row: Aria (Fighter) + Coda (Thief). Back row: Dell (Mage) + Eve
+ * (Priest). Spell IDs match the names in data/spells.ts.
  */
 export function createDefaultParty(): Character[] {
-  const fighter1 = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
-  const fighter2 = createCharacter("c2", "Bram", "Dwarf", "Good", "Fighter", 1);
-  const thief = createCharacter("c3", "Coda", "Hobbit", "Neutral", "Thief", 2);
-  const mage1 = createCharacter("c4", "Dell", "Elf", "Neutral", "Mage", 3);
-  const priest = createCharacter("c5", "Eve", "Gnome", "Good", "Priest", 4);
-  const mage2 = createCharacter("c6", "Fenn", "Elf", "Neutral", "Mage", 5);
+  const fighter = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+  const thief = createCharacter("c2", "Coda", "Hobbit", "Neutral", "Thief", 1);
+  const mage = createCharacter("c3", "Dell", "Elf", "Neutral", "Mage", 2);
+  const priest = createCharacter("c4", "Eve", "Gnome", "Good", "Priest", 3);
 
   // Level-1 casters know all tier-1 spells of their class.
-  grantMageStarterSpells(mage1);
-  grantMageStarterSpells(mage2);
+  grantMageStarterSpells(mage);
   grantPriestStarterSpells(priest);
 
-  return [fighter1, fighter2, thief, mage1, priest, mage2];
+  return [fighter, thief, mage, priest];
 }
 
-/** Arena experiment roster — four roles, no duplicate fighters/mages. */
-export const CLASSIC_FOUR_PARTY_SIZE = 4;
+/** Split victory XP evenly across every living party member (no bench). */
+export function awardCombatXp(party: Character[], xpEarned: number): void {
+  for (const c of party) {
+    if (c.hp <= 0) continue;
+    c.xp += xpEarned;
+  }
+}
+
+/** Deep-clone the post-combat CombatState party back into persisted GameState
+ *  form — the whole party fights, so this is a straight clone, not a merge. */
+export function applyCombatPartyResult(combatParty: Character[]): Character[] {
+  return combatParty.map((c) => ({
+    ...c,
+    stats: { ...c.stats },
+    status: [...c.status],
+    knownSpellIds: [...c.knownSpellIds],
+    perkIds: [...c.perkIds],
+  }));
+}
 
 function grantMageStarterSpells(c: Character): void {
   c.knownSpellIds = [
@@ -398,18 +416,4 @@ function grantPriestStarterSpells(c: Character): void {
     "priest-light",
     "priest-shield-of-faith",
   ];
-}
-
-/**
- * Classic Four — Fighter / Thief / Mage / Priest for Arena party-size experiments.
- * Front row: Aria + Coda. Back row: Dell + Eve.
- */
-export function createClassicFourParty(): Character[] {
-  const fighter = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
-  const thief = createCharacter("c2", "Coda", "Hobbit", "Neutral", "Thief", 1);
-  const mage = createCharacter("c3", "Dell", "Elf", "Neutral", "Mage", 3);
-  const priest = createCharacter("c4", "Eve", "Gnome", "Good", "Priest", 4);
-  grantMageStarterSpells(mage);
-  grantPriestStarterSpells(priest);
-  return [fighter, thief, mage, priest];
 }

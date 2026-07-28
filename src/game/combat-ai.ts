@@ -365,9 +365,9 @@ function protectedFormationSlots(party: Character[]): Set<number> {
   const protectedSlots = new Set<number>();
   for (const c of party) {
     if (c.hp <= 0) continue;
-    if (c.formationSlot > 2) continue;
+    if (c.formationSlot > 1) continue;
     if (!perksForCharacter(c).some((p) => p.id === "fighter-protector")) continue;
-    protectedSlots.add(c.formationSlot + 3);
+    protectedSlots.add(c.formationSlot + 2);
   }
   return protectedSlots;
 }

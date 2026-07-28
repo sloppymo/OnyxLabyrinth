@@ -105,14 +105,12 @@ import { ENEMIES_BY_ID } from "./data/enemies";
 import type { NPCDef } from "./data/floors";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
-import { reviveKnockedOut, createClassicFourParty, CLASSIC_FOUR_PARTY_SIZE, type Character } from "./game/party";
 import {
+  reviveKnockedOut,
   applyCombatPartyResult,
   awardCombatXp,
-  combatXpVictoryMessage,
-  defaultActiveCharIds,
-  normalizeActiveCharIds,
-} from "./game/active-roster";
+  type Character,
+} from "./game/party";
 import { levelUpChar, applyLevelUps } from "./game/leveling";
 import type { PendingPerkChoice } from "./game/perks";
 import type { GameState, GameMode } from "./types";
@@ -146,8 +144,6 @@ let mapVisible = false;
 
 /** First dungeon entry this page session — keyboard discoverability door hint. */
 let shownDungeonKeyboardHint = false;
-/** First dungeon entry this page session — one-line 4-of-6 bench onboarding. */
-let shownBenchHint = false;
 /**
  * Swallow the first town key after party creation / openTown so the same
  * Enter that confirmed the party cannot also select Inn (AGENTS.md
@@ -245,13 +241,7 @@ function openTown(): void {
       markExplored();
       transitionToMode("dungeon");
       const entry = last ? "You return to the dungeon..." : "You enter the dungeon...";
-      if (!shownBenchHint) {
-        shownBenchHint = true;
-        shownDungeonKeyboardHint = true;
-        // Bench first — 4 fight / 2 reserve is invisible otherwise. Tab/Esc
-        // remain discoverable from the action ring and Esc-from-dungeon.
-        setMessage(`${entry}\nFighting 4 · 2 on bench.`);
-      } else if (!shownDungeonKeyboardHint) {
+      if (!shownDungeonKeyboardHint) {
         shownDungeonKeyboardHint = true;
         // Line 2 teaches the keyboard *door* (action ring), not every verb —
         // Esc is Save only; pad Start / Tab opens Camp·Map·Town·Unlock·Grimoire.
@@ -297,7 +287,6 @@ function openPartyCreation(onDone: () => void): void {
     onConfirm: (party: Character[]) => {
       partyCreationController = null;
       state.party = party;
-      state.activeCharIds = defaultActiveCharIds(party);
       state.equipment = Object.fromEntries(
         party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
       );
@@ -505,8 +494,7 @@ function maybeTriggerEncounter(): boolean {
     ITEMS_BY_ID,
     loadout,
     state.inventory,
-    state.inAntimagic,
-    state.activeCharIds
+    state.inAntimagic
   );
   state.combat = combat;
   setMode(state, "combat");
@@ -608,15 +596,14 @@ function endCombat(result: CombatState): void {
   // can't leave the tense bed looping under town/dungeon.
   audio.stopBossCombat();
 
-  // Apply post-combat party state back to GameState. Only active fighters
-  // were cloned into combat; bench HP/SP/status stay as-is on the roster.
-  state.party = applyCombatPartyResult(state.party, result.party);
+  // Apply post-combat party state back to GameState.
+  state.party = applyCombatPartyResult(result.party);
 
   // Write the (possibly depleted) combat inventory back to GameState,
   // preserving per-instance identification flags.
   state.inventory = reconcileInventoryAfterCombat(state.inventory, result.inventory);
 
-  // Persist equipment changes from fighters; bench slots were not in combat.
+  // Persist equipment changes from combat.
   state.equipment = { ...state.equipment, ...result.loadout };
 
   // Perk choices queued by post-combat level-ups. Kept local to this flow; the
@@ -641,10 +628,7 @@ function endCombat(result: CombatState): void {
     const goldEarned = result.goldEarned;
     const xpEarned = result.xpEarned;
     state.partyGold += goldEarned;
-    const hasBench = state.party.some(
-      (c) => c.hp > 0 && !state.activeCharIds.includes(c.id)
-    );
-    awardCombatXp(state.party, state.activeCharIds, xpEarned);
+    awardCombatXp(state.party, xpEarned);
 
     // Process post-combat level-ups for living party members.
     const levelUpMessages: string[] = [];
@@ -663,7 +647,7 @@ function endCombat(result: CombatState): void {
     });
     if (levelUpMessages.length > 0) audio.levelUp();
 
-    const baseMsg = `Victory! +${goldEarned} gold, ${combatXpVictoryMessage(xpEarned, hasBench)}.`;
+    const baseMsg = `Victory! +${goldEarned} gold, +${xpEarned} XP each.`;
     const levelMsg = levelUpMessages.length > 0 ? ` ${levelUpMessages.join(" ")}` : "";
     setMessage(baseMsg + levelMsg);
   }
@@ -675,11 +659,8 @@ function endCombat(result: CombatState): void {
     if (npc) {
       if (result.result === "victory") {
         markKilled(state, npc);
-        const benchOnVictory = state.party.some(
-          (c) => c.hp > 0 && !state.activeCharIds.includes(c.id)
-        );
         setMessage(
-          `${npc.name} falls. +${result.goldEarned} gold, ${combatXpVictoryMessage(result.xpEarned, benchOnVictory)}.`
+          `${npc.name} falls. +${result.goldEarned} gold, +${result.xpEarned} XP each.`
         );
       } else if (result.result === "fled") {
         adjustDisposition(state, npc, -20);
@@ -1079,8 +1060,7 @@ function forceEncounter(): void {
     ITEMS_BY_ID,
     loadout,
     state.inventory,
-    state.inAntimagic,
-    state.activeCharIds
+    state.inAntimagic
   );
   state.combat = combat;
   setMode(state, "combat");
@@ -1497,8 +1477,6 @@ let inArena = false;
 let arenaWave = 1;
 let arenaFloor = 1;
 let arenaStartFloor = 1;
-/** Arena-only roster experiment: 6 = default, 4 = Classic Four preset. */
-let arenaRosterSize = 6;
 
 let arenaSetupController: { handleKey: (key: string) => void } | null = null;
 
@@ -1508,19 +1486,7 @@ function openArenaSetup(): void {
   setMessage("");
 
   const levels = [1, 3, 6, 9, 12];
-  const rosters: { size: number; label: string; detail: string }[] = [
-    { size: 6, label: "Full Six", detail: "Default 6-member party" },
-    {
-      size: CLASSIC_FOUR_PARTY_SIZE,
-      label: "Classic Four",
-      detail: "Fighter · Thief · Mage · Priest",
-    },
-  ];
-
-  type SetupPhase = "level" | "roster";
-  let phase: SetupPhase = "level";
   let selected = 0;
-  let pickedLevel = levels[0]!;
   let hasRendered = false;
 
   const render = () => {
@@ -1528,50 +1494,16 @@ function openArenaSetup(): void {
     const animated = !hasRendered;
     hasRendered = true;
 
-    if (phase === "level") {
-      const win = new FF6Window({
-        title: "Arena Mode",
-        contentHtml: `<div class="ff6-arena-meta">Choose starting party level</div>`,
-        items: levels.map((lv) => ({
-          label: `Level ${lv}`,
-          metadata: lv,
-        })),
-        selectedIndex: selected,
-        mode: "menu",
-        footer: "D-pad navigate · A next · B title",
-        animated,
-        onHover: (i) => {
-          selected = i;
-        },
-        onConfirm: (i) => {
-          selected = i;
-          pickedLevel = levels[selected]!;
-          phase = "roster";
-          selected = 0;
-          hasRendered = false;
-          render();
-        },
-        onBack: () => {
-          arenaSetupController = null;
-          openTitleScreen();
-        },
-      });
-      panel.innerHTML = "";
-      panel.appendChild(win.render());
-      return;
-    }
-
     const win = new FF6Window({
       title: "Arena Mode",
-      contentHtml: `<div class="ff6-arena-meta">Level ${pickedLevel} · choose roster</div>`,
-      items: rosters.map((r) => ({
-        label: r.label,
-        detail: r.detail,
-        metadata: r.size,
+      contentHtml: `<div class="ff6-arena-meta">Choose starting party level</div>`,
+      items: levels.map((lv) => ({
+        label: `Level ${lv}`,
+        metadata: lv,
       })),
       selectedIndex: selected,
       mode: "menu",
-      footer: "D-pad navigate · A start · B back",
+      footer: "D-pad navigate · A start · B title",
       animated,
       onHover: (i) => {
         selected = i;
@@ -1579,14 +1511,11 @@ function openArenaSetup(): void {
       onConfirm: (i) => {
         selected = i;
         arenaSetupController = null;
-        startArena(pickedLevel, rosters[selected]!.size);
+        startArena(levels[selected]!);
       },
       onBack: () => {
-        phase = "level";
-        selected = levels.indexOf(pickedLevel);
-        if (selected < 0) selected = 0;
-        hasRendered = false;
-        render();
+        arenaSetupController = null;
+        openTitleScreen();
       },
     });
     panel.innerHTML = "";
@@ -1597,35 +1526,18 @@ function openArenaSetup(): void {
     handleKey: (key: string) => {
       audio.uiForMenuKey(key);
       const lower = key.toLowerCase();
-      const items = phase === "level" ? levels : rosters;
       if (lower === "arrowup" || lower === "w") {
-        selected = (selected - 1 + items.length) % items.length;
+        selected = (selected - 1 + levels.length) % levels.length;
         render();
       } else if (lower === "arrowdown" || lower === "s") {
-        selected = (selected + 1) % items.length;
+        selected = (selected + 1) % levels.length;
         render();
       } else if (key === "Enter" || key === " ") {
-        if (phase === "level") {
-          pickedLevel = levels[selected]!;
-          phase = "roster";
-          selected = 0;
-          hasRendered = false;
-          render();
-        } else {
-          arenaSetupController = null;
-          startArena(pickedLevel, rosters[selected]!.size);
-        }
+        arenaSetupController = null;
+        startArena(levels[selected]!);
       } else if (key === "Escape") {
-        if (phase === "roster") {
-          phase = "level";
-          selected = levels.indexOf(pickedLevel);
-          if (selected < 0) selected = 0;
-          hasRendered = false;
-          render();
-        } else {
-          arenaSetupController = null;
-          openTitleScreen();
-        }
+        arenaSetupController = null;
+        openTitleScreen();
       }
     },
   };
@@ -1633,20 +1545,11 @@ function openArenaSetup(): void {
   render();
 }
 
-function startArena(targetLevel: number, rosterSize: number): void {
+function startArena(targetLevel: number): void {
   // Reset to a fresh default party and the first arena wave.
   Object.assign(state, createGameState(getFloors()[0]!));
   inArena = true;
   arenaWave = 1;
-  arenaRosterSize = rosterSize;
-
-  if (rosterSize === CLASSIC_FOUR_PARTY_SIZE) {
-    state.party = createClassicFourParty();
-    state.equipment = Object.fromEntries(
-      state.party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
-    );
-  }
-  state.activeCharIds = normalizeActiveCharIds(state.party, state.activeCharIds);
 
   // Scale starting floor with party level so high-level parties don't
   // waste waves trivially one-shotting floor-1 skeletons.
@@ -1683,7 +1586,6 @@ function openArena(): void {
     state,
     wave: arenaWave,
     floor: arenaFloor,
-    rosterLabel: arenaRosterSize === CLASSIC_FOUR_PARTY_SIZE ? "Classic Four" : "Full Six",
     onNext: () => {
       arenaController = null;
       startNextArenaFight();
@@ -1708,7 +1610,7 @@ function startNextArenaFight(): void {
     openArena();
     return;
   }
-  const sized = adjustArenaEncounterForSmallParty(entry, arenaRosterSize);
+  const sized = adjustArenaEncounterForSmallParty(entry);
   const resolved = resolveEncounter(sized);
   if (resolved.length === 0) {
     openArena();
@@ -1723,8 +1625,7 @@ function startNextArenaFight(): void {
     ITEMS_BY_ID,
     loadout,
     state.inventory,
-    state.inAntimagic,
-    state.activeCharIds
+    state.inAntimagic
   );
   state.combat = combat;
   setMode(state, "combat");
@@ -1952,8 +1853,7 @@ function startNPCFight(npc: NPCDef): void {
     ITEMS_BY_ID,
     buildLoadoutMap(),
     state.inventory,
-    state.inAntimagic,
-    state.activeCharIds
+    state.inAntimagic
   );
   state.combat = combat;
   setMode(state, "combat");
@@ -2009,8 +1909,7 @@ function loop() {
     renderPartyStrip(
       state.party,
       compassForFacing(state.player.facing),
-      floorLabel,
-      state.activeCharIds
+      floorLabel
     );
     const kind = globalInput.getLastInputKind();
     setContextualPrompt(resolveContextualPrompt(state, kind));

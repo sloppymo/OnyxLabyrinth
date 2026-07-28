@@ -28,7 +28,7 @@ export function defaultLoadoutForCharacter(char: Character): Loadout {
     loadout.weapon = ITEMS_BY_ID["long-sword"];
   }
   if (
-    char.formationSlot <= 2 ||
+    char.formationSlot <= 1 ||
     char.class === "Halberdier" ||
     char.class === "Crusader"
   ) {

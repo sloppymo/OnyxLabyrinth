@@ -11,7 +11,6 @@ import {
   ENEMIES_BY_ID,
   type EncounterEntry,
 } from "../data/enemies";
-import { CLASSIC_FOUR_PARTY_SIZE } from "./party";
 import type { EncounterZoneDef, FloorDef } from "../data/floors";
 
 /** Design doc §6.3: no more than one encounter per this many steps. */
@@ -129,14 +128,10 @@ export function rollArenaEncounter(
 }
 
 /**
- * Arena Classic Four experiment — trim one spawn from packs of 3+ so enemy
- * count stays closer to party size (no save migration; Arena-only).
+ * Arena's 4-person party — trim one spawn from packs of 3+ so enemy count
+ * stays closer to party size (no save migration; Arena-only).
  */
-export function adjustArenaEncounterForSmallParty(
-  entry: EncounterEntry,
-  partySize: number
-): EncounterEntry {
-  if (partySize > CLASSIC_FOUR_PARTY_SIZE) return entry;
+export function adjustArenaEncounterForSmallParty(entry: EncounterEntry): EncounterEntry {
   if (entry.spawns.length < 3) return entry;
   return { ...entry, spawns: entry.spawns.slice(0, -1) };
 }

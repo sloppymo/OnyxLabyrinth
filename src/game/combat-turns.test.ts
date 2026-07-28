@@ -1684,15 +1684,18 @@ describe("row swap", () => {
     expect(s.party.find((c) => c.id === "char-1")!.formationSlot).toBe(1);
   });
 
-  it("slides into an empty back-row slot", () => {
-    const state = fourPartyState(); // back row has only char-3
+  it("a standard 4-person party has no room to slide — front/back are always exactly 2/2", () => {
+    // Real gameplay always fields exactly 4, so a bare (no targetAllyId)
+    // Move can never find an open slot; only swapping with a living ally
+    // in the opposite row (tested above) works.
+    const state = fourPartyState();
     const s = resolvePlayerTurn(
       state,
       { kind: "move", actorId: "char-0" },
       seqRng([0.5])
     );
-    expect(s.party.find((c) => c.id === "char-0")!.formationSlot).toBe(3); // first vacated back slot (dense packing)
-    expect(s.log.some((m) => m.includes("falls back"))).toBe(true);
+    expect(s.party.find((c) => c.id === "char-0")!.formationSlot).toBe(0);
+    expect(s.log.some((m) => m.includes("no room"))).toBe(true);
   });
 
   it("rejects a slide when the target row is full", () => {

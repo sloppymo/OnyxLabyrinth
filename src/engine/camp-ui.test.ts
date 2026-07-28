@@ -1,6 +1,6 @@
 /**
- * Camp reorder / battle-roster: controller (D-pad + A) must work — the old
- * screens only accepted digit keys 1-6, which gamepads never send.
+ * Camp reorder: controller (D-pad + A) must work — the old screen only
+ * accepted digit keys, which gamepads never send.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CampController } from "./camp-ui";
@@ -73,7 +73,7 @@ describe("CampController reorder (controller-friendly)", () => {
     expect(party[1]!.name).toBe(first);
   });
 
-  it("still supports digit hotkeys 1-6", () => {
+  it("still supports digit hotkeys 1-4", () => {
     const { ctrl, party } = openCamp();
     openReorder(ctrl);
     const a = party[0]!.name;
@@ -97,26 +97,5 @@ describe("CampController rest audio", () => {
     const cue = vi.spyOn(audio, "uiCureMenu").mockImplementation(() => {});
     openCamp();
     expect(cue).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("CampController battle roster (controller-friendly)", () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("does not treat Enter as cancel — A marks a slot instead", () => {
-    const { ctrl, panel } = openCamp();
-    // continue, cast, sheet, reorder, roster
-    for (let i = 0; i < 4; i++) ctrl.handleKey("ArrowDown");
-    ctrl.handleKey("Enter");
-    expect(panel.textContent).toMatch(/Battle Roster/);
-
-    ctrl.handleKey("Enter"); // mark first active
-    expect(panel.textContent).toMatch(/marked|swap with/i);
-    expect(panel.textContent).toMatch(/Battle Roster/);
   });
 });

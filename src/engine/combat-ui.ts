@@ -698,7 +698,8 @@ export class CombatController {
         const others = this.state.party.filter((p) => p.id !== c.id);
         const inRow = others.filter((p) => charRow(p) === toRow).length;
         // A free slot (and an array that can reach it) means an instant slide.
-        if (inRow < 3 && (toRow === "front" || others.length >= 3)) {
+        // Each row holds at most 2 of the party's 4 members.
+        if (inRow < 2 && (toRow === "front" || others.length >= 3)) {
           this.resolveAndPlay(() =>
             resolvePlayerTurn(this.state, { kind: "move", actorId: c.id })
           );

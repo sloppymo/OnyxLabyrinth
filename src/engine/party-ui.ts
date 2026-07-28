@@ -1,10 +1,10 @@
 /**
  * Party Creation UI controller — design doc Section 4.
  *
- * Lets the player build a 6-character party from scratch: for each slot the
+ * Lets the player build a 4-character party from scratch: for each slot the
  * player enters a name, cycles race / alignment / class, re-rolls stats, and
  * confirms. Validates the alignment rule (no Good + Evil mix). On completion
- * calls onConfirm(party) with a full 6-member Character[].
+ * calls onConfirm(party) with a full 4-member Character[].
  *
  * Opens on a choice screen: pick the ready-made default party (Quick Start)
  * or build a custom one. Esc from slot 1 of the editor returns to the choice
@@ -29,6 +29,8 @@ import {
   computeMaxHp,
   computeMaxSp,
   createCharacter,
+  createDefaultParty,
+  PARTY_SIZE,
   type Race,
   type Alignment,
   type CharacterClass,
@@ -52,7 +54,7 @@ const CLASS_ALIGNMENT_RESTRICTIONS: Record<CharacterClass, Alignment[]> = {
   Crusader: ["Good", "Neutral", "Evil"],
 };
 
-const DEFAULT_NAMES = ["Aria", "Bram", "Coda", "Dell", "Eve", "Fenn"];
+const DEFAULT_NAMES = ["Aria", "Coda", "Dell", "Eve"];
 
 type Field = "name" | "race" | "alignment" | "class";
 const FIELDS: Field[] = ["name", "race", "alignment", "class"];
@@ -289,8 +291,8 @@ export class PartyCreationController {
       this.render();
       return;
     }
-    // Advance to the next slot, or finish if this was slot 5.
-    if (this.slotIndex >= 5) {
+    // Advance to the next slot, or finish if this was the last slot.
+    if (this.slotIndex >= PARTY_SIZE - 1) {
       this.finish();
       return;
     }
@@ -332,25 +334,9 @@ export class PartyCreationController {
   }
 
   private useDefaultParty(): void {
-    // Build the same default party createDefaultParty() produces.
-    const party: Character[] = [];
-    const specs: { name: string; race: Race; align: Alignment; cls: CharacterClass }[] = [
-      { name: "Aria", race: "Human", align: "Good", cls: "Fighter" },
-      { name: "Bram", race: "Dwarf", align: "Good", cls: "Fighter" },
-      { name: "Coda", race: "Hobbit", align: "Neutral", cls: "Thief" },
-      { name: "Dell", race: "Elf", align: "Neutral", cls: "Mage" },
-      { name: "Eve", race: "Gnome", align: "Good", cls: "Priest" },
-      { name: "Fenn", race: "Elf", align: "Neutral", cls: "Mage" },
-    ];
-    for (let i = 0; i < specs.length; i++) {
-      const s = specs[i];
-      const char = createCharacter(`c${i + 1}`, s.name, s.race, s.align, s.cls, i);
-      char.knownSpellIds = spellsForClass(s.cls, 1).map((sp) => sp.id);
-      party.push(char);
-    }
     this.panel.style.display = "none";
     this.panel.innerHTML = "";
-    this.onConfirm(party);
+    this.onConfirm(createDefaultParty());
   }
 
   // --- Rendering ----------------------------------------------------------
@@ -370,7 +356,7 @@ export class PartyCreationController {
     lines.push(`<div class="party-create">`);
     lines.push(`<div class="party-create-header">[+] Party Creation</div>`);
     lines.push(
-      `<div class="party-create-meta">Slot ${this.slotIndex + 1} of 6 · ${confirmedCount} confirmed</div>`
+      `<div class="party-create-meta">Slot ${this.slotIndex + 1} of ${PARTY_SIZE} · ${confirmedCount} confirmed</div>`
     );
 
     lines.push(`<div class="party-edit">`);
@@ -451,16 +437,16 @@ export class PartyCreationController {
 
     const win = new FF6Window({
       title: "Assemble Your Party",
-      contentHtml: `<div class="ff6-arena-meta">Six souls brave the labyrinth. Who will they be?</div>`,
+      contentHtml: `<div class="ff6-arena-meta">Four souls brave the labyrinth. Who will they be?</div>`,
       items: [
         {
           label: "Default Party",
-          detail: "Aria · Bram · Coda · Dell · Eve · Fenn",
+          detail: "Aria · Coda · Dell · Eve",
           metadata: "default",
         },
         {
           label: "Create Your Own",
-          detail: "Build six adventurers from scratch",
+          detail: "Build four adventurers from scratch",
           metadata: "custom",
         },
       ],

@@ -8,12 +8,11 @@ import {
   computeMaxSp,
   createCharacter,
   createDefaultParty,
-  createClassicFourParty,
-  CLASSIC_FOUR_PARTY_SIZE,
   isFrontRow,
   charRow,
   isPartyAlignmentValid,
   suggestFormationSlot,
+  PARTY_SIZE,
   RACES,
   CLASSES,
   type Race,
@@ -119,29 +118,22 @@ describe("createCharacter", () => {
 });
 
 describe("createDefaultParty", () => {
-  it("creates a party of 6 characters", () => {
+  it("creates a party of PARTY_SIZE role-distinct characters", () => {
     const party = createDefaultParty();
-    expect(party.length).toBe(6);
-  });
-
-  it("assigns formation slots 0-5", () => {
-    const party = createDefaultParty();
-    const slots = party.map((c) => c.formationSlot).sort((a, b) => a - b);
-    expect(slots).toEqual([0, 1, 2, 3, 4, 5]);
-  });
-});
-
-describe("createClassicFourParty", () => {
-  it("creates four role-distinct members for Arena experiments", () => {
-    const party = createClassicFourParty();
-    expect(party).toHaveLength(CLASSIC_FOUR_PARTY_SIZE);
+    expect(party).toHaveLength(PARTY_SIZE);
     expect(party.map((c) => c.class)).toEqual(["Fighter", "Thief", "Mage", "Priest"]);
     expect(party[2]!.knownSpellIds.length).toBeGreaterThan(0);
     expect(party[3]!.knownSpellIds.length).toBeGreaterThan(0);
   });
 
+  it("assigns formation slots 0..PARTY_SIZE-1", () => {
+    const party = createDefaultParty();
+    const slots = party.map((c) => c.formationSlot).sort((a, b) => a - b);
+    expect(slots).toEqual(Array.from({ length: PARTY_SIZE }, (_, i) => i));
+  });
+
   it("places casters in the back row", () => {
-    const party = createClassicFourParty();
+    const party = createDefaultParty();
     expect(isFrontRow(party[0]!)).toBe(true);
     expect(isFrontRow(party[1]!)).toBe(true);
     expect(isFrontRow(party[2]!)).toBe(false);
@@ -150,20 +142,18 @@ describe("createClassicFourParty", () => {
 });
 
 describe("formation helpers", () => {
-  it("isFrontRow returns true for slots 0-2", () => {
+  it("isFrontRow returns true for slots 0-1", () => {
     const party = createDefaultParty();
     expect(isFrontRow(party[0])).toBe(true);
     expect(isFrontRow(party[1])).toBe(true);
-    expect(isFrontRow(party[2])).toBe(true);
+    expect(isFrontRow(party[2])).toBe(false);
     expect(isFrontRow(party[3])).toBe(false);
-    expect(isFrontRow(party[4])).toBe(false);
-    expect(isFrontRow(party[5])).toBe(false);
   });
 
   it("charRow returns 'front' or 'back'", () => {
     const party = createDefaultParty();
     expect(charRow(party[0])).toBe("front");
-    expect(charRow(party[3])).toBe("back");
+    expect(charRow(party[2])).toBe("back");
   });
 });
 

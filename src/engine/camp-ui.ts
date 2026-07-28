@@ -19,10 +19,6 @@
 import type { Character } from "../game/party";
 import type { GameState } from "../types";
 import { charRow } from "../game/party";
-import {
-  ACTIVE_ROSTER_SIZE,
-  normalizeActiveCharIds,
-} from "../game/active-roster";
 import { ALL_SPELLS } from "../data/spells";
 import {
   utilityCastOptions,
@@ -47,7 +43,7 @@ export interface CampControllerOptions {
 
 const CAMP_DURATION_MS = 3000;
 
-type CampPhase = "animating" | "menu" | "charSheet" | "reorder" | "battleRoster" | "castSpell";
+type CampPhase = "animating" | "menu" | "charSheet" | "reorder" | "castSpell";
 
 interface CharAnim {
   char: Character;
@@ -64,7 +60,6 @@ const CAMP_MENU_ITEMS = [
   { key: "cast", label: "Cast a spell" },
   { key: "sheet", label: "View character sheets" },
   { key: "reorder", label: "Reorder party" },
-  { key: "roster", label: "Battle roster" },
 ] as const;
 
 export class CampController {
@@ -82,9 +77,6 @@ export class CampController {
   private sheetIndex = 0;
   private reorderFirst = -1;
   private reorderCursor = 0;
-  private rosterSwapFirst = -1;
-  private rosterCursor = 0;
-  private activeIds: string[] = [];
   private castIndex = 0;
   private castOptions: UtilityCastOption[] = [];
   private castFlash = "";
@@ -99,10 +91,6 @@ export class CampController {
     this.dayCount = opts.dayCount;
     this.state = opts.state;
     this.onEnd = opts.onEnd;
-    this.activeIds = normalizeActiveCharIds(
-      this.party,
-      this.state.activeCharIds
-    );
 
     // Snapshot pre-camp HP/SP and compute targets. KO'd characters revive to
     // 1 HP first, then tick up to max alongside everyone else.
@@ -178,8 +166,6 @@ export class CampController {
       }
     } else if (this.phase === "reorder") {
       this.handleReorderKey(lower, key);
-    } else if (this.phase === "battleRoster") {
-      this.handleBattleRosterKey(lower, key);
     } else if (this.phase === "castSpell") {
       this.handleCastKey(lower, key);
     }
@@ -264,78 +250,7 @@ export class CampController {
         this.reorderCursor = 0;
         this.renderReorder();
         break;
-      case "roster":
-        if (this.party.length <= ACTIVE_ROSTER_SIZE) {
-          this.renderMenu();
-          return;
-        }
-        this.phase = "battleRoster";
-        this.rosterSwapFirst = -1;
-        this.rosterCursor = 0;
-        this.activeIds = normalizeActiveCharIds(this.party, this.state.activeCharIds);
-        this.renderBattleRoster();
-        break;
     }
-  }
-
-  private handleBattleRosterKey(lower: string, key: string): void {
-    if (lower === "escape") {
-      this.phase = "menu";
-      this.renderMenu();
-      return;
-    }
-    if (lower === "arrowup" || lower === "w") {
-      this.rosterCursor =
-        (this.rosterCursor - 1 + this.party.length) % this.party.length;
-      this.renderBattleRoster();
-      return;
-    }
-    if (lower === "arrowdown" || lower === "s") {
-      this.rosterCursor = (this.rosterCursor + 1) % this.party.length;
-      this.renderBattleRoster();
-      return;
-    }
-    if (key === "Enter" || key === " ") {
-      this.selectBattleRosterSlot(this.rosterCursor);
-      return;
-    }
-    const idx = parseInt(key, 10);
-    if (isNaN(idx) || idx < 1 || idx > this.party.length) return;
-    this.rosterCursor = idx - 1;
-    this.selectBattleRosterSlot(this.rosterCursor);
-  }
-
-  private selectBattleRosterSlot(slotIdx: number): void {
-    if (this.rosterSwapFirst === -1) {
-      this.rosterSwapFirst = slotIdx;
-      this.renderBattleRoster();
-      return;
-    }
-    if (this.rosterSwapFirst === slotIdx) {
-      this.rosterSwapFirst = -1;
-      this.renderBattleRoster();
-      return;
-    }
-    const a = this.party[this.rosterSwapFirst]!;
-    const b = this.party[slotIdx]!;
-    const aActive = this.activeIds.includes(a.id);
-    const bActive = this.activeIds.includes(b.id);
-    if (aActive === bActive) {
-      this.rosterSwapFirst = -1;
-      this.renderBattleRoster();
-      return;
-    }
-    if (aActive) {
-      this.activeIds = this.activeIds.filter((id) => id !== a.id);
-      this.activeIds.push(b.id);
-    } else {
-      this.activeIds = this.activeIds.filter((id) => id !== b.id);
-      this.activeIds.push(a.id);
-    }
-    this.activeIds = normalizeActiveCharIds(this.party, this.activeIds);
-    this.state.activeCharIds = [...this.activeIds];
-    this.rosterSwapFirst = -1;
-    this.renderBattleRoster();
   }
 
   private handleReorderKey(lower: string, key: string): void {
@@ -559,50 +474,12 @@ export class CampController {
     lines.push(`</div>`);
     const footer =
       this.reorderFirst === -1
-        ? "D-pad select · A mark first · B back · or 1-6"
-        : `D-pad select · A swap with ${this.party[this.reorderFirst]!.name} · B cancel · or 1-6`;
+        ? "D-pad select · A mark first · B back · or 1-4"
+        : `D-pad select · A swap with ${this.party[this.reorderFirst]!.name} · B cancel · or 1-4`;
     this.panel.innerHTML = "";
     this.panel.appendChild(
       FF6Window.frame({
         title: "Reorder Party",
-        contentHtml: lines.join(""),
-        footer,
-        mode: "status",
-        animated,
-      })
-    );
-  }
-
-  private renderBattleRoster(): void {
-    const animated = this.lastPhaseKey !== "battleRoster";
-    this.lastPhaseKey = "battleRoster";
-    const active = new Set(this.activeIds);
-    const lines: string[] = [];
-    lines.push(`<div class="camp-party">`);
-    for (let i = 0; i < this.party.length; i++) {
-      const c = this.party[i]!;
-      const rowLabel = charRow(c) === "front" ? "F" : "B";
-      const fighting = active.has(c.id);
-      const isFirst = this.rosterSwapFirst === i;
-      const isCursor = this.rosterCursor === i;
-      const marker = isCursor ? "▶" : isFirst ? "★" : `${i + 1}.`;
-      const tag = fighting ? "ACTIVE" : "bench";
-      const sel = isCursor ? " selected" : "";
-      lines.push(
-        `<div class="camp-char${sel}${fighting ? "" : " bench"}">` +
-          `<span class="cc-name">${marker} [${rowLabel}] ${c.name} (${c.class}) — ${tag}${isFirst && !isCursor ? " · marked" : ""}</span>` +
-          `</div>`
-      );
-    }
-    lines.push(`</div>`);
-    const footer =
-      this.rosterSwapFirst === -1
-        ? `D-pad select · A mark · B back · or 1-6 (${ACTIVE_ROSTER_SIZE} fight)`
-        : `D-pad · A swap with ${this.party[this.rosterSwapFirst]!.name} · B cancel · or 1-6`;
-    this.panel.innerHTML = "";
-    this.panel.appendChild(
-      FF6Window.frame({
-        title: "Battle Roster",
         contentHtml: lines.join(""),
         footer,
         mode: "status",

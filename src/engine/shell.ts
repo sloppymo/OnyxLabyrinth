@@ -10,6 +10,7 @@
 // `style.display = ...` calls that previously made screen-state bugs easy.
 
 import type { Character } from "../game/party";
+import { isFrontRow } from "../game/party";
 import type { GameMode } from "../types";
 import { cappedRenderSize, pixelScaleToFit } from "./render-math";
 import {
@@ -228,11 +229,8 @@ function hpBarFillPx(hp: number, maxHp: number): { px: number; tone: string } {
 export function renderPartyStrip(
   party: Character[],
   compass: string,
-  floorLabel = "F?",
-  activeCharIds?: readonly string[]
+  floorLabel = "F?"
 ): void {
-  const active =
-    activeCharIds && activeCharIds.length > 0 ? new Set(activeCharIds) : null;
   // Keyboard players have no gamepad glyphs to fall back on, so keep the
   // dungeon key legend visible at all times rather than only on first entry
   // (playtest finding: Camp/Map/Grimoire/Actions were "secret keys").
@@ -243,7 +241,6 @@ export function renderPartyStrip(
   const parts: string[] = [];
   for (const c of party) {
     const ko = c.status.includes("knockedOut") || c.hp <= 0;
-    const bench = active !== null && !active.has(c.id);
     const { px, tone } = hpBarFillPx(c.hp, c.maxHp);
     const low = !ko && tone === "critical";
     const notches = c.status
@@ -253,8 +250,8 @@ export function renderPartyStrip(
       .join("");
     const hpClass = tone === "critical" || tone === "wounded" ? tone : "";
     parts.push(
-      `<div class="ps-char ${ko ? "ko" : ""} ${low ? "low" : ""} ${bench ? "bench" : ""}" title="${
-        bench ? "Bench — camp to activate" : c.formationSlot <= 2 ? "Front" : "Back"
+      `<div class="ps-char ${ko ? "ko" : ""} ${low ? "low" : ""}" title="${
+        isFrontRow(c) ? "Front" : "Back"
       } row">` +
         `<div class="ps-name-row"><span class="ps-name">${c.name}</span>${notches}</div>` +
         `<div class="ps-stat-row">` +

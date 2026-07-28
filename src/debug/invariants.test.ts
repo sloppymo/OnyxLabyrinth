@@ -43,20 +43,11 @@ describe("checkInvariants", () => {
     expect(checkInvariants({ state, route: "dungeon" }).some((w) => w.includes("sp"))).toBe(true);
   });
 
-  it("flags activeCharIds referencing an unknown character", () => {
+  it("flags a party that isn't exactly 4 members", () => {
     const state = baseState();
-    state.activeCharIds = [...state.activeCharIds.slice(0, -1), "ghost-id"];
+    state.party = state.party.slice(0, 3);
     expect(
-      checkInvariants({ state, route: "dungeon" }).some((w) => w.includes("ghost-id"))
-    ).toBe(true);
-  });
-
-  it("flags duplicate activeCharIds", () => {
-    const state = baseState();
-    const first = state.activeCharIds[0]!;
-    state.activeCharIds = [first, first, ...state.activeCharIds.slice(2)];
-    expect(
-      checkInvariants({ state, route: "dungeon" }).some((w) => /duplicate/i.test(w))
+      checkInvariants({ state, route: "dungeon" }).some((w) => /expected 4/i.test(w))
     ).toBe(true);
   });
 

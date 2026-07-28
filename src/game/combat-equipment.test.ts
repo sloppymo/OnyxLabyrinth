@@ -28,7 +28,7 @@ const VOIDBLADE = ITEMS_BY_ID["voidblade"]!; // close range, attackBonus 11
 const BOW = ITEMS_BY_ID["bow"]!; // long range, attackBonus 3
 
 function backRowMage(): ReturnType<typeof createCharacter> {
-  return createCharacter("c1", "Dell", "Elf", "Neutral", "Mage", 4);
+  return createCharacter("c1", "Dell", "Elf", "Neutral", "Mage", 2);
 }
 
 function frontRowFighter(slot = 0): ReturnType<typeof createCharacter> {
