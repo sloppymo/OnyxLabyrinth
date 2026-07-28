@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { ALL_SPELLS } from "../data/spells";
 import { resolveEffectStyle } from "./combat-scene";
@@ -51,6 +51,26 @@ describe("effect sprite wiring", () => {
     ]) {
       expect(getEffectStrip(id), id).toBeDefined();
     }
+  });
+
+  it("slash_attack is sliced as a 2×6 grid, not one full-sheet frame", () => {
+    const strip = getEffectStrip("slash_attack");
+    expect(strip).toBeDefined();
+    expect(strip!.frameWidth).toBe(25);
+    expect(strip!.frameHeight).toBe(21);
+    expect(strip!.frameCount).toBe(12);
+    expect(strip!.fps).toBeGreaterThan(0);
+
+    const dir = join(process.cwd(), "public/assets/effects");
+    const png = readFileSync(join(dir, strip!.url));
+    // PNG IHDR: width @16, height @20 (big-endian u32)
+    const width = png.readUInt32BE(16);
+    const height = png.readUInt32BE(20);
+    expect(width).toBe(strip!.frameWidth * 2);
+    expect(height).toBe(strip!.frameHeight * 6);
+    const cols = Math.floor(width / strip!.frameWidth);
+    const rows = Math.floor(height / strip!.frameHeight);
+    expect(cols * rows).toBeGreaterThanOrEqual(strip!.frameCount);
   });
 
   it("every url referenced by resolveEffectStyle exists on disk", () => {

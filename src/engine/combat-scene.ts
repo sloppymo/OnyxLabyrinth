@@ -772,7 +772,9 @@ function impactSteps(
             effect,
             scale,
             start: now,
-            duration: 250,
+            // Long enough for multi-frame melee strips (slash_attack is 12
+            // cells) to play a beat before the burst fades.
+            duration: 450,
           });
         }
         if (hurt) {
@@ -1700,11 +1702,16 @@ export function resolveEffectStyle(
   return { color: COLORS.spellBurst, burst: "fire_explosion" };
 }
 
-function meleeEffectForActor(className: string | undefined): string {
-  if (className === "Mage") return "wizard_attack1";
-  if (className === "Priest") return "priest_attack";
-  if (className === "Fighter" || className === "Duelist") return "free_slash";
-  return "slash_attack";
+function meleeEffectForActor(
+  className: string | undefined
+): { effect: string; scale: number } {
+  if (className === "Mage") return { effect: "wizard_attack1", scale: 1.1 };
+  if (className === "Priest") return { effect: "priest_attack", scale: 1.1 };
+  if (className === "Fighter" || className === "Duelist") {
+    return { effect: "free_slash", scale: 1.4 };
+  }
+  // slash_attack cells are 25×21 — scale up so the strike reads at combat size.
+  return { effect: "slash_attack", scale: 4 };
 }
 
 function projectileForActor(
@@ -1916,8 +1923,8 @@ export function playTurn(
               h,
               true,
               evt.crit === true,
-              hitEffect,
-              1,
+              hitEffect.effect,
+              hitEffect.scale,
               evt.damage
             )
           );
@@ -1948,8 +1955,8 @@ export function playTurn(
               h,
               true,
               evt.crit === true,
-              hitEffect,
-              1,
+              hitEffect.effect,
+              hitEffect.scale,
               evt.damage
             )
           );

@@ -305,13 +305,15 @@ const EFFECT_STRIPS: Record<string, EffectStrip> = {
     frameCount: 36,
     fps: 12,
   },
+  // 50×126 sheet = 2×6 grid of 25×21 cells (was wrongly registered as one
+  // 50×126 frame, so Thief/Halberdier/Crusader melee drew the whole sheet).
   slash_attack: {
     name: "slash_attack",
     url: "slash_attack.png",
-    frameWidth: 50,
-    frameHeight: 126,
-    frameCount: 1,
-    fps: 0,
+    frameWidth: 25,
+    frameHeight: 21,
+    frameCount: 12,
+    fps: 36,
   },
   staff_attack: {
     name: "staff_attack",
