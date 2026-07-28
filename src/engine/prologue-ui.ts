@@ -23,13 +23,16 @@
 import { audio } from "./audio";
 
 /**
- * Locked prologue copy — same words as the approved myth text. Beat 3 of the
- * original five-beat draft is split across two screens (same wording) so the
- * densest passage does not sit at the fatigue point as a single long type.
- * `\n` are author line breaks (CSS `white-space: pre-line`).
+ * Locked prologue copy — same words as the approved myth text. The opening
+ * pair, beat 3 of the original five-beat draft, and the Edgehollow close are
+ * each split across screens (same wording) so every sentence gets a full beat
+ * pause — densest passages never sit as a single long type. `\n` are author
+ * line breaks (CSS `white-space: pre-line`).
  */
 export const PROLOGUE_BEATS: readonly string[] = [
-  "We made war on the gods. We lost.",
+  // Opening split — full beat pause between war and loss (not a mid-line period).
+  "We made war on the gods.",
+  "We lost.",
   "They did not destroy us.\nThey left, and took Death with them.\nNothing here ends.",
   "They buried one thing before they went:\na labyrinth,\nand at the bottom of it a lamp,",
   "and in the lamp the last thing in\nexistence that can still grant a wish.",
@@ -41,20 +44,21 @@ export const PROLOGUE_BEATS: readonly string[] = [
   "Everyone here has been going down for a\nvery long time.",
 ] as const;
 
-/** Index of the opening beat — short line, needs breathing room. */
+/** Index of the opening beat — short line, needs breathing room before "We lost." */
 const OPENING_BEAT_INDEX = 0;
 /** Index of the pivot beat ("It has one left.") that gets an extra hold. */
-const PIVOT_BEAT_INDEX = 4;
+const PIVOT_BEAT_INDEX = 5;
 
 export const INTRO_STYLE = {
   // 20 cps: the opening beat is only ~34 chars; at 32 cps it finished in ~1.7s
   // and felt like a flash. Slower typing + opening hold lets the first page land.
   // (20 also keeps 1000/charsPerSec exact in float — avoids flaky pause asserts.)
   charsPerSec: 20,
-  pauseFullMs: 420, // . ? ! — slightly longer so "gods." / "lost." breathe
+  pauseFullMs: 420, // . ? ! — slightly longer so sentence ends breathe
   pauseHalfMs: 120, // , ; :
   holdAfterRevealMs: 1600,
-  holdOpeningExtraMs: 1200, // beat 0 — linger on the war/gods line
+  // Beat 0 hold ~5s so "We lost." lands after a beat of silence (not a flash, not a stall).
+  holdOpeningExtraMs: 3400, // 1600+3400 = 5000ms before auto-advance to "We lost."
   holdPivotExtraMs: 1400, // beat "It has one left." — clearly outlast neighbors
   fadeMs: 180,
   gapMs: 200,

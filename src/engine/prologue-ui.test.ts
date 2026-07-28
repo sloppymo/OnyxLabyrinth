@@ -11,9 +11,10 @@ import {
 } from "./prologue-ui";
 
 describe("PROLOGUE_BEATS", () => {
-  it("is the locked intro copy (lamp + Edgehollow splits), verbatim and in order", () => {
+  it("is the locked intro copy (opening + lamp + Edgehollow splits), verbatim and in order", () => {
     expect([...PROLOGUE_BEATS]).toEqual([
-      "We made war on the gods. We lost.",
+      "We made war on the gods.",
+      "We lost.",
       "They did not destroy us.\nThey left, and took Death with them.\nNothing here ends.",
       "They buried one thing before they went:\na labyrinth,\nand at the bottom of it a lamp,",
       "and in the lamp the last thing in\nexistence that can still grant a wish.",
@@ -67,23 +68,24 @@ describe("stepReveal", () => {
   });
 
   it("completeReveal shows the full string immediately", () => {
-    let s = createReveal(PROLOGUE_BEATS[4]!, 0);
+    let s = createReveal(PROLOGUE_BEATS[5]!, 0);
     s = completeReveal(s);
-    expect(s.visible).toBe(PROLOGUE_BEATS[4]!.length);
+    expect(s.visible).toBe(PROLOGUE_BEATS[5]!.length);
     expect(s.done).toBe(true);
   });
 });
 
 describe("holdDurationMs", () => {
-  it("adds opening extra on beat 0 and pivot extra on beat 4", () => {
+  it("adds opening extra on beat 0 and pivot extra on beat 5", () => {
     expect(holdDurationMs(0)).toBe(
       INTRO_STYLE.holdAfterRevealMs + INTRO_STYLE.holdOpeningExtraMs,
     );
-    expect(holdDurationMs(4)).toBe(
+    expect(holdDurationMs(5)).toBe(
       INTRO_STYLE.holdAfterRevealMs + INTRO_STYLE.holdPivotExtraMs,
     );
     expect(holdDurationMs(3)).toBe(INTRO_STYLE.holdAfterRevealMs);
-    expect(INTRO_STYLE.holdOpeningExtraMs).toBe(1200);
+    expect(INTRO_STYLE.holdOpeningExtraMs).toBe(3400);
+    expect(holdDurationMs(0)).toBe(5000);
     expect(INTRO_STYLE.holdPivotExtraMs).toBe(1400);
   });
 });
@@ -183,22 +185,22 @@ describe("PrologueController", () => {
     expect(panel.querySelectorAll(".prologue-text").length).toBe(1);
   });
 
-  it("holds the pivot beat (index 4) longer before auto-advancing", () => {
+  it("holds the pivot beat (index 5) longer before auto-advancing", () => {
     const c = mount();
-    for (let b = 0; b < 4; b++) {
+    for (let b = 0; b < 5; b++) {
       revealFully(c, PROLOGUE_BEATS[b]!);
       c.handleKey("Enter");
       tickPastAdvance(c);
     }
-    // Now on beat 4 ("It has one left.");
-    revealFully(c, PROLOGUE_BEATS[4]!);
+    // Now on beat 5 ("It has one left.");
+    revealFully(c, PROLOGUE_BEATS[5]!);
     time += INTRO_STYLE.holdAfterRevealMs + 50; // ordinary hold would have fired
     c.tickForTests(time);
-    expect(text()).toBe(PROLOGUE_BEATS[4]); // still on pivot — extra hold
+    expect(text()).toBe(PROLOGUE_BEATS[5]); // still on pivot — extra hold
     time += INTRO_STYLE.holdPivotExtraMs + INTRO_STYLE.fadeMs + INTRO_STYLE.gapMs + 50;
     c.tickForTests(time);
-    revealFully(c, PROLOGUE_BEATS[5]!);
-    expect(text()).toBe(PROLOGUE_BEATS[5]);
+    revealFully(c, PROLOGUE_BEATS[6]!);
+    expect(text()).toBe(PROLOGUE_BEATS[6]);
   });
 
   it("Escape immediately skips the whole intro", () => {
