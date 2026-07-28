@@ -31,8 +31,11 @@ import { getEffectSprite, type EffectSprite } from "./effect-sprite-cache";
 import { spellById } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import { BARK_PRIORITY, type BarkTrigger } from "../data/combat-barks";
+import { enemyIsUndead } from "./combat-audio";
 import type { SpriteStrip } from "./sprite-manifest";
 import combatBgUrl from "../assets/combat-bg.png";
+
+export { enemyIsUndead } from "./combat-audio";
 import {
   geometryForBackdrop,
   partySlot,
@@ -743,7 +746,9 @@ function impactSteps(
   big = false,
   effect?: string,
   scale?: number,
-  damageAmount?: number
+  damageAmount?: number,
+  underlay?: string,
+  underlayScale?: number
 ): ChoreoStep[] {
   return [
     step(t, (scene, now) => {
@@ -763,6 +768,18 @@ function impactSteps(
       }
       pushPopup(scene, targetId, text, color, now, w, h, big);
       if (actor) {
+        if (underlay) {
+          scene.effects.push({
+            type: "burst",
+            x: actor.x,
+            y: actor.y,
+            color,
+            effect: underlay,
+            scale: underlayScale ?? 1,
+            start: now,
+            duration: 280,
+          });
+        }
         if (effect) {
           scene.effects.push({
             type: "burst",
@@ -914,6 +931,12 @@ interface EffectStyle {
   burst: string;
   /** Field overlay effect for area/row spells. */
   field?: string;
+  /** Drawn under the primary burst at the same impact (glow twin). */
+  burstUnderlay?: string;
+  burstUnderlayScale?: number;
+  /** Drawn under the primary field (iso/glow twins). */
+  fieldUnderlay?: string;
+  fieldUnderlayScale?: number;
   /** Default scale for all effect stages. */
   scale?: number;
   /** Per-stage scale overrides (fall back to `scale` then 1). */
@@ -923,6 +946,8 @@ interface EffectStyle {
   /** Optional charge sprite drawn above the caster during the cast animation. */
   charge?: string;
   chargeScale?: number;
+  /** Override charge linger (default = cast→impact window). Presentation only. */
+  chargeDurationMs?: number;
   /** Number of parallel / raining projectiles (default 1). Higher for big spells. */
   projectileCount?: number;
   /** ±fraction applied to each projectile's scale (default 0.14 when count>1). */
@@ -946,6 +971,10 @@ interface EffectStyle {
   glow?: boolean;
 }
 
+/** Soft cap so stacked particle sprinkles can't flood the effect list. */
+const MAX_SCENE_EFFECTS = 40;
+const MAX_PARTICLE_BURSTS = 4;
+
 /** Push one or more bursts around (x,y) with mild scale/position variety.
  *  `durationOverride` (tier-scaled) applies when the style has no explicit
  *  `burstDurationMs`. */
@@ -960,6 +989,20 @@ function pushBursts(
   const count = Math.max(1, style.burstCount ?? 1);
   const duration = style.burstDurationMs ?? durationOverride ?? BURST_MS;
   const base = style.burstScale ?? style.scale ?? 1;
+  // Underlay first so primary sits on top (draw order = push order).
+  if (style.burstUnderlay) {
+    scene.effects.push({
+      type: "burst",
+      x,
+      y,
+      color: style.color,
+      effect: style.burstUnderlay,
+      scale: varyScale(style.burstUnderlayScale ?? base * 1.05, 0.08),
+      glow: true,
+      start: now,
+      duration,
+    });
+  }
   for (let i = 0; i < count; i++) {
     const ox = count > 1 ? (i - (count - 1) / 2) * 24 + (Math.random() * 12 - 6) : 0;
     const oy = count > 1 ? Math.random() * 18 - 9 : 0;
@@ -978,6 +1021,113 @@ function pushBursts(
   // Light the floor under the burst so the spell illuminates the room.
   const glowRadius = Math.min(190, 60 + base * 28);
   pushLightGlow(scene, x, y, style.color, glowRadius, now, Math.max(320, duration * 0.7));
+}
+
+/**
+ * Push area field layer(s). Underlay first; when underlay is the iso fire twin,
+ * also push `fire_explosion_iso_glow` (locked Meteor/Immolate layering).
+ */
+function pushFieldLayers(
+  scene: CombatScene,
+  fieldX: number,
+  h: number,
+  style: EffectStyle,
+  now: number,
+  fieldDuration: number,
+  fieldBase: number
+): void {
+  if (style.fieldUnderlay) {
+    scene.effects.push({
+      type: "field",
+      x: fieldX,
+      y: h * 0.42,
+      color: style.color,
+      effect: style.fieldUnderlay,
+      scale: varyScale((style.fieldUnderlayScale ?? fieldBase) * 0.9, 0.06),
+      glow: true,
+      start: now,
+      duration: fieldDuration,
+    });
+    // Special case: iso under mushroom gets its glow twin as a third layer.
+    if (style.fieldUnderlay === "fire_explosion_iso") {
+      scene.effects.push({
+        type: "field",
+        x: fieldX + 8,
+        y: h * 0.44,
+        color: style.color,
+        effect: "fire_explosion_iso_glow",
+        scale: varyScale(fieldBase * 0.85, 0.08),
+        glow: true,
+        start: now + 40,
+        duration: fieldDuration - 40,
+      });
+    }
+  }
+  scene.effects.push({
+    type: "field",
+    x: fieldX,
+    y: h * 0.42,
+    color: style.color,
+    effect: style.field ?? style.burst,
+    scale: varyScale(fieldBase, 0.06),
+    glow: style.glow,
+    start: now,
+    duration: fieldDuration,
+  });
+  scene.effects.push({
+    type: "field",
+    x: fieldX + 18,
+    y: h * 0.46,
+    color: style.color,
+    effect: style.field ?? style.burst,
+    scale: varyScale(fieldBase * 0.72, 0.1),
+    glow: style.glow,
+    start: now + 70,
+    duration: fieldDuration - 80,
+  });
+}
+
+/** Micro particle sprinkles (8×8 elemental strips). Capped for perf. */
+function pushParticleSprinkles(
+  scene: CombatScene,
+  x: number,
+  y: number,
+  color: string,
+  effect: string,
+  now: number,
+  count: number,
+  scale: number,
+  opts?: { underlay?: string; underlayScale?: number }
+): void {
+  if (scene.effects.length > MAX_SCENE_EFFECTS) return;
+  const n = Math.min(MAX_PARTICLE_BURSTS, Math.max(1, count));
+  if (opts?.underlay) {
+    scene.effects.push({
+      type: "burst",
+      x,
+      y,
+      color,
+      effect: opts.underlay,
+      scale: opts.underlayScale ?? scale * 1.1,
+      glow: true,
+      start: now,
+      duration: 320,
+    });
+  }
+  for (let i = 0; i < n; i++) {
+    const ox = (i - (n - 1) / 2) * 14 + (Math.random() * 8 - 4);
+    const oy = Math.random() * 12 - 6;
+    scene.effects.push({
+      type: "burst",
+      x: x + ox,
+      y: y + oy,
+      color,
+      effect,
+      scale: varyScale(scale, 0.2),
+      start: now + i * 35,
+      duration: 360 + i * 30,
+    });
+  }
 }
 
 /** Launch a volley of projectiles from → to with stagger and scale jitter. */
@@ -1135,9 +1285,10 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
     burst: "mp_fire_bomb",
     burstScale: 1.15,
     field: "large_fire",
+    fieldUnderlay: "large_fire_glow",
     scale: 2.5,
-    charge: "fz_fireball",
-    chargeScale: 0.15,
+    charge: "mp_fire_bomb_full",
+    chargeScale: 0.6,
     projectileCount: 1,
     projectilePath: "riseDash",
     riseFrac: 0.56,
@@ -1170,10 +1321,12 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
     projectile: "lightning_blast",
     burst: "mp_lightning",
     burstScale: 1.1,
+    burstUnderlay: "lightning_blast_glow",
+    burstUnderlayScale: 1.2,
     field: "lightning_energy_glow",
     scale: 1.8,
-    charge: "lightning_blast",
-    chargeScale: 0.4,
+    charge: "mp_lightning_full",
+    chargeScale: 0.55,
     projectileCount: 1,
   },
   // Poison — plant missile into verdant bloom (was red-lightning + verdant).
@@ -1240,8 +1393,8 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   },
   "mage-ember": {
     color: "#ff8c42",
-    projectile: "px_fireball",
-    projectileScale: 2.5,
+    projectile: "fireball",
+    projectileScale: 2.8,
     projectilePath: "riseDash",
     riseFrac: 0.56,
     riseLift: 66,
@@ -1250,13 +1403,17 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   },
   "mage-spark": {
     color: "#d0e8ff",
-    projectile: "px_arcane_bolt",
+    projectile: "px_magic_ray",
     projectileScale: 2.8,
     projectilePath: "riseDash",
     riseFrac: 0.54,
     riseLift: 62,
     burst: "px_magic_sparks",
     burstScale: 6.0,
+    burstUnderlay: "lightning_blast_glow",
+    burstUnderlayScale: 1.0,
+    charge: "mp_spark_full",
+    chargeScale: 0.65,
   },
   "mage-frostbite": {
     color: "#d6f7ff",
@@ -1267,6 +1424,8 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
     riseLift: 64,
     burst: "ice_burst",
     burstScale: 1.15,
+    field: "ice_burst_grey",
+    fieldScale: 1.05,
     glow: true,
   },
   "mage-water-bolt": {
@@ -1320,6 +1479,8 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   },
   "mage-arcane-ward": {
     color: "#7fe0e0",
+    projectile: "px_arcane_bolt",
+    projectileScale: 2.8,
     burst: "px_magic_orb",
     burstScale: 5.5,
     field: "px_shield",
@@ -1349,8 +1510,10 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
     burstCount: 2,
     field: "mp_fire_bomb",
     fieldScale: 1.4,
+    charge: "mp_fire_bomb_full",
+    chargeScale: 0.65,
   },
-  // Immolate — mushroom-cloud column + 3 staggered fireballs.
+  // Immolate — mushroom-cloud column + 3 staggered fireballs; iso underlay twin.
   "mage-immolate": {
     color: "#ff8c42",
     projectile: "fz_fireball",
@@ -1364,6 +1527,9 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
     burstCount: 2,
     field: "retro_fire_mushroom",
     fieldScale: 1.55,
+    fieldUnderlay: "fire_explosion_iso",
+    charge: "mp_fire_bomb_full",
+    chargeScale: 0.7,
   },
   "mage-burning-hands": { color: "#ff8c42", burst: "px_firebomb", burstScale: 2.4, burstCount: 2, field: "px_firebomb", fieldScale: 2.2 },
   // Priest holy — dedicated holy-bolt art instead of the generic priest_attack strip,
@@ -1407,13 +1573,66 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
     fieldScale: 1.5,
     scale: 1.2,
   },
-  // Summons — Foozle portal swirl per school (base purple / orange fire / gold holy).
-  "mage-summon-fire-elemental": { color: "#ff9a3a", burst: "fz_portal_orange", burstScale: 1.3, field: "fz_portal_orange", fieldScale: 0.7 },
-  "mage-conjure-elemental": { color: "#c080ff", burst: "fz_portal", burstScale: 1.2, field: "fz_portal", fieldScale: 0.7 },
-  "mage-gate": { color: "#c080ff", burst: "fz_portal", burstScale: 1.6, field: "fz_portal", fieldScale: 0.9, charge: "retro3_sigil_charge", chargeScale: 0.35 },
-  "priest-summon-guardian": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.2, field: "fz_portal_gold", fieldScale: 0.7 },
-  "priest-summon-celestial-guardian": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.5, field: "fz_portal_gold", fieldScale: 0.8 },
-  "priest-summon-celestial": { color: "#ffe27a", burst: "fz_portal_gold", burstScale: 1.3, field: "fz_portal_gold", fieldScale: 0.7 },
+  // Summons — Foozle portal swirl per school + elemental particle sprinkles.
+  "mage-summon-fire-elemental": {
+    color: "#ff9a3a",
+    burst: "fz_portal_orange",
+    burstScale: 1.3,
+    burstUnderlay: "elemental_v1",
+    burstUnderlayScale: 10,
+    burstCount: 1,
+    field: "fz_portal_orange",
+    fieldScale: 0.7,
+  },
+  "mage-conjure-elemental": {
+    color: "#c080ff",
+    burst: "fz_portal",
+    burstScale: 1.2,
+    burstUnderlay: "elemental_v2",
+    burstUnderlayScale: 10,
+    field: "fz_portal",
+    fieldScale: 0.7,
+  },
+  "mage-gate": {
+    color: "#c080ff",
+    burst: "fz_portal",
+    burstScale: 1.6,
+    burstUnderlay: "elemental_v1",
+    burstUnderlayScale: 11,
+    field: "fz_portal",
+    fieldScale: 0.9,
+    fieldUnderlay: "retro3_sigil_charge",
+    fieldUnderlayScale: 1.4,
+    charge: "mp_dark_bolt_full",
+    chargeScale: 0.45,
+  },
+  "priest-summon-guardian": {
+    color: "#ffe27a",
+    burst: "fz_portal_gold",
+    burstScale: 1.2,
+    burstUnderlay: "elemental_v2",
+    burstUnderlayScale: 9,
+    field: "fz_portal_gold",
+    fieldScale: 0.7,
+  },
+  "priest-summon-celestial-guardian": {
+    color: "#ffe27a",
+    burst: "fz_portal_gold",
+    burstScale: 1.5,
+    burstUnderlay: "elemental_v1",
+    burstUnderlayScale: 10,
+    field: "fz_portal_gold",
+    fieldScale: 0.8,
+  },
+  "priest-summon-celestial": {
+    color: "#ffe27a",
+    burst: "fz_portal_gold",
+    burstScale: 1.3,
+    burstUnderlay: "elemental_v2",
+    burstUnderlayScale: 9,
+    field: "fz_portal_gold",
+    fieldScale: 0.7,
+  },
   // Sunburst — Free pack flower burst for the flash, retro2 solar-ring field
   // for the lingering sacred corona (was the same burst twice).
   "priest-sunburst": {
@@ -1452,9 +1671,21 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   // Web — shares STATUS_STYLES.paralysis's status kind with Hold Person/Power Word
   // Stun, but needs its own tangled-vine look rather than the shared "stun stars" burst.
   "mage-web": { color: "#c8c4b8", field: "free_tangle", fieldScale: 1.3, burst: "free_tangle", burstScale: 1.3 },
-  // Silence/Dispel — a ward-ring sigil in place of the generic red_energy field.
-  "mage-silence": { color: "#7fe0e0", field: "free_wardring", fieldScale: 0.7, burst: "free_wardring", burstScale: 1.1 },
-  "mage-dispel-magic": { color: "#7fe0e0", field: "free_wardring", fieldScale: 0.7, burst: "free_wardring", burstScale: 1.1 },
+  // Silence/Dispel — ward-ring + B/W sparkle burst for the cancel beat.
+  "mage-silence": {
+    color: "#7fe0e0",
+    field: "free_wardring",
+    fieldScale: 0.7,
+    burst: "px_black_white_sparks",
+    burstScale: 5.5,
+  },
+  "mage-dispel-magic": {
+    color: "#7fe0e0",
+    field: "free_wardring",
+    fieldScale: 0.7,
+    burst: "px_black_white_sparks",
+    burstScale: 5.5,
+  },
 
   // --- New impact-pack overrides (2026 sprite additions) -------------------
 
@@ -1537,23 +1768,26 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
     field: "retro_fire_mushroom",
     fieldScale: 1.65,
     fieldDurationMs: 1100,
-    charge: "fz_fireball",
-    chargeScale: 0.55,
+    fieldUnderlay: "fire_explosion_iso",
+    charge: "mp_fire_bomb_full",
+    chargeScale: 0.7,
   },
   "mage-disintegrate": {
     color: "#c080ff",
-    projectile: "mp_dark_bolt",
-    projectileScale: 1.15,
+    projectile: "px_black_white_ray",
+    projectileScale: 2.8,
     projectilePath: "riseDash",
     riseFrac: 0.6,
     riseLift: 78,
     burst: "px_darkness_orb",
     burstScale: 7.0,
     burstCount: 2,
+    burstUnderlay: "mp_dark_bolt",
+    burstUnderlayScale: 1.1,
     field: "px_darkness_bolt",
     fieldScale: 5.5,
-    charge: "mp_dark_bolt",
-    chargeScale: 0.5,
+    charge: "mp_dark_bolt_full",
+    chargeScale: 0.55,
   },
   "mage-freezing-sphere": {
     color: "#9ad8ff",
@@ -1597,9 +1831,15 @@ const STATUS_STYLES: Record<string, EffectStyle> = {
   poison: { color: "#c080ff", burst: "dispel_sparks" },
   paralysis: { color: "#c8c4b8", burst: "free_stunburst", burstScale: 1.2 },
   blind: { color: "#c8c4b8", burst: "mp_spark" },
-  // Burn DoT (Meteor Swarm followup) — reuses the existing fire burst so the
-  // "is burning!" beat reads as fire, not the generic purple status sparks.
-  burn: { color: "#ff9a50", burst: "fire_explosion", burstScale: 1.1 },
+  slow: { color: "#d6f7ff", burst: "ice_burst_grey", burstScale: 1.15, glow: true },
+  // Burn DoT (Meteor Swarm followup) — fire burst + glow twin underlay.
+  burn: {
+    color: "#ff9a50",
+    burst: "fire_explosion",
+    burstScale: 1.1,
+    burstUnderlay: "fire_explosion_glow",
+    burstUnderlayScale: 1.15,
+  },
 };
 
 export function resolveEffectStyle(
@@ -1657,13 +1897,13 @@ export function resolveEffectStyle(
     if (eff.kind === "status") return STATUS_STYLES[eff.status] ?? { color: COLORS.poison, burst: "red_energy" };
     if (eff.kind === "fizzleField") return { color: "#7fe0e0", field: "free_wardring", fieldScale: 0.7, burst: "free_wardring", burstScale: 1.1 };
     if (eff.kind === "summon") return { color: COLORS.sp, burst: "fz_portal", burstScale: 1.1, field: "fz_portal", fieldScale: 0.6, scale: 1.2 };
-    return { color: COLORS.spellBurst, burst: "fire_explosion" };
+    return { color: COLORS.spellBurst, burst: "fire_explosion", burstUnderlay: "fire_explosion_glow" };
   }
   const spell = spellId ? spellById(spellId) : undefined;
   if (spell) {
     const eff = spell.effect;
     if (eff.kind === "damage" && eff.element) {
-      return ELEMENT_STYLES[eff.element] ?? { color: COLORS.spellBurst, burst: "fire_explosion" };
+      return ELEMENT_STYLES[eff.element] ?? { color: COLORS.spellBurst, burst: "fire_explosion", burstUnderlay: "fire_explosion_glow" };
     }
     if (eff.kind === "heal") {
       return { color: COLORS.heal, projectile: "priest_heal", burst: "priest_heal", scale: 1.2 };
@@ -1678,10 +1918,25 @@ export function resolveEffectStyle(
       return STATUS_STYLES[eff.status] ?? { color: COLORS.poison, burst: "red_energy" };
     }
     if (eff.kind === "fizzleField" || eff.kind === "dispelMagic") {
-      return { color: "#7fe0e0", field: "free_wardring", fieldScale: 0.7, burst: "free_wardring", burstScale: 1.1 };
+      return {
+        color: "#7fe0e0",
+        field: "free_wardring",
+        fieldScale: 0.7,
+        burst: "px_black_white_sparks",
+        burstScale: 5.5,
+      };
     }
     if (eff.kind === "summon") {
-      return { color: COLORS.sp, burst: "fz_portal", burstScale: 1.1, field: "fz_portal", fieldScale: 0.6, scale: 1.2 };
+      return {
+        color: COLORS.sp,
+        burst: "fz_portal",
+        burstScale: 1.1,
+        burstUnderlay: "elemental_v1",
+        burstUnderlayScale: 10,
+        field: "fz_portal",
+        fieldScale: 0.6,
+        scale: 1.2,
+      };
     }
   }
 
@@ -1697,21 +1952,102 @@ export function resolveEffectStyle(
     return { color: COLORS.poison, burst: "dispel_sparks" };
   }
   if (e.damage !== undefined) {
-    return { color: COLORS.dmg, burst: "fire_explosion" };
+    return { color: COLORS.dmg, burst: "fire_explosion", burstUnderlay: "fire_explosion_glow" };
   }
-  return { color: COLORS.spellBurst, burst: "fire_explosion" };
+  return { color: COLORS.spellBurst, burst: "fire_explosion", burstUnderlay: "fire_explosion_glow" };
 }
 
-function meleeEffectForActor(
-  className: string | undefined
-): { effect: string; scale: number } {
-  if (className === "Mage") return { effect: "wizard_attack1", scale: 1.1 };
-  if (className === "Priest") return { effect: "priest_attack", scale: 1.1 };
+export type MeleeHitEffect = {
+  effect: string;
+  scale: number;
+  underlay?: string;
+  underlayScale?: number;
+};
+
+/** Resolve melee hit burst (+ optional staff underlay) from class / crit. */
+export function resolveMeleeHitEffect(
+  className: string | undefined,
+  opts: { crit?: boolean } = {}
+): MeleeHitEffect {
+  if (className === "Mage") {
+    return {
+      effect: opts.crit ? "wizard_attack2" : "wizard_attack1",
+      scale: opts.crit ? 1.25 : 1.1,
+      underlay: "staff_attack",
+      underlayScale: 0.85,
+    };
+  }
+  if (className === "Priest") {
+    return {
+      effect: "priest_attack",
+      scale: 1.1,
+      underlay: "staff_attack",
+      underlayScale: 0.85,
+    };
+  }
   if (className === "Fighter" || className === "Duelist") {
     return { effect: "free_slash", scale: 1.4 };
   }
   // slash_attack cells are 25×21 — scale up so the strike reads at combat size.
   return { effect: "slash_attack", scale: 4 };
+}
+
+/**
+ * Explicit inventory of effect ids referenced by combat presentation styles /
+ * helpers. Prefer this over regex-scanning the file (P5 unused-id guard).
+ */
+export function collectReferencedEffectIds(): Set<string> {
+  const ids = new Set<string>();
+  const add = (s?: string): void => {
+    if (s) ids.add(s);
+  };
+  const addStyle = (style: EffectStyle): void => {
+    add(style.projectile);
+    add(style.burst);
+    add(style.field);
+    add(style.charge);
+    add(style.burstUnderlay);
+    add(style.fieldUnderlay);
+  };
+  for (const style of Object.values(ELEMENT_STYLES)) addStyle(style);
+  for (const style of Object.values(SPELL_OVERRIDES)) addStyle(style);
+  for (const style of Object.values(STATUS_STYLES)) addStyle(style);
+  // Iso glow is pushed as a special-case third field layer.
+  ids.add("fire_explosion_iso_glow");
+  // Melee / projectile / death / particle / analyze hardcodes.
+  for (const id of [
+    "wizard_attack1",
+    "wizard_attack2",
+    "priest_attack",
+    "staff_attack",
+    "free_slash",
+    "slash_attack",
+    "arrow",
+    "arrow_archer",
+    "arrow_skeleton",
+    "cannonball",
+    "rune-beam",
+    "demon-arrow",
+    "eye-beam",
+    "ghostfire-beam",
+    "lava-spike",
+    "warlock-magic",
+    "zombie_death_explosion",
+    "zombie_explosion",
+    "elemental_v1",
+    "elemental_v2",
+    "extra_elemental",
+    "extra_elemental_glow",
+    "px_black_white_sparks",
+    "fireball",
+    "priest_heal",
+    "lightning_energy",
+    "red_energy",
+    "lightning_energy_glow",
+  ]) {
+    ids.add(id);
+  }
+  return ids;
 }
 
 function projectileForActor(
@@ -1891,7 +2227,7 @@ export function playTurn(
       case "techniqueHit": {
         const isRanged = evt.type === "attack" && evt.range === "long";
         const attacker = findActor(scene, evt.actorId, w, h);
-        const hitEffect = meleeEffectForActor(attacker?.class);
+        const hitEffect = resolveMeleeHitEffect(attacker?.class, { crit: evt.crit === true });
         if (isRanged) {
           // Ranged: no approach; fire a projectile from attacker to target.
           attackAnim(evt.actorId);
@@ -1925,13 +2261,17 @@ export function playTurn(
               evt.crit === true,
               hitEffect.effect,
               hitEffect.scale,
-              evt.damage
+              evt.damage,
+              hitEffect.underlay,
+              hitEffect.underlayScale
             )
           );
           t += ATTACK_MS + 200;
         } else {
           approach(evt.actorId);
           const base = t;
+          const techniqueCrit = evt.type === "techniqueHit" && evt.crit === true;
+          const techniqueTarget = evt.type === "techniqueHit" ? evt.targetId : null;
           steps.push(
             step(base + APPROACH_MS, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
@@ -1957,9 +2297,32 @@ export function playTurn(
               evt.crit === true,
               hitEffect.effect,
               hitEffect.scale,
-              evt.damage
+              evt.damage,
+              hitEffect.underlay,
+              hitEffect.underlayScale
             )
           );
+          if (techniqueTarget) {
+            steps.push(
+              step(base + IMPACT_AT, (sc, n) => {
+                const to = findActor(sc, techniqueTarget, w, h);
+                if (!to) return;
+                pushParticleSprinkles(
+                  sc,
+                  to.x,
+                  to.y,
+                  COLORS.spellBurst,
+                  "extra_elemental",
+                  n,
+                  3,
+                  9,
+                  techniqueCrit
+                    ? { underlay: "extra_elemental_glow", underlayScale: 10 }
+                    : undefined
+                );
+              })
+            );
+          }
           t = base + APPROACH_MS + ATTACK_MS;
           returnHome();
         }
@@ -2010,7 +2373,7 @@ export function playTurn(
         const status = evt.statusInflicted;
         const effectName = status === "paralysis" ? "lightning_energy"
           : status === "poison" ? "red_energy"
-          : status === "slow" ? "ice_burst_glow"
+          : status === "slow" ? "ice_burst_grey"
           : status === "armorDown" ? "free_slash"
           : "lightning_energy_glow";
         const color = status === "poison" ? COLORS.poison
@@ -2085,6 +2448,7 @@ export function playTurn(
             step(t, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
               if (!actor) return;
+              const defaultDur = (pendingImpactBase ?? CAST_IMPACT) - t + 80;
               sc.effects.push({
                 type: "charge",
                 x: actor.x, y: actor.y,
@@ -2092,7 +2456,7 @@ export function playTurn(
                 effect: style.charge,
                 scale: varyScale(style.chargeScale ?? style.scale ?? 0.8, 0.08),
                 start: n,
-                duration: (pendingImpactBase ?? CAST_IMPACT) - t + 80,
+                duration: style.chargeDurationMs ?? defaultDur,
               });
             })
           );
@@ -2196,30 +2560,7 @@ export function playTurn(
           const fieldBase = (style.fieldScale ?? style.scale ?? 1) * 2;
           steps.push(
             step(impactAt, (sc, n) => {
-              // Twin field layers at slightly different scales read as depth
-              // instead of one flat stamp.
-              sc.effects.push({
-                type: "field",
-                x: fieldX,
-                y: h * 0.42,
-                color: style.color,
-                effect: style.field ?? style.burst,
-                scale: varyScale(fieldBase, 0.06),
-                glow: style.glow,
-                start: n,
-                duration: fieldDuration,
-              });
-              sc.effects.push({
-                type: "field",
-                x: fieldX + 18,
-                y: h * 0.46,
-                color: style.color,
-                effect: style.field ?? style.burst,
-                scale: varyScale(fieldBase * 0.72, 0.1),
-                glow: style.glow,
-                start: n + 70,
-                duration: fieldDuration - 80,
-              });
+              pushFieldLayers(sc, fieldX, h, style, n, fieldDuration, fieldBase);
               addScreenShake(sc, fieldX < w * 0.5 ? 4 : 2, n, 300);
             })
           );
@@ -2234,17 +2575,7 @@ export function playTurn(
           const fieldBase = (style.fieldScale ?? style.scale ?? 1) * 2;
           steps.push(
             step(impactAt, (sc, n) => {
-              sc.effects.push({
-                type: "field",
-                x: fieldX,
-                y: h * 0.42,
-                color: style.color,
-                effect: style.field ?? style.burst,
-                scale: varyScale(fieldBase, 0.08),
-                glow: style.glow,
-                start: n,
-                duration: fieldDuration,
-              });
+              pushFieldLayers(sc, fieldX, h, style, n, fieldDuration, fieldBase);
               addScreenShake(sc, evt.isDebuff ? 4 : 2, n, 300);
             })
           );
@@ -2316,6 +2647,25 @@ export function playTurn(
             const kind: SceneCursor["kind"] = actor?.kind ?? (evt.wasEnemy ? "enemy" : "party");
             const a = getAnim(sc, kind, targetId, n);
             setAnimState(a, "death", n);
+            // Undead death sibling burst (presentation routing via special).
+            if (evt.wasEnemy) {
+              const enemy =
+                sc.state.enemies.front.find((e) => e.instanceId === targetId) ??
+                sc.state.enemies.back.find((e) => e.instanceId === targetId) ??
+                sc.state.justDied.find((e) => e.instanceId === targetId);
+              if (enemy && enemyIsUndead(enemy.id) && actor) {
+                sc.effects.push({
+                  type: "burst",
+                  x: actor.x,
+                  y: actor.y,
+                  color: "#c080ff",
+                  effect: "zombie_death_explosion",
+                  scale: 1.35,
+                  start: n,
+                  duration: 500,
+                });
+              }
+            }
             // Enemies and summoned allies fade out after the death plays;
             // KO'd party members hold the death pose. A death bark on this
             // actor holds the fade so the corpse (and its live anchor) stay
@@ -2376,7 +2726,15 @@ export function playTurn(
 
       case "statusTick": {
         const tickColor = evt.status === "burn" ? "#ff9a50" : COLORS.poison;
+        const tickStyle = STATUS_STYLES[evt.status] ?? {
+          color: tickColor,
+          burst: "dispel_sparks",
+        };
         steps.push(
+          step(t, (sc, n) => {
+            const target = findActor(sc, evt.targetId, w, h);
+            if (target) pushBursts(sc, target.x, target.y, tickStyle, n);
+          }),
           ...impactSteps(t, evt.targetId, `${evt.damage}`, tickColor, w, h, false, false, undefined, undefined, evt.damage)
         );
         t += 250;
@@ -2395,7 +2753,22 @@ export function playTurn(
       case "silence": {
         showBanner("Silence", 900);
         steps.push(
-          step(t, (sc, n) => pushPopup(sc, evt.targetId, "SILENCED", COLORS.poison, n, w, h))
+          step(t, (sc, n) => {
+            pushPopup(sc, evt.targetId, "SILENCED", COLORS.poison, n, w, h);
+            const target = findActor(sc, evt.targetId, w, h);
+            if (target) {
+              sc.effects.push({
+                type: "burst",
+                x: target.x,
+                y: target.y,
+                color: "#7fe0e0",
+                effect: "px_black_white_sparks",
+                scale: 5.5,
+                start: n,
+                duration: 400,
+              });
+            }
+          })
         );
         t += 500;
         break;
@@ -2425,6 +2798,22 @@ export function playTurn(
 
       case "analyze": {
         showBanner("Analyze", 900);
+        steps.push(
+          step(t, (sc, n) => {
+            const target = findActor(sc, evt.targetId, w, h);
+            if (!target) return;
+            sc.effects.push({
+              type: "burst",
+              x: target.x,
+              y: target.y,
+              color: "#d0e8ff",
+              effect: "px_black_white_sparks",
+              scale: 5.0,
+              start: n,
+              duration: 420,
+            });
+          })
+        );
         t += 500;
         break;
       }
@@ -2437,7 +2826,22 @@ export function playTurn(
 
       case "fizzle": {
         steps.push(
-          step(t, (sc, n) => pushPopup(sc, evt.actorId, "FIZZLE", COLORS.miss, n, w, h))
+          step(t, (sc, n) => {
+            pushPopup(sc, evt.actorId, "FIZZLE", COLORS.miss, n, w, h);
+            const actor = findActor(sc, evt.actorId, w, h);
+            if (actor) {
+              sc.effects.push({
+                type: "burst",
+                x: actor.x,
+                y: actor.y,
+                color: "#c8c4b8",
+                effect: "px_black_white_sparks",
+                scale: 4.5,
+                start: n,
+                duration: 360,
+              });
+            }
+          })
         );
         t += 400;
         break;
@@ -3639,9 +4043,8 @@ export function renderScene(
   for (let i = 0; i < s.party.length; i++) {
     const char = s.party[i]!;
     // Visual stand position keys off the dense in-combat rank (i), not the
-    // roster's original formationSlot (0-5, sparse once bench members drop
-    // out) — matches findActor's convention and keeps the on-field cascade
-    // gap-free regardless of which two roster slots got benched this fight.
+    // roster's formationSlot (0-3, front 0-1 / back 2-3) — matches
+    // findActor's convention.
     const pos = partyPos(i, w, h, scene.backdropId);
     cmds.push({
       footY: pos.footY,

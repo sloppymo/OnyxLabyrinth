@@ -511,9 +511,21 @@ async function loadEffect(name: string): Promise<EffectSprite> {
   return promise;
 }
 
-/** Preload all effect sprites without blocking the render loop. */
+/** Not a combat animation — icon atlas. Excluded from loadEffectSprites core set. */
+export const NON_COMBAT_EFFECT_IDS = new Set(["fz_icons"]);
+
+/** Preload combat effect sprites without blocking the render loop. */
 export function loadEffectSprites(): Promise<EffectSprite[]> {
-  return Promise.all(Object.keys(EFFECT_STRIPS).map((name) => loadEffect(name)));
+  return Promise.all(
+    Object.keys(EFFECT_STRIPS)
+      .filter((name) => !NON_COMBAT_EFFECT_IDS.has(name))
+      .map((name) => loadEffect(name))
+  );
+}
+
+/** All registered strip ids (including non-combat allowlist entries). */
+export function allEffectStripIds(): string[] {
+  return Object.keys(EFFECT_STRIPS);
 }
 
 /** Return a cached effect sprite, or null if it failed to load. */

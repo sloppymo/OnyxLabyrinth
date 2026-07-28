@@ -505,8 +505,9 @@ class AudioEngine {
    * Play a combat SFX sample by id. Silently no-ops if the sample hasn't
    * finished loading yet (kicks a load for next time) or Web Audio isn't
    * available. The event->id mapping lives in combat-audio.ts, not here.
+   * Optional `gainMul` ducks layered cues (presentation only; leaf emitter).
    */
-  playCombatSfx(id: CombatSfxId): void {
+  playCombatSfx(id: CombatSfxId, opts?: { gainMul?: number }): void {
     if (!this.ctx || !this.masterGain) return;
     const buf = this.combatBuffers[id];
     if (!buf) {
@@ -521,7 +522,7 @@ class AudioEngine {
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
     const gain = this.ctx.createGain();
-    gain.gain.value = COMBAT_SFX_GAIN[id];
+    gain.gain.value = COMBAT_SFX_GAIN[id] * (opts?.gainMul ?? 1);
     src.connect(gain);
     gain.connect(this.masterGain);
     src.start();

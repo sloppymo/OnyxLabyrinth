@@ -1,0 +1,139 @@
+import { describe, expect, it } from "vitest";
+import {
+  clampSfxLayers,
+  enemyIsUndead,
+  FULL_CHARGE_SPELLS,
+  idsForEvent,
+} from "./combat-audio";
+import type { CombatState } from "../game/combat-types";
+import { createCharacter } from "../game/party";
+
+function bareState(partial: Partial<CombatState> = {}): CombatState {
+  return {
+    party: [],
+    enemies: { front: [], back: [] },
+    spells: {},
+    items: {},
+    justDied: [],
+    ...partial,
+  } as CombatState;
+}
+
+describe("idsForEvent layering", () => {
+  it("physical hit stays single-layer for non-caster classes", () => {
+    const fighter = createCharacter("a", "Bram", "Human", "Neutral", "Fighter", 0);
+    const ids = idsForEvent(
+      { type: "attack", actorId: "a", targetId: "e", damage: 5, crit: false, range: "short" },
+      bareState({ party: [fighter] })
+    );
+    expect(ids.map((x) => x.id)).toEqual(["attackHit"]);
+  });
+
+  it("Mage melee layers attackHit with soft physical; crit uses criticalHit", () => {
+    const mage = createCharacter("m", "Aria", "Human", "Neutral", "Mage", 0);
+    const normal = idsForEvent(
+      { type: "attack", actorId: "m", targetId: "e", damage: 5, crit: false, range: "short" },
+      bareState({ party: [mage] })
+    );
+    expect(normal.map((x) => x.id)).toEqual(["attackHit", "elementPhysical"]);
+    const crit = idsForEvent(
+      { type: "attack", actorId: "m", targetId: "e", damage: 12, crit: true, range: "short" },
+      bareState({ party: [mage] })
+    );
+    expect(crit.map((x) => x.id)).toEqual(["criticalHit", "elementPhysical"]);
+  });
+
+  it("Priest melee layers divine under attackHit", () => {
+    const priest = createCharacter("p", "Coda", "Human", "Neutral", "Priest", 0);
+    const ids = idsForEvent(
+      { type: "attack", actorId: "p", targetId: "e", damage: 4, crit: false, range: "short" },
+      bareState({ party: [priest] })
+    );
+    expect(ids.map((x) => x.id)).toEqual(["attackHit", "elementDivine"]);
+  });
+
+  it("charged cast adds ducked bossPhase under the element cue", () => {
+    expect(FULL_CHARGE_SPELLS.has("mage-fireball")).toBe(true);
+    const ids = idsForEvent(
+      { type: "cast", actorId: "m", spellId: "mage-fireball", targetId: "e" },
+      bareState()
+    );
+    expect(ids.map((x) => x.id)).toContain("elementFire");
+    expect(ids.map((x) => x.id)).toContain("bossPhase");
+    const phase = ids.find((x) => x.id === "bossPhase");
+    expect(phase?.gainMul).toBe(0.4);
+  });
+
+  it("caps at 3 cues", () => {
+    const layers = clampSfxLayers([
+      { id: "elementFire" },
+      { id: "bossPhase", gainMul: 0.4 },
+      { id: "burnTick", gainMul: 0.35 },
+      { id: "fizzle", gainMul: 0.2 },
+    ]);
+    expect(layers).toHaveLength(3);
+    expect(layers.map((x) => x.id)).toEqual(["elementFire", "bossPhase", "burnTick"]);
+  });
+
+  it("plain damage spellEffect stays silent (cast already played element)", () => {
+    const ids = idsForEvent(
+      {
+        type: "spellEffect",
+        actorId: "m",
+        spellId: "mage-fireball",
+        targetId: "e",
+        damage: 14,
+      },
+      bareState()
+    );
+    expect(ids).toEqual([]);
+  });
+
+  it("analyze / silence add soft fizzle layer", () => {
+    expect(
+      idsForEvent({ type: "analyze", actorId: "m", targetId: "e" }, bareState()).map(
+        (x) => x.id
+      )
+    ).toEqual(["analyze", "fizzle"]);
+    expect(
+      idsForEvent({ type: "silence", actorId: "boss", targetId: "m" }, bareState()).map(
+        (x) => x.id
+      )
+    ).toEqual(["silence", "fizzle"]);
+  });
+
+  it("undead defeat layers soft poison under enemyDefeated", () => {
+    const ids = idsForEvent(
+      { type: "defeated", targetId: "sk-0", wasEnemy: true },
+      bareState({
+        justDied: [
+          {
+            id: "skeleton",
+            name: "Skeleton",
+            instanceId: "sk-0",
+            currentHp: 0,
+            row: "front",
+            status: [],
+            hp: 10,
+            attack: 3,
+            ac: 0,
+            agi: 5,
+            xp: 1,
+            gold: 1,
+            rowPreference: "front",
+            special: [{ kind: "undead" }],
+            isBoss: false,
+          },
+        ],
+      })
+    );
+    expect(ids.map((x) => x.id)).toEqual(["enemyDefeated", "statusPoison"]);
+  });
+});
+
+describe("enemyIsUndead", () => {
+  it("detects undead special from enemy defs", () => {
+    expect(enemyIsUndead("skeleton")).toBe(true);
+    expect(enemyIsUndead("slime")).toBe(false);
+  });
+});

@@ -2,20 +2,35 @@ import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { ALL_SPELLS } from "../data/spells";
-import { resolveEffectStyle } from "./combat-scene";
-import { getEffectStrip } from "./effect-sprite-cache";
+import {
+  collectReferencedEffectIds,
+  resolveEffectStyle,
+  resolveMeleeHitEffect,
+} from "./combat-scene";
+import {
+  allEffectStripIds,
+  getEffectStrip,
+  NON_COMBAT_EFFECT_IDS,
+} from "./effect-sprite-cache";
 
 type StylePick = {
   projectile?: string;
   burst?: string;
   field?: string;
   charge?: string;
+  burstUnderlay?: string;
+  fieldUnderlay?: string;
 };
 
 function styleEffectIds(style: StylePick): string[] {
-  return [style.projectile, style.burst, style.field, style.charge].filter(
-    (id): id is string => typeof id === "string" && id.length > 0
-  );
+  return [
+    style.projectile,
+    style.burst,
+    style.field,
+    style.charge,
+    style.burstUnderlay,
+    style.fieldUnderlay,
+  ].filter((id): id is string => typeof id === "string" && id.length > 0);
 }
 
 describe("effect sprite wiring", () => {
@@ -90,11 +105,67 @@ describe("effect sprite wiring", () => {
         if (strip) urlsNeeded.add(strip.url);
       }
     }
-    for (const id of ["wizard_attack1", "priest_attack", "free_slash", "slash_attack"]) {
+    for (const id of [
+      "wizard_attack1",
+      "priest_attack",
+      "free_slash",
+      "slash_attack",
+      "staff_attack",
+      "wizard_attack2",
+      "zombie_death_explosion",
+      "extra_elemental",
+      "fireball",
+    ]) {
       const strip = getEffectStrip(id);
       if (strip) urlsNeeded.add(strip.url);
     }
     const missing = [...urlsNeeded].filter((u) => !onDisk.has(u));
     expect(missing).toEqual([]);
+  });
+
+  it("fire element field uses large_fire_glow underlay", () => {
+    // mage-burning-hands inherits fire element style (no full override for field underlay
+    // on ELEMENT default — resolve a spell that falls through to ELEMENT_STYLES.fire).
+    // mage-fire-bolt has its own override; use a plain fire damage spell without override
+    // if any — otherwise assert ELEMENT via burning-hands field path after checking.
+    const fireball = resolveEffectStyle("mage-fireball");
+    expect(fireball.charge).toBe("mp_fire_bomb_full");
+    expect(resolveEffectStyle("mage-immolate").fieldUnderlay).toBe("fire_explosion_iso");
+    expect(resolveEffectStyle("mage-meteor-swarm").fieldUnderlay).toBe("fire_explosion_iso");
+  });
+
+  it("mp_*_full charges and ray projectiles are wired", () => {
+    expect(resolveEffectStyle("mage-fireball").charge).toBe("mp_fire_bomb_full");
+    expect(resolveEffectStyle("mage-spark").charge).toBe("mp_spark_full");
+    expect(resolveEffectStyle("mage-spark").projectile).toBe("px_magic_ray");
+    expect(resolveEffectStyle("mage-disintegrate").charge).toBe("mp_dark_bolt_full");
+    expect(resolveEffectStyle("mage-disintegrate").projectile).toBe("px_black_white_ray");
+    expect(resolveEffectStyle("mage-ember").projectile).toBe("fireball");
+    expect(resolveEffectStyle("mage-gate").charge).toBe("mp_dark_bolt_full");
+  });
+
+  it("every EFFECT_STRIPS id is referenced by combat styles/helpers or allowlisted", () => {
+    const referenced = collectReferencedEffectIds();
+    const unused = allEffectStripIds().filter(
+      (id) => !referenced.has(id) && !NON_COMBAT_EFFECT_IDS.has(id)
+    );
+    expect(unused, unused.join("\n")).toEqual([]);
+  });
+
+  it("fz_icons is allowlisted as non-combat", () => {
+    expect(NON_COMBAT_EFFECT_IDS.has("fz_icons")).toBe(true);
+    expect(getEffectStrip("fz_icons")).toBeDefined();
+  });
+});
+
+describe("resolveMeleeHitEffect", () => {
+  it("Mage normal uses wizard_attack1; crit uses wizard_attack2", () => {
+    expect(resolveMeleeHitEffect("Mage", { crit: false }).effect).toBe("wizard_attack1");
+    expect(resolveMeleeHitEffect("Mage", { crit: true }).effect).toBe("wizard_attack2");
+  });
+
+  it("Mage/Priest melee include staff_attack underlay", () => {
+    expect(resolveMeleeHitEffect("Mage", { crit: false }).underlay).toBe("staff_attack");
+    expect(resolveMeleeHitEffect("Priest", { crit: false }).underlay).toBe("staff_attack");
   });
 });

@@ -21,6 +21,8 @@ import {
   setBarksEnabled,
   getBarksEnabled,
   BARK_DURATION_BASE,
+  resolveMeleeHitEffect,
+  enemyIsUndead,
 } from "./combat-scene";
 import { createCombatState } from "../game/combat";
 import { pickBark, resetBarkRngForCombat, setBarkRngForTests } from "../game/combat-barks";
@@ -334,6 +336,25 @@ describe("resolveEffectStyle impact-pack wiring", () => {
     expect(resolveEffectStyle("mage-freezing-sphere").projectileCount).toBe(4);
     expect(resolveEffectStyle("priest-divine-smite").projectileCount).toBe(2);
     expect(resolveEffectStyle("mage-ice-storm").projectileCount).toBe(4);
+  });
+});
+
+describe("resolveMeleeHitEffect", () => {
+  it("Mage normal uses wizard_attack1; crit uses wizard_attack2", () => {
+    expect(resolveMeleeHitEffect("Mage", { crit: false }).effect).toBe("wizard_attack1");
+    expect(resolveMeleeHitEffect("Mage", { crit: true }).effect).toBe("wizard_attack2");
+  });
+
+  it("Mage/Priest melee include staff_attack underlay", () => {
+    expect(resolveMeleeHitEffect("Mage", { crit: false }).underlay).toBe("staff_attack");
+    expect(resolveMeleeHitEffect("Priest", { crit: false }).underlay).toBe("staff_attack");
+  });
+});
+
+describe("enemyIsUndead", () => {
+  it("reads undead special from enemy defs", () => {
+    expect(enemyIsUndead("skeleton")).toBe(true);
+    expect(enemyIsUndead("slime")).toBe(false);
   });
 });
 
