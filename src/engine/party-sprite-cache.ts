@@ -12,8 +12,11 @@
  *   Thief → Archer, Halberdier → Armored Axeman,
  *   Duelist → Swordsman, Crusader → Knight Templar.
  *
- * States: idle / walk / attack / cast / hurt / death. `cast` is optional
- * (only Mage and Priest ship one) and falls back to `attack`.
+ * States: idle / walk / attack / attack_ranged / cast / hurt / death.
+ * `cast` is optional (only Mage and Priest ship one) and falls back to
+ * `attack`. `attack_ranged` is optional (Thief ships Archer Attack01 as the
+ * bow strip; Attack02 is the default melee `attack`) and also falls back to
+ * `attack`.
  *
  * The pack sprites face RIGHT. The combat renderer places the party on the
  * right side of the screen facing left, so it draws them mirrored.
@@ -26,6 +29,7 @@ export type PartySpriteState =
   | "idle"
   | "walk"
   | "attack"
+  | "attack_ranged"
   | "cast"
   | "hurt"
   | "death";
@@ -50,6 +54,7 @@ const STATE_CONFIG: Record<PartySpriteState, { fps: number; loop: boolean }> = {
   idle: { fps: 6, loop: true },
   walk: { fps: 10, loop: true },
   attack: { fps: 12, loop: false },
+  attack_ranged: { fps: 12, loop: false },
   cast: { fps: 10, loop: false },
   hurt: { fps: 10, loop: false },
   death: { fps: 8, loop: false },
@@ -131,8 +136,8 @@ export function loadPartySpriteBundle(dir: string): Promise<PartySpriteBundle> {
 
 /**
  * Return the strip + image for a class and state, if loaded.
- * `cast` falls back to `attack`; anything else missing returns null so the
- * renderer can fall back to the procedural silhouette.
+ * `cast` and `attack_ranged` fall back to `attack`; anything else missing
+ * returns null so the renderer can fall back to the procedural silhouette.
  */
 export function getPartySpriteStrip(
   cls: CharacterClass,
@@ -148,7 +153,10 @@ export function getPartySpriteStrip(
     return strip && img ? { strip, img } : null;
   };
 
-  return tryState(state) ?? (state === "cast" ? tryState("attack") : null);
+  return (
+    tryState(state) ??
+    (state === "cast" || state === "attack_ranged" ? tryState("attack") : null)
+  );
 }
 
 /** Test hook: clear all caches. */

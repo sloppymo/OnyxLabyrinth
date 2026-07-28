@@ -86,6 +86,38 @@ describe("party-sprite-cache", () => {
     expect(cast!.strip.frameCount).toBe(7); // the attack strip
   });
 
+  it("falls back from attack_ranged to attack when ranged strip is missing", async () => {
+    sizeForUrl = (url) => {
+      if (url.includes("attack_ranged")) return null;
+      if (url.includes("attack")) return { w: 700, h: 100 };
+      return { w: 600, h: 100 };
+    };
+    const { loadPartySprites, getPartySpriteStrip } = await import(
+      "./party-sprite-cache"
+    );
+    await loadPartySprites();
+    const ranged = getPartySpriteStrip("Fighter", "attack_ranged");
+    expect(ranged).not.toBeNull();
+    expect(ranged!.strip.frameCount).toBe(7);
+  });
+
+  it("loads a distinct attack_ranged strip when present", async () => {
+    sizeForUrl = (url) => {
+      if (url.includes("attack_ranged")) return { w: 900, h: 100 };
+      if (url.includes("attack")) return { w: 1200, h: 100 };
+      return { w: 600, h: 100 };
+    };
+    const { loadPartySprites, getPartySpriteStrip } = await import(
+      "./party-sprite-cache"
+    );
+    await loadPartySprites();
+    const melee = getPartySpriteStrip("Thief", "attack");
+    const ranged = getPartySpriteStrip("Thief", "attack_ranged");
+    expect(melee!.strip.frameCount).toBe(12);
+    expect(ranged!.strip.frameCount).toBe(9);
+    expect(ranged!.strip.url).toContain("attack_ranged");
+  });
+
   it("returns null for a state whose image failed to load", async () => {
     sizeForUrl = (url) => (url.includes("hurt") ? null : { w: 600, h: 100 });
     const { loadPartySprites, getPartySpriteStrip } = await import(

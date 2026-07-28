@@ -174,7 +174,7 @@ function getCombatBg(): HTMLImageElement | null {
 // --- Actor animation state -------------------------------------------------------
 
 /** Extended sprite state (party strips + generic mapping for enemies). */
-export type ActorSpriteState = PartySpriteState; // idle|walk|attack|cast|hurt|death
+export type ActorSpriteState = PartySpriteState; // idle|walk|attack|attack_ranged|cast|hurt|death
 
 export interface ActorAnim {
   state: ActorSpriteState;
@@ -2156,7 +2156,14 @@ export function playTurn(
     approachedKind = null;
   };
 
-  const attackAnim = (actorId: string): void => {
+  const clearAttackIfPlaying = (a: ActorAnim, n: number): void => {
+    if (a.state === "attack" || a.state === "attack_ranged") setAnimState(a, "idle", n);
+  };
+
+  const attackAnim = (
+    actorId: string,
+    animState: ActorSpriteState = "attack"
+  ): void => {
     // Same coil-then-strike telegraph as approach(), for actors that don't
     // physically step forward (ranged attackers, the miss path).
     const coilMs = Math.min(70, ATTACK_MS * 0.3);
@@ -2172,14 +2179,13 @@ export function playTurn(
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
         const a = getAnim(sc, actor.kind, actorId, n);
-        setAnimState(a, "attack", n);
+        setAnimState(a, animState, n);
         startMove(a, 0, 0, ATTACK_MS - coilMs, n, sc.playbackRate);
       }),
       step(t + ATTACK_MS, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
-        const a = getAnim(sc, actor.kind, actorId, n);
-        if (a.state === "attack") setAnimState(a, "idle", n);
+        clearAttackIfPlaying(getAnim(sc, actor.kind, actorId, n), n);
       })
     );
   };
@@ -2225,12 +2231,17 @@ export function playTurn(
       case "attack":
       case "ambush":
       case "techniqueHit": {
+        // Presentation follows the action's weapon range, not class. Long-
+        // range swings use `attack_ranged` (Thief bow strip); everything else
+        // — close/short/medium attacks, ambush, techniques — uses melee
+        // `attack` (Thief dagger/slash strip).
         const isRanged = evt.type === "attack" && evt.range === "long";
+        const attackState: ActorSpriteState = isRanged ? "attack_ranged" : "attack";
         const attacker = findActor(scene, evt.actorId, w, h);
         const hitEffect = resolveMeleeHitEffect(attacker?.class, { crit: evt.crit === true });
         if (isRanged) {
           // Ranged: no approach; fire a projectile from attacker to target.
-          attackAnim(evt.actorId);
+          attackAnim(evt.actorId, attackState);
           const impact = t + ATTACK_MS * 0.55;
           steps.push(
             step(t + ATTACK_MS * 0.1, (sc, n) => {
@@ -2276,13 +2287,12 @@ export function playTurn(
             step(base + APPROACH_MS, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
               if (!actor) return;
-              setAnimState(getAnim(sc, actor.kind, evt.actorId, n), "attack", n);
+              setAnimState(getAnim(sc, actor.kind, evt.actorId, n), attackState, n);
             }),
             step(base + APPROACH_MS + ATTACK_MS, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
               if (!actor) return;
-              const a = getAnim(sc, actor.kind, evt.actorId, n);
-              if (a.state === "attack") setAnimState(a, "idle", n);
+              clearAttackIfPlaying(getAnim(sc, actor.kind, evt.actorId, n), n);
             })
           );
           steps.push(
@@ -2350,8 +2360,7 @@ export function playTurn(
           step(base + APPROACH_MS + ATTACK_MS, (sc, n) => {
             const actor = findActor(sc, evt.actorId, w, h);
             if (!actor) return;
-            const a = getAnim(sc, actor.kind, evt.actorId, n);
-            if (a.state === "attack") setAnimState(a, "idle", n);
+            clearAttackIfPlaying(getAnim(sc, actor.kind, evt.actorId, n), n);
           })
         );
         t = base + APPROACH_MS + ATTACK_MS;
@@ -3157,6 +3166,7 @@ function drawStripFrame(
 function enemyStripState(state: ActorSpriteState): "idle" | "attacking" | "hit" | "defeated" {
   switch (state) {
     case "attack":
+    case "attack_ranged":
     case "cast":
     case "walk":
       return "attacking";

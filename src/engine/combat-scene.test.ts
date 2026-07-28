@@ -90,6 +90,67 @@ describe("playTurn choreography", () => {
     expect(scene.partyAnims.get("c0")?.state).toBe("idle");
   });
 
+  it("close/short attacks use melee attack state; long range uses attack_ranged", () => {
+    const party = [
+      createCharacter("c0", "Coda", "Hobbit", "Neutral", "Thief", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
+    const scene = createScene(state);
+
+    playTurn(
+      scene,
+      [{ type: "attack", actorId: "c0", targetId: "rat-0", damage: 4, range: "short" }],
+      spellName,
+      0,
+      W,
+      H
+    );
+    // Past approach (525ms): melee strip.
+    updateScene(scene, 540);
+    expect(scene.partyAnims.get("c0")?.state).toBe("attack");
+
+    const rangedScene = createScene(state);
+    playTurn(
+      rangedScene,
+      [{ type: "attack", actorId: "c0", targetId: "rat-0", damage: 4, range: "long" }],
+      spellName,
+      0,
+      W,
+      H
+    );
+    // Ranged coil is ~70ms then attack_ranged.
+    updateScene(rangedScene, 100);
+    expect(rangedScene.partyAnims.get("c0")?.state).toBe("attack_ranged");
+  });
+
+  it("techniqueHit uses melee attack state even for a thief", () => {
+    const party = [
+      createCharacter("c0", "Coda", "Hobbit", "Neutral", "Thief", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
+    const scene = createScene(state);
+    playTurn(
+      scene,
+      [
+        {
+          type: "techniqueHit",
+          actorId: "c0",
+          techniqueId: "thief-quick-slash",
+          targetId: "rat-0",
+          damage: 6,
+        },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(scene, 540);
+    expect(scene.partyAnims.get("c0")?.state).toBe("attack");
+  });
+
   it("cast shows the spell banner and bursts on targets", () => {
     const scene = makeScene();
     const events: CombatEvent[] = [
