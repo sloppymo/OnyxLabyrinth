@@ -84,8 +84,8 @@ describe("holdDurationMs", () => {
       INTRO_STYLE.holdAfterRevealMs + INTRO_STYLE.holdPivotExtraMs,
     );
     expect(holdDurationMs(3)).toBe(INTRO_STYLE.holdAfterRevealMs);
-    expect(INTRO_STYLE.holdOpeningExtraMs).toBe(3400);
-    expect(holdDurationMs(0)).toBe(5000);
+    expect(INTRO_STYLE.holdOpeningExtraMs).toBe(1900);
+    expect(holdDurationMs(0)).toBe(3500);
     expect(INTRO_STYLE.holdPivotExtraMs).toBe(1400);
   });
 });

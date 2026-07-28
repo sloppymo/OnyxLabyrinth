@@ -57,8 +57,8 @@ export const INTRO_STYLE = {
   pauseFullMs: 420, // . ? ! — slightly longer so sentence ends breathe
   pauseHalfMs: 120, // , ; :
   holdAfterRevealMs: 1600,
-  // Beat 0 hold ~5s so "We lost." lands after a beat of silence (not a flash, not a stall).
-  holdOpeningExtraMs: 3400, // 1600+3400 = 5000ms before auto-advance to "We lost."
+  // Beat 0 hold ~3.5s so "We lost." lands after a short silence.
+  holdOpeningExtraMs: 1900, // 1600+1900 = 3500ms before auto-advance to "We lost."
   holdPivotExtraMs: 1400, // beat "It has one left." — clearly outlast neighbors
   fadeMs: 180,
   gapMs: 200,
