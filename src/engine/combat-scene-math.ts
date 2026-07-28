@@ -304,8 +304,8 @@ export function geometryForBackdrop(id: string | null | undefined): BackdropGeom
  *   rank 3  0.90 → 1.0    (nearest, largest)
  *
  * X values respect the center aisle (see CENTER_AISLE_MIN_GAP_PX): all enemy
- * slots ≤ 336, all party slots ≥ 384 (design center) with a comfortable
- * margin. Near x clamped for 300px half-width bounds (max ≈ 614).
+ * slots ≤ 300, all party slots ≥ 445 with a comfortable margin. Near party x
+ * clamped for 300px half-width bounds (max ≈ 614).
  */
 export const PARTY_FORMATION_SLOTS: FormationSlot[] = [
   { x: 445, footYFrac: 0.18 },
@@ -314,18 +314,34 @@ export const PARTY_FORMATION_SLOTS: FormationSlot[] = [
   { x: 610, footYFrac: 0.9 },
 ];
 
+/**
+ * Enemies: left-side diagonal cascade mirroring the party queue (party goes
+ * down-right; enemies go down-left). Mechanical front/back rows still exist,
+ * but visually they share one continuous left column that steps through the
+ * same three pixel-art scales as the party — not two disconnected pockets
+ * with empty mid-field (the pre-fix back row sat at frac 0.06–0.20 while
+ * the front sat at 0.78–0.90, which read as scattered).
+ *
+ *   back  0  285/0.18 → 0.75   (farthest; bosses prefer this slot)
+ *   back  1  250/0.36 → 0.875
+ *   back  2  220/0.48 → 0.875
+ *   front 0  295/0.60 → 0.875  (slightly toward aisle = nearer the party)
+ *   front 1  255/0.78 → 1.0
+ *   front 2  215/0.90 → 1.0
+ *
+ * Max enemy x = 295 keeps ≥150px aisle to party x=445. Back-row x values
+ * clear BOSS_SIZE 480 at their resolved scales (0.75 / 0.875).
+ */
 export const ENEMY_FRONT_SLOTS: FormationSlot[] = [
-  { x: 275, footYFrac: 0.78 },
-  { x: 210, footYFrac: 0.87 },
-  // Edge slot lifted off the window band and pulled in from the screen edge
-  // (was 175/0.96 — flush with both); keeps ≥0.03 clear of the 0.75 step.
-  { x: 190, footYFrac: 0.9 },
+  { x: 295, footYFrac: 0.6 },
+  { x: 255, footYFrac: 0.78 },
+  { x: 215, footYFrac: 0.9 },
 ];
 
 export const ENEMY_BACK_SLOTS: FormationSlot[] = [
-  { x: 336, footYFrac: 0.06 },
-  { x: 270, footYFrac: 0.13 },
-  { x: 210, footYFrac: 0.2 },
+  { x: 285, footYFrac: 0.18 },
+  { x: 250, footYFrac: 0.36 },
+  { x: 220, footYFrac: 0.48 },
 ];
 
 /**

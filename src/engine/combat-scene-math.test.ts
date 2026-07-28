@@ -188,6 +188,24 @@ describe("formation floor invariant (all backdrops × full formation)", () => {
     }
   });
 
+  it("enemy rows are left-side cascades (mirror party, no mid-field scatter)", () => {
+    // Within each row: farther → nearer also means right → left (down-left
+    // diagonal), matching the party's down-right cascade on the opposite side.
+    for (const row of [ENEMY_BACK_SLOTS, ENEMY_FRONT_SLOTS]) {
+      for (let i = 1; i < row.length; i++) {
+        expect(row[i]!.footYFrac).toBeGreaterThan(row[i - 1]!.footYFrac);
+        expect(row[i]!.x).toBeLessThan(row[i - 1]!.x);
+      }
+    }
+    // Keep the whole enemy mass in a tight left column — the old back-row
+    // slot at x=336 read as mid-field next to the aisle.
+    const maxX = Math.max(
+      ...ENEMY_FRONT_SLOTS.map((s) => s.x),
+      ...ENEMY_BACK_SLOTS.map((s) => s.x)
+    );
+    expect(maxX).toBeLessThanOrEqual(310);
+  });
+
   it("party is on the right half, enemies on the left (logical width)", () => {
     for (const s of PARTY_FORMATION_SLOTS) {
       expect(s.x).toBeGreaterThan(LOGICAL_W / 2);
@@ -302,18 +320,16 @@ describe("seam derivation (baked themes track the arena camera)", () => {
 });
 
 describe("scale tiers (rows land on clean pixel-art steps)", () => {
-  it("back rows 0.75, summons 0.875, front rows 1.0 on baked geometry", () => {
+  it("enemy cascade + summons land on clean pixel-art steps", () => {
     const geo = BACKDROP_GEOMETRY.arena;
     const scaleOf = (s: FormationSlot) =>
       quantizeScale(depthScale(s.footYFrac, geo));
-    for (const s of ENEMY_BACK_SLOTS) {
-      expect(scaleOf(s)).toBe(0.75);
-    }
+    // Back starts far (0.75) and steps into mid-field; front finishes near (1.0).
+    // Same graduated line the party uses — not a binary far/near split.
+    expect(ENEMY_BACK_SLOTS.map(scaleOf)).toEqual([0.75, 0.875, 0.875]);
+    expect(ENEMY_FRONT_SLOTS.map(scaleOf)).toEqual([0.875, 1.0, 1.0]);
     for (const s of ALLY_FORMATION_SLOTS) {
       expect(scaleOf(s)).toBe(0.875);
-    }
-    for (const s of ENEMY_FRONT_SLOTS) {
-      expect(scaleOf(s)).toBe(1.0);
     }
   });
 
