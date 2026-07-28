@@ -287,12 +287,48 @@ export async function bootToDungeon(page, url, { maxSteps = 40 } = {}) {
 }
 
 /**
+ * main.ts only starts loading audio sample buffers on the first real keydown
+ * anywhere on the page (`resumeAudioOnce` — browser autoplay policy requires
+ * a user gesture). A real player always presses a key to navigate title/
+ * party-creation/town before ever reaching combat, so this always fires in
+ * time; `__onyxDebug.jumpTo`/`startCombat` are page.evaluate() calls, not
+ * keyboard events, so a script that jumps straight into combat can reach it
+ * before any sample has loaded — the first cue or two then report
+ * `bufferMissing: true`, which reads like an audio bug but isn't one.
+ *
+ * The keydown only *starts* the async fetch/decode (`getSampleLoadStatus().combat`
+ * goes "not-started" -> "loading" -> "done"/"failed") — a fixed wait after the
+ * keydown still races the network, so this polls the real readiness probe
+ * instead of guessing a delay. Confirmed via a headed-Chromium repro
+ * (2026-07-28): keydown alone with a short fixed wait still left the first
+ * cue's buffer missing; polling to "done"/"failed" does not.
+ *
+ * Deliberately no per-page memoization of the keydown itself: `resumeAudioOnce`
+ * removes itself after firing, so a repeat press is a no-op, and every
+ * `page.goto()` reload re-arms that listener in the fresh JS context — a
+ * "fired once already" guard would wrongly skip the dummy press after a
+ * script's second/third `freshBoot()`-style reload on the same Playwright
+ * page object.
+ */
+export async function ensureAudioResumed(page, timeout = 3000) {
+  await page.keyboard.press("Shift");
+  const deadline = Date.now() + timeout;
+  for (;;) {
+    const status = await page.evaluate(() => window.__onyxDebug.readiness().audioCombat);
+    if (status === "done" || status === "failed") return status;
+    if (Date.now() >= deadline) return status;
+    await wait(30);
+  }
+}
+
+/**
  * Jump to a dungeon cell via `__onyxDebug.jumpTo` (real transitionToFloor).
  * Replaces the old hand-rolled `warp()` that cloned floors without applying
  * killed-NPC / loot / unlocked-door bookkeeping.
  */
 export async function jumpTo(page, opts) {
   recordAction(page, "jumpTo", { opts });
+  await ensureAudioResumed(page);
   await page.evaluate((o) => window.__onyxDebug.jumpTo(o), opts);
   await waitForIdle(page);
   return snap(page);
@@ -309,6 +345,7 @@ export async function boot(page, url, { scenario } = {}) {
   recordAction(page, "boot", { url, scenario });
   await page.goto(url, { waitUntil: "networkidle" });
   await wait(400);
+  await ensureAudioResumed(page);
   // Title is idle; jumpTo closes the title controller and lands in dungeon.
   await page.evaluate((o) => window.__onyxDebug.jumpTo(o), scenario);
   await waitForIdle(page);
