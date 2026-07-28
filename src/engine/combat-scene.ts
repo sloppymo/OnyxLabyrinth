@@ -378,6 +378,8 @@ export interface CombatScene {
   introNameplate: string | null;
   introNameplateUntil: number;
   introNameplateStart: number;
+  /** Boss enemy def id — drives per-boss nameplate accent / silhouette FX. */
+  introBossId: string | null;
   /** Blinking cursor over a selection candidate (target phase). */
   cursor: SceneCursor | null;
   /** The actor whose menu is open (bouncing hand marker). */
@@ -485,6 +487,7 @@ export function createScene(state: CombatState): CombatScene {
     introNameplate: null,
     introNameplateUntil: 0,
     introNameplateStart: 0,
+    introBossId: null,
     cursor: null,
     activeActorId: null,
     choreo: null,
@@ -2622,6 +2625,7 @@ export function updateScene(scene: CombatScene, now: number): void {
   if (scene.banner && now >= scene.bannerUntil) scene.banner = null;
   if (scene.introNameplate && now >= scene.introNameplateUntil) {
     scene.introNameplate = null;
+    scene.introBossId = null;
   }
 }
 
@@ -2961,6 +2965,24 @@ function drawEnemy(
   const tint = burning ? BURN_TINT : enemy.status.includes("poison") ? POISON_TINT : undefined;
 
   drawContactShadow(ctx, x, footY, drawSize * 0.45);
+
+  // Boss silhouette aura — cheap per-id tint so borrowed trash sprites still
+  // read as gatekeepers (Dead Boy / Lonely Girl / Crying Man).
+  if (enemy.isBoss) {
+    const style = BOSS_PRESENTATION[enemy.id];
+    const glow = style?.glow ?? "rgba(180, 60, 60, 0.35)";
+    ctx.save();
+    const pulse = 0.55 + 0.2 * Math.sin(now / 480);
+    ctx.globalAlpha = anim.opacity * pulse;
+    const grd = ctx.createRadialGradient(x, y, drawSize * 0.08, x, y, drawSize * 0.55);
+    grd.addColorStop(0, glow);
+    grd.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.ellipse(x, y, drawSize * 0.48, drawSize * 0.58, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   if (hasStrip && stripInfo) {
     const { strip, img } = stripInfo;
@@ -3406,6 +3428,31 @@ function drawBanner(
   ctx.restore();
 }
 
+/** Per-boss nameplate / silhouette accents (display differentiation only). */
+const BOSS_PRESENTATION: Record<
+  string,
+  { tag: string; accent: string; glow: string; subtitle: string }
+> = {
+  "headmasters-echo": {
+    tag: "THE DEAD BOY",
+    accent: "#e07040",
+    glow: "rgba(220, 90, 30, 0.45)",
+    subtitle: "Forge of Ashes",
+  },
+  "headmasters-echo-remnant": {
+    tag: "THE LONELY GIRL",
+    accent: "#a878d0",
+    glow: "rgba(140, 80, 200, 0.4)",
+    subtitle: "Cursed Library",
+  },
+  "headmasters-echo-ascendant": {
+    tag: "THE CRYING MAN",
+    accent: "#70b0d8",
+    glow: "rgba(80, 140, 200, 0.42)",
+    subtitle: "Drowned Sanctum",
+  },
+};
+
 /** Larger top plate for boss reveal — lives above the spell banner slot. */
 function drawIntroNameplate(
   ctx: CanvasRenderingContext2D,
@@ -3420,27 +3467,43 @@ function drawIntroNameplate(
   if (age < 180) alpha *= Math.max(0, age / 180);
   else if (remaining < 320) alpha *= Math.max(0, remaining / 320);
   if (alpha <= 0.01) return;
+  const style =
+    (scene.introBossId && BOSS_PRESENTATION[scene.introBossId]) || {
+      tag: "BOSS",
+      accent: "#e07070",
+      glow: "rgba(180, 60, 60, 0.35)",
+      subtitle: "",
+    };
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.font = '16px "FF36", monospace';
-  const tag = "BOSS";
   ctx.font = '28px "FF36", monospace';
   const nameW = ctx.measureText(scene.introNameplate).width;
-  ctx.font = '16px "FF36", monospace';
-  const tagW = ctx.measureText(tag).width;
-  const boxW = Math.max(280, Math.max(nameW, tagW) + 72);
-  const boxH = 64;
+  ctx.font = '14px "FF36", monospace';
+  const tagW = ctx.measureText(style.tag).width;
+  const subW = style.subtitle ? ctx.measureText(style.subtitle).width : 0;
+  const boxW = Math.max(300, Math.max(nameW, tagW, subW) + 80);
+  const boxH = style.subtitle ? 78 : 64;
   const x = (w - boxW) / 2;
   const y = 12;
+  // Accent rim — unique per boss so the plate isn't a generic red BOSS chip.
+  ctx.strokeStyle = style.accent;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x - 1, y - 1, boxW + 2, boxH + 2);
   drawFF6Window(ctx, x, y, boxW, boxH);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "#e07070";
-  ctx.font = '16px "FF36", monospace';
-  ctx.fillText(tag, w / 2, y + 18);
+  ctx.fillStyle = style.accent;
+  ctx.font = '14px "FF36", monospace';
+  ctx.fillText(style.tag, w / 2, y + 16);
   ctx.fillStyle = COLORS.banner;
   ctx.font = '28px "FF36", monospace';
-  ctx.fillText(scene.introNameplate, w / 2, y + 42);
+  ctx.fillText(scene.introNameplate, w / 2, y + (style.subtitle ? 40 : 42));
+  if (style.subtitle) {
+    ctx.fillStyle = style.accent;
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.font = '12px "FF36", monospace';
+    ctx.fillText(style.subtitle, w / 2, y + 62);
+  }
   ctx.restore();
 }
 
@@ -3452,11 +3515,13 @@ export function setBossIntroNameplate(
   scene: CombatScene,
   name: string,
   now: number,
-  durationMs = 2600
+  durationMs = 2800,
+  bossId?: string
 ): void {
   scene.introNameplate = name;
   scene.introNameplateStart = now;
   scene.introNameplateUntil = now + durationMs;
+  scene.introBossId = bossId ?? null;
 }
 
 // --- Main render -----------------------------------------------------------------------

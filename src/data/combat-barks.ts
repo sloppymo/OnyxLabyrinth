@@ -45,6 +45,32 @@ export const COMBAT_BARKS: readonly BarkLineDef[] = [
     speaker: { classIds: ["Fighter", "Mage", "Priest", "Thief", "Halberdier", "Duelist", "Crusader"] },
     lines: ["Let this be the last time."],
   },
+  // Floor bosses — short bitter lines so borrowed sprites still sound distinct.
+  {
+    trigger: "beforeSpell",
+    speaker: { enemyIds: ["headmasters-echo"] },
+    lines: ["The forge remembers.", "Stay."],
+  },
+  {
+    trigger: "death",
+    speaker: { enemyIds: ["headmasters-echo"] },
+    lines: ["The ash settles."],
+  },
+  {
+    trigger: "beforeSpell",
+    speaker: { enemyIds: ["headmasters-echo-remnant"] },
+    lines: ["Don't leave.", "Read me."],
+  },
+  {
+    trigger: "death",
+    speaker: { enemyIds: ["headmasters-echo-remnant"] },
+    lines: ["The page turns."],
+  },
+  {
+    trigger: "beforeSpell",
+    speaker: { enemyIds: ["headmasters-echo-ascendant"] },
+    lines: ["We were kept.", "Listen."],
+  },
   {
     trigger: "death",
     speaker: { enemyIds: ["headmasters-echo-ascendant"] },

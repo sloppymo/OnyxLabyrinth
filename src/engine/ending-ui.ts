@@ -18,6 +18,9 @@
  * justOpenedPrologue/justOpenedSaveMenu, the caller in main.ts is
  * responsible for swallowing that first keypress via justOpenedEnding. This
  * class assumes every handleKey() call is a real, intentional press.
+ *
+ * Esc is two-stage (complete typewriter, then close) so a single Esc cannot
+ * dump into dungeon where key-repeat would open Save.
  */
 
 import { audio } from "./audio";
@@ -122,6 +125,15 @@ export class EndingController {
     if (this.phase === "finishing") return;
     const lower = key.toLowerCase();
     if (lower === "escape") {
+      // Two-stage Esc (same contract as confirm): first press completes the
+      // typewriter; Esc on a fully-revealed beat closes. Prevents a single
+      // Esc from dumping straight into dungeon where key-repeat opens Save.
+      if (!this.reveal.done) {
+        this.reveal = completeReveal(this.reveal);
+        this.paint();
+        this.enterHold();
+        return;
+      }
       audio.uiCancel();
       this.finishImmediate();
       return;

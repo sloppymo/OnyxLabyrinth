@@ -11,7 +11,7 @@ import {
   leaveChest,
   type ChestActionResult,
 } from "./game/features";
-import { DX, DY } from "./game/dungeon";
+import { revealAround } from "./game/explore";
 import {
   render,
   loadTextures,
@@ -146,6 +146,19 @@ let mapVisible = false;
 
 /** First dungeon entry this page session — keyboard discoverability door hint. */
 let shownDungeonKeyboardHint = false;
+/** First dungeon entry this page session — one-line 4-of-6 bench onboarding. */
+let shownBenchHint = false;
+/**
+ * Swallow the first town key after party creation / openTown so the same
+ * Enter that confirmed the party cannot also select Inn (AGENTS.md
+ * synchronous mode-open mid-keydown / key-repeat).
+ */
+let justOpenedTown = false;
+/**
+ * After the ending closes on Esc, ignore dungeon Esc→Save until keyup so
+ * key-repeat cannot open the save menu on the same physical press.
+ */
+let suppressDungeonEscUntilKeyup = false;
 
 // Session-wide gamepad/keyboard poller (combat keyboard path feeds this too).
 let actionRingController: DungeonActionRingController | null = null;
@@ -196,20 +209,11 @@ function transitionToMode(newMode: GameMode): void {
 }
 
 // --- Exploration tracking ------------------------------------------------
-// Mark the current tile and all 4 adjacent tiles as explored. The player
-// can see the current tile plus one ahead, so revealing adjacent tiles gives
-// a useful map without spoiling unexplored areas.
+// Flood-fill through open/door edges so the automap shows connected rooms
+// and corridors, not a plus-shaped smear through solid rock.
 function markExplored(): void {
   const { player, floor, explored } = state;
-  const key = (x: number, y: number) => `${x},${y}`;
-  explored.add(key(player.x, player.y));
-  for (let dir = 0; dir < 4; dir++) {
-    const nx = player.x + DX[dir];
-    const ny = player.y + DY[dir];
-    if (nx >= 0 && nx < floor.width && ny >= 0 && ny < floor.height) {
-      explored.add(key(nx, ny));
-    }
-  }
+  revealAround(explored, floor, player.x, player.y);
 }
 
 // Reveal the starting area on load.
@@ -222,6 +226,7 @@ function openTown(): void {
   if (mapVisible) toggleMap();
   transitionToMode("town");
   setMessage("");
+  justOpenedTown = true;
   townController = new TownController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
@@ -240,7 +245,13 @@ function openTown(): void {
       markExplored();
       transitionToMode("dungeon");
       const entry = last ? "You return to the dungeon..." : "You enter the dungeon...";
-      if (!shownDungeonKeyboardHint) {
+      if (!shownBenchHint) {
+        shownBenchHint = true;
+        shownDungeonKeyboardHint = true;
+        // Bench first — 4 fight / 2 reserve is invisible otherwise. Tab/Esc
+        // remain discoverable from the action ring and Esc-from-dungeon.
+        setMessage(`${entry}\nFighting 4 · 2 on bench.`);
+      } else if (!shownDungeonKeyboardHint) {
         shownDungeonKeyboardHint = true;
         // Line 2 teaches the keyboard *door* (action ring), not every verb —
         // Esc is Save only; pad Start / Tab opens Camp·Map·Town·Unlock·Grimoire.
@@ -371,6 +382,9 @@ function openEnding(): void {
       // branch does the same setMode+showMode pair, no openTitleScreen()).
       setMode(state, "dungeon");
       showMode("dungeon", mapVisible);
+      // Esc that closed the ending (and its key-repeat) must not open Save.
+      suppressDungeonEscUntilKeyup = true;
+      setMessage("The lamp is empty.");
       autoSave(state);
     },
   });
@@ -977,6 +991,7 @@ const dungeonHandlers: InputHandlers = {
     // While a trap prompt is up, Esc means "leave the chest" (handled by the
     // trap key listener below).
     if (state.mode !== "dungeon" || state.pendingTrap) return;
+    if (suppressDungeonEscUntilKeyup) return;
     if (mapVisible) {
       toggleMap();
       return;
@@ -1237,6 +1252,10 @@ function routeControllerEvent(event: ControllerInputEvent): void {
       return;
     }
     case "town": {
+      if (justOpenedTown) {
+        if (event.kind === "press") justOpenedTown = false;
+        return;
+      }
       const key = controllerEventToMenuKey(event);
       if (key) townController!.handleKey(key);
       return;
@@ -1372,6 +1391,12 @@ const resumeAudioOnce = () => {
 };
 window.addEventListener("keydown", resumeAudioOnce);
 
+// Clear the post-ending Esc swallow once the physical key is released so a
+// later intentional Esc can open Save.
+window.addEventListener("keyup", (e: KeyboardEvent) => {
+  if (e.key === "Escape") suppressDungeonEscUntilKeyup = false;
+});
+
 // Auto-save when the player leaves or reloads the page so the next session
 // can resume where they left off.
 window.addEventListener("beforeunload", () => {
@@ -1449,6 +1474,11 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 // Town key handler — routes keys to the TownController.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "town" || !townController) return;
+  if (justOpenedTown) {
+    justOpenedTown = false;
+    e.preventDefault();
+    return;
+  }
   townController.handleKey(e.key);
   e.preventDefault();
 });

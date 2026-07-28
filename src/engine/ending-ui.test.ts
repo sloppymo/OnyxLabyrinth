@@ -124,11 +124,24 @@ describe("EndingController", () => {
     expect(panel.querySelectorAll(".prologue-text").length).toBe(1);
   });
 
-  it("Escape immediately skips the whole ending", () => {
+  it("Escape while revealing completes the beat but does not exit", () => {
     let done = 0;
     const c = mount(() => {
       done += 1;
     });
+    time += 200;
+    c.tickForTests(time); // partial reveal
+    c.handleKey("Escape");
+    expect(done).toBe(0);
+    expect(text()).toBe(ENDING_BEATS[0]);
+  });
+
+  it("Escape on a fully-revealed beat skips the whole ending", () => {
+    let done = 0;
+    const c = mount(() => {
+      done += 1;
+    });
+    revealFully(c, ENDING_BEATS[0]!);
     c.handleKey("Escape");
     expect(done).toBe(1);
   });

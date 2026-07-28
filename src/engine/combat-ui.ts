@@ -167,7 +167,13 @@ export class CombatController {
         (e) => e.isBoss
       );
       if (boss) {
-        setBossIntroNameplate(this.scene, boss.name, performance.now());
+        setBossIntroNameplate(
+          this.scene,
+          boss.name,
+          performance.now(),
+          2800,
+          boss.id
+        );
       }
     }
     this.startRenderLoop();

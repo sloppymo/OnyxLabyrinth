@@ -236,7 +236,7 @@ describe("AudioEngine sample load status (?debug=1 readiness probe)", () => {
     await audio.loadDungeonSounds();
 
     const status = audio.getSampleLoadStatus();
-    expect(status.dungeon).toBe("done");
+    expect(status.dungeon).toBe("failed");
     expect(status.failed).toContain("dungeon:chestOpen");
   });
 
@@ -277,7 +277,7 @@ describe("AudioEngine sample load status (?debug=1 readiness probe)", () => {
     // consistent, not a leak. The claim under test is just that combat's own
     // failures were recorded.
     const status = audio.getSampleLoadStatus();
-    expect(status.combat).toBe("done");
+    expect(status.combat).toBe("failed");
     expect(status.failed.some((id) => id.startsWith("combat:"))).toBe(true);
   });
 });

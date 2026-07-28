@@ -258,6 +258,9 @@ function floor1(): FloorDef {
   setTile(grid, 3, 6, "npc");
 
   // Scripted events.
+  // First step north from the entry hall — teach the dead-end before the
+  // wall at (5,5). Keep ≤ ~2×30 so #message doesn't clip the hint.
+  setTile(grid, 5, 8, "event");
   setTile(grid, 5, 7, "event");
   setTile(grid, 2, 3, "event");
   setTile(grid, 1, 4, "event");
@@ -318,6 +321,12 @@ function floor1(): FloorDef {
       },
     ],
     events: [
+      {
+        x: 5,
+        y: 8,
+        kind: "message",
+        message: "The hall ends in stone ahead.\nTurn west — or east.",
+      },
       { x: 5, y: 7, kind: "message", message: "Above the arch, words are scrawled in something black: THE WATER REMEMBERS." },
       { x: 2, y: 3, kind: "damage", message: "A flagstone gives way and darts whistle through the corridor.", power: 4 },
       { x: 1, y: 4, kind: "reward", message: "A corpse clutches a rusted holy symbol. The dead have no use for it now.", itemId: "holy-symbol" },

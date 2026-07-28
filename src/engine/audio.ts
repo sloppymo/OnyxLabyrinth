@@ -190,8 +190,10 @@ const COMBAT_SFX_GAIN: Record<CombatSfxId, number> = {
   itemUse: 0.4,
 };
 
-/** Lazy-load status for a sample family — only becomes "loading" once `resume()` fires. */
-export type SampleLoadState = "not-started" | "loading" | "done";
+/** Lazy-load status for a sample family — only becomes "loading" once `resume()` fires.
+ *  Settles to `"done"` when every sample in the family decoded, or `"failed"` if any
+ *  404'd / failed to decode (so readiness never claims success while buffers are empty). */
+export type SampleLoadState = "not-started" | "loading" | "done" | "failed";
 
 export interface SampleLoadStatus {
   ui: SampleLoadState;
@@ -199,6 +201,13 @@ export interface SampleLoadStatus {
   dungeon: SampleLoadState;
   /** e.g. "ui:cursor" — ids that 404'd or failed to decode. */
   failed: string[];
+}
+
+/** Build `/<base>/assets/sfx/<folder>/` with a guaranteed trailing slash on base. */
+function sfxAssetBase(folder: "ui" | "combat" | "dungeon"): string {
+  const root = import.meta.env.BASE_URL || "/";
+  const normalized = root.endsWith("/") ? root : `${root}/`;
+  return `${normalized}assets/sfx/${folder}/`;
 }
 
 class AudioEngine {
@@ -337,7 +346,7 @@ class AudioEngine {
     const ctx = this.ctx;
     if (!ctx) return Promise.resolve();
 
-    const base = `${import.meta.env.BASE_URL ?? "/"}assets/sfx/ui/`;
+    const base = sfxAssetBase("ui");
     this.uiLoadStatus = "loading";
     this.uiLoadPromise = (async () => {
       await Promise.all(
@@ -345,18 +354,18 @@ class AudioEngine {
           try {
             const res = await fetch(base + UI_SFX_FILES[id]);
             if (!res.ok) {
-              this.failedSampleIds.push(`ui:${id}`);
+              this.recordSampleFailure(`ui:${id}`);
               return;
             }
             const raw = await res.arrayBuffer();
             this.uiBuffers[id] = await ctx.decodeAudioData(raw.slice(0));
           } catch {
             // Missing/corrupt asset — leave that slot empty.
-            this.failedSampleIds.push(`ui:${id}`);
+            this.recordSampleFailure(`ui:${id}`);
           }
         })
       );
-      this.uiLoadStatus = "done";
+      this.uiLoadStatus = this.familyLoadResult("ui:", Object.keys(UI_SFX_FILES).length);
     })();
     return this.uiLoadPromise;
   }
@@ -374,7 +383,7 @@ class AudioEngine {
     const ctx = this.ctx;
     if (!ctx) return Promise.resolve();
 
-    const base = `${import.meta.env.BASE_URL ?? "/"}assets/sfx/combat/`;
+    const base = sfxAssetBase("combat");
     this.combatLoadStatus = "loading";
     this.combatLoadPromise = (async () => {
       await Promise.all(
@@ -382,18 +391,21 @@ class AudioEngine {
           try {
             const res = await fetch(base + COMBAT_SFX_FILES[id]);
             if (!res.ok) {
-              this.failedSampleIds.push(`combat:${id}`);
+              this.recordSampleFailure(`combat:${id}`);
               return;
             }
             const raw = await res.arrayBuffer();
             this.combatBuffers[id] = await ctx.decodeAudioData(raw.slice(0));
           } catch {
             // Missing/corrupt asset — leave that slot empty.
-            this.failedSampleIds.push(`combat:${id}`);
+            this.recordSampleFailure(`combat:${id}`);
           }
         })
       );
-      this.combatLoadStatus = "done";
+      this.combatLoadStatus = this.familyLoadResult(
+        "combat:",
+        Object.keys(COMBAT_SFX_FILES).length
+      );
     })();
     return this.combatLoadPromise;
   }
@@ -408,7 +420,7 @@ class AudioEngine {
     const ctx = this.ctx;
     if (!ctx) return Promise.resolve();
 
-    const base = `${import.meta.env.BASE_URL ?? "/"}assets/sfx/dungeon/`;
+    const base = sfxAssetBase("dungeon");
     this.dungeonLoadStatus = "loading";
     this.dungeonLoadPromise = (async () => {
       await Promise.all(
@@ -416,20 +428,45 @@ class AudioEngine {
           try {
             const res = await fetch(base + DUNGEON_SFX_FILES[id]);
             if (!res.ok) {
-              this.failedSampleIds.push(`dungeon:${id}`);
+              this.recordSampleFailure(`dungeon:${id}`);
               return;
             }
             const raw = await res.arrayBuffer();
             this.dungeonBuffers[id] = await ctx.decodeAudioData(raw.slice(0));
           } catch {
             // Missing/corrupt asset — leave that slot empty.
-            this.failedSampleIds.push(`dungeon:${id}`);
+            this.recordSampleFailure(`dungeon:${id}`);
           }
         })
       );
-      this.dungeonLoadStatus = "done";
+      this.dungeonLoadStatus = this.familyLoadResult(
+        "dungeon:",
+        Object.keys(DUNGEON_SFX_FILES).length
+      );
     })();
     return this.dungeonLoadPromise;
+  }
+
+  /** Deduped failure list — readiness/assetFailed events key on these ids. */
+  private recordSampleFailure(id: string): void {
+    if (!this.failedSampleIds.includes(id)) this.failedSampleIds.push(id);
+  }
+
+  /** `"failed"` if any sample in the family is missing after settle; else `"done"`. */
+  private familyLoadResult(prefix: string, expectedCount: number): SampleLoadState {
+    const failed = this.failedSampleIds.filter((id) => id.startsWith(prefix)).length;
+    if (failed > 0) return "failed";
+    // Defensive: also fail if we somehow lost buffers without recording.
+    if (prefix === "ui:" && Object.keys(this.uiBuffers).length < expectedCount) {
+      return "failed";
+    }
+    if (prefix === "combat:" && Object.keys(this.combatBuffers).length < expectedCount) {
+      return "failed";
+    }
+    if (prefix === "dungeon:" && Object.keys(this.dungeonBuffers).length < expectedCount) {
+      return "failed";
+    }
+    return "done";
   }
 
   /**
@@ -474,6 +511,11 @@ class AudioEngine {
     const buf = this.combatBuffers[id];
     if (!buf) {
       void this.loadCombatSounds();
+      if (this.combatLoadStatus === "done" || this.combatLoadStatus === "failed") {
+        // Audible stand-in so encounter/KO cues aren't total silence when a
+        // WAV 404'd — still recorded as bufferMissing by the audio spy.
+        this.playProceduralUiClick(id === "partyKnockedOut" ? 110 : 330);
+      }
       return;
     }
     const src = this.ctx.createBufferSource();
@@ -598,8 +640,12 @@ class AudioEngine {
     if (!this.ctx || !this.masterGain) return;
     const buf = this.uiBuffers[id];
     if (!buf) {
-      // Samples may still be loading — kick a load and skip this hit.
+      // Samples may still be loading — kick a load. If the family already
+      // settled without this buffer, fall back so menus aren't silent.
       void this.loadUiSounds();
+      if (this.uiLoadStatus === "done" || this.uiLoadStatus === "failed") {
+        this.playProceduralUiClick(id === "cancel" ? 220 : 440);
+      }
       return;
     }
     const src = this.ctx.createBufferSource();
@@ -609,6 +655,23 @@ class AudioEngine {
     src.connect(gain);
     gain.connect(this.masterGain);
     src.start();
+  }
+
+  /** Tiny procedural tick when a UI WAV is missing after load settled. */
+  private playProceduralUiClick(freq: number): void {
+    if (!this.ctx || !this.masterGain) return;
+    const ctx = this.ctx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.06);
   }
 
   /** Start the ambient dungeon drone. No-op if already playing. */
