@@ -10,6 +10,7 @@ import {
   PARTY_FORMATION_SLOTS,
   ENEMY_FRONT_SLOTS,
   ENEMY_BACK_SLOTS,
+  ENEMY_FORMATION_SLOTS,
   ALLY_FORMATION_SLOTS,
   SCALE_STEPS,
   SEAM_INSET_FRAC,
@@ -188,21 +189,27 @@ describe("formation floor invariant (all backdrops × full formation)", () => {
     }
   });
 
-  it("enemy rows are left-side cascades (mirror party, no mid-field scatter)", () => {
-    // Within each row: farther → nearer also means right → left (down-left
-    // diagonal), matching the party's down-right cascade on the opposite side.
+  it("enemy rows zipper into one left-side cascade (not two parallel ranks)", () => {
+    // Within each mechanical row: farther → nearer also means right → left.
     for (const row of [ENEMY_BACK_SLOTS, ENEMY_FRONT_SLOTS]) {
       for (let i = 1; i < row.length; i++) {
         expect(row[i]!.footYFrac).toBeGreaterThan(row[i - 1]!.footYFrac);
         expect(row[i]!.x).toBeLessThan(row[i - 1]!.x);
       }
     }
+    // Combined depth order is one continuous down-left column — x falls as
+    // footYFrac rises, with no large mid-field gap between the two rows.
+    expect(ENEMY_FORMATION_SLOTS).toHaveLength(6);
+    for (let i = 1; i < ENEMY_FORMATION_SLOTS.length; i++) {
+      const prev = ENEMY_FORMATION_SLOTS[i - 1]!;
+      const cur = ENEMY_FORMATION_SLOTS[i]!;
+      expect(cur.footYFrac).toBeGreaterThan(prev.footYFrac);
+      expect(cur.x).toBeLessThan(prev.x);
+      expect(cur.footYFrac - prev.footYFrac).toBeLessThanOrEqual(0.18);
+    }
     // Keep the whole enemy mass in a tight left column — the old back-row
     // slot at x=336 read as mid-field next to the aisle.
-    const maxX = Math.max(
-      ...ENEMY_FRONT_SLOTS.map((s) => s.x),
-      ...ENEMY_BACK_SLOTS.map((s) => s.x)
-    );
+    const maxX = Math.max(...ENEMY_FORMATION_SLOTS.map((s) => s.x));
     expect(maxX).toBeLessThanOrEqual(310);
   });
 
@@ -210,7 +217,7 @@ describe("formation floor invariant (all backdrops × full formation)", () => {
     for (const s of PARTY_FORMATION_SLOTS) {
       expect(s.x).toBeGreaterThan(LOGICAL_W / 2);
     }
-    for (const s of [...ENEMY_FRONT_SLOTS, ...ENEMY_BACK_SLOTS]) {
+    for (const s of ENEMY_FORMATION_SLOTS) {
       expect(s.x).toBeLessThan(LOGICAL_W / 2);
     }
   });
@@ -256,13 +263,14 @@ describe("x-bounds invariant (sprites stay on canvas)", () => {
     ).toThrow(/x-bounds/);
   });
 
-  it("BOSS_SIZE (480, see combat-scene.ts) fits the back row but not the front row", () => {
+  it("BOSS_SIZE (480, see combat-scene.ts) fits the back row; nearest front slot does not", () => {
     // Bosses always draw at BOSS_SIZE regardless of which slot table
     // resolves their position (enemySlot() is size-unaware). Encounter
     // data guards bosses into the back row only (see enemies.test.ts
     // "never places a boss-flagged enemy in the front row") — this test
-    // proves that guard is actually load-bearing: the back row is wide
-    // enough for a boss-sized sprite, the front row is not.
+    // proves that guard is load-bearing for the nearest cascade slot.
+    // Mid-cascade front slots may still clear BOSS_SIZE after the zipper
+    // redesign (they share the same left column); the near end does not.
     const BOSS_SIZE = 480;
     for (const id of allBackdropIds()) {
       const geo = BACKDROP_GEOMETRY[id]!;
@@ -273,7 +281,7 @@ describe("x-bounds invariant (sprites stay on canvas)", () => {
         })
       ).not.toThrow();
       expect(() =>
-        assertSlotsInXBounds(ENEMY_FRONT_SLOTS, geo, {
+        assertSlotsInXBounds([ENEMY_FRONT_SLOTS[ENEMY_FRONT_SLOTS.length - 1]!], geo, {
           spriteWidth: BOSS_SIZE,
           margin,
         })
@@ -292,7 +300,7 @@ describe("x-bounds invariant (sprites stay on canvas)", () => {
       ).not.toThrow();
       expect(() =>
         assertSlotsInXBounds(
-          [...ENEMY_FRONT_SLOTS, ...ENEMY_BACK_SLOTS, ...ALLY_FORMATION_SLOTS],
+          [...ENEMY_FORMATION_SLOTS, ...ALLY_FORMATION_SLOTS],
           geo,
           { spriteWidth: 340, margin }
         )
@@ -324,10 +332,13 @@ describe("scale tiers (rows land on clean pixel-art steps)", () => {
     const geo = BACKDROP_GEOMETRY.arena;
     const scaleOf = (s: FormationSlot) =>
       quantizeScale(depthScale(s.footYFrac, geo));
-    // Back starts far (0.75) and steps into mid-field; front finishes near (1.0).
-    // Same graduated line the party uses — not a binary far/near split.
+    // Zippered cascade: far (0.75) → mid-field → near (1.0). Same graduated
+    // line the party uses — not a binary far/near front-vs-back split.
+    expect(ENEMY_FORMATION_SLOTS.map(scaleOf)).toEqual([
+      0.75, 0.875, 0.875, 0.875, 0.875, 1.0,
+    ]);
     expect(ENEMY_BACK_SLOTS.map(scaleOf)).toEqual([0.75, 0.875, 0.875]);
-    expect(ENEMY_FRONT_SLOTS.map(scaleOf)).toEqual([0.875, 1.0, 1.0]);
+    expect(ENEMY_FRONT_SLOTS.map(scaleOf)).toEqual([0.875, 0.875, 1.0]);
     for (const s of ALLY_FORMATION_SLOTS) {
       expect(scaleOf(s)).toBe(0.875);
     }
@@ -345,8 +356,7 @@ describe("scale tiers (rows land on clean pixel-art steps)", () => {
   it("every frac keeps ≥0.03 margin from a quantize boundary (t=0.25 / 0.75)", () => {
     const all = [
       ...PARTY_FORMATION_SLOTS,
-      ...ENEMY_FRONT_SLOTS,
-      ...ENEMY_BACK_SLOTS,
+      ...ENEMY_FORMATION_SLOTS,
       ...ALLY_FORMATION_SLOTS,
     ];
     for (const s of all) {
@@ -359,10 +369,7 @@ describe("scale tiers (rows land on clean pixel-art steps)", () => {
 describe("center aisle invariant (no-man's-land between battle lines)", () => {
   it("battle lines keep the minimum aisle (summons exempt by design)", () => {
     expect(() =>
-      assertCenterAisle(
-        [...ENEMY_FRONT_SLOTS, ...ENEMY_BACK_SLOTS],
-        PARTY_FORMATION_SLOTS
-      )
+      assertCenterAisle(ENEMY_FORMATION_SLOTS, PARTY_FORMATION_SLOTS)
     ).not.toThrow();
     expect(CENTER_AISLE_MIN_GAP_PX).toBeGreaterThanOrEqual(96);
   });

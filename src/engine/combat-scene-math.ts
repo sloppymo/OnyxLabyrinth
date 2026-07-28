@@ -315,33 +315,44 @@ export const PARTY_FORMATION_SLOTS: FormationSlot[] = [
 ];
 
 /**
- * Enemies: left-side diagonal cascade mirroring the party queue (party goes
- * down-right; enemies go down-left). Mechanical front/back rows still exist,
- * but visually they share one continuous left column that steps through the
- * same three pixel-art scales as the party — not two disconnected pockets
- * with empty mid-field (the pre-fix back row sat at frac 0.06–0.20 while
- * the front sat at 0.78–0.90, which read as scattered).
+ * Enemies: one left-side diagonal column mirroring the party (party goes
+ * down-right; enemies go down-left). Mechanical front/back rows still exist
+ * for reach/targeting, but the two slot tables ZIPPER into a single cascade
+ * — sorted by footYFrac they form one continuous line, not two parallel
+ * ranks with a toward-aisle "front" X-band and a behind "back" X-band
+ * (the look that read as disconnected front/back pockets).
  *
- *   back  0  285/0.18 → 0.75   (farthest; bosses prefer this slot)
- *   back  1  250/0.36 → 0.875
- *   back  2  220/0.48 → 0.875
- *   front 0  295/0.60 → 0.875  (slightly toward aisle = nearer the party)
- *   front 1  255/0.78 → 1.0
- *   front 2  215/0.90 → 1.0
+ *   back  0  295/0.16 → 0.75   (farthest; bosses prefer this slot)
+ *   front 0  278/0.30 → 0.875
+ *   back  1  260/0.42 → 0.875
+ *   front 1  242/0.54 → 0.875
+ *   back  2  225/0.68 → 0.875
+ *   front 2  208/0.86 → 1.0
  *
- * Max enemy x = 295 keeps ≥150px aisle to party x=445. Back-row x values
- * clear BOSS_SIZE 480 at their resolved scales (0.75 / 0.875).
+ * Max enemy x = 295 keeps ≥150px aisle to party x=445. Every back-row x
+ * clears BOSS_SIZE 480 at its resolved scale (0.75 / 0.875); the nearest
+ * front slot does not (bosses are data-guarded into the back row).
  */
-export const ENEMY_FRONT_SLOTS: FormationSlot[] = [
-  { x: 295, footYFrac: 0.6 },
-  { x: 255, footYFrac: 0.78 },
-  { x: 215, footYFrac: 0.9 },
+export const ENEMY_BACK_SLOTS: FormationSlot[] = [
+  { x: 295, footYFrac: 0.16 },
+  { x: 260, footYFrac: 0.42 },
+  { x: 225, footYFrac: 0.68 },
 ];
 
-export const ENEMY_BACK_SLOTS: FormationSlot[] = [
-  { x: 285, footYFrac: 0.18 },
-  { x: 250, footYFrac: 0.36 },
-  { x: 220, footYFrac: 0.48 },
+export const ENEMY_FRONT_SLOTS: FormationSlot[] = [
+  { x: 278, footYFrac: 0.3 },
+  { x: 242, footYFrac: 0.54 },
+  { x: 208, footYFrac: 0.86 },
+];
+
+/** All enemy stand positions in depth order (far → near) — one visual column. */
+export const ENEMY_FORMATION_SLOTS: FormationSlot[] = [
+  ENEMY_BACK_SLOTS[0]!,
+  ENEMY_FRONT_SLOTS[0]!,
+  ENEMY_BACK_SLOTS[1]!,
+  ENEMY_FRONT_SLOTS[1]!,
+  ENEMY_BACK_SLOTS[2]!,
+  ENEMY_FRONT_SLOTS[2]!,
 ];
 
 /**

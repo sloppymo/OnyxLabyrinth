@@ -1817,12 +1817,10 @@ canvas#map-canvas {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  /* Unlike .ff6-selection-list, this list has no selection cursor to follow
-     it into view (it's a passive status readout, not something the player
-     navigates) — a large multi-type pull (e.g. Flame Golem + Lava Slime x2 +
-     Warlock x2) can push a later group below the fixed footer band with
-     nothing on screen to show it's there. A visible thumb is the only cue
-     available without changing the band height (COMBAT_WINDOW_OVERLAP_PX). */
+  /* Dense single-line rows (see .ff6-enemy-row) fit typical multi-type
+     pulls in the fixed footer band without scrolling. Keep a thin thumb as
+     a fallback for edge cases (many species + summons + analyze tags) —
+     unlike .ff6-selection-list there is no selection cursor to follow. */
   scrollbar-width: thin;
   scrollbar-color: #6878c0 transparent;
 }
@@ -1845,38 +1843,36 @@ canvas#map-canvas {
 }
 
 /*
- * Column layout (name above, count below) rather than a side-by-side flex
- * row: a two-word name ("Skeleton Archer") wrapping to 2 lines used to
- * leave the ×N count floating next to line 1 only, reading as if "Skeleton"
- * and "Archer" were two different unrelated entries. Stacking removes the
- * ambiguity regardless of how many lines the name takes.
+ * Side-by-side name + ×N (FF6 monster-window density). Matching the party
+ * roster's 18px / 1.05 rhythm. A prior column stack put ×N under the name
+ * and sized it with --fs-small (26px town token), so each group ate ~2× a
+ * party row and clipped the third type in common 3-species pulls.
+ * Right-aligned ×N on the same line avoids the old wrap ambiguity where a
+ * two-word name + mid-row count read as two unrelated entries.
  */
 .ff6-enemy-row {
   display: flex;
-  flex-direction: column;
-  gap: 0;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
   font-size: 18px;
-  line-height: 1.25;
-  padding: 2px 4px;
+  line-height: 1.05;
+  padding: 1px 4px;
 }
 
-/* Prefer wrapping to two lines over mid-word ellipsis — names are the job. */
 .ff6-enemy-row > span:first-child {
+  flex: 1;
   min-width: 0;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ff6-enemy-count {
-  align-self: flex-end;
-  margin-top: -2px;
-  color: #b8c4f0;
-  font-size: var(--fs-small);
   flex-shrink: 0;
+  color: #b8c4f0;
+  /* Detail size near the roster, never --fs-small (26px). */
+  font-size: 16px;
 }
 
 /* Compact status tags (PSN / PAR / SLP / BLD / BRN / RGN) rendered inside

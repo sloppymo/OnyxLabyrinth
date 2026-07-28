@@ -2,9 +2,9 @@
  * FF6-style combat scene — canvas renderer + turn choreography engine.
  *
  * Layout (mirroring FF6):
- *   - Enemies on the LEFT (front row toward center, back row behind),
- *     party on the RIGHT in two staggered columns of animated sprites
- *     facing left.
+ *   - Enemies on the LEFT in one diagonal column (mechanical front/back
+ *     zippered into a single cascade — not two visual ranks), party on
+ *     the RIGHT in one diagonal queue of animated sprites facing left.
  *   - The battle scene fills the whole canvas; the FF6 menu windows are DOM
  *     overlays along the bottom (combat-select-action-view.ts).
  *   - A slim blue banner window at the top shows spell/skill names during

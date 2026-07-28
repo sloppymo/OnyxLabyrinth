@@ -256,6 +256,28 @@ describe("renderCombatWindows", () => {
     expect(rows[0].textContent).toContain("×3");
   });
 
+  it("lists every distinct living enemy type with a same-row count", () => {
+    const state = makeState([
+      makeEnemy("g0", "Stone Guardian"),
+      makeEnemy("g1", "Stone Guardian"),
+      makeEnemy("a0", "Animated Armor"),
+      makeEnemy("m0", "Demon Mage"),
+    ]);
+    renderCombatWindows(container, baseView(state), noopHandlers());
+    const rows = [...container.querySelectorAll(".ff6-enemy-row")];
+    expect(rows).toHaveLength(3);
+    const byName = Object.fromEntries(
+      rows.map((row) => {
+        const count = row.querySelector(".ff6-enemy-count")?.textContent ?? "";
+        const name = (row.textContent ?? "").replace(count, "");
+        return [name, count];
+      })
+    );
+    expect(byName["Stone Guardian"]).toBe("×2");
+    expect(byName["Animated Armor"]).toBe("×1");
+    expect(byName["Demon Mage"]).toBe("×1");
+  });
+
   it("omits dead enemies from the enemy window", () => {
     const dead = makeEnemy("rat-1");
     dead.currentHp = 0;

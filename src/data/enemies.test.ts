@@ -94,12 +94,11 @@ describe("encounter table integrity", () => {
   });
 
   it("never places a boss-flagged enemy in the front row", () => {
-    // Boss sprites draw at BOSS_SIZE (480px, see combat-scene.ts) but every
-    // encounter spawn still resolves through the regular front/back slot
-    // tables (see combat-scene-math.ts ENEMY_FRONT_SLOTS/ENEMY_BACK_SLOTS).
-    // The front row is only wide enough for ENEMY_SIZE (340px) sprites — a
-    // boss placed there would draw off the left edge of the canvas. Back
-    // row is verified boss-safe in combat-scene-math.test.ts.
+    // Boss sprites draw at BOSS_SIZE (480px, see combat-scene.ts). The
+    // nearest enemy cascade slot is only wide enough for ENEMY_SIZE (340px)
+    // — a boss planted there would draw off the left edge. Back-row slots
+    // are verified boss-safe in combat-scene-math.test.ts; keep bosses in
+    // the back row so they land on those far/mid cascade positions.
     for (const [floor, entries] of Object.entries(ENCOUNTER_TABLES)) {
       for (const entry of entries) {
         for (const spawn of entry.spawns) {
