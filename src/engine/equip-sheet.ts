@@ -244,6 +244,8 @@ export function equipSheetHtml(args: {
   previewMode: EquipPreviewMode;
   warning?: string;
   bottomHtml: string;
+  /** When set, lower band splits gear list (~55%) + description (~45%). */
+  descHtml?: string;
   /** When false, never add --anim (caller already knows reduced motion). */
   animateSprite?: boolean;
 }): string {
@@ -281,9 +283,123 @@ export function equipSheetHtml(args: {
     `</div>` +
     note +
     `<div class="equip-sheet-divider" aria-hidden="true"></div>` +
-    `<div class="equip-sheet-rows">${args.bottomHtml}</div>` +
+    (args.descHtml
+      ? `<div class="equip-sheet-lower">` +
+        `<div class="equip-sheet-gear"><div class="equip-sheet-rows">${args.bottomHtml}</div></div>` +
+        `<div class="equip-sheet-desc">${args.descHtml}</div>` +
+        `</div>`
+      : `<div class="equip-sheet-rows">${args.bottomHtml}</div>`) +
     `</div>`
   );
+}
+
+const STAT_DELTA_LABEL: Record<string, string> = {
+  str: "STR",
+  int: "INT",
+  pie: "PIE",
+  vit: "VIT",
+  agi: "AGI",
+  luk: "LUK",
+};
+
+const EMPTY_SLOT_BLURB: Record<string, string> = {
+  Weapon: "Equip from inventory to raise ATK and other bonuses.",
+  Body: "Equip from inventory to gain DEF and other bonuses.",
+  Shield: "Equip from inventory to gain DEF and other bonuses.",
+  Head: "Equip from inventory to gain DEF and other bonuses.",
+};
+
+/** Presentation deltas for the description panel (not combat math). */
+export function equipItemDeltas(
+  item: ItemDef
+): { label: string; value: string }[] {
+  const out: { label: string; value: string }[] = [];
+  const fmt = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+  if (item.attackBonus !== undefined && item.attackBonus !== 0) {
+    out.push({ label: "ATK", value: fmt(item.attackBonus) });
+  }
+  if (item.defenseBonus !== undefined && item.defenseBonus !== 0) {
+    out.push({ label: "DEF", value: fmt(item.defenseBonus) });
+  }
+  if (item.statBonuses) {
+    for (const key of ["str", "int", "pie", "vit", "agi", "luk"] as const) {
+      const v = item.statBonuses[key];
+      if (v !== undefined && v !== 0) {
+        out.push({ label: STAT_DELTA_LABEL[key]!, value: fmt(v) });
+      }
+    }
+  }
+  return out;
+}
+
+/** Short flavor line derived from existing ItemDef fields (no new item data). */
+export function equipItemFlavor(item: ItemDef): string {
+  if (item.cursed) return "A cursed relic. It will not come off.";
+  if (item.type === "weapon") {
+    const range = item.range ?? "close";
+    return `A ${range}-range weapon for adventurers.`;
+  }
+  if (item.slot === "body") return "Body armor worn into the labyrinth.";
+  if (item.slot === "shield") return "A shield for deflecting blows.";
+  if (item.slot === "head") return "Head protection for the dungeon.";
+  return "Equipment for the party.";
+}
+
+export type EquipDescPanelArgs =
+  | { kind: "item"; item: ItemDef }
+  | { kind: "empty"; slotLabel: string }
+  | { kind: "auto" };
+
+/** Right-hand description panel for the slot-phase lower band. */
+export function equipDescPanelHtml(args: EquipDescPanelArgs): string {
+  if (args.kind === "auto") {
+    return (
+      `<div class="equip-desc-title">Auto-Equip</div>` +
+      `<div class="equip-desc-rule" aria-hidden="true"></div>` +
+      `<div class="equip-desc-body">Equips the highest-stat gear you own for each slot.</div>`
+    );
+  }
+  if (args.kind === "empty") {
+    const blurb =
+      EMPTY_SLOT_BLURB[args.slotLabel] ??
+      "Equip from inventory to gain bonuses.";
+    return (
+      `<div class="equip-desc-title">${escapeHtml(args.slotLabel)}</div>` +
+      `<div class="equip-desc-rule" aria-hidden="true"></div>` +
+      `<div class="equip-desc-body">${escapeHtml(blurb)}</div>`
+    );
+  }
+  const item = args.item;
+  const deltas = equipItemDeltas(item)
+    .map(
+      (d) =>
+        `<div class="equip-desc-delta">` +
+        `<span class="equip-desc-delta-label">${d.label}</span>` +
+        `<span class="equip-desc-delta-value">${d.value}</span></div>`
+    )
+    .join("");
+  return (
+    `<div class="equip-desc-title">${escapeHtml(item.name)}</div>` +
+    `<div class="equip-desc-rule" aria-hidden="true"></div>` +
+    `<div class="equip-desc-body">${escapeHtml(equipItemFlavor(item))}</div>` +
+    (deltas ? `<div class="equip-desc-deltas">${deltas}</div>` : "")
+  );
+}
+
+/** Resolve desc panel from slot-phase focus. */
+export function equipDescForFocus(
+  focusedIndex: number,
+  slots: { slot: EquipSlot; label: string }[],
+  loadout: Loadout,
+  equippedInSlot: (loadout: Loadout, slot: EquipSlot) => ItemDef | undefined
+): string {
+  if (focusedIndex >= slots.length) {
+    return equipDescPanelHtml({ kind: "auto" });
+  }
+  const { slot, label } = slots[focusedIndex]!;
+  const item = equippedInSlot(loadout, slot);
+  if (!item) return equipDescPanelHtml({ kind: "empty", slotLabel: label });
+  return equipDescPanelHtml({ kind: "item", item });
 }
 
 /** Build focusable slot/Auto rows for the sheet bottom. */

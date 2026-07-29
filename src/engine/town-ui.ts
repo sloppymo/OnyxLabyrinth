@@ -39,6 +39,7 @@ import {
   equipItemNameHtml,
   equipSheetHtml,
   equipSlotRowsHtml,
+  equipDescForFocus,
   resolveEquipPreview,
 } from "./equip-sheet";
 import {
@@ -1442,16 +1443,23 @@ export class TownController {
   private renderEquipSlotPhase(animated: boolean): void {
     const c = this.equipChar();
     const loadout = this.equipLoadout();
-    const bottomHtml =
+    const rowsHtml =
       equipSlotRowsHtml(EQUIP_SLOTS, loadout, this.equipSlotIndex, (l, s) =>
         this.equippedInSlot(l, s)
       ) + this.equipTrinketsHtml();
+    const descHtml = equipDescForFocus(
+      this.equipSlotIndex,
+      EQUIP_SLOTS,
+      loadout,
+      (l, s) => this.equippedInSlot(l, s)
+    );
     const sheet = equipSheetHtml({
       character: c,
       loadout,
       preview: null,
       previewMode: "none",
-      bottomHtml,
+      bottomHtml: rowsHtml,
+      descHtml,
       warning: this.flash || undefined,
     });
     this.panel.appendChild(

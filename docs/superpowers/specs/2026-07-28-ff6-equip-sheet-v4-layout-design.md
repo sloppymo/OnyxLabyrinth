@@ -1,6 +1,6 @@
 # Equip Sheet v4 — FF6 Exact Layout (decorative chrome)
 
-**Status:** v4 final — shipped 2026-07-28  
+**Status:** v4 final — shipped 2026-07-28 (incl. slot-phase description panel)  
 **Supersedes (layout only):** two-column “Approach B” proposal; extends `2026-07-28-ff6-equip-sheet-design.md` presentation without changing equip math.
 
 ## 1. Goal
@@ -44,7 +44,15 @@ Trailing `+` / `-` vs bare loadout unchanged. Item-phase cyan `→` preview stil
 
 ### Lower band
 
-Full-width rows: Weapon, Body, Shield, Head, Auto. Empty slots show **blank** item area (not `—`). Selected row uses gold `▶` + yellow item name.
+Two columns in **slot** phase (~55% / ~45%):
+
+| Left | Right |
+|------|--------|
+| Weapon / Body / Shield / Head / Auto | Description panel for the focused row |
+
+Empty slots: blank item area (not `—`). Selected row uses gold `▶` + yellow item name.
+
+**Description panel states:** equipped item (name, flavor, ATK/DEF/stat deltas); empty slot (slot title + generic blurb); Auto (Auto-Equip copy). Flavor is derived from existing `ItemDef` fields — no new item data. Item browse phase keeps a full-width list (no desc split).
 
 ### Tabs
 

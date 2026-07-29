@@ -362,6 +362,8 @@ describe("TownController equip sheet", () => {
     expect(panel.querySelectorAll(".equip-sheet").length).toBe(1);
     expect(panel.querySelectorAll(".ff6-window").length).toBe(1);
     expect(panel.querySelector(".equip-sheet-band")).not.toBeNull();
+    expect(panel.querySelector(".equip-sheet-lower")).not.toBeNull();
+    expect(panel.querySelector(".equip-sheet-desc")).not.toBeNull();
     expect(panel.querySelectorAll(".equip-sheet-row[data-kind='slot']").length).toBe(4);
     const auto = panel.querySelector(".equip-sheet-row[data-kind='auto-equip']");
     expect(auto).not.toBeNull();
@@ -370,6 +372,17 @@ describe("TownController equip sheet", () => {
     expect(panel.querySelector(".equip-sheet-compare-hint")).toBeNull();
     expect(panel.querySelector(".ff6-footer")).toBeNull();
     expect(panel.querySelector(".equip-compare")).toBeNull();
+  });
+
+  it("desc panel updates when focus moves to empty Shield", () => {
+    const ctrl = makeTown();
+    openEquipSlot(ctrl);
+    // Weapon (0) → Body (1) → Shield (2)
+    ctrl.handleKey("ArrowDown");
+    ctrl.handleKey("ArrowDown");
+    const panel = panelOf(ctrl);
+    expect(panel.querySelector(".equip-desc-title")?.textContent).toBe("Shield");
+    expect(panel.querySelector(".equip-desc-body")?.textContent).toMatch(/Equip from inventory/);
   });
 
   it("ArrowRight wraps party and updates sheet name", () => {

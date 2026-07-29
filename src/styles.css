@@ -1223,6 +1223,75 @@ canvas#map-canvas {
   );
 }
 
+/* Slot phase: gear list (~55%) | description panel (~45%) */
+.equip-sheet-lower {
+  display: grid;
+  grid-template-columns: 55fr 45fr;
+  align-items: stretch;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.equip-sheet-gear {
+  padding: 8px 12px 8px 0;
+  border-right: 1px solid rgba(120, 140, 220, 0.4);
+  min-width: 0;
+}
+
+.equip-sheet-desc {
+  padding: 8px 12px;
+  font-size: var(--equip-fs-stat);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.equip-desc-title {
+  color: #fff;
+  font-size: var(--equip-fs-body);
+  line-height: 1.2;
+}
+
+.equip-desc-rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(140, 160, 230, 0.55),
+    rgba(140, 160, 230, 0.15)
+  );
+  margin: 0 0 2px;
+}
+
+.equip-desc-body {
+  color: #c8d0e8;
+  line-height: 1.35;
+}
+
+.equip-desc-deltas {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.equip-desc-delta {
+  display: grid;
+  grid-template-columns: 6ch 1fr;
+  column-gap: 8px;
+  align-items: baseline;
+}
+
+.equip-desc-delta-label {
+  color: var(--equip-label);
+}
+
+.equip-desc-delta-value {
+  color: #fff;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .equip-sheet-rows {
   display: flex;
   flex-direction: column;

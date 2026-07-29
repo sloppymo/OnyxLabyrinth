@@ -6,6 +6,8 @@ import {
   gearModsForLoadout,
   equipSheetHtml,
   equipSlotRowsHtml,
+  equipItemDeltas,
+  equipDescPanelHtml,
   STAT_ORDER,
   STAT_PAIRS,
 } from "./equip-sheet";
@@ -184,5 +186,45 @@ describe("equipSheetHtml v4", () => {
     expect(html).toMatch(/equip-item-cell--empty/);
     expect(html).not.toContain("—");
     expect(html).not.toMatch(/Auto-Equip/);
+  });
+});
+
+describe("equip description panel", () => {
+  it("lists ATK/stat deltas for a weapon", () => {
+    const sword = ITEMS_BY_ID["short-sword"]!;
+    const deltas = equipItemDeltas(sword);
+    expect(deltas.some((d) => d.label === "ATK" && d.value.startsWith("+"))).toBe(true);
+  });
+
+  it("renders item / empty / auto panel states", () => {
+    const sword = ITEMS_BY_ID["short-sword"]!;
+    const itemHtml = equipDescPanelHtml({ kind: "item", item: sword });
+    expect(itemHtml).toMatch(/equip-desc-title/);
+    expect(itemHtml).toMatch(/Short Sword/);
+    expect(itemHtml).toMatch(/equip-desc-delta/);
+
+    const emptyHtml = equipDescPanelHtml({ kind: "empty", slotLabel: "Shield" });
+    expect(emptyHtml).toMatch(/>Shield</);
+    expect(emptyHtml).toMatch(/Equip from inventory/);
+
+    const autoHtml = equipDescPanelHtml({ kind: "auto" });
+    expect(autoHtml).toMatch(/Auto-Equip/);
+    expect(autoHtml).toMatch(/highest-stat/);
+  });
+
+  it("sheet with descHtml mounts lower split band", () => {
+    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const html = equipSheetHtml({
+      character: c,
+      loadout: { armor: [] },
+      preview: null,
+      previewMode: "none",
+      bottomHtml: "<div class='equip-sheet-row'></div>",
+      descHtml: equipDescPanelHtml({ kind: "auto" }),
+      animateSprite: false,
+    });
+    expect(html).toMatch(/equip-sheet-lower/);
+    expect(html).toMatch(/equip-sheet-desc/);
+    expect(html).toMatch(/Auto-Equip/);
   });
 });
