@@ -1,13 +1,10 @@
 // Floor definitions. Each spell/enemy/item/floor must be defined as typed
 // data here (or in the sibling data files) — never hardcoded in game logic.
 //
-// This file hand-carves the first three campaign floors — The Flooded Crypt,
-// The Cursed Library, and The Forge of Ashes — linked linearly by stairs.
-// Floors 4 and 5 (The Null Choir, The Weeping Cistern) are authored as
-// editor-exported JSON and registered by src/content/floors/index.ts; the
-// full campaign is floors 1-5. Floor IDs must stay contiguous across all
-// five: handleStairs() in game/features.ts computes the target floor as
-// currentId ± 1.
+// This file hand-carves campaign floors 2–3 — The Cursed Library and The Forge
+// of Ashes — linked linearly by stairs. Floor 1 ("The Proving Depths") and
+// floors 4–5 ship as editor-exported JSON in src/content/floors/ and merge
+// at runtime via src/game/floor-registry.ts.
 //
 // Grid convention: grid[y][x]. Each cell has 4 edges (n/e/s/w). "open" =
 // passable, "wall" = blocked, "door" = passable + visual marker, "locked" =
@@ -184,168 +181,6 @@ export interface TeleporterLink {
   toFloorId: number;
   toX: number;
   toY: number;
-}
-
-// ---------------------------------------------------------------------------
-// Floor 1: The Flooded Crypt — tutorial floor.
-// Theme: green stagnant water seeping through cracked stone, mossy walls,
-// broken sarcophagi. Slimes and shambling dead; a rare acid puddle in the
-// floodwater.
-//
-// Shape: entry hall at the south, a processional corridor north to the
-// sanctum (stairs down), a west crypt row (crypt-key), and a flooded east
-// gallery leading to a locked reliquary (lexicon-key for floor 2).
-// ---------------------------------------------------------------------------
-
-function floor1(): FloorDef {
-  const width = 12;
-  const height = 12;
-  const grid = buildSolidGrid(width, height);
-
-  // Entry hall (south) — the party wakes here; stairs from floor 2 also land here.
-  carveRoom(grid, 4, 8, 7, 10);
-  // Processional corridor north from the entry hall to the crossroads only —
-  // the direct shot to the sanctum is gone. Everyone must jog west through
-  // the crypt row (loot + trap tutorial) to continue north.
-  carveVertical(grid, 5, 5, 8);
-  // North sanctum (stairs down).
-  carveRoom(grid, 3, 1, 7, 2);
-  // West crypt row (open treasure: crypt-key).
-  carveRoom(grid, 1, 4, 3, 6);
-  carveHorizontal(grid, 1, 5, 5);
-  // New route from the crypt's north row up to the sanctum, entering from
-  // the west (the crypt is now the only way north from the crossroads).
-  carveVertical(grid, 2, 1, 4);
-  carveHorizontal(grid, 2, 3, 1);
-  // Flooded east gallery.
-  carveRoom(grid, 7, 4, 10, 6);
-  carveHorizontal(grid, 5, 9, 5);
-  // Reliquary (locked, south of the gallery).
-  carveRoom(grid, 9, 8, 10, 9);
-  carveVertical(grid, 9, 6, 8);
-
-  // Sanctum entrance door (west side, off the new crypt route).
-  setEdge(grid, 3, 1, "w", "door");
-  setEdge(grid, 2, 1, "e", "door");
-  // Gallery entrance door.
-  setEdge(grid, 6, 5, "e", "door");
-  setEdge(grid, 7, 5, "w", "door");
-  // Locked reliquary door (crypt-key, found in the west crypt).
-  setEdge(grid, 9, 7, "s", "locked");
-  setEdge(grid, 9, 8, "n", "locked");
-
-  // Tile features.
-  // Stairs down in the sanctum.
-  setTile(grid, 5, 1, "stairs_down");
-  // Black floodwater in the east gallery — visibility drops to one tile.
-  setTile(grid, 8, 5, "darkness");
-  setTile(grid, 9, 5, "darkness");
-  // Floodwater. The gallery threshold is ankle-deep (teaches swimming on the
-  // reliquary route); the west crypt hides a blessed pool; the gallery's
-  // south-east corner drops into a drowning pool.
-  setTile(grid, 7, 5, "water");
-  setTile(grid, 2, 4, "water");
-  setTile(grid, 10, 6, "water");
-  // Open chest in the west crypt (holds the crypt-key) — first chest reached
-  // coming from the crossroads, teaches looting safely.
-  setTile(grid, 3, 5, "treasure");
-  // Trapped chest just beyond it — teaches trap inspection/disarming right
-  // after the safe chest, both now unavoidable on the route north.
-  setTile(grid, 2, 5, "treasure");
-  // Locked reliquary chest (holds the lexicon-key for floor 2).
-  setTile(grid, 10, 9, "treasure");
-  // Maro, a stranded swordsman, shelters in the crypt's south-east corner.
-  setTile(grid, 3, 6, "npc");
-
-  // Scripted events.
-  // First step north from the entry hall — teach the dead-end before the
-  // wall at (5,5). Keep ≤ ~2×30 so #message doesn't clip the hint.
-  setTile(grid, 5, 8, "event");
-  setTile(grid, 5, 7, "event");
-  setTile(grid, 2, 3, "event");
-  setTile(grid, 1, 4, "event");
-  setTile(grid, 4, 1, "event");
-  // Pre-entry tell for the depth-4 drowning pool at (10,6): both of its open
-  // approach tiles (north and west — the room's south/east walls are solid)
-  // carry a warning so a player can't step into the deep water blind, no
-  // matter which direction they entered the gallery from.
-  setTile(grid, 9, 6, "event");
-  setTile(grid, 10, 5, "event");
-
-  return {
-    id: 1,
-    name: "The Flooded Crypt",
-    width,
-    height,
-    grid,
-    startX: 5,
-    startY: 9,
-    encounterRate: 0.08,
-    tilesetTheme: "f1",
-    lockedDoors: [
-      { x: 9, y: 7, dir: "s", keyId: "crypt-key" },
-    ],
-    treasures: [
-      // The first chest reached from the crossroads is untrapped — it
-      // teaches looting safely.
-      { x: 3, y: 5, itemIds: ["healing-potion", "healing-potion", "crypt-key"] },
-      // A poison-needle chest just steps beyond it: the antidote inside
-      // softens the lesson, and it's now unavoidable on the route north.
-      { x: 2, y: 5, itemIds: ["antidote", "healing-potion"], trap: "poison" },
-      { x: 10, y: 9, itemIds: ["short-sword+1", "leather", "healing-potion", "lexicon-key"], trap: "gas" },
-    ],
-    waters: [
-      { x: 7, y: 5, depth: 1 },
-      { x: 2, y: 4, depth: 2, effect: { kind: "heal", power: 8 } },
-      { x: 10, y: 6, depth: 4, effect: { kind: "damage", power: 6 } },
-    ],
-    npcs: [
-      {
-        id: "maro",
-        name: "Maro",
-        title: "stranded swordsman",
-        x: 3,
-        y: 6,
-        greeting:
-          "A living face at last! I am Maro, once of the eastern guard. The water took my company; only I crawled out.",
-        returnGreeting: "Still breathing, friend? Good. The crypt has taken enough of us.",
-        topics: [
-          { key: "key", response: "The monks buried their key with their dead. Look among the sarcophagi, west of the great corridor." },
-          { key: "water", response: "The black pools drown the careless. The shallow ford by the gallery door is the only safe crossing — or so the dead believed." },
-          { key: "reliquary", response: "South of the flooded gallery, behind the locked door. What the monks sealed there, they meant to keep sealed." },
-          { key: "echo", hidden: true, response: "…so the whispers reach even this floor? Pray you never meet the boy they talk about." },
-        ],
-        wantsItemId: "healing-potion",
-        rewardItemId: "long-sword+1",
-        combatEnemyIds: ["ironclad-knight"],
-      },
-    ],
-    events: [
-      {
-        x: 5,
-        y: 8,
-        kind: "message",
-        message: "The hall ends in stone ahead.\nTurn west — or east.",
-      },
-      { x: 5, y: 7, kind: "message", message: "Above the arch, words are scrawled in something black: THE WATER REMEMBERS." },
-      { x: 2, y: 3, kind: "damage", message: "A flagstone gives way and darts whistle through the corridor.", power: 4 },
-      { x: 1, y: 4, kind: "reward", message: "A corpse clutches a rusted holy symbol. The dead have no use for it now.", itemId: "holy-symbol" },
-      { x: 4, y: 1, kind: "heal", message: "You kneel at the defiled altar. Something hungry listens — but it gives a little back.", power: 5 },
-      { x: 9, y: 6, kind: "message", message: "Ahead, the water turns black and bottomless. This is no ford — brace yourself, or turn back." },
-      { x: 10, y: 5, kind: "message", message: "Ahead, the water turns black and bottomless. This is no ford — brace yourself, or turn back." },
-    ],
-    mapSprites: [
-      { x: 6, y: 9, spriteId: "torch" },
-      { x: 1, y: 6, spriteId: "bones" },
-      { x: 9, y: 9, spriteId: "barrel" },
-      { x: 2, y: 2, spriteId: "torch" },
-      { x: 9, y: 4, spriteId: "bones" },
-    ],
-    encounterZones: [
-      { id: "crypt-tutorial-safe", x1: 1, y1: 4, x2: 7, y2: 9, rateMul: 0.5 },
-      { id: "flooded-gallery-risk", x1: 7, y1: 4, x2: 10, y2: 6, rateMul: 1.5 },
-    ],
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -664,7 +499,7 @@ function floor3(): FloorDef {
   };
 }
 
-export const FLOORS: readonly FloorDef[] = [floor1(), floor2(), floor3()];
+export const FLOORS: readonly FloorDef[] = [floor2(), floor3()];
 
 /** Deep-clone a floor definition so each game session gets its own mutable copy.
  *  This keeps the module-global FLOORS array as a read-only source of truth. */

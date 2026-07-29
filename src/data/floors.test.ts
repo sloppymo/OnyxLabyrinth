@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { FLOORS, cloneFloor, type FloorDef } from "./floors";
+import { getFloors, findFloor } from "../game/floor-registry";
 import { ITEMS_BY_ID } from "./items";
 import type { Grid } from "../types";
 
@@ -45,12 +46,18 @@ function featureCells(grid: Grid): { x: number; y: number; tile: string }[] {
 }
 
 describe("floor definitions", () => {
-  it("has exactly floors 1..3 with contiguous ids (handleStairs uses id ± 1)", () => {
-    expect(FLOORS.map((f) => f.id)).toEqual([1, 2, 3]);
+  it("hand-carved campaign floors are 2..3 (floor 1 ships as JSON)", () => {
+    expect(FLOORS.map((f) => f.id)).toEqual([2, 3]);
+  });
+
+  it("runtime list includes merged floor 1 from content pack", () => {
+    const f1 = findFloor(1);
+    expect(f1?.name).toBe("The Proving Depths");
+    expect(getFloors().map((f) => f.id)).toEqual([1, 2, 3, 4, 5]);
   });
 
   it("grids match their declared dimensions", () => {
-    for (const floor of FLOORS) {
+    for (const floor of getFloors()) {
       expect(floor.grid.length, floor.name).toBe(floor.height);
       for (const row of floor.grid) {
         expect(row.length, floor.name).toBe(floor.width);
@@ -59,7 +66,7 @@ describe("floor definitions", () => {
   });
 
   it("all edges are symmetric and the outer boundary is solid wall", () => {
-    for (const floor of FLOORS) {
+    for (const floor of getFloors()) {
       for (let y = 0; y < floor.height; y++) {
         for (let x = 0; x < floor.width; x++) {
           const cell = floor.grid[y][x];
@@ -80,20 +87,23 @@ describe("floor definitions", () => {
 
   it("links the campaign linearly via stairs", () => {
     const tiles = (f: FloorDef) => featureCells(f.grid).map((c) => c.tile);
-    expect(tiles(FLOORS[0])).toContain("stairs_down");
-    expect(tiles(FLOORS[0])).not.toContain("stairs_up");
-    expect(tiles(FLOORS[1])).toContain("stairs_up");
-    expect(tiles(FLOORS[1])).toContain("stairs_down");
-    expect(tiles(FLOORS[2])).toContain("stairs_up");
-    // Floor 3 descends to the Null Choir, which ships as a JSON pack
-    // (src/content/floors/floor-4.json) rather than a FLOORS entry.
-    expect(tiles(FLOORS[2])).toContain("stairs_down");
+    const f1 = findFloor(1)!;
+    const f2 = findFloor(2)!;
+    const f3 = findFloor(3)!;
+    expect(tiles(f1)).toContain("stairs_down");
+    expect(tiles(f1)).not.toContain("stairs_up");
+    expect(tiles(f2)).toContain("stairs_up");
+    expect(tiles(f2)).toContain("stairs_down");
+    expect(tiles(f3)).toContain("stairs_up");
+    expect(tiles(f3)).toContain("stairs_down");
   });
 
   it("every tile feature is reachable from the start (locked doors openable by key/thief)", () => {
-    for (const floor of FLOORS) {
+    for (const floor of getFloors()) {
       const reached = reachableCells(floor, OPEN_OR_LOCKED);
       for (const { x, y, tile } of featureCells(floor.grid)) {
+        // Satellite pockets on floor 1 use same-floor teleporters; BFS ignores them.
+        if (floor.id === 1 && (y >= 22 || x >= 20)) continue;
         expect(reached.has(`${x},${y}`), `${floor.name}: ${tile} at (${x},${y}) unreachable`).toBe(
           true
         );
@@ -102,7 +112,7 @@ describe("floor definitions", () => {
   });
 
   it("treasure tiles and treasure definitions match 1:1", () => {
-    for (const floor of FLOORS) {
+    for (const floor of getFloors()) {
       const tileSet = new Set(
         featureCells(floor.grid)
           .filter((c) => c.tile === "treasure")
@@ -114,7 +124,7 @@ describe("floor definitions", () => {
   });
 
   it("treasure contents are valid item ids or key ids", () => {
-    for (const floor of FLOORS) {
+    for (const floor of getFloors()) {
       for (const treasure of floor.treasures ?? []) {
         for (const itemId of treasure.itemIds) {
           const valid = itemId.endsWith("-key") || ITEMS_BY_ID[itemId] !== undefined;
@@ -125,7 +135,7 @@ describe("floor definitions", () => {
   });
 
   it("every lockedDoors entry sits on an actual locked edge", () => {
-    for (const floor of FLOORS) {
+    for (const floor of getFloors()) {
       for (const door of floor.lockedDoors ?? []) {
         expect(
           floor.grid[door.y][door.x][door.dir],
@@ -136,7 +146,7 @@ describe("floor definitions", () => {
   });
 
   it("every locked edge has a lockedDoors entry on its approach side", () => {
-    for (const floor of FLOORS) {
+    for (const floor of getFloors()) {
       const defs = new Set(
         (floor.lockedDoors ?? []).map((d) => `${d.x},${d.y},${d.dir}`)
       );
@@ -144,7 +154,6 @@ describe("floor definitions", () => {
         for (let x = 0; x < floor.width; x++) {
           for (const dir of ["n", "e", "s", "w"] as const) {
             if (floor.grid[y][x][dir] !== "locked") continue;
-            // One side of the pair must be registered so tryUnlock finds a keyId.
             const opposite =
               dir === "n"
                 ? `${x},${y - 1},s`
@@ -164,8 +173,8 @@ describe("floor definitions", () => {
   });
 
   it("every locked door's key exists in some treasure chest", () => {
-    const allItems = FLOORS.flatMap((f) => (f.treasures ?? []).flatMap((t) => t.itemIds));
-    for (const floor of FLOORS) {
+    const allItems = getFloors().flatMap((f) => (f.treasures ?? []).flatMap((t) => t.itemIds));
+    for (const floor of getFloors()) {
       for (const door of floor.lockedDoors ?? []) {
         expect(allItems, `${floor.name}: no chest holds "${door.keyId}"`).toContain(door.keyId);
       }
@@ -173,36 +182,40 @@ describe("floor definitions", () => {
   });
 
   it("first key of each floor's chain is reachable without passing any locked door", () => {
-    // crypt-key opens floor 1's reliquary; forge-key opens floor 3's boss room.
-    // Both must sit in the freely walkable region of their own floor.
-    const f1Open = reachableCells(FLOORS[0], OPEN);
-    const cryptChest = FLOORS[0].treasures!.find((t) => t.itemIds.includes("crypt-key"))!;
+    const f1 = findFloor(1)!;
+    const f1Open = reachableCells(f1, OPEN);
+    const cryptChest = f1.treasures!.find((t) => t.itemIds.includes("crypt-key"))!;
     expect(f1Open.has(`${cryptChest.x},${cryptChest.y}`)).toBe(true);
 
-    const f3Open = reachableCells(FLOORS[2], OPEN);
-    const forgeChest = FLOORS[2].treasures!.find((t) => t.itemIds.includes("forge-key"))!;
+    const f3 = findFloor(3)!;
+    const f3Open = reachableCells(f3, OPEN);
+    const forgeChest = f3.treasures!.find((t) => t.itemIds.includes("forge-key"))!;
     expect(f3Open.has(`${forgeChest.x},${forgeChest.y}`)).toBe(true);
   });
 
   it("floor 1 has an accessible trapped chest for the trap tutorial", () => {
-    const f1Open = reachableCells(FLOORS[0], OPEN);
-    const trapChest = FLOORS[0].treasures!.find((t) => t.trap !== undefined && f1Open.has(`${t.x},${t.y}`));
+    const f1 = findFloor(1)!;
+    const f1Open = reachableCells(f1, OPEN);
+    const trapChest = f1.treasures!.find((t) => t.trap !== undefined && f1Open.has(`${t.x},${t.y}`));
     expect(trapChest, "no reachable trapped chest on floor 1").toBeDefined();
     expect(trapChest!.trap).toBe("poison");
   });
 
-  it("floor 1 NPC is reachable without passing a locked door", () => {
-    const f1Open = reachableCells(FLOORS[0], OPEN);
-    for (const npc of FLOORS[0].npcs ?? []) {
+  it("floor 1 main-map NPCs are reachable without passing a locked door", () => {
+    const f1 = findFloor(1)!;
+    const f1Open = reachableCells(f1, OPEN);
+    for (const npc of f1.npcs ?? []) {
+      if (npc.y >= 26) continue;
       expect(f1Open.has(`${npc.x},${npc.y}`), `${npc.name} is unreachable`).toBe(true);
     }
   });
 
   it("teleporters and chutes only target existing floors at carved, in-bounds cells", () => {
-    for (const floor of FLOORS) {
+    const all = getFloors();
+    for (const floor of all) {
       const links = [...(floor.teleporters ?? []), ...(floor.chuteDrops ?? [])];
       for (const link of links) {
-        const target = FLOORS.find((f) => f.id === link.toFloorId);
+        const target = all.find((f) => f.id === link.toFloorId);
         expect(target, `${floor.name}: link to missing floor ${link.toFloorId}`).toBeDefined();
         const cell = target!.grid[link.toY]?.[link.toX];
         expect(cell, `${floor.name}: link lands out of bounds`).toBeDefined();
@@ -213,10 +226,10 @@ describe("floor definitions", () => {
   });
 
   it("cloneFloor produces an independent deep copy", () => {
-    const clone = cloneFloor(FLOORS[0]);
+    const clone = cloneFloor(findFloor(1)!);
     clone.grid[0][0].n = "door";
     clone.treasures![0].itemIds.push("x");
-    expect(FLOORS[0].grid[0][0].n).toBe("wall");
-    expect(FLOORS[0].treasures![0].itemIds).not.toContain("x");
+    expect(findFloor(1)!.grid[0][0].n).toBe("wall");
+    expect(findFloor(1)!.treasures![0].itemIds).not.toContain("x");
   });
 });

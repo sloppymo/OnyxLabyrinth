@@ -24,7 +24,7 @@ import {
 import { reconcileInventoryAfterCombat } from "./combat-inventory";
 import { ITEMS_BY_ID } from "../data/items";
 import { FLOORS } from "../data/floors";
-import { getFloors } from "./floor-registry";
+import { getFloors, findFloor } from "./floor-registry";
 import { createGameState } from "./state";
 import { loadAutoSave } from "./save";
 import type { FloorDef, EventDef } from "../data/floors";
@@ -598,7 +598,7 @@ describe("transitionToFloor and deepestFloorReached", () => {
   }
 
   it("advances deepestFloorReached on descent past the previous value", () => {
-    const state = createGameState(FLOORS[0]);
+    const state = createGameState(findFloor(1)!);
     expect(state.deepestFloorReached).toBe(1);
     transitionToFloor(state, floorById(4), 2, 2);
     expect(state.floor.id).toBe(4);
@@ -606,7 +606,7 @@ describe("transitionToFloor and deepestFloorReached", () => {
   });
 
   it("does not lower deepestFloorReached when backtracking to a shallower floor", () => {
-    const state = createGameState(FLOORS[0]);
+    const state = createGameState(findFloor(1)!);
     transitionToFloor(state, floorById(4), 2, 2);
     expect(state.deepestFloorReached).toBe(4);
     transitionToFloor(state, floorById(3), 2, 2);
@@ -616,7 +616,7 @@ describe("transitionToFloor and deepestFloorReached", () => {
 
   it("autosaves by default on floor transition", () => {
     localStorage.clear();
-    const state = createGameState(FLOORS[0]);
+    const state = createGameState(findFloor(1)!);
     state.mode = "dungeon";
     transitionToFloor(state, floorById(2), 2, 2);
     expect(loadAutoSave()?.floor.id).toBe(2);
@@ -624,7 +624,7 @@ describe("transitionToFloor and deepestFloorReached", () => {
 
   it("skips autosave when opts.autosave is false", () => {
     localStorage.clear();
-    const state = createGameState(FLOORS[0]);
+    const state = createGameState(findFloor(1)!);
     state.mode = "dungeon";
     transitionToFloor(state, floorById(2), 2, 2, 0, { autosave: false });
     expect(loadAutoSave()).toBeNull();

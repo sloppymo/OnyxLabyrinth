@@ -1,0 +1,44 @@
+# The Null Choir (id=4, 18x18)
+# start=(2,2) encounter=0.13
+# . floor  # solid  @ start  ^v stairs  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic
+
+   012345678901234567
+ 0 ##################
+ 1 #....##.....T#####
+ 2 #.@!......!..#####
+ 3 #....##......#####
+ 4 ##.######.########
+ 5 ##.######.###!DDT#
+ 6 ##!###......#.DD.#
+ 7 ##.###!.M...#...T#
+ 8 #....#..M........#
+ 9 #.......M...#...P#
+10 #.N..#..M.!.######
+11 #....#......######
+12 ##.###.###########
+13 #...##...!....####
+14 #.~.#######..!..T#
+15 #..T#######.MMMv.#
+16 ###########....T.#
+17 ##################
+
+# Overlays:
+#   lock (12,8) e key=choir-key
+#   lock (13,13) s key=sanctum-key
+#   treasure (12,1) items=[long-sword+1, healing-potion, antidote] trap=alarm
+#   treasure (3,15) items=[choir-key, healing-potion] trap=gas
+#   treasure (16,5) items=[sanctum-key, mace+2, healing-potion] trap=stunner
+#   treasure (16,7) items=[chain-mail+2, sages-circlet, healing-potion]
+#   treasure (15,16) items=[runeblade+3, mythril-plate+3, healing-potion, healing-potion] trap=teleporter
+#   treasure (16,14) items=[cursed-blade, shield+2] trap=poison
+#   water (2,14) depth=1
+#   npc (2,10) id=vesper-cantor name=Vesper
+#   event (3,2) kind=message
+#   event (10,2) kind=damage
+#   event (2,6) kind=message
+#   event (6,7) kind=message
+#   event (10,10) kind=damage
+#   event (13,5) kind=reward
+#   event (9,13) kind=heal
+#   event (13,14) kind=message
+#   teleporter (16,9) -> floor 4 (13,13)

@@ -243,7 +243,26 @@ export const HOLY_SYMBOL: ItemDef = {
   price: 0,
 };
 
-export const ALL_TRINKETS: ItemDef[] = [RING_OF_WATER_WALKING, HOLY_SYMBOL];
+export const WARDEN_SPHERE: ItemDef = {
+  id: "warden-sphere",
+  name: "Warden Sphere",
+  type: "trinket",
+  price: 0,
+};
+
+export const GATE_TOKEN: ItemDef = {
+  id: "gate-token",
+  name: "Gate Token",
+  type: "trinket",
+  price: 0,
+};
+
+export const ALL_TRINKETS: ItemDef[] = [
+  RING_OF_WATER_WALKING,
+  HOLY_SYMBOL,
+  WARDEN_SPHERE,
+  GATE_TOKEN,
+];
 
 // Cursed gear — masquerades as chest loot, clamps on when picked up.
 export const CURSED_BLADE: ItemDef = {

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { serialize, deserialize, autoSave, loadAutoSave } from "./save";
 import { createGameState } from "./state";
-import { FLOORS } from "../data/floors";
+import { findFloor } from "./floor-registry";
 import { createDefaultParty, createCharacter } from "./party";
 import type { GameState } from "../types";
 
@@ -9,7 +9,7 @@ describe("save serialization", () => {
   let state: GameState;
 
   beforeEach(() => {
-    state = createGameState(FLOORS[0]);
+    state = createGameState(findFloor(1)!);
     state.party = createDefaultParty();
     state.partyGold = 100;
     state.dayCount = 3;
@@ -70,7 +70,8 @@ describe("save serialization", () => {
     expect(restored.npcDisposition).toEqual({ maro: 80 });
     expect(restored.killedNPCs).toEqual(["maro"]);
     expect(restored.npcTradesDone).toEqual(["vestra:antidote>robe+2"]);
-    expect(restored.floor.grid[6][3].tile).toBeUndefined();
+    const maro = findFloor(1)!.npcs!.find((n) => n.id === "maro")!;
+    expect(restored.floor.grid[maro.y][maro.x].tile).toBeUndefined();
   });
 
   it("defaults NPC state to empty for saves that predate NPCs", () => {
@@ -86,7 +87,8 @@ describe("save serialization", () => {
     expect(restored.npcDisposition).toEqual({});
     expect(restored.killedNPCs).toEqual([]);
     expect(restored.npcTradesDone).toEqual([]);
-    expect(restored.floor.grid[6][3].tile).toBe("npc");
+    const maro = findFloor(1)!.npcs!.find((n) => n.id === "maro")!;
+    expect(restored.floor.grid[maro.y][maro.x].tile).toBe("npc");
   });
 
   it("preserves party character data", () => {
@@ -394,7 +396,7 @@ describe("autoSave", () => {
 
   beforeEach(() => {
     localStorage.clear();
-    state = createGameState(FLOORS[0]);
+    state = createGameState(findFloor(1)!);
     state.party = createDefaultParty();
     state.partyGold = 42;
   });
