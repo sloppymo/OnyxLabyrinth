@@ -2709,6 +2709,62 @@ export function playTurn(
         break;
       }
 
+      case "rowAdvance": {
+        // Back-row survivors slide into front-row stands after the front is
+        // wiped (combat-eor promoteEnemyBackRow). Clear the cached back-row
+        // slot index so assignSlot picks a free front index, then tween the
+        // draw offset from the old screen position down to the new stand.
+        const advanceId = evt.targetId;
+        const ROW_ADVANCE_MS = 280;
+        steps.push(
+          step(t, (sc, n) => {
+            const enemy =
+              sc.state.enemies.front.find((e) => e.instanceId === advanceId) ??
+              sc.state.enemies.back.find((e) => e.instanceId === advanceId);
+            if (!enemy) return;
+            const oldSlot = sc.enemySlots.get(advanceId);
+            const size = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
+            const oldPos =
+              oldSlot !== undefined
+                ? enemyPos(oldSlot, "back", w, h, sc.backdropId, size)
+                : null;
+            sc.enemySlots.delete(advanceId);
+            const newSlot = enemySlotIndex(sc, "front", advanceId);
+            const newPos = enemyPos(newSlot, "front", w, h, sc.backdropId, size);
+            if (!oldPos) return;
+            const a = getAnim(sc, "enemy", advanceId, n);
+            // Base draw pos has jumped to newPos; seed offset so the sprite
+            // still appears at oldPos, then ease back to zero.
+            const dx = oldPos.x - newPos.x;
+            const dy = oldPos.y - newPos.y;
+            a.moveFromX = dx;
+            a.moveFromY = dy;
+            a.moveToX = dx;
+            a.moveToY = dy;
+            a.moveDuration = 0;
+            a.moveStart = n;
+            startMove(a, 0, 0, ROW_ADVANCE_MS, n, sc.playbackRate);
+            setAnimState(a, "walk", n);
+          })
+        );
+        steps.push(
+          step(t + ROW_ADVANCE_MS, (sc, n) => {
+            const a = sc.enemyAnims.get(advanceId);
+            if (!a) return;
+            clearAttackIfPlaying(a, n);
+            if (a.state === "walk") setAnimState(a, "idle", n);
+          })
+        );
+        // Batch consecutive advances so a whole back row slides together.
+        let peekAdv = evtIndex + 1;
+        while (events[peekAdv]?.type === "bark") peekAdv++;
+        const nextAdv = events[peekAdv];
+        if (!nextAdv || nextAdv.type !== "rowAdvance") {
+          t += ROW_ADVANCE_MS + 80;
+        }
+        break;
+      }
+
       case "revived": {
         steps.push(
           step(t, (sc, n) => {

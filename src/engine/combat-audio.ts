@@ -203,6 +203,7 @@ export function idsForEvent(event: CombatEvent, state: CombatState): SfxLayer[] 
     case "spotted":
     case "incapacitated":
     case "statusEnd":
+    case "rowAdvance":
     default:
       return [];
   }

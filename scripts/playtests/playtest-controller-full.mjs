@@ -343,10 +343,10 @@ async function main() {
       await wait(300);
       st = await snap(page);
     }
-    // Map action toggles overlay ON — close it so move/trap work
+    // Map action toggles overlay ON — close with pad B (controller-first)
     st = await snap(page);
     if (/Auto-map open/i.test(st.msg + st.body)) {
-      await pressKey(page, "m");
+      await padBtn(page, BTN.b);
       await wait(200);
       st = await snap(page);
     }

@@ -1341,11 +1341,22 @@ function routeControllerEvent(event: ControllerInputEvent): void {
         dungeonHandlers.onTurnRight();
       }
       break;
+    case "b":
+      // Cancel closes the map (M / Esc on keyboard). Select also closes via
+      // onSystemMenu; Start toggles below — B is the obvious pad cancel.
+      if (mapVisible) {
+        dungeonHandlers.onToggleMap();
+      }
+      break;
     case "select":
       dungeonHandlers.onSystemMenu();
       break;
     case "start":
-      if (!mapVisible && !isRenderCameraAnimating()) {
+      if (mapVisible) {
+        // Mirror keyboard M — Start opened the ring that toggled the map on,
+        // so the same button can dismiss it without needing the ring again.
+        dungeonHandlers.onToggleMap();
+      } else if (!isRenderCameraAnimating()) {
         clearMessageOnPlayerAction();
         openActionRing();
       }
@@ -1900,12 +1911,16 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 });
 
 // --- Auto-map toggle -----------------------------------------------------
+function mapCloseHint(inputKind: "keyboard" | "gamepad"): string {
+  return inputKind === "gamepad" ? "Press B to close" : "Press M to close";
+}
+
 function toggleMap(): void {
   mapVisible = !mapVisible;
   showMode("dungeon", mapVisible);
   canvas.style.opacity = mapVisible ? "0.3" : "1";
   if (mapVisible) {
-    setMessage("Auto-map open. Press M to close.");
+    setMessage(`Auto-map open. ${mapCloseHint(globalInput.getLastInputKind())}.`);
   } else {
     setMessage("");
   }
@@ -1939,7 +1954,7 @@ function loop() {
     const kind = globalInput.getLastInputKind();
     setContextualPrompt(resolveContextualPrompt(state, kind));
     if (mapVisible) {
-      renderAutoMap(mapCtx, state);
+      renderAutoMap(mapCtx, state, globalInput.getLastInputKind());
     }
   }
   requestAnimationFrame(loop);

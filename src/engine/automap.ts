@@ -25,6 +25,7 @@
  */
 
 import type { GameState, Cell, TileFeature } from "../types";
+import type { InputKind } from "./contextual-prompt";
 
 // --- Palette (matches the warm wireframe aesthetic) -----------------------
 const MAP_COLORS = {
@@ -48,7 +49,11 @@ const PLAYER_SIZE = 12;   // radius of player triangle
  * Render the auto-map to a 2D canvas context. The map is centered on the
  * player and fills the canvas. Called every frame while the map is visible.
  */
-export function renderAutoMap(ctx: CanvasRenderingContext2D, state: GameState): void {
+export function renderAutoMap(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  inputKind: InputKind = "keyboard",
+): void {
   const { floor, player, explored } = state;
   const canvas = ctx.canvas;
   const cw = canvas.width;
@@ -156,7 +161,9 @@ export function renderAutoMap(ctx: CanvasRenderingContext2D, state: GameState): 
   ctx.textAlign = "left";
   ctx.fillStyle = MAP_COLORS.wall;
   ctx.font = '22px "FF36", "Courier New", monospace';
-  ctx.fillText("Press M to close", 16, ch - 24);
+  const closeHint =
+    inputKind === "gamepad" ? "Press B to close" : "Press M to close";
+  ctx.fillText(closeHint, 16, ch - 24);
 }
 
 // --- Edge drawing ----------------------------------------------------------

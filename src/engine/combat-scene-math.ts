@@ -320,38 +320,29 @@ export const PARTY_FORMATION_SLOTS: FormationSlot[] = [
  * ranks with a toward-aisle "front" X-band and a behind "back" X-band
  * (the look that read as disconnected front/back pockets).
  *
- *   back  0  305/0.16 → 0.75   (farthest; bosses prefer this slot)
- *   front 0  280/0.30 → 0.875
- *   back  1  255/0.42 → 0.875
- *   front 1  230/0.54 → 0.875
- *   back  2  218/0.68 → 0.875
- *   front 2  182/0.86 → 1.0
+ *   back  0  305/0.12 → 0.75   (farthest; bosses prefer this slot)
+ *   front 0  278/0.30 → 0.875
+ *   back  1  250/0.46 → 0.875
+ *   front 1  228/0.58 → 0.875
+ *   back  2  210/0.70 → 0.875
+ *   front 2  165/0.90 → 1.0
  *
- * X steps widened from a uniform ~17px to ~12-36px (visual-design-pass
- * 2026-07-27 item 4: a full 6-enemy boss pack read as an indistinguishable
- * heap). footYFrac is untouched — every scale-tier/quantize-margin/cascade-
- * delta test keys off it and none of those were the actual complaint. Max
- * enemy x = 305 still keeps a ≥140px aisle to party x=445 (≥96 required)
- * and stays under the 310 ceiling a wider back row was already tried
- * against and rejected (x=336 read as mid-field, not left-column). Both
- * back1 and back2 share the 0.875 scale tier, so BOTH must independently
- * clear BOSS_SIZE (400, see combat-scene.ts) at that scale (x ≥ 179) — that
- * floor, not symmetry, is why the front1→back2 gap (12px) is tighter than
- * its neighbors; the budget went to the two ends instead, where sprites are
- * smallest/largest and a wider gap reads best. Nearest front slot (182)
- * clears its scale-1.0 ENEMY_SIZE (300) x-bounds floor (~154) with margin,
- * but still cannot host a boss (minX ≈ 204 at scale 1.0).
+ * Vertical gaps widened toward party-like intervals (~0.12–0.18) so a full
+ * pack reads as a cascade, not a heap (2026-07-29). Max enemy x = 305 still
+ * keeps a ≥140px aisle to party x=445 (≥96 required). Back-row slots stay on
+ * the 0.75/0.875 tiers so BOSS_SIZE (400) fits; nearest front (165) clears
+ * ENEMY_SIZE (300) at scale 1.0 but still cannot host a boss.
  */
 export const ENEMY_BACK_SLOTS: FormationSlot[] = [
-  { x: 305, footYFrac: 0.16 },
-  { x: 255, footYFrac: 0.42 },
-  { x: 218, footYFrac: 0.68 },
+  { x: 305, footYFrac: 0.12 },
+  { x: 250, footYFrac: 0.46 },
+  { x: 210, footYFrac: 0.7 },
 ];
 
 export const ENEMY_FRONT_SLOTS: FormationSlot[] = [
-  { x: 280, footYFrac: 0.3 },
-  { x: 230, footYFrac: 0.54 },
-  { x: 182, footYFrac: 0.86 },
+  { x: 278, footYFrac: 0.3 },
+  { x: 228, footYFrac: 0.58 },
+  { x: 165, footYFrac: 0.9 },
 ];
 
 /** All enemy stand positions in depth order (far → near) — one visual column. */

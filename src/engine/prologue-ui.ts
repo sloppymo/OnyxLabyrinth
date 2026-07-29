@@ -50,6 +50,9 @@ const OPENING_BEAT_INDEX = 0;
 const PIVOT_BEAT_INDEX = 5;
 
 export const INTRO_STYLE = {
+  // Black-field beat after New Game confirm before the first glyph — lets the
+  // menu ting land and the cold open breathe before typewriter ticks start.
+  leadInMs: 1000,
   // 20 cps: the opening beat is only ~34 chars; at 32 cps it finished in ~1.7s
   // and felt like a flash. Slower typing + opening hold lets the first page land.
   // (20 also keeps 1000/charsPerSec exact in float — avoids flaky pause asserts.)
@@ -131,9 +134,11 @@ export interface PrologueControllerOptions {
   onDone: () => void;
   /** Injectable clock for deterministic tests; defaults to performance.now(). */
   now?: () => number;
+  /** Override black-field pause before beat 0; defaults to INTRO_STYLE.leadInMs. */
+  leadInMs?: number;
 }
 
-type Phase = "reveal" | "hold" | "advancing" | "finishing";
+type Phase = "leadIn" | "reveal" | "hold" | "advancing" | "finishing";
 
 export class PrologueController {
   private panel: HTMLElement;
@@ -146,7 +151,8 @@ export class PrologueController {
 
   private beatIndex = 0;
   private reveal: RevealState;
-  private phase: Phase = "reveal";
+  private phase: Phase = "leadIn";
+  private leadInUntil = 0;
   private holdUntil = 0;
   private advanceAt = 0;
   private finishAt = 0;
@@ -177,7 +183,17 @@ export class PrologueController {
     this.root.appendChild(this.caretEl);
     this.panel.appendChild(this.root);
 
-    this.reveal = createReveal(PROLOGUE_BEATS[0]!, this.nowFn());
+    const leadInMs = opts.leadInMs ?? INTRO_STYLE.leadInMs;
+    const now = this.nowFn();
+    if (leadInMs > 0) {
+      // Empty field until lead-in elapses — New Game's confirm cue lands here.
+      this.reveal = createReveal("", now);
+      this.phase = "leadIn";
+      this.leadInUntil = now + leadInMs;
+    } else {
+      this.reveal = createReveal(PROLOGUE_BEATS[0]!, now);
+      this.phase = "reveal";
+    }
     this.paint();
     this.scheduleFrame();
   }
@@ -193,6 +209,11 @@ export class PrologueController {
     }
     if (key !== "Enter" && key !== " ") return;
     if (this.phase === "advancing") return; // mid-transition: swallow
+    if (this.phase === "leadIn") {
+      // Impatient confirm skips the black pause and starts typing.
+      this.beginFirstBeat(this.nowFn());
+      return;
+    }
 
     if (!this.reveal.done) {
       // Complete the current beat only — must never also advance.
@@ -241,6 +262,12 @@ export class PrologueController {
     this.finishAt = this.nowFn() + INTRO_STYLE.fadeMs;
   }
 
+  private beginFirstBeat(now: number): void {
+    this.reveal = createReveal(PROLOGUE_BEATS[0]!, now);
+    this.phase = "reveal";
+    this.paint();
+  }
+
   private enterHold(): void {
     this.phase = "hold";
     this.holdUntil = this.nowFn() + holdDurationMs(this.beatIndex);
@@ -271,6 +298,11 @@ export class PrologueController {
 
   private onFrame(now: number): void {
     if (this.disposed) return;
+    if (this.phase === "leadIn") {
+      if (now < this.leadInUntil) return;
+      this.beginFirstBeat(now);
+      // Fall through so the first glyph can appear on this same frame.
+    }
     if (this.phase === "finishing") {
       if (now >= this.finishAt) {
         this.dispose();

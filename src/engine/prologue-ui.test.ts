@@ -96,11 +96,21 @@ describe("PrologueController", () => {
   let time = 0;
   const now = () => time;
 
-  function mount(onDone: () => void = () => {}): PrologueController {
+  function mount(
+    onDone: () => void = () => {},
+    opts: { leadInMs?: number } = {},
+  ): PrologueController {
     panel = document.createElement("div");
     document.body.appendChild(panel);
     time = 0;
-    controller = new PrologueController({ panel, onDone, now });
+    // Tests that assert typewriter timing skip the production lead-in unless
+    // they opt in — keeps beat/reveal assertions focused.
+    controller = new PrologueController({
+      panel,
+      onDone,
+      now,
+      leadInMs: opts.leadInMs ?? 0,
+    });
     return controller;
   }
 
@@ -140,6 +150,38 @@ describe("PrologueController", () => {
     expect(panel.querySelector(".ff6-window")).toBeNull();
     expect(panel.querySelector(".prologue-root")).toBeTruthy();
     expect(panel.querySelector(".prologue-text")).toBeTruthy();
+  });
+
+  it("holds a black field for leadInMs before the first glyph appears", () => {
+    expect(INTRO_STYLE.leadInMs).toBe(1000);
+    const c = mount(() => {}, { leadInMs: INTRO_STYLE.leadInMs });
+    expect(text()).toBe("");
+    time += INTRO_STYLE.leadInMs - 1;
+    c.tickForTests(time);
+    expect(text()).toBe("");
+    time += 1;
+    c.tickForTests(time);
+    expect(text().length).toBeGreaterThan(0);
+    expect(PROLOGUE_BEATS[0]!.startsWith(text())).toBe(true);
+  });
+
+  it("Enter during lead-in skips the pause and starts the first beat", () => {
+    const c = mount(() => {}, { leadInMs: INTRO_STYLE.leadInMs });
+    expect(text()).toBe("");
+    c.handleKey("Enter");
+    expect(text()).toBe(""); // createReveal starts at 0 visible
+    time += 400;
+    c.tickForTests(time);
+    expect(text().length).toBeGreaterThan(0);
+  });
+
+  it("Escape during lead-in still skips the whole intro", () => {
+    let done = 0;
+    const c = mount(() => {
+      done += 1;
+    }, { leadInMs: INTRO_STYLE.leadInMs });
+    c.handleKey("Escape");
+    expect(done).toBe(1);
   });
 
   it("reveals beat 0 character by character and never jumps ahead to beat 1", () => {

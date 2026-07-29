@@ -115,8 +115,8 @@ try {
   let st = await snap(page);
   await shot("01-title.png", "boot title screen");
 
-  await press(page, "n"); // New Game -> prologue
-  await wait(600);
+  await press(page, "n"); // New Game -> prologue (1s black lead-in before typewriter)
+  await wait(1400);
   await shot("02-prologue-early.png", "prologue, early beat");
   await wait(3500);
   await shot("03-prologue-mid.png", "prologue, mid beat (typewriter progressed)");

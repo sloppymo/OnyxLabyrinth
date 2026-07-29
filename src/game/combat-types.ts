@@ -118,6 +118,7 @@ export type CombatEvent =
   | { type: "cast"; actorId: string; spellId: string; targetId: string | null; damage?: number; heal?: number }
   | { type: "spellEffect"; spellId: string; targetId?: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean; isDebuff?: boolean }
   | { type: "defeated"; targetId: string; wasEnemy: boolean }
+  | { type: "rowAdvance"; targetId: string }
   | { type: "revived"; targetId: string }
   | { type: "defend"; actorId: string }
   | { type: "statusTick"; targetId: string; damage: number; status: string }

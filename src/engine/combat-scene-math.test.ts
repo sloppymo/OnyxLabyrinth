@@ -198,14 +198,14 @@ describe("formation floor invariant (all backdrops × full formation)", () => {
       }
     }
     // Combined depth order is one continuous down-left column — x falls as
-    // footYFrac rises, with no large mid-field gap between the two rows.
+    // footYFrac rises. Gaps may approach party-like spacing (~0.18–0.22).
     expect(ENEMY_FORMATION_SLOTS).toHaveLength(6);
     for (let i = 1; i < ENEMY_FORMATION_SLOTS.length; i++) {
       const prev = ENEMY_FORMATION_SLOTS[i - 1]!;
       const cur = ENEMY_FORMATION_SLOTS[i]!;
       expect(cur.footYFrac).toBeGreaterThan(prev.footYFrac);
       expect(cur.x).toBeLessThan(prev.x);
-      expect(cur.footYFrac - prev.footYFrac).toBeLessThanOrEqual(0.18);
+      expect(cur.footYFrac - prev.footYFrac).toBeLessThanOrEqual(0.22);
     }
     // Keep the whole enemy mass in a tight left column — the old back-row
     // slot at x=336 read as mid-field next to the aisle.
