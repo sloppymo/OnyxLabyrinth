@@ -14,6 +14,7 @@ describe("controllerEventToMenuKey", () => {
     expect(controllerEventToMenuKey(press("right"))).toBe("ArrowRight");
     expect(controllerEventToMenuKey(press("a"))).toBe("Enter");
     expect(controllerEventToMenuKey(press("b"))).toBe("Escape");
+    expect(controllerEventToMenuKey(press("y"))).toBe("y");
     expect(controllerEventToMenuKey(press("select"))).toBe("Escape");
   });
 

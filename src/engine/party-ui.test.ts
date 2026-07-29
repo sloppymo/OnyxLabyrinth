@@ -1,13 +1,15 @@
 /**
- * Party creation UI — layout must keep the active editor usable as the
- * confirmed roster grows (later slots used to push fields below the fold).
+ * Party creation UI — carousel choice phase + editor layout.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { PartyCreationController } from "./party-ui";
+
+const SLIDE_MS = 220;
 
 function makePanel(): HTMLElement {
   const panel = document.createElement("div");
   panel.id = "combat-panel";
+  panel.classList.add("party-create-host", "ff6-menu-host");
   return panel;
 }
 
@@ -16,19 +18,41 @@ function clearJustOpened(ctrl: PartyCreationController): void {
   ctrl.handleKey("ArrowUp");
 }
 
+function cycleRight(ctrl: PartyCreationController): void {
+  ctrl.handleKey("ArrowRight");
+  vi.advanceTimersByTime(SLIDE_MS);
+  ctrl.releaseDirection(1);
+}
+
+function cycleLeft(ctrl: PartyCreationController): void {
+  ctrl.handleKey("ArrowLeft");
+  vi.advanceTimersByTime(SLIDE_MS);
+  ctrl.releaseDirection(-1);
+}
+
+/** Choice screen: 4 presets then Custom — move to last stop via Left/Right. */
 function openEditor(ctrl: PartyCreationController): void {
   clearJustOpened(ctrl);
-  // Choice screen: 4 presets then Create Your Own — move to last row.
-  for (let i = 0; i < 4; i++) ctrl.handleKey("ArrowDown");
+  for (let i = 0; i < 4; i++) cycleRight(ctrl);
   ctrl.handleKey("Enter");
+  // Confirm flash uses a short timeout before enterEditor — advance timers.
+  vi.runAllTimers();
 }
 
 function confirmSlot(ctrl: PartyCreationController): void {
   ctrl.handleKey("Enter");
 }
 
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("PartyCreationController open guard", () => {
-  it("ignores the first Enter so a prologue confirm cannot auto-pick Default Party", () => {
+  it("ignores the first Enter so a prologue confirm cannot auto-pick a party", () => {
     let confirmed = 0;
     const panel = makePanel();
     const ctrl = new PartyCreationController({
@@ -38,11 +62,12 @@ describe("PartyCreationController open guard", () => {
       },
       onCancel: () => {},
     });
-    expect(panel.textContent).toMatch(/All Trades|Default Party|Create/i);
+    expect(panel.textContent).toMatch(/All Trades|Assemble Your Party|Custom/i);
     ctrl.handleKey("Enter"); // swallowed — still on choice
     expect(confirmed).toBe(0);
     expect(panel.textContent).not.toContain("Slot 1 of 4");
-    ctrl.handleKey("Enter"); // now selects All Trades (choiceIndex 0)
+    ctrl.handleKey("Enter"); // confirm flash, then All Trades
+    vi.runAllTimers();
     expect(confirmed).toBe(1);
   });
 
@@ -63,10 +88,185 @@ describe("PartyCreationController open guard", () => {
   });
 });
 
+describe("PartyCreationController choice carousel", () => {
+  it("cycles Left/Right through 4 presets + Custom with wrap", () => {
+    const panel = makePanel();
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: () => {},
+      onCancel: () => {},
+    });
+    clearJustOpened(ctrl);
+
+    expect(panel.querySelector(".party-carousel-card--focus")?.textContent).toMatch(/All Trades/);
+
+    cycleRight(ctrl);
+    expect(panel.querySelector(".party-carousel-card--focus")?.textContent).toMatch(/Shield Wall/);
+
+    cycleRight(ctrl);
+    expect(panel.querySelector(".party-carousel-card--focus")?.textContent).toMatch(/Glass Cannons/);
+
+    cycleRight(ctrl);
+    expect(panel.querySelector(".party-carousel-card--focus")?.textContent).toMatch(/All Steel/);
+
+    cycleRight(ctrl);
+    expect(panel.querySelector(".party-carousel-card--focus")?.textContent).toMatch(/Custom Party/);
+
+    cycleRight(ctrl);
+    expect(panel.querySelector(".party-carousel-card--focus")?.textContent).toMatch(/All Trades/);
+
+    cycleLeft(ctrl);
+    expect(panel.querySelector(".party-carousel-card--focus")?.textContent).toMatch(/Custom Party/);
+  });
+
+  it("shows peeks of neighboring cards and a persistent detail strip", () => {
+    const panel = makePanel();
+    new PartyCreationController({
+      panel,
+      onConfirm: () => {},
+      onCancel: () => {},
+    });
+
+    expect(panel.querySelector(".party-carousel-card--peek-left")).not.toBeNull();
+    expect(panel.querySelector(".party-carousel-card--peek-right")).not.toBeNull();
+    expect(panel.querySelector(".party-carousel-pro")?.textContent).toMatch(/Flexible/);
+    expect(panel.querySelector(".party-carousel-con")?.textContent).toMatch(/mediocre/);
+    expect(panel.querySelector(".ff6-footer")?.textContent).toMatch(/Y edit/);
+  });
+
+  it("does not confirm via number-key or C shortcuts", () => {
+    let confirmed = 0;
+    const panel = makePanel();
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: () => {
+        confirmed += 1;
+      },
+      onCancel: () => {},
+    });
+    clearJustOpened(ctrl);
+    ctrl.handleKey("2");
+    ctrl.handleKey("c");
+    expect(confirmed).toBe(0);
+    expect(panel.textContent).not.toContain("Slot 1 of 4");
+  });
+
+  it("Up/Down do not change the carousel index", () => {
+    const panel = makePanel();
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: () => {},
+      onCancel: () => {},
+    });
+    clearJustOpened(ctrl);
+    ctrl.handleKey("ArrowDown");
+    ctrl.handleKey("ArrowUp");
+    expect(panel.querySelector(".party-carousel-card--focus")?.textContent).toMatch(/All Trades/);
+  });
+
+  it("Enter on Custom opens an empty editor", () => {
+    const panel = makePanel();
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: () => {},
+      onCancel: () => {},
+    });
+    openEditor(ctrl);
+    expect(panel.textContent).toContain("Slot 1 of 4");
+    expect(panel.querySelector(".party-field .pf-value")?.textContent).toBe("Aria");
+  });
+
+  it("Y on a preset opens the editor seeded with that roster", () => {
+    const panel = makePanel();
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: () => {},
+      onCancel: () => {},
+    });
+    clearJustOpened(ctrl);
+    cycleRight(ctrl); // Shield Wall
+    ctrl.handleKey("y");
+    expect(panel.textContent).toContain("Slot 1 of 4");
+    expect(panel.querySelector(".party-field .pf-value")?.textContent).toBe("Bram");
+    confirmSlot(ctrl);
+    expect(panel.querySelector(".party-field .pf-value")?.textContent).toBe("Gareth");
+  });
+
+  it("Y on Custom opens an empty editor like Enter", () => {
+    const panel = makePanel();
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: () => {},
+      onCancel: () => {},
+    });
+    clearJustOpened(ctrl);
+    for (let i = 0; i < 4; i++) cycleRight(ctrl);
+    ctrl.handleKey("y");
+    expect(panel.textContent).toContain("Slot 1 of 4");
+    expect(panel.querySelector(".party-field .pf-value")?.textContent).toBe("Aria");
+  });
+
+  it("renders 2×2 idle sprites ordered by formation slot on the center card", () => {
+    const panel = makePanel();
+    new PartyCreationController({
+      panel,
+      onConfirm: () => {},
+      onCancel: () => {},
+    });
+    const focus = panel.querySelector(".party-carousel-card--focus")!;
+    const names = [...focus.querySelectorAll(".party-carousel-slot-name")].map(
+      (el) => el.textContent
+    );
+    expect(names).toEqual(["Fighter", "Thief", "Mage", "Priest"]);
+    const imgs = focus.querySelectorAll<HTMLImageElement>(".party-carousel-grid img");
+    expect(imgs).toHaveLength(4);
+    expect(imgs[0]!.getAttribute("src")).toMatch(/\/assets\/party\/fighter\/idle\.png$/);
+    expect(imgs[1]!.getAttribute("src")).toMatch(/\/assets\/party\/thief\/idle\.png$/);
+    expect(imgs[2]!.getAttribute("src")).toMatch(/\/assets\/party\/mage\/idle\.png$/);
+    expect(imgs[3]!.getAttribute("src")).toMatch(/\/assets\/party\/priest\/idle\.png$/);
+    expect(focus.querySelectorAll(".party-role-pip")).toHaveLength(4);
+  });
+
+  it("keeps center-card focus class contract across two cycles", () => {
+    const panel = makePanel();
+    document.body.appendChild(panel);
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: () => {},
+      onCancel: () => {},
+    });
+    clearJustOpened(ctrl);
+    const before = panel.querySelector(".party-carousel-card--focus")!;
+    const beforeClass = before.className;
+    cycleRight(ctrl);
+    cycleRight(ctrl);
+    const after = panel.querySelector(".party-carousel-card--focus")!;
+    expect(after.className).toBe(beforeClass);
+    expect(after.classList.contains("party-carousel-card--focus")).toBe(true);
+    panel.remove();
+  });
+
+  it("releaseDirection clears held carousel direction", () => {
+    const panel = makePanel();
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: () => {},
+      onCancel: () => {},
+    });
+    clearJustOpened(ctrl);
+    ctrl.handleKey("ArrowRight");
+    vi.advanceTimersByTime(SLIDE_MS);
+    ctrl.releaseDirection(1);
+    // A second press should move again (not treated as OS-repeat of a held key).
+    ctrl.handleKey("ArrowRight");
+    vi.advanceTimersByTime(SLIDE_MS);
+    expect(panel.querySelector(".party-carousel-card--focus")?.textContent).toMatch(/Glass Cannons/);
+  });
+});
+
 describe("PartyCreationController editor layout", () => {
   it("keeps the active editor above the confirmed roster after several confirms", () => {
     const panel = makePanel();
-    panel.classList.add("party-create-host");
     const ctrl = new PartyCreationController({
       panel,
       onConfirm: () => {},
@@ -74,8 +274,6 @@ describe("PartyCreationController editor layout", () => {
     });
     openEditor(ctrl);
 
-    // Confirm slots 1–3 so we are editing slot 4 (the last slot) with a
-    // confirmed list already showing.
     for (let i = 0; i < 3; i++) confirmSlot(ctrl);
 
     expect(panel.textContent).toContain("Slot 4 of 4");
@@ -86,11 +284,9 @@ describe("PartyCreationController editor layout", () => {
     expect(editor).not.toBeNull();
     expect(confirmed).not.toBeNull();
 
-    // Confirmed chips sit below the editor (reference only).
     const position = editor!.compareDocumentPosition(confirmed!);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-    // All four edit fields remain in the DOM (not clipped away by layout logic).
     expect(panel.querySelectorAll(".party-field")).toHaveLength(4);
     expect(panel.querySelector(".party-stats")).not.toBeNull();
     expect(panel.querySelector(".party-hint")).not.toBeNull();
@@ -99,7 +295,6 @@ describe("PartyCreationController editor layout", () => {
 
   it("resets panel scroll when advancing to a new slot", () => {
     const panel = makePanel();
-    panel.classList.add("party-create-host");
     panel.style.height = "200px";
     panel.style.overflow = "auto";
     const ctrl = new PartyCreationController({
@@ -121,7 +316,6 @@ describe("PartyCreationController editor layout", () => {
       onCancel: () => {},
     });
     openEditor(ctrl);
-    // Move cursor to CLASS field.
     for (let i = 0; i < 3; i++) ctrl.handleKey("ArrowDown");
 
     const classValue = panel.querySelectorAll(".party-field")[3]?.querySelector(".pf-value");
@@ -144,20 +338,15 @@ describe("PartyCreationController editor layout", () => {
     expect(confirmed!.querySelectorAll(".party-confirmed-chip")).toHaveLength(3);
   });
 
-  it("shows an idle class sprite on the choice screen and in the editor", () => {
+  it("shows an idle class sprite in the editor and follows class changes", () => {
     const panel = makePanel();
     const ctrl = new PartyCreationController({
       panel,
       onConfirm: () => {},
       onCancel: () => {},
     });
-    // Choice: All Trades preset sprites (Aria Fighter, Coda Thief, …).
     expect(panel.textContent).toContain("All Trades");
     expect(panel.textContent).toContain("Shield Wall");
-    const choiceImgs = panel.querySelectorAll<HTMLImageElement>(".party-choice-sprites img");
-    expect(choiceImgs.length).toBe(4);
-    expect(choiceImgs[0]!.getAttribute("src")).toMatch(/\/assets\/party\/fighter\/idle\.png$/);
-    expect(choiceImgs[1]!.getAttribute("src")).toMatch(/\/assets\/party\/thief\/idle\.png$/);
 
     openEditor(ctrl);
     const stageImg = panel.querySelector<HTMLImageElement>(".party-sprite-stage img");
@@ -165,7 +354,6 @@ describe("PartyCreationController editor layout", () => {
     expect(stageImg!.getAttribute("src")).toMatch(/\/assets\/party\/fighter\/idle\.png$/);
     expect(panel.querySelector(".party-sprite-caption")?.textContent).toBe("Fighter");
 
-    // Cycle class → Mage; preview should follow.
     for (let i = 0; i < 3; i++) ctrl.handleKey("ArrowDown");
     ctrl.handleKey("ArrowRight"); // Fighter → Mage
     const mageImg = panel.querySelector<HTMLImageElement>(".party-sprite-stage img");
@@ -173,27 +361,4 @@ describe("PartyCreationController editor layout", () => {
     expect(panel.querySelector(".party-sprite-caption")?.textContent).toBe("Mage");
     expect(panel.querySelector(".party-sprite-stage")?.classList.contains("is-focus")).toBe(true);
   });
-
-  it("confirms a non-balanced preset via number key", () => {
-    let party: { name: string; class: string }[] | null = null;
-    const panel = makePanel();
-    const ctrl = new PartyCreationController({
-      panel,
-      onConfirm: (p) => {
-        party = p.map((c) => ({ name: c.name, class: c.class }));
-      },
-      onCancel: () => {},
-    });
-    clearJustOpened(ctrl);
-    ctrl.handleKey("2"); // Shield Wall
-    expect(party).not.toBeNull();
-    expect(party!.map((c) => c.name)).toEqual(["Bram", "Gareth", "Helga", "Mira"]);
-    expect(party!.map((c) => c.class)).toEqual([
-      "Fighter",
-      "Crusader",
-      "Halberdier",
-      "Priest",
-    ]);
-  });
 });
-

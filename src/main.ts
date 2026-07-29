@@ -1255,6 +1255,14 @@ function routeControllerEvent(event: ControllerInputEvent): void {
       return;
     }
     case "party_creation": {
+      // Local DAS/ARR in PartyCreationController needs release to clear held dir.
+      if (
+        event.kind === "release" &&
+        (event.button === "left" || event.button === "right")
+      ) {
+        partyCreationController!.releaseDirection(event.button === "left" ? -1 : 1);
+        return;
+      }
       const key = controllerEventToMenuKey(event);
       if (key) partyCreationController!.handleKey(key);
       return;
@@ -1472,6 +1480,19 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "party_creation" || !partyCreationController) return;
   partyCreationController.handleKey(e.key);
   e.preventDefault();
+});
+
+// Clear held Left/Right so local DAS/ARR stops (mirrors gamepad release).
+window.addEventListener("keyup", (e: KeyboardEvent) => {
+  if (state.mode !== "party_creation" || !partyCreationController) return;
+  const lower = e.key.toLowerCase();
+  if (lower === "arrowleft") {
+    partyCreationController.releaseDirection(-1);
+    e.preventDefault();
+  } else if (lower === "arrowright") {
+    partyCreationController.releaseDirection(1);
+    e.preventDefault();
+  }
 });
 
 // --- Arena mode ----------------------------------------------------------

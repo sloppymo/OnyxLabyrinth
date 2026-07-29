@@ -7,6 +7,7 @@ const PRESS_TO_KEY: Readonly<Partial<Record<ControllerInputEvent["button"], stri
   right: "ArrowRight",
   a: "Enter",
   b: "Escape",
+  y: "y",
   select: "Escape",
 };
 

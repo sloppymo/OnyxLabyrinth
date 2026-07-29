@@ -13,6 +13,26 @@ import {
 
 export type PresetPartyId = "balanced" | "iron" | "glass" | "blades";
 
+/** Presentation-only roles for the party-select composition strip. */
+export type PartyRole = "tank" | "healer" | "physDps" | "magicDps" | "support" | "hybrid";
+
+/**
+ * Class → role for party-select comp-strip pips only.
+ * Not used by combat math or balance.
+ */
+export const CLASS_ROLE: Record<CharacterClass, PartyRole> = {
+  Fighter: "tank",
+  Mage: "magicDps",
+  Priest: "healer",
+  Thief: "support",
+  Halberdier: "physDps",
+  Duelist: "physDps",
+  Crusader: "hybrid",
+};
+
+/** Hand-authored 1–5 segment counts for the party-select ATK/DEF/SUP bars. */
+export type PartyBarScore = 1 | 2 | 3 | 4 | 5;
+
 export interface PresetMember {
   name: string;
   race: Race;
@@ -26,12 +46,18 @@ export interface PresetPartyDef {
   id: PresetPartyId;
   /** Menu label. */
   label: string;
-  /** One-line pitch under the label. */
+  /** Short flavor quote under the stat bars (not a name list). */
   tagline: string;
-  /** Short strength callout for the choice blurb. */
+  /** Short strength callout for the detail strip. */
   strength: string;
-  /** Short weakness callout for the choice blurb. */
+  /** Short weakness callout for the detail strip. */
   weakness: string;
+  /** Hand-authored attack emphasis (1–5). */
+  atk: PartyBarScore;
+  /** Hand-authored defense emphasis (1–5). */
+  def: PartyBarScore;
+  /** Hand-authored support emphasis (1–5). */
+  sup: PartyBarScore;
   members: readonly PresetMember[];
 }
 
@@ -73,9 +99,12 @@ export const PRESET_PARTIES: readonly PresetPartyDef[] = [
   {
     id: "balanced",
     label: "All Trades",
-    tagline: "Aria · Coda · Dell · Eve",
+    tagline: "Jack of all trades",
     strength: "Flexible — heal, burn, stab, and tank.",
     weakness: "No specialist edge; mediocre at everything.",
+    atk: 3,
+    def: 3,
+    sup: 3,
     members: [
       { name: "Aria", race: "Human", alignment: "Good", cls: "Fighter", slot: 0 },
       { name: "Coda", race: "Hobbit", alignment: "Neutral", cls: "Thief", slot: 1 },
@@ -86,9 +115,12 @@ export const PRESET_PARTIES: readonly PresetPartyDef[] = [
   {
     id: "iron",
     label: "Shield Wall",
-    tagline: "Bram · Gareth · Helga · Mira",
+    tagline: "Hold the line",
     strength: "Hard front line and steady divine healing.",
-    weakness: "No Mage — thin on elemental pressure (Unseal opens locks).",
+    weakness: "No Mage — thin elemental pressure (Unseal opens locks).",
+    atk: 2,
+    def: 5,
+    sup: 3,
     members: [
       { name: "Bram", race: "Dwarf", alignment: "Good", cls: "Fighter", slot: 0 },
       { name: "Gareth", race: "Human", alignment: "Good", cls: "Crusader", slot: 1 },
@@ -99,9 +131,12 @@ export const PRESET_PARTIES: readonly PresetPartyDef[] = [
   {
     id: "glass",
     label: "Glass Cannons",
-    tagline: "Sable · Wren · Nyx · Iris",
+    tagline: "Glass and lightning",
     strength: "Spellcraft and precision from a soft line.",
     weakness: "Fragile — if the front falls, the party dies.",
+    atk: 5,
+    def: 1,
+    sup: 4,
     members: [
       { name: "Sable", race: "Elf", alignment: "Neutral", cls: "Duelist", slot: 0 },
       { name: "Wren", race: "Hobbit", alignment: "Neutral", cls: "Thief", slot: 1 },
@@ -112,9 +147,12 @@ export const PRESET_PARTIES: readonly PresetPartyDef[] = [
   {
     id: "blades",
     label: "All Steel",
-    tagline: "Rook · Pike · Shade · Voss",
+    tagline: "Only steel",
     strength: "Raw steel and techniques — high kill speed.",
     weakness: "No healing magic; potions and camp only.",
+    atk: 5,
+    def: 3,
+    sup: 1,
     members: [
       { name: "Rook", race: "Human", alignment: "Neutral", cls: "Fighter", slot: 0 },
       { name: "Pike", race: "Dwarf", alignment: "Neutral", cls: "Halberdier", slot: 1 },

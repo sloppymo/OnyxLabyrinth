@@ -1,15 +1,14 @@
 /**
  * Party Creation UI controller — design doc Section 4.
  *
- * Opens on a choice screen: four pre-made parties with different strengths/
- * weaknesses, or build a custom one. Esc from slot 1 of the editor returns to
- * the choice screen; Esc from the choice screen cancels.
+ * Opens on a carousel choice screen: four pre-made parties + Custom, or build
+ * a custom one. Esc from slot 1 of the editor returns to the choice screen;
+ * Esc from the choice screen cancels.
  *
  * Keyboard (choice):
- *   Up/Down      move cursor
- *   1–4          pick a preset
- *   C            open custom editor
+ *   Left/Right   cycle carousel (wraps; local DAS/ARR while held)
  *   Enter/Space  confirm selection
+ *   Y            edit focused preset as custom (or empty editor on Custom)
  *   Esc          cancel
  *
  * Keyboard (editor):
@@ -37,11 +36,19 @@ import {
   type Character,
   type Stats,
 } from "../game/party";
-import { createPresetParty, PRESET_PARTIES, type PresetPartyId } from "../game/preset-parties";
+import {
+  createPresetParty,
+  PRESET_PARTIES,
+  CLASS_ROLE,
+  type PresetPartyDef,
+  type PresetPartyId,
+  type PartyRole,
+  type PartyBarScore,
+} from "../game/preset-parties";
 import { spellsForClass } from "../data/spells";
 import { FF6Window } from "./ff6-window-library";
 import { audio } from "./audio";
-import { partyIdleSpriteUrl } from "./party-sprite-cache";
+import { partyIdleSpriteUrl, getPartySpriteStrip } from "./party-sprite-cache";
 
 const RACE_LIST = Object.keys(RACES) as Race[];
 const CLASS_LIST = Object.keys(CLASSES) as CharacterClass[];
@@ -57,6 +64,28 @@ const CLASS_ALIGNMENT_RESTRICTIONS: Record<CharacterClass, Alignment[]> = {
 };
 
 const DEFAULT_NAMES = ["Aria", "Coda", "Dell", "Eve"];
+
+/** Silhouette glyphs for comp-strip pips (color reinforces; shape carries meaning). */
+const ROLE_GLYPH: Record<PartyRole, string> = {
+  tank: "◆",
+  healer: "❀",
+  physDps: "†",
+  magicDps: "✦",
+  support: "▲",
+  hybrid: "◈",
+};
+
+const IDLE_FPS = 6;
+const SPRITE_FRAME_PX = 100;
+const CAROUSEL_SLIDE_MS = 200;
+const CONFIRM_FLASH_MS = 110;
+/** Delayed auto-shift before repeat while Left/Right is held. */
+const DAS_MS = 250;
+/** Auto-repeat interval while Left/Right is held. */
+const ARR_MS = 100;
+
+const CUSTOM_DETAIL =
+  "Choose any four recruits and shape their roles yourself.";
 
 type Field = "name" | "race" | "alignment" | "class";
 const FIELDS: Field[] = ["name", "race", "alignment", "class"];
@@ -75,6 +104,33 @@ export interface PartyCreationOptions {
   onCancel: () => void;
 }
 
+function prefersReducedMotion(): boolean {
+  const mm = globalThis.matchMedia;
+  if (typeof mm !== "function") return false;
+  return mm.call(globalThis, "(prefers-reduced-motion: reduce)").matches;
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function segmentedBar(label: string, filled: PartyBarScore): string {
+  let blocks = "";
+  for (let i = 1; i <= 5; i++) {
+    blocks += i <= filled ? "▰" : "▱";
+  }
+  return (
+    `<div class="party-carousel-bar" aria-label="${label} ${filled} of 5">` +
+    `<span class="party-carousel-bar-label">${label}</span>` +
+    `<span class="party-carousel-bar-blocks">${blocks}</span>` +
+    `</div>`
+  );
+}
+
 export class PartyCreationController {
   private panel: HTMLElement;
   private onConfirm: (party: Character[]) => void;
@@ -85,17 +141,32 @@ export class PartyCreationController {
   private flash = "";
   /** Opening screen: pick a pre-made party or the custom editor. */
   private phase: "choice" | "edit" = "choice";
-  /** 0..PRESET_PARTIES.length-1 = preset; last index = Create Your Own. */
+  /** 0..PRESET_PARTIES.length-1 = preset; last index = Custom. */
   private choiceIndex = 0;
   private choiceHasRendered = false;
   /** Reset panel scroll when advancing slots so the header stays visible. */
   private scrollResetPending = false;
   /**
    * Swallow the first key after open. Prologue's final Enter (and key-repeat
-   * from New Game / Reform Party) must not auto-pick Default Party or cancel.
+   * from New Game / Reform Party) must not auto-pick a party or cancel.
    * Same pattern as PerkSelectController / justOpenedSaveMenu.
    */
   private justOpened = true;
+
+  /** Held carousel direction for local DAS/ARR (−1 left, +1 right, 0 none). */
+  private heldDir: -1 | 0 | 1 = 0;
+  private dasRaf: number | null = null;
+  private holdStartedAt = 0;
+  private lastRepeatAt = 0;
+
+  private idleRaf: number | null = null;
+  private idleStartedAt = 0;
+  private slideTimeout: ReturnType<typeof setTimeout> | null = null;
+  private sliding = false;
+  private confirmFlash = false;
+  private destroyed = false;
+  /** True when drafts were seeded from a preset via Y — don't pop/push mid-edit. */
+  private editorSeeded = false;
 
   constructor(opts: PartyCreationOptions) {
     this.panel = opts.panel;
@@ -105,6 +176,28 @@ export class PartyCreationController {
     // Start with a fresh draft for slot 0 using a random name + Human/Neutral/Fighter.
     this.drafts.push(this.freshDraft(0));
     this.render();
+  }
+
+  /** Tear down timers/rAF. Safe to call more than once. */
+  destroy(): void {
+    this.destroyed = true;
+    this.stopDasArr();
+    this.stopIdleAnim();
+    if (this.slideTimeout !== null) {
+      clearTimeout(this.slideTimeout);
+      this.slideTimeout = null;
+    }
+  }
+
+  /**
+   * Clear held Left/Right (keyboard keyup or gamepad release).
+   * Pass the released direction so a late opposite press is not cleared.
+   */
+  releaseDirection(dir: -1 | 1): void {
+    if (this.heldDir === dir) {
+      this.heldDir = 0;
+      this.stopDasArr();
+    }
   }
 
   handleKey(key: string): void {
@@ -118,8 +211,6 @@ export class PartyCreationController {
       this.handleChoiceKey(key, lower);
       return;
     }
-
-
 
     const field = FIELDS[this.fieldIndex];
 
@@ -180,49 +271,126 @@ export class PartyCreationController {
   }
 
   private choiceCount(): number {
-    return PRESET_PARTIES.length + 1; // presets + Create Your Own
+    return PRESET_PARTIES.length + 1; // presets + Custom
   }
 
   private isCustomChoice(): boolean {
     return this.choiceIndex >= PRESET_PARTIES.length;
   }
 
+  private wrapChoice(index: number): number {
+    const n = this.choiceCount();
+    return ((index % n) + n) % n;
+  }
+
   private handleChoiceKey(key: string, lower: string): void {
     if (lower === "escape") {
       audio.uiCancel();
+      this.destroy();
       this.onCancel();
       return;
     }
-    if (lower === "arrowup" || lower === "w") {
-      this.choiceIndex = (this.choiceIndex - 1 + this.choiceCount()) % this.choiceCount();
-      audio.uiCursor();
-      this.render();
+    if (lower === "arrowleft") {
+      this.onCarouselHold(-1);
       return;
     }
-    if (lower === "arrowdown" || lower === "s") {
-      this.choiceIndex = (this.choiceIndex + 1) % this.choiceCount();
-      audio.uiCursor();
-      this.render();
+    if (lower === "arrowright") {
+      this.onCarouselHold(1);
       return;
     }
-    // 1–4 pick a preset; C opens the custom editor.
-    if (lower === "1" || lower === "2" || lower === "3" || lower === "4") {
-      const idx = Number(lower) - 1;
-      if (idx < PRESET_PARTIES.length) {
-        audio.uiConfirm();
-        this.usePresetParty(PRESET_PARTIES[idx]!.id);
-      }
+    // Up/Down no-op — spatial model is horizontal only.
+    if (lower === "arrowup" || lower === "arrowdown" || lower === "w" || lower === "s") {
       return;
     }
-    if (lower === "c") {
+    if (lower === "y") {
       audio.uiConfirm();
-      this.enterEditor();
+      if (this.isCustomChoice()) this.enterEditor();
+      else this.enterEditorFromPreset(PRESET_PARTIES[this.choiceIndex]!);
       return;
     }
     if (key === "Enter" || key === " ") {
-      audio.uiConfirm();
-      this.confirmChoice();
+      this.confirmChoiceWithFlash();
     }
+  }
+
+  private onCarouselHold(dir: -1 | 1): void {
+    // OS key-repeat: already held this way — DAS/ARR owns further steps.
+    if (this.heldDir === dir) return;
+    this.heldDir = dir;
+    this.holdStartedAt = performance.now();
+    this.lastRepeatAt = this.holdStartedAt;
+    this.cycleChoice(dir);
+    this.startDasArr();
+  }
+
+  private startDasArr(): void {
+    if (this.dasRaf !== null) return;
+    const tick = (now: number) => {
+      this.dasRaf = null;
+      if (this.destroyed || this.phase !== "choice" || this.heldDir === 0) return;
+      const heldFor = now - this.holdStartedAt;
+      if (heldFor >= DAS_MS && now - this.lastRepeatAt >= ARR_MS) {
+        this.lastRepeatAt = now;
+        this.cycleChoice(this.heldDir);
+      }
+      this.dasRaf = requestAnimationFrame(tick);
+    };
+    this.dasRaf = requestAnimationFrame(tick);
+  }
+
+  private stopDasArr(): void {
+    if (this.dasRaf !== null) {
+      cancelAnimationFrame(this.dasRaf);
+      this.dasRaf = null;
+    }
+  }
+
+  private cycleChoice(dir: -1 | 1): void {
+    if (this.sliding || this.destroyed || this.phase !== "choice") return;
+    audio.uiCursor();
+    const next = this.wrapChoice(this.choiceIndex + dir);
+
+    if (prefersReducedMotion()) {
+      this.choiceIndex = next;
+      this.render();
+      return;
+    }
+
+    this.sliding = true;
+    const track = this.panel.querySelector<HTMLElement>(".party-carousel-track");
+    if (!track) {
+      this.choiceIndex = next;
+      this.sliding = false;
+      this.render();
+      return;
+    }
+
+    // Rest is translateX(-70%); each card is 80% of the viewport.
+    const toPct = dir > 0 ? -150 : 10;
+    track.style.transition = `transform ${CAROUSEL_SLIDE_MS}ms ease-out`;
+    track.style.transform = `translateX(${toPct}%)`;
+
+    this.slideTimeout = setTimeout(() => {
+      this.slideTimeout = null;
+      this.choiceIndex = next;
+      this.sliding = false;
+      this.render();
+    }, CAROUSEL_SLIDE_MS);
+  }
+
+  private confirmChoiceWithFlash(): void {
+    audio.uiConfirm();
+    if (prefersReducedMotion()) {
+      this.confirmChoice();
+      return;
+    }
+    this.confirmFlash = true;
+    this.render();
+    setTimeout(() => {
+      if (this.destroyed) return;
+      this.confirmFlash = false;
+      this.confirmChoice();
+    }, CONFIRM_FLASH_MS);
   }
 
   private confirmChoice(): void {
@@ -231,12 +399,41 @@ export class PartyCreationController {
   }
 
   private usePresetParty(id: PresetPartyId): void {
+    this.destroy();
     this.panel.style.display = "none";
     this.panel.innerHTML = "";
     this.onConfirm(createPresetParty(id));
   }
 
   private enterEditor(): void {
+    this.stopDasArr();
+    this.stopIdleAnim();
+    this.heldDir = 0;
+    this.editorSeeded = false;
+    this.drafts = [this.freshDraft(0)];
+    this.slotIndex = 0;
+    this.fieldIndex = 0;
+    this.phase = "edit";
+    this.flash = "";
+    this.scrollResetPending = true;
+    this.render();
+  }
+
+  private enterEditorFromPreset(def: PresetPartyDef): void {
+    this.stopDasArr();
+    this.stopIdleAnim();
+    this.heldDir = 0;
+    this.editorSeeded = true;
+    const ordered = [...def.members].sort((a, b) => a.slot - b.slot);
+    this.drafts = ordered.map((m) => ({
+      name: m.name,
+      race: m.race,
+      alignment: m.alignment,
+      cls: m.cls,
+      stats: rollStatsForRace(m.race),
+    }));
+    this.slotIndex = 0;
+    this.fieldIndex = 0;
     this.phase = "edit";
     this.flash = "";
     this.scrollResetPending = true;
@@ -328,7 +525,9 @@ export class PartyCreationController {
       return;
     }
     this.slotIndex++;
-    this.drafts.push(this.freshDraft(this.slotIndex));
+    if (!this.editorSeeded) {
+      this.drafts.push(this.freshDraft(this.slotIndex));
+    }
     this.fieldIndex = 0;
     this.flash = "";
     this.scrollResetPending = true;
@@ -340,10 +539,14 @@ export class PartyCreationController {
       // Return to the opening choice screen rather than cancelling outright.
       this.phase = "choice";
       this.flash = "";
+      this.heldDir = 0;
+      this.editorSeeded = false;
       this.render();
       return;
     }
-    this.drafts.pop();
+    if (!this.editorSeeded) {
+      this.drafts.pop();
+    }
     this.slotIndex--;
     this.flash = "";
     this.scrollResetPending = true;
@@ -359,6 +562,7 @@ export class PartyCreationController {
       char.knownSpellIds = tier1.map((s) => s.id);
       return char;
     });
+    this.destroy();
     this.panel.style.display = "none";
     this.panel.innerHTML = "";
     this.onConfirm(party);
@@ -366,17 +570,123 @@ export class PartyCreationController {
 
   // --- Rendering ----------------------------------------------------------
 
-  /** Idle strip clipped to frame 0; mirrored to match combat (party faces left). */
+  /** Idle strip clipped to frame 0; mirrored via tile container (matches combat). */
   private spritePreviewHtml(
     cls: CharacterClass,
-    opts: { label?: string; size?: "lg" | "sm" } = {}
+    opts: { label?: string; size?: "lg" | "sm"; anim?: boolean } = {}
   ): string {
     const size = opts.size ?? "lg";
     const label = opts.label ?? cls;
     const src = partyIdleSpriteUrl(cls);
+    const animClass = opts.anim ? " party-sprite-tile--anim" : "";
     return (
-      `<div class="party-sprite-preview party-sprite-preview--${size}" title="${label}">` +
-      `<img src="${src}" alt="${label}" width="100" height="100" decoding="async" />` +
+      `<div class="party-sprite-preview party-sprite-preview--${size} party-sprite-tile${animClass}"` +
+      ` data-cls="${cls}" title="${escapeHtml(label)}">` +
+      `<div class="party-sprite-zoom">` +
+      `<img src="${src}" alt="${escapeHtml(label)}" width="100" height="100" decoding="async" />` +
+      `</div>` +
+      `</div>`
+    );
+  }
+
+  private rolePipHtml(cls: CharacterClass): string {
+    const role = CLASS_ROLE[cls];
+    const glyph = ROLE_GLYPH[role];
+    return (
+      `<span class="party-role-pip party-role-pip--${role}" title="${escapeHtml(cls)}" aria-label="${escapeHtml(cls)}">` +
+      `${glyph}</span>`
+    );
+  }
+
+  private memberTileHtml(
+    member: { name: string; cls: CharacterClass } | null,
+    empty: boolean
+  ): string {
+    if (empty || !member) {
+      return (
+        `<div class="party-carousel-slot party-carousel-slot--empty">` +
+        `<div class="party-carousel-slot-tile" aria-hidden="true"></div>` +
+        `<div class="party-carousel-slot-name">&nbsp;</div>` +
+        `</div>`
+      );
+    }
+    return (
+      `<div class="party-carousel-slot">` +
+      this.spritePreviewHtml(member.cls, {
+        label: `${member.name} · ${member.cls}`,
+        size: "lg",
+        anim: true,
+      }) +
+      `<div class="party-carousel-slot-name">${escapeHtml(member.cls)}</div>` +
+      `</div>`
+    );
+  }
+
+  private cardHtml(
+    stopIndex: number,
+    opts: { focused: boolean; peek?: "left" | "right" }
+  ): string {
+    const isCustom = stopIndex >= PRESET_PARTIES.length;
+    const peekClass = opts.peek ? ` party-carousel-card--peek party-carousel-card--peek-${opts.peek}` : "";
+    const focusClass = opts.focused ? " party-carousel-card--focus" : "";
+    const flashClass = opts.focused && this.confirmFlash ? " party-carousel-card--confirm" : "";
+
+    if (isCustom) {
+      // Empty dotted slots — last-used-from-save intentionally out of scope for v1.
+      const slots = [0, 1, 2, 3].map(() => this.memberTileHtml(null, true)).join("");
+      return (
+        `<div class="party-carousel-card party-carousel-card--custom${peekClass}${focusClass}${flashClass}"` +
+        ` data-stop="${stopIndex}">` +
+        `<div class="party-carousel-card-header">` +
+        `<div class="party-carousel-card-title">Custom Party</div>` +
+        `<div class="party-carousel-comp" aria-hidden="true"></div>` +
+        `</div>` +
+        `<div class="party-carousel-grid">${slots}</div>` +
+        `<div class="party-carousel-bars party-carousel-bars--empty" aria-hidden="true"></div>` +
+        `<div class="party-carousel-tagline">&nbsp;</div>` +
+        (opts.peek === "left" ? `<span class="party-carousel-chevron" aria-hidden="true">‹</span>` : "") +
+        (opts.peek === "right" ? `<span class="party-carousel-chevron" aria-hidden="true">›</span>` : "") +
+        `</div>`
+      );
+    }
+
+    const preset = PRESET_PARTIES[stopIndex]!;
+    const bySlot = [...preset.members].sort((a, b) => a.slot - b.slot);
+    const pips = bySlot.map((m) => this.rolePipHtml(m.cls)).join("");
+    const slots = bySlot.map((m) => this.memberTileHtml(m, false)).join("");
+    const bars =
+      segmentedBar("ATK", preset.atk) +
+      segmentedBar("DEF", preset.def) +
+      segmentedBar("SUP", preset.sup);
+
+    return (
+      `<div class="party-carousel-card${peekClass}${focusClass}${flashClass}" data-stop="${stopIndex}">` +
+      `<div class="party-carousel-card-header">` +
+      `<div class="party-carousel-card-title">${escapeHtml(preset.label)}</div>` +
+      `<div class="party-carousel-comp" aria-label="Party roles">${pips}</div>` +
+      `</div>` +
+      `<div class="party-carousel-grid">${slots}</div>` +
+      `<div class="party-carousel-bars">${bars}</div>` +
+      `<div class="party-carousel-tagline">“${escapeHtml(preset.tagline)}”</div>` +
+      (opts.peek === "left" ? `<span class="party-carousel-chevron" aria-hidden="true">‹</span>` : "") +
+      (opts.peek === "right" ? `<span class="party-carousel-chevron" aria-hidden="true">›</span>` : "") +
+      `</div>`
+    );
+  }
+
+  private detailStripHtml(stopIndex: number): string {
+    if (stopIndex >= PRESET_PARTIES.length) {
+      return (
+        `<div class="party-carousel-detail party-carousel-detail--custom">` +
+        `<div class="party-carousel-detail-custom">${escapeHtml(CUSTOM_DETAIL)}</div>` +
+        `</div>`
+      );
+    }
+    const preset = PRESET_PARTIES[stopIndex]!;
+    return (
+      `<div class="party-carousel-detail">` +
+      `<div class="party-carousel-pro">▲ ${escapeHtml(preset.strength)}</div>` +
+      `<div class="party-carousel-con">▼ ${escapeHtml(preset.weakness)}</div>` +
       `</div>`
     );
   }
@@ -386,6 +696,7 @@ export class PartyCreationController {
       this.renderChoice();
       return;
     }
+    this.stopIdleAnim();
     const d = this.currentDraft();
     const maxHp = computeMaxHp(d.stats, d.cls);
     const maxSp = computeMaxSp(d.stats, d.cls);
@@ -416,7 +727,7 @@ export class PartyCreationController {
         `<div class="party-field ${selected ? "selected" : ""}">` +
         `<span class="tm-marker">${marker}</span>` +
         `<span class="pf-label">${f.toUpperCase()}</span>` +
-        `<span class="pf-value">${value}</span>` +
+        `<span class="pf-value">${escapeHtml(value)}</span>` +
         `</div>`
       );
     }
@@ -452,7 +763,7 @@ export class PartyCreationController {
         lines.push(
           `<span class="party-confirmed-chip" title="${c.race} ${c.alignment} ${c.cls}">` +
           this.spritePreviewHtml(c.cls, { label: `${c.name} · ${c.cls}`, size: "sm" }) +
-          `<span class="party-confirmed-chip-text"><b>${i + 1}.${c.name}</b> ${c.cls}</span>` +
+          `<span class="party-confirmed-chip-text"><b>${i + 1}.${escapeHtml(c.name)}</b> ${c.cls}</span>` +
           `</span>`
         );
       }
@@ -460,7 +771,7 @@ export class PartyCreationController {
     }
 
     if (this.flash) {
-      lines.push(`<div class="town-flash">${this.flash}</div>`);
+      lines.push(`<div class="town-flash">${escapeHtml(this.flash)}</div>`);
     }
     lines.push(`</div>`);
 
@@ -488,60 +799,74 @@ export class PartyCreationController {
     const animated = !this.choiceHasRendered;
     this.choiceHasRendered = true;
 
-    let spritesHtml = "";
-    let blurbHtml = `<div class="ff6-arena-meta">Four souls brave the labyrinth. Who will they be?</div>`;
-    if (!this.isCustomChoice()) {
-      const preset = PRESET_PARTIES[this.choiceIndex]!;
-      spritesHtml = preset.members
-        .map((m) =>
-          this.spritePreviewHtml(m.cls, { label: `${m.name} · ${m.cls}`, size: "sm" })
-        )
-        .join("");
-      blurbHtml =
-        `<div class="ff6-arena-meta">${preset.strength}</div>` +
-        `<div class="party-choice-weak">${preset.weakness}</div>` +
-        `<div class="party-choice-sprites" aria-hidden="true">${spritesHtml}</div>`;
-    } else {
-      blurbHtml =
-        `<div class="ff6-arena-meta">Name them. Pick race, alignment, and class.</div>` +
-        `<div class="party-choice-weak">Full control — no pre-rolled strengths.</div>`;
-    }
+    const prev = this.wrapChoice(this.choiceIndex - 1);
+    const next = this.wrapChoice(this.choiceIndex + 1);
 
-    const items = [
-      ...PRESET_PARTIES.map((p, i) => ({
-        label: `${i + 1}. ${p.label}`,
-        detail: p.tagline,
-        metadata: p.id,
-      })),
-      {
-        label: "Create Your Own",
-        detail: "Build four adventurers from scratch",
-        metadata: "custom",
-      },
-    ];
+    const contentHtml =
+      `<div class="party-carousel">` +
+      `<div class="party-carousel-viewport">` +
+      `<div class="party-carousel-track">` +
+      this.cardHtml(prev, { focused: false, peek: "left" }) +
+      this.cardHtml(this.choiceIndex, { focused: true }) +
+      this.cardHtml(next, { focused: false, peek: "right" }) +
+      `</div>` +
+      `</div>` +
+      this.detailStripHtml(this.choiceIndex) +
+      `</div>`;
 
     const win = new FF6Window({
       title: "Assemble Your Party",
-      contentHtml: blurbHtml,
-      items,
-      selectedIndex: this.choiceIndex,
-      mode: "menu",
-      footer: "D-pad · A confirm · 1-4 preset · C custom · B back",
-      maxHeight: 420,
+      items: [],
+      selectedIndex: 0,
+      mode: "status",
+      width: "full",
+      footer: "D-pad · A confirm · Y edit · B back",
       animated,
-      onHover: (i) => {
-        this.choiceIndex = i;
-        this.render();
-      },
-      onConfirm: (i) => {
-        this.choiceIndex = i;
-        this.confirmChoice();
-      },
+      contentHtml,
       onBack: () => {
+        this.destroy();
         this.onCancel();
       },
     });
     this.panel.innerHTML = "";
-    this.panel.appendChild(win.render());
+    const el = win.render();
+    this.panel.appendChild(el);
+    this.startIdleAnim();
+  }
+
+  private stopIdleAnim(): void {
+    if (this.idleRaf !== null) {
+      cancelAnimationFrame(this.idleRaf);
+      this.idleRaf = null;
+    }
+  }
+
+  private startIdleAnim(): void {
+    this.stopIdleAnim();
+    if (prefersReducedMotion() || this.destroyed || this.phase !== "choice") return;
+    this.idleStartedAt = performance.now();
+
+    const tick = (now: number) => {
+      this.idleRaf = null;
+      if (this.destroyed || this.phase !== "choice") return;
+      const elapsed = (now - this.idleStartedAt) / 1000;
+      const tiles = this.panel.querySelectorAll<HTMLElement>(".party-sprite-tile--anim");
+      for (const tile of tiles) {
+        const cls = tile.dataset.cls as CharacterClass | undefined;
+        if (!cls) continue;
+        const loaded = getPartySpriteStrip(cls, "idle");
+        const frameCount = loaded?.strip.frameCount ?? 1;
+        const fps = loaded?.strip.fps ?? IDLE_FPS;
+        const frameIndex = Math.floor(elapsed * fps) % frameCount;
+        const img = tile.querySelector("img");
+        if (img) {
+          // Mirror is on the tile via CSS scaleX(-1); translate uses natural strip order.
+          const tileW = tile.clientWidth || SPRITE_FRAME_PX;
+          img.style.transform = `translateX(${-frameIndex * tileW}px)`;
+        }
+      }
+      this.idleRaf = requestAnimationFrame(tick);
+    };
+    this.idleRaf = requestAnimationFrame(tick);
   }
 }
