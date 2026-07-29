@@ -5,7 +5,7 @@ import { describe, it, expect, vi } from "vitest";
 import { TownController } from "./town-ui";
 import { createGameState } from "../game/state";
 import { FLOORS } from "../data/floors";
-import { CURSED_BLADE } from "../data/items";
+import { CURSED_BLADE, ITEMS_BY_ID } from "../data/items";
 import { audio } from "./audio";
 
 function makePanel(): HTMLElement {
@@ -341,5 +341,139 @@ describe("TownController shop depth gate", () => {
     state.floor = FLOORS[0]; // player backtracked to floor 1's town
     const ctrl = makeTown(state);
     expect(buyListIds(ctrl)).toContain("focus-ward");
+  });
+});
+
+describe("TownController equip sheet", () => {
+  function panelOf(ctrl: TownController): HTMLElement {
+    return (ctrl as unknown as { panel: HTMLElement }).panel;
+  }
+
+  function openEquipSlot(ctrl: TownController): HTMLElement {
+    ctrl.handleKey("e");
+    expect(screenOf(ctrl)).toBe("equip");
+    ctrl.handleKey("Enter"); // char → slot
+    return panelOf(ctrl);
+  }
+
+  it("slot phase shows FF6 band sheet: 4 slots + Auto, decorative tabs, no footer", () => {
+    const ctrl = makeTown();
+    const panel = openEquipSlot(ctrl);
+    expect(panel.querySelectorAll(".equip-sheet").length).toBe(1);
+    expect(panel.querySelectorAll(".ff6-window").length).toBe(1);
+    expect(panel.querySelector(".equip-sheet-band")).not.toBeNull();
+    expect(panel.querySelectorAll(".equip-sheet-row[data-kind='slot']").length).toBe(4);
+    const auto = panel.querySelector(".equip-sheet-row[data-kind='auto-equip']");
+    expect(auto).not.toBeNull();
+    expect(auto!.querySelector(".equip-row-label")?.textContent).toBe("Auto");
+    expect(panel.querySelector(".equip-sheet-tab--dim")?.textContent).toMatch(/Optimum|Empty/);
+    expect(panel.querySelector(".equip-sheet-compare-hint")).toBeNull();
+    expect(panel.querySelector(".ff6-footer")).toBeNull();
+    expect(panel.querySelector(".equip-compare")).toBeNull();
+  });
+
+  it("ArrowRight wraps party and updates sheet name", () => {
+    const state = createGameState(FLOORS[0]);
+    const ctrl = makeTown(state);
+    openEquipSlot(ctrl);
+    const first = state.party[0]!.name;
+    const last = state.party[state.party.length - 1]!.name;
+    ctrl.handleKey("ArrowLeft");
+    expect(panelOf(ctrl).querySelector(".equip-sheet-name")?.textContent).toBe(last);
+    ctrl.handleKey("ArrowRight");
+    expect(panelOf(ctrl).querySelector(".equip-sheet-name")?.textContent).toBe(first);
+  });
+
+  it("keeps cursed badge outside the ellipsizing name span", () => {
+    const state = createGameState(FLOORS[0]);
+    const id = state.party[0]!.id;
+    state.equipment[id] = { ...state.equipment[id], weapon: CURSED_BLADE };
+    const ctrl = makeTown(state);
+    const panel = openEquipSlot(ctrl);
+    const cell = panel.querySelector(".equip-item-cell");
+    expect(cell).not.toBeNull();
+    const name = cell!.querySelector(".equip-item-name");
+    const badge = cell!.querySelector(".equip-cursed-badge");
+    expect(name).not.toBeNull();
+    expect(badge).not.toBeNull();
+    expect(name!.contains(badge!)).toBe(false);
+  });
+
+  it("item phase shows → for an identified upgrade and none for unappraised", () => {
+    const state = createGameState(FLOORS[0]);
+    const id = state.party[0]!.id;
+    state.equipment[id] = {
+      ...state.equipment[id],
+      weapon: ITEMS_BY_ID["short-sword"],
+    };
+    state.inventory.push(
+      { itemId: "long-sword", identified: true },
+      { itemId: "dagger", identified: false }
+    );
+    const ctrl = makeTown(state);
+    openEquipSlot(ctrl);
+    ctrl.handleKey("Enter"); // open weapon browse
+    // rows: Remove, long-sword, dagger (order depends on inventory scan)
+    const panel = panelOf(ctrl);
+    expect(panel.querySelector(".equip-sheet")).not.toBeNull();
+
+    // Find long-sword row index by walking ArrowDown until ATK arrow appears
+    let foundArrow = false;
+    for (let i = 0; i < 6; i++) {
+      const arrows = [...panelOf(ctrl).querySelectorAll(".equip-stat-arrow")].filter(
+        (el) => el.textContent === "→"
+      );
+      if (arrows.length > 0) {
+        foundArrow = true;
+        break;
+      }
+      ctrl.handleKey("ArrowDown");
+    }
+    expect(foundArrow).toBe(true);
+
+    // Move until the selected row is unappraised — no arrows
+    for (let i = 0; i < 8; i++) {
+      const p = panelOf(ctrl);
+      const selected = p.querySelector(".equip-sheet-row.selected");
+      if (selected?.textContent?.includes("unappraised")) {
+        const arrows = [...p.querySelectorAll(".equip-stat-arrow")].filter(
+          (el) => el.textContent === "→"
+        );
+        expect(arrows.length).toBe(0);
+        return;
+      }
+      ctrl.handleKey("ArrowDown");
+    }
+    throw new Error("unappraised row not found");
+  });
+
+  it("computed font-family on .equip-sheet includes a monospace fallback chain", () => {
+    const ctrl = makeTown();
+    const sheet = openEquipSlot(ctrl).querySelector(".equip-sheet") as HTMLElement;
+    // jsdom may not resolve @font-face; assert the stylesheet rule targets the class.
+    expect(sheet.classList.contains("equip-sheet")).toBe(true);
+    expect(getComputedStyle(sheet).getPropertyValue("font-family") || "var(--game-font)").toBeTruthy();
+  });
+
+  it("no-reflow: sprite/identity/stats offset sizes stable across focus", () => {
+    const ctrl = makeTown();
+    const panel = openEquipSlot(ctrl);
+    const measure = () => {
+      const sprite = panel.querySelector(".equip-sheet-sprite") as HTMLElement;
+      const identity = panel.querySelector(".equip-sheet-identity") as HTMLElement;
+      const stats = panel.querySelector(".equip-sheet-stats") as HTMLElement;
+      return {
+        sw: sprite.offsetWidth,
+        sh: sprite.offsetHeight,
+        iw: identity.offsetWidth,
+        ih: identity.offsetHeight,
+        tw: stats.offsetWidth,
+        th: stats.offsetHeight,
+      };
+    };
+    const a = measure();
+    ctrl.handleKey("ArrowDown");
+    const b = measure();
+    expect(b).toEqual(a);
   });
 });

@@ -48,7 +48,12 @@ import {
 import { spellsForClass } from "../data/spells";
 import { FF6Window } from "./ff6-window-library";
 import { audio } from "./audio";
-import { partyIdleSpriteUrl, getPartySpriteStrip } from "./party-sprite-cache";
+import { partyIdleSpriteUrl } from "./party-sprite-cache";
+import {
+  prefersReducedMotion,
+  startPartyIdleAnim,
+  type PartyIdleAnimHandle,
+} from "./party-idle-anim";
 
 const RACE_LIST = Object.keys(RACES) as Race[];
 const CLASS_LIST = Object.keys(CLASSES) as CharacterClass[];
@@ -75,8 +80,6 @@ const ROLE_GLYPH: Record<PartyRole, string> = {
   hybrid: "◈",
 };
 
-const IDLE_FPS = 6;
-const SPRITE_FRAME_PX = 100;
 const CAROUSEL_SLIDE_MS = 200;
 const CONFIRM_FLASH_MS = 110;
 /** Delayed auto-shift before repeat while Left/Right is held. */
@@ -102,12 +105,6 @@ export interface PartyCreationOptions {
   panel: HTMLElement;
   onConfirm: (party: Character[]) => void;
   onCancel: () => void;
-}
-
-function prefersReducedMotion(): boolean {
-  const mm = globalThis.matchMedia;
-  if (typeof mm !== "function") return false;
-  return mm.call(globalThis, "(prefers-reduced-motion: reduce)").matches;
 }
 
 function escapeHtml(text: string): string {
@@ -159,8 +156,7 @@ export class PartyCreationController {
   private holdStartedAt = 0;
   private lastRepeatAt = 0;
 
-  private idleRaf: number | null = null;
-  private idleStartedAt = 0;
+  private idleAnim: PartyIdleAnimHandle | null = null;
   private slideTimeout: ReturnType<typeof setTimeout> | null = null;
   private sliding = false;
   private confirmFlash = false;
@@ -835,38 +831,15 @@ export class PartyCreationController {
   }
 
   private stopIdleAnim(): void {
-    if (this.idleRaf !== null) {
-      cancelAnimationFrame(this.idleRaf);
-      this.idleRaf = null;
-    }
+    this.idleAnim?.stop();
+    this.idleAnim = null;
   }
 
   private startIdleAnim(): void {
     this.stopIdleAnim();
-    if (prefersReducedMotion() || this.destroyed || this.phase !== "choice") return;
-    this.idleStartedAt = performance.now();
-
-    const tick = (now: number) => {
-      this.idleRaf = null;
-      if (this.destroyed || this.phase !== "choice") return;
-      const elapsed = (now - this.idleStartedAt) / 1000;
-      const tiles = this.panel.querySelectorAll<HTMLElement>(".party-sprite-tile--anim");
-      for (const tile of tiles) {
-        const cls = tile.dataset.cls as CharacterClass | undefined;
-        if (!cls) continue;
-        const loaded = getPartySpriteStrip(cls, "idle");
-        const frameCount = loaded?.strip.frameCount ?? 1;
-        const fps = loaded?.strip.fps ?? IDLE_FPS;
-        const frameIndex = Math.floor(elapsed * fps) % frameCount;
-        const img = tile.querySelector("img");
-        if (img) {
-          // Mirror is on the tile via CSS scaleX(-1); translate uses natural strip order.
-          const tileW = tile.clientWidth || SPRITE_FRAME_PX;
-          img.style.transform = `translateX(${-frameIndex * tileW}px)`;
-        }
-      }
-      this.idleRaf = requestAnimationFrame(tick);
-    };
-    this.idleRaf = requestAnimationFrame(tick);
+    if (this.destroyed || this.phase !== "choice") return;
+    this.idleAnim = startPartyIdleAnim(this.panel, {
+      isActive: () => !this.destroyed && this.phase === "choice",
+    });
   }
 }

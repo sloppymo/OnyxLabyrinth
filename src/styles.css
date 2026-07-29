@@ -988,47 +988,322 @@ canvas#map-canvas {
   color: var(--amber);
 }
 
-/* --- Equip screen (FF6-style, town) ------------------------------------ */
+/* --- Equip screen (FF6-style character sheet) -------------------------- */
 
-.equip-compare {
-  margin: 0 auto;
-  max-width: 900px;
-  padding: 8px 14px;
-  font-size: var(--fs-body);
+.equip-sheet {
+  --equip-label: #50d0d0;
+  --equip-mod-up: #ffd769;
+  --equip-mod-down: #ff9090;
+  /* Local scale (~+2 from v3); gear list is the largest interactive type. */
+  --equip-fs-name: 24px;
+  --equip-fs-stat: 18px;
+  --equip-fs-body: 20px;
+  --equip-fs-gear: 22px;
+  font-family: var(--game-font);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   color: var(--warm-white);
+  box-sizing: border-box;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+  line-height: 1.25;
 }
 
-.equip-stat-line {
+/* Richer stage when the sheet is the only content in an FF6 window. */
+.ff6-window:has(.equip-sheet) {
+  background: linear-gradient(
+    180deg,
+    #3a4cb8 0%,
+    #243890 42%,
+    #152868 78%,
+    #0e1848 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px #6880e0,
+    inset 0 0 0 2px #1a2868,
+    inset 0 0 28px rgba(20, 28, 80, 0.45),
+    0 3px 8px rgba(0, 0, 0, 0.6);
+  max-height: 100%;
+  width: min(100%, 720px);
+}
+
+/* Decorative chrome — Equip lit; Optimum/Empty dim; never focused. */
+.equip-sheet-tabs {
   display: flex;
-  gap: 28px;
-  padding-bottom: 6px;
-  margin-bottom: 6px;
-  border-bottom: 1px solid #2a2620;
+  gap: 20px;
+  align-items: baseline;
+  padding: 0 2px 4px;
+  font-size: var(--equip-fs-body);
 }
 
-.equip-stat-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 22px;
-  font-size: var(--fs-small);
-  color: #aa9c80;
+.equip-sheet-tab {
+  letter-spacing: 0.03em;
 }
 
-.equip-stat {
-  white-space: nowrap;
+.equip-sheet-tab--active {
+  color: #fff;
 }
 
-.equip-stat-label {
-  color: #88775a;
+.equip-sheet-tab--dim {
+  color: #6a78a8;
+}
+
+.equip-sheet-tab-cursor {
+  color: #ffd769;
   margin-right: 4px;
 }
 
-.equip-delta-up {
-  color: #7dff9a;
+/* Upper band: portrait | identity (name/LV/HP) | stats — one top-aligned strip */
+.equip-sheet-band {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0;
+  width: max-content;
+  max-width: 100%;
 }
 
-.equip-delta-down {
+.equip-sheet-sprite {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+}
+
+.equip-sheet-sprite.party-sprite-preview {
+  width: 80px;
+  height: 80px;
+  background: transparent;
+  border: none;
+  overflow: hidden;
+}
+
+/* Source frames pad a small figure — crop-zoom so the character fills the tile. */
+.equip-sheet .party-sprite-zoom {
+  transform: scale(2.9);
+  transform-origin: center 40%;
+}
+
+.equip-sheet-sprite.party-sprite-preview img {
+  height: 100%;
+  width: auto;
+  max-width: none;
+}
+
+.equip-sprite-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #7080c0;
+  color: var(--equip-label);
+  font-size: var(--equip-fs-stat);
+  width: 80px;
+  height: 80px;
+}
+
+.equip-sheet-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-left: 16px;
+}
+
+.equip-sheet-name {
+  color: #fff;
+  font-size: var(--equip-fs-name);
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  max-width: 10ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.equip-id-row {
+  display: grid;
+  grid-template-columns: 3ch 7ch;
+  column-gap: 8px;
+  font-size: var(--equip-fs-stat);
+  line-height: 1.15;
+  margin: 0;
+}
+
+.equip-id-label {
+  color: var(--equip-label);
+}
+
+.equip-id-value {
+  text-align: right;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 4×2 stats; tucked ~6px after identity; values right-aligned as a block */
+.equip-sheet-stats {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 36px;
+  row-gap: 1px;
+  font-size: var(--equip-fs-stat);
+  align-content: start;
+  align-self: flex-start;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+.equip-stat-cell {
+  display: grid;
+  grid-template-columns: 3.5ch 4.5ch;
+  column-gap: 6px;
+  align-items: baseline;
+}
+
+.equip-stat-cell--compare {
+  grid-template-columns: 3.5ch 4.5ch 1.2ch 3.5ch;
+}
+
+.equip-sheet-stats .equip-stat-label {
+  color: var(--equip-label);
+}
+
+.equip-sheet-stats .equip-stat-nums {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.equip-sheet-stats .equip-stat-value,
+.equip-sheet-stats .equip-stat-preview {
+  text-align: right;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.equip-sheet-stats .equip-stat-mod {
+  margin: 0;
+  padding: 0;
+}
+
+.equip-sheet-stats .equip-stat-mod--up {
+  color: var(--equip-mod-up);
+}
+
+.equip-sheet-stats .equip-stat-mod--down {
+  color: var(--equip-mod-down);
+}
+
+.equip-sheet-stats .equip-stat-arrow {
+  color: var(--equip-label);
+  text-align: center;
+}
+
+.equip-sheet-note {
+  font-size: var(--equip-fs-stat);
+  line-height: 1.25;
+}
+
+.equip-sheet-note.equip-warning {
   color: var(--danger-red);
+}
+
+.equip-sheet-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(140, 160, 230, 0.55) 12%,
+    rgba(140, 160, 230, 0.55) 88%,
+    transparent
+  );
+}
+
+.equip-sheet-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 0 0 auto;
+  padding-top: 2px;
+}
+
+.equip-sheet-row {
+  display: grid;
+  grid-template-columns: 7ch minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: baseline;
+  padding: 3px 0 3px 1.2em;
+  font-size: var(--equip-fs-gear);
+  color: #e8e8f0;
+  position: relative;
+}
+
+.equip-sheet-row[data-kind="item"] {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.equip-sheet-slot-hint {
+  color: var(--equip-label);
+  font-size: var(--fs-small);
+  padding: 2px 0 4px;
+}
+
+.equip-row-detail {
+  font-size: var(--fs-small);
+  color: #a8b0d8;
+  white-space: nowrap;
+}
+
+.equip-sheet-row .equip-row-label {
+  color: var(--equip-label);
+  min-width: 0;
+}
+
+.equip-sheet-row.selected {
+  color: #ffd769;
+}
+
+.equip-sheet-row.selected::before {
+  content: "▶";
+  position: absolute;
+  left: 0;
+  color: #ffd769;
+}
+
+.equip-sheet-row.selected .equip-row-label {
+  color: #ffd769;
+}
+
+.equip-item-cell {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.equip-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.equip-item-name--dim {
+  color: #a8b0d8;
+}
+
+.equip-item-cell--empty {
+  min-height: 1em;
+}
+
+.equip-cursed-badge {
+  flex: 0 0 auto;
+  font-size: var(--equip-fs-stat);
 }
 
 .equip-cursed,
@@ -1042,12 +1317,6 @@ canvas#map-canvas {
   font-size: var(--fs-body);
 }
 
-.equip-note {
-  margin-top: 8px;
-  color: #aa9c80;
-  font-size: var(--fs-small);
-}
-
 .equip-summary {
   margin: 0 auto;
   max-width: 900px;
@@ -1059,23 +1328,27 @@ canvas#map-canvas {
   gap: 12px;
   padding: 4px 0;
   font-size: var(--fs-body);
-  border-bottom: 1px solid #2a2620;
+  border-bottom: 1px solid rgba(80, 104, 200, 0.35);
 }
 
 .equip-row-label {
-  color: #88775a;
+  color: var(--equip-label, #50d0d0);
   min-width: 90px;
   flex-shrink: 0;
 }
 
 .equip-row-value {
   color: var(--warm-white);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .equip-trinkets {
   margin-top: 8px;
   font-size: var(--fs-small);
-  color: #aa9c80;
+  color: #a8b0d8;
 }
 
 /* --- Party Creation (Section 4) ---------------------------------------- */
