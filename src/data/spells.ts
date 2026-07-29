@@ -54,10 +54,11 @@ export type SpellEffect =
   // resolved by game/persistent-spells.ts, hidden from the combat spell list.
   | { kind: "light"; duration: number }
   | { kind: "levitation"; duration: number }
-  | { kind: "detect" };
+  | { kind: "detect" }
+  | { kind: "knock" };
 
 /** Effect kinds castable only outside combat (dungeon / camp menus). */
-export const UTILITY_EFFECT_KINDS = ["light", "levitation", "detect"] as const;
+export const UTILITY_EFFECT_KINDS = ["light", "levitation", "detect", "knock"] as const;
 
 export function isUtilitySpell(spell: SpellDef): boolean {
   return (UTILITY_EFFECT_KINDS as readonly string[]).includes(spell.effect.kind);
@@ -85,6 +86,16 @@ export const MAGE_SPELLS: SpellDef[] = [
     target: "self",
     effect: { kind: "detect" },
     description: "Reveals the party's exact position and facing in the maze.",
+  },
+  {
+    id: "mage-knock",
+    name: "Knock",
+    class: "Mage",
+    tier: 1,
+    spCost: 2,
+    target: "self",
+    effect: { kind: "knock" },
+    description: "Springs a locked door the party is facing — no Thief required.",
   },
   {
     id: "mage-fire-bolt",
@@ -470,6 +481,16 @@ export const PRIEST_SPELLS: SpellDef[] = [
     target: "self",
     effect: { kind: "light", duration: 40 },
     description: "A soft magical radiance that holds back darkness zones.",
+  },
+  {
+    id: "priest-unseal",
+    name: "Unseal",
+    class: "Priest",
+    tier: 1,
+    spCost: 2,
+    target: "self",
+    effect: { kind: "knock" },
+    description: "A prayer that opens a locked door the party is facing.",
   },
   {
     id: "priest-cure-wounds",

@@ -18,8 +18,8 @@ function clearJustOpened(ctrl: PartyCreationController): void {
 
 function openEditor(ctrl: PartyCreationController): void {
   clearJustOpened(ctrl);
-  // Choice screen → Create Your Own
-  ctrl.handleKey("ArrowDown");
+  // Choice screen: 4 presets then Create Your Own — move to last row.
+  for (let i = 0; i < 4; i++) ctrl.handleKey("ArrowDown");
   ctrl.handleKey("Enter");
 }
 
@@ -38,11 +38,11 @@ describe("PartyCreationController open guard", () => {
       },
       onCancel: () => {},
     });
-    expect(panel.textContent).toMatch(/Default Party|Quick Start|Create/i);
+    expect(panel.textContent).toMatch(/All Trades|Default Party|Create/i);
     ctrl.handleKey("Enter"); // swallowed — still on choice
     expect(confirmed).toBe(0);
     expect(panel.textContent).not.toContain("Slot 1 of 4");
-    ctrl.handleKey("Enter"); // now selects Default Party (choiceIndex 0)
+    ctrl.handleKey("Enter"); // now selects All Trades (choiceIndex 0)
     expect(confirmed).toBe(1);
   });
 
@@ -142,6 +142,58 @@ describe("PartyCreationController editor layout", () => {
     const confirmed = panel.querySelector(".party-confirmed");
     expect(confirmed).not.toBeNull();
     expect(confirmed!.querySelectorAll(".party-confirmed-chip")).toHaveLength(3);
+  });
+
+  it("shows an idle class sprite on the choice screen and in the editor", () => {
+    const panel = makePanel();
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: () => {},
+      onCancel: () => {},
+    });
+    // Choice: All Trades preset sprites (Aria Fighter, Coda Thief, …).
+    expect(panel.textContent).toContain("All Trades");
+    expect(panel.textContent).toContain("Shield Wall");
+    const choiceImgs = panel.querySelectorAll<HTMLImageElement>(".party-choice-sprites img");
+    expect(choiceImgs.length).toBe(4);
+    expect(choiceImgs[0]!.getAttribute("src")).toMatch(/\/assets\/party\/fighter\/idle\.png$/);
+    expect(choiceImgs[1]!.getAttribute("src")).toMatch(/\/assets\/party\/thief\/idle\.png$/);
+
+    openEditor(ctrl);
+    const stageImg = panel.querySelector<HTMLImageElement>(".party-sprite-stage img");
+    expect(stageImg).not.toBeNull();
+    expect(stageImg!.getAttribute("src")).toMatch(/\/assets\/party\/fighter\/idle\.png$/);
+    expect(panel.querySelector(".party-sprite-caption")?.textContent).toBe("Fighter");
+
+    // Cycle class → Mage; preview should follow.
+    for (let i = 0; i < 3; i++) ctrl.handleKey("ArrowDown");
+    ctrl.handleKey("ArrowRight"); // Fighter → Mage
+    const mageImg = panel.querySelector<HTMLImageElement>(".party-sprite-stage img");
+    expect(mageImg!.getAttribute("src")).toMatch(/\/assets\/party\/mage\/idle\.png$/);
+    expect(panel.querySelector(".party-sprite-caption")?.textContent).toBe("Mage");
+    expect(panel.querySelector(".party-sprite-stage")?.classList.contains("is-focus")).toBe(true);
+  });
+
+  it("confirms a non-balanced preset via number key", () => {
+    let party: { name: string; class: string }[] | null = null;
+    const panel = makePanel();
+    const ctrl = new PartyCreationController({
+      panel,
+      onConfirm: (p) => {
+        party = p.map((c) => ({ name: c.name, class: c.class }));
+      },
+      onCancel: () => {},
+    });
+    clearJustOpened(ctrl);
+    ctrl.handleKey("2"); // Shield Wall
+    expect(party).not.toBeNull();
+    expect(party!.map((c) => c.name)).toEqual(["Bram", "Gareth", "Helga", "Mira"]);
+    expect(party!.map((c) => c.class)).toEqual([
+      "Fighter",
+      "Crusader",
+      "Halberdier",
+      "Priest",
+    ]);
   });
 });
 

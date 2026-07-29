@@ -6,6 +6,7 @@
  *   Levitate (levitation) — party-wide buff; the party floats over chutes
  *                          (and future hazards like pits/water).
  *   Wayfinder (detect)    — instant; reveals exact position and facing.
+ *   Knock / Unseal (knock)— opens a locked door the party is facing.
  *
  * Buffs live in GameState.persistentBuffs, tick down one step per dungeon
  * move (tickBuffs is called from main.ts onMove), and are cleared when the
@@ -15,6 +16,7 @@
 import type { GameState, PersistentBuff } from "../types";
 import type { SpellDef } from "../data/spells";
 import { ALL_SPELLS, isUtilitySpell } from "../data/spells";
+import { facingLock, unlockDoorAt } from "./doors";
 
 const SPELLS_BY_ID: Record<string, SpellDef> = Object.fromEntries(
   ALL_SPELLS.map((s) => [s.id, s])
@@ -80,8 +82,20 @@ export function castUtilitySpell(
     return "The anti-magic field drinks the spell away.";
   }
 
-  caster.sp -= spell.spCost;
   const eff = spell.effect;
+
+  // Knock spends SP only when a locked door is actually in front of the party.
+  if (eff.kind === "knock") {
+    const lock = facingLock(state);
+    if (!lock || state.unlockedDoors.has(lock.doorKey)) {
+      return "Face a locked door to cast that.";
+    }
+    caster.sp -= spell.spCost;
+    unlockDoorAt(state, lock.x, lock.y, lock.dir);
+    return `${caster.name} casts ${spell.name} — the lock yields.`;
+  }
+
+  caster.sp -= spell.spCost;
 
   if (eff.kind === "detect") {
     const { x, y, facing } = state.player;

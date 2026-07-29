@@ -27,6 +27,7 @@ import {
   ensureOutDir,
   writeReport,
   shot as libShot,
+  ensureAudioResumed,
 } from "./lib.mjs";
 
 const URL = process.env.ONYX_URL ?? "http://127.0.0.1:5176/OnyxLabyrinth/?debug=1";
@@ -52,6 +53,11 @@ async function shot(name) {
 async function freshBoot() {
   await page.goto(URL, { waitUntil: "networkidle" });
   await wait(400);
+  // Real keydown before any debug jumpTo/startCombat call — see
+  // ensureAudioResumed's doc comment in lib.mjs; without it, the first
+  // combat cue or two report bufferMissing purely because resumeAudioOnce
+  // never fired.
+  await ensureAudioResumed(page);
 }
 
 const jump = async (opts) => {

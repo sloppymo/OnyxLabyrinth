@@ -34,6 +34,7 @@ import {
   writeReport,
   wait,
   captureFailureBundle,
+  ensureAudioResumed,
 } from "./lib.mjs";
 
 const URL = process.env.ONYX_URL ?? "http://127.0.0.1:5176/OnyxLabyrinth/?debug=1";
@@ -372,6 +373,11 @@ const findings = createFindings({ page, outDir: OUT, errors });
 try {
   await page.goto(URL, { waitUntil: "networkidle" });
   await wait(400); // __onyxDebug attach settle; isIdle has nothing to poll yet
+  // Real keydown before any debug jumpTo/startCombat call — see
+  // ensureAudioResumed's doc comment in lib.mjs; without it, the first
+  // combat cue or two report bufferMissing purely because resumeAudioOnce
+  // never fired.
+  await ensureAudioResumed(page);
 
   // Resolve zone rects from live floor data (no hardcoded coords).
   const f1Safe = await zoneByRateMul(page, 1, (m) => m > 0 && m < 1);

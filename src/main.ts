@@ -1009,9 +1009,13 @@ const dungeonHandlers: InputHandlers = {
       const msg = tryUnlock(state);
       setMessage(msg);
       // Play the appropriate door sound based on the result.
-      if (msg.includes("unlock") || msg.includes("picks the lock")) {
+      if (
+        msg.includes("unlock") ||
+        msg.includes("picks the lock") ||
+        msg.includes("lock yields")
+      ) {
         audio.doorOpen();
-      } else if (msg.includes("locked")) {
+      } else if (msg.includes("locked") || msg.includes("no locked door")) {
         audio.doorLocked();
       }
     }

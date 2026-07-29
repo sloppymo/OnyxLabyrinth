@@ -1,14 +1,16 @@
 /**
  * Party Creation UI controller — design doc Section 4.
  *
- * Lets the player build a 4-character party from scratch: for each slot the
- * player enters a name, cycles race / alignment / class, re-rolls stats, and
- * confirms. Validates the alignment rule (no Good + Evil mix). On completion
- * calls onConfirm(party) with a full 4-member Character[].
+ * Opens on a choice screen: four pre-made parties with different strengths/
+ * weaknesses, or build a custom one. Esc from slot 1 of the editor returns to
+ * the choice screen; Esc from the choice screen cancels.
  *
- * Opens on a choice screen: pick the ready-made default party (Quick Start)
- * or build a custom one. Esc from slot 1 of the editor returns to the choice
- * screen; Esc from the choice screen cancels.
+ * Keyboard (choice):
+ *   Up/Down      move cursor
+ *   1–4          pick a preset
+ *   C            open custom editor
+ *   Enter/Space  confirm selection
+ *   Esc          cancel
  *
  * Keyboard (editor):
  *   Up/Down      move field cursor (name / race / alignment / class)
@@ -18,7 +20,6 @@
  *   R            re-roll stats
  *   Enter        confirm this character and advance to the next slot
  *   Esc          go back one slot (or return to the choice screen from slot 1)
- *   D            (on slot 1 only) use the default pre-made party
  */
 
 import {
@@ -29,7 +30,6 @@ import {
   computeMaxHp,
   computeMaxSp,
   createCharacter,
-  createDefaultParty,
   PARTY_SIZE,
   type Race,
   type Alignment,
@@ -37,9 +37,11 @@ import {
   type Character,
   type Stats,
 } from "../game/party";
+import { createPresetParty, PRESET_PARTIES, type PresetPartyId } from "../game/preset-parties";
 import { spellsForClass } from "../data/spells";
 import { FF6Window } from "./ff6-window-library";
 import { audio } from "./audio";
+import { partyIdleSpriteUrl } from "./party-sprite-cache";
 
 const RACE_LIST = Object.keys(RACES) as Race[];
 const CLASS_LIST = Object.keys(CLASSES) as CharacterClass[];
@@ -81,8 +83,9 @@ export class PartyCreationController {
   private slotIndex = 0;
   private fieldIndex = 0; // index into FIELDS
   private flash = "";
-  /** Opening screen: pick the default party or the custom editor. */
+  /** Opening screen: pick a pre-made party or the custom editor. */
   private phase: "choice" | "edit" = "choice";
+  /** 0..PRESET_PARTIES.length-1 = preset; last index = Create Your Own. */
   private choiceIndex = 0;
   private choiceHasRendered = false;
   /** Reset panel scroll when advancing slots so the header stays visible. */
@@ -176,21 +179,39 @@ export class PartyCreationController {
     }
   }
 
+  private choiceCount(): number {
+    return PRESET_PARTIES.length + 1; // presets + Create Your Own
+  }
+
+  private isCustomChoice(): boolean {
+    return this.choiceIndex >= PRESET_PARTIES.length;
+  }
+
   private handleChoiceKey(key: string, lower: string): void {
     if (lower === "escape") {
       audio.uiCancel();
       this.onCancel();
       return;
     }
-    if (lower === "arrowup" || lower === "w" || lower === "arrowdown" || lower === "s") {
-      this.choiceIndex = this.choiceIndex === 0 ? 1 : 0;
+    if (lower === "arrowup" || lower === "w") {
+      this.choiceIndex = (this.choiceIndex - 1 + this.choiceCount()) % this.choiceCount();
       audio.uiCursor();
       this.render();
       return;
     }
-    if (lower === "d") {
-      audio.uiConfirm();
-      this.useDefaultParty();
+    if (lower === "arrowdown" || lower === "s") {
+      this.choiceIndex = (this.choiceIndex + 1) % this.choiceCount();
+      audio.uiCursor();
+      this.render();
+      return;
+    }
+    // 1–4 pick a preset; C opens the custom editor.
+    if (lower === "1" || lower === "2" || lower === "3" || lower === "4") {
+      const idx = Number(lower) - 1;
+      if (idx < PRESET_PARTIES.length) {
+        audio.uiConfirm();
+        this.usePresetParty(PRESET_PARTIES[idx]!.id);
+      }
       return;
     }
     if (lower === "c") {
@@ -200,9 +221,19 @@ export class PartyCreationController {
     }
     if (key === "Enter" || key === " ") {
       audio.uiConfirm();
-      if (this.choiceIndex === 0) this.useDefaultParty();
-      else this.enterEditor();
+      this.confirmChoice();
     }
+  }
+
+  private confirmChoice(): void {
+    if (this.isCustomChoice()) this.enterEditor();
+    else this.usePresetParty(PRESET_PARTIES[this.choiceIndex]!.id);
+  }
+
+  private usePresetParty(id: PresetPartyId): void {
+    this.panel.style.display = "none";
+    this.panel.innerHTML = "";
+    this.onConfirm(createPresetParty(id));
   }
 
   private enterEditor(): void {
@@ -333,13 +364,22 @@ export class PartyCreationController {
     this.onConfirm(party);
   }
 
-  private useDefaultParty(): void {
-    this.panel.style.display = "none";
-    this.panel.innerHTML = "";
-    this.onConfirm(createDefaultParty());
-  }
-
   // --- Rendering ----------------------------------------------------------
+
+  /** Idle strip clipped to frame 0; mirrored to match combat (party faces left). */
+  private spritePreviewHtml(
+    cls: CharacterClass,
+    opts: { label?: string; size?: "lg" | "sm" } = {}
+  ): string {
+    const size = opts.size ?? "lg";
+    const label = opts.label ?? cls;
+    const src = partyIdleSpriteUrl(cls);
+    return (
+      `<div class="party-sprite-preview party-sprite-preview--${size}" title="${label}">` +
+      `<img src="${src}" alt="${label}" width="100" height="100" decoding="async" />` +
+      `</div>`
+    );
+  }
 
   private render(): void {
     if (this.phase === "choice") {
@@ -352,6 +392,7 @@ export class PartyCreationController {
     const lines: string[] = [];
     const confirmedCount = this.slotIndex;
     const field = FIELDS[this.fieldIndex];
+    const classSelected = field === "class";
 
     lines.push(`<div class="party-create">`);
     lines.push(`<div class="party-create-header">[+] Party Creation</div>`);
@@ -359,6 +400,8 @@ export class PartyCreationController {
       `<div class="party-create-meta">Slot ${this.slotIndex + 1} of ${PARTY_SIZE} · ${confirmedCount} confirmed</div>`
     );
 
+    lines.push(`<div class="party-create-main">`);
+    lines.push(`<div class="party-create-fields">`);
     lines.push(`<div class="party-edit">`);
     for (let fi = 0; fi < FIELDS.length; fi++) {
       const f = FIELDS[fi];
@@ -388,6 +431,15 @@ export class PartyCreationController {
       `HP ${maxHp} · SP ${maxSp}` +
       `</div>`
     );
+    lines.push(`</div>`); // party-create-fields
+
+    lines.push(
+      `<div class="party-sprite-stage${classSelected ? " is-focus" : ""}">` +
+      this.spritePreviewHtml(d.cls, { label: `${d.name || "Adventurer"} · ${d.cls}` }) +
+      `<div class="party-sprite-caption">${d.cls}</div>` +
+      `</div>`
+    );
+    lines.push(`</div>`); // party-create-main
 
     lines.push(
       `<div class="party-help">[↑↓] field · [←→] cycle · [R] reroll · [Enter] confirm · [Esc] back</div>`
@@ -399,7 +451,8 @@ export class PartyCreationController {
         const c = this.drafts[i];
         lines.push(
           `<span class="party-confirmed-chip" title="${c.race} ${c.alignment} ${c.cls}">` +
-          `<b>${i + 1}.${c.name}</b> ${c.cls}` +
+          this.spritePreviewHtml(c.cls, { label: `${c.name} · ${c.cls}`, size: "sm" }) +
+          `<span class="party-confirmed-chip-text"><b>${i + 1}.${c.name}</b> ${c.cls}</span>` +
           `</span>`
         );
       }
@@ -435,32 +488,54 @@ export class PartyCreationController {
     const animated = !this.choiceHasRendered;
     this.choiceHasRendered = true;
 
+    let spritesHtml = "";
+    let blurbHtml = `<div class="ff6-arena-meta">Four souls brave the labyrinth. Who will they be?</div>`;
+    if (!this.isCustomChoice()) {
+      const preset = PRESET_PARTIES[this.choiceIndex]!;
+      spritesHtml = preset.members
+        .map((m) =>
+          this.spritePreviewHtml(m.cls, { label: `${m.name} · ${m.cls}`, size: "sm" })
+        )
+        .join("");
+      blurbHtml =
+        `<div class="ff6-arena-meta">${preset.strength}</div>` +
+        `<div class="party-choice-weak">${preset.weakness}</div>` +
+        `<div class="party-choice-sprites" aria-hidden="true">${spritesHtml}</div>`;
+    } else {
+      blurbHtml =
+        `<div class="ff6-arena-meta">Name them. Pick race, alignment, and class.</div>` +
+        `<div class="party-choice-weak">Full control — no pre-rolled strengths.</div>`;
+    }
+
+    const items = [
+      ...PRESET_PARTIES.map((p, i) => ({
+        label: `${i + 1}. ${p.label}`,
+        detail: p.tagline,
+        metadata: p.id,
+      })),
+      {
+        label: "Create Your Own",
+        detail: "Build four adventurers from scratch",
+        metadata: "custom",
+      },
+    ];
+
     const win = new FF6Window({
       title: "Assemble Your Party",
-      contentHtml: `<div class="ff6-arena-meta">Four souls brave the labyrinth. Who will they be?</div>`,
-      items: [
-        {
-          label: "Default Party",
-          detail: "Aria · Coda · Dell · Eve",
-          metadata: "default",
-        },
-        {
-          label: "Create Your Own",
-          detail: "Build four adventurers from scratch",
-          metadata: "custom",
-        },
-      ],
+      contentHtml: blurbHtml,
+      items,
       selectedIndex: this.choiceIndex,
       mode: "menu",
-      footer: "D-pad navigate · A confirm · B back",
+      footer: "D-pad · A confirm · 1-4 preset · C custom · B back",
+      maxHeight: 420,
       animated,
       onHover: (i) => {
         this.choiceIndex = i;
+        this.render();
       },
       onConfirm: (i) => {
         this.choiceIndex = i;
-        if (i === 0) this.useDefaultParty();
-        else this.enterEditor();
+        this.confirmChoice();
       },
       onBack: () => {
         this.onCancel();

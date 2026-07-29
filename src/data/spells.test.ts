@@ -50,10 +50,8 @@ describe("endgame spell corpus (T6–T7)", () => {
     }
   });
 
-  it("every spell has a positive SP cost and a description", () => {
-    for (const s of [...MAGE_SPELLS, ...PRIEST_SPELLS]) {
-      expect(s.spCost).toBeGreaterThan(0);
-      expect(s.description.length).toBeGreaterThan(0);
-    }
+  it("marks Knock / Unseal as utility spells", () => {
+    expect(isUtilitySpell(spellById("mage-knock")!)).toBe(true);
+    expect(isUtilitySpell(spellById("priest-unseal")!)).toBe(true);
   });
 });

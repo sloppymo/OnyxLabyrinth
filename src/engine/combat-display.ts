@@ -88,6 +88,8 @@ export function spellEffectSummary(effect: SpellEffect): string {
       return "Levitates the party";
     case "detect":
       return "Reveals position";
+    case "knock":
+      return "Opens a locked door";
   }
 }
 

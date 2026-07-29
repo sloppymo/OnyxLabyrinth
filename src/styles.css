@@ -1088,11 +1088,11 @@ canvas#map-canvas {
   gap: 0;
 }
 
-/* Party-choice items ("Default Party" / "Create Your Own") pair a short
-   label with a full descriptive sentence, not a stat value — the shared
+/* Party-choice items (presets / "Create Your Own") pair a short
+   label with a roster tagline or sentence, not a stat value — the shared
    .ff6-sel-detail sizing (built for combat forecasts / spell-cost columns)
-   clipped it mid-word ("Build four adventu…") with visible room to spare.
-   Stack label/detail instead of squeezing both onto one row. */
+   clipped mid-word with visible room to spare. Stack label/detail instead
+   of squeezing both onto one row. */
 #combat-panel.party-create-host .ff6-selection-list .ff6-menu-item {
   flex-direction: column;
   align-items: flex-start;
@@ -1196,6 +1196,83 @@ canvas#map-canvas {
   margin: 0 auto;
 }
 
+.party-create-main {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.party-create-fields {
+  flex: 1;
+  min-width: 0;
+}
+
+.party-sprite-stage {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 8px;
+  background: rgba(8, 12, 36, 0.72);
+  border: 1px solid rgba(80, 104, 200, 0.4);
+  border-radius: 2px;
+}
+
+.party-sprite-stage.is-focus {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 1px rgba(212, 160, 64, 0.25);
+}
+
+.party-sprite-caption {
+  font-size: var(--fs-small);
+  color: var(--amber);
+  letter-spacing: 0.04em;
+}
+
+.party-sprite-preview {
+  width: 100px;
+  height: 100px;
+  overflow: hidden;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.party-sprite-preview img {
+  display: block;
+  height: 100px;
+  width: auto;
+  max-width: none;
+  /* Pack art faces right; combat draws party mirrored — match that here. */
+  transform: scaleX(-1);
+  transform-origin: center;
+}
+
+.party-sprite-preview--sm {
+  width: 48px;
+  height: 48px;
+}
+
+.party-sprite-preview--sm img {
+  height: 48px;
+}
+
+.party-choice-sprites {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px 0 4px;
+}
+
+.party-choice-weak {
+  margin-top: 4px;
+  font-size: var(--fs-small);
+  line-height: 1.35;
+  color: #aa9c80;
+  text-align: center;
+}
+
 .party-create-header {
   font-size: var(--fs-header);
   color: var(--amber);
@@ -1284,14 +1361,16 @@ canvas#map-canvas {
   gap: 4px 8px;
   margin: 8px 0 0;
   max-width: none;
-  max-height: 52px;
+  max-height: 64px;
   overflow-y: auto;
   padding: 0 10px;
 }
 
 .party-confirmed-chip {
-  display: inline-block;
-  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px 2px 2px;
   font-size: var(--fs-small);
   line-height: 1.25;
   color: var(--warm-white);
@@ -1299,6 +1378,11 @@ canvas#map-canvas {
   border: 1px solid rgba(80, 104, 200, 0.35);
   border-radius: 3px;
   white-space: nowrap;
+}
+
+.party-confirmed-chip-text b {
+  color: var(--amber);
+  font-weight: normal;
 }
 
 .party-confirmed-chip b {

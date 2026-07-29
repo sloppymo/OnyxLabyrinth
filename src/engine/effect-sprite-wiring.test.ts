@@ -40,7 +40,8 @@ describe("effect sprite wiring", () => {
       if (
         spell.effect.kind === "light" ||
         spell.effect.kind === "levitation" ||
-        spell.effect.kind === "detect"
+        spell.effect.kind === "detect" ||
+        spell.effect.kind === "knock"
       ) {
         continue;
       }
@@ -96,7 +97,8 @@ describe("effect sprite wiring", () => {
       if (
         spell.effect.kind === "light" ||
         spell.effect.kind === "levitation" ||
-        spell.effect.kind === "detect"
+        spell.effect.kind === "detect" ||
+        spell.effect.kind === "knock"
       ) {
         continue;
       }

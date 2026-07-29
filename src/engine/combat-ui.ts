@@ -629,7 +629,7 @@ export class CombatController {
   }
 
   private knownSpells(c: Character): SpellDef[] {
-    // Utility spells (light/levitation/detect) are dungeon-only — hidden
+    // Utility spells (light/levitation/detect/knock) are dungeon-only — hidden
     // here so they can't burn a combat turn with no effect.
     return c.knownSpellIds
       .map((id) => this.state.spells[id])

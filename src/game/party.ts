@@ -356,22 +356,10 @@ export function charRow(c: Character): "front" | "back" {
 
 /**
  * Create the balanced default level-1 party of 4 for the merged game.
- * Used when starting a new game without going through party creation.
- * Front row: Aria (Fighter) + Coda (Thief). Back row: Dell (Mage) + Eve
- * (Priest). Spell IDs match the names in data/spells.ts.
+ * Same roster as preset `"balanced"` (Aria / Coda / Dell / Eve).
+ * Re-exported from preset-parties to avoid a party ↔ preset import cycle.
  */
-export function createDefaultParty(): Character[] {
-  const fighter = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
-  const thief = createCharacter("c2", "Coda", "Hobbit", "Neutral", "Thief", 1);
-  const mage = createCharacter("c3", "Dell", "Elf", "Neutral", "Mage", 2);
-  const priest = createCharacter("c4", "Eve", "Gnome", "Good", "Priest", 3);
-
-  // Level-1 casters know all tier-1 spells of their class.
-  grantMageStarterSpells(mage);
-  grantPriestStarterSpells(priest);
-
-  return [fighter, thief, mage, priest];
-}
+export { createDefaultParty } from "./preset-parties";
 
 /** Split victory XP evenly across every living party member (no bench). */
 export function awardCombatXp(party: Character[], xpEarned: number): void {
@@ -391,29 +379,4 @@ export function applyCombatPartyResult(combatParty: Character[]): Character[] {
     knownSpellIds: [...c.knownSpellIds],
     perkIds: [...c.perkIds],
   }));
-}
-
-function grantMageStarterSpells(c: Character): void {
-  c.knownSpellIds = [
-    "mage-spark",
-    "mage-ember",
-    "mage-frostbite",
-    "mage-poison-spray",
-    "mage-fire-bolt",
-    "mage-water-bolt",
-    "mage-stone-shard",
-    "mage-gust",
-    "mage-arcane-ward",
-    "mage-wayfinder",
-  ];
-}
-
-function grantPriestStarterSpells(c: Character): void {
-  c.knownSpellIds = [
-    "priest-guiding-bolt",
-    "priest-cure-wounds",
-    "priest-sacred-flame",
-    "priest-light",
-    "priest-shield-of-faith",
-  ];
 }

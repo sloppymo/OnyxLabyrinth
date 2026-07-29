@@ -108,9 +108,9 @@ describe("buildPalette", () => {
   });
 
   it("filters out utility spells when deciding cast availability", () => {
-    // Only utility spells (light/levitate/detect) are passed.
+    // Only utility spells (light/levitate/detect/knock) are passed.
     const utilityOnly = MAGE_SPELLS.filter((s) =>
-      ["light", "levitation", "detect"].includes(s.effect.kind)
+      ["light", "levitation", "detect", "knock"].includes(s.effect.kind)
     );
     const p = buildPalette(makeChar("Mage"), utilityOnly, items);
     expect(findSlot(p, "cast")).toEqual({ kind: "cast", disabled: true });

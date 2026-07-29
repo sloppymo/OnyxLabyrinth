@@ -52,11 +52,13 @@ function mageOf(state: GameState) {
 }
 
 describe("utilityCastOptions", () => {
-  it("lists Light and Wayfinder for the default level-1 party", () => {
+  it("lists Light, Wayfinder, Knock, and Unseal for the default level-1 party", () => {
     const state = makeState();
     const ids = utilityCastOptions(state).map((o) => o.spell.id);
     expect(ids).toContain("priest-light");
     expect(ids).toContain("mage-wayfinder");
+    expect(ids).toContain("mage-knock");
+    expect(ids).toContain("priest-unseal");
     // Levitate is tier 4 — no level-1 caster knows it.
     expect(ids).not.toContain("mage-levitate");
   });

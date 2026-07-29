@@ -123,6 +123,12 @@ export function loadPartySprites(): Promise<Map<string, PartySpriteBundle>> {
   return Promise.all(promises).then((entries) => new Map(entries));
 }
 
+/** Public URL for a class's idle strip (frame 0 is the left 100×100 cell). */
+export function partyIdleSpriteUrl(cls: CharacterClass): string {
+  const dir = PARTY_SPRITE_DIRS[cls];
+  return `${ASSET_BASE}assets/party/${dir}/idle.png`;
+}
+
 /** Lazy-load one class directory's bundle (deduped). */
 export function loadPartySpriteBundle(dir: string): Promise<PartySpriteBundle> {
   const cached = bundleCache.get(dir);
