@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { FLOORS } from "../data/floors";
+import { findFloor, getFloors } from "./floor-registry";
 import {
   floorDefToMap,
   mapToFloorDef,
@@ -13,11 +14,11 @@ import { carveRoom, setTile } from "./dungeon";
 
 describe("floor-map", () => {
   it("round-trips campaign floor 1", () => {
-    const f0 = FLOORS[0];
+    const f0 = findFloor(1)!;
     const map = floorDefToMap(f0);
     const f1 = mapToFloorDef(map);
     expect(f1.id).toBe(f0.id);
-    expect(f1.grid[5][5].e).toBe(f0.grid[5][5].e);
+    expect(f1.grid[f0.startY][f0.startX].tile).toBe(f0.grid[f0.startY][f0.startX].tile);
     expect(f1.treasures?.length).toBe(f0.treasures?.length);
   });
 
@@ -30,7 +31,7 @@ describe("floor-map", () => {
   });
 
   it("rejects malformed overlay entries with precise errors", () => {
-    const base = () => JSON.parse(JSON.stringify(floorDefToMap(FLOORS[0])));
+    const base = () => JSON.parse(JSON.stringify(floorDefToMap(findFloor(1)!)));
 
     let raw = base();
     raw.lockedDoors = [{ x: 1, y: 1, dir: "q", keyId: "crypt-key" }];
@@ -97,16 +98,16 @@ describe("floor-map", () => {
 
 describe("floor-ascii", () => {
   it("includes start marker and legend", () => {
-    const ascii = floorToAscii(FLOORS[0]);
+    const ascii = floorToAscii(findFloor(1)!);
     expect(ascii).toContain("@");
-    expect(ascii).toContain("The Flooded Crypt");
+    expect(ascii).toContain("The Proving Depths");
     expect(ascii).toContain("crypt-key");
   });
 });
 
 describe("floor-validate", () => {
   it("campaign floors have no errors", () => {
-    for (const floor of FLOORS) {
+    for (const floor of getFloors()) {
       const issues = validateFloorDef(floor);
       const errors = issues.filter((i) => i.severity === "error");
       expect(errors, `floor ${floor.id}: ${errors.map((e) => e.message).join("; ")}`).toEqual([]);

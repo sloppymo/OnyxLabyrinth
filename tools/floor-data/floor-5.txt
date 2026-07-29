@@ -1,0 +1,46 @@
+# The Weeping Cistern (id=5, 18x18)
+# start=(2,2) encounter=0.145
+# . floor  # solid  @ start  ^v stairs  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic
+
+   012345678901234567
+ 0 ##################
+ 1 #...###.....T.####
+ 2 #.@.....~.!...####
+ 3 #.!.###.......####
+ 4 ##.####..!...T####
+ 5 #....####.########
+ 6 #.!.T####.########
+ 7 #.N..###...#######
+ 8 #..!.###...#######
+ 9 #....####!########
+10 ######.........T##
+11 ######.....D....##
+12 ######...!.D....##
+13 ######.T.....~~.##
+14 ######.........P##
+15 ###########!######
+16 ##########......##
+17 ##########....T.##
+
+# Overlays:
+#   lock (9,8) s key=sluice-key
+#   lock (11,14) s key=undersong-key
+#   treasure (12,1) items=[sluice-key, healing-potion] trap=gas
+#   treasure (13,4) items=[great-sword+1, antidote] trap=alarm
+#   treasure (4,6) items=[plate-mail+1, healing-potion]
+#   treasure (15,10) items=[undersong-key, healing-potion] trap=stunner
+#   treasure (7,13) items=[bow+3, focus-ward, healing-potion] trap=poison
+#   treasure (14,17) items=[voidblade+4, dragonscale-mail+4, healing-potion, healing-potion] trap=teleporter
+#   water (8,2) depth=1
+#   water (13,13) depth=2
+#   water (14,13) depth=2
+#   npc (2,7) id=ossian name=Ossian
+#   event (2,3) kind=message
+#   event (2,6) kind=message
+#   event (3,8) kind=reward
+#   event (10,2) kind=damage
+#   event (9,4) kind=message
+#   event (9,9) kind=damage
+#   event (9,12) kind=heal
+#   event (11,15) kind=message
+#   teleporter (15,14) -> floor 5 (3,6)

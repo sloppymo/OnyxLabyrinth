@@ -10,7 +10,6 @@
 
 import { writeFileSync, mkdirSync, readFileSync } from "fs";
 import { join } from "path";
-import { FLOORS } from "../src/data/floors";
 import { getFloors } from "../src/game/floor-registry";
 import { floorDefToMap, parseFloorMapJSON, mapToFloorDef } from "../src/game/floor-map";
 import { floorToAscii } from "../src/game/floor-ascii";
@@ -73,14 +72,14 @@ function runDump(): void {
 function runExportAll(): void {
   const outDir = opt("out") ?? "tools/floor-data";
   mkdirSync(outDir, { recursive: true });
-  for (const floor of FLOORS) {
+  for (const floor of getFloors()) {
     const map = floorDefToMap(floor);
     const base = `floor-${floor.id}`;
     writeFileSync(join(outDir, `${base}.json`), JSON.stringify(map, null, 2));
     writeFileSync(join(outDir, `${base}.txt`), floorToAscii(floor));
     console.log(`Wrote ${base}.json and ${base}.txt`);
   }
-  console.log(`Exported ${FLOORS.length} floors to ${outDir}`);
+  console.log(`Exported ${getFloors().length} floors to ${outDir}`);
 }
 
 function runCheckImport(): void {

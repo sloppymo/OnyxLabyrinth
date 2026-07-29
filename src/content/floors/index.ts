@@ -4,14 +4,15 @@
  * Drop a FloorMapJSON export into this folder and import it below, then it
  * appears in FLOORS after the campaign maps.
  *
- * Example:
- *   import floor4 from "./floor-4.json";
- *   export const EXTRA_FLOOR_MAPS = [floor4];
+ * floor-1.json ("The Proving Depths") replaces the hand-carved tutorial crypt.
+ * floor-4.json ("The Null Choir") is the campaign's fourth floor.
+ * floor-5.json ("The Weeping Cistern") is the campaign's fifth floor.
  */
 
 import type { FloorMapJSON } from "../../game/floor-map";
 import { mapToFloorDef, parseFloorMapJSON } from "../../game/floor-map";
 import type { FloorDef } from "../../data/floors";
+import floor1 from "./floor-1.json";
 import floor4 from "./floor-4.json";
 import floor5 from "./floor-5.json";
 
@@ -32,6 +33,7 @@ import floor5 from "./floor-5.json";
  * via the editor's Playtest Floor button or `?debug=1` registerFloorMap.
  */
 export const EXTRA_FLOOR_MAPS: FloorMapJSON[] = [
+  floor1 as unknown as FloorMapJSON,
   floor4 as unknown as FloorMapJSON,
   floor5 as unknown as FloorMapJSON,
 ];

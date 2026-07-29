@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { FLOORS, type FloorDef } from "../data/floors";
+import { getFloors, findFloor } from "./floor-registry";
 import {
   floorDefToMap,
   mapToFloorDef,
@@ -8,7 +9,6 @@ import {
   type FloorMapJSON,
 } from "./floor-map";
 import { validateFloorMap, validateFloorDef } from "./floor-validate";
-import { getFloors } from "./floor-registry";
 import { carveRoom, setTile, setEdge } from "./dungeon";
 import demoFloorRaw from "../content/floors/floor-4-demo.json";
 
@@ -31,11 +31,13 @@ function codes(floor: FloorDef): string[] {
 
 describe("floor-validate content checks", () => {
   it("campaign floors validate with zero errors and zero warnings", () => {
-    // Registry context so floor 3's stairs_down resolves to the floor-4 pack.
-    for (const floor of FLOORS) {
-      const issues = validateFloorDef(floor, { floors: getFloors() }).filter(
-        (i) => i.severity !== "info"
-      );
+    for (const floor of getFloors()) {
+      const issues = validateFloorDef(floor, { floors: getFloors() }).filter((i) => {
+        if (i.severity === "info") return false;
+        // Floor 1 satellite pockets are teleporter-only; unreachable-from-start is expected.
+        if (floor.id === 1 && i.code === "unreachable") return false;
+        return true;
+      });
       expect(issues, `floor ${floor.id}: ${issues.map((e) => e.message).join("; ")}`).toEqual([]);
     }
   });
@@ -133,7 +135,7 @@ describe("floor-validate content checks", () => {
 
   it("does not warn when the key sits in another known floor's chest", () => {
     // lexicon-key is chested on campaign floor 1 and unlocks floor 2.
-    const floor2 = FLOORS[1];
+    const floor2 = findFloor(2)!;
     const issues = validateFloorDef(floor2);
     expect(issues.map((i) => i.code)).not.toContain("lock_key_offmap");
   });

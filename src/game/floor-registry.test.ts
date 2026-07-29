@@ -13,7 +13,7 @@ describe("floor-registry", () => {
   });
 
   it("findFloor resolves campaign floors and misses unknown ids", () => {
-    expect(findFloor(2)?.name).toBe(FLOORS[1].name);
+    expect(findFloor(2)?.name).toBe(FLOORS[0].name);
     expect(findFloor(77)).toBeUndefined();
   });
 
@@ -27,7 +27,7 @@ describe("floor-registry", () => {
   });
 
   it("hot-registering an existing id replaces it (playtest flow)", () => {
-    const replacement = floorDefToMap(FLOORS[0]);
+    const replacement = floorDefToMap(findFloor(1)!);
     replacement.name = "Modded Crypt";
     const registered = registerFloorMap(replacement);
     expect(registered.name).toBe("Modded Crypt");

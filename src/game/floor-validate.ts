@@ -6,7 +6,8 @@
  * src/data/floors.test.ts so custom packs get the same guarantees.
  */
 
-import { FLOORS, type FloorDef } from "../data/floors";
+import { type FloorDef } from "../data/floors";
+import { getFloors } from "./floor-registry";
 import { MAP_SPRITES_BY_ID } from "../data/map-sprites";
 import { ITEMS_BY_ID } from "../data/items";
 import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
@@ -47,7 +48,7 @@ export interface ValidateContext {
   /**
    * Floors that will exist at runtime alongside this map (campaign floors +
    * the rest of the content pack). Used to verify teleporter/chute targets
-   * and stairs. Defaults to the campaign FLOORS; the map being validated
+   * and stairs. Defaults to the runtime floor list from floor-registry.
    * always shadows the same id.
    */
   floors?: readonly FloorDef[];
@@ -96,14 +97,14 @@ export function validateFloorMap(
 
   validateSymmetricEdges(map, issues);
   validateOverlayTiles(map, issues);
-  validateLockedDoors(map, issues, context?.floors ?? FLOORS);
+  validateLockedDoors(map, issues, context?.floors ?? getFloors());
   validateLockedEdgeCoverage(map, issues);
   validateReachability(map, issues);
   validateDuplicateOverlays(map, issues);
   validateItemRefs(map, issues);
   validateNpcRefs(map, issues);
-  validateFloorLinks(map, issues, context?.floors ?? FLOORS);
-  validateStairsTargets(map, issues, context?.floors ?? FLOORS);
+  validateFloorLinks(map, issues, context?.floors ?? getFloors());
+  validateStairsTargets(map, issues, context?.floors ?? getFloors());
   validateEncounterConfig(map, issues);
 
   return issues;

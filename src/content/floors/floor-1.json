@@ -5040,15 +5040,15 @@
         },
         {
           "key": "echo",
-          "response": "…so the whispers reach even this floor? Pray you never meet the boy they talk about.",
-          "hidden": true
+          "hidden": true,
+          "response": "…so the whispers reach even this floor? Pray you never meet the boy they talk about."
         }
       ],
+      "wantsItemId": "healing-potion",
+      "rewardItemId": "long-sword+1",
       "combatEnemyIds": [
         "ironclad-knight"
-      ],
-      "wantsItemId": "healing-potion",
-      "rewardItemId": "long-sword+1"
+      ]
     },
     {
       "id": "voss",

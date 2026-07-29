@@ -1,31 +1,62 @@
-# The Flooded Crypt (id=1, 12x12)
-# start=(5,9) encounter=0.08
+# The Proving Depths (id=1, 25x32)
+# start=(2,22) encounter=0.08
 # . floor  # solid  @ start  ^v stairs  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic
 
-   012345678901
- 0 ############
- 1 ##..!v..####
- 2 ##......####
- 3 ##!#########
- 4 #!~.###....#
- 5 #.TT...~DD.#
- 6 #..N#.#...~#
- 7 #####!###.##
- 8 ####....#..#
- 9 ####.@..#.T#
-10 ####....####
-11 ############
+   0123456789012345678901234
+ 0 #########################
+ 1 ####v.............#######
+ 2 ####.##............######
+ 3 ####...............######
+ 4 ####...............######
+ 5 ####.........N.....######
+ 6 ####....N.....#N...######
+ 7 ####..##......#...#...##.
+ 8 ####...#..!...#.....T....
+ 9 ####...#..#T..........#..
+10 ####...#...#....!..##....
+11 ####.#.#.#...........N.#.
+12 ####..............PN.....
+13 ##.##..............!#...#
+14 #..#..#...!.........#....
+15 #..#.....................
+16 #........................
+17 #.................#....##
+18 #.##..............#######
+19 #.#.###....##############
+20 #...#..#..###.....#######
+21 #......######.....#######
+22 #.@#T..######.!#..#######
+23 #......!.T#.......#######
+24 ####.##.#####.....#######
+25 #############..#..#######
+26 #############.P...#......
+27 #############.....#......
+28 #############.!...#...P..
+29 #############.P...#......
+30 #############..!..#......
+31 #########################
 
 # Overlays:
-#   lock (9,7) s key=crypt-key
-#   treasure (3,5) items=[healing-potion, healing-potion, crypt-key]
-#   treasure (2,5) items=[antidote, healing-potion] trap=poison
-#   treasure (10,9) items=[short-sword+1, leather, healing-potion, lexicon-key] trap=gas
-#   water (7,5) depth=1
-#   water (2,4) depth=2
-#   water (10,6) depth=4
-#   npc (3,6) id=maro name=Maro
-#   event (5,7) kind=message
-#   event (2,3) kind=damage
-#   event (1,4) kind=reward
-#   event (4,1) kind=heal
+#   lock (6,5) e key=crypt-key
+#   lock (6,23) n key=brass-key
+#   treasure (20,8) items=[crypt-key, healing-potion]
+#   treasure (4,22) items=[brass-key, antidote] trap=poison
+#   treasure (9,23) items=[lexicon-key, short-sword+1, healing-potion] trap=gas
+#   treasure (11,9) items=[warden-sphere]
+#   npc (8,6) id=maro name=Maro
+#   npc (13,5) id=voss name=Voss
+#   npc (15,6) id=cauldron name=The Cauldron
+#   npc (19,12) id=colossus name=The Shackled Colossus
+#   npc (21,11) id=lowing-saint name=The Lowing Saint
+#   event (10,8) kind=message
+#   event (14,22) kind=message
+#   event (16,10) kind=message
+#   event (7,23) kind=damage
+#   event (15,30) kind=message
+#   event (10,14) kind=message
+#   event (14,28) kind=message
+#   event (19,13) kind=damage
+#   teleporter (18,12) -> floor 1 (22,28)
+#   teleporter (22,28) -> floor 1 (18,12)
+#   teleporter (14,26) -> floor 1 (14,29)
+#   teleporter (14,29) -> floor 1 (14,26)
