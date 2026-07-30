@@ -17,6 +17,7 @@ import { createCombatState, type CombatState, type EnemyInstance } from "../game
 import { createCharacter, type Character } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
 import { MAGE_SPELLS } from "../data/spells";
+import { HEALING_POTION } from "../data/items";
 
 function makeEnemy(instanceId: string, name = "Test Rat"): EnemyInstance {
   const def = {
@@ -215,6 +216,22 @@ describe("renderCombatWindows", () => {
     expect(container.querySelector(".ff6-popup-header")?.textContent).toContain("RG 3/12");
     const disabled = container.querySelector(".ff6-palette-slot.disabled");
     expect(disabled?.textContent).toContain("Magic");
+    // Empty inventory → Item affordance greyed in the hint row.
+    const itemHint = container.querySelector(".ff6-hint-affordance.disabled");
+    expect(itemHint?.textContent).toMatch(/Item/);
+  });
+
+  it("keeps Item hint live when consumables remain", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    const fighter = state.party[0];
+    const view = baseView(state);
+    view.menuMode = "palette";
+    view.palette = buildPalette(fighter, [], [
+      { item: HEALING_POTION, count: 1 },
+    ]);
+    renderCombatWindows(container, view, noopHandlers());
+    expect(container.querySelector(".ff6-hint-affordance.disabled")).toBeNull();
+    expect(container.querySelector(".ff6-hint-affordance")?.textContent).toMatch(/Item/);
   });
 
   it("puts full spell description on title when the detail pane clamps", () => {

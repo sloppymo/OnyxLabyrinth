@@ -115,4 +115,18 @@ describe("buildPalette", () => {
     const p = buildPalette(makeChar("Mage"), utilityOnly, items);
     expect(findSlot(p, "cast")).toEqual({ kind: "cast", disabled: true });
   });
+
+  it("disables the Item (Select) affordance when inventory is empty", () => {
+    const empty = buildPalette(makeChar("Fighter"), [], []);
+    expect(empty.itemDisabled).toBe(true);
+    const zeroCount = buildPalette(makeChar("Fighter"), [], [
+      { item: HEALING_POTION, count: 0 },
+    ]);
+    expect(zeroCount.itemDisabled).toBe(true);
+  });
+
+  it("keeps Item enabled when consumables remain", () => {
+    const p = buildPalette(makeChar("Fighter"), [], items);
+    expect(p.itemDisabled).toBe(false);
+  });
 });

@@ -2471,8 +2471,22 @@ canvas#map-canvas {
 }
 
 .ff6-palette-slot.disabled {
-  opacity: 0.45;
+  opacity: 0.32;
+  filter: grayscale(0.65);
+  color: #8890b8;
   cursor: default;
+  pointer-events: none;
+}
+
+.ff6-palette-slot.disabled .ff6-palette-glyph {
+  color: #6a7088;
+  opacity: 0.5;
+}
+
+.ff6-hint-affordance.disabled {
+  opacity: 0.35;
+  color: #8890b8;
+  filter: grayscale(0.5);
 }
 
 /* Glyph is now a small accent badge — the action label is the readable

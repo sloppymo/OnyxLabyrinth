@@ -12,7 +12,9 @@ export type PaletteSlot =
 
 export interface CombatPalette {
   slots: PaletteSlot[];
+  /** Select opens the item menu; greyed when no consumables remain. */
   itemButton: "select";
+  itemDisabled: boolean;
   autoButton: "start";
 }
 
@@ -25,7 +27,7 @@ export interface CombatPalette {
  *   cheapest known spell.
  * - Skill is never disabled: every class gets Analyze, with techniques
  *   (melee) or Hide/Ambush (Thief) listed above it.
- * - Items are not a face slot; they are opened with the Select button.
+ * - Items are opened with the Select button (`itemDisabled` when empty).
  */
 export function buildPalette(
   c: Character,
@@ -53,10 +55,10 @@ export function buildPalette(
   // above it for the classes that have them.
   const skillDisabled = false;
 
-  // `items` is accepted so future cost/durability checks can live here, but
-  // for now the item button is always available and merely opens the item menu.
-  // `c` is likewise currently unused — the skill slot no longer checks class.
-  void items;
+  const itemDisabled =
+    items.length === 0 || items.every((entry) => entry.count <= 0);
+
+  // `c` / `currentRage` unused here — skill slot no longer checks class.
   void c;
   void options?.currentRage;
 
@@ -70,6 +72,7 @@ export function buildPalette(
   return {
     slots,
     itemButton: "select",
+    itemDisabled,
     autoButton: "start",
   };
 }

@@ -169,7 +169,9 @@ export function paletteHintText(
   partyAuto: boolean,
   inputKind: "keyboard" | "gamepad" = "gamepad"
 ): string {
-  void palette;
+  // Plain-string form for FOOTER_HINT_PRODUCERS / length tests. Rendering
+  // uses buildPaletteHintRow so Item can carry a disabled class.
+  void palette.itemDisabled;
   // Menu column is ~26% of the playfield (~170px usable). At 16px FF36 that
   // is ~22–24 glyphs — NOT the default joinHintParts budget of 42. Without a
   // tight maxLen, CSS overflow:hidden clips mid-token ("Start:A").
@@ -183,6 +185,31 @@ export function paletteHintText(
     ["Sel:Item", "hold B:Run", "Start:Auto", partyAuto ? "AUTO on" : ""],
     24
   );
+}
+
+/** Rich palette footer — Item affordance greys when inventory is empty. */
+export function buildPaletteHintRow(
+  palette: CombatPalette,
+  partyAuto: boolean,
+  inputKind: "keyboard" | "gamepad" = "gamepad"
+): HTMLElement {
+  const row = el("ff6-hint-row");
+  const itemLabel = inputKind === "keyboard" ? "I:Item" : "Sel:Item";
+  const itemSpan = document.createElement("span");
+  itemSpan.className = "ff6-hint-affordance";
+  if (palette.itemDisabled) itemSpan.classList.add("disabled");
+  itemSpan.textContent = itemLabel;
+  row.appendChild(itemSpan);
+
+  const rest =
+    inputKind === "keyboard"
+      ? ["R:Run", "Q:Auto", partyAuto ? "AUTO on" : ""]
+      : ["hold B:Run", "Start:Auto", partyAuto ? "AUTO on" : ""];
+  const restText = joinHintParts(rest, 16);
+  if (restText) {
+    row.appendChild(document.createTextNode(` · ${restText}`));
+  }
+  return row;
 }
 
 /** Playback meta hints — input-adaptive; never clip mid-token.
@@ -350,9 +377,10 @@ function buildCommandPopup(
     // Resource lives in the popup header only — a second SP/RG line under
     // the face buttons read as a layout leftover when identical.
     win.appendChild(
-      el(
-        "ff6-hint-row",
-        paletteHintText(view.palette, view.partyAuto ?? false, view.inputKind ?? "gamepad")
+      buildPaletteHintRow(
+        view.palette,
+        view.partyAuto ?? false,
+        view.inputKind ?? "gamepad"
       )
     );
   } else if (view.menuMode === "menu") {

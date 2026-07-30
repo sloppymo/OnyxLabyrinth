@@ -136,6 +136,7 @@ describe("CombatController input routing", () => {
         { kind: "skill", disabled: false },
       ],
       itemButton: "select",
+      itemDisabled: false,
       autoButton: "start",
     };
     c.pending = null;
@@ -164,6 +165,7 @@ describe("CombatController input routing", () => {
         { kind: "skill", disabled: false },
       ],
       itemButton: "select",
+      itemDisabled: false,
       autoButton: "start",
     };
     c.pending = null;
@@ -199,6 +201,7 @@ describe("CombatController input routing", () => {
         { kind: "skill", disabled: false },
       ],
       itemButton: "select",
+      itemDisabled: false,
       autoButton: "start",
     };
     c.pending = null;
@@ -285,6 +288,7 @@ describe("CombatController input routing", () => {
         { kind: "skill", disabled: false },
       ],
       itemButton: "select",
+      itemDisabled: false,
       autoButton: "start",
     };
     c.pending = null;
@@ -339,6 +343,7 @@ describe("CombatController input routing", () => {
         { kind: "skill", disabled: false },
       ],
       itemButton: "select",
+      itemDisabled: false,
       autoButton: "start",
     };
 
@@ -447,6 +452,7 @@ describe("CombatController input routing", () => {
         { kind: "skill", disabled: false },
       ],
       itemButton: "select",
+      itemDisabled: false,
       autoButton: "start",
     };
     c.lastCommandByActor.set("c0", {
@@ -559,6 +565,7 @@ describe("CombatController input routing", () => {
         { kind: "skill", disabled: false },
       ],
       itemButton: "select",
+      itemDisabled: false,
       autoButton: "start",
     };
 
@@ -592,6 +599,7 @@ describe("CombatController input routing", () => {
         { kind: "skill", disabled: true },
       ],
       itemButton: "select",
+      itemDisabled: false,
       autoButton: "start",
     };
 
