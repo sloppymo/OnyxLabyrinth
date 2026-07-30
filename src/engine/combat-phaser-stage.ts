@@ -20,7 +20,6 @@ import {
   absorbDeaths,
   skipPlaybackToEnd,
   setBossIntroNameplate,
-  partyPos,
   enemyPos,
   allyPos,
   animOffset,
@@ -38,7 +37,6 @@ import {
   PARTY_SIZE,
   ENEMY_SIZE,
   BOSS_SIZE,
-  ANIM_SPEED,
   POPUP_DURATION,
   BARK_MAX_WIDTH_PX,
   BOSS_PRESENTATION,
@@ -59,6 +57,7 @@ import {
   COMBAT_DESIGN_H,
   resolveSlot,
   enemySlot,
+  partySlot,
   geometryForBackdrop,
   type ResolvedSlot,
 } from "./combat-scene-math";
@@ -95,11 +94,11 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private glowGraphics: Phaser.GameObjects.Graphics | null = null;
   private bgImage: Phaser.GameObjects.Image | null = null;
   private bannerText: Phaser.GameObjects.Text | null = null;
-  private bannerBg: Phaser.GameObjects.Rectangle | null = null;
+  private bannerBg: Phaser.GameObjects.Graphics | null = null;
   private nameplateText: Phaser.GameObjects.Text | null = null;
   private nameplateTag: Phaser.GameObjects.Text | null = null;
   private nameplateSub: Phaser.GameObjects.Text | null = null;
-  private nameplateBg: Phaser.GameObjects.Rectangle | null = null;
+  private nameplateBg: Phaser.GameObjects.Graphics | null = null;
   private cursorMark: Phaser.GameObjects.Triangle | null = null;
   private activeMark: Phaser.GameObjects.Triangle | null = null;
   private fastCue: Phaser.GameObjects.Text | null = null;
@@ -114,11 +113,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#0d0b08");
     this.glowGraphics = this.add.graphics().setDepth(-50);
     this.pipGfx = this.add.graphics().setDepth(500);
-    this.bannerBg = this.add
-      .rectangle(0, 0, 220, 42, 0x3048b0)
-      .setStrokeStyle(3, 0xe8e8f0)
-      .setDepth(900)
-      .setVisible(false);
+    this.bannerBg = this.add.graphics().setDepth(900).setVisible(false);
     this.bannerText = this.add
       .text(0, 0, "", {
         fontFamily: "FF36, monospace",
@@ -128,11 +123,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(901)
       .setVisible(false);
-    this.nameplateBg = this.add
-      .rectangle(0, 0, 300, 64, 0x101c58)
-      .setStrokeStyle(3, 0xe07070)
-      .setDepth(910)
-      .setVisible(false);
+    this.nameplateBg = this.add.graphics().setDepth(910).setVisible(false);
     this.nameplateTag = this.add
       .text(0, 0, "", {
         fontFamily: "FF36, monospace",
@@ -199,6 +190,97 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     this.ensureFightTextures(scene);
   }
 
+  /** Debug: live actor centers/feet for ground-plane A/B. */
+  debugActorLayout(): Array<{
+    key: string;
+    kind: ActorKind;
+    x: number;
+    centerY: number;
+    footY: number;
+    h: number;
+    tex: string | null;
+  }> {
+    const out: Array<{
+      key: string;
+      kind: ActorKind;
+      x: number;
+      centerY: number;
+      footY: number;
+      h: number;
+      tex: string | null;
+    }> = [];
+    for (const entry of this.actors.values()) {
+      if (!entry.sprite.visible) continue;
+      const h = entry.sprite.displayHeight;
+      const centerY = entry.sprite.y;
+      // Reconstruct foot from center assuming artFoot 0.57 for strips;
+      // shadow.y is a better oracle (planted at foot − bias).
+      const footFromShadow = entry.shadow.y + entry.shadow.displayHeight * 0.175;
+      out.push({
+        key: entry.key,
+        kind: entry.kind,
+        x: Math.round(entry.sprite.x),
+        centerY: Math.round(centerY),
+        footY: Math.round(footFromShadow),
+        h: Math.round(h),
+        tex:
+          entry.sprite instanceof Phaser.GameObjects.Sprite
+            ? entry.sprite.texture.key
+            : null,
+      });
+    }
+    return out.sort((a, b) => a.footY - b.footY);
+  }
+
+  /** Defensive NEAREST after HTMLImageElement sheets (game config pixelArt alone can miss). */
+  private assertNearest(key: string): void {
+    if (!this.textures.exists(key)) return;
+    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+  }
+
+  private ensureSpriteSheet(
+    key: string,
+    img: HTMLImageElement,
+    frameWidth: number,
+    frameHeight: number
+  ): void {
+    if (this.textures.exists(key)) {
+      this.assertNearest(key);
+      return;
+    }
+    try {
+      this.textures.addSpriteSheet(key, img, { frameWidth, frameHeight });
+      this.assertNearest(key);
+    } catch {
+      /* duplicate / incomplete */
+    }
+  }
+
+  /**
+   * Mirror canvas `drawFF6Window`: vertical #3048b0→#101c58 gradient, dual stroke.
+   * Optional accent rim matches canvas intro nameplate (stroke outside the plate).
+   */
+  private drawFf6Window(
+    g: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    accentRim?: number
+  ): void {
+    g.clear();
+    if (accentRim !== undefined) {
+      g.lineStyle(3, accentRim, 1);
+      g.strokeRect(x - 1, y - 1, w + 2, h + 2);
+    }
+    g.fillGradientStyle(0x3048b0, 0x3048b0, 0x101c58, 0x101c58, 1);
+    g.fillRoundedRect(x, y, w, h, 6);
+    g.lineStyle(3, 0xe8e8f0, 1);
+    g.strokeRoundedRect(x, y, w, h, 6);
+    g.lineStyle(1, 0x5068c8, 1);
+    g.strokeRoundedRect(x, y, w, h, 6);
+  }
+
   private ensureFightTextures(scene: CombatScene): void {
     for (const e of [...scene.state.enemies.front, ...scene.state.enemies.back]) {
       void loadEnemySpriteBundle(e.id);
@@ -211,34 +293,24 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       for (const st of ["idle", "attacking", "hit", "defeated"] as const) {
         const info = getEnemySpriteStrip(e.id, st);
         if (!info?.img || info.img.naturalWidth <= 0) continue;
-        const key = `enemy:${e.id}:${st}`;
-        if (!this.textures.exists(key)) {
-          try {
-            this.textures.addSpriteSheet(key, info.img, {
-              frameWidth: info.strip.frameWidth,
-              frameHeight: info.strip.frameHeight,
-            });
-          } catch {
-            /* duplicate / incomplete */
-          }
-        }
+        this.ensureSpriteSheet(
+          `enemy:${e.id}:${st}`,
+          info.img,
+          info.strip.frameWidth,
+          info.strip.frameHeight
+        );
       }
     }
     for (const c of scene.state.party) {
       for (const st of ["idle", "walk", "attack", "attack_ranged", "cast", "hurt", "death"] as const) {
         const info = getPartySpriteStrip(c.class, st);
         if (!info?.img || info.img.naturalWidth <= 0) continue;
-        const key = `party:${c.class}:${st}`;
-        if (!this.textures.exists(key)) {
-          try {
-            this.textures.addSpriteSheet(key, info.img, {
-              frameWidth: info.strip.frameWidth,
-              frameHeight: info.strip.frameHeight,
-            });
-          } catch {
-            /* ignore */
-          }
-        }
+        this.ensureSpriteSheet(
+          `party:${c.class}:${st}`,
+          info.img,
+          info.strip.frameWidth,
+          info.strip.frameHeight
+        );
       }
     }
     for (const a of [...scene.state.summonedAllies, ...scene.allyCorpses]) {
@@ -247,17 +319,12 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       for (const st of ["idle", "attacking", "hit", "defeated"] as const) {
         const info = getEnemySpriteStrip(a.spriteId, st);
         if (!info?.img || info.img.naturalWidth <= 0) continue;
-        const key = `enemy:${a.spriteId}:${st}`;
-        if (!this.textures.exists(key)) {
-          try {
-            this.textures.addSpriteSheet(key, info.img, {
-              frameWidth: info.strip.frameWidth,
-              frameHeight: info.strip.frameHeight,
-            });
-          } catch {
-            /* ignore */
-          }
-        }
+        this.ensureSpriteSheet(
+          `enemy:${a.spriteId}:${st}`,
+          info.img,
+          info.strip.frameWidth,
+          info.strip.frameHeight
+        );
       }
     }
     // Backdrop canvas → texture (once). Re-remove/re-add every paint
@@ -296,7 +363,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     this.syncBarks(scene, now, w, h);
     this.syncBanner(scene, now, w);
     this.syncNameplate(scene, now, w);
-    this.syncMarkers(scene, now, w, h);
+    this.syncMarkers(scene, now);
     this.syncCues(scene);
     this.syncHpPips(scene, now, w, h);
   }
@@ -379,7 +446,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       const c = s.party[i]!;
       const key = this.actorPoolKey("party", c.id);
       seen.add(key);
-      this.upsertParty(key, c, i, scene, now, w, h);
+      this.upsertParty(key, c, i, scene, now, w);
     }
 
     for (const [key, entry] of this.actors) {
@@ -427,7 +494,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       entry.shadow.destroy();
     }
     const shadow = this.add.ellipse(0, 0, 40, 12, 0x000000, 0.4).setDepth(0);
-    const sprite = this.add.sprite(0, 0, texKey).setDepth(1);
+    // Origin (0.5, 0.5): position at ResolvedSlot.centerY — same contract as
+    // canvas drawStripFrame(ctx, …, x, centerY, size). Never position at drawY
+    // (frame top); that floats the whole formation ~½ sprite-height upward.
+    const sprite = this.add.sprite(0, 0, texKey).setOrigin(0.5, 0.5).setDepth(1);
     entry = { key, kind, sprite, shadow, isFallback: false };
     this.actors.set(key, entry);
     return entry;
@@ -467,6 +537,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     );
     const off = animOffset(anim, now);
     const x = pos.x + off.x;
+    const y = pos.y + off.y;
     const footY = pos.footY + off.y;
     const drawSize = baseSize * pos.scale;
 
@@ -481,8 +552,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
 
     entry.sprite.setVisible(true);
     entry.shadow.setVisible(true);
-    entry.shadow.setPosition(x, footY - 4);
-    entry.shadow.setDisplaySize(drawSize * 0.5, drawSize * 0.12);
+    // Match canvas drawContactShadow: ellipse centered slightly above footY.
+    const shadowRx = Math.max(8, drawSize * 0.45 * 0.28);
+    entry.shadow.setPosition(x, footY - shadowRx * 0.28 * 0.35);
+    entry.shadow.setDisplaySize(shadowRx * 2, shadowRx * 0.56);
     entry.shadow.setDepth(footY - 0.5);
     entry.sprite.setAlpha(anim.opacity);
     entry.sprite.setDepth(footY);
@@ -505,15 +578,15 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       }
       entry.sprite.setFrame(frame);
       entry.sprite.setDisplaySize(drawSize, drawSize);
-      // Sprite origin center; canvas draws with foot at footY and center at y.
-      entry.sprite.setPosition(x, footY - drawSize * artFoot);
+      // Center at ResolvedSlot.centerY (pos.y) — canvas drawStripFrame contract.
+      entry.sprite.setPosition(x, y);
       entry.sprite.setFlipX(false);
       if (enemy.status.includes("poison")) entry.sprite.setTint(0x3cbe50);
       else if ((scene.state.enemyDots[enemy.instanceId]?.length ?? 0) > 0)
         entry.sprite.setTint(0xff8228);
       else entry.sprite.clearTint();
     } else {
-      entry.sprite.setPosition(x, footY - drawSize * 0.45);
+      entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
         entry.sprite.setDisplaySize(drawSize * 0.55, drawSize * 0.7);
       }
@@ -541,6 +614,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const pos = allyPos(index, w, h, scene.backdropId);
     const off = animOffset(anim, now);
     const x = pos.x + off.x;
+    const y = pos.y + off.y;
     const footY = pos.footY + off.y;
     const drawSize = ENEMY_SIZE * pos.scale;
     const stripState = enemyStripState(anim.state);
@@ -558,8 +632,9 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     }
     entry.sprite.setVisible(true);
     entry.shadow.setVisible(true);
-    entry.shadow.setPosition(x, footY - 4);
-    entry.shadow.setDisplaySize(drawSize * 0.45, drawSize * 0.1);
+    const shadowRx = Math.max(8, drawSize * 0.45 * 0.28);
+    entry.shadow.setPosition(x, footY - shadowRx * 0.28 * 0.35);
+    entry.shadow.setDisplaySize(shadowRx * 2, shadowRx * 0.56);
     entry.shadow.setDepth(footY - 0.5);
     entry.sprite.setAlpha(anim.opacity);
     entry.sprite.setDepth(footY);
@@ -574,13 +649,9 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           : frameIndexFor(stripInfo.strip, stateAge);
       entry.sprite.setFrame(frame);
       entry.sprite.setDisplaySize(drawSize, drawSize);
-      const artFoot = artFootFromTopFor({
-        hasStrip: true,
-        stripArtFootFromTop: stripInfo.strip.artFootFromTop,
-      });
-      entry.sprite.setPosition(x, footY - drawSize * artFoot);
+      entry.sprite.setPosition(x, y);
     } else {
-      entry.sprite.setPosition(x, footY - drawSize * 0.4);
+      entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
         entry.sprite.setDisplaySize(drawSize * 0.4, drawSize * 0.4);
       }
@@ -593,18 +664,29 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     index: number,
     scene: CombatScene,
     now: number,
-    w: number,
-    h: number
+    w: number
   ): void {
     const anim = getAnim(scene, "party", char.id, now);
     const isDead = char.hp <= 0 || char.status.includes("knockedOut");
-    const pos = partyPos(index, w, h, scene.backdropId);
-    const off = animOffset(anim, now);
-    const x = pos.x + off.x;
-    const footY = pos.footY + off.y;
-    const drawSize = PARTY_SIZE * pos.scale;
     const stripInfo = getPartySpriteStrip(char.class, anim.state);
     const hasStrip = !!(stripInfo?.img && stripInfo.img.naturalWidth > 0);
+    const artFoot = artFootFromTopFor({
+      hasStrip,
+      stripArtFootFromTop: stripInfo?.strip.artFootFromTop,
+    });
+    // Mirror canvas drawPartyMember: resolve with strip-specific artFoot.
+    const pos = toScreenFromResolve(
+      resolveSlot(partySlot(index), geometryForBackdrop(scene.backdropId), {
+        spriteHeight: PARTY_SIZE,
+        canvasWidth: w,
+        artFootFromTop: artFoot,
+      })
+    );
+    const off = animOffset(anim, now);
+    const x = pos.x + off.x;
+    const y = pos.y + off.y;
+    const footY = pos.footY + off.y;
+    const drawSize = PARTY_SIZE * pos.scale;
     const texKey = `party:${char.class}:${anim.state}`;
     let entry = hasStrip ? this.ensureStripSprite(key, "party", texKey) : null;
     if (!entry) {
@@ -623,8 +705,9 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const opacity = (hidden ? 0.35 : 1) * anim.opacity * (isDead ? 0.85 : 1);
     entry.sprite.setVisible(true);
     entry.shadow.setVisible(!isDead);
-    entry.shadow.setPosition(x, footY - 4);
-    entry.shadow.setDisplaySize(drawSize * 0.45, drawSize * 0.1);
+    const shadowRx = Math.max(8, drawSize * 0.45 * 0.28);
+    entry.shadow.setPosition(x, footY - shadowRx * 0.28 * 0.35);
+    entry.shadow.setDisplaySize(shadowRx * 2, shadowRx * 0.56);
     entry.shadow.setDepth(footY - 0.5);
     entry.sprite.setAlpha(opacity);
     entry.sprite.setDepth(footY);
@@ -638,16 +721,12 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           : frameIndexFor(stripInfo.strip, stateAge);
       entry.sprite.setFrame(frame);
       entry.sprite.setDisplaySize(drawSize, drawSize);
-      const artFoot = artFootFromTopFor({
-        hasStrip: true,
-        stripArtFootFromTop: stripInfo.strip.artFootFromTop,
-      });
-      entry.sprite.setPosition(x, footY - drawSize * artFoot);
+      entry.sprite.setPosition(x, y);
       entry.sprite.setFlipX(true);
       if (char.status.includes("poison")) entry.sprite.setTint(0x3cbe50);
       else entry.sprite.clearTint();
     } else {
-      entry.sprite.setPosition(x, footY - drawSize * 0.45);
+      entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
         entry.sprite.setDisplaySize(drawSize * 0.4, drawSize * 0.65);
       }
@@ -687,16 +766,12 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         const sprite = getEffectSprite(effect.effect);
         if (sprite?.img && sprite.img.naturalWidth > 0) {
           const texKey = `effect:${effect.effect}`;
-          if (!this.textures.exists(texKey)) {
-            try {
-              this.textures.addSpriteSheet(texKey, sprite.img, {
-                frameWidth: sprite.strip.frameWidth,
-                frameHeight: sprite.strip.frameHeight,
-              });
-            } catch {
-              /* ignore */
-            }
-          }
+          this.ensureSpriteSheet(
+            texKey,
+            sprite.img,
+            sprite.strip.frameWidth,
+            sprite.strip.frameHeight
+          );
           if (this.textures.exists(texKey)) {
             const frame = effectFrame(sprite, effect.start, now, effect.type);
             const go = this.add
@@ -861,7 +936,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     if (!this.bannerText || !this.bannerBg) return;
     if (!scene.banner) {
       this.bannerText.setVisible(false);
-      this.bannerBg.setVisible(false);
+      this.bannerBg.clear().setVisible(false);
       return;
     }
     const age = now - scene.bannerStart;
@@ -871,16 +946,17 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     else if (remaining < 220) alpha *= Math.max(0, remaining / 220);
     if (alpha <= 0.01) {
       this.bannerText.setVisible(false);
-      this.bannerBg.setVisible(false);
+      this.bannerBg.clear().setVisible(false);
       return;
     }
     this.bannerText.setText(scene.banner);
     const boxW = Math.max(220, this.bannerText.width + 56);
-    this.bannerBg.setSize(boxW, 42);
-    this.bannerBg.setPosition(w / 2, 10 + 21);
-    this.bannerBg.setAlpha(alpha);
-    this.bannerBg.setVisible(true);
-    this.bannerText.setPosition(w / 2, 10 + 22);
+    const boxH = 42;
+    const x = (w - boxW) / 2;
+    const y = 10;
+    this.drawFf6Window(this.bannerBg, x, y, boxW, boxH);
+    this.bannerBg.setAlpha(alpha).setVisible(true);
+    this.bannerText.setPosition(w / 2, y + boxH / 2 + 1);
     this.bannerText.setAlpha(alpha);
     this.bannerText.setVisible(true);
   }
@@ -890,7 +966,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       return;
     if (!scene.introNameplate) {
       this.nameplateText.setVisible(false);
-      this.nameplateBg.setVisible(false);
+      this.nameplateBg.clear().setVisible(false);
       this.nameplateTag.setVisible(false);
       this.nameplateSub.setVisible(false);
       return;
@@ -902,7 +978,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     else if (remaining < 320) alpha *= Math.max(0, remaining / 320);
     if (alpha <= 0.01) {
       this.nameplateText.setVisible(false);
-      this.nameplateBg.setVisible(false);
+      this.nameplateBg.clear().setVisible(false);
       this.nameplateTag.setVisible(false);
       this.nameplateSub.setVisible(false);
       return;
@@ -923,21 +999,20 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     );
     const boxH = style.subtitle ? 78 : 64;
     const accent = Phaser.Display.Color.HexStringToColor(style.accent).color;
-    this.nameplateBg.setStrokeStyle(3, accent);
-    this.nameplateBg.setSize(boxW, boxH);
-    this.nameplateBg.setPosition(w / 2, 12 + boxH / 2);
-    this.nameplateBg.setAlpha(alpha);
-    this.nameplateBg.setVisible(true);
+    const x = (w - boxW) / 2;
+    const y = 12;
+    this.drawFf6Window(this.nameplateBg, x, y, boxW, boxH, accent);
+    this.nameplateBg.setAlpha(alpha).setVisible(true);
     this.nameplateTag.setColor(style.accent);
-    this.nameplateTag.setPosition(w / 2, 12 + 16);
+    this.nameplateTag.setPosition(w / 2, y + 16);
     this.nameplateTag.setAlpha(alpha);
     this.nameplateTag.setVisible(true);
-    this.nameplateText.setPosition(w / 2, 12 + (style.subtitle ? 40 : 42));
+    this.nameplateText.setPosition(w / 2, y + (style.subtitle ? 40 : 42));
     this.nameplateText.setAlpha(alpha);
     this.nameplateText.setVisible(true);
     if (style.subtitle) {
       this.nameplateSub.setColor(style.accent);
-      this.nameplateSub.setPosition(w / 2, 12 + 62);
+      this.nameplateSub.setPosition(w / 2, y + 62);
       this.nameplateSub.setAlpha(alpha * 0.85);
       this.nameplateSub.setVisible(true);
     } else {
@@ -945,29 +1020,33 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     }
   }
 
-  private syncMarkers(
-    scene: CombatScene,
-    now: number,
-    w: number,
-    h: number
+  private placeMarker(
+    mark: Phaser.GameObjects.Triangle,
+    entry: ActorSpriteEntry,
+    fill: number,
+    bounce: number
   ): void {
+    // Sprite.y is centerY; drawY = center − halfHeight. Match canvas visualHeadY.
+    const drawH = entry.sprite.displayHeight;
+    const drawY = entry.sprite.y - drawH / 2;
+    const artTop = artTopFromTopFor({ hasStrip: !entry.isFallback });
+    const headY = visualHeadY(drawY, drawH, artTop);
+    mark
+      .setPosition(entry.sprite.x, headY - MARKER_TIP_GAP_PX + bounce)
+      .setVisible(true)
+      .setFillStyle(fill);
+  }
+
+  private syncMarkers(scene: CombatScene, now: number): void {
     const bounce = Math.sin(now / 120) * 3;
-    // Active actor marker
     if (this.activeMark) {
       if (scene.activeActorId) {
         const entry =
           this.actors.get(this.actorPoolKey("party", scene.activeActorId)) ??
           this.actors.get(this.actorPoolKey("enemy", scene.activeActorId)) ??
           this.actors.get(this.actorPoolKey("ally", scene.activeActorId));
-        if (entry) {
-          const topY = entry.sprite.y - (entry.sprite.displayHeight / 2) * 0.4;
-          this.activeMark
-            .setPosition(entry.sprite.x, topY - MARKER_TIP_GAP_PX + bounce)
-            .setVisible(true)
-            .setFillStyle(0xffd700);
-        } else {
-          this.activeMark.setVisible(false);
-        }
+        if (entry) this.placeMarker(this.activeMark, entry, 0xffd700, bounce);
+        else this.activeMark.setVisible(false);
       } else {
         this.activeMark.setVisible(false);
       }
@@ -978,11 +1057,12 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           this.actorPoolKey(scene.cursor.kind, scene.cursor.id)
         );
         if (entry) {
-          const topY = entry.sprite.y - (entry.sprite.displayHeight / 2) * 0.4;
-          this.cursorMark
-            .setPosition(entry.sprite.x, topY - MARKER_TIP_GAP_PX + bounce)
-            .setVisible(true)
-            .setFillStyle(scene.cursor.kill ? 0xe05050 : 0xffd700);
+          this.placeMarker(
+            this.cursorMark,
+            entry,
+            scene.cursor.kill ? 0xe05050 : 0xffd700,
+            bounce
+          );
         } else {
           this.cursorMark.setVisible(false);
         }
@@ -990,11 +1070,6 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         this.cursorMark.setVisible(false);
       }
     }
-    void w;
-    void h;
-    void visualHeadY;
-    void artTopFromTopFor;
-    void ANIM_SPEED;
   }
 
   private syncCues(scene: CombatScene): void {
@@ -1245,8 +1320,14 @@ export async function createPhaserCombatStage(
         /* already torn down */
       }
       setPhaserStageActive(false);
+      if ((window as unknown as { __onyxPhaserActors?: unknown }).__onyxPhaserActors) {
+        delete (window as unknown as { __onyxPhaserActors?: unknown }).__onyxPhaserActors;
+      }
     },
   };
+
+  (window as unknown as { __onyxPhaserActors?: () => unknown }).__onyxPhaserActors =
+    () => phaserScene.debugActorLayout();
 
   return stage;
 }
