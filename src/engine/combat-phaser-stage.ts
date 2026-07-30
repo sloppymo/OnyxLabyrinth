@@ -382,16 +382,60 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
    * Debug: how many actors currently hold death-dissolve controllers.
    * Used by the capture script to assert they are spliced out once the
    * corpses settle, since there is no `disableFilters()` to lean on.
+   *
+   * `ramps` reads the animated values back **out of the filter controllers**,
+   * never from `deathDissolveRecipe`. That distinction is the whole point: the
+   * H2 cast bloom shipped with its envelope written to `parallelFilters.blendAmount`
+   * instead of `parallelFilters.blend.amount`, a silent no-op, and every probe
+   * that only proved "a filter exists and is torn down" stayed green throughout.
+   * Recomputing the recipe here would reproduce that blind spot exactly.
+   *
+   * Reported per key rather than as one aggregate so a capture can track a
+   * single actor's progression — otherwise N corpses each frozen at a different
+   * value would look like a ramp when nothing is animating at all.
    */
   debugDissolveCounts(): {
     active: number;
     keys: string[];
     shines: number;
     tweenTimeScale: number;
+    /**
+     * Per dissolving actor: the Pixelate controller's own `amount`, and row 0
+     * col 0 of the ColorMatrix. `grayscale(v)` delegates to `saturate(-v)`,
+     * which writes `x = 1 - 2v/3` there — so 1 means untouched and ~0.333 means
+     * fully grey. Monotonic in `v`, which is all an assertion needs.
+     */
+    ramps: { key: string; pixelate: number; saturation: number }[];
+    /**
+     * Per live Shine: `gradient.offset`, the property `AddEffectShine`'s tween
+     * actually animates. Reached through `tween.targets[0]` so the stage does
+     * not have to retain the gradient just to be observable.
+     */
+    shineOffsets: { key: string; offset: number }[];
   } {
     const keys: string[] = [];
+    const ramps: { key: string; pixelate: number; saturation: number }[] = [];
     for (const entry of this.actors.values()) {
-      if (entry.dissolve) keys.push(entry.key);
+      if (!entry.dissolve) continue;
+      keys.push(entry.key);
+      let saturation = Number.NaN;
+      try {
+        saturation = entry.dissolve.matrix.colorMatrix.getData()[0] ?? Number.NaN;
+      } catch {
+        /* controller torn down mid-probe */
+      }
+      ramps.push({
+        key: entry.key,
+        pixelate: entry.dissolve.pixelate.amount,
+        saturation,
+      });
+    }
+    const shineOffsets: { key: string; offset: number }[] = [];
+    for (const [key, shine] of this.shines) {
+      const gradient = shine.tween.targets?.[0] as { offset?: number } | undefined;
+      if (typeof gradient?.offset === "number") {
+        shineOffsets.push({ key, offset: gradient.offset });
+      }
     }
     // Report the Shines' own timeScale (they carry it per-tween, so the
     // manager's global value stays 1) — falling back to the manager when no
@@ -406,6 +450,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       keys,
       shines: this.shines.size,
       tweenTimeScale,
+      ramps,
+      shineOffsets,
     };
   }
 
