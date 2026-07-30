@@ -220,6 +220,42 @@ export function applyStatusTint(
   if (tint.mode != null) sprite.setTintMode?.(tint.mode);
 }
 
+/** Death anim length in `combat-phaser-stage`; the dissolve rides the same clock. */
+export const DEATH_ANIM_MS = 675;
+
+export type DeathDissolve = {
+  /** `Filters.Pixelate` amount — 1 is untouched, higher is blockier. */
+  pixelate: number;
+  /** `ColorMatrix.grayscale` amount — 0 keeps color, 1 is fully grey. */
+  grayscale: number;
+};
+
+const DEATH_PIXELATE_PEAK = 8;
+
+/**
+ * Mosaic-and-drain dissolve over death progress t∈[0,1].
+ *
+ * Starts at identity so a freshly-killed actor does not pop, then accelerates
+ * (t²) into the mosaic while the grayscale eases in slightly ahead of it — the
+ * body reads as "drained" a beat before it reads as "disintegrating", which is
+ * the classic SNES-RPG ordering.
+ *
+ * Presentation only: the existing `anim.opacity` / `fadeOutStart` fade still
+ * owns the actual disappearance, so the canvas path (and any non-WebGL Phaser
+ * fallback, where per-sprite filters are unavailable) loses nothing but polish.
+ */
+export function deathDissolveRecipe(t01: number): DeathDissolve {
+  const t = Math.min(1, Math.max(0, t01));
+  return {
+    pixelate: 1 + t * t * (DEATH_PIXELATE_PEAK - 1),
+    grayscale: smoothstep(Math.min(1, t * 1.35)),
+  };
+}
+
+function smoothstep(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
 /**
  * Vertical shift so a center-origin sprite's feet stay planted when sy≠1.
  * `y += drawSize * (1 - sy) / 2`.

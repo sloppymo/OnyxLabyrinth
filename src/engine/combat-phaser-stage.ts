@@ -66,6 +66,8 @@ import type { CombatStage, CreateCombatStageOpts } from "./combat-stage";
 import {
   applySpotlight,
   applyStatusTint,
+  deathDissolveRecipe,
+  DEATH_ANIM_MS,
   clearSpotlight,
   createSpotlightState,
   hitSquashFootOffset,
@@ -81,6 +83,8 @@ import {
 const PHASER_FX_SPOTLIGHT = true;
 /** Kill-switch for hurt impact squash. */
 const PHASER_FX_HIT_SQUASH = true;
+/** Kill-switch for the per-sprite death mosaic/desaturate (harvest H1). */
+const PHASER_FX_DEATH_DISSOLVE = true;
 
 function setPhaserStageActive(on: boolean): void {
   const wrap = combatPhaserCanvas.parentElement;
@@ -100,6 +104,16 @@ interface ActorSpriteEntry {
   sprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Ellipse;
   shadow: Phaser.GameObjects.Ellipse;
   isFallback: boolean;
+  /**
+   * Per-sprite death-dissolve controllers, allocated lazily on first death
+   * frame. Kept on the entry rather than looked up from the sprite because
+   * `ensureStripSprite` swaps the texture in place on state change, so the
+   * Sprite (and therefore its filter list) survives idle→death.
+   */
+  dissolve?: {
+    pixelate: Phaser.Filters.Pixelate;
+    matrix: Phaser.Filters.ColorMatrix;
+  } | null;
 }
 
 class OnyxCombatPhaserScene extends Phaser.Scene {
@@ -280,6 +294,19 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     };
   }
 
+  /**
+   * Debug: how many actors currently hold death-dissolve controllers.
+   * Used by the capture script to assert they are spliced out once the
+   * corpses settle, since there is no `disableFilters()` to lean on.
+   */
+  debugDissolveCounts(): { active: number; keys: string[] } {
+    const keys: string[] = [];
+    for (const entry of this.actors.values()) {
+      if (entry.dissolve) keys.push(entry.key);
+    }
+    return { active: keys.length, keys };
+  }
+
   /** Defensive NEAREST after HTMLImageElement sheets (game config pixelArt alone can miss). */
   private assertNearest(key: string): void {
     if (!this.textures.exists(key)) return;
@@ -450,6 +477,66 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private ensureSpotlightFilters(recipe: SpotlightRecipe): void {
     // One Glow + one ColorMatrix max (plan risk table); see applySpotlight.
     applySpotlight(this.spotlight, this.spotlightFilterLists(), recipe);
+  }
+
+  /**
+   * Mosaic-and-drain the actor across its death animation (harvest H1).
+   *
+   * Per-sprite Filters are WebGL-only, so this silently no-ops on the CANVAS
+   * renderer — the existing `anim.opacity` / `fadeOutStart` fade still owns the
+   * actual disappearance there, which is the documented canvas fallback.
+   *
+   * Note there is no `disableFilters()` in Phaser 4: `enableFilters()` allocates
+   * a framebuffer that lives until the Sprite is destroyed. That is why this is
+   * gated to actors that actually die rather than enabled up front — the cost is
+   * bounded by the corpse count, and the whole Game is torn down per fight.
+   */
+  private applyDeathDissolve(
+    entry: ActorSpriteEntry,
+    anim: ActorAnim,
+    now: number
+  ): void {
+    if (!(entry.sprite instanceof Phaser.GameObjects.Sprite)) return;
+    if (!PHASER_FX_DEATH_DISSOLVE || entry.isFallback || anim.state !== "death") {
+      this.clearDeathDissolve(entry);
+      return;
+    }
+    const recipe = deathDissolveRecipe((now - anim.stateStart) / DEATH_ANIM_MS);
+    try {
+      if (!entry.dissolve) {
+        const sprite = entry.sprite.enableFilters();
+        const internal = sprite.filters?.internal;
+        if (!internal) return;
+        entry.dissolve = {
+          pixelate: internal.addPixelate(recipe.pixelate),
+          matrix: internal.addColorMatrix(),
+        };
+      }
+      entry.dissolve.pixelate.amount = recipe.pixelate;
+      // Rebuild rather than accumulate: ColorMatrix ops multiply by default.
+      entry.dissolve.matrix.colorMatrix.reset();
+      entry.dissolve.matrix.colorMatrix.grayscale(recipe.grayscale);
+    } catch {
+      // CANVAS renderer / Filters unavailable — degrade to the opacity fade.
+      this.clearDeathDissolve(entry);
+    }
+  }
+
+  /** Splice dissolve controllers out (revive, or actor leaving death). */
+  private clearDeathDissolve(entry: ActorSpriteEntry): void {
+    if (!entry.dissolve) return;
+    try {
+      const internal = (
+        entry.sprite as Phaser.GameObjects.Sprite
+      ).filters?.internal;
+      if (internal) {
+        internal.remove(entry.dissolve.pixelate);
+        internal.remove(entry.dissolve.matrix);
+      }
+    } catch {
+      /* sprite already torn down */
+    }
+    entry.dissolve = null;
   }
 
   private applyHitSquash(
@@ -704,6 +791,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         })
       );
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
+      this.applyDeathDissolve(entry, anim, now);
     } else {
       entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
@@ -768,6 +856,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           : frameIndexFor(stripInfo.strip, stateAge);
       entry.sprite.setFrame(frame);
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
+      this.applyDeathDissolve(entry, anim, now);
     } else {
       entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
@@ -844,6 +933,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         statusTintFor({ poison: char.status.includes("poison") })
       );
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
+      this.applyDeathDissolve(entry, anim, now);
     } else {
       entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
@@ -1454,18 +1544,22 @@ export async function createPhaserCombatStage(
       const w = window as unknown as {
         __onyxPhaserActors?: unknown;
         __onyxPhaserFilters?: unknown;
+        __onyxPhaserDissolves?: unknown;
       };
       if (w.__onyxPhaserActors) delete w.__onyxPhaserActors;
       if (w.__onyxPhaserFilters) delete w.__onyxPhaserFilters;
+      if (w.__onyxPhaserDissolves) delete w.__onyxPhaserDissolves;
     },
   };
 
   const dbg = window as unknown as {
     __onyxPhaserActors?: () => unknown;
     __onyxPhaserFilters?: () => unknown;
+    __onyxPhaserDissolves?: () => unknown;
   };
   dbg.__onyxPhaserActors = () => phaserScene.debugActorLayout();
   dbg.__onyxPhaserFilters = () => phaserScene.debugFilterCounts();
+  dbg.__onyxPhaserDissolves = () => phaserScene.debugDissolveCounts();
 
   return stage;
 }

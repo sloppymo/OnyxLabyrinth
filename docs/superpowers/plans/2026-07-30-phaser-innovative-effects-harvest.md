@@ -154,8 +154,10 @@ Kill-switch: extend existing `?phaserFx=0` / `PHASER_FX_SPOTLIGHT` pattern so bl
 - Do **not** change hurt/death durations in `playTurn`
 
 **Steps:**
-- [ ] Add pure `deathDissolveRecipe(t01)` → `{ pixelate, saturation, alpha }` unit-tested
-- [ ] Stage: on `anim.state === "death"`, `enableFilters()` once per actor; drive Pixelate + ColorMatrix; clear on destroy / revive
+- [x] Add pure `deathDissolveRecipe(t01)` → `{ pixelate, grayscale }` unit-tested — 6 tests;
+      `alpha` dropped from the shape, since `anim.opacity` / `fadeOutStart` already own the fade
+- [x] Stage: on `anim.state === "death"`, `enableFilters()` once per actor; drive Pixelate +
+      ColorMatrix grayscale; clear on revive / state exit
 - [ ] Add `castBloomPulse(host, now, bannerStart)` — add bloom ≤180ms then destroy (never leave ParallelFilters stacked with idle spotlight)
 - [ ] Wire Shine for heal-colored EffectStyles / heal popups (reuse strip timing)
 - [ ] Stretch if time: H4 vignette pulse on crit popup or boss accent hit
@@ -219,9 +221,9 @@ Kill-switch: extend existing `?phaserFx=0` / `PHASER_FX_SPOTLIGHT` pattern so bl
 
 ---
 
-## 10. Decisions (proposed — lock on approval)
+## 10. Decisions — **LOCKED 2026-07-30** (human approved)
 
-1. **Phase A first slice** = H1 + H3 + H2 (death dissolve, Shine, cast bloom). ✅ proposed
+1. **Phase A first slice** = H1 + H3 + H2 (death dissolve, Shine, cast bloom). ✅
 2. **Do not dual-path encounter wipe** with Phaser Wipe — canvas swirl remains sole identity. ✅
 3. **Cone lights / Spine / Scope C / stencil windows / named imports** stay icebox. ✅
 4. **Full Mesh2D vertex warp** stays optional; scale squash already shipped. ✅

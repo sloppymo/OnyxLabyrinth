@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   applySpotlight,
+  deathDissolveRecipe,
+  DEATH_ANIM_MS,
   applyStatusTint,
   clearSpotlight,
   createSpotlightState,
@@ -258,5 +260,45 @@ describe("spotlight filter lifecycle", () => {
   it("distinct recipes produce distinct keys", () => {
     const keys = new Set([IDLE, CAST, BOSS].map(spotlightKeyFor));
     expect(keys.size).toBe(3);
+  });
+});
+
+describe("deathDissolveRecipe", () => {
+  it("starts at identity so a fresh kill does not pop", () => {
+    expect(deathDissolveRecipe(0)).toEqual({ pixelate: 1, grayscale: 0 });
+  });
+
+  it("ends fully mosaicked and fully drained", () => {
+    const end = deathDissolveRecipe(1);
+    expect(end.pixelate).toBeCloseTo(8, 5);
+    expect(end.grayscale).toBeCloseTo(1, 5);
+  });
+
+  it("increases monotonically across the death anim", () => {
+    let prevPix = -Infinity;
+    let prevGrey = -Infinity;
+    for (let i = 0; i <= 20; i++) {
+      const r = deathDissolveRecipe(i / 20);
+      expect(r.pixelate).toBeGreaterThanOrEqual(prevPix);
+      expect(r.grayscale).toBeGreaterThanOrEqual(prevGrey);
+      prevPix = r.pixelate;
+      prevGrey = r.grayscale;
+    }
+  });
+
+  it("drains color ahead of the mosaic", () => {
+    // Body reads as "drained" before it reads as "disintegrating".
+    const mid = deathDissolveRecipe(0.5);
+    const pixFrac = (mid.pixelate - 1) / 7;
+    expect(mid.grayscale).toBeGreaterThan(pixFrac);
+  });
+
+  it("clamps outside [0,1] instead of running away", () => {
+    expect(deathDissolveRecipe(-5)).toEqual(deathDissolveRecipe(0));
+    expect(deathDissolveRecipe(99)).toEqual(deathDissolveRecipe(1));
+  });
+
+  it("rides the same clock as the death animation", () => {
+    expect(DEATH_ANIM_MS).toBe(675);
   });
 });
