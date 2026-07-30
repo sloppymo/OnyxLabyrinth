@@ -289,10 +289,20 @@ try {
       }
     }
 
+    // The cap is a *retention* limit, not a draw ceiling: `end()` floors `keep`
+    // at the live count, so a burst wider than the cap legitimately leaves the
+    // pool oversized until the burst subsides (a 6-target heal spawns 16
+    // sparkles each = 96). Only flag retention beyond what is actually drawn.
     for (const [name, p] of Object.entries(after)) {
       if (typeof p !== "object" || p === null) continue;
-      if (p.size > 96) {
-        findings.find("P0", 0, "pool exceeded cap", `${name} pool holds ${p.size} (cap 96)`);
+      const allowed = Math.max(96, p.live);
+      if (p.size > allowed) {
+        findings.find(
+          "P0",
+          0,
+          "pool retained past cap",
+          `${name} pool holds ${p.size} with only ${p.live} live (cap 96)`
+        );
       }
     }
   }
