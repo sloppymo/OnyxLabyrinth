@@ -412,6 +412,18 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
      * not have to retain the gradient just to be observable.
      */
     shineOffsets: { key: string; offset: number }[];
+    /**
+     * The TweenManager's *global* timeScale, reported separately from the
+     * Shines' own, plus the playback rate that should never reach it.
+     *
+     * This stage must retime Shines per-tween: the manager's value multiplies
+     * into every tween in the scene, so pinning it to playback rate would
+     * silently retime anything added later by unrelated code. Both are needed
+     * to assert that — at 1x the two implementations write the same value, so
+     * a capture must confirm it sampled at rate > 1 before claiming a pass.
+     */
+    managerTimeScale: number;
+    playbackRate: number;
   } {
     const keys: string[] = [];
     const ramps: { key: string; pixelate: number; saturation: number }[] = [];
@@ -452,6 +464,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       tweenTimeScale,
       ramps,
       shineOffsets,
+      managerTimeScale: this.tweens?.timeScale ?? 1,
+      playbackRate: this.latest?.scene.playbackRate ?? 1,
     };
   }
 

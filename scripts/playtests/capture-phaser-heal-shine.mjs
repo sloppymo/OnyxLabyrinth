@@ -164,6 +164,45 @@ try {
   const result = await huntHeal(page, findings);
   console.log("  heal hunt:", JSON.stringify(result));
 
+  // Hold Shift for 2x playback and watch whether the rate leaks onto the
+  // TweenManager. The probe reads the scene's playback rate too, so it can tell
+  // us whether the precondition ever held rather than passing vacuously.
+  //
+  // Shift is only honoured while `phase === "playback"` (combat-ui syncPlaybackRate),
+  // so a turn has to be in flight — holding it at an idle palette leaves the
+  // rate at 1, where correct and global-scaling code write the same value.
+  let globalScale = null;
+  let st2 = await snap(page);
+  if (st2.route === "combat") {
+    if (st2.combat?.phase === "palette") {
+      await press(page, "Enter", 1, 80);
+      const t = await snap(page);
+      if (t.combat?.phase === "selectTarget") await press(page, "Enter", 1, 80);
+    }
+    await page.keyboard.down("Shift");
+    globalScale = await page.evaluate(async () => {
+      const probe = window.__onyxPhaserDissolves;
+      if (!probe) return null;
+      return await new Promise((resolve) => {
+        let peakRate = 0;
+        let peakManager = 1;
+        const end = performance.now() + 700;
+        const tick = () => {
+          const d = probe();
+          if (d) {
+            peakRate = Math.max(peakRate, d.playbackRate ?? 0);
+            if (d.managerTimeScale !== 1) peakManager = d.managerTimeScale;
+          }
+          if (performance.now() < end) requestAnimationFrame(tick);
+          else resolve({ peakRate, peakManager });
+        };
+        requestAnimationFrame(tick);
+      });
+    });
+    await page.keyboard.up("Shift");
+    console.log(`  hold-Shift probe: ${JSON.stringify(globalScale)}`);
+  }
+
   if (!result.found) {
     findings.find(
       "P1",
@@ -201,12 +240,31 @@ try {
     console.log("  OK: no Shine left after playback settled");
   }
 
-  // The tween clock must track playback rate, not run free at 1x.
-  const fx = await fxState(page);
-  if (fx && fx.tweenTimeScale !== 1) {
-    console.log(`  NOTE: tween timeScale = ${fx.tweenTimeScale} (playback not at 1x)`);
-  } else {
-    console.log("  OK: tween timeScale pinned to playback rate (1x at rest)");
+  if (globalScale) {
+    // Shine tweens must be retimed per-tween, never by scaling the TweenManager:
+    // its global value multiplies into every tween in the scene, so pinning it
+    // to playback rate silently retimes anything added later by unrelated code.
+    //
+    // Sampled under hold-Shift because at 1x both implementations write the same
+    // value and the check is blind. This replaces a check on `tweenTimeScale`,
+    // which fell back to the manager's value once no Shine was live and read 1 —
+    // green — even with the sweep deliberately frozen.
+    if (globalScale.peakRate <= 1) {
+      console.log(
+        `  NOTE: playback never exceeded 1x (peak ${globalScale.peakRate}) — global-scale check is blind, skipped`
+      );
+    } else if (globalScale.peakManager !== 1) {
+      findings.find(
+        "P0",
+        0,
+        "global tween timeScale scaled",
+        `TweenManager.timeScale reached ${globalScale.peakManager} at ${globalScale.peakRate}x playback — rate is applied globally instead of per-tween`
+      );
+    } else {
+      console.log(
+        `  OK: TweenManager global timeScale stayed 1 at ${globalScale.peakRate}x playback (per-tween scaling only)`
+      );
+    }
   }
 
   const pageErrors = errors.filter((e) => e.startsWith("pageerror:"));
