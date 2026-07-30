@@ -33,6 +33,10 @@ describe("computeIdle", () => {
     expect(computeIdle(base({ endingActive: true }))).toBe(false);
   });
 
+  it("is not idle while a combat encounter/leave transition (or Phaser boot) is active", () => {
+    expect(computeIdle(base({ combatTransitionActive: true }))).toBe(false);
+  });
+
   it("is not idle mid-playback with choreography unfinished", () => {
     expect(
       computeIdle(base({ combat: { phase: "playback", playbackDone: false } }))

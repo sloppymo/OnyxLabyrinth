@@ -43,19 +43,13 @@ import { isUtilitySpell, type SpellDef } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import { techniquesForClass, techniqueById, classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
 import type { ItemDef } from "../data/items";
-import { combatCanvas, combatWindows, combatPopupAnchor, combatTurnOrder } from "./shell";
+import { combatWindows, combatPopupAnchor, combatTurnOrder } from "./shell";
 import { playCombatEventSounds } from "./combat-audio";
+import type { CombatScene } from "./combat-scene";
 import {
-  createScene,
-  renderScene,
-  updateScene,
-  playTurn,
-  isPlaybackDone,
-  absorbDeaths,
-  skipPlaybackToEnd,
-  setBossIntroNameplate,
-  type CombatScene,
-} from "./combat-scene";
+  createCanvasCombatStage,
+  type CombatStage,
+} from "./combat-stage";
 import {
   renderCombatWindows,
   playbackHintText,
@@ -108,6 +102,11 @@ export interface CombatControllerOptions {
   backdropId?: string;
   /** Last-used device class for input-adaptive HUD hints. */
   getLastInputKind?: () => "keyboard" | "gamepad";
+  /**
+   * Pre-built presentation stage (canvas or Phaser). When omitted, a sync
+   * canvas stage is created — tests and the default path stay synchronous.
+   */
+  stage?: CombatStage;
 }
 
 export class CombatController {
@@ -149,44 +148,64 @@ export class CombatController {
   /** LT/RT roster inspect — visual only, never changes initiative. */
   private inspectCharacterId: string | null = null;
 
-  private scene: CombatScene;
+  private stage: CombatStage;
   private rafId: number | null = null;
   private windowsDirty = true;
   private getLastInputKind: () => "keyboard" | "gamepad";
+
+  /**
+   * Shared choreography model. Kept reachable for groundPlaneProbe / debug
+   * (casts through the controller); do not rename without an explicit follow-up.
+   */
+  get scene(): CombatScene {
+    return this.stage.scene;
+  }
 
   constructor(state: CombatState, opts: CombatControllerOptions) {
     this.state = state;
     this.onEnd = opts.onEnd;
     this.getLastInputKind = opts.getLastInputKind ?? (() => "keyboard");
-    this.scene = createScene(state);
-    this.scene.backdrop = opts.backdrop ?? null;
-    this.scene.backdropId = opts.backdropId ?? (opts.backdrop ? "arena" : "combat-bg");
+    this.stage =
+      opts.stage ??
+      createCanvasCombatStage({
+        state,
+        backdrop: opts.backdrop ?? null,
+        backdropId: opts.backdropId,
+      });
     this.startRound();
     if (state.isBoss) {
       const boss = [...state.enemies.front, ...state.enemies.back].find(
         (e) => e.isBoss
       );
       if (boss) {
-        setBossIntroNameplate(
-          this.scene,
-          boss.name,
-          performance.now(),
-          2800,
-          boss.id
-        );
+        this.stage.setBossIntroNameplate(boss.name, 2800, boss.id);
       }
     }
     this.startRenderLoop();
   }
 
-  /** Destroy the controller — cancel the render loop and clear the windows. */
-  destroy(): void {
+  /**
+   * Stop the render loop and clear DOM overlays without tearing down the
+   * GPU/canvas stage — leaveCombat must snapshot first, then call destroy().
+   */
+  stop(): void {
     if (this.rafId !== null) {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
     combatWindows.innerHTML = "";
     combatTurnOrder.innerHTML = "";
+  }
+
+  /** Idempotent full teardown (stop + stage.destroy). */
+  destroy(): void {
+    this.stop();
+    this.stage.destroy();
+  }
+
+  /** Canvas (or Phaser canvas) for battle-transition snapshots. */
+  snapshotCanvas(): HTMLCanvasElement | null {
+    return this.stage.snapshotCanvas();
   }
 
   // --- Render loop ----------------------------------------------------------
@@ -202,9 +221,10 @@ export class CombatController {
   private tick(): void {
     const now = performance.now();
     this.syncPlaybackRate();
-    updateScene(this.scene, now);
+    // Load-bearing order: update (may null choreo) → done-check → paint.
+    this.stage.update(now);
 
-    if (this.phase === "playback" && isPlaybackDone(this.scene, now)) {
+    if (this.phase === "playback" && this.stage.isPlaybackDone(now)) {
       this.afterPlayback();
     }
 
@@ -213,17 +233,18 @@ export class CombatController {
       this.windowsDirty = false;
     }
 
-    const ctx = combatCanvas.getContext("2d")!;
-    renderScene(ctx, combatCanvas.width, combatCanvas.height, this.scene, now);
+    this.stage.paint(now);
   }
 
   /** Apply hold-Shift / sticky FAST to the scene clock (playback only). */
   private syncPlaybackRate(): void {
     const turbo =
       this.phase === "playback" && (this.shiftHeld || this.autoFast);
-    this.scene.playbackRate = turbo ? 2 : 1;
-    this.scene.showFastCue = this.phase !== "result" && this.autoFast;
-    this.scene.showAutoCue = this.phase !== "result" && this.partyAuto;
+    this.stage.setPlaybackRate(turbo ? 2 : 1);
+    this.stage.setCues({
+      fast: this.phase !== "result" && this.autoFast,
+      auto: this.phase !== "result" && this.partyAuto,
+    });
   }
 
   // --- Round / turn machine ---------------------------------------------------
@@ -231,7 +252,7 @@ export class CombatController {
   private startRound(): void {
     const { state, queue } = beginRound(this.state);
     this.state = state;
-    this.scene.state = state;
+    this.stage.setState(state);
     this.queue = queue;
     this.queueIndex = 0;
     this.roundEnding = false;
@@ -308,7 +329,7 @@ export class CombatController {
     const events = next.events.slice(prevLogLength);
     playCombatEventSounds(events, next);
     this.state = next;
-    absorbDeaths(this.scene, next);
+    this.stage.absorbDeaths(next);
 
     // Allies summoned by this turn (BAMORDI/SOCORDI) act later this round,
     // matching the round-based resolver's player → ally → enemy phasing.
@@ -320,19 +341,18 @@ export class CombatController {
     if (hitId) this.lastHitEnemyId = hitId;
 
     // Clear a stale spell banner from the previous turn.
-    this.scene.banner = null;
+    this.stage.clearBanner();
 
     this.currentActorId = null;
-    this.scene.activeActorId = null;
-    this.scene.cursor = null;
+    this.stage.setActiveActor(null);
+    this.stage.setCursor(null);
     this.pending = null;
     this.flash = null;
     this.phase = "playback";
     this.syncPlaybackRate();
     this.windowsDirty = true;
 
-    playTurn(
-      this.scene,
+    this.stage.playTurn(
       events,
       // Banner name lookup: spells, items, then enemy abilities.
       (id) =>
@@ -340,11 +360,9 @@ export class CombatController {
         this.state.items[id]?.name ??
         enemyAbilityById(id)?.name ??
         id,
-      performance.now(),
-      combatCanvas.width,
-      combatCanvas.height,
       // Technique name lookup for technique banner.
-      (id) => techniqueById(id)?.name ?? id
+      (id) => techniqueById(id)?.name ?? id,
+      performance.now()
     );
   }
 
@@ -541,7 +559,7 @@ export class CombatController {
 
     this.phase = "palette";
     this.currentActorId = c.id;
-    this.scene.activeActorId = c.id;
+    this.stage.setActiveActor(c.id);
     this.palette = buildPalette(c, this.knownSpells(c), this.availableItems(), {
       silenced: this.state.silencedThisRound.includes(c.id),
       currentSp: c.sp,
@@ -952,7 +970,7 @@ export class CombatController {
       label: r === "front" ? "Front row" : "Back row",
     }));
     this.selectionIndex = 0;
-    this.scene.cursor = null;
+    this.stage.setCursor(null);
     this.windowsDirty = true;
   }
 
@@ -972,12 +990,12 @@ export class CombatController {
   /** Keep the scene target cursor in sync with the highlighted candidate. */
   private syncTargetCursor(): void {
     if (this.phase !== "selectTarget" || this.targetKind === "row") {
-      this.scene.cursor = null;
+      this.stage.setCursor(null);
       return;
     }
     const id = this.selectionIds[this.selectionIndex];
     if (!id) {
-      this.scene.cursor = null;
+      this.stage.setCursor(null);
       return;
     }
     const kind =
@@ -994,7 +1012,7 @@ export class CombatController {
         kill = this.previewFor(c, enemy)?.guaranteedKill === true;
       }
     }
-    this.scene.cursor = { kind, id, kill };
+    this.stage.setCursor({ kind, id, kill });
   }
 
   /** Confirm the highlighted selection entry. */
@@ -1273,7 +1291,7 @@ export class CombatController {
   private backToMenu(): void {
     const c = this.currentChar();
     if (!c) return;
-    this.scene.cursor = null;
+    this.stage.setCursor(null);
     if (this.phase === "selectTarget" && this.pending?.kind === "cast") {
       // Back out of target selection into the spell list.
       this.openSpellSelect(c);
@@ -1305,8 +1323,8 @@ export class CombatController {
     this.phase = "result";
     this.currentActorId = null;
     this.actingTurnId = null;
-    this.scene.activeActorId = null;
-    this.scene.cursor = null;
+    this.stage.setActiveActor(null);
+    this.stage.setCursor(null);
     this.inspectCharacterId = null;
     // Victory is sacred — clear turbo affordances so Enter only confirms.
     this.autoFast = false;
@@ -1348,7 +1366,7 @@ export class CombatController {
    * phase-gated; pair with getPhase() (see debug/idle.ts computeIdle).
    */
   isChoreographyDone(): boolean {
-    return isPlaybackDone(this.scene, performance.now());
+    return this.stage.isPlaybackDone(performance.now());
   }
 
   /**
@@ -1392,7 +1410,7 @@ export class CombatController {
   handleInput(event: ControllerInputEvent): void {
     if (this.phase === "result") {
       if (event.kind === "press" && event.button === "a") {
-        this.destroy();
+        this.stop();
         this.onEnd(this.state);
       }
       return;
@@ -1421,7 +1439,7 @@ export class CombatController {
         return;
       }
       if (event.button === "b") {
-        skipPlaybackToEnd(this.scene, performance.now());
+        this.stage.skipPlaybackToEnd(performance.now());
         this.windowsDirty = true;
         return;
       }
@@ -1583,7 +1601,7 @@ export class CombatController {
         return;
       }
       if (key === "Escape") {
-        skipPlaybackToEnd(this.scene, performance.now());
+        this.stage.skipPlaybackToEnd(performance.now());
         this.windowsDirty = true;
         return;
       }
@@ -1592,7 +1610,7 @@ export class CombatController {
 
     if (this.phase === "result") {
       if (key === " " || key === "Enter") {
-        this.destroy();
+        this.stop();
         this.onEnd(this.state);
       }
       return;

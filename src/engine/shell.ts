@@ -34,7 +34,8 @@ app.innerHTML = `
     </div>
     <div id="combat-panel"></div>
     <div id="combat-wrap" style="display:none">
-      <canvas id="combat-canvas" width="768" height="672"></canvas>
+      <canvas id="combat-canvas" class="combat-stage-canvas" width="768" height="672"></canvas>
+      <canvas id="combat-phaser-canvas" class="combat-stage-canvas" width="768" height="672" style="display:none"></canvas>
       <div id="combat-popup-anchor"></div>
       <div id="combat-turn-order"></div>
       <div id="combat-windows"></div>
@@ -73,6 +74,10 @@ export const combatTurnOrder = document.querySelector<HTMLDivElement>(
 )!;
 export const combatCanvas = document.querySelector<HTMLCanvasElement>("#combat-canvas")!;
 export const combatCtx = combatCanvas.getContext("2d")!;
+/** Sibling stage canvas for Phaser — never reuse #combat-canvas (sticky 2d context). */
+export const combatPhaserCanvas = document.querySelector<HTMLCanvasElement>(
+  "#combat-phaser-canvas"
+)!;
 
 const MAX_RENDER_WIDTH = 768;
 const MAX_RENDER_HEIGHT = 672;
@@ -100,6 +105,13 @@ export function resizeCorridorCanvas() {
   if (combatCanvas.width !== combatW || combatCanvas.height !== combatH) {
     combatCanvas.width = combatW;
     combatCanvas.height = combatH;
+  }
+  if (
+    combatPhaserCanvas.width !== combatW ||
+    combatPhaserCanvas.height !== combatH
+  ) {
+    combatPhaserCanvas.width = combatW;
+    combatPhaserCanvas.height = combatH;
   }
 }
 

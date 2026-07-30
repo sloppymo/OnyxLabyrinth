@@ -2209,12 +2209,30 @@ canvas#map-canvas {
   overflow: visible;
 }
 
-#combat-wrap #combat-canvas {
-  display: block;
+#combat-wrap #combat-canvas,
+#combat-wrap #combat-phaser-canvas,
+#combat-wrap .combat-stage-canvas {
   box-sizing: border-box;
   width: 100%;
   height: 100%;
   margin: 0;
+  image-rendering: pixelated;
+}
+
+#combat-wrap #combat-canvas {
+  display: block;
+}
+
+#combat-wrap #combat-phaser-canvas {
+  display: none;
+}
+
+#combat-wrap.phaser-stage #combat-canvas {
+  display: none;
+}
+
+#combat-wrap.phaser-stage #combat-phaser-canvas {
+  display: block;
 }
 
 #combat-windows {

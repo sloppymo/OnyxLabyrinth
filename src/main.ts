@@ -43,7 +43,6 @@ import {
   setContextualPrompt,
   getMessageText,
   setDebugMessageHook,
-  combatCanvas,
 } from "./engine/shell";
 import {
   playEncounterTransition,
@@ -59,6 +58,7 @@ import { DebugEventBuffer, type DebugEventKind } from "./debug/event-buffer";
 import { checkInvariants } from "./debug/invariants";
 import { installAudioSpy } from "./debug/audio-spy";
 import { CombatController } from "./engine/combat-ui";
+import { createCombatStage } from "./engine/combat-stage";
 import {
   createControllerInput,
   type ControllerInputEvent,
@@ -561,12 +561,18 @@ async function startCombat(combat: CombatState): Promise<void> {
     const theme = resolveTilesetTheme(state.floor);
     const backdropId = `theme:${theme}`;
 
+    const stage = await createCombatStage({
+      state: combat,
+      backdrop: bd,
+      backdropId,
+    });
     combatController = new CombatController(combat, {
       onEnd: (result: CombatState) => {
         endCombat(result);
       },
       backdrop: bd,
       backdropId,
+      stage,
       getLastInputKind: () => globalInput.getLastInputKind(),
     });
 
@@ -581,9 +587,11 @@ async function startCombat(combat: CombatState): Promise<void> {
  */
 async function leaveCombat(next: () => void): Promise<void> {
   return withCombatTransition(async () => {
+    const snap = combatController?.snapshotCanvas() ?? null;
     const source =
-      combatCanvas.width >= 16 && combatCanvas.height >= 16 ? combatCanvas : null;
+      snap && snap.width >= 16 && snap.height >= 16 ? snap : null;
     await playReturnTransition({ source });
+    combatController?.destroy();
     state.combat = undefined;
     combatController = null;
     next();
@@ -782,7 +790,8 @@ function exitDebugCombat(result: "victory" | "wipe" | "fled"): void {
   if (!combatController || !state.combat) return;
   state.combat.result = result;
   state.combat.ended = true;
-  combatController.destroy();
+  // Soft-stop only — leaveCombat snapshots the stage then destroy()s.
+  combatController.stop();
   endCombat(state.combat);
 }
 
@@ -2124,6 +2133,9 @@ if (new URLSearchParams(window.location.search).has("debug")) {
           )),
       prologueActive: !!prologueController,
       endingActive: !!endingController,
+      // Phaser stage boot + swirl/dissolve sit inside withCombatTransition;
+      // without this, waitForIdle returns true while route is still "none".
+      combatTransitionActive,
       combat: combatController
         ? {
             phase: combatController.getPhase(),
