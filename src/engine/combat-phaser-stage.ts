@@ -82,6 +82,7 @@ import {
   type SpotlightRecipe,
   type SpotlightState,
 } from "./combat-phaser-fx";
+import { GameObjectPool } from "./phaser-go-pool";
 
 /** Kill-switch for camera Glow/ColorMatrix (tint still applies). */
 const PHASER_FX_SPOTLIGHT = true;
@@ -111,103 +112,6 @@ const PHASER_FX_SHINE = true;
  * distance ever grows into a real lunge.
  */
 const PHASER_FX_AFTERIMAGE = false;
-
-/**
- * Upper bound on retained GOs per pool. A pool never shrinks during a frame it
- * is busy, but one outsized burst must not strand hundreds of objects for the
- * rest of the fight — anything past this is destroyed once it goes unused.
- */
-const POOL_MAX = 96;
-
-/**
- * Reusable GameObject pool (harvest H6).
- *
- * `syncEffects` / `syncParticles` previously destroyed and re-created every GO
- * on every paint — at 60fps with a burst on screen that is thousands of
- * allocations a second, all of it garbage. The pool keeps them and hands the
- * same objects back.
- *
- * Usage is strictly `begin()` → n × `acquire()` → `end()` per paint. Callers
- * MUST fully reset whatever they set on an acquired object: a pooled GO arrives
- * carrying whatever the last user left on it.
- *
- * Deliberately not a `Phaser.GameObjects.Group`. Group is the idiomatic pool
- * when objects have independent lifetimes and you ask for "the next dead one"
- * (`get()` / `killAndHide()`). Here the visible set is rebuilt wholesale every
- * paint from an authoritative array the choreography owns, so an index cursor
- * is both simpler and exactly ordered — Group's alive/dead bookkeeping would be
- * overhead for a question we never ask. The `setActive(false).setVisible(false)`
- * pair below is Group's own release idiom, kept so pooled objects are skipped by
- * both update and render passes.
- */
-class GameObjectPool<
-  T extends Phaser.GameObjects.GameObject & {
-    setVisible(v: boolean): T;
-    setActive(v: boolean): T;
-    x: number;
-    y: number;
-  },
-> {
-  private items: T[] = [];
-  private cursor = 0;
-  /**
-   * Monotonic count of objects ever allocated. This — not the pool size — is
-   * what proves reuse: a size probe cannot tell "reused 12" from "destroyed
-   * and recreated 12". Under a working pool this plateaus while the scene's
-   * particle list keeps churning.
-   */
-  created = 0;
-
-  constructor(private readonly factory: () => T) {}
-
-  begin(): void {
-    this.cursor = 0;
-  }
-
-  acquire(): T {
-    let item = this.items[this.cursor];
-    if (!item) {
-      item = this.factory();
-      this.created++;
-      this.items.push(item);
-    }
-    this.cursor++;
-    item.setActive(true).setVisible(true);
-    return item;
-  }
-
-  /** Release the tail that went unused this frame, and trim past the cap. */
-  end(): void {
-    for (let i = this.cursor; i < this.items.length; i++) {
-      this.items[i]!.setActive(false).setVisible(false);
-    }
-    if (this.items.length > POOL_MAX) {
-      const keep = Math.max(this.cursor, POOL_MAX);
-      for (const extra of this.items.splice(keep)) extra.destroy();
-    }
-  }
-
-  get size(): number {
-    return this.items.length;
-  }
-
-  get live(): number {
-    return this.cursor;
-  }
-
-  /** Widest gap between the objects acquired this frame (debug probe only). */
-  spreadPx(): number {
-    let max = 0;
-    for (let i = 0; i < this.cursor; i++) {
-      const a = this.items[i]!;
-      for (let j = i + 1; j < this.cursor; j++) {
-        const b = this.items[j]!;
-        max = Math.max(max, Math.hypot(a.x - b.x, a.y - b.y));
-      }
-    }
-    return max;
-  }
-}
 
 function setPhaserStageActive(on: boolean): void {
   const wrap = combatPhaserCanvas.parentElement;

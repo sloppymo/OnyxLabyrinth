@@ -112,7 +112,12 @@ try {
   let shotSpread = 0;
   let sawParticleChurn = 0;
 
-  for (let turn = 0; turn < 8 && peakGhosts === 0; turn++) {
+  // When the afterimage is off there is nothing to hunt, so take a single walk
+  // (enough to assert no ghosts are drawn) and leave the rest of the fight for
+  // the pooling window below — otherwise this loop burns all 8 turns looking
+  // for a trail that cannot appear, and H6 measures an empty scene.
+  const walkTurns = baseline.afterimageEnabled ? 8 : 1;
+  for (let turn = 0; turn < walkTurns && peakGhosts === 0; turn++) {
     const s = await snap(page);
     if (s.route !== "combat") break;
     if (s.combat?.phase !== "palette") {
@@ -203,18 +208,47 @@ try {
   }
 
   // --- H6: `created` must plateau while the scene keeps churning ----------
+  // Must stay inside ONE fight: Next Fight builds a fresh Phaser.Game, which
+  // means fresh pools with `created` back at 0 — chaining fights would make the
+  // allocation delta meaningless. So drive attack turns (each one spawns hit
+  // particles) and keep the last reading taken while still in combat.
   const mark = await pools(page);
-  await press(page, "q", 1, 150); // auto-battle: sustained particles/effects
   let churnSamples = 0;
-  const deadline = Date.now() + 20000;
-  while (Date.now() < deadline) {
-    const p = await pools(page);
-    if (p && p.sceneParticles > 0) churnSamples++;
+  let after = mark;
+  for (let turn = 0; turn < 10; turn++) {
     const s = await snap(page);
     if (s.route !== "combat") break;
-    await wait(120);
+    if (s.combat?.phase === "palette") {
+      await press(page, "Enter", 1, 80);
+      const t = await snap(page);
+      if (t.combat?.phase === "selectTarget") await press(page, "Enter", 1, 80);
+    }
+    // Sample per-frame through the impact, where particles actually live.
+    const w = await page.evaluate(async () => {
+      const probe = window.__onyxPhaserPools;
+      if (!probe) return null;
+      return await new Promise((resolve) => {
+        let churn = 0;
+        let last = null;
+        const end = performance.now() + 1400;
+        const tick = () => {
+          const p = probe();
+          if (p) {
+            last = p;
+            if (p.sceneParticles > 0) churn++;
+          }
+          if (performance.now() < end) requestAnimationFrame(tick);
+          else resolve({ churn, last });
+        };
+        requestAnimationFrame(tick);
+      });
+    });
+    if (w?.last) {
+      after = w.last;
+      churnSamples += w.churn;
+    }
+    await waitForIdle(page, 8000);
   }
-  const after = await pools(page);
 
   if (!after || !mark) {
     findings.find("P1", 0, "pool probe vanished", "combat ended before the churn window");
@@ -246,10 +280,12 @@ try {
           "P0",
           0,
           "pools not reusing",
-          `${total} GOs allocated during a 20s churn window (cap ${cap}) — ${JSON.stringify(grew)}`
+          `${total} GOs allocated across ${churnSamples} particle-live frames (cap ${cap}) — ${JSON.stringify(grew)}`
         );
       } else {
-        console.log(`  OK: allocations plateaued (${total} new GOs over 20s of combat)`);
+        console.log(
+          `  OK: allocations plateaued (${total} new GOs across ${churnSamples} particle-live frames)`
+        );
       }
     }
 
