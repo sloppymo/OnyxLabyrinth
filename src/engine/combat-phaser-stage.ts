@@ -63,6 +63,15 @@ import {
 } from "./combat-scene-math";
 import { combatCanvas, combatPhaserCanvas } from "./shell";
 import type { CombatStage, CreateCombatStageOpts } from "./combat-stage";
+import {
+  applyStatusTint,
+  spotlightRecipe,
+  statusTintFor,
+  type SpotlightRecipe,
+} from "./combat-phaser-fx";
+
+/** Kill-switch for camera Glow/ColorMatrix (tint still applies). */
+const PHASER_FX_SPOTLIGHT = true;
 
 function setPhaserStageActive(on: boolean): void {
   const wrap = combatPhaserCanvas.parentElement;
@@ -104,6 +113,9 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private fastCue: Phaser.GameObjects.Text | null = null;
   private autoCue: Phaser.GameObjects.Text | null = null;
   private pipGfx: Phaser.GameObjects.Graphics | null = null;
+  private spotlightGlow: Phaser.Filters.Glow | null = null;
+  private spotlightMatrix: Phaser.Filters.ColorMatrix | null = null;
+  private spotlightKey = "";
 
   constructor() {
     super(SCENE_KEY);
@@ -366,6 +378,69 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     this.syncMarkers(scene, now);
     this.syncCues(scene);
     this.syncHpPips(scene, now, w, h);
+    this.syncSpotlight(scene);
+  }
+
+  private syncSpotlight(scene: CombatScene): void {
+    if (!PHASER_FX_SPOTLIGHT) {
+      this.clearSpotlightFilters();
+      return;
+    }
+    const casting = !!(scene.banner && scene.banner.length > 0);
+    const bossAccent =
+      scene.introNameplate && scene.introBossId
+        ? BOSS_PRESENTATION[scene.introBossId]?.accent ?? null
+        : null;
+    const wants =
+      !!scene.activeActorId || !!scene.introNameplate || casting;
+    if (!wants) {
+      this.clearSpotlightFilters();
+      return;
+    }
+    const recipe = spotlightRecipe({
+      bossAccentHex: bossAccent,
+      casting,
+    });
+    this.ensureSpotlightFilters(recipe);
+  }
+
+  private ensureSpotlightFilters(recipe: SpotlightRecipe): void {
+    const key = `${recipe.glowColor}:${recipe.glowOuter}:${recipe.dimBrightness}`;
+    if (this.spotlightKey === key && this.spotlightGlow && this.spotlightMatrix) {
+      return;
+    }
+    try {
+      this.clearSpotlightFilters();
+      const cam = this.cameras.main;
+      // One Glow + one ColorMatrix max (plan risk table).
+      this.spotlightGlow = cam.filters.external.addGlow(
+        recipe.glowColor,
+        recipe.glowOuter,
+        0,
+        1,
+        false,
+        8,
+        8
+      );
+      this.spotlightMatrix = cam.filters.internal.addColorMatrix();
+      this.spotlightMatrix.colorMatrix.brightness(recipe.dimBrightness);
+      this.spotlightKey = key;
+    } catch {
+      // CANVAS / missing Filters — degrade gracefully; tint still works.
+      this.clearSpotlightFilters();
+    }
+  }
+
+  clearSpotlightFilters(): void {
+    try {
+      this.spotlightGlow?.destroy();
+      this.spotlightMatrix?.destroy();
+    } catch {
+      /* already gone */
+    }
+    this.spotlightGlow = null;
+    this.spotlightMatrix = null;
+    this.spotlightKey = "";
   }
 
   private syncBackground(scene: CombatScene): void {
@@ -581,10 +656,13 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       // Center at ResolvedSlot.centerY (pos.y) — canvas drawStripFrame contract.
       entry.sprite.setPosition(x, y);
       entry.sprite.setFlipX(false);
-      if (enemy.status.includes("poison")) entry.sprite.setTint(0x3cbe50);
-      else if ((scene.state.enemyDots[enemy.instanceId]?.length ?? 0) > 0)
-        entry.sprite.setTint(0xff8228);
-      else entry.sprite.clearTint();
+      applyStatusTint(
+        entry.sprite,
+        statusTintFor({
+          poison: enemy.status.includes("poison"),
+          burn: (scene.state.enemyDots[enemy.instanceId]?.length ?? 0) > 0,
+        })
+      );
     } else {
       entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
@@ -723,8 +801,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       entry.sprite.setDisplaySize(drawSize, drawSize);
       entry.sprite.setPosition(x, y);
       entry.sprite.setFlipX(true);
-      if (char.status.includes("poison")) entry.sprite.setTint(0x3cbe50);
-      else entry.sprite.clearTint();
+      applyStatusTint(
+        entry.sprite,
+        statusTintFor({ poison: char.status.includes("poison") })
+      );
     } else {
       entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
@@ -1294,6 +1374,11 @@ export async function createPhaserCombatStage(
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      try {
+        phaserScene.clearSpotlightFilters();
+      } catch {
+        /* ignore */
+      }
       try {
         // Game.destroy() only sets `pendingDestroy`. The actual teardown
         // (runDestroy -> scene.destroy, renderer.destroy, loop.destroy) is
