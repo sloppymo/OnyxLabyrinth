@@ -3,20 +3,29 @@
  *
  * Pure enough for Vitest — no Phaser.Game construction. Stage applies results
  * via GO refs / camera filter APIs. Tint mode numbers match Phaser.TintModes
- * (MULTIPLY = 0, MULTIPLY_TWO = 6) so tests stay Phaser-free.
+ * (MULTIPLY = 0, MULTIPLY_TWO = 7) so tests stay Phaser-free.
  */
 
 export const TINT_POISON = 0x3cbe50;
 export const TINT_BURN = 0xff8228;
 
-/** Phaser.TintModes.MULTIPLY — single-layer tint. */
+/** Phaser.TintModes.MULTIPLY — single-layer / corner tint. */
 export const TINT_MODE_MULTIPLY = 0;
-/** Phaser.TintModes.MULTIPLY_TWO — dual tint (setTint + setTint2). Value from TintModes.js. */
+/**
+ * Phaser.TintModes.MULTIPLY_TWO (= 7 in TintModes.js). Luminance split between
+ * tint and tint2 — NOT layered statuses. Kept for reference; dual DoTs use
+ * corner colors under MULTIPLY instead.
+ */
 export const TINT_MODE_MULTIPLY_TWO = 7;
 
 export type StatusTint = {
+  /** Uniform body tint (single status). */
   tint?: number;
-  tint2?: number;
+  /**
+   * Per-corner colors [tl, tr, bl, br] for dual status (poison left / burn
+   * right). Prefer this over MULTIPLY_TWO, which remaps by luminance.
+   */
+  corners?: readonly [number, number, number, number];
   mode?: number;
 };
 
@@ -27,10 +36,10 @@ export function statusTintFor(flags: {
   const poison = !!flags.poison;
   const burn = !!flags.burn;
   if (poison && burn) {
+    // Left = poison, right = burn — readable dual DoT without MULTIPLY_TWO.
     return {
-      tint: TINT_POISON,
-      tint2: TINT_BURN,
-      mode: TINT_MODE_MULTIPLY_TWO,
+      corners: [TINT_POISON, TINT_BURN, TINT_POISON, TINT_BURN],
+      mode: TINT_MODE_MULTIPLY,
     };
   }
   if (poison) return { tint: TINT_POISON, mode: TINT_MODE_MULTIPLY };
@@ -85,24 +94,40 @@ export interface PhaserFxHost {
  */
 export function applyStatusTint(
   sprite: {
-    setTint?: (c: number) => unknown;
-    setTint2?: (c: number) => unknown;
+    setTint?: (
+      topLeft?: number,
+      topRight?: number,
+      bottomLeft?: number,
+      bottomRight?: number
+    ) => unknown;
     setTintMode?: (m: number) => unknown;
     clearTint?: () => unknown;
   },
   tint: StatusTint
 ): void {
-  if (!tint.tint) {
+  if (!tint.tint && !tint.corners) {
     sprite.clearTint?.();
     return;
   }
-  sprite.setTint?.(tint.tint);
-  if (tint.tint2 != null && sprite.setTint2) {
-    sprite.setTint2(tint.tint2);
-    if (tint.mode != null) sprite.setTintMode?.(tint.mode);
-  } else if (tint.mode != null) {
-    sprite.setTintMode?.(tint.mode);
+  if (tint.corners) {
+    sprite.setTint?.(
+      tint.corners[0],
+      tint.corners[1],
+      tint.corners[2],
+      tint.corners[3]
+    );
+  } else if (tint.tint != null) {
+    sprite.setTint?.(tint.tint);
   }
+  if (tint.mode != null) sprite.setTintMode?.(tint.mode);
+}
+
+/**
+ * Vertical shift so a center-origin sprite's feet stay planted when sy≠1.
+ * `y += drawSize * (1 - sy) / 2`.
+ */
+export function hitSquashFootOffset(drawSize: number, sy: number): number {
+  return (drawSize * (1 - sy)) / 2;
 }
 
 /**

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   applyStatusTint,
+  hitSquashFootOffset,
   hitSquashScale,
   spotlightRecipe,
   statusTintFor,
   TINT_BURN,
   TINT_MODE_MULTIPLY,
-  TINT_MODE_MULTIPLY_TWO,
   TINT_POISON,
 } from "./combat-phaser-fx";
 
@@ -29,11 +29,10 @@ describe("statusTintFor", () => {
     });
   });
 
-  it("poison+burn layers with MULTIPLY_TWO", () => {
+  it("poison+burn uses corner split under MULTIPLY (not MULTIPLY_TWO)", () => {
     expect(statusTintFor({ poison: true, burn: true })).toEqual({
-      tint: TINT_POISON,
-      tint2: TINT_BURN,
-      mode: TINT_MODE_MULTIPLY_TWO,
+      corners: [TINT_POISON, TINT_BURN, TINT_POISON, TINT_BURN],
+      mode: TINT_MODE_MULTIPLY,
     });
   });
 });
@@ -71,20 +70,21 @@ describe("applyStatusTint", () => {
     expect(calls).toEqual(["clear"]);
   });
 
-  it("applies dual tint when tint2 present", () => {
-    const calls: Array<[string, number?]> = [];
+  it("applies corner tint for dual status", () => {
+    const calls: Array<[string, number?, number?, number?, number?]> = [];
     applyStatusTint(
       {
-        setTint: (c) => calls.push(["tint", c]),
-        setTint2: (c) => calls.push(["tint2", c]),
+        setTint: (tl, tr, bl, br) => calls.push(["tint", tl, tr, bl, br]),
         setTintMode: (m) => calls.push(["mode", m]),
       },
-      { tint: TINT_POISON, tint2: TINT_BURN, mode: TINT_MODE_MULTIPLY_TWO }
+      {
+        corners: [TINT_POISON, TINT_BURN, TINT_POISON, TINT_BURN],
+        mode: TINT_MODE_MULTIPLY,
+      }
     );
     expect(calls).toEqual([
-      ["tint", TINT_POISON],
-      ["tint2", TINT_BURN],
-      ["mode", TINT_MODE_MULTIPLY_TWO],
+      ["tint", TINT_POISON, TINT_BURN, TINT_POISON, TINT_BURN],
+      ["mode", TINT_MODE_MULTIPLY],
     ]);
   });
 });
@@ -101,5 +101,10 @@ describe("hitSquashScale", () => {
     const mid = hitSquashScale(0.18);
     expect(mid.sx).toBeGreaterThan(1);
     expect(mid.sy).toBeLessThan(1);
+  });
+
+  it("foot offset pushes Y down when sy < 1", () => {
+    expect(hitSquashFootOffset(100, 1)).toBe(0);
+    expect(hitSquashFootOffset(100, 0.8)).toBeCloseTo(10, 5);
   });
 });

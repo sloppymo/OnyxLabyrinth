@@ -65,6 +65,7 @@ import { combatCanvas, combatPhaserCanvas } from "./shell";
 import type { CombatStage, CreateCombatStageOpts } from "./combat-stage";
 import {
   applyStatusTint,
+  hitSquashFootOffset,
   hitSquashScale,
   spotlightRecipe,
   statusTintFor,
@@ -389,17 +390,18 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       this.clearSpotlightFilters();
       return;
     }
+    // Gate to intro / cast banner only — NOT activeActorId (palette phase
+    // would run camera-wide Glow+dim for the whole player turn).
     const casting = !!(scene.banner && scene.banner.length > 0);
-    const bossAccent =
-      scene.introNameplate && scene.introBossId
-        ? BOSS_PRESENTATION[scene.introBossId]?.accent ?? null
-        : null;
-    const wants =
-      !!scene.activeActorId || !!scene.introNameplate || casting;
-    if (!wants) {
+    const intro = !!scene.introNameplate;
+    if (!intro && !casting) {
       this.clearSpotlightFilters();
       return;
     }
+    const bossAccent =
+      intro && scene.introBossId
+        ? BOSS_PRESENTATION[scene.introBossId]?.accent ?? null
+        : null;
     const recipe = spotlightRecipe({
       bossAccentHex: bossAccent,
       casting,
@@ -438,7 +440,9 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     entry: ActorSpriteEntry,
     anim: ActorAnim,
     now: number,
-    drawSize: number
+    drawSize: number,
+    centerX: number,
+    centerY: number
   ): void {
     let sx = 1;
     let sy = 1;
@@ -453,14 +457,29 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     // Fold squash into display size — setScale after setDisplaySize would
     // discard the combat draw size (Phaser maps display size via scale).
     entry.sprite.setDisplaySize(drawSize * sx, drawSize * sy);
+    // Origin is (0.5, 0.5): shortening sy lifts feet off the shadow.
+    // Push Y down so the foot edge stays planted.
+    entry.sprite.setPosition(
+      centerX,
+      centerY + hitSquashFootOffset(drawSize, sy)
+    );
   }
 
   clearSpotlightFilters(): void {
     try {
-      this.spotlightGlow?.destroy();
-      this.spotlightMatrix?.destroy();
+      const cam = this.cameras?.main;
+      if (cam) {
+        // FilterList.remove splices out of the list then destroys — bare
+        // Controller.destroy() only deactivates and leaves zombies on recipe churn.
+        if (this.spotlightGlow) {
+          cam.filters.external.remove(this.spotlightGlow);
+        }
+        if (this.spotlightMatrix) {
+          cam.filters.internal.remove(this.spotlightMatrix);
+        }
+      }
     } catch {
-      /* already gone */
+      /* already gone / no camera */
     }
     this.spotlightGlow = null;
     this.spotlightMatrix = null;
@@ -677,7 +696,6 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       }
       entry.sprite.setFrame(frame);
       // Center at ResolvedSlot.centerY (pos.y) — canvas drawStripFrame contract.
-      entry.sprite.setPosition(x, y);
       entry.sprite.setFlipX(false);
       applyStatusTint(
         entry.sprite,
@@ -686,7 +704,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           burn: (scene.state.enemyDots[enemy.instanceId]?.length ?? 0) > 0,
         })
       );
-      this.applyHitSquash(entry, anim, now, drawSize);
+      this.applyHitSquash(entry, anim, now, drawSize, x, y);
     } else {
       entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
@@ -750,8 +768,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
             )
           : frameIndexFor(stripInfo.strip, stateAge);
       entry.sprite.setFrame(frame);
-      entry.sprite.setPosition(x, y);
-      this.applyHitSquash(entry, anim, now, drawSize);
+      this.applyHitSquash(entry, anim, now, drawSize, x, y);
     } else {
       entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
@@ -822,13 +839,12 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           ? 0
           : frameIndexFor(stripInfo.strip, stateAge);
       entry.sprite.setFrame(frame);
-      entry.sprite.setPosition(x, y);
       entry.sprite.setFlipX(true);
       applyStatusTint(
         entry.sprite,
         statusTintFor({ poison: char.status.includes("poison") })
       );
-      this.applyHitSquash(entry, anim, now, drawSize);
+      this.applyHitSquash(entry, anim, now, drawSize, x, y);
     } else {
       entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
