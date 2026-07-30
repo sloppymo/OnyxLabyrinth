@@ -265,6 +265,13 @@ export interface DamagePopup {
   start: number;
   /** Larger text for crits / boss damage. */
   big?: boolean;
+  /**
+   * Actor this popup belongs to. Presentation metadata only — nothing in
+   * choreography reads it. The Phaser stage uses it to find the sprite that was
+   * just healed (green popup) so it can Shine the body rather than guessing
+   * from popup coordinates.
+   */
+  actorId?: string;
 }
 
 export const POPUP_DURATION = 1350;
@@ -674,6 +681,7 @@ function pushPopup(
     color,
     start: now,
     big,
+    actorId: id,
   });
 }
 

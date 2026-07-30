@@ -256,6 +256,35 @@ export function castBloomPulse(ageMs: number): CastBloomPulse {
   return { active: true, blendAmount: CAST_BLOOM_PEAK * Math.max(0, amp) };
 }
 
+/** How long a heal Shine sweeps for, in ms (shorter than POPUP_DURATION). */
+export const SHINE_MS = 620;
+
+/**
+ * Actors that were just healed, from the damage-popup channel.
+ *
+ * Heals are not an `ActorAnim` state — there is no "being healed" sprite strip —
+ * so the readable signal is the green popup choreography already pushes. Taking
+ * the colour as a parameter keeps this module free of a `combat-choreography`
+ * import; the stage passes `COLORS.heal`.
+ *
+ * Returns ids, not popups: a multi-target heal pushes one popup per actor and
+ * each body should shine exactly once.
+ */
+export function shineTargetsFrom(
+  popups: ReadonlyArray<{ color: string; start: number; actorId?: string }>,
+  now: number,
+  healColor: string,
+  windowMs = SHINE_MS
+): string[] {
+  const out = new Set<string>();
+  for (const p of popups) {
+    if (!p.actorId || p.color !== healColor) continue;
+    const age = now - p.start;
+    if (age >= 0 && age <= windowMs) out.add(p.actorId);
+  }
+  return [...out];
+}
+
 /** Death anim length in `combat-phaser-stage`; the dissolve rides the same clock. */
 export const DEATH_ANIM_MS = 675;
 

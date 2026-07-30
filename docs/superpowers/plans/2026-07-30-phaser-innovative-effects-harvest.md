@@ -165,11 +165,27 @@ Kill-switch: extend existing `?phaserFx=0` / `PHASER_FX_SPOTLIGHT` pattern so bl
       (spotlight Glow + bloom), so `debugFilterCounts` reports `spotlightExternal` and
       `bloom` separately and the assertion is "≤1 spotlight external AND bloom never live
       outside its banner" rather than a bare count cap.
-- [ ] Wire Shine for heal-colored EffectStyles / heal popups (reuse strip timing)
-- [ ] Stretch if time: H4 vignette pulse on crit popup or boss accent hit
-- [ ] `npm run build` + `npm test`
-- [ ] Arena smoke Phaser + `?phaser=0` (death still fades on canvas without Filters)
-- [ ] AGENTS combat checklist 3, 4, 8, 11
+- [x] Wire Shine for heal-colored popups. There is no "being healed" anim state, so the
+      readable signal is the green popup channel; `DamagePopup` gained an optional
+      `actorId` (presentation metadata only — nothing in choreography reads it) so the
+      stage can shine the right body instead of guessing from popup coordinates.
+      Covers buffs too, since `COLORS.heal` is also used for `isBuff` popups.
+      **Tween sync (the blocker):** `AddEffectShine` runs on Phaser's tween manager, not
+      the choreography clock, so it would keep running at 1× while Shift-2× / Tab-FAST
+      doubles playback. `tweens.timeScale` is now pinned to `scene.playbackRate` each
+      paint. Shine is the only effect in this file that owns a tween + DynamicTexture, so
+      `clearShine` disposes all three (tween, ParallelFilters, DynamicTexture).
+- [ ] Stretch if time: H4 vignette pulse on crit popup or boss accent hit — **not taken**
+- [x] `npm run build` + `npm test` (fx suite 40 green)
+- [x] Arena smoke Phaser + `?phaser=0` (death still fades on canvas without Filters)
+- [x] AGENTS combat checklist 3, 4, 8, 11
+
+**Exit evidence (2026-07-30):** three capture scripts, all 0 findings —
+`capture-phaser-death-dissolve.mjs` (3 death frames; dying slime renders as a grey mosaic
+beside a living green one; peak 1 live dissolve; 0 controllers left after corpses settle),
+`capture-phaser-cast-fx.mjs` (bloom sampled inside its pulse, 0 samples with bloom live and
+no banner, spotlight external stays 1), `capture-phaser-heal-shine.mjs` (Shine fires on a
+healed body, 0 left after playback settles, tween timeScale pinned).
 
 **Exit criteria:** Screenshots: mid-death mosaic; cast bloom frame; heal Shine frame. Filters destroyed in `stage.destroy()` / Next Fight. No `src/game/` edits.
 

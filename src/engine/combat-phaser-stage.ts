@@ -69,6 +69,8 @@ import {
   deathDissolveRecipe,
   DEATH_ANIM_MS,
   castBloomPulse,
+  shineTargetsFrom,
+  SHINE_MS,
   clearSpotlight,
   createSpotlightState,
   hitSquashFootOffset,
@@ -88,6 +90,8 @@ const PHASER_FX_HIT_SQUASH = true;
 const PHASER_FX_DEATH_DISSOLVE = true;
 /** Kill-switch for the cast bloom pulse (harvest H2). */
 const PHASER_FX_CAST_BLOOM = true;
+/** Kill-switch for the heal Shine sweep (harvest H3). */
+const PHASER_FX_SHINE = true;
 
 function setPhaserStageActive(on: boolean): void {
   const wrap = combatPhaserCanvas.parentElement;
@@ -150,6 +154,20 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     /** `bannerStart` this pulse belongs to — a new banner restarts the pulse. */
     bannerStart: number;
   } | null = null;
+  /**
+   * Live heal Shines by actor key. Unlike every other effect here these own a
+   * Phaser tween and a DynamicTexture, so each one must be explicitly disposed —
+   * see `clearShine`.
+   */
+  private shines = new Map<
+    string,
+    {
+      tween: Phaser.Tweens.Tween;
+      dynamicTexture: Phaser.Textures.DynamicTexture;
+      parallelFilters: Phaser.Filters.ParallelFilters | null;
+      startedAt: number;
+    }
+  >();
 
   constructor() {
     super(SCENE_KEY);
@@ -319,12 +337,22 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
    * Used by the capture script to assert they are spliced out once the
    * corpses settle, since there is no `disableFilters()` to lean on.
    */
-  debugDissolveCounts(): { active: number; keys: string[] } {
+  debugDissolveCounts(): {
+    active: number;
+    keys: string[];
+    shines: number;
+    tweenTimeScale: number;
+  } {
     const keys: string[] = [];
     for (const entry of this.actors.values()) {
       if (entry.dissolve) keys.push(entry.key);
     }
-    return { active: keys.length, keys };
+    return {
+      active: keys.length,
+      keys,
+      shines: this.shines.size,
+      tweenTimeScale: this.tweens?.timeScale ?? 1,
+    };
   }
 
   /** Defensive NEAREST after HTMLImageElement sheets (game config pixelArt alone can miss). */
@@ -463,6 +491,88 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     this.syncHpPips(scene, now, w, h);
     this.syncSpotlight(scene);
     this.syncCastBloom(scene, now);
+    this.syncHealShine(scene, now);
+  }
+
+  /**
+   * Sweep a specular Shine across bodies that were just healed (harvest H3).
+   *
+   * `Phaser.Actions.AddEffectShine` is the one effect in this file that runs on
+   * Phaser's own tween manager rather than the choreography clock. Left alone it
+   * would keep running at 1x while Shift-2x / Tab-FAST doubles playback, so the
+   * shine would visibly drift away from the heal it illustrates. `tweens.timeScale`
+   * is pinned to `scene.playbackRate` every paint to keep the two in step.
+   */
+  private syncHealShine(scene: CombatScene, now: number): void {
+    if (!PHASER_FX_SHINE) {
+      this.clearAllShines();
+      return;
+    }
+    // Keep Phaser's tween clock on the same rate as playback (FAST / skip).
+    this.tweens.timeScale = Math.max(0.1, scene.playbackRate || 1);
+
+    // Popups carry a bare actor id; the sprite pool is keyed "<kind>:<id>".
+    // Probe the three kinds rather than scanning, so an id that happens to be a
+    // suffix of another can never match the wrong body.
+    const wanted = new Set<string>();
+    for (const id of shineTargetsFrom(scene.popups, now, COLORS.heal)) {
+      for (const kind of ["party", "ally", "enemy"] as const) {
+        const key = this.actorPoolKey(kind, id);
+        if (this.actors.has(key)) wanted.add(key);
+      }
+    }
+
+    for (const [key, shine] of this.shines) {
+      if (!wanted.has(key) || now - shine.startedAt > SHINE_MS) {
+        this.clearShine(key);
+      }
+    }
+
+    for (const key of wanted) {
+      if (this.shines.has(key)) continue;
+      const entry = this.actors.get(key);
+      if (!entry || entry.isFallback) continue;
+      if (!(entry.sprite instanceof Phaser.GameObjects.Sprite)) continue;
+      try {
+        const [added] = Phaser.Actions.AddEffectShine(entry.sprite, {
+          radius: 0.35,
+          direction: 0.6,
+          scale: 1.4,
+        });
+        if (!added?.tween) continue;
+        this.shines.set(key, {
+          tween: added.tween,
+          dynamicTexture: added.dynamicTexture,
+          parallelFilters: added.parallelFilters,
+          startedAt: now,
+        });
+      } catch {
+        // CANVAS renderer / Filters unavailable — heal still reads via popup.
+      }
+    }
+  }
+
+  /** Dispose one Shine: tween, filter, and the DynamicTexture it draws into. */
+  private clearShine(key: string): void {
+    const shine = this.shines.get(key);
+    if (!shine) return;
+    this.shines.delete(key);
+    try {
+      shine.tween.destroy();
+      const entry = this.actors.get(key);
+      const internal = (entry?.sprite as Phaser.GameObjects.Sprite | undefined)
+        ?.filters?.internal;
+      if (shine.parallelFilters && internal) {
+        internal.remove(shine.parallelFilters);
+      }
+      shine.dynamicTexture.destroy();
+    } catch {
+      /* sprite/texture already torn down */
+    }
+  }
+
+  clearAllShines(): void {
+    for (const key of [...this.shines.keys()]) this.clearShine(key);
   }
 
   /**
@@ -1596,6 +1706,7 @@ export async function createPhaserCombatStage(
       try {
         phaserScene.clearSpotlightFilters();
         phaserScene.clearCastBloom();
+        phaserScene.clearAllShines();
       } catch {
         /* ignore */
       }

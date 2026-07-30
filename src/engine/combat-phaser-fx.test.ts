@@ -5,6 +5,8 @@ import {
   DEATH_ANIM_MS,
   castBloomPulse,
   CAST_BLOOM_MS,
+  shineTargetsFrom,
+  SHINE_MS,
   applyStatusTint,
   clearSpotlight,
   createSpotlightState,
@@ -339,5 +341,59 @@ describe("castBloomPulse", () => {
     // Both live on the camera external list; the cap is what keeps them from
     // overlapping for the whole cast rather than a flash.
     expect(CAST_BLOOM_MS).toBeLessThanOrEqual(180);
+  });
+});
+
+describe("shineTargetsFrom", () => {
+  const HEAL = "#6fe06f";
+  const DMG = "#ffffff";
+
+  it("picks up fresh heal popups only", () => {
+    const popups = [
+      { color: HEAL, start: 1000, actorId: "a" },
+      { color: DMG, start: 1000, actorId: "b" },
+    ];
+    expect(shineTargetsFrom(popups, 1100, HEAL)).toEqual(["a"]);
+  });
+
+  it("dedupes so a multi-hit heal shines the body once", () => {
+    const popups = [
+      { color: HEAL, start: 1000, actorId: "a" },
+      { color: HEAL, start: 1020, actorId: "a" },
+    ];
+    expect(shineTargetsFrom(popups, 1100, HEAL)).toEqual(["a"]);
+  });
+
+  it("returns every target of a party-wide heal", () => {
+    const popups = ["a", "b", "c", "d"].map((actorId) => ({
+      color: HEAL,
+      start: 1000,
+      actorId,
+    }));
+    expect(shineTargetsFrom(popups, 1050, HEAL).sort()).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("drops popups older than the shine window", () => {
+    const popups = [{ color: HEAL, start: 1000, actorId: "a" }];
+    expect(shineTargetsFrom(popups, 1000 + SHINE_MS, HEAL)).toEqual(["a"]);
+    expect(shineTargetsFrom(popups, 1000 + SHINE_MS + 1, HEAL)).toEqual([]);
+  });
+
+  it("ignores popups with no actorId (older entries / non-actor text)", () => {
+    const popups = [{ color: HEAL, start: 1000 }];
+    expect(shineTargetsFrom(popups, 1100, HEAL)).toEqual([]);
+  });
+
+  it("ignores popups from the future (clock skew)", () => {
+    const popups = [{ color: HEAL, start: 2000, actorId: "a" }];
+    expect(shineTargetsFrom(popups, 1000, HEAL)).toEqual([]);
+  });
+
+  it("shines nothing when the fight has only damage popups", () => {
+    const popups = [
+      { color: DMG, start: 1000, actorId: "a" },
+      { color: "#b060ff", start: 1000, actorId: "b" },
+    ];
+    expect(shineTargetsFrom(popups, 1100, HEAL)).toEqual([]);
   });
 });
