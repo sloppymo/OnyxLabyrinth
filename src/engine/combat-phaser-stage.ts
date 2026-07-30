@@ -65,6 +65,7 @@ import { combatCanvas, combatPhaserCanvas } from "./shell";
 import type { CombatStage, CreateCombatStageOpts } from "./combat-stage";
 import {
   applyStatusTint,
+  hitSquashScale,
   spotlightRecipe,
   statusTintFor,
   type SpotlightRecipe,
@@ -72,6 +73,8 @@ import {
 
 /** Kill-switch for camera Glow/ColorMatrix (tint still applies). */
 const PHASER_FX_SPOTLIGHT = true;
+/** Kill-switch for hurt impact squash. */
+const PHASER_FX_HIT_SQUASH = true;
 
 function setPhaserStageActive(on: boolean): void {
   const wrap = combatPhaserCanvas.parentElement;
@@ -431,6 +434,27 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     }
   }
 
+  private applyHitSquash(
+    entry: ActorSpriteEntry,
+    anim: ActorAnim,
+    now: number,
+    drawSize: number
+  ): void {
+    let sx = 1;
+    let sy = 1;
+    if (
+      PHASER_FX_HIT_SQUASH &&
+      !entry.isFallback &&
+      anim.state === "hurt"
+    ) {
+      const t01 = Math.min(1, Math.max(0, (now - anim.stateStart) / 450));
+      ({ sx, sy } = hitSquashScale(t01));
+    }
+    // Fold squash into display size — setScale after setDisplaySize would
+    // discard the combat draw size (Phaser maps display size via scale).
+    entry.sprite.setDisplaySize(drawSize * sx, drawSize * sy);
+  }
+
   clearSpotlightFilters(): void {
     try {
       this.spotlightGlow?.destroy();
@@ -652,7 +676,6 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
             : frameIndexFor(stripInfo.strip, stateAge);
       }
       entry.sprite.setFrame(frame);
-      entry.sprite.setDisplaySize(drawSize, drawSize);
       // Center at ResolvedSlot.centerY (pos.y) — canvas drawStripFrame contract.
       entry.sprite.setPosition(x, y);
       entry.sprite.setFlipX(false);
@@ -663,6 +686,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           burn: (scene.state.enemyDots[enemy.instanceId]?.length ?? 0) > 0,
         })
       );
+      this.applyHitSquash(entry, anim, now, drawSize);
     } else {
       entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
@@ -726,8 +750,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
             )
           : frameIndexFor(stripInfo.strip, stateAge);
       entry.sprite.setFrame(frame);
-      entry.sprite.setDisplaySize(drawSize, drawSize);
       entry.sprite.setPosition(x, y);
+      this.applyHitSquash(entry, anim, now, drawSize);
     } else {
       entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
@@ -798,13 +822,13 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           ? 0
           : frameIndexFor(stripInfo.strip, stateAge);
       entry.sprite.setFrame(frame);
-      entry.sprite.setDisplaySize(drawSize, drawSize);
       entry.sprite.setPosition(x, y);
       entry.sprite.setFlipX(true);
       applyStatusTint(
         entry.sprite,
         statusTintFor({ poison: char.status.includes("poison") })
       );
+      this.applyHitSquash(entry, anim, now, drawSize);
     } else {
       entry.sprite.setPosition(x, y);
       if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {

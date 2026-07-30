@@ -104,3 +104,25 @@ export function applyStatusTint(
     sprite.setTintMode?.(tint.mode);
   }
 }
+
+/**
+ * Non-uniform hit squash over hurt progress t∈[0,1].
+ * Peaks early (~0.18), then eases back to identity — presentation only.
+ *
+ * Applied via Sprite.setScale (WebGL + CANVAS). Full Mesh2D vertex warp on
+ * strip frames is deferred — rebinding atlas pages per frame is fragile;
+ * scale delivers the same player-visible weight for Phase 4.
+ */
+export function hitSquashScale(t01: number): { sx: number; sy: number } {
+  const t = Math.min(1, Math.max(0, t01));
+  const peakAt = 0.18;
+  let amp: number;
+  if (t <= peakAt) {
+    amp = t / peakAt;
+  } else {
+    const u = (t - peakAt) / (1 - peakAt);
+    amp = 1 - u * u * (3 - 2 * u);
+  }
+  const squash = 0.14 * amp;
+  return { sx: 1 + squash, sy: 1 - squash * 1.35 };
+}

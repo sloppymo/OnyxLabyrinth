@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyStatusTint,
+  hitSquashScale,
   spotlightRecipe,
   statusTintFor,
   TINT_BURN,
@@ -85,5 +86,20 @@ describe("applyStatusTint", () => {
       ["tint2", TINT_BURN],
       ["mode", TINT_MODE_MULTIPLY_TWO],
     ]);
+  });
+});
+
+describe("hitSquashScale", () => {
+  it("starts and ends near identity", () => {
+    expect(hitSquashScale(0)).toEqual({ sx: 1, sy: 1 });
+    const end = hitSquashScale(1);
+    expect(end.sx).toBeCloseTo(1, 5);
+    expect(end.sy).toBeCloseTo(1, 5);
+  });
+
+  it("widens and shortens near the peak", () => {
+    const mid = hitSquashScale(0.18);
+    expect(mid.sx).toBeGreaterThan(1);
+    expect(mid.sy).toBeLessThan(1);
   });
 });
