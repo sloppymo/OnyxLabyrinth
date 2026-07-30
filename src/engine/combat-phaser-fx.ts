@@ -289,7 +289,14 @@ export function shineTargetsFrom(
 export const DEATH_ANIM_MS = 675;
 
 export type DeathDissolve = {
-  /** `Filters.Pixelate` amount — 1 is untouched, higher is blockier. */
+  /**
+   * `Filters.Pixelate` amount.
+   *
+   * Note there is no identity value: the shader always quantises to blocks of
+   * `2 + amount` screen px and has no zero-amount short-circuit. 0 is therefore
+   * the floor (2px blocks), not "off" — imperceptible on sprites this chunky,
+   * but the reason the ramp starts at 0 rather than 1.
+   */
   pixelate: number;
   /** `ColorMatrix.grayscale` amount — 0 keeps color, 1 is fully grey. */
   grayscale: number;
@@ -312,13 +319,86 @@ const DEATH_PIXELATE_PEAK = 8;
 export function deathDissolveRecipe(t01: number): DeathDissolve {
   const t = Math.min(1, Math.max(0, t01));
   return {
-    pixelate: 1 + t * t * (DEATH_PIXELATE_PEAK - 1),
+    pixelate: t * t * DEATH_PIXELATE_PEAK,
     grayscale: smoothstep(Math.min(1, t * 1.35)),
   };
 }
 
 function smoothstep(t: number): number {
   return t * t * (3 - 2 * t);
+}
+
+/** Ghost clones trailing a walking actor. Each one is an extra draw call. */
+export const AFTERIMAGE_COUNT = 3;
+
+/**
+ * Alpha of the ghost closest to the actor; the rest fall off linearly.
+ *
+ * Kept low because the ghosts overlap heavily (see `AFTERIMAGE_SPACING`) and
+ * overlapping alphas compound — three ghosts at 0.28/0.19/0.09 read as one soft
+ * smear, not three stacked bodies.
+ */
+const AFTERIMAGE_LEAD_ALPHA = 0.28;
+
+/**
+ * Spacing between ghosts, as a fraction of the move's own duration.
+ *
+ * A fraction, deliberately, not milliseconds: `startMove` already divides
+ * `moveDuration` by `playbackRate`, so sampling by fraction makes the trail the
+ * same shape at 1× and at Shift-2× / Tab-FAST without `playbackRate` ever
+ * entering this module.
+ *
+ * Wide on purpose. The reference effect is an FF6 dash across the screen, but
+ * this game's approach is `approachDelta` — a symbolic **35px** step, against
+ * sprites drawn ~100px wide. The trail can therefore never be wider than the
+ * step itself, so tight spacing collapses the ghosts into the body and renders
+ * as nothing (measured: 3.4px of total spread at 0.085). Sampling most of the
+ * move's length spends the whole 35px budget and produces a readable motion
+ * smear — which is the honest ceiling here, not distinct clones.
+ */
+const AFTERIMAGE_SPACING = 0.3;
+
+export type AfterimageSample = {
+  /** How far back to sample the move tween, in ms before now. */
+  ageMs: number;
+  /** Ghost alpha, to be multiplied by the actor's own opacity. */
+  alpha: number;
+};
+
+/**
+ * Ghost trail behind an actor mid-walk (harvest H5).
+ *
+ * Emits a sample only once the move is old enough to have a distinct past
+ * position (`ageMs <= elapsedMs`), so the trail grows 0→1→2→3 as the walk
+ * proceeds. That rule is load-bearing, not cosmetic: `animOffset` clamps its
+ * `t` at 1 but *not* at 0, so a negative age lands in the `t < 0.5` branch
+ * where `e = 2t²` is positive — a ghost sampled before `moveStart` would render
+ * ahead of the actor and then be overtaken by it. Skipping is also what keeps
+ * several ghosts from collapsing onto the start point and alpha-stacking.
+ *
+ * Returns nothing once the move is over: walk→idle lands a choreography step
+ * later, so a finished move still reports `state === "walk"` for a beat, and
+ * every sample would pile up on the endpoint.
+ */
+export function afterimageSamples(opts: {
+  elapsedMs: number;
+  moveDurationMs: number;
+  count?: number;
+}): AfterimageSample[] {
+  const { elapsedMs, moveDurationMs } = opts;
+  const count = opts.count ?? AFTERIMAGE_COUNT;
+  if (!(moveDurationMs > 0) || !(elapsedMs >= 0) || count <= 0) return [];
+  if (elapsedMs >= moveDurationMs) return [];
+  const out: AfterimageSample[] = [];
+  for (let i = 1; i <= count; i++) {
+    const ageMs = moveDurationMs * AFTERIMAGE_SPACING * i;
+    if (ageMs > elapsedMs) break;
+    out.push({
+      ageMs,
+      alpha: AFTERIMAGE_LEAD_ALPHA * (1 - (i - 1) / count),
+    });
+  }
+  return out;
 }
 
 /**

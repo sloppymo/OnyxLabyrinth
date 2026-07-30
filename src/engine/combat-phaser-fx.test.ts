@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  afterimageSamples,
+  AFTERIMAGE_COUNT,
   applySpotlight,
   deathDissolveRecipe,
   DEATH_ANIM_MS,
@@ -268,8 +270,9 @@ describe("spotlight filter lifecycle", () => {
 });
 
 describe("deathDissolveRecipe", () => {
-  it("starts at identity so a fresh kill does not pop", () => {
-    expect(deathDissolveRecipe(0)).toEqual({ pixelate: 1, grayscale: 0 });
+  it("starts at the pixelate floor so a fresh kill does not pop", () => {
+    // 0 is the floor, not "off" — the shader always quantises to 2 + amount px.
+    expect(deathDissolveRecipe(0)).toEqual({ pixelate: 0, grayscale: 0 });
   });
 
   it("ends fully mosaicked and fully drained", () => {
@@ -293,7 +296,7 @@ describe("deathDissolveRecipe", () => {
   it("drains color ahead of the mosaic", () => {
     // Body reads as "drained" before it reads as "disintegrating".
     const mid = deathDissolveRecipe(0.5);
-    const pixFrac = (mid.pixelate - 1) / 7;
+    const pixFrac = mid.pixelate / 8;
     expect(mid.grayscale).toBeGreaterThan(pixFrac);
   });
 
@@ -395,5 +398,93 @@ describe("shineTargetsFrom", () => {
       { color: "#b060ff", start: 1000, actorId: "b" },
     ];
     expect(shineTargetsFrom(popups, 1100, HEAL)).toEqual([]);
+  });
+});
+
+describe("afterimageSamples", () => {
+  const DUR = 400;
+
+  it("emits nothing at the very start of a move", () => {
+    expect(afterimageSamples({ elapsedMs: 0, moveDurationMs: DUR })).toEqual([]);
+  });
+
+  /**
+   * The bug this guards: `animOffset` clamps t at 1 but not at 0, so sampling
+   * before `moveStart` yields e = 2t² > 0 — a ghost drawn *ahead* of the actor.
+   * Every emitted age must therefore be reachable in the past.
+   */
+  it("never emits an age reaching back before the move began", () => {
+    for (let elapsed = 0; elapsed <= DUR; elapsed += 7) {
+      for (const s of afterimageSamples({ elapsedMs: elapsed, moveDurationMs: DUR })) {
+        expect(s.ageMs).toBeLessThanOrEqual(elapsed);
+      }
+    }
+  });
+
+  it("grows the trail as the move proceeds, up to the cap", () => {
+    // Sample across the whole move rather than fixed fractions, so the test
+    // does not silently encode whatever the current ghost spacing happens to be.
+    const counts = [0, 0.2, 0.4, 0.6, 0.8, 0.99].map(
+      (f) => afterimageSamples({ elapsedMs: DUR * f, moveDurationMs: DUR }).length
+    );
+    // Monotonic non-decreasing, never above the cap.
+    for (let i = 1; i < counts.length; i++) {
+      expect(counts[i]!).toBeGreaterThanOrEqual(counts[i - 1]!);
+    }
+    expect(Math.max(...counts)).toBe(AFTERIMAGE_COUNT);
+    expect(counts[0]).toBe(0);
+  });
+
+  it("fades each successive ghost and keeps them all translucent", () => {
+    const s = afterimageSamples({ elapsedMs: DUR, moveDurationMs: DUR + 1 });
+    expect(s).toHaveLength(AFTERIMAGE_COUNT);
+    for (let i = 1; i < s.length; i++) {
+      expect(s[i]!.alpha).toBeLessThan(s[i - 1]!.alpha);
+      expect(s[i]!.ageMs).toBeGreaterThan(s[i - 1]!.ageMs);
+    }
+    for (const g of s) {
+      expect(g.alpha).toBeGreaterThan(0);
+      expect(g.alpha).toBeLessThan(1);
+    }
+  });
+
+  /**
+   * walk→idle lands a step after the move ends, so a finished move still
+   * reports state "walk" for a beat — every ghost would stack on the endpoint.
+   */
+  it("emits nothing once the move has finished", () => {
+    expect(afterimageSamples({ elapsedMs: DUR, moveDurationMs: DUR })).toEqual([]);
+    expect(afterimageSamples({ elapsedMs: DUR * 3, moveDurationMs: DUR })).toEqual([]);
+  });
+
+  it("emits nothing for a zero/negative duration move (no tween in flight)", () => {
+    expect(afterimageSamples({ elapsedMs: 100, moveDurationMs: 0 })).toEqual([]);
+    expect(afterimageSamples({ elapsedMs: 100, moveDurationMs: -5 })).toEqual([]);
+  });
+
+  it("emits nothing for a negative elapsed (clock skew)", () => {
+    expect(afterimageSamples({ elapsedMs: -50, moveDurationMs: DUR })).toEqual([]);
+  });
+
+  /**
+   * Spacing is a fraction of the move, and `startMove` already divides
+   * duration by playbackRate — so the trail is identical in shape at any speed.
+   */
+  it("produces the same trail shape at 2x playback", () => {
+    const slow = afterimageSamples({ elapsedMs: DUR * 0.6, moveDurationMs: DUR });
+    const fast = afterimageSamples({ elapsedMs: DUR * 0.3, moveDurationMs: DUR / 2 });
+    expect(fast.map((g) => g.alpha)).toEqual(slow.map((g) => g.alpha));
+    expect(fast.map((g) => g.ageMs / (DUR / 2))).toEqual(
+      slow.map((g) => g.ageMs / DUR)
+    );
+  });
+
+  it("honours an explicit count", () => {
+    expect(
+      afterimageSamples({ elapsedMs: DUR, moveDurationMs: DUR + 1, count: 1 })
+    ).toHaveLength(1);
+    expect(
+      afterimageSamples({ elapsedMs: DUR, moveDurationMs: DUR + 1, count: 0 })
+    ).toEqual([]);
   });
 });

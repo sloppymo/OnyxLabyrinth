@@ -64,6 +64,7 @@ import {
 import { combatCanvas, combatPhaserCanvas } from "./shell";
 import type { CombatStage, CreateCombatStageOpts } from "./combat-stage";
 import {
+  afterimageSamples,
   applySpotlight,
   applyStatusTint,
   deathDissolveRecipe,
@@ -92,6 +93,121 @@ const PHASER_FX_DEATH_DISSOLVE = true;
 const PHASER_FX_CAST_BLOOM = true;
 /** Kill-switch for the heal Shine sweep (harvest H3). */
 const PHASER_FX_SHINE = true;
+/**
+ * Walk-forward ghost clones (harvest H5) — implemented, measured, OFF.
+ *
+ * The effect works: `capture-phaser-afterimage-pool.mjs` measures a 3-ghost
+ * trail spanning 28.6px, live only during a walk and gone at rest. It just does
+ * not *read*. The reference is an FF6 dash across the screen; this game's
+ * approach is `approachDelta` — a symbolic 35px step over 525ms (~80px/sec)
+ * with ~100px sprites, so the ghosts overlap the body by roughly two thirds and
+ * there is no fast motion for a viewer to interpret as a smear. Probed at both
+ * 0.28 and 0.6 alpha against the combat backdrop: invisible at the low end,
+ * and at the high end it reads as a double-image artifact rather than speed.
+ *
+ * Left wired and unit-tested rather than deleted — this is the plan's own
+ * documented rollback ("disable afterimage constant; pooling can stay"), and
+ * flipping this to `true` is the whole cost of revisiting if the approach
+ * distance ever grows into a real lunge.
+ */
+const PHASER_FX_AFTERIMAGE = false;
+
+/**
+ * Upper bound on retained GOs per pool. A pool never shrinks during a frame it
+ * is busy, but one outsized burst must not strand hundreds of objects for the
+ * rest of the fight — anything past this is destroyed once it goes unused.
+ */
+const POOL_MAX = 96;
+
+/**
+ * Reusable GameObject pool (harvest H6).
+ *
+ * `syncEffects` / `syncParticles` previously destroyed and re-created every GO
+ * on every paint — at 60fps with a burst on screen that is thousands of
+ * allocations a second, all of it garbage. The pool keeps them and hands the
+ * same objects back.
+ *
+ * Usage is strictly `begin()` → n × `acquire()` → `end()` per paint. Callers
+ * MUST fully reset whatever they set on an acquired object: a pooled GO arrives
+ * carrying whatever the last user left on it.
+ *
+ * Deliberately not a `Phaser.GameObjects.Group`. Group is the idiomatic pool
+ * when objects have independent lifetimes and you ask for "the next dead one"
+ * (`get()` / `killAndHide()`). Here the visible set is rebuilt wholesale every
+ * paint from an authoritative array the choreography owns, so an index cursor
+ * is both simpler and exactly ordered — Group's alive/dead bookkeeping would be
+ * overhead for a question we never ask. The `setActive(false).setVisible(false)`
+ * pair below is Group's own release idiom, kept so pooled objects are skipped by
+ * both update and render passes.
+ */
+class GameObjectPool<
+  T extends Phaser.GameObjects.GameObject & {
+    setVisible(v: boolean): T;
+    setActive(v: boolean): T;
+    x: number;
+    y: number;
+  },
+> {
+  private items: T[] = [];
+  private cursor = 0;
+  /**
+   * Monotonic count of objects ever allocated. This — not the pool size — is
+   * what proves reuse: a size probe cannot tell "reused 12" from "destroyed
+   * and recreated 12". Under a working pool this plateaus while the scene's
+   * particle list keeps churning.
+   */
+  created = 0;
+
+  constructor(private readonly factory: () => T) {}
+
+  begin(): void {
+    this.cursor = 0;
+  }
+
+  acquire(): T {
+    let item = this.items[this.cursor];
+    if (!item) {
+      item = this.factory();
+      this.created++;
+      this.items.push(item);
+    }
+    this.cursor++;
+    item.setActive(true).setVisible(true);
+    return item;
+  }
+
+  /** Release the tail that went unused this frame, and trim past the cap. */
+  end(): void {
+    for (let i = this.cursor; i < this.items.length; i++) {
+      this.items[i]!.setActive(false).setVisible(false);
+    }
+    if (this.items.length > POOL_MAX) {
+      const keep = Math.max(this.cursor, POOL_MAX);
+      for (const extra of this.items.splice(keep)) extra.destroy();
+    }
+  }
+
+  get size(): number {
+    return this.items.length;
+  }
+
+  get live(): number {
+    return this.cursor;
+  }
+
+  /** Widest gap between the objects acquired this frame (debug probe only). */
+  spreadPx(): number {
+    let max = 0;
+    for (let i = 0; i < this.cursor; i++) {
+      const a = this.items[i]!;
+      for (let j = i + 1; j < this.cursor; j++) {
+        const b = this.items[j]!;
+        max = Math.max(max, Math.hypot(a.x - b.x, a.y - b.y));
+      }
+    }
+    return max;
+  }
+}
 
 function setPhaserStageActive(on: boolean): void {
   const wrap = combatPhaserCanvas.parentElement;
@@ -128,8 +244,27 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private actors = new Map<string, ActorSpriteEntry>();
   private popups = new Map<string, Phaser.GameObjects.Text>();
   private barks = new Map<string, Phaser.GameObjects.Text>();
-  private particles: Phaser.GameObjects.Arc[] = [];
-  private effectSprites: Phaser.GameObjects.Sprite[] = [];
+  /**
+   * Pooled transient GOs (harvest H6). Effect sprites and the procedural
+   * fallback arcs get separate pools on purpose: sharing one would mean handing
+   * an Arc back where a Sprite is expected (the old code papered over this with
+   * an `as unknown as Sprite` cast) and would cross-contaminate tint/blend
+   * between two effect families.
+   */
+  private readonly particlePool = new GameObjectPool<Phaser.GameObjects.Arc>(() =>
+    this.add.circle(0, 0, 4, 0xffffff, 1).setDepth(550)
+  );
+  private readonly effectSpritePool = new GameObjectPool<Phaser.GameObjects.Sprite>(
+    // "__DEFAULT" is Phaser's blank placeholder texture. Not "__MISSING",
+    // which is the magenta error checkerboard — a pool slot is not an error.
+    () => this.add.sprite(0, 0, "__DEFAULT").setDepth(600)
+  );
+  private readonly effectArcPool = new GameObjectPool<Phaser.GameObjects.Arc>(() =>
+    this.add.circle(0, 0, 12, 0x4488cc, 1).setDepth(600)
+  );
+  private readonly ghostPool = new GameObjectPool<Phaser.GameObjects.Sprite>(() =>
+    this.add.sprite(0, 0, "__DEFAULT").setOrigin(0.5, 0.5)
+  );
   private glowGraphics: Phaser.GameObjects.Graphics | null = null;
   private bgImage: Phaser.GameObjects.Image | null = null;
   private bannerText: Phaser.GameObjects.Text | null = null;
@@ -310,6 +445,12 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     gate: boolean;
     webgl: boolean;
     bloom: boolean;
+    /**
+     * Live `blend.amount` of the bloom, or -1 when no bloom is up. Exposed
+     * because "a bloom exists" is not the property that matters — an envelope
+     * written to the wrong field still yields a bloom, just a frozen one.
+     */
+    bloomAmount: number;
     spotlightExternal: number;
   } {
     const cam = this.cameras?.main;
@@ -328,6 +469,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       // "<=1 spotlight external AND bloom only during its pulse", rather than a
       // bare cap that the bloom would legitimately trip.
       bloom: !!this.bloom,
+      bloomAmount: this.bloom ? this.bloom.parallelFilters.blend.amount : -1,
       spotlightExternal: this.spotlight.glow ? 1 : 0,
     };
   }
@@ -347,11 +489,61 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     for (const entry of this.actors.values()) {
       if (entry.dissolve) keys.push(entry.key);
     }
+    // Report the Shines' own timeScale (they carry it per-tween, so the
+    // manager's global value stays 1) — falling back to the manager when no
+    // Shine is live, which is what "at rest" looks like.
+    let tweenTimeScale = this.tweens?.timeScale ?? 1;
+    for (const shine of this.shines.values()) {
+      tweenTimeScale = shine.tween.timeScale;
+      break;
+    }
     return {
       active: keys.length,
       keys,
       shines: this.shines.size,
-      tweenTimeScale: this.tweens?.timeScale ?? 1,
+      tweenTimeScale,
+    };
+  }
+
+  /**
+   * Debug: pool occupancy and — the part that matters — lifetime allocation
+   * counts (harvest H6).
+   *
+   * A size-only probe cannot distinguish "reused 12 objects" from "destroyed and
+   * re-created 12 objects" every frame; both report 12. `created` is monotonic,
+   * so the assertion that can actually fail is: run combat for N seconds and
+   * confirm `created` plateaus while `sceneParticles` keeps churning.
+   */
+  debugPoolCounts(): {
+    particles: { live: number; size: number; created: number };
+    effectSprites: { live: number; size: number; created: number };
+    effectArcs: { live: number; size: number; created: number };
+    ghosts: { live: number; size: number; created: number };
+    /**
+     * Widest gap between live ghosts, in px. Counting ghosts proves objects
+     * exist; only the spread proves they are drawn at *different* past
+     * positions rather than stacked invisibly under the body.
+     */
+    ghostSpreadPx: number;
+    /** So a capture can tell "afterimage off by design" from "afterimage broken". */
+    afterimageEnabled: boolean;
+    sceneParticles: number;
+    sceneEffects: number;
+  } {
+    const of = (p: { live: number; size: number; created: number }) => ({
+      live: p.live,
+      size: p.size,
+      created: p.created,
+    });
+    return {
+      particles: of(this.particlePool),
+      effectSprites: of(this.effectSpritePool),
+      effectArcs: of(this.effectArcPool),
+      ghosts: of(this.ghostPool),
+      ghostSpreadPx: this.ghostPool.spreadPx(),
+      afterimageEnabled: PHASER_FX_AFTERIMAGE,
+      sceneParticles: this.latest?.scene.particles.length ?? 0,
+      sceneEffects: this.latest?.scene.effects.length ?? 0,
     };
   }
 
@@ -508,8 +700,15 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       this.clearAllShines();
       return;
     }
-    // Keep Phaser's tween clock on the same rate as playback (FAST / skip).
-    this.tweens.timeScale = Math.max(0.1, scene.playbackRate || 1);
+    // Keep the Shine tweens on the same clock as playback (FAST / skip).
+    //
+    // Per-tween `timeScale`, not `TweenManager.timeScale`: the manager's value
+    // multiplies into every tween in the scene, so scaling it here would
+    // silently retime any tween added later by unrelated code. Tween.timeScale
+    // is multiplied by the manager's, so this stays correct if that ever
+    // changes for another reason.
+    const rate = Math.max(0.1, scene.playbackRate || 1);
+    for (const shine of this.shines.values()) shine.tween.timeScale = rate;
 
     // Popups carry a bare actor id; the sprite pool is keyed "<kind>:<id>".
     // Probe the three kinds rather than scanning, so an id that happens to be a
@@ -540,6 +739,9 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           scale: 1.4,
         });
         if (!added?.tween) continue;
+        // Adopt the current playback rate immediately; a Shine started during
+        // FAST must not run its first frames at 1x.
+        added.tween.timeScale = rate;
         this.shines.set(key, {
           tween: added.tween,
           dynamicTexture: added.dynamicTexture,
@@ -617,10 +819,11 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           bannerStart: scene.bannerStart,
         };
       }
-      const blend = (
-        this.bloom.parallelFilters as unknown as { blendAmount?: number }
-      );
-      if ("blendAmount" in blend) blend.blendAmount = pulse.blendAmount;
+      // `AddEffectBloom`'s `blendAmount` config lands on `parallelFilters.blend.amount`
+      // (Blend filter), NOT a `blendAmount` property on the ParallelFilters itself.
+      // Writing the latter is a silent no-op that freezes the bloom at whatever
+      // amplitude its first frame happened to create it with.
+      this.bloom.parallelFilters.blend.amount = pulse.blendAmount;
     } catch {
       // CANVAS renderer / Filters unavailable — no bloom, spotlight unaffected.
       this.clearCastBloom();
@@ -805,9 +1008,54 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     return `${kind}:${id}`;
   }
 
+  /**
+   * Ghost clones trailing an actor mid-walk (harvest H5).
+   *
+   * Past positions come from replaying `animOffset` at earlier timestamps rather
+   * than from a history buffer — the move is an analytic ease, so sampling it is
+   * exact and costs nothing to keep. `afterimageSamples` guarantees every age it
+   * returns is inside the move, which matters: `animOffset` does not clamp `t` at
+   * 0, so an age reaching back before `moveStart` would place a ghost *ahead* of
+   * the actor.
+   *
+   * Phaser-only by design; `?phaser=0` keeps the plain walk.
+   */
+  private applyAfterimage(opts: {
+    anim: ActorAnim;
+    now: number;
+    baseX: number;
+    baseY: number;
+    baseFootY: number;
+    drawSize: number;
+    flipX: boolean;
+    texKey: string;
+    opacity: number;
+    frameFor: (ageMs: number) => number;
+  }): void {
+    if (!PHASER_FX_AFTERIMAGE) return;
+    const { anim, now } = opts;
+    if (anim.state !== "walk") return;
+    const samples = afterimageSamples({
+      elapsedMs: now - anim.moveStart,
+      moveDurationMs: anim.moveDuration,
+    });
+    for (const g of samples) {
+      const past = animOffset(anim, now - g.ageMs);
+      const ghost = this.ghostPool.acquire();
+      ghost.setTexture(opts.texKey, opts.frameFor(g.ageMs));
+      ghost.setPosition(opts.baseX + past.x, opts.baseY + past.y);
+      ghost.setDisplaySize(opts.drawSize, opts.drawSize);
+      ghost.setFlipX(opts.flipX);
+      ghost.setAlpha(g.alpha * opts.opacity);
+      // Behind the body, in front of its contact shadow (which sits at -0.5).
+      ghost.setDepth(opts.baseFootY + past.y - 0.4);
+    }
+  }
+
   private syncActors(scene: CombatScene, now: number, w: number, h: number): void {
     const seen = new Set<string>();
     const s = scene.state;
+    this.ghostPool.begin();
 
     const placeEnemy = (e: EnemyInstance, slot: number) => {
       const key = this.actorPoolKey("enemy", e.instanceId);
@@ -853,6 +1101,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         this.actors.delete(key);
       }
     }
+    // Nothing acquired this frame => every ghost hides. That is the whole
+    // clear-on-skip/turn-end story: the trail is derived from live anim state,
+    // so it cannot outlive the walk that produced it.
+    this.ghostPool.end();
   }
 
   private ensureFallback(
@@ -976,6 +1228,19 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       entry.sprite.setFrame(frame);
       // Center at ResolvedSlot.centerY (pos.y) — canvas drawStripFrame contract.
       entry.sprite.setFlipX(false);
+      this.applyAfterimage({
+        anim,
+        now,
+        baseX: pos.x,
+        baseY: pos.y,
+        baseFootY: pos.footY,
+        drawSize,
+        flipX: false,
+        texKey,
+        opacity: anim.opacity,
+        frameFor: (ageMs) =>
+          frameIndexFor(stripInfo.strip, Math.max(0, stateAge - ageMs)),
+      });
       applyStatusTint(
         entry.sprite,
         statusTintFor({
@@ -1048,6 +1313,19 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
             )
           : frameIndexFor(stripInfo.strip, stateAge);
       entry.sprite.setFrame(frame);
+      this.applyAfterimage({
+        anim,
+        now,
+        baseX: pos.x,
+        baseY: pos.y,
+        baseFootY: pos.footY,
+        drawSize,
+        flipX: false,
+        texKey,
+        opacity: anim.opacity,
+        frameFor: (ageMs) =>
+          frameIndexFor(stripInfo.strip, Math.max(0, stateAge - ageMs)),
+      });
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
       this.applyDeathDissolve(entry, anim, now);
     } else {
@@ -1121,6 +1399,21 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           : frameIndexFor(stripInfo.strip, stateAge);
       entry.sprite.setFrame(frame);
       entry.sprite.setFlipX(true);
+      this.applyAfterimage({
+        anim,
+        now,
+        baseX: pos.x,
+        baseY: pos.y,
+        baseFootY: pos.footY,
+        drawSize,
+        // Party strips are drawn mirrored — a ghost that misses this faces
+        // backwards behind its own body.
+        flipX: true,
+        texKey,
+        opacity,
+        frameFor: (ageMs) =>
+          frameIndexFor(stripInfo.strip, Math.max(0, stateAge - ageMs)),
+      });
       applyStatusTint(
         entry.sprite,
         statusTintFor({ poison: char.status.includes("poison") })
@@ -1135,10 +1428,17 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Paint `scene.effects` from the pools (harvest H6).
+   *
+   * Every property this sets must be set unconditionally, because a pooled GO
+   * arrives carrying the last frame's state. Blend mode is the trap: it used to
+   * be applied only under `if (effect.glow)`, which on a pooled object means the
+   * first glowing effect leaves ADD on that slot forever.
+   */
   private syncEffects(scene: CombatScene, now: number): void {
-    // Recreate lightly each frame — effect count is capped (~40).
-    for (const s of this.effectSprites) s.destroy();
-    this.effectSprites = [];
+    this.effectSpritePool.begin();
+    this.effectArcPool.begin();
     for (const effect of scene.effects) {
       const tRaw = (now - effect.start) / effect.duration;
       const t = Math.min(1, Math.max(0, tRaw));
@@ -1176,10 +1476,9 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           );
           if (this.textures.exists(texKey)) {
             const frame = effectFrame(sprite, effect.start, now, effect.type);
-            const go = this.add
-              .sprite(x, y, texKey, frame)
-              .setDepth(600)
-              .setRotation(angle);
+            const go = this.effectSpritePool.acquire();
+            go.setTexture(texKey, frame);
+            go.setPosition(x, y).setDepth(600).setRotation(angle);
             const scale = effect.scale ?? 1;
             go.setDisplaySize(
               sprite.strip.frameWidth * scale,
@@ -1192,45 +1491,47 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
                   ? 1 - t * 0.5
                   : 1;
             go.setAlpha(alpha);
-            if (effect.glow) {
-              try {
-                go.setBlendMode(Phaser.BlendModes.ADD);
-              } catch {
-                /* CANVAS may ignore */
-              }
+            try {
+              go.setBlendMode(
+                effect.glow ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL
+              );
+            } catch {
+              /* CANVAS may ignore */
             }
-            this.effectSprites.push(go);
             continue;
           }
         }
       }
       // Procedural fallback burst.
-      const go = this.add
-        .circle(x, y, 12 + t * 36, 0x4488cc, effect.type === "burst" ? 1 - t : 0.7)
-        .setDepth(600) as unknown as Phaser.GameObjects.Sprite;
-      this.effectSprites.push(go);
+      const arc = this.effectArcPool.acquire();
+      arc.setPosition(x, y).setDepth(600);
+      arc.setRadius(12 + t * 36);
+      arc.setFillStyle(0x4488cc, effect.type === "burst" ? 1 - t : 0.7);
     }
+    this.effectSpritePool.end();
+    this.effectArcPool.end();
   }
 
   private syncParticles(scene: CombatScene): void {
-    for (const p of this.particles) p.destroy();
-    this.particles = [];
+    this.particlePool.begin();
     for (const p of scene.particles) {
       const life = p.life / p.maxLife;
-      const arc = this.add
-        .circle(p.x, p.y, p.size * (1 - life * 0.5), 0xffffff, 1 - life)
-        .setDepth(550);
+      const arc = this.particlePool.acquire();
+      arc.setPosition(p.x, p.y).setDepth(550);
+      arc.setRadius(p.size * (1 - life * 0.5));
+      let color = 0xffffff;
       try {
-        const c = Phaser.Display.Color.HexStringToColor(
+        color = Phaser.Display.Color.HexStringToColor(
           p.color.startsWith("#") ? p.color : "#ffffff"
-        );
-        arc.setFillStyle(c.color, 1 - life);
+        ).color;
       } catch {
         /* keep white */
       }
-      if (p.glow) arc.setBlendMode(Phaser.BlendModes.ADD);
-      this.particles.push(arc);
+      arc.setFillStyle(color, 1 - life);
+      // Unconditional: a pooled arc keeps whatever blend the last one had.
+      arc.setBlendMode(p.glow ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL);
     }
+    this.particlePool.end();
   }
 
   private syncPopups(scene: CombatScene, now: number): void {
@@ -1740,10 +2041,12 @@ export async function createPhaserCombatStage(
         __onyxPhaserActors?: unknown;
         __onyxPhaserFilters?: unknown;
         __onyxPhaserDissolves?: unknown;
+        __onyxPhaserPools?: unknown;
       };
       if (w.__onyxPhaserActors) delete w.__onyxPhaserActors;
       if (w.__onyxPhaserFilters) delete w.__onyxPhaserFilters;
       if (w.__onyxPhaserDissolves) delete w.__onyxPhaserDissolves;
+      if (w.__onyxPhaserPools) delete w.__onyxPhaserPools;
     },
   };
 
@@ -1751,10 +2054,12 @@ export async function createPhaserCombatStage(
     __onyxPhaserActors?: () => unknown;
     __onyxPhaserFilters?: () => unknown;
     __onyxPhaserDissolves?: () => unknown;
+    __onyxPhaserPools?: () => unknown;
   };
   dbg.__onyxPhaserActors = () => phaserScene.debugActorLayout();
   dbg.__onyxPhaserFilters = () => phaserScene.debugFilterCounts();
   dbg.__onyxPhaserDissolves = () => phaserScene.debugDissolveCounts();
+  dbg.__onyxPhaserPools = () => phaserScene.debugPoolCounts();
 
   return stage;
 }

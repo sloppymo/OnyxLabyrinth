@@ -28,20 +28,29 @@ import {
 const BASE = process.env.ONYX_URL ?? "http://127.0.0.1:5176/OnyxLabyrinth/";
 const outDir = ensureOutDir("playtest-screenshots/phaser-cast-fx");
 
-/** Sample the filter list in-page while the cast plays out. */
+/**
+ * Sample the filter list in-page while the cast plays out.
+ *
+ * Per-frame via rAF, not a 40ms interval: the cast bloom lives <=180ms, so
+ * interval sampling caught it once or twice and could not distinguish a rising
+ * envelope from a frozen one.
+ */
 async function startFilterRecorder(page) {
   await page.evaluate(() => {
     window.__fxTrace = [];
-    window.__fxTimer = setInterval(() => {
+    window.__fxStop = false;
+    const tick = () => {
       const f = window.__onyxPhaserFilters?.();
       if (f) window.__fxTrace.push(f);
-    }, 40);
+      if (!window.__fxStop) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   });
 }
 
 async function stopFilterRecorder(page) {
   return page.evaluate(() => {
-    clearInterval(window.__fxTimer);
+    window.__fxStop = true;
     const t = window.__fxTrace ?? [];
     return {
       samples: t.length,
@@ -51,6 +60,17 @@ async function stopFilterRecorder(page) {
       maxSpotlightExternal: Math.max(0, ...t.map((s) => s.spotlightExternal ?? 0)),
       bloomSamples: t.filter((s) => s.bloom).length,
       bloomOutsideBanner: t.filter((s) => s.bloom && !s.gate).length,
+      // Distinct blend amounts seen while a bloom was up. A bloom whose
+      // envelope is written to the wrong property still reports `bloom: true`
+      // for its whole life — it just never changes amplitude. Counting the
+      // distinct values is what separates "pulsing" from "stuck on".
+      bloomAmounts: [
+        ...new Set(
+          t
+            .filter((s) => s.bloom && typeof s.bloomAmount === "number")
+            .map((s) => Math.round(s.bloomAmount * 100) / 100)
+        ),
+      ],
       keys: [...new Set(t.map((s) => s.key).filter(Boolean))],
       webgl: t[0]?.webgl ?? null,
     };
@@ -150,6 +170,23 @@ try {
     console.log(
       `  OK: cast bloom pulsed and tore down (${trace.bloomSamples} samples, none outside the banner)`
     );
+    // Amplitude must actually move. A single sample proves nothing either way,
+    // so say so rather than printing a tick the data does not support.
+    if (trace.bloomSamples < 2) {
+      console.log(
+        `  NOTE: only ${trace.bloomSamples} bloom sample — envelope not evaluated`
+      );
+    } else if (trace.bloomAmounts.length < 2) {
+      findings.find(
+        "P0",
+        0,
+        "cast bloom envelope frozen",
+        `bloom held a single blend amount (${trace.bloomAmounts.join(", ")}) across` +
+          ` ${trace.bloomSamples} samples — the per-frame envelope is not being applied`
+      );
+    } else {
+      console.log(`  OK: bloom amplitude animated (${trace.bloomAmounts.join(" → ")})`);
+    }
   } else {
     console.log("  NOTE: bloom never sampled — pulse is <=180ms, may fall between 40ms ticks");
   }

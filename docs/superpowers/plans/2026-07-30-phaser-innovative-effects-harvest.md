@@ -175,6 +175,16 @@ Kill-switch: extend existing `?phaserFx=0` / `PHASER_FX_SPOTLIGHT` pattern so bl
       doubles playback. `tweens.timeScale` is now pinned to `scene.playbackRate` each
       paint. Shine is the only effect in this file that owns a tween + DynamicTexture, so
       `clearShine` disposes all three (tween, ParallelFilters, DynamicTexture).
+- [x] **Correction (found in the Phase B API audit):** the H2 envelope was a silent no-op
+      as first shipped. `AddEffectBloom`'s `blendAmount` config lands on
+      `parallelFilters.blend.amount` (a `Filters.Blend`), not a `blendAmount` property on
+      the `ParallelFilters` — and the write was guarded by `"blendAmount" in blend`, so it
+      never fired. The bloom therefore froze at whatever amplitude its *first* frame
+      created it with, making the flash frame-timing dependent instead of an envelope.
+      Fixed to the typed `parallelFilters.blend.amount`; `debugFilterCounts` now reports
+      `bloomAmount` and the capture asserts ≥2 distinct amplitudes while the bloom is up
+      (measured 0 → 0.66). The original "bloom pulsed" evidence only proved the filter
+      existed and tore down — not that it animated.
 - [ ] Stretch if time: H4 vignette pulse on crit popup or boss accent hit — **not taken**
 - [x] `npm run build` + `npm test` (fx suite 40 green)
 - [x] Arena smoke Phaser + `?phaser=0` (death still fades on canvas without Filters)
@@ -202,12 +212,33 @@ healed body, 0 left after playback settles, tween timeScale pinned).
 - Optional: `combat-phaser-fx.ts` afterimage alpha curve
 
 **Exit criteria:**
-- [ ] Visible afterimages only during walk; cleared on skip / turn end
-- [ ] FAST playback still clean
-- [ ] Particle count capped; no leak across Next Fight
-- [ ] `?phaser=0` unchanged (afterimages Phaser-only OK)
+- [x] Visible afterimages only during walk; cleared on skip / turn end — mechanically met
+      (measured 3 ghosts / 28.6px trail during walk, 0 at rest), but **H5 ships disabled**.
+      See "H5 outcome" below.
+- [x] FAST playback still clean — ghost sampling is a fraction of `moveDuration`, which
+      `startMove` already divides by `playbackRate`, so the trail is rate-invariant by
+      construction and `playbackRate` never enters `combat-phaser-fx.ts`
+- [x] Particle count capped; no leak across Next Fight — pools trim at `POOL_MAX` 96;
+      Next Fight builds a fresh `Phaser.Game` and `stage.destroy()` tears it down
+      (`main.ts:595`), so pools cannot outlive a fight
+- [x] `?phaser=0` unchanged — smoke green; afterimage + pooling are Phaser-only
 
-**Rollback:** Disable afterimage constant; pooling can stay.
+**H5 outcome — implemented, measured, shipped OFF (`PHASER_FX_AFTERIMAGE = false`).**
+The effect is correct; the premise is not. The reference is an FF6 dash, but this game's
+approach is `approachDelta` — a symbolic **35px** step over 525ms (~80px/sec) against
+~100px sprites, so ghosts overlap the body by roughly two thirds and there is no fast
+motion to read as a smear. Probed at 0.28 alpha (invisible) and 0.6 (reads as a
+double-image artifact, not speed). This is the plan's own documented rollback; the
+machinery and 9 unit tests stay, so re-enabling is one constant if approach distance ever
+grows into a real lunge.
+
+**H6 outcome — shipped.** `syncEffects` / `syncParticles` no longer destroy and recreate
+every GO per paint. Verified by allocation count, not pool size: **0–1 new GOs across a
+20s churn window**, vs **1788** with reuse deliberately disabled (falsification run), so
+the assertion demonstrably fails when pooling breaks. Also split the effect Arc pool from
+the Sprite pool, retiring an `as unknown as Sprite` cast.
+
+**Rollback:** Disable afterimage constant (already the shipped state); pooling can stay.
 
 ---
 
