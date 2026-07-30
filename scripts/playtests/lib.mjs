@@ -351,3 +351,55 @@ export async function boot(page, url, { scenario } = {}) {
   await waitForIdle(page);
   return snap(page);
 }
+
+/**
+ * Drive a real spell cast in combat and stop on the frame the banner is up.
+ *
+ * Several presentation checks (spotlight Glow/ColorMatrix, cast bloom, Mag-vs-Tech
+ * impact language) only engage while `CombatScene.banner` is set, and the Arena's
+ * default encounter reaches none of them by pressing Enter — Attack shows no banner.
+ * The palette letter shortcut `c` is the reliable entry point: `main.ts` whitelists
+ * "tcmifr" during the palette phase (note `h`/`n`/`v` are NOT whitelisted despite
+ * combat-ui.ts defining them).
+ *
+ * Cycles actors: whoever is up may have no SP or no spells, in which case `c` is
+ * rejected and we pass the turn with a plain attack and try the next character.
+ *
+ * @returns {Promise<{cast: boolean, phase: string|null, actorTried: number}>}
+ */
+export async function castFirstSpell(page, { maxActors = 6, stepDelay = 120 } = {}) {
+  for (let actor = 0; actor < maxActors; actor++) {
+    let st = await snap(page);
+    if (st.route !== "combat") return { cast: false, phase: null, actorTried: actor };
+    // Gate on phase, not selection: selection is null during the root palette phase.
+    if (st.combat?.phase !== "palette") {
+      await waitForIdle(page, 6000);
+      st = await snap(page);
+      if (st.combat?.phase !== "palette") continue;
+    }
+
+    await press(page, "c", 1, stepDelay);
+    st = await snap(page);
+    if (st.combat?.phase === "selectSpell") {
+      await press(page, "Enter", 1, stepDelay);
+      st = await snap(page);
+      // Target-all spells skip straight to playback.
+      if (st.combat?.phase === "selectTarget") {
+        await press(page, "Enter", 1, stepDelay);
+        st = await snap(page);
+      }
+      if (st.combat?.phase !== "palette" && st.combat?.phase !== "selectSpell") {
+        return { cast: true, phase: st.combat?.phase ?? null, actorTried: actor };
+      }
+    }
+
+    // No magic for this character (or the menu bounced) — spend the turn and
+    // let the next actor try.
+    await press(page, "Escape", 1, stepDelay);
+    await press(page, "Enter", 1, stepDelay);
+    st = await snap(page);
+    if (st.combat?.phase === "selectTarget") await press(page, "Enter", 1, stepDelay);
+    await waitForIdle(page, 8000);
+  }
+  return { cast: false, phase: null, actorTried: maxActors };
+}

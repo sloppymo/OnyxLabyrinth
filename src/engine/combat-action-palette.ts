@@ -76,3 +76,38 @@ export function buildPalette(
     autoButton: "start",
   };
 }
+
+/**
+ * Letter shortcuts accepted during the palette phase, none of which are on the
+ * face-button map in `controller-input.ts`.
+ *
+ * `main.ts`'s combat keydown listener must forward exactly these keys before
+ * falling through to `globalInput`; it used to hardcode `"tcmifr"`, which
+ * silently dropped `h`/`n`/`v` (Hide / Analyze / Move) — `combat-ui.ts` defined
+ * handlers for them, but the keys reached no listener at all and were dead.
+ * Both sides import this now so they cannot drift apart again.
+ *
+ * Lives here rather than in `combat-ui.ts` so `main.ts` and tests can read it
+ * without pulling in `shell.ts` and its DOM shell.
+ */
+export const PALETTE_LETTER_SHORTCUTS: Readonly<Record<string, PaletteActionKind>> = {
+  t: "technique",
+  c: "cast",
+  m: "cast",
+  i: "item",
+  f: "flee",
+  r: "flee",
+  h: "hide",
+  n: "analyze",
+  v: "move",
+};
+
+/** Subset of `PlayerAction["kind"]` reachable from a palette letter shortcut. */
+export type PaletteActionKind =
+  | "technique"
+  | "cast"
+  | "item"
+  | "flee"
+  | "hide"
+  | "analyze"
+  | "move";

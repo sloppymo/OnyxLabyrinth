@@ -62,7 +62,11 @@ import {
 import type { CombatDebugView } from "../debug/snapshot";
 import { renderTurnOrderStrip } from "./combat-turn-order-view";
 import { remainingTurnOrder } from "../game/combat-turn-order";
-import { buildPalette, type CombatPalette } from "./combat-action-palette";
+import {
+  buildPalette,
+  PALETTE_LETTER_SHORTCUTS,
+  type CombatPalette,
+} from "./combat-action-palette";
 import type { ControllerInputEvent, ControllerButton } from "./controller-input";
 import { mapKeyboardKey } from "./controller-input";
 import {
@@ -1622,21 +1626,10 @@ export class CombatController {
       return;
     }
 
-    // Legacy letter shortcuts (m/t/i/r/h/c/n) not on the face-button map.
+    // Legacy letter shortcuts not on the face-button map.
     if (this.phase === "palette") {
       const lower = key.toLowerCase();
-      const shortcuts: Record<string, PlayerAction["kind"]> = {
-        t: "technique",
-        c: "cast",
-        m: "cast",
-        i: "item",
-        f: "flee",
-        r: "flee",
-        h: "hide",
-        n: "analyze",
-        v: "move",
-      };
-      const kind = shortcuts[lower];
+      const kind = PALETTE_LETTER_SHORTCUTS[lower];
       if (kind) {
         this.chooseAction(kind);
         return;

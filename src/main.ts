@@ -58,6 +58,7 @@ import { DebugEventBuffer, type DebugEventKind } from "./debug/event-buffer";
 import { checkInvariants } from "./debug/invariants";
 import { installAudioSpy } from "./debug/audio-spy";
 import { CombatController } from "./engine/combat-ui";
+import { PALETTE_LETTER_SHORTCUTS } from "./engine/combat-action-palette";
 import { createCombatStage } from "./engine/combat-stage";
 import {
   createControllerInput,
@@ -1440,7 +1441,7 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
   }
   if (phase === "palette") {
     const lower = e.key.toLowerCase();
-    if ("tcmifr".includes(lower)) {
+    if (lower in PALETTE_LETTER_SHORTCUTS) {
       combatController.handleKey(e.key, e);
       e.preventDefault();
       return;

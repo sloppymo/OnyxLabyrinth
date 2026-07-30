@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Character, CharacterClass } from "../game/party";
 import { MAGE_SPELLS, PRIEST_SPELLS } from "../data/spells";
 import { HEALING_POTION } from "../data/items";
-import { buildPalette } from "./combat-action-palette";
+import { buildPalette, PALETTE_LETTER_SHORTCUTS } from "./combat-action-palette";
 
 function makeChar(
   cls: CharacterClass,
@@ -128,5 +128,40 @@ describe("buildPalette", () => {
   it("keeps Item enabled when consumables remain", () => {
     const p = buildPalette(makeChar("Fighter"), [], items);
     expect(p.itemDisabled).toBe(false);
+  });
+});
+
+describe("PALETTE_LETTER_SHORTCUTS", () => {
+  it("covers every legacy letter verb", () => {
+    expect(PALETTE_LETTER_SHORTCUTS).toEqual({
+      t: "technique",
+      c: "cast",
+      m: "cast",
+      i: "item",
+      f: "flee",
+      r: "flee",
+      h: "hide",
+      n: "analyze",
+      v: "move",
+    });
+  });
+
+  it("includes the three verbs main.ts's old 'tcmifr' whitelist dropped", () => {
+    // Regression: h/n/v reached no handler at all — combat-ui defined them but
+    // the main.ts listener never forwarded them, and they are not on the
+    // face-button map either, so the keys were dead.
+    for (const key of ["h", "n", "v"]) {
+      expect(PALETTE_LETTER_SHORTCUTS[key]).toBeDefined();
+    }
+  });
+
+  it("claims no key that the controller face-button map already owns", () => {
+    // Letters bound in controller-input.ts's KEYBOARD_MAP; the palette
+    // whitelist intentionally shadows t/r/f, so only those three may overlap.
+    const faceButtonLetters = ["a", "b", "s", "d", "w", "z", "q", "e", "r", "t", "f", "g"];
+    const overlap = Object.keys(PALETTE_LETTER_SHORTCUTS).filter((k) =>
+      faceButtonLetters.includes(k)
+    );
+    expect(overlap.sort()).toEqual(["f", "r", "t"]);
   });
 });
