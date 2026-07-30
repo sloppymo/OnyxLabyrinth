@@ -410,6 +410,13 @@ describe("resolveMeleeHitEffect", () => {
     expect(resolveMeleeHitEffect("Mage", { crit: false }).underlay).toBe("staff_attack");
     expect(resolveMeleeHitEffect("Priest", { crit: false }).underlay).toBe("staff_attack");
   });
+
+  it("technique Fighter uses slash + stunburst, not elemental puff", () => {
+    const t = resolveMeleeHitEffect("Fighter", { technique: true });
+    expect(t.effect).toBe("free_slash");
+    expect(t.underlay).toBe("free_stunburst");
+    expect(t.scale).toBeGreaterThan(resolveMeleeHitEffect("Fighter").scale);
+  });
 });
 
 describe("enemyIsUndead", () => {

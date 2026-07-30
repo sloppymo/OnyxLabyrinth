@@ -870,6 +870,13 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
                   ? 1 - t * 0.5
                   : 1;
             go.setAlpha(alpha);
+            if (effect.glow) {
+              try {
+                go.setBlendMode(Phaser.BlendModes.ADD);
+              } catch {
+                /* CANVAS may ignore */
+              }
+            }
             this.effectSprites.push(go);
             continue;
           }

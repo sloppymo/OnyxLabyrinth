@@ -172,4 +172,10 @@ describe("resolveMeleeHitEffect", () => {
     expect(resolveMeleeHitEffect("Mage", { crit: false }).underlay).toBe("staff_attack");
     expect(resolveMeleeHitEffect("Priest", { crit: false }).underlay).toBe("staff_attack");
   });
+
+  it("technique path prefers slash/stunburst language", () => {
+    expect(resolveMeleeHitEffect("Fighter", { technique: true }).underlay).toBe(
+      "free_stunburst"
+    );
+  });
 });

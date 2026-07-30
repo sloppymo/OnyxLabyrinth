@@ -1386,8 +1386,15 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
     projectilePath: "riseDash",
     riseFrac: 0.56,
     riseLift: 66,
+    // Fire mushroom + glow twin — reads as magic, not a sword slash (vs Tech).
     burst: "fz_explosion",
-    burstScale: 1.15,
+    burstScale: 1.45,
+    burstUnderlay: "fire_explosion_glow",
+    burstUnderlayScale: 1.25,
+    burstCount: 2,
+    glow: true,
+    charge: "mp_fire_bomb_full",
+    chargeScale: 0.55,
   },
   "mage-spark": {
     color: "#d0e8ff",
@@ -1962,8 +1969,41 @@ export type MeleeHitEffect = {
 /** Resolve melee hit burst (+ optional staff underlay) from class / crit. */
 export function resolveMeleeHitEffect(
   className: string | undefined,
-  opts: { crit?: boolean } = {}
+  opts: { crit?: boolean; technique?: boolean } = {}
 ): MeleeHitEffect {
+  // Techniques: blade/spark language — never elemental puff strips (combat-only
+  // pass: Mag vs Tech must differ without reading the banner).
+  if (opts.technique) {
+    const base =
+      className === "Mage"
+        ? {
+            effect: opts.crit ? "wizard_attack2" : "wizard_attack1",
+            scale: opts.crit ? 1.35 : 1.2,
+            underlay: "staff_attack" as string | undefined,
+            underlayScale: 0.9,
+          }
+        : className === "Priest"
+          ? {
+              effect: "priest_attack",
+              scale: 1.2,
+              underlay: "staff_attack" as string | undefined,
+              underlayScale: 0.9,
+            }
+          : className === "Fighter" || className === "Duelist"
+            ? {
+                effect: "free_slash",
+                scale: opts.crit ? 1.75 : 1.55,
+                underlay: "free_stunburst" as string | undefined,
+                underlayScale: 0.95,
+              }
+            : {
+                effect: "slash_attack",
+                scale: opts.crit ? 4.6 : 4.2,
+                underlay: "free_stunburst" as string | undefined,
+                underlayScale: 0.85,
+              };
+    return base;
+  }
   if (className === "Mage") {
     return {
       effect: opts.crit ? "wizard_attack2" : "wizard_attack1",
@@ -2017,6 +2057,7 @@ export function collectReferencedEffectIds(): Set<string> {
     "staff_attack",
     "free_slash",
     "slash_attack",
+    "free_stunburst",
     "arrow",
     "arrow_archer",
     "arrow_skeleton",
@@ -2233,7 +2274,10 @@ export function playTurn(
         const isRanged = evt.type === "attack" && evt.range === "long";
         const attackState: ActorSpriteState = isRanged ? "attack_ranged" : "attack";
         const attacker = findActor(scene, evt.actorId, w, h);
-        const hitEffect = resolveMeleeHitEffect(attacker?.class, { crit: evt.crit === true });
+        const hitEffect = resolveMeleeHitEffect(attacker?.class, {
+          crit: evt.crit === true,
+          technique: evt.type === "techniqueHit",
+        });
         if (isRanged) {
           // Ranged: no approach; fire a projectile from attacker to target.
           attackAnim(evt.actorId, attackState);
@@ -2312,18 +2356,20 @@ export function playTurn(
               step(base + IMPACT_AT, (sc, n) => {
                 const to = findActor(sc, techniqueTarget, w, h);
                 if (!to) return;
+                // Steel sparks — not extra_elemental (that read as low-tier magic).
                 pushParticleSprinkles(
                   sc,
                   to.x,
                   to.y,
-                  COLORS.spellBurst,
-                  "extra_elemental",
+                  techniqueCrit ? COLORS.crit : "#f0e6d0",
+                  "px_black_white_sparks",
                   n,
-                  3,
-                  9,
-                  techniqueCrit
-                    ? { underlay: "extra_elemental_glow", underlayScale: 10 }
-                    : undefined
+                  techniqueCrit ? 4 : 3,
+                  7,
+                  {
+                    underlay: "free_stunburst",
+                    underlayScale: techniqueCrit ? 1.15 : 0.95,
+                  }
                 );
               })
             );
