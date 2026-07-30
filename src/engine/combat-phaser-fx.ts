@@ -88,6 +88,104 @@ export interface PhaserFxHost {
   clearSpotlightFilters(): void;
 }
 
+export function spotlightKeyFor(recipe: SpotlightRecipe): string {
+  return `${recipe.glowColor}:${recipe.glowOuter}:${recipe.dimBrightness}`;
+}
+
+/**
+ * Structural stand-ins for `camera.filters.external|internal` so the lifecycle
+ * below stays Phaser-free and unit-testable (plan §4 module table).
+ */
+export interface SpotlightFilterLists {
+  external: {
+    addGlow(
+      color: number,
+      outerStrength: number,
+      innerStrength: number,
+      scale: number,
+      knockout: boolean,
+      quality: number,
+      distance: number
+    ): unknown;
+    remove(filter: unknown): unknown;
+  };
+  internal: {
+    addColorMatrix(): { colorMatrix: { brightness(v: number): unknown } };
+    remove(filter: unknown): unknown;
+  };
+}
+
+/** Live spotlight controllers, owned by the stage and mutated in place. */
+export type SpotlightState = {
+  glow: unknown | null;
+  matrix: unknown | null;
+  key: string;
+};
+
+export function createSpotlightState(): SpotlightState {
+  return { glow: null, matrix: null, key: "" };
+}
+
+/**
+ * Splice both controllers out of their lists and reset the state.
+ *
+ * `FilterList.remove` (not `Controller.destroy`) is required: destroy only
+ * deactivates, leaving a zombie in `list` that re-renders and accumulates on
+ * every recipe change.
+ */
+export function clearSpotlight(
+  state: SpotlightState,
+  filters: SpotlightFilterLists | null
+): void {
+  try {
+    if (filters) {
+      if (state.glow) filters.external.remove(state.glow);
+      if (state.matrix) filters.internal.remove(state.matrix);
+    }
+  } catch {
+    /* camera already torn down */
+  }
+  state.glow = null;
+  state.matrix = null;
+  state.key = "";
+}
+
+/**
+ * Idempotent per recipe: same key is a no-op, a changed key clears first so at
+ * most one Glow + one ColorMatrix is ever live. Any throw (CANVAS renderer /
+ * Filters unsupported) degrades to no spotlight — tint still applies.
+ */
+export function applySpotlight(
+  state: SpotlightState,
+  filters: SpotlightFilterLists | null,
+  recipe: SpotlightRecipe
+): void {
+  const key = spotlightKeyFor(recipe);
+  if (state.key === key && state.glow && state.matrix) return;
+  if (!filters) {
+    clearSpotlight(state, filters);
+    return;
+  }
+  try {
+    clearSpotlight(state, filters);
+    state.glow = filters.external.addGlow(
+      recipe.glowColor,
+      recipe.glowOuter,
+      0,
+      1,
+      false,
+      8,
+      8
+    );
+    const matrix = filters.internal.addColorMatrix();
+    matrix.colorMatrix.brightness(recipe.dimBrightness);
+    state.matrix = matrix;
+    state.key = key;
+  } catch {
+    clearSpotlight(state, filters);
+  }
+}
+
 /**
  * Apply StatusTint to a sprite-like object. Safe no-op when tint APIs missing
  * (Ellipse fallback / CANVAS oddities).

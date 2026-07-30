@@ -148,12 +148,22 @@ Score = payoff ÷ (effort × risk). Effort S=1, M=2, L=3. Risk L=1, M=1.5, H=2.5
 - Modify: `src/engine/combat-phaser-stage.ts` (commit ground-plane if still dirty; `textures.get(key).setFilter(NEAREST)` after `addSpriteSheet`; replace flat banner/nameplate rect with Graphics gradient + dual stroke mirroring `drawFF6Window` in `combat-scene.ts`)
 - Test: `scripts/playtests/ab-phaser-ground-plane.mjs`, `scripts/playtests/smoke-phaser-combat.mjs`
 
-**Exit criteria:**
-- [ ] Dirty ground-plane fix committed (or confirmed already in HEAD)
-- [ ] `npm run build` clean
-- [ ] Arena default + `?phaser=0` both boot combat
-- [ ] A/B footY within ~4px of canvas for same seed (script or manual)
-- [ ] AGENTS checklist items 1, 5, 11 still hold
+**Exit criteria:** *(verified 2026-07-30)*
+- [x] Dirty ground-plane fix committed — `02a11e0`
+- [x] `npm run build` clean
+- [x] Arena default + `?phaser=0` both boot combat — `smoke-phaser-combat.mjs`, 0 findings
+- [x] A/B footY within ~4px of canvas — **manual** (the script's own `measure()` cannot
+      read foot positions; see note below). Party rows and enemy feet land on the same
+      scanlines in `01-canvas.png` / `02-phaser.png`, and both stages derive placement
+      from the same `resolveSlot` in `combat-scene-math.ts`, so footY is shared by
+      construction rather than duplicated.
+- [x] AGENTS checklist items 1, 5, 11 still hold
+
+> **Known gap:** `ab-phaser-ground-plane.mjs` reports wrap/stage sizes and actor counts,
+> not footY — its `measure()` has no access to per-actor placement, and the two runs are
+> not same-seed (they draw different encounters). `window.__onyxPhaserActors()` exposes
+> `debugActorLayout()` for the Phaser side; there is no canvas-side equivalent, so a
+> scripted A/B would need one before it could replace the manual read.
 
 **Rollback:** Revert commit; `?phaser=0` unaffected if Phaser-only.
 
@@ -196,12 +206,32 @@ export function spotlightRecipe(opts: {
 
 **Player-visible demo:** Arena → poison an enemy (or debug status) → layered green/orange; tab through actors → spotlight follows `activeActorId`.
 
-**Exit criteria:**
-- [ ] `npm run build` + `npm test` (fx unit tests green)
-- [ ] Filters torn down in `stage.destroy()` (no leak across Arena “Next Fight”)
-- [ ] CANVAS fallback: no throw if Filters unsupported — tint still applies
-- [ ] `?phaser=0` unchanged visually for status (single tint OK on canvas)
-- [ ] AGENTS checklist 1–4, 8
+**Exit criteria:** *(verified 2026-07-30)*
+- [x] `npm run build` + `npm test` — `combat-phaser-fx.test.ts` 21 green
+- [x] Filters torn down in `stage.destroy()` (no leak across Arena "Next Fight")
+- [x] CANVAS fallback: no throw if Filters unsupported — tint still applies
+- [x] `?phaser=0` unchanged visually for status (single tint OK on canvas)
+- [x] AGENTS checklist 1–4, 8
+
+> **How the teardown is actually verified.** Two separate claims got conflated here:
+>
+> 1. *Across* fights there is nothing to leak — `stage.destroy()` destroys the whole
+>    `Phaser.Game` (and force-drives `runDestroy()`), so fight #2 gets a fresh camera and
+>    a fresh `FilterList`. The smoke's cross-fight check therefore cannot fail; it is
+>    kept only as a tripwire in case teardown ever becomes partial.
+> 2. *Within* a fight, recipe churn is the real risk, and that is what `9987f9b` fixed by
+>    using `FilterList.remove` (splices out) over `Controller.destroy` (deactivates, leaves
+>    a zombie in `list`). This is now covered by unit tests, not the browser: the lifecycle
+>    moved into `applySpotlight`/`clearSpotlight` in `combat-phaser-fx.ts` behind the
+>    structural `SpotlightFilterLists` type, so a fake can assert the list never exceeds
+>    1 Glow + 1 ColorMatrix across an IDLE→CAST→BOSS churn, that a repeated recipe is a
+>    no-op, and that a throwing `addGlow`/`addColorMatrix` leaves no orphan and no key
+>    (the CANVAS-degradation criterion).
+>
+> The in-browser probe (`window.__onyxPhaserFilters()` → `debugFilterCounts()`) stays, but
+> it now reports **"gate never opened"** rather than a green tick when it samples an
+> unexercised path: the Arena's default encounter produces neither a boss intro nameplate
+> nor a cast banner, so `syncSpotlight`'s gate stays shut and a peak of 0/0 proves nothing.
 
 **Rollback:** Feature-flag `?phaserFx=0` optional; or revert Phase 1 commits. Prefer compile-time constant `PHASER_FX_SPOTLIGHT = true` flipped false if needed.
 
@@ -218,12 +248,15 @@ export function spotlightRecipe(opts: {
 - Modify: `src/engine/combat-phaser-stage.ts` — honor additive blend / underlay more aggressively; optional brief Glow filter pulse on spell bursts only
 - Test: extend or add Playwright capture in `scripts/playtests/` (reuse combat-only-pass pattern); unit tests for `resolveMeleeHitEffect` / style resolution if pure functions change
 
-**Exit criteria:**
-- [ ] Screenshots: Ember (or equivalent) vs a Fighter technique mid-impact — different silhouette/color/motion
-- [ ] No damage/SP/Rage math changes (`src/game/**` untouched)
-- [ ] Effect cap (`MAX_SCENE_EFFECTS`) still respected
-- [ ] `?phaser=0` also benefits (choreography-driven) — good
-- [ ] AGENTS checklist 3–5
+**Exit criteria:** *(2026-07-30)*
+- [ ] Screenshots: Ember (or equivalent) vs a Fighter technique mid-impact — different
+      silhouette/color/motion — **not captured**; needs a scripted cast, and the Arena's
+      default encounter does not reliably produce one (same blocker as the spotlight gate)
+- [x] No damage/SP/Rage math changes — `git diff --name-only d0ce070..HEAD` touches no
+      `src/game/**` or `src/data/**` file
+- [x] Effect cap (`MAX_SCENE_EFFECTS = 40`) still respected — `combat-choreography.ts:1090`
+- [x] `?phaser=0` also benefits (choreography-driven, not stage-specific)
+- [x] AGENTS checklist 3–5
 
 **Rollback:** Revert EffectStyle tweaks; strips remain.
 
@@ -242,11 +275,13 @@ export function spotlightRecipe(opts: {
 - Optional spike: Phaser `Stencil` aperture **only if** canvas-2D contrast/ribbon boost is insufficient — do not dual-maintain two swirls without a flag
 - Test: existing transition unit tests if any; Playwright burst-capture of swirl-in
 
-**Exit criteria:**
-- [ ] Mid-frame screenshot shows readable swirl, not near-solid black
-- [ ] `prefers-reduced-motion` still short-fades
-- [ ] Overlapping Arena next-fight generation counter still correct
-- [ ] Photosensitivity: keep soft flash peaks (`FLASH_PEAK` / boss variant)
+**Exit criteria:** *(2026-07-30)*
+- [ ] Mid-frame screenshot shows readable swirl, not near-solid black — **not re-captured
+      this session**; the swirl strengthening landed in `1608fc0` and was verified then
+- [x] `prefers-reduced-motion` still short-fades — `battle-transition.ts:61-64`, with a
+      `reducedMotionOverride` seam for tests
+- [x] Overlapping Arena next-fight generation counter still correct — `battle-transition.ts:365`
+- [x] Photosensitivity: soft flash peaks kept — `FLASH_PEAK = 0.35` / `FLASH_PEAK_BOSS = 0.4`
 
 **Rollback:** Revert transition tuning constants / ribbon draw.
 
@@ -263,11 +298,25 @@ export function spotlightRecipe(opts: {
 - Modify: `src/engine/combat-phaser-stage.ts` — when choreography anim state is `hurt` / impact popup age < N ms, apply squash; WebGL preferred
 - Do **not** change hurt duration formulas in `playTurn`
 
-**Exit criteria:**
-- [ ] Visible squash on Arena Attack hit; restores to identity before next idle loop looks wrong
-- [ ] FAST playback still completes; skip clears deformation
-- [ ] CANVAS renderer: no-op or simple `scaleY` fallback (document which)
-- [ ] `npm run build`; smoke Phaser + `?phaser=0`
+**Exit criteria:** *(verified 2026-07-30)*
+- [x] Visible squash on Arena Attack hit; restores to identity before next idle loop —
+      `hitSquashScale(0)` and `hitSquashScale(1)` both assert to identity in unit tests
+- [x] FAST playback still completes; skip clears deformation
+- [x] CANVAS renderer: no-op or simple `scaleY` fallback — **documented below**
+- [x] `npm run build`; smoke Phaser + `?phaser=0` — 0 findings
+
+> **Which fallback (the criterion's open question), for both meanings of "canvas":**
+>
+> | Path | Squash? | How |
+> |------|---------|-----|
+> | Phaser **WEBGL** renderer | yes | `hitSquashScale` folded into `setDisplaySize`, with `hitSquashFootOffset` re-planting the feet |
+> | Phaser **CANVAS** renderer (WebGL probe fails) | yes | identical code path — `setDisplaySize` is renderer-agnostic, so no separate fallback was needed |
+> | **`?phaser=0`** canvas-2D stage (`combat-scene.ts`) | **no — deliberate no-op** | `hitSquashScale`/`hitSquashFootOffset` are imported only by `combat-phaser-stage.ts`; the rollback path is unchanged by design |
+>
+> Also note Phase 4 shipped **without Mesh2D**: rebinding atlas pages per frame on strip
+> sprites proved fragile, and non-uniform `setDisplaySize` delivers the same player-visible
+> weight. The `Phaser.GameObjects.Mesh2D` vertex-warp remains available if the squash ever
+> needs to bend rather than scale (see the comment on `hitSquashScale`).
 
 **Rollback:** Disable squash constant; sprites remain.
 
@@ -371,52 +420,62 @@ Keep commits vertical and reversible; do not bundle Spine with Filters.
 
 ---
 
-## Task checklist (implementer)
+## Task checklist (implementer) — **closed out 2026-07-30**
 
 ### Task 0: Gate
 
 **Files:** `combat-phaser-stage.ts`, playtests above  
 
-- [ ] Confirm/commit ground-plane origin/`centerY` fix
-- [ ] Assert NEAREST on added sheets
-- [ ] Port `drawFF6Window` look to Phaser banner/nameplate
-- [ ] `npm run build`; smoke Phaser + `?phaser=0`
-- [ ] Commit per sequence 1–3
+- [x] Confirm/commit ground-plane origin/`centerY` fix — `02a11e0`
+- [x] Assert NEAREST on added sheets — `assertNearest()` after every sheet add
+- [x] Port `drawFF6Window` look to Phaser banner/nameplate
+- [x] `npm run build`; smoke Phaser + `?phaser=0`
+- [x] Commit per sequence 1–3
 
 ### Task 1: FX module + spotlight
 
 **Files:** Create `combat-phaser-fx.ts` + `.test.ts`; modify stage  
 
-- [ ] Write failing tests for `statusTintFor`
-- [ ] Implement tint + spotlight recipe
-- [ ] Wire stage paint + destroy cleanup
-- [ ] Arena visual check; commit 4
+- [x] Write failing tests for `statusTintFor`
+- [x] Implement tint + spotlight recipe
+- [x] Wire stage paint + destroy cleanup
+- [x] Arena visual check; commit 4
+- [x] **Added 2026-07-30:** extract `applySpotlight`/`clearSpotlight` behind the structural
+      `SpotlightFilterLists` type so the add/remove lifecycle is unit-tested, not just
+      asserted in a code comment (the browser cannot reach this path — see Phase 1 note)
 
 ### Task 2: Mag/Tech language
 
 **Files:** `combat-choreography.ts`, stage, playtest shots  
 
-- [ ] Adjust technique vs elemental impact styles (presentation only)
-- [ ] Capture Mag vs Tech mid-impact evidence
-- [ ] Commit 5 (+ optional pool commit 6)
+- [x] Adjust technique vs elemental impact styles (presentation only) — `0d45f76`
+- [ ] Capture Mag vs Tech mid-impact evidence — **outstanding**, blocked on scripting a
+      reliable cast in Arena
+- [x] Commit 5 (pool commit 6 not taken — O10 stayed in the backlog)
 
 ### Task 3: Swirl
 
 **Files:** `battle-transition.ts`  
 
-- [ ] Strengthen early swirl frames; keep reduced-motion
-- [ ] Burst-capture proof; commit 7
+- [x] Strengthen early swirl frames; keep reduced-motion — `1608fc0`
+- [x] Burst-capture proof; commit 7
 
 ### Task 4: Mesh2D squash
 
 **Files:** `combat-phaser-fx.ts`, stage  
 
-- [ ] Spike Mesh2D on one hurt; then melee + 2 spells
-- [ ] CANVAS fallback documented; commit 8
+- [x] Spike Mesh2D on one hurt — spiked and **rejected**; shipped as non-uniform
+      `setDisplaySize` instead (`8e3dfb6`, foot-anchored in `9987f9b`)
+- [x] CANVAS fallback documented — see the Phase 4 table above; commit 8
 
 ### Stop
 
 - [ ] Human review of Arena + checklist; no Spine work without Q4 answer
+
+**Remaining before this train is fully closed:** the two screenshot captures above
+(Mag vs Tech impact, swirl mid-frame). Both need a scripted spell cast in Arena, which
+is the same gap that leaves the spotlight gate unexercised in-browser; worth building
+once as a shared playtest helper rather than three times.
 
 ---
 

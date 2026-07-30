@@ -64,12 +64,17 @@ import {
 import { combatCanvas, combatPhaserCanvas } from "./shell";
 import type { CombatStage, CreateCombatStageOpts } from "./combat-stage";
 import {
+  applySpotlight,
   applyStatusTint,
+  clearSpotlight,
+  createSpotlightState,
   hitSquashFootOffset,
   hitSquashScale,
   spotlightRecipe,
   statusTintFor,
+  type SpotlightFilterLists,
   type SpotlightRecipe,
+  type SpotlightState,
 } from "./combat-phaser-fx";
 
 /** Kill-switch for camera Glow/ColorMatrix (tint still applies). */
@@ -117,9 +122,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private fastCue: Phaser.GameObjects.Text | null = null;
   private autoCue: Phaser.GameObjects.Text | null = null;
   private pipGfx: Phaser.GameObjects.Graphics | null = null;
-  private spotlightGlow: Phaser.Filters.Glow | null = null;
-  private spotlightMatrix: Phaser.Filters.ColorMatrix | null = null;
-  private spotlightKey = "";
+  private readonly spotlight: SpotlightState = createSpotlightState();
 
   constructor() {
     super(SCENE_KEY);
@@ -246,6 +249,35 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       });
     }
     return out.sort((a, b) => a.footY - b.footY);
+  }
+
+  /**
+   * Debug: live camera filter-list sizes for the spotlight leak check.
+   * `ensureSpotlightFilters` promises at most one Glow (external) + one
+   * ColorMatrix (internal); anything above that means a recipe churn is
+   * stranding controllers instead of splicing them out.
+   */
+  debugFilterCounts(): {
+    external: number;
+    internal: number;
+    key: string;
+    /** Whether syncSpotlight's gate was open on the last paint. */
+    gate: boolean;
+    webgl: boolean;
+  } {
+    const cam = this.cameras?.main;
+    const list = (l: unknown): number =>
+      Array.isArray((l as { list?: unknown[] })?.list)
+        ? (l as { list: unknown[] }).list.length
+        : 0;
+    const scene = this.latest?.scene;
+    return {
+      external: list(cam?.filters?.external),
+      internal: list(cam?.filters?.internal),
+      key: this.spotlight.key,
+      gate: !!(scene && (scene.introNameplate || (scene.banner && scene.banner.length))),
+      webgl: this.game?.renderer?.type === Phaser.WEBGL,
+    };
   }
 
   /** Defensive NEAREST after HTMLImageElement sheets (game config pixelArt alone can miss). */
@@ -409,31 +441,15 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     this.ensureSpotlightFilters(recipe);
   }
 
+  /** `camera.filters` as the structural shape `combat-phaser-fx` expects. */
+  private spotlightFilterLists(): SpotlightFilterLists | null {
+    const f = this.cameras?.main?.filters;
+    return (f as unknown as SpotlightFilterLists) ?? null;
+  }
+
   private ensureSpotlightFilters(recipe: SpotlightRecipe): void {
-    const key = `${recipe.glowColor}:${recipe.glowOuter}:${recipe.dimBrightness}`;
-    if (this.spotlightKey === key && this.spotlightGlow && this.spotlightMatrix) {
-      return;
-    }
-    try {
-      this.clearSpotlightFilters();
-      const cam = this.cameras.main;
-      // One Glow + one ColorMatrix max (plan risk table).
-      this.spotlightGlow = cam.filters.external.addGlow(
-        recipe.glowColor,
-        recipe.glowOuter,
-        0,
-        1,
-        false,
-        8,
-        8
-      );
-      this.spotlightMatrix = cam.filters.internal.addColorMatrix();
-      this.spotlightMatrix.colorMatrix.brightness(recipe.dimBrightness);
-      this.spotlightKey = key;
-    } catch {
-      // CANVAS / missing Filters — degrade gracefully; tint still works.
-      this.clearSpotlightFilters();
-    }
+    // One Glow + one ColorMatrix max (plan risk table); see applySpotlight.
+    applySpotlight(this.spotlight, this.spotlightFilterLists(), recipe);
   }
 
   private applyHitSquash(
@@ -466,24 +482,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   }
 
   clearSpotlightFilters(): void {
-    try {
-      const cam = this.cameras?.main;
-      if (cam) {
-        // FilterList.remove splices out of the list then destroys — bare
-        // Controller.destroy() only deactivates and leaves zombies on recipe churn.
-        if (this.spotlightGlow) {
-          cam.filters.external.remove(this.spotlightGlow);
-        }
-        if (this.spotlightMatrix) {
-          cam.filters.internal.remove(this.spotlightMatrix);
-        }
-      }
-    } catch {
-      /* already gone / no camera */
-    }
-    this.spotlightGlow = null;
-    this.spotlightMatrix = null;
-    this.spotlightKey = "";
+    clearSpotlight(this.spotlight, this.spotlightFilterLists());
   }
 
   private syncBackground(scene: CombatScene): void {
@@ -1452,14 +1451,21 @@ export async function createPhaserCombatStage(
         /* already torn down */
       }
       setPhaserStageActive(false);
-      if ((window as unknown as { __onyxPhaserActors?: unknown }).__onyxPhaserActors) {
-        delete (window as unknown as { __onyxPhaserActors?: unknown }).__onyxPhaserActors;
-      }
+      const w = window as unknown as {
+        __onyxPhaserActors?: unknown;
+        __onyxPhaserFilters?: unknown;
+      };
+      if (w.__onyxPhaserActors) delete w.__onyxPhaserActors;
+      if (w.__onyxPhaserFilters) delete w.__onyxPhaserFilters;
     },
   };
 
-  (window as unknown as { __onyxPhaserActors?: () => unknown }).__onyxPhaserActors =
-    () => phaserScene.debugActorLayout();
+  const dbg = window as unknown as {
+    __onyxPhaserActors?: () => unknown;
+    __onyxPhaserFilters?: () => unknown;
+  };
+  dbg.__onyxPhaserActors = () => phaserScene.debugActorLayout();
+  dbg.__onyxPhaserFilters = () => phaserScene.debugFilterCounts();
 
   return stage;
 }

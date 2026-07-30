@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  applySpotlight,
   applyStatusTint,
+  clearSpotlight,
+  createSpotlightState,
   hitSquashFootOffset,
   hitSquashScale,
+  spotlightKeyFor,
   spotlightRecipe,
   statusTintFor,
   TINT_BURN,
   TINT_MODE_MULTIPLY,
   TINT_POISON,
+  type SpotlightFilterLists,
 } from "./combat-phaser-fx";
 
 describe("statusTintFor", () => {
@@ -106,5 +111,152 @@ describe("hitSquashScale", () => {
   it("foot offset pushes Y down when sy < 1", () => {
     expect(hitSquashFootOffset(100, 1)).toBe(0);
     expect(hitSquashFootOffset(100, 0.8)).toBeCloseTo(10, 5);
+  });
+});
+
+// --- Spotlight filter lifecycle ------------------------------------------------
+// Guards the 9987f9b contract: recipe churn must splice controllers out via
+// FilterList.remove, never leave zombies behind (Phase 1 exit criterion).
+
+type FakeController = {
+  kind: string;
+  destroyed: boolean;
+  colorMatrix?: { brightness(v: number): unknown };
+};
+
+/** Models Phaser's FilterList: `list` is what actually renders. */
+function fakeFilters(opts: { glowThrows?: boolean; matrixThrows?: boolean } = {}) {
+  const external: FakeController[] = [];
+  const internal: FakeController[] = [];
+  const removed: FakeController[] = [];
+  const brightness: number[] = [];
+  const lists: SpotlightFilterLists = {
+    external: {
+      addGlow: () => {
+        if (opts.glowThrows) throw new Error("Filters unsupported");
+        const c: FakeController = { kind: "glow", destroyed: false };
+        external.push(c);
+        return c;
+      },
+      remove: (f: unknown) => {
+        const i = external.indexOf(f as FakeController);
+        if (i >= 0) removed.push(...external.splice(i, 1));
+        return f;
+      },
+    },
+    internal: {
+      addColorMatrix: () => {
+        if (opts.matrixThrows) throw new Error("Filters unsupported");
+        // Phaser returns the controller itself, so identity must survive the
+        // round-trip into `state.matrix` and back out through remove().
+        const c: FakeController = {
+          kind: "matrix",
+          destroyed: false,
+          colorMatrix: { brightness: (v: number) => brightness.push(v) },
+        };
+        internal.push(c);
+        return c as FakeController & {
+          colorMatrix: { brightness(v: number): unknown };
+        };
+      },
+      remove: (f: unknown) => {
+        const i = internal.indexOf(f as FakeController);
+        if (i >= 0) removed.push(...internal.splice(i, 1));
+        return f;
+      },
+    },
+  };
+  return { lists, external, internal, removed, brightness };
+}
+
+const IDLE = spotlightRecipe({ casting: false });
+const CAST = spotlightRecipe({ casting: true });
+const BOSS = spotlightRecipe({ casting: false, bossAccentHex: "#ff0044" });
+
+describe("spotlight filter lifecycle", () => {
+  it("adds exactly one Glow + one ColorMatrix", () => {
+    const f = fakeFilters();
+    const state = createSpotlightState();
+    applySpotlight(state, f.lists, IDLE);
+    expect(f.external).toHaveLength(1);
+    expect(f.internal).toHaveLength(1);
+    expect(state.key).toBe(spotlightKeyFor(IDLE));
+    expect(f.brightness).toEqual([IDLE.dimBrightness]);
+  });
+
+  it("re-applying the same recipe does not add a second filter", () => {
+    const f = fakeFilters();
+    const state = createSpotlightState();
+    applySpotlight(state, f.lists, IDLE);
+    applySpotlight(state, f.lists, IDLE);
+    applySpotlight(state, f.lists, IDLE);
+    expect(f.external).toHaveLength(1);
+    expect(f.internal).toHaveLength(1);
+    expect(f.removed).toHaveLength(0);
+  });
+
+  it("recipe churn never accumulates — list stays 1+1 and old controllers are removed", () => {
+    const f = fakeFilters();
+    const state = createSpotlightState();
+    for (const recipe of [IDLE, CAST, BOSS, IDLE, CAST, BOSS, IDLE]) {
+      applySpotlight(state, f.lists, recipe);
+      expect(f.external.length).toBeLessThanOrEqual(1);
+      expect(f.internal.length).toBeLessThanOrEqual(1);
+    }
+    expect(f.external).toHaveLength(1);
+    expect(f.internal).toHaveLength(1);
+    // Six transitions each retired a Glow and a ColorMatrix.
+    expect(f.removed).toHaveLength(12);
+    expect(f.removed.every((c) => !c.destroyed)).toBe(true);
+  });
+
+  it("clearSpotlight empties both lists and resets the key", () => {
+    const f = fakeFilters();
+    const state = createSpotlightState();
+    applySpotlight(state, f.lists, CAST);
+    clearSpotlight(state, f.lists);
+    expect(f.external).toHaveLength(0);
+    expect(f.internal).toHaveLength(0);
+    expect(state).toEqual({ glow: null, matrix: null, key: "" });
+  });
+
+  it("clearSpotlight is idempotent", () => {
+    const f = fakeFilters();
+    const state = createSpotlightState();
+    applySpotlight(state, f.lists, IDLE);
+    clearSpotlight(state, f.lists);
+    clearSpotlight(state, f.lists);
+    expect(f.removed).toHaveLength(2);
+    expect(state.key).toBe("");
+  });
+
+  it("addGlow throwing (CANVAS / no Filters) leaves no orphan and no key", () => {
+    const f = fakeFilters({ glowThrows: true });
+    const state = createSpotlightState();
+    expect(() => applySpotlight(state, f.lists, IDLE)).not.toThrow();
+    expect(f.external).toHaveLength(0);
+    expect(f.internal).toHaveLength(0);
+    expect(state).toEqual({ glow: null, matrix: null, key: "" });
+  });
+
+  it("addColorMatrix throwing removes the Glow already added", () => {
+    const f = fakeFilters({ matrixThrows: true });
+    const state = createSpotlightState();
+    expect(() => applySpotlight(state, f.lists, IDLE)).not.toThrow();
+    // The half-built stack must not render a lone Glow.
+    expect(f.external).toHaveLength(0);
+    expect(state.key).toBe("");
+  });
+
+  it("a null camera (torn-down scene) is a safe no-op", () => {
+    const state = createSpotlightState();
+    expect(() => applySpotlight(state, null, IDLE)).not.toThrow();
+    expect(() => clearSpotlight(state, null)).not.toThrow();
+    expect(state.key).toBe("");
+  });
+
+  it("distinct recipes produce distinct keys", () => {
+    const keys = new Set([IDLE, CAST, BOSS].map(spotlightKeyFor));
+    expect(keys.size).toBe(3);
   });
 });

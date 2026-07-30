@@ -44,6 +44,70 @@ async function stageInfo(page) {
   });
 }
 
+/**
+ * Camera filter-list sizes. `ensureSpotlightFilters` caps the spotlight at one
+ * Glow (external) + one ColorMatrix (internal); a growing list means recipe
+ * churn is stranding controllers instead of splicing them out.
+ */
+async function filterCounts(page) {
+  return page.evaluate(() =>
+    window.__onyxPhaserFilters ? window.__onyxPhaserFilters() : null
+  );
+}
+
+const FILTER_CAP = { external: 1, internal: 1 };
+
+/**
+ * Drive turns so the spotlight recipe churns (intro nameplate -> cast banner ->
+ * none) and sample the filter list at every step.
+ */
+async function watchFiltersDuringFight(page, findings, label, steps = 30) {
+  const seen = [];
+  let gateOpen = 0;
+  let worst = { external: 0, internal: 0 };
+  for (let i = 0; i < steps; i++) {
+    const c = await filterCounts(page);
+    if (c) {
+      seen.push(c);
+      if (c.gate) gateOpen++;
+      worst = {
+        external: Math.max(worst.external, c.external),
+        internal: Math.max(worst.internal, c.internal),
+      };
+    }
+    const st = await snap(page);
+    if (st.route !== "combat") break;
+    await press(page, "Enter", 1, 60);
+    await wait(120);
+  }
+  if (!seen.length) {
+    findings.find("P1", 0, `${label}: filter probe unavailable`, "__onyxPhaserFilters missing");
+    return { ...worst, gateOpen: 0, samples: 0 };
+  }
+  if (worst.external > FILTER_CAP.external || worst.internal > FILTER_CAP.internal) {
+    findings.find(
+      "P0",
+      0,
+      `${label}: spotlight filter leak`,
+      `peak external=${worst.external} internal=${worst.internal} over ${seen.length} samples`
+    );
+  } else if (gateOpen === 0) {
+    // Bounded-at-zero proves nothing: the spotlight gate (cast banner / boss
+    // intro nameplate) never opened, so add/remove was never exercised here.
+    // The lifecycle contract is covered by combat-phaser-fx.test.ts instead.
+    console.log(
+      `  NOTE: ${label}: spotlight gate never opened (${seen.length} samples) — ` +
+        `path unexercised in-browser; see combat-phaser-fx.test.ts`
+    );
+  } else {
+    console.log(
+      `  OK: ${label}: filter list bounded (peak ext=${worst.external} int=${worst.internal}, ` +
+        `${gateOpen}/${seen.length} samples with gate open)`
+    );
+  }
+  return { ...worst, gateOpen, samples: seen.length };
+}
+
 async function bootTitle(page, extraQuery) {
   const url = `${BASE}?debug=1${extraQuery}`;
   await page.goto(url, { waitUntil: "networkidle" });
@@ -133,6 +197,10 @@ try {
     }
   }
 
+  // Phase 1 exit criterion: spotlight Glow/ColorMatrix must not accumulate as
+  // the recipe churns across intro / cast banner / idle.
+  const fightPeak = await watchFiltersDuringFight(page, findings, "fight-1");
+
   const beforeFlee = errors.length;
   await page.evaluate(() => window.__onyxDebug.exitDebugCombat("fled"));
   await wait(1000);
@@ -166,6 +234,25 @@ try {
   info = await stageInfo(page);
   await shot(page, outDir, "02-second-fight.png");
   assertVisiblePhaser(info, findings, "second-fight");
+
+  // No carry-over across stage.destroy(): fight #2 must not inherit fight #1's
+  // filter controllers. (stage.destroy() tears down the whole Phaser.Game, so
+  // this is a weak check by construction — kept as a regression tripwire in
+  // case teardown ever becomes partial.)
+  const secondPeak = await watchFiltersDuringFight(page, findings, "fight-2", 20);
+  if (
+    secondPeak.external > fightPeak.external ||
+    secondPeak.internal > fightPeak.internal
+  ) {
+    findings.find(
+      "P0",
+      0,
+      "filters carried across Next Fight",
+      `fight1 peak=${JSON.stringify(fightPeak)} fight2 peak=${JSON.stringify(secondPeak)}`
+    );
+  } else {
+    console.log("  OK: no filter carry-over across teardown");
+  }
 
   const beforeVictory = errors.length;
   await page.evaluate(() => window.__onyxDebug.exitDebugCombat("victory"));
