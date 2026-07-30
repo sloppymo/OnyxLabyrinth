@@ -20,7 +20,7 @@ const MIN_SOURCE_PX = 16;
 /** Scanline band height — coarser than 1px, still reads as HDMA striping. */
 const BAND_H = 3;
 /** Full turns of swirl over the encounter wipe. */
-const SWIRL_TURNS = 2.5;
+const SWIRL_TURNS = 3.25;
 
 /**
  * Photosensitivity: slow single glow, not a hard spike. Matches the old
@@ -141,9 +141,10 @@ export function apertureBounds(
 
   const yN = h > 0 ? (y + 0.5) / h - 0.5 : 0;
   // Spiral phase: scanline index winds with rotation so edges corkscrew shut.
-  const spiral = Math.sin(theta + yN * Math.PI * 4);
-  const center = 0.5 + 0.22 * open * Math.cos(theta + yN * Math.PI * 2);
-  const half = open * (0.52 + 0.38 * spiral) * 0.5;
+  // Amplitude kept high so early frames read as a ribbon, not a soft fade.
+  const spiral = Math.sin(theta + yN * Math.PI * 5.5);
+  const center = 0.5 + 0.34 * open * Math.cos(theta + yN * Math.PI * 2.4);
+  const half = open * (0.48 + 0.48 * spiral) * 0.5;
   const left = (center - half) * w;
   const right = (center + half) * w;
   return {
@@ -163,9 +164,14 @@ function drawSwirlFrame(
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, w, h);
 
-  const theta = t * SWIRL_TURNS * Math.PI * 2;
+  // Front-load spiral motion so the first ~500ms shows corkscrew structure
+  // without lengthening total duration (ease-in on aperture close).
+  const eased = t * t * (3 - 2 * t); // smoothstep — still 0→1
+  const theta = eased * SWIRL_TURNS * Math.PI * 2;
+  const edgeAlpha = 0.55 * (1 - eased * 0.65);
+
   for (let y = 0; y < h; y += BAND_H) {
-    const { left, right } = apertureBounds(y, h, w, t, theta);
+    const { left, right } = apertureBounds(y, h, w, eased, theta);
     if (right <= left) continue;
     const band = Math.min(BAND_H, h - y);
     const sy = (y / h) * source.height;
@@ -173,6 +179,16 @@ function drawSwirlFrame(
     const sx = (left / w) * source.width;
     const sw = ((right - left) / w) * source.width;
     ctx.drawImage(source, sx, sy, sw, sh, left, y, right - left, band);
+
+    // Cream ribbon along aperture edges — readable against both light and dark snaps.
+    if (edgeAlpha > 0.04 && right - left > 4) {
+      ctx.fillStyle = `rgba(232, 232, 240, ${edgeAlpha})`;
+      ctx.fillRect(left, y, 2, band);
+      ctx.fillRect(right - 2, y, 2, band);
+      ctx.fillStyle = `rgba(80, 104, 200, ${edgeAlpha * 0.7})`;
+      ctx.fillRect(left + 2, y, 1, band);
+      ctx.fillRect(right - 3, y, 1, band);
+    }
   }
 
   if (flashAlpha > 0) {
