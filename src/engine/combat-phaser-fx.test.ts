@@ -3,6 +3,8 @@ import {
   applySpotlight,
   deathDissolveRecipe,
   DEATH_ANIM_MS,
+  castBloomPulse,
+  CAST_BLOOM_MS,
   applyStatusTint,
   clearSpotlight,
   createSpotlightState,
@@ -300,5 +302,42 @@ describe("deathDissolveRecipe", () => {
 
   it("rides the same clock as the death animation", () => {
     expect(DEATH_ANIM_MS).toBe(675);
+  });
+});
+
+describe("castBloomPulse", () => {
+  it("is silent at the banner's first instant and at the cap", () => {
+    expect(castBloomPulse(0)).toEqual({ active: true, blendAmount: 0 });
+    expect(castBloomPulse(CAST_BLOOM_MS).blendAmount).toBeCloseTo(0, 5);
+  });
+
+  it("goes inactive past the cap so the stage tears the filter down", () => {
+    expect(castBloomPulse(CAST_BLOOM_MS + 1).active).toBe(false);
+    expect(castBloomPulse(10_000)).toEqual({ active: false, blendAmount: 0 });
+  });
+
+  it("peaks early, well inside the pulse window", () => {
+    const peak = castBloomPulse(CAST_BLOOM_MS * 0.3);
+    expect(peak.blendAmount).toBeGreaterThan(castBloomPulse(CAST_BLOOM_MS * 0.1).blendAmount);
+    expect(peak.blendAmount).toBeGreaterThan(castBloomPulse(CAST_BLOOM_MS * 0.7).blendAmount);
+  });
+
+  it("never exceeds the documented peak blend", () => {
+    for (let ms = 0; ms <= CAST_BLOOM_MS; ms += 5) {
+      const p = castBloomPulse(ms);
+      expect(p.blendAmount).toBeGreaterThanOrEqual(0);
+      expect(p.blendAmount).toBeLessThanOrEqual(0.85);
+    }
+  });
+
+  it("treats a negative age (clock skew) as inactive rather than negative blend", () => {
+    expect(castBloomPulse(-1).active).toBe(false);
+    expect(castBloomPulse(NaN).active).toBe(false);
+  });
+
+  it("stays short enough to never idle-stack with the spotlight Glow", () => {
+    // Both live on the camera external list; the cap is what keeps them from
+    // overlapping for the whole cast rather than a flash.
+    expect(CAST_BLOOM_MS).toBeLessThanOrEqual(180);
   });
 });

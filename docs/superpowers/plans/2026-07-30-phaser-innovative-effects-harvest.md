@@ -158,7 +158,13 @@ Kill-switch: extend existing `?phaserFx=0` / `PHASER_FX_SPOTLIGHT` pattern so bl
       `alpha` dropped from the shape, since `anim.opacity` / `fadeOutStart` already own the fade
 - [x] Stage: on `anim.state === "death"`, `enableFilters()` once per actor; drive Pixelate +
       ColorMatrix grayscale; clear on revive / state exit
-- [ ] Add `castBloomPulse(host, now, bannerStart)` — add bloom ≤180ms then destroy (never leave ParallelFilters stacked with idle spotlight)
+- [x] Add `castBloomPulse(ageMs)` — bloom ≤180ms then spliced out (never leaves a
+      ParallelFilters stacked with the idle spotlight). Signature is pure (age in, envelope
+      out); the stage owns the host and the `bannerStart` identity.
+      **Budget policy:** the camera external list legitimately reaches 2 during the pulse
+      (spotlight Glow + bloom), so `debugFilterCounts` reports `spotlightExternal` and
+      `bloom` separately and the assertion is "≤1 spotlight external AND bloom never live
+      outside its banner" rather than a bare count cap.
 - [ ] Wire Shine for heal-colored EffectStyles / heal popups (reuse strip timing)
 - [ ] Stretch if time: H4 vignette pulse on crit popup or boss accent hit
 - [ ] `npm run build` + `npm test`

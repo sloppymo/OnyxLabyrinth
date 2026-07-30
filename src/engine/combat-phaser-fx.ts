@@ -220,6 +220,42 @@ export function applyStatusTint(
   if (tint.mode != null) sprite.setTintMode?.(tint.mode);
 }
 
+/**
+ * How long the cast bloom is allowed to live, in ms.
+ *
+ * Hard cap, not a suggestion: the bloom is a `ParallelFilters` on the same
+ * camera external list the spotlight Glow uses, so leaving it up would idle-stack
+ * two multi-pass filters for the whole cast. It pulses and tears down.
+ */
+export const CAST_BLOOM_MS = 180;
+
+export type CastBloomPulse = {
+  /** False once the pulse has expired — the stage must then remove it. */
+  active: boolean;
+  /** `AddEffectBloomConfig.blendAmount` for this frame. */
+  blendAmount: number;
+};
+
+const CAST_BLOOM_PEAK = 0.85;
+
+/**
+ * Bloom envelope over the age of a cast banner.
+ *
+ * Rises fast (~30% in) and falls off over the remainder, so the flash lands on
+ * the cast rather than trailing it. Returns `active: false` past
+ * `CAST_BLOOM_MS`, which is the stage's cue to splice the filter out.
+ */
+export function castBloomPulse(ageMs: number): CastBloomPulse {
+  if (!(ageMs >= 0) || ageMs > CAST_BLOOM_MS) {
+    return { active: false, blendAmount: 0 };
+  }
+  const t = ageMs / CAST_BLOOM_MS;
+  const peakAt = 0.3;
+  const amp =
+    t <= peakAt ? t / peakAt : 1 - (t - peakAt) / (1 - peakAt);
+  return { active: true, blendAmount: CAST_BLOOM_PEAK * Math.max(0, amp) };
+}
+
 /** Death anim length in `combat-phaser-stage`; the dissolve rides the same clock. */
 export const DEATH_ANIM_MS = 675;
 

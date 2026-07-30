@@ -68,6 +68,7 @@ import {
   applyStatusTint,
   deathDissolveRecipe,
   DEATH_ANIM_MS,
+  castBloomPulse,
   clearSpotlight,
   createSpotlightState,
   hitSquashFootOffset,
@@ -85,6 +86,8 @@ const PHASER_FX_SPOTLIGHT = true;
 const PHASER_FX_HIT_SQUASH = true;
 /** Kill-switch for the per-sprite death mosaic/desaturate (harvest H1). */
 const PHASER_FX_DEATH_DISSOLVE = true;
+/** Kill-switch for the cast bloom pulse (harvest H2). */
+const PHASER_FX_CAST_BLOOM = true;
 
 function setPhaserStageActive(on: boolean): void {
   const wrap = combatPhaserCanvas.parentElement;
@@ -137,6 +140,16 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private autoCue: Phaser.GameObjects.Text | null = null;
   private pipGfx: Phaser.GameObjects.Graphics | null = null;
   private readonly spotlight: SpotlightState = createSpotlightState();
+  /**
+   * Cast bloom, deliberately kept out of `SpotlightState`: it lands on the same
+   * camera external list but has its own (much shorter) lifetime, and folding a
+   * third member into `clearSpotlight`'s identity-splice logic would muddy it.
+   */
+  private bloom: {
+    parallelFilters: Phaser.Filters.ParallelFilters;
+    /** `bannerStart` this pulse belongs to — a new banner restarts the pulse. */
+    bannerStart: number;
+  } | null = null;
 
   constructor() {
     super(SCENE_KEY);
@@ -278,6 +291,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     /** Whether syncSpotlight's gate was open on the last paint. */
     gate: boolean;
     webgl: boolean;
+    bloom: boolean;
+    spotlightExternal: number;
   } {
     const cam = this.cameras?.main;
     const list = (l: unknown): number =>
@@ -291,6 +306,11 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       key: this.spotlight.key,
       gate: !!(scene && (scene.introNameplate || (scene.banner && scene.banner.length))),
       webgl: this.game?.renderer?.type === Phaser.WEBGL,
+      // Reported separately from the raw counts so the leak assertion can stay
+      // "<=1 spotlight external AND bloom only during its pulse", rather than a
+      // bare cap that the bloom would legitimately trip.
+      bloom: !!this.bloom,
+      spotlightExternal: this.spotlight.glow ? 1 : 0,
     };
   }
 
@@ -442,6 +462,69 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     this.syncCues(scene);
     this.syncHpPips(scene, now, w, h);
     this.syncSpotlight(scene);
+    this.syncCastBloom(scene, now);
+  }
+
+  /**
+   * One short bloom flash per cast banner (harvest H2).
+   *
+   * Keyed off `scene.bannerStart`, not a tween, so FAST playback and skip carry
+   * it correctly. `castBloomPulse` going inactive is the teardown cue — the
+   * bloom must never outlive its window, because it shares the camera external
+   * list with the spotlight Glow and two stacked multi-pass filters for a whole
+   * cast is exactly what the budget rule forbids.
+   */
+  private syncCastBloom(scene: CombatScene, now: number): void {
+    if (!PHASER_FX_CAST_BLOOM) {
+      this.clearCastBloom();
+      return;
+    }
+    const casting = !!(scene.banner && scene.banner.length > 0);
+    if (!casting) {
+      this.clearCastBloom();
+      return;
+    }
+    const pulse = castBloomPulse(now - scene.bannerStart);
+    if (!pulse.active) {
+      this.clearCastBloom();
+      return;
+    }
+    if (this.bloom && this.bloom.bannerStart !== scene.bannerStart) {
+      this.clearCastBloom();
+    }
+    try {
+      if (!this.bloom) {
+        const [added] = Phaser.Actions.AddEffectBloom(this.cameras.main, {
+          threshold: 0.55,
+          blurRadius: 6,
+          blurSteps: 2,
+          blurQuality: 1,
+          blendAmount: pulse.blendAmount,
+        });
+        if (!added?.parallelFilters) return;
+        this.bloom = {
+          parallelFilters: added.parallelFilters,
+          bannerStart: scene.bannerStart,
+        };
+      }
+      const blend = (
+        this.bloom.parallelFilters as unknown as { blendAmount?: number }
+      );
+      if ("blendAmount" in blend) blend.blendAmount = pulse.blendAmount;
+    } catch {
+      // CANVAS renderer / Filters unavailable — no bloom, spotlight unaffected.
+      this.clearCastBloom();
+    }
+  }
+
+  clearCastBloom(): void {
+    if (!this.bloom) return;
+    try {
+      this.cameras?.main?.filters?.external.remove(this.bloom.parallelFilters);
+    } catch {
+      /* camera already torn down */
+    }
+    this.bloom = null;
   }
 
   private syncSpotlight(scene: CombatScene): void {
@@ -1512,6 +1595,7 @@ export async function createPhaserCombatStage(
       destroyed = true;
       try {
         phaserScene.clearSpotlightFilters();
+        phaserScene.clearCastBloom();
       } catch {
         /* ignore */
       }

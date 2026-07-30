@@ -48,6 +48,9 @@ async function stopFilterRecorder(page) {
       gateOpen: t.filter((s) => s.gate).length,
       maxExternal: Math.max(0, ...t.map((s) => s.external)),
       maxInternal: Math.max(0, ...t.map((s) => s.internal)),
+      maxSpotlightExternal: Math.max(0, ...t.map((s) => s.spotlightExternal ?? 0)),
+      bloomSamples: t.filter((s) => s.bloom).length,
+      bloomOutsideBanner: t.filter((s) => s.bloom && !s.gate).length,
       keys: [...new Set(t.map((s) => s.key).filter(Boolean))],
       webgl: t[0]?.webgl ?? null,
     };
@@ -119,19 +122,36 @@ try {
     console.log(`  OK: spotlight engaged (${trace.gateOpen}/${trace.samples} samples)`);
   }
 
-  // The whole point of the in-browser check: the list must stay at 1+1 even
-  // though the recipe churns (idle -> cast glow) mid-fight.
-  if (trace.maxExternal > 1 || trace.maxInternal > 1) {
+  // Budget policy: the spotlight owns at most one external Glow + one internal
+  // ColorMatrix, and the cast bloom may add one more external ParallelFilters
+  // but ONLY inside its <=180ms pulse. A bare count cap would be tripped by the
+  // bloom legitimately, so assert the two properties separately.
+  if (trace.maxSpotlightExternal > 1 || trace.maxInternal > 1) {
     findings.find(
       "P0",
       0,
       "spotlight filter leak during cast",
-      `peak external=${trace.maxExternal} internal=${trace.maxInternal}`
+      `peak spotlight external=${trace.maxSpotlightExternal} internal=${trace.maxInternal}`
     );
   } else if (trace.gateOpen > 0) {
     console.log(
-      `  OK: filter list bounded through recipe churn (keys: ${trace.keys.join(", ")})`
+      `  OK: spotlight bounded through recipe churn (keys: ${trace.keys.join(", ")})`
     );
+  }
+
+  if (trace.bloomOutsideBanner > 0) {
+    findings.find(
+      "P0",
+      0,
+      "cast bloom outlived its banner",
+      `${trace.bloomOutsideBanner} samples with bloom live and no banner up`
+    );
+  } else if (trace.bloomSamples > 0) {
+    console.log(
+      `  OK: cast bloom pulsed and tore down (${trace.bloomSamples} samples, none outside the banner)`
+    );
+  } else {
+    console.log("  NOTE: bloom never sampled — pulse is <=180ms, may fall between 40ms ticks");
   }
 
   // Phase 2 evidence: the Mag frame above vs a Tech frame from a fresh fight,

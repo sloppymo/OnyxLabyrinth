@@ -55,7 +55,13 @@ async function filterCounts(page) {
   );
 }
 
-const FILTER_CAP = { external: 1, internal: 1 };
+/**
+ * Spotlight budget. `external` allows 2 because the cast bloom (harvest H2)
+ * adds a second, short-lived ParallelFilters alongside the spotlight Glow; the
+ * strict "bloom only inside its pulse" assertion lives in
+ * capture-phaser-cast-fx.mjs, which can actually reach a cast.
+ */
+const FILTER_CAP = { external: 2, internal: 1 };
 
 /**
  * Drive turns so the spotlight recipe churns (intro nameplate -> cast banner ->
