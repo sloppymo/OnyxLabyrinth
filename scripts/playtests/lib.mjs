@@ -403,3 +403,43 @@ export async function castFirstSpell(page, { maxActors = 6, stepDelay = 120 } = 
   }
   return { cast: false, phase: null, actorTried: maxActors };
 }
+
+/**
+ * Drive a class technique the same way `castFirstSpell` drives a spell, so the
+ * Mag-vs-Tech impact language can be captured side by side.
+ *
+ * `t` opens the technique list for melee classes; characters without one (or
+ * without the Rage to pay) bounce back to the palette and we try the next actor.
+ */
+export async function useFirstTechnique(page, { maxActors = 6, stepDelay = 120 } = {}) {
+  for (let actor = 0; actor < maxActors; actor++) {
+    let st = await snap(page);
+    if (st.route !== "combat") return { used: false, phase: null, actorTried: actor };
+    if (st.combat?.phase !== "palette") {
+      await waitForIdle(page, 6000);
+      st = await snap(page);
+      if (st.combat?.phase !== "palette") continue;
+    }
+
+    await press(page, "t", 1, stepDelay);
+    st = await snap(page);
+    if (st.combat?.phase === "selectTechnique") {
+      await press(page, "Enter", 1, stepDelay);
+      st = await snap(page);
+      if (st.combat?.phase === "selectTarget") {
+        await press(page, "Enter", 1, stepDelay);
+        st = await snap(page);
+      }
+      if (st.combat?.phase !== "palette" && st.combat?.phase !== "selectTechnique") {
+        return { used: true, phase: st.combat?.phase ?? null, actorTried: actor };
+      }
+    }
+
+    await press(page, "Escape", 1, stepDelay);
+    await press(page, "Enter", 1, stepDelay);
+    st = await snap(page);
+    if (st.combat?.phase === "selectTarget") await press(page, "Enter", 1, stepDelay);
+    await waitForIdle(page, 8000);
+  }
+  return { used: false, phase: null, actorTried: maxActors };
+}

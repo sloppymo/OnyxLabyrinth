@@ -609,4 +609,43 @@ describe("CombatController input routing", () => {
     expect(c.phase).toBe("palette");
     controller.destroy();
   });
+
+  it("the `h` shortcut rejects non-Thieves instead of burning the turn", () => {
+    // Regression: `h` was unreachable until the palette whitelist was fixed.
+    // resolveHide fizzles for non-Thieves but still spends the turn, so the
+    // controller must reject it at the palette the way "cast" does.
+    const party = [createCharacter("c0", "Bob", "Human", "Neutral", "Fighter", 1)];
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
+    const controller = new CombatControllerCtor(state, { onEnd: () => {} });
+    const c = controller as any;
+    c.phase = "palette";
+    c.currentActorId = "c0";
+
+    controller.handleKey("h");
+
+    expect(c.flash).toBe("Only a Thief can hide!");
+    expect(c.phase).toBe("palette");
+    controller.destroy();
+  });
+
+  it("the `h` shortcut hides a Thief and refuses to re-hide", () => {
+    const party = [createCharacter("c0", "Sly", "Human", "Neutral", "Thief", 1)];
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
+    const controller = new CombatControllerCtor(state, { onEnd: () => {} });
+    const c = controller as any;
+    c.phase = "palette";
+    c.currentActorId = "c0";
+
+    controller.handleKey("h");
+    expect(c.flash).not.toBe("Only a Thief can hide!");
+
+    // Second press while already hidden must not spend another turn.
+    party[0].status.push("hidden");
+    c.phase = "palette";
+    c.currentActorId = "c0";
+    controller.handleKey("h");
+    expect(c.flash).toBe("Already hidden!");
+    expect(c.phase).toBe("palette");
+    controller.destroy();
+  });
 });

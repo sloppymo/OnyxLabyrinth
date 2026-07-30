@@ -18,6 +18,7 @@ import {
   press,
   snap,
   castFirstSpell,
+  useFirstTechnique,
   createFindings,
   writeReport,
   ensureOutDir,
@@ -131,6 +132,32 @@ try {
     console.log(
       `  OK: filter list bounded through recipe churn (keys: ${trace.keys.join(", ")})`
     );
+  }
+
+  // Phase 2 evidence: the Mag frame above vs a Tech frame from a fresh fight,
+  // so the two impact languages can be compared without reading the banner.
+  await page.evaluate(() => window.__onyxDebug.exitDebugCombat("fled"));
+  await waitForIdle(page, 10000);
+  for (let i = 0; i < 12; i++) {
+    await press(page, "Enter", 1, 100);
+    await waitForIdle(page, 6000);
+    if ((await snap(page)).route === "combat") break;
+  }
+  const tech = await useFirstTechnique(page);
+  console.log("  technique:", JSON.stringify(tech));
+  await shot(page, outDir, "04-tech-midflight.png");
+  await wait(220);
+  await shot(page, outDir, "05-tech-impact.png");
+  await waitForIdle(page, 10000);
+  if (!tech.used) {
+    findings.find(
+      "P1",
+      0,
+      "no technique available",
+      `tried ${tech.actorTried} actors — Arena roster may be all casters`
+    );
+  } else {
+    console.log("  OK: technique drove the Tech impact path");
   }
 
   const pageErrors = errors.filter((e) => e.startsWith("pageerror:"));

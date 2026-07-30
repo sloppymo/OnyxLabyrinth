@@ -787,6 +787,18 @@ export class CombatController {
         );
         return;
       case "hide":
+        // `resolveHide` fizzles for non-Thieves but still spends the turn, so
+        // reject here the way "cast" rejects with no spells. The face-button
+        // path (handleCommand) already falls back to Attack rather than
+        // burning the turn; the `h` shortcut needs the same courtesy.
+        if (c.class !== "Thief") {
+          this.setFlash("Only a Thief can hide!");
+          return;
+        }
+        if (c.status.includes("hidden")) {
+          this.setFlash("Already hidden!");
+          return;
+        }
         this.rememberLastCommand(c.id, { kind: "hide" });
         this.resolveAndPlay(() =>
           resolvePlayerTurn(this.state, { kind: "hide", actorId: c.id })

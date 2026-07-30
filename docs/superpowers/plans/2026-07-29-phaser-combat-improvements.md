@@ -228,10 +228,16 @@ export function spotlightRecipe(opts: {
 >    no-op, and that a throwing `addGlow`/`addColorMatrix` leaves no orphan and no key
 >    (the CANVAS-degradation criterion).
 >
-> The in-browser probe (`window.__onyxPhaserFilters()` → `debugFilterCounts()`) stays, but
-> it now reports **"gate never opened"** rather than a green tick when it samples an
-> unexercised path: the Arena's default encounter produces neither a boss intro nameplate
-> nor a cast banner, so `syncSpotlight`'s gate stays shut and a peak of 0/0 proves nothing.
+> The two are complementary, not substitutes. The unit test pins the contract; the
+> in-browser probe (`window.__onyxPhaserFilters()` → `debugFilterCounts()`) proves the real
+> Phaser `FilterList` behaves the same way. `scripts/playtests/capture-phaser-cast-fx.mjs`
+> drives an actual spell via `castFirstSpell` and records the spotlight live with the cast
+> recipe (`glow #a8c8ff / outer 3.2 / dim 0.72`) at **9/129 samples, peak 1 external +
+> 1 internal** through the churn.
+>
+> The Arena *smoke* still can't reach it — pressing Enter picks Attack, which raises no
+> banner — so `smoke-phaser-combat.mjs` now reports **"gate never opened"** instead of a
+> green tick when it samples an unexercised path. A peak of 0/0 there proves nothing.
 
 **Rollback:** Feature-flag `?phaserFx=0` optional; or revert Phase 1 commits. Prefer compile-time constant `PHASER_FX_SPOTLIGHT = true` flipped false if needed.
 
@@ -250,8 +256,14 @@ export function spotlightRecipe(opts: {
 
 **Exit criteria:** *(2026-07-30)*
 - [ ] Screenshots: Ember (or equivalent) vs a Fighter technique mid-impact — different
-      silhouette/color/motion — **not captured**; needs a scripted cast, and the Arena's
-      default encounter does not reliably produce one (same blocker as the spotlight gate)
+      silhouette/color/motion — **partial**. The blocker is cleared: `castFirstSpell` /
+      `useFirstTechnique` in `scripts/playtests/lib.mjs` now drive both verbs reliably, and
+      `capture-phaser-cast-fx.mjs` captures Spark (`01-cast-midflight.png`, visible arcing
+      bolt on the target) against Quick Slash (`04`/`05-tech-*.png`, melee walk-in, no bolt).
+      What is still missing is the **impact frame itself** — both technique shots land during
+      the wind-up, because the script screenshots on a fixed 220 ms delay rather than
+      sampling at the impact timestamp. Finishing this needs the capture keyed off
+      choreography step times, not a sleep.
 - [x] No damage/SP/Rage math changes — `git diff --name-only d0ce070..HEAD` touches no
       `src/game/**` or `src/data/**` file
 - [x] Effect cap (`MAX_SCENE_EFFECTS = 40`) still respected — `combat-choreography.ts:1090`
@@ -472,10 +484,13 @@ Keep commits vertical and reversible; do not bundle Spine with Filters.
 
 - [ ] Human review of Arena + checklist; no Spine work without Q4 answer
 
-**Remaining before this train is fully closed:** the two screenshot captures above
-(Mag vs Tech impact, swirl mid-frame). Both need a scripted spell cast in Arena, which
-is the same gap that leaves the spotlight gate unexercised in-browser; worth building
-once as a shared playtest helper rather than three times.
+**Remaining before this train is fully closed:** frame-accurate impact captures.
+The shared helpers exist now (`castFirstSpell` / `useFirstTechnique` in
+`scripts/playtests/lib.mjs`, driven by `capture-phaser-cast-fx.mjs`), and they unblocked
+the spotlight verification and the Mag/Tech banner frames. The last gap is timing: the
+capture sleeps a fixed 220 ms after the verb instead of sampling at the choreography's
+impact step, so technique shots land mid-wind-up. Key the screenshot off the step clock
+and both the Mag-vs-Tech and swirl mid-frame criteria close.
 
 ---
 
