@@ -4,8 +4,12 @@ import {
   partyStatusText,
   hpBarColorClass,
   hpRatio,
+  spellMagicCategory,
+  spellElementLabel,
+  type SpellMagicCategory,
 } from "./combat-display";
 import { createCharacter } from "../game/party";
+import type { SpellEffect } from "../data/spells";
 
 describe("enemyHealthDescriptor", () => {
   it("describes full health as unwounded", () => {
@@ -71,5 +75,31 @@ describe("hp helpers", () => {
 
   it("leaves high HP bar color as default", () => {
     expect(hpBarColorClass(0.8)).toBe("");
+  });
+});
+
+describe("spellMagicCategory", () => {
+  const cases: [SpellEffect["kind"] | SpellEffect, SpellMagicCategory | null][] = [
+    [{ kind: "damage", element: "fire", power: 10 }, "offense"],
+    [{ kind: "summon", power: 2 }, "offense"],
+    [{ kind: "heal", power: 12 }, "defense"],
+    [{ kind: "resurrect" }, "defense"],
+    [{ kind: "magicScreen", power: 5 }, "defense"],
+    [{ kind: "buff", stat: "armor" }, "buffs"],
+    [{ kind: "disable", status: "sleep" }, "status"],
+    [{ kind: "cure", status: "poison" }, "status"],
+    [{ kind: "fizzleField", power: 5 }, "status"],
+    [{ kind: "dispelMagic" }, "status"],
+    [{ kind: "light", duration: 10 }, null],
+    [{ kind: "detect" }, null],
+  ];
+
+  it.each(cases)("maps %j → %s", (effect, expected) => {
+    expect(spellMagicCategory(effect as SpellEffect)).toBe(expected);
+  });
+
+  it("labels damage elements and dashes others", () => {
+    expect(spellElementLabel({ kind: "damage", element: "cold", power: 5 })).toBe("Cold");
+    expect(spellElementLabel({ kind: "heal", power: 10 })).toBe("—");
   });
 });

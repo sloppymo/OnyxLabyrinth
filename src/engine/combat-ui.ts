@@ -36,7 +36,7 @@ import type {
   SummonedAlly,
   ActionPreview,
 } from "../game/combat-types";
-import { enemyHealthDescriptor, formatActionPreview } from "./combat-display";
+import { enemyHealthDescriptor, formatActionPreview, spellMagicCategory, SPELL_MAGIC_TABS, type SpellMagicTab } from "./combat-display";
 import type { Character } from "../game/party";
 import { charRow } from "../game/party";
 import { isUtilitySpell, type SpellDef } from "../data/spells";
@@ -58,6 +58,7 @@ import {
   type MenuEntry,
   type SelectionEntry,
   type ResultView,
+  type MagicSheetView,
 } from "./combat-select-action-view";
 import type { CombatDebugView } from "../debug/snapshot";
 import { renderTurnOrderStrip } from "./combat-turn-order-view";
@@ -133,6 +134,8 @@ export class CombatController {
   private selectionIndex = 0;
   /** Ids behind selectionEntries (enemy instance ids / ally ids / spell ids / item ids / rows). */
   private selectionIds: string[] = [];
+  /** Magic sheet category tab while phase === selectSpell. */
+  private spellCategoryTab: SpellMagicTab = "all";
   private targetKind: "enemy" | "ally" | "row" = "enemy";
   private flash: string | null = null;
   private result: ResultView | null = null;
@@ -912,18 +915,100 @@ export class CombatController {
     }
   }
 
-  private openSpellSelect(c: Character): void {
+  private openSpellSelect(c: Character, preferSpellId?: string): void {
     this.phase = "selectSpell";
     this.selectionTitle = "Magic";
-    const spells = this.knownSpells(c);
-    this.selectionIds = spells.map((s) => s.id);
-    this.selectionEntries = spells.map((s) => ({
+    if (!preferSpellId) {
+      this.spellCategoryTab = "all";
+      this.selectionIndex = 0;
+    }
+    this.applySpellList(c, preferSpellId);
+    this.windowsDirty = true;
+  }
+
+  /** Rebuild the spell selection list for the active Magic-sheet tab. */
+  private applySpellList(c: Character, preferSpellId?: string): void {
+    const all = this.knownSpells(c);
+    const filtered =
+      this.spellCategoryTab === "all"
+        ? all
+        : all.filter((s) => spellMagicCategory(s.effect) === this.spellCategoryTab);
+    this.selectionIds = filtered.map((s) => s.id);
+    this.selectionEntries = filtered.map((s) => ({
       label: s.name,
       detail: `${s.spCost} SP`,
       disabled: c.sp < s.spCost,
     }));
-    this.selectionIndex = 0;
+    if (preferSpellId) {
+      const idx = this.selectionIds.indexOf(preferSpellId);
+      this.selectionIndex = idx >= 0 ? idx : 0;
+    } else if (this.selectionIndex >= filtered.length) {
+      this.selectionIndex = Math.max(0, filtered.length - 1);
+    }
+  }
+
+  private setSpellTab(tab: SpellMagicTab): void {
+    if (this.phase !== "selectSpell") return;
+    if (tab === this.spellCategoryTab) return;
+    const c = this.currentChar();
+    if (!c) return;
+    const prefer = this.selectionIds[this.selectionIndex];
+    this.spellCategoryTab = tab;
+    this.applySpellList(c, prefer);
     this.windowsDirty = true;
+  }
+
+  private cycleSpellTab(dir: -1 | 1): void {
+    const idx = SPELL_MAGIC_TABS.findIndex((t) => t.id === this.spellCategoryTab);
+    const next = SPELL_MAGIC_TABS[(idx + dir + SPELL_MAGIC_TABS.length) % SPELL_MAGIC_TABS.length];
+    if (next) this.setSpellTab(next.id);
+  }
+
+  /** Damage forecast line for the Magic sheet detail pane (single-target only). */
+  private spellSheetPreviewText(c: Character, spell: SpellDef): string | null {
+    if (spell.effect.kind !== "damage" || spell.target !== "singleEnemy") return null;
+    const enemy = this.livingEnemies()[0];
+    if (!enemy) return null;
+    const preview = previewSpellDamage(this.state, c, spell, enemy);
+    return `Est. ${formatActionPreview(preview)} vs. ${enemy.name}`;
+  }
+
+  private buildMagicSheetView(c: Character): MagicSheetView {
+    const all = this.knownSpells(c);
+    const tabCounts = {
+      all: all.length,
+      offense: 0,
+      defense: 0,
+      buffs: 0,
+      status: 0,
+    } satisfies Record<SpellMagicTab, number>;
+    for (const s of all) {
+      const cat = spellMagicCategory(s.effect);
+      if (cat) tabCounts[cat] += 1;
+    }
+    const detail =
+      this.state.spells[this.selectionIds[this.selectionIndex] ?? ""] ?? null;
+    return {
+      casterName: c.name,
+      sp: c.sp,
+      maxSp: c.maxSp,
+      activeTab: this.spellCategoryTab,
+      tabCounts,
+      spells: this.selectionIds.map((id, i) => {
+        const spell = this.state.spells[id]!;
+        const entry = this.selectionEntries[i];
+        return {
+          id,
+          name: spell.name,
+          spCost: spell.spCost,
+          disabled: entry?.disabled === true,
+        };
+      }),
+      cursor: this.selectionIndex,
+      detail,
+      previewText: detail ? this.spellSheetPreviewText(c, detail) : null,
+      flash: this.flash,
+    };
   }
 
   private openTechniqueSelect(c: Character): void {
@@ -1310,7 +1395,7 @@ export class CombatController {
     this.stage.setCursor(null);
     if (this.phase === "selectTarget" && this.pending?.kind === "cast") {
       // Back out of target selection into the spell list.
-      this.openSpellSelect(c);
+      this.openSpellSelect(c, this.pending.spellId);
       return;
     }
     if (this.phase === "selectTarget" && this.pending?.kind === "technique") {
@@ -1553,7 +1638,8 @@ export class CombatController {
 
   private handleSelectionInput(event: ControllerInputEvent): void {
     const len = this.selectionEntries.length;
-    if (len === 0) {
+    // Empty Magic-sheet category: stay on the overlay (←→ / 1–5 / Esc still work).
+    if (len === 0 && this.phase !== "selectSpell") {
       this.backToMenu();
       return;
     }
@@ -1561,16 +1647,29 @@ export class CombatController {
 
     switch (event.button) {
       case "up":
+        if (len === 0) return;
         this.selectionIndex = (this.selectionIndex - 1 + len) % len;
         this.syncTargetCursor();
         this.windowsDirty = true;
         return;
       case "down":
+        if (len === 0) return;
         this.selectionIndex = (this.selectionIndex + 1) % len;
         this.syncTargetCursor();
         this.windowsDirty = true;
         return;
+      case "left":
+        if (this.phase === "selectSpell") {
+          this.cycleSpellTab(-1);
+        }
+        return;
+      case "right":
+        if (this.phase === "selectSpell") {
+          this.cycleSpellTab(1);
+        }
+        return;
       case "a":
+        if (len === 0) return;
         this.confirmSelection();
         return;
       case "b":
@@ -1578,6 +1677,10 @@ export class CombatController {
         return;
       case "lb":
       case "rb":
+        if (this.phase === "selectSpell") {
+          this.cycleSpellTab(event.button === "lb" ? -1 : 1);
+          return;
+        }
         if (this.phase === "selectTarget") {
           const dir = event.button === "lb" ? -1 : 1;
           this.selectionIndex = (this.selectionIndex + dir + len) % len;
@@ -1662,10 +1765,17 @@ export class CombatController {
       this.phase === "selectTechnique"
     ) {
       const n = parseInt(key, 10);
-      if (!isNaN(n) && n >= 1 && n <= this.selectionEntries.length) {
-        this.selectionIndex = n - 1;
-        this.syncTargetCursor();
-        this.confirmSelection();
+      if (!isNaN(n) && n >= 1) {
+        if (this.phase === "selectSpell" && n <= SPELL_MAGIC_TABS.length) {
+          const tab = SPELL_MAGIC_TABS[n - 1];
+          if (tab) this.setSpellTab(tab.id);
+          return;
+        }
+        if (this.phase !== "selectSpell" && n <= this.selectionEntries.length) {
+          this.selectionIndex = n - 1;
+          this.syncTargetCursor();
+          this.confirmSelection();
+        }
       }
     }
   }
@@ -1684,13 +1794,14 @@ export class CombatController {
     const menuMode =
       this.phase === "palette"
         ? "palette"
-        : this.phase === "selectTarget" ||
-            this.phase === "selectSpell" ||
-            this.phase === "selectItem" ||
-            this.phase === "selectSkill" ||
-            this.phase === "selectTechnique"
-          ? "selection"
-          : "none";
+        : this.phase === "selectSpell"
+          ? "none"
+          : this.phase === "selectTarget" ||
+              this.phase === "selectItem" ||
+              this.phase === "selectSkill" ||
+              this.phase === "selectTechnique"
+            ? "selection"
+            : "none";
 
     // Wizardry-style qualitative health for the highlighted enemy target,
     // plus hit%/KO forecast for Attack / Ambush / single-target damage spells.
@@ -1717,10 +1828,8 @@ export class CombatController {
       }
     }
 
-    const spellDetail: SpellDef | null =
-      this.phase === "selectSpell"
-        ? (this.state.spells[this.selectionIds[this.selectionIndex] ?? ""] ?? null)
-        : null;
+    // Magic sheet carries its own detail pane — don't swap the enemy column.
+    const spellDetail: SpellDef | null = null;
 
     const techniqueDetail: TechniqueDef | null =
       this.phase === "selectTechnique"
@@ -1728,6 +1837,9 @@ export class CombatController {
         : null;
 
     const acting = this.currentChar();
+    const magicSheet =
+      this.phase === "selectSpell" && acting ? this.buildMagicSheetView(acting) : null;
+
     const resourceLine =
       this.phase === "palette" && acting
         ? menuResourceLine(
@@ -1752,6 +1864,7 @@ export class CombatController {
       selectionIndex: this.selectionIndex,
       selectionFooter,
       spellDetail,
+      magicSheet,
       techniqueDetail,
       flash: this.flash,
       result: this.phase === "result" ? this.result : null,
@@ -1788,6 +1901,9 @@ export class CombatController {
         this.selectionIndex = i;
         this.syncTargetCursor();
         this.confirmSelection();
+      },
+      onMagicTab: (tab) => {
+        this.setSpellTab(tab);
       },
     };
     renderCombatWindows(combatWindows, view, handlers, combatPopupAnchor);

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Recolor enemy sprite strips for summoned allies.
+ * Recolor enemy sprite strips for summoned allies and enemy variants.
  *
  * Reads base sprite PNGs from public/assets/enemies/<base-id>/<state>.png,
- * applies a hue rotation to all non-transparent pixels, and writes the
+ * applies a hue rotation or exact palette map to non-transparent pixels, and writes the
  * result to public/assets/enemies/<summon-id>/<state>.png.
  *
  * Usage: node scripts/recolor-sprites.mjs
@@ -78,6 +78,29 @@ function recolorPng(png, hueShiftDeg, satMult = 1, lightAdd = 0) {
   return out;
 }
 
+function recolorPalettePng(png, palette) {
+  const out = PNG.sync.read(PNG.sync.write(png));
+  for (let i = 0; i < out.data.length; i += 4) {
+    if (out.data[i + 3] === 0) continue;
+
+    const source = rgbKey(out.data[i], out.data[i + 1], out.data[i + 2]);
+    const target = palette[source];
+    if (!target) continue;
+
+    out.data[i] = target[0];
+    out.data[i + 1] = target[1];
+    out.data[i + 2] = target[2];
+  }
+  return out;
+}
+
+function rgbKey(r, g, b) {
+  return [r, g, b]
+    .map((channel) => channel.toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase();
+}
+
 function hueToRgb(p, q, t) {
   if (t < 0) t += 1;
   if (t > 1) t -= 1;
@@ -88,12 +111,27 @@ function hueToRgb(p, q, t) {
 }
 
 /**
- * Recolor definitions: summonId -> { base, hueShift, satMult?, lightAdd? }
+ * Recolor definitions:
+ *   - Hue rotation: { base, hueShift, satMult?, lightAdd? }
+ *   - Exact map:    { base, palette }
  *
  * hueShift is in degrees (0-360):
  *   0 = no change, 120 = green→magenta, 180 = invert, etc.
  */
 const RECOLORS = {
+  // Enemy variants
+  "red-skeleton": {
+    base: "skeleton",
+    palette: {
+      "6E6E6E": [74, 14, 20],
+      "878787": [100, 20, 27],
+      "909090": [124, 25, 33],
+      "A4A4A4": [165, 34, 43],
+      "B6B6B6": [198, 58, 67],
+      "CACACA": [227, 90, 98],
+    },
+  },
+
   // Mage summons
   "summon-slime":               { base: "slime",             hueShift: 200, satMult: 1.2, lightAdd: 0.05 },  // blue slime
   "summon-fire-elemental":      { base: "acid-puddle",       hueShift: -40, satMult: 1.3, lightAdd: 0.05 },  // red/orange
@@ -103,7 +141,7 @@ const RECOLORS = {
   // Priest summons
   "summon-holy-guardian":       { base: "animated-armor",    hueShift: 50,  satMult: 1.3, lightAdd: 0.1 },   // gold/white
   "summon-celestial-guardian":  { base: "animated-armor",    hueShift: 200, satMult: 1.2, lightAdd: 0.1 },   // blue/white
-  "summon-celestial":           { base: "skeleton",          hueShift: 60,  satMult: 1.4, lightAdd: 0.15 },  // white/gold
+  // summon-celestial has original ophanim art; do not replace it with a recolor.
 };
 
 const STATES = ["idle", "attack", "hurt", "death"];
@@ -135,7 +173,9 @@ function main() {
 
       const buf = fs.readFileSync(srcPath);
       const png = PNG.sync.read(buf);
-      const recolored = recolorPng(png, cfg.hueShift, cfg.satMult, cfg.lightAdd);
+      const recolored = cfg.palette
+        ? recolorPalettePng(png, cfg.palette)
+        : recolorPng(png, cfg.hueShift, cfg.satMult, cfg.lightAdd);
       const outBuf = PNG.sync.write(recolored);
       fs.writeFileSync(outPath, outBuf);
       console.log(`  OK   ${summonId}/${state}.png  (${png.width}x${png.height})`);

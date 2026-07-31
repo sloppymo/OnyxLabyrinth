@@ -22,7 +22,18 @@ import type { CombatState, PlayerAction, EnemyInstance } from "../game/combat-ty
 import type { Character } from "../game/party";
 import type { SpellDef } from "../data/spells";
 import { classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
-import { spellEffectSummary, spellTargetLabel, techniqueEffectSummary, techniqueTargetLabel, partyStatusText } from "./combat-display";
+import {
+  spellEffectSummary,
+  spellTargetLabel,
+  spellElementLabel,
+  spellMagicCategory,
+  SPELL_MAGIC_TABS,
+  SPELL_MAGIC_CATEGORY_LABEL,
+  techniqueEffectSummary,
+  techniqueTargetLabel,
+  partyStatusText,
+  type SpellMagicTab,
+} from "./combat-display";
 import type { CombatPalette, PaletteSlot } from "./combat-action-palette";
 
 /** What occupies the menu (left) window. */
@@ -43,6 +54,30 @@ export interface SelectionEntry {
   disabled?: boolean;
   /** Guaranteed-kill forecast — styles the detail column red. */
   kill?: boolean;
+}
+
+/** Inset Magic selection overlay (combat-only; stays in combat mode). */
+export interface MagicSheetSpellRow {
+  id: string;
+  name: string;
+  spCost: number;
+  disabled: boolean;
+}
+
+export interface MagicSheetView {
+  casterName: string;
+  sp: number;
+  maxSp: number;
+  activeTab: SpellMagicTab;
+  /** Counts for each tab (All = full book). */
+  tabCounts: Record<SpellMagicTab, number>;
+  spells: MagicSheetSpellRow[];
+  cursor: number;
+  /** Highlighted spell for the detail pane; null when the filtered list is empty. */
+  detail: SpellDef | null;
+  /** Optional damage preview line (existing combat-preview helpers only). */
+  previewText: string | null;
+  flash: string | null;
 }
 
 export interface ResultView {
@@ -68,8 +103,12 @@ export interface CombatWindowsView {
   selectionFooter?: string | null;
   /** The spell currently highlighted in the Magic list. When set, this
    *  replaces the enemy (middle) window with a description panel showing
-   *  its cost, target shape, mechanical effect, and flavor text. */
+   *  its cost, target shape, mechanical effect, and flavor text.
+   *  Unused while `magicSheet` is open (detail lives in the overlay). */
   spellDetail?: SpellDef | null;
+  /** Inset Magic sheet overlay — when set, hides the command-popup spell
+   *  list and keeps the battle footer on the enemy roster. */
+  magicSheet?: MagicSheetView | null;
   /** The technique currently highlighted in the Technique list. When set,
    *  replaces the enemy window with a description panel (same as spellDetail). */
   techniqueDetail?: TechniqueDef | null;
@@ -98,6 +137,8 @@ export interface CombatWindowsHandlers {
   onPaletteConfirm(slotIndex: number): void;
   onSelectionHover(index: number): void;
   onSelectionConfirm(index: number): void;
+  /** Magic sheet category tab click / keyboard. */
+  onMagicTab?(tab: SpellMagicTab): void;
 }
 
 /** FF6 labels for player actions. */
@@ -344,6 +385,14 @@ function buildCommandPopup(
   view: CombatWindowsView,
   handlers: CombatWindowsHandlers
 ): HTMLElement | null {
+  // Magic sheet owns selection UI — keep the stage footer visible and skip
+  // the cramped command-popup spell list / detail swap.
+  if (view.magicSheet) {
+    if (!view.flash) return null;
+    // Flash is also rendered inside the sheet; skip the docked popup.
+    return null;
+  }
+
   if (view.menuMode === "none") {
     if (!view.playbackHint && !view.flash) return null;
     const wrap = el("ff6-command-popup-wrap");
@@ -583,6 +632,201 @@ function buildSpellDetailBody(spell: SpellDef): HTMLElement {
   desc.title = spell.description;
   win.appendChild(desc);
   return win;
+}
+
+function metaSpan(label: string, value: string): HTMLElement {
+  const span = document.createElement("span");
+  const lab = document.createElement("span");
+  lab.className = "label";
+  lab.textContent = label;
+  span.appendChild(lab);
+  span.appendChild(document.createTextNode(` ${value}`));
+  return span;
+}
+
+/** Inset Magic sheet — list + detail + category tabs over a dimmed stage. */
+function buildMagicSheet(
+  sheet: MagicSheetView,
+  handlers: CombatWindowsHandlers
+): HTMLElement {
+  const overlay = el("magic-sheet-overlay");
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-label", "Magic selection");
+
+  const win = el("ff6-window magic-sheet");
+
+  const header = el("magic-sheet-header");
+  const title = el("magic-sheet-title");
+  title.appendChild(document.createTextNode(`MAGIC — ${sheet.casterName}`));
+  const sp = document.createElement("span");
+  sp.className = "sp";
+  sp.appendChild(document.createTextNode("SP "));
+  const nums = document.createElement("span");
+  nums.className = "sp-nums";
+  nums.textContent = `${sheet.sp}/${sheet.maxSp}`;
+  sp.appendChild(nums);
+  title.appendChild(sp);
+  header.appendChild(title);
+  const esc = el("magic-sheet-esc");
+  const kbdEsc = document.createElement("kbd");
+  kbdEsc.textContent = "Esc";
+  esc.appendChild(kbdEsc);
+  esc.appendChild(document.createTextNode(" Back"));
+  header.appendChild(esc);
+  win.appendChild(header);
+  win.appendChild(el("magic-sheet-divider"));
+
+  const tabs = document.createElement("nav");
+  tabs.className = "magic-sheet-tabs";
+  tabs.setAttribute("role", "tablist");
+  tabs.setAttribute("aria-label", "Spell categories");
+  for (const t of SPELL_MAGIC_TABS) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `magic-sheet-tab${t.id === sheet.activeTab ? " active" : ""}`;
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", String(t.id === sheet.activeTab));
+    btn.dataset.tab = t.id;
+    btn.appendChild(document.createTextNode(t.label));
+    const count = document.createElement("span");
+    count.className = "tab-count";
+    count.textContent = String(sheet.tabCounts[t.id]);
+    btn.appendChild(count);
+    btn.addEventListener("click", () => handlers.onMagicTab?.(t.id));
+    tabs.appendChild(btn);
+  }
+  win.appendChild(tabs);
+  win.appendChild(el("magic-sheet-divider"));
+
+  const body = el("magic-sheet-body");
+  const list = el("magic-sheet-list");
+  list.setAttribute("role", "listbox");
+  list.setAttribute("aria-label", "Spell list");
+  let selectedRow: HTMLElement | null = null;
+  if (sheet.spells.length === 0) {
+    list.appendChild(el("magic-sheet-empty", "No spells in this category."));
+  } else {
+    for (let i = 0; i < sheet.spells.length; i++) {
+      const s = sheet.spells[i];
+      const row = el("magic-sheet-row");
+      if (i === sheet.cursor) {
+        row.classList.add("selected");
+        selectedRow = row;
+      }
+      if (s.disabled) row.classList.add("disabled");
+      row.setAttribute("role", "option");
+      row.setAttribute("aria-selected", String(i === sheet.cursor));
+      row.appendChild(el("name", s.name));
+      row.appendChild(el("cost", String(s.spCost)));
+      row.addEventListener("mouseenter", () => handlers.onSelectionHover(i));
+      row.addEventListener("click", () => handlers.onSelectionConfirm(i));
+      list.appendChild(row);
+    }
+  }
+  body.appendChild(list);
+
+  const detail = el("magic-sheet-detail");
+  detail.setAttribute("aria-live", "polite");
+  const spell = sheet.detail;
+  if (!spell) {
+    detail.appendChild(el("magic-sheet-detail-name", "—"));
+    detail.appendChild(el("magic-sheet-detail-desc", "Nothing selected."));
+  } else {
+    const cat = spellMagicCategory(spell.effect);
+    detail.appendChild(el("magic-sheet-detail-name", spell.name));
+    const meta1 = el("magic-sheet-detail-meta");
+    meta1.appendChild(metaSpan("Class", `${spell.class} · Tier ${spell.tier}`));
+    meta1.appendChild(
+      metaSpan("Category", cat ? SPELL_MAGIC_CATEGORY_LABEL[cat] : "—")
+    );
+    detail.appendChild(meta1);
+    const meta2 = el("magic-sheet-detail-meta");
+    meta2.appendChild(metaSpan("Element", spellElementLabel(spell.effect)));
+    meta2.appendChild(metaSpan("Target", spellTargetLabel(spell.target)));
+    detail.appendChild(meta2);
+    const meta3 = el("magic-sheet-detail-meta");
+    meta3.appendChild(metaSpan("Cost", `${spell.spCost} SP`));
+    detail.appendChild(meta3);
+    detail.appendChild(el("magic-sheet-detail-rule"));
+    detail.appendChild(
+      el("magic-sheet-detail-effect", spellEffectSummary(spell.effect))
+    );
+    const desc = el("magic-sheet-detail-desc", spell.description);
+    desc.title = spell.description;
+    detail.appendChild(desc);
+    const preview = el("magic-sheet-detail-preview");
+    preview.appendChild(document.createTextNode("Preview · "));
+    if (sheet.previewText) {
+      const val = document.createElement("span");
+      val.className = "val";
+      val.textContent = sheet.previewText;
+      preview.appendChild(val);
+    } else {
+      preview.appendChild(document.createTextNode("—"));
+    }
+    detail.appendChild(preview);
+    const row = sheet.spells[sheet.cursor];
+    if (row?.disabled) {
+      const unafford = el(
+        "magic-sheet-detail-unafford",
+        `Not enough SP (${spell.spCost} needed)`
+      );
+      detail.appendChild(unafford);
+    }
+  }
+  body.appendChild(detail);
+  win.appendChild(body);
+  win.appendChild(el("magic-sheet-divider"));
+
+  const footer = el("magic-sheet-footer");
+  const hints: [string, string][] = [
+    ["←→", " tab"],
+    ["↑↓", " select"],
+    ["1–5", " category"],
+    ["Enter", " cast"],
+    ["Esc", " back"],
+  ];
+  for (const [keys, label] of hints) {
+    const span = document.createElement("span");
+    const kbd = document.createElement("kbd");
+    kbd.textContent = keys;
+    span.appendChild(kbd);
+    span.appendChild(document.createTextNode(label));
+    footer.appendChild(span);
+  }
+  win.appendChild(footer);
+
+  if (sheet.flash) {
+    win.appendChild(el("magic-sheet-flash", sheet.flash));
+  }
+
+  overlay.appendChild(win);
+
+  if (selectedRow) {
+    const target = selectedRow;
+    const followCursor = () => {
+      if (!list.isConnected) return;
+      if (typeof target.scrollIntoView === "function") {
+        target.scrollIntoView({ block: "nearest" });
+        return;
+      }
+      // jsdom: mirror the command-popup selection list scroll math.
+      const above = target.offsetTop;
+      const below = target.offsetTop + target.offsetHeight;
+      if (above < list.scrollTop) {
+        list.scrollTop = above;
+      } else if (below > list.scrollTop + list.clientHeight) {
+        list.scrollTop = below - list.clientHeight;
+      }
+    };
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(followCursor);
+    } else {
+      followCursor();
+    }
+  }
+
+  return overlay;
 }
 
 /** Replaces the enemy list with a readout of the highlighted technique. */
@@ -845,6 +1089,10 @@ export function renderCombatWindows(
 
   const popup = buildCommandPopup(view, handlers);
   if (popup) popupContainer.appendChild(popup);
+
+  if (view.magicSheet) {
+    popupContainer.appendChild(buildMagicSheet(view.magicSheet, handlers));
+  }
 
   const row = el("ff6-windows");
   row.appendChild(buildBattleWindow(view));

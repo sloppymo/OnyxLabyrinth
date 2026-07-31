@@ -27,6 +27,59 @@ const ELEMENT_LABELS: Record<DamageElement, string> = {
   wind: "Wind",
 };
 
+/** Combat Magic sheet category tabs (excludes dungeon utility spells). */
+export type SpellMagicCategory = "offense" | "defense" | "buffs" | "status";
+
+export type SpellMagicTab = "all" | SpellMagicCategory;
+
+export const SPELL_MAGIC_TABS: readonly { id: SpellMagicTab; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "offense", label: "Offense" },
+  { id: "defense", label: "Defense" },
+  { id: "buffs", label: "Buffs" },
+  { id: "status", label: "Status" },
+] as const;
+
+export const SPELL_MAGIC_CATEGORY_LABEL: Record<SpellMagicCategory, string> = {
+  offense: "Offense",
+  defense: "Defense",
+  buffs: "Buffs",
+  status: "Status",
+};
+
+/**
+ * Map SpellEffect.kind → Magic sheet category.
+ * Utilities return null (filtered out of combat lists already).
+ */
+export function spellMagicCategory(effect: SpellEffect): SpellMagicCategory | null {
+  switch (effect.kind) {
+    case "damage":
+    case "summon":
+      return "offense";
+    case "heal":
+    case "resurrect":
+    case "magicScreen":
+      return "defense";
+    case "buff":
+      return "buffs";
+    case "disable":
+    case "cure":
+    case "fizzleField":
+    case "dispelMagic":
+      return "status";
+    case "light":
+    case "levitation":
+    case "detect":
+    case "knock":
+      return null;
+  }
+}
+
+/** Element label for damage spells; em dash for non-elemental effects. */
+export function spellElementLabel(effect: SpellEffect): string {
+  return effect.kind === "damage" ? ELEMENT_LABELS[effect.element] : "—";
+}
+
 /** Friendly label for a spell's target shape (single/group/all, ally/enemy). */
 export function spellTargetLabel(target: SpellTarget): string {
   switch (target) {

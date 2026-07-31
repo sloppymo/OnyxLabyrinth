@@ -905,7 +905,9 @@ function onMove(): void {
         justOpenedTrapPrompt = false;
       }, 0);
     }
-    setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected));
+    setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected), {
+      instant: true,
+    });
   } else {
     trapPrompt = null;
     justOpenedTrapPrompt = false;
@@ -1091,7 +1093,10 @@ function handleTrapInput(key: string): boolean {
   }
   const action = trapPrompt.handleKey(key);
   if (action === null) {
-    setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected));
+    // Instant: cursor moves must not restart the typewriter.
+    setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected), {
+      instant: true,
+    });
     return true;
   }
   switch (action) {
@@ -1103,7 +1108,9 @@ function handleTrapInput(key: string): boolean {
     case "disarm":
       applyChestResult(disarmChest(state));
       if (state.pendingTrap && trapPrompt) {
-        setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected));
+        setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected), {
+          instant: true,
+        });
       } else {
         trapPrompt = null;
       }
@@ -2363,5 +2370,4 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     },
   };
 }
-
 

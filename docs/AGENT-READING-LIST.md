@@ -28,6 +28,7 @@ leakage within that file, predates the boss-rename work).
 | [`FOLLOWUP-2026-07-25-SESSION-HANDOFF-PROMPT.md`](FOLLOWUP-2026-07-25-SESSION-HANDOFF-PROMPT.md) | Full session handoff for the next agent | **Current** as of end of 2026-07-25 |
 | [`playtests/2026-07-24-progression-sprint-notes.md`](playtests/2026-07-24-progression-sprint-notes.md) | Measured floor 4-5 pacing data (real, not the audit's 6-15 estimate) | **Current** — closes the design note's biggest uncertainty; confirms no XP-multiplier retune needed |
 | [`TILESET-ART-STYLE-GUIDE.md`](TILESET-ART-STYLE-GUIDE.md) | Corridor wall/floor/ceiling art rules + AI/human recipes | Current (2026-07-24); measured from shipping `f1`–`f5` tilesets |
+| [`SPRITE-ART-GENERATION-GUIDE.md`](SPRITE-ART-GENERATION-GUIDE.md) | Enemy/summon sprite design, AI generation, post-processing, animation, and validation | **Current** — use before creating or replacing sprite strips |
 | [`ARENA-REVIEW.md`](ARENA-REVIEW.md) | Arena backdrop math/architecture review | Current (2026-07-13; addendum 2026-07-16). W4 horizon-sync closed; W1 partially addressed — seam now derives from `arena-camera.ts`, slots still screen-space |
 | [`PLAYTEST-DESIGN-REVIEW.md`](PLAYTEST-DESIGN-REVIEW.md) | Design-facing playtest (Arena + town + dungeon) | Findings kept; **Status notes** section flags what code already changed |
 | [`PLAYTEST-REPORT.md`](PLAYTEST-REPORT.md) | Earlier E2E polish report | Footer/`T` claims are **stale** (dynamic `menuHintText` + `t` shortcut shipped); mobile map still lower priority |

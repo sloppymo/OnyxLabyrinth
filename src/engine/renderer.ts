@@ -269,6 +269,27 @@ let cachedDarknessVignetteGradient: CanvasGradient | null = null;
 let floorCeilBuf: ImageData | null = null;
 let floorCeilBufW = 0;
 let floorCeilBufH = 0;
+
+// Floor/ceiling pixel-cast memoization: opacityForDepth is pure distance
+// math (no time term) and the render camera holds byte-identical values
+// while the player is neither moving nor turning (RenderCameraAnimator
+// pins displayX/Y/Facing once its tween finishes), so a standing-still
+// player recomputes ~516,000 pixels of identical output every frame with
+// nothing to show for it — measured ~30ms/frame of the ~34ms frame budget
+// on this loop alone. Cache the inputs that fully determine the buffer's
+// contents and skip straight to putImageData when none have changed.
+let floorCeilCacheValid = false;
+let floorCeilCacheCamX = NaN;
+let floorCeilCacheCamY = NaN;
+let floorCeilCacheDirX = NaN;
+let floorCeilCacheDirY = NaN;
+let floorCeilCachePlaneX = NaN;
+let floorCeilCachePlaneY = NaN;
+let floorCeilCacheBobY = NaN;
+let floorCeilCacheDarkness: boolean | null = null;
+let floorCeilCacheCeil: ImageData | null = null;
+let floorCeilCacheFloorA: ImageData | null = null;
+let floorCeilCacheFloorB: ImageData | null = null;
 // Pre-computed little-endian RGBA packed value for the bg color, used for
 // fast Uint32Array.fill() pre-fill of the buffer.
 const BG_RGBA_PACKED =
@@ -755,8 +776,30 @@ function drawFloorCeilingCast(
     floorCeilBuf = ctx.createImageData(w, h);
     floorCeilBufW = w;
     floorCeilBufH = h;
+    floorCeilCacheValid = false;
   }
   const buf = floorCeilBuf;
+
+  // Skip the whole per-pixel cast when nothing that feeds it has changed
+  // since last frame — the buffer already holds the correct pixels.
+  if (
+    floorCeilCacheValid &&
+    camX === floorCeilCacheCamX &&
+    camY === floorCeilCacheCamY &&
+    dirX === floorCeilCacheDirX &&
+    dirY === floorCeilCacheDirY &&
+    planeX === floorCeilCachePlaneX &&
+    planeY === floorCeilCachePlaneY &&
+    bobY === floorCeilCacheBobY &&
+    inDarkness === floorCeilCacheDarkness &&
+    ceilImg === floorCeilCacheCeil &&
+    floorA === floorCeilCacheFloorA &&
+    floorB === floorCeilCacheFloorB
+  ) {
+    ctx.putImageData(buf, 0, bobY);
+    return;
+  }
+
   const data = buf.data;
   const halfH = h / 2;
   const horizonY = Math.floor(halfH);
@@ -835,6 +878,19 @@ function drawFloorCeilingCast(
       worldY += stepY;
     }
   }
+
+  floorCeilCacheValid = true;
+  floorCeilCacheCamX = camX;
+  floorCeilCacheCamY = camY;
+  floorCeilCacheDirX = dirX;
+  floorCeilCacheDirY = dirY;
+  floorCeilCachePlaneX = planeX;
+  floorCeilCachePlaneY = planeY;
+  floorCeilCacheBobY = bobY;
+  floorCeilCacheDarkness = inDarkness;
+  floorCeilCacheCeil = ceilImg;
+  floorCeilCacheFloorA = floorA;
+  floorCeilCacheFloorB = floorB;
 
   ctx.putImageData(buf, 0, bobY);
 }

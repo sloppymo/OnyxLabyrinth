@@ -17,6 +17,7 @@ import {
   formatContextualPrompt,
   type ContextualPrompt,
 } from "./contextual-prompt";
+import { createReveal, completeReveal, stepReveal, type RevealState } from "./prologue-ui";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -24,7 +25,9 @@ app.innerHTML = `
   <div id="game-wrap">
     <div id="viewport-wrap">
       <div id="message-band">
-        <div id="message"></div>
+        <div id="message-box" class="ff6-window" hidden>
+          <div id="message"></div>
+        </div>
         <div id="hud-chrome" hidden>F1 · N</div>
       </div>
       <canvas id="view" width="768" height="672"></canvas>
@@ -50,6 +53,7 @@ export const ctx = canvas.getContext("2d")!;
 const mapCanvas = document.querySelector<HTMLCanvasElement>("#map-canvas")!;
 export const mapCtx = mapCanvas.getContext("2d")!;
 const messageBandEl = document.querySelector<HTMLDivElement>("#message-band")!;
+const messageBoxEl = document.querySelector<HTMLDivElement>("#message-box")!;
 const messageEl = document.querySelector<HTMLDivElement>("#message")!;
 const hudChromeEl = document.querySelector<HTMLDivElement>("#hud-chrome")!;
 const contextPromptEl = document.querySelector<HTMLDivElement>("#context-prompt")!;
@@ -152,11 +156,40 @@ window.addEventListener("resize", () => {
 });
 
 function syncMessageBandVisibility(): void {
-  const hasMsg = messageEl.textContent.trim().length > 0;
+  const hasMsg = messageReveal !== null;
   const hasChrome = !hudChromeEl.hidden && hudChromeEl.textContent.trim().length > 0;
+  messageBoxEl.hidden = !hasMsg;
   messageBandEl.classList.toggle("has-message", hasMsg);
   messageBandEl.classList.toggle("chrome-only", !hasMsg && hasChrome);
   messageBandEl.hidden = !hasMsg && !hasChrome;
+}
+
+/**
+ * Dungeon-notification typewriter: quick relative to the title-screen
+ * prologue (this is gameplay feedback, not myth text) but deliberately not
+ * instant — a message that reveals over a beat can't be blown past by the
+ * keypress that triggered it, the way an instant-paint banner could.
+ * `clearMessageOnPlayerAction` intercepts input mid-reveal and completes the
+ * text instead of dismissing it, so the earliest a message disappears is the
+ * *second* player action after it appeared.
+ */
+const MESSAGE_REVEAL_STYLE = {
+  charsPerSec: 42,
+  pauseFullMs: 110,
+  pauseHalfMs: 50,
+} as const;
+
+let messageReveal: RevealState | null = null;
+let messageRevealRaf = 0;
+
+function tickMessageReveal(now: number): void {
+  messageRevealRaf = 0;
+  if (!messageReveal || messageReveal.done) return;
+  messageReveal = stepReveal(messageReveal, now, MESSAGE_REVEAL_STYLE);
+  messageEl.textContent = messageReveal.full.slice(0, messageReveal.visible);
+  if (!messageReveal.done) {
+    messageRevealRaf = requestAnimationFrame(tickMessageReveal);
+  }
 }
 
 /**
@@ -170,27 +203,52 @@ export function setDebugMessageHook(fn: ((text: string) => void) | null): void {
   debugMessageHook = fn;
 }
 
+export type SetMessageOptions = {
+  /**
+   * Skip the typewriter and paint the full string immediately. Use for
+   * interactive overlays that refresh often (trap menu cursor moves) — those
+   * are menus, not notifications, and restarting a reveal on every arrow key
+   * makes them unreadable.
+   */
+  instant?: boolean;
+};
+
 /**
- * Show or update the message overlay. Empty text hides the text node.
- * Messages clear on the next player action via `clearMessageOnPlayerAction`
- * (not on a timer) — crawler contract: text waits, but never blocks.
+ * Show or update the message overlay as a typewriter reveal inside the blue
+ * notification window. Empty text hides the box. Messages clear on the
+ * *second* player action via `clearMessageOnPlayerAction` (not on a timer) —
+ * the first action mid-reveal completes the text instead of dismissing it.
  */
-export function setMessage(text: string): void {
+export function setMessage(text: string, opts?: SetMessageOptions): void {
   debugMessageHook?.(text);
   // Trap prompts / multi-line HTML-free copy: plain text only. Truncate for
   // strip density; full transcript belongs in the grimoire when wired.
   const trimmed = text.trim();
-  if (!trimmed) {
-    messageEl.textContent = "";
-  } else {
-    const lines = trimmed.split(/\n/).slice(0, 4);
-    let body = lines.join("\n");
-    if (trimmed.split(/\n/).length > 4 || body.length > 220) {
-      body = body.slice(0, 218).replace(/\s+\S*$/, "") + "…";
-    }
-    messageEl.textContent = body;
+  if (messageRevealRaf) {
+    cancelAnimationFrame(messageRevealRaf);
+    messageRevealRaf = 0;
   }
+  if (!trimmed) {
+    messageReveal = null;
+    messageEl.textContent = "";
+    syncMessageBandVisibility();
+    return;
+  }
+  const lines = trimmed.split(/\n/).slice(0, 4);
+  let body = lines.join("\n");
+  if (trimmed.split(/\n/).length > 4 || body.length > 220) {
+    body = body.slice(0, 218).replace(/\s+\S*$/, "") + "…";
+  }
+  if (opts?.instant) {
+    messageReveal = completeReveal(createReveal(body, performance.now()));
+    messageEl.textContent = messageReveal.full;
+    syncMessageBandVisibility();
+    return;
+  }
+  messageReveal = createReveal(body, performance.now());
+  messageEl.textContent = "";
   syncMessageBandVisibility();
+  messageRevealRaf = requestAnimationFrame(tickMessageReveal);
 }
 
 /**
@@ -199,13 +257,27 @@ export function setMessage(text: string): void {
  * visibility rule that `syncMessageBandVisibility` already owns.
  */
 export function getMessageText(): { text: string; visible: boolean } {
-  const text = messageEl.textContent ?? "";
+  const text = messageReveal?.full ?? "";
   return { text: text.trim(), visible: messageBandEl.classList.contains("has-message") };
 }
 
-/** Clear informational message text after a player dungeon action. */
+/**
+ * Clear informational message text after a player dungeon action. If the
+ * message is still mid-typewriter, the action completes the reveal instead
+ * of dismissing it, so a quick keypress can't skip a notification unread.
+ */
 export function clearMessageOnPlayerAction(): void {
-  if (!messageEl.textContent) return;
+  if (!messageReveal) return;
+  if (!messageReveal.done) {
+    if (messageRevealRaf) {
+      cancelAnimationFrame(messageRevealRaf);
+      messageRevealRaf = 0;
+    }
+    messageReveal = completeReveal(messageReveal);
+    messageEl.textContent = messageReveal.full;
+    return;
+  }
+  messageReveal = null;
   messageEl.textContent = "";
   syncMessageBandVisibility();
 }
@@ -234,6 +306,13 @@ function hpBarFillPx(hp: number, maxHp: number): { px: number; tone: string } {
   return { px, tone };
 }
 
+// This is called every rAF tick in dungeon mode, but HP/status/facing only
+// actually change on discrete game events — rebuilding the DOM subtree on
+// every frame regardless is pure churn. Skip the innerHTML write (and the
+// chrome textContent write) when the signature that determines them hasn't
+// moved since last frame.
+let lastPartyStripSig = "";
+
 /**
  * Render the bottom party overlay (token sibling of combat roster) and
  * refresh floor·facing chrome.
@@ -243,6 +322,17 @@ export function renderPartyStrip(
   compass: string,
   floorLabel = "F?"
 ): void {
+  const sig =
+    `${floorLabel}|${compass}|` +
+    party
+      .map(
+        (c) =>
+          `${c.id}:${c.hp}:${c.maxHp}:${c.formationSlot}:${c.status.join(",")}`
+      )
+      .join(";");
+  if (sig === lastPartyStripSig) return;
+  lastPartyStripSig = sig;
+
   // Keyboard players have no gamepad glyphs to fall back on, so keep the
   // dungeon key legend visible at all times rather than only on first entry
   // (playtest finding: Camp/Map/Grimoire/Actions were "secret keys").

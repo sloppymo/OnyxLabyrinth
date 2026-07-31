@@ -234,20 +234,31 @@ describe("renderCombatWindows", () => {
     expect(container.querySelector(".ff6-hint-affordance")?.textContent).toMatch(/Item/);
   });
 
-  it("puts full spell description on title when the detail pane clamps", () => {
+  it("puts full spell description on the Magic sheet detail pane", () => {
     const state = makeState([makeEnemy("rat-0")]);
     const spell = MAGE_SPELLS.find((s) => s.id === "mage-arcane-ward")!;
     const view = baseView(state);
-    view.menuMode = "selection";
-    view.selectionTitle = "Magic";
-    view.selectionEntries = [{ label: spell.name, detail: `${spell.spCost} SP` }];
-    view.spellDetail = spell;
+    view.menuMode = "none";
+    view.magicSheet = {
+      casterName: "Bob",
+      sp: 40,
+      maxSp: 40,
+      activeTab: "all",
+      tabCounts: { all: 1, offense: 0, defense: 0, buffs: 1, status: 0 },
+      spells: [{ id: spell.id, name: spell.name, spCost: spell.spCost, disabled: false }],
+      cursor: 0,
+      detail: spell,
+      previewText: null,
+      flash: null,
+    };
     renderCombatWindows(container, view, noopHandlers());
-    const desc = container.querySelector(".ff6-spell-detail-desc") as HTMLElement;
+    expect(container.querySelector(".ff6-command-popup")).toBeNull();
+    expect(container.querySelector(".magic-sheet-overlay")).not.toBeNull();
+    const desc = container.querySelector(".magic-sheet-detail-desc") as HTMLElement;
+    expect(desc?.textContent).toBe(spell.description);
     expect(desc?.title).toBe(spell.description);
-    expect(container.querySelector(".ff6-hint-row")?.textContent).toBe(
-      "A:confirm · B:back · ↑↓"
-    );
+    expect(container.querySelector(".magic-sheet-detail-effect")?.textContent).toBeTruthy();
+    expect(container.querySelector(".ff6-battle-round")).not.toBeNull();
   });
 
   it("highlights an inspected party member in the roster", () => {
@@ -347,29 +358,80 @@ describe("renderCombatWindows", () => {
     const state = makeState([makeEnemy("rat-0")]);
     const view = baseView(state);
     view.menuMode = "selection";
-    view.selectionTitle = "Magic";
+    view.selectionTitle = "Item";
     view.selectionEntries = [
-      { label: "Fire Bolt", detail: "3 SP" },
-      { label: "Cure Wounds", detail: "4 SP", disabled: true },
+      { label: "Potion", detail: "×2" },
+      { label: "Ether", detail: "×1", disabled: true },
     ];
     view.selectionIndex = 0;
     renderCombatWindows(container, view, noopHandlers());
-    expect(container.querySelector(".ff6-menu-title")?.textContent).toBe("Magic");
+    expect(container.querySelector(".ff6-menu-title")?.textContent).toBe("Item");
     const rows = container.querySelectorAll(".ff6-command-popup .ff6-menu-item");
     expect(rows).toHaveLength(2);
     expect(rows[0].classList.contains("selected")).toBe(true);
     expect(rows[1].classList.contains("disabled")).toBe(true);
-    expect(rows[1].textContent).toContain("4 SP");
+    expect(rows[1].textContent).toContain("×1");
+  });
+
+  it("renders the Magic sheet overlay with tabs, list, and full detail", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    const fire = MAGE_SPELLS.find((s) => s.id === "mage-fire-bolt")!;
+    const view = baseView(state);
+    view.menuMode = "none";
+    view.magicSheet = {
+      casterName: "Aria",
+      sp: 12,
+      maxSp: 40,
+      activeTab: "offense",
+      tabCounts: { all: 2, offense: 1, defense: 0, buffs: 0, status: 1 },
+      spells: [
+        { id: fire.id, name: fire.name, spCost: fire.spCost, disabled: false },
+      ],
+      cursor: 0,
+      detail: fire,
+      previewText: "Est. 10-14 vs. Test Rat",
+      flash: null,
+    };
+    const handlers = noopHandlers();
+    let tabClicked: string | null = null;
+    handlers.onMagicTab = (tab) => {
+      tabClicked = tab;
+    };
+    // Use a separate popup host like the live combat shell.
+    const popup = document.createElement("div");
+    const footer = document.createElement("div");
+    container.appendChild(popup);
+    container.appendChild(footer);
+    renderCombatWindows(footer, view, handlers, popup);
+
+    expect(popup.querySelector(".magic-sheet-overlay")).not.toBeNull();
+    expect(popup.querySelector(".ff6-command-popup")).toBeNull();
+    expect(popup.querySelector(".magic-sheet-title")?.textContent).toContain("MAGIC — Aria");
+    expect(popup.querySelector(".magic-sheet-title")?.textContent).toContain("12/40");
+    const tabs = [...popup.querySelectorAll(".magic-sheet-tab")];
+    expect(tabs).toHaveLength(5);
+    expect(tabs.find((t) => t.classList.contains("active"))?.textContent).toMatch(/Offense/);
+    expect(popup.querySelectorAll(".magic-sheet-row")).toHaveLength(1);
+    expect(popup.querySelector(".magic-sheet-detail-name")?.textContent).toBe(fire.name);
+    expect(popup.querySelector(".magic-sheet-detail-desc")?.textContent).toBe(fire.description);
+    expect(popup.querySelector(".magic-sheet-detail-preview .val")?.textContent).toBe(
+      "Est. 10-14 vs. Test Rat"
+    );
+    expect(footer.querySelector(".ff6-spell-detail")).toBeNull();
+    expect(footer.querySelector(".ff6-battle-round")).not.toBeNull();
+
+    (tabs.find((t) => t.getAttribute("data-tab") === "status") as HTMLButtonElement).click();
+    expect(tabClicked).toBe("status");
   });
 
   it("renders every row of a long (L9+) spell list and shows a position counter", () => {
     const state = makeState([makeEnemy("rat-0")]);
     const view = baseView(state);
     view.menuMode = "selection";
-    view.selectionTitle = "Magic";
+    view.selectionTitle = "Item";
     view.selectionEntries = Array.from({ length: 29 }, (_, i) => ({
-      label: `Spell ${i + 1}`,
-      detail: `${i + 1} SP`,
+      label: `Item ${i + 1}`,
+      detail: `×${i + 1}`,
     }));
     view.selectionIndex = 12;
     renderCombatWindows(container, view, noopHandlers());
@@ -377,7 +439,7 @@ describe("renderCombatWindows", () => {
     expect(rows).toHaveLength(29);
     expect(rows[12].classList.contains("selected")).toBe(true);
     // Counter tells the player where the cursor is in the scrolling list.
-    expect(container.querySelector(".ff6-menu-title")?.textContent).toBe("Magic 13/29");
+    expect(container.querySelector(".ff6-menu-title")?.textContent).toBe("Item 13/29");
   });
 
   it("shows a position counter for a full 6-member target list", () => {

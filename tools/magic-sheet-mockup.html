@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Magic Sheet Mockup — OnyxLabyrinth</title>
+  <style>
+    @font-face {
+      font-family: "FF36";
+      src: url("../src/assets/final-fantasy-36.ttf") format("truetype");
+      font-display: swap;
+    }
+
+    :root {
+      --bg: #0e0d0a;
+      --warm-white: #f5f0e6;
+      --equip-label: #50d0d0;
+      --gold: #ffd769;
+      --detail-muted: #b8c4f0;
+      --desc-muted: #c8c4e0;
+      --disabled: #8890b8;
+      --game-font: "FF36", "Courier New", ui-monospace, monospace;
+      --fs-header: 22px;
+      --fs-body: 20px;
+      --fs-stat: 17px;
+      --fs-row: 19px;
+      --fs-hint: 15px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      color: var(--warm-white);
+      font-family: var(--game-font);
+      -webkit-font-smoothing: none;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
+    }
+
+    /* Fake combat stage behind the overlay */
+    .stage {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 55% at 50% 42%, rgba(60, 40, 28, 0.55) 0%, transparent 70%),
+        linear-gradient(180deg, #1a1420 0%, #2a1c18 35%, #3a2818 55%, #1c1410 78%, #0a0808 100%);
+    }
+
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 90% 70% at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.72) 100%);
+      pointer-events: none;
+    }
+
+    /* Muted battle silhouettes */
+    .silhouettes {
+      position: absolute;
+      inset: 0;
+      opacity: 0.28;
+      pointer-events: none;
+    }
+
+    .sil {
+      position: absolute;
+      bottom: 22%;
+      width: 56px;
+      height: 72px;
+      background: #1a1010;
+      border-radius: 40% 40% 18% 18% / 30% 30% 45% 45%;
+      box-shadow: 0 0 0 1px rgba(80, 40, 40, 0.35);
+    }
+
+    .sil::after {
+      content: "";
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 28px;
+      height: 28px;
+      background: #1a1010;
+      border-radius: 50%;
+    }
+
+    .sil.e1 { left: 12%; height: 88px; width: 64px; }
+    .sil.e2 { left: 22%; height: 64px; width: 48px; bottom: 24%; }
+    .sil.e3 { left: 30%; height: 76px; width: 54px; }
+    .sil.p1 { right: 10%; left: auto; background: #12182a; }
+    .sil.p2 { right: 18%; left: auto; height: 68px; background: #12182a; }
+    .sil.p3 { right: 26%; left: auto; height: 80px; background: #12182a; }
+    .sil.p1::after, .sil.p2::after, .sil.p3::after { background: #12182a; }
+
+    .floor-line {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      bottom: 20%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(180, 120, 60, 0.35), transparent);
+    }
+
+    /* Overlay dim + sheet host */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 20px;
+      background: rgba(4, 6, 18, 0.55);
+      z-index: 2;
+    }
+
+    .ff6-window {
+      width: min(100%, 720px);
+      height: min(100%, 620px);
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: 10px 14px 8px;
+      background: linear-gradient(
+        180deg,
+        #3a4cb8 0%,
+        #243890 42%,
+        #152868 78%,
+        #0e1848 100%
+      );
+      border: 3px solid #e8e8f0;
+      border-radius: 8px;
+      box-shadow:
+        inset 0 0 0 1px #6880e0,
+        inset 0 0 0 2px #1a2868,
+        inset 0 0 28px rgba(20, 28, 80, 0.45),
+        0 8px 24px rgba(0, 0, 0, 0.65);
+      color: var(--warm-white);
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+      line-height: 1.25;
+      min-height: 0;
+    }
+
+    /* Header */
+    .sheet-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 2px 2px 8px;
+      flex-shrink: 0;
+    }
+
+    .sheet-title {
+      font-size: var(--fs-header);
+      color: #fff;
+      letter-spacing: 0.04em;
+      margin: 0;
+    }
+
+    .sheet-title .sp {
+      color: var(--equip-label);
+      margin-left: 14px;
+      letter-spacing: 0.02em;
+    }
+
+    .sheet-title .sp-nums {
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sheet-esc {
+      font-size: var(--fs-hint);
+      color: var(--detail-muted);
+      white-space: nowrap;
+    }
+
+    .sheet-esc kbd {
+      color: var(--gold);
+      font-family: inherit;
+      font-size: inherit;
+    }
+
+    .divider {
+      height: 1px;
+      flex-shrink: 0;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(140, 160, 230, 0.55) 12%,
+        rgba(140, 160, 230, 0.55) 88%,
+        transparent
+      );
+    }
+
+    /* Category tabs — FF6 menu strip under header */
+    .sheet-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px 0;
+      padding: 6px 2px 4px;
+      flex-shrink: 0;
+      font-size: var(--fs-stat);
+      user-select: none;
+    }
+
+    .sheet-tab {
+      position: relative;
+      padding: 3px 10px 4px;
+      color: var(--detail-muted);
+      background: transparent;
+      border: none;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: inherit;
+      text-shadow: inherit;
+      cursor: default;
+      letter-spacing: 0.03em;
+    }
+
+    .sheet-tab:hover {
+      color: #d8e4ff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .sheet-tab.active {
+      color: #fff;
+      background: rgba(255, 215, 105, 0.18);
+      box-shadow: inset 0 -2px 0 var(--gold);
+    }
+
+    .sheet-tab .tab-count {
+      color: #8898c8;
+      font-size: 13px;
+      margin-left: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sheet-tab.active .tab-count {
+      color: #c8d4f0;
+    }
+
+    .sheet-empty {
+      padding: 18px 10px;
+      color: var(--disabled);
+      font-size: var(--fs-row);
+      text-align: center;
+    }
+
+    /* Body: list | detail */
+    .sheet-body {
+      display: grid;
+      grid-template-columns: 52fr 48fr;
+      align-items: stretch;
+      min-height: 0;
+      flex: 1 1 auto;
+      margin-top: 4px;
+    }
+
+    .spell-list {
+      padding: 6px 10px 6px 0;
+      border-right: 1px solid rgba(120, 140, 220, 0.4);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #6878c0 transparent;
+      min-height: 0;
+    }
+
+    .spell-list::-webkit-scrollbar { width: 6px; }
+    .spell-list::-webkit-scrollbar-thumb {
+      background: #6878c0;
+      border-radius: 3px;
+    }
+
+    .spell-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      column-gap: 10px;
+      align-items: baseline;
+      padding: 3px 6px 3px 22px;
+      font-size: var(--fs-row);
+      color: var(--warm-white);
+      cursor: default;
+      border-radius: 3px;
+    }
+
+    .spell-row .name {
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .spell-row .cost {
+      color: var(--detail-muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .spell-row.selected {
+      color: #b8ecff;
+      background: rgba(255, 215, 105, 0.14);
+    }
+
+    .spell-row.selected::before {
+      content: "▶";
+      position: absolute;
+      left: 4px;
+      color: var(--gold);
+    }
+
+    .spell-row.selected .cost {
+      color: #d8ecff;
+    }
+
+    .spell-row.disabled {
+      color: var(--disabled);
+    }
+
+    .spell-row.disabled .cost {
+      color: #6a7088;
+    }
+
+    .spell-row.disabled.selected {
+      color: #9aa8c8;
+      background: rgba(120, 130, 180, 0.12);
+    }
+
+    /* Detail pane */
+    .spell-detail {
+      padding: 8px 4px 8px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #6878c0 transparent;
+    }
+
+    .detail-name {
+      font-size: 22px;
+      color: var(--gold);
+      letter-spacing: 0.02em;
+      margin: 0;
+      line-height: 1.15;
+    }
+
+    .detail-meta {
+      font-size: var(--fs-stat);
+      color: var(--detail-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+    }
+
+    .detail-meta .label {
+      color: var(--equip-label);
+    }
+
+    .detail-rule {
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        rgba(140, 160, 230, 0.55),
+        rgba(140, 160, 230, 0.15)
+      );
+      margin: 2px 0 4px;
+    }
+
+    .detail-effect {
+      font-size: var(--fs-body);
+      color: var(--warm-white);
+      font-weight: bold;
+      line-height: 1.2;
+    }
+
+    .detail-desc {
+      font-size: 18px;
+      color: var(--desc-muted);
+      line-height: 1.35;
+      /* FULL description — no clamp */
+      white-space: normal;
+    }
+
+    .detail-preview {
+      margin-top: auto;
+      padding-top: 8px;
+      font-size: var(--fs-stat);
+      color: var(--equip-label);
+      border-top: 1px solid rgba(120, 140, 220, 0.35);
+      line-height: 1.3;
+    }
+
+    .detail-preview .val {
+      color: #ff9a6a;
+    }
+
+    /* Footer */
+    .sheet-footer {
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      gap: 22px;
+      padding: 8px 4px 2px;
+      font-size: var(--fs-hint);
+      color: var(--detail-muted);
+      letter-spacing: 0.02em;
+    }
+
+    .sheet-footer kbd {
+      color: var(--gold);
+      font-family: inherit;
+      font-size: inherit;
+    }
+
+    .mock-badge {
+      position: fixed;
+      top: 10px;
+      left: 12px;
+      z-index: 5;
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      color: rgba(245, 240, 230, 0.45);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    @media (max-width: 560px) {
+      .overlay { padding: 10px; }
+      .ff6-window { height: min(100%, 100dvh); width: 100%; }
+      .sheet-body { grid-template-columns: 1fr; grid-template-rows: 45fr 55fr; }
+      .spell-list {
+        border-right: none;
+        border-bottom: 1px solid rgba(120, 140, 220, 0.4);
+        padding-right: 0;
+        max-height: none;
+      }
+      .spell-detail { padding-left: 4px; }
+      .sheet-title { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="mock-badge">Mockup · not wired</div>
+
+  <div class="stage" aria-hidden="true">
+    <div class="silhouettes">
+      <div class="sil e1"></div>
+      <div class="sil e2"></div>
+      <div class="sil e3"></div>
+      <div class="sil p1"></div>
+      <div class="sil p2"></div>
+      <div class="sil p3"></div>
+      <div class="floor-line"></div>
+    </div>
+  </div>
+
+  <div class="overlay" role="dialog" aria-label="Magic selection">
+    <div class="ff6-window">
+      <header class="sheet-header">
+        <h1 class="sheet-title">
+          MAGIC — Aria
+          <span class="sp">SP <span class="sp-nums">42/60</span></span>
+        </h1>
+        <div class="sheet-esc"><kbd>Esc</kbd> Back</div>
+      </header>
+
+      <div class="divider"></div>
+
+      <nav class="sheet-tabs" id="sheet-tabs" role="tablist" aria-label="Spell categories">
+        <!-- populated by script -->
+      </nav>
+
+      <div class="divider"></div>
+
+      <div class="sheet-body">
+        <div class="spell-list" id="spell-list" tabindex="0" role="listbox" aria-label="Spell list">
+          <!-- populated by script -->
+        </div>
+
+        <aside class="spell-detail" id="spell-detail" aria-live="polite">
+          <!-- populated by script -->
+        </aside>
+      </div>
+
+      <div class="divider"></div>
+
+      <footer class="sheet-footer">
+        <span><kbd>←</kbd><kbd>→</kbd> tab</span>
+        <span><kbd>↑</kbd><kbd>↓</kbd> select</span>
+        <span><kbd>1</kbd>–<kbd>5</kbd> category</span>
+        <span><kbd>Enter</kbd> cast</span>
+        <span><kbd>Esc</kbd> back</span>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const SP = 42;
+
+    const TARGET_LABEL = {
+      singleEnemy: "Single enemy",
+      groupEnemies: "Enemy group",
+      allEnemies: "All enemies",
+      self: "Self",
+      allAllies: "All allies",
+      singleAlly: "Single ally",
+    };
+
+    const CAT_LABEL = {
+      offense: "Offense",
+      defense: "Defense",
+      buffs: "Buffs",
+      status: "Status",
+    };
+
+    /**
+     * Category map (mirrors SpellEffect.kind from src/data/spells.ts):
+     *   damage / summon  → offense
+     *   heal / resurrect / magicScreen → defense
+     *   buff → buffs
+     *   disable / cure / fizzleField / dispelMagic → status
+     * Ambiguous (noted for wiring later): summon, dispelMagic, Wish.
+     */
+    const TABS = [
+      { id: "all", label: "All" },
+      { id: "offense", label: "Offense" },
+      { id: "defense", label: "Defense" },
+      { id: "buffs", label: "Buffs" },
+      { id: "status", label: "Status" },
+    ];
+
+    /** Combat mage list — long on purpose to show crowding solution. */
+    const SPELLS = [
+      { name: "Spark", tier: 1, element: "Lightning", target: "singleEnemy", spCost: 1, cat: "offense",
+        effect: "Lightning damage · power 5",
+        description: "A crackling bolt of lightning that strikes one foe.",
+        preview: "Est. ~12–18 dmg vs. Animated Armor" },
+      { name: "Ember", tier: 1, element: "Fire", target: "singleEnemy", spCost: 1, cat: "offense",
+        effect: "Fire damage · power 5",
+        description: "A bright flare that burns one target.",
+        preview: "Est. ~12–18 dmg vs. Animated Armor" },
+      { name: "Frostbite", tier: 1, element: "Cold", target: "singleEnemy", spCost: 1, cat: "offense",
+        effect: "Cold damage · power 5",
+        description: "A glistening shard of ice that pierces one foe.",
+        preview: "Est. ~12–18 dmg vs. Animated Armor" },
+      { name: "Poison Spray", tier: 1, element: "Poison", target: "singleEnemy", spCost: 1, cat: "offense",
+        effect: "Poison damage · power 5",
+        description: "A venomous bolt that withers one foe.",
+        preview: "Est. ~12–18 dmg vs. Animated Armor" },
+      { name: "Water Bolt", tier: 1, element: "Water", target: "singleEnemy", spCost: 1, cat: "offense",
+        effect: "Water damage · power 5",
+        description: "A pressurized jet of water that slams one foe.",
+        preview: "Est. ~12–18 dmg vs. Animated Armor" },
+      { name: "Fire Bolt", tier: 1, element: "Fire", target: "singleEnemy", spCost: 3, cat: "offense",
+        effect: "Fire damage · power 10",
+        description: "A gout of flame that burns a single foe. Favored opener for mages who want reliable single-target burn without committing to a group spell — cheap enough to weave between stronger casts when SP is tight.",
+        preview: "Est. ~28–36 dmg vs. Animated Armor" },
+      { name: "Arcane Ward", tier: 1, element: "—", target: "self", spCost: 3, cat: "buffs",
+        effect: "Buff · +Armor",
+        description: "Hardens the caster's skin against physical blows.",
+        preview: null },
+      { name: "Burning Hands", tier: 2, element: "Fire", target: "groupEnemies", spCost: 6, cat: "offense",
+        effect: "Fire damage · power 8 · group",
+        description: "Showers a group of enemies with embers.",
+        preview: "Est. ~20–28 dmg to each in group" },
+      { name: "Sleep", tier: 2, element: "—", target: "singleEnemy", spCost: 5, cat: "status",
+        effect: "Disable · Sleep",
+        description: "Lulls a single enemy into magical slumber.",
+        preview: null },
+      { name: "Hold Person", tier: 2, element: "—", target: "singleEnemy", spCost: 6, cat: "status",
+        effect: "Disable · Paralysis",
+        description: "Freezes a single enemy in place, preventing all action.",
+        preview: null },
+      { name: "Web", tier: 2, element: "—", target: "groupEnemies", spCost: 7, cat: "status",
+        effect: "Disable · Paralysis · group",
+        description: "Envelops an enemy group in sticky strands, paralyzing them.",
+        preview: null },
+      { name: "Lesser Summon", tier: 2, element: "—", target: "self", spCost: 6, cat: "offense",
+        effect: "Summon · Slime",
+        description: "Calls a small slime to fight at the party's side.",
+        preview: null },
+      { name: "Cone of Cold", tier: 3, element: "Cold", target: "groupEnemies", spCost: 9, cat: "offense",
+        effect: "Cold damage · power 12 · group",
+        description: "A freezing gust that chills a group of foes.",
+        preview: "Est. ~30–42 dmg to each in group" },
+      { name: "Fireball", tier: 3, element: "Fire", target: "allEnemies", spCost: 10, cat: "offense",
+        effect: "Fire damage · power 14 · all",
+        description: "An expanding ball of flame that engulfs every enemy.",
+        preview: "Est. ~36–48 dmg to all enemies" },
+      { name: "Summon Fire Elemental", tier: 3, element: "Fire", target: "self", spCost: 14, cat: "offense",
+        effect: "Summon · Fire Elemental",
+        description: "Calls forth a blazing elemental to fight for the party.",
+        preview: null },
+      { name: "Immolate", tier: 4, element: "Fire", target: "singleEnemy", spCost: 15, cat: "offense",
+        effect: "Fire damage · power 25",
+        description: "A concentrated inferno that incinerates one target.",
+        preview: "Est. ~70–90 dmg vs. Animated Armor" },
+      { name: "Ice Storm", tier: 4, element: "Cold", target: "allEnemies", spCost: 18, cat: "offense",
+        effect: "Cold damage · power 16 · all",
+        description: "A blizzard that blankets the entire enemy formation.",
+        preview: "Est. ~42–56 dmg to all enemies" },
+      { name: "Power Word: Stun", tier: 4, element: "—", target: "singleEnemy", spCost: 18, cat: "status",
+        effect: "Disable · Paralysis",
+        description: "A word of power that stuns a single foe into immobility.",
+        preview: null },
+      { name: "Spell Shield", tier: 5, element: "—", target: "allAllies", spCost: 12, cat: "defense",
+        effect: "Magic screen · party",
+        description: "Erects a magic screen that shields the party from spells and breath.",
+        preview: null },
+      { name: "Silence", tier: 5, element: "—", target: "groupEnemies", spCost: 20, cat: "status",
+        effect: "Fizzle field · group",
+        description: "Creates a fizzle field around one enemy group, causing their spells to fail.",
+        preview: null },
+      { name: "Dispel Magic", tier: 5, element: "—", target: "allEnemies", spCost: 18, cat: "status",
+        effect: "Dispel · all enemies",
+        description: "Dispels enemy magic screens and fizzle fields while cleansing the party's own fizzle field.",
+        preview: null },
+      { name: "Conjure Elemental", tier: 5, element: "—", target: "allAllies", spCost: 25, cat: "offense",
+        effect: "Summon · Elementals",
+        description: "Conjures a group of elemental monsters to fight for the party.",
+        preview: null },
+      { name: "Gate", tier: 5, element: "—", target: "self", spCost: 30, cat: "offense",
+        effect: "Summon · Eldritch Guardian",
+        description: "Tears open a portal to another plane, calling forth a powerful guardian.",
+        preview: null },
+      { name: "Disintegrate", tier: 6, element: "Physical", target: "singleEnemy", spCost: 22, cat: "offense",
+        effect: "Extreme single-target · power 50",
+        description: "Unravels a single foe with raw destructive force. Extreme single-target damage.",
+        preview: "Est. ~140–180 dmg vs. Animated Armor" },
+      { name: "Meteor Swarm", tier: 6, element: "Fire", target: "allEnemies", spCost: 30, cat: "offense",
+        effect: "Fire damage · power 35 + burn DoT",
+        description: "Calls a rain of meteors that scorches every enemy and leaves them burning.",
+        preview: "Est. ~95–120 + burn to all" },
+      { name: "Freezing Sphere", tier: 7, element: "Cold", target: "allEnemies", spCost: 24, cat: "offense",
+        effect: "Cold damage · power 24 · all",
+        description: "Hurls a sphere of absolute cold that freezes the entire enemy line.",
+        preview: "Est. ~65–85 dmg to all enemies" },
+      { name: "Wish", tier: 7, element: "—", target: "self", spCost: 50, cat: "buffs",
+        effect: "Rewrite fate · once per battle",
+        description: "Bends the labyrinth's rules for a single heartbeat. Cost is ruinous — only cast when the fight hangs on a knife's edge.",
+        preview: null },
+      { name: "Apocalypse", tier: 7, element: "Fire", target: "allEnemies", spCost: 55, cat: "offense",
+        effect: "Cataclysm · power 60 · all",
+        description: "Unleashes a world-ending conflagration that consumes every enemy on the field. Nearly empties the caster's reserves.",
+        preview: "Est. ~160–200 dmg to all enemies" },
+    ];
+
+    let activeTab = "all";
+    let cursor = 0;
+
+    const tabsEl = document.getElementById("sheet-tabs");
+    const listEl = document.getElementById("spell-list");
+    const detailEl = document.getElementById("spell-detail");
+
+    function isAffordable(spell) {
+      return spell.spCost <= SP;
+    }
+
+    function filteredSpells() {
+      if (activeTab === "all") return SPELLS;
+      return SPELLS.filter((s) => s.cat === activeTab);
+    }
+
+    function countFor(tabId) {
+      if (tabId === "all") return SPELLS.length;
+      return SPELLS.filter((s) => s.cat === tabId).length;
+    }
+
+    function setTab(tabId, preferName) {
+      if (!TABS.some((t) => t.id === tabId)) return;
+      const prevName = filteredSpells()[cursor]?.name;
+      activeTab = tabId;
+      const list = filteredSpells();
+      if (list.length === 0) {
+        cursor = 0;
+      } else {
+        const keepName = preferName || prevName;
+        const idx = keepName ? list.findIndex((s) => s.name === keepName) : -1;
+        cursor = idx >= 0 ? idx : 0;
+      }
+      refresh();
+    }
+
+    function renderTabs() {
+      tabsEl.innerHTML = TABS.map((t) => {
+        const active = t.id === activeTab;
+        return (
+          `<button type="button" class="sheet-tab${active ? " active" : ""}"` +
+          ` role="tab" data-tab="${t.id}" aria-selected="${active}"` +
+          ` id="tab-${t.id}">` +
+          `${t.label}<span class="tab-count">${countFor(t.id)}</span>` +
+          `</button>`
+        );
+      }).join("");
+    }
+
+    function renderList() {
+      const list = filteredSpells();
+      if (list.length === 0) {
+        listEl.innerHTML = `<div class="sheet-empty">No spells in this category.</div>`;
+        return;
+      }
+      listEl.innerHTML = list.map((s, i) => {
+        const disabled = !isAffordable(s);
+        const selected = i === cursor;
+        const classes = ["spell-row"];
+        if (selected) classes.push("selected");
+        if (disabled) classes.push("disabled");
+        return (
+          `<div class="${classes.join(" ")}" data-i="${i}" role="option" aria-selected="${selected}">` +
+          `<span class="name">${s.name}</span>` +
+          `<span class="cost">${s.spCost}</span>` +
+          `</div>`
+        );
+      }).join("");
+
+      const sel = listEl.querySelector(".spell-row.selected");
+      if (sel) sel.scrollIntoView({ block: "nearest" });
+    }
+
+    function renderDetail() {
+      const list = filteredSpells();
+      const s = list[cursor];
+      if (!s) {
+        detailEl.innerHTML =
+          `<h2 class="detail-name">—</h2>` +
+          `<div class="detail-desc">Nothing selected.</div>`;
+        return;
+      }
+      const disabled = !isAffordable(s);
+      const preview = s.preview
+        ? `<div class="detail-preview">Preview · <span class="val">${s.preview}</span></div>`
+        : `<div class="detail-preview">Preview · —</div>`;
+      const unafford = disabled
+        ? `<div class="detail-preview" style="color:#ff9090;border-top:none;padding-top:0;margin-top:4px;">Not enough SP (${s.spCost} needed)</div>`
+        : "";
+
+      detailEl.innerHTML =
+        `<h2 class="detail-name">${s.name}</h2>` +
+        `<div class="detail-meta">` +
+          `<span><span class="label">Class</span> Mage · Tier ${s.tier}</span>` +
+          `<span><span class="label">Category</span> ${CAT_LABEL[s.cat] || s.cat}</span>` +
+        `</div>` +
+        `<div class="detail-meta">` +
+          `<span><span class="label">Element</span> ${s.element}</span>` +
+          `<span><span class="label">Target</span> ${TARGET_LABEL[s.target] || s.target}</span>` +
+        `</div>` +
+        `<div class="detail-meta">` +
+          `<span><span class="label">Cost</span> ${s.spCost} SP</span>` +
+        `</div>` +
+        `<div class="detail-rule"></div>` +
+        `<div class="detail-effect">${s.effect}</div>` +
+        `<div class="detail-desc">${s.description}</div>` +
+        preview +
+        unafford;
+    }
+
+    function refresh() {
+      renderTabs();
+      renderList();
+      renderDetail();
+    }
+
+    tabsEl.addEventListener("click", (e) => {
+      const btn = e.target.closest(".sheet-tab");
+      if (!btn) return;
+      setTab(btn.dataset.tab);
+      listEl.focus();
+    });
+
+    listEl.addEventListener("click", (e) => {
+      const row = e.target.closest(".spell-row");
+      if (!row) return;
+      cursor = Number(row.dataset.i);
+      refresh();
+    });
+
+    window.addEventListener("keydown", (e) => {
+      const list = filteredSpells();
+      const tabIdx = TABS.findIndex((t) => t.id === activeTab);
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (list.length === 0) return;
+        cursor = Math.min(list.length - 1, cursor + 1);
+        refresh();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (list.length === 0) return;
+        cursor = Math.max(0, cursor - 1);
+        refresh();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setTab(TABS[Math.min(TABS.length - 1, tabIdx + 1)].id);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setTab(TABS[Math.max(0, tabIdx - 1)].id);
+      } else if (e.key >= "1" && e.key <= "5") {
+        e.preventDefault();
+        setTab(TABS[Number(e.key) - 1].id);
+      }
+    });
+
+    // Default: All tab, Fire Bolt selected (crowded-list demo).
+    activeTab = "all";
+    cursor = SPELLS.findIndex((s) => s.name === "Fire Bolt");
+    if (cursor < 0) cursor = 0;
+    refresh();
+    listEl.focus();
+  </script>
+</body>
+</html>

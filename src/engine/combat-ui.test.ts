@@ -58,6 +58,9 @@ import { CombatController } from "./combat-ui";
 import { createCombatState } from "../game/combat";
 import { createCharacter } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
+import { ALL_SPELLS } from "../data/spells";
+
+const SPELLS_BY_ID = Object.fromEntries(ALL_SPELLS.map((s) => [s.id, s]));
 
 function makeEnemy(instanceId: string) {
   const def = {
@@ -646,6 +649,87 @@ describe("CombatController input routing", () => {
     controller.handleKey("h");
     expect(c.flash).toBe("Already hidden!");
     expect(c.phase).toBe("palette");
+    controller.destroy();
+  });
+
+  it("Magic opens selectSpell with All tab and cycles categories with ←→ / 1–5", () => {
+    const party = [createCharacter("c0", "Bob", "Human", "Neutral", "Mage", 0)];
+    // Give a mixed book so tabs filter differently.
+    party[0].knownSpellIds = [
+      "mage-fire-bolt",
+      "mage-arcane-ward",
+      "mage-sleep",
+    ];
+    party[0].sp = 40;
+    party[0].maxSp = 40;
+    const state = createCombatState(
+      party,
+      { front: [makeEnemy("rat-0")], back: [] },
+      false,
+      SPELLS_BY_ID
+    );
+    const controller = new CombatControllerCtor(state, { onEnd: () => {} });
+    const c = controller as any;
+    c.phase = "palette";
+    c.currentActorId = "c0";
+    c.pending = null;
+    c.palette = {
+      slots: [
+        { kind: "attack" },
+        { kind: "defend" },
+        { kind: "cast", disabled: false },
+        { kind: "skill", disabled: false },
+      ],
+      itemButton: "select",
+      itemDisabled: false,
+      autoButton: "start",
+    };
+
+    controller.handleInput({ kind: "press", button: "x" });
+    expect(c.phase).toBe("selectSpell");
+    expect(c.spellCategoryTab).toBe("all");
+    expect(c.selectionIds.length).toBe(3);
+
+    controller.handleInput({ kind: "press", button: "right" });
+    expect(c.spellCategoryTab).toBe("offense");
+    expect(c.selectionIds).toEqual(["mage-fire-bolt"]);
+
+    controller.handleKey("4"); // Buffs
+    expect(c.spellCategoryTab).toBe("buffs");
+    expect(c.selectionIds).toEqual(["mage-arcane-ward"]);
+
+    controller.handleKey("5"); // Status
+    expect(c.spellCategoryTab).toBe("status");
+    expect(c.selectionIds).toEqual(["mage-sleep"]);
+
+    controller.handleInput({ kind: "press", button: "b" });
+    expect(c.phase).toBe("palette");
+    controller.destroy();
+  });
+
+  it("empty Magic category stays on the sheet instead of backing out", () => {
+    const party = [createCharacter("c0", "Bob", "Human", "Neutral", "Mage", 0)];
+    party[0].knownSpellIds = ["mage-fire-bolt"];
+    party[0].sp = 40;
+    const state = createCombatState(
+      party,
+      { front: [makeEnemy("rat-0")], back: [] },
+      false,
+      SPELLS_BY_ID
+    );
+    const controller = new CombatControllerCtor(state, { onEnd: () => {} });
+    const c = controller as any;
+    c.phase = "selectSpell";
+    c.currentActorId = "c0";
+    c.pending = { kind: "cast" };
+    c.spellCategoryTab = "defense";
+    c.applySpellList(party[0]);
+
+    expect(c.selectionIds).toEqual([]);
+    controller.handleInput({ kind: "press", button: "up" });
+    expect(c.phase).toBe("selectSpell");
+    controller.handleInput({ kind: "press", button: "a" });
+    expect(c.phase).toBe("selectSpell");
     controller.destroy();
   });
 });
