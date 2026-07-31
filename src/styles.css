@@ -3216,6 +3216,13 @@ canvas#map-canvas {
   white-space: normal;
 }
 
+.ff6-window.standalone .ff6-menu-item.multiline .ff6-sel-label {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.2;
+}
+
 .ff6-window.standalone .ff6-footer {
   font-size: var(--fs-small);
   color: #b8c4f0;
@@ -3251,6 +3258,67 @@ canvas#map-canvas {
 .ff6-window.width-medium { flex: 0 0 35%; max-width: 420px; }
 .ff6-window.width-wide { flex: 0 0 60%; max-width: 720px; }
 .ff6-window.width-full { flex: 0 0 100%; }
+
+/* Narrow screens keep the same logical 8:7 stage, so desktop padding and the
+   30px body scale can consume the complete vertical budget before the menu
+   list receives any height. Scope a compact token set to DOM menus only:
+   combat/corridor typography and their geometry stay untouched. */
+@media (max-width: 640px) {
+  #combat-panel.ff6-menu-host {
+    --fs-header: 32px;
+    --fs-panel: 27px;
+    --fs-body: 23px;
+    --fs-small: 18px;
+    gap: 8px;
+    padding: 10px 12px;
+    scrollbar-width: thin;
+    scrollbar-color: #6878c0 transparent;
+  }
+
+  #combat-panel.ff6-menu-host::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  #combat-panel.ff6-menu-host::-webkit-scrollbar-thumb {
+    background: #6878c0;
+    border-radius: 3px;
+  }
+
+  #combat-panel.ff6-menu-host::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .ff6-window.standalone {
+    max-height: 100%;
+  }
+
+  .ff6-window.standalone .ff6-menu-title {
+    padding-bottom: 2px;
+    margin-bottom: 2px;
+  }
+
+  .ff6-window.standalone .ff6-menu-item {
+    padding-top: 1px;
+    padding-bottom: 1px;
+    line-height: 1.15;
+  }
+
+  .ff6-window.standalone .ff6-footer,
+  .ff6-window.standalone .ff6-footer2 {
+    min-height: 0;
+    padding-top: 2px;
+    font-size: 16px;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+  }
+
+  .ff6-window.standalone .ff6-arena-meta {
+    font-size: 18px;
+    padding-bottom: 3px;
+  }
+}
 
 /* Mode variants. */
 .ff6-window.mode-status .ff6-content {
