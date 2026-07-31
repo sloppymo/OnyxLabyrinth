@@ -1,9 +1,10 @@
-// Procedural 16-bit-style tileset generator for the three-floor campaign.
+// Procedural 16-bit-style tileset generator for the five-floor campaign.
 //
-// Renders twelve seamless 256x256 PNGs into src/assets/ — wall / floorA /
-// floorB / ceiling for each floor (f1 = The Flooded Crypt, f2 = The Cursed
-// Library, f3 = The Forge of Ashes). Textures are drawn at a logical 128x128
-// and upscaled 2x nearest-neighbor for a chunky pixel-art read.
+// Renders twenty-five 256x256 PNGs into src/assets/ — wall / floorA / floorB
+// / ceiling / door for each floor (f1 = The Flooded Crypt, f2 = The Cursed
+// Library, f3 = The Forge of Ashes, f4 = The Null Choir, f5 = The Weeping
+// Cistern). Textures are drawn at a logical 128x128 and upscaled 2x
+// nearest-neighbor for a chunky pixel-art read.
 //
 // Everything is seeded and deterministic: re-running the script reproduces
 // the exact same PNGs. Dev tooling only — not part of the build.
