@@ -11,22 +11,41 @@
  */
 
 // --- Render config values needed by the math functions ----------------------
-// These mirror the RENDER_CONFIG entries in renderer.ts. They are duplicated
-// here (rather than imported) to keep this module DOM-free and testable in
-// pure Node. If you change a value in renderer.ts, update it here too.
+// SINGLE SOURCE OF TRUTH for every tunable the pure geometry/fog/camera math
+// reads. `renderer.ts` spreads this object into its own `RENDER_CONFIG`, so
+// `RENDER_CONFIG.fogFalloff` and friends resolve here and there is exactly one
+// definition of each value.
+//
+// These used to be hand-duplicated in `RENDER_CONFIG` with a "keep them in
+// sync" comment. The copies agreed, but the renderer's were never read — so
+// editing the obvious knob silently did nothing. Do not re-add a duplicate to
+// `renderer.ts`: add new pure-math tunables here instead, where they are
+// DOM-free and unit-testable in plain Node.
 export const MATH_CONFIG = {
   projectionScale: 0.62,
   heightFlatten: 0.85,
+  // Fog falloff per grid unit. 0.42 was too aggressive — at distance 2 walls
+  // dropped to 17% brightness, crushing all mid-range detail. 0.70 keeps
+  // distant walls readable while still providing a clear depth gradient.
   fogFalloff: 0.70,
+  // Mid-tone lift applied to the fog curve. After computing the exponential
+  // falloff, blend toward 1.0 by this fraction so mid-distance surfaces stay
+  // visible instead of dropping into the noise floor. 0 = pure exponential,
+  // 1 = no falloff at all.
   fogMidtoneLift: 0.25,
   baseOpacity: 1.0,
   glowBlurNear: 7,
   glowBlurFar: 2,
   maxDepth: 4,
   darknessMaxDist: 1.5,
+  // If the player jumps more than this many tiles in one state change
+  // (teleporter, stairs, chute), snap instantly instead of sliding.
   teleportSnapThreshold: 1.5,
-  moveAnimDuration: 150,
-  turnAnimDuration: 100,
+  // Smooth movement interpolation. When the player moves or turns, the render
+  // camera lerps from the old position to the new one over these durations.
+  // Set to 0 to disable (instant snap).
+  moveAnimDuration: 150,            // ms — forward/back step
+  turnAnimDuration: 100,            // ms — 90-degree turn
   // Arena room is smaller and viewed from a steeper angle than the corridor,
   // so the fog curve is tuned separately. Keep walls and far floor readable.
   arenaFogFalloff: 0.88,

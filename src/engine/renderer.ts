@@ -45,6 +45,7 @@ import {
   glowBlurForDepth,
   strokeColorForDepth,
   RenderCameraAnimator,
+  MATH_CONFIG,
 } from "./render-math";
 import type { RenderCamera } from "./render-math";
 import { resolveTilesetTheme } from "../game/floor-map";
@@ -78,24 +79,16 @@ const BG_B = parseInt(PALETTE.bg.slice(5, 7), 16);
 
 // Centralized renderer tuning. Keep magic numbers here so art passes and
 // debugging don't require hunting through the draw loop.
+//
+// Pure geometry/fog/camera tunables are spread in from `MATH_CONFIG`
+// (render-math.ts) rather than declared here, because that is the copy the
+// math functions actually read. `RENDER_CONFIG.fogFalloff` still resolves —
+// it just has one definition now. Declaring any MATH_CONFIG key again below
+// would shadow it for renderer.ts while leaving the math untouched, which is
+// the exact trap this spread removes: edit the value in render-math.ts.
 const RENDER_CONFIG = {
-  maxDepth: 4,
-  darknessDepth: 1,
-  projectionScale: 0.62,
-  heightFlatten: 0.85,
-  // Fog falloff per grid unit. 0.42 was too aggressive — at distance 2 walls
-  // dropped to 17% brightness, crushing all mid-range detail. 0.70 keeps
-  // distant walls readable while still providing a clear depth gradient.
-  fogFalloff: 0.70,
-  // Mid-tone lift applied to the fog curve. After computing the exponential
-  // falloff, blend toward 1.0 by this fraction so mid-distance surfaces stay
-  // visible instead of dropping into the noise floor. 0 = pure exponential,
-  // 1 = no falloff at all.
-  fogMidtoneLift: 0.25,
-  baseOpacity: 1.0,
+  ...MATH_CONFIG,
   fillOpacityMultiplier: 0.45,
-  glowBlurNear: 7,
-  glowBlurFar: 2,
   // The edge-glow pass draws an amber line on every 1px strip. At full
   // strength that repaints flat walls amber and hides the per-floor wall art,
   // so flat-wall strips are scaled down to a warm wash; strips at a depth
@@ -107,16 +100,13 @@ const RENDER_CONFIG = {
   glowEdgeDepthDelta: 0.12,
   scanlineOpacity: 0.10,
   scanlineSpacing: 3,
-  // Floor/ceiling are darker base textures than the wall; brighten them and use
-  // a darkening overlay so the pixel-art detail remains visible while still
-  // fading into the distance.
-  floorDarkenMultiplier: 0.55,
-  ceilingDarkenMultiplier: 0.3,
   // The two floor tiles get different brightness levels so the grid-coord
   // checkerboard is readable without distorting hue. The per-floor campaign
   // tilesets are authored at mid luminance (means ~50-90, vs ~9-45 for the
   // legacy tiles), so these factors are close to 1.0 — large factors clip
-  // mid-bright art to white before the darken multipliers pull it back.
+  // mid-bright art to white before the distance fog pass can pull it back.
+  // (The old floor/ceiling "darken multiplier" constants this comment used to
+  // name were dead: the darken model was replaced by fogBlend-toward-bg.)
   floorABrightnessFactor: 1.15,
   floorBBrightnessFactor: 0.85,
   ceilingBrightnessFactor: 1.4,
@@ -141,18 +131,6 @@ const RENDER_CONFIG = {
   // If stacked tiles are wanted on tall walls, sample texY per screen row
   // instead of pre-baking a repeated strip.
   wallRepeatsY: 1,
-  floorRepeats: 1,                  // texture repeats per floor grid tile
-  ceilingRepeats: 1,                // texture repeats per ceiling grid tile
-  darknessMaxDist: 1.5,
-  // Smooth movement interpolation. When the player moves or turns, the render
-  // camera lerps from the old position to the new one over these durations.
-  // This makes the grid-based movement feel like smooth first-person motion
-  // instead of instant snapping. Set to 0 to disable (instant snap).
-  moveAnimDuration: 150,            // ms — forward/back step
-  turnAnimDuration: 100,            // ms — 90-degree turn
-  // If the player jumps more than this many tiles in one state change
-  // (teleporter, stairs, chute), snap instantly instead of sliding.
-  teleportSnapThreshold: 1.5,
   // Torch flicker: a subtle warm overlay that oscillates in intensity,
   // giving the corridor a living, firelit feel. The period is ~2s; the
   // amplitude is kept small so it doesn't distract from gameplay.
