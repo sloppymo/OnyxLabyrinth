@@ -1,6 +1,37 @@
 # Corridor art-direction pass — diagnosis
 
-**Date:** 2026-07-30 · **Phase:** 1 (diagnosis only, no code changed) · **Status:** awaiting approval
+**Date:** 2026-07-30 · **Status:** diagnosis complete · **Phase 0 shipped** `84e9fe7` ·
+**Phase 1 shipped** `4aae61b` · Phases 2–4 not started. Branch `corridor-art-direction`,
+not pushed.
+
+> ## Implementation status
+>
+> | Phase | State | Evidence |
+> |---|---|---|
+> | 0 — unify `RENDER_CONFIG`/`MATH_CONFIG` | **Done** `84e9fe7` | Setting canonical `fogFalloff` to 0.42 moved f1 mean luma 35.13 → 25.78 and depth-4 floor luma 40.89 → 30.58; reverting returned both exactly. Before the change that edit was a no-op. |
+> | 1 — un-invert the torch | **Done** `4aae61b` | Near-wall flicker amplitude 0.037 → 0.761 (f1), 0.057 → 1.065 (f5); frame luminance −0.51 % / −0.50 %; falloff now monotonic near → annulus → centre. |
+> | 2 — taper fog to the clip boundary | Not started | Curve pre-verified (§5 under A): full-curve smoothstep only. |
+> | 3 — per-floor door panels | Not started | |
+> | 4 — extend the style guide | Not started | |
+>
+> **Two corrections made during Phase 1, both to my own measurements:**
+> 1. The `±3 %` frame-luminance gate was initially evaluated on single-frame
+>    captures. That is unsound — `drawTorchFlicker` early-returns when its alpha
+>    goes negative, which happens for part of every cycle, so an arbitrary-phase
+>    snapshot can catch a frame with no overlay drawn and report a falsely stable
+>    number. All Phase 1 figures come from `corridor-torch-probe.mjs`, which
+>    averages across whole flicker periods.
+> 2. `torchFlickerEdgeScale` was first set to 0.45 on an area-integral estimate.
+>    Measured, 0.65 was both *closer* to baseline frame luminance (−0.51 % vs
+>    −0.85 %) and more perceptible, so 0.65 shipped.
+>
+> **Phase 1 slightly increases near-background pixel counts in six views** (worst
+> `f5-treasure` +5.3 pp). This is not a regression: the old centre-weighted torch
+> was tinting the F1 void band amber, lifting those pixels just above the
+> near-bg threshold. Removing a cosmetic mask over F1 is the intended direction,
+> and Phase 2 addresses the void itself. Verified as uniform frame darkening
+> rather than band-specific — on `f2-straight` the band moved −4.1 and its
+> surroundings −4.2.
 
 Scope: the first-person corridor view (`src/engine/renderer.ts`, `render-math.ts`, the
 `f1`–`f5` tilesets, the shared door panel). Measured against the design bar in
