@@ -1,8 +1,8 @@
 # Corridor art-direction pass — diagnosis
 
 **Date:** 2026-07-30 · **Status:** diagnosis complete · **Phase 0 shipped** `84e9fe7` ·
-**Phase 1 shipped** `4aae61b` · **Phase 2 shipped** `367a8ed` · **Phase 4 shipped**
-(docs-only). Phase 3 not started. Branch `corridor-art-direction`, not pushed.
+**Phase 1 shipped** `4aae61b` · **Phase 2 shipped** `367a8ed` · **Phase 3 shipped** ·
+**Phase 4 shipped** (docs-only). Branch `corridor-art-direction`, not pushed.
 
 > ## Implementation status
 >
@@ -11,8 +11,8 @@
 > | 0 — unify `RENDER_CONFIG`/`MATH_CONFIG` | **Done** `84e9fe7` | Setting canonical `fogFalloff` to 0.42 moved f1 mean luma 35.13 → 25.78 and depth-4 floor luma 40.89 → 30.58; reverting returned both exactly. Before the change that edit was a no-op. |
 > | 1 — un-invert the torch | **Done** `4aae61b` | Near-wall flicker amplitude 0.037 → 0.761 (f1), 0.057 → 1.065 (f5); frame luminance −0.51 % / −0.50 %; falloff now monotonic near → annulus → centre. |
 > | 2 — taper fog to the clip boundary | **Done** `367a8ed` | Adversarial review retired the original band-ratio exit criterion (unreachable by construction — see revised exit criteria below); shipped with 3 modifications (kill-switch corner fix, darkness invariant unit test, sprite-pass early-out). Verified against a live dev-server probe: `f1-straight` depth-4 luma unchanged at 40.89 (bit-identical below d=4), sharpest row-edge moved from y=285 to y=147, matching the review's predicted argmax scatter. |
-> | 3 — per-floor door panels | Not started | |
-> | 4 — extend the style guide | **Done** (docs-only) | Added `docs/TILESET-ART-STYLE-GUIDE.md` §10 (fog/depth curve, torch, edge glow, feature glyphs, doors) with the Phase 0–2 measured numbers as baseline. Doors documented as a known, unclosed gap pending Phase 3. |
+> | 3 — per-floor door panels | **Done** | `scripts/generate-floor-tilesets.mjs` now generates one door PNG per floor, reusing that floor's own wall swatches (wood F1/F2, iron F3, stone F4/F5) so hue tracks the wall by construction. `renderer.ts` caches a door texture per theme (`LoadedTileset.door`) and falls back to the old shared placeholder only for themes with none. **Found and corrected a flawed exit criterion in the process** (below): the plan's "door-view hue vs the far `straight` pose" comparison is confounded by the Phase-1 torch overlay, which dominates any close-up view (even a plain, unmodified wall) regardless of the material's own hue — measured on the *baseline* `f4-frontWall`/`f5-frontWall` (unmodified wall, same close-up framing as a door), hue was already 18.0°/46.2°, nowhere near those floors' `straight`-pose wall hue of 321.3°/153.7°. The corrected, apples-to-apples check (door hue vs. `frontWall` hue, same pose distance) passes on all 5 floors (largest gap 14.5°, f5). Source-texture measurements (bypassing the renderer entirely) also confirm palette matching directly: door hue is within 1.5° of that floor's wall hue in every case, chroma is 16-20 (F4/F5 rendered-frame chroma 19.28/23.69, both under the 25 target), and posterizing the generator output (`Px.posterize(14)`) brought unique colours to 20-31 per door texture (target: <100). |
+> | 4 — extend the style guide | **Done** (docs-only) | Added `docs/TILESET-ART-STYLE-GUIDE.md` §10 (fog/depth curve, torch, edge glow, feature glyphs, doors) with the Phase 0–2 measured numbers as baseline; §10.5 updated after Phase 3 shipped. |
 >
 > **Two corrections made during Phase 1, both to my own measurements:**
 > 1. The `±3 %` frame-luminance gate was initially evaluated on single-frame
@@ -473,13 +473,39 @@ the 5 worst of 44 views) but not a valid fix-verification gate. Replaced with:*
 
 Six-view checklist on ≥3 floors via `corridor-transition-check.mjs`.
 
-**Phase 3 — B: per-floor door panels.**
+**Phase 3 — B: per-floor door panels. SHIPPED.**
 Generate 5 palette-matched doors through `generate-floor-tilesets.mjs` (deterministic; do not
 hand-edit PNGs, and do not parallelise — it writes shared outputs).
-*Exit:* each floor's rendered `door`-view hue lands within **30°** of that floor's corridor
-hue; F4 and F5 door-view chroma drops **below 25** (from 41.2 / 44.7); quantized colour count
-per door drops below 100 (from 268). Doors must still read as doors — a recolour that makes
-F5's door invisible against F5's wall fails.
+
+*Exit, as originally written:* each floor's rendered `door`-view hue lands within **30°** of
+that floor's `straight`-pose corridor hue; F4 and F5 door-view chroma drops **below 25** (from
+41.2 / 44.7); quantized colour count per door drops below 100 (from 268). Doors must still read
+as doors — a recolour that makes F5's door invisible against F5's wall fails.
+
+**The hue clause above turned out to be unmeasurable as written, for a reason unrelated to the
+door work.** The `straight` pose is a *far* view (mostly distant, dim wall); the `door` pose is
+a *close* view. Measuring the *unmodified* `f4-frontWall`/`f5-frontWall` baseline (a plain wall,
+same close-up framing as a door, captured before any Phase 3 change) already gives hue
+18.0°/46.2° — nowhere near those floors' own `straight`-pose wall hue of 321.3°/153.7°. The
+Phase-1 torch overlay (amber, and — by design — strongest on near surfaces) dominates any
+close-up view regardless of the material underneath; comparing a close view's hue to a far
+view's hue conflates "door doesn't match the wall" with "the torch is doing exactly what Phase 1
+made it do." This is the same class of error as the Phase 2 band-ratio criterion: a real
+measurement, holding a variable the plan didn't account for.
+
+*Exit, corrected:* door hue compared to `frontWall` hue (same close-up distance, so the torch's
+contribution is held constant) — passes on all 5 floors, largest gap 14.5° (f5). Confirmed
+independently at the source-texture level (bypassing the renderer and its post-processing
+entirely): door hue is within 1.5° of that floor's own wall-texture hue on every floor. Chroma
+and colour-count exit criteria are unaffected by this issue and pass as originally stated: F4/F5
+rendered door-view chroma 19.28/23.69 (< 25); unique colours per door **texture** (the
+`generate-floor-tilesets.mjs` output before any renderer post-processing) 20-31 after adding a
+`Px.posterize(14)` pass, well under 100. (Whole-*rendered-frame* colour count stays in the
+100s-200s regardless of the door — vignette/torch/scanline gradients and dithered floor/ceiling
+dominate that count on every pose, door or not, so it isn't a property of the door asset and
+isn't the right thing to gate on; the style guide's own §4.2 convention measures unique colours
+per tile *file*, which is what was actually checked here.) Doors read as doors on all 5 floors
+(double-leaf panel, riveted mid-band, two handle rings — verified visually on F4).
 
 **Phase 4 — E: extend the style guide.**
 Add §10 covering doors, fog/depth cueing, torch behaviour, feature glyphs — the gap F6

@@ -121,6 +121,15 @@ class Px {
   rect(x0, y0, w, h, c) {
     for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) this.set(x, y, c);
   }
+  /** Snap every channel to the nearest multiple of `step`, shrinking the
+   *  unique-colour count. Blended/mottled fills (mix, crackWalk) produce
+   *  near-continuous gradients; this restores the "limited palette" look the
+   *  style guide asks for (§1.2/§4.2) without hand-picking a palette. */
+  posterize(step) {
+    for (let i = 0; i < this.d.length; i++) {
+      this.d[i] = Math.min(255, Math.round(this.d[i] / step) * step);
+    }
+  }
   save(name) {
     const out = Buffer.alloc(L * 2 * L * 2 * 3);
     for (let y = 0; y < L * 2; y++) {
@@ -1161,6 +1170,241 @@ function f5Ceiling() {
   px.save("f5_ceiling_256.png");
 }
 
+// ===========================================================================
+// DOOR PANELS — one per floor, palette-matched to that floor's wall identity.
+// ===========================================================================
+//
+// Doors were previously a single shared placeholder texture regardless of
+// theme, so a corridor's door panel visually contradicted whatever floor
+// identity the walls established (measured: door-view hue landed ~27-30°
+// on every floor even where the floor's own wall hue was 150-320°). Each
+// door below reuses that floor's actual wall swatches for the panel fill,
+// so hue/chroma track the wall by construction rather than by re-tuning a
+// second palette by eye. Material follows the floor's §3 identity in
+// TILESET-ART-STYLE-GUIDE.md: wood for the crypt/library, iron for the
+// forge, stone for the choir/cistern.
+//
+// `door()` draws a common double-leaf structure (frame -> planked/coursed
+// panel -> center seam -> riveted mid-band with two handle rings) so every
+// floor's door reads as "a door" at a glance; only the swatches and the
+// per-floor motif callback (moss/ember/rune/glow) change.
+
+function door(name, cfg) {
+  const {
+    seed,
+    frameHex,
+    swatches,       // panel base colors (reuse that floor's wall `stones`)
+    mortarHex,      // border/frame + seam color (reuse that floor's wall mortar)
+    bandHex, bandHiHex, bandDarkHex,
+    rowH = 16, blockW = 32,
+    motif,          // (px, rng, mottle, B) => void — per-floor accent overlay
+  } = cfg;
+  const B = 6; // frame border width
+  const rng = mulberry32(seed);
+  const px = new Px();
+  const mottle = makeFbm(mulberry32(seed + 1));
+  const frame = hex(frameHex);
+  const mortar = hex(mortarHex);
+  const stones = swatches.map(hex);
+
+  px.fill(frame);
+  // frame bevel: lit top/left edge, shadowed bottom/right edge
+  for (let x = 0; x < L; x++) {
+    px.set(x, 0, shade(frame, 1.25));
+    px.set(x, L - 1, shade(frame, 0.7));
+  }
+  for (let y = 0; y < L; y++) {
+    px.set(0, y, shade(frame, 1.2));
+    px.set(L - 1, y, shade(frame, 0.72));
+  }
+
+  // Inset coursed panel (same technique as the wall generators: staggered
+  // blocks/planks, ordered-dither mottle, per-row bevel).
+  const blockTone = new Map();
+  for (let y = B; y < L - B; y++) {
+    for (let x = B; x < L - B; x++) {
+      const { row, col, lx, ly } = courses(x, y, rowH, blockW);
+      const key = `${row},${col}`;
+      if (!blockTone.has(key)) blockTone.set(key, stones[Math.floor(rng() * stones.length)]);
+      if (ly === 0 || lx === 0) {
+        px.set(x, y, mortar);
+        continue;
+      }
+      let c = blockTone.get(key);
+      const m = mottle(x, y);
+      const lvl = Math.floor(m * 3 + dither(x, y) * 0.999);
+      c = shade(c, [0.88, 1.0, 1.1][Math.max(0, Math.min(2, lvl))]);
+      if (ly === 1) c = shade(c, 1.15);
+      else if (ly === rowH - 1) c = shade(c, 0.8);
+      px.set(x, y, c);
+    }
+  }
+
+  // Center seam — the split between the two leaves of a double door.
+  const midX = Math.floor(L / 2);
+  for (let y = B; y < L - B; y++) {
+    px.blend(midX - 1, y, mortar, 0.5);
+    px.set(midX, y, mortar);
+    px.blend(midX + 1, y, mortar, 0.5);
+  }
+
+  // Riveted mid-band, same construction as the wall generators' frieze band.
+  const band = hex(bandHex);
+  const bandHi = hex(bandHiHex);
+  const bandDark = hex(bandDarkHex);
+  const y0 = 60;
+  for (let y = y0; y < y0 + 7; y++) {
+    for (let x = B; x < L - B; x++) {
+      let c = band;
+      if (y === y0) c = bandHi;
+      if (y === y0 + 6) c = bandDark;
+      if (mottle(x * 2, y * 2) > 0.66) c = shade(c, 0.87);
+      px.set(x, y, c);
+    }
+  }
+  for (let x = B + 5; x < L - B; x += 14) {
+    px.set(x, y0 + 3, bandHi);
+    px.set(x + 1, y0 + 3, bandDark);
+  }
+
+  // Two ring handles, one per leaf, just below the band.
+  for (const hx of [midX - 20, midX + 20]) {
+    const hy = y0 + 18;
+    for (let dy = -3; dy <= 3; dy++) {
+      for (let dx = -3; dx <= 3; dx++) {
+        const r = Math.hypot(dx, dy);
+        if (r > 2.2 && r < 3.4) px.set(hx + dx, hy + dy, bandHi);
+      }
+    }
+    px.set(hx, hy + 1, bandDark);
+  }
+
+  if (motif) motif(px, rng, mottle, B);
+
+  px.posterize(14);
+  px.save(name);
+}
+
+// F1 — mossy oak door, iron-banded, moss creeping from the seams (matches
+// the wall's moss vocabulary in TILESET-ART-STYLE-GUIDE.md §3).
+function f1Door() {
+  const mosses = [hex("#4d6b3a"), hex("#405c2f"), hex("#5a7d46")];
+  door("f1_door_256.png", {
+    seed: 150,
+    frameHex: "#2a2f24",
+    mortarHex: "#232820",
+    swatches: ["#5b6354", "#525a4c", "#4a5245", "#565f4e"],
+    bandHex: "#3b3f2e", bandHiHex: "#5a6248", bandDarkHex: "#1c2016",
+    motif: (px, rng, mottle, B) => {
+      for (let y = B; y < L - B; y++) {
+        for (let x = B; x < L - B; x++) {
+          const nearSeam = Math.min(y - B, L - B - y) / (L - 2 * B);
+          const m = mottle(x + 200, y + 200) - nearSeam * 0.5;
+          if (m > 0.55) {
+            const g = mosses[Math.floor(mottle(x + 37, y + 61) * mosses.length) % mosses.length];
+            px.blend(x, y, g, 0.75);
+          }
+        }
+      }
+    },
+  });
+}
+
+// F2 — library door: same warm walnut wood as the bookshelf wall, brass
+// hinge straps instead of an iron band (already close in hue; kept for
+// structural consistency and finish, not a hue correction).
+function f2Door() {
+  door("f2_door_256.png", {
+    seed: 250,
+    frameHex: "#191310",
+    mortarHex: "#221a14",
+    swatches: ["#6d4526", "#5c3a28", "#8c5c33", "#452a15"],
+    bandHex: "#5c4626", bandHiHex: "#8a6c38", bandDarkHex: "#2e2412",
+    rowH: 21, blockW: 999, // wide single planks, no brick coursing
+  });
+}
+
+// F3 — iron forge door: dark riveted plate, ember cracks matching the
+// wall's glow-crack motif.
+function f3Door() {
+  const emberCore = hex("#ffb347");
+  const emberMid = hex("#e2703a");
+  const emberDim = hex("#8a3a1c");
+  door("f3_door_256.png", {
+    seed: 350,
+    frameHex: "#1d1815",
+    mortarHex: "#1d1815",
+    swatches: ["#3b3f46", "#33363c", "#3e4148", "#2c2e33"],
+    bandHex: "#3b3f46", bandHiHex: "#585f6a", bandDarkHex: "#22252a",
+    motif: (px, rng, mottle, B) => {
+      const crackRng = mulberry32(351);
+      for (let i = 0; i < 4; i++) {
+        const sx = B + Math.floor(crackRng() * (L - 2 * B));
+        const sy = B + Math.floor(crackRng() * (L - 2 * B));
+        crackWalk(crackRng, sx, sy, 8 + Math.floor(crackRng() * 8), [0.3, 1], (x, y) => {
+          px.set(x, y, crackRng() < 0.3 ? emberCore : emberMid);
+          px.blend(x + 1, y, emberDim, 0.5);
+          px.blend(x - 1, y, emberDim, 0.5);
+        });
+      }
+    },
+  });
+}
+
+// F4 — carved choir stone door: cold purple-grey slab, silver rune veins
+// matching the wall's rune-glow motif (no orange — see style guide §3 F4).
+function f4Door() {
+  const runeCore = hex("#e8e6f2");
+  const runeMid = hex("#a9a4c9");
+  const runeDim = hex("#5f5a80");
+  door("f4_door_256.png", {
+    seed: 450,
+    frameHex: "#2a2733",
+    mortarHex: "#2a2733",
+    swatches: ["#5a5666", "#524e5e", "#4a4757", "#565064"],
+    bandHex: "#6e6a80", bandHiHex: "#8f8ba6", bandDarkHex: "#3a3748",
+    motif: (px, rng, mottle, B) => {
+      const crackRng = mulberry32(451);
+      for (let i = 0; i < 3; i++) {
+        const sx = B + Math.floor(crackRng() * (L - 2 * B));
+        const sy = B + Math.floor(crackRng() * (L - 2 * B));
+        crackWalk(crackRng, sx, sy, 8 + Math.floor(crackRng() * 8), [0.3, 1], (x, y) => {
+          px.set(x, y, crackRng() < 0.25 ? runeCore : runeMid);
+          px.blend(x + 1, y, runeDim, 0.5);
+          px.blend(x - 1, y, runeDim, 0.5);
+        });
+      }
+    },
+  });
+}
+
+// F5 — cistern stone door: wet teal-charcoal slab, aquamarine glow-veins
+// matching the wall's bioluminescent seep motif.
+function f5Door() {
+  const glowCore = hex("#baf7e8");
+  const glowMid = hex("#5fd6bd");
+  const glowDim = hex("#215048");
+  door("f5_door_256.png", {
+    seed: 550,
+    frameHex: "#141d20",
+    mortarHex: "#141d20",
+    swatches: ["#33454a", "#2c3d42", "#26363a", "#304248"],
+    bandHex: "#233c40", bandHiHex: "#3f5f63", bandDarkHex: "#0f1a1c",
+    motif: (px, rng, mottle, B) => {
+      const crackRng = mulberry32(551);
+      for (let i = 0; i < 4; i++) {
+        const sx = B + Math.floor(crackRng() * (L - 2 * B));
+        const sy = B + Math.floor(crackRng() * (L - 2 * B));
+        crackWalk(crackRng, sx, sy, 8 + Math.floor(crackRng() * 8), [0.2, 1], (x, y) => {
+          px.set(x, y, crackRng() < 0.25 ? glowCore : glowMid);
+          px.blend(x + 1, y, glowDim, 0.5);
+          px.blend(x - 1, y, glowDim, 0.5);
+        });
+      }
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 
 mkdirSync(OUT_DIR, { recursive: true });
@@ -1184,4 +1428,9 @@ f5Wall();
 f5FloorA();
 f5FloorB();
 f5Ceiling();
+f1Door();
+f2Door();
+f3Door();
+f4Door();
+f5Door();
 console.log("done");

@@ -38,6 +38,11 @@ import f5WallUrl from "../assets/f5_wall_256.png";
 import f5FloorAUrl from "../assets/f5_floor_a_256.png";
 import f5FloorBUrl from "../assets/f5_floor_b_256.png";
 import f5CeilingUrl from "../assets/f5_ceiling_256.png";
+import f1DoorUrl from "../assets/f1_door_256.png";
+import f2DoorUrl from "../assets/f2_door_256.png";
+import f3DoorUrl from "../assets/f3_door_256.png";
+import f4DoorUrl from "../assets/f4_door_256.png";
+import f5DoorUrl from "../assets/f5_door_256.png";
 import doorPlaceholderUrl from "../assets/door_placeholder_256.png";
 import {
   computeLineHeight,
@@ -187,22 +192,26 @@ export interface TextureSet {
   ceilingData: ImageData | null;
 }
 
-/** One fully prepared tileset (adjusted textures + pre-repeated wall). */
+/** One fully prepared tileset (adjusted textures + pre-repeated wall/door). */
 export interface LoadedTileset {
   set: TextureSet;
   repeatedWall: HTMLCanvasElement | null;
+  /** Palette-matched door panel for this theme, or null if it failed to load
+   *  (renderer falls back to the shared placeholder, then to the procedural
+   *  fill — see `doorTextureForTheme`). */
+  door: HTMLCanvasElement | null;
 }
 
 /** Bundled Vite-import fallbacks for campaign themes (also mirrored in public/). */
 const BUNDLED_THEME_URLS: Record<
   string,
-  { wall: string; floorA: string; floorB: string; ceiling: string }
+  { wall: string; floorA: string; floorB: string; ceiling: string; door: string }
 > = {
-  f1: { wall: f1WallUrl, floorA: f1FloorAUrl, floorB: f1FloorBUrl, ceiling: f1CeilingUrl },
-  f2: { wall: f2WallUrl, floorA: f2FloorAUrl, floorB: f2FloorBUrl, ceiling: f2CeilingUrl },
-  f3: { wall: f3WallUrl, floorA: f3FloorAUrl, floorB: f3FloorBUrl, ceiling: f3CeilingUrl },
-  f4: { wall: f4WallUrl, floorA: f4FloorAUrl, floorB: f4FloorBUrl, ceiling: f4CeilingUrl },
-  f5: { wall: f5WallUrl, floorA: f5FloorAUrl, floorB: f5FloorBUrl, ceiling: f5CeilingUrl },
+  f1: { wall: f1WallUrl, floorA: f1FloorAUrl, floorB: f1FloorBUrl, ceiling: f1CeilingUrl, door: f1DoorUrl },
+  f2: { wall: f2WallUrl, floorA: f2FloorAUrl, floorB: f2FloorBUrl, ceiling: f2CeilingUrl, door: f2DoorUrl },
+  f3: { wall: f3WallUrl, floorA: f3FloorAUrl, floorB: f3FloorBUrl, ceiling: f3CeilingUrl, door: f3DoorUrl },
+  f4: { wall: f4WallUrl, floorA: f4FloorAUrl, floorB: f4FloorBUrl, ceiling: f4CeilingUrl, door: f4DoorUrl },
+  f5: { wall: f5WallUrl, floorA: f5FloorAUrl, floorB: f5FloorBUrl, ceiling: f5CeilingUrl, door: f5DoorUrl },
 };
 
 const FALLBACK_THEME = "f1";
@@ -212,6 +221,7 @@ function publicThemeUrls(theme: string): {
   floorA: string;
   floorB: string;
   ceiling: string;
+  door: string;
 } {
   const base = `${import.meta.env.BASE_URL}assets/tilesets/${theme}`;
   return {
@@ -219,6 +229,7 @@ function publicThemeUrls(theme: string): {
     floorA: `${base}/floorA.png`,
     floorB: `${base}/floorB.png`,
     ceiling: `${base}/ceiling.png`,
+    door: `${base}/door.png`,
   };
 }
 
@@ -227,6 +238,7 @@ function urlsForTheme(theme: string): {
   floorA: string;
   floorB: string;
   ceiling: string;
+  door: string;
 } {
   return BUNDLED_THEME_URLS[theme] ?? publicThemeUrls(theme);
 }
@@ -237,7 +249,10 @@ function urlsForTheme(theme: string): {
 // when the target canvas is resized.)
 const tilesetCache = new Map<string, LoadedTileset>();
 const themeLoadPromises = new Map<string, Promise<LoadedTileset>>();
-/** Placeholder door panel texture (shared across themes). Null until loaded. */
+/** Fallback door panel texture, shared across themes with no door of their
+ *  own (custom/public themes without a `door.png`, or load failure). Each
+ *  bundled campaign theme carries its own palette-matched door in
+ *  `tilesetCache`, preferred via `doorTextureForTheme`. Null until loaded. */
 let doorTexture: HTMLCanvasElement | null = null;
 let doorLoadPromise: Promise<void> | null = null;
 // Reusable per-frame buffers (avoid allocation in the hot render loop).
@@ -359,12 +374,20 @@ function prepareRepeatedTexture(
   return c;
 }
 
-/** Load and prepare campaign themes (f1–f5) plus the shared door placeholder. */
+/** Load and prepare campaign themes (f1–f5, each with its own door panel)
+ *  plus the generic placeholder used as a fallback for themes with no door
+ *  of their own (custom/public themes, or a per-theme door that failed to load). */
 export function loadTextures(): Promise<void> {
   return Promise.all([
     ...Object.keys(BUNDLED_THEME_URLS).map((theme) => ensureThemeLoaded(theme)),
     ensureDoorTextureLoaded(),
   ]).then(() => {});
+}
+
+/** The door texture to draw for a theme: its own palette-matched panel if
+ *  loaded, else the shared placeholder, else null (procedural fallback). */
+function doorTextureForTheme(theme: string): HTMLCanvasElement | null {
+  return tilesetCache.get(theme)?.door ?? doorTexture;
 }
 
 function ensureDoorTextureLoaded(): Promise<void> {
@@ -406,13 +429,15 @@ function loadTileset(urls: {
   floorA: string;
   floorB: string;
   ceiling: string;
+  door: string;
 }): Promise<LoadedTileset> {
   return Promise.all([
     loadImage(urls.wall).catch(() => null),
     loadImage(urls.floorA).catch(() => null),
     loadImage(urls.floorB).catch(() => null),
     loadImage(urls.ceiling).catch(() => null),
-  ]).then(([wall, floorAImg, floorBImg, ceilingImg]) => {
+    loadImage(urls.door).catch(() => null),
+  ]).then(([wall, floorAImg, floorBImg, ceilingImg, doorImg]) => {
     const wallAdjusted = wall
       ? adjustTextureImage(wall, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)
       : null;
@@ -451,7 +476,11 @@ function loadTileset(urls: {
     const repeatedWall = wallAdjusted
       ? prepareRepeatedTexture(wallAdjusted, RENDER_CONFIG.wallRepeatsX, RENDER_CONFIG.wallRepeatsY)
       : null;
-    return { set, repeatedWall };
+    // Same mild darkening as the old shared placeholder so the panel sits in
+    // the corridor fog like the rest of the wall art (see ensureDoorTextureLoaded).
+    const doorAdjusted = doorImg ? adjustTextureImage(doorImg, 0.92, 1.05) : null;
+    const door = doorAdjusted ? prepareRepeatedTexture(doorAdjusted, 1, 1) : null;
+    return { set, repeatedWall, door };
   });
 }
 
@@ -954,23 +983,24 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     if (hit.edge === "door" || hit.edge === "locked") {
       const isLocked = hit.edge === "locked";
       const fogDoor = opacityForDepth(hit.perpWallDist);
+      const themeDoor = doorTextureForTheme(theme);
 
-      if (doorTexture) {
-        // Sample the placeholder door panel the same way as wall strips.
-        let texX = Math.floor(hit.wallX * doorTexture.width);
+      if (themeDoor) {
+        // Sample the door panel the same way as wall strips.
+        let texX = Math.floor(hit.wallX * themeDoor.width);
         if (
           (hit.side === "x" && rayDirX > 0) ||
           (hit.side === "y" && rayDirY < 0)
         ) {
-          texX = doorTexture.width - texX - 1;
+          texX = themeDoor.width - texX - 1;
         }
         ctx.globalAlpha = fogDoor;
         ctx.drawImage(
-          doorTexture,
+          themeDoor,
           texX,
           0,
           1,
-          doorTexture.height,
+          themeDoor.height,
           x,
           drawStart,
           stripWidth,
