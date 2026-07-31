@@ -3,7 +3,7 @@
 **Audience:** human pixel artists, AI image workflows, and engineers wiring new themes  
 **Scope:** corridor tilesets only (`wall` / `floorA` / `floorB` / `ceiling`)  
 **Canonical sources:** `src/assets/f{1-5}_*_256.png`, `scripts/generate-floor-tilesets.mjs`, `src/engine/renderer.ts`  
-**Last measured:** 2026-07-24 against shipping campaign art
+**Last measured:** 2026-07-24 against shipping campaign art (§1–§8); §10 added 2026-07-30 covering the Phase 0–2 corridor renderer pass
 
 This guide describes what the game already looks like so new tiles match in-engine, not just in a still preview.
 
@@ -365,3 +365,124 @@ VERIFY:   seam offset, A/B pair, corridor screenshots
 - `AGENTS.md` — renderer pitfalls and verification checklist
 - `scripts/generate-floor-tilesets.mjs` — procedural reference implementation
 - `src/engine/renderer.ts` — `RENDER_CONFIG` brightness/contrast and theme loading
+- `docs/superpowers/plans/2026-07-30-corridor-art-direction.md` — the corridor renderer pass §10 below documents
+
+---
+
+## 10. Fog, depth cueing, torch, and doors (renderer behavior — not texture authoring)
+
+**Scope note:** §1–§9 above cover tileset *textures*. This section documents the runtime
+*renderer* behavior layered on top — fog/depth opacity, the torch overlay, edge glow, feature
+glyphs, and doors — as measured during the Phase 0–2 corridor pass
+(`docs/superpowers/plans/2026-07-30-corridor-art-direction.md`). Written for engineers touching
+`render-math.ts` / `renderer.ts`, not primarily for texture artists. Treat the numbers below as
+the baseline for future tuning — re-measure, don't eyeball, if you change any of these curves.
+
+### 10.1 Fog / depth opacity curve
+
+Single source of truth: `opacityForDepth()` in `src/engine/render-math.ts`, driven by
+`MATH_CONFIG`. Every world-space draw pass — wall strips, floor/ceiling rows, map sprites,
+feature glyphs, amber edge glow — multiplies its alpha by this one function. Never add a
+second per-pass fog formula; the recurring class of renderer bugs here has been draw passes
+computing fog inconsistently.
+
+The curve: exponential falloff (`fogFalloff` = 0.70/grid unit) blended toward 1.0 by
+`fogMidtoneLift` (0.25) so mid-range surfaces stay readable, then tapered by a 1−smoothstep
+curve (`fogTaperFrac` = 0.5, taper starts at half the draw distance) so it reaches exactly 0 at
+`CORRIDOR_MAX_DIST` (`maxDepth * 2` = 8) instead of asymptoting above it.
+
+| depth (d) | opacity | note |
+|---|---|---|
+| 0 | 1.0000 | player's own cell, no fog |
+| 1 | 0.7474 | |
+| 2 | 0.6003 | |
+| 3 | 0.4991 | |
+| 4 | 0.4266 | taper start — everything ≤4 is bit-identical to the pre-taper (Phase 0/1) curve |
+| 5 | 0.3161 | |
+| 6 | 0.1688 | |
+| 7 | 0.0487 | |
+| 8 | 0.0000 | draw boundary — floor/ceiling `continue` clip and the raycaster's `maxDist` clip both fire here; the fade now reaches this value naturally instead of being cut off mid-fade |
+
+**Why this shape, not a simpler one:** without the taper, the curve asymptotes at
+`fogMidtoneLift` (0.25) as d→∞, never reaching 0 — so the pre-existing draw-distance clip cut
+surfaces off at ~29% opacity, producing a hard-edged band at the horizon (12.5% of canvas
+height, measured on `f1-straight`). Raising `maxDepth` cannot fix this; it only moves the
+same-sized step further out while costing fill rate. Smoothstep (not linear) was chosen because
+floor rows sample depth continuously — a linear taper's derivative discontinuities at the two
+knots (d=4, d=8) print as visible Mach-band creases in the gradient; smoothstep is C¹ at both.
+Full derivation, the rejected alternatives (reduce `fogMidtoneLift` instead; taper only the lift
+term; taper only floor/ceiling), and the measurement methodology are in
+`docs/PROMPT-corridor-phase2-plan-review.md`.
+
+Darkness zones (`state.inDarkness`, clipped separately at `darknessMaxDist` = 1.5) never reach
+the taper start (4), so darkness rendering stays bit-identical — this is a **structural
+invariant**, not a tuning decision, and it is guarded by a unit test in `render-math.test.ts`
+that fails if a future `maxDepth`/`fogTaperFrac` edit breaks the `darknessMaxDist ≤
+CORRIDOR_MAX_DIST · fogTaperFrac` relationship.
+
+**Kill switch:** `fogTaperFrac = 1.0` disables the taper everywhere — `opacityForDepth` reduces
+exactly to the untapered exponential+lift formula at every depth. Useful for A/B comparison
+during future tuning without reverting the code.
+
+### 10.2 Torch flicker
+
+A screen-space radial-gradient overlay drawn after `ctx.restore()` — screen-space, so it is
+**not** multiplied by `opacityForDepth()` the way world-space draws are. Peaks at the frame
+*edge* and is transparent at centre. (An earlier version had this inverted — peaking at the
+vanishing point, i.e. the furthest, foggiest pixels — and painted *before* the wall pass so
+walls painted over it; measured pre-fix, the near wall modulated by only 0.09% of its own mean.)
+
+Measured post-fix, time-averaged over two flicker periods: near-wall amplitude 0.037 → 0.761
+(`f1-straight`), 0.057 → 1.065 (`f5-straight`). Frame luminance shift from the inversion itself:
+−0.51% (f1) / −0.50% (f5) — the fix is about *where* the flicker lands, not how strong it reads
+overall.
+
+Tunables (`RENDER_CONFIG` in `renderer.ts`): `torchFlickerPeriod` (2000ms/cycle),
+`torchFlickerAmplitude` (±4%), `torchFlickerBase` (2%, always-present floor),
+`torchFlickerEdgeScale` (0.65), `torchFlickerMidStop`/`torchFlickerMidAlpha` (inner gradient
+stop so the effect reads as near-surface lighting rather than a vignette).
+
+### 10.3 Amber edge glow
+
+A 1px translucent amber stroke (`PALETTE.amber` `#e0a458`) drawn along every wall-strip edge,
+batched into distance buckets so `strokeColorForDepth()` / `glowBlurForDepth()` don't run
+per-pixel. Alpha follows the same `opacityForDepth()` curve as every other world-space pass, so
+a wall fading into the horizon fades its glow at the same rate — no separate seam between wall
+and glow. `glowWashAlphaScale` (0.22) caps the wash pass well below full strength so it accents
+per-floor wall art rather than repainting every wall flat amber.
+
+### 10.4 Feature glyphs and map sprites
+
+Feature glyphs (`drawDepthFeature`, drawn at the bottom of a wall strip) and map sprites
+(`drawMapSprites`) both multiply their alpha by `opacityForDepth()`. Map sprites are the one
+path that was never clipped by `maxDist` in the raycaster — only `transformY <= 0.2` and
+wall-occlusion filter them — so before the Phase 2 taper a glyph at d=12 could draw at ≈0.26
+alpha floating over pure background with no floor beneath it (the "floating-`$`" defect). The
+taper fixes this for free since it applies globally to every draw pass; `renderer.ts`'s sprite
+pass also now skips the draw call entirely once alpha reaches 0
+(`if (alpha <= 0) continue;`) instead of issuing an invisible `drawImage`.
+
+Glyphs dim by up to 6× between d=5 (fully visible) and d=7 (0.31 → 0.049 alpha) — accepted as a
+navigational cost given the automap exists and glyphs are fully readable well inside that range.
+
+### 10.5 Doors — known gap, not yet closed
+
+Doors currently render from a single shared placeholder texture
+(`door_placeholder_256.png`, cached as `doorTexture` in `renderer.ts`) regardless of which
+floor's theme is active — the only tileset slot exempted from per-floor identity (§2.1–§3 above
+scope `wall`/`floorA`/`floorB`/`ceiling` only; doors were never in scope for that pipeline).
+This is tracked as **Phase 3** of the corridor art-direction plan
+(`docs/superpowers/plans/2026-07-30-corridor-art-direction.md`, finding F6) and is **not yet
+implemented** — do not assume doors follow floor palette until that phase ships. Door opacity
+does go through `opacityForDepth()` (`fogDoor` in `renderer.ts`), so the Phase 2 taper applies
+to doors exactly like walls; only the *texture* is still generic.
+
+### 10.6 Verification
+
+`scripts/playtests/corridor-fog-probe.mjs` and `corridor-transition-check.mjs` read the canvas
+pixel buffer directly at fixed **world depths** (not fixed screen rows), so a `maxDepth` or
+camera-FOV change doesn't invalidate a before/after comparison. Re-run one of these against a
+live dev server before shipping any change to the tunables in this section — the
+`render-math.test.ts` suite is the fast CI-safe check on the pure math, but it can't see
+screen-space compositing (torch, vignette, scanlines) applied after `ctx.restore()`, so it is
+not a substitute for an in-browser capture.

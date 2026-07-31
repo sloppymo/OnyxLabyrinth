@@ -1,8 +1,8 @@
 # Corridor art-direction pass — diagnosis
 
 **Date:** 2026-07-30 · **Status:** diagnosis complete · **Phase 0 shipped** `84e9fe7` ·
-**Phase 1 shipped** `4aae61b` · Phases 2–4 not started. Branch `corridor-art-direction`,
-not pushed.
+**Phase 1 shipped** `4aae61b` · **Phase 2 shipped** `367a8ed` · **Phase 4 shipped**
+(docs-only). Phase 3 not started. Branch `corridor-art-direction`, not pushed.
 
 > ## Implementation status
 >
@@ -10,9 +10,9 @@ not pushed.
 > |---|---|---|
 > | 0 — unify `RENDER_CONFIG`/`MATH_CONFIG` | **Done** `84e9fe7` | Setting canonical `fogFalloff` to 0.42 moved f1 mean luma 35.13 → 25.78 and depth-4 floor luma 40.89 → 30.58; reverting returned both exactly. Before the change that edit was a no-op. |
 > | 1 — un-invert the torch | **Done** `4aae61b` | Near-wall flicker amplitude 0.037 → 0.761 (f1), 0.057 → 1.065 (f5); frame luminance −0.51 % / −0.50 %; falloff now monotonic near → annulus → centre. |
-> | 2 — taper fog to the clip boundary | Not started | Curve pre-verified (§5 under A): full-curve smoothstep only. |
+> | 2 — taper fog to the clip boundary | **Done** `367a8ed` | Adversarial review retired the original band-ratio exit criterion (unreachable by construction — see revised exit criteria below); shipped with 3 modifications (kill-switch corner fix, darkness invariant unit test, sprite-pass early-out). Verified against a live dev-server probe: `f1-straight` depth-4 luma unchanged at 40.89 (bit-identical below d=4), sharpest row-edge moved from y=285 to y=147, matching the review's predicted argmax scatter. |
 > | 3 — per-floor door panels | Not started | |
-> | 4 — extend the style guide | Not started | |
+> | 4 — extend the style guide | **Done** (docs-only) | Added `docs/TILESET-ART-STYLE-GUIDE.md` §10 (fog/depth curve, torch, edge glow, feature glyphs, doors) with the Phase 0–2 measured numbers as baseline. Doors documented as a known, unclosed gap pending Phase 3. |
 >
 > **Two corrections made during Phase 1, both to my own measurements:**
 > 1. The `±3 %` frame-luminance gate was initially evaluated on single-frame
