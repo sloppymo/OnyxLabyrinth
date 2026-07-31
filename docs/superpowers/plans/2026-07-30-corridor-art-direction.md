@@ -51,10 +51,19 @@ is a torch flicker that lights the far end of the corridor instead of the near w
 
 | Artifact | Location |
 |---|---|
-| 44 pinned-pose PNGs (5 floors × 8–10 views) | `playtest-screenshots/2026-07-30-corridor-baseline/` |
-| Per-view numeric probes | `.../probes.json` |
-| Falsification experiments | `.../experiments.json` |
+| 44 pinned-pose PNGs — **pre-Phase-1** (the original diagnosis capture) | `playtest-screenshots/2026-07-30-corridor-BEFORE/` |
+| 44 pinned-pose PNGs — **post-Phase-1** (current build) | `playtest-screenshots/2026-07-30-corridor-baseline/` |
+| Per-view numeric probes | `<either dir>/probes.json` |
+| Falsification experiments | `.../experiments.json`, `.../experiment-e3b.json` |
+| Torch probe, time-averaged (BEFORE / scale045 / scale065) | `.../torch-probe-*.json` |
+| Fog-curve probe (Phase 0 falsification) | `.../fog-probe-*.json` |
+| Checklist views 5 & 6 | `.../transition-check.json`, `.../check-*.png` |
 | Pose table (machine-readable) | `scripts/playtests/corridor-poses.json` |
+
+> **Read the directory names carefully.** `-BEFORE/` is the pre-Phase-1 capture that
+> every §3 finding was measured on. `-baseline/` is the *current* build. Any Phase 2
+> before/after must start from `-baseline/`, or it will be measuring Phase 2 against
+> Phase 1 rather than against the original.
 
 Three new scripts, following the existing `scripts/playtests/` shape (they reuse
 `launch`/`jumpTo`/`waitForIdle`/`shot`/`ensureOutDir` from `lib.mjs`, and are currently
@@ -318,9 +327,20 @@ rather than discovered in Phase 2.
 - **Motion.** Head bob, camera tween and flicker were assessed from stills and from a
   40-sample time series at a fixed pose. I did not evaluate how movement *feels* in play.
 - **Non-Chromium browsers.** All captures are headless Chromium.
-- **Combat → dungeon return (checklist view 5) and the map overlay (view 6).** Both are in
-  the six-view list; I captured the four corridor-geometry views plus the special-tile paths,
-  and did not exercise the two transition views. Phase 2 must cover them per-phase.
+- ~~**Combat → dungeon return (view 5) and the map overlay (view 6).**~~ Covered during
+  Phase 1 by `corridor-transition-check.mjs`: corridor mean luma 35.13 baseline → 35.13 after
+  a map toggle → 35.17 after a combat round-trip. Both pass.
+
+**One thing Phase 1 could have broken and did not — checked, not assumed.** The torch lives
+inside `render()`, and `renderCorridorBackdrop` runs the whole corridor render on an
+offscreen 2×-height canvas and crops to the *lower* portion — which under a centre-weighted
+gradient sat in dim falloff and under an edge-weighted one sits near full alpha. That would
+have put a warm wash on a combat backdrop. It does not, because `renderCorridorBackdrop` has
+no live caller: `main.ts:561` bakes the combat backdrop with `renderBattleArena`
+(`arena-renderer.ts`), which never goes through `render()`. `renderCorridorBackdrop` is
+imported only to be re-exported on the `?debug=1` surface (`main.ts:2324`), so the
+`scanlinePattern = null` invalidation inside it is likewise debug-only. Confirmed visually
+against `check-4-combat.png` — the backdrop is the 3/4 arena room, no amber wash.
 
 ---
 
@@ -419,11 +439,16 @@ crushes the outer ring regardless of what the torch does, so a perfect fix could
 it. E3b's bands are the ones to gate on.
 
 **Phase 2 — A: taper the fog to the clip boundary.**
-*Exit:* `f1-treasure` band ratio rises from 0.43 to **≥ 0.85**, and `f1-teleporter` from 0.40
-to ≥ 0.85. Simultaneously, mid-range legibility must hold: mean luma over depth 2–4 rows on
-`f1-straight` and `f2-straight` must not drop more than **10 %**. Row-to-row luma step at the
-old boundary (currently +16.1 / −18.6) must fall below 5. Six-view checklist on ≥3 floors,
-including the two transition views E2/E3 above did not cover.
+*Exit — measured against the post-Phase-1 build in `-baseline/`, not the original numbers:*
+`f1-treasure` band ratio rises from **0.37** to **≥ 0.85**, and `f1-teleporter` from **0.40**
+to ≥ 0.85. (`f1-treasure` was 0.43 pre-Phase-1; removing the centre-weighted torch took the
+amber wash off the void, which is the intended direction, not a regression. The other four
+severe views are unchanged to two decimals, and the median across all 44 is still 1.13.)
+Simultaneously, mid-range legibility must hold: mean luma over depth 2–4 rows on
+`f1-straight` and `f2-straight` must not drop more than **10 %** — the pre-verified
+full-curve smoothstep predicts 0.00 %, so any measured loss means the wrong formulation
+shipped. Row-to-row luma step at the old boundary (currently +16.1 / −18.6, predicted 0.03)
+must fall below 5. Six-view checklist on ≥3 floors via `corridor-transition-check.mjs`.
 
 **Phase 3 — B: per-floor door panels.**
 Generate 5 palette-matched doors through `generate-floor-tilesets.mjs` (deterministic; do not
