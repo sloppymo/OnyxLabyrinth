@@ -1,0 +1,452 @@
+{
+  "1": {
+    "straight": {
+      "x": 5,
+      "y": 1,
+      "facing": 1,
+      "tile": null,
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 2,
+      "enclosed": true
+    },
+    "sidePassage": {
+      "x": 4,
+      "y": 2,
+      "facing": 2,
+      "tile": null,
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": true
+    },
+    "frontWall": {
+      "x": 1,
+      "y": 14,
+      "facing": 0,
+      "tile": null,
+      "depth": 0,
+      "doorDepth": -1,
+      "sideDepth": -1,
+      "enclosed": false
+    },
+    "door": {
+      "x": 6,
+      "y": 5,
+      "facing": 1,
+      "tile": null,
+      "depth": 0,
+      "doorDepth": 0,
+      "sideDepth": -1,
+      "enclosed": false
+    },
+    "treasure": {
+      "x": 11,
+      "y": 9,
+      "facing": 0,
+      "tile": "treasure",
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "npc": {
+      "x": 13,
+      "y": 5,
+      "facing": 2,
+      "tile": "npc",
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "stairs_down": {
+      "x": 4,
+      "y": 1,
+      "facing": 1,
+      "tile": "stairs_down",
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 3,
+      "enclosed": false
+    },
+    "teleporter": {
+      "x": 18,
+      "y": 12,
+      "facing": 3,
+      "tile": "teleporter",
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    }
+  },
+  "2": {
+    "straight": {
+      "x": 9,
+      "y": 2,
+      "facing": 3,
+      "tile": null,
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 3,
+      "enclosed": true
+    },
+    "sidePassage": {
+      "x": 5,
+      "y": 2,
+      "facing": 1,
+      "tile": null,
+      "depth": 7,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": true
+    },
+    "frontWall": {
+      "x": 1,
+      "y": 2,
+      "facing": 3,
+      "tile": null,
+      "depth": 0,
+      "doorDepth": -1,
+      "sideDepth": -1,
+      "enclosed": false
+    },
+    "door": {
+      "x": 6,
+      "y": 4,
+      "facing": 2,
+      "tile": null,
+      "depth": 0,
+      "doorDepth": 0,
+      "sideDepth": -1,
+      "enclosed": true
+    },
+    "darkness": {
+      "x": 7,
+      "y": 2,
+      "facing": 3,
+      "tile": "darkness",
+      "depth": 6,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": true
+    },
+    "treasure": {
+      "x": 12,
+      "y": 3,
+      "facing": 0,
+      "tile": "treasure",
+      "depth": 2,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "npc": {
+      "x": 1,
+      "y": 1,
+      "facing": 1,
+      "tile": "npc",
+      "depth": 3,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "stairs_down": {
+      "x": 11,
+      "y": 12,
+      "facing": 0,
+      "tile": "stairs_down",
+      "depth": 2,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    }
+  },
+  "3": {
+    "straight": {
+      "x": 2,
+      "y": 4,
+      "facing": 2,
+      "tile": null,
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 3,
+      "enclosed": true
+    },
+    "sidePassage": {
+      "x": 2,
+      "y": 12,
+      "facing": 0,
+      "tile": null,
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": true
+    },
+    "frontWall": {
+      "x": 1,
+      "y": 1,
+      "facing": 0,
+      "tile": null,
+      "depth": 0,
+      "doorDepth": -1,
+      "sideDepth": -1,
+      "enclosed": false
+    },
+    "door": {
+      "x": 7,
+      "y": 5,
+      "facing": 2,
+      "tile": null,
+      "depth": 0,
+      "doorDepth": 0,
+      "sideDepth": -1,
+      "enclosed": true
+    },
+    "darkness": {
+      "x": 13,
+      "y": 7,
+      "facing": 2,
+      "tile": "darkness",
+      "depth": 4,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "treasure": {
+      "x": 2,
+      "y": 14,
+      "facing": 0,
+      "tile": "treasure",
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "npc": {
+      "x": 3,
+      "y": 9,
+      "facing": 0,
+      "tile": "npc",
+      "depth": 2,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "stairs_down": {
+      "x": 5,
+      "y": 14,
+      "facing": 1,
+      "tile": "stairs_down",
+      "depth": 5,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "teleporter": {
+      "x": 9,
+      "y": 6,
+      "facing": 2,
+      "tile": "teleporter",
+      "depth": 3,
+      "doorDepth": -1,
+      "sideDepth": 2,
+      "enclosed": false
+    }
+  },
+  "4": {
+    "straight": {
+      "x": 2,
+      "y": 4,
+      "facing": 2,
+      "tile": null,
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 4,
+      "enclosed": true
+    },
+    "sidePassage": {
+      "x": 2,
+      "y": 7,
+      "facing": 2,
+      "tile": null,
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": true
+    },
+    "frontWall": {
+      "x": 1,
+      "y": 1,
+      "facing": 0,
+      "tile": null,
+      "depth": 0,
+      "doorDepth": -1,
+      "sideDepth": -1,
+      "enclosed": false
+    },
+    "door": {
+      "x": 5,
+      "y": 9,
+      "facing": 1,
+      "tile": null,
+      "depth": 0,
+      "doorDepth": 0,
+      "sideDepth": -1,
+      "enclosed": true
+    },
+    "darkness": {
+      "x": 14,
+      "y": 5,
+      "facing": 2,
+      "tile": "darkness",
+      "depth": 4,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "water": {
+      "x": 2,
+      "y": 14,
+      "facing": 0,
+      "tile": "water",
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "treasure": {
+      "x": 12,
+      "y": 1,
+      "facing": 3,
+      "tile": "treasure",
+      "depth": 5,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "npc": {
+      "x": 2,
+      "y": 10,
+      "facing": 0,
+      "tile": "npc",
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "stairs_down": {
+      "x": 15,
+      "y": 15,
+      "facing": 3,
+      "tile": "stairs_down",
+      "depth": 4,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "teleporter": {
+      "x": 16,
+      "y": 9,
+      "facing": 0,
+      "tile": "teleporter",
+      "depth": 4,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    }
+  },
+  "5": {
+    "straight": {
+      "x": 4,
+      "y": 2,
+      "facing": 1,
+      "tile": null,
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 3,
+      "enclosed": true
+    },
+    "sidePassage": {
+      "x": 6,
+      "y": 2,
+      "facing": 1,
+      "tile": null,
+      "depth": 7,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": true
+    },
+    "frontWall": {
+      "x": 1,
+      "y": 1,
+      "facing": 0,
+      "tile": null,
+      "depth": 0,
+      "doorDepth": -1,
+      "sideDepth": -1,
+      "enclosed": false
+    },
+    "door": {
+      "x": 9,
+      "y": 8,
+      "facing": 2,
+      "tile": null,
+      "depth": 0,
+      "doorDepth": 0,
+      "sideDepth": -1,
+      "enclosed": false
+    },
+    "darkness": {
+      "x": 11,
+      "y": 11,
+      "facing": 3,
+      "tile": "darkness",
+      "depth": 5,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "water": {
+      "x": 14,
+      "y": 13,
+      "facing": 3,
+      "tile": "water",
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "treasure": {
+      "x": 15,
+      "y": 10,
+      "facing": 3,
+      "tile": "treasure",
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "npc": {
+      "x": 2,
+      "y": 7,
+      "facing": 0,
+      "tile": "npc",
+      "depth": 6,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    },
+    "teleporter": {
+      "x": 15,
+      "y": 14,
+      "facing": 3,
+      "tile": "teleporter",
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": false
+    }
+  }
+}
