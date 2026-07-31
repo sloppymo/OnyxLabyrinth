@@ -22,6 +22,38 @@ interface MenuItem {
   icon: string;
 }
 
+function renderTitleLockup(): HTMLElement {
+  const lockup = document.createElement("div");
+  lockup.className = "title-lockup";
+
+  const depthMark = document.createElement("div");
+  depthMark.className = "title-depth-mark";
+  depthMark.setAttribute("aria-hidden", "true");
+  for (let i = 0; i < 3; i += 1) {
+    depthMark.appendChild(document.createElement("span"));
+  }
+
+  const wordmark = document.createElement("h1");
+  wordmark.className = "title-wordmark";
+  wordmark.setAttribute("aria-label", "Onyx Labyrinth");
+
+  const onyx = document.createElement("span");
+  onyx.className = "title-wordmark-onyx";
+  onyx.textContent = "ONYX";
+
+  const labyrinth = document.createElement("span");
+  labyrinth.className = "title-wordmark-labyrinth";
+  labyrinth.textContent = "LABYRINTH";
+
+  const tagline = document.createElement("div");
+  tagline.className = "title-tagline";
+  tagline.textContent = "DESCEND · ENDURE · RETURN";
+
+  wordmark.append(onyx, labyrinth);
+  lockup.append(depthMark, wordmark, tagline);
+  return lockup;
+}
+
 export interface TitleControllerOptions {
   panel: HTMLElement;
   onNewGame: () => void;
@@ -123,7 +155,7 @@ export class TitleController {
     const footer = "D-pad navigate · A select";
 
     const win = new FF6Window({
-      title: "ONYX LABYRINTH",
+      title: "THE DESCENT",
       items: this.items.map((item) => ({
         label: item.label,
         metadata: item.key,
@@ -141,6 +173,6 @@ export class TitleController {
       },
     });
     this.panel.innerHTML = "";
-    this.panel.appendChild(win.render());
+    this.panel.append(renderTitleLockup(), win.render());
   }
 }

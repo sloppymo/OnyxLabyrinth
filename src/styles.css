@@ -285,6 +285,99 @@ canvas#map-canvas {
   --field-bottom: #050403;
 }
 
+/* The title needs a brand read before it becomes another menu. The nested
+   rectangles echo the corridor depth language without borrowing renderer
+   geometry or introducing a raster splash screen. */
+.title-lockup {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  color: var(--warm-white);
+  text-align: center;
+  text-shadow: 0 3px 0 #050403;
+}
+
+.title-depth-mark {
+  position: relative;
+  width: 66px;
+  height: 28px;
+  margin-bottom: 2px;
+}
+
+.title-depth-mark span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  box-sizing: border-box;
+  border: 2px solid rgba(224, 164, 88, 0.42);
+  transform: translate(-50%, -50%);
+}
+
+.title-depth-mark span:nth-child(1) {
+  width: 66px;
+  height: 28px;
+  border-bottom-color: transparent;
+}
+
+.title-depth-mark span:nth-child(2) {
+  width: 40px;
+  height: 20px;
+  border-bottom-color: transparent;
+}
+
+.title-depth-mark span:nth-child(3) {
+  width: 16px;
+  height: 12px;
+  border-color: var(--amber);
+}
+
+.title-wordmark {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 16px;
+  margin: 0;
+  font: inherit;
+  font-size: 52px;
+  line-height: 0.95;
+  letter-spacing: 0.07em;
+}
+
+.title-wordmark-onyx {
+  color: var(--amber);
+}
+
+.title-wordmark-labyrinth {
+  color: var(--warm-white);
+}
+
+.title-tagline {
+  padding-top: 7px;
+  border-top: 1px solid rgba(224, 164, 88, 0.42);
+  color: var(--text-dim);
+  font-size: 16px;
+  letter-spacing: 0.18em;
+}
+
+/* Camp: a low ember at the edge of the same oppressive field, warmer than
+   the dungeon but deliberately dimmer than Edgehollow's safe hearth. */
+#combat-panel.bg-camp {
+  --field-glow-1: rgba(196, 94, 48, 0.23);
+  --field-glow-2: rgba(44, 66, 76, 0.15);
+  --field-glow-3: rgba(30, 43, 50, 0.18);
+  --field-top: #211713;
+  --field-mid: #120e0c;
+  --field-bottom: #070809;
+  background-image:
+    radial-gradient(ellipse 66% 34% at 50% 100%, var(--field-glow-1), transparent 64%),
+    radial-gradient(ellipse 70% 42% at 0% 0%, var(--field-glow-2), transparent 68%),
+    radial-gradient(ellipse 70% 42% at 100% 0%, var(--field-glow-3), transparent 68%),
+    linear-gradient(180deg, var(--field-top) 0%, var(--field-mid) 55%, var(--field-bottom) 100%);
+}
+
 /* Town (Edgehollow): warmer, brighter hearth-glow — a place, not a void. */
 #combat-panel.bg-town {
   --field-glow-1: rgba(232, 178, 100, 0.3);
@@ -3355,6 +3448,42 @@ canvas#map-canvas {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: clip;
+  }
+
+  .title-lockup {
+    gap: 3px;
+  }
+
+  .title-depth-mark {
+    width: 44px;
+    height: 20px;
+    margin-bottom: 0;
+  }
+
+  .title-depth-mark span:nth-child(1) {
+    width: 44px;
+    height: 20px;
+  }
+
+  .title-depth-mark span:nth-child(2) {
+    width: 28px;
+    height: 14px;
+  }
+
+  .title-depth-mark span:nth-child(3) {
+    width: 12px;
+    height: 8px;
+  }
+
+  .title-wordmark {
+    gap: 8px;
+    font-size: 30px;
+  }
+
+  .title-tagline {
+    padding-top: 3px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
   }
 
   .ff6-window.standalone .ff6-arena-meta {
