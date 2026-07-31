@@ -1787,32 +1787,57 @@ canvas#map-canvas {
 }
 
 .party-create {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
+  padding: 10px 12px 8px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #3048b0 0%, #1a2c80 55%, #101c58 100%);
+  border: 3px solid #e8e8f0;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 0 1px #5068c8,
+    inset 0 0 0 2px #202c70,
+    0 3px 8px rgba(0, 0, 0, 0.6);
 }
 
 .party-create-main {
   display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 16px;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .party-create-fields {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
+  padding: 4px;
+  background: rgba(8, 12, 36, 0.46);
+  border: 1px solid rgba(184, 196, 240, 0.25);
+  border-radius: 3px;
 }
 
 .party-sprite-stage {
-  flex-shrink: 0;
+  flex: 0 0 36%;
+  min-width: 190px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 10px 12px 8px;
-  background: rgba(8, 12, 36, 0.72);
-  border: 1px solid rgba(80, 104, 200, 0.4);
-  border-radius: 2px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(224, 164, 88, 0.12), transparent 42%),
+    rgba(8, 12, 36, 0.72);
+  border: 1px solid rgba(184, 196, 240, 0.32);
+  border-radius: 3px;
 }
 
 .party-sprite-stage.is-focus {
@@ -1833,6 +1858,21 @@ canvas#map-canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   background: rgba(0, 0, 0, 0.35);
+}
+
+.party-sprite-stage .party-sprite-preview {
+  width: min(180px, 22vw, 24vh);
+  height: min(180px, 22vw, 24vh);
+  background: transparent;
+}
+
+.party-sprite-stage .party-sprite-preview img {
+  height: 100%;
+}
+
+.party-sprite-stage .party-sprite-zoom {
+  transform: scale(2.35);
+  transform-origin: center 42%;
 }
 
 /* Mirror the tile viewport so idle-frame translateX stays in natural strip order. */
@@ -1890,7 +1930,9 @@ canvas#map-canvas {
 .party-create-header {
   font-size: var(--fs-header);
   color: var(--amber);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(232, 232, 240, 0.35);
   letter-spacing: 0.05em;
   text-align: center;
 }
@@ -1960,10 +2002,11 @@ canvas#map-canvas {
 }
 
 .party-help {
-  margin-top: 8px;
-  padding: 0 10px;
+  margin-top: 5px;
+  padding: 3px 10px 0;
   font-size: var(--fs-small);
-  color: #88775a;
+  color: #b8c4f0;
+  border-top: 1px solid rgba(232, 232, 240, 0.25);
   letter-spacing: 0.02em;
   text-align: center;
 }
@@ -3317,6 +3360,51 @@ canvas#map-canvas {
   .ff6-window.standalone .ff6-arena-meta {
     font-size: 18px;
     padding-bottom: 3px;
+  }
+
+  .party-create {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .party-create-main {
+    flex: 0 0 320px;
+    gap: 10px;
+  }
+
+  .party-sprite-stage {
+    flex: 0 0 30%;
+    min-width: 0;
+    padding: 6px;
+  }
+
+  .party-sprite-stage .party-sprite-preview {
+    width: 74px;
+    height: 74px;
+  }
+
+  .party-field {
+    gap: 5px;
+    padding: 4px 6px;
+  }
+
+  .party-field.selected {
+    padding-left: 3px;
+  }
+
+  .party-field .tm-marker {
+    width: 12px;
+  }
+
+  .party-field .pf-label {
+    min-width: 58px;
+  }
+
+  .party-field .pf-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
