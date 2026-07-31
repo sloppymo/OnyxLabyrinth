@@ -10,6 +10,7 @@ import {
   ENCOUNTER_TABLES,
   ENEMIES_BY_ID,
   type EncounterEntry,
+  type Row,
 } from "../data/enemies";
 import type { EncounterZoneDef, FloorDef } from "../data/floors";
 
@@ -92,10 +93,77 @@ function entryHasBoss(entry: EncounterEntry): boolean {
 }
 
 /**
+ * Distinct, non-boss enemy ids that fill `row` anywhere in floor's own
+ * ENCOUNTER_TABLES (this already includes lower-floor enemies remixed into
+ * higher-floor packs). This is the pool {@link reshuffleSpawns} draws from —
+ * it never reaches outside the floor's curated roster.
+ */
+function rowPoolForFloor(floor: number, row: Row): string[] {
+  const table = ENCOUNTER_TABLES[floor];
+  if (!table) return [];
+  const ids = new Set<string>();
+  for (const entry of table) {
+    for (const spawn of entry.spawns) {
+      if (spawn.row === row && ENEMIES_BY_ID[spawn.enemyId]?.isBoss !== true) {
+        ids.add(spawn.enemyId);
+      }
+    }
+  }
+  return [...ids];
+}
+
+function shuffled<T>(items: T[], rng: () => number): T[] {
+  const arr = items.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * Re-fills a chosen encounter's spawn slots from the floor's full per-row
+ * roster instead of the fixed pair/trio baked into the table entry — the
+ * table still decides pack *shape* (how many enemies, front/back split,
+ * rarity of big packs), but not which specific sprites appear. Draws without
+ * replacement per row until the pool is exhausted, then reshuffles, so a
+ * single fight rarely repeats a sprite unless the row's pool is smaller than
+ * its slot count. Keeps Arena from looping the same handful of fixed
+ * formations forever — the dungeon's own `rollEncounter` is untouched and
+ * still returns the exact curated formation.
+ */
+function reshuffleSpawns(
+  floor: number,
+  entry: EncounterEntry,
+  rng: () => number
+): EncounterEntry {
+  const pools: Record<Row, string[]> = {
+    front: rowPoolForFloor(floor, "front"),
+    back: rowPoolForFloor(floor, "back"),
+  };
+  const draws: Record<Row, string[]> = { front: [], back: [] };
+
+  const spawns = entry.spawns.map((spawn) => {
+    const pool = pools[spawn.row];
+    if (pool.length === 0) return spawn;
+    if (draws[spawn.row].length === 0) {
+      draws[spawn.row] = shuffled(pool, rng);
+    }
+    const enemyId = draws[spawn.row].pop()!;
+    return { ...spawn, enemyId };
+  });
+
+  return { ...entry, spawns };
+}
+
+/**
  * Weighted Arena encounter pick.
  * - Drops boss formations (The Dead Boy etc.) — dungeon-only climax.
  * - Higher waves bias weight toward multi-enemy packs so L9+ Arena stays spicy
  *   even when locked to floor 3.
+ * - Reshuffles the winning entry's spawns across the floor's full roster
+ *   (see {@link reshuffleSpawns}) so repeated Arena waves show a wider mix of
+ *   sprites than the handful of fixed formations in ENCOUNTER_TABLES alone.
  */
 export function rollArenaEncounter(
   floor: number,
@@ -122,9 +190,10 @@ export function rollArenaEncounter(
   let roll = rng() * total;
   for (const { entry, w } of weighted) {
     roll -= w;
-    if (roll <= 0) return entry;
+    if (roll <= 0) return reshuffleSpawns(floor, entry, rng);
   }
-  return weighted[weighted.length - 1]?.entry ?? null;
+  const fallback = weighted[weighted.length - 1]?.entry;
+  return fallback ? reshuffleSpawns(floor, fallback, rng) : null;
 }
 
 /**

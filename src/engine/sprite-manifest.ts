@@ -206,6 +206,18 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     // Measured idle art top 0.29 (tall golem); pack default 0.38 sinks the cursor.
     0.29
   ),
+  "ice-golem": withTop(
+    withFoot(
+      {
+        idle: strip("ice-golem", "idle", 6, 6, true),
+        attack: strip("ice-golem", "attack", 9, 10),
+        hurt: strip("ice-golem", "hurt", 4, 8),
+        death: strip("ice-golem", "death", 6, 6),
+      },
+      0.75
+    ),
+    0.24
+  ),
   "lava-slime": withFoot(
     {
       idle: strip("lava-slime", "idle", 6, 6, true),
@@ -221,6 +233,18 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     hurt: strip("hellhound", "hurt", 4, 8),
     death: strip("hellhound", "death", 4, 6),
   },
+  "displacer-beast": withTop(
+    withFoot(
+      {
+        idle: strip("displacer-beast", "idle", 6, 8, true),
+        attack: strip("displacer-beast", "attack", 8, 10),
+        hurt: strip("displacer-beast", "hurt", 4, 8),
+        death: strip("displacer-beast", "death", 4, 6),
+      },
+      0.68
+    ),
+    0.32
+  ),
   hellbat: withTop(
     withFoot(
       {
@@ -244,6 +268,20 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     },
     // Measured idle art top 0.27 (tall knight); pack default 0.38 sinks the cursor.
     0.27
+  ),
+  "viper-man": withTop(
+    withFoot(
+      {
+        idle: strip("viper-man", "idle", 6, 6, true),
+        attack: strip("viper-man", "attack", 16, 12),
+        hurt: strip("viper-man", "hurt", 4, 8),
+        death: strip("viper-man", "death", 4, 6),
+      },
+      // Measured idle art bottom 0.75.
+      0.75
+    ),
+    // Measured idle art top 0.25.
+    0.25
   ),
   // Floor 4 elite (campaign progression sprint) — reuses Black Knight's strip.
   "iron-chorister": withTop(
@@ -394,6 +432,12 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
     attack: strip("skeleton", "attack", 6, 10),
     hurt: strip("skeleton", "hurt", 4, 8),
     death: strip("skeleton", "death", 4, 6),
+  },
+  "red-skeleton": {
+    idle: strip("red-skeleton", "idle", 6, 6, true),
+    attack: strip("red-skeleton", "attack", 6, 10),
+    hurt: strip("red-skeleton", "hurt", 4, 8),
+    death: strip("red-skeleton", "death", 4, 6),
   },
   "armored-skeleton": {
     idle: strip("armored-skeleton", "idle", 6, 6, true),

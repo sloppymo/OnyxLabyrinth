@@ -88,6 +88,42 @@ describe("rollArenaEncounter", () => {
       expect(rollArenaEncounter(floor, 1, () => 0)).not.toBeNull();
     }
   });
+
+  it("mixes sprites beyond any single formation's fixed spawns", () => {
+    // Floor 3's table has ~10 formations, none with more than 4 distinct
+    // front-row ids. Reshuffling across the floor's full roster should
+    // surface well more than that over enough rolls.
+    const seenFront = new Set<string>();
+    for (let i = 0; i < 500; i++) {
+      const entry = rollArenaEncounter(3, 1, Math.random);
+      for (const spawn of entry!.spawns) {
+        if (spawn.row === "front") seenFront.add(spawn.enemyId);
+      }
+    }
+    expect(seenFront.size).toBeGreaterThanOrEqual(8);
+  });
+
+  it("never substitutes in a boss even after reshuffling", () => {
+    for (let i = 0; i < 500; i++) {
+      const entry = rollArenaEncounter(5, 1, Math.random);
+      for (const spawn of entry!.spawns) {
+        expect(ENEMIES_BY_ID[spawn.enemyId]?.isBoss).not.toBe(true);
+      }
+    }
+  });
+
+  it("keeps the winning formation's pack shape (spawn count and row split)", () => {
+    const table = ENCOUNTER_TABLES[4]!;
+    for (let i = 0; i < 50; i++) {
+      const entry = rollArenaEncounter(4, 1, Math.random)!;
+      const shapeMatch = table.some(
+        (original) =>
+          original.spawns.length === entry.spawns.length &&
+          original.spawns.every((s, idx) => s.row === entry.spawns[idx]!.row)
+      );
+      expect(shapeMatch).toBe(true);
+    }
+  });
 });
 
 describe("adjustArenaEncounterForSmallParty", () => {

@@ -245,6 +245,31 @@ const ICE_SHARDS: EnemyAbilityDef = {
   element: "cold",
 };
 
+const FLASH_FREEZE: EnemyAbilityDef = {
+  id: "flash-freeze",
+  name: "Flash Freeze",
+  description: "Encases a party member in ice, freezing them in place.",
+  target: "singleParty",
+  effect: { kind: "status", status: "paralysis", chance: 0.5, duration: 2 },
+  condition: { kind: "partyMissingStatus", status: "paralysis" },
+  weight: 5,
+  cooldown: 2,
+  element: "cold",
+};
+
+const GLACIAL_SLAM: EnemyAbilityDef = {
+  id: "glacial-slam",
+  name: "Glacial Slam",
+  description: "Slams the ground hard enough to shatter into a freezing shockwave over the entire party.",
+  target: "allParty",
+  effect: { kind: "damage", power: 8, element: "cold" },
+  condition: { kind: "turnInterval", every: 3 },
+  weight: 6,
+  cooldown: 2,
+  element: "cold",
+  windUp: true,
+};
+
 const LIGHTNING_STRIKE: EnemyAbilityDef = {
   id: "lightning-strike",
   name: "Lightning Strike",
@@ -365,6 +390,30 @@ const RENDING_CLAW: EnemyAbilityDef = {
   condition: { kind: "partyMissingStatus", status: "poison" },
   weight: 3,
   cooldown: 1,
+  element: "physical",
+};
+
+const BLINK_STRIKE: EnemyAbilityDef = {
+  id: "blink-strike",
+  name: "Blink Strike",
+  description: "Vanishes and reappears behind a party member for a vicious double slash.",
+  target: "singleParty",
+  effect: { kind: "multiHit", hits: 2, powerPerHit: 5, element: "physical" },
+  condition: { kind: "turnInterval", every: 3 },
+  weight: 4,
+  cooldown: 2,
+  element: "physical",
+};
+
+const VANISH: EnemyAbilityDef = {
+  id: "vanish",
+  name: "Vanish",
+  description: "Blinks out of phase when hurt, becoming much harder to hit.",
+  target: "self",
+  effect: { kind: "buff", stat: "ac", amount: 5, duration: 2 },
+  condition: { kind: "hpBelow", percent: 60 },
+  weight: 8,
+  cooldown: 3,
   element: "physical",
 };
 
@@ -547,6 +596,32 @@ const CHARGE: EnemyAbilityDef = {
   element: "physical",
 };
 
+// --- Serpent / venom abilities ------------------------------------------------
+
+const VENOMOUS_STRIKE: EnemyAbilityDef = {
+  id: "venomous-strike",
+  name: "Venomous Strike",
+  description: "A precise, poisoned thrust that leaves a party member reeling.",
+  target: "singleParty",
+  effect: { kind: "status", status: "poison", chance: 0.75, duration: 3 },
+  condition: { kind: "partyMissingStatus", status: "poison" },
+  weight: 5,
+  cooldown: 1,
+  element: "poison",
+};
+
+const COILED_FURY: EnemyAbilityDef = {
+  id: "coiled-fury",
+  name: "Coiled Fury",
+  description: "Coils tight and strikes back with lethal, venom-quickened aggression.",
+  target: "self",
+  effect: { kind: "buff", stat: "attack", amount: 4, duration: 3 },
+  condition: { kind: "hpBelow", percent: 50 },
+  weight: 8,
+  cooldown: 3,
+  element: "poison",
+};
+
 // --- Wraith / spirit abilities ----------------------------------------------
 
 const PHASE_SHIFT: EnemyAbilityDef = {
@@ -604,6 +679,8 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   REPAIR,
   FIRE_BREATH,
   ICE_SHARDS,
+  FLASH_FREEZE,
+  GLACIAL_SLAM,
   LIGHTNING_STRIKE,
   DARK_PULSE,
   MASS_HEAL,
@@ -614,6 +691,8 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   HUNTING_POUNCE,
   HOWL,
   RENDING_CLAW,
+  BLINK_STRIKE,
+  VANISH,
   HELLFIRE,
   SOUL_DRAIN,
   SUMMON_IMP,
@@ -628,6 +707,8 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   SHIELD_BASH,
   PHALANX_GUARD,
   CHARGE,
+  VENOMOUS_STRIKE,
+  COILED_FURY,
   PHASE_SHIFT,
   LIFE_TAP,
   GHOSTLY_WAIL,

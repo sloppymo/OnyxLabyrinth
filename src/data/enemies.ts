@@ -115,6 +115,22 @@ export const SKELETON: EnemyDef = {
   isBoss: false,
 };
 
+export const RED_SKELETON: EnemyDef = {
+  id: "red-skeleton",
+  name: "Red Skeleton",
+  floors: [1, 2],
+  rowPreference: "front",
+  hp: 10,
+  attack: 3,
+  ac: 2,
+  agi: 10,
+  xp: 8,
+  gold: 200,
+  special: [{ kind: "undead" }],
+  abilityIds: ["bone-shard", "rattle"],
+  isBoss: false,
+};
+
 // Floor 2: The Cursed Library — armored dead, orc scavengers, cursed scribes.
 export const ARMORED_SKELETON: EnemyDef = {
   id: "armored-skeleton",
@@ -220,6 +236,22 @@ export const LAB_ASSISTANT: EnemyDef = {
   gold: 22,
   special: [{ kind: "healer", spellName: "Cure Wounds" }],
   abilityIds: ["mass-heal-ability", "ward"],
+  isBoss: false,
+};
+
+export const DISPLACER_BEAST: EnemyDef = {
+  id: "displacer-beast",
+  name: "Displacer Beast",
+  floors: [2],
+  rowPreference: "any",
+  hp: 32,
+  attack: 11,
+  ac: 4,
+  agi: 17,
+  xp: 28,
+  gold: 24,
+  special: [{ kind: "evasive" }],
+  abilityIds: ["blink-strike", "vanish", "rending-claw"],
   isBoss: false,
 };
 
@@ -421,6 +453,26 @@ export const FLAME_GOLEM: EnemyDef = {
   isBoss: false,
 };
 
+export const ICE_GOLEM: EnemyDef = {
+  id: "ice-golem",
+  name: "Ice Golem",
+  floors: [5],
+  rowPreference: "front",
+  hp: 100,
+  attack: 24,
+  ac: 19,
+  agi: 4,
+  xp: 86,
+  gold: 66,
+  special: [
+    { kind: "highDefense" },
+    { kind: "resistElement", element: "cold" },
+    { kind: "weakElement", element: "fire" },
+  ],
+  abilityIds: ["glacial-slam", "flash-freeze", "repair"],
+  isBoss: false,
+};
+
 export const LAVA_SLIME: EnemyDef = {
   id: "lava-slime",
   name: "Lava Slime",
@@ -499,6 +551,28 @@ export const BLACK_KNIGHT: EnemyDef = {
     { kind: "resistPhysical", percent: 25 },
   ],
   abilityIds: ["shield-bash", "charge", "phalanx-guard"],
+  isBoss: false,
+};
+
+// Rare palette-swap variant of Black Knight — same rig/kit, high-gold "shiny"
+// encounter (same treatment as Red Skeleton vs. Skeleton).
+export const VIPER_MAN: EnemyDef = {
+  id: "viper-man",
+  name: "Viper Man",
+  floors: [3, 4, 5],
+  rowPreference: "front",
+  hp: 61,
+  attack: 16,
+  ac: 16,
+  agi: 3,
+  xp: 51,
+  gold: 220,
+  special: [
+    { kind: "highDefense" },
+    { kind: "resistPhysical", percent: 25 },
+    { kind: "poisonOnHit" },
+  ],
+  abilityIds: ["venomous-strike", "charge", "coiled-fury"],
   isBoss: false,
 };
 
@@ -1039,12 +1113,14 @@ export const ALL_ENEMIES: EnemyDef[] = [
   TRAINING_DUMMY,
   SLIME,
   SKELETON,
+  RED_SKELETON,
   ARMORED_SKELETON,
   SKELETON_ARCHER,
   ORC,
   FAILED_EXPERIMENT,
   ACID_PUDDLE,
   LAB_ASSISTANT,
+  DISPLACER_BEAST,
   ELITE_ORC,
   LESSER_CONSTRUCT,
   WEREWOLF,
@@ -1055,10 +1131,12 @@ export const ALL_ENEMIES: EnemyDef[] = [
   EYEBALL_MONSTER,
   GHOSTFIRE,
   FLAME_GOLEM,
+  ICE_GOLEM,
   LAVA_SLIME,
   HELLHOUND,
   HELLBAT,
   BLACK_KNIGHT,
+  VIPER_MAN,
   MINOTAUR,
   WARLOCK,
   DEMON,
@@ -1149,6 +1227,14 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "skeleton", row: "front" },
       ],
     },
+    {
+      weight: 1,
+      spawns: [
+        { enemyId: "red-skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
   ],
   // Floor 2: The Cursed Library — typical 4–5, cap 5.
   2: [
@@ -1217,9 +1303,26 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      weight: 2,
+      spawns: [
+        { enemyId: "displacer-beast", row: "front" },
+        { enemyId: "failed-experiment", row: "front" },
+        { enemyId: "eyeball-monster", row: "back" },
+      ],
+    },
+    {
       weight: 1,
       spawns: [
         { enemyId: "failed-experiment", row: "front" },
+        { enemyId: "lab-assistant", row: "back" },
+      ],
+    },
+    {
+      weight: 1,
+      spawns: [
+        { enemyId: "red-skeleton", row: "front" },
+        { enemyId: "armored-skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
         { enemyId: "lab-assistant", row: "back" },
       ],
     },
@@ -1327,6 +1430,13 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "elite-orc", row: "back" },
       ],
     },
+    {
+      weight: 1,
+      spawns: [
+        { enemyId: "viper-man", row: "front" },
+        { enemyId: "rune-knight", row: "back" },
+      ],
+    },
     // The climax formation — The Dead Boy flanked by its forged honor guard.
     {
       weight: 1,
@@ -1421,6 +1531,13 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "null-acolyte", row: "back" },
       ],
     },
+    {
+      weight: 1,
+      spawns: [
+        { enemyId: "viper-man", row: "front" },
+        { enemyId: "demon-mage", row: "back" },
+      ],
+    },
     // The climax formation — The Lonely Girl, a genuine escalation over
     // floor 3's Dead Boy, not the same boss reused.
     {
@@ -1512,11 +1629,27 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      weight: 2,
+      spawns: [
+        { enemyId: "ice-golem", row: "front" },
+        { enemyId: "drowned-sentinel", row: "front" },
+        { enemyId: "cistern-wraith", row: "back" },
+        { enemyId: "undertow-caller", row: "back" },
+      ],
+    },
+    {
       weight: 1,
       spawns: [
         { enemyId: "minotaur", row: "front" },
         { enemyId: "demon-brawler", row: "front" },
         { enemyId: "undertow-caller", row: "back" },
+      ],
+    },
+    {
+      weight: 1,
+      spawns: [
+        { enemyId: "viper-man", row: "front" },
+        { enemyId: "succubus", row: "back" },
       ],
     },
     // The climax formation — The Crying Man, a true four-phase campaign

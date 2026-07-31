@@ -1,6 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { ENEMIES_BY_ID, enemiesForFloor, ENCOUNTER_TABLES, BIG_TITTY_OGRE, ALL_ENEMIES } from "./enemies";
+import {
+  ALL_ENEMIES,
+  BIG_TITTY_OGRE,
+  ENCOUNTER_TABLES,
+  ENEMIES_BY_ID,
+  RED_SKELETON,
+  enemiesForFloor,
+} from "./enemies";
 import { getFloors } from "../game/floor-registry";
+import { enemyAbilityById } from "./enemy-abilities";
 
 describe("enemy data", () => {
   it("registers big-titty-ogre", () => {
@@ -24,6 +32,15 @@ describe("enemy data", () => {
       entry.spawns.map((spawn) => spawn.enemyId)
     );
     expect(refs).toContain("big-titty-ogre");
+  });
+
+  it("registers the red skeleton as a high-gold early-floor enemy", () => {
+    expect(RED_SKELETON.floors).toEqual([1, 2]);
+    expect(RED_SKELETON.gold).toBe(200);
+    expect(RED_SKELETON.special).toContainEqual({ kind: "undead" });
+    expect(RED_SKELETON.gold).toBeGreaterThanOrEqual(
+      ENEMIES_BY_ID["skeleton"].gold * 10
+    );
   });
 
   it("puts an escalating boss variant on each deep floor's table (not the same boss reused)", () => {
@@ -124,6 +141,7 @@ describe("encounter table integrity", () => {
     for (const id of [
       "slime",
       "skeleton",
+      "red-skeleton",
       "armored-skeleton",
       "skeleton-archer",
       "orc",
@@ -134,9 +152,32 @@ describe("encounter table integrity", () => {
     }
   });
 
+  it("keeps the red skeleton rare on floors 1 and 2 only", () => {
+    for (const floor of [1, 2]) {
+      const table = ENCOUNTER_TABLES[floor];
+      const redEntries = table.filter((entry) =>
+        entry.spawns.some((spawn) => spawn.enemyId === "red-skeleton")
+      );
+      const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
+      const redWeight = redEntries.reduce((sum, entry) => sum + entry.weight, 0);
+
+      expect(redEntries).toHaveLength(1);
+      expect(redWeight / totalWeight).toBeLessThan(0.1);
+    }
+
+    for (const floor of [3, 4, 5]) {
+      expect(
+        ENCOUNTER_TABLES[floor].some((entry) =>
+          entry.spawns.some((spawn) => spawn.enemyId === "red-skeleton")
+        )
+      ).toBe(false);
+    }
+  });
+
   it("skeleton and ghost undead family carry the undead special", () => {
     for (const id of [
       "skeleton",
+      "red-skeleton",
       "armored-skeleton",
       "skeleton-archer",
       "ghostfire",
@@ -202,6 +243,42 @@ describe("encounter table integrity", () => {
       (e) => e.spawns.length === 1 && e.spawns[0].enemyId === "acid-puddle"
     );
     expect(soloAcid).toBe(false);
+  });
+
+  it("every enemy's abilityIds resolve to a defined ability", () => {
+    for (const enemy of ALL_ENEMIES) {
+      for (const id of enemy.abilityIds ?? []) {
+        expect(enemyAbilityById(id), `${enemy.id}: unknown ability "${id}"`).toBeDefined();
+      }
+    }
+  });
+
+  it("gives the new-sprite monsters their own signature kits, not borrowed ones", () => {
+    // Displacer Beast: blink/vanish, not a copy of Werewolf's howl/pounce.
+    expect(ENEMIES_BY_ID["displacer-beast"].abilityIds).toEqual([
+      "blink-strike",
+      "vanish",
+      "rending-claw",
+    ]);
+    // Ice Golem: cold control/nuke, not Flame Golem's fire kit relabeled.
+    expect(ENEMIES_BY_ID["ice-golem"].abilityIds).toEqual([
+      "glacial-slam",
+      "flash-freeze",
+      "repair",
+    ]);
+    // Viper Man: venom kit + poisonOnHit, distinct from Black Knight's
+    // shield-bash/phalanx-guard despite sharing its base stat block.
+    expect(ENEMIES_BY_ID["viper-man"].abilityIds).toEqual([
+      "venomous-strike",
+      "charge",
+      "coiled-fury",
+    ]);
+    expect(ENEMIES_BY_ID["viper-man"].abilityIds).not.toEqual(
+      ENEMIES_BY_ID["black-knight"].abilityIds
+    );
+    expect(
+      ENEMIES_BY_ID["viper-man"].special.some((s) => s.kind === "poisonOnHit")
+    ).toBe(true);
   });
 
   it("registers Pack 02 demon / forge enemies", () => {
