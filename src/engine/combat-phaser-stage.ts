@@ -49,6 +49,7 @@ import { getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache
 import { getPartySpriteStrip, loadPartySpriteBundle, PARTY_SPRITE_DIRS } from "./party-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
 import {
+  ART_FOOT_FROM_TOP_FALLBACK,
   artFootFromTopFor,
   artTopFromTopFor,
   visualHeadY,
@@ -1076,17 +1077,108 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     kind: ActorKind,
     color: number
   ): ActorSpriteEntry {
+    const textureKey = `onyx:fallback:${kind}:${color.toString(16).padStart(6, "0")}`;
     let entry = this.actors.get(key);
-    if (entry && entry.isFallback) return entry;
+    if (
+      entry &&
+      entry.isFallback &&
+      ((entry.sprite instanceof Phaser.GameObjects.Sprite &&
+        entry.sprite.texture.key === textureKey) ||
+        entry.sprite instanceof Phaser.GameObjects.Ellipse)
+    ) {
+      return entry;
+    }
     if (entry) {
       entry.sprite.destroy();
       entry.shadow.destroy();
     }
+
+    if (!this.textures.exists(textureKey)) {
+      const texture = this.textures.createCanvas(textureKey, 100, 100);
+      if (texture) {
+        const ctx = texture.getContext();
+        const fill = `#${color.toString(16).padStart(6, "0")}`;
+        ctx.clearRect(0, 0, 100, 100);
+        ctx.imageSmoothingEnabled = false;
+
+        // Chunky 16-bit silhouettes, deliberately compact inside the 100×100
+        // actor square. The old Phaser fallback filled 55×70% with one opaque
+        // ellipse, which became a tan screen-covering slab in dense packs.
+        // These shapes keep a dark outline, sparse luminous detail, and feet at
+        // y=92 to honor ART_FOOT_FROM_TOP_FALLBACK's ground-plane contract.
+        ctx.fillStyle = "#14110d";
+        if (kind === "party") {
+          ctx.fillRect(35, 20, 30, 27);
+          ctx.fillRect(28, 43, 44, 34);
+          ctx.fillRect(30, 73, 17, 20);
+          ctx.fillRect(53, 73, 17, 20);
+          ctx.fillStyle = fill;
+          ctx.fillRect(39, 24, 22, 19);
+          ctx.fillRect(33, 47, 34, 27);
+          ctx.fillRect(34, 74, 11, 15);
+          ctx.fillRect(55, 74, 11, 15);
+        } else if (kind === "ally") {
+          ctx.fillRect(39, 24, 22, 68);
+          ctx.fillRect(28, 35, 44, 42);
+          ctx.fillRect(34, 29, 32, 54);
+          ctx.fillStyle = fill;
+          ctx.fillRect(42, 29, 16, 58);
+          ctx.fillRect(33, 40, 34, 32);
+          ctx.fillStyle = "#f5f0e6";
+          ctx.fillRect(47, 48, 6, 6);
+        } else {
+          ctx.fillRect(30, 24, 40, 16);
+          ctx.fillRect(23, 35, 60, 43);
+          ctx.fillRect(29, 73, 19, 20);
+          ctx.fillRect(58, 73, 19, 20);
+          ctx.fillStyle = fill;
+          ctx.fillRect(34, 29, 32, 12);
+          ctx.fillRect(28, 40, 50, 34);
+          ctx.fillRect(33, 73, 13, 16);
+          ctx.fillRect(60, 73, 13, 16);
+          // Eyes face the party, matching the canvas rollback convention.
+          ctx.fillStyle = "#14110d";
+          ctx.fillRect(55, 45, 7, 7);
+          ctx.fillRect(68, 45, 7, 7);
+          ctx.fillStyle = "#e0a458";
+          ctx.fillRect(57, 47, 3, 3);
+          ctx.fillRect(70, 47, 3, 3);
+        }
+        texture.refresh();
+      }
+    }
+
     const shadow = this.add.ellipse(0, 0, 40, 12, 0x000000, 0.4).setDepth(0);
-    const sprite = this.add.ellipse(0, 0, 80, 100, color).setDepth(1);
+    const sprite = this.textures.exists(textureKey)
+      ? this.add.sprite(0, 0, textureKey).setOrigin(0.5, 0.5).setDepth(1)
+      : this.add.ellipse(0, 0, 44, 62, color).setDepth(1);
     entry = { key, kind, sprite, shadow, isFallback: true };
     this.actors.set(key, entry);
     return entry;
+  }
+
+  private placeFallback(
+    entry: ActorSpriteEntry,
+    x: number,
+    footY: number,
+    drawSize: number
+  ): void {
+    if (entry.sprite instanceof Phaser.GameObjects.Sprite) {
+      // Match the opaque footprint of pack art. Pack frames are drawSize square
+      // but their figures occupy only a compact center crop; drawing the full
+      // fallback texture at drawSize recreates the screen-covering slab.
+      const displaySize = drawSize * 0.46;
+      entry.sprite.setDisplaySize(displaySize, displaySize);
+      entry.sprite.setPosition(
+        x,
+        footY - displaySize * (ART_FOOT_FROM_TOP_FALLBACK - 0.5)
+      );
+      return;
+    }
+    const displayW = drawSize * 0.34;
+    const displayH = drawSize * 0.45;
+    entry.sprite.setDisplaySize(displayW, displayH);
+    entry.sprite.setPosition(x, footY - displayH / 2);
   }
 
   private ensureStripSprite(
@@ -1160,7 +1252,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         ? this.ensureStripSprite(key, "enemy", texKey)
         : null;
     if (!entry) {
-      entry = this.ensureFallback(key, "enemy", enemy.isBoss ? 0xaa4444 : 0x8a7a5a);
+      entry = this.ensureFallback(key, "enemy", enemy.isBoss ? 0x8f3f3f : 0x6f674f);
     }
 
     entry.sprite.setVisible(true);
@@ -1215,10 +1307,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
       this.applyDeathDissolve(entry, anim, now);
     } else {
-      entry.sprite.setPosition(x, y);
-      if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
-        entry.sprite.setDisplaySize(drawSize * 0.55, drawSize * 0.7);
-      }
+      this.placeFallback(entry, x, footY, drawSize);
     }
   }
 
@@ -1293,10 +1382,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
       this.applyDeathDissolve(entry, anim, now);
     } else {
-      entry.sprite.setPosition(x, y);
-      if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
-        entry.sprite.setDisplaySize(drawSize * 0.4, drawSize * 0.4);
-      }
+      this.placeFallback(entry, x, footY, drawSize);
     }
   }
 
@@ -1385,10 +1471,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
       this.applyDeathDissolve(entry, anim, now);
     } else {
-      entry.sprite.setPosition(x, y);
-      if (entry.sprite instanceof Phaser.GameObjects.Ellipse) {
-        entry.sprite.setDisplaySize(drawSize * 0.4, drawSize * 0.65);
-      }
+      this.placeFallback(entry, x, footY, drawSize);
     }
   }
 
