@@ -173,6 +173,7 @@ function resolveEnemyAbility(
         const hit = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit);
         emit(`${actor.name} uses ${ability.name} on ${t.name} for ${hit.finalDamage} damage!`, {
           type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: hit.finalDamage,
+          presentation: ability.presentation,
         });
         emitAbilityHeavyHitBarks(s, t, hit, emit);
         gainRage(s, t.id, 1);

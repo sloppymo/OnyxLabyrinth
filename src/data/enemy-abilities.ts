@@ -51,6 +51,7 @@ export type AbilityCondition =
   | { kind: "turnInterval"; every: number }     // every Nth turn (1 = every turn)
   | { kind: "minAllies"; count: number }        // at least N allies alive (including self)
   | { kind: "maxAllies"; count: number }        // at most N allies alive (for summoning)
+  | { kind: "minSameKind"; count: number }      // at least N living enemies sharing this enemy's def id (including self)
   | { kind: "partyHasStatus"; status: StatusEffect }
   | { kind: "partyMissingStatus"; status: StatusEffect }
   | { kind: "firstTurn" }                       // only on the enemy's first action
@@ -74,6 +75,13 @@ export interface EnemyAbilityDef {
   /** If true, using this ability spends one turn charging (telegraph) and it
    *  fires on the enemy's next turn. Paralysis/sleep cancels the wind-up. */
   windUp?: boolean;
+  /**
+   * Optional bespoke choreography key consumed by combat-choreography.ts's
+   * playTurn. When set, the combat scene renders a dedicated animation in
+   * place of the default stationary cast (banner + burst). Presentational
+   * only — never read by resolution logic.
+   */
+  presentation?: "meleeGangUp";
 }
 
 // ---------------------------------------------------------------------------
@@ -168,6 +176,20 @@ const SAVAGE_LUNGE: EnemyAbilityDef = {
   condition: { kind: "turnInterval", every: 2 },
   weight: 3,
   element: "physical",
+};
+
+const PACK_LEAP: EnemyAbilityDef = {
+  id: "pack-leap",
+  name: "Pack Leap",
+  description:
+    "Vaults off a fellow orc's back and sails past the front line to land beside a single target for a heavy blow, then leaps back into formation. Only usable with another orc still standing.",
+  target: "singleParty",
+  effect: { kind: "damage", power: 10, element: "physical" },
+  condition: { kind: "minSameKind", count: 2 },
+  weight: 4,
+  cooldown: 2,
+  element: "physical",
+  presentation: "meleeGangUp",
 };
 
 const BERSERK: EnemyAbilityDef = {
@@ -673,6 +695,7 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   ARCHER_VOLLEY,
   WAR_CRY,
   SAVAGE_LUNGE,
+  PACK_LEAP,
   BERSERK,
   STONE_SLAM,
   IRON_FIST,

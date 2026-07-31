@@ -1724,3 +1724,42 @@ describe("row swap", () => {
     expect(s.party.find((c) => c.id === "char-0")!.formationSlot).toBe(3);
   });
 });
+
+// --- Pack Leap: coordinated gang-up attack (minSameKind gating) -------------
+
+describe("pack-leap (minSameKind gating + presentation)", () => {
+  it("fires with a second living same-kind ally present, tagged for bespoke choreography", () => {
+    const state = makeState([
+      makeEnemy("rat-0", { abilityIds: ["pack-leap"] }),
+      makeEnemy("rat-1"),
+    ]);
+    const s = resolveEnemyTurn(state, "rat-0", seqRng([0.1]));
+    const evt = s.events.find(
+      (e) => e?.type === "cast" && e.spellId === "pack-leap"
+    );
+    expect(evt).toBeDefined();
+    expect(evt).toMatchObject({ presentation: "meleeGangUp" });
+  });
+
+  it("never fires without another living same-kind enemy (solo)", () => {
+    const state = makeState([makeEnemy("rat-0", { abilityIds: ["pack-leap"] })]);
+    const s = resolveEnemyTurn(state, "rat-0", seqRng([0.1]));
+    const evt = s.events.find(
+      (e) => e?.type === "cast" && e.spellId === "pack-leap"
+    );
+    expect(evt).toBeUndefined();
+  });
+
+  it("stops firing once the ally partner has died", () => {
+    const state = makeState([
+      makeEnemy("rat-0", { abilityIds: ["pack-leap"] }),
+      makeEnemy("rat-1"),
+    ]);
+    state.enemies.front[1].currentHp = 0;
+    const s = resolveEnemyTurn(state, "rat-0", seqRng([0.1]));
+    const evt = s.events.find(
+      (e) => e?.type === "cast" && e.spellId === "pack-leap"
+    );
+    expect(evt).toBeUndefined();
+  });
+});

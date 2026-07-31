@@ -36,6 +36,13 @@ function livingAllyCount(s: CombatState): number {
   return [...s.enemies.front, ...s.enemies.back].filter((e) => e.currentHp > 0).length;
 }
 
+/** Count living enemies sharing this enemy's def id (including self). */
+function livingSameKindCount(s: CombatState, enemy: EnemyInstance): number {
+  return [...s.enemies.front, ...s.enemies.back].filter(
+    (e) => e.currentHp > 0 && e.id === enemy.id
+  ).length;
+}
+
 /** Check if any ally (including self) is below the given HP percentage. */
 function anyAllyHurt(s: CombatState, percent: number): boolean {
   return [...s.enemies.front, ...s.enemies.back].some(
@@ -63,6 +70,7 @@ function abilityConditionMet(
     case "noAllyHurt": return !anyAllyHurt(s, 100);
     case "turnInterval": return s.round % cond.every === 0;
     case "minAllies": return livingAllyCount(s) >= cond.count;
+    case "minSameKind": return livingSameKindCount(s, enemy) >= cond.count;
     case "maxAllies":
       // "at most N allies alive" — must leave room for the summon itself.
       // Was `<=`, which let SUMMON_IMP fire at N=3 living and push a 4th.

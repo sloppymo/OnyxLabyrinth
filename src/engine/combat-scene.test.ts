@@ -23,13 +23,16 @@ import {
   BARK_DURATION_BASE,
   resolveMeleeHitEffect,
   enemyIsUndead,
+  animOffset,
+  paintOrderFootY,
+  getAnim,
 } from "./combat-scene";
-import { createCombatState } from "../game/combat";
+import { createCombatState, resolveEnemyTurn } from "../game/combat";
 import { pickBark, resetBarkRngForCombat, setBarkRngForTests } from "../game/combat-barks";
 import { BARK_PRIORITY } from "../data/combat-barks";
 import type { CombatEvent, EnemyInstance } from "../game/combat-types";
 import { createCharacter } from "../game/party";
-import type { EnemyDef } from "../data/enemies";
+import { ENEMIES_BY_ID, type EnemyDef } from "../data/enemies";
 
 const W = 768;
 const H = 672;
@@ -276,6 +279,88 @@ describe("playTurn choreography", () => {
     // Half wall duration should finish under 2×.
     updateScene(scene, t0 + duration / 2 + 30);
     expect(isPlaybackDone(scene, t0 + duration / 2 + 30)).toBe(true);
+  });
+
+  it("meleeGangUp cast presentation (Orc's Pack Leap) mounts an ally, leaps to the target, and returns home", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const state = createCombatState(
+      party,
+      { front: [makeEnemy("rat-0"), makeEnemy("rat-1")], back: [] },
+      false
+    );
+    const scene = createScene(state);
+    const events: CombatEvent[] = [
+      {
+        type: "cast",
+        actorId: "rat-0",
+        spellId: "pack-leap",
+        targetId: "c0",
+        damage: 10,
+        presentation: "meleeGangUp",
+      },
+    ];
+    const t0 = 0;
+    const duration = playTurn(scene, events, spellName, t0, W, H);
+    // A plain stationary ability cast is ~CAST_MS+400 (~1500ms); the leapfrog
+    // sequence (mount, leap out/land, attack, leap back) runs well past that.
+    expect(duration).toBeGreaterThan(1800);
+
+    // Early: attacker hops toward its ally (walk state, mid-flight offset).
+    updateScene(scene, t0 + 50);
+    expect(scene.enemyAnims.get("rat-0")?.state).toBe("walk");
+
+    // Airborne toward the target: attack pose, well past a normal approach
+    // distance (35px) — deep into party territory, short of the target.
+    updateScene(scene, t0 + 900);
+    const midAnim = scene.enemyAnims.get("rat-0");
+    expect(midAnim?.state).toBe("attack");
+    expect(midAnim!.moveToX).toBeGreaterThan(100);
+
+    // Impact: damage popup lands on the target, which plays its hurt anim.
+    updateScene(scene, t0 + 1200);
+    expect(scene.popups.some((p) => p.text === "10")).toBe(true);
+    expect(scene.partyAnims.get("c0")?.state).toBe("hurt");
+
+    // Step through the return leap in a few beats — jumping straight to the
+    // end would fire every remaining startMove at the same instant, which
+    // collapses each ease-in-out onto its start value instead of settling.
+    updateScene(scene, t0 + 1450);
+    updateScene(scene, t0 + 1750);
+
+    // After the full sequence: attacker is back at its home slot, idle.
+    updateScene(scene, t0 + duration + 50);
+    expect(isPlaybackDone(scene, t0 + duration + 50)).toBe(true);
+    const finalAnim = scene.enemyAnims.get("rat-0")!;
+    expect(finalAnim.state).toBe("idle");
+    expect(animOffset(finalAnim, t0 + duration + 50)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("meleeGangUp falls back to a solo hop (no crash) when no ally shares the attacker's kind", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
+    const scene = createScene(state);
+    const events: CombatEvent[] = [
+      {
+        type: "cast",
+        actorId: "rat-0",
+        spellId: "pack-leap",
+        targetId: "c0",
+        damage: 6,
+        presentation: "meleeGangUp",
+      },
+    ];
+    const duration = playTurn(scene, events, spellName, 0, W, H);
+    updateScene(scene, 1200);
+    expect(scene.popups.some((p) => p.text === "6")).toBe(true);
+    updateScene(scene, duration + 50);
+    expect(isPlaybackDone(scene, duration + 50)).toBe(true);
+    expect(scene.enemyAnims.get("rat-0")?.state).toBe("idle");
   });
 });
 
@@ -869,5 +954,70 @@ describe("bark ledger survives a scene-level drop (spec §5.1)", () => {
     // Locked behavior: the ledger entry stays burned even though the scene
     // dropped the line — "accept the loss" (spec §5.1).
     expect(state.barkSaid.m1?.heavyHit).toBe(true);
+  });
+});
+
+describe("paintOrderFootY (canvas z-order tracks live move offset)", () => {
+  it("returns the static footY unchanged when there is no offset", () => {
+    expect(paintOrderFootY(300, undefined, 0)).toBe(300);
+  });
+
+  it("adds the actor's current move offset, not just its home slot", () => {
+    const scene = makeScene();
+    const anim = getAnim(scene, "enemy", "rat-0", 0);
+    // Simulate a leap: parked 40px "nearer" than home for the next 200ms.
+    anim.moveFromX = 0;
+    anim.moveFromY = 0;
+    anim.moveToX = 0;
+    anim.moveToY = 40;
+    anim.moveStart = 0;
+    anim.moveDuration = 200;
+    expect(paintOrderFootY(300, anim, 0)).toBe(300);
+    expect(paintOrderFootY(300, anim, 200)).toBe(340);
+  });
+
+  it("regression: Orc Pack Leap's mid-flight footY used to sort behind the target it just flew past (canvas backend only — Phaser's setDepth already included the offset)", () => {
+    const seqRng = (values: number[]) => {
+      let i = 0;
+      return () => values[i++ % values.length];
+    };
+    const party = [
+      createCharacter("c0", "Aria", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bram", "Human", "Neutral", "Mage", 1),
+    ];
+    const orcDef = ENEMIES_BY_ID["orc"];
+    const enemies: EnemyInstance[] = [
+      { ...orcDef, abilityIds: ["pack-leap"], instanceId: "orc-0", currentHp: orcDef.hp, row: "front", status: [] },
+      { ...orcDef, instanceId: "orc-1", currentHp: orcDef.hp, row: "front", status: [] },
+    ];
+    let state = createCombatState(party, { front: enemies, back: [] }, false);
+    const before = state.events.length;
+    state = resolveEnemyTurn(state, "orc-0", seqRng([0.1]));
+    const events = (state.events.slice(before) as CombatEvent[]).filter((e) => e !== null);
+
+    const scene = createScene(state);
+    playTurn(scene, events, (id) => id, 0, W, H);
+
+    const orcHome = enemyPos(0, "front", W, H, scene.backdropId).footY;
+    const targetHome = partyPos(0, W, H, scene.backdropId).footY;
+
+    // Peak of the leap-out arc (~660ms): the attacker's home slot sorts
+    // ahead of the target's (static footY says "paint the target first,
+    // attacker on top"), but its true on-screen position at this instant —
+    // airborne, well off its home row — sorts the other way. The OLD
+    // static-only sort key ignored that and drew the attacker on top for
+    // the ENTIRE ~320ms leap-out arc regardless of where it actually was.
+    // The live offset must flip the order here to match what the Phaser
+    // backend already draws via sprite.setDepth on the offset position.
+    // (Ticks in 20ms increments rather than jumping straight to 660: a cold
+    // jump would fire every ChoreoStep due by 660 in one batch, each using
+    // now=660 as its OWN tween start — collapsing the read to that step's
+    // FROM value instead of its true mid-tween position at 660.)
+    for (let t = 0; t <= 660; t += 20) updateScene(scene, t);
+    const orcAnim = scene.enemyAnims.get("orc-0")!;
+    const staticOrder = Math.sign(orcHome - targetHome);
+    const liveOrder = Math.sign(paintOrderFootY(orcHome, orcAnim, 660) - targetHome);
+    expect(staticOrder).toBeGreaterThan(0); // static: attacker's home slot paints last (on top)
+    expect(liveOrder).toBeLessThan(0); // live: attacker's true position paints first (underneath) instead
   });
 });

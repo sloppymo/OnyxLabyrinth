@@ -281,6 +281,17 @@ describe("encounter table integrity", () => {
     ).toBe(true);
   });
 
+  it("Orc knows Pack Leap, a coordinated attack gated on a second living orc", () => {
+    expect(ENEMIES_BY_ID["orc"].abilityIds).toEqual([
+      "war-cry",
+      "savage-lunge",
+      "pack-leap",
+    ]);
+    const packLeap = enemyAbilityById("pack-leap");
+    expect(packLeap?.condition).toEqual({ kind: "minSameKind", count: 2 });
+    expect(packLeap?.presentation).toBe("meleeGangUp");
+  });
+
   it("registers Pack 02 demon / forge enemies", () => {
     for (const id of [
       "eyeball-monster",

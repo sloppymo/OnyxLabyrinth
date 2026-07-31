@@ -183,7 +183,7 @@ export const ORC: EnemyDef = {
     { kind: "poisonOnHit" },
     { kind: "weakElement", element: "wind" },
   ],
-  abilityIds: ["war-cry", "savage-lunge"],
+  abilityIds: ["war-cry", "savage-lunge", "pack-leap"],
   isBoss: false,
 };
 

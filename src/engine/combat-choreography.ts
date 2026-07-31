@@ -2127,6 +2127,165 @@ function projectileForActor(
   return { effect: "arrow", scale: 4 };
 }
 
+// --- Special melee choreography: coordinated pack-tactic leap ---------------
+// Used by enemy abilities flagged `presentation: "meleeGangUp"` (e.g. Orc's
+// Pack Leap, data/enemy-abilities.ts): the attacker mounts a living ally of
+// the same species, leaps past the front line to land beside the target,
+// strikes, then leaps back into formation. Falls back to a plain in-place
+// hop (no mount) when no eligible ally is found at animation time — the
+// mount is resolved per-step from live scene state, never cached, since the
+// same enemy id could in principle be re-used by a future solo spawn.
+
+const GANG_UP_MOUNT_MS = 260;
+const GANG_UP_HOLD_MS = 90;
+const GANG_UP_LEAP_OUT_MS = 300;
+const GANG_UP_LEAP_LAND_MS = 220;
+const GANG_UP_ATTACK_MS = 560;
+const GANG_UP_RETURN_OUT_MS = 260;
+const GANG_UP_RETURN_IN_MS = 320;
+const GANG_UP_DURATION_MS =
+  GANG_UP_MOUNT_MS +
+  GANG_UP_HOLD_MS +
+  GANG_UP_LEAP_OUT_MS +
+  GANG_UP_LEAP_LAND_MS +
+  GANG_UP_ATTACK_MS +
+  GANG_UP_RETURN_OUT_MS +
+  GANG_UP_RETURN_IN_MS;
+
+/** A living ally sharing the attacker's species id, to mount for the leap. */
+function findGangUpMount(scene: CombatScene, attackerId: string): EnemyInstance | null {
+  const all = [...scene.state.enemies.front, ...scene.state.enemies.back];
+  const self = all.find((e) => e.instanceId === attackerId);
+  if (!self) return null;
+  return (
+    all.find((e) => e.instanceId !== attackerId && e.id === self.id && e.currentHp > 0) ?? null
+  );
+}
+
+function pushMeleeGangUpSteps(
+  base: number,
+  attackerId: string,
+  targetId: string,
+  damage: number,
+  spellId: string,
+  w: number,
+  h: number
+): ChoreoStep[] {
+  const steps: ChoreoStep[] = [];
+  let t = base;
+
+  // Phase 1: hop onto an ally's back (or a stand-in vertical hop if solo).
+  steps.push(
+    step(t, (sc, n) => {
+      const attacker = findActor(sc, attackerId, w, h);
+      if (!attacker) return;
+      const a = getAnim(sc, "enemy", attackerId, n);
+      setAnimState(a, "walk", n);
+      const mount = findGangUpMount(sc, attackerId);
+      const mountPos = mount ? findActor(sc, mount.instanceId, w, h) : null;
+      if (mount && mountPos) {
+        startMove(
+          a,
+          (mountPos.x - attacker.x) * 0.8,
+          mountPos.y - attacker.y - 30,
+          GANG_UP_MOUNT_MS,
+          n,
+          sc.playbackRate
+        );
+        const mountAnim = getAnim(sc, "enemy", mount.instanceId, n);
+        startMove(mountAnim, 0, 6, 100, n, sc.playbackRate);
+        return;
+      }
+      startMove(a, 0, -26, GANG_UP_MOUNT_MS, n, sc.playbackRate);
+    }),
+    step(t + GANG_UP_MOUNT_MS, (sc, n) => {
+      const mount = findGangUpMount(sc, attackerId);
+      if (!mount) return;
+      const mountAnim = getAnim(sc, "enemy", mount.instanceId, n);
+      startMove(mountAnim, 0, 0, 120, n, sc.playbackRate);
+    })
+  );
+  t += GANG_UP_MOUNT_MS + GANG_UP_HOLD_MS;
+
+  // Phase 2: leap forward as a two-part rise/fall arc, landing just short of
+  // the target so the strike reads as "right in front of them", not on them.
+  const leapStart = t;
+  steps.push(
+    step(leapStart, (sc, n) => {
+      const attacker = findActor(sc, attackerId, w, h);
+      const target = findActor(sc, targetId, w, h);
+      if (!attacker || !target) return;
+      const a = getAnim(sc, "enemy", attackerId, n);
+      const cur = animOffset(a, n);
+      const apexDx = (target.x - attacker.x) * 0.55;
+      const apexDy = Math.min(cur.y, -30) - 70;
+      startMove(a, apexDx, apexDy, GANG_UP_LEAP_OUT_MS, n, sc.playbackRate);
+    }),
+    step(leapStart + GANG_UP_LEAP_OUT_MS, (sc, n) => {
+      const attacker = findActor(sc, attackerId, w, h);
+      const target = findActor(sc, targetId, w, h);
+      if (!attacker || !target) return;
+      const a = getAnim(sc, "enemy", attackerId, n);
+      const landDx = target.x - attacker.x - 55;
+      const landDy = target.y - attacker.y;
+      startMove(a, landDx, landDy, GANG_UP_LEAP_LAND_MS, n, sc.playbackRate);
+    })
+  );
+  t = leapStart + GANG_UP_LEAP_OUT_MS + GANG_UP_LEAP_LAND_MS;
+
+  // Phase 3: attack pose + impact on the target.
+  const attackAt = t;
+  steps.push(
+    step(attackAt, (sc, n) => {
+      const attacker = findActor(sc, attackerId, w, h);
+      if (!attacker) return;
+      setAnimState(getAnim(sc, "enemy", attackerId, n), "attack", n);
+    })
+  );
+  const impactAt = attackAt + GANG_UP_ATTACK_MS * 0.55;
+  const style = resolveEffectStyle(spellId);
+  steps.push(
+    step(impactAt, (sc, n) => {
+      const target = findActor(sc, targetId, w, h);
+      if (!target) return;
+      pushBursts(sc, target.x, target.y, style, n, burstDurationFor(spellId));
+      spawnSparkleParticles(sc, target.x, target.y, style.color, 8);
+      addScreenShake(sc, spellShakeAmount(spellId, damage), n, 250);
+    }),
+    ...impactSteps(impactAt, targetId, `${damage}`, COLORS.dmg, w, h, true, false, undefined, undefined, damage)
+  );
+  t = attackAt + GANG_UP_ATTACK_MS;
+  steps.push(
+    step(t, (sc, n) => {
+      const attacker = findActor(sc, attackerId, w, h);
+      if (!attacker) return;
+      const a = getAnim(sc, "enemy", attackerId, n);
+      if (a.state === "attack" || a.state === "attack_ranged") setAnimState(a, "idle", n);
+    })
+  );
+
+  // Phase 4: leap back into formation — a mirrored arc back to the home slot.
+  const backStart = t;
+  steps.push(
+    step(backStart, (sc, n) => {
+      const a = getAnim(sc, "enemy", attackerId, n);
+      setAnimState(a, "walk", n);
+      const cur = animOffset(a, n);
+      startMove(a, cur.x * 0.5, Math.min(cur.y, -20) - 50, GANG_UP_RETURN_OUT_MS, n, sc.playbackRate);
+    }),
+    step(backStart + GANG_UP_RETURN_OUT_MS, (sc, n) => {
+      const a = getAnim(sc, "enemy", attackerId, n);
+      startMove(a, 0, 0, GANG_UP_RETURN_IN_MS, n, sc.playbackRate);
+    }),
+    step(backStart + GANG_UP_RETURN_OUT_MS + GANG_UP_RETURN_IN_MS, (sc, n) => {
+      const a = getAnim(sc, "enemy", attackerId, n);
+      if (a.state === "walk") setAnimState(a, "idle", n);
+    })
+  );
+
+  return steps;
+}
+
 /**
  * Build and start the choreography for one resolved turn.
  * `events` are the structured CombatEvents appended by that turn (nulls are
@@ -2467,6 +2626,14 @@ export function playTurn(
       }
 
       case "cast": {
+        if (evt.presentation === "meleeGangUp" && evt.targetId) {
+          showBanner(spellNameFor(evt.spellId), 1400);
+          steps.push(
+            ...pushMeleeGangUpSteps(t, evt.actorId, evt.targetId, evt.damage ?? 0, evt.spellId, w, h)
+          );
+          t += GANG_UP_DURATION_MS;
+          break;
+        }
         showBanner(spellNameFor(evt.spellId), CAST_MS + 400);
         castAnim(evt.actorId);
         pendingImpactBase = t + CAST_IMPACT;

@@ -115,7 +115,7 @@ export type PlayerAction =
 export type CombatEvent =
   | { type: "attack"; actorId: string; targetId: string; damage: number; range?: WeaponRange; crit?: boolean }
   | { type: "miss"; actorId: string; targetId: string; reason: "evade" | "blind" | "noTarget" }
-  | { type: "cast"; actorId: string; spellId: string; targetId: string | null; damage?: number; heal?: number }
+  | { type: "cast"; actorId: string; spellId: string; targetId: string | null; damage?: number; heal?: number; presentation?: "meleeGangUp" }
   | { type: "spellEffect"; spellId: string; targetId?: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean; isDebuff?: boolean }
   | { type: "defeated"; targetId: string; wasEnemy: boolean }
   | { type: "rowAdvance"; targetId: string }

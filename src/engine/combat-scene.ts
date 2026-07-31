@@ -114,6 +114,18 @@ export type {
   Choreography,
 } from "./combat-choreography";
 
+/**
+ * Canvas paint-order sort key: an actor's static home-slot footY adjusted by
+ * its LIVE move offset. Without the offset, a sprite mid-tween away from its
+ * home slot (e.g. Orc's Pack Leap leaping deep into party territory) paints
+ * in its home row's z-order instead of its actual on-screen position — the
+ * Phaser backend already accounts for this via sprite.setDepth on the offset
+ * position, so this keeps both backends' paint order in sync.
+ */
+export function paintOrderFootY(baseFootY: number, anim: ActorAnim | undefined, now: number): number {
+  return anim ? baseFootY + animOffset(anim, now).y : baseFootY;
+}
+
 // --- Background (painter-owned; DOM Image) ------------------------------------
 
 let combatBgImage: HTMLImageElement | null = null;
@@ -1010,8 +1022,9 @@ export function renderScene(
     ctx.restore();
   }
 
-  // Combatants sorted by footY ascending (farther first). Contact shadows
-  // draw inside each draw* call immediately before the sprite.
+  // Combatants sorted by footY ascending (farther first) — see
+  // paintOrderFootY for why the live offset matters. Contact shadows draw
+  // inside each draw* call immediately before the sprite.
   type DrawCmd = { footY: number; draw: () => void };
   const cmds: DrawCmd[] = [];
 
@@ -1019,7 +1032,7 @@ export function renderScene(
     const slot = enemySlotIndex(scene, "back", e.instanceId);
     const pos = enemyPos(slot, "back", w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
     cmds.push({
-      footY: pos.footY,
+      footY: paintOrderFootY(pos.footY, scene.enemyAnims.get(e.instanceId), now),
       draw: () => drawEnemy(ctx, e, slot, scene, now, w, h),
     });
   });
@@ -1027,7 +1040,7 @@ export function renderScene(
     const slot = enemySlotIndex(scene, "front", e.instanceId);
     const pos = enemyPos(slot, "front", w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
     cmds.push({
-      footY: pos.footY,
+      footY: paintOrderFootY(pos.footY, scene.enemyAnims.get(e.instanceId), now),
       draw: () => drawEnemy(ctx, e, slot, scene, now, w, h),
     });
   });
@@ -1035,7 +1048,7 @@ export function renderScene(
     const slot = scene.enemySlots.get(e.instanceId) ?? enemySlotIndex(scene, e.row, e.instanceId);
     const pos = enemyPos(slot, e.row, w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
     cmds.push({
-      footY: pos.footY,
+      footY: paintOrderFootY(pos.footY, scene.enemyAnims.get(e.instanceId), now),
       draw: () => drawEnemy(ctx, e, slot, scene, now, w, h),
     });
   });
@@ -1043,7 +1056,7 @@ export function renderScene(
     const slot = allySlotIndex(scene, a.id);
     const pos = allyPos(slot, w, h, scene.backdropId);
     cmds.push({
-      footY: pos.footY,
+      footY: paintOrderFootY(pos.footY, scene.allyAnims.get(a.id), now),
       draw: () => drawAlly(ctx, a, slot, scene, now, w, h),
     });
   });
@@ -1051,7 +1064,7 @@ export function renderScene(
     const idx = scene.allySlots.get(a.id) ?? allySlotIndex(scene, a.id);
     const pos = allyPos(idx, w, h, scene.backdropId);
     cmds.push({
-      footY: pos.footY,
+      footY: paintOrderFootY(pos.footY, scene.allyAnims.get(a.id), now),
       draw: () => drawAlly(ctx, a, idx, scene, now, w, h),
     });
   });
@@ -1062,7 +1075,7 @@ export function renderScene(
     // findActor's convention.
     const pos = partyPos(i, w, h, scene.backdropId);
     cmds.push({
-      footY: pos.footY,
+      footY: paintOrderFootY(pos.footY, scene.partyAnims.get(char.id), now),
       draw: () => drawPartyMember(ctx, char, i, scene, now, w, h),
     });
   }
