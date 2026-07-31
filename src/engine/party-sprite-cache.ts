@@ -50,7 +50,8 @@ export const PARTY_SPRITE_DIRS: Record<CharacterClass, string> = {
 };
 
 /** Per-state playback config. Frame counts come from the loaded image. */
-const STATE_CONFIG: Record<PartySpriteState, { fps: number; loop: boolean }> = {
+/** Per-state playback metadata shared with preview/validation tooling. */
+export const PARTY_SPRITE_STATE_CONFIG: Record<PartySpriteState, { fps: number; loop: boolean }> = {
   idle: { fps: 6, loop: true },
   walk: { fps: 10, loop: true },
   attack: { fps: 12, loop: false },
@@ -60,7 +61,7 @@ const STATE_CONFIG: Record<PartySpriteState, { fps: number; loop: boolean }> = {
   death: { fps: 8, loop: false },
 };
 
-const ALL_STATES = Object.keys(STATE_CONFIG) as PartySpriteState[];
+const ALL_STATES = Object.keys(PARTY_SPRITE_STATE_CONFIG) as PartySpriteState[];
 
 export interface PartySpriteBundle {
   /** Loaded strip images by state (null = failed or absent, e.g. no cast). */
@@ -89,7 +90,7 @@ function stripFromImage(
 ): SpriteStrip | null {
   const frameCount = Math.floor(img.naturalWidth / FRAME_SIZE);
   if (frameCount < 1 || img.naturalHeight !== FRAME_SIZE) return null;
-  const cfg = STATE_CONFIG[state];
+  const cfg = PARTY_SPRITE_STATE_CONFIG[state];
   return {
     url,
     frameWidth: FRAME_SIZE,

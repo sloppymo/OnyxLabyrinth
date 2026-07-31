@@ -29,13 +29,12 @@ dev-party-creation.html
 /playtest-screenshots/
 /vfx-audit/
 
-# Generated preview HTML (outputs of scripts/generate-*.mjs — regenerated on demand)
+# Generated preview HTML (outputs of scripts/generate-*.mjs / .ts — regenerated on demand)
 /jewelflame-preview.html
 /jewelflame-preview-index.html
 /jewelflame-100x100-preview.html
 /jewelflame-creature-extended-preview.html
 /sprite-preview.html
-/sprite-preview-standalone.html
 
 # Local research/tool scratch (kept on disk, never tracked)
 .firecrawl/

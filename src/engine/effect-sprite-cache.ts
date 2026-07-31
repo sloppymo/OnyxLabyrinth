@@ -18,7 +18,8 @@ export interface EffectSprite {
   rows: number;
 }
 
-const EFFECT_STRIPS: Record<string, EffectStrip> = {
+/** Runtime effect definitions, also consumed by sprite-preview validation. */
+export const EFFECT_STRIPS: Record<string, EffectStrip> = {
   arrow: {
     name: "arrow",
     url: "arrow.png",
