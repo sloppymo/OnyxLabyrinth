@@ -38,6 +38,12 @@ export const MATH_CONFIG = {
   glowBlurFar: 2,
   maxDepth: 4,
   darknessMaxDist: 1.5,
+  // Fraction of the corridor draw distance (CORRIDOR_MAX_DIST) at which the
+  // fog curve begins tapering to exactly 0 at the draw boundary. Below this
+  // fraction the curve is bit-identical to the untapered exponential+lift
+  // formula. 1.0 is the kill-switch: taper never starts, so the curve is the
+  // untapered formula everywhere (see fogTaperForDepth).
+  fogTaperFrac: 0.5,
   // If the player jumps more than this many tiles in one state change
   // (teleporter, stairs, chute), snap instantly instead of sliding.
   teleportSnapThreshold: 1.5,
@@ -83,16 +89,47 @@ export function wallDrawBounds(
 }
 
 /**
+ * Corridor draw distance. `opacityForDepth(CORRIDOR_MAX_DIST)` is where the
+ * floor/ceiling `continue` clip and the raycaster's `perpWallDist > maxDist`
+ * clip kick in — the taper below is tuned to reach exactly 0 there so the
+ * clip is a pure performance optimisation with no visible seam.
+ */
+export const CORRIDOR_MAX_DIST = MATH_CONFIG.maxDepth * 2;
+
+/**
+ * 1 − smoothstep taper: holds at 1 until `maxDist * fogTaperFrac`, then eases
+ * (C¹, zero derivative at both ends) down to exactly 0 at `maxDist`. Without
+ * this, `opacityForDepth` asymptotes to `fogMidtoneLift` (0.25) instead of 0,
+ * so surfaces at the draw boundary get clipped mid-fade — a hard-edged step
+ * at the horizon that no amount of `maxDepth` tuning can hide.
+ *
+ * `fogTaperFrac >= 1` is the kill-switch: taper never starts, so this always
+ * returns 1 and `opacityForDepth` is exactly the untapered formula.
+ */
+export function fogTaperForDepth(d: number, maxDist: number): number {
+  if (MATH_CONFIG.fogTaperFrac >= 1) return 1;
+  const start = maxDist * MATH_CONFIG.fogTaperFrac;
+  if (d <= start) return 1;
+  if (d >= maxDist) return 0;
+  const t = (d - start) / (maxDist - start);
+  return 1 - t * t * (3 - 2 * t);
+}
+
+/**
  * Fog/depth opacity. Uses an exponential falloff blended toward 1.0 by
  * `fogMidtoneLift` so mid-distance surfaces stay visible instead of dropping
  * into the noise floor. At distance 0 the result is always 1.0 (no fog on the
- * player's own cell); the lift only affects distance > 0.
+ * player's own cell); the lift only affects distance > 0. A taper (see
+ * `fogTaperForDepth`) brings the curve down to exactly 0 at
+ * `CORRIDOR_MAX_DIST` so the floor/ceiling/raycast draw-distance clip never
+ * cuts off a surface mid-fade.
  */
 export function opacityForDepth(d: number): number {
   const exponential =
     MATH_CONFIG.baseOpacity * Math.pow(MATH_CONFIG.fogFalloff, d);
   const lift = MATH_CONFIG.fogMidtoneLift;
-  return exponential + (1 - exponential) * lift * (1 - Math.exp(-d));
+  const base = exponential + (1 - exponential) * lift * (1 - Math.exp(-d));
+  return base * fogTaperForDepth(d, CORRIDOR_MAX_DIST);
 }
 
 /** Edge-glow blur radius for a given distance (near = more blur, far = less). */

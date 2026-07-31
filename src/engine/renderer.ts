@@ -597,8 +597,11 @@ function drawMapSprites(
       if (hit && hit.perpWallDist < p.transformY - 0.05) continue;
     }
 
+    const alpha = opacityForDepth(p.transformY) * (inDarkness ? 0.5 : 1);
+    if (alpha <= 0) continue; // beyond the taper boundary: invisible, skip the draw call
+
     ctx.save();
-    ctx.globalAlpha = opacityForDepth(p.transformY) * (inDarkness ? 0.5 : 1);
+    ctx.globalAlpha = alpha;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(img, spriteScreenX - spriteW / 2, drawY, spriteW, spriteH);
     ctx.restore();

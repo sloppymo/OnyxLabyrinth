@@ -439,16 +439,39 @@ crushes the outer ring regardless of what the torch does, so a perfect fix could
 it. E3b's bands are the ones to gate on.
 
 **Phase 2 — A: taper the fog to the clip boundary.**
+
+*The band-ratio criterion below (0.37/0.40 → ≥0.85) was retired after an adversarial review
+(`docs/PROMPT-corridor-phase2-plan-review.md`) showed it is unreachable by construction: "band"
+and "surroundings" are defined as depths >8 and 4→8 respectively, and the taper's whole job is
+to darken 4→8 while the ≤10% mid-range cap forces depth 4 to stay bright — so the ratio can only
+approach 1 if the surroundings collapse to background, which the mid-range constraint forbids.
+It was a good severity-ranking instrument for the original diagnosis (it correctly picked out
+the 5 worst of 44 views) but not a valid fix-verification gate. Replaced with:*
+
 *Exit — measured against the post-Phase-1 build in `-baseline/`, not the original numbers:*
-`f1-treasure` band ratio rises from **0.37** to **≥ 0.85**, and `f1-teleporter` from **0.40**
-to ≥ 0.85. (`f1-treasure` was 0.43 pre-Phase-1; removing the centre-weighted torch took the
-amber wash off the void, which is the intended direction, not a regression. The other four
-severe views are unchanged to two decimals, and the median across all 44 is still 1.13.)
-Simultaneously, mid-range legibility must hold: mean luma over depth 2–4 rows on
-`f1-straight` and `f2-straight` must not drop more than **10 %** — the pre-verified
-full-curve smoothstep predicts 0.00 %, so any measured loss means the wrong formulation
-shipped. Row-to-row luma step at the old boundary (currently +16.1 / −18.6, predicted 0.03)
-must fall below 5. Six-view checklist on ≥3 floors via `corridor-transition-check.mjs`.
+1. **Boundary-step magnitude.** Max `|ΔL|` between adjacent rows within ±3 rows of the known
+   clip-boundary row (`y = halfH ± halfH/8`) must fall below **5** (median pre-fix 13.60, worst
+   pre-fix 26.05).
+2. **Argmax scatter (categorical).** Pre-fix, the sharpest row-drop in the frame sits at the
+   boundary row in every severe view. Post-fix that argmax must move off the boundary row —
+   if it's still pinned there, the clip is still the dominant edge in the image.
+3. **Predicted-vs-measured agreement.** Because the fix is a deterministic lerp-toward-`BG`,
+   the post-fix row profile is exactly predictable in closed form:
+   `L_new(y) = BG + taper(d(y)) · (L_old(y) − BG)`. Assert the *measured* post-fix profile
+   matches this prediction within a small tolerance across the depth 4→8 band, per view. This
+   is what actually closes the "broad over-darkening" blind spot the local step test alone
+   cannot see: a too-strong smooth darkening across 4→8 would pass criteria 1 and 2 but fail
+   this one, since it wouldn't match the predicted curve.
+4. **Mid-range legibility**, unchanged: mean luma over depth 2–4 rows on `f1-straight` and
+   `f2-straight` must not drop more than **10 %** — the smoothstep taper predicts 0.00 % (it's
+   bit-identical below d=4), so any measured loss means the wrong formulation shipped.
+5. **Bit-identity below d=4**, free since the taper is a no-op there: assert `opacityForDepth(d)`
+   for d ≤ 4 is unchanged to full precision.
+6. **Darkness zones unmeasured, explicitly out of scope for this pass** — the taper is a
+   structural no-op inside darkness (`darknessMaxDist` 1.5 sits below the taper start at 4), not
+   a tuned decision, and there are no darkness-zone captures in the 44-view set.
+
+Six-view checklist on ≥3 floors via `corridor-transition-check.mjs`.
 
 **Phase 3 — B: per-floor door panels.**
 Generate 5 palette-matched doors through `generate-floor-tilesets.mjs` (deterministic; do not

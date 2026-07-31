@@ -11,6 +11,8 @@ import {
   computeLineHeight,
   wallDrawBounds,
   opacityForDepth,
+  fogTaperForDepth,
+  CORRIDOR_MAX_DIST,
   glowBlurForDepth,
   strokeColorForDepth,
   dirFromFacing,
@@ -107,8 +109,60 @@ describe("opacityForDepth", () => {
     expect(near).toBeGreaterThan(far);
   });
 
-  it("stays above 0 even at large distances (midtone lift)", () => {
-    expect(opacityForDepth(10)).toBeGreaterThan(0);
+  it("reaches exactly 0 at the corridor draw boundary (taper, not midtone-lift asymptote)", () => {
+    // Without the taper, opacityForDepth asymptotes to fogMidtoneLift (0.25)
+    // and never reaches 0 — that's the hard-edged clip seam this fixes.
+    expect(opacityForDepth(CORRIDOR_MAX_DIST)).toBeCloseTo(0, 5);
+    expect(opacityForDepth(CORRIDOR_MAX_DIST + 4)).toBeCloseTo(0, 5);
+  });
+
+  it("matches the untapered exponential+lift formula at and below maxDepth (bit-identical to pre-taper)", () => {
+    const untapered = (d: number) => {
+      const exponential = MATH_CONFIG.baseOpacity * Math.pow(MATH_CONFIG.fogFalloff, d);
+      const lift = MATH_CONFIG.fogMidtoneLift;
+      return exponential + (1 - exponential) * lift * (1 - Math.exp(-d));
+    };
+    for (let d = 0; d <= MATH_CONFIG.maxDepth; d += 0.5) {
+      expect(opacityForDepth(d)).toBeCloseTo(untapered(d), 10);
+    }
+  });
+
+  it("is untapered at the darkness clip distance", () => {
+    const untapered = (d: number) => {
+      const exponential = MATH_CONFIG.baseOpacity * Math.pow(MATH_CONFIG.fogFalloff, d);
+      const lift = MATH_CONFIG.fogMidtoneLift;
+      return exponential + (1 - exponential) * lift * (1 - Math.exp(-d));
+    };
+    expect(opacityForDepth(MATH_CONFIG.darknessMaxDist)).toBeCloseTo(
+      untapered(MATH_CONFIG.darknessMaxDist),
+      10
+    );
+  });
+
+  it("invariant: darkness zones never reach the taper (structural no-op guard)", () => {
+    // opacityForDepth always tapers against CORRIDOR_MAX_DIST, not a per-call
+    // maxDist — so darkness rendering (clipped at darknessMaxDist) stays
+    // bit-identical only as long as darknessMaxDist sits below the taper
+    // start (CORRIDOR_MAX_DIST * fogTaperFrac). Nothing else enforces this;
+    // if a future maxDepth/fogTaperFrac edit breaks it, this should go red
+    // instead of silently darkening darkness zones.
+    const taperStart = CORRIDOR_MAX_DIST * MATH_CONFIG.fogTaperFrac;
+    expect(MATH_CONFIG.darknessMaxDist).toBeLessThanOrEqual(taperStart);
+  });
+
+  it("kill-switch (fogTaperFrac = 1.0) restores the untapered formula everywhere", () => {
+    const original = MATH_CONFIG.fogTaperFrac;
+    MATH_CONFIG.fogTaperFrac = 1.0;
+    try {
+      for (let d = 0; d <= 12; d += 1) {
+        expect(fogTaperForDepth(d, CORRIDOR_MAX_DIST)).toBe(1);
+      }
+      // The boundary-is-zero assertion must now fail: this is the falsification
+      // that proves the kill-switch actually disables the taper.
+      expect(opacityForDepth(CORRIDOR_MAX_DIST)).toBeGreaterThan(0);
+    } finally {
+      MATH_CONFIG.fogTaperFrac = original;
+    }
   });
 
   it("never exceeds 1.0", () => {
