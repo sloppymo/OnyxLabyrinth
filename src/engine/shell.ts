@@ -310,7 +310,7 @@ export function showMode(mode: GameMode, mapVisible: boolean): void {
   canvas.style.display = isDungeon ? "" : "none";
   partyStripEl.style.display = isDungeon ? "" : "none";
   contextPromptEl.style.display = isDungeon ? "" : "none";
-  messageBandEl.style.display = isDungeon ? "" : "none";
+  messageBandEl.style.display = isDungeon && !mapVisible ? "" : "none";
   combatPanel.style.display = usesDomPanel ? "flex" : "none";
   combatPanel.classList.toggle("ff6-menu-host", usesDomPanel);
   combatPanel.classList.toggle("party-create-host", mode === "party_creation");

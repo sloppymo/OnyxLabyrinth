@@ -1921,19 +1921,13 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 });
 
 // --- Auto-map toggle -----------------------------------------------------
-function mapCloseHint(inputKind: "keyboard" | "gamepad"): string {
-  return inputKind === "gamepad" ? "Press B to close" : "Press M to close";
-}
-
 function toggleMap(): void {
   mapVisible = !mapVisible;
   showMode("dungeon", mapVisible);
   canvas.style.opacity = mapVisible ? "0.3" : "1";
-  if (mapVisible) {
-    setMessage(`Auto-map open. ${mapCloseHint(globalInput.getLastInputKind())}.`);
-  } else {
-    setMessage("");
-  }
+  // The map canvas owns its floor/position header and input-specific close
+  // hint. Clear any corridor notice so it cannot reappear stale on map close.
+  setMessage("");
 }
 
 // --- Render loop ---------------------------------------------------------
