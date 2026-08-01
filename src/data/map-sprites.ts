@@ -16,6 +16,7 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "crate", name: "Crate", file: "crate.png", baseSize: 32 },
   { id: "bones", name: "Bones", file: "bones.png", baseSize: 30 },
   { id: "barrel", name: "Barrel", file: "barrel.png", baseSize: 32 },
+  { id: "chest-unlocked", name: "Unlocked Chest", file: "chest-unlocked.png", baseSize: 40 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(

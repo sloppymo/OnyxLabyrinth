@@ -6,6 +6,10 @@
 
 **Quality reference:** the original ophanim art in `public/assets/enemies/summon-celestial/`
 
+**Not this guide:** corridor floor props / maze event markers — use
+[`MAZE-EVENT-SPRITE-PROMPT.md`](MAZE-EVENT-SPRITE-PROMPT.md). Wall/floor/ceiling textures —
+[`TILESET-ART-STYLE-GUIDE.md`](TILESET-ART-STYLE-GUIDE.md).
+
 This guide documents the workflow that produced a new animated summon matching the
 shipping monster pack instead of looking like resized concept art. Follow the whole
 pipeline. A good image-generation result is only source material; it is not a shippable

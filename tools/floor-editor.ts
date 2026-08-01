@@ -41,6 +41,7 @@ const SPRITE_GLYPH: Record<string, string> = {
   crate: "□",
   bones: "≈",
   barrel: "o",
+  "chest-unlocked": "$",
 };
 
 const OPP: Record<"n" | "e" | "s" | "w", "n" | "e" | "s" | "w"> = {

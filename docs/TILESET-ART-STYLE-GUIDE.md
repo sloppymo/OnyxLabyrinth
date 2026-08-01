@@ -3,7 +3,8 @@
 **Audience:** human pixel artists, AI image workflows, and engineers wiring new themes  
 **Scope:** corridor tilesets only (`wall` / `floorA` / `floorB` / `ceiling`)  
 **Canonical sources:** `src/assets/f{1-5}_*_256.png`, `scripts/generate-floor-tilesets.mjs`, `src/engine/renderer.ts`  
-**Last measured:** 2026-07-24 against shipping campaign art (§1–§8); §10 added 2026-07-30 covering the Phase 0–2 corridor renderer pass
+**Last measured:** 2026-07-24 against shipping campaign art (§1–§8); §10 added 2026-07-30 covering the Phase 0–2 corridor renderer pass  
+**Related:** floor props / event markers → [`MAZE-EVENT-SPRITE-PROMPT.md`](MAZE-EVENT-SPRITE-PROMPT.md); combat strips → [`SPRITE-ART-GENERATION-GUIDE.md`](SPRITE-ART-GENERATION-GUIDE.md)
 
 This guide describes what the game already looks like so new tiles match in-engine, not just in a still preview.
 
