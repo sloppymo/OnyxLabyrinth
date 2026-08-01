@@ -281,3 +281,140 @@ describe("AudioEngine sample load status (?debug=1 readiness probe)", () => {
     expect(status.failed.some((id) => id.startsWith("combat:"))).toBe(true);
   });
 });
+
+describe("AudioEngine title music", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+  });
+
+  it("loops Breath of the Undercroft and stops cleanly", async () => {
+    const play = vi.fn(() => Promise.resolve());
+    const pause = vi.fn();
+    const instances: Array<{
+      loop: boolean;
+      volume: number;
+      currentTime: number;
+      paused: boolean;
+      ended: boolean;
+      play: typeof play;
+      pause: typeof pause;
+      preload: string;
+    }> = [];
+
+    vi.stubGlobal(
+      "Audio",
+      class {
+        loop = false;
+        volume = 1;
+        currentTime = 0;
+        paused = true;
+        ended = false;
+        preload = "";
+        play = play;
+        pause = pause;
+        constructor(public src: string) {
+          instances.push(this);
+        }
+      }
+    );
+
+    const { audio } = await import("./audio");
+    audio.startTitleMusic();
+    expect(instances).toHaveLength(1);
+    expect(instances[0]!.src).toContain("breath-of-the-undercroft.mp3");
+    expect(instances[0]!.loop).toBe(true);
+    expect(play).toHaveBeenCalledTimes(1);
+
+    audio.startTitleMusic();
+    expect(instances).toHaveLength(1);
+
+    audio.stopTitleMusic();
+    expect(pause).toHaveBeenCalled();
+    expect(instances[0]!.currentTime).toBe(0);
+  });
+
+  it("loops Torchlight Beneath Stone as the dungeon maze theme", async () => {
+    const play = vi.fn(() => Promise.resolve());
+    const pause = vi.fn();
+    const instances: Array<{
+      src: string;
+      loop: boolean;
+      currentTime: number;
+      paused: boolean;
+      ended: boolean;
+      play: typeof play;
+      pause: typeof pause;
+    }> = [];
+
+    vi.stubGlobal(
+      "Audio",
+      class {
+        loop = false;
+        volume = 1;
+        currentTime = 0;
+        paused = true;
+        ended = false;
+        preload = "";
+        play = play;
+        pause = pause;
+        constructor(public src: string) {
+          instances.push(this);
+        }
+      }
+    );
+
+    const { audio } = await import("./audio");
+    audio.startDungeon();
+    expect(instances).toHaveLength(1);
+    expect(instances[0]!.src).toContain("torchlight-beneath-stone.ogg");
+    expect(instances[0]!.loop).toBe(true);
+    expect(play).toHaveBeenCalled();
+
+    audio.stopDungeon();
+    expect(pause).toHaveBeenCalled();
+    expect(instances[0]!.currentTime).toBe(0);
+  });
+
+  it("loops Haven at Dusk as the town theme", async () => {
+    const play = vi.fn(() => Promise.resolve());
+    const pause = vi.fn();
+    const instances: Array<{
+      src: string;
+      loop: boolean;
+      currentTime: number;
+      paused: boolean;
+      ended: boolean;
+      play: typeof play;
+      pause: typeof pause;
+    }> = [];
+
+    vi.stubGlobal(
+      "Audio",
+      class {
+        loop = false;
+        volume = 1;
+        currentTime = 0;
+        paused = true;
+        ended = false;
+        preload = "";
+        play = play;
+        pause = pause;
+        constructor(public src: string) {
+          instances.push(this);
+        }
+      }
+    );
+
+    const { audio } = await import("./audio");
+    audio.startTownMusic();
+    expect(instances).toHaveLength(1);
+    expect(instances[0]!.src).toContain("haven-at-dusk.ogg");
+    expect(instances[0]!.loop).toBe(true);
+    expect(play).toHaveBeenCalled();
+
+    audio.stopTownMusic();
+    expect(pause).toHaveBeenCalled();
+    expect(instances[0]!.currentTime).toBe(0);
+  });
+});

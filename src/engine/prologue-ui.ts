@@ -7,8 +7,9 @@
  * full black panel, soft white FF36 text, one beat at a time (replace, not
  * stack), typewriter reveal with punctuation-aware pauses, and a two-stage
  * confirm (complete-then-advance, never both on one press). No FF6Window
- * chrome — this is myth text, not a menu. Intentionally silent of music —
- * cold typewriter ticks only.
+ * chrome — this is myth text, not a menu. Title/prologue BGM
+ * (`audio.startTitleMusic`) continues under the typewriter from the title
+ * screen; cold typewriter ticks stay as the only *SFX* on this screen.
  *
  * The keypress that opens this controller (e.g. the Enter that selected New
  * Game on the title screen) is dispatched to *every* window "keydown"

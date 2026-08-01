@@ -22,10 +22,14 @@
 //   - Menu UI: cursor / confirm / cancel / save / buy-sell / cure samples.
 //
 // Usage:
-//   audio.startDungeon();    // begin drone
-//   audio.stopDungeon();     // stop drone
+//   audio.startDungeon();    // begin maze theme (Torchlight Beneath Stone)
+//   audio.stopDungeon();     // stop maze theme
+//   audio.startTownMusic();  // loop town BGM (Haven at Dusk)
+//   audio.stopTownMusic();   // end town BGM
 //   audio.startBossCombat(); // exclusive boss bed (procedural BGM stand-in)
 //   audio.stopBossCombat();  // end boss bed
+//   audio.startTitleMusic(); // loop title + prologue BGM (HTMLAudio)
+//   audio.stopTitleMusic();  // end title/prologue BGM
 //   audio.footstep();        // play a footstep
 //   audio.doorOpen();        // door unlocked/opened
 //   audio.doorLocked();      // door remains locked
@@ -210,6 +214,24 @@ function sfxAssetBase(folder: "ui" | "combat" | "dungeon"): string {
   return `${normalized}assets/sfx/${folder}/`;
 }
 
+/** Title / prologue looping BGM under public/assets/music/. */
+const TITLE_MUSIC_FILE = "breath-of-the-undercroft.mp3";
+const TITLE_MUSIC_VOLUME = 0.42;
+
+/** Dungeon exploration (maze) looping BGM. */
+const DUNGEON_MUSIC_FILE = "torchlight-beneath-stone.ogg";
+const DUNGEON_MUSIC_VOLUME = 0.4;
+
+/** Town hub looping BGM. */
+const TOWN_MUSIC_FILE = "haven-at-dusk.ogg";
+const TOWN_MUSIC_VOLUME = 0.4;
+
+function musicAssetUrl(file: string): string {
+  const root = import.meta.env.BASE_URL || "/";
+  const normalized = root.endsWith("/") ? root : `${root}/`;
+  return `${normalized}assets/music/${file}`;
+}
+
 class AudioEngine {
   private ctx: Maybe<AudioContext> = null;
   private masterGain: Maybe<GainNode> = null;
@@ -237,6 +259,22 @@ class AudioEngine {
     gain: GainNode;
   }> = null;
   private bossBedPlaying = false;
+
+  /**
+   * Title + New Game prologue BGM. HTMLAudio (not AudioContext) so the MP3
+   * streams without competing with the SFX decode queues. `titleMusicWanted`
+   * stays true across autoplay blocks — `resume()` / the next gesture retries.
+   */
+  private titleMusic: HTMLAudioElement | null = null;
+  private titleMusicWanted = false;
+
+  /** Maze / dungeon exploration BGM (sample bed; replaces procedural drone). */
+  private dungeonMusic: HTMLAudioElement | null = null;
+  private dungeonMusicWanted = false;
+
+  /** Town hub BGM. */
+  private townMusic: HTMLAudioElement | null = null;
+  private townMusicWanted = false;
 
   // Noise buffer cache (footsteps reuse it).
   private noiseBuffer: Maybe<AudioBuffer> = null;
@@ -314,6 +352,9 @@ class AudioEngine {
   resume(): void {
     if (this.ctx) {
       if (this.ctx.state === "suspended") void this.ctx.resume();
+      this.tryPlayTitleMusic();
+      this.tryPlayDungeonMusic();
+      this.tryPlayTownMusic();
       return;
     }
     const Ctor =
@@ -331,6 +372,10 @@ class AudioEngine {
     void this.loadUiSounds();
     void this.loadCombatSounds();
     void this.loadDungeonSounds();
+    // Title / dungeon BGM may have been requested before the first gesture.
+    this.tryPlayTitleMusic();
+    this.tryPlayDungeonMusic();
+    this.tryPlayTownMusic();
   }
 
   /**
@@ -675,55 +720,78 @@ class AudioEngine {
     osc.stop(ctx.currentTime + 0.06);
   }
 
-  /** Start the ambient dungeon drone. No-op if already playing. */
+  /**
+   * Start the dungeon / maze bed. Uses the authored Torchlight theme instead
+   * of the old procedural drone so exploration has a real score. Stops any
+   * leftover drone nodes. Safe before Web Audio is ready (HTMLAudio).
+   */
   startDungeon(): void {
-    if (!this.ctx || !this.masterGain || this.dronePlaying) return;
-    const ctx = this.ctx;
-    const cfg = this.CFG.drone;
-
-    const osc1 = ctx.createOscillator();
-    osc1.type = "sine";
-    osc1.frequency.value = cfg.freq1;
-
-    const osc2 = ctx.createOscillator();
-    osc2.type = "sine";
-    osc2.frequency.value = cfg.freq2;
-    osc2.detune.value = cfg.detune;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = cfg.filterFreq;
-
-    const gain = ctx.createGain();
-    gain.gain.value = cfg.gain;
-
-    // LFO for subtle gain "breathing".
-    const lfo = ctx.createOscillator();
-    lfo.type = "sine";
-    lfo.frequency.value = cfg.lfoFreq;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = cfg.lfoDepth;
-    lfo.connect(lfoGain);
-    lfoGain.connect(gain.gain);
-
-    osc1.connect(filter);
-    osc2.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc1.start();
-    osc2.start();
-    lfo.start();
-
-    this.droneNodes = { osc1, osc2, lfo, lfoGain, filter, gain };
-    this.dronePlaying = true;
+    if (this.dronePlaying) this.stopProceduralDrone();
+    this.dungeonMusicWanted = true;
+    if (!this.dungeonMusic) {
+      const el = new Audio(musicAssetUrl(DUNGEON_MUSIC_FILE));
+      el.loop = true;
+      el.preload = "auto";
+      el.volume = DUNGEON_MUSIC_VOLUME;
+      this.dungeonMusic = el;
+    }
+    this.tryPlayDungeonMusic();
   }
 
-  /** Stop the ambient drone. No-op if not playing. */
+  /** Stop the dungeon / maze BGM (and any leftover procedural drone). */
   stopDungeon(): void {
+    this.dungeonMusicWanted = false;
+    if (this.dungeonMusic) {
+      this.dungeonMusic.pause();
+      this.dungeonMusic.currentTime = 0;
+    }
+    this.stopProceduralDrone();
+  }
+
+  private tryPlayDungeonMusic(): void {
+    if (!this.dungeonMusicWanted || !this.dungeonMusic) return;
+    if (!this.dungeonMusic.paused && !this.dungeonMusic.ended) return;
+    void this.dungeonMusic.play().catch(() => {
+      // Autoplay policy — retry from resume().
+    });
+  }
+
+  /**
+   * Loop the town hub BGM (Haven at Dusk). Call while `mode === "town"`;
+   * stop when leaving for dungeon, camp, title, etc.
+   */
+  startTownMusic(): void {
+    this.townMusicWanted = true;
+    if (!this.townMusic) {
+      const el = new Audio(musicAssetUrl(TOWN_MUSIC_FILE));
+      el.loop = true;
+      el.preload = "auto";
+      el.volume = TOWN_MUSIC_VOLUME;
+      this.townMusic = el;
+    }
+    this.tryPlayTownMusic();
+  }
+
+  /** Stop and rewind the town hub BGM. */
+  stopTownMusic(): void {
+    this.townMusicWanted = false;
+    if (!this.townMusic) return;
+    this.townMusic.pause();
+    this.townMusic.currentTime = 0;
+  }
+
+  private tryPlayTownMusic(): void {
+    if (!this.townMusicWanted || !this.townMusic) return;
+    if (!this.townMusic.paused && !this.townMusic.ended) return;
+    void this.townMusic.play().catch(() => {
+      // Autoplay policy — retry from resume().
+    });
+  }
+
+  /** Stop the legacy procedural drone only (internal). */
+  private stopProceduralDrone(): void {
     if (!this.ctx || !this.droneNodes) return;
     const { osc1, osc2, lfo } = this.droneNodes;
-    // Quick fade-out to avoid click.
     const t = this.ctx.currentTime;
     this.droneNodes.gain.gain.setValueAtTime(
       this.droneNodes.gain.gain.value,
@@ -735,6 +803,41 @@ class AudioEngine {
     lfo.stop(t + 0.16);
     this.droneNodes = null;
     this.dronePlaying = false;
+  }
+
+  /**
+   * Loop the title / prologue BGM. Safe before the first user gesture —
+   * play may be blocked until `resume()`; we keep wanting it until
+   * `stopTitleMusic()`. Continues seamlessly from title into the New Game
+   * prologue; callers stop it when leaving for party creation / Continue /
+   * Arena / dungeon.
+   */
+  startTitleMusic(): void {
+    this.titleMusicWanted = true;
+    if (!this.titleMusic) {
+      const el = new Audio(musicAssetUrl(TITLE_MUSIC_FILE));
+      el.loop = true;
+      el.preload = "auto";
+      el.volume = TITLE_MUSIC_VOLUME;
+      this.titleMusic = el;
+    }
+    this.tryPlayTitleMusic();
+  }
+
+  /** Stop and rewind the title / prologue BGM. */
+  stopTitleMusic(): void {
+    this.titleMusicWanted = false;
+    if (!this.titleMusic) return;
+    this.titleMusic.pause();
+    this.titleMusic.currentTime = 0;
+  }
+
+  private tryPlayTitleMusic(): void {
+    if (!this.titleMusicWanted || !this.titleMusic) return;
+    if (!this.titleMusic.paused && !this.titleMusic.ended) return;
+    void this.titleMusic.play().catch(() => {
+      // Autoplay policy — will retry from resume() / next startTitleMusic().
+    });
   }
 
   /**

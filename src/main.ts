@@ -412,6 +412,7 @@ function openTitleScreen(): void {
   showMode("title", mapVisible);
   setMessage("");
   window.focus();
+  audio.startTitleMusic();
   titleController = new TitleController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     onNewGame: () => {
@@ -421,15 +422,21 @@ function openTitleScreen(): void {
       // into the new campaign. Reform Party (townController.onReformParty)
       // reuses openPartyCreation without this reset, since it's meant to
       // keep the ongoing campaign's progress.
+      // Title BGM keeps playing through the prologue; stop when it ends.
       Object.assign(state, createGameState(getFloors()[0]!));
-      openPrologue(() => openPartyCreation(() => openTown()));
+      openPrologue(() => {
+        audio.stopTitleMusic();
+        openPartyCreation(() => openTown());
+      });
     },
     onContinue: (loaded) => {
       titleController = null;
+      audio.stopTitleMusic();
       applyLoadedGameState(loaded);
     },
     onArena: () => {
       titleController = null;
+      audio.stopTitleMusic();
       openArenaSetup();
     },
   });
@@ -1698,6 +1705,8 @@ function startNextArenaFight(): void {
 // Title screen key handler — routes keys to the TitleController.
 window.addEventListener("keydown", (e: KeyboardEvent) => {
   if (state.mode !== "title" || !titleController) return;
+  // First gesture unlocks AudioContext + title BGM (autoplay policy).
+  audio.resume();
   if (titleController.handleKey(e.key)) {
     e.preventDefault();
   }
@@ -1951,13 +1960,18 @@ function toggleMap(): void {
 let prevMode: GameMode | null = null;
 
 function loop() {
-  // Manage ambient drone on mode transitions.
+  // Manage BGM beds on mode transitions (maze / town).
   if (state.mode !== prevMode) {
     if (state.mode === "dungeon") {
       audio.startDungeon();
     } else if (prevMode === "dungeon") {
       audio.stopDungeon();
       clearPartyStrip();
+    }
+    if (state.mode === "town") {
+      audio.startTownMusic();
+    } else if (prevMode === "town") {
+      audio.stopTownMusic();
     }
     prevMode = state.mode;
   }
