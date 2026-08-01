@@ -792,7 +792,16 @@ describe("reach perks (Lunge/Sweep)", () => {
     c.formationSlot = 3; // back row
     const enemy = makeEnemy("e1");
     enemy.row = "back";
-    const state = createCombatState([c], { front: [], back: [enemy] }, false, {}, {}, { [c.id]: { weapon, armor: [] } });
+    // A combat with no front row is normalized by setup, promoting the back
+    // enemy. Keep a blocker here so these cases genuinely test back-row reach.
+    const state = createCombatState(
+      [c],
+      { front: [makeEnemy("front-blocker")], back: [enemy] },
+      false,
+      {},
+      {},
+      { [c.id]: { weapon, armor: [] } }
+    );
     return { c, state };
   }
 
