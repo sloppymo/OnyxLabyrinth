@@ -89,3 +89,74 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   review covered straight corridor, side passage, front wall, and darkness,
   plus close wall reads for floors 2–5. `npm test` remains at the workspace's
   known 12 unrelated failures (1489 passing).
+
+## 2026-07-31 — Magic sheet controller UX slice
+
+- Current prompt: choose and complete one highest-priority open player-facing
+  slice, with Magic sheet/message-band UX first; do not touch tileset art.
+- Selected the shipped combat Magic sheet: make its hints input-adaptive and
+  its empty-category state explicit. No game math, maps, renderer, or art.
+- Renderer tests now cover keyboard hints, gamepad hints, ARIA-disabled spell
+  rows, and category-specific empty copy.
+- Production-preview smoke uncovered a live integration gap: advertised 1–5
+  tab shortcuts were swallowed by `main.ts` before reaching `CombatController`.
+  Added direct digit routing only while `phase === "selectSpell"`.
+- Baseline build passed; focused tests were 91/91. After the change, renderer
+  tests passed; one unrelated combat-auto test flaked once and passed alone on
+  immediate rerun.
+- Final focused rerun: 66/66 passed; `npm run build` passed. Production preview
+  passed with Phaser and `?phaser=0`: live keyboard `3` selected Defense, the
+  empty state stayed open with category-specific copy, and mocked-pad LB
+  returned to Offense with gamepad-specific hints. Both ended at route combat /
+  phase selectSpell with browser errors `[]`. Screenshots and report are under
+  `/tmp/onyx-magic-sheet-polish/` and were visually inspected for clipping,
+  hierarchy, background/footer coexistence, and input-label correctness.
+
+## 2026-07-31 — Dungeon notification polish slice
+
+- Baseline build passed; message-adjacent focused tests passed 51/51.
+- Production baseline confirmed the entry notification duplicated
+  `Tab: Actions · Esc: Save` in both the blue message box and persistent HUD
+  chrome. It also showed `snapshot().message.text` returning the unrevealed
+  full string while the DOM visibly contained only a prefix.
+- Selected a bounded shell-only fix: keep floor/facing beside notifications,
+  show the persistent control legend only after the message clears, and make
+  the snapshot seam report currently rendered glyphs. No renderer, art,
+  movement, combat, balance, map data, or audio changes.
+- Added `src/engine/shell.test.ts` for empty visibility, two-action
+  complete/dismiss, instant trap prompts, long-copy bounds, HUD coexistence,
+  and map/mode visibility. Focused tests passed 56/56; build passed.
+- Production preview passed the real title→dungeon route, typewriter
+  progression, both notification actions, a live poison-chest prompt
+  (navigate/inspect/restore/leave), map open/close, save open/close, and a
+  long-message HUD preview. Desktop and 390px captures were visually
+  inspected; snapshots matched rendered text, warnings/errors were empty,
+  readiness was fully settled, and party DOM restored after Save.
+- Full suite passed: 75 files / 1,539 tests. Final evidence lives under
+  `/tmp/onyx-message-band-polish/`. No assets, renderer, combat, or game logic
+  changed; no commit was created.
+- Smallest follow-up: audit Arena entry/exit coherence next; the prioritized
+  Magic-sheet and dungeon-message slices are now both covered.
+
+## 2026-07-31 — Tier-2 priest heal VFX slice
+
+- Current prompt: complete one presentation-only spell/effect VFX slice using
+  existing strips, verify both Phaser and `?phaser=0`, and stop uncommitted.
+- Preserved the already-dirty Tier-2 heal remaps in
+  `combat-choreography.ts`: Cure Serious, Cure Blindness, and Mass Cure.
+- Reverified the live inventory: 111 effect PNGs, 110 registered strips, and
+  only `pixelart-magic-ray.png` orphaned. Focused wiring/choreography tests pass
+  65/65 and `npm run build` passes.
+- Next: capture and inspect each touched cast at mid-impact in real Arena on
+  Phaser and the canvas rollback, including snapshot/readiness/error evidence.
+- Completed the real-Arena capture on both painters. Serious exposed
+  `heal_sparks` → `priest_heal`; Blindness exposed
+  `px_black_white_sparks`; Mass Cure exposed `heal_sparks` + `priest_heal`
+  together. All six frozen mid-impact frames were visually inspected.
+- Both reports ended on route `combat` with warnings, console/network errors,
+  debug errors, and failed assets all empty. Evidence is under
+  `vfx-audit/2026-07-31-tier2-heals/{phaser,canvas}/`.
+- Visual result: focused green cross/orb for Serious, monochrome white cleanse
+  for Blindness, and simultaneous party-wide green rings/crosses for Mass Cure.
+  Remaining heal gap is the untouched higher-tier fallback cluster (Critical,
+  Regenerate, and Heal); that is a separate slice.
