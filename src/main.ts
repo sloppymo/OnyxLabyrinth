@@ -92,6 +92,8 @@ import {
   encounterRollChance,
   encounterRateAt,
   encounterTableFloorId,
+  zoneHeatAt,
+  pityPressureFor,
   arenaStartFloorForLevel,
   arenaFloorForWave,
   rollArenaEncounter,
@@ -1982,7 +1984,11 @@ function loop() {
     renderPartyStrip(
       state.party,
       compassForFacing(state.player.facing),
-      floorLabel
+      floorLabel,
+      {
+        heat: zoneHeatAt(state.floor, state.player.x, state.player.y),
+        pressure: pityPressureFor(state.stepsSinceEncounter),
+      }
     );
     const kind = globalInput.getLastInputKind();
     setContextualPrompt(resolveContextualPrompt(state, kind));

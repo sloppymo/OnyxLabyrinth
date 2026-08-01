@@ -12,6 +12,7 @@
  */
 import { createGameState } from "../game/state";
 import { getFloors } from "../game/floor-registry";
+import { zoneHeatAt, pityPressureFor } from "../game/encounters";
 import { createDefaultParty, type Character, type StatusEffect } from "../game/party";
 import { loadTextures, render } from "../engine/renderer";
 import { renderPartyStrip, setMessage, showMode, compassForFacing, ctx } from "../engine/shell";
@@ -27,7 +28,13 @@ const COMPASS_DIRS = ["N", "E", "S", "W"];
 let facing = 0;
 
 function redrawHud(): void {
-  renderPartyStrip(state.party, compassForFacing(facing));
+  // Pass a real danger readout — this page's whole promise is "what you see
+  // here is exactly what ships", so it must not render a HUD the game never
+  // shows. Computed from the live state, same as main.ts's frame loop.
+  renderPartyStrip(state.party, compassForFacing(facing), `F${state.floor.id}`, {
+    heat: zoneHeatAt(state.floor, state.player.x, state.player.y),
+    pressure: pityPressureFor(state.stepsSinceEncounter),
+  });
 }
 
 function redrawScene(): void {

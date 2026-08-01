@@ -180,6 +180,19 @@ canvas#map-canvas {
   padding-top: 1px;
 }
 
+/* Two-channel encounter readout. Zone heat is carried by the glyph and word,
+   pity pressure by the pip bar — colour below is a redundant hint only, so
+   both channels survive a colour-blind player and a greyscale screenshot. */
+#hud-danger.pressure-cooldown {
+  color: #7f9a72;
+}
+#hud-danger.pressure-live {
+  color: #ffd769;
+}
+#hud-danger.pressure-ramping {
+  color: #e2603f;
+}
+
 /* The first-entry notification already teaches Tab/Esc. Keep the location
    visible beside any notification, but reserve the persistent control legend
    for the chrome-only state so the same hint is never printed twice. */

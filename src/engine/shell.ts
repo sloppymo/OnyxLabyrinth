@@ -12,6 +12,7 @@
 import type { Character } from "../game/party";
 import { isFrontRow } from "../game/party";
 import type { GameMode } from "../types";
+import type { PityPressure, ZoneHeat } from "../game/encounters";
 import { cappedRenderSize, pixelScaleToFit } from "./render-math";
 import {
   formatContextualPrompt,
@@ -30,6 +31,7 @@ app.innerHTML = `
         </div>
         <div id="hud-chrome" hidden>
           <span id="hud-location">F1 · N</span>
+          <span id="hud-danger"></span>
           <span id="hud-controls"> · Tab:Actions · Esc:Save</span>
         </div>
       </div>
@@ -60,6 +62,7 @@ const messageBoxEl = document.querySelector<HTMLDivElement>("#message-box")!;
 const messageEl = document.querySelector<HTMLDivElement>("#message")!;
 const hudChromeEl = document.querySelector<HTMLDivElement>("#hud-chrome")!;
 const hudLocationEl = document.querySelector<HTMLSpanElement>("#hud-location")!;
+const hudDangerEl = document.querySelector<HTMLSpanElement>("#hud-danger")!;
 const contextPromptEl = document.querySelector<HTMLDivElement>("#context-prompt")!;
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
 export const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
@@ -292,6 +295,11 @@ export function clearMessageOnPlayerAction(): void {
 /** Clear the party status overlay (used when leaving dungeon mode). */
 export function clearPartyStrip(): void {
   partyStripEl.innerHTML = "";
+  // Clear every element renderPartyStrip writes, not just the strip — leaving
+  // a stale "● Hot ▮▮▮" behind is currently invisible only because showMode()
+  // hides the whole message band outside dungeon mode. Don't rely on that.
+  hudDangerEl.textContent = "";
+  hudDangerEl.className = "";
   // The next dungeon frame must recreate the DOM even when the party state
   // itself has not changed since this overlay was cleared.
   lastPartyStripSig = "";
@@ -327,13 +335,51 @@ let lastPartyStripSig = "";
  * Render the bottom party overlay (token sibling of combat roster) and
  * refresh floor·facing chrome.
  */
+/**
+ * Two-channel dungeon danger readout.
+ *
+ * `heat` (where you are) and `pressure` (how overdue a fight is) are
+ * independent — the pity ramp ignores encounter zones, so a dead pocket can
+ * still be about to produce a fight. Each channel is encoded in shape AND
+ * text, never colour alone: colour is a redundant hint, so the readout stays
+ * legible to a colour-blind player and in a screenshot.
+ */
+export interface DangerReadout {
+  heat: ZoneHeat;
+  pressure: PityPressure;
+}
+
+/** Glyph + word for the zone-heat channel. */
+// Glyphs read as increasing density (◌ ○ ◐ ●). "dead" deliberately avoids a
+// middot — the HUD already uses "·" as its field separator, so "· · Still"
+// rendered as an ambiguous double dot.
+const HEAT_LABELS: Record<ZoneHeat, string> = {
+  // "Unhunted", not "Still"/"Safe": a rateMul-0 zone stops ordinary rolls but
+  // NOT the pity force, which still guarantees a fight at ENCOUNTER_PITY_FORCE
+  // (verified for F4 vestry-quiet and F5 drip-vestry-safe). The label must not
+  // promise a safety the encounter clock does not honour.
+  dead: "◌ Unhunted",
+  quiet: "○ Quiet",
+  normal: "◐ Active",
+  hot: "● Hot",
+};
+
+/** Filling pip bar for the pity-pressure channel. */
+const PRESSURE_PIPS: Record<PityPressure, string> = {
+  cooldown: "▮▯▯",
+  live: "▮▮▯",
+  ramping: "▮▮▮",
+};
+
 export function renderPartyStrip(
   party: Character[],
   compass: string,
-  floorLabel = "F?"
+  floorLabel = "F?",
+  danger?: DangerReadout
 ): void {
+  const dangerSig = danger ? `${danger.heat}:${danger.pressure}` : "-";
   const sig =
-    `${floorLabel}|${compass}|` +
+    `${floorLabel}|${compass}|${dangerSig}|` +
     party
       .map(
         (c) =>
@@ -347,6 +393,14 @@ export function renderPartyStrip(
   // dungeon key legend persistent whenever a notification is not using the
   // band (playtest finding: Camp/Map/Grimoire/Actions were "secret keys").
   hudLocationEl.textContent = `${floorLabel} · ${compass}`;
+  if (danger) {
+    hudDangerEl.textContent =
+      ` · ${HEAT_LABELS[danger.heat]} ${PRESSURE_PIPS[danger.pressure]}`;
+    hudDangerEl.className = `heat-${danger.heat} pressure-${danger.pressure}`;
+  } else {
+    hudDangerEl.textContent = "";
+    hudDangerEl.className = "";
+  }
   hudChromeEl.hidden = false;
   syncMessageBandVisibility();
 

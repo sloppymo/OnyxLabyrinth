@@ -60,6 +60,61 @@ export function encounterRollChance(
 }
 
 /**
+ * How dangerous the party's current cell is, relative to its floor's own base
+ * rate — i.e. which authored `encounterZone` they are standing in.
+ *
+ * This is the *where* channel of the dungeon danger readout. It is a pure
+ * function of position and says nothing about how long it has been since the
+ * last fight.
+ */
+export type ZoneHeat = "dead" | "quiet" | "normal" | "hot";
+
+/** Tolerance around the floor's base rate that still reads as "normal". */
+const HEAT_TOLERANCE = 0.05;
+
+/**
+ * Classify the cell's encounter rate against its floor's base rate, recovering
+ * the covering zone's `rateMul` without needing to look the zone up again.
+ *
+ * A `rateMul: 0` pocket reads `dead` — no ordinary roll can fire there. That
+ * is deliberately NOT the same as "safe": pity still forces a fight, which is
+ * why pressure is a separate channel (see {@link pityPressureFor}).
+ */
+export function zoneHeatAt(
+  floor: Pick<FloorDef, "encounterRate" | "encounterZones">,
+  x: number,
+  y: number
+): ZoneHeat {
+  const rate = encounterRateAt(floor, x, y);
+  if (rate <= 0) return "dead";
+  const base = floor.encounterRate;
+  if (base <= 0) return "normal";
+  if (rate < base * (1 - HEAT_TOLERANCE)) return "quiet";
+  if (rate > base * (1 + HEAT_TOLERANCE)) return "hot";
+  return "normal";
+}
+
+/**
+ * How close the encounter clock is to firing.
+ *
+ * This is the *when* channel, and it is a pure function of the step counter —
+ * deliberately independent of the local rate, because the pity ramp ignores
+ * `rateMul` entirely. A dead zone at step 20+ genuinely is about to produce a
+ * fight, and the readout must be able to say so.
+ */
+export type PityPressure = "cooldown" | "live" | "ramping";
+
+export function pityPressureFor(
+  stepsSinceEncounter: number,
+  opts?: { cooldown?: number; pityStart?: number }
+): PityPressure {
+  const cooldown = opts?.cooldown ?? ENCOUNTER_COOLDOWN;
+  const pityStart = opts?.pityStart ?? ENCOUNTER_PITY_START;
+  if (stepsSinceEncounter < cooldown) return "cooldown";
+  return stepsSinceEncounter >= pityStart ? "ramping" : "live";
+}
+
+/**
  * Arena starting floor for a party level.
  * Maps each of the discrete Arena chooser levels (1/3/6/9/12) onto its own
  * floor across the full 5-floor campaign, so higher-level parties reach the

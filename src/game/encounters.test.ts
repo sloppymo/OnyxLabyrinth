@@ -6,12 +6,15 @@ import {
   encounterRollChance,
   encounterRateAt,
   encounterTableFloorId,
+  zoneHeatAt,
+  pityPressureFor,
   arenaStartFloorForLevel,
   arenaFloorForWave,
   rollArenaEncounter,
   adjustArenaEncounterForSmallParty,
 } from "./encounters";
 import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
+import { getFloors } from "./floor-registry";
 
 describe("encounterRollChance", () => {
   it("returns 0 during cooldown", () => {
@@ -168,5 +171,74 @@ describe("encounter zones", () => {
   it("overrides table floor id", () => {
     expect(encounterTableFloorId(floor, 6, 6)).toBe(3);
     expect(encounterTableFloorId(floor, 3, 3)).toBe(1);
+  });
+});
+
+describe("zoneHeatAt", () => {
+  const floor = {
+    encounterRate: 0.1,
+    encounterZones: [
+      { id: "dead", x1: 0, y1: 0, x2: 2, y2: 2, rateMul: 0 },
+      { id: "quiet", x1: 4, y1: 0, x2: 6, y2: 2, rateMul: 0.5 },
+      { id: "hot", x1: 8, y1: 0, x2: 10, y2: 2, rateMul: 2 },
+    ],
+  };
+
+  it("reads dead in a rateMul-0 pocket", () => {
+    expect(zoneHeatAt(floor, 1, 1)).toBe("dead");
+  });
+
+  it("reads quiet, normal, and hot against the floor's own base rate", () => {
+    expect(zoneHeatAt(floor, 5, 1)).toBe("quiet");
+    expect(zoneHeatAt(floor, 20, 20)).toBe("normal"); // outside every zone
+    expect(zoneHeatAt(floor, 9, 1)).toBe("hot");
+  });
+
+  it("is independent of the step counter", () => {
+    // Heat is the "where" channel — it must not encode encounter timing.
+    expect(zoneHeatAt(floor, 9, 1)).toBe(zoneHeatAt(floor, 9, 1));
+  });
+
+  it("classifies every authored zone on every live floor as visibly non-normal", () => {
+    // Uses the real runtime registry (campaign floors 2-3 plus the JSON packs
+    // for 1/4/5), not data/floors.ts's FLOORS, which holds only 2-3. A zone
+    // that read "normal" would be invisible to the player and the authoring
+    // effort would be wasted.
+    const floors = getFloors();
+    expect(floors.map((f) => f.id)).toEqual([1, 2, 3, 4, 5]);
+    let zonesChecked = 0;
+    for (const floorDef of floors) {
+      for (const zone of floorDef.encounterZones ?? []) {
+        expect(zoneHeatAt(floorDef, zone.x1, zone.y1)).not.toBe("normal");
+        zonesChecked++;
+      }
+    }
+    expect(zonesChecked).toBeGreaterThanOrEqual(12);
+  });
+});
+
+describe("pityPressureFor", () => {
+  it("fills as the counter climbs", () => {
+    expect(pityPressureFor(0)).toBe("cooldown");
+    expect(pityPressureFor(ENCOUNTER_COOLDOWN - 1)).toBe("cooldown");
+    expect(pityPressureFor(ENCOUNTER_COOLDOWN)).toBe("live");
+    expect(pityPressureFor(ENCOUNTER_PITY_START - 1)).toBe("live");
+    expect(pityPressureFor(ENCOUNTER_PITY_START)).toBe("ramping");
+    expect(pityPressureFor(ENCOUNTER_PITY_FORCE)).toBe("ramping");
+  });
+
+  it("agrees with encounterRollChance about when rolls go live", () => {
+    for (let steps = 0; steps <= ENCOUNTER_PITY_FORCE + 3; steps++) {
+      const rollable = encounterRollChance(0.1, steps) > 0;
+      expect(pityPressureFor(steps) === "cooldown").toBe(!rollable);
+    }
+  });
+
+  it("reports ramping in a dead zone, because pity ignores rateMul", () => {
+    // The two channels are orthogonal on purpose: a rateMul-0 pocket still
+    // gets a forced fight at ENCOUNTER_PITY_FORCE, and the readout must be
+    // able to warn about it.
+    expect(pityPressureFor(ENCOUNTER_PITY_START)).toBe("ramping");
+    expect(encounterRollChance(0, ENCOUNTER_PITY_FORCE)).toBe(1);
   });
 });
