@@ -20,7 +20,7 @@
 
 import type { GameState } from "../types";
 import { restoreParty, charRow, type Character, type Stats } from "../game/party";
-import { ALL_ITEMS, ITEMS_BY_ID, displayNameFor, type EquipSlot, type ItemDef } from "../data/items";
+import { ALL_ITEMS, ITEMS_BY_ID, displayNameFor, shopBuyPrice, type EquipSlot, type ItemDef } from "../data/items";
 import {
   equipItem,
   findBestEquipTarget,
@@ -1033,10 +1033,11 @@ export class TownController {
     return undefined;
   }
 
-  /** Buy price after the party's perk discount (thief-swindler). Sell and
-   *  trade-in values stay at base price. */
+  /** Buy price after the +3/+4 ruinous markup (shopBuyPrice) and the
+   *  party's perk discount (thief-swindler). Sell and trade-in values stay
+   *  at base price. */
   private buyPrice(item: ItemDef): number {
-    return discountedShopPrice(item.price, partyShopDiscount(this.state.party));
+    return discountedShopPrice(shopBuyPrice(item), partyShopDiscount(this.state.party));
   }
 
   private canAffordWithTradeIn(item: ItemDef): boolean {

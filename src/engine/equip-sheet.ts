@@ -332,9 +332,15 @@ export function equipItemDeltas(
   return out;
 }
 
-/** Short flavor line derived from existing ItemDef fields (no new item data). */
+/**
+ * Flavor line for the equip panel. The curse warning is mechanical
+ * information ("you cannot remove this"), so it still wins over authored
+ * copy; otherwise prefer the item's own description and fall back to a
+ * procedural line only for items that don't have one yet.
+ */
 export function equipItemFlavor(item: ItemDef): string {
   if (item.cursed) return "A cursed relic. It will not come off.";
+  if (item.description) return item.description;
   if (item.type === "weapon") {
     const range = item.range ?? "close";
     return `A ${range}-range weapon for adventurers.`;
