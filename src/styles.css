@@ -2887,6 +2887,8 @@ canvas#map-canvas {
 .ff6-status-tag.st-blind { color: #c8c4b8; }
 .ff6-status-tag.st-burn { color: #ff9a50; }
 .ff6-status-tag.st-regen { color: #6fe06f; }
+.ff6-status-tag.st-shrunk { color: #a0d8ff; }
+.ff6-status-tag.st-giantStrength { color: #e8a060; }
 
 /* Summoned allies (CONVOCIX/MAWCALLIX) — cyan to match their glow on the scene. */
 .ff6-enemy-row.summon,

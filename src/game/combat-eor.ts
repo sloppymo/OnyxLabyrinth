@@ -42,6 +42,7 @@ export function deathCheck(
       // Knocked out is the worst state: clear active combat statuses.
       c.status = c.status.filter((st) => st === "knockedOut");
       delete s.paralysisTimers[c.id];
+      delete s.giantStrengthTimers[c.id];
       emit(`${c.name} is knocked out!`, { type: "defeated", targetId: c.id, wasEnemy: false });
       maybeEmitBark(s, emit, {
         trigger: "death",
@@ -294,6 +295,16 @@ function tickStatuses(
         log(`${c.name} can see again.`);
       } else {
         s.blindTimers[c.id] = remaining;
+      }
+    }
+    if (c.status.includes("giantStrength")) {
+      const remaining = (s.giantStrengthTimers[c.id] ?? 3) - 1;
+      if (remaining <= 0) {
+        c.status = c.status.filter((st) => st !== "giantStrength");
+        delete s.giantStrengthTimers[c.id];
+        log(`${c.name}'s giant strength fades.`);
+      } else {
+        s.giantStrengthTimers[c.id] = remaining;
       }
     }
   }

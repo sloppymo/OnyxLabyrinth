@@ -90,6 +90,8 @@ describe("spellMagicCategory", () => {
     [{ kind: "cure", status: "poison" }, "status"],
     [{ kind: "fizzleField", power: 5 }, "status"],
     [{ kind: "dispelMagic" }, "status"],
+    [{ kind: "combatStatus", status: "shrunk" }, "status"],
+    [{ kind: "combatStatus", status: "giantStrength", duration: 3 }, "status"],
     [{ kind: "light", duration: 10 }, null],
     [{ kind: "detect" }, null],
   ];

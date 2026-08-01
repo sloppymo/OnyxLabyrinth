@@ -18,6 +18,8 @@ import {
   applyDisableToEnemy,
   observeAffinity,
   findEnemy,
+  addStatus,
+  scaleOutgoingDamage,
 } from "./combat-shared";
 import type {
   CombatEvent,
@@ -98,6 +100,7 @@ export function applySpell(
         if (s.enemyMagicScreens[t.row] > 0) {
           final = Math.max(1, Math.round(final * 0.5));
         }
+        final = scaleOutgoingDamage(final, caster);
         t.currentHp -= final;
         emit(
           `${spell.name} hits ${t.name} for ${final} damage.`,
@@ -256,13 +259,57 @@ export function applySpell(
       s.enemyMagicScreens = { front: 0, back: 0 };
       s.enemyFizzleFields = { front: 0, back: 0 };
       s.partyFizzleField = 0;
-      const clearedTotal = clearedEnemyScreens + clearedEnemyFizzles + clearedPartyFizzle;
+      let clearedBody = 0;
+      for (const e of [...s.enemies.front, ...s.enemies.back]) {
+        if (e.status.includes("shrunk")) {
+          e.status = e.status.filter((st) => st !== "shrunk");
+          clearedBody += 1;
+        }
+      }
+      for (const c of s.party) {
+        if (c.status.includes("giantStrength")) {
+          c.status = c.status.filter((st) => st !== "giantStrength");
+          delete s.giantStrengthTimers[c.id];
+          clearedBody += 1;
+        }
+      }
+      const clearedTotal = clearedEnemyScreens + clearedEnemyFizzles + clearedPartyFizzle + clearedBody;
       emit(
         clearedTotal > 0
-          ? `${spell.name} dispels enemy screens and fizzle fields.`
+          ? `${spell.name} dispels magical wards and body-magic.`
           : `${spell.name} finds no magic to dispel.`,
         { type: "spellEffect", spellId: spell.id, isBuff: true }
       );
+      break;
+    }
+    case "combatStatus": {
+      if (eff.status === "shrunk") {
+        for (const t of spellTargets(s, spell, action)) {
+          if (t.status.includes("shrunk")) {
+            emit(
+              `${t.name} is already shrunk.`,
+              { type: "spellEffect", spellId: spell.id, targetId: t.instanceId, statusInflicted: "shrunk" }
+            );
+            continue;
+          }
+          addStatus(t, "shrunk");
+          emit(
+            `${spell.name} shrinks ${t.name}!`,
+            { type: "spellEffect", spellId: spell.id, targetId: t.instanceId, statusInflicted: "shrunk", isDebuff: true }
+          );
+        }
+      } else {
+        const duration = eff.duration ?? 3;
+        for (const t of allyTargets(s, spell, action, caster)) {
+          if (t.hp <= 0 || t.status.includes("knockedOut")) continue;
+          addStatus(t, "giantStrength");
+          s.giantStrengthTimers[t.id] = duration;
+          emit(
+            `${spell.name} enlarges ${t.name}!`,
+            { type: "spellEffect", spellId: spell.id, targetId: t.id, statusInflicted: "giantStrength", isBuff: true }
+          );
+        }
+      }
       break;
     }
     case "summon": {

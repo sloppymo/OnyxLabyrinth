@@ -8,6 +8,7 @@
 
 import type { Character } from "../game/party";
 import type { EnemyInstance, SummonedAlly } from "../game/combat-types";
+import { statusDrawScale } from "../game/combat-shared";
 import { getEnemySpriteStrip } from "./enemy-sprite-cache";
 import { getPartySpriteStrip } from "./party-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
@@ -364,7 +365,7 @@ function drawPartyMember(
   const x = slot.x + off.x;
   const y = slot.y + off.y;
   const footY = slot.footY + off.y;
-  const drawSize = PARTY_SIZE * slot.scale;
+  const drawSize = PARTY_SIZE * slot.scale * statusDrawScale(char.status);
 
   const isDead = char.hp <= 0 || char.status.includes("knockedOut");
   if (isDead && anim.state !== "death") setAnimState(anim, "death", now);
@@ -446,7 +447,7 @@ function drawEnemy(
   const x = slot.x + off.x;
   const y = slot.y + off.y;
   const footY = slot.footY + off.y;
-  const drawSize = baseSize * slot.scale;
+  const drawSize = baseSize * slot.scale * statusDrawScale(enemy.status);
 
   const frozen = enemy.status.includes("sleep") || enemy.status.includes("paralysis");
   const burning = (scene.state.enemyDots[enemy.instanceId]?.length ?? 0) > 0;

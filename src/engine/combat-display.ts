@@ -66,6 +66,7 @@ export function spellMagicCategory(effect: SpellEffect): SpellMagicCategory | nu
     case "cure":
     case "fizzleField":
     case "dispelMagic":
+    case "combatStatus":
       return "status";
     case "light":
     case "levitation":
@@ -133,6 +134,10 @@ export function spellEffectSummary(effect: SpellEffect): string {
       return `Fizzle field (strength ${effect.power})`;
     case "dispelMagic":
       return "Dispels enemy wards";
+    case "combatStatus":
+      return effect.status === "shrunk"
+        ? "Shrinks one foe (half size & damage)"
+        : "Giant Strength (3 rounds)";
     case "summon":
       return `Summons an ally (power ${effect.power})`;
     case "light":

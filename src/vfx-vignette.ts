@@ -208,6 +208,7 @@ const state: CombatState = {
   attackDebuffs: {},
   sleepTimers: {},
   blindTimers: {},
+  giantStrengthTimers: {},
   poisonState: {},
   windUps: {},
   observedAffinity: {},

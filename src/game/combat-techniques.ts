@@ -22,6 +22,7 @@ import {
   warlordDamageMultiplier,
   wakeOnDamage,
   pickRandom,
+  scaleOutgoingDamage,
 } from "./combat-shared";
 import { canReach, effectiveWeaponRange } from "./combat-reach";
 import type {
@@ -654,6 +655,7 @@ function dealTechniqueDamage(
     }
   }
 
+  damage = scaleOutgoingDamage(damage, actor);
   target.currentHp -= damage;
   emit(
     `${actor.name} hits ${target.name} with ${tech.name} for ${damage} damage.`,

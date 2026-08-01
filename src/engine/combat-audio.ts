@@ -92,6 +92,8 @@ function idForCast(spellId: string, state: CombatState): CombatSfxId | null {
     case "fizzleField":
     case "dispelMagic":
       return "debuffCast";
+    case "combatStatus":
+      return eff.status === "giantStrength" ? "buffCast" : "debuffCast";
     default:
       return null;
   }

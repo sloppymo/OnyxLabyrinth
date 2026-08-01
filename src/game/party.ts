@@ -25,7 +25,9 @@ export type StatusEffect =
   | "knockedOut"
   | "hidden"
   | "exposed"
-  | "wet";
+  | "wet"
+  | "shrunk"
+  | "giantStrength";
 
 /** Fixed party size — no bench. Formation slots are densely 0..PARTY_SIZE-1. */
 export const PARTY_SIZE = 4;

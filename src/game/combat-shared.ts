@@ -111,7 +111,43 @@ export function damageReductionFor(
   if (perkMult !== 1) {
     dmg = Math.max(1, Math.round(dmg * perkMult));
   }
+  // Giant Strength: glass-cannon — take more damage while enlarged.
+  if (target.status.includes("giantStrength")) {
+    dmg = Math.max(1, Math.round(dmg * 1.2));
+  }
   return dmg;
+}
+
+/** Outgoing damage scale for Shrink (×0.5) / Giant Strength (×1.5). */
+export function scaleOutgoingDamage(
+  damage: number,
+  actor: { status: StatusEffect[] }
+): number {
+  let d = damage;
+  if (actor.status.includes("shrunk")) {
+    d = Math.max(1, Math.round(d * 0.5));
+  }
+  if (actor.status.includes("giantStrength")) {
+    d = Math.max(1, Math.round(d * 1.5));
+  }
+  return d;
+}
+
+/** Physical evade chance after Giant Strength's flat −20% clumsiness. */
+export function physicalEvadeChance(
+  baseChance: number,
+  defender: { status: StatusEffect[] }
+): number {
+  let c = baseChance;
+  if (defender.status.includes("giantStrength")) c -= 0.2;
+  return Math.max(0, c);
+}
+
+/** Sprite draw multiplier for body-magic statuses (foot-anchored). */
+export function statusDrawScale(status: readonly StatusEffect[]): number {
+  if (status.includes("shrunk")) return 0.5;
+  if (status.includes("giantStrength")) return 1.3;
+  return 1;
 }
 
 export function findEnemy(s: CombatState, instanceId: string): EnemyInstance | undefined {

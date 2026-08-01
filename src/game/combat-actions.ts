@@ -19,6 +19,7 @@ import {
   wakeOnDamage,
   findEnemy,
   pickRandom,
+  scaleOutgoingDamage,
 } from "./combat-shared";
 import { canReach, effectiveWeaponRange } from "./combat-reach";
 import { resolveTechnique, gainRage } from "./combat-techniques";
@@ -230,6 +231,8 @@ function resolveAttack(
 
   // halberdier-warlord: +20% damage while adjacent to a living Warlord holder.
   damage = Math.max(1, Math.round(damage * warlordDamageMultiplier(s, actor)));
+
+  damage = scaleOutgoingDamage(damage, actor);
 
   // Critical hit: chance based on effective LUK, capped at 25%.
   // thief-assassin: +25% crit vs enemies suffering any status effect,
@@ -620,6 +623,7 @@ function resolveAmbush(
 
   // Critical hit: same LUK/bonus formula and thief-assassin status bonus as
   // resolveAttack, so a Thief's own class perks apply to their signature verb.
+  damage = scaleOutgoingDamage(damage, actor);
   let crit = false;
   let critChance = critChanceFromLukAndBonuses(effStats.luk, mods.critChanceBonus);
   if (

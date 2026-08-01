@@ -23,6 +23,8 @@ import {
   wakeOnDamage,
   pickRandom,
   heavyHitBarkEligible,
+  scaleOutgoingDamage,
+  physicalEvadeChance,
 } from "./combat-shared";
 import { gainRage } from "./combat-techniques";
 import { isHeavyHit, maybeEmitBark } from "./combat-barks";
@@ -60,6 +62,7 @@ function abilityDamageParty(
   if (s.magicScreen > 0) {
     damage = Math.max(1, Math.round(damage * 0.5));
   }
+  damage = scaleOutgoingDamage(damage, actor);
   damage = damageReductionFor(s, target, damage);
   const result = applyPartyDamage(s, target, damage, actor, rng, emit);
   return {
@@ -447,6 +450,10 @@ export function resolveEnemyAction(
       if (s.magicScreen > 0) {
         damage = Math.max(1, Math.round(damage * 0.5));
       }
+      damage = scaleOutgoingDamage(damage, actor);
+      if (partyTarget.status.includes("giantStrength")) {
+        damage = Math.max(1, Math.round(damage * 1.2));
+      }
       partyTarget.hp -= damage;
       emit(
         `${actor.name} casts ${spellId} at ${partyTarget.name} for ${damage} damage.`,
@@ -528,7 +535,10 @@ export function resolveEnemyAction(
   // Physical evasion: AGI-based chance plus perk bonuses.
   const effStats = effStatsFor(s, partyTarget);
   const mods = perkModifiers(perksForCharacter(partyTarget), effStats);
-  const evasionChance = Math.max(0, Math.min((effStats.agi - 10) * 0.01, 0.15)) + mods.evasionBonusPercent;
+  const evasionChance = physicalEvadeChance(
+    Math.max(0, Math.min((effStats.agi - 10) * 0.01, 0.15)) + mods.evasionBonusPercent,
+    partyTarget
+  );
   if (rng() < evasionChance) {
     emit(
       `${partyTarget.name} evades ${actor.name}'s attack!`,
@@ -562,6 +572,7 @@ export function resolveEnemyAction(
   const base = actor.attack;
   const variance = 0.8 + rng() * 0.4;
   let damage = Math.max(1, Math.round(base * variance));
+  damage = scaleOutgoingDamage(damage, actor);
   damage = damageReductionFor(s, partyTarget, damage);
 
   const result = applyPartyDamage(s, partyTarget, damage, actor, rng, emit);

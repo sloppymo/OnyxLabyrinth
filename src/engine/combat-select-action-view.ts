@@ -326,6 +326,8 @@ export const STATUS_TAG_LABELS: Record<string, string> = {
   blind: "BLD",
   burn: "BRN",
   regen: "RGN",
+  shrunk: "SHK",
+  giantStrength: "GNT",
 };
 
 /** Trait tags revealed by Analyze, derived from an enemy's specials. */
@@ -350,7 +352,7 @@ function traitLabelsFor(enemy: EnemyInstance): string[] {
 }
 
 /** Statuses read straight off a combatant's `status` array for tag display. */
-const VISIBLE_STATUSES = ["poison", "paralysis", "sleep", "blind"] as const;
+const VISIBLE_STATUSES = ["poison", "paralysis", "sleep", "blind", "shrunk", "giantStrength"] as const;
 
 /** Small colored status tags (PSN / PAR / SLP / …) appended inside a name
  *  span, so they never disturb the row's flex/grid column layout. */

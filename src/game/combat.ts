@@ -130,6 +130,7 @@ export function createCombatState(
     attackDebuffs: {},
     sleepTimers: {},
     blindTimers: {},
+    giantStrengthTimers: {},
     poisonState: {},
     windUps: {},
     observedAffinity: {},

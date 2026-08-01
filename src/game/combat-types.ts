@@ -305,6 +305,11 @@ export interface CombatState {
   /** Blind countdown for party members (char id -> rounds left). */
   blindTimers: Record<string, number>;
   /**
+   * Giant Strength countdown (char id -> rounds left). Shrink has no timer
+   * (rest of combat until Dispel / death).
+   */
+  giantStrengthTimers: Record<string, number>;
+  /**
    * Poison state per actor (char id or enemy instance id -> damage/round and
    * rounds left). Poison ticks its recorded damage at end of round and the
    * status is removed when the duration runs out. Poison Blade poisons at

@@ -11,6 +11,7 @@
 import * as Phaser from "phaser";
 import type { CombatEvent, CombatState, EnemyInstance, SummonedAlly } from "../game/combat-types";
 import type { Character } from "../game/party";
+import { statusDrawScale } from "../game/combat-shared";
 import combatBgUrl from "../assets/combat-bg.png";
 import {
   createScene,
@@ -1284,7 +1285,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const x = pos.x + off.x;
     const y = pos.y + off.y;
     const footY = pos.footY + off.y;
-    const drawSize = baseSize * pos.scale;
+    const drawSize = baseSize * pos.scale * statusDrawScale(enemy.status);
 
     const texKey = `enemy:${enemy.id}:${stripState}`;
     let entry =
@@ -1457,7 +1458,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const x = pos.x + off.x;
     const y = pos.y + off.y;
     const footY = pos.footY + off.y;
-    const drawSize = PARTY_SIZE * pos.scale;
+    const drawSize = PARTY_SIZE * pos.scale * statusDrawScale(char.status);
     const texKey = `party:${char.class}:${anim.state}`;
     let entry = hasStrip ? this.ensureStripSprite(key, "party", texKey) : null;
     if (!entry) {

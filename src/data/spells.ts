@@ -50,6 +50,13 @@ export type SpellEffect =
   | { kind: "fizzleField"; power: number }
   | { kind: "dispelMagic" }
   | { kind: "summon"; power: number; spriteId?: string; allyName?: string }
+  /** Combat body-magic statuses (Shrink / Giant Strength). */
+  | {
+      kind: "combatStatus";
+      status: "shrunk" | "giantStrength";
+      /** Rounds remaining; omit for rest-of-combat (Shrink). */
+      duration?: number;
+    }
   // Utility (dungeon-only) effects — cast from the dungeon G menu or camp,
   // resolved by game/persistent-spells.ts, hidden from the combat spell list.
   | { kind: "light"; duration: number }
@@ -371,6 +378,17 @@ export const MAGE_SPELLS: SpellDef[] = [
     target: "allEnemies",
     effect: { kind: "damage", element: "cold", power: 24 },
     description: "Hurls a sphere of absolute cold that freezes the entire enemy line.",
+  },
+  {
+    id: "mage-shrink",
+    name: "Shrink",
+    class: "Mage",
+    tier: 6,
+    spCost: 18,
+    target: "singleEnemy",
+    effect: { kind: "combatStatus", status: "shrunk" },
+    description:
+      "Shrinks one foe for the rest of combat: half size, half damage dealt. Cleared by Dispel Magic.",
   },
 
   // --- Water ---
@@ -709,6 +727,17 @@ export const PRIEST_SPELLS: SpellDef[] = [
       followup: { kind: "regen", power: 8, duration: 3 },
     },
     description: "A sustained miracle that mends the party's wounds and keeps knitting them closed.",
+  },
+  {
+    id: "priest-giant-strength",
+    name: "Giant Strength",
+    class: "Priest",
+    tier: 6,
+    spCost: 16,
+    target: "singleAlly",
+    effect: { kind: "combatStatus", status: "giantStrength", duration: 3 },
+    description:
+      "For 3 rounds: ally grows (+30% size), deals +50% damage, takes +20% damage, and is clumsier (−20% evade).",
   },
   {
     id: "priest-holy-aura",
