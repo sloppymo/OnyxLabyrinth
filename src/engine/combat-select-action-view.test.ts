@@ -378,6 +378,7 @@ describe("renderCombatWindows", () => {
     const fire = MAGE_SPELLS.find((s) => s.id === "mage-fire-bolt")!;
     const view = baseView(state);
     view.menuMode = "none";
+    view.inputKind = "keyboard";
     view.magicSheet = {
       casterName: "Aria",
       sp: 12,
@@ -417,11 +418,47 @@ describe("renderCombatWindows", () => {
     expect(popup.querySelector(".magic-sheet-detail-preview .val")?.textContent).toBe(
       "Est. 10-14 vs. Test Rat"
     );
+    expect(popup.querySelector(".magic-sheet-esc")?.textContent).toContain("Esc");
+    expect(popup.querySelector(".magic-sheet-footer")?.textContent).toContain("1–5 category");
+    expect(popup.querySelector(".magic-sheet-footer")?.textContent).not.toContain("LB/RB");
     expect(footer.querySelector(".ff6-spell-detail")).toBeNull();
     expect(footer.querySelector(".ff6-battle-round")).not.toBeNull();
 
     (tabs.find((t) => t.getAttribute("data-tab") === "status") as HTMLButtonElement).click();
     expect(tabClicked).toBe("status");
+  });
+
+  it("shows gamepad hints and names an empty Magic category", () => {
+    const state = makeState([makeEnemy("rat-0")]);
+    const view = baseView(state);
+    view.menuMode = "none";
+    view.inputKind = "gamepad";
+    view.magicSheet = {
+      casterName: "Aria",
+      sp: 12,
+      maxSp: 40,
+      activeTab: "defense",
+      tabCounts: { all: 1, offense: 1, defense: 0, buffs: 0, status: 0 },
+      spells: [],
+      cursor: 0,
+      detail: null,
+      previewText: null,
+      flash: null,
+    };
+
+    renderCombatWindows(container, view, noopHandlers());
+
+    expect(container.querySelector(".magic-sheet-empty")?.textContent).toBe(
+      "No Defense spells known."
+    );
+    expect(container.querySelector(".magic-sheet-empty")?.getAttribute("role")).toBe("status");
+    expect(container.querySelector(".magic-sheet-esc")?.textContent).toContain("B");
+    const footer = container.querySelector(".magic-sheet-footer")?.textContent ?? "";
+    expect(footer).toContain("LB/RB tab");
+    expect(footer).toContain("D-pad select");
+    expect(footer).toContain("A cast");
+    expect(footer).toContain("B back");
+    expect(footer).not.toContain("Enter");
   });
 
   it("renders every row of a long (L9+) spell list and shows a position counter", () => {

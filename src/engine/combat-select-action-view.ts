@@ -647,7 +647,8 @@ function metaSpan(label: string, value: string): HTMLElement {
 /** Inset Magic sheet — list + detail + category tabs over a dimmed stage. */
 function buildMagicSheet(
   sheet: MagicSheetView,
-  handlers: CombatWindowsHandlers
+  handlers: CombatWindowsHandlers,
+  inputKind: "keyboard" | "gamepad"
 ): HTMLElement {
   const overlay = el("magic-sheet-overlay");
   overlay.setAttribute("role", "dialog");
@@ -669,7 +670,7 @@ function buildMagicSheet(
   header.appendChild(title);
   const esc = el("magic-sheet-esc");
   const kbdEsc = document.createElement("kbd");
-  kbdEsc.textContent = "Esc";
+  kbdEsc.textContent = inputKind === "gamepad" ? "B" : "Esc";
   esc.appendChild(kbdEsc);
   esc.appendChild(document.createTextNode(" Back"));
   header.appendChild(esc);
@@ -704,7 +705,11 @@ function buildMagicSheet(
   list.setAttribute("aria-label", "Spell list");
   let selectedRow: HTMLElement | null = null;
   if (sheet.spells.length === 0) {
-    list.appendChild(el("magic-sheet-empty", "No spells in this category."));
+    const activeLabel =
+      SPELL_MAGIC_TABS.find((tab) => tab.id === sheet.activeTab)?.label ?? "this category";
+    const empty = el("magic-sheet-empty", `No ${activeLabel} spells known.`);
+    empty.setAttribute("role", "status");
+    list.appendChild(empty);
   } else {
     for (let i = 0; i < sheet.spells.length; i++) {
       const s = sheet.spells[i];
@@ -716,6 +721,7 @@ function buildMagicSheet(
       if (s.disabled) row.classList.add("disabled");
       row.setAttribute("role", "option");
       row.setAttribute("aria-selected", String(i === sheet.cursor));
+      row.setAttribute("aria-disabled", String(s.disabled));
       row.appendChild(el("name", s.name));
       row.appendChild(el("cost", String(s.spCost)));
       row.addEventListener("mouseenter", () => handlers.onSelectionHover(i));
@@ -779,13 +785,21 @@ function buildMagicSheet(
   win.appendChild(el("magic-sheet-divider"));
 
   const footer = el("magic-sheet-footer");
-  const hints: [string, string][] = [
-    ["←→", " tab"],
-    ["↑↓", " select"],
-    ["1–5", " category"],
-    ["Enter", " cast"],
-    ["Esc", " back"],
-  ];
+  const hints: [string, string][] =
+    inputKind === "gamepad"
+      ? [
+          ["LB/RB", " tab"],
+          ["D-pad", " select"],
+          ["A", " cast"],
+          ["B", " back"],
+        ]
+      : [
+          ["←→", " tab"],
+          ["↑↓", " select"],
+          ["1–5", " category"],
+          ["Enter", " cast"],
+          ["Esc", " back"],
+        ];
   for (const [keys, label] of hints) {
     const span = document.createElement("span");
     const kbd = document.createElement("kbd");
@@ -1091,7 +1105,9 @@ export function renderCombatWindows(
   if (popup) popupContainer.appendChild(popup);
 
   if (view.magicSheet) {
-    popupContainer.appendChild(buildMagicSheet(view.magicSheet, handlers));
+    popupContainer.appendChild(
+      buildMagicSheet(view.magicSheet, handlers, view.inputKind ?? "gamepad")
+    );
   }
 
   const row = el("ff6-windows");

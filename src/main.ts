@@ -1207,6 +1207,7 @@ function currentRouteFlags(): ControllerRouteContext {
   };
 }
 
+
 function routeControllerEvent(event: ControllerInputEvent): void {
   if (combatTransitionActive) return;
   const route = resolveControllerRoute(currentRouteFlags());
@@ -1442,6 +1443,13 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
     return;
   }
   if (e.key === "q" || e.key === "Q" || e.key === "z" || e.key === ".") {
+    combatController.handleKey(e.key, e);
+    e.preventDefault();
+    return;
+  }
+  // Magic-sheet number tabs are controller-owned shortcuts, not normalized
+  // face-button input. Route them directly just like the palette letters.
+  if (phase === "selectSpell" && /^[1-5]$/.test(e.key)) {
     combatController.handleKey(e.key, e);
     e.preventDefault();
     return;
@@ -2370,4 +2378,3 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     },
   };
 }
-
