@@ -477,6 +477,44 @@ describe("resolveEffectStyle impact-pack wiring", () => {
     expect(massCure.field).toBe("priest_heal");
   });
 
+  it("differentiates higher-tier single-target priest heals", () => {
+    const serious = resolveEffectStyle("priest-cure-serious");
+    const critical = resolveEffectStyle("priest-cure-critical");
+    expect(critical.projectile).toBe("priest_heal");
+    expect(critical.burst).toBe("priest_heal");
+    expect(critical.burstCount).toBe(2);
+    expect(critical.burstScale!).toBeGreaterThan(serious.burstScale ?? serious.scale ?? 1);
+    expect(critical.field).toBeUndefined();
+    expect(critical.burstUnderlay).toBeUndefined();
+
+    const regen = resolveEffectStyle("priest-regenerate");
+    expect(regen.projectile).toBe("heal_sparks");
+    expect(regen.burst).toBe("heal_sparks");
+    expect(regen.burstCount).toBe(3);
+    expect(regen.burstDurationMs).toBe(1400);
+    expect(regen.burstUnderlay).toBe("px_magic_sparks");
+    expect(regen.field).toBeUndefined();
+    // Sustained spark knit — not Critical's double cross punch, not Heal's sun miracle.
+    expect(regen.burst).not.toBe(critical.burst);
+    expect(regen.charge).toBeUndefined();
+
+    const heal = resolveEffectStyle("priest-heal");
+    expect(heal.charge).toBe("retro_sun_ring");
+    expect(heal.projectile).toBe("priest_heal");
+    expect(heal.burst).toBe("priest_heal");
+    expect(heal.burstCount).toBe(2);
+    expect(heal.burstUnderlay).toBe("retro_sun_ring");
+    expect(heal.field).toBeUndefined();
+    // Not party-wide bloom / Raise Dead vocabulary.
+    expect(heal.field).not.toBe("retro3_arcane_bloom");
+    expect(heal.burst).not.toBe("retro_dot_flower");
+    expect(heal.burstUnderlay).not.toBe("retro_dot_flower");
+
+    const massHeal = resolveEffectStyle("priest-mass-heal");
+    expect(massHeal.field).toBe("retro3_arcane_bloom");
+    expect(heal.burstUnderlay).not.toBe(massHeal.field);
+  });
+
   it("wires the three leftover impact strips into spell/element styles", () => {
     expect(resolveEffectStyle("priest-holy-aura").burst).toBe("retro2_solar_ring");
     expect(resolveEffectStyle("priest-holy-aura").field).toBe("retro2_solar_ring");

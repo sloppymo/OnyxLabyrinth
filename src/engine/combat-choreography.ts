@@ -1534,6 +1534,43 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
     fieldScale: 0.82,
     scale: 1.15,
   },
+  // Higher-tier single-target heals: escalate Critical past Serious's spark→cross,
+  // give Regenerate a soft lingering spark knit (not a bigger punch), and reserve
+  // a divine sun underlay for Heal — single-target miracle, not mass bloom / Raise Dead.
+  "priest-cure-critical": {
+    color: "#8fffb0",
+    projectile: "priest_heal",
+    projectileScale: 1.1,
+    burst: "priest_heal",
+    burstScale: 1.5,
+    burstCount: 2,
+    scale: 1.3,
+  },
+  "priest-regenerate": {
+    color: "#8fffb0",
+    projectile: "heal_sparks",
+    projectileScale: 1.45,
+    burst: "heal_sparks",
+    burstScale: 2.8,
+    burstCount: 3,
+    burstDurationMs: 1400,
+    burstUnderlay: "px_magic_sparks",
+    burstUnderlayScale: 4.8,
+    scale: 1.1,
+  },
+  "priest-heal": {
+    color: "#c8ffe0",
+    charge: "retro_sun_ring",
+    chargeScale: 0.55,
+    projectile: "priest_heal",
+    projectileScale: 1.35,
+    burst: "priest_heal",
+    burstScale: 1.75,
+    burstCount: 2,
+    burstUnderlay: "retro_sun_ring",
+    burstUnderlayScale: 1.35,
+    scale: 1.4,
+  },
 
   // Fire — mid/high fire spells get multishot + bigger uneven bursts.
   "mage-fireball": {
