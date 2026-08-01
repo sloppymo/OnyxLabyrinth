@@ -28,7 +28,10 @@ app.innerHTML = `
         <div id="message-box" class="ff6-window" hidden>
           <div id="message"></div>
         </div>
-        <div id="hud-chrome" hidden>F1 · N</div>
+        <div id="hud-chrome" hidden>
+          <span id="hud-location">F1 · N</span>
+          <span id="hud-controls"> · Tab:Actions · Esc:Save</span>
+        </div>
       </div>
       <canvas id="view" width="768" height="672"></canvas>
       <canvas id="map-canvas" width="768" height="672" style="display:none"></canvas>
@@ -56,6 +59,7 @@ const messageBandEl = document.querySelector<HTMLDivElement>("#message-band")!;
 const messageBoxEl = document.querySelector<HTMLDivElement>("#message-box")!;
 const messageEl = document.querySelector<HTMLDivElement>("#message")!;
 const hudChromeEl = document.querySelector<HTMLDivElement>("#hud-chrome")!;
+const hudLocationEl = document.querySelector<HTMLSpanElement>("#hud-location")!;
 const contextPromptEl = document.querySelector<HTMLDivElement>("#context-prompt")!;
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
 export const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
@@ -257,7 +261,10 @@ export function setMessage(text: string, opts?: SetMessageOptions): void {
  * visibility rule that `syncMessageBandVisibility` already owns.
  */
 export function getMessageText(): { text: string; visible: boolean } {
-  const text = messageReveal?.full ?? "";
+  // Report the glyphs the player can currently see, not the reveal's hidden
+  // full string. The debug event log already records the complete setMessage
+  // payload; snapshot() is a description of the rendered state right now.
+  const text = messageEl.textContent ?? "";
   return { text: text.trim(), visible: messageBandEl.classList.contains("has-message") };
 }
 
@@ -285,6 +292,9 @@ export function clearMessageOnPlayerAction(): void {
 /** Clear the party status overlay (used when leaving dungeon mode). */
 export function clearPartyStrip(): void {
   partyStripEl.innerHTML = "";
+  // The next dungeon frame must recreate the DOM even when the party state
+  // itself has not changed since this overlay was cleared.
+  lastPartyStripSig = "";
 }
 
 const STATUS_NOTCH: Partial<Record<Character["status"][number], string>> = {
@@ -334,9 +344,9 @@ export function renderPartyStrip(
   lastPartyStripSig = sig;
 
   // Keyboard players have no gamepad glyphs to fall back on, so keep the
-  // dungeon key legend visible at all times rather than only on first entry
-  // (playtest finding: Camp/Map/Grimoire/Actions were "secret keys").
-  hudChromeEl.textContent = `${floorLabel} · ${compass} · Tab:Actions · Esc:Save`;
+  // dungeon key legend persistent whenever a notification is not using the
+  // band (playtest finding: Camp/Map/Grimoire/Actions were "secret keys").
+  hudLocationEl.textContent = `${floorLabel} · ${compass}`;
   hudChromeEl.hidden = false;
   syncMessageBandVisibility();
 

@@ -180,6 +180,13 @@ canvas#map-canvas {
   padding-top: 1px;
 }
 
+/* The first-entry notification already teaches Tab/Esc. Keep the location
+   visible beside any notification, but reserve the persistent control legend
+   for the chrome-only state so the same hint is never printed twice. */
+#message-band.has-message #hud-controls {
+  display: none;
+}
+
 #context-prompt {
   position: absolute;
   left: 50%;
