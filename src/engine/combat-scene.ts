@@ -75,6 +75,7 @@ export {
   setBossIntroNameplate,
   resolveEffectStyle,
   resolveMeleeHitEffect,
+  MISS_PRESENTATION,
   collectReferencedEffectIds,
   sampleProjectilePose,
   newActorAnim,

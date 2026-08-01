@@ -732,6 +732,48 @@ export function pushBark(
   return true;
 }
 
+/**
+ * Soft whiff burst for evade/miss only (Slice 3). Shared by party→enemy and
+ * enemy→party — both emit `miss`/`techniqueMiss` into the same playTurn case.
+ * Soft spark vocabulary (not damage boom, heal cross, or Tech slash/stun).
+ */
+export const MISS_PRESENTATION = {
+  effect: "dispel_sparks",
+  /** 16×16 cells → ~88px on screen; readable but still under the MISS popup. */
+  scale: 5.5,
+  durationMs: 360,
+  color: COLORS.miss,
+} as const;
+
+/**
+ * MISS popup + restrained soft-spark burst. No hurt anim, shake, or impact
+ * particles — those stay on the hit path only.
+ */
+function missImpactSteps(
+  t: number,
+  targetId: string,
+  w: number,
+  h: number
+): ChoreoStep[] {
+  return [
+    step(t, (scene, now) => {
+      const actor = findActor(scene, targetId, w, h);
+      pushPopup(scene, targetId, "MISS", MISS_PRESENTATION.color, now, w, h, false);
+      if (!actor) return;
+      scene.effects.push({
+        type: "burst",
+        x: actor.x,
+        y: actor.y,
+        color: MISS_PRESENTATION.color,
+        effect: MISS_PRESENTATION.effect,
+        scale: MISS_PRESENTATION.scale,
+        start: now,
+        duration: MISS_PRESENTATION.durationMs,
+      });
+    }),
+  ];
+}
+
 /** Trigger hurt anim + popup on a target at impact. */
 function impactSteps(
   t: number,
@@ -1749,6 +1791,36 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   // Web — shares STATUS_STYLES.paralysis's status kind with Hold Person/Power Word
   // Stun, but needs its own tangled-vine look rather than the shared "stun stars" burst.
   "mage-web": { color: "#c8c4b8", field: "free_tangle", fieldScale: 1.3, burst: "free_tangle", burstScale: 1.3 },
+  // Hold Person / Power Word: Stun — both are disable/paralysis singleEnemy and
+  // both used to fall through to STATUS_STYLES.paralysis → free_stunburst @1.2,
+  // so a soft T2 bind and a T4 spoken command looked identical. Split by
+  // spell-id override only — do NOT touch the global paralysis STATUS_STYLES
+  // (enemy-inflicted paralysis / technique underlays must stay coherent), and
+  // leave mage-web's free_tangle alone.
+  //
+  // Hold Person (T2): a soft arcane bolt carries a locking ring to ONE body.
+  // free_wardring expands late (same linger need as Shield of Faith); no field
+  // — singleEnemy would never push one. free_tangle stays Web's vine signature.
+  "mage-hold-person": {
+    color: "#c8c4b8",
+    projectile: "px_arcane_bolt",
+    projectileScale: 2.2,
+    burst: "free_wardring",
+    burstScale: 1.35,
+    burstDurationMs: 900,
+  },
+  // Power Word: Stun (T4): abrupt spoken command — no travel time. Keeps the
+  // stun-star vocabulary of the global paralysis fallback but punches harder
+  // (larger scale + shockwave underlay twin) so it reads as a word of power,
+  // not a Fighter technique hit (those pair free_slash + free_stunburst).
+  "mage-power-word-stun": {
+    color: "#c8c4b8",
+    burst: "free_stunburst",
+    burstScale: 1.65,
+    burstUnderlay: "retro_shockwave",
+    burstUnderlayScale: 1.4,
+    burstCount: 2,
+  },
   // Silence/Dispel — ward-ring + B/W sparkle burst for the cancel beat.
   "mage-silence": {
     color: "#7fe0e0",
@@ -1822,6 +1894,49 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
   // Spell Shield — a distinct rounded ward-square instead of the generic
   // px_shield used by every other buff/magicScreen spell.
   "mage-spell-shield": { color: "#7fe0e0", burst: "retro2_ward_square", burstScale: 1.6, field: "retro2_ward_square", fieldScale: 0.9, scale: 1.2 },
+  // Priest wards — Shield of Faith (T1, singleAlly) and Bless (T3, allAllies)
+  // are both `buff/armor` and both used to fall through to the bare px_shield
+  // kind fallback, so "one ally" and "the whole party" looked identical.
+  // They are split along the grammar the choreography already enforces:
+  // only a non-area cast draws a caster→target projectile, and a `field` is
+  // only pushed for area targets (a field on Shield of Faith would be dead
+  // data, so its absence is the honest "not party-wide" signal).
+  //
+  // Shield of Faith: a ward-sphere is carried to ONE ally and snaps shut as a
+  // ring flare around that body. px_shield is a fully opaque disc, so it is
+  // pulled well under the fallback's 1.6 — at 1.6 it swallowed the ally it was
+  // protecting (verified in capture) — and the transparent free_wardring
+  // underlay is the layer that carries the size. (free_wardring also backs
+  // Silence/Dispel, but those only ever field the ENEMY side.)
+  "priest-shield-of-faith": {
+    color: COLORS.sp,
+    projectile: "px_shield",
+    projectileScale: 1.1,
+    burst: "px_shield",
+    burstScale: 1.2,
+    burstUnderlay: "free_wardring",
+    burstUnderlayScale: 1.9,
+    // free_wardring only reaches its expanded-ring frames ~400ms in (strip fps
+    // × EFFECT_ANIM_SPEED), so the default 620ms burst died as a bare dot. The
+    // longer linger is also what lets the bubble fade off the ally's sprite.
+    burstDurationMs: 900,
+    scale: 1.2,
+  },
+  // Bless: a blessing sigil inscribed over the whole party — a large slow glyph
+  // hangs over the party column while a small one flickers on each ally. No
+  // projectile is thrown at anyone. retro3_sigil_charge was registered but had
+  // never rendered (mage-gate declares it as a fieldUnderlay, and Gate targets
+  // "self", so that field is never pushed) — it is unclaimed ward vocabulary,
+  // and deliberately not Holy Aura's solar vortex or Spell Shield's square.
+  "priest-bless": {
+    color: "#ffe27a",
+    burst: "retro3_sigil_charge",
+    burstScale: 0.95,
+    field: "retro3_sigil_charge",
+    fieldScale: 1.15,
+    fieldDurationMs: 1000,
+    scale: 1.15,
+  },
   // Neutralize Poison — a purifying white sigil burst distinguishes it from
   // the other "cure" spells, which otherwise all share the plain heal look.
   "priest-neutralize-poison": { color: "#f5f0e6", burst: "retro2_arcane_sigil", burstScale: 1.5, scale: 1.2 },
@@ -2156,6 +2271,9 @@ export function collectReferencedEffectIds(): Set<string> {
     "lightning_energy",
     "red_energy",
     "lightning_energy_glow",
+    // Slice 3 miss whiff (also referenced via STATUS_STYLES.poison / dispel
+    // styles — listed explicitly so the miss path stays discoverable).
+    MISS_PRESENTATION.effect,
   ]) {
     ids.add(id);
   }
@@ -2628,9 +2746,8 @@ export function playTurn(
           })
         );
         if (evt.targetId) {
-          steps.push(
-            ...impactSteps(base + IMPACT_AT, evt.targetId, "MISS", COLORS.miss, w, h, false)
-          );
+          // Shared choke for both directions (party→enemy and enemy→party).
+          steps.push(...missImpactSteps(base + IMPACT_AT, evt.targetId, w, h));
         }
         steps.push(
           step(base + APPROACH_MS + ATTACK_MS, (sc, n) => {

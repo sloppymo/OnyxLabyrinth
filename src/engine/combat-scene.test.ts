@@ -22,6 +22,7 @@ import {
   getBarksEnabled,
   BARK_DURATION_BASE,
   resolveMeleeHitEffect,
+  MISS_PRESENTATION,
   enemyIsUndead,
   animOffset,
   paintOrderFootY,
@@ -209,7 +210,7 @@ describe("playTurn choreography", () => {
     expect(scene.banner).toBe("The Dead Boy grows stronger!");
   });
 
-  it("miss pops MISS without a hurt animation", () => {
+  it("miss pops MISS with a soft whiff burst and no hurt animation", () => {
     const scene = makeScene();
     const events: CombatEvent[] = [
       { type: "miss", actorId: "c0", targetId: "rat-0", reason: "evade" },
@@ -218,6 +219,94 @@ describe("playTurn choreography", () => {
     updateScene(scene, 1100); // past IMPACT_AT (~987)
     expect(scene.popups.some((p) => p.text === "MISS")).toBe(true);
     expect(scene.enemyAnims.get("rat-0")?.state ?? "idle").not.toBe("hurt");
+    const missBurst = scene.effects.find(
+      (e) => e.type === "burst" && e.effect === MISS_PRESENTATION.effect
+    );
+    expect(missBurst).toBeDefined();
+    expect(missBurst!.scale).toBe(MISS_PRESENTATION.scale);
+    expect(missBurst!.duration).toBe(MISS_PRESENTATION.durationMs);
+    expect(missBurst!.color).toBe(MISS_PRESENTATION.color);
+  });
+
+  it("miss burst covers both party→enemy and enemy→party (shared path)", () => {
+    const partyMiss = makeScene();
+    playTurn(
+      partyMiss,
+      [{ type: "miss", actorId: "c0", targetId: "rat-0", reason: "evade" }],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(partyMiss, 1100);
+    expect(partyMiss.popups.some((p) => p.text === "MISS" && p.actorId === "rat-0")).toBe(true);
+    expect(
+      partyMiss.effects.some(
+        (e) => e.type === "burst" && e.effect === MISS_PRESENTATION.effect
+      )
+    ).toBe(true);
+
+    const enemyMiss = makeScene();
+    playTurn(
+      enemyMiss,
+      [{ type: "miss", actorId: "rat-0", targetId: "c0", reason: "evade" }],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(enemyMiss, 1100);
+    expect(enemyMiss.popups.some((p) => p.text === "MISS" && p.actorId === "c0")).toBe(true);
+    expect(
+      enemyMiss.effects.some(
+        (e) => e.type === "burst" && e.effect === MISS_PRESENTATION.effect
+      )
+    ).toBe(true);
+
+    // techniqueMiss shares the same case / helper.
+    const techMiss = makeScene();
+    playTurn(
+      techMiss,
+      [
+        {
+          type: "techniqueMiss",
+          actorId: "c0",
+          targetId: "rat-0",
+          techniqueId: "fighter-power-strike",
+        },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(techMiss, 1100);
+    expect(techMiss.popups.some((p) => p.text === "MISS")).toBe(true);
+    expect(
+      techMiss.effects.some(
+        (e) => e.type === "burst" && e.effect === MISS_PRESENTATION.effect
+      )
+    ).toBe(true);
+  });
+
+  it("hit impacts do not use the miss whiff burst", () => {
+    const scene = makeScene();
+    playTurn(
+      scene,
+      [{ type: "attack", actorId: "c0", targetId: "rat-0", damage: 7, range: "close" }],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(scene, 1100);
+    expect(scene.popups.some((p) => p.text === "7")).toBe(true);
+    expect(scene.popups.some((p) => p.text === "MISS")).toBe(false);
+    expect(
+      scene.effects.some(
+        (e) => e.type === "burst" && e.effect === MISS_PRESENTATION.effect
+      )
+    ).toBe(false);
   });
 
   it("defeated enemy plays death and schedules fade-out", () => {
@@ -513,6 +602,270 @@ describe("resolveEffectStyle impact-pack wiring", () => {
     const massHeal = resolveEffectStyle("priest-mass-heal");
     expect(massHeal.field).toBe("retro3_arcane_bloom");
     expect(heal.burstUnderlay).not.toBe(massHeal.field);
+  });
+
+  it("differentiates the priest ward cluster (single ally vs party)", () => {
+    // The shared buff/magicScreen kind fallback both spells used to land on.
+    const FALLBACK = { burst: "px_shield", burstScale: 1.6, field: "px_shield", fieldScale: 0.8 };
+
+    const faith = resolveEffectStyle("priest-shield-of-faith");
+    const bless = resolveEffectStyle("priest-bless");
+
+    // Single-target grammar: only a non-area cast draws a caster→target
+    // projectile, and playTurn never pushes a field for a singleAlly spell.
+    expect(faith.projectile).toBe("px_shield");
+    expect(faith.burst).toBe("px_shield");
+    expect(faith.burstUnderlay).toBe("free_wardring");
+    expect(faith.field).toBeUndefined();
+    expect(faith.burstCount).toBeUndefined();
+    // Still the shield bubble, but no longer the bald fallback — and never
+    // larger than it, so the opaque disc can't swallow the body it wards.
+    expect(faith.burstScale!).toBeLessThan(FALLBACK.burstScale);
+    // The ring underlay carries the size instead, and needs a longer linger
+    // than the default 620ms burst to reach its expanded-ring frames.
+    expect(faith.burstUnderlayScale!).toBeGreaterThan(faith.burstScale!);
+    expect(faith.burstDurationMs).toBe(900);
+
+    // Party grammar: a sigil field over the party column plus one small sigil
+    // per ally; no projectile at all, and no rain (projectileCount) either.
+    expect(bless.burst).toBe("retro3_sigil_charge");
+    expect(bless.field).toBe("retro3_sigil_charge");
+    expect(bless.fieldDurationMs).toBe(1000);
+    expect(bless.projectile).toBeUndefined();
+    expect(bless.projectileCount).toBeUndefined();
+    expect(bless.burst).not.toBe(FALLBACK.burst);
+    expect(bless.field).not.toBe(FALLBACK.field);
+
+    // The two differ from each other at strip level, not only by scale.
+    expect(faith.burst).not.toBe(bless.burst);
+    expect(faith.burstUnderlay).not.toBe(bless.burst);
+
+    // Neither borrows heal / resurrection vocabulary.
+    const HEAL_VOCAB = [
+      "priest_heal",
+      "heal_sparks",
+      "retro3_arcane_bloom",
+      "retro_dot_flower",
+      "retro_sun_ring",
+      "free_sunburst",
+    ];
+    for (const style of [faith, bless]) {
+      for (const id of [style.projectile, style.burst, style.field, style.charge, style.burstUnderlay, style.fieldUnderlay]) {
+        if (id) expect(HEAL_VOCAB).not.toContain(id);
+      }
+    }
+
+    // Bless does not collapse onto Holy Aura's solar vortex or Spell Shield's square.
+    const holyAura = resolveEffectStyle("priest-holy-aura");
+    const spellShield = resolveEffectStyle("mage-spell-shield");
+    expect(bless.burst).not.toBe(holyAura.burst);
+    expect(bless.field).not.toBe(holyAura.field);
+    expect(bless.burst).not.toBe(spellShield.burst);
+    expect(bless.field).not.toBe(spellShield.field);
+
+    // Neighbouring wards are untouched.
+    expect(holyAura.burst).toBe("retro2_solar_ring");
+    expect(spellShield.burst).toBe("retro2_ward_square");
+    const arcaneWard = resolveEffectStyle("mage-arcane-ward");
+    expect(arcaneWard.projectile).toBe("px_arcane_bolt");
+    expect(arcaneWard.burst).toBe("px_magic_orb");
+    expect(faith.burst).not.toBe(arcaneWard.burst);
+  });
+
+  it("differentiates mage disable twins (Hold Person vs Power Word Stun)", () => {
+    // Shared fallthrough both spells used to land on before this override.
+    const PARALYSIS_FALLBACK = { color: "#c8c4b8", burst: "free_stunburst", burstScale: 1.2 };
+
+    const hold = resolveEffectStyle("mage-hold-person");
+    const stun = resolveEffectStyle("mage-power-word-stun");
+    const web = resolveEffectStyle("mage-web");
+
+    // Hold Person: soft bind — arcane bolt + locking ring on one body.
+    expect(hold.projectile).toBe("px_arcane_bolt");
+    expect(hold.burst).toBe("free_wardring");
+    expect(hold.burstDurationMs).toBe(900);
+    expect(hold.field).toBeUndefined();
+    expect(hold.burstUnderlay).toBeUndefined();
+    expect(hold.burst).not.toBe(PARALYSIS_FALLBACK.burst);
+
+    // Power Word: Stun: abrupt command — heavier stun stars, no projectile.
+    expect(stun.projectile).toBeUndefined();
+    expect(stun.burst).toBe("free_stunburst");
+    expect(stun.burstUnderlay).toBe("retro_shockwave");
+    expect(stun.burstCount).toBe(2);
+    expect(stun.field).toBeUndefined();
+    expect(stun.burstScale!).toBeGreaterThan(PARALYSIS_FALLBACK.burstScale!);
+
+    // Style split at strip level, not only by scale.
+    expect(hold.burst).not.toBe(stun.burst);
+    expect(hold.projectile).not.toBe(stun.projectile);
+    expect(hold.burst).not.toBe(web.burst);
+    expect(stun.burst).not.toBe(web.burst);
+    expect(hold.burstUnderlay).not.toBe(web.burst);
+
+    // Web's tangled-vine override is untouched.
+    expect(web.burst).toBe("free_tangle");
+    expect(web.field).toBe("free_tangle");
+    expect(web.fieldScale).toBe(1.3);
+    expect(web.burstScale).toBe(1.3);
+
+    // Global paralysis STATUS_STYLES unchanged for non-override paths
+    // (enemy-inflicted paralysis / statusInflicted fallthrough).
+    const enemyParalysis = resolveEffectStyle(undefined, { statusInflicted: "paralysis" });
+    expect(enemyParalysis.burst).toBe(PARALYSIS_FALLBACK.burst);
+    expect(enemyParalysis.burstScale).toBe(PARALYSIS_FALLBACK.burstScale);
+    expect(enemyParalysis.color).toBe(PARALYSIS_FALLBACK.color);
+    expect(enemyParalysis.projectile).toBeUndefined();
+    expect(enemyParalysis.burstUnderlay).toBeUndefined();
+    expect(enemyParalysis.burstCount).toBeUndefined();
+
+    // Neither borrows Web's vines or Tech slash language.
+    for (const style of [hold, stun]) {
+      expect(style.burst).not.toBe("free_tangle");
+      expect(style.field).not.toBe("free_tangle");
+      expect(style.burst).not.toBe("free_slash");
+      expect(style.projectile).not.toBe("free_slash");
+    }
+  });
+
+  it("plays Hold Person bind and Power Word Stun impact on one body", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const enemies = { front: [makeEnemy("rat-0")], back: [] };
+
+    const holdScene = createScene(createCombatState(party, enemies, false));
+    playTurn(
+      holdScene,
+      [
+        { type: "cast", actorId: "c1", spellId: "mage-hold-person", targetId: "rat-0" },
+        {
+          type: "spellEffect",
+          spellId: "mage-hold-person",
+          targetId: "rat-0",
+          statusInflicted: "paralysis",
+        },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(holdScene, 1200);
+    const holdFx = holdScene.effects;
+    // Single-target: projectile volley + body burst; no area field.
+    expect(holdFx.some((e) => e.type === "field")).toBe(false);
+    expect(holdFx.some((e) => e.type === "projectile" && e.effect === "px_arcane_bolt")).toBe(true);
+    const holdBursts = holdFx.filter((e) => e.type === "burst" && e.effect === "free_wardring");
+    expect(holdBursts.length).toBe(1);
+    expect(holdFx.some((e) => e.type === "burst" && e.effect === "free_tangle")).toBe(false);
+    expect(holdFx.some((e) => e.type === "burst" && e.effect === "free_stunburst")).toBe(false);
+
+    const stunScene = createScene(createCombatState(party, enemies, false));
+    playTurn(
+      stunScene,
+      [
+        { type: "cast", actorId: "c1", spellId: "mage-power-word-stun", targetId: "rat-0" },
+        {
+          type: "spellEffect",
+          spellId: "mage-power-word-stun",
+          targetId: "rat-0",
+          statusInflicted: "paralysis",
+        },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(stunScene, 1200);
+    const stunFx = stunScene.effects;
+    expect(stunFx.some((e) => e.type === "field")).toBe(false);
+    expect(stunFx.some((e) => e.type === "projectile")).toBe(false);
+    const stunBursts = stunFx.filter((e) => e.type === "burst" && e.effect === "free_stunburst");
+    expect(stunBursts.length).toBe(2);
+    expect(stunFx.some((e) => e.type === "burst" && e.effect === "retro_shockwave")).toBe(true);
+    expect(stunFx.some((e) => e.type === "burst" && e.effect === "free_wardring")).toBe(false);
+    expect(stunFx.some((e) => e.type === "burst" && e.effect === "free_tangle")).toBe(false);
+
+    // Web area cast still fields tangle (regression guard for the intact override).
+    const webScene = createScene(createCombatState(party, enemies, false));
+    playTurn(
+      webScene,
+      [
+        { type: "cast", actorId: "c1", spellId: "mage-web", targetId: null },
+        {
+          type: "spellEffect",
+          spellId: "mage-web",
+          targetId: "rat-0",
+          statusInflicted: "paralysis",
+        },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(webScene, 1600);
+    const webFx = webScene.effects;
+    expect(webFx.some((e) => e.type === "field" && e.effect === "free_tangle")).toBe(true);
+    expect(webFx.some((e) => e.type === "burst" && e.effect === "free_tangle")).toBe(true);
+  });
+
+  it("plays Shield of Faith on one body and Bless over the whole party", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacter("c2", "Cleo", "Human", "Neutral", "Priest", 2),
+    ];
+    const enemies = { front: [makeEnemy("rat-0")], back: [] };
+
+    const faithScene = createScene(createCombatState(party, enemies, false));
+    playTurn(
+      faithScene,
+      [
+        { type: "cast", actorId: "c2", spellId: "priest-shield-of-faith", targetId: "c0" },
+        { type: "spellEffect", spellId: "priest-shield-of-faith", targetId: "c0", isBuff: true },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    // Past the cast → impact window.
+    updateScene(faithScene, 1200);
+    const faithFx = faithScene.effects;
+    // No party-wide field layer — the ward lands on a single body.
+    expect(faithFx.some((e) => e.type === "field")).toBe(false);
+    const faithBursts = faithFx.filter((e) => e.type === "burst" && e.effect === "px_shield");
+    expect(faithBursts.length).toBe(1);
+    expect(faithFx.some((e) => e.type === "burst" && e.effect === "free_wardring")).toBe(true);
+
+    const blessScene = createScene(createCombatState(party, enemies, false));
+    playTurn(
+      blessScene,
+      [
+        { type: "cast", actorId: "c2", spellId: "priest-bless", targetId: null },
+        { type: "spellEffect", spellId: "priest-bless", targetId: "c0", isBuff: true },
+        { type: "spellEffect", spellId: "priest-bless", targetId: "c1", isBuff: true },
+        { type: "spellEffect", spellId: "priest-bless", targetId: "c2", isBuff: true },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(blessScene, 1600);
+    const blessFx = blessScene.effects;
+    const blessFields = blessFx.filter((e) => e.type === "field" && e.effect === "retro3_sigil_charge");
+    expect(blessFields.length).toBeGreaterThan(0);
+    // Field sits over the party column (right side), not the enemy line.
+    for (const f of blessFields) expect(f.x).toBeGreaterThan(W * 0.5);
+    // One sigil per ally, and never a thrown projectile.
+    const blessBursts = blessFx.filter((e) => e.type === "burst" && e.effect === "retro3_sigil_charge");
+    expect(blessBursts.length).toBe(3);
+    expect(blessFx.some((e) => e.type === "projectile")).toBe(false);
   });
 
   it("wires the three leftover impact strips into spell/element styles", () => {
