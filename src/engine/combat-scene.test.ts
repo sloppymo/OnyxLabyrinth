@@ -460,6 +460,23 @@ describe("sampleProjectilePose rise→dash", () => {
 });
 
 describe("resolveEffectStyle impact-pack wiring", () => {
+  it("differentiates the tier-2 priest healing cluster", () => {
+    const serious = resolveEffectStyle("priest-cure-serious");
+    expect(serious.projectile).toBe("heal_sparks");
+    expect(serious.burst).toBe("priest_heal");
+
+    const blind = resolveEffectStyle("priest-cure-blind");
+    expect(blind.projectile).toBeUndefined();
+    expect(blind.burst).toBe("px_black_white_sparks");
+
+    const massCure = resolveEffectStyle("priest-mass-cure");
+    expect(massCure.projectile).toBe("heal_sparks");
+    expect(massCure.projectileCount).toBe(3);
+    expect(massCure.burst).toBe("heal_sparks");
+    expect(massCure.burstCount).toBe(2);
+    expect(massCure.field).toBe("priest_heal");
+  });
+
   it("wires the three leftover impact strips into spell/element styles", () => {
     expect(resolveEffectStyle("priest-holy-aura").burst).toBe("retro2_solar_ring");
     expect(resolveEffectStyle("priest-holy-aura").field).toBe("retro2_solar_ring");

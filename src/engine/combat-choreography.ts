@@ -1505,6 +1505,35 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
     burstScale: 5.5,
     scale: 1.15,
   },
+  // Tier-2 healing vocabulary: a stronger cross impact, a monochrome cleanse,
+  // and a restrained party-wide bloom instead of three identical heal orbs.
+  "priest-cure-serious": {
+    color: "#8fffb0",
+    projectile: "heal_sparks",
+    projectileScale: 2.1,
+    burst: "priest_heal",
+    burstScale: 1.15,
+    scale: 1.2,
+  },
+  "priest-cure-blind": {
+    color: "#f5f0e6",
+    burst: "px_black_white_sparks",
+    burstScale: 6.0,
+    scale: 1.1,
+  },
+  "priest-mass-cure": {
+    color: "#8fffb0",
+    projectile: "heal_sparks",
+    projectileScale: 1.65,
+    projectileCount: 3,
+    projectileScaleJitter: 0.15,
+    burst: "heal_sparks",
+    burstScale: 2.4,
+    burstCount: 2,
+    field: "priest_heal",
+    fieldScale: 0.82,
+    scale: 1.15,
+  },
 
   // Fire — mid/high fire spells get multishot + bigger uneven bursts.
   "mage-fireball": {
@@ -3403,4 +3432,3 @@ export function setBossIntroNameplate(
   scene.introNameplateUntil = now + durationMs;
   scene.introBossId = bossId ?? null;
 }
-
