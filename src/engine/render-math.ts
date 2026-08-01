@@ -21,6 +21,33 @@
 // editing the obvious knob silently did nothing. Do not re-add a duplicate to
 // `renderer.ts`: add new pure-math tunables here instead, where they are
 // DOM-free and unit-testable in plain Node.
+import type { EdgeType, TileFeature } from "../types";
+
+/**
+ * Stairs are still tile features for floor transitions, but in the corridor
+ * view they read as exit doors: the approach face uses the theme door panel
+ * (`f*_door_256.png`) instead of the old ↑/↓ floor glyphs.
+ */
+export function isStairExitFeature(tile: TileFeature | undefined): boolean {
+  return tile === "stairs_up" || tile === "stairs_down";
+}
+
+/**
+ * Raycaster stop rule for one crossed cell edge.
+ * Returns `null` to keep walking through open space; otherwise the edge type
+ * recorded on the hit. Open edges into stair tiles stop as `"door"` so the
+ * exit paints with the door texture while remaining walkable in `camera.ts`.
+ */
+export function raycastEdgeStop(
+  edge: EdgeType,
+  tile: TileFeature | undefined
+): EdgeType | null {
+  if (edge === "open") {
+    return isStairExitFeature(tile) ? "door" : null;
+  }
+  return edge;
+}
+
 export const MATH_CONFIG = {
   projectionScale: 0.62,
   heightFlatten: 0.85,

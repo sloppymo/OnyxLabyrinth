@@ -4,8 +4,9 @@
  * Called after each step (forward or backward) to process the tile the player
  * is now standing on. Each feature type has a distinct behavior:
  *
- *   stairs_up   → transition to the floor above (if it exists)
- *   stairs_down → transition to the floor below (if it exists)
+ *   stairs_up   → door exit up to the floor above (if it exists)
+ *   stairs_down → door exit down to the floor below (if it exists)
+ *                 (corridor view paints these as door panels; see renderer)
  *   teleporter  → instant relocation to the paired tile (possibly another floor)
  *   chute       → forced descent to a lower floor (one-way)
  *   darkness    → set inDarkness flag (renderer limits visibility to 1 tile)
@@ -118,8 +119,8 @@ function handleStairs(state: GameState, goingUp: boolean): FeatureResult {
   if (!targetFloor) {
     return {
       message: goingUp
-        ? "These stairs lead up, but there is nothing above this floor."
-        : "These stairs lead down, but there is nothing below this floor.",
+        ? "This door leads up, but there is nothing above this floor."
+        : "This door leads down, but there is nothing below this floor.",
       changedFloor: false,
       consumed: false,
     };
@@ -128,8 +129,8 @@ function handleStairs(state: GameState, goingUp: boolean): FeatureResult {
   transitionToFloor(state, targetFloor, targetFloor.startX, targetFloor.startY);
   return {
     message: goingUp
-      ? `You climb the stairs up to ${targetFloor.name} (Floor ${targetFloor.id}).`
-      : `You descend the stairs to ${targetFloor.name} (Floor ${targetFloor.id}).`,
+      ? `You pass through the door up to ${targetFloor.name} (Floor ${targetFloor.id}).`
+      : `You pass through the door down to ${targetFloor.name} (Floor ${targetFloor.id}).`,
     changedFloor: true,
     consumed: false,
   };

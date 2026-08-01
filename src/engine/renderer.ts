@@ -51,6 +51,8 @@ import {
   strokeColorForDepth,
   RenderCameraAnimator,
   MATH_CONFIG,
+  isStairExitFeature,
+  raycastEdgeStop,
 } from "./render-math";
 import type { RenderCamera } from "./render-math";
 import { resolveTilesetTheme } from "../game/floor-map";
@@ -570,25 +572,27 @@ function castRay(
     const dir = side === "y"
       ? (stepY > 0 ? 0 : 2)   // N or S edge
       : (stepX > 0 ? 3 : 1);  // W or E edge
-    const edge = edgeInDirection(cell, dir);
+    const rawEdge = edgeInDirection(cell, dir);
+    // Stair tiles stay walkable (open edges) but occlude like doors so the
+    // exit face samples the theme door panel instead of a ↑/↓ glyph.
+    const edge = raycastEdgeStop(rawEdge, cell.tile);
+    if (edge === null) continue;
 
-    if (edge !== "open") {
-      const perpWallDist = side === "y"
-        ? (mapY - playerWY + (1 - stepY) / 2) / rayDirY
-        : (mapX - playerWX + (1 - stepX) / 2) / rayDirX;
+    const perpWallDist = side === "y"
+      ? (mapY - playerWY + (1 - stepY) / 2) / rayDirY
+      : (mapX - playerWX + (1 - stepX) / 2) / rayDirX;
 
-      if (perpWallDist > maxDist) return null;
+    if (perpWallDist > maxDist) return null;
 
-      let wallX: number;
-      if (side === "y") {
-        wallX = playerWX + perpWallDist * rayDirX;
-      } else {
-        wallX = playerWY + perpWallDist * rayDirY;
-      }
-      wallX -= Math.floor(wallX);
-
-      return { side, mapX, mapY, perpWallDist, wallX, edge };
+    let wallX: number;
+    if (side === "y") {
+      wallX = playerWX + perpWallDist * rayDirX;
+    } else {
+      wallX = playerWY + perpWallDist * rayDirY;
     }
+    wallX -= Math.floor(wallX);
+
+    return { side, mapX, mapY, perpWallDist, wallX, edge };
   }
 }
 
@@ -987,10 +991,11 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
 
     // Tile feature on this cell (drawn once per visible cell, excluding the
-    // player's current tile, which is rendered at depth 0 below).
+    // player's current tile, which is rendered at depth 0 below). Stairs are
+    // door panels now — skip their old ↑/↓ glyphs.
     if (hit.mapX !== state.player.x || hit.mapY !== state.player.y) {
       const cell = state.floor.grid[hit.mapY]?.[hit.mapX];
-      if (cell?.tile) {
+      if (cell?.tile && !isStairExitFeature(cell.tile)) {
         const key = `${hit.mapX},${hit.mapY}`;
         if (!seenFeatureCells.has(key)) {
           seenFeatureCells.add(key);
@@ -1158,9 +1163,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
   ctx.restore();
 
-  // Draw tile feature at the player's feet (depth 0).
+  // Draw tile feature at the player's feet (depth 0). Stairs render as door
+  // panels on approach, not as floor glyphs underfoot.
   const currentCell = state.floor.grid[state.player.y]?.[state.player.x];
-  if (currentCell?.tile) {
+  if (currentCell?.tile && !isStairExitFeature(currentCell.tile)) {
     drawFloorFeature(ctx, w, h, currentCell.tile, state.inDarkness);
   }
 

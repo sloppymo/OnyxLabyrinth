@@ -630,3 +630,31 @@ describe("transitionToFloor and deepestFloorReached", () => {
     expect(loadAutoSave()).toBeNull();
   });
 });
+
+describe("stair exits (door presentation)", () => {
+  it("stepping on stairs_down still transitions floors with a door message", () => {
+    const state = createGameState(findFloor(1)!);
+    state.mode = "dungeon";
+    // Campaign F1 stairs_down at (4,1) — see floor-1.json / playtests.
+    state.player.x = 4;
+    state.player.y = 1;
+    const result = handleTileFeature(state);
+    expect(result?.changedFloor).toBe(true);
+    expect(state.floor.id).toBe(2);
+    expect(result?.message).toMatch(/pass through the door down/i);
+    expect(result?.message).not.toMatch(/stairs/i);
+  });
+
+  it("stepping on stairs_up transitions upward with a door message", () => {
+    const state = createGameState(findFloor(2)!);
+    state.mode = "dungeon";
+    // F2 atrium stairs_up is also the start tile.
+    state.player.x = state.floor.startX;
+    state.player.y = state.floor.startY;
+    expect(state.floor.grid[state.player.y][state.player.x].tile).toBe("stairs_up");
+    const result = handleTileFeature(state);
+    expect(result?.changedFloor).toBe(true);
+    expect(state.floor.id).toBe(1);
+    expect(result?.message).toMatch(/pass through the door up/i);
+  });
+});

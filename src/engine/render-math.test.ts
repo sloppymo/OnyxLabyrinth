@@ -36,6 +36,8 @@ import {
   arenaOpacityForDepth,
   arenaFloorScreenYForDepth,
   arenaSideWallWorldAt,
+  isStairExitFeature,
+  raycastEdgeStop,
 } from "./render-math";
 import {
   ARENA_CAMERA,
@@ -933,5 +935,27 @@ describe("arena projection math", () => {
     // Floor-dominant composition target: seam in the upper third of the frame.
     expect(arenaSeamFrac()).toBeGreaterThan(0.24);
     expect(arenaSeamFrac()).toBeLessThanOrEqual(0.34);
+  });
+});
+
+describe("stair exit door rendering helpers", () => {
+  it("recognizes stairs_up and stairs_down as exit features", () => {
+    expect(isStairExitFeature("stairs_up")).toBe(true);
+    expect(isStairExitFeature("stairs_down")).toBe(true);
+    expect(isStairExitFeature("teleporter")).toBe(false);
+    expect(isStairExitFeature(undefined)).toBe(false);
+  });
+
+  it("stops open edges into stair tiles as doors", () => {
+    expect(raycastEdgeStop("open", "stairs_down")).toBe("door");
+    expect(raycastEdgeStop("open", "stairs_up")).toBe("door");
+    expect(raycastEdgeStop("open", "treasure")).toBeNull();
+    expect(raycastEdgeStop("open", undefined)).toBeNull();
+  });
+
+  it("leaves real doors and walls unchanged", () => {
+    expect(raycastEdgeStop("door", "stairs_down")).toBe("door");
+    expect(raycastEdgeStop("locked", undefined)).toBe("locked");
+    expect(raycastEdgeStop("wall", "stairs_up")).toBe("wall");
   });
 });
