@@ -380,6 +380,158 @@ export interface RenderCamera {
   planeY: number;  // camera plane Y
 }
 
+/** A world tile projected into camera space for billboard drawing. */
+export interface BillboardProjection {
+  /** Lateral offset in camera space; divide by `depth` for screen position. */
+  lateral: number;
+  /** Perpendicular distance from the camera plane. <= 0 is behind the camera. */
+  depth: number;
+}
+
+/**
+ * Minimum depth a billboard must have before it is worth drawing. Below this
+ * the projection divides by ~0 and the sprite explodes across the screen; it
+ * also covers the tile the party is standing on, which is drawn separately as
+ * an underfoot indicator rather than as a billboard.
+ */
+export const BILLBOARD_MIN_DEPTH = 0.2;
+
+/**
+ * Project a tile centre into camera space (the standard Wolf3D sprite
+ * transform). The camera's `x`/`y` are cell indices, so the caller works in
+ * tile coordinates and this adds the half-cell centre offset.
+ *
+ * Returns `null` when the camera basis is degenerate, which keeps a NaN out of
+ * the draw path — `renderer.ts` has no defensive clamping and one bad index
+ * there kills the whole render loop.
+ */
+export function projectBillboard(
+  cam: RenderCamera,
+  tileX: number,
+  tileY: number
+): BillboardProjection | null {
+  const det = cam.planeX * cam.dirY - cam.dirX * cam.planeY;
+  if (!Number.isFinite(det) || det === 0) return null;
+  const invDet = 1 / det;
+  const dx = tileX + 0.5 - (cam.x + 0.5);
+  const dy = tileY + 0.5 - (cam.y + 0.5);
+  const lateral = invDet * (cam.dirY * dx - cam.dirX * dy);
+  const depth = invDet * (-cam.planeY * dx + cam.planeX * dy);
+  if (!Number.isFinite(lateral) || !Number.isFinite(depth)) return null;
+  return { lateral, depth };
+}
+
+/**
+ * Screen X (in pixels) for a projected billboard on a canvas `screenW` wide.
+ */
+export function billboardScreenX(proj: BillboardProjection, screenW: number): number {
+  return (screenW / 2) * (1 + proj.lateral / proj.depth);
+}
+
+/**
+ * Whether a tile feature gets a corridor marker the party can see from a
+ * distance.
+ *
+ * Three exclusions, for different reasons:
+ * - `stairs_up`/`stairs_down` already paint as door panels (`raycastEdgeStop`),
+ *   so a glyph would double up on art that exists.
+ * - `event` tiles are scripted one-shots, and floors 1-3 author them as things
+ *   you are meant to walk into: concealed rewards ("a false-bottomed drawer"),
+ *   ambush damage ("a bookcase groans and topples"). Marking them prospectively
+ *   would let a player route around authored hazards and would defeat authored
+ *   concealment — a balance change, not a rendering fix. The automap still
+ *   shows them, which is different: that is a record of tiles already visited.
+ * - `chute` is a concealed floor trap in the Wizardry tradition: dropping
+ *   through it *is* the event, so telegraphing it would remove the mechanic
+ *   rather than present it. `teleporter` is deliberately NOT excluded — it is
+ *   a navigation landmark the player is meant to spot, recognise and use.
+ *
+ * The automap still records all of them once visited.
+ */
+export function isCorridorMarkerFeature(
+  tile: TileFeature | undefined
+): tile is TileFeature {
+  if (!tile) return false;
+  if (isStairExitFeature(tile)) return false;
+  return tile !== "event" && tile !== "chute";
+}
+
+/**
+ * Depth-bucket index for the batched edge-glow pass, clamped into range.
+ *
+ * The renderer indexes a fixed array of `Path2D` buckets with this. Before the
+ * clamp, a negative or NaN `perpWallDist` produced an out-of-range index, and
+ * the resulting `undefined.moveTo()` threw *inside the rAF callback* — which
+ * does not just drop a frame, it ends the render loop for the rest of the
+ * session (the corridor goes black until reload). Observed twice while driving
+ * `__onyxDebug.jumpTo` with a bad `facing`/`x`/`y`.
+ *
+ * Clamping turns a fatal into one bad frame that recovers as soon as the camera
+ * is valid again. It is deliberately permissive rather than throwing.
+ */
+export function glowBucketForDepth(depth: number, bucketCount: number): number {
+  if (!Number.isFinite(depth)) return 0;
+  return Math.max(0, Math.min(bucketCount - 1, Math.floor(depth)));
+}
+
+/**
+ * Ceiling on a feature prop's height, as a fraction of the corridor's wall
+ * height at that same depth.
+ *
+ * `MapSpriteDef.baseSize` was authored for the floor editor's icon palette, not
+ * for corridor perspective: the chest ships at 40, and the raw billboard
+ * formula turns that into ~1.35x the wall height, so a chest two tiles away
+ * drew taller than the corridor it stands in. Capping against the wall keeps a
+ * prop inside the room it occupies while still letting a deliberately small
+ * `baseSize` render small — the cap only ever shrinks, never grows.
+ */
+export const PROP_MAX_WALL_FRAC = 0.55;
+
+/**
+ * On-screen height in pixels for a feature prop billboard: raw perspective
+ * scale, capped so the prop cannot be taller than the corridor around it.
+ */
+export function propBillboardSize(
+  screenH: number,
+  depth: number,
+  baseSize: number
+): number {
+  if (!Number.isFinite(depth) || depth <= 0) return FEATURE_MARKER_MIN_PX;
+  const raw = (screenH / depth) * (baseSize / 56);
+  const cap = computeLineHeight(screenH, depth) * PROP_MAX_WALL_FRAC;
+  return Math.max(FEATURE_MARKER_MIN_PX, Math.round(Math.min(raw, cap)));
+}
+
+/** Smallest a feature marker may shrink to before it stops being readable. */
+export const FEATURE_MARKER_MIN_PX = 10;
+
+/**
+ * Largest a feature marker may grow, as a fraction of screen height.
+ *
+ * Decor sprites are physical objects and are allowed to fill the view when you
+ * stand next to them. A feature marker is a *symbol*, and a symbol scaled like
+ * an object reads as a UI failure rather than as something in the room — at
+ * one tile away an unclamped glyph covered nearly half the viewport. Clamping
+ * costs the "grows then stops" tell on approach, which is the cheaper artifact.
+ */
+export const FEATURE_MARKER_MAX_SCREEN_FRAC = 0.2;
+
+/**
+ * On-screen height in pixels for a tile-feature marker at a given depth.
+ * Perspective-scaled like a billboard, then clamped at both ends so it stays
+ * both legible far away and unobtrusive up close.
+ */
+export function featureMarkerSize(
+  screenH: number,
+  depth: number,
+  baseSize: number
+): number {
+  if (!Number.isFinite(depth) || depth <= 0) return FEATURE_MARKER_MIN_PX;
+  const scaled = (screenH / depth) * (baseSize / 56);
+  const max = Math.max(FEATURE_MARKER_MIN_PX, screenH * FEATURE_MARKER_MAX_SCREEN_FRAC);
+  return Math.round(Math.min(max, Math.max(FEATURE_MARKER_MIN_PX, scaled)));
+}
+
 /**
  * Stateful render-camera animator. Tracks the display camera position
  * separately from the integer game-state position and tweens between them

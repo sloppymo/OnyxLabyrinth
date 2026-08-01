@@ -38,6 +38,16 @@ import {
   arenaSideWallWorldAt,
   isStairExitFeature,
   raycastEdgeStop,
+  projectBillboard,
+  billboardScreenX,
+  BILLBOARD_MIN_DEPTH,
+  featureMarkerSize,
+  FEATURE_MARKER_MIN_PX,
+  FEATURE_MARKER_MAX_SCREEN_FRAC,
+  isCorridorMarkerFeature,
+  glowBucketForDepth,
+  propBillboardSize,
+  PROP_MAX_WALL_FRAC,
 } from "./render-math";
 import {
   ARENA_CAMERA,
@@ -957,5 +967,214 @@ describe("stair exit door rendering helpers", () => {
     expect(raycastEdgeStop("door", "stairs_down")).toBe("door");
     expect(raycastEdgeStop("locked", undefined)).toBe("locked");
     expect(raycastEdgeStop("wall", "stairs_up")).toBe("wall");
+  });
+});
+
+describe("projectBillboard", () => {
+  // Facing north: dir = (0,-1), plane = (0.66, 0).
+  const camNorth = { x: 5, y: 5, dirX: 0, dirY: -1, planeX: 0.66, planeY: 0 };
+
+  it("puts a tile straight ahead on the view axis at its grid distance", () => {
+    const p = projectBillboard(camNorth, 5, 2)!;
+    expect(p.depth).toBeCloseTo(3, 6);
+    expect(p.lateral).toBeCloseTo(0, 6);
+  });
+
+  it("reports a tile behind the camera as negative depth", () => {
+    const p = projectBillboard(camNorth, 5, 8)!;
+    expect(p.depth).toBeLessThan(0);
+  });
+
+  it("gives the party's own tile a depth below the draw threshold", () => {
+    // The underfoot tile must never be billboarded — it is drawn separately.
+    const p = projectBillboard(camNorth, 5, 5)!;
+    expect(p.depth).toBeLessThanOrEqual(BILLBOARD_MIN_DEPTH);
+  });
+
+  it("mirrors lateral offset for tiles either side of the view axis", () => {
+    const left = projectBillboard(camNorth, 4, 2)!;
+    const right = projectBillboard(camNorth, 6, 2)!;
+    expect(left.depth).toBeCloseTo(right.depth, 6);
+    expect(left.lateral).toBeCloseTo(-right.lateral, 6);
+  });
+
+  it("keeps depth equal to grid distance when facing east", () => {
+    const camEast = { x: 5, y: 5, dirX: 1, dirY: 0, planeX: 0, planeY: 0.66 };
+    const p = projectBillboard(camEast, 9, 5)!;
+    expect(p.depth).toBeCloseTo(4, 6);
+    expect(p.lateral).toBeCloseTo(0, 6);
+  });
+
+  it("returns null for a degenerate camera basis rather than emitting NaN", () => {
+    // renderer.ts has no defensive clamping: a NaN here kills the render loop.
+    const degenerate = { x: 5, y: 5, dirX: 1, dirY: 0, planeX: 1, planeY: 0 };
+    expect(projectBillboard(degenerate, 6, 5)).toBeNull();
+  });
+
+  it("returns null when the camera carries a NaN", () => {
+    const broken = { x: NaN, y: 5, dirX: 0, dirY: -1, planeX: 0.66, planeY: 0 };
+    expect(projectBillboard(broken, 5, 2)).toBeNull();
+  });
+});
+
+describe("billboardScreenX", () => {
+  it("centres a billboard with no lateral offset", () => {
+    expect(billboardScreenX({ lateral: 0, depth: 3 }, 640)).toBeCloseTo(320, 6);
+  });
+
+  it("moves right for positive lateral offset and left for negative", () => {
+    const right = billboardScreenX({ lateral: 1, depth: 4 }, 640);
+    const left = billboardScreenX({ lateral: -1, depth: 4 }, 640);
+    expect(right).toBeGreaterThan(320);
+    expect(left).toBeLessThan(320);
+    expect(right - 320).toBeCloseTo(320 - left, 6);
+  });
+
+  it("converges toward centre as depth grows", () => {
+    const near = billboardScreenX({ lateral: 1, depth: 2 }, 640);
+    const far = billboardScreenX({ lateral: 1, depth: 8 }, 640);
+    expect(Math.abs(far - 320)).toBeLessThan(Math.abs(near - 320));
+  });
+});
+
+describe("featureMarkerSize", () => {
+  const H = 672;
+
+  it("shrinks with depth", () => {
+    const near = featureMarkerSize(H, 2, 18);
+    const far = featureMarkerSize(H, 5, 18);
+    expect(near).toBeGreaterThan(far);
+  });
+
+  it("never exceeds the screen-fraction cap", () => {
+    const cap = H * FEATURE_MARKER_MAX_SCREEN_FRAC;
+    for (const depth of [0.25, 0.5, 1, 1.5, 2]) {
+      expect(featureMarkerSize(H, depth, 18)).toBeLessThanOrEqual(Math.round(cap));
+    }
+  });
+
+  it("clamps the one-tile case that used to cover half the viewport", () => {
+    // Unclamped this was (672/1)*(26/56) = 312px on a 672px canvas.
+    expect(featureMarkerSize(H, 1, 18)).toBe(Math.round(H * FEATURE_MARKER_MAX_SCREEN_FRAC));
+  });
+
+  it("never shrinks below the legibility floor", () => {
+    expect(featureMarkerSize(H, 40, 18)).toBe(FEATURE_MARKER_MIN_PX);
+  });
+
+  it("returns the floor for a degenerate depth instead of Infinity", () => {
+    expect(featureMarkerSize(H, 0, 18)).toBe(FEATURE_MARKER_MIN_PX);
+    expect(featureMarkerSize(H, -1, 18)).toBe(FEATURE_MARKER_MIN_PX);
+    expect(featureMarkerSize(H, NaN, 18)).toBe(FEATURE_MARKER_MIN_PX);
+  });
+
+  it("reads at roughly a sixth of the screen two tiles out", () => {
+    const size = featureMarkerSize(H, 2, 18);
+    expect(size / H).toBeGreaterThan(0.13);
+    expect(size / H).toBeLessThan(0.19);
+  });
+});
+
+describe("isCorridorMarkerFeature", () => {
+  it("marks the landmark features a player should see ahead", () => {
+    for (const t of ["treasure", "teleporter", "darkness", "antimagic", "water", "npc"] as const) {
+      expect(isCorridorMarkerFeature(t)).toBe(true);
+    }
+  });
+
+  it("keeps teleporters visible as navigation landmarks", () => {
+    // Deliberately NOT hidden alongside chutes: a teleporter is something the
+    // player is meant to spot, recognise and route toward.
+    expect(isCorridorMarkerFeature("teleporter")).toBe(true);
+  });
+
+  it("hides chutes, which are concealed floor traps", () => {
+    // Falling through a chute IS the event; marking it would remove the
+    // mechanic rather than present it.
+    expect(isCorridorMarkerFeature("chute")).toBe(false);
+  });
+
+  it("excludes stairs, which already paint as door panels", () => {
+    expect(isCorridorMarkerFeature("stairs_up")).toBe(false);
+    expect(isCorridorMarkerFeature("stairs_down")).toBe(false);
+  });
+
+  it("excludes event tiles so authored concealment and ambushes survive", () => {
+    // Floors 1-3 author events as walk-into one-shots (hidden rewards, falling
+    // bookcases). Telegraphing them would be a balance change, not a fix.
+    expect(isCorridorMarkerFeature("event")).toBe(false);
+  });
+
+  it("treats an absent feature as nothing to draw", () => {
+    expect(isCorridorMarkerFeature(undefined)).toBe(false);
+  });
+});
+
+describe("glowBucketForDepth", () => {
+  it("buckets ordinary depths by floor", () => {
+    expect(glowBucketForDepth(0, 4)).toBe(0);
+    expect(glowBucketForDepth(1.9, 4)).toBe(1);
+    expect(glowBucketForDepth(2.0, 4)).toBe(2);
+  });
+
+  it("clamps past the last bucket", () => {
+    expect(glowBucketForDepth(99, 4)).toBe(3);
+  });
+
+  it("clamps negative depth to 0 instead of returning -1", () => {
+    // -1 indexed an array of Path2D and the undefined.moveTo() threw inside
+    // the rAF callback, ending the render loop for the whole session.
+    expect(glowBucketForDepth(-1, 4)).toBe(0);
+    expect(glowBucketForDepth(-0.5, 4)).toBe(0);
+  });
+
+  it("maps a NaN depth to 0 rather than a NaN index", () => {
+    expect(glowBucketForDepth(NaN, 4)).toBe(0);
+    expect(glowBucketForDepth(Infinity, 4)).toBe(0);
+  });
+
+  it("always returns an in-range index for any input", () => {
+    for (const d of [-1e9, -1, 0, 0.5, 3, 4, 1e9, NaN, Infinity, -Infinity]) {
+      const b = glowBucketForDepth(d, 4);
+      expect(Number.isInteger(b)).toBe(true);
+      expect(b).toBeGreaterThanOrEqual(0);
+      expect(b).toBeLessThanOrEqual(3);
+    }
+  });
+});
+
+describe("propBillboardSize", () => {
+  const H = 672;
+
+  it("never lets a prop stand taller than the corridor around it", () => {
+    // The shipped chest uses baseSize 40, which raw-scales to ~1.35x the wall
+    // height — it drew taller than the corridor before the cap.
+    for (const depth of [0.5, 1, 2, 3, 5]) {
+      const wall = computeLineHeight(H, depth);
+      expect(propBillboardSize(H, depth, 40)).toBeLessThanOrEqual(
+        Math.round(wall * PROP_MAX_WALL_FRAC)
+      );
+    }
+  });
+
+  it("caps an oversized baseSize to the wall fraction", () => {
+    const wall = computeLineHeight(H, 2);
+    expect(propBillboardSize(H, 2, 40)).toBe(Math.round(wall * PROP_MAX_WALL_FRAC));
+  });
+
+  it("leaves a deliberately small prop at its raw scale", () => {
+    // The cap only ever shrinks: a small baseSize must still render small.
+    const raw = (H / 3) * (8 / 56);
+    expect(propBillboardSize(H, 3, 8)).toBe(Math.round(raw));
+  });
+
+  it("shrinks with depth", () => {
+    expect(propBillboardSize(H, 2, 40)).toBeGreaterThan(propBillboardSize(H, 5, 40));
+  });
+
+  it("returns the floor for a degenerate depth instead of Infinity", () => {
+    expect(propBillboardSize(H, 0, 40)).toBe(FEATURE_MARKER_MIN_PX);
+    expect(propBillboardSize(H, NaN, 40)).toBe(FEATURE_MARKER_MIN_PX);
+    expect(propBillboardSize(H, -2, 40)).toBe(FEATURE_MARKER_MIN_PX);
   });
 });

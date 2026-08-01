@@ -13,6 +13,7 @@ import {
   leaveChest,
   swimChance,
   transitionToFloor,
+  isTreasureLooted,
 } from "./features";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
 import { createDefaultParty } from "./party";
@@ -145,15 +146,40 @@ describe("handleTreasure with traps", () => {
     expect(state.inventory.map((e) => e.itemId)).toContain("healing-potion");
     expect(state.keys).toContain("test-key");
     expect(state.pendingTrap).toBeNull();
-    expect(state.floor.grid[2][2].tile).toBeUndefined();
+    // The tile is KEPT (it used to be erased): an emptied chest stays in the
+    // world as an opened-chest landmark. Emptiness lives in the treasure def.
+    expect(state.floor.grid[2][2].tile).toBe("treasure");
+    expect(state.floor.treasures![0]!.itemIds).toEqual([]);
+    expect(isTreasureLooted(state.floor, 2, 2)).toBe(true);
   });
 
-  it("does not mark an already-looted chest as newly looted", () => {
+  it("treats an already-looted chest as inert floor", () => {
+    // Previously this returned a "consumed" result and erased the tile. Now
+    // the tile survives for rendering and `handleTileFeature` short-circuits,
+    // so re-crossing an emptied chest is silent instead of re-messaging.
     const state = makeState();
     state.floor.treasures![0]!.itemIds = [];
-    const result = handleTileFeature(state);
-    expect(result?.consumed).toBe(true);
-    expect(result?.looted).toBe(false);
+    expect(handleTileFeature(state)).toBeNull();
+    expect(state.floor.grid[2][2].tile).toBe("treasure");
+  });
+
+  it("clears zone flags when standing on a looted chest", () => {
+    const state = makeState();
+    state.floor.treasures![0]!.itemIds = [];
+    state.inDarkness = true;
+    state.inAntimagic = true;
+    handleTileFeature(state);
+    expect(state.inDarkness).toBe(false);
+    expect(state.inAntimagic).toBe(false);
+  });
+
+  it("does not re-award loot when the party re-crosses an emptied chest", () => {
+    const state = makeState();
+    handleTileFeature(state);
+    const afterFirst = state.inventory.length;
+    handleTileFeature(state);
+    handleTileFeature(state);
+    expect(state.inventory).toHaveLength(afterFirst);
   });
 
   it("sets pendingTrap for a trapped chest and does not loot", () => {
@@ -288,7 +314,9 @@ describe("openChest trap effects", () => {
     handleTileFeature(state);
     openChest(state, seqRng([0.5]));
     expect(state.lootTaken[1]?.has("2,2")).toBe(true);
-    expect(state.floor.grid[2][2].tile).toBeUndefined();
+    // Kept as an opened-chest landmark rather than erased; see the loot test.
+    expect(state.floor.grid[2][2].tile).toBe("treasure");
+    expect(isTreasureLooted(state.floor, 2, 2)).toBe(true);
   });
 });
 
@@ -439,11 +467,18 @@ describe("water tiles", () => {
   it("failed swimmers take depth-scaled damage, floored at 1 HP", () => {
     const state = makeWaterState(4);
     state.party[0].hp = 2;
+    // Pin the second swimmer's pool. `createCharacter` rolls stats with
+    // Math.random (party.ts:188), so maxHp varies run to run — and whenever it
+    // rolled <= 12 the damage floored at 1 HP and `maxHp - 12` went <= 0,
+    // failing this assertion at random. Pinning makes the damage exact rather
+    // than relative, which is a stronger check than the original.
+    state.party[1].maxHp = 30;
+    state.party[1].hp = 30;
     // Every roll 0.99: all fail (chance 5%), dmg 4×3=12, skill gain floor(0.99*2)=1.
     const result = handleTileFeature(state, seqRng([0.99]));
     expect(result?.message).toMatch(/struggle/);
     expect(state.party[0].hp).toBe(1); // floored
-    expect(state.party[1].hp).toBe(state.party[1].maxHp - 12);
+    expect(state.party[1].hp).toBe(18); // 30 - 12, not floored
     expect(state.swimSkill[state.party[1].id]).toBe(1); // learning from failure
   });
 
@@ -603,6 +638,23 @@ describe("transitionToFloor and deepestFloorReached", () => {
     transitionToFloor(state, floorById(4), 2, 2);
     expect(state.floor.id).toBe(4);
     expect(state.deepestFloorReached).toBe(4);
+  });
+
+  it("keeps an emptied chest's tile when the floor is re-entered", () => {
+    // The landmark has to survive a floor reload, or walking back into a
+    // cleared wing would look untouched again. `applyLootedTreasures` empties
+    // the def on the fresh clone but must NOT erase the tile.
+    const state = createGameState(findFloor(1)!);
+    const chest = state.floor.treasures?.[0];
+    if (!chest) throw new Error("floor 1 has no treasure to loot");
+    const { x, y } = chest;
+
+    state.lootTaken[1] = new Set([`${x},${y}`]);
+    transitionToFloor(state, floorById(2), 2, 2);
+    transitionToFloor(state, floorById(1), 2, 2);
+
+    expect(state.floor.grid[y]![x]!.tile).toBe("treasure");
+    expect(isTreasureLooted(state.floor, x, y)).toBe(true);
   });
 
   it("does not lower deepestFloorReached when backtracking to a shallower floor", () => {

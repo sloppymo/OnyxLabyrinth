@@ -46,13 +46,30 @@ export interface FeatureResult {
 }
 
 /**
+ * Whether the treasure at this tile has already been emptied.
+ *
+ * A treasure tile with no matching `TreasureDef` counts as looted: that is the
+ * shape `applyLootedTreasures` leaves behind, and it is also the safe reading
+ * of a floor authored with a stray treasure tile.
+ */
+export function isTreasureLooted(floor: FloorDef, x: number, y: number): boolean {
+  const def = floor.treasures?.find((t) => t.x === x && t.y === y);
+  return !def || def.itemIds.length === 0;
+}
+
+/**
  * Process the tile feature at the player's current position.
  * Returns null if the current tile has no feature.
  */
 export function handleTileFeature(state: GameState, rng: Rng = Math.random): FeatureResult | null {
   const { floor, player } = state;
   const cell = floor.grid[player.y]?.[player.x];
-  if (!cell || !cell.tile) {
+  // A looted treasure keeps its tile so the corridor can still draw an opened
+  // chest as a landmark, but it is inert — identical to standing on bare floor.
+  // Without this guard, re-crossing an emptied chest would spam "already
+  // looted" on every step and leave darkness/antimagic flags uncleared.
+  const inert = cell?.tile === "treasure" && isTreasureLooted(floor, player.x, player.y);
+  if (!cell || !cell.tile || inert) {
     // No feature — clear darkness/antimagic flags
     state.inDarkness = false;
     state.inAntimagic = false;
@@ -219,8 +236,9 @@ function handleTreasure(state: GameState): FeatureResult {
   const treasureDef = floor.treasures?.find((t) => t.x === player.x && t.y === player.y);
 
   if (!treasureDef || treasureDef.itemIds.length === 0) {
-    // Already looted — clear the feature
-    floor.grid[player.y][player.x].tile = undefined;
+    // Already looted. The tile is KEPT (an opened chest stays visible as a
+    // landmark); `handleTileFeature`'s inert guard normally short-circuits
+    // before reaching here, so this is the defensive path only.
     return {
       message: "This treasure has already been looted.",
       changedFloor: false,
@@ -315,9 +333,10 @@ function awardTreasure(
     itemNames.push(displayNameFor(item, entry.identified));
   }
 
-  // Clear the treasure
+  // Clear the treasure. The tile stays a "treasure" feature on purpose:
+  // emptying it flips it to the opened-chest prop instead of erasing it, so a
+  // cleared wing still reads as cleared when the party walks back through it.
   treasureDef.itemIds = [];
-  state.floor.grid[treasureDef.y][treasureDef.x].tile = undefined;
 
   // Record cross-floor so returning later or saving/loading doesn't need to
   // inspect (or mutate) the global FLOORS definition.
@@ -415,9 +434,8 @@ function applyLootedTreasures(
     if (treasureDef) {
       treasureDef.itemIds = [];
     }
-    if (floor.grid[y]?.[x]) {
-      floor.grid[y][x].tile = undefined;
-    }
+    // Tile deliberately left in place — an emptied `treasure` tile renders as
+    // an opened chest and is inert (see `handleTileFeature`'s inert guard).
   }
 }
 

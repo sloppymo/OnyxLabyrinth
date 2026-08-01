@@ -48,18 +48,29 @@ import {
   computeLineHeight,
   opacityForDepth,
   glowBlurForDepth,
+  glowBucketForDepth,
   strokeColorForDepth,
   RenderCameraAnimator,
   MATH_CONFIG,
   isStairExitFeature,
   raycastEdgeStop,
+  projectBillboard,
+  billboardScreenX,
+  featureMarkerSize,
+  propBillboardSize,
+  isCorridorMarkerFeature,
+  BILLBOARD_MIN_DEPTH,
 } from "./render-math";
 import type { RenderCamera } from "./render-math";
 import { resolveTilesetTheme } from "../game/floor-map";
 import {
   getMapSpriteDef,
   getMapSpriteImage,
+  type MapSpriteImage,
 } from "./map-sprite-cache";
+import type { MapSpriteDef } from "../data/map-sprites";
+import { featurePropSpriteIds } from "../data/maze-props";
+import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
@@ -93,6 +104,14 @@ const BG_B = parseInt(PALETTE.bg.slice(5, 7), 16);
 // it just has one definition now. Declaring any MATH_CONFIG key again below
 // would shadow it for renderer.ts while leaving the math untouched, which is
 // the exact trap this spread removes: edit the value in render-math.ts.
+/**
+ * Nominal source height for a tile-feature marker, in the same units as
+ * `MapSpriteDef.baseSize` (which runs 30-40 for the decor pack). Tuned so a
+ * feature two tiles ahead reads at roughly a sixth of the screen; closer than
+ * that, `featureMarkerSize` clamps it.
+ */
+const FEATURE_BILLBOARD_BASE_SIZE = 18;
+
 const RENDER_CONFIG = {
   ...MATH_CONFIG,
   fillOpacityMultiplier: 0.45,
@@ -259,7 +278,6 @@ let doorTexture: HTMLCanvasElement | null = null;
 let doorLoadPromise: Promise<void> | null = null;
 // Reusable per-frame buffers (avoid allocation in the hot render loop).
 let hitsBuffer: (RayHit | null)[] = [];
-let seenFeatureCellsBuffer = new Set<string>();
 let lastVignetteW = 0;
 let lastVignetteH = 0;
 let cachedVignetteGradient: CanvasGradient | null = null;
@@ -596,6 +614,62 @@ function castRay(
   }
 }
 
+/**
+ * Screen placement for one billboard standing on the floor of a tile.
+ * Returns `null` when the billboard is behind the camera, hidden by a wall, or
+ * faded out entirely.
+ */
+type BillboardPlacement = {
+  screenX: number;
+  /** Top edge, so the billboard's base rests on the floor at its depth. */
+  drawY: number;
+  size: number;
+  alpha: number;
+  depth: number;
+};
+
+function placeBillboard(
+  ctx: CanvasRenderingContext2D,
+  cam: RenderCamera,
+  hits: (RayHit | null)[],
+  stripWidth: number,
+  tileX: number,
+  tileY: number,
+  sizeFor: (screenH: number, depth: number) => number,
+  inDarkness: boolean
+): BillboardPlacement | null {
+  const proj = projectBillboard(cam, tileX, tileY);
+  if (!proj || proj.depth <= BILLBOARD_MIN_DEPTH) return null;
+
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const screenX = Math.floor(billboardScreenX(proj, w));
+  const size = sizeFor(h, proj.depth);
+  const lineHeight = computeLineHeight(h, proj.depth);
+  const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
+
+  // Z-test against the wall the ray through this billboard's centre hit.
+  const stripIdx = Math.floor(screenX / stripWidth);
+  if (stripIdx >= 0 && stripIdx < hits.length) {
+    const hit = hits[stripIdx];
+    if (hit && hit.perpWallDist < proj.depth - 0.05) return null;
+  }
+
+  const alpha = opacityForDepth(proj.depth) * (inDarkness ? 0.5 : 1);
+  if (alpha <= 0) return null; // beyond the taper boundary: skip the draw call
+
+  return { screenX, drawY: drawEnd - size, size, alpha, depth: proj.depth };
+}
+
+/**
+ * Decor sprites keep their original unclamped perspective scale — they are
+ * physical objects, so filling the view when you stand beside one is correct.
+ */
+const decorSpriteSize =
+  (baseSize: number) =>
+  (screenH: number, depth: number): number =>
+    Math.max(8, Math.abs(Math.floor((screenH / depth) * (baseSize / 56))));
+
 /** Draw static map decor sprites (Wolf3D-style billboards). */
 function drawMapSprites(
   ctx: CanvasRenderingContext2D,
@@ -608,56 +682,115 @@ function drawMapSprites(
   const sprites = state.floor.mapSprites;
   if (!sprites?.length) return;
 
-  const w = ctx.canvas.width;
-  const h = ctx.canvas.height;
-  const camWX = cam.x + 0.5;
-  const camWY = cam.y + 0.5;
-  const invDet = 1.0 / (cam.planeX * cam.dirY - cam.dirX * cam.planeY);
-
-  type Proj = {
-    spriteId: string;
-    transformX: number;
-    transformY: number;
-  };
-  const projected: Proj[] = [];
+  type Placed = { spriteId: string; place: BillboardPlacement };
+  const placed: Placed[] = [];
   for (const s of sprites) {
-    const dx = s.x + 0.5 - camWX;
-    const dy = s.y + 0.5 - camWY;
-    const transformX = invDet * (cam.dirY * dx - cam.dirX * dy);
-    const transformY = invDet * (-cam.planeY * dx + cam.planeX * dy);
-    if (transformY <= 0.2) continue;
-    projected.push({ spriteId: s.spriteId, transformX, transformY });
-  }
-  projected.sort((a, b) => b.transformY - a.transformY);
-
-  for (const p of projected) {
-    const img = getMapSpriteImage(p.spriteId);
-    const def = getMapSpriteDef(p.spriteId);
-    if (!img || !def) continue;
-
-    const spriteScreenX = Math.floor((w / 2) * (1 + p.transformX / p.transformY));
-    const spriteH = Math.max(
-      8,
-      Math.abs(Math.floor((h / p.transformY) * (def.baseSize / 56)))
+    const def = getMapSpriteDef(s.spriteId);
+    if (!def) continue;
+    const place = placeBillboard(
+      ctx, cam, hits, stripWidth, s.x, s.y, decorSpriteSize(def.baseSize), inDarkness
     );
-    const spriteW = spriteH;
-    const lineHeight = computeLineHeight(h, p.transformY);
-    const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
-    const drawY = drawEnd - spriteH;
+    if (place) placed.push({ spriteId: s.spriteId, place });
+  }
+  placed.sort((a, b) => b.place.depth - a.place.depth);
 
-    const stripIdx = Math.floor(spriteScreenX / stripWidth);
-    if (stripIdx >= 0 && stripIdx < hits.length) {
-      const hit = hits[stripIdx];
-      if (hit && hit.perpWallDist < p.transformY - 0.05) continue;
-    }
-
-    const alpha = opacityForDepth(p.transformY) * (inDarkness ? 0.5 : 1);
-    if (alpha <= 0) continue; // beyond the taper boundary: invisible, skip the draw call
-
+  for (const p of placed) {
+    const img = getMapSpriteImage(p.spriteId);
+    if (!img) continue;
+    const { screenX, drawY, size, alpha } = p.place;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, spriteScreenX - spriteW / 2, drawY, spriteW, spriteH);
+    ctx.drawImage(img, screenX - size / 2, drawY, size, size);
+    ctx.restore();
+  }
+}
+
+/**
+ * Draw interactive tile features as floor-standing billboards.
+ *
+ * Previously each feature was painted at the base of whichever wall strip the
+ * raycaster stopped on, keyed off `hit.mapX/mapY`. But `castRay` reports the
+ * cell it stepped INTO whose entry edge blocked — the cell on the far side of
+ * the wall. So the glyph was drawn for cells the party cannot see and never
+ * for a chest sitting on open floor ahead, which made every feature invisible
+ * until you stood on it. Projecting the feature's own tile fixes both halves.
+ *
+ * Stairs are excluded: they already paint as door panels via `raycastEdgeStop`.
+ */
+function drawFeatureBillboards(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  cam: RenderCamera,
+  hits: (RayHit | null)[],
+  stripWidth: number,
+  maxDist: number,
+  inDarkness: boolean
+): void {
+  const grid = state.floor.grid;
+  const color = inDarkness ? PALETTE.featureDark : PALETTE.feature;
+
+  type Placed = {
+    feature: TileFeature;
+    img: MapSpriteImage | null;
+    place: BillboardPlacement;
+  };
+  const placed: Placed[] = [];
+  for (let y = 0; y < grid.length; y++) {
+    const row = grid[y];
+    if (!row) continue;
+    for (let x = 0; x < row.length; x++) {
+      const tile = row[x]?.tile;
+      if (!isCorridorMarkerFeature(tile)) continue;
+      // The party's own tile is drawn as an underfoot indicator instead.
+      if (x === state.player.x && y === state.player.y) continue;
+      // Cheap reject before the projection maths.
+      if (Math.abs(x - cam.x) > maxDist || Math.abs(y - cam.y) > maxDist) continue;
+
+      const looted = tile === "treasure" && isTreasureLooted(state.floor, x, y);
+      // First candidate whose art has actually shipped wins.
+      let img: MapSpriteImage | null = null;
+      let def: MapSpriteDef | undefined;
+      for (const id of featurePropSpriteIds(tile, { looted })) {
+        const candidate = getMapSpriteImage(id);
+        if (!candidate) continue;
+        img = candidate;
+        def = getMapSpriteDef(id);
+        break;
+      }
+      const hasProp = !!(img && def);
+      // An emptied chest is scenery, not a lead. Without the opened-chest prop
+      // there is nothing honest to draw — a "$" would advertise loot that is
+      // already gone — so it renders as nothing, exactly as it did before.
+      if (looted && !hasProp) continue;
+
+      const place = placeBillboard(
+        ctx,
+        cam,
+        hits,
+        stripWidth,
+        x,
+        y,
+        hasProp
+          ? (screenH, depth) => propBillboardSize(screenH, depth, def!.baseSize)
+          : (screenH, depth) => featureMarkerSize(screenH, depth, FEATURE_BILLBOARD_BASE_SIZE),
+        inDarkness
+      );
+      if (place) placed.push({ feature: tile, img: hasProp ? img : null, place });
+    }
+  }
+  placed.sort((a, b) => b.place.depth - a.place.depth);
+
+  for (const p of placed) {
+    const { screenX, drawY, size, alpha } = p.place;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (p.img) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(p.img, screenX - size / 2, drawY, size, size);
+    } else {
+      drawFeatureGlyph(ctx, screenX, drawY + size / 2, p.feature, color, size);
+    }
     ctx.restore();
   }
 }
@@ -675,26 +808,6 @@ function drawFloorFeature(
   const cy = h / 2 + 30; // slightly below center, on the floor
   const color = inDarkness ? PALETTE.featureDark : PALETTE.feature;
   drawFeatureGlyph(ctx, cx, cy, feature, color, 16);
-  ctx.restore();
-}
-
-/** Draw a tile feature glyph at the bottom-center of a raycast wall strip. */
-function drawDepthFeature(
-  ctx: CanvasRenderingContext2D,
-  hit: RayHit,
-  screenX: number,
-  stripWidth: number,
-  feature: TileFeature,
-  inDarkness: boolean
-): void {
-  ctx.save();
-  const h = ctx.canvas.height;
-  const lineHeight = computeLineHeight(h, hit.perpWallDist);
-  const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
-  const cy = drawEnd + Math.max(4, lineHeight / 8);
-  const size = Math.max(6, Math.min(24, lineHeight / 4));
-  ctx.globalAlpha = opacityForDepth(hit.perpWallDist);
-  drawFeatureGlyph(ctx, screenX + stripWidth / 2, cy, feature, inDarkness ? PALETTE.featureDark : PALETTE.feature, size);
   ctx.restore();
 }
 
@@ -972,8 +1085,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     hitsBuffer.fill(null, 0, hitCount);
   }
   const hits = hitsBuffer;
-  seenFeatureCellsBuffer.clear();
-  const seenFeatureCells = seenFeatureCellsBuffer;
 
   ctx.save();
   for (let i = 0; i < hits.length; i++) {
@@ -989,20 +1100,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     const lineHeight = computeLineHeight(h, hit.perpWallDist);
     const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2));
     const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
-
-    // Tile feature on this cell (drawn once per visible cell, excluding the
-    // player's current tile, which is rendered at depth 0 below). Stairs are
-    // door panels now — skip their old ↑/↓ glyphs.
-    if (hit.mapX !== state.player.x || hit.mapY !== state.player.y) {
-      const cell = state.floor.grid[hit.mapY]?.[hit.mapX];
-      if (cell?.tile && !isStairExitFeature(cell.tile)) {
-        const key = `${hit.mapX},${hit.mapY}`;
-        if (!seenFeatureCells.has(key)) {
-          seenFeatureCells.add(key);
-          drawDepthFeature(ctx, hit, x, stripWidth, cell.tile, state.inDarkness);
-        }
-      }
-    }
 
     const fog = opacityForDepth(hit.perpWallDist);
 
@@ -1144,7 +1241,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       Math.abs(prev.perpWallDist - hit.perpWallDist) > RENDER_CONFIG.glowEdgeDepthDelta ||
       Math.abs(next.perpWallDist - hit.perpWallDist) > RENDER_CONFIG.glowEdgeDepthDelta;
 
-    const bucket = Math.min(GLOW_BUCKETS - 1, Math.floor(hit.perpWallDist));
+    const bucket = glowBucketForDepth(hit.perpWallDist, GLOW_BUCKETS);
     const path = isEdge ? glowEdgePaths[bucket] : glowWashPaths[bucket];
     path.moveTo(gx, drawStart);
     path.lineTo(gx, drawEnd);
@@ -1170,8 +1267,11 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     drawFloorFeature(ctx, w, h, currentCell.tile, state.inDarkness);
   }
 
-  // Decor sprites (after walls so Z-test uses the hit buffer).
+  // Decor sprites and feature billboards (after walls so the Z-test can use
+  // the hit buffer). Features draw last so a chest is never hidden behind a
+  // decorative crate sharing its tile.
   drawMapSprites(ctx, state, cam, hits, stripWidth, state.inDarkness);
+  drawFeatureBillboards(ctx, state, cam, hits, stripWidth, maxDist, state.inDarkness);
 
   // Restore from the head-bob translate before drawing screen-space overlays.
   ctx.restore();
