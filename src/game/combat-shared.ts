@@ -323,7 +323,7 @@ export function plainHitDamage(s: CombatState, c: Character, rng: Rng): number {
   const weaponBonus = loadout?.weapon?.attackBonus ?? 0;
   const base = eff.str + c.level + weaponBonus;
   const variance = 0.8 + rng() * 0.4;
-  return Math.max(1, Math.round(base * variance));
+  return scaleOutgoingDamage(Math.max(1, Math.round(base * variance)), c);
 }
 
 /**
@@ -462,6 +462,8 @@ export function applyPartyDamage(
         // crusader-retribution: the attacker takes the Crusader's effective
         // PIE as holy damage when an adjacent ally is struck.
         if (attacker.currentHp <= 0) return;
+        // Flat PIE — intentionally not scaleOutgoingDamage (status body-magic
+        // is about the Crusader's swings, not retribution pings).
         const holy = Math.max(1, effStatsFor(s, c).pie);
         attacker.currentHp -= holy;
         emit(

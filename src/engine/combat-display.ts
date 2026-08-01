@@ -137,7 +137,7 @@ export function spellEffectSummary(effect: SpellEffect): string {
     case "combatStatus":
       return effect.status === "shrunk"
         ? "Shrinks one foe (half size & damage)"
-        : "Giant Strength (3 rounds)";
+        : `Giant Strength (${effect.duration ?? 3} rounds)`;
     case "summon":
       return `Summons an ally (power ${effect.power})`;
     case "light":

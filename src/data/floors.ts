@@ -50,6 +50,17 @@ export interface EncounterZoneDef {
   tableFloorId?: number;
 }
 
+/** Rectangular corridor-material override. Later overlapping zones win. */
+export interface TilesetZoneDef {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  /** Texture folder under public/assets/tilesets/<theme>/. */
+  theme: string;
+}
+
 export interface FloorDef {
   id: number;
   name: string;
@@ -67,6 +78,8 @@ export interface FloorDef {
    * (wall.png, floorA.png, floorB.png, ceiling.png). Defaults to `f{id}`.
    */
   tilesetTheme?: string;
+  /** Optional per-cell corridor themes. Later overlapping zones win. */
+  tilesetZones?: TilesetZoneDef[];
   /**
    * @deprecated Ignored by the encounter roller — the weighted
    * ENCOUNTER_TABLES in data/enemies.ts (keyed by floor id) are the source
@@ -522,6 +535,9 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     startY: floor.startY,
     encounterRate: floor.encounterRate,
     tilesetTheme: floor.tilesetTheme,
+    tilesetZones: floor.tilesetZones
+      ? floor.tilesetZones.map((z) => ({ ...z }))
+      : undefined,
     encounterTable: floor.encounterTable ? [...floor.encounterTable] : undefined,
     encounterZones: floor.encounterZones
       ? floor.encounterZones.map((z) => ({ ...z }))

@@ -56,22 +56,21 @@ describe("save serialization", () => {
   });
 
   it("round-trips NPC state and clears killed NPC tiles on load", () => {
-    // Maro stands at (3,6) on floor 1.
-    state.talkedToNPCs = ["maro"];
-    state.npcDisposition = { maro: 80 };
-    state.killedNPCs = ["maro"];
+    const npc = findFloor(1)!.npcs![0]!;
+    state.talkedToNPCs = [npc.id];
+    state.npcDisposition = { [npc.id]: 80 };
+    state.killedNPCs = [npc.id];
     state.npcTradesDone = ["vestra:antidote>robe+2"];
     const json = serialize(state);
     const restored = deserialize(json);
     expect(restored).not.toBeNull();
     if (!restored) return;
 
-    expect(restored.talkedToNPCs).toEqual(["maro"]);
-    expect(restored.npcDisposition).toEqual({ maro: 80 });
-    expect(restored.killedNPCs).toEqual(["maro"]);
+    expect(restored.talkedToNPCs).toEqual([npc.id]);
+    expect(restored.npcDisposition).toEqual({ [npc.id]: 80 });
+    expect(restored.killedNPCs).toEqual([npc.id]);
     expect(restored.npcTradesDone).toEqual(["vestra:antidote>robe+2"]);
-    const maro = findFloor(1)!.npcs!.find((n) => n.id === "maro")!;
-    expect(restored.floor.grid[maro.y][maro.x].tile).toBeUndefined();
+    expect(restored.floor.grid[npc.y][npc.x].tile).toBeUndefined();
   });
 
   it("defaults NPC state to empty for saves that predate NPCs", () => {
@@ -87,8 +86,8 @@ describe("save serialization", () => {
     expect(restored.npcDisposition).toEqual({});
     expect(restored.killedNPCs).toEqual([]);
     expect(restored.npcTradesDone).toEqual([]);
-    const maro = findFloor(1)!.npcs!.find((n) => n.id === "maro")!;
-    expect(restored.floor.grid[maro.y][maro.x].tile).toBe("npc");
+    const npc = findFloor(1)!.npcs![0]!;
+    expect(restored.floor.grid[npc.y][npc.x].tile).toBe("npc");
   });
 
   it("preserves party character data", () => {

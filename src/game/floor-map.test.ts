@@ -7,6 +7,9 @@ import {
   parseFloorMapJSON,
   newFloorMapJSON,
   cellIsPassable,
+  themeAt,
+  themeForWallHit,
+  tilesetThemesForFloor,
 } from "./floor-map";
 import { floorToAscii } from "./floor-ascii";
 import { validateFloorDef, hasValidationErrors } from "./floor-validate";
@@ -28,6 +31,50 @@ describe("floor-map", () => {
     const parsed = parseFloorMapJSON(raw);
     expect(parsed.name).toBe(map.name);
     expect(parsed.grid.length).toBe(map.height);
+  });
+
+  it("round-trips regional tileset zones", () => {
+    const map = newFloorMapJSON(5, 5, { tilesetTheme: "f1" });
+    map.tilesetZones = [
+      { id: "stacks", x1: 1, y1: 1, x2: 2, y2: 3, theme: "f2" },
+    ];
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    const roundTrip = floorDefToMap(mapToFloorDef(parsed));
+    expect(roundTrip.tilesetZones).toEqual(map.tilesetZones);
+  });
+
+  it("resolves cell themes with primary fallback and last-zone-wins overlap", () => {
+    const floor = {
+      id: 1,
+      tilesetTheme: "f1",
+      tilesetZones: [
+        { id: "wide", x1: 1, y1: 1, x2: 4, y2: 4, theme: "f2" },
+        { id: "top", x1: 3, y1: 2, x2: 4, y2: 3, theme: "f5" },
+      ],
+    };
+    expect(themeAt(floor, 0, 0)).toBe("f1");
+    expect(themeAt(floor, 2, 2)).toBe("f2");
+    expect(themeAt(floor, 3, 2)).toBe("f5");
+    expect(tilesetThemesForFloor(floor)).toEqual(["f1", "f2", "f5"]);
+  });
+
+  it("uses the near visible cell theme for wall and door boundaries", () => {
+    const floor = {
+      id: 1,
+      tilesetTheme: "f1",
+      tilesetZones: [
+        { id: "east", x1: 2, y1: 0, x2: 4, y2: 4, theme: "f3" },
+        { id: "south", x1: 0, y1: 2, x2: 1, y2: 4, theme: "f4" },
+      ],
+    };
+    // Eastbound ray stepped into (2,1): visible side is west cell (1,1).
+    expect(themeForWallHit(floor, 2, 1, "x", 1, 0)).toBe("f1");
+    // Westbound ray stepped into (1,1): visible side is east cell (2,1).
+    expect(themeForWallHit(floor, 1, 1, "x", -1, 0)).toBe("f3");
+    // Southbound ray stepped into (1,2): visible side is north cell (1,1).
+    expect(themeForWallHit(floor, 1, 2, "y", 0, 1)).toBe("f1");
+    // Northbound ray stepped into (1,1): visible side is south cell (1,2).
+    expect(themeForWallHit(floor, 1, 1, "y", 0, -1)).toBe("f4");
   });
 
   it("rejects malformed overlay entries with precise errors", () => {
@@ -60,6 +107,10 @@ describe("floor-map", () => {
     raw = base();
     raw.encounterZones = [{ id: "z", x1: 0, y1: 0, x2: 1, y2: 1 }];
     expect(() => parseFloorMapJSON(raw)).toThrow(/rateMul/);
+
+    raw = base();
+    raw.tilesetZones = [{ id: "z", x1: 0, y1: 0, x2: 1, y2: 1 }];
+    expect(() => parseFloorMapJSON(raw)).toThrow(/tilesetZones\[0\]\.theme/);
   });
 
   it("preserves optional NPC and water fields through parse", () => {
@@ -100,7 +151,7 @@ describe("floor-ascii", () => {
   it("includes start marker and legend", () => {
     const ascii = floorToAscii(findFloor(1)!);
     expect(ascii).toContain("@");
-    expect(ascii).toContain("The Proving Depths");
+    expect(ascii).toContain(findFloor(1)!.name);
     expect(ascii).toContain("crypt-key");
   });
 });

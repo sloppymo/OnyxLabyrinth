@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "formatVersion": { "const": 1 },
-    "id": { "type": "integer", "description": "Floor id. Stairs implicitly link id-1 (up) and id+1 (down). Ids 1-3 replace campaign floors when shipped in a pack." },
+    "id": { "type": "integer", "description": "Floor id. Stairs implicitly link id-1 (up) and id+1 (down). Ids 1-5 replace campaign floors when shipped in a pack." },
     "name": { "type": "string", "minLength": 1 },
     "width": { "type": "integer", "minimum": 3 },
     "height": { "type": "integer", "minimum": 3 },
@@ -16,6 +16,23 @@
     "startY": { "type": "integer" },
     "encounterRate": { "type": "number", "minimum": 0, "maximum": 1, "description": "Base random-encounter chance per step (after cooldown). Only effective when ENCOUNTER_TABLES has this floor id, or inside zones with tableFloorId." },
     "tilesetTheme": { "type": "string", "description": "Folder under public/assets/tilesets/<theme>/ with wall.png, floorA.png, floorB.png, ceiling.png. Defaults to f{id}." },
+    "tilesetZones": {
+      "type": "array",
+      "description": "Inclusive rectangular per-cell corridor theme overrides. Later overlapping entries win; cells outside every zone use tilesetTheme.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "x1", "y1", "x2", "y2", "theme"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "x1": { "type": "integer" },
+          "y1": { "type": "integer" },
+          "x2": { "type": "integer" },
+          "y2": { "type": "integer" },
+          "theme": { "type": "string", "minLength": 1, "description": "Folder under public/assets/tilesets/<theme>/. Built-in values are f1-f5." }
+        }
+      }
+    },
     "grid": {
       "type": "array",
       "description": "height rows of width cells",

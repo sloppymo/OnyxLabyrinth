@@ -354,9 +354,10 @@ function drawPartyMember(
     hasStrip: !!stripInfo,
     stripArtTopFromTop: stripInfo?.strip.artTopFromTop,
   });
+  const statusScale = statusDrawScale(char.status);
   const slot = toScreenPos(
     resolveSlot(partySlot(index), geoFor(scene.backdropId), {
-      spriteHeight: PARTY_SIZE,
+      spriteHeight: PARTY_SIZE * statusScale,
       canvasWidth: w,
       artFootFromTop: artFoot,
     })
@@ -365,7 +366,7 @@ function drawPartyMember(
   const x = slot.x + off.x;
   const y = slot.y + off.y;
   const footY = slot.footY + off.y;
-  const drawSize = PARTY_SIZE * slot.scale * statusDrawScale(char.status);
+  const drawSize = PARTY_SIZE * slot.scale * statusScale;
 
   const isDead = char.hp <= 0 || char.status.includes("knockedOut");
   if (isDead && anim.state !== "death") setAnimState(anim, "death", now);
@@ -436,9 +437,10 @@ function drawEnemy(
     hasStrip,
     stripArtTopFromTop: stripInfo?.strip.artTopFromTop,
   });
+  const statusScale = statusDrawScale(enemy.status);
   const slot = toScreenPos(
     resolveSlot(enemySlot(idxInRow, enemy.row), geoFor(scene.backdropId), {
-      spriteHeight: baseSize,
+      spriteHeight: baseSize * statusScale,
       canvasWidth: w,
       artFootFromTop: artFoot,
     })
@@ -447,7 +449,7 @@ function drawEnemy(
   const x = slot.x + off.x;
   const y = slot.y + off.y;
   const footY = slot.footY + off.y;
-  const drawSize = baseSize * slot.scale * statusDrawScale(enemy.status);
+  const drawSize = baseSize * slot.scale * statusScale;
 
   const frozen = enemy.status.includes("sleep") || enemy.status.includes("paralysis");
   const burning = (scene.state.enemyDots[enemy.instanceId]?.length ?? 0) > 0;

@@ -140,6 +140,37 @@ describe("resolveSlot", () => {
     });
     expect(r.x).toBeCloseTo(192);
   });
+
+  it("status-scaled spriteHeight keeps the art foot on footY", () => {
+    // Painters must pass spriteHeight * statusDrawScale into resolveSlot so
+    // centreY moves with the draw size; multiplying size after resolve with a
+    // fixed centreY floats Shrink / sinks Giant Strength off the shadow.
+    const slot = ENEMY_FRONT_SLOTS[0]!;
+    const baseH = 300;
+    for (const statusScale of [0.5, 1.0, 1.3]) {
+      const r = resolveSlot(slot, geo, {
+        spriteHeight: baseH * statusScale,
+        artFootFromTop: ART_FOOT_FROM_TOP,
+      });
+      const drawH = baseH * statusScale * r.scale;
+      const visualFoot = r.centerY - drawH / 2 + drawH * ART_FOOT_FROM_TOP;
+      expect(visualFoot).toBeCloseTo(r.footY, 5);
+    }
+  });
+
+  it("centre-scaling after an unscaled resolveSlot drifts the art foot", () => {
+    const slot = ENEMY_FRONT_SLOTS[0]!;
+    const baseH = 300;
+    const r = resolveSlot(slot, geo, {
+      spriteHeight: baseH,
+      artFootFromTop: ART_FOOT_FROM_TOP,
+    });
+    const statusScale = 0.5;
+    const drawH = baseH * r.scale * statusScale;
+    const visualFoot = r.centerY - drawH / 2 + drawH * ART_FOOT_FROM_TOP;
+    // ~9px float at front-row scale — the bug status-scaled resolveSlot fixes.
+    expect(Math.abs(visualFoot - r.footY)).toBeGreaterThan(5);
+  });
 });
 
 describe("formation floor invariant (all backdrops × full formation)", () => {

@@ -12,12 +12,16 @@ import type {
   EncounterZoneDef,
   NPCDef,
   TeleporterLink,
+  TilesetZoneDef,
   WaterDef,
 } from "../data/floors";
 import type { TrapType } from "../types";
 import { buildSolidGrid } from "./dungeon";
 
 export const FLOOR_MAP_FORMAT_VERSION = 1 as const;
+
+/** Themes bundled with the game and therefore known to the pure validator. */
+export const BUILT_IN_TILESET_THEMES = ["f1", "f2", "f3", "f4", "f5"] as const;
 
 export interface CellJSON {
   n: EdgeType;
@@ -61,6 +65,8 @@ export interface FloorMapJSON {
   encounterRate: number;
   /** Texture theme under public/assets/tilesets/<theme>/. Defaults to f{id}. */
   tilesetTheme?: string;
+  /** Rectangular per-cell theme overrides. Later overlapping zones win. */
+  tilesetZones?: TilesetZoneDef[];
   grid: CellJSON[][];
   /**
    * @deprecated Ignored by the engine. Combat tables come from
@@ -92,6 +98,61 @@ export function resolveTilesetTheme(floor: {
   return t && t.length > 0 ? t : defaultTilesetTheme(floor.id);
 }
 
+export interface TilesetThemeSource {
+  id: number;
+  tilesetTheme?: string;
+  tilesetZones?: readonly TilesetZoneDef[];
+}
+
+/**
+ * Resolve the corridor material for one map cell.
+ *
+ * Rectangle bounds are inclusive. Zones are ordered paint layers: when they
+ * overlap, the later entry wins. Cells outside every zone use the floor's
+ * primary `tilesetTheme` (or `f{id}` when omitted).
+ */
+export function themeAt(floor: TilesetThemeSource, x: number, y: number): string {
+  const zones = floor.tilesetZones;
+  if (zones) {
+    for (let i = zones.length - 1; i >= 0; i--) {
+      const zone = zones[i];
+      if (x >= zone.x1 && x <= zone.x2 && y >= zone.y1 && y <= zone.y2) {
+        const theme = zone.theme.trim();
+        if (theme) return theme;
+      }
+    }
+  }
+  return resolveTilesetTheme(floor);
+}
+
+/** Unique themes a floor may need, primary first, for eager cache loading. */
+export function tilesetThemesForFloor(floor: TilesetThemeSource): string[] {
+  const themes = new Set<string>([resolveTilesetTheme(floor)]);
+  for (const zone of floor.tilesetZones ?? []) {
+    const theme = zone.theme.trim();
+    if (theme) themes.add(theme);
+  }
+  return [...themes];
+}
+
+/**
+ * Theme for a blocking wall/door ray hit. `castRay` reports the cell it
+ * stepped into, on the far side of the edge, so subtract the ray step on the
+ * hit axis and sample the near (visible) cell instead.
+ */
+export function themeForWallHit(
+  floor: TilesetThemeSource,
+  hitX: number,
+  hitY: number,
+  side: "x" | "y",
+  rayDirX: number,
+  rayDirY: number
+): string {
+  const nearX = side === "x" ? hitX - Math.sign(rayDirX) : hitX;
+  const nearY = side === "y" ? hitY - Math.sign(rayDirY) : hitY;
+  return themeAt(floor, nearX, nearY);
+}
+
 export function emptyCellJSON(): CellJSON {
   return { n: "wall", e: "wall", s: "wall", w: "wall" };
 }
@@ -119,6 +180,7 @@ export function newFloorMapJSON(
     startY: partial?.startY ?? height - 1,
     encounterRate: partial?.encounterRate ?? 0.08,
     tilesetTheme: partial?.tilesetTheme,
+    tilesetZones: partial?.tilesetZones,
     grid,
     encounterTable: partial?.encounterTable,
     encounterZones: partial?.encounterZones,
@@ -144,6 +206,7 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
     startY: floor.startY,
     encounterRate: floor.encounterRate,
     tilesetTheme: floor.tilesetTheme,
+    tilesetZones: floor.tilesetZones?.map((z) => ({ ...z })),
     grid: floor.grid.map((row) =>
       row.map((cell) => ({
         n: cell.n,
@@ -197,6 +260,7 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
     startY: map.startY,
     encounterRate: map.encounterRate,
     tilesetTheme: map.tilesetTheme,
+    tilesetZones: map.tilesetZones?.map((z) => ({ ...z })),
     encounterTable: map.encounterTable ? [...map.encounterTable] : undefined,
     encounterZones: map.encounterZones?.map((z) => ({ ...z })),
     mapSprites: map.mapSprites?.map((s) => ({ ...s })),
@@ -250,6 +314,7 @@ export function parseFloorMapJSON(raw: unknown): FloorMapJSON {
     startY: requireInt(o.startY, "startY"),
     encounterRate: requireNumber(o.encounterRate, "encounterRate"),
     tilesetTheme: typeof o.tilesetTheme === "string" ? o.tilesetTheme : undefined,
+    tilesetZones: parseOverlayArray(o.tilesetZones, "tilesetZones", parseTilesetZone),
     grid,
     encounterTable: optionalStringArray(o.encounterTable),
     encounterZones: parseOverlayArray(o.encounterZones, "encounterZones", parseZone),
@@ -312,6 +377,17 @@ function parseZone(o: Record<string, unknown>, l: string): EncounterZoneDef {
     zone.tableFloorId = requireInt(o.tableFloorId, `${l}.tableFloorId`);
   }
   return zone;
+}
+
+function parseTilesetZone(o: Record<string, unknown>, l: string): TilesetZoneDef {
+  return {
+    id: requireString(o.id, `${l}.id`),
+    x1: requireInt(o.x1, `${l}.x1`),
+    y1: requireInt(o.y1, `${l}.y1`),
+    x2: requireInt(o.x2, `${l}.x2`),
+    y2: requireInt(o.y2, `${l}.y2`),
+    theme: requireString(o.theme, `${l}.theme`),
+  };
 }
 
 function parseMapSprite(

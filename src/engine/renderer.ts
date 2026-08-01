@@ -9,10 +9,10 @@
  * Wall strips are sampled from a repeated source canvas and drawn with
  * `drawImage`. Floor and ceiling are assembled row-by-row via `ImageData` and
  * `putImageData`, then walls are rendered on top so they occlude the distant
- * floor/ceiling correctly. Each floor of the campaign has its own tileset
- * (wall/floorA/floorB/ceiling); all sets are prepared by loadTextures() and
- * cached in `tilesetCache` keyed by **theme name** (`floor.tilesetTheme` or
- * `f{id}`). Themes live under `public/assets/tilesets/<theme>/`.
+ * floor/ceiling correctly. A floor has a primary tileset plus optional
+ * rectangular regional overrides; all sets are prepared by loadTextures()
+ * and cached in `tilesetCache` keyed by theme name. Themes live under
+ * `public/assets/tilesets/<theme>/`.
  */
 
 import type { GameState, Grid } from "../types";
@@ -62,7 +62,12 @@ import {
   BILLBOARD_MIN_DEPTH,
 } from "./render-math";
 import type { RenderCamera } from "./render-math";
-import { resolveTilesetTheme } from "../game/floor-map";
+import {
+  resolveTilesetTheme,
+  themeAt,
+  themeForWallHit,
+  tilesetThemesForFloor,
+} from "../game/floor-map";
 import {
   getMapSpriteDef,
   getMapSpriteImage,
@@ -270,6 +275,19 @@ function urlsForTheme(theme: string): {
 // when the target canvas is resized.)
 const tilesetCache = new Map<string, LoadedTileset>();
 const themeLoadPromises = new Map<string, Promise<LoadedTileset>>();
+let tilesetGeneration = 0;
+
+type CellTextureGrid = (TextureSet | null)[][];
+
+interface ResolvedFloorTextures {
+  generation: number;
+  primaryTheme: string;
+  primaryTileset: LoadedTileset | null;
+  cellTextures: CellTextureGrid;
+}
+
+/** Per-floor prepared cell lookup; rebuilt only when another theme settles. */
+const floorTextureGridCache = new WeakMap<object, ResolvedFloorTextures>();
 /** Fallback door panel texture, shared across themes with no door of their
  *  own (custom/public themes without a `door.png`, or load failure). Each
  *  bundled campaign theme carries its own palette-matched door in
@@ -307,9 +325,8 @@ let floorCeilCachePlaneX = NaN;
 let floorCeilCachePlaneY = NaN;
 let floorCeilCacheBobY = NaN;
 let floorCeilCacheDarkness: boolean | null = null;
-let floorCeilCacheCeil: ImageData | null = null;
-let floorCeilCacheFloorA: ImageData | null = null;
-let floorCeilCacheFloorB: ImageData | null = null;
+let floorCeilCacheTextureGrid: CellTextureGrid | null = null;
+let floorCeilCachePrimaryTextures: TextureSet | null = null;
 // Pre-computed little-endian RGBA packed value for the bg color, used for
 // fast Uint32Array.fill() pre-fill of the buffer.
 const BG_RGBA_PACKED =
@@ -427,8 +444,15 @@ export function loadTextures(): Promise<void> {
 
 /** The door texture to draw for a theme: its own palette-matched panel if
  *  loaded, else the shared placeholder, else null (procedural fallback). */
-function doorTextureForTheme(theme: string): HTMLCanvasElement | null {
-  return tilesetCache.get(theme)?.door ?? doorTexture;
+function doorTextureForTheme(
+  theme: string,
+  primaryTheme: string
+): HTMLCanvasElement | null {
+  return (
+    tilesetCache.get(theme)?.door ??
+    tilesetCache.get(primaryTheme)?.door ??
+    doorTexture
+  );
 }
 
 function ensureDoorTextureLoaded(): Promise<void> {
@@ -457,6 +481,7 @@ export function ensureThemeLoaded(theme: string): Promise<LoadedTileset> {
   if (!pending) {
     pending = loadTileset(urlsForTheme(theme)).then((tileset) => {
       tilesetCache.set(theme, tileset);
+      tilesetGeneration++;
       themeLoadPromises.delete(theme);
       return tileset;
     });
@@ -523,6 +548,29 @@ function loadTileset(urls: {
     const door = doorAdjusted ? prepareRepeatedTexture(doorAdjusted, 1, 1) : null;
     return { set, repeatedWall, door };
   });
+}
+
+function resolveFloorTextures(floor: GameState["floor"]): ResolvedFloorTextures {
+  const cached = floorTextureGridCache.get(floor);
+  if (cached?.generation === tilesetGeneration) return cached;
+
+  const primaryTheme = resolveTilesetTheme(floor);
+  const primaryTileset =
+    tilesetCache.get(primaryTheme) ?? tilesetCache.get(FALLBACK_THEME) ?? null;
+  const cellTextures = floor.grid.map((row, y) =>
+    row.map((_, x) => {
+      const theme = themeAt(floor, x, y);
+      return tilesetCache.get(theme)?.set ?? primaryTileset?.set ?? null;
+    })
+  );
+  const resolved: ResolvedFloorTextures = {
+    generation: tilesetGeneration,
+    primaryTheme,
+    primaryTileset,
+    cellTextures,
+  };
+  floorTextureGridCache.set(floor, resolved);
+  return resolved;
 }
 
 function rgba(
@@ -873,7 +921,8 @@ function drawFloorCeilingCast(
   ctx: CanvasRenderingContext2D,
   cam: RenderCamera,
   inDarkness: boolean,
-  textures: TextureSet,
+  cellTextures: CellTextureGrid,
+  primaryTextures: TextureSet,
   bobY: number
 ): void {
   const w = ctx.canvas.width;
@@ -882,10 +931,6 @@ function drawFloorCeilingCast(
   const maxDist = inDarkness
     ? RENDER_CONFIG.darknessMaxDist
     : RENDER_CONFIG.maxDepth * 2;
-
-  const ceilImg = textures.ceilingData;
-  const floorA = textures.floorAData;
-  const floorB = textures.floorBData;
 
   // Reuse a single ImageData buffer across frames; only reallocate if the
   // canvas dimensions changed. This avoids ~2MB of per-frame GC pressure.
@@ -909,9 +954,8 @@ function drawFloorCeilingCast(
     planeY === floorCeilCachePlaneY &&
     bobY === floorCeilCacheBobY &&
     inDarkness === floorCeilCacheDarkness &&
-    ceilImg === floorCeilCacheCeil &&
-    floorA === floorCeilCacheFloorA &&
-    floorB === floorCeilCacheFloorB
+    cellTextures === floorCeilCacheTextureGrid &&
+    primaryTextures === floorCeilCachePrimaryTextures
   ) {
     ctx.putImageData(buf, 0, bobY);
     return;
@@ -929,25 +973,28 @@ function drawFloorCeilingCast(
   u32.fill(BG_RGBA_PACKED);
 
   // --- Ceiling rows (0 .. horizonY - 1) ---
-  if (ceilImg) {
-    const texSize = ceilImg.width;
-    for (let y = 0; y < horizonY; y++) {
-      const rowDistance = halfH / (halfH - y);
-      if (rowDistance > maxDist) continue;
+  for (let y = 0; y < horizonY; y++) {
+    const rowDistance = halfH / (halfH - y);
+    if (rowDistance > maxDist) continue;
 
-      const stepX = rowDistance * ((planeX * 2) / w);
-      const stepY = rowDistance * ((planeY * 2) / w);
-      let worldX = camX + 0.5 + rowDistance * (dirX - planeX);
-      let worldY = camY + 0.5 + rowDistance * (dirY - planeY);
-      const fog = opacityForDepth(rowDistance);
-      const rowOffset = y * w * 4;
+    const stepX = rowDistance * ((planeX * 2) / w);
+    const stepY = rowDistance * ((planeY * 2) / w);
+    let worldX = camX + 0.5 + rowDistance * (dirX - planeX);
+    let worldY = camY + 0.5 + rowDistance * (dirY - planeY);
+    const fog = opacityForDepth(rowDistance);
+    const rowOffset = y * w * 4;
 
-      for (let x = 0; x < w; x++) {
-        const gx = worldX | 0;
-        const gy = worldY | 0;
-        const texX = ((worldX - gx) * texSize | 0) % texSize;
-        const texY = ((worldY - gy) * texSize | 0) % texSize;
-        const srcIdx = (texY * texSize + texX) * 4;
+    for (let x = 0; x < w; x++) {
+      const gx = worldX | 0;
+      const gy = worldY | 0;
+      const textures = cellTextures[gy]?.[gx] ?? primaryTextures;
+      const ceilImg = textures.ceilingData ?? primaryTextures.ceilingData;
+      if (ceilImg) {
+        const texWidth = ceilImg.width;
+        const texHeight = ceilImg.height;
+        const texX = ((worldX - gx) * texWidth | 0) % texWidth;
+        const texY = ((worldY - gy) * texHeight | 0) % texHeight;
+        const srcIdx = (texY * texWidth + texX) * 4;
         const dstIdx = rowOffset + x * 4;
         // Fog: lerp toward bg color instead of fading to black.
         const inv = 1 - fog;
@@ -955,10 +1002,10 @@ function drawFloorCeilingCast(
         data[dstIdx + 1] = Math.min(255, ceilImg.data[srcIdx + 1] * fog + BG_G * inv);
         data[dstIdx + 2] = Math.min(255, ceilImg.data[srcIdx + 2] * fog + BG_B * inv);
         // alpha already 255 from pre-fill
-
-        worldX += stepX;
-        worldY += stepY;
       }
+
+      worldX += stepX;
+      worldY += stepY;
     }
   }
 
@@ -977,12 +1024,16 @@ function drawFloorCeilingCast(
     for (let x = 0; x < w; x++) {
       const gx = worldX | 0;
       const gy = worldY | 0;
-      const tex = (gx + gy) % 2 === 0 ? floorA : floorB;
+      const textures = cellTextures[gy]?.[gx] ?? primaryTextures;
+      const tex = (gx + gy) % 2 === 0
+        ? textures.floorAData ?? primaryTextures.floorAData
+        : textures.floorBData ?? primaryTextures.floorBData;
       if (tex) {
-        const texSize = tex.width;
-        const texX = ((worldX - gx) * texSize | 0) % texSize;
-        const texY = ((worldY - gy) * texSize | 0) % texSize;
-        const srcIdx = (texY * texSize + texX) * 4;
+        const texWidth = tex.width;
+        const texHeight = tex.height;
+        const texX = ((worldX - gx) * texWidth | 0) % texWidth;
+        const texY = ((worldY - gy) * texHeight | 0) % texHeight;
+        const srcIdx = (texY * texWidth + texX) * 4;
         const dstIdx = rowOffset + x * 4;
         // Fog: lerp toward bg color instead of fading to black.
         const inv = 1 - fog;
@@ -1005,9 +1056,8 @@ function drawFloorCeilingCast(
   floorCeilCachePlaneY = planeY;
   floorCeilCacheBobY = bobY;
   floorCeilCacheDarkness = inDarkness;
-  floorCeilCacheCeil = ceilImg;
-  floorCeilCacheFloorA = floorA;
-  floorCeilCacheFloorB = floorB;
+  floorCeilCacheTextureGrid = cellTextures;
+  floorCeilCachePrimaryTextures = primaryTextures;
 
   ctx.putImageData(buf, 0, bobY);
 }
@@ -1047,18 +1097,25 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.fillStyle = PALETTE.bg;
   ctx.fillRect(0, 0, w, h);
 
-  // Pick the active tileset for the current floor theme.
-  const theme = resolveTilesetTheme(state.floor);
-  if (!tilesetCache.has(theme)) {
-    void ensureThemeLoaded(theme);
+  // Ensure every regional theme is loading once; cache hits make this cheap.
+  for (const theme of tilesetThemesForFloor(state.floor)) {
+    if (!tilesetCache.has(theme)) void ensureThemeLoaded(theme);
   }
-  const tileset =
-    tilesetCache.get(theme) ?? tilesetCache.get(FALLBACK_THEME) ?? null;
-  const textures = tileset ? tileset.set : null;
+  const resolvedTextures = resolveFloorTextures(state.floor);
+  const primaryTheme = resolvedTextures.primaryTheme;
+  const primaryTileset = resolvedTextures.primaryTileset;
+  const primaryTextures = primaryTileset?.set ?? null;
 
   // --- Ceiling and floor casting (single batched upload) ---
-  if (textures) {
-    drawFloorCeilingCast(ctx, cam, state.inDarkness, textures, bobY);
+  if (primaryTextures) {
+    drawFloorCeilingCast(
+      ctx,
+      cam,
+      state.inDarkness,
+      resolvedTextures.cellTextures,
+      primaryTextures,
+      bobY
+    );
   }
 
   // --- World-space drawing pass (walls, edge glow, floor feature) ---
@@ -1073,8 +1130,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const maxDist = state.inDarkness
     ? RENDER_CONFIG.darknessMaxDist
     : RENDER_CONFIG.maxDepth * 2;
-
-  const repeatedWall = tileset ? tileset.repeatedWall : null;
 
   const stripWidth = RENDER_CONFIG.raycastStripWidth;
   const hitCount = Math.ceil(w / stripWidth);
@@ -1102,6 +1157,16 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
 
     const fog = opacityForDepth(hit.perpWallDist);
+    const wallTheme = themeForWallHit(
+      state.floor,
+      hit.mapX,
+      hit.mapY,
+      hit.side,
+      rayDirX,
+      rayDirY
+    );
+    const wallTileset = tilesetCache.get(wallTheme) ?? primaryTileset;
+    const repeatedWall = wallTileset?.repeatedWall ?? null;
 
     if (repeatedWall) {
       let texX = Math.floor(hit.wallX * repeatedWall.width);
@@ -1141,7 +1206,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     if (hit.edge === "door" || hit.edge === "locked") {
       const isLocked = hit.edge === "locked";
       const fogDoor = opacityForDepth(hit.perpWallDist);
-      const themeDoor = doorTextureForTheme(theme);
+      const themeDoor = doorTextureForTheme(wallTheme, primaryTheme);
 
       if (themeDoor) {
         // Sample the door panel the same way as wall strips.

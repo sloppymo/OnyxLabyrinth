@@ -505,6 +505,7 @@ export function resolveEnemyAction(
     const variance = 0.8 + rng() * 0.4;
     let damage = Math.max(1, Math.round(base * variance));
     damage = Math.max(1, damage - allyTarget.ac);
+    damage = scaleOutgoingDamage(damage, actor);
     allyTarget.hp -= damage;
     emit(
       `${actor.name} hits ${allyTarget.name} for ${damage} damage.`,

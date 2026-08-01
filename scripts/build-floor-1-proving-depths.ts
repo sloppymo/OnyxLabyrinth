@@ -1,7 +1,10 @@
 #!/usr/bin/env npx tsx
 /**
- * Generates src/content/floors/floor-1.json — "The Proving Depths".
- * Layout traced from the approved reference map PNG (32px cells).
+ * Generates src/content/floors/floor-1.json — "The Hall of Five Wounds".
+ *
+ * The filename is retained for existing local workflows; the old Proving
+ * Depths layout is intentionally replaced. Source layout:
+ * scripts/floor-1-ascii.txt.
  *
  * Run: npx tsx scripts/build-floor-1-proving-depths.ts
  */
@@ -9,72 +12,50 @@
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { buildSolidGrid, carveRoom, setTile, setEdge } from "../src/game/dungeon";
-import type { Grid } from "../src/types";
+import type { EdgeType, Grid } from "../src/types";
 import { floorDefToMap } from "../src/game/floor-map";
 import type { FloorDef } from "../src/data/floors";
 import { validateFloorDef, hasValidationErrors } from "../src/game/floor-validate";
 import { getFloors } from "../src/game/floor-registry";
 
+type Dir = "n" | "e" | "s" | "w";
+
 function parseAsciiFile(path: string): { width: number; height: number; floor: boolean[][] } {
   const lines = readFileSync(path, "utf8")
-    .split("\n")
-    .filter((l) => l.length > 0);
+    .trimEnd()
+    .split("\n");
   const height = lines.length;
-  const width = Math.max(...lines.map((l) => l.length));
-  const floor: boolean[][] = [];
-  for (let y = 0; y < height; y++) {
-    const row: boolean[] = [];
-    for (let x = 0; x < width; x++) {
-      row.push(lines[y][x] === ".");
-    }
-    floor.push(row);
-  }
+  const width = Math.max(...lines.map((line) => line.length));
+  const floor = lines.map((line) =>
+    Array.from({ length: width }, (_, x) => line[x] === ".")
+  );
   return { width, height, floor };
 }
 
 function connectFloorCells(grid: Grid, floor: boolean[][]): void {
-  const h = floor.length;
-  const w = floor[0].length;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
+  const height = floor.length;
+  const width = floor[0].length;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
       if (!floor[y][x]) continue;
       carveRoom(grid, x, y, x, y);
-      if (x + 1 < w && floor[y][x + 1]) {
-        setEdge(grid, x, y, "e", "open");
-        setEdge(grid, x + 1, y, "w", "open");
+      if (x + 1 < width && floor[y][x + 1]) {
+        setBoth(grid, x, y, "e", "open");
       }
-      if (y + 1 < h && floor[y + 1][x]) {
-        setEdge(grid, x, y, "s", "open");
-        setEdge(grid, x, y + 1, "n", "open");
+      if (y + 1 < height && floor[y + 1][x]) {
+        setBoth(grid, x, y, "s", "open");
       }
     }
   }
 }
 
-function lockBoth(grid: Grid, x: number, y: number, dir: "n" | "e" | "s" | "w"): void {
-  setEdge(grid, x, y, dir, "locked");
+function setBoth(grid: Grid, x: number, y: number, dir: Dir, edge: EdgeType): void {
   const dx = dir === "e" ? 1 : dir === "w" ? -1 : 0;
   const dy = dir === "s" ? 1 : dir === "n" ? -1 : 0;
-  const opp: "n" | "e" | "s" | "w" =
+  const opposite: Dir =
     dir === "n" ? "s" : dir === "s" ? "n" : dir === "e" ? "w" : "e";
-  setEdge(grid, x + dx, y + dy, opp, "locked");
-}
-
-/** Nearest floor cell to target, or target if already floor. */
-function snap(floor: boolean[][], x: number, y: number): { x: number; y: number } {
-  const h = floor.length;
-  const w = floor[0].length;
-  if (y >= 0 && y < h && x >= 0 && x < w && floor[y][x]) return { x, y };
-  for (let r = 1; r < 8; r++) {
-    for (let dy = -r; dy <= r; dy++) {
-      for (let dx = -r; dx <= r; dx++) {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (ny >= 0 && ny < h && nx >= 0 && nx < w && floor[ny][nx]) return { x: nx, y: ny };
-      }
-    }
-  }
-  throw new Error(`No floor near (${x},${y})`);
+  setEdge(grid, x, y, dir, edge);
+  setEdge(grid, x + dx, y + dy, opposite, edge);
 }
 
 function build(): FloorDef {
@@ -84,249 +65,274 @@ function build(): FloorDef {
   const grid = buildSolidGrid(width, height);
   connectFloorCells(grid, floor);
 
-  // Reference legend placements (32px trace grid).
-  const start = snap(floor, 2, 22);
-  const stairsDown = snap(floor, 5, 2);
-  const silverLock = { x: 6, y: 5, dir: "e" as const };
-  const brassLock = { x: 6, y: 23, dir: "n" as const };
-  const silverChest = snap(floor, 20, 8);
-  const brassChest = snap(floor, 4, 22);
-  const lexiconChest = snap(floor, 9, 23);
-  const orbGate = snap(floor, 10, 8);
-  const tokenGate = snap(floor, 14, 22);
-  const starPortal = snap(floor, 16, 10);
-  const pitL2 = snap(floor, 7, 23);
-  const chuteL6 = snap(floor, 15, 30);
-  const voiceMain = snap(floor, 10, 14);
-  const voiceWing = snap(floor, 14, 28);
-  const pitTrap = snap(floor, 20, 14);
-  const teleMain = snap(floor, 18, 12);
-  const telePocket = snap(floor, 22, 28);
-  const teleWingEntry = snap(floor, 14, 26);
-  const teleWingDeep = snap(floor, 14, 29);
-  const maro = snap(floor, 8, 6);
-  const voss = snap(floor, 14, 6);
-  const cauldron = snap(floor, 15, 6);
-  const colossus = snap(floor, 19, 12);
-  const lowing = snap(floor, 21, 11);
-  const wardenChest = snap(floor, 11, 9);
+  // Material-boundary doors. Renderer faces use the near/visible cell theme,
+  // so these panels deliberately read differently when approached in reverse.
+  setBoth(grid, 10, 19, "w", "door"); // f1 ↔ f2
+  setBoth(grid, 15, 12, "w", "door"); // f1 ↔ f5
+  setBoth(grid, 11, 10, "w", "door"); // f3 ↔ f4
+  setBoth(grid, 11, 12, "n", "locked"); // f1 → upper wounds
 
-  setTile(grid, stairsDown.x, stairsDown.y, "stairs_down");
-  lockBoth(grid, silverLock.x, silverLock.y, silverLock.dir);
-  lockBoth(grid, brassLock.x, brassLock.y, brassLock.dir);
+  setTile(grid, 20, 2, "stairs_down");
 
-  setTile(grid, teleMain.x, teleMain.y, "teleporter");
-  setTile(grid, telePocket.x, telePocket.y, "teleporter");
-  setTile(grid, teleWingEntry.x, teleWingEntry.y, "teleporter");
-  setTile(grid, teleWingDeep.x, teleWingDeep.y, "teleporter");
-
-  for (const { x, y } of [orbGate, tokenGate, starPortal, chuteL6, voiceMain, voiceWing]) {
-    setTile(grid, x, y, "event");
-  }
-  setTile(grid, pitL2.x, pitL2.y, "event");
-  setTile(grid, pitTrap.x, pitTrap.y, "event");
-
-  for (const { x, y } of [silverChest, brassChest, lexiconChest, wardenChest]) {
+  for (const [x, y] of [
+    [1, 18],
+    [5, 12],
+    [20, 12],
+    [3, 4],
+    [14, 8],
+    [18, 2],
+  ] as const) {
     setTile(grid, x, y, "treasure");
   }
 
-  setTile(grid, maro.x, maro.y, "npc");
-  setTile(grid, voss.x, voss.y, "npc");
-  setTile(grid, cauldron.x, cauldron.y, "npc");
-  setTile(grid, colossus.x, colossus.y, "npc");
-  setTile(grid, lowing.x, lowing.y, "npc");
+  for (const [x, y] of [
+    [10, 20],
+    [5, 18],
+    [20, 18],
+    [7, 8],
+  ] as const) {
+    setTile(grid, x, y, "npc");
+  }
+
+  for (const [x, y] of [
+    [11, 23],
+    [9, 19],
+    [3, 15],
+    [11, 14],
+    [17, 15],
+    [5, 6],
+    [7, 6],
+    [12, 5],
+    [18, 6],
+  ] as const) {
+    setTile(grid, x, y, "event");
+  }
+
+  setTile(grid, 3, 13, "teleporter");
+  setTile(grid, 7, 17, "teleporter");
+
+  for (const [x, y] of [
+    [14, 20],
+    [15, 20],
+    [16, 20],
+    [17, 20],
+    [19, 15],
+  ] as const) {
+    setTile(grid, x, y, "water");
+  }
+
+  setTile(grid, 3, 5, "darkness");
+  setTile(grid, 3, 6, "darkness");
+  setTile(grid, 3, 7, "darkness");
+  setTile(grid, 5, 4, "antimagic");
 
   return {
     id: 1,
-    name: "The Proving Depths",
+    name: "The Hall of Five Wounds",
     width,
     height,
     grid,
-    startX: start.x,
-    startY: start.y,
+    startX: 11,
+    startY: 25,
     encounterRate: 0.08,
     tilesetTheme: "f1",
-    lockedDoors: [
-      { x: silverLock.x, y: silverLock.y, dir: silverLock.dir, keyId: "crypt-key" },
-      { x: brassLock.x, y: brassLock.y, dir: brassLock.dir, keyId: "brass-key" },
+    tilesetZones: [
+      { id: "unfinished-index", x1: 1, y1: 12, x2: 9, y2: 20, theme: "f2" },
+      { id: "upward-cistern", x1: 15, y1: 12, x2: 22, y2: 20, theme: "f5" },
+      { id: "cut-bell-chapel", x1: 1, y1: 2, x2: 10, y2: 11, theme: "f4" },
+      { id: "ember-suture", x1: 11, y1: 2, x2: 22, y2: 11, theme: "f3" },
     ],
+    lockedDoors: [{ x: 11, y: 12, dir: "n", keyId: "crypt-key" }],
     treasures: [
-      { x: silverChest.x, y: silverChest.y, itemIds: ["crypt-key", "healing-potion"] },
-      { x: brassChest.x, y: brassChest.y, itemIds: ["brass-key", "antidote"], trap: "poison" },
+      { x: 1, y: 18, itemIds: ["antidote", "healing-potion"], trap: "poison" },
+      { x: 5, y: 12, itemIds: ["dagger+1", "eye-drops"], trap: "stunner" },
+      { x: 20, y: 12, itemIds: ["crypt-key", "healing-potion"] },
+      { x: 3, y: 4, itemIds: ["holy-symbol", "healing-potion"], trap: "alarm" },
       {
-        x: lexiconChest.x,
-        y: lexiconChest.y,
+        x: 14,
+        y: 8,
         itemIds: ["lexicon-key", "short-sword+1", "healing-potion"],
         trap: "gas",
       },
-      { x: wardenChest.x, y: wardenChest.y, itemIds: ["warden-sphere"] },
+      { x: 18, y: 2, itemIds: ["shield+1", "warden-sphere"], trap: "stunner" },
     ],
     teleporters: [
-      { x: teleMain.x, y: teleMain.y, toFloorId: 1, toX: telePocket.x, toY: telePocket.y },
-      { x: telePocket.x, y: telePocket.y, toFloorId: 1, toX: teleMain.x, toY: teleMain.y },
-      { x: teleWingEntry.x, y: teleWingEntry.y, toFloorId: 1, toX: teleWingDeep.x, toY: teleWingDeep.y },
-      { x: teleWingDeep.x, y: teleWingDeep.y, toFloorId: 1, toX: teleWingEntry.x, toY: teleWingEntry.y },
+      { x: 3, y: 13, toFloorId: 1, toX: 7, toY: 17 },
+      { x: 7, y: 17, toFloorId: 1, toX: 3, toY: 13 },
+    ],
+    waters: [
+      { x: 14, y: 20, depth: 1 },
+      { x: 15, y: 20, depth: 2 },
+      { x: 16, y: 20, depth: 2 },
+      { x: 17, y: 20, depth: 3 },
+      { x: 19, y: 15, depth: 1, effect: { kind: "cure", status: "poison" } },
     ],
     npcs: [
       {
-        id: "maro",
-        name: "Maro",
-        title: "stranded swordsman",
-        x: maro.x,
-        y: maro.y,
+        id: "oren-bellkeeper",
+        name: "Oren",
+        title: "keeper of the cut bell",
+        x: 10,
+        y: 20,
         greeting:
-          "A living face at last! I am Maro, once of the eastern guard. Something dragged my company down; only I crawled back out.",
-        returnGreeting: "Still breathing, friend? Good. These depths have taken enough.",
+          "The bell keeper holds a rope cut clean through. \"The bell rang when the gods left. It has not stopped; we learned not to hear it.\"",
+        returnGreeting: "\"Five wounds. One lock. You are still between them.\"",
         topics: [
           {
-            key: "key",
+            key: "wounds",
             response:
-              "The silver key lies east, past the twisting halls. The ward on the northern door will yield to it.",
+              "Five old places are bleeding into this hall. Follow the shelves for a dry road. Follow the water for a short one.",
           },
           {
-            key: "echo",
+            key: "years",
+            response:
+              "If the dark returns you, Edgehollow will be a century older. The bell will still be mid-swing.",
+          },
+          {
+            key: "kept",
             hidden: true,
             response:
-              "…so the whispers reach even this floor? Pray you never meet the boy they talk about.",
+              "Some are not returned. Too deep, and the lock keeps the hand that tested it.",
           },
         ],
-        wantsItemId: "healing-potion",
-        rewardItemId: "long-sword+1",
         combatEnemyIds: ["ironclad-knight"],
       },
       {
-        id: "voss",
-        name: "Voss",
-        title: "iron-nosed sentinel",
-        x: voss.x,
-        y: voss.y,
-        greeting: "I lost my nose to a trap and my patience to tourists. State your business.",
-        returnGreeting: "Still here? The silver key is east. I would not dawdle.",
-        topics: [
-          {
-            key: "key",
-            response: "East. Far east. Past the pit. The chest is guarded by nothing but your cowardice.",
-          },
-        ],
-        combatEnemyIds: ["skeleton"],
-      },
-      {
-        id: "cauldron",
-        name: "The Cauldron",
-        title: "laughing shrine",
-        x: cauldron.x,
-        y: cauldron.y,
+        id: "rill-of-pages",
+        name: "Rill-of-Pages",
+        title: "scribe of unwritten endings",
+        x: 5,
+        y: 18,
         greeting:
-          "HA! Another meal strolls in! …Kidding. Mostly. I am a kettle that learned to talk. Ask away.",
-        returnGreeting: "Back for stew? There is none. There was never any.",
+          "A scribe folds blank paper into tiny doors. \"All books here have the same last page.\"",
+        returnGreeting: "Rill creases another door. It opens onto nothing.",
         topics: [
           {
-            key: "brass",
-            response: "Southwest branch. Bronze, brass, whatever — the lock hunger is the same.",
+            key: "page",
+            response:
+              "It says: lamp, bottom, one wish. The line beneath has been scraped away.",
+          },
+          {
+            key: "route",
+            response:
+              "North aisle, then east. The dry stones reach the cistern key-chest.",
+          },
+          {
+            key: "death",
+            hidden: true,
+            response:
+              "Death left in the gods' shadow. These shelves have waited so long that dust forgot how to settle.",
           },
         ],
-        combatEnemyIds: ["slime"],
+        combatEnemyIds: ["warlock"],
       },
       {
-        id: "colossus",
-        name: "The Shackled Colossus",
-        title: "chained giant",
-        x: colossus.x,
-        y: colossus.y,
-        greeting: "Chains rattle. The giant does not look up.",
-        returnGreeting: "The chains hold. For now.",
-        topics: [{ key: "free", response: "No key fits these shackles. Only blood." }],
-        combatEnemyIds: ["acid-puddle"],
+        id: "tallow-in-a-boat",
+        name: "Tallow-in-a-Boat",
+        title: "ferryman of a puddle",
+        x: 20,
+        y: 18,
+        greeting:
+          "A boat rests in water too shallow to float it. Tallow rows once and moves nowhere. \"Fare paid in questions.\"",
+        returnGreeting: "Tallow measures the puddle with an oar. \"Deeper today.\"",
+        topics: [
+          {
+            key: "water",
+            response:
+              "Four wet stones west make the short road. The northern shelf stays dry.",
+          },
+          {
+            key: "chest",
+            response:
+              "The iron chest north never rusts. I stopped asking why before your oldest century.",
+          },
+          {
+            key: "warm",
+            hidden: true,
+            response:
+              "Water falls through every floor. Near the lamp at the bottom, it comes back warm.",
+          },
+        ],
+        combatEnemyIds: ["slime", "slime"],
       },
       {
-        id: "lowing-saint",
-        name: "The Lowing Saint",
-        title: "???",
-        x: lowing.x,
-        y: lowing.y,
-        greeting: "Moo, says the saint. Moo, say the stones.",
-        returnGreeting: "Moo.",
-        topics: [],
-        combatEnemyIds: ["skeleton"],
+        id: "sister-caldris",
+        name: "Sister Caldris",
+        title: "last cantor of the cut bell",
+        x: 7,
+        y: 8,
+        greeting:
+          "A woman kneels where every sound dies. She mouths: \"Do not mistake silence for peace.\"",
+        returnGreeting: "Caldris is still singing. The chapel is still refusing her.",
+        topics: [
+          {
+            key: "bell",
+            response:
+              "The third bell has no tongue. Ask what was taken, not who took it.",
+          },
+          {
+            key: "girl",
+            response:
+              "Far below, the lonely girl is still writing. Her page never ends.",
+          },
+          {
+            key: "tongue",
+            hidden: true,
+            response:
+              "A bell without a tongue remembers every hand that pulled it. So does this place.",
+          },
+        ],
+        combatEnemyIds: ["skeleton", "skeleton"],
       },
     ],
     events: [
+      { x: 11, y: 23, kind: "message", message: "Five wounds split one ancient hall." },
+      { x: 9, y: 19, kind: "message", message: "Shelves begin where the stone should be." },
+      { x: 3, y: 15, kind: "message", message: "The shelves list books not yet written." },
       {
-        x: orbGate.x,
-        y: orbGate.y,
+        x: 11,
+        y: 14,
         kind: "message",
-        message: "A circular recess waits for a warden sphere. Yours is empty-handed.",
+        message: "Five metals meet at a lock shaped like a lamp.",
       },
       {
-        x: tokenGate.x,
-        y: tokenGate.y,
+        x: 17,
+        y: 15,
         kind: "message",
-        message: "A slot for gate-tokens. Rust has welded it shut.",
+        message: "Black water drips upward, one bead at a time.",
       },
-      {
-        x: starPortal.x,
-        y: starPortal.y,
-        kind: "message",
-        message: "A sealed arch. Nothing on the other side answers.",
-      },
-      {
-        x: pitL2.x,
-        y: pitL2.y,
-        kind: "damage",
-        message: "The floor gives way into a pit. You catch the lip — barely.",
-        power: 6,
-      },
-      {
-        x: chuteL6.x,
-        y: chuteL6.y,
-        kind: "message",
-        message: "The chute drops into darkness. Not today.",
-      },
-      {
-        x: voiceMain.x,
-        y: voiceMain.y,
-        kind: "message",
-        message:
-          "The walls repeat your footsteps a half-beat late — as if someone else walked here first.",
-      },
-      {
-        x: voiceWing.x,
-        y: voiceWing.y,
-        kind: "message",
-        message:
-          "The walls repeat your footsteps a half-beat late — as if someone else walked here first.",
-      },
-      {
-        x: pitTrap.x,
-        y: pitTrap.y,
-        kind: "damage",
-        message: "A pit trap! Spikes graze your legs.",
-        power: 5,
-      },
+      { x: 5, y: 6, kind: "message", message: "THE THIRD BELL HAS NO TONGUE." },
+      { x: 7, y: 6, kind: "heal", message: "A cold hand closes your wounds.", power: 8 },
+      { x: 12, y: 5, kind: "damage", message: "Embers flower underfoot.", power: 4 },
+      { x: 18, y: 6, kind: "message", message: "Iron sweats. Something below coughs once." },
     ],
     mapSprites: [
-      { x: start.x, y: start.y, spriteId: "torch" },
-      { x: stairsDown.x, y: stairsDown.y, spriteId: "bones" },
-      { x: orbGate.x, y: orbGate.y, spriteId: "barrel" },
-      { x: telePocket.x, y: telePocket.y, spriteId: "bones" },
+      { x: 10, y: 24, spriteId: "torch" },
+      { x: 12, y: 24, spriteId: "torch" },
+      { x: 4, y: 18, spriteId: "barrel" },
+      { x: 7, y: 12, spriteId: "crate" },
+      { x: 4, y: 4, spriteId: "bones" },
+      { x: 16, y: 8, spriteId: "crate" },
+      { x: 11, y: 11, spriteId: "torch" },
     ],
     encounterZones: [
-      { id: "entry-safe", x1: 0, y1: height - 8, x2: 8, y2: height - 1, rateMul: 0.5 },
-      { id: "maze-hot", x1: 14, y1: 4, x2: 22, y2: 16, rateMul: 1.5 },
-      { id: "pocket-hot", x1: 14, y1: height - 8, x2: width - 1, y2: height - 1, rateMul: 2.0 },
+      { id: "threshold-safe", x1: 9, y1: 12, x2: 14, y2: 26, rateMul: 0.35 },
+      { id: "index-low", x1: 1, y1: 12, x2: 9, y2: 20, rateMul: 0.8 },
+      { id: "cistern-risk", x1: 15, y1: 12, x2: 22, y2: 20, rateMul: 1.25 },
+      { id: "chapel-hush", x1: 1, y1: 2, x2: 10, y2: 11, rateMul: 0.45 },
+      { id: "suture-hot", x1: 11, y1: 2, x2: 22, y2: 11, rateMul: 1.5 },
     ],
   };
 }
 
 const floor = build();
-const map = floorDefToMap(floor);
-const out = join(process.cwd(), "src/content/floors/floor-1.json");
-writeFileSync(out, JSON.stringify(map, null, 2));
-console.log(`Wrote ${out} (${floor.width}x${floor.height}) start=(${floor.startX},${floor.startY})`);
-
-// Pre-merge validation against campaign neighbors.
 const issues = validateFloorDef(floor, { floors: [...getFloors()] });
-for (const i of issues) {
-  console.log(`${i.severity.toUpperCase()} [${i.code}] ${i.message}`);
+for (const issue of issues) {
+  console.log(`${issue.severity.toUpperCase()} [${issue.code}] ${issue.message}`);
 }
 if (hasValidationErrors(issues)) process.exit(1);
+
+const map = floorDefToMap(floor);
+const out = join(process.cwd(), "src/content/floors/floor-1.json");
+writeFileSync(out, `${JSON.stringify(map, null, 2)}\n`);
+console.log(`Wrote ${out} (${floor.width}x${floor.height}) start=(${floor.startX},${floor.startY})`);

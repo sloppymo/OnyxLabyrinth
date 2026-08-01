@@ -1274,9 +1274,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       hasStrip,
       stripArtFootFromTop: stripInfo?.strip.artFootFromTop,
     });
+    const statusScale = statusDrawScale(enemy.status);
     const pos = toScreenFromResolve(
       resolveSlot(enemySlot(idxInRow, enemy.row), geometryForBackdrop(scene.backdropId), {
-        spriteHeight: baseSize,
+        spriteHeight: baseSize * statusScale,
         canvasWidth: w,
         artFootFromTop: artFoot,
       })
@@ -1285,7 +1286,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const x = pos.x + off.x;
     const y = pos.y + off.y;
     const footY = pos.footY + off.y;
-    const drawSize = baseSize * pos.scale * statusDrawScale(enemy.status);
+    const drawSize = baseSize * pos.scale * statusScale;
 
     const texKey = `enemy:${enemy.id}:${stripState}`;
     let entry =
@@ -1447,9 +1448,12 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       stripArtFootFromTop: stripInfo?.strip.artFootFromTop,
     });
     // Mirror canvas drawPartyMember: resolve with strip-specific artFoot.
+    // Fold statusDrawScale into spriteHeight so centreY foot-anchors (Shrink /
+    // Giant Strength); multiplying drawSize alone after resolve floats/sinks.
+    const statusScale = statusDrawScale(char.status);
     const pos = toScreenFromResolve(
       resolveSlot(partySlot(index), geometryForBackdrop(scene.backdropId), {
-        spriteHeight: PARTY_SIZE,
+        spriteHeight: PARTY_SIZE * statusScale,
         canvasWidth: w,
         artFootFromTop: artFoot,
       })
@@ -1458,7 +1462,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const x = pos.x + off.x;
     const y = pos.y + off.y;
     const footY = pos.footY + off.y;
-    const drawSize = PARTY_SIZE * pos.scale * statusDrawScale(char.status);
+    const drawSize = PARTY_SIZE * pos.scale * statusScale;
     const texKey = `party:${char.class}:${anim.state}`;
     let entry = hasStrip ? this.ensureStripSprite(key, "party", texKey) : null;
     if (!entry) {

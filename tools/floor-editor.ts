@@ -418,7 +418,7 @@ function syncMetaInputs(): void {
   const theme = map.tilesetTheme ?? `f${map.id}`;
   const sel = document.getElementById("meta-theme") as HTMLSelectElement;
   const customWrap = document.getElementById("meta-theme-custom-wrap")!;
-  if (theme === "f1" || theme === "f2" || theme === "f3") {
+  if (["f1", "f2", "f3", "f4", "f5"].includes(theme)) {
     sel.value = theme;
     customWrap.classList.add("hidden");
   } else {
@@ -456,6 +456,15 @@ function resizeMap(newW: number, newH: number): void {
     startY: Math.min(map.startY, newH - 1),
     encounterRate: map.encounterRate,
     tilesetTheme: map.tilesetTheme,
+    tilesetZones: map.tilesetZones
+      ?.filter((z) => Math.min(z.x1, z.x2) < newW && Math.min(z.y1, z.y2) < newH)
+      .map((z) => ({
+        ...z,
+        x1: Math.min(z.x1, newW - 1),
+        x2: Math.min(z.x2, newW - 1),
+        y1: Math.min(z.y1, newH - 1),
+        y2: Math.min(z.y2, newH - 1),
+      })),
     lockedDoors: map.lockedDoors?.filter(fits),
     treasures: map.treasures?.filter(fits),
     waters: map.waters?.filter(fits),

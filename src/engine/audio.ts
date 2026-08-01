@@ -219,11 +219,11 @@ const TITLE_MUSIC_FILE = "breath-of-the-undercroft.mp3";
 const TITLE_MUSIC_VOLUME = 0.42;
 
 /** Dungeon exploration (maze) looping BGM. */
-const DUNGEON_MUSIC_FILE = "torchlight-beneath-stone.ogg";
+const DUNGEON_MUSIC_FILE = "torchlight-beneath-stone.mp3";
 const DUNGEON_MUSIC_VOLUME = 0.4;
 
 /** Town hub looping BGM. */
-const TOWN_MUSIC_FILE = "haven-at-dusk.ogg";
+const TOWN_MUSIC_FILE = "haven-at-dusk.mp3";
 const TOWN_MUSIC_VOLUME = 0.4;
 
 function musicAssetUrl(file: string): string {

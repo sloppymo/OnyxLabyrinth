@@ -8,14 +8,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-OnyxLabyrinth is a Wizardry-style first-person dungeon crawler: TypeScript + Vite, no UI framework. A 2D canvas renders a pseudo-3D corridor view; the rest of the UI (menus, combat, town, camp) is hand-built DOM. Deployed to GitHub Pages by GitHub Actions on every push to `main` (`docs/` is documentation-only).
+OnyxLabyrinth is a Wizardry-style first-person dungeon crawler: TypeScript + Vite, no UI framework. A 2D canvas renders a pseudo-3D corridor view; combat uses a Phaser-default stage with a Canvas rollback painter plus DOM menu windows; the remaining menus are hand-built DOM. Deployed to GitHub Pages by GitHub Actions on every push to `main` (`docs/` is documentation-only).
 
 ## Commands
 
 ```bash
 npm install
 npm run dev                 # dev server
-npm run build                # tsc && vite build — must pass with zero TS errors before committing
+npm run build                # app tsc + tools tsc + Vite build — must pass before committing
 npm test                     # vitest run (all tests, single pass)
 npm run test:watch           # vitest watch mode
 npx vitest run src/game/combat.test.ts   # run a single test file
@@ -32,11 +32,12 @@ Every push to `main` runs `.github/workflows/deploy.yml`: `npm ci` → `npm run 
 
 ## Architecture
 
-Three top-level source areas with a one-way dependency shape — `game/` holds no engine/DOM concerns, `engine/` reads and mutates `GameState` but owns all rendering/input/audio, and `data/` is static content both depend on:
+The practical source boundary is rules/content versus browser presentation; it is not a strict import DAG. `game/` holds no engine/DOM concerns, `engine/` owns rendering/input/audio and consumes the rules, `data/` contains typed definitions, and `content/` contains portable floor packs:
 
 - **`src/game/`** — pure state and rules: `state.ts` (the `GameState` factory/mode setter), `dungeon.ts` (edge-based grid model — each `Cell` has N/E/S/W edges that are `open | wall | door | locked`, not a tile enum), `party.ts`, `combat.ts` (combat resolution; emits structured `CombatEvent`s alongside log strings), `effective-stats.ts` (`effectiveStats()` — the single source of truth for a character's final stats: base + equipment + perks), `perks.ts` (the class-perk engine: `PerkDef`, `perkModifiers()` for numeric passives, `dispatchHook()` for the ~17 stateful reactive perks), `leveling.ts` (`xpForNextLevel`/`levelUpChar`), `save.ts`, `features.ts` (tile-feature handling: stairs, teleporters, chutes, treasure, darkness/antimagic zones, scripted floor events).
-- **`src/engine/`** — rendering and I/O: `renderer.ts` (the corridor view — the most fragile file in the repo; see AGENTS.md before touching it) plus `render-math.ts` for the extracted, unit-tested pure geometry/fog/camera math; the FF6-style combat screen: `combat-scene.ts` (canvas scene + turn choreography + damage popups), `combat-ui.ts` (per-actor instant-resolve controller), `combat-select-action-view.ts` (DOM menu windows overlaid on the canvas); `perk-select-ui.ts` (post-combat perk-choice overlay); `title-ui.ts` (boot title screen) and `arena-ui.ts` (repeatable-combat testing mode); `game-over-ui.ts`; `shell.ts` as the single source of truth for DOM mode visibility; `camera.ts`, `input.ts`, `automap.ts`, `audio.ts` (procedural Web Audio, no sample files).
+- **`src/engine/`** — rendering and I/O: `renderer.ts` (the corridor view — the most fragile file in the repo; see AGENTS.md before touching it) plus `render-math.ts` for extracted, unit-tested geometry/fog/camera math; `combat-choreography.ts` as the shared timed presentation model; `combat-phaser-stage.ts` as the default combat painter; `combat-scene.ts` as the `?phaser=0` Canvas rollback painter; `combat-ui.ts` as the per-actor instant-resolve controller; and `combat-select-action-view.ts` for the overlaid DOM windows. It also contains the screen controllers, `shell.ts` as the source of truth for top-level visibility, `camera.ts`, `input.ts`, `automap.ts`, and `audio.ts` (streamed music, sample-backed SFX, and procedural cues).
 - **`src/data/`** — static definitions: `floors.ts`, `enemies.ts` (encounter tables), `spells.ts`, `items.ts`, `perks.ts` (all 56 `PerkDef`s, design doc §7).
+- **`src/content/floors/`** — JSON-authored campaign/custom floor packs merged into the runtime floor registry by id.
 - **`src/main.ts`** — wires everything together: owns the single `GameState` instance, the mode-transition logic (`transitionToMode`, fade via `canvas.style.opacity`), per-mode controllers (`CombatController`, `CampController`, `TownController`, `SaveController`, `PartyCreationController`, `TitleController`, `ArenaController`, `GameOverController`, `PerkSelectController`) that are constructed/torn down on mode entry/exit, and the top-level `keydown` listeners that route input to whichever controller is active for the current `state.mode`.
 
 `GameMode` is a strict union (`title | party_creation | town | dungeon | combat | camp | game_over | arena`) and only one mode is live at a time; `shell.showMode()` is the only place DOM visibility per mode should be toggled (see AGENTS.md "Common pitfalls" for the history of bugs from bypassing it). Several overlays (save menu, spell menu, NPC panel, perk selection) borrow mode `"title"` to pause dungeon input rather than defining their own mode — see AGENTS.md's "Borrowed title mode" pitfall.

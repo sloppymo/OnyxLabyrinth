@@ -1,6 +1,6 @@
 # OnyxLabyrinth
 
-A Wizardry-style dungeon crawler built with TypeScript and Vite. The game uses a hand-coded DOM UI, a 2D canvas corridor renderer, a canvas JRPG combat screen, and procedural Web Audio.
+A Wizardry-style dungeon crawler built with TypeScript and Vite. The game uses a hand-coded DOM UI, a 2D canvas corridor renderer, and an FF6-style combat presentation with Phaser as the default painter and a Canvas 2D rollback backend. Audio combines streamed music and sample-backed SFX with procedural Web Audio cues.
 
 ## The game
 
@@ -15,7 +15,7 @@ Boy**, **The Lonely Girl**, and **The Crying Man** — and the game never tells 
 
 Canon lives in
 [docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md](docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md).
-**Known gap:** there is no ending yet — beating the floor-5 boss returns you to the dungeon.
+Defeating the floor-5 boss opens the one-time wish/ending sequence; subsequent wins return to the normal post-combat flow.
 
 Want to build your own floors (custom geometry, textures, NPCs, events, encounter zones)? See [docs/FLOOR-AUTHORING.md](docs/FLOOR-AUTHORING.md) — `npm run floor:editor` opens the WYSIWYG editor, and `src/content/floors/floor-4-demo.json` is a complete example content pack.
 
@@ -24,8 +24,8 @@ Want to build your own floors (custom geometry, textures, NPCs, events, encounte
 ```bash
 npm install
 npm run dev          # local dev server
-npm run build        # TypeScript + Vite production build
-npm test             # Vitest suite (currently 1240 tests / 59 files)
+npm run build        # app/tools TypeScript checks + Vite production build
+npm test             # Vitest suite
 npm run floor:validate   # validate floor content packs
 npm run floor:editor     # WYSIWYG floor editor
 npx vite preview --port 5176 --base /OnyxLabyrinth/  # preview the production build locally
@@ -61,13 +61,14 @@ The corridor renderer is the most fragile part of the project. After any change 
 
 ### Combat screen (FF6-style)
 
-After any change to `src/engine/combat-scene.ts`, `src/engine/combat-ui.ts`, or `src/engine/combat-select-action-view.ts`:
+After any change to `src/engine/combat-scene.ts`, `src/engine/combat-choreography.ts`, `src/engine/combat-phaser-stage.ts`, `src/engine/combat-ui.ts`, or `src/engine/combat-select-action-view.ts`:
 
 1. Enter a combat encounter.
 2. Confirm enemy sprites (left) and animated party sprites (right) are visible, with the three blue menu windows along the bottom.
 3. Confirm an attack plays out: walk forward → attack animation → bouncing damage number over the target.
 4. Cast a spell and confirm the top banner shows the spell name.
 5. Flee or win (result window → Enter) and confirm the dungeon view returns.
+6. Verify the default Phaser stage and repeat the critical flow with `?phaser=0` for the Canvas rollback painter.
 
 ### Boss fights
 

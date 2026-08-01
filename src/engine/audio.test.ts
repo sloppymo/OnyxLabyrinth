@@ -367,7 +367,7 @@ describe("AudioEngine title music", () => {
     const { audio } = await import("./audio");
     audio.startDungeon();
     expect(instances).toHaveLength(1);
-    expect(instances[0]!.src).toContain("torchlight-beneath-stone.ogg");
+    expect(instances[0]!.src).toContain("torchlight-beneath-stone.mp3");
     expect(instances[0]!.loop).toBe(true);
     expect(play).toHaveBeenCalled();
 
@@ -409,7 +409,7 @@ describe("AudioEngine title music", () => {
     const { audio } = await import("./audio");
     audio.startTownMusic();
     expect(instances).toHaveLength(1);
-    expect(instances[0]!.src).toContain("haven-at-dusk.ogg");
+    expect(instances[0]!.src).toContain("haven-at-dusk.mp3");
     expect(instances[0]!.loop).toBe(true);
     expect(play).toHaveBeenCalled();
 

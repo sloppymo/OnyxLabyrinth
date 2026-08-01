@@ -3,6 +3,7 @@ import { FLOORS, cloneFloor, type FloorDef } from "./floors";
 import { getFloors, findFloor } from "../game/floor-registry";
 import { ITEMS_BY_ID } from "./items";
 import type { Grid } from "../types";
+import { resolveTilesetTheme, themeAt } from "../game/floor-map";
 
 /** BFS over the edge grid from the floor's start position.
  *  Returns the set of "x,y" cells reachable through the given edge types. */
@@ -52,7 +53,7 @@ describe("floor definitions", () => {
 
   it("runtime list includes merged floor 1 from content pack", () => {
     const f1 = findFloor(1);
-    expect(f1?.name).toBe("The Proving Depths");
+    expect(f1?.name).toBe("The Hall of Five Wounds");
     expect(getFloors().map((f) => f.id)).toEqual([1, 2, 3, 4, 5]);
   });
 
@@ -102,8 +103,6 @@ describe("floor definitions", () => {
     for (const floor of getFloors()) {
       const reached = reachableCells(floor, OPEN_OR_LOCKED);
       for (const { x, y, tile } of featureCells(floor.grid)) {
-        // Satellite pockets on floor 1 use same-floor teleporters; BFS ignores them.
-        if (floor.id === 1 && (y >= 22 || x >= 20)) continue;
         expect(reached.has(`${x},${y}`), `${floor.name}: ${tile} at (${x},${y}) unreachable`).toBe(
           true
         );
@@ -193,6 +192,43 @@ describe("floor definitions", () => {
     expect(f3Open.has(`${forgeChest.x},${forgeChest.y}`)).toBe(true);
   });
 
+  it("floor 1 gates the lexicon and its sole stair behind the crypt key", () => {
+    const f1 = findFloor(1)!;
+    const open = reachableCells(f1, OPEN);
+    const afterCrypt = reachableCells(f1, OPEN_OR_LOCKED);
+    const lexiconChest = f1.treasures!.find((t) => t.itemIds.includes("lexicon-key"))!;
+    const stairs = featureCells(f1.grid).filter((cell) => cell.tile === "stairs_down");
+    expect(stairs).toHaveLength(1);
+    expect(open.has(`${lexiconChest.x},${lexiconChest.y}`)).toBe(false);
+    expect(open.has(`${stairs[0].x},${stairs[0].y}`)).toBe(false);
+    expect(afterCrypt.has(`${lexiconChest.x},${lexiconChest.y}`)).toBe(true);
+    expect(afterCrypt.has(`${stairs[0].x},${stairs[0].y}`)).toBe(true);
+  });
+
+  it("floor 1 visibly uses all five built-in tileset themes", () => {
+    const f1 = findFloor(1)!;
+    const themes = new Set<string>([resolveTilesetTheme(f1)]);
+    for (let y = 0; y < f1.height; y++) {
+      for (let x = 0; x < f1.width; x++) themes.add(themeAt(f1, x, y));
+    }
+    expect([...themes].sort()).toEqual(["f1", "f2", "f3", "f4", "f5"]);
+  });
+
+  it("floor 1 keeps campaign encounter and lore contracts", () => {
+    const f1 = findFloor(1)!;
+    expect(f1.encounterRate).toBeCloseTo(0.08);
+    expect((f1.encounterZones ?? []).every((zone) => zone.tableFloorId === undefined)).toBe(true);
+    expect(f1.npcs).toHaveLength(4);
+    expect((f1.events ?? []).every((event) => event.message.length <= 60)).toBe(true);
+    const playerFacingCopy = JSON.stringify({
+      name: f1.name,
+      npcs: f1.npcs,
+      events: f1.events,
+    });
+    expect(playerFacingCopy).not.toMatch(/headmaster|academy|first descent/i);
+    expect(playerFacingCopy).not.toMatch(/\becho\b/i);
+  });
+
   it("floor 1 has an accessible trapped chest for the trap tutorial", () => {
     const f1 = findFloor(1)!;
     const f1Open = reachableCells(f1, OPEN);
@@ -201,13 +237,11 @@ describe("floor definitions", () => {
     expect(trapChest!.trap).toBe("poison");
   });
 
-  it("floor 1 main-map NPCs are reachable without passing a locked door", () => {
+  it("floor 1 introduces at least three NPCs before its locked wing", () => {
     const f1 = findFloor(1)!;
     const f1Open = reachableCells(f1, OPEN);
-    for (const npc of f1.npcs ?? []) {
-      if (npc.y >= 26) continue;
-      expect(f1Open.has(`${npc.x},${npc.y}`), `${npc.name} is unreachable`).toBe(true);
-    }
+    const earlyNpcs = (f1.npcs ?? []).filter((npc) => f1Open.has(`${npc.x},${npc.y}`));
+    expect(earlyNpcs.length).toBeGreaterThanOrEqual(3);
   });
 
   it("teleporters and chutes only target existing floors at carved, in-bounds cells", () => {
@@ -229,7 +263,9 @@ describe("floor definitions", () => {
     const clone = cloneFloor(findFloor(1)!);
     clone.grid[0][0].n = "door";
     clone.treasures![0].itemIds.push("x");
+    clone.tilesetZones![0].theme = "changed";
     expect(findFloor(1)!.grid[0][0].n).toBe("wall");
     expect(findFloor(1)!.treasures![0].itemIds).not.toContain("x");
+    expect(findFloor(1)!.tilesetZones![0].theme).not.toBe("changed");
   });
 });

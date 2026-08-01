@@ -371,13 +371,30 @@ export function awardCombatXp(party: Character[], xpEarned: number): void {
   }
 }
 
+/**
+ * Combat-only statuses that must not walk the dungeon or the next fight.
+ * Poison/paralysis can come from traps outside combat; knockedOut is the
+ * wipe/temple channel. Everything else (incl. Giant Strength / Shrink) is
+ * fight-scoped — leaving Giant Strength on would re-arm a free 3-round timer
+ * via combat-eor's `?? 3` fallback on the next encounter.
+ */
+const COMBAT_ONLY_STATUSES: ReadonlySet<StatusEffect> = new Set([
+  "sleep",
+  "blind",
+  "hidden",
+  "exposed",
+  "wet",
+  "shrunk",
+  "giantStrength",
+]);
+
 /** Deep-clone the post-combat CombatState party back into persisted GameState
  *  form — the whole party fights, so this is a straight clone, not a merge. */
 export function applyCombatPartyResult(combatParty: Character[]): Character[] {
   return combatParty.map((c) => ({
     ...c,
     stats: { ...c.stats },
-    status: [...c.status],
+    status: c.status.filter((s) => !COMBAT_ONLY_STATUSES.has(s)),
     knownSpellIds: [...c.knownSpellIds],
     perkIds: [...c.perkIds],
   }));

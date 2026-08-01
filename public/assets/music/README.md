@@ -3,10 +3,11 @@
 | File | Role |
 |------|------|
 | `breath-of-the-undercroft.mp3` | Title screen + New Game prologue loop |
-| `torchlight-beneath-stone.ogg` | Dungeon / maze exploration loop |
-| `haven-at-dusk.ogg` | Town hub loop |
+| `torchlight-beneath-stone.mp3` | Dungeon / maze exploration loop |
+| `haven-at-dusk.mp3` | Town hub loop |
 
-Wired in `src/engine/audio.ts`:
+All three beds are MP3 so Safari / iOS can play them (Ogg Vorbis is not
+supported there). Wired in `src/engine/audio.ts`:
 
 - `startTitleMusic` / `stopTitleMusic`
 - `startDungeon` / `stopDungeon`

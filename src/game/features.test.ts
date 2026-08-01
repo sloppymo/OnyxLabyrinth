@@ -687,9 +687,12 @@ describe("stair exits (door presentation)", () => {
   it("stepping on stairs_down still transitions floors with a door message", () => {
     const state = createGameState(findFloor(1)!);
     state.mode = "dungeon";
-    // Campaign F1 stairs_down at (4,1) — see floor-1.json / playtests.
-    state.player.x = 4;
-    state.player.y = 1;
+    const stairs = state.floor.grid.flatMap((row, y) =>
+      row.flatMap((cell, x) => (cell.tile === "stairs_down" ? [{ x, y }] : []))
+    )[0];
+    if (!stairs) throw new Error("floor 1 has no stairs_down");
+    state.player.x = stairs.x;
+    state.player.y = stairs.y;
     const result = handleTileFeature(state);
     expect(result?.changedFloor).toBe(true);
     expect(state.floor.id).toBe(2);

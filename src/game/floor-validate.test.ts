@@ -34,8 +34,6 @@ describe("floor-validate content checks", () => {
     for (const floor of getFloors()) {
       const issues = validateFloorDef(floor, { floors: getFloors() }).filter((i) => {
         if (i.severity === "info") return false;
-        // Floor 1 satellite pockets are teleporter-only; unreachable-from-start is expected.
-        if (floor.id === 1 && i.code === "unreachable") return false;
         return true;
       });
       expect(issues, `floor ${floor.id}: ${issues.map((e) => e.message).join("; ")}`).toEqual([]);
@@ -212,6 +210,22 @@ describe("floor-validate content checks", () => {
     const c = codes(floor);
     expect(c).toContain("zone_table_unknown");
     expect(c).toContain("zone_dup_id");
+  });
+
+  it("validates tileset zone bounds, themes, ids, and last-wins overlaps", () => {
+    const floor = testFloor();
+    floor.tilesetZones = [
+      { id: "same", x1: 1, y1: 1, x2: 3, y2: 3, theme: "f2" },
+      { id: "same", x1: 2, y1: 2, x2: 4, y2: 4, theme: "missing-theme" },
+      { id: "reverse", x1: 4, y1: 4, x2: 3, y2: 3, theme: "f3" },
+      { id: "outside", x1: 0, y1: 0, x2: 8, y2: 8, theme: "f4" },
+    ];
+    const c = codes(floor);
+    expect(c).toContain("tileset_zone_dup_id");
+    expect(c).toContain("tileset_zone_overlap");
+    expect(c).toContain("tileset_theme_unknown");
+    expect(c).toContain("tileset_zone_order");
+    expect(c).toContain("tileset_zone_oob");
   });
 
   it("warns on duplicate NPC ids", () => {

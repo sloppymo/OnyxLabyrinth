@@ -160,3 +160,62 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   for Blindness, and simultaneous party-wide green rings/crosses for Mass Cure.
   Remaining heal gap is the untouched higher-tier fallback cluster (Critical,
   Regenerate, and Heal); that is a separate slice.
+
+## 2026-08-01 — Documentation architecture audit
+
+- Audited the onboarding documentation against the live boot, combat-stage,
+  audio, ending, build, deployment, and floor-registry code.
+- Updated `README.md`, `CLAUDE.md`, `AGENTS.md`, and
+  `docs/FLOOR-AUTHORING.md` to remove stale Canvas-only combat, no-ending,
+  procedural-only audio, obsolete test-count, build-command, Pages-output,
+  floor-id, and no-CI claims.
+- `git diff --check` passed and targeted searches found no remaining copies of
+  those claims. Documentation-only change; no runtime behavior or assets
+  changed, so gameplay rendering was not rerun.
+
+## 2026-08-01 — Floor 1 showpiece + regional tilesets
+
+- Current prompt: ship a wholly redesigned Floor 1 vertical slice and add
+  rectangular per-cell `tilesetZones` across JSON, runtime types, validation,
+  schema, renderer, tests, and authoring docs. Preserve the `crypt-key` → F1
+  gate → `lexicon-key` campaign chain, use existing f1–f5 art, and verify both
+  data gates and production-preview visuals.
+- Loaded the `develop-web-game` skill. Its required browser loop and screenshot
+  inspection will be used after each meaningful runtime-visible change.
+- Shared worktree has unrelated in-flight audio, combat, docs, and asset edits.
+  Preserve them and restrict changes/diffs to Floor 1 and regional-theme files.
+- Next: read the live authoring/narrative contracts and audit the floor-map and
+  renderer theme-selection code before settling the new layout.
+- Design package completed at
+  `docs/superpowers/specs/2026-08-01-floor-1-showpiece-design.md`: 24×28 Hall
+  of Five Wounds, all five built-in themes, dry/wet routes to `crypt-key`,
+  gated f4/f3 finale with `lexicon-key`, one stair, four additive NPCs, four
+  soft puzzles, and six valid-item chests. Next: implement the regional-theme
+  data contract and renderer boundary rule before generating the JSON.
+- Regional-theme engine slice implemented: `TilesetZoneDef` round-trips through
+  FloorMapJSON/FloorDef, validator covers bounds/ids/built-ins/overlap, overlap
+  order is last-wins, ASCII dumps list zones, and renderer floor/ceiling/wall/
+  door sampling uses per-cell cached texture lookups with near-visible-side
+  wall selection. Focused floor-map/validator tests pass 31/31 and tools
+  TypeScript checking passes. Next: generate the authored Floor 1 JSON, then
+  exercise the combined runtime change in the required browser loop.
+- New `floor-1.json` generated from the 24×28 authored source. `floor:check`
+  passes, focused floor/map/registry suites pass 54/54, and `floor:validate`
+  reports zero issues on floors 1–5. Content assertions cover the sole gated
+  stair, crypt→lexicon order, all five themes, frequency-only campaign zones,
+  short event copy, four NPCs, and retired-lore residue. Next: full test/build
+  gates and production-preview browser evidence.
+- Final gates passed: 79 Vitest files / 1,700 tests, production and tools
+  TypeScript checks, Vite build, `git diff --check`, Floor 1 check, and all-floor
+  validation. One stochastic combat-auto assertion failed on the first full
+  run, passed alone, and the clean full rerun passed all 1,700 tests.
+- Production preview verification passed straight corridor, side passage,
+  depth-0 front wall, f1/f2/f3/f4/f5 regions, bidirectional boundary doors, an
+  open f1→f5 boundary corridor, darkness entered by movement, automap toggle,
+  and real combat→dungeon return. No browser errors or failed asset readiness;
+  screenshots and the machine-readable report are under
+  `/tmp/onyx-floor1-regional-tileset/`.
+- The required `develop-web-game` client also ran unchanged against the preview
+  after installing its matching Playwright dependency beside the skill; its
+  boot/prologue capture is under `/tmp/onyx-floor1-web-client/`. No commit or
+  push was created, and unrelated shared-worktree edits remain untouched.

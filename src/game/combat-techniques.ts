@@ -451,7 +451,10 @@ function resolveTechniqueDebuff(
       s.enemyArmorDebuffs[t.instanceId] = { penalty: eff.power, duration: eff.duration };
       // Disarm also deals 0.5x damage — handled via a hardcoded check.
       // Actually, let's just deal a small hit here.
-      const dmg = Math.max(1, Math.round((actor.level + 2) * 0.5));
+      const dmg = scaleOutgoingDamage(
+        Math.max(1, Math.round((actor.level + 2) * 0.5)),
+        actor
+      );
       t.currentHp -= dmg;
       emit(`${actor.name} disarms ${t.name} for ${dmg} damage and reduces their armor by ${eff.power}!`, { type: "techniqueHit", actorId: actor.id, techniqueId: tech.id, targetId: t.instanceId, damage: dmg });
       emit(`${t.name}'s armor is reduced by ${eff.power} for ${eff.duration} rounds.`, { type: "techniqueStatus", actorId: actor.id, techniqueId: tech.id, targetId: t.instanceId, statusInflicted: "armorDown" });

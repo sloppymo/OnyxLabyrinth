@@ -1986,16 +1986,12 @@ const SPELL_OVERRIDES: Record<string, EffectStyle> = {
     color: "#a0d8ff",
     burst: "ice_burst_grey",
     burstScale: 1.4,
-    field: "retro2_arcane_sigil",
-    fieldScale: 0.85,
     scale: 1.15,
   },
   "priest-giant-strength": {
     color: "#e8a060",
     burst: "px_shield",
     burstScale: 1.8,
-    field: "retro3_arcane_bloom",
-    fieldScale: 1.1,
     scale: 1.25,
   },
   "mage-freezing-sphere": {

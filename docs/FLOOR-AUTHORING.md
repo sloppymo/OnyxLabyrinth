@@ -37,6 +37,26 @@ public/assets/tilesets/<theme>/
 
 Built-in themes: `f1`, `f2`, `f3`, `f4`, `f5` (campaign). Pick the theme in the editor's Floor panel (or type a custom folder name). The floor's `tilesetTheme` is saved in the JSON; when unset it defaults to `f{id}`. Decor sprite art lives under `public/assets/map-sprites/<id>.png` (manifest: `src/data/map-sprites.ts`).
 
+One floor can paint rectangular regional overrides with `tilesetZones`:
+
+```json
+{
+  "tilesetTheme": "f1",
+  "tilesetZones": [
+    { "id": "stacks", "x1": 1, "y1": 2, "x2": 8, "y2": 10, "theme": "f2" },
+    { "id": "cistern", "x1": 14, "y1": 8, "x2": 20, "y2": 16, "theme": "f5" }
+  ]
+}
+```
+
+Bounds are inclusive. Cells outside every rectangle use `tilesetTheme`.
+Overlaps are allowed but warned by the validator; **the last matching zone
+wins**. Floor and ceiling pixels use the sampled map cell's theme. A wall or
+door between differently themed cells uses the theme on its near/visible side,
+so the same doorway can present the material of whichever room the party is
+standing in. The ASCII dump lists zone bounds under `# Overlays`; the editor
+preserves imported zones, but regional painting is currently JSON-authored.
+
 ## Editor tools
 
 | Tool | Use |
@@ -77,7 +97,7 @@ export const EXTRA_FLOOR_MAPS: FloorMapJSON[] = [
 ];
 ```
 
-4. Every JSON pack is run through `parseFloorMapJSON` at load — malformed files fail fast with a precise error. Stairs / saves / transitions resolve floors through `src/game/floor-registry.ts`, so a pack floor with a campaign id (1–4) **replaces** that campaign floor; new ids extend the list.
+4. Every JSON pack is run through `parseFloorMapJSON` at load — malformed files fail fast with a precise error. Stairs / saves / transitions resolve floors through `src/game/floor-registry.ts`, so a pack floor with a campaign id (1–5) **replaces** that campaign floor; new ids extend the list.
 5. `npm run floor:check -- --file src/content/floors/<your-floor>.json`
 6. `npm test && npm run build`
 
@@ -111,9 +131,9 @@ npm run check:tools                       # typecheck the editor + CLI
 - `rateMul` multiplies the floor's `encounterRate` at those cells (0 = safe zone for the *flat* roll band; pity can still force a fight by step 28 — see `encounterRollChance`).
 - `tableFloorId` pulls `ENCOUNTER_TABLES[n]` (from `src/data/enemies.ts`) instead of this floor's table. **This is the only way a custom-id floor gets random encounters** (constraint 3 above). Campaign floors 1–5 currently omit `tableFloorId` on all zones, so safe/hot only change frequency, not pack composition.
 
-## Gating changes (no CI configured)
+## Gating changes
 
-This repo has no CI. Before opening a PR that touches floors or the authoring suite, run locally:
+The Pages workflow runs `npm run build` on pushes to `main`, but it does not run the full test suite or floor validator. Before opening a PR that touches floors or the authoring suite, run locally:
 
 ```bash
 npm test && npm run build && npm run floor:validate
@@ -130,7 +150,7 @@ npm test && npm run build && npm run floor:validate
 | `src/game/floor-ascii.ts` | ASCII dump for LLM workflows |
 | `src/game/floor-registry.ts` | Campaign + content packs + hot-register |
 | `src/game/encounters.ts` | Zones + pity |
-| `src/content/floors/` | Shipped JSON packs (`floor-4.json`/`floor-5.json` campaign floors, `floor-4-demo.json` format example) |
+| `src/content/floors/` | Shipped JSON packs (`floor-1.json`, `floor-4.json`, and `floor-5.json` campaign floors; `floor-4-demo.json` format example) |
 | `src/data/map-sprites.ts` | Decor sprite manifest |
 | `src/engine/map-sprite-cache.ts` | Decor image cache |
 | `tools/floor-editor.*` | WYSIWYG UI |

@@ -12,7 +12,11 @@ import { MAP_SPRITES_BY_ID } from "../data/map-sprites";
 import { ITEMS_BY_ID } from "../data/items";
 import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
 import type { FloorMapJSON, CellJSON } from "./floor-map";
-import { floorDefToMap, cellIsPassable } from "./floor-map";
+import {
+  BUILT_IN_TILESET_THEMES,
+  floorDefToMap,
+  cellIsPassable,
+} from "./floor-map";
 
 export type ValidationSeverity = "error" | "warning" | "info";
 
@@ -106,6 +110,7 @@ export function validateFloorMap(
   validateFloorLinks(map, issues, context?.floors ?? getFloors());
   validateStairsTargets(map, issues, context?.floors ?? getFloors());
   validateEncounterConfig(map, issues);
+  validateTilesetConfig(map, issues);
 
   return issues;
 }
@@ -518,6 +523,78 @@ function validateEncounterConfig(map: FloorMapJSON, issues: ValidationIssue[]): 
         code: "zone_table_unknown",
         message: `Encounter zone ${z.id} tableFloorId ${z.tableFloorId} has no ENCOUNTER_TABLES entry (valid ids: ${Object.keys(ENCOUNTER_TABLES).join(", ")})`,
       });
+    }
+  }
+}
+
+function validateTilesetConfig(map: FloorMapJSON, issues: ValidationIssue[]): void {
+  const knownThemes = new Set<string>(BUILT_IN_TILESET_THEMES);
+  const primary = map.tilesetTheme?.trim();
+  if (primary && !knownThemes.has(primary)) {
+    issues.push({
+      severity: "warning",
+      code: "tileset_theme_unknown",
+      message: `Primary tileset theme "${primary}" is not bundled (${BUILT_IN_TILESET_THEMES.join(", ")}); ensure public/assets/tilesets/${primary}/ ships with the map`,
+    });
+  }
+
+  const zones = map.tilesetZones ?? [];
+  const seenIds = new Set<string>();
+  for (let i = 0; i < zones.length; i++) {
+    const zone = zones[i];
+    if (seenIds.has(zone.id)) {
+      issues.push({
+        severity: "warning",
+        code: "tileset_zone_dup_id",
+        message: `Duplicate tileset zone id "${zone.id}"`,
+      });
+    }
+    seenIds.add(zone.id);
+
+    if (zone.x1 > zone.x2 || zone.y1 > zone.y2) {
+      issues.push({
+        severity: "error",
+        code: "tileset_zone_order",
+        message: `Tileset zone ${zone.id} must use x1 <= x2 and y1 <= y2`,
+      });
+    }
+    if (!inBoundsGrid(map, zone.x1, zone.y1) || !inBoundsGrid(map, zone.x2, zone.y2)) {
+      issues.push({
+        severity: "error",
+        code: "tileset_zone_oob",
+        message: `Tileset zone ${zone.id} extends out of bounds`,
+      });
+    }
+
+    const theme = zone.theme.trim();
+    if (!theme) {
+      issues.push({
+        severity: "error",
+        code: "tileset_zone_theme_empty",
+        message: `Tileset zone ${zone.id} has an empty theme`,
+      });
+    } else if (!knownThemes.has(theme)) {
+      issues.push({
+        severity: "warning",
+        code: "tileset_theme_unknown",
+        message: `Tileset zone ${zone.id} theme "${theme}" is not bundled (${BUILT_IN_TILESET_THEMES.join(", ")}); ensure public/assets/tilesets/${theme}/ ships with the map`,
+      });
+    }
+
+    for (let previous = 0; previous < i; previous++) {
+      const other = zones[previous];
+      const overlaps =
+        zone.x1 <= other.x2 &&
+        zone.x2 >= other.x1 &&
+        zone.y1 <= other.y2 &&
+        zone.y2 >= other.y1;
+      if (overlaps) {
+        issues.push({
+          severity: "warning",
+          code: "tileset_zone_overlap",
+          message: `Tileset zone ${zone.id} overlaps ${other.id}; later zone ${zone.id} wins`,
+        });
+      }
     }
   }
 }

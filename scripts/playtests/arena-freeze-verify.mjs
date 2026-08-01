@@ -68,7 +68,10 @@ try {
       continue;
     }
     const wasErrored = !!firstError;
-    await press(page, "a", 1, 120);
+    // Attack has no palette letter (PALETTE_LETTER_SHORTCUTS is t/c/m/i/f/r/…).
+    // Pressing "a" falls through to WASD cursor-left and can confirm Defend —
+    // Attack is the default palette slot, so just Enter. See arena-freeze-repro.mjs.
+    await press(page, "Enter", 1, 120);
     st = await snap(page);
     if (st.combat?.phase === "selectTarget") await press(page, "Enter", 1, 120);
 

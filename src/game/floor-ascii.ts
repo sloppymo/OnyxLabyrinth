@@ -80,6 +80,13 @@ function legendLine(): string {
 
 function overlaySummary(map: FloorMapJSON): string[] {
   const lines: string[] = ["# Overlays:"];
+  if (map.tilesetZones?.length) {
+    for (const z of map.tilesetZones) {
+      lines.push(
+        `#   tileset-zone ${z.id} (${z.x1},${z.y1})-(${z.x2},${z.y2}) theme=${z.theme}`
+      );
+    }
+  }
   if (map.lockedDoors?.length) {
     for (const d of map.lockedDoors) {
       lines.push(`#   lock (${d.x},${d.y}) ${d.dir} key=${d.keyId}`);
