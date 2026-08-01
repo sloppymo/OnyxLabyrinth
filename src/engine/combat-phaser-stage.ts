@@ -85,6 +85,9 @@ import {
 } from "./combat-phaser-fx";
 import { GameObjectPool } from "./phaser-go-pool";
 
+/** GameObject "destroy" event name — see `clearShine`'s tidyup unhook. */
+const DESTROY_EVENT = Phaser.GameObjects.Events.DESTROY;
+
 /** Kill-switch for camera Glow/ColorMatrix (tint still applies). */
 const PHASER_FX_SPOTLIGHT = true;
 /** Kill-switch for hurt impact squash. */
@@ -198,6 +201,12 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
    * Live heal Shines by actor key. Unlike every other effect here these own a
    * Phaser tween and a DynamicTexture, so each one must be explicitly disposed —
    * see `clearShine`.
+   *
+   * `sprite`/`tidyup` are what make early disposal safe: `AddEffectShine`
+   * registers its own `sprite.on("destroy", …)` that destroys the same tween
+   * and DynamicTexture, and `Texture.destroy()` nulls `manager`, so a second
+   * destroy throws on `this.manager.stamp`. We keep the sprite we attached to
+   * and the exact listener that was added so `clearShine` can unhook it.
    */
   private shines = new Map<
     string,
@@ -206,6 +215,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       dynamicTexture: Phaser.Textures.DynamicTexture;
       parallelFilters: Phaser.Filters.ParallelFilters | null;
       startedAt: number;
+      /** The sprite the effect was attached to (may be replaced in the pool). */
+      sprite: Phaser.GameObjects.Sprite;
+      /** `AddEffectShine`'s own destroy handler, so we can remove it. */
+      tidyup: Function | null;
     }
   >();
 
@@ -697,8 +710,16 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       const entry = this.actors.get(key);
       if (!entry || entry.isFallback) continue;
       if (!(entry.sprite instanceof Phaser.GameObjects.Sprite)) continue;
+      const sprite = entry.sprite;
       try {
-        const [added] = Phaser.Actions.AddEffectShine(entry.sprite, {
+        // Diff the sprite's destroy listeners around the call: the one that
+        // appears is `AddEffectShine`'s internal `tidyup`, which `clearShine`
+        // must remove before disposing the same resources itself. This assumes
+        // the call adds exactly ONE destroy listener (true as of Phaser 4.2.1)
+        // — if a future version adds a second, `.find` would unhook the wrong
+        // one and the double-destroy freeze comes back.
+        const before = new Set(sprite.listeners(DESTROY_EVENT));
+        const [added] = Phaser.Actions.AddEffectShine(sprite, {
           radius: 0.35,
           direction: 0.6,
           scale: 1.4,
@@ -712,6 +733,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           dynamicTexture: added.dynamicTexture,
           parallelFilters: added.parallelFilters,
           startedAt: now,
+          sprite,
+          tidyup: sprite.listeners(DESTROY_EVENT).find((l) => !before.has(l)) ?? null,
         });
       } catch {
         // CANVAS renderer / Filters unavailable — heal still reads via popup.
@@ -719,16 +742,33 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     }
   }
 
-  /** Dispose one Shine: tween, filter, and the DynamicTexture it draws into. */
+  /**
+   * Dispose one Shine: tween, filter, and the DynamicTexture it draws into.
+   *
+   * Unhooking `AddEffectShine`'s own destroy handler FIRST is load-bearing, not
+   * tidiness. Left attached, it re-destroys this same DynamicTexture whenever
+   * the sprite is later destroyed (pool prune in `syncActors`, strip/fallback
+   * swap, scene teardown), and `Texture.destroy()` has already nulled `manager`
+   * — so it throws `Cannot read properties of null (reading 'stamp')` from
+   * inside `scene.update`. Phaser's `RequestAnimationFrame.step` reschedules
+   * only after `callback()` returns, so that throw permanently stops the
+   * render loop: the battle canvas freezes mid-fight while the DOM menus and
+   * combat logic (combat-ui's own RAF) keep running. Fixed 2026-08-01.
+   */
   private clearShine(key: string): void {
     const shine = this.shines.get(key);
     if (!shine) return;
     this.shines.delete(key);
     try {
+      if (shine.tidyup) {
+        shine.sprite.off(DESTROY_EVENT, shine.tidyup as (...args: unknown[]) => void);
+      }
+    } catch {
+      /* sprite already torn down — its tidyup has run, nothing to unhook */
+    }
+    try {
       shine.tween.destroy();
-      const entry = this.actors.get(key);
-      const internal = (entry?.sprite as Phaser.GameObjects.Sprite | undefined)
-        ?.filters?.internal;
+      const internal = shine.sprite.filters?.internal;
       if (shine.parallelFilters && internal) {
         internal.remove(shine.parallelFilters);
       }
