@@ -43,7 +43,9 @@ Three top-level source areas with a one-way dependency shape — `game/` holds n
 
 Combat sprites are hybrid: `sprite-manifest.ts` maps enemy IDs to horizontal PNG frame-strips (100×100 px/frame) under `public/assets/enemies/<id>/<state>.png`, and `party-sprite-cache.ts` maps character classes to strips under `public/assets/party/<class>/<state>.png` (frame counts derived from strip width at load). `combat-scene.ts` draws the image strip when present and falls back to a procedural shape otherwise. Not every enemy has art — that's expected, not a bug. Combat resolution has two APIs in `game/combat.ts` sharing the same internals: round-based `resolveCombatRound` (kept for tests) and the per-turn API (`beginRound`/`resolvePlayerTurn`/…) that drives the FF6 UI.
 
-Party creation opens on a choice screen (`party-ui.ts`, `PartyCreationController` phase `"choice"`): pick the ready-made Default Party (Aria/Bram/Coda/Dell/Eve/Fenn) or drop into the six-slot custom editor (phase `"edit"`). Esc from the editor's first slot returns to the choice screen rather than cancelling.
+Party creation opens on a choice screen (`party-ui.ts`, `PartyCreationController` phase `"choice"`): pick the ready-made Default Party (Aria/Coda/Dell/Eve) or drop into the custom editor (phase `"edit"`). Esc from the editor's first slot returns to the choice screen rather than cancelling.
+
+**The party is four characters, not six.** `PARTY_SIZE = 4` (`game/party.ts`) is the single source of truth — the editor runs `PARTY_SIZE` slots and formation slots are densely `0..PARTY_SIZE-1`. Save v13→v14 trimmed larger rosters down to four. Earlier revisions of this file and of `AGENTS.md` said six; that was stale, and it has misled agents into sizing designs (and rejecting them) against the wrong party count.
 
 ### Dungeon depth systems (built incrementally, see AGENTS.md pitfalls for each)
 

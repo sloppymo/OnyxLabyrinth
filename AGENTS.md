@@ -69,7 +69,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/engine/camp-ui.ts` | Camp screen controller. |
 | `src/engine/town-ui.ts` | Town/hub screen controller. Training Ground is now a read-only roster/perk-review screen — level-ups happen automatically post-combat (see "Class perks" below), not here. Also owns the FF6-style Equip screen (`[E]` from the main menu or roster): character → slot → item browse with live stat-delta arrows; manual swaps use `manualEquip`/`manualUnequip` (combat-equipment.ts — downgrades allowed, cursed slots refused), the Optimum row reuses `equipItem`'s strictly-better rule; shop buy-time auto-equip is unchanged. |
 | `src/engine/save-ui.ts` | Save/load menu controller. |
-| `src/engine/party-ui.ts` | Party creation controller. Opens on a choice screen (default party vs. custom editor) before the six-slot editor phase. |
+| `src/engine/party-ui.ts` | Party creation controller. Opens on a choice screen (default party vs. custom editor) before the editor phase, which runs `PARTY_SIZE` (= 4) slots. |
 | `src/engine/title-ui.ts` | Title screen controller (`TitleController`) — shown on boot: New Game (always), Continue (if an autosave exists), Arena. Owns the "real" home of mode `"title"`; several other overlays *borrow* the same mode name (see the pitfall below). |
 | `src/engine/arena-ui.ts` | Arena mode controller (`ArenaController`, mode `"arena"`) — repeatable back-to-back combats for fast manual/scripted verification of combat and perk behavior, bypassing the dungeon. |
 | `src/engine/perk-select-ui.ts` | Perk selection overlay (`PerkSelectController`) — modal shown after combat when any character crossed a perk tier (level 3/6/9/12). Borrows mode `"title"`; queue (`PendingPerkChoice[]`) is a **local variable in `main.ts`**, never stored on `GameState` or persisted (mirrors `pendingTrap`'s "never survives a save" policy, simpler since it's not even in the type). |
@@ -167,7 +167,7 @@ After any change to `src/engine/combat-scene.ts`, `src/engine/combat-choreograph
 8. **Defeated fade:** killed enemies play their death strip then fade out; KO'd party members stay in the death pose.
 9. **Result window:** victory shows gold/XP in a centered window; Enter exits.
 10. **Combat → dungeon transition:** fleeing or winning returns to the dungeon view with corridor textures intact.
-11. **Windows never clip sprites:** all six party members and all enemies stay visible above the bottom windows.
+11. **Windows never clip sprites:** all four party members (`PARTY_SIZE`) and all enemies stay visible above the bottom windows.
 12. **Summoned allies in the windows:** living BAMORDI/SOCORDI summons show as cyan rows in the enemy window (name + HP) and as compact cyan rows below the party list; single-target heal spells list them as extra targets (cursor kind "ally" on the scene) and the heal resolves on the summon's HP.
 
 ## Debug/testing aids
