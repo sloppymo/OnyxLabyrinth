@@ -535,7 +535,10 @@ function drawAlly(
       } else {
         frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED));
       }
-      drawStripFrame(ctx, img, strip, frame, x, y, drawSize, false, anim.opacity);
+      // Enemy-pack strips face RIGHT; summons fight for the party (center/right
+      // of the stage) so mirror them to face LEFT toward the enemy line —
+      // same contract as drawPartyMember.
+      drawStripFrame(ctx, img, strip, frame, x, y, drawSize, true, anim.opacity);
       const artTop = artTopFromTopFor({
         hasStrip: true,
         stripArtTopFromTop: strip.artTopFromTop,

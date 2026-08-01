@@ -150,7 +150,7 @@ After any change to `src/engine/combat-scene.ts`, `src/engine/combat-choreograph
 **Presentation backends:** combat paint is a `CombatStage` (`combat-stage.ts`). **Phaser is the default** (dynamic `import("phaser")` → `#combat-phaser-canvas`). Rollback with `?phaser=0` (canvas painter in `combat-scene.ts`). Choreography (`playTurn` / `updateScene`) lives in `combat-choreography.ts` and is shared. Do not import `combat-phaser-stage.ts` from tests (jsdom).
 
 1. **Combat starts:** entering a fight shows the FF6 scene (enemies LEFT, party RIGHT) with the three blue bottom windows (action menu / enemy names / party HP list) overlaid on the canvas.
-2. **Party sprites animate:** party members are animated pack sprites (Knight/Wizard/Priest/Archer/Swordsman) facing LEFT, idle-looping; the acting character has a bouncing marker.
+2. **Party sprites animate:** party members are animated pack sprites (Knight/Wizard/Priest/Archer/Swordsman) facing LEFT, idle-looping; the acting character has a bouncing marker. Summoned allies reuse enemy strips but are drawn mirrored (also face LEFT toward the enemy line).
 3. **Turn playback:** confirming an action plays immediately — attacker walks forward, attack animation, target hurt animation + white bouncing damage number, walk back. No Space-gating during playback.
 4. **Damage popups:** white = damage, green = heal, purple = poison tick, "MISS" on evades.
 4b. **Dialog barks:** cream text above sprites on cast shout / party heavy hit / death — sibling channel to damage popups; scales with playback speed; cleared on skip; muted via `__onyxDebug.setBarksEnabled(false)`.

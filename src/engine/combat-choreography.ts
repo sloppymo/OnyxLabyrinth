@@ -21,6 +21,8 @@
  *
  * Sprites: party members use the animated 100×100 strips from
  * party-sprite-cache (pack art faces RIGHT, so the party is drawn mirrored);
+ * summoned allies reuse enemy strips (also face RIGHT) and are mirrored the
+ * same way so they face the enemy line;
  * enemies use enemy-sprite-cache strips when available and fall back to
  * procedural silhouettes.
  */

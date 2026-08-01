@@ -1366,6 +1366,9 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
             )
           : frameIndexFor(stripInfo.strip, stateAge);
       entry.sprite.setFrame(frame);
+      // Enemy strips face RIGHT; summons stand with the party side of the
+      // stage and must face LEFT toward enemies (canvas drawAlly mirrors too).
+      entry.sprite.setFlipX(true);
       this.applyAfterimage({
         anim,
         now,
@@ -1373,7 +1376,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         baseY: pos.y,
         baseFootY: pos.footY,
         drawSize,
-        flipX: false,
+        flipX: true,
         texKey,
         opacity: anim.opacity,
         frameFor: (ageMs) =>
