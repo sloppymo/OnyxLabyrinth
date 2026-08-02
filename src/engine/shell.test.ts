@@ -108,7 +108,7 @@ describe("dungeon message band", () => {
     expect(overlay.hidden).toBe(true);
     expect(toggle.hidden).toBe(false);
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
-    expect(toggle.textContent).toContain("V · MAP");
+    expect(toggle.textContent).toContain("Y / V · MAP");
 
     shell.showMode("dungeon", false, true);
     expect(overlay.hidden).toBe(false);

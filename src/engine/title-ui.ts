@@ -15,6 +15,7 @@ import type { GameState } from "../types";
 import { loadAutoSave } from "../game/save";
 import { audio } from "./audio";
 import { FF6Window } from "./ff6-window-library";
+import "./title-map.css";
 
 interface MenuItem {
   key: "new" | "continue" | "arena";

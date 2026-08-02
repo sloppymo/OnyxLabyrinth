@@ -1441,6 +1441,11 @@ function routeControllerEvent(event: ControllerInputEvent): void {
         openActionRing();
       }
       break;
+    case "y":
+      // Quick-map counterpart to keyboard V. This remains nonmodal, so the
+      // movement buttons keep working while the overlay is visible.
+      dungeonHandlers.onToggleMapOverlay();
+      break;
     case "a": {
       // Contextual A = Unlock when facing a locked door (input-adaptive glyph).
       const kind = globalInput.getLastInputKind();

@@ -52,7 +52,7 @@ app.innerHTML = `
         aria-controls="map-overlay"
         aria-pressed="false"
         aria-label="Open quick dungeon map"
-      >V · MAP</button>
+      >Y / V · MAP</button>
       <div id="context-prompt" hidden></div>
       <div id="party-strip"></div>
     </div>
@@ -481,7 +481,7 @@ export function bindMapOverlayButton(onToggle: () => void): () => void {
 export function setMapOverlayPresentation(visible: boolean): void {
   mapOverlayEl.hidden = !visible;
   mapOverlayEl.setAttribute("aria-hidden", visible ? "false" : "true");
-  mapOverlayToggleEl.textContent = visible ? "V · CLOSE MAP" : "V · MAP";
+  mapOverlayToggleEl.textContent = visible ? "Y / V · CLOSE MAP" : "Y / V · MAP";
   mapOverlayToggleEl.setAttribute("aria-pressed", visible ? "true" : "false");
   mapOverlayToggleEl.setAttribute(
     "aria-label",

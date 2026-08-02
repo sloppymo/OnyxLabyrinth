@@ -59,6 +59,7 @@ async function overlayMetrics() {
       hidden: overlay.hidden,
       ariaHidden: overlay.getAttribute("aria-hidden"),
       background: getComputedStyle(overlay).backgroundColor,
+      opacity: getComputedStyle(overlay).opacity,
       widthFraction: overlayRect.width / viewportRect.width,
       heightFraction: overlayRect.height / viewportRect.height,
       intrinsic: { width: canvas.width, height: canvas.height },
@@ -87,6 +88,42 @@ async function ensureOverlayOpen() {
     state = await snap(page);
   }
   return state;
+}
+
+async function installMockGamepad() {
+  await page.evaluate(() => {
+    const buttons = Array.from({ length: 16 }, () => ({ pressed: false, touched: false, value: 0 }));
+    const gamepad = {
+      id: "Onyx test gamepad",
+      index: 0,
+      connected: true,
+      mapping: "standard",
+      timestamp: performance.now(),
+      axes: [0, 0, 0, 0],
+      buttons,
+      vibrationActuator: null,
+    };
+    Object.defineProperty(navigator, "getGamepads", {
+      configurable: true,
+      value: () => [gamepad],
+    });
+  });
+  await wait(80);
+}
+
+async function pressGamepadButton(index) {
+  const setPressed = ({ buttonIndex, pressed }) => {
+    const gamepad = navigator.getGamepads()[0];
+    const button = gamepad.buttons[buttonIndex];
+    button.pressed = pressed;
+    button.touched = pressed;
+    button.value = pressed ? 1 : 0;
+    gamepad.timestamp = performance.now();
+  };
+  await page.evaluate(setPressed, { buttonIndex: index, pressed: true });
+  await wait(100);
+  await page.evaluate(setPressed, { buttonIndex: index, pressed: false });
+  await wait(100);
 }
 
 async function startTrashCombat() {
@@ -131,9 +168,10 @@ try {
   check("boot reaches dungeon", initial.route === "dungeon", `route=${initial.route}`);
   await capture("01-overlay-closed");
 
-  await press(page, "v");
+  await installMockGamepad();
+  await pressGamepadButton(3); // Standard mapping: Y / Triangle face button.
   const opened = await capture("02-overlay-open-facing-north");
-  check("V opens quick overlay", opened.state.flags.mapOverlayVisible === true);
+  check("controller Y opens quick overlay", opened.state.flags.mapOverlayVisible === true);
   check("full automap remains closed", opened.state.flags.mapVisible === false);
   check(
     "panel is responsive and translucent",
@@ -142,6 +180,7 @@ try {
       opened.metrics.widthFraction <= 0.73 &&
       opened.metrics.heightFraction >= 0.55 &&
       opened.metrics.heightFraction <= 0.73 &&
+      opened.metrics.opacity === "0.88" &&
       /0\.58\)/.test(opened.metrics.background),
     JSON.stringify(opened.metrics),
   );
@@ -152,6 +191,12 @@ try {
       opened.metrics.nontransparentFraction < 0.9,
     JSON.stringify(opened.metrics),
   );
+
+  await pressGamepadButton(3);
+  const controllerClosed = await snap(page);
+  check("controller Y closes quick overlay", controllerClosed.flags.mapOverlayVisible === false);
+  await pressGamepadButton(3);
+  check("controller Y reopens quick overlay", (await snap(page)).flags.mapOverlayVisible === true);
   check(
     "toggle exposes pressed accessibility state",
     opened.metrics?.togglePressed === "true" && /Close quick dungeon map/.test(opened.metrics.toggleLabel),
