@@ -62,6 +62,38 @@ node scripts/playtests/map-overlay-verify.mjs
 
 Gameplay RNG is **not** seeded yet, so playtest numbers are directional, not reproducible.
 
+### All-floor corridor visual audit
+
+Use the production bundle for a current gallery of every campaign floor. The
+audit derives its camera poses from the live runtime maps on every run; it does
+not consume the dated `corridor-poses.json` file.
+
+Terminal 1:
+
+```bash
+npm run build
+npm run preview -- --host 127.0.0.1 --port 5176 --base /OnyxLabyrinth/
+```
+
+Terminal 2:
+
+```bash
+npm run visual:floors
+```
+
+The default output is `playtest-screenshots/floor-visual-audit/` (gitignored):
+open `index.html` for the human gallery and inspect `report.json` for derived
+poses, actual floor/camera/theme state, canvas metrics, readiness, errors, and
+map/combat lifecycle checks. Override the server or destination with
+`ONYX_URL` / `ONYX_OUT`; use `ONYX_FLOORS=2` (or `--floor 2`) for a focused
+iteration. A filtered run is not a full-campaign sign-off.
+
+This audit deliberately uses conservative black-frame/visibility guardrails,
+not exact PNG equality. Torch flicker, fog, scanlines, head bob, and camera
+compositing make pixel-perfect goldens brittle. `npm run tileset:gallery` is a
+separate static source-texture seam/checkerboard view; it does not replace the
+live renderer audit.
+
 ## Verifying changes
 
 ### Renderer

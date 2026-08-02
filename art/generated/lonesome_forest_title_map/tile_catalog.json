@@ -1,0 +1,6894 @@
+{
+  "tileSize": 16,
+  "indexing": "zero-based; index = row * columns + column",
+  "inspectionBasis": "Roles were assigned after visual review of contact_sheets/*.png.",
+  "tiles": [
+    {
+      "sheet": "combined",
+      "column": 0,
+      "row": 0,
+      "index": 0,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "combined",
+      "column": 1,
+      "row": 0,
+      "index": 1,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 2,
+      "row": 0,
+      "index": 2,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 3,
+      "row": 0,
+      "index": 3,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        2,
+        16,
+        16
+      ],
+      "visiblePixels": 186,
+      "opaquePixels": 186,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 4,
+      "row": 0,
+      "index": 4,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 5,
+      "row": 0,
+      "index": 5,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 6,
+      "row": 0,
+      "index": 6,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 0,
+      "row": 1,
+      "index": 7,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 1,
+      "row": 1,
+      "index": 8,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "combined",
+      "column": 2,
+      "row": 1,
+      "index": 9,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 3,
+      "row": 1,
+      "index": 10,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 4,
+      "row": 1,
+      "index": 11,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 5,
+      "row": 1,
+      "index": 12,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        2,
+        16,
+        16
+      ],
+      "visiblePixels": 191,
+      "opaquePixels": 191,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 6,
+      "row": 1,
+      "index": 13,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 0,
+      "row": 2,
+      "index": 14,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 234,
+      "opaquePixels": 234,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 1,
+      "row": 2,
+      "index": 15,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 2,
+      "row": 2,
+      "index": 16,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 3,
+      "row": 2,
+      "index": 17,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 4,
+      "row": 2,
+      "index": 18,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 5,
+      "row": 2,
+      "index": 19,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 6,
+      "row": 2,
+      "index": 20,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 0,
+      "row": 3,
+      "index": 21,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 221,
+      "opaquePixels": 221,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 1,
+      "row": 3,
+      "index": 22,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 2,
+      "row": 3,
+      "index": 23,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 3,
+      "row": 3,
+      "index": 24,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 221,
+      "opaquePixels": 221,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 4,
+      "row": 3,
+      "index": 25,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 223,
+      "opaquePixels": 223,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 5,
+      "row": 3,
+      "index": 26,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 6,
+      "row": 3,
+      "index": 27,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 223,
+      "opaquePixels": 223,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 0,
+      "row": 4,
+      "index": 28,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 1,
+      "row": 4,
+      "index": 29,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 2,
+      "row": 4,
+      "index": 30,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 3,
+      "row": 4,
+      "index": 31,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 4,
+      "row": 4,
+      "index": 32,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 221,
+      "opaquePixels": 221,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 5,
+      "row": 4,
+      "index": 33,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 6,
+      "row": 4,
+      "index": 34,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 221,
+      "opaquePixels": 221,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 0,
+      "row": 5,
+      "index": 35,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 1,
+      "row": 5,
+      "index": 36,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 2,
+      "row": 5,
+      "index": 37,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 3,
+      "row": 5,
+      "index": 38,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 4,
+      "row": 5,
+      "index": 39,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 5,
+      "row": 5,
+      "index": 40,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 6,
+      "row": 5,
+      "index": 41,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 0,
+      "row": 6,
+      "index": 42,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 1,
+      "row": 6,
+      "index": 43,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 2,
+      "row": 6,
+      "index": 44,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 3,
+      "row": 6,
+      "index": 45,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 4,
+      "row": 6,
+      "index": 46,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 5,
+      "row": 6,
+      "index": 47,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 6,
+      "row": 6,
+      "index": 48,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "combined",
+      "column": 0,
+      "row": 7,
+      "index": 49,
+      "role": "cliff face",
+      "name": "cliff_face_upper_0",
+      "notes": "Opaque upper cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 1,
+      "row": 7,
+      "index": 50,
+      "role": "cliff face",
+      "name": "cliff_face_upper_1",
+      "notes": "Opaque upper cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "combined",
+      "column": 2,
+      "row": 7,
+      "index": 51,
+      "role": "cliff face",
+      "name": "cliff_face_upper_2",
+      "notes": "Opaque upper cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "combined",
+      "column": 3,
+      "row": 7,
+      "index": 52,
+      "role": "cliff face",
+      "name": "cliff_face_upper_3",
+      "notes": "Opaque upper cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 4,
+      "row": 7,
+      "index": 53,
+      "role": "cliff face",
+      "name": "cliff_face_upper_4",
+      "notes": "Opaque upper cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "combined",
+      "column": 5,
+      "row": 7,
+      "index": 54,
+      "role": "cliff face",
+      "name": "cliff_face_upper_5",
+      "notes": "Opaque upper cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "combined",
+      "column": 6,
+      "row": 7,
+      "index": 55,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "combined",
+      "column": 0,
+      "row": 8,
+      "index": 56,
+      "role": "cliff face",
+      "name": "cliff_face_lower_0",
+      "notes": "Opaque lower cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 210,
+      "opaquePixels": 210,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 1,
+      "row": 8,
+      "index": 57,
+      "role": "cliff face",
+      "name": "cliff_face_lower_1",
+      "notes": "Opaque lower cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 221,
+      "opaquePixels": 221,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "combined",
+      "column": 2,
+      "row": 8,
+      "index": 58,
+      "role": "cliff face",
+      "name": "cliff_face_lower_2",
+      "notes": "Opaque lower cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 210,
+      "opaquePixels": 210,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "combined",
+      "column": 3,
+      "row": 8,
+      "index": 59,
+      "role": "cliff face",
+      "name": "cliff_face_lower_3",
+      "notes": "Opaque lower cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        14
+      ],
+      "visiblePixels": 182,
+      "opaquePixels": 182,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "combined",
+      "column": 4,
+      "row": 8,
+      "index": 60,
+      "role": "cliff face",
+      "name": "cliff_face_lower_4",
+      "notes": "Opaque lower cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "combined",
+      "column": 5,
+      "row": 8,
+      "index": 61,
+      "role": "cliff face",
+      "name": "cliff_face_lower_5",
+      "notes": "Opaque lower cliff-face variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "combined",
+      "column": 6,
+      "row": 8,
+      "index": 62,
+      "role": "water",
+      "name": "water_ripple_variant",
+      "notes": "Opaque alternate water ripple tile.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "combined",
+      "column": 0,
+      "row": 9,
+      "index": 63,
+      "role": "water",
+      "name": "water_base",
+      "notes": "Opaque dark-water ripple tile.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "combined",
+      "column": 1,
+      "row": 9,
+      "index": 64,
+      "role": "cave or doorway",
+      "name": "cave_mouth_left",
+      "notes": "Left half of the large cliff cave mouth.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "combined",
+      "column": 2,
+      "row": 9,
+      "index": 65,
+      "role": "cave or doorway",
+      "name": "cave_mouth_right",
+      "notes": "Right half of the large cliff cave mouth.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 130,
+      "opaquePixels": 130,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "combined",
+      "column": 3,
+      "row": 9,
+      "index": 66,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        8,
+        9,
+        16
+      ],
+      "visiblePixels": 47,
+      "opaquePixels": 47,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "combined",
+      "column": 4,
+      "row": 9,
+      "index": 67,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        9,
+        16
+      ],
+      "visiblePixels": 128,
+      "opaquePixels": 128,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "combined",
+      "column": 5,
+      "row": 9,
+      "index": 68,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        9,
+        16
+      ],
+      "visiblePixels": 123,
+      "opaquePixels": 123,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "combined",
+      "column": 6,
+      "row": 9,
+      "index": 69,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        7,
+        7
+      ],
+      "visiblePixels": 22,
+      "opaquePixels": 22,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "combined",
+      "column": 0,
+      "row": 10,
+      "index": 70,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "combined",
+      "column": 1,
+      "row": 10,
+      "index": 71,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "combined",
+      "column": 2,
+      "row": 10,
+      "index": 72,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "combined",
+      "column": 3,
+      "row": 10,
+      "index": 73,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "combined",
+      "column": 4,
+      "row": 10,
+      "index": 74,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "combined",
+      "column": 5,
+      "row": 10,
+      "index": 75,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "combined",
+      "column": 6,
+      "row": 10,
+      "index": 76,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 0,
+      "row": 0,
+      "index": 0,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 1,
+      "row": 0,
+      "index": 1,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        4
+      ],
+      "visiblePixels": 34,
+      "opaquePixels": 34,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 2,
+      "row": 0,
+      "index": 2,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 37,
+      "opaquePixels": 37,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 3,
+      "row": 0,
+      "index": 3,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        2,
+        16,
+        16
+      ],
+      "visiblePixels": 122,
+      "opaquePixels": 122,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 4,
+      "row": 0,
+      "index": 4,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        11,
+        11,
+        16,
+        16
+      ],
+      "visiblePixels": 20,
+      "opaquePixels": 20,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 5,
+      "row": 0,
+      "index": 5,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        11,
+        16,
+        16
+      ],
+      "visiblePixels": 74,
+      "opaquePixels": 74,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 6,
+      "row": 0,
+      "index": 6,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        11,
+        5,
+        16
+      ],
+      "visiblePixels": 20,
+      "opaquePixels": 20,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 0,
+      "row": 1,
+      "index": 7,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        5,
+        16
+      ],
+      "visiblePixels": 37,
+      "opaquePixels": 37,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 1,
+      "row": 1,
+      "index": 8,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 2,
+      "row": 1,
+      "index": 9,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        11,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 37,
+      "opaquePixels": 37,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 3,
+      "row": 1,
+      "index": 10,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 142,
+      "opaquePixels": 142,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 4,
+      "row": 1,
+      "index": 11,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        10,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 88,
+      "opaquePixels": 88,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 5,
+      "row": 1,
+      "index": 12,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        2,
+        16,
+        16
+      ],
+      "visiblePixels": 191,
+      "opaquePixels": 191,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 6,
+      "row": 1,
+      "index": 13,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        6,
+        16
+      ],
+      "visiblePixels": 88,
+      "opaquePixels": 88,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 0,
+      "row": 2,
+      "index": 14,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 204,
+      "opaquePixels": 204,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 1,
+      "row": 2,
+      "index": 15,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        11,
+        16,
+        16
+      ],
+      "visiblePixels": 40,
+      "opaquePixels": 40,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 2,
+      "row": 2,
+      "index": 16,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 37,
+      "opaquePixels": 37,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 3,
+      "row": 2,
+      "index": 17,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 200,
+      "opaquePixels": 200,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 4,
+      "row": 2,
+      "index": 18,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        11,
+        0,
+        16,
+        4
+      ],
+      "visiblePixels": 17,
+      "opaquePixels": 17,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 5,
+      "row": 2,
+      "index": 19,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        4
+      ],
+      "visiblePixels": 58,
+      "opaquePixels": 58,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 6,
+      "row": 2,
+      "index": 20,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        5,
+        4
+      ],
+      "visiblePixels": 17,
+      "opaquePixels": 17,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 0,
+      "row": 3,
+      "index": 21,
+      "role": "cliff corner",
+      "name": "cliff_front_left",
+      "notes": "Transparent rocky front-edge component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 104,
+      "opaquePixels": 104,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 1,
+      "row": 3,
+      "index": 22,
+      "role": "cliff top",
+      "name": "cliff_front_a",
+      "notes": "Transparent rocky front-edge component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 78,
+      "opaquePixels": 78,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 2,
+      "row": 3,
+      "index": 23,
+      "role": "cliff top",
+      "name": "cliff_front_b",
+      "notes": "Transparent rocky front-edge component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 78,
+      "opaquePixels": 78,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 3,
+      "row": 3,
+      "index": 24,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 104,
+      "opaquePixels": 104,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 4,
+      "row": 3,
+      "index": 25,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 167,
+      "opaquePixels": 167,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 5,
+      "row": 3,
+      "index": 26,
+      "role": "cliff top",
+      "name": "cliff_front_c",
+      "notes": "Transparent rocky front-edge component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 132,
+      "opaquePixels": 132,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 6,
+      "row": 3,
+      "index": 27,
+      "role": "cliff corner",
+      "name": "cliff_front_right",
+      "notes": "Transparent rocky front-edge component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 167,
+      "opaquePixels": 167,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 0,
+      "row": 4,
+      "index": 28,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 108,
+      "opaquePixels": 108,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 1,
+      "row": 4,
+      "index": 29,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 57,
+      "opaquePixels": 57,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 2,
+      "row": 4,
+      "index": 30,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 57,
+      "opaquePixels": 57,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 3,
+      "row": 4,
+      "index": 31,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 108,
+      "opaquePixels": 108,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 4,
+      "row": 4,
+      "index": 32,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 124,
+      "opaquePixels": 124,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 5,
+      "row": 4,
+      "index": 33,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 98,
+      "opaquePixels": 98,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 6,
+      "row": 4,
+      "index": 34,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 124,
+      "opaquePixels": 124,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 0,
+      "row": 5,
+      "index": 35,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 105,
+      "opaquePixels": 105,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 1,
+      "row": 5,
+      "index": 36,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 54,
+      "opaquePixels": 54,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 2,
+      "row": 5,
+      "index": 37,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 54,
+      "opaquePixels": 54,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 3,
+      "row": 5,
+      "index": 38,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 105,
+      "opaquePixels": 105,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 4,
+      "row": 5,
+      "index": 39,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 125,
+      "opaquePixels": 125,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 5,
+      "row": 5,
+      "index": 40,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 74,
+      "opaquePixels": 74,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 6,
+      "row": 5,
+      "index": 41,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 125,
+      "opaquePixels": 125,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 0,
+      "row": 6,
+      "index": 42,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 154,
+      "opaquePixels": 154,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 1,
+      "row": 6,
+      "index": 43,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 91,
+      "opaquePixels": 91,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 2,
+      "row": 6,
+      "index": 44,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 91,
+      "opaquePixels": 91,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 3,
+      "row": 6,
+      "index": 45,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 154,
+      "opaquePixels": 154,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 4,
+      "row": 6,
+      "index": 46,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 171,
+      "opaquePixels": 171,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 5,
+      "row": 6,
+      "index": 47,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 108,
+      "opaquePixels": 108,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 6,
+      "row": 6,
+      "index": 48,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 171,
+      "opaquePixels": 171,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 0,
+      "row": 7,
+      "index": 49,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 1,
+      "row": 7,
+      "index": 50,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 2,
+      "row": 7,
+      "index": 51,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 3,
+      "row": 7,
+      "index": 52,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 4,
+      "row": 7,
+      "index": 53,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 5,
+      "row": 7,
+      "index": 54,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 6,
+      "row": 7,
+      "index": 55,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 0,
+      "row": 8,
+      "index": 56,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 210,
+      "opaquePixels": 210,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 1,
+      "row": 8,
+      "index": 57,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 221,
+      "opaquePixels": 221,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 2,
+      "row": 8,
+      "index": 58,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 210,
+      "opaquePixels": 210,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 3,
+      "row": 8,
+      "index": 59,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        14
+      ],
+      "visiblePixels": 182,
+      "opaquePixels": 182,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 4,
+      "row": 8,
+      "index": 60,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 5,
+      "row": 8,
+      "index": 61,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 6,
+      "row": 8,
+      "index": 62,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 0,
+      "row": 9,
+      "index": 63,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 1,
+      "row": 9,
+      "index": 64,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 2,
+      "row": 9,
+      "index": 65,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 3,
+      "row": 9,
+      "index": 66,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 130,
+      "opaquePixels": 130,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 4,
+      "row": 9,
+      "index": 67,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 5,
+      "row": 9,
+      "index": 68,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "cliff_edges",
+      "column": 6,
+      "row": 9,
+      "index": 69,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "water_edges",
+      "column": 0,
+      "row": 0,
+      "index": 0,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "water_edges",
+      "column": 1,
+      "row": 0,
+      "index": 1,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        5
+      ],
+      "visiblePixels": 24,
+      "opaquePixels": 24,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 2,
+      "row": 0,
+      "index": 2,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 18,
+      "opaquePixels": 18,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 3,
+      "row": 0,
+      "index": 3,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 148,
+      "opaquePixels": 148,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 4,
+      "row": 0,
+      "index": 4,
+      "role": "concave river corner",
+      "name": "bank_inner_se_a",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        13,
+        13,
+        16,
+        16
+      ],
+      "visiblePixels": 6,
+      "opaquePixels": 6,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "water_edges",
+      "column": 5,
+      "row": 0,
+      "index": 5,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        13,
+        16,
+        16
+      ],
+      "visiblePixels": 44,
+      "opaquePixels": 44,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 6,
+      "row": 0,
+      "index": 6,
+      "role": "concave river corner",
+      "name": "bank_inner_sw_a",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        13,
+        3,
+        16
+      ],
+      "visiblePixels": 6,
+      "opaquePixels": 6,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "water_edges",
+      "column": 0,
+      "row": 1,
+      "index": 7,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        3,
+        16
+      ],
+      "visiblePixels": 18,
+      "opaquePixels": 18,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 1,
+      "row": 1,
+      "index": 8,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "water_edges",
+      "column": 2,
+      "row": 1,
+      "index": 9,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        13,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 18,
+      "opaquePixels": 18,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 3,
+      "row": 1,
+      "index": 10,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 88,
+      "opaquePixels": 88,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 4,
+      "row": 1,
+      "index": 11,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        13,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 44,
+      "opaquePixels": 44,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 5,
+      "row": 1,
+      "index": 12,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "water_edges",
+      "column": 6,
+      "row": 1,
+      "index": 13,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        3,
+        16
+      ],
+      "visiblePixels": 44,
+      "opaquePixels": 44,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 0,
+      "row": 2,
+      "index": 14,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 188,
+      "opaquePixels": 188,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 1,
+      "row": 2,
+      "index": 15,
+      "role": "concave river corner",
+      "name": "bank_inner_se_b",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        13,
+        16,
+        16
+      ],
+      "visiblePixels": 12,
+      "opaquePixels": 12,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "water_edges",
+      "column": 2,
+      "row": 2,
+      "index": 16,
+      "role": "concave river corner",
+      "name": "bank_inner_sw_b",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 18,
+      "opaquePixels": 18,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 3,
+      "row": 2,
+      "index": 17,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 128,
+      "opaquePixels": 128,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 4,
+      "row": 2,
+      "index": 18,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        13,
+        0,
+        16,
+        5
+      ],
+      "visiblePixels": 12,
+      "opaquePixels": 12,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 5,
+      "row": 2,
+      "index": 19,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        5
+      ],
+      "visiblePixels": 80,
+      "opaquePixels": 80,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 6,
+      "row": 2,
+      "index": 20,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        3,
+        5
+      ],
+      "visiblePixels": 12,
+      "opaquePixels": 12,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 0,
+      "row": 3,
+      "index": 21,
+      "role": "convex river corner",
+      "name": "bank_nw",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 132,
+      "opaquePixels": 132,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 1,
+      "row": 3,
+      "index": 22,
+      "role": "straight river edge",
+      "name": "bank_n_a",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 86,
+      "opaquePixels": 86,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 2,
+      "row": 3,
+      "index": 23,
+      "role": "straight river edge",
+      "name": "bank_n_b",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 86,
+      "opaquePixels": 86,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 3,
+      "row": 3,
+      "index": 24,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 132,
+      "opaquePixels": 132,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 4,
+      "row": 3,
+      "index": 25,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 155,
+      "opaquePixels": 155,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 5,
+      "row": 3,
+      "index": 26,
+      "role": "straight river edge",
+      "name": "bank_n_c",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 124,
+      "opaquePixels": 124,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 6,
+      "row": 3,
+      "index": 27,
+      "role": "convex river corner",
+      "name": "bank_ne",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 155,
+      "opaquePixels": 155,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 0,
+      "row": 4,
+      "index": 28,
+      "role": "straight river edge",
+      "name": "bank_w_a",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 50,
+      "opaquePixels": 50,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 1,
+      "row": 4,
+      "index": 29,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 24,
+      "opaquePixels": 24,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 2,
+      "row": 4,
+      "index": 30,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 24,
+      "opaquePixels": 24,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 3,
+      "row": 4,
+      "index": 31,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 50,
+      "opaquePixels": 50,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 4,
+      "row": 4,
+      "index": 32,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 138,
+      "opaquePixels": 138,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 5,
+      "row": 4,
+      "index": 33,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 92,
+      "opaquePixels": 92,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 6,
+      "row": 4,
+      "index": 34,
+      "role": "straight river edge",
+      "name": "bank_e_a",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 138,
+      "opaquePixels": 138,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 0,
+      "row": 5,
+      "index": 35,
+      "role": "straight river edge",
+      "name": "bank_w_b",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 56,
+      "opaquePixels": 56,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 1,
+      "row": 5,
+      "index": 36,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 30,
+      "opaquePixels": 30,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 2,
+      "row": 5,
+      "index": 37,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 30,
+      "opaquePixels": 30,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 3,
+      "row": 5,
+      "index": 38,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 56,
+      "opaquePixels": 56,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 4,
+      "row": 5,
+      "index": 39,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 62,
+      "opaquePixels": 62,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 5,
+      "row": 5,
+      "index": 40,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 36,
+      "opaquePixels": 36,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 6,
+      "row": 5,
+      "index": 41,
+      "role": "straight river edge",
+      "name": "bank_e_b",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 62,
+      "opaquePixels": 62,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 0,
+      "row": 6,
+      "index": 42,
+      "role": "convex river corner",
+      "name": "bank_sw",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 95,
+      "opaquePixels": 95,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 1,
+      "row": 6,
+      "index": 43,
+      "role": "straight river edge",
+      "name": "bank_s_a",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 56,
+      "opaquePixels": 56,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 2,
+      "row": 6,
+      "index": 44,
+      "role": "straight river edge",
+      "name": "bank_s_b",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 56,
+      "opaquePixels": 56,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 3,
+      "row": 6,
+      "index": 45,
+      "role": "straight river edge",
+      "name": "bank_s_c",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 95,
+      "opaquePixels": 95,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 4,
+      "row": 6,
+      "index": 46,
+      "role": "straight river edge",
+      "name": "bank_s_d",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 107,
+      "opaquePixels": 107,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 5,
+      "row": 6,
+      "index": 47,
+      "role": "straight river edge",
+      "name": "bank_s_e",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 68,
+      "opaquePixels": 68,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "water_edges",
+      "column": 6,
+      "row": 6,
+      "index": 48,
+      "role": "convex river corner",
+      "name": "bank_se",
+      "notes": "Bank component confirmed from alpha silhouette.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 107,
+      "opaquePixels": 107,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "floor",
+      "column": 0,
+      "row": 0,
+      "index": 0,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "floor",
+      "column": 1,
+      "row": 0,
+      "index": 1,
+      "role": "decorative vegetation",
+      "name": "flowers_pink_dense",
+      "notes": "Transparent flower/grass overlay.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "floor",
+      "column": 2,
+      "row": 0,
+      "index": 2,
+      "role": "decorative vegetation",
+      "name": "flowers_pink_small",
+      "notes": "Transparent flower/grass overlay.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "floor",
+      "column": 3,
+      "row": 0,
+      "index": 3,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "floor",
+      "column": 4,
+      "row": 0,
+      "index": 4,
+      "role": "floor",
+      "name": "base_ground",
+      "notes": "Seamless plain summer ground.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "floor",
+      "column": 5,
+      "row": 0,
+      "index": 5,
+      "role": "floor variation",
+      "name": "ground_speckle_a",
+      "notes": "Transparent sparse ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "floor",
+      "column": 6,
+      "row": 0,
+      "index": 6,
+      "role": "floor variation",
+      "name": "ground_speckle_b",
+      "notes": "Transparent sparse ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "floor",
+      "column": 0,
+      "row": 1,
+      "index": 7,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        2,
+        3,
+        14,
+        16
+      ],
+      "visiblePixels": 144,
+      "opaquePixels": 144,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "floor",
+      "column": 1,
+      "row": 1,
+      "index": 8,
+      "role": "decorative vegetation",
+      "name": "flowers_pink_tall",
+      "notes": "Transparent flower/grass overlay.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "floor",
+      "column": 2,
+      "row": 1,
+      "index": 9,
+      "role": "decorative vegetation",
+      "name": "flowers_pink_single",
+      "notes": "Transparent flower/grass overlay.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "floor",
+      "column": 3,
+      "row": 1,
+      "index": 10,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "floor",
+      "column": 4,
+      "row": 1,
+      "index": 11,
+      "role": "floor variation",
+      "name": "ground_single_stone",
+      "notes": "Transparent sparse ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "floor",
+      "column": 5,
+      "row": 1,
+      "index": 12,
+      "role": "floor variation",
+      "name": "ground_speckle_c",
+      "notes": "Transparent sparse ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "floor",
+      "column": 6,
+      "row": 1,
+      "index": 13,
+      "role": "floor variation",
+      "name": "ground_speckle_d",
+      "notes": "Transparent sparse ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "floor",
+      "column": 0,
+      "row": 2,
+      "index": 14,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        2,
+        0,
+        14,
+        16
+      ],
+      "visiblePixels": 192,
+      "opaquePixels": 192,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "floor",
+      "column": 1,
+      "row": 2,
+      "index": 15,
+      "role": "decorative vegetation",
+      "name": "flowers_white_cluster",
+      "notes": "Transparent flower/grass overlay.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 6
+    },
+    {
+      "sheet": "floor",
+      "column": 2,
+      "row": 2,
+      "index": 16,
+      "role": "decorative vegetation",
+      "name": "flowers_white_single",
+      "notes": "Transparent flower/grass overlay.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 6
+    },
+    {
+      "sheet": "floor",
+      "column": 3,
+      "row": 2,
+      "index": 17,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "floor",
+      "column": 4,
+      "row": 2,
+      "index": 18,
+      "role": "floor variation",
+      "name": "ground_stones_a",
+      "notes": "Transparent sparse ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "floor",
+      "column": 5,
+      "row": 2,
+      "index": 19,
+      "role": "floor variation",
+      "name": "ground_speckle_e",
+      "notes": "Transparent sparse ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "floor",
+      "column": 6,
+      "row": 2,
+      "index": 20,
+      "role": "floor variation",
+      "name": "ground_grass_a",
+      "notes": "Transparent sparse ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "floor",
+      "column": 0,
+      "row": 3,
+      "index": 21,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        2,
+        0,
+        14,
+        13
+      ],
+      "visiblePixels": 144,
+      "opaquePixels": 144,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "floor",
+      "column": 1,
+      "row": 3,
+      "index": 22,
+      "role": "decorative vegetation",
+      "name": "flowers_orange_cluster",
+      "notes": "Transparent flower/grass overlay.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "floor",
+      "column": 2,
+      "row": 3,
+      "index": 23,
+      "role": "decorative vegetation",
+      "name": "flowers_orange_small",
+      "notes": "Transparent flower/grass overlay.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "floor",
+      "column": 3,
+      "row": 3,
+      "index": 24,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "floor",
+      "column": 4,
+      "row": 3,
+      "index": 25,
+      "role": "floor variation",
+      "name": "ground_speckle_f",
+      "notes": "Transparent sparse ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "floor",
+      "column": 5,
+      "row": 3,
+      "index": 26,
+      "role": "floor variation",
+      "name": "ground_speckle_g",
+      "notes": "Transparent sparse ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "floor",
+      "column": 6,
+      "row": 3,
+      "index": 27,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        2,
+        3,
+        14,
+        13
+      ],
+      "visiblePixels": 96,
+      "opaquePixels": 96,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "floor",
+      "column": 0,
+      "row": 4,
+      "index": 28,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "floor",
+      "column": 1,
+      "row": 4,
+      "index": 29,
+      "role": "decorative vegetation",
+      "name": "flowers_orange_dense",
+      "notes": "Transparent flower/grass overlay.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "floor",
+      "column": 2,
+      "row": 4,
+      "index": 30,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        5,
+        2,
+        16,
+        13
+      ],
+      "visiblePixels": 105,
+      "opaquePixels": 105,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "floor",
+      "column": 3,
+      "row": 4,
+      "index": 31,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        2,
+        16,
+        13
+      ],
+      "visiblePixels": 176,
+      "opaquePixels": 176,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "floor",
+      "column": 4,
+      "row": 4,
+      "index": 32,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        2,
+        11,
+        13
+      ],
+      "visiblePixels": 105,
+      "opaquePixels": 105,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "floor",
+      "column": 5,
+      "row": 4,
+      "index": 33,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        1,
+        1,
+        16,
+        16
+      ],
+      "visiblePixels": 191,
+      "opaquePixels": 191,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "floor",
+      "column": 6,
+      "row": 4,
+      "index": 34,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        1,
+        15,
+        16
+      ],
+      "visiblePixels": 198,
+      "opaquePixels": 198,
+      "uniqueVisibleColors": 1
+    },
+    {
+      "sheet": "details",
+      "column": 0,
+      "row": 0,
+      "index": 0,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "details",
+      "column": 1,
+      "row": 0,
+      "index": 1,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        10,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 84,
+      "opaquePixels": 84,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 2,
+      "row": 0,
+      "index": 2,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        3,
+        16,
+        16
+      ],
+      "visiblePixels": 186,
+      "opaquePixels": 186,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 3,
+      "row": 0,
+      "index": 3,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 214,
+      "opaquePixels": 214,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 4,
+      "row": 0,
+      "index": 4,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        3,
+        16,
+        16
+      ],
+      "visiblePixels": 186,
+      "opaquePixels": 186,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 5,
+      "row": 0,
+      "index": 5,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        6,
+        16
+      ],
+      "visiblePixels": 84,
+      "opaquePixels": 84,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 6,
+      "row": 0,
+      "index": 6,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        10,
+        16,
+        16
+      ],
+      "visiblePixels": 74,
+      "opaquePixels": 74,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 0,
+      "row": 1,
+      "index": 7,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        1,
+        5,
+        15,
+        16
+      ],
+      "visiblePixels": 81,
+      "opaquePixels": 81,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 1,
+      "row": 1,
+      "index": 8,
+      "role": "rock",
+      "name": "rock_pillar_left_top",
+      "notes": "Top of the left tall boulder formation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        9,
+        14,
+        16
+      ],
+      "visiblePixels": 79,
+      "opaquePixels": 79,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "details",
+      "column": 2,
+      "row": 1,
+      "index": 9,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        6,
+        6
+      ],
+      "visiblePixels": 20,
+      "opaquePixels": 20,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "details",
+      "column": 3,
+      "row": 1,
+      "index": 10,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        2,
+        0,
+        14,
+        14
+      ],
+      "visiblePixels": 74,
+      "opaquePixels": 74,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 4,
+      "row": 1,
+      "index": 11,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        10,
+        0,
+        16,
+        6
+      ],
+      "visiblePixels": 20,
+      "opaquePixels": 20,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "details",
+      "column": 5,
+      "row": 1,
+      "index": 12,
+      "role": "rock",
+      "name": "rock_pillar_right_top",
+      "notes": "Top of the right tall boulder formation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        2,
+        6,
+        15,
+        16
+      ],
+      "visiblePixels": 109,
+      "opaquePixels": 109,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "details",
+      "column": 6,
+      "row": 1,
+      "index": 13,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        2,
+        0,
+        14,
+        16
+      ],
+      "visiblePixels": 192,
+      "opaquePixels": 192,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 0,
+      "row": 2,
+      "index": 14,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        2,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 173,
+      "opaquePixels": 173,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 1,
+      "row": 2,
+      "index": 15,
+      "role": "rock",
+      "name": "rock_pillar_left_bottom",
+      "notes": "Bottom of the left tall boulder formation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 230,
+      "opaquePixels": 230,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "details",
+      "column": 2,
+      "row": 2,
+      "index": 16,
+      "role": "rock",
+      "name": "rock_cluster_a",
+      "notes": "Standalone rock cluster.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        1,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 180,
+      "opaquePixels": 180,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "details",
+      "column": 3,
+      "row": 2,
+      "index": 17,
+      "role": "rock",
+      "name": "rock_cluster_b",
+      "notes": "Small standalone rock cluster.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        3,
+        2,
+        15,
+        14
+      ],
+      "visiblePixels": 81,
+      "opaquePixels": 81,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "details",
+      "column": 4,
+      "row": 2,
+      "index": 18,
+      "role": "rock",
+      "name": "rock_cluster_c",
+      "notes": "Standalone rock cluster.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        1,
+        1,
+        16,
+        16
+      ],
+      "visiblePixels": 160,
+      "opaquePixels": 160,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "details",
+      "column": 5,
+      "row": 2,
+      "index": 19,
+      "role": "rock",
+      "name": "rock_pillar_right_bottom",
+      "notes": "Bottom of the right tall boulder formation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 221,
+      "opaquePixels": 221,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "details",
+      "column": 6,
+      "row": 2,
+      "index": 20,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 234,
+      "opaquePixels": 234,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 0,
+      "row": 3,
+      "index": 21,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        2,
+        0,
+        16,
+        15
+      ],
+      "visiblePixels": 165,
+      "opaquePixels": 165,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 1,
+      "row": 3,
+      "index": 22,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 249,
+      "opaquePixels": 249,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 2,
+      "row": 3,
+      "index": 23,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 249,
+      "opaquePixels": 249,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 3,
+      "row": 3,
+      "index": 24,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        1,
+        3,
+        16,
+        16
+      ],
+      "visiblePixels": 137,
+      "opaquePixels": 137,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 4,
+      "row": 3,
+      "index": 25,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        3,
+        16,
+        16
+      ],
+      "visiblePixels": 150,
+      "opaquePixels": 150,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 5,
+      "row": 3,
+      "index": 26,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        3,
+        15,
+        16
+      ],
+      "visiblePixels": 137,
+      "opaquePixels": 137,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 6,
+      "row": 3,
+      "index": 27,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 222,
+      "opaquePixels": 222,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 0,
+      "row": 4,
+      "index": 28,
+      "role": "tree",
+      "name": "tree_single_top",
+      "notes": "Top of the one-column tree.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        3,
+        8,
+        13,
+        16
+      ],
+      "visiblePixels": 58,
+      "opaquePixels": 58,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 1,
+      "row": 4,
+      "index": 29,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 254,
+      "opaquePixels": 254,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 2,
+      "row": 4,
+      "index": 30,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 255,
+      "opaquePixels": 255,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 3,
+      "row": 4,
+      "index": 31,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 238,
+      "opaquePixels": 238,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 4,
+      "row": 4,
+      "index": 32,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 5,
+      "row": 4,
+      "index": 33,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 238,
+      "opaquePixels": 238,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 6,
+      "row": 4,
+      "index": 34,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        6
+      ],
+      "visiblePixels": 82,
+      "opaquePixels": 82,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 0,
+      "row": 5,
+      "index": 35,
+      "role": "tree",
+      "name": "tree_single_bottom",
+      "notes": "Bottom of the one-column tree.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 208,
+      "opaquePixels": 208,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 1,
+      "row": 5,
+      "index": 36,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        2,
+        2,
+        14,
+        14
+      ],
+      "visiblePixels": 85,
+      "opaquePixels": 85,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 2,
+      "row": 5,
+      "index": 37,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        1,
+        2,
+        15,
+        15
+      ],
+      "visiblePixels": 113,
+      "opaquePixels": 113,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 3,
+      "row": 5,
+      "index": 38,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 181,
+      "opaquePixels": 181,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 4,
+      "row": 5,
+      "index": 39,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 224,
+      "opaquePixels": 224,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 5,
+      "row": 5,
+      "index": 40,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 185,
+      "opaquePixels": 185,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 6,
+      "row": 5,
+      "index": 41,
+      "role": "decorative vegetation",
+      "name": "berry_bush",
+      "notes": "Standalone flowering bush.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        1,
+        1,
+        16,
+        16
+      ],
+      "visiblePixels": 162,
+      "opaquePixels": 162,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 0,
+      "row": 6,
+      "index": 42,
+      "role": "chest",
+      "name": "chest_closed_a",
+      "notes": "Closed chest variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        1,
+        0,
+        14,
+        16
+      ],
+      "visiblePixels": 159,
+      "opaquePixels": 159,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 1,
+      "row": 6,
+      "index": 43,
+      "role": "chest",
+      "name": "chest_closed_b",
+      "notes": "Closed chest variation.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        2,
+        0,
+        15,
+        16
+      ],
+      "visiblePixels": 159,
+      "opaquePixels": 159,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 2,
+      "row": 6,
+      "index": 44,
+      "role": "chest",
+      "name": "chest_open",
+      "notes": "Open chest with lid extending right.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        15,
+        16
+      ],
+      "visiblePixels": 174,
+      "opaquePixels": 174,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 3,
+      "row": 6,
+      "index": 45,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 214,
+      "opaquePixels": 214,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 4,
+      "row": 6,
+      "index": 46,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 236,
+      "opaquePixels": 236,
+      "uniqueVisibleColors": 5
+    },
+    {
+      "sheet": "details",
+      "column": 5,
+      "row": 6,
+      "index": 47,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        1,
+        6,
+        15,
+        16
+      ],
+      "visiblePixels": 80,
+      "opaquePixels": 80,
+      "uniqueVisibleColors": 3
+    },
+    {
+      "sheet": "details",
+      "column": 6,
+      "row": 6,
+      "index": 48,
+      "role": "cave or doorway",
+      "name": "cave_entrance",
+      "notes": "Stone arch/cave opening.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        2,
+        16,
+        15
+      ],
+      "visiblePixels": 194,
+      "opaquePixels": 194,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 0,
+      "row": 7,
+      "index": 49,
+      "role": "decorative vegetation",
+      "name": "white_plants_a",
+      "notes": "Small pale plant cluster.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        2,
+        2,
+        16,
+        14
+      ],
+      "visiblePixels": 71,
+      "opaquePixels": 71,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 1,
+      "row": 7,
+      "index": 50,
+      "role": "decorative vegetation",
+      "name": "white_plants_b",
+      "notes": "Larger pale plant cluster.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        1,
+        0,
+        15,
+        14
+      ],
+      "visiblePixels": 104,
+      "opaquePixels": 104,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 2,
+      "row": 7,
+      "index": 51,
+      "role": "decorative vegetation",
+      "name": "small_leaves_a",
+      "notes": "Tiny green ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        2,
+        2,
+        14,
+        12
+      ],
+      "visiblePixels": 42,
+      "opaquePixels": 42,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "details",
+      "column": 3,
+      "row": 7,
+      "index": 52,
+      "role": "decorative vegetation",
+      "name": "small_leaves_b",
+      "notes": "Tiny green ground detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        4,
+        3,
+        12,
+        13
+      ],
+      "visiblePixels": 24,
+      "opaquePixels": 24,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "details",
+      "column": 4,
+      "row": 7,
+      "index": 53,
+      "role": "sign",
+      "name": "signpost",
+      "notes": "Standalone wooden signpost.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        3,
+        0,
+        16,
+        13
+      ],
+      "visiblePixels": 104,
+      "opaquePixels": 104,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 5,
+      "row": 7,
+      "index": 54,
+      "role": "tent",
+      "name": "stone_tent",
+      "notes": "Small abandoned gray tent.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        1,
+        0,
+        15,
+        14
+      ],
+      "visiblePixels": 192,
+      "opaquePixels": 192,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "details",
+      "column": 6,
+      "row": 7,
+      "index": 55,
+      "role": "decorative vegetation",
+      "name": "bones",
+      "notes": "Standalone bones/skull detail.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        2,
+        5,
+        14,
+        13
+      ],
+      "visiblePixels": 54,
+      "opaquePixels": 54,
+      "uniqueVisibleColors": 4
+    },
+    {
+      "sheet": "path",
+      "column": 0,
+      "row": 0,
+      "index": 0,
+      "role": "transparent/empty",
+      "name": "empty",
+      "notes": "No visible pixels.",
+      "usefulForFinalMap": false,
+      "alphaBounds": null,
+      "visiblePixels": 0,
+      "opaquePixels": 0,
+      "uniqueVisibleColors": 0
+    },
+    {
+      "sheet": "path",
+      "column": 1,
+      "row": 0,
+      "index": 1,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 2,
+      "row": 0,
+      "index": 2,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 3,
+      "row": 0,
+      "index": 3,
+      "role": "path straight",
+      "name": "path_end_n",
+      "notes": "Opaque cobble-on-ground path component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 4,
+      "row": 0,
+      "index": 4,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 5,
+      "row": 0,
+      "index": 5,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 6,
+      "row": 0,
+      "index": 6,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 0,
+      "row": 1,
+      "index": 7,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 1,
+      "row": 1,
+      "index": 8,
+      "role": "path junction",
+      "name": "path_full_a",
+      "notes": "Opaque cobble-on-ground path component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 2,
+      "row": 1,
+      "index": 9,
+      "role": "path junction",
+      "name": "path_full_b",
+      "notes": "Opaque cobble-on-ground path component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 3,
+      "row": 1,
+      "index": 10,
+      "role": "path straight",
+      "name": "path_narrow_a",
+      "notes": "Opaque cobble-on-ground path component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 4,
+      "row": 1,
+      "index": 11,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 5,
+      "row": 1,
+      "index": 12,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 6,
+      "row": 1,
+      "index": 13,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 0,
+      "row": 2,
+      "index": 14,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 1,
+      "row": 2,
+      "index": 15,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 2,
+      "row": 2,
+      "index": 16,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 3,
+      "row": 2,
+      "index": 17,
+      "role": "path straight",
+      "name": "path_narrow_b",
+      "notes": "Opaque cobble-on-ground path component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 4,
+      "row": 2,
+      "index": 18,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 5,
+      "row": 2,
+      "index": 19,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 6,
+      "row": 2,
+      "index": 20,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 0,
+      "row": 3,
+      "index": 21,
+      "role": "path turn",
+      "name": "path_bend_a",
+      "notes": "Opaque cobble-on-ground path component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 1,
+      "row": 3,
+      "index": 22,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 2,
+      "row": 3,
+      "index": 23,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 3,
+      "row": 3,
+      "index": 24,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 4,
+      "row": 3,
+      "index": 25,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 5,
+      "row": 3,
+      "index": 26,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 6,
+      "row": 3,
+      "index": 27,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 0,
+      "row": 4,
+      "index": 28,
+      "role": "path turn",
+      "name": "path_bend_b",
+      "notes": "Opaque cobble-on-ground path component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 1,
+      "row": 4,
+      "index": 29,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 2,
+      "row": 4,
+      "index": 30,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 3,
+      "row": 4,
+      "index": 31,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 4,
+      "row": 4,
+      "index": 32,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 5,
+      "row": 4,
+      "index": 33,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 6,
+      "row": 4,
+      "index": 34,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 0,
+      "row": 5,
+      "index": 35,
+      "role": "path turn",
+      "name": "path_bend_c",
+      "notes": "Opaque cobble-on-ground path component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 1,
+      "row": 5,
+      "index": 36,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 2,
+      "row": 5,
+      "index": 37,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 3,
+      "row": 5,
+      "index": 38,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 4,
+      "row": 5,
+      "index": 39,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 5,
+      "row": 5,
+      "index": 40,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 6,
+      "row": 5,
+      "index": 41,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 0,
+      "row": 6,
+      "index": 42,
+      "role": "path turn",
+      "name": "path_bend_d",
+      "notes": "Opaque cobble-on-ground path component.",
+      "usefulForFinalMap": true,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 1,
+      "row": 6,
+      "index": 43,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 2,
+      "row": 6,
+      "index": 44,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 3,
+      "row": 6,
+      "index": 45,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 4,
+      "row": 6,
+      "index": 46,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 5,
+      "row": 6,
+      "index": 47,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    },
+    {
+      "sheet": "path",
+      "column": 6,
+      "row": 6,
+      "index": 48,
+      "role": "uncertain/unselected",
+      "name": "unselected",
+      "notes": "Visible in the contact sheet but not needed by this composition.",
+      "usefulForFinalMap": false,
+      "alphaBounds": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "visiblePixels": 256,
+      "opaquePixels": 256,
+      "uniqueVisibleColors": 2
+    }
+  ],
+  "multiCellObjects": {
+    "tree_single": {
+      "sizeCells": [
+        1,
+        2
+      ],
+      "tiles": [
+        [
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          5,
+          0,
+          1
+        ]
+      ],
+      "notes": "One-column tree, top then rooted lower half."
+    },
+    "tree_pair": {
+      "sizeCells": [
+        2,
+        2
+      ],
+      "tiles": [
+        [
+          1,
+          3,
+          0,
+          0
+        ],
+        [
+          2,
+          3,
+          1,
+          0
+        ],
+        [
+          1,
+          4,
+          0,
+          1
+        ],
+        [
+          2,
+          4,
+          1,
+          1
+        ]
+      ],
+      "notes": "Dense two-column, two-row tree cluster; row 5 contains separate fallen logs."
+    },
+    "tree_pair_middle": {
+      "sizeCells": [
+        2,
+        2
+      ],
+      "tiles": [
+        [
+          3,
+          3,
+          0,
+          0
+        ],
+        [
+          4,
+          3,
+          1,
+          0
+        ],
+        [
+          3,
+          4,
+          0,
+          1
+        ],
+        [
+          4,
+          4,
+          1,
+          1
+        ]
+      ],
+      "notes": "Middle two-column canopy variant from the connected tree block."
+    },
+    "tree_pair_right": {
+      "sizeCells": [
+        2,
+        2
+      ],
+      "tiles": [
+        [
+          4,
+          3,
+          0,
+          0
+        ],
+        [
+          5,
+          3,
+          1,
+          0
+        ],
+        [
+          4,
+          4,
+          0,
+          1
+        ],
+        [
+          5,
+          4,
+          1,
+          1
+        ]
+      ],
+      "notes": "Right two-column canopy variant from the connected tree block."
+    },
+    "tree_lobe_left": {
+      "sizeCells": [
+        3,
+        2
+      ],
+      "tiles": [
+        [
+          1,
+          3,
+          0,
+          0
+        ],
+        [
+          2,
+          3,
+          1,
+          0
+        ],
+        [
+          3,
+          3,
+          2,
+          0
+        ],
+        [
+          1,
+          4,
+          0,
+          1
+        ],
+        [
+          2,
+          4,
+          1,
+          1
+        ],
+        [
+          3,
+          4,
+          2,
+          1
+        ]
+      ],
+      "notes": "Three-by-two left canopy lobe used to vary forest silhouettes."
+    },
+    "tree_lobe_right": {
+      "sizeCells": [
+        3,
+        2
+      ],
+      "tiles": [
+        [
+          3,
+          3,
+          0,
+          0
+        ],
+        [
+          4,
+          3,
+          1,
+          0
+        ],
+        [
+          5,
+          3,
+          2,
+          0
+        ],
+        [
+          3,
+          4,
+          0,
+          1
+        ],
+        [
+          4,
+          4,
+          1,
+          1
+        ],
+        [
+          5,
+          4,
+          2,
+          1
+        ]
+      ],
+      "notes": "Three-by-two right canopy lobe used to vary forest silhouettes."
+    },
+    "tree_grove": {
+      "sizeCells": [
+        3,
+        3
+      ],
+      "tiles": [
+        [
+          3,
+          3,
+          0,
+          0
+        ],
+        [
+          4,
+          3,
+          1,
+          0
+        ],
+        [
+          5,
+          3,
+          2,
+          0
+        ],
+        [
+          3,
+          4,
+          0,
+          1
+        ],
+        [
+          4,
+          4,
+          1,
+          1
+        ],
+        [
+          5,
+          4,
+          2,
+          1
+        ],
+        [
+          3,
+          5,
+          0,
+          2
+        ],
+        [
+          4,
+          5,
+          1,
+          2
+        ],
+        [
+          5,
+          5,
+          2,
+          2
+        ]
+      ],
+      "notes": "Dense three-by-three interlocking grove."
+    },
+    "cave_mouth": {
+      "sheet": "combined",
+      "sizeCells": [
+        2,
+        1
+      ],
+      "tiles": [
+        [
+          1,
+          9,
+          0,
+          0
+        ],
+        [
+          2,
+          9,
+          1,
+          0
+        ]
+      ],
+      "notes": "Two-cell cave opening designed to replace the center of a cliff face."
+    },
+    "bridge_horizontal": {
+      "sizeCells": [
+        5,
+        2
+      ],
+      "tiles": [
+        [
+          1,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          1,
+          0
+        ],
+        [
+          3,
+          0,
+          2,
+          0
+        ],
+        [
+          4,
+          0,
+          3,
+          0
+        ],
+        [
+          5,
+          0,
+          4,
+          0
+        ],
+        [
+          2,
+          1,
+          1,
+          1
+        ],
+        [
+          3,
+          1,
+          2,
+          1
+        ],
+        [
+          4,
+          1,
+          3,
+          1
+        ]
+      ],
+      "notes": "Five-cell deck with the supplied diagonal and center supports beneath."
+    },
+    "bridge_vertical_standard": {
+      "sizeCells": [
+        1,
+        4
+      ],
+      "tiles": [
+        [
+          6,
+          1,
+          0,
+          0
+        ],
+        [
+          6,
+          2,
+          0,
+          1
+        ],
+        [
+          6,
+          3,
+          0,
+          2
+        ],
+        [
+          6,
+          4,
+          0,
+          3
+        ]
+      ],
+      "notes": "Vertical bridge: top, two middle deck cells, and lower landing."
+    },
+    "rock_pillar_left": {
+      "sizeCells": [
+        1,
+        2
+      ],
+      "tiles": [
+        [
+          1,
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          2,
+          0,
+          1
+        ]
+      ],
+      "notes": "Tall two-cell boulder formation."
+    },
+    "rock_pillar_right": {
+      "sizeCells": [
+        1,
+        2
+      ],
+      "tiles": [
+        [
+          5,
+          1,
+          0,
+          0
+        ],
+        [
+          5,
+          2,
+          0,
+          1
+        ]
+      ],
+      "notes": "Alternate tall two-cell boulder formation."
+    },
+    "camp_gear": {
+      "sizeCells": [
+        2,
+        1
+      ],
+      "tiles": [
+        [
+          3,
+          6,
+          0,
+          0
+        ],
+        [
+          4,
+          6,
+          1,
+          0
+        ]
+      ],
+      "notes": "Two-cell abandoned canvas/camp furnishing."
+    },
+    "path_landing_north": {
+      "sheet": "path",
+      "sizeCells": [
+        5,
+        2
+      ],
+      "tiles": [
+        [
+          1,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          1,
+          0
+        ],
+        [
+          3,
+          0,
+          2,
+          0
+        ],
+        [
+          4,
+          0,
+          3,
+          0
+        ],
+        [
+          5,
+          0,
+          4,
+          0
+        ],
+        [
+          1,
+          1,
+          0,
+          1
+        ],
+        [
+          2,
+          1,
+          1,
+          1
+        ],
+        [
+          3,
+          1,
+          2,
+          1
+        ],
+        [
+          4,
+          1,
+          3,
+          1
+        ],
+        [
+          5,
+          1,
+          4,
+          1
+        ]
+      ],
+      "notes": "Supplied contiguous five-by-two cobblestone taper for a north-side landing."
+    },
+    "path_landing_south": {
+      "sheet": "path",
+      "sizeCells": [
+        5,
+        2
+      ],
+      "tiles": [
+        [
+          1,
+          5,
+          0,
+          0
+        ],
+        [
+          2,
+          5,
+          1,
+          0
+        ],
+        [
+          3,
+          5,
+          2,
+          0
+        ],
+        [
+          4,
+          5,
+          3,
+          0
+        ],
+        [
+          5,
+          5,
+          4,
+          0
+        ],
+        [
+          1,
+          6,
+          0,
+          1
+        ],
+        [
+          2,
+          6,
+          1,
+          1
+        ],
+        [
+          3,
+          6,
+          2,
+          1
+        ],
+        [
+          4,
+          6,
+          3,
+          1
+        ],
+        [
+          5,
+          6,
+          4,
+          1
+        ]
+      ],
+      "notes": "Supplied contiguous five-by-two cobblestone taper for a south-side landing."
+    }
+  },
+  "intentionalOmissions": {
+    "campfire": "No static campfire was confirmed in the six allowed source sheets; the demonstration uses the separate flame animation. The final map therefore uses an abandoned/extinguished camp instead of guessing or importing an eighth asset."
+  }
+}

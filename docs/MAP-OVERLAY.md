@@ -1,10 +1,10 @@
 # Dungeon quick-map overlay
 
-`V` toggles a translucent, nonmodal map over the live first-person dungeon
-view. The semantic `V · MAP` button in the lower-right of the dungeon viewport
-invokes the same action for pointer users and reports its state with
-`aria-pressed`. `M` still opens the existing opaque, modal full automap, and
-`Tab` still opens the action ring.
+`V` or the controller's `Y` button toggles a translucent, nonmodal map over the
+live first-person dungeon view. The semantic `Y / V · MAP` button in the
+lower-right of the dungeon viewport invokes the same action for pointer users
+and reports its state with `aria-pressed`. `M` still opens the existing opaque,
+modal full automap, and `Tab` still opens the action ring.
 
 ## Behavior
 

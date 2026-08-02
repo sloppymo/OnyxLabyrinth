@@ -1,0 +1,107 @@
+{
+  "tileSize": 16,
+  "nativeCanvas": {
+    "width": 768,
+    "height": 672
+  },
+  "logicalGrid": {
+    "columns": 48,
+    "rows": 42
+  },
+  "sources": {
+    "combined": {
+      "path": "assets/jewelflame/Lonesome Forest - Summer and Winter Versions/Summer Tileset/Lonesome_Forest_WALLs_and_CLIIFS_with_FLOOR.png",
+      "filename": "Lonesome_Forest_WALLs_and_CLIIFS_with_FLOOR.png",
+      "width": 112,
+      "height": 176,
+      "mode": "RGBA",
+      "hasAlpha": true,
+      "referenceOnly": false,
+      "sha256": "2f62525bbd42d81a3195115cb49e13dd82b6b75b155bff3766cb09163c1daae2",
+      "columns": 7,
+      "rows": 11,
+      "tileCount": 77,
+      "contactSheet": "contact_sheets/combined_tiles.png"
+    },
+    "cliff_edges": {
+      "path": "assets/jewelflame/Lonesome Forest - Summer and Winter Versions/Summer Tileset/Lonesome_Forest_WALLS_and_CLIFF_EDGES.png",
+      "filename": "Lonesome_Forest_WALLS_and_CLIFF_EDGES.png",
+      "width": 112,
+      "height": 160,
+      "mode": "RGBA",
+      "hasAlpha": true,
+      "referenceOnly": false,
+      "sha256": "d968d603c195f7ea74f3d683044b41da31fc86f9dda3bb001f1c08b82a4d58c4",
+      "columns": 7,
+      "rows": 10,
+      "tileCount": 70,
+      "contactSheet": "contact_sheets/cliff_edges_tiles.png"
+    },
+    "water_edges": {
+      "path": "assets/jewelflame/Lonesome Forest - Summer and Winter Versions/Summer Tileset/Lonesome_Forest_RIVER_and_WATER_EDGES.png",
+      "filename": "Lonesome_Forest_RIVER_and_WATER_EDGES.png",
+      "width": 112,
+      "height": 112,
+      "mode": "RGBA",
+      "hasAlpha": true,
+      "referenceOnly": false,
+      "sha256": "19c5edf86d39ec712232bbc09ee410e40e892c8fabe2215beaddf8b0318ee0af",
+      "columns": 7,
+      "rows": 7,
+      "tileCount": 49,
+      "contactSheet": "contact_sheets/water_edges_tiles.png"
+    },
+    "floor": {
+      "path": "assets/jewelflame/Lonesome Forest - Summer and Winter Versions/Summer Tileset/Lonesome_Forest_FLOOR.png",
+      "filename": "Lonesome_Forest_FLOOR.png",
+      "width": 112,
+      "height": 80,
+      "mode": "RGBA",
+      "hasAlpha": true,
+      "referenceOnly": false,
+      "sha256": "3a6a94d26c4dc500d8f528b092fe065b7f30cd6b92c273caa3b76aed351bd32e",
+      "columns": 7,
+      "rows": 5,
+      "tileCount": 35,
+      "contactSheet": "contact_sheets/floor_tiles.png"
+    },
+    "details": {
+      "path": "assets/jewelflame/Lonesome Forest - Summer and Winter Versions/Summer Tileset/Lonesome_Forest_DETAIL_OBJECTS.png",
+      "filename": "Lonesome_Forest_DETAIL_OBJECTS.png",
+      "width": 112,
+      "height": 128,
+      "mode": "RGBA",
+      "hasAlpha": true,
+      "referenceOnly": false,
+      "sha256": "b8d77315d7b152562d11a95095be466aebda00b202d075e90cbdc2df908b816b",
+      "columns": 7,
+      "rows": 8,
+      "tileCount": 56,
+      "contactSheet": "contact_sheets/details_tiles.png"
+    },
+    "path": {
+      "path": "assets/jewelflame/Lonesome Forest - Summer and Winter Versions/Summer Tileset/Lonesome_Forest_COBBLESTONE_PATH.png",
+      "filename": "Lonesome_Forest_COBBLESTONE_PATH.png",
+      "width": 112,
+      "height": 112,
+      "mode": "RGBA",
+      "hasAlpha": true,
+      "referenceOnly": false,
+      "sha256": "d0af2dadacb1b14ebf917e17ca68e1f1d5afef448f738d86b2487ddd980a69fe",
+      "columns": 7,
+      "rows": 7,
+      "tileCount": 49,
+      "contactSheet": "contact_sheets/path_tiles.png"
+    },
+    "sample": {
+      "path": "assets/jewelflame/Lonesome Forest - Summer and Winter Versions/Sample Images/Lonesome_Forest_16_PICO8_sampe_image.png",
+      "filename": "Lonesome_Forest_16_PICO8_sampe_image.png",
+      "width": 1624,
+      "height": 1344,
+      "mode": "RGBA",
+      "hasAlpha": true,
+      "referenceOnly": true,
+      "sha256": "085ba8a70816393eb98665a8099cbd6cfc8ce186cc24851d11a608d909babbf0"
+    }
+  }
+}

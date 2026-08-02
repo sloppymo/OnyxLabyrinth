@@ -239,6 +239,86 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   and app TypeScript plus `git diff --check` pass. Next: production build and
   real-browser media/mode transition verification.
 
+## 2026-08-01 — Quick-map controller binding
+
+- Current prompt: bind the in-dungeon quick-map overlay to a controller button
+  and make the overlay slightly transparent.
+- Loaded the `develop-web-game` skill. Selected dungeon `Y` because Start and
+  Select already own the action ring and save menu; `Y` was free in exploration.
+- Added the `Y` toggle route, exposed `Y / V` in the pointer-visible map button,
+  and set the complete overlay surface to 0.88 opacity. Next: focused tests,
+  build, mocked-gamepad production-preview verification, and screenshot review.
+- Focused controller/input/map/shell regression run passed 64/64; `git diff
+  --check` is clean.
+- `npm run build` passed and the full Vitest suite passed 81 files / 1,730
+  tests. Production-preview verification used a mocked standard gamepad and
+  confirmed physical button 3 (`Y`) opens, closes, and reopens the quick map;
+  movement/turning, traps, menus, full map, combat return, stairs, and narrow
+  layout all passed. Computed opacity was 0.88, readiness/errors were empty,
+  and desktop/narrow screenshots were visually inspected. Evidence is under
+  `/tmp/onyx-map-controller-opacity-rerun/`; the required web-game client also
+  ran cleanly under `/tmp/onyx-map-controller-web-client/`. No commit or push.
+
+## 2026-08-02 — Lonesome Forest title-map composition
+
+- Current prompt: inspect the seven supplied summer Lonesome Forest sheets and
+  demonstration image, catalog every 16×16 tile, then produce an original,
+  deterministic, layered title-screen forest map and validate the rendered
+  deliverables. No generated/redrawn pixels and no image-generation model.
+- Loaded the `develop-web-game` skill. The live title stage is authoritatively
+  768×672 (8:7), exactly 48×42 source tiles, so native output will target that
+  design space with a 1536×1344 nearest-neighbor presentation export.
+- All seven requested inputs were located and visually inspected. The requested
+  `DETAIL_OBJECTS(1).png` corresponds to the supplied
+  `Lonesome_Forest_DETAIL_OBJECTS.png`.
+- Shared worktree contains unrelated edits, including title-adjacent files.
+  Keep this slice isolated under `art/generated/lonesome_forest_title_map/`
+  plus a standalone generator; do not modify existing runtime title code.
+- Completed the isolated deliverable set under
+  `art/generated/lonesome_forest_title_map/`: six labeled contact sheets,
+  complete per-cell alpha/color catalog with curated useful roles and exact
+  multi-cell patterns, explicit placement JSON, ten transparent layer PNGs,
+  native/2x/debug/overview renders, README, validation report, and a layered
+  OpenRaster file.
+- Iterated through three rendered composition passes. Visual review corrected
+  two misclassified rounded bank tiles, excessive water repetition, a tree
+  pattern that accidentally included fallen-log cells, disconnected path
+  diagonals, sparse perimeter framing, and a weak cave threshold. The final
+  48×42 layout has a cardinally connected central route, bank-to-bank vertical
+  bridge, continuous meandering river, tiered side shelves, dense edge forest,
+  framed cave entrance, abandoned camp, fork sign, off-route chest, bones,
+  flowers, river leaves, rocks, and lower discovery branches.
+- Programmatic validation passes all checks: 768×672 native and 1536×1344
+  presentation dimensions; 1,125 integer/grid-aligned source-tile placements;
+  ten matching layers; fully opaque composite; all eight final colors drawn
+  from the supplied source sheets; contiguous river; bridge reaches dry land
+  on both banks; unchanged source hashes; nearest-neighbor-only scaling; and
+  valid ten-layer ORA structure. `unzip -t` also reports no archive errors.
+- The required web-game client ran against the live title route. A separate
+  live browser proof injected the generated native image without editing
+  runtime files; `title_ui_preview.png` shows the real lockup/menu over the map,
+  with the quiet central clearing preserving readability and the bridge/river
+  visible beneath the FF6 window. Browser console/page errors were empty.
+- Final `npm run build` passed. Existing shared-worktree changes remain
+  untouched; this slice changed only the generated art directory and this
+  progress note. No commit or push was created.
+- Refinement pass from user review replaced the shallow, nearly horizontal
+  river with a 13-segment S profile; widened the dry main route to a three-cell
+  approach outside the lockup-safe band; rebuilt edge trees as staggered,
+  connected forest masses; raised the destination into a stepped ruined crown
+  using the confirmed two-cell cliff-cave mouth; and broke up the repeated
+  upper/lower framing. The bridge now owns both landing cells.
+- Added explicit `pathsDoNotOverlapWater` and `pathsDoNotOverlapBridge`
+  validation. Final metrics: 1,442 placements, 346/346 connected river cells,
+  128 path cells, zero road/water overlaps, zero road/bridge overlaps, ten ORA
+  layers, and all eight final colors sourced from the supplied sheets.
+- Visually inspected the revised native, debug-grid, layer overview, gateway
+  crop, river crop, and final real-title overlay. The 1280×800 browser proof is
+  `title_ui_preview.png`; Playwright reported zero errors/warnings. Exact image
+  hashes were stable across a second regeneration, ORA archive testing passed,
+  Python compilation passed, `git diff --check` passed, and the final
+  `npm run build` passed with only the existing large-chunk advisory.
+
 ## 2026-08-01 — Nonmodal dungeon map overlay
 
 - Current prompt: implement and production-verify a centered, translucent,
@@ -315,3 +395,198 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   empty. Straight corridor, side passage, depth-0 wall, darkness, map, and
   combat-return screenshots were visually inspected under
   `/tmp/onyx-party-asset-clean-local/`.
+
+## 2026-08-01 — Floor 2 Cursed Library tileset redo
+
+- Current prompt: generate the coordinated four-texture Floor 2 Cursed Library
+  set from the supplied comprehensive sprite/tileset brief, then clean and
+  verify it in the shipping corridor renderer.
+- Loaded the `imagegen` and `develop-web-game` skills. The current f2 set was
+  audited before replacement; the wall reads as a library, but the floor and
+  ceiling drift into mixed masonry instead of the requested wood-first story.
+- Four built-in image-generation sources are complete: walnut bookshelf wall,
+  horizontal plank Floor A, its darker worn Floor B twin, and a timber-beam /
+  aged-plaster ceiling. The wall source established the shared palette for the
+  other three assets.
+- Added `scripts/process-generated-tileset.py` for deterministic 128px logical
+  reduction, edge crossfading, exact wrap pixels, palette quantization, RGB
+  normalization, luminance targeting, and 2x nearest-neighbor ship output.
+- Persisted the four raw generations under local-only
+  `assets/tilesets/f2-redo/sources/`. Candidate metrics: wall 32 colors / mean
+  L65.22, Floor A 20 / L59.38, Floor B 20 / L52.48, ceiling 18 / L51.30.
+  Every tile is RGB, 256px, exact-wrapped on both axes, and composed of true
+  2x nearest-neighbor blocks. Contact, wall-repeat, A/B checker, and ceiling-
+  repeat previews were visually inspected with no hard seam.
+- Installed the four candidates into the shipping `src/assets/f2_*_256.png`
+  slots. `npm run build` passes and focused renderer/floor suites pass 166/166.
+- Ran the required generic web-game client after installing its matching
+  Playwright Chromium runtime; its prologue screenshot/state were inspected.
+  The existing corridor baseline client then captured all actual Floor 2
+  poses: straight, side passage, adjacent front wall, door, darkness, treasure,
+  NPC, and stair. Asset readiness failures were empty; the five primary views
+  were visually inspected and show readable shelves, wood floors, timber /
+  plaster ceilings, no black walls, no missing ceiling, and no texture stretch.
+- A dedicated production-preview lifecycle probe on actual Floor 2 passed full
+  automap open/close and combat/flee return. Canvas mean luminance stayed
+  28.93 → 28.62 after map → 29.21 after combat; readiness failures and browser
+  errors were empty. Evidence is under `/tmp/onyx-f2-tileset-browser/` and the
+  static source/candidate previews remain under `assets/tilesets/f2-redo/`.
+- Final gates: `npm run build`, all 81 Vitest files / 1,730 tests, and
+  `git diff --check` pass. No commit or push was created; unrelated maze-prop
+  and VFX worktree changes remain untouched.
+- Next: the tileset redo is complete; a Floor 2 map/content redesign and new
+  library enemy identities remain separate future slices.
+
+## 2026-08-01 — Unified campaign-floor visual audit
+
+- Current prompt: build one production-preview visual audit for all five live
+  campaign floors, with runtime-derived/validated poses, objective rendering
+  guardrails, lifecycle coverage, machine-readable output, and a human HTML
+  gallery. Do not change floor content, renderer math, gameplay, or art.
+- Loaded the `develop-web-game` skill and read the required corridor art/style
+  guidance plus the existing discovery, baseline, transition, regional, shared
+  library, and static-gallery scripts.
+- Design decision: derive every pose from `__onyxDebug.FLOORS` in the running
+  production bundle. The July 30 `corridor-poses.json` will not be an input.
+  Every capture will re-read and verify floor/name/dimensions/position/facing,
+  tile, route, warnings, and the current cell's resolved theme/zone before it
+  is accepted. Floor 1's five runtime themes are required coverage.
+- Next: implement the focused runner and gallery, then add the npm/docs entry
+  and run the full build/test/browser/static-gallery verification loop.
+- Added `scripts/playtests/floor-visual-audit.mjs`, `npm run visual:floors`, and
+  scoped README/style-guide instructions. The runner creates per-floor PNG
+  directories plus `report.json` and `index.html`, with runtime pose metadata,
+  canvas probes, readiness/errors, and Floor 2 map/combat lifecycle evidence.
+- A Floor 1-only production smoke passed objective checks. Visual inspection
+  caught the first regional f2 pose looking immediately across into f1 despite
+  standing on an f2 cell; regional selection now requires a sustained
+  same-theme sightline (or a same-theme close wall), and reports forward theme
+  depth so that misleading label cannot recur.
+- The first all-floor calibration run captured floors 1–5 and exercised the
+  lifecycle successfully. Its only failures were intended F3/F5 darkness at
+  mean luminance 5.85/5.97 against a cutoff of 6, while non-background remained
+  65.3%/67.4%. Lowered the black-frame floor to 4; the independent 8%
+  non-background gate still rejects a flat background. Also biased the A/B
+  variation pose toward unobstructed enclosed views after human inspection.
+- Next: rerun the full audit cleanly, inspect its final gallery/screenshots,
+  then finish the required build/test/diff/static-gallery gates.
+- Final production-preview run:
+  `ONYX_URL=http://127.0.0.1:5177/OnyxLabyrinth/?debug=1 ONYX_OUT=/tmp/onyx-floor-visual-audit-2026-08-01 npm run visual:floors`.
+  It passed with 44 corridor captures and five lifecycle captures, all campaign
+  floor ids 1-5 present, zero unavailable poses, zero failed capture/check
+  results, and a consistent 744x651 corridor canvas. Final readiness failures,
+  browser console/page/request failures, HTTP error responses, and debug error
+  events were all empty. The report confirms `runtime-derived` poses and
+  `savedPoseFileUsed: false`.
+- Floor 1 produced 12 corridor captures: the seven common categories plus
+  distinct f1/f2/f5/f4/f3 regional views. Floors 2-5 each produced eight: the
+  seven common categories plus their runtime base theme. Floor 2's lifecycle
+  used a real four-enemy non-boss encounter; the corridor survived both full
+  automap close and flee/return at the same floor, position, facing, and f2
+  theme (post-combat luminance/non-background ratios 0.986/0.992).
+- Opened and inspected the latest straight, side-passage, depth-0 wall, door,
+  A/B floor, darkness, landmark, Floor 1 regional, map-open, map-close, combat,
+  and combat-return screenshots. All five floors retain wall/floor/ceiling
+  texture, side openings do not become flat black cut-outs, close walls are
+  textured, and no center seam or projection stretch was evident. Darkness is
+  intentionally very dim but retains geometry; Floor 2 remains readable.
+  Stair arrows are visually subtle against several current wall textures, so
+  landmark identity is best read with the report metadata; this was recorded
+  rather than changing renderer/content in this infrastructure-only task.
+- `npm run tileset:gallery` reported 25/25 textures present. Its Floor 2
+  singles, 3x3 repeat/seam panels, and floor A/B checkerboard were opened and
+  inspected with no missing tile or visible wrap seam. This static source check
+  remains distinct from the production corridor audit.
+- Final gates pass: `npm run build`; 81 Vitest files / 1,730 tests; and
+  `git diff --check`. Generated evidence is untracked under
+  `/tmp/onyx-floor-visual-audit-2026-08-01/` (`report.json`, `index.html`, and
+  49 PNGs). Exact/golden PNG comparison remains deliberately out of scope
+  because flicker, scanlines, fog, and camera timing are live. No commit or push
+  was created, and the pre-existing Floor 2, maze-prop, VFX, and other shared
+  dirty-worktree changes remain untouched.
+
+## 2026-08-02 — Lonesome Forest focused v2 art-direction revision
+
+- Current prompt: preserve the 768×672 first-pass title map and make targeted
+  placement-data changes for a more hand-authored river, forest, route,
+  entrance, cliffs, open ground, and campsite; produce versioned v2 outputs,
+  a native-scale comparison, layered ORA, real title-screen proof, and full
+  deterministic/source-integrity validation.
+- Loaded the `develop-web-game` and `playwright` skills. Scoped work to
+  `art/generated/lonesome_forest_title_map/` plus this progress entry; no
+  runtime game files or unrelated dirty worktree changes were modified.
+- Preserved `final_native.png` by pinned SHA-256
+  `8ac6c5936701545968a8443ac0bbca9bd9c4a4b94e622db8215a5e847e9ea07e`.
+  The generator now refuses to write v2 if that baseline changes and writes
+  only versioned outputs/layers.
+- Completed two visual correction loops after the first technically valid v2
+  candidate: narrowed the river while keeping asymmetric broad bends, removed
+  incomplete-looking tree choices, strengthened selective route shoulders,
+  reduced the gateway crown's mechanical width, and added the supplied stone
+  threshold arch over the recessed two-cell mouth.
+- Current v2 validation passes all checks: 768×672 / 48×42, 1,231 exact source
+  placements, 316/316 connected water cells, 53/53 connected journey cells,
+  zero path-water or path-bridge overlaps, supported cliff faces, clear gate
+  approach, exact layer recomposition, eight source colors only, nearest 2×/4×
+  previews, intact source hashes, and structurally valid ten-layer ORA.
+- `npm run build` passes. The required web-game client booted the production
+  preview; Playwright then injected the v2 bitmap behind the real title DOM at
+  1280×800. The live title proof has zero console errors/warnings. Exact panel,
+  lockup, wordmark, and menu bounds were measured and converted into native-map
+  bounds for `placement_map_v2.json` and `final_debug_grid_v2.png`.
+- Final foliage-only correction added eleven offset canopy connectors at
+  existing mass boundaries; the final title proof shows continuous upper and
+  side forest walls while retaining the route, bridge, logo, and gate gaps.
+- Final determinism audit found and fixed timestamped ORA members. Two complete
+  generator runs now produce identical hashes for the baseline, v2 native,
+  2×/4× previews, debug grid, comparison, and editable ORA. Saved layer
+  recomposition and the ORA merged image both exactly match the flattened v2.
+- Final visual inspection covered native, measured debug grid, layer overview,
+  native-scale comparison, 4× river/gateway/route crops, and the regenerated
+  real-title proof. Browser warnings/errors remained empty after the final
+  foliage pass. Final `npm run build`, `git diff --check`, ORA archive test,
+  all 24 validation checks, and repeated byte-stable regeneration pass.
+- Complete. No runtime integration, commit, or push was requested or performed.
+
+## 2026-08-02 — Lonesome Forest title-map integration
+
+- Current prompt: integrate the approved v2 Lonesome Forest map into the live
+  game title screen and push it.
+- Loaded `develop-web-game` and `github:yeet`. The current shared branch has
+  unrelated dirty files and three already-pushed commits beyond `origin/main`;
+  integration is deliberately limited to a shipping PNG, a title-only CSS
+  module, and its clean `title-ui.ts` import. Shared `styles.css`, `main.ts`,
+  generated art, and other in-flight changes remain unstaged.
+- Installed the exact validated 768×672 v2 composite at
+  `src/assets/lonesome_forest_title_map.png`. `title-map.css` preserves the
+  native 8:7 fit, nearest-neighbor sampling, and stationary tile grid.
+- Next: build, production-preview desktop/mobile title verification, then
+  publish from a clean `origin/main` worktree so the existing branch's
+  unrelated commits cannot leak into the title-map PR.
+- Integration validation passed in the shared worktree and again from a clean
+  `origin/main` publication worktree: `npm run build`; required web-game client;
+  1280×800 and 390×844 production-preview screenshots; hashed map asset under
+  the `/OnyxLabyrinth/` base; menu rerender persistence; zero browser warnings
+  or errors. Both screenshots were visually inspected.
+- Published isolated branch `agent/lonesome-forest-title`, commit `3bd653b`
+  (`feat(title): add Lonesome Forest backdrop`), and draft PR #4 targeting
+  `main`: https://github.com/sloppymo/OnyxLabyrinth/pull/4. The PR contains
+  exactly the PNG, title CSS module, and title-controller import.
+- Complete. The shared worktree remains on its pre-existing branch with its
+  unrelated dirty changes preserved; the three integration files remain as a
+  local mirror of the pushed PR to avoid switching/cherry-picking beneath
+  parallel sessions.
+
+## 2026-08-02 — Merge and publish complete shared worktree
+
+- Current prompt: merge the title-map PR and push everything currently pending.
+  The user explicitly confirmed whole-worktree scope, including every unignored
+  modified and untracked file, so blanket staging is authorized for this pass.
+- Converted draft PR #4 to ready-for-review and squash-merged it into `main` as
+  `e246868` (`feat(title): add Lonesome Forest backdrop`). Refreshed
+  `origin/main` afterward.
+- Pre-publication gates pass on the complete shared worktree: `npm run build`;
+  81 Vitest files / 1,730 tests; no failures. The prior production browser
+  title checks remain clean at desktop and mobile sizes.
+- Next: stage the entire unignored worktree, inspect the exact staged manifest,
+  commit and push the current branch, open a PR to refreshed `main`, and merge it.

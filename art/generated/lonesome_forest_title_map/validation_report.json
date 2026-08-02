@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "checks": {
+    "nativeDimensions": true,
+    "presentationDimensions": true,
+    "allPlacementsInteger": true,
+    "structuralPlacementsGridAligned": true,
+    "allLayerDimensionsMatch": true,
+    "finalIsFullyOpaque": true,
+    "finalColorsSubsetOfSources": true,
+    "riverIsContiguous": true,
+    "bridgeReachesBothBanks": true,
+    "pathsDoNotOverlapWater": true,
+    "pathsDoNotOverlapBridge": true,
+    "sourcesUnmodified": true,
+    "sourceTilesNeverResampled": true,
+    "presentationUsesNearestNeighbor": true,
+    "openRasterStructureValid": true
+  },
+  "metrics": {
+    "placementCount": 1442,
+    "sourceVisibleColorCount": 8,
+    "finalColorCount": 8,
+    "unexpectedFinalColors": [],
+    "riverCellCount": 346,
+    "connectedRiverCellCount": 346,
+    "pathCellCount": 128,
+    "roadWaterOverlapCells": [],
+    "roadBridgeOverlapCells": [],
+    "oraLayerCount": 10
+  }
+}

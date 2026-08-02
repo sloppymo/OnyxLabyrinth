@@ -18,6 +18,7 @@
     "sprite-preview:generate": "tsx scripts/generate-sprite-preview.ts",
     "generate:combat-bg": "node scripts/generate-combat-bg.mjs",
     "tileset:gallery": "node scripts/generate-tileset-gallery.mjs",
+    "visual:floors": "node scripts/playtests/floor-visual-audit.mjs",
     "sprite-preview:serve": "python3 -m http.server 8080",
     "sprite-preview": "npm run sprite-preview:generate && echo 'Open sprite-preview.html in your browser (or run npm run sprite-preview:serve).'"
   },
