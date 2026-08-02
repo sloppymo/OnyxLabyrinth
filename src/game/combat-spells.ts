@@ -165,6 +165,7 @@ export function applySpell(
           `${spell.name} heals ${t.name} for ${t.hp - before} HP.`,
           { type: "spellEffect", spellId: spell.id, targetId: t.id, heal: t.hp - before }
         );
+        // Healing spells revive KO'd allies (Saint perk allows targeting them)
         if (t.status.includes("knockedOut") && t.hp > 0) {
           t.status = t.status.filter((st) => st !== "knockedOut");
           emit(`${t.name} is revived!`, { type: "revived", targetId: t.id });

@@ -485,6 +485,24 @@ register("priest-martyr", "BeforeDamageTaken", (ctx) => {
   if (redirect) redirect();
 });
 
+// priest-inquisitor: 35% chance offensive damage spells stun enemies.
+// Only applies to successful damage-dealing spells (not heals, buffs, debuffs, or utility).
+// Uses the injected gameplay RNG (ctx.rng), never direct Math.random().
+// Bosses are immune to full stun (staggered for 1 round instead via applyDisableToEnemy).
+// Already-disabled or dead targets are excluded; AoE spells roll independently per target.
+register("priest-inquisitor", "OnSpellResolve", (ctx) => {
+  const rng = ctx.rng as (() => number) | undefined;
+  const applyStun = ctx.applyStun as (() => void) | undefined;
+  const spellKind = ctx.spellKind as string | undefined;
+  const dealtDamage = ctx.dealtDamage as number | undefined;
+  // Only trigger on offensive damage spells that actually dealt damage
+  if (!rng || !applyStun || spellKind !== "damage" || dealtDamage === undefined || dealtDamage <= 0) return;
+  const chance = 0.35;
+  if (rng() < chance) {
+    applyStun();
+  }
+});
+
 // --- Thief --------------------------------------------------------------
 
 // thief-ambusher: the first attack each combat is always a critical hit.
@@ -527,6 +545,17 @@ register("thief-shadow-dance", "OnHide", (ctx) => {
   state.hideCount = (state.hideCount ?? 0) + 1;
   if (state.hideCount >= 2) {
     state.danceReady = true;
+  }
+});
+
+// thief-swindler: after landing a critical hit, mark the battle for a +25% gold bonus on victory.
+// Uses a boolean flag (swindlerGoldBonusActive) at combat state level instead of an accumulating multiplier.
+// Multiple critical hits or multiple Swindlers do not increase the bonus beyond 25%.
+// The flag is reset when creating a new combat (createCombatState sets it to false).
+register("thief-swindler", "OnCriticalHit", (ctx) => {
+  const combatState = ctx.combatState as { swindlerGoldBonusActive?: boolean } | undefined;
+  if (combatState && !combatState.swindlerGoldBonusActive) {
+    combatState.swindlerGoldBonusActive = true;
   }
 });
 
@@ -630,6 +659,23 @@ register("crusader-holy-shield", "OnDefend", (ctx) => {
   if (grantDefenseBuff) grantDefenseBuff(0.8, 2);
 });
 
+// crusader-paladin: once per combat, survive a lethal blow at 1 HP.
+// Each Paladin has their own independent survival state (per-character perkState).
+// The party-wide 10% physical damage reduction is handled by paladinDamageMultiplier()
+// in combat-shared.ts, which applies while any living Paladin holder is present.
+register("crusader-paladin", "OnAllyWouldDie", (ctx) => {
+  const state = ctx.state as { used?: boolean };
+  if (state.used) return;
+  const targetId = ctx.targetId as string | undefined;
+  const ownId = ctx.ownId as string | undefined;
+  if (targetId === undefined || ownId === undefined || targetId !== ownId) return;
+  const preventDeath = ctx.preventDeath as (() => void) | undefined;
+  if (preventDeath) {
+    state.used = true;
+    preventDeath();
+  }
+});
+
 // crusader-retribution: when an adjacent ally is hit by an enemy attack, the
 // attacker takes the Crusader's effective PIE as holy damage. The damage
 // callback is provided by applyPartyDamage in combat.ts.
@@ -651,9 +697,10 @@ register("crusader-dark-templar", "OnAttackHit", (ctx) => {
   }
 });
 
-// crusader-paladin: once per combat, survive a lethal blow at 1 HP. The
-// party-wide 10% damage reduction is still TODO(v1.1) — damageTakenMultiplier
-// only applies to the perk holder, not the whole party.
+// crusader-paladin: once per combat, survive a lethal blow at 1 HP.
+// Each Paladin has their own independent survival state (per-character perkState).
+// The party-wide 10% physical damage reduction is handled by paladinDamageMultiplier()
+// in combat-shared.ts, which applies while any living Paladin holder is present.
 register("crusader-paladin", "OnAllyWouldDie", (ctx) => {
   const state = ctx.state as { used?: boolean };
   if (state.used) return;

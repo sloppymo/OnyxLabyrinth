@@ -157,6 +157,12 @@ export function checkTermination(s: CombatState, log: (m: string) => void): bool
     s.ended = true;
     s.result = "victory";
     s.summonedAllies = [];
+    // Apply Swindler gold bonus at victory (+25% if any Swindler landed a crit)
+    if (s.swindlerGoldBonusActive) {
+      const bonus = Math.round(s.goldEarned * 0.25);
+      s.goldEarned += bonus;
+      log(`Swindler's critical hit grants +${bonus} bonus gold!`);
+    }
     log("All enemies defeated — victory!");
     return true;
   }

@@ -111,6 +111,24 @@ export function damageReductionFor(
   if (perkMult !== 1) {
     dmg = Math.max(1, Math.round(dmg * perkMult));
   }
+  // fighter-vanguard: front-row allies take 10% less damage while a Vanguard
+  // holder stands in the front row.
+  const vanguardMult = vanguardDamageMultiplier(s, target);
+  if (vanguardMult !== 1) {
+    dmg = Math.max(1, Math.round(dmg * vanguardMult));
+  }
+  // halberdier-sentinel: entire party takes 10% less damage while a Sentinel
+  // holder stands in the front row.
+  const sentinelMult = sentinelDamageMultiplier(s, target);
+  if (sentinelMult !== 1) {
+    dmg = Math.max(1, Math.round(dmg * sentinelMult));
+  }
+  // crusader-paladin: entire party takes 10% less damage while a Paladin
+  // holder is alive.
+  const paladinMult = paladinDamageMultiplier(s, target);
+  if (paladinMult !== 1) {
+    dmg = Math.max(1, Math.round(dmg * paladinMult));
+  }
   // Giant Strength: glass-cannon — take more damage while enlarged.
   if (target.status.includes("giantStrength")) {
     dmg = Math.max(1, Math.round(dmg * 1.2));
@@ -289,7 +307,7 @@ export function isDirectlyBehind(protector: Character, target: Character): boole
 
 /** Adjacent = side-by-side in the same row, or the front/back pair
  *  (formation slots 0-1 front, 2-3 back). Never true for the same character. */
-export function isAdjacentAlly(a: Character, b: Character): boolean {
+function isAdjacentAlly(a: Character, b: Character): boolean {
   if (a.id === b.id) return false;
   const diff = Math.abs(a.formationSlot - b.formationSlot);
   const sameRow = (a.formationSlot <= 1) === (b.formationSlot <= 1);
@@ -314,6 +332,64 @@ export function warlordDamageMultiplier(s: CombatState, actor: Character): numbe
       perksForCharacter(c).some((p) => p.id === "halberdier-warlord")
   );
   return holder ? 1.2 : 1;
+}
+
+/**
+ * Vanguard: front-row allies (excluding the holder) take 10% less damage
+ * while a living Vanguard holder stands in the front row. Applied in
+ * damageReductionFor. The holder receives only their personal 10% reduction
+ * via perkModifiers' damageTakenMultiplier, not this aura.
+ */
+export function vanguardDamageMultiplier(s: CombatState, target: Character): number {
+  const holder = s.party.find(
+    (c) =>
+      c.hp > 0 &&
+      charRow(c) === "front" &&
+      perksForCharacter(c).some((p) => p.id === "fighter-vanguard")
+  );
+  // Only applies to OTHER front-row targets when a Vanguard holder is in the front row
+  if (holder && charRow(target) === "front" && target.id !== holder.id) {
+    return 0.9;
+  }
+  return 1;
+}
+
+/**
+ * Sentinel: other party members take 10% less physical damage while a living
+ * Sentinel holder stands in the front row. Applied in damageReductionFor.
+ * The holder receives only their personal 20% reduction via perkModifiers'
+ * damageTakenMultiplier, not this aura.
+ */
+export function sentinelDamageMultiplier(s: CombatState, target: Character): number {
+  const holder = s.party.find(
+    (c) =>
+      c.hp > 0 &&
+      charRow(c) === "front" &&
+      perksForCharacter(c).some((p) => p.id === "halberdier-sentinel")
+  );
+  // Applies to OTHER party members when a Sentinel holder is in the front row
+  if (holder && target.id !== holder.id) {
+    return 0.9;
+  }
+  return 1;
+}
+
+/**
+ * Paladin: other party members take 10% less physical damage while a living
+ * Paladin holder is present. Applied in damageReductionFor.
+ * The holder receives no additional damage reduction beyond their base defenses.
+ */
+export function paladinDamageMultiplier(s: CombatState, target: Character): number {
+  const holder = s.party.find(
+    (c) =>
+      c.hp > 0 &&
+      perksForCharacter(c).some((p) => p.id === "crusader-paladin")
+  );
+  // Applies to OTHER party members when a Paladin holder is alive
+  if (holder && target.id !== holder.id) {
+    return 0.9;
+  }
+  return 1;
 }
 
 /** A plain physical hit for reactive counterattacks (no perks applied). */

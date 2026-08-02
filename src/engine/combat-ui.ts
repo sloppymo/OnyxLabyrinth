@@ -39,6 +39,7 @@ import type {
 import { enemyHealthDescriptor, formatActionPreview, spellMagicCategory, SPELL_MAGIC_TABS, type SpellMagicTab } from "./combat-display";
 import type { Character } from "../game/party";
 import { charRow } from "../game/party";
+import { perksForCharacter } from "../game/perks";
 import { isUtilitySpell, type SpellDef } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import { techniquesForClass, techniqueById, classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
@@ -493,10 +494,13 @@ export class CombatController {
           return true;
         }
         if (cmd.targetAllyId) {
-          const allyOk = this.state.party.some(
-            (p) =>
-              p.id === cmd.targetAllyId &&
-              (p.hp > 0 || p.status.includes("knockedOut"))
+          const target = this.state.party.find((p) => p.id === cmd.targetAllyId);
+          const targetIsKo = target && (target.hp <= 0 || target.status.includes("knockedOut"));
+          // Only Saints can target KO'd allies with healing spells
+          const casterHasSaint = perksForCharacter(c).some((p: { id: string }) => p.id === "priest-saint");
+          const spellIsHeal = this.state.spells[cmd.spellId]?.effect.kind === "heal";
+          const allyOk = target && (
+            (!targetIsKo) || (targetIsKo && casterHasSaint && spellIsHeal)
           );
           if (!allyOk) {
             fallbackAttack();

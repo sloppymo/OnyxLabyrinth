@@ -142,6 +142,7 @@ export function createCombatState(
     summonCounter: 0,
     holyShieldBuffs: {},
     barkSaid: {},
+    swindlerGoldBonusActive: false,
   };
 }
 
