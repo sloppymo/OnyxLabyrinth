@@ -115,6 +115,72 @@ canvas#map-canvas {
   z-index: 20;
 }
 
+/* Nonmodal heads-up map: a restrained Saturn/SNES map plate over the still-live
+   corridor. The fixed design-canvas scales with its percentage-sized parent;
+   all map geometry itself remains integer-aligned in canvas space. */
+#map-overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 72%;
+  height: 72%;
+  transform: translate(-50%, -50%);
+  z-index: 16;
+  overflow: hidden;
+  pointer-events: none;
+  background: rgba(18, 15, 12, 0.58);
+  border: 2px solid #d0b06a;
+  box-shadow:
+    inset 0 0 0 1px rgba(44, 35, 24, 0.95),
+    inset 0 0 0 3px rgba(116, 84, 42, 0.48);
+}
+
+#map-overlay[hidden] {
+  display: none !important;
+}
+
+#map-overlay-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+#map-overlay-toggle {
+  position: absolute;
+  right: 12px;
+  bottom: 57px;
+  z-index: 18;
+  min-width: 76px;
+  margin: 0;
+  padding: 4px 8px 3px;
+  color: #ffd769;
+  background: rgba(10, 16, 48, 0.82);
+  border: 2px solid #e8e8f0;
+  border-radius: 0;
+  font: 14px/1.1 var(--game-font);
+  letter-spacing: 0.035em;
+  cursor: pointer;
+}
+
+#map-overlay-toggle:hover,
+#map-overlay-toggle:focus-visible {
+  color: var(--warm-white);
+  outline: 2px solid var(--amber);
+  outline-offset: 1px;
+}
+
+#map-overlay-toggle[aria-pressed="true"] {
+  color: #17100a;
+  background: #ffd769;
+  border-color: #fff1b8;
+}
+
+#map-overlay-toggle[hidden] {
+  display: none !important;
+}
+
 /* Message band: absolute top over ceiling/fog — never reflows the canvas.
    Notification box left; floor·facing chrome right (finding 5). The band
    itself carries no chrome of its own — that lives on #message-box below —

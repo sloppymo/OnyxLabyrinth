@@ -8,6 +8,7 @@
 //   ArrowRight / D   turn right
 //   C                camp
 //   M                toggle auto-map
+//   V                toggle nonmodal map overlay
 //   T                return to town
 //   U                unlock (locked door / chest)
 //   G                grimoire (cast utility spells: light, levitation, …)
@@ -30,6 +31,7 @@ export interface InputHandlers {
   onTurnRight: () => void;
   onCamp: () => void;
   onToggleMap: () => void;
+  onToggleMapOverlay: () => void;
   onSystemMenu: () => void;
   onTown: () => void;
   onUnlock: () => void;
@@ -55,6 +57,8 @@ const KEY_MAP: Record<string, keyof InputHandlers> = {
   C: "onCamp",
   m: "onToggleMap",
   M: "onToggleMap",
+  v: "onToggleMapOverlay",
+  V: "onToggleMapOverlay",
   t: "onTown",
   T: "onTown",
   u: "onUnlock",
@@ -65,10 +69,31 @@ const KEY_MAP: Record<string, keyof InputHandlers> = {
   Tab: "onActionRing",
 };
 
-export function bindInput(target: Window, handlers: InputHandlers): () => void {
+export type InputAction = keyof InputHandlers;
+
+export interface BindInputOptions {
+  /** The shell uses this to claim keys only while dungeon input owns focus. */
+  shouldHandle?: (action: InputAction, event: KeyboardEvent) => boolean;
+}
+
+export function isEditableInputTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return target.closest("input, textarea, select, [contenteditable]:not([contenteditable='false'])") !== null;
+}
+
+export function bindInput(
+  target: Window,
+  handlers: InputHandlers,
+  options: BindInputOptions = {},
+): () => void {
   const onKeyDown = (e: KeyboardEvent) => {
     const action = KEY_MAP[e.key];
     if (!action) return;
+    if (isEditableInputTarget(e.target)) return;
+    // The quick overlay is a state toggle, never a held action. Keep movement
+    // key-repeat intact while preventing a held V from rapidly flickering it.
+    if (action === "onToggleMapOverlay" && e.repeat) return;
+    if (options.shouldHandle && !options.shouldHandle(action, e)) return;
     handlers[action]();
     e.preventDefault();
   };

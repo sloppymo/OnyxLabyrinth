@@ -238,6 +238,27 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   preserves the exclusive procedural boss bed. Focused audio tests pass 11/11
   and app TypeScript plus `git diff --check` pass. Next: production build and
   real-browser media/mode transition verification.
+
+## 2026-08-01 — Nonmodal dungeon map overlay
+
+- Current prompt: implement and production-verify a centered, translucent,
+  north-up dungeon map overlay over the live corridor; preserve fog-of-war,
+  saves, all authored floors, the existing full automap, and blocking-mode
+  input boundaries.
+- Loaded the `develop-web-game` skill. Its required iterative browser client,
+  screenshot inspection, text-state checks, and console review will follow the
+  implementation.
+- Audit: `M` opens the existing modal full-canvas automap and `Tab` opens the
+  important dungeon action ring (which also exposes that full map). Discovery
+  already lives in `GameState.explored` / `exploredByFloor` and save format v14.
+  `showMode` owns shell visibility, while several blocking overlays borrow
+  mode `title`.
+- Design decision: preserve the full automap unchanged; add a separate
+  session-only, nonmodal HUD canvas on unused `V` plus an accessible clickable
+  hint. It will reuse `state.explored`, remain north-up, cache redraws, and be
+  forced closed whenever the shell leaves dungeon exploration.
+- Next: implement pure overlay state/model/geometry plus focused tests, then
+  wire shell/input/main transitions.
 - Final validation passed: `npm run build`, 79 Vitest files / 1,701 tests, and
   the required unchanged web-game client. The dedicated production-preview
   smoke exercised both random Emberwake files, normal combat, flee/return, and
@@ -262,3 +283,20 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   media responses succeeded and browser errors were empty. Evidence is under
   `/tmp/onyx-music-routing-all/`. The music slice remains local/uncommitted and
   the unrelated Headmaster sprite edit remains untouched.
+
+## 2026-08-01 — Nonmodal dungeon map overlay (completion)
+
+- Implemented the `V` quick map as a separate DOM-overlay Canvas 2D renderer;
+  the existing `M` full automap and `Tab` action ring remain unchanged. The
+  overlay is north-up, nonmodal, discovery-only, player-centred/clamped, and
+  session-only; saved exploration continues through the v14 save fields.
+- Focused map/input/shell/snapshot/explore/save verification passes 6 files / 81
+  tests. The full suite passes 81 files / 1,729 tests, app and tools TypeScript
+  checks plus the production build pass, all five floors validate, the Floor 1
+  content check passes, and `git diff --check` is clean.
+- The production browser driver covers open/close, repeat/editable input,
+  pointer access, movement and discovery while open, facing, locked doors,
+  regional art, darkness, both camera edges, trapped and ordinary chests, NPC
+  dialogue/knowledge, full automap, save/load, combat return, real F1→F2 stairs,
+  and a 390×700 viewport. No browser errors or failed assets were reported;
+  evidence is under `/tmp/onyx-map-overlay-final.CsVCiX/`.

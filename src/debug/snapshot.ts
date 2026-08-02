@@ -46,6 +46,8 @@ export interface SnapshotInput {
   route: ControllerRouteKind;
   message: { text: string; visible: boolean };
   mapVisible: boolean;
+  /** Session-only nonmodal heads-up map state. */
+  mapOverlayVisible?: boolean;
   inArena: boolean;
   /** Quiescence — no pending mode fade, camera tween, prologue, or unfinished
    *  combat playback. Required (not defaulted) so a caller can't accidentally
@@ -85,6 +87,7 @@ export interface Snapshot {
     inDarkness: boolean;
     inAntimagic: boolean;
     mapVisible: boolean;
+    mapOverlayVisible: boolean;
     inArena: boolean;
     pendingTrap: PendingTrap | null;
   };
@@ -122,6 +125,7 @@ const DUNGEON_ACTIONS = [
   "turnRight",
   "camp",
   "map",
+  "mapOverlay",
   "grimoire",
   "town",
   "unlock",
@@ -180,6 +184,7 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
       inDarkness: state.inDarkness,
       inAntimagic: state.inAntimagic,
       mapVisible: input.mapVisible,
+      mapOverlayVisible: input.mapOverlayVisible ?? false,
       inArena: input.inArena,
       pendingTrap: state.pendingTrap ? { ...state.pendingTrap } : null,
     },

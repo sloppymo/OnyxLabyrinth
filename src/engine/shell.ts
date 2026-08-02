@@ -36,7 +36,23 @@ app.innerHTML = `
         </div>
       </div>
       <canvas id="view" width="768" height="672"></canvas>
+      <div id="map-overlay" hidden aria-hidden="true">
+        <canvas
+          id="map-overlay-canvas"
+          width="552"
+          height="484"
+          role="img"
+          aria-label="Dungeon map overlay. North is up."
+        ></canvas>
+      </div>
       <canvas id="map-canvas" width="768" height="672" style="display:none"></canvas>
+      <button
+        id="map-overlay-toggle"
+        type="button"
+        aria-controls="map-overlay"
+        aria-pressed="false"
+        aria-label="Open quick dungeon map"
+      >V · MAP</button>
       <div id="context-prompt" hidden></div>
       <div id="party-strip"></div>
     </div>
@@ -57,6 +73,12 @@ export const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
 export const ctx = canvas.getContext("2d")!;
 const mapCanvas = document.querySelector<HTMLCanvasElement>("#map-canvas")!;
 export const mapCtx = mapCanvas.getContext("2d")!;
+const mapOverlayEl = document.querySelector<HTMLDivElement>("#map-overlay")!;
+export const mapOverlayCanvas = document.querySelector<HTMLCanvasElement>(
+  "#map-overlay-canvas"
+)!;
+export const mapOverlayCtx = mapOverlayCanvas.getContext("2d")!;
+const mapOverlayToggleEl = document.querySelector<HTMLButtonElement>("#map-overlay-toggle")!;
 const messageBandEl = document.querySelector<HTMLDivElement>("#message-band")!;
 const messageBoxEl = document.querySelector<HTMLDivElement>("#message-box")!;
 const messageEl = document.querySelector<HTMLDivElement>("#message")!;
@@ -448,8 +470,31 @@ export function compassForFacing(facing: number): string {
   return COMPASS_DIRS[facing] ?? "N";
 }
 
+/** Bind the single pointer-accessible quick-map control. */
+export function bindMapOverlayButton(onToggle: () => void): () => void {
+  const handleClick = () => onToggle();
+  mapOverlayToggleEl.addEventListener("click", handleClick);
+  return () => mapOverlayToggleEl.removeEventListener("click", handleClick);
+}
+
+/** Update open/closed chrome without changing which top-level game pane shows. */
+export function setMapOverlayPresentation(visible: boolean): void {
+  mapOverlayEl.hidden = !visible;
+  mapOverlayEl.setAttribute("aria-hidden", visible ? "false" : "true");
+  mapOverlayToggleEl.textContent = visible ? "V · CLOSE MAP" : "V · MAP";
+  mapOverlayToggleEl.setAttribute("aria-pressed", visible ? "true" : "false");
+  mapOverlayToggleEl.setAttribute(
+    "aria-label",
+    visible ? "Close quick dungeon map" : "Open quick dungeon map",
+  );
+}
+
 /** Show/hide the top-level shell elements for the current game mode. */
-export function showMode(mode: GameMode, mapVisible: boolean): void {
+export function showMode(
+  mode: GameMode,
+  mapVisible: boolean,
+  mapOverlayVisible = false,
+): void {
   const isDungeon = mode === "dungeon";
   const isCombat = mode === "combat";
   const usesDomPanel =
@@ -473,6 +518,9 @@ export function showMode(mode: GameMode, mapVisible: boolean): void {
   combatPanel.classList.toggle("bg-arena", mode === "arena");
   combatWrap.style.display = isCombat ? "block" : "none";
   mapCanvas.style.display = isDungeon && mapVisible ? "block" : "none";
+  const showMapOverlay = isDungeon && !mapVisible && mapOverlayVisible;
+  setMapOverlayPresentation(showMapOverlay);
+  mapOverlayToggleEl.hidden = !isDungeon || mapVisible;
 
   // Measure the footprint *after* the per-mode display toggles above so the
   // active pane (viewport / DOM panel / combat) is the one being sized. All

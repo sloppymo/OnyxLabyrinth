@@ -98,4 +98,43 @@ describe("dungeon message band", () => {
     shell.showMode("town", false);
     expect(band.style.display).toBe("none");
   });
+
+  it("shows accessible quick-map chrome only during eligible dungeon display", async () => {
+    const shell = await loadShell();
+    const overlay = document.querySelector<HTMLDivElement>("#map-overlay")!;
+    const toggle = document.querySelector<HTMLButtonElement>("#map-overlay-toggle")!;
+
+    shell.showMode("dungeon", false, false);
+    expect(overlay.hidden).toBe(true);
+    expect(toggle.hidden).toBe(false);
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle.textContent).toContain("V · MAP");
+
+    shell.showMode("dungeon", false, true);
+    expect(overlay.hidden).toBe(false);
+    expect(overlay.getAttribute("aria-hidden")).toBe("false");
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(toggle.textContent).toContain("CLOSE MAP");
+
+    shell.showMode("dungeon", true, true);
+    expect(overlay.hidden).toBe(true);
+    expect(toggle.hidden).toBe(true);
+
+    shell.showMode("combat", false, true);
+    expect(overlay.hidden).toBe(true);
+    expect(toggle.hidden).toBe(true);
+  });
+
+  it("removes the quick-map button listener on teardown", async () => {
+    const shell = await loadShell();
+    const onToggle = vi.fn();
+    const unbind = shell.bindMapOverlayButton(onToggle);
+    const toggle = document.querySelector<HTMLButtonElement>("#map-overlay-toggle")!;
+
+    toggle.click();
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    unbind();
+    toggle.click();
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
 });

@@ -35,6 +35,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/engine/input.ts` | Dungeon exploration key bindings. |
 | `src/engine/camera.ts` | Movement, turning, collision, door unlock. |
 | `src/engine/automap.ts` | Auto-map rendering. |
+| `src/engine/map-overlay.ts` | Nonmodal `V` quick-map state, fog-safe render model, integer camera geometry, and retained Canvas 2D renderer. Uses `GameState.explored`; the separate `M` full automap remains in `automap.ts`. |
 | `src/game/state.ts` | `GameState` factory and mode setter. |
 | `src/game/features.ts` | Tile-feature handling (stairs, teleporters, chutes, darkness, antimagic, treasure, water) + trapped-chest interaction (`pendingTrap`, Inspect/Disarm/Open/Leave, trap effects) + swim checks (`swimChance`, learn-by-doing `swimSkill`). |
 | `src/game/features.test.ts` | Unit tests for the trap interaction and water/swimming (vitest). |

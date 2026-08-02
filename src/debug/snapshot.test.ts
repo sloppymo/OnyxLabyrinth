@@ -61,6 +61,7 @@ describe("buildSnapshot", () => {
 
     expect(snap.mode).toBe("title");
     expect(snap.route).toBe("save");
+    expect(snap.flags.mapOverlayVisible).toBe(false);
   });
 
   it("includes floor, position and compass for the current player state", () => {
@@ -147,6 +148,22 @@ describe("buildSnapshot", () => {
 
     expect(idleSnap.idle).toBe(true);
     expect(busySnap.idle).toBe(false);
+  });
+
+  it("reports the nonmodal map overlay separately from the full automap", () => {
+    const snap = buildSnapshot({
+      state: stateOnTestFloor(),
+      route: "dungeon",
+      message: NO_MESSAGE,
+      mapVisible: false,
+      mapOverlayVisible: true,
+      inArena: false,
+      idle: true,
+    });
+
+    expect(snap.flags.mapVisible).toBe(false);
+    expect(snap.flags.mapOverlayVisible).toBe(true);
+    expect(snap.availableActions).toContain("mapOverlay");
   });
 
   it("summarizes the party without leaking character references", () => {

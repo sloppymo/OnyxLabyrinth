@@ -19,6 +19,20 @@ Defeating the floor-5 boss opens the one-time wish/ending sequence; subsequent w
 
 Want to build your own floors (custom geometry, textures, NPCs, events, encounter zones)? See [docs/FLOOR-AUTHORING.md](docs/FLOOR-AUTHORING.md) — `npm run floor:editor` opens the WYSIWYG editor, and `src/content/floors/floor-4-demo.json` is a complete example content pack.
 
+## Dungeon controls
+
+- Arrow keys or `WASD`: move and turn.
+- `V`: toggle the translucent quick map. It is north-up and nonmodal, so
+  exploration continues while it is open.
+- `M`: open the existing full automap.
+- `Tab`: open the dungeon action ring.
+- `G`: open the grimoire; `C`: camp; `U`: unlock; `T`: return to town;
+  `Esc`: save/load.
+
+The quick map uses the same saved exploration memory as the full automap, but
+its open/closed state is session-only. See [docs/MAP-OVERLAY.md](docs/MAP-OVERLAY.md)
+for its rendering and discovery rules.
+
 ## Development
 
 ```bash
@@ -43,6 +57,7 @@ node scripts/playtests/smoke-debug-surface.mjs
 node scripts/playtests/stress-invariants.mjs
 node scripts/playtests/playtest-floors-1-3.mjs
 node scripts/playtests/playtest-floors-4-5.mjs
+node scripts/playtests/map-overlay-verify.mjs
 ```
 
 Gameplay RNG is **not** seeded yet, so playtest numbers are directional, not reproducible.

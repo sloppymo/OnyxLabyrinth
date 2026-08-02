@@ -31,14 +31,24 @@ import { audio } from "./engine/audio";
 import { renderAutoMap } from "./engine/automap";
 import { bindInput, type InputHandlers } from "./engine/input";
 import {
+  MapOverlayRenderer,
+  createMapOverlayState,
+  hideMapOverlayState,
+  syncMapOverlayMode,
+  toggleMapOverlayState,
+} from "./engine/map-overlay";
+import {
   canvas,
   ctx,
   mapCtx,
+  mapOverlayCtx,
   setMessage,
   clearMessageOnPlayerAction,
   renderPartyStrip,
   clearPartyStrip,
-  showMode,
+  showMode as showShellMode,
+  bindMapOverlayButton,
+  setMapOverlayPresentation,
   compassForFacing,
   setContextualPrompt,
   getMessageText,
@@ -145,6 +155,22 @@ const state = createGameState(playtestFloor ?? getFloors()[0]!);
 // Auto-map visibility flag.
 let mapVisible = false;
 
+// The quick overlay is session-only UI state. Explored terrain remains in the
+// normal GameState save fields; whether this panel happens to be open does not.
+const mapOverlayState = createMapOverlayState();
+const mapOverlayRenderer = new MapOverlayRenderer();
+
+function closeMapOverlay(): void {
+  if (!hideMapOverlayState(mapOverlayState)) return;
+  setMapOverlayPresentation(false);
+}
+
+/** Shell-mode seam: every blocking pane closes the quick map before display. */
+function showMode(mode: GameMode, fullMapVisible = mapVisible): void {
+  syncMapOverlayMode(mapOverlayState, mode);
+  showShellMode(mode, fullMapVisible, mapOverlayState.visible);
+}
+
 /** First dungeon entry this page session — keyboard discoverability door hint. */
 let shownDungeonKeyboardHint = false;
 /**
@@ -195,6 +221,7 @@ function recordDebugEvent(kind: DebugEventKind, data: Record<string, unknown>): 
 
 function transitionToMode(newMode: GameMode): void {
   recordDebugEvent("modeChange", { from: state.mode, to: newMode });
+  if (newMode !== "dungeon") closeMapOverlay();
   modeTransitionPending = true;
   canvas.style.opacity = "0";
   setTimeout(() => {
@@ -391,6 +418,8 @@ let titleController: TitleController | null = null;
  * normalizeLoadedMode.
  */
 function applyLoadedGameState(loaded: GameState): void {
+  closeMapOverlay();
+  mapOverlayRenderer.invalidate();
   Object.assign(state, loaded);
   state.mode = normalizeLoadedMode(state.mode);
   if (state.mode === "town") {
@@ -425,6 +454,8 @@ function openTitleScreen(): void {
       // reuses openPartyCreation without this reset, since it's meant to
       // keep the ongoing campaign's progress.
       // Title BGM keeps playing through the prologue; stop when it ends.
+      closeMapOverlay();
+      mapOverlayRenderer.invalidate();
       Object.assign(state, createGameState(getFloors()[0]!));
       openPrologue(() => {
         audio.stopTitleMusic();
@@ -548,6 +579,7 @@ function withCombatTransition<T>(fn: () => Promise<T>): Promise<T> {
 
 async function startCombat(combat: CombatState): Promise<void> {
   return withCombatTransition(async () => {
+    closeMapOverlay();
     state.combat = combat;
     // Mode flag only — keep dungeon painted until the swirl finishes.
     setMode(state, "combat");
@@ -907,6 +939,9 @@ function onMove(): void {
   }
 
   if (state.pendingTrap) {
+    // Trap choices own dungeon input without changing GameMode, so they need
+    // the same explicit quick-map cleanup as other blocking overlays.
+    closeMapOverlay();
     if (!trapPrompt) {
       trapPrompt = new TrapPromptController();
       // Swallow the opening step key (same keydown may reach the trap
@@ -989,6 +1024,18 @@ const dungeonHandlers: InputHandlers = {
       toggleMap();
     }
   },
+  onToggleMapOverlay: () => {
+    if (combatTransitionActive) return;
+    const handled = toggleMapOverlayState(mapOverlayState, {
+      mode: state.mode,
+      fullMapVisible: mapVisible,
+      blocked: !!state.pendingTrap,
+    });
+    if (!handled) return;
+    clearMessageOnPlayerAction();
+    if (mapOverlayState.visible) mapOverlayRenderer.invalidate();
+    showMode("dungeon", mapVisible);
+  },
   onSystemMenu: () => {
     if (combatTransitionActive) return;
     // In town mode, Esc is handled by the town controller (back from
@@ -1046,7 +1093,10 @@ const dungeonHandlers: InputHandlers = {
   },
 };
 
-bindInput(window, dungeonHandlers);
+bindInput(window, dungeonHandlers, {
+  shouldHandle: () => state.mode === "dungeon" && !state.pendingTrap,
+});
+bindMapOverlayButton(dungeonHandlers.onToggleMapOverlay);
 
 // --- Trapped chest prompt --------------------------------------------------
 // Active while state.pendingTrap is set (the party is standing on a trapped,
@@ -1802,6 +1852,7 @@ function openSaveMenu(): void {
     onLoaded: (loaded: GameState) => {
       // Replace the current game state with the loaded one.
       // We can't reassign `state` (it's const), so we mutate in place.
+      mapOverlayRenderer.invalidate();
       Object.assign(state, loaded);
       saveController = null;
       canvas.style.opacity = "1";
@@ -1952,6 +2003,7 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 // --- Auto-map toggle -----------------------------------------------------
 function toggleMap(): void {
   mapVisible = !mapVisible;
+  if (mapVisible) closeMapOverlay();
   showMode("dungeon", mapVisible);
   canvas.style.opacity = mapVisible ? "0.3" : "1";
   // The map canvas owns its floor/position header and input-specific close
@@ -1997,6 +2049,9 @@ function loop() {
     setContextualPrompt(resolveContextualPrompt(state, kind));
     if (mapVisible) {
       renderAutoMap(mapCtx, state, globalInput.getLastInputKind());
+    }
+    if (mapOverlayState.visible) {
+      mapOverlayRenderer.renderIfNeeded(mapOverlayCtx, state);
     }
   }
   requestAnimationFrame(loop);
@@ -2225,6 +2280,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       route,
       message: getMessageText(),
       mapVisible,
+      mapOverlayVisible: mapOverlayState.visible,
       inArena,
       idle: isIdle(),
       combat,
@@ -2287,6 +2343,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     }
 
     markExplored();
+    mapOverlayRenderer.invalidate();
     resetRenderCamera(state.player.x, state.player.y, state.player.facing);
     setMode(state, "dungeon");
     showMode("dungeon", mapVisible);
