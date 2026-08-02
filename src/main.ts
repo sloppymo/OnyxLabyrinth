@@ -554,6 +554,8 @@ async function startCombat(combat: CombatState): Promise<void> {
     audio.playCombatSfx(combat.isBoss ? "bossAppear" : "encounterStart");
     if (combat.isBoss) {
       audio.startBossCombat();
+    } else {
+      audio.startBattleMusic();
     }
 
     // Corridor canvas is 1×1 when coming from title/arena (viewport hidden).
@@ -610,8 +612,9 @@ async function leaveCombat(next: () => void): Promise<void> {
 }
 
 function endCombat(result: CombatState): void {
-  // Boss bed is exclusive to isBoss fights; always stop so a wipe/flee/victory
-  // can't leave the tense bed looping under town/dungeon.
+  // Always stop both combat beds so every wipe/flee/victory/arena exit is
+  // safe regardless of which kind of encounter created this CombatState.
+  audio.stopBattleMusic();
   audio.stopBossCombat();
 
   // Apply post-combat party state back to GameState.

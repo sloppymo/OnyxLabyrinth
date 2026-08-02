@@ -22,10 +22,12 @@
 //   - Menu UI: cursor / confirm / cancel / save / buy-sell / cure samples.
 //
 // Usage:
-//   audio.startDungeon();    // begin maze theme (Torchlight Beneath Stone)
+//   audio.startDungeon();    // choose and loop a random dungeon theme
 //   audio.stopDungeon();     // stop maze theme
 //   audio.startTownMusic();  // loop town BGM (Haven at Dusk)
 //   audio.stopTownMusic();   // end town BGM
+//   audio.startBattleMusic(); // loop authored normal-encounter BGM
+//   audio.stopBattleMusic();  // stop and rewind normal-encounter BGM
 //   audio.startBossCombat(); // exclusive boss bed (procedural BGM stand-in)
 //   audio.stopBossCombat();  // end boss bed
 //   audio.startTitleMusic(); // loop title + prologue BGM (HTMLAudio)
@@ -218,13 +220,22 @@ function sfxAssetBase(folder: "ui" | "combat" | "dungeon"): string {
 const TITLE_MUSIC_FILE = "breath-of-the-undercroft.mp3";
 const TITLE_MUSIC_VOLUME = 0.42;
 
-/** Dungeon exploration (maze) looping BGM. */
-const DUNGEON_MUSIC_FILE = "torchlight-beneath-stone.mp3";
+/** Equal-random dungeon pool; title/town/combat themes stay mode-specific. */
+const DUNGEON_MUSIC_FILES = [
+  "torchlight-beneath-stone.mp3",
+  "understone-dungeon-loop.mp3",
+  "emberwake-strings-loop.mp3",
+  "emberwake-organ-loop.mp3",
+] as const;
 const DUNGEON_MUSIC_VOLUME = 0.4;
 
 /** Town hub looping BGM. */
 const TOWN_MUSIC_FILE = "haven-at-dusk.mp3";
 const TOWN_MUSIC_VOLUME = 0.4;
+
+/** Normal encounter BGM. Boss encounters keep their exclusive procedural bed. */
+const BATTLE_MUSIC_FILE = "battle-theme-v3.mp3";
+const BATTLE_MUSIC_VOLUME = 0.46;
 
 function musicAssetUrl(file: string): string {
   const root = import.meta.env.BASE_URL || "/";
@@ -275,6 +286,10 @@ class AudioEngine {
   /** Town hub BGM. */
   private townMusic: HTMLAudioElement | null = null;
   private townMusicWanted = false;
+
+  /** Authored BGM for non-boss combat. */
+  private battleMusic: HTMLAudioElement | null = null;
+  private battleMusicWanted = false;
 
   // Noise buffer cache (footsteps reuse it).
   private noiseBuffer: Maybe<AudioBuffer> = null;
@@ -355,6 +370,7 @@ class AudioEngine {
       this.tryPlayTitleMusic();
       this.tryPlayDungeonMusic();
       this.tryPlayTownMusic();
+      this.tryPlayBattleMusic();
       return;
     }
     const Ctor =
@@ -376,6 +392,7 @@ class AudioEngine {
     this.tryPlayTitleMusic();
     this.tryPlayDungeonMusic();
     this.tryPlayTownMusic();
+    this.tryPlayBattleMusic();
   }
 
   /**
@@ -721,20 +738,22 @@ class AudioEngine {
   }
 
   /**
-   * Start the dungeon / maze bed. Uses the authored Torchlight theme instead
-   * of the old procedural drone so exploration has a real score. Stops any
-   * leftover drone nodes. Safe before Web Audio is ready (HTMLAudio).
+   * Start an equal-random dungeon theme. One choice loops for the current
+   * dungeon visit; leaving and re-entering rolls again. Stops any leftover
+   * drone nodes. Safe before Web Audio is ready (HTMLAudio).
    */
   startDungeon(): void {
     if (this.dronePlaying) this.stopProceduralDrone();
-    this.dungeonMusicWanted = true;
-    if (!this.dungeonMusic) {
-      const el = new Audio(musicAssetUrl(DUNGEON_MUSIC_FILE));
+    if (!this.dungeonMusicWanted) {
+      const index = Math.floor(Math.random() * DUNGEON_MUSIC_FILES.length);
+      const file = DUNGEON_MUSIC_FILES[index] ?? DUNGEON_MUSIC_FILES[0];
+      const el = new Audio(musicAssetUrl(file));
       el.loop = true;
       el.preload = "auto";
       el.volume = DUNGEON_MUSIC_VOLUME;
       this.dungeonMusic = el;
     }
+    this.dungeonMusicWanted = true;
     this.tryPlayDungeonMusic();
   }
 
@@ -784,6 +803,35 @@ class AudioEngine {
     if (!this.townMusicWanted || !this.townMusic) return;
     if (!this.townMusic.paused && !this.townMusic.ended) return;
     void this.townMusic.play().catch(() => {
+      // Autoplay policy — retry from resume().
+    });
+  }
+
+  /** Start the authored normal-combat loop. Boss fights use startBossCombat. */
+  startBattleMusic(): void {
+    this.battleMusicWanted = true;
+    if (!this.battleMusic) {
+      const el = new Audio(musicAssetUrl(BATTLE_MUSIC_FILE));
+      el.loop = true;
+      el.preload = "auto";
+      el.volume = BATTLE_MUSIC_VOLUME;
+      this.battleMusic = el;
+    }
+    this.tryPlayBattleMusic();
+  }
+
+  /** Stop and rewind the normal-combat BGM. */
+  stopBattleMusic(): void {
+    this.battleMusicWanted = false;
+    if (!this.battleMusic) return;
+    this.battleMusic.pause();
+    this.battleMusic.currentTime = 0;
+  }
+
+  private tryPlayBattleMusic(): void {
+    if (!this.battleMusicWanted || !this.battleMusic) return;
+    if (!this.battleMusic.paused && !this.battleMusic.ended) return;
+    void this.battleMusic.play().catch(() => {
       // Autoplay policy — retry from resume().
     });
   }

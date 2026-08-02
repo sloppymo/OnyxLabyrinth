@@ -334,12 +334,13 @@ describe("AudioEngine title music", () => {
     expect(instances[0]!.currentTime).toBe(0);
   });
 
-  it("loops Torchlight Beneath Stone as the dungeon maze theme", async () => {
+  it("gives every dungeon theme an equal quarter of the random pool", async () => {
     const play = vi.fn(() => Promise.resolve());
     const pause = vi.fn();
     const instances: Array<{
       src: string;
       loop: boolean;
+      volume: number;
       currentTime: number;
       paused: boolean;
       ended: boolean;
@@ -364,16 +365,40 @@ describe("AudioEngine title music", () => {
       }
     );
 
-    const { audio } = await import("./audio");
-    audio.startDungeon();
-    expect(instances).toHaveLength(1);
-    expect(instances[0]!.src).toContain("torchlight-beneath-stone.mp3");
-    expect(instances[0]!.loop).toBe(true);
-    expect(play).toHaveBeenCalled();
+    const random = vi.spyOn(Math, "random")
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0.25)
+      .mockReturnValueOnce(0.5)
+      .mockReturnValueOnce(0.999);
 
-    audio.stopDungeon();
-    expect(pause).toHaveBeenCalled();
-    expect(instances[0]!.currentTime).toBe(0);
+    const { audio } = await import("./audio");
+    const expected = [
+      "torchlight-beneath-stone.mp3",
+      "understone-dungeon-loop.mp3",
+      "emberwake-strings-loop.mp3",
+      "emberwake-organ-loop.mp3",
+    ];
+
+    for (let index = 0; index < expected.length; index++) {
+      audio.startDungeon();
+      expect(instances).toHaveLength(index + 1);
+      expect(instances[index]!.src).toContain(expected[index]);
+      expect(instances[index]!.loop).toBe(true);
+      expect(instances[index]!.volume).toBe(0.4);
+
+      if (index === 0) {
+        // Repeated calls in one visit do not restart or reroll the bed.
+        audio.startDungeon();
+        expect(instances).toHaveLength(1);
+      }
+
+      audio.stopDungeon();
+      expect(instances[index]!.currentTime).toBe(0);
+    }
+
+    expect(random).toHaveBeenCalledTimes(4);
+    expect(play).toHaveBeenCalled();
+    expect(pause).toHaveBeenCalledTimes(4);
   });
 
   it("loops Haven at Dusk as the town theme", async () => {
@@ -415,6 +440,53 @@ describe("AudioEngine title music", () => {
 
     audio.stopTownMusic();
     expect(pause).toHaveBeenCalled();
+    expect(instances[0]!.currentTime).toBe(0);
+  });
+
+  it("loops and rewinds the authored normal battle theme", async () => {
+    const play = vi.fn(() => Promise.resolve());
+    const pause = vi.fn();
+    const instances: Array<{
+      src: string;
+      loop: boolean;
+      volume: number;
+      currentTime: number;
+      paused: boolean;
+      ended: boolean;
+      play: typeof play;
+      pause: typeof pause;
+    }> = [];
+
+    vi.stubGlobal(
+      "Audio",
+      class {
+        loop = false;
+        volume = 1;
+        currentTime = 0;
+        paused = true;
+        ended = false;
+        preload = "";
+        play = play;
+        pause = pause;
+        constructor(public src: string) {
+          instances.push(this);
+        }
+      }
+    );
+
+    const { audio } = await import("./audio");
+    audio.startBattleMusic();
+    expect(instances).toHaveLength(1);
+    expect(instances[0]!.src).toContain("battle-theme-v3.mp3");
+    expect(instances[0]!.loop).toBe(true);
+    expect(instances[0]!.volume).toBe(0.46);
+    expect(play).toHaveBeenCalledTimes(1);
+
+    audio.startBattleMusic();
+    expect(instances).toHaveLength(1);
+
+    audio.stopBattleMusic();
+    expect(pause).toHaveBeenCalledTimes(1);
     expect(instances[0]!.currentTime).toBe(0);
   });
 });

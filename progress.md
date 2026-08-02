@@ -219,3 +219,46 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   after installing its matching Playwright dependency beside the skill; its
   boot/prologue capture is under `/tmp/onyx-floor1-web-client/`. No commit or
   push was created, and unrelated shared-worktree edits remain untouched.
+
+## 2026-08-01 — Battle and randomized dungeon music
+
+- Current prompt: use `~/Downloads/OnyxLabyrinth_Battle_Theme_v3.mp3` as the
+  normal battle theme, and use isolated Emberwake MIDI tracks 5 and 6 as the
+  two randomized dungeon loops. Keep the existing procedural boss bed for boss
+  encounters.
+- Loaded the `develop-web-game` skill. Next: inspect source media and live audio
+  transitions, render browser-compatible dungeon assets, then add focused audio
+  tests plus a production-preview mode-transition smoke.
+- Added three browser-ready assets: the supplied Battle Theme v3 unchanged,
+  plus 57.1-second stereo MP3 renders of Emberwake track 5 (Strings) and track
+  6 (Percussive Organ). The two dungeon renders are loudness-normalized ambient
+  beds; source validation reported no lost/cut MIDI notes.
+- Audio routing now rolls one Emberwake stem per dungeon visit, re-rolls after
+  leaving/re-entering, starts Battle Theme v3 only for non-boss combat, and
+  preserves the exclusive procedural boss bed. Focused audio tests pass 11/11
+  and app TypeScript plus `git diff --check` pass. Next: production build and
+  real-browser media/mode transition verification.
+- Final validation passed: `npm run build`, 79 Vitest files / 1,701 tests, and
+  the required unchanged web-game client. The dedicated production-preview
+  smoke exercised both random Emberwake files, normal combat, flee/return, and
+  boss combat; every MP3 reached HTTP 206 and browser readyState 4, with no
+  browser errors. Screenshots were visually inspected and the report is under
+  `/tmp/onyx-music-routing-final/`.
+- `torchlight-beneath-stone.mp3` remains as a documented unused reserve rather
+  than being destructively removed. The unrelated user edit to
+  `public/assets/enemies/headmasters-echo/idle.png` remains untouched. This
+  music slice is local and uncommitted/unpushed pending user direction.
+- Follow-up prompt: completely randomize dungeon playback across every dungeon
+  theme so all of them are showcased. The pool will be equal-random across
+  Torchlight Beneath Stone, Understone, Emberwake Strings, and Emberwake Organ;
+  title, town, normal-battle, and boss music remain mode-specific.
+- Understone was copied byte-for-byte from Downloads and Torchlight was restored
+  to active rotation. Deterministic tests pin the four probability quarters;
+  each dungeon entry/return independently selects one theme and loops it until
+  the next mode transition.
+- Final gates remain green: `npm run build`, 79 Vitest files / 1,701 tests, the
+  required unchanged web-game client, and the production-preview routing smoke.
+  The browser exercised all four dungeon themes plus normal and boss combat;
+  media responses succeeded and browser errors were empty. Evidence is under
+  `/tmp/onyx-music-routing-all/`. The music slice remains local/uncommitted and
+  the unrelated Headmaster sprite edit remains untouched.
