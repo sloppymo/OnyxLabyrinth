@@ -307,6 +307,15 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Updated audio test to mock HTMLAudioElement instead of checking oscillator behavior.
 - Build passes and all 14 audio tests pass. Committed and pushed.
 
+## 2026-08-02 — Character creation music
+
+- Current prompt: add music to character creation screen using one of the dungeon themes.
+- Added party creation BGM using torchlight-beneath-stone.mp3 (from dungeon theme pool).
+- Added startPartyCreationMusic/stopPartyCreationMusic methods to audio engine.
+- Wired music start/stop to openPartyCreation controller lifecycle.
+- Added party creation music test coverage.
+- Build passes and all 15 audio tests pass. Committed and pushed.
+
 ## 2026-08-01 — Quick-map controller binding
 
 - Current prompt: bind the in-dungeon quick-map overlay to a controller button

@@ -26,6 +26,8 @@
 //   audio.stopDungeon();     // stop maze theme
 //   audio.startTownMusic();  // loop town BGM (Haven at Dusk)
 //   audio.stopTownMusic();   // end town BGM
+//   audio.startPartyCreationMusic(); // loop character creation BGM
+//   audio.stopPartyCreationMusic();  // end character creation BGM
 //   audio.startBattleMusic(); // loop authored normal-encounter BGM
 //   audio.stopBattleMusic();  // stop and rewind normal-encounter BGM
 //   audio.startBossCombat(); // loop boss encounter BGM
@@ -247,6 +249,10 @@ const DUNGEON_MUSIC_VOLUME = 0.4;
 const TOWN_MUSIC_FILE = "haven-at-dusk.mp3";
 const TOWN_MUSIC_VOLUME = 0.4;
 
+/** Character creation looping BGM. */
+const PARTY_CREATION_MUSIC_FILE = "torchlight-beneath-stone.mp3";
+const PARTY_CREATION_MUSIC_VOLUME = 0.4;
+
 /** Normal encounter BGM. */
 const BATTLE_MUSIC_FILE = "battle-theme-v3.mp3";
 const BATTLE_MUSIC_VOLUME = 0.46;
@@ -295,6 +301,10 @@ class AudioEngine {
   /** Town hub BGM. */
   private townMusic: HTMLAudioElement | null = null;
   private townMusicWanted = false;
+
+  /** Character creation BGM. */
+  private partyCreationMusic: HTMLAudioElement | null = null;
+  private partyCreationMusicWanted = false;
 
   /** Authored BGM for non-boss combat. */
   private battleMusic: HTMLAudioElement | null = null;
@@ -371,6 +381,7 @@ class AudioEngine {
       this.tryPlayTitleMusic();
       this.tryPlayDungeonMusic();
       this.tryPlayTownMusic();
+      this.tryPlayPartyCreationMusic();
       this.tryPlayBattleMusic();
       this.tryPlayBossMusic();
       return;
@@ -814,6 +825,35 @@ class AudioEngine {
     if (!this.townMusicWanted || !this.townMusic) return;
     if (!this.townMusic.paused && !this.townMusic.ended) return;
     void this.townMusic.play().catch(() => {
+      // Autoplay policy — retry from resume().
+    });
+  }
+
+  /** Start the character creation BGM. */
+  startPartyCreationMusic(): void {
+    this.partyCreationMusicWanted = true;
+    if (!this.partyCreationMusic) {
+      const el = new Audio(musicAssetUrl(PARTY_CREATION_MUSIC_FILE));
+      el.loop = true;
+      el.preload = "auto";
+      el.volume = PARTY_CREATION_MUSIC_VOLUME;
+      this.partyCreationMusic = el;
+    }
+    this.tryPlayPartyCreationMusic();
+  }
+
+  /** Stop and rewind the character creation BGM. */
+  stopPartyCreationMusic(): void {
+    this.partyCreationMusicWanted = false;
+    if (!this.partyCreationMusic) return;
+    this.partyCreationMusic.pause();
+    this.partyCreationMusic.currentTime = 0;
+  }
+
+  private tryPlayPartyCreationMusic(): void {
+    if (!this.partyCreationMusicWanted || !this.partyCreationMusic) return;
+    if (!this.partyCreationMusic.paused && !this.partyCreationMusic.ended) return;
+    void this.partyCreationMusic.play().catch(() => {
       // Autoplay policy — retry from resume().
     });
   }

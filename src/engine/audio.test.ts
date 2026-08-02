@@ -641,4 +641,41 @@ describe("AudioEngine title music", () => {
     expect(pause).toHaveBeenCalledTimes(1);
     expect(instances[0]!.currentTime).toBe(0);
   });
+
+  it("loops and rewinds the character creation theme", async () => {
+    const instances: HTMLAudioElement[] = [];
+    let play = vi.fn().mockResolvedValue(undefined);
+    let pause = vi.fn();
+    vi.stubGlobal(
+      "Audio",
+      class {
+        loop = false;
+        volume = 1;
+        currentTime = 0;
+        paused = true;
+        ended = false;
+        preload = "";
+        play = play;
+        pause = pause;
+        constructor(public src: string) {
+          instances.push(this);
+        }
+      }
+    );
+
+    const { audio } = await import("./audio");
+    audio.startPartyCreationMusic();
+    expect(instances).toHaveLength(1);
+    expect(instances[0]!.src).toContain("torchlight-beneath-stone.mp3");
+    expect(instances[0]!.loop).toBe(true);
+    expect(instances[0]!.volume).toBe(0.4);
+    expect(play).toHaveBeenCalledTimes(1);
+
+    audio.startPartyCreationMusic();
+    expect(instances).toHaveLength(1);
+
+    audio.stopPartyCreationMusic();
+    expect(pause).toHaveBeenCalledTimes(1);
+    expect(instances[0]!.currentTime).toBe(0);
+  });
 });

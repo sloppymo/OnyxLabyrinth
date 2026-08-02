@@ -312,6 +312,7 @@ function openPartyCreation(onDone: () => void): void {
   setMode(state, "party_creation");
   showMode("party_creation", mapVisible);
   setMessage("");
+  audio.startPartyCreationMusic();
   partyCreationController = new PartyCreationController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     onConfirm: (party: Character[]) => {
@@ -320,10 +321,12 @@ function openPartyCreation(onDone: () => void): void {
       state.equipment = Object.fromEntries(
         party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
       );
+      audio.stopPartyCreationMusic();
       onDone();
     },
     onCancel: () => {
       partyCreationController = null;
+      audio.stopPartyCreationMusic();
       onDone();
     },
   });
