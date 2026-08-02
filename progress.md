@@ -300,3 +300,18 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   dialogue/knowledge, full automap, save/load, combat return, real F1→F2 stairs,
   and a 390×700 viewport. No browser errors or failed assets were reported;
   evidence is under `/tmp/onyx-map-overlay-final.CsVCiX/`.
+
+## 2026-08-01 — Pages release and optional party-strip cleanup
+
+- Promoted the three release commits through `1b4f4e9` to `main`; the Pages
+  workflow and live hashed bundle succeeded. The first live corridor smoke
+  exposed eleven 404s from preloading optional party animation filenames that
+  do not ship, even though their documented `attack` fallback worked.
+- Party sprite preload now requests only the optional strips present on disk:
+  Mage/Priest `cast` and Thief `attack_ranged`. The existing fallback behavior
+  is unchanged and a focused test pins the request manifest.
+- Final local gates pass: production build, 81 Vitest files / 1,730 tests, and
+  the full Floor 1 renderer checklist with browser errors/readiness failures
+  empty. Straight corridor, side passage, depth-0 wall, darkness, map, and
+  combat-return screenshots were visually inspected under
+  `/tmp/onyx-party-asset-clean-local/`.

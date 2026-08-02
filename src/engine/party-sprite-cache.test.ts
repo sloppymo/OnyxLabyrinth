@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
  * frame-count derivation (width / 100) and the missing-cast fallback.
  */
 let sizeForUrl: (url: string) => { w: number; h: number } | null;
+let requestedUrls: string[];
 
 class FakeImage {
   naturalWidth = 0;
@@ -15,6 +16,7 @@ class FakeImage {
 
   set src(value: string) {
     this._src = value;
+    requestedUrls.push(value);
     queueMicrotask(() => {
       const size = sizeForUrl(value);
       if (!size) {
@@ -39,7 +41,8 @@ describe("party-sprite-cache", () => {
     originalImage = globalThis.Image;
     // @ts-expect-error test double
     globalThis.Image = FakeImage as unknown as typeof Image;
-    // Default: every state exists; attack is 7 frames, others 6.
+    requestedUrls = [];
+    // Default: every requested state exists; attack is 7 frames, others 6.
     sizeForUrl = (url) => {
       if (url.includes("attack")) return { w: 700, h: 100 };
       return { w: 600, h: 100 };
@@ -116,6 +119,23 @@ describe("party-sprite-cache", () => {
     expect(melee!.strip.frameCount).toBe(12);
     expect(ranged!.strip.frameCount).toBe(9);
     expect(ranged!.strip.url).toContain("attack_ranged");
+  });
+
+  it("requests only optional strips that ship for each class", async () => {
+    const { loadPartySprites } = await import("./party-sprite-cache");
+    await loadPartySprites();
+
+    const optionalUrls = requestedUrls.filter(
+      (url) => url.includes("/cast.png") || url.includes("/attack_ranged.png")
+    );
+    expect(optionalUrls).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("/mage/cast.png"),
+        expect.stringContaining("/priest/cast.png"),
+        expect.stringContaining("/thief/attack_ranged.png"),
+      ])
+    );
+    expect(optionalUrls).toHaveLength(3);
   });
 
   it("returns null for a state whose image failed to load", async () => {

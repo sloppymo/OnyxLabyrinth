@@ -61,7 +61,24 @@ export const PARTY_SPRITE_STATE_CONFIG: Record<PartySpriteState, { fps: number; 
   death: { fps: 8, loop: false },
 };
 
-const ALL_STATES = Object.keys(PARTY_SPRITE_STATE_CONFIG) as PartySpriteState[];
+const REQUIRED_STATES = [
+  "idle",
+  "walk",
+  "attack",
+  "hurt",
+  "death",
+] as const satisfies readonly PartySpriteState[];
+
+/** Optional strips that actually ship; unlisted states fall back at lookup. */
+const OPTIONAL_STATES_BY_DIR: Readonly<Record<string, readonly PartySpriteState[]>> = {
+  mage: ["cast"],
+  priest: ["cast"],
+  thief: ["attack_ranged"],
+};
+
+function statesForDir(dir: string): readonly PartySpriteState[] {
+  return [...REQUIRED_STATES, ...(OPTIONAL_STATES_BY_DIR[dir] ?? [])];
+}
 
 export interface PartySpriteBundle {
   /** Loaded strip images by state (null = failed or absent, e.g. no cast). */
@@ -104,7 +121,7 @@ function stripFromImage(
 async function loadBundle(dir: string): Promise<PartySpriteBundle> {
   const bundle: PartySpriteBundle = { images: {}, strips: {} };
   await Promise.all(
-    ALL_STATES.map(async (state) => {
+    statesForDir(dir).map(async (state) => {
       const url = `${ASSET_BASE}assets/party/${dir}/${state}.png`;
       const img = await loadImage(url);
       bundle.images[state] = img;
