@@ -239,6 +239,46 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   and app TypeScript plus `git diff --check` pass. Next: production build and
   real-browser media/mode transition verification.
 
+## 2026-08-02 — Combat and title-menu SFX audibility
+
+- Current prompt: raise battle-scene sound effects and make title-menu switching
+  sounds audible over the title music.
+- Loaded the `develop-web-game` skill and read the current product reading list.
+- Worktree is clean on `agent/floor1-regional-tilesets`; keep the change scoped
+  to audio presentation, add focused regression coverage, then build/test and
+  verify title plus combat through the production preview and prescribed client.
+- Loudness audit found the title cursor at roughly -16 dB peak after routing
+  against title music peaking near -7.7 dB after its element volume; combat
+  cues had a similar gap against Battle Theme v3. Added scoped 2x UI and 1.8x
+  combat sample-family lifts, preserving per-cue ratios/layer ducking and the
+  existing 0.8 master. The combat lift keeps the loudest layered presentation
+  just under unity at the master input.
+- Added focused tests for the title cursor playback gain and a ducked combat
+  layer. Next: run focused tests/build, then production-preview verification.
+- Focused audio/combat-audio suites pass 22/22. Full verification passes: all
+  81 test files / 1,732 tests, both TypeScript checks, and the Vite production
+  build. Next: drive title navigation and an Arena fight in production preview,
+  confirm decoded samples/cue records, inspect screenshots, and review errors.
+- The prescribed web-game client passed title navigation with no console errors;
+  its screenshot was visually inspected. The production music-routing smoke
+  also passed all 16 checks for normal/boss combat, transitions, media responses,
+  and browser errors; its normal-combat screenshot was visually inspected.
+- Browser-path review identified that the first title input starts asynchronous
+  WAV decoding and could drop that first cursor/confirm cue. Added a per-id
+  deferred/deduped UI play so the initial cue fires immediately after decode.
+  Focused tests now pass 23/23, including the decode-in-flight case. Next: final
+  full gates and updated production-preview cue/gain audit.
+- Final gates pass after the deferred-cue change: all 81 test files / 1,733
+  tests, both TypeScript checks, Vite production build, and `git diff --check`.
+- Final prescribed-client run selected Arena on the title screen, reported the
+  expected title route/state, and had no console errors; screenshot visually
+  inspected. A separate production-browser gain audit confirmed the first
+  cursor request was retained through decode and then played from a real buffer
+  at 0.64 gain, while `combat:encounterStart` played from a real buffer at 0.72
+  gain. All audio/visual readiness fields settled, failed assets and browser
+  errors were empty, and the combat screenshot was visually inspected.
+- No remaining TODOs for this slice. No commit or push created.
+
 ## 2026-08-01 — Quick-map controller binding
 
 - Current prompt: bind the in-dungeon quick-map overlay to a controller button

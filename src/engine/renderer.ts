@@ -125,7 +125,7 @@ const RENDER_CONFIG = {
   // so flat-wall strips are scaled down to a warm wash; strips at a depth
   // discontinuity (corners, doorways, passage edges) keep full strength so
   // the signature glow lines still trace the geometry.
-  glowWashAlphaScale: 0.22,
+  glowWashAlphaScale: 0.02,
   // Minimum perpWallDist jump between adjacent strips that counts as a
   // depth discontinuity for full-strength glow lines.
   glowEdgeDepthDelta: 0.12,

@@ -282,6 +282,147 @@ describe("AudioEngine sample load status (?debug=1 readiness probe)", () => {
   });
 });
 
+describe("AudioEngine SFX mix levels", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+  });
+
+  it("lifts title-menu cursor samples above their legacy gain", async () => {
+    const gains: FakeNode[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
+    );
+    const ctx = {
+      state: "running",
+      currentTime: 0,
+      sampleRate: 44100,
+      destination: fakeNode(),
+      createGain: () => {
+        const node = fakeNode();
+        gains.push(node);
+        return node;
+      },
+      createBufferSource: () => fakeNode(),
+      createOscillator: () => fakeNode(),
+      createBiquadFilter: () => fakeNode(),
+      createBuffer: () => ({ getChannelData: () => new Float32Array(1) }),
+      decodeAudioData: async () => ({ decoded: true }),
+    };
+    Object.defineProperty(window, "AudioContext", {
+      configurable: true,
+      value: class {
+        constructor() {
+          return ctx;
+        }
+      },
+    });
+    vi.spyOn(performance, "now").mockReturnValue(100);
+
+    const { audio } = await import("./audio");
+    audio.resume();
+    await audio.loadUiSounds();
+    audio.uiCursor();
+
+    expect(gains[0]!.gain.value).toBe(0.8);
+    expect(gains.at(-1)!.gain.value).toBeCloseTo(0.64);
+  });
+
+  it("plays the first title-menu cursor after initial sample decoding", async () => {
+    const sources: FakeNode[] = [];
+    let releaseDecode!: () => void;
+    const decodeGate = new Promise<void>((resolve) => {
+      releaseDecode = resolve;
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
+    );
+    const ctx = {
+      state: "running",
+      currentTime: 0,
+      sampleRate: 44100,
+      destination: fakeNode(),
+      createGain: () => fakeNode(),
+      createBufferSource: () => {
+        const node = fakeNode();
+        sources.push(node);
+        return node;
+      },
+      createOscillator: () => fakeNode(),
+      createBiquadFilter: () => fakeNode(),
+      createBuffer: () => ({ getChannelData: () => new Float32Array(1) }),
+      decodeAudioData: async () => {
+        await decodeGate;
+        return { decoded: true };
+      },
+    };
+    Object.defineProperty(window, "AudioContext", {
+      configurable: true,
+      value: class {
+        constructor() {
+          return ctx;
+        }
+      },
+    });
+    vi.spyOn(performance, "now").mockReturnValue(100);
+
+    const { audio } = await import("./audio");
+    audio.resume();
+    audio.uiCursor();
+    audio.uiCursor();
+    expect(sources).toHaveLength(0);
+
+    releaseDecode();
+    await audio.loadUiSounds();
+    await Promise.resolve();
+
+    expect(sources).toHaveLength(1);
+    expect(sources[0]!.start).toHaveBeenCalledTimes(1);
+  });
+
+  it("lifts combat samples while retaining per-layer ducking", async () => {
+    const gains: FakeNode[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
+    );
+    const ctx = {
+      state: "running",
+      currentTime: 0,
+      sampleRate: 44100,
+      destination: fakeNode(),
+      createGain: () => {
+        const node = fakeNode();
+        gains.push(node);
+        return node;
+      },
+      createBufferSource: () => fakeNode(),
+      createOscillator: () => fakeNode(),
+      createBiquadFilter: () => fakeNode(),
+      createBuffer: () => ({ getChannelData: () => new Float32Array(1) }),
+      decodeAudioData: async () => ({ decoded: true }),
+    };
+    Object.defineProperty(window, "AudioContext", {
+      configurable: true,
+      value: class {
+        constructor() {
+          return ctx;
+        }
+      },
+    });
+
+    const { audio } = await import("./audio");
+    audio.resume();
+    await audio.loadCombatSounds();
+    audio.playCombatSfx("attackHit", { gainMul: 0.5 });
+
+    expect(gains[0]!.gain.value).toBe(0.8);
+    expect(gains.at(-1)!.gain.value).toBeCloseTo(0.36);
+  });
+});
+
 describe("AudioEngine title music", () => {
   beforeEach(() => {
     vi.resetModules();

@@ -68,6 +68,13 @@ const UI_SFX_GAIN: Record<UiSfxId, number> = {
   cureMenu: 0.36,
 };
 
+/**
+ * UI samples were authored much quieter than the streamed music beds. Lift the
+ * family as a group so title/menu navigation remains distinct over BGM while
+ * preserving the relative balance between cursor, confirm, and longer chimes.
+ */
+const UI_SFX_BUS_GAIN = 2;
+
 /** Swappable non-combat world/NPC cues. */
 export type DungeonSfxId = "chestOpen" | "npcSteal";
 
@@ -196,6 +203,13 @@ const COMBAT_SFX_GAIN: Record<CombatSfxId, number> = {
   itemUse: 0.4,
 };
 
+/**
+ * Combat WAVs need more transient presence than their original sample gains
+ * provide against the authored battle track. 1.8x leaves headroom for the
+ * loudest three-layer combat presentation after the 0.8 master gain.
+ */
+const COMBAT_SFX_BUS_GAIN = 1.8;
+
 /** Lazy-load status for a sample family — only becomes "loading" once `resume()` fires.
  *  Settles to `"done"` when every sample in the family decoded, or `"failed"` if any
  *  404'd / failed to decode (so readiness never claims success while buffers are empty). */
@@ -298,6 +312,8 @@ class AudioEngine {
   private uiBuffers: Partial<Record<UiSfxId, AudioBuffer>> = {};
   private uiLoadPromise: Promise<void> | null = null;
   private uiLoadStatus: SampleLoadState = "not-started";
+  /** One deferred play per id while first-gesture sample decoding settles. */
+  private pendingUiSfx = new Set<UiSfxId>();
   /** Throttle rapid cursor moves (gamepad held / key-repeat). */
   private lastCursorAt = 0;
   private lastTextTickAt = 0;
@@ -584,7 +600,8 @@ class AudioEngine {
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
     const gain = this.ctx.createGain();
-    gain.gain.value = COMBAT_SFX_GAIN[id] * (opts?.gainMul ?? 1);
+    gain.gain.value =
+      COMBAT_SFX_GAIN[id] * COMBAT_SFX_BUS_GAIN * (opts?.gainMul ?? 1);
     src.connect(gain);
     gain.connect(this.masterGain);
     src.start();
@@ -705,16 +722,24 @@ class AudioEngine {
     if (!buf) {
       // Samples may still be loading — kick a load. If the family already
       // settled without this buffer, fall back so menus aren't silent.
-      void this.loadUiSounds();
       if (this.uiLoadStatus === "done" || this.uiLoadStatus === "failed") {
         this.playProceduralUiClick(id === "cancel" ? 220 : 440);
+      } else if (!this.pendingUiSfx.has(id)) {
+        // The first title-menu key is also the gesture that creates the audio
+        // context and starts decoding. Preserve that cue instead of dropping
+        // it, but dedupe held/repeated input while the load is in flight.
+        this.pendingUiSfx.add(id);
+        void this.loadUiSounds().then(() => {
+          this.pendingUiSfx.delete(id);
+          this.playUi(id);
+        });
       }
       return;
     }
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
     const gain = this.ctx.createGain();
-    gain.gain.value = UI_SFX_GAIN[id];
+    gain.gain.value = UI_SFX_GAIN[id] * UI_SFX_BUS_GAIN;
     src.connect(gain);
     gain.connect(this.masterGain);
     src.start();
