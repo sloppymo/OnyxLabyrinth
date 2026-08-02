@@ -236,6 +236,15 @@ After wiring a theme:
 
 Commands: `npm run build`, then `npx vite preview --port 5176 --base /OnyxLabyrinth/`.
 
+For the maintained all-campaign workflow, keep that production preview running
+and run `npm run visual:floors` in a second terminal. It runtime-derives valid
+poses for floors 1–5 (including every active Floor 1 regional theme), captures
+the live projected renderer, exercises full-map and combat/flee return, and
+writes a gitignored `index.html` plus `report.json` under
+`playtest-screenshots/floor-visual-audit/`. This is intentionally distinct from
+`npm run tileset:gallery`, which checks source texture repeats and A/B seams
+without renderer fog, projection, lighting, vignette, or scanlines.
+
 ---
 
 ## 5. Human artist workflow

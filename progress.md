@@ -239,6 +239,26 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   and app TypeScript plus `git diff --check` pass. Next: production build and
   real-browser media/mode transition verification.
 
+## 2026-08-01 — Quick-map controller binding
+
+- Current prompt: bind the in-dungeon quick-map overlay to a controller button
+  and make the overlay slightly transparent.
+- Loaded the `develop-web-game` skill. Selected dungeon `Y` because Start and
+  Select already own the action ring and save menu; `Y` was free in exploration.
+- Added the `Y` toggle route, exposed `Y / V` in the pointer-visible map button,
+  and set the complete overlay surface to 0.88 opacity. Next: focused tests,
+  build, mocked-gamepad production-preview verification, and screenshot review.
+- Focused controller/input/map/shell regression run passed 64/64; `git diff
+  --check` is clean.
+- `npm run build` passed and the full Vitest suite passed 81 files / 1,730
+  tests. Production-preview verification used a mocked standard gamepad and
+  confirmed physical button 3 (`Y`) opens, closes, and reopens the quick map;
+  movement/turning, traps, menus, full map, combat return, stairs, and narrow
+  layout all passed. Computed opacity was 0.88, readiness/errors were empty,
+  and desktop/narrow screenshots were visually inspected. Evidence is under
+  `/tmp/onyx-map-controller-opacity-rerun/`; the required web-game client also
+  ran cleanly under `/tmp/onyx-map-controller-web-client/`. No commit or push.
+
 ## 2026-08-01 — Nonmodal dungeon map overlay
 
 - Current prompt: implement and production-verify a centered, translucent,
@@ -315,3 +335,112 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   empty. Straight corridor, side passage, depth-0 wall, darkness, map, and
   combat-return screenshots were visually inspected under
   `/tmp/onyx-party-asset-clean-local/`.
+
+## 2026-08-01 — Floor 2 Cursed Library tileset redo
+
+- Current prompt: generate the coordinated four-texture Floor 2 Cursed Library
+  set from the supplied comprehensive sprite/tileset brief, then clean and
+  verify it in the shipping corridor renderer.
+- Loaded the `imagegen` and `develop-web-game` skills. The current f2 set was
+  audited before replacement; the wall reads as a library, but the floor and
+  ceiling drift into mixed masonry instead of the requested wood-first story.
+- Four built-in image-generation sources are complete: walnut bookshelf wall,
+  horizontal plank Floor A, its darker worn Floor B twin, and a timber-beam /
+  aged-plaster ceiling. The wall source established the shared palette for the
+  other three assets.
+- Added `scripts/process-generated-tileset.py` for deterministic 128px logical
+  reduction, edge crossfading, exact wrap pixels, palette quantization, RGB
+  normalization, luminance targeting, and 2x nearest-neighbor ship output.
+- Persisted the four raw generations under local-only
+  `assets/tilesets/f2-redo/sources/`. Candidate metrics: wall 32 colors / mean
+  L65.22, Floor A 20 / L59.38, Floor B 20 / L52.48, ceiling 18 / L51.30.
+  Every tile is RGB, 256px, exact-wrapped on both axes, and composed of true
+  2x nearest-neighbor blocks. Contact, wall-repeat, A/B checker, and ceiling-
+  repeat previews were visually inspected with no hard seam.
+- Installed the four candidates into the shipping `src/assets/f2_*_256.png`
+  slots. `npm run build` passes and focused renderer/floor suites pass 166/166.
+- Ran the required generic web-game client after installing its matching
+  Playwright Chromium runtime; its prologue screenshot/state were inspected.
+  The existing corridor baseline client then captured all actual Floor 2
+  poses: straight, side passage, adjacent front wall, door, darkness, treasure,
+  NPC, and stair. Asset readiness failures were empty; the five primary views
+  were visually inspected and show readable shelves, wood floors, timber /
+  plaster ceilings, no black walls, no missing ceiling, and no texture stretch.
+- A dedicated production-preview lifecycle probe on actual Floor 2 passed full
+  automap open/close and combat/flee return. Canvas mean luminance stayed
+  28.93 → 28.62 after map → 29.21 after combat; readiness failures and browser
+  errors were empty. Evidence is under `/tmp/onyx-f2-tileset-browser/` and the
+  static source/candidate previews remain under `assets/tilesets/f2-redo/`.
+- Final gates: `npm run build`, all 81 Vitest files / 1,730 tests, and
+  `git diff --check` pass. No commit or push was created; unrelated maze-prop
+  and VFX worktree changes remain untouched.
+- Next: the tileset redo is complete; a Floor 2 map/content redesign and new
+  library enemy identities remain separate future slices.
+
+## 2026-08-01 — Unified campaign-floor visual audit
+
+- Current prompt: build one production-preview visual audit for all five live
+  campaign floors, with runtime-derived/validated poses, objective rendering
+  guardrails, lifecycle coverage, machine-readable output, and a human HTML
+  gallery. Do not change floor content, renderer math, gameplay, or art.
+- Loaded the `develop-web-game` skill and read the required corridor art/style
+  guidance plus the existing discovery, baseline, transition, regional, shared
+  library, and static-gallery scripts.
+- Design decision: derive every pose from `__onyxDebug.FLOORS` in the running
+  production bundle. The July 30 `corridor-poses.json` will not be an input.
+  Every capture will re-read and verify floor/name/dimensions/position/facing,
+  tile, route, warnings, and the current cell's resolved theme/zone before it
+  is accepted. Floor 1's five runtime themes are required coverage.
+- Next: implement the focused runner and gallery, then add the npm/docs entry
+  and run the full build/test/browser/static-gallery verification loop.
+- Added `scripts/playtests/floor-visual-audit.mjs`, `npm run visual:floors`, and
+  scoped README/style-guide instructions. The runner creates per-floor PNG
+  directories plus `report.json` and `index.html`, with runtime pose metadata,
+  canvas probes, readiness/errors, and Floor 2 map/combat lifecycle evidence.
+- A Floor 1-only production smoke passed objective checks. Visual inspection
+  caught the first regional f2 pose looking immediately across into f1 despite
+  standing on an f2 cell; regional selection now requires a sustained
+  same-theme sightline (or a same-theme close wall), and reports forward theme
+  depth so that misleading label cannot recur.
+- The first all-floor calibration run captured floors 1–5 and exercised the
+  lifecycle successfully. Its only failures were intended F3/F5 darkness at
+  mean luminance 5.85/5.97 against a cutoff of 6, while non-background remained
+  65.3%/67.4%. Lowered the black-frame floor to 4; the independent 8%
+  non-background gate still rejects a flat background. Also biased the A/B
+  variation pose toward unobstructed enclosed views after human inspection.
+- Next: rerun the full audit cleanly, inspect its final gallery/screenshots,
+  then finish the required build/test/diff/static-gallery gates.
+- Final production-preview run:
+  `ONYX_URL=http://127.0.0.1:5177/OnyxLabyrinth/?debug=1 ONYX_OUT=/tmp/onyx-floor-visual-audit-2026-08-01 npm run visual:floors`.
+  It passed with 44 corridor captures and five lifecycle captures, all campaign
+  floor ids 1-5 present, zero unavailable poses, zero failed capture/check
+  results, and a consistent 744x651 corridor canvas. Final readiness failures,
+  browser console/page/request failures, HTTP error responses, and debug error
+  events were all empty. The report confirms `runtime-derived` poses and
+  `savedPoseFileUsed: false`.
+- Floor 1 produced 12 corridor captures: the seven common categories plus
+  distinct f1/f2/f5/f4/f3 regional views. Floors 2-5 each produced eight: the
+  seven common categories plus their runtime base theme. Floor 2's lifecycle
+  used a real four-enemy non-boss encounter; the corridor survived both full
+  automap close and flee/return at the same floor, position, facing, and f2
+  theme (post-combat luminance/non-background ratios 0.986/0.992).
+- Opened and inspected the latest straight, side-passage, depth-0 wall, door,
+  A/B floor, darkness, landmark, Floor 1 regional, map-open, map-close, combat,
+  and combat-return screenshots. All five floors retain wall/floor/ceiling
+  texture, side openings do not become flat black cut-outs, close walls are
+  textured, and no center seam or projection stretch was evident. Darkness is
+  intentionally very dim but retains geometry; Floor 2 remains readable.
+  Stair arrows are visually subtle against several current wall textures, so
+  landmark identity is best read with the report metadata; this was recorded
+  rather than changing renderer/content in this infrastructure-only task.
+- `npm run tileset:gallery` reported 25/25 textures present. Its Floor 2
+  singles, 3x3 repeat/seam panels, and floor A/B checkerboard were opened and
+  inspected with no missing tile or visible wrap seam. This static source check
+  remains distinct from the production corridor audit.
+- Final gates pass: `npm run build`; 81 Vitest files / 1,730 tests; and
+  `git diff --check`. Generated evidence is untracked under
+  `/tmp/onyx-floor-visual-audit-2026-08-01/` (`report.json`, `index.html`, and
+  49 PNGs). Exact/golden PNG comparison remains deliberately out of scope
+  because flicker, scanlines, fog, and camera timing are live. No commit or push
+  was created, and the pre-existing Floor 2, maze-prop, VFX, and other shared
+  dirty-worktree changes remain untouched.
