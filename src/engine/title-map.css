@@ -1,0 +1,12 @@
+/* The authored map matches the title stage's 8:7 aspect ratio exactly. Keep
+   nearest-neighbor sampling and disable the generic field drift so the 16px
+   tile grid remains stationary and crisp at every responsive size. */
+#combat-panel.ff6-menu-host.bg-title {
+  background-color: #645d54;
+  background-image: url("../assets/lonesome_forest_title_map.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+  animation: none;
+}
