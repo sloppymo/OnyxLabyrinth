@@ -3,7 +3,9 @@
 **Audience:** LLM image workflows, pixel artists, and agents generating corridor floor props  
 **Scope:** SNES / FF6-era JRPG **object** sprites for the first-person maze — treasure, ritual markers, corpses, hazard tells, event flavor  
 **Not this doc:** combat enemy strips ([`SPRITE-ART-GENERATION-GUIDE.md`](SPRITE-ART-GENERATION-GUIDE.md)); wall/floor/ceiling bricks ([`TILESET-ART-STYLE-GUIDE.md`](TILESET-ART-STYLE-GUIDE.md))  
-**Status:** generation brief + suggested asset IDs. Interactive tile features still draw as text glyphs in `renderer.ts` (`drawFeatureGlyph`); non-interactive decor uses `src/data/map-sprites.ts` → `public/assets/map-sprites/`. Wiring generated props into the corridor is a separate engine task.
+**Status:** generation brief + suggested asset IDs. The corridor wiring exists: `src/data/maze-props.ts` maps each `TileFeature` to a preference-ordered list of sprite ids, `drawFeatureBillboards` in `renderer.ts` billboards the first id that resolves in `MAP_SPRITES`, and `drawFeatureGlyph` is now only the fallback for features whose art has not shipped. Adding a prop is therefore a two-step change with no engine edit: drop the PNG in `public/assets/map-sprites/` and register it in `src/data/map-sprites.ts`.
+
+Six of these props ship today — `chest-closed`, `chest-open`, `cistern-basin`, `antimagic-ward`, `darkness-idol`, `teleporter-disc` — built deterministically by [`scripts/generate-maze-props.mjs`](../scripts/generate-maze-props.mjs) rather than by image generation. See "Deterministic alternative" below before reaching for a generator.
 
 Copy the **Master style lock** into every generation, then append one **Per-prop prompt**, optionally a **Floor-theme palette** line, and the **Animation strip** block when you need idle frames.
 
@@ -276,6 +278,40 @@ Shared rules: same pixel density, same outline weight, same light direction, sam
 ```
 
 ---
+
+## Deterministic alternative (prefer this for props)
+
+The prompts above exist for the case where you have an image generator and want a
+concept fast. For the props that have actually shipped, none of them were used —
+`scripts/generate-maze-props.mjs` builds them from two sources instead, and it
+reproduces byte-identical PNGs on every run:
+
+1. **Harvest** a 16×16 cell from the Electric Lemon "Classic Dungeons" pack in
+   `assets/Classic Dungeons - Files/`. That pack is authored on the 16-colour
+   PICO-8 palette, which is *why* it reads as 16-bit: three to six colours per
+   object, hard edges, one-pixel outline. Its licence permits use inside a game
+   product with no attribution and forbids redistributing the raw pack.
+2. **Recolour** with an explicit source-hex → target-hex table. The mapping is
+   1:1 and throws on an unmapped colour, so an output prop can never carry more
+   colours than its source cell, and never half of ours and half of theirs.
+3. **Hand-author** the cells the pack has no art for, as an ASCII map with a
+   colour legend (`fromAscii`). At 16×16 a deliberate silhouette and a generated
+   blob cost the same number of pixels and only one of them survives the
+   distance taper.
+4. **Scale ×2 nearest-neighbour** to 32×32 and force binary alpha.
+
+Two failures worth not repeating, both caught by reviewing props composited over
+the real wall and floor textures rather than on a flat dark background:
+
+- **The basin painted in the corridor's own colours disappeared.** Its rim used
+  the f5 wall swatch, and f5 is where water tiles are most common. A prop that
+  marks a tile must out-contrast the wall behind it — the rim is now lighter
+  than every wall theme and the water darker than every wall theme.
+- **A sigil made of three overlapping strokes read as a lilac smudge.** At five
+  pixels across, a sigil gets one idea. The ward is now a plain X.
+
+Always review at native size over the actual tilesets, at near/mid/far depths.
+A prop judged on `#101014` will lie to you.
 
 ## Quality checklist before you accept a result
 

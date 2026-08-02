@@ -17,6 +17,17 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "bones", name: "Bones", file: "bones.png", baseSize: 30 },
   { id: "barrel", name: "Barrel", file: "barrel.png", baseSize: 32 },
   { id: "chest-unlocked", name: "Unlocked Chest", file: "chest-unlocked.png", baseSize: 40 },
+  // Corridor feature props, built by `scripts/generate-maze-props.mjs`. These
+  // ids are the ones `data/maze-props.ts` looks up, so registering them here is
+  // what swaps a feature from its text glyph to art — no renderer change.
+  // `baseSize` is tuned against how much of the 32x32 cell each prop fills, so
+  // a stele reads as taller than a chest without either one dwarfing the other.
+  { id: "chest-closed", name: "Closed Chest", file: "chest-closed.png", baseSize: 34 },
+  { id: "chest-open", name: "Opened Chest", file: "chest-open.png", baseSize: 34 },
+  { id: "cistern-basin", name: "Cistern Basin", file: "cistern-basin.png", baseSize: 30 },
+  { id: "antimagic-ward", name: "Antimagic Ward", file: "antimagic-ward.png", baseSize: 38 },
+  { id: "darkness-idol", name: "Darkness Idol", file: "darkness-idol.png", baseSize: 34 },
+  { id: "teleporter-disc", name: "Teleporter Disc", file: "teleporter-disc.png", baseSize: 40 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(
