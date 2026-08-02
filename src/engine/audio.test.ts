@@ -678,4 +678,65 @@ describe("AudioEngine title music", () => {
     expect(pause).toHaveBeenCalledTimes(1);
     expect(instances[0]!.currentTime).toBe(0);
   });
+
+  it("does not play party creation music on resume unless wanted", async () => {
+    const instances: HTMLAudioElement[] = [];
+    const play = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal(
+      "Audio",
+      class {
+        loop = false;
+        volume = 1;
+        currentTime = 0;
+        paused = true;
+        ended = false;
+        preload = "";
+        play = play;
+        pause = vi.fn();
+        constructor(public src: string) {
+          instances.push(this);
+        }
+      }
+    );
+
+    const { audio } = await import("./audio");
+    audio.resume();
+    // Party creation music should not start on resume unless partyCreationMusicWanted is true
+    expect(instances.length).toBe(0);
+  });
+
+  it("handles multiple start/stop cycles without overlapping instances", async () => {
+    const instances: HTMLAudioElement[] = [];
+    const play = vi.fn().mockResolvedValue(undefined);
+    const pause = vi.fn();
+    vi.stubGlobal(
+      "Audio",
+      class {
+        loop = false;
+        volume = 1;
+        currentTime = 0;
+        paused = true;
+        ended = false;
+        preload = "";
+        play = play;
+        pause = pause;
+        constructor(public src: string) {
+          instances.push(this);
+        }
+      }
+    );
+
+    const { audio } = await import("./audio");
+    // First cycle
+    audio.startPartyCreationMusic();
+    expect(instances).toHaveLength(1);
+    audio.stopPartyCreationMusic();
+    expect(pause).toHaveBeenCalledTimes(1);
+
+    // Second cycle - should reuse the same instance
+    audio.startPartyCreationMusic();
+    expect(instances).toHaveLength(1);
+    audio.stopPartyCreationMusic();
+    expect(pause).toHaveBeenCalledTimes(2);
+  });
 });

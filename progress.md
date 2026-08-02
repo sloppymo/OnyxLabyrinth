@@ -314,7 +314,10 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Added startPartyCreationMusic/stopPartyCreationMusic methods to audio engine.
 - Wired music start/stop to openPartyCreation controller lifecycle.
 - Added party creation music test coverage.
-- Build passes and all 15 audio tests pass. Committed and pushed.
+- Edge case fix: added tryPlayPartyCreationMusicGuarded() to prevent resume() from starting music on wrong screen.
+- Store previous mode before entering party creation to restore correct music on cancel (title→title, town→town).
+- Added tests for resume guard and multiple start/stop cycles to prevent overlapping instances.
+- Build passes and all 17 audio tests pass. Committed and pushed.
 
 ## 2026-08-01 — Quick-map controller binding
 

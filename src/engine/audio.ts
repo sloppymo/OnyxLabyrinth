@@ -381,7 +381,7 @@ class AudioEngine {
       this.tryPlayTitleMusic();
       this.tryPlayDungeonMusic();
       this.tryPlayTownMusic();
-      this.tryPlayPartyCreationMusic();
+      this.tryPlayPartyCreationMusicGuarded();
       this.tryPlayBattleMusic();
       this.tryPlayBossMusic();
       return;
@@ -856,6 +856,12 @@ class AudioEngine {
     void this.partyCreationMusic.play().catch(() => {
       // Autoplay policy — retry from resume().
     });
+  }
+
+  /** Guarded party creation music play for resume() — only plays if actively wanted. */
+  private tryPlayPartyCreationMusicGuarded(): void {
+    if (!this.partyCreationMusicWanted) return;
+    this.tryPlayPartyCreationMusic();
   }
 
   /** Start the authored normal-combat loop. Boss fights use startBossCombat. */

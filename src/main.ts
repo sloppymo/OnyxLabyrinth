@@ -309,6 +309,7 @@ let partyCreationController: PartyCreationController | null = null;
 
 function openPartyCreation(onDone: () => void): void {
   if (mapVisible) toggleMap();
+  const previousMode = state.mode;
   setMode(state, "party_creation");
   showMode("party_creation", mapVisible);
   setMessage("");
@@ -327,6 +328,12 @@ function openPartyCreation(onDone: () => void): void {
     onCancel: () => {
       partyCreationController = null;
       audio.stopPartyCreationMusic();
+      // Restore the music that was playing before party creation
+      if (previousMode === "title") {
+        audio.startTitleMusic();
+      } else if (previousMode === "town") {
+        audio.startTownMusic();
+      }
       onDone();
     },
   });
@@ -2025,7 +2032,7 @@ function toggleMap(): void {
 let prevMode: GameMode | null = null;
 
 function loop() {
-  // Manage BGM beds on mode transitions (maze / town).
+  // Manage BGM beds on mode transitions (maze / town / party_creation).
   if (state.mode !== prevMode) {
     if (state.mode === "dungeon") {
       audio.startDungeon();
@@ -2037,6 +2044,13 @@ function loop() {
       audio.startTownMusic();
     } else if (prevMode === "town") {
       audio.stopTownMusic();
+    }
+    if (state.mode === "party_creation") {
+      // Party creation music is started by openPartyCreation()
+      // Don't start it here to avoid double-starting
+    } else if (prevMode === "party_creation") {
+      // Party creation music is stopped by the controller callbacks
+      // Don't stop it here to avoid double-stopping
     }
     prevMode = state.mode;
   }
