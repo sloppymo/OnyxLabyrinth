@@ -277,7 +277,7 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   at 0.64 gain, while `combat:encounterStart` played from a real buffer at 0.72
   gain. All audio/visual readiness fields settled, failed assets and browser
   errors were empty, and the combat screenshot was visually inspected.
-- No remaining TODOs for this slice. Committed and pushed to agent/floor1-regional-tilesets; later cherry-picked to clean fix branch for main merge.
+- No commit or push was created during this verification pass. The work was later committed and pushed, then incorporated into the clean merge branch.
 
 ## 2026-08-02 — Renderer wall glow wash reduction
 
@@ -285,8 +285,7 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - The amber glow wash was painting over flat wall surfaces, shifting green-gray walls (average RGB 84,93,77) to orange (approximately 94,86,58).
 - Reduced glowWashAlphaScale to 0.02 to preserve gold glow lines on genuine corners and depth discontinuities while eliminating the flat-wall amber wash.
 - Also carried over completed audio SFX audibility improvements (UI gain 2×, combat gain 1.8×, deferred first-cue handling).
-- Verified on current main via clean cherry-pick branch; build passes.
-- Fixed stale progress entry ("No commit or push created") to reflect actual commit/push status.
+- Verified on a clean branch based on current main; build passes.
 
 ## 2026-08-01 — Quick-map controller binding
 
