@@ -1,5 +1,15 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+## 2026-08-02 — Boss combat music
+
+- Current prompt: replace procedural boss combat bed with authored music file (higher-difficulty-battle.mp3).
+- Copied the supplied MP3 to public/assets/music/higher-difficulty-battle.mp3.
+- Replaced the procedural oscillator-based boss bed with HTMLAudioElement streaming, matching the pattern used for other BGM tracks.
+- Added BOSS_MUSIC_FILE constant and volume setting (0.5), removed bossBed config and related oscillator nodes.
+- Updated startBossCombat/stopBossCombat to use music file instead of procedural generation.
+- Updated audio test to mock HTMLAudioElement instead of checking oscillator behavior.
+- Build passes and all 14 audio tests pass. Committed and ready to push.
+
 ## 2026-07-31
 
 - Created branch `visual/full-pass-2026-07-31` from the existing dirty `main` worktree.
@@ -286,6 +296,16 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Reduced glowWashAlphaScale to 0.02 to preserve gold glow lines on genuine corners and depth discontinuities while eliminating the flat-wall amber wash.
 - Also carried over completed audio SFX audibility improvements (UI gain 2×, combat gain 1.8×, deferred first-cue handling).
 - Verified on a clean branch based on current main; build passes.
+
+## 2026-08-02 — Boss combat music
+
+- Current prompt: replace procedural boss combat bed with authored music file (higher-difficulty-battle.mp3).
+- Copied the supplied MP3 to public/assets/music/higher-difficulty-battle.mp3.
+- Replaced the procedural oscillator-based boss bed with HTMLAudioElement streaming, matching the pattern used for other BGM tracks.
+- Added BOSS_MUSIC_FILE constant and volume setting (0.5), removed bossBed config and related oscillator nodes.
+- Updated startBossCombat/stopBossCombat to use music file instead of procedural generation.
+- Updated audio test to mock HTMLAudioElement instead of checking oscillator behavior.
+- Build passes and all 14 audio tests pass. Committed and pushed.
 
 ## 2026-08-01 — Quick-map controller binding
 

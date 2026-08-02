@@ -122,8 +122,7 @@ describe("AudioEngine dungeon cues", () => {
     expect(oscillators.every((osc) => osc.start.mock.calls.length === 1)).toBe(true);
   });
 
-  it("starts and stops the procedural boss combat bed", async () => {
-    const oscillators: FakeNode[] = [];
+  it("starts and stops the boss combat BGM", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
     const ctx = {
       state: "running",
@@ -132,11 +131,7 @@ describe("AudioEngine dungeon cues", () => {
       destination: fakeNode(),
       createGain: () => fakeNode(),
       createBufferSource: () => fakeNode(),
-      createOscillator: () => {
-        const node = fakeNode();
-        oscillators.push(node);
-        return node;
-      },
+      createOscillator: () => fakeNode(),
       createBiquadFilter: () => fakeNode(),
       createBuffer: () => ({ getChannelData: () => new Float32Array(1) }),
       decodeAudioData: async () => ({ decoded: true }),
@@ -150,17 +145,33 @@ describe("AudioEngine dungeon cues", () => {
       },
     });
 
+    // Mock HTMLAudioElement
+    const mockAudio = {
+      loop: false,
+      volume: 0,
+      paused: true,
+      ended: false,
+      currentTime: 0,
+      play: vi.fn().mockResolvedValue(undefined),
+      pause: vi.fn(),
+    };
+    vi.stubGlobal("Audio", class {
+      constructor() {
+        return mockAudio;
+      }
+    });
+
     const { audio } = await import("./audio");
     audio.resume();
     audio.startBossCombat();
-    // 3 voice oscs + 1 LFO
-    expect(oscillators).toHaveLength(4);
-    expect(oscillators[0]!.frequency.value).toBe(46.25);
-    expect(oscillators[1]!.frequency.value).toBe(65.4);
-    expect(oscillators[2]!.frequency.value).toBe(92.5);
+    // Boss music uses HTMLAudioElement
+    expect(audio["bossMusic"]).not.toBeNull();
+    expect(audio["bossMusic"]?.loop).toBe(true);
+    expect(audio["bossMusic"]?.volume).toBe(0.5);
 
     audio.stopBossCombat();
-    expect(oscillators.every((osc) => osc.stop.mock.calls.length === 1)).toBe(true);
+    expect(audio["bossMusic"]?.paused).toBe(true);
+    expect(audio["bossMusic"]?.currentTime).toBe(0);
 
     // Idempotent: second stop is a no-op.
     audio.stopBossCombat();

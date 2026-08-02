@@ -28,8 +28,8 @@
 //   audio.stopTownMusic();   // end town BGM
 //   audio.startBattleMusic(); // loop authored normal-encounter BGM
 //   audio.stopBattleMusic();  // stop and rewind normal-encounter BGM
-//   audio.startBossCombat(); // exclusive boss bed (procedural BGM stand-in)
-//   audio.stopBossCombat();  // end boss bed
+//   audio.startBossCombat(); // loop boss encounter BGM
+//   audio.stopBossCombat();  // stop and rewind boss BGM
 //   audio.startTitleMusic(); // loop title + prologue BGM (HTMLAudio)
 //   audio.stopTitleMusic();  // end title/prologue BGM
 //   audio.footstep();        // play a footstep
@@ -247,9 +247,13 @@ const DUNGEON_MUSIC_VOLUME = 0.4;
 const TOWN_MUSIC_FILE = "haven-at-dusk.mp3";
 const TOWN_MUSIC_VOLUME = 0.4;
 
-/** Normal encounter BGM. Boss encounters keep their exclusive procedural bed. */
+/** Normal encounter BGM. */
 const BATTLE_MUSIC_FILE = "battle-theme-v3.mp3";
 const BATTLE_MUSIC_VOLUME = 0.46;
+
+/** Boss encounter BGM. */
+const BOSS_MUSIC_FILE = "higher-difficulty-battle.mp3";
+const BOSS_MUSIC_VOLUME = 0.5;
 
 function musicAssetUrl(file: string): string {
   const root = import.meta.env.BASE_URL || "/";
@@ -272,18 +276,9 @@ class AudioEngine {
   }> = null;
   private dronePlaying = false;
 
-  // Boss combat bed — tenser procedural bed while a floor boss is up.
-  // There is no shipped BGM asset; this is the exclusive "boss music" stand-in.
-  private bossBedNodes: Maybe<{
-    osc1: OscillatorNode;
-    osc2: OscillatorNode;
-    osc3: OscillatorNode;
-    lfo: OscillatorNode;
-    lfoGain: GainNode;
-    filter: BiquadFilterNode;
-    gain: GainNode;
-  }> = null;
-  private bossBedPlaying = false;
+  /** Boss combat BGM. */
+  private bossMusic: HTMLAudioElement | null = null;
+  private bossMusicWanted = false;
 
   /**
    * Title + New Game prologue BGM. HTMLAudio (not AudioContext) so the MP3
@@ -340,16 +335,6 @@ class AudioEngine {
       lfoDepth: 0.015,     // gain wobble depth (subtle)
       gain: 0.06,          // master drone level (quiet — ambient bed)
     },
-    bossBed: {
-      freq1: 46.25,        // F#1 — darker root than the dungeon drone
-      freq2: 65.4,         // C2 — tritone-ish tension against F#
-      freq3: 92.5,         // F#2 — pulse octave
-      detune: 18,
-      filterFreq: 340,
-      lfoFreq: 0.28,       // faster breathing — unease
-      lfoDepth: 0.035,
-      gain: 0.085,
-    },
     footstep: {
       duration: 0.12,      // seconds — short burst
       filterFreq: 1800,    // lowpass — muffled stone step
@@ -387,6 +372,7 @@ class AudioEngine {
       this.tryPlayDungeonMusic();
       this.tryPlayTownMusic();
       this.tryPlayBattleMusic();
+      this.tryPlayBossMusic();
       return;
     }
     const Ctor =
@@ -913,74 +899,33 @@ class AudioEngine {
     });
   }
 
-  /**
-   * Start the exclusive boss combat bed (procedural stand-in for boss BGM).
-   * No-op if already playing. Safe to call when Web Audio isn't ready.
-   */
+  /** Start the boss combat BGM. No-op if already playing. */
   startBossCombat(): void {
-    if (!this.ctx || !this.masterGain || this.bossBedPlaying) return;
-    const ctx = this.ctx;
-    const cfg = this.CFG.bossBed;
-
-    const osc1 = ctx.createOscillator();
-    osc1.type = "sawtooth";
-    osc1.frequency.value = cfg.freq1;
-
-    const osc2 = ctx.createOscillator();
-    osc2.type = "square";
-    osc2.frequency.value = cfg.freq2;
-    osc2.detune.value = cfg.detune;
-
-    const osc3 = ctx.createOscillator();
-    osc3.type = "triangle";
-    osc3.frequency.value = cfg.freq3;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = cfg.filterFreq;
-
-    const gain = ctx.createGain();
-    gain.gain.value = cfg.gain;
-
-    const lfo = ctx.createOscillator();
-    lfo.type = "sine";
-    lfo.frequency.value = cfg.lfoFreq;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = cfg.lfoDepth;
-    lfo.connect(lfoGain);
-    lfoGain.connect(gain.gain);
-
-    osc1.connect(filter);
-    osc2.connect(filter);
-    osc3.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc1.start();
-    osc2.start();
-    osc3.start();
-    lfo.start();
-
-    this.bossBedNodes = { osc1, osc2, osc3, lfo, lfoGain, filter, gain };
-    this.bossBedPlaying = true;
+    this.bossMusicWanted = true;
+    if (!this.bossMusic) {
+      const el = new Audio(musicAssetUrl(BOSS_MUSIC_FILE));
+      el.loop = true;
+      el.preload = "auto";
+      el.volume = BOSS_MUSIC_VOLUME;
+      this.bossMusic = el;
+    }
+    this.tryPlayBossMusic();
   }
 
-  /** Stop the boss combat bed. No-op if not playing. */
+  /** Stop and rewind the boss combat BGM. */
   stopBossCombat(): void {
-    if (!this.ctx || !this.bossBedNodes) return;
-    const { osc1, osc2, osc3, lfo } = this.bossBedNodes;
-    const t = this.ctx.currentTime;
-    this.bossBedNodes.gain.gain.setValueAtTime(
-      this.bossBedNodes.gain.gain.value,
-      t
-    );
-    this.bossBedNodes.gain.gain.linearRampToValueAtTime(0, t + 0.2);
-    osc1.stop(t + 0.22);
-    osc2.stop(t + 0.22);
-    osc3.stop(t + 0.22);
-    lfo.stop(t + 0.22);
-    this.bossBedNodes = null;
-    this.bossBedPlaying = false;
+    this.bossMusicWanted = false;
+    if (!this.bossMusic) return;
+    this.bossMusic.pause();
+    this.bossMusic.currentTime = 0;
+  }
+
+  private tryPlayBossMusic(): void {
+    if (!this.bossMusicWanted || !this.bossMusic) return;
+    if (!this.bossMusic.paused && !this.bossMusic.ended) return;
+    void this.bossMusic.play().catch(() => {
+      // Autoplay policy — retry from resume().
+    });
   }
 
   /**
