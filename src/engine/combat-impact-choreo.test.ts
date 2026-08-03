@@ -60,7 +60,7 @@ describe("impact presentation choreography integration", () => {
       expect(scene.impact.actorFlashes.has("rat-0")).toBe(true);
     });
 
-    it("sets a zoom impulse for a massive melee hit", () => {
+    it("does not set a zoom impulse when zoom is disabled", () => {
       const scene = makeScene();
       // damage 10 on a 10 HP enemy = 100% ratio = massive
       const events: CombatEvent[] = [
@@ -70,8 +70,8 @@ describe("impact presentation choreography integration", () => {
       playTurn(scene, events, spellName, t0, W, H);
       updateScene(scene, t0 + 2000);
 
-      expect(scene.impact.zoom).not.toBeNull();
-      expect(scene.impact.zoom!.peakScale).toBeGreaterThan(1);
+      // Runtime zoom creation is disabled by default; the impulse is not populated.
+      expect(scene.impact.zoom).toBeNull();
     });
 
     it("does not set zoom for a light hit", () => {
@@ -230,7 +230,7 @@ describe("impact presentation choreography integration", () => {
       setReducedMotion(false);
     });
 
-    it("caps zoom at 1.015x under reduced motion", () => {
+    it("does not set zoom under reduced motion when zoom is disabled", () => {
       setReducedMotion(true);
       const scene = makeScene();
       const events: CombatEvent[] = [
@@ -240,8 +240,8 @@ describe("impact presentation choreography integration", () => {
       playTurn(scene, events, spellName, t0, W, H);
       updateScene(scene, t0 + 2000);
 
-      expect(scene.impact.zoom).not.toBeNull();
-      expect(scene.impact.zoom!.peakScale).toBeLessThanOrEqual(1.015);
+      // Runtime zoom creation is disabled; reduced motion does not re-enable it.
+      expect(scene.impact.zoom).toBeNull();
       setReducedMotion(false);
     });
   });
