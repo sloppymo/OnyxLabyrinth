@@ -178,18 +178,18 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
    * between two effect families.
    */
   private readonly particlePool = new GameObjectPool<Phaser.GameObjects.Arc>(() =>
-    this.addToCombatWorld(this.add.circle(0, 0, 4, 0xffffff, 1).setDepth(550))
+    this.addTo(this.effectsLayer, this.add.circle(0, 0, 4, 0xffffff, 1).setDepth(550))
   );
   private readonly effectSpritePool = new GameObjectPool<Phaser.GameObjects.Sprite>(
     // "__DEFAULT" is Phaser's blank placeholder texture. Not "__MISSING",
     // which is the magenta error checkerboard — a pool slot is not an error.
-    () => this.addToCombatWorld(this.add.sprite(0, 0, "__DEFAULT").setDepth(600))
+    () => this.addTo(this.effectsLayer, this.add.sprite(0, 0, "__DEFAULT").setDepth(600))
   );
   private readonly effectArcPool = new GameObjectPool<Phaser.GameObjects.Arc>(() =>
-    this.addToCombatWorld(this.add.circle(0, 0, 12, 0x4488cc, 1).setDepth(600))
+    this.addTo(this.effectsLayer, this.add.circle(0, 0, 12, 0x4488cc, 1).setDepth(600))
   );
   private readonly ghostPool = new GameObjectPool<Phaser.GameObjects.Sprite>(() =>
-    this.addToCombatWorld(this.add.sprite(0, 0, "__DEFAULT").setOrigin(0.5, 0.5))
+    this.addTo(this.effectsLayer, this.add.sprite(0, 0, "__DEFAULT").setOrigin(0.5, 0.5))
   );
   private glowGraphics: Phaser.GameObjects.Graphics | null = null;
   private bgImage: Phaser.GameObjects.Image | null = null;
@@ -212,8 +212,15 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private fastCue: Phaser.GameObjects.Text | null = null;
   private autoCue: Phaser.GameObjects.Text | null = null;
   private pipGfx: Phaser.GameObjects.Graphics | null = null;
-  /** Dedicated container for all battlefield-only GameObjects. */
+  /** Root transform/filter target for all battlefield-only GameObjects. */
   private combatWorld!: Phaser.GameObjects.Container;
+  private bgLayer!: Phaser.GameObjects.Container;
+  private dimLayer!: Phaser.GameObjects.Container;
+  private glowLayer!: Phaser.GameObjects.Container;
+  private actorLayer!: Phaser.GameObjects.Container;
+  private actorOverlayLayer!: Phaser.GameObjects.Container;
+  private effectsLayer!: Phaser.GameObjects.Container;
+  private fgLightingLayer!: Phaser.GameObjects.Container;
   private readonly spotlight: SpotlightState = createSpotlightState();
   /**
    * Cast bloom, deliberately kept out of `SpotlightState`: it lands on the same
@@ -254,17 +261,29 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     super(SCENE_KEY);
   }
 
-  /** Add a freshly created GameObject to the battlefield world layer. */
-  private addToCombatWorld<T extends Phaser.GameObjects.GameObject>(object: T): T {
-    this.combatWorld.add(object);
+  /** Add a freshly created GameObject to the specified world subcontainer. */
+  private addTo<T extends Phaser.GameObjects.GameObject>(
+    layer: Phaser.GameObjects.Container,
+    object: T
+  ): T {
+    layer.add(object);
     return object;
   }
 
   create(): void {
     this.cameras.main.setBackgroundColor("#0d0b08");
+
     this.combatWorld = this.add.container(0, 0);
-    this.glowGraphics = this.addToCombatWorld(this.add.graphics().setDepth(-50));
-    this.pipGfx = this.addToCombatWorld(this.add.graphics().setDepth(500));
+    this.bgLayer = this.addTo(this.combatWorld, this.add.container(0, 0));
+    this.dimLayer = this.addTo(this.combatWorld, this.add.container(0, 0));
+    this.glowLayer = this.addTo(this.combatWorld, this.add.container(0, 0));
+    this.actorLayer = this.addTo(this.combatWorld, this.add.container(0, 0));
+    this.actorOverlayLayer = this.addTo(this.combatWorld, this.add.container(0, 0));
+    this.effectsLayer = this.addTo(this.combatWorld, this.add.container(0, 0));
+    this.fgLightingLayer = this.addTo(this.combatWorld, this.add.container(0, 0));
+
+    this.glowGraphics = this.addTo(this.glowLayer, this.add.graphics().setDepth(-50));
+    this.pipGfx = this.addTo(this.actorOverlayLayer, this.add.graphics().setDepth(500));
     this.bannerBg = this.add.graphics().setDepth(900).setVisible(false);
     this.bannerText = this.add
       .text(0, 0, "", {
@@ -570,17 +589,26 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
 
   /** Debug probe reporting world-layer ownership and transform. */
   debugWorldLayer(): {
-    worldChildren: number;
+    layerCounts: Record<string, number>;
     worldTransform: { x: number; y: number; scaleX: number; scaleY: number };
   } {
-    const c = this.combatWorld;
+    const count = (c: Phaser.GameObjects.Container | undefined) =>
+      c ? c.list.length : 0;
     return {
-      worldChildren: (c as unknown as { length?: number }).length ?? c.list.length,
+      layerCounts: {
+        bg: count(this.bgLayer),
+        dim: count(this.dimLayer),
+        glow: count(this.glowLayer),
+        actors: count(this.actorLayer),
+        actorOverlays: count(this.actorOverlayLayer),
+        effects: count(this.effectsLayer),
+        fgLighting: count(this.fgLightingLayer),
+      },
       worldTransform: {
-        x: c.x,
-        y: c.y,
-        scaleX: c.scaleX,
-        scaleY: c.scaleY,
+        x: this.combatWorld.x,
+        y: this.combatWorld.y,
+        scaleX: this.combatWorld.scaleX,
+        scaleY: this.combatWorld.scaleY,
       },
     };
   }
@@ -737,6 +765,20 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     this.syncSpotlight(scene);
     this.syncCastBloom(scene, now);
     this.syncHealShine(scene, now);
+    this.sortWorldLayers();
+  }
+
+  /**
+   * Container children render by list order, not by their `setDepth` values.
+   * Re-sort the layers that contain dynamic objects so the intended depth
+   * values still define render order.
+   */
+  private sortWorldLayers(): void {
+    const byDepth = (a: Phaser.GameObjects.GameObject, b: Phaser.GameObjects.GameObject) =>
+      ((a as unknown as { depth: number }).depth - (b as unknown as { depth: number }).depth);
+    this.actorLayer.list.sort(byDepth);
+    this.effectsLayer.list.sort(byDepth);
+    this.fgLightingLayer.list.sort(byDepth);
   }
 
   /**
@@ -1088,7 +1130,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     entry.ashArcs ??= [];
     const desired = recipe.ash.count;
     while (entry.ashArcs.length < desired) {
-      const arc = this.addToCombatWorld(this.add.circle(0, 0, 2, recipe.ash.color, 0));
+      const arc = this.addTo(this.effectsLayer, this.add.circle(0, 0, 2, recipe.ash.color, 0));
       arc.setDepth(footY);
       arc.setBlendMode(Phaser.BlendModes.NORMAL);
       arc.setVisible(false);
@@ -1182,7 +1224,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
 
     // Dim overlay (normal blend, black, alpha = backdropDim).
     if (!this.envDimRect) {
-      this.envDimRect = this.addToCombatWorld(this.add.rectangle(0, 0, w, h, 0x000000, 0).setOrigin(0, 0).setDepth(-900));
+      this.envDimRect = this.addTo(this.dimLayer, this.add.rectangle(0, 0, w, h, 0x000000, 0).setOrigin(0, 0).setDepth(-900));
     }
     this.envDimRect.setVisible(true);
     this.envDimRect.setAlpha(env.backdropDim);
@@ -1202,7 +1244,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     // Floor radial glow (additive, impact-centered).
     if (env.floorStrength > 0.001) {
       if (!this.envFloorGlow) {
-        this.envFloorGlow = this.addToCombatWorld(this.add.graphics().setDepth(898).setBlendMode(Phaser.BlendModes.ADD));
+        this.envFloorGlow = this.addTo(this.fgLightingLayer, this.add.graphics().setDepth(898).setBlendMode(Phaser.BlendModes.ADD));
       }
       this.envFloorGlow.setVisible(true);
       this.envFloorGlow.clear();
@@ -1222,7 +1264,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     // Rim vignette (additive, top-down gradient).
     if (env.rimStrength > 0.001) {
       if (!this.envRimGlow) {
-        this.envRimGlow = this.addToCombatWorld(this.add.graphics().setDepth(897).setBlendMode(Phaser.BlendModes.ADD));
+        this.envRimGlow = this.addTo(this.fgLightingLayer, this.add.graphics().setDepth(897).setBlendMode(Phaser.BlendModes.ADD));
       }
       this.envRimGlow.setVisible(true);
       this.envRimGlow.clear();
@@ -1247,7 +1289,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         : null;
     if (!key) return;
     if (!this.bgImage) {
-      this.bgImage = this.addToCombatWorld(this.add.image(COMBAT_DESIGN_W / 2, COMBAT_DESIGN_H / 2, key).setDepth(-1000));
+      this.bgImage = this.addTo(this.bgLayer, this.add.image(COMBAT_DESIGN_W / 2, COMBAT_DESIGN_H / 2, key).setDepth(-1000));
       this.bgImage.setDisplaySize(COMBAT_DESIGN_W, COMBAT_DESIGN_H);
     } else if (this.bgImage.texture.key !== key) {
       this.bgImage.setTexture(key);
@@ -1454,10 +1496,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       }
     }
 
-    const shadow = this.addToCombatWorld(this.add.ellipse(0, 0, 40, 12, 0x000000, 0.4).setDepth(0));
+    const shadow = this.addTo(this.actorLayer, this.add.ellipse(0, 0, 40, 12, 0x000000, 0.4).setDepth(0));
     const sprite = this.textures.exists(textureKey)
-      ? this.addToCombatWorld(this.add.sprite(0, 0, textureKey).setOrigin(0.5, 0.5).setDepth(1))
-      : this.addToCombatWorld(this.add.ellipse(0, 0, 44, 62, color).setDepth(1));
+      ? this.addTo(this.actorLayer, this.add.sprite(0, 0, textureKey).setOrigin(0.5, 0.5).setDepth(1))
+      : this.addTo(this.actorLayer, this.add.ellipse(0, 0, 44, 62, color).setDepth(1));
     entry = { key, kind, sprite, shadow, isFallback: true };
     this.actors.set(key, entry);
     return entry;
@@ -1504,11 +1546,11 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       entry.sprite.destroy();
       entry.shadow.destroy();
     }
-    const shadow = this.addToCombatWorld(this.add.ellipse(0, 0, 40, 12, 0x000000, 0.4).setDepth(0));
+    const shadow = this.addTo(this.actorLayer, this.add.ellipse(0, 0, 40, 12, 0x000000, 0.4).setDepth(0));
     // Origin (0.5, 0.5): position at ResolvedSlot.centerY — same contract as
     // canvas drawStripFrame(ctx, …, x, centerY, size). Never position at drawY
     // (frame top); that floats the whole formation ~½ sprite-height upward.
-    const sprite = this.addToCombatWorld(this.add.sprite(0, 0, texKey).setOrigin(0.5, 0.5).setDepth(1));
+    const sprite = this.addTo(this.actorLayer, this.add.sprite(0, 0, texKey).setOrigin(0.5, 0.5).setDepth(1));
     entry = { key, kind, sprite, shadow, isFallback: false };
     this.actors.set(key, entry);
     return entry;
