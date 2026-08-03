@@ -217,13 +217,20 @@ describe("zoom", () => {
     expect(scale).toBeCloseTo(1.05, 4);
   });
 
-  it("returns 1.0 when zoom is disabled", () => {
+  it("zoom is disabled by default", () => {
+    expect(COMBAT_IMPACT_ZOOM_ENABLED).toBe(false);
+  });
+
+  it("pure zoom sampler still works with a manual impulse", () => {
     const imp = makeZoom(1000, 1.05, 300);
-    // COMBAT_IMPACT_ZOOM_ENABLED is a const; we test the function directly.
-    // When enabled, it should work; the const guards the function.
-    expect(COMBAT_IMPACT_ZOOM_ENABLED).toBe(true);
     const { scale } = sampleZoom(imp, 1000 + 50);
     expect(scale).toBeGreaterThan(1);
+  });
+
+  it("peakZoomScale still exposes dormant tuning values", () => {
+    expect(peakZoomScale("strong")).toBeCloseTo(1.03, 4);
+    expect(peakZoomScale("heavy")).toBeCloseTo(1.045, 4);
+    expect(peakZoomScale("massive")).toBeCloseTo(1.06, 4);
   });
 });
 
@@ -571,7 +578,7 @@ describe("triggerImpactPresentation", () => {
     expect(impact.freezeUntilWallTime).toBe(0);
   });
 
-  it("sets zoom for strong impacts", () => {
+  it("does NOT set zoom for strong impacts when disabled", () => {
     const impact = makeImpact();
     triggerImpactPresentation(impact, {
       actorId: "p1",
@@ -581,8 +588,9 @@ describe("triggerImpactPresentation", () => {
       x: 200,
       y: 200,
     }, 1000, 1);
-    expect(impact.zoom).not.toBeNull();
-    expect(impact.zoom!.peakScale).toBeCloseTo(1.03, 4);
+    expect(impact.zoom).toBeNull();
+    // Pure tuning lookup remains available.
+    expect(peakZoomScale("strong")).toBeCloseTo(1.03, 4);
   });
 
   it("does NOT set zoom for light impacts", () => {
@@ -733,53 +741,15 @@ describe("triggerImpactPresentation", () => {
   });
 
   it("stronger zoom replaces weaker", () => {
-    const impact = makeImpact();
-    // Strong hit: 1.03 zoom.
-    triggerImpactPresentation(impact, {
-      actorId: "p1",
-      targetId: "e1",
-      damage: 15,
-      targetMaxHp: 100,
-      x: 200,
-      y: 200,
-    }, 1000, 1);
-    expect(impact.zoom!.peakScale).toBeCloseTo(1.03, 4);
-
-    // Massive hit: 1.06 zoom — should replace.
-    triggerImpactPresentation(impact, {
-      actorId: "p1",
-      targetId: "e1",
-      damage: 50,
-      targetMaxHp: 100,
-      x: 200,
-      y: 200,
-    }, 1050, 1);
-    expect(impact.zoom!.peakScale).toBeCloseTo(1.06, 4);
+    const weak = makeZoom(1000, 1.03, 220);
+    const strong = makeZoom(1050, 1.06, 340);
+    expect(shouldReplaceZoom(weak, strong, 1000)).toBe(true);
   });
 
   it("weaker zoom does NOT replace stronger", () => {
-    const impact = makeImpact();
-    // Massive hit: 1.06 zoom.
-    triggerImpactPresentation(impact, {
-      actorId: "p1",
-      targetId: "e1",
-      damage: 50,
-      targetMaxHp: 100,
-      x: 200,
-      y: 200,
-    }, 1000, 1);
-    expect(impact.zoom!.peakScale).toBeCloseTo(1.06, 4);
-
-    // Strong hit: 1.03 zoom — should NOT replace.
-    triggerImpactPresentation(impact, {
-      actorId: "p1",
-      targetId: "e1",
-      damage: 15,
-      targetMaxHp: 100,
-      x: 200,
-      y: 200,
-    }, 1050, 1);
-    expect(impact.zoom!.peakScale).toBeCloseTo(1.06, 4);
+    const strong = makeZoom(1000, 1.06, 340);
+    const weak = makeZoom(1050, 1.03, 220);
+    expect(shouldReplaceZoom(strong, weak, 1000)).toBe(false);
   });
 
   it("heal does not cause hit-stop or zoom", () => {
@@ -813,9 +783,9 @@ describe("triggerImpactPresentation", () => {
     // Hit-stop should be capped (30ms), not zero.
     expect(impact.freezeUntilWallTime).toBeGreaterThan(0);
     expect(impact.accumulatedFreezeThisTurn).toBeLessThanOrEqual(30);
-    // Zoom should be set but capped at 1.015x.
-    expect(impact.zoom).not.toBeNull();
-    expect(impact.zoom!.peakScale).toBeLessThanOrEqual(1.015);
+    // Zoom remains disabled at runtime, but pure peakZoomScale is still tuned.
+    expect(impact.zoom).toBeNull();
+    expect(peakZoomScale("massive")).toBeCloseTo(1.06, 4);
     // Environment light should be set (screen flash suppressed).
     expect(impact.environment).not.toBeNull();
     // Actor flash should be preserved.

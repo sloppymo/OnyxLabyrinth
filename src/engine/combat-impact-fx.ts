@@ -18,7 +18,7 @@
 // ---------------------------------------------------------------------------
 
 export const COMBAT_HIT_STOP_ENABLED = true;
-export const COMBAT_IMPACT_ZOOM_ENABLED = true;
+export const COMBAT_IMPACT_ZOOM_ENABLED = false;
 export const COMBAT_ENV_LIGHTING_ENABLED = true;
 export const COMBAT_ACTOR_FLASH_ENABLED = true;
 
@@ -235,7 +235,6 @@ const BASE_ZOOM: Record<ImpactStrength, number> = {
 };
 
 export function peakZoomScale(strength: ImpactStrength): number {
-  if (!COMBAT_IMPACT_ZOOM_ENABLED) return 1.0;
   return BASE_ZOOM[strength];
 }
 
@@ -261,7 +260,7 @@ export function sampleZoom(
   impulse: CameraZoomImpulse | null,
   now: number
 ): { scale: number; focusX: number; focusY: number } {
-  if (!impulse || !COMBAT_IMPACT_ZOOM_ENABLED) {
+  if (!impulse) {
     return { scale: 1, focusX: 0, focusY: 0 };
   }
   const elapsed = now - impulse.start;
