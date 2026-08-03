@@ -178,18 +178,18 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
    * between two effect families.
    */
   private readonly particlePool = new GameObjectPool<Phaser.GameObjects.Arc>(() =>
-    this.add.circle(0, 0, 4, 0xffffff, 1).setDepth(550)
+    this.addToCombatWorld(this.add.circle(0, 0, 4, 0xffffff, 1).setDepth(550))
   );
   private readonly effectSpritePool = new GameObjectPool<Phaser.GameObjects.Sprite>(
     // "__DEFAULT" is Phaser's blank placeholder texture. Not "__MISSING",
     // which is the magenta error checkerboard — a pool slot is not an error.
-    () => this.add.sprite(0, 0, "__DEFAULT").setDepth(600)
+    () => this.addToCombatWorld(this.add.sprite(0, 0, "__DEFAULT").setDepth(600))
   );
   private readonly effectArcPool = new GameObjectPool<Phaser.GameObjects.Arc>(() =>
-    this.add.circle(0, 0, 12, 0x4488cc, 1).setDepth(600)
+    this.addToCombatWorld(this.add.circle(0, 0, 12, 0x4488cc, 1).setDepth(600))
   );
   private readonly ghostPool = new GameObjectPool<Phaser.GameObjects.Sprite>(() =>
-    this.add.sprite(0, 0, "__DEFAULT").setOrigin(0.5, 0.5)
+    this.addToCombatWorld(this.add.sprite(0, 0, "__DEFAULT").setOrigin(0.5, 0.5))
   );
   private glowGraphics: Phaser.GameObjects.Graphics | null = null;
   private bgImage: Phaser.GameObjects.Image | null = null;
@@ -212,6 +212,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private fastCue: Phaser.GameObjects.Text | null = null;
   private autoCue: Phaser.GameObjects.Text | null = null;
   private pipGfx: Phaser.GameObjects.Graphics | null = null;
+  /** Dedicated container for all battlefield-only GameObjects. */
+  private combatWorld!: Phaser.GameObjects.Container;
   private readonly spotlight: SpotlightState = createSpotlightState();
   /**
    * Cast bloom, deliberately kept out of `SpotlightState`: it lands on the same
@@ -252,10 +254,17 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     super(SCENE_KEY);
   }
 
+  /** Add a freshly created GameObject to the battlefield world layer. */
+  private addToCombatWorld<T extends Phaser.GameObjects.GameObject>(object: T): T {
+    this.combatWorld.add(object);
+    return object;
+  }
+
   create(): void {
     this.cameras.main.setBackgroundColor("#0d0b08");
-    this.glowGraphics = this.add.graphics().setDepth(-50);
-    this.pipGfx = this.add.graphics().setDepth(500);
+    this.combatWorld = this.add.container(0, 0);
+    this.glowGraphics = this.addToCombatWorld(this.add.graphics().setDepth(-50));
+    this.pipGfx = this.addToCombatWorld(this.add.graphics().setDepth(500));
     this.bannerBg = this.add.graphics().setDepth(900).setVisible(false);
     this.bannerText = this.add
       .text(0, 0, "", {
@@ -549,6 +558,30 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       afterimageEnabled: PHASER_FX_AFTERIMAGE,
       sceneParticles: this.latest?.scene.particles.length ?? 0,
       sceneEffects: this.latest?.scene.effects.length ?? 0,
+    };
+  }
+
+  /** Toggle a development-only world-layer transform to prove UI isolation. */
+  setWorldDebugTransform(enabled: boolean): void {
+    if (!this.combatWorld) return;
+    this.combatWorld.setScale(enabled ? 0.96 : 1);
+    this.combatWorld.setPosition(enabled ? 12 : 0, enabled ? 6 : 0);
+  }
+
+  /** Debug probe reporting world-layer ownership and transform. */
+  debugWorldLayer(): {
+    worldChildren: number;
+    worldTransform: { x: number; y: number; scaleX: number; scaleY: number };
+  } {
+    const c = this.combatWorld;
+    return {
+      worldChildren: (c as unknown as { length?: number }).length ?? c.list.length,
+      worldTransform: {
+        x: c.x,
+        y: c.y,
+        scaleX: c.scaleX,
+        scaleY: c.scaleY,
+      },
     };
   }
 
@@ -1055,7 +1088,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     entry.ashArcs ??= [];
     const desired = recipe.ash.count;
     while (entry.ashArcs.length < desired) {
-      const arc = this.add.circle(0, 0, 2, recipe.ash.color, 0);
+      const arc = this.addToCombatWorld(this.add.circle(0, 0, 2, recipe.ash.color, 0));
       arc.setDepth(footY);
       arc.setBlendMode(Phaser.BlendModes.NORMAL);
       arc.setVisible(false);
@@ -1149,7 +1182,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
 
     // Dim overlay (normal blend, black, alpha = backdropDim).
     if (!this.envDimRect) {
-      this.envDimRect = this.add.rectangle(0, 0, w, h, 0x000000, 0).setOrigin(0, 0).setDepth(-900);
+      this.envDimRect = this.addToCombatWorld(this.add.rectangle(0, 0, w, h, 0x000000, 0).setOrigin(0, 0).setDepth(-900));
     }
     this.envDimRect.setVisible(true);
     this.envDimRect.setAlpha(env.backdropDim);
@@ -1169,7 +1202,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     // Floor radial glow (additive, impact-centered).
     if (env.floorStrength > 0.001) {
       if (!this.envFloorGlow) {
-        this.envFloorGlow = this.add.graphics().setDepth(898).setBlendMode(Phaser.BlendModes.ADD);
+        this.envFloorGlow = this.addToCombatWorld(this.add.graphics().setDepth(898).setBlendMode(Phaser.BlendModes.ADD));
       }
       this.envFloorGlow.setVisible(true);
       this.envFloorGlow.clear();
@@ -1189,7 +1222,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     // Rim vignette (additive, top-down gradient).
     if (env.rimStrength > 0.001) {
       if (!this.envRimGlow) {
-        this.envRimGlow = this.add.graphics().setDepth(897).setBlendMode(Phaser.BlendModes.ADD);
+        this.envRimGlow = this.addToCombatWorld(this.add.graphics().setDepth(897).setBlendMode(Phaser.BlendModes.ADD));
       }
       this.envRimGlow.setVisible(true);
       this.envRimGlow.clear();
@@ -1214,7 +1247,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         : null;
     if (!key) return;
     if (!this.bgImage) {
-      this.bgImage = this.add.image(COMBAT_DESIGN_W / 2, COMBAT_DESIGN_H / 2, key).setDepth(-1000);
+      this.bgImage = this.addToCombatWorld(this.add.image(COMBAT_DESIGN_W / 2, COMBAT_DESIGN_H / 2, key).setDepth(-1000));
       this.bgImage.setDisplaySize(COMBAT_DESIGN_W, COMBAT_DESIGN_H);
     } else if (this.bgImage.texture.key !== key) {
       this.bgImage.setTexture(key);
@@ -1421,10 +1454,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       }
     }
 
-    const shadow = this.add.ellipse(0, 0, 40, 12, 0x000000, 0.4).setDepth(0);
+    const shadow = this.addToCombatWorld(this.add.ellipse(0, 0, 40, 12, 0x000000, 0.4).setDepth(0));
     const sprite = this.textures.exists(textureKey)
-      ? this.add.sprite(0, 0, textureKey).setOrigin(0.5, 0.5).setDepth(1)
-      : this.add.ellipse(0, 0, 44, 62, color).setDepth(1);
+      ? this.addToCombatWorld(this.add.sprite(0, 0, textureKey).setOrigin(0.5, 0.5).setDepth(1))
+      : this.addToCombatWorld(this.add.ellipse(0, 0, 44, 62, color).setDepth(1));
     entry = { key, kind, sprite, shadow, isFallback: true };
     this.actors.set(key, entry);
     return entry;
@@ -1471,11 +1504,11 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       entry.sprite.destroy();
       entry.shadow.destroy();
     }
-    const shadow = this.add.ellipse(0, 0, 40, 12, 0x000000, 0.4).setDepth(0);
+    const shadow = this.addToCombatWorld(this.add.ellipse(0, 0, 40, 12, 0x000000, 0.4).setDepth(0));
     // Origin (0.5, 0.5): position at ResolvedSlot.centerY — same contract as
     // canvas drawStripFrame(ctx, …, x, centerY, size). Never position at drawY
     // (frame top); that floats the whole formation ~½ sprite-height upward.
-    const sprite = this.add.sprite(0, 0, texKey).setOrigin(0.5, 0.5).setDepth(1);
+    const sprite = this.addToCombatWorld(this.add.sprite(0, 0, texKey).setOrigin(0.5, 0.5).setDepth(1));
     entry = { key, kind, sprite, shadow, isFallback: false };
     this.actors.set(key, entry);
     return entry;
@@ -2373,11 +2406,15 @@ export async function createPhaserCombatStage(
         __onyxPhaserFilters?: unknown;
         __onyxPhaserDissolves?: unknown;
         __onyxPhaserPools?: unknown;
+        __onyxPhaserWorldTransform?: unknown;
+        __onyxPhaserWorldLayer?: unknown;
       };
       if (w.__onyxPhaserActors) delete w.__onyxPhaserActors;
       if (w.__onyxPhaserFilters) delete w.__onyxPhaserFilters;
       if (w.__onyxPhaserDissolves) delete w.__onyxPhaserDissolves;
       if (w.__onyxPhaserPools) delete w.__onyxPhaserPools;
+      if (w.__onyxPhaserWorldTransform) delete w.__onyxPhaserWorldTransform;
+      if (w.__onyxPhaserWorldLayer) delete w.__onyxPhaserWorldLayer;
     },
   };
 
@@ -2386,11 +2423,16 @@ export async function createPhaserCombatStage(
     __onyxPhaserFilters?: () => unknown;
     __onyxPhaserDissolves?: () => unknown;
     __onyxPhaserPools?: () => unknown;
+    __onyxPhaserWorldTransform?: (enabled: boolean) => void;
+    __onyxPhaserWorldLayer?: () => unknown;
   };
   dbg.__onyxPhaserActors = () => phaserScene.debugActorLayout();
   dbg.__onyxPhaserFilters = () => phaserScene.debugFilterCounts();
   dbg.__onyxPhaserDissolves = () => phaserScene.debugDissolveCounts();
   dbg.__onyxPhaserPools = () => phaserScene.debugPoolCounts();
+  dbg.__onyxPhaserWorldTransform = (enabled: boolean) =>
+    phaserScene.setWorldDebugTransform(enabled);
+  dbg.__onyxPhaserWorldLayer = () => phaserScene.debugWorldLayer();
 
   return stage;
 }
