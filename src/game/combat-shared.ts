@@ -411,7 +411,7 @@ export function applyPartyDamage(
   s: CombatState,
   target: Character,
   damage: number,
-  attacker: EnemyInstance,
+  attacker: EnemyInstance | null,
   rng: Rng,
   emit: (m: string, e: CombatEvent) => void
 ): { finalDamage: number; redirectDamage: number; redirectTarget?: Character } {
@@ -523,11 +523,14 @@ export function applyPartyDamage(
     }
   }
 
-  // AfterDamageTaken hooks (e.g. Last Stand, Hold the Line).
-  for (const c of s.party) {
-    if (c.hp <= 0) continue;
-    dispatchHook("AfterDamageTaken", perksForCharacter(c), {
-      state: s.perkState[c.id],
+  // AfterDamageTaken hooks (e.g. Last Stand, Hold the Line, Retribution).
+  // Skipped when there is no attacker (e.g. poison/status ticks) — counter-
+  // attacks and retribution have no valid target.
+  if (attacker) {
+    for (const c of s.party) {
+      if (c.hp <= 0) continue;
+      dispatchHook("AfterDamageTaken", perksForCharacter(c), {
+        state: s.perkState[c.id],
       rng,
       targetId: target.id,
       ownId: c.id,
@@ -584,6 +587,7 @@ export function applyPartyDamage(
         }
       },
     });
+  }
   }
 
   // Heavy-hit bark eligibility is reported to the caller (see

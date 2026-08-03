@@ -9,7 +9,7 @@
  */
 
 import { perksForCharacter } from "./perks";
-import { addStatus, findEnemy, observeAffinity } from "./combat-shared";
+import { addStatus, applyPartyDamage, findEnemy, observeAffinity } from "./combat-shared";
 import { checkSpotHidden } from "./combat-ai";
 import { tickTechniqueBuffs } from "./combat-techniques";
 import { maybeEmitBark, enemyDefIdFromInstance } from "./combat-barks";
@@ -186,7 +186,7 @@ export function runEndOfRound(
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): boolean {
-  tickStatuses(s, log, emit);
+  tickStatuses(s, rng, log, emit);
   deathCheck(s, emit);
   allyDeathCheck(s, emit);
   if (checkTermination(s, log)) return true;
@@ -249,6 +249,7 @@ export function runEndOfRound(
 
 function tickStatuses(
   s: CombatState,
+  rng: Rng,
   log: (m: string) => void,
   emit?: (m: string, e: CombatEvent) => void
 ): void {
@@ -263,8 +264,19 @@ function tickStatuses(
     if (c.status.includes("knockedOut")) continue;
     if (c.status.includes("poison")) {
       const ps = s.poisonState[c.id] ?? { damage: 2, duration: 3 };
-      c.hp = Math.max(0, c.hp - ps.damage);
-      tick(`${c.name} suffers ${ps.damage} poison damage.`, c.id, ps.damage);
+      // Route through applyPartyDamage (attacker=null: no counter-attacks)
+      // so lethal-save hooks (Guardian Angel, Paladin) and damage
+      // redirection (Martyr) / SP absorption (Mana Shield) apply to poison.
+      if (emit) {
+        const result = applyPartyDamage(s, c, ps.damage, null, rng, emit);
+        tick(`${c.name} suffers ${result.finalDamage} poison damage.`, c.id, result.finalDamage);
+      } else {
+        // No emit (legacy log-only path) — still route through the hook
+        // layer so lethal saves apply, then log the final damage.
+        const dummyEmit = (_m: string, _e: CombatEvent) => {};
+        const result = applyPartyDamage(s, c, ps.damage, null, rng, dummyEmit);
+        tick(`${c.name} suffers ${result.finalDamage} poison damage.`, c.id, result.finalDamage);
+      }
       if (ps.duration - 1 <= 0) {
         c.status = c.status.filter((st) => st !== "poison");
         delete s.poisonState[c.id];

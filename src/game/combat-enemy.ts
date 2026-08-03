@@ -454,14 +454,18 @@ export function resolveEnemyAction(
       if (partyTarget.status.includes("giantStrength")) {
         damage = Math.max(1, Math.round(damage * 1.2));
       }
-      partyTarget.hp -= damage;
+      // Route through applyPartyDamage so lethal-save hooks (Guardian Angel,
+      // Paladin), damage redirection (Martyr), and SP absorption (Mana
+      // Shield) apply to enemy spell damage — not just enemy melee.
+      const result = applyPartyDamage(s, partyTarget, damage, actor, rng, emit);
+      const finalDamage = result.finalDamage;
       emit(
-        `${actor.name} casts ${spellId} at ${partyTarget.name} for ${damage} damage.`,
-        { type: "cast", actorId: actor.instanceId, spellId, targetId: partyTarget.id, damage }
+        `${actor.name} casts ${spellId} at ${partyTarget.name} for ${finalDamage} damage.`,
+        { type: "cast", actorId: actor.instanceId, spellId, targetId: partyTarget.id, damage: finalDamage }
       );
       // Party heavy-hit bark (v1) — emitted after the cast's own event so
       // the choreography schedules it post-impact, not before (spec 2026-07-26).
-      if (partyTarget.hp > 0 && isHeavyHit(damage, partyTarget.maxHp)) {
+      if (partyTarget.hp > 0 && isHeavyHit(finalDamage, partyTarget.maxHp)) {
         maybeEmitBark(s, emit, {
           trigger: "heavyHit",
           actorId: partyTarget.id,

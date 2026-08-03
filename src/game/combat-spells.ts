@@ -141,6 +141,10 @@ export function applySpell(
         1,
         Math.round((eff.power + castingBonus) * powerMultiplier * healMult)
       );
+      // priest-saint: only Saints may target KO'd allies with healing spells.
+      // Enforced in the pure resolver (not just the UI) so direct API calls
+      // and Party Auto can't bypass it.
+      const casterHasSaint = perksForCharacter(caster).some((p) => p.id === "priest-saint");
       // Single-target heals can also mend a summoned ally (they hold the
       // front line and soak hits). Summons have no statuses, so cure /
       // resurrect stay party-only.
@@ -159,6 +163,10 @@ export function applySpell(
         }
       }
       for (const t of allyTargets(s, spell, action, caster)) {
+        // Defense-in-depth: even if a KO'd ally reached the target list
+        // (e.g. a direct API call with an explicit targetAllyId), only a
+        // Saint caster may heal-revive them.
+        if (t.status.includes("knockedOut") && !casterHasSaint) continue;
         const before = t.hp;
         t.hp = Math.min(t.maxHp, t.hp + healPower);
         emit(
@@ -373,7 +381,13 @@ function allyTargets(
   action: Extract<PlayerAction, { kind: "cast" }>,
   caster: Character
 ): Character[] {
-  const living = s.party.filter((c) => c.hp > 0 || c.status.includes("knockedOut"));
+  const casterHasSaint = perksForCharacter(caster).some((p) => p.id === "priest-saint");
+  // KO'd allies are only valid targets for healing spells cast by a Saint.
+  // Non-heal spells (cure, buff) and non-Saint healers target living allies only.
+  const allowKo = spell.effect.kind === "heal" && casterHasSaint;
+  const living = s.party.filter(
+    (c) => c.hp > 0 || (allowKo && c.status.includes("knockedOut"))
+  );
   switch (spell.target) {
     case "self":
       return [caster];
