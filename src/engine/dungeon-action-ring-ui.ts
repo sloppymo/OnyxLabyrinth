@@ -1,14 +1,15 @@
 /**
- * Dungeon actions palette — compact field-command menu opened from the
- * gamepad Start button or the dungeon action shortcut.
+ * Dungeon actions palette — compact controller-first field-command menu.
  *
- * This intentionally uses the shared FF6Window chrome instead of drawing
- * directly into the full menu host. The old implementation reused camp
- * roster classes, which produced an oversized empty field with a thin list
- * floating in the middle of it.
+ * The menu is opened with Start and navigated as a two-column D-pad grid.
+ * It uses the shared FF6Window chrome instead of reusing camp roster markup,
+ * which previously left a thin list floating inside an oversized empty field.
  */
 
+import type { ControllerInputEvent } from "./controller-input";
+import { controllerEventToMenuKey } from "./menu-controller-adapter";
 import { FF6Window } from "./ff6-window-library";
+import { audio } from "./audio";
 import "./dungeon-action-ring-ui.css";
 
 export type DungeonActionRingOptions = {
@@ -25,36 +26,55 @@ const ENTRIES = [
   {
     id: "camp",
     label: "Camp",
-    shortcut: "c",
+    role: "REST",
     description: "Rest until dawn. Restore HP and SP and clear ailments.",
   },
   {
     id: "map",
-    label: "Toggle Map",
-    shortcut: "m",
+    label: "Map",
+    role: "EXPLORE",
     description: "Show or hide the explored-floor map.",
   },
   {
     id: "grimoire",
     label: "Grimoire",
-    shortcut: "g",
+    role: "MAGIC",
     description: "Cast persistent and utility magic in the field.",
   },
   {
     id: "unlock",
     label: "Unlock",
-    shortcut: "u",
+    role: "DOOR",
     description: "Attempt to open the locked door directly ahead.",
   },
   {
     id: "town",
     label: "Return to Town",
-    shortcut: "t",
+    role: "LEAVE",
     description: "End this expedition and return the party to town.",
   },
 ] as const;
 
 type EntryId = (typeof ENTRIES)[number]["id"];
+type GridDirection = "up" | "down" | "left" | "right";
+
+/**
+ * Two-column navigation graph:
+ *
+ *   Camp        Map
+ *   Grimoire    Unlock
+ *       Return to Town
+ *
+ * The final command spans both columns, so vertical movement from either
+ * lower tile lands on it predictably.
+ */
+const GRID_NEIGHBORS: ReadonlyArray<Record<GridDirection, number>> = [
+  { up: 4, down: 2, left: 1, right: 1 },
+  { up: 4, down: 3, left: 0, right: 0 },
+  { up: 0, down: 4, left: 3, right: 3 },
+  { up: 1, down: 4, left: 2, right: 2 },
+  { up: 2, down: 0, left: 4, right: 4 },
+];
 
 export class DungeonActionRingController {
   private panel: HTMLElement;
@@ -77,33 +97,52 @@ export class DungeonActionRingController {
     this.render();
   }
 
-  handleKey(key: string): void {
-    const lower = key.toLowerCase();
+  /** Direct controller entry point for tests and controller-owned routes. */
+  handleInput(event: ControllerInputEvent): void {
+    const key = controllerEventToMenuKey(event);
+    if (key) this.handleKey(key);
+  }
 
-    const shortcutIndex = ENTRIES.findIndex((entry) => entry.shortcut === lower);
-    if (shortcutIndex >= 0) {
-      this.index = shortcutIndex;
-      this.menu?.updateSelectedIndex(this.index);
-      this.updateDescription();
-      this.confirm();
+  /** Receives normalized A/B/D-pad commands from the shared input router. */
+  handleKey(key: string): void {
+    const direction = this.directionForKey(key);
+    if (direction) {
+      this.moveSelection(direction);
       return;
     }
 
-    // FF6Window already owns cursor audio, confirm/cancel audio, pointer
-    // activation, and highlight movement. Normalize S so keyboard players
-    // retain the previous W/S navigation contract.
-    const normalizedKey = lower === "s" ? "ArrowDown" : key;
-    const activeMenu = this.menu;
-    if (!activeMenu) return;
-    const handled = activeMenu.handleKey(normalizedKey);
-    if (handled && this.menu === activeMenu) {
-      this.index = activeMenu.getSelectedIndex();
-      this.updateDescription();
+    // FF6Window owns A/B audio, confirmation, cancellation, and pointer input.
+    if (key === "Enter" || key === " " || key === "Escape") {
+      this.menu?.handleKey(key);
     }
   }
 
   destroy(): void {
     this.dispose();
+  }
+
+  private directionForKey(key: string): GridDirection | null {
+    switch (key) {
+      case "ArrowUp":
+        return "up";
+      case "ArrowDown":
+        return "down";
+      case "ArrowLeft":
+        return "left";
+      case "ArrowRight":
+        return "right";
+      default:
+        return null;
+    }
+  }
+
+  private moveSelection(direction: GridDirection): void {
+    const next = GRID_NEIGHBORS[this.index]?.[direction] ?? this.index;
+    if (next === this.index) return;
+    this.index = next;
+    audio.uiCursor();
+    this.menu?.updateSelectedIndex(this.index);
+    this.updateDescription();
   }
 
   private confirm(): void {
@@ -152,7 +191,7 @@ export class DungeonActionRingController {
       title: "Dungeon Actions",
       items: ENTRIES.map((entry) => ({
         label: entry.label,
-        detail: entry.shortcut.toUpperCase(),
+        detail: entry.role,
         metadata: entry.id,
         className: `dungeon-action dungeon-action-${entry.id}`,
       })),
@@ -162,9 +201,9 @@ export class DungeonActionRingController {
       contentHtml:
         `<div class="dungeon-actions-intro">` +
         `<span class="dungeon-actions-eyebrow">FIELD COMMANDS</span>` +
-        `<span class="dungeon-actions-prompt">Choose your next move</span>` +
+        `<span class="dungeon-actions-prompt">Select an action</span>` +
         `</div>`,
-      footer: "D-pad navigate · A confirm · B close",
+      footer: "D-PAD MOVE  ·  A SELECT  ·  B BACK",
       footer2: selected.description,
       animated: true,
       onHover: (index) => {
