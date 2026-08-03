@@ -46,11 +46,30 @@ describe("DungeonActionRingController", () => {
     c.destroy();
   });
 
-  it("footer shows Start and A/B pad hints", () => {
+  it("renders the shared window chrome with descriptions and controls", () => {
     const { c, panel } = mount();
-    expect(panel.innerHTML).toMatch(/\[A\] confirm/);
-    expect(panel.innerHTML).toMatch(/\[B\/Esc\]/);
-    expect(panel.innerHTML).toMatch(/Start/);
+    expect(panel.classList.contains("dungeon-actions-host")).toBe(true);
+    expect(panel.querySelector(".ff6-window.dungeon-actions-window")).not.toBeNull();
+    expect(panel.textContent).toMatch(/Dungeon Actions/i);
+    expect(panel.textContent).toMatch(/Restore HP and SP/);
+    expect(panel.textContent).toMatch(/D-pad navigate/);
+    expect(panel.textContent).toMatch(/A confirm/);
+    expect(panel.textContent).toMatch(/B close/);
+    c.destroy();
+  });
+
+  it("updates the action description when the cursor moves", () => {
+    const { c, panel } = mount();
+    c.handleKey("ArrowDown");
+    expect(panel.textContent).toMatch(/explored-floor map/);
+    c.destroy();
+  });
+
+  it("supports direct letter shortcuts", () => {
+    const { c, onTown, onClose } = mount();
+    c.handleKey("t");
+    expect(onTown).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
     c.destroy();
   });
 });
