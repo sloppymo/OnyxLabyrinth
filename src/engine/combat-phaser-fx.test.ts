@@ -272,24 +272,37 @@ describe("spotlight filter lifecycle", () => {
 describe("deathDissolveRecipe", () => {
   it("starts at the pixelate floor so a fresh kill does not pop", () => {
     // 0 is the floor, not "off" — the shader always quantises to 2 + amount px.
-    expect(deathDissolveRecipe(0)).toEqual({ pixelate: 0, grayscale: 0 });
+    const r = deathDissolveRecipe(0);
+    expect(r.pixelate).toBe(0);
+    expect(r.grayscale).toBe(0);
+    expect(r.gradientMap.alpha).toBe(0);
+    expect(r.blocky.size).toBe(1);
+    expect(r.wipe.progress).toBe(0);
+    expect(r.ash.count).toBe(0);
   });
 
-  it("ends fully mosaicked and fully drained", () => {
+  it("ends fully mosaicked, drained, and wiped", () => {
     const end = deathDissolveRecipe(1);
     expect(end.pixelate).toBeCloseTo(8, 5);
     expect(end.grayscale).toBeCloseTo(1, 5);
+    expect(end.gradientMap.alpha).toBeCloseTo(1, 5);
+    expect(end.blocky.size).toBeCloseTo(7, 5);
+    expect(end.wipe.progress).toBeCloseTo(1, 5);
+    expect(end.ash.count).toBe(0);
   });
 
   it("increases monotonically across the death anim", () => {
     let prevPix = -Infinity;
     let prevGrey = -Infinity;
+    let prevBlocky = -Infinity;
     for (let i = 0; i <= 20; i++) {
       const r = deathDissolveRecipe(i / 20);
       expect(r.pixelate).toBeGreaterThanOrEqual(prevPix);
       expect(r.grayscale).toBeGreaterThanOrEqual(prevGrey);
+      expect(r.blocky.size).toBeGreaterThanOrEqual(prevBlocky);
       prevPix = r.pixelate;
       prevGrey = r.grayscale;
+      prevBlocky = r.blocky.size;
     }
   });
 
@@ -298,6 +311,26 @@ describe("deathDissolveRecipe", () => {
     const mid = deathDissolveRecipe(0.5);
     const pixFrac = mid.pixelate / 8;
     expect(mid.grayscale).toBeGreaterThan(pixFrac);
+  });
+
+  it("starts the wipe in the middle of the death anim", () => {
+    expect(deathDissolveRecipe(0.25).wipe.progress).toBe(0);
+    expect(deathDissolveRecipe(0.75).wipe.progress).toBeGreaterThan(0);
+  });
+
+  it("spawns six to ten ash particles during the crumble", () => {
+    const early = deathDissolveRecipe(0.35).ash.count;
+    const peak = deathDissolveRecipe(0.75).ash.count;
+    expect(early).toBeGreaterThanOrEqual(6);
+    expect(peak).toBeLessThanOrEqual(10);
+  });
+
+  it("selects different ramps and ash colors by family", () => {
+    const defaultRamp = deathDissolveRecipe(0.5, "default").gradientMap.ramp;
+    const undeadRamp = deathDissolveRecipe(0.5, "undead").gradientMap.ramp;
+    const demonAsh = deathDissolveRecipe(0.5, "demon").ash.color;
+    expect(defaultRamp[0]?.colorStart).not.toBe(undeadRamp[0]?.colorStart);
+    expect(demonAsh).toBe(0xb85c1a);
   });
 
   it("clamps outside [0,1] instead of running away", () => {

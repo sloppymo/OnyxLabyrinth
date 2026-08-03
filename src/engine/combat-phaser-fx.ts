@@ -288,6 +288,48 @@ export function shineTargetsFrom(
 /** Death anim length in `combat-phaser-stage`; the dissolve rides the same clock. */
 export const DEATH_ANIM_MS = 675;
 
+export type DeathFamily = "default" | "undead" | "demon";
+
+/** Color band description for `Phaser.Filters.GradientMap` ramp. */
+export type ColorBandRecipe = {
+  /** Start color as a hex integer. */
+  colorStart: number;
+  /** End color as a hex integer. */
+  colorEnd: number;
+  /** Normalized start position in the ramp. */
+  start: number;
+  /** Normalized end position in the ramp. */
+  end: number;
+};
+
+export type GradientMapRecipe = {
+  ramp: ColorBandRecipe[];
+  dither: boolean;
+  /** How much the gradient recoloring blends over the original (0–1). */
+  alpha: number;
+};
+
+export type BlockyRecipe = {
+  /** Block size in screen pixels. */
+  size: number;
+};
+
+export type WipeRecipe = {
+  /** 0 = none, 1 = fully wiped. */
+  progress: number;
+  /** Softness of the wipe edge, normalized (0–1). */
+  width: number;
+};
+
+export type AshRecipe = {
+  /** Number of ash particles to show at this instant. */
+  count: number;
+  /** Color of the ash particles as a hex integer. */
+  color: number;
+  /** Baseline opacity (0–1). */
+  alpha: number;
+};
+
 export type DeathDissolve = {
   /**
    * `Filters.Pixelate` amount.
@@ -300,27 +342,84 @@ export type DeathDissolve = {
   pixelate: number;
   /** `ColorMatrix.grayscale` amount — 0 keeps color, 1 is fully grey. */
   grayscale: number;
+  /** Ash-tone gradient map applied on top of the sprite. */
+  gradientMap: GradientMapRecipe;
+  /** Increasing blocky pixelation. */
+  blocky: BlockyRecipe;
+  /** Bottom-to-top wipe. */
+  wipe: WipeRecipe;
+  /** Palette-matched ash particles. */
+  ash: AshRecipe;
 };
 
 const DEATH_PIXELATE_PEAK = 8;
 
+const ASH_RAMPS: Record<DeathFamily, ColorBandRecipe[]> = {
+  default: [
+    { colorStart: 0x3d3d3d, colorEnd: 0x6a6a6a, start: 0.0, end: 0.4 },
+    { colorStart: 0x6a6a6a, colorEnd: 0xb0b0b0, start: 0.4, end: 0.7 },
+    { colorStart: 0xb0b0b0, colorEnd: 0xe8e8e8, start: 0.7, end: 1.0 },
+  ],
+  undead: [
+    { colorStart: 0x5c4033, colorEnd: 0x8c7a5a, start: 0.0, end: 0.4 },
+    { colorStart: 0x8c7a5a, colorEnd: 0xc2b280, start: 0.4, end: 0.7 },
+    { colorStart: 0xc2b280, colorEnd: 0xf5f5dc, start: 0.7, end: 1.0 },
+  ],
+  demon: [
+    { colorStart: 0x1a1a1a, colorEnd: 0x5c1a1a, start: 0.0, end: 0.33 },
+    { colorStart: 0x5c1a1a, colorEnd: 0xb85c1a, start: 0.33, end: 0.66 },
+    { colorStart: 0xb85c1a, colorEnd: 0x8a8a8a, start: 0.66, end: 1.0 },
+  ],
+};
+
+/** Choose an ash color ramp for an enemy family. */
+export function paletteCrumbleRamp(family: DeathFamily): ColorBandRecipe[] {
+  return ASH_RAMPS[family] ?? ASH_RAMPS.default;
+}
+
+const ASH_COLOR: Record<DeathFamily, number> = {
+  default: 0xb0b0b0,
+  undead: 0xc2b280,
+  demon: 0xb85c1a,
+};
+
 /**
- * Mosaic-and-drain dissolve over death progress t∈[0,1].
+ * Palette-crumble death dissolve over progress t∈[0,1].
  *
- * Starts at identity so a freshly-killed actor does not pop, then accelerates
- * (t²) into the mosaic while the grayscale eases in slightly ahead of it — the
- * body reads as "drained" a beat before it reads as "disintegrating", which is
- * the classic SNES-RPG ordering.
- *
- * Presentation only: the existing `anim.opacity` / `fadeOutStart` fade still
- * owns the actual disappearance, so the canvas path (and any non-WebGL Phaser
- * fallback, where per-sprite filters are unavailable) loses nothing but polish.
+ * Returns deterministic parameters for the classic SNES-RPG ordering: colors
+ * drain to ash first (GradientMap), the body turns blocky, then a bottom-to-top
+ * wipe erases it, while a small number of palette-matched ash particles drift
+ * from the corpse. The companion `applyDeathDissolve` in `combat-phaser-stage`
+ * owns the actual filter/particle application; Canvas and non-WebGL paths keep
+ * the existing `anim.opacity` fade.
  */
-export function deathDissolveRecipe(t01: number): DeathDissolve {
+export function deathDissolveRecipe(
+  t01: number,
+  family: DeathFamily = "default"
+): DeathDissolve {
   const t = Math.min(1, Math.max(0, t01));
+  const grayscale = smoothstep(Math.min(1, t * 1.35));
+  const pixelate = t * t * DEATH_PIXELATE_PEAK;
   return {
-    pixelate: t * t * DEATH_PIXELATE_PEAK,
-    grayscale: smoothstep(Math.min(1, t * 1.35)),
+    pixelate,
+    grayscale,
+    gradientMap: {
+      ramp: paletteCrumbleRamp(family),
+      dither: true,
+      alpha: smoothstep(t),
+    },
+    blocky: {
+      size: 1 + t * t * 6,
+    },
+    wipe: {
+      progress: t < 0.45 ? 0 : smoothstep((t - 0.45) / 0.55),
+      width: 0.15,
+    },
+    ash: {
+      count: t > 0.25 && t < 0.9 ? Math.round(6 + (t - 0.25) * 6) : 0,
+      color: ASH_COLOR[family] ?? ASH_COLOR.default,
+      alpha: t < 0.7 ? t * 1.4 : Math.max(0, (1 - t) * 3.3),
+    },
   };
 }
 
