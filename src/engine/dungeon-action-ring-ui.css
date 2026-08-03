@@ -1,10 +1,10 @@
 #combat-panel.dungeon-actions-host {
   justify-content: center;
-  padding: 54px 64px;
+  padding: 48px 58px;
 }
 
 .dungeon-actions-window {
-  width: min(100%, 640px);
+  width: min(100%, 660px);
   min-height: 0;
   border-color: #e8e8f0;
   box-shadow:
@@ -32,7 +32,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  padding: 2px 8px 8px;
+  padding: 2px 8px 10px;
   border-bottom: 1px solid rgba(245, 240, 230, 0.2);
 }
 
@@ -47,47 +47,59 @@
   font-size: 18px;
 }
 
+/* Controller-native 2×2 command grid with a full-width exit command. */
 .dungeon-actions-window .ff6-selection-list {
   display: grid;
-  gap: 4px;
-  padding: 6px 2px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px 2px;
+  overflow: visible;
 }
 
 .dungeon-actions-window .ff6-menu-item {
-  min-height: 50px;
-  padding: 8px 14px 8px 34px;
-  border: 1px solid transparent;
-  font-size: 26px;
+  min-height: 76px;
+  padding: 12px 16px 10px 38px;
+  border: 1px solid rgba(184, 236, 255, 0.12);
+  background: rgba(8, 10, 32, 0.16);
+  font-size: 25px;
   letter-spacing: 0.015em;
+}
+
+.dungeon-actions-window .ff6-menu-item.dungeon-action-town {
+  grid-column: 1 / -1;
+  min-height: 64px;
 }
 
 .dungeon-actions-window .ff6-menu-item.selected {
   color: #fff1b8;
   background:
-    linear-gradient(90deg, rgba(255, 215, 105, 0.18), rgba(184, 236, 255, 0.08));
-  border-color: rgba(255, 215, 105, 0.42);
-  box-shadow: inset 3px 0 0 #ffd769;
-  transform: translateX(2px);
+    linear-gradient(90deg, rgba(255, 215, 105, 0.22), rgba(184, 236, 255, 0.08));
+  border-color: rgba(255, 215, 105, 0.56);
+  box-shadow:
+    inset 4px 0 0 #ffd769,
+    0 0 0 1px rgba(255, 215, 105, 0.12);
+  transform: translateY(-1px);
 }
 
 .dungeon-actions-window .ff6-menu-item.selected::before {
-  left: 10px;
+  left: 12px;
   color: #ffd769;
 }
 
+/* These are action roles, not keyboard shortcuts. */
 .dungeon-actions-window .ff6-sel-detail {
-  min-width: 28px;
-  padding: 2px 5px 1px;
+  min-width: 58px;
   color: #b8ecff;
-  background: rgba(8, 10, 32, 0.36);
-  border: 1px solid rgba(184, 236, 255, 0.28);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
-  text-align: center;
+  letter-spacing: 0.08em;
+  text-align: right;
 }
 
 .dungeon-actions-window .ff6-footer {
+  color: #ffd769;
   font-size: 17px;
+  letter-spacing: 0.045em;
   text-align: center;
 }
 
@@ -104,7 +116,7 @@
 
 @media (max-width: 720px) {
   #combat-panel.dungeon-actions-host {
-    padding: 28px 24px;
+    padding: 26px 22px;
   }
 
   .dungeon-actions-window .ff6-menu-title {
@@ -112,10 +124,14 @@
   }
 
   .dungeon-actions-window .ff6-menu-item {
-    min-height: 42px;
-    padding-top: 5px;
-    padding-bottom: 5px;
-    font-size: 22px;
+    min-height: 62px;
+    padding: 8px 10px 7px 32px;
+    font-size: 21px;
+  }
+
+  .dungeon-actions-window .ff6-sel-detail {
+    min-width: 0;
+    font-size: 12px;
   }
 
   .dungeon-actions-intro {
