@@ -85,6 +85,11 @@ import {
   type SpotlightState,
 } from "./combat-phaser-fx";
 import { GameObjectPool } from "./phaser-go-pool";
+import {
+  sampleZoom,
+  sampleEnvironmentLight,
+  sampleActorFlash,
+} from "./combat-impact-fx";
 
 /** GameObject "destroy" event name — see `clearShine`'s tidyup unhook. */
 const DESTROY_EVENT = Phaser.GameObjects.Events.DESTROY;
@@ -176,6 +181,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   );
   private glowGraphics: Phaser.GameObjects.Graphics | null = null;
   private bgImage: Phaser.GameObjects.Image | null = null;
+  /** Environmental lighting dim overlay (normal blend, black). */
+  private envDimRect: Phaser.GameObjects.Rectangle | null = null;
+  /** Environmental lighting flash/glow overlay (additive blend, element color). */
+  private envFlashRect: Phaser.GameObjects.Rectangle | null = null;
   private bannerText: Phaser.GameObjects.Text | null = null;
   private bannerBg: Phaser.GameObjects.Graphics | null = null;
   private nameplateText: Phaser.GameObjects.Text | null = null;
@@ -648,7 +657,22 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       this.cameras.main.setScroll(0, 0);
     }
 
+    // Bounded impact zoom: scale the camera around the impact focus point.
+    const zoom = sampleZoom(scene.impact.zoom, now);
+    if (zoom.scale > 1.001) {
+      // Adjust scroll so the focus point stays centered after zoom.
+      const cx = w / 2;
+      const cy = h / 2;
+      const dx = zoom.focusX - cx;
+      const dy = zoom.focusY - cy;
+      this.cameras.main.setZoom(zoom.scale);
+      this.cameras.main.centerOn(zoom.focusX - dx / zoom.scale, zoom.focusY - dy / zoom.scale);
+    } else {
+      this.cameras.main.setZoom(1);
+    }
+
     this.syncBackground(scene);
+    this.syncEnvLight(scene, now, w, h);
     this.syncGlows(scene, now);
     this.syncActors(scene, now, w, h);
     this.syncEffects(scene, now);
@@ -970,8 +994,59 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * Apply impact silhouette flash as a sprite tint override.
+   * Called after applyStatusTint so the flash takes precedence when active.
+   * When the flash expires, the next applyStatusTint call restores the normal tint.
+   */
+  private applyActorFlash(
+    entry: ActorSpriteEntry,
+    actorId: string,
+    scene: CombatScene,
+    now: number
+  ): void {
+    const flash = sampleActorFlash(scene.impact.actorFlashes.get(actorId) ?? null, now);
+    if (flash.strength > 0.01 && !entry.isFallback) {
+      const colorHex = flash.color.replace("#", "0x");
+      const colorNum = parseInt(colorHex, 16) || 0xffffff;
+      // Use ADD tint mode so the flash brightens the sprite rather than replacing it.
+      const sprite = entry.sprite as Phaser.GameObjects.Sprite;
+      sprite.setTint(colorNum);
+    }
+  }
+
   clearSpotlightFilters(): void {
     clearSpotlight(this.spotlight, this.spotlightFilterLists());
+  }
+
+  private syncEnvLight(scene: CombatScene, now: number, w: number, h: number): void {
+    const env = sampleEnvironmentLight(scene.impact.environment, now);
+    if (!env.active) {
+      if (this.envDimRect) this.envDimRect.setVisible(false);
+      if (this.envFlashRect) this.envFlashRect.setVisible(false);
+      return;
+    }
+    // Dim overlay (normal blend, black, alpha = backdropDim).
+    if (!this.envDimRect) {
+      this.envDimRect = this.add.rectangle(0, 0, w, h, 0x000000, 0).setOrigin(0, 0).setDepth(-900);
+    }
+    this.envDimRect.setVisible(true);
+    this.envDimRect.setAlpha(env.backdropDim);
+
+    // Flash/glow overlay (additive blend, element color).
+    const flashStrength = Math.max(env.screenFlashStrength, env.floorStrength * 0.5, env.rimStrength * 0.3);
+    if (flashStrength > 0.001) {
+      const colorHex = scene.impact.environment?.color ?? "#ffffff";
+      const colorNum = parseInt(colorHex.replace("#", "0x"), 16) || 0xffffff;
+      if (!this.envFlashRect) {
+        this.envFlashRect = this.add.rectangle(0, 0, w, h, colorNum, 0).setOrigin(0, 0).setDepth(899).setBlendMode(Phaser.BlendModes.ADD);
+      }
+      this.envFlashRect.setVisible(true);
+      this.envFlashRect.setFillStyle(colorNum);
+      this.envFlashRect.setAlpha(flashStrength);
+    } else if (this.envFlashRect) {
+      this.envFlashRect.setVisible(false);
+    }
   }
 
   private syncBackground(scene: CombatScene): void {
@@ -1348,6 +1423,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       );
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
       this.applyDeathDissolve(entry, anim, now);
+      this.applyActorFlash(entry, enemy.instanceId, scene, now);
     } else {
       this.placeFallback(entry, x, footY, drawSize);
     }
@@ -1426,6 +1502,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       });
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
       this.applyDeathDissolve(entry, anim, now);
+      this.applyActorFlash(entry, ally.id, scene, now);
     } else {
       this.placeFallback(entry, x, footY, drawSize);
     }
@@ -1518,6 +1595,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       );
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
       this.applyDeathDissolve(entry, anim, now);
+      this.applyActorFlash(entry, char.id, scene, now);
     } else {
       this.placeFallback(entry, x, footY, drawSize);
     }

@@ -36,6 +36,21 @@ import { enemyAbilityById } from "../data/enemy-abilities";
 import { BARK_PRIORITY, type BarkTrigger } from "../data/combat-barks";
 import { enemyIsUndead } from "./combat-audio";
 import type { SpriteStrip } from "./sprite-manifest";
+import {
+  type CombatImpactState,
+  type IlluminationProfile,
+  createImpactState,
+  resetImpactState,
+  ELEMENT_ILLUMINATION_DEFAULTS,
+  triggerImpactPresentation,
+  shiftPresentationClocks,
+  resolveIllumination,
+  preScanDamageEvents,
+  classifyHitSequence,
+  syncReducedMotionFromMediaQuery,
+} from "./combat-impact-fx";
+
+export type { CombatImpactState, CameraZoomImpulse, EnvironmentLightImpulse, ActorFlashImpulse, IlluminationProfile } from "./combat-impact-fx";
 
 export { enemyIsUndead } from "./combat-audio";
 import {
@@ -406,6 +421,8 @@ export interface CombatScene {
   backdrop: HTMLCanvasElement | null;
   /** Ground-plane geometry key (arena | theme:fN | combat-bg | corridor). */
   backdropId: string;
+  /** Shared impact presentation state (hit-stop, zoom, env light, actor flash). */
+  impact: CombatImpactState;
 }
 
 export interface SceneEffect {
@@ -464,6 +481,8 @@ export interface LightGlow {
 }
 
 export function createScene(state: CombatState): CombatScene {
+  // Sync reduced-motion preference from the browser before any combat effects.
+  syncReducedMotionFromMediaQuery();
   // Lazy-load any summon sprite bundles that aren't yet cached (e.g. a
   // summon spell was cast for the first time this session).
   for (const ally of state.summonedAllies) {
@@ -500,6 +519,7 @@ export function createScene(state: CombatState): CombatScene {
     lightGlows: [],
     backdrop: null,
     backdropId: "arena",
+    impact: createImpactState(),
   };
   // Pre-seed slots in encounter / array order so the leftmost sprite matches
   // the target-select menu (which walks the same arrays). Without this,
@@ -628,6 +648,24 @@ export function findActor(
     return { kind: "ally", ...p };
   }
   return null;
+}
+
+/** Look up an actor's maximum HP for impact strength classification. */
+function actorMaxHp(scene: CombatScene, id: string): number {
+  const s = scene.state;
+  const pc = s.party.find((c) => c.id === id);
+  if (pc) return pc.maxHp;
+  for (const row of ["front", "back"] as const) {
+    const e = s.enemies[row].find((en) => en.instanceId === id);
+    if (e) return e.hp;
+  }
+  const corpse = scene.enemyCorpses.find((e) => e.instanceId === id);
+  if (corpse) return corpse.hp;
+  const ally = s.summonedAllies.find((a) => a.id === id);
+  if (ally) return ally.maxHp;
+  const allyCorpse = scene.allyCorpses.find((a) => a.id === id);
+  if (allyCorpse) return allyCorpse.maxHp;
+  return 100; // fallback
 }
 
 // --- Choreography construction ----------------------------------------------------------
@@ -774,6 +812,21 @@ function missImpactSteps(
   ];
 }
 
+/** Optional impact presentation parameters for hit-stop / zoom / flash / env light. */
+interface ImpactPresentationOpts {
+  actorId?: string;
+  crit?: boolean;
+  spellId?: string;
+  spellTier?: number;
+  isBossSignature?: boolean;
+  isArea?: boolean;
+  isFirstHit?: boolean;
+  isFinalHit?: boolean;
+  allowHitStop?: boolean;
+  illumination?: IlluminationProfile;
+  effectColor?: string;
+}
+
 /** Trigger hurt anim + popup on a target at impact. */
 function impactSteps(
   t: number,
@@ -788,7 +841,8 @@ function impactSteps(
   scale?: number,
   damageAmount?: number,
   underlay?: string,
-  underlayScale?: number
+  underlayScale?: number,
+  impactOpts?: ImpactPresentationOpts
 ): ChoreoStep[] {
   return [
     step(t, (scene, now) => {
@@ -839,6 +893,28 @@ function impactSteps(
           spawnImpactParticles(scene, actor.x, actor.y, color, big);
           pushLightGlow(scene, actor.x, actor.y, color, big ? 110 : 80, now, 320);
         }
+      }
+      // Trigger shared impact presentation (hit-stop, zoom, flash, env light).
+      // Called after all visual effects are pushed so the held frame is complete.
+      if (impactOpts && hurt && (damageAmount ?? 0) > 0) {
+        triggerImpactPresentation(scene.impact, {
+          actorId: impactOpts.actorId ?? targetId,
+          targetId,
+          damage: damageAmount ?? 0,
+          crit: impactOpts.crit,
+          spellId: impactOpts.spellId,
+          isArea: impactOpts.isArea,
+          isFirstHit: impactOpts.isFirstHit,
+          isFinalHit: impactOpts.isFinalHit,
+          allowHitStop: impactOpts.allowHitStop,
+          x: actor?.x ?? w * 0.5,
+          y: actor?.y ?? h * 0.5,
+          targetMaxHp: actorMaxHp(scene, targetId),
+          spellTier: impactOpts.spellTier,
+          isBossSignature: impactOpts.isBossSignature,
+          illumination: impactOpts.illumination,
+          effectColor: impactOpts.effectColor ?? color,
+        }, now, scene.playbackRate);
       }
     }),
     // Ease recoil home, then return to idle after the hurt strip.
@@ -1009,6 +1085,8 @@ export interface EffectStyle {
   riseLift?: number;
   /** If true, draw a white additive glow behind the burst/field to make it pop against the blue background. */
   glow?: boolean;
+  /** Elemental environment illumination profile for impact lighting. */
+  illumination?: IlluminationProfile;
 }
 
 /** Soft cap so stacked particle sprinkles can't flood the effect list. */
@@ -1333,6 +1411,7 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
     projectilePath: "riseDash",
     riseFrac: 0.56,
     riseLift: 68,
+    illumination: ELEMENT_ILLUMINATION_DEFAULTS.fire,
   },
   cold: {
     color: "#d6f7ff",
@@ -1350,11 +1429,12 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
     projectilePath: "riseDash",
     riseFrac: 0.55,
     riseLift: 70,
+    illumination: ELEMENT_ILLUMINATION_DEFAULTS.cold,
   },
   // Physical was previously burst-only with no field/charge; the retro2
   // crescent-slash reads as a blade arc, a much better fit than the
   // undead-shared zombie_explosion.
-  physical: { color: "#f5f0e6", burst: "retro2_crescent_slash", burstScale: 1.3, field: "retro_crescent_arc", fieldScale: 1.1 },
+  physical: { color: "#f5f0e6", burst: "retro2_crescent_slash", burstScale: 1.3, field: "retro_crescent_arc", fieldScale: 1.1, illumination: ELEMENT_ILLUMINATION_DEFAULTS.physical },
   undead: { color: "#c080ff", projectile: "red_lightning_blast", burst: "zombie_explosion", field: "red_energy_glow", scale: 1.3, charge: "red_lightning_blast_glow", chargeScale: 0.4, projectileCount: 1 },
   lightning: {
     color: "#ffd769",
@@ -1368,6 +1448,7 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
     charge: "mp_lightning_full",
     chargeScale: 0.55,
     projectileCount: 1,
+    illumination: ELEMENT_ILLUMINATION_DEFAULTS.lightning,
   },
   // Poison — plant missile into verdant bloom (was red-lightning + verdant).
   poison: {
@@ -1415,7 +1496,7 @@ const ELEMENT_STYLES: Record<string, EffectStyle> = {
   // SPELL_OVERRIDE was silently falling back to the generic fire_explosion.
   // Only priest-divine-smite currently uses this element and it has its own
   // override below, but this closes the gap for any future divine spell.
-  divine: { color: "#ffe8a0", burst: "retro_starburst", burstScale: 1.6, field: "retro_sun_ring", fieldScale: 1.3, charge: "retro_sun_ring", chargeScale: 0.5 },
+  divine: { color: "#ffe8a0", burst: "retro_starburst", burstScale: 1.6, field: "retro_sun_ring", fieldScale: 1.3, charge: "retro_sun_ring", chargeScale: 0.5, illumination: ELEMENT_ILLUMINATION_DEFAULTS.divine },
 };
 
 /** Per-spell visual overrides for alternate effect variants. */
@@ -2507,6 +2588,9 @@ export function playTurn(
   const steps: ChoreoStep[] = [];
   let t = 0;
 
+  // Clear any impact presentation state from the previous turn.
+  resetImpactState(scene.impact);
+
   // Track whether the acting entity walked forward so we only walk back once.
   let approachedId: string | null = null;
   let approachedKind: SceneCursor["kind"] | null = null;
@@ -2629,6 +2713,11 @@ export function playTurn(
   let fieldPushed = false;
   let pendingCastStyle: EffectStyle | null = null;
 
+  // Pre-scan damage events to determine first/final hit sequencing for
+  // impact presentation (hit-stop throttling, multi-hit rules).
+  const damageInfos = preScanDamageEvents(events);
+  const hitSequence = classifyHitSequence(damageInfos);
+
   for (let evtIndex = 0; evtIndex < events.length; evtIndex++) {
     const evt = events[evtIndex];
     if (!evt) continue;
@@ -2683,7 +2772,13 @@ export function playTurn(
               hitEffect.scale,
               evt.damage,
               hitEffect.underlay,
-              hitEffect.underlayScale
+              hitEffect.underlayScale,
+              {
+                actorId: evt.actorId,
+                crit: evt.crit === true,
+                isFirstHit: hitSequence.get(evtIndex)?.isFirst,
+                isFinalHit: hitSequence.get(evtIndex)?.isFinal,
+              }
             )
           );
           t += ATTACK_MS + 200;
@@ -2718,7 +2813,13 @@ export function playTurn(
               hitEffect.scale,
               evt.damage,
               hitEffect.underlay,
-              hitEffect.underlayScale
+              hitEffect.underlayScale,
+              {
+                actorId: evt.actorId,
+                crit: evt.crit === true,
+                isFirstHit: hitSequence.get(evtIndex)?.isFirst,
+                isFinalHit: hitSequence.get(evtIndex)?.isFinal,
+              }
             )
           );
           if (techniqueTarget) {
@@ -2950,7 +3051,20 @@ export function playTurn(
                 }
               }
             }),
-            ...impactSteps(pendingImpactBase!, evt.targetId, text, isHeal ? COLORS.heal : COLORS.dmg, w, h, !isHeal, false, undefined, undefined, evt.damage)
+            ...impactSteps(pendingImpactBase!, evt.targetId, text, isHeal ? COLORS.heal : COLORS.dmg, w, h, !isHeal, false, undefined, undefined, evt.damage, undefined, undefined, {
+              actorId: evt.actorId,
+              spellId: evt.spellId,
+              spellTier: spellById(evt.spellId)?.tier,
+              isArea: castIsArea,
+              isFirstHit: hitSequence.get(evtIndex)?.isFirst,
+              isFinalHit: hitSequence.get(evtIndex)?.isFinal,
+              allowHitStop: !isHeal,
+              illumination: !isHeal ? resolveIllumination(
+                spellById(evt.spellId)?.effect.kind === "damage" ? (spellById(evt.spellId)!.effect as { element?: string }).element : undefined,
+                style.illumination
+              ) : undefined,
+              effectColor: style.color,
+            })
           );
           pendingImpactCount++;
         }
@@ -3038,6 +3152,12 @@ export function playTurn(
           })
         );
         if (text) {
+          const spell = spellById(evt.spellId);
+          const spellTier = spell?.tier;
+          const illum = resolveIllumination(
+            spell?.effect.kind === "damage" ? (spell.effect as { element?: string }).element : undefined,
+            style.illumination
+          );
           steps.push(
             ...impactSteps(
               impactAt,
@@ -3050,7 +3170,19 @@ export function playTurn(
               false,
               undefined,
               undefined,
-              evt.damage
+              evt.damage,
+              undefined,
+              undefined,
+              {
+                spellId: evt.spellId,
+                spellTier,
+                isArea: !!isArea,
+                isFirstHit: hitSequence.get(evtIndex)?.isFirst,
+                isFinalHit: hitSequence.get(evtIndex)?.isFinal,
+                allowHitStop: evt.damage !== undefined,
+                illumination: evt.damage !== undefined ? illum : undefined,
+                effectColor: style.color,
+              }
             )
           );
         }
@@ -3398,6 +3530,8 @@ export function playTurn(
 
 /** True when the current choreography (if any) has fully played out. */
 export function isPlaybackDone(scene: CombatScene, now: number): boolean {
+  // During a hit-stop freeze, playback is not done — the scene is held.
+  if (scene.impact.freezeUntilWallTime > now) return false;
   if (!scene.choreo) return true;
   return now - scene.choreo.start >= scene.choreo.duration;
 }
@@ -3417,6 +3551,7 @@ export function skipPlaybackToEnd(scene: CombatScene, now: number): void {
   scene.choreo = null;
   scene.barks = [];
   scene.barkWindow = [];
+  resetImpactState(scene.impact);
 }
 
 /**
@@ -3449,6 +3584,21 @@ export function absorbDeaths(scene: CombatScene, state: CombatState): void {
 // --- Per-frame update ---------------------------------------------------------------
 
 export function updateScene(scene: CombatScene, now: number): void {
+  // --- Hit-stop: freeze all presentation clocks ---
+  // When freezeUntilWallTime > now, the scene is frozen. We shift every
+  // presentation timestamp forward by the real-time delta so nothing
+  // visually advances.  freezeUntilWallTime itself is NOT shifted (real time).
+  // Particles are not advanced.  lastUpdate is set to `now` to prevent a
+  // large particle jump after unfreezing.
+  if (scene.impact.freezeUntilWallTime > now) {
+    const prevLast = scene.lastUpdate;
+    if (prevLast !== undefined && prevLast < now) {
+      shiftPresentationClocks(scene, now - prevLast);
+    }
+    scene.lastUpdate = now;
+    return;
+  }
+
   // Fire due choreography steps. When playbackRate > 1, warp choreo.start
   // backward so wall-clock jumps and continuous frames both stay in sync
   // (absolute-time tests with rate=1 are unchanged).
@@ -3467,6 +3617,9 @@ export function updateScene(scene: CombatScene, now: number): void {
     }
     if (elapsed >= scene.choreo.duration) {
       scene.choreo = null;
+      // Clear any freeze set by steps that fired in this batch — when the
+      // choreography is done, the visual hold is irrelevant.
+      scene.impact.freezeUntilWallTime = 0;
     }
   }
 

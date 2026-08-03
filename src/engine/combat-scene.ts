@@ -56,6 +56,11 @@ import {
   type SceneCursor,
   type SceneEffect,
 } from "./combat-choreography";
+import {
+  sampleZoom,
+  sampleEnvironmentLight,
+  sampleActorFlash,
+} from "./combat-impact-fx";
 
 // Re-export the public choreography API so existing importers keep working.
 export {
@@ -224,7 +229,10 @@ function drawStripFrame(
   size: number,
   mirror: boolean,
   opacity: number,
-  tint?: string
+  tint?: string,
+  actorId?: string,
+  scene?: CombatScene,
+  now?: number,
 ): void {
   ctx.save();
   ctx.globalAlpha = opacity;
@@ -244,6 +252,19 @@ function drawStripFrame(
     size,
     size
   );
+  // Actor silhouette flash: additive white/elemental overlay on strong hits.
+  if (actorId && scene && now !== undefined) {
+    const flash = sampleActorFlash(scene.impact.actorFlashes.get(actorId) ?? null, now);
+    if (flash.strength > 0.01) {
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = flash.strength * opacity;
+      ctx.fillStyle = flash.color;
+      // Draw the same sprite frame again as a solid tinted silhouette:
+      // we can't easily tint a sprite, so we draw a filled rect over the
+      // sprite bounds as a flash glow.
+      ctx.fillRect(-size / 2, -size / 2, size, size);
+    }
+  }
   ctx.restore();
 }
 
@@ -384,7 +405,7 @@ function drawPartyMember(
   if (stripInfo) {
     const stateAge = now - anim.stateStart;
     const frame = frozen && anim.state === "idle" ? 0 : frameIndexFor(stripInfo.strip, stateAge);
-    drawStripFrame(ctx, stripInfo.img, stripInfo.strip, frame, x, y, drawSize, true, opacity, tint);
+    drawStripFrame(ctx, stripInfo.img, stripInfo.strip, frame, x, y, drawSize, true, opacity, tint, char.id, scene, now);
   } else {
     drawPartyFallback(ctx, x, y, char, anim, drawSize, tint);
     if (anim.state === "hurt" && now - anim.stateStart < 200) {
@@ -488,7 +509,7 @@ function drawEnemy(
     } else {
       frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED));
     }
-    drawStripFrame(ctx, img!, strip, frame, x, y, drawSize, false, anim.opacity, tint);
+    drawStripFrame(ctx, img!, strip, frame, x, y, drawSize, false, anim.opacity, tint, enemy.instanceId, scene, now);
   } else {
     drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize, frozen, tint);
   }
@@ -542,7 +563,7 @@ function drawAlly(
       // Enemy-pack strips face RIGHT; summons fight for the party (center/right
       // of the stage) so mirror them to face LEFT toward the enemy line —
       // same contract as drawPartyMember.
-      drawStripFrame(ctx, img, strip, frame, x, y, drawSize, true, anim.opacity);
+      drawStripFrame(ctx, img, strip, frame, x, y, drawSize, true, anim.opacity, undefined, ally.id, scene, now);
       const artTop = artTopFromTopFor({
         hasStrip: true,
         stripArtTopFromTop: strip.artTopFromTop,
@@ -989,6 +1010,15 @@ export function renderScene(
     ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
   }
 
+  // Bounded impact zoom: scale around the impact focus point.
+  // Applied before all drawing so the entire scene zooms together.
+  const zoom = sampleZoom(scene.impact.zoom, now);
+  if (zoom.scale > 1.001) {
+    ctx.translate(zoom.focusX, zoom.focusY);
+    ctx.scale(zoom.scale, zoom.scale);
+    ctx.translate(-zoom.focusX, -zoom.focusY);
+  }
+
   // Background: prefer the baked arena room backdrop (current floor tileset),
   // fall back to the static combat-bg.png image, then a plain gradient.
   const backdrop = scene.backdrop;
@@ -1006,6 +1036,58 @@ export function renderScene(
       grad.addColorStop(1, "#1f1b14");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
+    }
+  }
+
+  // Elemental environmental lighting: dim the backdrop during prelude,
+  // then flash + floor/rim glow on impact.  Drawn after background but
+  // before sprites so actors sit on top of the lighting.
+  const envLight = sampleEnvironmentLight(scene.impact.environment, now);
+  if (envLight.active) {
+    // Backdrop dim (multiply-like via dark overlay).
+    if (envLight.backdropDim > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = envLight.backdropDim;
+      ctx.fillStyle = "rgba(0,0,0,1)";
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+    // Screen flash (additive, very brief).
+    if (envLight.screenFlashStrength > 0) {
+      const flashColor = scene.impact.environment?.color ?? "#ffffff";
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = envLight.screenFlashStrength;
+      ctx.fillStyle = flashColor;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+    // Floor glow (additive radial from bottom-center).
+    if (envLight.floorStrength > 0) {
+      const floorColor = scene.impact.environment?.color ?? "#ffffff";
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = envLight.floorStrength * 0.5;
+      const grad = ctx.createRadialGradient(w * 0.5, h * 0.8, 0, w * 0.5, h * 0.8, w * 0.6);
+      grad.addColorStop(0, floorColor);
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+    // Rim light (additive top vignette).
+    if (envLight.rimStrength > 0) {
+      const rimColor = scene.impact.environment?.color ?? "#ffffff";
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = envLight.rimStrength * 0.3;
+      const grad = ctx.createLinearGradient(0, 0, 0, h * 0.4);
+      grad.addColorStop(0, rimColor);
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h * 0.4);
+      ctx.restore();
     }
   }
 
