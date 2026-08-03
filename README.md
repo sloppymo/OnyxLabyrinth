@@ -60,7 +60,7 @@ node scripts/playtests/playtest-floors-4-5.mjs
 node scripts/playtests/map-overlay-verify.mjs
 ```
 
-Gameplay RNG is **not** seeded yet, so playtest numbers are directional, not reproducible.
+Gameplay RNG is seedable: call `window.__onyxDebug.setGameplayRng(window.__onyxDebug.createSeededRng(seed))` before a playtest run to make combat, encounters, and stat rolls reproducible. Reset with `resetGameplayRng()` (or a page reload) to return to `Math.random`. The deterministic replay proof lives in `src/game/deterministic-replay.test.ts`.
 
 ### All-floor corridor visual audit
 

@@ -3,7 +3,7 @@ import {
   createCombatState,
   resolveCombatRound,
 } from "./combat";
-import { createSeededRng } from "./rng";
+import { createSeededRng, setGameplayRng, resetGameplayRng } from "./rng";
 import type {
   CombatState,
   EnemyInstance,
@@ -178,6 +178,69 @@ describe("deterministic replay", () => {
 
   it("combat actually terminates (victory or wipe) within the round cap", () => {
     const result = runReplay(party, 12345);
+    expect(result.ended).toBe(true);
+    expect(["victory", "wipe", "fled"]).toContain(result.result);
+  });
+});
+
+// --- Live-path tests --------------------------------------------------------
+// These prove the seeded RNG works through the DEFAULT parameter path
+// (rng: Rng = getGameplayRng()), which is the path the live game uses when
+// it calls resolveCombatRound without passing an explicit rng. The tests above
+// pass rng directly; these set the global gameplay RNG via setGameplayRng and
+// rely on the default, closing the gap between the test harness and reality.
+
+/**
+ * Run combat via the live path: seed the global gameplay RNG once, then call
+ * resolveCombatRound WITHOUT passing rng (so it falls back to the
+ * getGameplayRng() default). The RNG state carries across rounds exactly as
+ * it would in the real game — one continuous stream per run.
+ */
+function runReplayLivePath(party: Character[], seed: number, maxRounds = 12): ReplaySnapshot {
+  let state = makeState(party);
+  // createCombatState() calls resetBarkRngForCombat() (Date.now()-seeded), so
+  // re-inject the deterministic bark RNG AFTER state creation.
+  setBarkRngForTests(createSeededRng(seed + 7919));
+  // Seed the global gameplay RNG once for the whole run. Each resolveCombatRound
+  // call picks up the same seeded function via getGameplayRng() and advances
+  // its internal LCG state across rounds — mirroring the live game's one-stream
+  // model rather than the per-round re-seed that runReplay uses.
+  setGameplayRng(createSeededRng(seed));
+  try {
+    for (let i = 0; i < maxRounds && !state.ended; i++) {
+      state = resolveCombatRound(state, actionsFor(state));
+    }
+  } finally {
+    resetGameplayRng();
+  }
+  return snapshot(state);
+}
+
+describe("deterministic replay (live path via getGameplayRng default)", () => {
+  const party = createDefaultParty();
+
+  it("same seed produces identical combat outcomes through the default-rng path", () => {
+    const a = runReplayLivePath(party, 12345);
+    const b = runReplayLivePath(party, 12345);
+    expect(b).toEqual(a);
+  });
+
+  it("live-path determinism holds across multiple seeds", () => {
+    for (const seed of [1, 42, 1000, 999999, 7]) {
+      const a = runReplayLivePath(party, seed);
+      const b = runReplayLivePath(party, seed);
+      expect(b).toEqual(a);
+    }
+  });
+
+  it("different seeds produce different outcomes via the live path", () => {
+    const a = runReplayLivePath(party, 12345);
+    const b = runReplayLivePath(party, 67890);
+    expect(a).not.toEqual(b);
+  });
+
+  it("live path terminates (victory or wipe) within the round cap", () => {
+    const result = runReplayLivePath(party, 12345);
     expect(result.ended).toBe(true);
     expect(["victory", "wipe", "fled"]).toContain(result.result);
   });

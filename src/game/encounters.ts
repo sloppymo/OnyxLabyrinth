@@ -13,6 +13,7 @@ import {
   type Row,
 } from "../data/enemies";
 import type { EncounterZoneDef, FloorDef } from "../data/floors";
+import { getGameplayRng } from "./rng";
 
 /** Design doc §6.3: no more than one encounter per this many steps. */
 export const ENCOUNTER_COOLDOWN = 8;
@@ -223,7 +224,7 @@ function reshuffleSpawns(
 export function rollArenaEncounter(
   floor: number,
   wave = 1,
-  rng: () => number = Math.random
+  rng: () => number = getGameplayRng()
 ): EncounterEntry | null {
   const table = ENCOUNTER_TABLES[floor];
   if (!table || table.length === 0) return null;

@@ -94,6 +94,7 @@ import { ArenaController } from "./engine/arena-ui";
 import { FF6Window } from "./engine/ff6-window-library";
 import { autoSave, serialize, deserialize } from "./game/save";
 import { createCombatFromEncounter } from "./game/combat";
+import { getGameplayRng, setGameplayRng, resetGameplayRng, createSeededRng } from "./game/rng";
 import { defaultLoadoutForCharacter } from "./game/combat-equipment";
 import { reconcileInventoryAfterCombat } from "./game/combat-inventory";
 import type { CombatState, Loadout } from "./game/combat-types";
@@ -524,7 +525,7 @@ function maybeTriggerEncounter(): boolean {
   // Design doc §6.2: treasure rooms are guaranteed empty of enemies.
   const cell = state.floor.grid[state.player.y]?.[state.player.x];
   if (cell?.tile === "treasure") return false;
-  if (Math.random() >= chance) return false;
+  if (getGameplayRng()() >= chance) return false;
 
   const tableId = encounterTableFloorId(
     state.floor,
@@ -2431,6 +2432,12 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     getCombatController: () => combatController,
     setBarksEnabled,
     getBarksEnabled,
+    // Seeded gameplay RNG — call setGameplayRng(createSeededRng(seed)) before
+    // a playtest run to make combat/encounters/stat-rolls reproducible. Reset
+    // with resetGameplayRng() (or a page reload) to return to Math.random.
+    setGameplayRng,
+    resetGameplayRng,
+    createSeededRng,
     renderBattleArena,
     renderCorridorBackdrop,
     groundPlaneProbe: () => {

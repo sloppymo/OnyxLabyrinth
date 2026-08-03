@@ -7,6 +7,8 @@
  * the combat system to wire up later.
  */
 
+import { getGameplayRng } from "./rng";
+
 export type Race = "Human" | "Elf" | "Dwarf" | "Gnome" | "Hobbit";
 export type Alignment = "Good" | "Neutral" | "Evil";
 export type CharacterClass =
@@ -187,7 +189,7 @@ export const MAX_STAT = 18;
 
 /** Roll one fair six-sided die. */
 export function rollD6(): number {
-  return Math.floor(Math.random() * 6) + 1;
+  return Math.floor(getGameplayRng()() * 6) + 1;
 }
 
 /** Roll 3d6, the standard attribute roll. */
