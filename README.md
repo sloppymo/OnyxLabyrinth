@@ -60,7 +60,7 @@ node scripts/playtests/playtest-floors-4-5.mjs
 node scripts/playtests/map-overlay-verify.mjs
 ```
 
-Gameplay RNG is seedable: call `window.__onyxDebug.setGameplayRng(window.__onyxDebug.createSeededRng(seed))` before a playtest run to make combat, encounters, and stat rolls reproducible. Reset with `resetGameplayRng()` (or a page reload) to return to `Math.random`. The deterministic replay proof lives in `src/game/deterministic-replay.test.ts`.
+Gameplay RNG is seedable: call `window.__onyxDebug.setGameplayRng(window.__onyxDebug.createSeededRng(seed))` before a playtest run to make individual RNG-influenced systems (combat resolution, encounter selection, stat rolls, chest traps, NPC theft) reproducible in isolation. Reset with `resetGameplayRng()` (or a page reload) to return to `Math.random`. Unit tests in `src/game/deterministic-replay.test.ts` and `src/game/rng-wiring.test.ts` prove same-seed determinism for each system's default-parameter path. Full end-to-end playthrough replay (same inputs → same complete game state) is not yet implemented — it requires transcript replay on top of the seeded RNG.
 
 ### All-floor corridor visual audit
 

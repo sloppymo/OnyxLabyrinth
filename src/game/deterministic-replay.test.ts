@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import {
   createCombatState,
   resolveCombatRound,
@@ -217,6 +217,11 @@ function runReplayLivePath(party: Character[], seed: number, maxRounds = 12): Re
 }
 
 describe("deterministic replay (live path via getGameplayRng default)", () => {
+  // Safety net: runReplayLivePath uses try/finally, but afterEach guarantees
+  // no seeded RNG leaks into other test files if something throws before the
+  // finally block.
+  afterEach(() => resetGameplayRng());
+
   const party = createDefaultParty();
 
   it("same seed produces identical combat outcomes through the default-rng path", () => {
