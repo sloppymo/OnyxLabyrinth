@@ -133,9 +133,9 @@ describe("classifyImpact", () => {
     expect(classifyImpact({ damage: 5, targetMaxHp: 100, isBossSignature: true })).toBe("massive");
   });
 
-  it("handles zero max HP gracefully (treats as full ratio)", () => {
-    expect(classifyImpact({ damage: 50, targetMaxHp: 0 })).toBe("massive");
-    expect(classifyImpact({ damage: 1, targetMaxHp: 0 })).toBe("massive");
+  it("handles zero max HP gracefully (defaults to strong, not massive)", () => {
+    expect(classifyImpact({ damage: 50, targetMaxHp: 0 })).toBe("strong");
+    expect(classifyImpact({ damage: 1, targetMaxHp: 0 })).toBe("strong");
   });
 });
 
@@ -169,9 +169,10 @@ describe("hit-stop", () => {
     expect(effectiveHitStopMs("strong", 10, false)).toBe(20);
   });
 
-  it("returns 0 under reduced motion", () => {
+  it("caps at 30ms under reduced motion", () => {
     setReducedMotion(true);
-    expect(effectiveHitStopMs("massive", 1, false)).toBe(0);
+    expect(effectiveHitStopMs("massive", 1, false)).toBe(30);
+    expect(effectiveHitStopMs("heavy", 1, false)).toBeLessThanOrEqual(30);
     setReducedMotion(false);
   });
 
@@ -405,9 +406,9 @@ describe("AOE / multi-hit throttling", () => {
 describe("reduced motion", () => {
   beforeEach(() => setReducedMotion(false));
 
-  it("disables hit-stop", () => {
+  it("caps hit-stop at 30ms instead of disabling", () => {
     setReducedMotion(true);
-    expect(effectiveHitStopMs("massive", 1, false)).toBe(0);
+    expect(effectiveHitStopMs("massive", 1, false)).toBe(30);
     setReducedMotion(false);
   });
 
@@ -796,7 +797,7 @@ describe("triggerImpactPresentation", () => {
     expect(impact.zoom).toBeNull();
   });
 
-  it("reduced motion disables all effects", () => {
+  it("reduced motion degrades but does not disable effects", () => {
     setReducedMotion(true);
     const impact = makeImpact();
     triggerImpactPresentation(impact, {
@@ -809,10 +810,16 @@ describe("triggerImpactPresentation", () => {
       isFirstHit: true,
       illumination: ELEMENT_ILLUMINATION_DEFAULTS.fire,
     }, 1000, 1);
-    expect(impact.freezeUntilWallTime).toBe(0);
-    expect(impact.zoom).toBeNull();
-    expect(impact.environment).toBeNull();
-    expect(impact.actorFlashes.size).toBe(0);
+    // Hit-stop should be capped (30ms), not zero.
+    expect(impact.freezeUntilWallTime).toBeGreaterThan(0);
+    expect(impact.accumulatedFreezeThisTurn).toBeLessThanOrEqual(30);
+    // Zoom should be set but capped at 1.015x.
+    expect(impact.zoom).not.toBeNull();
+    expect(impact.zoom!.peakScale).toBeLessThanOrEqual(1.015);
+    // Environment light should be set (screen flash suppressed).
+    expect(impact.environment).not.toBeNull();
+    // Actor flash should be preserved.
+    expect(impact.actorFlashes.size).toBeGreaterThan(0);
     setReducedMotion(false);
   });
 });

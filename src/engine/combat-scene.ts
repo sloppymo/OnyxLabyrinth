@@ -1063,13 +1063,15 @@ export function renderScene(
       ctx.fillRect(0, 0, w, h);
       ctx.restore();
     }
-    // Floor glow (additive radial from bottom-center).
+    // Floor glow (additive radial from impact source point on the floor).
     if (envLight.floorStrength > 0) {
       const floorColor = scene.impact.environment?.color ?? "#ffffff";
+      const srcX = scene.impact.environment?.sourceX ?? w * 0.5;
+      const srcY = scene.impact.environment?.sourceY ?? h * 0.7;
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = envLight.floorStrength * 0.5;
-      const grad = ctx.createRadialGradient(w * 0.5, h * 0.8, 0, w * 0.5, h * 0.8, w * 0.6);
+      const grad = ctx.createRadialGradient(srcX, srcY, 0, srcX, srcY, w * 0.5);
       grad.addColorStop(0, floorColor);
       grad.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = grad;

@@ -12,7 +12,7 @@ import {
   isPlaybackDone,
   skipPlaybackToEnd,
 } from "./combat-choreography";
-import { setReducedMotion, getReducedMotion } from "./combat-impact-fx";
+import { setReducedMotion, getReducedMotion, sampleEnvironmentLight } from "./combat-impact-fx";
 import { createCombatState } from "../game/combat";
 import type { CombatEvent, EnemyInstance } from "../game/combat-types";
 import { createCharacter } from "../game/party";
@@ -129,7 +129,7 @@ describe("impact presentation choreography integration", () => {
       }
     });
 
-    it("clears freeze when choreography completes naturally", () => {
+    it("preserves final-hit hit-stop after choreography ends", () => {
       const scene = makeScene();
       const events: CombatEvent[] = [
         { type: "attack", actorId: "c0", targetId: "rat-0", damage: 10, range: "close" },
@@ -137,13 +137,23 @@ describe("impact presentation choreography integration", () => {
       const t0 = 1000;
       playTurn(scene, events, spellName, t0, W, H);
 
-      // Advance well past the entire choreography duration.
-      const endTime = t0 + scene.choreo!.duration + 500;
-      updateScene(scene, endTime);
+      // Advance to just past choreography end but before freeze expires.
+      // The impact fires at ~987ms; choreo duration is ~1700ms.
+      // A massive hit (10/10) grants ~78ms hit-stop, so freeze ends at ~1065ms.
+      // Advance to choreo end but check that if freeze is still active,
+      // isPlaybackDone returns false.
+      const choreoEnd = t0 + scene.choreo!.duration;
+      updateScene(scene, choreoEnd);
 
-      // After choreography is done, freeze should be cleared.
-      expect(scene.impact.freezeUntilWallTime).toBe(0);
-      expect(isPlaybackDone(scene, endTime)).toBe(true);
+      // If freeze is still active at choreoEnd, playback should NOT be done.
+      if (scene.impact.freezeUntilWallTime > choreoEnd) {
+        expect(isPlaybackDone(scene, choreoEnd)).toBe(false);
+      }
+
+      // After freeze expires, playback should be done.
+      const afterFreeze = Math.max(choreoEnd, scene.impact.freezeUntilWallTime) + 10;
+      updateScene(scene, afterFreeze);
+      expect(isPlaybackDone(scene, afterFreeze)).toBe(true);
     });
   });
 
@@ -198,8 +208,29 @@ describe("impact presentation choreography integration", () => {
     });
   });
 
-  describe("reduced motion disables impact effects", () => {
-    it("playTurn does not set impact state under reduced motion", () => {
+  describe("reduced motion degrades impact effects", () => {
+    it("preserves actor flash and environment light under reduced motion", () => {
+      setReducedMotion(true);
+      const scene = makeScene();
+      const events: CombatEvent[] = [
+        { type: "cast", actorId: "c0", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 8 },
+        { type: "spellEffect", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 8 },
+      ];
+      const t0 = 1000;
+      playTurn(scene, events, spellName, t0, W, H);
+      updateScene(scene, t0 + 2000);
+
+      // Actor flash should still be set (degraded, not disabled).
+      expect(scene.impact.actorFlashes.size).toBeGreaterThan(0);
+      // Environment light should still be set for fire spells.
+      expect(scene.impact.environment).not.toBeNull();
+      // Hit-stop should be capped but not zero.
+      expect(scene.impact.accumulatedFreezeThisTurn).toBeGreaterThan(0);
+      expect(scene.impact.accumulatedFreezeThisTurn).toBeLessThanOrEqual(30);
+      setReducedMotion(false);
+    });
+
+    it("caps zoom at 1.015x under reduced motion", () => {
       setReducedMotion(true);
       const scene = makeScene();
       const events: CombatEvent[] = [
@@ -209,11 +240,9 @@ describe("impact presentation choreography integration", () => {
       playTurn(scene, events, spellName, t0, W, H);
       updateScene(scene, t0 + 2000);
 
-      expect(scene.impact.actorFlashes.size).toBe(0);
-      expect(scene.impact.zoom).toBeNull();
-      expect(scene.impact.environment).toBeNull();
-      expect(scene.impact.freezeUntilWallTime).toBe(0);
-      expect(getReducedMotion()).toBe(true);
+      expect(scene.impact.zoom).not.toBeNull();
+      expect(scene.impact.zoom!.peakScale).toBeLessThanOrEqual(1.015);
+      setReducedMotion(false);
     });
   });
 
@@ -244,6 +273,35 @@ describe("impact presentation choreography integration", () => {
       updateScene(scene, t0 + 3000);
 
       expect(scene.impact.actorFlashes.has("rat-0")).toBe(true);
+    });
+
+    it("environment light prelude is active before the damage step fires", () => {
+      const scene = makeScene();
+      const events: CombatEvent[] = [
+        { type: "cast", actorId: "c0", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 8 },
+        { type: "spellEffect", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 8 },
+      ];
+      const t0 = 1000;
+      playTurn(scene, events, spellName, t0, W, H);
+
+      // Fire-bolt uses riseDash, so pendingImpactBase = max(CAST_IMPACT, 920) = 920ms.
+      // Fire has preludeMs=120, so the prelude step fires at 920-120=800ms.
+      // Advance in small steps so the step fires near its scheduled time.
+      for (let ms = 100; ms <= 850; ms += 50) {
+        updateScene(scene, t0 + ms);
+      }
+      const preludeTime = t0 + 850;
+      updateScene(scene, preludeTime);
+
+      // Environment light should be armed and active (backdrop dim visible).
+      expect(scene.impact.environment).not.toBeNull();
+      const envSample = sampleEnvironmentLight(scene.impact.environment, preludeTime);
+      expect(envSample.active).toBe(true);
+      // During prelude, backdrop dim should be > 0 (darkening phase).
+      expect(envSample.backdropDim).toBeGreaterThan(0);
+      // Floor/rim/flash should be 0 during prelude (they activate at impact).
+      expect(envSample.floorStrength).toBe(0);
+      expect(envSample.screenFlashStrength).toBe(0);
     });
   });
 

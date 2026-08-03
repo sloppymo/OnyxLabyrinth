@@ -140,7 +140,8 @@ export interface ImpactClassificationInput {
 }
 
 export function classifyImpact(input: ImpactClassificationInput): ImpactStrength {
-  const ratio = input.targetMaxHp > 0 ? input.damage / input.targetMaxHp : 1;
+  // Invalid max HP → conservative default ("strong"), not "massive".
+  const ratio = input.targetMaxHp > 0 ? input.damage / input.targetMaxHp : null;
 
   // Tier / boss promotion first (massive floor).
   if (input.spellTier !== undefined && input.spellTier >= 6) {
@@ -151,7 +152,8 @@ export function classifyImpact(input: ImpactClassificationInput): ImpactStrength
   }
 
   let strength: ImpactStrength;
-  if (ratio < 0.12) strength = "light";
+  if (ratio === null) strength = "strong";
+  else if (ratio < 0.12) strength = "light";
   else if (ratio < 0.25) strength = "strong";
   else if (ratio < 0.4) strength = "heavy";
   else strength = "massive";
@@ -187,6 +189,9 @@ export function baseHitStopMs(strength: ImpactStrength): number {
  * Effective hit-stop after FAST scaling and reduced-motion adjustment.
  * Returns 0 for light impacts or when disabled.
  */
+/** Reduced-motion hit-stop cap (ms). */
+export const REDUCED_MOTION_HIT_STOP_CAP = 30;
+
 export function effectiveHitStopMs(
   strength: ImpactStrength,
   playbackRate: number,
@@ -195,7 +200,8 @@ export function effectiveHitStopMs(
   if (!COMBAT_HIT_STOP_ENABLED) return 0;
   const base = baseHitStopMs(strength);
   if (base <= 0) return 0;
-  if (reducedMotion || reducedMotionActive) return 0;
+  const reduced = reducedMotion || reducedMotionActive;
+  if (reduced) return Math.min(base, REDUCED_MOTION_HIT_STOP_CAP);
   const rate = Math.max(1, playbackRate || 1);
   return Math.max(20, Math.round(base / rate));
 }
@@ -209,7 +215,8 @@ export function cappedHitStopMs(
   accumulatedSoFar: number
 ): number {
   if (desired <= 0) return 0;
-  const remaining = MAX_CUMULATIVE_HIT_STOP - accumulatedSoFar;
+  const cap = (reducedMotionActive) ? REDUCED_MOTION_HIT_STOP_CAP : MAX_CUMULATIVE_HIT_STOP;
+  const remaining = cap - accumulatedSoFar;
   if (remaining <= 0) return 0;
   return Math.min(desired, remaining);
 }
@@ -658,7 +665,8 @@ export function triggerImpactPresentation(
   });
 
   // --- Actor flash (always, even on AOE non-stop targets) ---
-  if (COMBAT_ACTOR_FLASH_ENABLED && !reduced) {
+  // Preserved under reduced motion (it communicates damage strength).
+  if (COMBAT_ACTOR_FLASH_ENABLED) {
     const flashDuration = strength === "light" ? 0
       : strength === "strong" ? 24
       : strength === "heavy" ? 32
@@ -705,8 +713,11 @@ export function triggerImpactPresentation(
   }
 
   // --- Zoom ---
-  if (COMBAT_IMPACT_ZOOM_ENABLED && !reduced) {
-    const peak = peakZoomScale(strength);
+  // Under reduced motion, cap zoom at 1.015x instead of disabling.
+  if (COMBAT_IMPACT_ZOOM_ENABLED) {
+    const peak = reduced
+      ? Math.min(1.015, peakZoomScale(strength))
+      : peakZoomScale(strength);
     const dur = zoomDurationMs(strength);
     if (peak > 1 && dur > 0) {
       const candidate: CameraZoomImpulse = {
@@ -723,7 +734,10 @@ export function triggerImpactPresentation(
   }
 
   // --- Environment light ---
-  if (COMBAT_ENV_LIGHTING_ENABLED && !reduced && input.illumination) {
+  // Preserved under reduced motion (it communicates elemental identity).
+  // Under reduced motion, suppress the aggressive screen flash but keep
+  // backdrop dim, floor glow, and rim light.
+  if (COMBAT_ENV_LIGHTING_ENABLED && input.illumination) {
     const illum = input.illumination;
     const prelude = illum.preludeMs ?? 0;
     const candidate: EnvironmentLightImpulse = {
@@ -735,7 +749,7 @@ export function triggerImpactPresentation(
       backdropDim: illum.backdropDim ?? 0.3,
       floorStrength: illum.floorStrength ?? 0.5,
       rimStrength: illum.rimStrength ?? 0.3,
-      screenFlashStrength: illum.screenFlashStrength ?? 0.2,
+      screenFlashStrength: reduced ? 0 : (illum.screenFlashStrength ?? 0.2),
       sourceX: input.x,
       sourceY: input.y,
     };

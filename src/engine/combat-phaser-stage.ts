@@ -183,8 +183,12 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private bgImage: Phaser.GameObjects.Image | null = null;
   /** Environmental lighting dim overlay (normal blend, black). */
   private envDimRect: Phaser.GameObjects.Rectangle | null = null;
-  /** Environmental lighting flash/glow overlay (additive blend, element color). */
+  /** Environmental lighting flash overlay (additive blend, element color). */
   private envFlashRect: Phaser.GameObjects.Rectangle | null = null;
+  /** Environmental lighting floor radial glow (additive, element color). */
+  private envFloorGlow: Phaser.GameObjects.Graphics | null = null;
+  /** Environmental lighting rim vignette (additive, element color). */
+  private envRimGlow: Phaser.GameObjects.Graphics | null = null;
   private bannerText: Phaser.GameObjects.Text | null = null;
   private bannerBg: Phaser.GameObjects.Graphics | null = null;
   private nameplateText: Phaser.GameObjects.Text | null = null;
@@ -1024,8 +1028,15 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     if (!env.active) {
       if (this.envDimRect) this.envDimRect.setVisible(false);
       if (this.envFlashRect) this.envFlashRect.setVisible(false);
+      if (this.envFloorGlow) this.envFloorGlow.setVisible(false);
+      if (this.envRimGlow) this.envRimGlow.setVisible(false);
       return;
     }
+    const colorHex = scene.impact.environment?.color ?? "#ffffff";
+    const colorNum = parseInt(colorHex.replace("#", "0x"), 16) || 0xffffff;
+    const srcX = scene.impact.environment?.sourceX ?? w * 0.5;
+    const srcY = scene.impact.environment?.sourceY ?? h * 0.7;
+
     // Dim overlay (normal blend, black, alpha = backdropDim).
     if (!this.envDimRect) {
       this.envDimRect = this.add.rectangle(0, 0, w, h, 0x000000, 0).setOrigin(0, 0).setDepth(-900);
@@ -1033,19 +1044,55 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     this.envDimRect.setVisible(true);
     this.envDimRect.setAlpha(env.backdropDim);
 
-    // Flash/glow overlay (additive blend, element color).
-    const flashStrength = Math.max(env.screenFlashStrength, env.floorStrength * 0.5, env.rimStrength * 0.3);
-    if (flashStrength > 0.001) {
-      const colorHex = scene.impact.environment?.color ?? "#ffffff";
-      const colorNum = parseInt(colorHex.replace("#", "0x"), 16) || 0xffffff;
+    // Screen flash (additive, very brief).
+    if (env.screenFlashStrength > 0.001) {
       if (!this.envFlashRect) {
         this.envFlashRect = this.add.rectangle(0, 0, w, h, colorNum, 0).setOrigin(0, 0).setDepth(899).setBlendMode(Phaser.BlendModes.ADD);
       }
       this.envFlashRect.setVisible(true);
       this.envFlashRect.setFillStyle(colorNum);
-      this.envFlashRect.setAlpha(flashStrength);
+      this.envFlashRect.setAlpha(env.screenFlashStrength);
     } else if (this.envFlashRect) {
       this.envFlashRect.setVisible(false);
+    }
+
+    // Floor radial glow (additive, impact-centered).
+    if (env.floorStrength > 0.001) {
+      if (!this.envFloorGlow) {
+        this.envFloorGlow = this.add.graphics().setDepth(898).setBlendMode(Phaser.BlendModes.ADD);
+      }
+      this.envFloorGlow.setVisible(true);
+      this.envFloorGlow.clear();
+      const radius = w * 0.5;
+      const alpha = env.floorStrength * 0.5;
+      // Draw concentric circles from outer (transparent) to inner (color).
+      for (let i = 5; i >= 0; i--) {
+        const r = radius * (1 - i * 0.15);
+        const a = alpha * (i / 5);
+        this.envFloorGlow.fillStyle(colorNum, a);
+        this.envFloorGlow.fillCircle(srcX, srcY, r);
+      }
+    } else if (this.envFloorGlow) {
+      this.envFloorGlow.setVisible(false);
+    }
+
+    // Rim vignette (additive, top-down gradient).
+    if (env.rimStrength > 0.001) {
+      if (!this.envRimGlow) {
+        this.envRimGlow = this.add.graphics().setDepth(897).setBlendMode(Phaser.BlendModes.ADD);
+      }
+      this.envRimGlow.setVisible(true);
+      this.envRimGlow.clear();
+      const rimAlpha = env.rimStrength * 0.3;
+      // Draw horizontal bands fading from top to mid-screen.
+      for (let i = 0; i < 6; i++) {
+        const bandH = h * 0.4 / 6;
+        const a = rimAlpha * (1 - i / 6);
+        this.envRimGlow.fillStyle(colorNum, a);
+        this.envRimGlow.fillRect(0, i * bandH, w, bandH);
+      }
+    } else if (this.envRimGlow) {
+      this.envRimGlow.setVisible(false);
     }
   }
 

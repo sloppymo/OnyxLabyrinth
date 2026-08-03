@@ -39,6 +39,7 @@ import type { SpriteStrip } from "./sprite-manifest";
 import {
   type CombatImpactState,
   type IlluminationProfile,
+  type EnvironmentLightImpulse,
   createImpactState,
   resetImpactState,
   ELEMENT_ILLUMINATION_DEFAULTS,
@@ -48,6 +49,7 @@ import {
   preScanDamageEvents,
   classifyHitSequence,
   syncReducedMotionFromMediaQuery,
+  shouldReplaceEnvironmentLight,
 } from "./combat-impact-fx";
 
 export type { CombatImpactState, CameraZoomImpulse, EnvironmentLightImpulse, ActorFlashImpulse, IlluminationProfile } from "./combat-impact-fx";
@@ -3036,6 +3038,40 @@ export function playTurn(
           );
         }
 
+        // Pre-impact illumination prelude: arm the environment light before
+        // the impact step fires so the prelude darkening (e.g. fire) is
+        // visible to the renderer in the frames leading up to impact.
+        const castIllumination = resolveIllumination(
+          castSpell?.effect.kind === "damage" ? (castSpell.effect as { element?: string }).element : undefined,
+          style.illumination
+        );
+        if (castIllumination && (castIllumination.preludeMs ?? 0) > 0) {
+          const preludeMs = castIllumination.preludeMs!;
+          const preludeTime = pendingImpactBase! - preludeMs;
+          const illum = castIllumination;
+          steps.push(
+            step(preludeTime, (sc, n) => {
+              const target = evt.targetId ? findActor(sc, evt.targetId, w, h) : null;
+              const candidate: EnvironmentLightImpulse = {
+                kind: illum.kind,
+                start: n,
+                impactAt: n + preludeMs,
+                duration: illum.durationMs,
+                color: illum.color,
+                backdropDim: illum.backdropDim ?? 0.3,
+                floorStrength: 0, // floor/rim/flash activate at impact
+                rimStrength: 0,
+                screenFlashStrength: 0,
+                sourceX: target?.x ?? w * 0.5,
+                sourceY: target?.y ?? h * 0.5,
+              };
+              if (shouldReplaceEnvironmentLight(sc.impact.environment, candidate, n)) {
+                sc.impact.environment = candidate;
+              }
+            })
+          );
+        }
+
         // Enemy casts / items carry their damage/heal directly on the cast event.
         if (evt.targetId && (evt.damage !== undefined || evt.heal !== undefined)) {
           const isHeal = evt.heal !== undefined;
@@ -3616,10 +3652,15 @@ export function updateScene(scene: CombatScene, now: number): void {
       }
     }
     if (elapsed >= scene.choreo.duration) {
+      const choreoEndTime = scene.choreo.start + scene.choreo.duration;
       scene.choreo = null;
-      // Clear any freeze set by steps that fired in this batch — when the
-      // choreography is done, the visual hold is irrelevant.
-      scene.impact.freezeUntilWallTime = 0;
+      // Preserve a legitimate final-hit hit-stop armed *before* the choreography
+      // ended (frame-by-frame playback).  But if the freeze was armed by a step
+      // that fired in this final batch (large time jump firing all remaining
+      // steps at once), clear it — it's an artifact, not a real hold.
+      if (scene.impact.lastFreezeWallTime >= choreoEndTime) {
+        scene.impact.freezeUntilWallTime = 0;
+      }
     }
   }
 
