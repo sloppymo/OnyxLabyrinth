@@ -6,11 +6,21 @@
  * which previously left a thin list floating inside an oversized empty field.
  */
 
-import type { ControllerInputEvent } from "./controller-input";
+import type { ControllerInputEvent, ControllerButton } from "./controller-input";
 import { controllerEventToMenuKey } from "./menu-controller-adapter";
 import { FF6Window } from "./ff6-window-library";
 import { audio } from "./audio";
 import "./dungeon-action-ring-ui.css";
+
+const KEYBOARD_TO_CONTROLLER: Readonly<Record<string, ControllerButton>> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+  Enter: "a",
+  " ": "a",
+  Escape: "b",
+};
 
 export type DungeonActionRingOptions = {
   panel: HTMLElement;
@@ -92,6 +102,8 @@ export class DungeonActionRingController {
       onTown: opts.onTown,
       onClose: opts.onClose,
     };
+    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("keyup", this.onKeyUp);
     this.panel.style.display = "flex";
     this.panel.classList.add("bg-overlay-dim", "dungeon-actions-host");
     this.render();
@@ -102,6 +114,20 @@ export class DungeonActionRingController {
     const key = controllerEventToMenuKey(event);
     if (key) this.handleKey(key);
   }
+
+  private onKeyDown = (e: KeyboardEvent): void => {
+    if (e.repeat) return;
+    const button = KEYBOARD_TO_CONTROLLER[e.key];
+    if (!button) return;
+    e.preventDefault();
+    this.handleInput({ kind: "press", button });
+  };
+
+  private onKeyUp = (e: KeyboardEvent): void => {
+    const button = KEYBOARD_TO_CONTROLLER[e.key];
+    if (!button) return;
+    this.handleInput({ kind: "release", button });
+  };
 
   /** Receives normalized A/B/D-pad commands from the shared input router. */
   handleKey(key: string): void {
@@ -178,6 +204,8 @@ export class DungeonActionRingController {
   }
 
   private dispose(): void {
+    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("keyup", this.onKeyUp);
     this.menu?.destroy();
     this.menu = null;
     this.panel.style.display = "none";

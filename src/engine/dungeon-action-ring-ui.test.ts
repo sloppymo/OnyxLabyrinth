@@ -88,4 +88,29 @@ describe("DungeonActionRingController", () => {
     expect(onTown).toHaveBeenCalledOnce();
     c.destroy();
   });
+
+  it("keyboard ArrowRight then Enter selects Map", () => {
+    const { c, onToggleMap, onClose } = mount();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    expect(onToggleMap).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+    c.destroy();
+  });
+
+  it("keyboard Escape closes without choosing an action", () => {
+    const { c, onCamp, onClose } = mount();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(onCamp).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledOnce();
+    c.destroy();
+  });
+
+  it("ignores unmapped keyboard keys", () => {
+    const { c, onClose } = mount();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "x" }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab" }));
+    expect(onClose).not.toHaveBeenCalled();
+    c.destroy();
+  });
 });
