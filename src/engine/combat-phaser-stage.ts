@@ -1000,8 +1000,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
 
   /**
    * Apply impact silhouette flash as a sprite tint override.
+   * Uses TintModes.FILL so the flash color replaces the texture (white silhouette).
    * Called after applyStatusTint so the flash takes precedence when active.
-   * When the flash expires, the next applyStatusTint call restores the normal tint.
+   * When the flash expires, we clear the tint so the next applyStatusTint call
+   * restores the normal MULTIPLY-mode status tint.
    */
   private applyActorFlash(
     entry: ActorSpriteEntry,
@@ -1013,10 +1015,14 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     if (flash.strength > 0.01 && !entry.isFallback) {
       const colorHex = flash.color.replace("#", "0x");
       const colorNum = parseInt(colorHex, 16) || 0xffffff;
-      // Use ADD tint mode so the flash brightens the sprite rather than replacing it.
+      // FILL mode replaces texture color while respecting alpha — true silhouette flash.
       const sprite = entry.sprite as Phaser.GameObjects.Sprite;
       sprite.setTint(colorNum);
+      sprite.setTintMode(Phaser.TintModes.FILL);
     }
+    // When flash is expired, do nothing — applyStatusTint already set the
+    // correct tint+mode (MULTIPLY) earlier this frame.  The FILL mode from
+    // the previous frame is overwritten by applyStatusTint's setTintMode call.
   }
 
   clearSpotlightFilters(): void {

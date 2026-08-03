@@ -230,7 +230,7 @@ describe("impact presentation choreography integration", () => {
       setReducedMotion(false);
     });
 
-    it("caps zoom at 1.015x under reduced motion", () => {
+    it("disables zoom under reduced motion", () => {
       setReducedMotion(true);
       const scene = makeScene();
       const events: CombatEvent[] = [
@@ -240,8 +240,7 @@ describe("impact presentation choreography integration", () => {
       playTurn(scene, events, spellName, t0, W, H);
       updateScene(scene, t0 + 2000);
 
-      expect(scene.impact.zoom).not.toBeNull();
-      expect(scene.impact.zoom!.peakScale).toBeLessThanOrEqual(1.015);
+      expect(scene.impact.zoom).toBeNull();
       setReducedMotion(false);
     });
   });
@@ -302,6 +301,31 @@ describe("impact presentation choreography integration", () => {
       // Floor/rim/flash should be 0 during prelude (they activate at impact).
       expect(envSample.floorStrength).toBe(0);
       expect(envSample.screenFlashStrength).toBe(0);
+    });
+
+    it("frame stall: large update jump fires impact without stale prelude dim", () => {
+      const scene = makeScene();
+      const events: CombatEvent[] = [
+        { type: "cast", actorId: "c0", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 8 },
+        { type: "spellEffect", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 8 },
+      ];
+      const t0 = 1000;
+      const duration = playTurn(scene, events, spellName, t0, W, H);
+
+      // Simulate a frame stall: jump far past everything at once.
+      const stallTime = t0 + duration + 500;
+      updateScene(scene, stallTime);
+
+      // Impact should have fired (popup exists).
+      expect(scene.popups.some((p) => p.text === "8")).toBe(true);
+      // No stale prelude: environment should be inactive or in decay (not dimming).
+      const envSample = sampleEnvironmentLight(scene.impact.environment, stallTime);
+      if (envSample.active) {
+        // If still active, it should not be in the prelude/darkening phase.
+        expect(envSample.backdropDim).toBeLessThanOrEqual(envSample.floorStrength);
+      }
+      // Playback should complete.
+      expect(isPlaybackDone(scene, stallTime)).toBe(true);
     });
   });
 

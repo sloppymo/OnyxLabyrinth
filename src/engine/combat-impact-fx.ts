@@ -713,11 +713,10 @@ export function triggerImpactPresentation(
   }
 
   // --- Zoom ---
-  // Under reduced motion, cap zoom at 1.015x instead of disabling.
-  if (COMBAT_IMPACT_ZOOM_ENABLED) {
-    const peak = reduced
-      ? Math.min(1.015, peakZoomScale(strength))
-      : peakZoomScale(strength);
+  // Under reduced motion, disable zoom entirely (scale = 1.0).
+  // MDN identifies scaling/panning large objects as vestibular triggers.
+  if (COMBAT_IMPACT_ZOOM_ENABLED && !reduced) {
+    const peak = peakZoomScale(strength);
     const dur = zoomDurationMs(strength);
     if (peak > 1 && dur > 0) {
       const candidate: CameraZoomImpulse = {

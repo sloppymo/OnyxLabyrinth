@@ -49,6 +49,7 @@ import {
   preScanDamageEvents,
   classifyHitSequence,
   syncReducedMotionFromMediaQuery,
+  getReducedMotion,
   shouldReplaceEnvironmentLight,
 } from "./combat-impact-fx";
 
@@ -935,8 +936,10 @@ function impactSteps(
   ];
 }
 
-/** Add (or increase) screen shake. Capped so big spells never nauseate. */
+/** Add (or increase) screen shake. Capped so big spells never nauseate.
+ *  Suppressed entirely under reduced-motion preference. */
 function addScreenShake(scene: CombatScene, amount: number, now: number, duration: number): void {
+  if (getReducedMotion()) return;
   scene.screenShake = {
     amount: Math.min(8, Math.max(scene.screenShake.amount, amount)),
     until: Math.max(scene.screenShake.until, now + duration),
@@ -3051,11 +3054,20 @@ export function playTurn(
           const illum = castIllumination;
           steps.push(
             step(preludeTime, (sc, n) => {
+              // Use the scheduled choreography time, not the real wall time,
+              // so that a frame stall doesn't collapse the prelude into the
+              // impact.  The scheduled time is choreo.start + step.at.
+              const scheduledNow = sc.choreo
+                ? sc.choreo.start + preludeTime
+                : n;
+              // If the scheduled impact time has already passed (large frame
+              // stall), skip the prelude — it's too late to darken.
+              if (n >= scheduledNow + preludeMs) return;
               const target = evt.targetId ? findActor(sc, evt.targetId, w, h) : null;
               const candidate: EnvironmentLightImpulse = {
                 kind: illum.kind,
-                start: n,
-                impactAt: n + preludeMs,
+                start: scheduledNow,
+                impactAt: scheduledNow + preludeMs,
                 duration: illum.durationMs,
                 color: illum.color,
                 backdropDim: illum.backdropDim ?? 0.3,

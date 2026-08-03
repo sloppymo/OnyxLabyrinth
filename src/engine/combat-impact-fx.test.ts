@@ -813,9 +813,8 @@ describe("triggerImpactPresentation", () => {
     // Hit-stop should be capped (30ms), not zero.
     expect(impact.freezeUntilWallTime).toBeGreaterThan(0);
     expect(impact.accumulatedFreezeThisTurn).toBeLessThanOrEqual(30);
-    // Zoom should be set but capped at 1.015x.
-    expect(impact.zoom).not.toBeNull();
-    expect(impact.zoom!.peakScale).toBeLessThanOrEqual(1.015);
+    // Zoom should be null (disabled under reduced motion).
+    expect(impact.zoom).toBeNull();
     // Environment light should be set (screen flash suppressed).
     expect(impact.environment).not.toBeNull();
     // Actor flash should be preserved.
