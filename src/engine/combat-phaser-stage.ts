@@ -100,6 +100,13 @@ const PHASER_FX_SPOTLIGHT = true;
 const PHASER_FX_HIT_SQUASH = true;
 /** Kill-switch for the per-sprite death mosaic/desaturate (harvest H1). */
 const PHASER_FX_DEATH_DISSOLVE = true;
+/**
+ * Kill-switch for the new palette-crumble ash effect.
+ *
+ * When false the stage falls back to the legacy pixelate + grayscale dissolve,
+ * which is also gated by `PHASER_FX_DEATH_DISSOLVE`.
+ */
+const PHASER_FX_PALETTE_CRUMBLE = true;
 /** Kill-switch for the cast bloom pulse (harvest H2). */
 const PHASER_FX_CAST_BLOOM = true;
 /** Kill-switch for the heal Shine sweep (harvest H3). */
@@ -142,15 +149,20 @@ interface ActorSpriteEntry {
   shadow: Phaser.GameObjects.Ellipse;
   isFallback: boolean;
   /**
-   * Per-sprite death-dissolve controllers, allocated lazily on first death
+   * Per-sprite palette-crumble controllers, allocated lazily on first death
    * frame. Kept on the entry rather than looked up from the sprite because
    * `ensureStripSprite` swaps the texture in place on state change, so the
    * Sprite (and therefore its filter list) survives idle→death.
    */
-  dissolve?: {
-    pixelate: Phaser.Filters.Pixelate;
-    matrix: Phaser.Filters.ColorMatrix;
+  crumble?: {
+    pixelate?: Phaser.Filters.Pixelate;
+    matrix?: Phaser.Filters.ColorMatrix;
+    gradientMap?: Phaser.Filters.GradientMap;
+    blocky?: Phaser.Filters.Blocky;
+    wipe?: Phaser.Filters.Wipe;
   } | null;
+  /** Transient ash-particle arcs for the crumble; destroyed on clear. */
+  ashArcs?: Phaser.GameObjects.Arc[];
 }
 
 class OnyxCombatPhaserScene extends Phaser.Scene {
@@ -456,17 +468,18 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const keys: string[] = [];
     const ramps: { key: string; pixelate: number; saturation: number }[] = [];
     for (const entry of this.actors.values()) {
-      if (!entry.dissolve) continue;
+      if (!entry.crumble) continue;
       keys.push(entry.key);
       let saturation = Number.NaN;
       try {
-        saturation = entry.dissolve.matrix.colorMatrix.getData()[0] ?? Number.NaN;
+        saturation =
+          entry.crumble.matrix?.colorMatrix.getData()[0] ?? Number.NaN;
       } catch {
         /* controller torn down mid-probe */
       }
       ramps.push({
         key: entry.key,
-        pixelate: entry.dissolve.pixelate.amount,
+        pixelate: entry.crumble.pixelate?.amount ?? Number.NaN,
         saturation,
       });
     }
@@ -924,49 +937,146 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private applyDeathDissolve(
     entry: ActorSpriteEntry,
     anim: ActorAnim,
-    now: number
+    now: number,
+    x: number,
+    footY: number,
+    drawSize: number
   ): void {
     if (!(entry.sprite instanceof Phaser.GameObjects.Sprite)) return;
     if (!PHASER_FX_DEATH_DISSOLVE || entry.isFallback || anim.state !== "death") {
       this.clearDeathDissolve(entry);
       return;
     }
-    const recipe = deathDissolveRecipe((now - anim.stateStart) / DEATH_ANIM_MS);
+    const t = (now - anim.stateStart) / DEATH_ANIM_MS;
+    const recipe = deathDissolveRecipe(t, "default");
     try {
-      if (!entry.dissolve) {
+      if (!entry.crumble) {
         const sprite = entry.sprite.enableFilters();
         const internal = sprite.filters?.internal;
         if (!internal) return;
-        entry.dissolve = {
-          pixelate: internal.addPixelate(recipe.pixelate),
-          matrix: internal.addColorMatrix(),
-        };
+        entry.crumble = {};
+        if (PHASER_FX_PALETTE_CRUMBLE) {
+          entry.crumble.gradientMap = internal.addGradientMap({
+            ramp: recipe.gradientMap.ramp,
+            dither: recipe.gradientMap.dither,
+            alpha: 0,
+          });
+          entry.crumble.blocky = internal.addBlocky({ size: 1 });
+          entry.crumble.wipe = internal.addWipe(
+            recipe.wipe.width,
+            1, // bottom-to-top
+            1, // Y axis
+            0 // fade (not reveal)
+          );
+        } else {
+          entry.crumble.pixelate = internal.addPixelate(recipe.pixelate);
+          entry.crumble.matrix = internal.addColorMatrix();
+        }
       }
-      entry.dissolve.pixelate.amount = recipe.pixelate;
-      // Rebuild rather than accumulate: ColorMatrix ops multiply by default.
-      entry.dissolve.matrix.colorMatrix.reset();
-      entry.dissolve.matrix.colorMatrix.grayscale(recipe.grayscale);
+      if (PHASER_FX_PALETTE_CRUMBLE) {
+        if (entry.crumble.gradientMap) {
+          entry.crumble.gradientMap.alpha = recipe.gradientMap.alpha;
+        }
+        if (entry.crumble.blocky) {
+          const size = recipe.blocky.size;
+          entry.crumble.blocky.size = { x: size, y: size };
+        }
+        if (entry.crumble.wipe) {
+          entry.crumble.wipe.progress = recipe.wipe.progress;
+        }
+        this.updateAshParticles(entry, recipe, t, x, footY, drawSize);
+      } else {
+        if (entry.crumble.pixelate) {
+          entry.crumble.pixelate.amount = recipe.pixelate;
+        }
+        if (entry.crumble.matrix) {
+          entry.crumble.matrix.colorMatrix.reset();
+          entry.crumble.matrix.colorMatrix.grayscale(recipe.grayscale);
+        }
+      }
     } catch {
       // CANVAS renderer / Filters unavailable — degrade to the opacity fade.
       this.clearDeathDissolve(entry);
     }
   }
 
-  /** Splice dissolve controllers out (revive, or actor leaving death). */
+  /** Splice crumble controllers and ash arcs out (revive, actor leaving death). */
   private clearDeathDissolve(entry: ActorSpriteEntry): void {
-    if (!entry.dissolve) return;
+    this.clearAshArcs(entry);
+    if (!entry.crumble) return;
     try {
       const internal = (
         entry.sprite as Phaser.GameObjects.Sprite
       ).filters?.internal;
       if (internal) {
-        internal.remove(entry.dissolve.pixelate);
-        internal.remove(entry.dissolve.matrix);
+        if (entry.crumble.pixelate) internal.remove(entry.crumble.pixelate);
+        if (entry.crumble.matrix) internal.remove(entry.crumble.matrix);
+        if (entry.crumble.gradientMap) internal.remove(entry.crumble.gradientMap);
+        if (entry.crumble.blocky) internal.remove(entry.crumble.blocky);
+        if (entry.crumble.wipe) internal.remove(entry.crumble.wipe);
       }
     } catch {
       /* sprite already torn down */
     }
-    entry.dissolve = null;
+    entry.crumble = null;
+  }
+
+  private clearAshArcs(entry: ActorSpriteEntry): void {
+    if (!entry.ashArcs?.length) return;
+    for (const arc of entry.ashArcs) {
+      try {
+        arc.destroy();
+      } catch {
+        /* already destroyed */
+      }
+    }
+    entry.ashArcs = [];
+  }
+
+  /** Explicit teardown before the scene is destroyed, so no filter leaks. */
+  clearAllCrumble(): void {
+    for (const entry of this.actors.values()) {
+      this.clearDeathDissolve(entry);
+    }
+  }
+
+  private updateAshParticles(
+    entry: ActorSpriteEntry,
+    recipe: ReturnType<typeof deathDissolveRecipe>,
+    t: number,
+    x: number,
+    footY: number,
+    drawSize: number
+  ): void {
+    if (recipe.ash.count <= 0) {
+      entry.ashArcs?.forEach((arc) => arc.setVisible(false));
+      return;
+    }
+    entry.ashArcs ??= [];
+    const desired = recipe.ash.count;
+    while (entry.ashArcs.length < desired) {
+      const arc = this.add.circle(0, 0, 2, recipe.ash.color, 0);
+      arc.setDepth(footY);
+      arc.setBlendMode(Phaser.BlendModes.NORMAL);
+      arc.setVisible(false);
+      entry.ashArcs.push(arc);
+    }
+    for (let i = 0; i < desired; i++) {
+      const arc = entry.ashArcs[i];
+      if (!arc) continue;
+      const speed = (i % 3) + 1;
+      const phase = desired > 1 ? i / (desired - 1) : 0.5;
+      const spread = (i % 2 === 0 ? 1 : -1) * (0.2 + (i % 5) * 0.05) * drawSize * 0.5;
+      const baseY = footY - drawSize * (0.2 + phase * 0.4);
+      const rise = t * speed * drawSize * 0.3;
+      arc.x = x + spread;
+      arc.y = baseY - rise;
+      arc.setFillStyle(recipe.ash.color, recipe.ash.alpha);
+      arc.setVisible(true);
+    }
+    for (let i = desired; i < entry.ashArcs.length; i++) {
+      entry.ashArcs[i]?.setVisible(false);
+    }
   }
 
   private applyHitSquash(
@@ -1469,7 +1579,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         })
       );
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
-      this.applyDeathDissolve(entry, anim, now);
+      this.applyDeathDissolve(entry, anim, now, x, footY, drawSize);
       this.applyActorFlash(entry, enemy.instanceId, scene, now);
     } else {
       this.placeFallback(entry, x, footY, drawSize);
@@ -1548,7 +1658,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
           frameIndexFor(stripInfo.strip, Math.max(0, stateAge - ageMs)),
       });
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
-      this.applyDeathDissolve(entry, anim, now);
+      this.applyDeathDissolve(entry, anim, now, x, footY, drawSize);
       this.applyActorFlash(entry, ally.id, scene, now);
     } else {
       this.placeFallback(entry, x, footY, drawSize);
@@ -1641,7 +1751,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         statusTintFor({ poison: char.status.includes("poison") })
       );
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
-      this.applyDeathDissolve(entry, anim, now);
+      this.applyDeathDissolve(entry, anim, now, x, footY, drawSize);
       this.applyActorFlash(entry, char.id, scene, now);
     } else {
       this.placeFallback(entry, x, footY, drawSize);
@@ -2228,6 +2338,7 @@ export async function createPhaserCombatStage(
         phaserScene.clearSpotlightFilters();
         phaserScene.clearCastBloom();
         phaserScene.clearAllShines();
+        phaserScene.clearAllCrumble();
       } catch {
         /* ignore */
       }
