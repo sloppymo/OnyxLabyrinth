@@ -7,6 +7,7 @@ import {
   DEATH_ANIM_MS,
   castBloomPulse,
   CAST_BLOOM_MS,
+  paletteCrumbleRamp,
   shineTargetsFrom,
   SHINE_MS,
   applyStatusTint,
@@ -331,6 +332,11 @@ describe("deathDissolveRecipe", () => {
     const demonAsh = deathDissolveRecipe(0.5, "demon").ash.color;
     expect(defaultRamp[0]?.colorStart).not.toBe(undeadRamp[0]?.colorStart);
     expect(demonAsh).toBe(0xb85c1a);
+  });
+
+  it("falls back to the default ramp for unknown families", () => {
+    const fallback = paletteCrumbleRamp("unknown" as any);
+    expect(fallback).toBe(paletteCrumbleRamp("default"));
   });
 
   it("clamps outside [0,1] instead of running away", () => {
