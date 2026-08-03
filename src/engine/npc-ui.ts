@@ -26,6 +26,7 @@ import {
 } from "../game/npc";
 import { FF6Window } from "./ff6-window-library";
 import { audio } from "./audio";
+import { nondeterministicRng, type Rng } from "../game/rng";
 
 type Phase = "root" | "talk" | "ask" | "barter" | "give";
 
@@ -42,6 +43,7 @@ export interface NPCControllerOptions {
   panel: HTMLElement;
   state: GameState;
   npc: NPCDef;
+  rng?: Rng;
   /** Close the panel; `message` goes to the dungeon message bar. */
   onClose: (message: string) => void;
   /** Start a fight against the NPC (attack / botched steal). */
@@ -54,6 +56,7 @@ export class NPCController {
   private npc: NPCDef;
   private onClose: (message: string) => void;
   private onFight: (npc: NPCDef) => void;
+  private rng: Rng;
 
   private phase: Phase = "root";
   private index = 0;
@@ -71,6 +74,7 @@ export class NPCController {
     this.npc = opts.npc;
     this.onClose = opts.onClose;
     this.onFight = opts.onFight;
+    this.rng = opts.rng ?? nondeterministicRng;
     this.dialogue = greet(this.state, this.npc);
     this.panel.style.display = "flex";
     this.render();
@@ -164,7 +168,7 @@ export class NPCController {
         case "steal":
           {
             const goldBefore = this.state.partyGold;
-            const result = stealFrom(this.state, this.npc);
+            const result = stealFrom(this.state, this.npc, this.rng);
             if (this.state.partyGold > goldBefore) {
               audio.playDungeonSfx("npcSteal");
             }

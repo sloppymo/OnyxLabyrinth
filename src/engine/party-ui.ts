@@ -36,6 +36,7 @@ import {
   type Character,
   type Stats,
 } from "../game/party";
+import { nondeterministicRng, type Rng } from "../game/rng";
 import {
   createPresetParty,
   PRESET_PARTIES,
@@ -105,6 +106,7 @@ export interface PartyCreationOptions {
   panel: HTMLElement;
   onConfirm: (party: Character[]) => void;
   onCancel: () => void;
+  rng?: Rng;
 }
 
 function escapeHtml(text: string): string {
@@ -132,6 +134,7 @@ export class PartyCreationController {
   private panel: HTMLElement;
   private onConfirm: (party: Character[]) => void;
   private onCancel: () => void;
+  private rng: Rng;
   private drafts: SlotDraft[] = [];
   private slotIndex = 0;
   private fieldIndex = 0; // index into FIELDS
@@ -168,6 +171,7 @@ export class PartyCreationController {
     this.panel = opts.panel;
     this.onConfirm = opts.onConfirm;
     this.onCancel = opts.onCancel;
+    this.rng = opts.rng ?? nondeterministicRng;
     this.panel.style.display = "flex";
     // Start with a fresh draft for slot 0 using a random name + Human/Neutral/Fighter.
     this.drafts.push(this.freshDraft(0));
@@ -398,7 +402,7 @@ export class PartyCreationController {
     this.destroy();
     this.panel.style.display = "none";
     this.panel.innerHTML = "";
-    this.onConfirm(createPresetParty(id));
+    this.onConfirm(createPresetParty(id, this.rng));
   }
 
   private enterEditor(): void {
@@ -426,7 +430,7 @@ export class PartyCreationController {
       race: m.race,
       alignment: m.alignment,
       cls: m.cls,
-      stats: rollStatsForRace(m.race),
+      stats: rollStatsForRace(m.race, this.rng),
     }));
     this.slotIndex = 0;
     this.fieldIndex = 0;
@@ -462,7 +466,7 @@ export class PartyCreationController {
       race,
       alignment: "Neutral",
       cls: "Fighter",
-      stats: rollStatsForRace(race),
+      stats: rollStatsForRace(race, this.rng),
     };
   }
 
@@ -472,7 +476,7 @@ export class PartyCreationController {
       const i = RACE_LIST.indexOf(d.race);
       d.race = RACE_LIST[(i + dir + RACE_LIST.length) % RACE_LIST.length];
       // Re-roll stats when race changes so racial modifiers apply.
-      d.stats = rollStatsForRace(d.race);
+      d.stats = rollStatsForRace(d.race, this.rng);
     } else if (field === "alignment") {
       const i = ALIGNMENTS.indexOf(d.alignment);
       d.alignment = ALIGNMENTS[(i + dir + ALIGNMENTS.length) % ALIGNMENTS.length];
@@ -486,7 +490,7 @@ export class PartyCreationController {
 
   private reroll(): void {
     const d = this.currentDraft();
-    d.stats = rollStatsForRace(d.race);
+    d.stats = rollStatsForRace(d.race, this.rng);
     this.flash = "Stats re-rolled.";
     this.render();
   }
@@ -552,7 +556,7 @@ export class PartyCreationController {
   private finish(): void {
     // Build the final party from the drafts.
     const party: Character[] = this.drafts.map((d, i) => {
-      const char = createCharacter(`c${i + 1}`, d.name.trim(), d.race, d.alignment, d.cls, i);
+      const char = createCharacter(`c${i + 1}`, d.name.trim(), d.race, d.alignment, d.cls, i, this.rng);
       // Grant tier-1 spells to casters (matches createDefaultParty behavior).
       const tier1 = spellsForClass(d.cls, 1);
       char.knownSpellIds = tier1.map((s) => s.id);

@@ -20,6 +20,7 @@ import {
   findEnemy,
   pickRandom,
   scaleOutgoingDamage,
+  applyDisableToEnemy,
 } from "./combat-shared";
 import { canReach, effectiveWeaponRange } from "./combat-reach";
 import { resolveTechnique, gainRage } from "./combat-techniques";
@@ -253,11 +254,12 @@ function resolveAttack(
     damage = Math.max(1, Math.round(damage * mods.critDamageMultiplier));
     crit = true;
     log(`${actor.name} lands a critical hit!`);
-    // OnCriticalHit hooks (e.g. Perfect Timing arming its next attack).
+    // OnCriticalHit hooks (e.g. Perfect Timing arming its next attack, Swindler gold bonus).
     dispatchHook("OnCriticalHit", perksForCharacter(actor), {
       state: s.perkState[actor.id],
       rng,
       targetId: target.instanceId,
+      combatState: s,
     });
   }
 
@@ -457,13 +459,20 @@ function resolveCast(
   const powerMultiplier = isSurgeSpell ? 1.5 : 1;
   applySpell(s, actor, spell, action, rng, log, emit, powerMultiplier);
 
-  // OnSpellResolve hooks (e.g. Spell Echo, Chain Caster). Guards prevent
-  // either effect from re-triggering off its own extra cast.
+  // OnSpellResolve hooks (e.g. Spell Echo, Chain Caster, Inquisitor stun).
+  // Guards prevent effects from re-triggering off their own extra casts.
   let echoTriggered = false;
   let chainTriggered = false;
+  let stunTriggered = false;
+  // For Inquisitor: we assume damage was dealt if the spell is a damage spell
+  // and has a target (actual damage calculation would require tracking pre/post HP)
+  const damageDealt = spell.effect.kind === "damage" && action.targetInstanceId ? 1 : 0;
   dispatchHook("OnSpellResolve", perksForCharacter(actor), {
     state: pstate,
     rng,
+    spellKind: spell.effect.kind,
+    dealtDamage: damageDealt,
+    targetInstanceId: action.targetInstanceId,
     repeatSpellFree: () => {
       if (echoTriggered) return;
       echoTriggered = true;
@@ -490,6 +499,26 @@ function resolveCast(
               emit,
               powerMultiplier
             );
+          }
+        : undefined,
+    applyStun:
+      spell.effect.kind === "damage" && action.targetInstanceId
+        ? () => {
+            if (stunTriggered) return;
+            const target = [...s.enemies.front, ...s.enemies.back].find(
+              (e) => e.instanceId === action.targetInstanceId
+            );
+            if (!target) return;
+            // Skip if target is already disabled or dead
+            if (target.status.includes("paralysis") || target.status.includes("sleep") || target.currentHp <= 0) return;
+            stunTriggered = true;
+            // Use the existing disable system for consistency (handles diminishing returns, boss stagger)
+            applyDisableToEnemy(s, target, "paralysis", spell, emit);
+            // Emit a clear log message when stun succeeds (bosses stagger instead of full stun)
+            const message = target.isBoss
+              ? `${actor.name}'s Inquisitor perk staggers ${target.name}!`
+              : `${actor.name}'s Inquisitor perk stuns ${target.name}!`;
+            log(message);
           }
         : undefined,
   });
@@ -640,6 +669,7 @@ function resolveAmbush(
       state: s.perkState[actor.id],
       rng,
       targetId: target.instanceId,
+      combatState: s,
     });
   }
 

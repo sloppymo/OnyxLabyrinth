@@ -12,11 +12,12 @@ import { cloneFloor } from "../data/floors";
 import { createDefaultParty } from "./party";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { ENCOUNTER_COOLDOWN } from "./encounters";
+import { nondeterministicRng, type Rng } from "./rng";
 
 export type { GameMode, GameState } from "../types";
 
-export function createGameState(floor: FloorDef): GameState {
-  const party = createDefaultParty();
+export function createGameState(floor: FloorDef, rng: Rng = nondeterministicRng): GameState {
+  const party = createDefaultParty(rng);
   return {
     mode: "town", // start in town; player chooses to enter the dungeon
     floor: cloneFloor(floor),

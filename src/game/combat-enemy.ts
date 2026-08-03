@@ -56,14 +56,15 @@ function abilityDamageParty(
   baseDamage: number,
   actor: EnemyInstance,
   rng: Rng,
-  emit: (m: string, e: CombatEvent) => void
+  emit: (m: string, e: CombatEvent) => void,
+  physical = false
 ): AbilityDamageResult {
   let damage = Math.max(1, Math.round(baseDamage * (0.8 + rng() * 0.4)));
   if (s.magicScreen > 0) {
     damage = Math.max(1, Math.round(damage * 0.5));
   }
   damage = scaleOutgoingDamage(damage, actor);
-  damage = damageReductionFor(s, target, damage);
+  damage = damageReductionFor(s, target, damage, physical);
   const result = applyPartyDamage(s, target, damage, actor, rng, emit);
   return {
     finalDamage: result.finalDamage,
@@ -173,7 +174,7 @@ function resolveEnemyAbility(
   switch (eff.kind) {
     case "damage": {
       for (const t of partyTargets) {
-        const hit = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit);
+        const hit = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit, eff.element === "physical");
         emit(`${actor.name} uses ${ability.name} on ${t.name} for ${hit.finalDamage} damage!`, {
           type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: hit.finalDamage,
           presentation: ability.presentation,
@@ -191,7 +192,7 @@ function resolveEnemyAbility(
         let redirectHeavyTarget: Character | undefined;
         const hitPower = scaledAbilityPower(eff.powerPerHit);
         for (let h = 0; h < eff.hits; h++) {
-          const hit = abilityDamageParty(s, t, hitPower, actor, rng, emit);
+          const hit = abilityDamageParty(s, t, hitPower, actor, rng, emit, eff.element === "physical");
           totalDmg += hit.finalDamage;
           if (hit.heavy) anyHeavy = true;
           if (hit.redirectHeavy) redirectHeavyTarget = hit.redirectTarget;
@@ -225,7 +226,7 @@ function resolveEnemyAbility(
     case "drain": {
       let totalDrained = 0;
       for (const t of partyTargets) {
-        const hit = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit);
+        const hit = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit, eff.element === "physical");
         totalDrained += Math.round(hit.finalDamage * 0.5);
         emit(`${actor.name} uses ${ability.name}, draining ${hit.finalDamage} from ${t.name}!`, {
           type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: hit.finalDamage,
@@ -574,7 +575,7 @@ export function resolveEnemyAction(
   const variance = 0.8 + rng() * 0.4;
   let damage = Math.max(1, Math.round(base * variance));
   damage = scaleOutgoingDamage(damage, actor);
-  damage = damageReductionFor(s, partyTarget, damage);
+  damage = damageReductionFor(s, partyTarget, damage, true);
 
   const result = applyPartyDamage(s, partyTarget, damage, actor, rng, emit);
   emit(

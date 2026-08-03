@@ -48,6 +48,7 @@ import type {
   Rng,
   TurnQueueEntry,
 } from "./combat-types";
+import { nondeterministicRng } from "./rng";
 import { inventoryToCounts } from "./combat-inventory";
 import { resetBarkRngForCombat } from "./combat-barks";
 import {
@@ -142,6 +143,7 @@ export function createCombatState(
     summonCounter: 0,
     holyShieldBuffs: {},
     barkSaid: {},
+    swindlerGoldBonusActive: false,
   };
 }
 
@@ -199,7 +201,7 @@ export function createCombatFromEncounter(
 export function resolveCombatRound(
   state: CombatState,
   actions: PlayerAction[],
-  rng: Rng = Math.random
+  rng: Rng = nondeterministicRng
 ): CombatState {
   const s: CombatState = structuredClone(state);
   if (s.ended) return s;
@@ -361,7 +363,7 @@ function turnLoggers(s: CombatState) {
  */
 export function beginRound(
   state: CombatState,
-  rng: Rng = Math.random
+  rng: Rng = nondeterministicRng
 ): { state: CombatState; queue: TurnQueueEntry[] } {
   const s = structuredClone(state);
   if (s.ended) return { state: s, queue: [] };
@@ -421,7 +423,7 @@ export function beginRound(
 export function resolvePlayerTurn(
   state: CombatState,
   action: PlayerAction,
-  rng: Rng = Math.random
+  rng: Rng = nondeterministicRng
 ): CombatState {
   const s = structuredClone(state);
   if (s.ended) return s;
@@ -482,7 +484,7 @@ export function resolvePlayerTurn(
 export function resolveEnemyTurn(
   state: CombatState,
   enemyInstanceId: string,
-  rng: Rng = Math.random
+  rng: Rng = nondeterministicRng
 ): CombatState {
   const s = structuredClone(state);
   if (s.ended) return s;
@@ -505,7 +507,7 @@ export function resolveEnemyTurn(
 export function resolveAllyTurn(
   state: CombatState,
   allyId: string,
-  rng: Rng = Math.random
+  rng: Rng = nondeterministicRng
 ): CombatState {
   const s = structuredClone(state);
   if (s.ended) return s;
@@ -557,7 +559,7 @@ export function enqueueNewAllies(
  * hidden-character spotting, magic screen / fizzle field decay, and per-round
  * silence expiry. Mirrors Phase 5 of resolveCombatRound exactly.
  */
-export function endRound(state: CombatState, rng: Rng = Math.random): CombatState {
+export function endRound(state: CombatState, rng: Rng = nondeterministicRng): CombatState {
   const s = structuredClone(state);
   if (s.ended) return s;
   s.justDied = [];
@@ -615,4 +617,3 @@ function initiativeOrder(
   entries.sort((x, y) => y.agi - x.agi || y.luk - x.luk || y.roll - x.roll);
   return entries;
 }
-

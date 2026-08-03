@@ -165,6 +165,7 @@ export function applySpell(
           `${spell.name} heals ${t.name} for ${t.hp - before} HP.`,
           { type: "spellEffect", spellId: spell.id, targetId: t.id, heal: t.hp - before }
         );
+        // Healing spells revive KO'd allies (Saint perk allows targeting them)
         if (t.status.includes("knockedOut") && t.hp > 0) {
           t.status = t.status.filter((st) => st !== "knockedOut");
           emit(`${t.name} is revived!`, { type: "revived", targetId: t.id });
@@ -372,14 +373,22 @@ function allyTargets(
   action: Extract<PlayerAction, { kind: "cast" }>,
   caster: Character
 ): Character[] {
-  const living = s.party.filter((c) => c.hp > 0 || c.status.includes("knockedOut"));
+  const saintCanHealKo =
+    (spell.effect.kind === "heal" || spell.effect.kind === "resurrect") &&
+    (spell.effect.kind === "resurrect" ||
+      perksForCharacter(caster).some((p) => p.id === "priest-saint"));
+  const living = s.party.filter(
+    (c) => c.hp > 0 || (saintCanHealKo && c.status.includes("knockedOut"))
+  );
   switch (spell.target) {
     case "self":
       return [caster];
     case "singleAlly": {
       const id = action.targetAllyId ?? caster.id;
       const t = s.party.find((c) => c.id === id);
-      return t ? [t] : [];
+      return t && (t.hp > 0 || (saintCanHealKo && t.status.includes("knockedOut")))
+        ? [t]
+        : [];
     }
     case "groupAllies": {
       // Target one row of allies (front if any living, else back).

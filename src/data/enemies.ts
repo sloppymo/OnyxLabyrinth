@@ -12,6 +12,7 @@
  */
 
 import type { DamageElement } from "./spells";
+import { nondeterministicRng } from "../game/rng";
 
 export type Row = "front" | "back";
 
@@ -1669,12 +1670,12 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
 };
 
 /** Pick a random encounter for a floor using the weighted table. */
-export function rollEncounter(floor: number): EncounterEntry | null {
+export function rollEncounter(floor: number, rng: () => number = nondeterministicRng): EncounterEntry | null {
   const table = ENCOUNTER_TABLES[floor];
   if (!table || table.length === 0) return null;
 
   const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
-  let roll = Math.random() * totalWeight;
+  let roll = rng() * totalWeight;
 
   for (const entry of table) {
     roll -= entry.weight;

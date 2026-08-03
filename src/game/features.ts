@@ -30,6 +30,7 @@ import { displayNameFor } from "../data/items";
 import { effectiveStats } from "./effective-stats";
 import { perksForCharacter, perkModifiers } from "./perks";
 import { ENCOUNTER_COOLDOWN } from "./encounters";
+import { nondeterministicRng } from "./rng";
 
 type Rng = () => number;
 
@@ -61,7 +62,7 @@ export function isTreasureLooted(floor: FloorDef, x: number, y: number): boolean
  * Process the tile feature at the player's current position.
  * Returns null if the current tile has no feature.
  */
-export function handleTileFeature(state: GameState, rng: Rng = Math.random): FeatureResult | null {
+export function handleTileFeature(state: GameState, rng: Rng = nondeterministicRng): FeatureResult | null {
   const { floor, player } = state;
   const cell = floor.grid[player.y]?.[player.x];
   // A looted treasure keeps its tile so the corridor can still draw an opened
@@ -720,7 +721,7 @@ export function inspectChest(state: GameState): string {
  * fires (the chest still opens — the trap is spent, loot survives) and a 50%
  * chance nothing happens (the party may retry).
  */
-export function disarmChest(state: GameState, rng: Rng = Math.random): ChestActionResult {
+export function disarmChest(state: GameState, rng: Rng = nondeterministicRng): ChestActionResult {
   const p = state.pendingTrap;
   const treasure = pendingTreasure(state);
   if (!p || !treasure) return noChest();
@@ -781,7 +782,7 @@ export function disarmChest(state: GameState, rng: Rng = Math.random): ChestActi
 }
 
 /** Open the chest without disarming: the trap fires, then the loot is taken. */
-export function openChest(state: GameState, rng: Rng = Math.random): ChestActionResult {
+export function openChest(state: GameState, rng: Rng = nondeterministicRng): ChestActionResult {
   const p = state.pendingTrap;
   const treasure = pendingTreasure(state);
   if (!p || !treasure) return noChest();

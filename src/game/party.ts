@@ -7,6 +7,8 @@
  * the combat system to wire up later.
  */
 
+import { nondeterministicRng, type Rng } from "./rng";
+
 export type Race = "Human" | "Elf" | "Dwarf" | "Gnome" | "Hobbit";
 export type Alignment = "Good" | "Neutral" | "Evil";
 export type CharacterClass =
@@ -186,24 +188,24 @@ export const MIN_STAT = 3;
 export const MAX_STAT = 18;
 
 /** Roll one fair six-sided die. */
-export function rollD6(): number {
-  return Math.floor(Math.random() * 6) + 1;
+export function rollD6(rng: Rng = nondeterministicRng): number {
+  return Math.floor(rng() * 6) + 1;
 }
 
 /** Roll 3d6, the standard attribute roll. */
-export function roll3d6(): number {
-  return rollD6() + rollD6() + rollD6();
+export function roll3d6(rng: Rng = nondeterministicRng): number {
+  return rollD6(rng) + rollD6(rng) + rollD6(rng);
 }
 
 /** Roll a fresh 3d6 stat block with no modifiers applied. */
-export function rollBaseStats(): Stats {
+export function rollBaseStats(rng: Rng = nondeterministicRng): Stats {
   return {
-    str: roll3d6(),
-    int: roll3d6(),
-    pie: roll3d6(),
-    vit: roll3d6(),
-    agi: roll3d6(),
-    luk: roll3d6(),
+    str: roll3d6(rng),
+    int: roll3d6(rng),
+    pie: roll3d6(rng),
+    vit: roll3d6(rng),
+    agi: roll3d6(rng),
+    luk: roll3d6(rng),
   };
 }
 
@@ -226,8 +228,8 @@ export function applyRacialModifiers(base: Stats, race: Race): Stats {
 }
 
 /** Roll a complete stat block for a race. */
-export function rollStatsForRace(race: Race): Stats {
-  return applyRacialModifiers(rollBaseStats(), race);
+export function rollStatsForRace(race: Race, rng: Rng = nondeterministicRng): Stats {
+  return applyRacialModifiers(rollBaseStats(rng), race);
 }
 
 /** Compute maximum HP for a level 1 character. VIT drives the base; Fighter adds a bonus. */
@@ -250,9 +252,10 @@ export function createCharacter(
   race: Race,
   alignment: Alignment,
   cls: CharacterClass,
-  slot: number
+  slot: number,
+  rng: Rng = nondeterministicRng
 ): Character {
-  const stats = rollStatsForRace(race);
+  const stats = rollStatsForRace(race, rng);
   const maxHp = computeMaxHp(stats, cls);
   const maxSp = computeMaxSp(stats, cls);
 

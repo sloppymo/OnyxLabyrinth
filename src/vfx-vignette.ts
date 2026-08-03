@@ -218,6 +218,7 @@ const state: CombatState = {
   summonCounter: 0,
   holyShieldBuffs: {},
   barkSaid: {},
+  swindlerGoldBonusActive: false,
 };
 
 // Give every character full rage so techniques are always available in the demo.

@@ -10,6 +10,7 @@ import {
   type CharacterClass,
   type Race,
 } from "./party";
+import { nondeterministicRng, type Rng } from "./rng";
 
 export type PresetPartyId = "balanced" | "iron" | "glass" | "blades";
 
@@ -169,16 +170,16 @@ export function presetPartyById(id: PresetPartyId): PresetPartyDef {
 }
 
 /** Build a live Character[] from a preset (ids c1…c4, starter spells granted). */
-export function createPresetParty(id: PresetPartyId): Character[] {
+export function createPresetParty(id: PresetPartyId, rng: Rng = nondeterministicRng): Character[] {
   const def = presetPartyById(id);
   return def.members.map((m, i) => {
-    const c = createCharacter(`c${i + 1}`, m.name, m.race, m.alignment, m.cls, m.slot);
+    const c = createCharacter(`c${i + 1}`, m.name, m.race, m.alignment, m.cls, m.slot, rng);
     grantStarters(c);
     return c;
   });
 }
 
 /** Balanced default — same as preset `"balanced"`. Kept name for call-site stability. */
-export function createDefaultParty(): Character[] {
-  return createPresetParty("balanced");
+export function createDefaultParty(rng: Rng = nondeterministicRng): Character[] {
+  return createPresetParty("balanced", rng);
 }

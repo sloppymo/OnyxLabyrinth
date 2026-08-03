@@ -13,6 +13,9 @@ import type { SpellDef, SpellEffect, SpellTarget, DamageElement } from "../data/
 import type { ItemDef } from "../data/items";
 import type { TechniqueDef, TechniqueEffect, TechniqueTarget } from "../data/techniques";
 
+// Re-export Rng for backward compatibility with imports from combat-types
+export type { Rng } from "./rng";
+
 // Re-export types that the combat UI / main.ts needs
 export type { Character, EnemyDef, SpellDef, ItemDef, Row, StatusEffect };
 
@@ -376,9 +379,12 @@ export interface CombatState {
    * A dropped scene bark still leaves the entry burned (presentation cap).
    */
   barkSaid: Record<string, Partial<Record<"beforeSpell" | "heavyHit" | "death", true>>>;
+  /**
+   * Swindler gold bonus flag. Set to true when any Swindler lands a critical hit.
+   * Applied at combat end to add +25% gold to the base gold earned from enemies.
+   */
+  swindlerGoldBonusActive: boolean;
 }
-
-export type Rng = () => number;
 
 export interface TurnQueueEntry {
   kind: "player" | "enemy" | "ally";

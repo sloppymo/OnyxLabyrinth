@@ -11,6 +11,7 @@ import type { GameState } from "../types";
 import type { NPCDef, NPCTradeDef } from "../data/floors";
 import { ITEMS_BY_ID, displayNameFor } from "../data/items";
 import { effectiveStats } from "./effective-stats";
+import { nondeterministicRng } from "./rng";
 
 export interface NPCActionResult {
   message: string;
@@ -150,7 +151,7 @@ export function canSteal(state: GameState): boolean {
 export function stealFrom(
   state: GameState,
   npc: NPCDef,
-  rng: () => number = Math.random
+  rng: () => number = nondeterministicRng
 ): NPCActionResult {
   const thief = state.party.find(
     (c) => c.class === "Thief" && c.hp > 0 && !c.status.includes("knockedOut")

@@ -2,6 +2,7 @@ import "./styles.css";
 import { getFloors, findFloor, registerFloorMap } from "./game/floor-registry";
 import { createGameState, setMode } from "./game/state";
 import { moveForward, moveBackward, turnLeft, turnRight, tryUnlock } from "./engine/camera";
+import { createSeededRng, type Rng } from "./game/rng";
 import {
   handleTileFeature,
   transitionToFloor,
@@ -150,7 +151,18 @@ function tryBootPlaytestFloor(): ReturnType<typeof registerFloorMap> | null {
 }
 
 const playtestFloor = tryBootPlaytestFloor();
-const state = createGameState(playtestFloor ?? getFloors()[0]!);
+const seedParam = new URLSearchParams(window.location.search).get("seed");
+const parsedSeed = seedParam === null ? null : Number(seedParam);
+const sessionSeed = Number.isSafeInteger(parsedSeed)
+  ? parsedSeed!
+  : Math.floor(Math.random() * 0x1_0000_0000);
+let gameplayRng: Rng = createSeededRng(sessionSeed);
+
+function resetGameplayRng(): void {
+  gameplayRng = createSeededRng(sessionSeed);
+}
+
+const state = createGameState(playtestFloor ?? getFloors()[0]!, gameplayRng);
 
 // Auto-map visibility flag.
 let mapVisible = false;
@@ -314,6 +326,7 @@ function openPartyCreation(onDone: () => void): void {
   setMessage("");
   partyCreationController = new PartyCreationController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    rng: gameplayRng,
     onConfirm: (party: Character[]) => {
       partyCreationController = null;
       state.party = party;
@@ -456,7 +469,8 @@ function openTitleScreen(): void {
       // Title BGM keeps playing through the prologue; stop when it ends.
       closeMapOverlay();
       mapOverlayRenderer.invalidate();
-      Object.assign(state, createGameState(getFloors()[0]!));
+      resetGameplayRng();
+      Object.assign(state, createGameState(getFloors()[0]!, gameplayRng));
       openPrologue(() => {
         audio.stopTitleMusic();
         openPartyCreation(() => openTown());
@@ -514,14 +528,14 @@ function maybeTriggerEncounter(): boolean {
   // Design doc §6.2: treasure rooms are guaranteed empty of enemies.
   const cell = state.floor.grid[state.player.y]?.[state.player.x];
   if (cell?.tile === "treasure") return false;
-  if (Math.random() >= chance) return false;
+  if (gameplayRng() >= chance) return false;
 
   const tableId = encounterTableFloorId(
     state.floor,
     state.player.x,
     state.player.y
   );
-  const entry = rollEncounter(tableId);
+  const entry = rollEncounter(tableId, gameplayRng);
   if (!entry) return false;
 
   const resolved = resolveEncounter(entry);
@@ -614,6 +628,7 @@ async function startCombat(combat: CombatState): Promise<void> {
       onEnd: (result: CombatState) => {
         endCombat(result);
       },
+      rng: gameplayRng,
       backdrop: bd,
       backdropId,
       stage,
@@ -906,7 +921,7 @@ function onMove(): void {
   };
 
   // Process the tile feature at the player's current position.
-  const result = handleTileFeature(state);
+  const result = handleTileFeature(state, gameplayRng);
   if (result) {
     recordDebugEvent("feature", {
       ...steppedOn,
@@ -1125,7 +1140,7 @@ function forceEncounter(): void {
     state.player.x,
     state.player.y
   );
-  const entry = rollEncounter(tableId);
+  const entry = rollEncounter(tableId, gameplayRng);
   if (!entry) return;
   const resolved = resolveEncounter(entry);
   if (resolved.length === 0) return;
@@ -1168,7 +1183,7 @@ function handleTrapInput(key: string): boolean {
       break;
     }
     case "disarm":
-      applyChestResult(disarmChest(state));
+      applyChestResult(disarmChest(state, gameplayRng));
       if (state.pendingTrap && trapPrompt) {
         setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected), {
           instant: true,
@@ -1178,7 +1193,7 @@ function handleTrapInput(key: string): boolean {
       }
       break;
     case "open":
-      applyChestResult(openChest(state));
+      applyChestResult(openChest(state, gameplayRng));
       trapPrompt = null;
       break;
     case "leave":
@@ -1670,7 +1685,7 @@ function openArenaSetup(): void {
 
 function startArena(targetLevel: number): void {
   // Reset to a fresh default party and the first arena wave.
-  Object.assign(state, createGameState(getFloors()[0]!));
+  Object.assign(state, createGameState(getFloors()[0]!, gameplayRng));
   inArena = true;
   arenaWave = 1;
 
@@ -1727,7 +1742,7 @@ function startNextArenaFight(): void {
   arenaWave++;
   arenaFloor = arenaFloorForWave(arenaStartFloor, arenaWave);
 
-  const entry = rollArenaEncounter(floor, wave);
+  const entry = rollArenaEncounter(floor, wave, gameplayRng);
   if (!entry) {
     // No encounters for this floor; start a fresh wave hub.
     openArena();
@@ -1950,6 +1965,7 @@ function openNPCPanel(npcId: string): void {
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
     npc,
+    rng: gameplayRng,
     onClose: (message: string) => {
       npcController = null;
       if (npcFightId) return; // a fight is taking over the screen

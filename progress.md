@@ -315,3 +315,9 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   empty. Straight corridor, side passage, depth-0 wall, darkness, map, and
   combat-return screenshots were visually inspected under
   `/tmp/onyx-party-asset-clean-local/`.
+
+## 2026-08-02 — Seeded gameplay RNG continuation
+
+- Audited the interrupted worktree: current branch is `agent/lonesome-forest-title`; perk changes are staged while RNG edits are partly unstaged and the replay test is untracked. `origin/main` points at `99b2342`; no commit/push/switch/reset was performed.
+- Replaced the mutable RNG module singleton with explicit seeded streams. Runtime main now owns the session stream, accepts `?seed=<integer>`, resets it for New Game, and injects it into party creation, dungeon feature/loot, encounters, NPC theft, and CombatController.
+- Rewrote deterministic replay coverage for stats, encounter sequences, combat state/rewards, loot, cosmetic isolation, and test-order isolation. Remaining: run focused/full tests, audit perk semantics, build, browser smoke, and final diff audit. No commit or push authorized.

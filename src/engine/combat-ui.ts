@@ -18,13 +18,14 @@
  */
 
 import {
-  beginRound,
-  resolvePlayerTurn,
-  resolveEnemyTurn,
-  resolveAllyTurn,
-  endRound,
+  beginRound as beginRoundCore,
+  resolvePlayerTurn as resolvePlayerTurnCore,
+  resolveEnemyTurn as resolveEnemyTurnCore,
+  resolveAllyTurn as resolveAllyTurnCore,
+  endRound as endRoundCore,
   enqueueNewAllies,
 } from "../game/combat";
+import { nondeterministicRng, type Rng } from "../game/rng";
 import { previewAttack, previewSpellDamage } from "../game/combat-preview";
 import { visibleCombatLogLines } from "../game/combat-barks";
 import type {
@@ -39,6 +40,7 @@ import type {
 import { enemyHealthDescriptor, formatActionPreview, spellMagicCategory, SPELL_MAGIC_TABS, type SpellMagicTab } from "./combat-display";
 import type { Character } from "../game/party";
 import { charRow } from "../game/party";
+import { perksForCharacter } from "../game/perks";
 import { isUtilitySpell, type SpellDef } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import { techniquesForClass, techniqueById, classHasTechniques, maxRageForLevel, type TechniqueDef } from "../data/techniques";
@@ -100,6 +102,8 @@ interface PendingAction {
 
 export interface CombatControllerOptions {
   onEnd: (result: CombatState) => void;
+  /** Explicit gameplay RNG stream for this run. */
+  rng?: Rng;
   /** Optional baked corridor backdrop canvas. When null, the static
    *  combat-bg.png image is used instead. */
   backdrop?: HTMLCanvasElement | null;
@@ -159,6 +163,7 @@ export class CombatController {
   private rafId: number | null = null;
   private windowsDirty = true;
   private getLastInputKind: () => "keyboard" | "gamepad";
+  private rng: Rng;
 
   /**
    * Shared choreography model. Kept reachable for groundPlaneProbe / debug
@@ -168,9 +173,22 @@ export class CombatController {
     return this.stage.scene;
   }
 
+  private resolvePlayerTurn(state: CombatState, action: PlayerAction): CombatState {
+    return resolvePlayerTurnCore(state, action, this.rng);
+  }
+
+  private resolveEnemyTurn(state: CombatState, enemyInstanceId: string): CombatState {
+    return resolveEnemyTurnCore(state, enemyInstanceId, this.rng);
+  }
+
+  private resolveAllyTurn(state: CombatState, allyId: string): CombatState {
+    return resolveAllyTurnCore(state, allyId, this.rng);
+  }
+
   constructor(state: CombatState, opts: CombatControllerOptions) {
     this.state = state;
     this.onEnd = opts.onEnd;
+    this.rng = opts.rng ?? nondeterministicRng;
     this.getLastInputKind = opts.getLastInputKind ?? (() => "keyboard");
     this.stage =
       opts.stage ??
@@ -257,7 +275,7 @@ export class CombatController {
   // --- Round / turn machine ---------------------------------------------------
 
   private startRound(): void {
-    const { state, queue } = beginRound(this.state);
+    const { state, queue } = beginRoundCore(this.state, this.rng);
     this.state = state;
     this.stage.setState(state);
     this.queue = queue;
@@ -281,7 +299,7 @@ export class CombatController {
       // Round over: run end-of-round ticks and play them out.
       this.roundEnding = true;
       this.windowsDirty = true;
-      this.resolveAndPlay(() => endRound(this.state));
+      this.resolveAndPlay(() => endRoundCore(this.state, this.rng));
       return;
     }
 
@@ -298,7 +316,7 @@ export class CombatController {
       if (c.status.includes("sleep") || c.status.includes("paralysis")) {
         // Incapacitated: auto-resolve (logs the skip) and play it.
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
+          this.resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
         );
         return;
       }
@@ -314,7 +332,7 @@ export class CombatController {
       }
       this.actingTurnId = entry.id;
       this.windowsDirty = true;
-      this.resolveAndPlay(() => resolveEnemyTurn(this.state, entry.id));
+      this.resolveAndPlay(() => this.resolveEnemyTurn(this.state, entry.id));
       return;
     }
 
@@ -326,7 +344,7 @@ export class CombatController {
     }
     this.actingTurnId = entry.id;
     this.windowsDirty = true;
-    this.resolveAndPlay(() => resolveAllyTurn(this.state, entry.id));
+    this.resolveAndPlay(() => this.resolveAllyTurn(this.state, entry.id));
   }
 
   /** Resolve a turn via `fn`, then play its events on the scene. */
@@ -393,7 +411,7 @@ export class CombatController {
   ): void {
     this.rememberStickyAttack(kind, actorId, targetInstanceId);
     this.resolveAndPlay(() =>
-      resolvePlayerTurn(this.state, { kind, actorId, targetInstanceId })
+      this.resolvePlayerTurn(this.state, { kind, actorId, targetInstanceId })
     );
   }
 
@@ -421,7 +439,7 @@ export class CombatController {
       if (reachable.length === 0) {
         this.rememberLastCommand(c.id, { kind: "defend" });
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
+          this.resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
         );
         return;
       }
@@ -454,14 +472,14 @@ export class CombatController {
       }
       case "defend":
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
+          this.resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
         );
         return true;
       case "hide":
         if (c.class === "Thief" && !c.status.includes("hidden")) {
           this.rememberLastCommand(c.id, { kind: "hide" });
           this.resolveAndPlay(() =>
-            resolvePlayerTurn(this.state, { kind: "hide", actorId: c.id })
+            this.resolvePlayerTurn(this.state, { kind: "hide", actorId: c.id })
           );
         } else if (
           c.class === "Thief" &&
@@ -493,10 +511,13 @@ export class CombatController {
           return true;
         }
         if (cmd.targetAllyId) {
-          const allyOk = this.state.party.some(
-            (p) =>
-              p.id === cmd.targetAllyId &&
-              (p.hp > 0 || p.status.includes("knockedOut"))
+          const target = this.state.party.find((p) => p.id === cmd.targetAllyId);
+          const targetIsKo = target && (target.hp <= 0 || target.status.includes("knockedOut"));
+          // Only Saints can target KO'd allies with healing spells
+          const casterHasSaint = perksForCharacter(c).some((p: { id: string }) => p.id === "priest-saint");
+          const spellIsHeal = this.state.spells[cmd.spellId]?.effect.kind === "heal";
+          const allyOk = target && (
+            (!targetIsKo) || (targetIsKo && casterHasSaint && spellIsHeal)
           );
           if (!allyOk) {
             fallbackAttack();
@@ -505,7 +526,7 @@ export class CombatController {
         }
         this.rememberLastCommand(c.id, cmd);
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
+          this.resolvePlayerTurn(this.state, {
             kind: "cast",
             actorId: c.id,
             spellId: cmd.spellId,
@@ -532,7 +553,7 @@ export class CombatController {
         }
         this.rememberLastCommand(c.id, cmd);
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
+          this.resolvePlayerTurn(this.state, {
             kind: "technique",
             actorId: c.id,
             techniqueId: cmd.techniqueId,
@@ -628,8 +649,13 @@ export class CombatController {
   }
 
   private targetableAllies(): Character[] {
+    const caster = this.currentChar();
+    const spell = this.pending?.spellId ? this.state.spells[this.pending.spellId] : undefined;
+    const canTargetKo = !!spell &&
+      (spell.effect.kind === "resurrect" ||
+        (spell.effect.kind === "heal" && !!caster && perksForCharacter(caster).some((p) => p.id === "priest-saint")));
     return this.state.party.filter(
-      (p) => p.hp > 0 || p.status.includes("knockedOut")
+      (p) => p.hp > 0 || (canTargetKo && p.status.includes("knockedOut"))
     );
   }
 
@@ -707,7 +733,7 @@ export class CombatController {
         this.pending = { kind: "analyze" };
         if (enemies.length === 1) {
           this.resolveAndPlay(() =>
-            resolvePlayerTurn(this.state, {
+            this.resolvePlayerTurn(this.state, {
               kind: "analyze",
               actorId: c.id,
               targetInstanceId: enemies[0].instanceId,
@@ -726,7 +752,7 @@ export class CombatController {
         // Each row holds at most 2 of the party's 4 members.
         if (inRow < 2 && (toRow === "front" || others.length >= 3)) {
           this.resolveAndPlay(() =>
-            resolvePlayerTurn(this.state, { kind: "move", actorId: c.id })
+            this.resolvePlayerTurn(this.state, { kind: "move", actorId: c.id })
           );
           return;
         }
@@ -786,7 +812,7 @@ export class CombatController {
       case "defend":
         this.rememberLastCommand(c.id, { kind: "defend" });
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
+          this.resolvePlayerTurn(this.state, { kind: "defend", actorId: c.id })
         );
         return;
       case "hide":
@@ -804,13 +830,13 @@ export class CombatController {
         }
         this.rememberLastCommand(c.id, { kind: "hide" });
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, { kind: "hide", actorId: c.id })
+          this.resolvePlayerTurn(this.state, { kind: "hide", actorId: c.id })
         );
         return;
       case "flee":
         // Never store Flee for Auto — intentional escape only.
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, { kind: "flee", actorId: c.id })
+          this.resolvePlayerTurn(this.state, { kind: "flee", actorId: c.id })
         );
         return;
     }
@@ -1179,7 +1205,7 @@ export class CombatController {
             targetInstanceId: enemies[0].instanceId,
           });
           this.resolveAndPlay(() =>
-            resolvePlayerTurn(this.state, {
+            this.resolvePlayerTurn(this.state, {
               kind: "cast",
               actorId: c.id,
               spellId: id,
@@ -1198,7 +1224,7 @@ export class CombatController {
         // Group / self / all spells need no target.
         this.rememberLastCommand(c.id, { kind: "cast", spellId: id });
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
+          this.resolvePlayerTurn(this.state, {
             kind: "cast",
             actorId: c.id,
             spellId: id,
@@ -1236,7 +1262,7 @@ export class CombatController {
           targetRow: id as Row,
         });
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
+          this.resolvePlayerTurn(this.state, {
             kind: "cast",
             actorId: c.id,
             spellId,
@@ -1254,7 +1280,7 @@ export class CombatController {
           targetRow: id as Row,
         });
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
+          this.resolvePlayerTurn(this.state, {
             kind: "technique",
             actorId: c.id,
             techniqueId,
@@ -1270,7 +1296,7 @@ export class CombatController {
       } else if (pending.kind === "analyze") {
         // Analyze is never stored for Repeat — intel, not an attack.
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
+          this.resolvePlayerTurn(this.state, {
             kind: "analyze",
             actorId: c.id,
             targetInstanceId: id,
@@ -1279,7 +1305,7 @@ export class CombatController {
       } else if (pending.kind === "move") {
         // Move is never stored for Repeat — repositioning is a per-turn call.
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
+          this.resolvePlayerTurn(this.state, {
             kind: "move",
             actorId: c.id,
             targetAllyId: id,
@@ -1306,12 +1332,12 @@ export class CombatController {
           targetInstanceId: action.targetInstanceId,
           targetAllyId: action.targetAllyId,
         });
-        this.resolveAndPlay(() => resolvePlayerTurn(this.state, action));
+        this.resolveAndPlay(() => this.resolvePlayerTurn(this.state, action));
       } else if (pending.kind === "item" && pending.itemId) {
         // Items are never stored for Auto (consumables).
         const itemId = pending.itemId;
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
+          this.resolvePlayerTurn(this.state, {
             kind: "item",
             actorId: c.id,
             itemId,
@@ -1340,7 +1366,7 @@ export class CombatController {
           targetInstanceId: action.targetInstanceId,
           targetAllyId: action.targetAllyId,
         });
-        this.resolveAndPlay(() => resolvePlayerTurn(this.state, action));
+        this.resolveAndPlay(() => this.resolvePlayerTurn(this.state, action));
       }
     }
   }
@@ -1358,7 +1384,7 @@ export class CombatController {
           targetInstanceId: enemies[0].instanceId,
         });
         this.resolveAndPlay(() =>
-          resolvePlayerTurn(this.state, {
+          this.resolvePlayerTurn(this.state, {
             kind: "technique",
             actorId: c.id,
             techniqueId: id,
@@ -1379,7 +1405,7 @@ export class CombatController {
       // self / allEnemies / allFrontEnemies / allAllies / allFrontAllies / randomEnemies
       this.rememberLastCommand(c.id, { kind: "technique", techniqueId: id });
       this.resolveAndPlay(() =>
-        resolvePlayerTurn(this.state, {
+        this.resolvePlayerTurn(this.state, {
           kind: "technique",
           actorId: c.id,
           techniqueId: id,

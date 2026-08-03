@@ -5,8 +5,7 @@
  * 1-4). Numeric fields on `effect` are read generically by
  * `game/perks.ts`'s `perkModifiers()`; a handful of perks additionally have
  * reactive hook handlers registered in `game/perks.ts` (see the list in that
- * file's header comment). Perks with neither a wired numeric field nor a
- * registered handler are inert placeholders for v1.1 (marked below).
+ * file's header comment).
  *
  * All percentages/multipliers here are playtest values, expected to change.
  */
@@ -69,8 +68,13 @@ const FIGHTER_PERKS: PerkDef[] = [
   ),
   perk(
     "fighter-vanguard", "Fighter", 3, "Vanguard",
-    "You take 10% less physical damage in the front row. (v1.1: extends to front-row allies.)",
-    [], { damageTakenMultiplier: 0.9, damageTakenFrontRowOnly: true }, ["defense", "support", "passive"]
+    "You take 10% less physical damage; front-row allies take 10% less physical damage while you stand in the front row.",
+    [], { damageTakenMultiplier: 0.9 }, ["defense", "support", "passive"]
+    // Personal reduction (10%) is applied via perkModifiers' damageTakenMultiplier.
+    // Aura reduction (10% to other front-row allies) is wired directly in combat.ts:
+    // vanguardDamageMultiplier() checks for a living Vanguard holder in the front
+    // row and applies the reduction to other front-row allies in damageReductionFor.
+    // The holder receives only one 10% reduction (personal), not both.
   ),
   perk(
     "fighter-last-stand", "Fighter", 3, "Last Stand",
@@ -184,19 +188,18 @@ const PRIEST_PERKS: PerkDef[] = [
   ),
   perk(
     "priest-saint", "Priest", 4, "Saint",
-    "Party regains 5% max HP per round. (Healing KO'd allies as revives is v1.1.)",
+    "Party regains 5% max HP per round. Healing spells may target KO'd allies.",
     ["OnTurnEnd"], {}, ["support", "passive"]
     // Regen is wired directly in combat.ts endRound (no hook needed).
-    // TODO(v1.1): heal-as-revive targeting.
+    // The healing-as-revival targeting is handled by the spell targeting UI allowing KO'd allies.
   ),
   perk(
     "priest-inquisitor", "Priest", 4, "Inquisitor",
-    "+30% damage vs undead/demons. (35% stun on offensive spells is v1.1.)",
+    "+30% damage vs undead/demons; 35% chance offensive spells stun enemies.",
     ["OnSpellResolve"],
     { chance: 0.35, undeadDamageMultiplier: 1.3, demonDamageMultiplier: 1.3 },
     ["offense", "reactive"]
-    // TODO(v1.1): the 35% stun-on-spell half has no registered handler yet;
-    // the undead/demon damage bonus applies via perkModifiers.
+    // The stun-on-spell half is registered in game/perks.ts.
   ),
 ];
 
@@ -249,10 +252,10 @@ const THIEF_PERKS: PerkDef[] = [
   ),
   perk(
     "thief-swindler", "Thief", 4, "Swindler",
-    "Shop buy prices are 20% cheaper. (35% steal-on-attack is v1.1.)",
-    ["OnAttackHit"], { chance: 0.35, shopDiscountPercent: 0.2 }, ["offense", "utility"]
-    // TODO(v1.1): the steal-on-attack side has no registered handler (no
-    // steal economy exists); the shop discount applies via town-ui.ts.
+    "Shop buy prices are 20% cheaper. After landing a critical hit, gain 25% bonus gold if the battle is won.",
+    ["OnCriticalHit"], { shopDiscountPercent: 0.2 }, ["offense", "utility"]
+    // The gold bonus is registered in game/perks.ts as a boolean flag.
+    // The shop discount applies via town-ui.ts.
   ),
 ];
 
@@ -294,8 +297,13 @@ const HALBERDIER_PERKS: PerkDef[] = [
   ),
   perk(
     "halberdier-sentinel", "Halberdier", 4, "Sentinel",
-    "You take 20% less physical damage in the front row. (v1.1: extends to the whole party.)",
-    [], { damageTakenMultiplier: 0.8, damageTakenFrontRowOnly: true }, ["defense", "passive"]
+    "You take 20% less physical damage; party takes 10% less physical damage while you stand in the front row.",
+    [], { damageTakenMultiplier: 0.8 }, ["defense", "support", "passive"]
+    // Personal reduction (20%) is applied via perkModifiers' damageTakenMultiplier.
+    // Aura reduction (10% to other party members) is wired directly in combat.ts:
+    // sentinelDamageMultiplier() checks for a living Sentinel holder in the front
+    // row and applies the reduction to other party members in damageReductionFor.
+    // The holder receives only 20% (personal), not 28% (personal + aura).
   ),
   perk(
     "halberdier-warlord", "Halberdier", 4, "Warlord",
@@ -400,9 +408,12 @@ const CRUSADER_PERKS: PerkDef[] = [
   ),
   perk(
     "crusader-paladin", "Crusader", 4, "Paladin",
-    "Once per combat, survive a lethal blow at 1 HP. (Party-wide 10% damage reduction is v1.1.)",
-    ["AfterDamageTaken"], {}, ["defense", "support", "reactive"],
+    "Party takes 10% less physical damage while you are alive; once per combat, survive a lethal blow at 1 HP.",
+    ["OnAllyWouldDie"], {}, ["defense", "support", "reactive"],
     { oncePerCombat: true, priority: "high" }
+    // The damage reduction is wired directly in combat.ts: paladinDamageMultiplier()
+    // checks for a living Paladin holder and applies the reduction to the entire
+    // party in damageReductionFor. The self-survival is registered in game/perks.ts.
   ),
   perk(
     "crusader-dark-templar", "Crusader", 4, "Dark Templar",
