@@ -77,6 +77,7 @@ import type { MapSpriteDef } from "../data/map-sprites";
 import { featurePropSpriteIds } from "../data/maze-props";
 import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
+import { waterGridFromFloor } from "./water-floor";
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
 export const PALETTE = {
@@ -269,6 +270,9 @@ function urlsForTheme(theme: string): {
   return BUNDLED_THEME_URLS[theme] ?? publicThemeUrls(theme);
 }
 
+const WATER_FLOOR_A_URL = `${import.meta.env.BASE_URL}assets/tilesets/water/floorA.png`;
+const WATER_FLOOR_B_URL = `${import.meta.env.BASE_URL}assets/tilesets/water/floorB.png`;
+
 // Loaded tilesets keyed by theme id. Populated by loadTextures() /
 // ensureThemeLoaded(); render() picks the active set from the floor's theme.
 // (Cached entries hold images/canvases — never CanvasPattern objects, which die
@@ -284,6 +288,9 @@ interface ResolvedFloorTextures {
   primaryTheme: string;
   primaryTileset: LoadedTileset | null;
   cellTextures: CellTextureGrid;
+  waterCells: boolean[][];
+  waterFloorAData: ImageData | null;
+  waterFloorBData: ImageData | null;
 }
 
 /** Per-floor prepared cell lookup; rebuilt only when another theme settles. */
@@ -294,6 +301,8 @@ const floorTextureGridCache = new WeakMap<object, ResolvedFloorTextures>();
  *  `tilesetCache`, preferred via `doorTextureForTheme`. Null until loaded. */
 let doorTexture: HTMLCanvasElement | null = null;
 let doorLoadPromise: Promise<void> | null = null;
+let waterTileset: LoadedTileset | null = null;
+let waterLoadPromise: Promise<void> | null = null;
 // Reusable per-frame buffers (avoid allocation in the hot render loop).
 let hitsBuffer: (RayHit | null)[] = [];
 let lastVignetteW = 0;
@@ -327,6 +336,9 @@ let floorCeilCacheBobY = NaN;
 let floorCeilCacheDarkness: boolean | null = null;
 let floorCeilCacheTextureGrid: CellTextureGrid | null = null;
 let floorCeilCachePrimaryTextures: TextureSet | null = null;
+let floorCeilCacheWaterCells: boolean[][] | null = null;
+let floorCeilCacheWaterAData: ImageData | null = null;
+let floorCeilCacheWaterBData: ImageData | null = null;
 // Pre-computed little-endian RGBA packed value for the bg color, used for
 // fast Uint32Array.fill() pre-fill of the buffer.
 const BG_RGBA_PACKED =
@@ -439,6 +451,7 @@ export function loadTextures(): Promise<void> {
   return Promise.all([
     ...Object.keys(BUNDLED_THEME_URLS).map((theme) => ensureThemeLoaded(theme)),
     ensureDoorTextureLoaded(),
+    ensureWaterTextureLoaded(),
   ]).then(() => {});
 }
 
@@ -471,6 +484,52 @@ function ensureDoorTextureLoaded(): Promise<void> {
       doorLoadPromise = null;
     });
   return doorLoadPromise;
+}
+
+/** Load the shared authored water floor tileset. It only provides floor
+ *  textures; walls/ceilings/doors for water cells continue to use the
+ *  surrounding regional theme, so those files are not requested. */
+function ensureWaterTextureLoaded(): Promise<void> {
+  if (waterTileset) return Promise.resolve();
+  if (waterLoadPromise) return waterLoadPromise;
+  waterLoadPromise = Promise.all([
+    loadImage(WATER_FLOOR_A_URL).catch(() => null),
+    loadImage(WATER_FLOOR_B_URL).catch(() => null),
+  ])
+    .then(([floorAImg, floorBImg]) => {
+      const floorA = floorAImg ? adjustTextureImage(floorAImg, 1, 1) : null;
+      const floorB = floorBImg ? adjustTextureImage(floorBImg, 1, 1) : null;
+      const floorARepeated = floorA ? prepareRepeatedTexture(floorA, 1, 1) : null;
+      const floorBRepeated = floorB ? prepareRepeatedTexture(floorB, 1, 1) : null;
+      waterTileset = {
+        set: {
+          wall: null,
+          floorA,
+          floorB,
+          ceiling: null,
+          floorARepeated,
+          floorBRepeated,
+          ceilingRepeated: null,
+          floorAData: floorARepeated
+            ? floorARepeated.getContext("2d")!.getImageData(0, 0, floorARepeated.width, floorARepeated.height)
+            : null,
+          floorBData: floorBRepeated
+            ? floorBRepeated.getContext("2d")!.getImageData(0, 0, floorBRepeated.width, floorBRepeated.height)
+            : null,
+          ceilingData: null,
+        },
+        repeatedWall: null,
+        door: null,
+      };
+      tilesetGeneration++;
+    })
+    .catch(() => {
+      waterTileset = null;
+    })
+    .then(() => {
+      waterLoadPromise = null;
+    });
+  return waterLoadPromise;
 }
 
 /** Ensure a tileset theme is in the cache (no-op if already loaded). */
@@ -563,11 +622,17 @@ function resolveFloorTextures(floor: GameState["floor"]): ResolvedFloorTextures 
       return tilesetCache.get(theme)?.set ?? primaryTileset?.set ?? null;
     })
   );
+  const waterCells = waterGridFromFloor(floor);
+  const waterFloorAData = waterTileset?.set.floorAData ?? null;
+  const waterFloorBData = waterTileset?.set.floorBData ?? null;
   const resolved: ResolvedFloorTextures = {
     generation: tilesetGeneration,
     primaryTheme,
     primaryTileset,
     cellTextures,
+    waterCells,
+    waterFloorAData,
+    waterFloorBData,
   };
   floorTextureGridCache.set(floor, resolved);
   return resolved;
@@ -923,6 +988,9 @@ function drawFloorCeilingCast(
   inDarkness: boolean,
   cellTextures: CellTextureGrid,
   primaryTextures: TextureSet,
+  waterCells: boolean[][],
+  waterFloorAData: ImageData | null,
+  waterFloorBData: ImageData | null,
   bobY: number
 ): void {
   const w = ctx.canvas.width;
@@ -955,7 +1023,10 @@ function drawFloorCeilingCast(
     bobY === floorCeilCacheBobY &&
     inDarkness === floorCeilCacheDarkness &&
     cellTextures === floorCeilCacheTextureGrid &&
-    primaryTextures === floorCeilCachePrimaryTextures
+    primaryTextures === floorCeilCachePrimaryTextures &&
+    waterCells === floorCeilCacheWaterCells &&
+    waterFloorAData === floorCeilCacheWaterAData &&
+    waterFloorBData === floorCeilCacheWaterBData
   ) {
     ctx.putImageData(buf, 0, bobY);
     return;
@@ -1025,9 +1096,17 @@ function drawFloorCeilingCast(
       const gx = worldX | 0;
       const gy = worldY | 0;
       const textures = cellTextures[gy]?.[gx] ?? primaryTextures;
-      const tex = (gx + gy) % 2 === 0
-        ? textures.floorAData ?? primaryTextures.floorAData
-        : textures.floorBData ?? primaryTextures.floorBData;
+      const isFloorA = (gx + gy) % 2 === 0;
+      const isWater = waterCells[gy]?.[gx] ?? false;
+      let tex: ImageData | null = null;
+      if (isWater) {
+        tex = isFloorA ? waterFloorAData : waterFloorBData;
+      }
+      if (!tex) {
+        tex = isFloorA
+          ? textures.floorAData ?? primaryTextures.floorAData
+          : textures.floorBData ?? primaryTextures.floorBData;
+      }
       if (tex) {
         const texWidth = tex.width;
         const texHeight = tex.height;
@@ -1058,6 +1137,9 @@ function drawFloorCeilingCast(
   floorCeilCacheDarkness = inDarkness;
   floorCeilCacheTextureGrid = cellTextures;
   floorCeilCachePrimaryTextures = primaryTextures;
+  floorCeilCacheWaterCells = waterCells;
+  floorCeilCacheWaterAData = waterFloorAData;
+  floorCeilCacheWaterBData = waterFloorBData;
 
   ctx.putImageData(buf, 0, bobY);
 }
@@ -1114,6 +1196,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       state.inDarkness,
       resolvedTextures.cellTextures,
       primaryTextures,
+      resolvedTextures.waterCells,
+      resolvedTextures.waterFloorAData,
+      resolvedTextures.waterFloorBData,
       bobY
     );
   }
