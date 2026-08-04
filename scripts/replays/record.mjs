@@ -104,6 +104,57 @@ const SCENARIOS = {
     forceCombat: false,
     driver: trapInteractionDriver,
   },
+
+  // --- Verb-specific transcripts (Combat Verb Identity sprint) ---
+
+  // Use a Technique (Fighter Power Attack) on the first turn, then Attack.
+  "verb-technique": {
+    renderer: "phaser",
+    urlSuffix: "",
+    jumpTo: { floorId: 1, x: 11, y: 25, facing: 0, autosave: false },
+    jumpTo2: null,
+    forceCombat: true,
+    driver: techniqueDriver,
+  },
+
+  // Cast an offensive spell (Mage Fire Bolt) on the first turn, then Attack.
+  "verb-offensive-spell": {
+    renderer: "phaser",
+    urlSuffix: "",
+    jumpTo: { floorId: 1, x: 11, y: 25, facing: 0, autosave: false },
+    jumpTo2: null,
+    forceCombat: true,
+    driver: offensiveSpellDriver,
+  },
+
+  // Cast a healing spell (Priest Heal) after someone takes damage.
+  "verb-healing-spell": {
+    renderer: "phaser",
+    urlSuffix: "",
+    jumpTo: { floorId: 1, x: 11, y: 25, facing: 0, autosave: false },
+    jumpTo2: null,
+    forceCombat: true,
+    // Pre-damage the party so the Priest has someone to heal on round 1.
+    preCombatSetup: async (page) => {
+      await page.evaluate(() => {
+        const st = window.__onyxDebug.state;
+        // Damage Aria (c1) to ~60% HP so she's the heal target.
+        const aria = st.party.find((c) => c.id === "c1");
+        if (aria) aria.hp = Math.floor(aria.maxHp * 0.6);
+      });
+    },
+    driver: healingSpellDriver,
+  },
+
+  // Canvas fallback guard for the technique verb.
+  "verb-technique-canvas": {
+    renderer: "canvas",
+    urlSuffix: "&phaser=0",
+    jumpTo: { floorId: 1, x: 11, y: 25, facing: 0, autosave: false },
+    jumpTo2: null,
+    forceCombat: true,
+    driver: techniqueDriver,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -205,6 +256,185 @@ async function* trapInteractionDriver(page) {
 }
 
 // ---------------------------------------------------------------------------
+// Verb-specific drivers (Combat Verb Identity sprint)
+// ---------------------------------------------------------------------------
+
+/**
+ * Technique driver: use Power Attack (Fighter) on the first palette phase,
+ * then fall through to normal Attack for the rest of combat.
+ *
+ * The acting character is identified by combat.actingCharId. The default
+ * party is Aria (Fighter, c1), Coda (Thief, c2), Dell (Mage, c3), Eve (Priest, c4).
+ * Aria starts with 8 rage (half of max 16 at L1), Power Attack costs 5.
+ */
+async function* techniqueDriver(page) {
+  let techniqueUsed = false;
+
+  for (let round = 0; round < 40; round++) {
+    const s = await snap(page);
+    if (s.route !== "combat") break;
+    if (s.combat?.result) {
+      yield { key: "Enter", action: "dismiss-result" };
+      return;
+    }
+    const phase = s.combat?.phase;
+    if (!phase) {
+      yield { key: "Enter", action: "settle" };
+      continue;
+    }
+
+    // When it's the Fighter's turn and we haven't used the technique yet,
+    // open the technique list and select the first one.
+    if (phase === "palette" && !techniqueUsed && s.combat?.actingCharId === "c1") {
+      // Press 't' to open the technique list.
+      yield { key: "t", action: "open-techniques" };
+      // Press Enter to select the first technique (Power Attack).
+      yield { key: "Enter", action: "select-technique" };
+      // Press Enter to confirm the default target.
+      yield { key: "Enter", action: "confirm-technique-target" };
+      techniqueUsed = true;
+      continue;
+    }
+
+    switch (phase) {
+      case "palette":
+        yield { key: "Enter", action: "confirm-attack" };
+        break;
+      case "selectTarget":
+        yield { key: "Enter", action: "confirm-target" };
+        break;
+      case "selectSpell":
+      case "selectTechnique":
+      case "selectSkill":
+      case "selectItem":
+        yield { key: "Escape", action: "cancel-submenu" };
+        break;
+      case "playback":
+        yield { key: "b", action: "skip-playback" };
+        break;
+      case "result":
+        yield { key: "Enter", action: "dismiss-result" };
+        return;
+      default:
+        yield { key: "Enter", action: `settle-${phase}` };
+    }
+  }
+}
+
+/**
+ * Offensive spell driver: cast the first spell (Fire Bolt) when it's the
+ * Mage's (c3) turn, then fall through to normal Attack.
+ */
+async function* offensiveSpellDriver(page) {
+  let spellUsed = false;
+
+  for (let round = 0; round < 40; round++) {
+    const s = await snap(page);
+    if (s.route !== "combat") break;
+    if (s.combat?.result) {
+      yield { key: "Enter", action: "dismiss-result" };
+      return;
+    }
+    const phase = s.combat?.phase;
+    if (!phase) {
+      yield { key: "Enter", action: "settle" };
+      continue;
+    }
+
+    // When it's the Mage's turn and we haven't cast yet, open Magic and
+    // cast the first spell.
+    if (phase === "palette" && !spellUsed && s.combat?.actingCharId === "c3") {
+      yield { key: "c", action: "open-magic" };
+      yield { key: "Enter", action: "select-spell" };
+      yield { key: "Enter", action: "confirm-spell-target" };
+      spellUsed = true;
+      continue;
+    }
+
+    switch (phase) {
+      case "palette":
+        yield { key: "Enter", action: "confirm-attack" };
+        break;
+      case "selectTarget":
+        yield { key: "Enter", action: "confirm-target" };
+        break;
+      case "selectSpell":
+      case "selectTechnique":
+      case "selectSkill":
+      case "selectItem":
+        yield { key: "Escape", action: "cancel-submenu" };
+        break;
+      case "playback":
+        yield { key: "b", action: "skip-playback" };
+        break;
+      case "result":
+        yield { key: "Enter", action: "dismiss-result" };
+        return;
+      default:
+        yield { key: "Enter", action: `settle-${phase}` };
+    }
+  }
+}
+
+/**
+ * Healing spell driver: cast Heal (Priest, c4) on the first palette phase
+ * (the party is pre-damaged via preCombatSetup), then fall through to Attack.
+ */
+async function* healingSpellDriver(page) {
+  let healUsed = false;
+
+  for (let round = 0; round < 40; round++) {
+    const s = await snap(page);
+    if (s.route !== "combat") break;
+    if (s.combat?.result) {
+      yield { key: "Enter", action: "dismiss-result" };
+      return;
+    }
+    const phase = s.combat?.phase;
+    if (!phase) {
+      yield { key: "Enter", action: "settle" };
+      continue;
+    }
+
+    // When it's the Priest's turn and we haven't healed yet, cast Heal.
+    if (phase === "palette" && !healUsed && s.combat?.actingCharId === "c4") {
+      const damaged = s.party.some((p) => p.hp < p.maxHp);
+      if (damaged) {
+        yield { key: "c", action: "open-magic" };
+        yield { key: "Enter", action: "select-heal" };
+        // Confirm the default target (should be the first damaged party member).
+        yield { key: "Enter", action: "confirm-heal-target" };
+        healUsed = true;
+        continue;
+      }
+    }
+
+    switch (phase) {
+      case "palette":
+        yield { key: "Enter", action: "confirm-attack" };
+        break;
+      case "selectTarget":
+        yield { key: "Enter", action: "confirm-target" };
+        break;
+      case "selectSpell":
+      case "selectTechnique":
+      case "selectSkill":
+      case "selectItem":
+        yield { key: "Escape", action: "cancel-submenu" };
+        break;
+      case "playback":
+        yield { key: "b", action: "skip-playback" };
+        break;
+      case "result":
+        yield { key: "Enter", action: "dismiss-result" };
+        return;
+      default:
+        yield { key: "Enter", action: `settle-${phase}` };
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Recorder core
 // ---------------------------------------------------------------------------
 
@@ -269,7 +499,15 @@ async function recordScenario(page, scenario, seed) {
     await wait(300);
   }
 
-  // Dump the starting save (after all jumps, before seeding RNG).
+  // Optional pre-combat setup (e.g., pre-damage the party for heal tests).
+  // Runs after jumps but before dumping the save, so the save captures the
+  // modified state.
+  if (cfg.preCombatSetup) {
+    await cfg.preCombatSetup(page);
+    await wait(200);
+  }
+
+  // Dump the starting save (after all jumps + pre-combat setup, before seeding).
   const startingSave = await page.evaluate(() => window.__onyxDebug.dumpSave());
 
   // Install the seeded gameplay RNG.

@@ -16,6 +16,8 @@ export interface CombatPalette {
   itemButton: "select";
   itemDisabled: boolean;
   autoButton: "start";
+  /** Flee is unavailable (boss encounter). Greys out the Run hint. */
+  fleeDisabled: boolean;
 }
 
 /**
@@ -37,6 +39,7 @@ export function buildPalette(
     silenced?: boolean;
     currentSp?: number;
     currentRage?: number;
+    isBoss?: boolean;
   }
 ): CombatPalette {
   // Filter to combat-castable spells only (dungeon-only utility spells are
@@ -62,6 +65,8 @@ export function buildPalette(
   void c;
   void options?.currentRage;
 
+  const fleeDisabled = options?.isBoss ?? false;
+
   const slots: PaletteSlot[] = [
     { kind: "attack" },
     { kind: "defend" },
@@ -74,6 +79,7 @@ export function buildPalette(
     itemButton: "select",
     itemDisabled,
     autoButton: "start",
+    fleeDisabled,
   };
 }
 

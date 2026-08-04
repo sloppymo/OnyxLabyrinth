@@ -2785,6 +2785,30 @@ export function playTurn(
           );
           t += ATTACK_MS + 200;
         } else {
+          // Technique wind-up: a brief charge glow on the attacker before the
+          // approach, so techniques read as deliberate power moves rather than
+          // instant swings. Purely visual — does not change t or gameplay state.
+          if (evt.type === "techniqueHit") {
+            steps.push(
+              step(t, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                if (!actor) return;
+                // Warm steel-gold charge glow under the attacker.
+                pushLightGlow(sc, actor.x, actor.y + 8, "#f0e6d0", 70, n, 280);
+                // Brief gathering spark effect.
+                sc.effects.push({
+                  type: "charge",
+                  x: actor.x,
+                  y: actor.y - 12 * actor.scale,
+                  color: "#f0e6d0",
+                  effect: "free_stunburst",
+                  scale: 0.7,
+                  start: n,
+                  duration: 220,
+                });
+              })
+            );
+          }
           approach(evt.actorId);
           const base = t;
           const techniqueCrit = evt.type === "techniqueHit" && evt.crit === true;
@@ -2830,6 +2854,8 @@ export function playTurn(
                 const to = findActor(sc, techniqueTarget, w, h);
                 if (!to) return;
                 // Steel sparks — not extra_elemental (that read as low-tier magic).
+                // Techniques get more debris and a wider underlay than basic attacks
+                // so the contact frame reads as heavier.
                 pushParticleSprinkles(
                   sc,
                   to.x,
@@ -2837,13 +2863,17 @@ export function playTurn(
                   techniqueCrit ? COLORS.crit : "#f0e6d0",
                   "px_black_white_sparks",
                   n,
-                  techniqueCrit ? 4 : 3,
-                  7,
+                  techniqueCrit ? 6 : 4,
+                  8,
                   {
                     underlay: "free_stunburst",
-                    underlayScale: techniqueCrit ? 1.15 : 0.95,
+                    underlayScale: techniqueCrit ? 1.3 : 1.1,
                   }
                 );
+                // Dust kick at the target's feet — physical, not elemental.
+                pushLightGlow(sc, to.x, to.y + 6, "#c8b890", 90, n, 350);
+                // Stronger screen shake for techniques vs basic attacks.
+                addScreenShake(sc, techniqueCrit ? 6 : 4, n, 300);
               })
             );
           }
@@ -2991,6 +3021,19 @@ export function playTurn(
             })
           );
         }
+
+        // Magic caster aura: a soft elemental-colored floor glow under the
+        // caster that persists through the cast, making the charge phase read
+        // as "gathering magic" even without the charge sprite. This is the
+        // primary visual differentiator for the Magic verb — Attack and
+        // Technique never light the floor under the attacker this way.
+        steps.push(
+          step(t, (sc, n) => {
+            const actor = findActor(sc, evt.actorId, w, h);
+            if (!actor) return;
+            pushLightGlow(sc, actor.x, actor.y + 10, style.color, 100, n, castHold);
+          })
+        );
 
         // AOE nukes with a declared projectile rain from above the affected
         // side (Meteor Swarm, Ice Storm, etc.) instead of a single beam.
@@ -3183,6 +3226,16 @@ export function playTurn(
               spawnSparkleParticles(sc, target.x, target.y, style.color, isHeal ? 12 : 8);
               if (!isHeal && evt.damage !== undefined) {
                 addScreenShake(sc, spellShakeAmount(evt.spellId, evt.damage), n, 250);
+              }
+              // Support verb: healing and buff effects get an upward aura
+              // ring and rising motes — no damage-style screen shake. This
+              // is the primary visual differentiator for the Support verb:
+              // the motion is upward and gentle, not a punch.
+              if (isHeal) {
+                // Expanding warm aura ring at the target's feet.
+                pushLightGlow(sc, target.x, target.y + 8, style.color, 120, n, 600);
+                // Rising sparkle motes — more than the damage path, warm-toned.
+                spawnSparkleParticles(sc, target.x, target.y - 20, style.color, 16);
               }
             }
           })

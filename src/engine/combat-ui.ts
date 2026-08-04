@@ -575,6 +575,7 @@ export class CombatController {
       silenced: this.state.silencedThisRound.includes(c.id),
       currentSp: c.sp,
       currentRage: classHasTechniques(c.class) ? this.currentRage(c) : undefined,
+      isBoss: this.state.isBoss,
     });
     this.pending = null;
     this.flash = null;
@@ -1591,6 +1592,10 @@ export class CombatController {
     if (!c || !this.palette) return;
 
     if (event.kind === "hold" && event.button === "b") {
+      if (this.state.isBoss) {
+        this.setFlash("Can't flee from a boss!");
+        return;
+      }
       this.chooseAction("flee");
       return;
     }
