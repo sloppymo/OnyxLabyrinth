@@ -95,7 +95,7 @@ const FIGHTER_TECHNIQUES: TechniqueDef[] = [
     level: 3,
     rageCost: 8,
     target: "singleEnemy",
-    effect: { kind: "damageWithStatus", multiplier: 1, status: "paralysis", statusChance: 0.25, statusDuration: 1 },
+    effect: { kind: "damageWithStatus", multiplier: 1.5, status: "paralysis", statusChance: 0.25, statusDuration: 2 },
     description: "Slam the shield into a foe, potentially stunning them senseless.",
   },
   {

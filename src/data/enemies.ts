@@ -846,7 +846,7 @@ export const CHOIR_WARDEN: EnemyDef = {
   name: "Choir Warden",
   floors: [4],
   rowPreference: "front",
-  hp: 105,
+  hp: 75,
   attack: 22,
   ac: 20,
   agi: 5,
@@ -854,7 +854,6 @@ export const CHOIR_WARDEN: EnemyDef = {
   gold: 62,
   special: [
     { kind: "highDefense" },
-    { kind: "resistPhysical", percent: 25 },
     { kind: "resistElement", element: "lightning" },
   ],
   abilityIds: ["shield-bash", "phalanx-guard", "ward"],
