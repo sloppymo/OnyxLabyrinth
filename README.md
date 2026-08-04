@@ -133,6 +133,12 @@ See `AGENTS.md` for the full checklists and common pitfalls.
 
 GitHub Actions builds and deploys `dist/` to Pages on every push to `main` (`.github/workflows/deploy.yml`).
 
+To verify a recent deploy:
+
+```bash
+gh run list --workflow=deploy.yml --limit 1
+```
+
 The live game is available at:
 
 - **GitHub Pages:** https://sloppymo.github.io/OnyxLabyrinth/

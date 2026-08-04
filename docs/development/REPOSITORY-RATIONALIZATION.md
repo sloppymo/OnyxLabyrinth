@@ -115,7 +115,7 @@ Run at the final head on `chore/repository-rationalization`:
 
 ## Remaining placeholders and deferred work
 
-- `CLAUDE.md` still overlaps `AGENTS.md`. The overlap was noted; `CLAUDE.md` was intentionally not truncated because a unique-content diff was not completed in this pass. Defer to a future focused agent-specific doc pass.
+- `CLAUDE.md` has been reconciled with `AGENTS.md` and `README.md` and is now a short pointer; no content was lost.
 - Dead-code deletion was treated as optional and was not attempted; no proven-dead files were identified or removed.
 - The approved water tile `public/assets/tilesets/f1/water_floor.png` remains unintegrated, awaiting a separate water-rendering implementation pass.
 
