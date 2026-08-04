@@ -35,6 +35,7 @@ import { spellById } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import { BARK_PRIORITY, type BarkTrigger } from "../data/combat-barks";
 import { enemyIsUndead } from "./combat-audio";
+import { warnAsset } from "./asset-warn";
 import type { SpriteStrip } from "./sprite-manifest";
 import {
   type CombatImpactState,
@@ -2961,6 +2962,9 @@ export function playTurn(
       }
 
       case "cast": {
+        if (evt.presentation && evt.presentation !== "meleeGangUp") {
+          warnAsset(`unknown cast presentation: ${evt.presentation}`);
+        }
         if (evt.presentation === "meleeGangUp" && evt.targetId) {
           showBanner(spellNameFor(evt.spellId), 1400);
           steps.push(

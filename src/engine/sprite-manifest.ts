@@ -564,6 +564,20 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
   ),
 };
 
+/**
+ * Explicit opt-out list for enemies that intentionally use the procedural
+ * fallback in combat-scene.ts instead of a sprite strip. A missing entry here
+ * is a loud signal that an enemy was added without sprite coverage.
+ */
+export const PROCEDURAL_ENEMY_SPRITE_OPT_OUTS: Record<string, { reason: string }> = {
+  "discordant-cantor": { reason: "procedural choir — no shipped sprite strip" },
+  "null-acolyte": { reason: "procedural choir — no shipped sprite strip" },
+  "choir-magus": { reason: "procedural choir — no shipped sprite strip" },
+  "cistern-wraith": { reason: "procedural wraith — no shipped sprite strip" },
+  "weeping-revenant": { reason: "procedural revenant — no shipped sprite strip" },
+  "undertow-caller": { reason: "procedural caller — no shipped sprite strip" },
+};
+
 /** Convert the renderer's SpriteState to a strip key. */
 export function spriteStateToStripKey(
   state: "idle" | "attacking" | "hit" | "defeated"

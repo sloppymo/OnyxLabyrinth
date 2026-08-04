@@ -1,3 +1,5 @@
+import { warnAsset } from "./asset-warn";
+
 const EFFECT_BASE = (import.meta.env.BASE_URL ?? "/") + "assets/effects/";
 
 export interface EffectStrip {
@@ -485,7 +487,10 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
+    img.onerror = () => {
+      warnAsset(`failed to load effect sprite: ${src}`);
+      resolve(null);
+    };
     img.src = src;
   });
 }

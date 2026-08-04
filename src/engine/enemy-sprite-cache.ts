@@ -1,10 +1,12 @@
 import {
   ENEMY_SPRITE_DEFS,
+  PROCEDURAL_ENEMY_SPRITE_OPT_OUTS,
   spriteStateToStripKey,
   type EnemySpriteDef,
   type EnemySpriteState,
   type SpriteStrip,
 } from "./sprite-manifest";
+import { warnAsset } from "./asset-warn";
 
 export type EnemyAnimationState =
   | "idle"
@@ -21,19 +23,34 @@ const stripImageCache: Map<string, HTMLImageElement | null> = new Map();
 const bundleCache: Map<string, EnemySpriteBundle | null> = new Map();
 const bundleLoadPromises: Map<string, Promise<EnemySpriteBundle | null>> =
   new Map();
+const warnedMissingEnemies = new Set<string>();
 
 function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => resolve(null); // graceful fallback to procedural
+    img.onerror = () => {
+      warnAsset(`failed to load enemy sprite: ${src}`);
+      resolve(null); // graceful fallback to procedural
+    };
     img.src = src;
   });
 }
 
 async function loadBundle(id: string): Promise<EnemySpriteBundle | null> {
   const def = ENEMY_SPRITE_DEFS[id];
-  if (!def) return null;
+  if (!def) {
+    if (
+      !PROCEDURAL_ENEMY_SPRITE_OPT_OUTS[id] &&
+      !warnedMissingEnemies.has(id)
+    ) {
+      warnedMissingEnemies.add(id);
+      warnAsset(
+        `enemy ${id} has no sprite manifest entry or procedural opt-out`,
+      );
+    }
+    return null;
+  }
 
   const images: Record<EnemySpriteState, HTMLImageElement | null> = {
     idle: null,

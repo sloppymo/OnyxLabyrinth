@@ -12,7 +12,12 @@ import { statusDrawScale } from "../game/combat-shared";
 import { getEnemySpriteStrip } from "./enemy-sprite-cache";
 import { getPartySpriteStrip } from "./party-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
-import type { SpriteStrip } from "./sprite-manifest";
+import {
+  ENEMY_SPRITE_DEFS,
+  PROCEDURAL_ENEMY_SPRITE_OPT_OUTS,
+  type SpriteStrip,
+} from "./sprite-manifest";
+import { warnAsset } from "./asset-warn";
 import combatBgUrl from "../assets/combat-bg.png";
 import {
   artFootFromTopFor,
@@ -139,10 +144,17 @@ let combatBgImage: HTMLImageElement | null = null;
 function getCombatBg(): HTMLImageElement | null {
   if (!combatBgImage) {
     combatBgImage = new Image();
+    combatBgImage.onerror = () => {
+      warnAsset(`failed to load combat background: ${combatBgUrl}`);
+      combatBgImage = null;
+    };
     combatBgImage.src = combatBgUrl;
   }
   return combatBgImage;
 }
+
+const warnedMissingEnemySprites = new Set<string>();
+const warnedMissingPartySprites = new Set<string>();
 
 // --- Drawing ---------------------------------------------------------------------------
 
@@ -407,6 +419,15 @@ function drawPartyMember(
     const frame = frozen && anim.state === "idle" ? 0 : frameIndexFor(stripInfo.strip, stateAge);
     drawStripFrame(ctx, stripInfo.img, stripInfo.strip, frame, x, y, drawSize, true, opacity, tint, char.id, scene, now);
   } else {
+    if (
+      !warnedMissingPartySprites.has(char.class) &&
+      !getPartySpriteStrip(char.class, "idle")
+    ) {
+      warnedMissingPartySprites.add(char.class);
+      warnAsset(
+        `party sprite missing for class ${char.class} — using procedural fallback`,
+      );
+    }
     drawPartyFallback(ctx, x, y, char, anim, drawSize, tint);
     if (anim.state === "hurt" && now - anim.stateStart < 200) {
       const intensity = anim.hitFlashIntensity || 0.3;
@@ -511,6 +532,16 @@ function drawEnemy(
     }
     drawStripFrame(ctx, img!, strip, frame, x, y, drawSize, false, anim.opacity, tint, enemy.instanceId, scene, now);
   } else {
+    if (
+      !ENEMY_SPRITE_DEFS[enemy.id] &&
+      !PROCEDURAL_ENEMY_SPRITE_OPT_OUTS[enemy.id] &&
+      !warnedMissingEnemySprites.has(enemy.id)
+    ) {
+      warnedMissingEnemySprites.add(enemy.id);
+      warnAsset(
+        `enemy ${enemy.id} has no sprite manifest entry or procedural opt-out`,
+      );
+    }
     drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize, frozen, tint);
   }
 
@@ -578,6 +609,17 @@ function drawAlly(
         now
       );
       return;
+    }
+    if (
+      ally.spriteId &&
+      !ENEMY_SPRITE_DEFS[ally.spriteId] &&
+      !PROCEDURAL_ENEMY_SPRITE_OPT_OUTS[ally.spriteId] &&
+      !warnedMissingEnemySprites.has(ally.spriteId)
+    ) {
+      warnedMissingEnemySprites.add(ally.spriteId);
+      warnAsset(
+        `ally sprite ${ally.spriteId} has no manifest entry or procedural opt-out`,
+      );
     }
   }
 
