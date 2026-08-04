@@ -3632,6 +3632,31 @@ canvas#map-canvas {
     width: 100%;
     max-width: none;
   }
+
+  /* #combat-turn-order is a separate absolutely-positioned sibling
+     (top: 2%; right: 2%; z-index: 2) docked opposite the command popup —
+     it isn't nested inside #combat-popup-anchor, so it can't be switched
+     to position: static and stacked "after" the popup the way
+     .ff6-command-popup-wrap was above: #combat-wrap's other in-flow
+     children are the full-bleed stage canvases, and pushing this into
+     normal flow would grow #combat-wrap taller than its aspect-ratio-
+     locked box (768/672), which #combat-windows' `bottom: 6px` anchor and
+     the sprite math in combat-scene-math.ts both depend on staying intact
+     (see AGENTS.md: the renderer/combat sizing chain is fragile — do not
+     grow #combat-wrap's box here).
+     Once the popup above goes static + full-width, this strip no longer
+     has a clear lane to float in — it lands on top of the popup's right-
+     hand slots (e.g. the 4th palette button) instead of beside them, and
+     its z-index: 2 means it visually wins, hiding the button underneath
+     entirely with no visual/functional indication (the slot is still
+     selectable via keyboard/gamepad — this is a paint-order bug, not a
+     lost input path). Simplest safe fix: this strip is a nice-to-have
+     upcoming-turn preview, not load-bearing (the roster's "acting"
+     highlight and the message log already convey whose turn it is) — hide
+     it rather than risk a height-dependent reflow at this viewport. */
+  #combat-turn-order {
+    display: none;
+  }
 }
 
 .ff6-hint-row {
