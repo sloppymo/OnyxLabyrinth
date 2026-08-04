@@ -79,7 +79,6 @@ describe("idsForEvent layering", () => {
     const ids = idsForEvent(
       {
         type: "spellEffect",
-        actorId: "m",
         spellId: "mage-fireball",
         targetId: "e",
         damage: 14,
@@ -120,6 +119,7 @@ describe("idsForEvent layering", () => {
             agi: 5,
             xp: 1,
             gold: 1,
+            floors: [1],
             rowPreference: "front",
             special: [{ kind: "undead" }],
             isBoss: false,

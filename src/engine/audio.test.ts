@@ -1,4 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Mock } from "vitest";
+
+type FakeAudio = {
+  src: string;
+  loop: boolean;
+  volume: number;
+  currentTime: number;
+  paused: boolean;
+  ended: boolean;
+  play: Mock<() => Promise<void>>;
+  pause: Mock<() => void>;
+  preload: string;
+};
 
 type FakeNode = {
   connect: ReturnType<typeof vi.fn>;
@@ -443,16 +456,7 @@ describe("AudioEngine title music", () => {
   it("loops Breath of the Undercroft and stops cleanly", async () => {
     const play = vi.fn(() => Promise.resolve());
     const pause = vi.fn();
-    const instances: Array<{
-      loop: boolean;
-      volume: number;
-      currentTime: number;
-      paused: boolean;
-      ended: boolean;
-      play: typeof play;
-      pause: typeof pause;
-      preload: string;
-    }> = [];
+    const instances: FakeAudio[] = [];
 
     vi.stubGlobal(
       "Audio",
@@ -489,16 +493,7 @@ describe("AudioEngine title music", () => {
   it("gives every dungeon theme an equal quarter of the random pool", async () => {
     const play = vi.fn(() => Promise.resolve());
     const pause = vi.fn();
-    const instances: Array<{
-      src: string;
-      loop: boolean;
-      volume: number;
-      currentTime: number;
-      paused: boolean;
-      ended: boolean;
-      play: typeof play;
-      pause: typeof pause;
-    }> = [];
+    const instances: FakeAudio[] = [];
 
     vi.stubGlobal(
       "Audio",
@@ -556,15 +551,7 @@ describe("AudioEngine title music", () => {
   it("loops Haven at Dusk as the town theme", async () => {
     const play = vi.fn(() => Promise.resolve());
     const pause = vi.fn();
-    const instances: Array<{
-      src: string;
-      loop: boolean;
-      currentTime: number;
-      paused: boolean;
-      ended: boolean;
-      play: typeof play;
-      pause: typeof pause;
-    }> = [];
+    const instances: FakeAudio[] = [];
 
     vi.stubGlobal(
       "Audio",
@@ -598,16 +585,7 @@ describe("AudioEngine title music", () => {
   it("loops and rewinds the authored normal battle theme", async () => {
     const play = vi.fn(() => Promise.resolve());
     const pause = vi.fn();
-    const instances: Array<{
-      src: string;
-      loop: boolean;
-      volume: number;
-      currentTime: number;
-      paused: boolean;
-      ended: boolean;
-      play: typeof play;
-      pause: typeof pause;
-    }> = [];
+    const instances: FakeAudio[] = [];
 
     vi.stubGlobal(
       "Audio",
@@ -643,7 +621,7 @@ describe("AudioEngine title music", () => {
   });
 
   it("loops and rewinds the character creation theme", async () => {
-    const instances: HTMLAudioElement[] = [];
+    const instances: FakeAudio[] = [];
     let play = vi.fn().mockResolvedValue(undefined);
     let pause = vi.fn();
     vi.stubGlobal(
@@ -680,7 +658,7 @@ describe("AudioEngine title music", () => {
   });
 
   it("does not play party creation music on resume unless wanted", async () => {
-    const instances: HTMLAudioElement[] = [];
+    const instances: FakeAudio[] = [];
     const play = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal(
       "Audio",
@@ -706,7 +684,7 @@ describe("AudioEngine title music", () => {
   });
 
   it("handles multiple start/stop cycles without overlapping instances", async () => {
-    const instances: HTMLAudioElement[] = [];
+    const instances: FakeAudio[] = [];
     const play = vi.fn().mockResolvedValue(undefined);
     const pause = vi.fn();
     vi.stubGlobal(

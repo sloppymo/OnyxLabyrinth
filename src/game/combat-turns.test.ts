@@ -42,6 +42,7 @@ function makeEnemyDef(overrides: Partial<EnemyDef> = {}): EnemyDef {
     agi: 5,
     xp: 3,
     gold: 2,
+    floors: [1],
     rowPreference: "front",
     special: [],
     isBoss: false,
@@ -390,7 +391,7 @@ describe("resolveEnemyTurn", () => {
 
   it("silenceRandom lands at the enemy's turn", () => {
     const state = makeState([
-      makeEnemy("boss-0", { special: [{ kind: "silenceRandom" }], isBoss: true }),
+      makeEnemy("boss-0", { special: [{ kind: "silenceRandom", target: "party", duration: "combat" }], isBoss: true }),
     ]);
     const s = resolveEnemyTurn(state, "boss-0", seqRng([0.01]));
     expect(s.silencedThisRound).toHaveLength(1);
@@ -516,7 +517,7 @@ describe("audit fixes: event emission", () => {
 
   it("silenceRandom emits a structured silence event", () => {
     const state = makeState([
-      makeEnemy("boss-0", { special: [{ kind: "silenceRandom" }], isBoss: true }),
+      makeEnemy("boss-0", { special: [{ kind: "silenceRandom", target: "party", duration: "combat" }], isBoss: true }),
     ]);
     const s = resolveEnemyTurn(state, "boss-0", seqRng([0.01]));
     const evt = s.events.find((e) => e?.type === "silence");
@@ -1183,7 +1184,7 @@ describe("affinity discovery (P2-9)", () => {
 
   it("DoT ticks discover affinity too", () => {
     const state = makeState([makeEnemy("rat-0", { hp: 100, special: [{ kind: "weakElement", element: "fire" }] })]);
-    state.enemyDots["rat-0"] = [{ element: "fire", power: 5, duration: 2 }];
+    state.enemyDots["rat-0"] = [{ element: "fire", power: 5, duration: 2, spellId: "mage-fire-bolt" }];
     const s = endRound(state, seqRng([0.5]));
     expect(s.observedAffinity["Test Rat"]?.weak).toEqual(["fire"]);
     expect(s.events.some((e) => e?.type === "affinityDiscovered")).toBe(true);

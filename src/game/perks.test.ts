@@ -24,8 +24,8 @@ import {
   resolveEnemyTurn,
   endRound,
 } from "./combat";
-import type { CombatState } from "./combat-types";
-import type { EnemyDef, EnemyInstance } from "../data/enemies";
+import type { CombatState, EnemyInstance } from "./combat-types";
+import type { EnemyDef } from "../data/enemies";
 import type { SpellDef } from "../data/spells";
 
 const BASE_STATS = { str: 10, int: 10, pie: 10, vit: 10, agi: 10, luk: 10 };
@@ -49,6 +49,7 @@ function makeEnemy(instanceId: string, name = "Test Rat", hp = 20): EnemyInstanc
     agi: 5,
     xp: 3,
     gold: 2,
+    floors: [1],
     rowPreference: "front",
     special: [],
     isBoss: false,
@@ -850,6 +851,7 @@ describe("Paladin perk", () => {
     let prevented = 0;
     const ctx = {
       state,
+      rng: () => 0.5,
       ownId: "c1",
       targetId: "c1",
       preventDeath: () => {
@@ -1136,6 +1138,7 @@ describe("crusader-holy-shield", () => {
       agi: 5,
       xp: 3,
       gold: 2,
+      floors: [1],
       rowPreference: "front",
       special: [],
       isBoss: false,

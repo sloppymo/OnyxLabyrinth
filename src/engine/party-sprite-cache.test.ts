@@ -39,7 +39,6 @@ describe("party-sprite-cache", () => {
 
   beforeEach(() => {
     originalImage = globalThis.Image;
-    // @ts-expect-error test double
     globalThis.Image = FakeImage as unknown as typeof Image;
     requestedUrls = [];
     // Default: every requested state exists; attack is 7 frames, others 6.
@@ -51,7 +50,7 @@ describe("party-sprite-cache", () => {
   });
 
   afterEach(() => {
-    globalThis.Image = originalImage;
+    if (originalImage) globalThis.Image = originalImage;
   });
 
   it("returns null before the bundle loads", async () => {

@@ -100,6 +100,9 @@ function makeState(npc: NPCDef = makeNPC()): GameState {
     npcTradesDone: [],
     inDarkness: false,
     inAntimagic: false,
+    eventsTriggered: {},
+    deepestFloorReached: 1,
+    hasCompletedEnding: false,
     lastDungeon: null,
   };
 }
