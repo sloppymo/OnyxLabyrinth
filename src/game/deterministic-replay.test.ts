@@ -42,7 +42,7 @@ function snapshot(state: CombatState): ReplaySnapshot {
     result: state.result,
     goldEarned: state.goldEarned,
     xpEarned: state.xpEarned,
-    partyHp: state.party.map((c) => c.currentHp),
+    partyHp: state.party.map((c) => c.hp),
     enemyHp: [...state.enemies.front, ...state.enemies.back]
       .filter((e) => e.currentHp > 0)
       .map((e) => ({ id: e.instanceId, hp: e.currentHp })),
@@ -143,6 +143,8 @@ describe("deterministic replay", () => {
   it("same seed produces identical combat outcomes", () => {
     const a = runReplay(party, 12345);
     const b = runReplay(party, 12345);
+    expect(a.partyHp.every((hp) => typeof hp === "number" && Number.isFinite(hp))).toBe(true);
+    expect(b.partyHp.every((hp) => typeof hp === "number" && Number.isFinite(hp))).toBe(true);
     expect(b).toEqual(a);
   });
 
