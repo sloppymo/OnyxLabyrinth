@@ -61,6 +61,8 @@ Pre-existing warnings: Vite chunk-size warning for `dist/assets/combat-phaser-st
 - Clean stale comments containing obsolete test totals, floor counts, or "TODO" for already-shipped features.
 - Package script audit: add descriptions or remove duplicates if proven unused.
 
+**Result:** No deletions performed (insufficient evidence for dead code). Removed stale "procedural boss bed" / `CFG.bossBed` references from `AGENTS.md`, `README.md`, `docs/AGENT-READING-LIST.md`, `public/assets/music/README.md`, and the top comment of `src/engine/audio.ts` to match the authored `higher-difficulty-battle.mp3` implementation. Verification: `npm test` 1926/1926 passing, `npm run build` clean, `git diff --check` clean. `public/assets/tilesets/f1/water_floor.png` in the original worktree remains untouched.
+
 ### Batch D — `.gitignore` and artifact triage
 
 - Verify `.gitignore` coverage and document local-only artifacts.

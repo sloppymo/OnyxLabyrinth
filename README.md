@@ -124,7 +124,7 @@ After any change to boss data, `sprite-manifest.ts`, or the boss audio path:
 1. Reach a floor boss (or `jumpTo` the floor under `?debug=1`).
 2. Confirm the intro nameplate shows the boss name and then yields to the normal banner.
 3. Confirm the boss sprite is distinct per floor — floors 3/4/5 must not look alike.
-4. Confirm the procedural boss bed starts with the fight and **stops on any combat end**,
+4. Confirm the authored boss music (`higher-difficulty-battle.mp3`) starts with the fight and **stops on any combat end**,
    including flee and wipe. A following trash fight must be silent of it.
 
 See `AGENTS.md` for the full checklists and common pitfalls.
