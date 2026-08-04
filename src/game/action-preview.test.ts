@@ -8,7 +8,6 @@ import type { CombatState, EnemyInstance, EnemyFormation, ActionPreview } from "
 import { createDefaultParty } from "./party";
 import { ALL_SPELLS } from "../data/spells";
 import { ALL_ITEMS } from "../data/items";
-import type { EnemyDef } from "../data/enemies";
 import { formatActionPreview } from "../engine/combat-display";
 
 function makeRng(value = 0.5): () => number {
@@ -19,7 +18,7 @@ function makeEnemy(
   id: string,
   name: string,
   hp: number,
-  opts: Partial<EnemyDef> = {}
+  opts: Partial<EnemyInstance> = {}
 ): EnemyInstance {
   return {
     id,
@@ -65,7 +64,7 @@ describe("previewAttack", () => {
     const fighter = state.party.find((c) => c.class === "Fighter")!;
     fighter.formationSlot = 0; // front
     // No weapon → close range
-    state.loadout[fighter.id] = { weapon: null, armor: null };
+    state.loadout[fighter.id] = { weapon: undefined, armor: [] };
 
     const preview = previewAttack(state, fighter, back);
     // Row restrictions removed: back-row target is reachable with close weapon.
@@ -81,7 +80,7 @@ describe("previewAttack", () => {
     const fighter = state.party.find((c) => c.class === "Fighter")!;
     fighter.formationSlot = 0;
     fighter.status = ["blind"];
-    state.loadout[fighter.id] = { weapon: null, armor: null };
+    state.loadout[fighter.id] = { weapon: undefined, armor: [] };
 
     const preview = previewAttack(state, fighter, enemy);
     // 0.8 * 0.85 * 0.5 = 0.34
@@ -96,7 +95,7 @@ describe("previewAttack", () => {
     fighter.formationSlot = 0;
     fighter.stats.str = 20;
     fighter.level = 5;
-    state.loadout[fighter.id] = { weapon: null, armor: null };
+    state.loadout[fighter.id] = { weapon: undefined, armor: [] };
 
     const preview = previewAttack(state, fighter, enemy);
     expect(preview.hitChance).toBe(1);
@@ -111,7 +110,7 @@ describe("previewAttack", () => {
     fighter.formationSlot = 0;
     fighter.stats.str = 12;
     fighter.level = 3;
-    state.loadout[fighter.id] = { weapon: null, armor: null };
+    state.loadout[fighter.id] = { weapon: undefined, armor: [] };
 
     const preview = previewAttack(state, fighter, enemy);
     // 1st roll → variance 0.8; later rolls high so critChance never fires.
@@ -144,13 +143,90 @@ describe("previewAttack", () => {
       f.stats.str = 15;
       f.level = 4;
     }
-    stateSoft.loadout[fSoft.id] = { weapon: null, armor: null };
-    stateHard.loadout[fHard.id] = { weapon: null, armor: null };
+    stateSoft.loadout[fSoft.id] = { weapon: undefined, armor: [] };
+    stateHard.loadout[fHard.id] = { weapon: undefined, armor: [] };
 
     const pSoft = previewAttack(stateSoft, fSoft, soft);
     const pHard = previewAttack(stateHard, fHard, hard);
     expect(pHard.minDamage).toBeLessThan(pSoft.minDamage);
     expect(pHard.maxDamage).toBeLessThan(pSoft.maxDamage);
+  });
+
+  it("parity: Battle Cry damage buff is reflected in the preview", () => {
+    const enemy = makeEnemy("e1", "Rat", 200, { ac: 0 });
+    const state = makeCombatState([enemy]);
+    const fighter = state.party.find((c) => c.class === "Fighter")!;
+    fighter.formationSlot = 0;
+    fighter.stats.str = 12;
+    fighter.level = 3;
+    state.loadout[fighter.id] = { weapon: undefined, armor: [] };
+    state.damageBuffs[fighter.id] = { multiplier: 1.5, duration: 1 };
+
+    const preview = previewAttack(state, fighter, enemy);
+    let roll = 0;
+    const rng = () => {
+      roll += 1;
+      return roll === 1 ? 0 : 0.99;
+    };
+    const after = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: fighter.id, targetInstanceId: "e1" },
+      rng
+    );
+    const dealt = 200 - after.enemies.front[0].currentHp;
+    expect(preview.minDamage).toBe(dealt);
+  });
+
+  it("parity: Warlord aura damage buff is reflected in the preview", () => {
+    const enemy = makeEnemy("e1", "Rat", 200, { ac: 0 });
+    const state = makeCombatState([enemy]);
+    const fighter = state.party.find((c) => c.class === "Fighter")!;
+    const holder = state.party.find((c) => c.class === "Thief")!;
+    holder.perkIds.push("halberdier-warlord");
+    fighter.formationSlot = 0;
+    holder.formationSlot = 1;
+    fighter.stats.str = 12;
+    fighter.level = 3;
+    state.loadout[fighter.id] = { weapon: undefined, armor: [] };
+
+    const preview = previewAttack(state, fighter, enemy);
+    let roll = 0;
+    const rng = () => {
+      roll += 1;
+      return roll === 1 ? 0 : 0.99;
+    };
+    const after = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: fighter.id, targetInstanceId: "e1" },
+      rng
+    );
+    const dealt = 200 - after.enemies.front[0].currentHp;
+    expect(preview.minDamage).toBe(dealt);
+  });
+
+  it("parity: Shrink/Giant Strength scale the preview", () => {
+    const enemy = makeEnemy("e1", "Rat", 200, { ac: 0 });
+    const state = makeCombatState([enemy]);
+    const fighter = state.party.find((c) => c.class === "Fighter")!;
+    fighter.formationSlot = 0;
+    fighter.stats.str = 12;
+    fighter.level = 3;
+    state.loadout[fighter.id] = { weapon: undefined, armor: [] };
+    fighter.status = ["shrunk"];
+
+    const preview = previewAttack(state, fighter, enemy);
+    let roll = 0;
+    const rng = () => {
+      roll += 1;
+      return roll === 1 ? 0 : 0.99;
+    };
+    const after = resolvePlayerTurn(
+      state,
+      { kind: "attack", actorId: fighter.id, targetInstanceId: "e1" },
+      rng
+    );
+    const dealt = 200 - after.enemies.front[0].currentHp;
+    expect(preview.minDamage).toBe(dealt);
   });
 });
 
@@ -224,6 +300,35 @@ describe("previewSpellDamage", () => {
     state.enemyMagicScreens.front = 3;
     const screened = previewSpellDamage(state, mage, spell, enemy);
     expect(screened.minDamage).toBe(Math.max(1, Math.round(open.minDamage * 0.5)));
+  });
+
+  it("parity: Warlord aura and Giant Strength apply to spell damage", () => {
+    const enemy = makeEnemy("e1", "Rat", 200, { ac: 0 });
+    const state = makeCombatState([enemy]);
+    const mage = state.party.find((c) => c.class === "Mage")!;
+    const holder = state.party.find((c) => c.class === "Thief")!;
+    holder.perkIds.push("halberdier-warlord");
+    mage.formationSlot = 0;
+    holder.formationSlot = 1;
+    mage.sp = 50;
+    mage.knownSpellIds = ["mage-fire-bolt"];
+    mage.stats.int = 16;
+    mage.status = ["giantStrength"];
+    const spell = state.spells["mage-fire-bolt"];
+
+    const preview = previewSpellDamage(state, mage, spell, enemy);
+    const after = resolvePlayerTurn(
+      state,
+      {
+        kind: "cast",
+        actorId: mage.id,
+        spellId: "mage-fire-bolt",
+        targetInstanceId: "e1",
+      },
+      makeRng(0.99)
+    );
+    const dealt = 200 - after.enemies.front[0].currentHp;
+    expect(preview.minDamage).toBe(dealt);
   });
 });
 

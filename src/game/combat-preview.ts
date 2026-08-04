@@ -10,7 +10,13 @@ import { charRow } from "./party";
 import type { EnemySpecial } from "../data/enemies";
 import type { SpellDef } from "../data/spells";
 import { perkModifiers, perksForCharacter } from "./perks";
-import { effStatsFor, tagDamageMultiplier, effectiveEnemyAc } from "./combat-shared";
+import {
+  effStatsFor,
+  tagDamageMultiplier,
+  effectiveEnemyAc,
+  warlordDamageMultiplier,
+  scaleOutgoingDamage,
+} from "./combat-shared";
 import { effectiveWeaponRange } from "./combat-reach";
 import type { ActionPreview, CombatState, EnemyInstance, WeaponRange } from "./combat-types";
 
@@ -43,6 +49,15 @@ function previewPhysicalDamageAtVariance(
     mods.meleeBonusDamage;
 
   damage = Math.max(1, Math.round(damage * tagDamageMultiplier(mods, target)));
+
+  // Apply deterministic, non-reactive damage multipliers in the same order
+  // as resolveAttack: Battle Cry → Warlord aura → Shrink/Giant Strength.
+  const dmgBuff = s.damageBuffs[actor.id];
+  if (dmgBuff) {
+    damage = Math.max(1, Math.round(damage * dmgBuff.multiplier));
+  }
+  damage = Math.max(1, Math.round(damage * warlordDamageMultiplier(s, actor)));
+  damage = scaleOutgoingDamage(damage, actor);
 
   const acIgnoreFactor =
     charRow(actor) === "back" && perksForCharacter(actor).some((p) => p.id === "thief-backstab")
@@ -130,9 +145,10 @@ export function previewSpellDamage(
   const spellMult = casterMods.spellDamageMultiplier;
   const tagMult = tagDamageMultiplier(casterMods, target);
   const powerMultiplier = 1; // Arcane Surge not simulated (reactive)
+  const warlordMult = warlordDamageMultiplier(s, caster);
   const raw = Math.max(
     1,
-    Math.round((eff.power + castingBonus) * powerMultiplier * spellMult * tagMult)
+    Math.round((eff.power + castingBonus) * powerMultiplier * spellMult * tagMult * warlordMult)
   );
   let final = Math.max(1, raw - Math.floor(target.ac / 2));
   if (eff.element) {
@@ -151,6 +167,8 @@ export function previewSpellDamage(
   if (s.enemyMagicScreens[target.row] > 0) {
     final = Math.max(1, Math.round(final * 0.5));
   }
+
+  final = scaleOutgoingDamage(final, caster);
 
   const guaranteedKill = hitChance >= 1 && final >= target.currentHp;
   return { hitChance, minDamage: final, maxDamage: final, guaranteedKill };
