@@ -6,9 +6,10 @@
  * guard on their own controller instance.
  */
 
-import { describe, it, expect, beforeAll, vi } from "vitest";
+import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
 import { createDefaultParty } from "../game/party";
 import { defaultLoadoutForCharacter } from "../game/combat-equipment";
+import { setGameplayRng, resetGameplayRng } from "../game/rng";
 import type { GameState } from "../types";
 import type { NPCDef } from "../data/floors";
 import { audio } from "./audio";
@@ -86,6 +87,10 @@ function makeState(npc: NPCDef = makeNPC()): GameState {
 }
 
 describe("NPCController", () => {
+  // Safety net: if any test sets a seeded gameplay RNG and throws before
+  // resetting, afterEach ensures the rest of the suite sees Math.random.
+  afterEach(() => resetGameplayRng());
+
   function freshController(state: GameState, npc: NPCDef) {
     let closeMessage = "";
     let fightNpc: NPCDef | null = null;
@@ -186,17 +191,20 @@ describe("NPCController", () => {
   });
 
   it("plays the steal cue only on a successful theft", () => {
-    vi.spyOn(Math, "random").mockReturnValue(0);
-    const cue = vi.spyOn(audio, "playDungeonSfx").mockImplementation(() => {});
-    const npc = makeNPC();
-    const state = makeState(npc);
-    const { controller } = freshController(state, npc);
+    setGameplayRng(() => 0);
+    try {
+      const cue = vi.spyOn(audio, "playDungeonSfx").mockImplementation(() => {});
+      const npc = makeNPC();
+      const state = makeState(npc);
+      const { controller } = freshController(state, npc);
 
-    controller.handleKey("s");
+      controller.handleKey("s");
 
-    expect(cue).toHaveBeenCalledWith("npcSteal");
-    controller.destroy();
-    vi.restoreAllMocks();
+      expect(cue).toHaveBeenCalledWith("npcSteal");
+      controller.destroy();
+    } finally {
+      resetGameplayRng();
+    }
   });
 
   it("plays the transaction cue after a successful barter", () => {

@@ -50,6 +50,7 @@ import type {
 } from "./combat-types";
 import { inventoryToCounts } from "./combat-inventory";
 import { resetBarkRngForCombat } from "./combat-barks";
+import { getGameplayRng } from "./rng";
 import {
   effStatsFor,
   findEnemy,
@@ -200,7 +201,7 @@ export function createCombatFromEncounter(
 export function resolveCombatRound(
   state: CombatState,
   actions: PlayerAction[],
-  rng: Rng = Math.random
+  rng: Rng = getGameplayRng()
 ): CombatState {
   const s: CombatState = structuredClone(state);
   if (s.ended) return s;
@@ -362,7 +363,7 @@ function turnLoggers(s: CombatState) {
  */
 export function beginRound(
   state: CombatState,
-  rng: Rng = Math.random
+  rng: Rng = getGameplayRng()
 ): { state: CombatState; queue: TurnQueueEntry[] } {
   const s = structuredClone(state);
   if (s.ended) return { state: s, queue: [] };
@@ -422,7 +423,7 @@ export function beginRound(
 export function resolvePlayerTurn(
   state: CombatState,
   action: PlayerAction,
-  rng: Rng = Math.random
+  rng: Rng = getGameplayRng()
 ): CombatState {
   const s = structuredClone(state);
   if (s.ended) return s;
@@ -483,7 +484,7 @@ export function resolvePlayerTurn(
 export function resolveEnemyTurn(
   state: CombatState,
   enemyInstanceId: string,
-  rng: Rng = Math.random
+  rng: Rng = getGameplayRng()
 ): CombatState {
   const s = structuredClone(state);
   if (s.ended) return s;
@@ -506,7 +507,7 @@ export function resolveEnemyTurn(
 export function resolveAllyTurn(
   state: CombatState,
   allyId: string,
-  rng: Rng = Math.random
+  rng: Rng = getGameplayRng()
 ): CombatState {
   const s = structuredClone(state);
   if (s.ended) return s;
@@ -558,7 +559,7 @@ export function enqueueNewAllies(
  * hidden-character spotting, magic screen / fizzle field decay, and per-round
  * silence expiry. Mirrors Phase 5 of resolveCombatRound exactly.
  */
-export function endRound(state: CombatState, rng: Rng = Math.random): CombatState {
+export function endRound(state: CombatState, rng: Rng = getGameplayRng()): CombatState {
   const s = structuredClone(state);
   if (s.ended) return s;
   s.justDied = [];

@@ -12,6 +12,7 @@
  */
 
 import type { DamageElement } from "./spells";
+import { getGameplayRng } from "../game/rng";
 
 export type Row = "front" | "back";
 
@@ -1674,7 +1675,7 @@ export function rollEncounter(floor: number): EncounterEntry | null {
   if (!table || table.length === 0) return null;
 
   const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
-  let roll = Math.random() * totalWeight;
+  let roll = getGameplayRng()() * totalWeight;
 
   for (const entry of table) {
     roll -= entry.weight;
