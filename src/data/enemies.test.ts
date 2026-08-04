@@ -8,7 +8,7 @@ import {
   enemiesForFloor,
 } from "./enemies";
 import { getFloors } from "../game/floor-registry";
-import { enemyAbilityById } from "./enemy-abilities";
+import { ALL_ENEMY_ABILITIES, enemyAbilityById } from "./enemy-abilities";
 
 describe("enemy data", () => {
   it("registers big-titty-ogre", () => {
@@ -316,6 +316,17 @@ describe("encounter table integrity", () => {
       "succubus",
     ]) {
       expect(ENEMIES_BY_ID[id], `missing ${id}`).toBeDefined();
+    }
+  });
+
+  it("uses only known presentation keys on enemy abilities", () => {
+    const known: string[] = ["meleeGangUp"];
+    for (const ability of ALL_ENEMY_ABILITIES) {
+      if (ability.presentation) {
+        expect(known, `unknown presentation: ${ability.presentation}`).toContain(
+          ability.presentation,
+        );
+      }
     }
   });
 });

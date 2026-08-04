@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ENEMY_SPRITE_DEFS } from "./sprite-manifest";
+import { ALL_ENEMIES } from "../data/enemies";
+import { ENEMY_SPRITE_DEFS, PROCEDURAL_ENEMY_SPRITE_OPT_OUTS } from "./sprite-manifest";
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -75,4 +76,20 @@ describe("sprite-manifest", () => {
       }
     });
   }
+
+  it("every registered enemy either has a sprite strip or an explicit procedural opt-out", () => {
+    const missing = ALL_ENEMIES.filter(
+      (e) =>
+        !ENEMY_SPRITE_DEFS[e.id] && !PROCEDURAL_ENEMY_SPRITE_OPT_OUTS[e.id],
+    );
+    expect(missing.map((e) => e.id)).toEqual([]);
+  });
+
+  it("procedural opt-outs reference real enemies and are actually missing sprites", () => {
+    for (const id of Object.keys(PROCEDURAL_ENEMY_SPRITE_OPT_OUTS)) {
+      const enemy = ALL_ENEMIES.find((e) => e.id === id);
+      expect(enemy, id).toBeDefined();
+      expect(ENEMY_SPRITE_DEFS[id], id).toBeUndefined();
+    }
+  });
 });

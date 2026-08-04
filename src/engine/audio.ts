@@ -43,6 +43,8 @@
 //   audio.uiCancel();        // menu cancel / close
 //   audio.resume();          // call on first user gesture
 
+import { warnAsset } from "./asset-warn";
+
 type Maybe<T> = T | null;
 
 export type UiSfxId =
@@ -530,7 +532,10 @@ class AudioEngine {
 
   /** Deduped failure list — readiness/assetFailed events key on these ids. */
   private recordSampleFailure(id: string): void {
-    if (!this.failedSampleIds.includes(id)) this.failedSampleIds.push(id);
+    if (!this.failedSampleIds.includes(id)) {
+      this.failedSampleIds.push(id);
+      warnAsset(`missing/corrupt audio sample: ${id}`);
+    }
   }
 
   /** `"failed"` if any sample in the family is missing after settle; else `"done"`. */

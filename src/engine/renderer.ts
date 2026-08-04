@@ -18,6 +18,7 @@
 import type { GameState, Grid } from "../types";
 import type { EdgeType, TileFeature } from "../types";
 import { edgeInDirection } from "../game/dungeon";
+import { warnAsset } from "./asset-warn";
 import f1WallUrl from "../assets/f1_wall_256.png";
 import f1FloorAUrl from "../assets/f1_floor_a_256.png";
 import f1FloorBUrl from "../assets/f1_floor_b_256.png";
@@ -478,6 +479,7 @@ function ensureDoorTextureLoaded(): Promise<void> {
       doorTexture = prepareRepeatedTexture(adjusted, 1, 1);
     })
     .catch(() => {
+      warnAsset(`failed to load door placeholder texture: ${doorPlaceholderUrl}`);
       doorTexture = null;
     })
     .then(() => {
@@ -524,6 +526,7 @@ function ensureWaterTextureLoaded(): Promise<void> {
       tilesetGeneration++;
     })
     .catch(() => {
+      warnAsset("failed to load water tileset textures");
       waterTileset = null;
     })
     .then(() => {
@@ -557,11 +560,26 @@ function loadTileset(urls: {
   door: string;
 }): Promise<LoadedTileset> {
   return Promise.all([
-    loadImage(urls.wall).catch(() => null),
-    loadImage(urls.floorA).catch(() => null),
-    loadImage(urls.floorB).catch(() => null),
-    loadImage(urls.ceiling).catch(() => null),
-    loadImage(urls.door).catch(() => null),
+    loadImage(urls.wall).catch(() => {
+      warnAsset(`failed to load wall texture: ${urls.wall}`);
+      return null;
+    }),
+    loadImage(urls.floorA).catch(() => {
+      warnAsset(`failed to load floorA texture: ${urls.floorA}`);
+      return null;
+    }),
+    loadImage(urls.floorB).catch(() => {
+      warnAsset(`failed to load floorB texture: ${urls.floorB}`);
+      return null;
+    }),
+    loadImage(urls.ceiling).catch(() => {
+      warnAsset(`failed to load ceiling texture: ${urls.ceiling}`);
+      return null;
+    }),
+    loadImage(urls.door).catch(() => {
+      warnAsset(`failed to load door texture: ${urls.door}`);
+      return null;
+    }),
   ]).then(([wall, floorAImg, floorBImg, ceilingImg, doorImg]) => {
     const wallAdjusted = wall
       ? adjustTextureImage(wall, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)

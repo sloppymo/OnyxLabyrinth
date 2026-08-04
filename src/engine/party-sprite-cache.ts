@@ -24,6 +24,7 @@
 
 import type { CharacterClass } from "../game/party";
 import type { SpriteStrip } from "./sprite-manifest";
+import { warnAsset } from "./asset-warn";
 
 export type PartySpriteState =
   | "idle"
@@ -94,7 +95,10 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => resolve(null); // graceful fallback to procedural
+    img.onerror = () => {
+      warnAsset(`failed to load party sprite: ${src}`);
+      resolve(null); // graceful fallback to procedural
+    };
     img.src = src;
   });
 }
