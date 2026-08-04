@@ -155,6 +155,31 @@ const SCENARIOS = {
     forceCombat: true,
     driver: techniqueDriver,
   },
+
+  // --- Golden path (opening 20-30 min vertical-slice sprint) ---
+
+  // A single fight that exercises all four combat verbs — Technique,
+  // Attack, Magic, and Heal — in one continuous encounter. Fills the gap
+  // no single existing transcript covers (the verb-specific transcripts
+  // each isolate one verb; this proves they compose correctly turn over
+  // turn in the same combat instance, same as a real player's first fight).
+  "golden-path": {
+    renderer: "phaser",
+    urlSuffix: "",
+    jumpTo: { floorId: 1, x: 11, y: 25, facing: 0, autosave: false },
+    jumpTo2: null,
+    forceCombat: true,
+    // Pre-damage Aria so the Priest's Heal has a real target this fight
+    // (mirrors verb-healing-spell's setup).
+    preCombatSetup: async (page) => {
+      await page.evaluate(() => {
+        const st = window.__onyxDebug.state;
+        const aria = st.party.find((c) => c.id === "c1");
+        if (aria) aria.hp = Math.floor(aria.maxHp * 0.6);
+      });
+    },
+    driver: goldenPathCombatDriver,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -413,6 +438,84 @@ async function* healingSpellDriver(page) {
       case "palette":
         yield { key: "Enter", action: "confirm-attack" };
         break;
+      case "selectTarget":
+        yield { key: "Enter", action: "confirm-target" };
+        break;
+      case "selectSpell":
+      case "selectTechnique":
+      case "selectSkill":
+      case "selectItem":
+        yield { key: "Escape", action: "cancel-submenu" };
+        break;
+      case "playback":
+        yield { key: "b", action: "skip-playback" };
+        break;
+      case "result":
+        yield { key: "Enter", action: "dismiss-result" };
+        return;
+      default:
+        yield { key: "Enter", action: `settle-${phase}` };
+    }
+  }
+}
+
+/**
+ * Golden-path combat driver: exercises all four combat verbs — Technique,
+ * Attack, Magic (offensive), and Heal (support) — across one continuous
+ * fight, in party turn order (c1 Fighter, c2 Thief, c3 Mage, c4 Priest).
+ * Falls through to Attack for any extra turns once every verb has fired.
+ */
+async function* goldenPathCombatDriver(page) {
+  const used = { technique: false, magic: false, heal: false };
+
+  for (let round = 0; round < 40; round++) {
+    const s = await snap(page);
+    if (s.route !== "combat") break;
+    if (s.combat?.result) {
+      yield { key: "Enter", action: "dismiss-result" };
+      return;
+    }
+    const phase = s.combat?.phase;
+    if (!phase) {
+      yield { key: "Enter", action: "settle" };
+      continue;
+    }
+    const actingChar = s.combat?.actingCharId;
+
+    if (phase === "palette") {
+      // c1 (Fighter) — Technique.
+      if (actingChar === "c1" && !used.technique) {
+        yield { key: "t", action: "open-techniques" };
+        yield { key: "Enter", action: "select-technique" };
+        yield { key: "Enter", action: "confirm-technique-target" };
+        used.technique = true;
+        continue;
+      }
+      // c3 (Mage) — offensive spell.
+      if (actingChar === "c3" && !used.magic) {
+        yield { key: "c", action: "open-magic" };
+        yield { key: "Enter", action: "select-spell" };
+        yield { key: "Enter", action: "confirm-spell-target" };
+        used.magic = true;
+        continue;
+      }
+      // c4 (Priest) — Heal (Aria is pre-damaged so a target is guaranteed).
+      if (actingChar === "c4" && !used.heal) {
+        const damaged = s.party.some((p) => p.hp < p.maxHp);
+        if (damaged) {
+          yield { key: "c", action: "open-magic" };
+          yield { key: "Enter", action: "select-heal" };
+          yield { key: "Enter", action: "confirm-heal-target" };
+          used.heal = true;
+          continue;
+        }
+      }
+      // Everyone else (and any fallthrough turns) — basic Attack.
+      yield { key: "Enter", action: "confirm-attack" };
+      continue;
+    }
+
+    switch (phase) {
       case "selectTarget":
         yield { key: "Enter", action: "confirm-target" };
         break;

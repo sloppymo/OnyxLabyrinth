@@ -43,6 +43,7 @@ export const PROCEDURAL_CUE_MS = {
   footstep: 120,
   doorOpen: 420,
   doorLocked: 260,
+  wallBump: 140,
   levelUp: 900,
   uiTextTick: 40,
 } as const;

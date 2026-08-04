@@ -64,6 +64,10 @@ export interface TownControllerOptions {
   onEnterDungeon: () => void;
   onOpenSave: () => void;
   onReformParty: () => void;
+  /** One-time orientation line shown under the main menu on open (e.g. the
+   *  first town visit after party creation). Cleared on the first menu
+   *  navigation/selection, same as any other transient flash message. */
+  initialFlash?: string;
 }
 
 const MAIN_MENU_ITEMS = [
@@ -130,6 +134,7 @@ export class TownController {
     this.onEnterDungeon = opts.onEnterDungeon;
     this.onOpenSave = opts.onOpenSave;
     this.onReformParty = opts.onReformParty;
+    this.flash = opts.initialFlash ?? "";
     this.panel.style.display = "flex";
     this.render();
   }
