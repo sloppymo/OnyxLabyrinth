@@ -868,7 +868,11 @@ function openGameOver(): void {
 
 /** Cleanly exit the current combat for automated visual testing. */
 function exitDebugCombat(result: "victory" | "wipe" | "fled"): void {
-  if (!combatController || !state.combat) return;
+  if (!combatController || !state.combat) {
+    throw new Error(
+      "exitDebugCombat: no active combat — only call while a debug combat is running",
+    );
+  }
   state.combat.result = result;
   state.combat.ended = true;
   // Soft-stop only — leaveCombat snapshots the stage then destroy()s.
