@@ -2448,7 +2448,43 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     jumpTo,
     dumpSave,
     loadSave,
-    startCombat,
+    startCombat: async () => {
+      if (combatController) {
+        throw new Error("startCombat: combat is already active — use exitDebugCombat first");
+      }
+      if (state.party.length === 0) {
+        throw new Error("startCombat: no party");
+      }
+      if (!state.floor) {
+        throw new Error("startCombat: no floor");
+      }
+      const tableId = encounterTableFloorId(
+        state.floor,
+        state.player.x,
+        state.player.y
+      );
+      const entry = rollEncounter(tableId);
+      if (!entry) {
+        throw new Error(`startCombat: rollEncounter returned null for table ${tableId}`);
+      }
+      const resolved = resolveEncounter(entry);
+      if (resolved.length === 0) {
+        throw new Error("startCombat: resolveEncounter returned no spawns");
+      }
+      const combat = createCombatFromEncounter(
+        state.party,
+        resolved,
+        SPELLS_BY_ID,
+        ITEMS_BY_ID,
+        buildLoadoutMap(),
+        state.inventory,
+        state.inAntimagic
+      );
+      state.combat = combat;
+      setMode(state, "combat");
+      state.stepsSinceEncounter = 0;
+      await startCombat(combat);
+    },
     exitDebugCombat,
     FLOORS: getFloors(),
     findFloor,
