@@ -17,21 +17,18 @@ import {
   effStatsFor,
   tagDamageMultiplier,
   effectiveEnemyAc,
-  findEnemy,
   critChanceFromLukAndBonuses,
   warlordDamageMultiplier,
   wakeOnDamage,
   pickRandom,
   scaleOutgoingDamage,
 } from "./combat-shared";
-import { canReach, effectiveWeaponRange } from "./combat-reach";
 import type {
   CombatEvent,
   CombatState,
   EnemyInstance,
   PlayerAction,
   Rng,
-  WeaponRange,
 } from "./combat-types";
 
 // ---------------------------------------------------------------------------
@@ -123,31 +120,6 @@ export function tickTechniqueBuffs(s: CombatState): void {
 // Technique resolution
 // ---------------------------------------------------------------------------
 
-function techniqueNeedsEnemyReach(tech: TechniqueDef): boolean {
-  const eff = tech.effect;
-  return (
-    eff.kind === "damage" ||
-    eff.kind === "multiHit" ||
-    eff.kind === "damageWithStatus" ||
-    eff.kind === "damageWithExecute" ||
-    eff.kind === "debuff"
-  );
-}
-
-function techniqueCanReach(
-  s: CombatState,
-  actor: Character,
-  tech: TechniqueDef,
-  target: EnemyInstance
-): boolean {
-  const ignoresRange =
-    tech.id === "duelist-lunge" || tech.id === "halberdier-pole-vault";
-  if (ignoresRange) return true;
-  const loadout = s.loadout[actor.id];
-  const weaponRange: WeaponRange = effectiveWeaponRange(actor, loadout?.weapon?.range ?? "close");
-  return canReach(actor.formationSlot, weaponRange, target.row);
-}
-
 export function resolveTechnique(
   s: CombatState,
   actor: Character,
@@ -160,18 +132,6 @@ export function resolveTechnique(
   if (!tech) {
     log(`${actor.name} attempts an unknown technique.`);
     return;
-  }
-
-  if (action.targetInstanceId && techniqueNeedsEnemyReach(tech)) {
-    const target = findEnemy(s, action.targetInstanceId);
-    if (target && !techniqueCanReach(s, actor, tech, target)) {
-      if (target.row === "back" && s.enemies.front.some((e) => e.currentHp > 0)) {
-        log(`${actor.name} cannot reach ${target.name} in the back row with ${tech.name}.`);
-      } else {
-        log(`${actor.name} cannot reach ${target.name} with ${tech.name}.`);
-      }
-      return;
-    }
   }
 
   // Validate rage cost
@@ -545,22 +505,6 @@ function dealTechniqueDamage(
   emit: (m: string, e: CombatEvent) => void,
   extraCritChance: number = 0
 ): boolean {
-  // Check reachability for non-reach techniques.
-  // Lunge and Pole Vault ignore range; others use the actor's weapon range.
-  const ignoresRange = tech.id === "duelist-lunge" || tech.id === "halberdier-pole-vault";
-  if (!ignoresRange) {
-    const loadout = s.loadout[actor.id];
-    const weaponRange: WeaponRange = effectiveWeaponRange(actor, loadout?.weapon?.range ?? "close");
-    if (!canReach(actor.formationSlot, weaponRange, target.row)) {
-      if (target.row === "back" && s.enemies.front.some((e) => e.currentHp > 0)) {
-        log(`${actor.name} cannot reach ${target.name} in the back row with ${tech.name}.`);
-      } else {
-        log(`${actor.name} cannot reach ${target.name} with ${tech.name}.`);
-      }
-      return false;
-    }
-  }
-
   // Feint / next-attack bonus: check before evasion/blind so guaranteed hits skip them.
   const nextBonus = s.nextAttackBonuses[actor.id];
   const guaranteedHit = nextBonus?.hitChance >= 1;
@@ -596,11 +540,8 @@ function dealTechniqueDamage(
   const weapon = loadout?.weapon;
   const weaponBonus = weapon?.attackBonus ?? 0;
   const base = effStats.str + actor.level + weaponBonus;
-  const isThief = actor.class === "Thief";
-  const weaponRange = effectiveWeaponRange(actor, weapon?.range ?? "close");
-  const rowMultiplier = charRow(actor) === "back" && weaponRange === "close" && !isThief && !ignoresRange ? 0.4 : 1;
   const variance = 0.8 + rng() * 0.4;
-  let damage = Math.max(1, Math.round(base * rowMultiplier * variance * mods.meleeDamageMultiplier)) + mods.meleeBonusDamage;
+  let damage = Math.max(1, Math.round(base * variance * mods.meleeDamageMultiplier)) + mods.meleeBonusDamage;
 
   // Apply technique multiplier (plus undead/demon perk bonuses).
   damage = Math.max(1, Math.round(damage * multiplier * tagDamageMultiplier(mods, target)));

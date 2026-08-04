@@ -22,7 +22,7 @@ import {
   scaleOutgoingDamage,
   applyDisableToEnemy,
 } from "./combat-shared";
-import { canReach, effectiveWeaponRange } from "./combat-reach";
+import { effectiveWeaponRange } from "./combat-reach";
 import { resolveTechnique, gainRage } from "./combat-techniques";
 import { applySpell } from "./combat-spells";
 import { maybeEmitBark } from "./combat-barks";
@@ -105,25 +105,9 @@ function resolveAttack(
     return;
   }
 
-  // Formation check (Section 7.4): weapon range determines reachability.
-  // Back-row enemies are immune to short-range weapons until front row is cleared.
   const loadout = s.loadout[actor.id];
   const weapon = loadout?.weapon;
-  const weaponRange: WeaponRange = effectiveWeaponRange(actor, weapon?.range ?? "close"); // Default to close range if no weapon
-
-  // Check if attacker can reach the target based on position and weapon range
-  if (!canReach(actor.formationSlot, weaponRange, target.row)) {
-    const reason =
-      target.row === "back" && s.enemies.front.some((e) => e.currentHp > 0)
-        ? `cannot reach ${target.name} in the back row (front row still up)`
-        : `cannot reach ${target.name} from this position`;
-    log(`${actor.name} ${reason} with their ${weapon?.name || "weapon"}.`);
-    emit(
-      `${actor.name} ${reason}.`,
-      { type: "miss", actorId: actor.id, targetId: target.instanceId, reason: "noTarget" }
-    );
-    return;
-  }
+  const weaponRange: WeaponRange = effectiveWeaponRange(actor, weapon?.range ?? "close");
 
   // Feint / next-attack bonus applies to basic attacks too.
   const nextBonus = s.nextAttackBonuses[actor.id];
@@ -205,16 +189,10 @@ function resolveAttack(
   const weaponBonus = weapon?.attackBonus ?? 0;
   const attackDebuff = s.attackDebuffs[actor.id]?.penalty ?? 0;
   const base = Math.max(1, effStats.str + actor.level + weaponBonus - attackDebuff);
-  // Back-row attackers deal ~40% melee damage when forced to fight at close
-  // range. A weapon with reach (short/medium/long) lets them strike effectively.
-  // Thieves deal full damage from the back row (§4.2).
-  const isThief = actor.class === "Thief";
-  const rowMultiplier =
-    charRow(actor) === "back" && weaponRange === "close" && !isThief ? 0.4 : 1;
   const variance = 0.8 + rng() * 0.4; // +/-20%
   let damage = Math.max(
     1,
-    Math.round(base * rowMultiplier * variance * mods.meleeDamageMultiplier)
+    Math.round(base * variance * mods.meleeDamageMultiplier)
   ) + mods.meleeBonusDamage;
 
   // Undead / demon damage bonuses (Turn Undead, Judge, Inquisitor).

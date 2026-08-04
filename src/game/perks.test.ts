@@ -1018,11 +1018,12 @@ describe("reach perks (Lunge/Sweep)", () => {
     expect(s.enemies.back[0].currentHp).toBe(6);
   });
 
-  it("without Lunge, a back-row short weapon cannot reach the back row", () => {
+  it("without Lunge, a back-row short weapon can still reach the back row (row restrictions removed)", () => {
     const { c, state } = backRowRig("Duelist", [], SHORT_SWORD, false);
     const s = resolvePlayerTurn(state, { kind: "attack", actorId: c.id, targetInstanceId: "e1" }, () => 0.5);
-    expect(s.enemies.back[0].currentHp).toBe(20); // no damage
-    expect(s.events.some((e) => e?.type === "miss")).toBe(true);
+    // Row restrictions removed: short weapon from back row hits back row.
+    expect(s.enemies.back[0].currentHp).toBeLessThan(20);
+    expect(s.events.some((e) => e?.type === "miss")).toBe(false);
   });
 
   it("halberdier-sweep: back-row melee reaches any row at full damage, any weapon", () => {
@@ -1033,11 +1034,12 @@ describe("reach perks (Lunge/Sweep)", () => {
     expect(s.enemies.back[0].currentHp).toBe(5);
   });
 
-  it("halberdier-sweep does not grant reach to other classes", () => {
+  it("halberdier-sweep: other classes also reach the back row (row restrictions removed)", () => {
     const { c, state } = backRowRig("Duelist", ["halberdier-sweep"], CLOSE_MACE, false);
     const s = resolvePlayerTurn(state, { kind: "attack", actorId: c.id, targetInstanceId: "e1" }, () => 0.5);
-    expect(s.enemies.back[0].currentHp).toBe(20);
-    expect(s.events.some((e) => e?.type === "miss")).toBe(true);
+    // Row restrictions removed: all classes can reach the back row.
+    expect(s.enemies.back[0].currentHp).toBeLessThan(20);
+    expect(s.events.some((e) => e?.type === "miss")).toBe(false);
   });
 });
 

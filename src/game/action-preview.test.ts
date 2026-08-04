@@ -58,7 +58,7 @@ function makeCombatState(enemies: EnemyInstance[]): CombatState {
 }
 
 describe("previewAttack", () => {
-  it("flags unreachable targets (back-row close weapon from front with front still up)", () => {
+  it("back-row targets are reachable (row restrictions removed)", () => {
     const front = makeEnemy("f1", "Rat", 20);
     const back = makeEnemy("b1", "Archer", 20, { row: "back", rowPreference: "back" });
     const state = makeCombatState([front, back]);
@@ -68,11 +68,9 @@ describe("previewAttack", () => {
     state.loadout[fighter.id] = { weapon: null, armor: null };
 
     const preview = previewAttack(state, fighter, back);
-    expect(preview.unreachable).toBe(true);
-    expect(preview.hitChance).toBe(0);
-    expect(preview.minDamage).toBe(0);
-    expect(preview.maxDamage).toBe(0);
-    expect(preview.guaranteedKill).toBe(false);
+    // Row restrictions removed: back-row target is reachable with close weapon.
+    expect(preview.unreachable).toBeFalsy();
+    expect(preview.hitChance).toBeGreaterThan(0);
   });
 
   it("stacks evasive / flying+close / blind miss sources into hitChance", () => {

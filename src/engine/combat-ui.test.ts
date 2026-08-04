@@ -484,11 +484,10 @@ describe("CombatController input routing", () => {
     controller.destroy();
   });
 
-  it("Auto falls back to Defend instead of repeating an unreachable Attack forever", () => {
-    // Regression: a close-range weapon can never reach the back row
-    // (combat-reach.ts). Before the fix, replaying a remembered attack
-    // against a still-alive-but-unreachable target no-op'd every turn under
-    // Auto instead of falling back — a real floor-4/5 death spiral.
+  it("Auto proceeds with Attack against a back-row enemy (row restrictions removed)", () => {
+    // Row-based targeting restrictions have been removed: a close-range
+    // weapon can now reach the back row. The remembered attack against a
+    // back-row enemy proceeds normally instead of falling back to Defend.
     const closeRangeWeapon = {
       id: "test-close-blade",
       name: "Test Close Blade",
@@ -515,12 +514,14 @@ describe("CombatController input routing", () => {
 
     c.openPaletteFor(state.party[0]);
 
-    expect(c.lastCommandByActor.get("c0")).toEqual({ kind: "defend" });
+    expect(c.lastCommandByActor.get("c0")).toEqual({ kind: "attack", targetId: "boss-0" });
     expect(c.phase).toBe("playback");
     controller.destroy();
   });
 
-  it("Auto falls back to a reachable enemy when the remembered target is unreachable", () => {
+  it("Auto keeps the remembered back-row target (row restrictions removed)", () => {
+    // With row restrictions removed, the remembered back-row target is
+    // reachable and is not switched to a front-row enemy.
     const closeRangeWeapon = {
       id: "test-close-blade",
       name: "Test Close Blade",
@@ -550,7 +551,7 @@ describe("CombatController input routing", () => {
 
     expect(c.lastCommandByActor.get("c0")).toEqual({
       kind: "attack",
-      targetId: "grunt-0",
+      targetId: "boss-0",
     });
     controller.destroy();
   });

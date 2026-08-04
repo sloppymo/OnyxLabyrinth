@@ -417,42 +417,16 @@ describe("equipment helpers", () => {
 
 describe("weapon range system", () => {
   describe("canReach", () => {
-    it("close range: front row can hit front only, back row cannot attack", () => {
-      expect(canReach(0, "close", "front")).toBe(true); // Front row, front target
-      expect(canReach(0, "close", "back")).toBe(false);  // Front row, back target
-      expect(canReach(3, "close", "front")).toBe(false); // Back row, front target
-      expect(canReach(3, "close", "back")).toBe(false);  // Back row, back target
-    });
-
-    it("short range: front row can hit front/back, back row can hit front only", () => {
-      expect(canReach(0, "short", "front")).toBe(true); // Front row, front target
-      expect(canReach(0, "short", "back")).toBe(true);  // Front row, back target
-      expect(canReach(3, "short", "front")).toBe(true);  // Back row, front target
-      expect(canReach(3, "short", "back")).toBe(false); // Back row, back target
-    });
-
-    it("medium range: all positions can hit front/back", () => {
-      expect(canReach(0, "medium", "front")).toBe(true); // Front row, front target
-      expect(canReach(0, "medium", "back")).toBe(true);  // Front row, back target
-      expect(canReach(3, "medium", "front")).toBe(true); // Back row, front target
-      expect(canReach(3, "medium", "back")).toBe(true);  // Back row, back target
-    });
-
-    it("long range: all positions can hit front/back", () => {
-      expect(canReach(0, "long", "front")).toBe(true); // Front row, front target
-      expect(canReach(0, "long", "back")).toBe(true);  // Front row, back target
-      expect(canReach(3, "long", "front")).toBe(true); // Back row, front target
-      expect(canReach(3, "long", "back")).toBe(true);  // Back row, back target
-    });
-
-    it("all front row positions (0-1) behave the same", () => {
-      expect(canReach(0, "short", "back")).toBe(true);
-      expect(canReach(1, "short", "back")).toBe(true);
-    });
-
-    it("all back row positions (2-3) behave the same", () => {
-      expect(canReach(2, "short", "back")).toBe(false);
-      expect(canReach(3, "short", "back")).toBe(false);
+    it("all weapons can reach all rows from all positions (row restrictions removed)", () => {
+      // Row-based targeting restrictions have been removed.
+      // All visible enemies are valid melee targets regardless of
+      // attacker position or weapon range.
+      for (const pos of [0, 1, 2, 3]) {
+        for (const range of ["close", "short", "medium", "long"] as const) {
+          expect(canReach(pos, range, "front")).toBe(true);
+          expect(canReach(pos, range, "back")).toBe(true);
+        }
+      }
     });
   });
 });
