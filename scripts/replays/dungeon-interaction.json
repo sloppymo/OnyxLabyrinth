@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "name": "dungeon-interaction",
+  "seed": 42,
+  "startingSave": "{\"version\":14,\"mode\":\"dungeon\",\"floorId\":1,\"player\":{\"x\":3,\"y\":5,\"facing\":0},\"party\":[{\"id\":\"c1\",\"name\":\"Aria\",\"race\":\"Human\",\"alignment\":\"Good\",\"class\":\"Fighter\",\"level\":1,\"xp\":0,\"stats\":{\"str\":8,\"int\":8,\"pie\":7,\"vit\":9,\"agi\":16,\"luk\":13},\"hp\":26,\"sp\":0,\"maxHp\":26,\"maxSp\":0,\"formationSlot\":0,\"status\":[],\"knownSpellIds\":[],\"perkIds\":[]},{\"id\":\"c2\",\"name\":\"Coda\",\"race\":\"Hobbit\",\"alignment\":\"Neutral\",\"class\":\"Thief\",\"level\":1,\"xp\":0,\"stats\":{\"str\":12,\"int\":10,\"pie\":5,\"vit\":14,\"agi\":12,\"luk\":14},\"hp\":32,\"sp\":0,\"maxHp\":32,\"maxSp\":0,\"formationSlot\":1,\"status\":[],\"knownSpellIds\":[],\"perkIds\":[]},{\"id\":\"c3\",\"name\":\"Dell\",\"race\":\"Elf\",\"alignment\":\"Neutral\",\"class\":\"Mage\",\"level\":1,\"xp\":0,\"stats\":{\"str\":8,\"int\":15,\"pie\":9,\"vit\":12,\"agi\":8,\"luk\":9},\"hp\":24,\"sp\":30,\"maxHp\":24,\"maxSp\":30,\"formationSlot\":2,\"status\":[],\"knownSpellIds\":[\"mage-spark\",\"mage-ember\",\"mage-frostbite\",\"mage-poison-spray\",\"mage-fire-bolt\",\"mage-water-bolt\",\"mage-stone-shard\",\"mage-gust\",\"mage-arcane-ward\",\"mage-wayfinder\",\"mage-knock\"],\"perkIds\":[]},{\"id\":\"c4\",\"name\":\"Eve\",\"race\":\"Gnome\",\"alignment\":\"Good\",\"class\":\"Priest\",\"level\":1,\"xp\":0,\"stats\":{\"str\":6,\"int\":10,\"pie\":16,\"vit\":11,\"agi\":6,\"luk\":11},\"hp\":24,\"sp\":32,\"maxHp\":24,\"maxSp\":32,\"formationSlot\":3,\"status\":[],\"knownSpellIds\":[\"priest-guiding-bolt\",\"priest-cure-wounds\",\"priest-sacred-flame\",\"priest-light\",\"priest-unseal\",\"priest-shield-of-faith\"],\"perkIds\":[]}],\"explored\":[\"11,25\",\"11,24\",\"12,25\",\"11,26\",\"10,25\",\"11,23\",\"12,24\",\"10,24\",\"13,25\",\"12,26\",\"10,26\",\"9,25\",\"11,22\",\"12,23\",\"10,23\",\"13,24\",\"9,24\",\"13,26\",\"9,26\",\"3,5\",\"3,4\",\"3,6\",\"4,4\",\"4,6\",\"3,7\",\"5,4\",\"5,6\",\"3,8\"],\"exploredByFloor\":{\"1\":[\"11,25\",\"11,24\",\"12,25\",\"11,26\",\"10,25\",\"11,23\",\"12,24\",\"10,24\",\"13,25\",\"12,26\",\"10,26\",\"9,25\",\"11,22\",\"12,23\",\"10,23\",\"13,24\",\"9,24\",\"13,26\",\"9,26\",\"3,5\",\"3,4\",\"3,6\",\"4,4\",\"4,6\",\"3,7\",\"5,4\",\"5,6\",\"3,8\"]},\"stepsSinceEncounter\":8,\"dayCount\":1,\"worldYear\":3847,\"partyGold\":100,\"inventory\":[{\"itemId\":\"healing-potion\",\"identified\":true},{\"itemId\":\"healing-potion\",\"identified\":true}],\"keys\":[],\"unlockedDoors\":[],\"inDarkness\":false,\"inAntimagic\":false,\"lastDungeon\":null,\"equipment\":{\"c1\":{\"armor\":[{\"id\":\"leather\",\"name\":\"Leather Armor\",\"type\":\"armor\",\"slot\":\"body\",\"defenseBonus\":2,\"price\":80,\"dropFloorTier\":1,\"description\":\"Boiled leather, stiff enough to turn a glancing blow.\"}],\"weapon\":{\"id\":\"short-sword\",\"name\":\"Short Sword\",\"type\":\"weapon\",\"slot\":\"hand\",\"attackBonus\":3,\"range\":\"short\",\"price\":100,\"dropFloorTier\":1,\"description\":\"A gladius-pattern arming sword: short, quick, and merciless in a tight corridor.\"}},\"c2\":{\"armor\":[{\"id\":\"leather\",\"name\":\"Leather Armor\",\"type\":\"armor\",\"slot\":\"body\",\"defenseBonus\":2,\"price\":80,\"dropFloorTier\":1,\"description\":\"Boiled leather, stiff enough to turn a glancing blow.\"}],\"weapon\":{\"id\":\"dagger\",\"name\":\"Dagger\",\"type\":\"weapon\",\"slot\":\"hand\",\"attackBonus\":2,\"range\":\"short\",\"price\":100,\"dropFloorTier\":1,\"description\":\"A slim, quick blade favored by those who'd rather not be seen swinging it.\"}},\"c3\":{\"armor\":[],\"weapon\":{\"id\":\"staff\",\"name\":\"Staff\",\"type\":\"weapon\",\"slot\":\"hand\",\"attackBonus\":2,\"range\":\"medium\",\"price\":100,\"dropFloorTier\":1,\"description\":\"A gnarled length of dense wood, channeling focus as readily as it strikes.\"}},\"c4\":{\"armor\":[],\"weapon\":{\"id\":\"staff\",\"name\":\"Staff\",\"type\":\"weapon\",\"slot\":\"hand\",\"attackBonus\":2,\"range\":\"medium\",\"price\":100,\"dropFloorTier\":1,\"description\":\"A gnarled length of dense wood, channeling focus as readily as it strikes.\"}}},\"persistentBuffs\":[],\"swimSkill\":{},\"talkedToNPCs\":[],\"npcDisposition\":{},\"killedNPCs\":[],\"npcTradesDone\":[],\"lootTaken\":{\"1\":[]},\"eventsTriggered\":{},\"deepestFloorReached\":1,\"hasCompletedEnding\":false,\"savedAt\":\"2026-08-04T00:23:26.950Z\"}",
+  "renderer": "phaser",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "forceCombat": false,
+  "actions": [
+    {
+      "index": 0,
+      "routeBefore": "dungeon",
+      "action": "walk-forward",
+      "key": "ArrowUp",
+      "stateHashAfter": "9cbf42665babfe0b"
+    },
+    {
+      "index": 1,
+      "routeBefore": "trap",
+      "action": "inspect-chest",
+      "key": "i",
+      "stateHashAfter": "42ba5d3ffc49af47"
+    },
+    {
+      "index": 2,
+      "routeBefore": "trap",
+      "action": "disarm-chest",
+      "key": "d",
+      "stateHashAfter": "c104e001e5a56f77"
+    },
+    {
+      "index": 3,
+      "routeBefore": "combat",
+      "action": "open-chest",
+      "key": "o",
+      "stateHashAfter": "c104e001e5a56f77"
+    }
+  ]
+}

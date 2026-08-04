@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "name": "phaser-combat",
+  "seed": 42,
+  "startingSave": "{\"version\":14,\"mode\":\"dungeon\",\"floorId\":1,\"player\":{\"x\":11,\"y\":25,\"facing\":0},\"party\":[{\"id\":\"c1\",\"name\":\"Aria\",\"race\":\"Human\",\"alignment\":\"Good\",\"class\":\"Fighter\",\"level\":1,\"xp\":0,\"stats\":{\"str\":14,\"int\":13,\"pie\":12,\"vit\":13,\"agi\":14,\"luk\":9},\"hp\":34,\"sp\":0,\"maxHp\":34,\"maxSp\":0,\"formationSlot\":0,\"status\":[],\"knownSpellIds\":[],\"perkIds\":[]},{\"id\":\"c2\",\"name\":\"Coda\",\"race\":\"Hobbit\",\"alignment\":\"Neutral\",\"class\":\"Thief\",\"level\":1,\"xp\":0,\"stats\":{\"str\":6,\"int\":9,\"pie\":10,\"vit\":12,\"agi\":9,\"luk\":9},\"hp\":28,\"sp\":0,\"maxHp\":28,\"maxSp\":0,\"formationSlot\":1,\"status\":[],\"knownSpellIds\":[],\"perkIds\":[]},{\"id\":\"c3\",\"name\":\"Dell\",\"race\":\"Elf\",\"alignment\":\"Neutral\",\"class\":\"Mage\",\"level\":1,\"xp\":0,\"stats\":{\"str\":3,\"int\":17,\"pie\":9,\"vit\":10,\"agi\":8,\"luk\":8},\"hp\":20,\"sp\":34,\"maxHp\":20,\"maxSp\":34,\"formationSlot\":2,\"status\":[],\"knownSpellIds\":[\"mage-spark\",\"mage-ember\",\"mage-frostbite\",\"mage-poison-spray\",\"mage-fire-bolt\",\"mage-water-bolt\",\"mage-stone-shard\",\"mage-gust\",\"mage-arcane-ward\",\"mage-wayfinder\",\"mage-knock\"],\"perkIds\":[]},{\"id\":\"c4\",\"name\":\"Eve\",\"race\":\"Gnome\",\"alignment\":\"Good\",\"class\":\"Priest\",\"level\":1,\"xp\":0,\"stats\":{\"str\":12,\"int\":14,\"pie\":9,\"vit\":8,\"agi\":10,\"luk\":10},\"hp\":18,\"sp\":18,\"maxHp\":18,\"maxSp\":18,\"formationSlot\":3,\"status\":[],\"knownSpellIds\":[\"priest-guiding-bolt\",\"priest-cure-wounds\",\"priest-sacred-flame\",\"priest-light\",\"priest-unseal\",\"priest-shield-of-faith\"],\"perkIds\":[]}],\"explored\":[\"11,25\",\"11,24\",\"12,25\",\"11,26\",\"10,25\",\"11,23\",\"12,24\",\"10,24\",\"13,25\",\"12,26\",\"10,26\",\"9,25\",\"11,22\",\"12,23\",\"10,23\",\"13,24\",\"9,24\",\"13,26\",\"9,26\"],\"exploredByFloor\":{\"1\":[\"11,25\",\"11,24\",\"12,25\",\"11,26\",\"10,25\",\"11,23\",\"12,24\",\"10,24\",\"13,25\",\"12,26\",\"10,26\",\"9,25\",\"11,22\",\"12,23\",\"10,23\",\"13,24\",\"9,24\",\"13,26\",\"9,26\"]},\"stepsSinceEncounter\":8,\"dayCount\":1,\"worldYear\":3847,\"partyGold\":100,\"inventory\":[{\"itemId\":\"healing-potion\",\"identified\":true},{\"itemId\":\"healing-potion\",\"identified\":true}],\"keys\":[],\"unlockedDoors\":[],\"inDarkness\":false,\"inAntimagic\":false,\"lastDungeon\":null,\"equipment\":{\"c1\":{\"armor\":[{\"id\":\"leather\",\"name\":\"Leather Armor\",\"type\":\"armor\",\"slot\":\"body\",\"defenseBonus\":2,\"price\":80,\"dropFloorTier\":1,\"description\":\"Boiled leather, stiff enough to turn a glancing blow.\"}],\"weapon\":{\"id\":\"short-sword\",\"name\":\"Short Sword\",\"type\":\"weapon\",\"slot\":\"hand\",\"attackBonus\":3,\"range\":\"short\",\"price\":100,\"dropFloorTier\":1,\"description\":\"A gladius-pattern arming sword: short, quick, and merciless in a tight corridor.\"}},\"c2\":{\"armor\":[{\"id\":\"leather\",\"name\":\"Leather Armor\",\"type\":\"armor\",\"slot\":\"body\",\"defenseBonus\":2,\"price\":80,\"dropFloorTier\":1,\"description\":\"Boiled leather, stiff enough to turn a glancing blow.\"}],\"weapon\":{\"id\":\"dagger\",\"name\":\"Dagger\",\"type\":\"weapon\",\"slot\":\"hand\",\"attackBonus\":2,\"range\":\"short\",\"price\":100,\"dropFloorTier\":1,\"description\":\"A slim, quick blade favored by those who'd rather not be seen swinging it.\"}},\"c3\":{\"armor\":[],\"weapon\":{\"id\":\"staff\",\"name\":\"Staff\",\"type\":\"weapon\",\"slot\":\"hand\",\"attackBonus\":2,\"range\":\"medium\",\"price\":100,\"dropFloorTier\":1,\"description\":\"A gnarled length of dense wood, channeling focus as readily as it strikes.\"}},\"c4\":{\"armor\":[],\"weapon\":{\"id\":\"staff\",\"name\":\"Staff\",\"type\":\"weapon\",\"slot\":\"hand\",\"attackBonus\":2,\"range\":\"medium\",\"price\":100,\"dropFloorTier\":1,\"description\":\"A gnarled length of dense wood, channeling focus as readily as it strikes.\"}}},\"persistentBuffs\":[],\"swimSkill\":{},\"talkedToNPCs\":[],\"npcDisposition\":{},\"killedNPCs\":[],\"npcTradesDone\":[],\"lootTaken\":{\"1\":[]},\"eventsTriggered\":{},\"deepestFloorReached\":1,\"hasCompletedEnding\":false,\"savedAt\":\"2026-08-04T00:20:38.558Z\"}",
+  "renderer": "phaser",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "forceCombat": true,
+  "actions": [
+    {
+      "index": 0,
+      "routeBefore": "combat",
+      "action": "confirm-attack",
+      "key": "Enter",
+      "stateHashAfter": "3aab51c869dfce1a"
+    },
+    {
+      "index": 1,
+      "routeBefore": "combat",
+      "action": "confirm-target",
+      "key": "Enter",
+      "stateHashAfter": "105ed93ef2480141"
+    },
+    {
+      "index": 2,
+      "routeBefore": "combat",
+      "action": "confirm-attack",
+      "key": "Enter",
+      "stateHashAfter": "e419394473ffd64b"
+    },
+    {
+      "index": 3,
+      "routeBefore": "combat",
+      "action": "confirm-target",
+      "key": "Enter",
+      "stateHashAfter": "b0fa6d82b8687956"
+    },
+    {
+      "index": 4,
+      "routeBefore": "combat",
+      "action": "confirm-attack",
+      "key": "Enter",
+      "stateHashAfter": "18b247afdbaed725"
+    },
+    {
+      "index": 5,
+      "routeBefore": "combat",
+      "action": "confirm-attack",
+      "key": "Enter",
+      "stateHashAfter": "91f8cbc5c6535af8"
+    },
+    {
+      "index": 6,
+      "routeBefore": "combat",
+      "action": "confirm-attack",
+      "key": "Enter",
+      "stateHashAfter": "461f833877155a95"
+    },
+    {
+      "index": 7,
+      "routeBefore": "combat",
+      "action": "dismiss-result",
+      "key": "Enter",
+      "stateHashAfter": "4089400468a9914f"
+    }
+  ]
+}
