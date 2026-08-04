@@ -228,7 +228,8 @@ export function paletteHintText(
   );
 }
 
-/** Rich palette footer — Item affordance greys when inventory is empty. */
+/** Rich palette footer — Item affordance greys when inventory is empty,
+ *  Run greys when flee is unavailable (boss encounter). */
 export function buildPaletteHintRow(
   palette: CombatPalette,
   partyAuto: boolean,
@@ -242,10 +243,19 @@ export function buildPaletteHintRow(
   itemSpan.textContent = itemLabel;
   row.appendChild(itemSpan);
 
+  // Run hint — greys out during boss encounters (flee always fails).
+  const runLabel = inputKind === "keyboard" ? "R:Run" : "hold B:Run";
+  const runSpan = document.createElement("span");
+  runSpan.className = "ff6-hint-affordance";
+  if (palette.fleeDisabled) runSpan.classList.add("disabled");
+  runSpan.textContent = runLabel;
+  row.appendChild(document.createTextNode(" · "));
+  row.appendChild(runSpan);
+
   const rest =
     inputKind === "keyboard"
-      ? ["R:Run", "Q:Auto", partyAuto ? "AUTO on" : ""]
-      : ["hold B:Run", "Start:Auto", partyAuto ? "AUTO on" : ""];
+      ? ["Q:Auto", partyAuto ? "AUTO on" : ""]
+      : ["Start:Auto", partyAuto ? "AUTO on" : ""];
   const restText = joinHintParts(rest, 16);
   if (restText) {
     row.appendChild(document.createTextNode(` · ${restText}`));
