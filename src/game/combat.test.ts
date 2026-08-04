@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   createCombatState,
+  createCombatFromEncounter,
   resolveCombatRound,
   resolvePlayerTurn,
   resolveEnemyTurn,
@@ -1054,5 +1055,41 @@ describe("summoning mechanics", () => {
     for (const c of result.party) {
       expect(result.armorBuffs[c.id] ?? 0).toBeGreaterThanOrEqual(5);
     }
+  });
+});
+
+describe("createCombatFromEncounter", () => {
+  it("always returns a defined isBoss flag", () => {
+    const enemies = Object.values(ENEMIES_BY_ID);
+    const regular = enemies.find((e) => !e.isBoss) ?? enemies[0];
+    const boss = enemies.find((e) => e.isBoss) ?? { ...enemies[0], isBoss: true };
+    const spells: Record<string, typeof ALL_SPELLS[number]> = {};
+    for (const s of ALL_SPELLS) spells[s.id] = s;
+    const items: Record<string, typeof ALL_ITEMS[number]> = {};
+    for (const it of ALL_ITEMS) items[it.id] = it;
+    const party = createDefaultParty();
+    const loadout: Record<string, Loadout> = {};
+
+    const regularEncounter = [{ enemy: regular, row: "front" as const }];
+    const regularCombat = createCombatFromEncounter(
+      party,
+      regularEncounter,
+      spells,
+      items,
+      loadout,
+      []
+    );
+    expect(regularCombat.isBoss).toBe(false);
+
+    const bossEncounter = [{ enemy: boss, row: "front" as const }];
+    const bossCombat = createCombatFromEncounter(
+      party,
+      bossEncounter,
+      spells,
+      items,
+      loadout,
+      []
+    );
+    expect(bossCombat.isBoss).toBe(true);
   });
 });

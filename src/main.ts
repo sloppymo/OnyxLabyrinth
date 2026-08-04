@@ -67,6 +67,7 @@ import { applyJumpPartyOptions, type JumpToOptions } from "./debug/jump-to";
 import { DebugEventBuffer, type DebugEventKind } from "./debug/event-buffer";
 import { checkInvariants } from "./debug/invariants";
 import { installAudioSpy } from "./debug/audio-spy";
+import { buildDebugCombat } from "./debug/start-combat";
 import { CombatController } from "./engine/combat-ui";
 import { PALETTE_LETTER_SHORTCUTS } from "./engine/combat-action-palette";
 import { createCombatStage } from "./engine/combat-stage";
@@ -2448,7 +2449,14 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     jumpTo,
     dumpSave,
     loadSave,
-    startCombat,
+    startCombat: async () => {
+      if (combatController) {
+        throw new Error("startCombat: combat is already active — use exitDebugCombat first");
+      }
+      const combat = buildDebugCombat(state, buildLoadoutMap());
+      setMode(state, "combat");
+      await startCombat(combat);
+    },
     exitDebugCombat,
     FLOORS: getFloors(),
     findFloor,
