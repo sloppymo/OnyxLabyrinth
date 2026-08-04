@@ -147,8 +147,9 @@ The live game is available at:
 - `src/styles.css` — all UI styling.
 - `scripts/playtests/` — Playwright playtest scripts driving the `?debug=1` surface.
 - `docs/` — **design docs, specs, and playtest reports (markdown only).** Start at
-  [docs/AGENT-READING-LIST.md](docs/AGENT-READING-LIST.md). This directory is *not* a build
-  output; Pages deploys `dist/` straight from CI.
+  [docs/README.md](docs/README.md) for the current index, then
+  [docs/AGENT-READING-LIST.md](docs/AGENT-READING-LIST.md) for product status. This directory
+  is *not* a build output; Pages deploys `dist/` straight from CI.
 
 ## Git workflow
 

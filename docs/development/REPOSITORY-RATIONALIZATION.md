@@ -44,12 +44,16 @@ Pre-existing warnings: Vite chunk-size warning for `dist/assets/combat-phaser-st
 - Create `docs/development/REPOSITORY-RATIONALIZATION.md` (this file) as the living audit report.
 - Remove the stale fixed test total from `docs/AGENT-READING-LIST.md`.
 
+**Result:** `docs/README.md` and `docs/development/REPOSITORY-RATIONALIZATION.md` created; `docs/AGENT-READING-LIST.md` updated. Verification: `npm test` 1926/1926 passing, `npm run build` clean, `git diff --check` clean.
+
 ### Batch B — architecture and source-of-truth map
 
 - Add a concise architecture overview to `AGENTS.md` or `docs/development/ARCHITECTURE.md`.
 - Add a "Where do I make this change?" table to `AGENTS.md`.
 - Add a "Do not do this" section to `AGENTS.md`.
 - Reconcile `README.md`, `AGENTS.md`, and `CLAUDE.md` only after identifying unique content in `CLAUDE.md`.
+
+**Result:** Added `Architecture overview`, `Where do I make this change?`, and `Do not do this` sections to `AGENTS.md`; updated `README.md` to point to `docs/README.md`; updated the stale boss-audio claim in `AGENTS.md` to match the authored music file. Verification: `npm test` 1926/1926 passing, `npm run build` clean, `git diff --check` clean. `CLAUDE.md` left intact for a later unique-content pass.
 
 ### Batch C — code, naming, and script hygiene
 
