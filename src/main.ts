@@ -174,6 +174,10 @@ function showMode(mode: GameMode, fullMapVisible = mapVisible): void {
 
 /** First dungeon entry this page session — keyboard discoverability door hint. */
 let shownDungeonKeyboardHint = false;
+/** First-ever town visit this session (right after party creation) —
+ *  orientation hint pointing at Enter Dungeon so a new player isn't left
+ *  facing eight menu options with no stated objective. */
+let shownTownIntro = false;
 /**
  * Swallow the first town key after party creation / openTown so the same
  * Enter that confirmed the party cannot also select Inn (AGENTS.md
@@ -249,14 +253,34 @@ markExplored();
 // --- Town mode -----------------------------------------------------------
 let townController: TownController | null = null;
 
-function openTown(): void {
+function openTown(opts?: { showIntroHint?: boolean }): void {
   if (mapVisible) toggleMap();
   transitionToMode("town");
   setMessage("");
   justOpenedTown = true;
+  let introHint = "";
+  if (opts?.showIntroHint && !shownTownIntro) {
+    shownTownIntro = true;
+    // Kept short (one line) so it doesn't compete with the menu items for
+    // vertical space in the fixed-height FF6Window on narrow viewports.
+    introHint = "Ready when you are — [>] Enter Dungeon.";
+  }
+  // Most openTown() callers are decoupled from any keydown event (e.g. the
+  // party-creation confirm flash's setTimeout, or the combat return
+  // transition's async dissolve) — for those, no cascaded keydown ever
+  // arrives to clear the flag, so it would otherwise sit armed until the
+  // player's next *genuine* keypress and silently eat that one instead.
+  // A truly cascaded same-event keydown (e.g. game_over's Enter calling
+  // openTown() synchronously) still fires — and clears the flag — well
+  // before this rAF's next-paint callback runs, so that protection is
+  // unaffected; this only forecloses the "wait forever" failure mode.
+  requestAnimationFrame(() => {
+    justOpenedTown = false;
+  });
   townController = new TownController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
+    initialFlash: introHint,
     onEnterDungeon: () => {
       townController = null;
       const last = state.lastDungeon;
@@ -470,7 +494,7 @@ function openTitleScreen(): void {
       Object.assign(state, createGameState(getFloors()[0]!));
       openPrologue(() => {
         audio.stopTitleMusic();
-        openPartyCreation(() => openTown());
+        openPartyCreation(() => openTown({ showIntroHint: true }));
       });
     },
     onContinue: (loaded) => {
@@ -986,6 +1010,11 @@ const dungeonHandlers: InputHandlers = {
         markExplored();
         onMove();
         scheduleFootstep();
+      } else {
+        // Walked into a wall — give audible feedback instead of a silent
+        // no-op (the player would otherwise get zero indication their
+        // input was rejected).
+        audio.wallBump();
       }
     }
   },
@@ -1000,6 +1029,8 @@ const dungeonHandlers: InputHandlers = {
         markExplored();
         onMove();
         scheduleFootstep();
+      } else {
+        audio.wallBump();
       }
     }
   },

@@ -37,6 +37,7 @@
 //   audio.footstep();        // play a footstep
 //   audio.doorOpen();        // door unlocked/opened
 //   audio.doorLocked();      // door remains locked
+//   audio.wallBump();        // move blocked by a plain wall
 //   audio.uiCursor();        // menu highlight move
 //   audio.uiConfirm();       // menu confirm
 //   audio.uiCancel();        // menu cancel / close
@@ -367,6 +368,11 @@ class AudioEngine {
       rattleDuration: 0.25,
       rattleFilterFreq: 3000,
       gain: 0.22,
+    },
+    wallBump: {
+      thudDuration: 0.09,
+      thudFreq: 70,
+      gain: 0.14,
     },
   } as const;
 
@@ -1079,6 +1085,31 @@ class AudioEngine {
     rattleSrc.connect(rattleFilter);
     rattleFilter.connect(rattleEnv);
     rattleEnv.connect(this.masterGain);
+  }
+
+  /**
+   * Play a wall-bump sound: a single dull, low thud, quieter and shorter
+   * than doorLocked's (no metallic rattle — there's no door here, just
+   * stone). Gives the player audible feedback when a move into a wall is
+   * silently rejected by `moveForward`/`moveBackward` (camera.ts).
+   */
+  wallBump(): void {
+    if (!this.ctx || !this.masterGain) return;
+    const ctx = this.ctx;
+    const cfg = this.CFG.wallBump;
+    const t = ctx.currentTime;
+
+    const thud = ctx.createOscillator();
+    thud.type = "sine";
+    thud.frequency.setValueAtTime(cfg.thudFreq, t);
+    thud.frequency.exponentialRampToValueAtTime(cfg.thudFreq * 0.6, t + cfg.thudDuration);
+    const thudEnv = ctx.createGain();
+    thudEnv.gain.setValueAtTime(cfg.gain, t);
+    thudEnv.gain.exponentialRampToValueAtTime(0.001, t + cfg.thudDuration);
+    thud.connect(thudEnv);
+    thudEnv.connect(this.masterGain);
+    thud.start(t);
+    thud.stop(t + cfg.thudDuration + 0.05);
   }
 
   // --- Internal helpers ---
