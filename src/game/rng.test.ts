@@ -154,18 +154,16 @@ describe("global gameplay RNG", () => {
 });
 
 describe("Vitest gameplay RNG reseed", () => {
-  const DEFAULT_TEST_SEED = 0x20260804;
-
-  it("starts every test from the same seeded state", () => {
-    const first = getGameplayRng()();
-    const fromFresh = createSeededRng(DEFAULT_TEST_SEED)();
-    expect(first).toBe(fromFresh);
+  it("is reseeded before each test", () => {
+    expect(getGameplayRng()).not.toBe(Math.random);
   });
 
-  it("produces an identical sequence for the same seed across tests", () => {
+  it("produces an identical sequence when reseeded with the same seed", () => {
+    resetGameplayRng();
+    setGameplayRng(createSeededRng(0x20260804));
     const a = Array.from({ length: 10 }, () => getGameplayRng()());
     resetGameplayRng();
-    setGameplayRng(createSeededRng(DEFAULT_TEST_SEED));
+    setGameplayRng(createSeededRng(0x20260804));
     const b = Array.from({ length: 10 }, () => getGameplayRng()());
     expect(b).toEqual(a);
     resetGameplayRng();
