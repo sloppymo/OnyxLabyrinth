@@ -35,9 +35,9 @@ function frontRowFighter(slot = 0): ReturnType<typeof createCharacter> {
   return createCharacter("c2", "Bram", "Human", "Good", "Fighter", slot);
 }
 
-describe("weaponIsReachable", () => {
-  it("close-range weapons are unreachable from the back row", () => {
-    expect(weaponIsReachable(backRowMage(), MACE)).toBe(false);
+describe("weaponIsReachable (row restrictions removed)", () => {
+  it("close-range weapons are reachable from the back row", () => {
+    expect(weaponIsReachable(backRowMage(), MACE)).toBe(true);
   });
 
   it("close-range weapons are reachable from the front row", () => {
@@ -49,7 +49,7 @@ describe("weaponIsReachable", () => {
     expect(weaponIsReachable(backRowMage(), BOW)).toBe(true);
   });
 
-  it("short-range weapons remain reachable from the back row (they reach the front)", () => {
+  it("short-range weapons are reachable from the back row", () => {
     expect(weaponIsReachable(backRowMage(), SHORT_SWORD)).toBe(true);
   });
 
@@ -59,17 +59,16 @@ describe("weaponIsReachable", () => {
   });
 });
 
-describe("isBetterEquip with a holder (range-aware)", () => {
-  it("never treats an unreachable weapon as better, even with a higher attack bonus", () => {
+describe("isBetterEquip with a holder (row restrictions removed)", () => {
+  it("treats a higher-attack weapon as better regardless of row (restrictions removed)", () => {
     const mage = backRowMage();
-    // Mace(4) > Staff(2) on raw attack, but the Mage is back row and Mace is close-range.
-    expect(isBetterEquip(STAFF, MACE, mage)).toBe(false);
+    // Mace(4) > Staff(2) on raw attack. Row restrictions removed, so
+    // the Mace is reachable and is a strict upgrade.
+    expect(isBetterEquip(STAFF, MACE, mage)).toBe(true);
   });
 
   it("still treats a reachable higher-attack weapon as better", () => {
     const fighter = frontRowFighter();
-    // Short Sword (short, reaches back row from front) -> Long Sword
-    // (medium, always reaches back row): no reach lost, attack goes up.
     expect(isBetterEquip(SHORT_SWORD, LONG_SWORD, fighter)).toBe(true);
   });
 
@@ -78,13 +77,12 @@ describe("isBetterEquip with a holder (range-aware)", () => {
   });
 });
 
-describe("losesBackRowReach", () => {
-  it("flags a front-row character trading a back-row-capable weapon for a close-range one", () => {
+describe("losesBackRowReach (row restrictions removed)", () => {
+  it("never flags a reach loss (all weapons reach all rows)", () => {
     const fighter = frontRowFighter();
-    // Short Sword (short) currently reaches the back row; Voidblade (close)
-    // never does, regardless of formation — a real tactical loss despite
-    // Voidblade's much higher attack bonus.
-    expect(losesBackRowReach(SHORT_SWORD, VOIDBLADE, fighter)).toBe(true);
+    // Row restrictions removed: no weapon swap can lose back-row reach
+    // because all weapons reach all rows from all positions.
+    expect(losesBackRowReach(SHORT_SWORD, VOIDBLADE, fighter)).toBe(false);
   });
 
   it("does not flag a swap between two weapons that both reach the back row", () => {
@@ -99,36 +97,30 @@ describe("losesBackRowReach", () => {
 
   it("does not flag a swap when the current weapon already couldn't reach the back row", () => {
     const fighter = frontRowFighter();
-    // Mace (close) already can't hit the back row, so Voidblade (also
-    // close) costs nothing further.
     expect(losesBackRowReach(MACE, VOIDBLADE, fighter)).toBe(false);
   });
 
-  it("isBetterEquip rejects a strictly-higher-attack weapon that would lose back-row reach", () => {
+  it("isBetterEquip accepts a strictly-higher-attack weapon (row restrictions removed)", () => {
     const fighter = frontRowFighter();
-    // Regression (2026-07-24 floors 4-5 playtest, Finding 3): naive
-    // attack-bonus comparison would auto-equip Voidblade over Short Sword
-    // even though it silently removes the only way this character could
-    // ever hit a protected back-row boss.
-    expect(isBetterEquip(SHORT_SWORD, VOIDBLADE, fighter)).toBe(false);
+    // Row restrictions removed: Voidblade (close, +11) is a strict upgrade
+    // over Short Sword (short, +3) — no reach is lost.
+    expect(isBetterEquip(SHORT_SWORD, VOIDBLADE, fighter)).toBe(true);
   });
 
-  it("equipItem refuses the reach-losing swap even though attack bonus is much higher", () => {
+  it("equipItem accepts the higher-attack swap (row restrictions removed)", () => {
     const fighter = frontRowFighter();
     const loadout: Loadout = { weapon: SHORT_SWORD, armor: [] };
     const next = equipItem(loadout, VOIDBLADE, fighter);
-    expect(next).toBe(loadout);
-    expect(next.weapon).toBe(SHORT_SWORD);
+    expect(next.weapon).toBe(VOIDBLADE);
   });
 });
 
-describe("equipItem with a holder (range-aware)", () => {
-  it("refuses to equip a close-range weapon onto a back-row character", () => {
+describe("equipItem with a holder (row restrictions removed)", () => {
+  it("equips a close-range weapon onto a back-row character", () => {
     const mage = backRowMage();
     const loadout: Loadout = { weapon: STAFF, armor: [] };
     const next = equipItem(loadout, MACE, mage);
-    expect(next).toBe(loadout);
-    expect(next.weapon).toBe(STAFF);
+    expect(next.weapon).toBe(MACE);
   });
 
   it("still equips a reachable upgrade onto a front-row character", () => {
@@ -139,8 +131,8 @@ describe("equipItem with a holder (range-aware)", () => {
   });
 });
 
-describe("findBestEquipTarget with row-blind candidates (range-aware)", () => {
-  it("skips a back-row candidate for a close-range weapon even with the weakest current weapon", () => {
+describe("findBestEquipTarget (row restrictions removed)", () => {
+  it("picks the weakest candidate by attack bonus (all rows reachable)", () => {
     const mage = backRowMage(); // Staff, attackBonus 2 — the "weakest" by raw score
     const fighter = frontRowFighter(); // Short Sword, attackBonus 3
     const party = [mage, fighter];
@@ -148,9 +140,9 @@ describe("findBestEquipTarget with row-blind candidates (range-aware)", () => {
       [mage.id]: { weapon: STAFF, armor: [] },
       [fighter.id]: { weapon: SHORT_SWORD, armor: [] },
     };
-    // Naive ATK-only scoring would pick the Mage (2 < 3); reachability must
-    // route this to the Fighter instead, since the Mage can't use a Mace at all.
-    expect(findBestEquipTarget(party, equipment, MACE)).toBe(fighter.id);
+    // Row restrictions removed: the Mage (attackBonus 2) is the weakest
+    // and all weapons are reachable from all rows.
+    expect(findBestEquipTarget(party, equipment, MACE)).toBe(mage.id);
   });
 
   it("still picks the weakest reachable candidate when reach isn't a constraint", () => {
@@ -161,8 +153,6 @@ describe("findBestEquipTarget with row-blind candidates (range-aware)", () => {
       [mage.id]: { weapon: STAFF, armor: [] },
       [fighter.id]: { weapon: SHORT_SWORD, armor: [] },
     };
-    // Bow is long-range — reachable from any row — so plain weakest-weapon
-    // scoring applies again and the Mage (attackBonus 2) wins.
     expect(findBestEquipTarget(party, equipment, BOW)).toBe(mage.id);
   });
 });

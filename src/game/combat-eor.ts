@@ -84,30 +84,7 @@ export function deathCheck(
     }
     return true;
   });
-  promoteEnemyBackRow(s, emit);
   checkBossPhases(s, emit);
-}
-
-/**
- * When the living front row is empty, surviving back-row enemies advance into
- * the front (mechanical row flip + array move). Makes them reachable by close
- * weapons and frees front-row stand slots for the combat scene to slide into.
- */
-export function promoteEnemyBackRow(
-  s: CombatState,
-  emit: (m: string, e: CombatEvent) => void
-): void {
-  if (s.enemies.front.length > 0 || s.enemies.back.length === 0) return;
-  const advancing = s.enemies.back;
-  for (const e of advancing) {
-    e.row = "front";
-    emit(`${e.name} advances to the front!`, {
-      type: "rowAdvance",
-      targetId: e.instanceId,
-    });
-  }
-  s.enemies.front = advancing;
-  s.enemies.back = [];
 }
 
 /**

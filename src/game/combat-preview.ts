@@ -11,7 +11,7 @@ import type { EnemySpecial } from "../data/enemies";
 import type { SpellDef } from "../data/spells";
 import { perkModifiers, perksForCharacter } from "./perks";
 import { effStatsFor, tagDamageMultiplier, effectiveEnemyAc } from "./combat-shared";
-import { canReach, effectiveWeaponRange } from "./combat-reach";
+import { effectiveWeaponRange } from "./combat-reach";
 import type { ActionPreview, CombatState, EnemyInstance, WeaponRange } from "./combat-types";
 
 function emptyPreview(flags: Partial<ActionPreview> = {}): ActionPreview {
@@ -29,7 +29,6 @@ function previewPhysicalDamageAtVariance(
   s: CombatState,
   actor: Character,
   target: EnemyInstance,
-  weaponRange: WeaponRange,
   variance: number
 ): number {
   const loadout = s.loadout[actor.id];
@@ -39,11 +38,8 @@ function previewPhysicalDamageAtVariance(
   const weaponBonus = weapon?.attackBonus ?? 0;
   const attackDebuff = s.attackDebuffs[actor.id]?.penalty ?? 0;
   const base = Math.max(1, effStats.str + actor.level + weaponBonus - attackDebuff);
-  const isThief = actor.class === "Thief";
-  const rowMultiplier =
-    charRow(actor) === "back" && weaponRange === "close" && !isThief ? 0.4 : 1;
   let damage =
-    Math.max(1, Math.round(base * rowMultiplier * variance * mods.meleeDamageMultiplier)) +
+    Math.max(1, Math.round(base * variance * mods.meleeDamageMultiplier)) +
     mods.meleeBonusDamage;
 
   damage = Math.max(1, Math.round(damage * tagDamageMultiplier(mods, target)));
@@ -78,10 +74,6 @@ export function previewAttack(
   const weapon = loadout?.weapon;
   const weaponRange: WeaponRange = effectiveWeaponRange(actor, weapon?.range ?? "close");
 
-  if (!canReach(actor.formationSlot, weaponRange, target.row)) {
-    return emptyPreview({ unreachable: true });
-  }
-
   const nextBonus = s.nextAttackBonuses[actor.id];
   const forcedHit = nextBonus?.hitChance !== undefined && nextBonus.hitChance >= 1;
 
@@ -94,8 +86,8 @@ export function previewAttack(
     if (actor.status.includes("blind")) hitChance *= 0.5;
   }
 
-  const minDamage = previewPhysicalDamageAtVariance(s, actor, target, weaponRange, 0.8);
-  const maxDamage = previewPhysicalDamageAtVariance(s, actor, target, weaponRange, 1.2);
+  const minDamage = previewPhysicalDamageAtVariance(s, actor, target, 0.8);
+  const maxDamage = previewPhysicalDamageAtVariance(s, actor, target, 1.2);
   const guaranteedKill = hitChance >= 1 && minDamage >= target.currentHp;
   return { hitChance, minDamage, maxDamage, guaranteedKill };
 }

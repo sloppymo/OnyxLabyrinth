@@ -1644,8 +1644,11 @@ describe("row swap", () => {
     expect(s.log.some((m) => m.includes("swap rows"))).toBe(true);
   });
 
-  it("a fighter moved to the back row can no longer reach with a close weapon", () => {
+  it("a fighter moved to the back row can still reach with a close weapon (row restrictions removed)", () => {
     const state = fourPartyState();
+    // Use a high-HP enemy so it survives the attack for HP comparison.
+    state.enemies.front[0].hp = 100;
+    state.enemies.front[0].currentHp = 100;
     const s1 = resolvePlayerTurn(
       state,
       { kind: "move", actorId: "char-0", targetAllyId: "char-3" },
@@ -1656,8 +1659,9 @@ describe("row swap", () => {
       { kind: "attack", actorId: "char-0", targetInstanceId: "rat-0" },
       seqRng([0.5])
     );
-    // Close-range weapon from the back row cannot reach the front-row enemy.
-    expect(s2.enemies.front[0].currentHp).toBe(s2.enemies.front[0].hp);
+    // Row restrictions removed: close-range weapon from the back row
+    // can now reach the front-row enemy.
+    expect(s2.enemies.front[0].currentHp).toBeLessThan(s2.enemies.front[0].hp);
   });
 
   it("rejects a KO'd swap partner", () => {
