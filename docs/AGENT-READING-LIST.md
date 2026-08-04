@@ -4,8 +4,8 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 
 **Last refreshed:** 2026-07-26 (prologue; century wipe→town + lore scrub; debug surface PR-1–4; zone-flavor = frequency-only addendum; F1/F2 closed; PR-5 not built; per-floor combat-difficulty probe + F3 L6/L8/L9 matrix; wipe→game-over-screen-skip **fixed**; **boss rename + presentation stack shipped** `7f89fcd`; **wish/ending scene shipped** — the largest remaining narrative gap is now closed)
 
-**Health at last refresh:** `npm run build` clean. **1258/1258** tests passing (60 files) in a
-full-suite run — the previously-flagged `combat-turns.test.ts` order-dependent flake (ice-shards
+**Health at last refresh:** `npm run build` clean. Run `npm test` for the current test total —
+the previously-flagged `combat-turns.test.ts` order-dependent flake (ice-shards
 test) did not reproduce this run; still unfixed/unroot-caused if it resurfaces (cross-test state
 leakage within that file, predates the boss-rename work).
 
