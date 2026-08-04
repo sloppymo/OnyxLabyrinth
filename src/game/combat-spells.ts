@@ -330,7 +330,7 @@ export function applySpell(
         name: eff.allyName ?? "Summoned Ally",
         hp: power * 6,
         maxHp: power * 6,
-        attack: power * 3,
+        attack: power * 4,
         ac: Math.max(1, Math.floor(power / 2)),
         agi: 8 + power * 3,
         row: "front",

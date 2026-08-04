@@ -677,7 +677,7 @@ export function resolveAllyAction(
   const base = ally.attack;
   const variance = 0.8 + rng() * 0.4;
   let damage = Math.max(1, Math.round(base * variance));
-  damage = Math.max(1, damage - target.ac);
+  damage = Math.max(1, damage - Math.floor(target.ac / 2));
   target.currentHp -= damage;
   emit(
     `${ally.name} attacks ${target.name} for ${damage} damage.`,
