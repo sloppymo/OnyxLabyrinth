@@ -22,7 +22,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 |------|----------------|
 | `src/engine/renderer.ts` | Corridor 3D view (the most fragile code). |
 | `src/engine/render-math.ts` | Pure math functions extracted from renderer (geometry, fog, camera interpolation). Unit-tested via `render-math.test.ts`. |
-| `src/engine/audio.ts` | Hybrid audio: streamed title/town/dungeon music, sample-backed UI/combat/dungeon SFX, and procedural footsteps, door sounds, fallback ambience, and the **boss combat bed** (`startBossCombat`/`stopBossCombat`, `CFG.bossBed`). See the audio pitfall below. |
+| `src/engine/audio.ts` | Hybrid audio: streamed title/town/dungeon/boss music, sample-backed UI/combat/dungeon SFX, and procedural footsteps, door sounds, and fallback ambience (`startBossCombat`/`stopBossCombat` use the authored boss music file). See the audio pitfall below. |
 | `src/engine/combat-choreography.ts` | The shared, DOM-free choreography engine: builds a timed `Choreography` (`ChoreoStep[]`) from a turn's `CombatEvent`s (`playTurn`) and steps it forward (`updateScene`). Both render backends (`combat-scene.ts` canvas, `combat-phaser-stage.ts` Phaser) import this and paint the same `ActorAnim`/offset/popup/banner state differently — never the reverse. Reusable multi-actor presentations (e.g. `meleeGangUp`, see "Combat event system" below) live here as `push*Steps()` helpers keyed off a `CombatEvent.presentation` field. |
 | `src/engine/combat-scene.ts` | FF6-style canvas combat scene (the `?phaser=0` rollback painter): enemies LEFT / party RIGHT, animated sprite strips, spell-name banner. Paints `combat-choreography.ts`'s scene state; its own paint-order sort key (`paintOrderFootY`) must include each actor's LIVE move offset, not just its static home-slot position — see the pitfall below. |
 | `src/engine/enemy-sprite-cache.ts` | Module-level image cache for enemy sprite strips (enemy art faces RIGHT, drawn unmirrored). Falls back to procedural shapes in `combat-scene.ts`. |
@@ -197,7 +197,60 @@ After any change to `src/engine/combat-scene.ts`, `src/engine/combat-choreograph
   - **Step-on event / tile message assertions:** `onMove` sets the feature message *before* rolling a random encounter. If a fight starts on that same step and the script flees via `exitDebugCombat`, the live message band becomes `"You fled from combat."` even though the event fired. Assert against recent `__onyxDebug.log(n, "message")` entries (see `recentMessages` in `playtest-floors-1-3.mjs`), not only `snapshot().message.text`.
   - **Campaign encounter zones are frequency-only** unless a zone sets `tableFloorId` (none currently do). Safe/hot share `ENCOUNTER_TABLES[floor.id]`; only `rateMul` differs. Pity still forces a fight by step 28 even at `rateMul: 0`. See `docs/playtests/2026-07-25-invariants-pacing-playtest.md` addendum. Session handoff: `docs/FOLLOWUP-2026-07-25-SESSION-HANDOFF-PROMPT.md`.
   - **Boss identity is display-name-only; internal ids are historical.** `headmasters-echo` / `-remnant` / `-ascendant` are **The Dead Boy** (F3), **The Lonely Girl** (F4), and **The Crying Man** (F5). Ids are frozen for save/test stability and carry **no lore** — do not rename them, and do not reconstruct fiction from them. Retired display vocabulary that must never come back: *Headmaster*, *Echo* (as a player-facing noun), *the Vanguard's/Choir's/Drowned Echo*, *the First Descent*. Canon: `docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md`.
-  - **Boss presentation is synthesized, not authored.** All three bosses reuse existing sprite strips at `BOSS_SIZE`; there is no boss BGM asset, so `audio.startBossCombat()` generates one. `main.ts` starts it only when `combat.isBoss` and stops it unconditionally in `endCombat`, so a normal fight cannot inherit it. **A lowpass `BiquadFilterNode` has no usable `Q`** — setting `filter.Q.value` on the boss bed throws under the test's mocked audio graph. Do not add it back.
+  - **Boss BGM is authored; boss sprites are reused.** The boss fight music is `public/assets/music/higher-difficulty-battle.mp3`. All three bosses reuse existing sprite strips at `BOSS_SIZE`. `audio.startBossCombat()` streams the authored music; `main.ts` starts it only when `combat.isBoss` and stops it unconditionally in `endCombat`, so a normal fight cannot inherit it.
+
+## Architecture overview
+
+The practical boundary is **rules/content** (`src/game/`, `src/data/`, `src/content/`) versus **browser presentation** (`src/engine/`). `src/main.ts` owns the single `GameState`, mode transitions, and per-mode controller lifecycle.
+
+- **Application modes** are a strict union (`title | party_creation | town | dungeon | combat | camp | game_over | arena`). `shell.showMode()` is the only place that should toggle top-level DOM visibility. Several overlays (save menu, spell menu, NPC panel, perk selection) borrow mode `"title"` to pause dungeon input. Borrowing "title" is risky: always restore the real previous mode and never trigger title-music logic from an overlay.
+- **Dungeon rendering** (`src/engine/renderer.ts`) draws the pseudo-3D corridor. `src/engine/render-math.ts` holds the pure, unit-tested geometry/fog/camera math. `src/engine/camera.ts` handles movement, turning, and door unlock. `src/engine/automap.ts` and `src/engine/map-overlay.ts` are the full (`M`) and quick (`V`) maps.
+- **Combat** is split into rules, choreography, and two painters. `src/game/combat.ts` resolves a turn and emits `CombatEvent`s. `src/engine/combat-choreography.ts` builds the timed animation state. `src/engine/combat-phaser-stage.ts` is the default painter; `src/engine/combat-scene.ts` is the `?phaser=0` Canvas rollback. `src/engine/combat-ui.ts` drives the per-actor FF6 menu. Both painters consume the same choreography; never add a second choreography engine.
+- **Party / perks / leveling**: `src/game/party.ts` defines `PARTY_SIZE = 4` (not six). `src/game/effective-stats.ts` is the single source of truth for final stats. `src/game/perks.ts` (`perkModifiers` for passives, `dispatchHook` for reactive). `src/game/leveling.ts` handles automatic post-combat level-ups.
+- **Floors and content**: `src/data/floors.ts` contains campaign definitions, `src/content/floors/*.json` are JSON packs, and `src/game/floor-registry.ts` is the runtime resolver. `src/game/floor-validate.ts` is the linter. `FloorDef.encounterTable` is deprecated/ignored in favor of `ENCOUNTER_TABLES[floor.id]`.
+- **Audio** (`src/engine/audio.ts`) streams music and plays sample-backed SFX plus procedural cues. Music ownership is per-mode; never start mode-specific music from an overlay.
+- **Save and compatibility** (`src/game/save.ts`) is at version 14. Save-compatible identifiers (enemy, item, perk, NPC, and floor IDs) must not be renamed casually.
+- **RNG** (`src/game/rng.ts`) is the only source of gameplay randomness. `Math.random()` is not used for deterministic systems.
+
+## Where do I make this change?
+
+| Task | Primary location |
+|------|-----------------|
+| Add enemy stats / encounters | `src/data/enemies.ts` |
+| Add enemy ability | `src/data/enemy-abilities.ts` |
+| Add enemy sprite | `src/engine/sprite-manifest.ts` + `public/assets/enemies/<id>/` |
+| Add spell | `src/data/spells.ts` |
+| Add melee technique | `src/data/techniques.ts` |
+| Add class perk | `src/data/perks.ts` + `src/game/perks.ts` if reactive |
+| Change combat math | `src/game/combat-*.ts` (read `src/game/combat.ts` first) |
+| Change combat animation timing | `src/engine/combat-choreography.ts` |
+| Change Phaser painting | `src/engine/combat-phaser-stage.ts` |
+| Change Canvas rollback painting | `src/engine/combat-scene.ts` |
+| Add floor | `src/content/floors/*.json` + `src/game/floor-registry.ts` |
+| Add maze prop | `src/data/maze-props.ts` + `public/assets/map-props/` (or glyph fallback) |
+| Add corridor tileset | `src/assets/` tile assets + tileset registration |
+| Change title composition | `src/assets/lonesome_forest_title_map.png` + `src/engine/title-ui.ts` + `src/styles.css` |
+| Add music | `public/assets/music/` + `src/engine/audio.ts` |
+| Add SFX | `public/assets/sfx/` + `src/engine/audio.ts` |
+| Change save schema | `src/game/save.ts` (bump version, add migration, add test) |
+| Change effective stats | `src/game/effective-stats.ts` |
+| Change perk engine | `src/game/perks.ts` |
+
+## Do not do this
+
+- Do not add a second combat choreography engine. Both Phaser and Canvas must paint the same `combat-choreography.ts` state.
+- Do not import the Canvas painter (`combat-scene.ts`) from choreography or Phaser.
+- Do not add a second fog formula. `render-math.ts` owns the canonical math.
+- Do not hardcode content IDs in renderer or UI code; look them up in the data modules.
+- Do not casually rename enemy, item, perk, NPC, or floor IDs. They are save-compatible and test-referenced.
+- Do not use `Math.random()` for gameplay randomness. Use `src/game/rng.ts`.
+- Do not commit `dist/` or copy it into `docs/`. CI builds and deploys `dist/` separately.
+- Do not commit purchased raw asset packs (`assets/`, `playtest-screenshots/`, `vfx-audit/`). They are local-only and gitignored.
+- Do not treat a screenshot or build success as proof of visual correctness for renderer/combat changes.
+- Do not bypass `shell.showMode()` when toggling mode visibility.
+- Do not confuse a borrowed `"title"` mode with the real title screen.
+- Do not update damage preview (`combat-preview.ts`) without also updating the actual resolver path in `combat-actions.ts`/`combat-spells.ts`.
+- Do not remove a fallback renderer or debug surface that is still used by `?phaser=0`, `?debug=1`, or the test suite.
 
 ## Conventions
 

@@ -124,7 +124,7 @@ After any change to boss data, `sprite-manifest.ts`, or the boss audio path:
 1. Reach a floor boss (or `jumpTo` the floor under `?debug=1`).
 2. Confirm the intro nameplate shows the boss name and then yields to the normal banner.
 3. Confirm the boss sprite is distinct per floor — floors 3/4/5 must not look alike.
-4. Confirm the procedural boss bed starts with the fight and **stops on any combat end**,
+4. Confirm the authored boss music (`higher-difficulty-battle.mp3`) starts with the fight and **stops on any combat end**,
    including flee and wipe. A following trash fight must be silent of it.
 
 See `AGENTS.md` for the full checklists and common pitfalls.
@@ -132,6 +132,12 @@ See `AGENTS.md` for the full checklists and common pitfalls.
 ## Deployment
 
 GitHub Actions builds and deploys `dist/` to Pages on every push to `main` (`.github/workflows/deploy.yml`).
+
+To verify a recent deploy:
+
+```bash
+gh run list --workflow=deploy.yml --limit 1
+```
 
 The live game is available at:
 
@@ -147,8 +153,9 @@ The live game is available at:
 - `src/styles.css` — all UI styling.
 - `scripts/playtests/` — Playwright playtest scripts driving the `?debug=1` surface.
 - `docs/` — **design docs, specs, and playtest reports (markdown only).** Start at
-  [docs/AGENT-READING-LIST.md](docs/AGENT-READING-LIST.md). This directory is *not* a build
-  output; Pages deploys `dist/` straight from CI.
+  [docs/README.md](docs/README.md) for the current index, then
+  [docs/AGENT-READING-LIST.md](docs/AGENT-READING-LIST.md) for product status. This directory
+  is *not* a build output; Pages deploys `dist/` straight from CI.
 
 ## Git workflow
 

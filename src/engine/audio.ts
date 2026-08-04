@@ -1,4 +1,4 @@
-// Procedural audio engine for OnyxLabyrinth.
+// Hybrid audio engine for OnyxLabyrinth.
 //
 // Ambient / dungeon sounds are synthesized via the Web Audio API. Menu UI
 // SFX are short WAV samples (FF6 system tings, licensed — see

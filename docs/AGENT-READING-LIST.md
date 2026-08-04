@@ -4,15 +4,15 @@ Use this list before acting on playtest, balance, combat UX, or perk work. Prefe
 
 **Last refreshed:** 2026-07-26 (prologue; century wipe→town + lore scrub; debug surface PR-1–4; zone-flavor = frequency-only addendum; F1/F2 closed; PR-5 not built; per-floor combat-difficulty probe + F3 L6/L8/L9 matrix; wipe→game-over-screen-skip **fixed**; **boss rename + presentation stack shipped** `7f89fcd`; **wish/ending scene shipped** — the largest remaining narrative gap is now closed)
 
-**Health at last refresh:** `npm run build` clean. **1258/1258** tests passing (60 files) in a
-full-suite run — the previously-flagged `combat-turns.test.ts` order-dependent flake (ice-shards
+**Health at last refresh:** `npm run build` clean. Run `npm test` for the current test total —
+the previously-flagged `combat-turns.test.ts` order-dependent flake (ice-shards
 test) did not reproduce this run; still unfixed/unroot-caused if it resurfaces (cross-test state
 leakage within that file, predates the boss-rename work).
 
 | Doc | Role | Status |
 |-----|------|--------|
 | [`AGENTS.md`](../AGENTS.md) | Hard engine rules, file map, pitfalls | **Authoritative** for code constraints |
-| [`CLAUDE.md`](../CLAUDE.md) | Commands, architecture orientation | Authoritative; defers to AGENTS.md for `src/` rules |
+| [`CLAUDE.md`](../CLAUDE.md) | Claude Code orientation pointer; defers to `AGENTS.md` for `src/` rules and `README.md` for commands | Authoritative |
 | [`superpowers/specs/2026-07-25-labyrinth-narrative-design.md`](superpowers/specs/2026-07-25-labyrinth-narrative-design.md) | Canon: gods left / Death left / lamp / the kept / century cycle / **boss names + presentation** / **wish ending** | **Current lore** — supersedes Headmaster/academy framing in `wizardry_v_clone_design_doc.md` and Echo-boss *fiction* (mechanics stay). Has an **Implementation status** table at the top. Every section now describes shipped code, including §6 (wish/ending scene, `ending-ui.ts`, shipped 2026-07-26) |
 | [`superpowers/specs/2026-07-25-snes-era-intro-style-guide.md`](superpowers/specs/2026-07-25-snes-era-intro-style-guide.md) | Black-field narration, typewriter, FF36, two-stage skip | **Current** for prologue / future attract text |
 | [`superpowers/plans/2026-07-25-prologue-intro-sequence.md`](superpowers/plans/2026-07-25-prologue-intro-sequence.md) | New Game prologue implementation | **Done 2026-07-25** — shipped (`prologue-ui.ts`) |
@@ -70,8 +70,8 @@ leakage within that file, predates the boss-rename work).
 
 - ~~Headmaster / academy as campaign lore~~ — superseded 2026-07-25 by `superpowers/specs/2026-07-25-labyrinth-narrative-design.md` (gods left, Death left, lamp/djinn, the kept). Boss *mechanics* in the Echo phases spec still apply; display names/strings rewritten 2026-07-25 (internal `headmasters-echo*` IDs kept stable for saves/tests — see historical-ID comments at each definition site).
 - ~~"The Vanguard's Echo" / "The Choir's Echo" / "The Drowned Echo" / "The First Descent" as boss names~~ — **all four are dead display names**, including the *replacements* written earlier the same day. Shipped names are **The Dead Boy** (F3), **The Lonely Girl** (F4), **The Crying Man** (F5) — `7f89fcd`. "Echo" and "First Descent" are no longer player-facing vocabulary anywhere; `echo-of-silence` displays as **"Stolen Quiet"**. If a doc dated 2026-07-25 or earlier uses the old names, the doc is behind the code.
-- ~~"The three floor bosses are the same fight reskinned"~~ — they were visually, until `7f89fcd`. Each now maps to a distinct existing sprite strip (`flame-golem` / `warlock` / `summon-holy-guardian`) at `BOSS_SIZE`, plus a shared intro nameplate and a procedural audio bed. **No new boss art was generated** — do not go looking for boss sprite files.
-- ~~"Boss fights have no music"~~ — true of *assets*, false of behavior. `audio.startBossCombat()` synthesizes a bed (`CFG.bossBed`); `main.ts` stops it on any `endCombat`. Do not add `filter.Q.value` to its lowpass — a lowpass `BiquadFilterNode` has no usable `Q` and it throws in tests.
+- ~~"The three floor bosses are the same fight reskinned"~~ — they were visually, until `7f89fcd`. Each now maps to a distinct existing sprite strip (`flame-golem` / `warlock` / `summon-holy-guardian`) at `BOSS_SIZE`, plus a shared intro nameplate and the authored boss music file. **No new boss art was generated** — do not go looking for boss sprite files.
+- ~~"Boss fights have no music"~~ — false. `audio.startBossCombat()` plays the authored `higher-difficulty-battle.mp3`; `main.ts` stops it on any `endCombat`.
 - ~~"Wipe returns the party to the dungeon entrance"~~ — superseded 2026-07-25; a campaign wipe now advances `worldYear` by 100 and returns the party to town (`openTown()`), per the century-cycle design. Arena wipes are unaffected (no year advance, no town redirect). Arena game-over copy also omits the century / wake-in-town lines (`a5bdd5e`).
 - ~~"Hot zones have harder enemies" / "safe vs hot is combat-difficulty flavor"~~ — **false for campaign floors as authored.** Zones only change `rateMul` unless they set `tableFloorId`; no campaign zone sets it, so safe/hot share `ENCOUNTER_TABLES[floor.id]`. Frequency (and thus attrition) still differs. See playtest addendum 2026-07-25. Do not spend a session rediscovering this with TTK sampling.
 - ~~"`rateMul: 0` means zero encounters forever"~~ — **false.** Pity still forces a fight by step 28 even when effective rate is 0 (`encounterRollChance`); F4/F5 quiet-zone pacing samples observe this. Comment on `encounterRateAt` is optimistic relative to the pity path.
