@@ -30,7 +30,7 @@ import {
 } from "./combat-scene-math";
 import {
   COLORS,
-  PARTY_SIZE,
+  PARTY_SPRITE_SIZE,
   ENEMY_SIZE,
   BOSS_SIZE,
   ANIM_SPEED,
@@ -92,7 +92,7 @@ export {
   newActorAnim,
   BARK_DURATION_BASE,
   COLORS,
-  PARTY_SIZE,
+  PARTY_SPRITE_SIZE,
   ENEMY_SIZE,
   BOSS_SIZE,
   ANIM_SPEED,
@@ -337,10 +337,10 @@ function drawPartyFallback(
   y: number,
   char: Character,
   anim: ActorAnim,
-  size: number = PARTY_SIZE,
+  size: number = PARTY_SPRITE_SIZE,
   tint?: string
 ): void {
-  const scale = size / PARTY_SIZE;
+  const scale = size / PARTY_SPRITE_SIZE;
   ctx.save();
   ctx.globalAlpha = anim.opacity;
   const colors: Record<string, string> = {
@@ -390,7 +390,7 @@ function drawPartyMember(
   const statusScale = statusDrawScale(char.status);
   const slot = toScreenPos(
     resolveSlot(partySlot(index), geoFor(scene.backdropId), {
-      spriteHeight: PARTY_SIZE * statusScale,
+      spriteHeight: PARTY_SPRITE_SIZE * statusScale,
       canvasWidth: w,
       artFootFromTop: artFoot,
     })
@@ -399,7 +399,7 @@ function drawPartyMember(
   const x = slot.x + off.x;
   const y = slot.y + off.y;
   const footY = slot.footY + off.y;
-  const drawSize = PARTY_SIZE * slot.scale * statusScale;
+  const drawSize = PARTY_SPRITE_SIZE * slot.scale * statusScale;
 
   const isDead = char.hp <= 0 || char.status.includes("knockedOut");
   if (isDead && anim.state !== "death") setAnimState(anim, "death", now);
