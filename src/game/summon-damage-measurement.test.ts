@@ -36,10 +36,11 @@ function makeEnemy(instanceId: string, ac: number, hp: number): EnemyInstance {
     agi: 5,
     xp: 3,
     gold: 2,
+    floors: [1],
     rowPreference: "front",
     special: [],
     isBoss: false,
-  } as EnemyDef;
+  };
   return { ...def, instanceId, currentHp: hp, row: "front", status: [] };
 }
 

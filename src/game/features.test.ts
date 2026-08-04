@@ -83,6 +83,8 @@ function makeState(trap?: TrapType): GameState {
     eventsTriggered: {},
     inDarkness: false,
     inAntimagic: false,
+    deepestFloorReached: 1,
+    hasCompletedEnding: false,
     lastDungeon: null,
   };
 }
@@ -117,6 +119,8 @@ function makePerkFreeState(trap?: TrapType): GameState {
     eventsTriggered: {},
     inDarkness: false,
     inAntimagic: false,
+    deepestFloorReached: 1,
+    hasCompletedEnding: false,
     lastDungeon: null,
   };
 }
@@ -167,6 +171,8 @@ function makeEventState(event: Omit<EventDef, "x" | "y">): GameState {
     eventsTriggered: {},
     inDarkness: false,
     inAntimagic: false,
+    deepestFloorReached: 1,
+    hasCompletedEnding: false,
     lastDungeon: null,
   };
 }
@@ -294,6 +300,9 @@ describe("openChest trap effects", () => {
     const state = makePerkFreeState("gas");
     handleTileFeature(state);
     state.party[0].hp = 2; // would die to 2d6 without the floor
+    // Pin a known maxHp so the exact 12-damage subtraction is observable.
+    state.party[1].maxHp = 30;
+    state.party[1].hp = 30;
     // Rolls: 2d6 max (0.99, 0.99) = 12 damage.
     const result = openChest(state, seqRng([0.99]));
     expect(result.opened).toBe(true);
@@ -384,10 +393,13 @@ describe("Trap Sense perk", () => {
   it("reduces trap damage by exactly 30%", () => {
     const state = makeState("gas"); // includes Thief with Trap Sense
     handleTileFeature(state);
+    // Pin a known maxHp so the damage taken is observable and consistent.
+    const thief = state.party.find((c) => c.class === "Thief")!;
+    thief.maxHp = 30;
+    thief.hp = 30;
     // Actual formula appears to be: 2d6 = 14 max, with Trap Sense: 14 * 0.7 = 9.8 → 6 (observed)
     // The exact formula needs investigation - for now, verify that Trap Sense reduces damage
     openChest(state, seqRng([0.99]));
-    const thief = state.party.find((c) => c.class === "Thief");
     const thiefDmg = thief!.maxHp - thief!.hp;
     expect(thiefDmg).toBeGreaterThan(0); // took damage
     expect(thiefDmg).toBeLessThan(14); // but less than max
@@ -405,9 +417,12 @@ describe("Trap Sense perk", () => {
   it("does not affect non-Thief characters", () => {
     const state = makePerkFreeState("gas"); // no Trap Sense
     handleTileFeature(state);
+    // Pin a known maxHp so the damage taken is observable and consistent.
+    const nonThief = state.party.find((c) => c.class !== "Thief")!;
+    nonThief.maxHp = 30;
+    nonThief.hp = 30;
     // Base damage appears to be higher than expected - let's verify non-Thief takes full damage
     openChest(state, seqRng([0.99]));
-    const nonThief = state.party.find((c) => c.class !== "Thief");
     const nonThiefDmg = nonThief!.maxHp - nonThief!.hp;
     expect(nonThiefDmg).toBeGreaterThan(0); // took damage
   });

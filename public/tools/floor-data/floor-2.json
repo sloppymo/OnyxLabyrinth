@@ -1316,7 +1316,7 @@
       "title": "unbound scribe",
       "x": 1,
       "y": 1,
-      "greeting": "Shhh! Lower your voice — the stacks listen. I am Vestra. I copied for the Headmaster, before. I don't copy anymore.",
+      "greeting": "Shhh! Lower your voice — the stacks listen. I am Vestra. I used to copy what came up from below. I don't copy anymore.",
       "returnGreeting": "You again. Quietly, quietly. The shelves have been restless.",
       "topics": [
         {
@@ -1329,7 +1329,7 @@
         },
         {
           "key": "echo",
-          "response": "The Headmaster did not die. He diffused. What waits in the forge below wears his face badly."
+          "response": "Something warm waits in the forge. People call it a boy. People who go looking don't come back the same."
         },
         {
           "key": "books",

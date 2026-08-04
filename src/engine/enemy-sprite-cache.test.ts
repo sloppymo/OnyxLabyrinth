@@ -18,13 +18,12 @@ describe("enemy-sprite-cache", () => {
 
   beforeEach(() => {
     originalImage = globalThis.Image;
-    // @ts-expect-error node environment has no global Image constructor
     globalThis.Image = FakeImage as unknown as typeof Image;
     vi.resetModules();
   });
 
   afterEach(() => {
-    globalThis.Image = originalImage;
+    if (originalImage) globalThis.Image = originalImage;
   });
 
   it("returns undefined before loadEnemySprites resolves", async () => {

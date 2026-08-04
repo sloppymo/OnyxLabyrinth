@@ -1148,7 +1148,7 @@ describe("impact feedback (shake / floor glow / banner)", () => {
     playTurn(
       scene,
       [
-        { type: "cast", actorId: "c1", spellId: "mage-fire-bolt" },
+        { type: "cast", actorId: "c1", spellId: "mage-fire-bolt", targetId: "rat-0" },
         { type: "spellEffect", spellId: "mage-fire-bolt", targetId: "rat-0", damage: 5 },
       ],
       spellName,

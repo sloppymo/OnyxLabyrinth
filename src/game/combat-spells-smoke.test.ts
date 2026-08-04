@@ -298,7 +298,7 @@ describe("combat spell smoke (every non-utility spell)", () => {
       );
 
       if (spell.effect.kind === "cure" && spell.effect.status === "poison") {
-        state.poisonState[ally.id] = { damage: 3, roundsLeft: 2 };
+        state.poisonState[ally.id] = { damage: 3, duration: 2 };
       }
       if (spell.effect.kind === "dispelMagic") {
         state.enemyMagicScreens = { front: 2, back: 1 };

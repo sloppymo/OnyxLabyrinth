@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   createSeededRng,
   createRngFromString,
@@ -150,5 +150,29 @@ describe("global gameplay RNG", () => {
     expect(getGameplayRng()).not.toBe(Math.random);
     resetGameplayRng();
     expect(getGameplayRng()).toBe(Math.random);
+  });
+});
+
+describe("Vitest gameplay RNG reseed", () => {
+  it("is reseeded before each test", () => {
+    expect(getGameplayRng()).not.toBe(Math.random);
+  });
+
+  it("produces an identical sequence when reseeded with the same seed", () => {
+    resetGameplayRng();
+    setGameplayRng(createSeededRng(0x20260804));
+    const a = Array.from({ length: 10 }, () => getGameplayRng()());
+    resetGameplayRng();
+    setGameplayRng(createSeededRng(0x20260804));
+    const b = Array.from({ length: 10 }, () => getGameplayRng()());
+    expect(b).toEqual(a);
+    resetGameplayRng();
+  });
+
+  it("explicit per-test replacement still takes precedence", () => {
+    const stub: Rng = () => 0.7;
+    setGameplayRng(stub);
+    expect(getGameplayRng()).toBe(stub);
+    expect(getGameplayRng()()).toBe(0.7);
   });
 });

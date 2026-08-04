@@ -57,7 +57,7 @@ describe("effectiveStats", () => {
     const loadout: Loadout = {
       armor: [
         mockItem({ type: "armor", slot: "body", statBonuses: { vit: 2 } }),
-        mockItem({ type: "armor", slot: "helm", statBonuses: { int: 1 } }),
+        mockItem({ type: "armor", slot: "head", statBonuses: { int: 1 } }),
       ],
     };
     const result = effectiveStats(c, loadout);

@@ -16,6 +16,9 @@ describe("applyJumpPartyOptions", () => {
   it("sets gold, keys, and inventory when provided", () => {
     const state = createGameState(FLOORS[0]!);
     const opts: JumpToOptions = {
+      floorId: 1,
+      x: 2,
+      y: 2,
       gold: 500,
       keys: ["crypt-key"],
       items: [{ itemId: "healing-potion", identified: true }],

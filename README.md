@@ -43,6 +43,8 @@ npm test             # Vitest suite
 npm run floor:validate   # validate floor content packs
 npm run floor:editor     # WYSIWYG floor editor
 npx vite preview --port 5176 --base /OnyxLabyrinth/  # preview the production build locally
+
+npm run check        # full required gate: test typecheck, build, tests, floor validation
 ```
 
 ### Automated playtests

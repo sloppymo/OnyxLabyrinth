@@ -1739,12 +1739,12 @@
       "title": "masterless duelist",
       "x": 3,
       "y": 9,
-      "greeting": "Stay your hand or draw — I care little which. I am Kazeharu. My master fed this forge. I keep what vigil is left.",
-      "returnGreeting": "Back among the cinders. The Echo still waits, and so do I.",
+      "greeting": "Stay your hand or draw — I care little which. I am Kazeharu. Someone went down into the heat and did not come back. I keep what vigil is left.",
+      "returnGreeting": "Back among the cinders. The boy still waits, and so do I.",
       "topics": [
         {
           "key": "forge",
-          "response": "Beyond the locked door south, the Echo holds court in dead air — no spell will answer you there. Bring steel."
+          "response": "Beyond the locked door south, the dead boy holds court in dead air — no spell will answer you there. Bring steel."
         },
         {
           "key": "duel",
@@ -1753,7 +1753,7 @@
         {
           "key": "master",
           "hidden": true,
-          "response": "My master built the Grand Forge and burned in it. I stayed to guard his failure. Kill the Echo, and my vigil ends."
+          "response": "They were no smith. They came down chasing the deep, same as anyone, and burned trying to reach it. I stayed to guard what they couldn't finish. Put the boy down, and my vigil ends."
         }
       ],
       "combatEnemyIds": [
@@ -1799,7 +1799,7 @@
       "x": 2,
       "y": 6,
       "kind": "message",
-      "message": "Hammered into a bronze plate: THE ECHO WEARS HIS FACE."
+      "message": "Hammered into a bronze plate: HE IS STILL WARM."
     },
     {
       "x": 1,

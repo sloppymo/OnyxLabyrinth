@@ -27,6 +27,7 @@ function makeEnemy(instanceId: string, overrides: Partial<EnemyDef> = {}): Enemy
     agi: 5,
     xp: 3,
     gold: 2,
+    floors: [1],
     rowPreference: "front",
     special: [],
     isBoss: false,

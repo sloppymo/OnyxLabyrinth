@@ -34,10 +34,11 @@ function makeEnemy(instanceId: string, row: "front" | "back", hp: number): Enemy
     agi: 5,
     xp: 3,
     gold: 2,
+    floors: [1],
     rowPreference: row,
     special: [],
     isBoss: false,
-  } as EnemyDef;
+  };
   return { ...def, instanceId, currentHp: hp, row, status: [] };
 }
 

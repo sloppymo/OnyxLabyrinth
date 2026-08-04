@@ -58,12 +58,13 @@ import { CombatController } from "./combat-ui";
 import { createCombatState } from "../game/combat";
 import { createCharacter } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
+import type { EnemyInstance } from "../game/combat-types";
 import { ALL_SPELLS } from "../data/spells";
 
 const SPELLS_BY_ID = Object.fromEntries(ALL_SPELLS.map((s) => [s.id, s]));
 
-function makeEnemy(instanceId: string) {
-  const def = {
+function makeEnemy(instanceId: string): EnemyInstance {
+  const def: EnemyDef = {
     id: "test-rat",
     name: "Test Rat",
     hp: 10,
@@ -72,10 +73,11 @@ function makeEnemy(instanceId: string) {
     agi: 5,
     xp: 3,
     gold: 2,
+    floors: [1],
     rowPreference: "front",
     special: [],
     isBoss: false,
-  } as EnemyDef;
+  };
   return { ...def, instanceId, currentHp: def.hp, row: "front", status: [] };
 }
 
@@ -498,7 +500,7 @@ describe("CombatController input routing", () => {
       price: 0,
     } as any;
     const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
-    const backEnemy = { ...makeEnemy("boss-0"), row: "back" };
+    const backEnemy: EnemyInstance = { ...makeEnemy("boss-0"), row: "back" };
     const state = createCombatState(
       party,
       { front: [], back: [backEnemy] },
@@ -532,7 +534,7 @@ describe("CombatController input routing", () => {
       price: 0,
     } as any;
     const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
-    const backEnemy = { ...makeEnemy("boss-0"), row: "back" };
+    const backEnemy: EnemyInstance = { ...makeEnemy("boss-0"), row: "back" };
     const frontEnemy = makeEnemy("grunt-0");
     const state = createCombatState(
       party,

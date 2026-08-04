@@ -13,7 +13,8 @@ import {
   type CombatWindowsHandlers,
 } from "./combat-select-action-view";
 import { buildPalette } from "./combat-action-palette";
-import { createCombatState, type CombatState, type EnemyInstance } from "../game/combat";
+import { createCombatState } from "../game/combat";
+import type { CombatState, EnemyInstance } from "../game/combat-types";
 import { createCharacter, type Character } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
 import { MAGE_SPELLS } from "../data/spells";
@@ -29,6 +30,7 @@ function makeEnemy(instanceId: string, name = "Test Rat"): EnemyInstance {
     agi: 5,
     xp: 3,
     gold: 2,
+    floors: [1],
     rowPreference: "front",
     special: [],
     isBoss: false,

@@ -80,6 +80,8 @@ function makeTrapState(trap: TrapType): GameState {
     eventsTriggered: {},
     inDarkness: false,
     inAntimagic: false,
+    deepestFloorReached: 1,
+    hasCompletedEnding: false,
     lastDungeon: null,
   };
 }
@@ -139,6 +141,8 @@ function makeNpcState(): GameState {
     eventsTriggered: {},
     inDarkness: false,
     inAntimagic: false,
+    deepestFloorReached: 1,
+    hasCompletedEnding: false,
     lastDungeon: null,
   };
 }

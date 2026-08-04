@@ -45,7 +45,7 @@ function makeGamepad(
   buttons: { pressed: boolean; value: number }[],
   axes: number[] = [0, 0],
   index = 0,
-): Gamepad {
+): Omit<Gamepad, "axes"> & { axes: number[] } {
   return {
     index,
     connected: true,
@@ -56,7 +56,7 @@ function makeGamepad(
     axes,
     vibrationActuator: null,
     hapticActuators: [],
-  } as unknown as Gamepad;
+  } as unknown as Gamepad & { axes: number[] };
 }
 
 function stubGamepads(gamepads: (Gamepad | null)[]): void {

@@ -8,7 +8,7 @@
  *   npx tsx scripts/floor-tool.ts export-all --out tools/floor-data
  */
 
-import { writeFileSync, mkdirSync, readFileSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { getFloors } from "../src/game/floor-registry";
 import { floorDefToMap, parseFloorMapJSON, mapToFloorDef } from "../src/game/floor-map";
@@ -97,6 +97,51 @@ function runCheckImport(): void {
   process.exit(hasValidationErrors(issues) ? 1 : 0);
 }
 
+function checkDir(dir: string, name: string): boolean {
+  let drift = false;
+  for (const floor of getFloors()) {
+    const map = floorDefToMap(floor);
+    const json = JSON.stringify(map, null, 2);
+    const base = `floor-${floor.id}`;
+    const jsonPath = join(dir, `${base}.json`);
+    const txtPath = join(dir, `${base}.txt`);
+
+    if (!existsSync(jsonPath)) {
+      console.error(`MISSING [${name}] ${jsonPath}`);
+      drift = true;
+      continue;
+    }
+    const existingJson = readFileSync(jsonPath, "utf8");
+    if (existingJson !== json) {
+      console.error(`DRIFT  [${name}] ${jsonPath}`);
+      drift = true;
+    }
+
+    const txt = floorToAscii(floor);
+    if (!existsSync(txtPath)) {
+      console.error(`MISSING [${name}] ${txtPath}`);
+      drift = true;
+      continue;
+    }
+    const existingTxt = readFileSync(txtPath, "utf8");
+    if (existingTxt !== txt) {
+      console.error(`DRIFT  [${name}] ${txtPath}`);
+      drift = true;
+    }
+  }
+  return drift;
+}
+
+function runExportCheck(): void {
+  const toolsDrift = checkDir("tools/floor-data", "tools");
+  const publicDrift = checkDir("public/tools/floor-data", "public/tools");
+  if (toolsDrift || publicDrift) {
+    console.error("\nFloor exports are stale. Run `npm run floor:export-all` to regenerate.");
+    process.exit(1);
+  }
+  console.log("OK (floor exports match generated output)");
+}
+
 async function main(): Promise<void> {
   switch (cmd) {
     case "validate":
@@ -111,6 +156,9 @@ async function main(): Promise<void> {
     case "check":
       runCheckImport();
       break;
+    case "export-check":
+      runExportCheck();
+      break;
     default:
       console.log(`OnyxLabyrinth floor-tool
 
@@ -118,6 +166,7 @@ Commands:
   validate [--floor N]     Validate campaign floor(s)
   dump --floor N           ASCII map (default) or --json
   export-all [--out dir]   Write JSON + ASCII for all floors
+  export-check             Verify committed exports match generated output
   check --file map.json    Validate an editor export
 `);
       process.exit(cmd ? 1 : 0);

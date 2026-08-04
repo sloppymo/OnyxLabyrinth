@@ -2148,7 +2148,7 @@
       "x": 7,
       "y": 13,
       "itemIds": [
-        "bow+3",
+        "bow+2",
         "focus-ward",
         "healing-potion"
       ],
@@ -2158,8 +2158,8 @@
       "x": 14,
       "y": 17,
       "itemIds": [
-        "voidblade+4",
-        "dragonscale-mail+4",
+        "voidblade+2",
+        "dragonscale-mail+2",
         "healing-potion",
         "healing-potion"
       ],

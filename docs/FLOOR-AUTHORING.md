@@ -136,10 +136,10 @@ npm run check:tools                       # typecheck the editor + CLI
 The Pages workflow runs `npm run build` on pushes to `main`, but it does not run the full test suite or floor validator. Before opening a PR that touches floors or the authoring suite, run locally:
 
 ```bash
-npm test && npm run build && npm run floor:validate
+npm run check
 ```
 
-`npm run build` includes the tools typecheck (`tsconfig.tools.json`).
+`npm run check` runs `test:typecheck`, `build`, `test`, and `floor:validate` in one sequence.
 
 ## Modules
 
