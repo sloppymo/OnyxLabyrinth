@@ -51,6 +51,8 @@ export function createGameState(floor: FloorDef): GameState {
     lastDungeon: null,
     deepestFloorReached: floor.id,
     hasCompletedEnding: false,
+    keyItems: [],
+    floorRevisions: {},
   };
 }
 

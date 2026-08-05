@@ -85,6 +85,8 @@ function makeState(trap?: TrapType): GameState {
     inAntimagic: false,
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    keyItems: [],
+    floorRevisions: {},
     lastDungeon: null,
   };
 }
@@ -121,6 +123,8 @@ function makePerkFreeState(trap?: TrapType): GameState {
     inAntimagic: false,
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    keyItems: [],
+    floorRevisions: {},
     lastDungeon: null,
   };
 }
@@ -173,6 +177,8 @@ function makeEventState(event: Omit<EventDef, "x" | "y">): GameState {
     inAntimagic: false,
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    keyItems: [],
+    floorRevisions: {},
     lastDungeon: null,
   };
 }

@@ -204,7 +204,7 @@ interface RayHit {
   mapY: number;
   perpWallDist: number;             // perpendicular distance, no fisheye
   wallX: number;                    // exact hit position along the wall face (0..1); for `y` hits this is fractional world x, for `x` hits fractional world y
-  edge: EdgeType;                   // "wall" | "door" | "locked" | "open"
+  edge: EdgeType;                   // "wall" | "door" | "locked" | "barred" | "open"
 }
 
 export interface TextureSet {
@@ -1306,12 +1306,13 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       );
     }
 
-    if (hit.edge === "door" || hit.edge === "locked") {
+    if (hit.edge === "door" || hit.edge === "locked" || hit.edge === "barred") {
       const isLocked = hit.edge === "locked";
+      const isBarred = hit.edge === "barred";
       const fogDoor = opacityForDepth(hit.perpWallDist);
       const themeDoor = doorTextureForTheme(wallTheme, primaryTheme);
 
-      if (themeDoor) {
+      if (themeDoor && !isBarred) {
         // Sample the door panel the same way as wall strips.
         let texX = Math.floor(hit.wallX * themeDoor.width);
         if (
@@ -1335,8 +1336,14 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         ctx.globalAlpha = 1.0;
       } else {
         // Procedural fallback until the texture loads (or if it failed).
-        const markerColor = isLocked ? PALETTE.lockedMarker : PALETTE.doorMarker;
-        ctx.fillStyle = rgba(PALETTE.doorFill, fogDoor * 0.35);
+        // Barred gates use a distinct dark fill with vertical bars.
+        const markerColor = isLocked
+          ? PALETTE.lockedMarker
+          : isBarred
+            ? "#8a7a6a"
+            : PALETTE.doorMarker;
+        const fillColor = isBarred ? { r: 58, g: 53, b: 48 } : PALETTE.doorFill;
+        ctx.fillStyle = rgba(fillColor, fogDoor * 0.35);
         ctx.fillRect(x, drawStart, stripWidth, drawEnd - drawStart + 1);
         ctx.fillStyle = markerColor;
         ctx.globalAlpha = fogDoor;
@@ -1362,6 +1369,22 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         ctx.moveTo(cx + markerSize / 2, cy - markerSize / 2);
         ctx.lineTo(cx - markerSize / 2, cy + markerSize / 2);
         ctx.stroke();
+        ctx.globalAlpha = 1.0;
+      }
+
+      if (isBarred) {
+        // Draw vertical bars across the gate to distinguish it from doors.
+        ctx.strokeStyle = "#9a8a7a";
+        ctx.lineWidth = Math.max(1, Math.floor(stripWidth / 3));
+        ctx.globalAlpha = fogDoor;
+        const barCount = 3;
+        for (let i = 1; i <= barCount; i++) {
+          const bx = x + (stripWidth * i) / (barCount + 1);
+          ctx.beginPath();
+          ctx.moveTo(bx, drawStart);
+          ctx.lineTo(bx, drawEnd);
+          ctx.stroke();
+        }
         ctx.globalAlpha = 1.0;
       }
     }

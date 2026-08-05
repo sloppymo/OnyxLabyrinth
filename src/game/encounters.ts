@@ -280,6 +280,31 @@ export function encounterZoneAt(
 }
 
 /**
+ * True if ANY encounter zone covering (x,y) has safeZone: true.
+ * Safe zones suppress ALL random encounters (including pity-forced ones)
+ * and do NOT increment stepsSinceEncounter while inside. Precedence is
+ * explicit: if any covering zone is safe, the cell is safe — regardless
+ * of array order. Scripted combat (NPC attack, trap-triggered fights) is
+ * unaffected; safe zone only suppresses the random encounter roller.
+ */
+export function isSafeZoneAt(
+  floor: Pick<FloorDef, "encounterZones">,
+  x: number,
+  y: number
+): boolean {
+  const zones = floor.encounterZones;
+  if (!zones?.length) return false;
+  for (const z of zones) {
+    const loX = Math.min(z.x1, z.x2);
+    const hiX = Math.max(z.x1, z.x2);
+    const loY = Math.min(z.y1, z.y2);
+    const hiY = Math.max(z.y1, z.y2);
+    if (x >= loX && x <= hiX && y >= loY && y <= hiY && z.safeZone) return true;
+  }
+  return false;
+}
+
+/**
  * Effective encounter base rate for a step at (x,y).
  * Multiplies floor.encounterRate by the covering zone's rateMul (or returns
  * the floor rate when no zone covers the cell). A rateMul of 0 yields 0 here,

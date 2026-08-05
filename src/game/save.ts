@@ -346,6 +346,10 @@ interface SerializedState {
   worldYear?: number;
   /** Whether the wish/ending sequence has already played. v13+. */
   hasCompletedEnding?: boolean;
+  /** Permanent party-level key items (e.g. "raft"). v14+. */
+  keyItems?: string[];
+  /** Per-floor revision tracking: floorId → revision when last visited. v14+. */
+  floorRevisions?: Record<number, number>;
   savedAt: string;
 }
 
@@ -413,6 +417,8 @@ export function serialize(state: GameState): string {
     eventsTriggered,
     deepestFloorReached: state.deepestFloorReached,
     hasCompletedEnding: state.hasCompletedEnding,
+    keyItems: [...state.keyItems],
+    floorRevisions: { ...state.floorRevisions },
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -447,16 +453,51 @@ export function deserialize(json: string): GameState | null {
       eventsTriggered[Number(floorIdStr)] = new Set(positions);
     }
 
+    // Per-floor explored tile tracking (restored from save).
+    const exploredByFloor: Record<number, string[]> = { ...(ser.exploredByFloor ?? {}) };
+
     // Build a private mutable copy of the floor and restore runtime state.
     const floor = cloneFloor(floorDef);
-    for (const doorKey of unlockedDoors) {
-      const parts = doorKey.split(":");
-      if (parts.length !== 4 || parseInt(parts[0]) !== floor.id) continue;
-      const dx = parseInt(parts[1]);
-      const dy = parseInt(parts[2]);
-      const dir = parts[3] as "n" | "e" | "s" | "w";
-      if (floor.grid[dy]?.[dx]) {
-        floor.grid[dy][dx][dir] = "door";
+
+    // Floor-revision check: if the floor's geometry/content has changed
+    // since the save was made, clear that floor's explored/loot/events/doors
+    // state and reset the player to the floor's start position. Other floors
+    // are unaffected. This is the development save-break policy for floor
+    // revisions (see FloorDef.floorRevision).
+    const floorRevisions = ser.floorRevisions ?? {};
+    const savedRev = floorRevisions[floor.id];
+    const currentRev = floor.floorRevision;
+    const stale = savedRev !== undefined && currentRev !== undefined && savedRev !== currentRev;
+
+    if (stale) {
+      // Clear this floor's state from the save.
+      unlockedDoors.delete(`${floor.id}:`);
+      // More precise: remove all door keys for this floor.
+      for (const key of [...unlockedDoors]) {
+        const parts = key.split(":");
+        if (parts.length > 0 && parseInt(parts[0]) === floor.id) {
+          unlockedDoors.delete(key);
+        }
+      }
+      delete lootTaken[floor.id];
+      delete eventsTriggered[floor.id];
+      // Clear explored for this floor.
+      exploredByFloor[floor.id] = [];
+      // Reset player to floor start.
+      ser.player = { ...ser.player, x: floor.startX, y: floor.startY };
+      // Update the revision.
+      floorRevisions[floor.id] = currentRev;
+    } else {
+      // Restore door state.
+      for (const doorKey of unlockedDoors) {
+        const parts = doorKey.split(":");
+        if (parts.length !== 4 || parseInt(parts[0]) !== floor.id) continue;
+        const dx = parseInt(parts[1]);
+        const dy = parseInt(parts[2]);
+        const dir = parts[3] as "n" | "e" | "s" | "w";
+        if (floor.grid[dy]?.[dx]) {
+          floor.grid[dy][dx][dir] = "door";
+        }
       }
     }
     const killedNPCs = ser.killedNPCs ? [...ser.killedNPCs] : [];
@@ -497,8 +538,8 @@ export function deserialize(json: string): GameState | null {
         knownSpellIds: [...c.knownSpellIds],
         perkIds: [...c.perkIds],
       })),
-      explored: new Set(ser.explored),
-      exploredByFloor: ser.exploredByFloor ?? {},
+      explored: stale ? new Set() : new Set(ser.explored),
+      exploredByFloor,
       stepsSinceEncounter: ser.stepsSinceEncounter,
       dayCount: ser.dayCount,
       worldYear: ser.worldYear ?? 3847,
@@ -529,6 +570,8 @@ export function deserialize(json: string): GameState | null {
         ),
       deepestFloorReached: ser.deepestFloorReached ?? floor.id,
       hasCompletedEnding: ser.hasCompletedEnding ?? false,
+      keyItems: ser.keyItems ? [...ser.keyItems] : [],
+      floorRevisions,
     };
   } catch {
     return null;

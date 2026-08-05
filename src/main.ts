@@ -1,7 +1,10 @@
 import "./styles.css";
 import { getFloors, findFloor, registerFloorMap } from "./game/floor-registry";
 import { createGameState, setMode } from "./game/state";
-import { moveForward, moveBackward, turnLeft, turnRight, tryUnlock } from "./engine/camera";
+import { turnLeft, turnRight, tryUnlock, resolveTraversal, openBarredGate } from "./engine/camera";
+import { type Direction, type TraversalResult } from "./game/traversal";
+import { RaftAnimationController, isRaftAnimating } from "./engine/raft-animation";
+import { DungeonDialogController } from "./engine/dungeon-dialog";
 import {
   handleTileFeature,
   transitionToFloor,
@@ -9,6 +12,7 @@ import {
   disarmChest,
   openChest,
   leaveChest,
+  confirmChuteDrop,
   type ChestActionResult,
 } from "./game/features";
 import { revealAround } from "./game/explore";
@@ -110,6 +114,7 @@ import {
   arenaFloorForWave,
   rollArenaEncounter,
   adjustArenaEncounterForSmallParty,
+  isSafeZoneAt,
 } from "./game/encounters";
 import { tickBuffs, clearBuffs } from "./game/persistent-spells";
 import { SpellMenuController } from "./engine/spell-ui";
@@ -117,7 +122,7 @@ import { NPCController } from "./engine/npc-ui";
 import { PerkSelectController } from "./engine/perk-select-ui";
 import { markKilled, adjustDisposition } from "./game/npc";
 import { ENEMIES_BY_ID } from "./data/enemies";
-import type { NPCDef } from "./data/floors";
+import type { NPCDef, FloorDef } from "./data/floors";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
 import {
@@ -198,6 +203,14 @@ let trapPrompt: TrapPromptController | null = null;
 let justOpenedTrapPrompt = false;
 type RingActionId = "camp" | "map" | "grimoire" | "unlock" | "town";
 let pendingRingAction: RingActionId | null = null;
+
+// --- Raft animation + dungeon dialog controllers ---
+let raftAnimation: RaftAnimationController | null = null;
+let dungeonDialog: DungeonDialogController | null = null;
+/** Swallow the step key that opened a dungeon dialog so it cannot also move. */
+let justOpenedDungeonDialog = false;
+/** Swallow movement after closing a dialog until the closing key is released. */
+let suppressDungeonMovementUntilKeyup = false;
 
 // --- Mode transition with fade -------------------------------------------
 // The canvas has `transition: opacity 0.15s` in CSS. This helper fades out,
@@ -926,6 +939,69 @@ function scheduleFootstep(): void {
 
 function onMove(): void {
   if (state.mode !== "dungeon") return;
+  // Safe-zone pity preservation: if the player is in a safe zone, do NOT
+  // increment stepsSinceEncounter. Pity pauses while inside and resumes
+  // from its pre-hub value when leaving.
+  if (isSafeZoneAt(state.floor, state.player.x, state.player.y)) {
+    // Still process tile features and buff ticks, but skip encounter pity.
+    const expiry = tickBuffs(state);
+    const steppedOn = {
+      tile: state.floor.grid[state.player.y]?.[state.player.x]?.tile ?? null,
+      x: state.player.x,
+      y: state.player.y,
+      floorId: state.floor.id,
+    };
+    const result = handleTileFeature(state);
+    if (result) {
+      recordDebugEvent("feature", {
+        ...steppedOn,
+        message: result.message,
+        looted: result.looted ?? false,
+        changedFloor: result.changedFloor ?? false,
+        npcId: result.npcId ?? null,
+      });
+      if (result.looted) audio.playDungeonSfx("chestOpen");
+      if (!state.pendingTrap) {
+        setMessage([...expiry, result.message].join(" "));
+      }
+      if (result.changedFloor) {
+        markExplored();
+        resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+        return;
+      }
+      if (result.npcId) {
+        openNPCPanel(result.npcId);
+        return;
+      }
+      if (result.pendingChuteDrop) {
+        const drop = result.pendingChuteDrop;
+        openDungeonDialog({
+          lines: [
+            "A steep sluice disappears into darkness. There may be no way back up.",
+          ],
+          choices: [
+            { label: "Descend", value: "descend" },
+            { label: "Step away", value: "cancel" },
+          ],
+          onSelect: (value) => {
+            if (value === "descend") {
+              const dropResult = confirmChuteDrop(state, drop);
+              if (dropResult.changedFloor) {
+                markExplored();
+                resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+              }
+              setMessage(dropResult.message);
+            }
+          },
+        });
+        return;
+      }
+    } else if (expiry.length > 0) {
+      setMessage(expiry.join(" "));
+    }
+    // Skip maybeTriggerEncounter — safe zones suppress all random encounters.
+    return;
+  }
   state.stepsSinceEncounter++;
 
   // Tick persistent spell buffs (light/levitation) BEFORE processing the
@@ -970,6 +1046,31 @@ function onMove(): void {
       openNPCPanel(result.npcId);
       return;
     }
+    if (result.pendingChuteDrop) {
+      // Stepped onto a chute that requires confirmation — show a
+      // point-of-no-return dialog instead of dropping immediately.
+      const drop = result.pendingChuteDrop;
+      openDungeonDialog({
+        lines: [
+          "A steep sluice disappears into darkness. There may be no way back up.",
+        ],
+        choices: [
+          { label: "Descend", value: "descend" },
+          { label: "Step away", value: "cancel" },
+        ],
+        onSelect: (value) => {
+          if (value === "descend") {
+            const dropResult = confirmChuteDrop(state, drop);
+            if (dropResult.changedFloor) {
+              markExplored();
+              resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+            }
+            setMessage(dropResult.message);
+          }
+        },
+      });
+      return;
+    }
   } else if (expiry.length > 0) {
     setMessage(expiry.join(" "));
   }
@@ -999,40 +1100,142 @@ function onMove(): void {
   maybeTriggerEncounter();
 }
 
+/**
+ * Execute a traversal result from resolveTraversal(). Handles ordinary
+ * steps, blocked moves, raft-route triggers, and barred-gate interactions.
+ */
+function handleTraversalResult(result: TraversalResult, dir: Direction): void {
+  switch (result.kind) {
+    case "step": {
+      state.player.x = result.x;
+      state.player.y = result.y;
+      markExplored();
+      onMove();
+      scheduleFootstep();
+      break;
+    }
+    case "blocked": {
+      audio.wallBump();
+      if (result.message) {
+        // Show blocking dialog for raft-channel messages.
+        openDungeonDialog({
+          lines: [result.message],
+          cancelable: true,
+        });
+      }
+      break;
+    }
+    case "raft": {
+      // Find the route and start the animation.
+      const route = state.floor.raftRoutes?.find((r) => r.id === result.routeId);
+      if (route) {
+        startRaftAnimation(route, result.reverse);
+      }
+      break;
+    }
+    case "barred-gate": {
+      if (result.canOpen) {
+        // Open the gate from this side.
+        openBarredGate(state, dir);
+        audio.doorOpen();
+        setMessage("You lift the bar and push the gate open.");
+        // Now step through.
+        const stepResult = resolveTraversal(state, dir);
+        if (stepResult.kind === "step") {
+          state.player.x = stepResult.x;
+          state.player.y = stepResult.y;
+          markExplored();
+          onMove();
+          scheduleFootstep();
+        }
+      } else {
+        audio.wallBump();
+        openDungeonDialog({
+          lines: [result.message ?? "A barred gate blocks the way."],
+          cancelable: true,
+        });
+      }
+      break;
+    }
+  }
+}
+
+/** Start a raft route animation. */
+function startRaftAnimation(route: NonNullable<FloorDef["raftRoutes"]>[number], reverse: boolean): void {
+  // Show boarding message as a blocking dialog, then start animation.
+  openDungeonDialog({
+    lines: ["You step onto the raft. It carries you across the water..."],
+    onClose: () => {
+      // Start the animation after the boarding message is dismissed.
+      raftAnimation = new RaftAnimationController({
+        state,
+        route,
+        reverse,
+        onComplete: () => {
+          raftAnimation = null;
+          markExplored();
+          setMessage("The raft nudges against the far dock. You step off.");
+        },
+        onInterrupt: () => {
+          raftAnimation = null;
+          setMessage("The crossing was interrupted. You return to a dock.");
+        },
+      });
+      raftAnimation.start();
+    },
+  });
+}
+
+/** Open a blocking dungeon dialog. */
+function openDungeonDialog(opts: {
+  lines: string[];
+  choices?: { label: string; value: string }[];
+  title?: string;
+  onSelect?: (value: string) => void;
+  onClose?: () => void;
+  cancelable?: boolean;
+}): void {
+  dungeonDialog = new DungeonDialogController({
+    state: state as { mode: string },
+    lines: opts.lines,
+    choices: opts.choices,
+    title: opts.title,
+    onSelect: opts.onSelect,
+    onClose: () => {
+      dungeonDialog = null;
+      // Swallow the closing keypress so it doesn't also move the player.
+      suppressDungeonMovementUntilKeyup = true;
+      opts.onClose?.();
+    },
+    cancelable: opts.cancelable,
+  });
+  justOpenedDungeonDialog = true;
+  setTimeout(() => { justOpenedDungeonDialog = false; }, 0);
+  dungeonDialog.open();
+}
+
 const dungeonHandlers: InputHandlers = {
   onForward: () => {
     if (combatTransitionActive) return;
+    if (suppressDungeonMovementUntilKeyup) return;
+    if (isRaftAnimating(raftAnimation)) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       clearMessageOnPlayerAction();
-      const before = { x: state.player.x, y: state.player.y };
-      moveForward(state);
-      if (state.player.x !== before.x || state.player.y !== before.y) {
-        markExplored();
-        onMove();
-        scheduleFootstep();
-      } else {
-        // Walked into a wall — give audible feedback instead of a silent
-        // no-op (the player would otherwise get zero indication their
-        // input was rejected).
-        audio.wallBump();
-      }
+      const result = resolveTraversal(state, state.player.facing as Direction);
+      handleTraversalResult(result, state.player.facing as Direction);
     }
   },
   onBackward: () => {
     if (combatTransitionActive) return;
+    if (suppressDungeonMovementUntilKeyup) return;
+    if (isRaftAnimating(raftAnimation)) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       clearMessageOnPlayerAction();
-      const before = { x: state.player.x, y: state.player.y };
-      moveBackward(state);
-      if (state.player.x !== before.x || state.player.y !== before.y) {
-        markExplored();
-        onMove();
-        scheduleFootstep();
-      } else {
-        audio.wallBump();
-      }
+      const behindDir = ((state.player.facing + 2) % 4) as Direction;
+      const result = resolveTraversal(state, behindDir);
+      handleTraversalResult(result, behindDir);
     }
   },
   onTurnLeft: () => {
@@ -1137,9 +1340,33 @@ const dungeonHandlers: InputHandlers = {
 };
 
 bindInput(window, dungeonHandlers, {
-  shouldHandle: () => state.mode === "dungeon" && !state.pendingTrap,
+  shouldHandle: () =>
+    state.mode === "dungeon" && !state.pendingTrap && !isRaftAnimating(raftAnimation),
 });
 bindMapOverlayButton(dungeonHandlers.onToggleMapOverlay);
+
+// --- Dungeon dialog mode --------------------------------------------------
+// Active while state.mode === "dialog" (blocking dungeon dialogs: raft
+// warnings, boarding messages, gate prompts, chute warnings). All dungeon
+// movement/turning/encounters are suppressed by the shouldHandle guard
+// above (mode !== "dungeon"). These keys drive the dialog controller.
+
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "dialog") return;
+  if (!dungeonDialog) return;
+  if (justOpenedDungeonDialog) {
+    e.preventDefault();
+    return;
+  }
+  dungeonDialog.handleKey(e.key);
+  e.preventDefault();
+});
+
+window.addEventListener("keyup", () => {
+  if (suppressDungeonMovementUntilKeyup) {
+    suppressDungeonMovementUntilKeyup = false;
+  }
+});
 
 // --- Trapped chest prompt --------------------------------------------------
 // Active while state.pendingTrap is set (the party is standing on a trapped,
@@ -2088,7 +2315,13 @@ function loop() {
     prevMode = state.mode;
   }
 
-  if (state.mode === "dungeon") {
+  // Update raft animation if active. The animation runs in "dialog" mode
+  // (input locked), so this update happens regardless of dungeon mode.
+  if (raftAnimation && raftAnimation.isActive()) {
+    raftAnimation.update();
+  }
+
+  if (state.mode === "dungeon" || (state.mode === "dialog" && raftAnimation)) {
     render(ctx, state);
     const floorLabel = `F${state.floor.id}`;
     renderPartyStrip(

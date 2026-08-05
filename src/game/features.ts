@@ -44,6 +44,10 @@ export interface FeatureResult {
   looted?: boolean;
   /** Set when the party stepped onto a living NPC — main.ts opens the panel. */
   npcId?: string;
+  /** Set when the party stepped onto a chute that requires confirmation.
+   *  main.ts shows a point-of-no-return dialog; if the player confirms,
+   *  it calls confirmChuteDrop() to execute the descent. */
+  pendingChuteDrop?: { toFloorId: number; toX: number; toY: number };
 }
 
 /**
@@ -219,9 +223,43 @@ function handleChute(state: GameState): FeatureResult {
     return { message: "The chute is blocked. You can't go down here.", changedFloor: false, consumed: false };
   }
 
+  // If this chute requires confirmation, return a pending drop instead of
+  // executing immediately. main.ts shows a point-of-no-return dialog.
+  if (drop.confirm) {
+    return {
+      message: "A steep sluice disappears into darkness. There may be no way back up.",
+      changedFloor: false,
+      consumed: false,
+      pendingChuteDrop: { toFloorId: drop.toFloorId, toX: drop.toX, toY: drop.toY },
+    };
+  }
+
   transitionToFloor(state, targetFloor, drop.toX, drop.toY);
   return {
     message: `You slide down the chute to ${targetFloor.name} (Floor ${targetFloor.id}).`,
+    changedFloor: true,
+    consumed: false,
+  };
+}
+
+/**
+ * Execute a confirmed chute drop. Called by main.ts after the player
+ * confirms the point-of-no-return dialog for a `confirm: true` chute.
+ */
+export function confirmChuteDrop(
+  state: GameState,
+  drop: { toFloorId: number; toX: number; toY: number }
+): FeatureResult {
+  const targetFloor = findFloor(drop.toFloorId);
+  if (!targetFloor) {
+    return { message: "The chute is blocked. You can't go down here.", changedFloor: false, consumed: false };
+  }
+  transitionToFloor(state, targetFloor, drop.toX, drop.toY);
+  return {
+    message:
+      drop.toFloorId !== state.floor.id
+        ? `You slide down the chute to ${targetFloor.name} (Floor ${targetFloor.id}).`
+        : "You slide down the chute to a lower passage.",
     changedFloor: true,
     consumed: false,
   };
@@ -648,6 +686,13 @@ function applyEvent(state: GameState, event: EventDef): FeatureResult {
       const item = ITEMS_BY_ID[itemId];
       if (item) {
         state.inventory.push({ itemId, identified: true });
+      }
+      return { message: event.message, ...noEvent };
+    }
+    case "keyReward": {
+      const itemId = event.itemId ?? "";
+      if (itemId && !state.keyItems.includes(itemId)) {
+        state.keyItems.push(itemId);
       }
       return { message: event.message, ...noEvent };
     }

@@ -103,6 +103,8 @@ function makeState(npc: NPCDef = makeNPC()): GameState {
     eventsTriggered: {},
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    keyItems: [],
+    floorRevisions: {},
     lastDungeon: null,
   };
 }
