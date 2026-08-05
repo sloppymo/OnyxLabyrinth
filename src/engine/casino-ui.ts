@@ -64,7 +64,7 @@ const KNUCKLE_LABELS: Record<KnucklebonesBet, string> = {
   exact: "Exact total · up to 30x",
 };
 
-const EXACT_TOTALS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const EXACT_TOTALS = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
 
 const EXACT_PAYOUTS: Record<number, number> = {
   2: 30, 3: 15, 4: 10, 5: 8, 6: 6, 7: 0, 8: 6, 9: 8, 10: 10, 11: 15, 12: 30,
@@ -83,6 +83,7 @@ type Phase =
   | "knuckle-exact"
   | "knuckle-wager"
   | "knuckle-roll"
+  | "knuckle-settled"
   | "black-bet"
   | "black-play"
   | "black-settled"
@@ -112,7 +113,7 @@ export class CasinoController {
   private monteSpeed = 350;
   private blackDrawState: BlackDrawState | null = null;
   private pendingAction = false;
-  private activeTimeouts: number[] = [];
+  private activeTimeouts: ReturnType<typeof setTimeout>[] = [];
   private closing = false;
 
   constructor(opts: CasinoControllerOptions) {
@@ -129,13 +130,13 @@ export class CasinoController {
 
   private clearTimeouts(): void {
     for (const id of this.activeTimeouts) {
-      window.clearTimeout(id);
+      clearTimeout(id);
     }
     this.activeTimeouts = [];
   }
 
-  private queueTimeout(fn: () => void, ms: number): number {
-    const id = window.setTimeout(() => {
+  private queueTimeout(fn: () => void, ms: number): ReturnType<typeof setTimeout> {
+    const id = setTimeout(() => {
       this.activeTimeouts = this.activeTimeouts.filter((x) => x !== id);
       fn();
     }, ms);
@@ -278,7 +279,7 @@ export class CasinoController {
       if (this.selectedKnuckle === "exact") {
         this.phase = "knuckle-exact";
         this.setMenuList(EXACT_TOTALS.map((t) => ({ key: String(t), label: `Call ${t} · ${EXACT_PAYOUTS[t]}x` })));
-        this.index = 6; // default 7
+        this.index = 4; // default 6
       } else {
         this.phase = "knuckle-wager";
         this.setMenuList(BET_PRESETS.map((b) => ({ key: String(b), label: `${b} gold` })));
@@ -307,6 +308,11 @@ export class CasinoController {
     }
 
     if (this.phase === "knuckle-roll") {
+      this.settleKnuckleAndShow();
+      return;
+    }
+
+    if (this.phase === "knuckle-settled") {
       this.phase = "knuckle-bet";
       this.setMenuList(KNUCKLEBONES_BETS.map((b) => ({ key: b, label: KNUCKLE_LABELS[b] })));
       this.index = 0;
@@ -367,7 +373,6 @@ export class CasinoController {
 
   private back(): void {
     this.flash = "";
-    this.clearTimeouts();
     switch (this.phase) {
       case "root":
         this.close("You step away from the table.");
@@ -384,7 +389,7 @@ export class CasinoController {
       case "monte-settled":
       case "knuckle-bet":
       case "knuckle-wager":
-      case "knuckle-roll":
+      case "knuckle-settled":
       case "black-bet":
       case "black-settled":
       case "prize":
@@ -494,6 +499,20 @@ export class CasinoController {
     this.setMenuList([{ key: "ok", label: "Accept" }]);
     this.index = 0;
     this.dialogue = "The bones are cast.";
+    this.render();
+  }
+
+  private settleKnuckleAndShow(): void {
+    const pending = this.state.casino.pendingRound;
+    const out = pending?.committedOutcome as { kind: "knucklebones"; bone1: number; bone2: number } | undefined;
+    const total = out ? out.bone1 + out.bone2 : 0;
+    const result = settleCasinoRound(this.state);
+    autoSave(this.state);
+    this.flash = result.message;
+    this.dialogue = `Rolled ${out?.bone1 ?? 0} + ${out?.bone2 ?? 0} = ${total}. Payout: ${result.payout} gold. Chits: +${result.chits}.`;
+    this.phase = "knuckle-settled";
+    this.setMenuList([{ key: "ok", label: "Accept" }]);
+    this.index = 0;
     this.render();
   }
 
@@ -688,17 +707,24 @@ export class CasinoController {
       case "knuckle-bet":
       case "knuckle-exact":
       case "knuckle-wager":
-      case "knuckle-roll":
       case "black-bet":
       case "black-settled":
       case "prize":
       case "prize-confirm":
         this.renderMenu(lines);
         break;
+      case "knuckle-roll":
+      case "knuckle-settled":
+        this.renderKnuckleRoll(lines);
+        this.renderMenu(lines);
+        break;
       case "monte-reveal":
       case "monte-shuffle":
+        this.renderMonte(lines);
+        break;
       case "monte-reveal-result":
         this.renderMonte(lines);
+        this.renderMenu(lines);
         break;
       case "black-play":
         this.renderBlackDraw(lines);
@@ -776,6 +802,13 @@ export class CasinoController {
   private updateMonteMessage(): void {
     const el = this.panel.querySelector<HTMLDivElement>(".monte-message");
     if (el) el.textContent = `Swap ${this.monteStep}`;
+  }
+
+  private renderKnuckleRoll(lines: string[]): void {
+    const pending = this.state.casino.pendingRound;
+    if (!pending || pending.gameId !== "knucklebones") return;
+    const out = pending.committedOutcome as { kind: "knucklebones"; bone1: number; bone2: number };
+    lines.push(`<div class="camp-party"><div class="camp-char"><span class="cc-name">${out.bone1} · ${out.bone2} (total ${out.bone1 + out.bone2})</span></div></div>`);
   }
 
   private renderBlackDraw(lines: string[]): void {

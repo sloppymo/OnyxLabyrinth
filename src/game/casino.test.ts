@@ -16,6 +16,8 @@ import {
   beginCasinoRound,
   settleCasinoRound,
   resumeCasinoRound,
+  BLACK_VALUES,
+  type CardId,
   MONTE_TIERS,
   monteTierForBet,
   availableMonteTiers,
@@ -148,9 +150,48 @@ describe("black draw", () => {
 
   it("payout ladder is correct for totals 2-13", () => {
     expect(blackDrawPayoutForTotal(2)).toBe(0);
-    expect(blackDrawPayoutForTotal(7)).toBe(2);
-    expect(blackDrawPayoutForTotal(13)).toBe(10);
+    expect(blackDrawPayoutForTotal(7)).toBe(0.7);
+    expect(blackDrawPayoutForTotal(13)).toBe(3.7);
     expect(blackDrawPayoutForTotal(14)).toBe(0);
+  });
+
+  it("always-stand expected return is within 90-96%", () => {
+    const ids = Object.keys(BLACK_VALUES) as CardId[];
+    function* perms<T>(arr: T[]): Generator<T[]> {
+      if (arr.length <= 1) {
+        yield arr;
+        return;
+      }
+      for (let i = 0; i < arr.length; i++) {
+        const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
+        for (const p of perms(rest)) {
+          yield [arr[i], ...p];
+        }
+      }
+    }
+    let sum = 0;
+    let n = 0;
+    const target = 13;
+    const dealerStop = target - 3;
+    for (const deck of perms(ids)) {
+      const playerTotal = BLACK_VALUES[deck[0]] + BLACK_VALUES[deck[1]];
+      let dealerTotal = 0;
+      let i = 2;
+      while (dealerTotal < dealerStop && i < 8) {
+        dealerTotal += BLACK_VALUES[deck[i]];
+        i++;
+      }
+      n++;
+      if (playerTotal > target) continue;
+      const win = playerTotal > dealerTotal || dealerTotal > target;
+      if (win) sum += blackDrawPayoutForTotal(playerTotal);
+    }
+    const ev = sum / n;
+    if (ev < 0.9 || ev > 0.96) {
+      console.log(`Black Draw always-stand EV: ${ev.toFixed(4)}`);
+    }
+    expect(ev).toBeGreaterThanOrEqual(0.9);
+    expect(ev).toBeLessThanOrEqual(0.96);
   });
 
   it("total over 13 loses", () => {
@@ -167,7 +208,7 @@ describe("black draw", () => {
     state.dealerTotal = 5;
     const r = settleBlackDraw(state);
     expect(r.win).toBe(true);
-    expect(r.multiplier).toBe(10);
+    expect(r.multiplier).toBe(3.7);
   });
 });
 

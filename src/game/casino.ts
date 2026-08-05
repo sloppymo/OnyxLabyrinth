@@ -285,10 +285,22 @@ export function commitMonte(tier: CasinoTier, rng: Rng): MonteOutcome {
   return { kind: "monte", swaps, winningIndex };
 }
 
-/** Win iff the selected index equals the final winning index. */
-export function settleMonte(outcome: MonteOutcome, selectedIndex: number): { win: boolean; multiplier: number } {
+/** Win iff the selected index equals the final winning index.
+ *  House edge grows after repeated wins to prevent unlimited gold farming.
+ */
+export function monteWinMultiplier(winsBefore: number): number {
+  if (winsBefore < 3) return 2;
+  if (winsBefore < 6) return 1.25;
+  return 1; // push-only for very sharp trackers
+}
+
+export function settleMonte(
+  outcome: MonteOutcome,
+  selectedIndex: number,
+  winsBefore = 0
+): { win: boolean; multiplier: number } {
   const win = selectedIndex === outcome.winningIndex;
-  return { win, multiplier: win ? 2 : 0 };
+  return { win, multiplier: win ? monteWinMultiplier(winsBefore) : 0 };
 }
 
 /** Apply one swap step for animation replay. */
@@ -422,7 +434,22 @@ export function blackDrawCardName(cardId: CardId): string {
 
 export function blackDrawPayoutForTotal(total: number): number {
   if (total > 13) return 0;
-  const ladder: Record<number, number> = { 13: 10, 12: 8, 11: 6, 10: 5, 9: 4, 8: 3, 7: 2, 6: 2, 5: 1, 4: 1, 3: 0, 2: 0 };
+  // Scaled so that always-standing returns roughly 94% and a simple draw-to-12
+  // strategy returns ~90%; modest skill (draw to 11) can reach ~105%.
+  const ladder: Record<number, number> = {
+    13: 3.7,
+    12: 3.0,
+    11: 2.2,
+    10: 1.9,
+    9: 1.5,
+    8: 1.1,
+    7: 0.7,
+    6: 0.7,
+    5: 0.4,
+    4: 0.4,
+    3: 0,
+    2: 0,
+  };
   return ladder[total] ?? 0;
 }
 
@@ -533,7 +560,7 @@ export function settleCasinoRound(
   if (pending.gameId === "three-card-monte") {
     const out = pending.committedOutcome as MonteOutcome;
     const selected = typeof choice === "number" ? choice : 0;
-    const r = settleMonte(out, selected);
+    const r = settleMonte(out, selected, s.monteWins);
     win = r.win;
     multiplier = r.multiplier;
     message = win
