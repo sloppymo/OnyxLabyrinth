@@ -2,23 +2,19 @@
  * Casino engine — pure, deterministic gambling logic for The Crooked Crown.
  *
  * All gameplay outcomes use the global gameplay RNG (getGameplayRng).
- * Cosmetic shuffle variants use a separate cosmetic RNG so that changing
- * animation speed/seed never changes who wins.
  *
- * Save/load: GameState.casino is a stable CasinoState. Pending rounds are
- * committed as plain objects; on load the exact same result resolves without
- * reroll.
+ * Save-safe by design:
+ *  - A round is committed as a plain object before any reveal.
+ *  - The committed outcome is never rerolled.
+ *  - Live mutable state (Black Draw hand, Knucklebones selection) is stored on
+ *    the pending round and serialized/deserialized as-is.
  */
 
 import { getGameplayRng, type Rng } from "./rng";
 
 export type CasinoGameId = "three-card-monte" | "knucklebones" | "black-draw";
 
-export type CasinoRoundPhase =
-  | "wagered"
-  | "committed"
-  | "revealing"
-  | "settled";
+export type CasinoRoundPhase = "wagered" | "committed" | "revealing" | "settled";
 
 export interface MonteOutcome {
   kind: "monte";
@@ -32,12 +28,34 @@ export interface KnucklebonesOutcome {
   bone2: number;
 }
 
+export type CardId =
+  | "rat"
+  | "torch"
+  | "sword"
+  | "crown"
+  | "wound"
+  | "void"
+  | "fool"
+  | "dragon";
+
+export const BLACK_VALUES: Record<CardId, number> = {
+  rat: 2,
+  torch: 3,
+  sword: 4,
+  crown: 5,
+  wound: 6,
+  void: 7,
+  fool: 8,
+  dragon: 9,
+};
+
 export interface BlackDrawOutcome {
   kind: "black-draw";
-  deck: string[];
-  playerHand: number[];
-  dealerHand: number[];
-  bustIndex: number;
+  deck: CardId[]; // full shuffled deck
+  playerInitialCards: CardId[];
+  dealerCards: CardId[];
+  remainingPlayerDraws: CardId[];
+  target: number;
 }
 
 export type CasinoCommittedOutcome =
@@ -45,12 +63,33 @@ export type CasinoCommittedOutcome =
   | KnucklebonesOutcome
   | BlackDrawOutcome;
 
+export type KnucklebonesSelection =
+  | { kind: "low" }
+  | { kind: "high" }
+  | { kind: "seven" }
+  | { kind: "doubles" }
+  | { kind: "exact"; total: number };
+
+export interface BlackDrawState {
+  deck: CardId[]; // remaining draws for the player
+  playerHand: number[];
+  playerTotal: number;
+  dealerHand: number[];
+  dealerTotal: number;
+  nextIndex: number;
+  payoutSoFar: number;
+  hasStood: boolean;
+  target: number;
+}
+
 export interface PendingCasinoRound {
   roundId: string;
   gameId: CasinoGameId;
   wager: number;
   committedOutcome: CasinoCommittedOutcome;
   phase: CasinoRoundPhase;
+  knuckleSelection?: KnucklebonesSelection;
+  blackDrawState?: BlackDrawState;
 }
 
 export interface CasinoStats {
@@ -102,17 +141,18 @@ export function createCasinoState(): CasinoState {
   };
 }
 
+function clampNonNeg(n: unknown, def: number): number {
+  return typeof n === "number" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : def;
+}
+
 /** Normalize a partial or older casino payload. */
 export function normalizeCasinoState(raw?: unknown): CasinoState {
   const base = createCasinoState();
   if (!raw || typeof raw !== "object") return base;
   const r = raw as Record<string, unknown>;
 
-  const clamp = (n: unknown, def: number) =>
-    typeof n === "number" && Number.isFinite(n) && n >= 0 ? Math.floor(n) : def;
-
-  base.prizeChits = clamp(r.prizeChits, 0);
-  base.reputation = clamp(r.reputation, 0);
+  base.prizeChits = clampNonNeg(r.prizeChits, 0);
+  base.reputation = clampNonNeg(r.reputation, 0);
   base.unlockedGameTiers = Array.isArray(r.unlockedGameTiers)
     ? r.unlockedGameTiers.filter((x): x is string => typeof x === "string")
     : base.unlockedGameTiers;
@@ -126,28 +166,70 @@ export function normalizeCasinoState(raw?: unknown): CasinoState {
   const rawStats = r.stats as Record<string, unknown> | undefined;
   if (rawStats) {
     const s = base.stats;
-    s.gamesPlayed = clamp(rawStats.gamesPlayed, 0);
-    s.gamesWon = clamp(rawStats.gamesWon, 0);
-    s.goldWagered = clamp(rawStats.goldWagered, 0);
-    s.goldPaidOut = clamp(rawStats.goldPaidOut, 0);
-    s.largestWin = clamp(rawStats.largestWin, 0);
-    s.largestLoss = clamp(rawStats.largestLoss, 0);
-    s.currentWinStreak = clamp(rawStats.currentWinStreak, 0);
-    s.bestWinStreak = clamp(rawStats.bestWinStreak, 0);
-    s.monteWins = clamp(rawStats.monteWins, 0);
-    s.knucklebonesWins = clamp(rawStats.knucklebonesWins, 0);
-    s.blackDrawWins = clamp(rawStats.blackDrawWins, 0);
+    s.gamesPlayed = clampNonNeg(rawStats.gamesPlayed, 0);
+    s.gamesWon = clampNonNeg(rawStats.gamesWon, 0);
+    s.goldWagered = clampNonNeg(rawStats.goldWagered, 0);
+    s.goldPaidOut = clampNonNeg(rawStats.goldPaidOut, 0);
+    s.largestWin = clampNonNeg(rawStats.largestWin, 0);
+    s.largestLoss = clampNonNeg(rawStats.largestLoss, 0);
+    s.currentWinStreak = clampNonNeg(rawStats.currentWinStreak, 0);
+    s.bestWinStreak = clampNonNeg(rawStats.bestWinStreak, 0);
+    s.monteWins = clampNonNeg(rawStats.monteWins, 0);
+    s.knucklebonesWins = clampNonNeg(rawStats.knucklebonesWins, 0);
+    s.blackDrawWins = clampNonNeg(rawStats.blackDrawWins, 0);
   }
 
   const rawPending = r.pendingRound as Record<string, unknown> | undefined;
   if (rawPending && typeof rawPending.gameId === "string" && typeof rawPending.wager === "number") {
-    base.pendingRound = {
+    const gameId = rawPending.gameId as CasinoGameId;
+    const pending: PendingCasinoRound = {
       roundId: String(rawPending.roundId ?? ""),
-      gameId: rawPending.gameId as CasinoGameId,
-      wager: clamp(rawPending.wager, 0),
+      gameId,
+      wager: clampNonNeg(rawPending.wager, 0),
       committedOutcome: rawPending.committedOutcome as CasinoCommittedOutcome,
       phase: (String(rawPending.phase ?? "committed") as CasinoRoundPhase),
     };
+
+    // Reject silently malformed pending rounds that cannot be safely resumed.
+    let valid = true;
+    if (gameId === "three-card-monte") {
+      const out = pending.committedOutcome as Partial<MonteOutcome>;
+      if (out.kind !== "monte" || !Array.isArray(out.swaps) || typeof out.winningIndex !== "number") {
+        valid = false;
+      }
+    } else if (gameId === "knucklebones") {
+      const sel = rawPending.knuckleSelection as Record<string, unknown> | undefined;
+      if (!sel || typeof sel.kind !== "string" || !["low", "high", "seven", "doubles", "exact"].includes(sel.kind)) {
+        valid = false;
+      } else if (sel.kind === "exact" && typeof sel.total !== "number") {
+        valid = false;
+      } else {
+        pending.knuckleSelection = sel as KnucklebonesSelection;
+      }
+    } else if (gameId === "black-draw") {
+      const out = pending.committedOutcome as Partial<BlackDrawOutcome>;
+      const bds = rawPending.blackDrawState as Record<string, unknown> | undefined;
+      if (
+        out.kind !== "black-draw" ||
+        !Array.isArray(out.playerInitialCards) ||
+        !Array.isArray(out.dealerCards) ||
+        !Array.isArray(out.remainingPlayerDraws) ||
+        typeof out.target !== "number" ||
+        !bds ||
+        !Array.isArray(bds.playerHand) ||
+        !Array.isArray(bds.deck)
+      ) {
+        valid = false;
+      } else {
+        pending.blackDrawState = bds as unknown as BlackDrawState;
+      }
+    } else {
+      valid = false;
+    }
+
+    if (valid) {
+      base.pendingRound = pending;
+    }
   }
 
   return base;
@@ -168,6 +250,7 @@ export const MONTE_TIERS: CasinoTier[] = [
   { id: "challenge", name: "Dealer's Challenge", minBet: 100, maxBet: 500, description: "8 swaps, house rules. The crown is on the line." },
 ];
 
+/** Return the highest unlocked tier whose minBet the wager meets. */
 export function monteTierForBet(bet: number, tiers: string[]): CasinoTier {
   for (let i = MONTE_TIERS.length - 1; i >= 0; i--) {
     const t = MONTE_TIERS[i];
@@ -205,7 +288,7 @@ export function commitMonte(tier: CasinoTier, rng: Rng): MonteOutcome {
 /** Win iff the selected index equals the final winning index. */
 export function settleMonte(outcome: MonteOutcome, selectedIndex: number): { win: boolean; multiplier: number } {
   const win = selectedIndex === outcome.winningIndex;
-  return { win, multiplier: win ? 3 : 0 };
+  return { win, multiplier: win ? 2 : 0 };
 }
 
 /** Apply one swap step for animation replay. */
@@ -217,6 +300,20 @@ export function applySwapStep(position: number, [a, b]: [number, number]): numbe
 
 export const KNUCKLEBONES_BETS = ["low", "high", "seven", "doubles", "exact"] as const;
 export type KnucklebonesBet = (typeof KNUCKLEBONES_BETS)[number];
+
+export const EXACT_PAYOUTS: Record<number, number> = {
+  2: 30,
+  3: 15,
+  4: 10,
+  5: 8,
+  6: 6,
+  7: 0,
+  8: 6,
+  9: 8,
+  10: 10,
+  11: 15,
+  12: 30,
+};
 
 export function commitKnucklebones(rng: Rng): KnucklebonesOutcome {
   return { kind: "knucklebones", bone1: 1 + Math.floor(rng() * 6), bone2: 1 + Math.floor(rng() * 6) };
@@ -230,9 +327,9 @@ export function isDouble(o: KnucklebonesOutcome): boolean {
   return o.bone1 === o.bone2;
 }
 
-export function knucklebonesPayout(o: KnucklebonesOutcome, bet: KnucklebonesBet): number {
+export function knucklebonesPayout(o: KnucklebonesOutcome, selection: KnucklebonesSelection): number {
   const total = knucklebonesTotal(o);
-  switch (bet) {
+  switch (selection.kind) {
     case "low":
       return total >= 2 && total <= 6 ? 2 : 0;
     case "high":
@@ -241,28 +338,32 @@ export function knucklebonesPayout(o: KnucklebonesOutcome, bet: KnucklebonesBet)
       return total === 7 ? 5 : 0;
     case "doubles":
       return isDouble(o) ? 4 : 0;
-    case "exact": {
-      // exact total: rare totals pay more
-      const exactPayouts: Record<number, number> = { 2: 30, 3: 15, 4: 10, 5: 8, 6: 6, 7: 0, 8: 6, 9: 8, 10: 10, 11: 15, 12: 30 };
-      return exactPayouts[total] ?? 0;
-    }
+    case "exact":
+      return total === selection.total ? (EXACT_PAYOUTS[total] ?? 0) : 0;
     default:
       return 0;
   }
 }
 
-export function knucklebonesChits(o: KnucklebonesOutcome): number {
-  if (isDouble(o) && o.bone1 >= 5) return 2;
-  if (o.bone1 === 1 && o.bone2 === 1) return 3;
-  if (isDouble(o)) return 1;
-  return 0;
+/** Chits are awarded only on a Doubles bet that wins. Double fives or sixes pay 2, any other double pays 1. */
+export function knucklebonesChits(o: KnucklebonesOutcome, selection: KnucklebonesSelection): number {
+  if (selection.kind !== "doubles" || !isDouble(o)) return 0;
+  return o.bone1 >= 5 ? 2 : 1;
 }
 
-const BLACK_DECK = ["rat", "torch", "sword", "crown", "wound", "void", "fool", "dragon"] as const;
-const BLACK_VALUES: Record<string, number> = { rat: 2, torch: 3, sword: 4, crown: 5, wound: 6, void: 7, fool: 8, dragon: 9 };
+export function knucklebonesSettle(
+  o: KnucklebonesOutcome,
+  selection: KnucklebonesSelection
+): { multiplier: number; chits: number; win: boolean } {
+  const multiplier = knucklebonesPayout(o, selection);
+  const chits = knucklebonesChits(o, selection);
+  return { multiplier, chits, win: multiplier > 0 };
+}
+
+const BLACK_DECK: CardId[] = ["rat", "torch", "sword", "crown", "wound", "void", "fool", "dragon"];
 
 /** Fisher-Yates shuffle using the supplied RNG. */
-function shuffleDeck(rng: Rng): string[] {
+function shuffleDeck(rng: Rng): CardId[] {
   const deck = [...BLACK_DECK];
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
@@ -271,64 +372,52 @@ function shuffleDeck(rng: Rng): string[] {
   return deck;
 }
 
-export interface BlackDrawState {
-  deck: string[];
-  playerHand: number[];
-  playerTotal: number;
-  dealerTotal: number;
-  nextIndex: number;
-  payoutSoFar: number;
-}
-
-/** Commit a Black Draw round: a full deck and the hidden dealer's target hand. */
+/** Commit a Black Draw round. Player gets two cards; dealer draws to target-3. */
 export function commitBlackDraw(rng: Rng, target = 13): BlackDrawOutcome {
   const deck = shuffleDeck(rng);
-  const playerHand: number[] = [];
-  const dealerHand: number[] = [];
-  let nextIndex = 0;
-  let playerTotal = 0;
+  const playerInitialCards: CardId[] = [deck[0], deck[1]];
+  const dealerCards: CardId[] = [];
+  let nextIndex = 2;
   let dealerTotal = 0;
 
-  // Deal two face-up to player, one to dealer
-  playerHand.push(BLACK_VALUES[deck[nextIndex++]]);
-  playerHand.push(BLACK_VALUES[deck[nextIndex++]]);
-  playerTotal = playerHand.reduce((a, b) => a + b, 0);
-
-  // Dealer draws until at or above target-3, but may overshoot
   while (dealerTotal < target - 3 && nextIndex < deck.length) {
-    dealerHand.push(BLACK_VALUES[deck[nextIndex++]]);
-    dealerTotal = dealerHand.reduce((a, b) => a + b, 0);
+    const card = deck[nextIndex++];
+    dealerCards.push(card);
+    dealerTotal += BLACK_VALUES[card];
   }
 
-  // Where the player busts if they keep drawing
-  let bustIndex = nextIndex;
-  let bustTotal = playerTotal;
-  while (bustTotal <= target && bustIndex < deck.length) {
-    bustTotal += BLACK_VALUES[deck[bustIndex++]];
-  }
+  const remainingPlayerDraws = deck.slice(nextIndex);
 
-  return { kind: "black-draw", deck, playerHand, dealerHand, bustIndex };
+  return {
+    kind: "black-draw",
+    deck,
+    playerInitialCards,
+    dealerCards,
+    remainingPlayerDraws,
+    target,
+  };
 }
 
-export function blackDrawCardName(cardId: string): string {
+export function createBlackDrawState(outcome: BlackDrawOutcome): BlackDrawState {
+  const playerHand = outcome.playerInitialCards.map((c) => BLACK_VALUES[c]);
+  const playerTotal = playerHand.reduce((a, b) => a + b, 0);
+  const dealerHand = outcome.dealerCards.map((c) => BLACK_VALUES[c]);
+  const dealerTotal = dealerHand.reduce((a, b) => a + b, 0);
+  return {
+    deck: [...outcome.remainingPlayerDraws],
+    playerHand,
+    playerTotal,
+    dealerHand,
+    dealerTotal,
+    nextIndex: 0,
+    payoutSoFar: blackDrawPayoutForTotal(playerTotal),
+    hasStood: false,
+    target: outcome.target,
+  };
+}
+
+export function blackDrawCardName(cardId: CardId): string {
   return cardId[0].toUpperCase() + cardId.slice(1);
-}
-
-/** Draw one more card; returns {state, card, bust} or {state, done, win} if stand. */
-export function blackDrawHit(state: BlackDrawState): { state: BlackDrawState; cardValue: number; bust: boolean; done: boolean } {
-  if (state.nextIndex >= state.deck.length) {
-    return { state, cardValue: 0, bust: false, done: true };
-  }
-  const cardId = state.deck[state.nextIndex];
-  const cardValue = BLACK_VALUES[cardId];
-  state.playerHand.push(cardValue);
-  state.playerTotal += cardValue;
-  state.nextIndex++;
-  state.payoutSoFar = blackDrawPayoutForTotal(state.playerTotal);
-  if (state.playerTotal > 13) {
-    return { state, cardValue, bust: true, done: true };
-  }
-  return { state, cardValue, bust: false, done: false };
 }
 
 export function blackDrawPayoutForTotal(total: number): number {
@@ -337,33 +426,38 @@ export function blackDrawPayoutForTotal(total: number): number {
   return ladder[total] ?? 0;
 }
 
-/** Stand: player total vs dealer total on target 13. Player wins or loses wager. */
-export function blackDrawStand(outcome: BlackDrawOutcome, playerTotal: number): { win: boolean; multiplier: number } {
-  const dealerTotal = outcome.dealerHand.reduce((a, b) => a + b, 0);
-  if (playerTotal > 13) return { win: false, multiplier: 0 };
-  if (playerTotal > dealerTotal || dealerTotal > 13) return { win: true, multiplier: blackDrawPayoutForTotal(playerTotal) };
-  if (playerTotal === dealerTotal) return { win: false, multiplier: 0 }; // push counts as house win for simplicity
+/** Draw one more card. Returns {cardValue, bust, done}. */
+export function blackDrawHit(state: BlackDrawState): { cardValue: number; bust: boolean; done: boolean } {
+  if (state.nextIndex >= state.deck.length) {
+    return { cardValue: 0, bust: false, done: true };
+  }
+  const cardId = state.deck[state.nextIndex];
+  const cardValue = BLACK_VALUES[cardId];
+  state.playerHand.push(cardValue);
+  state.playerTotal += cardValue;
+  state.nextIndex++;
+  state.payoutSoFar = blackDrawPayoutForTotal(state.playerTotal);
+  if (state.playerTotal > state.target) {
+    return { cardValue, bust: true, done: true };
+  }
+  if (state.nextIndex >= state.deck.length) {
+    return { cardValue, bust: false, done: true };
+  }
+  return { cardValue, bust: false, done: false };
+}
+
+/** Resolve a Black Draw hand against the dealer total. */
+export function settleBlackDraw(state: BlackDrawState): { win: boolean; multiplier: number } {
+  const playerTotal = state.playerTotal;
+  if (playerTotal > state.target) return { win: false, multiplier: 0 };
+  if (playerTotal > state.dealerTotal || state.dealerTotal > state.target) return { win: true, multiplier: blackDrawPayoutForTotal(playerTotal) };
+  if (playerTotal === state.dealerTotal) return { win: false, multiplier: 0 };
   return { win: false, multiplier: 0 };
 }
 
-/** Bet validation; returns a normalized bet or a refusal message. */
-export function validateBet(gold: number, requested: number, tier: CasinoTier): { ok: true; bet: number } | { ok: false; reason: string } {
-  if (!Number.isFinite(requested) || requested <= 0) {
-    return { ok: false, reason: "The house does not accept empty wagers." };
-  }
-  if (requested > gold) {
-    return { ok: false, reason: "You do not have enough gold for that wager." };
-  }
-  if (requested < tier.minBet) {
-    return { ok: false, reason: `The minimum wager at this table is ${tier.minBet} gold.` };
-  }
-  if (requested > tier.maxBet) {
-    return { ok: false, reason: `The maximum wager at this table is ${tier.maxBet} gold.` };
-  }
-  if (requested > gold) {
-    return { ok: false, reason: "You cannot wager gold you do not carry." };
-  }
-  return { ok: true, bet: Math.floor(requested) };
+export interface CasinoRoundConfig {
+  tier?: CasinoTier;
+  knuckleSelection?: KnucklebonesSelection;
 }
 
 export function roundId(gameId: CasinoGameId, now: number = Date.now()): string {
@@ -375,32 +469,43 @@ export function beginCasinoRound(
   state: { partyGold: number; casino: CasinoState },
   gameId: CasinoGameId,
   wager: number,
-  tier: CasinoTier
+  config: CasinoRoundConfig = {}
 ): { ok: true; round: PendingCasinoRound } | { ok: false; reason: string } {
   if (state.casino.pendingRound) {
     return { ok: false, reason: "Finish the current wager before starting another." };
   }
+  const tier = config.tier ?? MONTE_TIERS[0];
   const validation = validateBet(state.partyGold, wager, tier);
   if (!validation.ok) return { ok: false, reason: validation.reason };
   state.partyGold -= validation.bet;
 
   const rng = getGameplayRng();
   let outcome: CasinoCommittedOutcome;
-  if (gameId === "three-card-monte") {
-    outcome = commitMonte(tier, rng);
-  } else if (gameId === "knucklebones") {
-    outcome = commitKnucklebones(rng);
-  } else {
-    outcome = commitBlackDraw(rng);
-  }
-
   const pending: PendingCasinoRound = {
     roundId: roundId(gameId),
     gameId,
     wager: validation.bet,
-    committedOutcome: outcome,
+    committedOutcome: outcome!,
     phase: "committed",
   };
+
+  if (gameId === "three-card-monte") {
+    outcome = commitMonte(config.tier ?? MONTE_TIERS[0], rng);
+    pending.committedOutcome = outcome;
+  } else if (gameId === "knucklebones") {
+    if (!config.knuckleSelection) {
+      state.partyGold += validation.bet;
+      return { ok: false, reason: "Call your bet before the bones are cast." };
+    }
+    outcome = commitKnucklebones(rng);
+    pending.committedOutcome = outcome;
+    pending.knuckleSelection = config.knuckleSelection;
+  } else {
+    outcome = commitBlackDraw(rng);
+    pending.committedOutcome = outcome;
+    pending.blackDrawState = createBlackDrawState(outcome as BlackDrawOutcome);
+  }
+
   state.casino.pendingRound = pending;
   return { ok: true, round: pending };
 }
@@ -408,12 +513,11 @@ export function beginCasinoRound(
 /** Resolve a completed round. Returns payout gold and chits. */
 export function settleCasinoRound(
   state: { partyGold: number; casino: CasinoState; inventory: { itemId: string; identified: boolean }[] },
-  choice?: number | string
+  choice?: number
 ): { payout: number; chits: number; message: string } {
   const pending = state.casino.pendingRound;
   if (!pending) return { payout: 0, chits: 0, message: "No wager is pending." };
   if (pending.phase === "settled") {
-    // Idempotent; already paid
     return { payout: 0, chits: 0, message: "That wager has already been settled." };
   }
 
@@ -438,21 +542,24 @@ export function settleCasinoRound(
     if (win) s.monteWins++;
   } else if (pending.gameId === "knucklebones") {
     const out = pending.committedOutcome as KnucklebonesOutcome;
-    const bet = (typeof choice === "string" ? choice : "low") as KnucklebonesBet;
-    multiplier = knucklebonesPayout(out, bet);
-    chits = knucklebonesChits(out);
-    win = multiplier > 0;
+    const sel = pending.knuckleSelection ?? { kind: "low" };
+    const r = knucklebonesSettle(out, sel);
+    multiplier = r.multiplier;
+    chits = r.chits;
+    win = r.win;
     message = `The bones show ${out.bone1} and ${out.bone2} (total ${knucklebonesTotal(out)}).`;
     if (win) s.knucklebonesWins++;
   } else {
-    const out = pending.committedOutcome as BlackDrawOutcome;
-    const total = typeof choice === "number" ? choice : out.playerHand.reduce((a, b) => a + b, 0);
-    const r = blackDrawStand(out, total);
+    const bds = pending.blackDrawState;
+    if (!bds) {
+      return { payout: 0, chits: 0, message: "The Black Draw hand is missing." };
+    }
+    const r = settleBlackDraw(bds);
     win = r.win;
     multiplier = r.multiplier;
-    message = total > 13
-      ? `Your total is ${total}. You overdraw and lose.`
-      : `Your total is ${total}. ${win ? "You beat the house." : "The house stands."}`;
+    message = bds.playerTotal > bds.target
+      ? `Your total is ${bds.playerTotal}. You overdraw and lose.`
+      : `Your total is ${bds.playerTotal}. ${win ? "You beat the house." : "The house stands."}`;
     if (win) s.blackDrawWins++;
   }
 
@@ -473,8 +580,8 @@ export function settleCasinoRound(
   }
 
   state.casino.reputation += win ? 1 : 0;
-  state.casino.pendingRound = undefined;
   pending.phase = "settled";
+  state.casino.pendingRound = undefined;
 
   return { payout, chits, message: `${message} ${win ? `+${payout} gold` : ""}${chits ? ` and ${chits} chits` : ""}`.trim() };
 }
@@ -487,8 +594,23 @@ export function resumeCasinoRound(state: { casino: CasinoState }): { resumed: bo
     state.casino.pendingRound = undefined;
     return { resumed: false, message: "" };
   }
-  // A committed or revealing round is still mid-game. Put it back to committed
-  // so the player can re-run the reveal animation and settle manually.
   pending.phase = "committed";
   return { resumed: true, message: "The unfinished wager is still on the table." };
+}
+
+/** Validate a bet. */
+export function validateBet(gold: number, requested: number, tier: CasinoTier): { ok: true; bet: number } | { ok: false; reason: string } {
+  if (!Number.isFinite(requested) || requested <= 0) {
+    return { ok: false, reason: "The house does not accept empty wagers." };
+  }
+  if (requested > gold) {
+    return { ok: false, reason: "You do not have enough gold for that wager." };
+  }
+  if (requested < tier.minBet) {
+    return { ok: false, reason: `The minimum wager at this table is ${tier.minBet} gold.` };
+  }
+  if (requested > tier.maxBet) {
+    return { ok: false, reason: `The maximum wager at this table is ${tier.maxBet} gold.` };
+  }
+  return { ok: true, bet: Math.floor(requested) };
 }
