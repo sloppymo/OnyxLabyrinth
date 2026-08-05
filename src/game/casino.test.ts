@@ -25,7 +25,7 @@ import {
 import { setGameplayRng, resetGameplayRng, createSeededRng } from "./rng";
 
 function mockState(gold = 500) {
-  return { partyGold: gold, casino: createCasinoState(), inventory: [], dayCount: 1 };
+  return { partyGold: gold, casino: createCasinoState(), inventory: [], deepestFloorReached: 1 };
 }
 
 describe("casino state", () => {
@@ -276,5 +276,85 @@ describe("casino transactions", () => {
     beginCasinoRound(s, "knucklebones", 10, { knuckleSelection: { kind: "high" } });
     settleCasinoRound(s);
     expect(s.casino.pendingRound).toBeUndefined();
+  });
+});
+
+describe("Monte allowance", () => {
+  beforeEach(() => setGameplayRng(() => 0.5));
+  afterEach(() => resetGameplayRng());
+
+  it("pays 2x for the first three correct tracks at a milestone", () => {
+    const s = mockState(100);
+    const tier = MONTE_TIERS[0];
+    for (let i = 0; i < 3; i++) {
+      beginCasinoRound(s, "three-card-monte", 5, { tier });
+      const r = settleCasinoRound(s, 0);
+      expect(r.payout).toBe(10);
+      expect(r.chits).toBe(0);
+      expect(s.casino.montePaidWinsAtDepth).toBe(i + 1);
+      expect(s.casino.monteProfitDepth).toBe(1);
+    }
+  });
+
+  it("returns the stake and pays two chits for the fourth correct track", () => {
+    const s = mockState(100);
+    s.casino.montePaidWinsAtDepth = 3;
+    s.casino.monteProfitDepth = 1;
+    beginCasinoRound(s, "three-card-monte", 5, { tier: MONTE_TIERS[0] });
+    const r = settleCasinoRound(s, 0);
+    expect(r.payout).toBe(5);
+    expect(r.chits).toBe(2);
+    expect(r.message).toMatch(/returns your stake/);
+    expect(s.casino.montePaidWinsAtDepth).toBe(3);
+  });
+
+  it("still loses on an incorrect selection", () => {
+    const s = mockState(100);
+    beginCasinoRound(s, "three-card-monte", 5, { tier: MONTE_TIERS[0] });
+    const r = settleCasinoRound(s, 1);
+    expect(r.payout).toBe(0);
+    expect(r.chits).toBe(0);
+    expect(s.casino.montePaidWinsAtDepth).toBe(0);
+  });
+
+  it("resets the allowance only when reaching a new deepest floor", () => {
+    const s = mockState(100);
+    s.casino.montePaidWinsAtDepth = 3;
+    s.casino.monteProfitDepth = 1;
+    s.deepestFloorReached = 2;
+    beginCasinoRound(s, "three-card-monte", 5, { tier: MONTE_TIERS[0] });
+    const r = settleCasinoRound(s, 0);
+    expect(r.payout).toBe(10);
+    expect(s.casino.montePaidWinsAtDepth).toBe(1);
+    expect(s.casino.monteProfitDepth).toBe(2);
+  });
+
+  it("does not reset the allowance when dayCount changes", () => {
+    const s = mockState(100);
+    s.casino.montePaidWinsAtDepth = 3;
+    s.casino.monteProfitDepth = 1;
+    s.deepestFloorReached = 1;
+    (s as any).dayCount = 5;
+    beginCasinoRound(s, "three-card-monte", 5, { tier: MONTE_TIERS[0] });
+    const r = settleCasinoRound(s, 0);
+    expect(r.payout).toBe(5);
+    expect(r.chits).toBe(2);
+  });
+
+  it("does not reset when the player returns to an earlier floor", () => {
+    const s = mockState(100);
+    s.casino.montePaidWinsAtDepth = 3;
+    s.casino.monteProfitDepth = 2;
+    s.deepestFloorReached = 2;
+    beginCasinoRound(s, "three-card-monte", 5, { tier: MONTE_TIERS[0] });
+    const r = settleCasinoRound(s, 0);
+    expect(r.payout).toBe(5);
+    expect(r.chits).toBe(2);
+  });
+
+  it("normalizes the allowance fields from older saves", () => {
+    const normalized = normalizeCasinoState({ monteProfitDepth: 7, montePaidWinsAtDepth: 2 });
+    expect(normalized.monteProfitDepth).toBe(7);
+    expect(normalized.montePaidWinsAtDepth).toBe(2);
   });
 });

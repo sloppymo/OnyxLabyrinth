@@ -824,10 +824,10 @@ export class CasinoController {
 
   private renderRules(lines: string[]): void {
     const rules = [
-      "Three-Card Monte: watch the Crown, follow the swaps, pick the final slot. Correct = 2x.",
+      "Three-Card Monte: watch the Crown, follow the swaps, pick the final slot. The first three correct tracks at each new deepest-floor milestone pay 2x; later correct tracks at that milestone return the stake and award 2 chits.",
       "Knucklebones: two six-sided bones. Low (2-6) or High (8-12) pays 2x; Seven pays 5x; Doubles 4x; called Exact total pays up to 30x.",
       "The Black Draw: draw to 13 or less. Stand at any point; the displayed multiplier is awarded if you beat the dealer. Over 13 is a bust.",
-      "Prize Cage: chits from a winning Doubles bet can buy side-grade gear. Unique prizes are one per customer.",
+      "Prize Cage: chits from a winning Doubles bet or post-allowance Monte tracks can buy side-grade gear. Unique prizes are one per customer.",
       "No debt, no negative wagers, no wagering quest items or equipped gear.",
     ];
     lines.push(`<div class="camp-party">`);

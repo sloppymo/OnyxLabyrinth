@@ -113,8 +113,8 @@ export interface CasinoState {
   unlockedGameTiers: string[];
   uniquePrizesClaimed: string[];
   seenDialogueFlags: string[];
-  monteProfitDay: number;
-  montePaidWinsToday: number;
+  monteProfitDepth: number;
+  montePaidWinsAtDepth: number;
   stats: CasinoStats;
   pendingRound?: PendingCasinoRound;
 }
@@ -127,8 +127,8 @@ export function createCasinoState(): CasinoState {
     unlockedGameTiers: ["street"],
     uniquePrizesClaimed: [],
     seenDialogueFlags: [],
-    monteProfitDay: 0,
-    montePaidWinsToday: 0,
+    monteProfitDepth: 0,
+    montePaidWinsAtDepth: 0,
     stats: {
       gamesPlayed: 0,
       gamesWon: 0,
@@ -166,8 +166,8 @@ export function normalizeCasinoState(raw?: unknown): CasinoState {
   base.seenDialogueFlags = Array.isArray(r.seenDialogueFlags)
     ? r.seenDialogueFlags.filter((x): x is string => typeof x === "string")
     : base.seenDialogueFlags;
-  base.monteProfitDay = clampNonNeg(r.monteProfitDay, 0);
-  base.montePaidWinsToday = clampNonNeg(r.montePaidWinsToday, 0);
+  base.monteProfitDepth = clampNonNeg(r.monteProfitDepth, 0);
+  base.montePaidWinsAtDepth = clampNonNeg(r.montePaidWinsAtDepth, 0);
 
   const rawStats = r.stats as Record<string, unknown> | undefined;
   if (rawStats) {
@@ -540,7 +540,7 @@ export function beginCasinoRound(
 
 /** Resolve a completed round. Returns payout gold and chits. */
 export function settleCasinoRound(
-  state: { partyGold: number; casino: CasinoState; inventory: { itemId: string; identified: boolean }[]; dayCount: number },
+  state: { partyGold: number; casino: CasinoState; inventory: { itemId: string; identified: boolean }[]; deepestFloorReached: number },
   choice?: number
 ): { payout: number; chits: number; message: string } {
   const pending = state.casino.pendingRound;
@@ -565,17 +565,18 @@ export function settleCasinoRound(
     win = r.win;
     multiplier = r.multiplier;
     if (win) {
-      if (state.casino.monteProfitDay !== state.dayCount) {
-        state.casino.monteProfitDay = state.dayCount;
-        state.casino.montePaidWinsToday = 0;
+      if (state.deepestFloorReached > state.casino.monteProfitDepth) {
+        // Allowance resets only when the player reaches a new deepest floor.
+        state.casino.monteProfitDepth = state.deepestFloorReached;
+        state.casino.montePaidWinsAtDepth = 0;
       }
-      if (state.casino.montePaidWinsToday >= 3) {
-        // After three profitable wins this expedition, correct tracking pays chits only.
-        multiplier = 0;
+      if (state.casino.montePaidWinsAtDepth >= 3) {
+        // Correct tracking after the allowance returns the stake plus two chits.
+        multiplier = 1;
         chits = 2;
-        message = `The winning card is at position ${out.winningIndex + 1}. The house trades gold for chits.`;
+        message = `The winning card is at position ${out.winningIndex + 1}. The house returns your stake and pays two chits.`;
       } else {
-        state.casino.montePaidWinsToday++;
+        state.casino.montePaidWinsAtDepth++;
         message = `The winning card is at position ${out.winningIndex + 1}. You follow it.`;
       }
       s.monteWins++;
