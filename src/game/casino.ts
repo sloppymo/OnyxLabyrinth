@@ -113,6 +113,8 @@ export interface CasinoState {
   unlockedGameTiers: string[];
   uniquePrizesClaimed: string[];
   seenDialogueFlags: string[];
+  monteProfitDay: number;
+  montePaidWinsToday: number;
   stats: CasinoStats;
   pendingRound?: PendingCasinoRound;
 }
@@ -125,6 +127,8 @@ export function createCasinoState(): CasinoState {
     unlockedGameTiers: ["street"],
     uniquePrizesClaimed: [],
     seenDialogueFlags: [],
+    monteProfitDay: 0,
+    montePaidWinsToday: 0,
     stats: {
       gamesPlayed: 0,
       gamesWon: 0,
@@ -162,6 +166,8 @@ export function normalizeCasinoState(raw?: unknown): CasinoState {
   base.seenDialogueFlags = Array.isArray(r.seenDialogueFlags)
     ? r.seenDialogueFlags.filter((x): x is string => typeof x === "string")
     : base.seenDialogueFlags;
+  base.monteProfitDay = clampNonNeg(r.monteProfitDay, 0);
+  base.montePaidWinsToday = clampNonNeg(r.montePaidWinsToday, 0);
 
   const rawStats = r.stats as Record<string, unknown> | undefined;
   if (rawStats) {
@@ -285,22 +291,13 @@ export function commitMonte(tier: CasinoTier, rng: Rng): MonteOutcome {
   return { kind: "monte", swaps, winningIndex };
 }
 
-/** Win iff the selected index equals the final winning index.
- *  House edge grows after repeated wins to prevent unlimited gold farming.
- */
-export function monteWinMultiplier(winsBefore: number): number {
-  if (winsBefore < 3) return 2;
-  if (winsBefore < 6) return 1.25;
-  return 1; // push-only for very sharp trackers
-}
-
+/** Win iff the selected index equals the final winning index. */
 export function settleMonte(
   outcome: MonteOutcome,
-  selectedIndex: number,
-  winsBefore = 0
+  selectedIndex: number
 ): { win: boolean; multiplier: number } {
   const win = selectedIndex === outcome.winningIndex;
-  return { win, multiplier: win ? monteWinMultiplier(winsBefore) : 0 };
+  return { win, multiplier: win ? 2 : 0 };
 }
 
 /** Apply one swap step for animation replay. */
@@ -434,19 +431,19 @@ export function blackDrawCardName(cardId: CardId): string {
 
 export function blackDrawPayoutForTotal(total: number): number {
   if (total > 13) return 0;
-  // Scaled so that always-standing returns roughly 94% and a simple draw-to-12
-  // strategy returns ~90%; modest skill (draw to 11) can reach ~105%.
+  // Tuned by exhaustive deck enumeration. Always-standing gross return ~0.90;
+  // the best simple threshold (draw until 9) is just under 1.0.
   const ladder: Record<number, number> = {
-    13: 3.7,
-    12: 3.0,
-    11: 2.2,
-    10: 1.9,
-    9: 1.5,
-    8: 1.1,
-    7: 0.7,
-    6: 0.7,
-    5: 0.4,
-    4: 0.4,
+    13: 3.4,
+    12: 2.75,
+    11: 2.0,
+    10: 1.7,
+    9: 1.35,
+    8: 1.35,
+    7: 1.05,
+    6: 1.05,
+    5: 0.8,
+    4: 0.8,
     3: 0,
     2: 0,
   };
@@ -477,7 +474,11 @@ export function blackDrawHit(state: BlackDrawState): { cardValue: number; bust: 
 export function settleBlackDraw(state: BlackDrawState): { win: boolean; multiplier: number } {
   const playerTotal = state.playerTotal;
   if (playerTotal > state.target) return { win: false, multiplier: 0 };
-  if (playerTotal > state.dealerTotal || state.dealerTotal > state.target) return { win: true, multiplier: blackDrawPayoutForTotal(playerTotal) };
+  const multiplier = blackDrawPayoutForTotal(playerTotal);
+  if (playerTotal > state.dealerTotal || state.dealerTotal > state.target) {
+    // Beating the dealer is only a "win" if the payout exceeds the wager.
+    return { win: multiplier > 1, multiplier };
+  }
   if (playerTotal === state.dealerTotal) return { win: false, multiplier: 0 };
   return { win: false, multiplier: 0 };
 }
@@ -539,7 +540,7 @@ export function beginCasinoRound(
 
 /** Resolve a completed round. Returns payout gold and chits. */
 export function settleCasinoRound(
-  state: { partyGold: number; casino: CasinoState; inventory: { itemId: string; identified: boolean }[] },
+  state: { partyGold: number; casino: CasinoState; inventory: { itemId: string; identified: boolean }[]; dayCount: number },
   choice?: number
 ): { payout: number; chits: number; message: string } {
   const pending = state.casino.pendingRound;
@@ -560,13 +561,27 @@ export function settleCasinoRound(
   if (pending.gameId === "three-card-monte") {
     const out = pending.committedOutcome as MonteOutcome;
     const selected = typeof choice === "number" ? choice : 0;
-    const r = settleMonte(out, selected, s.monteWins);
+    const r = settleMonte(out, selected);
     win = r.win;
     multiplier = r.multiplier;
-    message = win
-      ? `The winning card is at position ${out.winningIndex + 1}. You follow it.`
-      : `The winning card is at position ${out.winningIndex + 1}. You lose the track.`;
-    if (win) s.monteWins++;
+    if (win) {
+      if (state.casino.monteProfitDay !== state.dayCount) {
+        state.casino.monteProfitDay = state.dayCount;
+        state.casino.montePaidWinsToday = 0;
+      }
+      if (state.casino.montePaidWinsToday >= 3) {
+        // After three profitable wins this expedition, correct tracking pays chits only.
+        multiplier = 0;
+        chits = 2;
+        message = `The winning card is at position ${out.winningIndex + 1}. The house trades gold for chits.`;
+      } else {
+        state.casino.montePaidWinsToday++;
+        message = `The winning card is at position ${out.winningIndex + 1}. You follow it.`;
+      }
+      s.monteWins++;
+    } else {
+      message = `The winning card is at position ${out.winningIndex + 1}. You lose the track.`;
+    }
   } else if (pending.gameId === "knucklebones") {
     const out = pending.committedOutcome as KnucklebonesOutcome;
     const sel = pending.knuckleSelection ?? { kind: "low" };
@@ -584,13 +599,16 @@ export function settleCasinoRound(
     const r = settleBlackDraw(bds);
     win = r.win;
     multiplier = r.multiplier;
+    const partial = bds.playerTotal <= bds.target && !win && multiplier > 0;
     message = bds.playerTotal > bds.target
       ? `Your total is ${bds.playerTotal}. You overdraw and lose.`
-      : `Your total is ${bds.playerTotal}. ${win ? "You beat the house." : "The house stands."}`;
+      : partial
+        ? `Your total is ${bds.playerTotal}. You edge the dealer and recover part of the stake.`
+        : `Your total is ${bds.playerTotal}. ${win ? "You beat the house." : "The house stands."}`;
     if (win) s.blackDrawWins++;
   }
 
-  const payout = win ? Math.floor(pending.wager * multiplier) : 0;
+  const payout = Math.floor(pending.wager * multiplier);
   state.partyGold += payout;
   state.casino.prizeChits += chits;
 

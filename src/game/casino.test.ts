@@ -25,7 +25,7 @@ import {
 import { setGameplayRng, resetGameplayRng, createSeededRng } from "./rng";
 
 function mockState(gold = 500) {
-  return { partyGold: gold, casino: createCasinoState(), inventory: [] };
+  return { partyGold: gold, casino: createCasinoState(), inventory: [], dayCount: 1 };
 }
 
 describe("casino state", () => {
@@ -150,25 +150,27 @@ describe("black draw", () => {
 
   it("payout ladder is correct for totals 2-13", () => {
     expect(blackDrawPayoutForTotal(2)).toBe(0);
-    expect(blackDrawPayoutForTotal(7)).toBe(0.7);
-    expect(blackDrawPayoutForTotal(13)).toBe(3.7);
+    expect(blackDrawPayoutForTotal(4)).toBe(0.8);
+    expect(blackDrawPayoutForTotal(7)).toBe(1.05);
+    expect(blackDrawPayoutForTotal(13)).toBe(3.4);
     expect(blackDrawPayoutForTotal(14)).toBe(0);
   });
 
-  it("always-stand expected return is within 90-96%", () => {
-    const ids = Object.keys(BLACK_VALUES) as CardId[];
-    function* perms<T>(arr: T[]): Generator<T[]> {
-      if (arr.length <= 1) {
-        yield arr;
-        return;
-      }
-      for (let i = 0; i < arr.length; i++) {
-        const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
-        for (const p of perms(rest)) {
-          yield [arr[i], ...p];
-        }
+  function* perms<T>(arr: T[]): Generator<T[]> {
+    if (arr.length <= 1) {
+      yield arr;
+      return;
+    }
+    for (let i = 0; i < arr.length; i++) {
+      const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
+      for (const p of perms(rest)) {
+        yield [arr[i], ...p];
       }
     }
+  }
+
+  function blackDrawEv(stop: number): number {
+    const ids = Object.keys(BLACK_VALUES) as CardId[];
     let sum = 0;
     let n = 0;
     const target = 13;
@@ -181,17 +183,37 @@ describe("black draw", () => {
         dealerTotal += BLACK_VALUES[deck[i]];
         i++;
       }
+      let total = playerTotal;
+      let j = i;
+      while (total < stop && j < 8) {
+        total += BLACK_VALUES[deck[j]];
+        j++;
+      }
       n++;
-      if (playerTotal > target) continue;
-      const win = playerTotal > dealerTotal || dealerTotal > target;
-      if (win) sum += blackDrawPayoutForTotal(playerTotal);
+      if (total > target) continue;
+      const win = total > dealerTotal || dealerTotal > target;
+      if (win) sum += blackDrawPayoutForTotal(total);
     }
-    const ev = sum / n;
+    return sum / n;
+  }
+
+  it("always-stand expected return is within 90-96%", () => {
+    const ev = blackDrawEv(0);
     if (ev < 0.9 || ev > 0.96) {
       console.log(`Black Draw always-stand EV: ${ev.toFixed(4)}`);
     }
     expect(ev).toBeGreaterThanOrEqual(0.9);
     expect(ev).toBeLessThanOrEqual(0.96);
+  });
+
+  it("no simple threshold strategy exceeds 1.02x", () => {
+    for (let stop = 6; stop <= 13; stop++) {
+      const ev = blackDrawEv(stop);
+      if (ev > 1.02) {
+        console.log(`Black Draw threshold ${stop} EV: ${ev.toFixed(4)}`);
+      }
+      expect(ev).toBeLessThanOrEqual(1.02);
+    }
   });
 
   it("total over 13 loses", () => {
@@ -208,7 +230,7 @@ describe("black draw", () => {
     state.dealerTotal = 5;
     const r = settleBlackDraw(state);
     expect(r.win).toBe(true);
-    expect(r.multiplier).toBe(3.7);
+    expect(r.multiplier).toBe(3.4);
   });
 });
 
