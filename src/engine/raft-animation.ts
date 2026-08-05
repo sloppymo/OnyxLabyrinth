@@ -70,10 +70,23 @@ export class RaftAnimationController {
     this.destX = dest.x;
     this.destY = dest.y;
 
-    // Facing after arrival: the toApproach direction (forward) or
-    // fromApproach direction (reverse).
-    const facingName = this.reverse ? opts.route.fromApproach : opts.route.toApproach;
-    this.destFacing = ["n", "e", "s", "w"].indexOf(facingName);
+    // Facing after arrival: computed from the last step of the path,
+    // so the party faces the direction of travel — not back toward the
+    // water. For a forward path [A, B, C, D], the last step is C→D.
+    // For a reverse path [D, C, B, A], the last step is B→A.
+    if (this.path.length >= 2) {
+      const prev = this.path[this.path.length - 2];
+      const last = this.path[this.path.length - 1];
+      const dx = last.x - prev.x;
+      const dy = last.y - prev.y;
+      if (dx > 0) this.destFacing = 1;      // East
+      else if (dx < 0) this.destFacing = 3; // West
+      else if (dy > 0) this.destFacing = 2; // South
+      else if (dy < 0) this.destFacing = 0; // North
+      else this.destFacing = 0;             // Fallback: North
+    } else {
+      this.destFacing = 0;
+    }
   }
 
   /** Start the raft animation. Locks input by setting mode to "dialog". */

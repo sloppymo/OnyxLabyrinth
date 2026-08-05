@@ -455,15 +455,13 @@
         "n": "wall",
         "e": "open",
         "s": "open",
-        "w": "open",
-        "tile": "event"
+        "w": "open"
       },
       {
         "n": "wall",
         "e": "open",
         "s": "open",
-        "w": "open",
-        "tile": "stairs_down"
+        "w": "open"
       },
       {
         "n": "wall",
@@ -3222,7 +3220,39 @@
       },
       {
         "n": "open",
-        "e": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "tile": "water"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "tile": "water"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
         "s": "wall",
         "w": "open"
       },
@@ -3230,37 +3260,8 @@
         "n": "wall",
         "e": "wall",
         "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "w": "open",
+        "tile": "stairs_down"
       },
       {
         "n": "wall",
@@ -3310,7 +3311,8 @@
         "n": "open",
         "e": "wall",
         "s": "open",
-        "w": "wall"
+        "w": "wall",
+        "tile": "event"
       },
       {
         "n": "open",
@@ -4338,26 +4340,22 @@
     {
       "x": 14,
       "y": 20,
-      "depth": 1,
-      "raftChannel": true
+      "depth": 1
     },
     {
       "x": 15,
       "y": 20,
-      "depth": 2,
-      "raftChannel": true
+      "depth": 2
     },
     {
       "x": 16,
       "y": 20,
-      "depth": 2,
-      "raftChannel": true
+      "depth": 2
     },
     {
       "x": 17,
       "y": 20,
-      "depth": 3,
-      "raftChannel": true
+      "depth": 3
     },
     {
       "x": 19,
@@ -4367,6 +4365,18 @@
         "kind": "cure",
         "status": "poison"
       }
+    },
+    {
+      "x": 15,
+      "y": 21,
+      "depth": 4,
+      "raftChannel": true
+    },
+    {
+      "x": 16,
+      "y": 21,
+      "depth": 4,
+      "raftChannel": true
     }
   ],
   "npcs": [
@@ -4486,28 +4496,28 @@
       "title": "the Tavern Keeper",
       "x": 10,
       "y": 24,
-      "greeting": "Hot Boi waves a ladle. \"Sit, sit. The hall eats the hasty. Ask me about the way down, or the water, or the chute.\"",
-      "returnGreeting": "Hot Boi nods. \"Back already? The hall keeps its wounds open.\"",
+      "greeting": "Hot Boi waves a ladle. \"Welcome to the hall. The right-hand way down is flooded \u2014 you need a raft. Ask me about the raft, the chute, or the water.\"",
+      "returnGreeting": "Hot Boi nods. \"The hall keeps its wounds open.\"",
       "topics": [
         {
-          "key": "way",
-          "response": "\"Five wounds, five paths. The crypt key opens the north door. Beyond it, the reliquary and the stairs down.\""
-        },
-        {
-          "key": "water",
-          "response": "\"Black water cuts the cistern wing. Deep, still, and cold. You cannot swim it \u2014 you need a raft. They say one leans near the stairs.\""
+          "key": "raft",
+          "response": "\"The raft lies in a sealed pocket. Take the left-side chute \u2014 it drops you there. The only way back is a barred gate, but it lifts from inside.\""
         },
         {
           "key": "chute",
-          "response": "\"There is a sluice in the chapel wing. It drops to a sealed pocket below. The only way back is a barred gate \u2014 but it opens from inside. A shortcut, if you survive the fall.\""
+          "response": "\"A sluice in the chapel wing drops to a pocket below. The fall is warned \u2014 you cannot climb back up. But the raft is down there.\""
         },
         {
-          "key": "raft",
-          "response": "\"A raft will carry you across deep water, dock to dock. Find one near the stairs down, in the suture wing.\""
+          "key": "water",
+          "response": "\"Black water cuts the right fork near the entrance. Deep and still \u2014 no swimming, no floating. Only a raft crosses it, dock to dock.\""
+        },
+        {
+          "key": "stairs",
+          "response": "\"The stairs down are past the flooded fork. Cross with the raft, then descend.\""
         },
         {
           "key": "shortcut",
-          "response": "\"The chute is the shortcut. Drop from the chapel, land in the pocket, lift the bar, and you are back at the fork. Nine steps instead of twenty.\""
+          "response": "\"The chute is the shortcut. Drop from the chapel, find the raft, lift the bar, and you are back at the fork with what you need.\""
         }
       ],
       "combatEnemyIds": [],
@@ -4578,10 +4588,10 @@
       "message": "Iron sweats. Something below coughs once."
     },
     {
-      "x": 19,
-      "y": 2,
+      "x": 3,
+      "y": 22,
       "kind": "keyReward",
-      "message": "A weathered raft leans here. You take it.",
+      "message": "A raft lies wedged in the pocket. You take it.",
       "itemId": "raft",
       "once": true
     }
@@ -4596,7 +4606,7 @@
       "confirm": true
     }
   ],
-  "floorRevision": 2,
+  "floorRevision": 3,
   "barredGates": [
     {
       "x": 3,
@@ -4607,49 +4617,33 @@
   ],
   "raftRoutes": [
     {
-      "id": "f1-raft-east",
+      "id": "f1-raft-fork",
       "fromDock": {
-        "x": 13,
-        "y": 20
+        "x": 14,
+        "y": 21
       },
       "fromApproach": "e",
       "toDock": {
-        "x": 20,
-        "y": 20
+        "x": 17,
+        "y": 21
       },
       "toApproach": "w",
       "path": [
         {
-          "x": 13,
-          "y": 20
-        },
-        {
           "x": 14,
-          "y": 20
+          "y": 21
         },
         {
           "x": 15,
-          "y": 20
+          "y": 21
         },
         {
           "x": 16,
-          "y": 20
+          "y": 21
         },
         {
           "x": 17,
-          "y": 20
-        },
-        {
-          "x": 18,
-          "y": 20
-        },
-        {
-          "x": 19,
-          "y": 20
-        },
-        {
-          "x": 20,
-          "y": 20
+          "y": 21
         }
       ],
       "bidirectional": true

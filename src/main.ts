@@ -158,6 +158,8 @@ function tryBootPlaytestFloor(): ReturnType<typeof registerFloorMap> | null {
 
 const playtestFloor = tryBootPlaytestFloor();
 const state = createGameState(playtestFloor ?? getFloors()[0]!);
+// Temporary debug hook for screenshot automation.
+(window as unknown as { __devin?: unknown }).__devin = { state };
 
 // Auto-map visibility flag.
 let mapVisible = false;
