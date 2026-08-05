@@ -24,12 +24,13 @@ import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { applyKilledNPCs } from "./npc";
 import { cumulativeXpToReachLevel } from "./leveling";
 import { PARTY_SIZE, sortPartyByFormation, type Character } from "./party";
+import { createCasinoState, normalizeCasinoState } from "./casino";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 14;
+const SAVE_VERSION = 15;
 
 /** v9 → v10 historical helper: first PARTY_SIZE characters by formation order —
  *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
@@ -288,6 +289,11 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     delete ser.activeCharIds;
     version = 14;
   }
+  if (version === 14) {
+    // v14 → v15: add casino state (The Crooked Crown). Older saves start fresh.
+    ser.casino = createCasinoState();
+    version = 15;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -346,6 +352,8 @@ interface SerializedState {
   worldYear?: number;
   /** Whether the wish/ending sequence has already played. v13+. */
   hasCompletedEnding?: boolean;
+  /** Casino state for The Crooked Crown. v15+. */
+  casino?: GameState["casino"];
   savedAt: string;
 }
 
@@ -380,7 +388,7 @@ export function serialize(state: GameState): string {
 
   const ser: SerializedState = {
     version: SAVE_VERSION,
-    mode: state.mode === "combat" ? "dungeon" : state.mode,
+    mode: state.mode === "combat" || state.mode === "casino" ? "dungeon" : state.mode,
     floorId: state.floor.id,
     player: { ...state.player },
     party: state.party.map((c) => ({
@@ -413,6 +421,7 @@ export function serialize(state: GameState): string {
     eventsTriggered,
     deepestFloorReached: state.deepestFloorReached,
     hasCompletedEnding: state.hasCompletedEnding,
+    casino: state.casino,
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -487,7 +496,7 @@ export function deserialize(json: string): GameState | null {
     }
 
     return {
-      mode: ser.mode,
+      mode: ser.mode === "casino" ? "dungeon" : ser.mode,
       floor,
       player: { ...ser.player },
       party: ser.party.map((c) => ({
@@ -529,6 +538,7 @@ export function deserialize(json: string): GameState | null {
         ),
       deepestFloorReached: ser.deepestFloorReached ?? floor.id,
       hasCompletedEnding: ser.hasCompletedEnding ?? false,
+      casino: normalizeCasinoState(ser.casino),
     };
   } catch {
     return null;

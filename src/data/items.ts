@@ -286,6 +286,66 @@ export const ALL_CONSUMABLES: ItemDef[] = [
   PHOENIX_FEATHER,
 ];
 
+// Casino-exclusive gear from The Crooked Crown (Floor 1). Side-grades, not
+// campaign-breaking — deliberately weaker than the shop's +2/+3 lines.
+export const CARD_SHARP_GLOVES: ItemDef = {
+  id: "card-sharp-gloves",
+  name: "Cardsharp's Gloves",
+  type: "armor",
+  slot: "hand",
+  attackBonus: 1,
+  statBonuses: { agi: 1, luk: 1 },
+  price: 150,
+  dropFloorTier: 1,
+  description: "Thin calfskin gloves that let a blade or a card slip exactly where it is meant to.",
+};
+
+export const HOUSE_EDGE: ItemDef = {
+  id: "house-edge",
+  name: "House Edge",
+  type: "weapon",
+  slot: "hand",
+  attackBonus: 3,
+  statBonuses: { agi: 1, str: -1 },
+  range: "close",
+  price: 160,
+  dropFloorTier: 1,
+  description: "A dagger that favors the bold and punishes the hesitant — just like its former owner.",
+};
+
+export const LOADED_BUCKLER: ItemDef = {
+  id: "loaded-buckler",
+  name: "Loaded Buckler",
+  type: "armor",
+  slot: "shield",
+  defenseBonus: 2,
+  statBonuses: { luk: 1 },
+  price: 140,
+  dropFloorTier: 1,
+  description: "A small shield with a hidden weight in the rim. It lands heavier than it looks.",
+};
+
+export const CROOKED_CROWN: ItemDef = {
+  id: "crooked-crown",
+  name: "Crooked Crown",
+  type: "armor",
+  slot: "head",
+  defenseBonus: 1,
+  statBonuses: { int: 1, pie: 1, vit: -1 },
+  price: 300,
+  dropFloorTier: 2,
+  description: "A bent coronet that sharpens the mind but saps the body. The house never takes it off.",
+};
+
+export const LAST_COIN: ItemDef = {
+  id: "last-coin",
+  name: "Last Coin",
+  type: "consumable",
+  effect: { kind: "heal", power: 50 },
+  price: 80,
+  description: "A stamped slug of copper, warm from someone's last pocket. It buys one more step.",
+};
+
 // Trinkets: carried (not equipped, not usable in combat) — their presence in
 // the inventory grants a passive effect. Checked by game logic directly.
 export const RING_OF_WATER_WALKING: ItemDef = {
@@ -359,11 +419,25 @@ export const ALL_ITEMS: ItemDef[] = [
   ...ALL_CONSUMABLES,
   ...ALL_TRINKETS,
   ...ALL_CURSED,
+  CARD_SHARP_GLOVES,
+  HOUSE_EDGE,
+  LOADED_BUCKLER,
+  CROOKED_CROWN,
+  LAST_COIN,
 ];
 
-export const ITEMS_BY_ID: Record<string, ItemDef> = Object.fromEntries(
-  ALL_ITEMS.map((item) => [item.id, item])
-);
+const CASINO_ITEMS: Record<string, ItemDef> = {
+  "card-sharp-gloves": CARD_SHARP_GLOVES,
+  "house-edge": HOUSE_EDGE,
+  "loaded-buckler": LOADED_BUCKLER,
+  "crooked-crown": CROOKED_CROWN,
+  "last-coin": LAST_COIN,
+};
+
+export const ITEMS_BY_ID: Record<string, ItemDef> = {
+  ...Object.fromEntries(ALL_ITEMS.map((item) => [item.id, item])),
+  ...CASINO_ITEMS,
+};
 
 /** Items appropriate as random drops on a given floor. */
 export function dropsForFloor(floor: number): ItemDef[] {

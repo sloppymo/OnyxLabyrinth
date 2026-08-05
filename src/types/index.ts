@@ -6,10 +6,12 @@
 import type { FloorDef } from "../data/floors";
 import type { Character } from "../game/party";
 import type { CombatState, Loadout } from "../game/combat-types";
+import type { CasinoState } from "../game/casino";
 export type { FloorDef };
 export type { Character };
 export type { CombatState };
 export type { Loadout };
+export type { CasinoState };
 
 // --- Edge-based grid model ---------------------------------------------------
 // Each cell has four edges (N/E/S/W). An edge is open, a wall, or a door.
@@ -101,7 +103,8 @@ export type GameMode =
   | "combat"
   | "camp"
   | "game_over"
-  | "arena";
+  | "arena"
+  | "casino";
 
 export interface GameState {
   mode: GameMode;
@@ -195,4 +198,6 @@ export interface GameState {
   // scripted fight, so this flag — not "boss defeated" — is what gates a
   // repeat victory from re-triggering EndingController.
   hasCompletedEnding: boolean;
+  // Casino state for The Crooked Crown (Floor 1). Optional for older saves.
+  casino: CasinoState;
 }

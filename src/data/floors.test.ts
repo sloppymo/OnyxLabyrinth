@@ -218,7 +218,7 @@ describe("floor definitions", () => {
     const f1 = findFloor(1)!;
     expect(f1.encounterRate).toBeCloseTo(0.08);
     expect((f1.encounterZones ?? []).every((zone) => zone.tableFloorId === undefined)).toBe(true);
-    expect(f1.npcs).toHaveLength(4);
+    expect(f1.npcs).toHaveLength(5);
     expect((f1.events ?? []).every((event) => event.message.length <= 60)).toBe(true);
     const playerFacingCopy = JSON.stringify({
       name: f1.name,

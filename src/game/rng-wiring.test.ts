@@ -24,6 +24,7 @@ import { disarmChest, openChest } from "./features";
 import { stealFrom } from "./npc";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
+import { createCasinoState } from "./casino";
 import type { FloorDef, NPCDef } from "../data/floors";
 import type { GameState, TrapType } from "../types";
 
@@ -82,6 +83,7 @@ function makeTrapState(trap: TrapType): GameState {
     inAntimagic: false,
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    casino: createCasinoState(),
     lastDungeon: null,
   };
 }
@@ -143,6 +145,7 @@ function makeNpcState(): GameState {
     inAntimagic: false,
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    casino: createCasinoState(),
     lastDungeon: null,
   };
 }
