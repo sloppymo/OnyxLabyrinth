@@ -31,6 +31,9 @@ import {
 import { isSafeZoneAt, stepPity } from "../game/encounters";
 import { confirmChuteDrop, handleTileFeature } from "../game/features";
 import { RaftAnimationController, isRaftAnimating } from "../engine/raft-animation";
+import { setRaftVisualOverride, hasRaftVisualOverride } from "../engine/renderer";
+import { serialize, deserialize } from "../game/save";
+import { DungeonDialogController } from "../engine/dungeon-dialog";
 import { DX, DY, edgeInDirection, inBounds } from "./dungeon";
 import type { FloorDef, GameState } from "../types";
 
@@ -368,25 +371,90 @@ describe("Floor 1 chute confirmation — runtime event flow", () => {
   });
 });
 
-describe("Floor 1 chute choice — decline behavior", () => {
-  it("declining the chute (Step Away) leaves the player at the chute, no raft", () => {
+describe("Floor 1 chute choice — decline via real dialog callback", () => {
+  it("selecting 'cancel' closes the dialog, leaves player at (3,8), no raft", () => {
     const state = makeFloor1State();
     // Player is at the chute tile
     state.player.x = 3;
     state.player.y = 8;
     state.player.facing = 0;
+    state.mode = "dungeon";
     expect(state.keyItems).not.toContain("raft");
 
-    // Simulate the "Step away" choice: the runtime callback does nothing
-    // (no confirmChuteDrop call). The player stays at the chute.
-    // This mirrors main.ts's onSelect: if value === "cancel", nothing happens.
-    const playerXBefore = state.player.x;
-    const playerYBefore = state.player.y;
+    // Build the same dialog + callback that main.ts installs for the chute
+    // confirmation. The callback only calls confirmChuteDrop on "descend".
+    const drop = { toFloorId: 1, toX: 3, toY: 22 };
+    const dialog = new DungeonDialogController({
+      state,
+      lines: [
+        "A steep sluice disappears into darkness. There may be no way back up.",
+      ],
+      choices: [
+        { label: "Descend", value: "descend" },
+        { label: "Step away", value: "cancel" },
+      ],
+      onSelect: (value) => {
+        if (value === "descend") {
+          confirmChuteDrop(state, drop);
+        }
+      },
+    });
+    dialog.open();
 
-    // No confirmChuteDrop call — player stays put
-    expect(state.player.x).toBe(playerXBefore);
-    expect(state.player.y).toBe(playerYBefore);
+    // Dialog is active, mode is "dialog"
+    expect(dialog.isActive()).toBe(true);
+    expect(state.mode).toBe("dialog");
+
+    // With a single-line dialog, we're already in the choice menu phase
+    // (page 0 >= lines.length - 1 = 0). Select "Step away" (index 1).
+    dialog.handleKey("ArrowDown");
+    expect(dialog.selectedIndex).toBe(1);
+    dialog.handleKey("Enter");
+
+    // Dialog is closed, mode restored to "dungeon"
+    expect(dialog.isActive()).toBe(false);
+    expect(state.mode).toBe("dungeon");
+
+    // Player stays at the chute — no raft granted
+    expect(state.player.x).toBe(3);
+    expect(state.player.y).toBe(8);
     expect(state.keyItems).not.toContain("raft");
+  });
+
+  it("selecting 'descend' via real dialog callback grants the raft", () => {
+    const state = makeFloor1State();
+    state.player.x = 3;
+    state.player.y = 8;
+    state.player.facing = 0;
+    state.mode = "dungeon";
+
+    const drop = { toFloorId: 1, toX: 3, toY: 22 };
+    const dialog = new DungeonDialogController({
+      state,
+      lines: [
+        "A steep sluice disappears into darkness. There may be no way back up.",
+      ],
+      choices: [
+        { label: "Descend", value: "descend" },
+        { label: "Step away", value: "cancel" },
+      ],
+      onSelect: (value) => {
+        if (value === "descend") {
+          confirmChuteDrop(state, drop);
+        }
+      },
+    });
+    dialog.open();
+
+    // With a single-line dialog, we're already in the choice menu phase.
+    // "Descend" is at index 0 (default selection).
+    expect(dialog.selectedIndex).toBe(0);
+    dialog.handleKey("Enter");
+
+    // Player is now at the pocket with the raft
+    expect(state.player.x).toBe(3);
+    expect(state.player.y).toBe(22);
+    expect(state.keyItems).toContain("raft");
   });
 });
 
@@ -766,5 +834,187 @@ describe("Floor 1 revision", () => {
   it("floor 1 has floorRevision set to 3", () => {
     const floor = findFloor(1)!;
     expect(floor.floorRevision).toBe(3);
+  });
+});
+
+describe("Chute drop persistence — serialize/deserialize after landing", () => {
+  it("serialized state after confirmChuteDrop has player at (3,22), raft, event consumed", () => {
+    const state = makeFloor1State();
+    state.player.x = 3;
+    state.player.y = 8;
+    state.player.facing = 0;
+    expect(state.keyItems).not.toContain("raft");
+
+    confirmChuteDrop(state, { toFloorId: 1, toX: 3, toY: 22 });
+
+    // Serialize the post-landing state and reload it
+    const json = serialize(state);
+    expect(json).toBeTruthy();
+    const loaded = deserialize(json);
+    expect(loaded).not.toBeNull();
+    const ls = loaded!;
+
+    // Player is at the pocket
+    expect(ls.player.x).toBe(3);
+    expect(ls.player.y).toBe(22);
+
+    // Raft is in keyItems
+    expect(ls.keyItems).toContain("raft");
+
+    // The raft event is recorded as triggered (key format is "x,y" per floor)
+    expect(ls.eventsTriggered[1]).toBeDefined();
+    expect(ls.eventsTriggered[1].has("3,22")).toBe(true);
+
+    // Returning to the tile cannot grant another raft
+    ls.player.x = 3;
+    ls.player.y = 22;
+    const secondResult = handleTileFeature(ls);
+    expect(secondResult).toBeNull();
+
+    // Still only one raft
+    const raftCount = ls.keyItems.filter((k) => k === "raft").length;
+    expect(raftCount).toBe(1);
+  });
+});
+
+describe("Raft animation renderer integration — visual camera override", () => {
+  let originalNow: typeof performance.now;
+  let nowMock: number;
+
+  beforeEach(() => {
+    originalNow = performance.now;
+    nowMock = 1000;
+    vi.stubGlobal("performance", {
+      now: () => nowMock,
+    });
+    // Clear any leftover override from a previous test
+    setRaftVisualOverride(null);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    setRaftVisualOverride(null);
+  });
+
+  function makeRoute() {
+    const floor = findFloor(1)!;
+    return floor.raftRoutes!.find((r) => r.id === "f1-raft-fork")!;
+  }
+
+  it("getVisualCamera returns different positions at different animation times", () => {
+    const state = makeFloor1State();
+    state.player.x = 14;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: false,
+      onComplete: () => {},
+    });
+    ctrl.start();
+
+    // At start (t=0): position should be at origin (14,21)
+    nowMock = 1000;
+    const startCam = ctrl.getVisualCamera();
+    expect(startCam).not.toBeNull();
+    expect(startCam!.x).toBeCloseTo(14, 5);
+    expect(startCam!.y).toBeCloseTo(21, 5);
+
+    // At mid-animation (300ms elapsed, 3 steps × 200ms = 600ms total)
+    // t=0.5 → floatStep=1.5 → stepIdx=1, frac=0.5
+    // path[1]=(15,21), path[2]=(16,21) → x = 15 + 0.5 = 15.5
+    nowMock = 1300;
+    const midCam = ctrl.getVisualCamera();
+    expect(midCam).not.toBeNull();
+    expect(midCam!.x).toBeCloseTo(15.5, 5);
+    expect(midCam!.y).toBeCloseTo(21, 5);
+
+    // The two positions must be different — this is the core visual proof
+    expect(midCam!.x).not.toBeCloseTo(startCam!.x, 5);
+
+    // Near completion (550ms): t≈0.917 → floatStep≈2.75 → stepIdx=2, frac=0.75
+    // path[2]=(16,21), path[3]=(17,21) → x = 16 + 0.75 = 16.75
+    nowMock = 1550;
+    const lateCam = ctrl.getVisualCamera();
+    expect(lateCam).not.toBeNull();
+    expect(lateCam!.x).toBeCloseTo(16.75, 2);
+    expect(lateCam!.x).not.toBeCloseTo(midCam!.x, 5);
+    expect(lateCam!.x).not.toBeCloseTo(startCam!.x, 5);
+  });
+
+  it("setRaftVisualOverride installs and clears the override", () => {
+    expect(hasRaftVisualOverride()).toBe(false);
+    setRaftVisualOverride({ x: 15.5, y: 21, facing: 1 });
+    expect(hasRaftVisualOverride()).toBe(true);
+    setRaftVisualOverride(null);
+    expect(hasRaftVisualOverride()).toBe(false);
+  });
+
+  it("getVisualCamera faces east during forward eastward travel", () => {
+    const state = makeFloor1State();
+    state.player.x = 14;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: false,
+      onComplete: () => {},
+    });
+    ctrl.start();
+
+    // Mid-animation — traveling east (path goes (14,21)→(15,21)→...)
+    nowMock = 1300;
+    const cam = ctrl.getVisualCamera();
+    expect(cam).not.toBeNull();
+    expect(cam!.facing).toBe(1); // East
+  });
+
+  it("getVisualCamera faces west during reverse westward travel", () => {
+    const state = makeFloor1State();
+    state.player.x = 17;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: true,
+      onComplete: () => {},
+    });
+    ctrl.start();
+
+    // Mid-animation — traveling west (reverse path: (17,21)→(16,21)→...)
+    nowMock = 1300;
+    const cam = ctrl.getVisualCamera();
+    expect(cam).not.toBeNull();
+    expect(cam!.facing).toBe(3); // West
+  });
+
+  it("getVisualCamera returns null when animation is not active", () => {
+    const state = makeFloor1State();
+    state.player.x = 14;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: false,
+      onComplete: () => {},
+    });
+    // Not started yet
+    expect(ctrl.getVisualCamera()).toBeNull();
+
+    ctrl.start();
+    expect(ctrl.getVisualCamera()).not.toBeNull();
+
+    // Complete the animation
+    nowMock = 1700;
+    ctrl.update();
+    expect(ctrl.getVisualCamera()).toBeNull();
   });
 });

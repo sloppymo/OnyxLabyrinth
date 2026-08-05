@@ -24,6 +24,7 @@ import {
   resetRenderCamera,
   renderBattleArena,
   renderCorridorBackdrop,
+  setRaftVisualOverride,
 } from "./engine/renderer";
 import { partyPos, enemyPos, setBarksEnabled, getBarksEnabled } from "./engine/combat-scene";
 import { geometryForBackdrop, assertFloorBottomClearOfWindows } from "./engine/combat-scene-math";
@@ -159,8 +160,6 @@ function tryBootPlaytestFloor(): ReturnType<typeof registerFloorMap> | null {
 
 const playtestFloor = tryBootPlaytestFloor();
 const state = createGameState(playtestFloor ?? getFloors()[0]!);
-// Temporary debug hook for screenshot automation.
-(window as unknown as { __devin?: unknown }).__devin = { state };
 
 // Auto-map visibility flag.
 let mapVisible = false;
@@ -2330,7 +2329,16 @@ function loop() {
   }
 
   if (state.mode === "dungeon" || (state.mode === "dialog" && raftAnimation)) {
+    // While a raft animation is active, install the interpolated visual
+    // camera override so the first-person view glides along the path. The
+    // authoritative grid position stays at the origin dock until completion.
+    if (raftAnimation && raftAnimation.isActive()) {
+      setRaftVisualOverride(raftAnimation.getVisualCamera());
+    } else {
+      setRaftVisualOverride(null);
+    }
     render(ctx, state);
+    setRaftVisualOverride(null);
     const floorLabel = `F${state.floor.id}`;
     renderPartyStrip(
       state.party,

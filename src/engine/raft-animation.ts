@@ -131,6 +131,39 @@ export class RaftAnimationController {
     };
   }
 
+  /**
+   * Current visual camera override for the renderer: the interpolated float
+   * position plus the facing of the current step (direction of travel). The
+   * main loop installs this via `setRaftVisualOverride()` so the first-person
+   * camera glides along the path while the authoritative grid position stays
+   * at the origin dock. Returns null if not active.
+   */
+  getVisualCamera(): { x: number; y: number; facing: number } | null {
+    if (!this.active) return null;
+    const pos = this.getVisualPosition();
+    if (!pos) return null;
+    const elapsed = performance.now() - this.startTime;
+    const totalSteps = this.path.length - 1;
+    const totalMs = totalSteps * RAFT_STEP_MS;
+    const t = Math.min(1, elapsed / totalMs);
+    const floatStep = t * totalSteps;
+    const stepIdx = Math.floor(floatStep);
+
+    // Determine facing from the current step's direction of travel.
+    let facing = this.destFacing;
+    if (stepIdx < totalSteps) {
+      const a = this.path[stepIdx];
+      const b = this.path[stepIdx + 1];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      if (dx > 0) facing = 1;       // East
+      else if (dx < 0) facing = 3;  // West
+      else if (dy > 0) facing = 2;  // South
+      else if (dy < 0) facing = 0;  // North
+    }
+    return { x: pos.x, y: pos.y, facing };
+  }
+
   /** Update the animation. Call this every frame. Returns true if still
    *  active, false if completed or interrupted. */
   update(): boolean {
