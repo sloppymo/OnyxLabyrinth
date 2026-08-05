@@ -6,10 +6,14 @@
 import type { FloorDef } from "../data/floors";
 import type { Character } from "../game/party";
 import type { CombatState, Loadout } from "../game/combat-types";
+import type { QuestProgress } from "../game/quests";
+import type { CompanionState } from "../game/companion";
 export type { FloorDef };
 export type { Character };
 export type { CombatState };
 export type { Loadout };
+export type { QuestProgress };
+export type { CompanionState };
 
 // --- Edge-based grid model ---------------------------------------------------
 // Each cell has four edges (N/E/S/W). An edge is open, a wall, or a door.
@@ -204,4 +208,14 @@ export interface GameState {
   // When a floor's geometry/content changes (floorRevision bumped), loading
   // an old save clears that floor's explored/loot/events/doors state.
   floorRevisions: Record<number, number>;
+  // --- Hot Boi's tavern (game/tavern.ts, game/quests.ts) ---
+  // Scorchboard quest progress, keyed by stable quest id. A quest with no
+  // entry here is implicitly "available" (see game/quests.ts policy).
+  questStates: Record<string, QuestProgress>;
+  // Monotonic counter driving deterministic (non-random) rumor cycling —
+  // see game/tavern.ts nextRumor.
+  tavernRumorCursor: number;
+  // The one authored temporary fifth party member, or null if never
+  // recruited. See game/companion.ts.
+  companion: CompanionState | null;
 }

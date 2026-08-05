@@ -88,6 +88,9 @@ function makeState(trap?: TrapType): GameState {
     keyItems: [],
     floorRevisions: {},
     lastDungeon: null,
+    questStates: {},
+    tavernRumorCursor: 0,
+    companion: null,
   };
 }
 
@@ -126,6 +129,9 @@ function makePerkFreeState(trap?: TrapType): GameState {
     keyItems: [],
     floorRevisions: {},
     lastDungeon: null,
+    questStates: {},
+    tavernRumorCursor: 0,
+    companion: null,
   };
 }
 
@@ -180,6 +186,9 @@ function makeEventState(event: Omit<EventDef, "x" | "y">): GameState {
     keyItems: [],
     floorRevisions: {},
     lastDungeon: null,
+    questStates: {},
+    tavernRumorCursor: 0,
+    companion: null,
   };
 }
 

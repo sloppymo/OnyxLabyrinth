@@ -85,6 +85,9 @@ function makeTrapState(trap: TrapType): GameState {
     keyItems: [],
     floorRevisions: {},
     lastDungeon: null,
+    questStates: {},
+    tavernRumorCursor: 0,
+    companion: null,
   };
 }
 
@@ -148,6 +151,9 @@ function makeNpcState(): GameState {
     keyItems: [],
     floorRevisions: {},
     lastDungeon: null,
+    questStates: {},
+    tavernRumorCursor: 0,
+    companion: null,
   };
 }
 

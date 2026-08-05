@@ -121,8 +121,10 @@ import {
 import { tickBuffs, clearBuffs } from "./game/persistent-spells";
 import { SpellMenuController } from "./engine/spell-ui";
 import { NPCController } from "./engine/npc-ui";
+import { TavernController } from "./engine/tavern-ui";
 import { PerkSelectController } from "./engine/perk-select-ui";
 import { markKilled, adjustDisposition } from "./game/npc";
+import { companionAsSummonedAlly, syncCompanionAfterCombat } from "./game/companion";
 import { ENEMIES_BY_ID } from "./data/enemies";
 import type { NPCDef, FloorDef } from "./data/floors";
 import { ALL_SPELLS } from "./data/spells";
@@ -629,6 +631,15 @@ function withCombatTransition<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function startCombat(combat: CombatState): Promise<void> {
+  // The one authored temporary companion (game/companion.ts) rides the same
+  // summonedAllies channel as the Priest's BAMORDI/SOCORDI summons — a
+  // simple AI-controlled combatant, not a real party slot — so it never
+  // touches PARTY_SIZE/formation/save-schema assumptions. Never follows
+  // into Arena, matching how boss music/ending never fire there either.
+  if (!arenaController) {
+    const ally = companionAsSummonedAlly(state);
+    if (ally) combat.summonedAllies.push(ally);
+  }
   return withCombatTransition(async () => {
     closeMapOverlay();
     state.combat = combat;
@@ -709,6 +720,11 @@ function endCombat(result: CombatState): void {
 
   // Persist equipment changes from combat.
   state.equipment = { ...state.equipment, ...result.loadout };
+
+  // Sync the companion's ending HP (or death) back onto persisted state.
+  // No-op if no companion was traveling (e.g. an Arena fight never injects
+  // one in the first place — see startCombat).
+  syncCompanionAfterCombat(state, result.summonedAllies);
 
   // Perk choices queued by post-combat level-ups. Kept local to this flow; the
   // overlay consumes it and then returns to the dungeon / arena / ending.
@@ -1472,6 +1488,7 @@ function openActionRing(): void {
     saveController ||
     spellMenuController ||
     npcController ||
+    tavernController ||
     actionRingController
   ) {
     return;
@@ -1533,6 +1550,7 @@ function currentRouteFlags(): ControllerRouteContext {
     hasSave: !!saveController,
     hasSpellMenu: !!spellMenuController,
     hasNpc: !!npcController,
+    hasTavern: !!tavernController,
     hasActionRing: !!actionRingController,
     hasTown: !!townController,
     hasCamp: !!campController,
@@ -1585,6 +1603,15 @@ function routeControllerEvent(event: ControllerInputEvent): void {
       }
       const key = controllerEventToMenuKey(event);
       if (key) npcController!.handleKey(key);
+      return;
+    }
+    case "tavern": {
+      if (justOpenedTavernPanel) {
+        if (event.kind === "press") justOpenedTavernPanel = false;
+        return;
+      }
+      const key = controllerEventToMenuKey(event);
+      if (key) tavernController!.handleKey(key);
       return;
     }
     case "action_ring": {
@@ -2222,6 +2249,13 @@ let npcFightId: string | null = null;
 let justOpenedNPCPanel = false;
 
 function openNPCPanel(npcId: string): void {
+  // Hot Boi's tavern is a dedicated hub, not a generic dungeon NPC — see
+  // engine/tavern-ui.ts for why it isn't just another NPCController capability
+  // set.
+  if (npcId === "hot-boi") {
+    openTavernPanel();
+    return;
+  }
   const npc = state.floor.npcs?.find((n) => n.id === npcId);
   if (!npc) return;
   setMode(state, "title");
@@ -2278,6 +2312,50 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
     return;
   }
   if (npcController.handleKey(e.key)) {
+    e.preventDefault();
+  }
+});
+
+// --- Hot Boi's tavern --------------------------------------------------
+// Borrows "title" mode like the save/grimoire/NPC panels. Opened by stepping
+// onto Hot Boi's tile (see openNPCPanel's dispatch above) instead of the
+// generic NPCController.
+let tavernController: TavernController | null = null;
+let justOpenedTavernPanel = false;
+
+function openTavernPanel(): void {
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  canvas.style.opacity = "0.2";
+  justOpenedTavernPanel = true;
+  tavernController = new TavernController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    state,
+    onClose: () => {
+      tavernController = null;
+      canvas.style.opacity = "1";
+      setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
+      setMessage("");
+    },
+    // A Rest/turn-in/companion transaction has already fully committed to
+    // `state` by the time this fires — never called mid-transaction, so the
+    // autosave can't capture a half-applied gold deduction or reward.
+    onSave: () => {
+      autoSave(state);
+    },
+  });
+}
+
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "title" || !tavernController) return;
+  if (justOpenedTavernPanel) {
+    // The movement key that stepped onto Hot Boi must not also drive the menu.
+    justOpenedTavernPanel = false;
+    e.preventDefault();
+    return;
+  }
+  if (tavernController.handleKey(e.key)) {
     e.preventDefault();
   }
 });
@@ -2608,6 +2686,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       saveController ||
       spellMenuController ||
       npcController ||
+      tavernController ||
       perkSelectController ||
       prologueController ||
       endingController
@@ -2665,6 +2744,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       saveController ||
       spellMenuController ||
       npcController ||
+      tavernController ||
       perkSelectController ||
       prologueController ||
       endingController ||

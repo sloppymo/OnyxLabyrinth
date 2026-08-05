@@ -88,6 +88,9 @@ function makeState(npc: NPCDef = makeNPC()): GameState {
     keyItems: [],
     floorRevisions: {},
     lastDungeon: null,
+    questStates: {},
+    tavernRumorCursor: 0,
+    companion: null,
   };
 }
 

@@ -29,7 +29,7 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 14;
+const SAVE_VERSION = 15;
 
 /** v9 → v10 historical helper: first PARTY_SIZE characters by formation order —
  *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
@@ -288,6 +288,15 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     delete ser.activeCharIds;
     version = 14;
   }
+  if (version === 14) {
+    // v14 → v15: Hot Boi's tavern — Scorchboard quest progress, deterministic
+    // rumor cycling, and the one authored temporary companion. Every
+    // pre-existing save predates all three, so they start empty/unrecruited.
+    ser.questStates = {};
+    ser.tavernRumorCursor = 0;
+    ser.companion = null;
+    version = 15;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -350,6 +359,12 @@ interface SerializedState {
   keyItems?: string[];
   /** Per-floor revision tracking: floorId → revision when last visited. v14+. */
   floorRevisions?: Record<number, number>;
+  /** Scorchboard quest progress, keyed by quest id. v15+. */
+  questStates?: GameState["questStates"];
+  /** Deterministic rumor-cycling cursor. v15+. */
+  tavernRumorCursor?: number;
+  /** The one authored temporary companion, if recruited. v15+. */
+  companion?: GameState["companion"];
   savedAt: string;
 }
 
@@ -419,6 +434,14 @@ export function serialize(state: GameState): string {
     hasCompletedEnding: state.hasCompletedEnding,
     keyItems: [...state.keyItems],
     floorRevisions: { ...state.floorRevisions },
+    questStates: Object.fromEntries(
+      Object.entries(state.questStates).map(([id, p]) => [
+        id,
+        { ...p, counters: p.counters ? { ...p.counters } : undefined, flags: p.flags ? { ...p.flags } : undefined },
+      ])
+    ),
+    tavernRumorCursor: state.tavernRumorCursor,
+    companion: state.companion ? { ...state.companion } : null,
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -572,6 +595,16 @@ export function deserialize(json: string): GameState | null {
       hasCompletedEnding: ser.hasCompletedEnding ?? false,
       keyItems: ser.keyItems ? [...ser.keyItems] : [],
       floorRevisions,
+      questStates: ser.questStates
+        ? Object.fromEntries(
+            Object.entries(ser.questStates).map(([id, p]) => [
+              id,
+              { ...p, counters: p.counters ? { ...p.counters } : undefined, flags: p.flags ? { ...p.flags } : undefined },
+            ])
+          )
+        : {},
+      tavernRumorCursor: ser.tavernRumorCursor ?? 0,
+      companion: ser.companion ? { ...ser.companion } : null,
     };
   } catch {
     return null;

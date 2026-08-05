@@ -53,6 +53,9 @@ export function createGameState(floor: FloorDef): GameState {
     hasCompletedEnding: false,
     keyItems: [],
     floorRevisions: {},
+    questStates: {},
+    tavernRumorCursor: 0,
+    companion: null,
   };
 }
 

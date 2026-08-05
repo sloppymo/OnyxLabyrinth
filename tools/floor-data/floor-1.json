@@ -40,6 +40,14 @@
       "x2": 22,
       "y2": 11,
       "theme": "f3"
+    },
+    {
+      "id": "hot-bois-hearth",
+      "x1": 9,
+      "y1": 22,
+      "x2": 14,
+      "y2": 26,
+      "theme": "f2"
     }
   ],
   "grid": [
@@ -3519,7 +3527,8 @@
         "n": "wall",
         "e": "wall",
         "s": "open",
-        "w": "open"
+        "w": "open",
+        "tile": "event"
       },
       {
         "n": "wall",
@@ -3788,7 +3797,8 @@
         "n": "open",
         "e": "open",
         "s": "open",
-        "w": "wall"
+        "w": "wall",
+        "tile": "event"
       },
       {
         "n": "open",
@@ -4254,6 +4264,16 @@
       "x": 11,
       "y": 11,
       "spriteId": "torch"
+    },
+    {
+      "x": 9,
+      "y": 23,
+      "spriteId": "barrel"
+    },
+    {
+      "x": 14,
+      "y": 24,
+      "spriteId": "crate"
     }
   ],
   "teleporters": [
@@ -4604,6 +4624,20 @@
       "message": "A raft lies wedged in the pocket. You take it.",
       "itemId": "raft",
       "once": true
+    },
+    {
+      "x": 13,
+      "y": 23,
+      "kind": "message",
+      "message": "Scorched board. Notices pinned in a shaking hand.",
+      "once": false
+    },
+    {
+      "x": 9,
+      "y": 25,
+      "kind": "message",
+      "message": "Bedrolls line the wall, each one facing the door.",
+      "once": false
     }
   ],
   "floorRevision": 3,
