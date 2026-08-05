@@ -4,7 +4,7 @@
  * Drop a FloorMapJSON export into this folder and import it below, then it
  * appears in FLOORS after the campaign maps.
  *
- * floor-1.json ("The Proving Depths") replaces the hand-carved tutorial crypt.
+ * floor-1.json ("The Hall of Five Wounds") replaces the hand-carved tutorial crypt.
  * floor-4.json ("The Null Choir") is the campaign's fourth floor.
  * floor-5.json ("The Weeping Cistern") is the campaign's fifth floor.
  */

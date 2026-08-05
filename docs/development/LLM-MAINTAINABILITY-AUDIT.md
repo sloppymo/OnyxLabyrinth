@@ -9,6 +9,10 @@
 
 ---
 
+## Historical score disclaimer
+
+The **69/100 score** recorded in this report is a **historical measurement of the audited baseline `be6131c1dcdf5a06922a3b6cb6fac4f9447f5415` only**. It does **not** describe current `main` (`ed1704e`) or any later commit. Several of the highest-priority findings were already fixed between the audited commit and this report's rebase (e.g. required status checks, asset-integrity warnings, and `PARTY_SPRITE_SIZE` clarification). Revalidate each recommendation against the current tree before acting on it.
+
 ## 1. Executive summary
 
 **Verdict: Strong but with identifiable friction.**
