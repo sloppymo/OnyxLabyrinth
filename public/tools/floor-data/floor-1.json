@@ -2286,7 +2286,8 @@
         "n": "wall",
         "e": "open",
         "s": "open",
-        "w": "open"
+        "w": "open",
+        "tile": "npc"
       },
       {
         "n": "wall",
@@ -4203,6 +4204,14 @@
       "x2": 22,
       "y2": 11,
       "rateMul": 1.5
+    },
+    {
+      "id": "casino-safe",
+      "x1": 4,
+      "y1": 14,
+      "x2": 6,
+      "y2": 16,
+      "rateMul": 0
     }
   ],
   "mapSprites": [
@@ -4461,6 +4470,32 @@
       ],
       "combatEnemyIds": [
         "skeleton",
+        "skeleton"
+      ]
+    },
+    {
+      "id": "crooked-dealer",
+      "name": "Mistress Nine",
+      "title": "Keeper of the Crooked Crown",
+      "x": 5,
+      "y": 15,
+      "greeting": "Mistress Nine spreads three plaques on a coffin lid. 'Welcome to the Crown. I have lost eight parties. You are the ninth table.'",
+      "returnGreeting": "Mistress Nine barely looks up. 'Back for another wound, or another crown?'",
+      "topics": [
+        {
+          "key": "crown",
+          "response": "'The Crown is not the name of this place. It is the name of the losing card. Win too often and you stop finding it.'"
+        },
+        {
+          "key": "nine",
+          "response": "'Nine is the number of parties I have buried. The Crown belongs to the dead; I only deal for them.'"
+        },
+        {
+          "key": "house",
+          "response": "'The house edge is honesty. We tell you the rules. The dungeon does not even do that much.'"
+        }
+      ],
+      "combatEnemyIds": [
         "skeleton"
       ]
     }

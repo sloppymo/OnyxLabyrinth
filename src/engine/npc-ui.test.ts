@@ -10,6 +10,7 @@ import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
 import { createDefaultParty } from "../game/party";
 import { defaultLoadoutForCharacter } from "../game/combat-equipment";
 import { setGameplayRng, resetGameplayRng } from "../game/rng";
+import { createCasinoState } from "../game/casino";
 import type { GameState } from "../types";
 import type { NPCDef } from "../data/floors";
 import { audio } from "./audio";
@@ -85,6 +86,7 @@ function makeState(npc: NPCDef = makeNPC()): GameState {
     eventsTriggered: {},
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    casino: createCasinoState(),
     lastDungeon: null,
   };
 }

@@ -113,6 +113,7 @@ import {
 } from "./game/encounters";
 import { tickBuffs, clearBuffs } from "./game/persistent-spells";
 import { SpellMenuController } from "./engine/spell-ui";
+import { CasinoController } from "./engine/casino-ui";
 import { NPCController } from "./engine/npc-ui";
 import { PerkSelectController } from "./engine/perk-select-ui";
 import { markKilled, adjustDisposition } from "./game/npc";
@@ -1982,14 +1983,40 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
 // Borrows "title" mode like the save/grimoire menus. Opened by stepping onto
 // a living NPC's tile; Attack (or a caught theft) hands off to a real fight.
 let npcController: NPCController | null = null;
+let casinoController: CasinoController | null = null;
 /** NPC the current combat is against (set for Attack/caught-steal fights). */
 let npcFightId: string | null = null;
 
 let justOpenedNPCPanel = false;
+let justOpenedCasinoPanel = false;
+
+const CASINO_NPC_ID = "crooked-dealer";
+
+function openCasinoPanel(_npcId: string): void {
+  setMode(state, "casino");
+  showMode("casino", mapVisible);
+  canvas.style.opacity = "0.2";
+  justOpenedCasinoPanel = true;
+  casinoController = new CasinoController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    state,
+    onClose: (message: string) => {
+      casinoController = null;
+      canvas.style.opacity = "1";
+      setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
+      setMessage(message);
+    },
+  });
+}
 
 function openNPCPanel(npcId: string): void {
   const npc = state.floor.npcs?.find((n) => n.id === npcId);
   if (!npc) return;
+  if (npc.id === CASINO_NPC_ID) {
+    openCasinoPanel(npcId);
+    return;
+  }
   setMode(state, "title");
   showMode("title", mapVisible);
   canvas.style.opacity = "0.2";
@@ -2036,6 +2063,17 @@ function startNPCFight(npc: NPCDef): void {
 }
 
 window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode === "casino" && casinoController) {
+    if (justOpenedCasinoPanel) {
+      justOpenedCasinoPanel = false;
+      e.preventDefault();
+      return;
+    }
+    if (casinoController.handleKey(e.key)) {
+      e.preventDefault();
+    }
+    return;
+  }
   if (state.mode !== "title" || !npcController) return;
   if (justOpenedNPCPanel) {
     // The movement key that stepped onto the NPC must not also drive the menu.

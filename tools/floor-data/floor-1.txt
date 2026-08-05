@@ -18,7 +18,7 @@
 12 ###..T..............T.##
 13 ###P###.##...####.#...##
 14 ###.###.##.!.####.###.##
-15 ###!....#.....###!.~..##
+15 ###!.N..#.....###!.~..##
 16 ###.#.#.###.#####.###.##
 17 ###.#.#P###.#####.###.##
 18 #T...N..#.....###...N.##
@@ -53,6 +53,7 @@
 #   npc (5,18) id=rill-of-pages name=Rill-of-Pages
 #   npc (20,18) id=tallow-in-a-boat name=Tallow-in-a-Boat
 #   npc (7,8) id=sister-caldris name=Sister Caldris
+#   npc (5,15) id=crooked-dealer name=Mistress Nine
 #   event (11,23) kind=message
 #   event (9,19) kind=message
 #   event (3,15) kind=message

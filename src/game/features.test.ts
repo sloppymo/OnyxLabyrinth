@@ -28,6 +28,7 @@ import { FLOORS } from "../data/floors";
 import { getFloors, findFloor } from "./floor-registry";
 import { createGameState } from "./state";
 import { loadAutoSave } from "./save";
+import { createCasinoState } from "./casino";
 import type { FloorDef, EventDef } from "../data/floors";
 import type { GameState, TrapType } from "../types";
 
@@ -85,6 +86,7 @@ function makeState(trap?: TrapType): GameState {
     inAntimagic: false,
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    casino: createCasinoState(),
     lastDungeon: null,
   };
 }
@@ -121,6 +123,7 @@ function makePerkFreeState(trap?: TrapType): GameState {
     inAntimagic: false,
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    casino: createCasinoState(),
     lastDungeon: null,
   };
 }
@@ -173,6 +176,7 @@ function makeEventState(event: Omit<EventDef, "x" | "y">): GameState {
     inAntimagic: false,
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    casino: createCasinoState(),
     lastDungeon: null,
   };
 }

@@ -25,6 +25,7 @@ import { handleTileFeature } from "./features";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
 import { createDefaultParty } from "./party";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
+import { createCasinoState } from "./casino";
 import { cloneFloor, type FloorDef, type NPCDef } from "../data/floors";
 import type { GameState } from "../types";
 
@@ -103,6 +104,7 @@ function makeState(npc: NPCDef = makeNPC()): GameState {
     eventsTriggered: {},
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    casino: createCasinoState(),
     lastDungeon: null,
   };
 }
