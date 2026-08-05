@@ -255,7 +255,11 @@ export function confirmChuteDrop(
     return { message: "The chute is blocked. You can't go down here.", changedFloor: false, consumed: false };
   }
   const fromFloorId = state.floor.id;
-  transitionToFloor(state, targetFloor, drop.toX, drop.toY);
+  // Defer the autosave until AFTER the destination tile's feature (e.g. the
+  // raft keyReward event) is processed, so a reload immediately after landing
+  // restores the raft in keyItems and the consumed-event state — not a stale
+  // pre-reward snapshot.
+  transitionToFloor(state, targetFloor, drop.toX, drop.toY, 0, { autosave: false });
   const chuteMessage =
     drop.toFloorId === fromFloorId
       ? "You slide down the chute to a lower passage."
@@ -265,6 +269,9 @@ export function confirmChuteDrop(
   // reward (e.g. the raft keyReward event in the pocket) immediately on
   // landing — without needing to step away and return.
   const featureResult = handleTileFeature(state);
+  // Now that the destination reward has been applied, persist the full state
+  // atomically with the raft granted and the event marked consumed.
+  autoSave(state);
   if (featureResult && featureResult.message) {
     return {
       message: `${chuteMessage} ${featureResult.message}`,
