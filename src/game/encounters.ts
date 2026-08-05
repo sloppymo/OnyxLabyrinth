@@ -305,6 +305,26 @@ export function isSafeZoneAt(
 }
 
 /**
+ * Advance encounter pity for one step, respecting safe zones.
+ *
+ * In a safe zone, pity pauses: `stepsSinceEncounter` is unchanged.
+ * Outside a safe zone, pity increments by 1.
+ *
+ * This is the pure testable core of the safe-zone pity preservation
+ * logic in main.ts's `onMove()`. The runtime code also processes tile
+ * features and ticks buffs, but the pity decision is fully captured here.
+ */
+export function stepPity(
+  floor: Pick<FloorDef, "encounterZones">,
+  x: number,
+  y: number,
+  stepsSinceEncounter: number
+): number {
+  if (isSafeZoneAt(floor, x, y)) return stepsSinceEncounter;
+  return stepsSinceEncounter + 1;
+}
+
+/**
  * Effective encounter base rate for a step at (x,y).
  * Multiplies floor.encounterRate by the covering zone's rateMul (or returns
  * the floor rate when no zone covers the cell). A rateMul of 0 yields 0 here,

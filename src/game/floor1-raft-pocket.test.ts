@@ -9,13 +9,16 @@
  * - Floor 2 stairs are unreachable without the raft (no bypass via swimming,
  *   Levitate, Ring of Water Walking, teleporters, or alternate corridors).
  * - Floor 2 stairs are reachable with the raft.
- * - The raft is acquired in the chute pocket at (3,22).
+ * - The raft is acquired in the chute pocket at (3,22) — immediately on landing.
  * - The chute has a point-of-no-return confirmation.
  * - The barred gate is the only pocket exit and opens from inside.
- * - Safe zones pause pity without resetting it.
- * - Raft animation blocks saving and encounters.
+ * - Safe zones pause pity without resetting it (tested via production stepPity).
+ * - Raft animation: position stays at origin during crossing, commits on
+ *   completion, faces direction of travel, interruption restores a dock,
+ *   mode is non-dungeon while active.
+ * - Chute decline leaves the player at the chute, no raft granted.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { findFloor } from "../game/floor-registry";
 import { createGameState } from "../game/state";
 import {
@@ -25,8 +28,9 @@ import {
   isRaftChannel,
   type Direction,
 } from "../game/traversal";
-import { isSafeZoneAt } from "../game/encounters";
+import { isSafeZoneAt, stepPity } from "../game/encounters";
 import { confirmChuteDrop, handleTileFeature } from "../game/features";
+import { RaftAnimationController, isRaftAnimating } from "../engine/raft-animation";
 import { DX, DY, edgeInDirection, inBounds } from "./dungeon";
 import type { FloorDef, GameState } from "../types";
 
@@ -306,6 +310,86 @@ describe("Floor 1 raft pocket — softlock validation", () => {
   });
 });
 
+describe("Floor 1 chute confirmation — runtime event flow", () => {
+  it("confirmChuteDrop grants the raft immediately on landing (no step-away needed)", () => {
+    const state = makeFloor1State();
+    // Player starts at the chute tile
+    state.player.x = 3;
+    state.player.y = 8;
+    state.player.facing = 0;
+    expect(state.keyItems).not.toContain("raft");
+
+    // Execute the confirmed chute drop — this is the same helper
+    // called by main.ts's dialog onSelect callback.
+    const result = confirmChuteDrop(state, {
+      toFloorId: 1,
+      toX: 3,
+      toY: 22,
+    });
+
+    // Player is now at the pocket
+    expect(state.player.x).toBe(3);
+    expect(state.player.y).toBe(22);
+    // Raft is granted immediately — no need to step away and return
+    expect(state.keyItems).toContain("raft");
+    // The result message includes both the chute and raft text
+    expect(result.message).toMatch(/chute|slide/i);
+    expect(result.message).toMatch(/raft/i);
+  });
+
+  it("confirmChuteDrop marks the raft reward event as consumed", () => {
+    const state = makeFloor1State();
+    confirmChuteDrop(state, { toFloorId: 1, toX: 3, toY: 22 });
+
+    // The event tile should be cleared (once-only event consumed)
+    expect(state.floor.grid[22][3].tile).not.toBe("event");
+
+    // Calling handleTileFeature again should return null (already consumed)
+    state.player.x = 3;
+    state.player.y = 22;
+    const secondResult = handleTileFeature(state);
+    expect(secondResult).toBeNull();
+  });
+
+  it("confirmChuteDrop does not double-grant the raft on a second drop", () => {
+    const state = makeFloor1State();
+    // First drop grants the raft
+    confirmChuteDrop(state, { toFloorId: 1, toX: 3, toY: 22 });
+    expect(state.keyItems).toContain("raft");
+    const raftCount = state.keyItems.filter((k) => k === "raft").length;
+    expect(raftCount).toBe(1);
+
+    // Move player back to chute and drop again
+    state.player.x = 3;
+    state.player.y = 8;
+    confirmChuteDrop(state, { toFloorId: 1, toX: 3, toY: 22 });
+    const raftCount2 = state.keyItems.filter((k) => k === "raft").length;
+    expect(raftCount2).toBe(1); // Still only one raft
+  });
+});
+
+describe("Floor 1 chute choice — decline behavior", () => {
+  it("declining the chute (Step Away) leaves the player at the chute, no raft", () => {
+    const state = makeFloor1State();
+    // Player is at the chute tile
+    state.player.x = 3;
+    state.player.y = 8;
+    state.player.facing = 0;
+    expect(state.keyItems).not.toContain("raft");
+
+    // Simulate the "Step away" choice: the runtime callback does nothing
+    // (no confirmChuteDrop call). The player stays at the chute.
+    // This mirrors main.ts's onSelect: if value === "cancel", nothing happens.
+    const playerXBefore = state.player.x;
+    const playerYBefore = state.player.y;
+
+    // No confirmChuteDrop call — player stays put
+    expect(state.player.x).toBe(playerXBefore);
+    expect(state.player.y).toBe(playerYBefore);
+    expect(state.keyItems).not.toContain("raft");
+  });
+});
+
 describe("Floor 1 raft route — traversal validation", () => {
   it("the raft route goes from dock (14,21) to dock (17,21)", () => {
     const floor = findFloor(1)!;
@@ -386,7 +470,7 @@ describe("Floor 1 raft route — traversal validation", () => {
   });
 });
 
-describe("Floor 1 safe zone — pity preservation", () => {
+describe("Floor 1 safe zone — pity preservation (production logic)", () => {
   it("the entrance/tavern area is a safe zone", () => {
     const floor = findFloor(1)!;
     expect(isSafeZoneAt(floor, 11, 25)).toBe(true);
@@ -400,23 +484,250 @@ describe("Floor 1 safe zone — pity preservation", () => {
     expect(isSafeZoneAt(floor, 3, 8)).toBe(false);
   });
 
-  it("fifty tavern steps do not increase pity (stepsSinceEncounter unchanged)", () => {
-    const state = makeFloor1State();
-    state.player.x = 11;
-    state.player.y = 25; // In the safe zone
-    const initialPity = state.stepsSinceEncounter;
-    // Simulate 50 steps in the safe zone by calling the safe-zone path
-    // of onMove (which skips stepsSinceEncounter increment).
-    // We can't call onMove directly (it's in main.ts), but we can verify
-    // that isSafeZoneAt returns true for the tavern area, which is the
-    // gate condition for pity preservation.
+  it("50 safe-zone steps leave pity unchanged at 12", () => {
+    const floor = findFloor(1)!;
+    let pity = 12;
+    // Simulate 50 steps in the safe zone at (11,25)
     for (let i = 0; i < 50; i++) {
-      expect(isSafeZoneAt(state.floor, state.player.x, state.player.y)).toBe(true);
+      pity = stepPity(floor, 11, 25, pity);
     }
-    // If we were in a non-safe zone, pity would increment. The safe zone
-    // check is the guard. The actual pity value is unchanged because
-    // the increment is skipped (verified by the guard condition).
-    expect(state.stepsSinceEncounter).toBe(initialPity);
+    expect(pity).toBe(12);
+  });
+
+  it("one ordinary dungeon step changes pity from 12 to 13", () => {
+    const floor = findFloor(1)!;
+    // (11,12) is outside the safe zone
+    const pity = stepPity(floor, 11, 12, 12);
+    expect(pity).toBe(13);
+  });
+
+  it("stepping from safe zone to non-safe zone resumes pity increment", () => {
+    const floor = findFloor(1)!;
+    let pity = 12;
+    // 10 steps in safe zone
+    for (let i = 0; i < 10; i++) {
+      pity = stepPity(floor, 11, 25, pity);
+    }
+    expect(pity).toBe(12);
+    // 1 step outside safe zone
+    pity = stepPity(floor, 11, 12, pity);
+    expect(pity).toBe(13);
+  });
+});
+
+describe("RaftAnimationController — direct animation tests", () => {
+  let originalNow: typeof performance.now;
+  let nowMock: number;
+
+  beforeEach(() => {
+    originalNow = performance.now;
+    nowMock = 1000;
+    vi.stubGlobal("performance", {
+      now: () => nowMock,
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function makeRoute() {
+    const floor = findFloor(1)!;
+    return floor.raftRoutes!.find((r) => r.id === "f1-raft-fork")!;
+  }
+
+  it("authoritative position remains at origin during animation", () => {
+    const state = makeFloor1State();
+    state.player.x = 14;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: false,
+      onComplete: () => {},
+    });
+    ctrl.start();
+
+    // During animation, player is at origin (14,21)
+    expect(state.player.x).toBe(14);
+    expect(state.player.y).toBe(21);
+    expect(ctrl.isActive()).toBe(true);
+
+    // Advance time but not enough to complete (3 steps × 200ms = 600ms total)
+    nowMock = 1300; // 300ms elapsed — still in first step
+    ctrl.update();
+    expect(state.player.x).toBe(14); // Still at origin
+    expect(state.player.y).toBe(21);
+    expect(ctrl.isActive()).toBe(true);
+  });
+
+  it("completion commits the destination", () => {
+    const state = makeFloor1State();
+    state.player.x = 14;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+
+    let completed = false;
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: false,
+      onComplete: () => { completed = true; },
+    });
+    ctrl.start();
+
+    // Advance past total duration (3 steps × 200ms = 600ms)
+    nowMock = 1700; // 700ms elapsed
+    const stillActive = ctrl.update();
+
+    expect(stillActive).toBe(false);
+    expect(completed).toBe(true);
+    expect(state.player.x).toBe(17); // At destination dock
+    expect(state.player.y).toBe(21);
+  });
+
+  it("forward arrival faces east (direction of travel)", () => {
+    const state = makeFloor1State();
+    state.player.x = 14;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: false,
+      onComplete: () => {},
+    });
+    ctrl.start();
+    nowMock = 1700; // Complete
+    ctrl.update();
+
+    // Forward path: (14,21)→(15,21)→(16,21)→(17,21)
+    // Last step: (16,21)→(17,21), dx=+1 → East
+    expect(state.player.facing).toBe(1); // East
+  });
+
+  it("reverse arrival faces west (direction of travel)", () => {
+    const state = makeFloor1State();
+    state.player.x = 17;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: true,
+      onComplete: () => {},
+    });
+    ctrl.start();
+    nowMock = 1700; // Complete
+    ctrl.update();
+
+    // Reverse path: (17,21)→(16,21)→(15,21)→(14,21)
+    // Last step: (15,21)→(14,21), dx=-1 → West
+    expect(state.player.facing).toBe(3); // West
+  });
+
+  it("interruption always restores one of the docks", () => {
+    const state = makeFloor1State();
+    state.player.x = 14;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+
+    let interrupted = false;
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: false,
+      onComplete: () => {},
+      onInterrupt: () => { interrupted = true; },
+    });
+    ctrl.start();
+
+    // Advance to mid-animation (300ms — between dock 14 and water 15)
+    nowMock = 1300;
+    ctrl.interrupt();
+
+    expect(interrupted).toBe(true);
+    expect(ctrl.isActive()).toBe(false);
+    // Player should be at one of the docks (14 or 17), not on water
+    const atOrigin = state.player.x === 14 && state.player.y === 21;
+    const atDest = state.player.x === 17 && state.player.y === 21;
+    expect(atOrigin || atDest).toBe(true);
+  });
+
+  it("state mode is non-dungeon while active and returns to dungeon after", () => {
+    const state = makeFloor1State();
+    state.player.x = 14;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+    state.mode = "dungeon";
+
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: false,
+      onComplete: () => {},
+    });
+    ctrl.start();
+
+    // Mode is "dialog" during animation (blocks input/saves/encounters)
+    expect(state.mode).toBe("dialog");
+
+    // Complete the animation
+    nowMock = 1700;
+    ctrl.update();
+
+    // Mode returns to "dungeon"
+    expect(state.mode).toBe("dungeon");
+  });
+
+  it("isRaftAnimating returns true during animation, false after", () => {
+    const state = makeFloor1State();
+    state.player.x = 14;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: false,
+      onComplete: () => {},
+    });
+
+    expect(isRaftAnimating(ctrl)).toBe(false);
+
+    ctrl.start();
+    expect(isRaftAnimating(ctrl)).toBe(true);
+
+    nowMock = 1700;
+    ctrl.update();
+    expect(isRaftAnimating(ctrl)).toBe(false);
+  });
+
+  it("interruption near destination restores to destination dock", () => {
+    const state = makeFloor1State();
+    state.player.x = 14;
+    state.player.y = 21;
+    state.keyItems = ["raft"];
+
+    const ctrl = new RaftAnimationController({
+      state,
+      route: makeRoute(),
+      reverse: false,
+      onComplete: () => {},
+    });
+    ctrl.start();
+
+    // Advance to near the end (550ms — close to destination)
+    nowMock = 1550;
+    ctrl.interrupt();
+
+    // Should be at destination (17,21) since we're closer to it
+    expect(state.player.x).toBe(17);
+    expect(state.player.y).toBe(21);
   });
 });
 

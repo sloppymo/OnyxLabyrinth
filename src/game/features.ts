@@ -254,12 +254,27 @@ export function confirmChuteDrop(
   if (!targetFloor) {
     return { message: "The chute is blocked. You can't go down here.", changedFloor: false, consumed: false };
   }
+  const fromFloorId = state.floor.id;
   transitionToFloor(state, targetFloor, drop.toX, drop.toY);
+  const chuteMessage =
+    drop.toFloorId === fromFloorId
+      ? "You slide down the chute to a lower passage."
+      : `You slide down the chute to ${targetFloor.name} (Floor ${targetFloor.id}).`;
+
+  // Process the destination tile's feature so the player receives any
+  // reward (e.g. the raft keyReward event in the pocket) immediately on
+  // landing — without needing to step away and return.
+  const featureResult = handleTileFeature(state);
+  if (featureResult && featureResult.message) {
+    return {
+      message: `${chuteMessage} ${featureResult.message}`,
+      changedFloor: true,
+      consumed: featureResult.consumed,
+      looted: featureResult.looted,
+    };
+  }
   return {
-    message:
-      drop.toFloorId !== state.floor.id
-        ? `You slide down the chute to ${targetFloor.name} (Floor ${targetFloor.id}).`
-        : "You slide down the chute to a lower passage.",
+    message: chuteMessage,
     changedFloor: true,
     consumed: false,
   };

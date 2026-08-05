@@ -115,6 +115,7 @@ import {
   rollArenaEncounter,
   adjustArenaEncounterForSmallParty,
   isSafeZoneAt,
+  stepPity,
 } from "./game/encounters";
 import { tickBuffs, clearBuffs } from "./game/persistent-spells";
 import { SpellMenuController } from "./engine/spell-ui";
@@ -1004,7 +1005,12 @@ function onMove(): void {
     // Skip maybeTriggerEncounter — safe zones suppress all random encounters.
     return;
   }
-  state.stepsSinceEncounter++;
+  state.stepsSinceEncounter = stepPity(
+    state.floor,
+    state.player.x,
+    state.player.y,
+    state.stepsSinceEncounter
+  );
 
   // Tick persistent spell buffs (light/levitation) BEFORE processing the
   // tile, so a light that just expired doesn't still counter this darkness.
