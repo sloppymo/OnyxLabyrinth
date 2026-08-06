@@ -184,7 +184,7 @@ export class NPCController {
     if (this.phase === "talk") {
       const topics = visibleTopics(this.npc);
       if (this.index < topics.length) {
-        this.dialogue = askTopic(this.npc, topics[this.index]);
+        this.dialogue = askTopic(this.state, this.npc, topics[this.index]);
         this.render();
       } else {
         this.phase = "ask";
@@ -236,7 +236,7 @@ export class NPCController {
       return true;
     }
     if (key === "Enter") {
-      this.dialogue = askTopic(this.npc, this.typed);
+      this.dialogue = askTopic(this.state, this.npc, this.typed);
       this.phase = "talk";
       this.index = 0;
       this.render();

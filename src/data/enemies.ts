@@ -1445,7 +1445,15 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "rune-knight", row: "back" },
       ],
     },
-    // The climax formation — The Dead Boy flanked by its forged honor guard.
+  ],
+  // Floor 3 Grand Forge climax — The Dead Boy flanked by its forged honor
+  // guard (the two Animated Armors stand in for the statue at (6,11) that
+  // "will animate when the lock is tried": it's folded into this one
+  // guaranteed formation, not fought a second time). Reachable only from
+  // the grand-forge-guardian zone on the trophy chest (see data/floors.ts,
+  // floor3()) — never from the ambient Floor 3 table above, so the boss
+  // the room already promises is no longer a 1-in-many random-table dilution.
+  7: [
     {
       weight: 1,
       spawns: [
