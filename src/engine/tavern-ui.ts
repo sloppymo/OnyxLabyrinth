@@ -20,6 +20,9 @@
 import type { GameState } from "../types";
 import { FF6Window, type FF6WindowItem } from "./ff6-window-library";
 import { audio } from "./audio";
+
+/** Portrait art for Hot Boi, shown at the top of the tavern panel. */
+const HOT_BOI_PORTRAIT_URL = `${import.meta.env.BASE_URL ?? "/"}assets/portraits/hot-boi.png`;
 import {
   hotBoiGreeting,
   TALK_TOPICS,
@@ -451,6 +454,7 @@ export class TavernController {
         break;
     }
 
+    const portraitHtml = `<div class="tavern-portrait"><img src="${HOT_BOI_PORTRAIT_URL}" alt="Hot Boi" /></div>`;
     const dialogueHtml = `<div class="npc-dialogue">${this.dialogue}</div>`;
     const ambientHtml =
       this.phase === "root" ? `<div class="npc-empty-line">${this.ambient}</div>` : "";
@@ -461,7 +465,7 @@ export class TavernController {
 
     const win = new FF6Window({
       title,
-      contentHtml: dialogueHtml + ambientHtml + emptyBoardHtml,
+      contentHtml: portraitHtml + dialogueHtml + ambientHtml + emptyBoardHtml,
       items,
       selectedIndex: this.index,
       mode: "menu",

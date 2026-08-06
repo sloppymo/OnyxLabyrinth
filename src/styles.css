@@ -783,6 +783,20 @@ canvas#map-canvas {
 
 /* --- Dungeon NPC panel --------------------------------------------------- */
 
+.tavern-portrait {
+  margin: 0 auto 12px;
+  max-width: 180px;
+  text-align: center;
+}
+
+.tavern-portrait img {
+  width: 100%;
+  height: auto;
+  border: 2px solid var(--amber, #ffd769);
+  border-radius: 4px;
+  image-rendering: auto;
+}
+
 .npc-dialogue {
   margin: 0 auto 16px;
   max-width: 700px;
