@@ -119,16 +119,20 @@ export interface ScorchboardEntry {
   status: QuestStatus;
 }
 
-/** Quests currently worth showing on the board. Fifth Chair only appears
- *  once Last Lantern is completed (Hot Boi vouching for the party) AND the
- *  party has the raft (Vess isn't offered until there's somewhere for her
- *  to go) — neither is a generic quest-engine concept, so the gate lives
- *  here. */
+/** Fifth Chair unlock gate: Last Lantern completed (Hot Boi vouching for
+ *  the party) AND the party has the raft (Vess isn't offered until there's
+ *  somewhere for her to go). Neither half is a generic quest-engine
+ *  concept, so this lives here — the single source of truth for both
+ *  visibility (scorchboardEntries) and acceptance (acceptScorchboardQuest),
+ *  which must never drift apart from each other. */
+function fifthChairUnlocked(state: GameState): boolean {
+  return questStatus(state, "last-lantern") === "completed" && hasRaft(state);
+}
+
+/** Quests currently worth showing on the board. */
 export function scorchboardEntries(state: GameState): ScorchboardEntry[] {
   return FLOOR1_QUESTS.filter((def) => {
-    if (def.id === "fifth-chair") {
-      return questStatus(state, "last-lantern") === "completed" && hasRaft(state);
-    }
+    if (def.id === "fifth-chair") return fifthChairUnlocked(state);
     return true;
   }).map((def) => ({ def, status: questStatus(state, def.id) }));
 }
@@ -162,7 +166,7 @@ export function acceptScorchboardQuest(state: GameState, questId: string): boole
   // Belt-and-suspenders: tavern-ui.ts only ever offers ids sourced from
   // scorchboardEntries, but this keeps the invariant enforced at the
   // game-logic layer too, not just by UI construction.
-  if (questId === "fifth-chair" && !(questStatus(state, "last-lantern") === "completed" && hasRaft(state))) {
+  if (questId === "fifth-chair" && !fifthChairUnlocked(state)) {
     return false;
   }
   const accepted = acceptQuest(state, questId);
