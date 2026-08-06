@@ -2405,6 +2405,7 @@ function openTavernPanel(): void {
   showMode("title", mapVisible);
   canvas.style.opacity = "0.2";
   justOpenedTavernPanel = true;
+  audio.startTavernMusic();
   tavernController = new TavernController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
@@ -2414,6 +2415,7 @@ function openTavernPanel(): void {
       setMode(state, "dungeon");
       showMode("dungeon", mapVisible);
       setMessage("");
+      audio.stopTavernMusic();
     },
     // A Rest/turn-in/companion transaction has already fully committed to
     // `state` by the time this fires — never called mid-transaction, so the

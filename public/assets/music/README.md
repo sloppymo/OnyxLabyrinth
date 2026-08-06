@@ -4,6 +4,7 @@
 |------|------|
 | `breath-of-the-undercroft.mp3` | Title screen + New Game prologue loop |
 | `haven-at-dusk.mp3` | Town hub loop |
+| `coffin-nails.mp3` | Hot Boi's tavern loop |
 | `torchlight-beneath-stone.mp3` | Random dungeon / maze loop |
 | `understone-dungeon-loop.mp3` | Random dungeon / maze loop |
 | `emberwake-strings-loop.mp3` | Random dungeon / maze loop (MIDI track 5) |
@@ -16,10 +17,13 @@ supported there). Wired in `src/engine/audio.ts`:
 - `startTitleMusic` / `stopTitleMusic`
 - `startDungeon` / `stopDungeon`
 - `startTownMusic` / `stopTownMusic`
+- `startTavernMusic` / `stopTavernMusic`
 - `startBattleMusic` / `stopBattleMusic`
 
 Town theme plays while `state.mode === "town"` and stops when leaving for
-dungeon, camp, title, etc. Each dungeon entry picks every dungeon theme with
+dungeon, camp, title, etc. Tavern theme plays while the Hot Boi's tavern
+panel is open (the panel borrows "title" mode, so the loop's mode-transition
+logic doesn't manage it — it's started/stopped at the call site). Each dungeon entry picks every dungeon theme with
 equal probability: Torchlight, Understone, Emberwake Strings, or Emberwake
 Organ. Normal encounters use the authored battle theme; boss fights use the
 exclusive `higher-difficulty-battle.mp3` loop.
