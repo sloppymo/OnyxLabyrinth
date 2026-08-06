@@ -1320,7 +1320,10 @@
         "ring-of-water-walking",
         "furnace-key"
       ],
-      "trap": "alarm"
+      "trap": "alarm",
+      "climax": {
+        "id": "floor2-guardian"
+      }
     }
   ],
   "npcs": [
