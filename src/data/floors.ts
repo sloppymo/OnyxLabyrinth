@@ -623,6 +623,12 @@ function floor2(): FloorDef {
         id: "vestra",
         name: "Vestra",
         title: "unbound scribe",
+        // No approved portrait asset yet — this deliberately uses the
+        // silhouette fallback (first-initial placeholder) instead of a broken
+        // image or an unassigned portrait.
+        portraitId: undefined,
+        portraitSide: "left",
+        dialogueAccent: "neutral",
         x: 1,
         y: 1,
         greeting:
