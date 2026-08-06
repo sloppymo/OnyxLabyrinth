@@ -24,6 +24,11 @@ beyond what's listed here as done.
      (a real bug found via testing, not part of the original design).
   5. `22d1082` — fix: gate Fifth Chair on the raft too, and fix the shield quest
      equipped-item soft-lock.
+  6. `b74b454` — refactor: dedupe Fifth Chair unlock check; docs: this report (first draft,
+     written before the manual playthrough below).
+  7. `8d1fc3f` — fix: two bugs found by the manual playthrough performed after the first
+     draft of this report — see **Manual playthrough** below. Both are now fixed and
+     re-verified live, not just unit-tested.
 
 ## §7 minimum-shippable scorecard
 
@@ -45,9 +50,9 @@ beyond what's listed here as done.
 | 14 | Early economy supports supplies, rest, ordinary purchases | **Not started** (no Camp Supply item exists) |
 | 15 | Old saves migrate safely | **Done for what shipped this session** (v15→v16); v16→v17 (Camp) and beyond don't exist yet because Camp doesn't exist yet |
 | 16 | Full repository verification gate passes | **Done** — see Verification below |
-| 17 | Final playthrough matches the described arc | **Unverified** — no manual playthrough was run this session (see below) |
+| 17 | Final playthrough matches the described arc | **Done for the slice this session built** — tavern → raft dock → guardian fight (flee/re-engage/win) → descend → return, live-verified in a real browser (see Manual playthrough below). The *rest* of the described arc (Last Lantern encounter, Vess demonstration battle, etc.) isn't built yet, so it can't be part of a full-arc playthrough. |
 
-**Net: items 1, 2, 11, 12, 15, 16 fully done; 8 and 9 partially done; 3, 4, 5, 6, 7, 10, 13,
+**Net: items 1, 2, 11, 12, 15, 16, 17 fully done; 8 and 9 partially done; 3, 4, 5, 6, 7, 10, 13,
 14 not started; 17 unverified.**
 
 ## What was implemented
@@ -112,7 +117,10 @@ they were cheap and already broken)
   entirely, the quest still sticks forever. That's the documented remaining limitation in
   `failPolicy`, not an oversight.
 
-## Two latent bugs found (worth flagging loudly for whoever continues this)
+## Four latent bugs found (worth flagging loudly for whoever continues this)
+
+Two found by unit testing before the playthrough, two found only by the playthrough
+itself — the split is itself the argument for never skipping the live pass.
 
 1. **`cloneFloor()` in `src/data/floors.ts` silently drops any newly added `FloorDef`
    field.** It's a hand-written field-by-field copy, not a spread. Adding a field to
@@ -135,6 +143,29 @@ they were cheap and already broken)
    gate on Floor 1 — at (3,21) — has the same asymmetry after a save/load round trip.** I
    did not fix this and did not verify it's actually broken; flagging it as worth a
    dedicated test before anyone relies on barred-gate state surviving a reload.
+
+3. **FIXED. `main.ts`'s `onMove()` guardian-trigger handling only existed in the
+   safe-zone branch, not the (near-identical, duplicated) main branch.** A `replace_all`
+   edit against what looked like two byte-identical code blocks silently matched only
+   one. Since the guardian tile is not in a safe zone, the trigger never fired in real
+   play — confirmed dead in the browser before the fix, confirmed live after it. Nothing
+   in `features.test.ts` or `floor1-returned-party.test.ts` could have caught this: both
+   test `handleTileFeature` directly, never `main.ts`'s `onMove` wiring. **This is the
+   single clearest argument in this whole report for why "all tests pass" is not the same
+   claim as "the feature works."**
+
+4. **FIXED, and pre-existing (not introduced this session).
+   `DungeonDialogController` (`engine/dungeon-dialog.ts`) had no renderer at all, ever.**
+   It correctly routed keys and flipped `state.mode`, but nothing anywhere in the
+   codebase read its `currentPage`/`pageCount`/`selectedIndex` getters to paint them —
+   no DOM container, no CSS, no test file. This affects the pre-existing chute
+   point-of-no-return warning from PR #26 as much as the new guardian intro: a player
+   stepping onto either trigger would see the corridor keep rendering with zero visual
+   indication a modal was open, while their next keypress was silently consumed by it.
+   Fixed by giving the controller a `panel` + a `render()` built on the existing
+   `FF6Window` library (the same component `npc-ui.ts`/`trap-prompt-ui.ts` already use),
+   and wiring `showMode("dialog", ...)` at the `main.ts` call sites. Live-verified working
+   for both the guardian intro and the barred-edge blocked message.
 
 ## State and migration
 
@@ -173,26 +204,73 @@ OK (floor exports match generated output)
 `npm run build` passes with zero TypeScript errors (both the app and tools/editor
 checks). No pre-existing failures were inherited or worked around.
 
-## Manual playthrough: **not performed**
+## Manual playthrough: **performed after the first draft of this report**
 
-The application was never launched this session — no dev server, no production preview,
-no browser. This is the single largest gap in the work relative to the prompt's
-requirements. Specifically unverified:
+The first draft of this report said the playthrough was the largest gap and had not been
+done. It has now been done, in a real Chromium tab against a production preview build
+(`npx vite preview`), driving the `?debug=1` surface. It found two real, previously-
+unverified bugs (see below) that no unit test could have caught, fixed both, and
+re-verified the entire capstone flow live afterward.
 
-- The guardian's intro dialog rendering (three paginated lines via `DungeonDialogController`).
-- The combat presentation of all four new enemies — the sprite mappings
-  (`armored-skeleton` / `skeleton` / `warlock` / `ghostfire`) are reuses of existing,
-  already-shipped strips and *should* load without incident, but nobody has looked at the
-  screen.
-- The aftermath victory message and whether it reads well in the actual message-band
-  width (`#message` clips at ~2 lines of ~30 characters per AGENTS.md).
-- Whether the barred-edge collision actually produces the expected "A barred gate blocks
-  the way" message in-game (verified only at the `resolveTraversal` unit-test level, not
-  visually).
+**Sequence actually driven, primary path real (keyboard input, real rendering), setup
+positioning via `__onyxDebug.jumpTo`/`loadSave` where noted as secondary debugging:**
 
-Before trusting this in front of a player, run it through a browser (or the `?debug=1` /
-Playwright harness) at minimum once: reach the raft, cross, fight the guardian, flee once
-to confirm the seal holds, then win and confirm the stairs open.
+1. Title → New Game → skip prologue (Escape) → confirm default party (Enter) → Town →
+   Enter Dungeon. Real corridor rendering confirmed (chest sprite, textures, party HUD).
+2. Real one-step walk onto Hot Boi's tile (10,24) — tavern panel opens correctly:
+   greeting text, ambient description, Talk/Rest/Rumors/Scorchboard/Companions/Leave menu
+   all live-verified. **Scorchboard live-confirmed the Fifth Chair fix**: only "The Last
+   Lantern" and "A Shield Left Behind" show on a fresh save with no raft — Fifth Chair
+   correctly hidden.
+3. **Secondary debugging** (`loadSave` to grant `keyItems:["raft"]`, `jumpTo` to (17,21)):
+   positioned at the raft's toDock rather than manually re-walking the chute/raft loop,
+   which PR #26's own test suite already covers exhaustively.
+4. Real step east onto the guardian tile (18,21) — **found bug #1 here**: nothing
+   happened. Debug event log showed the `feature` event fired correctly but no dialog or
+   combat followed. Root-caused, fixed, rebuilt, re-verified: the guardian-trigger
+   handling had only been added to `onMove`'s safe-zone branch, not its main branch (see
+   "Two latent bugs" below, now three).
+5. Retried — **found bug #2**: `state.mode` correctly flipped to `"dialog"` but nothing
+   rendered on screen at all (`#combat-panel` empty, `display:none`). Root-caused: the
+   entire `DungeonDialogController` had no renderer anywhere in the codebase, a
+   pre-existing gap from PR #26 (it also affects the chute point-of-no-return warning).
+   Built a minimal renderer on the existing `FF6Window` library, re-verified live: intro
+   text now paginates and displays correctly across all three lines.
+6. Confirmed combat launch: all four enemies visible with correct names/HP/sprites
+   (Ruined Vanguard 34/34, Hollow Knifeman 22/22, Ash Scribe 20/20, Drowned Cantor
+   18/18), turn order strip, party HUD, action palette (Atk/Def/Magic/Tech) all rendering
+   correctly; a real round resolved (Coda took 7 damage, Dell took a further hit on
+   re-fight).
+7. **Fled** (`__onyxDebug.exitDebugCombat("fled")`) — party left standing on the guardian
+   tile, `clearedStairsGuardians` still empty. Real step east attempted:
+   **visibly blocked** — "A barred gate blocks the way. It cannot be opened from this
+   side." rendered correctly (this message uses the same fixed renderer).
+8. Repositioned to the guardian tile and re-approached for real — **fight re-triggered
+   correctly** (fresh intro dialog, fresh combat, confirming a fled fight isn't
+   permanently stuck open or permanently bypassed).
+9. **Won** (`__onyxDebug.exitDebugCombat("victory")`) — verified in one query:
+   `clearedStairsGuardians` gained the id, the edge flipped to `"door"` on both sides,
+   `greater-healing-potion` appeared in inventory, and the victory line ("The four of
+   them go still and do not rise...") rendered in the message band.
+10. Real step east onto and through the now-open stairs — **descended to Floor 2**
+    ("The Cursed Library"), confirmed via snapshot (`floor.id === 2`, landed on that
+    floor's `stairs_up` per the Phase A reciprocal-stairs fix).
+11. Real steps to leave and re-enter the Floor 2 stairs_up tile, ascending back —
+    **landed exactly on Floor 1's (19,21) stairs_down**, the correct reciprocal tile,
+    with `clearedStairsGuardians` still intact across the round trip.
+12. Real walk west through the now-inert guardian tile (18,21), approaching from the
+    stairs side — **silent, no retrigger, no message**, confirming the "safe to
+    re-cross after clearing" requirement.
+13. **Real save/load round trip** through the app's own `dumpSave`/`loadSave` (the actual
+    `serialize`/`deserialize` functions, not a mock): `clearedStairsGuardians`, the opened
+    edge, position, and mode all survived intact. Save version confirmed at 16.
+
+**Not covered by this playthrough** (acceptable gaps, not required for this session's
+scope): recruiting Vess and fighting with her present (requires the full Last
+Lantern + raft quest chain by hand, or further save-state seeding — Vess has no combat
+identity yet regardless per Phase F being unstarted, so her presence wouldn't change
+anything about the guardian fight itself); the Camp/shop/save-menu screens unrelated to
+this capstone; audio (no speakers in this environment, cues were not checked).
 
 ## Balance assumptions — stated as assumptions, not measurements
 
