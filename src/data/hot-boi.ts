@@ -11,7 +11,7 @@
 
 import type { GameState } from "../types";
 
-function hasRaft(state: GameState): boolean {
+export function hasRaft(state: GameState): boolean {
   return state.keyItems.includes("raft");
 }
 

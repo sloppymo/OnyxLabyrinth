@@ -48,7 +48,7 @@ export const QUEST_SHIELD_LEFT_BEHIND: QuestDef = {
   completeText:
     "Hot Boi turns it over once, sets it behind the bar. \"Didn't think this was coming back. Here.\"",
   failPolicy:
-    "No time limit or fail state. If the shield is sold or otherwise removed from the party's inventory before turn-in, the quest simply stays active indefinitely — an honest limitation rather than a soft-lock, since nothing else in the campaign depends on finishing it.",
+    "No time limit or fail state. Carrying or wearing the shield both count toward turn-in (game/tavern.ts hasShieldLeftBehind/consumeShieldLeftBehind). If it is sold or otherwise discarded entirely before turn-in, the quest stays active indefinitely — an honest limitation rather than a soft-lock, since nothing else in the campaign depends on finishing it.",
   rewardGold: 90,
   rewardItemId: "greater-healing-potion",
 };

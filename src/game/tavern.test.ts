@@ -12,6 +12,7 @@ import {
   onTavernOpen,
 } from "./tavern";
 import { questStatus } from "./quests";
+import { ITEMS_BY_ID } from "../data/items";
 
 function freshState() {
   return createGameState(FLOORS[0]);
@@ -96,13 +97,19 @@ describe("nextRumor", () => {
 });
 
 describe("Scorchboard", () => {
-  it("Fifth Chair is hidden until Last Lantern is completed", () => {
+  it("Fifth Chair is hidden until Last Lantern is completed AND the raft is acquired", () => {
     const state = freshState();
     expect(scorchboardEntries(state).map((e) => e.def.id)).not.toContain("fifth-chair");
     acceptScorchboardQuest(state, "last-lantern");
     state.talkedToNPCs.push("sister-caldris");
     refreshScorchboardReadiness(state);
     turnInScorchboardQuest(state, "last-lantern");
+    // Last Lantern done, but no raft yet — Vess still isn't offered.
+    expect(scorchboardEntries(state).map((e) => e.def.id)).not.toContain("fifth-chair");
+    expect(acceptScorchboardQuest(state, "fifth-chair")).toBe(false);
+    expect(questStatus(state, "fifth-chair")).toBe("available");
+
+    state.keyItems.push("raft");
     expect(scorchboardEntries(state).map((e) => e.def.id)).toContain("fifth-chair");
   });
 
@@ -149,12 +156,47 @@ describe("Scorchboard", () => {
     expect(state.inventory.some((e) => e.itemId === "shield+1")).toBe(false);
   });
 
+  it("an EQUIPPED shield+1 also satisfies the quest — equipping it is not a soft-lock", () => {
+    const state = freshState();
+    const charId = state.party[0].id;
+    state.equipment[charId] = {
+      ...state.equipment[charId],
+      armor: [...state.equipment[charId].armor, { ...ITEMS_BY_ID["shield+1"] }],
+    };
+    acceptScorchboardQuest(state, "shield-left-behind");
+    refreshScorchboardReadiness(state);
+    expect(questStatus(state, "shield-left-behind")).toBe("ready");
+
+    const result = turnInScorchboardQuest(state, "shield-left-behind");
+    expect(result.ok).toBe(true);
+    // Consumed from the equipment slot, not duplicated or left behind.
+    expect(state.equipment[charId].armor.some((a) => a.id === "shield+1")).toBe(false);
+    expect(state.inventory.some((e) => e.itemId === "shield+1")).toBe(false);
+  });
+
+  it("prefers consuming an inventory copy over an equipped one when both exist", () => {
+    const state = freshState();
+    const charId = state.party[0].id;
+    state.inventory.push({ itemId: "shield+1", identified: true });
+    state.equipment[charId] = {
+      ...state.equipment[charId],
+      armor: [...state.equipment[charId].armor, { ...ITEMS_BY_ID["shield+1"] }],
+    };
+    acceptScorchboardQuest(state, "shield-left-behind");
+    refreshScorchboardReadiness(state);
+    turnInScorchboardQuest(state, "shield-left-behind");
+    expect(state.inventory.some((e) => e.itemId === "shield+1")).toBe(false);
+    // The worn copy is untouched — the party keeps using it.
+    expect(state.equipment[charId].armor.some((a) => a.id === "shield+1")).toBe(true);
+  });
+
   it("Fifth Chair grants the companion exactly once on turn-in", () => {
     const state = freshState();
     acceptScorchboardQuest(state, "last-lantern");
     state.talkedToNPCs.push("sister-caldris");
     refreshScorchboardReadiness(state);
     turnInScorchboardQuest(state, "last-lantern");
+    state.keyItems.push("raft");
 
     acceptScorchboardQuest(state, "fifth-chair");
     refreshScorchboardReadiness(state); // no dungeon step — instantly ready

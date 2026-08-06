@@ -11,6 +11,7 @@ import {
   REST_PRICE,
   RUMORS,
   unlockedRumors,
+  hasRaft,
   type RumorDef,
 } from "../data/hot-boi";
 import { FLOOR1_QUESTS_BY_ID, FLOOR1_QUESTS } from "../data/quests-floor1";
@@ -23,6 +24,44 @@ import {
   type QuestStatus,
 } from "./quests";
 import { recruitCompanion, reviveCompanionAtTavern, FIFTH_CHAIR } from "./companion";
+import { manualUnequip } from "./combat-equipment";
+
+// --- Shield Left Behind: equipped-or-carried lookup ------------------------
+// The shield is the normal thing to do with a shield, so the quest must
+// recognize it worn as well as carried — otherwise equipping it makes the
+// quest permanently unwinnable (its own failPolicy text used to admit this).
+
+const SHIELD_LEFT_BEHIND_ITEM_ID = "shield+1";
+
+function findEquippedShieldOwner(state: GameState): string | undefined {
+  for (const [charId, loadout] of Object.entries(state.equipment)) {
+    if (loadout.armor.some((a) => a.id === SHIELD_LEFT_BEHIND_ITEM_ID)) return charId;
+  }
+  return undefined;
+}
+
+function hasShieldLeftBehind(state: GameState): boolean {
+  return (
+    state.inventory.some((e) => e.itemId === SHIELD_LEFT_BEHIND_ITEM_ID) ||
+    findEquippedShieldOwner(state) !== undefined
+  );
+}
+
+/** Consumes the shield from wherever it is (inventory takes priority over
+ *  an equipped copy, so a party carrying a spare never over-consumes the
+ *  worn one). No-op if neither holds it — callers only reach here once
+ *  hasShieldLeftBehind has already confirmed one exists. */
+function consumeShieldLeftBehind(state: GameState): void {
+  const idx = state.inventory.findIndex((e) => e.itemId === SHIELD_LEFT_BEHIND_ITEM_ID);
+  if (idx >= 0) {
+    state.inventory.splice(idx, 1);
+    return;
+  }
+  const charId = findEquippedShieldOwner(state);
+  if (!charId) return;
+  const result = manualUnequip(state.equipment[charId], "shield");
+  if (result) state.equipment[charId] = result.loadout;
+}
 
 // --- Rest --------------------------------------------------------------
 
@@ -81,13 +120,14 @@ export interface ScorchboardEntry {
 }
 
 /** Quests currently worth showing on the board. Fifth Chair only appears
- *  once Last Lantern is completed (Hot Boi vouching for the party) — it
- *  has no other prerequisite check, so the gate lives here rather than in
- *  the generic quest engine. */
+ *  once Last Lantern is completed (Hot Boi vouching for the party) AND the
+ *  party has the raft (Vess isn't offered until there's somewhere for her
+ *  to go) — neither is a generic quest-engine concept, so the gate lives
+ *  here. */
 export function scorchboardEntries(state: GameState): ScorchboardEntry[] {
   return FLOOR1_QUESTS.filter((def) => {
     if (def.id === "fifth-chair") {
-      return questStatus(state, "last-lantern") === "completed";
+      return questStatus(state, "last-lantern") === "completed" && hasRaft(state);
     }
     return true;
   }).map((def) => ({ def, status: questStatus(state, def.id) }));
@@ -106,7 +146,7 @@ export function refreshScorchboardReadiness(state: GameState): void {
   }
   if (
     questStatus(state, "shield-left-behind") === "active" &&
-    state.inventory.some((e) => e.itemId === "shield+1")
+    hasShieldLeftBehind(state)
   ) {
     markQuestReady(state, "shield-left-behind");
   }
@@ -119,6 +159,12 @@ export function refreshScorchboardReadiness(state: GameState): void {
 export function acceptScorchboardQuest(state: GameState, questId: string): boolean {
   const def = FLOOR1_QUESTS_BY_ID[questId];
   if (!def) return false;
+  // Belt-and-suspenders: tavern-ui.ts only ever offers ids sourced from
+  // scorchboardEntries, but this keeps the invariant enforced at the
+  // game-logic layer too, not just by UI construction.
+  if (questId === "fifth-chair" && !(questStatus(state, "last-lantern") === "completed" && hasRaft(state))) {
+    return false;
+  }
   const accepted = acceptQuest(state, questId);
   if (accepted) refreshScorchboardReadiness(state);
   return accepted;
@@ -148,8 +194,7 @@ export function turnInScorchboardQuest(state: GameState, questId: string): TurnI
   }
   if (def.rewardItemId) {
     if (questId === "shield-left-behind") {
-      const idx = state.inventory.findIndex((e) => e.itemId === "shield+1");
-      if (idx >= 0) state.inventory.splice(idx, 1);
+      consumeShieldLeftBehind(state);
     }
     state.inventory.push({ itemId: def.rewardItemId, identified: true });
     result.itemGained = def.rewardItemId;
