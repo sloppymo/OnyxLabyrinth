@@ -1694,7 +1694,7 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       spawns: [
         { enemyId: "eyeball-monster", row: "back" },
         { enemyId: "eyeball-monster", row: "back" },
-        { enemyId: "eyeball-monster", row: "back" },
+        { enemyId: "blood-wraith", row: "back" },
         { enemyId: "blood-wraith", row: "back" },
         { enemyId: "blood-wraith", row: "back" },
       ],
