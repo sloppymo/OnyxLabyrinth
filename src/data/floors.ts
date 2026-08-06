@@ -188,6 +188,18 @@ export interface NPCDef {
   rewardItemId?: string;
   /** Enemy formation if the party attacks (or botches a theft). */
   combatEnemyIds: string[];
+  /**
+   * Stable id resolved through engine/npc-portraits.ts's manifest — never a
+   * literal asset path, and never inferred from `name`/`id` by the renderer
+   * (so a missing entry falls back to a deliberate silhouette instead of a
+   * broken-image icon or an accidental match). Optional: most NPCs have no
+   * portrait yet.
+   */
+  portraitId?: string;
+  /** Which side of the dialogue panel the portrait sits on. Defaults to "left". */
+  portraitSide?: "left" | "right";
+  /** Tints the dialogue frame's accent border. Defaults to "neutral". */
+  dialogueAccent?: "neutral" | "warm" | "cold" | "hostile";
 }
 
 export interface TeleporterLink {
@@ -325,6 +337,12 @@ function floor2(): FloorDef {
         id: "vestra",
         name: "Vestra",
         title: "unbound scribe",
+        // No approved portrait asset yet — this deliberately uses the
+        // silhouette fallback (first-initial placeholder) instead of a broken
+        // image or an unassigned portrait.
+        portraitId: undefined,
+        portraitSide: "left",
+        dialogueAccent: "neutral",
         x: 1,
         y: 1,
         greeting:
@@ -507,6 +525,7 @@ function floor3(): FloorDef {
         id: "kazeharu",
         name: "Kazeharu",
         title: "masterless duelist",
+        portraitId: "kazeharu",
         x: 3,
         y: 9,
         greeting:

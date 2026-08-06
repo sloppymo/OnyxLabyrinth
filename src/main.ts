@@ -54,6 +54,8 @@ import {
   setContextualPrompt,
   getMessageText,
   setDebugMessageHook,
+  showNpcDialogueOverlay,
+  hideNpcDialogueOverlay,
 } from "./engine/shell";
 import {
   playEncounterTransition,
@@ -2017,8 +2019,12 @@ function openNPCPanel(npcId: string): void {
   const npc = state.floor.npcs?.find((n) => n.id === npcId);
   if (!npc) return;
   setMode(state, "title");
-  showMode("title", mapVisible);
-  canvas.style.opacity = "0.2";
+  // Deliberately not the generic showMode("title", ...): every other
+  // borrowed-"title" overlay (save/grimoire/perk-select/town/camp) replaces
+  // the whole screen, but NPC dialogue keeps the dungeon corridor visible
+  // behind a bottom-anchored panel instead (styles.css .npc-dialogue-host).
+  syncMapOverlayMode(mapOverlayState, "title");
+  showNpcDialogueOverlay();
   justOpenedNPCPanel = true;
   npcController = new NPCController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
@@ -2027,7 +2033,7 @@ function openNPCPanel(npcId: string): void {
     onClose: (message: string) => {
       npcController = null;
       if (npcFightId) return; // a fight is taking over the screen
-      canvas.style.opacity = "1";
+      hideNpcDialogueOverlay();
       setMode(state, "dungeon");
       showMode("dungeon", mapVisible);
       setMessage(message);
@@ -2045,7 +2051,7 @@ function startNPCFight(npc: NPCDef): void {
     .map((def) => ({ enemy: def, row: "front" as const }));
   if (spawns.length === 0) return;
   npcFightId = npc.id;
-  canvas.style.opacity = "1";
+  hideNpcDialogueOverlay();
   const combat = createCombatFromEncounter(
     state.party,
     spawns,
@@ -2466,6 +2472,10 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     snapshot: debugSnapshot,
     isIdle,
     readiness,
+    /** Live NPC controller, null when no dialogue panel is open. */
+    get npcController() {
+      return npcController;
+    },
     /** Recent debug events, oldest-first. `log(50, "audioCue")` to filter. */
     log: (n?: number, kind?: DebugEventKind) => events.log(n, kind),
     clearLog: () => events.clear(),
