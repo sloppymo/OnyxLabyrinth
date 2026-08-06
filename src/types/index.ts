@@ -192,6 +192,21 @@ export interface GameState {
   killedNPCs: string[];
   // One-time barters already consumed ("npcId:giveId>receiveId").
   npcTradesDone: string[];
+  // Floor 3: whether Kazeharu has told the party the truth about his master
+  // (asked via the hidden "master" topic). Part of the "Duelist's Vigil"
+  // recruitment gate — see game/kazeharu.ts. Optional/undefined is treated
+  // as false everywhere it's read, so legacy saves and test fixtures that
+  // predate this field need no migration.
+  kazeharuToldTruth?: boolean;
+  // Floor 3: whether Kazeharu has agreed to escort the party into the Grand
+  // Forge. Combat-scoped (see kazeharuGuestAlly in game/kazeharu.ts) — this
+  // flag only gates whether he's added to a fight, never party size/save
+  // schema. Optional/undefined == false, same reasoning as above.
+  kazeharuRecruited?: boolean;
+  // Floor 3: how Kazeharu's vigil ended, set once after the Grand Forge
+  // guardian combat resolves with him recruited. Undefined until then (and
+  // forever, if he was never recruited).
+  kazeharuOutcome?: "joinedSurvived" | "joinedFell";
   // Set while the party stands on a trapped, unopened chest. While non-null,
   // dungeon movement is blocked and the Inspect/Disarm/Open/Leave keys are
   // live. Never persisted: a save can't be taken while the prompt is open.

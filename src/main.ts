@@ -150,6 +150,12 @@ import { applyNamandaBlessing } from "./game/namanda";
 import { PerkSelectController } from "./engine/perk-select-ui";
 import { markKilled, adjustDisposition } from "./game/npc";
 import { companionAsSummonedAlly, syncCompanionAfterCombat } from "./game/companion";
+import {
+  kazeharuGuestAlly,
+  resolveKazeharuAfterForge,
+  FLOOR3_GUARDIAN_CLIMAX_ID,
+  KAZEHARU_GUEST_ID,
+} from "./game/kazeharu";
 import { ENEMIES_BY_ID } from "./data/enemies";
 import type { NPCDef, FloorDef, StairsGuardianDef } from "./data/floors";
 import { ALL_SPELLS } from "./data/spells";
@@ -864,7 +870,13 @@ function endCombat(result: CombatState): void {
     const levelMsg = levelUpMessages.length > 0 ? ` ${levelUpMessages.join(" ")}` : "";
     const climaxLoot = result.climaxId ? resolveClimaxVictory(state, result.climaxId) : "";
     const climaxLootMsg = climaxLoot ? ` ${climaxLoot}` : "";
-    setMessage(baseMsg + levelMsg + climaxLootMsg);
+    let kazeharuMsg = "";
+    if (result.climaxId === FLOOR3_GUARDIAN_CLIMAX_ID) {
+      const survived = !result.deadAllyIds.includes(KAZEHARU_GUEST_ID);
+      resolveKazeharuAfterForge(state, survived);
+      if (!survived) kazeharuMsg = " Kazeharu falls beside you — his vigil ends here.";
+    }
+    setMessage(baseMsg + levelMsg + climaxLootMsg + kazeharuMsg);
   }
 
   // NPC fights: victory kills the NPC (tile cleared); fleeing leaves them
@@ -1608,6 +1620,10 @@ function forceEncounter(): void {
     pending.x === state.player.x &&
     pending.y === state.player.y;
   combat.climaxId = isCurrentClimax ? pending.id : undefined;
+  if (combat.climaxId === FLOOR3_GUARDIAN_CLIMAX_ID) {
+    const guest = kazeharuGuestAlly(state);
+    if (guest) combat.summonedAllies.push(guest);
+  }
   state.combat = combat;
   setMode(state, "combat");
   state.stepsSinceEncounter = 0;

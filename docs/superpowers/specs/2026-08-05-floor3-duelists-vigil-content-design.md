@@ -1,12 +1,38 @@
 # Floor 3 content pass — "The Duelist's Vigil"
 
-**Status:** Design only. No production code changed. Phases A-E of the
-autonomous content-development pass; implementation (Phases F-J) is a
-separate, later session pending review of this document.
+**Status:** Design (Phases A-E) approved with revisions; implementation
+(Phases F-J) proceeds on `content/floor3-duelists-vigil`, stacked directly
+on PR #28's head (`3413249`) rather than `main`, to reuse its
+`pendingClimax`/`CombatState.climaxId` escrow machinery instead of
+reinventing a second climax framework. PR #28 itself is not modified.
+This branch cannot be merged before #28 merges; it will need a rebase once
+#28 lands (see the PR body for the exact dependency note).
 
-**Branch:** `content/maze-inhabitants-pass`, isolated worktree at
-`/home/sloppymo/OnyxLabyrinth-content-pass`, based on `origin/main` @
-`c590d09` (clean — no relation to the three open floor PRs).
+**Revisions applied per review before implementation:**
+- The statue is folded directly into the Grand Forge's one guaranteed
+  formation instead of a separate mandatory fight.
+- The Grand Forge climax reuses PR #28's `pendingClimax`/`climaxId`
+  primitive (chest-triggered `trap: "alarm"` + `climax: { id }`), not a
+  bespoke door-trigger mechanism.
+- Kazeharu's guest-ally identity gets one authored opening line and a
+  single deterministic "finishing strike" behavior, not just a renamed
+  `SummonedAlly`.
+- The recruitment gate dropped the gift-item requirement (arbitrary gift
+  taxes were flagged as illegible) in favor of a three-step, fully
+  player-legible chain: learn the truth about his master (hidden "master"
+  topic) → recover the smith's signet ring (now an automatic `reward`
+  event, not a hidden dilemma UI) → ask him to join. Hostility (killed or
+  caught stealing) disqualifies.
+- Post-fight dialogue collapsed from five states to three: joined &
+  survived, joined & fell, and declined/never recruited (which itself
+  covers both "boss killed without him" and "boss never engaged," since
+  both just show his unchanged vigil dialogue).
+- The keepsake blade is a flat, comparable-to-shop-gear sidegrade
+  (matches `great-sword+1`'s attack bonus, trades a point of attack for a
+  point of AGI) — not a mathematically superior "best route" reward.
+
+**Branch:** `content/floor3-duelists-vigil`, isolated worktree at
+`/home/sloppymo/OnyxLabyrinth-content-pass`.
 
 ## Table of contents
 

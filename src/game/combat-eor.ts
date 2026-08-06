@@ -24,6 +24,7 @@ export function allyDeathCheck(
     if (ally.hp <= 0) {
       emit(`${ally.name} is banished.`, { type: "defeated", targetId: ally.id, wasEnemy: false });
       s.justDiedAllies.push(ally);
+      s.deadAllyIds.push(ally.id);
       return false;
     }
     return true;
