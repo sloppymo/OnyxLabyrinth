@@ -125,6 +125,20 @@ export function handleTileFeature(state: GameState, rng: Rng = getGameplayRng())
   }
 }
 
+type StairTile = "stairs_up" | "stairs_down";
+
+function findStairTile(floor: FloorDef, tile: StairTile): { x: number; y: number } | null {
+  for (let y = 0; y < floor.grid.length; y++) {
+    const row = floor.grid[y];
+    for (let x = 0; x < row.length; x++) {
+      if (row[x]?.tile === tile) {
+        return { x, y };
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * Handle stairs_up / stairs_down. Transitions to the adjacent floor.
  * Saves the current floor's explored tiles and restores the new floor's.
@@ -144,7 +158,17 @@ function handleStairs(state: GameState, goingUp: boolean): FeatureResult {
     };
   }
 
-  transitionToFloor(state, targetFloor, targetFloor.startX, targetFloor.startY);
+  // Going upward means arriving on the upper floor's downward staircase.
+  // Going downward means arriving on the lower floor's upward staircase.
+  const arrivalTile: StairTile = goingUp ? "stairs_down" : "stairs_up";
+  const arrival = findStairTile(targetFloor, arrivalTile);
+
+  transitionToFloor(
+    state,
+    targetFloor,
+    arrival?.x ?? targetFloor.startX,
+    arrival?.y ?? targetFloor.startY
+  );
   return {
     message: goingUp
       ? `You pass through the door up to ${targetFloor.name} (Floor ${targetFloor.id}).`

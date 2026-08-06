@@ -780,6 +780,7 @@ describe("stair exits (door presentation)", () => {
     expect(state.floor.id).toBe(2);
     expect(result?.message).toMatch(/pass through the door down/i);
     expect(result?.message).not.toMatch(/stairs/i);
+    expect(state.floor.grid[state.player.y][state.player.x].tile).toBe("stairs_up");
   });
 
   it("stepping on stairs_up transitions upward with a door message", () => {
@@ -793,5 +794,6 @@ describe("stair exits (door presentation)", () => {
     expect(result?.changedFloor).toBe(true);
     expect(state.floor.id).toBe(1);
     expect(result?.message).toMatch(/pass through the door up/i);
+    expect(state.floor.grid[state.player.y][state.player.x].tile).toBe("stairs_down");
   });
 });
