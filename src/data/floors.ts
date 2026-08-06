@@ -107,7 +107,9 @@ export interface FloorDef {
   // item IDs they contain. Once looted, the tile feature is cleared.
   // `trap` marks the chest as trapped (Inspect/Disarm/Open/Leave prompt on
   // step; see game/features.ts). Untrapped chests loot immediately.
-  treasures?: { x: number; y: number; itemIds: string[]; trap?: TrapType }[];
+  // `climax` locks the treasure in escrow: opening the chest begins combat,
+  // and the items are only awarded after the linked combat is won.
+  treasures?: { x: number; y: number; itemIds: string[]; trap?: TrapType; climax?: { id: string } }[];
   // Water tiles (feature "water"). Depth 1-4 sets the swim difficulty; an
   // optional effect fires on everyone who enters (blessed/cursed pools).
   // Tiles are never consumed. Levitation or the Ring of Water Walking
@@ -270,9 +272,12 @@ function floor2(): FloorDef {
   setTile(grid, 12, 8, "treasure");
   // Vestra, an unbound scribe, hides deep in the west stacks.
   setTile(grid, 1, 1, "npc");
+  // Faint ward just inside the forbidden wing, foreshadowing the forge's
+  // antimagic without stealing floor 3's reveal.
+  setTile(grid, 11, 6, "antimagic");
 
   // Scripted events.
-  setTile(grid, 8, 2, "event");
+  setTile(grid, 9, 2, "event");
   setTile(grid, 7, 10, "event");
   setTile(grid, 3, 2, "event");
   setTile(grid, 11, 4, "event");
@@ -280,6 +285,9 @@ function floor2(): FloorDef {
   setTile(grid, 7, 8, "event");
   setTile(grid, 3, 11, "event");
   setTile(grid, 11, 10, "event");
+  // A shelf between the two reading-hall islands, otherwise the floor's
+  // emptiest room.
+  setTile(grid, 7, 6, "event");
 
   return {
     id: 2,
@@ -291,14 +299,26 @@ function floor2(): FloorDef {
     startY: 11,
     encounterRate: 0.10,
     tilesetTheme: "f2",
+    // f2b: cold-recolored variant of the shipping f2 tileset (same wood/book
+    // material, shifted palette) — see scripts/generate-f2b-tileset.mjs.
+    // Marks the forbidden wing as visually distinct, not just narratively
+    // locked, before the player ever reaches the alarm/climax chest.
+    tilesetZones: [
+      { id: "forbidden-wing", x1: 11, y1: 6, x2: 12, y2: 9, theme: "f2b" },
+    ],
     lockedDoors: [
       { x: 10, y: 7, dir: "e", keyId: "lexicon-key" },
     ],
     treasures: [
-      // A silenced library hates noise — the alarm summons the stacks' keepers.
-      // The blade among the loot is cursed: it clamps onto whoever takes it.
-      { x: 12, y: 3, itemIds: ["mace+1", "chain-mail", "cursed-blade", "antidote"], trap: "alarm" },
-      { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "ring-of-water-walking", "furnace-key"], trap: "stunner" },
+      // A silenced library hates noise — this stunner ward punishes whoever
+      // disturbs the cursed blade.
+      { x: 12, y: 3, itemIds: ["mace+1", "chain-mail", "cursed-blade", "antidote"], trap: "stunner" },
+      // The forbidden wing's real payoff (furnace-key for floor 3). Its
+      // alarm draws the stacks' keepers themselves (see the
+      // forbidden-wing-hot zone's tableFloorId, ENCOUNTER_TABLES[6]) — the
+      // floor's actual climax, not a scarier-named hallway fight. The key is
+      // only awarded after the guardian combat is won.
+      { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "ring-of-water-walking", "furnace-key"], trap: "alarm", climax: { id: "floor2-guardian" } },
     ],
     npcs: [
       {
@@ -321,7 +341,7 @@ function floor2(): FloorDef {
       },
     ],
     events: [
-      { x: 8, y: 2, kind: "damage", message: "A bookcase groans and topples into the dark corridor.", power: 6 },
+      { x: 9, y: 2, kind: "damage", message: "A bookcase groans and topples into the dark corridor.", power: 6 },
       { x: 7, y: 10, kind: "message", message: "A glyph flares on the threshold. For a moment your throat is too dry to speak — but it passes." },
       { x: 3, y: 2, kind: "message", message: "The shelves whisper. One voice is clear: 'Forbidden wing… key of lexicon… furnace below.'" },
       { x: 11, y: 4, kind: "message", message: "The librarian's journal names the forge below and the key that opens it. You leave the body where it fell." },
@@ -329,6 +349,14 @@ function floor2(): FloorDef {
       { x: 7, y: 8, kind: "reward", message: "A cracked lens catches the candlelight — tucked into a false-bottomed drawer between the stacks.", itemId: "eye-drops" },
       { x: 3, y: 11, kind: "heal", message: "A brazier long left burning warms this corner of the atrium.", power: 5 },
       { x: 11, y: 10, kind: "message", message: "A brass plate, half-melted: MIND THE STEP — TO THE FORGE BELOW." },
+      {
+        x: 7,
+        y: 6,
+        kind: "reward",
+        message:
+          "A shelfcatalogue falls open. Under 'Forbidden Wing — Guardians' it reads: 'Two Gaze Wraiths and three Blood Wraiths hold the furnace key. They strike from the back row and silence the unwary. Take this antidote — the cursed volumes have already touched it.'",
+        itemId: "antidote",
+      },
     ],
     mapSprites: [
       { x: 2, y: 2, spriteId: "torch" },
@@ -338,7 +366,7 @@ function floor2(): FloorDef {
     ],
     encounterZones: [
       { id: "library-loop-safe", x1: 1, y1: 4, x2: 4, y2: 12, rateMul: 0.6 },
-      { id: "forbidden-wing-hot", x1: 11, y1: 6, x2: 12, y2: 9, rateMul: 1.6 },
+      { id: "forbidden-wing-hot", x1: 11, y1: 6, x2: 12, y2: 9, rateMul: 1.6, tableFloorId: 6 },
       { id: "scriptorium-hot", x1: 10, y1: 1, x2: 12, y2: 4, rateMul: 1.4 },
     ],
   };
@@ -547,7 +575,13 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     chuteDrops: floor.chuteDrops ? floor.chuteDrops.map((c) => ({ ...c })) : undefined,
     lockedDoors: floor.lockedDoors ? floor.lockedDoors.map((d) => ({ ...d })) : undefined,
     treasures: floor.treasures
-      ? floor.treasures.map((t) => ({ x: t.x, y: t.y, itemIds: [...t.itemIds], trap: t.trap }))
+      ? floor.treasures.map((t) => ({
+          x: t.x,
+          y: t.y,
+          itemIds: [...t.itemIds],
+          trap: t.trap,
+          climax: t.climax ? { ...t.climax } : undefined,
+        }))
       : undefined,
     waters: floor.waters
       ? floor.waters.map((w) => ({ ...w, effect: w.effect ? { ...w.effect } : undefined }))

@@ -27,6 +27,10 @@ import f2WallUrl from "../assets/f2_wall_256.png";
 import f2FloorAUrl from "../assets/f2_floor_a_256.png";
 import f2FloorBUrl from "../assets/f2_floor_b_256.png";
 import f2CeilingUrl from "../assets/f2_ceiling_256.png";
+import f2bWallUrl from "../assets/f2b_wall_256.png";
+import f2bFloorAUrl from "../assets/f2b_floor_a_256.png";
+import f2bFloorBUrl from "../assets/f2b_floor_b_256.png";
+import f2bCeilingUrl from "../assets/f2b_ceiling_256.png";
 import f3WallUrl from "../assets/f3_wall_256.png";
 import f3FloorAUrl from "../assets/f3_floor_a_256.png";
 import f3FloorBUrl from "../assets/f3_floor_b_256.png";
@@ -41,6 +45,7 @@ import f5FloorBUrl from "../assets/f5_floor_b_256.png";
 import f5CeilingUrl from "../assets/f5_ceiling_256.png";
 import f1DoorUrl from "../assets/f1_door_256.png";
 import f2DoorUrl from "../assets/f2_door_256.png";
+import f2bDoorUrl from "../assets/f2b_door_256.png";
 import f3DoorUrl from "../assets/f3_door_256.png";
 import f4DoorUrl from "../assets/f4_door_256.png";
 import f5DoorUrl from "../assets/f5_door_256.png";
@@ -237,6 +242,7 @@ const BUNDLED_THEME_URLS: Record<
 > = {
   f1: { wall: f1WallUrl, floorA: f1FloorAUrl, floorB: f1FloorBUrl, ceiling: f1CeilingUrl, door: f1DoorUrl },
   f2: { wall: f2WallUrl, floorA: f2FloorAUrl, floorB: f2FloorBUrl, ceiling: f2CeilingUrl, door: f2DoorUrl },
+  f2b: { wall: f2bWallUrl, floorA: f2bFloorAUrl, floorB: f2bFloorBUrl, ceiling: f2bCeilingUrl, door: f2bDoorUrl },
   f3: { wall: f3WallUrl, floorA: f3FloorAUrl, floorB: f3FloorBUrl, ceiling: f3CeilingUrl, door: f3DoorUrl },
   f4: { wall: f4WallUrl, floorA: f4FloorAUrl, floorB: f4FloorBUrl, ceiling: f4CeilingUrl, door: f4DoorUrl },
   f5: { wall: f5WallUrl, floorA: f5FloorAUrl, floorB: f5FloorBUrl, ceiling: f5CeilingUrl, door: f5DoorUrl },

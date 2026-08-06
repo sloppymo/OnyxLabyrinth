@@ -326,6 +326,8 @@ interface SerializedState {
   // Active utility-spell buffs (light/levitation). Optional: absent in saves
   // from before the buff system, defaulting to none on load.
   persistentBuffs?: GameState["persistentBuffs"];
+  // Climax chest whose treasure is held until the linked guardian is defeated.
+  pendingClimax?: GameState["pendingClimax"];
   // Per-character swim skill. Optional: absent in older saves, defaults to {}.
   swimSkill?: GameState["swimSkill"];
   // Dungeon NPC state. Optional: absent in saves from before NPCs existed.
@@ -404,6 +406,7 @@ export function serialize(state: GameState): string {
     lastDungeon: state.lastDungeon,
     equipment: { ...state.equipment },
     persistentBuffs: state.persistentBuffs.map((b) => ({ ...b })),
+    pendingClimax: state.pendingClimax,
     swimSkill: { ...state.swimSkill },
     talkedToNPCs: [...state.talkedToNPCs],
     npcDisposition: { ...state.npcDisposition },
@@ -514,6 +517,7 @@ export function deserialize(json: string): GameState | null {
       // off and back onto the tile re-prompts.
       pendingTrap: null,
       persistentBuffs: ser.persistentBuffs?.map((b) => ({ ...b })) ?? [],
+      pendingClimax: ser.pendingClimax,
       swimSkill: ser.swimSkill ? { ...ser.swimSkill } : {},
       talkedToNPCs: ser.talkedToNPCs ? [...ser.talkedToNPCs] : [],
       npcDisposition: ser.npcDisposition ? { ...ser.npcDisposition } : {},

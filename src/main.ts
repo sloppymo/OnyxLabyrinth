@@ -9,6 +9,7 @@ import {
   disarmChest,
   openChest,
   leaveChest,
+  resolveClimaxVictory,
   type ChestActionResult,
 } from "./game/features";
 import { revealAround } from "./game/explore";
@@ -738,7 +739,9 @@ function endCombat(result: CombatState): void {
 
     const baseMsg = `Victory! +${goldEarned} gold, +${xpEarned} XP each.`;
     const levelMsg = levelUpMessages.length > 0 ? ` ${levelUpMessages.join(" ")}` : "";
-    setMessage(baseMsg + levelMsg);
+    const climaxLoot = result.climaxId ? resolveClimaxVictory(state, result.climaxId) : "";
+    const climaxLootMsg = climaxLoot ? ` ${climaxLoot}` : "";
+    setMessage(baseMsg + levelMsg + climaxLootMsg);
   }
 
   // NPC fights: victory kills the NPC (tile cleared); fleeing leaves them
@@ -1183,6 +1186,13 @@ function forceEncounter(): void {
     state.inventory,
     state.inAntimagic
   );
+  const pending = state.pendingClimax;
+  const isCurrentClimax =
+    pending !== undefined &&
+    pending.floorId === state.floor.id &&
+    pending.x === state.player.x &&
+    pending.y === state.player.y;
+  combat.climaxId = isCurrentClimax ? pending.id : undefined;
   state.combat = combat;
   setMode(state, "combat");
   state.stepsSinceEncounter = 0;
