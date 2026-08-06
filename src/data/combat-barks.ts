@@ -42,7 +42,7 @@ export const COMBAT_BARKS: readonly BarkLineDef[] = [
   },
   {
     trigger: "death",
-    speaker: { classIds: ["Fighter", "Mage", "Priest", "Thief", "Halberdier", "Duelist", "Crusader"] },
+    speaker: { classIds: ["Fighter", "Mage", "Priest", "Thief", "Halberdier", "Duelist", "Crusader", "Ninja"] },
     lines: ["Let this be the last time."],
   },
   // Floor bosses — short bitter lines so borrowed sprites still sound distinct.

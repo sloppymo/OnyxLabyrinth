@@ -7,6 +7,8 @@
  * using existing effect kinds only (no DoT / armor-pen / double-action yet).
  */
 
+import type { CharacterClass } from "../game/party";
+
 export type SpellcasterClass = "Mage" | "Priest";
 
 export type SpellTarget =
@@ -765,14 +767,7 @@ export function spellById(id: string): SpellDef | undefined {
 
 /** Return every spell a character class can learn at their current tier range. */
 export function spellsForClass(
-  cls:
-    | "Fighter"
-    | "Mage"
-    | "Priest"
-    | "Thief"
-    | "Halberdier"
-    | "Duelist"
-    | "Crusader",
+  cls: CharacterClass,
   maxTier: 1 | 2 | 3 | 4 | 5 | 6 | 7
 ): SpellDef[] {
   if (cls === "Mage") return MAGE_SPELLS.filter((s) => s.tier <= maxTier);
@@ -784,7 +779,7 @@ export function spellsForClass(
 
 /** Highest tier that has real spell definitions for a casting class (or 0). */
 export function maxContentSpellTier(
-  cls: "Mage" | "Priest" | "Crusader" | "Fighter" | "Thief" | "Halberdier" | "Duelist"
+  cls: CharacterClass
 ): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 {
   const pool =
     cls === "Mage" ? MAGE_SPELLS : cls === "Priest" || cls === "Crusader" ? PRIEST_SPELLS : [];
