@@ -575,7 +575,13 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     chuteDrops: floor.chuteDrops ? floor.chuteDrops.map((c) => ({ ...c })) : undefined,
     lockedDoors: floor.lockedDoors ? floor.lockedDoors.map((d) => ({ ...d })) : undefined,
     treasures: floor.treasures
-      ? floor.treasures.map((t) => ({ x: t.x, y: t.y, itemIds: [...t.itemIds], trap: t.trap }))
+      ? floor.treasures.map((t) => ({
+          x: t.x,
+          y: t.y,
+          itemIds: [...t.itemIds],
+          trap: t.trap,
+          climax: t.climax ? { ...t.climax } : undefined,
+        }))
       : undefined,
     waters: floor.waters
       ? floor.waters.map((w) => ({ ...w, effect: w.effect ? { ...w.effect } : undefined }))
