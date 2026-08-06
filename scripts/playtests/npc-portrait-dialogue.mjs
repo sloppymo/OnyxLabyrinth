@@ -32,7 +32,7 @@ function check(name, cond, detail = "") {
 }
 
 async function typeWord(page, word) {
-  await page.keyboard.type(word, { delay: 20 });
+  await page.keyboard.type(word, { delay: 60 });
 }
 
 async function panelText(page) {
@@ -45,6 +45,28 @@ async function panelHtml(page) {
 
 /** Bounds for the visible #combat-panel, portrait, and text cells. Used
  *  to prove no clipping at narrow viewports. */
+async function acknowledge(page) {
+  // With full animation, a one-page message may need two Enter presses:
+  // the first completes the reveal-mask, the second acknowledges the page.
+  // If the message is already revealed, the first press acknowledges it.
+  // Either way, three presses is enough to consume a short message without
+  // accidentally confirming the next menu item (which would need a fourth).
+  await press(page, "Enter", 2);
+}
+
+async function acknowledgeFully(page, max = 8) {
+  // Multi-page dialogue responses need several Enter presses (reveal + turn
+  // for each page, then a final acknowledge). Stop once the continuation
+  // indicator is hidden or missing.
+  for (let i = 0; i < max; i++) {
+    await press(page, "Enter");
+    const hasMore = await page.evaluate(
+      () => !!document.querySelector(".npc-dlg-continue:not([hidden])")
+    );
+    if (!hasMore) return;
+  }
+}
+
 async function panelClipInfo(page) {
   return page.evaluate(() => {
     const panel = document.querySelector("#combat-panel");
@@ -87,12 +109,12 @@ console.log("=== Kazeharu: portrait + greeting (dungeon visible behind panel) ==
 await jumpTo(page, { floorId: 3, x: 2, y: 9, facing: 1 });
 await press(page, "ArrowUp"); // step onto (3,9)
 await wait(400);
-
+// Acknowledge the greeting before any root action hotkeys. Two Enter
 let html = await panelHtml(page);
 check("Kazeharu's real portrait <img> renders", html.includes("kazeharu/portrait.png"));
 let text = await panelText(page);
 check("Greeting text present", text.includes("I am Kazeharu"));
-check("Action bar NOT shown before acknowledgment", !text.includes("[T] Talk"));
+check("Action bar NOT shown before acknowledgment", !text.includes("[T] Talk"), text.slice(0, 120));
 
 const canvasVisible = await page.evaluate(() => {
   const canvas = document.querySelector("#view");
@@ -156,13 +178,22 @@ check("hidden 'master' topic answers and sets kazeharuToldTruth", text.includes(
 const toldTruth = await page.evaluate(() => !!window.__onyxDebug.state.kazeharuToldTruth);
 check("kazeharuToldTruth flag set", toldTruth);
 
+// Consume the master answer before opening the next ask.
+await acknowledgeFully(page);
+
 await press(page, "ArrowDown", 2);
 await press(page, "Enter");
+await wait(200);
 await typeWord(page, "join");
+await wait(200);
 await press(page, "Enter");
-await wait(150);
+await wait(300);
 text = await panelText(page);
-check("hidden 'join' topic (not yet eligible — no ring) refuses", text.includes("Bring me something"));
+check("hidden 'join' topic (not yet eligible — no ring) refuses", text.includes("Bring me something"), text.slice(0, 180));
+
+// Consume the join answer before opening the typed-keyword ask for the
+// injection test.
+await acknowledgeFully(page);
 
 console.log("=== HTML-escaped typed keyword (no script injection) ===");
 await press(page, "ArrowDown", 2);
@@ -196,11 +227,13 @@ check("Vestra's greeting shown", text.includes("I am Vestra"));
 await shot(page, OUT, "05-vestra-silhouette-fallback.png");
 
 console.log("=== Vestra: barter (transaction result) ===");
+await acknowledge(page);
 await press(page, "b"); // Barter
 await wait(200);
 text = await panelText(page);
 check("barter list shows the trade", text.includes("Antidote") && text.includes("Robe"));
 await shot(page, OUT, "06-vestra-barter-list.png");
+await acknowledge(page); // consume "Vestra lays out an offer."
 await press(page, "Enter"); // confirm the (only) trade
 await wait(200);
 text = await panelText(page);
@@ -214,11 +247,13 @@ console.log("=== Vestra: Give (rejected — she has no wantsItemId) ===");
 await jumpTo(page, { floorId: 2, x: 2, y: 1, facing: 3, items: [{ itemId: "healing-potion", identified: true }] });
 await press(page, "ArrowUp");
 await wait(300);
+await acknowledge(page);
 await press(page, "g"); // Give
 await wait(150);
 text = await panelText(page);
 check("give list renders the inventory item", text.includes("healing-potion") || text.includes("Healing Potion"));
 await shot(page, OUT, "07b-vestra-give-list.png");
+await acknowledge(page); // consume "Offer what?"
 await press(page, "Enter"); // offer the only inventory item
 await wait(150);
 text = await panelText(page);
@@ -232,6 +267,7 @@ await page.evaluate(() => window.__onyxDebug.setGameplayRng(() => 0));
 await jumpTo(page, { floorId: 2, x: 2, y: 1, facing: 3 });
 await press(page, "ArrowUp");
 await wait(300);
+await acknowledge(page);
 await press(page, "s"); // Steal
 await wait(200);
 text = await panelText(page);
@@ -245,6 +281,7 @@ await page.evaluate(() => window.__onyxDebug.setGameplayRng(() => 0.99));
 await jumpTo(page, { floorId: 2, x: 2, y: 1, facing: 3 });
 await press(page, "ArrowUp");
 await wait(300);
+await acknowledge(page);
 await press(page, "s"); // Steal — will fail at rng=0.99, showing the hostile line
 await wait(250);
 html = await panelHtml(page);
@@ -269,6 +306,7 @@ console.log("=== Kazeharu: Attack transition ===");
 await jumpTo(page, { floorId: 3, x: 2, y: 9, facing: 1 });
 await press(page, "ArrowUp");
 await wait(300);
+await acknowledge(page);
 await press(page, "a"); // Attack
 s = await waitForRoute(page, "combat");
 check("Attack starts combat", s.route === "combat", `got ${s.route}`);
@@ -281,6 +319,7 @@ console.log("=== Kazeharu: Leave ===");
 await jumpTo(page, { floorId: 3, x: 2, y: 9, facing: 1 });
 await press(page, "ArrowUp");
 await wait(300);
+await acknowledge(page);
 await press(page, "l"); // Leave
 await wait(300);
 s = await snap(page);
@@ -293,6 +332,7 @@ console.log("=== Long dialogue pagination ===");
 await jumpTo(page, { floorId: 3, x: 2, y: 9, facing: 1 });
 await press(page, "ArrowUp");
 await wait(300);
+await acknowledge(page);
 await press(page, "t");
 await press(page, "ArrowDown", 2);
 await press(page, "Enter");
