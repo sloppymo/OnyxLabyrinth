@@ -454,18 +454,22 @@ export class TavernController {
         break;
     }
 
-    const portraitHtml = `<div class="tavern-portrait"><img src="${HOT_BOI_PORTRAIT_URL}" alt="Hot Boi" /></div>`;
+    const isRoot = this.phase === "root";
+    const subtitle = isRoot ? `<div class="tavern-subtitle">Tavern &amp; Adventurers' Hall</div>` : "";
+    const portraitHtml = `<div class="tavern-portrait"><img src="${HOT_BOI_PORTRAIT_URL}" alt="Hot Boi" /><div class="tavern-portrait-label">Hot Boi</div></div>`;
     const dialogueHtml = `<div class="npc-dialogue">${this.dialogue}</div>`;
     const ambientHtml =
-      this.phase === "root" ? `<div class="npc-empty-line">${this.ambient}</div>` : "";
+      isRoot ? `<div class="tavern-ambient">${this.ambient}</div>` : "";
     const emptyBoardHtml =
       this.phase === "scorchboard" && items.length === 0
         ? `<div class="npc-empty-line">Nothing posted right now.</div>`
         : "";
 
+    const headerHtml = `<div class="tavern-header">${portraitHtml}<div class="tavern-dialogue-block">${subtitle}${dialogueHtml}${ambientHtml}</div></div>`;
+
     const win = new FF6Window({
       title,
-      contentHtml: portraitHtml + dialogueHtml + ambientHtml + emptyBoardHtml,
+      contentHtml: headerHtml + emptyBoardHtml,
       items,
       selectedIndex: this.index,
       mode: "menu",

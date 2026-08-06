@@ -783,28 +783,68 @@ canvas#map-canvas {
 
 /* --- Dungeon NPC panel --------------------------------------------------- */
 
+.tavern-header {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 0 auto 10px;
+  max-width: 700px;
+}
+
 .tavern-portrait {
-  margin: 0 auto 12px;
-  max-width: 180px;
-  text-align: center;
+  flex: 0 0 140px;
+  width: 140px;
 }
 
 .tavern-portrait img {
   width: 100%;
   height: auto;
-  border: 2px solid var(--amber, #ffd769);
+  border: 2px solid var(--amber);
   border-radius: 4px;
-  image-rendering: auto;
+  image-rendering: pixelated;
+}
+
+.tavern-portrait-label {
+  text-align: center;
+  font-size: var(--fs-small);
+  color: var(--amber);
+  margin-top: 4px;
+}
+
+.tavern-dialogue-block {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 140px;
+}
+
+.tavern-subtitle {
+  font-size: var(--fs-small);
+  color: var(--amber);
+  font-style: italic;
+  margin-bottom: 6px;
 }
 
 .npc-dialogue {
-  margin: 0 auto 16px;
-  max-width: 700px;
-  text-align: center;
-  font-size: var(--fs-body);
+  margin: 0 0 6px;
+  font-size: var(--fs-small);
   color: var(--warm-white);
   font-style: italic;
-  line-height: 1.5;
+  line-height: 1.4;
+}
+
+.npc-empty-line {
+  font-size: var(--fs-small);
+  color: #c8b896;
+  line-height: 1.4;
+}
+
+.tavern-ambient {
+  font-size: var(--fs-small);
+  color: #c8b896;
+  line-height: 1.4;
 }
 
 .npc-caret {
