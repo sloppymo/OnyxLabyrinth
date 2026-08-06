@@ -530,3 +530,37 @@ export function showMode(
   resizeGameScale();
   resizeCorridorCanvas();
 }
+
+/**
+ * NPC dialogue is the one borrowed-"title" overlay that must NOT hide the
+ * dungeon behind it (every other one — save, grimoire, perk select, town,
+ * camp — intentionally replaces the whole screen via showMode()'s generic
+ * `usesDomPanel` path). Keeps #viewport-wrap/#view exactly as dungeon mode
+ * left them and positions #combat-panel as a bottom-anchored bar over them
+ * instead (`.npc-dialogue-host` in styles.css), so main.ts's openNPCPanel
+ * calls this instead of showMode("title", ...).
+ */
+export function showNpcDialogueOverlay(): void {
+  viewportWrap.style.display = "";
+  canvas.style.display = "";
+  partyStripEl.style.display = "";
+  contextPromptEl.style.display = "";
+  combatWrap.style.display = "none";
+  mapCanvas.style.display = "none";
+  // The dungeon HUD message band shows its own independent "you meet
+  // <name>, <title>" line (and runs its own separate typewriter reveal) for
+  // the step that opened this NPC — leaving it up duplicates/collides with
+  // the dialogue panel's own header. showMode("dungeon", ...) restores its
+  // normal visibility once the panel closes.
+  messageBandEl.style.display = "none";
+  combatPanel.style.display = "flex";
+  combatPanel.classList.add("npc-dialogue-host");
+}
+
+/** Reverse of showNpcDialogueOverlay(); main.ts follows this with the
+ *  normal showMode("dungeon", ...) (or showMode("combat", ...) on an
+ *  Attack/botched-Steal hand-off) to fully restore standard mode display. */
+export function hideNpcDialogueOverlay(): void {
+  combatPanel.classList.remove("npc-dialogue-host");
+  combatPanel.style.display = "none";
+}
