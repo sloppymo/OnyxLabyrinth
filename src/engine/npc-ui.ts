@@ -131,6 +131,13 @@ export class NPCController {
     const isConfirm = key === "Enter" || key === " ";
     const lower = key.toLowerCase();
 
+    // A hostile handoff (failed theft, etc.) is a commitment: nothing except an
+    // explicit confirm may leave or sidestep the panel. Escape, arrows, and
+    // root hotkeys are swallowed until the player presses Enter/Space.
+    if (this.pendingFight && !isConfirm) {
+      return true;
+    }
+
     // For every phase except "ask", the same rule applies: the first Enter/Space
     // completes the typewriter reveal; subsequent Enter/Space advances pages; the
     // final Enter/Space acknowledges the beat. Only then can a later confirmation
@@ -204,6 +211,8 @@ export class NPCController {
   }
 
   private startPendingFight(): void {
+    if (!this.pendingFight) return;
+    this.pendingFight = false;
     this.close("");
     this.onFight(this.npc);
   }

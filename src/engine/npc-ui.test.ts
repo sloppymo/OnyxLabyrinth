@@ -103,6 +103,7 @@ describe("NPCController", () => {
   function freshController(state: GameState, npc: NPCDef) {
     let closeMessage = "";
     let fightNpc: NPCDef | null = null;
+    let fightCount = 0;
     const controller = new NPCControllerCtor({
       panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
       state,
@@ -112,9 +113,15 @@ describe("NPCController", () => {
       },
       onFight: (n: NPCDef) => {
         fightNpc = n;
+        fightCount++;
       },
     });
-    return { controller, closeMessage: () => closeMessage, fightNpc: () => fightNpc };
+    return {
+      controller,
+      closeMessage: () => closeMessage,
+      fightNpc: () => fightNpc,
+      fightCount: () => fightCount,
+    };
   }
 
   it("shows the portrait/name/greeting first, with the action bar hidden until acknowledged", () => {
@@ -685,12 +692,12 @@ describe("NPCController", () => {
     controller.destroy();
   });
 
-  it("failed steal starts exactly one fight and only on Enter/Space", () => {
+  it("failed steal keeps the panel open on Escape, then starts one fight on Enter", () => {
     setGameplayRng(() => 0.99);
     try {
       const npc = makeNPC();
       const state = makeState(npc);
-      const { controller, fightNpc, closeMessage } = freshController(state, npc);
+      const { controller, fightNpc, closeMessage, fightCount } = freshController(state, npc);
       const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
 
       controller.handleKey("Enter");
@@ -699,10 +706,22 @@ describe("NPCController", () => {
       expect(panel.textContent).toContain("steel is drawn");
       expect(fightNpc()).toBeNull();
 
-      // Escape does not launch combat.
+      // Escape does not close the panel and does not let the player walk away.
       controller.handleKey("Escape");
-      expect(closeMessage()).toBe("You step away.");
+      expect(closeMessage()).toBe("");
       expect(fightNpc()).toBeNull();
+      expect(panel.textContent).toContain("steel is drawn");
+
+      // Enter/Space completes the hostile reveal and, on the same key,
+      // acknowledges and hands off to exactly one combat.
+      controller.handleKey("Enter"); // complete reveal
+      controller.handleKey("Enter"); // acknowledge + start fight
+      expect(fightNpc()?.id).toBe("hermit");
+      expect(fightCount()).toBe(1);
+
+      // A stray later confirm cannot start a second fight; the panel is gone.
+      controller.handleKey("Enter");
+      expect(fightCount()).toBe(1);
 
       controller.destroy();
     } finally {
