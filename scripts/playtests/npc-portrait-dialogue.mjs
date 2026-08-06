@@ -56,14 +56,19 @@ async function acknowledge(page) {
 
 async function acknowledgeFully(page, max = 8) {
   // Multi-page dialogue responses need several Enter presses (reveal + turn
-  // for each page, then a final acknowledge). Stop once the continuation
-  // indicator is hidden or missing.
+  // for each page, then a final acknowledge). Stop once the live controller
+  // reports the current beat is fully revealed and acknowledged.
   for (let i = 0; i < max; i++) {
-    await press(page, "Enter");
-    const hasMore = await page.evaluate(
-      () => !!document.querySelector(".npc-dlg-continue:not([hidden])")
+    const done = await page.evaluate(
+      () => {
+        const c = window.__onyxDebug.npcController;
+        if (!c) return true;
+        return c.textRevealed && c.acknowledged;
+      }
     );
-    if (!hasMore) return;
+    if (done) return;
+    await press(page, "Enter");
+    await wait(60);
   }
 }
 

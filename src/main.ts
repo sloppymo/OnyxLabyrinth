@@ -3101,6 +3101,10 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     snapshot: debugSnapshot,
     isIdle,
     readiness,
+    /** Live NPC controller, null when no dialogue panel is open. */
+    get npcController() {
+      return npcController;
+    },
     /** Recent debug events, oldest-first. `log(50, "audioCue")` to filter. */
     log: (n?: number, kind?: DebugEventKind) => events.log(n, kind),
     clearLog: () => events.clear(),
