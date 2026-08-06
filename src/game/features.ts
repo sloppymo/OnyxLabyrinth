@@ -528,6 +528,23 @@ function awardTreasure(
 }
 
 /**
+ * Award a climax chest's treasure after its guardian combat ends in victory.
+ * Returns the same loot message `awardTreasure` would have produced.
+ */
+export function resolveClimaxVictory(state: GameState, climaxId: string): string {
+  const pending = state.pendingClimax;
+  if (!pending || pending.id !== climaxId) return "";
+  const treasure = state.floor.treasures?.find((t) => t.x === pending.x && t.y === pending.y);
+  if (!treasure) {
+    state.pendingClimax = undefined;
+    return "";
+  }
+  const result = awardTreasure(state, treasure);
+  state.pendingClimax = undefined;
+  return result.message;
+}
+
+/**
  * Transition to a new floor. Saves the current floor's explored tiles and
  * restores the new floor's explored tiles (if any). The new floor is cloned
  * from the global definition, then mutable runtime state (unlocked doors,
@@ -936,6 +953,17 @@ export function disarmChest(state: GameState, rng: Rng = getGameplayRng()): Ches
         ) + disarmerMods.trapDisarmBonusPercent
       : Math.min(0.95, (disarmerStats.luk / 3 + 5) / 100) + disarmerMods.trapDisarmBonusPercent;
 
+  // Climax chests are bound to a guardian encounter; they cannot be disarmed.
+  if (treasure.climax) {
+    return {
+      message: `${disarmer.name} studies the chest, but the alarm is bound to a guardian ward — it cannot be disarmed. Open or leave it.`,
+      opened: false,
+      alarm: false,
+      relocated: false,
+      trapType: p.trapType,
+    };
+  }
+
   if (rng() < chance) {
     state.pendingTrap = null;
     const loot = awardTreasure(state, treasure);
@@ -1045,6 +1073,24 @@ function triggerTrapAndOpen(state: GameState, prefix: string, rng: Rng): ChestAc
   }
 
   // The trap is spent; the loot survives (design: traps punish, not rob).
+  // Except for climax chests, whose treasure is held in escrow until the
+  // linked guardian combat is won. Those stay full and re-prompt on re-entry.
+  if (treasure.climax) {
+    state.pendingClimax = {
+      id: treasure.climax.id,
+      floorId: state.floor.id,
+      x: treasure.x,
+      y: treasure.y,
+    };
+    return {
+      message: `${prefix} ${effectMsg} The guardian ward holds the ${treasure.itemIds.filter((id) => id.endsWith("-key")).map(keyDisplayName).join(", ") || "treasure"} until the keepers fall.`,
+      opened: true,
+      alarm,
+      relocated,
+      trapType: p.trapType,
+    };
+  }
+
   const loot = awardTreasure(state, treasure);
 
   // Teleported away from the chest: the loot message still applies (the

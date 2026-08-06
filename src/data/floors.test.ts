@@ -4,6 +4,7 @@ import { getFloors, findFloor } from "../game/floor-registry";
 import { ITEMS_BY_ID } from "./items";
 import type { Grid } from "../types";
 import { resolveTilesetTheme, themeAt } from "../game/floor-map";
+import { encounterTableFloorId } from "../game/encounters";
 
 /** BFS over the edge grid from the floor's start position.
  *  Returns the set of "x,y" cells reachable through the given edge types.
@@ -418,5 +419,19 @@ describe("floor 2 (The Cursed Library) redesign regressions", () => {
     // Boundary check: just outside the zone must stay the floor's base theme.
     expect(themeAt(f2, 12, 5)).toBe("f2");
     expect(themeAt(f2, 2, 2)).toBe("f2");
+  });
+
+  it("the furnace-key chest is the only floor-2 tile that resolves to the guardian table", () => {
+    const f2 = findFloor(2)!;
+    expect(encounterTableFloorId(f2, 12, 8)).toBe(6);
+    expect(encounterTableFloorId(f2, 12, 3)).toBe(2); // scriptorium uses ordinary table
+    // No other floor-2 encounter zone references table 6.
+    expect(f2.encounterZones?.some((z) => z.id !== "forbidden-wing-hot" && z.tableFloorId === 6)).toBe(false);
+  });
+
+  it("the furnace-key chest is marked as a climax", () => {
+    const f2 = findFloor(2)!;
+    const chest = f2.treasures?.find((t) => t.x === 12 && t.y === 8);
+    expect(chest?.climax?.id).toBe("floor2-guardian");
   });
 });

@@ -11,6 +11,7 @@ import {
   disarmChest,
   openChest,
   leaveChest,
+  resolveClimaxVictory,
   swimChance,
   transitionToFloor,
   isTreasureLooted,
@@ -831,5 +832,69 @@ describe("stair exits (door presentation)", () => {
     expect(state.floor.id).toBe(1);
     expect(result?.message).toMatch(/pass through the door up/i);
     expect(state.floor.grid[state.player.y][state.player.x].tile).toBe("stairs_down");
+  });
+});
+
+describe("climax chests (guardian-ward treasure)", () => {
+  function makeClimaxState(): GameState {
+    const state = makeState("alarm");
+    state.floor.treasures![0].climax = { id: "test-guardian" };
+    return state;
+  }
+
+  it("opening a climax chest does not award items and sets pendingClimax", () => {
+    const state = makeClimaxState();
+    handleTileFeature(state);
+    const result = openChest(state, () => 0.5);
+    expect(result.opened).toBe(true);
+    expect(result.alarm).toBe(true);
+    expect(state.pendingClimax).toEqual({
+      id: "test-guardian",
+      floorId: 1,
+      x: 2,
+      y: 2,
+    });
+    expect(state.inventory.length).toBe(0);
+    expect(state.keys.length).toBe(0);
+    expect(state.lootTaken[1]?.has("2,2")).not.toBe(true);
+    expect(isTreasureLooted(state.floor, 2, 2)).toBe(false);
+  });
+
+  it("leaving a climax chest keeps it unresolved", () => {
+    const state = makeClimaxState();
+    handleTileFeature(state);
+    const msg = leaveChest(state);
+    expect(msg).toMatch(/untouched/i);
+    expect(state.inventory.length).toBe(0);
+    expect(state.pendingClimax).toBeUndefined();
+  });
+
+  it("disarming a climax chest is impossible", () => {
+    const state = makeClimaxState();
+    handleTileFeature(state);
+    const result = disarmChest(state, () => 0);
+    expect(result.opened).toBe(false);
+    expect(result.alarm).toBe(false);
+    expect(state.inventory.length).toBe(0);
+    expect(state.pendingTrap).not.toBeNull();
+  });
+
+  it("resolveClimaxVictory awards the treasure and clears pendingClimax", () => {
+    const state = makeClimaxState();
+    state.pendingClimax = { id: "test-guardian", floorId: 1, x: 2, y: 2 };
+    const msg = resolveClimaxVictory(state, "test-guardian");
+    expect(msg).toMatch(/Treasure!/i);
+    expect(state.inventory.length).toBeGreaterThan(0);
+    expect(state.keys).toContain("test-key");
+    expect(state.pendingClimax).toBeUndefined();
+    expect(isTreasureLooted(state.floor, 2, 2)).toBe(true);
+    expect(state.lootTaken[1]?.has("2,2")).toBe(true);
+  });
+
+  it("resolveClimaxVictory is a no-op when no pendingClimax matches", () => {
+    const state = makeClimaxState();
+    expect(resolveClimaxVictory(state, "wrong-id")).toBe("");
+    expect(resolveClimaxVictory(state, "test-guardian")).toBe("");
+    expect(state.inventory.length).toBe(0);
   });
 });

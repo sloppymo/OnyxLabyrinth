@@ -201,7 +201,9 @@ export interface FloorDef {
   // item IDs they contain. Once looted, the tile feature is cleared.
   // `trap` marks the chest as trapped (Inspect/Disarm/Open/Leave prompt on
   // step; see game/features.ts). Untrapped chests loot immediately.
-  treasures?: { x: number; y: number; itemIds: string[]; trap?: TrapType }[];
+  // `climax` locks the treasure in escrow: opening the chest begins combat,
+  // and the items are only awarded after the linked combat is won.
+  treasures?: { x: number; y: number; itemIds: string[]; trap?: TrapType; climax?: { id: string } }[];
   // Water tiles (feature "water"). Depth 1-4 sets the swim difficulty; an
   // optional effect fires on everyone who enters (blessed/cursed pools).
   // Tiles are never consumed. Levitation or the Ring of Water Walking
@@ -533,8 +535,9 @@ function floor2(): FloorDef {
       // The forbidden wing's real payoff (furnace-key for floor 3). Its
       // alarm draws the stacks' keepers themselves (see the
       // forbidden-wing-hot zone's tableFloorId, ENCOUNTER_TABLES[6]) — the
-      // floor's actual climax, not a scarier-named hallway fight.
-      { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "ring-of-water-walking", "furnace-key"], trap: "alarm" },
+      // floor's actual climax, not a scarier-named hallway fight. The key is
+      // only awarded after the guardian combat is won.
+      { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "ring-of-water-walking", "furnace-key"], trap: "alarm", climax: { id: "floor2-guardian" } },
     ],
     npcs: [
       {
@@ -565,7 +568,14 @@ function floor2(): FloorDef {
       { x: 7, y: 8, kind: "reward", message: "A cracked lens catches the candlelight — tucked into a false-bottomed drawer between the stacks.", itemId: "eye-drops" },
       { x: 3, y: 11, kind: "heal", message: "A brazier long left burning warms this corner of the atrium.", power: 5 },
       { x: 11, y: 10, kind: "message", message: "A brass plate, half-melted: MIND THE STEP — TO THE FORGE BELOW." },
-      { x: 7, y: 6, kind: "message", message: "A shelf-book falls open on its own. The page reads only: 'The furnace remembers what it eats.'" },
+      {
+        x: 7,
+        y: 6,
+        kind: "reward",
+        message:
+          "A shelfcatalogue falls open. Under 'Forbidden Wing — Guardians' it reads: 'Two Gaze Wraiths and three Blood Wraiths hold the furnace key. They strike from the back row and silence the unwary. Take this antidote — the cursed volumes have already touched it.'",
+        itemId: "antidote",
+      },
     ],
     mapSprites: [
       { x: 2, y: 2, spriteId: "torch" },

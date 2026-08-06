@@ -32,4 +32,4 @@
 #   event (7,8) kind=reward
 #   event (3,11) kind=heal
 #   event (11,10) kind=message
-#   event (7,6) kind=message
+#   event (7,6) kind=reward

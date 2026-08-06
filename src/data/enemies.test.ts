@@ -339,3 +339,41 @@ describe("encounter table integrity", () => {
     }
   });
 });
+
+describe("Floor 2 forbidden-wing climax table (table 6)", () => {
+  it("is only reachable from the forbidden-wing-hot zone on floor 2", () => {
+    for (const floor of getFloors()) {
+      const zones = floor.encounterZones ?? [];
+      for (const zone of zones) {
+        if (zone.id === "forbidden-wing-hot") {
+          expect(zone.tableFloorId).toBe(6);
+        } else {
+          expect(zone.tableFloorId, `${floor.name}/${zone.id}`).not.toBe(6);
+        }
+      }
+    }
+  });
+
+  it("contains no boss enemies and all referenced ids are registered", () => {
+    for (const entry of ENCOUNTER_TABLES[6]) {
+      for (const spawn of entry.spawns) {
+        const enemy = ENEMIES_BY_ID[spawn.enemyId];
+        expect(enemy, `unknown enemyId "${spawn.enemyId}"`).toBeDefined();
+        expect(enemy!.isBoss, `${spawn.enemyId} is a boss; table 6 must be regulars`).toBe(false);
+      }
+    }
+  });
+
+  it("uses only back-row spawns and respects the Gaze Wraith cap", () => {
+    for (const entry of ENCOUNTER_TABLES[6]) {
+      expect(entry.spawns.length).toBeLessThanOrEqual(5);
+      expect(
+        entry.spawns.filter((s) => s.enemyId === "eyeball-monster").length,
+        "table 6 has at most 2 Gaze Wraiths per pack"
+      ).toBeLessThanOrEqual(2);
+      for (const spawn of entry.spawns) {
+        expect(spawn.row).toBe("back");
+      }
+    }
+  });
+});
