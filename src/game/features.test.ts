@@ -379,6 +379,24 @@ describe("openChest trap effects", () => {
     expect(state.floor.grid[2][2].tile).toBe("treasure");
     expect(isTreasureLooted(state.floor, 2, 2)).toBe(true);
   });
+
+  it("an alarm chest cannot re-fire on a return visit after being looted", () => {
+    // The floor 2 forbidden-wing climax puts an "alarm" trap on the party's
+    // mandatory chest. Once looted, the inert-treasure guard in
+    // handleTileFeature must short-circuit before handleTreasure runs again
+    // — otherwise re-crossing (or fleeing and coming back) would re-trigger
+    // the forced encounter indefinitely.
+    const state = makePerkFreeState("alarm");
+    handleTileFeature(state); // arms pendingTrap
+    const first = openChest(state, seqRng([0.5]));
+    expect(first.alarm).toBe(true);
+    expect(isTreasureLooted(state.floor, 2, 2)).toBe(true);
+
+    // Re-crossing the now-empty chest tile must not re-open or re-alarm.
+    const second = handleTileFeature(state);
+    expect(second).toBeNull();
+    expect(state.pendingTrap).toBeNull();
+  });
 });
 
 describe("leaveChest", () => {

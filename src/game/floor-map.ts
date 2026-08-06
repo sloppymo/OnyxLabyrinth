@@ -30,6 +30,7 @@ export const FLOOR_MAP_FORMAT_VERSION = 1 as const;
 export const BUILT_IN_TILESET_THEMES = [
   "f1",
   "f2",
+  "f2b",
   "f3",
   "f4",
   "f5",
