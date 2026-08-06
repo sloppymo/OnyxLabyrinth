@@ -188,9 +188,11 @@ export const ORC: EnemyDef = {
   isBoss: false,
 };
 
+// Display name only — id/sprite/kit unchanged. Renamed off its old
+// mad-science flavor to read as one of Vestra's fellow scribes, gone feral.
 export const FAILED_EXPERIMENT: EnemyDef = {
   id: "failed-experiment",
-  name: "Failed Experiment",
+  name: "Feral Scrivener",
   floors: [2],
   rowPreference: "front",
   hp: 40,
@@ -224,9 +226,12 @@ export const ACID_PUDDLE: EnemyDef = {
   isBoss: false,
 };
 
+// Display name only — id/sprite/kit unchanged. The robed healer sprite is
+// the floor's actual "cursed scribe" (the archetype the section header
+// promises); its old lab-coat name never matched what's on screen.
 export const LAB_ASSISTANT: EnemyDef = {
   id: "lab-assistant",
-  name: "Lab Assistant",
+  name: "Cursed Scribe",
   floors: [2],
   rowPreference: "back",
   hp: 24,
@@ -240,9 +245,12 @@ export const LAB_ASSISTANT: EnemyDef = {
   isBoss: false,
 };
 
+// Display name only — id/sprite/kit unchanged. Its D&D-coded old name never
+// fit the library; "Shelf Stalker" matches both the blink/vanish kit and
+// the shadow-panther sprite.
 export const DISPLACER_BEAST: EnemyDef = {
   id: "displacer-beast",
-  name: "Displacer Beast",
+  name: "Shelf Stalker",
   floors: [2],
   rowPreference: "any",
   hp: 32,
@@ -1663,6 +1671,42 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "headmasters-echo-ascendant", row: "back" },
         { enemyId: "demon-mage", row: "back" },
         { enemyId: "succubus", row: "back" },
+      ],
+    },
+  ],
+  // Floor 2 forbidden-wing climax ("the stacks' keepers") — a curated,
+  // alarm-only pool for the furnace-key chest, referenced via the
+  // forbidden-wing-hot zone's tableFloorId, not by floor id. All back-row:
+  // no front line, just the library's evasive/flying/silencing guardians
+  // converging on whoever sets off the alarm.
+  6: [
+    {
+      weight: 3,
+      spawns: [
+        { enemyId: "eyeball-monster", row: "back" },
+        { enemyId: "eyeball-monster", row: "back" },
+        { enemyId: "blood-wraith", row: "back" },
+        { enemyId: "blood-wraith", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "eyeball-monster", row: "back" },
+        { enemyId: "eyeball-monster", row: "back" },
+        { enemyId: "eyeball-monster", row: "back" },
+        { enemyId: "blood-wraith", row: "back" },
+        { enemyId: "blood-wraith", row: "back" },
+      ],
+    },
+    {
+      weight: 2,
+      spawns: [
+        { enemyId: "eyeball-monster", row: "back" },
+        { enemyId: "eyeball-monster", row: "back" },
+        { enemyId: "blood-wraith", row: "back" },
+        { enemyId: "blood-wraith", row: "back" },
+        { enemyId: "blood-wraith", row: "back" },
       ],
     },
   ],

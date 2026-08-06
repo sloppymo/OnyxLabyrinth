@@ -21,7 +21,7 @@ import { buildSolidGrid } from "./dungeon";
 export const FLOOR_MAP_FORMAT_VERSION = 1 as const;
 
 /** Themes bundled with the game and therefore known to the pure validator. */
-export const BUILT_IN_TILESET_THEMES = ["f1", "f2", "f3", "f4", "f5"] as const;
+export const BUILT_IN_TILESET_THEMES = ["f1", "f2", "f2b", "f3", "f4", "f5"] as const;
 
 export interface CellJSON {
   n: EdgeType;
