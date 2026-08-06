@@ -7,10 +7,12 @@
 
 import type { EdgeType, Grid, TileFeature } from "../types";
 import type {
+  BarredGateDef,
   EventDef,
   FloorDef,
   EncounterZoneDef,
   NPCDef,
+  RaftRouteDef,
   TeleporterLink,
   TilesetZoneDef,
   WaterDef,
@@ -51,6 +53,8 @@ export interface ChuteDropJSON {
   toFloorId: number;
   toX: number;
   toY: number;
+  /** If true, stepping onto this chute shows a confirmation dialog. */
+  confirm?: boolean;
 }
 
 /** Serializable floor — round-trips with FloorDef. */
@@ -83,6 +87,9 @@ export interface FloorMapJSON {
   waters?: WaterDef[];
   npcs?: NPCDef[];
   events?: EventDef[];
+  floorRevision?: number;
+  barredGates?: BarredGateDef[];
+  raftRoutes?: RaftRouteDef[];
 }
 
 /** Canonical tileset folder for a floor when none is set. */
@@ -192,6 +199,9 @@ export function newFloorMapJSON(
     waters: partial?.waters,
     npcs: partial?.npcs,
     events: partial?.events,
+    floorRevision: partial?.floorRevision,
+    barredGates: partial?.barredGates,
+    raftRoutes: partial?.raftRoutes,
   };
 }
 
@@ -234,6 +244,14 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
     })),
     npcs: floor.npcs ? [...floor.npcs] : undefined,
     events: floor.events ? [...floor.events] : undefined,
+    floorRevision: floor.floorRevision,
+    barredGates: floor.barredGates?.map((g) => ({ ...g })),
+    raftRoutes: floor.raftRoutes?.map((r) => ({
+      ...r,
+      fromDock: { ...r.fromDock },
+      toDock: { ...r.toDock },
+      path: r.path.map((p) => ({ ...p })),
+    })),
   };
 }
 
@@ -279,6 +297,14 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
     })),
     npcs: map.npcs ? [...map.npcs] : undefined,
     events: map.events ? [...map.events] : undefined,
+    floorRevision: map.floorRevision,
+    barredGates: map.barredGates?.map((g) => ({ ...g })),
+    raftRoutes: map.raftRoutes?.map((r) => ({
+      ...r,
+      fromDock: { ...r.fromDock },
+      toDock: { ...r.toDock },
+      path: r.path.map((p) => ({ ...p })),
+    })),
   };
 }
 
@@ -326,6 +352,9 @@ export function parseFloorMapJSON(raw: unknown): FloorMapJSON {
     waters: parseOverlayArray(o.waters, "waters", parseWater),
     npcs: parseOverlayArray(o.npcs, "npcs", parseNpc),
     events: parseOverlayArray(o.events, "events", parseEvent),
+    floorRevision: typeof o.floorRevision === "number" ? o.floorRevision : undefined,
+    barredGates: parseOverlayArray(o.barredGates, "barredGates", parseBarredGate),
+    raftRoutes: parseOverlayArray(o.raftRoutes, "raftRoutes", parseRaftRoute),
   };
 }
 
@@ -376,6 +405,8 @@ function parseZone(o: Record<string, unknown>, l: string): EncounterZoneDef {
   if (o.tableFloorId !== undefined) {
     zone.tableFloorId = requireInt(o.tableFloorId, `${l}.tableFloorId`);
   }
+  const safeZone = optionalBool(o.safeZone, `${l}.safeZone`);
+  if (safeZone !== undefined) zone.safeZone = safeZone;
   return zone;
 }
 
@@ -412,7 +443,9 @@ function parseTeleporter(o: Record<string, unknown>, l: string): TeleporterLink 
 }
 
 function parseChute(o: Record<string, unknown>, l: string): ChuteDropJSON {
-  return parseTeleporter(o, l);
+  const base = parseTeleporter(o, l);
+  const confirm = optionalBool(o.confirm, `${l}.confirm`);
+  return confirm !== undefined ? { ...base, confirm } : base;
 }
 
 function parseLockedDoor(o: Record<string, unknown>, l: string): LockedDoorJSON {
@@ -453,6 +486,8 @@ function parseWater(o: Record<string, unknown>, l: string): WaterDef {
     y: requireInt(o.y, `${l}.y`),
     depth: depth as WaterDef["depth"],
   };
+  const raftChannel = optionalBool(o.raftChannel, `${l}.raftChannel`);
+  if (raftChannel !== undefined) w.raftChannel = raftChannel;
   if (o.effect !== undefined) {
     if (!o.effect || typeof o.effect !== "object") {
       throw new Error(`${l}.effect must be an object`);
@@ -470,7 +505,7 @@ function parseWater(o: Record<string, unknown>, l: string): WaterDef {
   return w;
 }
 
-const EVENT_KINDS = ["message", "damage", "heal", "reward"] as const;
+const EVENT_KINDS = ["message", "damage", "heal", "reward", "keyReward"] as const;
 
 function parseEvent(o: Record<string, unknown>, l: string): EventDef {
   if (typeof o.kind !== "string" || !EVENT_KINDS.includes(o.kind as EventDef["kind"])) {
@@ -524,6 +559,18 @@ function parseNpc(o: Record<string, unknown>, l: string): NPCDef {
   if (o.rewardItemId !== undefined) {
     npc.rewardItemId = requireString(o.rewardItemId, `${l}.rewardItemId`);
   }
+  if (o.capabilities !== undefined) {
+    if (!o.capabilities || typeof o.capabilities !== "object") {
+      throw new Error(`${l}.capabilities must be an object`);
+    }
+    const caps = o.capabilities as Record<string, unknown>;
+    const capabilities: NonNullable<NPCDef["capabilities"]> = {};
+    for (const key of ["talk", "barter", "give", "steal", "attack"] as const) {
+      const val = optionalBool(caps[key], `${l}.capabilities.${key}`);
+      if (val !== undefined) capabilities[key] = val;
+    }
+    npc.capabilities = capabilities;
+  }
   if (o.trades !== undefined) {
     if (!Array.isArray(o.trades)) throw new Error(`${l}.trades must be an array`);
     npc.trades = o.trades.map((t, i) => {
@@ -539,6 +586,49 @@ function parseNpc(o: Record<string, unknown>, l: string): NPCDef {
     });
   }
   return npc;
+}
+
+const DIR_NAMES = ["n", "e", "s", "w"] as const;
+type DirName = (typeof DIR_NAMES)[number];
+
+function parseDirName(v: unknown, label: string): DirName {
+  if (typeof v !== "string" || !DIR_NAMES.includes(v as DirName)) {
+    throw new Error(`${label} must be one of n/e/s/w`);
+  }
+  return v as DirName;
+}
+
+function parseBarredGate(o: Record<string, unknown>, l: string): BarredGateDef {
+  return {
+    x: requireInt(o.x, `${l}.x`),
+    y: requireInt(o.y, `${l}.y`),
+    dir: parseDirName(o.dir, `${l}.dir`),
+    opensFrom: parseDirName(o.opensFrom, `${l}.opensFrom`),
+  };
+}
+
+function parsePoint(o: Record<string, unknown>, l: string): { x: number; y: number } {
+  return { x: requireInt(o.x, `${l}.x`), y: requireInt(o.y, `${l}.y`) };
+}
+
+function parseRaftRoute(o: Record<string, unknown>, l: string): RaftRouteDef {
+  const pathRaw = o.path;
+  if (!Array.isArray(pathRaw) || pathRaw.length < 2) {
+    throw new Error(`${l}.path must be an array of at least 2 points`);
+  }
+  const path = pathRaw.map((p, i) => {
+    if (!p || typeof p !== "object") throw new Error(`${l}.path[${i}] must be an object`);
+    return parsePoint(p as Record<string, unknown>, `${l}.path[${i}]`);
+  });
+  return {
+    id: requireString(o.id, `${l}.id`),
+    fromDock: parsePoint(o.fromDock as Record<string, unknown>, `${l}.fromDock`),
+    fromApproach: parseDirName(o.fromApproach, `${l}.fromApproach`),
+    toDock: parsePoint(o.toDock as Record<string, unknown>, `${l}.toDock`),
+    toApproach: parseDirName(o.toApproach, `${l}.toApproach`),
+    path,
+    bidirectional: optionalBool(o.bidirectional, `${l}.bidirectional`) ?? true,
+  };
 }
 
 function parseCell(raw: unknown, x: number, y: number): CellJSON {
@@ -558,7 +648,7 @@ function parseCell(raw: unknown, x: number, y: number): CellJSON {
   return cell;
 }
 
-const EDGE_TYPES: readonly EdgeType[] = ["open", "wall", "door", "locked"];
+const EDGE_TYPES: readonly EdgeType[] = ["open", "wall", "door", "locked", "barred"];
 const TILE_FEATURES: readonly TileFeature[] = [
   "stairs_up",
   "stairs_down",

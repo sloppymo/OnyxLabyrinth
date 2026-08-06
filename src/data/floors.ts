@@ -48,6 +48,15 @@ export interface EncounterZoneDef {
    * When omitted, uses this floor's own id.
    */
   tableFloorId?: number;
+  /**
+   * If true, NO random encounters fire in this zone — not even pity-forced
+   * ones. Additionally, steps taken inside a safe zone do NOT increment
+   * stepsSinceEncounter (pity pauses while inside, resumes on exit).
+   * Use for hub rooms (tavern, town-return). Scripted combat (NPC attack,
+   * trap-triggered fights) is unaffected — safe zone only suppresses the
+   * random encounter roller.
+   */
+  safeZone?: boolean;
 }
 
 /** Rectangular corridor-material override. Later overlapping zones win. */
@@ -98,8 +107,9 @@ export interface FloorDef {
   // they are instantly relocated.
   teleporters?: TeleporterLink[];
   // Chute destinations: tiles with the "chute" feature drop the player to
-  // the given floor at the given position.
-  chuteDrops?: { x: number; y: number; toFloorId: number; toX: number; toY: number }[];
+  // the given floor at the given position. When `confirm` is true, stepping
+  // onto the chute shows a point-of-no-return warning dialog before descent.
+  chuteDrops?: { x: number; y: number; toFloorId: number; toX: number; toY: number; confirm?: boolean }[];
   // Locked door definitions: each entry specifies a tile and direction where
   // a locked door exists, and which key ID unlocks it.
   lockedDoors?: { x: number; y: number; dir: "n" | "e" | "s" | "w"; keyId: string }[];
@@ -121,12 +131,26 @@ export interface FloorDef {
   // Scripted floor events (feature "event"): one-time or repeatable message/
   // damage/heal/reward triggers. See game/features.ts handleEvent.
   events?: EventDef[];
+  /**
+   * Incremented when geometry/content changes. Saves with a stale revision
+   * for this floor have their explored/loot/event/door state cleared for
+   * that floor only. See game/save.ts floor-revision handling.
+   */
+  floorRevision?: number;
+  /** Barred gates: one-sided gates openable only from the specified side.
+   *  Cannot be picked by Thief or bypassed by Knock/Unseal. Becomes a
+   *  permanent two-way door once opened. See game/traversal.ts. */
+  barredGates?: BarredGateDef[];
+  /** Automatic dock-to-dock raft routes. When the player steps onto a
+   *  fromDock tile from the fromApproach direction while possessing the
+   *  raft key item, the route triggers automatically. See game/traversal.ts. */
+  raftRoutes?: RaftRouteDef[];
 }
 
 export interface EventDef {
   x: number;
   y: number;
-  kind: "message" | "damage" | "heal" | "reward";
+  kind: "message" | "damage" | "heal" | "reward" | "keyReward";
   message: string;
   /** For "damage"/"heal" kinds: HP applied to every living party member. */
   power?: number;
@@ -142,6 +166,13 @@ export interface WaterDef {
   /** 1 = ankle-deep (easy) … 4 = a drowning pool (hard). */
   depth: 1 | 2 | 3 | 4;
   effect?: WaterEffect;
+  /**
+   * Marks this as a raft-channel tile: impassable via normal movement
+   * (blocked before the step, not swim-checked after). The Ring of Water
+   * Walking and Levitate do NOT bypass raft channels. Only automatic raft
+   * route traversal can cross these tiles.
+   */
+  raftChannel?: boolean;
 }
 
 export type WaterEffect =
@@ -200,6 +231,21 @@ export interface NPCDef {
   portraitSide?: "left" | "right";
   /** Tints the dialogue frame's accent border. Defaults to "neutral". */
   dialogueAccent?: "neutral" | "warm" | "cold" | "hostile";
+  /**
+   * Per-NPC interaction capabilities. When omitted, all root actions
+   * (Talk/Barter/Give/Steal/Attack/Leave) are available. When present,
+   * only enabled capabilities appear in the menu. Used to make hub NPCs
+   * like Hot Boi non-combat (disable Attack/Steal).
+   */
+  capabilities?: NPCCapabilities;
+}
+
+export interface NPCCapabilities {
+  talk?: boolean;
+  barter?: boolean;
+  give?: boolean;
+  steal?: boolean;
+  attack?: boolean;
 }
 
 export interface TeleporterLink {
@@ -208,6 +254,49 @@ export interface TeleporterLink {
   toFloorId: number;
   toX: number;
   toY: number;
+}
+
+// --- Barred gates -----------------------------------------------------------
+// One-sided gates that can only be opened from a specified direction.
+// Unlike locked doors, they cannot be picked by Thief or bypassed by
+// Knock/Unseal. Once opened from the correct side, they become a permanent
+// two-way door. See game/traversal.ts.
+
+export interface BarredGateDef {
+  x: number;
+  y: number;
+  /** Direction of the barred edge (the edge that is "barred"). */
+  dir: "n" | "e" | "s" | "w";
+  /**
+   * The direction the player must be facing to open the gate. This is the
+   * direction FROM the player's tile TOWARD the gate. E.g. if the gate is
+   * on the east edge of (3,21), opensFrom is "e" — the player stands at
+   * (3,21) facing east to open it.
+   */
+  opensFrom: "n" | "e" | "s" | "w";
+}
+
+// --- Raft routes ------------------------------------------------------------
+// Automatic dock-to-dock raft traversal (Zelda-style). When the player
+// steps onto a fromDock tile from the fromApproach direction while
+// possessing the raft key item, the route triggers: input locks, the
+// party animates along the path, and arrives at toDock. See
+// game/traversal.ts.
+
+export interface RaftRouteDef {
+  id: string;
+  fromDock: { x: number; y: number };
+  /** Direction the player must be moving to trigger the route at fromDock.
+   *  E.g. "e" means the player steps east onto fromDock to trigger. */
+  fromApproach: "n" | "e" | "s" | "w";
+  toDock: { x: number; y: number };
+  /** Direction the player arrives at toDock (their facing after arrival). */
+  toApproach: "n" | "e" | "s" | "w";
+  /** Ordered tiles the raft passes through, including fromDock and toDock.
+   *  Intermediate tiles must be raft-channel water. */
+  path: { x: number; y: number }[];
+  /** If true, the route works in reverse (toDock is also a launch point). */
+  bidirectional: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -634,5 +723,17 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     // Event defs are static content; fired-once tracking lives in
     // GameState.eventsTriggered, not on the def itself.
     events: floor.events ? [...floor.events] : undefined,
+    floorRevision: floor.floorRevision,
+    barredGates: floor.barredGates
+      ? floor.barredGates.map((g) => ({ ...g }))
+      : undefined,
+    raftRoutes: floor.raftRoutes
+      ? floor.raftRoutes.map((r) => ({
+          ...r,
+          fromDock: { ...r.fromDock },
+          toDock: { ...r.toDock },
+          path: r.path.map((p) => ({ ...p })),
+        }))
+      : undefined,
   };
 }

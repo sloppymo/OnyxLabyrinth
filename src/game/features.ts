@@ -44,6 +44,10 @@ export interface FeatureResult {
   looted?: boolean;
   /** Set when the party stepped onto a living NPC — main.ts opens the panel. */
   npcId?: string;
+  /** Set when the party stepped onto a chute that requires confirmation.
+   *  main.ts shows a point-of-no-return dialog; if the player confirms,
+   *  it calls confirmChuteDrop() to execute the descent. */
+  pendingChuteDrop?: { toFloorId: number; toX: number; toY: number };
 }
 
 /**
@@ -219,9 +223,65 @@ function handleChute(state: GameState): FeatureResult {
     return { message: "The chute is blocked. You can't go down here.", changedFloor: false, consumed: false };
   }
 
+  // If this chute requires confirmation, return a pending drop instead of
+  // executing immediately. main.ts shows a point-of-no-return dialog.
+  if (drop.confirm) {
+    return {
+      message: "A steep sluice disappears into darkness. There may be no way back up.",
+      changedFloor: false,
+      consumed: false,
+      pendingChuteDrop: { toFloorId: drop.toFloorId, toX: drop.toX, toY: drop.toY },
+    };
+  }
+
   transitionToFloor(state, targetFloor, drop.toX, drop.toY);
   return {
     message: `You slide down the chute to ${targetFloor.name} (Floor ${targetFloor.id}).`,
+    changedFloor: true,
+    consumed: false,
+  };
+}
+
+/**
+ * Execute a confirmed chute drop. Called by main.ts after the player
+ * confirms the point-of-no-return dialog for a `confirm: true` chute.
+ */
+export function confirmChuteDrop(
+  state: GameState,
+  drop: { toFloorId: number; toX: number; toY: number }
+): FeatureResult {
+  const targetFloor = findFloor(drop.toFloorId);
+  if (!targetFloor) {
+    return { message: "The chute is blocked. You can't go down here.", changedFloor: false, consumed: false };
+  }
+  const fromFloorId = state.floor.id;
+  // Defer the autosave until AFTER the destination tile's feature (e.g. the
+  // raft keyReward event) is processed, so a reload immediately after landing
+  // restores the raft in keyItems and the consumed-event state — not a stale
+  // pre-reward snapshot.
+  transitionToFloor(state, targetFloor, drop.toX, drop.toY, 0, { autosave: false });
+  const chuteMessage =
+    drop.toFloorId === fromFloorId
+      ? "You slide down the chute to a lower passage."
+      : `You slide down the chute to ${targetFloor.name} (Floor ${targetFloor.id}).`;
+
+  // Process the destination tile's feature so the player receives any
+  // reward (e.g. the raft keyReward event in the pocket) immediately on
+  // landing — without needing to step away and return.
+  const featureResult = handleTileFeature(state);
+  // Now that the destination reward has been applied, persist the full state
+  // atomically with the raft granted and the event marked consumed.
+  autoSave(state);
+  if (featureResult && featureResult.message) {
+    return {
+      message: `${chuteMessage} ${featureResult.message}`,
+      changedFloor: true,
+      consumed: featureResult.consumed,
+      looted: featureResult.looted,
+    };
+  }
+  return {
+    message: chuteMessage,
     changedFloor: true,
     consumed: false,
   };
@@ -670,6 +730,13 @@ function applyEvent(state: GameState, event: EventDef): FeatureResult {
       const item = ITEMS_BY_ID[itemId];
       if (item) {
         state.inventory.push({ itemId, identified: true });
+      }
+      return { message: event.message, ...noEvent };
+    }
+    case "keyReward": {
+      const itemId = event.itemId ?? "";
+      if (itemId && !state.keyItems.includes(itemId)) {
+        state.keyItems.push(itemId);
       }
       return { message: event.message, ...noEvent };
     }

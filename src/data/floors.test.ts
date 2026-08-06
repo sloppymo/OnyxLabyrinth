@@ -7,8 +7,16 @@ import { resolveTilesetTheme, themeAt } from "../game/floor-map";
 import { encounterTableFloorId } from "../game/encounters";
 
 /** BFS over the edge grid from the floor's start position.
- *  Returns the set of "x,y" cells reachable through the given edge types. */
-function reachableCells(floor: FloorDef, passable: Set<string>): Set<string> {
+ *  Returns the set of "x,y" cells reachable through the given edge types.
+ *  Raft-channel water tiles are always impassable (they require the raft
+ *  key item, which this BFS does not model). Chute drops on the same floor
+ *  create one-way reachability connections. Raft route dock-to-dock
+ *  connections are included only when `options.withRaft` is true. */
+function reachableCells(
+  floor: FloorDef,
+  passable: Set<string>,
+  options?: { withRaft?: boolean }
+): Set<string> {
   const seen = new Set<string>([`${floor.startX},${floor.startY}`]);
   const queue: [number, number][] = [[floor.startX, floor.startY]];
   const steps: ["n" | "e" | "s" | "w", number, number][] = [
@@ -17,6 +25,34 @@ function reachableCells(floor: FloorDef, passable: Set<string>): Set<string> {
     ["s", 0, 1],
     ["w", -1, 0],
   ];
+  // Build raft-channel water set (impassable without raft).
+  const raftChannelTiles = new Set<string>();
+  for (const w of floor.waters ?? []) {
+    if (w.raftChannel) raftChannelTiles.add(`${w.x},${w.y}`);
+  }
+  // Chute drops on the same floor create reachability connections.
+  const sameFloorChutes = new Map<string, [number, number]>();
+  for (const c of floor.chuteDrops ?? []) {
+    if (c.toFloorId === floor.id) {
+      sameFloorChutes.set(`${c.x},${c.y}`, [c.toX, c.toY]);
+    }
+  }
+  // Raft routes create dock-to-dock connections (only included when
+  // options.withRaft is true — the raft is acquirable via the chute
+  // pocket, similar to how OPEN_OR_LOCKED assumes all keys are available).
+  const raftConnections = new Map<string, [number, number][]>();
+  if (options?.withRaft) {
+    for (const route of floor.raftRoutes ?? []) {
+      const fromKey = `${route.fromDock.x},${route.fromDock.y}`;
+      const toKey = `${route.toDock.x},${route.toDock.y}`;
+      if (!raftConnections.has(fromKey)) raftConnections.set(fromKey, []);
+      if (!raftConnections.has(toKey)) raftConnections.set(toKey, []);
+      raftConnections.get(fromKey)!.push([route.toDock.x, route.toDock.y]);
+      if (route.bidirectional) {
+        raftConnections.get(toKey)!.push([route.fromDock.x, route.fromDock.y]);
+      }
+    }
+  }
   while (queue.length > 0) {
     const [x, y] = queue.shift()!;
     for (const [dir, dx, dy] of steps) {
@@ -24,10 +60,32 @@ function reachableCells(floor: FloorDef, passable: Set<string>): Set<string> {
       const ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= floor.width || ny >= floor.height) continue;
       if (!passable.has(floor.grid[y][x][dir])) continue;
+      // Raft-channel water is impassable without the raft.
+      if (raftChannelTiles.has(`${nx},${ny}`)) continue;
       const key = `${nx},${ny}`;
       if (!seen.has(key)) {
         seen.add(key);
         queue.push([nx, ny]);
+      }
+    }
+    // Apply chute drops (one-way teleport to destination on same floor)
+    const chuteKey = `${x},${y}`;
+    if (sameFloorChutes.has(chuteKey)) {
+      const [tx, ty] = sameFloorChutes.get(chuteKey)!;
+      const tKey = `${tx},${ty}`;
+      if (!seen.has(tKey)) {
+        seen.add(tKey);
+        queue.push([tx, ty]);
+      }
+    }
+    // Apply raft route connections (dock-to-dock, bidirectional if flagged)
+    if (raftConnections.has(chuteKey)) {
+      for (const [tx, ty] of raftConnections.get(chuteKey)!) {
+        const tKey = `${tx},${ty}`;
+        if (!seen.has(tKey)) {
+          seen.add(tKey);
+          queue.push([tx, ty]);
+        }
       }
     }
   }
@@ -100,10 +158,16 @@ describe("floor definitions", () => {
     expect(tiles(f3)).toContain("stairs_down");
   });
 
-  it("every tile feature is reachable from the start (locked doors openable by key/thief)", () => {
+  it("every tile feature is reachable from the start (locked doors openable by key/thief, raft routes included)", () => {
     for (const floor of getFloors()) {
-      const reached = reachableCells(floor, OPEN_OR_LOCKED);
+      const reached = reachableCells(floor, OPEN_OR_LOCKED, { withRaft: true });
+      // Raft-channel water tiles are impassable terrain — the player
+      // crosses them via raft animation but never stands on them.
+      const raftChannelTiles = new Set(
+        (floor.waters ?? []).filter((w) => w.raftChannel).map((w) => `${w.x},${w.y}`)
+      );
       for (const { x, y, tile } of featureCells(floor.grid)) {
+        if (raftChannelTiles.has(`${x},${y}`)) continue;
         expect(reached.has(`${x},${y}`), `${floor.name}: ${tile} at (${x},${y}) unreachable`).toBe(
           true
         );
@@ -193,17 +257,23 @@ describe("floor definitions", () => {
     expect(f3Open.has(`${forgeChest.x},${forgeChest.y}`)).toBe(true);
   });
 
-  it("floor 1 gates the lexicon and its sole stair behind the crypt key", () => {
+  it("floor 1 gates the lexicon behind the crypt key and stairs behind the raft", () => {
     const f1 = findFloor(1)!;
     const open = reachableCells(f1, OPEN);
     const afterCrypt = reachableCells(f1, OPEN_OR_LOCKED);
+    const afterCryptAndRaft = reachableCells(f1, OPEN_OR_LOCKED, { withRaft: true });
     const lexiconChest = f1.treasures!.find((t) => t.itemIds.includes("lexicon-key"))!;
     const stairs = featureCells(f1.grid).filter((cell) => cell.tile === "stairs_down");
     expect(stairs).toHaveLength(1);
+    // Lexicon is gated behind the crypt-key locked door.
     expect(open.has(`${lexiconChest.x},${lexiconChest.y}`)).toBe(false);
-    expect(open.has(`${stairs[0].x},${stairs[0].y}`)).toBe(false);
     expect(afterCrypt.has(`${lexiconChest.x},${lexiconChest.y}`)).toBe(true);
-    expect(afterCrypt.has(`${stairs[0].x},${stairs[0].y}`)).toBe(true);
+    // Stairs are gated behind the raft (raft-channel water is impassable
+    // even with all keys). Without the raft, stairs are unreachable.
+    expect(open.has(`${stairs[0].x},${stairs[0].y}`)).toBe(false);
+    expect(afterCrypt.has(`${stairs[0].x},${stairs[0].y}`)).toBe(false);
+    // With the raft (acquired via the chute pocket), stairs are reachable.
+    expect(afterCryptAndRaft.has(`${stairs[0].x},${stairs[0].y}`)).toBe(true);
   });
 
   it("floor 1 visibly uses all five built-in tileset themes", () => {
@@ -219,7 +289,7 @@ describe("floor definitions", () => {
     const f1 = findFloor(1)!;
     expect(f1.encounterRate).toBeCloseTo(0.08);
     expect((f1.encounterZones ?? []).every((zone) => zone.tableFloorId === undefined)).toBe(true);
-    expect(f1.npcs).toHaveLength(4);
+    expect(f1.npcs).toHaveLength(5);
     expect((f1.events ?? []).every((event) => event.message.length <= 60)).toBe(true);
     const playerFacingCopy = JSON.stringify({
       name: f1.name,
