@@ -877,4 +877,18 @@ describe("climax chests (guardian-ward treasure)", () => {
     expect(resolveClimaxVictory(state, "test-guardian")).toBe("");
     expect(state.inventory.length).toBe(0);
   });
+
+  it("resolveClimaxVictory does not clear a Floor 2 climax when called on another floor", () => {
+    const state = makeClimaxState();
+    state.pendingClimax = { id: "test-guardian", floorId: 1, x: 2, y: 2 };
+    state.floor = { ...state.floor, id: 99 };
+    expect(resolveClimaxVictory(state, "test-guardian")).toBe("");
+    expect(state.inventory.length).toBe(0);
+    expect(state.pendingClimax).toEqual({
+      id: "test-guardian",
+      floorId: 1,
+      x: 2,
+      y: 2,
+    });
+  });
 });

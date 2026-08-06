@@ -1186,7 +1186,13 @@ function forceEncounter(): void {
     state.inventory,
     state.inAntimagic
   );
-  combat.climaxId = state.pendingClimax?.id;
+  const pending = state.pendingClimax;
+  const isCurrentClimax =
+    pending !== undefined &&
+    pending.floorId === state.floor.id &&
+    pending.x === state.player.x &&
+    pending.y === state.player.y;
+  combat.climaxId = isCurrentClimax ? pending.id : undefined;
   state.combat = combat;
   setMode(state, "combat");
   state.stepsSinceEncounter = 0;
