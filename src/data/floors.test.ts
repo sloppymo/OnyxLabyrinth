@@ -319,4 +319,20 @@ describe("floor 2 (The Cursed Library) redesign regressions", () => {
     const chest = f2.treasures?.find((t) => t.x === 12 && t.y === 8);
     expect(chest?.climax?.id).toBe("floor2-guardian");
   });
+
+  it("cloneFloor preserves treasure.climax and produces an independent copy", () => {
+    const original = findFloor(2)!;
+    const originalChest = original.treasures?.find((t) => t.x === 12 && t.y === 8);
+    expect(originalChest?.climax).toEqual({ id: "floor2-guardian" });
+
+    const clone = cloneFloor(original);
+    const cloneChest = clone.treasures?.find((t) => t.x === 12 && t.y === 8);
+
+    // Preserved with the correct id.
+    expect(cloneChest?.climax).toEqual({ id: "floor2-guardian" });
+
+    // Independent object — mutating the clone must not affect the source.
+    cloneChest!.climax = { id: "mutated" };
+    expect(originalChest?.climax).toEqual({ id: "floor2-guardian" });
+  });
 });
