@@ -409,6 +409,7 @@ describe("Floor 1 chute choice — decline via real dialog callback", () => {
     const drop = { toFloorId: 1, toX: 3, toY: 22 };
     const dialog = new DungeonDialogController({
       state,
+      panel: document.createElement("div"),
       lines: [
         "A steep sluice disappears into darkness. There may be no way back up.",
       ],
@@ -454,6 +455,7 @@ describe("Floor 1 chute choice — decline via real dialog callback", () => {
     const drop = { toFloorId: 1, toX: 3, toY: 22 };
     const dialog = new DungeonDialogController({
       state,
+      panel: document.createElement("div"),
       lines: [
         "A steep sluice disappears into darkness. There may be no way back up.",
       ],

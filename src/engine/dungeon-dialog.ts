@@ -15,7 +15,21 @@
  *
  * This follows the existing justOpenedTrapPrompt / suppressDungeonEscUntilKeyup
  * patterns in main.ts, generalized into a reusable controller.
+ *
+ * Rendering: this class owns both state and presentation (same pattern as
+ * NPCController/TavernController) via the FF6Window library, painted into
+ * the caller-supplied `panel` element. Found live 2026-08-06: this class
+ * previously had NO renderer at all — it correctly routed keys and flipped
+ * `state.mode`, but nothing ever painted to the screen, so every dialog
+ * (including the pre-existing chute point-of-no-return warning) was
+ * invisible to a real player despite working "correctly" under the hood.
+ * main.ts's caller is responsible for showMode("dialog", ...) on open and
+ * showMode("dungeon", ...) in its onClose — this class only touches its
+ * own panel's contents, not mode-level DOM visibility (mirrors how
+ * NPCController leaves showMode to its main.ts call sites).
  */
+
+import { FF6Window } from "./ff6-window-library";
 
 export interface DialogChoice {
   label: string;
@@ -24,6 +38,8 @@ export interface DialogChoice {
 
 export interface DungeonDialogOptions {
   state: { mode: string };
+  /** DOM element to render into (typically #combat-panel). */
+  panel: HTMLElement;
   /** Paginated dialog text (each entry is one page). */
   lines: string[];
   /** Optional choices (if present, the dialog is a menu, not just text). */
@@ -38,10 +54,19 @@ export interface DungeonDialogOptions {
   cancelable?: boolean;
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 export class DungeonDialogController {
   private state: { mode: string };
+  private panel: HTMLElement;
   private lines: string[];
   private choices: DialogChoice[] | undefined;
+  private title: string | undefined;
   private onSelect: ((value: string) => void) | undefined;
   private onClose: (() => void) | undefined;
   private cancelable: boolean;
@@ -51,19 +76,69 @@ export class DungeonDialogController {
 
   constructor(opts: DungeonDialogOptions) {
     this.state = opts.state;
+    this.panel = opts.panel;
     this.lines = opts.lines;
     this.choices = opts.choices;
+    this.title = opts.title;
     this.onSelect = opts.onSelect;
     this.onClose = opts.onClose;
     this.cancelable = opts.cancelable ?? true;
   }
 
-  /** Open the dialog. Sets mode to "dialog". */
+  /** Open the dialog. Sets mode to "dialog" and paints the first page. */
   open(): void {
     this.active = true;
     this.state.mode = "dialog";
     this.page = 0;
     this.index = 0;
+    this.render();
+  }
+
+  /** True while on the last page with choices present (matches handleKey's
+   *  own phase check — kept in sync deliberately rather than tracked as a
+   *  separate flag). */
+  private inChoicePhase(): boolean {
+    return !!this.choices && this.page >= this.lines.length - 1;
+  }
+
+  private render(): void {
+    this.panel.innerHTML = "";
+    const text = this.lines[this.page] ?? "";
+    const contentHtml = `<div class="dungeon-dialog-text">${escapeHtml(text)}</div>`;
+
+    if (this.inChoicePhase() && this.choices) {
+      const win = new FF6Window({
+        title: this.title,
+        contentHtml,
+        items: this.choices.map((c) => ({ label: c.label })),
+        selectedIndex: this.index,
+        mode: "menu",
+        footer: this.cancelable ? "[↑/↓] select · [Enter] confirm · [Esc] cancel" : "[↑/↓] select · [Enter] confirm",
+        onHover: (i) => {
+          this.index = i;
+        },
+        onConfirm: (i) => {
+          this.index = i;
+          const choice = this.choices?.[i];
+          if (choice) {
+            this.onSelect?.(choice.value);
+            this.close();
+          }
+        },
+      });
+      this.panel.appendChild(win.render());
+      return;
+    }
+
+    const morePages = this.page < this.lines.length - 1;
+    this.panel.appendChild(
+      FF6Window.frame({
+        title: this.title,
+        contentHtml,
+        footer: morePages ? "[Enter] continue" : "[Enter] close",
+        mode: "description",
+      })
+    );
   }
 
   /** True if the dialog is currently active. */
@@ -96,10 +171,12 @@ export class DungeonDialogController {
       const len = this.choices.length;
       if (lower === "arrowup") {
         if (len > 0) this.index = (this.index - 1 + len) % len;
+        this.render();
         return true;
       }
       if (lower === "arrowdown") {
         if (len > 0) this.index = (this.index + 1) % len;
+        this.render();
         return true;
       }
       if (key === "Enter" || key === " ") {
@@ -122,11 +199,13 @@ export class DungeonDialogController {
     if (key === "Enter" || key === " " || lower === "escape") {
       if (this.page < this.lines.length - 1) {
         this.page++;
+        this.render();
       } else {
         // Last page — dismiss or enter choice phase.
         if (this.choices) {
           // Switch to choice menu phase (stay on last page).
           this.index = 0;
+          this.render();
         } else {
           this.onSelect?.("ok");
           this.close();
@@ -137,11 +216,12 @@ export class DungeonDialogController {
     return true; // swallow all other keys while dialog is open
   }
 
-  /** Close the dialog. Restores mode to "dungeon". */
+  /** Close the dialog. Restores mode to "dungeon" and clears the panel. */
   close(): void {
     if (!this.active) return;
     this.active = false;
     this.state.mode = "dungeon";
+    this.panel.innerHTML = "";
     this.onClose?.();
   }
 }

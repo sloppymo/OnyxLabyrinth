@@ -1125,6 +1125,21 @@ function onMove(): void {
       });
       return;
     }
+    if (result.pendingStairsGuardian) {
+      const guardian = result.pendingStairsGuardian;
+      openDungeonDialog({
+        // No choices, so this dialog never reaches DungeonDialogController's
+        // choice-menu phase — Escape and Enter both just advance/dismiss
+        // text pages there, same as any other pure-text dialog. The real
+        // guarantee that this can't be skipped is the sealed edge
+        // (StairsGuardianDef.blocksDir), not a dialog-level cancel guard.
+        lines: guardian.introLines,
+        onSelect: () => {
+          startStairsGuardianFight(guardian);
+        },
+      });
+      return;
+    }
   } else if (expiry.length > 0) {
     setMessage(expiry.join(" "));
   }
@@ -1251,6 +1266,7 @@ function openDungeonDialog(opts: {
 }): void {
   dungeonDialog = new DungeonDialogController({
     state: state as { mode: string },
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     lines: opts.lines,
     choices: opts.choices,
     title: opts.title,
@@ -1259,6 +1275,7 @@ function openDungeonDialog(opts: {
       dungeonDialog = null;
       // Swallow the closing keypress so it doesn't also move the player.
       suppressDungeonMovementUntilKeyup = true;
+      showMode("dungeon", mapVisible);
       opts.onClose?.();
     },
     cancelable: opts.cancelable,
@@ -1266,6 +1283,7 @@ function openDungeonDialog(opts: {
   justOpenedDungeonDialog = true;
   setTimeout(() => { justOpenedDungeonDialog = false; }, 0);
   dungeonDialog.open();
+  showMode("dialog", mapVisible);
 }
 
 const dungeonHandlers: InputHandlers = {
