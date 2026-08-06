@@ -93,6 +93,11 @@ function reachableCells(
 
 const OPEN = new Set(["open", "door"]);
 const OPEN_OR_LOCKED = new Set(["open", "door", "locked"]);
+// "barred" included: same "assume every gate is eventually resolvable"
+// philosophy as OPEN_OR_LOCKED assuming all keys are found — the one
+// existing barred gate is assumed openable from its correct side, and
+// Floor 1's stairsGuardian edge is assumed openable by winning its fight.
+const OPEN_OR_LOCKED_OR_BARRED = new Set(["open", "door", "locked", "barred"]);
 
 function featureCells(grid: Grid): { x: number; y: number; tile: string }[] {
   const cells: { x: number; y: number; tile: string }[] = [];
@@ -159,7 +164,7 @@ describe("floor definitions", () => {
 
   it("every tile feature is reachable from the start (locked doors openable by key/thief, raft routes included)", () => {
     for (const floor of getFloors()) {
-      const reached = reachableCells(floor, OPEN_OR_LOCKED, { withRaft: true });
+      const reached = reachableCells(floor, OPEN_OR_LOCKED_OR_BARRED, { withRaft: true });
       // Raft-channel water tiles are impassable terrain — the player
       // crosses them via raft animation but never stands on them.
       const raftChannelTiles = new Set(
@@ -256,11 +261,14 @@ describe("floor definitions", () => {
     expect(f3Open.has(`${forgeChest.x},${forgeChest.y}`)).toBe(true);
   });
 
-  it("floor 1 gates the lexicon behind the crypt key and stairs behind the raft", () => {
+  it("floor 1 gates the lexicon behind the crypt key and stairs behind the raft AND the returned-party fight", () => {
     const f1 = findFloor(1)!;
     const open = reachableCells(f1, OPEN);
     const afterCrypt = reachableCells(f1, OPEN_OR_LOCKED);
     const afterCryptAndRaft = reachableCells(f1, OPEN_OR_LOCKED, { withRaft: true });
+    const afterCryptRaftAndGuardian = reachableCells(f1, OPEN_OR_LOCKED_OR_BARRED, {
+      withRaft: true,
+    });
     const lexiconChest = f1.treasures!.find((t) => t.itemIds.includes("lexicon-key"))!;
     const stairs = featureCells(f1.grid).filter((cell) => cell.tile === "stairs_down");
     expect(stairs).toHaveLength(1);
@@ -271,8 +279,11 @@ describe("floor definitions", () => {
     // even with all keys). Without the raft, stairs are unreachable.
     expect(open.has(`${stairs[0].x},${stairs[0].y}`)).toBe(false);
     expect(afterCrypt.has(`${stairs[0].x},${stairs[0].y}`)).toBe(false);
-    // With the raft (acquired via the chute pocket), stairs are reachable.
-    expect(afterCryptAndRaft.has(`${stairs[0].x},${stairs[0].y}`)).toBe(true);
+    // The raft alone is no longer enough: "The Party That Returned"
+    // (stairsGuardian) bars the last stretch until it's defeated.
+    expect(afterCryptAndRaft.has(`${stairs[0].x},${stairs[0].y}`)).toBe(false);
+    // Raft + winning the guardian fight: stairs are finally reachable.
+    expect(afterCryptRaftAndGuardian.has(`${stairs[0].x},${stairs[0].y}`)).toBe(true);
   });
 
   it("floor 1 visibly uses all five built-in tileset themes", () => {

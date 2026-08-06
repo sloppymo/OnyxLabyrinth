@@ -151,14 +151,58 @@ function isStairsGuardianCleared(state: GameState, floor: FloorDef, x: number, y
   return state.clearedStairsGuardians.includes(guardian.id);
 }
 
+const GUARDIAN_DIR_DELTA: Record<"n" | "e" | "s" | "w", [number, number]> = {
+  n: [0, -1],
+  e: [1, 0],
+  s: [0, 1],
+  w: [-1, 0],
+};
+const GUARDIAN_OPPOSITE_DIR: Record<"n" | "e" | "s" | "w", "n" | "e" | "s" | "w"> = {
+  n: "s",
+  s: "n",
+  e: "w",
+  w: "e",
+};
+
+/**
+ * Opens the guardian's sealed edge on victory, exactly like
+ * traversal.ts's openBarredGate: both sides become "door" and the edge is
+ * recorded in unlockedDoors so it survives save/load. Without this, the
+ * tile-feature trigger alone only fires on arrival — a player who flees
+ * and is left standing on the guardian tile could otherwise just step past
+ * it onto the stairs having never won.
+ */
+function openStairsGuardianEdge(state: GameState, guardian: StairsGuardianDef): void {
+  const { floor } = state;
+  const cell = floor.grid[guardian.y]?.[guardian.x];
+  if (!cell) return;
+  const dir = guardian.blocksDir;
+  const [dx, dy] = GUARDIAN_DIR_DELTA[dir];
+  const nx = guardian.x + dx;
+  const ny = guardian.y + dy;
+  const neighbor = floor.grid[ny]?.[nx];
+  if (!neighbor) return;
+  cell[dir] = "door";
+  neighbor[GUARDIAN_OPPOSITE_DIR[dir]] = "door";
+  // Both sides recorded: save.ts's unlockedDoors restore loop only sets the
+  // ONE side matching each stored key, never its reciprocal edge — so
+  // without the second key, a save/load round trip would leave the far
+  // side of the edge still "barred" (resolveTraversal blocks on either
+  // side being non-passable, so that alone would re-trap a "cleared" save).
+  state.unlockedDoors.add(`${floor.id}:${guardian.x}:${guardian.y}:${dir}`);
+  state.unlockedDoors.add(`${floor.id}:${nx}:${ny}:${GUARDIAN_OPPOSITE_DIR[dir]}`);
+}
+
 /**
  * Records victory over a stairsGuardian fight. Idempotent — returns false
  * (no-op) if the guardian is already cleared, so a stale/duplicate call can
- * never push the same id twice or let main.ts grant its reward again.
+ * never push the same id twice, re-open an already-open edge, or let
+ * main.ts grant its reward again.
  */
-export function clearStairsGuardian(state: GameState, guardianId: string): boolean {
-  if (state.clearedStairsGuardians.includes(guardianId)) return false;
-  state.clearedStairsGuardians.push(guardianId);
+export function clearStairsGuardian(state: GameState, guardian: StairsGuardianDef): boolean {
+  if (state.clearedStairsGuardians.includes(guardian.id)) return false;
+  state.clearedStairsGuardians.push(guardian.id);
+  openStairsGuardianEdge(state, guardian);
   return true;
 }
 

@@ -303,9 +303,24 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     // already reached floor 2 or deeper under the old rules never fought
     // it and must not be retroactively trapped behind it on their way back
     // up — treat deepestFloorReached >= 2 as an already-cleared encounter;
-    // everyone else starts in the pre-encounter state.
+    // everyone else starts in the pre-encounter state. Marking the flag
+    // alone is not enough: the guardian's edge (18,21).e is authored
+    // "barred" in the static floor content and only game state (via
+    // unlockedDoors) opens it — an already-cleared save with the flag set
+    // but no matching unlockedDoors entry would load with the flag saying
+    // "done" while the tile is still physically sealed, trapping the
+    // party right where the fight used to be.
     const deepest = (ser.deepestFloorReached as number | undefined) ?? 1;
-    ser.clearedStairsGuardians = deepest >= 2 ? ["floor1-returned-party"] : [];
+    const alreadyCleared = deepest >= 2;
+    ser.clearedStairsGuardians = alreadyCleared ? ["floor1-returned-party"] : [];
+    if (alreadyCleared) {
+      // Both sides of the edge — see the matching comment in
+      // features.ts's openStairsGuardianEdge for why one side isn't enough.
+      const doors = new Set<string>((ser.unlockedDoors as string[] | undefined) ?? []);
+      doors.add("1:18:21:e");
+      doors.add("1:19:21:w");
+      ser.unlockedDoors = [...doors];
+    }
     version = 16;
   }
   if (version !== SAVE_VERSION) return null;

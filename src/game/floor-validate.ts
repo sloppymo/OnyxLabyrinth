@@ -264,6 +264,17 @@ function validateStairsGuardianRefs(map: FloorMapJSON, issues: ValidationIssue[]
       at: { x: g.x, y: g.y },
     });
   }
+  if (inBoundsGrid(map, g.x, g.y)) {
+    const edge = map.grid[g.y][g.x][DIR_EDGE[g.blocksDir]];
+    if (edge !== "barred") {
+      issues.push({
+        severity: "error",
+        code: "guardian_edge_unsealed",
+        message: `Stairs guardian ${g.id} blocksDir "${g.blocksDir}" must be authored as "barred" (got "${edge}") — "wall" would fail reachability, and anything else lets a fled fight be walked past`,
+        at: { x: g.x, y: g.y },
+      });
+    }
+  }
 }
 
 function validateLockedDoors(

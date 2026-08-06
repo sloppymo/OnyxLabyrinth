@@ -3,12 +3,16 @@
  * StairsGuardianDef, game/features.ts handleStairsGuardian/clearStairsGuardian).
  *
  * A one-time scripted fight blocks the single-tile chokepoint (18,21)
- * between the raft's toDock (17,21) and the stairs_down at (19,21) — the
- * only edge into (19,21) is from (18,21), so the geometry itself (not a
- * runtime check on the stairs tile) guarantees the fight cannot be
- * bypassed. Victory pushes the guardian's id into
- * GameState.clearedStairsGuardians (game/save.ts v16), after which the
- * tile is permanently inert.
+ * between the raft's toDock (17,21) and the stairs_down at (19,21). Two
+ * independent guarantees combine to make this unbypassable:
+ *  - The tile feature ("guardian") triggers the intro dialog + fight the
+ *    moment the party arrives at (18,21).
+ *  - The edge from (18,21) toward the stairs is authored as "barred"
+ *    (StairsGuardianDef.blocksDir) and only flips to "door" on victory —
+ *    so a party that flees and is left standing on the guardian tile
+ *    cannot simply walk past it. The tile trigger alone is not enough for
+ *    this, since it only fires on arrival, not on every step taken while
+ *    standing there.
  *
  * Covers the prompt's twelve mandatory staircase edge cases.
  */
@@ -16,6 +20,7 @@ import { describe, it, expect } from "vitest";
 import { findFloor } from "./floor-registry";
 import { createGameState } from "./state";
 import { handleTileFeature, clearStairsGuardian } from "./features";
+import { resolveTraversal } from "./traversal";
 import { serialize, deserialize } from "./save";
 import type { GameState } from "../types";
 
@@ -27,27 +32,35 @@ function makeFloor1State(): GameState {
   return createGameState(floor);
 }
 
+function guardianDef(state: GameState) {
+  const g = state.floor.stairsGuardian;
+  if (!g) throw new Error("Floor 1 has no stairsGuardian");
+  return g;
+}
+
 describe("floor 1 stairs guardian content", () => {
-  it("is defined on a mandatory chokepoint whose only entrance is the guardian tile", () => {
+  it("is defined on a mandatory chokepoint sealed by a barred edge, not a wall", () => {
     const floor = findFloor(1)!;
     const guardian = floor.stairsGuardian;
     expect(guardian).toBeDefined();
     expect(guardian!.id).toBe(GUARDIAN_ID);
     expect(floor.grid[guardian!.y][guardian!.x].tile).toBe("guardian");
+    expect(guardian!.x).toBe(18);
+    expect(guardian!.y).toBe(21);
+    expect(guardian!.blocksDir).toBe("e");
+
+    // "barred", not "wall": floor-validate.ts's reachability BFS only
+    // treats "wall" as impassable, so a literal wall here would make the
+    // stairs fail floor validation outright (this was caught and fixed —
+    // see the guardian_edge_unsealed validator rule).
+    expect(floor.grid[21][18].e).toBe("barred");
+    expect(floor.grid[21][19].w).toBe("barred");
 
     const stairsCell = floor.grid[21][19];
     expect(stairsCell.tile).toBe("stairs_down");
-    // stairs_down's only open edge is west, back to the guardian tile —
-    // there is no other route in, so reaching the stairs requires crossing
-    // (18,21) first. This is what makes requirement #2 ("cannot step onto
-    // the stairs before victory") true by construction, not by a runtime
-    // check bolted onto handleStairs.
-    expect(stairsCell.w).toBe("open");
     expect(stairsCell.n).toBe("wall");
     expect(stairsCell.e).toBe("wall");
     expect(stairsCell.s).toBe("wall");
-    expect(guardian!.x).toBe(18);
-    expect(guardian!.y).toBe(21);
   });
 
   it("spawns resolve to defined enemies split two front / two back", () => {
@@ -75,49 +88,63 @@ describe("stairs guardian trigger and clear (features.ts)", () => {
     expect(result!.changedFloor).toBe(false);
   });
 
-  it("2. the stairs are unreachable without crossing the guardian tile (geometry, see content describe above)", () => {
-    // Re-asserted here as a trigger-layer guarantee: standing on the
-    // guardian tile never itself performs a floor transition.
+  it("2. the stairs cannot be reached before victory — even standing on the guardian tile after fleeing", () => {
     const state = makeFloor1State();
     state.player.x = 18;
     state.player.y = 21;
-    const result = handleTileFeature(state);
-    expect(result!.changedFloor).toBe(false);
+    state.player.facing = 1; // east, toward the stairs
+
+    // Simulate: arrived, fight triggered, then fled — combat never touches
+    // player position, so the party is still on the guardian tile with the
+    // encounter unresolved. Trying to continue east must be blocked by the
+    // barred edge, not merely by "no one has stepped there yet."
+    const move = resolveTraversal(state, 1 as const);
+    expect(move.kind).toBe("barred-gate");
+    if (move.kind === "barred-gate") {
+      expect(move.canOpen).toBe(false);
+    }
   });
 
-  it("3. victory permanently clears the block", () => {
+  it("3. victory permanently clears the block and opens the edge", () => {
     const state = makeFloor1State();
-    expect(clearStairsGuardian(state, GUARDIAN_ID)).toBe(true);
+    expect(clearStairsGuardian(state, guardianDef(state))).toBe(true);
     expect(state.clearedStairsGuardians).toContain(GUARDIAN_ID);
+    expect(state.floor.grid[21][18].e).toBe("door");
+    expect(state.floor.grid[21][19].w).toBe("door");
+    expect(state.unlockedDoors.has(`${state.floor.id}:18:21:e`)).toBe(true);
 
     state.player.x = 18;
     state.player.y = 21;
-    const result = handleTileFeature(state);
     // Inert — same shape as an already-looted chest: no feature fires.
-    expect(result).toBeNull();
+    expect(handleTileFeature(state)).toBeNull();
+    // And now genuinely passable.
+    const move = resolveTraversal(state, 1 as const);
+    expect(move.kind).toBe("step");
   });
 
-  it("4. saving after victory and reloading preserves the cleared state", () => {
+  it("4. saving after victory and reloading preserves both the flag and the opened edge", () => {
     const state = makeFloor1State();
-    clearStairsGuardian(state, GUARDIAN_ID);
+    clearStairsGuardian(state, guardianDef(state));
     const restored = deserialize(serialize(state));
     expect(restored).not.toBeNull();
     expect(restored!.clearedStairsGuardians).toContain(GUARDIAN_ID);
+    expect(restored!.floor.grid[21][18].e).toBe("door");
+    expect(restored!.floor.grid[21][19].w).toBe("door");
   });
 
-  it("5/6. a cleared guardian never fires again after a floor round-trip, regardless of approach direction", () => {
+  it("5/6. a cleared guardian never fires again and the path stays open across a floor round-trip", () => {
     const state = makeFloor1State();
-    clearStairsGuardian(state, GUARDIAN_ID);
+    clearStairsGuardian(state, guardianDef(state));
     state.player.x = 18;
     state.player.y = 21;
-    // Approach twice (simulates leaving toward the stairs and walking back).
     expect(handleTileFeature(state)).toBeNull();
     expect(handleTileFeature(state)).toBeNull();
+    expect(resolveTraversal(state, 1 as const).kind).toBe("step");
   });
 
-  it("7. the player can move off the return stair onto the (now inert) guardian tile", () => {
+  it("7. the player can move off the return stair onto the (now inert, now open) guardian tile", () => {
     const state = makeFloor1State();
-    clearStairsGuardian(state, GUARDIAN_ID);
+    clearStairsGuardian(state, guardianDef(state));
     state.player.x = 18;
     state.player.y = 21;
     expect(handleTileFeature(state)).toBeNull();
@@ -125,10 +152,7 @@ describe("stairs guardian trigger and clear (features.ts)", () => {
 
   it("8. approaching the old encounter tile from the stair side after returning is safe", () => {
     const state = makeFloor1State();
-    clearStairsGuardian(state, GUARDIAN_ID);
-    // "From the stair side" — the party's last movement before this step
-    // came from (19,21) toward (18,21), same tile either direction since
-    // handleTileFeature only inspects the tile the party currently stands on.
+    clearStairsGuardian(state, guardianDef(state));
     state.player.x = 18;
     state.player.y = 21;
     const result = handleTileFeature(state);
@@ -143,34 +167,36 @@ describe("stairs guardian trigger and clear (features.ts)", () => {
     const unclearedRestored = deserialize(serialize(uncleared));
     expect(unclearedRestored).not.toBeNull();
     expect(unclearedRestored!.clearedStairsGuardians).toEqual([]);
-    // Uncleared + standing short of the guardian tile: next step still
-    // resolves to a normal trigger, not a stuck state.
     unclearedRestored!.player.x = 18;
     unclearedRestored!.player.y = 21;
     expect(handleTileFeature(unclearedRestored!)!.pendingStairsGuardian).toBeDefined();
 
     const cleared = makeFloor1State();
-    clearStairsGuardian(cleared, GUARDIAN_ID);
+    clearStairsGuardian(cleared, guardianDef(cleared));
     cleared.player.x = 19;
     cleared.player.y = 21;
     const clearedRestored = deserialize(serialize(cleared));
     expect(clearedRestored).not.toBeNull();
     expect(clearedRestored!.clearedStairsGuardians).toContain(GUARDIAN_ID);
+    expect(clearedRestored!.floor.grid[21][18].e).toBe("door");
   });
 
   it("10. rewards cannot be collected twice: clearing an already-cleared guardian is a no-op", () => {
     const state = makeFloor1State();
-    expect(clearStairsGuardian(state, GUARDIAN_ID)).toBe(true);
-    expect(clearStairsGuardian(state, GUARDIAN_ID)).toBe(false);
+    const guardian = guardianDef(state);
+    expect(clearStairsGuardian(state, guardian)).toBe(true);
+    expect(clearStairsGuardian(state, guardian)).toBe(false);
     expect(state.clearedStairsGuardians).toEqual([GUARDIAN_ID]);
   });
 
-  it("11. merely triggering the fight does not itself mark victory (retreat/cancel can't fake a clear)", () => {
+  it("11. merely triggering the fight does not itself mark victory or open the path (retreat/cancel can't fake a clear)", () => {
     const state = makeFloor1State();
     state.player.x = 18;
     state.player.y = 21;
     handleTileFeature(state);
     expect(state.clearedStairsGuardians).toEqual([]);
+    expect(state.floor.grid[21][18].e).toBe("barred");
+    expect(resolveTraversal(state, 1 as const).kind).toBe("barred-gate");
   });
 
   it("12a. old saves that never reached floor 2 migrate to the pre-encounter state", () => {
@@ -182,9 +208,11 @@ describe("stairs guardian trigger and clear (features.ts)", () => {
     const restored = deserialize(JSON.stringify(raw));
     expect(restored).not.toBeNull();
     expect(restored!.clearedStairsGuardians).toEqual([]);
+    // Pre-encounter migration must not retroactively open the edge either.
+    expect(restored!.floor.grid[21][18].e).toBe("barred");
   });
 
-  it("12b. old saves that already reached floor 2+ migrate to the post-encounter (cleared) state", () => {
+  it("12b. old saves that already reached floor 2+ migrate to the post-encounter (cleared) state, edge included", () => {
     const state = makeFloor1State();
     state.deepestFloorReached = 3;
     const raw = JSON.parse(serialize(state));
@@ -193,5 +221,9 @@ describe("stairs guardian trigger and clear (features.ts)", () => {
     const restored = deserialize(JSON.stringify(raw));
     expect(restored).not.toBeNull();
     expect(restored!.clearedStairsGuardians).toEqual([GUARDIAN_ID]);
+    // The flag alone is not enough — the edge must also be open, or a
+    // "cleared" migrated save would still find the tile physically sealed.
+    expect(restored!.floor.grid[21][18].e).toBe("door");
+    expect(restored!.floor.grid[21][19].w).toBe("door");
   });
 });

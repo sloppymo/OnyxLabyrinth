@@ -797,7 +797,7 @@ function endCombat(result: CombatState): void {
   // stairs on the next approach. See game/features.ts handleStairsGuardian.
   if (pendingStairsGuardianFight) {
     const guardian = pendingStairsGuardianFight;
-    if (result.result === "victory" && clearStairsGuardian(state, guardian.id)) {
+    if (result.result === "victory" && clearStairsGuardian(state, guardian)) {
       if (guardian.rewardItemId) {
         state.inventory.push({ itemId: guardian.rewardItemId, identified: true });
       }
@@ -1033,8 +1033,12 @@ function onMove(): void {
       if (result.pendingStairsGuardian) {
         const guardian = result.pendingStairsGuardian;
         openDungeonDialog({
+          // No choices, so this dialog never reaches DungeonDialogController's
+          // choice-menu phase — Escape and Enter both just advance/dismiss
+          // text pages there, same as any other pure-text dialog. The real
+          // guarantee that this can't be skipped is the sealed edge
+          // (StairsGuardianDef.blocksDir), not a dialog-level cancel guard.
           lines: guardian.introLines,
-          cancelable: false,
           onSelect: () => {
             startStairsGuardianFight(guardian);
           },

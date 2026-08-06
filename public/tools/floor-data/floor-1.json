@@ -3260,7 +3260,7 @@
       },
       {
         "n": "wall",
-        "e": "open",
+        "e": "barred",
         "s": "wall",
         "w": "open",
         "tile": "guardian"
@@ -3269,7 +3269,7 @@
         "n": "wall",
         "e": "wall",
         "s": "wall",
-        "w": "open",
+        "w": "barred",
         "tile": "stairs_down"
       },
       {
@@ -4722,6 +4722,7 @@
       "They were a party once. They still stand like one."
     ],
     "victoryLine": "The four of them go still and do not rise again. Whatever answered when you called was down here, not up there. The stairs are clear.",
+    "blocksDir": "e",
     "rewardItemId": "greater-healing-potion"
   }
 }

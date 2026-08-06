@@ -64,11 +64,22 @@ function bfsReachable(
   floor: FloorDef,
   startX: number,
   startY: number,
-  hasRaft: boolean
+  hasRaft: boolean,
+  // "The Party That Returned" (stairsGuardian) bars its edge with a
+  // "barred" edge, same as OPEN_OR_LOCKED_OR_BARRED in floors.test.ts —
+  // this BFS otherwise only accepts "open"/"door", so without this flag
+  // the guardian's edge (and any future one like it) reads as impassable.
+  guardianCleared = false
 ): Set<string> {
   const visited = new Set<string>();
   const queue: { x: number; y: number }[] = [{ x: startX, y: startY }];
   visited.add(`${startX},${startY}`);
+
+  const clearedGuardianEdges = new Set<string>();
+  if (guardianCleared && floor.stairsGuardian) {
+    const g = floor.stairsGuardian;
+    clearedGuardianEdges.add(`${g.x},${g.y}`);
+  }
 
   // Build teleporter map
   const teleporters = new Map<string, { x: number; y: number }>();
@@ -103,9 +114,14 @@ function bfsReachable(
     if (!cell) continue;
 
     // Check 4 directional edges
+    const DIR_NAME = ["n", "e", "s", "w"] as const;
     for (let dir = 0; dir < 4; dir++) {
       const edge = edgeInDirection(cell, dir);
-      if (edge !== "open" && edge !== "door") continue;
+      const isClearedGuardianEdge =
+        clearedGuardianEdges.has(`${x},${y}`) &&
+        edge === "barred" &&
+        floor.stairsGuardian?.blocksDir === DIR_NAME[dir];
+      if (edge !== "open" && edge !== "door" && !isClearedGuardianEdge) continue;
 
       const nx = x + DX[dir];
       const ny = y + DY[dir];
@@ -115,7 +131,7 @@ function bfsReachable(
       const targetCell = floor.grid[ny][nx];
       const oppDir = (dir + 2) % 4;
       const oppEdge = edgeInDirection(targetCell, oppDir);
-      if (oppEdge !== "open" && oppEdge !== "door") continue;
+      if (oppEdge !== "open" && oppEdge !== "door" && !isClearedGuardianEdge) continue;
 
       // Block raftChannel water tiles
       if (raftChannelTiles.has(`${nx},${ny}`)) continue;
@@ -186,9 +202,16 @@ describe("Floor 1 progression — raft gates Floor 2", () => {
     expect(reachable.has(`${stairs.x},${stairs.y}`)).toBe(false);
   });
 
-  it("stairs are reachable from start WITH the raft", () => {
+  it("stairs remain unreachable with the raft alone — the returned-party fight also gates them", () => {
     const floor = findFloor(1)!;
     const reachable = bfsReachable(floor, floor.startX, floor.startY, true);
+    const stairs = findStairsDown(floor)!;
+    expect(reachable.has(`${stairs.x},${stairs.y}`)).toBe(false);
+  });
+
+  it("stairs are reachable from start WITH the raft AND the stairs guardian defeated", () => {
+    const floor = findFloor(1)!;
+    const reachable = bfsReachable(floor, floor.startX, floor.startY, true, true);
     const stairs = findStairsDown(floor)!;
     expect(reachable.has(`${stairs.x},${stairs.y}`)).toBe(true);
   });

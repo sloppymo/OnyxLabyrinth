@@ -163,6 +163,18 @@ export interface StairsGuardianDef {
   victoryLine: string;
   /** Item granted once, on victory. */
   rewardItemId?: string;
+  /**
+   * The edge FROM (x,y), authored as "barred" (not "wall" — reachability
+   * validation treats "wall" as permanently impassable, but "barred" is
+   * understood as openable), that seals off progress past the guardian.
+   * Fleeing leaves the player standing on the guardian tile with this edge
+   * still barred — the tile-feature trigger alone only fires on arrival,
+   * so without a real edge block a fled player could simply step past it.
+   * Victory opens both sides of the edge to "door" and records it in
+   * GameState.unlockedDoors, the same mechanism openBarredGate uses. See
+   * game/features.ts clearStairsGuardian.
+   */
+  blocksDir: "n" | "e" | "s" | "w";
 }
 
 export interface EventDef {

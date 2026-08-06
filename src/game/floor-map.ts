@@ -674,6 +674,7 @@ function parseStairsGuardian(o: Record<string, unknown>, l: string): StairsGuard
     spawns,
     introLines: [...introRaw],
     victoryLine: requireString(o.victoryLine, `${l}.victoryLine`),
+    blocksDir: parseDirName(o.blocksDir, `${l}.blocksDir`),
   };
   if (o.rewardItemId !== undefined) {
     guardian.rewardItemId = requireString(o.rewardItemId, `${l}.rewardItemId`);
