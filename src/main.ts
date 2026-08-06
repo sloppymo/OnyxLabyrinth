@@ -1,7 +1,10 @@
 import "./styles.css";
 import { getFloors, findFloor, registerFloorMap } from "./game/floor-registry";
 import { createGameState, setMode } from "./game/state";
-import { moveForward, moveBackward, turnLeft, turnRight, tryUnlock } from "./engine/camera";
+import { turnLeft, turnRight, tryUnlock, resolveTraversal, openBarredGate } from "./engine/camera";
+import { type Direction, type TraversalResult } from "./game/traversal";
+import { RaftAnimationController, isRaftAnimating } from "./engine/raft-animation";
+import { DungeonDialogController } from "./engine/dungeon-dialog";
 import {
   handleTileFeature,
   transitionToFloor,
@@ -9,6 +12,7 @@ import {
   disarmChest,
   openChest,
   leaveChest,
+  confirmChuteDrop,
   type ChestActionResult,
 } from "./game/features";
 import { revealAround } from "./game/explore";
@@ -20,6 +24,7 @@ import {
   resetRenderCamera,
   renderBattleArena,
   renderCorridorBackdrop,
+  setRaftVisualOverride,
 } from "./engine/renderer";
 import { partyPos, enemyPos, setBarksEnabled, getBarksEnabled } from "./engine/combat-scene";
 import { geometryForBackdrop, assertFloorBottomClearOfWindows } from "./engine/combat-scene-math";
@@ -110,14 +115,18 @@ import {
   arenaFloorForWave,
   rollArenaEncounter,
   adjustArenaEncounterForSmallParty,
+  isSafeZoneAt,
+  stepPity,
 } from "./game/encounters";
 import { tickBuffs, clearBuffs } from "./game/persistent-spells";
 import { SpellMenuController } from "./engine/spell-ui";
 import { NPCController } from "./engine/npc-ui";
+import { TavernController } from "./engine/tavern-ui";
 import { PerkSelectController } from "./engine/perk-select-ui";
 import { markKilled, adjustDisposition } from "./game/npc";
+import { companionAsSummonedAlly, syncCompanionAfterCombat } from "./game/companion";
 import { ENEMIES_BY_ID } from "./data/enemies";
-import type { NPCDef } from "./data/floors";
+import type { NPCDef, FloorDef } from "./data/floors";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
 import {
@@ -198,6 +207,14 @@ let trapPrompt: TrapPromptController | null = null;
 let justOpenedTrapPrompt = false;
 type RingActionId = "camp" | "map" | "grimoire" | "unlock" | "town";
 let pendingRingAction: RingActionId | null = null;
+
+// --- Raft animation + dungeon dialog controllers ---
+let raftAnimation: RaftAnimationController | null = null;
+let dungeonDialog: DungeonDialogController | null = null;
+/** Swallow the step key that opened a dungeon dialog so it cannot also move. */
+let justOpenedDungeonDialog = false;
+/** Swallow movement after closing a dialog until the closing key is released. */
+let suppressDungeonMovementUntilKeyup = false;
 
 // --- Mode transition with fade -------------------------------------------
 // The canvas has `transition: opacity 0.15s` in CSS. This helper fades out,
@@ -614,6 +631,15 @@ function withCombatTransition<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function startCombat(combat: CombatState): Promise<void> {
+  // The one authored temporary companion (game/companion.ts) rides the same
+  // summonedAllies channel as the Priest's BAMORDI/SOCORDI summons — a
+  // simple AI-controlled combatant, not a real party slot — so it never
+  // touches PARTY_SIZE/formation/save-schema assumptions. Never follows
+  // into Arena, matching how boss music/ending never fire there either.
+  if (!arenaController) {
+    const ally = companionAsSummonedAlly(state);
+    if (ally) combat.summonedAllies.push(ally);
+  }
   return withCombatTransition(async () => {
     closeMapOverlay();
     state.combat = combat;
@@ -694,6 +720,11 @@ function endCombat(result: CombatState): void {
 
   // Persist equipment changes from combat.
   state.equipment = { ...state.equipment, ...result.loadout };
+
+  // Sync the companion's ending HP (or death) back onto persisted state.
+  // No-op if no companion was traveling (e.g. an Arena fight never injects
+  // one in the first place — see startCombat).
+  syncCompanionAfterCombat(state, result.summonedAllies);
 
   // Perk choices queued by post-combat level-ups. Kept local to this flow; the
   // overlay consumes it and then returns to the dungeon / arena / ending.
@@ -926,7 +957,75 @@ function scheduleFootstep(): void {
 
 function onMove(): void {
   if (state.mode !== "dungeon") return;
-  state.stepsSinceEncounter++;
+  // Safe-zone pity preservation: if the player is in a safe zone, do NOT
+  // increment stepsSinceEncounter. Pity pauses while inside and resumes
+  // from its pre-hub value when leaving.
+  if (isSafeZoneAt(state.floor, state.player.x, state.player.y)) {
+    // Still process tile features and buff ticks, but skip encounter pity.
+    const expiry = tickBuffs(state);
+    const steppedOn = {
+      tile: state.floor.grid[state.player.y]?.[state.player.x]?.tile ?? null,
+      x: state.player.x,
+      y: state.player.y,
+      floorId: state.floor.id,
+    };
+    const result = handleTileFeature(state);
+    if (result) {
+      recordDebugEvent("feature", {
+        ...steppedOn,
+        message: result.message,
+        looted: result.looted ?? false,
+        changedFloor: result.changedFloor ?? false,
+        npcId: result.npcId ?? null,
+      });
+      if (result.looted) audio.playDungeonSfx("chestOpen");
+      if (!state.pendingTrap) {
+        setMessage([...expiry, result.message].join(" "));
+      }
+      if (result.changedFloor) {
+        markExplored();
+        resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+        return;
+      }
+      if (result.npcId) {
+        openNPCPanel(result.npcId);
+        return;
+      }
+      if (result.pendingChuteDrop) {
+        const drop = result.pendingChuteDrop;
+        openDungeonDialog({
+          lines: [
+            "A steep sluice disappears into darkness. There may be no way back up.",
+          ],
+          choices: [
+            { label: "Descend", value: "descend" },
+            { label: "Step away", value: "cancel" },
+          ],
+          onSelect: (value) => {
+            if (value === "descend") {
+              const dropResult = confirmChuteDrop(state, drop);
+              if (dropResult.changedFloor) {
+                markExplored();
+                resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+              }
+              setMessage(dropResult.message);
+            }
+          },
+        });
+        return;
+      }
+    } else if (expiry.length > 0) {
+      setMessage(expiry.join(" "));
+    }
+    // Skip maybeTriggerEncounter — safe zones suppress all random encounters.
+    return;
+  }
+  state.stepsSinceEncounter = stepPity(
+    state.floor,
+    state.player.x,
+    state.player.y,
+    state.stepsSinceEncounter
+  );
 
   // Tick persistent spell buffs (light/levitation) BEFORE processing the
   // tile, so a light that just expired doesn't still counter this darkness.
@@ -970,6 +1069,31 @@ function onMove(): void {
       openNPCPanel(result.npcId);
       return;
     }
+    if (result.pendingChuteDrop) {
+      // Stepped onto a chute that requires confirmation — show a
+      // point-of-no-return dialog instead of dropping immediately.
+      const drop = result.pendingChuteDrop;
+      openDungeonDialog({
+        lines: [
+          "A steep sluice disappears into darkness. There may be no way back up.",
+        ],
+        choices: [
+          { label: "Descend", value: "descend" },
+          { label: "Step away", value: "cancel" },
+        ],
+        onSelect: (value) => {
+          if (value === "descend") {
+            const dropResult = confirmChuteDrop(state, drop);
+            if (dropResult.changedFloor) {
+              markExplored();
+              resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+            }
+            setMessage(dropResult.message);
+          }
+        },
+      });
+      return;
+    }
   } else if (expiry.length > 0) {
     setMessage(expiry.join(" "));
   }
@@ -999,40 +1123,142 @@ function onMove(): void {
   maybeTriggerEncounter();
 }
 
+/**
+ * Execute a traversal result from resolveTraversal(). Handles ordinary
+ * steps, blocked moves, raft-route triggers, and barred-gate interactions.
+ */
+function handleTraversalResult(result: TraversalResult, dir: Direction): void {
+  switch (result.kind) {
+    case "step": {
+      state.player.x = result.x;
+      state.player.y = result.y;
+      markExplored();
+      onMove();
+      scheduleFootstep();
+      break;
+    }
+    case "blocked": {
+      audio.wallBump();
+      if (result.message) {
+        // Show blocking dialog for raft-channel messages.
+        openDungeonDialog({
+          lines: [result.message],
+          cancelable: true,
+        });
+      }
+      break;
+    }
+    case "raft": {
+      // Find the route and start the animation.
+      const route = state.floor.raftRoutes?.find((r) => r.id === result.routeId);
+      if (route) {
+        startRaftAnimation(route, result.reverse);
+      }
+      break;
+    }
+    case "barred-gate": {
+      if (result.canOpen) {
+        // Open the gate from this side.
+        openBarredGate(state, dir);
+        audio.doorOpen();
+        setMessage("You lift the bar and push the gate open.");
+        // Now step through.
+        const stepResult = resolveTraversal(state, dir);
+        if (stepResult.kind === "step") {
+          state.player.x = stepResult.x;
+          state.player.y = stepResult.y;
+          markExplored();
+          onMove();
+          scheduleFootstep();
+        }
+      } else {
+        audio.wallBump();
+        openDungeonDialog({
+          lines: [result.message ?? "A barred gate blocks the way."],
+          cancelable: true,
+        });
+      }
+      break;
+    }
+  }
+}
+
+/** Start a raft route animation. */
+function startRaftAnimation(route: NonNullable<FloorDef["raftRoutes"]>[number], reverse: boolean): void {
+  // Show boarding message as a blocking dialog, then start animation.
+  openDungeonDialog({
+    lines: ["You step onto the raft. It carries you across the water..."],
+    onClose: () => {
+      // Start the animation after the boarding message is dismissed.
+      raftAnimation = new RaftAnimationController({
+        state,
+        route,
+        reverse,
+        onComplete: () => {
+          raftAnimation = null;
+          markExplored();
+          setMessage("The raft nudges against the far dock. You step off.");
+        },
+        onInterrupt: () => {
+          raftAnimation = null;
+          setMessage("The crossing was interrupted. You return to a dock.");
+        },
+      });
+      raftAnimation.start();
+    },
+  });
+}
+
+/** Open a blocking dungeon dialog. */
+function openDungeonDialog(opts: {
+  lines: string[];
+  choices?: { label: string; value: string }[];
+  title?: string;
+  onSelect?: (value: string) => void;
+  onClose?: () => void;
+  cancelable?: boolean;
+}): void {
+  dungeonDialog = new DungeonDialogController({
+    state: state as { mode: string },
+    lines: opts.lines,
+    choices: opts.choices,
+    title: opts.title,
+    onSelect: opts.onSelect,
+    onClose: () => {
+      dungeonDialog = null;
+      // Swallow the closing keypress so it doesn't also move the player.
+      suppressDungeonMovementUntilKeyup = true;
+      opts.onClose?.();
+    },
+    cancelable: opts.cancelable,
+  });
+  justOpenedDungeonDialog = true;
+  setTimeout(() => { justOpenedDungeonDialog = false; }, 0);
+  dungeonDialog.open();
+}
+
 const dungeonHandlers: InputHandlers = {
   onForward: () => {
     if (combatTransitionActive) return;
+    if (suppressDungeonMovementUntilKeyup) return;
+    if (isRaftAnimating(raftAnimation)) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       clearMessageOnPlayerAction();
-      const before = { x: state.player.x, y: state.player.y };
-      moveForward(state);
-      if (state.player.x !== before.x || state.player.y !== before.y) {
-        markExplored();
-        onMove();
-        scheduleFootstep();
-      } else {
-        // Walked into a wall — give audible feedback instead of a silent
-        // no-op (the player would otherwise get zero indication their
-        // input was rejected).
-        audio.wallBump();
-      }
+      const result = resolveTraversal(state, state.player.facing as Direction);
+      handleTraversalResult(result, state.player.facing as Direction);
     }
   },
   onBackward: () => {
     if (combatTransitionActive) return;
+    if (suppressDungeonMovementUntilKeyup) return;
+    if (isRaftAnimating(raftAnimation)) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap && !isRenderCameraAnimating()) {
       audio.resume();
       clearMessageOnPlayerAction();
-      const before = { x: state.player.x, y: state.player.y };
-      moveBackward(state);
-      if (state.player.x !== before.x || state.player.y !== before.y) {
-        markExplored();
-        onMove();
-        scheduleFootstep();
-      } else {
-        audio.wallBump();
-      }
+      const behindDir = ((state.player.facing + 2) % 4) as Direction;
+      const result = resolveTraversal(state, behindDir);
+      handleTraversalResult(result, behindDir);
     }
   },
   onTurnLeft: () => {
@@ -1137,9 +1363,33 @@ const dungeonHandlers: InputHandlers = {
 };
 
 bindInput(window, dungeonHandlers, {
-  shouldHandle: () => state.mode === "dungeon" && !state.pendingTrap,
+  shouldHandle: () =>
+    state.mode === "dungeon" && !state.pendingTrap && !isRaftAnimating(raftAnimation),
 });
 bindMapOverlayButton(dungeonHandlers.onToggleMapOverlay);
+
+// --- Dungeon dialog mode --------------------------------------------------
+// Active while state.mode === "dialog" (blocking dungeon dialogs: raft
+// warnings, boarding messages, gate prompts, chute warnings). All dungeon
+// movement/turning/encounters are suppressed by the shouldHandle guard
+// above (mode !== "dungeon"). These keys drive the dialog controller.
+
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "dialog") return;
+  if (!dungeonDialog) return;
+  if (justOpenedDungeonDialog) {
+    e.preventDefault();
+    return;
+  }
+  dungeonDialog.handleKey(e.key);
+  e.preventDefault();
+});
+
+window.addEventListener("keyup", () => {
+  if (suppressDungeonMovementUntilKeyup) {
+    suppressDungeonMovementUntilKeyup = false;
+  }
+});
 
 // --- Trapped chest prompt --------------------------------------------------
 // Active while state.pendingTrap is set (the party is standing on a trapped,
@@ -1238,6 +1488,7 @@ function openActionRing(): void {
     saveController ||
     spellMenuController ||
     npcController ||
+    tavernController ||
     actionRingController
   ) {
     return;
@@ -1299,6 +1550,7 @@ function currentRouteFlags(): ControllerRouteContext {
     hasSave: !!saveController,
     hasSpellMenu: !!spellMenuController,
     hasNpc: !!npcController,
+    hasTavern: !!tavernController,
     hasActionRing: !!actionRingController,
     hasTown: !!townController,
     hasCamp: !!campController,
@@ -1351,6 +1603,15 @@ function routeControllerEvent(event: ControllerInputEvent): void {
       }
       const key = controllerEventToMenuKey(event);
       if (key) npcController!.handleKey(key);
+      return;
+    }
+    case "tavern": {
+      if (justOpenedTavernPanel) {
+        if (event.kind === "press") justOpenedTavernPanel = false;
+        return;
+      }
+      const key = controllerEventToMenuKey(event);
+      if (key) tavernController!.handleKey(key);
       return;
     }
     case "action_ring": {
@@ -1988,6 +2249,13 @@ let npcFightId: string | null = null;
 let justOpenedNPCPanel = false;
 
 function openNPCPanel(npcId: string): void {
+  // Hot Boi's tavern is a dedicated hub, not a generic dungeon NPC — see
+  // engine/tavern-ui.ts for why it isn't just another NPCController capability
+  // set.
+  if (npcId === "hot-boi") {
+    openTavernPanel();
+    return;
+  }
   const npc = state.floor.npcs?.find((n) => n.id === npcId);
   if (!npc) return;
   setMode(state, "title");
@@ -2048,6 +2316,50 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
   }
 });
 
+// --- Hot Boi's tavern --------------------------------------------------
+// Borrows "title" mode like the save/grimoire/NPC panels. Opened by stepping
+// onto Hot Boi's tile (see openNPCPanel's dispatch above) instead of the
+// generic NPCController.
+let tavernController: TavernController | null = null;
+let justOpenedTavernPanel = false;
+
+function openTavernPanel(): void {
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  canvas.style.opacity = "0.2";
+  justOpenedTavernPanel = true;
+  tavernController = new TavernController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    state,
+    onClose: () => {
+      tavernController = null;
+      canvas.style.opacity = "1";
+      setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
+      setMessage("");
+    },
+    // A Rest/turn-in/companion transaction has already fully committed to
+    // `state` by the time this fires — never called mid-transaction, so the
+    // autosave can't capture a half-applied gold deduction or reward.
+    onSave: () => {
+      autoSave(state);
+    },
+  });
+}
+
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "title" || !tavernController) return;
+  if (justOpenedTavernPanel) {
+    // The movement key that stepped onto Hot Boi must not also drive the menu.
+    justOpenedTavernPanel = false;
+    e.preventDefault();
+    return;
+  }
+  if (tavernController.handleKey(e.key)) {
+    e.preventDefault();
+  }
+});
+
 // --- Auto-map toggle -----------------------------------------------------
 function toggleMap(): void {
   mapVisible = !mapVisible;
@@ -2088,8 +2400,23 @@ function loop() {
     prevMode = state.mode;
   }
 
-  if (state.mode === "dungeon") {
+  // Update raft animation if active. The animation runs in "dialog" mode
+  // (input locked), so this update happens regardless of dungeon mode.
+  if (raftAnimation && raftAnimation.isActive()) {
+    raftAnimation.update();
+  }
+
+  if (state.mode === "dungeon" || (state.mode === "dialog" && raftAnimation)) {
+    // While a raft animation is active, install the interpolated visual
+    // camera override so the first-person view glides along the path. The
+    // authoritative grid position stays at the origin dock until completion.
+    if (raftAnimation && raftAnimation.isActive()) {
+      setRaftVisualOverride(raftAnimation.getVisualCamera());
+    } else {
+      setRaftVisualOverride(null);
+    }
     render(ctx, state);
+    setRaftVisualOverride(null);
     const floorLabel = `F${state.floor.id}`;
     renderPartyStrip(
       state.party,
@@ -2359,6 +2686,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       saveController ||
       spellMenuController ||
       npcController ||
+      tavernController ||
       perkSelectController ||
       prologueController ||
       endingController
@@ -2416,6 +2744,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       saveController ||
       spellMenuController ||
       npcController ||
+      tavernController ||
       perkSelectController ||
       prologueController ||
       endingController ||

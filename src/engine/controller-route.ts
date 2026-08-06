@@ -7,6 +7,7 @@ export type ControllerRouteKind =
   | "save"
   | "spell"
   | "npc"
+  | "tavern"
   | "action_ring"
   | "town"
   | "camp"
@@ -27,6 +28,7 @@ export interface ControllerRouteContext {
   hasSave: boolean;
   hasSpellMenu: boolean;
   hasNpc: boolean;
+  hasTavern: boolean;
   hasActionRing: boolean;
   hasTown: boolean;
   hasCamp: boolean;
@@ -47,6 +49,7 @@ export function resolveControllerRoute(ctx: ControllerRouteContext): ControllerR
   if (ctx.mode === "title" && ctx.hasSave) return "save";
   if (ctx.mode === "title" && ctx.hasSpellMenu) return "spell";
   if (ctx.mode === "title" && ctx.hasNpc) return "npc";
+  if (ctx.mode === "title" && ctx.hasTavern) return "tavern";
   if (ctx.mode === "title" && ctx.hasActionRing) return "action_ring";
   if (ctx.mode === "town" && ctx.hasTown) return "town";
   if (ctx.mode === "camp" && ctx.hasCamp) return "camp";

@@ -6,10 +6,14 @@
 import type { FloorDef } from "../data/floors";
 import type { Character } from "../game/party";
 import type { CombatState, Loadout } from "../game/combat-types";
+import type { QuestProgress } from "../game/quests";
+import type { CompanionState } from "../game/companion";
 export type { FloorDef };
 export type { Character };
 export type { CombatState };
 export type { Loadout };
+export type { QuestProgress };
+export type { CompanionState };
 
 // --- Edge-based grid model ---------------------------------------------------
 // Each cell has four edges (N/E/S/W). An edge is open, a wall, or a door.
@@ -17,7 +21,7 @@ export type { Loadout };
 // wireframe renderer consumes; tile-feature layers (stairs, teleporters, ...)
 // ride on top via the optional `tile` field below.
 
-export type EdgeType = "open" | "wall" | "door" | "locked";
+export type EdgeType = "open" | "wall" | "door" | "locked" | "barred";
 
 export interface Cell {
   n: EdgeType;
@@ -101,7 +105,8 @@ export type GameMode =
   | "combat"
   | "camp"
   | "game_over"
-  | "arena";
+  | "arena"
+  | "dialog";
 
 export interface GameState {
   mode: GameMode;
@@ -145,6 +150,10 @@ export interface GameState {
   // When the party attempts to pass a locked door, the key is consumed.
   // Design doc §6.2: "Require keys (found on floor) or Thief lockpick."
   keys: string[];
+  // Permanent party-level key items (e.g. "raft"). Unlike `keys`, these are
+  // never consumed by door unlocks and cannot be sold or dropped. Used for
+  // progression gating (raft channels, etc.). Serialized in saves.
+  keyItems: string[];
   // Set of "floorId:x:y:dir" strings for locked doors that have been unlocked.
   // Prevents re-locking when the player walks back through.
   unlockedDoors: Set<string>;
@@ -195,4 +204,18 @@ export interface GameState {
   // scripted fight, so this flag — not "boss defeated" — is what gates a
   // repeat victory from re-triggering EndingController.
   hasCompletedEnding: boolean;
+  // Per-floor revision tracking: floorId → revision number when last visited.
+  // When a floor's geometry/content changes (floorRevision bumped), loading
+  // an old save clears that floor's explored/loot/events/doors state.
+  floorRevisions: Record<number, number>;
+  // --- Hot Boi's tavern (game/tavern.ts, game/quests.ts) ---
+  // Scorchboard quest progress, keyed by stable quest id. A quest with no
+  // entry here is implicitly "available" (see game/quests.ts policy).
+  questStates: Record<string, QuestProgress>;
+  // Monotonic counter driving deterministic (non-random) rumor cycling —
+  // see game/tavern.ts nextRumor.
+  tavernRumorCursor: number;
+  // The one authored temporary fifth party member, or null if never
+  // recruited. See game/companion.ts.
+  companion: CompanionState | null;
 }

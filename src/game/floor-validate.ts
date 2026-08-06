@@ -210,7 +210,7 @@ function validateOverlayTiles(map: FloorMapJSON, issues: ValidationIssue[]): voi
   }
   for (const n of map.npcs ?? []) {
     expectTile(n.x, n.y, "npc", "npc_tile", `NPC ${n.id}`);
-    if (!n.combatEnemyIds?.length) {
+    if (!n.combatEnemyIds?.length && n.capabilities?.attack !== false) {
       issues.push({
         severity: "warning",
         code: "npc_no_combat",

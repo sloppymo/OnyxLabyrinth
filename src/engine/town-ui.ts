@@ -42,6 +42,7 @@ import {
   equipDescForFocus,
   resolveEquipPreview,
 } from "./equip-sheet";
+import { scorchboardEntries } from "../game/tavern";
 import {
   startPartyIdleAnim,
   type PartyIdleAnimHandle,
@@ -694,6 +695,16 @@ export class TownController {
     const avgLevel = Math.round(
       this.state.party.reduce((sum, c) => sum + c.level, 0) / this.state.party.length
     );
+    // Nudges players back toward Hot Boi's tavern (Floor 1) once there's a
+    // concrete reason to go — self-gating, since a quest can't be "ready"
+    // until the player has already visited and accepted it there.
+    const readyQuests = scorchboardEntries(this.state).filter(
+      (e) => e.status === "ready"
+    ).length;
+    const scorchboardNote =
+      readyQuests > 0
+        ? ` · Hot Boi's Scorchboard: ${readyQuests} ready to turn in`
+        : "";
 
     const win = new FF6Window({
       title: `Town of Edgehollow — Year ${this.state.worldYear}`,
@@ -705,7 +716,7 @@ export class TownController {
       mode: "menu",
       flash: this.flash || null,
       footer: "D-pad navigate · A select · Select save",
-      footer2: `Party: ${aliveCount}/${this.state.party.length} alive · Avg Lv${avgLevel} · Gold: ${this.state.partyGold}g`,
+      footer2: `Party: ${aliveCount}/${this.state.party.length} alive · Avg Lv${avgLevel} · Gold: ${this.state.partyGold}g${scorchboardNote}`,
       animated,
       onHover: (i) => {
         this.selectedIndex = i;

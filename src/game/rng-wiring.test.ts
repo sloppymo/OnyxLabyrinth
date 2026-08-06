@@ -82,7 +82,12 @@ function makeTrapState(trap: TrapType): GameState {
     inAntimagic: false,
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    keyItems: [],
+    floorRevisions: {},
     lastDungeon: null,
+    questStates: {},
+    tavernRumorCursor: 0,
+    companion: null,
   };
 }
 
@@ -143,7 +148,12 @@ function makeNpcState(): GameState {
     inAntimagic: false,
     deepestFloorReached: 1,
     hasCompletedEnding: false,
+    keyItems: [],
+    floorRevisions: {},
     lastDungeon: null,
+    questStates: {},
+    tavernRumorCursor: 0,
+    companion: null,
   };
 }
 
