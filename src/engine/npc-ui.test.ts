@@ -117,7 +117,7 @@ describe("NPCController", () => {
     return { controller, closeMessage: () => closeMessage, fightNpc: () => fightNpc };
   }
 
-  it("renders the root menu and greeting", () => {
+  it("shows the portrait/name/greeting first, with the action bar hidden until acknowledged", () => {
     const npc = makeNPC();
     const state = makeState(npc);
     const { controller } = freshController(state, npc);
@@ -125,6 +125,13 @@ describe("NPCController", () => {
     const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
     expect(panel.textContent).toContain("Odo");
     expect(panel.textContent).toContain("A visitor!");
+    // The root action bar is a deliberate second beat, not part of the
+    // initial cinematic greeting — see npc-dialogue-view.ts.
+    expect(panel.textContent).not.toContain("Talk");
+    expect(panel.textContent).not.toContain("Attack");
+
+    // Any acknowledgment (here, an arrow key) reveals it.
+    controller.handleKey("ArrowDown");
     expect(panel.textContent).toContain("Talk");
     expect(panel.textContent).toContain("Attack");
 
@@ -288,6 +295,82 @@ describe("NPCController", () => {
     controller.handleKey("Escape");
 
     expect(closeMessage()).toBe("You step away.");
+
+    controller.destroy();
+  });
+
+  it("root Enter completes the reveal before it can advance/select anything", () => {
+    // Real timers (no fake-timer advance) mean textRevealed starts false
+    // right after construction unless reduced motion is on — force that
+    // deterministically instead of relying on matchMedia in jsdom.
+    const npc = makeNPC();
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+
+    // First Enter, while the mask is still animating, must only complete
+    // the reveal — never select the default-highlighted root item.
+    const consumed = controller.handleKey("Enter");
+    expect(consumed).toBe(true);
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+    // Still on the greeting, not inside a sub-phase (e.g. Talk/Attack menu).
+    expect(panel.textContent).toContain("A visitor!");
+
+    controller.destroy();
+  });
+
+  it("repeated Enter cannot select Attack: it first reveals, then only acknowledges", () => {
+    const npc = makeNPC();
+    const state = makeState(npc);
+    const { controller, fightNpc } = freshController(state, npc);
+
+    controller.handleKey("Enter"); // complete reveal
+    controller.handleKey("Enter"); // acknowledge (show action bar)
+    expect(fightNpc()).toBeNull();
+
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+    expect(panel.textContent).toContain("Talk");
+    expect(panel.textContent).toContain("Attack");
+    // Cursor still defaults to the first root item (Talk), not Attack.
+    expect(fightNpc()).toBeNull();
+
+    controller.destroy();
+  });
+
+  it("close() clears the reveal timer (no lingering setTimeout after destroy)", () => {
+    const npc = makeNPC({
+      greeting: "A very long greeting sentence that will take a while to reveal on screen.",
+    });
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+
+    const clearSpy = vi.spyOn(globalThis, "clearTimeout");
+    controller.destroy();
+    expect(clearSpy).toHaveBeenCalled();
+    clearSpy.mockRestore();
+  });
+
+  it("every existing NPC remains usable without a configured portrait", () => {
+    const npc = makeNPC(); // no portraitId
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+    expect(panel.querySelector("img")).toBeNull();
+    expect(panel.querySelector(".npc-dlg-portrait-silhouette")).not.toBeNull();
+    expect(panel.textContent).toContain("Odo");
+
+    controller.destroy();
+  });
+
+  it("Kazeharu-shaped NPCDef (portraitId set) renders a real portrait image", () => {
+    const npc = makeNPC({ portraitId: "kazeharu" });
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+    const img = panel.querySelector<HTMLImageElement>("img");
+    expect(img).not.toBeNull();
+    expect(img!.src).toContain("kazeharu/portrait.png");
 
     controller.destroy();
   });

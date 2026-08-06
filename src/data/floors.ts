@@ -371,6 +371,13 @@ export interface NPCDef {
    * like Hot Boi non-combat (disable Attack/Steal).
    */
   capabilities?: NPCCapabilities;
+  /** Stable id resolved through the NPC portrait manifest. Missing art uses
+   * the deliberate silhouette fallback in the dialogue renderer. */
+  portraitId?: string;
+  /** Which side of the dialogue panel the portrait sits on. */
+  portraitSide?: "left" | "right";
+  /** Tints the dialogue frame's accent border. */
+  dialogueAccent?: "neutral" | "warm" | "cold" | "hostile";
 }
 
 export interface NPCCapabilities {
@@ -799,6 +806,7 @@ function floor3(): FloorDef {
         id: "kazeharu",
         name: "Kazeharu",
         title: "masterless duelist",
+        portraitId: "kazeharu",
         x: 3,
         y: 9,
         greeting:
