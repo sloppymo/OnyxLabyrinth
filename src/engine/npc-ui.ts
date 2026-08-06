@@ -112,26 +112,18 @@ export class NPCController {
     }
 
     const isConfirm = key === "Enter" || key === " ";
+    const lower = key.toLowerCase();
 
     // For every phase except "ask", the same rule applies: the first Enter/Space
     // completes the typewriter reveal; subsequent Enter/Space advances pages; the
     // final Enter/Space acknowledges the beat. Only then can a later confirmation
     // activate the currently selected menu item. This stops Enter from
     // immediately re-trading, re-giving, or re-asking a paginated message.
-    if (isConfirm && this.consumeDialogue()) {
-      return true;
-    }
-
-    // A failed steal (or future affront) displays the hostile line and waits
-    // for one final confirmation before handing off to combat. Exactly one.
-    if (this.pendingFight && this.acknowledged) {
-      this.close("");
-      this.onFight(this.npc);
-      return true;
+    if (isConfirm) {
+      return this.activateCurrentSelection(true);
     }
 
     audio.uiForMenuKey(key);
-    const lower = key.toLowerCase();
     if (lower === "escape") {
       if (this.phase === "root") {
         this.close("You step away.");
@@ -150,22 +142,42 @@ export class NPCController {
       this.render();
       return true;
     }
-    if (isConfirm) {
-      this.confirm();
-      return true;
-    }
     // Root hotkeys are intentionally disabled until the greeting (or a fresh
-    // paginated message) has been acknowledged. Pressing 'a' during the
-    // typewriter must not silently Attack, 's' must not Steal, etc.
-    if (this.phase === "root" && this.acknowledged) {
+    // paginated message) has been acknowledged, and while a failed theft is
+    // displaying the hostile handoff. Pressing 'a' during the typewriter must
+    // not silently Attack, 's' must not Steal, etc.
+    if (this.phase === "root" && this.acknowledged && !this.pendingFight) {
       const idx = ROOT_ITEMS.findIndex((it) => it.key.startsWith(lower));
       if (idx >= 0) {
         this.index = idx;
-        this.confirm();
-        return true;
+        return this.activateCurrentSelection(false);
       }
     }
     return false;
+  }
+
+  /**
+   * Central confirmation gate. It always tries to consume the current dialogue
+   * beat first (reveal → page turn → acknowledgement). Once the beat is fully
+   * consumed, an actual confirm source (Enter/Space/mouse click) may proceed to
+   * `confirm()`. This keeps keyboard, root/topic clicks, and mounted FF6Window
+   * lists on the same lifecycle.
+   */
+  private activateCurrentSelection(isConfirm: boolean): boolean {
+    if (this.consumeDialogue()) {
+      return true;
+    }
+    if (isConfirm && this.pendingFight) {
+      this.startPendingFight();
+      return true;
+    }
+    this.confirm();
+    return true;
+  }
+
+  private startPendingFight(): void {
+    this.close("");
+    this.onFight(this.npc);
   }
 
   /**
@@ -187,7 +199,13 @@ export class NPCController {
     }
     if (!this.acknowledged) {
       this.acknowledged = true;
-      this.render();
+      // A hostile handoff starts on the same confirm that acknowledges the
+      // final page — one key, not two.
+      if (this.pendingFight) {
+        this.startPendingFight();
+      } else {
+        this.render();
+      }
       return true;
     }
     return false;
@@ -366,6 +384,10 @@ export class NPCController {
     this.pages = paginateText(text);
     this.pageIndex = 0;
     this.dialogueKind = kind;
+    // A fresh dialogue beat always requires acknowledgement before any menu
+    // selection can be activated. Resetting this here stops a one-page answer
+    // from becoming immediately re-executable after reveal.
+    this.acknowledged = false;
     this.startReveal();
   }
 
@@ -408,7 +430,7 @@ export class NPCController {
     let footer: string | undefined;
     let emptyLine: string | undefined;
 
-    if (this.phase === "root") {
+    if (this.phase === "root" && !this.pendingFight) {
       secondary = {
         kind: "actions",
         items: ROOT_ITEMS.map((it) => ({ key: it.key, label: `[${it.label[0]}] ${it.label}` })),
@@ -487,7 +509,7 @@ export class NPCController {
         },
         onConfirm: (i) => {
           this.index = i;
-          this.confirm();
+          this.activateCurrentSelection(true);
         },
       });
       mountSlot.appendChild(win.render());
@@ -507,7 +529,7 @@ export class NPCController {
         },
         onConfirm: (i) => {
           this.index = i;
-          this.confirm();
+          this.activateCurrentSelection(true);
         },
       });
       mountSlot.appendChild(win.render());
@@ -531,7 +553,7 @@ export class NPCController {
         });
         node.addEventListener("click", () => {
           this.index = i;
-          this.confirm();
+          this.activateCurrentSelection(true);
         });
       });
     }

@@ -479,4 +479,231 @@ describe("NPCController", () => {
 
     controller.destroy();
   });
+
+  // --- Acknowledgement lifecycle --------------------------------------------
+
+  it("a one-page topic response requires acknowledgement before re-asking", () => {
+    const npc = makeNPC({
+      topics: [{ key: "key", response: "Answer one." }],
+    });
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+
+    // Open talk and select the only topic.
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    controller.handleKey("t");
+    controller.handleKey("Enter"); // ask the topic
+    expect(panel.textContent).toContain("Answer one.");
+    expect(panel.textContent).toContain("key"); // topic list still visible
+
+    // First Enter only completes the reveal — the response is not asked again.
+    controller.handleKey("Enter");
+    expect(panel.textContent).toContain("Answer one.");
+
+    // Second Enter acknowledges the beat.
+    controller.handleKey("Enter");
+    expect(panel.textContent).toContain("Ask about");
+
+    // Third Enter finally re-asks the same topic.
+    controller.handleKey("Enter");
+    expect(panel.textContent).toContain("Answer one.");
+
+    controller.destroy();
+  });
+
+  it("a multi-page topic response requires acknowledgement of the final page", () => {
+    const response =
+      "First page of the answer, which is intentionally long. " +
+      "It keeps going so the paginate function has to split it. " +
+      "Second page of the answer, which only appears after the player turns. " +
+      "Third page of the answer, which is the final page and must be acknowledged.";
+    const npc = makeNPC({ topics: [{ key: "key", response }] });
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    controller.handleKey("t");
+    controller.handleKey("Enter"); // ask
+    for (let i = 0; i < 8; i++) controller.handleKey("Enter"); // page through
+    // The final "Third page" must appear.
+    expect(panel.textContent).toContain("Third page");
+
+    controller.destroy();
+  });
+
+  it("a repeatable barter cannot repeat before the transaction result is acknowledged", () => {
+    const npc = makeNPC({
+      trades: [
+        { giveItemId: "antidote", receiveItemId: "healing-potion", once: false },
+      ],
+    });
+    const state = makeState(npc);
+    state.inventory.push({ itemId: "antidote", identified: true });
+    state.inventory.push({ itemId: "antidote", identified: true });
+    const { controller } = freshController(state, npc);
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    controller.handleKey("b");
+    // Acknowledge "Odo lays out an offer."
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    // Confirm the first trade.
+    controller.handleKey("Enter"); // complete reveal
+    controller.handleKey("Enter"); // acknowledge
+    controller.handleKey("Enter"); // confirm
+    expect(panel.textContent).toContain("takes the Antidote");
+
+    const healingCount = state.inventory.filter((e) => e.itemId === "healing-potion").length;
+    // Trying to trade again immediately (same Enter that acknowledged) does not
+    // consume a second Antidote because the result must be acknowledged first.
+    // The next Enter, after acknowledgement, will trade again.
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    expect(state.inventory.filter((e) => e.itemId === "healing-potion").length).toBe(
+      healingCount + 1
+    );
+
+    controller.destroy();
+  });
+
+  it("mouse click on a topic goes through the same acknowledgement gate as Enter", () => {
+    const npc = makeNPC({
+      topics: [{ key: "key", response: "Answer one." }],
+    });
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    controller.handleKey("t");
+    // Click the first topic row.
+    const topic = panel.querySelector<HTMLElement>(".npc-dlg-topic");
+    expect(topic).not.toBeNull();
+    topic!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(panel.textContent).toContain("Answer one.");
+
+    // Clicking the same topic again while the answer is not consumed does
+    // not re-ask; it just acknowledges the page.
+    topic!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    topic!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    // After acknowledgement, another click may re-ask, but the text still
+    // contains the answer.
+    expect(panel.textContent).toContain("Answer one.");
+
+    controller.destroy();
+  });
+
+  it("mounted barter list mouse confirmation goes through the acknowledgement gate", () => {
+    const npc = makeNPC({
+      trades: [{ giveItemId: "antidote", receiveItemId: "healing-potion", once: false }],
+    });
+    const state = makeState(npc);
+    state.inventory.push({ itemId: "antidote", identified: true });
+    const { controller } = freshController(state, npc);
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    controller.handleKey("b");
+    // The barter narration must be revealed (click 1), acknowledged (click 2),
+    // and only then can a row confirmation execute the trade (click 3).
+    let row = panel.querySelector<HTMLElement>(".ff6-menu-item");
+    expect(row).not.toBeNull();
+    row!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    row = panel.querySelector<HTMLElement>(".ff6-menu-item");
+    row!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    // Still the narration; action not yet executed.
+    expect(panel.textContent).toContain("lays out");
+
+    row = panel.querySelector<HTMLElement>(".ff6-menu-item");
+    row!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(panel.textContent).toContain("takes the Antidote");
+
+    controller.destroy();
+  });
+
+  it("failed steal starts exactly one fight and only on Enter/Space", () => {
+    setGameplayRng(() => 0.99);
+    try {
+      const npc = makeNPC();
+      const state = makeState(npc);
+      const { controller, fightNpc, closeMessage } = freshController(state, npc);
+      const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+
+      controller.handleKey("Enter");
+      controller.handleKey("Enter");
+      controller.handleKey("s");
+      expect(panel.textContent).toContain("steel is drawn");
+      expect(fightNpc()).toBeNull();
+
+      // Escape does not launch combat.
+      controller.handleKey("Escape");
+      expect(closeMessage()).toBe("You step away.");
+      expect(fightNpc()).toBeNull();
+
+      controller.destroy();
+    } finally {
+      resetGameplayRng();
+    }
+  });
+
+  it("pending combat only starts with Enter/Space, not arrows or Escape", () => {
+    setGameplayRng(() => 0.99);
+    try {
+      const npc = makeNPC();
+      const state = makeState(npc);
+      const { controller, fightNpc } = freshController(state, npc);
+
+      controller.handleKey("Enter");
+      controller.handleKey("Enter");
+      controller.handleKey("s"); // steal, sets pendingFight
+
+      // Arrows do not start combat.
+      controller.handleKey("ArrowUp");
+      expect(fightNpc()).toBeNull();
+      controller.handleKey("ArrowDown");
+      expect(fightNpc()).toBeNull();
+
+      // Space (the other confirm key) starts it exactly once.
+      controller.handleKey(" "); // complete reveal
+      controller.handleKey(" "); // acknowledge and start
+      expect(fightNpc()?.id).toBe("hermit");
+
+      controller.destroy();
+    } finally {
+      resetGameplayRng();
+    }
+  });
+
+  it("setDialogue resets acknowledgement for every new dialogue beat", () => {
+    const npc = makeNPC({
+      topics: [{ key: "key", response: "Answer one." }],
+    });
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+
+    // Greeting is acknowledged.
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    expect(panel.textContent).toContain("Talk"); // action bar visible
+
+    // Ask a topic; the answer is a fresh beat and should not have its action
+    // bar/topic list immediately re-activatable.
+    controller.handleKey("t");
+    controller.handleKey("Enter");
+    // Action bar should not be visible; the answer is the current text.
+    expect(panel.textContent).not.toContain("Talk");
+    expect(panel.textContent).toContain("Answer one.");
+
+    controller.destroy();
+  });
 });
