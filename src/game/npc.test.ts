@@ -149,10 +149,11 @@ describe("greet", () => {
 describe("topics", () => {
   it("hides hidden topics from the menu but answers them when typed", () => {
     const npc = makeNPC();
+    const state = makeState(npc);
     expect(visibleTopics(npc)).toEqual(["key"]);
-    expect(askTopic(npc, "key")).toBe("The key lies with the dead.");
-    expect(askTopic(npc, "  ECHO ")).toBe("You heard it too?");
-    expect(askTopic(npc, "dragon")).toContain("nothing to say");
+    expect(askTopic(state, npc, "key")).toBe("The key lies with the dead.");
+    expect(askTopic(state, npc, "  ECHO ")).toBe("You heard it too?");
+    expect(askTopic(state, npc, "dragon")).toContain("nothing to say");
   });
 });
 

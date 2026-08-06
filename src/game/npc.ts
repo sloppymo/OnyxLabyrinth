@@ -12,6 +12,7 @@ import type { NPCDef, NPCTradeDef } from "../data/floors";
 import { ITEMS_BY_ID, displayNameFor } from "../data/items";
 import { effectiveStats } from "./effective-stats";
 import { getGameplayRng } from "./rng";
+import { onKazeharuTopicAsked, kazeharuReturnLine } from "./kazeharu";
 
 export interface NPCActionResult {
   message: string;
@@ -57,7 +58,9 @@ export function moodOf(state: GameState, npc: NPCDef): string {
 
 /** Greeting for the interaction header; marks the NPC as talked-to. */
 export function greet(state: GameState, npc: NPCDef): string {
-  if (state.talkedToNPCs.includes(npc.id)) return npc.returnGreeting;
+  if (state.talkedToNPCs.includes(npc.id)) {
+    return kazeharuReturnLine(state) ?? npc.returnGreeting;
+  }
   state.talkedToNPCs.push(npc.id);
   return npc.greeting;
 }
@@ -67,12 +70,17 @@ export function visibleTopics(npc: NPCDef): string[] {
   return npc.topics.filter((t) => !t.hidden).map((t) => t.key);
 }
 
-/** Answer a topic — from the menu or a typed keyword (case-insensitive). */
-export function askTopic(npc: NPCDef, keyword: string): string {
+/**
+ * Answer a topic — from the menu or a typed keyword (case-insensitive).
+ * A couple of Kazeharu's topics (Floor 3) carry side effects/dynamic
+ * responses; see game/kazeharu.ts. Every other NPC's topics are static.
+ */
+export function askTopic(state: GameState, npc: NPCDef, keyword: string): string {
   const key = keyword.trim().toLowerCase();
   if (!key) return `${npc.name} waits.`;
   const topic = npc.topics.find((t) => t.key.toLowerCase() === key);
-  return topic ? topic.response : `${npc.name} has nothing to say about that.`;
+  if (!topic) return `${npc.name} has nothing to say about that.`;
+  return onKazeharuTopicAsked(state, npc, key) ?? topic.response;
 }
 
 /** Trades not yet consumed (one-time trades are recorded in npcTradesDone). */

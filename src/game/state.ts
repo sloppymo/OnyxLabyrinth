@@ -46,6 +46,8 @@ export function createGameState(floor: FloorDef): GameState {
     npcDisposition: {},
     killedNPCs: [],
     npcTradesDone: [],
+    kazeharuToldTruth: false,
+    kazeharuRecruited: false,
     inDarkness: false,
     inAntimagic: false,
     lastDungeon: null,

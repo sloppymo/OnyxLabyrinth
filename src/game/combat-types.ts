@@ -177,6 +177,16 @@ export interface SummonedAlly {
   row: Row;
   /** Enemy sprite id for rendering; falls back to procedural orb if absent. */
   spriteId?: string;
+  /**
+   * Flat damage added to this ally's very first attack this combat, then
+   * spent (see `finishingStrikeUsed`). Gives a hand-authored guest ally
+   * (e.g. Kazeharu) one deterministic, once-per-fight beat instead of being
+   * indistinguishable from a plain spell-summoned attacker. Undefined for
+   * ordinary summons (BAMORDI/SOCORDI).
+   */
+  finishingStrikeBonus?: number;
+  /** Set once the bonus above has been spent. */
+  finishingStrikeUsed?: boolean;
 }
 
 export interface CombatState {
@@ -248,6 +258,14 @@ export interface CombatState {
    * Cleared at the start of each round.
    */
   justDiedAllies: SummonedAlly[];
+  /**
+   * Every summoned-ally id that has died at any point this combat, never
+   * reset mid-fight (unlike `justDiedAllies`, which is per-turn and would
+   * otherwise lose earlier deaths once `summonedAllies` is wiped on
+   * victory/wipe). Lets content check "did this specific guest ally
+   * survive the whole fight?" after the fact — see game/kazeharu.ts.
+   */
+  deadAllyIds: string[];
   /**
    * Structured events emitted alongside log messages this round. Each
    * entry corresponds 1:1 with a log entry (null if the log message has
