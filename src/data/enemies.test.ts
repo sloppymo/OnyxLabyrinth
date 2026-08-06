@@ -132,9 +132,18 @@ describe("encounter table integrity", () => {
 
   it("has a table for every registered floor and no orphan tables", () => {
     // Registry = campaign FLOORS merged with content/floors packs (floor 4).
-    const floorIds = getFloors().map((f) => f.id).sort();
-    const tableIds = Object.keys(ENCOUNTER_TABLES).map(Number).sort();
-    expect(tableIds).toEqual(floorIds);
+    // A table key doesn't have to match a floor id one-to-one — a zone can
+    // point its tableFloorId at a synthetic key (e.g. floor 2's forbidden-
+    // wing climax table) — but every key must be reachable from somewhere:
+    // either a floor id directly, or some zone's tableFloorId override.
+    const floors = getFloors();
+    const floorIds = floors.map((f) => f.id);
+    const zoneTableIds = floors.flatMap(
+      (f) => f.encounterZones?.map((z) => z.tableFloorId).filter((id): id is number => id !== undefined) ?? []
+    );
+    const reachableIds = [...new Set([...floorIds, ...zoneTableIds])].sort((a, b) => a - b);
+    const tableIds = Object.keys(ENCOUNTER_TABLES).map(Number).sort((a, b) => a - b);
+    expect(tableIds).toEqual(reachableIds);
   });
 
   it("re-themed bestiary ids are registered (slime/skeleton/orc family)", () => {
@@ -254,7 +263,7 @@ describe("encounter table integrity", () => {
   });
 
   it("gives the new-sprite monsters their own signature kits, not borrowed ones", () => {
-    // Displacer Beast: blink/vanish, not a copy of Werewolf's howl/pounce.
+    // Shelf Stalker (displacer-beast): blink/vanish, not a copy of Werewolf's howl/pounce.
     expect(ENEMIES_BY_ID["displacer-beast"].abilityIds).toEqual([
       "blink-strike",
       "vanish",
