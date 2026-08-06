@@ -4274,6 +4274,16 @@
       "x": 14,
       "y": 24,
       "spriteId": "crate"
+    },
+    {
+      "x": 11,
+      "y": 22,
+      "spriteId": "tavern-door"
+    },
+    {
+      "x": 11,
+      "y": 21,
+      "spriteId": "tavern-sign"
     }
   ],
   "teleporters": [

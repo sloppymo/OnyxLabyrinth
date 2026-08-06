@@ -430,6 +430,74 @@ function teleporterDisc() {
   return outline(b, "#0a0910");
 }
 
+/**
+ * Hot Boi's tavern door — a rustic plank door for the Floor 1 hub, distinct
+ * from the corridor's own `door.png` (which is a wall-face texture keyed by
+ * theme, not by room). This is a floor billboard like every other map
+ * sprite: it marks the threshold, it does not gate movement.
+ *
+ * Source cell (doors sheet, col 3 row 1) is the frontal closed-door panel —
+ * picked over the sheet's other closed-door cell (col 0 row 0 of
+ * `door_exit_enter`) because that one is a round medallion-style door that
+ * reads as a vault, not a tavern. Recoloured into the same small warm
+ * family as the sign below (honey wood, wine-red trim, one gold gleam) so
+ * the two props read as belonging to the same place.
+ */
+function tavernDoor() {
+  const b = cell("classic_dungeons_doors", 3, 1);
+  recolor(b, {
+    [P8.BLACK]: "#0b0b10",
+    [P8.BROWN]: "#c98a3f", // honey wood — warmer than the chest's, deliberately inviting
+    [P8.DARKGREY]: "#6b6259", // iron hardware, same ramp as the chest bands
+    [P8.DARKPURPLE]: "#8a2e3f", // wine-red trim — the tavern's colour
+    [P8.DARKBLUE]: "#2a2016", // warm shadow, not the cool blue-black elsewhere
+    [P8.INDIGO]: "#e8b25a", // one gleam, matches the sign's accent
+  });
+  return b;
+}
+
+/**
+ * Hot Boi's tavern sign — hand-authored, not harvested. The pack (checked
+ * across `general_detail`, `doors`, `door_exit_enter`) has no hanging-sign
+ * art, the same gap `darknessIdol()` hit for the same reason: a generated
+ * blob and a deliberate 16x16 silhouette cost the same pixels, only one
+ * reads at corridor distance. The board's icon is a deliberately abstract
+ * emblem, not a literal tankard — same call the antimagic ward's sigil
+ * made ("the sigil gets one idea, not three") — because at this size a
+ * detailed mug reads as a smudge, not a mug.
+ */
+function tavernSign() {
+  return fromAscii(
+    [
+      "................",
+      "....cc....cc....",
+      "....cc....cc....",
+      "...oooooooooo...",
+      "..oeeeeeeeeeeo..",
+      ".oewwwwwwwwwweo.",
+      ".oew........weo.",
+      ".oew.wffffw.weo.",
+      ".oew.fmmmmf.weo.",
+      ".oew.fmgmmf.weo.",
+      ".oew.wmmmmw.weo.",
+      ".oew........weo.",
+      ".oewwwwwwwwwweo.",
+      ".oeeeeeeeeeeeeo.",
+      "..oooooooooooo..",
+      "................",
+    ],
+    {
+      o: "#0b0b10", // outline
+      c: "#6b6259", // hanging chain, matches the door's hardware
+      e: "#8a5a2b", // board bevel, duller wood
+      w: "#c98a3f", // board face, matches the door's honey wood
+      m: "#8a2e3f", // emblem body, matches the door's wine-red trim
+      f: "#e8d9b8", // emblem highlight band
+      g: "#e8b25a", // one gleam, matches the door's accent
+    }
+  );
+}
+
 // -----------------------------------------------------------------------------
 
 mkdirSync(OUT_DIR, { recursive: true });
@@ -439,4 +507,6 @@ save(cisternBasin(), "cistern-basin.png");
 save(antimagicWard(), "antimagic-ward.png");
 save(darknessIdol(), "darkness-idol.png");
 save(teleporterDisc(), "teleporter-disc.png");
+save(tavernDoor(), "tavern-door.png");
+save(tavernSign(), "tavern-sign.png");
 console.log("done");

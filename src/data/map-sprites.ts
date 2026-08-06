@@ -28,6 +28,9 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "antimagic-ward", name: "Antimagic Ward", file: "antimagic-ward.png", baseSize: 38 },
   { id: "darkness-idol", name: "Darkness Idol", file: "darkness-idol.png", baseSize: 34 },
   { id: "teleporter-disc", name: "Teleporter Disc", file: "teleporter-disc.png", baseSize: 40 },
+  // Hot Boi's tavern (Floor 1 hub), built by the same generator.
+  { id: "tavern-door", name: "Tavern Door", file: "tavern-door.png", baseSize: 40 },
+  { id: "tavern-sign", name: "Tavern Sign", file: "tavern-sign.png", baseSize: 30 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(
