@@ -1328,6 +1328,8 @@
       "id": "vestra",
       "name": "Vestra",
       "title": "unbound scribe",
+      "portraitSide": "left",
+      "dialogueAccent": "neutral",
       "x": 1,
       "y": 1,
       "greeting": "Shhh! Lower your voice — the stacks listen. I am Vestra. I used to copy what came up from below. I don't copy anymore.",
