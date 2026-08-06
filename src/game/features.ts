@@ -533,10 +533,15 @@ function awardTreasure(
  */
 export function resolveClimaxVictory(state: GameState, climaxId: string): string {
   const pending = state.pendingClimax;
-  if (!pending || pending.id !== climaxId) return "";
+  if (
+    !pending ||
+    pending.id !== climaxId ||
+    pending.floorId !== state.floor.id
+  ) {
+    return "";
+  }
   const treasure = state.floor.treasures?.find((t) => t.x === pending.x && t.y === pending.y);
   if (!treasure) {
-    state.pendingClimax = undefined;
     return "";
   }
   const result = awardTreasure(state, treasure);

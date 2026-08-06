@@ -1754,33 +1754,13 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
   ],
-  // Floor 2 forbidden-wing climax ("the stacks' keepers") — a curated,
-  // alarm-only pool for the furnace-key chest, referenced via the
-  // forbidden-wing-hot zone's tableFloorId, not by floor id. All back-row:
-  // no front line, just the library's evasive/flying/silencing guardians
-  // converging on whoever sets off the alarm.
+  // Floor 2 forbidden-wing climax ("the stacks' keepers") — a single,
+  // authored guardian formation for the furnace-key chest, referenced via
+  // the forbidden-wing-hot zone's tableFloorId. All back row: two Gaze
+  // Wraiths and three Blood Wraiths. No rerolls between attempts.
   6: [
     {
-      weight: 3,
-      spawns: [
-        { enemyId: "eyeball-monster", row: "back" },
-        { enemyId: "eyeball-monster", row: "back" },
-        { enemyId: "blood-wraith", row: "back" },
-        { enemyId: "blood-wraith", row: "back" },
-      ],
-    },
-    {
-      weight: 2,
-      spawns: [
-        { enemyId: "eyeball-monster", row: "back" },
-        { enemyId: "eyeball-monster", row: "back" },
-        { enemyId: "blood-wraith", row: "back" },
-        { enemyId: "blood-wraith", row: "back" },
-        { enemyId: "blood-wraith", row: "back" },
-      ],
-    },
-    {
-      weight: 2,
+      weight: 1,
       spawns: [
         { enemyId: "eyeball-monster", row: "back" },
         { enemyId: "eyeball-monster", row: "back" },

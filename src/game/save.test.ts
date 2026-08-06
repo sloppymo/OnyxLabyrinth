@@ -446,4 +446,23 @@ describe("autoSave", () => {
     const loaded = loadAutoSave();
     expect(loaded?.partyGold).toBe(42);
   });
+
+  it("round-trips an unresolved pendingClimax", () => {
+    state.pendingClimax = {
+      id: "floor2-guardian",
+      floorId: 2,
+      x: 12,
+      y: 8,
+    };
+    const json = serialize(state);
+    const restored = deserialize(json);
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    expect(restored.pendingClimax).toEqual({
+      id: "floor2-guardian",
+      floorId: 2,
+      x: 12,
+      y: 8,
+    });
+  });
 });
