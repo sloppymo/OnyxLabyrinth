@@ -245,7 +245,17 @@ await page.evaluate(() => window.__onyxDebug.setGameplayRng(() => 0.99));
 await jumpTo(page, { floorId: 2, x: 2, y: 1, facing: 3 });
 await press(page, "ArrowUp");
 await wait(300);
-await press(page, "s"); // Steal — will fail at rng=0.99
+await press(page, "s"); // Steal — will fail at rng=0.99, showing the hostile line
+await wait(250);
+html = await panelHtml(page);
+check("failed steal shows the hostile accent/border", html.includes("npc-dlg-accent-hostile") || html.includes("npc-dlg-hostile-flash"));
+check("failed steal steel-is-drawn text visible", html.includes("steel is drawn"));
+await shot(page, OUT, "09a-vestra-hostile-steal.png");
+// Consume the hostile line (reveal + acknowledge) then confirm the
+// single transition to combat.
+await press(page, "Enter");
+await press(page, "Enter");
+await press(page, "Enter");
 let s = await waitForRoute(page, "combat");
 check("failed steal starts exactly one combat", s.route === "combat", `got ${s.route}`);
 await shot(page, OUT, "09-failed-steal-combat.png");

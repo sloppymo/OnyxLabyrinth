@@ -75,17 +75,22 @@ export class NPCController {
   private pages: string[] = [];
   private pageIndex = 0;
   private dialogueKind: NPCMessageKind = "speech";
-  /** Root action bar stays hidden until the greeting is acknowledged
-   *  (Enter/Space/an arrow key), or a root hotkey is typed directly. */
+  /** True once the current dialogue beat has been fully consumed (reveal + all
+   *  pages shown). For the root phase this also reveals the action bar; for
+   *  other phases it gates `confirm()` so a paginated result must be read
+   *  before it can be acted on again. Reset to false by setDialogue(). */
   private acknowledged = false;
   /** Whether the current page's reveal-mask animation has finished (or was
-   *  skipped for reduced motion). Gates Enter's meaning in root phase only —
-   *  see handleKey. */
+   *  skipped for reduced motion). */
   private textRevealed = true;
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly reducedMotion: boolean;
   /** Typed keyword buffer for the ask phase. */
   private typed = "";
+  /** If a steal/attack/affront message ended with startFight, the hostile
+   *  line is shown and this flag ensures one final confirmation starts the
+   *  combat exactly once. */
+  private pendingFight = false;
 
   constructor(opts: NPCControllerOptions) {
     this.panel = opts.panel;
@@ -107,26 +112,22 @@ export class NPCController {
     }
 
     const isConfirm = key === "Enter" || key === " ";
-    // The typewriter/pagination/acknowledge gate only applies to the root
-    // greeting screen — barter/give/talk are already list- or
-    // keyword-driven, so their Enter keeps its immediate meaning (and the
-    // existing tests for those phases rely on that).
-    if (this.phase === "root" && isConfirm) {
-      if (!this.textRevealed) {
-        this.completeReveal();
-        return true;
-      }
-      if (this.pageIndex < this.pages.length - 1) {
-        this.pageIndex++;
-        this.startReveal();
-        this.render();
-        return true;
-      }
-      if (!this.acknowledged) {
-        this.acknowledged = true;
-        this.render();
-        return true;
-      }
+
+    // For every phase except "ask", the same rule applies: the first Enter/Space
+    // completes the typewriter reveal; subsequent Enter/Space advances pages; the
+    // final Enter/Space acknowledges the beat. Only then can a later confirmation
+    // activate the currently selected menu item. This stops Enter from
+    // immediately re-trading, re-giving, or re-asking a paginated message.
+    if (isConfirm && this.consumeDialogue()) {
+      return true;
+    }
+
+    // A failed steal (or future affront) displays the hostile line and waits
+    // for one final confirmation before handing off to combat. Exactly one.
+    if (this.pendingFight && this.acknowledged) {
+      this.close("");
+      this.onFight(this.npc);
+      return true;
     }
 
     audio.uiForMenuKey(key);
@@ -137,36 +138,57 @@ export class NPCController {
       } else {
         this.phase = "root";
         this.index = 0;
+        this.acknowledged = true;
         this.render();
       }
       return true;
     }
     const len = this.listLength();
-    if (lower === "arrowup") {
-      if (len > 0) this.index = (this.index - 1 + len) % len;
-      if (this.phase === "root") this.acknowledged = true;
+    if (lower === "arrowup" || lower === "arrowdown") {
+      if (len > 0) this.index = (this.index + (lower === "arrowdown" ? 1 : -1) + len) % len;
+      if (this.phase === "root" && !this.acknowledged) this.acknowledged = true;
       this.render();
       return true;
     }
-    if (lower === "arrowdown") {
-      if (len > 0) this.index = (this.index + 1) % len;
-      if (this.phase === "root") this.acknowledged = true;
-      this.render();
-      return true;
-    }
-    if (key === "Enter" || key === " ") {
+    if (isConfirm) {
       this.confirm();
       return true;
     }
-    // Root hotkeys — work immediately even before the action bar is shown.
-    if (this.phase === "root") {
+    // Root hotkeys are intentionally disabled until the greeting (or a fresh
+    // paginated message) has been acknowledged. Pressing 'a' during the
+    // typewriter must not silently Attack, 's' must not Steal, etc.
+    if (this.phase === "root" && this.acknowledged) {
       const idx = ROOT_ITEMS.findIndex((it) => it.key.startsWith(lower));
       if (idx >= 0) {
         this.index = idx;
-        this.acknowledged = true;
         this.confirm();
         return true;
       }
+    }
+    return false;
+  }
+
+  /**
+   * Consumes one step of the current dialogue beat on a confirm input.
+   * Returns true if the event was consumed (reveal, page turn, or final
+   * acknowledgement). When it returns false, the caller may proceed with the
+   * phase-specific menu action.
+   */
+  private consumeDialogue(): boolean {
+    if (!this.textRevealed) {
+      this.completeReveal();
+      return true;
+    }
+    if (this.pageIndex < this.pages.length - 1) {
+      this.pageIndex++;
+      this.startReveal();
+      this.render();
+      return true;
+    }
+    if (!this.acknowledged) {
+      this.acknowledged = true;
+      this.render();
+      return true;
     }
     return false;
   }
@@ -311,10 +333,16 @@ export class NPCController {
 
   private applyResult(result: NPCActionResult): void {
     if (result.startFight) {
-      this.close(result.message);
-      this.onFight(this.npc);
+      // Show the hostile line first, then hand off to combat on the next
+      // confirm. This renders the hostile tint/shake and prevents the fight
+      // from being started twice.
+      this.pendingFight = true;
+      if (result.message) this.setDialogue(result.message, result.kind ?? "hostile");
+      else this.acknowledged = true;
+      this.render();
       return;
     }
+    this.pendingFight = false;
     if (result.message) this.setDialogue(result.message, result.kind ?? "speech");
     this.render();
   }
