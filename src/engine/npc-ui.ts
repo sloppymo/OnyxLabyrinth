@@ -484,6 +484,29 @@ export class NPCController {
       });
       mountSlot.appendChild(win.render());
     }
+
+    // Pointer discoverability: hover to preview a root/topic item, click to
+    // confirm it. Matches the FF6 window hover/click behavior used for
+    // barter/give. Keyboard remains the primary input path.
+    this.attachPointerHandlers(root);
+  }
+
+  private attachPointerHandlers(root: HTMLElement): void {
+    if (this.phase === "root" || this.phase === "talk") {
+      const selector = this.phase === "root" ? ".npc-dlg-action" : ".npc-dlg-topic";
+      const nodes = root.querySelectorAll<HTMLElement>(selector);
+      nodes.forEach((node, i) => {
+        node.addEventListener("mouseenter", () => {
+          this.index = i;
+          nodes.forEach((n) => n.classList.remove("selected"));
+          node.classList.add("selected");
+        });
+        node.addEventListener("click", () => {
+          this.index = i;
+          this.confirm();
+        });
+      });
+    }
   }
 
   private tradeLabel(trade: NPCTradeDef): string {
