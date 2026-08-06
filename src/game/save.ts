@@ -29,7 +29,7 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 15;
+const SAVE_VERSION = 16;
 
 /** v9 → v10 historical helper: first PARTY_SIZE characters by formation order —
  *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
@@ -297,6 +297,17 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     ser.companion = null;
     version = 15;
   }
+  if (version === 15) {
+    // v15 → v16: "The Party That Returned" scripted stairs guardian on
+    // Floor 1. Every pre-existing save predates it. A party that has
+    // already reached floor 2 or deeper under the old rules never fought
+    // it and must not be retroactively trapped behind it on their way back
+    // up — treat deepestFloorReached >= 2 as an already-cleared encounter;
+    // everyone else starts in the pre-encounter state.
+    const deepest = (ser.deepestFloorReached as number | undefined) ?? 1;
+    ser.clearedStairsGuardians = deepest >= 2 ? ["floor1-returned-party"] : [];
+    version = 16;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -365,6 +376,8 @@ interface SerializedState {
   tavernRumorCursor?: number;
   /** The one authored temporary companion, if recruited. v15+. */
   companion?: GameState["companion"];
+  /** Ids of cleared stairsGuardian scripted encounters. v16+. */
+  clearedStairsGuardians?: string[];
   savedAt: string;
 }
 
@@ -442,6 +455,7 @@ export function serialize(state: GameState): string {
     ),
     tavernRumorCursor: state.tavernRumorCursor,
     companion: state.companion ? { ...state.companion } : null,
+    clearedStairsGuardians: [...state.clearedStairsGuardians],
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -605,6 +619,7 @@ export function deserialize(json: string): GameState | null {
         : {},
       tavernRumorCursor: ser.tavernRumorCursor ?? 0,
       companion: ser.companion ? { ...ser.companion } : null,
+      clearedStairsGuardians: ser.clearedStairsGuardians ? [...ser.clearedStairsGuardians] : [],
     };
   } catch {
     return null;

@@ -19,7 +19,7 @@
 
 import type { Facing, GameState, TrapType } from "../types";
 import type { Character } from "./party";
-import { cloneFloor, type EventDef, type FloorDef } from "../data/floors";
+import { cloneFloor, type EventDef, type FloorDef, type StairsGuardianDef } from "../data/floors";
 import { findFloor } from "./floor-registry";
 import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
@@ -48,6 +48,9 @@ export interface FeatureResult {
    *  main.ts shows a point-of-no-return dialog; if the player confirms,
    *  it calls confirmChuteDrop() to execute the descent. */
   pendingChuteDrop?: { toFloorId: number; toX: number; toY: number };
+  /** Set when the party stepped onto an unresolved stairsGuardian tile.
+   *  main.ts shows the intro dialog then starts the scripted fight. */
+  pendingStairsGuardian?: StairsGuardianDef;
 }
 
 /**
@@ -73,7 +76,9 @@ export function handleTileFeature(state: GameState, rng: Rng = getGameplayRng())
   // chest as a landmark, but it is inert — identical to standing on bare floor.
   // Without this guard, re-crossing an emptied chest would spam "already
   // looted" on every step and leave darkness/antimagic flags uncleared.
-  const inert = cell?.tile === "treasure" && isTreasureLooted(floor, player.x, player.y);
+  const treasureInert = cell?.tile === "treasure" && isTreasureLooted(floor, player.x, player.y);
+  const guardianInert = cell?.tile === "guardian" && isStairsGuardianCleared(state, floor, player.x, player.y);
+  const inert = treasureInert || guardianInert;
   if (!cell || !cell.tile || inert) {
     // No feature — clear darkness/antimagic flags
     state.inDarkness = false;
@@ -110,6 +115,8 @@ export function handleTileFeature(state: GameState, rng: Rng = getGameplayRng())
       return handleWater(state, rng);
     case "event":
       return handleEvent(state);
+    case "guardian":
+      return handleStairsGuardian(state);
     case "npc": {
       const npc = npcAt(state, player.x, player.y);
       if (!npc) {
@@ -127,6 +134,45 @@ export function handleTileFeature(state: GameState, rng: Rng = getGameplayRng())
     default:
       return null;
   }
+}
+
+/**
+ * "The Party That Returned" (Floor 1 capstone). A `stairsGuardian` blocks a
+ * single tile on the mandatory approach to the stairs down; the first step
+ * onto it hands back a `pendingStairsGuardian` result instead of a normal
+ * message. main.ts shows the intro dialog and starts the fight; victory
+ * pushes the guardian's id into `clearedStairsGuardians` (see endCombat),
+ * after which this tile is permanently inert (see the `guardianInert` check
+ * in handleTileFeature).
+ */
+function isStairsGuardianCleared(state: GameState, floor: FloorDef, x: number, y: number): boolean {
+  const guardian = floor.stairsGuardian;
+  if (!guardian || guardian.x !== x || guardian.y !== y) return true;
+  return state.clearedStairsGuardians.includes(guardian.id);
+}
+
+/**
+ * Records victory over a stairsGuardian fight. Idempotent — returns false
+ * (no-op) if the guardian is already cleared, so a stale/duplicate call can
+ * never push the same id twice or let main.ts grant its reward again.
+ */
+export function clearStairsGuardian(state: GameState, guardianId: string): boolean {
+  if (state.clearedStairsGuardians.includes(guardianId)) return false;
+  state.clearedStairsGuardians.push(guardianId);
+  return true;
+}
+
+function handleStairsGuardian(state: GameState): FeatureResult | null {
+  const { floor, player } = state;
+  const guardian = floor.stairsGuardian;
+  if (!guardian || guardian.x !== player.x || guardian.y !== player.y) return null;
+  if (state.clearedStairsGuardians.includes(guardian.id)) return null;
+  return {
+    message: "",
+    changedFloor: false,
+    consumed: false,
+    pendingStairsGuardian: guardian,
+  };
 }
 
 type StairTile = "stairs_up" | "stairs_down";

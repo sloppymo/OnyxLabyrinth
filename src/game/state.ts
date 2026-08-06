@@ -56,6 +56,7 @@ export function createGameState(floor: FloorDef): GameState {
     questStates: {},
     tavernRumorCursor: 0,
     companion: null,
+    clearedStairsGuardians: [],
   };
 }
 

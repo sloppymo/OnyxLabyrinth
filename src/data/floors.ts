@@ -143,6 +143,26 @@ export interface FloorDef {
    *  fromDock tile from the fromApproach direction while possessing the
    *  raft key item, the route triggers automatically. See game/traversal.ts. */
   raftRoutes?: RaftRouteDef[];
+  /** A one-time scripted-combat blocker on a "guardian" tile (see
+   *  TileFeature). Stepping onto it before GameState.clearedStairsGuardians
+   *  includes its id triggers a forced fight instead of ordinary movement;
+   *  victory persists the clear. See game/features.ts handleStairsGuardian. */
+  stairsGuardian?: StairsGuardianDef;
+}
+
+export interface StairsGuardianDef {
+  /** Stable id, persisted in GameState.clearedStairsGuardians on victory. */
+  id: string;
+  x: number;
+  y: number;
+  /** Enemy formation, in EnemyDef id + row form (mirrors EnemySpawn). */
+  spawns: { enemyId: string; row: "front" | "back" }[];
+  /** Paginated intro dialog shown before combat starts. */
+  introLines: string[];
+  /** Message shown after victory, alongside the normal gold/XP line. */
+  victoryLine: string;
+  /** Item granted once, on victory. */
+  rewardItemId?: string;
 }
 
 export interface EventDef {
@@ -658,6 +678,13 @@ export function cloneFloor(floor: FloorDef): FloorDef {
           toDock: { ...r.toDock },
           path: r.path.map((p) => ({ ...p })),
         }))
+      : undefined,
+    stairsGuardian: floor.stairsGuardian
+      ? {
+          ...floor.stairsGuardian,
+          spawns: floor.stairsGuardian.spawns.map((s) => ({ ...s })),
+          introLines: [...floor.stairsGuardian.introLines],
+        }
       : undefined,
   };
 }

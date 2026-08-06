@@ -13,6 +13,7 @@ import type {
   EncounterZoneDef,
   NPCDef,
   RaftRouteDef,
+  StairsGuardianDef,
   TeleporterLink,
   TilesetZoneDef,
   WaterDef,
@@ -90,6 +91,7 @@ export interface FloorMapJSON {
   floorRevision?: number;
   barredGates?: BarredGateDef[];
   raftRoutes?: RaftRouteDef[];
+  stairsGuardian?: StairsGuardianDef;
 }
 
 /** Canonical tileset folder for a floor when none is set. */
@@ -202,6 +204,7 @@ export function newFloorMapJSON(
     floorRevision: partial?.floorRevision,
     barredGates: partial?.barredGates,
     raftRoutes: partial?.raftRoutes,
+    stairsGuardian: partial?.stairsGuardian,
   };
 }
 
@@ -252,6 +255,9 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
       toDock: { ...r.toDock },
       path: r.path.map((p) => ({ ...p })),
     })),
+    stairsGuardian: floor.stairsGuardian
+      ? { ...floor.stairsGuardian, spawns: floor.stairsGuardian.spawns.map((s) => ({ ...s })), introLines: [...floor.stairsGuardian.introLines] }
+      : undefined,
   };
 }
 
@@ -305,6 +311,9 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
       toDock: { ...r.toDock },
       path: r.path.map((p) => ({ ...p })),
     })),
+    stairsGuardian: map.stairsGuardian
+      ? { ...map.stairsGuardian, spawns: map.stairsGuardian.spawns.map((s) => ({ ...s })), introLines: [...map.stairsGuardian.introLines] }
+      : undefined,
   };
 }
 
@@ -355,6 +364,9 @@ export function parseFloorMapJSON(raw: unknown): FloorMapJSON {
     floorRevision: typeof o.floorRevision === "number" ? o.floorRevision : undefined,
     barredGates: parseOverlayArray(o.barredGates, "barredGates", parseBarredGate),
     raftRoutes: parseOverlayArray(o.raftRoutes, "raftRoutes", parseRaftRoute),
+    stairsGuardian: o.stairsGuardian !== undefined
+      ? parseStairsGuardian(o.stairsGuardian as Record<string, unknown>, "stairsGuardian")
+      : undefined,
   };
 }
 
@@ -631,6 +643,44 @@ function parseRaftRoute(o: Record<string, unknown>, l: string): RaftRouteDef {
   };
 }
 
+function parseSpawnRow(v: unknown, label: string): "front" | "back" {
+  if (v !== "front" && v !== "back") {
+    throw new Error(`${label} must be "front" or "back"`);
+  }
+  return v;
+}
+
+function parseStairsGuardian(o: Record<string, unknown>, l: string): StairsGuardianDef {
+  const spawnsRaw = o.spawns;
+  if (!Array.isArray(spawnsRaw) || spawnsRaw.length === 0) {
+    throw new Error(`${l}.spawns must be a non-empty array`);
+  }
+  const spawns = spawnsRaw.map((s, i) => {
+    if (!s || typeof s !== "object") throw new Error(`${l}.spawns[${i}] must be an object`);
+    const so = s as Record<string, unknown>;
+    return {
+      enemyId: requireString(so.enemyId, `${l}.spawns[${i}].enemyId`),
+      row: parseSpawnRow(so.row, `${l}.spawns[${i}].row`),
+    };
+  });
+  const introRaw = o.introLines;
+  if (!Array.isArray(introRaw) || !introRaw.every((s) => typeof s === "string") || introRaw.length === 0) {
+    throw new Error(`${l}.introLines must be a non-empty string array`);
+  }
+  const guardian: StairsGuardianDef = {
+    id: requireString(o.id, `${l}.id`),
+    x: requireInt(o.x, `${l}.x`),
+    y: requireInt(o.y, `${l}.y`),
+    spawns,
+    introLines: [...introRaw],
+    victoryLine: requireString(o.victoryLine, `${l}.victoryLine`),
+  };
+  if (o.rewardItemId !== undefined) {
+    guardian.rewardItemId = requireString(o.rewardItemId, `${l}.rewardItemId`);
+  }
+  return guardian;
+}
+
 function parseCell(raw: unknown, x: number, y: number): CellJSON {
   if (!raw || typeof raw !== "object") {
     throw new Error(`cell (${x},${y}) must be an object`);
@@ -660,6 +710,7 @@ const TILE_FEATURES: readonly TileFeature[] = [
   "water",
   "npc",
   "event",
+  "guardian",
 ];
 
 function parseEdge(v: unknown, label: string): EdgeType {

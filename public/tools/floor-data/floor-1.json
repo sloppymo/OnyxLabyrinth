@@ -3262,7 +3262,8 @@
         "n": "wall",
         "e": "open",
         "s": "wall",
-        "w": "open"
+        "w": "open",
+        "tile": "guardian"
       },
       {
         "n": "wall",
@@ -4692,5 +4693,35 @@
       ],
       "bidirectional": true
     }
-  ]
+  ],
+  "stairsGuardian": {
+    "id": "floor1-returned-party",
+    "x": 18,
+    "y": 21,
+    "spawns": [
+      {
+        "enemyId": "ruined-vanguard",
+        "row": "front"
+      },
+      {
+        "enemyId": "hollow-knifeman",
+        "row": "front"
+      },
+      {
+        "enemyId": "ash-scribe",
+        "row": "back"
+      },
+      {
+        "enemyId": "drowned-cantor",
+        "row": "back"
+      }
+    ],
+    "introLines": [
+      "Four shapes rise from the landing ahead, wearing gear you recognize the make of.",
+      "A shield with a familiar dent. A drawn knife, already dark. A scribe's satchel, waterlogged. A cantor's cracked bell.",
+      "They were a party once. They still stand like one."
+    ],
+    "victoryLine": "The four of them go still and do not rise again. Whatever answered when you called was down here, not up there. The stairs are clear.",
+    "rewardItemId": "greater-healing-potion"
+  }
 }

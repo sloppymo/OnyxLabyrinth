@@ -13,6 +13,7 @@ import {
   openChest,
   leaveChest,
   confirmChuteDrop,
+  clearStairsGuardian,
   type ChestActionResult,
 } from "./game/features";
 import { revealAround } from "./game/explore";
@@ -126,7 +127,7 @@ import { PerkSelectController } from "./engine/perk-select-ui";
 import { markKilled, adjustDisposition } from "./game/npc";
 import { companionAsSummonedAlly, syncCompanionAfterCombat } from "./game/companion";
 import { ENEMIES_BY_ID } from "./data/enemies";
-import type { NPCDef, FloorDef } from "./data/floors";
+import type { NPCDef, FloorDef, StairsGuardianDef } from "./data/floors";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
 import {
@@ -790,6 +791,21 @@ function endCombat(result: CombatState): void {
     npcFightId = null;
   }
 
+  // Stairs guardian ("The Party That Returned"): victory permanently clears
+  // the blocker (idempotent — a re-fought/reloaded guardian can't grant the
+  // reward twice); flee/wipe leave it uncleared so the tile still blocks the
+  // stairs on the next approach. See game/features.ts handleStairsGuardian.
+  if (pendingStairsGuardianFight) {
+    const guardian = pendingStairsGuardianFight;
+    if (result.result === "victory" && clearStairsGuardian(state, guardian.id)) {
+      if (guardian.rewardItemId) {
+        state.inventory.push({ itemId: guardian.rewardItemId, identified: true });
+      }
+      setMessage(guardian.victoryLine);
+    }
+    pendingStairsGuardianFight = null;
+  }
+
   // The wish (§6): floor-5 boss victory, once per campaign. The floor-5 boss
   // pack is a re-rollable random encounter (data/enemies.ts ENCOUNTER_TABLES,
   // weight: 1 like any other pack), not a one-time scripted fight — so a
@@ -1010,6 +1026,17 @@ function onMove(): void {
               }
               setMessage(dropResult.message);
             }
+          },
+        });
+        return;
+      }
+      if (result.pendingStairsGuardian) {
+        const guardian = result.pendingStairsGuardian;
+        openDungeonDialog({
+          lines: guardian.introLines,
+          cancelable: false,
+          onSelect: () => {
+            startStairsGuardianFight(guardian);
           },
         });
         return;
@@ -2287,6 +2314,34 @@ function startNPCFight(npc: NPCDef): void {
     .map((def) => ({ enemy: def, row: "front" as const }));
   if (spawns.length === 0) return;
   npcFightId = npc.id;
+  canvas.style.opacity = "1";
+  const combat = createCombatFromEncounter(
+    state.party,
+    spawns,
+    SPELLS_BY_ID,
+    ITEMS_BY_ID,
+    buildLoadoutMap(),
+    state.inventory,
+    state.inAntimagic
+  );
+  state.combat = combat;
+  setMode(state, "combat");
+  state.stepsSinceEncounter = 0;
+  startCombat(combat);
+}
+
+// --- Stairs guardian ("The Party That Returned") -------------------------
+let pendingStairsGuardianFight: StairsGuardianDef | null = null;
+
+function startStairsGuardianFight(guardian: StairsGuardianDef): void {
+  const spawns = guardian.spawns
+    .map((s) => {
+      const enemy = ENEMIES_BY_ID[s.enemyId];
+      return enemy ? { enemy, row: s.row } : null;
+    })
+    .filter((s): s is { enemy: (typeof ENEMIES_BY_ID)[string]; row: "front" | "back" } => s !== null);
+  if (spawns.length === 0) return;
+  pendingStairsGuardianFight = guardian;
   canvas.style.opacity = "1";
   const combat = createCombatFromEncounter(
     state.party,

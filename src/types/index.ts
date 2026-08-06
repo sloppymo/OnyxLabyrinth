@@ -44,7 +44,8 @@ export type TileFeature =
   | "antimagic"
   | "water"
   | "npc"
-  | "event";
+  | "event"
+  | "guardian";
 
 export type Grid = Cell[][]; // grid[y][x]
 
@@ -218,4 +219,8 @@ export interface GameState {
   // The one authored temporary fifth party member, or null if never
   // recruited. See game/companion.ts.
   companion: CompanionState | null;
+  // Ids of FloorDef.stairsGuardian scripted encounters ("The Party That
+  // Returned") already won. A guardian tile whose id is here is inert —
+  // never re-triggers combat. See game/features.ts handleStairsGuardian.
+  clearedStairsGuardians: string[];
 }

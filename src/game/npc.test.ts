@@ -109,6 +109,7 @@ function makeState(npc: NPCDef = makeNPC()): GameState {
     questStates: {},
     tavernRumorCursor: 0,
     companion: null,
+    clearedStairsGuardians: [],
   };
 }
 
