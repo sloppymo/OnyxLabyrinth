@@ -320,11 +320,21 @@ export const GATE_TOKEN: ItemDef = {
   description: "A coin-sized disc stamped with a sigil no living cartographer recognizes.",
 };
 
+export const SMITHS_SIGNET_RING: ItemDef = {
+  id: "smiths-signet-ring",
+  name: "Smith's Signet Ring",
+  type: "trinket",
+  statBonuses: { luk: 1 },
+  price: 0,
+  description: "Pried gently from a fused, warning hand. Someone's father wore this, once.",
+};
+
 export const ALL_TRINKETS: ItemDef[] = [
   RING_OF_WATER_WALKING,
   HOLY_SYMBOL,
   WARDEN_SPHERE,
   GATE_TOKEN,
+  SMITHS_SIGNET_RING,
 ];
 
 // Cursed gear — masquerades as chest loot, clamps on when picked up.
@@ -353,12 +363,32 @@ export const CURSED_HELM: ItemDef = {
 
 export const ALL_CURSED: ItemDef[] = [CURSED_BLADE, CURSED_HELM];
 
+// Unique keepsakes — one-of-a-kind rewards, not part of a +0..+4 line.
+// Deliberately a sidegrade against contemporary Floor 3 gear (matches
+// great-sword+1's attack bonus, trades a point of raw power for AGI), not
+// a strictly-better "best route" reward.
+export const KAZEHARUS_BLADE: ItemDef = {
+  id: "kazeharus-blade",
+  name: "Kazeharu's Blade",
+  type: "weapon",
+  slot: "hand",
+  attackBonus: 8,
+  statBonuses: { agi: 1 },
+  range: "close",
+  price: 0,
+  dropFloorTier: 3,
+  description: "Left behind at the Grand Forge door. Balanced for a duel that finally happened.",
+};
+
+export const ALL_UNIQUES: ItemDef[] = [KAZEHARUS_BLADE];
+
 export const ALL_ITEMS: ItemDef[] = [
   ...ALL_WEAPONS,
   ...ALL_ARMOR,
   ...ALL_CONSUMABLES,
   ...ALL_TRINKETS,
   ...ALL_CURSED,
+  ...ALL_UNIQUES,
 ];
 
 export const ITEMS_BY_ID: Record<string, ItemDef> = Object.fromEntries(

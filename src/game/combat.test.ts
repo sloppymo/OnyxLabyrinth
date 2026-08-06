@@ -975,6 +975,41 @@ describe("summoning mechanics", () => {
     expect(result.summonedAllies.length).toBe(0);
   });
 
+  it("a guest ally's finishing strike bonus applies once, then never again", () => {
+    const enemy = makeEnemy("e1", "Rat", 1000, { ac: 0 });
+    const state = makeCombatState([enemy]);
+    state.summonedAllies = [
+      {
+        id: "kazeharu-guest",
+        name: "Kazeharu",
+        hp: 40,
+        maxHp: 40,
+        attack: 10,
+        ac: 4,
+        agi: 50,
+        row: "front",
+        finishingStrikeBonus: 100,
+      },
+    ];
+
+    const defend: PlayerAction[] = state.party.map((c) => ({
+      kind: "defend" as const,
+      actorId: c.id,
+    }));
+
+    // Fixed variance (rng=0.5 -> the 0.8..1.2 multiplier lands at exactly 1).
+    const afterFirst = resolveCombatRound(state, defend, makeRng(0.5));
+    const dmgAfterFirst = 1000 - afterFirst.enemies.front[0].currentHp;
+    // First hit includes the +100 bonus: (10 + 100) * 1 = 110.
+    expect(dmgAfterFirst).toBe(110);
+    expect(afterFirst.summonedAllies[0].finishingStrikeUsed).toBe(true);
+
+    const afterSecond = resolveCombatRound(afterFirst, defend, makeRng(0.5));
+    const dmgSecond = afterFirst.enemies.front[0].currentHp - afterSecond.enemies.front[0].currentHp;
+    // Second hit is the bare attack only: 10 * 1 = 10, not 110 again.
+    expect(dmgSecond).toBe(10);
+  });
+
   it("summoned allies are cleared when the party flees", () => {
     const enemy = makeEnemy("e1", "Rat", 100);
     const state = makeCombatState([enemy]);

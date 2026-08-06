@@ -44,17 +44,21 @@ describe("enemy data", () => {
   });
 
   it("puts an escalating boss variant on each deep floor's table (not the same boss reused)", () => {
-    const expectedBossByFloor: Record<number, string> = {
-      3: "headmasters-echo",
+    // Floor 3's boss now lives on its own guaranteed climax table (7), not
+    // the ambient floor-3 table — see the "Grand Forge climax table"
+    // describe block below. Floors 4/5 are unaffected: their table id
+    // still equals the floor id.
+    const expectedBossByTable: Record<number, string> = {
+      7: "headmasters-echo",
       4: "headmasters-echo-remnant",
       5: "headmasters-echo-ascendant",
     };
-    for (const [floorStr, expectedBoss] of Object.entries(expectedBossByFloor)) {
-      const floor = Number(floorStr);
-      const refs = ENCOUNTER_TABLES[floor].flatMap((entry) =>
+    for (const [tableStr, expectedBoss] of Object.entries(expectedBossByTable)) {
+      const table = Number(tableStr);
+      const refs = ENCOUNTER_TABLES[table].flatMap((entry) =>
         entry.spawns.map((spawn) => spawn.enemyId)
       );
-      expect(refs, `floor ${floor}`).toContain(expectedBoss);
+      expect(refs, `table ${table}`).toContain(expectedBoss);
     }
   });
 
@@ -335,6 +339,40 @@ describe("encounter table integrity", () => {
         expect(known, `unknown presentation: ${ability.presentation}`).toContain(
           ability.presentation,
         );
+      }
+    }
+  });
+});
+
+describe("Floor 3 Grand Forge climax table (table 7)", () => {
+  it("is only reachable from the grand-forge-guardian zone on floor 3", () => {
+    for (const floor of getFloors()) {
+      const zones = floor.encounterZones ?? [];
+      for (const zone of zones) {
+        if (zone.id === "grand-forge-guardian") {
+          expect(zone.tableFloorId).toBe(7);
+        } else {
+          expect(zone.tableFloorId, `${floor.name}/${zone.id}`).not.toBe(7);
+        }
+      }
+    }
+  });
+
+  it("is the sole home of The Dead Boy — the ambient floor-3 table no longer rolls it", () => {
+    for (const entry of ENCOUNTER_TABLES[3]) {
+      expect(entry.spawns.some((s) => s.enemyId === "headmasters-echo")).toBe(false);
+    }
+    expect(ENCOUNTER_TABLES[7].some((entry) => entry.spawns.some((s) => s.enemyId === "headmasters-echo"))).toBe(true);
+  });
+
+  it("is a single fixed formation (no reroll between attempts)", () => {
+    expect(ENCOUNTER_TABLES[7].length).toBe(1);
+  });
+
+  it("all referenced ids are registered", () => {
+    for (const entry of ENCOUNTER_TABLES[7]) {
+      for (const spawn of entry.spawns) {
+        expect(ENEMIES_BY_ID[spawn.enemyId], `unknown enemyId "${spawn.enemyId}"`).toBeDefined();
       }
     }
   });

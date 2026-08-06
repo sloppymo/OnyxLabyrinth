@@ -674,13 +674,16 @@ export function resolveAllyAction(
   const target = pickRandom(targets, rng);
   if (!target) return;
 
-  const base = ally.attack;
+  const usingFinishingStrike = !!ally.finishingStrikeBonus && !ally.finishingStrikeUsed;
+  const base = ally.attack + (usingFinishingStrike ? ally.finishingStrikeBonus! : 0);
   const variance = 0.8 + rng() * 0.4;
   let damage = Math.max(1, Math.round(base * variance));
   damage = Math.max(1, damage - Math.floor(target.ac / 2));
   target.currentHp -= damage;
+  if (usingFinishingStrike) ally.finishingStrikeUsed = true;
+  const verb = usingFinishingStrike ? "opens with a clean, deciding strike on" : "attacks";
   emit(
-    `${ally.name} attacks ${target.name} for ${damage} damage.`,
+    `${ally.name} ${verb} ${target.name} for ${damage} damage.`,
     { type: "attack", actorId: ally.id, targetId: target.instanceId, damage }
   );
   wakeOnDamage(target, _log);

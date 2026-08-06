@@ -320,3 +320,59 @@ describe("floor 2 (The Cursed Library) redesign regressions", () => {
     expect(chest?.climax?.id).toBe("floor2-guardian");
   });
 });
+
+describe("Floor 3 'Duelist's Vigil' content", () => {
+  it("the trophy chest is the real Grand Forge climax: alarm trap, curated zone table", () => {
+    const f3 = findFloor(3)!;
+    const chest = f3.treasures?.find((t) => t.x === 9 && t.y === 13);
+    expect(chest?.trap).toBe("alarm");
+    expect(chest?.climax?.id).toBe("floor3-guardian");
+    const zone = f3.encounterZones?.find((z) => z.id === "grand-forge-guardian");
+    expect(zone?.tableFloorId).toBe(7);
+    expect(zone?.rateMul).toBeGreaterThan(1);
+  });
+
+  it("the trophy chest is the only floor-3 tile that resolves to the guardian table", () => {
+    const f3 = findFloor(3)!;
+    expect(encounterTableFloorId(f3, 9, 13)).toBe(7);
+    expect(encounterTableFloorId(f3, 13, 2)).toBe(3); // slag vault uses the ordinary table
+    expect(f3.encounterZones?.some((z) => z.id !== "grand-forge-guardian" && z.tableFloorId === 7)).toBe(false);
+  });
+
+  it("the statue's foreshadowing tile still exists and is not itself a second fight", () => {
+    const f3 = findFloor(3)!;
+    expect(f3.events?.some((e) => e.x === 6 && e.y === 11 && e.kind === "message")).toBe(true);
+    // No treasure/trap/climax lives at the statue's own tile — it's folded
+    // into the Grand Forge's one guaranteed formation (ENCOUNTER_TABLES[7]),
+    // not a separate mandatory fight.
+    expect(f3.treasures?.some((t) => t.x === 6 && t.y === 11)).toBe(false);
+  });
+
+  it("the fused-smith event grants the smith's signet ring on step, once", () => {
+    const f3 = findFloor(3)!;
+    const event = f3.events?.find((e) => e.x === 14 && e.y === 9);
+    expect(event?.kind).toBe("reward");
+    expect(event?.itemId).toBe("smiths-signet-ring");
+  });
+
+  it("cloneFloor preserves the climax field (regression: it used to be dropped, silencing the escrow path on every real floor load)", () => {
+    const f3 = findFloor(3)!;
+    const cloned = cloneFloor(f3);
+    const chest = cloned.treasures?.find((t) => t.x === 9 && t.y === 13);
+    expect(chest?.climax?.id).toBe("floor3-guardian");
+    // Same regression, Floor 2's climax chest.
+    const f2 = findFloor(2)!;
+    const clonedF2 = cloneFloor(f2);
+    const f2chest = clonedF2.treasures?.find((t) => t.x === 12 && t.y === 8);
+    expect(f2chest?.climax?.id).toBe("floor2-guardian");
+  });
+
+  it("Kazeharu has a hidden recruitment topic in addition to his original three", () => {
+    const f3 = findFloor(3)!;
+    const kazeharu = f3.npcs?.find((n) => n.id === "kazeharu");
+    expect(kazeharu?.topics.some((t) => t.key === "master")).toBe(true);
+    expect(kazeharu?.topics.some((t) => t.key === "duel")).toBe(true);
+    expect(kazeharu?.topics.some((t) => t.key === "forge")).toBe(true);
+    expect(kazeharu?.topics.some((t) => t.key === "join" && t.hidden)).toBe(true);
+  });
+});

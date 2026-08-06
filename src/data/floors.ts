@@ -495,7 +495,12 @@ function floor3(): FloorDef {
       // helm inside whispers (cursed).
       { x: 14, y: 8, itemIds: ["halberd+1", "shield+1", "cursed-helm", "healing-potion"], trap: "teleporter" },
       { x: 2, y: 14, itemIds: ["forge-key", "healing-potion", "antidote"], trap: "poison" },
-      { x: 9, y: 13, itemIds: ["great-sword+2", "plate-mail+2", "healing-potion", "healing-potion"], trap: "stunner" },
+      // The Grand Forge's real payoff. Its alarm wakes the room's guardian
+      // formation itself (see the grand-forge-guardian zone's tableFloorId,
+      // ENCOUNTER_TABLES[7]) — the statue at (6,11) that "will animate when
+      // the lock is tried" is folded into that same fixed formation, not a
+      // second fight. The trophy is only awarded after the guardian falls.
+      { x: 9, y: 13, itemIds: ["great-sword+2", "plate-mail+2", "healing-potion", "healing-potion"], trap: "alarm", climax: { id: "floor3-guardian" } },
     ],
     npcs: [
       {
@@ -511,6 +516,10 @@ function floor3(): FloorDef {
           { key: "forge", response: "Beyond the locked door south, the dead boy holds court in dead air — no spell will answer you there. Bring steel." },
           { key: "duel", response: "Draw when ready. I will not strike first, and I will not strike last." },
           { key: "master", hidden: true, response: "They were no smith. They came down chasing the deep, same as anyone, and burned trying to reach it. I stayed to guard what they couldn't finish. Put the boy down, and my vigil ends." },
+          // Recruitment ask — see game/kazeharu.ts (onKazeharuTopicAsked)
+          // for the dynamic response; this static text is only the
+          // fallback if that hook is ever bypassed.
+          { key: "join", hidden: true, response: "You don't know what you're asking yet." },
         ],
         combatEnemyIds: ["black-knight"],
       },
@@ -520,7 +529,9 @@ function floor3(): FloorDef {
       { x: 13, y: 10, kind: "damage", message: "An iron grate gives way over a magma channel. Heat blisters your skin.", power: 6 },
       { x: 6, y: 11, kind: "message", message: "The statue beside the Grand Forge door twitches as you pass. It will animate when the lock is tried." },
       { x: 7, y: 7, kind: "heal", message: "You rest your weapon on the anvil altar. The forge-forged steel hums, and a little warmth returns.", power: 6 },
-      { x: 14, y: 9, kind: "message", message: "A smith is fused to the wall, hammer still raised as if warning you back." },
+      // Recovering this is one leg of Kazeharu's recruitment (see
+      // game/kazeharu.ts) — a small keepsake, not a dilemma prompt.
+      { x: 14, y: 9, kind: "reward", message: "A smith is fused to the wall, hammer still raised as if warning you back. You ease a signet ring from the warning hand.", itemId: "smiths-signet-ring" },
       { x: 2, y: 6, kind: "message", message: "Hammered into a bronze plate: HE IS STILL WARM." },
       { x: 1, y: 9, kind: "reward", message: "A guard's satchel, forgotten against the wall. Something rattles inside.", itemId: "smelling-salts" },
     ],
@@ -536,6 +547,11 @@ function floor3(): FloorDef {
       { id: "foundry-crossroads-safe", x1: 6, y1: 6, x2: 9, y2: 9, rateMul: 0.7 },
       { id: "chain-hall-hot", x1: 12, y1: 6, x2: 14, y2: 9, rateMul: 1.5 },
       { id: "slag-vault-hot", x1: 12, y1: 1, x2: 14, y2: 3, rateMul: 1.3 },
+      // Single-tile zone over the trophy chest: the only place on this
+      // floor that resolves to the guardian table (ENCOUNTER_TABLES[7]).
+      // rateMul is cosmetic here (the alarm forces the fight regardless of
+      // rate) but reads as "hot," matching the room's danger.
+      { id: "grand-forge-guardian", x1: 9, y1: 13, x2: 9, y2: 13, rateMul: 1.5, tableFloorId: 7 },
     ],
   };
 }
@@ -575,7 +591,20 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     chuteDrops: floor.chuteDrops ? floor.chuteDrops.map((c) => ({ ...c })) : undefined,
     lockedDoors: floor.lockedDoors ? floor.lockedDoors.map((d) => ({ ...d })) : undefined,
     treasures: floor.treasures
-      ? floor.treasures.map((t) => ({ x: t.x, y: t.y, itemIds: [...t.itemIds], trap: t.trap }))
+      ? floor.treasures.map((t) => ({
+          x: t.x,
+          y: t.y,
+          itemIds: [...t.itemIds],
+          trap: t.trap,
+          // Bug fix: this used to omit `climax`, so a climax chest's alarm
+          // trap would fire an ordinary combat (never setting
+          // GameState.pendingClimax) on every *real* transitionToFloor —
+          // only synthetic tests that mutate state.floor.treasures directly
+          // (bypassing this clone) ever exercised the escrow path. Found
+          // while wiring Floor 3's Grand Forge climax onto the same
+          // primitive Floor 2 uses; fixes both.
+          climax: t.climax ? { id: t.climax.id } : undefined,
+        }))
       : undefined,
     waters: floor.waters
       ? floor.waters.map((w) => ({ ...w, effect: w.effect ? { ...w.effect } : undefined }))
