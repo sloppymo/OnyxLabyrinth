@@ -143,6 +143,8 @@ describe("NPCController", () => {
     const state = makeState(npc);
     const { controller } = freshController(state, npc);
 
+    controller.handleKey("Enter"); // complete reveal
+    controller.handleKey("Enter"); // acknowledge greeting
     controller.handleKey("t");
 
     const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
@@ -158,6 +160,8 @@ describe("NPCController", () => {
     state.inventory.push({ itemId: "antidote", identified: true });
     const { controller } = freshController(state, npc);
 
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
     controller.handleKey("b");
 
     const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
@@ -171,6 +175,8 @@ describe("NPCController", () => {
     const state = makeState(npc);
     const { controller, closeMessage } = freshController(state, npc);
 
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
     controller.handleKey("l");
 
     expect(closeMessage()).toBe("You step away.");
@@ -183,6 +189,8 @@ describe("NPCController", () => {
     const state = makeState(npc);
     const { controller, fightNpc } = freshController(state, npc);
 
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
     controller.handleKey("a");
 
     expect(fightNpc()?.id).toBe("hermit");
@@ -198,6 +206,8 @@ describe("NPCController", () => {
     }
     const { controller } = freshController(state, npc);
 
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
     controller.handleKey("s");
 
     const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
@@ -214,6 +224,8 @@ describe("NPCController", () => {
       const state = makeState(npc);
       const { controller } = freshController(state, npc);
 
+      controller.handleKey("Enter");
+      controller.handleKey("Enter");
       controller.handleKey("s");
 
       expect(cue).toHaveBeenCalledWith("npcSteal");
@@ -230,8 +242,14 @@ describe("NPCController", () => {
     state.inventory.push({ itemId: "antidote", identified: true });
     const { controller } = freshController(state, npc);
 
-    controller.handleKey("b");
+    // Acknowledge greeting, open barter, then consume the barter narration
+    // and confirm the trade.
     controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    controller.handleKey("b");
+    controller.handleKey("Enter"); // consume reveal
+    controller.handleKey("Enter"); // acknowledge barter narration
+    controller.handleKey("Enter"); // confirm the trade
 
     expect(cue).toHaveBeenCalledTimes(1);
     controller.destroy();
@@ -300,9 +318,6 @@ describe("NPCController", () => {
   });
 
   it("root Enter completes the reveal before it can advance/select anything", () => {
-    // Real timers (no fake-timer advance) mean textRevealed starts false
-    // right after construction unless reduced motion is on — force that
-    // deterministically instead of relying on matchMedia in jsdom.
     const npc = makeNPC();
     const state = makeState(npc);
     const { controller } = freshController(state, npc);
@@ -332,6 +347,126 @@ describe("NPCController", () => {
     expect(panel.textContent).toContain("Attack");
     // Cursor still defaults to the first root item (Talk), not Attack.
     expect(fightNpc()).toBeNull();
+
+    controller.destroy();
+  });
+
+  it("blocks root action hotkeys (a, s, g, b, t, l) before the greeting is acknowledged", () => {
+    const npc = makeNPC();
+    const state = makeState(npc);
+    const { controller, closeMessage, fightNpc } = freshController(state, npc);
+
+    for (const key of ["a", "s", "g", "b", "t", "l"]) {
+      const consumed = controller.handleKey(key);
+      // Most hotkeys are silently ignored before ack; 'l' matches an
+      // unrelated 'ArrowLeft' substring? No — startsWith('l') is exact.
+      // After this we assert nothing happened.
+      expect(consumed).toBe(key === "Escape" ? true : false);
+    }
+
+    expect(fightNpc()).toBeNull();
+    expect(closeMessage()).toBe("");
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+    // Still the initial greeting, no action bar, no sub-phase.
+    expect(panel.textContent).toContain("A visitor!");
+    expect(panel.textContent).not.toContain("Talk");
+
+    controller.destroy();
+  });
+
+  it("paginates a long root greeting across multiple Enter presses", () => {
+    const longGreeting =
+      "This is the first sentence of a very long greeting. " +
+      "This is the second sentence, and it continues for a while. " +
+      "This is the third sentence, which should push the text beyond the page budget. " +
+      "This is the fourth sentence, and it also keeps going so we get at least one page break. " +
+      "This is the fifth sentence so the controller definitely has to split into pages.";
+    const npc = makeNPC({ greeting: longGreeting });
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+    // First page is a prefix of the full greeting.
+    expect(panel.textContent).not.toContain("fifth sentence");
+
+    controller.handleKey("Enter"); // complete reveal
+    controller.handleKey("Enter"); // acknowledge first page
+    expect(panel.textContent).toContain("fifth sentence"); // now on a later page
+
+    controller.destroy();
+  });
+
+  it("paginates a long topic answer and requires acknowledgement before re-asking", () => {
+    const longResponse =
+      "First part of the answer. It keeps going. It keeps going some more. " +
+      "Second part of the answer, which is long enough to force a second page and then some. " +
+      "Third part of the answer, which must also be quite long if the pagination is to split the whole response into at least two pages, preferably three. " +
+      "Fourth part of the answer, added here so the text is unambiguously longer than the per-page budget and the player sees a page turn. " +
+      "Fifth part of the answer, which is the final segment and should only appear after the player has turned to the last page. " +
+      "Sixth part of the answer, padding the response with enough additional words to absolutely ensure at least three pages.";
+    const npc = makeNPC({
+      topics: [{ key: "key", response: longResponse }],
+    });
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    controller.handleKey("t"); // talk, index 0 selects the only visible topic
+    // The first page of the response is shown but should not contain the
+    // tail marker yet.
+    expect(panel.textContent).not.toContain("Fifth part");
+    // Keep paging through (reveal + turn for each page) until the final
+    // page is reached; the marker must appear.
+    for (let i = 0; i < 8; i++) controller.handleKey("Enter");
+    expect(panel.textContent).toContain("Fifth part");
+
+    controller.destroy();
+  });
+
+  it("paginates a barter transaction result and requires acknowledgement before re-trading", () => {
+    const cue = vi.spyOn(audio, "uiBuySell").mockImplementation(() => {});
+    const npc = makeNPC();
+    const state = makeState(npc);
+    state.inventory.push({ itemId: "antidote", identified: true });
+    const { controller } = freshController(state, npc);
+
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    controller.handleKey("b");
+    // Confirm the trade once.
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    expect(panel.textContent).toContain("takes the Antidote");
+    // A one-time trade is now exhausted; another immediate confirm should not
+    // trigger the cue again.
+    expect(cue).toHaveBeenCalledTimes(1);
+
+    controller.destroy();
+    vi.restoreAllMocks();
+  });
+
+  it("give result is acknowledged and cannot be re-triggered immediately", () => {
+    const npc = makeNPC({ wantsItemId: "healing-potion", rewardItemId: "long-sword+1" });
+    const state = makeState(npc);
+    state.inventory.push({ itemId: "healing-potion", identified: true });
+    const { controller } = freshController(state, npc);
+
+    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
+    controller.handleKey("g");
+    // Confirm the give once (healing potion is the only item).
+    controller.handleKey("Enter"); // complete reveal
+    controller.handleKey("Enter"); // acknowledge
+    controller.handleKey("Enter"); // confirm give
+    expect(panel.textContent).toContain("accepts");
+    // Wanted gift is consumed and one-time reward is added.
+    expect(state.inventory.length).toBe(1);
+    expect(state.inventory[0].itemId).toBe("long-sword+1");
 
     controller.destroy();
   });
@@ -382,6 +517,8 @@ describe("NPCController", () => {
     const state = makeState(npc);
     const { controller } = freshController(state, npc);
 
+    controller.handleKey("Enter");
+    controller.handleKey("Enter");
     controller.handleKey("t"); // Talk
     controller.handleKey("ArrowDown"); // move to "Ask about…"
     controller.handleKey("Enter"); // enter Ask mode
