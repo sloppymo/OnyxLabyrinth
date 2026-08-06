@@ -66,6 +66,7 @@ const CLASS_ALIGNMENT_RESTRICTIONS: Record<CharacterClass, Alignment[]> = {
   Halberdier: ["Good", "Neutral", "Evil"],
   Duelist: ["Good", "Neutral", "Evil"],
   Crusader: ["Good", "Neutral", "Evil"],
+  Ninja: ["Good", "Neutral", "Evil"],
 };
 
 const DEFAULT_NAMES = ["Aria", "Coda", "Dell", "Eve"];
