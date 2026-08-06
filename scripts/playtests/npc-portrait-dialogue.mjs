@@ -3,10 +3,11 @@
  * (npc-dialogue-view.ts / npc-ui.ts / shell.ts's
  * showNpcDialogueOverlay/hideNpcDialogueOverlay).
  *
- * Covers: Kazeharu greeting + portrait, visible topic, hidden "master"/
- * "join" topics, Vestra greeting/trade/give (no portrait -> silhouette
- * fallback), successful steal, failed steal -> combat, Attack transition,
- * Leave, long-dialogue pagination, and three viewport sizes.
+ * Covers: greeting acknowledgement, Enter-before-action protection,
+ * portrait fallback, mouse hover/click, visible/hidden topics,
+ * barter/give lists, transaction result, successful/failed steal, Attack,
+ * Leave, long-dialogue pagination, HTML-escaped typed keywords, and
+ * 1440x900, 1280x720, 1024x768, and 800x700 viewports with reduced motion.
  *
  * Disclosed debug shortcuts: jumpTo() for positioning, setGameplayRng() to
  * make the steal roll deterministic. No shortcuts around the dialogue UI
@@ -31,10 +32,7 @@ function check(name, cond, detail = "") {
 }
 
 async function typeWord(page, word) {
-  for (const ch of word) {
-    await page.keyboard.press(ch);
-    await wait(20);
-  }
+  await page.keyboard.type(word, { delay: 20 });
 }
 
 async function panelText(page) {
@@ -43,6 +41,26 @@ async function panelText(page) {
 
 async function panelHtml(page) {
   return page.evaluate(() => document.querySelector("#combat-panel")?.innerHTML ?? "");
+}
+
+/** Bounds for the visible #combat-panel, portrait, and text cells. Used
+ *  to prove no clipping at narrow viewports. */
+async function panelClipInfo(page) {
+  return page.evaluate(() => {
+    const panel = document.querySelector("#combat-panel");
+    const portrait = document.querySelector(".npc-dlg-portrait");
+    const text = document.querySelector(".npc-dlg-text");
+    const actionBar = document.querySelector(".npc-dlg-action-bar");
+    const body = document.querySelector(".npc-dlg-body");
+    return {
+      panel: panel ? panel.getBoundingClientRect() : null,
+      portrait: portrait ? portrait.getBoundingClientRect() : null,
+      text: text ? text.getBoundingClientRect() : null,
+      actionBar: actionBar ? actionBar.getBoundingClientRect() : null,
+      body: body ? body.getBoundingClientRect() : null,
+      panelHtml: panel ? panel.innerHTML : "",
+    };
+  });
 }
 
 /** Poll snap() until route matches — combat-intro animations can take
@@ -89,11 +107,34 @@ const panelPositioned = await page.evaluate(() => {
 check("dialogue panel is the bottom-anchored overlay, not the full-screen host", panelPositioned);
 await shot(page, OUT, "01-kazeharu-greeting-1440x900.png");
 
-await press(page, "ArrowDown"); // acknowledge
-await wait(150);
+// First Enter must complete the typewriter reveal; the second Enter
+// acknowledges the greeting and shows the action bar. It must NOT
+// confirm the default item or start combat.
+await press(page, "Enter"); // complete reveal
+await wait(120);
+await press(page, "Enter"); // acknowledge
+await wait(120);
 text = await panelText(page);
+const routeCheck = await snap(page);
+check("Enter completes reveal and acknowledges, does not start combat", routeCheck.route !== "combat");
 check("Action bar appears after acknowledgment", text.includes("Talk") && text.includes("Attack"));
 await shot(page, OUT, "02-kazeharu-action-bar.png");
+
+console.log("=== Mouse hover and click on the root action bar ===");
+const actionEls = await page.locator(".npc-dlg-action").all();
+check("action bar has six buttons", actionEls.length === 6);
+if (actionEls.length >= 3) {
+  await actionEls[2].hover();
+  await wait(120);
+  let selectedHtml = await panelHtml(page);
+  check("mouse hover updates the selected highlight", selectedHtml.includes('class="npc-dlg-action selected"') && selectedHtml.includes("Give"));
+  await actionEls[2].click({ force: true });
+  await wait(200);
+  text = await panelText(page);
+  check("mouse click on Give opens the give phase", text.includes("Offer what") || text.includes("Your pack is empty"));
+  await press(page, "Escape"); // give -> root
+  await wait(120);
+}
 
 console.log("=== Kazeharu: visible topic + hidden 'master'/'join' ===");
 await press(page, "t"); // Talk
@@ -122,6 +163,23 @@ await press(page, "Enter");
 await wait(150);
 text = await panelText(page);
 check("hidden 'join' topic (not yet eligible — no ring) refuses", text.includes("Bring me something"));
+
+console.log("=== HTML-escaped typed keyword (no script injection) ===");
+await press(page, "ArrowDown", 2);
+await press(page, "Enter");
+await typeWord(page, "<img src=x onerror=alert(1)>");
+await wait(150);
+html = await panelHtml(page);
+check("typed keyword is escaped (not a live img tag)", !html.includes("<img src=x"));
+check("typed keyword shows the escaped entity form", html.includes("&lt;img"));
+check("no onerror attribute from raw injection", !html.includes("onerror=alert(1)"));
+await shot(page, OUT, "04-kazeharu-ask-escaped.png");
+await press(page, "Enter"); // submit the malformed keyword; the unknown-key
+// response should render plain, not execute anything.
+await wait(150);
+html = await panelHtml(page);
+check("after submit, no live <img> tag from the typed keyword", !html.includes("<img src=x"));
+check("after submit, no onerror attribute", !html.includes("onerror=alert(1)"));
 await press(page, "Escape");
 await press(page, "Escape");
 await wait(300);
@@ -158,6 +216,9 @@ await press(page, "ArrowUp");
 await wait(300);
 await press(page, "g"); // Give
 await wait(150);
+text = await panelText(page);
+check("give list renders the inventory item", text.includes("healing-potion") || text.includes("Healing Potion"));
+await shot(page, OUT, "07b-vestra-give-list.png");
 await press(page, "Enter"); // offer the only inventory item
 await wait(150);
 text = await panelText(page);
@@ -238,30 +299,38 @@ await press(page, "Escape");
 await press(page, "Escape");
 
 console.log("=== Viewport screenshots ===");
-await page.setViewportSize({ width: 1280, height: 720 });
-await jumpTo(page, { floorId: 3, x: 2, y: 9, facing: 1 });
-await press(page, "ArrowUp");
-await wait(400);
-await press(page, "ArrowDown");
-await wait(150);
-await shot(page, OUT, "11-viewport-1280x720.png");
-await press(page, "Escape");
-await wait(150);
-
-await page.setViewportSize({ width: 800, height: 700 });
-await jumpTo(page, { floorId: 3, x: 2, y: 9, facing: 1 });
-await press(page, "ArrowUp");
-await wait(400);
-text = await panelText(page);
-check("narrow viewport still shows portrait + name + greeting", text.includes("Kazeharu"));
-const narrowPortraitVisible = await page.evaluate(() => {
-  const portrait = document.querySelector(".npc-dlg-portrait");
-  return portrait ? portrait.getBoundingClientRect().width > 0 : false;
-});
-check("portrait remains visible (not dropped) at narrow width", narrowPortraitVisible);
-await shot(page, OUT, "12-viewport-narrow-800x700.png");
-await press(page, "Escape");
-await wait(150);
+for (const viewport of [
+  { width: 1280, height: 720, file: "11-viewport-1280x720.png" },
+  { width: 1024, height: 768, file: "11b-viewport-1024x768.png" },
+  { width: 800, height: 700, file: "12-viewport-narrow-800x700.png" },
+]) {
+  await page.setViewportSize({ width: viewport.width, height: viewport.height });
+  await jumpTo(page, { floorId: 3, x: 2, y: 9, facing: 1 });
+  await press(page, "ArrowUp");
+  await wait(400);
+  await press(page, "ArrowDown");
+  await wait(150);
+  const clip = await panelClipInfo(page);
+  const panel = clip.panel;
+  const portrait = clip.portrait;
+  const text = clip.text;
+  const actionBar = clip.actionBar;
+  check(
+    `viewport ${viewport.width}x${viewport.height}: panel, portrait, text, and action bar all inside viewport`,
+    !!panel && !!portrait && !!text && !!actionBar &&
+      panel.width > 0 && panel.height > 0 &&
+      portrait.width > 0 && portrait.height > 0 &&
+      text.width > 0 && text.height > 0 &&
+      actionBar.width > 0 && actionBar.height > 0 &&
+      panel.right <= viewport.width + 1 && panel.bottom <= viewport.height + 1 &&
+      portrait.right <= panel.right + 1 && text.right <= panel.right + 1 &&
+      actionBar.bottom <= panel.bottom + 1,
+    JSON.stringify({ viewport, panel, portrait, text, actionBar })
+  );
+  await shot(page, OUT, viewport.file);
+  await press(page, "Escape");
+  await wait(150);
+}
 await page.setViewportSize({ width: 1440, height: 900 });
 
 console.log("=== Reduced motion ===");
