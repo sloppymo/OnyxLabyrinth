@@ -1109,6 +1109,82 @@ export const HEADMASTERS_ECHO_ASCENDANT: EnemyDef = {
   phaseThresholds: [70, 45, 20],
 };
 
+// --- The Party That Returned (Floor 1 capstone, game/features.ts
+// stairsGuardian) — a ruined four-person adventuring party mirroring the
+// player's own Fighter/Thief/Mage/Priest roles. Scripted one-time fight,
+// not a random encounter table entry, so `floors: []` keeps them out of
+// ENCOUNTER_TABLES (same convention as TRAINING_DUMMY above).
+
+export const RUINED_VANGUARD: EnemyDef = {
+  id: "ruined-vanguard",
+  name: "Ruined Vanguard",
+  floors: [],
+  rowPreference: "front",
+  hp: 34,
+  attack: 8,
+  ac: 6,
+  agi: 6,
+  xp: 30,
+  gold: 20,
+  special: [{ kind: "undead" }],
+  abilityIds: ["phalanx-guard"],
+  isBoss: false,
+};
+
+export const HOLLOW_KNIFEMAN: EnemyDef = {
+  id: "hollow-knifeman",
+  name: "Hollow Knifeman",
+  floors: [],
+  rowPreference: "front",
+  hp: 22,
+  attack: 9,
+  ac: 3,
+  agi: 14,
+  xp: 26,
+  gold: 18,
+  special: [{ kind: "undead" }],
+  abilityIds: ["opportunist-strike"],
+  isBoss: false,
+};
+
+export const ASH_SCRIBE: EnemyDef = {
+  id: "ash-scribe",
+  name: "Ash Scribe",
+  floors: [],
+  rowPreference: "back",
+  hp: 20,
+  attack: 5,
+  ac: 2,
+  agi: 9,
+  xp: 28,
+  gold: 20,
+  special: [
+    { kind: "caster", element: "fire" },
+    { kind: "undead" },
+  ],
+  abilityIds: [],
+  isBoss: false,
+};
+
+export const DROWNED_CANTOR: EnemyDef = {
+  id: "drowned-cantor",
+  name: "Drowned Cantor",
+  floors: [],
+  rowPreference: "back",
+  hp: 18,
+  attack: 4,
+  ac: 2,
+  agi: 8,
+  xp: 26,
+  gold: 18,
+  special: [
+    { kind: "healer", spellName: "Cure Wounds" },
+    { kind: "undead" },
+  ],
+  abilityIds: ["curse"],
+  isBoss: false,
+};
+
 export const ALL_ENEMIES: EnemyDef[] = [
   TRAINING_DUMMY,
   SLIME,
@@ -1162,6 +1238,10 @@ export const ALL_ENEMIES: EnemyDef[] = [
   UNDERTOW_CALLER,
   HEADMASTERS_ECHO_REMNANT,
   HEADMASTERS_ECHO_ASCENDANT,
+  RUINED_VANGUARD,
+  HOLLOW_KNIFEMAN,
+  ASH_SCRIBE,
+  DROWNED_CANTOR,
 ];
 
 export const ENEMIES_BY_ID: Record<string, EnemyDef> = Object.fromEntries(

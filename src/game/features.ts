@@ -19,7 +19,7 @@
 
 import type { Facing, GameState, TrapType } from "../types";
 import type { Character } from "./party";
-import { cloneFloor, type EventDef, type FloorDef } from "../data/floors";
+import { cloneFloor, type EventDef, type FloorDef, type StairsGuardianDef } from "../data/floors";
 import { findFloor } from "./floor-registry";
 import { ITEMS_BY_ID } from "../data/items";
 import { autoSave } from "./save";
@@ -44,6 +44,13 @@ export interface FeatureResult {
   looted?: boolean;
   /** Set when the party stepped onto a living NPC — main.ts opens the panel. */
   npcId?: string;
+  /** Set when the party stepped onto a chute that requires confirmation.
+   *  main.ts shows a point-of-no-return dialog; if the player confirms,
+   *  it calls confirmChuteDrop() to execute the descent. */
+  pendingChuteDrop?: { toFloorId: number; toX: number; toY: number };
+  /** Set when the party stepped onto an unresolved stairsGuardian tile.
+   *  main.ts shows the intro dialog then starts the scripted fight. */
+  pendingStairsGuardian?: StairsGuardianDef;
 }
 
 /**
@@ -69,7 +76,9 @@ export function handleTileFeature(state: GameState, rng: Rng = getGameplayRng())
   // chest as a landmark, but it is inert — identical to standing on bare floor.
   // Without this guard, re-crossing an emptied chest would spam "already
   // looted" on every step and leave darkness/antimagic flags uncleared.
-  const inert = cell?.tile === "treasure" && isTreasureLooted(floor, player.x, player.y);
+  const treasureInert = cell?.tile === "treasure" && isTreasureLooted(floor, player.x, player.y);
+  const guardianInert = cell?.tile === "guardian" && isStairsGuardianCleared(state, floor, player.x, player.y);
+  const inert = treasureInert || guardianInert;
   if (!cell || !cell.tile || inert) {
     // No feature — clear darkness/antimagic flags
     state.inDarkness = false;
@@ -106,6 +115,8 @@ export function handleTileFeature(state: GameState, rng: Rng = getGameplayRng())
       return handleWater(state, rng);
     case "event":
       return handleEvent(state);
+    case "guardian":
+      return handleStairsGuardian(state);
     case "npc": {
       const npc = npcAt(state, player.x, player.y);
       if (!npc) {
@@ -123,6 +134,103 @@ export function handleTileFeature(state: GameState, rng: Rng = getGameplayRng())
     default:
       return null;
   }
+}
+
+/**
+ * "The Party That Returned" (Floor 1 capstone). A `stairsGuardian` blocks a
+ * single tile on the mandatory approach to the stairs down; the first step
+ * onto it hands back a `pendingStairsGuardian` result instead of a normal
+ * message. main.ts shows the intro dialog and starts the fight; victory
+ * pushes the guardian's id into `clearedStairsGuardians` (see endCombat),
+ * after which this tile is permanently inert (see the `guardianInert` check
+ * in handleTileFeature).
+ */
+function isStairsGuardianCleared(state: GameState, floor: FloorDef, x: number, y: number): boolean {
+  const guardian = floor.stairsGuardian;
+  if (!guardian || guardian.x !== x || guardian.y !== y) return true;
+  return state.clearedStairsGuardians.includes(guardian.id);
+}
+
+const GUARDIAN_DIR_DELTA: Record<"n" | "e" | "s" | "w", [number, number]> = {
+  n: [0, -1],
+  e: [1, 0],
+  s: [0, 1],
+  w: [-1, 0],
+};
+const GUARDIAN_OPPOSITE_DIR: Record<"n" | "e" | "s" | "w", "n" | "e" | "s" | "w"> = {
+  n: "s",
+  s: "n",
+  e: "w",
+  w: "e",
+};
+
+/**
+ * Opens the guardian's sealed edge on victory, exactly like
+ * traversal.ts's openBarredGate: both sides become "door" and the edge is
+ * recorded in unlockedDoors so it survives save/load. Without this, the
+ * tile-feature trigger alone only fires on arrival — a player who flees
+ * and is left standing on the guardian tile could otherwise just step past
+ * it onto the stairs having never won.
+ */
+function openStairsGuardianEdge(state: GameState, guardian: StairsGuardianDef): void {
+  const { floor } = state;
+  const cell = floor.grid[guardian.y]?.[guardian.x];
+  if (!cell) return;
+  const dir = guardian.blocksDir;
+  const [dx, dy] = GUARDIAN_DIR_DELTA[dir];
+  const nx = guardian.x + dx;
+  const ny = guardian.y + dy;
+  const neighbor = floor.grid[ny]?.[nx];
+  if (!neighbor) return;
+  cell[dir] = "door";
+  neighbor[GUARDIAN_OPPOSITE_DIR[dir]] = "door";
+  // Both sides recorded: save.ts's unlockedDoors restore loop only sets the
+  // ONE side matching each stored key, never its reciprocal edge — so
+  // without the second key, a save/load round trip would leave the far
+  // side of the edge still "barred" (resolveTraversal blocks on either
+  // side being non-passable, so that alone would re-trap a "cleared" save).
+  state.unlockedDoors.add(`${floor.id}:${guardian.x}:${guardian.y}:${dir}`);
+  state.unlockedDoors.add(`${floor.id}:${nx}:${ny}:${GUARDIAN_OPPOSITE_DIR[dir]}`);
+}
+
+/**
+ * Records victory over a stairsGuardian fight. Idempotent — returns false
+ * (no-op) if the guardian is already cleared, so a stale/duplicate call can
+ * never push the same id twice, re-open an already-open edge, or let
+ * main.ts grant its reward again.
+ */
+export function clearStairsGuardian(state: GameState, guardian: StairsGuardianDef): boolean {
+  if (state.clearedStairsGuardians.includes(guardian.id)) return false;
+  state.clearedStairsGuardians.push(guardian.id);
+  openStairsGuardianEdge(state, guardian);
+  return true;
+}
+
+function handleStairsGuardian(state: GameState): FeatureResult | null {
+  const { floor, player } = state;
+  const guardian = floor.stairsGuardian;
+  if (!guardian || guardian.x !== player.x || guardian.y !== player.y) return null;
+  if (state.clearedStairsGuardians.includes(guardian.id)) return null;
+  return {
+    message: "",
+    changedFloor: false,
+    consumed: false,
+    pendingStairsGuardian: guardian,
+  };
+}
+
+type StairTile = "stairs_up" | "stairs_down";
+
+function findStairTile(floor: FloorDef, tile: StairTile): { x: number; y: number } | null {
+  for (let y = 0; y < floor.grid.length; y++) {
+    const row = floor.grid[y];
+    for (let x = 0; x < row.length; x++) {
+      if (row[x]?.tile === tile) {
+        return { x, y };
+      }
+    }
+  }
+  return null;
 }
 
 /**
@@ -144,7 +252,17 @@ function handleStairs(state: GameState, goingUp: boolean): FeatureResult {
     };
   }
 
-  transitionToFloor(state, targetFloor, targetFloor.startX, targetFloor.startY);
+  // Going upward means arriving on the upper floor's downward staircase.
+  // Going downward means arriving on the lower floor's upward staircase.
+  const arrivalTile: StairTile = goingUp ? "stairs_down" : "stairs_up";
+  const arrival = findStairTile(targetFloor, arrivalTile);
+
+  transitionToFloor(
+    state,
+    targetFloor,
+    arrival?.x ?? targetFloor.startX,
+    arrival?.y ?? targetFloor.startY
+  );
   return {
     message: goingUp
       ? `You pass through the door up to ${targetFloor.name} (Floor ${targetFloor.id}).`
@@ -219,9 +337,65 @@ function handleChute(state: GameState): FeatureResult {
     return { message: "The chute is blocked. You can't go down here.", changedFloor: false, consumed: false };
   }
 
+  // If this chute requires confirmation, return a pending drop instead of
+  // executing immediately. main.ts shows a point-of-no-return dialog.
+  if (drop.confirm) {
+    return {
+      message: "A steep sluice disappears into darkness. There may be no way back up.",
+      changedFloor: false,
+      consumed: false,
+      pendingChuteDrop: { toFloorId: drop.toFloorId, toX: drop.toX, toY: drop.toY },
+    };
+  }
+
   transitionToFloor(state, targetFloor, drop.toX, drop.toY);
   return {
     message: `You slide down the chute to ${targetFloor.name} (Floor ${targetFloor.id}).`,
+    changedFloor: true,
+    consumed: false,
+  };
+}
+
+/**
+ * Execute a confirmed chute drop. Called by main.ts after the player
+ * confirms the point-of-no-return dialog for a `confirm: true` chute.
+ */
+export function confirmChuteDrop(
+  state: GameState,
+  drop: { toFloorId: number; toX: number; toY: number }
+): FeatureResult {
+  const targetFloor = findFloor(drop.toFloorId);
+  if (!targetFloor) {
+    return { message: "The chute is blocked. You can't go down here.", changedFloor: false, consumed: false };
+  }
+  const fromFloorId = state.floor.id;
+  // Defer the autosave until AFTER the destination tile's feature (e.g. the
+  // raft keyReward event) is processed, so a reload immediately after landing
+  // restores the raft in keyItems and the consumed-event state — not a stale
+  // pre-reward snapshot.
+  transitionToFloor(state, targetFloor, drop.toX, drop.toY, 0, { autosave: false });
+  const chuteMessage =
+    drop.toFloorId === fromFloorId
+      ? "You slide down the chute to a lower passage."
+      : `You slide down the chute to ${targetFloor.name} (Floor ${targetFloor.id}).`;
+
+  // Process the destination tile's feature so the player receives any
+  // reward (e.g. the raft keyReward event in the pocket) immediately on
+  // landing — without needing to step away and return.
+  const featureResult = handleTileFeature(state);
+  // Now that the destination reward has been applied, persist the full state
+  // atomically with the raft granted and the event marked consumed.
+  autoSave(state);
+  if (featureResult && featureResult.message) {
+    return {
+      message: `${chuteMessage} ${featureResult.message}`,
+      changedFloor: true,
+      consumed: featureResult.consumed,
+      looted: featureResult.looted,
+    };
+  }
+  return {
+    message: chuteMessage,
     changedFloor: true,
     consumed: false,
   };
@@ -648,6 +822,13 @@ function applyEvent(state: GameState, event: EventDef): FeatureResult {
       const item = ITEMS_BY_ID[itemId];
       if (item) {
         state.inventory.push({ itemId, identified: true });
+      }
+      return { message: event.message, ...noEvent };
+    }
+    case "keyReward": {
+      const itemId = event.itemId ?? "";
+      if (itemId && !state.keyItems.includes(itemId)) {
+        state.keyItems.push(itemId);
       }
       return { message: event.message, ...noEvent };
     }

@@ -40,6 +40,14 @@
       "x2": 22,
       "y2": 11,
       "theme": "f3"
+    },
+    {
+      "id": "hot-bois-hearth",
+      "x1": 9,
+      "y1": 22,
+      "x2": 14,
+      "y2": 26,
+      "theme": "f2"
     }
   ],
   "grid": [
@@ -461,8 +469,7 @@
         "n": "wall",
         "e": "open",
         "s": "open",
-        "w": "open",
-        "tile": "stairs_down"
+        "w": "open"
       },
       {
         "n": "wall",
@@ -1245,7 +1252,8 @@
         "n": "open",
         "e": "wall",
         "s": "open",
-        "w": "wall"
+        "w": "wall",
+        "tile": "chute"
       },
       {
         "n": "wall",
@@ -3160,15 +3168,15 @@
       },
       {
         "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "e": "barred",
+        "s": "open",
         "w": "wall"
       },
       {
         "n": "wall",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "barred"
       },
       {
         "n": "wall",
@@ -3220,9 +3228,160 @@
       },
       {
         "n": "open",
-        "e": "wall",
+        "e": "open",
         "s": "wall",
         "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "tile": "water"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "tile": "water"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "barred",
+        "s": "wall",
+        "w": "open",
+        "tile": "guardian"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "barred",
+        "tile": "stairs_down"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "wall",
+        "tile": "event"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "door",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       },
       {
         "n": "wall",
@@ -3305,155 +3464,9 @@
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
         "n": "open",
         "e": "wall",
         "s": "open",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      }
-    ],
-    [
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
         "w": "wall"
       },
       {
@@ -3499,7 +3512,7 @@
         "w": "open"
       },
       {
-        "n": "open",
+        "n": "door",
         "e": "open",
         "s": "open",
         "w": "open",
@@ -3515,6 +3528,154 @@
         "n": "wall",
         "e": "wall",
         "s": "open",
+        "w": "open",
+        "tile": "event"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "tile": "npc"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
         "w": "open"
       },
       {
@@ -3637,153 +3798,8 @@
         "n": "open",
         "e": "open",
         "s": "open",
-        "w": "wall"
-      },
-      {
-        "n": "open",
-        "e": "open",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "open",
-        "e": "open",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "open",
-        "e": "open",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "open",
-        "e": "wall",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      }
-    ],
-    [
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "open",
-        "e": "open",
-        "s": "open",
-        "w": "wall"
+        "w": "wall",
+        "tile": "event"
       },
       {
         "n": "open",
@@ -4203,6 +4219,15 @@
       "x2": 22,
       "y2": 11,
       "rateMul": 1.5
+    },
+    {
+      "id": "tavern-safe",
+      "x1": 9,
+      "y1": 22,
+      "x2": 14,
+      "y2": 26,
+      "rateMul": 0,
+      "safeZone": true
     }
   ],
   "mapSprites": [
@@ -4240,6 +4265,21 @@
       "x": 11,
       "y": 11,
       "spriteId": "torch"
+    },
+    {
+      "x": 9,
+      "y": 23,
+      "spriteId": "barrel"
+    },
+    {
+      "x": 14,
+      "y": 24,
+      "spriteId": "crate"
+    },
+    {
+      "x": 11,
+      "y": 21,
+      "spriteId": "tavern-sign"
     }
   ],
   "teleporters": [
@@ -4256,6 +4296,16 @@
       "toFloorId": 1,
       "toX": 3,
       "toY": 13
+    }
+  ],
+  "chuteDrops": [
+    {
+      "x": 3,
+      "y": 8,
+      "toFloorId": 1,
+      "toX": 3,
+      "toY": 22,
+      "confirm": true
     }
   ],
   "lockedDoors": [
@@ -4351,6 +4401,18 @@
         "kind": "cure",
         "status": "poison"
       }
+    },
+    {
+      "x": 15,
+      "y": 21,
+      "depth": 4,
+      "raftChannel": true
+    },
+    {
+      "x": 16,
+      "y": 21,
+      "depth": 4,
+      "raftChannel": true
     }
   ],
   "npcs": [
@@ -4463,6 +4525,45 @@
         "skeleton",
         "skeleton"
       ]
+    },
+    {
+      "id": "hot-boi",
+      "name": "Hot Boi",
+      "title": "the Tavern Keeper",
+      "x": 10,
+      "y": 24,
+      "greeting": "Hot Boi waves a ladle. \"Welcome to Hot Boi's. Sorry about the smell. The right-hand way down is flooded — you need a raft. Ask me about the raft, the chute, or the water.\"",
+      "returnGreeting": "Hot Boi nods. \"The hall keeps its wounds open.\"",
+      "topics": [
+        {
+          "key": "raft",
+          "response": "\"The raft lies in a sealed pocket. Take the left-side chute — it drops you there. The only way back is a barred gate, but it lifts from inside.\""
+        },
+        {
+          "key": "chute",
+          "response": "\"A sluice in the chapel wing drops to a pocket below. The fall is warned — you cannot climb back up. But the raft is down there.\""
+        },
+        {
+          "key": "water",
+          "response": "\"Black water cuts the right fork near the entrance. Deep and still — no swimming, no floating. Only a raft crosses it, dock to dock.\""
+        },
+        {
+          "key": "stairs",
+          "response": "\"The stairs down are past the flooded fork. Cross with the raft, then descend.\""
+        },
+        {
+          "key": "shortcut",
+          "response": "\"The chute is the shortcut. Drop from the chapel, find the raft, lift the bar, and you are back at the fork with what you need.\""
+        }
+      ],
+      "combatEnemyIds": [],
+      "capabilities": {
+        "talk": true,
+        "barter": false,
+        "give": false,
+        "steal": false,
+        "attack": false
+      }
     }
   ],
   "events": [
@@ -4521,6 +4622,102 @@
       "y": 6,
       "kind": "message",
       "message": "Iron sweats. Something below coughs once."
+    },
+    {
+      "x": 3,
+      "y": 22,
+      "kind": "keyReward",
+      "message": "A raft lies wedged in the pocket. You take it.",
+      "itemId": "raft",
+      "once": true
+    },
+    {
+      "x": 13,
+      "y": 23,
+      "kind": "message",
+      "message": "Scorched board. Notices pinned in a shaking hand.",
+      "once": false
+    },
+    {
+      "x": 9,
+      "y": 25,
+      "kind": "message",
+      "message": "Bedrolls line the wall, each one facing the door.",
+      "once": false
     }
-  ]
+  ],
+  "floorRevision": 3,
+  "barredGates": [
+    {
+      "x": 3,
+      "y": 21,
+      "dir": "e",
+      "opensFrom": "e"
+    }
+  ],
+  "raftRoutes": [
+    {
+      "id": "f1-raft-fork",
+      "fromDock": {
+        "x": 14,
+        "y": 21
+      },
+      "fromApproach": "e",
+      "toDock": {
+        "x": 17,
+        "y": 21
+      },
+      "toApproach": "w",
+      "path": [
+        {
+          "x": 14,
+          "y": 21
+        },
+        {
+          "x": 15,
+          "y": 21
+        },
+        {
+          "x": 16,
+          "y": 21
+        },
+        {
+          "x": 17,
+          "y": 21
+        }
+      ],
+      "bidirectional": true
+    }
+  ],
+  "stairsGuardian": {
+    "id": "floor1-returned-party",
+    "x": 18,
+    "y": 21,
+    "spawns": [
+      {
+        "enemyId": "ruined-vanguard",
+        "row": "front"
+      },
+      {
+        "enemyId": "hollow-knifeman",
+        "row": "front"
+      },
+      {
+        "enemyId": "ash-scribe",
+        "row": "back"
+      },
+      {
+        "enemyId": "drowned-cantor",
+        "row": "back"
+      }
+    ],
+    "introLines": [
+      "Four shapes rise from the landing ahead, wearing gear you recognize the make of.",
+      "A shield with a familiar dent. A drawn knife, already dark. A scribe's satchel, waterlogged. A cantor's cracked bell.",
+      "They were a party once. They still stand like one."
+    ],
+    "victoryLine": "The four of them go still and do not rise again. Whatever answered when you called was down here, not up there. The stairs are clear.",
+    "blocksDir": "e",
+    "rewardItemId": "greater-healing-potion"
+  }
 }

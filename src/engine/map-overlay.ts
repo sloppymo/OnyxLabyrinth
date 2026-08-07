@@ -145,6 +145,7 @@ function featureLandmark(feature: TileFeature): MapOverlayLandmarkKind | null {
     case "treasure":
     case "npc":
     case "event":
+    case "guardian":
       return null;
   }
 }

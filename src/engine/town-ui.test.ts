@@ -7,6 +7,7 @@ import { createGameState } from "../game/state";
 import { FLOORS } from "../data/floors";
 import { CURSED_BLADE, ITEMS_BY_ID } from "../data/items";
 import { audio } from "./audio";
+import { acceptQuest, markQuestReady } from "../game/quests";
 
 function makePanel(): HTMLElement {
   const panel = document.createElement("div");
@@ -176,6 +177,39 @@ describe("TownController main footer party count", () => {
     const ctrl = makeTown(state);
     const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
     expect(panel.querySelector(".ff6-footer2")?.textContent).toMatch(/^Party: 2\/3 alive/);
+  });
+});
+
+describe("TownController main footer Scorchboard pointer", () => {
+  it("says nothing about the Scorchboard when no quest is ready", () => {
+    const state = createGameState(FLOORS[0]);
+    const ctrl = makeTown(state);
+    const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
+    expect(panel.querySelector(".ff6-footer2")?.textContent).not.toMatch(/Scorchboard/);
+  });
+
+  it("points back to Hot Boi's once a quest is ready to turn in", () => {
+    const state = createGameState(FLOORS[0]);
+    acceptQuest(state, "last-lantern");
+    markQuestReady(state, "last-lantern");
+    const ctrl = makeTown(state);
+    const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
+    expect(panel.querySelector(".ff6-footer2")?.textContent).toMatch(
+      /Hot Boi's Scorchboard: 1 ready to turn in/
+    );
+  });
+
+  it("counts multiple ready quests", () => {
+    const state = createGameState(FLOORS[0]);
+    for (const id of ["last-lantern", "shield-left-behind"]) {
+      acceptQuest(state, id);
+      markQuestReady(state, id);
+    }
+    const ctrl = makeTown(state);
+    const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
+    expect(panel.querySelector(".ff6-footer2")?.textContent).toMatch(
+      /Hot Boi's Scorchboard: 2 ready to turn in/
+    );
   });
 });
 

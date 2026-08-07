@@ -107,6 +107,7 @@ export function validateFloorMap(
   validateDuplicateOverlays(map, issues);
   validateItemRefs(map, issues);
   validateNpcRefs(map, issues);
+  validateStairsGuardianRefs(map, issues);
   validateFloorLinks(map, issues, context?.floors ?? getFloors());
   validateStairsTargets(map, issues, context?.floors ?? getFloors());
   validateEncounterConfig(map, issues);
@@ -210,7 +211,7 @@ function validateOverlayTiles(map: FloorMapJSON, issues: ValidationIssue[]): voi
   }
   for (const n of map.npcs ?? []) {
     expectTile(n.x, n.y, "npc", "npc_tile", `NPC ${n.id}`);
-    if (!n.combatEnemyIds?.length) {
+    if (!n.combatEnemyIds?.length && n.capabilities?.attack !== false) {
       issues.push({
         severity: "warning",
         code: "npc_no_combat",
@@ -227,6 +228,52 @@ function validateOverlayTiles(map: FloorMapJSON, issues: ValidationIssue[]): voi
   }
   for (const c of map.chuteDrops ?? []) {
     expectTile(c.x, c.y, "chute", "chute_tile", "Chute");
+  }
+  if (map.stairsGuardian) {
+    const g = map.stairsGuardian;
+    expectTile(g.x, g.y, "guardian", "guardian_tile", `Stairs guardian ${g.id}`);
+  }
+}
+
+function validateStairsGuardianRefs(map: FloorMapJSON, issues: ValidationIssue[]): void {
+  const g = map.stairsGuardian;
+  if (!g) return;
+  if (g.spawns.length === 0) {
+    issues.push({
+      severity: "error",
+      code: "guardian_no_spawns",
+      message: `Stairs guardian ${g.id} has no spawns`,
+      at: { x: g.x, y: g.y },
+    });
+  }
+  for (const spawn of g.spawns) {
+    if (!ENEMIES_BY_ID[spawn.enemyId]) {
+      issues.push({
+        severity: "error",
+        code: "guardian_enemy_unknown",
+        message: `Stairs guardian ${g.id} spawns references unknown enemy "${spawn.enemyId}"`,
+        at: { x: g.x, y: g.y },
+      });
+    }
+  }
+  if (g.rewardItemId && !isObtainableItemId(g.rewardItemId)) {
+    issues.push({
+      severity: "warning",
+      code: "guardian_reward_item_unknown",
+      message: `Stairs guardian ${g.id} rewardItemId "${g.rewardItemId}" is not a recognized item`,
+      at: { x: g.x, y: g.y },
+    });
+  }
+  if (inBoundsGrid(map, g.x, g.y)) {
+    const edge = map.grid[g.y][g.x][DIR_EDGE[g.blocksDir]];
+    if (edge !== "barred") {
+      issues.push({
+        severity: "error",
+        code: "guardian_edge_unsealed",
+        message: `Stairs guardian ${g.id} blocksDir "${g.blocksDir}" must be authored as "barred" (got "${edge}") — "wall" would fail reachability, and anything else lets a fled fight be walked past`,
+        at: { x: g.x, y: g.y },
+      });
+    }
   }
 }
 
