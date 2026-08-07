@@ -3368,7 +3368,7 @@
       {
         "n": "open",
         "e": "wall",
-        "s": "open",
+        "s": "door",
         "w": "open"
       },
       {
@@ -3512,7 +3512,7 @@
         "w": "open"
       },
       {
-        "n": "open",
+        "n": "door",
         "e": "open",
         "s": "open",
         "w": "open",
@@ -4275,11 +4275,6 @@
       "x": 14,
       "y": 24,
       "spriteId": "crate"
-    },
-    {
-      "x": 11,
-      "y": 22,
-      "spriteId": "tavern-door"
     },
     {
       "x": 11,
