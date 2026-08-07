@@ -38,6 +38,11 @@ import {
   arenaSideWallWorldAt,
   isStairExitFeature,
   raycastEdgeStop,
+  dirForWallHit,
+  wallFeatureCellForHit,
+  stableWallX,
+  wallFeatureLocalU,
+  wallFeatureVerticalRect,
   projectBillboard,
   billboardScreenX,
   BILLBOARD_MIN_DEPTH,
@@ -1176,5 +1181,95 @@ describe("propBillboardSize", () => {
     expect(propBillboardSize(H, 0, 40)).toBe(FEATURE_MARKER_MIN_PX);
     expect(propBillboardSize(H, NaN, 40)).toBe(FEATURE_MARKER_MIN_PX);
     expect(propBillboardSize(H, -2, 40)).toBe(FEATURE_MARKER_MIN_PX);
+  });
+});
+
+describe("dirForWallHit", () => {
+  it("resolves the near cell's face from ray direction sign", () => {
+    expect(dirForWallHit("x", 1, 0)).toBe("e");
+    expect(dirForWallHit("x", -1, 0)).toBe("w");
+    expect(dirForWallHit("y", 0, 1)).toBe("s");
+    expect(dirForWallHit("y", 0, -1)).toBe("n");
+  });
+});
+
+describe("wallFeatureCellForHit", () => {
+  it("steps back one cell on the hit axis, matching themeForWallHit's near-cell math", () => {
+    // A ray traveling +x that stops at mapX=5 crossed the east edge of the
+    // cell at x=4 — the near (visible) cell is one step behind the hit.
+    expect(wallFeatureCellForHit(5, 3, "x", 1, 0)).toEqual({ x: 4, y: 3, dir: "e" });
+    expect(wallFeatureCellForHit(5, 3, "x", -1, 0)).toEqual({ x: 6, y: 3, dir: "w" });
+    expect(wallFeatureCellForHit(2, 7, "y", 0, 1)).toEqual({ x: 2, y: 6, dir: "s" });
+    expect(wallFeatureCellForHit(2, 7, "y", 0, -1)).toEqual({ x: 2, y: 8, dir: "n" });
+  });
+});
+
+describe("stableWallX", () => {
+  it("mirrors wallX only for the approach directions that flip texX", () => {
+    // Same flip condition as the wall/door texX sampling in renderer.ts:
+    // (side === "x" && rayDirX > 0) || (side === "y" && rayDirY < 0).
+    expect(stableWallX(0.3, "x", 1, 0)).toBeCloseTo(0.7);
+    expect(stableWallX(0.3, "x", -1, 0)).toBeCloseTo(0.3);
+    expect(stableWallX(0.3, "y", 0, -1)).toBeCloseTo(0.7);
+    expect(stableWallX(0.3, "y", 0, 1)).toBeCloseTo(0.3);
+  });
+
+  it("is stable across a round trip: approaching from either side reads the same physical spot", () => {
+    // A decal centered on the face should sit at the same wallX regardless of
+    // which direction the ray is walking, once flip-corrected.
+    const fromOneSide = stableWallX(0.8, "x", 1, 0);
+    const fromOtherSide = stableWallX(0.2, "x", -1, 0);
+    expect(fromOneSide).toBeCloseTo(fromOtherSide);
+  });
+});
+
+describe("wallFeatureLocalU", () => {
+  it("returns null outside the centered window", () => {
+    expect(wallFeatureLocalU(0.1, 0.5)).toBeNull();
+    expect(wallFeatureLocalU(0.9, 0.5)).toBeNull();
+  });
+
+  it("maps the window to a 0-1 local U inside it", () => {
+    // widthFrac 0.5 centered on the face -> window is [0.25, 0.75].
+    expect(wallFeatureLocalU(0.25, 0.5)).toBeCloseTo(0);
+    expect(wallFeatureLocalU(0.5, 0.5)).toBeCloseTo(0.5);
+    expect(wallFeatureLocalU(0.75, 0.5)).toBeCloseTo(1);
+  });
+
+  it("a full-width decal (widthFrac 1) accepts the whole face", () => {
+    expect(wallFeatureLocalU(0, 1)).toBeCloseTo(0);
+    expect(wallFeatureLocalU(1, 1)).toBeCloseTo(1);
+  });
+
+  it("treats a non-positive widthFrac as never matching", () => {
+    expect(wallFeatureLocalU(0.5, 0)).toBeNull();
+    expect(wallFeatureLocalU(0.5, -1)).toBeNull();
+  });
+});
+
+describe("wallFeatureVerticalRect", () => {
+  it("centers the decal by default", () => {
+    const [top, bottom] = wallFeatureVerticalRect(100, 300, 0.5, "center");
+    expect(bottom - top).toBeCloseTo(100);
+    expect(top).toBeCloseTo(150);
+    expect(bottom).toBeCloseTo(250);
+  });
+
+  it("anchors to the bottom (floor-grounded props like a grate or vent)", () => {
+    const [top, bottom] = wallFeatureVerticalRect(100, 300, 0.5, "bottom");
+    expect(bottom).toBeCloseTo(300);
+    expect(top).toBeCloseTo(200);
+  });
+
+  it("anchors to the top (e.g. a ceiling-adjacent feature)", () => {
+    const [top, bottom] = wallFeatureVerticalRect(100, 300, 0.5, "top");
+    expect(top).toBeCloseTo(100);
+    expect(bottom).toBeCloseTo(200);
+  });
+
+  it("clamps heightFrac into 0-1", () => {
+    const [top, bottom] = wallFeatureVerticalRect(100, 300, 2, "center");
+    expect(top).toBeCloseTo(100);
+    expect(bottom).toBeCloseTo(300);
   });
 });

@@ -349,4 +349,21 @@ describe("floor definitions", () => {
     expect(findFloor(1)!.treasures![0].itemIds).not.toContain("x");
     expect(findFloor(1)!.tilesetZones![0].theme).not.toBe("changed");
   });
+
+  it("cloneFloor preserves wallFeatures as an independent deep copy", () => {
+    // Regression test: cloneFloor lists fields explicitly (like floorDefToMap
+    // / mapToFloorDef), so a new FloorDef field silently vanishes on every
+    // floor transition unless it's added here too. transitionToFloor()
+    // (game/features.ts) calls cloneFloor on every floor load — this is
+    // exactly the path that dropped wallFeatures for a full render-loop
+    // silently the first time it was wired in.
+    const source: FloorDef = {
+      ...findFloor(2)!,
+      wallFeatures: [{ x: 1, y: 1, dir: "n", spriteId: "test-switch" }],
+    };
+    const clone = cloneFloor(source);
+    expect(clone.wallFeatures).toEqual(source.wallFeatures);
+    clone.wallFeatures![0].spriteId = "changed";
+    expect(source.wallFeatures![0].spriteId).toBe("test-switch");
+  });
 });

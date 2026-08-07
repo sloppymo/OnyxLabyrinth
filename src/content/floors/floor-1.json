@@ -4719,5 +4719,55 @@
     "victoryLine": "The four of them go still and do not rise again. Whatever answered when you called was down here, not up there. The stairs are clear.",
     "rewardItemId": "greater-healing-potion",
     "blocksDir": "e"
-  }
+  },
+  "wallFeatures": [
+    {
+      "x": 10,
+      "y": 14,
+      "dir": "w",
+      "spriteId": "lamp-lock"
+    },
+    {
+      "x": 5,
+      "y": 6,
+      "dir": "n",
+      "spriteId": "bell"
+    },
+    {
+      "x": 10,
+      "y": 18,
+      "dir": "n",
+      "spriteId": "bookshelf-intrusion"
+    },
+    {
+      "x": 5,
+      "y": 9,
+      "dir": "s",
+      "spriteId": "bookshelf-intrusion"
+    },
+    {
+      "x": 7,
+      "y": 6,
+      "dir": "e",
+      "spriteId": "cold-hand"
+    },
+    {
+      "x": 18,
+      "y": 6,
+      "dir": "e",
+      "spriteId": "sweating-iron"
+    },
+    {
+      "x": 12,
+      "y": 5,
+      "dir": "e",
+      "spriteId": "ember-scorch"
+    },
+    {
+      "x": 17,
+      "y": 15,
+      "dir": "w",
+      "spriteId": "upward-water"
+    }
+  ]
 }

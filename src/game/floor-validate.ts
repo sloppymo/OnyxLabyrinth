@@ -9,6 +9,7 @@
 import { type FloorDef } from "../data/floors";
 import { getFloors } from "./floor-registry";
 import { MAP_SPRITES_BY_ID } from "../data/map-sprites";
+import { WALL_FEATURES_BY_ID } from "../data/wall-features";
 import { ITEMS_BY_ID } from "../data/items";
 import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
 import type { FloorMapJSON, CellJSON } from "./floor-map";
@@ -103,6 +104,7 @@ export function validateFloorMap(
   validateOverlayTiles(map, issues);
   validateLockedDoors(map, issues, context?.floors ?? getFloors());
   validateLockedEdgeCoverage(map, issues);
+  validateWallFeatures(map, issues);
   validateReachability(map, issues);
   validateDuplicateOverlays(map, issues);
   validateItemRefs(map, issues);
@@ -359,6 +361,43 @@ function validateLockedEdgeCoverage(map: FloorMapJSON, issues: ValidationIssue[]
           });
         }
       }
+    }
+  }
+}
+
+/**
+ * Wall features are visual-only decals bound to a specific wall face — the
+ * edge they name must actually be a plain "wall" (not door/locked/open;
+ * doors already carry their own art, and there's no wall texture underneath
+ * an open edge to composite onto) and the spriteId must resolve.
+ */
+function validateWallFeatures(map: FloorMapJSON, issues: ValidationIssue[]): void {
+  for (const f of map.wallFeatures ?? []) {
+    if (!inBoundsGrid(map, f.x, f.y)) {
+      issues.push({
+        severity: "error",
+        code: "wall_feature_oob",
+        message: `Wall feature "${f.spriteId}" at (${f.x},${f.y}) out of bounds`,
+        at: { x: f.x, y: f.y },
+      });
+      continue;
+    }
+    const edge = map.grid[f.y][f.x][f.dir];
+    if (edge !== "wall") {
+      issues.push({
+        severity: "error",
+        code: "wall_feature_edge_mismatch",
+        message: `wallFeatures entry (${f.x},${f.y}) ${f.dir} but grid edge is "${edge}" (must be "wall")`,
+        at: { x: f.x, y: f.y },
+      });
+    }
+    if (!WALL_FEATURES_BY_ID[f.spriteId]) {
+      issues.push({
+        severity: "error",
+        code: "wall_feature_unknown",
+        message: `Unknown wall feature id "${f.spriteId}" at (${f.x},${f.y})`,
+        at: { x: f.x, y: f.y },
+      });
     }
   }
 }

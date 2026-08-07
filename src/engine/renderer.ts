@@ -63,6 +63,10 @@ import {
   BILLBOARD_MIN_DEPTH,
   dirFromFacing,
   planeFromDir,
+  wallFeatureCellForHit,
+  stableWallX,
+  wallFeatureLocalU,
+  wallFeatureVerticalRect,
 } from "./render-math";
 import type { RenderCamera } from "./render-math";
 import {
@@ -77,6 +81,7 @@ import {
   type MapSpriteImage,
 } from "./map-sprite-cache";
 import type { MapSpriteDef } from "../data/map-sprites";
+import { getWallFeatureDef, getWallFeatureImage } from "./wall-feature-cache";
 import { featurePropSpriteIds } from "../data/maze-props";
 import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
@@ -230,6 +235,16 @@ export interface LoadedTileset {
    *  (renderer falls back to the shared placeholder, then to the procedural
    *  fill — see `doorTextureForTheme`). */
   door: HTMLCanvasElement | null;
+  /**
+   * Optional architectural panel drawn instead of the plain door texture
+   * when the approach face leads into a stairs_up/stairs_down tile (see
+   * `stairsTextureForTheme`). Loaded from `assets/tilesets/<theme>/stairs.png`
+   * on the public path only (never Vite-bundled) — most themes have none,
+   * which is expected and not a load failure, so a missing file is silent
+   * (no `warnAsset`) and this stays null, falling back to the normal door
+   * panel exactly as before this field existed.
+   */
+  stairs: HTMLCanvasElement | null;
 }
 
 /** Bundled Vite-import fallbacks for campaign themes (also mirrored in public/). */
@@ -271,6 +286,11 @@ function urlsForTheme(theme: string): {
   door: string;
 } {
   return BUNDLED_THEME_URLS[theme] ?? publicThemeUrls(theme);
+}
+
+/** Public path only — see `LoadedTileset.stairs` doc comment. */
+function stairsUrlForTheme(theme: string): string {
+  return `${import.meta.env.BASE_URL}assets/tilesets/${theme}/stairs.png`;
 }
 
 const WATER_FLOOR_A_URL = `${import.meta.env.BASE_URL}assets/tilesets/water/floorA.png`;
@@ -513,6 +533,18 @@ function doorTextureForTheme(
   );
 }
 
+/** The stairs architecture panel for a theme, or null when none is registered
+ *  (falls back to the normal door panel — see the `hit.edge === "door"`
+ *  branch in `render()`). Unlike `doorTextureForTheme`, there is no shared
+ *  placeholder: a theme with no stairs art should render its ordinary door,
+ *  not a generic stairs panel that belongs to a different theme. */
+function stairsTextureForTheme(
+  theme: string,
+  primaryTheme: string
+): HTMLCanvasElement | null {
+  return tilesetCache.get(theme)?.stairs ?? tilesetCache.get(primaryTheme)?.stairs ?? null;
+}
+
 function ensureDoorTextureLoaded(): Promise<void> {
   if (doorTexture) return Promise.resolve();
   if (doorLoadPromise) return doorLoadPromise;
@@ -566,6 +598,7 @@ function ensureWaterTextureLoaded(): Promise<void> {
         },
         repeatedWall: null,
         door: null,
+        stairs: null,
       };
       tilesetGeneration++;
     })
@@ -585,7 +618,7 @@ export function ensureThemeLoaded(theme: string): Promise<LoadedTileset> {
   if (cached) return Promise.resolve(cached);
   let pending = themeLoadPromises.get(theme);
   if (!pending) {
-    pending = loadTileset(urlsForTheme(theme)).then((tileset) => {
+    pending = loadTileset(theme, urlsForTheme(theme)).then((tileset) => {
       tilesetCache.set(theme, tileset);
       tilesetGeneration++;
       themeLoadPromises.delete(theme);
@@ -596,13 +629,16 @@ export function ensureThemeLoaded(theme: string): Promise<LoadedTileset> {
   return pending;
 }
 
-function loadTileset(urls: {
-  wall: string;
-  floorA: string;
-  floorB: string;
-  ceiling: string;
-  door: string;
-}): Promise<LoadedTileset> {
+function loadTileset(
+  theme: string,
+  urls: {
+    wall: string;
+    floorA: string;
+    floorB: string;
+    ceiling: string;
+    door: string;
+  }
+): Promise<LoadedTileset> {
   return Promise.all([
     loadImage(urls.wall).catch(() => {
       warnAsset(`failed to load wall texture: ${urls.wall}`);
@@ -624,7 +660,12 @@ function loadTileset(urls: {
       warnAsset(`failed to load door texture: ${urls.door}`);
       return null;
     }),
-  ]).then(([wall, floorAImg, floorBImg, ceilingImg, doorImg]) => {
+    // Optional and per-theme — most themes have no stairs.png yet. That's not
+    // a failure, so no warnAsset: a 404 here just means the plain door panel
+    // keeps rendering for this theme's stairs exits, same as before this field
+    // existed.
+    loadImage(stairsUrlForTheme(theme)).catch(() => null),
+  ]).then(([wall, floorAImg, floorBImg, ceilingImg, doorImg, stairsImg]) => {
     const wallAdjusted = wall
       ? adjustTextureImage(wall, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)
       : null;
@@ -667,7 +708,14 @@ function loadTileset(urls: {
     // the corridor fog like the rest of the wall art (see ensureDoorTextureLoaded).
     const doorAdjusted = doorImg ? adjustTextureImage(doorImg, 0.92, 1.05) : null;
     const door = doorAdjusted ? prepareRepeatedTexture(doorAdjusted, 1, 1) : null;
-    return { set, repeatedWall, door };
+    // Stairs architecture is a full wall/door-face replacement, not a dim
+    // panel — keep it at the same tone as the surrounding wall art rather
+    // than the door's mild darkening.
+    const stairsAdjusted = stairsImg
+      ? adjustTextureImage(stairsImg, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)
+      : null;
+    const stairs = stairsAdjusted ? prepareRepeatedTexture(stairsAdjusted, 1, 1) : null;
+    return { set, repeatedWall, door, stairs };
   });
 }
 
@@ -1350,11 +1398,59 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       );
     }
 
+    // Wall-feature decal pass: small switches/plaques/reliefs composited onto
+    // one specific wall face (see data/wall-features.ts). Plain "wall" edges
+    // only — door/locked edges already carry their own dedicated art below,
+    // and this needs the plain wall texture underneath to composite over.
+    if (hit.edge === "wall" && state.floor.wallFeatures?.length) {
+      const face = wallFeatureCellForHit(hit.mapX, hit.mapY, hit.side, rayDirX, rayDirY);
+      const featureDef = state.floor.wallFeatures.find(
+        (f) => f.x === face.x && f.y === face.y && f.dir === face.dir
+      );
+      if (featureDef) {
+        const sprite = getWallFeatureDef(featureDef.spriteId);
+        const img = getWallFeatureImage(featureDef.spriteId);
+        if (sprite && img) {
+          const stableX = stableWallX(hit.wallX, hit.side, rayDirX, rayDirY);
+          const u = wallFeatureLocalU(stableX, sprite.widthFrac);
+          if (u !== null) {
+            const [top, bottom] = wallFeatureVerticalRect(
+              drawStart,
+              drawEnd,
+              sprite.heightFrac,
+              sprite.anchor
+            );
+            const texX = Math.min(img.width - 1, Math.floor(u * img.width));
+            ctx.globalAlpha = fog;
+            ctx.drawImage(
+              img,
+              texX,
+              0,
+              1,
+              img.height,
+              x,
+              Math.floor(top),
+              stripWidth,
+              Math.max(1, Math.ceil(bottom) - Math.floor(top))
+            );
+            ctx.globalAlpha = 1.0;
+          }
+        }
+      }
+    }
+
     if (hit.edge === "door" || hit.edge === "locked" || hit.edge === "barred") {
       const isLocked = hit.edge === "locked";
       const isBarred = hit.edge === "barred";
       const fogDoor = opacityForDepth(hit.perpWallDist);
-      const themeDoor = doorTextureForTheme(wallTheme, primaryTheme);
+      // Stairs exits reach this branch via raycastEdgeStop's open->door
+      // coercion (isStairExitFeature). Prefer the theme's architectural
+      // stairs panel there; every other door/locked face — and any theme
+      // with no stairs.png yet — keeps the ordinary door texture.
+      const farTile = state.floor.grid[hit.mapY]?.[hit.mapX]?.tile;
+      const themeDoor = isStairExitFeature(farTile)
+        ? stairsTextureForTheme(wallTheme, primaryTheme) ?? doorTextureForTheme(wallTheme, primaryTheme)
+        : doorTextureForTheme(wallTheme, primaryTheme);
 
       if (themeDoor && !isBarred) {
         // Sample the door panel the same way as wall strips.
