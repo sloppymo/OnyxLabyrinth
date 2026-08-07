@@ -41,5 +41,12 @@ dev-party-creation.html
 .firecrawl/
 .playwright-cli/
 
+# Local secrets — API keys for sprite-gen tooling etc, never tracked
+.env
+.env.*
+
+# PixelLab API test/scratch output
+/scripts/pixellab-out/
+
 # Ephemeral venv for one-off music tooling (not part of the build)
 .venv-music/
