@@ -46,3 +46,29 @@ combat sprites.
   pattern hides it; this arch's clean lines don't). Documented as a known
   minor rendering quirk rather than touched, since fixing it means editing
   the raycaster's DDA tie-break, out of scope for an art pass.
+
+## Asset: lamp-lock (wallFeatures decal)
+
+- **Location**: Floor 1 (10,14) dir `w`. Event at (11,14): "Five metals meet
+  at a lock shaped like a lamp." Placed one tile west, on the plain wall
+  the player faces while standing on/near that event tile.
+- **Mechanism**: wallFeatures decal (first real one, not the throwaway
+  smoke test). `widthFrac: 0.3, heightFrac: 0.4, anchor: "center"`.
+- **Endpoint**: `create-image-pixflux`, 64x64, `no_background: true`.
+- **Reference**: `color_image` = `src/assets/f1_wall_256.png`.
+- **Description**: "small ornate mechanical lock shaped like an oil lamp,
+  made of five different tarnished metals - bronze, iron, silver, gold,
+  copper - bolted into ancient stone, mysterious dungeon mechanism, front
+  view, dark 16-bit dungeon crawler pixel art, no text"
+- **Candidates generated**: 1. **Accepted**: 1 (`f1-lamp-lock-01.png`) — reads
+  as an ornate mechanism with a lamp-like domed top and a keyhole; genuine
+  "five metals" detail is implicit rather than literal, acceptable given the
+  event text itself is figurative.
+- **Output**: `public/assets/wall-features/lamp-lock.png`
+- **In-engine QA**: `scripts/floor1-wallfeature-qa.mjs f1-lamplock 10 14 3 11 14 3 12 14 3`
+  — confirmed centered, wall-attached (not floating), no stretching, no
+  mirroring artifacts, legible at 0/1/2-tile distance and appropriately
+  subtle (not glowing/UI-like) at range. **This calibration
+  (widthFrac 0.3 / heightFrac 0.4 / anchor center) is the baseline reused
+  for the remaining Floor 1 wall decals** unless a specific asset's
+  silhouette calls for a different aspect (e.g. a taller relief).

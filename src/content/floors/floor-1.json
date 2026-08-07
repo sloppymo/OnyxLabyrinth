@@ -4522,5 +4522,13 @@
       "kind": "message",
       "message": "Iron sweats. Something below coughs once."
     }
+  ],
+  "wallFeatures": [
+    {
+      "x": 10,
+      "y": 14,
+      "dir": "w",
+      "spriteId": "lamp-lock"
+    }
   ]
 }

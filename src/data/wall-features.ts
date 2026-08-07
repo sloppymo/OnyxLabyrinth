@@ -19,7 +19,16 @@ export interface WallFeatureSpriteDef {
   anchor: "center" | "bottom" | "top";
 }
 
-export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [];
+export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
+  {
+    id: "lamp-lock",
+    name: "Lamp-shaped Lock",
+    file: "lamp-lock.png",
+    widthFrac: 0.3,
+    heightFrac: 0.4,
+    anchor: "center",
+  },
+];
 
 export const WALL_FEATURES_BY_ID: Record<string, WallFeatureSpriteDef> = Object.fromEntries(
   WALL_FEATURES.map((f) => [f.id, f])
