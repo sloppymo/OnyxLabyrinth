@@ -209,10 +209,11 @@
     </div>
   </div>
   <div class="card">
-    <img src="screenshots/chain-long.png" alt="long thin chain hanging in cistern corridor">
+    <img src="screenshots/chain-long.png" alt="long thin chain hanging in cistern corridor, pre-scale-fix">
+    <img src="screenshots/chain-long-scaled.png" alt="same chain at scale 0.7, 1 tile away, now ending well above the floor">
     <div class="body">
       <h3>Long Rusted Chain <span class="status notes">ACCEPT WITH NOTES</span></h3>
-      <div class="meta">(21,16) · <span class="tag">ceiling sprite</span> · id <code>f1-chain-long</code></div>
+      <div class="meta">(21,16) · <span class="tag">ceiling sprite</span> · id <code>f1-chain-long</code> · <code>scale: 0.7</code></div>
       <div class="qa"><strong>Found and fixed during QA:</strong> ceiling
       sprites were originally drawn into a forced square region
       (<code>size × size</code>), copied from <code>drawMapSprites</code>
@@ -223,6 +224,20 @@
       derived from each image's own aspect ratio, with <code>size</code>
       driving height. This screenshot is post-fix — the chain reads as
       genuinely thin, matching the source art, not stretched.</div>
+      <div class="qa"><strong>Also found during QA:</strong> at 1 tile away
+      the full-length chain ran from the ceiling line to the floor,
+      reading more like a floor-to-ceiling pole than a hanging chain — the
+      one placement in this batch where "no arbitrary tiny-size clamp"
+      produced a genuine floor intersection rather than an acceptable
+      close-up crop. This is what the optional per-placement
+      <code>scale</code> field exists for; it had shipped
+      schema-validated but unused by any placement. Set
+      <code>scale: 0.7</code> here and re-verified at 1 and 2 tiles
+      (<code>screenshots/chain-long-scaled.png</code>): the chain now
+      reads unambiguously as hanging — shorter, ends well above the
+      floor with its hook/ring visible, still top-anchored to the
+      ceiling and correctly perspective-scaled between the two
+      distances.</div>
     </div>
   </div>
   <div class="card">

@@ -4326,7 +4326,8 @@
     {
       "x": 21,
       "y": 16,
-      "spriteId": "f1-chain-long"
+      "spriteId": "f1-chain-long",
+      "scale": 0.7
     },
     {
       "x": 11,
