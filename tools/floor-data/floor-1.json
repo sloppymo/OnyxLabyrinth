@@ -4344,6 +4344,18 @@
       "y": 23,
       "dir": "n",
       "spriteId": "hot-bois-tavern-door"
+    },
+    {
+      "x": 10,
+      "y": 10,
+      "dir": "e",
+      "spriteId": "namanda-church-door"
+    },
+    {
+      "x": 11,
+      "y": 10,
+      "dir": "w",
+      "spriteId": "namanda-church-door"
     }
   ],
   "teleporters": [

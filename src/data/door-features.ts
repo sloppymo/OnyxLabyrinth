@@ -20,6 +20,11 @@ export const DOOR_FEATURES: readonly DoorFeatureSpriteDef[] = [
     name: "Hot Boi's Tavern Door",
     file: "hot-bois-tavern-door.png",
   },
+  {
+    id: "namanda-church-door",
+    name: "Church of Saint Namanda Door",
+    file: "namanda-church-door.png",
+  },
 ];
 
 export const DOOR_FEATURES_BY_ID: Record<string, DoorFeatureSpriteDef> = Object.fromEntries(
