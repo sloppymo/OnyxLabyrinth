@@ -72,3 +72,49 @@ combat sprites.
   (widthFrac 0.3 / heightFrac 0.4 / anchor center) is the baseline reused
   for the remaining Floor 1 wall decals** unless a specific asset's
   silhouette calls for a different aspect (e.g. a taller relief).
+
+## Assets: bell, bookshelf-intrusion, cold-hand, sweating-iron, ember-scorch, upward-water
+
+All six generated via `create-image-pixflux`, `no_background: true`, each
+`--palette`-locked to the actual wall texture of the theme the target
+coordinate's `tilesetZones` entry resolves to (not always f1 — several of
+these events sit inside F1's "wound" quadrants, which are pre-textured with
+a neighboring floor's theme). One candidate accepted per asset except
+upward-water (rerolled once — v1 was too abstract/textural to read as a
+droplet; v2's tighter "single droplet, clear silhouette" prompt fixed it).
+
+| Asset | Location | Event source | Zone / reference theme | widthFrac/heightFrac/anchor |
+|---|---|---|---|---|
+| `bell` | (5,6) `n`, and reused at (3,15)? no — (3,15) uses bookshelf-intrusion | "THE THIRD BELL HAS NO TONGUE." | cut-bell-chapel → f4 | 0.3 / 0.55 / top |
+| `bookshelf-intrusion` | (8,19) `n` and (3,15) `w` | "Shelves begin where the stone should be." / "The shelves list books not yet written." | unfinished-index → f2 | 0.4 / 0.7 / bottom |
+| `cold-hand` | (7,6) `e` | "A cold hand closes your wounds." (heal event) | cut-bell-chapel → f4 | 0.28 / 0.4 / center |
+| `sweating-iron` | (18,6) `e` | "Iron sweats. Something below coughs once." | ember-suture → f3 | 0.35 / 0.45 / center |
+| `ember-scorch` | (12,5) `e` | "Embers flower underfoot." | ember-suture → f3 | 0.3 / 0.35 / bottom |
+| `upward-water` | (17,15) `w` | "Black water drips upward, one bead at a time." | upward-cistern → f5 | 0.22 / 0.35 / top |
+
+**In-engine QA**: `scripts/floor1-wallfeature-qa.mjs f1-decals 5 6 0  8 19 0  3 15 3  7 6 1  18 6 1  12 5 1  17 15 3`
+— all six confirmed wall-attached, correctly scaled, no stretching/mirroring
+artifacts, legible without reading as a floating UI icon.
+
+**Known limitation, documented rather than fixed**: both `bookshelf-intrusion`
+placements sit several cells inside the already-f2-themed `unfinished-index`
+zone rather than exactly on the crypt/library seam, so the "impossible
+material crossing into stone" contrast the event text implies is muted —
+the decal mostly blends into the already-library-toned wall around it
+instead of visibly interrupting plain crypt stone. The `sweating-iron` and
+`cold-hand`/`bell` placements don't have this problem (their events sit
+close enough to their zone's edge, or the material families differ sharply
+enough from the flanking crypt masonry, that the decal still pops).
+Repositioning the two bookshelf entries onto a plain-crypt-themed wall face
+one or two cells outside the library zone (still near their event tiles)
+would fix this — flagged as the top remaining opportunity in the final
+report rather than iterated on further this pass.
+
+**Floor-decal adaptation note**: `ember-scorch` (12,5) and `upward-water`
+(17,15) visualize event text that describes a *floor*-level phenomenon
+("flower underfoot", water "drips" implying a ceiling/floor relationship).
+wallFeatures only supports wall-face decals in this pass (floor decals are
+a different rendering mode, not built here) — both were adapted to a
+wall-mounted equivalent (a scorched wall-base patch; a droplet clinging to
+a wall crack near the ceiling) rather than left unvisualized. Noted as a
+deliberate scope decision, not an oversight.

@@ -4242,6 +4242,56 @@
       "spriteId": "torch"
     }
   ],
+  "wallFeatures": [
+    {
+      "x": 10,
+      "y": 14,
+      "dir": "w",
+      "spriteId": "lamp-lock"
+    },
+    {
+      "x": 5,
+      "y": 6,
+      "dir": "n",
+      "spriteId": "bell"
+    },
+    {
+      "x": 8,
+      "y": 19,
+      "dir": "n",
+      "spriteId": "bookshelf-intrusion"
+    },
+    {
+      "x": 3,
+      "y": 15,
+      "dir": "w",
+      "spriteId": "bookshelf-intrusion"
+    },
+    {
+      "x": 7,
+      "y": 6,
+      "dir": "e",
+      "spriteId": "cold-hand"
+    },
+    {
+      "x": 18,
+      "y": 6,
+      "dir": "e",
+      "spriteId": "sweating-iron"
+    },
+    {
+      "x": 12,
+      "y": 5,
+      "dir": "e",
+      "spriteId": "ember-scorch"
+    },
+    {
+      "x": 17,
+      "y": 15,
+      "dir": "w",
+      "spriteId": "upward-water"
+    }
+  ],
   "teleporters": [
     {
       "x": 3,
