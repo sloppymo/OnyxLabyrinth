@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Floor 1 Environmental Art — Review Gallery</title>
+<style>
+  body { background:#0e0d0a; color:#e8e0d0; font-family: -apple-system, Segoe UI, sans-serif; margin:0; padding:2rem; }
+  h1 { color:#e0a458; margin-bottom:0.2rem; }
+  .sub { color:#a8a090; margin-bottom:2rem; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap:1.5rem; }
+  .card { background:#1a1712; border:1px solid #3a332a; border-radius:6px; overflow:hidden; }
+  .card img { width:100%; display:block; image-rendering: pixelated; background:#000; }
+  .card .body { padding:0.9rem 1rem; }
+  .card h2 { font-size:1.05rem; margin:0 0 0.3rem; color:#f5f0e6; }
+  .meta { font-size:0.82rem; color:#c8a040; margin-bottom:0.5rem; }
+  .qa { font-size:0.85rem; color:#c8bfa8; line-height:1.4; }
+  .tag { display:inline-block; font-size:0.72rem; padding:0.15rem 0.5rem; border-radius:3px; background:#2a2418; color:#e0a458; margin-right:0.4rem; }
+  .shots { display:flex; gap:0.3rem; }
+  .shots img { flex: 1 1 0; }
+  footer { margin-top:3rem; color:#7a7264; font-size:0.8rem; }
+</style>
+</head>
+<body>
+<h1>Floor 1 — The Hall of Five Wounds</h1>
+<div class="sub">Environmental art pass review · commit range c590d09 → agent/floor1-environment-art · all screenshots captured live in the production raycaster</div>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="shots">
+      <img src="screenshots/stairs-close.png" alt="stairs close">
+      <img src="screenshots/stairs-mid.png" alt="stairs mid">
+      <img src="screenshots/stairs-far.png" alt="stairs far">
+    </div>
+    <div class="body">
+      <h2>Stairway Down</h2>
+      <div class="meta">(20,2) · <span class="tag">stairs panel</span> hero asset</div>
+      <div class="qa">Full architectural wall-face replacement via the new per-theme
+      <code>LoadedTileset.stairs</code> slot (same substitution point as door.png).
+      Reads as a real descending stairwell at 1/2/4-tile approach; at distance it
+      glows as a strong landmark against the flanking ember-suture (f3) zone.
+      Minor known issue: a faint centerline seam appears only when the camera is
+      perfectly axis-aligned — a pre-existing raycaster tie-break, not unique to
+      this asset (documented, not fixed this pass).</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <img src="screenshots/lamp-lock.png" alt="lamp lock">
+    <div class="body">
+      <h2>Lamp-shaped Lock</h2>
+      <div class="meta">(10,14) w · <span class="tag">wallFeature decal</span></div>
+      <div class="qa">Visualizes "Five metals meet at a lock shaped like a lamp"
+      (11,14). Calibration asset for the wallFeatures system — established
+      widthFrac 0.3 / heightFrac 0.4 / anchor center as the baseline reused
+      for the rest of the pass. Reads as wall-embedded, not a floating billboard.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <img src="screenshots/bell.png" alt="tongueless bell">
+    <div class="body">
+      <h2>Tongueless Bell</h2>
+      <div class="meta">(5,6) n · <span class="tag">wallFeature decal</span></div>
+      <div class="qa">"THE THIRD BELL HAS NO TONGUE." Top-anchored in the cut-bell
+      chapel niche, rope cut at the frame edge. One of the strongest results —
+      clean silhouette, matches the f4 choir palette precisely.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <img src="screenshots/cold-hand.png" alt="cold hand shrine">
+    <div class="body">
+      <h2>Cold-Hand Shrine</h2>
+      <div class="meta">(7,6) e · <span class="tag">wallFeature decal</span></div>
+      <div class="qa">"A cold hand closes your wounds" (heal event). Carved stone
+      hand reaching from a niche. Eerie, well-matched to the chapel stone,
+      no gore/cartoon-hand failure modes.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <img src="screenshots/sweating-iron.png" alt="sweating iron plate">
+    <div class="body">
+      <h2>Sweating Iron Plate</h2>
+      <div class="meta">(18,6) e · <span class="tag">wallFeature decal</span></div>
+      <div class="qa">"Iron sweats. Something below coughs once." Riveted plate
+      with glowing ember cracks at the base, bolted into the ember-suture wall.
+      Strongest of the six decals — forge infrastructure that genuinely looks
+      like it doesn't belong in a crypt.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <img src="screenshots/bookshelf-8-19.png" alt="bookshelf intrusion 8,19">
+    <div class="body">
+      <h2>Impossible Bookshelf (8,19)</h2>
+      <div class="meta">(8,19) n · <span class="tag">wallFeature decal</span> <span class="tag">known limitation</span></div>
+      <div class="qa">"Shelves begin where the stone should be." Placed inside the
+      already-f2-themed unfinished-index zone, so the decal blends into the
+      surrounding shelf wall rather than interrupting plain crypt stone — the
+      "impossible intrusion" contrast the event text implies is muted here.
+      Top remaining opportunity: reposition to the actual crypt/library seam.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <img src="screenshots/bookshelf-3-15.png" alt="bookshelf intrusion 3,15">
+    <div class="body">
+      <h2>Impossible Bookshelf (3,15)</h2>
+      <div class="meta">(3,15) w · <span class="tag">wallFeature decal</span> <span class="tag">known limitation</span></div>
+      <div class="qa">"The shelves list books not yet written." Same asset, same
+      placement issue as (8,19) — deep inside the library zone rather than at
+      its boundary.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <img src="screenshots/ember-scorch.png" alt="ember scorch mark">
+    <div class="body">
+      <h2>Ember Scorch Mark</h2>
+      <div class="meta">(12,5) e · <span class="tag">wallFeature decal</span> <span class="tag">adapted</span></div>
+      <div class="qa">"Embers flower underfoot" — the source text describes a
+      floor-level phenomenon; wallFeatures only covers wall faces this pass, so
+      this ships as a bottom-anchored scorched wall-base patch instead. Weakest
+      of the six — blends somewhat with the already-scorched ember-suture wall
+      around it.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <img src="screenshots/upward-water.png" alt="upward dripping water">
+    <div class="body">
+      <h2>Upward-Dripping Water</h2>
+      <div class="meta">(17,15) w · <span class="tag">wallFeature decal</span> <span class="tag">adapted</span></div>
+      <div class="qa">"Black water drips upward, one bead at a time." Adapted to
+      a single droplet clinging to a wet ceiling-adjacent crack (top-anchored)
+      rather than a true floor-level or animated effect. Rerolled once — the
+      first candidate was too abstract/textural to read as a droplet.</div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Generated during the overnight Floor 1 environmental art pass. Raw candidates
+  and full prompts/settings in <code>art/pixellab/maze-environment-generation-log.md</code>.
+  Progress log in <code>docs/FLOOR1-ENVIRONMENT-ART-OVERNIGHT.md</code>.
+</footer>
+
+</body>
+</html>

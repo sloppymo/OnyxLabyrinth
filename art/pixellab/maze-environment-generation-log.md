@@ -85,7 +85,7 @@ droplet; v2's tighter "single droplet, clear silhouette" prompt fixed it).
 
 | Asset | Location | Event source | Zone / reference theme | widthFrac/heightFrac/anchor |
 |---|---|---|---|---|
-| `bell` | (5,6) `n`, and reused at (3,15)? no — (3,15) uses bookshelf-intrusion | "THE THIRD BELL HAS NO TONGUE." | cut-bell-chapel → f4 | 0.3 / 0.55 / top |
+| `bell` | (5,6) `n` | "THE THIRD BELL HAS NO TONGUE." | cut-bell-chapel → f4 | 0.3 / 0.55 / top |
 | `bookshelf-intrusion` | (8,19) `n` and (3,15) `w` | "Shelves begin where the stone should be." / "The shelves list books not yet written." | unfinished-index → f2 | 0.4 / 0.7 / bottom |
 | `cold-hand` | (7,6) `e` | "A cold hand closes your wounds." (heal event) | cut-bell-chapel → f4 | 0.28 / 0.4 / center |
 | `sweating-iron` | (18,6) `e` | "Iron sweats. Something below coughs once." | ember-suture → f3 | 0.35 / 0.45 / center |
