@@ -456,7 +456,7 @@ export class TavernController {
 
     const isRoot = this.phase === "root";
     const subtitle = isRoot ? `<div class="tavern-subtitle">Tavern &amp; Adventurers' Hall</div>` : "";
-    const portraitHtml = `<div class="tavern-portrait"><img src="${HOT_BOI_PORTRAIT_URL}" alt="Hot Boi" /><div class="tavern-portrait-label">Hot Boi</div></div>`;
+    const portraitHtml = `<div class="tavern-portrait"><img src="${HOT_BOI_PORTRAIT_URL}" alt="Hot Boi" /></div>`;
     const dialogueHtml = `<div class="npc-dialogue">${this.dialogue}</div>`;
     const ambientHtml =
       isRoot ? `<div class="tavern-ambient">${this.ambient}</div>` : "";
