@@ -552,6 +552,7 @@ export function cloneFloor(floor: FloorDef): FloorDef {
       ? floor.encounterZones.map((z) => ({ ...z }))
       : undefined,
     mapSprites: floor.mapSprites ? floor.mapSprites.map((s) => ({ ...s })) : undefined,
+    wallFeatures: floor.wallFeatures ? floor.wallFeatures.map((f) => ({ ...f })) : undefined,
     teleporters: floor.teleporters ? floor.teleporters.map((t) => ({ ...t })) : undefined,
     chuteDrops: floor.chuteDrops ? floor.chuteDrops.map((c) => ({ ...c })) : undefined,
     lockedDoors: floor.lockedDoors ? floor.lockedDoors.map((d) => ({ ...d })) : undefined,
