@@ -4537,7 +4537,7 @@
       "title": "the Tavern Keeper",
       "x": 10,
       "y": 24,
-      "greeting": "Hot Boi waves a ladle. \"Welcome to the hall. The right-hand way down is flooded — you need a raft. Ask me about the raft, the chute, or the water.\"",
+      "greeting": "Hot Boi waves a ladle. \"Welcome to Hot Boi's. Sorry about the smell. The right-hand way down is flooded — you need a raft. Ask me about the raft, the chute, or the water.\"",
       "returnGreeting": "Hot Boi nods. \"The hall keeps its wounds open.\"",
       "topics": [
         {

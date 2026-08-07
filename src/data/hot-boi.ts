@@ -29,7 +29,7 @@ export function hotBoiGreeting(state: GameState, firstVisit: boolean): string {
     return "\"You found it, then.\" Hot Boi nods at the ladle in his hand like it explains something. \"The fork's yours whenever you're ready for it.\"";
   }
   if (firstVisit) {
-    return "\"Welcome to the hall.\" Hot Boi wipes a mug that was never going to get cleaner. \"You look mostly alive. That puts you ahead of last night's crowd.\"";
+    return "\"Welcome to Hot Boi's. Sorry about the smell.\"";
   }
   return "\"Back again.\" Hot Boi doesn't look up from the mug. \"The hall keeps its wounds open. So do I, apparently.\"";
 }
