@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Floor 1 Ceiling Art — Review Gallery</title>
+<style>
+  body { background:#0e0d0a; color:#e8e0d0; font-family: -apple-system, Segoe UI, sans-serif; margin:0; padding:2rem; }
+  h1 { color:#e0a458; margin-bottom:0.2rem; }
+  .sub { color:#a8a090; margin-bottom:1rem; max-width:900px; }
+  h2.section { color:#e0a458; border-bottom:1px solid #3a332a; padding-bottom:0.3rem; margin-top:2.5rem; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap:1.5rem; margin-top:1rem; }
+  .card { background:#1a1712; border:1px solid #3a332a; border-radius:6px; overflow:hidden; }
+  .card img { width:100%; display:block; image-rendering: pixelated; background:#000; }
+  .card .thumbs { display:flex; gap:0.3rem; padding:0.5rem; background:#100e0a; }
+  .card .thumbs img { flex:1 1 0; border:1px solid #2a241c; }
+  .card .body { padding:0.9rem 1rem; }
+  .card h3 { font-size:1.05rem; margin:0 0 0.3rem; color:#f5f0e6; }
+  .meta { font-size:0.82rem; color:#c8a040; margin-bottom:0.5rem; }
+  .qa { font-size:0.85rem; color:#c8bfa8; line-height:1.4; }
+  .tag { display:inline-block; font-size:0.72rem; padding:0.15rem 0.5rem; border-radius:3px; background:#2a2418; color:#e0a458; margin-right:0.4rem; }
+  .status { display:inline-block; font-size:0.72rem; font-weight:600; padding:0.15rem 0.5rem; border-radius:3px; margin-left:0.3rem; }
+  .status.accept { background:#1f3a24; color:#7ed48a; }
+  .status.notes { background:#3a3020; color:#e0c458; }
+  .status.parked { background:#2a2a2a; color:#a0a0a0; }
+  .parked-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:1rem; margin-top:1rem; }
+  .parked-card { background:#1a1712; border:1px solid #3a332a; border-radius:6px; padding:0.6rem; text-align:center; }
+  .parked-card img { width:100%; image-rendering:pixelated; background:#000; margin-bottom:0.4rem; }
+  .parked-card .name { font-size:0.8rem; color:#c8bfa8; }
+  footer { margin-top:3rem; color:#7a7264; font-size:0.8rem; padding-bottom:2rem; }
+  code { background:#100e0a; padding:0.1rem 0.3rem; border-radius:3px; }
+</style>
+</head>
+<body>
+<h1>Floor 1 — Ceiling Environment Art Pass</h1>
+<div class="sub">
+  Two new renderer primitives — <code>ceilingSprites</code> (top-anchored
+  hanging billboards) and <code>ceilingFeatures</code> (per-cell ceiling
+  texture overrides) — plus an 18-asset PixelLab batch, 15 of which are
+  placed into Floor 1's five regional zones. All screenshots captured live
+  in the production raycaster (<code>vite preview</code>), not isolated
+  PNGs. Branch <code>agent/ceiling-environment-art</code>.
+</div>
+
+<h2 class="section">Baseline — for comparison</h2>
+<div class="grid">
+  <div class="card">
+    <img src="screenshots/baseline-plain-ceiling-f2.png" alt="plain ceiling baseline, floor 2, no ceiling art">
+    <div class="body">
+      <h3>Plain ceiling, no art (Floor 2)</h3>
+      <div class="meta"><span class="tag">reference</span></div>
+      <div class="qa">Floor 2 has zero ceiling art. Included because a straight
+      corridor's own base ceiling texture already shows a radiating
+      beam/plank pattern under this engine's affine perspective cast — worth
+      seeing once so it isn't mistaken for a rendering bug in the cards below
+      (it was, briefly, during this pass's own QA).</div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section">Hero landmark — full 1 / 2 / 4-tile + off-axis</h2>
+<div class="grid">
+  <div class="card">
+    <div class="thumbs">
+      <img src="screenshots/cage-1tile.png" alt="cage at 1 tile">
+      <img src="screenshots/cage-2tile.png" alt="cage at 2 tiles">
+      <img src="screenshots/cage-4tile.png" alt="cage at 4 tiles">
+    </div>
+    <img src="screenshots/cage-offaxis.png" alt="cage seen off-axis through a doorway, partially occluded by a wall corner">
+    <div class="body">
+      <h3>Hanging Iron Cage <span class="status accept">ACCEPT</span></h3>
+      <div class="meta">(11,18) · <span class="tag">ceiling sprite</span> · id <code>f1-cage</code> · crypt spine</div>
+      <div class="qa">Three chains converge to a real attachment point at the
+      ceiling line at every distance tested — the top never freezes or slides
+      as the party approaches, which was the one thing this whole primitive
+      had to get right. At 1 tile it fills most of the screen (deliberately
+      unclamped, like floor decor); at 4 tiles it's a small, clean landmark
+      silhouette. The off-axis shot (bottom image, standing in a side room
+      looking through a doorway) shows correct wall occlusion: the wall
+      corner clips most of the cage, a small sliver shows through the open
+      doorway, no bleed-through. Reads dark against a dark unlit corridor —
+      consistent with how the existing wallFeature decals read in the same
+      lighting, not a defect unique to this asset.</div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section">Chapel zone (theme f4, NW)</h2>
+<div class="grid">
+  <div class="card">
+    <img src="screenshots/namanda-mark-with-censer.png" alt="chapel relief medallion overhead with censer visible beyond">
+    <div class="body">
+      <h3>Chapel Relief + Censer (combined view) <span class="status accept">ACCEPT</span></h3>
+      <div class="meta">(6,4) feature · (7,4) sprite · <span class="tag">ceiling feature</span> <span class="tag">ceiling sprite</span></div>
+      <div class="qa">The best single shot in the pass: the relief medallion
+      (<code>f1-ceiling-namanda-mark</code>) fills the near ceiling exactly
+      where the per-cell UV mapping says it should, and the censer
+      (<code>f1-censer</code>) is correctly visible two tiles further down
+      the same room, both legible in one frame. No canonical Namanda symbol
+      exists anywhere in the merged codebase (checked — see the generation
+      log), so the relief is a neutral worn sun/wheel carving, not invented
+      iconography; the censer is the task's suggested Namanda-compatible
+      fallback asset.</div>
+    </div>
+  </div>
+  <div class="card">
+    <img src="screenshots/censer.png" alt="censer close up, well lit">
+    <div class="body">
+      <h3>Hanging Censer, close <span class="status accept">ACCEPT</span></h3>
+      <div class="meta">(7,4) · <span class="tag">ceiling sprite</span> · id <code>f1-censer</code></div>
+      <div class="qa">Standing directly under it: chains attach cleanly at
+      the ceiling, bowl and lid detail hold up at full scale, good contrast
+      against the lighter chapel stone (the chapel's palette reads noticeably
+      better than the unlit crypt corridors — worth reusing this framing for
+      future landmark placements).</div>
+    </div>
+  </div>
+  <div class="card">
+    <img src="screenshots/bell-cracked.png" alt="cracked hanging bell close up">
+    <div class="body">
+      <h3>Cracked Hanging Bell <span class="status accept">ACCEPT</span></h3>
+      <div class="meta">(4,6) · <span class="tag">ceiling sprite</span> · id <code>f1-bell-cracked</code></div>
+      <div class="qa">Clearly distinct from the existing wall-mounted
+      tongueless <code>bell</code> wallFeature two cells away — this one
+      unmistakably hangs (bracket + drop), the other is set into the wall
+      face. Reads well at 2 tiles.</div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section">Forge / ember-suture zone (theme f3, NE)</h2>
+<div class="grid">
+  <div class="card">
+    <img src="screenshots/chain-hook-with-plate.png" alt="chain and hook with attachment plate visible on ceiling above, near stairs">
+    <div class="body">
+      <h3>Chain + Hook, paired with Chain Plate <span class="status accept">ACCEPT</span></h3>
+      <div class="meta">(19,3) both · <span class="tag">ceiling sprite</span> <span class="tag">ceiling feature</span> · near the stairs landmark</div>
+      <div class="qa">A ceiling feature and a ceiling sprite placed on the
+      <em>same cell</em> on purpose: the riveted attachment plate
+      (<code>f1-ceiling-chain-plate</code>) sits directly above the hook
+      chain (<code>f1-chain-hook</code>), so the chain visibly attaches to
+      hardware instead of just disappearing into plain stone — the strongest
+      demonstration in this pass of "the top attachment is important." Good
+      ember-orange forge palette against the scorched wall.</div>
+    </div>
+  </div>
+  <div class="card">
+    <img src="screenshots/forge-counterweight.png" alt="solid iron counterweight ball on a chain">
+    <div class="body">
+      <h3>Forge Chain Counterweight <span class="status accept">ACCEPT</span></h3>
+      <div class="meta">(13,4) · <span class="tag">ceiling sprite</span> · id <code>f1-forge-counterweight</code></div>
+      <div class="qa">Reroll (v2) — the first candidate read as a second
+      lantern (windowed, glowing). This version is a solid opaque iron mass
+      with visible rivets, clearly a weight rather than a light source.
+      Distinct silhouette from every other hanging asset in the set.</div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section">Unfinished-index / library zone (theme f2, SW)</h2>
+<div class="grid">
+  <div class="card">
+    <img src="screenshots/lantern-hanging.png" alt="hanging lantern in library corridor">
+    <div class="body">
+      <h3>Hanging Lantern <span class="status notes">ACCEPT WITH NOTES</span></h3>
+      <div class="meta">(7,14) · <span class="tag">ceiling sprite</span> · id <code>f1-lantern-hanging</code></div>
+      <div class="qa"><strong>Found and fixed during QA:</strong> the first
+      placement (7,12) landed on the exact same cell as a pre-existing
+      floor-standing <code>crate</code> mapSprite, and the two billboards
+      overlapped into what looked like a broken opaque orange rectangle — a
+      placement bug, not a render bug (confirmed by inspecting the source
+      PNG's alpha channel directly: clean 0/255, no partial values). Moved to
+      (7,14), a clean cell nearby; the fix is a reminder to cross-check new
+      placements against existing <code>mapSprites</code>/<code>wallFeatures</code>/<code>events</code>/<code>treasures</code>
+      coordinates, which this pass now does for all 15 final placements.</div>
+    </div>
+  </div>
+  <div class="card">
+    <img src="screenshots/ceiling-hole.png" alt="broken masonry ceiling hole in library">
+    <div class="body">
+      <h3>Broken Masonry Hole <span class="status accept">ACCEPT</span></h3>
+      <div class="meta">(3,16) · <span class="tag">ceiling feature</span> · id <code>f1-ceiling-hole</code></div>
+      <div class="qa">Reads as damage/decay fitting the "unfinished" library
+      theme — a gap in the wooden-beamed ceiling revealing rougher stone
+      above. A treasure chest is visible in the same shot purely by
+      coincidence of the corridor layout; good incidental composition.</div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section">Upward-cistern zone (theme f5, SE)</h2>
+<div class="grid">
+  <div class="card">
+    <div class="thumbs">
+      <img src="screenshots/drain-and-root-curtain-far.png" alt="drain close, root curtain far, both visible">
+      <img src="screenshots/root-curtain-close.png" alt="root curtain at 1 tile, filling the frame">
+    </div>
+    <div class="body">
+      <h3>Ceiling Drain + Root Curtain <span class="status accept">ACCEPT</span></h3>
+      <div class="meta">(17,15) feature · (17,13) sprite · <span class="tag">ceiling feature</span> <span class="tag">ceiling sprite</span></div>
+      <div class="qa">The drain (<code>f1-ceiling-drain</code>) sits directly
+      on the same cell as the existing "black water drips upward" event and
+      the <code>upward-water</code> wallFeature — the water now has a
+      visible source overhead, not just a wall decal. Root curtain
+      (<code>f1-root-curtain</code>) at 1 tile (right image) is the most
+      dramatic single frame in the set: irregular strand lengths, solid mass
+      at the ceiling line, genuine sense of things hanging down into the
+      party's space. Cistern's teal fog tint does a lot of work for mood
+      here.</div>
+    </div>
+  </div>
+  <div class="card">
+    <img src="screenshots/chain-long.png" alt="long thin chain hanging in cistern corridor">
+    <div class="body">
+      <h3>Long Rusted Chain <span class="status notes">ACCEPT WITH NOTES</span></h3>
+      <div class="meta">(21,16) · <span class="tag">ceiling sprite</span> · id <code>f1-chain-long</code></div>
+      <div class="qa"><strong>Found and fixed during QA:</strong> ceiling
+      sprites were originally drawn into a forced square region
+      (<code>size × size</code>), copied from <code>drawMapSprites</code>
+      without noticing that mapSprite art is uniformly 32×32 while this
+      pass's art is intentionally tall-and-narrow (a 56×144 chain vs. an
+      88×128 cage). Squares distorted each asset by a different,
+      art-dependent amount. Fixed in <code>renderer.ts</code>: width is now
+      derived from each image's own aspect ratio, with <code>size</code>
+      driving height. This screenshot is post-fix — the chain reads as
+      genuinely thin, matching the source art, not stretched.</div>
+    </div>
+  </div>
+  <div class="card">
+    <img src="screenshots/water-stain-close.png" alt="water stain feature, very subtle, barely visible">
+    <div class="body">
+      <h3>Water-Damaged Ceiling Patch <span class="status notes">ACCEPT WITH NOTES</span></h3>
+      <div class="meta">(21,13) · <span class="tag">ceiling feature</span> · id <code>f1-ceiling-water-stain</code></div>
+      <div class="qa">This is the deliberately subtle "ordinary dressing"
+      entry the task brief asked for, and at 1 tile in a dim corridor it is
+      <em>very</em> subtle — close to invisible without knowing to look for
+      it. That matches the brief ("subtle not overwhelming") but is worth
+      flagging: if a future pass wants players to actually register this as
+      authored content rather than texture noise, it needs more contrast.
+      Shipping as-is since under-stating an "ordinary" tile is the safer
+      failure mode.</div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section">Crypt spine (theme f1, central corridor)</h2>
+<div class="grid">
+  <div class="card">
+    <img src="screenshots/chain-broken.png" alt="two-chain pair hanging in crypt corridor">
+    <div class="body">
+      <h3>Short Chain Pair <span class="status accept">ACCEPT</span></h3>
+      <div class="meta">(11,24) · <span class="tag">ceiling sprite</span> · id <code>f1-chain-broken</code></div>
+      <div class="qa">Reads clearly as two hanging chains at distance. Less
+      "asymmetric/snapped" than the brief asked for — the first candidate's
+      two chains are similar length, and a reroll aimed at a single obviously
+      snapped chain came back visually noisy and was rejected (kept on disk,
+      not shipped). Serviceable generic crypt dressing rather than a distinct
+      story beat; a good candidate to revisit with a third attempt in a
+      future pass.</div>
+    </div>
+  </div>
+  <div class="card">
+    <img src="screenshots/ceiling-beam.png" alt="wooden cross-beam ceiling feature, distinct from plain ceiling">
+    <div class="body">
+      <h3>Wooden Cross-Beam <span class="status accept">ACCEPT</span></h3>
+      <div class="meta">(11,15) · <span class="tag">ceiling feature</span> · id <code>f1-ceiling-beam</code></div>
+      <div class="qa">X-brace timber panel with iron corner fittings, clearly
+      distinct from the surrounding plain crypt ceiling's cracked-stone
+      pattern. The red mark visible in the background is an unrelated,
+      pre-existing locked door (crypt-key) four tiles further down the same
+      corridor — flagging it explicitly because it was mistaken for part of
+      this asset during the first look at this screenshot.</div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section">Accepted but not placed this pass</h2>
+<div class="sub" style="margin-top:0.3rem">
+  All three generated cleanly and are registered in
+  <code>data/ceiling-sprites.ts</code> / <code>data/ceiling-features.ts</code>,
+  available for the next pass. Held back to keep this pass's placement count
+  (15) inside the "don't carpet the map" guidance rather than forcing every
+  generated asset into the floor.
+</div>
+<div class="parked-grid">
+  <div class="parked-card">
+    <img src="isolated/f1-root-bundle.png" alt="thick root bundle">
+    <div class="name">f1-root-bundle <span class="status parked">PARKED</span></div>
+  </div>
+  <div class="parked-card">
+    <img src="isolated/f1-ceiling-grate.png" alt="iron ceiling grate">
+    <div class="name">f1-ceiling-grate <span class="status parked">PARKED</span></div>
+  </div>
+  <div class="parked-card">
+    <img src="isolated/f1-ceiling-crack-roots.png" alt="cracked ceiling with roots">
+    <div class="name">f1-ceiling-crack-roots <span class="status parked">PARKED</span></div>
+  </div>
+</div>
+
+<h2 class="section">Rejected candidates (not shipped)</h2>
+<div class="sub" style="margin-top:0.3rem">
+  Kept on disk in <code>art/pixellab-candidates/ceiling/</code> for the
+  record. Full prompts and reasoning in
+  <code>art/pixellab/ceiling-art-generation-log.md</code>.
+</div>
+<ul class="qa">
+  <li><code>f1-chain-broken-02</code> — visually noisy/blocky at small size, discarded in favor of the v01 two-chain pair.</li>
+  <li><code>f1-root-bundle-01</code> — read as a thin wispy strand, too similar to root-curtain; v02 ("much thicker, blunt, architectural") shipped instead.</li>
+  <li><code>f1-forge-counterweight-01</code> — read as a second lantern (windowed, glowing) rather than a solid weight; v02 shipped instead.</li>
+</ul>
+
+<footer>
+  Ceiling environment art pass · branch <code>agent/ceiling-environment-art</code> ·
+  all screenshots captured live in the production raycaster (<code>vite preview</code>),
+  not isolated PNGs. Isolated source art for every accepted asset is under
+  <code>isolated/</code> next to this file.
+</footer>
+
+</body>
+</html>
