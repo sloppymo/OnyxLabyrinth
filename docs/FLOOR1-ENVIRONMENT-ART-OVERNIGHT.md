@@ -112,6 +112,23 @@ in-engine before re-validating (`floor:validate`, full test suite,
 `floor:export-check`, build — all green) and committed. Full detail in
 `art/pixellab/maze-environment-generation-log.md`.
 
+## Follow-up: polish pass (branch `agent/floor1-art-polish`)
+
+After user review of the shipped gallery, four of the six wallFeature decals
+were regenerated and the stairs panel's floor seam was post-processed:
+`cold-hand` (mounted hand → emerging-from-niche), `upward-water` (luminous
+blob → three discrete rising droplets), `sweating-iron` (distressed the
+surrounding masonry without losing the metal-plate identity, after two
+rejected overcorrections), `lamp-lock` (added a legible keyhole aperture
+while keeping the domed-lamp silhouette), and `stairs.png` (alpha-feathered
+bottom ~10% so the live floor-cast shows through at the seam). `ember-scorch`
+deliberately untouched — explicit user direction to wait for a floor-decal
+rendering primitive rather than spend more budget on a wall-mounted
+compromise. Full per-asset before/after detail, rejected candidates, and
+reasoning: `art/pixellab/maze-environment-generation-log.md` → "Polish pass"
+section. Quality bar and grades this pass worked against:
+[[floor1-wallfeature-quality-bar]].
+
 ## Not completed / deferred
 
 - **P9 (reliquary gate polish, (11,12) `n`)** — skipped. The gate's edge type

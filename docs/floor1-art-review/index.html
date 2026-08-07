@@ -39,6 +39,11 @@
       <code>LoadedTileset.stairs</code> slot (same substitution point as door.png).
       Reads as a real descending stairwell at 1/2/4-tile approach; at distance it
       glows as a strong landmark against the flanking ember-suture (f3) zone.
+      <strong>Polish pass:</strong> the bottom ~10% of the panel is now alpha-feathered
+      (<code>scripts/feather-stairs.mjs</code>) so the live floor-cast shows through at
+      the seam instead of a hard static edge — measurably better at 1-tile range.
+      At 2+ tiles it still reads partly as "a picture in a frame," but that's mostly
+      the pre-existing flanking ivy billboards, not this texture; not fully closed.
       Minor known issue: a faint centerline seam appears only when the camera is
       perfectly axis-aligned — a pre-existing raycaster tie-break, not unique to
       this asset (documented, not fixed this pass).</div>
@@ -53,7 +58,10 @@
       <div class="qa">Visualizes "Five metals meet at a lock shaped like a lamp"
       (11,14). Calibration asset for the wallFeatures system — established
       widthFrac 0.3 / heightFrac 0.4 / anchor center as the baseline reused
-      for the rest of the pass. Reads as wall-embedded, not a floating billboard.</div>
+      for the rest of the pass. Reads as wall-embedded, not a floating billboard.
+      <strong>Polish pass:</strong> regenerated with an explicit keyhole aperture
+      while keeping the domed-lamp silhouette and multi-metal rim — now reads
+      as a legible mechanism, not just an inscrutable relief.</div>
     </div>
   </div>
 
@@ -75,7 +83,11 @@
       <div class="meta">(7,6) e · <span class="tag">wallFeature decal</span></div>
       <div class="qa">"A cold hand closes your wounds" (heal event). Carved stone
       hand reaching from a niche. Eerie, well-matched to the chapel stone,
-      no gore/cartoon-hand failure modes.</div>
+      no gore/cartoon-hand failure modes.
+      <strong>Polish pass:</strong> fully redone as an arched shrine niche with the
+      wrist disappearing into the recess and a small reliquary ledge below — the
+      original read as a hand mounted on the wall (mitten silhouette at gameplay
+      scale); this now reads unmistakably as a hand emerging from the wall.</div>
     </div>
   </div>
 
@@ -87,7 +99,11 @@
       <div class="qa">"Iron sweats. Something below coughs once." Riveted plate
       with glowing ember cracks at the base, bolted into the ember-suture wall.
       Strongest of the six decals — forge infrastructure that genuinely looks
-      like it doesn't belong in a crypt.</div>
+      like it doesn't belong in a crypt.
+      <strong>Polish pass:</strong> distressed the surrounding masonry so it chips
+      into the plate's edge (two earlier attempts overcorrected into losing the
+      metal-plate identity entirely, rejected before landing here) while keeping
+      the four corner rivets and glowing seams unmistakably metal.</div>
     </div>
   </div>
 
@@ -137,10 +153,13 @@
     <div class="body">
       <h2>Upward-Dripping Water</h2>
       <div class="meta">(17,15) w · <span class="tag">wallFeature decal</span> <span class="tag">adapted</span></div>
-      <div class="qa">"Black water drips upward, one bead at a time." Adapted to
-      a single droplet clinging to a wet ceiling-adjacent crack (top-anchored)
-      rather than a true floor-level or animated effect. Rerolled once — the
-      first candidate was too abstract/textural to read as a droplet.</div>
+      <div class="qa">"Black water drips upward, one bead at a time."
+      <strong>Polish pass:</strong> replaced the single luminous cyan blob (read as
+      "magic thing on the wall," not water) with three distinct droplets rising
+      from a small basin — anchor flipped top → bottom so the basin sits near the
+      floor. One rejected attempt in between produced an abstract repeating
+      pattern with texture-heavy prompt wording; the fix was switching to explicit
+      "game icon, discrete droplets" phrasing.</div>
     </div>
   </div>
 

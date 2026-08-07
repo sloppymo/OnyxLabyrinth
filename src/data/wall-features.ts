@@ -48,16 +48,16 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     id: "cold-hand",
     name: "Cold-Hand Shrine",
     file: "cold-hand.png",
-    widthFrac: 0.28,
-    heightFrac: 0.4,
+    widthFrac: 0.35,
+    heightFrac: 0.55,
     anchor: "center",
   },
   {
     id: "sweating-iron",
     name: "Sweating Iron Plate",
     file: "sweating-iron.png",
-    widthFrac: 0.35,
-    heightFrac: 0.45,
+    widthFrac: 0.4,
+    heightFrac: 0.5,
     anchor: "center",
   },
   {
@@ -73,8 +73,8 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     name: "Upward-Dripping Water",
     file: "upward-water.png",
     widthFrac: 0.22,
-    heightFrac: 0.35,
-    anchor: "top",
+    heightFrac: 0.45,
+    anchor: "bottom",
   },
 ];
 
