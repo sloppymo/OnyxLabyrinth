@@ -128,3 +128,78 @@ a different rendering mode, not built here) — both were adapted to a
 wall-mounted equivalent (a scorched wall-base patch; a droplet clinging to
 a wall crack near the ceiling) rather than left unvisualized. Noted as a
 deliberate scope decision, not an oversight.
+
+## Doors pass (branch `agent/tavern-hero-door`)
+
+Reconciled the previously-unmerged `floor1/definitive-pass` branch (Hot Boi's
+Tavern hub) onto post-merge main so the tavern and the `wallFeatures`/
+stairs-panel system exist in the same tree for the first time. Two
+conflicts, both non-overlapping sibling additions (`renderer.ts`'s
+`door`/`locked`/`barred` check gaining a `barredGates` branch on one side
+and a wallFeatures decal pass on the other; `floor-1.json`'s new top-level
+`chuteDrops`/`barredGates`/`raftRoutes`/`stairsGuardian` keys vs
+`wallFeatures`) — resolved by keeping both sides.
+
+### Full-face door override: `doorFeatures`
+
+Built a new coordinate-keyed system, structurally parallel to `wallFeatures`
+but modeled on the stairs-panel substitution (full wall-face image, not a
+windowed decal): `src/data/door-features.ts` (registry),
+`src/engine/door-feature-cache.ts` (image cache, mirrors
+`wall-feature-cache.ts`), a `doorFeatures?: {x,y,dir,spriteId}[]` field
+threaded through `FloorDef`/`FloorMapJSON`/`cloneFloor`/`floorDefToMap`/
+`mapToFloorDef`/`newFloorMapJSON`/`parseFloorMapJSON` (all four
+touch-points from the earlier `wallFeatures` `cloneFloor` bug, grepped and
+confirmed this time), a `validateDoorFeatures` check (edge must be
+`door`/`locked`/`barred`, spriteId must resolve), and a renderer hook: the
+existing `door`/`locked`/`barred` draw branch now resolves the hit's
+near-cell+dir (reusing `wallFeatureCellForHit` — a door hit shares the same
+geometry as a wall hit) against `state.floor.doorFeatures` and substitutes
+the matched image for the generic per-theme door texture when found.
+Bidirectional doors need one entry per approach side, same as how the grid
+itself stores the edge on both adjoining cells.
+
+| Asset | Coords | Prompt intent | Palette | Result |
+|---|---|---|---|---|
+| `hot-bois-tavern-door` | (11,22) `s` / (11,23) `n` | massive blackened double doors, iron banding, brass ring pulls, stone arch, flanking lantern sconces, asymmetric wear, no text | f2 (zone theme at that coordinate) | Accepted on the first candidate |
+
+**In-engine QA**: `scripts/floor1-wallfeature-qa.mjs f1-tavern-door 11 21 2
+11 20 2 11 18 2` (1/2/4-tile approach, matching the stairs QA convention).
+Reads as an unmistakable landmark at 1–2 tiles; at 4 tiles it's legible but
+dim — the engine's fog falloff (`MATH_CONFIG.fogFalloff`/`maxDepth: 4` in
+`render-math.ts`) attenuates all wall art heavily near the draw-distance
+edge, not specific to this asset (the stairs panel reads brighter at a
+comparable distance only because that scene had a different environmental
+lighting state, not because of a difference in the texture itself).
+
+**Found and fixed in the same pass**: the pre-existing `tavern-sign`
+billboard (from the original tavern branch, authored before this hero door
+existed) sat at (11,21) — dead-center in the 1-wide corridor's sightline to
+the door — and fully occluded the new door from 2+ tiles away, undermining
+the "recognizable across the room" goal. Moved to (10,21), one tile off-axis
+but still adjacent to the doorway; re-verified in-engine after the move.
+
+### Secret-door art (parked, not wired — no discovery mechanic exists yet)
+
+Explicit scope decision: generate hidden/revealed art pairs for three Floor 1
+zones now, but build no interaction/discovery system this pass (`EdgeType`
+has no hidden/secret state — see `src/types/index.ts` — so there is nowhere
+in the data model for these to attach yet). Filed as candidates only, not
+copied into `public/` and not registered in any sprite registry.
+
+| Pair | Palette | Hidden-state intent | Revealed-state intent | File(s) |
+|---|---|---|---|---|
+| Native crypt | f1 | suspicious-but-plausible masonry, no obvious tell | rectangular recessed stone panel, dark cavity, iron pull ring | `secret-f1-hidden-01.png`, `secret-f1-revealed-01.png` |
+| Unfinished Index (bookshelf) | f2 | ordinary bookshelf, no visible tell | shelf pivoted open, dark passage, spilled books at the base | `secret-f2-hidden-01.png`, `secret-f2-revealed-01.png` |
+| Ember Suture (iron hatch) | f3 | plain riveted iron plate, indistinguishable from the existing `sweating-iron` decal style | hatch open on a hinge, dark cavity, ember glow at the frame | `secret-f3-hidden-02.png` (accepted; `-01` rejected — read as an obviously distinct hatch outline, failing the "plausibly missable" requirement), `secret-f3-revealed-01.png` |
+
+Total this pass: 8 PixelLab generations (1 tavern door, 6 secret-door
+pairs + 1 rejected `secret-f3-hidden-01` reroll). Quality bar for "hidden"
+states going forward: if a wall/shelf/plate reads as obviously special on
+first glance, it has failed — the tell should only be legible in hindsight,
+after the player already knows to look.
+
+**Next step, not started**: a real secret-door mechanic (an interact/search
+input, a discovered-state flag per grid edge or a new `EdgeType`, and a
+render swap between hidden/revealed art) — this pass deliberately stopped at
+art generation, per explicit scope decision.

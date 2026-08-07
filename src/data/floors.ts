@@ -111,6 +111,15 @@ export interface FloorDef {
    * wall-feature helpers in `src/engine/render-math.ts` for the projection.
    */
   wallFeatures?: { x: number; y: number; dir: "n" | "e" | "s" | "w"; spriteId: string }[];
+  /**
+   * Full-face door-panel overrides — one-off "hero door" landmarks that
+   * replace the generic theme door texture at one specific edge. `dir` must
+   * name an edge that is "door"/"locked"/"barred" on this cell. See
+   * `src/data/door-features.ts` for the sprite registry. A bidirectional
+   * door needs one entry per approach side (mirrors how the grid itself
+   * stores the edge on both adjoining cells).
+   */
+  doorFeatures?: { x: number; y: number; dir: "n" | "e" | "s" | "w"; spriteId: string }[];
   // Teleporter links: each entry maps a tile (x,y) on this floor to a
   // destination (floorId, x, y). When the player steps on a teleporter tile,
   // they are instantly relocated.
@@ -674,6 +683,7 @@ export function cloneFloor(floor: FloorDef): FloorDef {
       : undefined,
     mapSprites: floor.mapSprites ? floor.mapSprites.map((s) => ({ ...s })) : undefined,
     wallFeatures: floor.wallFeatures ? floor.wallFeatures.map((f) => ({ ...f })) : undefined,
+    doorFeatures: floor.doorFeatures ? floor.doorFeatures.map((f) => ({ ...f })) : undefined,
     teleporters: floor.teleporters ? floor.teleporters.map((t) => ({ ...t })) : undefined,
     chuteDrops: floor.chuteDrops ? floor.chuteDrops.map((c) => ({ ...c })) : undefined,
     lockedDoors: floor.lockedDoors ? floor.lockedDoors.map((d) => ({ ...d })) : undefined,

@@ -4277,7 +4277,7 @@
       "spriteId": "crate"
     },
     {
-      "x": 11,
+      "x": 10,
       "y": 21,
       "spriteId": "tavern-sign"
     }
@@ -4768,6 +4768,20 @@
       "y": 15,
       "dir": "w",
       "spriteId": "upward-water"
+    }
+  ],
+  "doorFeatures": [
+    {
+      "x": 11,
+      "y": 22,
+      "dir": "s",
+      "spriteId": "hot-bois-tavern-door"
+    },
+    {
+      "x": 11,
+      "y": 23,
+      "dir": "n",
+      "spriteId": "hot-bois-tavern-door"
     }
   ]
 }

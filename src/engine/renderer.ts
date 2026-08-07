@@ -82,6 +82,7 @@ import {
 } from "./map-sprite-cache";
 import type { MapSpriteDef } from "../data/map-sprites";
 import { getWallFeatureDef, getWallFeatureImage } from "./wall-feature-cache";
+import { getDoorFeatureImage } from "./door-feature-cache";
 import { featurePropSpriteIds } from "../data/maze-props";
 import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
@@ -1448,11 +1449,22 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       // stairs panel there; every other door/locked face — and any theme
       // with no stairs.png yet — keeps the ordinary door texture.
       const farTile = state.floor.grid[hit.mapY]?.[hit.mapX]?.tile;
-      const themeDoor = isStairExitFeature(farTile)
-        ? stairsTextureForTheme(wallTheme, primaryTheme) ?? doorTextureForTheme(wallTheme, primaryTheme)
-        : doorTextureForTheme(wallTheme, primaryTheme);
+      // Hero-door override: a one-off full-face panel registered by
+      // coordinate (see data/door-features.ts). Same face-resolution
+      // helper as wallFeatures, since a door/locked/barred hit shares the
+      // exact same near-cell geometry as a wall hit.
+      const doorFace = wallFeatureCellForHit(hit.mapX, hit.mapY, hit.side, rayDirX, rayDirY);
+      const doorFeatureDef = state.floor.doorFeatures?.find(
+        (f) => f.x === doorFace.x && f.y === doorFace.y && f.dir === doorFace.dir
+      );
+      const doorFeatureImg = doorFeatureDef ? getDoorFeatureImage(doorFeatureDef.spriteId) : null;
+      const themeDoor =
+        doorFeatureImg ??
+        (isStairExitFeature(farTile)
+          ? stairsTextureForTheme(wallTheme, primaryTheme) ?? doorTextureForTheme(wallTheme, primaryTheme)
+          : doorTextureForTheme(wallTheme, primaryTheme));
 
-      if (themeDoor && !isBarred) {
+      if (themeDoor && (doorFeatureImg || !isBarred)) {
         // Sample the door panel the same way as wall strips.
         let texX = Math.floor(hit.wallX * themeDoor.width);
         if (

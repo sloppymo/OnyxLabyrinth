@@ -144,6 +144,28 @@
     </div>
   </div>
 
+  <div class="card">
+    <div class="shots">
+      <img src="screenshots/tavern-door-close.png" alt="tavern door close">
+      <img src="screenshots/tavern-door-mid.png" alt="tavern door mid">
+      <img src="screenshots/tavern-door-far.png" alt="tavern door far">
+    </div>
+    <div class="body">
+      <h2>Hot Boi's Tavern Door</h2>
+      <div class="meta">(11,22) s / (11,23) n · <span class="tag">doorFeatures</span> hero asset</div>
+      <div class="qa">New full-face door-panel override system, structurally parallel to
+      the stairs panel but keyed by coordinate instead of theme (see
+      <code>src/data/door-features.ts</code>). Massive blackened double doors, iron
+      banding, brass ring pulls, carved stone arch, flanking lantern sconces — reads
+      as an unmistakable landmark at 1–2 tiles. At 4 tiles it's legible but dim, the
+      same fog falloff every wall asset gets near the render-distance edge, not
+      unique to this texture. Fixing this also surfaced a real placement bug: the
+      pre-existing <code>tavern-sign</code> billboard sat dead-center in the corridor
+      sightline and fully blocked the door from 2+ tiles away — moved one tile
+      off-axis to (10,21).</div>
+    </div>
+  </div>
+
 </div>
 
 <footer>

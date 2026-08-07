@@ -10,6 +10,7 @@ import { type FloorDef } from "../data/floors";
 import { getFloors } from "./floor-registry";
 import { MAP_SPRITES_BY_ID } from "../data/map-sprites";
 import { WALL_FEATURES_BY_ID } from "../data/wall-features";
+import { DOOR_FEATURES_BY_ID } from "../data/door-features";
 import { ITEMS_BY_ID } from "../data/items";
 import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
 import type { FloorMapJSON, CellJSON } from "./floor-map";
@@ -105,6 +106,7 @@ export function validateFloorMap(
   validateLockedDoors(map, issues, context?.floors ?? getFloors());
   validateLockedEdgeCoverage(map, issues);
   validateWallFeatures(map, issues);
+  validateDoorFeatures(map, issues);
   validateReachability(map, issues);
   validateDuplicateOverlays(map, issues);
   validateItemRefs(map, issues);
@@ -396,6 +398,43 @@ function validateWallFeatures(map: FloorMapJSON, issues: ValidationIssue[]): voi
         severity: "error",
         code: "wall_feature_unknown",
         message: `Unknown wall feature id "${f.spriteId}" at (${f.x},${f.y})`,
+        at: { x: f.x, y: f.y },
+      });
+    }
+  }
+}
+
+/**
+ * A doorFeatures entry is a full-face art override for a "hero door" — the
+ * edge it names must already be door-like (door/locked/barred, not a plain
+ * wall or open passage, since there's no generic door texture underneath an
+ * open edge to substitute) and the spriteId must resolve.
+ */
+function validateDoorFeatures(map: FloorMapJSON, issues: ValidationIssue[]): void {
+  for (const f of map.doorFeatures ?? []) {
+    if (!inBoundsGrid(map, f.x, f.y)) {
+      issues.push({
+        severity: "error",
+        code: "door_feature_oob",
+        message: `Door feature "${f.spriteId}" at (${f.x},${f.y}) out of bounds`,
+        at: { x: f.x, y: f.y },
+      });
+      continue;
+    }
+    const edge = map.grid[f.y][f.x][f.dir];
+    if (edge !== "door" && edge !== "locked" && edge !== "barred") {
+      issues.push({
+        severity: "error",
+        code: "door_feature_edge_mismatch",
+        message: `doorFeatures entry (${f.x},${f.y}) ${f.dir} but grid edge is "${edge}" (must be door/locked/barred)`,
+        at: { x: f.x, y: f.y },
+      });
+    }
+    if (!DOOR_FEATURES_BY_ID[f.spriteId]) {
+      issues.push({
+        severity: "error",
+        code: "door_feature_unknown",
+        message: `Unknown door feature id "${f.spriteId}" at (${f.x},${f.y})`,
         at: { x: f.x, y: f.y },
       });
     }
