@@ -998,10 +998,20 @@ function drawCeilingSprites(
     const img = getCeilingSpriteImage(p.spriteId);
     if (!img) continue;
     const { screenX, drawY, size, alpha } = p.place;
+    // Unlike mapSprites (uniformly 32x32 square source art), ceiling-sprite
+    // art is authored tall-and-narrow on purpose (a chain reads nothing like
+    // a cage). Forcing every image into a size x size square would stretch
+    // each one by a different, art-dependent amount. `size` is the vertical
+    // scale (matches how a hanging object's apparent LENGTH should drive its
+    // on-screen size); width is derived from the source image's own aspect
+    // ratio so the art's proportions survive at every distance.
+    const aspect = img.width / img.height;
+    const drawH = size;
+    const drawW = size * aspect;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, screenX - size / 2, drawY, size, size);
+    ctx.drawImage(img, screenX - drawW / 2, drawY, drawW, drawH);
     ctx.restore();
   }
 }

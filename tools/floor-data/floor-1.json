@@ -4292,6 +4292,85 @@
       "spriteId": "upward-water"
     }
   ],
+  "ceilingSprites": [
+    {
+      "x": 7,
+      "y": 4,
+      "spriteId": "f1-censer"
+    },
+    {
+      "x": 4,
+      "y": 6,
+      "spriteId": "f1-bell-cracked"
+    },
+    {
+      "x": 19,
+      "y": 3,
+      "spriteId": "f1-chain-hook"
+    },
+    {
+      "x": 13,
+      "y": 4,
+      "spriteId": "f1-forge-counterweight"
+    },
+    {
+      "x": 7,
+      "y": 14,
+      "spriteId": "f1-lantern-hanging"
+    },
+    {
+      "x": 17,
+      "y": 13,
+      "spriteId": "f1-root-curtain"
+    },
+    {
+      "x": 21,
+      "y": 16,
+      "spriteId": "f1-chain-long"
+    },
+    {
+      "x": 11,
+      "y": 18,
+      "spriteId": "f1-cage"
+    },
+    {
+      "x": 11,
+      "y": 24,
+      "spriteId": "f1-chain-broken"
+    }
+  ],
+  "ceilingFeatures": [
+    {
+      "x": 6,
+      "y": 4,
+      "spriteId": "f1-ceiling-namanda-mark"
+    },
+    {
+      "x": 19,
+      "y": 3,
+      "spriteId": "f1-ceiling-chain-plate"
+    },
+    {
+      "x": 3,
+      "y": 16,
+      "spriteId": "f1-ceiling-hole"
+    },
+    {
+      "x": 17,
+      "y": 15,
+      "spriteId": "f1-ceiling-drain"
+    },
+    {
+      "x": 21,
+      "y": 13,
+      "spriteId": "f1-ceiling-water-stain"
+    },
+    {
+      "x": 11,
+      "y": 15,
+      "spriteId": "f1-ceiling-beam"
+    }
+  ],
   "teleporters": [
     {
       "x": 3,
