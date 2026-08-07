@@ -65,6 +65,8 @@ import {
   stableWallX,
   wallFeatureLocalU,
   wallFeatureVerticalRect,
+  ceilingAnchorY,
+  isBillboardOccluded,
 } from "./render-math";
 import type { RenderCamera } from "./render-math";
 import {
@@ -80,6 +82,11 @@ import {
 } from "./map-sprite-cache";
 import type { MapSpriteDef } from "../data/map-sprites";
 import { getWallFeatureDef, getWallFeatureImage } from "./wall-feature-cache";
+import {
+  getCeilingSpriteDef,
+  getCeilingSpriteImage,
+} from "./ceiling-sprite-cache";
+import { CEILING_FEATURES, ceilingFeatureUrl } from "../data/ceiling-features";
 import { featurePropSpriteIds } from "../data/maze-props";
 import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
@@ -324,6 +331,12 @@ let doorTexture: HTMLCanvasElement | null = null;
 let doorLoadPromise: Promise<void> | null = null;
 let waterTileset: LoadedTileset | null = null;
 let waterLoadPromise: Promise<void> | null = null;
+// Ceiling surface features (see data/ceiling-features.ts): each entry fully
+// replaces the sampled ceiling texture for one grid cell, so it's prepared
+// exactly like a theme's ceiling.png (brightness/contrast match, one repeat,
+// flattened to ImageData) and looked up by spriteId rather than by theme.
+const ceilingFeatureCache = new Map<string, ImageData | null>();
+let ceilingFeaturesLoadPromise: Promise<void> | null = null;
 // Reusable per-frame buffers (avoid allocation in the hot render loop).
 let hitsBuffer: (RayHit | null)[] = [];
 let lastVignetteW = 0;
@@ -568,6 +581,52 @@ function ensureWaterTextureLoaded(): Promise<void> {
   return waterLoadPromise;
 }
 
+/**
+ * Load every registered ceiling feature and prepare it as a drop-in
+ * `TextureSet.ceilingData` replacement — same brightness/contrast treatment
+ * as an ordinary ceiling.png, so a feature cell doesn't read darker or
+ * flatter than its neighbors.
+ *
+ * `resolveFloorTextures` memoizes its per-floor cell grid on `floor` +
+ * `tilesetGeneration`. Feature art can finish loading well after that grid
+ * was first built (this call is not awaited before the render loop starts),
+ * so this bumps `tilesetGeneration` on settle — the same invalidation lever
+ * `ensureWaterTextureLoaded`/`ensureThemeLoaded` use — rather than relying on
+ * load-order luck to make the swap visible.
+ */
+export function loadCeilingFeatures(): Promise<void> {
+  if (ceilingFeaturesLoadPromise) return ceilingFeaturesLoadPromise;
+  ceilingFeaturesLoadPromise = Promise.all(
+    CEILING_FEATURES.map((def) =>
+      loadImage(ceilingFeatureUrl(def))
+        .then((img) => {
+          const adjusted = adjustTextureImage(
+            img,
+            RENDER_CONFIG.ceilingBrightnessFactor,
+            RENDER_CONFIG.ceilingContrastFactor
+          );
+          const repeated = prepareRepeatedTexture(adjusted, 1, 1);
+          const data = repeated
+            .getContext("2d")!
+            .getImageData(0, 0, repeated.width, repeated.height);
+          ceilingFeatureCache.set(def.id, data);
+        })
+        .catch(() => {
+          warnAsset(`failed to load ceiling feature: ${def.id}`);
+          ceilingFeatureCache.set(def.id, null);
+        })
+    )
+  ).then(() => {
+    tilesetGeneration++;
+    ceilingFeaturesLoadPromise = null;
+  });
+  return ceilingFeaturesLoadPromise;
+}
+
+function getCeilingFeatureData(spriteId: string): ImageData | null {
+  return ceilingFeatureCache.get(spriteId) ?? null;
+}
+
 /** Ensure a tileset theme is in the cache (no-op if already loaded). */
 export function ensureThemeLoaded(theme: string): Promise<LoadedTileset> {
   const cached = tilesetCache.get(theme);
@@ -682,10 +741,21 @@ function resolveFloorTextures(floor: GameState["floor"]): ResolvedFloorTextures 
   const primaryTheme = resolveTilesetTheme(floor);
   const primaryTileset =
     tilesetCache.get(primaryTheme) ?? tilesetCache.get(FALLBACK_THEME) ?? null;
+  // Ceiling features fully replace the sampled ceiling texture for their one
+  // cell (see data/ceiling-features.ts) — build the lookup once per floor
+  // rather than scanning the array per cell.
+  const ceilingFeatureByCell = new Map<string, string>();
+  for (const f of floor.ceilingFeatures ?? []) {
+    ceilingFeatureByCell.set(`${f.x},${f.y}`, f.spriteId);
+  }
   const cellTextures = floor.grid.map((row, y) =>
     row.map((_, x) => {
       const theme = themeAt(floor, x, y);
-      return tilesetCache.get(theme)?.set ?? primaryTileset?.set ?? null;
+      const base = tilesetCache.get(theme)?.set ?? primaryTileset?.set ?? null;
+      const featureId = ceilingFeatureByCell.get(`${x},${y}`);
+      if (!featureId || !base) return base;
+      const featureData = getCeilingFeatureData(featureId);
+      return featureData ? { ...base, ceilingData: featureData } : base;
     })
   );
   const waterCells = waterGridFromFloor(floor);
@@ -831,13 +901,59 @@ function placeBillboard(
   const stripIdx = Math.floor(screenX / stripWidth);
   if (stripIdx >= 0 && stripIdx < hits.length) {
     const hit = hits[stripIdx];
-    if (hit && hit.perpWallDist < proj.depth - 0.05) return null;
+    if (hit && isBillboardOccluded(hit.perpWallDist, proj.depth)) return null;
   }
 
   const alpha = opacityForDepth(proj.depth) * (inDarkness ? 0.5 : 1);
   if (alpha <= 0) return null; // beyond the taper boundary: skip the draw call
 
   return { screenX, drawY: drawEnd - size, size, alpha, depth: proj.depth };
+}
+
+/**
+ * Screen placement for one billboard hanging from the CEILING at a tile's
+ * depth — the top-anchored mirror of `placeBillboard`.
+ *
+ * The critical difference is the anchor line itself: `placeBillboard`'s floor
+ * line is `Math.min(h - 1, ...)`, clamped so it never runs off the bottom of
+ * the screen. The ceiling line here is deliberately UNCLAMPED
+ * (`h / 2 - lineHeight / 2`, which goes negative up close). Clamping it would
+ * freeze the attachment point at screen-top once the wall band grows past the
+ * viewport at close range, so the object would visibly slide down and detach
+ * from the ceiling as the party approaches — exactly the "floating icon"
+ * failure a suspended object must not have. `ctx.drawImage` clips a negative
+ * Y fine; only the alpha/depth rejects below need guarding.
+ */
+function placeCeilingBillboard(
+  ctx: CanvasRenderingContext2D,
+  cam: RenderCamera,
+  hits: (RayHit | null)[],
+  stripWidth: number,
+  tileX: number,
+  tileY: number,
+  sizeFor: (screenH: number, depth: number) => number,
+  inDarkness: boolean
+): BillboardPlacement | null {
+  const proj = projectBillboard(cam, tileX, tileY);
+  if (!proj || proj.depth <= BILLBOARD_MIN_DEPTH) return null;
+
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+  const screenX = Math.floor(billboardScreenX(proj, w));
+  const size = sizeFor(h, proj.depth);
+  const drawY = ceilingAnchorY(h, proj.depth);
+
+  // Same single-strip Z-test as the floor anchor (see placeBillboard).
+  const stripIdx = Math.floor(screenX / stripWidth);
+  if (stripIdx >= 0 && stripIdx < hits.length) {
+    const hit = hits[stripIdx];
+    if (hit && isBillboardOccluded(hit.perpWallDist, proj.depth)) return null;
+  }
+
+  const alpha = opacityForDepth(proj.depth) * (inDarkness ? 0.5 : 1);
+  if (alpha <= 0) return null;
+
+  return { screenX, drawY, size, alpha, depth: proj.depth };
 }
 
 /**
@@ -848,6 +964,47 @@ const decorSpriteSize =
   (baseSize: number) =>
   (screenH: number, depth: number): number =>
     Math.max(8, Math.abs(Math.floor((screenH / depth) * (baseSize / 56))));
+
+/** Draw ceiling-hanging decor sprites (chains, cages, censers, roots, ...). */
+function drawCeilingSprites(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  cam: RenderCamera,
+  hits: (RayHit | null)[],
+  stripWidth: number,
+  maxDist: number,
+  inDarkness: boolean
+): void {
+  const sprites = state.floor.ceilingSprites;
+  if (!sprites?.length) return;
+
+  type Placed = { spriteId: string; place: BillboardPlacement };
+  const placed: Placed[] = [];
+  for (const s of sprites) {
+    // Cheap reject before the projection maths — keeps hundreds of
+    // placements on a floor practical (see AGENTS.md perf notes).
+    if (Math.abs(s.x - cam.x) > maxDist || Math.abs(s.y - cam.y) > maxDist) continue;
+    const def = getCeilingSpriteDef(s.spriteId);
+    if (!def) continue;
+    const scale = s.scale && Number.isFinite(s.scale) && s.scale > 0 ? s.scale : 1;
+    const place = placeCeilingBillboard(
+      ctx, cam, hits, stripWidth, s.x, s.y, decorSpriteSize(def.baseSize * scale), inDarkness
+    );
+    if (place) placed.push({ spriteId: s.spriteId, place });
+  }
+  placed.sort((a, b) => b.place.depth - a.place.depth);
+
+  for (const p of placed) {
+    const img = getCeilingSpriteImage(p.spriteId);
+    if (!img) continue;
+    const { screenX, drawY, size, alpha } = p.place;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, screenX - size / 2, drawY, size, size);
+    ctx.restore();
+  }
+}
 
 /** Draw static map decor sprites (Wolf3D-style billboards). */
 function drawMapSprites(
@@ -1531,9 +1688,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     drawFloorFeature(ctx, w, h, currentCell.tile, state.inDarkness);
   }
 
-  // Decor sprites and feature billboards (after walls so the Z-test can use
-  // the hit buffer). Features draw last so a chest is never hidden behind a
-  // decorative crate sharing its tile.
+  // Ceiling sprites, decor sprites, and feature billboards (after walls so
+  // the Z-test can use the hit buffer). Ceiling sprites draw first — they
+  // hang up and out of the way of gameplay-relevant floor content. Features
+  // draw last so a chest is never hidden behind a decorative crate sharing
+  // its tile.
+  drawCeilingSprites(ctx, state, cam, hits, stripWidth, maxDist, state.inDarkness);
   drawMapSprites(ctx, state, cam, hits, stripWidth, state.inDarkness);
   drawFeatureBillboards(ctx, state, cam, hits, stripWidth, maxDist, state.inDarkness);
 

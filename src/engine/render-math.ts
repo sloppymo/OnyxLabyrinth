@@ -429,6 +429,36 @@ export function billboardScreenX(proj: BillboardProjection, screenW: number): nu
 }
 
 /**
+ * Unclamped screen-Y of the ceiling line at a given depth — the top anchor
+ * for a ceiling-hanging billboard (`placeCeilingBillboard` in renderer.ts).
+ *
+ * This mirrors the floor anchor's `h/2 + lineHeight/2`, but deliberately
+ * WITHOUT that anchor's `Math.min(h - 1, ...)` clamp. Clamping the ceiling
+ * line would freeze the attachment point at screen-top once the wall band
+ * grows past the viewport at close range, so a hanging object would visibly
+ * slide down and detach from the ceiling as the party approaches — exactly
+ * the "floating icon" a suspended object must not look like. `drawImage`
+ * clips a negative Y fine; only the depth/alpha rejects need guarding.
+ */
+export function ceilingAnchorY(screenH: number, perpWallDist: number): number {
+  return screenH / 2 - computeLineHeight(screenH, perpWallDist) / 2;
+}
+
+/**
+ * Whether a billboard at `billboardDepth` is hidden behind the wall the
+ * camera ray through its screen centre actually hit. Shared by floor-
+ * anchored and ceiling-anchored billboards (`placeBillboard` /
+ * `placeCeilingBillboard` in renderer.ts) — a billboard only draws when
+ * nothing closer than it blocks the single strip at its centre x.
+ */
+export function isBillboardOccluded(
+  hitPerpWallDist: number,
+  billboardDepth: number
+): boolean {
+  return hitPerpWallDist < billboardDepth - 0.05;
+}
+
+/**
  * Whether a tile feature gets a corridor marker the party can see from a
  * distance.
  *

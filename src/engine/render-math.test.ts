@@ -53,6 +53,8 @@ import {
   glowBucketForDepth,
   propBillboardSize,
   PROP_MAX_WALL_FRAC,
+  ceilingAnchorY,
+  isBillboardOccluded,
 } from "./render-math";
 import {
   ARENA_CAMERA,
@@ -1039,6 +1041,58 @@ describe("billboardScreenX", () => {
     const near = billboardScreenX({ lateral: 1, depth: 2 }, 640);
     const far = billboardScreenX({ lateral: 1, depth: 8 }, 640);
     expect(Math.abs(far - 320)).toBeLessThan(Math.abs(near - 320));
+  });
+});
+
+describe("ceilingAnchorY", () => {
+  const H = 672;
+
+  it("sits exactly at the horizon-mirrored floor line — the wall's top edge", () => {
+    // The floor anchor (wallDrawBounds().drawStart, before its Math.max(0,...)
+    // clamp) is h/2 - lineHeight/2 too — same wall band, opposite edge. The
+    // eye reads "ceiling" as the wall's top, so the two must agree exactly.
+    const depth = 3;
+    const lineHeight = computeLineHeight(H, depth);
+    expect(ceilingAnchorY(H, depth)).toBeCloseTo(H / 2 - lineHeight / 2, 6);
+  });
+
+  it("is UNCLAMPED: goes negative (off the top of the screen) at close range", () => {
+    // This is the whole point of the primitive — see the doc comment. A
+    // clamped anchor would freeze at 0 and the object would appear to slide
+    // down and detach from the ceiling as the party approaches.
+    const closeDepth = 0.3;
+    expect(computeLineHeight(H, closeDepth)).toBeGreaterThan(H); // sanity: band overflows screen
+    expect(ceilingAnchorY(H, closeDepth)).toBeLessThan(0);
+  });
+
+  it("differs from the floor anchor's clamped drawStart once the wall band overflows the screen", () => {
+    const closeDepth = 0.3;
+    const floorAnchor = wallDrawBounds(H, closeDepth).drawStart; // clamped to >= 0
+    expect(floorAnchor).toBe(0);
+    expect(ceilingAnchorY(H, closeDepth)).toBeLessThan(floorAnchor);
+  });
+
+  it("rises toward the horizon (h/2) monotonically as depth grows", () => {
+    const y1 = ceilingAnchorY(H, 1);
+    const y2 = ceilingAnchorY(H, 3);
+    const y3 = ceilingAnchorY(H, 8);
+    expect(y1).toBeLessThan(y2);
+    expect(y2).toBeLessThan(y3);
+    expect(y3).toBeLessThan(H / 2);
+  });
+});
+
+describe("isBillboardOccluded", () => {
+  it("is not occluded when the wall hit is farther than the billboard", () => {
+    expect(isBillboardOccluded(5, 3)).toBe(false);
+  });
+
+  it("is occluded when the wall hit is nearer than the billboard", () => {
+    expect(isBillboardOccluded(2, 5)).toBe(true);
+  });
+
+  it("uses a small epsilon so a billboard flush against a wall still draws", () => {
+    expect(isBillboardOccluded(3, 3)).toBe(false);
   });
 });
 

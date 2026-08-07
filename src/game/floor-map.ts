@@ -45,6 +45,19 @@ export interface WallFeatureJSON {
   spriteId: string;
 }
 
+export interface CeilingSpriteJSON {
+  x: number;
+  y: number;
+  spriteId: string;
+  scale?: number;
+}
+
+export interface CeilingFeatureJSON {
+  x: number;
+  y: number;
+  spriteId: string;
+}
+
 export interface TreasureJSON {
   x: number;
   y: number;
@@ -84,6 +97,8 @@ export interface FloorMapJSON {
   encounterZones?: EncounterZoneDef[];
   mapSprites?: { x: number; y: number; spriteId: string }[];
   wallFeatures?: WallFeatureJSON[];
+  ceilingSprites?: CeilingSpriteJSON[];
+  ceilingFeatures?: CeilingFeatureJSON[];
   teleporters?: TeleporterLink[];
   chuteDrops?: ChuteDropJSON[];
   lockedDoors?: LockedDoorJSON[];
@@ -194,6 +209,8 @@ export function newFloorMapJSON(
     encounterZones: partial?.encounterZones,
     mapSprites: partial?.mapSprites,
     wallFeatures: partial?.wallFeatures,
+    ceilingSprites: partial?.ceilingSprites,
+    ceilingFeatures: partial?.ceilingFeatures,
     teleporters: partial?.teleporters,
     chuteDrops: partial?.chuteDrops,
     lockedDoors: partial?.lockedDoors,
@@ -229,6 +246,8 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
     encounterZones: floor.encounterZones?.map((z) => ({ ...z })),
     mapSprites: floor.mapSprites?.map((s) => ({ ...s })),
     wallFeatures: floor.wallFeatures?.map((f) => ({ ...f })),
+    ceilingSprites: floor.ceilingSprites?.map((s) => ({ ...s })),
+    ceilingFeatures: floor.ceilingFeatures?.map((f) => ({ ...f })),
     teleporters: floor.teleporters?.map((t) => ({ ...t })),
     chuteDrops: floor.chuteDrops?.map((c) => ({ ...c })),
     lockedDoors: floor.lockedDoors?.map((d) => ({ ...d })),
@@ -275,6 +294,8 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
     encounterZones: map.encounterZones?.map((z) => ({ ...z })),
     mapSprites: map.mapSprites?.map((s) => ({ ...s })),
     wallFeatures: map.wallFeatures?.map((f) => ({ ...f })),
+    ceilingSprites: map.ceilingSprites?.map((s) => ({ ...s })),
+    ceilingFeatures: map.ceilingFeatures?.map((f) => ({ ...f })),
     teleporters: map.teleporters?.map((t) => ({ ...t })),
     chuteDrops: map.chuteDrops?.map((c) => ({ ...c })),
     lockedDoors: map.lockedDoors?.map((d) => ({ ...d })),
@@ -331,6 +352,8 @@ export function parseFloorMapJSON(raw: unknown): FloorMapJSON {
     encounterZones: parseOverlayArray(o.encounterZones, "encounterZones", parseZone),
     mapSprites: parseOverlayArray(o.mapSprites, "mapSprites", parseMapSprite),
     wallFeatures: parseOverlayArray(o.wallFeatures, "wallFeatures", parseWallFeature),
+    ceilingSprites: parseOverlayArray(o.ceilingSprites, "ceilingSprites", parseCeilingSprite),
+    ceilingFeatures: parseOverlayArray(o.ceilingFeatures, "ceilingFeatures", parseCeilingFeature),
     teleporters: parseOverlayArray(o.teleporters, "teleporters", parseTeleporter),
     chuteDrops: parseOverlayArray(o.chuteDrops, "chuteDrops", parseChute),
     lockedDoors: parseOverlayArray(o.lockedDoors, "lockedDoors", parseLockedDoor),
@@ -418,6 +441,28 @@ function parseWallFeature(o: Record<string, unknown>, l: string): WallFeatureJSO
     x: requireInt(o.x, `${l}.x`),
     y: requireInt(o.y, `${l}.y`),
     dir: parseDir(o.dir, `${l}.dir`),
+    spriteId: requireString(o.spriteId, `${l}.spriteId`),
+  };
+}
+
+function parseCeilingSprite(o: Record<string, unknown>, l: string): CeilingSpriteJSON {
+  const s: CeilingSpriteJSON = {
+    x: requireInt(o.x, `${l}.x`),
+    y: requireInt(o.y, `${l}.y`),
+    spriteId: requireString(o.spriteId, `${l}.spriteId`),
+  };
+  if (o.scale !== undefined) {
+    const scale = requireNumber(o.scale, `${l}.scale`);
+    if (scale <= 0) throw new Error(`${l}.scale must be > 0`);
+    s.scale = scale;
+  }
+  return s;
+}
+
+function parseCeilingFeature(o: Record<string, unknown>, l: string): CeilingFeatureJSON {
+  return {
+    x: requireInt(o.x, `${l}.x`),
+    y: requireInt(o.y, `${l}.y`),
     spriteId: requireString(o.spriteId, `${l}.spriteId`),
   };
 }

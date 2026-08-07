@@ -28,6 +28,8 @@ import { loadPartySprites } from "./engine/party-sprite-cache";
 import { loadEffectSprites } from "./engine/effect-sprite-cache";
 import { loadMapSprites } from "./engine/map-sprite-cache";
 import { loadWallFeatures } from "./engine/wall-feature-cache";
+import { loadCeilingSprites } from "./engine/ceiling-sprite-cache";
+import { loadCeilingFeatures } from "./engine/renderer";
 import { audio } from "./engine/audio";
 import { renderAutoMap } from "./engine/automap";
 import { bindInput, type InputHandlers } from "./engine/input";
@@ -2126,6 +2128,8 @@ let partySpritesReady = false;
 let effectSpritesReady = false;
 let mapSpritesReady = false;
 let wallFeaturesReady = false;
+let ceilingSpritesReady = false;
+let ceilingFeaturesReady = false;
 const failedAssets: string[] = [];
 
 // Wait for the custom font and corridor textures to load before starting the
@@ -2203,6 +2207,22 @@ loadWallFeatures()
   .catch(() => {
     wallFeaturesReady = true;
     failedAssets.push("wallFeatures");
+  });
+loadCeilingSprites()
+  .then(() => {
+    ceilingSpritesReady = true;
+  })
+  .catch(() => {
+    ceilingSpritesReady = true;
+    failedAssets.push("ceilingSprites");
+  });
+loadCeilingFeatures()
+  .then(() => {
+    ceilingFeaturesReady = true;
+  })
+  .catch(() => {
+    ceilingFeaturesReady = true;
+    failedAssets.push("ceilingFeatures");
   });
 
 // Debug helpers for targeted visual verification; only active when the page
@@ -2330,6 +2350,8 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       effectSprites: effectSpritesReady,
       mapSprites: mapSpritesReady,
       wallFeatures: wallFeaturesReady,
+      ceilingSprites: ceilingSpritesReady,
+      ceilingFeatures: ceilingFeaturesReady,
       audioUi: audioStatus.ui,
       audioCombat: audioStatus.combat,
       audioDungeon: audioStatus.dungeon,

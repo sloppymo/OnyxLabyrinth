@@ -285,4 +285,21 @@ describe("floor definitions", () => {
     clone.wallFeatures![0].spriteId = "changed";
     expect(source.wallFeatures![0].spriteId).toBe("test-switch");
   });
+
+  it("cloneFloor preserves ceilingSprites and ceilingFeatures as independent deep copies", () => {
+    // Same regression shape as the wallFeatures case above, for the two
+    // fields the ceiling-art pass added.
+    const source: FloorDef = {
+      ...findFloor(2)!,
+      ceilingSprites: [{ x: 1, y: 1, spriteId: "test-chain", scale: 1.5 }],
+      ceilingFeatures: [{ x: 2, y: 2, spriteId: "test-grate" }],
+    };
+    const clone = cloneFloor(source);
+    expect(clone.ceilingSprites).toEqual(source.ceilingSprites);
+    expect(clone.ceilingFeatures).toEqual(source.ceilingFeatures);
+    clone.ceilingSprites![0].spriteId = "changed";
+    clone.ceilingFeatures![0].spriteId = "changed";
+    expect(source.ceilingSprites![0].spriteId).toBe("test-chain");
+    expect(source.ceilingFeatures![0].spriteId).toBe("test-grate");
+  });
 });

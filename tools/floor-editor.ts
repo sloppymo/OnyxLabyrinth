@@ -482,6 +482,8 @@ function resizeMap(newW: number, newH: number): void {
         y2: Math.min(z.y2, newH - 1),
       })),
     mapSprites: map.mapSprites?.filter(fits),
+    ceilingSprites: map.ceilingSprites?.filter(fits),
+    ceilingFeatures: map.ceilingFeatures?.filter(fits),
   });
   for (let y = 0; y < Math.min(map.height, newH); y++) {
     for (let x = 0; x < Math.min(map.width, newW); x++) {

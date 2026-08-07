@@ -10,6 +10,8 @@ import { type FloorDef } from "../data/floors";
 import { getFloors } from "./floor-registry";
 import { MAP_SPRITES_BY_ID } from "../data/map-sprites";
 import { WALL_FEATURES_BY_ID } from "../data/wall-features";
+import { CEILING_SPRITES_BY_ID } from "../data/ceiling-sprites";
+import { CEILING_FEATURES_BY_ID } from "../data/ceiling-features";
 import { ITEMS_BY_ID } from "../data/items";
 import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
 import type { FloorMapJSON, CellJSON } from "./floor-map";
@@ -105,6 +107,8 @@ export function validateFloorMap(
   validateLockedDoors(map, issues, context?.floors ?? getFloors());
   validateLockedEdgeCoverage(map, issues);
   validateWallFeatures(map, issues);
+  validateCeilingSprites(map, issues);
+  validateCeilingFeatures(map, issues);
   validateReachability(map, issues);
   validateDuplicateOverlays(map, issues);
   validateItemRefs(map, issues);
@@ -349,6 +353,76 @@ function validateWallFeatures(map: FloorMapJSON, issues: ValidationIssue[]): voi
         severity: "error",
         code: "wall_feature_unknown",
         message: `Unknown wall feature id "${f.spriteId}" at (${f.x},${f.y})`,
+        at: { x: f.x, y: f.y },
+      });
+    }
+  }
+}
+
+/** Ceiling sprites are visual-only billboards — bounds + a known spriteId,
+ *  plus a sanity check on the optional per-placement scale. */
+function validateCeilingSprites(map: FloorMapJSON, issues: ValidationIssue[]): void {
+  for (const s of map.ceilingSprites ?? []) {
+    if (!inBoundsGrid(map, s.x, s.y)) {
+      issues.push({
+        severity: "error",
+        code: "ceiling_sprite_oob",
+        message: `Ceiling sprite "${s.spriteId}" at (${s.x},${s.y}) is out of bounds`,
+        at: { x: s.x, y: s.y },
+      });
+    }
+    if (!CEILING_SPRITES_BY_ID[s.spriteId]) {
+      issues.push({
+        severity: "error",
+        code: "ceiling_sprite_unknown",
+        message: `Unknown ceiling sprite id "${s.spriteId}" at (${s.x},${s.y})`,
+        at: { x: s.x, y: s.y },
+      });
+    }
+    if (s.scale !== undefined && (!Number.isFinite(s.scale) || s.scale <= 0)) {
+      issues.push({
+        severity: "error",
+        code: "ceiling_sprite_scale",
+        message: `Ceiling sprite "${s.spriteId}" at (${s.x},${s.y}) has invalid scale ${s.scale} (must be > 0)`,
+        at: { x: s.x, y: s.y },
+      });
+    }
+  }
+}
+
+/**
+ * Ceiling features fully replace the sampled ceiling texture for one grid
+ * cell, so — unlike the "last writer wins" overlays in
+ * `validateDuplicateOverlays` — two entries on the same cell are a real
+ * authoring error, not just a warning.
+ */
+function validateCeilingFeatures(map: FloorMapJSON, issues: ValidationIssue[]): void {
+  const seenCells = new Set<string>();
+  for (const f of map.ceilingFeatures ?? []) {
+    if (!inBoundsGrid(map, f.x, f.y)) {
+      issues.push({
+        severity: "error",
+        code: "ceiling_feature_oob",
+        message: `Ceiling feature "${f.spriteId}" at (${f.x},${f.y}) is out of bounds`,
+        at: { x: f.x, y: f.y },
+      });
+      continue;
+    }
+    const key = `${f.x},${f.y}`;
+    if (seenCells.has(key)) {
+      issues.push({
+        severity: "error",
+        code: "ceiling_feature_duplicate",
+        message: `Multiple ceilingFeatures entries at (${f.x},${f.y}) — a cell can only sample one ceiling texture`,
+        at: { x: f.x, y: f.y },
+      });
+    }
+    seenCells.add(key);
+    if (!CEILING_FEATURES_BY_ID[f.spriteId]) {
+      issues.push({
+        severity: "error",
+        code: "ceiling_feature_unknown",
+        message: `Unknown ceiling feature id "${f.spriteId}" at (${f.x},${f.y})`,
         at: { x: f.x, y: f.y },
       });
     }

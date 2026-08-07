@@ -102,6 +102,23 @@ export interface FloorDef {
    * wall-feature helpers in `src/engine/render-math.ts` for the projection.
    */
   wallFeatures?: { x: number; y: number; dir: "n" | "e" | "s" | "w"; spriteId: string }[];
+  /**
+   * Physical objects suspended downward from the ceiling (chains, cages,
+   * censers, roots, lanterns, ...) — billboard-float like `mapSprites`, but
+   * top-anchored to the ceiling instead of bottom-anchored to the floor.
+   * Visual only — no collision/trigger behavior. `scale` (if given) must be
+   * a finite number > 0; it multiplies the sprite's registered `baseSize`,
+   * letting the same asset read as a short stub or a long descent depending
+   * on placement. See `src/data/ceiling-sprites.ts`.
+   */
+  ceilingSprites?: { x: number; y: number; spriteId: string; scale?: number }[];
+  /**
+   * Artwork belonging to the ceiling PLANE itself (grates, cracks, beams,
+   * hatches, ...) — fully replaces the sampled ceiling texture for one grid
+   * cell, unlike `ceilingSprites` which billboard-float in open space. At
+   * most one entry per cell. See `src/data/ceiling-features.ts`.
+   */
+  ceilingFeatures?: { x: number; y: number; spriteId: string }[];
   // Teleporter links: each entry maps a tile (x,y) on this floor to a
   // destination (floorId, x, y). When the player steps on a teleporter tile,
   // they are instantly relocated.
@@ -553,6 +570,8 @@ export function cloneFloor(floor: FloorDef): FloorDef {
       : undefined,
     mapSprites: floor.mapSprites ? floor.mapSprites.map((s) => ({ ...s })) : undefined,
     wallFeatures: floor.wallFeatures ? floor.wallFeatures.map((f) => ({ ...f })) : undefined,
+    ceilingSprites: floor.ceilingSprites ? floor.ceilingSprites.map((s) => ({ ...s })) : undefined,
+    ceilingFeatures: floor.ceilingFeatures ? floor.ceilingFeatures.map((f) => ({ ...f })) : undefined,
     teleporters: floor.teleporters ? floor.teleporters.map((t) => ({ ...t })) : undefined,
     chuteDrops: floor.chuteDrops ? floor.chuteDrops.map((c) => ({ ...c })) : undefined,
     lockedDoors: floor.lockedDoors ? floor.lockedDoors.map((d) => ({ ...d })) : undefined,
