@@ -532,6 +532,99 @@ export function featureMarkerSize(
   return Math.round(Math.min(max, Math.max(FEATURE_MARKER_MIN_PX, scaled)));
 }
 
+// --- Wall features -----------------------------------------------------------
+// A wall feature is a small decal (switch, plaque, relief, lock, vent, ...)
+// composited onto a *specific wall face* — as opposed to `mapSprites`, which
+// billboard-float in front of the corridor. The face is identified by the
+// cell the ray's wall/door hit belongs to (`hit.mapX/mapY` is the far cell;
+// the wall lives on the near cell, same math as `themeForWallHit`) plus which
+// of that cell's four edges was struck.
+
+export type WallDir = "n" | "e" | "s" | "w";
+
+/**
+ * Which face of the *near* cell a wall raycast hit belongs to. Mirrors the
+ * texture-flip condition used for wall/door texX sampling: a ray stepping in
+ * +x crosses the near cell's east edge; -x crosses its west edge; same for
+ * y/north-south.
+ */
+export function dirForWallHit(
+  side: "x" | "y",
+  rayDirX: number,
+  rayDirY: number
+): WallDir {
+  return side === "x" ? (rayDirX > 0 ? "e" : "w") : rayDirY > 0 ? "s" : "n";
+}
+
+/** The near cell + face a wall/door ray hit belongs to, for wallFeatures lookup. */
+export function wallFeatureCellForHit(
+  hitX: number,
+  hitY: number,
+  side: "x" | "y",
+  rayDirX: number,
+  rayDirY: number
+): { x: number; y: number; dir: WallDir } {
+  const x = side === "x" ? hitX - Math.sign(rayDirX) : hitX;
+  const y = side === "y" ? hitY - Math.sign(rayDirY) : hitY;
+  return { x, y, dir: dirForWallHit(side, rayDirX, rayDirY) };
+}
+
+/**
+ * `wallX` (0-1 across the face) sampled facing the same direction regardless
+ * of which side the ray approached from, so a decal doesn't mirror left/right
+ * when the player turns around and walks back past it. Uses the identical
+ * flip condition as the wall/door texX sampling in renderer.ts.
+ */
+export function stableWallX(
+  wallX: number,
+  side: "x" | "y",
+  rayDirX: number,
+  rayDirY: number
+): number {
+  const flip = (side === "x" && rayDirX > 0) || (side === "y" && rayDirY < 0);
+  return flip ? 1 - wallX : wallX;
+}
+
+/**
+ * A wall feature occupies a centered horizontal window of the wall face,
+ * `widthFrac` of the face's width. Returns the local 0-1 U coordinate within
+ * that window for a (stable) wallX, or null outside the window — the plain
+ * wall texture shows through there instead.
+ */
+export function wallFeatureLocalU(
+  stableX: number,
+  widthFrac: number
+): number | null {
+  if (widthFrac <= 0) return null;
+  const half = Math.min(0.5, widthFrac / 2);
+  const lo = 0.5 - half;
+  const hi = 0.5 + half;
+  if (stableX < lo || stableX > hi) return null;
+  return (stableX - lo) / (hi - lo);
+}
+
+export type WallFeatureAnchor = "center" | "bottom" | "top";
+
+/**
+ * Vertical [top, bottom] screen-pixel range for a wall feature decal — a
+ * sub-rectangle of the full wall strip's [drawStart, drawEnd] draw range, so
+ * e.g. a switch can sit at eye height instead of stretching floor-to-ceiling.
+ */
+export function wallFeatureVerticalRect(
+  drawStart: number,
+  drawEnd: number,
+  heightFrac: number,
+  anchor: WallFeatureAnchor
+): [number, number] {
+  const full = drawEnd - drawStart;
+  const featH = full * Math.max(0, Math.min(1, heightFrac));
+  let top: number;
+  if (anchor === "top") top = drawStart;
+  else if (anchor === "bottom") top = drawEnd - featH;
+  else top = drawStart + (full - featH) / 2;
+  return [top, top + featH];
+}
+
 /**
  * Stateful render-camera animator. Tracks the display camera position
  * separately from the integer game-state position and tweens between them

@@ -38,6 +38,13 @@ export interface LockedDoorJSON {
   keyId: string;
 }
 
+export interface WallFeatureJSON {
+  x: number;
+  y: number;
+  dir: "n" | "e" | "s" | "w";
+  spriteId: string;
+}
+
 export interface TreasureJSON {
   x: number;
   y: number;
@@ -76,6 +83,7 @@ export interface FloorMapJSON {
   encounterTable?: string[];
   encounterZones?: EncounterZoneDef[];
   mapSprites?: { x: number; y: number; spriteId: string }[];
+  wallFeatures?: WallFeatureJSON[];
   teleporters?: TeleporterLink[];
   chuteDrops?: ChuteDropJSON[];
   lockedDoors?: LockedDoorJSON[];
@@ -185,6 +193,7 @@ export function newFloorMapJSON(
     encounterTable: partial?.encounterTable,
     encounterZones: partial?.encounterZones,
     mapSprites: partial?.mapSprites,
+    wallFeatures: partial?.wallFeatures,
     teleporters: partial?.teleporters,
     chuteDrops: partial?.chuteDrops,
     lockedDoors: partial?.lockedDoors,
@@ -219,6 +228,7 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
     encounterTable: floor.encounterTable ? [...floor.encounterTable] : undefined,
     encounterZones: floor.encounterZones?.map((z) => ({ ...z })),
     mapSprites: floor.mapSprites?.map((s) => ({ ...s })),
+    wallFeatures: floor.wallFeatures?.map((f) => ({ ...f })),
     teleporters: floor.teleporters?.map((t) => ({ ...t })),
     chuteDrops: floor.chuteDrops?.map((c) => ({ ...c })),
     lockedDoors: floor.lockedDoors?.map((d) => ({ ...d })),
@@ -264,6 +274,7 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
     encounterTable: map.encounterTable ? [...map.encounterTable] : undefined,
     encounterZones: map.encounterZones?.map((z) => ({ ...z })),
     mapSprites: map.mapSprites?.map((s) => ({ ...s })),
+    wallFeatures: map.wallFeatures?.map((f) => ({ ...f })),
     teleporters: map.teleporters?.map((t) => ({ ...t })),
     chuteDrops: map.chuteDrops?.map((c) => ({ ...c })),
     lockedDoors: map.lockedDoors?.map((d) => ({ ...d })),
@@ -319,6 +330,7 @@ export function parseFloorMapJSON(raw: unknown): FloorMapJSON {
     encounterTable: optionalStringArray(o.encounterTable),
     encounterZones: parseOverlayArray(o.encounterZones, "encounterZones", parseZone),
     mapSprites: parseOverlayArray(o.mapSprites, "mapSprites", parseMapSprite),
+    wallFeatures: parseOverlayArray(o.wallFeatures, "wallFeatures", parseWallFeature),
     teleporters: parseOverlayArray(o.teleporters, "teleporters", parseTeleporter),
     chuteDrops: parseOverlayArray(o.chuteDrops, "chuteDrops", parseChute),
     lockedDoors: parseOverlayArray(o.lockedDoors, "lockedDoors", parseLockedDoor),
@@ -397,6 +409,15 @@ function parseMapSprite(
   return {
     x: requireInt(o.x, `${l}.x`),
     y: requireInt(o.y, `${l}.y`),
+    spriteId: requireString(o.spriteId, `${l}.spriteId`),
+  };
+}
+
+function parseWallFeature(o: Record<string, unknown>, l: string): WallFeatureJSON {
+  return {
+    x: requireInt(o.x, `${l}.x`),
+    y: requireInt(o.y, `${l}.y`),
+    dir: parseDir(o.dir, `${l}.dir`),
     spriteId: requireString(o.spriteId, `${l}.spriteId`),
   };
 }

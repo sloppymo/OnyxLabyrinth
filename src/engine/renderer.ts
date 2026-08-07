@@ -61,6 +61,10 @@ import {
   propBillboardSize,
   isCorridorMarkerFeature,
   BILLBOARD_MIN_DEPTH,
+  wallFeatureCellForHit,
+  stableWallX,
+  wallFeatureLocalU,
+  wallFeatureVerticalRect,
 } from "./render-math";
 import type { RenderCamera } from "./render-math";
 import {
@@ -75,6 +79,7 @@ import {
   type MapSpriteImage,
 } from "./map-sprite-cache";
 import type { MapSpriteDef } from "../data/map-sprites";
+import { getWallFeatureDef, getWallFeatureImage } from "./wall-feature-cache";
 import { featurePropSpriteIds } from "../data/maze-props";
 import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
@@ -1304,6 +1309,47 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         stripWidth,
         drawEnd - drawStart + 1
       );
+    }
+
+    // Wall-feature decal pass: small switches/plaques/reliefs composited onto
+    // one specific wall face (see data/wall-features.ts). Plain "wall" edges
+    // only — door/locked edges already carry their own dedicated art below,
+    // and this needs the plain wall texture underneath to composite over.
+    if (hit.edge === "wall" && state.floor.wallFeatures?.length) {
+      const face = wallFeatureCellForHit(hit.mapX, hit.mapY, hit.side, rayDirX, rayDirY);
+      const featureDef = state.floor.wallFeatures.find(
+        (f) => f.x === face.x && f.y === face.y && f.dir === face.dir
+      );
+      if (featureDef) {
+        const sprite = getWallFeatureDef(featureDef.spriteId);
+        const img = getWallFeatureImage(featureDef.spriteId);
+        if (sprite && img) {
+          const stableX = stableWallX(hit.wallX, hit.side, rayDirX, rayDirY);
+          const u = wallFeatureLocalU(stableX, sprite.widthFrac);
+          if (u !== null) {
+            const [top, bottom] = wallFeatureVerticalRect(
+              drawStart,
+              drawEnd,
+              sprite.heightFrac,
+              sprite.anchor
+            );
+            const texX = Math.min(img.width - 1, Math.floor(u * img.width));
+            ctx.globalAlpha = fog;
+            ctx.drawImage(
+              img,
+              texX,
+              0,
+              1,
+              img.height,
+              x,
+              Math.floor(top),
+              stripWidth,
+              Math.max(1, Math.ceil(bottom) - Math.floor(top))
+            );
+            ctx.globalAlpha = 1.0;
+          }
+        }
+      }
     }
 
     if (hit.edge === "door" || hit.edge === "locked") {

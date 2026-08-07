@@ -27,6 +27,7 @@ import { loadEnemySprites } from "./engine/enemy-sprite-cache";
 import { loadPartySprites } from "./engine/party-sprite-cache";
 import { loadEffectSprites } from "./engine/effect-sprite-cache";
 import { loadMapSprites } from "./engine/map-sprite-cache";
+import { loadWallFeatures } from "./engine/wall-feature-cache";
 import { audio } from "./engine/audio";
 import { renderAutoMap } from "./engine/automap";
 import { bindInput, type InputHandlers } from "./engine/input";
@@ -2124,6 +2125,7 @@ let enemySpritesReady = false;
 let partySpritesReady = false;
 let effectSpritesReady = false;
 let mapSpritesReady = false;
+let wallFeaturesReady = false;
 const failedAssets: string[] = [];
 
 // Wait for the custom font and corridor textures to load before starting the
@@ -2193,6 +2195,14 @@ loadMapSprites()
   .catch(() => {
     mapSpritesReady = true;
     failedAssets.push("mapSprites");
+  });
+loadWallFeatures()
+  .then(() => {
+    wallFeaturesReady = true;
+  })
+  .catch(() => {
+    wallFeaturesReady = true;
+    failedAssets.push("wallFeatures");
   });
 
 // Debug helpers for targeted visual verification; only active when the page
@@ -2319,6 +2329,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       partySprites: partySpritesReady,
       effectSprites: effectSpritesReady,
       mapSprites: mapSpritesReady,
+      wallFeatures: wallFeaturesReady,
       audioUi: audioStatus.ui,
       audioCombat: audioStatus.combat,
       audioDungeon: audioStatus.dungeon,

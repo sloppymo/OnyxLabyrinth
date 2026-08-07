@@ -93,6 +93,15 @@ export interface FloorDef {
    * Drawn in the corridor view using `public/assets/map-sprites/`.
    */
   mapSprites?: { x: number; y: number; spriteId: string }[];
+  /**
+   * Small decals (switches, plaques, reliefs, locks, vents, ...) composited
+   * onto one specific wall face, unlike `mapSprites` which billboard-float in
+   * front of the corridor. Visual only — no collision/trigger behavior.
+   * `dir` must name an edge that is "wall" (not door/locked/open) on this
+   * cell. See `src/data/wall-features.ts` for the sprite registry and the
+   * wall-feature helpers in `src/engine/render-math.ts` for the projection.
+   */
+  wallFeatures?: { x: number; y: number; dir: "n" | "e" | "s" | "w"; spriteId: string }[];
   // Teleporter links: each entry maps a tile (x,y) on this floor to a
   // destination (floorId, x, y). When the player steps on a teleporter tile,
   // they are instantly relocated.
