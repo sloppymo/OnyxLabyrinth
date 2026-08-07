@@ -86,7 +86,7 @@ droplet; v2's tighter "single droplet, clear silhouette" prompt fixed it).
 | Asset | Location | Event source | Zone / reference theme | widthFrac/heightFrac/anchor |
 |---|---|---|---|---|
 | `bell` | (5,6) `n` | "THE THIRD BELL HAS NO TONGUE." | cut-bell-chapel → f4 | 0.3 / 0.55 / top |
-| `bookshelf-intrusion` | (8,19) `n` and (3,15) `w` | "Shelves begin where the stone should be." / "The shelves list books not yet written." | unfinished-index → f2 | 0.4 / 0.7 / bottom |
+| `bookshelf-intrusion` | (10,18) `n` and (5,9) `s` | "Shelves begin where the stone should be." / "The shelves list books not yet written." | placed just *outside* unfinished-index (f1 crypt / f4 chapel respectively — see repositioning note below); art itself is f2 library material | 0.4 / 0.7 / bottom |
 | `cold-hand` | (7,6) `e` | "A cold hand closes your wounds." (heal event) | cut-bell-chapel → f4 | 0.28 / 0.4 / center |
 | `sweating-iron` | (18,6) `e` | "Iron sweats. Something below coughs once." | ember-suture → f3 | 0.35 / 0.45 / center |
 | `ember-scorch` | (12,5) `e` | "Embers flower underfoot." | ember-suture → f3 | 0.3 / 0.35 / bottom |
@@ -96,19 +96,29 @@ droplet; v2's tighter "single droplet, clear silhouette" prompt fixed it).
 — all six confirmed wall-attached, correctly scaled, no stretching/mirroring
 artifacts, legible without reading as a floating UI icon.
 
-**Known limitation, documented rather than fixed**: both `bookshelf-intrusion`
-placements sit several cells inside the already-f2-themed `unfinished-index`
-zone rather than exactly on the crypt/library seam, so the "impossible
-material crossing into stone" contrast the event text implies is muted —
-the decal mostly blends into the already-library-toned wall around it
-instead of visibly interrupting plain crypt stone. The `sweating-iron` and
-`cold-hand`/`bell` placements don't have this problem (their events sit
-close enough to their zone's edge, or the material families differ sharply
-enough from the flanking crypt masonry, that the decal still pops).
-Repositioning the two bookshelf entries onto a plain-crypt-themed wall face
-one or two cells outside the library zone (still near their event tiles)
-would fix this — flagged as the top remaining opportunity in the final
-report rather than iterated on further this pass.
+**Repositioned after initial QA**: both `bookshelf-intrusion` placements
+originally sat several cells inside the already-f2-themed `unfinished-index`
+zone (at (8,19) and (3,15)), so the "impossible material crossing into
+stone" contrast the event text implies was muted — the decal blended into
+the already-library-toned wall around it instead of visibly interrupting a
+different material.
+
+Fixed by moving each to a wall face just *outside* the library zone,
+verified via `themeAt`/`tilesetZones` inspection, not guessed:
+- (8,19) → **(10,18) `n`**: one cell east of the zone's `x2=9` boundary,
+  which is plain f1 crypt stone. The shelf now visibly interrupts ordinary
+  mossy masonry.
+- (3,15) → **(5,9) `s`**: there is no plain-crypt buffer between the
+  library and chapel quadrants at this x-range (`unfinished-index` and
+  `cut-bell-chapel` are directly adjacent, `y=12` / `y=11`), so this one
+  crosses into the cut-bell-chapel (f4) zone instead — cold purple-grey
+  choir stone is arguably an even sharper material contrast than crypt
+  stone would have been.
+
+Both re-verified in-engine (`f1-bookshelf-fixed-01/02.png`) before
+re-validating and rebuilding; `floor:validate` and the full test suite stay
+green (the wallFeatures validator only checks edge-type/bounds/spriteId, not
+zone placement, so this was a content/QA fix, not a system-level one).
 
 **Floor-decal adaptation note**: `ember-scorch` (12,5) and `upward-water`
 (17,15) visualize event text that describes a *floor*-level phenomenon

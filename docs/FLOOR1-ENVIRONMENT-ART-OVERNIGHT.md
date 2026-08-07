@@ -93,8 +93,24 @@ Full per-asset prompts, palette references, and settings:
 
 `docs/floor1-art-review/index.html` — open directly in a browser. Real
 in-game screenshots for every implemented asset, at multiple distances for
-the stairs, with per-asset QA notes including the two known limitations
-(bookshelf placement, ember-scorch's floor→wall adaptation).
+the stairs, with per-asset QA notes including one remaining known
+limitation (ember-scorch's floor→wall adaptation). The bookshelf placement
+issue noted in the first pass was fixed in a follow-up (see below) — both
+now sit on the correct side of their zone boundary.
+
+## Follow-up: bookshelf repositioning
+
+Both `bookshelf-intrusion` placements originally sat inside the
+already-f2-themed `unfinished-index` zone rather than at its boundary,
+muting the "impossible material" contrast the event text implies. Fixed by
+moving each onto a wall face just outside the zone (verified against
+`tilesetZones`, not guessed): (8,19)→**(10,18) `n`**, plain f1 crypt stone
+one cell past the zone's `x2=9` edge; (3,15)→**(5,9) `s`**, into the
+cut-bell-chapel (f4) zone instead, since no plain-crypt buffer exists
+between the library and chapel quadrants at that x-range. Both re-verified
+in-engine before re-validating (`floor:validate`, full test suite,
+`floor:export-check`, build — all green) and committed. Full detail in
+`art/pixellab/maze-environment-generation-log.md`.
 
 ## Not completed / deferred
 
@@ -109,12 +125,6 @@ the stairs, with per-asset QA notes including the two known limitations
   texture, structurally similar to the stairs slot but keyed by door
   identity instead of theme) — a clean, scoped follow-up, not attempted
   this pass to keep to the priority order.
-- **Bookshelf placement fix** — both `bookshelf-intrusion` placements sit
-  inside the already-themed library zone instead of at its boundary with
-  plain crypt stone, muting the "impossible material" contrast. Documented
-  in the generation log and gallery; a 10-minute fix (move to a plain-crypt
-  wall face one or two cells outside the zone) that didn't happen this pass
-  because it was caught during QA near the end of the session.
 - **NPC billboards** — untouched, per explicit scope (task said do not
   build the NPC hook this pass).
 - **Floor decals (true floor-level effects)** — not built as a separate
@@ -123,15 +133,12 @@ the stairs, with per-asset QA notes including the two known limitations
   reasonable Wave 2 candidate if more of the audit's floor-level candidates
   (pressure plates, drain grates on Floors 3/5) get built later.
 
-## Top 3 next actions
+## Top 2 next actions
 
-1. Reposition the two `bookshelf-intrusion` placements to the actual
-   crypt/library zone boundary — highest-value, lowest-effort fix left on
-   the table.
-2. A per-lockedDoors-entry unique door texture, to give the reliquary gate
+1. A per-lockedDoors-entry unique door texture, to give the reliquary gate
    (and eventually each floor's boss door) real architectural identity —
    the same design pattern as the stairs slot, just keyed differently.
-3. Extend this same PixelLab + wallFeatures pipeline to Floor 3 (the
+2. Extend this same PixelLab + wallFeatures pipeline to Floor 3 (the
    audit's richest floor: guardian statue, anvil altar, pressure-plate/
    flame-jet, fused-smith-in-wall) now that the system and the production
    workflow are both proven.
