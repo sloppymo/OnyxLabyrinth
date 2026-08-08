@@ -191,6 +191,19 @@ individually — same time/generation-budget tradeoff as the wall art batch.
 | hotboi-kitchen-prep | 64x52 | baseSize 32 | 1 | accepted first try — butcher table, cleaver, vegetables |
 | hotboi-kitchen-shelves | 240x240 | 0.98/0.95/bottom | 1 | accepted first try — sacks, jars, hanging dried herbs and garlic, bread, cabinet below; cluttered/utilitarian per the kitchen brief |
 
+## P2 — secondary lantern + clutter (`public/assets/ceiling-sprites/` + `public/assets/map-sprites/`)
+
+Curated P2 pass, not exhaustive — brief's own stop condition ("additional
+generations start becoming redundant") applies once the room has enough to
+compose from. Lantern verified in-engine (reverted); the two clutter piles
+were inspected at full res only.
+
+| id | size | baseSize | candidates | notes |
+|---|---|---|---|---|
+| hotboi-lantern | 44x64 | 30 | 1 | accepted first try — modest iron/brass lantern, correctly reads as secondary next to the chandelier |
+| hotboi-bar-clutter | 48x36 | 22 | 1 | accepted first try — mugs, bottle, coins, dice; 2px bottom-anchor correction |
+| hotboi-kitchen-clutter | 48x40 | 22 | 1 | accepted first try — sack, cheese, sausage, small pot |
+
 ## Rejected/superseded candidates
 
 Kept in `art/pixellab-candidates/hot-bois-tavern/` for the record.

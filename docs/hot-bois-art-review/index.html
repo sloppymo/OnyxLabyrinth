@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Hot Boi's Tavern — Art Review (P0 + P1)</title>
+<title>Hot Boi's Tavern — Art Review (P0–P2)</title>
 <style>
   :root {
     --bg: #14100b;
@@ -77,9 +77,9 @@
 
   <header>
     <span class="eyebrow">OnyxLabyrinth &middot; Art Production Review</span>
-    <h1>Hot Boi's Tavern — Interior Art (P0 + P1)</h1>
-    <p class="sub">Branch <code>agent/hot-bois-interior-art</code>. Core surfaces, the three-part bar, Hot Boi's proprietor billboard, the central pillar (P0) — plus the hearth, chandelier, hanging bar rack, core furniture, varied wall art, and kitchen core (P1). Every in-engine screenshot here is the real renderer (<code>vite preview</code>), reached by temporarily wiring each asset onto a real Floor 1 wall/cell, screenshotting, then reverting the floor data — only the art files and registry entries are committed.</p>
-    <div class="stopnote">P0 + P1 both complete. P2 (secondary lantern, clutter compositions, kitchen/bar/table clutter, optional material variants) not started — the brief's own stop conditions say to stop once "additional generations start becoming redundant," and the room now has enough furnishing options to compose from.</div>
+    <h1>Hot Boi's Tavern — Interior Art (P0–P2)</h1>
+    <p class="sub">Branch <code>agent/hot-bois-interior-art</code>. Core surfaces, the three-part bar, Hot Boi's proprietor billboard, the central pillar (P0) — the hearth, chandelier, hanging bar rack, core furniture, varied wall art, and kitchen core (P1) — a secondary lantern and two clutter compositions (P2, curated not exhaustive). Every in-engine screenshot here is the real renderer (<code>vite preview</code>), reached by temporarily wiring each asset onto a real Floor 1 wall/cell, screenshotting, then reverting the floor data — only the art files and registry entries are committed.</p>
+    <div class="stopnote">P0–P2 complete, 25 accepted assets. Stopping per the brief's own stop conditions ("additional generations start becoming redundant") — optional material variants (smoke-dark wall near hearth, etc.) and further clutter were judged not to materially improve the room at this stage.</div>
   </header>
 
   <section>
@@ -189,6 +189,17 @@
   </section>
 
   <section>
+    <h2>K. P2 — Secondary Lantern &amp; Clutter</h2>
+    <p class="note">Curated, not exhaustive — the brief's own stop condition applies once the room has enough to compose from.</p>
+    <div class="grid grid-3">
+      <figure class="card"><img src="screenshots/enlarge-lantern.png" alt="lantern enlarged"><figcaption>hotboi-lantern.png — 4× nearest-neighbor</figcaption></figure>
+      <figure class="card"><img src="screenshots/enlarge-bar-clutter.png" alt="bar clutter enlarged"><figcaption>hotboi-bar-clutter.png — 6× nearest-neighbor</figcaption></figure>
+      <figure class="card"><img src="screenshots/enlarge-kitchen-clutter.png" alt="kitchen clutter enlarged"><figcaption>hotboi-kitchen-clutter.png — 6× nearest-neighbor</figcaption></figure>
+      <figure class="card hero-shot" style="grid-column: span 3"><img src="screenshots/hotboi-lantern-inengine.png" alt="lantern in engine"><figcaption>gameplay scale · lantern, 1 tile — correctly reads as secondary next to the chandelier</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
     <h2>J. Composition Board</h2>
     <p class="note">The floorplan is canonical (from the task brief text — no floorplan image file was supplied, so this is a schematic, not a redesign). Not true first-person; the point is proving every asset belongs to <em>one</em> room.</p>
     <div class="board">
@@ -215,6 +226,7 @@
       <tr><td>table / bench / keg-stack</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td>bottom-anchor corrected on all three</td></tr>
       <tr><td>notice-board / trophy / key-rack</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td>anti-slop check: 3 distinct silhouettes/anchors, zero centered rectangles</td></tr>
       <tr><td>kitchen stove / prep / shelves</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td>minimum P1 kitchen set; clutter compositions parked as P2</td></tr>
+      <tr><td>lantern / bar &amp; kitchen clutter</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td>lantern confirmed secondary-scale in-engine; clutter piles inspected at full res</td></tr>
     </table>
   </section>
 

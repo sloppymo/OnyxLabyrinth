@@ -53,6 +53,8 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "hotboi-keg-stack", name: "Hot Boi's Keg Stack", file: "hotboi-keg-stack.png", baseSize: 32 },
   { id: "hotboi-kitchen-stove", name: "Hot Boi's Kitchen Stove", file: "hotboi-kitchen-stove.png", baseSize: 34 },
   { id: "hotboi-kitchen-prep", name: "Hot Boi's Prep Table", file: "hotboi-kitchen-prep.png", baseSize: 32 },
+  { id: "hotboi-bar-clutter", name: "Bar Clutter", file: "hotboi-bar-clutter.png", baseSize: 22 },
+  { id: "hotboi-kitchen-clutter", name: "Kitchen Clutter", file: "hotboi-kitchen-clutter.png", baseSize: 22 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(
