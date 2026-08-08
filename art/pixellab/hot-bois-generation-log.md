@@ -204,6 +204,31 @@ were inspected at full res only.
 | hotboi-bar-clutter | 48x36 | 22 | 1 | accepted first try — mugs, bottle, coins, dice; 2px bottom-anchor correction |
 | hotboi-kitchen-clutter | 48x40 | 22 | 1 | accepted first try — sack, cheese, sausage, small pot |
 
+## Coherence audit (post-P2, `art/pixellab-candidates/hot-bois-tavern/coherence-audit/`)
+
+Once Hot Boi's own NPC design was reviewed and approved as canonical (see
+memory `hotbois-interior-art-canon`), all 24 accepted P0–P2 assets were
+re-graded against him on five axes — chunkiness, weirdness/personality,
+lived-in wear, compatibility with Hot Boi, composition-usefulness — and
+classified KEEP / EDIT / REGENERATE. 20 assets were strong KEEPs outright
+(both tilesets and NPC/pillar in P0; hearth, hanging-rack, all furniture,
+monster-trophy, key-rack, all kitchen pieces in P1; all of P2). No asset was
+bad enough to warrant a full REGENERATE. Four were flagged EDIT:
+
+| id | defect | outcome |
+|---|---|---|
+| hotboi-bar-right | back-bar shelf had a baked-in arched doorway shape with a doorknob — reads as a real interactive door, not wall art | **replaced** — v6 (3rd attempt) drops the archway entirely: strongbox, ledger, trophy cup, mugs, dried goods on hooks. v4 fixed the door but reintroduced a potted plant (this pass's own earlier plants exclusion); v5 tried a stronger negative-prompt fix and made it worse (three plants, one prop read as an anachronistic device) — negating "plant" kept reinforcing it. v6 dropped the negation and only described positive replacement objects, which worked cleanly. |
+| hotboi-chandelier | too polished/symmetric — unlit candles, no wax, no grime; a room-defining object that can't afford to read as generic | **replaced** — v3 (2nd attempt): visible glowing flames, dripping wax, slightly asymmetric arms. v2 (palette-conditioned on the original) desaturated to flat monochrome brown and lost the black-iron material read entirely — v3 dropped palette conditioning and named the material explicitly instead, which fixed it. |
+| hotboi-bar-center | bottle shelving reads as tidy evenly-spaced rows — user specifically wants "crooked overloaded shelving" over "elegant evenly-spaced bottles" | **kept original** — 2 attempts (v2, v3) both failed to break the model's strong prior toward symmetric shelf rows, and each regressed something else that already worked (v2 turned the centered tapped keg into an odd wall-mounted barrel medallion; v3 dropped the tap fixture and drifted from 4 to 5 stools). Original remains the strongest of the three bar panels per the initial P0 review; its tidiness is a minor, forgivable trait against that, not worth a third attempt. |
+| hotboi-notice-board | already fixed the "blank rectangle" prior (see P1 entry), but the 4 paper scraps sit in a rigid, uniform 2×2 grid — reads closer to a repeating pattern than a messy collage | **kept original** — 2 attempts (v6, v7) both failed: v6 ("scattered, overlapping") produced *more* papers in an even tighter, more rectangular 4×3 grid — a regression on the exact anti-slop axis being fixed; v7 (explicit count + spacing) produced 3 narrow parchment-scroll strips touching edge-to-edge with no visible text, a different failure mode, and one strip bled off the canvas top. Original's grid-4 composition already cleared the P1 acceptance bar; not worth a third attempt chasing a secondary polish concern. |
+
+Two clear lesson for this endpoint (no image-to-image/inpainting, pixflux
+text-to-image only): negating a concept in the prompt ("no plants") can
+reinforce it rather than suppress it — describing only the desired positive
+content works more reliably. And palette-conditioning on an existing asset
+via `color_image` can wash out material contrast (chandelier v2's iron read
+disappeared) — worth dropping for a from-scratch material-heavy redo.
+
 ## Rejected/superseded candidates
 
 Kept in `art/pixellab-candidates/hot-bois-tavern/` for the record.
