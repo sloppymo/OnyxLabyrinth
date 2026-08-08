@@ -43,6 +43,7 @@ import {
   resolveEquipPreview,
 } from "./equip-sheet";
 import { scorchboardEntries } from "../game/tavern";
+import { REMOVE_CURSE_COST, APPRAISE_COST } from "../data/service-prices";
 import {
   startPartyIdleAnim,
   type PartyIdleAnimHandle,
@@ -52,12 +53,6 @@ type TownScreen = "main" | "inn" | "temple" | "shop" | "roster" | "equip";
 type EquipPhase = "char" | "slot" | "item";
 type ShopTab = "buy" | "sell" | "appraise" | "buyConfirm";
 type RosterTab = "status" | "progress";
-
-/** Temple fee to shatter all equipped cursed gear. */
-const REMOVE_CURSE_COST = 100;
-
-/** Shop fee to identify one unidentified item. */
-const APPRAISE_COST = 50;
 
 export interface TownControllerOptions {
   panel: HTMLElement;

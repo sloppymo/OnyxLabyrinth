@@ -127,6 +127,8 @@ import { tickBuffs, clearBuffs } from "./game/persistent-spells";
 import { SpellMenuController } from "./engine/spell-ui";
 import { NPCController } from "./engine/npc-ui";
 import { TavernController } from "./engine/tavern-ui";
+import { NamandaController } from "./engine/namanda-ui";
+import { applyNamandaBlessing } from "./game/namanda";
 import { PerkSelectController } from "./engine/perk-select-ui";
 import { markKilled, adjustDisposition } from "./game/npc";
 import { companionAsSummonedAlly, syncCompanionAfterCombat } from "./game/companion";
@@ -636,6 +638,12 @@ function withCombatTransition<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function startCombat(combat: CombatState): Promise<void> {
+  // Namanda's Blessing (Church of Saint Namanda, game/namanda.ts): a flat
+  // party-wide armor bonus while the dungeon buff is active. Applied here,
+  // once, so every real fight (dungeon encounters, NPC fights, the stairs
+  // guardian, Arena) picks it up uniformly instead of threading a flag
+  // through each of their individual createCombatFromEncounter call sites.
+  applyNamandaBlessing(state, combat);
   // The one authored temporary companion (game/companion.ts) rides the same
   // summonedAllies channel as the Priest's BAMORDI/SOCORDI summons — a
   // simple AI-controlled combatant, not a real party slot — so it never
@@ -1542,6 +1550,7 @@ function openActionRing(): void {
     spellMenuController ||
     npcController ||
     tavernController ||
+    namandaController ||
     actionRingController
   ) {
     return;
@@ -1604,6 +1613,7 @@ function currentRouteFlags(): ControllerRouteContext {
     hasSpellMenu: !!spellMenuController,
     hasNpc: !!npcController,
     hasTavern: !!tavernController,
+    hasNamanda: !!namandaController,
     hasActionRing: !!actionRingController,
     hasTown: !!townController,
     hasCamp: !!campController,
@@ -2309,6 +2319,12 @@ function openNPCPanel(npcId: string): void {
     openTavernPanel();
     return;
   }
+  // The Church of Saint Namanda's altar — a physical interaction point, not
+  // a character. See engine/namanda-ui.ts's doc comment.
+  if (npcId === "namanda-altar") {
+    openNamandaPanel();
+    return;
+  }
   const npc = state.floor.npcs?.find((n) => n.id === npcId);
   if (!npc) return;
   setMode(state, "title");
@@ -2439,6 +2455,49 @@ window.addEventListener("keydown", (e: KeyboardEvent) => {
     return;
   }
   if (tavernController.handleKey(e.key)) {
+    e.preventDefault();
+  }
+});
+
+// --- Church of Saint Namanda ---------------------------------------------
+// Borrows "title" mode like the Tavern. Opened by stepping onto the altar's
+// interaction tile (see openNPCPanel's dispatch above) instead of the
+// generic NPCController — there is no NPC here, just the altar itself.
+let namandaController: NamandaController | null = null;
+let justOpenedNamandaPanel = false;
+
+function openNamandaPanel(): void {
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  canvas.style.opacity = "0.2";
+  justOpenedNamandaPanel = true;
+  namandaController = new NamandaController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    state,
+    onClose: () => {
+      namandaController = null;
+      canvas.style.opacity = "1";
+      setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
+      setMessage("");
+    },
+    // Same atomicity contract as the Tavern's onSave: a heal/bless/uncurse/
+    // identify transaction has already fully committed to `state`.
+    onSave: () => {
+      autoSave(state);
+    },
+  });
+}
+
+window.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (state.mode !== "title" || !namandaController) return;
+  if (justOpenedNamandaPanel) {
+    // The movement key that stepped onto the altar must not also drive the menu.
+    justOpenedNamandaPanel = false;
+    e.preventDefault();
+    return;
+  }
+  if (namandaController.handleKey(e.key)) {
     e.preventDefault();
   }
 });
@@ -2810,6 +2869,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       spellMenuController ||
       npcController ||
       tavernController ||
+      namandaController ||
       perkSelectController ||
       prologueController ||
       endingController
@@ -2868,6 +2928,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       spellMenuController ||
       npcController ||
       tavernController ||
+      namandaController ||
       perkSelectController ||
       prologueController ||
       endingController ||

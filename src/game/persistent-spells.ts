@@ -126,6 +126,17 @@ function setBuff(state: GameState, kind: PersistentBuff["kind"], steps: number):
 }
 
 /**
+ * Namanda's Blessing (Church of Saint Namanda service, `game/namanda.ts`):
+ * one active blessing at a time, same refresh-not-stack rule as Light/
+ * Levitate. Its combat effect (a flat armor bonus for the whole party) is
+ * applied at combat start in `main.ts`'s `startCombat` via `hasBuff` —
+ * this function only manages the dungeon-side timer.
+ */
+export function blessParty(state: GameState, steps: number): void {
+  setBuff(state, "blessing", steps);
+}
+
+/**
  * Tick all buffs down one step (call once per dungeon move, before tile
  * features are processed). Returns expiry messages for the message bar.
  */
@@ -137,7 +148,9 @@ export function tickBuffs(state: GameState): string[] {
       messages.push(
         b.kind === "light"
           ? "The magical light gutters out."
-          : "The party settles back onto the stone."
+          : b.kind === "blessing"
+            ? "Namanda's blessing fades."
+            : "The party settles back onto the stone."
       );
     }
   }

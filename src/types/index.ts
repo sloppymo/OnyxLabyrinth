@@ -71,7 +71,7 @@ export interface InventoryEntry {
 // See game/persistent-spells.ts.
 
 export interface PersistentBuff {
-  kind: "light" | "levitation";
+  kind: "light" | "levitation" | "blessing";
   remainingSteps: number;
 }
 

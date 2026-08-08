@@ -13,6 +13,7 @@ function ctx(overrides: Partial<ControllerRouteContext> = {}): ControllerRouteCo
     hasSpellMenu: false,
     hasNpc: false,
     hasTavern: false,
+    hasNamanda: false,
     hasActionRing: false,
     hasTown: false,
     hasCamp: false,
@@ -70,6 +71,18 @@ describe("resolveControllerRoute", () => {
       resolveControllerRoute(ctx({ mode: "title", hasNpc: true, hasTavern: true })),
     ).toBe("npc");
     expect(resolveControllerRoute(ctx({ mode: "dungeon", hasTavern: true }))).toBe(
+      "dungeon",
+    );
+  });
+
+  it("routes the Church of Saint Namanda between tavern and action ring", () => {
+    expect(
+      resolveControllerRoute(ctx({ mode: "title", hasNamanda: true, hasActionRing: true })),
+    ).toBe("namanda");
+    expect(
+      resolveControllerRoute(ctx({ mode: "title", hasTavern: true, hasNamanda: true })),
+    ).toBe("tavern");
+    expect(resolveControllerRoute(ctx({ mode: "dungeon", hasNamanda: true }))).toBe(
       "dungeon",
     );
   });
