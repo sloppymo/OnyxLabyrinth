@@ -103,6 +103,82 @@ floor.ceilingFeatures = [
   { x: 27, y: 16, spriteId: "camp-sky-star-b" },
 ];
 
+const campSpriteIds = new Set([
+  "camp-tent-large",
+  "camp-wagon",
+  "camp-fire",
+  "camp-dead-tree",
+  "camp-supply-stack",
+  "camp-smith-work-area",
+  "camp-map-table",
+  "camp-palisade-checkpoint",
+  "camp-armor-rack",
+  "camp-barrel-stack",
+  "camp-bedrolls",
+  "camp-cookpot",
+  "camp-crate-stack",
+  "camp-gear-pile",
+  "camp-grindstone",
+  "camp-handcart",
+  "camp-lantern-post",
+  "camp-rough-fence",
+  "camp-tent-small",
+  "camp-weapon-rack",
+  "camp-adventurer-cards",
+  "camp-adventurer-map-study",
+  "camp-adventurer-shield-repair",
+  "camp-adventurer-sleeping",
+  "camp-adventurer-stew",
+  "camp-adventurer-watch",
+  "camp-adventurer-wounded",
+]);
+floor.mapSprites = [
+  ...(floor.mapSprites ?? []).filter((sprite) => !campSpriteIds.has(sprite.spriteId)),
+  { x: 26, y: 9, spriteId: "camp-tent-large" },
+  { x: 33, y: 9, spriteId: "camp-wagon" },
+  { x: 29, y: 12, spriteId: "camp-fire" },
+  { x: 33, y: 14, spriteId: "camp-dead-tree" },
+  { x: 31, y: 9, spriteId: "camp-supply-stack" },
+  { x: 31, y: 15, spriteId: "camp-smith-work-area" },
+  { x: 28, y: 10, spriteId: "camp-map-table" },
+  { x: 34, y: 8, spriteId: "camp-palisade-checkpoint" },
+  { x: 33, y: 16, spriteId: "camp-armor-rack" },
+  { x: 34, y: 10, spriteId: "camp-barrel-stack" },
+  { x: 25, y: 10, spriteId: "camp-bedrolls" },
+  { x: 30, y: 13, spriteId: "camp-cookpot" },
+  { x: 30, y: 8, spriteId: "camp-crate-stack" },
+  { x: 27, y: 14, spriteId: "camp-gear-pile" },
+  { x: 32, y: 16, spriteId: "camp-grindstone" },
+  { x: 32, y: 11, spriteId: "camp-handcart" },
+  { x: 31, y: 11, spriteId: "camp-lantern-post" },
+  { x: 25, y: 16, spriteId: "camp-rough-fence" },
+  { x: 26, y: 15, spriteId: "camp-tent-small" },
+  { x: 34, y: 16, spriteId: "camp-weapon-rack" },
+  { x: 27, y: 13, spriteId: "camp-adventurer-cards" },
+  { x: 29, y: 10, spriteId: "camp-adventurer-map-study" },
+  { x: 30, y: 16, spriteId: "camp-adventurer-shield-repair" },
+  { x: 26, y: 11, spriteId: "camp-adventurer-sleeping" },
+  { x: 31, y: 13, spriteId: "camp-adventurer-stew" },
+  { x: 25, y: 13, spriteId: "camp-adventurer-watch" },
+  { x: 33, y: 11, spriteId: "camp-adventurer-wounded" },
+];
+
+// One existing root curtain at the far edge is the physical false-sky clue.
+// It stays out of the central sky and visually ties to the dead tree below.
+floor.ceilingSprites = [
+  ...(floor.ceilingSprites ?? []).filter(
+    (sprite) => !(sprite.x === 34 && sprite.y === 14 && sprite.spriteId === "f1-root-curtain")
+  ),
+  { x: 34, y: 14, spriteId: "f1-root-curtain", scale: 0.55 },
+];
+
+const campDoorFeatureId = "camp-entrance-gate";
+floor.doorFeatures = [
+  ...(floor.doorFeatures ?? []).filter((feature) => feature.spriteId !== campDoorFeatureId),
+  { x: 24, y: 12, dir: "e", spriteId: campDoorFeatureId },
+  { x: 25, y: 12, dir: "w", spriteId: campDoorFeatureId },
+];
+
 floor.floorRevision = Math.max(6, floor.floorRevision ?? 0);
 
 writeFileSync(FLOOR_PATH, `${JSON.stringify(floor, null, 2)}\n`);

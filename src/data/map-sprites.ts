@@ -55,6 +55,36 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "hotboi-kitchen-prep", name: "Hot Boi's Prep Table", file: "hotboi-kitchen-prep.png", baseSize: 32 },
   { id: "hotboi-bar-clutter", name: "Bar Clutter", file: "hotboi-bar-clutter.png", baseSize: 22 },
   { id: "hotboi-kitchen-clutter", name: "Kitchen Clutter", file: "hotboi-kitchen-clutter.png", baseSize: 22 },
+  // The Camp — Floor 1's large false-outdoor refuge. Hero compositions are
+  // intentionally much larger than ordinary corridor props; the supporting
+  // and ambient scenes share the same PixelLab production family.
+  { id: "camp-tent-large", name: "Camp Pavilion", file: "camp-tent-large.png", baseSize: 78 },
+  { id: "camp-wagon", name: "Camp Supply Wagon", file: "camp-wagon.png", baseSize: 64 },
+  { id: "camp-fire", name: "Camp Communal Fire", file: "camp-fire.png", baseSize: 42 },
+  { id: "camp-dead-tree", name: "Camp Dead Tree", file: "camp-dead-tree.png", baseSize: 78 },
+  { id: "camp-supply-stack", name: "Camp Supply Mound", file: "camp-supply-stack.png", baseSize: 54 },
+  { id: "camp-smith-work-area", name: "Camp Smith Work Area", file: "camp-smith-work-area.png", baseSize: 64 },
+  { id: "camp-map-table", name: "Camp Expedition Table", file: "camp-map-table.png", baseSize: 46 },
+  { id: "camp-palisade-checkpoint", name: "Camp Palisade Checkpoint", file: "camp-palisade-checkpoint.png", baseSize: 68 },
+  { id: "camp-armor-rack", name: "Camp Armor Stand", file: "camp-armor-rack.png", baseSize: 42 },
+  { id: "camp-barrel-stack", name: "Camp Barrel Stack", file: "camp-barrel-stack.png", baseSize: 42 },
+  { id: "camp-bedrolls", name: "Camp Bedrolls", file: "camp-bedrolls.png", baseSize: 34 },
+  { id: "camp-cookpot", name: "Camp Cookpot", file: "camp-cookpot.png", baseSize: 38 },
+  { id: "camp-crate-stack", name: "Camp Crate Stack", file: "camp-crate-stack.png", baseSize: 42 },
+  { id: "camp-gear-pile", name: "Camp Gear Pile", file: "camp-gear-pile.png", baseSize: 38 },
+  { id: "camp-grindstone", name: "Camp Grindstone", file: "camp-grindstone.png", baseSize: 36 },
+  { id: "camp-handcart", name: "Camp Handcart", file: "camp-handcart.png", baseSize: 42 },
+  { id: "camp-lantern-post", name: "Camp Lantern Post", file: "camp-lantern-post.png", baseSize: 58 },
+  { id: "camp-rough-fence", name: "Camp Rough Fence", file: "camp-rough-fence.png", baseSize: 34 },
+  { id: "camp-tent-small", name: "Camp Sleeping Tent", file: "camp-tent-small.png", baseSize: 54 },
+  { id: "camp-weapon-rack", name: "Camp Weapon Rack", file: "camp-weapon-rack.png", baseSize: 46 },
+  { id: "camp-adventurer-cards", name: "Adventurers Playing Cards", file: "camp-adventurer-cards.png", baseSize: 42 },
+  { id: "camp-adventurer-map-study", name: "Adventurers Studying a Map", file: "camp-adventurer-map-study.png", baseSize: 44 },
+  { id: "camp-adventurer-shield-repair", name: "Adventurer Repairing a Shield", file: "camp-adventurer-shield-repair.png", baseSize: 42 },
+  { id: "camp-adventurer-sleeping", name: "Sleeping Adventurer", file: "camp-adventurer-sleeping.png", baseSize: 34 },
+  { id: "camp-adventurer-stew", name: "Adventurer Tending Stew", file: "camp-adventurer-stew.png", baseSize: 42 },
+  { id: "camp-adventurer-watch", name: "Camp Watch Keeper", file: "camp-adventurer-watch.png", baseSize: 48 },
+  { id: "camp-adventurer-wounded", name: "Wounded Adventurer", file: "camp-adventurer-wounded.png", baseSize: 42 },
   // Hot Boi's tavern (Floor 1 hub) — an earlier, simpler prop set from
   // before the dedicated room's own asset pass existed. Kept registered
   // (not currently placed) in case the "tavern-sign" landmark is useful

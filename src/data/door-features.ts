@@ -25,6 +25,11 @@ export const DOOR_FEATURES: readonly DoorFeatureSpriteDef[] = [
     name: "Church of Saint Namanda Door",
     file: "namanda-church-door.png",
   },
+  {
+    id: "camp-entrance-gate",
+    name: "The Camp Checkpoint Gate",
+    file: "camp-entrance-gate.png",
+  },
 ];
 
 export const DOOR_FEATURES_BY_ID: Record<string, DoorFeatureSpriteDef> = Object.fromEntries(
