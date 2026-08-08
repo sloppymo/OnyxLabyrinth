@@ -109,6 +109,7 @@ const EDGE_COLORS: Record<EdgeType, string> = {
   open: "#1a1814",
   door: "#c8a040",
   locked: "#c04040",
+  barred: "#8a7a6a",
 };
 
 const TRAPS: (TrapType | "")[] = ["", "gas", "teleporter", "alarm", "stunner", "poison"];

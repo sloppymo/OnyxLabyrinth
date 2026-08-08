@@ -302,6 +302,84 @@ reveal past it, the kitchen doorway reads as a distinct nook, and stepping
 onto Hot Boi's tile opens the NPC panel. `npm run check` (typecheck, build,
 tests, floor:validate) is green.
 
+## Merging `agent/tavern-hero-door` (raft/stairs progression + tavern UI)
+
+Per the user's explicit direction, `agent/tavern-hero-door` (7,578 lines:
+`tavern-ui.ts`, `companion.ts`, `quests.ts`, `traversal.ts`, a raft-crossing
+mechanic gating Floor 2's relocated stairs, a `save.ts` schema bump, plus
+the door-features system) was merged into this room's history. Merged via
+a scratch branch off `origin/main` + `git push origin HEAD:main` — never
+touched the shared local `main` branch, which had unrelated unpushed
+commits from a concurrent session.
+
+**Real collision, not just a JSON conflict:** the branch's relocated Floor
+2 stairs + a "guardian" barred-gate puzzle sit at (18,21)/(19,21) — exactly
+this room's original entrance cell. Confirmed by reading the branch's
+floor-1.json directly (`git show agent/tavern-hero-door:...`), not by
+guessing from the diff. Per the user's explicit choice, the raft/stairs
+puzzle was kept exactly as authored (it's the bigger, more load-bearing
+feature) and the tavern room was re-carved one column east, still avoiding
+the stairs/guardian cells.
+
+**Two structural-diff scripts under-counted the branch's actual changes.**
+A Python script diffing `FloorDef` field-by-field between the merge base
+and the branch was used to plan the merge precisely rather than
+hand-resolving a 500-line text diff — but the first pass only checked a
+hardcoded list of overlay keys, missing `barredGates`, `raftRoutes`,
+`stairsGuardian`, and `encounterZones` entirely. This caused ~30 test
+failures on the first `npm run check` (the entire stairs-guardian
+fight, the raft route, and a "starting area is a safe zone" test) before
+the gap was found and those fields were pulled over explicitly. Lesson:
+diff *every* key on the object (`Object.keys`), never a maintained list —
+a maintained list silently rots the moment the schema grows.
+
+**A cleanup script accidentally reset the stairs cell.** Removing the
+room's *old* location used a blanket `x in [18,19,20,21], y in 21..26`
+reset to blank walls — but (19,21) is also the branch's own stairs cell,
+which happened to share that x-coordinate. `floor:validate` caught the
+resulting asymmetric-edge error immediately (`(18,21).e=barred but
+(19,21).w=wall`), so it never reached the test suite, but it's a reminder
+that "reset my own old content" scripts need bounds *narrower* than "the
+column range I used," once other content has moved into the same
+neighborhood.
+
+**A real renderer bug, not a data bug: don't place a room's far wall on
+the grid's last row.** After the merge, the bar row (originally placed at
+y=27, the last row of this 24×28 floor) rendered with the wrong theme —
+cold stone/f1 instead of the tavern's warm wood — but *only* right around
+Hot Boi and the bar; everything else in the room rendered correctly. Live
+`console.log` instrumentation in `resolveFloorTextures` (`src/engine/
+renderer.ts`) proved the per-cell theme lookup (`themeAt`) was correct on
+every call — "hotboi" every time, correctly cached. The actual bug is one
+level down: `drawFloorCeilingCast`'s per-scanline floor/ceiling raycaster
+samples world position purely from screen-row distance (`rowDistance`,
+independent of any actual wall hit), and for scanlines near the horizon
+that projected sample can land one cell past the array's edge —
+`cellTextures[gy]?.[gx] ?? primaryTextures` then silently falls back to
+the floor's *primary* theme (f1) with no error, no console warning. Row 27
+is the last valid index in a 28-row grid, so a room built flush against it
+has no buffer to absorb that overshoot. Every other room on this floor
+keeps at least one row of solid margin before the map edge; this one
+didn't, and paid for it. Fixed by pulling the whole room back one row
+(bar now at y=26, y=27 untouched) — confirmed clean by re-running the
+Playwright walkthrough and comparing the same screenshot before/after.
+**Rule for any future room built against a floor's absolute grid edge:
+always leave at least one full row/column of untouched buffer between the
+room's outer wall and the array boundary**, independent of whatever the
+tilesetZone bounds say — the zone data was never the problem here.
+
+Verified with a real Playwright walkthrough, not just static screenshots:
+`scripts/playtests/hotboi-room-walkthrough.mjs`, screenshots in
+`docs/hot-bois-art-review/screenshots/room-walkthrough/`. Confirms: the
+pillar visually blocks the bar from the entrance, the chandelier + Hot Boi
+reveal past it, the kitchen doorway reads as a distinct nook, stepping
+onto Hot Boi's tile now hands off into the real `TavernController`
+(Talk/Rest/Rumors/Scorchboard/Companions) rather than the generic NPC
+panel — no interaction code was written for this; the branch's existing
+`openNPCPanel()` dispatch on `npcId === "hot-boi"` picked it up
+automatically once merged. `npm run check` (typecheck, build, 2115 tests,
+floor:validate, floor:export-check) is green.
+
 ## Rejected/superseded candidates
 
 Kept in `art/pixellab-candidates/hot-bois-tavern/` for the record.

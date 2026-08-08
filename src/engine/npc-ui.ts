@@ -38,6 +38,21 @@ const ROOT_ITEMS = [
   { key: "leave", label: "Leave" },
 ] as const;
 
+/** Filter root menu items by the NPC's capabilities. When `capabilities`
+ *  is omitted, all actions are available (backward compatible). "Leave"
+ *  is always available. */
+function rootItemsFor(npc: NPCDef): readonly { key: string; label: string }[] {
+  if (!npc.capabilities) return ROOT_ITEMS;
+  return ROOT_ITEMS.filter((it) => {
+    if (it.key === "leave") return true;
+    const cap = npc.capabilities as Record<string, boolean | undefined>;
+    // If the capability is explicitly set, use it. If not set, default to
+    // enabled (only explicitly-false capabilities are disabled).
+    const val = cap[it.key];
+    return val !== false;
+  });
+}
+
 export interface NPCControllerOptions {
   panel: HTMLElement;
   state: GameState;
@@ -109,7 +124,8 @@ export class NPCController {
     }
     // Root hotkeys.
     if (this.phase === "root") {
-      const idx = ROOT_ITEMS.findIndex((it) => it.key.startsWith(lower));
+      const items = rootItemsFor(this.npc);
+      const idx = items.findIndex((it) => it.key.startsWith(lower));
       if (idx >= 0) {
         this.index = idx;
         this.confirm();
@@ -122,7 +138,7 @@ export class NPCController {
   private listLength(): number {
     switch (this.phase) {
       case "root":
-        return ROOT_ITEMS.length;
+        return rootItemsFor(this.npc).length;
       case "talk":
         return visibleTopics(this.npc).length + 1; // + "Ask about…"
       case "barter":
@@ -136,7 +152,8 @@ export class NPCController {
 
   private confirm(): void {
     if (this.phase === "root") {
-      const item = ROOT_ITEMS[this.index];
+      const item = rootItemsFor(this.npc)[this.index];
+      if (!item) return;
       switch (item.key) {
         case "talk":
           this.phase = "talk";
@@ -306,7 +323,7 @@ export class NPCController {
     let footer = "";
     let emptyLine = "";
     if (this.phase === "root") {
-      items = ROOT_ITEMS.map((it) => ({ label: `[${it.label[0]}] ${it.label}` }));
+      items = rootItemsFor(npc).map((it) => ({ label: `[${it.label[0]}] ${it.label}` }));
       footer = "[↑/↓] select · [Enter] confirm · [Esc] leave";
     } else if (this.phase === "talk") {
       items = [

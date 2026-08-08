@@ -55,6 +55,12 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "hotboi-kitchen-prep", name: "Hot Boi's Prep Table", file: "hotboi-kitchen-prep.png", baseSize: 32 },
   { id: "hotboi-bar-clutter", name: "Bar Clutter", file: "hotboi-bar-clutter.png", baseSize: 22 },
   { id: "hotboi-kitchen-clutter", name: "Kitchen Clutter", file: "hotboi-kitchen-clutter.png", baseSize: 22 },
+  // Hot Boi's tavern (Floor 1 hub) — an earlier, simpler prop set from
+  // before the dedicated room's own asset pass existed. Kept registered
+  // (not currently placed) in case the "tavern-sign" landmark is useful
+  // pointing toward the room from the main corridor.
+  { id: "tavern-door", name: "Tavern Door", file: "tavern-door.png", baseSize: 40 },
+  { id: "tavern-sign", name: "Tavern Sign", file: "tavern-sign.png", baseSize: 30 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(

@@ -244,6 +244,7 @@ const TILE_GLYPH: Record<TileFeature, string> = {
   water: "W",
   npc: "N",
   event: "E",
+  guardian: "G",
 };
 
 function horizontalEdge(edge: EdgeType): string {

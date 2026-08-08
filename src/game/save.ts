@@ -29,7 +29,7 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 14;
+const SAVE_VERSION = 16;
 
 /** v9 → v10 historical helper: first PARTY_SIZE characters by formation order —
  *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
@@ -288,6 +288,41 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     delete ser.activeCharIds;
     version = 14;
   }
+  if (version === 14) {
+    // v14 → v15: Hot Boi's tavern — Scorchboard quest progress, deterministic
+    // rumor cycling, and the one authored temporary companion. Every
+    // pre-existing save predates all three, so they start empty/unrecruited.
+    ser.questStates = {};
+    ser.tavernRumorCursor = 0;
+    ser.companion = null;
+    version = 15;
+  }
+  if (version === 15) {
+    // v15 → v16: "The Party That Returned" scripted stairs guardian on
+    // Floor 1. Every pre-existing save predates it. A party that has
+    // already reached floor 2 or deeper under the old rules never fought
+    // it and must not be retroactively trapped behind it on their way back
+    // up — treat deepestFloorReached >= 2 as an already-cleared encounter;
+    // everyone else starts in the pre-encounter state. Marking the flag
+    // alone is not enough: the guardian's edge (18,21).e is authored
+    // "barred" in the static floor content and only game state (via
+    // unlockedDoors) opens it — an already-cleared save with the flag set
+    // but no matching unlockedDoors entry would load with the flag saying
+    // "done" while the tile is still physically sealed, trapping the
+    // party right where the fight used to be.
+    const deepest = (ser.deepestFloorReached as number | undefined) ?? 1;
+    const alreadyCleared = deepest >= 2;
+    ser.clearedStairsGuardians = alreadyCleared ? ["floor1-returned-party"] : [];
+    if (alreadyCleared) {
+      // Both sides of the edge — see the matching comment in
+      // features.ts's openStairsGuardianEdge for why one side isn't enough.
+      const doors = new Set<string>((ser.unlockedDoors as string[] | undefined) ?? []);
+      doors.add("1:18:21:e");
+      doors.add("1:19:21:w");
+      ser.unlockedDoors = [...doors];
+    }
+    version = 16;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -346,6 +381,18 @@ interface SerializedState {
   worldYear?: number;
   /** Whether the wish/ending sequence has already played. v13+. */
   hasCompletedEnding?: boolean;
+  /** Permanent party-level key items (e.g. "raft"). v14+. */
+  keyItems?: string[];
+  /** Per-floor revision tracking: floorId → revision when last visited. v14+. */
+  floorRevisions?: Record<number, number>;
+  /** Scorchboard quest progress, keyed by quest id. v15+. */
+  questStates?: GameState["questStates"];
+  /** Deterministic rumor-cycling cursor. v15+. */
+  tavernRumorCursor?: number;
+  /** The one authored temporary companion, if recruited. v15+. */
+  companion?: GameState["companion"];
+  /** Ids of cleared stairsGuardian scripted encounters. v16+. */
+  clearedStairsGuardians?: string[];
   savedAt: string;
 }
 
@@ -413,6 +460,17 @@ export function serialize(state: GameState): string {
     eventsTriggered,
     deepestFloorReached: state.deepestFloorReached,
     hasCompletedEnding: state.hasCompletedEnding,
+    keyItems: [...state.keyItems],
+    floorRevisions: { ...state.floorRevisions },
+    questStates: Object.fromEntries(
+      Object.entries(state.questStates).map(([id, p]) => [
+        id,
+        { ...p, counters: p.counters ? { ...p.counters } : undefined, flags: p.flags ? { ...p.flags } : undefined },
+      ])
+    ),
+    tavernRumorCursor: state.tavernRumorCursor,
+    companion: state.companion ? { ...state.companion } : null,
+    clearedStairsGuardians: [...state.clearedStairsGuardians],
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -447,16 +505,51 @@ export function deserialize(json: string): GameState | null {
       eventsTriggered[Number(floorIdStr)] = new Set(positions);
     }
 
+    // Per-floor explored tile tracking (restored from save).
+    const exploredByFloor: Record<number, string[]> = { ...(ser.exploredByFloor ?? {}) };
+
     // Build a private mutable copy of the floor and restore runtime state.
     const floor = cloneFloor(floorDef);
-    for (const doorKey of unlockedDoors) {
-      const parts = doorKey.split(":");
-      if (parts.length !== 4 || parseInt(parts[0]) !== floor.id) continue;
-      const dx = parseInt(parts[1]);
-      const dy = parseInt(parts[2]);
-      const dir = parts[3] as "n" | "e" | "s" | "w";
-      if (floor.grid[dy]?.[dx]) {
-        floor.grid[dy][dx][dir] = "door";
+
+    // Floor-revision check: if the floor's geometry/content has changed
+    // since the save was made, clear that floor's explored/loot/events/doors
+    // state and reset the player to the floor's start position. Other floors
+    // are unaffected. This is the development save-break policy for floor
+    // revisions (see FloorDef.floorRevision).
+    const floorRevisions = ser.floorRevisions ?? {};
+    const savedRev = floorRevisions[floor.id];
+    const currentRev = floor.floorRevision;
+    const stale = savedRev !== undefined && currentRev !== undefined && savedRev !== currentRev;
+
+    if (stale) {
+      // Clear this floor's state from the save.
+      unlockedDoors.delete(`${floor.id}:`);
+      // More precise: remove all door keys for this floor.
+      for (const key of [...unlockedDoors]) {
+        const parts = key.split(":");
+        if (parts.length > 0 && parseInt(parts[0]) === floor.id) {
+          unlockedDoors.delete(key);
+        }
+      }
+      delete lootTaken[floor.id];
+      delete eventsTriggered[floor.id];
+      // Clear explored for this floor.
+      exploredByFloor[floor.id] = [];
+      // Reset player to floor start.
+      ser.player = { ...ser.player, x: floor.startX, y: floor.startY };
+      // Update the revision.
+      floorRevisions[floor.id] = currentRev;
+    } else {
+      // Restore door state.
+      for (const doorKey of unlockedDoors) {
+        const parts = doorKey.split(":");
+        if (parts.length !== 4 || parseInt(parts[0]) !== floor.id) continue;
+        const dx = parseInt(parts[1]);
+        const dy = parseInt(parts[2]);
+        const dir = parts[3] as "n" | "e" | "s" | "w";
+        if (floor.grid[dy]?.[dx]) {
+          floor.grid[dy][dx][dir] = "door";
+        }
       }
     }
     const killedNPCs = ser.killedNPCs ? [...ser.killedNPCs] : [];
@@ -497,8 +590,8 @@ export function deserialize(json: string): GameState | null {
         knownSpellIds: [...c.knownSpellIds],
         perkIds: [...c.perkIds],
       })),
-      explored: new Set(ser.explored),
-      exploredByFloor: ser.exploredByFloor ?? {},
+      explored: stale ? new Set() : new Set(ser.explored),
+      exploredByFloor,
       stepsSinceEncounter: ser.stepsSinceEncounter,
       dayCount: ser.dayCount,
       worldYear: ser.worldYear ?? 3847,
@@ -529,6 +622,19 @@ export function deserialize(json: string): GameState | null {
         ),
       deepestFloorReached: ser.deepestFloorReached ?? floor.id,
       hasCompletedEnding: ser.hasCompletedEnding ?? false,
+      keyItems: ser.keyItems ? [...ser.keyItems] : [],
+      floorRevisions,
+      questStates: ser.questStates
+        ? Object.fromEntries(
+            Object.entries(ser.questStates).map(([id, p]) => [
+              id,
+              { ...p, counters: p.counters ? { ...p.counters } : undefined, flags: p.flags ? { ...p.flags } : undefined },
+            ])
+          )
+        : {},
+      tavernRumorCursor: ser.tavernRumorCursor ?? 0,
+      companion: ser.companion ? { ...ser.companion } : null,
+      clearedStairsGuardians: ser.clearedStairsGuardians ? [...ser.clearedStairsGuardians] : [],
     };
   } catch {
     return null;

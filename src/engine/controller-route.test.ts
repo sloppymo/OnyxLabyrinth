@@ -12,6 +12,7 @@ function ctx(overrides: Partial<ControllerRouteContext> = {}): ControllerRouteCo
     hasSave: false,
     hasSpellMenu: false,
     hasNpc: false,
+    hasTavern: false,
     hasActionRing: false,
     hasTown: false,
     hasCamp: false,
@@ -58,6 +59,18 @@ describe("resolveControllerRoute", () => {
     ).toBe("npc");
     expect(resolveControllerRoute(ctx({ mode: "title", hasActionRing: true }))).toBe(
       "action_ring",
+    );
+  });
+
+  it("routes Hot Boi's tavern between npc and action ring", () => {
+    expect(
+      resolveControllerRoute(ctx({ mode: "title", hasTavern: true, hasActionRing: true })),
+    ).toBe("tavern");
+    expect(
+      resolveControllerRoute(ctx({ mode: "title", hasNpc: true, hasTavern: true })),
+    ).toBe("npc");
+    expect(resolveControllerRoute(ctx({ mode: "dungeon", hasTavern: true }))).toBe(
+      "dungeon",
     );
   });
 

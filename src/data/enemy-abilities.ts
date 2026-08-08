@@ -82,6 +82,12 @@ export interface EnemyAbilityDef {
    * only — never read by resolution logic.
    */
   presentation?: "meleeGangUp";
+  /**
+   * For "singleParty" target only: pick the lowest-HP% living party member
+   * instead of a random one. Mirrors the existing wounded-ally preference
+   * already used for singleAlly heal targeting in pickAbilityTargetId.
+   */
+  preferWounded?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -683,6 +689,20 @@ const GHOSTLY_WAIL: EnemyAbilityDef = {
   windUp: true,
 };
 
+// --- The Party That Returned (Floor 1 capstone) -----------------------------
+
+const OPPORTUNIST_STRIKE: EnemyAbilityDef = {
+  id: "opportunist-strike",
+  name: "Opportunist's Strike",
+  description: "A precise strike aimed at whoever is already hurt.",
+  target: "singleParty",
+  effect: { kind: "damage", power: 7, element: "physical" },
+  condition: { kind: "always" },
+  weight: 1,
+  element: "physical",
+  preferWounded: true,
+};
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -735,6 +755,7 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   PHASE_SHIFT,
   LIFE_TAP,
   GHOSTLY_WAIL,
+  OPPORTUNIST_STRIKE,
 ];
 
 export const ENEMY_ABILITIES_BY_ID: Record<string, EnemyAbilityDef> =

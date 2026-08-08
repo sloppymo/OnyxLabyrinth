@@ -503,7 +503,8 @@ export function showMode(
     mode === "title" ||
     mode === "party_creation" ||
     mode === "game_over" ||
-    mode === "arena";
+    mode === "arena" ||
+    mode === "dialog";
 
   viewportWrap.style.display = isDungeon ? "" : "none";
   canvas.style.display = isDungeon ? "" : "none";

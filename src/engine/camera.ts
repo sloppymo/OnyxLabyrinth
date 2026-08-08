@@ -2,40 +2,70 @@
 // Extracted from game/state.ts during the reconciliation pass. state.ts now
 // holds only the state machine; movement lives here.
 //
-// Collision rule: "wall" and "locked" edges block movement; "open" and "door"
-// are passable. Locked doors can be unlocked with a key, Thief lockpick, or
-// a knock-kind utility spell (design doc §6.2). Unlock resolution lives in
-// game/doors.ts; this module re-exports tryUnlock for callers.
+// Collision rule: "wall", "locked", and "barred" edges block movement;
+// "open" and "door" are passable. Locked doors can be unlocked with a key,
+// Thief lockpick, or a knock-kind utility spell (design doc §6.2). Barred
+// gates can only be opened from one specified side and cannot be picked or
+// bypassed by spells. Raft-channel water is impassable via normal movement.
+//
+// All passability decisions go through game/traversal.ts resolveTraversal().
+// This module re-exports tryUnlock for callers and provides thin movement
+// helpers that delegate to the traversal resolver.
 
 import type { GameState } from "../types";
-import { DX, DY, edgeInDirection, inBounds } from "../game/dungeon";
+import { DX, DY } from "../game/dungeon";
+import { resolveTraversal, type Direction } from "../game/traversal";
 export { tryUnlock } from "../game/doors";
+export { openBarredGate, resolveTraversal } from "../game/traversal";
 
-/** True if the player can step one tile in the given direction. */
+/** True if the player can step one tile in the given direction (ordinary
+ *  movement only — does not account for raft routes or barred gates, which
+ *  need the full resolveTraversal result). Used by code that only needs a
+ *  boolean passability check (e.g. camp validation). For movement intent,
+ *  use resolveTraversal() instead. */
 export function canMove(state: GameState, dir: number): boolean {
-  const { floor, player } = state;
-  if (!inBounds(floor.grid, player.x, player.y)) return false;
-  const cell = floor.grid[player.y][player.x];
-  const edge = edgeInDirection(cell, dir);
-  if (edge === "wall" || edge === "locked") return false;
-  const nx = player.x + DX[dir];
-  const ny = player.y + DY[dir];
-  return inBounds(floor.grid, nx, ny);
+  const result = resolveTraversal(state, dir as Direction);
+  return result.kind === "step";
 }
 
-/** Step forward one tile if the cell ahead is not blocked by a wall. */
+/** Step forward one tile if the cell ahead is passable. Returns the
+ *  traversal result so the caller can handle raft/barred-gate cases.
+ *  Does NOT execute raft routes or open gates — that's the caller's job. */
+export function tryStepForward(state: GameState) {
+  return resolveTraversal(state, state.player.facing as Direction);
+}
+
+/** Step backward one tile (no turning) if the cell behind is passable.
+ *  Returns the traversal result for the backward direction. */
+export function tryStepBackward(state: GameState) {
+  const behindDir = ((state.player.facing + 2) % 4) as Direction;
+  return resolveTraversal(state, behindDir);
+}
+
+/** Execute an ordinary step (caller has confirmed the result is "step"). */
+export function executeStep(state: GameState, dir: number): void {
+  state.player.x += DX[dir];
+  state.player.y += DY[dir];
+}
+
+/** Step forward one tile if the cell ahead is not blocked by a wall.
+ *  Legacy convenience — prefer tryStepForward + executeStep for new code. */
 export function moveForward(state: GameState): void {
-  if (!canMove(state, state.player.facing)) return;
-  state.player.x += DX[state.player.facing];
-  state.player.y += DY[state.player.facing];
+  const result = resolveTraversal(state, state.player.facing as Direction);
+  if (result.kind === "step") {
+    state.player.x = result.x;
+    state.player.y = result.y;
+  }
 }
 
 /** Step backward one tile (no turning) if the cell behind is not blocked. */
 export function moveBackward(state: GameState): void {
   const behindDir = (state.player.facing + 2) % 4;
-  if (!canMove(state, behindDir)) return;
-  state.player.x += DX[behindDir];
-  state.player.y += DY[behindDir];
+  const result = resolveTraversal(state, behindDir as Direction);
+  if (result.kind === "step") {
+    state.player.x = result.x;
+    state.player.y = result.y;
+  }
 }
 
 export function turnLeft(state: GameState): void {

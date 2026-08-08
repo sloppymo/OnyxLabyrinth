@@ -112,6 +112,38 @@ in-engine before re-validating (`floor:validate`, full test suite,
 `floor:export-check`, build — all green) and committed. Full detail in
 `art/pixellab/maze-environment-generation-log.md`.
 
+## Follow-up: doors pass (branch `agent/tavern-hero-door`)
+
+Added a `doorFeatures` system — a coordinate-keyed full-face door-panel
+override, structurally parallel to `wallFeatures` but modeled on the stairs
+panel's full-face substitution rather than a windowed decal. Two hero doors
+shipped: Hot Boi's Tavern entrance (11,22)/(11,23) and the Church of Saint
+Namanda entrance (10,10)/(11,10) — the latter reuses the cut-bell-chapel
+zone's one existing doorway rather than carving new topology, and is the
+first door art placed on a coordinate with existing lore (`Sister Caldris`,
+`quests-floor1.ts`). Building the tavern door first required reconciling the
+previously-unmerged tavern branch (`floor1/definitive-pass`) with main, since
+Hot Boi's had never actually reached main — see
+[[floor1-tavern-hero-door]] for the full merge/conflict detail.
+
+Also authored Saint Namanda's mark (open hand over a plain ring) as a
+hand-authored deterministic sprite (`scripts/generate-namanda-mark.mjs`,
+same pipeline as the tavern-sign/darkness-idol props) rather than a PixelLab
+generation, since it's meant to recur pixel-identical across future assets
+and PixelLab has no image-to-image edit. Composited onto the church door's
+blank stone panel via `scripts/composite-namanda-door.mjs`.
+
+Generated (but explicitly not wired) three secret-door hidden/revealed art
+pairs — native crypt, library bookshelf, ember-suture iron hatch — filed
+under `art/pixellab-candidates/` for a future discovery mechanic; `EdgeType`
+has no hidden/secret state yet.
+
+Full prompts, the rejected candidates, and the design principle this pass
+established ("important doors advertise themselves, secret doors deny
+that they're doors") are in
+`art/pixellab/maze-environment-generation-log.md` → "Doors pass" and
+"Church of Saint Namanda door" sections.
+
 ## Not completed / deferred
 
 - **P9 (reliquary gate polish, (11,12) `n`)** — skipped. The gate's edge type

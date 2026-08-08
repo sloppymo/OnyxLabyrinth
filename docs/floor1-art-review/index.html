@@ -144,6 +144,51 @@
     </div>
   </div>
 
+  <div class="card">
+    <div class="shots">
+      <img src="screenshots/tavern-door-close.png" alt="tavern door close">
+      <img src="screenshots/tavern-door-mid.png" alt="tavern door mid">
+      <img src="screenshots/tavern-door-far.png" alt="tavern door far">
+    </div>
+    <div class="body">
+      <h2>Hot Boi's Tavern Door</h2>
+      <div class="meta">(11,22) s / (11,23) n · <span class="tag">doorFeatures</span> hero asset</div>
+      <div class="qa">New full-face door-panel override system, structurally parallel to
+      the stairs panel but keyed by coordinate instead of theme (see
+      <code>src/data/door-features.ts</code>). Massive blackened double doors, iron
+      banding, brass ring pulls, carved stone arch, flanking lantern sconces — reads
+      as an unmistakable landmark at 1–2 tiles. At 4 tiles it's legible but dim, the
+      same fog falloff every wall asset gets near the render-distance edge, not
+      unique to this texture. Fixing this also surfaced a real placement bug: the
+      pre-existing <code>tavern-sign</code> billboard sat dead-center in the corridor
+      sightline and fully blocked the door from 2+ tiles away — moved one tile
+      off-axis to (10,21).</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="shots">
+      <img src="screenshots/namanda-door-close.png" alt="namanda church door close">
+      <img src="screenshots/namanda-door-mid.png" alt="namanda church door mid">
+      <img src="screenshots/namanda-door-far.png" alt="namanda church door far">
+    </div>
+    <div class="body">
+      <h2>Church of Saint Namanda Door</h2>
+      <div class="meta">(10,10) e / (11,10) w · <span class="tag">doorFeatures</span> hero asset</div>
+      <div class="qa">Deliberately the visual opposite of Hot Boi's: pale ashlar stone, a very
+      tall narrow pointed arch, severe symmetry, dark carved timber doors, votive candle stands
+      at the threshold. Reads as an unmistakable, faintly unnerving sanctuary at 1–3 tiles — the
+      pale stone actually contrasts harder against the dark corridor than the tavern's dark-on-dark
+      palette does at range. Carries Saint Namanda's mark (open hand over a plain ring) on a
+      blank stone panel above the arch, composited in <code>scripts/composite-namanda-door.mjs</code>
+      rather than left to a PixelLab reroll — the mark is a recurring worldbuilding motif and needs
+      to stay pixel-identical everywhere it appears, which a fresh per-asset generation can't
+      guarantee. Canonical mark authored once, deterministically, in
+      <code>scripts/generate-namanda-mark.mjs</code> (same hand-authored-not-generated approach as
+      the tavern sign and darkness idol).</div>
+    </div>
+  </div>
+
 </div>
 
 <footer>

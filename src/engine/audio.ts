@@ -26,6 +26,8 @@
 //   audio.stopDungeon();     // stop maze theme
 //   audio.startTownMusic();  // loop town BGM (Haven at Dusk)
 //   audio.stopTownMusic();   // end town BGM
+//   audio.startTavernMusic(); // loop Hot Boi's tavern BGM (Coffin Nails)
+//   audio.stopTavernMusic();  // end tavern BGM
 //   audio.startPartyCreationMusic(); // loop character creation BGM
 //   audio.stopPartyCreationMusic();  // end character creation BGM
 //   audio.startBattleMusic(); // loop authored normal-encounter BGM
@@ -252,6 +254,10 @@ const DUNGEON_MUSIC_VOLUME = 0.4;
 const TOWN_MUSIC_FILE = "haven-at-dusk.mp3";
 const TOWN_MUSIC_VOLUME = 0.4;
 
+/** Hot Boi's tavern looping BGM. */
+const TAVERN_MUSIC_FILE = "coffin-nails.mp3";
+const TAVERN_MUSIC_VOLUME = 0.4;
+
 /** Character creation looping BGM. */
 const PARTY_CREATION_MUSIC_FILE = "torchlight-beneath-stone.mp3";
 const PARTY_CREATION_MUSIC_VOLUME = 0.4;
@@ -304,6 +310,10 @@ class AudioEngine {
   /** Town hub BGM. */
   private townMusic: HTMLAudioElement | null = null;
   private townMusicWanted = false;
+
+  /** Hot Boi's tavern BGM. */
+  private tavernMusic: HTMLAudioElement | null = null;
+  private tavernMusicWanted = false;
 
   /** Character creation BGM. */
   private partyCreationMusic: HTMLAudioElement | null = null;
@@ -389,6 +399,7 @@ class AudioEngine {
       this.tryPlayTitleMusic();
       this.tryPlayDungeonMusic();
       this.tryPlayTownMusic();
+      this.tryPlayTavernMusic();
       this.tryPlayPartyCreationMusicGuarded();
       this.tryPlayBattleMusic();
       this.tryPlayBossMusic();
@@ -413,6 +424,7 @@ class AudioEngine {
     this.tryPlayTitleMusic();
     this.tryPlayDungeonMusic();
     this.tryPlayTownMusic();
+    this.tryPlayTavernMusic();
     this.tryPlayBattleMusic();
   }
 
@@ -836,6 +848,40 @@ class AudioEngine {
     if (!this.townMusicWanted || !this.townMusic) return;
     if (!this.townMusic.paused && !this.townMusic.ended) return;
     void this.townMusic.play().catch(() => {
+      // Autoplay policy — retry from resume().
+    });
+  }
+
+  /**
+   * Loop the Hot Boi's tavern BGM (Coffin Nails). Call when the tavern panel
+   * opens; stop when it closes. The tavern borrows "title" mode, so the loop's
+   * mode-transition logic won't manage this — it must be started/stopped at
+   * the openTavernPanel / onClose call sites in main.ts.
+   */
+  startTavernMusic(): void {
+    this.tavernMusicWanted = true;
+    if (!this.tavernMusic) {
+      const el = new Audio(musicAssetUrl(TAVERN_MUSIC_FILE));
+      el.loop = true;
+      el.preload = "auto";
+      el.volume = TAVERN_MUSIC_VOLUME;
+      this.tavernMusic = el;
+    }
+    this.tryPlayTavernMusic();
+  }
+
+  /** Stop and rewind the Hot Boi's tavern BGM. */
+  stopTavernMusic(): void {
+    this.tavernMusicWanted = false;
+    if (!this.tavernMusic) return;
+    this.tavernMusic.pause();
+    this.tavernMusic.currentTime = 0;
+  }
+
+  private tryPlayTavernMusic(): void {
+    if (!this.tavernMusicWanted || !this.tavernMusic) return;
+    if (!this.tavernMusic.paused && !this.tavernMusic.ended) return;
+    void this.tavernMusic.play().catch(() => {
       // Autoplay policy — retry from resume().
     });
   }

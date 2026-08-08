@@ -61,6 +61,8 @@ import {
   propBillboardSize,
   isCorridorMarkerFeature,
   BILLBOARD_MIN_DEPTH,
+  dirFromFacing,
+  planeFromDir,
   wallFeatureCellForHit,
   stableWallX,
   wallFeatureLocalU,
@@ -87,6 +89,7 @@ import {
   getCeilingSpriteImage,
 } from "./ceiling-sprite-cache";
 import { CEILING_FEATURES, ceilingFeatureUrl } from "../data/ceiling-features";
+import { getDoorFeatureImage } from "./door-feature-cache";
 import { featurePropSpriteIds } from "../data/maze-props";
 import { npcAt } from "../game/npc";
 import { isTreasureLooted } from "../game/features";
@@ -217,7 +220,7 @@ interface RayHit {
   mapY: number;
   perpWallDist: number;             // perpendicular distance, no fisheye
   wallX: number;                    // exact hit position along the wall face (0..1); for `y` hits this is fractional world x, for `x` hits fractional world y
-  edge: EdgeType;                   // "wall" | "door" | "locked" | "open"
+  edge: EdgeType;                   // "wall" | "door" | "locked" | "barred" | "open"
 }
 
 export interface TextureSet {
@@ -386,11 +389,53 @@ const BG_RGBA_PACKED =
 // it is purely a render concern — game logic always sees integer grid coords.
 const cameraAnim = new RenderCameraAnimator();
 
+// --- Raft animation visual override ---------------------------------------
+// While a raft route animation is active, the authoritative player position
+// stays at the origin dock (by design — see raft-animation.ts). The renderer
+// must still show the party moving along the path, so the main loop installs
+// a transient visual override (interpolated float position + travel facing)
+// that bypasses the grid camera animator for the duration of the crossing.
+// This is purely a render concern; game logic never sees these floats.
+let raftVisualOverride: { x: number; y: number; facing: number } | null = null;
+
+/**
+ * Install (or clear) a transient raft-animation visual camera override. The
+ * main loop calls this every frame while a `RaftAnimationController` is
+ * active, passing the controller's interpolated `getVisualPosition()` and the
+ * travel facing. Pass `null` to restore normal grid camera interpolation.
+ */
+export function setRaftVisualOverride(
+  pos: { x: number; y: number; facing: number } | null
+): void {
+  raftVisualOverride = pos;
+}
+
+/** True if a raft visual override is currently installed. Test helper. */
+export function hasRaftVisualOverride(): boolean {
+  return raftVisualOverride !== null;
+}
+
 /**
  * Update the display camera toward the actual player position and return the
- * RenderCamera to use for this frame's rendering.
+ * RenderCamera to use for this frame's rendering. When a raft visual override
+ * is installed, the camera is positioned at the override's interpolated float
+ * coordinates with the travel facing, bypassing the grid camera animator —
+ * the party visually glides along the raft path while the authoritative grid
+ * position remains at the origin dock.
  */
 function updateRenderCamera(state: GameState): RenderCamera {
+  if (raftVisualOverride) {
+    const dir = dirFromFacing(raftVisualOverride.facing);
+    const plane = planeFromDir(dir.x, dir.y, RENDER_CONFIG.raycastFov);
+    return {
+      x: raftVisualOverride.x,
+      y: raftVisualOverride.y,
+      dirX: dir.x,
+      dirY: dir.y,
+      planeX: plane.planeX,
+      planeY: plane.planeY,
+    };
+  }
   cameraAnim.update(
     state.player.x,
     state.player.y,
@@ -1578,19 +1623,31 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       }
     }
 
-    if (hit.edge === "door" || hit.edge === "locked") {
+    if (hit.edge === "door" || hit.edge === "locked" || hit.edge === "barred") {
       const isLocked = hit.edge === "locked";
+      const isBarred = hit.edge === "barred";
       const fogDoor = opacityForDepth(hit.perpWallDist);
       // Stairs exits reach this branch via raycastEdgeStop's open->door
       // coercion (isStairExitFeature). Prefer the theme's architectural
       // stairs panel there; every other door/locked face — and any theme
       // with no stairs.png yet — keeps the ordinary door texture.
       const farTile = state.floor.grid[hit.mapY]?.[hit.mapX]?.tile;
-      const themeDoor = isStairExitFeature(farTile)
-        ? stairsTextureForTheme(wallTheme, primaryTheme) ?? doorTextureForTheme(wallTheme, primaryTheme)
-        : doorTextureForTheme(wallTheme, primaryTheme);
+      // Hero-door override: a one-off full-face panel registered by
+      // coordinate (see data/door-features.ts). Same face-resolution
+      // helper as wallFeatures, since a door/locked/barred hit shares the
+      // exact same near-cell geometry as a wall hit.
+      const doorFace = wallFeatureCellForHit(hit.mapX, hit.mapY, hit.side, rayDirX, rayDirY);
+      const doorFeatureDef = state.floor.doorFeatures?.find(
+        (f) => f.x === doorFace.x && f.y === doorFace.y && f.dir === doorFace.dir
+      );
+      const doorFeatureImg = doorFeatureDef ? getDoorFeatureImage(doorFeatureDef.spriteId) : null;
+      const themeDoor =
+        doorFeatureImg ??
+        (isStairExitFeature(farTile)
+          ? stairsTextureForTheme(wallTheme, primaryTheme) ?? doorTextureForTheme(wallTheme, primaryTheme)
+          : doorTextureForTheme(wallTheme, primaryTheme));
 
-      if (themeDoor) {
+      if (themeDoor && (doorFeatureImg || !isBarred)) {
         // Sample the door panel the same way as wall strips.
         let texX = Math.floor(hit.wallX * themeDoor.width);
         if (
@@ -1614,8 +1671,14 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         ctx.globalAlpha = 1.0;
       } else {
         // Procedural fallback until the texture loads (or if it failed).
-        const markerColor = isLocked ? PALETTE.lockedMarker : PALETTE.doorMarker;
-        ctx.fillStyle = rgba(PALETTE.doorFill, fogDoor * 0.35);
+        // Barred gates use a distinct dark fill with vertical bars.
+        const markerColor = isLocked
+          ? PALETTE.lockedMarker
+          : isBarred
+            ? "#8a7a6a"
+            : PALETTE.doorMarker;
+        const fillColor = isBarred ? { r: 58, g: 53, b: 48 } : PALETTE.doorFill;
+        ctx.fillStyle = rgba(fillColor, fogDoor * 0.35);
         ctx.fillRect(x, drawStart, stripWidth, drawEnd - drawStart + 1);
         ctx.fillStyle = markerColor;
         ctx.globalAlpha = fogDoor;
@@ -1641,6 +1704,22 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         ctx.moveTo(cx + markerSize / 2, cy - markerSize / 2);
         ctx.lineTo(cx - markerSize / 2, cy + markerSize / 2);
         ctx.stroke();
+        ctx.globalAlpha = 1.0;
+      }
+
+      if (isBarred) {
+        // Draw vertical bars across the gate to distinguish it from doors.
+        ctx.strokeStyle = "#9a8a7a";
+        ctx.lineWidth = Math.max(1, Math.floor(stripWidth / 3));
+        ctx.globalAlpha = fogDoor;
+        const barCount = 3;
+        for (let i = 1; i <= barCount; i++) {
+          const bx = x + (stripWidth * i) / (barCount + 1);
+          ctx.beginPath();
+          ctx.moveTo(bx, drawStart);
+          ctx.lineTo(bx, drawEnd);
+          ctx.stroke();
+        }
         ctx.globalAlpha = 1.0;
       }
     }

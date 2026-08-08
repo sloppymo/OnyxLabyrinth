@@ -97,6 +97,12 @@ function pickAbilityTargetId(
     case "self":
       return null;
     case "singleParty": {
+      if (ability.preferWounded) {
+        const wounded = party.filter((c) => c.hp < c.maxHp);
+        const pool = wounded.length > 0 ? wounded : party;
+        const t = [...pool].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+        return t?.id ?? null;
+      }
       const t = pickRandom(party, rng);
       return t?.id ?? null;
     }

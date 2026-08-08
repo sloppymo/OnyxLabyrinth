@@ -12,6 +12,7 @@ import { MAP_SPRITES_BY_ID } from "../data/map-sprites";
 import { WALL_FEATURES_BY_ID } from "../data/wall-features";
 import { CEILING_SPRITES_BY_ID } from "../data/ceiling-sprites";
 import { CEILING_FEATURES_BY_ID } from "../data/ceiling-features";
+import { DOOR_FEATURES_BY_ID } from "../data/door-features";
 import { ITEMS_BY_ID } from "../data/items";
 import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
 import type { FloorMapJSON, CellJSON } from "./floor-map";
@@ -109,10 +110,12 @@ export function validateFloorMap(
   validateWallFeatures(map, issues);
   validateCeilingSprites(map, issues);
   validateCeilingFeatures(map, issues);
+  validateDoorFeatures(map, issues);
   validateReachability(map, issues);
   validateDuplicateOverlays(map, issues);
   validateItemRefs(map, issues);
   validateNpcRefs(map, issues);
+  validateStairsGuardianRefs(map, issues);
   validateFloorLinks(map, issues, context?.floors ?? getFloors());
   validateStairsTargets(map, issues, context?.floors ?? getFloors());
   validateEncounterConfig(map, issues);
@@ -216,7 +219,7 @@ function validateOverlayTiles(map: FloorMapJSON, issues: ValidationIssue[]): voi
   }
   for (const n of map.npcs ?? []) {
     expectTile(n.x, n.y, "npc", "npc_tile", `NPC ${n.id}`);
-    if (!n.combatEnemyIds?.length) {
+    if (!n.combatEnemyIds?.length && n.capabilities?.attack !== false) {
       issues.push({
         severity: "warning",
         code: "npc_no_combat",
@@ -233,6 +236,52 @@ function validateOverlayTiles(map: FloorMapJSON, issues: ValidationIssue[]): voi
   }
   for (const c of map.chuteDrops ?? []) {
     expectTile(c.x, c.y, "chute", "chute_tile", "Chute");
+  }
+  if (map.stairsGuardian) {
+    const g = map.stairsGuardian;
+    expectTile(g.x, g.y, "guardian", "guardian_tile", `Stairs guardian ${g.id}`);
+  }
+}
+
+function validateStairsGuardianRefs(map: FloorMapJSON, issues: ValidationIssue[]): void {
+  const g = map.stairsGuardian;
+  if (!g) return;
+  if (g.spawns.length === 0) {
+    issues.push({
+      severity: "error",
+      code: "guardian_no_spawns",
+      message: `Stairs guardian ${g.id} has no spawns`,
+      at: { x: g.x, y: g.y },
+    });
+  }
+  for (const spawn of g.spawns) {
+    if (!ENEMIES_BY_ID[spawn.enemyId]) {
+      issues.push({
+        severity: "error",
+        code: "guardian_enemy_unknown",
+        message: `Stairs guardian ${g.id} spawns references unknown enemy "${spawn.enemyId}"`,
+        at: { x: g.x, y: g.y },
+      });
+    }
+  }
+  if (g.rewardItemId && !isObtainableItemId(g.rewardItemId)) {
+    issues.push({
+      severity: "warning",
+      code: "guardian_reward_item_unknown",
+      message: `Stairs guardian ${g.id} rewardItemId "${g.rewardItemId}" is not a recognized item`,
+      at: { x: g.x, y: g.y },
+    });
+  }
+  if (inBoundsGrid(map, g.x, g.y)) {
+    const edge = map.grid[g.y][g.x][DIR_EDGE[g.blocksDir]];
+    if (edge !== "barred") {
+      issues.push({
+        severity: "error",
+        code: "guardian_edge_unsealed",
+        message: `Stairs guardian ${g.id} blocksDir "${g.blocksDir}" must be authored as "barred" (got "${edge}") — "wall" would fail reachability, and anything else lets a fled fight be walked past`,
+        at: { x: g.x, y: g.y },
+      });
+    }
   }
 }
 
@@ -423,6 +472,43 @@ function validateCeilingFeatures(map: FloorMapJSON, issues: ValidationIssue[]): 
         severity: "error",
         code: "ceiling_feature_unknown",
         message: `Unknown ceiling feature id "${f.spriteId}" at (${f.x},${f.y})`,
+        at: { x: f.x, y: f.y },
+      });
+    }
+  }
+}
+
+/**
+ * A doorFeatures entry is a full-face art override for a "hero door" — the
+ * edge it names must already be door-like (door/locked/barred, not a plain
+ * wall or open passage, since there's no generic door texture underneath an
+ * open edge to substitute) and the spriteId must resolve.
+ */
+function validateDoorFeatures(map: FloorMapJSON, issues: ValidationIssue[]): void {
+  for (const f of map.doorFeatures ?? []) {
+    if (!inBoundsGrid(map, f.x, f.y)) {
+      issues.push({
+        severity: "error",
+        code: "door_feature_oob",
+        message: `Door feature "${f.spriteId}" at (${f.x},${f.y}) out of bounds`,
+        at: { x: f.x, y: f.y },
+      });
+      continue;
+    }
+    const edge = map.grid[f.y][f.x][f.dir];
+    if (edge !== "door" && edge !== "locked" && edge !== "barred") {
+      issues.push({
+        severity: "error",
+        code: "door_feature_edge_mismatch",
+        message: `doorFeatures entry (${f.x},${f.y}) ${f.dir} but grid edge is "${edge}" (must be door/locked/barred)`,
+        at: { x: f.x, y: f.y },
+      });
+    }
+    if (!DOOR_FEATURES_BY_ID[f.spriteId]) {
+      issues.push({
+        severity: "error",
+        code: "door_feature_unknown",
+        message: `Unknown door feature id "${f.spriteId}" at (${f.x},${f.y})`,
         at: { x: f.x, y: f.y },
       });
     }
