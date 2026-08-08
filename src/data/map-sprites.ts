@@ -47,6 +47,12 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   // out of scope for an art pass. baseSize is deliberately far above any
   // other prop here — it needs to read floor-to-ceiling, not knee-high.
   { id: "hotboi-pillar", name: "Hot Boi's Central Pillar", file: "hotboi-pillar.png", baseSize: 74 },
+  // Hot Boi's Tavern furniture. Not yet placed on any floor.
+  { id: "hotboi-table", name: "Hot Boi's Table", file: "hotboi-table.png", baseSize: 30 },
+  { id: "hotboi-bench", name: "Hot Boi's Bench", file: "hotboi-bench.png", baseSize: 28 },
+  { id: "hotboi-keg-stack", name: "Hot Boi's Keg Stack", file: "hotboi-keg-stack.png", baseSize: 32 },
+  { id: "hotboi-kitchen-stove", name: "Hot Boi's Kitchen Stove", file: "hotboi-kitchen-stove.png", baseSize: 34 },
+  { id: "hotboi-kitchen-prep", name: "Hot Boi's Prep Table", file: "hotboi-kitchen-prep.png", baseSize: 32 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(

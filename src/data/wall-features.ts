@@ -114,6 +114,49 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     heightFrac: 0.95,
     anchor: "bottom",
   },
+  {
+    id: "hotboi-hearth",
+    name: "Hot Boi's Hearth",
+    file: "hotboi-hearth.png",
+    widthFrac: 0.98,
+    heightFrac: 0.95,
+    anchor: "bottom",
+  },
+  // Deliberately varied silhouettes/anchors vs. F1's wall-decal batch (which
+  // drew a "C" for centered-rectangle repetition) — irregular collage,
+  // top-mounted, and narrow-vertical, not three more boxes at eye height.
+  {
+    id: "hotboi-notice-board",
+    name: "Hot Boi's Notices",
+    file: "hotboi-notice-board.png",
+    widthFrac: 0.4,
+    heightFrac: 0.5,
+    anchor: "bottom",
+  },
+  {
+    id: "hotboi-monster-trophy",
+    name: "Mounted Trophy",
+    file: "hotboi-monster-trophy.png",
+    widthFrac: 0.35,
+    heightFrac: 0.45,
+    anchor: "top",
+  },
+  {
+    id: "hotboi-key-rack",
+    name: "Hot Boi's Key Rack",
+    file: "hotboi-key-rack.png",
+    widthFrac: 0.18,
+    heightFrac: 0.5,
+    anchor: "center",
+  },
+  {
+    id: "hotboi-kitchen-shelves",
+    name: "Hot Boi's Kitchen Pantry",
+    file: "hotboi-kitchen-shelves.png",
+    widthFrac: 0.98,
+    heightFrac: 0.95,
+    anchor: "bottom",
+  },
 ];
 
 export const WALL_FEATURES_BY_ID: Record<string, WallFeatureSpriteDef> = Object.fromEntries(

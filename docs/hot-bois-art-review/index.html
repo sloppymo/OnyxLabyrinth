@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Hot Boi's Tavern — Art Review (P0)</title>
+<title>Hot Boi's Tavern — Art Review (P0 + P1)</title>
 <style>
   :root {
     --bg: #14100b;
@@ -77,9 +77,9 @@
 
   <header>
     <span class="eyebrow">OnyxLabyrinth &middot; Art Production Review</span>
-    <h1>Hot Boi's Tavern — Interior Art (P0)</h1>
-    <p class="sub">Branch <code>agent/hot-bois-interior-art</code>. Core surfaces, the three-part bar, Hot Boi's proprietor billboard, and the central pillar — the P0 set the task brief calls "must complete before proceeding." Every in-engine screenshot here is the real renderer (<code>vite preview</code>), reached by temporarily wiring each asset onto a real Floor 1 wall/cell, screenshotting, then reverting the floor data — only the art files and registry entries are committed.</p>
-    <div class="stopnote">Per the brief's own P0 priority order (item 9: "review these together before proceeding") — <strong>this is a stop point.</strong> P1 (hearth, chandelier, furniture, kitchen) has not been started.</div>
+    <h1>Hot Boi's Tavern — Interior Art (P0 + P1)</h1>
+    <p class="sub">Branch <code>agent/hot-bois-interior-art</code>. Core surfaces, the three-part bar, Hot Boi's proprietor billboard, the central pillar (P0) — plus the hearth, chandelier, hanging bar rack, core furniture, varied wall art, and kitchen core (P1). Every in-engine screenshot here is the real renderer (<code>vite preview</code>), reached by temporarily wiring each asset onto a real Floor 1 wall/cell, screenshotting, then reverting the floor data — only the art files and registry entries are committed.</p>
+    <div class="stopnote">P0 + P1 both complete. P2 (secondary lantern, clutter compositions, kitchen/bar/table clutter, optional material variants) not started — the brief's own stop conditions say to stop once "additional generations start becoming redundant," and the room now has enough furnishing options to compose from.</div>
   </header>
 
   <section>
@@ -134,17 +134,72 @@
   </section>
 
   <section>
-    <h2>D. Composition Board</h2>
+    <h2>E. Hearth</h2>
+    <p class="note">One of the top-3 landmark compositions per the brief (bar+Hot Boi, pillar, hearth). Same near-full-face wallFeature treatment as the bar.</p>
+    <div class="grid grid-3">
+      <figure class="card"><img src="screenshots/enlarge-hearth.png" alt="hearth enlarged"><figcaption>hotboi-hearth.png — 3× nearest-neighbor</figcaption></figure>
+      <figure class="card hero-shot"><img src="screenshots/hotboi-hearth-inengine.png" alt="hearth in engine"><figcaption>gameplay scale · 2 tiles, real F1 wall</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>F. Chandelier &amp; Hanging Bar Rack</h2>
+    <p class="note">Ceiling sprites. The chandelier's <code>baseSize</code> (56) is pushed well above every other ceiling sprite in the game — deliberately, per the "big fake geometry" principle from the ceiling-art pass.</p>
+    <div class="grid grid-2">
+      <figure class="card"><img src="screenshots/enlarge-chandelier.png" alt="chandelier enlarged"><figcaption>hotboi-chandelier.png — 4× nearest-neighbor</figcaption></figure>
+      <figure class="card"><img src="screenshots/enlarge-hanging-rack.png" alt="hanging rack enlarged"><figcaption>hotboi-hanging-rack.png — 4× nearest-neighbor</figcaption></figure>
+      <figure class="card hero-shot"><img src="screenshots/hotboi-chandelier-inengine.png" alt="chandelier in engine"><figcaption>gameplay scale · 1 tile — fills the frame, exactly as intended</figcaption></figure>
+      <figure class="card hero-shot"><img src="screenshots/hotboi-hanging-rack-inengine.png" alt="hanging rack in engine"><figcaption>gameplay scale · 1 tile — kept secondary to the chandelier</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>G. Furniture</h2>
+    <p class="note">Curated per the brief's own "1-2 compositions rather than dozens of props" guidance — table and keg-stack are baked scenes (mugs+bread; barrels+tapped keg), not bare objects. Bar stools live in <code>hotboi-bar-center</code>; standalone crate/barrel reuse the base game's generic props.</p>
+    <div class="grid grid-3">
+      <figure class="card"><img src="screenshots/enlarge-table.png" alt="table enlarged"><figcaption>hotboi-table.png — 5× nearest-neighbor</figcaption></figure>
+      <figure class="card"><img src="screenshots/enlarge-bench.png" alt="bench enlarged"><figcaption>hotboi-bench.png — 5× nearest-neighbor</figcaption></figure>
+      <figure class="card"><img src="screenshots/enlarge-keg-stack.png" alt="keg stack enlarged"><figcaption>hotboi-keg-stack.png — 5× nearest-neighbor</figcaption></figure>
+      <figure class="card hero-shot"><img src="screenshots/hotboi-table-bench-inengine.png" alt="table and bench in engine"><figcaption>gameplay scale · table + bench together</figcaption></figure>
+      <figure class="card hero-shot"><img src="screenshots/hotboi-kegstack-inengine.png" alt="keg stack in engine"><figcaption>gameplay scale · keg stack alone</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>H. Wall Art — Anti-Slop Check</h2>
+    <p class="note">F1's wall-decal batch drew a "C" for centered-rectangle repetition. These three are deliberately not that: an irregular collage (bottom-anchored), a trophy mounted high (top-anchored), a narrow rack at eye height (center-anchored, 18% width).</p>
+    <div class="grid grid-3">
+      <figure class="card"><img src="screenshots/enlarge-notice-board.png" alt="notice board enlarged"><figcaption>hotboi-notice-board — irregular collage, bottom</figcaption></figure>
+      <figure class="card"><img src="screenshots/enlarge-monster-trophy.png" alt="monster trophy enlarged"><figcaption>hotboi-monster-trophy — mounted high, top</figcaption></figure>
+      <figure class="card"><img src="screenshots/enlarge-key-rack.png" alt="key rack enlarged"><figcaption>hotboi-key-rack — narrow vertical, center</figcaption></figure>
+      <figure class="card hero-shot" style="grid-column: span 3"><img src="screenshots/hotboi-notice-board-inengine.png" alt="notice board in engine"><figcaption>gameplay scale · notice board, 2 tiles — reads as a cluster of pinned papers, not a rectangle</figcaption></figure>
+    </div>
+    <p class="note" style="margin-top:0.6rem"><strong>Notice-board took 4 candidates</strong> — v1-v3 all collapsed to a blank rectangular panel despite explicit "no frame/no board" language; describing it as "four separate rotated paper scraps" instead of "a board" is what finally broke the model's prior. Full history in the generation log.</p>
+  </section>
+
+  <section>
+    <h2>I. Kitchen (core)</h2>
+    <p class="note">Minimum P1 kitchen set. Clutter compositions (cookware rack, cauldron, sack piles) are P2, not generated here.</p>
+    <div class="grid grid-3">
+      <figure class="card"><img src="screenshots/enlarge-kitchen-stove.png" alt="kitchen stove enlarged"><figcaption>hotboi-kitchen-stove — 5× nearest-neighbor</figcaption></figure>
+      <figure class="card"><img src="screenshots/enlarge-kitchen-prep.png" alt="kitchen prep enlarged"><figcaption>hotboi-kitchen-prep — 5× nearest-neighbor</figcaption></figure>
+      <figure class="card"><img src="screenshots/enlarge-kitchen-shelves.png" alt="kitchen shelves enlarged"><figcaption>hotboi-kitchen-shelves — 2× nearest-neighbor</figcaption></figure>
+      <figure class="card hero-shot" style="grid-column: span 3"><img src="screenshots/hotboi-kitchen-stove-inengine.png" alt="kitchen stove in engine"><figcaption>gameplay scale · stove, 1 tile (shelving partly occluded behind it — placement artifact of the test, not the asset)</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>J. Composition Board</h2>
     <p class="note">The floorplan is canonical (from the task brief text — no floorplan image file was supplied, so this is a schematic, not a redesign). Not true first-person; the point is proving every asset belongs to <em>one</em> room.</p>
     <div class="board">
       <div class="cell bar">BAR<br>(left)</div><div class="cell bar">BAR<br>(center)</div><div class="cell bar">BAR<br>(right)</div>
-      <div class="cell empty"></div><div class="cell empty"></div><div class="cell empty"></div>
-      <div class="cell empty"></div><div class="cell empty"></div><div class="cell kitchen">→ kitchen<br>(spur, P1)</div>
-      <div class="cell empty"></div><div class="cell pillar">PILLAR</div><div class="cell empty"></div>
-      <div class="cell empty"></div><div class="cell empty"></div><div class="cell empty"></div>
+      <div class="cell" style="background:#2a2010;color:var(--accent)">chandelier<br>overhead</div><div class="cell empty"></div><div class="cell" style="background:#2a1810;color:#c98a5a">hearth<br>(west wall)</div>
+      <div class="cell empty"></div><div class="cell empty"></div><div class="cell kitchen">→ kitchen<br>stove/prep/pantry</div>
+      <div class="cell empty"></div><div class="cell pillar">PILLAR</div><div class="cell" style="background:#241d15;color:var(--ink-dim)">notice board</div>
+      <div class="cell" style="background:#1f1a12;color:var(--ink-dim)">table<br>+ bench</div><div class="cell empty"></div><div class="cell" style="background:#1f1a12;color:var(--ink-dim)">keg<br>stack</div>
       <div class="cell empty"></div><div class="cell entry">talk spot</div><div class="cell empty"></div>
     </div>
-    <p class="note" style="margin-top:0.8rem">South entrance (door, P1/exterior — already shipped on the unmerged <code>agent/tavern-hero-door</code> branch, not touched here) is off the bottom-center cell. Walking north: cold stone → warm timber (material transition, section A) → pillar forces a path choice → kitchen spur glimpsed east → bar dominates the north wall, Hot Boi centered.</p>
+    <p class="note" style="margin-top:0.8rem">South entrance (door, exterior — already shipped on the unmerged <code>agent/tavern-hero-door</code> branch, not touched here) is off the bottom-center cell. Walking north: cold stone → warm timber (material transition, section A) → past furniture and the hearth's firelight → pillar forces a path choice → kitchen spur glimpsed east, notice board catches the eye → bar dominates the north wall under the chandelier, Hot Boi centered.</p>
   </section>
 
   <section>
@@ -155,6 +210,11 @@
       <tr><td>bar-left/center/right</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td>reads as attached/built-into the wall, not floating</td></tr>
       <tr><td>hotboi-npc</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td>grounded, bottom-anchored; species identity preserved (see generation log)</td></tr>
       <tr><td>hotboi-pillar</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-note">visual-only</span></td><td>no real 4-sided collision — see section C</td></tr>
+      <tr><td>hearth</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td>top-3 landmark quality, confirmed in-engine</td></tr>
+      <tr><td>chandelier / hanging rack</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td>chandelier baseSize deliberately dominant; rack kept secondary</td></tr>
+      <tr><td>table / bench / keg-stack</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td>bottom-anchor corrected on all three</td></tr>
+      <tr><td>notice-board / trophy / key-rack</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td>anti-slop check: 3 distinct silhouettes/anchors, zero centered rectangles</td></tr>
+      <tr><td>kitchen stove / prep / shelves</td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td><span class="tag tag-ok">pass</span></td><td>minimum P1 kitchen set; clutter compositions parked as P2</td></tr>
     </table>
   </section>
 

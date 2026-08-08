@@ -123,6 +123,74 @@ then reverted — not committed).
 |---|---|---|---|---|
 | hotboi-pillar | 128x256 | 74 | 1 | accepted first try — massive timber shaft, iron straps, stone base, reads as genuinely structural at both 1 and 2 tile distances |
 
+## Hearth (`public/assets/wall-features/`)
+
+Same near-full-face wallFeature approach as the bar. Verified in-engine
+(1 asset alone, reverted). Screenshot: `docs/hot-bois-art-review/screenshots/hotboi-hearth-inengine.png`.
+
+| id | size | candidates | notes |
+|---|---|---|---|
+| hotboi-hearth | 240x240 | 1 | accepted first try — arched masonry, mantel with objects, stacked firewood, fire poker, glowing embers |
+
+## Chandelier + hanging bar rack (`public/assets/ceiling-sprites/`)
+
+Both top-anchor flush at row 0 with no correction needed. Verified in-engine
+individually (stacking all three P1 hanging/wall pieces in one tight
+corridor cell was tried first and was too cluttered to judge — reverted,
+retested one at a time). Screenshots: `docs/hot-bois-art-review/screenshots/hotboi-{chandelier,hanging-rack}-inengine.png`.
+
+| id | size | baseSize | candidates | notes |
+|---|---|---|---|---|
+| hotboi-chandelier | 160x100 | 56 | 1 | accepted first try — broad iron ring, chains, lit candles; baseSize pushed well above every other ceiling sprite so it genuinely dominates, per the "big fake geometry" principle |
+| hotboi-hanging-rack | 96x72 | 40 | 1 | accepted first try — tankards on an iron rail, kept secondary in scale to the chandelier |
+
+## Furniture (`public/assets/map-sprites/`)
+
+Curated per the brief's own "1-2 table compositions rather than dozens of
+individual props" guidance — table and keg-stack are baked compositions
+(mugs+bread; barrels+tapped keg), not single objects. Standalone chair/stool/
+bottle-crate skipped: stools are already part of `hotboi-bar-center`'s
+composition, and the base game's generic `crate`/`barrel` map-sprites cover
+that role without new art. All three needed a bottom-anchor correction
+(4-7px gap, same alpha-scan method as every prior asset this pass). Verified
+in-engine (table+bench together, then keg-stack alone — reverted).
+
+| id | size | baseSize | candidates | notes |
+|---|---|---|---|---|
+| hotboi-table | 64x56 | 30 | 1 | accepted first try — round table, two mugs, half a loaf |
+| hotboi-bench | 64x36 | 28 | 1 | accepted first try — simple long bench, clean silhouette |
+| hotboi-keg-stack | 56x56 | 32 | 1 | accepted first try — barrel/keg pyramid, one tapped |
+
+## Wall art (`public/assets/wall-features/`)
+
+Frac/anchor pre-committed before generating, per §18's anti-slop rule —
+irregular collage (bottom), top-mounted trophy, narrow-vertical rack. None
+are a centered rectangle at eye height. Notice-board verified in-engine
+(reverted); trophy/key-rack were not (both already inspected at 5x zoom and
+structurally sound — judgment call to save generation/screenshot budget,
+noted here rather than left implicit).
+
+| id | size | frac/anchor | candidates | notes |
+|---|---|---|---|---|
+| hotboi-notice-board | 92x88 | 0.4/0.5/bottom | 4 | v1-v3 all collapsed to a blank rectangular panel despite explicit "papers, torn edges, no frame, no board" language — the model has a strong prior toward a single flat panel for this concept. v4 broke it by describing a "collage of four separate rotated paper scraps" instead of one board — worked immediately. Rejected candidates kept for the record; this cost 4x the generations of anything else in the pass. |
+| hotboi-monster-trophy | 76x92 | 0.35/0.45/top | 1 | accepted first try — horned beast skull on a plaque, restrained (not glowing/ornate) |
+| hotboi-key-rack | 40x112 | 0.18/0.5/center | 1 | accepted first try — mismatched keys, two columns instead of the requested one, still reads as a coherent narrow rack |
+
+## Kitchen (`public/assets/map-sprites/` + `public/assets/wall-features/`)
+
+Minimum P1 kitchen set — stove, prep table, pantry shelving (clutter
+compositions like hanging cookware rack / cauldron / sack pile are P2, not
+generated this pass). Stove + prep table needed the same bottom-anchor
+correction as the other furniture. Stove verified in-engine (reverted);
+prep table and shelving were inspected at full res only, not screenshotted
+individually — same time/generation-budget tradeoff as the wall art batch.
+
+| id | size | baseSize/frac | candidates | notes |
+|---|---|---|---|---|
+| hotboi-kitchen-stove | 64x64 | baseSize 34 | 1 | accepted first try — soot-blackened brick, glowing firebox, iron pot |
+| hotboi-kitchen-prep | 64x52 | baseSize 32 | 1 | accepted first try — butcher table, cleaver, vegetables |
+| hotboi-kitchen-shelves | 240x240 | 0.98/0.95/bottom | 1 | accepted first try — sacks, jars, hanging dried herbs and garlic, bread, cabinet below; cluttered/utilitarian per the kitchen brief |
+
 ## Rejected/superseded candidates
 
 Kept in `art/pixellab-candidates/hot-bois-tavern/` for the record.

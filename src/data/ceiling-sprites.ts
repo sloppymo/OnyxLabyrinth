@@ -31,6 +31,9 @@ export const CEILING_SPRITES: readonly CeilingSpriteDef[] = [
   { id: "f1-lantern-hanging", name: "Hanging Lantern", file: "f1-lantern-hanging.png", baseSize: 32 },
   { id: "f1-forge-counterweight", name: "Forge Chain Counterweight", file: "f1-forge-counterweight.png", baseSize: 44 },
   { id: "f4-bell-cracked", name: "Cracked Choir Bell", file: "f4-bell-cracked.png", baseSize: 36 },
+  // Hot Boi's Tavern interior. Not yet placed on any floor.
+  { id: "hotboi-chandelier", name: "Hot Boi's Chandelier", file: "hotboi-chandelier.png", baseSize: 56 },
+  { id: "hotboi-hanging-rack", name: "Hot Boi's Hanging Bar Rack", file: "hotboi-hanging-rack.png", baseSize: 40 },
 ];
 
 export const CEILING_SPRITES_BY_ID: Record<string, CeilingSpriteDef> = Object.fromEntries(
