@@ -355,13 +355,6 @@ let floorCeilBuf: ImageData | null = null;
 let floorCeilBufW = 0;
 let floorCeilBufH = 0;
 
-// Screen-space sky backdrop for the Camp's false-outdoor reveal. Generated
-// once at the current canvas size and blitted into the upper half of the
-// floor/ceiling buffer before the floor casting pass.
-let campSkyBuf: ImageData | null = null;
-let campSkyBufW = 0;
-let campSkyBufH = 0;
-
 // Floor/ceiling pixel-cast memoization: opacityForDepth is pure distance
 // math (no time term) and the render camera holds byte-identical values
 // while the player is neither moving nor turning (RenderCameraAnimator
@@ -379,7 +372,6 @@ let floorCeilCachePlaneX = NaN;
 let floorCeilCachePlaneY = NaN;
 let floorCeilCacheBobY = NaN;
 let floorCeilCacheDarkness: boolean | null = null;
-let floorCeilCacheUseSky: boolean | null = null;
 let floorCeilCacheTextureGrid: CellTextureGrid | null = null;
 let floorCeilCachePrimaryTextures: TextureSet | null = null;
 let floorCeilCacheWaterCells: boolean[][] | null = null;
@@ -1284,50 +1276,10 @@ function featureGlyph(feature: TileFeature): string {
  * maxDist are also filled with background, since the raycaster leaves them
  * empty and the walls (drawn after) will occlude most of them anyway.
  */
-/** Fill the upper half of an ImageData with a screen-space Camp sky backdrop. */
-function fillCampSky(buf: ImageData, w: number, h: number): void {
-  const u32 = new Uint32Array(buf.data.buffer);
-  const topR = 12,
-    topG = 14,
-    topB = 28;
-  const horR = 44,
-    horG = 48,
-    horB = 62;
-  for (let y = 0; y < h; y++) {
-    const t = h <= 1 ? 0 : y / (h - 1);
-    const r = topR + Math.round((horR - topR) * t);
-    const g = topG + Math.round((horG - topG) * t);
-    const b = topB + Math.round((horB - topB) * t);
-    const packed = (255 << 24) | (b << 16) | (g << 8) | r;
-    const rowOff = y * w;
-    for (let x = 0; x < w; x++) {
-      u32[rowOff + x] = packed;
-    }
-  }
-
-  // Sparse stars / tiny clusters — deterministic screen-space placement.
-  let seed = 0xca7f00d;
-  const starCount = 60;
-  for (let i = 0; i < starCount; i++) {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    const x = seed % w;
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    const y = seed % h;
-    const sr = 210,
-      sg = 212,
-      sb = 216;
-    u32[y * w + x] = (255 << 24) | (sb << 16) | (sg << 8) | sr;
-    if (i % 7 === 0 && x + 1 < w) {
-      u32[y * w + x + 1] = (255 << 24) | (sb << 16) | (sg << 8) | sr;
-    }
-  }
-}
-
 function drawFloorCeilingCast(
   ctx: CanvasRenderingContext2D,
   cam: RenderCamera,
   inDarkness: boolean,
-  useSky: boolean,
   cellTextures: CellTextureGrid,
   primaryTextures: TextureSet,
   waterCells: boolean[][],
@@ -1364,7 +1316,6 @@ function drawFloorCeilingCast(
     planeY === floorCeilCachePlaneY &&
     bobY === floorCeilCacheBobY &&
     inDarkness === floorCeilCacheDarkness &&
-    useSky === floorCeilCacheUseSky &&
     cellTextures === floorCeilCacheTextureGrid &&
     primaryTextures === floorCeilCachePrimaryTextures &&
     waterCells === floorCeilCacheWaterCells &&
@@ -1386,21 +1337,8 @@ function drawFloorCeilingCast(
   const u32 = new Uint32Array(data.buffer);
   u32.fill(BG_RGBA_PACKED);
 
-  // Blit the screen-space Camp sky into the upper half when active.
-  if (useSky) {
-    if (!campSkyBuf || campSkyBufW !== w || campSkyBufH !== horizonY) {
-      campSkyBuf = ctx.createImageData(w, horizonY);
-      campSkyBufW = w;
-      campSkyBufH = horizonY;
-      fillCampSky(campSkyBuf, w, horizonY);
-    }
-    const skyU32 = new Uint32Array(campSkyBuf.data.buffer);
-    u32.set(skyU32, 0);
-  }
-
   // --- Ceiling rows (0 .. horizonY - 1) ---
   for (let y = 0; y < horizonY; y++) {
-    if (useSky) continue;
     const rowDistance = halfH / (halfH - y);
     if (rowDistance > maxDist) continue;
 
@@ -1491,7 +1429,6 @@ function drawFloorCeilingCast(
   floorCeilCachePlaneY = planeY;
   floorCeilCacheBobY = bobY;
   floorCeilCacheDarkness = inDarkness;
-  floorCeilCacheUseSky = useSky;
   floorCeilCacheTextureGrid = cellTextures;
   floorCeilCachePrimaryTextures = primaryTextures;
   floorCeilCacheWaterCells = waterCells;
@@ -1545,19 +1482,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const primaryTileset = resolvedTextures.primaryTileset;
   const primaryTextures = primaryTileset?.set ?? null;
 
-  // Screen-space sky is used only in the Camp tileset, where the walls
-  // themselves become the horizon. Darkness zones intentionally keep the
-  // normal fogged ceiling so the sky doesn't read through a dark cave.
-  const activeTheme = themeAt(state.floor, state.player.x, state.player.y);
-  const useSky = activeTheme === "camp" && !state.inDarkness;
-
   // --- Ceiling and floor casting (single batched upload) ---
   if (primaryTextures) {
     drawFloorCeilingCast(
       ctx,
       cam,
       state.inDarkness,
-      useSky,
       resolvedTextures.cellTextures,
       primaryTextures,
       resolvedTextures.waterCells,
