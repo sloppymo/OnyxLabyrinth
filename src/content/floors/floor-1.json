@@ -7773,21 +7773,6 @@
       "x": 9,
       "y": 15,
       "spriteId": "f1-ceiling-crack-roots"
-    },
-    {
-      "x": 28,
-      "y": 10,
-      "spriteId": "camp-sky-star-a"
-    },
-    {
-      "x": 33,
-      "y": 15,
-      "spriteId": "camp-sky-star-b"
-    },
-    {
-      "x": 27,
-      "y": 16,
-      "spriteId": "camp-sky-star-b"
     }
   ],
   "chuteDrops": [
