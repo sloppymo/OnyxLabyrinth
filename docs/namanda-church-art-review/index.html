@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Church of Saint Namanda — Art & Room Review</title>
+<style>
+  :root {
+    --bg: #0e1016;
+    --panel: #171a24;
+    --ink: #e7e2d6;
+    --ink-dim: #9a97a8;
+    --accent: #c9b06a;
+    --line: #2a2e3d;
+    --ok: #6fae5e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Georgia, "Iowan Old Style", serif;
+    line-height: 1.5;
+  }
+  .page { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+  header { border-bottom: 1px solid var(--line); padding-bottom: 1.5rem; margin-bottom: 2.5rem; }
+  .eyebrow { font-family: ui-monospace, monospace; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-size: 2.2rem; font-weight: 400; font-style: italic; margin: 0.4rem 0 0.6rem; }
+  .sub { color: var(--ink-dim); max-width: 74ch; margin: 0; }
+  .stopnote {
+    margin-top: 1.2rem; padding: 0.9rem 1.1rem; border: 1px solid var(--accent);
+    border-radius: 4px; background: #1c1808; font-family: ui-monospace, monospace; font-size: 0.85rem;
+  }
+  .rawnote {
+    margin-top: 0.8rem; padding: 0.7rem 1rem; border: 1px solid var(--line);
+    border-radius: 4px; background: #10151d; font-family: ui-monospace, monospace; font-size: 0.78rem; color: var(--ink-dim);
+  }
+  section { margin-bottom: 3.5rem; }
+  h2 { font-size: 1.5rem; font-weight: 400; font-style: italic; border-bottom: 1px solid var(--line); padding-bottom: 0.5rem; }
+  h3 { font-size: 1.05rem; font-weight: 600; color: var(--accent); margin-bottom: 0.6rem; }
+  .grid { display: grid; gap: 1.2rem; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 0.8rem; }
+  .card img { display: block; width: 100%; height: auto; border-radius: 3px; image-rendering: pixelated; }
+  .card figcaption { font-family: ui-monospace, monospace; font-size: 0.72rem; color: var(--ink-dim); margin-top: 0.5rem; }
+  .hero-shot img { image-rendering: pixelated; }
+  .tag { display: inline-block; font-family: ui-monospace, monospace; font-size: 0.68rem; padding: 0.15rem 0.5rem; border-radius: 3px; margin-right: 0.4rem; }
+  .tag-ok { background: #1e3016; color: var(--ok); border: 1px solid #345224; }
+  .tag-note { background: #241f0a; color: var(--accent); border: 1px solid #4a3f18; }
+  p.note { color: var(--ink-dim); font-size: 0.92rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin-top: 0.8rem; }
+  th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--line); }
+  th { color: var(--accent); font-weight: 600; }
+  .filmstrip { display: flex; gap: 0.6rem; overflow-x: auto; padding-bottom: 0.5rem; }
+  .filmstrip figure { flex: 0 0 220px; margin: 0; }
+  code { color: var(--accent); }
+  footer { border-top: 1px solid var(--line); padding-top: 1.2rem; font-family: ui-monospace, monospace; font-size: 0.75rem; color: var(--ink-dim); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <span class="eyebrow">OnyxLabyrinth &middot; Art &amp; Room Production Review</span>
+    <h1>Church of Saint Namanda — pale stone, censer, and four sacred services</h1>
+    <p class="sub">Branch <code>agent/saint-namanda-church</code>. The second fully realized enterable Floor 1 micro-location, built as the deliberate counterpart to Hot Boi's Tavern: pale ivory ashlar stone, restrained candlelight, verticality, and restraint instead of clutter. 11 new assets (4 tileset materials + 2 altar panels + votive wall + reliquary niche + font + bench + kneeling rail), reusing the already-shipped hero door, Namanda's mark, and the hanging censer without regenerating any of them.</p>
+    <div class="stopnote">P0/P1 complete at 11 accepted assets from 15 generations (only the ceiling material needed rerolls, chasing a warm-not-purple palette). Room assembled, four real services wired to existing game systems, 2133 tests green, <code>npm run check</code> green. Stopped here — the room's four visual anchors (altar/relief, censer, votive wall, font) were judged complete; no side alcove was added (see §G for why).</div>
+    <div class="rawnote">Every in-engine screenshot below is a raw <code>vite preview</code> capture — no brightness/contrast inspection filter applied anywhere on this page. What you see is exactly what a player sees.</div>
+  </header>
+
+  <section>
+    <h2>A. Source Art</h2>
+    <p class="note">All new assets generated via <code>scripts/pixellab-generate.mjs</code> against the PixelLab REST API (no MCP server configured in this repo — same path every prior art pass used). Reused assets are called out explicitly; none were regenerated.</p>
+    <div class="grid grid-4">
+      <figure class="card"><img src="assets/namanda-altar.png" alt="namanda-altar"><figcaption>namanda-altar — apse, west panel</figcaption></figure>
+      <figure class="card"><img src="assets/namanda-relief.png" alt="namanda-relief"><figcaption>namanda-relief — apse, east panel (Namanda's mark composited on)</figcaption></figure>
+      <figure class="card"><img src="assets/namanda-votive-wall.png" alt="namanda-votive-wall"><figcaption>namanda-votive-wall — irregular candle niches</figcaption></figure>
+      <figure class="card"><img src="assets/namanda-reliquary-niche.png" alt="namanda-reliquary-niche"><figcaption>namanda-reliquary-niche — tall narrow niche</figcaption></figure>
+      <figure class="card"><img src="assets/namanda-font.png" alt="namanda-font"><figcaption>namanda-font — stone basin, mapSprite</figcaption></figure>
+      <figure class="card"><img src="assets/namanda-bench.png" alt="namanda-bench"><figcaption>namanda-bench — carved pew, mapSprite</figcaption></figure>
+      <figure class="card"><img src="assets/namanda-kneeling-rail.png" alt="namanda-kneeling-rail"><figcaption>namanda-kneeling-rail — doubles as the service interaction tile's art</figcaption></figure>
+      <figure class="card"><img src="assets/namanda-mark-large.png" alt="namanda mark"><figcaption><span class="tag tag-note">reused</span>Namanda's mark — hand-authored, not regenerated</figcaption></figure>
+      <figure class="card"><img src="assets/namanda-church-door.png" alt="namanda church door"><figcaption><span class="tag tag-note">reused</span>hero door — already shipped on <code>origin/main</code>, kept as-is (relocated, not redrawn — see §G)</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>B. Material Tile Tests</h2>
+    <p class="note">256×256 RGB, seamless. Darkened from the raw PixelLab output to the engine's mid-dark luminance band (wall ≈86, floorA ≈74, floorB ≈65, ceiling ≈54 — target band per <code>docs/TILESET-ART-STYLE-GUIDE.md</code>) after the first pass came back too bright to survive the renderer's contrast stretch. The ceiling needed three attempts to land on a warm cream rather than the model's default cool lavender-grey (Namanda's stone must not read as F4's cold purple).</p>
+    <div class="grid grid-4">
+      <figure class="card"><img src="materials/wall.png" alt="wall"><figcaption>wall.png (source)</figcaption></figure>
+      <figure class="card"><img src="materials/wall-2x2.png" alt="wall tiled"><figcaption>wall — 2×2 tiled</figcaption></figure>
+      <figure class="card"><img src="materials/ceiling.png" alt="ceiling"><figcaption>ceiling.png (source)</figcaption></figure>
+      <figure class="card"><img src="materials/ceiling-2x2.png" alt="ceiling tiled"><figcaption>ceiling — 2×2 tiled</figcaption></figure>
+      <figure class="card"><img src="materials/floorA.png" alt="floorA"><figcaption>floorA.png (source)</figcaption></figure>
+      <figure class="card"><img src="materials/floorB.png" alt="floorB"><figcaption>floorB.png (source)</figcaption></figure>
+      <figure class="card"><img src="materials/floorA-2x2.png" alt="floorA tiled"><figcaption>floorA — 2×2 tiled</figcaption></figure>
+      <figure class="card"><img src="materials/floorB-2x2.png" alt="floorB tiled"><figcaption>floorB — 2×2 tiled</figcaption></figure>
+      <figure class="card hero-shot"><img src="screenshots/room-walkthrough/03-immediately-after-entering.png" alt="materials in corridor"><figcaption>gameplay-scale — the exact frame after crossing the door, pale stone replacing the corridor's default theme</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>C. Altar Composition</h2>
+    <p class="note">The apse is narrower than the nave (2 cells vs. 4) — a recessed niche, not a flat backdrop. <code>namanda-altar</code> and <code>namanda-relief</code> sit on the two apse cells' north walls (near-full-face, <code>widthFrac 0.95 / heightFrac 0.95 / anchor bottom</code>, the same technique as Hot Boi's bar composition). Namanda's mark is composited onto the relief panel's empty arch — tinted warm gilt, pixel-identical to the door's mark, never redrawn.</p>
+    <div class="grid grid-3">
+      <figure class="card"><img src="assets/namanda-altar.png" alt="altar source"><figcaption>namanda-altar (source)</figcaption></figure>
+      <figure class="card"><img src="assets/namanda-relief.png" alt="relief source"><figcaption>namanda-relief (source, mark composited)</figcaption></figure>
+      <figure class="card hero-shot"><img src="screenshots/room-walkthrough/10-altar-reveal.png" alt="altar in engine"><figcaption>in-engine — full apse reveal, 3 tiles out</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>D. Wall Features</h2>
+    <p class="note">Deliberately not another centered rectangle: an irregular scattered candle cluster (one niche left cold on purpose — the room's one unexplained strange detail) and a tall narrow niche, on opposite nave walls.</p>
+    <div class="grid grid-2">
+      <figure class="card"><img src="screenshots/room-walkthrough/07-votive-wall.png" alt="votive wall in engine"><figcaption>votive wall — in-engine, west wall of the nave</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/09-reliquary-niche.png" alt="reliquary niche in engine"><figcaption>reliquary niche — in-engine, east wall of the nave</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>E. Ceiling Piece</h2>
+    <p class="note"><span class="tag tag-note">reused</span> <code>f1-censer</code> — the existing accepted hanging censer from the ceiling-environment-art pass, already compatible with Namanda's material language. No new censer was generated. Placed mid-nave (10,5) to reinforce the entrance→altar sightline.</p>
+    <div class="grid grid-2">
+      <figure class="card hero-shot"><img src="screenshots/room-walkthrough/08-censer-aisle.png" alt="censer in engine"><figcaption>in-engine — censer hanging in the central aisle, altar visible beyond</figcaption></figure>
+      <figure class="card hero-shot"><img src="screenshots/room-walkthrough/11-service-position.png" alt="full sightline"><figcaption>entrance→aisle→censer→altar sightline from the service tile</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>F. Furniture</h2>
+    <div class="grid grid-3">
+      <figure class="card hero-shot"><img src="screenshots/room-walkthrough/05-at-font.png" alt="font in engine"><figcaption>font — narthex, near the threshold</figcaption></figure>
+      <figure class="card hero-shot"><img src="screenshots/room-walkthrough/06-bench-alcove.png" alt="bench in engine"><figcaption>bench — one, sparse per the room's restraint brief</figcaption></figure>
+      <figure class="card hero-shot"><img src="screenshots/room-walkthrough/12-church-ui-open.png" alt="kneeling rail as service tile"><figcaption>kneeling rail doubles as the altar's interaction tile art</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>G. Final Room</h2>
+    <p class="note">Footprint: <code>x=8–11, y=2–9</code> (4-wide nave/narthex, 2-wide apse, 1-wide threshold) — previously uncarved rock directly north of Sister Caldris's cut-bell chapel and above the ember-forge corridor, confirmed empty of every existing event/treasure/wallFeature/ceilingSprite before carving. Two <code>tilesetZones</code> (main room + a 1×1 threshold cell) keep the new "namanda" theme from bleeding onto Caldris's adjacent corridor cells.</p>
+    <p class="note"><strong>The hero door was relocated</strong>, same asset, from <code>(10,10)/(11,10)</code> (the cut-bell-chapel↔ember-suture junction it originally shipped on) to <code>(11,9)/(11,10)</code> — the church's own mouth. The original coordinate is a live through-corridor shared with unrelated Floor 1 traffic; crossing it landed the party back in the ember-forge theme, failing the "immediate material transition" requirement. Relocating is a placement change, not a redesign — same PNG, same symbol, same severe pale-arch silhouette.</p>
+    <table>
+      <tr><th>Anchor</th><th>Placement</th><th>Notes</th></tr>
+      <tr><td>Altar + relief</td><td>(9,2)/(10,2), dir n</td><td>apse, narrower than the nave</td></tr>
+      <tr><td>Censer</td><td>(10,5), ceiling</td><td>reused f1-censer</td></tr>
+      <tr><td>Votive wall</td><td>(8,6), dir w</td><td>west nave wall</td></tr>
+      <tr><td>Reliquary niche</td><td>(11,4), dir e</td><td>east nave wall</td></tr>
+      <tr><td>Font</td><td>(9,8)</td><td>narthex, doubles as the "side alcove" requirement</td></tr>
+      <tr><td>Bench</td><td>(8,7)</td><td>one, off the main sightline</td></tr>
+      <tr><td>Service tile</td><td>(10,3), tile "npc"</td><td>kneeling rail art, no NPC character</td></tr>
+    </table>
+    <p class="note">No separate side-alcove room was added — the available safe rock (see AGENTS.md's array-boundary and existing-content-collision pitfalls) was a single contiguous block bounded by Caldris's chapel to the south-west and live ember-forge content to the east; the font was placed to satisfy that composition role instead of carving a second pocket into busier ground.</p>
+  </section>
+
+  <section>
+    <h2>H. Walkthrough</h2>
+    <p class="note">Full script: <code>scripts/playtests/namanda-church-walkthrough.mjs</code>. Run against a production preview (<code>npx vite preview --port 5176 --base /OnyxLabyrinth/</code>). Confirms: immediate material transition on crossing the door, the full sightline, every wall/ceiling/furniture placement, the real Church UI opening on the service tile (not the generic NPC panel), and returning to the same physical room afterward.</p>
+    <div class="filmstrip">
+      <figure class="card"><img src="screenshots/room-walkthrough/01-approach-door.png"><figcaption>01 — approach</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/02-door-close.png"><figcaption>02 — door close</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/03-immediately-after-entering.png"><figcaption>03 — immediately inside</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/04-narthex-toward-font.png"><figcaption>04 — narthex</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/05-at-font.png"><figcaption>05 — font</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/06-bench-alcove.png"><figcaption>06 — bench</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/07-votive-wall.png"><figcaption>07 — votive wall</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/08-censer-aisle.png"><figcaption>08 — censer</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/09-reliquary-niche.png"><figcaption>09 — reliquary niche</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/10-altar-reveal.png"><figcaption>10 — altar reveal</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/11-service-position.png"><figcaption>11 — service tile</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/12-church-ui-open.png"><figcaption>12 — Church UI open</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/13-back-in-room.png"><figcaption>13 — back in the room</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/14-turned-toward-entrance.png"><figcaption>14 — turned toward the door</figcaption></figure>
+      <figure class="card"><img src="screenshots/room-walkthrough/15-leaving-the-nave.png"><figcaption>15 — leaving</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Coherence audit — self-check</h2>
+    <table>
+      <tr><th>Asset</th><th>Grade</th><th>Note</th></tr>
+      <tr><td>namanda-wall/floorA/floorB/ceiling</td><td><span class="tag tag-ok">KEEP</span></td><td>darkened to engine band; seams clean; ceiling re-rolled twice for hue only</td></tr>
+      <tr><td>namanda-altar</td><td><span class="tag tag-ok">KEEP</span></td><td>ancient, plain, physically grounded — no gold excess</td></tr>
+      <tr><td>namanda-relief</td><td><span class="tag tag-ok">KEEP</span></td><td>mark composite reads clearly at gameplay scale</td></tr>
+      <tr><td>namanda-votive-wall</td><td><span class="tag tag-ok">KEEP</span></td><td>asymmetric niches; one cold wick kept as the room's strangeness</td></tr>
+      <tr><td>namanda-reliquary-niche</td><td><span class="tag tag-ok">KEEP</span></td><td>tall/vertical, not a repeat of the centered-rectangle failure</td></tr>
+      <tr><td>namanda-font</td><td><span class="tag tag-ok">KEEP</span></td><td>humble, physically plausible basin</td></tr>
+      <tr><td>namanda-bench</td><td><span class="tag tag-note">EDIT</span></td><td>baseSize reduced 28→18 and moved off the central sightline after looking oversized/blocking at depth 1</td></tr>
+      <tr><td>namanda-kneeling-rail</td><td><span class="tag tag-note">EDIT</span></td><td>source padded to a squarer aspect ratio after the renderer's forced-square prop scaling stretched the original 52×18 crop into a distorted, off-color-reading blob</td></tr>
+    </table>
+    <p class="note">No asset needed a full regenerate. Both EDITs were scale/placement corrections caught by standing directly next to the object in-engine, not composition defects in the source art.</p>
+  </section>
+
+  <footer>
+    OnyxLabyrinth &middot; Church of Saint Namanda art &amp; room review &middot; branch <code>agent/saint-namanda-church</code>
+  </footer>
+
+</div>
+</body>
+</html>

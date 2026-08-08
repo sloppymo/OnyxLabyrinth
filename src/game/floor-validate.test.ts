@@ -40,6 +40,18 @@ describe("floor-validate content checks", () => {
         // tracks — the validator's "not bundled" check is a false positive
         // here, not a missing-asset bug.
         if (i.code === "tileset_theme_unknown" && i.message.includes("hotboi")) return false;
+        // namanda is the Church of Saint Namanda's own shipped theme folder
+        // (public/assets/tilesets/namanda/), the same kind of deliberate
+        // one-off zone as hotboi above.
+        if (i.code === "tileset_theme_unknown" && i.message.includes("namanda")) return false;
+        // The church's zone rectangles deliberately override the wider
+        // cut-bell-chapel/ember-suture zones they sit inside of (last-zone-
+        // wins is the documented precedence in floor-map.ts's themeAt) —
+        // see art/pixellab-candidates/namanda-church for the room layout.
+        if (i.code === "tileset_zone_overlap" && i.message.includes("namanda-church")) return false;
+        // The altar is a physical interaction point, not a character — it
+        // is deliberately unfightable (engine/namanda-ui.ts).
+        if (i.code === "npc_no_combat" && i.message.includes("namanda-altar")) return false;
         return true;
       });
       expect(issues, `floor ${floor.id}: ${issues.map((e) => e.message).join("; ")}`).toEqual([]);
