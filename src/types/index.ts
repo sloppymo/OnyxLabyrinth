@@ -78,6 +78,14 @@ export interface PendingTrap {
   inspected: boolean;
 }
 
+/** A chest whose treasure is held in escrow until a linked combat is won. */
+export interface PendingClimax {
+  id: string;
+  floorId: number;
+  x: number;
+  y: number;
+}
+
 // --- Facing / player ---------------------------------------------------------
 
 export type Facing = 0 | 1 | 2 | 3; // 0=N, 1=E, 2=S, 3=W
@@ -174,6 +182,10 @@ export interface GameState {
   // dungeon movement is blocked and the Inspect/Disarm/Open/Leave keys are
   // live. Never persisted: a save can't be taken while the prompt is open.
   pendingTrap: PendingTrap | null;
+  // Set when a climax chest is opened. Its treasure is awarded only after the
+  // linked guardian combat ends in victory. Cleared on victory or if the chest
+  // is otherwise resolved.
+  pendingClimax?: PendingClimax;
   // Whether the current tile is a darkness zone (affects render depth).
   inDarkness: boolean;
   // Whether the current tile is an anti-magic zone (affects spell casting).

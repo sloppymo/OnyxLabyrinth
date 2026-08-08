@@ -21,7 +21,7 @@ import { buildSolidGrid } from "./dungeon";
 export const FLOOR_MAP_FORMAT_VERSION = 1 as const;
 
 /** Themes bundled with the game and therefore known to the pure validator. */
-export const BUILT_IN_TILESET_THEMES = ["f1", "f2", "f3", "f4", "f5"] as const;
+export const BUILT_IN_TILESET_THEMES = ["f1", "f2", "f2b", "f3", "f4", "f5"] as const;
 
 export interface CellJSON {
   n: EdgeType;
@@ -63,6 +63,9 @@ export interface TreasureJSON {
   y: number;
   itemIds: string[];
   trap?: TrapType;
+  /** Guardian-ward escrow: opening the chest begins combat, items awarded
+   *  only after the linked climax combat is won. See data/floors.ts. */
+  climax?: { id: string };
 }
 
 export interface ChuteDropJSON {
@@ -256,6 +259,7 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
       y: t.y,
       itemIds: [...t.itemIds],
       trap: t.trap,
+      climax: t.climax ? { ...t.climax } : undefined,
     })),
     waters: floor.waters?.map((w) => ({
       ...w,
@@ -304,6 +308,7 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
       y: t.y,
       itemIds: [...t.itemIds],
       trap: t.trap,
+      climax: t.climax ? { ...t.climax } : undefined,
     })),
     waters: map.waters?.map((w) => ({
       ...w,
@@ -507,6 +512,16 @@ function parseTreasure(o: Record<string, unknown>, l: string): TreasureJSON {
       throw new Error(`${l}.trap must be one of ${TRAP_TYPES.join("/")}`);
     }
     t.trap = o.trap as TrapType;
+  }
+  if (o.climax !== undefined) {
+    if (!o.climax || typeof o.climax !== "object") {
+      throw new Error(`${l}.climax must be an object`);
+    }
+    const c = o.climax as Record<string, unknown>;
+    if (typeof c.id !== "string" || c.id.length === 0) {
+      throw new Error(`${l}.climax.id must be a non-empty string`);
+    }
+    t.climax = { id: c.id };
   }
   return t;
 }
