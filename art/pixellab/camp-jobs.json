@@ -1,0 +1,1145 @@
+{
+  "jobs": [
+    {
+      "key": "camp-sky-01",
+      "family": "materials",
+      "tool": "create_image_pixen",
+      "jobId": "8ede580b-8fff-4dc7-849e-e94099024520",
+      "args": {
+        "description": "Seamless dark twilight false-sky texture for a low-resolution first-person dungeon game. Near-solid dusty navy and blue-gray field, enormous sparse charcoal cloud bands crossing the tile edges, extremely low contrast, two tiny dim stars at most, broad hard-edged pixel clusters, authentic restrained 16-bit pixel art, limited 8-color palette, no perspective, no horizon, no gradients, no bright blue.",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "detail": "low detail",
+        "seed": 81001
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-sky-01.png"
+      ],
+      "result": "status: completed\nid: 8ede580b-8fff-4dc7-849e-e94099024520\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/8ede580b-8fff-4dc7-849e-e94099024520/download"
+    },
+    {
+      "key": "camp-ground-01",
+      "family": "materials",
+      "tool": "create_image_pixen",
+      "jobId": "58931268-8e21-4c24-b5ee-e0366c9449f9",
+      "args": {
+        "description": "Trampled settlement ground texture: packed dark brown earth, sparse dead olive grass, damp gray mud, embedded tiny old stone fragments, broad worn foot traffic, practical and occupied, authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "detail": "medium detail",
+        "seed": 81101
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-ground-01.png"
+      ],
+      "result": "status: completed\nid: 58931268-8e21-4c24-b5ee-e0366c9449f9\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/58931268-8e21-4c24-b5ee-e0366c9449f9/download"
+    },
+    {
+      "key": "camp-wall-01",
+      "family": "materials",
+      "tool": "create_image_pixen",
+      "jobId": "68442059-c467-4bcd-8711-c9303c58b191",
+      "args": {
+        "description": "Ancient courtyard perimeter masonry texture: large uneven gray-brown stone courses, soot-dark mortar, chipped edges, two restrained root intrusions, salvaged and repaired by settlers, authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "detail": "medium detail",
+        "seed": 81201
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-wall-01.png"
+      ],
+      "result": "status: completed\nid: 68442059-c467-4bcd-8711-c9303c58b191\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/68442059-c467-4bcd-8711-c9303c58b191/download"
+    },
+    {
+      "key": "camp-sky-02",
+      "family": "materials",
+      "tool": "create_image_pixen",
+      "jobId": "7b769f5e-f3f3-43e3-8699-d84542e210dc",
+      "args": {
+        "description": "Dark false twilight sky texture: near-solid dusty navy and desaturated blue-gray, one enormous charcoal cloud band crossing two tile edges, extremely sparse dim pinprick stars, calm and beautiful, authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "detail": "low detail",
+        "seed": 81002
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-sky-02.png"
+      ],
+      "result": "status: completed\nid: 7b769f5e-f3f3-43e3-8699-d84542e210dc\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/7b769f5e-f3f3-43e3-8699-d84542e210dc/download"
+    },
+    {
+      "key": "camp-sky-03",
+      "family": "materials",
+      "tool": "create_image_pixen",
+      "jobId": "e31cf4ac-a8b1-47ee-b173-de8620158c20",
+      "args": {
+        "description": "Deep muted twilight sky texture: broad near-solid navy field, low-contrast blue-gray tonal drift in enormous irregular pixel clusters, only one tiny faint star, atmospheric and restrained, authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "detail": "low detail",
+        "seed": 81003
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-sky-03.png"
+      ],
+      "result": "status: completed\nid: e31cf4ac-a8b1-47ee-b173-de8620158c20\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/e31cf4ac-a8b1-47ee-b173-de8620158c20/download"
+    },
+    {
+      "key": "camp-ground-02",
+      "family": "materials",
+      "tool": "create_image_pixen",
+      "jobId": "ef77a50e-c1be-4d27-99d3-b0db09f50574",
+      "args": {
+        "description": "Packed dirt courtyard texture for a long-occupied camp: dark umber soil, charcoal damp patches, sparse muted olive and dead straw traces, occasional half-buried flat stones, irregular broad clusters, authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "detail": "medium detail",
+        "seed": 81102
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-ground-02.png"
+      ],
+      "result": "status: completed\nid: ef77a50e-c1be-4d27-99d3-b0db09f50574\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/ef77a50e-c1be-4d27-99d3-b0db09f50574/download"
+    },
+    {
+      "key": "camp-ground-trampled-01",
+      "family": "materials",
+      "tool": "create_image_pixen",
+      "jobId": "b50a7071-e5c5-4ba3-bb18-2c56b3c2a754",
+      "args": {
+        "description": "Heavily trampled camp path texture: compacted brown-gray earth, two softened cart ruts, flattened straw and sparse dead grass, a few embedded flagstone corners, worn central walking route, authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "detail": "medium detail",
+        "seed": 81103
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-ground-trampled-01.png"
+      ],
+      "result": "status: completed\nid: b50a7071-e5c5-4ba3-bb18-2c56b3c2a754\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/b50a7071-e5c5-4ba3-bb18-2c56b3c2a754/download"
+    },
+    {
+      "key": "camp-wall-02",
+      "family": "materials",
+      "tool": "create_image_pixen",
+      "jobId": "5e7e4cdf-23f9-4af4-a5ca-4a7a02a91abe",
+      "args": {
+        "description": "Old labyrinth retaining wall texture used at a camp edge: irregular charcoal and damp gray blocks, rough lime repairs, subtle cracks, one timber brace socket, heavy functional masonry, authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "detail": "medium detail",
+        "seed": 81202
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-wall-02.png"
+      ],
+      "result": "status: completed\nid: 5e7e4cdf-23f9-4af4-a5ca-4a7a02a91abe\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/5e7e4cdf-23f9-4af4-a5ca-4a7a02a91abe/download"
+    },
+    {
+      "key": "camp-wall-edge-01",
+      "family": "materials",
+      "tool": "create_image_pixen",
+      "jobId": "844139f7-f1e2-4f8f-99ed-6aa7ceb6ee2a",
+      "args": {
+        "description": "Ruined courtyard edge masonry texture: ancient dark stone courses interrupted by a crude repaired section of scavenged timber and patched mortar, practical settlement construction, authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "detail": "medium detail",
+        "seed": 81203
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-wall-edge-01.png"
+      ],
+      "result": "status: completed\nid: 844139f7-f1e2-4f8f-99ed-6aa7ceb6ee2a\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/844139f7-f1e2-4f8f-99ed-6aa7ceb6ee2a/download"
+    },
+    {
+      "key": "camp-sky-04-img2img",
+      "family": "materials",
+      "tool": "create_image_pixflux",
+      "jobId": "af29b124-ab3b-44af-a628-9763983a35b5",
+      "args": {
+        "description": "Refine this exact near-solid false-twilight texture into dusty navy and desaturated blue-gray with only broad low-contrast atmospheric pixel clusters. Preserve its flat seamless composition and restrained values. authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "shading": "flat shading",
+        "detail": "low detail",
+        "text_guidance_scale": 10,
+        "init_image_strength": 430,
+        "seed": 81301
+      },
+      "initPath": "art/pixellab/camp-references/camp-sky-draft-128.png",
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-sky-04-img2img.png"
+      ],
+      "result": "status: completed\nid: af29b124-ab3b-44af-a628-9763983a35b5\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/af29b124-ab3b-44af-a628-9763983a35b5/download"
+    },
+    {
+      "key": "camp-ground-03-img2img",
+      "family": "materials",
+      "tool": "create_image_pixflux",
+      "jobId": "259cceef-df39-4a4b-a8f5-9e58f97e19c2",
+      "args": {
+        "description": "Refine this exact packed-earth tile with dark umber soil, charcoal damp patches, sparse dead olive grass and a few flattened straw traces. Preserve its seamless flat surface and broad worn route. authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "shading": "basic shading",
+        "detail": "medium detail",
+        "text_guidance_scale": 10,
+        "init_image_strength": 390,
+        "seed": 81302
+      },
+      "initPath": "art/pixellab/camp-references/camp-ground-a-draft-128.png",
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-ground-03-img2img.png"
+      ],
+      "result": "status: completed\nid: 259cceef-df39-4a4b-a8f5-9e58f97e19c2\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/259cceef-df39-4a4b-a8f5-9e58f97e19c2/download"
+    },
+    {
+      "key": "camp-ground-04-img2img",
+      "family": "materials",
+      "tool": "create_image_pixflux",
+      "jobId": "068f7bd2-0821-4b0b-beff-a7a3b0706da1",
+      "args": {
+        "description": "Refine this companion packed-earth tile with dark brown dirt, softened cart wear, sparse trampled olive growth and embedded tiny gray stones. Preserve the seamless flat composition and match the same camp-ground family. authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "shading": "basic shading",
+        "detail": "medium detail",
+        "text_guidance_scale": 10,
+        "init_image_strength": 390,
+        "seed": 81303
+      },
+      "initPath": "art/pixellab/camp-references/camp-ground-b-draft-128.png",
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-ground-04-img2img.png"
+      ],
+      "result": "status: completed\nid: 068f7bd2-0821-4b0b-beff-a7a3b0706da1\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/068f7bd2-0821-4b0b-beff-a7a3b0706da1/download"
+    },
+    {
+      "key": "camp-wall-03-img2img",
+      "family": "materials",
+      "tool": "create_image_pixflux",
+      "jobId": "ba798764-e69a-4f16-b17c-2600fd7e6134",
+      "args": {
+        "description": "Refine this exact old courtyard masonry tile: uneven damp gray-brown stone courses, soot-dark mortar, restrained chips and rough practical repairs. Preserve the seamless front-facing wall composition. authentic low-logical-resolution 16-bit pixel art, hard square pixels, limited restrained palette, broad shading clusters, no antialiasing, seamless tile, orthographic surface with no baked perspective",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "outline": "lineless",
+        "shading": "basic shading",
+        "detail": "medium detail",
+        "text_guidance_scale": 10,
+        "init_image_strength": 410,
+        "seed": 81304
+      },
+      "initPath": "art/pixellab/camp-references/camp-wall-draft-128.png",
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-wall-03-img2img.png"
+      ],
+      "result": "status: completed\nid: ba798764-e69a-4f16-b17c-2600fd7e6134\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/ba798764-e69a-4f16-b17c-2600fd7e6134/download"
+    },
+    {
+      "key": "camp-wall-04-inpaint",
+      "family": "materials",
+      "tool": "inpaint_image",
+      "jobId": "63ae92e5-abc5-4a27-9738-f7d4683af3ed",
+      "args": {
+        "description": "Continue the same irregular old gray masonry courses through this lower strip, matching the existing blocks, cracks, palette, mortar, and hard-pixel style at the mask boundary.",
+        "mask_x": 0,
+        "mask_y": 110,
+        "mask_width": 128,
+        "mask_height": 18,
+        "crop_to_mask": true,
+        "no_background": false,
+        "seed": 81305
+      },
+      "imagePath": "art/pixellab-candidates/camp/materials/camp-wall-02.png",
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-wall-04-inpaint.png"
+      ],
+      "result": "status: completed\nid: 63ae92e5-abc5-4a27-9738-f7d4683af3ed\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/63ae92e5-abc5-4a27-9738-f7d4683af3ed/download"
+    },
+    {
+      "key": "camp-ground-05-edit",
+      "family": "materials",
+      "tool": "edit_image",
+      "jobId": "2c0bee36-0732-4950-a533-3d59da27e1b3",
+      "args": {
+        "description": "Keep the exact flat top-down pixel texture and earthy palette. Consolidate most bright rocks and vivid sprouts into broad packed dark-earth patches, leaving only sparse tiny stones, dead olive grass, damp gray mud, and worn foot traffic.",
+        "width": 128,
+        "height": 128,
+        "no_background": false,
+        "seed": 81306
+      },
+      "imagesPath": [
+        "art/pixellab-candidates/camp/materials/camp-ground-02.png"
+      ],
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/materials/camp-ground-05-edit.png"
+      ],
+      "result": "status: completed\nid: 2c0bee36-0732-4950-a533-3d59da27e1b3\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/2c0bee36-0732-4950-a533-3d59da27e1b3/download"
+    },
+    {
+      "key": "camp-tent-large-01",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "c144a6b2-dec1-412e-93d7-e05c905dcac7",
+      "args": {
+        "description": "Large settlement pavilion tent dividing a room: broad ridge roof, heavy patched gray-tan canvas, mismatched repairs, thick timber poles, taut ropes and pegged lower edge, partly open front flap, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 160,
+        "height": 112,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82001
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-tent-large-01.png"
+      ],
+      "result": "status: completed\nid: c144a6b2-dec1-412e-93d7-e05c905dcac7\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/c144a6b2-dec1-412e-93d7-e05c905dcac7/download"
+    },
+    {
+      "key": "camp-tent-large-02",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "8af95c1d-be8c-4dd3-aea7-0bd5e865116d",
+      "args": {
+        "description": "Substantial improvised command tent: asymmetrical canvas pavilion with a short side awning, dark weathered cloth, visible stitch patches, salvaged timber uprights and useful tied-back entrance, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 160,
+        "height": 112,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82002
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-tent-large-02.png"
+      ],
+      "result": "status: completed\nid: 8af95c1d-be8c-4dd3-aea7-0bd5e865116d\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/8af95c1d-be8c-4dd3-aea7-0bd5e865116d/download"
+    },
+    {
+      "key": "camp-wagon-01",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "d908b8f6-5490-4bf6-9a88-3bfb278198f9",
+      "args": {
+        "description": "Large covered supply wagon landmark: chunky dark timber body, two clearly constructed worn wheels, patched gray canvas hoop cover, rope lashings, crates visible at the open rear, one repaired wheel spoke, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 160,
+        "height": 112,
+        "no_background": true,
+        "view": "low top-down",
+        "direction": "west",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82101
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-wagon-01.png"
+      ],
+      "result": "status: completed\nid: d908b8f6-5490-4bf6-9a88-3bfb278198f9\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/d908b8f6-5490-4bf6-9a88-3bfb278198f9/download"
+    },
+    {
+      "key": "camp-wagon-02",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "2cbcea31-3827-4f44-a14a-630e0811a19f",
+      "args": {
+        "description": "Dungeon-worn covered merchant wagon in front three-quarter view: heavy plank bed, mismatched wheels, patched muted canvas canopy, tied bedroll and supply sacks, believable axles and braces, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 160,
+        "height": 112,
+        "no_background": true,
+        "view": "low top-down",
+        "direction": "east",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82102
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-wagon-02.png"
+      ],
+      "result": "status: completed\nid: 2cbcea31-3827-4f44-a14a-630e0811a19f\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/2cbcea31-3827-4f44-a14a-630e0811a19f/download"
+    },
+    {
+      "key": "camp-fire-01",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "0569f54b-6956-46bc-a1ec-ae645bf9e5be",
+      "args": {
+        "description": "Large communal campfire composition: low rough-stone fire ring, crossed charred logs, restrained amber flame, blackened iron cooking tripod and suspended pot, ash and two split-log seats, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 96,
+        "height": 80,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82201
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-fire-01.png"
+      ],
+      "result": "status: completed\nid: 0569f54b-6956-46bc-a1ec-ae645bf9e5be\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/0569f54b-6956-46bc-a1ec-ae645bf9e5be/download"
+    },
+    {
+      "key": "camp-fire-02",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "24d4af5b-9e29-4867-893d-96af3c80fcff",
+      "args": {
+        "description": "Busy but readable communal fire: broad stone ring, settled coals and modest orange-yellow flames, iron spit frame with soot-black kettle, nearby poker and chopped log, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 96,
+        "height": 80,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82202
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-fire-02.png"
+      ],
+      "result": "status: completed\nid: 24d4af5b-9e29-4867-893d-96af3c80fcff\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/24d4af5b-9e29-4867-893d-96af3c80fcff/download"
+    },
+    {
+      "key": "camp-dead-tree-02",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "47148df5-ff1c-41da-a0ed-99f183953581",
+      "args": {
+        "description": "Tall strange dead courtyard tree: weathered forked trunk, sparse broken branches, exposed roots entangled with one squared dungeon stone, rope tie and faded cloth strip left by campers, quiet physical wrongness, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 96,
+        "height": 160,
+        "no_background": true,
+        "view": "side",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82302
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-dead-tree-02.png"
+      ],
+      "result": "status: completed\nid: 47148df5-ff1c-41da-a0ed-99f183953581\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/47148df5-ff1c-41da-a0ed-99f183953581/download"
+    },
+    {
+      "key": "camp-supply-stack-01",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "146cf5ed-3252-45e6-97a4-411c87b3bfde",
+      "args": {
+        "description": "Large coherent supply mound: five mismatched timber crates, three tied burlap sacks and two banded barrels stacked for stability under a small patched tarp, ropes and practical labels represented only by simple marks, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 128,
+        "height": 96,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82401
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-supply-stack-01.png"
+      ],
+      "result": "status: completed\nid: 146cf5ed-3252-45e6-97a4-411c87b3bfde\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/146cf5ed-3252-45e6-97a4-411c87b3bfde/download"
+    },
+    {
+      "key": "camp-supply-stack-02",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "8665ce0f-7e27-4806-9141-54f349e4807b",
+      "args": {
+        "description": "Quartermaster supply pile with believable weight: uneven crates, patched grain sacks, one small barrel, bundled poles, rolled canvas and rope secured against collapse, improvised and heavily used, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 128,
+        "height": 96,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82402
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-supply-stack-02.png"
+      ],
+      "result": "status: completed\nid: 8665ce0f-7e27-4806-9141-54f349e4807b\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/8665ce0f-7e27-4806-9141-54f349e4807b/download"
+    },
+    {
+      "key": "camp-smith-work-area-01",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "03e4ad79-13a3-43ed-b647-b2584949d2a3",
+      "args": {
+        "description": "Readable camp equipment work zone as one composition: scarred timber workbench, small practical anvil, hand-crank grindstone, tongs and two repairable weapons, rough awning post, warm work lantern, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 160,
+        "height": 112,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82501
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-smith-work-area-01.png"
+      ],
+      "result": "status: completed\nid: 03e4ad79-13a3-43ed-b647-b2584949d2a3\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/03e4ad79-13a3-43ed-b647-b2584949d2a3/download"
+    },
+    {
+      "key": "camp-smith-work-area-02",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "1c2e6ffb-a848-4db2-94f1-e700931ce573",
+      "args": {
+        "description": "Improvised armorer repair station: low plank bench on salvaged stone supports, compact anvil, foot grindstone, shield in repair clamps, hammer and organized tool pegs, soot and honest wear, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 160,
+        "height": 112,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82502
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-smith-work-area-02.png"
+      ],
+      "result": "status: completed\nid: 1c2e6ffb-a848-4db2-94f1-e700931ce573\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/1c2e6ffb-a848-4db2-94f1-e700931ce573/download"
+    },
+    {
+      "key": "camp-dead-tree-01",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "324807d3-18ad-4ad8-be77-5c9d61e0c162",
+      "args": {
+        "description": "Large dead tree landmark: thick split charcoal-brown trunk, five stark crooked limbs, starved bark, roots gripping a few ancient masonry fragments, one root extending subtly sideways, natural rather than magical, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 96,
+        "height": 160,
+        "no_background": true,
+        "view": "side",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82301
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-dead-tree-01.png"
+      ],
+      "result": "status: completed\nid: 324807d3-18ad-4ad8-be77-5c9d61e0c162\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/324807d3-18ad-4ad8-be77-5c9d61e0c162/download"
+    },
+    {
+      "key": "camp-map-table-01",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "28e3abd9-5afb-4db7-9366-cb0b083010b2",
+      "args": {
+        "description": "Large expedition planning table: broad battered plank top, one unfurled abstract labyrinth map with simple lines only, weighted corners, compass, candle stub, four mismatched stools and packs underneath, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 128,
+        "height": 88,
+        "no_background": true,
+        "view": "high top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82601
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-map-table-01.png"
+      ],
+      "result": "status: completed\nid: 28e3abd9-5afb-4db7-9366-cb0b083010b2\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/28e3abd9-5afb-4db7-9366-cb0b083010b2/download"
+    },
+    {
+      "key": "camp-map-table-02",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "847356ce-0125-4365-ae09-cd74f450c820",
+      "args": {
+        "description": "Horizontal adventurer map table landmark: thick scavenged wood on ancient stone-block legs, hand-drawn route sheet, markers, lantern and two rolled charts, repaired uneven construction, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 128,
+        "height": 88,
+        "no_background": true,
+        "view": "high top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82602
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-map-table-02.png"
+      ],
+      "result": "status: completed\nid: 847356ce-0125-4365-ae09-cd74f450c820\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/847356ce-0125-4365-ae09-cd74f450c820/download"
+    },
+    {
+      "key": "camp-palisade-checkpoint-01",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "3d015c38-7183-4bac-b0a1-5e2502512c6b",
+      "args": {
+        "description": "Rough settlement checkpoint element: uneven sharpened timber palisade section, open central passage, braced watch platform, faded plain cloth banner, rope ties and one lantern hook, clearly improvised at a dungeon arch, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 160,
+        "height": 128,
+        "no_background": true,
+        "view": "side",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82701
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-palisade-checkpoint-01.png"
+      ],
+      "result": "status: completed\nid: 3d015c38-7183-4bac-b0a1-5e2502512c6b\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/3d015c38-7183-4bac-b0a1-5e2502512c6b/download"
+    },
+    {
+      "key": "camp-palisade-checkpoint-02",
+      "family": "heroes",
+      "tool": "create_image_pixen",
+      "jobId": "6d0f4df5-88ab-4a34-9bc0-927f182d8c5c",
+      "args": {
+        "description": "Salvaged camp gate checkpoint: two crude timber towers joined by a simple crossbeam and canvas rain strip, open doorway, diagonal braces, notice board and practical hanging lamp, settlement ahead rather than fortress, single coherent front-facing three-quarter world sprite on transparent background, grounded on the bottom baseline with generous transparent margin, authentic low-resolution 16-bit pixel art, hard pixels, selective dark outline, limited twilight palette, broad shading clusters, strong readable silhouette, practical dungeon-worn construction",
+        "width": 160,
+        "height": 128,
+        "no_background": true,
+        "view": "side",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 82702
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/heroes/camp-palisade-checkpoint-02.png"
+      ],
+      "result": "status: completed\nid: 6d0f4df5-88ab-4a34-9bc0-927f182d8c5c\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/6d0f4df5-88ab-4a34-9bc0-927f182d8c5c/download"
+    },
+    {
+      "key": "camp-tent-small-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "b3fad65f-35c6-44bd-a567-04c4a6c581a0",
+      "args": {
+        "description": "Small low sleeping tent with patched gray-brown canvas, short ridge pole, tied flap and visible peg ropes, occupied and repaired rather than pristine, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 128,
+        "height": 96,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83001
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-tent-small-01.png"
+      ],
+      "result": "status: completed\nid: b3fad65f-35c6-44bd-a567-04c4a6c581a0\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/b3fad65f-35c6-44bd-a567-04c4a6c581a0/download"
+    },
+    {
+      "key": "camp-tent-collapsed-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "01b5f29c-5798-4abf-b536-1846bb6a6e17",
+      "args": {
+        "description": "Collapsed camp tent as a low coherent mound: torn muted canvas folded over one snapped pole, loose rope, two pegs and a rolled blanket rescued from beneath it, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 128,
+        "height": 80,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83002
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-tent-collapsed-01.png"
+      ],
+      "result": "status: completed\nid: 01b5f29c-5798-4abf-b536-1846bb6a6e17\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/01b5f29c-5798-4abf-b536-1846bb6a6e17/download"
+    },
+    {
+      "key": "camp-handcart-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "9bac227c-0b50-46c0-bf63-1e8d9bce1f75",
+      "args": {
+        "description": "Rough two-handled supply handcart with one pair of worn timber wheels, believable axle, plank bed, rope coil and two sacks, one repaired handle brace, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 112,
+        "height": 80,
+        "no_background": true,
+        "view": "low top-down",
+        "direction": "west",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83101
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-handcart-01.png"
+      ],
+      "result": "status: completed\nid: 9bac227c-0b50-46c0-bf63-1e8d9bce1f75\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/9bac227c-0b50-46c0-bf63-1e8d9bce1f75/download"
+    },
+    {
+      "key": "camp-crate-stack-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "d6c68040-4d55-4ccd-86c3-2cf202721f06",
+      "args": {
+        "description": "Stable stack of four mismatched dark timber supply crates, iron corners, simple painted inventory marks rather than text, one lid repaired with a cross brace, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 96,
+        "height": 80,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83102
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-crate-stack-01.png"
+      ],
+      "result": "status: completed\nid: d6c68040-4d55-4ccd-86c3-2cf202721f06\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/d6c68040-4d55-4ccd-86c3-2cf202721f06/download"
+    },
+    {
+      "key": "camp-barrel-stack-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "225d7930-7594-4da8-9931-5446dd27c875",
+      "args": {
+        "description": "Three squat banded camp barrels stored together with two upright and one on a timber chock, dark stained staves, patched hoop and small bung, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 96,
+        "height": 80,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83103
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-barrel-stack-01.png"
+      ],
+      "result": "status: completed\nid: 225d7930-7594-4da8-9931-5446dd27c875\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/225d7930-7594-4da8-9931-5446dd27c875/download"
+    },
+    {
+      "key": "camp-bedrolls-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "082c916a-2852-46a2-9904-bcaae6a49edb",
+      "args": {
+        "description": "Cluster of three used adventurer bedrolls: one open blanket and two tied rolls, mismatched muted cloth, small boots and waterskin nearby, low horizontal composition, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 112,
+        "height": 72,
+        "no_background": true,
+        "view": "high top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83201
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-bedrolls-01.png"
+      ],
+      "result": "status: completed\nid: 082c916a-2852-46a2-9904-bcaae6a49edb\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/082c916a-2852-46a2-9904-bcaae6a49edb/download"
+    },
+    {
+      "key": "camp-gear-pile-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "cffda273-ffe5-4fda-836b-f501a76751a2",
+      "args": {
+        "description": "Tired adventuring party gear pile: four packs, coiled rope, rolled cloaks, one plain shield and bundled tools arranged for use, mismatched and dungeon-worn, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 112,
+        "height": 80,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83202
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-gear-pile-01.png"
+      ],
+      "result": "status: completed\nid: cffda273-ffe5-4fda-836b-f501a76751a2\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/cffda273-ffe5-4fda-836b-f501a76751a2/download"
+    },
+    {
+      "key": "camp-armor-rack-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "f97d3c31-2355-493d-84f3-840807d3a823",
+      "args": {
+        "description": "Rough timber armor stand holding one dented plain breastplate, mismatched shoulder plates, helmet and leather straps, repair tags shown as simple tied cloth, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 96,
+        "height": 96,
+        "no_background": true,
+        "view": "side",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83302
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-armor-rack-01.png"
+      ],
+      "result": "status: completed\nid: f97d3c31-2355-493d-84f3-840807d3a823\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/f97d3c31-2355-493d-84f3-840807d3a823/download"
+    },
+    {
+      "key": "camp-grindstone-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "6bcc0a4c-4667-4a78-b3bf-35b899dcf838",
+      "args": {
+        "description": "Foot-powered sharpening wheel on a low repaired timber frame, gray stone disc, pedal linkage, water cup and small tray of filings, functional construction, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 96,
+        "height": 80,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83401
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-grindstone-01.png"
+      ],
+      "result": "status: completed\nid: 6bcc0a4c-4667-4a78-b3bf-35b899dcf838\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/6bcc0a4c-4667-4a78-b3bf-35b899dcf838/download"
+    },
+    {
+      "key": "camp-cookpot-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "1387a40f-10b6-4d72-bbfa-52582dd770aa",
+      "args": {
+        "description": "Soot-black communal stew pot hanging from a simple three-pole cooking tripod over low coals, wooden ladle and chopped root vegetables on one board, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 96,
+        "height": 80,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83402
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-cookpot-01.png"
+      ],
+      "result": "status: completed\nid: 1387a40f-10b6-4d72-bbfa-52582dd770aa\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/1387a40f-10b6-4d72-bbfa-52582dd770aa/download"
+    },
+    {
+      "key": "camp-lantern-post-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "9e0fe562-3482-4f77-bb35-14c9109e1f46",
+      "args": {
+        "description": "Tall rough timber camp lantern post with diagonal brace, rope-wrapped base and one modest warm iron lantern, slightly leaning but structurally sound, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 64,
+        "height": 128,
+        "no_background": true,
+        "view": "side",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83501
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-lantern-post-01.png"
+      ],
+      "result": "status: completed\nid: 9e0fe562-3482-4f77-bb35-14c9109e1f46\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/9e0fe562-3482-4f77-bb35-14c9109e1f46/download"
+    },
+    {
+      "key": "camp-weapon-rack-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "395ea620-5fe8-4e07-a061-22a28a725b7b",
+      "args": {
+        "description": "Crude freestanding weapon rack made from scavenged lumber, holding two plain spears, two worn swords and a small axe with believable slots and weight, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 96,
+        "height": 96,
+        "no_background": true,
+        "view": "side",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83301
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-weapon-rack-01.png"
+      ],
+      "result": "status: completed\nid: 395ea620-5fe8-4e07-a061-22a28a725b7b\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/395ea620-5fe8-4e07-a061-22a28a725b7b/download"
+    },
+    {
+      "key": "camp-banner-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "f54746dc-88c3-4ce4-bdfb-0410b9cb133c",
+      "args": {
+        "description": "Tall plain settlement banner pole: salvaged dark timber, faded desaturated ochre cloth with one simple stripe, frayed lower edge, rope ties and heavy stone foot, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 64,
+        "height": 144,
+        "no_background": true,
+        "view": "side",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83502
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-banner-01.png"
+      ],
+      "result": "status: completed\nid: f54746dc-88c3-4ce4-bdfb-0410b9cb133c\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/f54746dc-88c3-4ce4-bdfb-0410b9cb133c/download"
+    },
+    {
+      "key": "camp-rough-fence-01",
+      "family": "support",
+      "tool": "create_image_pixen",
+      "jobId": "e9a7d918-9f4b-48c6-a03c-855b623c2dd7",
+      "args": {
+        "description": "Low rough camp fence segment built from mismatched horizontal rails and uneven posts, rope lashings, one replaced board and open gaps, practical route divider, single practical world prop on transparent background, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective outline, broad shading clusters, simple readable silhouette, mismatched repairs and believable wear",
+        "width": 128,
+        "height": 72,
+        "no_background": true,
+        "view": "side",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 83601
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/support/camp-rough-fence-01.png"
+      ],
+      "result": "status: completed\nid: e9a7d918-9f4b-48c6-a03c-855b623c2dd7\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/e9a7d918-9f4b-48c6-a03c-855b623c2dd7/download"
+    },
+    {
+      "key": "camp-adventurer-sleeping-01",
+      "family": "people",
+      "tool": "create_image_pixen",
+      "jobId": "757a0ee2-7871-4ce4-b13f-25f7ce3e94f1",
+      "args": {
+        "description": "One exhausted cloaked adventurer sleeping curled on a worn bedroll, boots still on, pack used as pillow, one hand near a sheathed short sword, low horizontal silhouette, transparent-background ambient world scene, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective dark outlines, broad shading clusters, tired practical dungeon-worn adventurers with mismatched equipment rather than glamorous heroes",
+        "width": 96,
+        "height": 80,
+        "no_background": true,
+        "view": "high top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 84002
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/people/camp-adventurer-sleeping-01.png"
+      ],
+      "result": "status: completed\nid: 757a0ee2-7871-4ce4-b13f-25f7ce3e94f1\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/757a0ee2-7871-4ce4-b13f-25f7ce3e94f1/download"
+    },
+    {
+      "key": "camp-adventurer-sharpening-01",
+      "family": "people",
+      "tool": "create_image_pixen",
+      "jobId": "d00ba22e-0597-4848-8549-0af0eea8b62d",
+      "args": {
+        "description": "One broad armored fighter seated on an upturned crate, calmly sharpening a plain sword with a whetstone across the knees, helmet beside one boot, practical absorbed pose, transparent-background ambient world scene, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective dark outlines, broad shading clusters, tired practical dungeon-worn adventurers with mismatched equipment rather than glamorous heroes",
+        "width": 96,
+        "height": 96,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 84101
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/people/camp-adventurer-sharpening-01.png"
+      ],
+      "result": "status: completed\nid: d00ba22e-0597-4848-8549-0af0eea8b62d\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/d00ba22e-0597-4848-8549-0af0eea8b62d/download"
+    },
+    {
+      "key": "camp-adventurer-map-study-01",
+      "family": "people",
+      "tool": "create_image_pixen",
+      "jobId": "ba96aebd-aecd-453b-882f-90baedb96b55",
+      "args": {
+        "description": "Two mismatched adventurers leaning over a small expedition table studying a simple route map: a short hooded scout pointing and a tall lightly armored delver listening, packs at their feet, transparent-background ambient world scene, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective dark outlines, broad shading clusters, tired practical dungeon-worn adventurers with mismatched equipment rather than glamorous heroes",
+        "width": 128,
+        "height": 96,
+        "no_background": true,
+        "view": "high top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 84102
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/people/camp-adventurer-map-study-01.png"
+      ],
+      "result": "status: completed\nid: ba96aebd-aecd-453b-882f-90baedb96b55\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/ba96aebd-aecd-453b-882f-90baedb96b55/download"
+    },
+    {
+      "key": "camp-adventurer-stew-01",
+      "family": "people",
+      "tool": "create_image_pixen",
+      "jobId": "5f7b22be-7dc9-4cbf-99af-2bd8b82df29c",
+      "args": {
+        "description": "One practical middle-aged camp cook kneeling beside a soot-black stew pot, stirring with a long ladle and tasting from a wooden spoon, apron over mismatched light armor, transparent-background ambient world scene, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective dark outlines, broad shading clusters, tired practical dungeon-worn adventurers with mismatched equipment rather than glamorous heroes",
+        "width": 96,
+        "height": 96,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 84201
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/people/camp-adventurer-stew-01.png"
+      ],
+      "result": "status: completed\nid: 5f7b22be-7dc9-4cbf-99af-2bd8b82df29c\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/5f7b22be-7dc9-4cbf-99af-2bd8b82df29c/download"
+    },
+    {
+      "key": "camp-adventurer-wounded-01",
+      "family": "people",
+      "tool": "create_image_pixen",
+      "jobId": "f1cda5a5-a3e8-4a24-9517-e4be05c77dd8",
+      "args": {
+        "description": "One wounded adventurer sitting heavily against a supply crate, one leg bandaged and extended, dented round shield nearby, exhausted alert face, practical layered clothing, transparent-background ambient world scene, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective dark outlines, broad shading clusters, tired practical dungeon-worn adventurers with mismatched equipment rather than glamorous heroes",
+        "width": 96,
+        "height": 96,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 84202
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/people/camp-adventurer-wounded-01.png"
+      ],
+      "result": "status: completed\nid: f1cda5a5-a3e8-4a24-9517-e4be05c77dd8\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/f1cda5a5-a3e8-4a24-9517-e4be05c77dd8/download"
+    },
+    {
+      "key": "camp-adventurer-cards-01",
+      "family": "people",
+      "tool": "create_image_pixen",
+      "jobId": "92fa71c0-ccea-437b-9e7b-7262b2109625",
+      "args": {
+        "description": "Two visibly different adventurers seated on low stools at a tiny crate-table playing cards: one stocky in partial armor, one slim and cloaked, relaxed tired posture, cards and tin cups clearly visible, transparent-background ambient world scene, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective dark outlines, broad shading clusters, tired practical dungeon-worn adventurers with mismatched equipment rather than glamorous heroes",
+        "width": 128,
+        "height": 96,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 84001
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/people/camp-adventurer-cards-01.png"
+      ],
+      "result": "status: completed\nid: 92fa71c0-ccea-437b-9e7b-7262b2109625\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/92fa71c0-ccea-437b-9e7b-7262b2109625/download"
+    },
+    {
+      "key": "camp-adventurer-shield-repair-01",
+      "family": "people",
+      "tool": "create_image_pixen",
+      "jobId": "d0b32962-ae76-4287-92ab-af94e505f705",
+      "args": {
+        "description": "One small sturdy adventurer kneeling at a low block repairing a cracked plain shield with hammer and rivets, rolled sleeves, tool pouch and concentrated posture, transparent-background ambient world scene, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective dark outlines, broad shading clusters, tired practical dungeon-worn adventurers with mismatched equipment rather than glamorous heroes",
+        "width": 96,
+        "height": 96,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 84301
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/people/camp-adventurer-shield-repair-01.png"
+      ],
+      "result": "status: completed\nid: d0b32962-ae76-4287-92ab-af94e505f705\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/d0b32962-ae76-4287-92ab-af94e505f705/download"
+    },
+    {
+      "key": "camp-adventurer-packing-01",
+      "family": "people",
+      "tool": "create_image_pixen",
+      "jobId": "6a211c34-d019-481c-a105-aa10ae498037",
+      "args": {
+        "description": "Two tired party members preparing packs together: one kneeling to tighten a bedroll strap while a taller cloaked companion checks rope and waterskins, distinct silhouettes and organized travel gear, transparent-background ambient world scene, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective dark outlines, broad shading clusters, tired practical dungeon-worn adventurers with mismatched equipment rather than glamorous heroes",
+        "width": 128,
+        "height": 96,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 84302
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/people/camp-adventurer-packing-01.png"
+      ],
+      "result": "status: completed\nid: 6a211c34-d019-481c-a105-aa10ae498037\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/6a211c34-d019-481c-a105-aa10ae498037/download"
+    },
+    {
+      "key": "camp-adventurer-watch-01",
+      "family": "people",
+      "tool": "create_image_pixen",
+      "jobId": "d2f808b1-cc82-43ce-b5cc-05084d21598d",
+      "args": {
+        "description": "One lean standing camp watch keeper in a patched cloak over light armor, plain spear held at rest, lantern at the belt, observant tired stance rather than combat pose, transparent-background ambient world scene, front-facing three-quarter view, grounded at the bottom with clear padding, authentic low-resolution 16-bit pixel art, hard pixels, limited muted camp palette, selective dark outlines, broad shading clusters, tired practical dungeon-worn adventurers with mismatched equipment rather than glamorous heroes",
+        "width": 64,
+        "height": 112,
+        "no_background": true,
+        "view": "side",
+        "outline": "selective outline",
+        "detail": "medium detail",
+        "seed": 84401
+      },
+      "status": "completed",
+      "outputPaths": [
+        "art/pixellab-candidates/camp/people/camp-adventurer-watch-01.png"
+      ],
+      "result": "status: completed\nid: d2f808b1-cc82-43ce-b5cc-05084d21598d\nframes: 1\ndownload: https://api.pixellab.ai/mcp/images/d2f808b1-cc82-43ce-b5cc-05084d21598d/download"
+    }
+  ]
+}
