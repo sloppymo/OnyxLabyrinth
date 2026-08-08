@@ -2086,6 +2086,26 @@
       "x": 12,
       "y": 16,
       "spriteId": "bones"
+    },
+    {
+      "x": 6,
+      "y": 7,
+      "spriteId": "choir-statue"
+    },
+    {
+      "x": 9,
+      "y": 7,
+      "spriteId": "choir-statue"
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "spriteId": "choir-statue"
+    },
+    {
+      "x": 13,
+      "y": 5,
+      "spriteId": "cantor-lectern"
     }
   ],
   "teleporters": [

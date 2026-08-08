@@ -40,6 +40,8 @@ Proposed filenames under a future `public/assets/maze-props/` (or reuse `map-spr
 | 16b | `camp-journal` | Candle + journal | additive flavor | Generate separately |
 | 16c | `merchant-crate` | Crate stash | overlaps map-sprite `crate` | Match existing decor density |
 | 17 | `forge-guardian-statue` | Boss-door landmark | `EventDef` `kind: "message"` (F3 (6,11), "the statue... will animate when the lock is tried") | **Shipped** — PixelLab, `mapSprites` decor entry, not a `TileFeature` hook. Not in the harvest pack (checked all 133 cells of `classic_dungeons_general_detail.png` — no statue/armor silhouette exists there) |
+| 18 | `choir-statue` | Robed chorister, F4 nave set-piece | `EventDef` `kind: "message"` (F4 (6,7), "stone choristers line the nave... one of the heads has turned") | **Shipped** — one sprite id, placed 3× at (6,7)/(9,7)/(11,7) to read as a row, not a single statue |
+| 19 | `cantor-lectern` | Open hymnal on a book stand | `EventDef` `kind: "reward"` (F4 (13,5), holy-symbol) | **Shipped** — 2 rerolls, see prompt notes below |
 
 Existing `MAP_SPRITES` IDs (`torch`, `crate`, `bones`, `barrel`) stay for non-interactive editor decor; regenerate them with this style lock if refreshing that pack.
 
@@ -170,6 +172,59 @@ cell of the existing "statue beside the Grand Forge door twitches as you
 pass" event — the pack has no statue/armor art (checked all 133 cells of
 `classic_dungeons_general_detail.png`), so this one is AI-only, no
 deterministic-harvest option.
+
+### 18. Stone chorister statue (F4 nave set-piece)
+
+```text
+SUBJECT: A single robed stone chorister statue standing upright on a low
+plinth, viewed from a 3/4 elevated angle, centered alone on the canvas.
+Silhouette anchors: a slender hooded/robed humanoid figure carved from
+smooth stone, hands clasped together at the chest in a singing pose, head
+facing forward, facial features worn nearly smooth (a blank oval where a
+mouth would be, no eyes carved), long robe folds reaching a square plinth
+base.
+Materials: cold purple-grey stone body with pale lilac/white highlight
+scratches on the robe folds, dull darker grey shadow ramp, one faint cold
+white fleck accent — no orange, no warm bronze, no gold.
+Mood: silenced, liturgical, cold, faintly uncanny — a statue that might have
+moved when you weren't looking, but shown perfectly still and forward-facing.
+```
+
+**Shipped 2026-08-08, accepted first try.** One sprite id, placed three times
+at F4 (6,7)/(9,7)/(11,7) — the event text ("stone choristers line the nave")
+describes a row, not a single object, and this floor's `mapSprites` array
+already reuses ids this way (`torch`/`bones` placed multiple times). Deliberately
+did **not** depict a turned head on the statue itself: the event's whole
+effect is that the player can't be sure which one moved, so illustrating a
+turned head on the shared sprite would either apply to all three (destroying
+the ambiguity) or require a second, one-off variant sprite for no narrative
+gain. Left neutral, same restraint as the F1 Namanda relief choosing a
+generic symbol over an invented one.
+
+### 19. Cantor's lectern with hymnal (F4 reward event)
+
+```text
+SUBJECT: A wooden book stand (lectern) shaped like a capital letter A from
+the side, with a large open book draped over its slanted top like a tent,
+viewed from a 3/4 elevated angle, centered alone on the canvas. The book's
+two open pages are the most visible part of the whole sprite, angled up and
+outward from a center spine crease, covering most of the stand beneath.
+Materials: dark cold-toned wood legs, pale bone-white page paper with a few
+thin grey line-marks suggesting text, a thin silver-grey wire stitched along
+the spine crease, one small warm-colored fleck on a page corner.
+Must clearly read as an open book on a stand, not a plain pedestal or table —
+the open pages should dominate the silhouette.
+```
+
+**Shipped 2026-08-08, two rerolls.** First candidate, prompted only around
+"lectern" and "hymnal bound in silver wire" without describing the book's own
+shape, came back as a plain stone pedestal with a flat white slab on top —
+readable as *a stand* but not as *a book*. The working prompt (v2 above)
+leads with the book's silhouette ("the open pages should dominate") and gives
+the stand a distinctive letter-A profile so it can't collapse into a generic
+table. Same lesson as the anvil-altar reroll: a prop prompt that names the
+container object first and the defining object second risks losing the part
+that actually makes it identifiable.
 
 ### 6. Dead adventurer
 
