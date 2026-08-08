@@ -50,6 +50,22 @@
       "theme": "hotboi"
     },
     {
+      "id": "namanda-church",
+      "x1": 8,
+      "y1": 2,
+      "x2": 11,
+      "y2": 8,
+      "theme": "namanda"
+    },
+    {
+      "id": "namanda-church-threshold",
+      "x1": 11,
+      "y1": 9,
+      "x2": 11,
+      "y2": 9,
+      "theme": "namanda"
+    },
+    {
       "id": "the-camp",
       "x1": 25,
       "y1": 8,
@@ -600,15 +616,15 @@
       },
       {
         "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "e": "open",
+        "s": "open",
         "w": "wall"
       },
       {
         "n": "wall",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "wall",
@@ -837,27 +853,28 @@
       },
       {
         "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "e": "open",
+        "s": "open",
         "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "tile": "npc"
       },
       {
         "n": "wall",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "wall",
@@ -1080,28 +1097,28 @@
         "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "n": "open",
+        "e": "open",
+        "s": "open",
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "wall",
@@ -1323,28 +1340,28 @@
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "n": "open",
+        "e": "open",
+        "s": "open",
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "open",
@@ -1569,28 +1586,28 @@
         "tile": "event"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "n": "open",
+        "e": "open",
+        "s": "open",
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "open",
@@ -1813,28 +1830,28 @@
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "n": "open",
+        "e": "open",
+        "s": "open",
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "open",
@@ -2057,28 +2074,28 @@
         "tile": "npc"
       },
       {
-        "n": "wall",
-        "e": "wall",
+        "n": "open",
+        "e": "open",
         "s": "wall",
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
+        "n": "open",
+        "e": "open",
         "s": "wall",
-        "w": "wall"
+        "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
+        "n": "open",
+        "e": "open",
         "s": "wall",
-        "w": "wall"
+        "w": "open"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "open",
@@ -2318,9 +2335,9 @@
         "w": "open"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
-        "s": "wall",
+        "s": "door",
         "w": "wall"
       },
       {
@@ -2555,15 +2572,15 @@
       },
       {
         "n": "open",
-        "e": "door",
+        "e": "open",
         "s": "wall",
         "w": "open"
       },
       {
-        "n": "wall",
+        "n": "door",
         "e": "open",
         "s": "open",
-        "w": "door"
+        "w": "open"
       },
       {
         "n": "open",
@@ -7007,6 +7024,16 @@
       "spriteId": "hotboi-kitchen-prep"
     },
     {
+      "x": 9,
+      "y": 8,
+      "spriteId": "namanda-font"
+    },
+    {
+      "x": 8,
+      "y": 7,
+      "spriteId": "namanda-bench"
+    },
+    {
       "x": 26,
       "y": 9,
       "spriteId": "camp-tent-large"
@@ -7232,6 +7259,30 @@
       "y": 24,
       "dir": "e",
       "spriteId": "hotboi-kitchen-shelves"
+    },
+    {
+      "x": 9,
+      "y": 2,
+      "dir": "n",
+      "spriteId": "namanda-altar"
+    },
+    {
+      "x": 10,
+      "y": 2,
+      "dir": "n",
+      "spriteId": "namanda-relief"
+    },
+    {
+      "x": 8,
+      "y": 6,
+      "dir": "w",
+      "spriteId": "namanda-votive-wall"
+    },
+    {
+      "x": 11,
+      "y": 4,
+      "dir": "e",
+      "spriteId": "namanda-reliquary-niche"
     }
   ],
   "ceilingSprites": [
@@ -7295,6 +7346,11 @@
       "x": 22,
       "y": 24,
       "spriteId": "hotboi-lantern"
+    },
+    {
+      "x": 10,
+      "y": 5,
+      "spriteId": "f1-censer"
     },
     {
       "x": 34,
@@ -7362,18 +7418,6 @@
   ],
   "doorFeatures": [
     {
-      "x": 10,
-      "y": 10,
-      "dir": "e",
-      "spriteId": "namanda-church-door"
-    },
-    {
-      "x": 11,
-      "y": 10,
-      "dir": "w",
-      "spriteId": "namanda-church-door"
-    },
-    {
       "x": 20,
       "y": 20,
       "dir": "s",
@@ -7384,6 +7428,18 @@
       "y": 21,
       "dir": "n",
       "spriteId": "hot-bois-tavern-door"
+    },
+    {
+      "x": 11,
+      "y": 10,
+      "dir": "n",
+      "spriteId": "namanda-church-door"
+    },
+    {
+      "x": 11,
+      "y": 9,
+      "dir": "s",
+      "spriteId": "namanda-church-door"
     },
     {
       "x": 24,
@@ -7688,6 +7744,18 @@
         "steal": false,
         "attack": false
       }
+    },
+    {
+      "id": "namanda-altar",
+      "name": "Namanda's altar",
+      "title": "silent and waiting",
+      "x": 10,
+      "y": 3,
+      "greeting": "The altar waits, candlelight steady, stone worn smooth by hands before yours.",
+      "returnGreeting": "The altar is exactly as you left it.",
+      "topics": [],
+      "combatEnemyIds": [],
+      "mapSpriteId": "namanda-kneeling-rail"
     }
   ],
   "events": [
