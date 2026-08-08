@@ -88,6 +88,7 @@ import {
 } from "./ceiling-sprite-cache";
 import { CEILING_FEATURES, ceilingFeatureUrl } from "../data/ceiling-features";
 import { featurePropSpriteIds } from "../data/maze-props";
+import { npcAt } from "../game/npc";
 import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
 import { waterGridFromFloor } from "./water-floor";
@@ -1097,12 +1098,27 @@ function drawFeatureBillboards(
       // First candidate whose art has actually shipped wins.
       let img: MapSpriteImage | null = null;
       let def: MapSpriteDef | undefined;
-      for (const id of featurePropSpriteIds(tile, { looted })) {
-        const candidate = getMapSpriteImage(id);
-        if (!candidate) continue;
-        img = candidate;
-        def = getMapSpriteDef(id);
-        break;
+      // NPCs are per-instance, not per-feature-type: each one may carry its
+      // own mapSpriteId (same MAP_SPRITES registry/cache as decor sprites),
+      // so this resolves the specific NPC at (x,y) instead of the shared
+      // featurePropSpriteIds table (which stays [] for "npc" on purpose — see
+      // maze-props.test.ts). Absent or unregistered id falls through to the
+      // ordinary "&" glyph below, same as any other feature with no art yet.
+      const npcSpriteId = tile === "npc" ? npcAt(state, x, y)?.mapSpriteId : undefined;
+      if (npcSpriteId) {
+        const candidate = getMapSpriteImage(npcSpriteId);
+        if (candidate) {
+          img = candidate;
+          def = getMapSpriteDef(npcSpriteId);
+        }
+      } else {
+        for (const id of featurePropSpriteIds(tile, { looted })) {
+          const candidate = getMapSpriteImage(id);
+          if (!candidate) continue;
+          img = candidate;
+          def = getMapSpriteDef(id);
+          break;
+        }
       }
       const hasProp = !!(img && def);
       // An emptied chest is scenery, not a lead. Without the opened-chest prop

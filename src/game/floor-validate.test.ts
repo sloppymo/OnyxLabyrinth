@@ -97,6 +97,47 @@ describe("floor-validate content checks", () => {
     expect(issues[0].message).toContain("no-such-enemy");
   });
 
+  it("does not flag an NPC with no mapSpriteId — absent is the default, not an error", () => {
+    const floor = testFloor();
+    setTile(floor.grid, 3, 2, "npc");
+    floor.npcs = [
+      {
+        id: "test-npc",
+        name: "Test",
+        title: "tester",
+        x: 3,
+        y: 2,
+        greeting: "hi",
+        returnGreeting: "hi again",
+        topics: [{ key: "a", response: "b" }],
+        combatEnemyIds: [],
+      },
+    ];
+    expect(codes(floor)).not.toContain("npc_sprite_unknown");
+  });
+
+  it("flags an NPC mapSpriteId that isn't registered in MAP_SPRITES", () => {
+    const floor = testFloor();
+    setTile(floor.grid, 3, 2, "npc");
+    floor.npcs = [
+      {
+        id: "test-npc",
+        name: "Test",
+        title: "tester",
+        x: 3,
+        y: 2,
+        greeting: "hi",
+        returnGreeting: "hi again",
+        topics: [{ key: "a", response: "b" }],
+        combatEnemyIds: [],
+        mapSpriteId: "no-such-sprite",
+      },
+    ];
+    const issues = validateFloorDef(floor).filter((i) => i.code === "npc_sprite_unknown");
+    expect(issues.length).toBe(1);
+    expect(issues[0].message).toContain("no-such-sprite");
+  });
+
   it("errors on locked edges with no lockedDoors entry, once per physical edge", () => {
     const floor = testFloor();
     setEdge(floor.grid, 2, 2, "e", "locked");

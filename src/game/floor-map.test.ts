@@ -130,6 +130,7 @@ describe("floor-map", () => {
         wantsItemId: "holy-symbol",
         rewardItemId: "long-sword+1",
         combatEnemyIds: ["skeleton"],
+        mapSpriteId: "vesper",
       },
     ];
     const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
@@ -137,6 +138,26 @@ describe("floor-map", () => {
     expect(parsed.npcs?.[0].topics[0].hidden).toBe(true);
     expect(parsed.npcs?.[0].trades?.[0].once).toBe(true);
     expect(parsed.npcs?.[0].wantsItemId).toBe("holy-symbol");
+    expect(parsed.npcs?.[0].mapSpriteId).toBe("vesper");
+  });
+
+  it("leaves mapSpriteId undefined when the JSON omits it", () => {
+    const map = newFloorMapJSON(5, 5);
+    map.npcs = [
+      {
+        id: "n",
+        name: "N",
+        title: "t",
+        x: 2,
+        y: 2,
+        greeting: "g",
+        returnGreeting: "r",
+        topics: [],
+        combatEnemyIds: [],
+      },
+    ];
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    expect(parsed.npcs?.[0].mapSpriteId).toBeUndefined();
   });
 
   it("cellIsPassable detects carved room", () => {

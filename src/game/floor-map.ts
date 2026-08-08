@@ -590,6 +590,9 @@ function parseNpc(o: Record<string, unknown>, l: string): NPCDef {
   if (o.rewardItemId !== undefined) {
     npc.rewardItemId = requireString(o.rewardItemId, `${l}.rewardItemId`);
   }
+  if (o.mapSpriteId !== undefined) {
+    npc.mapSpriteId = requireString(o.mapSpriteId, `${l}.mapSpriteId`);
+  }
   if (o.trades !== undefined) {
     if (!Array.isArray(o.trades)) throw new Error(`${l}.trades must be an array`);
     npc.trades = o.trades.map((t, i) => {

@@ -212,6 +212,13 @@ export interface NPCDef {
   rewardItemId?: string;
   /** Enemy formation if the party attacks (or botches a theft). */
   combatEnemyIds: string[];
+  /**
+   * Optional corridor billboard, keyed into `MAP_SPRITES` (same registry and
+   * cache as decor `mapSprites` — not a separate NPC image loader). When
+   * absent, or when the id doesn't resolve, the NPC's tile falls back to the
+   * generic "&" glyph exactly as it always has.
+   */
+  mapSpriteId?: string;
 }
 
 export interface TeleporterLink {

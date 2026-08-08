@@ -119,6 +119,17 @@ describe("npcAt", () => {
     state.killedNPCs.push("hermit");
     expect(npcAt(state, 2, 2)).toBeNull();
   });
+
+  it("carries a per-instance mapSpriteId, distinct per NPC and absent by default", () => {
+    // Different NPCs can point at different corridor billboards...
+    const withArt = makeNPC({ id: "vesper-test", mapSpriteId: "vesper" });
+    expect(npcAt(makeState(withArt), withArt.x, withArt.y)?.mapSpriteId).toBe("vesper");
+
+    // ...and an NPC with no art set stays undefined, which is the renderer's
+    // cue to fall back to the "&" glyph rather than a missing-sprite error.
+    const withoutArt = makeNPC({ id: "oren-test" });
+    expect(npcAt(makeState(withoutArt), withoutArt.x, withoutArt.y)?.mapSpriteId).toBeUndefined();
+  });
 });
 
 describe("disposition and mood", () => {

@@ -488,6 +488,18 @@ function validateNpcRefs(map: FloorMapJSON, issues: ValidationIssue[]): void {
       });
     }
     seenIds.add(n.id);
+    // Unlike mapSprites/wallFeatures/ceilingSprites, mapSpriteId is optional
+    // by design (absent = the "&" glyph, not a bug) — only flag a value that
+    // was actually set but doesn't resolve, which is a typo, not a missing
+    // art pass.
+    if (n.mapSpriteId && !MAP_SPRITES_BY_ID[n.mapSpriteId]) {
+      issues.push({
+        severity: "error",
+        code: "npc_sprite_unknown",
+        message: `NPC ${n.id} has unknown mapSpriteId "${n.mapSpriteId}"`,
+        at: { x: n.x, y: n.y },
+      });
+    }
     for (const enemyId of n.combatEnemyIds ?? []) {
       if (!ENEMIES_BY_ID[enemyId]) {
         issues.push({
