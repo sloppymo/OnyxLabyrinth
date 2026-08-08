@@ -670,3 +670,37 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   title checks remain clean at desktop and mobile sizes.
 - Next: stage the entire unignored worktree, inspect the exact staged manifest,
   commit and push the current branch, open a PR to refreshed `main`, and merge it.
+
+## 2026-08-08 — The Camp location gate
+
+- Current prompt: build The Camp, a large approximately 10×10 false-outdoor
+  Floor 1 refuge, using the existing first-person renderer and a coherent
+  PixelLab MCP production-art library.
+- Loaded the `develop-web-game`, `playwright`, and `imagegen` skills. Actual
+  production asset generation is reserved for PixelLab MCP per the prompt;
+  the image skill contributes inspection and artifact-QA discipline.
+- Created isolated worktree `/home/sloppymo/OnyxLabyrinth-camp` on
+  `agent/floor1-camp` from current `origin/main` at `8314483`. The shared main
+  worktree's unrelated dirty combat/sprite work was not touched.
+- Audited the live 24×28 Floor 1 grid and every coordinate overlay. There is
+  no safe-margin untouched 10×10 region, or even a 6×6 one. The best 10×10
+  candidate overwrites 28 active cells and substantial Saint Namanda content;
+  the largest untouched rectangle is only 17×3.
+- Mission stop gate reached before sky prototyping or PixelLab generation.
+  Detailed evidence and ranked candidates are in `docs/CAMP-LOCATION-AUDIT.md`.
+- The user approved a 40×28 eastward expansion, preserving every existing
+  coordinate, with a 10×10 Camp heart at `(25,8)`–`(34,17)`, an east-facing
+  approach from `(22,12)`, and untouched future rock at `x=35`–`x=39`.
+- Expansion, approach, safe zone, theme zone, floor revision, exports, and
+  editor-compatible serialization are implemented. Focused tests lock the
+  10×10 openness and unused eastern headroom; floor validation has zero issues.
+- False-sky candidate 1 was rejected in raw gameplay: discrete cloud masses
+  repeated into a perspective polka-dot ceiling. Candidate 2/3 uses a nearly
+  solid muted navy field plus three sparse star feature cells. Raw 1/3/5/8+
+  tile and cross-room captures show open volume without obvious stamp motifs.
+  Existing renderer architecture passes the P0 gate; no extension is needed.
+- Added the persistent `scripts/playtests/camp-sky-prototype.mjs` capture and
+  visually inspected all ten raw screenshots. Browser console/network errors:
+  zero. Build and focused floor/validator tests pass.
+- PixelLab MCP connection and production schemas are confirmed. Opening balance
+  is 1,812 subscription generations. Production generation may now begin.

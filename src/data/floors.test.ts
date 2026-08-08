@@ -286,20 +286,61 @@ describe("floor definitions", () => {
     expect(afterCryptRaftAndGuardian.has(`${stairs[0].x},${stairs[0].y}`)).toBe(true);
   });
 
-  it("floor 1 visibly uses all five built-in tileset themes plus Hot Boi's tavern and Namanda's church zones", () => {
+  it("floor 1 visibly uses all five numbered themes plus both refuge themes", () => {
     const f1 = findFloor(1)!;
     const themes = new Set<string>([resolveTilesetTheme(f1)]);
     for (let y = 0; y < f1.height; y++) {
       for (let x = 0; x < f1.width; x++) themes.add(themeAt(f1, x, y));
     }
-    expect([...themes].sort()).toEqual(["f1", "f2", "f3", "f4", "f5", "hotboi", "namanda"]);
+    expect([...themes].sort()).toEqual(["camp", "f1", "f2", "f3", "f4", "f5", "hotboi", "namanda"]);
+  });
+
+  it("keeps The Camp as an open 10x10 safe refuge with unused east headroom", () => {
+    const f1 = findFloor(1)!;
+    expect({ width: f1.width, height: f1.height }).toEqual({ width: 40, height: 28 });
+
+    const campZone = f1.tilesetZones!.find((zone) => zone.id === "the-camp");
+    expect(campZone).toEqual({
+      id: "the-camp",
+      x1: 25,
+      y1: 8,
+      x2: 34,
+      y2: 17,
+      theme: "camp",
+    });
+    const safeZone = f1.encounterZones!.find((zone) => zone.id === "the-camp-refuge");
+    expect(safeZone).toMatchObject({
+      x1: 25,
+      y1: 8,
+      x2: 34,
+      y2: 17,
+      rateMul: 0,
+      safeZone: true,
+    });
+
+    for (let y = 8; y <= 17; y++) {
+      for (let x = 25; x <= 34; x++) {
+        if (x < 34) expect(f1.grid[y][x].e, `east edge at ${x},${y}`).toBe("open");
+        if (y < 17) expect(f1.grid[y][x].s, `south edge at ${x},${y}`).toBe("open");
+      }
+    }
+    expect(f1.grid[12][24].e).toBe("door");
+    expect(f1.grid[12][25].w).toBe("door");
+
+    // Approved future-proofing: the Camp stops at x=34 and the remaining
+    // eastern columns stay solid in this pass.
+    for (let y = 0; y < f1.height; y++) {
+      for (let x = 35; x < f1.width; x++) {
+        expect(f1.grid[y][x]).toMatchObject({ n: "wall", e: "wall", s: "wall", w: "wall" });
+      }
+    }
   });
 
   it("floor 1 keeps campaign encounter and lore contracts", () => {
     const f1 = findFloor(1)!;
     expect(f1.encounterRate).toBeCloseTo(0.08);
     expect((f1.encounterZones ?? []).every((zone) => zone.tableFloorId === undefined)).toBe(true);
-    expect(f1.npcs).toHaveLength(6);
+    expect(f1.npcs).toHaveLength(5);
     expect((f1.events ?? []).every((event) => event.message.length <= 60)).toBe(true);
     const playerFacingCopy = JSON.stringify({
       name: f1.name,

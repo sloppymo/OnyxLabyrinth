@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "id": 1,
   "name": "The Hall of Five Wounds",
-  "width": 24,
+  "width": 40,
   "height": 28,
   "startX": 11,
   "startY": 25,
@@ -49,6 +49,7 @@
       "y2": 26,
       "theme": "hotboi"
     },
+    },
     {
       "id": "namanda-church",
       "x1": 8,
@@ -64,6 +65,14 @@
       "x2": 11,
       "y2": 9,
       "theme": "namanda"
+    },
+    {
+      "id": "the-camp",
+      "x1": 25,
+      "y1": 8,
+      "x2": 34,
+      "y2": 17,
+      "theme": "camp"
     }
   ],
   "grid": [
@@ -211,9 +220,201 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
       {
         "n": "wall",
         "e": "wall",
@@ -504,6 +705,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
@@ -639,6 +936,102 @@
         "e": "wall",
         "s": "wall",
         "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       },
       {
         "n": "wall",
@@ -799,6 +1192,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
@@ -928,6 +1417,102 @@
         "n": "open",
         "e": "wall",
         "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
         "w": "wall"
       },
       {
@@ -1097,6 +1682,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
@@ -1225,6 +1906,102 @@
         "n": "open",
         "e": "wall",
         "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
         "w": "wall"
       },
       {
@@ -1393,6 +2170,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
@@ -1539,6 +2412,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
@@ -1655,6 +2624,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "wall",
@@ -1831,6 +2896,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
@@ -1964,9 +3125,105 @@
       },
       {
         "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "door",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "door"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
         "e": "wall",
         "s": "open",
         "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       },
       {
         "n": "wall",
@@ -2126,6 +3383,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
@@ -2260,6 +3613,102 @@
         "n": "open",
         "e": "wall",
         "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
         "w": "wall"
       },
       {
@@ -2422,6 +3871,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
@@ -2555,6 +4100,102 @@
         "n": "open",
         "e": "wall",
         "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
         "w": "wall"
       },
       {
@@ -2702,6 +4343,102 @@
         "n": "open",
         "e": "wall",
         "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
         "w": "wall"
       },
       {
@@ -2864,6 +4601,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
@@ -2998,6 +4831,102 @@
         "n": "open",
         "e": "wall",
         "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
         "w": "wall"
       },
       {
@@ -3150,6 +5079,102 @@
         "e": "wall",
         "s": "wall",
         "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       },
       {
         "n": "wall",
@@ -3312,6 +5337,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
@@ -3447,6 +5568,102 @@
         "e": "wall",
         "s": "open",
         "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       },
       {
         "n": "wall",
@@ -3607,6 +5824,102 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
@@ -3747,6 +6060,102 @@
         "e": "wall",
         "s": "open",
         "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       },
       {
         "n": "wall",
@@ -3891,6 +6300,102 @@
       },
       {
         "n": "open",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
         "e": "wall",
         "s": "wall",
         "w": "wall"
@@ -4047,9 +6552,201 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
       }
     ],
     [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
       {
         "n": "wall",
         "e": "wall",
@@ -4243,6 +6940,15 @@
       "y1": 22,
       "x2": 14,
       "y2": 26,
+      "rateMul": 0,
+      "safeZone": true
+    },
+    {
+      "id": "the-camp-refuge",
+      "x1": 25,
+      "y1": 8,
+      "x2": 34,
+      "y2": 17,
       "rateMul": 0,
       "safeZone": true
     }
@@ -4582,15 +7288,15 @@
         },
         {
           "key": "raft",
-          "response": "\"The raft lies in a sealed pocket. Take the left-side chute \u2014 it drops you there. The only way back is a barred gate, but it lifts from inside.\""
+          "response": "\"The raft lies in a sealed pocket. Take the left-side chute — it drops you there. The only way back is a barred gate, but it lifts from inside.\""
         },
         {
           "key": "chute",
-          "response": "\"A sluice in the chapel wing drops to a pocket below. The fall is warned \u2014 you cannot climb back up. But the raft is down there.\""
+          "response": "\"A sluice in the chapel wing drops to a pocket below. The fall is warned — you cannot climb back up. But the raft is down there.\""
         },
         {
           "key": "water",
-          "response": "\"Black water cuts the right fork near the entrance. Deep and still \u2014 no swimming, no floating. Only a raft crosses it, dock to dock.\""
+          "response": "\"Black water cuts the right fork near the entrance. Deep and still — no swimming, no floating. Only a raft crosses it, dock to dock.\""
         },
         {
           "key": "wounds",
@@ -4927,6 +7633,21 @@
       "x": 9,
       "y": 15,
       "spriteId": "f1-ceiling-crack-roots"
+    },
+    {
+      "x": 28,
+      "y": 10,
+      "spriteId": "camp-sky-star-a"
+    },
+    {
+      "x": 33,
+      "y": 15,
+      "spriteId": "camp-sky-star-b"
+    },
+    {
+      "x": 27,
+      "y": 16,
+      "spriteId": "camp-sky-star-b"
     }
   ],
   "chuteDrops": [
