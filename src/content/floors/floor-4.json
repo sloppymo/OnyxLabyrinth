@@ -2301,5 +2301,8 @@
   ],
   "ceilingSprites": [
     { "x": 10, "y": 2, "spriteId": "f4-bell-cracked" }
+  ],
+  "wallFeatures": [
+    { "x": 2, "y": 6, "dir": "e", "spriteId": "writing-plaque" }
   ]
 }

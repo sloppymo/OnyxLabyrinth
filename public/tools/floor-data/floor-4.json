@@ -2108,6 +2108,14 @@
       "spriteId": "cantor-lectern"
     }
   ],
+  "wallFeatures": [
+    {
+      "x": 2,
+      "y": 6,
+      "dir": "e",
+      "spriteId": "writing-plaque"
+    }
+  ],
   "ceilingSprites": [
     {
       "x": 10,

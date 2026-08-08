@@ -29,7 +29,7 @@ Proposed filenames under a future `public/assets/maze-props/` (or reuse `map-spr
 | 6 | `dead-adventurer` | Corpse story prop | `EventDef` `kind: "message"` | Not a combat enemy |
 | 7 | `skeleton-remains` | Prior-party bones | decor / event | Overlaps map-sprite `bones` — prefer one style |
 | 8 | `satchel` | Forgotten pack | `EventDef` `kind: "reward"` | F3 guard satchel, etc. |
-| 9 | `warning-plaque` | Brass plate | `EventDef` `kind: "message"` | No readable letters |
+| 9 | `warning-plaque` | Brass plate | `EventDef` `kind: "message"` | No readable letters. First instance shipped as F4's `writing-plaque` (see #20) — a `wallFeatures` decal, not a `mapSprites` object like the other Tier A entries in this table |
 | 10 | `brazier` | Heal warmth | `EventDef` `kind: "heal"` | F2 atrium brazier |
 | 11 | `pressure-plate` | Hazard tell | `EventDef` `kind: "damage"` | Quiet, not a red button |
 | 12 | `teleporter-disc` | Rune platform | `TileFeature` `"teleporter"` | Glyph `✦` today |
@@ -405,6 +405,50 @@ the real wall and floor textures rather than on a flat dark background:
 
 Always review at native size over the actual tilesets, at near/mid/far depths.
 A prop judged on `#101014` will lie to you.
+
+### 20. Writing plaque (F4 wall decal, `wallFeatures` not `mapSprites`)
+
+```text
+SUBJECT: a small tarnished metal plate bolted crookedly onto a stone wall,
+viewed dead-on as a wall-mounted decal.
+Silhouette anchors: a rectangular plate, wider than tall, mounted at a
+slight crooked angle (not perfectly level), one corner visibly bent/lifted
+away from the wall with a dark gap behind it, four rivets/bolts at the
+corners with one rivet missing or rusted through, a hairline crack in the
+stone wall radiating out from the lifted corner.
+Surface: abstract hammered dents and scratch marks suggesting worn
+engraving — no readable letters, no legible text, just texture.
+Materials: tarnished dull pewter/steel-grey metal (not brass, not gold, not
+warm bronze — matched to F4's cold no-orange palette instead of the event
+text's literal "bronze"), pale cold lilac-white highlight on the bent
+corner's edge, dark rust-black at the rivets.
+The surrounding stone is the same cold purple-grey masonry as the wall it
+is mounted on.
+Flat opaque background matching the wall stone, filling the entire canvas
+edge to edge — this decal composites directly onto a wall texture, it is
+not a floating object on transparency.
+```
+
+**Shipped 2026-08-08, accepted first try.** Placed at F4 (2,6) east wall —
+the "SHE IS STILL WRITING" plaque event. This is a **`wallFeatures` decal**,
+a third rendering path distinct from both other systems used this session:
+unlike `ceilingSprites` (aspect-preserving billboard) and `mapSprites`
+(forced-square billboard), `wallFeatures` art is column-sampled directly
+onto the wall strip using `widthFrac`/`heightFrac`/`anchor` metadata in
+`src/data/wall-features.ts`, and — confirmed by checking `bell.png` and the
+other five shipped decals — the PNG is **fully opaque edge-to-edge**, not
+transparent; it replaces a rectangular patch of the wall texture rather than
+compositing over it. Generate with `--background`, not the default
+transparent mode.
+
+Per [[floor1-wallfeature-quality-bar]] (the user's grading notes from the F1
+wallFeatures pass): every existing plaque-class decal (`lamp-lock`,
+`cold-hand`, `sweating-iron`) uses `anchor: "center"`, and a `C`-graded decal
+(`ember-scorch`) was explicitly called out for reading as "another centered
+rectangle." This one uses `anchor: "bottom"` and an off-axis widthFrac/
+heightFrac (0.38 × 0.24, wide-and-short) instead, plus a crooked mount and a
+crack breaking into the surrounding stone, so it doesn't add a fourth
+instance of the same shape/placement.
 
 ## Quality checklist before you accept a result
 

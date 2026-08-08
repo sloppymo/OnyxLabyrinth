@@ -76,6 +76,14 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     heightFrac: 0.35,
     anchor: "top",
   },
+  {
+    id: "writing-plaque",
+    name: "Crooked Bronze Plate",
+    file: "writing-plaque.png",
+    widthFrac: 0.38,
+    heightFrac: 0.24,
+    anchor: "bottom",
+  },
 ];
 
 export const WALL_FEATURES_BY_ID: Record<string, WallFeatureSpriteDef> = Object.fromEntries(
