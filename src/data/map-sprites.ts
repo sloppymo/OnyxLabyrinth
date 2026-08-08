@@ -61,6 +61,12 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   // pointing toward the room from the main corridor.
   { id: "tavern-door", name: "Tavern Door", file: "tavern-door.png", baseSize: 40 },
   { id: "tavern-sign", name: "Tavern Sign", file: "tavern-sign.png", baseSize: 30 },
+  // Church of Saint Namanda interior furniture — humble, sparse per the
+  // room's restraint brief (a few pieces implying a whole church, not rows
+  // of them).
+  { id: "namanda-font", name: "Namanda's Font", file: "namanda-font.png", baseSize: 30 },
+  { id: "namanda-bench", name: "Namanda's Bench", file: "namanda-bench.png", baseSize: 18 },
+  { id: "namanda-kneeling-rail", name: "Kneeling Rail", file: "namanda-kneeling-rail.png", baseSize: 20 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(

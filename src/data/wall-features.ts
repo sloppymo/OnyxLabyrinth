@@ -157,6 +157,41 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     heightFrac: 0.95,
     anchor: "bottom",
   },
+  // Church of Saint Namanda interior — apse backdrop (near-full-face, same
+  // technique as Hot Boi's bar composition) plus a sparser votive wall and a
+  // tall narrow reliquary niche, deliberately not another centered rectangle.
+  {
+    id: "namanda-altar",
+    name: "Namanda's Altar",
+    file: "namanda-altar.png",
+    widthFrac: 0.95,
+    heightFrac: 0.95,
+    anchor: "bottom",
+  },
+  {
+    id: "namanda-relief",
+    name: "Namanda's Relief",
+    file: "namanda-relief.png",
+    widthFrac: 0.95,
+    heightFrac: 0.95,
+    anchor: "bottom",
+  },
+  {
+    id: "namanda-votive-wall",
+    name: "Votive Candle Wall",
+    file: "namanda-votive-wall.png",
+    widthFrac: 0.55,
+    heightFrac: 0.6,
+    anchor: "center",
+  },
+  {
+    id: "namanda-reliquary-niche",
+    name: "Reliquary Niche",
+    file: "namanda-reliquary-niche.png",
+    widthFrac: 0.22,
+    heightFrac: 0.75,
+    anchor: "bottom",
+  },
 ];
 
 export const WALL_FEATURES_BY_ID: Record<string, WallFeatureSpriteDef> = Object.fromEntries(
