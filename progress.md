@@ -1,5 +1,16 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+## 2026-08-08 — Floor 1 Camp hub
+
+- Current mission: establish The Camp as Floor 1's third major refuge: a 10×10 false-outdoor twilight settlement rendered by the existing raycaster, with a coherent PixelLab production library, populated layout, review gallery, walkthrough, and measured QA.
+- Dedicated worktree `/home/sloppymo/OnyxLabyrinth-camp`, branch `agent/floor1-camp`; the original shared worktree remains untouched.
+- Floor 1 safely expands east from 24×28 to 40×28 without shifting any authored coordinate. The open Camp heart is `(25,8)–(34,17)`, entered eastward from `(22,12)` through `(23,12)` and `(24,12)`; columns 35–39 remain unused rock.
+- False-sky gate passed with existing ceiling casting: low-frequency muted navy material, worn earth, Camp masonry perimeter, sparse star ceiling features, and one physical root-curtain clue. No renderer extension was needed. Raw prototype evidence and findings live under `docs/camp-art-review/screenshots/false-sky-prototype/` and `docs/CAMP-FALSE-SKY-PROTOTYPE.md`.
+- PixelLab production pass generated 54 candidates across materials, hero objects, support props, and ambient people. The first-pass library is frozen after native visual inspection and deterministic alpha/dimension/palette/bounds checks.
+- Current assembled layout has 27 map-sprite placements, including six strong landmarks and seven ambient compositions depicting nine people. A 14-view production-preview walkthrough passes with no browser errors; its raw screenshots live under `docs/camp-art-review/screenshots/walkthrough/raw-gameplay/`.
+- In-engine tuning enlarged the pavilion and added the accepted palisade checkpoint at the north perimeter. Build and focused Floor 1 assertions pass after this adjustment.
+- Next: run the standard web-game client once against the final layout, measure normal/2× sprite load without permanent renderer instrumentation, build the review gallery/generation log, then run the complete project gate and commit coherent production phases.
+
 ## 2026-08-02 — Boss combat music
 
 - Current prompt: replace procedural boss combat bed with authored music file (higher-difficulty-battle.mp3).

@@ -327,6 +327,23 @@ describe("floor definitions", () => {
     expect(f1.grid[12][24].e).toBe("door");
     expect(f1.grid[12][25].w).toBe("door");
 
+    const campSprites = (f1.mapSprites ?? []).filter((sprite) => sprite.spriteId.startsWith("camp-"));
+    expect(campSprites).toHaveLength(27);
+    expect(new Set(campSprites.map((sprite) => `${sprite.x},${sprite.y}`)).size).toBe(27);
+    expect(
+      campSprites.every(
+        (sprite) => sprite.x >= 25 && sprite.x <= 34 && sprite.y >= 8 && sprite.y <= 17
+      )
+    ).toBe(true);
+    expect(
+      f1.doorFeatures?.filter((feature) => feature.spriteId === "camp-entrance-gate")
+    ).toHaveLength(2);
+    expect(
+      f1.ceilingSprites?.some(
+        (sprite) => sprite.x === 34 && sprite.y === 14 && sprite.spriteId === "f1-root-curtain"
+      )
+    ).toBe(true);
+
     // Approved future-proofing: the Camp stops at x=34 and the remaining
     // eastern columns stay solid in this pass.
     for (let y = 0; y < f1.height; y++) {

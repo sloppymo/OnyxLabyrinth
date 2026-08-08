@@ -1,0 +1,83 @@
+{
+  "measuredAt": "2026-08-08T22:36:28.933Z",
+  "url": "http://localhost:5196/OnyxLabyrinth/?debug=1",
+  "pose": {
+    "x": 25,
+    "y": 12,
+    "facing": "east"
+  },
+  "methodology": {
+    "sampleFrames": 180,
+    "candidateStage": "mapSprites currently has no pre-projection distance reject; every registered floor placement is considered before project/occlusion tests",
+    "projectedAndDrawn": "mean and peak Canvas drawImage calls whose loaded source is assets/map-sprites/camp-*; all Camp sources were ready",
+    "frameTime": "requestAnimationFrame interval pacing in headless Chromium; this is a dropped-frame indicator, not isolated renderer CPU time",
+    "stress": "temporary in-memory duplicates shifted within the 10x10 Camp; no floor data is modified"
+  },
+  "normal": {
+    "totalFloorSprites": 41,
+    "totalCampSprites": 27,
+    "candidatesAfterDistanceReject": 27,
+    "frames": 180,
+    "projectedAndDrawnMean": 17,
+    "projectedAndDrawnPeak": 17,
+    "visibleSpriteSources": [
+      "camp-adventurer-cards.png",
+      "camp-adventurer-map-study.png",
+      "camp-adventurer-shield-repair.png",
+      "camp-adventurer-sleeping.png",
+      "camp-adventurer-stew.png",
+      "camp-cookpot.png",
+      "camp-crate-stack.png",
+      "camp-fire.png",
+      "camp-gear-pile.png",
+      "camp-grindstone.png",
+      "camp-handcart.png",
+      "camp-lantern-post.png",
+      "camp-map-table.png",
+      "camp-smith-work-area.png",
+      "camp-supply-stack.png",
+      "camp-tent-large.png",
+      "camp-tent-small.png"
+    ],
+    "frameIntervalMedianMs": 16.7,
+    "frameIntervalP95Ms": 16.8,
+    "framesOver25Ms": 1
+  },
+  "doubled": {
+    "totalFloorSprites": 68,
+    "totalCampSprites": 54,
+    "candidatesAfterDistanceReject": 54,
+    "frames": 180,
+    "projectedAndDrawnMean": 37,
+    "projectedAndDrawnPeak": 37,
+    "visibleSpriteSources": [
+      "camp-adventurer-cards.png",
+      "camp-adventurer-map-study.png",
+      "camp-adventurer-shield-repair.png",
+      "camp-adventurer-sleeping.png",
+      "camp-adventurer-stew.png",
+      "camp-adventurer-watch.png",
+      "camp-barrel-stack.png",
+      "camp-bedrolls.png",
+      "camp-cookpot.png",
+      "camp-crate-stack.png",
+      "camp-fire.png",
+      "camp-gear-pile.png",
+      "camp-grindstone.png",
+      "camp-handcart.png",
+      "camp-lantern-post.png",
+      "camp-map-table.png",
+      "camp-palisade-checkpoint.png",
+      "camp-rough-fence.png",
+      "camp-smith-work-area.png",
+      "camp-supply-stack.png",
+      "camp-tent-large.png",
+      "camp-tent-small.png",
+      "camp-weapon-rack.png"
+    ],
+    "frameIntervalMedianMs": 16.7,
+    "frameIntervalP95Ms": 16.7,
+    "framesOver25Ms": 0
+  },
+  "browserErrors": []
+}
