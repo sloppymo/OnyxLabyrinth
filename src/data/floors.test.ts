@@ -205,20 +205,20 @@ describe("floor definitions", () => {
     expect(afterCrypt.has(`${stairs[0].x},${stairs[0].y}`)).toBe(true);
   });
 
-  it("floor 1 visibly uses all five built-in tileset themes", () => {
+  it("floor 1 visibly uses all five built-in tileset themes plus Hot Boi's tavern zone", () => {
     const f1 = findFloor(1)!;
     const themes = new Set<string>([resolveTilesetTheme(f1)]);
     for (let y = 0; y < f1.height; y++) {
       for (let x = 0; x < f1.width; x++) themes.add(themeAt(f1, x, y));
     }
-    expect([...themes].sort()).toEqual(["f1", "f2", "f3", "f4", "f5"]);
+    expect([...themes].sort()).toEqual(["f1", "f2", "f3", "f4", "f5", "hotboi"]);
   });
 
   it("floor 1 keeps campaign encounter and lore contracts", () => {
     const f1 = findFloor(1)!;
     expect(f1.encounterRate).toBeCloseTo(0.08);
     expect((f1.encounterZones ?? []).every((zone) => zone.tableFloorId === undefined)).toBe(true);
-    expect(f1.npcs).toHaveLength(4);
+    expect(f1.npcs).toHaveLength(5);
     expect((f1.events ?? []).every((event) => event.message.length <= 60)).toBe(true);
     const playerFacingCopy = JSON.stringify({
       name: f1.name,

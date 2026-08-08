@@ -40,6 +40,14 @@
       "x2": 22,
       "y2": 11,
       "theme": "f3"
+    },
+    {
+      "id": "hotboi-tavern",
+      "x1": 17,
+      "y1": 21,
+      "x2": 22,
+      "y2": 27,
+      "theme": "hotboi"
     }
   ],
   "grid": [
@@ -3111,7 +3119,7 @@
       {
         "n": "wall",
         "e": "open",
-        "s": "wall",
+        "s": "door",
         "w": "open"
       },
       {
@@ -3250,21 +3258,21 @@
       },
       {
         "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "e": "open",
+        "s": "open",
         "w": "wall"
+      },
+      {
+        "n": "door",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "wall",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "wall",
@@ -3395,22 +3403,22 @@
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "n": "open",
+        "e": "open",
+        "s": "open",
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "wall",
@@ -3542,27 +3550,27 @@
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "n": "open",
+        "e": "open",
+        "s": "open",
         "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "wall",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "s": "open",
         "w": "wall"
       },
       {
@@ -3688,28 +3696,28 @@
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "n": "open",
+        "e": "open",
+        "s": "open",
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "wall",
@@ -3834,25 +3842,25 @@
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "n": "open",
+        "e": "open",
+        "s": "open",
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
         "s": "wall",
         "w": "wall"
@@ -3980,22 +3988,23 @@
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
+        "n": "open",
+        "e": "open",
         "s": "wall",
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
+        "n": "open",
+        "e": "open",
         "s": "wall",
-        "w": "wall"
+        "w": "open",
+        "tile": "npc"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
         "s": "wall",
-        "w": "wall"
+        "w": "open"
       },
       {
         "n": "wall",
@@ -4240,6 +4249,31 @@
       "x": 11,
       "y": 11,
       "spriteId": "torch"
+    },
+    {
+      "x": 19,
+      "y": 23,
+      "spriteId": "hotboi-pillar"
+    },
+    {
+      "x": 18,
+      "y": 24,
+      "spriteId": "hotboi-table"
+    },
+    {
+      "x": 20,
+      "y": 22,
+      "spriteId": "hotboi-keg-stack"
+    },
+    {
+      "x": 21,
+      "y": 23,
+      "spriteId": "hotboi-kitchen-stove"
+    },
+    {
+      "x": 21,
+      "y": 25,
+      "spriteId": "hotboi-kitchen-prep"
     }
   ],
   "teleporters": [
@@ -4463,6 +4497,34 @@
         "skeleton",
         "skeleton"
       ]
+    },
+    {
+      "id": "hot-boi",
+      "name": "Hot Boi",
+      "title": "keeper of a bar that should not be here",
+      "x": 19,
+      "y": 26,
+      "greeting": "A broad-headed toad-thing behind the counter lifts a foam-crowned mug in your direction without being asked. \"Sit. Drink. Nobody down here does either enough.\"",
+      "returnGreeting": "Hot Boi refills the mug he's holding, whether or not you asked for it.",
+      "topics": [
+        {
+          "key": "bar",
+          "response": "\"Built it myself. Don't ask how the kegs got down here. Don't ask how I did either.\""
+        },
+        {
+          "key": "labyrinth",
+          "response": "He shrugs, a motion that seems to involve his whole enormous head. \"Rooms come and go up there. Mine stays. That's the trick.\""
+        },
+        {
+          "key": "wounds",
+          "hidden": true,
+          "response": "\"Heard the hall two doors that way still bleeds. Not my problem. My roof doesn't leak.\""
+        }
+      ],
+      "combatEnemyIds": [
+        "ironclad-knight"
+      ],
+      "mapSpriteId": "hotboi-npc"
     }
   ],
   "events": [
@@ -4571,27 +4633,153 @@
       "y": 15,
       "dir": "w",
       "spriteId": "upward-water"
+    },
+    {
+      "x": 18,
+      "y": 26,
+      "dir": "s",
+      "spriteId": "hotboi-bar-left"
+    },
+    {
+      "x": 19,
+      "y": 26,
+      "dir": "s",
+      "spriteId": "hotboi-bar-center"
+    },
+    {
+      "x": 20,
+      "y": 26,
+      "dir": "s",
+      "spriteId": "hotboi-bar-right"
+    },
+    {
+      "x": 18,
+      "y": 22,
+      "dir": "w",
+      "spriteId": "hotboi-hearth"
+    },
+    {
+      "x": 18,
+      "y": 25,
+      "dir": "w",
+      "spriteId": "hotboi-notice-board"
+    },
+    {
+      "x": 20,
+      "y": 22,
+      "dir": "e",
+      "spriteId": "hotboi-monster-trophy"
+    },
+    {
+      "x": 21,
+      "y": 24,
+      "dir": "e",
+      "spriteId": "hotboi-kitchen-shelves"
     }
   ],
   "ceilingSprites": [
-    { "x": 7, "y": 4, "spriteId": "f1-censer" },
-    { "x": 4, "y": 6, "spriteId": "f1-bell-cracked" },
-    { "x": 19, "y": 3, "spriteId": "f1-chain-hook" },
-    { "x": 13, "y": 4, "spriteId": "f1-forge-counterweight" },
-    { "x": 7, "y": 14, "spriteId": "f1-lantern-hanging" },
-    { "x": 17, "y": 13, "spriteId": "f1-root-curtain" },
-    { "x": 21, "y": 16, "spriteId": "f1-chain-long", "scale": 0.7 },
-    { "x": 11, "y": 18, "spriteId": "f1-cage" },
-    { "x": 11, "y": 24, "spriteId": "f1-chain-broken" }
+    {
+      "x": 7,
+      "y": 4,
+      "spriteId": "f1-censer"
+    },
+    {
+      "x": 4,
+      "y": 6,
+      "spriteId": "f1-bell-cracked"
+    },
+    {
+      "x": 19,
+      "y": 3,
+      "spriteId": "f1-chain-hook"
+    },
+    {
+      "x": 13,
+      "y": 4,
+      "spriteId": "f1-forge-counterweight"
+    },
+    {
+      "x": 7,
+      "y": 14,
+      "spriteId": "f1-lantern-hanging"
+    },
+    {
+      "x": 17,
+      "y": 13,
+      "spriteId": "f1-root-curtain"
+    },
+    {
+      "x": 21,
+      "y": 16,
+      "spriteId": "f1-chain-long",
+      "scale": 0.7
+    },
+    {
+      "x": 11,
+      "y": 18,
+      "spriteId": "f1-cage"
+    },
+    {
+      "x": 11,
+      "y": 24,
+      "spriteId": "f1-chain-broken"
+    },
+    {
+      "x": 19,
+      "y": 24,
+      "spriteId": "hotboi-chandelier"
+    },
+    {
+      "x": 18,
+      "y": 26,
+      "spriteId": "hotboi-hanging-rack"
+    },
+    {
+      "x": 21,
+      "y": 24,
+      "spriteId": "hotboi-lantern"
+    }
   ],
   "ceilingFeatures": [
-    { "x": 6, "y": 4, "spriteId": "f1-ceiling-namanda-mark" },
-    { "x": 19, "y": 3, "spriteId": "f1-ceiling-chain-plate" },
-    { "x": 3, "y": 16, "spriteId": "f1-ceiling-hole" },
-    { "x": 17, "y": 15, "spriteId": "f1-ceiling-drain" },
-    { "x": 21, "y": 13, "spriteId": "f1-ceiling-water-stain" },
-    { "x": 11, "y": 15, "spriteId": "f1-ceiling-beam" },
-    { "x": 17, "y": 19, "spriteId": "f1-ceiling-grate" },
-    { "x": 9, "y": 15, "spriteId": "f1-ceiling-crack-roots" }
+    {
+      "x": 6,
+      "y": 4,
+      "spriteId": "f1-ceiling-namanda-mark"
+    },
+    {
+      "x": 19,
+      "y": 3,
+      "spriteId": "f1-ceiling-chain-plate"
+    },
+    {
+      "x": 3,
+      "y": 16,
+      "spriteId": "f1-ceiling-hole"
+    },
+    {
+      "x": 17,
+      "y": 15,
+      "spriteId": "f1-ceiling-drain"
+    },
+    {
+      "x": 21,
+      "y": 13,
+      "spriteId": "f1-ceiling-water-stain"
+    },
+    {
+      "x": 11,
+      "y": 15,
+      "spriteId": "f1-ceiling-beam"
+    },
+    {
+      "x": 17,
+      "y": 19,
+      "spriteId": "f1-ceiling-grate"
+    },
+    {
+      "x": 9,
+      "y": 15,
+      "spriteId": "f1-ceiling-crack-roots"
+    }
   ]
 }

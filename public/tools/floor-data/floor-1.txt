@@ -24,12 +24,12 @@
 18 #T...N..#.....###...N.##
 19 ###......!....###.###.##
 20 #########.N...~~~~....##
-21 #########.....##########
-22 ###########.############
-23 #########..!..##########
-24 #########.....##########
-25 #########..@..##########
-26 #########.....##########
+21 #########.....####...###
+22 ###########.######...###
+23 #########..!..####....##
+24 #########.....####....##
+25 #########..@..####....##
+26 #########.....####.N.###
 27 ########################
 
 # Overlays:
@@ -37,6 +37,7 @@
 #   tileset-zone upward-cistern (15,12)-(22,20) theme=f5
 #   tileset-zone cut-bell-chapel (1,2)-(10,11) theme=f4
 #   tileset-zone ember-suture (11,2)-(22,11) theme=f3
+#   tileset-zone hotboi-tavern (17,21)-(22,27) theme=hotboi
 #   lock (11,12) n key=crypt-key
 #   treasure (1,18) items=[antidote, healing-potion] trap=poison
 #   treasure (5,12) items=[dagger+1, eye-drops] trap=stunner
@@ -53,6 +54,7 @@
 #   npc (5,18) id=rill-of-pages name=Rill-of-Pages
 #   npc (20,18) id=tallow-in-a-boat name=Tallow-in-a-Boat
 #   npc (7,8) id=sister-caldris name=Sister Caldris
+#   npc (19,26) id=hot-boi name=Hot Boi
 #   event (11,23) kind=message
 #   event (9,19) kind=message
 #   event (3,15) kind=message
