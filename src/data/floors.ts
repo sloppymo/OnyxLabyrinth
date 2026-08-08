@@ -529,6 +529,8 @@ function floor3(): FloorDef {
       { x: 5, y: 13, spriteId: "bones" },
       { x: 10, y: 13, spriteId: "bones" },
       { x: 12, y: 7, spriteId: "barrel" },
+      { x: 7, y: 7, spriteId: "anvil-altar" },
+      { x: 6, y: 11, spriteId: "forge-guardian-statue" },
     ],
     encounterZones: [
       { id: "foundry-crossroads-safe", x1: 6, y1: 6, x2: 9, y2: 9, rateMul: 0.7 },

@@ -7,6 +7,10 @@
 
 Six of these props ship today — `chest-closed`, `chest-open`, `cistern-basin`, `antimagic-ward`, `darkness-idol`, `teleporter-disc` — built deterministically by [`scripts/generate-maze-props.mjs`](../scripts/generate-maze-props.mjs) rather than by image generation. See "Deterministic alternative" below before reaching for a generator.
 
+**Two hard constraints for `MAP_SPRITES` art specifically** (learned generating `anvil-altar` / `forge-guardian-statue`, both AI-generated since neither exists in the harvest pack):
+- **Square canvas, always.** `drawMapSprites` (`renderer.ts`) draws the source PNG into a fixed `size x size` square with no aspect correction — unlike `ceilingSprites`, which preserve their own aspect ratio. A non-square generation will stretch. Generate at e.g. 64x64, not a tall/wide rectangle.
+- **Ground the art before shipping.** Generated art rarely fills the canvas edge-to-edge; empty rows below the subject become a scaled gap between the object and the floor at render time — the object visibly hovers, worse the closer you stand ([[Maze prop billboard anchoring]]). `scripts/generate-maze-props.mjs`'s `ground()` does this automatically for the deterministic path; for an AI-generated PNG, shift the content down (same canvas size) so the lowest opaque pixel row lands on the image's last row before saving to `public/assets/map-sprites/`.
+
 Copy the **Master style lock** into every generation, then append one **Per-prop prompt**, optionally a **Floor-theme palette** line, and the **Animation strip** block when you need idle frames.
 
 ---
@@ -21,7 +25,7 @@ Proposed filenames under a future `public/assets/maze-props/` (or reuse `map-spr
 | 2 | `chest-open` | Looted / empty | same tile after `consumed` | Not a separate feature yet — visual state only |
 | 3 | `chest-trapped` | Trap tell | `treasure` + `TreasureDef.trap` | Keep primarily chest-shaped |
 | 4 | `altar` | Mysterious shrine | `EventDef` flavor / `"event"` | F2 library / general shrine |
-| 5 | `anvil-altar` | Forge rest | `EventDef` `kind: "heal"` (F3 anvil) | Matches campaign copy |
+| 5 | `anvil-altar` | Forge rest | `EventDef` `kind: "heal"` (F3 anvil) | **Shipped** — PixelLab, placed as a `mapSprites` decor entry at F3 (7,7), not a `TileFeature` hook |
 | 6 | `dead-adventurer` | Corpse story prop | `EventDef` `kind: "message"` | Not a combat enemy |
 | 7 | `skeleton-remains` | Prior-party bones | decor / event | Overlaps map-sprite `bones` — prefer one style |
 | 8 | `satchel` | Forgotten pack | `EventDef` `kind: "reward"` | F3 guard satchel, etc. |
@@ -35,6 +39,7 @@ Proposed filenames under a future `public/assets/maze-props/` (or reuse `map-spr
 | 16a | `camp-bedroll` | NPC camp remnant | additive flavor / near `"npc"` | Never gates progression |
 | 16b | `camp-journal` | Candle + journal | additive flavor | Generate separately |
 | 16c | `merchant-crate` | Crate stash | overlaps map-sprite `crate` | Match existing decor density |
+| 17 | `forge-guardian-statue` | Boss-door landmark | `EventDef` `kind: "message"` (F3 (6,11), "the statue... will animate when the lock is tried") | **Shipped** — PixelLab, `mapSprites` decor entry, not a `TileFeature` hook. Not in the harvest pack (checked all 133 cells of `classic_dungeons_general_detail.png` — no statue/armor silhouette exists there) |
 
 Existing `MAP_SPRITES` IDs (`torch`, `crate`, `bones`, `barrel`) stay for non-interactive editor decor; regenerate them with this style lock if refreshing that pack.
 
@@ -132,6 +137,39 @@ Silhouette anchors: heavy anvil horn + base, hammer leaning or resting, faint he
 Palette: charcoal iron, muted ember orange only in thin cracks/flecks.
 Mood: heat under iron, solemn, not lava spectacle.
 ```
+
+**Shipped 2026-08-08, one reroll.** The first candidate, run with this exact
+brief prompt, came back as a stone archway/gateway with an orange tiled floor
+under it — the model latched onto "ritual resting place in a forge dungeon"
+as an architecture cue instead of an object cue. The working prompt dropped
+that phrase entirely and front-loaded the object: *"a single blacksmith's
+anvil sitting on a short wooden stump base... The anvil is the entire
+subject"*, plus an explicit negative list (*"no background scene, no floor,
+no walls, no arches, no architecture, no doorway... only the anvil and its
+base"*). Generalize this: any prop prompt whose SUBJECT line reads like a
+*place* rather than a *thing* risks the same architecture drift.
+
+### 17. Forge guardian statue (F3 boss-door landmark)
+
+```text
+SUBJECT: A single dormant stone-and-iron guardian statue standing on a low
+square plinth, viewed from a 3/4 elevated angle, centered alone on the canvas.
+Silhouette anchors: a humanoid armored knight-shape carved from dark stone
+with iron joint plates, standing rigidly at attention, arms crossed or
+holding a stone greatsword point-down in front of it, a featureless or
+visor-shadowed helm, faint hairline cracks across the shoulders and chest.
+Materials: charred grey-black stone body, dull iron joint plates and helm,
+a couple of thin ember-orange cracks and one faint warm fleck implying it is
+not fully inert.
+Mood: heat under iron, dormant threat, solemn — not a friendly decoration,
+not a skeleton, not a full room diorama.
+```
+
+**Shipped 2026-08-08, accepted first try.** Placed at F3 (6,11), the exact
+cell of the existing "statue beside the Grand Forge door twitches as you
+pass" event — the pack has no statue/armor art (checked all 133 cells of
+`classic_dungeons_general_detail.png`), so this one is AI-only, no
+deterministic-harvest option.
 
 ### 6. Dead adventurer
 

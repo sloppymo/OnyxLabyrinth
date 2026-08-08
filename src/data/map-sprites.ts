@@ -28,6 +28,8 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "antimagic-ward", name: "Antimagic Ward", file: "antimagic-ward.png", baseSize: 38 },
   { id: "darkness-idol", name: "Darkness Idol", file: "darkness-idol.png", baseSize: 34 },
   { id: "teleporter-disc", name: "Teleporter Disc", file: "teleporter-disc.png", baseSize: 40 },
+  { id: "anvil-altar", name: "Anvil Altar", file: "anvil-altar.png", baseSize: 34 },
+  { id: "forge-guardian-statue", name: "Forge Guardian Statue", file: "forge-guardian-statue.png", baseSize: 40 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(
