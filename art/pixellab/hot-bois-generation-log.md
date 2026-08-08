@@ -229,6 +229,79 @@ content works more reliably. And palette-conditioning on an existing asset
 via `color_image` can wash out material contrast (chandelier v2's iron read
 disappeared) — worth dropping for a from-scratch material-heavy redo.
 
+## Room assembly (`src/content/floors/floor-1.json`)
+
+The frozen P0–P2 (+ coherence-audit) asset set is wired into a real,
+walkable room: a 3×6 interior at grid x18–20,y21–26, plus an east 1×3
+kitchen spur at x21,y23–25, carved into previously-unused floor-1 rock and
+connected to the existing corridor by a single door at (19,20)–(19,21).
+Reskinned via a new `hotboi-tavern` tilesetZone, (17,21)–(22,27), a
+deliberately generous bounding box around the room + spur (matches the
+existing zones' own margin style); validated with `floor:validate` /
+`floor:export-check`.
+
+**The reserved spot was wrong — don't reuse it.** Both `agent/tavern-hero-door`
+and `floor1/raft-tavern-redesign` (unmerged, predate this branch's real
+`hotboi` theme) had staked out a `hot-bois-hearth` tilesetZone at roughly
+(9,22)–(14,26). That rectangle turned out to be floor-1's actual campaign
+**start room** — "The Hall of Five Wounds," `start=(11,25)`, with its own
+NPC (Oren) and narrative already live there. This build does **not** use
+that location; it carves fresh space at x18–21,y21–26 instead.
+
+**⚠ Orientation is rotated relative to the original brief's wording — this
+is intentional, do not "fix" it.** The brief described the room as
+"south-entry door, north three-cell bar." In actual floor-1 grid terms the
+room's door sits on its **north** edge (connecting to the existing corridor
+at y20) and the bar sits on the **south** edge (y26, dead-ending into the
+map's outer boundary at y27). This is not a bug: floor-1 is a 24×28 grid
+(rows 0–27) and row 27 is the map's literal southern edge — **no location
+anywhere on floor-1 can have a true compass-south approach**, because
+there is nothing south of row 27 to route a connector through, and every
+other direction near any large-enough unused block was already built out.
+Confirmed with the user before carving (2026-08-08) that swapping which
+grid edge is "entrance" vs. "bar" is purely a label swap — the actual
+player experience (pillar breaks the sightline on approach, bar/Hot Boi
+revealed past it, kitchen spur discovered to the side, talk position one
+cell before Hot Boi's tile) matches the brief exactly. If a future pass
+touches this room, treat "north edge = entrance, south edge = bar" as
+correct and load-bearing, not an error to reorient.
+
+Placements (all previously "catalogued, unassigned" registry entries, now
+actually live):
+
+| what | where | notes |
+|---|---|---|
+| hotboi-bar-left / -center / -right | (18/19/20, 26), dir `s` | far wall from the entrance; mirroring behavior per the note above still applies — verified in-engine, not just assumed |
+| hotboi-npc | (19,26), tile `npc`, `mapSpriteId` | same per-instance NPC billboard hook as `vesper-cantor`; opens the **generic** NPC panel (Talk/Barter/Give/Steal/Attack/Leave) on step-on, not a bespoke tavern UI (see below) |
+| hotboi-pillar | (19,23) | directly in the entrance→bar sightline on purpose — visual-only, no collision (documented renderer limitation from the art pass, not new scope) |
+| hotboi-hearth | (18,22), dir `w` | west wall, near-entrance landmark |
+| hotboi-notice-board | (18,25), dir `w` | west wall, near the bar |
+| hotboi-monster-trophy | (20,22), dir `e` | east wall, near-entrance, opposite the hearth |
+| hotboi-kitchen-shelves | (21,24), dir `e` | kitchen spur's own far wall |
+| hotboi-chandelier | (19,24) ceiling | center lane, past the pillar |
+| hotboi-hanging-rack | (18,26) ceiling | above the bar's west panel |
+| hotboi-lantern | (21,24) ceiling | inside the kitchen spur — secondary "pools of warmth" light |
+| hotboi-table / hotboi-keg-stack / hotboi-kitchen-stove / hotboi-kitchen-prep | (18,24) / (20,22) / (21,23) / (21,25) | kept sparse per the brief's "preserve walking space" note — not one prop per cell |
+
+**Interaction is deliberately minimal for now.** Hot Boi hands off to the
+same generic NPC panel every other dungeon NPC uses — there is no bespoke
+tavern UI (Talk/Rest/Rumors/Scorchboard) wired in. That system
+(`tavern-ui.ts`, 497 lines, plus `tavern.ts`/`companion.ts`/`quests.ts`/
+`traversal.ts`/a `save.ts` schema bump) exists only on the unmerged
+`agent/tavern-hero-door` / `floor1/raft-tavern-redesign` branches — **it is
+not on `main`**, despite an earlier session's memory note describing it as
+"shipped" (that note was tracking the unmerged branch, not main). Bringing
+it in is a materially bigger undertaking than this room-assembly pass and
+is tracked as separate future work, not done here.
+
+Verified with a real Playwright walkthrough, not just static screenshots:
+`scripts/playtests/hotboi-room-walkthrough.mjs`, screenshots in
+`docs/hot-bois-art-review/screenshots/room-walkthrough/`. Confirms: the
+pillar visually blocks the bar from the entrance, the chandelier + Hot Boi
+reveal past it, the kitchen doorway reads as a distinct nook, and stepping
+onto Hot Boi's tile opens the NPC panel. `npm run check` (typecheck, build,
+tests, floor:validate) is green.
+
 ## Rejected/superseded candidates
 
 Kept in `art/pixellab-candidates/hot-bois-tavern/` for the record.
