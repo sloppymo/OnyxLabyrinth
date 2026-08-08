@@ -37,6 +37,16 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   // for its own read (guarded, mask-like) rather than as a discarded draft.
   // Not currently assigned to any NPC; registered so it's available to use.
   { id: "vesper-guarded", name: "Vesper, the Last Cantor (guarded)", file: "vesper-guarded.png", baseSize: 42 },
+  // Hot Boi's Tavern interior — proprietor billboard via the per-instance
+  // NPC corridor-billboard hook (same mechanism as Vesper). Not yet assigned
+  // to any npcs[] entry on a floor; registered for the art pass only.
+  { id: "hotboi-npc", name: "Hot Boi", file: "hotboi-npc.png", baseSize: 44 },
+  // Central structural pillar for Hot Boi's — visual-only billboard, NOT a
+  // solid obstruction. There is no 4-sided solid-interior-cell primitive in
+  // this renderer (walls are per-edge, not per-cell-fill), and adding one is
+  // out of scope for an art pass. baseSize is deliberately far above any
+  // other prop here — it needs to read floor-to-ceiling, not knee-high.
+  { id: "hotboi-pillar", name: "Hot Boi's Central Pillar", file: "hotboi-pillar.png", baseSize: 74 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(

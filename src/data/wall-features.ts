@@ -84,6 +84,36 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     heightFrac: 0.24,
     anchor: "bottom",
   },
+  // Hot Boi's Tavern interior — near-full-face bar composition (counter +
+  // back-bar shelving baked as one decal per north-wall cell). widthFrac/
+  // heightFrac verified empirically against a real F1 wall face before any
+  // of these were generated (see art/pixellab/hot-bois-generation-log.md).
+  // Not yet placed on any floor — registered for the art pass only, same
+  // pattern as `vesper-guarded` in map-sprites.ts.
+  {
+    id: "hotboi-bar-left",
+    name: "Hot Boi's Bar (West)",
+    file: "hotboi-bar-left.png",
+    widthFrac: 0.98,
+    heightFrac: 0.95,
+    anchor: "bottom",
+  },
+  {
+    id: "hotboi-bar-center",
+    name: "Hot Boi's Bar (Center)",
+    file: "hotboi-bar-center.png",
+    widthFrac: 0.98,
+    heightFrac: 0.95,
+    anchor: "bottom",
+  },
+  {
+    id: "hotboi-bar-right",
+    name: "Hot Boi's Bar (East)",
+    file: "hotboi-bar-right.png",
+    widthFrac: 0.98,
+    heightFrac: 0.95,
+    anchor: "bottom",
+  },
 ];
 
 export const WALL_FEATURES_BY_ID: Record<string, WallFeatureSpriteDef> = Object.fromEntries(
