@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Camp — Floor 1 Art Review</title>
+<style>
+  :root { --bg:#0b1118; --panel:#111a23; --line:#293743; --ink:#d8d4c7; --dim:#87929a; --blue:#6f91aa; --fire:#d28a42; --ok:#8fa96e; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 Georgia,serif; }
+  .page { max-width:1200px; margin:auto; padding:42px 22px 80px; }
+  header { border-bottom:1px solid var(--line); padding-bottom:22px; margin-bottom:38px; }
+  .eyebrow,.label,figcaption,code,table,.metric { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+  .eyebrow { color:var(--blue); letter-spacing:.12em; text-transform:uppercase; font-size:12px; }
+  h1 { margin:.25rem 0 .4rem; font-size:2.7rem; font-weight:400; font-style:italic; }
+  h2 { margin-top:3.4rem; border-bottom:1px solid var(--line); padding-bottom:.5rem; font-weight:400; font-style:italic; }
+  h3 { color:var(--fire); margin:1.7rem 0 .65rem; }
+  p { max-width:78ch; }
+  .summary { color:var(--dim); }
+  .gate { padding:12px 15px; border:1px solid var(--blue); background:#101d28; color:#b8c9d5; }
+  .grid { display:grid; gap:14px; }
+  .g2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .g3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .g4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  figure { margin:0; padding:10px; background:var(--panel); border:1px solid var(--line); border-radius:5px; }
+  figure img { display:block; width:100%; height:auto; background:#080b0e; }
+  figure.source img { height:220px; object-fit:contain; image-rendering:pixelated; }
+  figure.game img { image-rendering:pixelated; }
+  figcaption { color:var(--dim); font-size:12px; margin-top:8px; }
+  .raw { color:#f1d08a; font-weight:700; letter-spacing:.06em; }
+  .assets { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; }
+  .asset { background:var(--panel); border:1px solid var(--line); padding:8px; min-width:0; }
+  .asset img { width:100%; aspect-ratio:1; object-fit:contain; image-rendering:pixelated; background:#080b0e; }
+  .asset code { display:block; color:var(--dim); font-size:11px; overflow-wrap:anywhere; margin-top:5px; }
+  .layout-wrap { display:grid; grid-template-columns:minmax(460px,1fr) minmax(260px,.55fr); gap:20px; align-items:start; }
+  #layout { display:grid; grid-template-columns:repeat(10,1fr); aspect-ratio:1; border:2px solid #334451; background:#161b18; }
+  .cell { position:relative; border:1px solid #263029; min-width:0; background:#1c201b; }
+  .cell::after { content:attr(data-label); position:absolute; inset:2px; display:grid; place-items:center; text-align:center; color:#b9b39e; font:9px/1.05 ui-monospace,monospace; overflow:hidden; }
+  .cell.hero { background:#4a321e; } .cell.people { background:#263849; } .cell.support { background:#283225; } .cell.entry { background:#314936; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { padding:8px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+  th { color:var(--blue); }
+  .metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .metric { padding:16px; border:1px solid var(--line); background:var(--panel); }
+  .metric strong { display:block; color:var(--fire); font-size:24px; }
+  footer { margin-top:50px; padding-top:18px; border-top:1px solid var(--line); color:var(--dim); font:12px ui-monospace,monospace; }
+  @media(max-width:800px) { .g3,.g4,.assets,.metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .layout-wrap { grid-template-columns:1fr; } }
+</style>
+</head>
+<body><main class="page">
+<header>
+  <div class="eyebrow">OnyxLabyrinth · Floor 1 production review</div>
+  <h1>The Camp</h1>
+  <p class="summary">A 10×10 false-outdoor refuge at <code>(25,8)–(34,17)</code>: cool twilight sky, worn earth, patched canvas, salvaged timber, warm fires, and nine visibly occupied adventurer figures. Branch <code>agent/floor1-camp</code>; not merged.</p>
+  <p class="gate">False-sky P0: <strong>passed.</strong> Existing ceiling casting carries the illusion without renderer architecture changes. Every gameplay image below is unmodified raw production-preview output.</p>
+</header>
+
+<section>
+  <h2>A. False-sky prototype</h2>
+  <p>The low-frequency navy field reads as dark open sky at first glance. Its faint ceiling projection and three irregular star features remain the restrained second-look clue. No exposure correction is used.</p>
+  <div class="grid g4">
+    <figure class="source"><img src="../../public/assets/tilesets/camp/ceiling.png" alt="camp sky source"><figcaption>camp-sky · 256×256 source</figcaption></figure>
+    <figure><img src="materials/camp-sky-2x2.png" alt="camp sky tiled"><figcaption>camp-sky · 2×2 tiled repetition audit</figcaption></figure>
+    <figure class="source"><img src="../../public/assets/tilesets/camp/floorA.png" alt="camp ground source"><figcaption>camp-ground-a · 256×256 source</figcaption></figure>
+    <figure><img src="materials/camp-ground-checker.png" alt="camp ground checker"><figcaption>camp-ground-a/b · checkerboard audit</figcaption></figure>
+  </div>
+  <h3><span class="raw">RAW GAMEPLAY</span> · sightline gate</h3>
+  <div class="grid g3">
+    <figure class="game"><img src="screenshots/false-sky-prototype/raw-gameplay/04-one-tile.png" alt="one tile"><figcaption>1 tile</figcaption></figure>
+    <figure class="game"><img src="screenshots/false-sky-prototype/raw-gameplay/06-five-tiles.png" alt="five tiles"><figcaption>5 tiles</figcaption></figure>
+    <figure class="game"><img src="screenshots/false-sky-prototype/raw-gameplay/07-eight-tiles.png" alt="eight tiles"><figcaption>8 tiles</figcaption></figure>
+    <figure class="game"><img src="screenshots/false-sky-prototype/raw-gameplay/03-first-reveal.png" alt="prototype reveal"><figcaption>threshold reveal</figcaption></figure>
+    <figure class="game"><img src="screenshots/false-sky-prototype/raw-gameplay/08-longest-axis.png" alt="longest axis"><figcaption>longest axial view</figcaption></figure>
+    <figure class="game"><img src="screenshots/false-sky-prototype/raw-gameplay/09-longest-cross-view.png" alt="longest cross"><figcaption>long cross-room view</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>B. Production materials</h2>
+  <p>PixelLab's edited masonry is the perimeter base. Renderer-tested deterministic sky and dirt outperformed generated scene-like texture candidates and remain frozen production art.</p>
+  <div class="grid g4">
+    <figure class="source"><img src="../../public/assets/tilesets/camp/wall.png" alt="camp wall"><figcaption>camp-wall · PixelLab inpaint keeper · 256×256</figcaption></figure>
+    <figure><img src="materials/camp-wall-2x2.png" alt="camp wall tiled"><figcaption>camp-wall · 2×2 tiling audit</figcaption></figure>
+    <figure class="source"><img src="../../public/assets/door-features/camp-entrance-gate.png" alt="camp gate"><figcaption>camp-entrance-gate · full-face doorFeature</figcaption></figure>
+    <figure class="game"><img src="screenshots/walkthrough/raw-gameplay/02-entrance-threshold.png" alt="gate in engine"><figcaption><span class="raw">RAW GAMEPLAY</span> · gate at threshold</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>C. Hero environmental objects</h2>
+  <p>Isolated shipping sources are shown nearest-neighbor enlarged. Each is an existing <code>mapSprites</code> billboard; the gate is the existing full-face <code>doorFeature</code> primitive.</p>
+  <div class="assets" id="heroes"></div>
+  <h3><span class="raw">RAW GAMEPLAY</span> · actual renderer</h3>
+  <div class="grid g3">
+    <figure class="game"><img src="screenshots/walkthrough/raw-gameplay/05-campfire.png" alt="fire"><figcaption>communal fire · close</figcaption></figure>
+    <figure class="game"><img src="screenshots/walkthrough/raw-gameplay/06-wagon.png" alt="wagon"><figcaption>wagon + north checkpoint</figcaption></figure>
+    <figure class="game"><img src="screenshots/walkthrough/raw-gameplay/07-pavilion.png" alt="pavilion"><figcaption>pavilion · 3 tiles</figcaption></figure>
+    <figure class="game"><img src="screenshots/walkthrough/raw-gameplay/08-dead-tree.png" alt="dead tree"><figcaption>dead tree · 2 tiles</figcaption></figure>
+    <figure class="game"><img src="screenshots/walkthrough/raw-gameplay/09-smith-area.png" alt="smith"><figcaption>smith/work zone</figcaption></figure>
+    <figure class="game"><img src="screenshots/walkthrough/raw-gameplay/10-supplies.png" alt="supplies"><figcaption>supply mound + expedition neighborhood</figcaption></figure>
+  </div>
+  <p class="summary">The distant fire in the reveal and the close fire above provide the multiple-distance check for the central anchor. The central and cross-room walkthrough views below verify the remaining landmarks as a combined long-distance composition.</p>
+</section>
+
+<section>
+  <h2>D. Supporting props</h2>
+  <p>Twelve accepted practical objects. The collapsed-tent candidate is parked because it generated as another intact tent; the generic heraldic banner was rejected.</p>
+  <div class="assets" id="support"></div>
+</section>
+
+<section>
+  <h2>E. Ambient people</h2>
+  <p>Seven environmental scenes depict nine inhabitants. They are intentionally non-interactive world art: cards, map study, repair, sleep, cooking, watch, and injury communicate habitation without twelve dialogue panels.</p>
+  <div class="assets" id="people"></div>
+  <div class="grid g2" style="margin-top:14px">
+    <figure class="game"><img src="screenshots/walkthrough/raw-gameplay/11-ambient-adventurers.png" alt="card players"><figcaption><span class="raw">RAW GAMEPLAY</span> · card players, close</figcaption></figure>
+    <figure class="game"><img src="screenshots/walkthrough/raw-gameplay/12-longest-cross-view.png" alt="ambient long"><figcaption><span class="raw">RAW GAMEPLAY</span> · ambient figures across a long view</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>F. Final 10×10 layout</h2>
+  <div class="layout-wrap">
+    <div id="layout" aria-label="Camp placement schematic"></div>
+    <div>
+      <table>
+        <tr><th>Region</th><th>Role</th></tr>
+        <tr><td>West / entrance</td><td>sleeping area, watch, fence, small tent</td></tr>
+        <tr><td>North</td><td>pavilion, expedition table, supply mound, wagon, checkpoint</td></tr>
+        <tr><td>Center</td><td>communal fire and intentionally open circulation</td></tr>
+        <tr><td>South-east</td><td>dead tree, smith, grindstone, armor and weapon racks</td></tr>
+        <tr><td>Far east edge</td><td>root-curtain overlap: the quiet false-sky clue</td></tr>
+      </table>
+      <p class="summary">27 meaningful map-sprite placements occupy 27% of the 100-cell heart. The remaining negative space preserves paths, axial/diagonal sightlines, and room around service landmarks.</p>
+    </div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <figure class="game"><img src="screenshots/walkthrough/raw-gameplay/03-first-camp-reveal.png" alt="first reveal"><figcaption><span class="raw">RAW GAMEPLAY</span> · first Camp reveal</figcaption></figure>
+    <figure class="game"><img src="screenshots/walkthrough/raw-gameplay/04-central-long-view.png" alt="central long"><figcaption><span class="raw">RAW GAMEPLAY</span> · central 9-tile axis</figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2>G. Persistent walkthrough</h2>
+  <p>Generated by <code>scripts/playtests/camp-walkthrough.mjs</code> against a production-style Vite preview. All captures are raw gameplay.</p>
+  <div class="grid g3" id="walkthrough"></div>
+</section>
+
+<section>
+  <h2>H. Performance</h2>
+  <div class="metrics">
+    <div class="metric"><strong>27</strong>authored Camp placements</div>
+    <div class="metric"><strong>17</strong>actual draws/frame at reveal</div>
+    <div class="metric"><strong>37</strong>draws/frame at temporary 2× load</div>
+    <div class="metric"><strong>16.7 ms</strong>median/p95 frame interval</div>
+  </div>
+  <p>The persistent measurement is <code>scripts/playtests/camp-performance.mjs</code>; raw results are in <a href="performance.json">performance.json</a>. It runs 180 frames at `(25,12)` facing east, then temporarily duplicates and shifts all 27 Camp placements in memory. The authored floor remains unchanged. Browser errors: zero. The renderer currently considers all map sprites before projection/occlusion; there is no pre-projection distance-reject stage to report.</p>
+</section>
+
+<footer>agent/floor1-camp · 54 PixelLab MCP jobs / 95 subscription generations · 28 accepted PixelLab outputs · no merge</footer>
+</main>
+<script>
+const assetRoot = "../../public/assets/map-sprites/";
+const groups = {
+  heroes: ["tent-large","wagon","fire","dead-tree","supply-stack","smith-work-area","map-table","palisade-checkpoint"],
+  support: ["tent-small","handcart","crate-stack","barrel-stack","bedrolls","gear-pile","armor-rack","grindstone","cookpot","lantern-post","weapon-rack","rough-fence"],
+  people: ["adventurer-cards","adventurer-map-study","adventurer-shield-repair","adventurer-sleeping","adventurer-stew","adventurer-watch","adventurer-wounded"]
+};
+for (const [id,names] of Object.entries(groups)) {
+  document.getElementById(id).innerHTML = names.map(name => `<div class="asset"><img src="${assetRoot}camp-${name}.png" alt="camp-${name}"><code>camp-${name}</code></div>`).join("");
+}
+const walk = ["01-dungeon-approach","02-entrance-threshold","03-first-camp-reveal","04-central-long-view","05-campfire","06-wagon","07-pavilion","08-dead-tree","09-smith-area","10-supplies","11-ambient-adventurers","12-longest-cross-view","13-false-sky-root-clue","14-looking-back"];
+document.getElementById("walkthrough").innerHTML = walk.map(name => `<figure class="game"><img src="screenshots/walkthrough/raw-gameplay/${name}.png" alt="${name}"><figcaption><span class="raw">RAW GAMEPLAY</span> · ${name}</figcaption></figure>`).join("");
+const placements = [
+  [26,9,"pavilion","hero"],[33,9,"wagon","hero"],[29,12,"fire","hero"],[33,14,"tree","hero"],[31,9,"supplies","hero"],[31,15,"smith","hero"],[28,10,"map table","hero"],[34,8,"checkpoint","hero"],
+  [33,16,"armor","support"],[34,10,"barrels","support"],[25,10,"bedrolls","support"],[30,13,"cookpot","support"],[30,8,"crates","support"],[27,14,"gear","support"],[32,16,"grindstone","support"],[32,11,"handcart","support"],[31,11,"lantern","support"],[25,16,"fence","support"],[26,15,"small tent","support"],[34,16,"weapons","support"],
+  [27,13,"cards ×2","people"],[29,10,"map ×2","people"],[30,16,"repair","people"],[26,11,"sleeping","people"],[31,13,"stew","people"],[25,13,"watch","people"],[33,11,"wounded","people"]
+];
+const byCell = new Map(placements.map(p => [`${p[0]},${p[1]}`,p]));
+const layout = document.getElementById("layout");
+for (let y=8;y<=17;y++) for (let x=25;x<=34;x++) {
+  const p=byCell.get(`${x},${y}`); const cell=document.createElement("div");
+  cell.className=`cell ${p?p[3]:""} ${x===25&&y===12?"entry":""}`;
+  cell.dataset.label=p?p[2]:(x===25&&y===12?"ENTRANCE":"");
+  cell.title=`(${x},${y})${p?` ${p[2]}`:""}`; layout.appendChild(cell);
+}
+</script>
+</body></html>
