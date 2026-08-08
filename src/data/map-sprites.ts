@@ -33,6 +33,10 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "choir-statue", name: "Stone Chorister Statue", file: "choir-statue.png", baseSize: 38 },
   { id: "cantor-lectern", name: "Cantor's Lectern", file: "cantor-lectern.png", baseSize: 32 },
   { id: "vesper", name: "Vesper, the Last Cantor", file: "vesper.png", baseSize: 42 },
+  // Earlier art for the same character — slate isn't legible at range, kept
+  // for its own read (guarded, mask-like) rather than as a discarded draft.
+  // Not currently assigned to any NPC; registered so it's available to use.
+  { id: "vesper-guarded", name: "Vesper, the Last Cantor (guarded)", file: "vesper-guarded.png", baseSize: 42 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(
