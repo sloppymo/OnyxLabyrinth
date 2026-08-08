@@ -4370,6 +4370,16 @@
       "x": 11,
       "y": 15,
       "spriteId": "f1-ceiling-beam"
+    },
+    {
+      "x": 17,
+      "y": 19,
+      "spriteId": "f1-ceiling-grate"
+    },
+    {
+      "x": 9,
+      "y": 15,
+      "spriteId": "f1-ceiling-crack-roots"
     }
   ],
   "teleporters": [
