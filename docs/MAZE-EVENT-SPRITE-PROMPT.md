@@ -45,6 +45,41 @@ Proposed filenames under a future `public/assets/maze-props/` (or reuse `map-spr
 
 Existing `MAP_SPRITES` IDs (`torch`, `crate`, `bones`, `barrel`) stay for non-interactive editor decor; regenerate them with this style lock if refreshing that pack.
 
+**NPC billboards are now a live hook, not just a proposal.** `NPCDef.mapSpriteId?: string` (added 2026-08-08) resolves through `drawFeatureBillboards` exactly like any other feature prop — same `MAP_SPRITES` registry, same cache, same fallback-to-glyph contract. Unlike a `TileFeature`-keyed entry, this is per-NPC-instance, so each of the 8 NPCs across the campaign can carry its own distinct sprite. Vesper (F4) is the only one that has shipped art so far — see #21 below. The other 7 (Oren, Rill-of-Pages, Tallow-in-a-Boat, Sister Caldris, Vestra, Kazeharu, Ossian) are still bare `&` glyphs and are explicitly **not** in scope for this pass; the hook was built once and proven with one vertical slice on purpose, not as a green light to batch all eight in the same session.
+
+### 21. Vesper, the last cantor (F4 NPC billboard)
+
+```text
+SUBJECT: a single pale woman standing fully upright, shown head-to-feet as
+a complete standing figure (NOT a portrait, NOT a bust, NOT cropped at the
+shoulders), viewed from a slight 3/4 elevated angle, centered alone on the
+canvas like a maze NPC billboard.
+Silhouette anchors: a slender pale-skinned woman in a long dark choir
+vestment/robe reaching her feet, hands raised together at chest height
+holding a small rectangular slate tablet flat in front of her body (the
+slate is the single most important readable detail — a plain grey-white
+rectangle held with both hands, chalk-marked but with no legible letters),
+a still, upright, unmoving posture, head slightly bowed, expression blank
+rather than warm.
+Materials: pale ivory-white skin tone, dark cold purple-grey choir vestment
+with pale lilac trim/embroidery at the collar and cuffs, a plain grey slate
+tablet with faint pale scratch marks (no readable text).
+Mood: silenced, liturgical, cold, quietly unsettling rather than
+beautiful — a figure you'd rather not make eye contact with.
+```
+
+**Shipped 2026-08-08, accepted first try.** Placed as F4 npc `vesper-cantor`'s
+`mapSpriteId`. Textually well-constrained (unlike Vestra/Kazeharu, whose
+existing greeting text gives no physical description) — "a pale woman in
+choir vestments raises a slate and writes" is in her own greeting string,
+so the brief could lean on established fiction rather than inventing a look.
+Renders through the feature-billboard path (`propBillboardSize`, capped at
+55% of corridor wall height), not the uncapped decor path the ceiling and
+prop batches used earlier this session — a full-body NPC at `baseSize: 42`
+does not loom at 1-tile range the way an uncapped decor object would.
+Reviewed at 1/2/4-tile distance: holds up as a distinct humanoid silhouette
+even at 4 tiles, not a "gray stick."
+
 ---
 
 ## Master style lock (use every generation)

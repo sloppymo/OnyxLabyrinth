@@ -2249,7 +2249,8 @@
         "succubus"
       ],
       "wantsItemId": "holy-symbol",
-      "rewardItemId": "staff+1"
+      "rewardItemId": "staff+1",
+      "mapSpriteId": "vesper"
     }
   ],
   "events": [

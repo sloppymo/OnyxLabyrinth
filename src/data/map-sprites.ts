@@ -32,6 +32,7 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "forge-guardian-statue", name: "Forge Guardian Statue", file: "forge-guardian-statue.png", baseSize: 40 },
   { id: "choir-statue", name: "Stone Chorister Statue", file: "choir-statue.png", baseSize: 38 },
   { id: "cantor-lectern", name: "Cantor's Lectern", file: "cantor-lectern.png", baseSize: 32 },
+  { id: "vesper", name: "Vesper, the Last Cantor", file: "vesper.png", baseSize: 42 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(

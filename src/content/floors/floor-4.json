@@ -2234,7 +2234,8 @@
       "rewardItemId": "staff+1",
       "combatEnemyIds": [
         "succubus"
-      ]
+      ],
+      "mapSpriteId": "vesper"
     }
   ],
   "events": [
