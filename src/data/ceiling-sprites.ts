@@ -30,6 +30,7 @@ export const CEILING_SPRITES: readonly CeilingSpriteDef[] = [
   { id: "f1-root-bundle", name: "Thick Root Bundle", file: "f1-root-bundle.png", baseSize: 40 },
   { id: "f1-lantern-hanging", name: "Hanging Lantern", file: "f1-lantern-hanging.png", baseSize: 32 },
   { id: "f1-forge-counterweight", name: "Forge Chain Counterweight", file: "f1-forge-counterweight.png", baseSize: 44 },
+  { id: "f4-bell-cracked", name: "Cracked Choir Bell", file: "f4-bell-cracked.png", baseSize: 36 },
 ];
 
 export const CEILING_SPRITES_BY_ID: Record<string, CeilingSpriteDef> = Object.fromEntries(

@@ -2278,5 +2278,8 @@
       "message": "Beyond the door, rank upon rank of the Choir turns to face you as one. None of them makes a sound.",
       "once": true
     }
+  ],
+  "ceilingSprites": [
+    { "x": 10, "y": 2, "spriteId": "f4-bell-cracked" }
   ]
 }

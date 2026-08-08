@@ -2088,6 +2088,13 @@
       "spriteId": "bones"
     }
   ],
+  "ceilingSprites": [
+    {
+      "x": 10,
+      "y": 2,
+      "spriteId": "f4-bell-cracked"
+    }
+  ],
   "teleporters": [
     {
       "x": 16,

@@ -60,6 +60,28 @@ Kept on disk in `art/pixellab-candidates/ceiling/` for the record, not
 shipped: `f1-chain-broken-02` (noisy), `f1-root-bundle-01` (too thin),
 `f1-forge-counterweight-01` (read as a lantern, not a weight).
 
+## Second pass — placement + one new floor (2026-08-08)
+
+Placed the two Floor 1 ceiling features that were generated in the first
+pass but never wired into `floor-1.json`: `f1-ceiling-grate` at (17,19)
+over the shallow-water cistern room (pairs with the existing drain/water-
+stain features already in that zone) and `f1-ceiling-crack-roots` at (9,15)
+in the overgrown-library zone.
+
+Then generated one new sprite for Floor 4 (The Null Choir), palette-
+conditioned on `public/assets/tilesets/f4/wall.png` (cold purple-grey, pale
+lilac/white accents, no orange — per `TILESET-ART-STYLE-GUIDE.md` §F4):
+
+| id | palette ref | size | candidates | notes |
+|---|---|---|---|---|
+| f4-bell-cracked | f4_wall (choir) | 56x96 | 1 | accepted first try — matches the existing F4 `(10,2)` damage event ("The cracked bells overhead strike a chord you cannot hear") which previously rendered nothing |
+
+`f4-bell-cracked` reuses the F1 `f1-bell-cracked` silhouette language
+(cracked bell + short chain) but is a fresh generation, not a recolor —
+palette-conditioned directly on the F4 wall texture rather than adjusted
+from the F1 asset, keeping it consistent with how every other sprite in
+this pack was made.
+
 ## Cost
 
 21 `create-image-pixflux` generations, no auth/infrastructure issues.
