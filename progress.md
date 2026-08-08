@@ -10,6 +10,12 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Current assembled layout has 27 map-sprite placements, including six strong landmarks and seven ambient compositions depicting nine people. A 14-view production-preview walkthrough passes with no browser errors; its raw screenshots live under `docs/camp-art-review/screenshots/walkthrough/raw-gameplay/`.
 - In-engine tuning enlarged the pavilion and added the accepted palisade checkpoint at the north perimeter. Build and focused Floor 1 assertions pass after this adjustment.
 - Next: run the standard web-game client once against the final layout, measure normal/2× sprite load without permanent renderer instrumentation, build the review gallery/generation log, then run the complete project gate and commit coherent production phases.
+- Final QA complete: the standard web-game client ran without captured errors; the 14-view Camp walkthrough and the 65-image review gallery were visually inspected; all gallery image requests resolve.
+- Performance at the entrance reveal: 27 authored Camp sprites / 17 drawn per frame; temporary 54-sprite stress / 37 drawn per frame; both held 16.7 ms median/p95 frame pacing with no browser errors. The stress population was browser-memory-only.
+- Full gate passed: 103 test files / 2,116 tests, app/tools TypeScript, Vite build, all-floor validation, and export drift.
+- Completed commits: `6542000` false-sky shell, `bc32071` production PixelLab art/layout, `e53a3f1` visual regression QA. No push or merge.
+- Handoff: `origin/main` advanced by five Saint Namanda commits during this pass and overlaps Floor 1 exports/registries/tests. Do not merge this stale-base branch directly; replay or reconcile the three Camp commits onto current main while preserving both hubs, then rerun `npm run check` and both walkthroughs.
+- Deliberately deferred: merchant/storage/smith/companion interactions and named service NPCs. The physical service neighborhoods exist, but this art/area pass does not add commerce or companion systems.
 
 ## 2026-08-02 — Boss combat music
 
