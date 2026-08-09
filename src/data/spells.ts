@@ -47,9 +47,20 @@ export type SpellEffect =
   | { kind: "disable"; status: "sleep" | "paralysis" }
   | { kind: "resurrect" }
   | { kind: "massResurrect" }
-  | { kind: "magicScreen"; power: number }
+  | {
+      kind: "magicScreen";
+      power: number;
+      /** Fraction of incoming magical damage prevented; legacy default is 50%. */
+      reduction?: number;
+    }
   | { kind: "fizzleField"; power: number }
-  | { kind: "dispelMagic" }
+  | {
+      kind: "dispelMagic";
+      /** Optional enemy anti-magic aftershock, measured in fizzle strength. */
+      fizzlePower?: number;
+      /** Iso-void does not strip the party's beneficial body-magic. */
+      preservePartyBuffs?: boolean;
+    }
   | { kind: "summon"; power: number; spriteId?: string; allyName?: string }
   /** Combat body-magic statuses (Shrink / Giant Strength). */
   | {
@@ -93,13 +104,13 @@ export const MAGE_SPELLS: SpellDef[] = [
   },
   {
     id: "mage-isovoid", name: "Isovoid", class: "Mage", tier: 7, spCost: 36,
-    target: "allEnemies", effect: { kind: "dispelMagic" },
-    description: "Erases hostile magical structure, wards, fields, and body-magic.", acquisition: "iso-shop",
+    target: "allEnemies", effect: { kind: "dispelMagic", fizzlePower: 4, preservePartyBuffs: true },
+    description: "Erases enemy wards, fields, and body-magic, then leaves their casting hollow.", acquisition: "iso-shop",
   },
   {
     id: "mage-isostorm", name: "Isostorm", class: "Mage", tier: 7, spCost: 38,
-    target: "allEnemies", effect: { kind: "damage", element: "lightning", power: 48, followup: { kind: "dot", element: "lightning", power: 8, duration: 2 } },
-    description: "A violent lightning storm that keeps tearing at every enemy.", acquisition: "iso-shop",
+    target: "allEnemies", effect: { kind: "damage", element: "lightning", power: 60, followup: { kind: "dot", element: "lightning", power: 12, duration: 3 } },
+    description: "A violent lightning storm that tears through every enemy, then keeps tearing.", acquisition: "iso-shop",
   },
   // --- Tier 1 ---
   {
@@ -514,8 +525,8 @@ export const PRIEST_SPELLS: SpellDef[] = [
   },
   {
     id: "priest-isobarrier", name: "Isobarrier", class: "Priest", tier: 7, spCost: 34,
-    target: "allAllies", effect: { kind: "magicScreen", power: 20 },
-    description: "Raises a near-impenetrable magical screen around the party.", acquisition: "iso-shop",
+    target: "allAllies", effect: { kind: "magicScreen", power: 8, reduction: 0.75 },
+    description: "A near-impenetrable barrier that turns hostile magic into a dull shimmer.", acquisition: "iso-shop",
   },
   {
     id: "priest-isorevive", name: "Isorevive", class: "Priest", tier: 7, spCost: 46,

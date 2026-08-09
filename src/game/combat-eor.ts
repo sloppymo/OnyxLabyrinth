@@ -190,6 +190,7 @@ export function runEndOfRound(
 
   if (s.magicScreen > 0) {
     s.magicScreen = Math.max(0, s.magicScreen - 1);
+    if (s.magicScreen === 0) s.magicScreenReduction = 0.5;
   }
   if (s.partyFizzleField > 0) {
     s.partyFizzleField = Math.max(0, s.partyFizzleField - 1);

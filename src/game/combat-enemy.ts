@@ -60,7 +60,7 @@ function abilityDamageParty(
 ): AbilityDamageResult {
   let damage = Math.max(1, Math.round(baseDamage * (0.8 + rng() * 0.4)));
   if (s.magicScreen > 0) {
-    damage = Math.max(1, Math.round(damage * 0.5));
+    damage = Math.max(1, Math.round(damage * (1 - (s.magicScreenReduction ?? 0.5))));
   }
   damage = scaleOutgoingDamage(damage, actor);
   damage = damageReductionFor(s, target, damage);
@@ -448,7 +448,7 @@ export function resolveEnemyAction(
       if (defendPct > 0) damage = Math.max(1, Math.round(damage * (1 - defendPct)));
       // Magic screen reduces spell damage. It deteriorates at the end of each round.
       if (s.magicScreen > 0) {
-        damage = Math.max(1, Math.round(damage * 0.5));
+        damage = Math.max(1, Math.round(damage * (1 - (s.magicScreenReduction ?? 0.5))));
       }
       damage = scaleOutgoingDamage(damage, actor);
       if (partyTarget.status.includes("giantStrength")) {

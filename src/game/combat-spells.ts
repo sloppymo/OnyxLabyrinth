@@ -258,8 +258,9 @@ export function applySpell(
     }
     case "magicScreen": {
       s.magicScreen += eff.power;
+      s.magicScreenReduction = eff.reduction ?? 0.5;
       emit(
-        `${spell.name} raises a magic screen around the party (strength ${s.magicScreen}).`,
+        `${spell.name} raises a magic screen around the party (strength ${s.magicScreen}, ${Math.round((s.magicScreenReduction ?? 0.5) * 100)}% ward).`,
         { type: "spellEffect", spellId: spell.id, targetId: caster.id, isBuff: true }
       );
       break;
@@ -288,12 +289,20 @@ export function applySpell(
           clearedBody += 1;
         }
       }
-      for (const c of s.party) {
-        if (c.status.includes("giantStrength")) {
-          c.status = c.status.filter((st) => st !== "giantStrength");
-          delete s.giantStrengthTimers[c.id];
-          clearedBody += 1;
+      if (!eff.preservePartyBuffs) {
+        for (const c of s.party) {
+          if (c.status.includes("giantStrength")) {
+            c.status = c.status.filter((st) => st !== "giantStrength");
+            delete s.giantStrengthTimers[c.id];
+            clearedBody += 1;
+          }
         }
+      }
+      if (eff.fizzlePower) {
+        s.enemyFizzleFields = {
+          front: Math.max(s.enemyFizzleFields.front, eff.fizzlePower),
+          back: Math.max(s.enemyFizzleFields.back, eff.fizzlePower),
+        };
       }
       const clearedTotal = clearedEnemyScreens + clearedEnemyFizzles + clearedPartyFizzle + clearedBody;
       emit(

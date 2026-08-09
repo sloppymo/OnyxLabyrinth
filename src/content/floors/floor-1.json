@@ -6023,27 +6023,27 @@
         "inventory": [
           {
             "spellId": "mage-isovoid",
-            "price": 48000
+            "price": 2400
           },
           {
             "spellId": "mage-isoflare",
-            "price": 56000
+            "price": 3200
           },
           {
             "spellId": "mage-isostorm",
-            "price": 64000
+            "price": 3600
           },
           {
             "spellId": "priest-isoheal",
-            "price": 52000
+            "price": 2800
           },
           {
             "spellId": "priest-isobarrier",
-            "price": 68000
+            "price": 4000
           },
           {
             "spellId": "priest-isorevive",
-            "price": 85000
+            "price": 5200
           }
         ]
       },
@@ -6310,6 +6310,12 @@
       "y": 28,
       "dir": "e",
       "spriteId": "isobels-sign"
+    },
+    {
+      "x": 16,
+      "y": 27,
+      "dir": "n",
+      "spriteId": "isobels-shelves"
     }
   ],
   "ceilingSprites": [

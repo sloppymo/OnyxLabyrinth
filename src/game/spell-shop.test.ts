@@ -25,10 +25,10 @@ describe("Isobel's Iso-spell shop", () => {
     const before = state.partyGold;
     const result = purchaseSpell(state, shop, "mage-isoflare");
     expect(result.ok).toBe(true);
-    expect(state.partyGold).toBe(before - 56000);
+    expect(state.partyGold).toBe(before - 3200);
     expect(mage.knownSpellIds).toContain("mage-isoflare");
     expect(purchaseSpell(state, shop, "mage-isoflare").ok).toBe(false);
-    expect(state.partyGold).toBe(before - 56000);
+    expect(state.partyGold).toBe(before - 3200);
   });
 
   it("does not mutate gold or knowledge when unaffordable", () => {

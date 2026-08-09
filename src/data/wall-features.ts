@@ -92,6 +92,14 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     heightFrac: 0.42,
     anchor: "center",
   },
+  {
+    id: "isobels-shelves",
+    name: "Isobel's Spell Shelves",
+    file: "isobels-shelves.svg",
+    widthFrac: 0.82,
+    heightFrac: 0.62,
+    anchor: "bottom",
+  },
   // Hot Boi's Tavern interior — near-full-face bar composition (counter +
   // back-bar shelving baked as one decal per north-wall cell). widthFrac/
   // heightFrac verified empirically against a real F1 wall face before any

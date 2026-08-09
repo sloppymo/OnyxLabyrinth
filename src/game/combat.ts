@@ -112,6 +112,7 @@ export function createCombatState(
     inAntimagic,
     inventory: { ...inventory },
     magicScreen: 0,
+    magicScreenReduction: 0.5,
     partyFizzleField: 0,
     enemyFizzleFields: { front: 0, back: 0 },
     enemyMagicScreens: { front: 0, back: 0 },
@@ -617,4 +618,3 @@ function initiativeOrder(
   entries.sort((x, y) => y.agi - x.agi || y.luk - x.luk || y.roll - x.roll);
   return entries;
 }
-
