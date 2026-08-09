@@ -22,6 +22,51 @@ export const DEFAULT_KEY_TOLERANCE = 10;
 /** Alpha at or above this counts as "opaque" when probing for an alpha channel. */
 const OPAQUE_ALPHA = 250;
 
+/** The tight source rectangle around the visible part of a sprite. */
+export type AlphaBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Fully transparent source rows between the visible base and canvas edge. */
+  bottomPadding: number;
+};
+
+/**
+ * Find the visible-content bounds after any chroma-key cleanup.
+ *
+ * Every non-zero alpha pixel counts as content, so antialiased edges and a
+ * one-pixel contact shadow remain part of the floor-standing sprite.
+ */
+export function alphaBounds(
+  data: Uint8ClampedArray | number[],
+  width: number,
+  height: number
+): AlphaBounds | null {
+  if (width <= 0 || height <= 0) return null;
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (data[((y * width + x) << 2) + 3]! === 0) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  if (maxX < 0 || maxY < 0) return null;
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX + 1,
+    height: maxY - minY + 1,
+    bottomPadding: height - maxY - 1,
+  };
+}
+
 /**
  * True when the image already carries real transparency, in which case it must
  * be left alone. Art authored with an alpha channel (or an explicit chroma

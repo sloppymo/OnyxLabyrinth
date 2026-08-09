@@ -9,6 +9,12 @@ export interface MapSpriteDef {
   file: string;
   /** Drawn size in world-ish pixels at depth 0 (scaled by distance). */
   baseSize: number;
+  /** Optional presentation-only warm light cast around a placed billboard. */
+  light?: {
+    color: string;
+    radiusScale: number;
+    intensity: number;
+  };
 }
 
 export const MAP_SPRITES: readonly MapSpriteDef[] = [
@@ -60,7 +66,10 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   // and ambient scenes share the same PixelLab production family.
   { id: "camp-tent-large", name: "Camp Pavilion", file: "camp-tent-large.png", baseSize: 78 },
   { id: "camp-wagon", name: "Camp Supply Wagon", file: "camp-wagon.png", baseSize: 64 },
-  { id: "camp-fire", name: "Camp Communal Fire", file: "camp-fire.png", baseSize: 42 },
+  {
+    id: "camp-fire", name: "Camp Communal Fire", file: "camp-fire.png", baseSize: 42,
+    light: { color: "255, 166, 76", radiusScale: 2.8, intensity: 0.26 },
+  },
   { id: "camp-dead-tree", name: "Camp Dead Tree", file: "camp-dead-tree.png", baseSize: 78 },
   { id: "camp-supply-stack", name: "Camp Supply Mound", file: "camp-supply-stack.png", baseSize: 54 },
   { id: "camp-smith-work-area", name: "Camp Smith Work Area", file: "camp-smith-work-area.png", baseSize: 64 },
@@ -74,7 +83,10 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "camp-gear-pile", name: "Camp Gear Pile", file: "camp-gear-pile.png", baseSize: 38 },
   { id: "camp-grindstone", name: "Camp Grindstone", file: "camp-grindstone.png", baseSize: 36 },
   { id: "camp-handcart", name: "Camp Handcart", file: "camp-handcart.png", baseSize: 42 },
-  { id: "camp-lantern-post", name: "Camp Lantern Post", file: "camp-lantern-post.png", baseSize: 58 },
+  {
+    id: "camp-lantern-post", name: "Camp Lantern Post", file: "camp-lantern-post.png", baseSize: 58,
+    light: { color: "255, 191, 102", radiusScale: 2.15, intensity: 0.19 },
+  },
   { id: "camp-rough-fence", name: "Camp Rough Fence", file: "camp-rough-fence.png", baseSize: 34 },
   { id: "camp-tent-small", name: "Camp Sleeping Tent", file: "camp-tent-small.png", baseSize: 54 },
   { id: "camp-weapon-rack", name: "Camp Weapon Rack", file: "camp-weapon-rack.png", baseSize: 46 },
