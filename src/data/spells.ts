@@ -46,6 +46,7 @@ export type SpellEffect =
   | { kind: "cure"; status: "poison" | "sleep" | "paralysis" | "blind" }
   | { kind: "disable"; status: "sleep" | "paralysis" }
   | { kind: "resurrect" }
+  | { kind: "massResurrect" }
   | { kind: "magicScreen"; power: number }
   | { kind: "fizzleField"; power: number }
   | { kind: "dispelMagic" }
@@ -80,9 +81,26 @@ export interface SpellDef {
   target: SpellTarget;
   effect: SpellEffect;
   description: string;
+  /** Special spells are never granted by ordinary level/tier progression. */
+  acquisition?: "iso-shop";
 }
 
 export const MAGE_SPELLS: SpellDef[] = [
+  {
+    id: "mage-isoflare", name: "Isoflare", class: "Mage", tier: 7, spCost: 42,
+    target: "allEnemies", effect: { kind: "damage", element: "fire", power: 70 },
+    description: "A brutally concentrated detonation that engulfs every enemy.", acquisition: "iso-shop",
+  },
+  {
+    id: "mage-isovoid", name: "Isovoid", class: "Mage", tier: 7, spCost: 36,
+    target: "allEnemies", effect: { kind: "dispelMagic" },
+    description: "Erases hostile magical structure, wards, fields, and body-magic.", acquisition: "iso-shop",
+  },
+  {
+    id: "mage-isostorm", name: "Isostorm", class: "Mage", tier: 7, spCost: 38,
+    target: "allEnemies", effect: { kind: "damage", element: "lightning", power: 48, followup: { kind: "dot", element: "lightning", power: 8, duration: 2 } },
+    description: "A violent lightning storm that keeps tearing at every enemy.", acquisition: "iso-shop",
+  },
   // --- Tier 1 ---
   {
     id: "mage-wayfinder",
@@ -489,6 +507,21 @@ export const MAGE_SPELLS: SpellDef[] = [
 ];
 
 export const PRIEST_SPELLS: SpellDef[] = [
+  {
+    id: "priest-isoheal", name: "Isoheal", class: "Priest", tier: 7, spCost: 40,
+    target: "allAllies", effect: { kind: "heal", power: 9999 },
+    description: "A tremendous healing wave that restores the party to full strength.", acquisition: "iso-shop",
+  },
+  {
+    id: "priest-isobarrier", name: "Isobarrier", class: "Priest", tier: 7, spCost: 34,
+    target: "allAllies", effect: { kind: "magicScreen", power: 20 },
+    description: "Raises a near-impenetrable magical screen around the party.", acquisition: "iso-shop",
+  },
+  {
+    id: "priest-isorevive", name: "Isorevive", class: "Priest", tier: 7, spCost: 46,
+    target: "allAllies", effect: { kind: "massResurrect" },
+    description: "Calls every fallen ally back from the edge of death.", acquisition: "iso-shop",
+  },
   // --- Tier 1 ---
   {
     id: "priest-light",
@@ -775,9 +808,9 @@ export function spellsForClass(
     | "Crusader",
   maxTier: 1 | 2 | 3 | 4 | 5 | 6 | 7
 ): SpellDef[] {
-  if (cls === "Mage") return MAGE_SPELLS.filter((s) => s.tier <= maxTier);
+  if (cls === "Mage") return MAGE_SPELLS.filter((s) => s.tier <= maxTier && !s.acquisition);
   if (cls === "Priest" || cls === "Crusader") {
-    return PRIEST_SPELLS.filter((s) => s.tier <= maxTier);
+    return PRIEST_SPELLS.filter((s) => s.tier <= maxTier && !s.acquisition);
   }
   return [];
 }

@@ -15,6 +15,7 @@ import { CEILING_FEATURES_BY_ID } from "../data/ceiling-features";
 import { DOOR_FEATURES_BY_ID } from "../data/door-features";
 import { ITEMS_BY_ID } from "../data/items";
 import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
+import { spellById } from "../data/spells";
 import type { FloorMapJSON, CellJSON } from "./floor-map";
 import {
   BUILT_IN_TILESET_THEMES,
@@ -614,6 +615,20 @@ function validateNpcRefs(map: FloorMapJSON, issues: ValidationIssue[]): void {
           message: `NPC ${n.id} ${label} references unknown item "${id}"`,
           at: { x: n.x, y: n.y },
         });
+      }
+    }
+    const shopSpellIds = new Set<string>();
+    for (const listing of n.shop?.inventory ?? []) {
+      if (shopSpellIds.has(listing.spellId)) {
+        issues.push({ severity: "error", code: "shop_spell_duplicate", message: `NPC ${n.id} shop lists spell "${listing.spellId}" more than once`, at: { x: n.x, y: n.y } });
+      }
+      shopSpellIds.add(listing.spellId);
+      const spell = spellById(listing.spellId);
+      if (!spell || spell.acquisition !== "iso-shop") {
+        issues.push({ severity: "error", code: "shop_spell_unknown", message: `NPC ${n.id} shop references non-Iso spell "${listing.spellId}"`, at: { x: n.x, y: n.y } });
+      }
+      if (!Number.isInteger(listing.price) || listing.price <= 0) {
+        issues.push({ severity: "error", code: "shop_price_invalid", message: `NPC ${n.id} shop price for "${listing.spellId}" must be a positive integer`, at: { x: n.x, y: n.y } });
       }
     }
   }

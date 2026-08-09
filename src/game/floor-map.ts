@@ -660,6 +660,19 @@ function parseNpc(o: Record<string, unknown>, l: string): NPCDef {
     topics,
     combatEnemyIds: [...combatRaw],
   };
+  if (o.shop !== undefined) {
+    if (!o.shop || typeof o.shop !== "object") throw new Error(`${l}.shop must be an object`);
+    const shop = o.shop as Record<string, unknown>;
+    if (shop.kind !== "spell" || !Array.isArray(shop.inventory)) throw new Error(`${l}.shop must be a spell shop with inventory`);
+    npc.shop = {
+      kind: "spell",
+      inventory: shop.inventory.map((entry, i) => {
+        if (!entry || typeof entry !== "object") throw new Error(`${l}.shop.inventory[${i}] must be an object`);
+        const e = entry as Record<string, unknown>;
+        return { spellId: requireString(e.spellId, `${l}.shop.inventory[${i}].spellId`), price: requireInt(e.price, `${l}.shop.inventory[${i}].price`) };
+      }),
+    };
+  }
   if (o.wantsItemId !== undefined) {
     npc.wantsItemId = requireString(o.wantsItemId, `${l}.wantsItemId`);
   }
@@ -675,7 +688,7 @@ function parseNpc(o: Record<string, unknown>, l: string): NPCDef {
     }
     const caps = o.capabilities as Record<string, unknown>;
     const capabilities: NonNullable<NPCDef["capabilities"]> = {};
-    for (const key of ["talk", "barter", "give", "steal", "attack"] as const) {
+    for (const key of ["shop", "talk", "barter", "give", "steal", "attack"] as const) {
       const val = optionalBool(caps[key], `${l}.capabilities.${key}`);
       if (val !== undefined) capabilities[key] = val;
     }
