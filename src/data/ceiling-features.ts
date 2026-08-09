@@ -31,6 +31,7 @@ export const CEILING_FEATURES: readonly CeilingFeatureDef[] = [
   { id: "f1-ceiling-drain", name: "Dark Circular Drain", file: "f1-ceiling-drain.png" },
   { id: "f1-ceiling-hole", name: "Broken Masonry Hole", file: "f1-ceiling-hole.png" },
   { id: "f1-ceiling-water-stain", name: "Water-Damaged Ceiling Patch", file: "f1-ceiling-water-stain.png" },
+  { id: "f1-ceiling-fracture-b", name: "Sparse Ceiling Fracture", file: "f1-ceiling-fracture-b.png" },
   { id: "f1-ceiling-namanda-mark", name: "Namanda Chapel Relief", file: "f1-ceiling-namanda-mark.png" },
 ];
 

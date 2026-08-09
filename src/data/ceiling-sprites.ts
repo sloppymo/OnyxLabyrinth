@@ -30,6 +30,13 @@ export const CEILING_SPRITES: readonly CeilingSpriteDef[] = [
   { id: "f1-root-bundle", name: "Thick Root Bundle", file: "f1-root-bundle.png", baseSize: 40 },
   { id: "f1-lantern-hanging", name: "Hanging Lantern", file: "f1-lantern-hanging.png", baseSize: 32 },
   { id: "f1-forge-counterweight", name: "Forge Chain Counterweight", file: "f1-forge-counterweight.png", baseSize: 44 },
+  { id: "f1-chain-loop-a", name: "Short Chain Loop", file: "f1-chain-loop-a.png", baseSize: 34 },
+  { id: "f1-rope-loop-a", name: "Broken Rope Loop", file: "f1-rope-loop-a.png", baseSize: 38 },
+  { id: "f1-hook-small-a", name: "Small Iron Hook", file: "f1-hook-small-a.png", baseSize: 34 },
+  { id: "f1-pulley-a", name: "Small Pulley", file: "f1-pulley-a.png", baseSize: 38 },
+  { id: "f1-bucket-small-a", name: "Hanging Iron Bucket", file: "f1-bucket-small-a.png", baseSize: 42 },
+  { id: "f1-web-strands-a", name: "Sparse Web Strands", file: "f1-web-strands-a.png", baseSize: 36 },
+  { id: "f1-counterweight-small-a", name: "Small Counterweight", file: "f1-counterweight-small-a.png", baseSize: 38 },
   { id: "f4-bell-cracked", name: "Cracked Choir Bell", file: "f4-bell-cracked.png", baseSize: 36 },
   // Hot Boi's Tavern interior. Not yet placed on any floor.
   { id: "hotboi-chandelier", name: "Hot Boi's Chandelier", file: "hotboi-chandelier.png", baseSize: 56 },

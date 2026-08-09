@@ -108,6 +108,30 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     heightFrac: 0.48,
     anchor: "bottom",
   },
+  {
+    id: "wall-crack-small-b",
+    name: "Stepped Edge Crack",
+    file: "wall-crack-small-b.png",
+    widthFrac: 0.22,
+    heightFrac: 0.34,
+    anchor: "top",
+  },
+  {
+    id: "wall-root-corner-a",
+    name: "Dry Corner Root",
+    file: "wall-root-corner-a.png",
+    widthFrac: 0.18,
+    heightFrac: 0.48,
+    anchor: "top",
+  },
+  {
+    id: "wall-damp-streak-b",
+    name: "Narrow Damp Streak",
+    file: "wall-damp-streak-b.png",
+    widthFrac: 0.14,
+    heightFrac: 0.44,
+    anchor: "top",
+  },
   // Hot Boi's Tavern interior — near-full-face bar composition (counter +
   // back-bar shelving baked as one decal per north-wall cell). widthFrac/
   // heightFrac verified empirically against a real F1 wall face before any

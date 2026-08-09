@@ -4753,10 +4753,28 @@
       "spriteId": "upward-water"
     },
     {
-      "x": 2,
-      "y": 16,
+      "x": 15,
+      "y": 17,
       "dir": "w",
       "spriteId": "wall-moss-edge-a"
+    },
+    {
+      "x": 4,
+      "y": 15,
+      "dir": "s",
+      "spriteId": "wall-root-corner-a"
+    },
+    {
+      "x": 3,
+      "y": 13,
+      "dir": "e",
+      "spriteId": "wall-crack-small-b"
+    },
+    {
+      "x": 18,
+      "y": 17,
+      "dir": "w",
+      "spriteId": "wall-damp-streak-b"
     },
     {
       "x": 14,
@@ -4903,9 +4921,54 @@
       "x": 10,
       "y": 5,
       "spriteId": "f1-censer"
+    },
+    {
+      "x": 18,
+      "y": 15,
+      "spriteId": "f1-chain-loop-a",
+      "scale": 0.8
+    },
+    {
+      "x": 4,
+      "y": 16,
+      "spriteId": "f1-rope-loop-a",
+      "scale": 0.8
+    },
+    {
+      "x": 6,
+      "y": 18,
+      "spriteId": "f1-hook-small-a"
+    },
+    {
+      "x": 14,
+      "y": 7,
+      "spriteId": "f1-pulley-a"
+    },
+    {
+      "x": 20,
+      "y": 18,
+      "spriteId": "f1-bucket-small-a",
+      "scale": 0.8
+    },
+    {
+      "x": 5,
+      "y": 8,
+      "spriteId": "f1-web-strands-a",
+      "scale": 0.8
+    },
+    {
+      "x": 16,
+      "y": 6,
+      "spriteId": "f1-counterweight-small-a",
+      "scale": 0.8
     }
   ],
   "ceilingFeatures": [
+    {
+      "x": 4,
+      "y": 18,
+      "spriteId": "f1-ceiling-fracture-b"
+    },
     {
       "x": 6,
       "y": 4,
