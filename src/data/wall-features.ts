@@ -84,6 +84,30 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     heightFrac: 0.24,
     anchor: "bottom",
   },
+  {
+    id: "wall-damp-streak-a",
+    name: "Damp Wall Streak",
+    file: "wall-damp-streak-a.png",
+    widthFrac: 0.24,
+    heightFrac: 0.58,
+    anchor: "top",
+  },
+  {
+    id: "wall-moss-edge-a",
+    name: "Sparse Edge Moss",
+    file: "wall-moss-edge-a.png",
+    widthFrac: 0.34,
+    heightFrac: 0.30,
+    anchor: "bottom",
+  },
+  {
+    id: "wall-soot-smear-a",
+    name: "Torch Soot Smear",
+    file: "wall-soot-smear-a.png",
+    widthFrac: 0.18,
+    heightFrac: 0.48,
+    anchor: "bottom",
+  },
   // Hot Boi's Tavern interior — near-full-face bar composition (counter +
   // back-bar shelving baked as one decal per north-wall cell). widthFrac/
   // heightFrac verified empirically against a real F1 wall face before any
