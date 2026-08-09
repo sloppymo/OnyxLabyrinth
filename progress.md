@@ -2,6 +2,11 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 
 ## 2026-08-08 — Floor 1 Camp hub
 
+- Follow-up grounding gate: fixed the generic floor-standing map-sprite contract. The cache now measures post-key alpha bounds once per image; renderer source-crops to those bounds, preserves their aspect ratio, and anchors the lowest visible pixel to the projected floor line. This applies to Camp decor and map-sprite-backed feature billboards without per-Camp offsets or art regeneration.
+- Scale correction: the cropped visible rectangle now inherits the original source-canvas pixel scale (`size / sourceHeight`), so alpha cropping removes padding without enlarging low/wide props. Fresh production captures visually rechecked the one-tile handcart and two-tile lantern; wheels and the lantern base meet the projected floor with no unexpected size jump.
+- Diagnostic: all 27 Camp sprites were alpha-bounds audited. The handcart's 120×120 canvas contains a 95×59 visible rectangle ending nine transparent rows above the canvas bottom; multiple other assets have 4–44 trailing transparent rows. A temporary same-size debug sprite with opaque pixels on the literal canvas bottom was rendered at the handcart's one-tile pose, then removed. It and the cropped handcart both met the same projected floor line. Production captures of the restored handcart at one and two tiles were visually inspected; wheels visibly contact the floor. Browser console reported zero errors.
+- Follow-up verification: `npm run check` passes: app/tools typecheck, Vite build, full Vitest suite (104 files / 2,136 tests), floor validation (only pre-existing Namanda warnings), and floor-export consistency. `git diff --check` passes.
+
 - Current mission: establish The Camp as Floor 1's third major refuge: a 10×10 false-outdoor twilight settlement rendered by the existing raycaster, with a coherent PixelLab production library, populated layout, review gallery, walkthrough, and measured QA.
 - Dedicated worktree `/home/sloppymo/OnyxLabyrinth-camp`, branch `agent/floor1-camp`; the original shared worktree remains untouched.
 - Floor 1 safely expands east from 24×28 to 40×28 without shifting any authored coordinate. The open Camp heart is `(25,8)–(34,17)`, entered eastward from `(22,12)` through `(23,12)` and `(24,12)`; columns 35–39 remain unused rock.
@@ -721,3 +726,9 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   zero. Build and focused floor/validator tests pass.
 - PixelLab MCP connection and production schemas are confirmed. Opening balance
   is 1,812 subscription generations. Production generation may now begin.
+
+## 2026-08-08 — Camp recomposition in progress
+
+- Corrected the renderer design to use a Camp-owned sky panorama instead of Floor 1's primary ceiling texture; heading-aware sampling and Camp-only readable-night lighting passed visual verification from the Camp's four headings with no browser errors.
+- Repositioned Camp visual-only props into the fortified-caravan composition selected by the user; no collision, encounter, or gameplay data changed.
+- Verification: production-preview Camp screenshots were visually reviewed from the four cardinal headings with zero browser console errors. `npm run build`, the focused renderer/floor tests (166), the full suite (104 files / 2,134 tests), floor validation, and floor export consistency all pass. Existing Floor 1 validator warnings concern Namanda content, not this Camp pass.
