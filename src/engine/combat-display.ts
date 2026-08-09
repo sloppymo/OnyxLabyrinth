@@ -136,7 +136,9 @@ export function spellEffectSummary(effect: SpellEffect): string {
     case "fizzleField":
       return `Fizzle field (strength ${effect.power})`;
     case "dispelMagic":
-      return "Dispels enemy wards";
+      return effect.preserveEnemyDebuffs
+        ? `Erases enemy wards + fizzle (${effect.fizzlePower ?? 0})`
+        : "Dispels enemy wards";
     case "combatStatus":
       return effect.status === "shrunk"
         ? "Shrinks one foe (half size & damage)"
