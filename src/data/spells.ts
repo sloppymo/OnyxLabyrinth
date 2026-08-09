@@ -60,6 +60,8 @@ export type SpellEffect =
       fizzlePower?: number;
       /** Iso-void does not strip the party's beneficial body-magic. */
       preservePartyBuffs?: boolean;
+      /** Preserve harmful effects already afflicting enemies. */
+      preserveEnemyDebuffs?: boolean;
     }
   | { kind: "summon"; power: number; spriteId?: string; allyName?: string }
   /** Combat body-magic statuses (Shrink / Giant Strength). */
@@ -104,8 +106,8 @@ export const MAGE_SPELLS: SpellDef[] = [
   },
   {
     id: "mage-isovoid", name: "Isovoid", class: "Mage", tier: 7, spCost: 36,
-    target: "allEnemies", effect: { kind: "dispelMagic", fizzlePower: 4, preservePartyBuffs: true },
-    description: "Erases enemy wards, fields, and body-magic, then leaves their casting hollow.", acquisition: "iso-shop",
+    target: "allEnemies", effect: { kind: "dispelMagic", fizzlePower: 4, preservePartyBuffs: true, preserveEnemyDebuffs: true },
+    description: "Erases enemy wards without disturbing your curses, then leaves their casting hollow.", acquisition: "iso-shop",
   },
   {
     id: "mage-isostorm", name: "Isostorm", class: "Mage", tier: 7, spCost: 38,

@@ -630,7 +630,8 @@ describe("spell defense mechanics", () => {
     fighter.status = ["giantStrength"];
     state.giantStrengthTimers[fighter.id] = 2;
     state.enemyMagicScreens = { front: 3, back: 2 };
-    state.enemyFizzleFields = { front: 0, back: 0 };
+    state.enemyFizzleFields = { front: 5, back: 0 };
+    state.enemies.front[0]!.status = ["shrunk", "paralysis"];
 
     const result = resolveCombatRound(
       state,
@@ -643,8 +644,10 @@ describe("spell defense mechanics", () => {
     );
 
     expect(result.enemyMagicScreens).toEqual({ front: 0, back: 0 });
-    expect(result.enemyFizzleFields.front).toBe(3); // 4, then end-of-round decay
-    expect(result.enemyFizzleFields.back).toBe(3);
+    expect(result.enemyFizzleFields.front).toBe(4); // stronger existing curse is preserved, then decays
+    expect(result.enemyFizzleFields.back).toBe(3); // Isovoid's aftershock: 4, then decays
+    expect(result.enemies.front[0]!.status).toEqual(["shrunk", "paralysis"]);
+    expect(result.log.some((line) => line.includes("preserves every curse"))).toBe(true);
     expect(result.party[0]!.status).toContain("giantStrength");
     expect(result.giantStrengthTimers[fighter.id]).toBe(1); // normal body-magic decay still applies
   });
@@ -690,6 +693,27 @@ describe("spell defense mechanics", () => {
     expect(result.magicScreen).toBe(7);
     expect(result.magicScreenReduction).toBe(0.75);
     expect(result.party.reduce((sum, c) => sum + c.hp, 0)).toBeGreaterThan(0);
+  });
+
+  it("a later ordinary screen cannot downgrade Isobarrier", () => {
+    const enemy = makeEnemy("e1", "Fire Caster", 100, {
+      attack: 20,
+      agi: 1,
+      special: [{ kind: "caster", element: "fire" }],
+    });
+    const state = makeCombatState([enemy]);
+    const mage = state.party.find((c) => c.class === "Mage")!;
+    mage.knownSpellIds = ["mage-spell-shield"];
+    mage.sp = 99;
+    state.magicScreen = 3;
+    state.magicScreenReduction = 0.75;
+    const result = resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: mage.id, spellId: "mage-spell-shield" },
+      makeRng(0.5)
+    );
+    expect(result.magicScreen).toBe(8);
+    expect(result.magicScreenReduction).toBe(0.75);
   });
 
   it("party fizzle field causes party spells to fizzle when strong enough", () => {

@@ -258,7 +258,10 @@ export function applySpell(
     }
     case "magicScreen": {
       s.magicScreen += eff.power;
-      s.magicScreenReduction = eff.reduction ?? 0.5;
+      // Screens may stack for duration, but a weaker later screen must not
+      // downgrade an active stronger ward (notably Isobarrier).
+      const activeReduction = s.magicScreen > 0 ? s.magicScreenReduction ?? 0.5 : 0.5;
+      s.magicScreenReduction = Math.max(activeReduction, eff.reduction ?? 0.5);
       emit(
         `${spell.name} raises a magic screen around the party (strength ${s.magicScreen}, ${Math.round((s.magicScreenReduction ?? 0.5) * 100)}% ward).`,
         { type: "spellEffect", spellId: spell.id, targetId: caster.id, isBuff: true }
@@ -277,16 +280,20 @@ export function applySpell(
     }
     case "dispelMagic": {
       const clearedEnemyScreens = s.enemyMagicScreens.front + s.enemyMagicScreens.back;
-      const clearedEnemyFizzles = s.enemyFizzleFields.front + s.enemyFizzleFields.back;
+      const clearedEnemyFizzles = eff.preserveEnemyDebuffs
+        ? 0
+        : s.enemyFizzleFields.front + s.enemyFizzleFields.back;
       const clearedPartyFizzle = s.partyFizzleField;
       s.enemyMagicScreens = { front: 0, back: 0 };
-      s.enemyFizzleFields = { front: 0, back: 0 };
+      if (!eff.preserveEnemyDebuffs) s.enemyFizzleFields = { front: 0, back: 0 };
       s.partyFizzleField = 0;
       let clearedBody = 0;
-      for (const e of [...s.enemies.front, ...s.enemies.back]) {
-        if (e.status.includes("shrunk")) {
-          e.status = e.status.filter((st) => st !== "shrunk");
-          clearedBody += 1;
+      if (!eff.preserveEnemyDebuffs) {
+        for (const e of [...s.enemies.front, ...s.enemies.back]) {
+          if (e.status.includes("shrunk")) {
+            e.status = e.status.filter((st) => st !== "shrunk");
+            clearedBody += 1;
+          }
         }
       }
       if (!eff.preservePartyBuffs) {
@@ -307,9 +314,9 @@ export function applySpell(
       const clearedTotal = clearedEnemyScreens + clearedEnemyFizzles + clearedPartyFizzle + clearedBody;
       emit(
         clearedTotal > 0
-          ? `${spell.name} dispels magical wards and body-magic.`
-          : `${spell.name} finds no magic to dispel.`,
-        { type: "spellEffect", spellId: spell.id, isBuff: true }
+          ? `${spell.name} dispels enemy wards${eff.preserveEnemyDebuffs ? " and preserves every curse" : " and body-magic"}.`
+          : `${spell.name} finds no enemy wards to dispel.`,
+        { type: "spellEffect", spellId: spell.id, isDebuff: true }
       );
       break;
     }
