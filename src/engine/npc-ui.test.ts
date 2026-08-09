@@ -241,8 +241,8 @@ describe("NPCController", () => {
       shop: {
         kind: "spell",
         inventory: [
-          { spellId: "mage-isovoid", price: 48000 },
-          { spellId: "mage-isoflare", price: 56000 },
+          { spellId: "mage-isovoid", price: 2400 },
+          { spellId: "mage-isoflare", price: 3200 },
         ],
       },
     });
@@ -256,7 +256,7 @@ describe("NPCController", () => {
     controller.handleKey("ArrowDown"); // Must not change the confirmation target
     controller.handleKey("Enter"); // Buy Isovoid
 
-    expect(state.partyGold).toBe(12000);
+    expect(state.partyGold).toBe(57600);
     expect(mage.knownSpellIds).toContain("mage-isovoid");
     expect(mage.knownSpellIds).not.toContain("mage-isoflare");
     expect(cue).toHaveBeenCalledTimes(1);
@@ -267,7 +267,7 @@ describe("NPCController", () => {
   it("hides attack, steal, barter, and give for a spell shopkeeper", () => {
     const npc = makeNPC({
       capabilities: { shop: true, talk: true, barter: false, give: false, steal: false, attack: false },
-      shop: { kind: "spell", inventory: [{ spellId: "mage-isovoid", price: 48000 }] },
+      shop: { kind: "spell", inventory: [{ spellId: "mage-isovoid", price: 2400 }] },
     });
     const state = makeState(npc);
     const { controller } = freshController(state, npc);

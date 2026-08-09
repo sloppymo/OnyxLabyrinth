@@ -619,6 +619,79 @@ describe("spell defense mechanics", () => {
     expect(result.partyFizzleField).toBe(0);
   });
 
+  it("Isovoid leaves party Giant Strength intact and locks enemy casting", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const mage = state.party.find((c) => c.class === "Mage")!;
+    mage.knownSpellIds = ["mage-isovoid"];
+    mage.sp = 99;
+    mage.stats.agi = 100;
+    const fighter = state.party[0]!;
+    fighter.status = ["giantStrength"];
+    state.giantStrengthTimers[fighter.id] = 2;
+    state.enemyMagicScreens = { front: 3, back: 2 };
+    state.enemyFizzleFields = { front: 0, back: 0 };
+
+    const result = resolveCombatRound(
+      state,
+      state.party.map((c) =>
+        c.id === mage.id
+          ? { kind: "cast" as const, actorId: c.id, spellId: "mage-isovoid" }
+          : { kind: "defend" as const, actorId: c.id }
+      ),
+      makeRng(0.5)
+    );
+
+    expect(result.enemyMagicScreens).toEqual({ front: 0, back: 0 });
+    expect(result.enemyFizzleFields.front).toBe(3); // 4, then end-of-round decay
+    expect(result.enemyFizzleFields.back).toBe(3);
+    expect(result.party[0]!.status).toContain("giantStrength");
+    expect(result.giantStrengthTimers[fighter.id]).toBe(1); // normal body-magic decay still applies
+  });
+
+  it("Isostorm clearly outpressures Meteor Swarm on impact", () => {
+    const castDamage = (spellId: string): number => {
+      const state = makeCombatState([makeEnemy("e1", "Rat", 200, { ac: 0 })]);
+      const mage = state.party.find((c) => c.class === "Mage")!;
+      mage.knownSpellIds = [spellId];
+      mage.sp = 99;
+      mage.stats.int = 20;
+      return 200 - resolvePlayerTurn(
+        state,
+        { kind: "cast", actorId: mage.id, spellId, targetInstanceId: "e1" },
+        makeRng(0.5)
+      ).enemies.front[0]!.currentHp;
+    };
+
+    expect(castDamage("mage-isostorm")).toBeGreaterThan(castDamage("mage-meteor-swarm"));
+  });
+
+  it("Isobarrier uses its stronger magical damage reduction", () => {
+    const enemy = makeEnemy("e1", "Fire Caster", 100, {
+      attack: 20,
+      agi: 1,
+      special: [{ kind: "caster", element: "fire" }],
+    });
+    const state = makeCombatState([enemy]);
+    const priest = state.party.find((c) => c.class === "Priest")!;
+    priest.knownSpellIds = ["priest-isobarrier"];
+    priest.sp = 99;
+    priest.stats.agi = 100;
+    const result = resolveCombatRound(
+      state,
+      state.party.map((c) =>
+        c.id === priest.id
+          ? { kind: "cast" as const, actorId: c.id, spellId: "priest-isobarrier" }
+          : { kind: "defend" as const, actorId: c.id }
+      ),
+      makeRng(0.99)
+    );
+
+    expect(result.magicScreen).toBe(7);
+    expect(result.magicScreenReduction).toBe(0.75);
+    expect(result.party.reduce((sum, c) => sum + c.hp, 0)).toBeGreaterThan(0);
+  });
+
   it("party fizzle field causes party spells to fizzle when strong enough", () => {
     const enemy = makeEnemy("e1", "Rat", 100);
     const state = makeCombatState([enemy]);

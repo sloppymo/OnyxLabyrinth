@@ -216,6 +216,8 @@ export interface CombatState {
    * and deteriorates each round and when hit.
    */
   magicScreen: number;
+  /** Fraction of hostile magical damage prevented while the screen is active. */
+  magicScreenReduction?: number;
   /**
    * Enemy fizzle field strength on the party. Causes party spells to fizzle.
    */
