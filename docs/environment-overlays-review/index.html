@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OnyxLabyrinth Environmental Overlays Review</title>
+  <style>
+    body { margin: 0; padding: 2rem; background: #0e0d0a; color: #e8e0d0; font: 16px system-ui, sans-serif; }
+    h1, h2 { color: #e0a458; } h2 { border-bottom: 1px solid #3a332a; padding-bottom: .35rem; margin-top: 2.5rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+    figure { margin: 0; padding: .75rem; background: #1a1712; border: 1px solid #3a332a; }
+    img { display: block; width: 100%; image-rendering: pixelated; background: repeating-conic-gradient(#242018 0 25%, #15130f 0 50%) 0 / 16px 16px; }
+    figcaption { margin-top: .6rem; color: #c8bfa8; font-size: .9rem; }
+    code { color: #e0c458; }
+  </style>
+</head>
+<body>
+  <h1>Environmental Wall + Ceiling Overlays</h1>
+  <p>Curated, transparent surface details composited by the existing corridor renderer. New wall art is intentionally sparse; the existing reviewed ceiling library is shown alongside it.</p>
+
+  <h2>Wall — moisture and age</h2>
+  <div class="grid">
+    <figure><img src="../../public/assets/wall-features/wall-damp-streak-a.png"><figcaption><code>wall-damp-streak-a</code> — cistern seepage; 96×96 RGBA.</figcaption></figure>
+    <figure><img src="../../public/assets/wall-features/wall-moss-edge-a.png"><figcaption><code>wall-moss-edge-a</code> — restrained lower-edge moss; 96×96 RGBA.</figcaption></figure>
+    <figure><img src="../../public/assets/wall-features/wall-soot-smear-a.png"><figcaption><code>wall-soot-smear-a</code> — narrow torch soot; 64×96 RGBA.</figcaption></figure>
+  </div>
+
+  <h2>Ceiling surface and hanging library</h2>
+  <div class="grid">
+    <figure><img src="../../public/assets/ceiling-features/f1-ceiling-crack-roots.png"><figcaption><code>f1-ceiling-crack-roots</code> — existing reviewed ceiling surface.</figcaption></figure>
+    <figure><img src="../../public/assets/ceiling-features/f1-ceiling-water-stain.png"><figcaption><code>f1-ceiling-water-stain</code> — existing reviewed ceiling surface.</figcaption></figure>
+    <figure><img src="../../public/assets/ceiling-sprites/f1-chain-long.png"><figcaption><code>f1-chain-long</code> — existing reviewed hanging sprite.</figcaption></figure>
+    <figure><img src="../../public/assets/ceiling-sprites/f1-root-bundle.png"><figcaption><code>f1-root-bundle</code> — existing reviewed hanging sprite.</figcaption></figure>
+  </div>
+
+  <h2>In-engine review</h2>
+  <div class="grid">
+    <figure><img src="screenshots/moss-index.png"><figcaption>Live F1 unfinished-index capture — sparse moss placement.</figcaption></figure>
+    <figure><img src="screenshots/soot-forge.png"><figcaption>Live F1 forge capture — soot placement over regional stone.</figcaption></figure>
+    <figure><img src="screenshots/damp-cistern.png"><figcaption>Live F1 cistern capture — damp streak placement over wet stone.</figcaption></figure>
+  </div>
+  <p>Raw captures are also retained at <code>playtest-screenshots/floor1-art-qa/</code>. The gallery keeps isolated art and in-engine evidence separate so a transparent source is never mistaken for its projected appearance.</p>
+</body>
+</html>
