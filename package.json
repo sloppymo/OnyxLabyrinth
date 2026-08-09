@@ -13,6 +13,7 @@
     "test:typecheck": "tsc -p tsconfig.test.json --noEmit",
     "check": "npm run test:typecheck && npm run build && npm test && npm run floor:validate && npm run floor:export-check",
     "floor:validate": "tsx scripts/floor-tool.ts validate",
+    "art:overlay-qa": "node scripts/qa-environment-overlays.mjs",
     "floor:dump": "tsx scripts/floor-tool.ts dump",
     "floor:export-all": "tsx scripts/floor-tool.ts export-all && mkdir -p public/tools && rm -rf public/tools/floor-data && cp -r tools/floor-data public/tools/floor-data",
     "floor:export-check": "tsx scripts/floor-tool.ts export-check",

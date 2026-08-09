@@ -7593,6 +7593,24 @@
       "spriteId": "upward-water"
     },
     {
+      "x": 2,
+      "y": 16,
+      "dir": "w",
+      "spriteId": "wall-moss-edge-a"
+    },
+    {
+      "x": 14,
+      "y": 9,
+      "dir": "s",
+      "spriteId": "wall-soot-smear-a"
+    },
+    {
+      "x": 16,
+      "y": 16,
+      "dir": "e",
+      "spriteId": "wall-damp-streak-a"
+    },
+    {
       "x": 19,
       "y": 26,
       "dir": "s",
