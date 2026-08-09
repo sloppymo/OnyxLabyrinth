@@ -4379,40 +4379,22 @@
       "spriteId": "upward-water"
     },
     {
-      "x": 15,
-      "y": 17,
-      "dir": "w",
-      "spriteId": "wall-moss-edge-a"
-    },
-    {
       "x": 4,
       "y": 15,
-      "dir": "s",
+      "dir": "n",
       "spriteId": "wall-root-corner-a"
     },
     {
       "x": 3,
       "y": 13,
-      "dir": "e",
-      "spriteId": "wall-crack-small-b"
-    },
-    {
-      "x": 18,
-      "y": 17,
       "dir": "w",
-      "spriteId": "wall-damp-streak-b"
+      "spriteId": "wall-crack-small-c"
     },
     {
       "x": 14,
       "y": 9,
-      "dir": "s",
+      "dir": "n",
       "spriteId": "wall-soot-smear-a"
-    },
-    {
-      "x": 16,
-      "y": 16,
-      "dir": "e",
-      "spriteId": "wall-damp-streak-a"
     },
     {
       "x": 19,

@@ -11,50 +11,54 @@ the existing wall projection, fog, darkness, and nearest-neighbor settings.
 `ceilingSprites` are cached top-anchored hanging billboards. No renderer
 extension was necessary.
 
-## Accepted new wall overlays
+## Accepted wall overlays after visual review
 
 | ID | PixelLab operation | Size | Result | Shipping path | Placement |
 |---|---|---:|---|---|---|
-| `wall-damp-streak-a` | `create_image_pixen`, seed 8802 | 96x96 | KEEP | `public/assets/wall-features/wall-damp-streak-a.png` | F1 cistern, (16,16), east face |
-| `wall-moss-edge-a` | `create_image_pixen`, seed 8803 | 96x96 | KEEP | `public/assets/wall-features/wall-moss-edge-a.png` | F1 upward cistern transition, (15,17), west face |
 | `wall-soot-smear-a` | `create_map_object`, 64x96 | KEEP | `public/assets/wall-features/wall-soot-smear-a.png` | F1 forge seam, (14,9), south face |
-| `wall-crack-small-b` | `create_map_object`, 48x48 | KEEP | `public/assets/wall-features/wall-crack-small-b.png` | F1 index, (3,13), south face |
-| `wall-root-corner-a` | `create_map_object`, 32x64 | KEEP | `public/assets/wall-features/wall-root-corner-a.png` | F1 index, (4,15), east face |
-| `wall-damp-streak-b` | `create_map_object`, 32x64 | KEEP | `public/assets/wall-features/wall-damp-streak-b.png` | F1 cistern, (18,17), west face |
+| `wall-crack-small-c` | `create_map_object`, 48x48, local palette correction | 48x48 | KEEP | `public/assets/wall-features/wall-crack-small-c.png` | F1 index, (3,13), east face |
+| `wall-root-corner-a` | `create_map_object`, local palette lift | 32x64 | KEEP | `public/assets/wall-features/wall-root-corner-a.png` | F1 index, (4,15), south face |
 
-All three have genuine RGBA transparency and were visually inspected at
-native pixel scale. The sparse moss is deliberately restrained; the soot is a
-narrow torch-history mark rather than a full wall repaint.
+All three have genuine RGBA transparency and were visually inspected at native
+pixel scale and over the F1 wall. The old damp, moss, and rock-like crack
+assets were removed from the shipping registry after gallery review.
+
+Final shipped addition count in this branch: 3 wall overlays, 1 ceiling
+surface replacement, and 7 hanging sprites. The two damp families and moss
+are intentionally parked until a candidate reads as a physical surface mark
+at gameplay scale.
 
 ## Phase 2 candidate outcomes
 
-The literal-geometry strategy was tested with 10 Pixen jobs and 16 map-object
+The literal-geometry strategy was tested with 10 Pixen jobs and 20 map-object
 jobs. Pixen repeatedly returned full wall scenes at 32–64px, so those outputs
 were rejected. Basic map-object generation produced reliable transparent
 cutouts. Seven hanging assets were accepted: `f1-chain-loop-a`,
 `f1-rope-loop-a`, `f1-hook-small-a`, `f1-pulley-a`, `f1-bucket-small-a`,
 `f1-web-strands-a`, and `f1-counterweight-small-a`.
 
-One 256x256 Pixen ceiling replacement, `f1-ceiling-fracture-b`, was accepted
-against the existing full-cell ceiling-feature contract. A second water tile
-was rejected for a bright cyan edge. Four surface-mark map objects were
-rejected for blank, bug-like, or oversized output.
+One 256x256 Pixen ceiling replacement, `f1-ceiling-fracture-b`, was retained
+after a deterministic palette correction against the existing full-cell
+ceiling-feature contract. A PixelLab recolor edit was rejected because it
+invented a complete stone-tile grid. The pulley and bucket were edited with
+PixelLab and accepted after visual review; the moss edit was rejected because
+it retained floating/background structure, and both damp families were
+regenerated and rejected for slash/metal-like silhouettes.
 
-The final Phase 2 count is 34 PixelLab jobs total across both phases: 22
-successful Phase 2 jobs plus the 12 Phase 1 jobs. Eleven new assets were
-accepted in Phase 2 and eleven new candidates were rejected. No inpainting was
-needed after the map-object path began producing clean silhouettes; the
-promising Pixen outputs were not structurally salvageable because they baked
-complete walls into the canvas.
+The final count is 43 submitted PixelLab jobs total across both phases: 31
+Phase 2 submissions plus the 12 Phase 1 jobs. The second pass used four
+PixelLab edit jobs for moss, root, pulley, and bucket, plus one ceiling recolor
+edit. The root/pulley/bucket edits were useful, while the moss and ceiling edit
+were rejected; the final ceiling palette adjustment preserved its geometry.
 
 ## Candidate outcomes
 
-Accepted/reviewed candidates: 12 jobs total, 3 shipped. Rejected candidates
-included a loose rock pile, masonry-background crack, leafy tree root, framed
-repair slab, stacked masonry "clamps", a stone-background water result, an
-overbright centered moss result, and text-like tally bands. These failures are
-kept in `art/pixellab/environment-overlays/candidates/` for audit, but are not
-registered or shipped.
+Rejected candidates include a loose rock pile, masonry-background crack,
+leafy tree root, framed repair slab, stacked masonry "clamps", slash-like damp
+marks, a metal-strip damp mark, floating moss fragments, and a full stone-grid
+ceiling edit. These failures are kept under
+`art/pixellab/environment-overlays-v2/rejected/` or `candidates/` for audit,
+but are not registered or shipped.
 
 The service's eight-job concurrency limit was hit during both phases;
 subsequent batches were throttled and polled to completion. PixelLab MCP
