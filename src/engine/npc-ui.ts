@@ -26,8 +26,9 @@ import {
 } from "../game/npc";
 import { FF6Window } from "./ff6-window-library";
 import { audio } from "./audio";
+import { purchaseSpell, spellShopListing } from "../game/spell-shop";
 
-type Phase = "root" | "talk" | "ask" | "barter" | "give";
+type Phase = "root" | "talk" | "ask" | "barter" | "give" | "shop" | "shopConfirm";
 
 const ROOT_ITEMS = [
   { key: "talk", label: "Talk" },
@@ -42,8 +43,9 @@ const ROOT_ITEMS = [
  *  is omitted, all actions are available (backward compatible). "Leave"
  *  is always available. */
 function rootItemsFor(npc: NPCDef): readonly { key: string; label: string }[] {
-  if (!npc.capabilities) return ROOT_ITEMS;
-  return ROOT_ITEMS.filter((it) => {
+  const base = npc.shop ? [{ key: "shop", label: "Browse Iso-Spells" }, ...ROOT_ITEMS] : [...ROOT_ITEMS];
+  if (!npc.capabilities) return base;
+  return base.filter((it) => {
     if (it.key === "leave") return true;
     const cap = npc.capabilities as Record<string, boolean | undefined>;
     // If the capability is explicitly set, use it. If not set, default to
@@ -100,11 +102,20 @@ export class NPCController {
     if (lower === "escape") {
       if (this.phase === "root") {
         this.close("You step away.");
+      } else if (this.phase === "shopConfirm") {
+        this.phase = "shop";
+        this.render();
       } else {
         this.phase = "root";
         this.index = 0;
         this.render();
       }
+      return true;
+    }
+    // Confirmation is modal: the spell named in the confirmation copy must
+    // remain the spell that Enter buys. Do not let keyboard navigation change
+    // the index underneath it.
+    if (this.phase === "shopConfirm" && (lower === "arrowup" || lower === "arrowdown")) {
       return true;
     }
     const len = this.listLength();
@@ -125,7 +136,9 @@ export class NPCController {
     // Root hotkeys.
     if (this.phase === "root") {
       const items = rootItemsFor(this.npc);
-      const idx = items.findIndex((it) => it.key.startsWith(lower));
+      const idx = items.findIndex(
+        (it) => it.key.startsWith(lower) || it.label.toLowerCase().startsWith(lower)
+      );
       if (idx >= 0) {
         this.index = idx;
         this.confirm();
@@ -145,6 +158,9 @@ export class NPCController {
         return availableTrades(this.state, this.npc).length;
       case "give":
         return this.state.inventory.length;
+      case "shop":
+      case "shopConfirm":
+        return this.shopListings().length;
       default:
         return 0;
     }
@@ -155,6 +171,12 @@ export class NPCController {
       const item = rootItemsFor(this.npc)[this.index];
       if (!item) return;
       switch (item.key) {
+        case "shop":
+          this.phase = "shop";
+          this.index = 0;
+          this.dialogue = "Pick one.";
+          this.render();
+          return;
         case "talk":
           this.phase = "talk";
           this.index = 0;
@@ -242,7 +264,32 @@ export class NPCController {
       this.applyResult(result);
       // The list may have shrunk.
       this.index = Math.min(this.index, Math.max(0, this.state.inventory.length - 1));
+      return;
     }
+
+    if (this.phase === "shop") {
+      const listing = this.shopListings()[this.index];
+      if (listing?.spell) {
+        this.phase = "shopConfirm";
+        this.dialogue = `${listing.spell.name}: ${listing.spell.description} Buy for ${listing.listing.price.toLocaleString()}g?`;
+        this.render();
+      }
+      return;
+    }
+
+    if (this.phase === "shopConfirm") {
+      const listing = this.shopListings()[this.index];
+      if (!listing?.spell || !this.npc.shop) return;
+      const result = purchaseSpell(this.state, this.npc.shop, listing.spell.id);
+      if (result.ok) audio.uiBuySell();
+      this.dialogue = result.message;
+      this.phase = "shop";
+      this.render();
+    }
+  }
+
+  private shopListings() {
+    return this.npc.shop ? spellShopListing(this.npc.shop) : [];
   }
 
   private handleAskKey(key: string): boolean {
@@ -344,12 +391,22 @@ export class NPCController {
       });
       if (inv.length === 0) emptyLine = "Your pack is empty.";
       footer = "[Enter] give · [Esc] back";
+    } else if (this.phase === "shop" || this.phase === "shopConfirm") {
+      const learned = new Set(this.state.purchasedSpellIds ?? []);
+      items = this.shopListings().map(({ listing, spell }) => ({
+        label: spell ? `${spell.name}  ${spell.class}` : listing.spellId,
+        detail: learned.has(listing.spellId) ? "LEARNED" : `${listing.price.toLocaleString()}g · ${spell?.spCost ?? "?"} SP`,
+        disabled: learned.has(listing.spellId),
+        className: learned.has(listing.spellId) ? "shop-learned" : undefined,
+      }));
+      footer = this.phase === "shopConfirm" ? "[Enter] buy · [Esc] back" : "[↑/↓] select · [Enter] inspect · [Esc] back";
     }
 
     const win = new FF6Window({
       title,
       contentHtml:
         dialogueHtml +
+        ((this.phase === "shop" || this.phase === "shopConfirm") ? `<div class="npc-shop-gold">GOLD: ${this.state.partyGold.toLocaleString()}</div>` : "") +
         (emptyLine ? `<div class="npc-empty-line">${emptyLine}</div>` : ""),
       items,
       selectedIndex: this.index,
@@ -357,9 +414,10 @@ export class NPCController {
       footer,
       animated,
       onHover: (i) => {
-        this.index = i;
+        if (this.phase !== "shopConfirm") this.index = i;
       },
       onConfirm: (i) => {
+        if (this.phase === "shopConfirm" && i !== this.index) return;
         this.index = i;
         this.confirm();
       },

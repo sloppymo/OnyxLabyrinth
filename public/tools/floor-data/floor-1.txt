@@ -30,9 +30,9 @@
 24 ###.#####.....#####....#####
 25 #########!.@..#####....#####
 26 #########.....#####.N.######
-27 #########......#############
-28 ########........############
-29 ########...N...!############
+27 #########......#..##########
+28 ########.........N##########
+29 ########...N...!..##########
 30 ############################
 
 # Overlays:
@@ -72,6 +72,7 @@
 #   npc (10,3) id=namanda-altar name=Namanda's altar
 #   npc (24,6) id=morrow-company name=Morrow Company
 #   npc (11,29) id=second-survey name=The Second Survey
+#   npc (17,28) id=isobel name=Isobel
 #   event (11,23) kind=message
 #   event (9,19) kind=message
 #   event (3,15) kind=message

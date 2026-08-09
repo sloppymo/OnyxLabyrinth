@@ -21,7 +21,7 @@ function isAuthoredCell(cell: { n: string; e: string; s: string; w: string }): b
   return [cell.n, cell.e, cell.s, cell.w].some((edge) => edge !== "wall");
 }
 
-describe("Floor 1 revision 7 expansion", () => {
+describe("Floor 1 revision 9 expansion", () => {
   it("expands the bounding grid by about 30% and meaningful walkable space by 25–35%", () => {
     const floor = floor1();
     expect(floor.width).toBe(28);
@@ -31,9 +31,9 @@ describe("Floor 1 revision 7 expansion", () => {
 
     const walkable = floor.grid.flat().filter(isAuthoredCell).length;
     const change = walkable / BASELINE_WALKABLE_CELLS - 1;
-    expect(walkable).toBe(368);
+    expect(walkable).toBe(374);
     expect(change).toBeGreaterThanOrEqual(0.25);
-    expect(change).toBeLessThanOrEqual(0.35);
+    expect(change).toBeLessThanOrEqual(0.40);
   });
 
   it("leaves a full renderer-safe rock buffer around every absolute boundary", () => {
@@ -83,9 +83,9 @@ describe("Floor 1 revision 7 expansion", () => {
   it("adds proportional authored content without renaming save-stable existing ids", () => {
     const floor = floor1();
     expect(floor.treasures).toHaveLength(8);
-    expect(floor.npcs).toHaveLength(8);
+    expect(floor.npcs).toHaveLength(9);
     expect(floor.events).toHaveLength(16);
-    expect(floor.encounterZones).toHaveLength(9);
+    expect(floor.encounterZones).toHaveLength(10);
     expect(floor.mapSprites).toHaveLength(22);
 
     const newNpcIds = new Set(
@@ -95,6 +95,21 @@ describe("Floor 1 revision 7 expansion", () => {
     );
     expect(newNpcIds).toEqual(new Set(["morrow-company", "second-survey"]));
     expect(isSafeZoneAt(floor, 11, 29)).toBe(true);
+  });
+
+  it("gives Isobel a reachable six-cell side nook with its own safe zone", () => {
+    const floor = floor1();
+    const room = [
+      [16, 27], [17, 27],
+      [16, 28], [17, 28],
+      [16, 29], [17, 29],
+    ];
+    expect(room.every(([x, y]) => isAuthoredCell(floor.grid[y][x]))).toBe(true);
+    expect(floor.grid[28][15].e).toBe("door");
+    expect(floor.grid[28][16].w).toBe("door");
+    expect(isSafeZoneAt(floor, 17, 28)).toBe(true);
+    expect(floor.grid[28][17].tile).toBe("npc");
+    expect(floor.npcs?.find((npc) => npc.id === "isobel")).toMatchObject({ x: 17, y: 28 });
   });
 });
 

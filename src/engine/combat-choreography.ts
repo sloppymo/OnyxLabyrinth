@@ -2200,7 +2200,7 @@ export function resolveEffectStyle(
     if (eff.kind === "buff" || eff.kind === "magicScreen") {
       return { color: COLORS.sp, burst: "px_shield", burstScale: 1.6, field: "px_shield", fieldScale: 0.8, scale: 1.2 };
     }
-    if (eff.kind === "cure" || eff.kind === "resurrect") {
+    if (eff.kind === "cure" || eff.kind === "resurrect" || eff.kind === "massResurrect") {
       return { color: COLORS.heal, burst: "priest_heal", scale: 1.2 };
     }
     if (eff.kind === "disable" && eff.status) {

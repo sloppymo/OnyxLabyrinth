@@ -4828,15 +4828,15 @@
       },
       {
         "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "e": "open",
+        "s": "open",
         "w": "wall"
       },
       {
         "n": "wall",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "wall",
@@ -4992,21 +4992,22 @@
       },
       {
         "n": "wall",
-        "e": "wall",
+        "e": "door",
         "s": "open",
         "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "door"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open",
+        "tile": "npc"
       },
       {
         "n": "wall",
@@ -5169,16 +5170,16 @@
         "tile": "event"
       },
       {
-        "n": "wall",
-        "e": "wall",
+        "n": "open",
+        "e": "open",
         "s": "wall",
         "w": "wall"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
         "s": "wall",
-        "w": "wall"
+        "w": "open"
       },
       {
         "n": "wall",
@@ -5486,6 +5487,15 @@
       "y2": 29,
       "rateMul": 0,
       "safeZone": true
+    },
+    {
+      "id": "isobels-safe",
+      "x1": 16,
+      "y1": 27,
+      "x2": 17,
+      "y2": 29,
+      "rateMul": 0,
+      "safeZone": true
     }
   ],
   "mapSprites": [
@@ -5738,6 +5748,12 @@
       "y": 29,
       "dir": "w",
       "spriteId": "bookshelf-intrusion"
+    },
+    {
+      "x": 17,
+      "y": 28,
+      "dir": "e",
+      "spriteId": "isobels-sign"
     }
   ],
   "ceilingSprites": [
@@ -6308,6 +6324,65 @@
         "steal": false,
         "attack": false
       }
+    },
+    {
+      "id": "isobel",
+      "name": "Isobel",
+      "title": "proprietor of ISO-SPELLS",
+      "x": 17,
+      "y": 28,
+      "greeting": "Welcome to Isobel's. I sell Iso-spells. They're better.",
+      "returnGreeting": "Back again? Good.",
+      "topics": [
+        {
+          "key": "prices",
+          "response": "They're worth it."
+        },
+        {
+          "key": "discount",
+          "response": "No.",
+          "hidden": true
+        }
+      ],
+      "combatEnemyIds": [],
+      "shop": {
+        "kind": "spell",
+        "inventory": [
+          {
+            "spellId": "mage-isovoid",
+            "price": 48000
+          },
+          {
+            "spellId": "mage-isoflare",
+            "price": 56000
+          },
+          {
+            "spellId": "mage-isostorm",
+            "price": 64000
+          },
+          {
+            "spellId": "priest-isoheal",
+            "price": 52000
+          },
+          {
+            "spellId": "priest-isobarrier",
+            "price": 68000
+          },
+          {
+            "spellId": "priest-isorevive",
+            "price": 85000
+          }
+        ]
+      },
+      "mapSpriteId": "isobel-npc",
+      "capabilities": {
+        "shop": true,
+        "talk": true,
+        "barter": false,
+        "give": false,
+        "steal": false,
+        "attack": false
+      }
     }
   ],
   "events": [
@@ -6419,7 +6494,7 @@
       "once": true
     }
   ],
-  "floorRevision": 7,
+  "floorRevision": 9,
   "barredGates": [
     {
       "x": 3,

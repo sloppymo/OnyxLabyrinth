@@ -29,7 +29,7 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 16;
+const SAVE_VERSION = 17;
 
 /** v9 → v10 historical helper: first PARTY_SIZE characters by formation order —
  *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
@@ -323,6 +323,11 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     }
     version = 16;
   }
+  if (version === 16) {
+    // v16 → v17: Isobel's purchased Iso-spells. Older saves have none.
+    ser.purchasedSpellIds = [];
+    version = 17;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -393,6 +398,8 @@ interface SerializedState {
   companion?: GameState["companion"];
   /** Ids of cleared stairsGuardian scripted encounters. v16+. */
   clearedStairsGuardians?: string[];
+  /** Iso-spells bought from Isobel's; optional for pre-v17 saves. */
+  purchasedSpellIds?: string[];
   savedAt: string;
 }
 
@@ -471,6 +478,7 @@ export function serialize(state: GameState): string {
     tavernRumorCursor: state.tavernRumorCursor,
     companion: state.companion ? { ...state.companion } : null,
     clearedStairsGuardians: [...state.clearedStairsGuardians],
+    purchasedSpellIds: [...(state.purchasedSpellIds ?? [])],
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -635,6 +643,7 @@ export function deserialize(json: string): GameState | null {
       tavernRumorCursor: ser.tavernRumorCursor ?? 0,
       companion: ser.companion ? { ...ser.companion } : null,
       clearedStairsGuardians: ser.clearedStairsGuardians ? [...ser.clearedStairsGuardians] : [],
+      purchasedSpellIds: ser.purchasedSpellIds ? [...ser.purchasedSpellIds] : [],
     };
   } catch {
     return null;

@@ -58,6 +58,7 @@ export function spellMagicCategory(effect: SpellEffect): SpellMagicCategory | nu
       return "offense";
     case "heal":
     case "resurrect":
+    case "massResurrect":
     case "magicScreen":
       return "defense";
     case "buff":
@@ -128,6 +129,8 @@ export function spellEffectSummary(effect: SpellEffect): string {
       return `Inflicts ${capitalize(effect.status)}`;
     case "resurrect":
       return "Revives a fallen ally";
+    case "massResurrect":
+      return "Revives every fallen ally";
     case "magicScreen":
       return `Magic screen (strength ${effect.power})`;
     case "fizzleField":

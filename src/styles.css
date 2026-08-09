@@ -3916,6 +3916,14 @@ canvas#map-canvas {
   padding: 4px 6px;
   color: var(--text-dim, #99a);
 }
+.ff6-window.standalone .npc-shop-gold {
+  padding: 2px 6px 5px;
+  color: #ffd769;
+  letter-spacing: 0.04em;
+}
+.ff6-window.standalone .ff6-menu-item.shop-learned .ff6-sel-detail {
+  color: #9bb5a1;
+}
 
 /* Width variants (spec: narrow/medium/wide/full). In a flex row they set
    the basis; standalone-in-column they cap the width. */

@@ -243,6 +243,19 @@ export function applySpell(
       }
       break;
     }
+    case "massResurrect": {
+      const revivePct = perkModifiers(perksForCharacter(caster), effStats).resurrectHpPercent;
+      let revived = 0;
+      for (const t of s.party) {
+        if (!t.status.includes("knockedOut")) continue;
+        t.hp = Math.max(1, Math.round(t.maxHp * revivePct));
+        t.status = t.status.filter((st) => st !== "knockedOut");
+        revived += 1;
+        emit(`${spell.name} resurrects ${t.name} with ${t.hp} HP!`, { type: "revived", targetId: t.id });
+      }
+      if (revived === 0) emit(`${spell.name} finds no fallen allies.`, { type: "spellEffect", spellId: spell.id, isBuff: true });
+      break;
+    }
     case "magicScreen": {
       s.magicScreen += eff.power;
       emit(

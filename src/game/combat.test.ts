@@ -924,6 +924,29 @@ describe("summoning mechanics", () => {
     }
   });
 
+  it("Isorevive restores every fallen ally without changing living allies", () => {
+    const state = makeCombatState([makeEnemy("e1", "Rat", 100)]);
+    const priest = state.party.find((c) => c.class === "Priest");
+    if (!priest) throw new Error("No Priest in party");
+    priest.knownSpellIds = ["priest-isorevive"];
+    priest.sp = 99;
+    priest.stats.agi = 100;
+    const fallen = state.party[0]!;
+    fallen.hp = 0;
+    fallen.status = ["knockedOut"];
+    const livingHp = state.party[1]!.hp;
+    const actions: PlayerAction[] = state.party.map((c) =>
+      c.id === priest.id
+        ? { kind: "cast" as const, actorId: c.id, spellId: "priest-isorevive" }
+        : { kind: "defend" as const, actorId: c.id }
+    );
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.party.find((c) => c.id === fallen.id)!.hp).toBeGreaterThan(0);
+    expect(result.party.find((c) => c.id === fallen.id)!.status).not.toContain("knockedOut");
+    expect(result.party[1]!.hp).toBeLessThanOrEqual(livingHp);
+    expect(result.party[1]!.hp).toBeGreaterThan(0);
+  });
+
   it("existing summoned ally attacks an enemy", () => {
     const enemy = makeEnemy("e1", "Rat", 100);
     const state = makeCombatState([enemy]);

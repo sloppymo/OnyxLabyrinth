@@ -84,6 +84,7 @@ function idForCast(spellId: string, state: CombatState): CombatSfxId | null {
     case "heal":
     case "cure":
     case "resurrect":
+    case "massResurrect":
       return "healCast";
     case "buff":
     case "magicScreen":
