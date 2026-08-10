@@ -109,7 +109,7 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "namanda-font", name: "Namanda's Font", file: "namanda-font.png", baseSize: 30 },
   { id: "namanda-bench", name: "Namanda's Bench", file: "namanda-bench.png", baseSize: 18 },
   { id: "namanda-kneeling-rail", name: "Kneeling Rail", file: "namanda-kneeling-rail.png", baseSize: 20 },
-  { id: "isobel-npc", name: "Isobel", file: "isobel-npc.svg", baseSize: 42 },
+  { id: "isobel-npc", name: "Isobel", file: "isobel-npc-pixellab.png", baseSize: 42 },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(

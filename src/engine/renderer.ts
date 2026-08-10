@@ -84,7 +84,11 @@ import {
   type MapSpriteImage,
 } from "./map-sprite-cache";
 import type { MapSpriteDef } from "../data/map-sprites";
-import { getWallFeatureDef, getWallFeatureImage } from "./wall-feature-cache";
+import {
+  getWallFeatureDef,
+  getWallFeatureImage,
+  getWallFeatureTextImage,
+} from "./wall-feature-cache";
 import {
   getCeilingSpriteDef,
   getCeilingSpriteImage,
@@ -1823,6 +1827,20 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
               stripWidth,
               Math.max(1, Math.ceil(bottom) - Math.floor(top))
             );
+            const textImg = getWallFeatureTextImage(featureDef.spriteId);
+            if (textImg) {
+              ctx.drawImage(
+                textImg,
+                texX,
+                0,
+                1,
+                textImg.height,
+                x,
+                Math.floor(top),
+                stripWidth,
+                Math.max(1, Math.ceil(bottom) - Math.floor(top))
+              );
+            }
             ctx.globalAlpha = 1.0;
           }
         }
