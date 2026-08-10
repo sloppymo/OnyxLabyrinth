@@ -308,12 +308,22 @@ function f1Floor(name, seed, baseHex) {
       const m = mottle(x, y);
       const lvl = Math.floor(m * 3 + dither(x, y) * 0.999);
       c = shade(c, [0.93, 1.0, 1.07][Math.max(0, Math.min(2, lvl))]);
+      // Quiet top-left bevels keep the slabs readable in the distant
+      // corridor without making each cell look like a separate tile.
+      const lx = x % 32;
+      const ly = y % 32;
+      if (ly === 1) c = shade(c, 1.05);
+      else if (ly === 30) c = shade(c, 0.9);
+      else if (lx === 1) c = shade(c, 1.025);
+      else if (lx === 30) c = shade(c, 0.92);
       px.set(x, y, c);
     }
   }
-  // slab cracks
+  // Sparse, short cracks. They sit inside slabs rather than making a
+  // repeated central emblem, so floorA/floorB remain ordinary floor twins.
   const crackRng = mulberry32(seed + 3);
-  for (let i = 0; i < 7; i++) {
+  const crackCount = name.includes("_b_") ? 18 : 13;
+  for (let i = 0; i < crackCount; i++) {
     crackWalk(
       crackRng,
       Math.floor(crackRng() * L),
@@ -323,9 +333,32 @@ function f1Floor(name, seed, baseHex) {
       (x, y) => px.blend(x, y, hex("#20261e"), 0.75)
     );
   }
-  // Puddles are no longer baked here — they're drawn at render time in
-  // world space (arena-renderer.ts) so they span tile boundaries instead of
-  // resetting at every grid cell.
+
+  // Damp moss belongs to mortar lines and corners, not broad luminous pools.
+  // Each patch is only a few logical pixels wide and is deliberately seeded
+  // near a slab seam so the texture reads as one material under fog.
+  const mossRng = mulberry32(seed + 4);
+  const mossDark = hex("#3d5335");
+  const mossMid = hex("#587044");
+  const patchCount = name.includes("_b_") ? 24 : 18;
+  for (let i = 0; i < patchCount; i++) {
+    const cellX = Math.floor(mossRng() * 4);
+    const cellY = Math.floor(mossRng() * 4);
+    const seamX = mossRng() < 0.5;
+    const cx = seamX ? cellX * 32 + (mossRng() < 0.5 ? 1 : 30) : cellX * 32 + 4 + Math.floor(mossRng() * 24);
+    const cy = seamX ? cellY * 32 + 4 + Math.floor(mossRng() * 24) : cellY * 32 + (mossRng() < 0.5 ? 1 : 30);
+    const radius = 2 + Math.floor(mossRng() * 3);
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        if (Math.hypot(dx, dy) > radius + 0.25 || mossRng() < 0.13) continue;
+        const color = mossRng() < 0.72 ? mossDark : mossMid;
+        px.blend(cx + dx, cy + dy, color, 0.8);
+      }
+    }
+  }
+
+  // Keep the palette intentionally quiet after the hand-shaped wear pass.
+  px.posterize(5);
   px.save(name);
 }
 
@@ -1409,10 +1442,13 @@ function f5Door() {
 // ---------------------------------------------------------------------------
 
 mkdirSync(OUT_DIR, { recursive: true });
-f1Wall();
+const onlyF1 = process.env.ONLY_F1 === "1";
+const onlyF1Floors = process.env.ONLY_F1_FLOORS === "1";
+if (!onlyF1Floors) f1Wall();
 f1Floor("f1_floor_a_256.png", 110, "#4c5245");
 f1Floor("f1_floor_b_256.png", 115, "#454c40");
-f1Ceiling();
+if (!onlyF1Floors) f1Ceiling();
+if (onlyF1 || onlyF1Floors) process.exit(0);
 f2Wall();
 f2Floor("f2_floor_a_256.png", 210, false, "#4e3620");
 f2Floor("f2_floor_b_256.png", 215, true, "#45301c");

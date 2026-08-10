@@ -509,7 +509,7 @@ function buildTurnEvents(action: DemoAction): CombatEvent[] {
     const isBuff = eff.kind === "buff" || eff.kind === "magicScreen";
     const isDisable = eff.kind === "disable";
     const isSummon = eff.kind === "summon";
-    const isCure = eff.kind === "cure" || eff.kind === "resurrect";
+    const isCure = eff.kind === "cure" || eff.kind === "resurrect" || eff.kind === "massResurrect";
     const isDispel = eff.kind === "fizzleField" || eff.kind === "dispelMagic";
 
     const pushSpellEffect = (tid: string | undefined, isDebuff = false) => {

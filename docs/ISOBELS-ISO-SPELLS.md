@@ -1,0 +1,16 @@
+# Isobel's — Iso-spells
+
+Maintenance note for the optional Floor 1 spell shop.
+
+- Isobel is the `isobel` NPC in `src/content/floors/floor-1.json`, at `(17,28)`, inside a new six-cell nook immediately east of Surveyors' Rest. The single entrance is the door edge between `(15,28)` and `(16,28)`.
+- Her `shop` field is a typed `NPCSpellShopDef`; inventory is six spell IDs plus positive integer gold prices.
+- Iso-spells carry `acquisition: "iso-shop"`, so `spellsForClass` never grants them through ordinary tier progression.
+- `src/game/spell-shop.ts` validates listings, charges party gold once, records `purchasedSpellIds`, and teaches every eligible current caster.
+- `purchasedSpellIds` is serialized in save version 17; older saves default to an empty list.
+- Isobel's NPC capabilities disable barter, give, steal, and attack. The existing NPC FF6 window owns Browse, confirmation, gold display, and learned-state presentation.
+- PixelLab-generated production art is used for Isobel (`public/assets/map-sprites/isobel-npc-pixellab.png`), the wooden sign (`public/assets/wall-features/isobels-sign-pixellab.png`), and the stocked shelf (`public/assets/wall-features/isobels-shelf-pixellab.png`).
+- The sign deliberately contains no generated lettering: the renderer composites `ISOBEL'S` and `ISO-SPELLS` with the loaded FF36 pixel font, keeping the exact text legible while preserving the generated wood texture.
+- The compact shelf wall decal is placed on the nook's back wall so the room reads as stocked without adding furniture or walkable cells.
+- Prices are 2,400g / 3,200g / 3,600g for Mage spells and 2,800g / 4,000g / 5,200g for Priest spells. The campaign's measured income is about 6,300g by the end of Floor 5 before discretionary gear spending, making one purchase a plausible late-game choice while the full 21,200g inventory remains a serious sink.
+- Isovoid removes enemy magic screens, preserves every harmful enemy status (including Shrink and existing fizzle fields), preserves party buffs, and leaves a four-strength fizzle aftershock. Isostorm deals 60 impact plus three 12-power lightning ticks; Isobarrier prevents 75% of hostile magical damage for eight rounds and later ordinary screens cannot downgrade it.
+- The economy estimate uses the current four-person party and the campaign progression note's measured ~6,300g cumulative encounter income by the end of Floor 5 before discretionary gear purchases. The 2,400g entry spell is a plausible late-game saving target; the 5,200g crown spell and 21,200g complete inventory remain deliberate postgame/grind sinks. Exact later-floor route income remains variable because treasure, sales, and repeatable Arena farming are not modeled in that estimate.

@@ -46,9 +46,23 @@ export type SpellEffect =
   | { kind: "cure"; status: "poison" | "sleep" | "paralysis" | "blind" }
   | { kind: "disable"; status: "sleep" | "paralysis" }
   | { kind: "resurrect" }
-  | { kind: "magicScreen"; power: number }
+  | { kind: "massResurrect" }
+  | {
+      kind: "magicScreen";
+      power: number;
+      /** Fraction of incoming magical damage prevented; legacy default is 50%. */
+      reduction?: number;
+    }
   | { kind: "fizzleField"; power: number }
-  | { kind: "dispelMagic" }
+  | {
+      kind: "dispelMagic";
+      /** Optional enemy anti-magic aftershock, measured in fizzle strength. */
+      fizzlePower?: number;
+      /** Iso-void does not strip the party's beneficial body-magic. */
+      preservePartyBuffs?: boolean;
+      /** Preserve harmful effects already afflicting enemies. */
+      preserveEnemyDebuffs?: boolean;
+    }
   | { kind: "summon"; power: number; spriteId?: string; allyName?: string }
   /** Combat body-magic statuses (Shrink / Giant Strength). */
   | {
@@ -80,9 +94,26 @@ export interface SpellDef {
   target: SpellTarget;
   effect: SpellEffect;
   description: string;
+  /** Special spells are never granted by ordinary level/tier progression. */
+  acquisition?: "iso-shop";
 }
 
 export const MAGE_SPELLS: SpellDef[] = [
+  {
+    id: "mage-isoflare", name: "Isoflare", class: "Mage", tier: 7, spCost: 42,
+    target: "allEnemies", effect: { kind: "damage", element: "fire", power: 70 },
+    description: "A brutally concentrated detonation that engulfs every enemy.", acquisition: "iso-shop",
+  },
+  {
+    id: "mage-isovoid", name: "Isovoid", class: "Mage", tier: 7, spCost: 36,
+    target: "allEnemies", effect: { kind: "dispelMagic", fizzlePower: 4, preservePartyBuffs: true, preserveEnemyDebuffs: true },
+    description: "Erases enemy wards without disturbing your curses, then leaves their casting hollow.", acquisition: "iso-shop",
+  },
+  {
+    id: "mage-isostorm", name: "Isostorm", class: "Mage", tier: 7, spCost: 38,
+    target: "allEnemies", effect: { kind: "damage", element: "lightning", power: 60, followup: { kind: "dot", element: "lightning", power: 12, duration: 3 } },
+    description: "A violent lightning storm that tears through every enemy, then keeps tearing.", acquisition: "iso-shop",
+  },
   // --- Tier 1 ---
   {
     id: "mage-wayfinder",
@@ -489,6 +520,21 @@ export const MAGE_SPELLS: SpellDef[] = [
 ];
 
 export const PRIEST_SPELLS: SpellDef[] = [
+  {
+    id: "priest-isoheal", name: "Isoheal", class: "Priest", tier: 7, spCost: 40,
+    target: "allAllies", effect: { kind: "heal", power: 9999 },
+    description: "A tremendous healing wave that restores the party to full strength.", acquisition: "iso-shop",
+  },
+  {
+    id: "priest-isobarrier", name: "Isobarrier", class: "Priest", tier: 7, spCost: 34,
+    target: "allAllies", effect: { kind: "magicScreen", power: 8, reduction: 0.75 },
+    description: "A near-impenetrable barrier that turns hostile magic into a dull shimmer.", acquisition: "iso-shop",
+  },
+  {
+    id: "priest-isorevive", name: "Isorevive", class: "Priest", tier: 7, spCost: 46,
+    target: "allAllies", effect: { kind: "massResurrect" },
+    description: "Calls every fallen ally back from the edge of death.", acquisition: "iso-shop",
+  },
   // --- Tier 1 ---
   {
     id: "priest-light",
@@ -775,9 +821,9 @@ export function spellsForClass(
     | "Crusader",
   maxTier: 1 | 2 | 3 | 4 | 5 | 6 | 7
 ): SpellDef[] {
-  if (cls === "Mage") return MAGE_SPELLS.filter((s) => s.tier <= maxTier);
+  if (cls === "Mage") return MAGE_SPELLS.filter((s) => s.tier <= maxTier && !s.acquisition);
   if (cls === "Priest" || cls === "Crusader") {
-    return PRIEST_SPELLS.filter((s) => s.tier <= maxTier);
+    return PRIEST_SPELLS.filter((s) => s.tier <= maxTier && !s.acquisition);
   }
   return [];
 }

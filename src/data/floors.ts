@@ -266,6 +266,11 @@ export interface NPCTradeDef {
   once?: boolean;
 }
 
+export interface NPCSpellShopDef {
+  kind: "spell";
+  inventory: { spellId: string; price: number }[];
+}
+
 export interface NPCDef {
   id: string;
   name: string;
@@ -278,6 +283,7 @@ export interface NPCDef {
   returnGreeting: string;
   topics: NPCTopicDef[];
   trades?: NPCTradeDef[];
+  shop?: NPCSpellShopDef;
   /** Giving this item raises disposition sharply (and may earn the reward). */
   wantsItemId?: string;
   /** Handed over once when disposition reaches 80. */
@@ -301,6 +307,7 @@ export interface NPCDef {
 }
 
 export interface NPCCapabilities {
+  shop?: boolean;
   talk?: boolean;
   barter?: boolean;
   give?: boolean;

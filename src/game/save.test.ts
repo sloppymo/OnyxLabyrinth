@@ -135,6 +135,17 @@ describe("save serialization", () => {
     expect(result).toBeNull();
   });
 
+  it("persists purchased Iso-spells and defaults the field for legacy saves", () => {
+    state.purchasedSpellIds = ["mage-isoflare"];
+    const restored = deserialize(serialize(state));
+    expect(restored?.purchasedSpellIds).toEqual(["mage-isoflare"]);
+
+    const legacy = JSON.parse(serialize(state));
+    legacy.version = 16;
+    delete legacy.purchasedSpellIds;
+    expect(deserialize(JSON.stringify(legacy))?.purchasedSpellIds).toEqual([]);
+  });
+
   it("preserves exploredByFloor data", () => {
     // Note: serialize() overwrites exploredByFloor[currentFloorId] with the
     // current explored set. So floor 1 gets the current explored tiles.

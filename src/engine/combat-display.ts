@@ -58,6 +58,7 @@ export function spellMagicCategory(effect: SpellEffect): SpellMagicCategory | nu
       return "offense";
     case "heal":
     case "resurrect":
+    case "massResurrect":
     case "magicScreen":
       return "defense";
     case "buff":
@@ -128,12 +129,16 @@ export function spellEffectSummary(effect: SpellEffect): string {
       return `Inflicts ${capitalize(effect.status)}`;
     case "resurrect":
       return "Revives a fallen ally";
+    case "massResurrect":
+      return "Revives every fallen ally";
     case "magicScreen":
       return `Magic screen (strength ${effect.power})`;
     case "fizzleField":
       return `Fizzle field (strength ${effect.power})`;
     case "dispelMagic":
-      return "Dispels enemy wards";
+      return effect.preserveEnemyDebuffs
+        ? `Erases enemy wards + fizzle (${effect.fizzlePower ?? 0})`
+        : "Dispels enemy wards";
     case "combatStatus":
       return effect.status === "shrunk"
         ? "Shrinks one foe (half size & damage)"

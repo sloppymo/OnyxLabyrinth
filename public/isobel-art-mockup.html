@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Isobel's — PixelLab Art Mockup</title>
+  <style>
+    @font-face { font-family: FF36; src: url('./assets/final-fantasy-36.ttf') format('truetype'); }
+    :root { color-scheme: dark; --ink:#17151b; --stone:#30352f; --wood:#70462e; --gold:#e0a458; --paper:#e9dfc9; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:#0e0d0a; color:var(--paper); font-family:FF36,monospace; image-rendering:pixelated; }
+    main { width:min(1120px, calc(100% - 32px)); margin:32px auto 64px; }
+    h1 { margin:0 0 8px; color:var(--gold); font-size:28px; letter-spacing:2px; }
+    .lede { margin:0 0 28px; color:#b7aa95; font-family:monospace; line-height:1.5; }
+    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    .card { min-height:260px; padding:16px; border:2px solid #5c6db8; background:#1a1c29; box-shadow:inset 0 0 0 2px #29345f; }
+    .card h2 { margin:0 0 6px; font-size:18px; color:var(--gold); }
+    .meta { margin:0 0 14px; color:#9b9ba9; font:12px monospace; }
+    .checker { display:grid; place-items:center; min-height:190px; background-color:#252631; background-image:linear-gradient(45deg,#30313d 25%,transparent 25%),linear-gradient(-45deg,#30313d 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#30313d 75%),linear-gradient(-45deg,transparent 75%,#30313d 75%); background-size:24px 24px; background-position:0 0,0 12px,12px -12px,-12px 0; }
+    .checker img { max-width:92%; max-height:180px; image-rendering:pixelated; }
+    .shop { position:relative; min-height:360px; margin-top:24px; overflow:hidden; border:3px solid #6673bd; background:#272c29; background-image:linear-gradient(#394039 1px,transparent 1px),linear-gradient(90deg,#394039 1px,transparent 1px); background-size:64px 42px; box-shadow:inset 0 0 100px #10120f; }
+    .shop::after { content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(180deg,rgba(0,0,0,.45),transparent 45%,rgba(0,0,0,.5)); }
+    .shop-title { position:relative; z-index:1; width:min(430px,80%); margin:26px auto 0; }
+    .sign { display:block; width:100%; height:auto; }
+    .sign-text { position:absolute; inset:0; display:grid; place-content:center; gap:2px; color:#2a2022; text-align:center; font-size:25px; line-height:1; text-shadow:1px 1px #a06c43; }
+    .shelf { position:absolute; z-index:1; left:50%; bottom:38px; width:310px; transform:translateX(-50%); }
+    .charms { position:absolute; z-index:1; left:13%; top:128px; width:110px; image-rendering:pixelated; }
+    .books { position:absolute; z-index:1; right:12%; top:150px; width:150px; image-rendering:pixelated; }
+    .isobel { position:absolute; z-index:2; left:50%; bottom:22px; width:142px; transform:translateX(-50%); image-rendering:pixelated; }
+    .label { position:relative; z-index:3; margin:18px 20px 0; color:#d8c8ad; font:13px monospace; }
+    .notes { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; }
+    .note { padding:16px; border-left:4px solid var(--gold); background:#181813; color:#b7aa95; font:13px/1.55 monospace; }
+    code { color:#e8c27d; }
+    @media (max-width:760px) { .grid,.notes { grid-template-columns:1fr; } .shop { min-height:300px; } .shelf { width:240px; } .charms { left:4%; width:82px; } .books { right:3%; width:110px; } .isobel { width:115px; } .sign-text { font-size:18px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>ISOBEL'S — ISO-SPELLS</h1>
+    <p class="lede">PixelLab production-art mockup · actual shipping assets · nearest-neighbor presentation</p>
+
+    <section class="grid" aria-label="Individual assets">
+      <article class="card">
+        <h2>Isobel</h2>
+        <p class="meta">PixelLab character · native 48×64 RGBA PNG · blonde-readability pass</p>
+        <div class="checker"><img src="./assets/map-sprites/isobel-npc-pixellab.png" alt="Isobel's shopkeeper sprite"></div>
+      </article>
+      <article class="card">
+        <h2>Spell shelf</h2>
+        <p class="meta">PixelLab prop · transparent RGBA · 160×96</p>
+        <div class="checker"><img src="./assets/wall-features/isobels-shelf-pixellab.png" alt="Shelf of magical vessels"></div>
+      </article>
+      <article class="card">
+        <h2>Wooden sign</h2>
+        <p class="meta">PixelLab board · transparent RGBA · 192×80</p>
+        <div class="checker"><img src="./assets/wall-features/isobels-sign-pixellab.png" alt="Aged wooden shop sign without lettering"></div>
+      </article>
+      <article class="card">
+        <h2>Hanging charms</h2>
+        <p class="meta">PixelLab wall prop · transparent RGBA · 96×96</p>
+        <div class="checker"><img src="./assets/wall-features/isobel-wall-charms-pixellab.png" alt="Hanging magical charms"></div>
+      </article>
+      <article class="card">
+        <h2>Spellbook stack</h2>
+        <p class="meta">PixelLab wall prop · transparent RGBA · 128×96</p>
+        <div class="checker"><img src="./assets/wall-features/isobel-spellbook-stack-pixellab.png" alt="Stacked spellbooks and scrolls"></div>
+      </article>
+    </section>
+
+    <section class="shop" aria-label="Tiny shop composition mockup">
+      <div class="shop-title">
+        <img class="sign" src="./assets/wall-features/isobels-sign-pixellab.png" alt="Isobel's sign board">
+        <div class="sign-text"><span>ISOBEL'S</span><span>ISO-SPELLS</span></div>
+      </div>
+      <img class="shelf" src="./assets/wall-features/isobels-shelf-pixellab.png" alt="Spell shelf">
+      <img class="charms" src="./assets/wall-features/isobel-wall-charms-pixellab.png" alt="Hanging magical charms">
+      <img class="books" src="./assets/wall-features/isobel-spellbook-stack-pixellab.png" alt="Stacked spellbooks">
+      <img class="isobel" src="./assets/map-sprites/isobel-npc-pixellab.png" alt="Isobel">
+      <p class="label">tiny, warm, overstocked, and completely matter-of-fact</p>
+    </section>
+
+    <section class="notes">
+      <div class="note"><strong>In-game registrations</strong><br><code>MAP_SPRITES[isobel-npc]</code><br><code>WALL_FEATURES[isobels-shelves]</code><br><code>WALL_FEATURES[isobel-wall-charms]</code><br><code>WALL_FEATURES[isobel-spellbook-stack]</code><br><code>WALL_FEATURES[isobels-sign]</code></div>
+      <div class="note"><strong>Exact lettering</strong><br>The sign board is generated art. The two lines of lettering are rendered with the game's FF36 pixel font so the apostrophe and spelling remain exact.</div>
+    </section>
+  </main>
+</body>
+</html>

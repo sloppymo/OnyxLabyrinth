@@ -619,6 +619,103 @@ describe("spell defense mechanics", () => {
     expect(result.partyFizzleField).toBe(0);
   });
 
+  it("Isovoid leaves party Giant Strength intact and locks enemy casting", () => {
+    const enemy = makeEnemy("e1", "Rat", 100);
+    const state = makeCombatState([enemy]);
+    const mage = state.party.find((c) => c.class === "Mage")!;
+    mage.knownSpellIds = ["mage-isovoid"];
+    mage.sp = 99;
+    mage.stats.agi = 100;
+    const fighter = state.party[0]!;
+    fighter.status = ["giantStrength"];
+    state.giantStrengthTimers[fighter.id] = 2;
+    state.enemyMagicScreens = { front: 3, back: 2 };
+    state.enemyFizzleFields = { front: 5, back: 0 };
+    state.enemies.front[0]!.status = ["shrunk", "paralysis"];
+
+    const result = resolveCombatRound(
+      state,
+      state.party.map((c) =>
+        c.id === mage.id
+          ? { kind: "cast" as const, actorId: c.id, spellId: "mage-isovoid" }
+          : { kind: "defend" as const, actorId: c.id }
+      ),
+      makeRng(0.5)
+    );
+
+    expect(result.enemyMagicScreens).toEqual({ front: 0, back: 0 });
+    expect(result.enemyFizzleFields.front).toBe(4); // stronger existing curse is preserved, then decays
+    expect(result.enemyFizzleFields.back).toBe(3); // Isovoid's aftershock: 4, then decays
+    expect(result.enemies.front[0]!.status).toEqual(["shrunk", "paralysis"]);
+    expect(result.log.some((line) => line.includes("preserves every curse"))).toBe(true);
+    expect(result.party[0]!.status).toContain("giantStrength");
+    expect(result.giantStrengthTimers[fighter.id]).toBe(1); // normal body-magic decay still applies
+  });
+
+  it("Isostorm clearly outpressures Meteor Swarm on impact", () => {
+    const castDamage = (spellId: string): number => {
+      const state = makeCombatState([makeEnemy("e1", "Rat", 200, { ac: 0 })]);
+      const mage = state.party.find((c) => c.class === "Mage")!;
+      mage.knownSpellIds = [spellId];
+      mage.sp = 99;
+      mage.stats.int = 20;
+      return 200 - resolvePlayerTurn(
+        state,
+        { kind: "cast", actorId: mage.id, spellId, targetInstanceId: "e1" },
+        makeRng(0.5)
+      ).enemies.front[0]!.currentHp;
+    };
+
+    expect(castDamage("mage-isostorm")).toBeGreaterThan(castDamage("mage-meteor-swarm"));
+  });
+
+  it("Isobarrier uses its stronger magical damage reduction", () => {
+    const enemy = makeEnemy("e1", "Fire Caster", 100, {
+      attack: 20,
+      agi: 1,
+      special: [{ kind: "caster", element: "fire" }],
+    });
+    const state = makeCombatState([enemy]);
+    const priest = state.party.find((c) => c.class === "Priest")!;
+    priest.knownSpellIds = ["priest-isobarrier"];
+    priest.sp = 99;
+    priest.stats.agi = 100;
+    const result = resolveCombatRound(
+      state,
+      state.party.map((c) =>
+        c.id === priest.id
+          ? { kind: "cast" as const, actorId: c.id, spellId: "priest-isobarrier" }
+          : { kind: "defend" as const, actorId: c.id }
+      ),
+      makeRng(0.99)
+    );
+
+    expect(result.magicScreen).toBe(7);
+    expect(result.magicScreenReduction).toBe(0.75);
+    expect(result.party.reduce((sum, c) => sum + c.hp, 0)).toBeGreaterThan(0);
+  });
+
+  it("a later ordinary screen cannot downgrade Isobarrier", () => {
+    const enemy = makeEnemy("e1", "Fire Caster", 100, {
+      attack: 20,
+      agi: 1,
+      special: [{ kind: "caster", element: "fire" }],
+    });
+    const state = makeCombatState([enemy]);
+    const mage = state.party.find((c) => c.class === "Mage")!;
+    mage.knownSpellIds = ["mage-spell-shield"];
+    mage.sp = 99;
+    state.magicScreen = 3;
+    state.magicScreenReduction = 0.75;
+    const result = resolvePlayerTurn(
+      state,
+      { kind: "cast", actorId: mage.id, spellId: "mage-spell-shield" },
+      makeRng(0.5)
+    );
+    expect(result.magicScreen).toBe(8);
+    expect(result.magicScreenReduction).toBe(0.75);
+  });
+
   it("party fizzle field causes party spells to fizzle when strong enough", () => {
     const enemy = makeEnemy("e1", "Rat", 100);
     const state = makeCombatState([enemy]);
@@ -922,6 +1019,29 @@ describe("summoning mechanics", () => {
     for (const c of result.party) {
       expect(c.hp).toBeGreaterThan(Math.max(1, c.maxHp - 20));
     }
+  });
+
+  it("Isorevive restores every fallen ally without changing living allies", () => {
+    const state = makeCombatState([makeEnemy("e1", "Rat", 100)]);
+    const priest = state.party.find((c) => c.class === "Priest");
+    if (!priest) throw new Error("No Priest in party");
+    priest.knownSpellIds = ["priest-isorevive"];
+    priest.sp = 99;
+    priest.stats.agi = 100;
+    const fallen = state.party[0]!;
+    fallen.hp = 0;
+    fallen.status = ["knockedOut"];
+    const livingHp = state.party[1]!.hp;
+    const actions: PlayerAction[] = state.party.map((c) =>
+      c.id === priest.id
+        ? { kind: "cast" as const, actorId: c.id, spellId: "priest-isorevive" }
+        : { kind: "defend" as const, actorId: c.id }
+    );
+    const result = resolveCombatRound(state, actions, makeRng(0.5));
+    expect(result.party.find((c) => c.id === fallen.id)!.hp).toBeGreaterThan(0);
+    expect(result.party.find((c) => c.id === fallen.id)!.status).not.toContain("knockedOut");
+    expect(result.party[1]!.hp).toBeLessThanOrEqual(livingHp);
+    expect(result.party[1]!.hp).toBeGreaterThan(0);
   });
 
   it("existing summoned ally attacks an enemy", () => {

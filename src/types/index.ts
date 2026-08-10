@@ -223,4 +223,5 @@ export interface GameState {
   // Returned") already won. A guardian tile whose id is here is inert —
   // never re-triggers combat. See game/features.ts handleStairsGuardian.
   clearedStairsGuardians: string[];
+  purchasedSpellIds?: string[];
 }

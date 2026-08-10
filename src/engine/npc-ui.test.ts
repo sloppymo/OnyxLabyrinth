@@ -231,6 +231,55 @@ describe("NPCController", () => {
     vi.restoreAllMocks();
   });
 
+  it("keeps a spell confirmation locked to the inspected row", () => {
+    const cue = vi.spyOn(audio, "uiBuySell").mockImplementation(() => {});
+    const npc = makeNPC({
+      id: "isobel",
+      name: "Isobel",
+      title: "proprietor of ISO-SPELLS",
+      capabilities: { shop: true, talk: true, barter: false, give: false, steal: false, attack: false },
+      shop: {
+        kind: "spell",
+        inventory: [
+          { spellId: "mage-isovoid", price: 2400 },
+          { spellId: "mage-isoflare", price: 3200 },
+        ],
+      },
+    });
+    const state = makeState(npc);
+    state.partyGold = 60000;
+    const mage = state.party.find((c) => c.class === "Mage")!;
+    const { controller } = freshController(state, npc);
+
+    controller.handleKey("b"); // Browse
+    controller.handleKey("Enter"); // Inspect Isovoid
+    controller.handleKey("ArrowDown"); // Must not change the confirmation target
+    controller.handleKey("Enter"); // Buy Isovoid
+
+    expect(state.partyGold).toBe(57600);
+    expect(mage.knownSpellIds).toContain("mage-isovoid");
+    expect(mage.knownSpellIds).not.toContain("mage-isoflare");
+    expect(cue).toHaveBeenCalledTimes(1);
+    controller.destroy();
+    vi.restoreAllMocks();
+  });
+
+  it("hides attack, steal, barter, and give for a spell shopkeeper", () => {
+    const npc = makeNPC({
+      capabilities: { shop: true, talk: true, barter: false, give: false, steal: false, attack: false },
+      shop: { kind: "spell", inventory: [{ spellId: "mage-isovoid", price: 2400 }] },
+    });
+    const state = makeState(npc);
+    const { controller } = freshController(state, npc);
+    const text = document.querySelector<HTMLDivElement>("#combat-panel")!.textContent ?? "";
+    expect(text).toContain("Browse Iso-Spells");
+    expect(text).not.toContain("Attack");
+    expect(text).not.toContain("Steal");
+    expect(text).not.toContain("Barter");
+    expect(text).not.toContain("Give");
+    controller.destroy();
+  });
+
   it("closes with Escape", () => {
     const npc = makeNPC();
     const state = makeState(npc);
