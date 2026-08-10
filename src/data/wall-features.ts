@@ -17,6 +17,10 @@ export interface WallFeatureSpriteDef {
   heightFrac: number;
   /** Vertical placement of the decal within the wall face. */
   anchor: "center" | "bottom" | "top";
+  /** Optional deterministic in-engine lettering composited over the art. */
+  overlayText?: readonly string[];
+  /** East-facing wall samples reverse the source texture horizontally. */
+  overlayTextMirrored?: boolean;
 }
 
 export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
@@ -87,17 +91,35 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
   {
     id: "isobels-sign",
     name: "Isobel's ISO-SPELLS sign",
-    file: "isobels-sign.svg",
-    widthFrac: 0.72,
-    heightFrac: 0.42,
+    file: "isobels-sign-pixellab.png",
+    widthFrac: 0.58,
+    heightFrac: 0.30,
     anchor: "center",
+    overlayText: ["ISOBEL'S", "ISO-SPELLS"],
+    overlayTextMirrored: true,
   },
   {
     id: "isobels-shelves",
     name: "Isobel's Spell Shelves",
-    file: "isobels-shelves.svg",
+    file: "isobels-shelf-pixellab.png",
     widthFrac: 0.82,
     heightFrac: 0.62,
+    anchor: "bottom",
+  },
+  {
+    id: "isobel-wall-charms",
+    name: "Isobel's Hanging Charms",
+    file: "isobel-wall-charms-pixellab.png",
+    widthFrac: 0.44,
+    heightFrac: 0.58,
+    anchor: "center",
+  },
+  {
+    id: "isobel-spellbook-stack",
+    name: "Isobel's Spellbook Stack",
+    file: "isobel-spellbook-stack-pixellab.png",
+    widthFrac: 0.52,
+    heightFrac: 0.58,
     anchor: "bottom",
   },
   // Hot Boi's Tavern interior — near-full-face bar composition (counter +

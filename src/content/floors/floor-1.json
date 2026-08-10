@@ -6316,6 +6316,18 @@
       "y": 27,
       "dir": "n",
       "spriteId": "isobels-shelves"
+    },
+    {
+      "x": 17,
+      "y": 27,
+      "dir": "n",
+      "spriteId": "isobel-spellbook-stack"
+    },
+    {
+      "x": 17,
+      "y": 29,
+      "dir": "e",
+      "spriteId": "isobel-wall-charms"
     }
   ],
   "ceilingSprites": [

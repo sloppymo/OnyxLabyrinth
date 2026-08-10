@@ -16,6 +16,7 @@ export default defineConfig({
         vignette: resolve(__dirname, "vfx-vignette.html"),
         dungeonHudPreview: resolve(__dirname, "dungeon-hud-preview.html"),
         floorEditor: resolve(__dirname, "tools/floor-editor.html"),
+        isobelArtMockup: resolve(__dirname, "public/isobel-art-mockup.html"),
       },
     },
   },
