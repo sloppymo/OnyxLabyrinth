@@ -78,6 +78,7 @@ import {
   tilesetThemesForFloor,
 } from "../game/floor-map";
 import {
+  getMapSpriteAlphaBounds,
   getMapSpriteDef,
   getMapSpriteImage,
   type MapSpriteImage,
@@ -254,6 +255,8 @@ export interface LoadedTileset {
    * panel exactly as before this field existed.
    */
   stairs: HTMLCanvasElement | null;
+  /** Optional non-repeating, heading-aware panorama used by outdoor themes. */
+  sky: HTMLImageElement | null;
 }
 
 /** Bundled Vite-import fallbacks for campaign themes (also mirrored in public/). */
@@ -300,6 +303,12 @@ function urlsForTheme(theme: string): {
 /** Public path only — see `LoadedTileset.stairs` doc comment. */
 function stairsUrlForTheme(theme: string): string {
   return `${import.meta.env.BASE_URL}assets/tilesets/${theme}/stairs.png`;
+}
+
+function skyUrlForTheme(theme: string): string | null {
+  return theme === "camp"
+    ? `${import.meta.env.BASE_URL}assets/tilesets/camp/sky.png`
+    : null;
 }
 
 const WATER_FLOOR_A_URL = `${import.meta.env.BASE_URL}assets/tilesets/water/floorA.png`;
@@ -355,6 +364,20 @@ let floorCeilBuf: ImageData | null = null;
 let floorCeilBufW = 0;
 let floorCeilBufH = 0;
 
+// Screen-space sky backdrop for the Camp's false-outdoor reveal. Generated
+// once at the current canvas size and blitted into the upper half of the
+// floor/ceiling buffer before the floor casting pass.
+let campSkyBuf: ImageData | null = null;
+let campSkyBufW = 0;
+let campSkyBufH = 0;
+let campSkyBufImage: HTMLImageElement | null = null;
+let campSkyBufHeading = NaN;
+
+let campSkyScratchCanvas: HTMLCanvasElement | null = null;
+let campSkyScratchCtx: CanvasRenderingContext2D | null = null;
+let campSkySourceImage: HTMLImageElement | null = null;
+let campSkySourceData: ImageData | null = null;
+
 // Floor/ceiling pixel-cast memoization: opacityForDepth is pure distance
 // math (no time term) and the render camera holds byte-identical values
 // while the player is neither moving nor turning (RenderCameraAnimator
@@ -372,6 +395,7 @@ let floorCeilCachePlaneX = NaN;
 let floorCeilCachePlaneY = NaN;
 let floorCeilCacheBobY = NaN;
 let floorCeilCacheDarkness: boolean | null = null;
+let floorCeilCacheUseSky: boolean | null = null;
 let floorCeilCacheTextureGrid: CellTextureGrid | null = null;
 let floorCeilCachePrimaryTextures: TextureSet | null = null;
 let floorCeilCacheWaterCells: boolean[][] | null = null;
@@ -614,6 +638,7 @@ function ensureWaterTextureLoaded(): Promise<void> {
         repeatedWall: null,
         door: null,
         stairs: null,
+        sky: null,
       };
       tilesetGeneration++;
     })
@@ -726,7 +751,8 @@ function loadTileset(
     // keeps rendering for this theme's stairs exits, same as before this field
     // existed.
     loadImage(stairsUrlForTheme(theme)).catch(() => null),
-  ]).then(([wall, floorAImg, floorBImg, ceilingImg, doorImg, stairsImg]) => {
+    skyUrlForTheme(theme) ? loadImage(skyUrlForTheme(theme)!).catch(() => null) : Promise.resolve(null),
+  ]).then(([wall, floorAImg, floorBImg, ceilingImg, doorImg, stairsImg, sky]) => {
     const wallAdjusted = wall
       ? adjustTextureImage(wall, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)
       : null;
@@ -776,7 +802,7 @@ function loadTileset(
       ? adjustTextureImage(stairsImg, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)
       : null;
     const stairs = stairsAdjusted ? prepareRepeatedTexture(stairsAdjusted, 1, 1) : null;
-    return { set, repeatedWall, door, stairs };
+    return { set, repeatedWall, door, stairs, sky };
   });
 }
 
@@ -1011,6 +1037,46 @@ const decorSpriteSize =
   (screenH: number, depth: number): number =>
     Math.max(8, Math.abs(Math.floor((screenH / depth) * (baseSize / 56))));
 
+/**
+ * Paint a floor-standing map sprite using its visible source rectangle.
+ *
+ * `groundY` is the projected floor line for the tile. Cropping is intentional:
+ * source canvases often include transparent export padding, and anchoring that
+ * padding instead of the lowest opaque pixel makes wheels, boots, and tent
+ * hems visibly float above the floor.
+ */
+function drawGroundedMapSprite(
+  ctx: CanvasRenderingContext2D,
+  img: MapSpriteImage,
+  spriteId: string,
+  screenX: number,
+  groundY: number,
+  drawH: number
+): void {
+  const bounds = getMapSpriteAlphaBounds(spriteId);
+  if (!bounds) return;
+  // `drawH` is the projected height of the original source canvas (the
+  // pre-grounding billboard contract). Crop transparent padding without
+  // changing that world scale: the visible rectangle gets the same pixels
+  // per source pixel as the full image did.
+  const sourceH = (img as HTMLImageElement).naturalHeight || img.height;
+  if (sourceH <= 0 || bounds.height <= 0) return;
+  const scale = drawH / sourceH;
+  const visibleH = bounds.height * scale;
+  const drawW = bounds.width * scale;
+  ctx.drawImage(
+    img,
+    bounds.x,
+    bounds.y,
+    bounds.width,
+    bounds.height,
+    screenX - drawW / 2,
+    groundY - visibleH,
+    drawW,
+    visibleH
+  );
+}
+
 /** Draw ceiling-hanging decor sprites (chains, cages, censers, roots, ...). */
 function drawCeilingSprites(
   ctx: CanvasRenderingContext2D,
@@ -1074,7 +1140,7 @@ function drawMapSprites(
   const sprites = state.floor.mapSprites;
   if (!sprites?.length) return;
 
-  type Placed = { spriteId: string; place: BillboardPlacement };
+  type Placed = { spriteId: string; def: MapSpriteDef; place: BillboardPlacement };
   const placed: Placed[] = [];
   for (const s of sprites) {
     const def = getMapSpriteDef(s.spriteId);
@@ -1082,9 +1148,26 @@ function drawMapSprites(
     const place = placeBillboard(
       ctx, cam, hits, stripWidth, s.x, s.y, decorSpriteSize(def.baseSize), inDarkness
     );
-    if (place) placed.push({ spriteId: s.spriteId, place });
+    if (place) placed.push({ spriteId: s.spriteId, def, place });
   }
   placed.sort((a, b) => b.place.depth - a.place.depth);
+
+  // Warm pools belong behind their props, so the fire and lantern cores stay
+  // crisp while their light gently reaches the readable night floor/walls.
+  for (const p of placed) {
+    if (!p.def.light) continue;
+    const { screenX, drawY, size, alpha } = p.place;
+    const light = p.def.light;
+    const radius = size * light.radiusScale;
+    const gradient = ctx.createRadialGradient(screenX, drawY + size, 0, screenX, drawY + size, radius);
+    gradient.addColorStop(0, `rgba(${light.color}, ${light.intensity * alpha})`);
+    gradient.addColorStop(0.45, `rgba(${light.color}, ${light.intensity * alpha * 0.34})`);
+    gradient.addColorStop(1, `rgba(${light.color}, 0)`);
+    ctx.save();
+    ctx.fillStyle = gradient;
+    ctx.fillRect(screenX - radius, drawY + size - radius, radius * 2, radius * 2);
+    ctx.restore();
+  }
 
   for (const p of placed) {
     const img = getMapSpriteImage(p.spriteId);
@@ -1093,7 +1176,7 @@ function drawMapSprites(
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, screenX - size / 2, drawY, size, size);
+    drawGroundedMapSprite(ctx, img, p.spriteId, screenX, drawY + size, size);
     ctx.restore();
   }
 }
@@ -1124,6 +1207,7 @@ function drawFeatureBillboards(
 
   type Placed = {
     feature: TileFeature;
+    spriteId: string | null;
     img: MapSpriteImage | null;
     place: BillboardPlacement;
   };
@@ -1143,6 +1227,7 @@ function drawFeatureBillboards(
       // First candidate whose art has actually shipped wins.
       let img: MapSpriteImage | null = null;
       let def: MapSpriteDef | undefined;
+      let spriteId: string | null = null;
       // NPCs are per-instance, not per-feature-type: each one may carry its
       // own mapSpriteId (same MAP_SPRITES registry/cache as decor sprites),
       // so this resolves the specific NPC at (x,y) instead of the shared
@@ -1155,6 +1240,7 @@ function drawFeatureBillboards(
         if (candidate) {
           img = candidate;
           def = getMapSpriteDef(npcSpriteId);
+          spriteId = npcSpriteId;
         }
       } else {
         for (const id of featurePropSpriteIds(tile, { looted })) {
@@ -1162,6 +1248,7 @@ function drawFeatureBillboards(
           if (!candidate) continue;
           img = candidate;
           def = getMapSpriteDef(id);
+          spriteId = id;
           break;
         }
       }
@@ -1183,7 +1270,12 @@ function drawFeatureBillboards(
           : (screenH, depth) => featureMarkerSize(screenH, depth, FEATURE_BILLBOARD_BASE_SIZE),
         inDarkness
       );
-      if (place) placed.push({ feature: tile, img: hasProp ? img : null, place });
+      if (place) placed.push({
+        feature: tile,
+        spriteId,
+        img: hasProp ? img : null,
+        place,
+      });
     }
   }
   placed.sort((a, b) => b.place.depth - a.place.depth);
@@ -1192,9 +1284,9 @@ function drawFeatureBillboards(
     const { screenX, drawY, size, alpha } = p.place;
     ctx.save();
     ctx.globalAlpha = alpha;
-    if (p.img) {
+    if (p.img && p.spriteId) {
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(p.img, screenX - size / 2, drawY, size, size);
+      drawGroundedMapSprite(ctx, p.img, p.spriteId, screenX, drawY + size, size);
     } else {
       drawFeatureGlyph(ctx, screenX, drawY + size / 2, p.feature, color, size);
     }
@@ -1276,10 +1368,97 @@ function featureGlyph(feature: TileFeature): string {
  * maxDist are also filled with background, since the raycaster leaves them
  * empty and the walls (drawn after) will occlude most of them anyway.
  */
+/** Fill the upper half of an ImageData with the Camp's star-sky ceiling texture
+ * drawn as a screen-space sky backdrop. Falls back to a procedural gradient if
+ * the ceiling art is not (yet) loaded. */
+function fillCampSky(
+  buf: ImageData,
+  w: number,
+  h: number,
+  img: HTMLImageElement | null,
+  heading: number
+): void {
+  if (
+    img &&
+    (img as HTMLImageElement).width > 0 &&
+    typeof document !== "undefined"
+  ) {
+    if (!campSkyScratchCanvas) {
+      campSkyScratchCanvas = document.createElement("canvas");
+      campSkyScratchCtx = campSkyScratchCanvas.getContext("2d");
+    }
+    if (campSkyScratchCtx) {
+      if (campSkySourceImage !== img || !campSkySourceData) {
+        campSkyScratchCanvas!.width = img.width;
+        campSkyScratchCanvas!.height = img.height;
+        campSkyScratchCtx!.imageSmoothingEnabled = false;
+        campSkyScratchCtx!.drawImage(img, 0, 0);
+        campSkySourceImage = img;
+        campSkySourceData = campSkyScratchCtx!.getImageData(0, 0, img.width, img.height);
+      }
+      const src = campSkySourceData!;
+      const span = Math.min(1, w / h);
+      const offset = ((heading / (Math.PI * 2)) % 1 + 1) % 1;
+      for (let y = 0; y < h; y++) {
+        const sy = Math.min(src.height - 1, Math.floor((y / h) * src.height));
+        for (let x = 0; x < w; x++) {
+          const sx = Math.floor((((offset + (x / w - 0.5) * span) % 1 + 1) % 1) * src.width);
+          const from = (sy * src.width + sx) * 4;
+          const to = (y * w + x) * 4;
+          buf.data[to] = src.data[from];
+          buf.data[to + 1] = src.data[from + 1];
+          buf.data[to + 2] = src.data[from + 2];
+          buf.data[to + 3] = 255;
+        }
+      }
+      return;
+    }
+  }
+
+  // Procedural fallback (gradient + sparse stars) while the art loads.
+  const u32 = new Uint32Array(buf.data.buffer);
+  const topR = 12,
+    topG = 14,
+    topB = 28;
+  const horR = 44,
+    horG = 48,
+    horB = 62;
+  for (let y = 0; y < h; y++) {
+    const t = h <= 1 ? 0 : y / (h - 1);
+    const r = topR + Math.round((horR - topR) * t);
+    const g = topG + Math.round((horG - topG) * t);
+    const b = topB + Math.round((horB - topB) * t);
+    const packed = (255 << 24) | (b << 16) | (g << 8) | r;
+    const rowOff = y * w;
+    for (let x = 0; x < w; x++) {
+      u32[rowOff + x] = packed;
+    }
+  }
+
+  // Sparse stars / tiny clusters — deterministic screen-space placement.
+  let seed = 0xca7f00d;
+  const starCount = 60;
+  for (let i = 0; i < starCount; i++) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    const x = seed % w;
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    const y = seed % h;
+    const sr = 210,
+      sg = 212,
+      sb = 216;
+    u32[y * w + x] = (255 << 24) | (sb << 16) | (sg << 8) | sr;
+    if (i % 7 === 0 && x + 1 < w) {
+      u32[y * w + x + 1] = (255 << 24) | (sb << 16) | (sg << 8) | sr;
+    }
+  }
+}
+
 function drawFloorCeilingCast(
   ctx: CanvasRenderingContext2D,
   cam: RenderCamera,
   inDarkness: boolean,
+  useSky: boolean,
+  sky: HTMLImageElement | null,
   cellTextures: CellTextureGrid,
   primaryTextures: TextureSet,
   waterCells: boolean[][],
@@ -1316,6 +1495,7 @@ function drawFloorCeilingCast(
     planeY === floorCeilCachePlaneY &&
     bobY === floorCeilCacheBobY &&
     inDarkness === floorCeilCacheDarkness &&
+    useSky === floorCeilCacheUseSky &&
     cellTextures === floorCeilCacheTextureGrid &&
     primaryTextures === floorCeilCachePrimaryTextures &&
     waterCells === floorCeilCacheWaterCells &&
@@ -1337,8 +1517,24 @@ function drawFloorCeilingCast(
   const u32 = new Uint32Array(data.buffer);
   u32.fill(BG_RGBA_PACKED);
 
+  // Blit the screen-space Camp sky into the upper half when active.
+  if (useSky) {
+    const heading = Math.atan2(cam.dirY, cam.dirX);
+    if (!campSkyBuf || campSkyBufW !== w || campSkyBufH !== horizonY || campSkyBufImage !== sky || campSkyBufHeading !== heading) {
+      campSkyBuf = ctx.createImageData(w, horizonY);
+      campSkyBufW = w;
+      campSkyBufH = horizonY;
+      campSkyBufImage = sky;
+      campSkyBufHeading = heading;
+      fillCampSky(campSkyBuf, w, horizonY, sky, heading);
+    }
+    const skyU32 = new Uint32Array(campSkyBuf.data.buffer);
+    u32.set(skyU32, 0);
+  }
+
   // --- Ceiling rows (0 .. horizonY - 1) ---
   for (let y = 0; y < horizonY; y++) {
+    if (useSky) continue;
     const rowDistance = halfH / (halfH - y);
     if (rowDistance > maxDist) continue;
 
@@ -1429,6 +1625,7 @@ function drawFloorCeilingCast(
   floorCeilCachePlaneY = planeY;
   floorCeilCacheBobY = bobY;
   floorCeilCacheDarkness = inDarkness;
+  floorCeilCacheUseSky = useSky;
   floorCeilCacheTextureGrid = cellTextures;
   floorCeilCachePrimaryTextures = primaryTextures;
   floorCeilCacheWaterCells = waterCells;
@@ -1482,12 +1679,21 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const primaryTileset = resolvedTextures.primaryTileset;
   const primaryTextures = primaryTileset?.set ?? null;
 
+  // Screen-space sky is used only in the Camp tileset, where the walls
+  // themselves become the horizon. Darkness zones intentionally keep the
+  // normal fogged ceiling so the sky doesn't read through a dark cave.
+  const activeTheme = themeAt(state.floor, state.player.x, state.player.y);
+  const useSky = activeTheme === "camp" && !state.inDarkness;
+  const campSky = useSky ? tilesetCache.get("camp")?.sky ?? null : null;
+
   // --- Ceiling and floor casting (single batched upload) ---
   if (primaryTextures) {
     drawFloorCeilingCast(
       ctx,
       cam,
       state.inDarkness,
+      useSky,
+      campSky,
       resolvedTextures.cellTextures,
       primaryTextures,
       resolvedTextures.waterCells,
@@ -1804,6 +2010,13 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
 
   // Restore from the head-bob translate before drawing screen-space overlays.
   ctx.restore();
+
+  if (useSky) {
+    ctx.save();
+    ctx.fillStyle = "rgba(29, 43, 79, 0.10)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
 
   // --- Torch flicker overlay ---
   // A subtle warm overlay that breathes with a slow sine wave, adding life to

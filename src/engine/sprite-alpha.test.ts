@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  alphaBounds,
   hasAlphaChannel,
   keyOutBackground,
   sampleBackgroundColor,
@@ -38,6 +39,31 @@ describe("hasAlphaChannel", () => {
     const { data } = grid(["..", ".."], { ".": BG });
     data[3] = 0;
     expect(hasAlphaChannel(data)).toBe(true);
+  });
+});
+
+describe("alphaBounds", () => {
+  it("returns a tight visible rectangle and reports bottom padding", () => {
+    const { data, width, height } = grid(
+      ["......", ".XX...", ".XXX..", "......", "......"],
+      { ".": BG, X: [140, 80, 40] }
+    );
+    // This fixture starts opaque; make the background transparent exactly as
+    // the map-sprite cache does before measuring it.
+    keyOutBackground(data, width, height);
+
+    expect(alphaBounds(data, width, height)).toEqual({
+      x: 1,
+      y: 1,
+      width: 3,
+      height: 2,
+      bottomPadding: 2,
+    });
+  });
+
+  it("returns null for a fully transparent canvas", () => {
+    const data = new Uint8ClampedArray(4 * 4 * 4);
+    expect(alphaBounds(data, 4, 4)).toBeNull();
   });
 });
 

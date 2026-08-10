@@ -286,7 +286,7 @@ describe("floor definitions", () => {
     expect(afterCryptRaftAndGuardian.has(`${stairs[0].x},${stairs[0].y}`)).toBe(true);
   });
 
-  it("floor 1 visibly uses all five built-in tileset themes plus Hot Boi's tavern and Namanda's church zones", () => {
+  it("floor 1 visibly uses all five built-in themes plus Hot Boi's tavern and Namanda's church", () => {
     const f1 = findFloor(1)!;
     const themes = new Set<string>([resolveTilesetTheme(f1)]);
     for (let y = 0; y < f1.height; y++) {
@@ -299,7 +299,7 @@ describe("floor definitions", () => {
     const f1 = findFloor(1)!;
     expect(f1.encounterRate).toBeCloseTo(0.08);
     expect((f1.encounterZones ?? []).every((zone) => zone.tableFloorId === undefined)).toBe(true);
-    expect(f1.npcs).toHaveLength(6);
+    expect(f1.npcs).toHaveLength(8);
     expect((f1.events ?? []).every((event) => event.message.length <= 60)).toBe(true);
     const playerFacingCopy = JSON.stringify({
       name: f1.name,

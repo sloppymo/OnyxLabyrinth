@@ -3,7 +3,7 @@
  */
 
 import { MAP_SPRITES, mapSpriteUrl, type MapSpriteDef } from "../data/map-sprites";
-import { keyOutBackground } from "./sprite-alpha";
+import { alphaBounds, keyOutBackground, type AlphaBounds } from "./sprite-alpha";
 
 /**
  * Decor billboards are drawn straight through `ctx.drawImage`, so anything
@@ -17,7 +17,9 @@ import { keyOutBackground } from "./sprite-alpha";
  */
 export type MapSpriteImage = HTMLImageElement | HTMLCanvasElement;
 
-const cache = new Map<string, MapSpriteImage | null>();
+type CachedMapSprite = { image: MapSpriteImage; alphaBounds: AlphaBounds };
+
+const cache = new Map<string, CachedMapSprite | null>();
 let loadPromise: Promise<void> | null = null;
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
@@ -35,26 +37,36 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
  * canvas work is unavailable. Never throws — a failed key must degrade to the
  * old behaviour, not lose the sprite.
  */
-function prepareSprite(img: HTMLImageElement): MapSpriteImage {
+function prepareSprite(img: HTMLImageElement): CachedMapSprite | null {
   const w = img.naturalWidth || img.width;
   const h = img.naturalHeight || img.height;
-  if (!w || !h) return img;
+  if (!w || !h) return null;
   try {
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return img;
+    if (!ctx) {
+      return {
+        image: img,
+        alphaBounds: { x: 0, y: 0, width: w, height: h, bottomPadding: 0 },
+      };
+    }
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(img, 0, 0);
     const pixels = ctx.getImageData(0, 0, w, h);
-    if (keyOutBackground(pixels.data, w, h) === 0) return img;
+    keyOutBackground(pixels.data, w, h);
+    const bounds = alphaBounds(pixels.data, w, h);
+    if (!bounds) return null;
     ctx.putImageData(pixels, 0, 0);
-    return canvas;
+    return { image: canvas, alphaBounds: bounds };
   } catch {
     // Tainted canvas or a headless context with no getImageData: keep the
     // original rather than dropping the decor entirely.
-    return img;
+    return {
+      image: img,
+      alphaBounds: { x: 0, y: 0, width: w, height: h, bottomPadding: 0 },
+    };
   }
 }
 
@@ -70,7 +82,12 @@ export function loadMapSprites(): Promise<void> {
 }
 
 export function getMapSpriteImage(spriteId: string): MapSpriteImage | null {
-  return cache.get(spriteId) ?? null;
+  return cache.get(spriteId)?.image ?? null;
+}
+
+/** Content bounds calculated from the post-keyed image. */
+export function getMapSpriteAlphaBounds(spriteId: string): AlphaBounds | null {
+  return cache.get(spriteId)?.alphaBounds ?? null;
 }
 
 export function getMapSpriteDef(spriteId: string): MapSpriteDef | undefined {

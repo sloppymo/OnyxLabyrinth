@@ -1,5 +1,27 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+## 2026-08-08 — Floor 1 Camp hub
+
+- Follow-up grounding gate: fixed the generic floor-standing map-sprite contract. The cache now measures post-key alpha bounds once per image; renderer source-crops to those bounds, preserves their aspect ratio, and anchors the lowest visible pixel to the projected floor line. This applies to Camp decor and map-sprite-backed feature billboards without per-Camp offsets or art regeneration.
+- Scale correction: the cropped visible rectangle now inherits the original source-canvas pixel scale (`size / sourceHeight`), so alpha cropping removes padding without enlarging low/wide props. Fresh production captures visually rechecked the one-tile handcart and two-tile lantern; wheels and the lantern base meet the projected floor with no unexpected size jump.
+- Diagnostic: all 27 Camp sprites were alpha-bounds audited. The handcart's 120×120 canvas contains a 95×59 visible rectangle ending nine transparent rows above the canvas bottom; multiple other assets have 4–44 trailing transparent rows. A temporary same-size debug sprite with opaque pixels on the literal canvas bottom was rendered at the handcart's one-tile pose, then removed. It and the cropped handcart both met the same projected floor line. Production captures of the restored handcart at one and two tiles were visually inspected; wheels visibly contact the floor. Browser console reported zero errors.
+- Follow-up verification: `npm run check` passes: app/tools typecheck, Vite build, full Vitest suite (104 files / 2,136 tests), floor validation (only pre-existing Namanda warnings), and floor-export consistency. `git diff --check` passes.
+
+- Current mission: establish The Camp as Floor 1's third major refuge: a 10×10 false-outdoor twilight settlement rendered by the existing raycaster, with a coherent PixelLab production library, populated layout, review gallery, walkthrough, and measured QA.
+- Dedicated worktree `/home/sloppymo/OnyxLabyrinth-camp`, branch `agent/floor1-camp`; the original shared worktree remains untouched.
+- Floor 1 safely expands east from 24×28 to 40×28 without shifting any authored coordinate. The open Camp heart is `(25,8)–(34,17)`, entered eastward from `(22,12)` through `(23,12)` and `(24,12)`; columns 35–39 remain unused rock.
+- False-sky gate passed with existing ceiling casting: low-frequency muted navy material, worn earth, Camp masonry perimeter, sparse star ceiling features, and one physical root-curtain clue. No renderer extension was needed. Raw prototype evidence and findings live under `docs/camp-art-review/screenshots/false-sky-prototype/` and `docs/CAMP-FALSE-SKY-PROTOTYPE.md`.
+- PixelLab production pass generated 54 candidates across materials, hero objects, support props, and ambient people. The first-pass library is frozen after native visual inspection and deterministic alpha/dimension/palette/bounds checks.
+- Current assembled layout has 27 map-sprite placements, including six strong landmarks and seven ambient compositions depicting nine people. A 14-view production-preview walkthrough passes with no browser errors; its raw screenshots live under `docs/camp-art-review/screenshots/walkthrough/raw-gameplay/`.
+- In-engine tuning enlarged the pavilion and added the accepted palisade checkpoint at the north perimeter. Build and focused Floor 1 assertions pass after this adjustment.
+- Next: run the standard web-game client once against the final layout, measure normal/2× sprite load without permanent renderer instrumentation, build the review gallery/generation log, then run the complete project gate and commit coherent production phases.
+- Final QA complete: the standard web-game client ran without captured errors; the 14-view Camp walkthrough and the 65-image review gallery were visually inspected; all gallery image requests resolve.
+- Performance at the entrance reveal: 27 authored Camp sprites / 17 drawn per frame; temporary 54-sprite stress / 37 drawn per frame; both held 16.7 ms median/p95 frame pacing with no browser errors. The stress population was browser-memory-only.
+- Full gate passed: 103 test files / 2,116 tests, app/tools TypeScript, Vite build, all-floor validation, and export drift.
+- Completed commits: `6542000` false-sky shell, `bc32071` production PixelLab art/layout, `e53a3f1` visual regression QA. No push or merge.
+- Handoff: `origin/main` advanced by five Saint Namanda commits during this pass and overlaps Floor 1 exports/registries/tests. Do not merge this stale-base branch directly; replay or reconcile the three Camp commits onto current main while preserving both hubs, then rerun `npm run check` and both walkthroughs.
+- Deliberately deferred: merchant/storage/smith/companion interactions and named service NPCs. The physical service neighborhoods exist, but this art/area pass does not add commerce or companion systems.
+
 ## 2026-08-02 — Boss combat music
 
 - Current prompt: replace procedural boss combat bed with authored music file (higher-difficulty-battle.mp3).
@@ -670,3 +692,43 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   title checks remain clean at desktop and mobile sizes.
 - Next: stage the entire unignored worktree, inspect the exact staged manifest,
   commit and push the current branch, open a PR to refreshed `main`, and merge it.
+
+## 2026-08-08 — The Camp location gate
+
+- Current prompt: build The Camp, a large approximately 10×10 false-outdoor
+  Floor 1 refuge, using the existing first-person renderer and a coherent
+  PixelLab MCP production-art library.
+- Loaded the `develop-web-game`, `playwright`, and `imagegen` skills. Actual
+  production asset generation is reserved for PixelLab MCP per the prompt;
+  the image skill contributes inspection and artifact-QA discipline.
+- Created isolated worktree `/home/sloppymo/OnyxLabyrinth-camp` on
+  `agent/floor1-camp` from current `origin/main` at `8314483`. The shared main
+  worktree's unrelated dirty combat/sprite work was not touched.
+- Audited the live 24×28 Floor 1 grid and every coordinate overlay. There is
+  no safe-margin untouched 10×10 region, or even a 6×6 one. The best 10×10
+  candidate overwrites 28 active cells and substantial Saint Namanda content;
+  the largest untouched rectangle is only 17×3.
+- Mission stop gate reached before sky prototyping or PixelLab generation.
+  Detailed evidence and ranked candidates are in `docs/CAMP-LOCATION-AUDIT.md`.
+- The user approved a 40×28 eastward expansion, preserving every existing
+  coordinate, with a 10×10 Camp heart at `(25,8)`–`(34,17)`, an east-facing
+  approach from `(22,12)`, and untouched future rock at `x=35`–`x=39`.
+- Expansion, approach, safe zone, theme zone, floor revision, exports, and
+  editor-compatible serialization are implemented. Focused tests lock the
+  10×10 openness and unused eastern headroom; floor validation has zero issues.
+- False-sky candidate 1 was rejected in raw gameplay: discrete cloud masses
+  repeated into a perspective polka-dot ceiling. Candidate 2/3 uses a nearly
+  solid muted navy field plus three sparse star feature cells. Raw 1/3/5/8+
+  tile and cross-room captures show open volume without obvious stamp motifs.
+  Existing renderer architecture passes the P0 gate; no extension is needed.
+- Added the persistent `scripts/playtests/camp-sky-prototype.mjs` capture and
+  visually inspected all ten raw screenshots. Browser console/network errors:
+  zero. Build and focused floor/validator tests pass.
+- PixelLab MCP connection and production schemas are confirmed. Opening balance
+  is 1,812 subscription generations. Production generation may now begin.
+
+## 2026-08-08 — Camp recomposition in progress
+
+- Corrected the renderer design to use a Camp-owned sky panorama instead of Floor 1's primary ceiling texture; heading-aware sampling and Camp-only readable-night lighting passed visual verification from the Camp's four headings with no browser errors.
+- Repositioned Camp visual-only props into the fortified-caravan composition selected by the user; no collision, encounter, or gameplay data changed.
+- Verification: production-preview Camp screenshots were visually reviewed from the four cardinal headings with zero browser console errors. `npm run build`, the focused renderer/floor tests (166), the full suite (104 files / 2,134 tests), floor validation, and floor export consistency all pass. Existing Floor 1 validator warnings concern Namanda content, not this Camp pass.

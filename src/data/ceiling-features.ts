@@ -24,6 +24,8 @@ export interface CeilingFeatureDef {
 }
 
 export const CEILING_FEATURES: readonly CeilingFeatureDef[] = [
+  { id: "camp-sky-star-a", name: "Camp False-Sky Star A", file: "camp-sky-star-a.png" },
+  { id: "camp-sky-star-b", name: "Camp False-Sky Star B", file: "camp-sky-star-b.png" },
   { id: "f1-ceiling-grate", name: "Iron Ceiling Grate", file: "f1-ceiling-grate.png" },
   { id: "f1-ceiling-crack-roots", name: "Cracked Ceiling with Roots", file: "f1-ceiling-crack-roots.png" },
   { id: "f1-ceiling-beam", name: "Heavy Wooden Cross-Beam", file: "f1-ceiling-beam.png" },
