@@ -129,6 +129,18 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
     baseSize: 16,
     foreground: true,
   },
+  // The Sunken Processional (Level 2 "descent" kit).
+  { id: "descent-toppled-drum", name: "Toppled Column Drum", file: "descent-toppled-drum.png", baseSize: 36 },
+  { id: "descent-offering-bowls", name: "Stacked Offering Bowls", file: "descent-offering-bowls.png", baseSize: 16 },
+  { id: "descent-rubble", name: "Collapsed Masonry", file: "descent-rubble.png", baseSize: 40 },
+  { id: "descent-fallen-standard", name: "Processional Standard", file: "descent-fallen-standard.png", baseSize: 36 },
+  {
+    id: "descent-brazier",
+    name: "Burning Tripod Brazier",
+    file: "descent-brazier.png",
+    baseSize: 40,
+    light: { color: "255, 154, 60", radiusScale: 1.3, intensity: 0.34 },
+  },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(

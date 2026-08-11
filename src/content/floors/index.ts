@@ -31,6 +31,11 @@ import floor5 from "./floor-5.json";
  * map sprites) and is imported directly by floor-validate.test.ts. It is no
  * longer registered here (id 4 now belongs to the campaign floor); load it
  * via the editor's Playtest Floor button or `?debug=1` registerFloorMap.
+ *
+ * level-2-slice.json ("The Sunken Processional") is the Level 2 vertical
+ * slice for Maze Renderer 2 (height zones, ramp climb, grand stair, 3x hall).
+ * It stays unregistered until the campaign links it; walk it via
+ * scripts/playtests/level2-slice-walk.mjs or import it in the floor editor.
  */
 export const EXTRA_FLOOR_MAPS: FloorMapJSON[] = [
   floor1 as unknown as FloorMapJSON,

@@ -263,6 +263,56 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     heightFrac: 0.82,
     anchor: "center",
   },
+  // The Sunken Processional (Level 2 "descent" kit).
+  {
+    id: "descent-relief-procession",
+    name: "Processional Frieze",
+    file: "descent-relief-procession.png",
+    widthFrac: 0.92,
+    heightFrac: 0.46,
+    anchor: "center",
+  },
+  {
+    id: "descent-niche-votive",
+    name: "Votive Niche",
+    file: "descent-niche-votive.png",
+    widthFrac: 0.5,
+    heightFrac: 0.72,
+    anchor: "center",
+  },
+  {
+    id: "descent-bronze-grate",
+    name: "Bronze Vent Grate",
+    file: "descent-bronze-grate.png",
+    widthFrac: 0.42,
+    heightFrac: 0.42,
+    anchor: "center",
+  },
+  {
+    id: "descent-repair-plate",
+    name: "Bronze Repair Plate",
+    file: "descent-repair-plate.png",
+    widthFrac: 0.44,
+    heightFrac: 0.5,
+    anchor: "bottom",
+  },
+  // Hero landmark halves: the sealed processional gate (two adjacent cells).
+  {
+    id: "descent-gate-left",
+    name: "Gate of the Kept (left leaf)",
+    file: "descent-gate-left.png",
+    widthFrac: 1.0,
+    heightFrac: 1.0,
+    anchor: "bottom",
+  },
+  {
+    id: "descent-gate-right",
+    name: "Gate of the Kept (right leaf)",
+    file: "descent-gate-right.png",
+    widthFrac: 1.0,
+    heightFrac: 1.0,
+    anchor: "bottom",
+  },
 ];
 
 export const WALL_FEATURES_BY_ID: Record<string, WallFeatureSpriteDef> = Object.fromEntries(

@@ -11,6 +11,7 @@ import {
 import { validateFloorMap, validateFloorDef } from "./floor-validate";
 import { carveRoom, setTile, setEdge } from "./dungeon";
 import demoFloorRaw from "../content/floors/floor-4-demo.json";
+import level2SliceRaw from "../content/floors/level-2-slice.json";
 
 /** Small carved test floor: open 1..4 room, start inside. */
 function testFloor(): FloorDef {
@@ -163,6 +164,12 @@ describe("floor-validate content checks", () => {
 
   it("shipped demo pack parses and has no errors", () => {
     const map = parseFloorMapJSON(JSON.parse(JSON.stringify(demoFloorRaw)));
+    const errors = validateFloorMap(map).filter((i) => i.severity === "error");
+    expect(errors, errors.map((e) => e.message).join("; ")).toEqual([]);
+  });
+
+  it("Level 2 vertical slice pack parses and has no errors", () => {
+    const map = parseFloorMapJSON(JSON.parse(JSON.stringify(level2SliceRaw)));
     const errors = validateFloorMap(map).filter((i) => i.severity === "error");
     expect(errors, errors.map((e) => e.message).join("; ")).toEqual([]);
   });

@@ -35,6 +35,9 @@ export const CEILING_FEATURES: readonly CeilingFeatureDef[] = [
   { id: "f1-ceiling-water-stain", name: "Water-Damaged Ceiling Patch", file: "f1-ceiling-water-stain.png" },
   { id: "f1-ceiling-namanda-mark", name: "Namanda Chapel Relief", file: "f1-ceiling-namanda-mark.png" },
   { id: "isobel-astral-medallion", name: "Iso-Spells Astral Medallion", file: "isobel-astral-medallion.png" },
+  // The Sunken Processional (Level 2 "descent" kit).
+  { id: "descent-ceiling-shaft", name: "Square Hoist Shaft", file: "descent-ceiling-shaft.png" },
+  { id: "descent-ceiling-medallion", name: "Bronze Ring Medallion", file: "descent-ceiling-medallion.png" },
 ];
 
 export const CEILING_FEATURES_BY_ID: Record<string, CeilingFeatureDef> = Object.fromEntries(
