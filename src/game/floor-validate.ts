@@ -23,6 +23,13 @@ import {
   cellIsPassable,
 } from "./floor-map";
 import { resolveCellVolume } from "../engine/maze-renderer/geometry/cell-volume";
+import {
+  isConnectorSide,
+  maxFloorSurfaceZ,
+  OPPOSITE_SURFACE_DIRECTION,
+  resolveFloorSurface,
+  surfacesConnectAcrossEdge,
+} from "../engine/maze-renderer/geometry/floor-surface";
 
 export type ValidationSeverity = "error" | "warning" | "info";
 
@@ -181,6 +188,8 @@ function validateHeightConfig(
     }
   }
 
+  validateRampConfig(map, issues);
+
   for (let y = 0; y < map.height; y++) {
     for (let x = 0; x < map.width; x++) {
       const volume = resolveCellVolume(map, x, y);
@@ -191,11 +200,14 @@ function validateHeightConfig(
           message: `Cell (${x},${y}) resolves to floorZ ${volume.floorZ} >= ceilingZ ${volume.ceilingZ}`,
           at: { x, y },
         });
-      } else if (volume.ceilingZ - volume.floorZ < MIN_CELL_CLEARANCE) {
+      } else if (
+        volume.ceilingZ - maxFloorSurfaceZ(resolveFloorSurface(map, x, y)) <
+        MIN_CELL_CLEARANCE
+      ) {
         issues.push({
           severity: "error",
           code: "height_clearance_too_small",
-          message: `Cell (${x},${y}) vertical clearance must be at least ${MIN_CELL_CLEARANCE}`,
+          message: `Cell (${x},${y}) vertical clearance above its highest floor surface must be at least ${MIN_CELL_CLEARANCE}`,
           at: { x, y },
         });
       }
@@ -218,15 +230,134 @@ function validateHeightConfig(
             at: { x, y },
           });
         }
-        if (volume.floorZ !== neighbor.floorZ) {
+        if (!surfacesConnectAcrossEdge(map, x, y, dir)) {
           issues.push({
             severity: "error",
-            code: "height_floor_step_unsupported",
-            message: `Traversable ${dir} edge from (${x},${y}) changes floorZ ${volume.floorZ}→${neighbor.floorZ}; stairs/ramp movement is not implemented`,
+            code: "height_surface_mismatch",
+            message: `Traversable ${dir} edge from (${x},${y}) has mismatched floor surfaces (${volume.floorZ} vs ${neighbor.floorZ}); add or correct a ramp/stair connector`,
             at: { x, y },
           });
         }
       }
+    }
+  }
+}
+
+function validateRampConfig(
+  map: FloorMapJSON,
+  issues: ValidationIssue[]
+): void {
+  const seen = new Set<string>();
+  for (const ramp of map.ramps ?? []) {
+    const key = `${ramp.x},${ramp.y}`;
+    if (seen.has(key)) {
+      issues.push({
+        severity: "error",
+        code: "ramp_duplicate",
+        message: `Floor ${map.id} has multiple local connectors at (${ramp.x},${ramp.y})`,
+        at: { x: ramp.x, y: ramp.y },
+      });
+      continue;
+    }
+    seen.add(key);
+    if (!inBoundsGrid(map, ramp.x, ramp.y)) {
+      issues.push({
+        severity: "error",
+        code: "ramp_oob",
+        message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) is out of bounds`,
+        at: { x: ramp.x, y: ramp.y },
+      });
+      continue;
+    }
+
+    const [dx, dy] = DELTA[ramp.dir];
+    const hx = ramp.x + dx;
+    const hy = ramp.y + dy;
+    const downhill = OPPOSITE_SURFACE_DIRECTION[ramp.dir];
+    const [ldx, ldy] = DELTA[downhill];
+    const lx = ramp.x + ldx;
+    const ly = ramp.y + ldy;
+    if (!inBoundsGrid(map, hx, hy) || !inBoundsGrid(map, lx, ly)) {
+      issues.push({
+        severity: "error",
+        code: "ramp_endpoint_oob",
+        message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) ${ramp.dir} needs in-bounds low (${lx},${ly}) and high (${hx},${hy}) endpoints`,
+        at: { x: ramp.x, y: ramp.y },
+      });
+      continue;
+    }
+
+    const surface = resolveFloorSurface(map, ramp.x, ramp.y);
+    if (surface.kind === "flat") continue;
+    if (!(surface.highZ > surface.lowZ)) {
+      issues.push({
+        severity: "error",
+        code: surface.highZ === surface.lowZ ? "ramp_zero_rise" : "ramp_not_uphill",
+        message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) ${ramp.dir} must rise from ${surface.lowZ}; uphill endpoint (${hx},${hy}) resolves to ${surface.highZ}`,
+        at: { x: ramp.x, y: ramp.y },
+      });
+    }
+
+    for (const endpoint of [
+      { dir: downhill, label: "low", x: lx, y: ly, expected: surface.lowZ },
+      { dir: ramp.dir, label: "high", x: hx, y: hy, expected: surface.highZ },
+    ] as const) {
+      const edge = map.grid[ramp.y][ramp.x][endpoint.dir];
+      if (edge !== "open") {
+        issues.push({
+          severity: "error",
+          code: "ramp_endpoint_edge",
+          message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) ${endpoint.label} edge ${endpoint.dir} must be open (expected Z ${endpoint.expected}, actual edge ${edge})`,
+          at: { x: ramp.x, y: ramp.y },
+        });
+      }
+      if (!surfacesConnectAcrossEdge(map, ramp.x, ramp.y, endpoint.dir)) {
+        issues.push({
+          severity: "error",
+          code: "ramp_endpoint_mismatch",
+          message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) ${endpoint.label} edge ${endpoint.dir} does not meet (${endpoint.x},${endpoint.y}) at expected Z ${endpoint.expected}`,
+          at: { x: ramp.x, y: ramp.y },
+        });
+      }
+    }
+
+    for (const dir of ["n", "e", "s", "w"] as const) {
+      if (!isConnectorSide(surface, dir)) continue;
+      const edge = map.grid[ramp.y][ramp.x][dir];
+      if (edge !== "wall") {
+        issues.push({
+          severity: "error",
+          code: "ramp_side_open",
+          message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) side edge ${dir} must be wall; side entry has no unambiguous elevation`,
+          at: { x: ramp.x, y: ramp.y },
+        });
+      }
+    }
+
+    const tile = map.grid[ramp.y][ramp.x].tile;
+    if (tile === "stairs_up" || tile === "stairs_down") {
+      issues.push({
+        severity: "error",
+        code: "ramp_interfloor_stairs_conflict",
+        message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) cannot also be an inter-floor ${tile} tile`,
+        at: { x: ramp.x, y: ramp.y },
+      });
+    }
+    if (map.mapSprites?.some((sprite) => sprite.x === ramp.x && sprite.y === ramp.y)) {
+      issues.push({
+        severity: "error",
+        code: "ramp_map_sprite_unsupported",
+        message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) cannot contain a map sprite; place it on a flat landing`,
+        at: { x: ramp.x, y: ramp.y },
+      });
+    }
+    if (map.npcs?.some((npc) => npc.x === ramp.x && npc.y === ramp.y)) {
+      issues.push({
+        severity: "error",
+        code: "ramp_npc_unsupported",
+        message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) cannot contain an NPC; place it on a flat landing`,
+        at: { x: ramp.x, y: ramp.y },
+      });
     }
   }
 }

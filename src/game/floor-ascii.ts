@@ -55,7 +55,8 @@ export function floorToAscii(
         row += "@";
         continue;
       }
-      row += cellGlyph(cell);
+      const ramp = map.ramps?.find((candidate) => candidate.x === x && candidate.y === y);
+      row += ramp ? ({ n: "^", e: ">", s: "v", w: "<" } as const)[ramp.dir] : cellGlyph(cell);
     }
     lines.push(row);
   }
@@ -74,7 +75,7 @@ function cellGlyph(cell: CellJSON): string {
 
 function legendLine(): string {
   return (
-    "# . floor  # solid  @ start  ^v stairs  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic"
+    "# . floor  # solid  @ start  ^v inter-floor stairs / local ramp direction  >< local ramp direction  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic"
   );
 }
 
@@ -93,6 +94,13 @@ function overlaySummary(map: FloorMapJSON): string[] {
       const ceiling = z.ceilingZ === undefined ? "inherit" : String(z.ceilingZ);
       lines.push(
         `#   height-zone ${z.id} (${z.x1},${z.y1})-(${z.x2},${z.y2}) floorZ=${floor} ceilingZ=${ceiling}`
+      );
+    }
+  }
+  if (map.ramps?.length) {
+    for (const ramp of map.ramps) {
+      lines.push(
+        `#   local-${ramp.surface} (${ramp.x},${ramp.y}) uphill=${ramp.dir}`
       );
     }
   }

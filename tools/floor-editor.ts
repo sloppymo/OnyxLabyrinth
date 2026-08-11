@@ -475,6 +475,7 @@ function resizeMap(newW: number, newH: number): void {
         y1: Math.min(z.y1, newH - 1),
         y2: Math.min(z.y2, newH - 1),
       })),
+    ramps: map.ramps?.filter(fits),
     lockedDoors: map.lockedDoors?.filter(fits),
     treasures: map.treasures?.filter(fits),
     waters: map.waters?.filter(fits),

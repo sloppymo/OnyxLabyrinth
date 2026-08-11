@@ -13,6 +13,7 @@ import type {
   EncounterZoneDef,
   HeightZoneDef,
   NPCDef,
+  RampDef,
   RaftRouteDef,
   StairsGuardianDef,
   TeleporterLink,
@@ -111,6 +112,8 @@ export interface FloorMapJSON {
   tilesetZones?: TilesetZoneDef[];
   /** Rectangular cell-volume overrides. Later overlapping zones win. */
   heightZones?: HeightZoneDef[];
+  /** Local traversable floor surfaces; dir names the uphill edge. */
+  ramps?: RampDef[];
   grid: CellJSON[][];
   /**
    * @deprecated Ignored by the engine. Combat tables come from
@@ -234,6 +237,7 @@ export function newFloorMapJSON(
     tilesetTheme: partial?.tilesetTheme,
     tilesetZones: partial?.tilesetZones,
     heightZones: partial?.heightZones,
+    ramps: partial?.ramps,
     grid,
     encounterTable: partial?.encounterTable,
     encounterZones: partial?.encounterZones,
@@ -269,6 +273,7 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
     tilesetTheme: floor.tilesetTheme,
     tilesetZones: floor.tilesetZones?.map((z) => ({ ...z })),
     heightZones: floor.heightZones?.map((z) => ({ ...z })),
+    ramps: floor.ramps?.map((r) => ({ ...r })),
     grid: floor.grid.map((row) =>
       row.map((cell) => ({
         n: cell.n,
@@ -339,6 +344,7 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
     tilesetTheme: map.tilesetTheme,
     tilesetZones: map.tilesetZones?.map((z) => ({ ...z })),
     heightZones: map.heightZones?.map((z) => ({ ...z })),
+    ramps: map.ramps?.map((r) => ({ ...r })),
     encounterTable: map.encounterTable ? [...map.encounterTable] : undefined,
     encounterZones: map.encounterZones?.map((z) => ({ ...z })),
     mapSprites: map.mapSprites?.map((s) => ({ ...s })),
@@ -409,6 +415,7 @@ export function parseFloorMapJSON(raw: unknown): FloorMapJSON {
     tilesetTheme: typeof o.tilesetTheme === "string" ? o.tilesetTheme : undefined,
     tilesetZones: parseOverlayArray(o.tilesetZones, "tilesetZones", parseTilesetZone),
     heightZones: parseOverlayArray(o.heightZones, "heightZones", parseHeightZone),
+    ramps: parseOverlayArray(o.ramps, "ramps", parseRamp),
     grid,
     encounterTable: optionalStringArray(o.encounterTable),
     encounterZones: parseOverlayArray(o.encounterZones, "encounterZones", parseZone),
@@ -513,6 +520,19 @@ function parseHeightZone(o: Record<string, unknown>, l: string): HeightZoneDef {
     y2: requireInt(o.y2, `${l}.y2`),
     floorZ,
     ceilingZ,
+  };
+}
+
+function parseRamp(o: Record<string, unknown>, l: string): RampDef {
+  const surface = requireString(o.surface, `${l}.surface`);
+  if (surface !== "ramp" && surface !== "stairs") {
+    throw new Error(`${l}.surface must be ramp or stairs`);
+  }
+  return {
+    x: requireInt(o.x, `${l}.x`),
+    y: requireInt(o.y, `${l}.y`),
+    dir: parseDir(o.dir, `${l}.dir`),
+    surface,
   };
 }
 

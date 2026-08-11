@@ -55,6 +55,21 @@
         }
       }
     },
+    "ramps": {
+      "type": "array",
+      "description": "Local within-floor elevation connectors. dir names the uphill edge. The connector starts at its cell floorZ and ends at the uphill neighbor floorZ.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["x", "y", "dir", "surface"],
+        "properties": {
+          "x": { "type": "integer" },
+          "y": { "type": "integer" },
+          "dir": { "enum": ["n", "e", "s", "w"] },
+          "surface": { "enum": ["ramp", "stairs"] }
+        }
+      }
+    },
     "grid": {
       "type": "array",
       "description": "height rows of width cells",
