@@ -70,6 +70,17 @@ export interface TilesetZoneDef {
   theme: string;
 }
 
+/** Rectangular cell-volume override. Later overlapping zones win. */
+export interface HeightZoneDef {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  floorZ?: number;
+  ceilingZ?: number;
+}
+
 export interface FloorDef {
   id: number;
   name: string;
@@ -89,6 +100,8 @@ export interface FloorDef {
   tilesetTheme?: string;
   /** Optional per-cell corridor themes. Later overlapping zones win. */
   tilesetZones?: TilesetZoneDef[];
+  /** Optional per-cell vertical volumes. Legacy cells default to 0→1. */
+  heightZones?: HeightZoneDef[];
   /**
    * @deprecated Ignored by the encounter roller — the weighted
    * ENCOUNTER_TABLES in data/enemies.ts (keyed by floor id) are the source
@@ -709,6 +722,9 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     tilesetTheme: floor.tilesetTheme,
     tilesetZones: floor.tilesetZones
       ? floor.tilesetZones.map((z) => ({ ...z }))
+      : undefined,
+    heightZones: floor.heightZones
+      ? floor.heightZones.map((z) => ({ ...z }))
       : undefined,
     encounterTable: floor.encounterTable ? [...floor.encounterTable] : undefined,
     encounterZones: floor.encounterZones

@@ -28,6 +28,7 @@ import {
 } from "./engine/renderer";
 import { mazeRenderProfiler } from "./engine/maze-renderer/performance";
 import { createMazeRenderer } from "./engine/maze-renderer/renderer-factory";
+import { MazeRendererDebugHud } from "./engine/maze-renderer/maze-debug-hud";
 import type {
   MazeRenderer,
   MazeRendererSelection,
@@ -183,6 +184,20 @@ let mazeRendererSelection: MazeRendererSelection | null = null;
 let mazeRendererFloor: FloorDef | null = null;
 let mazeRendererWidth = -1;
 let mazeRendererHeight = -1;
+let mazeRendererFloorLoading = false;
+let mazeRendererFloorLoadId = 0;
+const mazeRendererDebugHud = new MazeRendererDebugHud();
+
+async function loadMazeRendererFloor(floor: FloorDef): Promise<void> {
+  if (!mazeRenderer) return;
+  const loadId = ++mazeRendererFloorLoadId;
+  mazeRendererFloorLoading = true;
+  try {
+    await mazeRenderer.loadFloor(floor);
+  } finally {
+    if (loadId === mazeRendererFloorLoadId) mazeRendererFloorLoading = false;
+  }
+}
 
 async function initializeMazeRenderer(): Promise<void> {
   mazeRendererSelection = await createMazeRenderer({
@@ -192,16 +207,21 @@ async function initializeMazeRenderer(): Promise<void> {
   });
   mazeRenderer = mazeRendererSelection.renderer;
   setMazeRendererSurface(mazeRendererSelection.active);
-  await mazeRenderer.loadFloor(state.floor);
-  mazeRendererFloor = state.floor;
+  const initialFloor = state.floor;
+  await loadMazeRendererFloor(initialFloor);
+  mazeRendererFloor = initialFloor;
   syncMazeRendererSize();
 }
 
 function syncMazeRendererFloor(): void {
   if (!mazeRenderer || mazeRendererFloor === state.floor) return;
-  mazeRenderer.disposeFloor();
-  mazeRendererFloor = state.floor;
-  void mazeRenderer.loadFloor(state.floor);
+  const nextFloor = state.floor;
+  // Keep the previous buffers alive while shared images finish loading. The
+  // backend atomically replaces them after preparation, avoiding a black
+  // transition frame and preventing the render loop from scheduling the same
+  // async load repeatedly.
+  mazeRendererFloor = nextFloor;
+  void loadMazeRendererFloor(nextFloor);
 }
 
 function syncMazeRendererSize(): void {
@@ -2603,6 +2623,7 @@ function loop() {
     syncMazeRendererFloor();
     syncMazeRendererSize();
     mazeRenderer?.render(state);
+    if (mazeRenderer) mazeRendererDebugHud.update(mazeRenderer);
     setRaftVisualOverride(null);
     const floorLabel = `F${state.floor.id}`;
     renderPartyStrip(
@@ -2808,7 +2829,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
    * values — see AGENTS.md's Debug/testing aids section.
    */
   const isIdle = (): boolean =>
-    computeIdle({
+    !mazeRendererFloorLoading && computeIdle({
       modeTransitionPending,
       // isRenderCameraAnimating() alone misses the window between a movement
       // keydown and the next frame's camera update (the tween starts in the
@@ -2865,6 +2886,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     return {
       fonts: fontsReady,
       textures: texturesReady,
+      mazeRendererFloor: !mazeRendererFloorLoading,
       enemySprites: enemySpritesReady,
       partySprites: partySpritesReady,
       effectSprites: effectSpritesReady,
@@ -3011,6 +3033,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       active: mazeRendererSelection?.active ?? null,
       fallbackReason: mazeRendererSelection?.fallbackReason ?? null,
       size: { width: mazeRendererWidth, height: mazeRendererHeight },
+      statistics: mazeRenderer?.getStatistics?.() ?? null,
     }),
     /** Audio cue records (id, firedAt, durationMs, endsAt, bufferMissing). */
     sounds: (n?: number) => audioSpy.log.recent(n),

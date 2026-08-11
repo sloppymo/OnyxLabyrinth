@@ -8,6 +8,16 @@ export interface MazeRendererSize {
   height: number;
 }
 
+export interface MazeRendererStatistics {
+  drawCalls: number;
+  triangles: number;
+  textures: number;
+  geometries: number;
+  visibleDynamicSprites: number;
+  staticChunks: number;
+  staticBatches: number;
+}
+
 /** Graphics-only boundary. Game state remains the authoritative world. */
 export interface MazeRenderer {
   readonly backend: MazeRendererBackendId;
@@ -17,6 +27,7 @@ export interface MazeRenderer {
   resize(size: MazeRendererSize): void;
   disposeFloor(): void;
   dispose(): void;
+  getStatistics?(): MazeRendererStatistics;
 }
 
 export interface MazeRendererHost {

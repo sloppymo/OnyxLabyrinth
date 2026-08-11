@@ -87,6 +87,15 @@ function overlaySummary(map: FloorMapJSON): string[] {
       );
     }
   }
+  if (map.heightZones?.length) {
+    for (const z of map.heightZones) {
+      const floor = z.floorZ === undefined ? "inherit" : String(z.floorZ);
+      const ceiling = z.ceilingZ === undefined ? "inherit" : String(z.ceilingZ);
+      lines.push(
+        `#   height-zone ${z.id} (${z.x1},${z.y1})-(${z.x2},${z.y2}) floorZ=${floor} ceilingZ=${ceiling}`
+      );
+    }
+  }
   if (map.lockedDoors?.length) {
     for (const d of map.lockedDoors) {
       lines.push(`#   lock (${d.x},${d.y}) ${d.dir} key=${d.keyId}`);
