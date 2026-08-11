@@ -1140,7 +1140,8 @@ function drawMapSprites(
   cam: RenderCamera,
   hits: (RayHit | null)[],
   stripWidth: number,
-  inDarkness: boolean
+  inDarkness: boolean,
+  foreground = false
 ): void {
   const sprites = state.floor.mapSprites;
   if (!sprites?.length) return;
@@ -1150,6 +1151,7 @@ function drawMapSprites(
   for (const s of sprites) {
     const def = getMapSpriteDef(s.spriteId);
     if (!def) continue;
+    if (foreground && !def.foreground) continue;
     const place = placeBillboard(
       ctx, cam, hits, stripWidth, s.x, s.y, decorSpriteSize(def.baseSize), inDarkness
     );
@@ -1159,22 +1161,27 @@ function drawMapSprites(
 
   // Warm pools belong behind their props, so the fire and lantern cores stay
   // crisp while their light gently reaches the readable night floor/walls.
-  for (const p of placed) {
-    if (!p.def.light) continue;
-    const { screenX, drawY, size, alpha } = p.place;
-    const light = p.def.light;
-    const radius = size * light.radiusScale;
-    const gradient = ctx.createRadialGradient(screenX, drawY + size, 0, screenX, drawY + size, radius);
-    gradient.addColorStop(0, `rgba(${light.color}, ${light.intensity * alpha})`);
-    gradient.addColorStop(0.45, `rgba(${light.color}, ${light.intensity * alpha * 0.34})`);
-    gradient.addColorStop(1, `rgba(${light.color}, 0)`);
-    ctx.save();
-    ctx.fillStyle = gradient;
-    ctx.fillRect(screenX - radius, drawY + size - radius, radius * 2, radius * 2);
-    ctx.restore();
+  // Lights always belong in the background pass. A foreground prop may sit
+  // over an NPC, but its radial presentation light must not wash over them.
+  if (!foreground) {
+    for (const p of placed) {
+      if (!p.def.light) continue;
+      const { screenX, drawY, size, alpha } = p.place;
+      const light = p.def.light;
+      const radius = size * light.radiusScale;
+      const gradient = ctx.createRadialGradient(screenX, drawY + size, 0, screenX, drawY + size, radius);
+      gradient.addColorStop(0, `rgba(${light.color}, ${light.intensity * alpha})`);
+      gradient.addColorStop(0.45, `rgba(${light.color}, ${light.intensity * alpha * 0.34})`);
+      gradient.addColorStop(1, `rgba(${light.color}, 0)`);
+      ctx.save();
+      ctx.fillStyle = gradient;
+      ctx.fillRect(screenX - radius, drawY + size - radius, radius * 2, radius * 2);
+      ctx.restore();
+    }
   }
 
   for (const p of placed) {
+    if (!!p.def.foreground !== foreground) continue;
     const img = getMapSpriteImage(p.spriteId);
     if (!img) continue;
     const { screenX, drawY, size, alpha } = p.place;
@@ -2042,6 +2049,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   drawCeilingSprites(ctx, state, cam, hits, stripWidth, maxDist, state.inDarkness);
   drawMapSprites(ctx, state, cam, hits, stripWidth, state.inDarkness);
   drawFeatureBillboards(ctx, state, cam, hits, stripWidth, maxDist, state.inDarkness);
+  // Opt-in foreground props are rare physical occluders. Isobel's counter is
+  // the motivating case: she and the desk share a cell, but the front edge
+  // must cross her lower torso so she reads as the shopkeeper behind it.
+  drawMapSprites(ctx, state, cam, hits, stripWidth, state.inDarkness, true);
 
   // Restore from the head-bob translate before drawing screen-space overlays.
   ctx.restore();

@@ -87,3 +87,23 @@ violet, amber, and parchment vocabulary. Magical jewel motifs were reduced in
 secondary positions rather than recoloured wholesale. The canonical Isobel,
 hero door, tileset surfaces, ceiling medallion, renderer configuration, and all
 placement/scale data remain unchanged.
+
+## Final hero-wall / shopkeeper composition pass
+
+No PixelLab generation, concept-sheet pixels, tracing, cropping, or resampling
+were used. The approved hand-finished backdrop was re-authored at its native
+256×256 density in Aseprite 1.3.18.1. Its outer arch and transparent negative
+space remain the foundation; only the interior optical/mechanical apparatus was
+rebuilt. The deterministic working scripts and layered files are preserved in
+`art/pixellab-candidates/isobel-iso-spells/aseprite-working/hero-wall-pass/`.
+
+| Production asset | Source | Hand-authored work | Production use |
+|---|---|---|---|
+| `isobel-iso-prism-backdrop.png` | approved hand-finished backdrop | retained the broad arch; shifted the sole bright prism off-axis; added an interrupted inner rib, left calibration carriage/tag/counterweight, right unlit lens/empty socket/repair plate/tied wire, mounting feet and supported trajectories; removed the sparse mirrored interior marks | east-wall feature at `(17,28)`, scaled from `0.98 × 0.98` to `1.04 × 1.04` after three renderer trials |
+| `isobel-sales-counter-front.png` | canonical approved counter pixels | isolated only the lower central apron and added a four-pixel wood front lip; no character pixels and no new counter concept | opt-in foreground billboard at `(17,28)` so the counter crosses Isobel's waist/lower torso while the full counter, clutter, and light remain in their original background pass |
+
+The canonical Isobel PNG, approved full counter PNG, prism mobile, hero door,
+catalogue/archive/charm cabinetry, base surfaces, and ceiling art are unchanged.
+The foreground apron exists only to express the intended renderer-native depth
+order (`wall apparatus → Isobel → counter front`) without flattening the scene
+into a composite image.

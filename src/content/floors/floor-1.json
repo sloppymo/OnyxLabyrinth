@@ -5621,6 +5621,11 @@
       "x": 17,
       "y": 28,
       "spriteId": "isobel-sales-counter"
+    },
+    {
+      "x": 17,
+      "y": 28,
+      "spriteId": "isobel-sales-counter-front"
     }
   ],
   "teleporters": [
