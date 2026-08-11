@@ -6,6 +6,13 @@ implementation is the vertical-slice floor `src/content/floors/level-2-slice.jso
 (35 traversable cells), driven by `scripts/playtests/level2-slice-map.mjs` and
 captured by `scripts/playtests/level2-slice-walk.mjs`.
 
+**Status:** slice validated 2026-08-11 by a continuous (non-teleporting),
+HUD-off playthrough of the full route — see `progress.md`'s 2026-08-11
+entry. No navigation confusion, dead zones, repetition, or broken reveals
+found. Treat the slice as **locked**: no further polish pass on it absent a
+specific problem found while building the real floor. It is now the
+reference for the visual grammar above and the pacing grammar below.
+
 ## Visual thesis
 
 Level 2 is a **ceremonial descent-road that outlived its purpose**: a
@@ -102,6 +109,36 @@ When building new Level 2 landmarks:
 - One landmark per major space. It must read at 3–5 cells of distance through
   fog — strong silhouette, restrained palette, no glow-spam.
 - No giant glowing runes. Ever.
+- **The Gate of the Kept is this slice's one hero motif, not a template.**
+  Each major region built after this slice needs its own spatial idea —
+  a different kind of reveal, not another gate-leaves + counterweight +
+  hoist-shaft composition. Copying it dilutes the thing that makes it land.
+
+## Pacing grammar
+
+Validated by the 2026-08-11 continuous walkthrough (see `progress.md`) as
+this sequence, in order:
+
+1. **Compression** — ordinary 1× corridor, nothing to look at.
+2. **Foreshadowing** — a seam/slot cell (taller ceiling, hanging chain)
+   flashes the vertical motif before it pays off.
+3. **Vertical transition** — the climb (ramp risers, sconce/relief on the
+   flanking wall) is itself the content for that stretch, not a delay
+   between rooms.
+4. **Widening/release** — the gallery or hall opens ceiling and floor plan
+   at once; this is where held breath lets out.
+5. **Distant landmark** — the hero motif reveals itself from several cells
+   out, in full light — not at its own doorstep. A close-up on the landmark
+   can and should be darker/quieter (see the Gate's asymmetric sconces);
+   the reveal beat happens on approach, not on arrival.
+6. **Optional side interest** — a secondary room (the chapel) branches off
+   the main line through its own door; it is not on the return path by
+   default.
+7. **Return shortcut** — the loop closes via a second connector, not a
+   walk back down the same corridor.
+
+Skipping step 5's distance requirement is the most likely mistake: a
+landmark first seen up close reads as clutter, not a destination.
 
 ## Prop vocabulary (reusable kit)
 
