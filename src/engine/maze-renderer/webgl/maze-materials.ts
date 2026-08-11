@@ -137,7 +137,7 @@ export class MazeMaterialLibrary {
 
     const material = new MeshBasicMaterial({
       map,
-      color: map ? 0xffffff : new Color(FALLBACK_COLORS[surface] ?? FALLBACK_COLORS.wall),
+      color: map ? 0xeeeeee : new Color(FALLBACK_COLORS[surface] ?? FALLBACK_COLORS.wall),
       fog: true,
       toneMapped: false,
       alphaTest,
@@ -157,7 +157,7 @@ export class MazeMaterialLibrary {
     const composite = this.composite(materialKey, source, overlay);
     const material = new MeshBasicMaterial({
       map: this.textureFor(composite, false),
-      color: 0xffffff,
+      color: 0xeeeeee,
       alphaTest: 0.5,
       depthTest: true,
       depthWrite: true,

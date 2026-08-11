@@ -61,7 +61,7 @@ export class MazeVisualCollection {
     for (const mesh of this.billboardMeshes) {
       const meta = mesh.userData.mazeBillboard as BillboardMeta;
       mesh.quaternion.copy(camera.quaternion);
-      if (meta.depthBias > 0) {
+      if (meta.depthBias !== 0) {
         const dx = camera.position.x - meta.baseX;
         const dz = camera.position.z - meta.baseZ;
         const length = Math.hypot(dx, dz) || 1;
@@ -145,7 +145,11 @@ export class MazeVisualCollection {
         placement.y,
         placement.spriteId,
         def.baseSize / 56,
-        def.foreground ? 0.08 : 0.03,
+        // Canvas paints ordinary decor before feature/NPC billboards and only
+        // the opt-in foreground layer afterward. Preserve that semantic with
+        // physical depth: background decor sits slightly farther from the
+        // camera, foreground art slightly closer.
+        def.foreground ? 0.08 : -0.03,
         undefined
       );
       if (def.light) {
