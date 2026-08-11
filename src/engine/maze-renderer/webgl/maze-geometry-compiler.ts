@@ -157,7 +157,10 @@ function materialForDoor(
 
 export function compileMazeGeometry(
   floor: FloorDef,
-  chunkSize = 16
+  // Current campaign floors are roughly 30 cells across and only a few
+  // thousand triangles. A 32-cell chunk keeps regional-theme batches low;
+  // larger/future maps still split spatially without an atlas rewrite.
+  chunkSize = 32
 ): CompiledMazeGeometry {
   const builders = new Map<string, BatchBuilder>();
   const chunks = new Set<string>();
