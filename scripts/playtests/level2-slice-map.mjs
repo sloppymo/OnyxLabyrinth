@@ -87,6 +87,13 @@ export function makeLevel2SliceMap({ theme = "f1" } = {}) {
     startY: 10,
     encounterRate: 0,
     tilesetTheme: theme,
+    tilesetZones: [
+      // Localized floor-only reskins: same wall/ceiling/door art, alternate
+      // floorA/floorB pair. One-cell zones, so only the matching-parity
+      // floor slot is ever sampled, but both slots ship the same texture.
+      { id: "hall-drain", x1: 8, y1: 10, x2: 8, y2: 10, theme: "descent-grate" },
+      { id: "approach-inlay", x1: 3, y1: 10, x2: 3, y2: 10, theme: "descent-inlay" },
+    ],
     heightZones: [
       { id: "seam", x1: 4, y1: 9, x2: 4, y2: 11, ceilingZ: 2.5 },
       { id: "antechamber", x1: 5, y1: 10, x2: 6, y2: 10, ceilingZ: 1.5 },
@@ -141,6 +148,7 @@ export function makeLevel2SliceMap({ theme = "f1" } = {}) {
       { x: 7, y: 8, dir: "n", spriteId: "descent-niche-votive" },
       { x: 7, y: 10, dir: "s", spriteId: "descent-repair-plate" },
       { x: 9, y: 5, dir: "e", spriteId: "descent-structural-band" },
+      { x: 12, y: 11, dir: "e", spriteId: "descent-sealed-valve" },
     ],
     architecturalProps: [
       // Naked blockout: shallow, wall-hugging supports frame the volume;
@@ -157,6 +165,7 @@ export function makeLevel2SliceMap({ theme = "f1" } = {}) {
     ceilingFeatures: [
       { x: 4, y: 10, spriteId: "descent-ceiling-shaft" },
       { x: 10, y: 12, spriteId: "descent-ceiling-shaft" },
+      { x: 9, y: 8, spriteId: "descent-ceiling-beam" },
     ],
     ceilingSprites: [
       { x: 4, y: 9, spriteId: "descent-chain-heavy", scale: 1.4 },

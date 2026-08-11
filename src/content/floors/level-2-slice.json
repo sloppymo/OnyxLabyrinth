@@ -8,6 +8,24 @@
   "startY": 10,
   "encounterRate": 0,
   "tilesetTheme": "descent",
+  "tilesetZones": [
+    {
+      "id": "hall-drain",
+      "x1": 8,
+      "y1": 10,
+      "x2": 8,
+      "y2": 10,
+      "theme": "descent-grate"
+    },
+    {
+      "id": "approach-inlay",
+      "x1": 3,
+      "y1": 10,
+      "x2": 3,
+      "y2": 10,
+      "theme": "descent-inlay"
+    }
+  ],
   "heightZones": [
     {
       "id": "seam",
@@ -228,6 +246,12 @@
       "y": 5,
       "dir": "e",
       "spriteId": "descent-structural-band"
+    },
+    {
+      "x": 12,
+      "y": 11,
+      "dir": "e",
+      "spriteId": "descent-sealed-valve"
     }
   ],
   "architecturalProps": [
@@ -353,6 +377,11 @@
       "x": 10,
       "y": 12,
       "spriteId": "descent-ceiling-shaft"
+    },
+    {
+      "x": 9,
+      "y": 8,
+      "spriteId": "descent-ceiling-beam"
     }
   ],
   "ceilingSprites": [
