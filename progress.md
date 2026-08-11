@@ -1039,3 +1039,61 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - `npm run check` (2225 tests), `floor:check --file level-2-slice.json`
   (only the pre-existing no-stairs info warning), and `git diff --check`
   all pass. No push, no merge.
+
+## 2026-08-11 — Chapel bypass fix + route-composition/blind-playtest validation
+
+- Route audit flagged a pre-existing topology bug: `(7,8).e`/`(8,8).w` was
+  open, letting a player at the threshold walk `(6,10)→(7,10)→(7,9)→(7,8)→(8,8)`
+  straight into the procession hall — skipping the climb, gallery, stair,
+  and both intended doors, not just "the chapel door is bypassable" as
+  originally described. Fixed with a two-line reseal in
+  `level2-slice-map.mjs` (`grid[8][7].e`/`grid[8][8].w = "wall"`), extending
+  the file's existing climb-column reseal pattern rather than introducing a
+  new one. No art or chapel redesign touched, per explicit scope. Verified
+  via a pure-Node BFS over the grid (46/46 cells still reachable, both
+  doors and the return-link connector intact), `floor:validate`,
+  `vitest run` (22/22 floor-map tests), and a 9-pose browser capture with
+  zero console errors. Committed `ffa8228`, local only.
+- Ran the two QA passes recommended after that fix: a route-composition
+  walk (does the sequence read correctly in motion, does the climb's
+  sconce/relief earn its keep, does the gate reveal land) and a blind
+  playtest (navigation clarity, dead zones, repetition, overdecoration).
+  `level2-slice-walk.mjs` teleports between fixed poses, which is the wrong
+  tool for a "does it read in motion" question, so both passes ran off one
+  new continuous walk driven entirely by real `w`/`a`/`d` keypresses (no
+  `jumpTo` between waypoints) covering the full route — approach → seam →
+  threshold → climb → gallery → stair → hall → gate → chapel (via the
+  `(8,9)w` door) → altar → back through the same door → return door
+  `(8,10)w` → return-link → threshold — with the `mazePerf` debug HUD off
+  throughout (only `debug=1`, which draws no on-screen overlay by itself)
+  and a Playwright video recording plus 25 milestone stills.
+- Two stills initially looked like renderer bugs: `(6,5)` facing north
+  (flat tiled brick, no depth) and the `(9,12)` gate close-up (near-black).
+  Re-sampled both at increasing delays with the perf HUD's live geometry
+  counters (`cell 6,5 flat`, draw/tri/tex counts) — identical at t=0 and
+  t=2500ms in both cases, so neither is a stale-idle/camera-tween race.
+  `(6,5)` genuinely is a bare, undecorated wall one tile from the camera
+  (nothing wired to that wall face) for the single beat before the route
+  turns east into the gallery; the gate's close-up darkness is the
+  documented asymmetric side-lighting (`(8,11)w`/`(12,9)e` sconces only)
+  working as designed — a deliberately unlit "never been opened" read up
+  close. Neither needed a code change.
+- The gate reveal itself lands hard the moment the hall opens up: standing
+  at `(9,8)` facing south (four cells out) shows the full lit door/wheel
+  assembly in detail (23 draw calls, 420 tri) — this is the actual "hero
+  landmark" beat, not the closer `(9,12)` vantage. No fix needed, just a
+  note that the reveal fires at hall-entry, not at the gate's foot.
+- Verdict against the user's stated stop condition (no major navigation
+  confusion / visual dead zone / obvious repetition / broken reveal /
+  distracting asset → stop polishing): none found. Chapel altar event and
+  offering-bowl sprite render correctly; the four named legs (climb,
+  gallery, stair, hall) each read visually distinct; no area reads dead or
+  overdecorated. Slice treated as complete per that stop condition — no
+  further art pass follows from this review. One honest caveat: this was
+  an agent-scripted walk along a pre-planned path, not a masked human
+  playtester, so "blind" here means HUD-off + judged-on-footage, not
+  literal foreknowledge-free play.
+- Capture artifacts (video + stills + transcript) are scratch, not
+  committed: `/tmp/claude-1000/-home-sloppymo-OnyxLabyrinth/0902e78a-7554-4c54-be0c-fdac0d936e03/scratchpad/route-walk/`.
+  No code or content changes from this pass; nothing to commit beyond the
+  chapel fix above.
