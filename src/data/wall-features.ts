@@ -230,6 +230,39 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     heightFrac: 0.75,
     anchor: "bottom",
   },
+  // Isobel's Iso-Spells — a coherent six-cell boutique installation.
+  {
+    id: "isobel-iso-prism-backdrop",
+    name: "Iso-Prism backdrop",
+    file: "isobel-iso-prism-backdrop.png",
+    widthFrac: 0.95,
+    heightFrac: 0.95,
+    anchor: "bottom",
+  },
+  {
+    id: "isobel-catalogue-cabinet",
+    name: "Iso-Spells catalogue cabinet",
+    file: "isobel-catalogue-cabinet.png",
+    widthFrac: 0.92,
+    heightFrac: 0.92,
+    anchor: "bottom",
+  },
+  {
+    id: "isobel-formula-archive",
+    name: "Iso-Spells formula archive",
+    file: "isobel-formula-archive.png",
+    widthFrac: 0.92,
+    heightFrac: 0.92,
+    anchor: "bottom",
+  },
+  {
+    id: "isobel-charm-cabinet",
+    name: "Iso-Spells charm cabinet",
+    file: "isobel-charm-cabinet.png",
+    widthFrac: 0.58,
+    heightFrac: 0.66,
+    anchor: "center",
+  },
 ];
 
 export const WALL_FEATURES_BY_ID: Record<string, WallFeatureSpriteDef> = Object.fromEntries(

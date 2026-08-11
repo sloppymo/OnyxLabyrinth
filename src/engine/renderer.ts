@@ -94,7 +94,7 @@ import {
   getCeilingSpriteImage,
 } from "./ceiling-sprite-cache";
 import { CEILING_FEATURES, ceilingFeatureUrl } from "../data/ceiling-features";
-import { getDoorFeatureImage } from "./door-feature-cache";
+import { getDoorFeatureImage, getDoorFeatureTextImage } from "./door-feature-cache";
 import { featurePropSpriteIds } from "../data/maze-props";
 import { npcAt } from "../game/npc";
 import { isTreasureLooted } from "../game/features";
@@ -1892,6 +1892,22 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
           stripWidth,
           drawEnd - drawStart + 1
         );
+        if (doorFeatureDef) {
+          const textImg = getDoorFeatureTextImage(doorFeatureDef.spriteId);
+          if (textImg) {
+            ctx.drawImage(
+              textImg,
+              texX,
+              0,
+              1,
+              textImg.height,
+              x,
+              drawStart,
+              stripWidth,
+              drawEnd - drawStart + 1
+            );
+          }
+        }
         ctx.globalAlpha = 1.0;
       } else {
         // Procedural fallback until the texture loads (or if it failed).

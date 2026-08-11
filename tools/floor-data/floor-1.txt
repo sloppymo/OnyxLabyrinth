@@ -46,6 +46,7 @@
 #   tileset-zone ember-stitchworks (23,2)-(26,11) theme=f3
 #   tileset-zone cistern-overflow (23,12)-(26,20) theme=f5
 #   tileset-zone surveyors-rest (8,27)-(15,29) theme=f1
+#   tileset-zone isobels-iso-spells (16,27)-(17,29) theme=isobel
 #   lock (11,12) n key=crypt-key
 #   treasure (1,18) items=[antidote, healing-potion] trap=poison
 #   treasure (5,12) items=[dagger+1, eye-drops] trap=stunner
