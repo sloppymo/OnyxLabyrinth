@@ -18,13 +18,16 @@ import {
   ensureThemeLoaded,
   loadCeilingFeatures,
   getRenderCameraForState,
+  getRenderCameraMoveBob,
   loadTextures,
 } from "../../renderer";
 import { loadDoorFeatures } from "../../door-feature-cache";
+import { MATH_CONFIG } from "../../render-math";
+import { LEGACY_VERTICAL_UNIT, resolveCellVolume } from "../geometry/cell-volume";
 import {
-  LEGACY_VERTICAL_UNIT,
-  resolveCellVolume,
-} from "../geometry/cell-volume";
+  floorSurfaceZAtDisplayPosition,
+  resolveFloorSurface,
+} from "../geometry/floor-surface";
 import { mazeRenderProfiler } from "../performance";
 import type {
   MazeRenderer,
@@ -46,6 +49,16 @@ export function verticalFovForHorizontal(
   return (2 * Math.atan(Math.tan(horizontal / 2) / aspect) * 180) / Math.PI;
 }
 
+export function webglHeadBobWorld(
+  bobPixels: number,
+  viewportHeight: number
+): number {
+  return (
+    (bobPixels * LEGACY_VERTICAL_UNIT) /
+    (Math.max(1, viewportHeight) * MATH_CONFIG.projectionScale * MATH_CONFIG.heightFlatten)
+  );
+}
+
 /** Three.js/WebGL2 graphics backend. GameState remains authoritative. */
 export class WebGLMazeRenderer implements MazeRenderer {
   readonly backend = "webgl" as const;
@@ -64,6 +77,7 @@ export class WebGLMazeRenderer implements MazeRenderer {
   private initialized = false;
   private floorLoadGeneration = 0;
   private geometryStats = { chunks: 0, batches: 0, vertices: 0, triangles: 0 };
+  private debugPosition: MazeRendererStatistics["debugPosition"];
 
   private readonly onContextLost = (event: Event): void => {
     event.preventDefault();
@@ -156,13 +170,33 @@ export class WebGLMazeRenderer implements MazeRenderer {
     mazeRenderProfiler.beginFrame("webgl");
     const cameraStartedAt = mazeRenderProfiler.beginSection();
     const display = getRenderCameraForState(state);
-    const playerVolume = resolveCellVolume(
+    const surfaceZ = floorSurfaceZAtDisplayPosition(
+      state.floor,
+      display.x,
+      display.y
+    );
+    const eyeY =
+      surfaceZ * LEGACY_VERTICAL_UNIT +
+      LEGACY_VERTICAL_UNIT / 2 +
+      webglHeadBobWorld(getRenderCameraMoveBob(), this.height);
+    const playerSurface = resolveFloorSurface(
       state.floor,
       state.player.x,
       state.player.y
     );
-    const eyeY =
-      playerVolume.floorZ * LEGACY_VERTICAL_UNIT + LEGACY_VERTICAL_UNIT / 2;
+    this.debugPosition = {
+      cellX: state.player.x,
+      cellY: state.player.y,
+      surface: playerSurface.kind,
+      surfaceZ,
+      cameraY: eyeY,
+      ceilingZ: resolveCellVolume(
+        state.floor,
+        state.player.x,
+        state.player.y
+      ).ceilingZ,
+      ...(playerSurface.kind === "flat" ? {} : { rampDir: playerSurface.dir }),
+    };
     this.camera.position.set(display.x + 0.5, eyeY, display.y + 0.5);
     this.cameraTarget.set(
       display.x + 0.5 + display.dirX,
@@ -201,6 +235,7 @@ export class WebGLMazeRenderer implements MazeRenderer {
       visibleDynamicSprites: this.visuals.visibleBillboardCount(),
       staticChunks: this.geometryStats.chunks,
       staticBatches: this.geometryStats.batches,
+      debugPosition: this.debugPosition,
     };
   }
 

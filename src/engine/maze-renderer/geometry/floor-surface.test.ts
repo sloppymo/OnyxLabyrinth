@@ -3,6 +3,7 @@ import type { FloorDef } from "../../../data/floors";
 import { newFloorMapJSON, mapToFloorDef } from "../../../game/floor-map";
 import {
   floorSurfaceEdgeHeights,
+  floorSurfaceZAtDisplayPosition,
   floorSurfaceZAt,
   floorSurfaceZAtWorldPosition,
   resolveFloorSurface,
@@ -86,6 +87,19 @@ describe("floor surfaces", () => {
     expect(floorSurfaceZAtWorldPosition(floor, 1.5, 1.5)).toBe(0.5);
     expect(floorSurfaceZAtWorldPosition(floor, 2, 1.5)).toBe(1);
     expect(floorSurfaceZAtWorldPosition(floor, 2.5, 1.5)).toBe(1);
+  });
+
+  it("derives smooth camera base elevation across both ramp half-steps", () => {
+    const floor = mapToFloorDef(newFloorMapJSON(5, 3)) as FloorDef;
+    floor.heightZones = [
+      { id: "high", x1: 3, y1: 1, x2: 4, y2: 1, floorZ: 1, ceilingZ: 2 },
+    ];
+    floor.ramps = [{ x: 2, y: 1, dir: "e", surface: "ramp" }];
+    // Display positions are cell-center indices: low cell 1, ramp cell 2,
+    // high cell 3. The ramp itself occupies world X 2→3.
+    expect([1, 1.5, 2, 2.5, 3].map((x) =>
+      floorSurfaceZAtDisplayPosition(floor, x, 1)
+    )).toEqual([0, 0, 0.5, 1, 1]);
   });
 
   it("permits low/high connector edges and rejects side entry or raw steps", () => {

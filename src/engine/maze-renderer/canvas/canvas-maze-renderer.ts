@@ -13,7 +13,13 @@ export class CanvasMazeRenderer implements MazeRenderer {
     return loadTextures();
   }
 
-  loadFloor(_floor: FloorDef): void {}
+  loadFloor(floor: FloorDef): void {
+    if (floor.ramps?.length) {
+      console.warn(
+        "[maze-renderer] Local ramps/stairs require WebGL; Canvas fallback renders legacy flat presentation only"
+      );
+    }
+  }
 
   render(state: GameState): void {
     render(this.context, state);

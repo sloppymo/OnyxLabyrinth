@@ -24,6 +24,7 @@
     "visual:floors": "node scripts/playtests/floor-visual-audit.mjs",
     "benchmark:maze": "node scripts/playtests/maze-renderer-benchmark.mjs",
     "playtest:maze-heights": "node scripts/playtests/maze-height-demo.mjs",
+    "playtest:maze-vertical": "node scripts/playtests/maze-vertical-traversal.mjs",
     "playtest:maze-lifecycle": "node scripts/playtests/maze-renderer-lifecycle.mjs",
     "playtest:hubs": "node scripts/playtests/hub-walkthrough.mjs",
     "sprite-preview:serve": "python3 -m http.server 8080",
