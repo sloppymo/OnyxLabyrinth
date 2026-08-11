@@ -1,0 +1,6 @@
+#!/bin/bash
+G="node ../../../scripts/pixellab-generate.mjs"
+$G --description "carved stone frieze relief of a solemn procession of robed human figures walking in profile carrying poles and bowls, ancient weathered bas-relief on dark umber stone panel, wide horizontal composition, 16-bit SNES pixel art, hard pixels, limited palette, flat front view" --size 128x64 --palette palette-stone.png --out wf-relief-01.png
+$G --description "shallow recessed votive niche in dark stone wall, inside sits a small bronze offering bowl with three tiny pebbles, dark umber stone surround, 16-bit SNES pixel art, hard pixels, limited palette, front view" --size 64x64 --palette palette-stone.png --out wf-niche-01.png
+$G --description "square aged bronze vent grate set in dark stone, heavy grid bars, verdigris-free dark bronze, dark umber stone frame edge, 16-bit SNES pixel art, hard pixels, limited palette, front view" --size 64x64 --palette palette.png --out wf-grate-01.png
+$G --description "rectangular aged bronze repair plate bolted with four heavy rivets over a cracked dark umber stone block, mismatched patch, practical repair, 16-bit SNES pixel art, hard pixels, limited palette, front view" --size 64x64 --palette palette.png --out wf-repair-01.png

@@ -159,7 +159,6 @@ export function makeLevel2SliceMap({ theme = "f1" } = {}) {
       { x: 4, y: 11, spriteId: "descent-chain-heavy", scale: 1.4 },
       { x: 10, y: 10, spriteId: "descent-counterweight", scale: 1 },
       { x: 11, y: 10, spriteId: "descent-chain-heavy", scale: 1.2 },
-      { x: 7, y: 9, spriteId: "descent-censer", scale: 0.9 },
     ],
     grid,
   };

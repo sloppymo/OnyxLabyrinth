@@ -329,12 +329,6 @@
       "y": 10,
       "spriteId": "descent-chain-heavy",
       "scale": 1.2
-    },
-    {
-      "x": 7,
-      "y": 9,
-      "spriteId": "descent-censer",
-      "scale": 0.9
     }
   ],
   "grid": [

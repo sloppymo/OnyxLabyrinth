@@ -891,3 +891,26 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Reproducible headed/hardware selection, benchmark/lifecycle evidence and
   generated floor dumps are committed as `61d34b8`. Documentation is the last
   local commit; no push, merge, stash, rebase, reset, or PR action occurred.
+
+## Level 2 vertical slice — The Sunken Processional (feat/level2-vertical-slice)
+
+- Built a playable 35-cell Level 2 slice on Maze Renderer 2: cramped approach,
+  2.5x seam foreshadow with hanging chains, 1.5x threshold antechamber, a
+  four-cell quarter-step ramp climb (0 -> 1), an elevated gallery at floorZ 1,
+  a two-cell grand stair reveal into a 3x procession hall, the Gate of the
+  Kept hero landmark (two wall-feature leaves + suspended counterweight +
+  hoist-shaft ceiling features + flanking brazier glow), a votive chapel, and
+  a return loop.
+- New `descent` tileset theme (wall/floorA/floorB/ceiling/door) registered in
+  `BUILT_IN_TILESET_THEMES`, plus 14 kit sprites across wall-features,
+  ceiling-sprites, ceiling-features and map-sprites. Pipeline: PixelLab
+  pixflux candidates -> Pillow normalization/recolor -> two hand-built
+  hero assets (gate, counterweight) when AI output fought the palette.
+- The floor ships as an unregistered pack (`src/content/floors/level-2-slice.json`,
+  id 6) like floor-4-demo; walk it with `scripts/playtests/level2-slice-walk.mjs`.
+  A validator test covers the pack. Style bible: `docs/LEVEL2-VISUAL-BIBLE.md`;
+  asset catalog: `docs/level2-descent-asset-manifest.md`.
+- Hardware (RTX 2060 SUPER, headed Chrome): slice poses 0.2-0.6 ms median /
+  0.3-1.1 ms p95; Floor 1 regression benchmarks unchanged vs the
+  pre-work baseline. Ten Floor 1 <-> slice cycles are resource-bounded
+  (textures plateau after first full slice load; geometries flat).

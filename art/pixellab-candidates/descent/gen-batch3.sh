@@ -1,0 +1,8 @@
+#!/bin/bash
+G="node ../../../scripts/pixellab-generate.mjs"
+# Hero gate panels (opaque, wall-anchored, each fills one cell face)
+$G --description "monumental ancient sealed stone gate, left half of a colossal double door filling the frame, dark umber basalt slabs with heavy aged bronze bands and a huge bronze ring, hairline seam down the right edge, cracked lintel stone above, 16-bit SNES pixel art, hard pixels, limited palette, flat front view" --size 128x128 --background --palette palette.png --out hero-gate-left-01.png
+$G --description "monumental ancient sealed stone gate, right half of a colossal double door filling the frame, dark umber basalt slabs with heavy aged bronze bands and a huge bronze boss, hairline seam down the left edge, cracked lintel stone above, 16-bit SNES pixel art, hard pixels, limited palette, flat front view" --size 128x128 --background --palette palette.png --out hero-gate-right-01.png
+# Ceiling features (opaque 128 -> 256)
+$G --description "seamless tileable texture, dark stone ceiling seen from below with one large square black shaft opening in the center, heavy bronze ring anchors bolted at the shaft corners, dark warm umber stone coffers around it, low contrast, 16-bit SNES pixel art texture, hard pixels, limited palette, flat lighting" --size 128x128 --background --palette palette-stone.png --out cf-shaft-01.png
+$G --description "seamless tileable texture, dark stone ceiling seen from below with a large circular aged bronze medallion ring set flush in the center, dark warm umber stone coffers around it, low contrast, 16-bit SNES pixel art texture, hard pixels, limited palette, flat lighting" --size 128x128 --background --palette palette-stone.png --out cf-medallion-01.png
