@@ -12,6 +12,8 @@ export interface DoorFeatureSpriteDef {
   name: string;
   /** Filename under public/assets/door-features/. Rendered at full wall-face size, like stairs.png. */
   file: string;
+  /** Optional deterministic lettering composited over the full-face panel. */
+  overlayText?: readonly string[];
 }
 
 export const DOOR_FEATURES: readonly DoorFeatureSpriteDef[] = [
@@ -29,6 +31,12 @@ export const DOOR_FEATURES: readonly DoorFeatureSpriteDef[] = [
     id: "camp-entrance-gate",
     name: "The Camp Checkpoint Gate",
     file: "camp-entrance-gate.png",
+  },
+  {
+    id: "isobels-iso-spells-door",
+    name: "Isobel's Iso-Spells Door",
+    file: "isobels-iso-spells-door.png",
+    overlayText: ["ISOBEL'S", "ISO-SPELLS"],
   },
 ];
 

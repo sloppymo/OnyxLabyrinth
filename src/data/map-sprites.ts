@@ -110,6 +110,16 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
   { id: "namanda-bench", name: "Namanda's Bench", file: "namanda-bench.png", baseSize: 18 },
   { id: "namanda-kneeling-rail", name: "Kneeling Rail", file: "namanda-kneeling-rail.png", baseSize: 20 },
   { id: "isobel-npc", name: "Isobel", file: "isobel-npc-pixellab.png", baseSize: 42 },
+  {
+    id: "isobel-sales-counter",
+    name: "Isobel's Sales Counter",
+    file: "isobel-sales-counter.png",
+    // The source includes a tall transparent working canvas. Keep the
+    // projected counter compact enough to cover Isobel's lower body without
+    // swallowing her face/hat at the one-cell hero depth.
+    baseSize: 14,
+    light: { color: "112, 190, 255", radiusScale: 2.0, intensity: 0.12 },
+  },
 ];
 
 export const MAP_SPRITES_BY_ID: Record<string, MapSpriteDef> = Object.fromEntries(

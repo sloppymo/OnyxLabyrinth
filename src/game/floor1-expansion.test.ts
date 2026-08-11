@@ -86,7 +86,7 @@ describe("Floor 1 revision 9 expansion", () => {
     expect(floor.npcs).toHaveLength(9);
     expect(floor.events).toHaveLength(16);
     expect(floor.encounterZones).toHaveLength(10);
-    expect(floor.mapSprites).toHaveLength(22);
+    expect(floor.mapSprites).toHaveLength(23);
 
     const newNpcIds = new Set(
       floor.npcs

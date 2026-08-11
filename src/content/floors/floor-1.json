@@ -88,6 +88,14 @@
       "x2": 15,
       "y2": 29,
       "theme": "f1"
+    },
+    {
+      "id": "isobels-iso-spells",
+      "x1": 16,
+      "y1": 27,
+      "x2": 17,
+      "y2": 29,
+      "theme": "isobel"
     }
   ],
   "grid": [
@@ -5608,6 +5616,11 @@
       "x": 14,
       "y": 28,
       "spriteId": "crate"
+    },
+    {
+      "x": 17,
+      "y": 28,
+      "spriteId": "isobel-sales-counter"
     }
   ],
   "teleporters": [
@@ -6306,28 +6319,28 @@
       "spriteId": "bookshelf-intrusion"
     },
     {
-      "x": 17,
-      "y": 28,
-      "dir": "e",
-      "spriteId": "isobels-sign"
-    },
-    {
       "x": 16,
       "y": 27,
       "dir": "n",
-      "spriteId": "isobels-shelves"
+      "spriteId": "isobel-catalogue-cabinet"
     },
     {
       "x": 17,
       "y": 27,
       "dir": "n",
-      "spriteId": "isobel-spellbook-stack"
+      "spriteId": "isobel-formula-archive"
+    },
+    {
+      "x": 17,
+      "y": 28,
+      "dir": "e",
+      "spriteId": "isobel-iso-prism-backdrop"
     },
     {
       "x": 17,
       "y": 29,
       "dir": "e",
-      "spriteId": "isobel-wall-charms"
+      "spriteId": "isobel-charm-cabinet"
     }
   ],
   "ceilingSprites": [
@@ -6417,6 +6430,12 @@
       "x": 11,
       "y": 28,
       "spriteId": "f1-lantern-hanging"
+    },
+    {
+      "x": 17,
+      "y": 28,
+      "spriteId": "isobel-prism-mobile",
+      "scale": 0.62
     }
   ],
   "ceilingFeatures": [
@@ -6474,6 +6493,11 @@
       "x": 14,
       "y": 29,
       "spriteId": "f1-ceiling-beam"
+    },
+    {
+      "x": 17,
+      "y": 28,
+      "spriteId": "isobel-astral-medallion"
     }
   ],
   "chuteDrops": [
@@ -6589,6 +6613,18 @@
       "y": 9,
       "dir": "s",
       "spriteId": "namanda-church-door"
+    },
+    {
+      "x": 15,
+      "y": 28,
+      "dir": "e",
+      "spriteId": "isobels-iso-spells-door"
+    },
+    {
+      "x": 16,
+      "y": 28,
+      "dir": "w",
+      "spriteId": "isobels-iso-spells-door"
     }
   ],
   "floorRevision": 9
