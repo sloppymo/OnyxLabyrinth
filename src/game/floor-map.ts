@@ -32,6 +32,7 @@ export const BUILT_IN_TILESET_THEMES = [
   "f5",
   "hotboi",
   "camp",
+  "isobel",
 ] as const;
 
 export interface CellJSON {

@@ -34,6 +34,7 @@ export const CEILING_FEATURES: readonly CeilingFeatureDef[] = [
   { id: "f1-ceiling-hole", name: "Broken Masonry Hole", file: "f1-ceiling-hole.png" },
   { id: "f1-ceiling-water-stain", name: "Water-Damaged Ceiling Patch", file: "f1-ceiling-water-stain.png" },
   { id: "f1-ceiling-namanda-mark", name: "Namanda Chapel Relief", file: "f1-ceiling-namanda-mark.png" },
+  { id: "isobel-astral-medallion", name: "Iso-Spells Astral Medallion", file: "isobel-astral-medallion.png" },
 ];
 
 export const CEILING_FEATURES_BY_ID: Record<string, CeilingFeatureDef> = Object.fromEntries(

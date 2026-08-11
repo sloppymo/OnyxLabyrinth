@@ -9,6 +9,7 @@ import { keyOutBackground } from "./sprite-alpha";
 export type DoorFeatureImage = HTMLImageElement | HTMLCanvasElement;
 
 const cache = new Map<string, DoorFeatureImage | null>();
+const textCache = new Map<string, HTMLCanvasElement | null>();
 let loadPromise: Promise<void> | null = null;
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
@@ -48,6 +49,7 @@ export function loadDoorFeatures(): Promise<void> {
     DOOR_FEATURES.map(async (def) => {
       const img = await loadImage(doorFeatureUrl(def));
       cache.set(def.id, img ? preparePanel(img) : null);
+      textCache.set(def.id, buildOverlayText(def));
     })
   ).then(() => {});
   return loadPromise;
@@ -59,4 +61,36 @@ export function getDoorFeatureImage(spriteId: string): DoorFeatureImage | null {
 
 export function getDoorFeatureDef(spriteId: string): DoorFeatureSpriteDef | undefined {
   return DOOR_FEATURES.find((f) => f.id === spriteId);
+}
+
+function buildOverlayText(def: DoorFeatureSpriteDef): HTMLCanvasElement | null {
+  if (!def.overlayText?.length) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = false;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = '16px "FF36", monospace';
+  ctx.fillStyle = "#f0d080";
+  ctx.strokeStyle = "#24152f";
+  ctx.lineWidth = 2;
+  // Door samples are mirrored by the corridor's full-face panel path for
+  // both approach edges. Mirror the overlay source once so the final glyphs
+  // remain readable from either side of the same physical door asset.
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  const lineHeight = 23;
+  const firstY = canvas.height / 2 - ((def.overlayText.length - 1) * lineHeight) / 2;
+  for (const [index, line] of def.overlayText.entries()) {
+    ctx.strokeText(line, canvas.width / 2, firstY + index * lineHeight);
+    ctx.fillText(line, canvas.width / 2, firstY + index * lineHeight);
+  }
+  return canvas;
+}
+
+export function getDoorFeatureTextImage(spriteId: string): HTMLCanvasElement | null {
+  return textCache.get(spriteId) ?? null;
 }

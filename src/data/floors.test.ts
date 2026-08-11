@@ -292,7 +292,7 @@ describe("floor definitions", () => {
     for (let y = 0; y < f1.height; y++) {
       for (let x = 0; x < f1.width; x++) themes.add(themeAt(f1, x, y));
     }
-    expect([...themes].sort()).toEqual(["f1", "f2", "f3", "f4", "f5", "hotboi", "namanda"]);
+      expect([...themes].sort()).toEqual(["f1", "f2", "f3", "f4", "f5", "hotboi", "isobel", "namanda"]);
   });
 
   it("floor 1 keeps campaign encounter and lore contracts", () => {
