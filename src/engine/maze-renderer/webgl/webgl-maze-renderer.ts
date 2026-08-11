@@ -37,6 +37,7 @@ import type {
 import { compileMazeGeometry } from "./maze-geometry-compiler";
 import { MazeMaterialLibrary } from "./maze-materials";
 import { MazeVisualCollection, preloadMazeVisuals } from "./maze-visuals";
+import { loadArchitecturalProps } from "../../architectural-prop-cache";
 
 const HORIZONTAL_FOV_DEGREES = 60;
 const BACKGROUND_COLOR = 0x0e0d0a;
@@ -95,6 +96,7 @@ export class WebGLMazeRenderer implements MazeRenderer {
     this.scene.fog = new FogExp2(BACKGROUND_COLOR, 0.22);
     this.scene.add(this.floorGroup);
     this.scene.add(this.visuals.wallFeatures);
+    this.scene.add(this.visuals.architecturalProps);
     this.scene.add(this.visuals.billboards);
   }
 
@@ -137,6 +139,7 @@ export class WebGLMazeRenderer implements MazeRenderer {
       loadDoorFeatures(),
       loadCeilingFeatures(),
       preloadMazeVisuals(),
+      loadArchitecturalProps(floor.architecturalProps ?? []),
     ]);
     await Promise.all(
       tilesetThemesForFloor(floor).map((theme) => ensureThemeLoaded(theme))

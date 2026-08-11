@@ -914,3 +914,63 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   0.3-1.1 ms p95; Floor 1 regression benchmarks unchanged vs the
   pre-work baseline. Ten Floor 1 <-> slice cycles are resource-bounded
   (textures plateau after first full slice load; geometries flat).
+## 2026-08-11 — Level 2 architectural blockout reset
+
+- Rejected the oversized diagnostic arrangement while preserving the fixed-orientation static architectural-prop primitive.
+- Rebuilt the hero room as a safe 5×5 chamber at x=8..12, y=8..12, with the existing stair/chapel/return topology intact. A trial threshold expansion across stair row y=7 was rejected by `floor:check` and reverted.
+- Removed hall clutter and replaced it with shallow wall-hugging supports, one far-wall gate silhouette, one lock, one counterweight, and a reduced chain.
+- Moved the gate event/grid marker to (10,8), so hero captures are free of the fallback event glyph.
+- Final capture set: `playtest-screenshots/level2-slice/blockout-widened-final/`; 7 screenshots, zero browser errors. `floor:check` and `npm run build` pass; `git diff --check` passes.
+- The renderer’s temporary low-fog diagnostic settings remain intentionally active. Do not begin production art until the room composition is accepted; restore those settings afterward.
+
+## 2026-08-11 — Gate of the Kept production-art checkpoint
+
+- Composition is frozen at the approved 5×5 chamber; no topology or structural-scale changes were made.
+- Generated and installed production textures: `gate-kept.png`, `support-basalt.png`, and `counterweight-kept.png` under `public/assets/architectural-props/`.
+- Replaced neon diagnostic architecture, removed the separate yellow lock cube, switched to the production chain, and reduced legacy censer scales.
+- Restored the original renderer fog/brightness constants after the architecture became readable.
+- Final production capture: `playtest-screenshots/level2-slice/production-gate-final/`; seven views, zero browser errors. Do not add decorative clutter until this gate is reviewed.
+## 2026-08-11 — Gate of the Kept environment integration pass
+
+- Preserved the approved 5×5 chamber, gate footprint/silhouette, shallow supports, far-wall placement, ordinary-door scale cue, and open central floor.
+- Thickened only the gate lintel from `0.24` to `0.34` world units using the existing basalt/bronze support texture; no new structural footprint was introduced.
+- Replaced the easy-to-miss architectural counterweight box with the existing production hanging counterweight sprite, offset to the side and reduced to `0.30` scale so the hoist reads as functional without competing with the gate.
+- Added a restrained upper-chamber atmospheric veil in the renderer: the upper 30–40% progressively falls toward warm black while the gate mechanism and floor remain readable.
+- Re-exported the floor and passed `npm run floor:check -- --file src/content/floors/level-2-slice.json` (only the existing no-stairs warning).
+- Recaptured `07`, `08`, `09`, `10`, and `11b` to `playtest-screenshots/level2-slice/atmosphere-integration-v2/`; browser report contains `errors: []`.
+- Visual result: gate remains dominant and ancient/engineered, the hoist has slight asymmetry, supports remain subordinate, and the ceiling no longer reads as a uniformly measurable grid.
+## 2026-08-11 — Controlled architecture polish checkpoint
+
+- Kept the Gate of the Kept production bitmap unchanged.
+- Increased the hero upper-volume fade modestly so the ceiling grid recedes further while the gate mechanism remains readable.
+- Removed one pale processional relief placement to reduce repetition and visual competition with the gate.
+- Tested a reusable north cornice and small hoist-housing box using the existing basalt material; browser captures showed both reading as floating slabs because of their cell anchoring, so both were removed immediately.
+- Final retained result is intentionally restrained: darker upper atmosphere, existing shallow support vocabulary, existing offset counterweight, and no new clutter.
+- Final hero capture set: `playtest-screenshots/level2-slice/architecture-atmosphere-final/`; browser report contains `errors: []`.
+- `floor:check` passes with only the existing no-stairs warning; the previous build remains valid for the renderer change.
+
+## 2026-08-11 — Level 2 architectural-language experiment
+
+- Added one reusable subdued structural wall-band asset at `public/assets/wall-features/descent-structural-band.png` and registered it as `descent-structural-band`.
+- Added a sibling darkened processional-relief asset and swapped the gallery placement to `descent-relief-procession-subdued`, preserving the original source art.
+- Placed the band only on the approach face `(5,10,n)` and gallery end wall `(9,5,e)`; no topology, gate, supports, or gameplay logic changed.
+- Extended the upper atmosphere veil slightly (`0.56` → `0.60` screen height) without changing normal fog constants.
+- Browser capture `playtest-screenshots/level2-slice/architecture-language-v2/` contains seven views with `errors: []`. The gallery view now shows the band as a restrained structural course; hero gate and close-up remain unchanged in silhouette and hierarchy.
+- Floor export/check, build, and `git diff --check` pass. The ordinary-room follow-up remains intentionally limited to the existing gallery/approach context because the slice has no separate wide secondary chamber without topology changes.
+
+## 2026-08-11 — Level 2 wall sconce production prototype
+
+- Audited the local PixelLab generator, wall-feature cache, WebGL visual collection, and existing warm glow convention before editing.
+- Generated one PixelLab candidate using the gate, structural band, and subdued relief as visual references; selected it for its compact black-iron/aged-bronze silhouette and clear flame.
+- Added five 64×96 hard-pixel lit frames at 9 fps plus a matched extinguished 64×96 frame under `public/assets/wall-features/descent-sconce-frames/` and `descent-sconce-extinguished-frames/`. Near-transparent pixels are now binary-alpha keyed, and every frame has a two-pixel transparent top safety margin.
+- Extended wall-feature metadata/cache for optional animation and restrained fixed wall light pools. WebGL swaps materials in place; no geometry rebuild occurs. Phase is coordinate-derived and deterministic.
+- Added `wallFeatureFrameIndex` and three focused tests. The existing 2D renderer also samples the same frame sequence.
+- Registered one sconce and one extinguished sibling; the live animation order is now `01 → 03 → 02 → 05 → 04 → 03` at 9 fps. Added two verified sealed side-wall placements at `(8,11,w)` and `(12,9,e)` in the Gate chamber. Gate, topology, and structural scale remain unchanged.
+- Final capture `playtest-screenshots/level2-slice/torch-production-final/` contains the normal seven views with `browserErrors: []`; `01-cramped-approach.png` shows the localized warm pool while `09-hall-hero.png` remains gate-dominant.
+- Motion contact sheet was inspected from a disposable external temp location. Build, focused tests, floor check, and `git diff --check` pass. No commits or pushes.
+
+## 2026-08-11 — Sconce localized-light refinement
+
+- Added fixed horizontal floor light pools beneath wall sconces and deterministic independent material modulation of approximately ±4%. The effect remains restrained, does not change global fog, and preserves the Gate's hierarchy.
+- Recaptured `playtest-screenshots/level2-slice/torch-localized-v2/`: seven views, browser errors `[]`. The approach sconce reads clearly; the chamber remains mostly dark and the gate remains dominant, with warm side-wall/floor catches from oblique views.
+- Review decision: freeze the sconce art, alpha treatment, frame order, 9 fps timing, radius, and intensity. `01-cramped-approach.png` in this capture set is the canonical localized-light reference for future fog, exposure, tonemapping, and renderer changes.

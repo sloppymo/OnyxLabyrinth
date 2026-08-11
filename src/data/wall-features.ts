@@ -21,9 +21,41 @@ export interface WallFeatureSpriteDef {
   overlayText?: readonly string[];
   /** East-facing wall samples reverse the source texture horizontally. */
   overlayTextMirrored?: boolean;
+  /** Optional fixed-rate frame sequence. The first file is also the static fallback. */
+  animation?: { files: readonly string[]; fps: number };
+  /** Restrained projected warm light for fixed wall fixtures. */
+  light?: { color: string; radius: number; intensity: number };
 }
 
 export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
+  {
+    id: "descent-sconce",
+    name: "Descent Wall Sconce",
+    file: "descent-sconce-frames/frame-01.png",
+    widthFrac: 0.15,
+    heightFrac: 0.34,
+    anchor: "center",
+    animation: {
+      files: [
+        "descent-sconce-frames/frame-01.png",
+        "descent-sconce-frames/frame-03.png",
+        "descent-sconce-frames/frame-02.png",
+        "descent-sconce-frames/frame-05.png",
+        "descent-sconce-frames/frame-04.png",
+        "descent-sconce-frames/frame-03.png",
+      ],
+      fps: 9,
+    },
+    light: { color: "255, 146, 54", radius: 0.85, intensity: 0.22 },
+  },
+  {
+    id: "descent-sconce-extinguished",
+    name: "Extinguished Descent Wall Sconce",
+    file: "descent-sconce-extinguished-frames/frame-01.png",
+    widthFrac: 0.15,
+    heightFrac: 0.34,
+    anchor: "center",
+  },
   {
     id: "lamp-lock",
     name: "Lamp-shaped Lock",
@@ -270,6 +302,22 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     file: "descent-relief-procession.png",
     widthFrac: 0.92,
     heightFrac: 0.46,
+    anchor: "center",
+  },
+  {
+    id: "descent-relief-procession-subdued",
+    name: "Processional Frieze (subdued)",
+    file: "descent-relief-procession-subdued.png",
+    widthFrac: 0.92,
+    heightFrac: 0.46,
+    anchor: "center",
+  },
+  {
+    id: "descent-structural-band",
+    name: "Descent Structural Band",
+    file: "descent-structural-band.png",
+    widthFrac: 0.98,
+    heightFrac: 0.22,
     anchor: "center",
   },
   {

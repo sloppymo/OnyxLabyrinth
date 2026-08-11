@@ -87,6 +87,7 @@ import {
 import type { MapSpriteDef } from "../data/map-sprites";
 import {
   getWallFeatureDef,
+  getWallFeatureFrames,
   getWallFeatureImage,
   getWallFeatureTextImage,
 } from "./wall-feature-cache";
@@ -102,6 +103,7 @@ import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
 import { waterGridFromFloor } from "./water-floor";
 import { mazeRenderProfiler } from "./maze-renderer/performance";
+import { wallFeatureFrameIndex } from "./wall-feature-animation";
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
 export const PALETTE = {
@@ -145,6 +147,10 @@ const FEATURE_BILLBOARD_BASE_SIZE = 18;
 const RENDER_CONFIG = {
   ...MATH_CONFIG,
   fillOpacityMultiplier: 0.45,
+  // The approved Level 2 hall is intentionally taller than the corridor.
+  // A screen-space atmospheric veil lets the upper volume disappear into
+  // darkness without sacrificing the gate's lower silhouette or mechanism.
+  upperChamberAtmosphere: true,
   // The edge-glow pass draws an amber line on every 1px strip. At full
   // strength that repaints flat walls amber and hides the per-floor wall art,
   // so flat-wall strips are scaled down to a warm wash; strips at a depth
@@ -1676,6 +1682,28 @@ function drawFloorCeilingCast(
   mazeRenderProfiler.endSection("putImageData", uploadStartedAt);
 }
 
+/**
+ * Fade the upper chamber into the dungeon's warm black. This is deliberately
+ * a shallow screen-space treatment: the gate and floor remain readable while
+ * the ceiling/hoist lose their measurable grid-like quality with height.
+ */
+function drawUpperChamberAtmosphere(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number
+): void {
+  if (!RENDER_CONFIG.upperChamberAtmosphere) return;
+  const gradient = ctx.createLinearGradient(0, 0, 0, h * 0.60);
+  gradient.addColorStop(0, "rgba(8, 7, 6, 0.86)");
+  gradient.addColorStop(0.38, "rgba(8, 7, 6, 0.68)");
+  gradient.addColorStop(0.78, "rgba(8, 7, 6, 0.32)");
+  gradient.addColorStop(1, "rgba(8, 7, 6, 0)");
+  ctx.save();
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, w, h * 0.60);
+  ctx.restore();
+}
+
 /** Return the loaded tileset for a theme id, or null if none is cached. */
 export function getTilesetForTheme(theme: string): LoadedTileset | null {
   return tilesetCache.get(theme) ?? tilesetCache.get(FALLBACK_THEME) ?? null;
@@ -1862,7 +1890,14 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       );
       if (featureDef) {
         const sprite = getWallFeatureDef(featureDef.spriteId);
-        const img = getWallFeatureImage(featureDef.spriteId);
+        const frames = getWallFeatureFrames(featureDef.spriteId);
+        const img = frames.length > 0
+          ? frames[wallFeatureFrameIndex(
+            performance.now() / 1000,
+            sprite?.animation?.fps ?? 1,
+            frames.length
+          )]
+          : getWallFeatureImage(featureDef.spriteId);
         if (sprite && img) {
           const stableX = stableWallX(hit.wallX, hit.side, rayDirX, rayDirY);
           const u = wallFeatureLocalU(stableX, sprite.widthFrac);
@@ -2110,6 +2145,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
 
   // Restore from the head-bob translate before drawing screen-space overlays.
   ctx.restore();
+
+  // Let the upper chamber recede into darkness while preserving the gate's
+  // silhouette and the floor/path that establishes its scale.
+  drawUpperChamberAtmosphere(ctx, w, h);
 
   const postprocessStartedAt = mazeRenderProfiler.beginSection();
   if (useSky) {

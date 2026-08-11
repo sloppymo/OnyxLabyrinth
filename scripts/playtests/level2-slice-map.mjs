@@ -15,7 +15,7 @@ const wall = () => ({ n: "wall", e: "wall", s: "wall", w: "wall" });
 // C  ramp climb (0 -> 1, air 2)    (6,9) (6,8) (6,7) (6,6)
 // G  gallery (floorZ 1, air 3)     (6,5) (7,5) (8,5) (9,5)
 // D  grand stair (1 -> 0, air 3)   (9,6) (9,7)
-// H  procession hall (0 -> 3)      x 8..11 y 8..10 + (12,9) (12,10)
+// H  procession hall (0 -> 3)      x 8..12 y 8..12 (5x5 chamber)
 // K  votive chapel (0 -> 2)        (7,8) (7,9), door at (8,9)w
 // R  return link (1x)              (7,10), door at (8,10)w
 
@@ -26,17 +26,18 @@ const AIR = [
   [6, 9], [6, 8], [6, 7], [6, 6],
   [6, 5], [7, 5], [8, 5], [9, 5],
   [9, 6], [9, 7],
-  [8, 8], [9, 8], [10, 8], [11, 8],
+  [8, 8], [9, 8], [10, 8], [11, 8], [12, 8],
   [8, 9], [9, 9], [10, 9], [11, 9], [12, 9],
   [8, 10], [9, 10], [10, 10], [11, 10], [12, 10],
-  [9, 11], [12, 11], // south alcoves flanking the gate wall
+  [8, 11], [9, 11], [10, 11], [11, 11], [12, 11],
+  [8, 12], [9, 12], [10, 12], [11, 12], [12, 12],
   [7, 8], [7, 9],
   [7, 10],
 ];
 
 const DOORS = [
   // [x, y, dir] — dir names the edge of (x,y) that is a door.
-  [4, 10, "e"], // threshold door into the antechamber
+  [5, 10, "e"], // threshold door mid-antechamber, so the seam breathes first
   [8, 9, "w"], // chapel door
   [8, 10, "w"], // return-loop door
 ];
@@ -73,7 +74,7 @@ export function makeLevel2SliceMap({ theme = "f1" } = {}) {
     grid[y][6].e = "wall";
     grid[y][7].w = "wall";
   }
-  for (const [x, y] of [[5, 10], [9, 5], [7, 8], [10, 10]]) {
+  for (const [x, y] of [[5, 10], [9, 5], [7, 8], [10, 8]]) {
     grid[y][x].tile = "event";
   }
   return {
@@ -96,9 +97,7 @@ export function makeLevel2SliceMap({ theme = "f1" } = {}) {
       { id: "gallery", x1: 6, y1: 5, x2: 9, y2: 5, floorZ: 1, ceilingZ: 3 },
       { id: "stair-air", x1: 9, y1: 6, x2: 9, y2: 7, ceilingZ: 3 },
       { id: "stair-mid", x1: 9, y1: 6, x2: 9, y2: 6, floorZ: 0.5 },
-      { id: "hall-a", x1: 8, y1: 8, x2: 11, y2: 10, ceilingZ: 3 },
-      { id: "hall-b", x1: 12, y1: 9, x2: 12, y2: 10, ceilingZ: 3 },
-      { id: "hall-alcoves", x1: 9, y1: 11, x2: 12, y2: 11, ceilingZ: 3 },
+      { id: "hall", x1: 8, y1: 8, x2: 12, y2: 12, ceilingZ: 3 },
       { id: "chapel", x1: 7, y1: 8, x2: 7, y2: 9, ceilingZ: 2 },
     ],
     ramps: [
@@ -123,42 +122,49 @@ export function makeLevel2SliceMap({ theme = "f1" } = {}) {
         message: "A votive chapel. The offerings are dust — but someone has stacked the bowls neatly, recently.",
       },
       {
-        x: 10, y: 10, kind: "message", once: true,
+        x: 10, y: 8, kind: "message", once: true,
         message: "The gate has never opened. Chains as thick as your arm vanish into the dark above it.",
       },
     ],
     mapSprites: [
-      { x: 11, y: 8, spriteId: "descent-toppled-drum" },
-      { x: 11, y: 8, spriteId: "descent-fallen-standard" },
-      { x: 8, y: 9, spriteId: "descent-rubble" },
-      { x: 9, y: 11, spriteId: "descent-brazier" },
-      { x: 12, y: 11, spriteId: "descent-brazier" },
       { x: 7, y: 8, spriteId: "descent-offering-bowls" },
     ],
     wallFeatures: [
-      { x: 5, y: 10, dir: "n", spriteId: "descent-relief-procession" },
+      { x: 2, y: 10, dir: "n", spriteId: "descent-sconce" },
+      // Asymmetric side-wall pools keep the gate chamber mostly dark while
+      // giving the lock and one pier a functional warm rake of light.
+      { x: 8, y: 11, dir: "w", spriteId: "descent-sconce" },
+      { x: 12, y: 9, dir: "e", spriteId: "descent-sconce" },
       { x: 6, y: 10, dir: "s", spriteId: "descent-niche-votive" },
       { x: 6, y: 8, dir: "w", spriteId: "descent-bronze-grate" },
-      { x: 7, y: 5, dir: "n", spriteId: "descent-relief-procession" },
-      { x: 8, y: 8, dir: "n", spriteId: "descent-relief-procession" },
-      { x: 11, y: 8, dir: "n", spriteId: "descent-repair-plate" },
-      { x: 12, y: 9, dir: "e", spriteId: "descent-niche-votive" },
-      { x: 10, y: 10, dir: "s", spriteId: "descent-gate-left" },
-      { x: 11, y: 10, dir: "s", spriteId: "descent-gate-right" },
+      { x: 7, y: 5, dir: "n", spriteId: "descent-relief-procession-subdued" },
       { x: 7, y: 8, dir: "n", spriteId: "descent-niche-votive" },
       { x: 7, y: 10, dir: "s", spriteId: "descent-repair-plate" },
+      { x: 9, y: 5, dir: "e", spriteId: "descent-structural-band" },
+    ],
+    architecturalProps: [
+      // Naked blockout: shallow, wall-hugging supports frame the volume;
+      // the gate is one unified destination silhouette on the south wall.
+      { id: "hall-support-west-north", x: 8, y: 8, kind: "box", facing: "s", width: 0.22, height: 2.7, depth: 0.18, texture: "support-basalt.png", offsetX: -0.34, offsetZ: -0.34, alphaMode: "opaque" },
+      { id: "hall-support-east-north", x: 12, y: 8, kind: "box", facing: "s", width: 0.22, height: 2.7, depth: 0.18, texture: "support-basalt.png", offsetX: 0.34, offsetZ: -0.34, alphaMode: "opaque" },
+      { id: "hall-support-west-south", x: 8, y: 10, kind: "box", facing: "s", width: 0.22, height: 2.7, depth: 0.18, texture: "support-basalt.png", offsetX: -0.34, offsetZ: 0.34, alphaMode: "opaque" },
+      { id: "hall-support-east-south", x: 12, y: 10, kind: "box", facing: "s", width: 0.22, height: 2.7, depth: 0.18, texture: "support-basalt.png", offsetX: 0.34, offsetZ: 0.34, alphaMode: "opaque" },
+      { id: "gate-frame-west", x: 8, y: 12, kind: "box", facing: "s", width: 0.22, height: 2.8, depth: 0.16, texture: "support-basalt.png", offsetX: 0.12, offsetZ: 0.46, alphaMode: "opaque" },
+      { id: "gate-frame-east", x: 12, y: 12, kind: "box", facing: "s", width: 0.22, height: 2.8, depth: 0.16, texture: "support-basalt.png", offsetX: -0.12, offsetZ: 0.46, alphaMode: "opaque" },
+      { id: "gate-frame-lintel", x: 10, y: 12, kind: "box", facing: "s", width: 4.0, height: 0.34, depth: 0.16, texture: "support-basalt.png", offsetZ: 0.46, anchor: "ceiling", alphaMode: "opaque" },
+      { id: "gate-unified", x: 10, y: 12, kind: "box", facing: "s", width: 3.55, height: 2.45, depth: 0.1, texture: "gate-kept.png", offsetZ: 0.48, alphaMode: "opaque" },
     ],
     ceilingFeatures: [
       { x: 4, y: 10, spriteId: "descent-ceiling-shaft" },
-      { x: 10, y: 9, spriteId: "descent-ceiling-medallion" },
-      { x: 10, y: 10, spriteId: "descent-ceiling-shaft" },
-      { x: 11, y: 10, spriteId: "descent-ceiling-shaft" },
+      { x: 10, y: 12, spriteId: "descent-ceiling-shaft" },
     ],
     ceilingSprites: [
       { x: 4, y: 9, spriteId: "descent-chain-heavy", scale: 1.4 },
       { x: 4, y: 11, spriteId: "descent-chain-heavy", scale: 1.4 },
-      { x: 10, y: 10, spriteId: "descent-counterweight", scale: 1 },
-      { x: 11, y: 10, spriteId: "descent-chain-heavy", scale: 1.2 },
+      { x: 7, y: 5, spriteId: "descent-censer", scale: 0.45 },
+      { x: 10, y: 11, spriteId: "descent-chain-heavy", scale: 0.68 },
+      { x: 9, y: 11, spriteId: "descent-counterweight", scale: 0.30 },
+      { x: 7, y: 9, spriteId: "descent-censer", scale: 0.4 },
     ],
     grid,
   };

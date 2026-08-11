@@ -83,27 +83,11 @@
       "floorZ": 0.5
     },
     {
-      "id": "hall-a",
+      "id": "hall",
       "x1": 8,
       "y1": 8,
-      "x2": 11,
-      "y2": 10,
-      "ceilingZ": 3
-    },
-    {
-      "id": "hall-b",
-      "x1": 12,
-      "y1": 9,
       "x2": 12,
-      "y2": 10,
-      "ceilingZ": 3
-    },
-    {
-      "id": "hall-alcoves",
-      "x1": 9,
-      "y1": 11,
-      "x2": 12,
-      "y2": 11,
+      "y2": 12,
       "ceilingZ": 3
     },
     {
@@ -177,38 +161,13 @@
     },
     {
       "x": 10,
-      "y": 10,
+      "y": 8,
       "kind": "message",
       "once": true,
       "message": "The gate has never opened. Chains as thick as your arm vanish into the dark above it."
     }
   ],
   "mapSprites": [
-    {
-      "x": 11,
-      "y": 8,
-      "spriteId": "descent-toppled-drum"
-    },
-    {
-      "x": 11,
-      "y": 8,
-      "spriteId": "descent-fallen-standard"
-    },
-    {
-      "x": 8,
-      "y": 9,
-      "spriteId": "descent-rubble"
-    },
-    {
-      "x": 9,
-      "y": 11,
-      "spriteId": "descent-brazier"
-    },
-    {
-      "x": 12,
-      "y": 11,
-      "spriteId": "descent-brazier"
-    },
     {
       "x": 7,
       "y": 8,
@@ -217,10 +176,22 @@
   ],
   "wallFeatures": [
     {
-      "x": 5,
+      "x": 2,
       "y": 10,
       "dir": "n",
-      "spriteId": "descent-relief-procession"
+      "spriteId": "descent-sconce"
+    },
+    {
+      "x": 8,
+      "y": 11,
+      "dir": "w",
+      "spriteId": "descent-sconce"
+    },
+    {
+      "x": 12,
+      "y": 9,
+      "dir": "e",
+      "spriteId": "descent-sconce"
     },
     {
       "x": 6,
@@ -238,49 +209,138 @@
       "x": 7,
       "y": 5,
       "dir": "n",
-      "spriteId": "descent-relief-procession"
+      "spriteId": "descent-relief-procession-subdued"
     },
     {
+      "x": 7,
+      "y": 8,
+      "dir": "n",
+      "spriteId": "descent-niche-votive"
+    },
+    {
+      "x": 7,
+      "y": 10,
+      "dir": "s",
+      "spriteId": "descent-repair-plate"
+    },
+    {
+      "x": 9,
+      "y": 5,
+      "dir": "e",
+      "spriteId": "descent-structural-band"
+    }
+  ],
+  "architecturalProps": [
+    {
+      "id": "hall-support-west-north",
       "x": 8,
       "y": 8,
-      "dir": "n",
-      "spriteId": "descent-relief-procession"
+      "kind": "box",
+      "facing": "s",
+      "width": 0.22,
+      "height": 2.7,
+      "depth": 0.18,
+      "texture": "support-basalt.png",
+      "offsetX": -0.34,
+      "offsetZ": -0.34,
+      "alphaMode": "opaque"
     },
     {
-      "x": 11,
-      "y": 8,
-      "dir": "n",
-      "spriteId": "descent-repair-plate"
-    },
-    {
+      "id": "hall-support-east-north",
       "x": 12,
-      "y": 9,
-      "dir": "e",
-      "spriteId": "descent-niche-votive"
-    },
-    {
-      "x": 10,
-      "y": 10,
-      "dir": "s",
-      "spriteId": "descent-gate-left"
-    },
-    {
-      "x": 11,
-      "y": 10,
-      "dir": "s",
-      "spriteId": "descent-gate-right"
-    },
-    {
-      "x": 7,
       "y": 8,
-      "dir": "n",
-      "spriteId": "descent-niche-votive"
+      "kind": "box",
+      "facing": "s",
+      "width": 0.22,
+      "height": 2.7,
+      "depth": 0.18,
+      "texture": "support-basalt.png",
+      "offsetX": 0.34,
+      "offsetZ": -0.34,
+      "alphaMode": "opaque"
     },
     {
-      "x": 7,
+      "id": "hall-support-west-south",
+      "x": 8,
       "y": 10,
-      "dir": "s",
-      "spriteId": "descent-repair-plate"
+      "kind": "box",
+      "facing": "s",
+      "width": 0.22,
+      "height": 2.7,
+      "depth": 0.18,
+      "texture": "support-basalt.png",
+      "offsetX": -0.34,
+      "offsetZ": 0.34,
+      "alphaMode": "opaque"
+    },
+    {
+      "id": "hall-support-east-south",
+      "x": 12,
+      "y": 10,
+      "kind": "box",
+      "facing": "s",
+      "width": 0.22,
+      "height": 2.7,
+      "depth": 0.18,
+      "texture": "support-basalt.png",
+      "offsetX": 0.34,
+      "offsetZ": 0.34,
+      "alphaMode": "opaque"
+    },
+    {
+      "id": "gate-frame-west",
+      "x": 8,
+      "y": 12,
+      "kind": "box",
+      "facing": "s",
+      "width": 0.22,
+      "height": 2.8,
+      "depth": 0.16,
+      "texture": "support-basalt.png",
+      "offsetX": 0.12,
+      "offsetZ": 0.46,
+      "alphaMode": "opaque"
+    },
+    {
+      "id": "gate-frame-east",
+      "x": 12,
+      "y": 12,
+      "kind": "box",
+      "facing": "s",
+      "width": 0.22,
+      "height": 2.8,
+      "depth": 0.16,
+      "texture": "support-basalt.png",
+      "offsetX": -0.12,
+      "offsetZ": 0.46,
+      "alphaMode": "opaque"
+    },
+    {
+      "id": "gate-frame-lintel",
+      "x": 10,
+      "y": 12,
+      "kind": "box",
+      "facing": "s",
+      "width": 4,
+      "height": 0.34,
+      "depth": 0.16,
+      "texture": "support-basalt.png",
+      "offsetZ": 0.46,
+      "anchor": "ceiling",
+      "alphaMode": "opaque"
+    },
+    {
+      "id": "gate-unified",
+      "x": 10,
+      "y": 12,
+      "kind": "box",
+      "facing": "s",
+      "width": 3.55,
+      "height": 2.45,
+      "depth": 0.1,
+      "texture": "gate-kept.png",
+      "offsetZ": 0.48,
+      "alphaMode": "opaque"
     }
   ],
   "ceilingFeatures": [
@@ -291,17 +351,7 @@
     },
     {
       "x": 10,
-      "y": 9,
-      "spriteId": "descent-ceiling-medallion"
-    },
-    {
-      "x": 10,
-      "y": 10,
-      "spriteId": "descent-ceiling-shaft"
-    },
-    {
-      "x": 11,
-      "y": 10,
+      "y": 12,
       "spriteId": "descent-ceiling-shaft"
     }
   ],
@@ -319,16 +369,28 @@
       "scale": 1.4
     },
     {
-      "x": 10,
-      "y": 10,
-      "spriteId": "descent-counterweight",
-      "scale": 1
+      "x": 7,
+      "y": 5,
+      "spriteId": "descent-censer",
+      "scale": 0.45
     },
     {
-      "x": 11,
-      "y": 10,
+      "x": 10,
+      "y": 11,
       "spriteId": "descent-chain-heavy",
-      "scale": 1.2
+      "scale": 0.68
+    },
+    {
+      "x": 9,
+      "y": 11,
+      "spriteId": "descent-counterweight",
+      "scale": 0.3
+    },
+    {
+      "x": 7,
+      "y": 9,
+      "spriteId": "descent-censer",
+      "scale": 0.4
     }
   ],
   "grid": [
@@ -1183,191 +1245,93 @@
         "n": "wall",
         "e": "open",
         "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      }
-    ],
-    [
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "open",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "open",
-        "e": "wall",
-        "s": "open",
-        "w": "wall"
-      },
-      {
-        "n": "open",
-        "e": "door",
-        "s": "open",
-        "w": "wall"
-      },
-      {
-        "n": "open",
-        "e": "open",
-        "s": "open",
-        "w": "door"
-      },
-      {
-        "n": "open",
-        "e": "open",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "open",
-        "e": "open",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "open",
-        "e": "open",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      }
-    ],
-    [
-      {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "open",
-        "s": "wall",
-        "w": "wall"
-      },
-      {
-        "n": "wall",
-        "e": "open",
-        "s": "wall",
-        "w": "open"
-      },
-      {
-        "n": "wall",
-        "e": "open",
-        "s": "wall",
-        "w": "open"
-      },
-      {
-        "n": "open",
-        "e": "door",
-        "s": "open",
-        "w": "open"
-      },
-      {
-        "n": "wall",
-        "e": "open",
-        "s": "wall",
-        "w": "door",
+        "w": "open",
         "tile": "event"
       },
       {
-        "n": "open",
+        "n": "wall",
         "e": "open",
-        "s": "wall",
+        "s": "open",
         "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "wall"
       },
       {
         "n": "open",
         "e": "door",
-        "s": "wall",
-        "w": "open"
+        "s": "open",
+        "w": "wall"
       },
       {
         "n": "open",
         "e": "open",
-        "s": "wall",
+        "s": "open",
         "w": "door"
       },
       {
@@ -1379,6 +1343,74 @@
       {
         "n": "open",
         "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "door",
         "s": "wall",
         "w": "open",
         "tile": "event"
@@ -1387,6 +1419,36 @@
         "n": "open",
         "e": "open",
         "s": "wall",
+        "w": "door"
+      },
+      {
+        "n": "open",
+        "e": "door",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "door"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
         "w": "open"
       },
       {
@@ -1464,34 +1526,34 @@
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
+        "n": "open",
+        "e": "open",
+        "s": "open",
         "w": "wall"
       },
       {
         "n": "open",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "open",
         "e": "wall",
-        "s": "wall",
-        "w": "wall"
+        "s": "open",
+        "w": "open"
       },
       {
         "n": "wall",
@@ -1562,34 +1624,34 @@
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
+        "n": "open",
+        "e": "open",
         "s": "wall",
         "w": "wall"
       },
       {
-        "n": "wall",
-        "e": "wall",
+        "n": "open",
+        "e": "open",
         "s": "wall",
-        "w": "wall"
+        "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
+        "n": "open",
+        "e": "open",
         "s": "wall",
-        "w": "wall"
+        "w": "open"
       },
       {
-        "n": "wall",
-        "e": "wall",
+        "n": "open",
+        "e": "open",
         "s": "wall",
-        "w": "wall"
+        "w": "open"
       },
       {
-        "n": "wall",
+        "n": "open",
         "e": "wall",
         "s": "wall",
-        "w": "wall"
+        "w": "open"
       },
       {
         "n": "wall",

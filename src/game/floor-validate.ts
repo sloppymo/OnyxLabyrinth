@@ -117,6 +117,7 @@ export function validateFloorMap(
   validateLockedDoors(map, issues, context?.floors ?? getFloors());
   validateLockedEdgeCoverage(map, issues);
   validateWallFeatures(map, issues);
+  validateArchitecturalProps(map, issues);
   validateCeilingSprites(map, issues);
   validateCeilingFeatures(map, issues);
   validateDoorFeatures(map, issues);
@@ -641,6 +642,52 @@ function validateWallFeatures(map: FloorMapJSON, issues: ValidationIssue[]): voi
         code: "wall_feature_unknown",
         message: `Unknown wall feature id "${f.spriteId}" at (${f.x},${f.y})`,
         at: { x: f.x, y: f.y },
+      });
+    }
+  }
+}
+
+function validateArchitecturalProps(map: FloorMapJSON, issues: ValidationIssue[]): void {
+  for (const prop of map.architecturalProps ?? []) {
+    if (!inBoundsGrid(map, prop.x, prop.y)) {
+      issues.push({
+        severity: "error",
+        code: "architectural_prop_oob",
+        message: `Architectural prop "${prop.id}" at (${prop.x},${prop.y}) out of bounds`,
+        at: { x: prop.x, y: prop.y },
+      });
+    }
+    if (!Number.isFinite(prop.width) || prop.width <= 0 || !Number.isFinite(prop.height) || prop.height <= 0) {
+      issues.push({
+        severity: "error",
+        code: "architectural_prop_dimensions",
+        message: `Architectural prop "${prop.id}" must have positive finite width and height`,
+        at: { x: prop.x, y: prop.y },
+      });
+    }
+    if ((prop.offsetX !== undefined && !Number.isFinite(prop.offsetX)) ||
+        (prop.offsetZ !== undefined && !Number.isFinite(prop.offsetZ))) {
+      issues.push({
+        severity: "error",
+        code: "architectural_prop_offset",
+        message: `Architectural prop "${prop.id}" offsets must be finite`,
+        at: { x: prop.x, y: prop.y },
+      });
+    }
+    if (prop.kind === "box" && (!Number.isFinite(prop.depth) || (prop.depth ?? 0) <= 0)) {
+      issues.push({
+        severity: "error",
+        code: "architectural_prop_depth",
+        message: `Box architectural prop "${prop.id}" must have positive finite depth`,
+        at: { x: prop.x, y: prop.y },
+      });
+    }
+    if (prop.kind === "plane" && prop.depth !== undefined) {
+      issues.push({
+        severity: "warning",
+        code: "architectural_prop_plane_depth",
+        message: `Plane architectural prop "${prop.id}" ignores depth`,
+        at: { x: prop.x, y: prop.y },
       });
     }
   }

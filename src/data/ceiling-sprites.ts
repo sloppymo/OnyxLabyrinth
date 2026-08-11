@@ -40,6 +40,7 @@ export const CEILING_SPRITES: readonly CeilingSpriteDef[] = [
   { id: "descent-chain-heavy", name: "Heavy Bronze Chain", file: "descent-chain-heavy.png", baseSize: 52 },
   { id: "descent-censer", name: "Hanging Bronze Censer", file: "descent-censer.png", baseSize: 40 },
   { id: "descent-counterweight", name: "Great Suspended Counterweight", file: "descent-counterweight.png", baseSize: 72 },
+  { id: "descent-chain-heavy-blockout", name: "Heavy Chain (blockout)", file: "descent-chain-heavy-blockout.png", baseSize: 68 },
 ];
 
 export const CEILING_SPRITES_BY_ID: Record<string, CeilingSpriteDef> = Object.fromEntries(
