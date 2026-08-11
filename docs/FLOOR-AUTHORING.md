@@ -73,12 +73,36 @@ Bounds are inclusive and later matching zones win independently for each field:
 ```
 
 The WebGL geometry compiler tiles wall art once per authored vertical unit and
-adds upper wall spans where a low corridor opens into a tall room. `floorZ` is
-part of the format and renderer architecture, but v1 movement deliberately
-rejects an open edge whose neighboring cells resolve to different floorZ
-values; ramps/stairs need explicit future gameplay semantics. The editor
-preserves imported height zones and clamps them on resize. Height-zone painting
-is currently JSON-authored.
+adds upper wall spans where a low corridor opens into a tall room. A raw open
+edge between mismatched flat floor surfaces is invalid. Local within-floor
+ramps/stairs make that elevation change explicit:
+
+```json
+{
+  "heightZones": [
+    { "id": "ramp-air", "x1": 2, "y1": 4, "x2": 2, "y2": 4, "ceilingZ": 2 },
+    { "id": "raised-room", "x1": 3, "y1": 2, "x2": 6, "y2": 6, "floorZ": 1, "ceilingZ": 3 }
+  ],
+  "ramps": [
+    { "x": 2, "y": 4, "dir": "e", "surface": "ramp" }
+  ]
+}
+```
+
+`dir` names the uphill edge. The connector starts at its own resolved
+`floorZ` and ends at the uphill neighbor's resolved `floorZ`; do not duplicate
+`fromZ`/`toZ`. The downhill and uphill edges must be open. For the first
+authoring version both side edges must be walls, and doors, inter-floor stair
+tiles, NPCs, and map sprites cannot occupy the connector cell. Use
+`"surface": "stairs"` for the same navigation/camera path with a four-step
+visual mesh. Existing `stairs_up`/`stairs_down` tile features still transition
+between FloorDefs and are unrelated.
+
+Gradual climbs chain connector bases. For example, east-rising cells whose
+resolved floorZ values are `0`, `.25`, `.5`, and `.75`, followed by a flat
+cell at `1`, produce four exact quarter-unit rises. Clearance is checked above
+the highest point of every surface. The editor preserves imported height zones
+and ramps and clamps/drops them safely on resize; painting remains JSON-authored.
 
 ## Editor tools
 
