@@ -1,6 +1,6 @@
 # The Cursed Library (id=2, 14x14)
 # start=(2,11) encounter=0.1
-# . floor  # solid  @ start  ^v stairs  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic
+# . floor  # solid  @ start  ^v inter-floor stairs / local ramp direction  >< local ramp direction  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic
 
    01234567890123
  0 ##############

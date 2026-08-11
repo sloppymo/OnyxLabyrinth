@@ -1,6 +1,6 @@
 # The Forge of Ashes (id=3, 16x16)
 # start=(2,2) encounter=0.12
-# . floor  # solid  @ start  ^v stairs  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic
+# . floor  # solid  @ start  ^v inter-floor stairs / local ramp direction  >< local ramp direction  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic
 
    0123456789012345
  0 ################
