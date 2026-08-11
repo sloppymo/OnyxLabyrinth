@@ -54,9 +54,32 @@ export function createVerticalTraversalDemoMap(): FloorMapJSON {
       { x: 5, y: 2, dir: "e", surface: "ramp" },
       { x: 2, y: 10, dir: "e", surface: "stairs" },
     ],
-    mapSprites: [{ x: 5, y: 6, spriteId: "crate" }],
-    ceilingFeatures: [{ x: 4, y: 5, spriteId: "f1-ceiling-grate" }],
-    ceilingSprites: [{ x: 4, y: 6, spriteId: "f1-chain-long", scale: 1 }],
+    mapSprites: [
+      { x: 5, y: 6, spriteId: "crate" },
+      { x: 4, y: 7, spriteId: "barrel" },
+      { x: 5, y: 7, spriteId: "bones" },
+      { x: 5, y: 5, spriteId: "torch" },
+      { x: 4, y: 5, spriteId: "camp-lantern-post" },
+      { x: 4, y: 2, spriteId: "chest-closed" },
+      { x: 7, y: 2, spriteId: "torch" },
+      { x: 4, y: 10, spriteId: "anvil-altar" },
+      { x: 5, y: 10, spriteId: "barrel" },
+    ],
+    wallFeatures: [
+      { x: 3, y: 5, dir: "w", spriteId: "bell" },
+      { x: 6, y: 7, dir: "e", spriteId: "writing-plaque" },
+      { x: 4, y: 4, dir: "n", spriteId: "ember-scorch" },
+      { x: 6, y: 5, dir: "e", spriteId: "upward-water" },
+    ],
+    ceilingFeatures: [
+      { x: 4, y: 5, spriteId: "f1-ceiling-grate" },
+      { x: 5, y: 7, spriteId: "f1-ceiling-beam" },
+      { x: 6, y: 6, spriteId: "f1-ceiling-crack-roots" },
+    ],
+    ceilingSprites: [
+      { x: 4, y: 6, spriteId: "f1-chain-long", scale: 1 },
+      { x: 5, y: 5, spriteId: "f1-chain-long", scale: 0.8 },
+    ],
     grid,
   };
 }
