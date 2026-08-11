@@ -48,9 +48,22 @@ export function getTranscript(page) {
   return [...transcriptFor(page)];
 }
 
-/** Launch a headless browser + page with console/pageerror capture attached. */
-export async function launch({ viewport = { width: 1280, height: 800 } } = {}) {
-  const browser = await chromium.launch({ headless: true });
+/**
+ * Launch a browser + page with console/pageerror capture attached.
+ *
+ * Playtests stay headless by default. Set ONYX_PLAYTEST_HEADED=1 and, when
+ * needed, ONYX_PLAYTEST_CHANNEL=chrome to audit the machine's actual browser
+ * and GPU instead of Playwright Chromium/SwiftShader.
+ */
+export async function launch({
+  viewport = { width: 1280, height: 800 },
+  headless = process.env.ONYX_PLAYTEST_HEADED !== "1",
+  channel = process.env.ONYX_PLAYTEST_CHANNEL,
+} = {}) {
+  const browser = await chromium.launch({
+    headless,
+    ...(channel ? { channel } : {}),
+  });
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   const errors = [];

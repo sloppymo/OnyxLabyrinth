@@ -1,6 +1,6 @@
 # The Hall of Five Wounds (id=1, 28x31)
 # start=(11,25) encounter=0.08
-# . floor  # solid  @ start  ^v stairs  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic
+# . floor  # solid  @ start  ^v inter-floor stairs / local ramp direction  >< local ramp direction  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic
 
    0123456789012345678901234567
  0 ############################

@@ -79,6 +79,55 @@ const { browser, page, errors } = await launch({ viewport: { width: 1280, height
 const captures = [];
 const checkpoints = [];
 
+function percentile(values, quantile) {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * quantile))] ?? 0;
+}
+
+function summarize(values) {
+  return {
+    count: values.length,
+    median: Number(percentile(values, 0.5).toFixed(3)),
+    p95: Number(percentile(values, 0.95).toFixed(3)),
+  };
+}
+
+async function browserInfo() {
+  return page.evaluate(() => {
+    const probe = document.createElement("canvas");
+    const gl = probe.getContext("webgl2");
+    const extension = gl?.getExtension("WEBGL_debug_renderer_info");
+    const vendor = extension
+      ? gl.getParameter(extension.UNMASKED_VENDOR_WEBGL)
+      : null;
+    const renderer = extension
+      ? gl.getParameter(extension.UNMASKED_RENDERER_WEBGL)
+      : null;
+    const gpuText = `${vendor ?? ""} ${renderer ?? ""}`.toLowerCase();
+    const view = document.querySelector("#view");
+    return {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      viewport: { width: innerWidth, height: innerHeight },
+      devicePixelRatio,
+      webgl2: !!gl,
+      gpuVendor: vendor,
+      gpuRenderer: renderer,
+      likelySoftwareRendering:
+        /swiftshader|llvmpipe|software|microsoft basic render/.test(gpuText),
+      canvas: view ? { width: view.width, height: view.height } : null,
+    };
+  });
+}
+
+async function animationFrames(count) {
+  await page.evaluate(async (frameCount) => {
+    for (let index = 0; index < frameCount; index++) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+  }, count);
+}
+
 async function capture(name, settleMs = 280) {
   await wait(settleMs);
   captures.push(await shot(page, OUT, `${name}.png`));
@@ -139,6 +188,53 @@ try {
   await press("ArrowRight");
   await capture("12-stairs-top-looking-down");
 
+  const performanceScenes = [];
+  for (const pose of [
+    { id: "single-ramp", x: 1, y: 6, facing: 1 },
+    { id: "gradual-ramp", x: 1, y: 2, facing: 1 },
+    { id: "local-stairs", x: 1, y: 10, facing: 1 },
+    { id: "high-room", x: 3, y: 6, facing: 1 },
+  ]) {
+    await jumpTo(page, { floorId: 92, ...pose, autosave: false });
+    await animationFrames(30);
+    await page.evaluate(() => window.__onyxDebug.mazeRendererPerformance.reset());
+    await animationFrames(90);
+    const sampled = await page.evaluate(() => ({
+      samples: window.__onyxDebug.mazeRendererPerformance.snapshot().samples.slice(-90),
+      renderer: window.__onyxDebug.mazeRendererInfo(),
+    }));
+    performanceScenes.push({
+      id: pose.id,
+      totalMs: summarize(sampled.samples.map((entry) => entry.totalMs)),
+      drawCalls: sampled.renderer.statistics.drawCalls,
+      triangles: sampled.renderer.statistics.triangles,
+    });
+  }
+
+  const lifecycle = [];
+  const readLifecycle = async (label) => {
+    await wait(180);
+    lifecycle.push({
+      label,
+      ...(await page.evaluate(() => window.__onyxDebug.mazeRendererInfo())),
+    });
+  };
+  await jumpTo(page, { floorId: 1, x: 4, y: 12, facing: 1, autosave: false });
+  await readLifecycle("warm-floor-1");
+  await jumpTo(page, { floorId: 92, x: 1, y: 6, facing: 1, autosave: false });
+  await readLifecycle("baseline-ramp-floor");
+  const lifecycleBaseline = lifecycle.at(-1).statistics;
+  for (let cycle = 1; cycle <= 10; cycle++) {
+    await jumpTo(page, { floorId: 1, x: 4, y: 12, facing: 1, autosave: false });
+    await readLifecycle(`cycle-${cycle}-floor-1`);
+    await jumpTo(page, { floorId: 92, x: 1, y: 6, facing: 1, autosave: false });
+    await readLifecycle(`cycle-${cycle}-ramp-floor`);
+  }
+  const lifecycleFinal = lifecycle.at(-1).statistics;
+  const lifecyclePass =
+    lifecycleFinal.textures === lifecycleBaseline.textures &&
+    lifecycleFinal.geometries === lifecycleBaseline.geometries;
+
   const result = await page.evaluate(() => ({
     renderer: window.__onyxDebug.mazeRendererInfo(),
     performance: window.__onyxDebug.mazeRendererPerformance.snapshot(),
@@ -150,13 +246,22 @@ try {
     floor: map,
     captures,
     checkpoints,
+    performanceScenes,
+    lifecycle: {
+      readings: lifecycle,
+      baseline: lifecycleBaseline,
+      final: lifecycleFinal,
+      pass: lifecyclePass,
+    },
     renderer: result.renderer,
+    browser: await browserInfo(),
     sampleCount: result.performance.samples.length,
     browserErrors: errors,
     pass: errors.length === 0 && result.renderer.active === "webgl" &&
       result.renderer.statistics?.triangles > 0 &&
       checkpoints.some((entry) => entry.renderer.statistics?.debugPosition?.surface === "ramp") &&
-      checkpoints.some((entry) => entry.renderer.statistics?.debugPosition?.surface === "stairs"),
+      checkpoints.some((entry) => entry.renderer.statistics?.debugPosition?.surface === "stairs") &&
+      lifecyclePass,
   };
   writeFileSync(`${OUT}/report.json`, `${JSON.stringify(report, null, 2)}\n`);
   console.log(JSON.stringify({
@@ -164,6 +269,8 @@ try {
     output: OUT,
     captures,
     renderer: report.renderer,
+    performanceScenes,
+    lifecycle: { pass: lifecyclePass, baseline: lifecycleBaseline, final: lifecycleFinal },
     browserErrors: errors,
   }, null, 2));
   if (!report.pass) process.exitCode = 1;
