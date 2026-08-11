@@ -179,13 +179,13 @@ measurements are stored under the ignored
 
 | Scene | Canvas median | Canvas p95 | WebGL median | WebGL p95 |
 |---|---:|---:|---:|---:|
-| Floor 1 straight | 1.5 ms | 2.0 ms | 1.1 ms | 1.5 ms |
-| Side passage | 2.0 ms | 2.2 ms | 1.0 ms | 1.2 ms |
-| Front wall | 1.5 ms | 1.9 ms | 0.8 ms | 0.9 ms |
+| Floor 1 straight | 1.5 ms | 2.0 ms | 1.3 ms | 1.5 ms |
+| Side passage | 2.0 ms | 2.2 ms | 1.0 ms | 1.4 ms |
+| Front wall | 1.5 ms | 1.9 ms | 0.8 ms | 1.0 ms |
 | Door | 2.4 ms | 3.1 ms | 0.9 ms | 1.2 ms |
-| Isobel hero | 2.1 ms | 2.8 ms | 0.8 ms | 0.9 ms |
-| Isobel walking | 3.4 ms | 29.3 ms | 1.3 ms | 1.5 ms |
-| Combat return | 2.1 ms | 2.6 ms | 1.1 ms | 1.4 ms |
+| Isobel hero | 2.1 ms | 2.8 ms | 0.8 ms | 1.0 ms |
+| Isobel walking | 3.4 ms | 29.3 ms | 1.0 ms | 1.5 ms |
+| Combat return | 2.1 ms | 2.6 ms | 1.0 ms | 1.5 ms |
 
 The most important result is removal of the CPU walking hitch: the WebGL path
 does no per-pixel JavaScript floor cast, `ImageData` rewrite, `putImageData`, or
