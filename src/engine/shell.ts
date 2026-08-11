@@ -36,6 +36,7 @@ app.innerHTML = `
         </div>
       </div>
       <canvas id="view" width="768" height="672"></canvas>
+      <canvas id="maze-webgl" width="768" height="672" hidden></canvas>
       <div id="map-overlay" hidden aria-hidden="true">
         <canvas
           id="map-overlay-canvas"
@@ -71,6 +72,7 @@ const gameWrap = document.querySelector<HTMLDivElement>("#game-wrap")!;
 const viewportWrap = document.querySelector<HTMLDivElement>("#viewport-wrap")!;
 export const canvas = document.querySelector<HTMLCanvasElement>("#view")!;
 export const ctx = canvas.getContext("2d")!;
+export const mazeWebglCanvas = document.querySelector<HTMLCanvasElement>("#maze-webgl")!;
 const mapCanvas = document.querySelector<HTMLCanvasElement>("#map-canvas")!;
 export const mapCtx = mapCanvas.getContext("2d")!;
 const mapOverlayEl = document.querySelector<HTMLDivElement>("#map-overlay")!;
@@ -114,6 +116,8 @@ export const combatPhaserCanvas = document.querySelector<HTMLCanvasElement>(
 
 const MAX_RENDER_WIDTH = 768;
 const MAX_RENDER_HEIGHT = 672;
+export type MazeRendererSurface = "canvas" | "webgl";
+let activeMazeRendererSurface: MazeRendererSurface = "canvas";
 /** Inner fill track of the 48px party HP bar (1px border × 2). */
 const HP_BAR_TRACK_PX = 46;
 
@@ -128,6 +132,10 @@ export function resizeCorridorCanvas() {
   if (canvas.width !== width || canvas.height !== height) {
     canvas.width = width;
     canvas.height = height;
+  }
+  if (mazeWebglCanvas.width !== width || mazeWebglCanvas.height !== height) {
+    mazeWebglCanvas.width = width;
+    mazeWebglCanvas.height = height;
   }
   if (mapCanvas.width !== width || mapCanvas.height !== height) {
     mapCanvas.width = width;
@@ -146,6 +154,26 @@ export function resizeCorridorCanvas() {
     combatPhaserCanvas.width = combatW;
     combatPhaserCanvas.height = combatH;
   }
+}
+
+function syncMazeRendererSurfaces(isDungeon: boolean): void {
+  canvas.style.display = isDungeon && activeMazeRendererSurface === "canvas" ? "" : "none";
+  mazeWebglCanvas.hidden = !(isDungeon && activeMazeRendererSurface === "webgl");
+  mazeWebglCanvas.style.display = isDungeon && activeMazeRendererSurface === "webgl" ? "" : "none";
+}
+
+export function setMazeRendererSurface(surface: MazeRendererSurface): void {
+  activeMazeRendererSurface = surface;
+  syncMazeRendererSurfaces(viewportWrap.style.display !== "none");
+}
+
+export function getMazeRendererSurface(): HTMLCanvasElement {
+  return activeMazeRendererSurface === "webgl" ? mazeWebglCanvas : canvas;
+}
+
+export function setMazeSurfaceOpacity(opacity: string): void {
+  canvas.style.opacity = opacity;
+  mazeWebglCanvas.style.opacity = opacity;
 }
 
 /**
@@ -507,7 +535,7 @@ export function showMode(
     mode === "dialog";
 
   viewportWrap.style.display = isDungeon ? "" : "none";
-  canvas.style.display = isDungeon ? "" : "none";
+  syncMazeRendererSurfaces(isDungeon);
   partyStripEl.style.display = isDungeon ? "" : "none";
   contextPromptEl.style.display = isDungeon ? "" : "none";
   messageBandEl.style.display = isDungeon && !mapVisible ? "" : "none";
