@@ -30,12 +30,15 @@ const OUT = ensureOutDir(
 const VIEWPORT = { width: 1280, height: 800 };
 const WARMUP_FRAMES = Number(process.env.ONYX_MAZE_BENCH_WARMUP ?? 60);
 const SAMPLE_FRAMES = Number(process.env.ONYX_MAZE_BENCH_FRAMES ?? 180);
+const corridorPoses = JSON.parse(
+  fs.readFileSync("scripts/playtests/corridor-poses.json", "utf8")
+)["1"];
 
 const staticScenes = [
-  { id: "floor1-straight", floorId: 1, x: 5, y: 1, facing: 1 },
-  { id: "floor1-side-passage", floorId: 1, x: 4, y: 2, facing: 2 },
-  { id: "floor1-front-wall", floorId: 1, x: 1, y: 14, facing: 0 },
-  { id: "floor1-door", floorId: 1, x: 6, y: 5, facing: 1 },
+  { id: "floor1-straight", floorId: 1, ...corridorPoses.straight },
+  { id: "floor1-side-passage", floorId: 1, ...corridorPoses.sidePassage },
+  { id: "floor1-front-wall", floorId: 1, ...corridorPoses.frontWall },
+  { id: "floor1-door", floorId: 1, ...corridorPoses.door },
   { id: "isobel-hero", floorId: 1, x: 16, y: 28, facing: 1 },
   { id: "camp", floorId: 1, x: 25, y: 12, facing: 1 },
   { id: "hot-bois", floorId: 1, x: 20, y: 25, facing: 2 },

@@ -1,19 +1,19 @@
 {
   "1": {
     "straight": {
-      "x": 5,
-      "y": 1,
+      "x": 4,
+      "y": 12,
       "facing": 1,
       "tile": null,
       "depth": 8,
       "doorDepth": -1,
-      "sideDepth": 2,
+      "sideDepth": 3,
       "enclosed": true
     },
     "sidePassage": {
-      "x": 4,
-      "y": 2,
-      "facing": 2,
+      "x": 6,
+      "y": 12,
+      "facing": 1,
       "tile": null,
       "depth": 8,
       "doorDepth": -1,
@@ -21,8 +21,8 @@
       "enclosed": true
     },
     "frontWall": {
-      "x": 1,
-      "y": 14,
+      "x": 2,
+      "y": 18,
       "facing": 0,
       "tile": null,
       "depth": 0,
@@ -31,19 +31,39 @@
       "enclosed": false
     },
     "door": {
-      "x": 6,
-      "y": 5,
+      "x": 9,
+      "y": 19,
       "facing": 1,
-      "tile": null,
+      "tile": "event",
       "depth": 0,
       "doorDepth": 0,
       "sideDepth": -1,
       "enclosed": false
     },
+    "darkness": {
+      "x": 3,
+      "y": 5,
+      "facing": 2,
+      "tile": "darkness",
+      "depth": 4,
+      "doorDepth": -1,
+      "sideDepth": 1,
+      "enclosed": true
+    },
+    "water": {
+      "x": 14,
+      "y": 20,
+      "facing": 1,
+      "tile": "water",
+      "depth": 8,
+      "doorDepth": -1,
+      "sideDepth": 3,
+      "enclosed": true
+    },
     "treasure": {
-      "x": 11,
-      "y": 9,
-      "facing": 0,
+      "x": 18,
+      "y": 2,
+      "facing": 1,
       "tile": "treasure",
       "depth": 8,
       "doorDepth": -1,
@@ -51,34 +71,24 @@
       "enclosed": false
     },
     "npc": {
-      "x": 13,
-      "y": 5,
-      "facing": 2,
+      "x": 10,
+      "y": 20,
+      "facing": 1,
       "tile": "npc",
       "depth": 8,
       "doorDepth": -1,
       "sideDepth": 1,
       "enclosed": false
     },
-    "stairs_down": {
-      "x": 4,
-      "y": 1,
-      "facing": 1,
-      "tile": "stairs_down",
-      "depth": 8,
-      "doorDepth": -1,
-      "sideDepth": 3,
-      "enclosed": false
-    },
     "teleporter": {
-      "x": 18,
-      "y": 12,
-      "facing": 3,
+      "x": 3,
+      "y": 13,
+      "facing": 2,
       "tile": "teleporter",
-      "depth": 8,
+      "depth": 6,
       "doorDepth": -1,
-      "sideDepth": 1,
-      "enclosed": false
+      "sideDepth": 2,
+      "enclosed": true
     }
   },
   "2": {
