@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { compileOpenBoundarySpans, fullBoundarySpan } from "./boundary-spans";
+import {
+  compileOpenBoundaryPatches,
+  compileOpenBoundarySpans,
+  fullBoundaryPatch,
+  fullBoundarySpan,
+} from "./boundary-spans";
 
 describe("vertical boundary spans", () => {
   it("emits a full legacy wall span", () => {
@@ -56,5 +61,62 @@ describe("vertical boundary spans", () => {
     expect(result.open).toBeNull();
     expect(result.aClosed[0]).toMatchObject({ minY: 0, maxY: 1 });
     expect(result.bClosed[0]).toMatchObject({ minY: 2, maxY: 3 });
+  });
+});
+
+describe("sloped boundary patches", () => {
+  it("reduces equal flat neighbors to no shared wall", () => {
+    expect(
+      compileOpenBoundaryPatches(
+        { floorZ: 0, ceilingZ: 1 },
+        { floorZ: 0, ceilingZ: 1 },
+        { z0: 0, z1: 0 },
+        { z0: 0, z1: 0 }
+      ).aClosed
+    ).toEqual([]);
+  });
+
+  it("creates a trapezoidal lower closure when profiles differ", () => {
+    const result = compileOpenBoundaryPatches(
+      { floorZ: 0, ceilingZ: 2 },
+      { floorZ: 0, ceilingZ: 2 },
+      { z0: 0, z1: 1 },
+      { z0: 0.5, z1: 1 }
+    );
+    expect(result.valid).toBe(true);
+    expect(result.aClosed).toContainEqual({
+      bottom0: 0,
+      bottom1: 1,
+      top0: 0.5,
+      top1: 1,
+      kind: "lowerClosure",
+    });
+  });
+
+  it("retains an upper closure above a low portal", () => {
+    const result = compileOpenBoundaryPatches(
+      { floorZ: 0, ceilingZ: 3 },
+      { floorZ: 0, ceilingZ: 1 },
+      { z0: 0, z1: 0 },
+      { z0: 0, z1: 0 }
+    );
+    expect(result.aClosed).toEqual([
+      { bottom0: 1, bottom1: 1, top0: 3, top1: 3, kind: "upperClosure" },
+    ]);
+  });
+
+  it("builds a full wall whose bottom follows a slope", () => {
+    expect(
+      fullBoundaryPatch(
+        { floorZ: 0, ceilingZ: 2 },
+        { z0: 1, z1: 0 }
+      )
+    ).toEqual({
+      bottom0: 1,
+      bottom1: 0,
+      top0: 2,
+      top1: 2,
+      kind: "fullClosure",
+    });
   });
 });
