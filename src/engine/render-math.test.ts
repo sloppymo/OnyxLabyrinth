@@ -9,6 +9,7 @@
 import { describe, it, expect } from "vitest";
 import {
   computeLineHeight,
+  floorCeilingRowDistance,
   wallDrawBounds,
   opacityForDepth,
   fogTaperForDepth,
@@ -87,6 +88,27 @@ describe("computeLineHeight", () => {
       (h / dist) * MATH_CONFIG.projectionScale * MATH_CONFIG.heightFlatten
     );
     expect(computeLineHeight(h, dist)).toBe(expected);
+  });
+});
+
+describe("floorCeilingRowDistance", () => {
+  it("uses the same flattened projection as wall-strip height", () => {
+    const screenH = 600;
+    const wallDistance = 1.5;
+    const wallHeight =
+      (screenH / wallDistance) *
+      MATH_CONFIG.projectionScale *
+      MATH_CONFIG.heightFlatten;
+    const wallTop = screenH / 2 - wallHeight / 2;
+
+    expect(floorCeilingRowDistance(screenH, wallTop)).toBeCloseTo(
+      wallDistance,
+      10
+    );
+  });
+
+  it("returns infinity at the horizon", () => {
+    expect(floorCeilingRowDistance(600, 300)).toBe(Number.POSITIVE_INFINITY);
   });
 });
 
