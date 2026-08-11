@@ -47,6 +47,7 @@ import f5DoorUrl from "../assets/f5_door_256.png";
 import doorPlaceholderUrl from "../assets/door_placeholder_256.png";
 import {
   computeLineHeight,
+  floorCeilingRowDistance,
   opacityForDepth,
   glowBlurForDepth,
   glowBucketForDepth,
@@ -1539,7 +1540,7 @@ function drawFloorCeilingCast(
   // --- Ceiling rows (0 .. horizonY - 1) ---
   for (let y = 0; y < horizonY; y++) {
     if (useSky) continue;
-    const rowDistance = halfH / (halfH - y);
+    const rowDistance = floorCeilingRowDistance(h, y);
     if (rowDistance > maxDist) continue;
 
     const stepX = rowDistance * ((planeX * 2) / w);
@@ -1576,7 +1577,7 @@ function drawFloorCeilingCast(
 
   // --- Floor rows (horizonY + 1 .. h - 1) ---
   for (let y = horizonY + 1; y < h; y++) {
-    const rowDistance = halfH / (y - halfH);
+    const rowDistance = floorCeilingRowDistance(h, y);
     if (rowDistance > maxDist) continue;
 
     const stepX = rowDistance * ((planeX * 2) / w);

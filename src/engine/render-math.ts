@@ -101,6 +101,25 @@ export function computeLineHeight(h: number, perpWallDist: number): number {
 }
 
 /**
+ * Distance from the camera to the floor/ceiling plane sampled by one screen
+ * row. This must use the same flattened projection as wall-strip height;
+ * otherwise horizon-adjacent rows sample behind the wall and leak textures
+ * from cells the player cannot actually see.
+ */
+export function floorCeilingRowDistance(
+  screenH: number,
+  screenY: number
+): number {
+  const halfH = screenH / 2;
+  const rowOffset = Math.abs(screenY - halfH);
+  if (rowOffset === 0) return Number.POSITIVE_INFINITY;
+  return (
+    (halfH * MATH_CONFIG.projectionScale * MATH_CONFIG.heightFlatten) /
+    rowOffset
+  );
+}
+
+/**
  * Compute the vertical draw bounds [drawStart, drawEnd] for a wall strip
  * at the given perpendicular distance on a screen of height `h`.
  * Returns clamped values suitable for `drawImage` / `fillRect` calls.
