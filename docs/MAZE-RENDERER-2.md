@@ -105,28 +105,71 @@ Missing authoring data resolves to `0 -> 1`. Optional `FloorDef.heightZones`
 and `FloorMapJSON.heightZones` are inclusive rectangles. Later zones win per
 supplied field, matching tileset-zone precedence.
 
-For an open edge, the portal is the overlap of the adjacent air volumes:
+For an open edge, the portal is the overlap of the adjacent air volumes and
+their resolved floor-surface edge profiles:
 
 ```text
 max(floorA, floorB) -> min(ceilingA, ceilingB)
 ```
 
-The pure boundary compiler emits lower and upper closure spans outside that
-overlap. A 0->1 corridor opening into a 0->3 chamber therefore stays open from
-0->1 and receives a real 1->3 upper wall face on the tall side. Closed edges
-emit a full span for each visible side. Unit tests cover equal volumes, tall
-transitions, floor steps, non-overlap, boundaries, UV repetition and regional
-materials.
+The pure boundary compiler retains legacy vertical spans and generalizes them
+to endpoint-aware patches (`bottom0`, `bottom1`, `top0`, `top1`). It emits
+lower and upper closure patches outside the portal. A 0->1 corridor opening
+into a 0->3 chamber therefore stays open from 0->1 and receives a real 1->3
+upper wall face on the tall side. A wall beside a ramp starts at the sloped
+surface and is a trapezoid rather than a constant-bottom quad.
 
-Validation enforces finite values, `floorZ < ceilingZ`, at least 0.25 clearance,
-bounds from -8 through 16, in-bounds zones and overlapping air on traversable
-edges. The renderer supports floorZ geometrically, but traversable neighboring
-floorZ differences are rejected until explicit stair/ramp movement semantics
-exist.
+Validation enforces finite values, `floorZ < ceilingZ`, at least 0.25 clearance
+above the highest surface point, bounds from -8 through 16, in-bounds zones,
+overlapping air, and matching floor surfaces on traversable edges. Different
+flat `floorZ` values remain blocked unless a valid connector makes the shared
+surface heights exact.
 
-Height zones round-trip through parse, FloorDef conversion, export/check and
-ASCII dump. The floor editor preserves imported zones and clamps them when a
-map is resized; height painting is currently JSON-authored.
+Height zones and local connectors round-trip through parse, FloorDef conversion,
+export/check and ASCII dump. The floor editor preserves imported definitions
+and clamps/drops them when a map is resized; height painting is currently
+JSON-authored.
+
+## Traversable floor surfaces
+
+`CellVolume.floorZ` remains the constant bottom of a cell's air envelope. A
+separate pure `FloorSurface` describes what the party stands on:
+
+```ts
+type FloorSurface =
+  | { kind: "flat"; z: number }
+  | { kind: "ramp" | "stairs"; lowZ: number; highZ: number; dir: Direction };
+```
+
+Portable floors use `ramps?: RampDef[]`, where `dir` names the uphill edge and
+`surface` is `ramp` or `stairs`. `lowZ` is the connector cell's resolved
+floorZ. `highZ` is the uphill neighbor's resolved floorZ. This avoids a second
+copy of authored heights and lets `0/.25/.5/.75/1` chains resolve naturally.
+
+Low and high connector edges must be open and meet their neighboring surfaces
+exactly. Connector side edges are walls in v1, avoiding ambiguous side entry.
+Local doors, NPCs, inter-floor stair features, and map sprites on a connector
+are rejected. Flat high-level cells fully support doors, wall features, NPCs,
+decor, ceiling features, and hanging sprites at their resolved elevations.
+
+Continuous ramps emit one sloped floor quad. Local stairs use the same smooth
+navigation surface but render four bounded treads and risers; camera motion is
+deliberately smooth rather than jolting over each visual step. Stair sides use
+solid low-base stringer walls so no underside void is visible.
+
+Gameplay remains authoritative in `game/traversal.ts`. It compares the two
+pure surface profiles at a candidate grid edge and never queries Three. There
+is no mutable player Z. At rest and during a step, camera elevation is derived
+from the surface beneath the shared interpolated display X/Y:
+
+```text
+cameraY = surfaceZ * LEGACY_VERTICAL_UNIT
+        + legacyEyeHeight
+        + small independent headBob
+```
+
+This supports stopping, turning, ascending, and descending on connector cells
+without camera snaps or a second source of player-position truth.
 
 ## Materials and pixel-art assets
 
@@ -199,11 +242,17 @@ and authored separate alpha assets.
 - `npm run playtest:maze-heights` creates a dev-only portable 1x -> 2x -> 3x
   test floor in localStorage and captures both transition directions. It also
   verifies the high ceiling feature and hanging-chain anchor.
+- `npm run playtest:maze-vertical` creates dev-only Floor 92 with a one-cell
+  ramp, a four-cell quarter-rise climb, local stairs, and a tall raised room.
+  It captures both directions and turning on a connector, benchmarks four
+  scenes, and performs ten normal-floor/ramp-floor resource cycles.
 - `npm run playtest:maze-lifecycle` warms Floors 1 and 2, then repeats
   `1 -> 2 -> 1` ten times. Geometry and texture counts must return exactly to
   the warmed Floor 1 baseline.
 - `npm run playtest:hubs` exercises Camp UI, Namanda, Hot Boi's and Isobel.
 - `?mazeRenderer=canvas` provides direct comparison and emergency fallback.
+  Local ramps/stairs are intentionally WebGL-only; Canvas warns and shows its
+  legacy flat presentation instead of pretending to support local Z geometry.
 
 Floor-specific BufferGeometry is explicitly disposed. Prepared textures and
 materials are retained as a bounded reusable cache for the session and disposed
@@ -213,7 +262,8 @@ browser restoration resumes the scene. Initialization failure selects Canvas.
 ## Known limitations and future geometry
 
 - Height-zone painting has no editor brush yet; import/export/resize are safe.
-- Authored floor elevation transitions are intentionally validation errors.
+- Raw flat-to-flat elevation steps, connector side entry, and doors/props/NPCs
+  placed directly on connector cells are validation errors.
 - Doors remain the current static gameplay presentation; no animation was
   invented.
 - The main game loop continues rendering subtle animated presentation rather
@@ -224,8 +274,8 @@ browser restoration resumes the scene. Initialization failure selects Canvas.
   gzip and triggers the existing Vite 500 kB advisory. It does not join the
   main application chunk.
 
-The resolved-volume and general vertical-span model can later express real
-stairs, ramps, raised or sunken rooms, low walls, windows, arches, portcullises,
-columns, bridges and multi-height chambers. Those authoring and gameplay
-semantics are deliberately deferred; adding them does not require gameplay to
-derive state from Three.
+The resolved-volume, floor-surface and boundary-patch model can later express
+raised/sunken rooms, low walls, windows, arches, portcullises and columns.
+Stacked occupancy, bridges with walkable space beneath, jumping, falling,
+elevators, free look, physics and multi-layer pathfinding remain deliberately
+deferred; adding them must not make gameplay derive state from Three.

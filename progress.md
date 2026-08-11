@@ -870,3 +870,24 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Next: commit camera/fixture slice, add documentation, then run before/after
   performance, resource lifecycle with the ramp floor, flat-scene parity,
   full check, and final visual regressions.
+- Post-change flat-scene SwiftShader comparison shows no meaningful regression:
+  straight 1.1/1.2 ms median/p95 (pre 1.1/1.3), Isobel hero 0.8/1.0
+  (unchanged), and Isobel walking 1.1/1.5 (pre 1.0/1.8), with identical
+  draw/triangle counts. Floor 1, darkness, combat return, height lab, normal
+  lifecycle and all four hub walkthroughs pass with zero browser errors.
+- Headed Chrome 151 remains confirmed on real ANGLE/NVIDIA RTX 2060 SUPER
+  WebGL2. Post flat med/p95 is 0.7/1.0 ms for straight, 0.5/0.7 for Isobel
+  hero and 0.6/0.8 for Isobel walking. New connector scenes are 0.1-0.2 ms
+  median / 0.2-0.3 ms p95 at 4-7 visible draws and 260-266 triangles.
+- Ten normal-floor/ramp-floor cycles return exactly to 70 textures and 7
+  geometries. The floor editor smoke passes 9/9. Post screenshots preserve
+  Isobel depth, low/high portal closure, fog and flat corridor framing.
+- Final Vitest result is 114 files / 2,215 tests. The first full gate correctly
+  caught stale generated ASCII floor dumps after the legend gained local-ramp
+  arrows; all five tracked tool/public dumps were regenerated and reviewed.
+  The final canonical gate now passes app/tools TypeScript, Vite build, all
+  tests, floor validation, export parity, and `git diff --check`. Only the
+  established font/chunk advisories and known Namanda content warnings remain.
+- Reproducible headed/hardware selection, benchmark/lifecycle evidence and
+  generated floor dumps are committed as `61d34b8`. Documentation is the last
+  local commit; no push, merge, stash, rebase, reset, or PR action occurred.
