@@ -787,3 +787,60 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   pass with zero browser errors.
 - Implementation commit: `b3bd967 feat(renderer): add webgl variable-height backend`.
   Documentation is the remaining local commit; no push, merge, or PR action.
+
+## 2026-08-10 — Maze Renderer 2 vertical traversal
+
+- Current prompt: first re-audit and stress-test the actual Renderer 2 branch,
+  then add grid-based traversable ramps and local stairs across non-unit
+  `floorZ` changes without physics, free movement, or stacked occupancy.
+- Safety audit: fetched all remotes; `origin/main` remains `06ffb48`. The clean
+  Renderer 2 branch remains at reported `ad96b2d`, ahead 13 / behind 0. The
+  original Isobel worktree is still ahead 5 / behind 2 with unrelated dirty
+  Camp art/progress files, all untouched.
+- Created isolated worktree
+  `/home/sloppymo/OnyxLabyrinth-maze-vertical-traversal` on
+  `feat/maze-vertical-traversal`, branching directly from verified Renderer 2
+  HEAD `ad96b2d`. Nothing will be pushed, merged, reset, rebased, or stashed.
+- Next: map the actual renderer/movement/tooling architecture and complete the
+  full pre-change verification, hardware diagnostic, benchmark, and tall-room
+  visual audit before editing ramp code.
+- Pre-change gate passed exactly at 112 test files / 2,186 tests, both app and
+  tools TypeScript builds, Vite production build, floor validation, export
+  drift, and `git diff --check`. Only the documented font/chunk advisories and
+  known Namanda lints appeared.
+- Existing Renderer 2 QA passed before ramp edits: the 1×/2×/3× height lab,
+  ten-cycle Floor 1↔2 lifecycle, and all Camp/Namanda/Tavern/Isobel hub flows
+  produced zero browser errors. Height captures were visually inspected from
+  low→high and high→low; no cracks, inverted faces, texture stretch, ceiling
+  leakage, sprite-anchor problems, or z-fighting were found.
+- Headless Chromium 140 is confirmed WebGL2 SwiftShader. Its equal-sample
+  pre-ramp WebGL benchmark remains software-only: Floor 1 straight 1.1/1.3 ms
+  median/p95, Isobel hero 0.8/1.0, Isobel walking 1.0/1.8, tall lab captured
+  separately at 5 draws / 320 triangles.
+- Headed system Chrome 151 can access the real machine GPU: ANGLE OpenGL on
+  NVIDIA GeForce RTX 2060 SUPER, WebGL2, 1280×800 viewport, 744×651 maze,
+  DPR≈1. Pre-ramp headed med/p95: straight 0.7/0.9 ms, Isobel hero 0.5/0.7,
+  Isobel walking 0.7/1.1, tall room 0.2/0.3. Reports are under ignored
+  `playtest-screenshots/maze-vertical-traversal/pre-benchmark/`.
+- Architecture decision: no mutable player Z. Add a pure resolved floor-surface
+  model shared by traversal, validation, compiler, camera, visuals, and debug.
+  `game/traversal.ts` remains authoritative; Three continues to consume state.
+- Next: implement portable ramp definitions and surface math/tests first, then
+  generalize boundary patches and camera elevation in separately verified
+  slices.
+- Portable surface slice complete: optional `ramps` round-trip through
+  FloorDef/JSON/parser/clone/editor resize/schema/ASCII dump. `dir` names the
+  uphill edge and `surface` selects `ramp` or `stairs`; endpoints derive from
+  the connector cell's floorZ and uphill neighbor floorZ, so gradual chains do
+  not duplicate fromZ/toZ.
+- Added pure flat/ramp/stair surface sampling, global edge profiles, side-entry
+  classification, exact edge matching, and world-position sampling. Game
+  traversal now permits only meeting surfaces, preserving flat movement while
+  blocking raw steps and ramp-side entry without querying WebGL.
+- Validation now covers bounds, duplicates, non-uphill/zero rise, exact open
+  low/high endpoints, strict wall sides, clearance at the surface high point,
+  inter-floor stair conflicts, and unsupported NPC/map-sprite placement.
+- Focused surface/map/validator/traversal tests pass 58/58; test TypeScript,
+  tools TypeScript, production build, and `git diff --check` pass.
+- Next: generalize vertical spans into sloped boundary patches and compile real
+  ramp/stair floor meshes with deterministic geometry tests.

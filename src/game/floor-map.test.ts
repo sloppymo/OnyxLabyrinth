@@ -55,6 +55,18 @@ describe("floor-map", () => {
     expect(roundTrip.heightZones).toEqual(map.heightZones);
   });
 
+  it("round-trips local ramps and stairs without changing formatVersion", () => {
+    const map = newFloorMapJSON(5, 5);
+    map.ramps = [
+      { x: 1, y: 2, dir: "e", surface: "ramp" },
+      { x: 3, y: 2, dir: "w", surface: "stairs" },
+    ];
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    const roundTrip = floorDefToMap(mapToFloorDef(parsed));
+    expect(roundTrip.formatVersion).toBe(1);
+    expect(roundTrip.ramps).toEqual(map.ramps);
+  });
+
   it("resolves cell themes with primary fallback and last-zone-wins overlap", () => {
     const floor = {
       id: 1,
@@ -131,6 +143,14 @@ describe("floor-map", () => {
     raw = base();
     raw.heightZones = [{ id: "z", x1: 0, y1: 0, x2: 1, y2: 1, ceilingZ: "high" }];
     expect(() => parseFloorMapJSON(raw)).toThrow(/heightZones\[0\]\.ceilingZ/);
+
+    raw = base();
+    raw.ramps = [{ x: 1, y: 1, dir: "q", surface: "ramp" }];
+    expect(() => parseFloorMapJSON(raw)).toThrow(/ramps\[0\]\.dir/);
+
+    raw = base();
+    raw.ramps = [{ x: 1, y: 1, dir: "n", surface: "escalator" }];
+    expect(() => parseFloorMapJSON(raw)).toThrow(/ramps\[0\]\.surface/);
   });
 
   it("preserves optional NPC and water fields through parse", () => {

@@ -13,6 +13,7 @@
 import type { GameState } from "../types";
 import type { BarredGateDef, FloorDef, RaftRouteDef, WaterDef } from "../data/floors";
 import { DX, DY, edgeInDirection, inBounds } from "./dungeon";
+import { surfacesConnectAcrossEdge } from "../engine/maze-renderer/geometry/floor-surface";
 
 /** Direction as an integer (0=N, 1=E, 2=S, 3=W). */
 export type Direction = 0 | 1 | 2 | 3;
@@ -219,6 +220,17 @@ export function resolveTraversal(
   const oppEdge = edgeInDirection(targetCell, OPP_DIRS[dir]);
   if (oppEdge === "wall" || oppEdge === "locked" || oppEdge === "barred") {
     return { kind: "blocked" };
+  }
+
+  // Grid edges remain authoritative, but a geometrically open edge is only
+  // walkable when both authored floor surfaces meet at that boundary. This
+  // admits ramp/stair endpoints and rejects raw vertical steps or ambiguous
+  // connector-side entry without consulting the Three scene.
+  if (!surfacesConnectAcrossEdge(floor, player.x, player.y, dirToName(dir))) {
+    return {
+      kind: "blocked",
+      message: "The change in elevation is too steep to cross here.",
+    };
   }
 
   // Raft-channel water on the target tile: impassable via normal movement.

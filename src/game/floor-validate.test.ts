@@ -21,6 +21,19 @@ function testFloor(): FloorDef {
   return floor;
 }
 
+function rampFloor(): FloorDef {
+  const floor = mapToFloorDef(newFloorMapJSON(7, 5));
+  carveRoom(floor.grid, 1, 2, 5, 2);
+  floor.startX = 1;
+  floor.startY = 2;
+  floor.heightZones = [
+    { id: "connector-air", x1: 2, y1: 2, x2: 2, y2: 2, ceilingZ: 2 },
+    { id: "high", x1: 3, y1: 2, x2: 5, y2: 2, floorZ: 1, ceilingZ: 3 },
+  ];
+  floor.ramps = [{ x: 2, y: 2, dir: "e", surface: "ramp" }];
+  return floor;
+}
+
 function issuesFor(floor: FloorDef): { code: string; severity: string }[] {
   return validateFloorDef(floor).map((i) => ({ code: i.code, severity: i.severity }));
 }
@@ -61,12 +74,63 @@ describe("floor-validate content checks", () => {
     expect(codes(floor)).toContain("height_open_no_overlap");
   });
 
-  it("rejects traversable floor steps until movement semantics exist", () => {
+  it("rejects traversable floor steps without a matching connector", () => {
     const floor = testFloor();
     floor.heightZones = [
       { id: "step", x1: 3, y1: 2, x2: 3, y2: 2, floorZ: 0.5, ceilingZ: 2 },
     ];
-    expect(codes(floor)).toContain("height_floor_step_unsupported");
+    expect(codes(floor)).toContain("height_surface_mismatch");
+  });
+
+  it("accepts a bidirectional ramp with exact low/high endpoints", () => {
+    const issues = validateFloorDef(rampFloor()).filter(
+      (issue) => issue.severity === "error" &&
+        (issue.code.startsWith("ramp_") || issue.code.startsWith("height_"))
+    );
+    expect(issues).toEqual([]);
+  });
+
+  it("rejects zero-rise, blocked-endpoint, side-open, and low-clearance ramps", () => {
+    const zero = rampFloor();
+    zero.heightZones = [
+      { id: "flat", x1: 2, y1: 2, x2: 5, y2: 2, floorZ: 0, ceilingZ: 1 },
+    ];
+    expect(codes(zero)).toContain("ramp_zero_rise");
+
+    const blocked = rampFloor();
+    setEdge(blocked.grid, 2, 2, "e", "door");
+    expect(codes(blocked)).toContain("ramp_endpoint_edge");
+
+    const side = rampFloor();
+    carveRoom(side.grid, 2, 1, 2, 2);
+    expect(codes(side)).toContain("ramp_side_open");
+
+    const low = rampFloor();
+    low.heightZones![0].ceilingZ = 1.2;
+    expect(codes(low)).toContain("height_clearance_too_small");
+  });
+
+  it("rejects duplicate, out-of-bounds, and occupied connector cells", () => {
+    const floor = rampFloor();
+    floor.ramps!.push({ ...floor.ramps![0], surface: "stairs" });
+    floor.ramps!.push({ x: 99, y: 99, dir: "n", surface: "ramp" });
+    floor.mapSprites = [{ x: 2, y: 2, spriteId: "crate" }];
+    floor.npcs = [{
+      id: "ramp-npc",
+      name: "Ramp NPC",
+      title: "Tester",
+      x: 2,
+      y: 2,
+      greeting: "No.",
+      returnGreeting: "Still no.",
+      topics: [],
+      combatEnemyIds: [],
+    }];
+    const result = codes(floor);
+    expect(result).toContain("ramp_duplicate");
+    expect(result).toContain("ramp_oob");
+    expect(result).toContain("ramp_map_sprite_unsupported");
+    expect(result).toContain("ramp_npc_unsupported");
   });
 
   it("campaign floors validate with zero errors and zero warnings", () => {

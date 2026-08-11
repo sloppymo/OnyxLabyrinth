@@ -81,6 +81,15 @@ export interface HeightZoneDef {
   ceilingZ?: number;
 }
 
+/** Local within-floor connector. `dir` always names the uphill edge. */
+export interface RampDef {
+  x: number;
+  y: number;
+  dir: "n" | "e" | "s" | "w";
+  /** Navigation is continuous for both variants; only the GPU mesh differs. */
+  surface: "ramp" | "stairs";
+}
+
 export interface FloorDef {
   id: number;
   name: string;
@@ -102,6 +111,8 @@ export interface FloorDef {
   tilesetZones?: TilesetZoneDef[];
   /** Optional per-cell vertical volumes. Legacy cells default to 0→1. */
   heightZones?: HeightZoneDef[];
+  /** Optional local connectors between different floorZ regions. */
+  ramps?: RampDef[];
   /**
    * @deprecated Ignored by the encounter roller — the weighted
    * ENCOUNTER_TABLES in data/enemies.ts (keyed by floor id) are the source
@@ -726,6 +737,7 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     heightZones: floor.heightZones
       ? floor.heightZones.map((z) => ({ ...z }))
       : undefined,
+    ramps: floor.ramps ? floor.ramps.map((r) => ({ ...r })) : undefined,
     encounterTable: floor.encounterTable ? [...floor.encounterTable] : undefined,
     encounterZones: floor.encounterZones
       ? floor.encounterZones.map((z) => ({ ...z }))
