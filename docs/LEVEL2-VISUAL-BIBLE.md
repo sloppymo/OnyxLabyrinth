@@ -105,9 +105,17 @@ When building new Level 2 landmarks:
 
 ## Prop vocabulary (reusable kit)
 
-Common: relief frieze, votive niche, bronze grate, repair plate, toppled
-column drum, rubble, offering bowls, fallen standard, heavy chain, censer.
+Common: relief frieze, votive niche, bronze grate, repair plate, sealed
+valve (functional/ambiguous mechanism), structural band, animated sconce,
+toppled column drum, rubble, offering bowls, fallen standard, heavy chain,
+censer, ceiling cross-beam, floor drain grate, floor processional inlay.
 Rare/hero: gate leaves, counterweight, ceiling shaft/medallion, brazier.
+
+Floor variation has no decal primitive — it ships as a localized
+`tilesetZones` swap to an alternate `floorA`/`floorB` pair (theme folders
+`descent-grate`, `descent-inlay`), not a sprite. Keep these to single cells
+at meaningful spots (a machinery corner, a threshold); a floor is not a
+canvas for repeated decals. See `docs/level2-descent-asset-manifest.md`.
 
 Wear language is *specific*, not random damage: bronze repair plates bolted
 over cracks, mismatched reused masonry (floorB), dropped standards, neatly

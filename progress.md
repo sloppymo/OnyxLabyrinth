@@ -974,3 +974,57 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Added fixed horizontal floor light pools beneath wall sconces and deterministic independent material modulation of approximately ±4%. The effect remains restrained, does not change global fog, and preserves the Gate's hierarchy.
 - Recaptured `playtest-screenshots/level2-slice/torch-localized-v2/`: seven views, browser errors `[]`. The approach sconce reads clearly; the chamber remains mostly dark and the gate remains dominant, with warm side-wall/floor catches from oblique views.
 - Review decision: freeze the sconce art, alpha treatment, frame order, 9 fps timing, radius, and intensity. `01-cramped-approach.png` in this capture set is the canonical localized-light reference for future fog, exposure, tonemapping, and renderer changes.
+
+## 2026-08-11 — Ordinary-space environment art expansion
+
+- Scoped against the asset manifest and visual bible rather than a generic
+  "12-18 new assets" target: the wall/ceiling/hero kit was already dense
+  (10 wall, 6 ceiling, 5 map, 3 architectural-prop entries); the real gaps
+  were floors (zero floor-plane assets existed at all), one ceiling
+  structural beam to break up the repeating coffered grid, and one
+  functional wall mechanism (the diagnostic lock cube was removed earlier
+  and never replaced with production art).
+- Confirmed there is no floor-decal/sprite rendering primitive (`drawFloorFeature`
+  in `renderer.ts` is an unrelated 2D gameplay-glyph function for stairs/
+  treasure icons, unused by the WebGL path). Shipped floor variation as
+  `tilesetZones` swaps to two new theme folders, `descent-grate` and
+  `descent-inlay`, each reusing `descent`'s wall/ceiling/door art unchanged
+  and shipping only new `floorA`/`floorB` art (both slots identical, so a
+  1-cell zone reads correctly regardless of `(x+y)%2` parity). Registered
+  both in `BUILT_IN_TILESET_THEMES` to clear the validator's unbundled-theme
+  warning.
+- Added `descent-ceiling-beam` (blackened iron cross-beam, two bronze
+  clamps) at the hall entrance cell (9,8) — the "reveal" moment from the
+  gallery stair top now shows a beam breaking the coffered grid instead of
+  relying solely on the atmosphere veil.
+- Added `descent-sealed-valve`, a disused bronze pipe-valve wall mechanism,
+  at (12,11,e) on the hall's east wall. First two PixelLab candidate
+  directions ("lever housing") consistently produced a symmetric
+  keyhole/lockbox icon — rejected as a "videogame switch" cliché; the pipe
+  valve concept was asymmetric and read as ambiguous machinery instead.
+- Placed `descent-grate` at cell (8,10) (hall machinery corner) and
+  `descent-inlay` at cell (3,10) (approach corridor, reads as a ceremonial
+  threshold band crossing the floor). Edited the generator
+  (`scripts/playtests/level2-slice-map.mjs`, the actual source of truth —
+  hand-editing `level-2-slice.json` directly gets overwritten) and
+  regenerated; `floor:export-check` confirms the round-trip.
+- Gotcha: `vite preview` serves `dist/`, not `public/` — new asset files
+  added after the last build 404 silently into the SPA fallback (200
+  `text/html`, no console error). Any new asset needs `npm run build`
+  before a preview-server playtest will see it.
+- Verified all four assets in-engine via targeted debug poses plus the full
+  `level2-slice-walk.mjs` capture (`playtest-screenshots/level2-slice/environment-expansion-v1/`,
+  `browserErrors: []`). Gate of the Kept close-up unchanged and still
+  dominant. Floor1↔slice lifecycle (10 cycles): textures plateau at 122
+  after the first full slice load, geometries/draw calls flat thereafter —
+  no leak from the two new tileset themes.
+- Also committed the prior session's reviewed-and-frozen checkpoint (sconce
+  animation/lighting, structural band, subdued relief, architectural-prop
+  primitive) as its own commit before starting this pass, so the two bodies
+  of work stay bisectable. Left six unreferenced neon diagnostic swatches
+  (`cyan.png`, `lime.png`, `magenta.png`, `red.png`, `white.png`,
+  `yellow.png`) and stray `output/web-game/shot-0.png`/`state-0.json`
+  uncommitted — not part of either checkpoint.
+- `npm run check` (2225 tests), `floor:check --file level-2-slice.json`
+  (only the pre-existing no-stairs info warning), and `git diff --check`
+  all pass. No push, no merge.

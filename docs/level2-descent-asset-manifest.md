@@ -29,9 +29,13 @@ palette + wall texture.
 | Sprite id | File | Size | Role | Reuse | Provenance |
 |-----------|------|------|------|-------|-----------|
 | descent-relief-procession | `descent-relief-procession.png` | 256×128 RGBA | Marching-figure frieze | common | PixelLab `wf-relief-01` |
+| descent-relief-procession-subdued | `descent-relief-procession-subdued.png` | 256×128 RGBA | Darkened frieze variant | common | PixelLab, darkened sibling |
+| descent-structural-band | `descent-structural-band.png` | 256×~56 RGBA | Subdued iron/bronze reinforcement course | common | PixelLab |
 | descent-niche-votive | `descent-niche-votive.png` | 128×128 RGBA | Votive niche with bowl | common | PixelLab `wf-niche-01`, darkened |
 | descent-bronze-grate | `descent-bronze-grate.png` | 128×128 RGBA | Vent/service grate | common | PixelLab `wf-grate-01` |
 | descent-repair-plate | `descent-repair-plate.png` | 128×128 RGBA | Bolted bronze patch over crack | common | hand-built |
+| descent-sealed-valve | `descent-sealed-valve.png` | 64×64 RGBA | Disused bronze pipe valve, functional/ambiguous mechanism (§6D) | common | PixelLab `wf-mechanism-04` |
+| descent-sconce / descent-sconce-extinguished | `descent-sconce-frames/frame-0{1-5}.png`, `descent-sconce-extinguished-frames/frame-01.png` | 64×96 RGBA | Animated lit/extinguished wall torch, 9 fps, localized floor light pool | common | PixelLab, hand-timed frame order |
 | descent-gate-left | `descent-gate-left.png` | 128×256 RGB | Hero gate left leaf | hero-only | PixelLab base → hand-rebuilt (PIL) |
 | descent-gate-right | `descent-gate-right.png` | 128×256 RGB | Hero gate right leaf | hero-only | same master, split |
 
@@ -49,6 +53,7 @@ palette + wall texture.
 |-----------|------|------|------|-----------|
 | descent-ceiling-shaft | `descent-ceiling-shaft.png` | 256×256 RGB | Square hoist shaft opening | PixelLab `cf-shaft-01` → normalized |
 | descent-ceiling-medallion | `descent-ceiling-medallion.png` | 256×256 RGB | Bronze ring medallion | PixelLab `cf-medallion-01` → normalized |
+| descent-ceiling-beam | `descent-ceiling-beam.png` | 256×256 RGB | Blackened iron cross-beam w/ two bronze clamps; breaks up the repeating coffer grid | PixelLab `cf-beam-01` → normalized (luma 37) |
 
 ## Map sprites (`public/assets/map-sprites/`, floor-grounded billboards)
 
@@ -59,6 +64,33 @@ palette + wall texture.
 | descent-rubble | `descent-rubble.png` | 128×128 RGBA | 40 | Collapsed masonry pile | PixelLab `ms-rubble-01` |
 | descent-fallen-standard | `descent-fallen-standard.png` | 128×128 RGBA | 36 | Standard + oxblood banner | PixelLab `ms-standard-02`, recolored |
 | descent-brazier | `descent-brazier.png` | 128×128 RGBA | 40 | Burning tripod brazier, `light` def | PixelLab `ms-brazier-01`, red coals cleaned |
+
+## Tileset zone variants (`public/assets/tilesets/descent-<variant>/`)
+
+There is no floor-decal/sprite primitive in the renderer — floor-plane
+variation must ship as an alternate `floorA`/`floorB` pair inside a small
+`tilesetZones` region (`TilesetZoneDef` in `src/data/floors.ts`), reusing
+`descent`'s `wall.png`/`ceiling.png`/`door.png` unchanged. Both slots ship
+the same texture so a 1-cell zone reads correctly regardless of the
+`(x+y)%2` floorA/floorB parity check. Registered in `BUILT_IN_TILESET_THEMES`
+(`src/game/floor-map.ts`) so the validator doesn't flag them as unbundled.
+
+| Theme | floorA/floorB | Role | Provenance |
+|-------|----------------|------|-----------|
+| `descent-grate` | `floorA.png`/`floorB.png` (identical) | Inset dark iron drain grate | PixelLab `floor-grate-01` → normalized (luma 47) |
+| `descent-inlay` | `floorA.png`/`floorB.png` (identical) | Dark bronze processional-path inlay strip | PixelLab `floor-inlay-01` → normalized (luma 53) |
+
+## Architectural props (`public/assets/architectural-props/`, fixed-orientation planes/boxes)
+
+| File | Role | Provenance |
+|------|------|-----------|
+| `gate-kept.png` | Gate of the Kept unified hero texture | PixelLab base → hand-rebuilt (PIL) |
+| `support-basalt.png` | Shallow wall-hugging support/pier/lintel material | hand-built from wall texture |
+| `counterweight-kept.png` | Suspended hero counterweight block | hand-built (PIL) |
+
+`cyan.png`/`lime.png`/`magenta.png`/`red.png`/`white.png`/`yellow.png` in
+this folder are leftover neon diagnostic swatches from the blockout phase —
+unreferenced by any registered prop, not shipped, safe to delete.
 
 ## Renderer requirements
 
