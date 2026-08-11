@@ -45,6 +45,7 @@ export class MazeRendererDebugHud {
     const elapsed = samples.length > 1 ? samples.at(-1)!.at - samples[0].at : 0;
     const fps = elapsed > 0 ? ((samples.length - 1) * 1000) / elapsed : 0;
     const stats = renderer.getStatistics?.();
+    const position = stats?.debugPosition;
     this.element.textContent = [
       `Maze ${renderer.backend.toUpperCase()}`,
       `FPS ${fps.toFixed(1)}  CPU ${percentile(frameMs, 0.5).toFixed(2)}ms p95 ${percentile(frameMs, 0.95).toFixed(2)}`,
@@ -52,7 +53,13 @@ export class MazeRendererDebugHud {
       `tex ${stats?.textures ?? "—"}  geo ${stats?.geometries ?? "—"}`,
       `chunks ${stats?.staticChunks ?? "—"}  batches ${stats?.staticBatches ?? "—"}`,
       `sprites ${stats?.visibleDynamicSprites ?? "—"}`,
-    ].join("\n");
+      position
+        ? `cell ${position.cellX},${position.cellY} ${position.surface}${position.rampDir ? ` ${position.rampDir}` : ""}`
+        : "",
+      position
+        ? `surfaceZ ${position.surfaceZ.toFixed(3)} cameraY ${position.cameraY.toFixed(3)} ceilZ ${position.ceilingZ.toFixed(3)}`
+        : "",
+    ].filter(Boolean).join("\n");
   }
 
   dispose(): void {

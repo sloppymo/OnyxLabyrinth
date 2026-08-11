@@ -844,3 +844,29 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   tools TypeScript, production build, and `git diff --check` pass.
 - Next: generalize vertical spans into sloped boundary patches and compile real
   ramp/stair floor meshes with deterministic geometry tests.
+- Geometry slice complete and committed as `d05b20d`: endpoint-aware boundary
+  patches retain legacy spans while supporting bottom0/bottom1/top0/top1;
+  continuous ramps are one true sloped quad, side-wall bottoms follow the
+  slope, and local stairs use four treads/four risers. A browser pass caught
+  and fixed stair-side triangular voids by using solid low-base stringers.
+- Camera elevation now samples the real surface beneath the shared interpolated
+  X/Y display camera; no playerZ was added. Resting on a ramp uses its center
+  height, reverse traversal is exact, turning preserves height, and WebGL head
+  bob is a small independent world offset converted from the legacy 2.5px bob.
+- `?mazePerf=1` now shows cell, surface kind/direction, surfaceZ, cameraY and
+  ceilingZ. Canvas fallback explicitly warns that authored local-Z connectors
+  require WebGL and otherwise retains legacy flat presentation.
+- Dev Floor 92 proves one-cell ramp ascent/descent, in-motion elevation,
+  turning on a ramp, a four-cell 0/.25/.5/.75/1 gradual climb, four-step local
+  stairs, high room, elevated crate, ceiling grate and hanging chain. Twelve
+  captures plus report/contact sheet live under ignored
+  `playtest-screenshots/maze-vertical-traversal/vertical-demo/`; zero browser
+  errors, 4 final visible draws / 260 triangles. Every capture was visually
+  inspected; no remaining cracks, holes, inverted faces, z-fighting, fog or
+  grounding errors.
+- Renderer/geometry/tooling focused gate passes 82/82, production build passes,
+  and the required standard web-game client also completed (its title/prologue
+  smoke produced only the environment-owned module-type advisory).
+- Next: commit camera/fixture slice, add documentation, then run before/after
+  performance, resource lifecycle with the ramp floor, flat-scene parity,
+  full check, and final visual regressions.

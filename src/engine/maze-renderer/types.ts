@@ -16,6 +16,15 @@ export interface MazeRendererStatistics {
   visibleDynamicSprites: number;
   staticChunks: number;
   staticBatches: number;
+  debugPosition?: {
+    cellX: number;
+    cellY: number;
+    surface: "flat" | "ramp" | "stairs";
+    surfaceZ: number;
+    cameraY: number;
+    ceilingZ: number;
+    rampDir?: "n" | "e" | "s" | "w";
+  };
 }
 
 /** Graphics-only boundary. Game state remains the authoritative world. */

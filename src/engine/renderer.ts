@@ -481,6 +481,14 @@ export function getRenderCameraForState(state: GameState): RenderCamera {
   return updateRenderCamera(state);
 }
 
+/** Current movement-bob offset in legacy Canvas screen pixels. */
+export function getRenderCameraMoveBob(): number {
+  return cameraAnim.getMoveBob(
+    performance.now(),
+    RENDER_CONFIG.headBobAmplitude
+  );
+}
+
 /** True if the render camera is currently tweening toward a target. */
 export function isRenderCameraAnimating(): boolean {
   return cameraAnim.isAnimating();

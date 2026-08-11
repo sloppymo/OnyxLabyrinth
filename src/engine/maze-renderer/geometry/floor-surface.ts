@@ -174,6 +174,15 @@ export function floorSurfaceZAtWorldPosition(
   );
 }
 
+/** RenderCamera coordinates are cell indices; world coordinates add 0.5. */
+export function floorSurfaceZAtDisplayPosition(
+  floor: FloorSurfaceSource,
+  renderX: number,
+  renderY: number
+): number {
+  return floorSurfaceZAtWorldPosition(floor, renderX + 0.5, renderY + 0.5);
+}
+
 export function maxFloorSurfaceZ(surface: FloorSurface): number {
   return surface.kind === "flat"
     ? surface.z
