@@ -58,3 +58,32 @@ catalogue/archive `0.92×0.92` → `0.98×0.95`; charm cabinet `0.58×0.66` →
 → `26` after two corrected hero reviews shortened its hanging lengths and
 cleared the hat silhouette. The mobile's cell placement and per-instance scale
 remain unchanged.
+
+## Final hand-authored / de-AI pass
+
+No PixelLab jobs or replacement concepts were used. The approved correction
+exports remained the immutable inputs. A deterministic Aseprite 1.3.18.1
+working pass converted those low-colour imports to true-colour, edited only
+opaque pixel clusters, and re-exported every production PNG without scaling,
+antialiasing, feathering, or semitransparent edges. Layered `.aseprite` files,
+the production-sized working PNGs, and the repeatable edit script are preserved
+under
+`art/pixellab-candidates/isobel-iso-spells/aseprite-working/hand-finish-pass/`.
+
+These edits are explicitly **humanization / de-AI** finishing rather than new
+generation:
+
+| Asset | Preserved | Hand-authored intervention |
+|---|---|---|
+| Catalogue cabinet | frame, drawers, most bottle art, dimensions | removed one evenly spaced bottle, replaced one tall bottle with a tied ceramic reagent crock, fitted one mismatched iron drawer pull and repair strap |
+| Formula archive | frame, parchment fields, scroll construction, dimensions | left one consulted formula slot open with a loose scrap and lone rack peg, removed one mirrored folio sigil, added a backwards dark bundle and wax-sealed packet |
+| Charm cabinet | frame, backing, bottom merchandise, one cyan charm, dimensions | replaced three regular jewels with an old key, cloth-wrapped talisman, and tooth/bone charm; retained an empty hook; replaced the centered heraldic gem with an iron ring and sealed tag |
+| Sales counter | silhouette, dimensions, left bottle/folio, wood/brass construction | replaced the centered cyan diamond with a small scuffed lock plate and added an asymmetric inkpot/quill work cluster |
+| Iso-Prism backdrop | outer arch, top prism, one side prism, transparent quiet center, dimensions | replaced the mirrored side prism and matching arcs with interrupted measuring rails, an unlit optical lens, mismatched repair plate, tied wire, and short trajectory marks |
+| Prism mobile | short production footprint, central prism, clearance, dimensions | rebuilt the lower half as three unequal weights (key, violet prism, dark optical weight), retained one empty eyelet, and added an offset tied crossbar extension |
+
+The family retains its established walnut, aged brass, indigo, plum, cyan,
+violet, amber, and parchment vocabulary. Magical jewel motifs were reduced in
+secondary positions rather than recoloured wholesale. The canonical Isobel,
+hero door, tileset surfaces, ceiling medallion, renderer configuration, and all
+placement/scale data remain unchanged.
