@@ -74,6 +74,13 @@ export function makeLevel2SliceMap({ theme = "f1" } = {}) {
     grid[y][6].e = "wall";
     grid[y][7].w = "wall";
   }
+  // (7,8) is also grid-adjacent to the hall's (8,8), one row above the
+  // intended chapel door at (8,9)w — reseal it so the chapel/return-link
+  // column (7,8)-(7,9)-(7,10) has exactly its two designed hall doors
+  // ((8,9)w chapel, (8,10)w return-loop), not a free third opening that
+  // lets the threshold's return-link connector skip the whole climb.
+  grid[8][7].e = "wall";
+  grid[8][8].w = "wall";
   for (const [x, y] of [[5, 10], [9, 5], [7, 8], [10, 8]]) {
     grid[y][x].tile = "event";
   }

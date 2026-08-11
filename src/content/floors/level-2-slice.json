@@ -1279,7 +1279,7 @@
       },
       {
         "n": "wall",
-        "e": "open",
+        "e": "wall",
         "s": "open",
         "w": "wall",
         "tile": "event"
@@ -1288,7 +1288,7 @@
         "n": "wall",
         "e": "open",
         "s": "open",
-        "w": "open"
+        "w": "wall"
       },
       {
         "n": "open",
