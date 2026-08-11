@@ -748,3 +748,42 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Corrected the renderer design to use a Camp-owned sky panorama instead of Floor 1's primary ceiling texture; heading-aware sampling and Camp-only readable-night lighting passed visual verification from the Camp's four headings with no browser errors.
 - Repositioned Camp visual-only props into the fortified-caravan composition selected by the user; no collision, encounter, or gameplay data changed.
 - Verification: production-preview Camp screenshots were visually reviewed from the four cardinal headings with zero browser console errors. `npm run build`, the focused renderer/floor tests (166), the full suite (104 files / 2,134 tests), floor validation, and floor export consistency all pass. Existing Floor 1 validator warnings concern Namanda content, not this Camp pass.
+
+## 2026-08-10 — Maze Renderer 2
+
+- Created isolated worktree `/home/sloppymo/OnyxLabyrinth-maze-renderer-2` on
+  `feat/maze-renderer-2` from `origin/main` `06ffb48`, then replayed the five
+  local-only Isobel commits. The original ahead-5/behind-2 Isobel worktree and
+  unrelated dirty Camp/progress files remain untouched.
+- Recorded the Canvas baseline with an opt-in bounded profiler and deterministic
+  live corridor poses. Headless Chromium reports SwiftShader, so frame pacing is
+  diagnostic only; CPU section timings remain useful comparative evidence.
+- Added the graphics-only backend interface and graceful Canvas fallback, then
+  installed Three 0.185.1 and implemented a WebGL2 renderer with 16x16 batched
+  static BufferGeometry, shared prepared texture sources, GPU fog/depth, real
+  doors/features, wall decals and text, NPC/decor billboards, ceiling features,
+  hanging sprites, and cheap additive local glows.
+- Added backward-compatible `heightZones`, pure `CellVolume` resolution and
+  boundary-span compilation, validator/editor/schema/export preservation, and
+  focused tests. The dev height laboratory demonstrates 1x/2x/3x ceilings,
+  upper closure above a low portal, repeating tall-wall UVs, a high ceiling
+  feature, and a ceiling-anchored chain.
+- Browser checkpoints: Isobel WebGL walkthrough passes with zero errors and
+  preserves the approved door/backdrop/character/counter composition. Height
+  lab passes with zero errors at 13 visible draw calls / 296 triangles before
+  the subsequent 16x16 chunk retune is remeasured.
+- Next: rerun performance after the chunk retune, switch the verified production
+  default, document architecture/limitations, exercise resource transitions,
+  run the full verification gate, and make focused local commits. Nothing will
+  be pushed or merged.
+- Production default is now WebGL with `?mazeRenderer=canvas` retained. The
+  equal-sample final benchmark uses 30 warmup + 90 measured frames per scene at
+  744x651/DPR 1. Canvas Isobel-walking p95 is 29.3 ms versus WebGL 1.5 ms;
+  WebGL static scene CPU submission is 0.4-1.5 ms p95 under SwiftShader.
+- Final canonical gate passes: 112 test files / 2,186 tests, app and tools
+  TypeScript, Vite build, floor validation, and floor export-check. The only
+  warnings are the pre-existing font/chunk advisories and known Namanda floor
+  lints. Repeated Floor 1↔2 resources are stable and all four hub walkthroughs
+  pass with zero browser errors.
+- Implementation commit: `b3bd967 feat(renderer): add webgl variable-height backend`.
+  Documentation is the remaining local commit; no push, merge, or PR action.
