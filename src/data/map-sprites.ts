@@ -9,6 +9,8 @@ export interface MapSpriteDef {
   file: string;
   /** Drawn size in world-ish pixels at depth 0 (scaled by distance). */
   baseSize: number;
+  /** Paint after tile-feature/NPC billboards when a prop must sit in front. */
+  foreground?: boolean;
   /** Optional presentation-only warm light cast around a placed billboard. */
   light?: {
     color: string;
@@ -119,6 +121,13 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
     // first-pass desk that covered her face and hat.
     baseSize: 16,
     light: { color: "112, 190, 255", radiusScale: 2.0, intensity: 0.12 },
+  },
+  {
+    id: "isobel-sales-counter-front",
+    name: "Isobel's Sales Counter Front",
+    file: "isobel-sales-counter-front.png",
+    baseSize: 16,
+    foreground: true,
   },
 ];
 

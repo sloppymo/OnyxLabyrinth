@@ -86,7 +86,7 @@ describe("Floor 1 revision 9 expansion", () => {
     expect(floor.npcs).toHaveLength(9);
     expect(floor.events).toHaveLength(16);
     expect(floor.encounterZones).toHaveLength(10);
-    expect(floor.mapSprites).toHaveLength(23);
+    expect(floor.mapSprites).toHaveLength(24);
 
     const newNpcIds = new Set(
       floor.npcs
@@ -108,6 +108,11 @@ describe("Floor 1 revision 9 expansion", () => {
     expect(floor.grid[28][15].e).toBe("door");
     expect(floor.grid[28][16].w).toBe("door");
     expect(isSafeZoneAt(floor, 17, 28)).toBe(true);
+    expect(
+      floor.mapSprites
+        ?.filter((sprite) => sprite.x === 17 && sprite.y === 28)
+        .map((sprite) => sprite.spriteId)
+    ).toEqual(["isobel-sales-counter", "isobel-sales-counter-front"]);
     expect(floor.grid[28][17].tile).toBe("npc");
     expect(floor.npcs?.find((npc) => npc.id === "isobel")).toMatchObject({ x: 17, y: 28 });
   });

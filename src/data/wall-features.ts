@@ -235,8 +235,8 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     id: "isobel-iso-prism-backdrop",
     name: "Iso-Prism backdrop",
     file: "isobel-iso-prism-backdrop.png",
-    widthFrac: 0.98,
-    heightFrac: 0.98,
+    widthFrac: 1.04,
+    heightFrac: 1.04,
     anchor: "bottom",
   },
   {
