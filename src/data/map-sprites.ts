@@ -114,10 +114,10 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
     id: "isobel-sales-counter",
     name: "Isobel's Sales Counter",
     file: "isobel-sales-counter.png",
-    // The source includes a tall transparent working canvas. Keep the
-    // projected counter compact enough to cover Isobel's lower body without
-    // swallowing her face/hat at the one-cell hero depth.
-    baseSize: 14,
+    // The corrected source is 40% wider at unchanged height. This gives
+    // Isobel a proper merchant silhouette without returning to the oversized
+    // first-pass desk that covered her face and hat.
+    baseSize: 16,
     light: { color: "112, 190, 255", radiusScale: 2.0, intensity: 0.12 },
   },
 ];

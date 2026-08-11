@@ -33,3 +33,28 @@ Reused unchanged: `public/assets/map-sprites/isobel-npc-pixellab.png` is the
 canonical Isobel sprite and was never regenerated or composited over.
 `isobels-sign-pixellab.png` remains in the repository as retained source art;
 only its old wall placement was removed.
+
+## Visual correction pass
+
+Production screenshots exposed a projection mismatch rather than weak Isobel
+surface art: the floor/ceiling caster did not apply the wall projection's
+`projectionScale * heightFlatten`, so hidden samples beyond the shop walls
+leaked Floor 1 gray ceiling and olive floor into the room. The renderer math
+was synchronized before judging or replacing any assets.
+
+No new PixelLab jobs were needed. The catalogue and archive source art stayed
+intact; Aseprite exports removed their opaque generation backgrounds and
+cropped unused padding so configuration scale reads as built-in cabinetry.
+The existing counter was widened 40% with nearest-neighbour scaling at
+unchanged height. The charm frame and mobile were retained and given larger,
+physical hanging silhouettes. The backdrop was rebuilt from the approved
+prism vocabulary as a mostly transparent brass wall apparatus with a quiet
+center. Correction working exports are under
+`art/pixellab-candidates/isobel-iso-spells/aseprite-working/correction-pass/`.
+
+Renderer-scale corrections: backdrop `0.95×0.95` → `0.98×0.98` wall fraction;
+catalogue/archive `0.92×0.92` → `0.98×0.95`; charm cabinet `0.58×0.66` →
+`0.82×0.82`; counter `baseSize 14` → `16` after widening; mobile `baseSize 38`
+→ `26` after two corrected hero reviews shortened its hanging lengths and
+cleared the hat silhouette. The mobile's cell placement and per-instance scale
+remain unchanged.
