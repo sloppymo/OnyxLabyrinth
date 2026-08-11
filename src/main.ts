@@ -27,6 +27,7 @@ import {
   renderCorridorBackdrop,
   setRaftVisualOverride,
 } from "./engine/renderer";
+import { mazeRenderProfiler } from "./engine/maze-renderer/performance";
 import { partyPos, enemyPos, setBarksEnabled, getBarksEnabled } from "./engine/combat-scene";
 import { geometryForBackdrop, assertFloorBottomClearOfWindows } from "./engine/combat-scene-math";
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
@@ -2956,6 +2957,11 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     /** Recent debug events, oldest-first. `log(50, "audioCue")` to filter. */
     log: (n?: number, kind?: DebugEventKind) => events.log(n, kind),
     clearLog: () => events.clear(),
+    mazeRendererPerformance: {
+      snapshot: () => mazeRenderProfiler.snapshot(),
+      reset: () => mazeRenderProfiler.reset(),
+      setEnabled: (enabled: boolean) => mazeRenderProfiler.setEnabled(enabled),
+    },
     /** Audio cue records (id, firedAt, durationMs, endsAt, bufferMissing). */
     sounds: (n?: number) => audioSpy.log.recent(n),
     soundsPlaying: () => audioSpy.log.playingNow(),

@@ -1,5 +1,17 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+## 2026-08-10 — Maze Renderer 2
+
+- Current prompt: replace CPU maze picture-making with a production Three.js/WebGL2 graphics backend, retain Canvas fallback and every existing gameplay/content contract, benchmark both paths, and add backward-compatible variable-height cell volumes with real low-to-tall boundary geometry.
+- Safety checkpoint: the shared `/home/sloppymo/OnyxLabyrinth` worktree remains on dirty `feat/isobels-iso-spells` at `9e1761a` (ahead 5 / behind 2); unrelated Camp/progress files were not stashed, reset, or edited.
+- Created isolated worktree `/home/sloppymo/OnyxLabyrinth-maze-renderer-2`, branch `feat/maze-renderer-2`, from fetched `origin/main` at `06ffb48`.
+- Replayed the five local-only Isobel commits (`f415650`, `65dd63a`, `963f4da`, `f261543`, `9e1761a`) in order; they applied cleanly as `d0d5c60` through `3686ae4`.
+- Integrated baseline gate passed: app/tools/test TypeScript, Vite build, 107 test files / 2,164 tests, floor validation, and export drift. Only the existing font/chunk build notices and known Namanda floor warnings appeared.
+- Added opt-in (`?mazePerf=1`) bounded Canvas section timing plus `npm run benchmark:maze`; ordinary play performs no profiler timestamps or sample allocation. The harness covers straight/side/front/door, Isobel idle/walking, Camp route, Hot Boi's, Namanda, darkness, and combat return, and records screenshots, browser/GPU identity, frame pacing, heap probes, and render-section median/p95/p99.
+- First production-preview baseline is under gitignored `playtest-screenshots/maze-renderer-2/benchmark/`. Chromium 140 reported SwiftShader, so its rAF pacing is diagnostic only. Static render CPU median was 1.5–2.2 ms (p95 1.9–3.0 ms); Isobel walking exposed the real bottleneck at 27.6 ms p95 total, 25.2 ms of it CPU floor/ceiling casting. Browser errors were empty and the contact sheet was visually inspected.
+- Instrumentation verification: app build passed; focused renderer/shell tests passed 175/175; standard web-game client rendered without app errors (its only console output was the skill client's own module-type warning); `git diff --check` passed.
+- Next: commit the benchmark milestone, add the renderer backend boundary, then install/lazy-load Three.js for the WebGL2 backend with Canvas fallback.
+
 ## 2026-08-08 — Floor 1 Camp hub
 
 - Follow-up grounding gate: fixed the generic floor-standing map-sprite contract. The cache now measures post-key alpha bounds once per image; renderer source-crops to those bounds, preserves their aspect ratio, and anchors the lowest visible pixel to the projected floor line. This applies to Camp decor and map-sprite-backed feature billboards without per-Camp offsets or art regeneration.
