@@ -11,6 +11,7 @@ import type {
   EventDef,
   FloorDef,
   EncounterZoneDef,
+  HeightZoneDef,
   NPCDef,
   RaftRouteDef,
   StairsGuardianDef,
@@ -108,6 +109,8 @@ export interface FloorMapJSON {
   tilesetTheme?: string;
   /** Rectangular per-cell theme overrides. Later overlapping zones win. */
   tilesetZones?: TilesetZoneDef[];
+  /** Rectangular cell-volume overrides. Later overlapping zones win. */
+  heightZones?: HeightZoneDef[];
   grid: CellJSON[][];
   /**
    * @deprecated Ignored by the engine. Combat tables come from
@@ -230,6 +233,7 @@ export function newFloorMapJSON(
     encounterRate: partial?.encounterRate ?? 0.08,
     tilesetTheme: partial?.tilesetTheme,
     tilesetZones: partial?.tilesetZones,
+    heightZones: partial?.heightZones,
     grid,
     encounterTable: partial?.encounterTable,
     encounterZones: partial?.encounterZones,
@@ -264,6 +268,7 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
     encounterRate: floor.encounterRate,
     tilesetTheme: floor.tilesetTheme,
     tilesetZones: floor.tilesetZones?.map((z) => ({ ...z })),
+    heightZones: floor.heightZones?.map((z) => ({ ...z })),
     grid: floor.grid.map((row) =>
       row.map((cell) => ({
         n: cell.n,
@@ -333,6 +338,7 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
     encounterRate: map.encounterRate,
     tilesetTheme: map.tilesetTheme,
     tilesetZones: map.tilesetZones?.map((z) => ({ ...z })),
+    heightZones: map.heightZones?.map((z) => ({ ...z })),
     encounterTable: map.encounterTable ? [...map.encounterTable] : undefined,
     encounterZones: map.encounterZones?.map((z) => ({ ...z })),
     mapSprites: map.mapSprites?.map((s) => ({ ...s })),
@@ -402,6 +408,7 @@ export function parseFloorMapJSON(raw: unknown): FloorMapJSON {
     encounterRate: requireNumber(o.encounterRate, "encounterRate"),
     tilesetTheme: typeof o.tilesetTheme === "string" ? o.tilesetTheme : undefined,
     tilesetZones: parseOverlayArray(o.tilesetZones, "tilesetZones", parseTilesetZone),
+    heightZones: parseOverlayArray(o.heightZones, "heightZones", parseHeightZone),
     grid,
     encounterTable: optionalStringArray(o.encounterTable),
     encounterZones: parseOverlayArray(o.encounterZones, "encounterZones", parseZone),
@@ -486,6 +493,26 @@ function parseTilesetZone(o: Record<string, unknown>, l: string): TilesetZoneDef
     x2: requireInt(o.x2, `${l}.x2`),
     y2: requireInt(o.y2, `${l}.y2`),
     theme: requireString(o.theme, `${l}.theme`),
+  };
+}
+
+function parseHeightZone(o: Record<string, unknown>, l: string): HeightZoneDef {
+  const floorZ = o.floorZ === undefined ? undefined : requireFiniteNumber(o.floorZ, `${l}.floorZ`);
+  const ceilingZ =
+    o.ceilingZ === undefined
+      ? undefined
+      : requireFiniteNumber(o.ceilingZ, `${l}.ceilingZ`);
+  if (floorZ === undefined && ceilingZ === undefined) {
+    throw new Error(`${l} must define floorZ and/or ceilingZ`);
+  }
+  return {
+    id: requireString(o.id, `${l}.id`),
+    x1: requireInt(o.x1, `${l}.x1`),
+    y1: requireInt(o.y1, `${l}.y1`),
+    x2: requireInt(o.x2, `${l}.x2`),
+    y2: requireInt(o.y2, `${l}.y2`),
+    floorZ,
+    ceilingZ,
   };
 }
 
@@ -850,6 +877,13 @@ function requireInt(v: unknown, name: string): number {
 function requireNumber(v: unknown, name: string): number {
   if (typeof v !== "number" || Number.isNaN(v)) {
     throw new Error(`${name} must be a number`);
+  }
+  return v;
+}
+
+function requireFiniteNumber(v: unknown, name: string): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) {
+    throw new Error(`${name} must be a finite number`);
   }
   return v;
 }

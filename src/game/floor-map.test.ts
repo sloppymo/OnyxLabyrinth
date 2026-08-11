@@ -43,6 +43,18 @@ describe("floor-map", () => {
     expect(roundTrip.tilesetZones).toEqual(map.tilesetZones);
   });
 
+  it("round-trips variable-height zones without changing the format version", () => {
+    const map = newFloorMapJSON(5, 5);
+    map.heightZones = [
+      { id: "high-room", x1: 1, y1: 1, x2: 3, y2: 3, ceilingZ: 3 },
+      { id: "future-step", x1: 2, y1: 2, x2: 2, y2: 2, floorZ: 0.5 },
+    ];
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    const roundTrip = floorDefToMap(mapToFloorDef(parsed));
+    expect(roundTrip.formatVersion).toBe(1);
+    expect(roundTrip.heightZones).toEqual(map.heightZones);
+  });
+
   it("resolves cell themes with primary fallback and last-zone-wins overlap", () => {
     const floor = {
       id: 1,
@@ -111,6 +123,14 @@ describe("floor-map", () => {
     raw = base();
     raw.tilesetZones = [{ id: "z", x1: 0, y1: 0, x2: 1, y2: 1 }];
     expect(() => parseFloorMapJSON(raw)).toThrow(/tilesetZones\[0\]\.theme/);
+
+    raw = base();
+    raw.heightZones = [{ id: "z", x1: 0, y1: 0, x2: 1, y2: 1 }];
+    expect(() => parseFloorMapJSON(raw)).toThrow(/heightZones\[0\].*floorZ.*ceilingZ/);
+
+    raw = base();
+    raw.heightZones = [{ id: "z", x1: 0, y1: 0, x2: 1, y2: 1, ceilingZ: "high" }];
+    expect(() => parseFloorMapJSON(raw)).toThrow(/heightZones\[0\]\.ceilingZ/);
   });
 
   it("preserves optional NPC and water fields through parse", () => {

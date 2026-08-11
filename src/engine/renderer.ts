@@ -355,6 +355,7 @@ let waterLoadPromise: Promise<void> | null = null;
 // exactly like a theme's ceiling.png (brightness/contrast match, one repeat,
 // flattened to ImageData) and looked up by spriteId rather than by theme.
 const ceilingFeatureCache = new Map<string, ImageData | null>();
+const ceilingFeatureSourceCache = new Map<string, HTMLCanvasElement | null>();
 let ceilingFeaturesLoadPromise: Promise<void> | null = null;
 // Reusable per-frame buffers (avoid allocation in the hot render loop).
 let hitsBuffer: (RayHit | null)[] = [];
@@ -473,6 +474,11 @@ function updateRenderCamera(state: GameState): RenderCamera {
     performance.now()
   );
   return cameraAnim.getCamera(RENDER_CONFIG.raycastFov);
+}
+
+/** Shared display-camera seam used by both maze graphics backends. */
+export function getRenderCameraForState(state: GameState): RenderCamera {
+  return updateRenderCamera(state);
 }
 
 /** True if the render camera is currently tweening toward a target. */
@@ -687,10 +693,12 @@ export function loadCeilingFeatures(): Promise<void> {
             .getContext("2d")!
             .getImageData(0, 0, repeated.width, repeated.height);
           ceilingFeatureCache.set(def.id, data);
+          ceilingFeatureSourceCache.set(def.id, repeated);
         })
         .catch(() => {
           warnAsset(`failed to load ceiling feature: ${def.id}`);
           ceilingFeatureCache.set(def.id, null);
+          ceilingFeatureSourceCache.set(def.id, null);
         })
     )
   ).then(() => {
@@ -702,6 +710,11 @@ export function loadCeilingFeatures(): Promise<void> {
 
 function getCeilingFeatureData(spriteId: string): ImageData | null {
   return ceilingFeatureCache.get(spriteId) ?? null;
+}
+
+/** Prepared ceiling-feature source shared by Canvas and GPU backends. */
+export function getCeilingFeatureSource(spriteId: string): HTMLCanvasElement | null {
+  return ceilingFeatureSourceCache.get(spriteId) ?? null;
 }
 
 /** Ensure a tileset theme is in the cache (no-op if already loaded). */
@@ -1678,7 +1691,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
 
   // Compute the interpolated render camera (smooth movement).
   const cameraStartedAt = mazeRenderProfiler.beginSection();
-  const cam = updateRenderCamera(state);
+  const cam = getRenderCameraForState(state);
 
   // Head bob: a subtle screen-space vertical offset synced to the movement
   // animation. Rounded to integer pixels because putImageData requires integer

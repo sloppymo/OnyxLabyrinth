@@ -57,6 +57,29 @@ so the same doorway can present the material of whichever room the party is
 standing in. The ASCII dump lists zone bounds under `# Overlays`; the editor
 preserves imported zones, but regional painting is currently JSON-authored.
 
+### Cell heights (Maze Renderer 2)
+
+Optional `heightZones` describe vertical air volumes without changing the
+edge-grid gameplay model. Legacy cells resolve to `floorZ: 0, ceilingZ: 1`.
+Bounds are inclusive and later matching zones win independently for each field:
+
+```json
+{
+  "heightZones": [
+    { "id": "high-room", "x1": 5, "y1": 5, "x2": 9, "y2": 9, "ceilingZ": 2 },
+    { "id": "grand-center", "x1": 7, "y1": 7, "x2": 8, "y2": 8, "ceilingZ": 3 }
+  ]
+}
+```
+
+The WebGL geometry compiler tiles wall art once per authored vertical unit and
+adds upper wall spans where a low corridor opens into a tall room. `floorZ` is
+part of the format and renderer architecture, but v1 movement deliberately
+rejects an open edge whose neighboring cells resolve to different floorZ
+values; ramps/stairs need explicit future gameplay semantics. The editor
+preserves imported height zones and clamps them on resize. Height-zone painting
+is currently JSON-authored.
+
 ## Editor tools
 
 | Tool | Use |

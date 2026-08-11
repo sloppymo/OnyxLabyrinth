@@ -30,6 +30,45 @@ function codes(floor: FloorDef): string[] {
 }
 
 describe("floor-validate content checks", () => {
+  it("accepts tall-ceiling zones over traversable cells", () => {
+    const floor = testFloor();
+    floor.heightZones = [
+      { id: "tall-room", x1: 2, y1: 2, x2: 3, y2: 3, ceilingZ: 3 },
+    ];
+    const heightErrors = validateFloorDef(floor).filter(
+      (issue) => issue.severity === "error" && issue.code.startsWith("height_")
+    );
+    expect(heightErrors).toEqual([]);
+  });
+
+  it("rejects invalid height volumes and out-of-bounds zones", () => {
+    const floor = testFloor();
+    floor.heightZones = [
+      { id: "inverted", x1: 2, y1: 2, x2: 2, y2: 2, floorZ: 2, ceilingZ: 1 },
+      { id: "outside", x1: 4, y1: 4, x2: 8, y2: 8, ceilingZ: 20 },
+    ];
+    const result = codes(floor);
+    expect(result).toContain("height_volume_inverted");
+    expect(result).toContain("height_zone_oob");
+    expect(result).toContain("height_out_of_range");
+  });
+
+  it("rejects open portals whose air volumes do not overlap", () => {
+    const floor = testFloor();
+    floor.heightZones = [
+      { id: "raised", x1: 3, y1: 2, x2: 3, y2: 2, floorZ: 2, ceilingZ: 3 },
+    ];
+    expect(codes(floor)).toContain("height_open_no_overlap");
+  });
+
+  it("rejects traversable floor steps until movement semantics exist", () => {
+    const floor = testFloor();
+    floor.heightZones = [
+      { id: "step", x1: 3, y1: 2, x2: 3, y2: 2, floorZ: 0.5, ceilingZ: 2 },
+    ];
+    expect(codes(floor)).toContain("height_floor_step_unsupported");
+  });
+
   it("campaign floors validate with zero errors and zero warnings", () => {
     for (const floor of getFloors()) {
       const issues = validateFloorDef(floor, { floors: getFloors() }).filter((i) => {

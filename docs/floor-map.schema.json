@@ -33,6 +33,28 @@
         }
       }
     },
+    "heightZones": {
+      "type": "array",
+      "description": "Inclusive rectangular cell-volume overrides. Later overlapping entries win per supplied field. Missing floorZ/ceilingZ inherit the previous resolved value, ultimately defaulting to 0/1.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "x1", "y1", "x2", "y2"],
+        "anyOf": [
+          { "required": ["floorZ"] },
+          { "required": ["ceilingZ"] }
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "x1": { "type": "integer" },
+          "y1": { "type": "integer" },
+          "x2": { "type": "integer" },
+          "y2": { "type": "integer" },
+          "floorZ": { "type": "number", "minimum": -8, "maximum": 16 },
+          "ceilingZ": { "type": "number", "minimum": -8, "maximum": 16 }
+        }
+      }
+    },
     "grid": {
       "type": "array",
       "description": "height rows of width cells",

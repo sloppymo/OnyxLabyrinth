@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { requestedMazeRendererBackend } from "./renderer-factory";
 
 describe("requestedMazeRendererBackend", () => {
-  it("keeps Canvas as the migration default", () => {
-    expect(requestedMazeRendererBackend("")).toBe("canvas");
+  it("uses WebGL as the production default", () => {
+    expect(requestedMazeRendererBackend("")).toBe("webgl");
   });
 
   it("accepts explicit Canvas and WebGL selectors", () => {
@@ -12,6 +12,6 @@ describe("requestedMazeRendererBackend", () => {
   });
 
   it("ignores unknown selectors", () => {
-    expect(requestedMazeRendererBackend("?mazeRenderer=webgpu")).toBe("canvas");
+    expect(requestedMazeRendererBackend("?mazeRenderer=webgpu")).toBe("webgl");
   });
 });

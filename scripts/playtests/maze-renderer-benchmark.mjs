@@ -82,7 +82,7 @@ async function resetProfiler(page) {
   await page.evaluate(() => window.__onyxDebug.mazeRendererPerformance.reset());
 }
 
-async function sample(page, id, drive) {
+async function sample(page, backend, id, drive) {
   await animationFrames(page, WARMUP_FRAMES);
   await resetProfiler(page);
   const heapBefore = await page.evaluate(
@@ -119,7 +119,8 @@ async function sample(page, id, drive) {
     sectionNames.map((name) => [name, summarize(samples.map((entry) => entry[name]))])
   );
   const longFrames = intervals.filter((ms) => ms > 25).length;
-  const screenshot = await shot(page, OUT, `${id}.png`);
+  const renderer = await page.evaluate(() => window.__onyxDebug.mazeRendererInfo());
+  const screenshot = await shot(page, OUT, `${backend}-${id}.png`);
   return {
     id,
     sampleFrames: samples.length,
@@ -134,6 +135,7 @@ async function sample(page, id, drive) {
       after: heapAfter,
       delta: heapBefore !== null && heapAfter !== null ? heapAfter - heapBefore : null,
     },
+    rendererStatistics: renderer.statistics,
     screenshot: path.relative(process.cwd(), screenshot),
   };
 }
@@ -180,11 +182,14 @@ async function main() {
       window.__onyxDebug.state.floor.encounterRate = 0;
       window.__onyxDebug.mazeRendererPerformance.setEnabled(true);
     });
+    const backend = await page.evaluate(
+      () => window.__onyxDebug.mazeRendererInfo().active
+    );
 
     for (const scene of staticScenes) {
       await jumpTo(page, { ...scene, autosave: false });
       await waitForIdle(page, 5000);
-      results.push(await sample(page, scene.id));
+      results.push(await sample(page, backend, scene.id));
       console.log(
         `${scene.id.padEnd(24)} median=${results.at(-1).timings.totalMs.median}ms ` +
           `p95=${results.at(-1).timings.totalMs.p95}ms`
@@ -202,12 +207,12 @@ async function main() {
     });
     await jumpTo(page, { floorId: 1, ...darkness, facing: 0, autosave: false });
     await waitForIdle(page, 5000);
-    results.push(await sample(page, "darkness"));
+    results.push(await sample(page, backend, "darkness"));
 
     await jumpTo(page, { floorId: 1, x: 16, y: 29, facing: 0, autosave: false });
     await waitForIdle(page, 5000);
     results.push(
-      await sample(page, "isobel-walking", async () => {
+      await sample(page, backend, "isobel-walking", async () => {
         const keys = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown"];
         for (let cycle = 0; cycle < 4; cycle++) {
           for (const key of keys) {
@@ -218,19 +223,19 @@ async function main() {
       })
     );
 
-    await jumpTo(page, { floorId: 1, x: 5, y: 1, facing: 1, autosave: false });
+    await jumpTo(page, { floorId: 1, ...corridorPoses.straight, autosave: false });
     await page.evaluate(() => window.__onyxDebug.startCombat());
     await wait(350);
     await page.evaluate(() => window.__onyxDebug.exitDebugCombat("fled"));
     await waitForIdle(page, 5000);
-    results.push(await sample(page, "combat-return"));
+    results.push(await sample(page, backend, "combat-return"));
 
     const info = await browserInfo(page);
     const report = {
       schema: 1,
       generatedAt: new Date().toISOString(),
       git: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
-      backend: "canvas",
+      backend,
       url: URL,
       methodology: {
         warmupFrames: WARMUP_FRAMES,
@@ -247,10 +252,12 @@ async function main() {
       browserErrors: errors,
     };
     fs.writeFileSync(
-      path.join(OUT, "canvas-baseline.json"),
+      path.join(OUT, backend === "canvas" ? "canvas-baseline.json" : "webgl-benchmark.json"),
       `${JSON.stringify(report, null, 2)}\n`
     );
-    console.log(`wrote ${path.join(OUT, "canvas-baseline.json")}`);
+    console.log(
+      `wrote ${path.join(OUT, backend === "canvas" ? "canvas-baseline.json" : "webgl-benchmark.json")}`
+    );
     if (errors.length) process.exitCode = 1;
   } finally {
     await browser.close();

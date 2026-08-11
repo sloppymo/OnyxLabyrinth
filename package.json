@@ -23,6 +23,8 @@
     "tileset:gallery": "node scripts/generate-tileset-gallery.mjs",
     "visual:floors": "node scripts/playtests/floor-visual-audit.mjs",
     "benchmark:maze": "node scripts/playtests/maze-renderer-benchmark.mjs",
+    "playtest:maze-heights": "node scripts/playtests/maze-height-demo.mjs",
+    "playtest:maze-lifecycle": "node scripts/playtests/maze-renderer-lifecycle.mjs",
     "playtest:hubs": "node scripts/playtests/hub-walkthrough.mjs",
     "sprite-preview:serve": "python3 -m http.server 8080",
     "sprite-preview": "npm run sprite-preview:generate && echo 'Open sprite-preview.html in your browser (or run npm run sprite-preview:serve).'",
@@ -31,6 +33,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
+    "@types/three": "^0.185.4",
     "jsdom": "^29.1.1",
     "playwright": "^1.55.0",
     "pngjs": "^7.0.0",
@@ -40,6 +43,7 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
-    "phaser": "4.2.1"
+    "phaser": "4.2.1",
+    "three": "^0.185.1"
   }
 }

@@ -22,6 +22,7 @@ import {
   floorDefToMap,
   cellIsPassable,
 } from "./floor-map";
+import { resolveCellVolume } from "../engine/maze-renderer/geometry/cell-volume";
 
 export type ValidationSeverity = "error" | "warning" | "info";
 
@@ -121,8 +122,113 @@ export function validateFloorMap(
   validateStairsTargets(map, issues, context?.floors ?? getFloors());
   validateEncounterConfig(map, issues);
   validateTilesetConfig(map, issues);
+  validateHeightConfig(map, issues);
 
   return issues;
+}
+
+const MIN_HEIGHT_Z = -8;
+const MAX_HEIGHT_Z = 16;
+const MIN_CELL_CLEARANCE = 0.25;
+
+function validateHeightConfig(
+  map: FloorMapJSON,
+  issues: ValidationIssue[]
+): void {
+  const zones = map.heightZones ?? [];
+  const ids = new Set<string>();
+  for (const zone of zones) {
+    if (ids.has(zone.id)) {
+      issues.push({
+        severity: "error",
+        code: "height_zone_duplicate_id",
+        message: `Height zone id "${zone.id}" is duplicated`,
+      });
+    }
+    ids.add(zone.id);
+    if (zone.x1 > zone.x2 || zone.y1 > zone.y2) {
+      issues.push({
+        severity: "error",
+        code: "height_zone_order",
+        message: `Height zone ${zone.id} must use x1 <= x2 and y1 <= y2`,
+      });
+    }
+    if (!inBoundsGrid(map, zone.x1, zone.y1) || !inBoundsGrid(map, zone.x2, zone.y2)) {
+      issues.push({
+        severity: "error",
+        code: "height_zone_oob",
+        message: `Height zone ${zone.id} extends out of bounds`,
+      });
+    }
+    for (const [field, value] of [
+      ["floorZ", zone.floorZ],
+      ["ceilingZ", zone.ceilingZ],
+    ] as const) {
+      if (value === undefined) continue;
+      if (!Number.isFinite(value)) {
+        issues.push({
+          severity: "error",
+          code: "height_non_finite",
+          message: `Height zone ${zone.id} ${field} must be finite`,
+        });
+      } else if (value < MIN_HEIGHT_Z || value > MAX_HEIGHT_Z) {
+        issues.push({
+          severity: "error",
+          code: "height_out_of_range",
+          message: `Height zone ${zone.id} ${field}=${value} must be between ${MIN_HEIGHT_Z} and ${MAX_HEIGHT_Z}`,
+        });
+      }
+    }
+  }
+
+  for (let y = 0; y < map.height; y++) {
+    for (let x = 0; x < map.width; x++) {
+      const volume = resolveCellVolume(map, x, y);
+      if (!(volume.floorZ < volume.ceilingZ)) {
+        issues.push({
+          severity: "error",
+          code: "height_volume_inverted",
+          message: `Cell (${x},${y}) resolves to floorZ ${volume.floorZ} >= ceilingZ ${volume.ceilingZ}`,
+          at: { x, y },
+        });
+      } else if (volume.ceilingZ - volume.floorZ < MIN_CELL_CLEARANCE) {
+        issues.push({
+          severity: "error",
+          code: "height_clearance_too_small",
+          message: `Cell (${x},${y}) vertical clearance must be at least ${MIN_CELL_CLEARANCE}`,
+          at: { x, y },
+        });
+      }
+
+      for (const dir of ["e", "s"] as const) {
+        const edge = map.grid[y][x][dir];
+        if (edge === "wall") continue;
+        const [dx, dy] = DELTA[dir];
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!inBoundsGrid(map, nx, ny)) continue;
+        const neighbor = resolveCellVolume(map, nx, ny);
+        const overlapMin = Math.max(volume.floorZ, neighbor.floorZ);
+        const overlapMax = Math.min(volume.ceilingZ, neighbor.ceilingZ);
+        if (!(overlapMin < overlapMax)) {
+          issues.push({
+            severity: "error",
+            code: "height_open_no_overlap",
+            message: `Traversable ${dir} edge from (${x},${y}) has no overlapping air volume with (${nx},${ny})`,
+            at: { x, y },
+          });
+        }
+        if (volume.floorZ !== neighbor.floorZ) {
+          issues.push({
+            severity: "error",
+            code: "height_floor_step_unsupported",
+            message: `Traversable ${dir} edge from (${x},${y}) changes floorZ ${volume.floorZ}→${neighbor.floorZ}; stairs/ramp movement is not implemented`,
+            at: { x, y },
+          });
+        }
+      }
+    }
+  }
 }
 
 export function validateFloorDef(
