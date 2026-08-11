@@ -101,6 +101,7 @@ import { npcAt } from "../game/npc";
 import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
 import { waterGridFromFloor } from "./water-floor";
+import { mazeRenderProfiler } from "./maze-renderer/performance";
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
 export const PALETTE = {
@@ -1478,6 +1479,7 @@ function drawFloorCeilingCast(
   waterFloorBData: ImageData | null,
   bobY: number
 ): void {
+  const cpuStartedAt = mazeRenderProfiler.beginSection();
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
   const { x: camX, y: camY, dirX, dirY, planeX, planeY } = cam;
@@ -1514,7 +1516,10 @@ function drawFloorCeilingCast(
     waterFloorAData === floorCeilCacheWaterAData &&
     waterFloorBData === floorCeilCacheWaterBData
   ) {
+    mazeRenderProfiler.endSection("floorCeilingCpu", cpuStartedAt);
+    const uploadStartedAt = mazeRenderProfiler.beginSection();
     ctx.putImageData(buf, 0, bobY);
+    mazeRenderProfiler.endSection("putImageData", uploadStartedAt);
     return;
   }
 
@@ -1644,7 +1649,10 @@ function drawFloorCeilingCast(
   floorCeilCacheWaterAData = waterFloorAData;
   floorCeilCacheWaterBData = waterFloorBData;
 
+  mazeRenderProfiler.endSection("floorCeilingCpu", cpuStartedAt);
+  const uploadStartedAt = mazeRenderProfiler.beginSection();
   ctx.putImageData(buf, 0, bobY);
+  mazeRenderProfiler.endSection("putImageData", uploadStartedAt);
 }
 
 /** Return the loaded tileset for a theme id, or null if none is cached. */
@@ -1658,6 +1666,7 @@ export function getTilesetForFloor(floorId: number): LoadedTileset | null {
 }
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
+  mazeRenderProfiler.beginFrame("canvas");
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
 
@@ -1668,6 +1677,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.imageSmoothingEnabled = false;
 
   // Compute the interpolated render camera (smooth movement).
+  const cameraStartedAt = mazeRenderProfiler.beginSection();
   const cam = updateRenderCamera(state);
 
   // Head bob: a subtle screen-space vertical offset synced to the movement
@@ -1677,6 +1687,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   const bobY = Math.round(
     cameraAnim.getMoveBob(performance.now(), RENDER_CONFIG.headBobAmplitude)
   );
+  mazeRenderProfiler.endSection("camera", cameraStartedAt);
 
   // Background
   ctx.fillStyle = PALETTE.bg;
@@ -1738,15 +1749,34 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   }
   const hits = hitsBuffer;
 
+  // Keep DDA visibility measurement separate from Canvas strip submission so
+  // the Renderer 2 benchmark can identify the old renderer's actual CPU split.
+  const raycastStartedAt = mazeRenderProfiler.beginSection();
+  for (let i = 0; i < hitCount; i++) {
+    const x = i * stripWidth;
+    const cameraX = (2 * x) / w - 1;
+    const rayDirX = dirX + planeX * cameraX;
+    const rayDirY = dirY + planeY * cameraX;
+    hits[i] = castRay(
+      state.floor.grid,
+      cam.x + 0.5,
+      cam.y + 0.5,
+      rayDirX,
+      rayDirY,
+      maxDist
+    );
+  }
+  mazeRenderProfiler.endSection("raycast", raycastStartedAt);
+
+  const wallsStartedAt = mazeRenderProfiler.beginSection();
   ctx.save();
-  for (let i = 0; i < hits.length; i++) {
+  for (let i = 0; i < hitCount; i++) {
     const x = i * stripWidth;
     const cameraX = (2 * x) / w - 1;
     const rayDirX = dirX + planeX * cameraX;
     const rayDirY = dirY + planeY * cameraX;
 
-    const hit = castRay(state.floor.grid, cam.x + 0.5, cam.y + 0.5, rayDirX, rayDirY, maxDist);
-    hits[i] = hit;
+    const hit = hits[i];
     if (!hit) continue;
 
     const lineHeight = computeLineHeight(h, hit.perpWallDist);
@@ -1987,7 +2017,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     glowEdgePaths.push(new Path2D());
     glowWashPaths.push(new Path2D());
   }
-  for (let i = 0; i < hits.length; i++) {
+  for (let i = 0; i < hitCount; i++) {
     const hit = hits[i];
     if (!hit) continue;
 
@@ -2006,7 +2036,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     // Edges keep the full glow line; flat-wall strips get the scaled wash so
     // the wall texture stays readable underneath.
     const prev = i > 0 ? hits[i - 1] : null;
-    const next = i < hits.length - 1 ? hits[i + 1] : null;
+    const next = i < hitCount - 1 ? hits[i + 1] : null;
     const isEdge =
       !prev ||
       !next ||
@@ -2033,6 +2063,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     ctx.globalAlpha = 1.0;
   }
   ctx.restore();
+  mazeRenderProfiler.endSection("walls", wallsStartedAt);
 
   // Draw tile feature at the player's feet (depth 0). Stairs render as door
   // panels on approach, not as floor glyphs underfoot.
@@ -2046,6 +2077,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // hang up and out of the way of gameplay-relevant floor content. Features
   // draw last so a chest is never hidden behind a decorative crate sharing
   // its tile.
+  const billboardsStartedAt = mazeRenderProfiler.beginSection();
   drawCeilingSprites(ctx, state, cam, hits, stripWidth, maxDist, state.inDarkness);
   drawMapSprites(ctx, state, cam, hits, stripWidth, state.inDarkness);
   drawFeatureBillboards(ctx, state, cam, hits, stripWidth, maxDist, state.inDarkness);
@@ -2053,10 +2085,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // the motivating case: she and the desk share a cell, but the front edge
   // must cross her lower torso so she reads as the shopkeeper behind it.
   drawMapSprites(ctx, state, cam, hits, stripWidth, state.inDarkness, true);
+  mazeRenderProfiler.endSection("billboards", billboardsStartedAt);
 
   // Restore from the head-bob translate before drawing screen-space overlays.
   ctx.restore();
 
+  const postprocessStartedAt = mazeRenderProfiler.beginSection();
   if (useSky) {
     ctx.save();
     ctx.fillStyle = "rgba(29, 43, 79, 0.10)";
@@ -2084,6 +2118,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   if (state.inDarkness) {
     drawVignette(ctx, w, h, 1.35);
   }
+  mazeRenderProfiler.endSection("postprocess", postprocessStartedAt);
+  mazeRenderProfiler.endFrame();
 }
 
 /** Darken the corners/edges with a radial gradient overlay. */
