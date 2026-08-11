@@ -38,6 +38,7 @@ export const CEILING_FEATURES: readonly CeilingFeatureDef[] = [
   // The Sunken Processional (Level 2 "descent" kit).
   { id: "descent-ceiling-shaft", name: "Square Hoist Shaft", file: "descent-ceiling-shaft.png" },
   { id: "descent-ceiling-medallion", name: "Bronze Ring Medallion", file: "descent-ceiling-medallion.png" },
+  { id: "descent-ceiling-beam", name: "Blackened Cross-Beam", file: "descent-ceiling-beam.png" },
 ];
 
 export const CEILING_FEATURES_BY_ID: Record<string, CeilingFeatureDef> = Object.fromEntries(
