@@ -156,6 +156,7 @@ import { levelUpChar, applyLevelUps } from "./game/leveling";
 import type { PendingPerkChoice } from "./game/perks";
 import type { GameState, GameMode } from "./types";
 import { parseFloorMapJSON, resolveTilesetTheme } from "./game/floor-map";
+import { createVerticalTraversalDemoMap } from "./content/vertical-traversal-demo";
 
 const PLAYTEST_STORAGE_KEY = "onyx-floor-playtest";
 
@@ -177,7 +178,15 @@ function tryBootPlaytestFloor(): ReturnType<typeof registerFloorMap> | null {
   }
 }
 
-const playtestFloor = tryBootPlaytestFloor();
+/** Direct live-demo entry point; normal title/new-game flow is unchanged. */
+function tryBootVerticalDemo(): ReturnType<typeof registerFloorMap> | null {
+  if (!new URLSearchParams(window.location.search).has("mazeVerticalDemo")) {
+    return null;
+  }
+  return registerFloorMap(createVerticalTraversalDemoMap());
+}
+
+const playtestFloor = tryBootPlaytestFloor() ?? tryBootVerticalDemo();
 const state = createGameState(playtestFloor ?? getFloors()[0]!);
 let mazeRenderer: MazeRenderer | null = null;
 let mazeRendererSelection: MazeRendererSelection | null = null;
