@@ -1002,9 +1002,14 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   directions ("lever housing") consistently produced a symmetric
   keyhole/lockbox icon — rejected as a "videogame switch" cliché; the pipe
   valve concept was asymmetric and read as ambiguous machinery instead.
-- Placed `descent-grate` at cell (8,10) (hall machinery corner) and
-  `descent-inlay` at cell (3,10) (approach corridor, reads as a ceremonial
-  threshold band crossing the floor). Edited the generator
+- Placed `descent-grate` at cell (8,10) (hall machinery corner). First pass
+  put `descent-inlay` at a single cell (3,10); the generated strip happened
+  to run perpendicular to the corridor, so it read as a crossing seam
+  rather than the intended processional road. Caught on review: rotated
+  the shipped `descent-inlay/floorA.png`/`floorB.png` 90° and extended the
+  zone to span the full approach corridor (x1:1, x2:3, y=10) so it reads as
+  one continuous path from the first view of the level — confirmed in a
+  recapture, not assumed. Edited the generator
   (`scripts/playtests/level2-slice-map.mjs`, the actual source of truth —
   hand-editing `level-2-slice.json` directly gets overwritten) and
   regenerated; `floor:export-check` confirms the round-trip.
@@ -1016,8 +1021,14 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   `level2-slice-walk.mjs` capture (`playtest-screenshots/level2-slice/environment-expansion-v1/`,
   `browserErrors: []`). Gate of the Kept close-up unchanged and still
   dominant. Floor1↔slice lifecycle (10 cycles): textures plateau at 122
-  after the first full slice load, geometries/draw calls flat thereafter —
-  no leak from the two new tileset themes.
+  after the first full slice load (versus 95 on Floor 1 warm / 102 after
+  first slice load), geometries/draw calls flat thereafter — no leak from
+  the two new tileset themes. `themeAt(floor, x, y)` is called per-cell in
+  both the WebGL floor-batch compiler and the 2D canvas per-pixel cast
+  (`renderer.ts:858`), and `BUILT_IN_TILESET_THEMES` has no other consumer
+  besides the validator — confirmed both renderers show all four assets
+  correctly (`mazeRenderer=canvas` debug capture) and that the two new
+  zone themes don't get eagerly loaded on unrelated floors.
 - Also committed the prior session's reviewed-and-frozen checkpoint (sconce
   animation/lighting, structural band, subdued relief, architectural-prop
   primitive) as its own commit before starting this pass, so the two bodies

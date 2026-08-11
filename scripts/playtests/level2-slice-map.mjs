@@ -89,10 +89,12 @@ export function makeLevel2SliceMap({ theme = "f1" } = {}) {
     tilesetTheme: theme,
     tilesetZones: [
       // Localized floor-only reskins: same wall/ceiling/door art, alternate
-      // floorA/floorB pair. One-cell zones, so only the matching-parity
-      // floor slot is ever sampled, but both slots ship the same texture.
+      // floorA/floorB pair (both slots ship the same texture, so the zone
+      // reads correctly regardless of the (x+y)%2 floorA/floorB parity).
       { id: "hall-drain", x1: 8, y1: 10, x2: 8, y2: 10, theme: "descent-grate" },
-      { id: "approach-inlay", x1: 3, y1: 10, x2: 3, y2: 10, theme: "descent-inlay" },
+      // Spans the full approach corridor so the inlay reads as a
+      // continuous processional path, not a one-cell crossing seam.
+      { id: "approach-inlay", x1: 1, y1: 10, x2: 3, y2: 10, theme: "descent-inlay" },
     ],
     heightZones: [
       { id: "seam", x1: 4, y1: 9, x2: 4, y2: 11, ceilingZ: 2.5 },
