@@ -224,6 +224,18 @@
       "spriteId": "descent-bronze-grate"
     },
     {
+      "x": 6,
+      "y": 7,
+      "dir": "e",
+      "spriteId": "descent-sconce"
+    },
+    {
+      "x": 6,
+      "y": 6,
+      "dir": "e",
+      "spriteId": "descent-relief-procession"
+    },
+    {
       "x": 7,
       "y": 5,
       "dir": "n",
@@ -364,6 +376,20 @@
       "depth": 0.1,
       "texture": "gate-kept.png",
       "offsetZ": 0.48,
+      "alphaMode": "opaque"
+    },
+    {
+      "id": "grate-conduit-stub",
+      "x": 8,
+      "y": 10,
+      "kind": "box",
+      "facing": "e",
+      "width": 0.16,
+      "height": 0.9,
+      "depth": 0.14,
+      "texture": "support-basalt.png",
+      "offsetX": -0.3,
+      "anchor": "ceiling",
       "alphaMode": "opaque"
     }
   ],

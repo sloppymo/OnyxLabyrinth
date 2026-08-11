@@ -146,6 +146,11 @@ export function makeLevel2SliceMap({ theme = "f1" } = {}) {
       { x: 12, y: 9, dir: "e", spriteId: "descent-sconce" },
       { x: 6, y: 10, dir: "s", spriteId: "descent-niche-votive" },
       { x: 6, y: 8, dir: "w", spriteId: "descent-bronze-grate" },
+      // The climb's middle two risers (6,7)/(6,6) were bare on both walls —
+      // a sconce lights the way and the full-brightness relief (the subdued
+      // sibling waits at the gallery top) gives it something to reveal.
+      { x: 6, y: 7, dir: "e", spriteId: "descent-sconce" },
+      { x: 6, y: 6, dir: "e", spriteId: "descent-relief-procession" },
       { x: 7, y: 5, dir: "n", spriteId: "descent-relief-procession-subdued" },
       { x: 7, y: 8, dir: "n", spriteId: "descent-niche-votive" },
       { x: 7, y: 10, dir: "s", spriteId: "descent-repair-plate" },
@@ -163,6 +168,11 @@ export function makeLevel2SliceMap({ theme = "f1" } = {}) {
       { id: "gate-frame-east", x: 12, y: 12, kind: "box", facing: "s", width: 0.22, height: 2.8, depth: 0.16, texture: "support-basalt.png", offsetX: -0.12, offsetZ: 0.46, alphaMode: "opaque" },
       { id: "gate-frame-lintel", x: 10, y: 12, kind: "box", facing: "s", width: 4.0, height: 0.34, depth: 0.16, texture: "support-basalt.png", offsetZ: 0.46, anchor: "ceiling", alphaMode: "opaque" },
       { id: "gate-unified", x: 10, y: 12, kind: "box", facing: "s", width: 3.55, height: 2.45, depth: 0.1, texture: "gate-kept.png", offsetZ: 0.48, alphaMode: "opaque" },
+      // Masonry conduit stub, cut off mid-air above the drain grate below —
+      // ties the wall infrastructure to the floor without new art; the gap
+      // before it reaches the floor reads as the same disused/sealed
+      // plumbing language as the valve at (12,11).
+      { id: "grate-conduit-stub", x: 8, y: 10, kind: "box", facing: "e", width: 0.16, height: 0.9, depth: 0.14, texture: "support-basalt.png", offsetX: -0.3, anchor: "ceiling", alphaMode: "opaque" },
     ],
     ceilingFeatures: [
       { x: 4, y: 10, spriteId: "descent-ceiling-shaft" },
