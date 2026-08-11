@@ -78,7 +78,7 @@ export class WebGLMazeRenderer implements MazeRenderer {
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.scene.background = new Color(BACKGROUND_COLOR);
-    this.scene.fog = new FogExp2(BACKGROUND_COLOR, 0.18);
+    this.scene.fog = new FogExp2(BACKGROUND_COLOR, 0.22);
     this.scene.add(this.floorGroup);
     this.scene.add(this.visuals.wallFeatures);
     this.scene.add(this.visuals.billboards);
@@ -172,7 +172,7 @@ export class WebGLMazeRenderer implements MazeRenderer {
     this.camera.lookAt(this.cameraTarget);
     this.visuals.update(state.floor, this.camera);
     if (this.scene.fog instanceof FogExp2) {
-      this.scene.fog.density = state.inDarkness ? 0.78 : 0.18;
+      this.scene.fog.density = state.inDarkness ? 0.78 : 0.22;
     }
     mazeRenderProfiler.endSection("camera", cameraStartedAt);
     const submissionStartedAt = mazeRenderProfiler.beginSection();
