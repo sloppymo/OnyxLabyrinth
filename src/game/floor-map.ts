@@ -37,6 +37,8 @@ export const BUILT_IN_TILESET_THEMES = [
   "camp",
   "isobel",
   "descent",
+  "descent-grate",
+  "descent-inlay",
 ] as const;
 
 export interface CellJSON {
