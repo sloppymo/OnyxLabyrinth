@@ -2,14 +2,21 @@ import type { FloorDef } from "../../../data/floors";
 import { themeAt } from "../../../game/floor-map";
 import type { Cell, EdgeType } from "../../../types";
 import {
-  compileOpenBoundarySpans,
-  fullBoundarySpan,
-  type VerticalSpan,
+  compileOpenBoundaryPatches,
+  fullBoundaryPatch,
+  type BoundaryPatch,
 } from "../geometry/boundary-spans";
 import {
   LEGACY_VERTICAL_UNIT,
   resolveCellVolume,
 } from "../geometry/cell-volume";
+import {
+  floorSurfaceEdgeHeights,
+  floorSurfaceZAt,
+  OPPOSITE_SURFACE_DIRECTION,
+  resolveFloorSurface,
+  type FloorSurface,
+} from "../geometry/floor-surface";
 
 export type MazeSurfaceKind = "floor" | "ceiling" | "wall" | "door";
 
@@ -58,9 +65,9 @@ function isInterior(cell: Cell | undefined): cell is Cell {
 
 function addQuad(
   batch: BatchBuilder,
-  vertices: readonly [number, number, number][],
+  vertices: readonly (readonly [number, number, number])[],
   normal: readonly [number, number, number],
-  uvs: readonly [number, number][]
+  uvs: readonly (readonly [number, number])[]
 ): void {
   const base = batch.positions.length / 3;
   for (let i = 0; i < 4; i++) {
@@ -106,25 +113,167 @@ function addHorizontal(
   }
 }
 
-function addVertical(
+function faceNormal(
+  vertices: readonly (readonly [number, number, number])[]
+): [number, number, number] {
+  const a = vertices[0];
+  const b = vertices[1];
+  const c = vertices[2];
+  const abx = b[0] - a[0];
+  const aby = b[1] - a[1];
+  const abz = b[2] - a[2];
+  const acx = c[0] - a[0];
+  const acy = c[1] - a[1];
+  const acz = c[2] - a[2];
+  const nx = aby * acz - abz * acy;
+  const ny = abz * acx - abx * acz;
+  const nz = abx * acy - aby * acx;
+  const length = Math.hypot(nx, ny, nz) || 1;
+  return [nx / length, ny / length, nz / length];
+}
+
+function addFloorQuad(
+  batch: BatchBuilder,
+  x: number,
+  y: number,
+  surface: FloorSurface
+): void {
+  const locals = [
+    [0, 0],
+    [0, 1],
+    [1, 1],
+    [1, 0],
+  ] as const;
+  const vertices = locals.map(([lx, ly]) => [
+    x + lx,
+    floorSurfaceZAt(surface, lx, ly) * LEGACY_VERTICAL_UNIT,
+    y + ly,
+  ]) as [number, number, number][];
+  addQuad(batch, vertices, faceNormal(vertices), locals);
+}
+
+function localForProgress(
+  dir: Direction,
+  progress: number,
+  lateral: number
+): readonly [number, number] {
+  if (dir === "e") return [progress, lateral];
+  if (dir === "w") return [1 - progress, lateral];
+  if (dir === "s") return [lateral, progress];
+  return [lateral, 1 - progress];
+}
+
+function addStairFloor(
+  floorBatch: BatchBuilder,
+  riserBatch: BatchBuilder,
+  x: number,
+  y: number,
+  surface: Exclude<FloorSurface, { kind: "flat" | "ramp" }>,
+  steps = 4
+): void {
+  const rise = surface.highZ - surface.lowZ;
+  const downhillNormal: readonly [number, number, number] =
+    surface.dir === "e"
+      ? [-1, 0, 0]
+      : surface.dir === "w"
+        ? [1, 0, 0]
+        : surface.dir === "s"
+          ? [0, 0, -1]
+          : [0, 0, 1];
+
+  for (let index = 0; index < steps; index++) {
+    const p0 = index / steps;
+    const p1 = (index + 1) / steps;
+    const treadZ = surface.lowZ + rise * p0;
+    const local = [
+      localForProgress(surface.dir, p0, 0),
+      localForProgress(surface.dir, p0, 1),
+      localForProgress(surface.dir, p1, 1),
+      localForProgress(surface.dir, p1, 0),
+    ];
+    let vertices = local.map(([lx, ly]) => [
+      x + lx,
+      treadZ * LEGACY_VERTICAL_UNIT,
+      y + ly,
+    ]) as [number, number, number][];
+    let uvs = local.map(([lx, ly]) => [lx, ly]) as [number, number][];
+    if (faceNormal(vertices)[1] < 0) {
+      vertices = [vertices[0], vertices[3], vertices[2], vertices[1]];
+      uvs = [uvs[0], uvs[3], uvs[2], uvs[1]];
+    }
+    addQuad(floorBatch, vertices, [0, 1, 0], uvs);
+
+    const nextZ = surface.lowZ + rise * p1;
+    const a = localForProgress(surface.dir, p1, 0);
+    const b = localForProgress(surface.dir, p1, 1);
+    let riserVertices: [number, number, number][] = [
+      [x + a[0], treadZ * LEGACY_VERTICAL_UNIT, y + a[1]],
+      [x + b[0], treadZ * LEGACY_VERTICAL_UNIT, y + b[1]],
+      [x + b[0], nextZ * LEGACY_VERTICAL_UNIT, y + b[1]],
+      [x + a[0], nextZ * LEGACY_VERTICAL_UNIT, y + a[1]],
+    ];
+    let normal = faceNormal(riserVertices);
+    const dot =
+      normal[0] * downhillNormal[0] + normal[2] * downhillNormal[2];
+    if (dot < 0) {
+      riserVertices = [
+        riserVertices[1],
+        riserVertices[0],
+        riserVertices[3],
+        riserVertices[2],
+      ];
+      normal = faceNormal(riserVertices);
+    }
+    addQuad(riserBatch, riserVertices, normal, [
+      [0, treadZ],
+      [1, treadZ],
+      [1, nextZ],
+      [0, nextZ],
+    ]);
+  }
+}
+
+function boundaryFloorProfile(
+  surface: FloorSurface,
+  dir: Direction
+): { z0: number; z1: number } {
+  // Stepped treads sit on a solid stair/stringer volume. A continuous sloped
+  // side-wall bottom leaves triangular holes beneath the discrete treads.
+  if (
+    surface.kind === "stairs" &&
+    dir !== surface.dir &&
+    dir !== OPPOSITE_SURFACE_DIRECTION[surface.dir]
+  ) {
+    return { z0: surface.lowZ, z1: surface.lowZ };
+  }
+  return floorSurfaceEdgeHeights(surface, dir);
+}
+
+function addBoundaryPatch(
   batch: BatchBuilder,
   x: number,
   y: number,
   dir: Direction,
-  span: VerticalSpan
+  patch: BoundaryPatch
 ): void {
-  const low = span.minY * LEGACY_VERTICAL_UNIT;
-  const high = span.maxY * LEGACY_VERTICAL_UNIT;
-  const v0 = span.minY;
-  const v1 = span.maxY;
+  const b0 = patch.bottom0 * LEGACY_VERTICAL_UNIT;
+  const b1 = patch.bottom1 * LEGACY_VERTICAL_UNIT;
+  const t0 = patch.top0 * LEGACY_VERTICAL_UNIT;
+  const t1 = patch.top1 * LEGACY_VERTICAL_UNIT;
+  const uvs: readonly [number, number][] = [
+    [0, patch.bottom0],
+    [1, patch.bottom1],
+    [1, patch.top1],
+    [0, patch.top0],
+  ];
   if (dir === "n") {
-    addQuad(batch, [[x, low, y], [x + 1, low, y], [x + 1, high, y], [x, high, y]], [0, 0, 1], [[0, v0], [1, v0], [1, v1], [0, v1]]);
+    addQuad(batch, [[x, b0, y], [x + 1, b1, y], [x + 1, t1, y], [x, t0, y]], [0, 0, 1], uvs);
   } else if (dir === "e") {
-    addQuad(batch, [[x + 1, low, y], [x + 1, low, y + 1], [x + 1, high, y + 1], [x + 1, high, y]], [-1, 0, 0], [[0, v0], [1, v0], [1, v1], [0, v1]]);
+    addQuad(batch, [[x + 1, b0, y], [x + 1, b1, y + 1], [x + 1, t1, y + 1], [x + 1, t0, y]], [-1, 0, 0], uvs);
   } else if (dir === "s") {
-    addQuad(batch, [[x + 1, low, y + 1], [x, low, y + 1], [x, high, y + 1], [x + 1, high, y + 1]], [0, 0, -1], [[0, v0], [1, v0], [1, v1], [0, v1]]);
+    addQuad(batch, [[x + 1, b1, y + 1], [x, b0, y + 1], [x, t0, y + 1], [x + 1, t1, y + 1]], [0, 0, -1], [[0, patch.bottom1], [1, patch.bottom0], [1, patch.top0], [0, patch.top1]]);
   } else {
-    addQuad(batch, [[x, low, y + 1], [x, low, y], [x, high, y], [x, high, y + 1]], [1, 0, 0], [[0, v0], [1, v0], [1, v1], [0, v1]]);
+    addQuad(batch, [[x, b1, y + 1], [x, b0, y], [x, t0, y], [x, t1, y + 1]], [1, 0, 0], [[0, patch.bottom1], [1, patch.bottom0], [1, patch.top0], [0, patch.top1]]);
   }
 }
 
@@ -197,9 +346,23 @@ export function compileMazeGeometry(
       const cell = floor.grid[y]?.[x];
       if (!isInterior(cell)) continue;
       const volume = resolveCellVolume(floor, x, y);
+      const surface = resolveFloorSurface(floor, x, y);
       const theme = themeAt(floor, x, y);
       const floorVariant = (x + y) % 2 === 0 ? "floorA" : "floorB";
-      addHorizontal(batchFor(x, y, `${theme}:${floorVariant}`, "floor"), x, y, volume.floorZ, false);
+      const floorBatch = batchFor(x, y, `${theme}:${floorVariant}`, "floor");
+      if (surface.kind === "flat") {
+        addHorizontal(floorBatch, x, y, surface.z, false);
+      } else if (surface.kind === "ramp") {
+        addFloorQuad(floorBatch, x, y, surface);
+      } else {
+        addStairFloor(
+          floorBatch,
+          batchFor(x, y, `${theme}:wall`, "wall"),
+          x,
+          y,
+          surface
+        );
+      }
 
       const ceilingFeature = floor.ceilingFeatures?.find(
         (feature) => feature.x === x && feature.y === y
@@ -230,24 +393,41 @@ export function compileMazeGeometry(
           (neighbor?.tile === "stairs_up" || neighbor?.tile === "stairs_down");
 
         if (edge === "open" && neighborInterior && !isStairDoor) {
-          const spans = compileOpenBoundarySpans(
+          const neighborVolume = resolveCellVolume(floor, nx, ny);
+          const neighborSurface = resolveFloorSurface(floor, nx, ny);
+          const patches = compileOpenBoundaryPatches(
             volume,
-            resolveCellVolume(floor, nx, ny)
+            neighborVolume,
+            boundaryFloorProfile(surface, dir),
+            boundaryFloorProfile(
+              neighborSurface,
+              OPPOSITE_SURFACE_DIRECTION[dir]
+            )
           ).aClosed;
-          for (const span of spans) {
-            addVertical(batchFor(x, y, `${theme}:wall`, "wall"), x, y, dir, span);
+          for (const patch of patches) {
+            addBoundaryPatch(
+              batchFor(x, y, `${theme}:wall`, "wall"),
+              x,
+              y,
+              dir,
+              patch
+            );
           }
           continue;
         }
 
         if (edge === "door" || edge === "locked" || edge === "barred" || isStairDoor) {
-          const panelTop = Math.min(volume.ceilingZ, volume.floorZ + 1);
-          const panel: VerticalSpan = {
-            minY: volume.floorZ,
-            maxY: panelTop,
+          const floorEdge = boundaryFloorProfile(surface, dir);
+          const panelTop0 = Math.min(volume.ceilingZ, floorEdge.z0 + 1);
+          const panelTop1 = Math.min(volume.ceilingZ, floorEdge.z1 + 1);
+          const panel: BoundaryPatch = {
+            bottom0: floorEdge.z0,
+            bottom1: floorEdge.z1,
+            top0: panelTop0,
+            top1: panelTop1,
             kind: "fullClosure",
           };
-          addVertical(
+          addBoundaryPatch(
             batchFor(
               x,
               y,
@@ -259,24 +439,30 @@ export function compileMazeGeometry(
             dir,
             panel
           );
-          if (panelTop < volume.ceilingZ) {
-            addVertical(
+          if (panelTop0 < volume.ceilingZ || panelTop1 < volume.ceilingZ) {
+            addBoundaryPatch(
               batchFor(x, y, `${theme}:wall`, "wall"),
               x,
               y,
               dir,
-              { minY: panelTop, maxY: volume.ceilingZ, kind: "upperClosure" }
+              {
+                bottom0: panelTop0,
+                bottom1: panelTop1,
+                top0: volume.ceilingZ,
+                top1: volume.ceilingZ,
+                kind: "upperClosure",
+              }
             );
           }
           continue;
         }
 
-        addVertical(
+        addBoundaryPatch(
           batchFor(x, y, `${theme}:wall`, "wall"),
           x,
           y,
           dir,
-          fullBoundarySpan(volume)
+          fullBoundaryPatch(volume, boundaryFloorProfile(surface, dir))
         );
       }
     }
