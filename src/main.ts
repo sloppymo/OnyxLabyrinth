@@ -18,7 +18,6 @@ import {
 } from "./game/features";
 import { revealAround } from "./game/explore";
 import {
-  render,
   loadTextures,
   isRenderCameraAnimating,
   isRenderCameraSettledFor,
@@ -28,6 +27,11 @@ import {
   setRaftVisualOverride,
 } from "./engine/renderer";
 import { mazeRenderProfiler } from "./engine/maze-renderer/performance";
+import { createMazeRenderer } from "./engine/maze-renderer/renderer-factory";
+import type {
+  MazeRenderer,
+  MazeRendererSelection,
+} from "./engine/maze-renderer/types";
 import { partyPos, enemyPos, setBarksEnabled, getBarksEnabled } from "./engine/combat-scene";
 import { geometryForBackdrop, assertFloorBottomClearOfWindows } from "./engine/combat-scene-math";
 import { loadEnemySprites } from "./engine/enemy-sprite-cache";
@@ -51,6 +55,7 @@ import {
 import {
   canvas,
   ctx,
+  mazeWebglCanvas,
   mapCtx,
   mapOverlayCtx,
   setMessage,
@@ -64,6 +69,9 @@ import {
   setContextualPrompt,
   getMessageText,
   setDebugMessageHook,
+  getMazeRendererSurface,
+  setMazeRendererSurface,
+  setMazeSurfaceOpacity,
 } from "./engine/shell";
 import {
   playEncounterTransition,
@@ -170,6 +178,40 @@ function tryBootPlaytestFloor(): ReturnType<typeof registerFloorMap> | null {
 
 const playtestFloor = tryBootPlaytestFloor();
 const state = createGameState(playtestFloor ?? getFloors()[0]!);
+let mazeRenderer: MazeRenderer | null = null;
+let mazeRendererSelection: MazeRendererSelection | null = null;
+let mazeRendererFloor: FloorDef | null = null;
+let mazeRendererWidth = -1;
+let mazeRendererHeight = -1;
+
+async function initializeMazeRenderer(): Promise<void> {
+  mazeRendererSelection = await createMazeRenderer({
+    canvas,
+    context: ctx,
+    webglCanvas: mazeWebglCanvas,
+  });
+  mazeRenderer = mazeRendererSelection.renderer;
+  setMazeRendererSurface(mazeRendererSelection.active);
+  await mazeRenderer.loadFloor(state.floor);
+  mazeRendererFloor = state.floor;
+  syncMazeRendererSize();
+}
+
+function syncMazeRendererFloor(): void {
+  if (!mazeRenderer || mazeRendererFloor === state.floor) return;
+  mazeRenderer.disposeFloor();
+  mazeRendererFloor = state.floor;
+  void mazeRenderer.loadFloor(state.floor);
+}
+
+function syncMazeRendererSize(): void {
+  if (!mazeRenderer) return;
+  const surface = getMazeRendererSurface();
+  if (surface.width === mazeRendererWidth && surface.height === mazeRendererHeight) return;
+  mazeRendererWidth = surface.width;
+  mazeRendererHeight = surface.height;
+  mazeRenderer.resize({ width: surface.width, height: surface.height });
+}
 
 // Auto-map visibility flag.
 let mapVisible = false;
@@ -254,11 +296,11 @@ function transitionToMode(newMode: GameMode): void {
   recordDebugEvent("modeChange", { from: state.mode, to: newMode });
   if (newMode !== "dungeon") closeMapOverlay();
   modeTransitionPending = true;
-  canvas.style.opacity = "0";
+  setMazeSurfaceOpacity("0");
   setTimeout(() => {
     setMode(state, newMode);
     showMode(newMode, mapVisible);
-    canvas.style.opacity = "1";
+    setMazeSurfaceOpacity("1");
     requestAnimationFrame(() => {
       modeTransitionPending = false;
     });
@@ -487,7 +529,7 @@ function applyLoadedGameState(loaded: GameState): void {
     openTown();
   } else {
     // Combat is converted to dungeon on save; any other mode resumes directly.
-    canvas.style.opacity = "1";
+    setMazeSurfaceOpacity("1");
     showMode(state.mode, mapVisible);
     setMessage("Welcome back to the labyrinth.");
     if (state.mode === "dungeon") {
@@ -539,7 +581,7 @@ function openTitleScreen(): void {
 if (playtestFloor) {
   setMode(state, "dungeon");
   showMode("dungeon", false);
-  canvas.style.opacity = "1";
+  setMazeSurfaceOpacity("1");
   resetRenderCamera(state.player.x, state.player.y, state.player.facing);
   setMessage(`Playtesting: ${playtestFloor.name}`);
   window.focus();
@@ -669,7 +711,7 @@ async function startCombat(combat: CombatState): Promise<void> {
     // Corridor canvas is 1×1 when coming from title/arena (viewport hidden).
     // snapshotSource treats tiny sources as a dark field so the wipe still
     // reads; dungeon encounters get the live corridor pixels.
-    await playEncounterTransition({ source: canvas, isBoss: combat.isBoss });
+    await playEncounterTransition({ source: getMazeRendererSurface(), isBoss: combat.isBoss });
 
     showMode("combat", mapVisible);
 
@@ -860,14 +902,14 @@ let perkSelectController: PerkSelectController | null = null;
 function openPerkSelectOverlay(queue: PendingPerkChoice[], onDone?: () => void): void {
   setMode(state, "title");
   showMode("title", mapVisible);
-  canvas.style.opacity = "0.2";
+  setMazeSurfaceOpacity("0.2");
   perkSelectController = new PerkSelectController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
     queue,
     onDone: () => {
       perkSelectController = null;
-      canvas.style.opacity = "1";
+      setMazeSurfaceOpacity("1");
       if (onDone) {
         onDone();
       } else {
@@ -1561,7 +1603,7 @@ function openActionRing(): void {
   }
   setMode(state, "title");
   showMode("title", mapVisible);
-  canvas.style.opacity = "0.2";
+  setMazeSurfaceOpacity("0.2");
   // No justOpened* guard: Start opens the ring on the dungeon route and is
   // never fed into the ring's handleKey (unlike Esc→save), so the first A/B
   // must confirm/cancel immediately.
@@ -1585,7 +1627,7 @@ function openActionRing(): void {
     },
     onClose: () => {
       actionRingController = null;
-      canvas.style.opacity = "1";
+      setMazeSurfaceOpacity("1");
       setMode(state, "dungeon");
       showMode("dungeon", mapVisible);
       setMessage("");
@@ -2216,7 +2258,7 @@ function openSaveMenu(): void {
   modeBeforeSaveMenu = state.mode;
   setMode(state, "title"); // borrow "title" mode so dungeon input pauses
   showMode("title", mapVisible);
-  canvas.style.opacity = "0.2";
+  setMazeSurfaceOpacity("0.2");
   justOpenedSaveMenu = true;
   saveController = new SaveController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
@@ -2228,7 +2270,7 @@ function openSaveMenu(): void {
       mapOverlayRenderer.invalidate();
       Object.assign(state, loaded);
       saveController = null;
-      canvas.style.opacity = "1";
+      setMazeSurfaceOpacity("1");
       // Return to the mode from the loaded save, or dungeon if it was combat.
       const targetMode = state.mode === "combat" ? "dungeon" : state.mode;
       setMode(state, targetMode);
@@ -2241,7 +2283,7 @@ function openSaveMenu(): void {
     },
     onClose: () => {
       saveController = null;
-      canvas.style.opacity = "1";
+      setMazeSurfaceOpacity("1");
       if (modeBeforeSaveMenu === "town") {
         openTown();
       } else {
@@ -2277,14 +2319,14 @@ let justOpenedSpellMenu = false;
 function openSpellMenu(): void {
   setMode(state, "title");
   showMode("title", mapVisible);
-  canvas.style.opacity = "0.2";
+  setMazeSurfaceOpacity("0.2");
   justOpenedSpellMenu = true;
   spellMenuController = new SpellMenuController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
     onClose: (message: string) => {
       spellMenuController = null;
-      canvas.style.opacity = "1";
+      setMazeSurfaceOpacity("1");
       setMode(state, "dungeon");
       showMode("dungeon", mapVisible);
       setMessage(message);
@@ -2330,7 +2372,7 @@ function openNPCPanel(npcId: string): void {
   if (!npc) return;
   setMode(state, "title");
   showMode("title", mapVisible);
-  canvas.style.opacity = "0.2";
+  setMazeSurfaceOpacity("0.2");
   justOpenedNPCPanel = true;
   npcController = new NPCController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
@@ -2339,7 +2381,7 @@ function openNPCPanel(npcId: string): void {
     onClose: (message: string) => {
       npcController = null;
       if (npcFightId) return; // a fight is taking over the screen
-      canvas.style.opacity = "1";
+      setMazeSurfaceOpacity("1");
       setMode(state, "dungeon");
       showMode("dungeon", mapVisible);
       setMessage(message);
@@ -2357,7 +2399,7 @@ function startNPCFight(npc: NPCDef): void {
     .map((def) => ({ enemy: def, row: "front" as const }));
   if (spawns.length === 0) return;
   npcFightId = npc.id;
-  canvas.style.opacity = "1";
+  setMazeSurfaceOpacity("1");
   const combat = createCombatFromEncounter(
     state.party,
     spawns,
@@ -2385,7 +2427,7 @@ function startStairsGuardianFight(guardian: StairsGuardianDef): void {
     .filter((s): s is { enemy: (typeof ENEMIES_BY_ID)[string]; row: "front" | "back" } => s !== null);
   if (spawns.length === 0) return;
   pendingStairsGuardianFight = guardian;
-  canvas.style.opacity = "1";
+  setMazeSurfaceOpacity("1");
   const combat = createCombatFromEncounter(
     state.party,
     spawns,
@@ -2424,7 +2466,7 @@ let justOpenedTavernPanel = false;
 function openTavernPanel(): void {
   setMode(state, "title");
   showMode("title", mapVisible);
-  canvas.style.opacity = "0.2";
+  setMazeSurfaceOpacity("0.2");
   justOpenedTavernPanel = true;
   audio.startTavernMusic();
   tavernController = new TavernController({
@@ -2432,7 +2474,7 @@ function openTavernPanel(): void {
     state,
     onClose: () => {
       tavernController = null;
-      canvas.style.opacity = "1";
+      setMazeSurfaceOpacity("1");
       setMode(state, "dungeon");
       showMode("dungeon", mapVisible);
       setMessage("");
@@ -2470,14 +2512,14 @@ let justOpenedNamandaPanel = false;
 function openNamandaPanel(): void {
   setMode(state, "title");
   showMode("title", mapVisible);
-  canvas.style.opacity = "0.2";
+  setMazeSurfaceOpacity("0.2");
   justOpenedNamandaPanel = true;
   namandaController = new NamandaController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
     onClose: () => {
       namandaController = null;
-      canvas.style.opacity = "1";
+      setMazeSurfaceOpacity("1");
       setMode(state, "dungeon");
       showMode("dungeon", mapVisible);
       setMessage("");
@@ -2508,7 +2550,7 @@ function toggleMap(): void {
   mapVisible = !mapVisible;
   if (mapVisible) closeMapOverlay();
   showMode("dungeon", mapVisible);
-  canvas.style.opacity = mapVisible ? "0.3" : "1";
+  setMazeSurfaceOpacity(mapVisible ? "0.3" : "1");
   // The map canvas owns its floor/position header and input-specific close
   // hint. Clear any corridor notice so it cannot reappear stale on map close.
   setMessage("");
@@ -2558,7 +2600,9 @@ function loop() {
     } else {
       setRaftVisualOverride(null);
     }
-    render(ctx, state);
+    syncMazeRendererFloor();
+    syncMazeRendererSize();
+    mazeRenderer?.render(state);
     setRaftVisualOverride(null);
     const floorLabel = `F${state.floor.id}`;
     renderPartyStrip(
@@ -2614,7 +2658,7 @@ if ("fonts" in document) {
         fontsReady = true;
         failedAssets.push("fonts");
       }),
-    loadTextures()
+    initializeMazeRenderer()
       .then(() => {
         texturesReady = true;
       })
@@ -2624,7 +2668,7 @@ if ("fonts" in document) {
       }),
   ]).then(() => loop()); // both branches above resolve — this never rejects
 } else {
-  loadTextures()
+  initializeMazeRenderer()
     .then(() => {
       texturesReady = true;
     })
@@ -2914,7 +2958,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     resetRenderCamera(state.player.x, state.player.y, state.player.facing);
     setMode(state, "dungeon");
     showMode("dungeon", mapVisible);
-    canvas.style.opacity = "1";
+    setMazeSurfaceOpacity("1");
     setMessage("");
   };
 
@@ -2962,6 +3006,12 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       reset: () => mazeRenderProfiler.reset(),
       setEnabled: (enabled: boolean) => mazeRenderProfiler.setEnabled(enabled),
     },
+    mazeRendererInfo: () => ({
+      requested: mazeRendererSelection?.requested ?? null,
+      active: mazeRendererSelection?.active ?? null,
+      fallbackReason: mazeRendererSelection?.fallbackReason ?? null,
+      size: { width: mazeRendererWidth, height: mazeRendererHeight },
+    }),
     /** Audio cue records (id, firedAt, durationMs, endsAt, bufferMissing). */
     sounds: (n?: number) => audioSpy.log.recent(n),
     soundsPlaying: () => audioSpy.log.playingNow(),

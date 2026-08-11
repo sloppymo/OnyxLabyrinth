@@ -11,6 +11,10 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - First production-preview baseline is under gitignored `playtest-screenshots/maze-renderer-2/benchmark/`. Chromium 140 reported SwiftShader, so its rAF pacing is diagnostic only. Static render CPU median was 1.5–2.2 ms (p95 1.9–3.0 ms); Isobel walking exposed the real bottleneck at 27.6 ms p95 total, 25.2 ms of it CPU floor/ceiling casting. Browser errors were empty and the contact sheet was visually inspected.
 - Instrumentation verification: app build passed; focused renderer/shell tests passed 175/175; standard web-game client rendered without app errors (its only console output was the skill client's own module-type warning); `git diff --check` passed.
 - Next: commit the benchmark milestone, add the renderer backend boundary, then install/lazy-load Three.js for the WebGL2 backend with Canvas fallback.
+- Benchmark milestone committed as `d6959b8` (`perf(renderer): add maze rendering benchmark harness`).
+- Renderer boundary implemented: `MazeRenderer` owns init/floor/render/resize/disposal; `CanvasMazeRenderer` adapts the retained CPU renderer; factory parses `?mazeRenderer=canvas|webgl`; shell now owns distinct 2D and WebGL canvas surfaces plus active-surface opacity/snapshot routing. Floor and resize lifecycle are synchronized from the authoritative `GameState` without querying a scene graph.
+- The transitional explicit WebGL request currently reports a reason and falls back to Canvas. Build passed; backend/shell tests passed 10/10; Isobel's full hub walkthrough passed with browser errors empty under `?mazeRenderer=webgl`; the shop-interior screenshot was visually inspected and preserved Isobel/counter/backdrop/mobile composition. The standard web-game client also ran (only its environment-owned module-type warning).
+- Registry check: npm reports Three.js `0.185.1` as the current `latest` release. Next: install that pinned dependency and replace the transitional fallback with a lazy-loaded WebGL2 renderer that still falls back on initialization failure.
 
 ## 2026-08-08 — Floor 1 Camp hub
 
