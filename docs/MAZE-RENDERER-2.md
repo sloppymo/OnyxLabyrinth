@@ -34,7 +34,7 @@ GameState / FloorDef
 The scene contains flat groups for static floor geometry, wall features, and
 billboards. There is no cell-per-Object3D tree.
 
-- Static: floor, ceiling, wall and door batches, grouped by 16x16 spatial
+- Static: floor, ceiling, wall and door batches, grouped by 32x32 spatial
   chunk, surface and material.
 - Separate visual objects: doors/features requiring distinct art, wall decals,
   NPCs, map decor, feature props, hanging ceiling sprites and additive glows.
@@ -43,9 +43,10 @@ billboards. There is no cell-per-Object3D tree.
 - Floor geometry is compiled and uploaded after a floor change, never each
   frame.
 
-The 16x16 chunk size was selected after comparing the initial 8x8 compiler.
-It lowers CPU submission and batch traversal on current approximately 30-cell
-floors while retaining four spatial chunks and frustum culling on Floor 1.
+The 32x32 chunk size was selected after measuring the initial 8x8 and 16x16
+compilers. Current floors are only about 30 cells wide and a few thousand
+triangles, so reducing regional-theme batch duplication wins more than
+fine-grained culling. Larger future floors still split spatially.
 
 ## Coordinate system and camera
 
@@ -179,18 +180,18 @@ measurements are stored under the ignored
 
 | Scene | Canvas median | Canvas p95 | WebGL median | WebGL p95 |
 |---|---:|---:|---:|---:|
-| Floor 1 straight | 1.5 ms | 2.0 ms | 1.3 ms | 1.5 ms |
-| Side passage | 2.0 ms | 2.2 ms | 1.0 ms | 1.4 ms |
-| Front wall | 1.5 ms | 1.9 ms | 0.8 ms | 1.0 ms |
-| Door | 2.4 ms | 3.1 ms | 0.9 ms | 1.2 ms |
-| Isobel hero | 2.1 ms | 2.8 ms | 0.8 ms | 1.0 ms |
-| Isobel walking | 3.4 ms | 29.3 ms | 1.0 ms | 1.5 ms |
-| Combat return | 2.1 ms | 2.6 ms | 1.0 ms | 1.5 ms |
+| Floor 1 straight | 1.5 ms | 2.0 ms | 1.1 ms | 1.6 ms |
+| Side passage | 2.0 ms | 2.2 ms | 1.0 ms | 1.2 ms |
+| Front wall | 1.5 ms | 1.9 ms | 0.8 ms | 0.9 ms |
+| Door | 2.4 ms | 3.1 ms | 0.9 ms | 1.1 ms |
+| Isobel hero | 2.1 ms | 2.8 ms | 0.7 ms | 1.0 ms |
+| Isobel walking | 3.4 ms | 29.3 ms | 1.2 ms | 1.5 ms |
+| Combat return | 2.1 ms | 2.6 ms | 1.0 ms | 1.2 ms |
 
 The most important result is removal of the CPU walking hitch: the WebGL path
 does no per-pixel JavaScript floor cast, `ImageData` rewrite, `putImageData`, or
-per-column DDA rendering. Current Floor 1 compiles to four chunks, 83 static
-batches and only a few thousand visible triangles; draw calls vary with view
+per-column DDA rendering. Current Floor 1 compiles to one chunk, a few dozen
+static batches and only a few thousand visible triangles; draw calls vary with view
 and authored separate alpha assets.
 
 ## QA fixtures and lifecycle
