@@ -344,6 +344,14 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     heightFrac: 0.5,
     anchor: "bottom",
   },
+  {
+    id: "descent-sealed-valve",
+    name: "Sealed Bronze Valve",
+    file: "descent-sealed-valve.png",
+    widthFrac: 0.34,
+    heightFrac: 0.48,
+    anchor: "bottom",
+  },
   // Hero landmark halves: the sealed processional gate (two adjacent cells).
   {
     id: "descent-gate-left",
