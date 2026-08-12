@@ -8,7 +8,7 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 - **No framework.** The UI is hand-drawn DOM + a 2D canvas corridor renderer.
 - **Entry:** `src/main.ts` bootstraps the app and mounts it into `#app`.
 - **Build:** `npm run build` (runs the app TypeScript check, the tools/editor TypeScript check, then `vite build`). Both TypeScript checks must pass with zero errors.
-- **Full verification:** `npm run check` runs `test:typecheck`, `build`, `test`, and `floor:validate` in one sequence. Use this as the required gate before committing.
+- **Full verification:** `npm run check` runs `test:typecheck`, `build`, `test`, `floor:validate`, and `floor:export-check` in one sequence. Use this as the required gate before committing.
 - **Dev server:** `npm run dev`.
 - **Tests:** `npm test` (runs Vitest). Test files use `.test.ts` suffix and are excluded from the build tsconfig.
 - **Production preview:** `npx vite preview --port 5176 --base /OnyxLabyrinth/`.
