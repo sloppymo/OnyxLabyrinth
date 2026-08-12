@@ -25,15 +25,21 @@ describe("Floor 1 revision 9 expansion", () => {
   it("expands the bounding grid by about 30% and meaningful walkable space by 25–35%", () => {
     const floor = floor1();
     expect(floor.width).toBe(28);
-    expect(floor.height).toBe(31);
-    expect(floor.width * floor.height).toBe(868);
+    // Revision 10 (the Kept Gate entrance, appended south) added 6 more rows
+    // on top of revision 9's 31; see "Floor 1 revision 10" below.
+    expect(floor.height).toBe(37);
+    expect(floor.width * floor.height).toBe(1036);
     expect(floor.floorRevision).toBeGreaterThanOrEqual(7);
 
     const walkable = floor.grid.flat().filter(isAuthoredCell).length;
     const change = walkable / BASELINE_WALKABLE_CELLS - 1;
-    expect(walkable).toBe(374);
+    // Revision 9 alone landed at 374/274 (+36%); revision 10 adds the gate
+    // hall on top, so the combined change is measured against the same
+    // pre-revision-9 baseline and no longer fits revision 9's own 25–40%
+    // band in isolation.
+    expect(walkable).toBe(400);
     expect(change).toBeGreaterThanOrEqual(0.25);
-    expect(change).toBeLessThanOrEqual(0.40);
+    expect(change).toBeLessThanOrEqual(0.50);
   });
 
   it("leaves a full renderer-safe rock buffer around every absolute boundary", () => {
@@ -50,7 +56,9 @@ describe("Floor 1 revision 9 expansion", () => {
 
   it("preserves every major pre-expansion landmark coordinate", () => {
     const floor = floor1();
-    expect([floor.startX, floor.startY]).toEqual([11, 25]);
+    // Revision 10 moved start into the new Kept Gate entrance; the old
+    // revision-9 start (11,25) is still the doorway into the rest of F1.
+    expect([floor.startX, floor.startY]).toEqual([11, 35]);
     expect(floor.grid[8][3].tile).toBe("chute");
     expect(floor.grid[21][19].tile).toBe("stairs_down");
     expect(floor.stairsGuardian && [floor.stairsGuardian.x, floor.stairsGuardian.y]).toEqual([
@@ -84,7 +92,8 @@ describe("Floor 1 revision 9 expansion", () => {
     const floor = floor1();
     expect(floor.treasures).toHaveLength(8);
     expect(floor.npcs).toHaveLength(9);
-    expect(floor.events).toHaveLength(16);
+    // +1 for the revision 10 gate-hall entry message.
+    expect(floor.events).toHaveLength(17);
     expect(floor.encounterZones).toHaveLength(10);
     expect(floor.mapSprites).toHaveLength(24);
 
@@ -115,6 +124,35 @@ describe("Floor 1 revision 9 expansion", () => {
     ).toEqual(["isobel-sales-counter", "isobel-sales-counter-front"]);
     expect(floor.grid[28][17].tile).toBe("npc");
     expect(floor.npcs?.find((npc) => npc.id === "isobel")).toMatchObject({ x: 17, y: 28 });
+  });
+});
+
+describe("Floor 1 revision 10 — the Kept Gate entrance", () => {
+  it("starts the player facing straight into the gate hall", () => {
+    const state = createGameState(floor1());
+    expect(state.player).toMatchObject({ x: 11, y: 35, facing: 0 });
+  });
+
+  it("carries the ported architecturalProp gate and its ceiling dressing", () => {
+    const floor = floor1();
+    const gate = floor.architecturalProps?.find((p) => p.id === "gate-unified");
+    expect(gate).toMatchObject({ x: 11, y: 31, facing: "n", texture: "gate-kept.png" });
+    expect(
+      floor.ceilingSprites?.some((s) => s.spriteId === "descent-counterweight")
+    ).toBe(true);
+    const zone = floor.heightZones?.find((z) => z.id === "gate-hall");
+    expect(zone).toMatchObject({ x1: 9, y1: 31, x2: 13, y2: 35, ceilingZ: 3 });
+  });
+
+  it("routes into the old start through Surveyors-Rest, not a new shortcut", () => {
+    const floor = floor1();
+    expect(floor.grid[31][11].n).toBe("open");
+    expect(floor.grid[30][11].s).toBe("open");
+    expect(floor.grid[29][11].s).toBe("open");
+    // Only the center column punches through; the rest of the old south
+    // border stays sealed rock.
+    expect(floor.grid[30][10].n).toBe("wall");
+    expect(floor.grid[30][12].n).toBe("wall");
   });
 });
 
