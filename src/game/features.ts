@@ -79,6 +79,10 @@ export function handleTileFeature(state: GameState, rng: Rng = getGameplayRng())
   const playerZ = resolvePlayerZ(player, floor);
   const baseZ = resolveCellVolume(floor, player.x, player.y).floorZ;
   if (!sameZ(playerZ, baseZ)) {
+    // Still clear darkness/antimagic so an upper-storey visit does not
+    // leave the wrong retroactive environment state behind.
+    state.inDarkness = false;
+    state.inAntimagic = false;
     return null;
   }
 
@@ -306,6 +310,7 @@ function handleTeleporter(state: GameState): FeatureResult {
   } else {
     state.player.x = link.toX;
     state.player.y = link.toY;
+    state.player.z = resolvePlayerZ(state.player, state.floor);
   }
 
   return {

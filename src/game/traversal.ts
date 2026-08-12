@@ -36,14 +36,38 @@ export type TraversalResult =
   | { kind: "raft"; routeId: string; reverse: boolean }
   | { kind: "barred-gate"; gateId: string; canOpen: boolean; message?: string };
 
-/** Canonical player Z: explicit `z` wins, otherwise resolve from floor heightZones. */
+/** Discrete vertical quantum for authored landings and canonical positions. */
+export const VERTICAL_QUANTUM = 0.25;
+
+/** Snap an authored Z to the nearest quantum step. */
+export function quantizeZ(z: number, quantum = VERTICAL_QUANTUM): number {
+  const n = Math.round(z / quantum);
+  return n * quantum;
+}
+
+/** Canonical player Z: validate an explicit `z` against the floor's supported
+ *  surfaces (landings, flat/ramp surface centre), otherwise resolve from
+ *  heightZones. Stale or unsupported Z values fall back to the cell's base
+ *  floor, which is the safe recovery path for old saves and floor edits. */
 export function resolvePlayerZ(
   player: Pick<PlayerState, "x" | "y" | "z">,
   floor: FloorDef
 ): number {
-  if (player.z !== undefined && Number.isFinite(player.z)) {
-    return player.z;
+  const z = player.z;
+  if (z === undefined || !Number.isFinite(z)) {
+    return resolveCellVolume(floor, player.x, player.y).floorZ;
   }
+
+  // If the player is standing on an authored landing, use the landing's Z.
+  const landing = landingAt(floor, player.x, player.y, z);
+  if (landing) return landing.z;
+
+  // Otherwise the player must be on the physical surface at the cell centre.
+  const surface = resolveFloorSurface(floor, player.x, player.y);
+  const centreZ = floorSurfaceZAt(surface, 0.5, 0.5);
+  if (sameZ(z, centreZ)) return z;
+
+  // Unsupported position: recover to the base surface.
   return resolveCellVolume(floor, player.x, player.y).floorZ;
 }
 
@@ -72,10 +96,11 @@ export function landingAt(
 /**
  * Effective N/E/S/W edge semantics for a navigable (x, y, z).
  *
- * The base grid is the default; an explicit landing at that exact Z may
- * override individual edges. This is the single source of truth for all
- * stacked-cell edge lookup — traversal, validators, automap, and AI should
- * all call this helper rather than reimplementing the lookup.
+ * The base grid is the default when no explicit landing exists. An explicit
+ * landing at that exact Z owns all four edges; any omitted edge defaults to
+ * "wall" so upper storeys cannot accidentally inherit base-grid connectivity.
+ * This is the single source of truth for all stacked-cell edge lookup —
+ * traversal, validators, automap, and AI should call this helper.
  */
 export function resolveLandingEdges(
   floor: FloorDef,
@@ -85,12 +110,12 @@ export function resolveLandingEdges(
 ): Record<"n" | "e" | "s" | "w", EdgeType> {
   const base = floor.grid[y]?.[x] ?? emptyCell();
   const landing = landingAt(floor, x, y, z);
-  if (!landing?.edgeOverrides) return base;
+  if (!landing) return base;
   return {
-    n: landing.edgeOverrides.n ?? base.n,
-    e: landing.edgeOverrides.e ?? base.e,
-    s: landing.edgeOverrides.s ?? base.s,
-    w: landing.edgeOverrides.w ?? base.w,
+    n: landing.edgeOverrides?.n ?? "wall",
+    e: landing.edgeOverrides?.e ?? "wall",
+    s: landing.edgeOverrides?.s ?? "wall",
+    w: landing.edgeOverrides?.w ?? "wall",
   };
 }
 

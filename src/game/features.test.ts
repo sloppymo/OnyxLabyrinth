@@ -52,6 +52,15 @@ function makeFloor(trap?: TrapType): FloorDef {
     encounterRate: 0,
     encounterTable: [],
     treasures: [{ x: 2, y: 2, itemIds: ["healing-potion", "test-key"], trap }],
+    verticalLandings: [
+      {
+        id: "l1-2-2",
+        x: 2,
+        y: 2,
+        z: 1,
+        edgeOverrides: { n: "wall", e: "wall", s: "wall", w: "wall" },
+      },
+    ],
   };
 }
 
