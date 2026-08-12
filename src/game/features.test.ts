@@ -815,3 +815,15 @@ describe("stair exits (door presentation)", () => {
     expect(state.floor.grid[state.player.y][state.player.x].tile).toBe("stairs_down");
   });
 });
+
+describe("handleTileFeature Z guard", () => {
+  it("does not trigger base features from an upper landing", () => {
+    const state = makeState();
+    state.player = { x: 2, y: 2, z: 1, facing: 0 };
+    const result = handleTileFeature(state);
+    expect(result).toBeNull();
+    // The treasure was not looted from the upper landing.
+    expect(state.floor.treasures?.[0].itemIds.length).toBe(2);
+    expect(state.inventory.length).toBe(0);
+  });
+});

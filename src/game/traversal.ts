@@ -110,29 +110,48 @@ function entryPointForDir(
 }
 
 /**
- * Resolve the destination Z for a step from the current Z moving `dir` to
- * (nx, ny). Returns undefined when the destination has no landing or surface
- * that can hold the player's current Z.
+ * Resolve the destination Z for a step whose source exit edge is at
+ * `sourceExitZ` and is moving `dir` to (nx, ny). Returns undefined when the
+ * destination has no landing or physically compatible surface for that edge.
+ *
+ * For a flat or landing, the destination settled Z equals the entry Z. For a
+ * ramp/stair connector, the destination is the cell's *center* Z (e.g. 0.5 for
+ * a 0->1 ramp), not the entry edge, so the player rests mid-ramp.
  */
 export function resolveStepZ(
   floor: FloorDef,
   nx: number,
   ny: number,
-  fromZ: number,
+  sourceExitZ: number,
   dir: Direction
 ): number | undefined {
   // Landing-to-landing: keep the same authored Z if the destination supports it.
-  const landing = landingAt(floor, nx, ny, fromZ);
+  const landing = landingAt(floor, nx, ny, sourceExitZ);
   if (landing) return landing.z;
 
   // Otherwise, land on the physical surface at the entry edge.
   const surface = resolveFloorSurface(floor, nx, ny);
   const oppDir = DIR_NAMES[OPP_DIRS[dir]];
   const pt = entryPointForDir(oppDir);
-  const entryZ = floorSurfaceZAt(surface, pt.localX, pt.localY);
-  // If the physical entry has a matching landing, use the landing's authored Z.
-  const entryLanding = landingAt(floor, nx, ny, entryZ);
-  return entryLanding ? entryLanding.z : entryZ;
+  const destEntryZ = floorSurfaceZAt(surface, pt.localX, pt.localY);
+  if (!sameZ(sourceExitZ, destEntryZ)) {
+    return undefined;
+  }
+  return floorSurfaceZAt(surface, 0.5, 0.5);
+}
+
+/** Z of the source edge the player is leaving from. */
+export function resolveSourceExitZ(
+  floor: FloorDef,
+  x: number,
+  y: number,
+  z: number,
+  dir: Direction
+): number {
+  if (landingAt(floor, x, y, z)) return z;
+  const surface = resolveFloorSurface(floor, x, y);
+  const pt = entryPointForDir(DIR_NAMES[dir]);
+  return floorSurfaceZAt(surface, pt.localX, pt.localY);
 }
 
 // --- Direction helpers --------------------------------------------------
@@ -282,16 +301,15 @@ export function resolveTraversal(
   }
 
   const z = resolvePlayerZ(player, floor);
+  const baseZ = resolveCellVolume(floor, player.x, player.y).floorZ;
   const sourceEdges = resolveLandingEdges(floor, player.x, player.y, z);
   const edge = sourceEdges[dirToName(dir)];
 
-  // Check for raft route trigger FIRST: if the player is on a dock tile
-  // and moving in the approach direction, the raft route takes precedence
-  // over the normal edge check (the dock tile's edge in the approach
-  // direction should be "open" to allow stepping onto the dock, but once
-  // on the dock, the raft triggers instead of stepping into water).
+  // Check for raft route trigger FIRST. Raft docks and their routes are
+  // base-surface features; an explicit landing above the dock must not
+  // accidentally launch the raft from an upper storey.
   const raftHit = raftRouteAt(floor, player.x, player.y, dir);
-  if (raftHit && state.keyItems.includes("raft")) {
+  if (raftHit && state.keyItems.includes("raft") && sameZ(z, baseZ)) {
     return {
       kind: "raft",
       routeId: raftHit.route.id,
@@ -307,7 +325,10 @@ export function resolveTraversal(
     return { kind: "blocked", message: "A locked door blocks the way." };
   }
   if (edge === "barred") {
-    const canOpen = canOpenBarredGate(floor, player.x, player.y, dir);
+    // Barred gates are physical, base-surface mechanisms; they can only be
+    // opened while the player is actually standing on that surface.
+    const canOpen =
+      canOpenBarredGate(floor, player.x, player.y, dir) && sameZ(z, baseZ);
     const gate = barredGateAt(floor, player.x, player.y, dir);
     const gateId = gate ? `${gate.x}:${gate.y}:${gate.dir}` : "";
     return {
@@ -326,7 +347,8 @@ export function resolveTraversal(
     return { kind: "blocked" };
   }
 
-  const destZ = resolveStepZ(floor, nx, ny, z, dir);
+  const sourceExitZ = resolveSourceExitZ(floor, player.x, player.y, z, dir);
+  const destZ = resolveStepZ(floor, nx, ny, sourceExitZ, dir);
   if (destZ === undefined) {
     return {
       kind: "blocked",

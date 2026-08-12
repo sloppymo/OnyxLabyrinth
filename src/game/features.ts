@@ -28,7 +28,8 @@ import { hasBuff } from "./persistent-spells";
 import { npcAt, applyKilledNPCs } from "./npc";
 import { displayNameFor } from "../data/items";
 import { effectiveStats } from "./effective-stats";
-import { resolvePlayerZ } from "./traversal";
+import { resolvePlayerZ, sameZ } from "./traversal";
+import { resolveCellVolume } from "../engine/maze-renderer/geometry/cell-volume";
 import { perksForCharacter, perkModifiers } from "./perks";
 import { ENCOUNTER_COOLDOWN } from "./encounters";
 import { getGameplayRng } from "./rng";
@@ -72,6 +73,15 @@ export function isTreasureLooted(floor: FloorDef, x: number, y: number): boolean
  */
 export function handleTileFeature(state: GameState, rng: Rng = getGameplayRng()): FeatureResult | null {
   const { floor, player } = state;
+
+  // Tile features are base-surface only. An explicit upper landing at the
+  // same (x,y) does not inherit downstairs treasures, NPCs, water, etc.
+  const playerZ = resolvePlayerZ(player, floor);
+  const baseZ = resolveCellVolume(floor, player.x, player.y).floorZ;
+  if (!sameZ(playerZ, baseZ)) {
+    return null;
+  }
+
   const cell = floor.grid[player.y]?.[player.x];
   // A looted treasure keeps its tile so the corridor can still draw an opened
   // chest as a landmark, but it is inert — identical to standing on bare floor.
