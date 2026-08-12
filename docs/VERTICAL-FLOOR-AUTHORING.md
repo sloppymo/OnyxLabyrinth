@@ -70,10 +70,12 @@ The validator and runtime now agree on which edges are actually crossable:
 - **`open` and `door` edges** must have matching floor surfaces on both
   sides. If they don't, the validator raises `height_surface_mismatch` and
   the runtime blocks the step with "The change in elevation is too steep."
-- **`locked` and `barred` edges** are blocked at runtime by their state, so
-  the validator does not raise an error for a mismatched floor surface.
-  It does emit a `height_surface_mismatch_sealed` **warning**, because
-  unlocking/opening the edge will still leave the tile uncrossable.
+- **`locked` and `barred` edges** are also validated as **errors** when
+  their floor surfaces do not match (`height_surface_mismatch_sealed`),
+  because once the key/gate condition is satisfied the edge becomes a
+  `door` and the same surface-continuity check still fails at runtime. A
+  sealed edge with mismatched heights is therefore not crossable even after
+  opening.
 - **`wall` edges** are always blocked and are not checked for surface
   continuity.
 
@@ -95,18 +97,20 @@ Place these features on flat landing cells adjacent to the connector.
 
 ## Teleporter and chute landing semantics
 
-Teleporters and chutes bypass normal edge traversal. They are allowed to
-land on any passable cell, including:
+Teleporters and chutes bypass normal edge traversal, but the validator
+forbids them from landing on a ramp/stair connector
+(`link_lands_on_connector` error). Only the following destinations are
+valid:
 
 - **Flat elevated cells** — the camera eye derives from the cell's
-  `floorZ` and the player can walk off if the surrounding edges are valid.
-- **Connector cells (ramps/stairs)** — the camera eye derives from the
-  interpolated surface at the cell center. The player can immediately move
-  along the connector's `dir` or its opposite. Landing on a connector is
-  valid, but prefer landing on flat landing cells when authoring.
+  `floorZ`, the player can stand and walk off if the surrounding edges are
+  valid, and the within-cell surface position is unambiguous.
+- **Flat legacy cells** — the default `floorZ = 0` case.
 
-The validator's `validateFloorLinks` check already rejects landing inside
-solid rock. Connector landing remains a valid authoring option.
+Connector destinations are disallowed because the within-cell surface
+position of a ramp is ambiguous and interaction/event/movement behavior
+after landing is undefined. Place the arrival on the nearest flat landing
+cell.
 
 ## Reachability
 

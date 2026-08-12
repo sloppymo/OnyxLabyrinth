@@ -232,28 +232,21 @@ function validateHeightConfig(
             at: { x, y },
           });
         }
-        // Surface continuity matters for edges the player can actually cross.
-        // Locked/barred edges are blocked by state at runtime, so a mismatch
-        // there is a warning (it may break the tile if unlocked/opened) rather
-        // than a validator error. Open/door edges must meet for the step to pass.
-        if (edge === "open" || edge === "door") {
-          if (!surfacesConnectAcrossEdge(map, x, y, dir)) {
-            issues.push({
-              severity: "error",
-              code: "height_surface_mismatch",
-              message: `Traversable ${dir} edge from (${x},${y}) has mismatched floor surfaces (${volume.floorZ} vs ${neighbor.floorZ}); add or correct a ramp/stair connector`,
-              at: { x, y },
-            });
-          }
-        } else if (edge === "locked" || edge === "barred") {
-          if (!surfacesConnectAcrossEdge(map, x, y, dir)) {
-            issues.push({
-              severity: "warning",
-              code: "height_surface_mismatch_sealed",
-              message: `Sealed ${dir} edge from (${x},${y}) has mismatched floor surfaces; the door/gate is currently impassable, but will remain uncrossable after unlocking/opening`,
-              at: { x, y },
-            });
-          }
+        // Surface continuity matters for any edge that can eventually become
+        // traversable. Open/door edges are immediately crossable; locked/barred
+        // edges become crossable after the key/gate condition is satisfied. If
+        // the floor surfaces do not meet, the post-unlock step still fails at
+        // runtime, so the mismatch is a validator error for all non-wall edges.
+        if (!surfacesConnectAcrossEdge(map, x, y, dir)) {
+          const sealed = edge === "locked" || edge === "barred";
+          issues.push({
+            severity: "error",
+            code: sealed ? "height_surface_mismatch_sealed" : "height_surface_mismatch",
+            message: sealed
+              ? `Sealed ${dir} edge from (${x},${y}) has mismatched floor surfaces; unlocking/opening it will still leave the tile uncrossable, so the height transition needs a ramp/stair connector`
+              : `Traversable ${dir} edge from (${x},${y}) has mismatched floor surfaces (${volume.floorZ} vs ${neighbor.floorZ}); add or correct a ramp/stair connector`,
+            at: { x, y },
+          });
         }
       }
     }
@@ -929,10 +922,19 @@ function validateFloorLinks(
 ): void {
   const findTarget = (
     id: number
-  ): { width: number; height: number; grid: readonly (readonly CellJSON[])[] } | undefined => {
-    if (id === map.id) return map;
+  ):
+    | {
+        width: number;
+        height: number;
+        grid: readonly (readonly CellJSON[])[];
+        ramps?: { x: number; y: number }[];
+      }
+    | undefined => {
+    if (id === map.id) return { ...map, ramps: map.ramps };
     const f = floors.find((fl) => fl.id === id);
-    return f ? { width: f.width, height: f.height, grid: f.grid } : undefined;
+    return f
+      ? { width: f.width, height: f.height, grid: f.grid, ramps: f.ramps }
+      : undefined;
   };
 
   const links = [
@@ -970,6 +972,14 @@ function validateFloorLinks(
         severity: "error",
         code: "link_solid",
         message: `${link.label} at (${link.x},${link.y}) lands inside solid rock at (${link.toX},${link.toY}) on floor ${link.toFloorId}`,
+        at: { x: link.x, y: link.y },
+      });
+    }
+    if (target.ramps?.some((r) => r.x === link.toX && r.y === link.toY)) {
+      issues.push({
+        severity: "error",
+        code: "link_lands_on_connector",
+        message: `${link.label} at (${link.x},${link.y}) lands on a ramp/stair connector at (${link.toX},${link.toY}) on floor ${link.toFloorId}; land on a flat elevated cell instead`,
         at: { x: link.x, y: link.y },
       });
     }

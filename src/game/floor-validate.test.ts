@@ -421,4 +421,99 @@ describe("floor-validate content checks", () => {
     const withContext = validateFloorMap(map, { floors: [...FLOORS, packMate] });
     expect(withContext.map((i) => i.code)).not.toContain("link_floor_unknown");
   });
+
+  it("rejects locked and barred edges whose heights would still block after opening", () => {
+    const floor = testFloor();
+    floor.heightZones = [
+      { id: "low", x1: 2, y1: 2, x2: 2, y2: 2, floorZ: 0, ceilingZ: 2 },
+      { id: "high", x1: 3, y1: 2, x2: 3, y2: 2, floorZ: 1, ceilingZ: 3 },
+    ];
+    setEdge(floor.grid, 2, 2, "e", "locked");
+    setEdge(floor.grid, 3, 2, "w", "locked");
+    expect(codes(floor)).toContain("height_surface_mismatch_sealed");
+
+    const barred = testFloor();
+    barred.heightZones = floor.heightZones;
+    setEdge(barred.grid, 2, 2, "e", "barred");
+    setEdge(barred.grid, 3, 2, "w", "barred");
+    expect(codes(barred)).toContain("height_surface_mismatch_sealed");
+  });
+
+  it("accepts an open edge with matching heights once a barred gate is opened", () => {
+    const floor = testFloor();
+    floor.heightZones = [
+      { id: "low", x1: 2, y1: 2, x2: 2, y2: 2, floorZ: 0, ceilingZ: 2 },
+      { id: "high", x1: 3, y1: 2, x2: 3, y2: 2, floorZ: 0, ceilingZ: 2 },
+    ];
+    setEdge(floor.grid, 2, 2, "e", "barred");
+    setEdge(floor.grid, 3, 2, "w", "barred");
+    expect(
+      validateFloorDef(floor).filter(
+        (i) =>
+          i.severity === "error" &&
+          (i.code === "height_surface_mismatch" || i.code === "height_surface_mismatch_sealed")
+      )
+    ).toEqual([]);
+  });
+
+  it("rejects teleporter and chute destinations that land on a ramp", () => {
+    const floor = rampFloor();
+    setTile(floor.grid, 1, 2, "teleporter");
+    floor.teleporters = [{ x: 1, y: 2, toFloorId: floor.id, toX: 2, toY: 2 }];
+    expect(codes(floor)).toContain("link_lands_on_connector");
+
+    const chute = rampFloor();
+    chute.chuteDrops = [{ x: 1, y: 2, toFloorId: chute.id, toX: 2, toY: 2 }];
+    expect(codes(chute)).toContain("link_lands_on_connector");
+  });
+
+  it("allows an elevated flat teleporter destination", () => {
+    const floor = testFloor();
+    floor.heightZones = [
+      { id: "raised", x1: 2, y1: 2, x2: 2, y2: 2, floorZ: 2, ceilingZ: 3 },
+    ];
+    setTile(floor.grid, 3, 2, "teleporter");
+    floor.teleporters = [{ x: 3, y: 2, toFloorId: floor.id, toX: 2, toY: 2 }];
+    const errors = validateFloorDef(floor).filter(
+      (i) => i.severity === "error" && i.code.startsWith("link_")
+    );
+    expect(errors).toEqual([]);
+  });
+
+  it("rejects connector cells occupied by interactive features", () => {
+    const floor = rampFloor();
+    for (const tile of ["treasure", "event", "water", "teleporter", "chute", "guardian"] as const) {
+      const f = mapToFloorDef(floorDefToMap(floor));
+      setTile(f.grid, 2, 2, tile);
+      expect(codes(f)).toContain("ramp_tile_unsupported");
+    }
+
+    const overlays = rampFloor();
+    overlays.treasures = [{ x: 2, y: 2, itemIds: ["crypt-key"] }];
+    overlays.events = [{ x: 2, y: 2, kind: "message", message: "nope" }];
+    overlays.waters = [{ x: 2, y: 2, depth: 1 }];
+    overlays.teleporters = [{ x: 2, y: 2, toFloorId: 2, toX: 1, toY: 1 }];
+    overlays.chuteDrops = [{ x: 2, y: 2, toFloorId: 2, toX: 1, toY: 1 }];
+    const c = new Set(codes(overlays));
+    expect(c).toContain("ramp_treasure_unsupported");
+    expect(c).toContain("ramp_event_unsupported");
+    expect(c).toContain("ramp_water_unsupported");
+    expect(c).toContain("ramp_teleporter_unsupported");
+    expect(c).toContain("ramp_chute_unsupported");
+  });
+
+  it("enforces minimum camera clearance", () => {
+    const floor = rampFloor();
+    floor.heightZones![0].ceilingZ = 1.2;
+    expect(codes(floor)).toContain("height_clearance_too_small");
+  });
+
+  it("treats a ramp endpoint as reachable through height-aware BFS", () => {
+    const floor = rampFloor();
+    floor.treasures = [{ x: 4, y: 2, itemIds: ["crypt-key"] }];
+    const errors = validateFloorDef(floor).filter(
+      (i) => i.severity === "error" && i.code === "unreachable"
+    );
+    expect(errors).toEqual([]);
+  });
 });
