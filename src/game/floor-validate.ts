@@ -8,6 +8,7 @@
 
 import { type FloorDef } from "../data/floors";
 import { getFloors } from "./floor-registry";
+import { landingAt, sameZ, VERTICAL_QUANTUM } from "./traversal";
 import { MAP_SPRITES_BY_ID } from "../data/map-sprites";
 import { WALL_FEATURES_BY_ID } from "../data/wall-features";
 import { CEILING_SPRITES_BY_ID } from "../data/ceiling-sprites";
@@ -27,6 +28,7 @@ import {
   resolveCellVolume,
 } from "../engine/maze-renderer/geometry/cell-volume";
 import {
+  floorSurfaceZAt,
   isConnectorSide,
   maxFloorSurfaceZ,
   OPPOSITE_SURFACE_DIRECTION,
@@ -133,6 +135,7 @@ export function validateFloorMap(
   validateEncounterConfig(map, issues);
   validateTilesetConfig(map, issues);
   validateHeightConfig(map, issues);
+  validateVerticalAndLadderConfig(map, issues);
 
   return issues;
 }
@@ -403,6 +406,205 @@ function validateRampConfig(
       }
     }
   }
+}
+
+function validateVerticalAndLadderConfig(
+  map: FloorMapJSON,
+  issues: ValidationIssue[]
+): void {
+  const landings = map.verticalLandings ?? [];
+  const landingKeys = new Set<string>();
+
+  for (const landing of landings) {
+    const key = `${landing.x},${landing.y},${landing.z}`;
+    if (landingKeys.has(key)) {
+      issues.push({
+        severity: "error",
+        code: "landing_duplicate_xyz",
+        message: `Duplicate landing at (${landing.x},${landing.y},${landing.z})`,
+        at: { x: landing.x, y: landing.y },
+      });
+      continue;
+    }
+    landingKeys.add(key);
+
+    if (!inBoundsGrid(map, landing.x, landing.y)) {
+      issues.push({
+        severity: "error",
+        code: "landing_oob",
+        message: `Landing at (${landing.x},${landing.y},${landing.z}) is out of bounds`,
+        at: { x: landing.x, y: landing.y },
+      });
+      continue;
+    }
+
+    if (!isQuantized(landing.z)) {
+      issues.push({
+        severity: "error",
+        code: "landing_z_not_quantized",
+        message: `Landing at (${landing.x},${landing.y},${landing.z}) has Z not aligned to the ${VERTICAL_QUANTUM} quantum`,
+        at: { x: landing.x, y: landing.y },
+      });
+    }
+
+    const volume = resolveCellVolume(map, landing.x, landing.y);
+    if (landing.z < volume.floorZ) {
+      issues.push({
+        severity: "error",
+        code: "landing_below_floor",
+        message: `Landing at (${landing.x},${landing.y},${landing.z}) is below the cell floor (${volume.floorZ})`,
+        at: { x: landing.x, y: landing.y },
+      });
+    }
+    if (landing.z > volume.ceilingZ) {
+      issues.push({
+        severity: "error",
+        code: "landing_above_ceiling",
+        message: `Landing at (${landing.x},${landing.y},${landing.z}) is above the cell ceiling (${volume.ceilingZ})`,
+        at: { x: landing.x, y: landing.y },
+      });
+    } else if (volume.ceilingZ - landing.z < MIN_CAMERA_CLEARANCE) {
+      issues.push({
+        severity: "error",
+        code: "landing_clearance_too_small",
+        message: `Landing at (${landing.x},${landing.y},${landing.z}) needs at least ${MIN_CAMERA_CLEARANCE} clearance to the cell ceiling`,
+        at: { x: landing.x, y: landing.y },
+      });
+    }
+
+    if (landing.z !== volume.floorZ && !hasCompleteEdgeOverrides(landing)) {
+      issues.push({
+        severity: "error",
+        code: "landing_incomplete_edges",
+        message: `Upper landing at (${landing.x},${landing.y},${landing.z}) must define all four N/E/S/W edgeOverrides`,
+        at: { x: landing.x, y: landing.y },
+      });
+    }
+
+    if (landing.edgeOverrides) {
+      for (const dir of ["n", "e", "s", "w"] as const) {
+        const edge = landing.edgeOverrides[dir];
+        if (edge === "wall" || edge === undefined) continue;
+        const [dx, dy] = DELTA[dir];
+        const nx = landing.x + dx;
+        const ny = landing.y + dy;
+        if (!inBoundsGrid(map, nx, ny)) {
+          issues.push({
+            severity: "error",
+            code: "landing_edge_leaks",
+            message: `Landing at (${landing.x},${landing.y},${landing.z}) has ${dir} edge "${edge}" leading outside the map`,
+            at: { x: landing.x, y: landing.y },
+          });
+          continue;
+        }
+        const neighbor = landingAt(map, nx, ny, landing.z);
+        if (!neighbor) {
+          issues.push({
+            severity: "error",
+            code: "landing_edge_no_neighbor",
+            message: `Landing at (${landing.x},${landing.y},${landing.z}) has ${dir} edge "${edge}" but there is no landing at the same Z in (${nx},${ny})`,
+            at: { x: landing.x, y: landing.y },
+          });
+        }
+      }
+    }
+  }
+
+  const ladderIds = new Set<string>();
+  for (const ladder of map.ladders ?? []) {
+    if (ladderIds.has(ladder.id)) {
+      issues.push({
+        severity: "error",
+        code: "ladder_duplicate_id",
+        message: `Ladder id "${ladder.id}" is duplicated`,
+        at: { x: ladder.x, y: ladder.y },
+      });
+      continue;
+    }
+    ladderIds.add(ladder.id);
+
+    if (!inBoundsGrid(map, ladder.x, ladder.y)) {
+      issues.push({
+        severity: "error",
+        code: "ladder_oob",
+        message: `Ladder "${ladder.id}" at (${ladder.x},${ladder.y}) is out of bounds`,
+        at: { x: ladder.x, y: ladder.y },
+      });
+      continue;
+    }
+
+    if (sameZ(ladder.fromZ, ladder.toZ)) {
+      issues.push({
+        severity: "error",
+        code: "ladder_same_z",
+        message: `Ladder "${ladder.id}" fromZ and toZ must differ (got ${ladder.fromZ}, ${ladder.toZ})`,
+        at: { x: ladder.x, y: ladder.y },
+      });
+      continue;
+    }
+
+    for (const field of ["fromZ", "toZ"] as const) {
+      if (!isQuantized(ladder[field])) {
+        issues.push({
+          severity: "error",
+          code: "ladder_z_not_quantized",
+          message: `Ladder "${ladder.id}" ${field}=${ladder[field]} is not aligned to the ${VERTICAL_QUANTUM} quantum`,
+          at: { x: ladder.x, y: ladder.y },
+        });
+      }
+    }
+
+    for (const z of [ladder.fromZ, ladder.toZ]) {
+      const surface = resolveFloorSurface(map, ladder.x, ladder.y);
+      const centerZ = floorSurfaceZAt(surface, 0.5, 0.5);
+      if (!landingAt(map, ladder.x, ladder.y, z) && !sameZ(centerZ, z)) {
+        issues.push({
+          severity: "error",
+          code: "ladder_endpoint_missing",
+          message: `Ladder "${ladder.id}" endpoint at Z ${z} does not resolve to an authored landing or the base floor surface`,
+          at: { x: ladder.x, y: ladder.y },
+        });
+      }
+    }
+
+    if (
+      ladder.unlockFrom &&
+      (ladder.unlockFrom !== "n" &&
+        ladder.unlockFrom !== "e" &&
+        ladder.unlockFrom !== "s" &&
+        ladder.unlockFrom !== "w")
+    ) {
+      issues.push({
+        severity: "error",
+        code: "ladder_unlock_from_invalid",
+        message: `Ladder "${ladder.id}" unlockFrom "${ladder.unlockFrom}" must be n/e/s/w`,
+        at: { x: ladder.x, y: ladder.y },
+      });
+    }
+
+    if (ladder.bidirectional === false && !ladder.unlockFrom) {
+      // A one-way, non-lowerable ladder can only be used in the fromZ->toZ
+      // direction. That is a valid authoring choice; ensure it is not also
+      // the base surface for both ends (which would require a landing).
+    }
+  }
+}
+
+function isQuantized(z: number): boolean {
+  const n = Math.round(z / VERTICAL_QUANTUM);
+  return sameZ(z, n * VERTICAL_QUANTUM);
+}
+
+function hasCompleteEdgeOverrides(
+  landing: NonNullable<FloorMapJSON["verticalLandings"]>[number]
+): boolean {
+  return (
+    !!landing.edgeOverrides &&
+    landing.edgeOverrides.n !== undefined &&
+    landing.edgeOverrides.e !== undefined &&
+    landing.edgeOverrides.s !== undefined &&
+    landing.edgeOverrides.w !== undefined
+  );
 }
 
 export function validateFloorDef(

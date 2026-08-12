@@ -10,6 +10,7 @@ import type {
   BarredGateDef,
   EventDef,
   FloorDef,
+  LadderDef,
   EncounterZoneDef,
   HeightZoneDef,
   NPCDef,
@@ -18,6 +19,7 @@ import type {
   StairsGuardianDef,
   TeleporterLink,
   TilesetZoneDef,
+  VerticalLandingDef,
   WaterDef,
 } from "../data/floors";
 import type { TrapType } from "../types";
@@ -114,6 +116,10 @@ export interface FloorMapJSON {
   heightZones?: HeightZoneDef[];
   /** Local traversable floor surfaces; dir names the uphill edge. */
   ramps?: RampDef[];
+  /** Explicit stacked walkable landings at (x,y,z). */
+  verticalLandings?: VerticalLandingDef[];
+  /** Vertical ladders between same-XY landings. */
+  ladders?: LadderDef[];
   grid: CellJSON[][];
   /**
    * @deprecated Ignored by the engine. Combat tables come from
@@ -238,6 +244,8 @@ export function newFloorMapJSON(
     tilesetZones: partial?.tilesetZones,
     heightZones: partial?.heightZones,
     ramps: partial?.ramps,
+    verticalLandings: partial?.verticalLandings,
+    ladders: partial?.ladders,
     grid,
     encounterTable: partial?.encounterTable,
     encounterZones: partial?.encounterZones,
@@ -274,6 +282,8 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
     tilesetZones: floor.tilesetZones?.map((z) => ({ ...z })),
     heightZones: floor.heightZones?.map((z) => ({ ...z })),
     ramps: floor.ramps?.map((r) => ({ ...r })),
+    verticalLandings: floor.verticalLandings?.map((l) => ({ ...l })),
+    ladders: floor.ladders?.map((l) => ({ ...l })),
     grid: floor.grid.map((row) =>
       row.map((cell) => ({
         n: cell.n,
@@ -345,6 +355,8 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
     tilesetZones: map.tilesetZones?.map((z) => ({ ...z })),
     heightZones: map.heightZones?.map((z) => ({ ...z })),
     ramps: map.ramps?.map((r) => ({ ...r })),
+    verticalLandings: map.verticalLandings?.map((l) => ({ ...l })),
+    ladders: map.ladders?.map((l) => ({ ...l })),
     encounterTable: map.encounterTable ? [...map.encounterTable] : undefined,
     encounterZones: map.encounterZones?.map((z) => ({ ...z })),
     mapSprites: map.mapSprites?.map((s) => ({ ...s })),
