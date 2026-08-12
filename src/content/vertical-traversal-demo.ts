@@ -36,6 +36,7 @@ export function createVerticalTraversalDemoMap(): FloorMapJSON {
     encounterRate: 0,
     tilesetTheme: "f1",
     heightZones: [
+      { id: "start-air", x1: 1, y1: 6, x2: 1, y2: 6, ceilingZ: 3 },
       { id: "single-connector-air", x1: 2, y1: 6, x2: 2, y2: 6, ceilingZ: 2 },
       { id: "tall-high-room", x1: 3, y1: 4, x2: 6, y2: 8, floorZ: 1, ceilingZ: 3 },
       { id: "gradual-air", x1: 2, y1: 2, x2: 5, y2: 2, ceilingZ: 2 },
@@ -79,6 +80,18 @@ export function createVerticalTraversalDemoMap(): FloorMapJSON {
     ceilingSprites: [
       { x: 4, y: 6, spriteId: "f1-chain-long", scale: 1 },
       { x: 5, y: 5, spriteId: "f1-chain-long", scale: 0.8 },
+    ],
+    verticalLandings: [
+      {
+        id: "start-platform",
+        x: 1,
+        y: 6,
+        z: 1,
+        edgeOverrides: { n: "wall", e: "wall", s: "wall", w: "wall" },
+      },
+    ],
+    ladders: [
+      { id: "start-ladder", x: 1, y: 6, fromZ: 0, toZ: 1, facing: "e" },
     ],
     grid,
   };
