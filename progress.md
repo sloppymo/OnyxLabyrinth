@@ -1306,3 +1306,29 @@ visual-pass notes below; this section tracks the current task only.
   inspected and console/page errors were zero. One initial barrel north view
   faced a wall and was replaced with the south approach; the sprite itself
   rendered correctly from both valid views.
+
+## 2026-08-12 — Ember scorch wall decal replacement
+
+- Diagnosed `public/assets/wall-features/ember-scorch.png` (1,357 bytes) as the
+  C-graded F1 wall decal that read as another centered rectangle. It is a
+  `wallFeatures` decal, not a `mapSprites` floor prop, placed on east walls at
+  Floor 1 (12,5) and (26,6); the existing `widthFrac`/`heightFrac`/`anchor`
+  metadata in `src/data/wall-features.ts` did not need to change.
+- Replaced it with an AI-generated 64x64 opaque PixelLab wall decal via
+  `scripts/pixellab-generate.mjs` (pixflux, 64x64, `--background`), using the
+  F1 wall tileset (`public/assets/tilesets/f1/wall.png`) as a `--palette` to
+  lock the wall color. The first candidates drew a lit wall torch or brazier;
+  subsequent candidates with any rust/red in the prompt produced a bright
+  red-outlined circle/portal or a small red ember blob. The accepted 10th
+  candidate removes all warm colors from the positive list and asks for a low,
+  irregular, lopsided sooty scorch with a slightly lighter ashen edge so the
+  shape is visible against the wall, not a centered rectangle and not a flame.
+- Added `scripts/playtests/verify-ember-scorch.mjs` and captured the (26,6) east
+  wall from the front cell and one tile back; screenshots were visually
+  inspected and console/page errors were zero. The new decal is visible as a
+  dark, low soot mark above the floor line.
+- Full project gate passes: `npm run check` (typecheck, build, 2,164 Vitest
+  tests, floor validate, floor export-check), with only the pre-existing
+  Namanda-related floor warnings.
+- Updated `docs/MAZE-EVENT-SPRITE-PROMPT.md` prompt #23 and the running
+  progress log.
