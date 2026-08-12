@@ -1265,3 +1265,22 @@ visual-pass notes below; this section tracks the current task only.
 - Removed the old deterministic `chestClosed()`/`chestOpen()` recipes (and
   their `save()` calls) from `scripts/generate-maze-props.mjs`, same
   pipeline-hygiene fix as the cistern basin.
+
+## 2026-08-12 — Bones decor sprite replacement
+
+- Surveyed remaining placeholder art after the chest fix; `bones.png` (a
+  single-commit stub from the original floor-authoring-suite scaffold, never
+  part of the deterministic harvest pipeline) barely read as a skull-and-arc
+  shape at in-corridor scale — the ugliest asset still shipping.
+- Replaced it with an AI-generated skeleton-remains pile via
+  `scripts/pixellab-generate.mjs` (pixflux, 64x64, transparent), accepted
+  first try. Prompt explicitly called for a low, floor-hugging pile rather
+  than an upright skeleton pose. Manually grounded (+13px). See
+  `docs/MAZE-EVENT-SPRITE-PROMPT.md` #7 for the full prompt and notes — this
+  also resolves the doc's long-standing "overlaps map-sprite `bones`" flag,
+  since prompt #7 and the `bones` map-sprite are now the same shipped asset.
+- Verified in-engine at Floor 1's `(4,4)` bones placement from both approach
+  directions (`scripts/playtests/verify-bones.mjs`), zero console errors,
+  full `npm run check` gate green.
+- `torch`, `crate`, and `barrel` are the same original crude placeholder
+  batch and are next in line for the same treatment.

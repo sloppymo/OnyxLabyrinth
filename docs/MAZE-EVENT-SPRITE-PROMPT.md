@@ -27,7 +27,7 @@ Proposed filenames under a future `public/assets/maze-props/` (or reuse `map-spr
 | 4 | `altar` | Mysterious shrine | `EventDef` flavor / `"event"` | F2 library / general shrine |
 | 5 | `anvil-altar` | Forge rest | `EventDef` `kind: "heal"` (F3 anvil) | **Shipped** — PixelLab, placed as a `mapSprites` decor entry at F3 (7,7), not a `TileFeature` hook |
 | 6 | `dead-adventurer` | Corpse story prop | `EventDef` `kind: "message"` | Not a combat enemy |
-| 7 | `skeleton-remains` | Prior-party bones | decor / event | Overlaps map-sprite `bones` — prefer one style |
+| 7 | `skeleton-remains` | Prior-party bones | decor / event | **Shipped as `bones`** — AI-generated 2026-08-12, replacing the map-sprite's original crude placeholder; resolves the overlap this row used to flag by using one style for both |
 | 8 | `satchel` | Forgotten pack | `EventDef` `kind: "reward"` | F3 guard satchel, etc. |
 | 9 | `warning-plaque` | Brass plate | `EventDef` `kind: "message"` | No readable letters. First instance shipped as F4's `writing-plaque` (see #20) — a `wallFeatures` decal, not a `mapSprites` object like the other Tier A entries in this table |
 | 10 | `brazier` | Heal warmth | `EventDef` `kind: "heal"` | F2 atrium brazier |
@@ -43,7 +43,7 @@ Proposed filenames under a future `public/assets/maze-props/` (or reuse `map-spr
 | 18 | `choir-statue` | Robed chorister, F4 nave set-piece | `EventDef` `kind: "message"` (F4 (6,7), "stone choristers line the nave... one of the heads has turned") | **Shipped** — one sprite id, placed 3× at (6,7)/(9,7)/(11,7) to read as a row, not a single statue |
 | 19 | `cantor-lectern` | Open hymnal on a book stand | `EventDef` `kind: "reward"` (F4 (13,5), holy-symbol) | **Shipped** — 2 rerolls, see prompt notes below |
 
-Existing `MAP_SPRITES` IDs (`torch`, `crate`, `bones`, `barrel`) stay for non-interactive editor decor; regenerate them with this style lock if refreshing that pack.
+Existing `MAP_SPRITES` IDs `torch`, `crate`, `barrel` are still the original flat placeholder art from the floor-authoring-suite scaffold and are due for the same regeneration `bones` got on 2026-08-12 (see #7) — same crude, near-untextured style, same fix.
 
 **NPC billboards are now a live hook, not just a proposal.** `NPCDef.mapSpriteId?: string` (added 2026-08-08) resolves through `drawFeatureBillboards` exactly like any other feature prop — same `MAP_SPRITES` registry, same cache, same fallback-to-glyph contract. Unlike a `TileFeature`-keyed entry, this is per-NPC-instance, so each of the 8 NPCs across the campaign can carry its own distinct sprite. Vesper (F4) is the only one that has shipped art so far — see #21 below. The other 7 (Oren, Rill-of-Pages, Tallow-in-a-Boat, Sister Caldris, Vestra, Kazeharu, Ossian) are still bare `&` glyphs and are explicitly **not** in scope for this pass; the hook was built once and proven with one vertical slice on purpose, not as a green light to batch all eight in the same session.
 
@@ -318,6 +318,21 @@ Silhouette anchors: skull + ribcage cluster, one bony hand near a rusted blade.
 Keep compact as one prop cluster, not a full anatomy lesson.
 Palette: ivory bone, brown-grey rust, dark void in eye sockets.
 ```
+
+**Shipped 2026-08-12, accepted first try**, via `scripts/pixellab-generate.mjs`
+(pixflux, 64x64, transparent), replacing the original `bones.png` placeholder
+— a single-commit stub from the floor-authoring-suite scaffold, never part of
+the deterministic harvest pipeline (no recipe to delete from
+`generate-maze-props.mjs`), that barely read as a skull-and-arc shape at
+in-corridor scale. The prompt emphasized "low and wide rather than tall (it's
+lying on the floor)" to avoid the generation defaulting to an upright
+skeleton pose, and explicitly listed "a standing/upright skeleton, a skeleton
+enemy pose" in the negative — this prop is ambient floor decor, not a combat
+silhouette. Manually grounded (+13px,
+`art/pixellab-candidates/maze-props/bones-02-grounded.png`) before shipping
+to `public/assets/map-sprites/bones.png`. This also resolves the overlap this
+row previously flagged against the map-sprite `bones` id — they are now the
+same asset, one style.
 
 ### 8. Satchel / forgotten pack
 
