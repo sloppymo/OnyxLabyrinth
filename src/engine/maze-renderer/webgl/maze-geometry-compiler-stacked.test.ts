@@ -100,4 +100,20 @@ describe("compileMazeGeometry stacked rooms", () => {
     });
     expect(upperWalls.length).toBeGreaterThanOrEqual(4);
   });
+
+  it("emits a vertical ladder rung for a defined ladder", () => {
+    const floor = stackedRoomFloor();
+    floor.ladders = [
+      { id: "l1", x: 2, y: 1, fromZ: 0, toZ: 1, facing: "n" },
+    ];
+    const compiled = compileMazeGeometry(floor);
+    const ladderBatch = compiled.batches.find(
+      (batch) => batch.materialKey === "ladder:ladder" && batch.kind === "wall"
+    );
+    expect(ladderBatch).toBeDefined();
+    if (!ladderBatch) return;
+    const heights = ladderBatch.positions.filter((_, i) => i % 3 === 1);
+    expect(Math.min(...heights)).toBe(0);
+    expect(Math.max(...heights)).toBe(LEGACY_VERTICAL_UNIT);
+  });
 });

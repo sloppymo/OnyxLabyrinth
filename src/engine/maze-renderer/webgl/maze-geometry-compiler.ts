@@ -1,4 +1,4 @@
-import type { FloorDef, VerticalLandingDef } from "../../../data/floors";
+import type { FloorDef, LadderDef, VerticalLandingDef } from "../../../data/floors";
 import { themeAt } from "../../../game/floor-map";
 import type { Cell, EdgeType } from "../../../types";
 import {
@@ -305,6 +305,86 @@ function materialForDoor(
   return `${theme}:door`;
 }
 
+function ladderRungQuad(
+  ladder: LadderDef
+): { vertices: [number, number, number][]; normal: [number, number, number]; uvs: [number, number][] } | null {
+  if (ladder.facing !== "n" && ladder.facing !== "e" && ladder.facing !== "s" && ladder.facing !== "w") {
+    return null;
+  }
+  const lowerZ = Math.min(ladder.fromZ, ladder.toZ) * LEGACY_VERTICAL_UNIT;
+  const upperZ = Math.max(ladder.fromZ, ladder.toZ) * LEGACY_VERTICAL_UNIT;
+  const x = ladder.x;
+  const y = ladder.y;
+  const x1 = x + 1;
+  const y1 = y + 1;
+  switch (ladder.facing) {
+    case "n":
+      return {
+        vertices: [
+          [x, lowerZ, y],
+          [x1, lowerZ, y],
+          [x1, upperZ, y],
+          [x, upperZ, y],
+        ],
+        normal: [0, 0, 1],
+        uvs: [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 1],
+        ],
+      };
+    case "s":
+      return {
+        vertices: [
+          [x1, lowerZ, y1],
+          [x, lowerZ, y1],
+          [x, upperZ, y1],
+          [x1, upperZ, y1],
+        ],
+        normal: [0, 0, -1],
+        uvs: [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 1],
+        ],
+      };
+    case "e":
+      return {
+        vertices: [
+          [x1, lowerZ, y],
+          [x1, lowerZ, y1],
+          [x1, upperZ, y1],
+          [x1, upperZ, y],
+        ],
+        normal: [-1, 0, 0],
+        uvs: [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 1],
+        ],
+      };
+    case "w":
+      return {
+        vertices: [
+          [x, lowerZ, y1],
+          [x, lowerZ, y],
+          [x, upperZ, y],
+          [x, upperZ, y1],
+        ],
+        normal: [1, 0, 0],
+        uvs: [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 1],
+        ],
+      };
+  }
+}
+
 export function compileMazeGeometry(
   floor: FloorDef,
   // Current campaign floors are roughly 30 cells across and only a few
@@ -551,6 +631,14 @@ export function compileMazeGeometry(
         );
       }
     }
+  }
+
+  // Emit ladder quads as vertical rungs attached to the named wall.
+  for (const ladder of floor.ladders ?? []) {
+    const rung = ladderRungQuad(ladder);
+    if (!rung) continue;
+    const batch = batchFor(ladder.x, ladder.y, "ladder:ladder", "wall");
+    addQuad(batch, rung.vertices, rung.normal, rung.uvs);
   }
 
   const batches = [...builders.values()];
