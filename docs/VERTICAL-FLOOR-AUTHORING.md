@@ -28,7 +28,7 @@ precedence rule as `tilesetZones`).
 - `ceilingZ` is optional. When omitted, the cell keeps the default `1`.
 - `floorZ` must be `< ceilingZ`.
 - Out-of-order bounds (`x1 > x2` or `y1 > y2`) are rejected.
-- Zones may extend outside the floor; anything outside the grid is ignored.
+- Zone bounds must remain inside the floor grid; out-of-bounds zones are rejected with `height_zone_oob`.
 
 ### `ramps` and `stairs`
 

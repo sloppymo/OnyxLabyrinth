@@ -12,12 +12,24 @@ function buildIdentity() {
   }
 }
 
+const ONYX_BUILD = buildIdentity();
+const ONYX_BUILD_SCRIPT = `<script>window.__onyxBuild = ${JSON.stringify(ONYX_BUILD)};</script>`;
+
 // IMPORTANT: replace 'wizardry-clone' with your actual GitHub repo name
 // before deploying, or asset paths will 404 on GitHub Pages.
 export default defineConfig({
   base: "/OnyxLabyrinth/",
+  plugins: [
+    {
+      name: "onyx-build-identity",
+      enforce: "pre",
+      transformIndexHtml(html) {
+        return html.replace("<head>", `<head>\n    ${ONYX_BUILD_SCRIPT}`);
+      },
+    },
+  ],
   define: {
-    __ONYX_BUILD__: JSON.stringify(buildIdentity()),
+    __ONYX_BUILD__: JSON.stringify(ONYX_BUILD),
   },
   build: {
     // Inline all texture images into the JS bundle as data URIs so the game
