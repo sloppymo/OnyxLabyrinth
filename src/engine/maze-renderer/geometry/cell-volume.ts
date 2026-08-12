@@ -27,6 +27,14 @@ export const LEGACY_VERTICAL_UNIT =
   (MATH_CONFIG.projectionScale * MATH_CONFIG.heightFlatten * 2 * Math.tan(Math.PI / 6)) /
   (8 / 7);
 
+/**
+ * Worst-case clearance (in cell-height units) between the highest traversable
+ * floor surface and the ceiling. The camera eye sits 0.5 cells above the
+ * floor plus a small head-bob margin, so anything smaller risks clipping
+ * through the ceiling. Validator and renderer code use this one constant.
+ */
+export const MIN_CAMERA_CLEARANCE = 0.625;
+
 /** Later overlapping height zones win, matching regional tileset zones. */
 export function resolveCellVolume(
   floor: CellVolumeSource,

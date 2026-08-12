@@ -10,39 +10,32 @@ create/reuse art → localized lighting → route-at-speed QA → freeze.
 This document is the **spatial thesis** step. The audit and graybox steps
 are not done yet — see Prerequisites below before starting either.
 
-## Prerequisites (open, not solved by this doc)
+## Prerequisites
 
-Floor 1 is not Level 2. The slice floor (`LEVEL2_SLICE_ID = 6`) is an
-**unregistered** playtest-only pack, exempt from `floor:validate` and
-`floor:export-check`. Floor 1 (`src/content/floors/floor-1.json`, id
-`floor-1`, "The Hall of Five Wounds") is a **registered, shipped** pack
-subject to both. Two things must be true before graybox work can start,
-neither of which is true today:
+**Status: resolved on `feat/productionize-vertical-traversal`.**
+Floor 1 graybox is now unblocked.
 
-1. **Renderer 2 must be merged (or at least reachable).** `feat/maze-vertical-traversal`
-   (39 commits, 0 behind `main` as of 2026-08-11) has the WebGL
-   variable-height backend, ramp interpolation, and sloped-boundary
-   rendering. It is **not merged to `main`**. This worktree/branch
-   (`feat/floor1-vertical-revamp`) is currently based on plain `main` and
-   has zero `floorZ`/`ceilingZ`/ramp support anywhere in the codebase —
-   confirmed by grep, not assumption. Before any graybox editing, merge or
-   rebase in `feat/maze-vertical-traversal` (or an equivalent subset).
-2. **The validator and exporter must learn the new fields.** `src/game/floor-validate.ts`
-   (943 lines) has no concept of `floorZ`, `ceilingZ`, or ramps — it
-   validates a purely 2D `FloorDef`. Adding Z-fields to `floor-1.json`
-   without teaching `floor:validate`/`floor:export-check` about them means
-   either the checks silently ignore the new data (false confidence) or
-   reject the floor outright. Teaching the validator precedes any graybox
-   work, not follows it.
-3. **Watch for the `cloneFloor` gotcha.** `cloneFloor` has already once
-   silently dropped a whole `FloorDef` field (`wallFeatures`, fixed
-   `f7e3e47`) because a new field wasn't added to its spread/copy list.
-   Any new `floorZ`/`ceilingZ`/`ramps` field is the same hazard class —
-   verify `cloneFloor` (and any other structural clone/copy of `FloorDef`)
-   explicitly carries it.
+1. **Renderer 2 is present and green.** `feat/maze-vertical-traversal` has
+   been adopted as the integration base for the vertical lineage. The WebGL
+   variable-height backend, ramp/stair interpolation, and sloped-boundary
+   rendering are available. Canvas fallback remains the default; WebGL is
+   opt-in.
+2. **The validator and exporter are height-aware.** `src/game/floor-validate.ts`
+   validates `heightZones`, `ramps`, `floorZ`/`ceilingZ`, surface
+   continuity, and connector occupancy. `floor:validate` and
+   `floor:export-check` pass on all registered floors.
+3. **`cloneFloor` carries the new fields.** `src/data/floors.ts` deep-copies
+   `heightZones` and `ramps`; round-trip save/load and floor export preserve
+   them.
 
-Nothing below requires these to be resolved to be *written*. They must be
-resolved before anything below is *built*.
+## Blocker status: READY FOR VERTICAL GRAYBOX
+
+The integration branch is `feat/productionize-vertical-traversal`, cut from
+`feat/maze-vertical-traversal` at `5ef73ee`. It has passed the full
+production check (`npm run check`), including `floor:validate` and
+`floor:export-check`, with no new errors. The five semantic gaps identified
+in the hardening audit have been addressed (see
+`docs/VERTICAL-FLOOR-AUTHORING.md`).
 
 ## Spatial thesis
 
