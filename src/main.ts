@@ -3024,6 +3024,9 @@ if (new URLSearchParams(window.location.search).has("debug")) {
 
   (window as any).render_game_to_text = () => JSON.stringify(debugSnapshot());
 
+  // @ts-expect-error Vite `define` replaces this global at build/dev time.
+  (window as any).__onyxBuild = __ONYX_BUILD__;
+
   (window as any).__onyxDebug = {
     state,
     snapshot: debugSnapshot,
