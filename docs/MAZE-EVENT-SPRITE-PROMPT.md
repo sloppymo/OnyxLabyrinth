@@ -5,7 +5,7 @@
 **Not this doc:** combat enemy strips ([`SPRITE-ART-GENERATION-GUIDE.md`](SPRITE-ART-GENERATION-GUIDE.md)); wall/floor/ceiling bricks ([`TILESET-ART-STYLE-GUIDE.md`](TILESET-ART-STYLE-GUIDE.md))  
 **Status:** generation brief + suggested asset IDs. The corridor wiring exists: `src/data/maze-props.ts` maps each `TileFeature` to a preference-ordered list of sprite ids, `drawFeatureBillboards` in `renderer.ts` billboards the first id that resolves in `MAP_SPRITES`, and `drawFeatureGlyph` is now only the fallback for features whose art has not shipped. Adding a prop is therefore a two-step change with no engine edit: drop the PNG in `public/assets/map-sprites/` and register it in `src/data/map-sprites.ts`.
 
-Six of these props ship today — `chest-closed`, `chest-open`, `cistern-basin`, `antimagic-ward`, `darkness-idol`, `teleporter-disc` — built deterministically by [`scripts/generate-maze-props.mjs`](../scripts/generate-maze-props.mjs) rather than by image generation. See "Deterministic alternative" below before reaching for a generator.
+Five of these props ship today — `chest-closed`, `chest-open`, `antimagic-ward`, `darkness-idol`, `teleporter-disc` — built deterministically by [`scripts/generate-maze-props.mjs`](../scripts/generate-maze-props.mjs) rather than by image generation. See "Deterministic alternative" below before reaching for a generator. `cistern-basin` shipped this way too until 2026-08-11, when it was replaced with AI-generated art (see #15) — the harvested source cell reads as a robot/helmet face at in-corridor scale, not wet stone.
 
 **Two hard constraints for `MAP_SPRITES` art specifically** (learned generating `anvil-altar` / `forge-guardian-statue`, both AI-generated since neither exists in the harvest pack):
 - **Square canvas, always.** `drawMapSprites` (`renderer.ts`) draws the source PNG into a fixed `size x size` square with no aspect correction — unlike `ceilingSprites`, which preserve their own aspect ratio. A non-square generation will stretch. Generate at e.g. 64x64, not a tall/wide rectangle.
@@ -35,7 +35,7 @@ Proposed filenames under a future `public/assets/maze-props/` (or reuse `map-spr
 | 12 | `teleporter-disc` | Rune platform | `TileFeature` `"teleporter"` | Glyph `✦` today |
 | 13 | `antimagic-ward` | Null seal | `TileFeature` `"antimagic"` | Glyph `∅` today |
 | 14 | `darkness-idol` | Snuffed lantern / idol | `TileFeature` `"darkness"` | Glyph `◐` today |
-| 15 | `cistern-basin` | Wet shrine marker | `TileFeature` `"water"` / F5 flavor | Glyph `≈` today |
+| 15 | `cistern-basin` | Wet shrine marker | `TileFeature` `"water"` / F5 flavor | **Shipped** — AI-generated 2026-08-11, replacing an earlier deterministic-harvest version that read as a robot face (see prompt notes below) |
 | 16a | `camp-bedroll` | NPC camp remnant | additive flavor / near `"npc"` | Never gates progression |
 | 16b | `camp-journal` | Candle + journal | additive flavor | Generate separately |
 | 16c | `merchant-crate` | Crate stash | overlaps map-sprite `crate` | Match existing decor density |
@@ -347,6 +347,27 @@ Accent: almost none — the point is absence of light.
 SUBJECT: Wet stone basin or cracked fountain niche object for flooded dungeon flavor.
 Palette: teal-charcoal stone, dark water, sparse drip highlights.
 ```
+
+**Shipped 2026-08-11, accepted first try**, via `scripts/pixellab-generate.mjs`
+(pixflux, 64x64, transparent) rather than the deterministic harvest path — the
+pack's closest cell (`general_detail` 5,1) is a pot/urn silhouette, not a
+basin, and its dark rectangular "window" interior plus two symmetric
+drip-highlight accents read as a robot/helmet face at in-corridor render
+scale, not wet stone (the original bug report was a screenshot of exactly
+this). The working prompt front-loaded "low, wide, squat... wider than it is
+tall" to avoid a tall urn silhouette, and explicitly called out the pareidolia
+failure mode as a negative: *"Must NOT read as a face, head, robot, helmet, or
+creature... asymmetric details specifically to avoid any symmetric two-dot
+'eyes' pareidolia."* Naming the exact wrong reading in the negative, not just
+the desired one, is what earlier props like `anvil-altar` (architecture drift)
+and `cantor-lectern` (lost book silhouette) also needed — generalize this: if
+a prior version failed a specific legibility check, say so directly in the
+next prompt's negative list rather than only restating the positive brief.
+Manually grounded (+8px, `art/pixellab-candidates/maze-props/cistern-basin-02-grounded.png`)
+before shipping to `public/assets/map-sprites/cistern-basin.png`. The old
+deterministic `cisternBasin()` recipe was removed from
+`generate-maze-props.mjs` so a routine re-run of that script cannot silently
+revert this fix.
 
 ### 16. NPC camp remnant (additive flavor)
 

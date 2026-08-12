@@ -1,5 +1,11 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+## 2026-08-08 — Isobel's Iso-spells
+
+- Added a data-driven six-spell NPC shop, persisted purchased spell unlocks, and the mass-resurrection effect.
+- Added Isobel and the exact SVG sign `ISOBEL'S / ISO-SPELLS` in a new six-cell Floor 1 side nook at `(16..17,27..29)`, reached through the single door between `(15,28)` and `(16,28)`.
+- Focused tests/build/floor validation/export drift passed. Playwright browser binary was installed; title/prologue screenshot rendered with warnings empty. Full in-game shop navigation remains the next manual step if a debug teleport is added.
+
 ## 2026-08-08 — Floor 1 Camp hub
 
 - Follow-up grounding gate: fixed the generic floor-standing map-sprite contract. The cache now measures post-key alpha bounds once per image; renderer source-crops to those bounds, preserves their aspect ratio, and anchors the lowest visible pixel to the projected floor line. This applies to Camp decor and map-sprite-backed feature billboards without per-Camp offsets or art regeneration.
@@ -732,3 +738,32 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Corrected the renderer design to use a Camp-owned sky panorama instead of Floor 1's primary ceiling texture; heading-aware sampling and Camp-only readable-night lighting passed visual verification from the Camp's four headings with no browser errors.
 - Repositioned Camp visual-only props into the fortified-caravan composition selected by the user; no collision, encounter, or gameplay data changed.
 - Verification: production-preview Camp screenshots were visually reviewed from the four cardinal headings with zero browser console errors. `npm run build`, the focused renderer/floor tests (166), the full suite (104 files / 2,134 tests), floor validation, and floor export consistency all pass. Existing Floor 1 validator warnings concern Namanda content, not this Camp pass.
+
+## 2026-08-09 — Isobel / Floor 1 correction pass
+
+- Preserved the six-cell Isobel shop and shelf/sign presentation. Isovoid now
+  removes enemy wards while preserving harmful enemy statuses and party buffs;
+  Isobarrier stacking retains the strongest active reduction.
+- Reworked the canonical F1 floor generator's floor wear: short cracks and
+  small seam/corner moss patches replace broad green masses. Wall and ceiling
+  assets remain untouched; revised bundled/public floor twins are byte-equal.
+- Focused combat/shop tests: 102/102; production build and browser corridor/
+  shop screenshots passed with no game console errors. Full project gate remains
+  to be run before the focused changes are committed; this note is not staged
+  with the unrelated Camp work.
+
+## 2026-08-11 — Cistern basin replacement
+
+- Diagnosed a user-reported "ugly placeholder" screenshot of a water tile in
+  the corridor: the shipped `cistern-basin` map-sprite harvested a pot/urn
+  cell from the Classic Dungeons pack (no basin exists in the pack), and its
+  dark rectangular interior plus two symmetric drip-highlight accents read as
+  a robot/helmet face at in-corridor render scale.
+- Replaced it with an AI-generated asset via `scripts/pixellab-generate.mjs`
+  (pixflux, 64x64, transparent), following the same path used for
+  `anvil-altar`/`forge-guardian-statue`. Accepted first try; manually grounded
+  (+8px). See `docs/MAZE-EVENT-SPRITE-PROMPT.md` #15 for the full prompt and
+  the pareidolia-avoidance lesson.
+- Removed the old deterministic `cisternBasin()` recipe from
+  `scripts/generate-maze-props.mjs` so a routine re-run of that script cannot
+  silently revert the new art.
