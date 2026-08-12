@@ -8,6 +8,7 @@ import {
   resolveTraversal,
   openBarredGate,
   executeStep,
+  executeLadderAction,
 } from "./engine/camera";
 import { type Direction, type TraversalResult } from "./game/traversal";
 import { RaftAnimationController, isRaftAnimating } from "./engine/raft-animation";
@@ -1894,11 +1895,26 @@ function routeControllerEvent(event: ControllerInputEvent): void {
       dungeonHandlers.onToggleMapOverlay();
       break;
     case "a": {
-      // Contextual A = Unlock when facing a locked door (input-adaptive glyph).
+      // Contextual A = Unlock / Ladder (input-adaptive glyph).
       const kind = globalInput.getLastInputKind();
       const prompt = resolveContextualPrompt(state, kind);
       if (prompt?.action === "unlock") {
         dungeonHandlers.onUnlock();
+      } else if (prompt?.action?.startsWith("ladder-")) {
+        if (executeLadderAction(state, prompt.action)) {
+          // Ladder use does not consume a step, but it does move the party
+          // to a different Z without triggering an encounter.
+          markExplored();
+          resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+          autoSave(state);
+          setMessage(
+            prompt.action === "ladder-up"
+              ? "You climb the ladder."
+              : prompt.action === "ladder-down"
+                ? "You descend the ladder."
+                : "You lower the ladder into place."
+          );
+        }
       }
       break;
     }

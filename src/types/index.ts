@@ -226,5 +226,7 @@ export interface GameState {
   // Returned") already won. A guardian tile whose id is here is inert —
   // never re-triggers combat. See game/features.ts handleStairsGuardian.
   clearedStairsGuardians: string[];
+  /** Ladder ids the player has lowered/unlocked. v18+. */
+  unlockedLadderIds: string[];
   purchasedSpellIds?: string[];
 }

@@ -101,6 +101,7 @@ function makeState(trap?: TrapType): GameState {
     tavernRumorCursor: 0,
     companion: null,
     clearedStairsGuardians: [],
+    unlockedLadderIds: [],
   };
 }
 
@@ -143,6 +144,7 @@ function makePerkFreeState(trap?: TrapType): GameState {
     tavernRumorCursor: 0,
     companion: null,
     clearedStairsGuardians: [],
+    unlockedLadderIds: [],
   };
 }
 
@@ -201,6 +203,7 @@ function makeEventState(event: Omit<EventDef, "x" | "y">): GameState {
     tavernRumorCursor: 0,
     companion: null,
     clearedStairsGuardians: [],
+    unlockedLadderIds: [],
   };
 }
 

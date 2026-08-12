@@ -336,6 +336,7 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     if (ser.lastDungeon) {
       ser.lastDungeon = { ...(ser.lastDungeon as object), z: undefined };
     }
+    ser.unlockedLadderIds = ser.unlockedLadderIds ?? [];
     version = 18;
   }
   if (version !== SAVE_VERSION) return null;
@@ -408,6 +409,8 @@ interface SerializedState {
   companion?: GameState["companion"];
   /** Ids of cleared stairsGuardian scripted encounters. v16+. */
   clearedStairsGuardians?: string[];
+  /** Ladder ids the player has lowered/unlocked. v18+. */
+  unlockedLadderIds?: string[];
   /** Iso-spells bought from Isobel's; optional for pre-v17 saves. */
   purchasedSpellIds?: string[];
   savedAt: string;
@@ -488,6 +491,7 @@ export function serialize(state: GameState): string {
     tavernRumorCursor: state.tavernRumorCursor,
     companion: state.companion ? { ...state.companion } : null,
     clearedStairsGuardians: [...state.clearedStairsGuardians],
+    unlockedLadderIds: [...state.unlockedLadderIds],
     purchasedSpellIds: [...(state.purchasedSpellIds ?? [])],
     savedAt: new Date().toISOString(),
   };
@@ -653,6 +657,7 @@ export function deserialize(json: string): GameState | null {
       tavernRumorCursor: ser.tavernRumorCursor ?? 0,
       companion: ser.companion ? { ...ser.companion } : null,
       clearedStairsGuardians: ser.clearedStairsGuardians ? [...ser.clearedStairsGuardians] : [],
+      unlockedLadderIds: ser.unlockedLadderIds ? [...ser.unlockedLadderIds] : [],
       purchasedSpellIds: ser.purchasedSpellIds ? [...ser.purchasedSpellIds] : [],
     };
   } catch {

@@ -19,7 +19,12 @@ import {
   type TraversalResult,
 } from "../game/traversal";
 export { tryUnlock } from "../game/doors";
-export { openBarredGate, resolveTraversal } from "../game/traversal";
+export {
+  openBarredGate,
+  resolveTraversal,
+  executeLadderAction,
+  type LadderAction,
+} from "../game/traversal";
 
 /** True if the player can step one tile in the given direction (ordinary
  *  movement only — does not account for raft routes or barred gates, which

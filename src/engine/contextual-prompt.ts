@@ -12,6 +12,7 @@
 
 import type { GameState } from "../types";
 import { edgeInDirection, inBounds } from "../game/dungeon";
+import { resolveLadderAction, type LadderAction } from "../game/traversal";
 
 export type InputKind = "keyboard" | "gamepad";
 
@@ -21,7 +22,7 @@ export interface ContextualPrompt {
   /** Short verb (“Unlock”, …). */
   verb: string;
   /** Stable id for input routing. */
-  action: "unlock";
+  action: "unlock" | LadderAction;
 }
 
 /** Resolve the single contextual interact verb, or null if none. */
@@ -42,6 +43,20 @@ export function resolveContextualPrompt(
       glyph: inputKind === "keyboard" ? "U" : "A",
       verb: "Unlock",
       action: "unlock",
+    };
+  }
+
+  const ladderAction = resolveLadderAction(state);
+  if (ladderAction) {
+    const verbs: Record<LadderAction, string> = {
+      "ladder-up": "Climb",
+      "ladder-down": "Descend",
+      "ladder-lower": "Lower",
+    };
+    return {
+      glyph: inputKind === "keyboard" ? "A" : "A",
+      verb: verbs[ladderAction],
+      action: ladderAction,
     };
   }
 

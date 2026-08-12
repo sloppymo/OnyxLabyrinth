@@ -14,6 +14,7 @@ import type { GameState, PlayerState, EdgeType } from "../types";
 import type {
   BarredGateDef,
   FloorDef,
+  LadderDef,
   RaftRouteDef,
   VerticalLandingDef,
   WaterDef,
@@ -426,4 +427,85 @@ export function resolveTraversal(
 /** Convenience: true if the traversal result allows movement (step or raft). */
 export function isPassable(result: TraversalResult): boolean {
   return result.kind === "step" || result.kind === "raft";
+}
+
+// --- Ladder traversal ---------------------------------------------------
+
+export type LadderAction = "ladder-up" | "ladder-down" | "ladder-lower";
+
+/** Find the ladder at (x,y) whose endpoints include the given Z. */
+export function ladderAt(
+  floor: FloorDef,
+  x: number,
+  y: number,
+  z: number
+): LadderDef | undefined {
+  return floor.ladders?.find(
+    (l) => l.x === x && l.y === y && (sameZ(l.fromZ, z) || sameZ(l.toZ, z))
+  );
+}
+
+function isLadderUnlocked(ladder: LadderDef, state: GameState): boolean {
+  // A ladder with no unlock side and not explicitly one-way is always open.
+  if (!ladder.unlockFrom && ladder.bidirectional !== false) return true;
+  return state.unlockedLadderIds.includes(ladder.id);
+}
+
+/** Determine which ladder verb (if any) is available at the player's position. */
+export function resolveLadderAction(state: GameState): LadderAction | null {
+  const { floor, player } = state;
+  const z = resolvePlayerZ(player, floor);
+  const ladder = ladderAt(floor, player.x, player.y, z);
+  if (!ladder) return null;
+
+  const unlocked = isLadderUnlocked(ladder, state);
+  const upperZ = Math.max(ladder.fromZ, ladder.toZ);
+  const lowerZ = Math.min(ladder.fromZ, ladder.toZ);
+
+  if (sameZ(z, lowerZ)) {
+    if (unlocked) return "ladder-up";
+    // One-way only: from -> to without an unlock side is still usable in
+    // the authored direction.
+    if (ladder.bidirectional === false && !ladder.unlockFrom) {
+      return sameZ(z, ladder.fromZ) ? "ladder-up" : null;
+    }
+    return null;
+  }
+
+  if (sameZ(z, upperZ)) {
+    if (unlocked) return "ladder-down";
+    if (ladder.unlockFrom) {
+      const required = nameToDir(ladder.unlockFrom);
+      if (player.facing === required) return "ladder-lower";
+    }
+    return null;
+  }
+
+  return null;
+}
+
+/** Execute a resolved ladder action. Returns true if the state changed. */
+export function executeLadderAction(
+  state: GameState,
+  action: LadderAction
+): boolean {
+  const { floor, player } = state;
+  const z = resolvePlayerZ(player, floor);
+  const ladder = ladderAt(floor, player.x, player.y, z);
+  if (!ladder) return false;
+
+  const expected = resolveLadderAction(state);
+  if (expected !== action) return false;
+
+  if (action === "ladder-lower") {
+    if (!state.unlockedLadderIds.includes(ladder.id)) {
+      state.unlockedLadderIds.push(ladder.id);
+    }
+    return true;
+  }
+
+  const upperZ = Math.max(ladder.fromZ, ladder.toZ);
+  const lowerZ = Math.min(ladder.fromZ, ladder.toZ);
+  player.z = action === "ladder-up" ? upperZ : lowerZ;
+  return true;
 }

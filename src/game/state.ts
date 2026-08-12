@@ -63,6 +63,7 @@ export function createGameState(floor: FloorDef): GameState {
     tavernRumorCursor: 0,
     companion: null,
     clearedStairsGuardians: [],
+    unlockedLadderIds: [],
     purchasedSpellIds: [],
   };
 }

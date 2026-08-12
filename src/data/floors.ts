@@ -114,6 +114,9 @@ export interface LadderDef {
   facing: "n" | "e" | "s" | "w";
   /** Default true. */
   bidirectional?: boolean;
+  /** Optional side the ladder can be lowered/unlocked from. Until lowered,
+   *  the ladder is one-way only. The id is recorded in `GameState.unlockedLadderIds`. */
+  unlockFrom?: "n" | "e" | "s" | "w";
 }
 
 export interface FloorDef {

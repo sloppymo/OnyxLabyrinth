@@ -89,6 +89,7 @@ function makeTrapState(trap: TrapType): GameState {
     tavernRumorCursor: 0,
     companion: null,
     clearedStairsGuardians: [],
+    unlockedLadderIds: [],
   };
 }
 
@@ -156,6 +157,7 @@ function makeNpcState(): GameState {
     tavernRumorCursor: 0,
     companion: null,
     clearedStairsGuardians: [],
+    unlockedLadderIds: [],
   };
 }
 
