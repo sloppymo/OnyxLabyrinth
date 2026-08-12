@@ -9,6 +9,7 @@ import { keyOutBackground } from "./sprite-alpha";
 export type WallFeatureImage = HTMLImageElement | HTMLCanvasElement;
 
 const cache = new Map<string, WallFeatureImage | null>();
+const frameCache = new Map<string, WallFeatureImage[]>();
 const textCache = new Map<string, HTMLCanvasElement | null>();
 let loadPromise: Promise<void> | null = null;
 
@@ -53,6 +54,12 @@ export function loadWallFeatures(): Promise<void> {
       WALL_FEATURES.map(async (def) => {
         const img = await loadImage(wallFeatureUrl(def));
         cache.set(def.id, img ? prepareDecal(img) : null);
+        const frameFiles = def.animation?.files ?? [def.file];
+        const frames = await Promise.all(frameFiles.map(async (file) => {
+          const frame = await loadImage(wallFeatureUrl({ ...def, file }));
+          return frame ? prepareDecal(frame) : null;
+        }));
+        frameCache.set(def.id, frames.filter((frame): frame is WallFeatureImage => !!frame));
         textCache.set(def.id, buildOverlayText(def));
       })
     ).then(() => {})
@@ -95,6 +102,10 @@ function buildOverlayText(def: WallFeatureSpriteDef): HTMLCanvasElement | null {
 
 export function getWallFeatureImage(spriteId: string): WallFeatureImage | null {
   return cache.get(spriteId) ?? null;
+}
+
+export function getWallFeatureFrames(spriteId: string): WallFeatureImage[] {
+  return frameCache.get(spriteId) ?? [];
 }
 
 export function getWallFeatureTextImage(spriteId: string): HTMLCanvasElement | null {

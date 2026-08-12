@@ -54,6 +54,8 @@ export const MATH_CONFIG = {
   // Fog falloff per grid unit. 0.42 was too aggressive — at distance 2 walls
   // dropped to 17% brightness, crushing all mid-range detail. 0.70 keeps
   // distant walls readable while still providing a clear depth gradient.
+  // Temporary Level 2 architectural blockout diagnostic: keep distant
+  // silhouettes readable while the neon placeholders prove placement.
   fogFalloff: 0.70,
   // Mid-tone lift applied to the fog curve. After computing the exponential
   // falloff, blend toward 1.0 by this fraction so mid-distance surfaces stay

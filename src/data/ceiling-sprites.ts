@@ -36,6 +36,11 @@ export const CEILING_SPRITES: readonly CeilingSpriteDef[] = [
   { id: "hotboi-hanging-rack", name: "Hot Boi's Hanging Bar Rack", file: "hotboi-hanging-rack.png", baseSize: 40 },
   { id: "hotboi-lantern", name: "Hot Boi's Lantern", file: "hotboi-lantern.png", baseSize: 30 },
   { id: "isobel-prism-mobile", name: "Iso-Spells Prism Mobile", file: "isobel-prism-mobile.png", baseSize: 26 },
+  // The Sunken Processional (Level 2 "descent" kit).
+  { id: "descent-chain-heavy", name: "Heavy Bronze Chain", file: "descent-chain-heavy.png", baseSize: 52 },
+  { id: "descent-censer", name: "Hanging Bronze Censer", file: "descent-censer.png", baseSize: 40 },
+  { id: "descent-counterweight", name: "Great Suspended Counterweight", file: "descent-counterweight.png", baseSize: 72 },
+  { id: "descent-chain-heavy-blockout", name: "Heavy Chain (blockout)", file: "descent-chain-heavy-blockout.png", baseSize: 68 },
 ];
 
 export const CEILING_SPRITES_BY_ID: Record<string, CeilingSpriteDef> = Object.fromEntries(
