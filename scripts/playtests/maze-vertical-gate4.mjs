@@ -9,7 +9,7 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { boot, ensureOutDir, jumpTo, launch, shot, wait, waitForIdle } from "./lib.mjs";
 
-const URL =
+const BASE_URL =
   process.env.MAZE_VERTICAL_GATE4_URL ??
   "http://127.0.0.1:5197/OnyxLabyrinth/?debug=1&mazeRenderer=webgl&mazePerf=1&playtestFloor=1";
 const OUT = ensureOutDir(
@@ -284,7 +284,7 @@ try {
   }, map);
 
   // Prove the build identity exists before the debug-only main.ts surface is enabled.
-  const nonDebugUrl = new URL(URL);
+  const nonDebugUrl = new URL(BASE_URL);
   nonDebugUrl.searchParams.delete("debug");
   await page.goto(nonDebugUrl.toString(), { waitUntil: "networkidle" });
   await wait(150);
@@ -293,7 +293,7 @@ try {
     throw new Error(`Non-debug build identity mismatch: ${JSON.stringify(nonDebugBuild)}`);
   }
 
-  await boot(page, URL, {
+  await boot(page, BASE_URL, {
     scenario: { floorId: 92, x: 1, y: 6, facing: 1, autosave: false },
   });
   const debugBuild = await buildIdentity("debug");
@@ -407,7 +407,7 @@ try {
   const report = {
     schema: 1,
     generatedAt: new Date().toISOString(),
-    url: URL,
+    url: BASE_URL,
     expectedBuild: EXPECTED_BUILD,
     buildIdentity: { nonDebug: nonDebugBuild, debug: debugBuild },
     downhillCases,
@@ -458,7 +458,7 @@ try {
   const failure = {
     schema: 1,
     generatedAt: new Date().toISOString(),
-    url: URL,
+    url: BASE_URL,
     expectedBuild: EXPECTED_BUILD,
     error: error instanceof Error ? error.stack ?? error.message : String(error),
     downhillCases,
