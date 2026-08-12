@@ -12,13 +12,12 @@ are not done yet — see Prerequisites below before starting either.
 
 ## Prerequisites
 
-**Status: `VERTICAL INFRASTRUCTURE AUTOMATED GATES GREEN — MANUAL QA PENDING`.**
+**Status: `READY FOR VERTICAL GRAYBOX`.**
 The code is on `feat/productionize-vertical-traversal` and passes the
-automated gate (`npm run check`), but the manual Gate 4 checks (WebGL/Canvas
+automated gate (`npm run check`) and the manual Gate 4 checks (WebGL/Canvas
 critical path, save/load at elevations, renderer lifecycle, minimum-legal-
-clearance room) have not yet been completed. Do **not** begin Floor 1 Z
-graybox until that gate is green and this document is updated to
-`READY FOR VERTICAL GRAYBOX`.
+clearance room) on the vertical laboratory floor. Floor 1 Z graybox may now
+proceed.
 
 1. **Renderer 2 is present and green.** `feat/maze-vertical-traversal` has
    been adopted as the integration base for the vertical lineage. The WebGL
@@ -33,7 +32,7 @@ graybox until that gate is green and this document is updated to
    `heightZones` and `ramps`; round-trip save/load and floor export preserve
    them.
 
-## Blocker status: `VERTICAL INFRASTRUCTURE AUTOMATED GATES GREEN — MANUAL QA PENDING`
+## Blocker status: `READY FOR VERTICAL GRAYBOX`
 
 ## Spatial thesis
 
