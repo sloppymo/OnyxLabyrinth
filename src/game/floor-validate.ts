@@ -22,7 +22,10 @@ import {
   floorDefToMap,
   cellIsPassable,
 } from "./floor-map";
-import { resolveCellVolume } from "../engine/maze-renderer/geometry/cell-volume";
+import {
+  MIN_CAMERA_CLEARANCE,
+  resolveCellVolume,
+} from "../engine/maze-renderer/geometry/cell-volume";
 import {
   isConnectorSide,
   maxFloorSurfaceZ,
@@ -136,7 +139,6 @@ export function validateFloorMap(
 
 const MIN_HEIGHT_Z = -8;
 const MAX_HEIGHT_Z = 16;
-const MIN_CELL_CLEARANCE = 0.25;
 
 function validateHeightConfig(
   map: FloorMapJSON,
@@ -202,12 +204,12 @@ function validateHeightConfig(
         });
       } else if (
         volume.ceilingZ - maxFloorSurfaceZ(resolveFloorSurface(map, x, y)) <
-        MIN_CELL_CLEARANCE
+        MIN_CAMERA_CLEARANCE
       ) {
         issues.push({
           severity: "error",
           code: "height_clearance_too_small",
-          message: `Cell (${x},${y}) vertical clearance above its highest floor surface must be at least ${MIN_CELL_CLEARANCE}`,
+          message: `Cell (${x},${y}) vertical clearance above its highest floor surface must be at least ${MIN_CAMERA_CLEARANCE} to keep the camera below the ceiling`,
           at: { x, y },
         });
       }
@@ -230,13 +232,28 @@ function validateHeightConfig(
             at: { x, y },
           });
         }
-        if (!surfacesConnectAcrossEdge(map, x, y, dir)) {
-          issues.push({
-            severity: "error",
-            code: "height_surface_mismatch",
-            message: `Traversable ${dir} edge from (${x},${y}) has mismatched floor surfaces (${volume.floorZ} vs ${neighbor.floorZ}); add or correct a ramp/stair connector`,
-            at: { x, y },
-          });
+        // Surface continuity matters for edges the player can actually cross.
+        // Locked/barred edges are blocked by state at runtime, so a mismatch
+        // there is a warning (it may break the tile if unlocked/opened) rather
+        // than a validator error. Open/door edges must meet for the step to pass.
+        if (edge === "open" || edge === "door") {
+          if (!surfacesConnectAcrossEdge(map, x, y, dir)) {
+            issues.push({
+              severity: "error",
+              code: "height_surface_mismatch",
+              message: `Traversable ${dir} edge from (${x},${y}) has mismatched floor surfaces (${volume.floorZ} vs ${neighbor.floorZ}); add or correct a ramp/stair connector`,
+              at: { x, y },
+            });
+          }
+        } else if (edge === "locked" || edge === "barred") {
+          if (!surfacesConnectAcrossEdge(map, x, y, dir)) {
+            issues.push({
+              severity: "warning",
+              code: "height_surface_mismatch_sealed",
+              message: `Sealed ${dir} edge from (${x},${y}) has mismatched floor surfaces; the door/gate is currently impassable, but will remain uncrossable after unlocking/opening`,
+              at: { x, y },
+            });
+          }
         }
       }
     }
@@ -343,6 +360,21 @@ function validateRampConfig(
         at: { x: ramp.x, y: ramp.y },
       });
     }
+    if (
+      tile === "treasure" ||
+      tile === "event" ||
+      tile === "water" ||
+      tile === "teleporter" ||
+      tile === "chute" ||
+      tile === "guardian"
+    ) {
+      issues.push({
+        severity: "error",
+        code: "ramp_tile_unsupported",
+        message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) cannot also be a ${tile} tile; place it on a flat landing`,
+        at: { x: ramp.x, y: ramp.y },
+      });
+    }
     if (map.mapSprites?.some((sprite) => sprite.x === ramp.x && sprite.y === ramp.y)) {
       issues.push({
         severity: "error",
@@ -358,6 +390,24 @@ function validateRampConfig(
         message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) cannot contain an NPC; place it on a flat landing`,
         at: { x: ramp.x, y: ramp.y },
       });
+    }
+    const unsupportedRampOverlays: [keyof FloorMapJSON, string][] = [
+      ["treasures", "ramp_treasure_unsupported"],
+      ["events", "ramp_event_unsupported"],
+      ["waters", "ramp_water_unsupported"],
+      ["teleporters", "ramp_teleporter_unsupported"],
+      ["chuteDrops", "ramp_chute_unsupported"],
+    ];
+    for (const [key, code] of unsupportedRampOverlays) {
+      const arr = (map[key] as { x: number; y: number }[] | undefined) ?? [];
+      if (arr.some((o) => o.x === ramp.x && o.y === ramp.y)) {
+        issues.push({
+          severity: "error",
+          code,
+          message: `Floor ${map.id} ramp (${ramp.x},${ramp.y}) cannot contain a ${key} entry; place it on a flat landing`,
+          at: { x: ramp.x, y: ramp.y },
+        });
+      }
     }
   }
 }
@@ -1098,6 +1148,14 @@ function validateReachability(map: FloorMapJSON, issues: ValidationIssue[]): voi
     for (const dir of ["n", "e", "s", "w"] as const) {
       const edge = cell[dir];
       if (edge === "wall") continue;
+      // The BFS is height-aware for open/door edges: if the floor surfaces
+      // do not meet, the player cannot actually step through even though the
+      // grid edge says it is open. Locked and barred edges remain passable to
+      // the BFS by design (it is not key/gate-aware); their geometric sanity
+      // is covered by the per-edge continuity check in validateHeightConfig.
+      if ((edge === "open" || edge === "door") && !surfacesConnectAcrossEdge(map, x, y, dir)) {
+        continue;
+      }
       const [dx, dy] = DELTA[dir];
       const nx = x + dx;
       const ny = y + dy;
