@@ -10,18 +10,28 @@
  * Design doc: Floor 1 redesign — raft/tavern/shortcut progression.
  */
 
-import type { GameState, PlayerState } from "../types";
-import type { BarredGateDef, FloorDef, RaftRouteDef, WaterDef } from "../data/floors";
-import { DX, DY, edgeInDirection, inBounds } from "./dungeon";
+import type { GameState, PlayerState, EdgeType } from "../types";
+import type {
+  BarredGateDef,
+  FloorDef,
+  RaftRouteDef,
+  VerticalLandingDef,
+  WaterDef,
+} from "../data/floors";
+import { DX, DY, emptyCell, inBounds } from "./dungeon";
 import { resolveCellVolume } from "../engine/maze-renderer/geometry/cell-volume";
-import { surfacesConnectAcrossEdge } from "../engine/maze-renderer/geometry/floor-surface";
+import {
+  floorSurfaceZAt,
+  resolveFloorSurface,
+  surfacesConnectAcrossEdge,
+} from "../engine/maze-renderer/geometry/floor-surface";
 
 /** Direction as an integer (0=N, 1=E, 2=S, 3=W). */
 export type Direction = 0 | 1 | 2 | 3;
 
 /** Result of resolving a movement intent in a given direction. */
 export type TraversalResult =
-  | { kind: "step"; x: number; y: number }
+  | { kind: "step"; x: number; y: number; z: number }
   | { kind: "blocked"; message?: string }
   | { kind: "raft"; routeId: string; reverse: boolean }
   | { kind: "barred-gate"; gateId: string; canOpen: boolean; message?: string };
@@ -35,6 +45,94 @@ export function resolvePlayerZ(
     return player.z;
   }
   return resolveCellVolume(floor, player.x, player.y).floorZ;
+}
+
+// --- Stacked Z helpers --------------------------------------------------
+
+/** Tolerance for authored vertical-quantum equality. */
+export const VERTICAL_EPSILON = 1e-6;
+
+/** Exact-enough Z comparison for authored discrete landing heights. */
+export function sameZ(a: number, b: number): boolean {
+  return Math.abs(a - b) <= VERTICAL_EPSILON;
+}
+
+/** Find the explicit vertical landing at an exact (x, y, z) position. */
+export function landingAt(
+  floor: FloorDef,
+  x: number,
+  y: number,
+  z: number
+): VerticalLandingDef | undefined {
+  return floor.verticalLandings?.find(
+    (l) => l.x === x && l.y === y && sameZ(l.z, z)
+  );
+}
+
+/**
+ * Effective N/E/S/W edge semantics for a navigable (x, y, z).
+ *
+ * The base grid is the default; an explicit landing at that exact Z may
+ * override individual edges. This is the single source of truth for all
+ * stacked-cell edge lookup — traversal, validators, automap, and AI should
+ * all call this helper rather than reimplementing the lookup.
+ */
+export function resolveLandingEdges(
+  floor: FloorDef,
+  x: number,
+  y: number,
+  z: number
+): Record<"n" | "e" | "s" | "w", EdgeType> {
+  const base = floor.grid[y]?.[x] ?? emptyCell();
+  const landing = landingAt(floor, x, y, z);
+  if (!landing?.edgeOverrides) return base;
+  return {
+    n: landing.edgeOverrides.n ?? base.n,
+    e: landing.edgeOverrides.e ?? base.e,
+    s: landing.edgeOverrides.s ?? base.s,
+    w: landing.edgeOverrides.w ?? base.w,
+  };
+}
+
+function entryPointForDir(
+  dir: "n" | "e" | "s" | "w"
+): { localX: number; localY: number } {
+  switch (dir) {
+    case "n":
+      return { localX: 0.5, localY: 0 };
+    case "e":
+      return { localX: 1, localY: 0.5 };
+    case "s":
+      return { localX: 0.5, localY: 1 };
+    case "w":
+      return { localX: 0, localY: 0.5 };
+  }
+}
+
+/**
+ * Resolve the destination Z for a step from the current Z moving `dir` to
+ * (nx, ny). Returns undefined when the destination has no landing or surface
+ * that can hold the player's current Z.
+ */
+export function resolveStepZ(
+  floor: FloorDef,
+  nx: number,
+  ny: number,
+  fromZ: number,
+  dir: Direction
+): number | undefined {
+  // Landing-to-landing: keep the same authored Z if the destination supports it.
+  const landing = landingAt(floor, nx, ny, fromZ);
+  if (landing) return landing.z;
+
+  // Otherwise, land on the physical surface at the entry edge.
+  const surface = resolveFloorSurface(floor, nx, ny);
+  const oppDir = DIR_NAMES[OPP_DIRS[dir]];
+  const pt = entryPointForDir(oppDir);
+  const entryZ = floorSurfaceZAt(surface, pt.localX, pt.localY);
+  // If the physical entry has a matching landing, use the landing's authored Z.
+  const entryLanding = landingAt(floor, nx, ny, entryZ);
+  return entryLanding ? entryLanding.z : entryZ;
 }
 
 // --- Direction helpers --------------------------------------------------
@@ -183,8 +281,9 @@ export function resolveTraversal(
     return { kind: "blocked" };
   }
 
-  const cell = floor.grid[player.y][player.x];
-  const edge = edgeInDirection(cell, dir);
+  const z = resolvePlayerZ(player, floor);
+  const sourceEdges = resolveLandingEdges(floor, player.x, player.y, z);
+  const edge = sourceEdges[dirToName(dir)];
 
   // Check for raft route trigger FIRST: if the player is on a dock tile
   // and moving in the approach direction, the raft route takes precedence
@@ -227,9 +326,17 @@ export function resolveTraversal(
     return { kind: "blocked" };
   }
 
-  // Check target tile's reverse edge.
-  const targetCell = floor.grid[ny][nx];
-  const oppEdge = edgeInDirection(targetCell, OPP_DIRS[dir]);
+  const destZ = resolveStepZ(floor, nx, ny, z, dir);
+  if (destZ === undefined) {
+    return {
+      kind: "blocked",
+      message: "The way is too steep here.",
+    };
+  }
+
+  // Check target landing's reverse edge at the destination Z.
+  const targetEdges = resolveLandingEdges(floor, nx, ny, destZ);
+  const oppEdge = targetEdges[dirToName(OPP_DIRS[dir])];
   if (oppEdge === "wall" || oppEdge === "locked" || oppEdge === "barred") {
     return { kind: "blocked" };
   }
@@ -266,7 +373,7 @@ export function resolveTraversal(
     };
   }
 
-  return { kind: "step", x: nx, y: ny };
+  return { kind: "step", x: nx, y: ny, z: destZ };
 }
 
 /** Convenience: true if the traversal result allows movement (step or raft). */

@@ -1,7 +1,14 @@
 import "./styles.css";
 import { getFloors, findFloor, registerFloorMap } from "./game/floor-registry";
 import { createGameState, setMode } from "./game/state";
-import { turnLeft, turnRight, tryUnlock, resolveTraversal, openBarredGate } from "./engine/camera";
+import {
+  turnLeft,
+  turnRight,
+  tryUnlock,
+  resolveTraversal,
+  openBarredGate,
+  executeStep,
+} from "./engine/camera";
 import { type Direction, type TraversalResult } from "./game/traversal";
 import { RaftAnimationController, isRaftAnimating } from "./engine/raft-animation";
 import { DungeonDialogController } from "./engine/dungeon-dialog";
@@ -1263,8 +1270,7 @@ function onMove(): void {
 function handleTraversalResult(result: TraversalResult, dir: Direction): void {
   switch (result.kind) {
     case "step": {
-      state.player.x = result.x;
-      state.player.y = result.y;
+      executeStep(state, result);
       markExplored();
       onMove();
       scheduleFootstep();
@@ -1298,8 +1304,7 @@ function handleTraversalResult(result: TraversalResult, dir: Direction): void {
         // Now step through.
         const stepResult = resolveTraversal(state, dir);
         if (stepResult.kind === "step") {
-          state.player.x = stepResult.x;
-          state.player.y = stepResult.y;
+          executeStep(state, stepResult);
           markExplored();
           onMove();
           scheduleFootstep();

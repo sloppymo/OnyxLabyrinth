@@ -13,8 +13,11 @@
 // helpers that delegate to the traversal resolver.
 
 import type { GameState } from "../types";
-import { DX, DY } from "../game/dungeon";
-import { resolveTraversal, type Direction } from "../game/traversal";
+import {
+  resolveTraversal,
+  type Direction,
+  type TraversalResult,
+} from "../game/traversal";
 export { tryUnlock } from "../game/doors";
 export { openBarredGate, resolveTraversal } from "../game/traversal";
 
@@ -43,29 +46,27 @@ export function tryStepBackward(state: GameState) {
 }
 
 /** Execute an ordinary step (caller has confirmed the result is "step"). */
-export function executeStep(state: GameState, dir: number): void {
-  state.player.x += DX[dir];
-  state.player.y += DY[dir];
+export function executeStep(
+  state: GameState,
+  result: Extract<TraversalResult, { kind: "step" }>
+): void {
+  state.player.x = result.x;
+  state.player.y = result.y;
+  state.player.z = result.z;
 }
 
 /** Step forward one tile if the cell ahead is not blocked by a wall.
  *  Legacy convenience — prefer tryStepForward + executeStep for new code. */
 export function moveForward(state: GameState): void {
   const result = resolveTraversal(state, state.player.facing as Direction);
-  if (result.kind === "step") {
-    state.player.x = result.x;
-    state.player.y = result.y;
-  }
+  if (result.kind === "step") executeStep(state, result);
 }
 
 /** Step backward one tile (no turning) if the cell behind is not blocked. */
 export function moveBackward(state: GameState): void {
   const behindDir = (state.player.facing + 2) % 4;
   const result = resolveTraversal(state, behindDir as Direction);
-  if (result.kind === "step") {
-    state.player.x = result.x;
-    state.player.y = result.y;
-  }
+  if (result.kind === "step") executeStep(state, result);
 }
 
 export function turnLeft(state: GameState): void {
