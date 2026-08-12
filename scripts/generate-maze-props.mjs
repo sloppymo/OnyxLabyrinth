@@ -262,31 +262,16 @@ function save(rawBuf, name) {
 // the material stories in docs/MAZE-EVENT-SPRITE-PROMPT.md so props sit inside
 // the corridor's colour world instead of fighting the tilesets.
 
-/** Closed treasure chest — warm wood, cold iron bands, one brass clasp gleam. */
-function chestClosed() {
-  const b = cell("classic_dungeons_animated_box_chest", 0, 0);
-  recolor(b, {
-    [P8.BLACK]: "#0b0b10", // outline
-    [P8.BROWN]: "#8a5a2b", // wood boards
-    [P8.DARKGREY]: "#6b6259", // iron band midtone
-    [P8.DARKBLUE]: "#232a3a", // shadowed underside
-    [P8.INDIGO]: "#c9a24a", // brass clasp — the single warm accent
-  });
-  return b;
-}
-
-/** The same chest emptied: lid up, dark cavity, no gold. Marks a cleared wing. */
-function chestOpen() {
-  const b = cell("classic_dungeons_animated_box_chest", 3, 0);
-  recolor(b, {
-    [P8.BLACK]: "#0b0b10",
-    [P8.BROWN]: "#7a4f26", // wood, a shade duller than the closed chest
-    [P8.DARKGREY]: "#5e564e",
-    [P8.DARKBLUE]: "#14161f", // the empty cavity reads darker than any shadow
-    [P8.INDIGO]: "#9c8340", // tarnished clasp
-  });
-  return b;
-}
+// chestClosed()/chestOpen() were retired 2026-08-12: the harvested source cell
+// (classic_dungeons_animated_box_chest 0,0 / 3,0) is a low-detail, near-flat
+// silhouette at 32x32 in-corridor scale — no wood-grain shading, no metal
+// ramp on the bands, just a handful of flat recolored fills, which read as
+// crude vector-style art rather than SNES-era pixel art next to the rest of
+// the shipped props. Production art for `chest-closed`/`chest-open` is now
+// AI-generated, following the same path as `anvil-altar`/`cistern-basin` (see
+// docs/MAZE-EVENT-SPRITE-PROMPT.md #1-2). They are no longer part of this
+// deterministic byte-identical batch. Do not re-add `save(..., "chest-closed.png")`
+// / `save(..., "chest-open.png")` calls here without checking that doc first.
 
 // cisternBasin() was retired 2026-08-11: the harvested source cell (general_detail
 // 5,1) is a pot/urn silhouette, not a basin, and at 32x32 in-corridor its dark
@@ -487,8 +472,6 @@ function tavernSign() {
 // -----------------------------------------------------------------------------
 
 mkdirSync(OUT_DIR, { recursive: true });
-save(chestClosed(), "chest-closed.png");
-save(chestOpen(), "chest-open.png");
 save(antimagicWard(), "antimagic-ward.png");
 save(darknessIdol(), "darkness-idol.png");
 save(teleporterDisc(), "teleporter-disc.png");

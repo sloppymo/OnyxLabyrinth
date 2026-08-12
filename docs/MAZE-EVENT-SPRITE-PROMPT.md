@@ -5,7 +5,7 @@
 **Not this doc:** combat enemy strips ([`SPRITE-ART-GENERATION-GUIDE.md`](SPRITE-ART-GENERATION-GUIDE.md)); wall/floor/ceiling bricks ([`TILESET-ART-STYLE-GUIDE.md`](TILESET-ART-STYLE-GUIDE.md))  
 **Status:** generation brief + suggested asset IDs. The corridor wiring exists: `src/data/maze-props.ts` maps each `TileFeature` to a preference-ordered list of sprite ids, `drawFeatureBillboards` in `renderer.ts` billboards the first id that resolves in `MAP_SPRITES`, and `drawFeatureGlyph` is now only the fallback for features whose art has not shipped. Adding a prop is therefore a two-step change with no engine edit: drop the PNG in `public/assets/map-sprites/` and register it in `src/data/map-sprites.ts`.
 
-Five of these props ship today — `chest-closed`, `chest-open`, `antimagic-ward`, `darkness-idol`, `teleporter-disc` — built deterministically by [`scripts/generate-maze-props.mjs`](../scripts/generate-maze-props.mjs) rather than by image generation. See "Deterministic alternative" below before reaching for a generator. `cistern-basin` shipped this way too until 2026-08-11, when it was replaced with AI-generated art (see #15) — the harvested source cell reads as a robot/helmet face at in-corridor scale, not wet stone.
+Three of these props ship today — `antimagic-ward`, `darkness-idol`, `teleporter-disc` — built deterministically by [`scripts/generate-maze-props.mjs`](../scripts/generate-maze-props.mjs) rather than by image generation. See "Deterministic alternative" below before reaching for a generator. `cistern-basin` shipped this way too until 2026-08-11, when it was replaced with AI-generated art (see #15) — the harvested source cell reads as a robot/helmet face at in-corridor scale, not wet stone. `chest-closed`/`chest-open` shipped this way until 2026-08-12, when both were replaced with AI-generated art (see #1-2) — the harvested cell is a flat, near-untextured silhouette that read as crude vector art next to the rest of the shipped props.
 
 **Two hard constraints for `MAP_SPRITES` art specifically** (learned generating `anvil-altar` / `forge-guardian-statue`, both AI-generated since neither exists in the harvest pack):
 - **Square canvas, always.** `drawMapSprites` (`renderer.ts`) draws the source PNG into a fixed `size x size` square with no aspect correction — unlike `ceilingSprites`, which preserve their own aspect ratio. A non-square generation will stretch. Generate at e.g. 64x64, not a tall/wide rectangle.
@@ -21,8 +21,8 @@ Proposed filenames under a future `public/assets/maze-props/` (or reuse `map-spr
 
 | Prompt # | Suggested id | Reads as | Live hook today | Notes |
 |---:|---|---|---|---|
-| 1 | `chest-closed` | Closed treasure | `TileFeature` `"treasure"` | Glyph `$` until sprite path exists |
-| 2 | `chest-open` | Looted / empty | same tile after `consumed` | Not a separate feature yet — visual state only |
+| 1 | `chest-closed` | Closed treasure | `TileFeature` `"treasure"` | **Shipped** — AI-generated 2026-08-12, replacing an earlier deterministic-harvest version that read as flat vector art (see prompt notes below) |
+| 2 | `chest-open` | Looted / empty | same tile after `consumed` | **Shipped** — AI-generated 2026-08-12, matched pair with #1 |
 | 3 | `chest-trapped` | Trap tell | `treasure` + `TreasureDef.trap` | Keep primarily chest-shaped |
 | 4 | `altar` | Mysterious shrine | `EventDef` flavor / `"event"` | F2 library / general shrine |
 | 5 | `anvil-altar` | Forge rest | `EventDef` `kind: "heal"` (F3 anvil) | **Shipped** — PixelLab, placed as a `mapSprites` decor entry at F3 (7,7), not a `TileFeature` hook |
@@ -146,6 +146,43 @@ Inside: empty dark cavity OR a tiny sparse glint of remaining coin (2–4 pixels
 Keep identical wood/iron language as a closed chest set.
 Must not have: mountain of treasure, rainbow gem pile, huge sparkles.
 ```
+
+**Shipped 2026-08-12**, via `scripts/pixellab-generate.mjs` (pixflux, 64x64,
+transparent), replacing the deterministic harvest path — the pack's
+`classic_dungeons_animated_box_chest` cells (0,0 / 3,0) are low-detail, near-flat
+silhouettes at 32x32 in-corridor scale, with no wood-grain shading and no
+metal ramp on the iron bands, so next to AI-generated props like `anvil-altar`
+and `cistern-basin` they read as crude flat vector art rather than SNES-era
+pixel art — this was the "terrible vector treasure chest" the fix was
+reported against.
+
+Neither prompt landed on the first try. `chest-closed` rerolled once: the
+first pass, written closer to the generic master-style-lock language
+("emissive accent", moody dungeon framing) without pinning the object's
+silhouette hard enough, came back as a glowing purple monolith/portal — not a
+chest at all. The working version front-loads an explicit box-plus-lid
+silhouette description (rectangular body wider than tall, domed lid, seam
+line, iron bands, clasp) and adds "no purple, no violet, no blue glow, no
+magic aura, no gemstone" to the negative list, since the moody framing was
+what pulled it toward a magic-portal reading. `chest-open` took three passes:
+"empty cavity OR a tiny glint of remaining coin" from the original brief
+produced a visible red gem each time until the glint option was dropped
+entirely and the negative list named colored interior objects explicitly
+("zero coins, zero gems, zero colored objects, zero sparkle... no red, no
+purple, no blue, no green"); the second attempt still read as basically
+closed until the prompt described the lid and box as two separate pieces
+with a visible transparent gap between them, rather than one hinged shape.
+General lesson, consistent with `cistern-basin` (#15): for a small object
+with a specific, checkable silhouette, describe the geometry piece-by-piece
+and put likely wrong readings in the negative list by name — don't rely on
+the master style lock's general mood language to constrain shape.
+
+Both generations were manually grounded (+9px closed, +10px open,
+`art/pixellab-candidates/maze-props/chest-{closed,open}-grounded.png`) before
+shipping to `public/assets/map-sprites/`. The old deterministic
+`chestClosed()`/`chestOpen()` recipes and their `save()` calls were removed
+from `generate-maze-props.mjs` so a routine re-run of that script cannot
+silently revert this fix.
 
 ### 3. Trapped chest (subtle tell)
 

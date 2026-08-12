@@ -1239,3 +1239,29 @@ visual-pass notes below; this section tracks the current task only.
 - Removed the old deterministic `cisternBasin()` recipe from
   `scripts/generate-maze-props.mjs` so a routine re-run of that script cannot
   silently revert the new art.
+
+## 2026-08-12 — Treasure chest replacement
+
+- User called out the shipped `chest-closed`/`chest-open` map-sprites as
+  "terrible vector" art: both were harvested from the Classic Dungeons pack's
+  `classic_dungeons_animated_box_chest` cell and recolored, but that source
+  cell is a low-detail, near-flat silhouette at 32x32 in-corridor scale — no
+  wood-grain shading, no metal ramp on the iron bands — so it read as crude
+  flat vector art next to AI-generated props like `anvil-altar` and
+  `cistern-basin`.
+- Replaced both with AI-generated art via `scripts/pixellab-generate.mjs`
+  (pixflux, 64x64, transparent), same path as `cistern-basin`. Neither prompt
+  landed first try: `chest-closed` first came back as a glowing purple
+  monolith/portal until the silhouette was pinned down explicitly and
+  "no purple/glow/aura/gemstone" was added to the negative list;
+  `chest-open` took three passes to stop drawing a visible gem inside the
+  cavity and to actually show a gap between the lid and the box instead of
+  reading as closed. Both manually grounded (+9px closed, +10px open). See
+  `docs/MAZE-EVENT-SPRITE-PROMPT.md` #1-2 for the full prompts and notes.
+- Verified in-engine at the Floor 1 treasure tile (18,2): adjacent, two
+  tiles back, and from the opposite (east) approach, plus the looted/open
+  state forced via debug state mutation. Zero console errors,
+  `scripts/playtests/verify-chest.mjs`.
+- Removed the old deterministic `chestClosed()`/`chestOpen()` recipes (and
+  their `save()` calls) from `scripts/generate-maze-props.mjs`, same
+  pipeline-hygiene fix as the cistern basin.
