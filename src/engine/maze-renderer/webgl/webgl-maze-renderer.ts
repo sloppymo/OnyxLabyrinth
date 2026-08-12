@@ -24,10 +24,8 @@ import {
 import { loadDoorFeatures } from "../../door-feature-cache";
 import { MATH_CONFIG } from "../../render-math";
 import { LEGACY_VERTICAL_UNIT, resolveCellVolume } from "../geometry/cell-volume";
-import {
-  floorSurfaceZAtDisplayPosition,
-  resolveFloorSurface,
-} from "../geometry/floor-surface";
+import { resolveFloorSurface } from "../geometry/floor-surface";
+import { resolvePlayerZ } from "../../../game/traversal";
 import { mazeRenderProfiler } from "../performance";
 import type {
   MazeRenderer,
@@ -56,6 +54,20 @@ export function webglHeadBobWorld(
   return (
     (bobPixels * LEGACY_VERTICAL_UNIT) /
     (Math.max(1, viewportHeight) * MATH_CONFIG.projectionScale * MATH_CONFIG.heightFlatten)
+  );
+}
+
+/** Authoritative WebGL camera eye height for the current player position. */
+export function webglMazeEyeY(
+  state: GameState,
+  viewportHeight: number,
+  bobPixels: number
+): number {
+  const eyeZ = resolvePlayerZ(state.player, state.floor);
+  return (
+    eyeZ * LEGACY_VERTICAL_UNIT +
+    LEGACY_VERTICAL_UNIT / 2 +
+    webglHeadBobWorld(bobPixels, viewportHeight)
   );
 }
 
@@ -170,15 +182,12 @@ export class WebGLMazeRenderer implements MazeRenderer {
     mazeRenderProfiler.beginFrame("webgl");
     const cameraStartedAt = mazeRenderProfiler.beginSection();
     const display = getRenderCameraForState(state);
-    const surfaceZ = floorSurfaceZAtDisplayPosition(
-      state.floor,
-      display.x,
-      display.y
+    const surfaceZ = resolvePlayerZ(state.player, state.floor);
+    const eyeY = webglMazeEyeY(
+      state,
+      this.height,
+      getRenderCameraMoveBob()
     );
-    const eyeY =
-      surfaceZ * LEGACY_VERTICAL_UNIT +
-      LEGACY_VERTICAL_UNIT / 2 +
-      webglHeadBobWorld(getRenderCameraMoveBob(), this.height);
     const playerSurface = resolveFloorSurface(
       state.floor,
       state.player.x,
