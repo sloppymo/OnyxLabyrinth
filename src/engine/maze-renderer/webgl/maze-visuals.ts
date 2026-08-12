@@ -1,6 +1,9 @@
 import {
+  BoxGeometry,
+  BufferGeometry,
   Group,
   Mesh,
+  MeshBasicMaterial,
   PlaneGeometry,
   type Camera,
   type Material,
@@ -17,6 +20,7 @@ import {
 } from "../../map-sprite-cache";
 import {
   getWallFeatureDef,
+  getWallFeatureFrames,
   getWallFeatureImage,
   getWallFeatureTextImage,
   loadWallFeatures,
@@ -27,7 +31,10 @@ import {
   loadCeilingSprites,
 } from "../../ceiling-sprite-cache";
 import { LEGACY_VERTICAL_UNIT, resolveCellVolume } from "../geometry/cell-volume";
+import { resolveArchitecturalPropPose } from "../geometry/architectural-prop";
+import { getArchitecturalPropImage } from "../../architectural-prop-cache";
 import type { MazeMaterialLibrary } from "./maze-materials";
+import { wallFeatureFrameIndex } from "../../wall-feature-animation";
 
 interface BillboardMeta {
   baseX: number;
@@ -38,19 +45,36 @@ interface BillboardMeta {
   featureKind?: "npc" | "treasure-unlooted" | "treasure-looted" | "tile";
 }
 
+interface AnimatedWallFeature {
+  mesh: Mesh<PlaneGeometry, Material>;
+  materials: Material[];
+  fps: number;
+  phase: number;
+}
+
+interface AnimatedWallLight {
+  material: MeshBasicMaterial;
+  phase: number;
+}
+
 export class MazeVisualCollection {
   readonly wallFeatures = new Group();
+  readonly architecturalProps = new Group();
   readonly billboards = new Group();
-  private readonly geometries: PlaneGeometry[] = [];
+  private readonly geometries: BufferGeometry[] = [];
   private readonly billboardMeshes: Mesh<PlaneGeometry, Material>[] = [];
+  private readonly animatedWallFeatures: AnimatedWallFeature[] = [];
+  private readonly animatedWallLights: AnimatedWallLight[] = [];
 
   constructor(private readonly materials: MazeMaterialLibrary) {
     this.wallFeatures.name = "maze-wall-features";
+    this.architecturalProps.name = "maze-architectural-props";
     this.billboards.name = "maze-billboards";
   }
 
   loadFloor(floor: FloorDef): void {
     this.clear();
+    this.addArchitecturalProps(floor);
     this.addWallFeatures(floor);
     this.addDecor(floor);
     this.addFeatureProps(floor);
@@ -58,6 +82,25 @@ export class MazeVisualCollection {
   }
 
   update(floor: FloorDef, camera: Camera): void {
+    const now = performance.now() / 1000;
+    for (const animated of this.animatedWallFeatures) {
+      const frame = wallFeatureFrameIndex(
+        now,
+        animated.fps,
+        animated.materials.length,
+        animated.phase
+      );
+      animated.mesh.material = animated.materials[frame];
+    }
+    // Keep the visible flame and its illumination related, but deliberately
+    // less synchronized and much less dramatic. The glow is authored as an
+    // additive local pool, so a small deterministic modulation reads as fire
+    // without making the room pulse like a UI effect.
+    for (const light of this.animatedWallLights) {
+      const slow = Math.sin(now * 1.7 + light.phase * Math.PI * 2);
+      const quick = Math.sin(now * 3.1 + light.phase * 9.1);
+      light.material.opacity = 0.965 + slow * 0.025 + quick * 0.01;
+    }
     for (const mesh of this.billboardMeshes) {
       const meta = mesh.userData.mazeBillboard as BillboardMeta;
       mesh.quaternion.copy(camera.quaternion);
@@ -94,6 +137,30 @@ export class MazeVisualCollection {
     return geometry;
   }
 
+  private addArchitecturalProps(floor: FloorDef): void {
+    for (const prop of floor.architecturalProps ?? []) {
+      const image = getArchitecturalPropImage(prop.texture);
+      if (!image) continue;
+      const volume = resolveCellVolume(floor, prop.x, prop.y);
+      const pose = resolveArchitecturalPropPose(prop, volume.floorZ, volume.ceilingZ);
+      const geometry = prop.kind === "box"
+        ? new BoxGeometry(pose.width, pose.height, pose.depth)
+        : this.plane(pose.width, pose.height);
+      if (prop.kind === "box") this.geometries.push(geometry);
+      const material = this.materials.getImage(
+        `architectural:${prop.texture}:${prop.alphaMode ?? "cutout"}`,
+        image,
+        null,
+        prop.alphaMode ?? "cutout"
+      );
+      const mesh = new Mesh(geometry, material);
+      mesh.position.set(pose.x, pose.y, pose.z);
+      mesh.rotation.y = pose.rotationY;
+      mesh.name = `architectural-prop:${prop.id}`;
+      this.architecturalProps.add(mesh);
+    }
+  }
+
   private addWallFeatures(floor: FloorDef): void {
     for (const placement of floor.wallFeatures ?? []) {
       const def = getWallFeatureDef(placement.spriteId);
@@ -117,6 +184,24 @@ export class MazeVisualCollection {
         getWallFeatureTextImage(placement.spriteId)
       );
       const mesh = new Mesh(this.plane(width, height), material);
+      const frames = getWallFeatureFrames(placement.spriteId);
+      if (def.animation && frames.length > 1) {
+        const animatedMaterials = frames.map((frame, index) =>
+          this.materials.getImage(
+            `wall:${placement.spriteId}:frame:${index}`,
+            frame,
+            index === 0 ? getWallFeatureTextImage(placement.spriteId) : null
+          )
+        );
+        this.animatedWallFeatures.push({
+          mesh,
+          materials: animatedMaterials,
+          fps: def.animation.fps,
+          // Coordinate-derived phase keeps multiple fixtures from marching
+          // in lockstep while remaining reproducible in captures.
+          phase: (placement.x * 0.37 + placement.y * 0.61) % 1,
+        });
+      }
       const inset = 0.002;
       const x = placement.x;
       const z = placement.y;
@@ -132,6 +217,52 @@ export class MazeVisualCollection {
       }
       mesh.name = `wall-feature:${placement.spriteId}`;
       this.wallFeatures.add(mesh);
+      if (def.light) {
+        const lightSize = def.light.radius * 2;
+        const phase = (placement.x * 0.37 + placement.y * 0.61) % 1;
+        const glow = new Mesh(
+          this.plane(lightSize, lightSize),
+          this.materials.getGlow(
+            `wall:${placement.spriteId}:${placement.x}:${placement.y}:wall`,
+            def.light.color,
+            def.light.intensity
+          )
+        );
+        const glowY = def.anchor === "bottom" ? panelMin + height * 0.55 : centerY;
+        if (placement.dir === "n") glow.position.set(x + 0.5, glowY, z + inset * 2);
+        if (placement.dir === "s") glow.position.set(x + 0.5, glowY, z + 1 - inset * 2);
+        if (placement.dir === "e") {
+          glow.position.set(x + 1 - inset * 2, glowY, z + 0.5);
+          glow.rotation.y = Math.PI / 2;
+        }
+        if (placement.dir === "w") {
+          glow.position.set(x + inset * 2, glowY, z + 0.5);
+          glow.rotation.y = Math.PI / 2;
+        }
+        glow.name = `wall-light:${placement.spriteId}`;
+        this.wallFeatures.add(glow);
+
+        const floorGlow = new Mesh(
+          this.plane(lightSize, lightSize),
+          this.materials.getGlow(
+            `wall:${placement.spriteId}:${placement.x}:${placement.y}:floor`,
+            def.light.color,
+            def.light.intensity * 0.72
+          )
+        );
+        floorGlow.rotation.x = -Math.PI / 2;
+        floorGlow.position.set(x + 0.5, volume.floorZ * LEGACY_VERTICAL_UNIT + 0.006, z + 0.5);
+        floorGlow.name = `floor-light:${placement.spriteId}`;
+        this.wallFeatures.add(floorGlow);
+        const wallMaterial = glow.material;
+        const floorMaterial = floorGlow.material;
+        if (wallMaterial instanceof MeshBasicMaterial) {
+          this.animatedWallLights.push({ material: wallMaterial, phase });
+        }
+        if (floorMaterial instanceof MeshBasicMaterial) {
+          this.animatedWallLights.push({ material: floorMaterial, phase: phase + 0.21 });
+        }
+      }
     }
   }
 
@@ -326,10 +457,13 @@ export class MazeVisualCollection {
 
   clear(): void {
     this.wallFeatures.clear();
+    this.architecturalProps.clear();
     this.billboards.clear();
     for (const geometry of this.geometries) geometry.dispose();
     this.geometries.length = 0;
     this.billboardMeshes.length = 0;
+    this.animatedWallFeatures.length = 0;
+    this.animatedWallLights.length = 0;
   }
 
   dispose(): void {

@@ -90,6 +90,29 @@ export interface RampDef {
   surface: "ramp" | "stairs";
 }
 
+export type ArchitecturalPropKind = "plane" | "box";
+export type ArchitecturalPropFacing = "n" | "e" | "s" | "w";
+export type ArchitecturalPropAnchor = "floor" | "ceiling";
+export type ArchitecturalPropAlphaMode = "opaque" | "cutout";
+
+/** Static, non-colliding structure rendered in fixed world orientation. */
+export interface ArchitecturalPropDef {
+  id: string;
+  x: number;
+  y: number;
+  /** Small local placement offsets in world-cell units; no arbitrary transforms. */
+  offsetX?: number;
+  offsetZ?: number;
+  kind: ArchitecturalPropKind;
+  facing: ArchitecturalPropFacing;
+  width: number;
+  height: number;
+  depth?: number;
+  texture: string;
+  anchor?: ArchitecturalPropAnchor;
+  alphaMode?: ArchitecturalPropAlphaMode;
+}
+
 export interface FloorDef {
   id: number;
   name: string;
@@ -113,6 +136,8 @@ export interface FloorDef {
   heightZones?: HeightZoneDef[];
   /** Optional local connectors between different floorZ regions. */
   ramps?: RampDef[];
+  /** Fixed-orientation planes/boxes for visual architecture only. */
+  architecturalProps?: ArchitecturalPropDef[];
   /**
    * @deprecated Ignored by the encounter roller — the weighted
    * ENCOUNTER_TABLES in data/enemies.ts (keyed by floor id) are the source
@@ -738,6 +763,9 @@ export function cloneFloor(floor: FloorDef): FloorDef {
       ? floor.heightZones.map((z) => ({ ...z }))
       : undefined,
     ramps: floor.ramps ? floor.ramps.map((r) => ({ ...r })) : undefined,
+    architecturalProps: floor.architecturalProps
+      ? floor.architecturalProps.map((p) => ({ ...p }))
+      : undefined,
     encounterTable: floor.encounterTable ? [...floor.encounterTable] : undefined,
     encounterZones: floor.encounterZones
       ? floor.encounterZones.map((z) => ({ ...z }))

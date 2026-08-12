@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { FLOORS } from "../data/floors";
+import { cloneFloor, FLOORS } from "../data/floors";
 import { findFloor, getFloors } from "./floor-registry";
 import {
   floorDefToMap,
@@ -65,6 +65,67 @@ describe("floor-map", () => {
     const roundTrip = floorDefToMap(mapToFloorDef(parsed));
     expect(roundTrip.formatVersion).toBe(1);
     expect(roundTrip.ramps).toEqual(map.ramps);
+  });
+
+  it("round-trips fixed architectural props", () => {
+    const map = newFloorMapJSON(5, 5, {
+      architecturalProps: [{
+        id: "pillar",
+        x: 2,
+        y: 2,
+        kind: "box",
+        facing: "e",
+        width: 0.7,
+        height: 2.5,
+        depth: 0.45,
+        texture: "cyan.png",
+        anchor: "floor",
+        alphaMode: "opaque",
+      }],
+    });
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    expect(parsed.architecturalProps).toEqual(map.architecturalProps);
+    expect(floorDefToMap(mapToFloorDef(parsed)).architecturalProps).toEqual(
+      map.architecturalProps
+    );
+  });
+
+  it("rejects invalid architectural prop dimensions and kinds", () => {
+    const base = () => JSON.parse(JSON.stringify(floorDefToMap(findFloor(1)!)));
+    const raw = base();
+    raw.architecturalProps = [{
+      id: "bad",
+      x: 1,
+      y: 1,
+      kind: "mesh",
+      facing: "n",
+      width: 0,
+      height: 1,
+      texture: "bad.png",
+    }];
+    expect(() => parseFloorMapJSON(raw)).toThrow(/kind must be plane or box/);
+    raw.architecturalProps[0].kind = "box";
+    expect(() => parseFloorMapJSON(raw)).toThrow(/dimensions must be > 0/);
+  });
+
+  it("preserves architectural props through the mutable floor clone", () => {
+    const map = newFloorMapJSON(4, 4, {
+      architecturalProps: [{
+        id: "beam",
+        x: 1,
+        y: 1,
+        kind: "box",
+        facing: "n",
+        width: 1,
+        height: 0.25,
+        depth: 0.2,
+        texture: "magenta.png",
+        anchor: "ceiling",
+      }],
+    });
+    expect(cloneFloor(mapToFloorDef(map)).architecturalProps).toEqual(
+      map.architecturalProps
+    );
   });
 
   it("resolves cell themes with primary fallback and last-zone-wins overlap", () => {
