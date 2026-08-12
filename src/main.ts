@@ -165,6 +165,7 @@ import type { PendingPerkChoice } from "./game/perks";
 import type { GameState, GameMode } from "./types";
 import { parseFloorMapJSON, resolveTilesetTheme } from "./game/floor-map";
 import { createVerticalTraversalDemoMap } from "./content/vertical-traversal-demo";
+import { createVerticalSyntheticQA } from "./content/vertical-synthetic-qa";
 
 const PLAYTEST_STORAGE_KEY = "onyx-floor-playtest";
 
@@ -194,7 +195,16 @@ function tryBootVerticalDemo(): ReturnType<typeof registerFloorMap> | null {
   return registerFloorMap(createVerticalTraversalDemoMap());
 }
 
-const playtestFloor = tryBootPlaytestFloor() ?? tryBootVerticalDemo();
+/** Phase D synthetic QA floor for stacked-room certification. */
+function tryBootVerticalQA(): ReturnType<typeof registerFloorMap> | null {
+  if (!new URLSearchParams(window.location.search).has("mazeVerticalQA")) {
+    return null;
+  }
+  return registerFloorMap(createVerticalSyntheticQA());
+}
+
+const playtestFloor =
+  tryBootPlaytestFloor() ?? tryBootVerticalDemo() ?? tryBootVerticalQA();
 const state = createGameState(playtestFloor ?? getFloors()[0]!);
 let mazeRenderer: MazeRenderer | null = null;
 let mazeRendererSelection: MazeRendererSelection | null = null;
