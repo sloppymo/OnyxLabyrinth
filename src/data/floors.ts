@@ -24,7 +24,7 @@
 // "// EVENT:" comments are design annotations for a future scripted-event /
 // trap system — the engine does not run them yet.
 
-import type { Grid, TrapType } from "../types";
+import type { EdgeType, Grid, TrapType } from "../types";
 import {
   buildSolidGrid,
   carveRoom,
@@ -88,6 +88,32 @@ export interface RampDef {
   dir: "n" | "e" | "s" | "w";
   /** Navigation is continuous for both variants; only the GPU mesh differs. */
   surface: "ramp" | "stairs";
+}
+
+/** Stackable navigable surface attached to a cell at a particular Z. */
+export interface VerticalLandingDef {
+  id: string;
+  x: number;
+  y: number;
+  /** Authorised floor Z (must align to the floor's vertical quantum). */
+  z: number;
+  /** Optional edge overrides at this Z; omitted edges use the base grid. */
+  edgeOverrides?: Partial<Record<"n" | "e" | "s" | "w", EdgeType>>;
+}
+
+/** Vertical-only Z-connector. X and Y never change during use. */
+export interface LadderDef {
+  id: string;
+  x: number;
+  y: number;
+  /** Starting Z. */
+  fromZ: number;
+  /** Ending Z. */
+  toZ: number;
+  /** Direction the ladder is visually attached to (e.g. edge the player faces). */
+  facing: "n" | "e" | "s" | "w";
+  /** Default true. */
+  bidirectional?: boolean;
 }
 
 export interface FloorDef {
@@ -207,6 +233,11 @@ export interface FloorDef {
    *  includes its id triggers a forced fight instead of ordinary movement;
    *  victory persists the clear. See game/features.ts handleStairsGuardian. */
   stairsGuardian?: StairsGuardianDef;
+  /** Stackable vertical landings that allow the same (x,y) to host multiple
+   *  navigable Z levels with distinct edge connectivity. */
+  verticalLandings?: VerticalLandingDef[];
+  /** Z-only connectors (ladders). X and Y do not change during use. */
+  ladders?: LadderDef[];
 }
 
 export interface StairsGuardianDef {
@@ -781,5 +812,12 @@ export function cloneFloor(floor: FloorDef): FloorDef {
           introLines: [...floor.stairsGuardian.introLines],
         }
       : undefined,
+    verticalLandings: floor.verticalLandings
+      ? floor.verticalLandings.map((l) => ({
+          ...l,
+          edgeOverrides: l.edgeOverrides ? { ...l.edgeOverrides } : undefined,
+        }))
+      : undefined,
+    ladders: floor.ladders ? floor.ladders.map((l) => ({ ...l })) : undefined,
   };
 }

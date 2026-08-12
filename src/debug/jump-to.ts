@@ -8,6 +8,7 @@ export interface JumpToOptions {
   floorId: number;
   x: number;
   y: number;
+  z?: number;
   facing?: 0 | 1 | 2 | 3;
   partyLevel?: number;
   gold?: number;

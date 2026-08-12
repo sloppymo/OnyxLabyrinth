@@ -387,7 +387,8 @@ function openTown(opts?: { showIntroHint?: boolean }): void {
       const x = last ? last.x : floor.startX;
       const y = last ? last.y : floor.startY;
       const facing = last ? last.facing : 0;
-      transitionToFloor(state, floor, x, y, facing);
+      const startZ = last ? last.z : undefined;
+      transitionToFloor(state, floor, x, y, facing, { startZ });
       state.inDarkness = false;
       state.inAntimagic = false;
       markExplored();
@@ -420,6 +421,7 @@ function returnToTown(): void {
     floorId: state.floor.id,
     x: state.player.x,
     y: state.player.y,
+    z: state.player.z,
     facing: state.player.facing,
   };
   setMessage("You return to town.");
@@ -989,6 +991,7 @@ function openGameOver(): void {
           floorId: state.floor.id,
           x: state.floor.startX,
           y: state.floor.startY,
+          z: undefined,
           facing: 0,
         };
         openTown();
@@ -2979,6 +2982,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     applyJumpPartyOptions(state, opts);
     transitionToFloor(state, floor, opts.x, opts.y, (opts.facing ?? 0) as 0 | 1 | 2 | 3, {
       autosave: opts.autosave !== false,
+      startZ: opts.z,
     });
     if (opts.stepsSinceEncounter !== undefined) {
       state.stepsSinceEncounter = opts.stepsSinceEncounter;

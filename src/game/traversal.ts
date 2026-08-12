@@ -10,9 +10,10 @@
  * Design doc: Floor 1 redesign — raft/tavern/shortcut progression.
  */
 
-import type { GameState } from "../types";
+import type { GameState, PlayerState } from "../types";
 import type { BarredGateDef, FloorDef, RaftRouteDef, WaterDef } from "../data/floors";
 import { DX, DY, edgeInDirection, inBounds } from "./dungeon";
+import { resolveCellVolume } from "../engine/maze-renderer/geometry/cell-volume";
 import { surfacesConnectAcrossEdge } from "../engine/maze-renderer/geometry/floor-surface";
 
 /** Direction as an integer (0=N, 1=E, 2=S, 3=W). */
@@ -24,6 +25,17 @@ export type TraversalResult =
   | { kind: "blocked"; message?: string }
   | { kind: "raft"; routeId: string; reverse: boolean }
   | { kind: "barred-gate"; gateId: string; canOpen: boolean; message?: string };
+
+/** Canonical player Z: explicit `z` wins, otherwise resolve from floor heightZones. */
+export function resolvePlayerZ(
+  player: Pick<PlayerState, "x" | "y" | "z">,
+  floor: FloorDef
+): number {
+  if (player.z !== undefined && Number.isFinite(player.z)) {
+    return player.z;
+  }
+  return resolveCellVolume(floor, player.x, player.y).floorZ;
+}
 
 // --- Direction helpers --------------------------------------------------
 

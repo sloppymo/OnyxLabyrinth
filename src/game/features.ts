@@ -28,6 +28,7 @@ import { hasBuff } from "./persistent-spells";
 import { npcAt, applyKilledNPCs } from "./npc";
 import { displayNameFor } from "../data/items";
 import { effectiveStats } from "./effective-stats";
+import { resolvePlayerZ } from "./traversal";
 import { perksForCharacter, perkModifiers } from "./perks";
 import { ENCOUNTER_COOLDOWN } from "./encounters";
 import { getGameplayRng } from "./rng";
@@ -540,6 +541,8 @@ export interface TransitionToFloorOpts {
    * loadSave → jumpTo → Continue test can keep its loaded autosave.
    */
   autosave?: boolean;
+  /** Optional starting Z; when absent, resolves from floor heightZones. */
+  startZ?: number;
 }
 
 export function transitionToFloor(
@@ -564,6 +567,8 @@ export function transitionToFloor(
   state.player.x = x;
   state.player.y = y;
   state.player.facing = facing;
+  state.player.z =
+    opts.startZ ?? resolvePlayerZ({ x, y }, floorCopy);
   state.deepestFloorReached = Math.max(state.deepestFloorReached, floorCopy.id);
   // Clear cooldown without triggering pity-force (see game/encounters.ts).
   state.stepsSinceEncounter = ENCOUNTER_COOLDOWN;

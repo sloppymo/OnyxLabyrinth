@@ -24,12 +24,13 @@ import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { applyKilledNPCs } from "./npc";
 import { cumulativeXpToReachLevel } from "./leveling";
 import { PARTY_SIZE, sortPartyByFormation, type Character } from "./party";
+import { resolvePlayerZ } from "./traversal";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 17;
+const SAVE_VERSION = 18;
 
 /** v9 → v10 historical helper: first PARTY_SIZE characters by formation order —
  *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
@@ -328,6 +329,15 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     ser.purchasedSpellIds = [];
     version = 17;
   }
+  if (version === 17) {
+    // v17 → v18: Player elevation Z and lastDungeon Z. Missing values are
+    // resolved from floor heightZones on load, so no explicit data rewrite.
+    ser.player = { ...(ser.player as object), z: undefined };
+    if (ser.lastDungeon) {
+      ser.lastDungeon = { ...(ser.lastDungeon as object), z: undefined };
+    }
+    version = 18;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -543,8 +553,8 @@ export function deserialize(json: string): GameState | null {
       delete eventsTriggered[floor.id];
       // Clear explored for this floor.
       exploredByFloor[floor.id] = [];
-      // Reset player to floor start.
-      ser.player = { ...ser.player, x: floor.startX, y: floor.startY };
+      // Reset player to floor start; let `resolvePlayerZ` compute start Z below.
+      ser.player = { ...ser.player, x: floor.startX, y: floor.startY, z: undefined };
       // Update the revision.
       floorRevisions[floor.id] = currentRev;
     } else {
@@ -590,7 +600,7 @@ export function deserialize(json: string): GameState | null {
     return {
       mode: ser.mode,
       floor,
-      player: { ...ser.player },
+      player: { ...ser.player, z: resolvePlayerZ(ser.player, floor) },
       party: ser.party.map((c) => ({
         ...c,
         stats: { ...c.stats },

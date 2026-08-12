@@ -90,6 +90,9 @@ export type Facing = 0 | 1 | 2 | 3; // 0=N, 1=E, 2=S, 3=W
 export interface PlayerState {
   x: number;
   y: number;
+  /** Authorised Z surface. Optional in save files for backwards compatibility;
+   *  the canonical helper `resolvePlayerZ` derives it from floor heightZones. */
+  z?: number;
   facing: Facing;
 }
 
@@ -190,7 +193,7 @@ export interface GameState {
   inAntimagic: boolean;
   // Last dungeon position before returning to town, so re-entering the dungeon
   // resumes where the player left off instead of resetting to Floor 1.
-  lastDungeon: { floorId: number; x: number; y: number; facing: Facing } | null;
+  lastDungeon: { floorId: number; x: number; y: number; z?: number; facing: Facing } | null;
   // Per-character equipped gear. Keyed by character id. Initialized from the
   // default loadout at party creation and updated by shop purchases / treasure
   // finds / post-combat persistence.

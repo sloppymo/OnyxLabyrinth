@@ -224,7 +224,7 @@ describe("buildMapOverlayModel", () => {
     transitionToFloor(state, second, 0, 0, 2, { autosave: false });
     const model = buildMapOverlayModel(state);
     expect(model.floorId).toBe(42);
-    expect(model.player).toEqual({ x: 0, y: 0, facing: 2 });
+    expect(model.player).toEqual({ x: 0, y: 0, z: 0, facing: 2 });
     expect(model.cells).toEqual([{ x: 0, y: 0 }]);
     expect(state.exploredByFloor[41]).toEqual(["1,1", "2,1"]);
   });

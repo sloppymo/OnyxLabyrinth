@@ -12,6 +12,7 @@ import { cloneFloor } from "../data/floors";
 import { createDefaultParty } from "./party";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { ENCOUNTER_COOLDOWN } from "./encounters";
+import { resolvePlayerZ } from "./traversal";
 
 export type { GameMode, GameState } from "../types";
 
@@ -20,7 +21,12 @@ export function createGameState(floor: FloorDef): GameState {
   return {
     mode: "town", // start in town; player chooses to enter the dungeon
     floor: cloneFloor(floor),
-    player: { x: floor.startX, y: floor.startY, facing: 0 },
+    player: {
+      x: floor.startX,
+      y: floor.startY,
+      z: resolvePlayerZ({ x: floor.startX, y: floor.startY }, floor),
+      facing: 0,
+    },
     party,
     equipment: Object.fromEntries(party.map((c) => [c.id, defaultLoadoutForCharacter(c)])),
     explored: new Set<string>(),
