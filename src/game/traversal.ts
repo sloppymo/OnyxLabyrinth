@@ -328,6 +328,14 @@ export function resolveTraversal(
 
   const z = resolvePlayerZ(player, floor);
   const baseZ = resolveCellVolume(floor, player.x, player.y).floorZ;
+  // A landing authored at the same Z as the base surface (e.g. a base cell
+  // with custom edgeOverrides) is not "elevated" — base-surface geometry
+  // checks still apply. Only an explicit landing above/below the base
+  // surface skips them; ramps have no landing entry at all, so they're
+  // never considered elevated here (their z is a surface midpoint, not a
+  // landing Z, and always runs through the checks below).
+  const onElevatedLanding =
+    landingAt(floor, player.x, player.y, z) !== undefined && !sameZ(z, baseZ);
   const sourceEdges = resolveLandingEdges(floor, player.x, player.y, z);
   const edge = sourceEdges[dirToName(dir)];
 
@@ -392,8 +400,14 @@ export function resolveTraversal(
   // Grid edges remain authoritative, but a geometrically open edge is only
   // walkable when both authored floor surfaces meet at that boundary. This
   // admits ramp/stair endpoints and rejects raw vertical steps or ambiguous
-  // connector-side entry without consulting the Three scene.
-  if (!surfacesConnectAcrossEdge(floor, player.x, player.y, dirToName(dir))) {
+  // connector-side entry without consulting the Three scene. Ramp/stair
+  // geometry is a base-surface concept; a player standing on an elevated
+  // landing has already been validated by that landing's edgeOverrides
+  // above and doesn't share the base cell's surface geometry.
+  if (
+    !onElevatedLanding &&
+    !surfacesConnectAcrossEdge(floor, player.x, player.y, dirToName(dir))
+  ) {
     return {
       kind: "blocked",
       message: "The change in elevation is too steep to cross here.",
@@ -401,7 +415,9 @@ export function resolveTraversal(
   }
 
   // Raft-channel water on the target tile: impassable via normal movement.
-  if (isRaftChannel(floor, nx, ny)) {
+  // Raft channels are a base-surface feature; an elevated landing bridging
+  // over one is unaffected by the water below.
+  if (!onElevatedLanding && isRaftChannel(floor, nx, ny)) {
     // If the player has the raft, check if there's a route from the
     // current dock. If not (e.g. approaching from wrong side), still block.
     if (raftHit && state.keyItems.includes("raft")) {

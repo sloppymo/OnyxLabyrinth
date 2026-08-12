@@ -24,8 +24,11 @@ import {
 import { loadDoorFeatures } from "../../door-feature-cache";
 import { MATH_CONFIG } from "../../render-math";
 import { LEGACY_VERTICAL_UNIT, resolveCellVolume } from "../geometry/cell-volume";
-import { resolveFloorSurface } from "../geometry/floor-surface";
-import { resolvePlayerZ } from "../../../game/traversal";
+import {
+  floorSurfaceZAtDisplayPosition,
+  resolveFloorSurface,
+} from "../geometry/floor-surface";
+import { landingAt, resolvePlayerZ } from "../../../game/traversal";
 import { mazeRenderProfiler } from "../performance";
 import type {
   MazeRenderer,
@@ -57,13 +60,35 @@ export function webglHeadBobWorld(
   );
 }
 
+/**
+ * Eye Z for the render camera. On an authored landing, the settled Z snaps
+ * immediately (landings are discrete platforms, not surfaces to climb across
+ * mid-animation). Otherwise sample the physical surface at the smoothly
+ * interpolated display position, so ramps/stairs climb continuously as the
+ * camera tweens across the cell instead of popping when the step commits.
+ */
+function resolveRenderEyeZ(
+  state: GameState,
+  settledZ: number,
+  displayX: number,
+  displayY: number
+): number {
+  if (landingAt(state.floor, state.player.x, state.player.y, settledZ)) {
+    return settledZ;
+  }
+  return floorSurfaceZAtDisplayPosition(state.floor, displayX, displayY);
+}
+
 /** Authoritative WebGL camera eye height for the current player position. */
 export function webglMazeEyeY(
   state: GameState,
   viewportHeight: number,
-  bobPixels: number
+  bobPixels: number,
+  settledZ: number,
+  displayX: number,
+  displayY: number
 ): number {
-  const eyeZ = resolvePlayerZ(state.player, state.floor);
+  const eyeZ = resolveRenderEyeZ(state, settledZ, displayX, displayY);
   return (
     eyeZ * LEGACY_VERTICAL_UNIT +
     LEGACY_VERTICAL_UNIT / 2 +
@@ -186,7 +211,10 @@ export class WebGLMazeRenderer implements MazeRenderer {
     const eyeY = webglMazeEyeY(
       state,
       this.height,
-      getRenderCameraMoveBob()
+      getRenderCameraMoveBob(),
+      surfaceZ,
+      display.x,
+      display.y
     );
     const playerSurface = resolveFloorSurface(
       state.floor,

@@ -28,6 +28,25 @@ describe("resolveContextualPrompt", () => {
     expect(p?.glyph).toBe("U");
   });
 
+  it("does not offer Unlock for a base-storey lock while on an upper landing (bug_002 regression)", () => {
+    const floor = findFloor(1)!;
+    const state = createGameState(floor);
+    const cell = state.floor.grid[state.player.y][state.player.x];
+    cell.n = "locked";
+    state.player.facing = 0;
+    state.floor.verticalLandings = [
+      {
+        id: "over-lock",
+        x: state.player.x,
+        y: state.player.y,
+        z: 1,
+        edgeOverrides: { n: "wall", e: "wall", s: "wall", w: "wall" },
+      },
+    ];
+    state.player.z = 1;
+    expect(resolveContextualPrompt(state, "gamepad")).toBeNull();
+  });
+
   it("returns null while a trap prompt is pending", () => {
     const floor = findFloor(1)!;
     const state = createGameState(floor);

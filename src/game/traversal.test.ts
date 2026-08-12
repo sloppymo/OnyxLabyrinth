@@ -275,3 +275,105 @@ describe("ladder traversal", () => {
     expect(executeLadderAction(state, "ladder-down")).toBe(false);
   });
 });
+
+describe("upper-landing bridges skip base-surface checks (bug_012 regression)", () => {
+  it("crosses a bridge landing even when the base cells below have mismatched heights", () => {
+    const grid = buildOpenRoom(8, 8);
+    const floor: FloorDef = {
+      id: 102,
+      name: "bridge over stepped terrain",
+      width: 8,
+      height: 8,
+      grid,
+      startX: 1,
+      startY: 4,
+      encounterRate: 0,
+      heightZones: [
+        { id: "raised", x1: 2, y1: 4, x2: 2, y2: 4, floorZ: 0.5, ceilingZ: 3 },
+      ],
+      verticalLandings: [
+        {
+          id: "bridge-w",
+          x: 1,
+          y: 4,
+          z: 1,
+          edgeOverrides: { n: "wall", e: "open", s: "wall", w: "wall" },
+        },
+        {
+          id: "bridge-e",
+          x: 2,
+          y: 4,
+          z: 1,
+          edgeOverrides: { n: "wall", e: "wall", s: "wall", w: "open" },
+        },
+      ],
+    };
+    const state = createGameState(floor);
+    state.mode = "dungeon";
+    state.player = { x: 1, y: 4, z: 1, facing: 1 };
+    expect(resolveTraversal(state, 1)).toEqual({ kind: "step", x: 2, y: 4, z: 1 });
+  });
+
+  it("crosses a bridge landing over raft-channel water without blocking or launching the raft", () => {
+    const grid = buildOpenRoom(8, 8);
+    const floor: FloorDef = {
+      id: 103,
+      name: "bridge over raft channel",
+      width: 8,
+      height: 8,
+      grid,
+      startX: 1,
+      startY: 4,
+      encounterRate: 0,
+      waters: [{ x: 2, y: 4, depth: 4, raftChannel: true }],
+      verticalLandings: [
+        {
+          id: "bridge-w",
+          x: 1,
+          y: 4,
+          z: 1,
+          edgeOverrides: { n: "wall", e: "open", s: "wall", w: "wall" },
+        },
+        {
+          id: "bridge-e",
+          x: 2,
+          y: 4,
+          z: 1,
+          edgeOverrides: { n: "wall", e: "wall", s: "wall", w: "open" },
+        },
+      ],
+    };
+    const state = createGameState(floor);
+    state.mode = "dungeon";
+    state.player = { x: 1, y: 4, z: 1, facing: 1 };
+    state.keyItems = ["raft"];
+    expect(resolveTraversal(state, 1)).toEqual({ kind: "step", x: 2, y: 4, z: 1 });
+  });
+
+  it("still blocks a plain ramp (no landing) stepping into raft-channel water", () => {
+    // Distinguishes the fix from a `sameZ(z, baseZ)` gate: a player mid-ramp
+    // has z at the ramp's centre (0.5 here), which never equals baseZ (0),
+    // so that predicate would have disabled this check for every ramp.
+    const grid = buildOpenRoom(8, 8);
+    const floor: FloorDef = {
+      id: 104,
+      name: "ramp into raft channel",
+      width: 8,
+      height: 8,
+      grid,
+      startX: 1,
+      startY: 4,
+      encounterRate: 0,
+      heightZones: [
+        { id: "raised", x1: 3, y1: 4, x2: 3, y2: 4, floorZ: 1, ceilingZ: 3 },
+      ],
+      ramps: [{ x: 2, y: 4, dir: "e" as const, surface: "ramp" as const }],
+      waters: [{ x: 3, y: 4, depth: 4, raftChannel: true }],
+    };
+    const state = createGameState(floor);
+    state.mode = "dungeon";
+    state.player = { x: 2, y: 4, z: 0.5, facing: 1 };
+    const result = resolveTraversal(state, 1);
+    expect(result.kind).toBe("blocked");
+  });
+});

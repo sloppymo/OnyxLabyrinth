@@ -8,7 +8,8 @@ import type { GameState } from "../types";
 import type { Character } from "./party";
 import type { SpellDef } from "../data/spells";
 import { ALL_SPELLS } from "../data/spells";
-import { DX, DY, edgeInDirection, inBounds } from "./dungeon";
+import { DX, DY, inBounds } from "./dungeon";
+import { resolveLandingEdges, resolvePlayerZ } from "./traversal";
 
 const DIR_NAMES = ["n", "e", "s", "w"] as const;
 
@@ -26,7 +27,9 @@ export function facingLock(state: GameState): FacingLock | null {
   const { floor, player } = state;
   const dir = player.facing;
   if (!inBounds(floor.grid, player.x, player.y)) return null;
-  const edge = edgeInDirection(floor.grid[player.y][player.x], dir);
+  const z = resolvePlayerZ(player, floor);
+  const edges = resolveLandingEdges(floor, player.x, player.y, z);
+  const edge = edges[DIR_NAMES[dir]];
   if (edge !== "locked") return null;
 
   const dirName = DIR_NAMES[dir];

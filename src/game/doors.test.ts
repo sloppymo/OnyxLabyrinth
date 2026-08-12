@@ -85,6 +85,24 @@ describe("tryUnlock", () => {
   });
 });
 
+describe("facingLock ignores base-storey locks from an upper landing (bug_002 regression)", () => {
+  it("does not see a base 'locked' edge while standing on an upper landing above it", () => {
+    const state = makeLockedState({ withThief: false });
+    state.floor.verticalLandings = [
+      {
+        id: "over-lock",
+        x: 1,
+        y: 1,
+        z: 1,
+        edgeOverrides: { n: "wall", e: "wall", s: "wall", w: "wall" },
+      },
+    ];
+    state.player.z = 1;
+    expect(facingLock(state)).toBeNull();
+    expect(tryUnlock(state)).toBe("There is no locked door here.");
+  });
+});
+
 describe("Knock / Unseal via grimoire", () => {
   it("opens a facing locked door and spends SP", () => {
     const state = makeLockedState({ withMageOnly: true });

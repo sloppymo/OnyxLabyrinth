@@ -11,10 +11,18 @@
  */
 
 import type { GameState } from "../types";
-import { edgeInDirection, inBounds } from "../game/dungeon";
-import { resolveLadderAction, type LadderAction } from "../game/traversal";
+import { inBounds } from "../game/dungeon";
+import {
+  resolveLadderAction,
+  resolveLandingEdges,
+  resolvePlayerZ,
+  type LadderAction,
+} from "../game/traversal";
 
 export type InputKind = "keyboard" | "gamepad";
+
+/** Facing index (0-3) to edge-name, matching game/dungeon.ts DIRS order. */
+const FACING_NAMES = ["n", "e", "s", "w"] as const;
 
 export interface ContextualPrompt {
   /** Face button / key glyph shown to the player (A, U, …). */
@@ -35,8 +43,9 @@ export function resolveContextualPrompt(
   const { floor, player } = state;
   if (!inBounds(floor.grid, player.x, player.y)) return null;
 
-  const cell = floor.grid[player.y][player.x];
-  const edge = edgeInDirection(cell, player.facing);
+  const z = resolvePlayerZ(player, floor);
+  const edges = resolveLandingEdges(floor, player.x, player.y, z);
+  const edge = edges[FACING_NAMES[player.facing]];
 
   if (edge === "locked") {
     return {
