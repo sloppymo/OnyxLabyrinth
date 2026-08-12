@@ -13,9 +13,13 @@ export function createVerticalSyntheticQA(): FloorMapJSON {
     Array.from({ length: width }, cell)
   );
 
-  // Lower corridor (y=4, x=1..6) and its continuation (5,4)-(6,4).
+  // Lower corridor (y=4, x=1..6) and a southern courtyard for look-back.
   const lower = new Set<string>();
   for (let x = 1; x <= 6; x++) lower.add(`${x},4`);
+  for (let x = 2; x <= 4; x++) {
+    lower.add(`${x},3`);
+    lower.add(`${x},5`);
+  }
   // Upper bridge (y=4, x=1..4) at z=1.
   const upper = new Set<string>();
   for (let x = 1; x <= 4; x++) upper.add(`${x},4`);
@@ -56,6 +60,14 @@ export function createVerticalSyntheticQA(): FloorMapJSON {
     tilesetTheme: "f1",
     heightZones: [
       { id: "bridge-air", x1: 1, y1: 4, x2: 4, y2: 4, ceilingZ: 2.5 },
+      {
+        id: "courtyard-s",
+        x1: 2,
+        y1: 5,
+        x2: 4,
+        y2: 5,
+        ceilingZ: 1,
+      },
     ],
     verticalLandings: [
       {
@@ -70,21 +82,21 @@ export function createVerticalSyntheticQA(): FloorMapJSON {
         x: 2,
         y: 4,
         z: 1,
-        edgeOverrides: { n: "wall", e: "open", s: "wall", w: "open" },
+        edgeOverrides: { n: "wall", e: "open", s: "open", w: "open" },
       },
       {
         id: "bridge-mid-2",
         x: 3,
         y: 4,
         z: 1,
-        edgeOverrides: { n: "wall", e: "open", s: "wall", w: "open" },
+        edgeOverrides: { n: "wall", e: "open", s: "open", w: "open" },
       },
       {
         id: "bridge-e",
         x: 4,
         y: 4,
         z: 1,
-        edgeOverrides: { n: "wall", e: "wall", s: "wall", w: "open" },
+        edgeOverrides: { n: "wall", e: "wall", s: "open", w: "open" },
       },
     ],
     ladders: [
