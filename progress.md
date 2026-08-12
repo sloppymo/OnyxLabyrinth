@@ -1282,5 +1282,27 @@ visual-pass notes below; this section tracks the current task only.
 - Verified in-engine at Floor 1's `(4,4)` bones placement from both approach
   directions (`scripts/playtests/verify-bones.mjs`), zero console errors,
   full `npm run check` gate green.
-- `torch`, `crate`, and `barrel` are the same original crude placeholder
-  batch and are next in line for the same treatment.
+- `torch`, `crate`, and `barrel` were the same original crude placeholder
+  batch; their replacement is documented below.
+
+## 2026-08-12 — Basic decor trio replacement
+
+- Diagnosed the remaining 121/128/145-byte `torch.png`, `crate.png`, and
+  `barrel.png` files as the original floor-authoring-suite scaffold stubs:
+  flat single-tone silhouettes with almost no material shading. They are plain
+  `mapSprites` decor (`baseSize` 28/32/32), not tile-feature hooks, and their
+  single-commit history has no deterministic recipe to retire.
+- Replaced all three with AI-generated PixelLab sprites via
+  `scripts/pixellab-generate.mjs` (pixflux, 64x64, transparent), accepted on
+  the first try for each. The prompts explicitly pinned the sconce/cup/flame,
+  box/top/front/side/bands, and barrel/rim/body/three-hoop silhouettes, while
+  naming the likely cross-reads and face/helmet pareidolia as negatives.
+- Manually grounded the accepted art: torch +6px, crate +5px, barrel +4px.
+  Raw and grounded candidates are retained under
+  `art/pixellab-candidates/maze-props/`.
+- Verified in-engine at Floor 1 map-sprite placements torch (10,24), crate
+  (16,8), and barrel (24,18), from two adjacent approach directions each via
+  `scripts/playtests/verify-basic-decor.mjs`; screenshots were visually
+  inspected and console/page errors were zero. One initial barrel north view
+  faced a wall and was replaced with the south approach; the sprite itself
+  rendered correctly from both valid views.

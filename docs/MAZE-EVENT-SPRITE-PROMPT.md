@@ -42,8 +42,11 @@ Proposed filenames under a future `public/assets/maze-props/` (or reuse `map-spr
 | 17 | `forge-guardian-statue` | Boss-door landmark | `EventDef` `kind: "message"` (F3 (6,11), "the statue... will animate when the lock is tried") | **Shipped** — PixelLab, `mapSprites` decor entry, not a `TileFeature` hook. Not in the harvest pack (checked all 133 cells of `classic_dungeons_general_detail.png` — no statue/armor silhouette exists there) |
 | 18 | `choir-statue` | Robed chorister, F4 nave set-piece | `EventDef` `kind: "message"` (F4 (6,7), "stone choristers line the nave... one of the heads has turned") | **Shipped** — one sprite id, placed 3× at (6,7)/(9,7)/(11,7) to read as a row, not a single statue |
 | 19 | `cantor-lectern` | Open hymnal on a book stand | `EventDef` `kind: "reward"` (F4 (13,5), holy-symbol) | **Shipped** — 2 rerolls, see prompt notes below |
+| 22a | `torch` | Iron wall torch | decor via `mapSprites` | **Shipped** — AI-generated 2026-08-12, replacing the flat scaffold stub (see prompt notes below) |
+| 22b | `crate` | Wooden storage crate | decor via `mapSprites` | **Shipped** — AI-generated 2026-08-12, replacing the flat scaffold stub (see prompt notes below) |
+| 22c | `barrel` | Wooden storage barrel | decor via `mapSprites` | **Shipped** — AI-generated 2026-08-12, replacing the flat scaffold stub (see prompt notes below) |
 
-Existing `MAP_SPRITES` IDs `torch`, `crate`, `barrel` are still the original flat placeholder art from the floor-authoring-suite scaffold and are due for the same regeneration `bones` got on 2026-08-12 (see #7) — same crude, near-untextured style, same fix.
+Existing `MAP_SPRITES` IDs `torch`, `crate`, `barrel` were the original flat placeholder art from the floor-authoring-suite scaffold. All three now use AI-generated 64×64 PixelLab sprites in the same replacement pass as `bones` (#7), with no renderer or registry change required.
 
 **NPC billboards are now a live hook, not just a proposal.** `NPCDef.mapSpriteId?: string` (added 2026-08-08) resolves through `drawFeatureBillboards` exactly like any other feature prop — same `MAP_SPRITES` registry, same cache, same fallback-to-glyph contract. Unlike a `TileFeature`-keyed entry, this is per-NPC-instance, so each of the 8 NPCs across the campaign can carry its own distinct sprite. Vesper (F4) is the only one that has shipped art so far — see #21 below. The other 7 (Oren, Rill-of-Pages, Tallow-in-a-Boat, Sister Caldris, Vestra, Kazeharu, Ossian) are still bare `&` glyphs and are explicitly **not** in scope for this pass; the hook was built once and proven with one vertical slice on purpose, not as a green light to batch all eight in the same session.
 
@@ -428,6 +431,82 @@ SUBJECT: Small non-gating dungeon flavor prop suggesting someone lives/hides her
 Examples to generate separately: bedroll + tin cup; candle stump + journal; merchant crate.
 Keep each as one tidy prop group.
 ```
+
+### 22. Basic decor scaffold trio: torch, crate, and barrel
+
+```text
+SUBJECT: A single iron wall torch sconce, viewed straight-on with a slight
+3/4 elevated hint. Pin the silhouette piece by piece: a short vertical iron
+mounting bracket and small backplate at the top, a shallow bowl/cup attached
+to the bracket below it, and one compact pointed orange-gold flame rising from
+the cup. The metal sconce is the dominant silhouette; the flame is a small
+accent, not the whole object. Charcoal iron, blue-grey edge highlights,
+rust-brown wear, restrained amber/orange/yellow flame. Keep the full torch
+compact, vertically oriented, and centered.
+
+Must not have: standalone floating flame, candle, glass lantern, chandelier,
+brazier, wall or brick background, floor scene, smoke cloud, huge fire plume,
+magic aura, purple/blue magical glow, face, eyes, symmetric dark cavities,
+robot/helmet pareidolia, humanoid figure, weapon, multiple torches, text,
+glossy vector icon, or soft halo.
+```
+
+```text
+SUBJECT: A single squat wooden shipping crate on the dungeon floor, viewed
+from a 3/4 elevated angle. Pin the silhouette piece by piece: a compact square
+box with a flat top plane, visible front face and one narrower side face, four
+hard corners, and two dark iron or rope bands wrapping horizontally around the
+box. Show a clear diagonal wood-plank direction and 2–3 chunky plank seams on
+the front; give the side face a darker brown value. The crate is a closed solid
+box, low and slightly wider than tall, with a tiny grounded bottom edge. Deep
+umber outline, dark brown shadow, warm brown midtone, muted ochre highlights.
+
+Must not have: open crate, flying lid, visible contents, coins, bottles,
+books, barrel, chest, treasure chest hardware, standalone wooden panel, wall
+section, floor tile, background scene, stacked crates, multiple objects,
+humanoid, face, eyes, symmetric dark cavities, robot/helmet pareidolia, magic
+glow, purple neon, glossy vector icon, soft halo, or readable markings.
+```
+
+```text
+SUBJECT: A single squat upright wooden storage barrel on the dungeon floor,
+viewed from a 3/4 elevated angle. Pin the silhouette piece by piece: a rounded
+cylindrical body widest through the middle, a visible elliptical top rim, a
+front face tapering slightly toward top and bottom, and exactly three dark iron
+hoops wrapping horizontally around the barrel. Make the curved wood body and
+three hoops the dominant readable features; show 2–3 vertical wood-grain
+highlight clusters between the hoops, a darker side edge, and a tiny grounded
+bottom edge. Deep umber outline, dark brown shadow, warm reddish-brown wood,
+dull iron hoops, muted ochre highlights. One intact closed barrel, centered and
+compact.
+
+Must not have: open lid, spilling contents, bottle, cup, crate, chest,
+treasure chest hardware, stack of barrels, multiple objects, barrel pile,
+wheel, bucket, standing humanoid, face, eyes, symmetric dark cavities,
+robot/helmet pareidolia, wall or floor scene, label or readable markings,
+magic glow, purple neon, glossy vector icon, or soft halo.
+```
+
+**Shipped 2026-08-12, all three accepted first try**, via
+`scripts/pixellab-generate.mjs` (pixflux, 64×64, transparent). The original
+`torch.png`, `crate.png`, and `barrel.png` were 121/128/145-byte,
+single-commit floor-authoring-suite stubs: flat single-tone silhouettes with
+almost no material shading. The prompts pin each silhouette piece-by-piece and
+name the likely cross-reads explicitly — especially flame-versus-torch,
+crate-versus-chest, and barrel-versus-crate — while forbidding face/helmet
+pareidolia on the small rounded props. No deterministic recipe existed for
+these three, so there was no generator function or `save()` call to retire.
+
+The candidates were manually grounded before shipping: torch +6px,
+crate +5px, and barrel +4px. The grounded files are retained alongside the
+raw candidates at `art/pixellab-candidates/maze-props/torch-01-grounded.png`,
+`crate-01-grounded.png`, and `barrel-01-grounded.png`. Verified in the live
+Floor 1 corridor at real `mapSprites` placements — torch (10,24), crate
+(16,8), barrel (24,18) — from two adjacent approaches each, with zero
+console/page errors. The first barrel north-facing vantage exposed a wall
+instead of the prop; it was a bad approach coordinate, not an art failure, so
+the verification was corrected to the south-facing adjacent tile before the
+final capture.
 
 ---
 
