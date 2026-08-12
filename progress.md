@@ -107,6 +107,12 @@ visual-pass notes below; this section tracks the current task only.
 - The transitional explicit WebGL request currently reports a reason and falls back to Canvas. Build passed; backend/shell tests passed 10/10; Isobel's full hub walkthrough passed with browser errors empty under `?mazeRenderer=webgl`; the shop-interior screenshot was visually inspected and preserved Isobel/counter/backdrop/mobile composition. The standard web-game client also ran (only its environment-owned module-type warning).
 - Registry check: npm reports Three.js `0.185.1` as the current `latest` release. Next: install that pinned dependency and replace the transitional fallback with a lazy-loaded WebGL2 renderer that still falls back on initialization failure.
 
+## 2026-08-08 — Isobel's Iso-spells
+
+- Added a data-driven six-spell NPC shop, persisted purchased spell unlocks, and the mass-resurrection effect.
+- Added Isobel and the exact SVG sign `ISOBEL'S / ISO-SPELLS` in a new six-cell Floor 1 side nook at `(16..17,27..29)`, reached through the single door between `(15,28)` and `(16,28)`.
+- Focused tests/build/floor validation/export drift passed. Playwright browser binary was installed; title/prologue screenshot rendered with warnings empty. Full in-game shop navigation remains the next manual step if a debug teleport is added.
+
 ## 2026-08-08 — Floor 1 Camp hub
 
 - Follow-up grounding gate: fixed the generic floor-standing map-sprite contract. The cache now measures post-key alpha bounds once per image; renderer source-crops to those bounds, preserves their aspect ratio, and anchors the lowest visible pixel to the projected floor line. This applies to Camp decor and map-sprite-backed feature billboards without per-Camp offsets or art regeneration.
@@ -1204,3 +1210,32 @@ visual-pass notes below; this section tracks the current task only.
 - Final verdict is `PASS WITH TUNING`: contract tests and shared Canvas/Phaser
   presentation pass; organic signature frequency, Guarded Bomb attrition, and
   5th/10th/20th exposure fatigue remain human-playtest questions.
+
+## 2026-08-09 — Isobel / Floor 1 correction pass
+
+- Preserved the six-cell Isobel shop and shelf/sign presentation. Isovoid now
+  removes enemy wards while preserving harmful enemy statuses and party buffs;
+  Isobarrier stacking retains the strongest active reduction.
+- Reworked the canonical F1 floor generator's floor wear: short cracks and
+  small seam/corner moss patches replace broad green masses. Wall and ceiling
+  assets remain untouched; revised bundled/public floor twins are byte-equal.
+- Focused combat/shop tests: 102/102; production build and browser corridor/
+  shop screenshots passed with no game console errors. Full project gate remains
+  to be run before the focused changes are committed; this note is not staged
+  with the unrelated Camp work.
+
+## 2026-08-11 — Cistern basin replacement
+
+- Diagnosed a user-reported "ugly placeholder" screenshot of a water tile in
+  the corridor: the shipped `cistern-basin` map-sprite harvested a pot/urn
+  cell from the Classic Dungeons pack (no basin exists in the pack), and its
+  dark rectangular interior plus two symmetric drip-highlight accents read as
+  a robot/helmet face at in-corridor render scale.
+- Replaced it with an AI-generated asset via `scripts/pixellab-generate.mjs`
+  (pixflux, 64x64, transparent), following the same path used for
+  `anvil-altar`/`forge-guardian-statue`. Accepted first try; manually grounded
+  (+8px). See `docs/MAZE-EVENT-SPRITE-PROMPT.md` #15 for the full prompt and
+  the pareidolia-avoidance lesson.
+- Removed the old deterministic `cisternBasin()` recipe from
+  `scripts/generate-maze-props.mjs` so a routine re-run of that script cannot
+  silently revert the new art.

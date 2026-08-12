@@ -288,28 +288,14 @@ function chestOpen() {
   return b;
 }
 
-/**
- * Wet stone basin for water tiles — pale rim, dark standing water.
- *
- * The rim was first painted with the f5 wall swatch (#33454a) on the theory
- * that props should share the corridor's colour world. It vanished completely
- * against f5, which is the floor where water tiles are most common. A prop that
- * marks a tile has to out-contrast the wall behind it, so the rim is now paler
- * than any of the five wall themes and the water is darker than any of them.
- */
-function cisternBasin() {
-  const b = cell("classic_dungeons_general_detail", 5, 1);
-  recolor(b, {
-    [P8.BLACK]: "#0b0f10",
-    [P8.DARKGREY]: "#6d7f80", // wet stone rim, deliberately lighter than every wall
-    [P8.INDIGO]: "#16232a", // standing water, deliberately darker than every wall
-  });
-  // Two drip highlights on the rim. Sparse by design — the style guide asks for
-  // salt, not the meal.
-  b.setIfOpaque(5, 8, hex("#a8f0e0"));
-  b.setIfOpaque(10, 9, hex("#a8f0e0"));
-  return b;
-}
+// cisternBasin() was retired 2026-08-11: the harvested source cell (general_detail
+// 5,1) is a pot/urn silhouette, not a basin, and at 32x32 in-corridor its dark
+// "window" plus two drip-highlight accents read as a robot/helmet face rather
+// than wet stone. Production art for `cistern-basin` is now AI-generated,
+// following the same anvil-altar/forge-guardian-statue path (see
+// docs/MAZE-EVENT-SPRITE-PROMPT.md #15) — it is no longer part of this
+// deterministic byte-identical batch. Do not re-add a `save(..., "cistern-basin.png")`
+// call here without checking that doc first.
 
 /** Antimagic ward — upright stele, purple-grey stone, a struck-through sigil. */
 function antimagicWard() {
@@ -503,7 +489,6 @@ function tavernSign() {
 mkdirSync(OUT_DIR, { recursive: true });
 save(chestClosed(), "chest-closed.png");
 save(chestOpen(), "chest-open.png");
-save(cisternBasin(), "cistern-basin.png");
 save(antimagicWard(), "antimagic-ward.png");
 save(darknessIdol(), "darkness-idol.png");
 save(teleporterDisc(), "teleporter-disc.png");
