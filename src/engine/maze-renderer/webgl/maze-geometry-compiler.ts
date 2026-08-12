@@ -1,4 +1,4 @@
-import type { FloorDef } from "../../../data/floors";
+import type { FloorDef, VerticalLandingDef } from "../../../data/floors";
 import { themeAt } from "../../../game/floor-map";
 import type { Cell, EdgeType } from "../../../types";
 import {
@@ -9,6 +9,7 @@ import {
 import {
   LEGACY_VERTICAL_UNIT,
   resolveCellVolume,
+  type CellVolume,
 } from "../geometry/cell-volume";
 import {
   floorSurfaceEdgeHeights,
@@ -341,11 +342,44 @@ export function compileMazeGeometry(
     return batch;
   };
 
+  // Pre-compute per-cell volumes and the effective base ceiling. A cell that
+  // hosts one or more upper landings has its base ceiling lowered to the
+  // lowest upper landing Z so the underside of the upper slab is visible from
+  // below and the upper landing can be rendered above it.
+  const cellVolumes: CellVolume[][] = [];
+  const effectiveCeilingZ: number[][] = [];
+  const landingsByCell = new Map<string, VerticalLandingDef[]>();
+  for (const landing of floor.verticalLandings ?? []) {
+    const key = `${landing.x},${landing.y}`;
+    const list = landingsByCell.get(key) ?? [];
+    list.push(landing);
+    landingsByCell.set(key, list);
+  }
+  for (let y = 0; y < floor.height; y++) {
+    const volRow: CellVolume[] = [];
+    const ceilRow: number[] = [];
+    for (let x = 0; x < floor.width; x++) {
+      const volume = resolveCellVolume(floor, x, y);
+      const landings = landingsByCell.get(`${x},${y}`) ?? [];
+      let minUpper = volume.ceilingZ;
+      for (const l of landings) {
+        if (l.z > volume.floorZ && l.z < minUpper) {
+          minUpper = l.z;
+        }
+      }
+      volRow.push(volume);
+      ceilRow.push(minUpper);
+    }
+    cellVolumes.push(volRow);
+    effectiveCeilingZ.push(ceilRow);
+  }
+
   for (let y = 0; y < floor.height; y++) {
     for (let x = 0; x < floor.width; x++) {
       const cell = floor.grid[y]?.[x];
       if (!isInterior(cell)) continue;
-      const volume = resolveCellVolume(floor, x, y);
+      const volume = cellVolumes[y][x];
+      const baseVolume: CellVolume = { ...volume, ceilingZ: effectiveCeilingZ[y][x] };
       const surface = resolveFloorSurface(floor, x, y);
       const theme = themeAt(floor, x, y);
       const floorVariant = (x + y) % 2 === 0 ? "floorA" : "floorB";
@@ -378,7 +412,7 @@ export function compileMazeGeometry(
         ),
         x,
         y,
-        volume.ceilingZ,
+        baseVolume.ceilingZ,
         true
       );
 
@@ -393,11 +427,14 @@ export function compileMazeGeometry(
           (neighbor?.tile === "stairs_up" || neighbor?.tile === "stairs_down");
 
         if (edge === "open" && neighborInterior && !isStairDoor) {
-          const neighborVolume = resolveCellVolume(floor, nx, ny);
+          const neighborVolume = cellVolumes[ny]?.[nx];
+          const neighborBaseVolume: CellVolume = neighborVolume
+            ? { ...neighborVolume, ceilingZ: effectiveCeilingZ[ny][nx] }
+            : baseVolume;
           const neighborSurface = resolveFloorSurface(floor, nx, ny);
           const patches = compileOpenBoundaryPatches(
-            volume,
-            neighborVolume,
+            baseVolume,
+            neighborBaseVolume,
             boundaryFloorProfile(surface, dir),
             boundaryFloorProfile(
               neighborSurface,
@@ -418,8 +455,8 @@ export function compileMazeGeometry(
 
         if (edge === "door" || edge === "locked" || edge === "barred" || isStairDoor) {
           const floorEdge = boundaryFloorProfile(surface, dir);
-          const panelTop0 = Math.min(volume.ceilingZ, floorEdge.z0 + 1);
-          const panelTop1 = Math.min(volume.ceilingZ, floorEdge.z1 + 1);
+          const panelTop0 = Math.min(baseVolume.ceilingZ, floorEdge.z0 + 1);
+          const panelTop1 = Math.min(baseVolume.ceilingZ, floorEdge.z1 + 1);
           const panel: BoundaryPatch = {
             bottom0: floorEdge.z0,
             bottom1: floorEdge.z1,
@@ -439,7 +476,7 @@ export function compileMazeGeometry(
             dir,
             panel
           );
-          if (panelTop0 < volume.ceilingZ || panelTop1 < volume.ceilingZ) {
+          if (panelTop0 < baseVolume.ceilingZ || panelTop1 < baseVolume.ceilingZ) {
             addBoundaryPatch(
               batchFor(x, y, `${theme}:wall`, "wall"),
               x,
@@ -448,8 +485,8 @@ export function compileMazeGeometry(
               {
                 bottom0: panelTop0,
                 bottom1: panelTop1,
-                top0: volume.ceilingZ,
-                top1: volume.ceilingZ,
+                top0: baseVolume.ceilingZ,
+                top1: baseVolume.ceilingZ,
                 kind: "upperClosure",
               }
             );
@@ -462,7 +499,55 @@ export function compileMazeGeometry(
           x,
           y,
           dir,
-          fullBoundaryPatch(volume, boundaryFloorProfile(surface, dir))
+          fullBoundaryPatch(baseVolume, boundaryFloorProfile(surface, dir))
+        );
+      }
+    }
+  }
+
+  // Emit upper landing slabs, ceilings, and perimeter walls.
+  for (const landing of floor.verticalLandings ?? []) {
+    const cell = floor.grid[landing.y]?.[landing.x];
+    if (!isInterior(cell)) continue;
+    const volume = cellVolumes[landing.y][landing.x];
+    if (landing.z === volume.floorZ) continue;
+    const landingVolume: CellVolume = { floorZ: landing.z, ceilingZ: volume.ceilingZ };
+    const theme = themeAt(floor, landing.x, landing.y);
+    const floorVariant = (landing.x + landing.y) % 2 === 0 ? "floorA" : "floorB";
+    addHorizontal(
+      batchFor(landing.x, landing.y, `${theme}:${floorVariant}`, "floor"),
+      landing.x,
+      landing.y,
+      landing.z,
+      false
+    );
+    const ceilingFeature = floor.ceilingFeatures?.find(
+      (feature) => feature.x === landing.x && feature.y === landing.y
+    )?.spriteId;
+    addHorizontal(
+      batchFor(
+        landing.x,
+        landing.y,
+        ceilingFeature
+          ? `ceilingFeature:${ceilingFeature}@${theme}`
+          : `${theme}:ceiling`,
+        "ceiling"
+      ),
+      landing.x,
+      landing.y,
+      volume.ceilingZ,
+      true
+    );
+    if (!landing.edgeOverrides) continue;
+    for (const { dir } of DIRECTIONS) {
+      const edge = landing.edgeOverrides[dir];
+      if (edge === "wall") {
+        addBoundaryPatch(
+          batchFor(landing.x, landing.y, `${theme}:wall`, "wall"),
+          landing.x,
+          landing.y,
+          dir,
+          fullBoundaryPatch(landingVolume, { z0: landing.z, z1: landing.z })
         );
       }
     }
