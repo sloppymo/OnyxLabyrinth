@@ -14,10 +14,21 @@ import { effectiveStats } from "./effective-stats";
 import { getGameplayRng } from "./rng";
 import { onKazeharuTopicAsked, kazeharuReturnLine } from "./kazeharu";
 
+/**
+ * How a dialogue line should present, independent of its text — the view
+ * layer (npc-dialogue-view.ts) uses this instead of inferring presentation
+ * by parsing message strings. "speech" (the default) is a quoted NPC line;
+ * "transaction" is a clear item/gold result; "hostile" briefly tints/shakes
+ * the portrait frame and plays the combat-handoff beat.
+ */
+export type NPCMessageKind = "speech" | "narration" | "transaction" | "warning" | "hostile";
+
 export interface NPCActionResult {
   message: string;
   /** When set, main.ts starts a fight against the NPC's formation. */
   startFight?: boolean;
+  /** Presentation hint for the view layer. Defaults to "speech" when absent. */
+  kind?: NPCMessageKind;
 }
 
 const DEFAULT_DISPOSITION = 50;
@@ -110,6 +121,7 @@ export function doTrade(state: GameState, npc: NPCDef, trade: NPCTradeDef): NPCA
   adjustDisposition(state, npc, 5);
   return {
     message: `${npc.name} takes the ${give.name} and hands over ${articleFor(receive.name)} ${receive.name}.`,
+    kind: "transaction",
   };
 }
 
@@ -142,7 +154,7 @@ export function giveItem(state: GameState, npc: NPCDef, invIndex: number): NPCAc
       message += ` "Take this — it has served me well." (${reward.name})`;
     }
   }
-  return { message };
+  return { message, kind: "transaction" };
 }
 
 /** Whether the party has a living Thief available to attempt theft. */
@@ -171,12 +183,13 @@ export function stealFrom(
   if (rng() < chance) {
     const gold = 10 + Math.floor(rng() * 31); // 10-40
     state.partyGold += gold;
-    return { message: `${thief.name} lifts ${gold} gold unnoticed.` };
+    return { message: `${thief.name} lifts ${gold} gold unnoticed.`, kind: "transaction" };
   }
   adjustDisposition(state, npc, -40);
   return {
     message: `${npc.name} catches ${thief.name}'s hand in the pouch — steel is drawn!`,
     startFight: true,
+    kind: "hostile",
   };
 }
 

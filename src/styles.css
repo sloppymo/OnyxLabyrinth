@@ -878,6 +878,14 @@ canvas#map-canvas {
   color: #c8b896;
   line-height: 1.4;
 }
+/* --- Dungeon NPC panel: cinematic portrait dialogue ---------------------
+   #combat-panel normally fills the whole 8/7 stage as an opaque backdrop
+   (see .ff6-menu-host) for the overlays it shares with title/town/camp/etc.
+   NPC dialogue is different on purpose: shell.ts's
+   showNpcDialogueOverlay()/hideNpcDialogueOverlay() keep #viewport-wrap
+   (the live corridor) visible and instead position #combat-panel as a
+   bottom-anchored bar over it, via this modifier class — never touching
+   the base #combat-panel/.ff6-menu-host rules other modes still rely on. */
 
 .npc-caret {
   display: inline-block;
@@ -888,6 +896,339 @@ canvas#map-canvas {
 @keyframes npc-caret-blink {
   50% {
     opacity: 0;
+  }
+}
+
+#combat-panel.npc-dialogue-host {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  height: clamp(230px, 32%, 340px);
+  padding: 10px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(6, 8, 20, 0) 0%, rgba(6, 8, 20, 0.55) 30%, rgba(4, 6, 16, 0.92) 100%);
+  font-size: initial;
+  line-height: initial;
+  white-space: normal;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.npc-dlg {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+  max-width: min(1120px, calc(100vw - 48px));
+  min-height: 0;
+  background: linear-gradient(180deg, #1a2458 0%, #101c58 60%, #0c1642 100%);
+  border: 3px solid #e8e8f0;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 0 1px #5068c8,
+    inset 0 0 0 2px #1a2458,
+    0 8px 22px rgba(0, 0, 0, 0.55);
+  padding: 14px 18px;
+  box-sizing: border-box;
+  animation: npc-dlg-rise 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .npc-dlg {
+    animation: none;
+  }
+}
+
+@keyframes npc-dlg-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.npc-dlg-side-right {
+  flex-direction: row-reverse;
+}
+
+.npc-dlg-portrait {
+  flex: 0 0 clamp(140px, 24%, 220px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px solid #5068c8;
+  border-radius: 4px;
+  background: #0a0e28;
+  align-self: stretch;
+}
+
+.npc-dlg-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  display: block;
+}
+
+.npc-dlg-portrait-silhouette {
+  align-items: center;
+  background: linear-gradient(160deg, #12183c 0%, #060814 100%);
+}
+
+.npc-dlg-portrait-initial {
+  font-size: clamp(40px, 6vw, 64px);
+  color: #3a4680;
+}
+
+.npc-dlg-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 6px;
+}
+
+.npc-dlg-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.npc-dlg-name {
+  font-size: clamp(24px, 2.4vw, 32px);
+  color: #ffd769;
+  letter-spacing: 0.02em;
+}
+
+.npc-dlg-meta {
+  font-size: clamp(14px, 1.2vw, 18px);
+  color: #a8b4e8;
+  letter-spacing: 0.03em;
+}
+
+.npc-dlg-text-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 2.7em;
+}
+
+.npc-dlg-text {
+  font-size: clamp(20px, 2.1vw, 28px);
+  line-height: 1.35;
+  color: var(--warm-white);
+  max-width: 58ch;
+  white-space: pre-wrap;
+}
+
+.npc-dlg-text-speech {
+  color: var(--warm-white);
+}
+
+.npc-dlg-text-narration {
+  color: #c8d0f0;
+  font-style: italic;
+}
+
+.npc-dlg-text-transaction {
+  color: #a8e0a8;
+}
+
+.npc-dlg-text-warning {
+  color: #ffd07a;
+}
+
+.npc-dlg-text-hostile {
+  color: #ff9a9a;
+}
+
+/* Reveal "wipe" — a right-anchored mask that shrinks to 0 over the scheduled
+   duration, rather than mutating textContent per character. This keeps the
+   full line in the DOM (and therefore in every existing textContent-based
+   test/assertion) at all times; only the *visual* reveal is animated. */
+.npc-dlg-reveal-mask {
+  position: absolute;
+  inset: 0;
+  left: auto;
+  width: 100%;
+  background: linear-gradient(180deg, #1a2458 0%, #101c58 60%, #0c1642 100%);
+  transition: width linear;
+  pointer-events: none;
+}
+
+.npc-dlg-continue {
+  align-self: flex-end;
+  color: #ffd769;
+  font-size: 18px;
+  animation: npc-caret-blink 1s steps(1) infinite;
+}
+
+.npc-dlg-continue[hidden] {
+  display: none;
+}
+
+.npc-dlg-secondary {
+  margin-top: 4px;
+}
+
+.npc-dlg-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.npc-dlg-action {
+  font-size: clamp(16px, 1.5vw, 20px);
+  color: #b8c4f0;
+  padding: 2px 4px;
+}
+
+.npc-dlg-action.selected {
+  color: #17100a;
+  background: #ffd769;
+  border-radius: 2px;
+}
+
+.npc-dlg-action.disabled {
+  color: #5a6494;
+}
+
+.npc-dlg-topic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 4.5em;
+  overflow-y: auto;
+}
+
+.npc-dlg-topic {
+  font-size: clamp(16px, 1.5vw, 20px);
+  color: #b8c4f0;
+  padding: 1px 4px;
+}
+
+.npc-dlg-topic.selected {
+  color: #17100a;
+  background: #ffd769;
+  border-radius: 2px;
+}
+
+.npc-dlg-ask-strip {
+  font-size: clamp(16px, 1.5vw, 20px);
+  color: var(--warm-white);
+}
+
+.npc-dlg-ask-typed {
+  color: #ffd769;
+}
+
+.npc-dlg-empty-line {
+  color: var(--text-dim, #99a);
+  font-size: clamp(14px, 1.2vw, 18px);
+}
+
+.npc-dlg-footer {
+  margin-top: 4px;
+  color: #b8c4f0;
+  font-size: clamp(12px, 1vw, 15px);
+  letter-spacing: 0.03em;
+}
+
+.npc-dlg-mount .ff6-window.standalone {
+  min-height: 0;
+  max-height: min(24vh, 220px);
+  border-width: 2px;
+}
+
+/* Accent border tints — dialogueAccent, restrained (border only). */
+.npc-dlg-accent-warm {
+  border-color: #e8c890;
+}
+
+.npc-dlg-accent-cold {
+  border-color: #90c8e8;
+}
+
+.npc-dlg-accent-hostile {
+  border-color: #e89090;
+}
+
+/* Hostile beat: one brief shake, not a persistent effect. */
+.npc-dlg-hostile-flash {
+  animation: npc-dlg-rise 160ms ease-out, npc-dlg-shake 220ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .npc-dlg-hostile-flash {
+    animation: none;
+  }
+}
+
+@keyframes npc-dlg-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+@media (max-width: 900px) {
+  .npc-dlg-portrait {
+    flex: 0 0 clamp(100px, 26%, 160px);
+  }
+
+  .npc-dlg-name {
+    font-size: 22px;
+  }
+
+  .npc-dlg-text {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  #combat-panel.npc-dialogue-host {
+    height: clamp(190px, 42%, 300px);
+    padding: 6px;
+  }
+
+  .npc-dlg {
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .npc-dlg-side-right {
+    flex-direction: column;
+  }
+
+  .npc-dlg-portrait {
+    flex: 0 0 64px;
+    align-self: flex-start;
+  }
+
+  .npc-dlg-action-bar {
+    gap: 4px 10px;
   }
 }
 
