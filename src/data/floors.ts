@@ -113,6 +113,20 @@ export interface ArchitecturalPropDef {
   alphaMode?: ArchitecturalPropAlphaMode;
 }
 
+/** A large animated plane fixed in world space (never camera-facing). */
+export interface EnvironmentalSpriteDef {
+  id: string;
+  spriteId: string;
+  /** World-cell centre. Fractions are intentional for abyss-scale staging. */
+  centerX: number;
+  centerY: number;
+  /** Centre height in legacy floor-height units (0→1 is one corridor). */
+  centerZ: number;
+  facing: ArchitecturalPropFacing;
+  width: number;
+  height: number;
+}
+
 export interface FloorDef {
   id: number;
   name: string;
@@ -138,6 +152,8 @@ export interface FloorDef {
   ramps?: RampDef[];
   /** Fixed-orientation planes/boxes for visual architecture only. */
   architecturalProps?: ArchitecturalPropDef[];
+  /** Large fixed-orientation animated planes for environmental set pieces. */
+  environmentalSprites?: EnvironmentalSpriteDef[];
   /**
    * @deprecated Ignored by the encounter roller — the weighted
    * ENCOUNTER_TABLES in data/enemies.ts (keyed by floor id) are the source
@@ -201,7 +217,9 @@ export interface FloorDef {
   // item IDs they contain. Once looted, the tile feature is cleared.
   // `trap` marks the chest as trapped (Inspect/Disarm/Open/Leave prompt on
   // step; see game/features.ts). Untrapped chests loot immediately.
-  treasures?: { x: number; y: number; itemIds: string[]; trap?: TrapType }[];
+  // `climax` locks the treasure in escrow: opening the chest begins combat,
+  // and the items are only awarded after the linked combat is won.
+  treasures?: { x: number; y: number; itemIds: string[]; trap?: TrapType; climax?: { id: string } }[];
   // Water tiles (feature "water"). Depth 1-4 sets the swim difficulty; an
   // optional effect fires on everyone who enters (blessed/cursed pools).
   // Tiles are never consumed. Levitation or the Ring of Water Walking
@@ -428,7 +446,7 @@ export interface RaftRouteDef {
 
 function floor2(): FloorDef {
   const width = 14;
-  const height = 14;
+  const height = 26;
   const grid = buildSolidGrid(width, height);
 
   // SW entrance atrium (stairs up; arrivals from floors 1 and 3 land here).
@@ -463,6 +481,48 @@ function floor2(): FloorDef {
   // Atrium-to-hall link (closes the central loop).
   carveHorizontal(grid, 4, 7, 10);
 
+  // Floor 1 entrance extension. The old 14×14 library remains exactly where
+  // it was; rows 13–24 are an authored void volume containing only a narrow
+  // bridge and its masonry landings. The final row is a safety buffer.
+  carveRoom(grid, 0, 13, width - 1, 24);
+  for (let y = 13; y <= 24; y++) {
+    for (let x = 0; x < width; x++) grid[y][x].void = true;
+  }
+
+  // North throat, seven exposed bridge tiles, and the south throat.
+  carveVertical(grid, 2, 12, 24);
+  for (let y = 13; y <= 21; y++) delete grid[y][2].void;
+  for (let y = 14; y <= 20; y++) grid[y][2].noCeiling = true;
+  carveRoom(grid, 1, 22, 3, 24);
+  for (let y = 22; y <= 24; y++) {
+    for (let x = 1; x <= 3; x++) delete grid[y][x].void;
+  }
+
+  const seal = (
+    x: number,
+    y: number,
+    dir: "n" | "e" | "s" | "w",
+    nx: number,
+    ny: number,
+    opposite: "n" | "e" | "s" | "w"
+  ) => {
+    setEdge(grid, x, y, dir, "wall");
+    setEdge(grid, nx, ny, opposite, "wall");
+  };
+  // The exposed bridge deliberately keeps east/west open. Only the short
+  // landings regain side walls.
+  for (const y of [13, 21]) {
+    seal(2, y, "w", 1, y, "e");
+    seal(2, y, "e", 3, y, "w");
+  }
+  for (let y = 22; y <= 24; y++) {
+    seal(1, y, "w", 0, y, "e");
+    seal(3, y, "e", 4, y, "w");
+  }
+  seal(1, 22, "n", 1, 21, "s");
+  seal(3, 22, "n", 3, 21, "s");
+  for (let x = 1; x <= 3; x++) seal(x, 24, "s", x, 25, "n");
+
   // Reading hall north entrance door.
   setEdge(grid, 6, 4, "s", "door");
   setEdge(grid, 6, 5, "n", "door");
@@ -475,7 +535,7 @@ function floor2(): FloorDef {
 
   // Tile features.
   // Stairs up in the atrium (the arrival tile itself, Wizardry-style).
-  setTile(grid, 2, 11, "stairs_up");
+  setTile(grid, 2, 23, "stairs_up");
   // Stairs down in the SE stair room.
   setTile(grid, 11, 12, "stairs_down");
   // Snuffed-candle stretch of the north corridor.
@@ -489,9 +549,12 @@ function floor2(): FloorDef {
   setTile(grid, 12, 8, "treasure");
   // Vestra, an unbound scribe, hides deep in the west stacks.
   setTile(grid, 1, 1, "npc");
+  // Faint ward just inside the forbidden wing, foreshadowing the forge's
+  // antimagic without stealing floor 3's reveal.
+  setTile(grid, 11, 6, "antimagic");
 
   // Scripted events.
-  setTile(grid, 8, 2, "event");
+  setTile(grid, 9, 2, "event");
   setTile(grid, 7, 10, "event");
   setTile(grid, 3, 2, "event");
   setTile(grid, 11, 4, "event");
@@ -499,6 +562,9 @@ function floor2(): FloorDef {
   setTile(grid, 7, 8, "event");
   setTile(grid, 3, 11, "event");
   setTile(grid, 11, 10, "event");
+  // A shelf between the two reading-hall islands, otherwise the floor's
+  // emptiest room.
+  setTile(grid, 7, 6, "event");
 
   return {
     id: 2,
@@ -507,17 +573,43 @@ function floor2(): FloorDef {
     height,
     grid,
     startX: 2,
-    startY: 11,
+    startY: 23,
     encounterRate: 0.10,
     tilesetTheme: "f2",
+    // f2b: cold-recolored variant of the shipping f2 tileset (same wood/book
+    // material, shifted palette) — see scripts/generate-f2b-tileset.mjs.
+    // Marks the forbidden wing as visually distinct, not just narratively
+    // locked, before the player ever reaches the alarm/climax chest.
+    tilesetZones: [
+      { id: "forbidden-wing", x1: 11, y1: 6, x2: 12, y2: 9, theme: "f2b" },
+      { id: "abyss-bridge-masonry", x1: 1, y1: 13, x2: 3, y2: 24, theme: "f1" },
+    ],
+    environmentalSprites: [
+      {
+        id: "abyss-face",
+        spriteId: "abyss-face",
+        centerX: 4.7,
+        centerY: 16.5,
+        centerZ: 1.65,
+        facing: "w",
+        width: 4.8,
+        height: 4.6,
+      },
+    ],
+    floorRevision: 1,
     lockedDoors: [
       { x: 10, y: 7, dir: "e", keyId: "lexicon-key" },
     ],
     treasures: [
-      // A silenced library hates noise — the alarm summons the stacks' keepers.
-      // The blade among the loot is cursed: it clamps onto whoever takes it.
-      { x: 12, y: 3, itemIds: ["mace+1", "chain-mail", "cursed-blade", "antidote"], trap: "alarm" },
-      { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "ring-of-water-walking", "furnace-key"], trap: "stunner" },
+      // A silenced library hates noise — this stunner ward punishes whoever
+      // disturbs the cursed blade.
+      { x: 12, y: 3, itemIds: ["mace+1", "chain-mail", "cursed-blade", "antidote"], trap: "stunner" },
+      // The forbidden wing's real payoff (furnace-key for floor 3). Its
+      // alarm draws the stacks' keepers themselves (see the
+      // forbidden-wing-hot zone's tableFloorId, ENCOUNTER_TABLES[6]) — the
+      // floor's actual climax, not a scarier-named hallway fight. The key is
+      // only awarded after the guardian combat is won.
+      { x: 12, y: 8, itemIds: ["staff+1", "robe+1", "ring-of-water-walking", "furnace-key"], trap: "alarm", climax: { id: "floor2-guardian" } },
     ],
     npcs: [
       {
@@ -540,7 +632,7 @@ function floor2(): FloorDef {
       },
     ],
     events: [
-      { x: 8, y: 2, kind: "damage", message: "A bookcase groans and topples into the dark corridor.", power: 6 },
+      { x: 9, y: 2, kind: "damage", message: "A bookcase groans and topples into the dark corridor.", power: 6 },
       { x: 7, y: 10, kind: "message", message: "A glyph flares on the threshold. For a moment your throat is too dry to speak — but it passes." },
       { x: 3, y: 2, kind: "message", message: "The shelves whisper. One voice is clear: 'Forbidden wing… key of lexicon… furnace below.'" },
       { x: 11, y: 4, kind: "message", message: "The librarian's journal names the forge below and the key that opens it. You leave the body where it fell." },
@@ -548,6 +640,14 @@ function floor2(): FloorDef {
       { x: 7, y: 8, kind: "reward", message: "A cracked lens catches the candlelight — tucked into a false-bottomed drawer between the stacks.", itemId: "eye-drops" },
       { x: 3, y: 11, kind: "heal", message: "A brazier long left burning warms this corner of the atrium.", power: 5 },
       { x: 11, y: 10, kind: "message", message: "A brass plate, half-melted: MIND THE STEP — TO THE FORGE BELOW." },
+      {
+        x: 7,
+        y: 6,
+        kind: "reward",
+        message:
+          "A shelfcatalogue falls open. Under 'Forbidden Wing — Guardians' it reads: 'Two Gaze Wraiths and three Blood Wraiths hold the furnace key. They strike from the back row and silence the unwary. Take this antidote — the cursed volumes have already touched it.'",
+        itemId: "antidote",
+      },
     ],
     mapSprites: [
       { x: 2, y: 2, spriteId: "torch" },
@@ -556,8 +656,9 @@ function floor2(): FloorDef {
       { x: 7, y: 9, spriteId: "crate" },
     ],
     encounterZones: [
+      { id: "abyss-bridge-safe", x1: 2, y1: 13, x2: 2, y2: 24, rateMul: 0, safeZone: true },
       { id: "library-loop-safe", x1: 1, y1: 4, x2: 4, y2: 12, rateMul: 0.6 },
-      { id: "forbidden-wing-hot", x1: 11, y1: 6, x2: 12, y2: 9, rateMul: 1.6 },
+      { id: "forbidden-wing-hot", x1: 11, y1: 6, x2: 12, y2: 9, rateMul: 1.6, tableFloorId: 6 },
       { id: "scriptorium-hot", x1: 10, y1: 1, x2: 12, y2: 4, rateMul: 1.4 },
     ],
   };
@@ -749,6 +850,8 @@ export function cloneFloor(floor: FloorDef): FloorDef {
         e: cell.e,
         s: cell.s,
         w: cell.w,
+        void: cell.void,
+        noCeiling: cell.noCeiling,
         tile: cell.tile,
       }))
     ),
@@ -766,6 +869,9 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     architecturalProps: floor.architecturalProps
       ? floor.architecturalProps.map((p) => ({ ...p }))
       : undefined,
+    environmentalSprites: floor.environmentalSprites
+      ? floor.environmentalSprites.map((p) => ({ ...p }))
+      : undefined,
     encounterTable: floor.encounterTable ? [...floor.encounterTable] : undefined,
     encounterZones: floor.encounterZones
       ? floor.encounterZones.map((z) => ({ ...z }))
@@ -779,7 +885,13 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     chuteDrops: floor.chuteDrops ? floor.chuteDrops.map((c) => ({ ...c })) : undefined,
     lockedDoors: floor.lockedDoors ? floor.lockedDoors.map((d) => ({ ...d })) : undefined,
     treasures: floor.treasures
-      ? floor.treasures.map((t) => ({ x: t.x, y: t.y, itemIds: [...t.itemIds], trap: t.trap }))
+      ? floor.treasures.map((t) => ({
+          x: t.x,
+          y: t.y,
+          itemIds: [...t.itemIds],
+          trap: t.trap,
+          climax: t.climax ? { ...t.climax } : undefined,
+        }))
       : undefined,
     waters: floor.waters
       ? floor.waters.map((w) => ({ ...w, effect: w.effect ? { ...w.effect } : undefined }))

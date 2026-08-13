@@ -187,6 +187,8 @@ export interface CombatState {
   log: string[];
   ended: boolean;
   result?: "victory" | "wipe" | "fled";
+  /** Optional link to a pending guardian climax in GameState. */
+  climaxId?: string;
   /** Total gold and XP earned from defeated enemies (for victory rewards). */
   goldEarned: number;
   xpEarned: number;

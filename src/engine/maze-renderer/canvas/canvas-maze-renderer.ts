@@ -2,6 +2,7 @@ import type { FloorDef } from "../../../data/floors";
 import type { GameState } from "../../../types";
 import { loadTextures, render } from "../../renderer";
 import type { MazeRenderer, MazeRendererSize } from "../types";
+import { loadEnvironmentalSprites } from "../../environmental-sprite-cache";
 
 /** Adapter around the retained CPU raycaster during Renderer 2 migration. */
 export class CanvasMazeRenderer implements MazeRenderer {
@@ -10,7 +11,7 @@ export class CanvasMazeRenderer implements MazeRenderer {
   constructor(private readonly context: CanvasRenderingContext2D) {}
 
   init(): Promise<void> {
-    return loadTextures();
+    return Promise.all([loadTextures(), loadEnvironmentalSprites()]).then(() => undefined);
   }
 
   loadFloor(floor: FloorDef): void {

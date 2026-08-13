@@ -43,6 +43,48 @@ function codes(floor: FloorDef): string[] {
 }
 
 describe("floor-validate content checks", () => {
+  it("accepts a featureless void beside a walkable open edge", () => {
+    const floor = testFloor();
+    floor.grid[2][3].void = true;
+    const errors = validateFloorDef(floor).filter((issue) =>
+      issue.severity === "error" && issue.code.startsWith("void_")
+    );
+    expect(errors).toEqual([]);
+  });
+
+  it("rejects void starts, features, ramps, and redundant noCeiling", () => {
+    const floor = testFloor();
+    floor.grid[2][2].void = true;
+    floor.grid[2][2].noCeiling = true;
+    floor.grid[2][2].tile = "event";
+    floor.ramps = [{ x: 2, y: 2, dir: "n", surface: "ramp" }];
+    const result = codes(floor);
+    expect(result).toContain("start_void");
+    expect(result).toContain("void_tile");
+    expect(result).toContain("void_ramp");
+    expect(result).toContain("void_no_ceiling_redundant");
+  });
+
+  it("validates environmental sprite ids and geometry", () => {
+    const floor = testFloor();
+    floor.environmentalSprites = [{
+      id: "face",
+      spriteId: "abyss-face",
+      centerX: 4,
+      centerY: 2,
+      centerZ: 1,
+      facing: "w",
+      width: 4,
+      height: 3,
+    }];
+    expect(codes(floor)).not.toContain("environmental_sprite_unknown");
+    floor.environmentalSprites.push({ ...floor.environmentalSprites[0], id: "face", spriteId: "missing", width: 0 });
+    const result = codes(floor);
+    expect(result).toContain("environmental_sprite_duplicate_id");
+    expect(result).toContain("environmental_sprite_unknown");
+    expect(result).toContain("environmental_sprite_geometry");
+  });
+
   it("accepts tall-ceiling zones over traversable cells", () => {
     const floor = testFloor();
     floor.heightZones = [

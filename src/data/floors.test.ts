@@ -4,6 +4,7 @@ import { getFloors, findFloor } from "../game/floor-registry";
 import { ITEMS_BY_ID } from "./items";
 import type { Grid } from "../types";
 import { resolveTilesetTheme, themeAt } from "../game/floor-map";
+import { encounterTableFloorId } from "../game/encounters";
 
 /** BFS over the edge grid from the floor's start position.
  *  Returns the set of "x,y" cells reachable through the given edge types.
@@ -382,5 +383,71 @@ describe("floor definitions", () => {
     clone.ceilingFeatures![0].spriteId = "changed";
     expect(source.ceilingSprites![0].spriteId).toBe("test-chain");
     expect(source.ceilingFeatures![0].spriteId).toBe("test-grate");
+  });
+});
+
+describe("floor 2 (The Cursed Library) redesign regressions", () => {
+  it("the north-corridor darkness stretch is two real tiles, not clobbered by the event", () => {
+    // A `setTile` overwrite bug once put the bookcase event on top of the
+    // second darkness tile at (8,2), so the corridor only ever read as dark
+    // from one approach direction. Guard against that regressing: both
+    // (7,2) and (8,2) must stay "darkness", and the event must sit just past
+    // them at (9,2), on lit ground, regardless of travel direction.
+    const f2 = findFloor(2)!;
+    expect(f2.grid[2][7].tile).toBe("darkness");
+    expect(f2.grid[2][8].tile).toBe("darkness");
+    expect(f2.grid[2][9].tile).toBe("event");
+    expect(f2.events?.some((e) => e.x === 9 && e.y === 2)).toBe(true);
+    expect(f2.events?.some((e) => e.x === 8 && e.y === 2)).toBe(false);
+  });
+
+  it("the forbidden-wing chest is the real climax: alarm trap, curated zone table", () => {
+    const f2 = findFloor(2)!;
+    const chest = f2.treasures?.find((t) => t.x === 12 && t.y === 8);
+    expect(chest?.trap).toBe("alarm");
+    expect(chest?.itemIds).toContain("furnace-key");
+    const zone = f2.encounterZones?.find((z) => z.id === "forbidden-wing-hot");
+    expect(zone?.tableFloorId).toBe(6);
+  });
+
+  it("the forbidden wing reads as visually distinct via the f2b tileset zone", () => {
+    const f2 = findFloor(2)!;
+    const zone = f2.tilesetZones?.find((z) => z.id === "forbidden-wing");
+    expect(zone).toEqual({ id: "forbidden-wing", x1: 11, y1: 6, x2: 12, y2: 9, theme: "f2b" });
+    expect(themeAt(f2, 12, 7)).toBe("f2b"); // furnace-key chest
+    expect(themeAt(f2, 11, 6)).toBe("f2b"); // antimagic foreshadow tile
+    // Boundary check: just outside the zone must stay the floor's base theme.
+    expect(themeAt(f2, 12, 5)).toBe("f2");
+    expect(themeAt(f2, 2, 2)).toBe("f2");
+  });
+
+  it("the furnace-key chest is the only floor-2 tile that resolves to the guardian table", () => {
+    const f2 = findFloor(2)!;
+    expect(encounterTableFloorId(f2, 12, 8)).toBe(6);
+    expect(encounterTableFloorId(f2, 12, 3)).toBe(2); // scriptorium uses ordinary table
+    // No other floor-2 encounter zone references table 6.
+    expect(f2.encounterZones?.some((z) => z.id !== "forbidden-wing-hot" && z.tableFloorId === 6)).toBe(false);
+  });
+
+  it("the furnace-key chest is marked as a climax", () => {
+    const f2 = findFloor(2)!;
+    const chest = f2.treasures?.find((t) => t.x === 12 && t.y === 8);
+    expect(chest?.climax?.id).toBe("floor2-guardian");
+  });
+
+  it("cloneFloor preserves treasure.climax and produces an independent copy", () => {
+    const original = findFloor(2)!;
+    const originalChest = original.treasures?.find((t) => t.x === 12 && t.y === 8);
+    expect(originalChest?.climax).toEqual({ id: "floor2-guardian" });
+
+    const clone = cloneFloor(original);
+    const cloneChest = clone.treasures?.find((t) => t.x === 12 && t.y === 8);
+
+    // Preserved with the correct id.
+    expect(cloneChest?.climax).toEqual({ id: "floor2-guardian" });
+
+    // Independent object — mutating the clone must not affect the source.
+    cloneChest!.climax = { id: "mutated" };
+    expect(originalChest?.climax).toEqual({ id: "floor2-guardian" });
   });
 });

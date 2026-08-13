@@ -3,11 +3,41 @@
   "id": 2,
   "name": "The Cursed Library",
   "width": 14,
-  "height": 14,
+  "height": 26,
   "startX": 2,
-  "startY": 11,
+  "startY": 23,
   "encounterRate": 0.1,
   "tilesetTheme": "f2",
+  "tilesetZones": [
+    {
+      "id": "forbidden-wing",
+      "x1": 11,
+      "y1": 6,
+      "x2": 12,
+      "y2": 9,
+      "theme": "f2b"
+    },
+    {
+      "id": "abyss-bridge-masonry",
+      "x1": 1,
+      "y1": 13,
+      "x2": 3,
+      "y2": 24,
+      "theme": "f1"
+    }
+  ],
+  "environmentalSprites": [
+    {
+      "id": "abyss-face",
+      "spriteId": "abyss-face",
+      "centerX": 4.7,
+      "centerY": 16.5,
+      "centerZ": 1.65,
+      "facing": "w",
+      "width": 4.8,
+      "height": 4.6
+    }
+  ],
   "grid": [
     [
       {
@@ -238,13 +268,14 @@
         "e": "open",
         "s": "wall",
         "w": "open",
-        "tile": "event"
+        "tile": "darkness"
       },
       {
         "n": "wall",
         "e": "open",
         "s": "wall",
-        "w": "open"
+        "w": "open",
+        "tile": "event"
       },
       {
         "n": "open",
@@ -578,7 +609,8 @@
         "n": "open",
         "e": "wall",
         "s": "open",
-        "w": "wall"
+        "w": "wall",
+        "tile": "event"
       },
       {
         "n": "wall",
@@ -602,7 +634,8 @@
         "n": "wall",
         "e": "open",
         "s": "open",
-        "w": "wall"
+        "w": "wall",
+        "tile": "antimagic"
       },
       {
         "n": "wall",
@@ -984,8 +1017,7 @@
         "n": "open",
         "e": "open",
         "s": "open",
-        "w": "open",
-        "tile": "stairs_up"
+        "w": "open"
       },
       {
         "n": "open",
@@ -1071,7 +1103,7 @@
       {
         "n": "open",
         "e": "open",
-        "s": "wall",
+        "s": "open",
         "w": "open"
       },
       {
@@ -1140,6 +1172,1196 @@
         "e": "wall",
         "s": "wall",
         "w": "wall"
+      }
+    ],
+    [
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      }
+    ],
+    [
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "noCeiling": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      }
+    ],
+    [
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "noCeiling": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      }
+    ],
+    [
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "noCeiling": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      }
+    ],
+    [
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "noCeiling": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      }
+    ],
+    [
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "noCeiling": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      }
+    ],
+    [
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "noCeiling": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      }
+    ],
+    [
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "noCeiling": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      }
+    ],
+    [
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "wall",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      }
+    ],
+    [
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "wall",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "wall",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      }
+    ],
+    [
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "tile": "stairs_up"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "open",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "open",
+        "w": "open",
+        "void": true
+      }
+    ],
+    [
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "wall",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "wall"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "wall",
+        "w": "open"
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "wall",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "open",
+        "s": "wall",
+        "w": "open",
+        "void": true
+      },
+      {
+        "n": "open",
+        "e": "wall",
+        "s": "wall",
+        "w": "open",
+        "void": true
       }
     ],
     [
@@ -1231,6 +2453,15 @@
   ],
   "encounterZones": [
     {
+      "id": "abyss-bridge-safe",
+      "x1": 2,
+      "y1": 13,
+      "x2": 2,
+      "y2": 24,
+      "rateMul": 0,
+      "safeZone": true
+    },
+    {
       "id": "library-loop-safe",
       "x1": 1,
       "y1": 4,
@@ -1244,7 +2475,8 @@
       "y1": 6,
       "x2": 12,
       "y2": 9,
-      "rateMul": 1.6
+      "rateMul": 1.6,
+      "tableFloorId": 6
     },
     {
       "id": "scriptorium-hot",
@@ -1295,7 +2527,7 @@
         "cursed-blade",
         "antidote"
       ],
-      "trap": "alarm"
+      "trap": "stunner"
     },
     {
       "x": 12,
@@ -1306,7 +2538,10 @@
         "ring-of-water-walking",
         "furnace-key"
       ],
-      "trap": "stunner"
+      "trap": "alarm",
+      "climax": {
+        "id": "floor2-guardian"
+      }
     }
   ],
   "npcs": [
@@ -1352,7 +2587,7 @@
   ],
   "events": [
     {
-      "x": 8,
+      "x": 9,
       "y": 2,
       "kind": "damage",
       "message": "A bookcase groans and topples into the dark corridor.",
@@ -1401,6 +2636,14 @@
       "y": 10,
       "kind": "message",
       "message": "A brass plate, half-melted: MIND THE STEP — TO THE FORGE BELOW."
+    },
+    {
+      "x": 7,
+      "y": 6,
+      "kind": "reward",
+      "message": "A shelfcatalogue falls open. Under 'Forbidden Wing — Guardians' it reads: 'Two Gaze Wraiths and three Blood Wraiths hold the furnace key. They strike from the back row and silence the unwary. Take this antidote — the cursed volumes have already touched it.'",
+      "itemId": "antidote"
     }
-  ]
+  ],
+  "floorRevision": 1
 }

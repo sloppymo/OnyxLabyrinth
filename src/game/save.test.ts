@@ -42,6 +42,20 @@ describe("save serialization", () => {
     expect(restored.unlockedDoors).toEqual(new Set(["1:5:6:N"]));
   });
 
+  it("round-trips bridge position and environmental encounter progress", () => {
+    state = createGameState(findFloor(2)!);
+    state.mode = "dungeon";
+    state.player = { x: 2, y: 17, facing: 1 };
+    state.environmentalEncounters = {
+      "abyss-face": { crossings: 2, oneShots: ["fart"], repeatCursor: 3, lookCount: 7 },
+    };
+    const restored = deserialize(serialize(state));
+    expect(restored?.player).toEqual({ x: 2, y: 17, facing: 1 });
+    expect(restored?.environmentalEncounters?.["abyss-face"]).toEqual(
+      state.environmentalEncounters["abyss-face"]
+    );
+  });
+
   it("migrates v4 saves: string inventory becomes identified entries", () => {
     const json = serialize(state);
     const raw = JSON.parse(json);
@@ -445,5 +459,24 @@ describe("autoSave", () => {
 
     const loaded = loadAutoSave();
     expect(loaded?.partyGold).toBe(42);
+  });
+
+  it("round-trips an unresolved pendingClimax", () => {
+    state.pendingClimax = {
+      id: "floor2-guardian",
+      floorId: 2,
+      x: 12,
+      y: 8,
+    };
+    const json = serialize(state);
+    const restored = deserialize(json);
+    expect(restored).not.toBeNull();
+    if (!restored) return;
+    expect(restored.pendingClimax).toEqual({
+      id: "floor2-guardian",
+      floorId: 2,
+      x: 12,
+      y: 8,
+    });
   });
 });

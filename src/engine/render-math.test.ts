@@ -45,6 +45,7 @@ import {
   wallFeatureLocalU,
   wallFeatureVerticalRect,
   projectBillboard,
+  projectWorldPoint,
   billboardScreenX,
   BILLBOARD_MIN_DEPTH,
   featureMarkerSize,
@@ -1006,6 +1007,12 @@ describe("projectBillboard", () => {
   it("puts a tile straight ahead on the view axis at its grid distance", () => {
     const p = projectBillboard(camNorth, 5, 2)!;
     expect(p.depth).toBeCloseTo(3, 6);
+    expect(p.lateral).toBeCloseTo(0, 6);
+  });
+
+  it("projects exact world points without adding a tile-centre offset", () => {
+    const p = projectWorldPoint(camNorth, 5.5, 3)!;
+    expect(p.depth).toBeCloseTo(2.5, 6);
     expect(p.lateral).toBeCloseTo(0, 6);
   });
 

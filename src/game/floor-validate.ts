@@ -13,6 +13,7 @@ import { WALL_FEATURES_BY_ID } from "../data/wall-features";
 import { CEILING_SPRITES_BY_ID } from "../data/ceiling-sprites";
 import { CEILING_FEATURES_BY_ID } from "../data/ceiling-features";
 import { DOOR_FEATURES_BY_ID } from "../data/door-features";
+import { getEnvironmentalSpriteAsset } from "../data/environmental-sprites";
 import { ITEMS_BY_ID } from "../data/items";
 import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
 import { spellById } from "../data/spells";
@@ -105,7 +106,14 @@ export function validateFloorMap(
     });
   } else {
     const startCell = map.grid[map.startY][map.startX];
-    if (!cellIsPassable(startCell)) {
+    if (startCell.void) {
+      issues.push({
+        severity: "error",
+        code: "start_void",
+        message: "Start position cannot be a void cell",
+        at: { x: map.startX, y: map.startY },
+      });
+    } else if (!cellIsPassable(startCell)) {
       issues.push({
         severity: "error",
         code: "start_solid",
@@ -116,11 +124,13 @@ export function validateFloorMap(
   }
 
   validateSymmetricEdges(map, issues);
+  validateVoidCells(map, issues);
   validateOverlayTiles(map, issues);
   validateLockedDoors(map, issues, context?.floors ?? getFloors());
   validateLockedEdgeCoverage(map, issues);
   validateWallFeatures(map, issues);
   validateArchitecturalProps(map, issues);
+  validateEnvironmentalSprites(map, issues);
   validateCeilingSprites(map, issues);
   validateCeilingFeatures(map, issues);
   validateDoorFeatures(map, issues);
@@ -136,6 +146,40 @@ export function validateFloorMap(
   validateHeightConfig(map, issues);
 
   return issues;
+}
+
+function validateVoidCells(map: FloorMapJSON, issues: ValidationIssue[]): void {
+  const rampCells = new Set((map.ramps ?? []).map((ramp) => `${ramp.x},${ramp.y}`));
+  for (let y = 0; y < map.height; y++) {
+    for (let x = 0; x < map.width; x++) {
+      const cell = map.grid[y][x];
+      if (!cell.void) continue;
+      if (cell.tile) {
+        issues.push({
+          severity: "error",
+          code: "void_tile",
+          message: `Void cell (${x},${y}) cannot contain tile feature ${cell.tile}`,
+          at: { x, y },
+        });
+      }
+      if (cell.noCeiling) {
+        issues.push({
+          severity: "error",
+          code: "void_no_ceiling_redundant",
+          message: `Void cell (${x},${y}) already has no ceiling; remove noCeiling`,
+          at: { x, y },
+        });
+      }
+      if (rampCells.has(`${x},${y}`)) {
+        issues.push({
+          severity: "error",
+          code: "void_ramp",
+          message: `Void cell (${x},${y}) cannot contain a ramp or local stairs`,
+          at: { x, y },
+        });
+      }
+    }
+  }
 }
 
 const MIN_HEIGHT_Z = -8;
@@ -736,6 +780,35 @@ function validateArchitecturalProps(map: FloorMapJSON, issues: ValidationIssue[]
   }
 }
 
+function validateEnvironmentalSprites(map: FloorMapJSON, issues: ValidationIssue[]): void {
+  const seen = new Set<string>();
+  for (const sprite of map.environmentalSprites ?? []) {
+    if (seen.has(sprite.id)) {
+      issues.push({
+        severity: "error",
+        code: "environmental_sprite_duplicate_id",
+        message: `Duplicate environmental sprite id "${sprite.id}"`,
+      });
+    }
+    seen.add(sprite.id);
+    if (!getEnvironmentalSpriteAsset(sprite.spriteId)) {
+      issues.push({
+        severity: "error",
+        code: "environmental_sprite_unknown",
+        message: `Unknown environmental sprite asset "${sprite.spriteId}"`,
+      });
+    }
+    const values = [sprite.centerX, sprite.centerY, sprite.centerZ, sprite.width, sprite.height];
+    if (!values.every(Number.isFinite) || sprite.width <= 0 || sprite.height <= 0) {
+      issues.push({
+        severity: "error",
+        code: "environmental_sprite_geometry",
+        message: `Environmental sprite "${sprite.id}" needs finite coordinates and positive dimensions`,
+      });
+    }
+  }
+}
+
 /** Ceiling sprites are visual-only billboards — bounds + a known spriteId,
  *  plus a sanity check on the optional per-placement scale. */
 function validateCeilingSprites(map: FloorMapJSON, issues: ValidationIssue[]): void {
@@ -1216,7 +1289,11 @@ function validateReachability(map: FloorMapJSON, issues: ValidationIssue[]): voi
       const [dx, dy] = DELTA[dir];
       const nx = x + dx;
       const ny = y + dy;
-      if (inBoundsGrid(map, nx, ny) && !visited.has(key(nx, ny))) {
+      if (
+        inBoundsGrid(map, nx, ny) &&
+        !map.grid[ny][nx].void &&
+        !visited.has(key(nx, ny))
+      ) {
         queue.push([nx, ny]);
       }
     }

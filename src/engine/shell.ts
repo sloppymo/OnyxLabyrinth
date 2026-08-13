@@ -19,6 +19,7 @@ import {
   type ContextualPrompt,
 } from "./contextual-prompt";
 import { createReveal, completeReveal, stepReveal, type RevealState } from "./prologue-ui";
+import { setAmbientSpeaker } from "./ambient-bark-state";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
@@ -37,6 +38,10 @@ app.innerHTML = `
       </div>
       <canvas id="view" width="768" height="672"></canvas>
       <canvas id="maze-webgl" width="768" height="672" hidden></canvas>
+      <div id="ambient-bark" class="ff6-window" hidden aria-live="polite">
+        <div id="ambient-bark-speaker"></div>
+        <div id="ambient-bark-text"></div>
+      </div>
       <div id="map-overlay" hidden aria-hidden="true">
         <canvas
           id="map-overlay-canvas"
@@ -89,6 +94,9 @@ const hudLocationEl = document.querySelector<HTMLSpanElement>("#hud-location")!;
 const hudDangerEl = document.querySelector<HTMLSpanElement>("#hud-danger")!;
 const contextPromptEl = document.querySelector<HTMLDivElement>("#context-prompt")!;
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
+const ambientBarkEl = document.querySelector<HTMLDivElement>("#ambient-bark")!;
+const ambientBarkSpeakerEl = document.querySelector<HTMLDivElement>("#ambient-bark-speaker")!;
+const ambientBarkTextEl = document.querySelector<HTMLDivElement>("#ambient-bark-text")!;
 export const combatPanel = document.querySelector<HTMLDivElement>("#combat-panel")!;
 const combatWrap = document.querySelector<HTMLDivElement>("#combat-wrap")!;
 export const combatWindows = document.querySelector<HTMLDivElement>("#combat-windows")!;
@@ -255,6 +263,47 @@ function tickMessageReveal(now: number): void {
  * patch or poll `#message`.
  */
 let debugMessageHook: ((text: string) => void) | null = null;
+
+interface QueuedAmbientBark {
+  speakerId: string;
+  speaker: string;
+  text: string;
+  durationMs: number;
+  onShow?: () => void;
+}
+
+const ambientBarkQueue: QueuedAmbientBark[] = [];
+let ambientBarkTimer = 0;
+
+function presentNextAmbientBark(): void {
+  if (ambientBarkTimer || ambientBarkQueue.length === 0) return;
+  const bark = ambientBarkQueue.shift()!;
+  ambientBarkSpeakerEl.textContent = bark.speaker;
+  ambientBarkTextEl.textContent = bark.text;
+  ambientBarkEl.hidden = false;
+  const until = performance.now() + bark.durationMs;
+  setAmbientSpeaker(bark.speakerId, until);
+  bark.onShow?.();
+  ambientBarkTimer = window.setTimeout(() => {
+    ambientBarkTimer = 0;
+    ambientBarkEl.hidden = true;
+    ambientBarkTextEl.textContent = "";
+    setAmbientSpeaker(null);
+    presentNextAmbientBark();
+  }, bark.durationMs);
+}
+
+/** Queue a compact, nonmodal world bark; dungeon movement remains enabled. */
+export function showAmbientBark(bark: {
+  speakerId: string;
+  speaker: string;
+  text: string;
+  durationMs?: number;
+  onShow?: () => void;
+}): void {
+  ambientBarkQueue.push({ ...bark, durationMs: bark.durationMs ?? 2400 });
+  presentNextAmbientBark();
+}
 
 export function setDebugMessageHook(fn: ((text: string) => void) | null): void {
   debugMessageHook = fn;

@@ -325,6 +325,7 @@ class AudioEngine {
 
   // Noise buffer cache (footsteps reuse it).
   private noiseBuffer: Maybe<AudioBuffer> = null;
+  private abyssWind: Maybe<{ source: AudioBufferSourceNode; gain: GainNode }> = null;
 
   /** Decoded FF6 UI SFX buffers (empty until loadUiSounds resolves). */
   private uiBuffers: Partial<Record<UiSfxId, AudioBuffer>> = {};
@@ -597,6 +598,71 @@ class AudioEngine {
     src.connect(gain);
     gain.connect(this.masterGain);
     src.start();
+  }
+
+  /** Duck the score and open a low, filtered void-wind bed on exposed bridge cells. */
+  setAbyssExposure(active: boolean): void {
+    if (this.dungeonMusic) this.dungeonMusic.volume = active ? 0.12 : DUNGEON_MUSIC_VOLUME;
+    if (!this.ctx || !this.masterGain) return;
+    if (active && !this.abyssWind) {
+      const source = this.ctx.createBufferSource();
+      source.buffer = this.createNoiseBuffer(2.4);
+      source.loop = true;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 240;
+      filter.Q.value = 0.7;
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.032, this.ctx.currentTime + 0.8);
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain);
+      source.start();
+      this.abyssWind = { source, gain };
+    } else if (!active && this.abyssWind) {
+      const wind = this.abyssWind;
+      this.abyssWind = null;
+      const stopAt = this.ctx.currentTime + 0.5;
+      wind.gain.gain.cancelScheduledValues(this.ctx.currentTime);
+      wind.gain.gain.setValueAtTime(Math.max(0.001, wind.gain.gain.value), this.ctx.currentTime);
+      wind.gain.gain.exponentialRampToValueAtTime(0.001, stopAt);
+      wind.source.stop(stopAt + 0.02);
+    }
+  }
+
+  /** Deliberately crude 8-bit-ish abyss-face fart; no pristine stock sample. */
+  playAbyssFart(): void {
+    if (!this.ctx || !this.masterGain) return;
+    const ctx = this.ctx;
+    const start = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(92, start);
+    osc.frequency.exponentialRampToValueAtTime(38, start + 0.95);
+    const wobble = ctx.createOscillator();
+    wobble.type = "square";
+    wobble.frequency.value = 17;
+    const wobbleGain = ctx.createGain();
+    wobbleGain.gain.value = 18;
+    wobble.connect(wobbleGain);
+    wobbleGain.connect(osc.frequency);
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(260, start);
+    filter.frequency.exponentialRampToValueAtTime(95, start + 1.05);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.001, start);
+    env.gain.linearRampToValueAtTime(0.16, start + 0.025);
+    env.gain.setValueAtTime(0.13, start + 0.65);
+    env.gain.exponentialRampToValueAtTime(0.001, start + 1.08);
+    osc.connect(filter);
+    filter.connect(env);
+    env.connect(this.masterGain);
+    osc.start(start);
+    wobble.start(start);
+    osc.stop(start + 1.1);
+    wobble.stop(start + 1.1);
   }
 
   /**

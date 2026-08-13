@@ -132,9 +132,18 @@ describe("encounter table integrity", () => {
 
   it("has a table for every registered floor and no orphan tables", () => {
     // Registry = campaign FLOORS merged with content/floors packs (floor 4).
-    const floorIds = getFloors().map((f) => f.id).sort();
-    const tableIds = Object.keys(ENCOUNTER_TABLES).map(Number).sort();
-    expect(tableIds).toEqual(floorIds);
+    // A table key doesn't have to match a floor id one-to-one — a zone can
+    // point its tableFloorId at a synthetic key (e.g. floor 2's forbidden-
+    // wing climax table) — but every key must be reachable from somewhere:
+    // either a floor id directly, or some zone's tableFloorId override.
+    const floors = getFloors();
+    const floorIds = floors.map((f) => f.id);
+    const zoneTableIds = floors.flatMap(
+      (f) => f.encounterZones?.map((z) => z.tableFloorId).filter((id): id is number => id !== undefined) ?? []
+    );
+    const reachableIds = [...new Set([...floorIds, ...zoneTableIds])].sort((a, b) => a - b);
+    const tableIds = Object.keys(ENCOUNTER_TABLES).map(Number).sort((a, b) => a - b);
+    expect(tableIds).toEqual(reachableIds);
   });
 
   it("re-themed bestiary ids are registered (slime/skeleton/orc family)", () => {
@@ -254,7 +263,7 @@ describe("encounter table integrity", () => {
   });
 
   it("gives the new-sprite monsters their own signature kits, not borrowed ones", () => {
-    // Displacer Beast: blink/vanish, not a copy of Werewolf's howl/pounce.
+    // Shelf Stalker (displacer-beast): blink/vanish, not a copy of Werewolf's howl/pounce.
     expect(ENEMIES_BY_ID["displacer-beast"].abilityIds).toEqual([
       "blink-strike",
       "vanish",
@@ -326,6 +335,44 @@ describe("encounter table integrity", () => {
         expect(known, `unknown presentation: ${ability.presentation}`).toContain(
           ability.presentation,
         );
+      }
+    }
+  });
+});
+
+describe("Floor 2 forbidden-wing climax table (table 6)", () => {
+  it("is only reachable from the forbidden-wing-hot zone on floor 2", () => {
+    for (const floor of getFloors()) {
+      const zones = floor.encounterZones ?? [];
+      for (const zone of zones) {
+        if (zone.id === "forbidden-wing-hot") {
+          expect(zone.tableFloorId).toBe(6);
+        } else {
+          expect(zone.tableFloorId, `${floor.name}/${zone.id}`).not.toBe(6);
+        }
+      }
+    }
+  });
+
+  it("contains no boss enemies and all referenced ids are registered", () => {
+    for (const entry of ENCOUNTER_TABLES[6]) {
+      for (const spawn of entry.spawns) {
+        const enemy = ENEMIES_BY_ID[spawn.enemyId];
+        expect(enemy, `unknown enemyId "${spawn.enemyId}"`).toBeDefined();
+        expect(enemy!.isBoss, `${spawn.enemyId} is a boss; table 6 must be regulars`).toBe(false);
+      }
+    }
+  });
+
+  it("uses only back-row spawns and respects the Gaze Wraith cap", () => {
+    for (const entry of ENCOUNTER_TABLES[6]) {
+      expect(entry.spawns.length).toBeLessThanOrEqual(5);
+      expect(
+        entry.spawns.filter((s) => s.enemyId === "eyeball-monster").length,
+        "table 6 has at most 2 Gaze Wraiths per pack"
+      ).toBeLessThanOrEqual(2);
+      for (const spawn of entry.spawns) {
+        expect(spawn.row).toBe("back");
       }
     }
   });

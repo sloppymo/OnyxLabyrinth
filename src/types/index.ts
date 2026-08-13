@@ -28,6 +28,10 @@ export interface Cell {
   e: EdgeType;
   s: EdgeType;
   w: EdgeType;
+  /** No walkable surface or ordinary floor/ceiling geometry exists here. */
+  void?: true;
+  /** Walkable cell whose ceiling is open to an exterior/void volume. */
+  noCeiling?: true;
   // Optional tile feature layered on top of the edge grid. Unused at Step 2
   // but locked in here so Step 11 (teleporters, chutes, stairs, darkness,
   // treasure rooms) doesn't force a second refactor of every grid consumer.
@@ -81,6 +85,14 @@ export interface PendingTrap {
   trapType: TrapType;
   /** Whether the party has Inspected the chest (reveals the trap type). */
   inspected: boolean;
+}
+
+/** A chest whose treasure is held in escrow until a linked combat is won. */
+export interface PendingClimax {
+  id: string;
+  floorId: number;
+  x: number;
+  y: number;
 }
 
 // --- Facing / player ---------------------------------------------------------
@@ -184,6 +196,10 @@ export interface GameState {
   // dungeon movement is blocked and the Inspect/Disarm/Open/Leave keys are
   // live. Never persisted: a save can't be taken while the prompt is open.
   pendingTrap: PendingTrap | null;
+  // Set when a climax chest is opened. Its treasure is awarded only after the
+  // linked guardian combat ends in victory. Cleared on victory or if the chest
+  // is otherwise resolved.
+  pendingClimax?: PendingClimax;
   // Whether the current tile is a darkness zone (affects render depth).
   inDarkness: boolean;
   // Whether the current tile is an anti-magic zone (affects spell casting).
@@ -223,5 +239,14 @@ export interface GameState {
   // Returned") already won. A guardian tile whose id is here is inert —
   // never re-triggers combat. See game/features.ts handleStairsGuardian.
   clearedStairsGuardians: string[];
+  /** Persistent state for authored nonmodal environmental encounters. */
+  environmentalEncounters?: Record<string, EnvironmentalEncounterProgress>;
   purchasedSpellIds?: string[];
+}
+
+export interface EnvironmentalEncounterProgress {
+  crossings: number;
+  oneShots: string[];
+  repeatCursor: number;
+  lookCount: number;
 }

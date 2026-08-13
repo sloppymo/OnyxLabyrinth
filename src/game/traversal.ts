@@ -222,6 +222,13 @@ export function resolveTraversal(
     return { kind: "blocked" };
   }
 
+  if (targetCell.void) {
+    return {
+      kind: "blocked",
+      message: "There is no floor beyond the edge.",
+    };
+  }
+
   // Grid edges remain authoritative, but a geometrically open edge is only
   // walkable when both authored floor surfaces meet at that boundary. This
   // admits ramp/stair endpoints and rejects raw vertical steps or ambiguous

@@ -1,5 +1,33 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+## 2026-08-13 — Floor 2 abyss bridge entrance
+
+- Current prompt: design, implement, art-finish, test, and production-browser
+  playtest Floor 2's south entrance as a one-tile bridge over real void beside
+  an enormous animated heckling face.
+- Dedicated branch `feat/floor2-abyss-bridge-face` from the required vertical
+  QA tip `2089c00`; `2089c00` is not yet on local `main`.
+- Unrelated untracked Camp people candidates in the shared worktree remain
+  untouched and must never be staged.
+- Audit note and exact proposed coordinates are recorded in
+  `docs/superpowers/specs/2026-08-13-floor2-abyss-bridge-face-implementation.md`.
+- Complete: real `void` / `noCeiling` semantics, 14×26 Floor 2 extension,
+  fixed world-space animated face in WebGL + Canvas, 13-frame production art,
+  persisted nonmodal heckling encounter, contextual taunts, abyss audio, and
+  procedural fart cue.
+- Final browser evidence: nine entrance captures per backend in
+  `output/playwright/floor2-abyss-bridge/`; Canvas renderer regression gallery
+  in `output/playwright/floor2-renderer-regression-canvas/`. Both bridge runs
+  blocked void traversal and reported zero browser errors; `npm run check`
+  passed.
+- Integration follow-up: preserved original feature commit `4f2c0ea` on local
+  `feat/floor2-abyss-bridge-face-qa-base`, then replayed it byte-for-byte as
+  `b2a08f0` onto canonical Floor 1 PR #37 head `7f89b09`. The replay exposed
+  four stale Floor 2 editor/public exports; regenerated only those artifacts.
+  Fresh `npm run check` passed (118 files / 2,259 tests), and the dedicated
+  nine-shot WebGL + Canvas bridge runs again blocked void traversal with zero
+  browser errors. Deliberate repeat-crossing silence remains unchanged.
+
 ## 2026-08-10 — Maze Renderer 2
 
 - Current prompt: replace CPU maze picture-making with a production Three.js/WebGL2 graphics backend, retain Canvas fallback and every existing gameplay/content contract, benchmark both paths, and add backward-compatible variable-height cell volumes with real low-to-tall boundary geometry.

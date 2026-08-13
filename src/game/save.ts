@@ -29,7 +29,7 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 17;
+const SAVE_VERSION = 18;
 
 /** v9 → v10 historical helper: first PARTY_SIZE characters by formation order —
  *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
@@ -328,6 +328,11 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     ser.purchasedSpellIds = [];
     version = 17;
   }
+  if (version === 17) {
+    // v17 → v18: authored environmental encounter progress (abyss face).
+    ser.environmentalEncounters = {};
+    version = 18;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -366,6 +371,8 @@ interface SerializedState {
   // Active utility-spell buffs (light/levitation). Optional: absent in saves
   // from before the buff system, defaulting to none on load.
   persistentBuffs?: GameState["persistentBuffs"];
+  // Climax chest whose treasure is held until the linked guardian is defeated.
+  pendingClimax?: GameState["pendingClimax"];
   // Per-character swim skill. Optional: absent in older saves, defaults to {}.
   swimSkill?: GameState["swimSkill"];
   // Dungeon NPC state. Optional: absent in saves from before NPCs existed.
@@ -400,6 +407,7 @@ interface SerializedState {
   clearedStairsGuardians?: string[];
   /** Iso-spells bought from Isobel's; optional for pre-v17 saves. */
   purchasedSpellIds?: string[];
+  environmentalEncounters?: NonNullable<GameState["environmentalEncounters"]>;
   savedAt: string;
 }
 
@@ -458,6 +466,7 @@ export function serialize(state: GameState): string {
     lastDungeon: state.lastDungeon,
     equipment: { ...state.equipment },
     persistentBuffs: state.persistentBuffs.map((b) => ({ ...b })),
+    pendingClimax: state.pendingClimax,
     swimSkill: { ...state.swimSkill },
     talkedToNPCs: [...state.talkedToNPCs],
     npcDisposition: { ...state.npcDisposition },
@@ -479,6 +488,12 @@ export function serialize(state: GameState): string {
     companion: state.companion ? { ...state.companion } : null,
     clearedStairsGuardians: [...state.clearedStairsGuardians],
     purchasedSpellIds: [...(state.purchasedSpellIds ?? [])],
+    environmentalEncounters: Object.fromEntries(
+      Object.entries(state.environmentalEncounters ?? {}).map(([id, progress]) => [
+        id,
+        { ...progress, oneShots: [...progress.oneShots] },
+      ])
+    ),
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -615,6 +630,7 @@ export function deserialize(json: string): GameState | null {
       // off and back onto the tile re-prompts.
       pendingTrap: null,
       persistentBuffs: ser.persistentBuffs?.map((b) => ({ ...b })) ?? [],
+      pendingClimax: ser.pendingClimax,
       swimSkill: ser.swimSkill ? { ...ser.swimSkill } : {},
       talkedToNPCs: ser.talkedToNPCs ? [...ser.talkedToNPCs] : [],
       npcDisposition: ser.npcDisposition ? { ...ser.npcDisposition } : {},
@@ -644,6 +660,14 @@ export function deserialize(json: string): GameState | null {
       companion: ser.companion ? { ...ser.companion } : null,
       clearedStairsGuardians: ser.clearedStairsGuardians ? [...ser.clearedStairsGuardians] : [],
       purchasedSpellIds: ser.purchasedSpellIds ? [...ser.purchasedSpellIds] : [],
+      environmentalEncounters: ser.environmentalEncounters
+        ? Object.fromEntries(
+            Object.entries(ser.environmentalEncounters).map(([id, progress]) => [
+              id,
+              { ...progress, oneShots: [...progress.oneShots] },
+            ])
+          )
+        : {},
     };
   } catch {
     return null;

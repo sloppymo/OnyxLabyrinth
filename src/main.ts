@@ -14,6 +14,7 @@ import {
   leaveChest,
   confirmChuteDrop,
   clearStairsGuardian,
+  resolveClimaxVictory,
   type ChestActionResult,
 } from "./game/features";
 import { revealAround } from "./game/explore";
@@ -73,7 +74,14 @@ import {
   getMazeRendererSurface,
   setMazeRendererSurface,
   setMazeSurfaceOpacity,
+  showAmbientBark,
 } from "./engine/shell";
+import {
+  resolveAbyssFaceStep,
+  resolveAbyssFaceTurn,
+  isOnAbyssBridge,
+  type AmbientBarkCue,
+} from "./game/abyss-face";
 import {
   playEncounterTransition,
   playReturnTransition,
@@ -854,7 +862,9 @@ function endCombat(result: CombatState): void {
 
     const baseMsg = `Victory! +${goldEarned} gold, +${xpEarned} XP each.`;
     const levelMsg = levelUpMessages.length > 0 ? ` ${levelUpMessages.join(" ")}` : "";
-    setMessage(baseMsg + levelMsg);
+    const climaxLoot = result.climaxId ? resolveClimaxVictory(state, result.climaxId) : "";
+    const climaxLootMsg = climaxLoot ? ` ${climaxLoot}` : "";
+    setMessage(baseMsg + levelMsg + climaxLootMsg);
   }
 
   // NPC fights: victory kills the NPC (tile cleared); fleeing leaves them
@@ -1055,6 +1065,21 @@ function scheduleFootstep(): void {
   setTimeout(() => audio.footstep(), MOVE_ANIM_MS / 2);
 }
 
+function syncAbyssExposure(): void {
+  audio.setAbyssExposure(isOnAbyssBridge(state));
+}
+
+function presentAbyssCue(cue: AmbientBarkCue | null): void {
+  if (!cue) return;
+  showAmbientBark({
+    speakerId: cue.speakerId,
+    speaker: cue.speaker,
+    text: cue.text,
+    durationMs: cue.durationMs,
+    onShow: cue.sfx === "abyss-fart" ? () => audio.playAbyssFart() : undefined,
+  });
+}
+
 function onMove(): void {
   if (state.mode !== "dungeon") return;
   // Safe-zone pity preservation: if the player is in a safe zone, do NOT
@@ -1085,6 +1110,7 @@ function onMove(): void {
       if (result.changedFloor) {
         markExplored();
         resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+        syncAbyssExposure();
         return;
       }
       if (result.npcId) {
@@ -1175,6 +1201,7 @@ function onMove(): void {
       // floors).
       markExplored();
       resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+      syncAbyssExposure();
       // Don't trigger encounters on the same step as a floor transition.
       return;
     }
@@ -1260,8 +1287,11 @@ function onMove(): void {
 function handleTraversalResult(result: TraversalResult, dir: Direction): void {
   switch (result.kind) {
     case "step": {
+      const from = { x: state.player.x, y: state.player.y };
       state.player.x = result.x;
       state.player.y = result.y;
+      presentAbyssCue(resolveAbyssFaceStep(state, from, result));
+      syncAbyssExposure();
       markExplored();
       onMove();
       scheduleFootstep();
@@ -1295,8 +1325,11 @@ function handleTraversalResult(result: TraversalResult, dir: Direction): void {
         // Now step through.
         const stepResult = resolveTraversal(state, dir);
         if (stepResult.kind === "step") {
+          const from = { x: state.player.x, y: state.player.y };
           state.player.x = stepResult.x;
           state.player.y = stepResult.y;
+          presentAbyssCue(resolveAbyssFaceStep(state, from, stepResult));
+          syncAbyssExposure();
           markExplored();
           onMove();
           scheduleFootstep();
@@ -1401,6 +1434,7 @@ const dungeonHandlers: InputHandlers = {
       clearMessageOnPlayerAction();
       turnLeft(state);
       markExplored();
+      presentAbyssCue(resolveAbyssFaceTurn(state));
     }
   },
   onTurnRight: () => {
@@ -1410,6 +1444,7 @@ const dungeonHandlers: InputHandlers = {
       clearMessageOnPlayerAction();
       turnRight(state);
       markExplored();
+      presentAbyssCue(resolveAbyssFaceTurn(state));
     }
   },
   onCamp: () => {
@@ -1566,6 +1601,13 @@ function forceEncounter(): void {
     state.inventory,
     state.inAntimagic
   );
+  const pending = state.pendingClimax;
+  const isCurrentClimax =
+    pending !== undefined &&
+    pending.floorId === state.floor.id &&
+    pending.x === state.player.x &&
+    pending.y === state.player.y;
+  combat.climaxId = isCurrentClimax ? pending.id : undefined;
   state.combat = combat;
   setMode(state, "combat");
   state.stepsSinceEncounter = 0;
@@ -2595,7 +2637,9 @@ function loop() {
   if (state.mode !== prevMode) {
     if (state.mode === "dungeon") {
       audio.startDungeon();
+      syncAbyssExposure();
     } else if (prevMode === "dungeon") {
+      audio.setAbyssExposure(false);
       audio.stopDungeon();
       clearPartyStrip();
     }

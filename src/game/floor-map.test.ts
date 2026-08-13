@@ -67,6 +67,26 @@ describe("floor-map", () => {
     expect(roundTrip.ramps).toEqual(map.ramps);
   });
 
+  it("parses and round-trips void and open-ceiling cells", () => {
+    const map = newFloorMapJSON(5, 5);
+    map.grid[2][1].void = true;
+    map.grid[2][2].noCeiling = true;
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    const roundTrip = floorDefToMap(mapToFloorDef(parsed));
+    expect(roundTrip.grid[2][1]).toMatchObject({ void: true });
+    expect(roundTrip.grid[2][2]).toMatchObject({ noCeiling: true });
+    expect(cellIsPassable(roundTrip.grid[2][1])).toBe(false);
+  });
+
+  it("rejects false-valued void and noCeiling fields", () => {
+    const raw = JSON.parse(JSON.stringify(newFloorMapJSON(5, 5)));
+    raw.grid[2][1].void = false;
+    expect(() => parseFloorMapJSON(raw)).toThrow(/void must be true/);
+    delete raw.grid[2][1].void;
+    raw.grid[2][1].noCeiling = "yes";
+    expect(() => parseFloorMapJSON(raw)).toThrow(/noCeiling must be true/);
+  });
+
   it("round-trips fixed architectural props", () => {
     const map = newFloorMapJSON(5, 5, {
       architecturalProps: [{
@@ -87,6 +107,25 @@ describe("floor-map", () => {
     expect(parsed.architecturalProps).toEqual(map.architecturalProps);
     expect(floorDefToMap(mapToFloorDef(parsed)).architecturalProps).toEqual(
       map.architecturalProps
+    );
+  });
+
+  it("round-trips fixed animated environmental sprites", () => {
+    const map = newFloorMapJSON(5, 5, {
+      environmentalSprites: [{
+        id: "god-face",
+        spriteId: "abyss-face",
+        centerX: 3.5,
+        centerY: 2,
+        centerZ: 1.5,
+        facing: "w",
+        width: 6,
+        height: 4,
+      }],
+    });
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    expect(floorDefToMap(mapToFloorDef(parsed)).environmentalSprites).toEqual(
+      map.environmentalSprites
     );
   });
 
@@ -266,6 +305,83 @@ describe("floor-map", () => {
     carveRoom(floor.grid, 1, 1, 3, 3);
     expect(cellIsPassable(floor.grid[2][2])).toBe(true);
     expect(cellIsPassable(floor.grid[0][0])).toBe(false);
+  });
+});
+
+describe("treasure.climax portable-map round trip", () => {
+  it("floorDefToMap preserves climax metadata", () => {
+    const f2 = findFloor(2)!;
+    const map = floorDefToMap(f2);
+    const chest = map.treasures?.find((t) => t.x === 12 && t.y === 8);
+    expect(chest?.climax).toEqual({ id: "floor2-guardian" });
+  });
+
+  it("floorDefToMap does not alias the source climax object", () => {
+    const f2 = findFloor(2)!;
+    const map = floorDefToMap(f2);
+    const mapChest = map.treasures?.find((t) => t.x === 12 && t.y === 8)!;
+    const srcChest = f2.treasures?.find((t) => t.x === 12 && t.y === 8)!;
+    expect(mapChest.climax).not.toBe(srcChest.climax);
+    expect(mapChest.climax).toEqual(srcChest.climax);
+  });
+
+  it("parseFloorMapJSON accepts a valid climax id", () => {
+    const map = newFloorMapJSON(6, 6);
+    map.treasures = [
+      { x: 2, y: 2, itemIds: ["furnace-key"], trap: "alarm", climax: { id: "test-guardian" } },
+    ];
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    expect(parsed.treasures?.[0].climax).toEqual({ id: "test-guardian" });
+  });
+
+  it("mapToFloorDef preserves climax from a parsed map", () => {
+    const map = newFloorMapJSON(6, 6);
+    map.treasures = [
+      { x: 2, y: 2, itemIds: ["furnace-key"], trap: "alarm", climax: { id: "test-guardian" } },
+    ];
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    const floor = mapToFloorDef(parsed);
+    expect(floor.treasures?.[0].climax).toEqual({ id: "test-guardian" });
+  });
+
+  it("full round trip (FloorDef → JSON → parse → FloorDef) preserves the climax id", () => {
+    const f2 = findFloor(2)!;
+    const map = floorDefToMap(f2);
+    const raw = JSON.parse(JSON.stringify(map));
+    const parsed = parseFloorMapJSON(raw);
+    const restored = mapToFloorDef(parsed);
+    const chest = restored.treasures?.find((t) => t.x === 12 && t.y === 8);
+    expect(chest?.climax).toEqual({ id: "floor2-guardian" });
+  });
+
+  it("mapToFloorDef does not alias the source climax object", () => {
+    const map = newFloorMapJSON(6, 6);
+    map.treasures = [
+      { x: 2, y: 2, itemIds: ["furnace-key"], climax: { id: "test-guardian" } },
+    ];
+    const floor = mapToFloorDef(map);
+    const floorChest = floor.treasures?.[0]!;
+    const mapChest = map.treasures[0]!;
+    expect(floorChest.climax).not.toBe(mapChest.climax);
+    expect(floorChest.climax).toEqual(mapChest.climax);
+  });
+
+  it("rejects climax that is not an object", () => {
+    const base = () => JSON.parse(JSON.stringify(floorDefToMap(findFloor(1)!)));
+    const raw = base();
+    raw.treasures = [{ x: 1, y: 1, itemIds: ["healing-potion"], climax: "not-an-object" }];
+    expect(() => parseFloorMapJSON(raw)).toThrow(/treasures\[0\]\.climax must be an object/);
+  });
+
+  it("rejects climax.id that is not a non-empty string", () => {
+    const base = () => JSON.parse(JSON.stringify(floorDefToMap(findFloor(1)!)));
+    const raw = base();
+    raw.treasures = [{ x: 1, y: 1, itemIds: ["healing-potion"], climax: { id: 42 } }];
+    expect(() => parseFloorMapJSON(raw)).toThrow(/treasures\[0\]\.climax\.id must be a non-empty string/);
+
+    const raw2 = base();
+    raw2.treasures = [{ x: 1, y: 1, itemIds: ["healing-potion"], climax: { id: "" } }];
+    expect(() => parseFloorMapJSON(raw2)).toThrow(/treasures\[0\]\.climax\.id must be a non-empty string/);
   });
 });
 

@@ -1,29 +1,43 @@
-# The Cursed Library (id=2, 14x14)
-# start=(2,11) encounter=0.1
+# The Cursed Library (id=2, 14x26)
+# start=(2,23) encounter=0.1
 # . floor  # solid  @ start  ^v inter-floor stairs / local ramp direction  >< local ramp direction  T treasure  ~ water  N npc  ! event  P tele  C chute  D dark  M antimagic
 
    01234567890123
  0 ##############
  1 #N...#####...#
- 2 #..!...D!....#
+ 2 #..!...DD!...#
  3 #....#.###..T#
  4 #....#.###.!.#
  5 ##.##.....####
- 6 ##.##.#.#.#..#
+ 6 ##.##.#!#.#M.#
  7 ##.##........#
  8 ##.##..!..#DT#
  9 ##!##.....#..#
 10 #......!##.!.#
-11 #.@!.##......#
+11 #..!.##......#
 12 #....#####.v.#
-13 ##############
+13 ##.###########
+14 ##.###########
+15 ##.###########
+16 ##.###########
+17 ##.###########
+18 ##.###########
+19 ##.###########
+20 ##.###########
+21 ##.###########
+22 #...##########
+23 #.@.##########
+24 #...##########
+25 ##############
 
 # Overlays:
+#   tileset-zone forbidden-wing (11,6)-(12,9) theme=f2b
+#   tileset-zone abyss-bridge-masonry (1,13)-(3,24) theme=f1
 #   lock (10,7) e key=lexicon-key
-#   treasure (12,3) items=[mace+1, chain-mail, cursed-blade, antidote] trap=alarm
-#   treasure (12,8) items=[staff+1, robe+1, ring-of-water-walking, furnace-key] trap=stunner
+#   treasure (12,3) items=[mace+1, chain-mail, cursed-blade, antidote] trap=stunner
+#   treasure (12,8) items=[staff+1, robe+1, ring-of-water-walking, furnace-key] trap=alarm
 #   npc (1,1) id=vestra name=Vestra
-#   event (8,2) kind=damage
+#   event (9,2) kind=damage
 #   event (7,10) kind=message
 #   event (3,2) kind=message
 #   event (11,4) kind=message
@@ -31,3 +45,4 @@
 #   event (7,8) kind=reward
 #   event (3,11) kind=heal
 #   event (11,10) kind=message
+#   event (7,6) kind=reward

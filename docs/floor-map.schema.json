@@ -70,6 +70,25 @@
         }
       }
     },
+    "environmentalSprites": {
+      "type": "array",
+      "description": "Large animated planes fixed in world space; assets are registered in src/data/environmental-sprites.ts.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "spriteId", "centerX", "centerY", "centerZ", "facing", "width", "height"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "spriteId": { "type": "string", "minLength": 1 },
+          "centerX": { "type": "number" },
+          "centerY": { "type": "number" },
+          "centerZ": { "type": "number" },
+          "facing": { "enum": ["n", "e", "s", "w"] },
+          "width": { "type": "number", "exclusiveMinimum": 0 },
+          "height": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
     "grid": {
       "type": "array",
       "description": "height rows of width cells",
@@ -253,6 +272,14 @@
         "e": { "$ref": "#/definitions/edge" },
         "s": { "$ref": "#/definitions/edge" },
         "w": { "$ref": "#/definitions/edge" },
+        "void": {
+          "const": true,
+          "description": "No walkable surface and no ordinary floor/ceiling geometry. Movement into this cell is blocked even when the shared edge is open."
+        },
+        "noCeiling": {
+          "const": true,
+          "description": "Walkable floor cell whose ordinary ceiling plane is omitted. Cannot be combined with void."
+        },
         "tile": {
           "enum": ["stairs_up", "stairs_down", "teleporter", "chute", "darkness", "treasure", "antimagic", "water", "npc", "event"]
         }

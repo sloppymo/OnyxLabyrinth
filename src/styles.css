@@ -294,6 +294,39 @@ canvas#map-canvas {
   display: none !important;
 }
 
+/* Nonmodal environmental bark: low and compact so the architecture stays visible. */
+#ambient-bark.ff6-window {
+  position: absolute;
+  left: 50%;
+  bottom: 82px;
+  z-index: 18;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  width: min(88%, 570px);
+  min-height: 0;
+  padding: 9px 16px 11px;
+  pointer-events: none;
+  font-family: var(--game-font);
+  text-align: left;
+}
+
+#ambient-bark[hidden] {
+  display: none !important;
+}
+
+#ambient-bark-speaker {
+  margin-bottom: 2px;
+  color: #ffd769;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+}
+
+#ambient-bark-text {
+  color: var(--warm-white);
+  font-size: 22px;
+  line-height: 1.25;
+}
+
 #combat-panel {
   display: none;
   width: 100%;
