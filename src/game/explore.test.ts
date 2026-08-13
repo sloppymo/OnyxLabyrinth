@@ -51,7 +51,7 @@ describe("revealAround", () => {
     revealAround(explored, floor, floor.startX, floor.startY, 3);
     revealAround(explored, floor, 11, 20, 3);
     expect(explored.has("11,20")).toBe(true);
-    expect(explored.has("9,19")).toBe(true);
+    expect(explored.has("11,17")).toBe(true);
     // The distant cistern key-chest stays hidden until the party reaches it.
     expect(explored.has("20,12")).toBe(false);
   });

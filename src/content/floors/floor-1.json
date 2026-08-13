@@ -1211,7 +1211,7 @@
       },
       {
         "n": "wall",
-        "e": "open",
+        "e": "wall",
         "s": "wall",
         "w": "open"
       },
@@ -1219,7 +1219,7 @@
         "n": "wall",
         "e": "open",
         "s": "wall",
-        "w": "open"
+        "w": "wall"
       },
       {
         "n": "wall",
@@ -1556,7 +1556,7 @@
       },
       {
         "n": "wall",
-        "e": "open",
+        "e": "wall",
         "s": "wall",
         "w": "open"
       },
@@ -1564,7 +1564,7 @@
         "n": "wall",
         "e": "open",
         "s": "wall",
-        "w": "open",
+        "w": "wall",
         "tile": "treasure"
       },
       {
@@ -1958,25 +1958,25 @@
       {
         "n": "open",
         "e": "open",
-        "s": "open",
+        "s": "wall",
         "w": "wall"
       },
       {
         "n": "wall",
         "e": "open",
-        "s": "open",
+        "s": "wall",
         "w": "open"
       },
       {
         "n": "wall",
         "e": "open",
-        "s": "open",
+        "s": "wall",
         "w": "open"
       },
       {
         "n": "open",
         "e": "wall",
-        "s": "open",
+        "s": "wall",
         "w": "open"
       },
       {
@@ -2126,26 +2126,26 @@
         "w": "wall"
       },
       {
-        "n": "open",
+        "n": "wall",
         "e": "open",
         "s": "wall",
         "w": "wall"
       },
       {
-        "n": "open",
+        "n": "wall",
         "e": "open",
         "s": "barred",
         "w": "open",
         "tile": "event"
       },
       {
-        "n": "open",
+        "n": "wall",
         "e": "open",
         "s": "wall",
         "w": "open"
       },
       {
-        "n": "open",
+        "n": "wall",
         "e": "wall",
         "s": "wall",
         "w": "open"
@@ -2215,7 +2215,7 @@
       },
       {
         "n": "wall",
-        "e": "open",
+        "e": "wall",
         "s": "wall",
         "w": "open"
       },
@@ -2223,7 +2223,7 @@
         "n": "wall",
         "e": "open",
         "s": "open",
-        "w": "open"
+        "w": "wall"
       },
       {
         "n": "locked",
@@ -2729,7 +2729,7 @@
       },
       {
         "n": "wall",
-        "e": "open",
+        "e": "wall",
         "s": "wall",
         "w": "wall"
       },
@@ -2737,7 +2737,7 @@
         "n": "open",
         "e": "open",
         "s": "wall",
-        "w": "open"
+        "w": "wall"
       },
       {
         "n": "open",
@@ -3254,7 +3254,7 @@
       {
         "n": "wall",
         "e": "open",
-        "s": "open",
+        "s": "wall",
         "w": "open"
       },
       {
@@ -3419,16 +3419,16 @@
       },
       {
         "n": "open",
-        "e": "door",
+        "e": "wall",
         "s": "open",
         "w": "open",
         "tile": "event"
       },
       {
-        "n": "open",
+        "n": "wall",
         "e": "open",
         "s": "open",
-        "w": "door"
+        "w": "wall"
       },
       {
         "n": "open",
@@ -3590,15 +3590,15 @@
       },
       {
         "n": "open",
-        "e": "open",
-        "s": "open",
+        "e": "wall",
+        "s": "wall",
         "w": "wall"
       },
       {
         "n": "open",
         "e": "open",
         "s": "open",
-        "w": "open",
+        "w": "wall",
         "tile": "npc"
       },
       {
@@ -3764,7 +3764,7 @@
         "w": "wall"
       },
       {
-        "n": "open",
+        "n": "wall",
         "e": "open",
         "s": "wall",
         "w": "wall"
@@ -8404,11 +8404,20 @@
     },
     {
       "id": "central-hall",
-      "x1": 9,
+      "x1": 10,
       "y1": 12,
       "x2": 14,
       "y2": 26,
       "ceilingZ": 1.5
+    },
+    {
+      "id": "index-ramp",
+      "x1": 10,
+      "y1": 18,
+      "x2": 10,
+      "y2": 18,
+      "floorZ": 0,
+      "ceilingZ": 2.5
     },
     {
       "id": "chapel-vault",
@@ -8432,7 +8441,8 @@
       "y1": 12,
       "x2": 9,
       "y2": 20,
-      "ceilingZ": 2
+      "ceilingZ": 2.5,
+      "floorZ": 1
     },
     {
       "id": "ember-loft",
@@ -8440,15 +8450,26 @@
       "y1": 2,
       "x2": 22,
       "y2": 11,
-      "ceilingZ": 2.5
+      "ceilingZ": 2.5,
+      "floorZ": 0
+    },
+    {
+      "id": "ember-elevated",
+      "x1": 14,
+      "y1": 2,
+      "x2": 22,
+      "y2": 11,
+      "floorZ": 1,
+      "ceilingZ": 3
     },
     {
       "id": "stitchworks-loft",
       "x1": 23,
       "y1": 2,
       "x2": 26,
-      "y2": 11,
-      "ceilingZ": 2.5
+      "y2": 10,
+      "ceilingZ": 3,
+      "floorZ": 1
     }
   ],
   "architecturalProps": [
@@ -8576,6 +8597,26 @@
       "offsetX": -0.3,
       "anchor": "ceiling",
       "alphaMode": "opaque"
+    }
+  ],
+  "ramps": [
+    {
+      "x": 10,
+      "y": 18,
+      "dir": "w",
+      "surface": "ramp"
+    },
+    {
+      "x": 13,
+      "y": 4,
+      "dir": "e",
+      "surface": "ramp"
+    },
+    {
+      "x": 13,
+      "y": 10,
+      "dir": "e",
+      "surface": "ramp"
     }
   ]
 }

@@ -39,7 +39,7 @@ describe("Floor 1 revision 9 expansion", () => {
     // gate hall and its approach corridor on top, so the combined change is
     // measured against the same pre-revision-9 baseline and no longer fits
     // revision 9's own 25–40% band in isolation.
-    expect(walkable).toBe(404);
+    expect(walkable).toBe(403);
     expect(change).toBeGreaterThanOrEqual(0.25);
     expect(change).toBeLessThanOrEqual(0.50);
   });
@@ -209,5 +209,87 @@ describe("Floor 1 Stitchworks return gate", () => {
     expect(state.floor.grid[11][24].s).toBe("door");
     expect(state.floor.grid[12][24].n).toBe("door");
     expect(resolveTraversal(state, 2 as Direction).kind).toBe("step");
+  });
+});
+
+describe("Floor 1 vertical graybox", () => {
+  it("raises Index and Ember, keeps Central Hall from overlapping at x=9", () => {
+    const floor = floor1();
+    const index = floor.heightZones?.find((z) => z.id === "index-stack");
+    const ramp = floor.heightZones?.find((z) => z.id === "index-ramp");
+    const central = floor.heightZones?.find((z) => z.id === "central-hall");
+    const ember = floor.heightZones?.find((z) => z.id === "ember-elevated");
+    const stitchworks = floor.heightZones?.find((z) => z.id === "stitchworks-loft");
+
+    expect(index).toMatchObject({ x1: 1, y1: 12, x2: 9, y2: 20, floorZ: 1, ceilingZ: 2.5 });
+    expect(ramp).toMatchObject({ x1: 10, y1: 18, x2: 10, y2: 18, floorZ: 0, ceilingZ: 2.5 });
+    expect(central).toMatchObject({ x1: 10, y1: 12, x2: 14, y2: 26, ceilingZ: 1.5 });
+    expect(ember).toMatchObject({ x1: 14, y1: 2, x2: 22, y2: 11, floorZ: 1, ceilingZ: 3 });
+    expect(stitchworks).toMatchObject({
+      x1: 23,
+      y1: 2,
+      x2: 26,
+      y2: 10,
+      floorZ: 1,
+      ceilingZ: 3,
+    });
+  });
+
+  it("has three ramps at the audited connectors", () => {
+    const floor = floor1();
+    const ramps = floor.ramps || [];
+    expect(ramps.some((r) => r.x === 10 && r.y === 18 && r.dir === "w")).toBe(true);
+    expect(ramps.some((r) => r.x === 13 && r.y === 4 && r.dir === "e")).toBe(true);
+    expect(ramps.some((r) => r.x === 13 && r.y === 10 && r.dir === "e")).toBe(true);
+  });
+
+  it("gives the Index ramp side walls so the player cannot slip sideways off the slope", () => {
+    const floor = floor1();
+    expect(floor.grid[18][10].n).toBe("wall");
+    expect(floor.grid[18][10].s).toBe("wall");
+    expect(floor.grid[18][10].w).toBe("open");
+    expect(floor.grid[18][10].e).toBe("open");
+  });
+
+  it("seals the forbidden Index perimeter edges", () => {
+    const floor = floor1();
+    expect(floor.grid[12][9].e).toBe("wall");
+    expect(floor.grid[12][10].w).toBe("wall");
+    expect(floor.grid[15][9].e).toBe("wall");
+    expect(floor.grid[15][10].w).toBe("wall");
+    expect(floor.grid[19][9].e).toBe("wall");
+    expect(floor.grid[19][10].w).toBe("wall");
+    expect(floor.grid[20][9].e).toBe("wall");
+    expect(floor.grid[20][10].w).toBe("wall");
+    expect(floor.grid[20][9].s).toBe("wall");
+    expect(floor.grid[21][9].n).toBe("wall");
+  });
+
+  it("seals the forbidden Ember perimeter edges", () => {
+    const floor = floor1();
+    expect(floor.grid[6][13].e).toBe("wall");
+    expect(floor.grid[6][14].w).toBe("wall");
+    expect(floor.grid[8][13].e).toBe("wall");
+    expect(floor.grid[8][14].w).toBe("wall");
+  });
+
+  it("seals the forbidden Stitchworks perimeter edges", () => {
+    const floor = floor1();
+    expect(floor.grid[10][23].s).toBe("wall");
+    expect(floor.grid[10][24].s).toBe("wall");
+    expect(floor.grid[10][25].s).toBe("wall");
+    expect(floor.grid[10][26].s).toBe("wall");
+    expect(floor.grid[11][23].n).toBe("wall");
+    expect(floor.grid[11][24].n).toBe("wall");
+    expect(floor.grid[11][25].n).toBe("wall");
+    expect(floor.grid[11][26].n).toBe("wall");
+  });
+
+  it("keeps the (24,11) barred gate unchanged as a base-level shortcut", () => {
+    const floor = floor1();
+    expect(floor.grid[11][24].s).toBe("barred");
+    expect(floor.grid[12][24].n).toBe("barred");
+    expect(canOpenBarredGate(floor, 24, 11, 2 as Direction)).toBe(true);
+    expect(canOpenBarredGate(floor, 24, 12, 0 as Direction)).toBe(false);
   });
 });
