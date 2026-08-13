@@ -304,6 +304,47 @@ function materialForDoor(
   return `${theme}:door`;
 }
 
+const OVERLOOK_PARAPET_HEIGHT = 0.25;
+
+function hasBarredGate(
+  floor: FloorDef,
+  x: number,
+  y: number,
+  dir: Direction
+): boolean {
+  return floor.barredGates?.some(
+    (gate) => gate.x === x && gate.y === y && gate.dir === dir
+  ) ?? false;
+}
+
+/**
+ * A high catwalk directly above the approach side of a barred gate needs a
+ * low parapet rather than a full-height wall. The edge remains a wall in the
+ * grid, so this is presentation-only: the party still cannot cross it, but
+ * the gate below can be read as a lower level from the catwalk.
+ */
+function overlookBoundaryForBarredGate(
+  floor: FloorDef,
+  x: number,
+  y: number,
+  dir: Direction,
+  volume: ReturnType<typeof resolveCellVolume>,
+  neighborVolume: ReturnType<typeof resolveCellVolume> | null
+): "high" | "low" | null {
+  if (!neighborVolume || volume.floorZ === neighborVolume.floorZ) return null;
+  const direction = DIRECTIONS.find((entry) => entry.dir === dir);
+  if (!direction) return null;
+  const neighborX = x + direction.dx;
+  const neighborY = y + direction.dy;
+  if (volume.floorZ > neighborVolume.floorZ && hasBarredGate(floor, neighborX, neighborY, dir)) {
+    return "high";
+  }
+  if (volume.floorZ < neighborVolume.floorZ && hasBarredGate(floor, x, y, direction.opposite)) {
+    return "low";
+  }
+  return null;
+}
+
 export function compileMazeGeometry(
   floor: FloorDef,
   // Current campaign floors are roughly 30 cells across and only a few
@@ -388,16 +429,18 @@ export function compileMazeGeometry(
         const ny = y + dy;
         const neighbor = floor.grid[ny]?.[nx];
         const neighborInterior = isInterior(neighbor);
+        const neighborVolume = neighborInterior
+          ? resolveCellVolume(floor, nx, ny)
+          : null;
         const isStairDoor =
           edge === "open" &&
           (neighbor?.tile === "stairs_up" || neighbor?.tile === "stairs_down");
 
         if (edge === "open" && neighborInterior && !isStairDoor) {
-          const neighborVolume = resolveCellVolume(floor, nx, ny);
           const neighborSurface = resolveFloorSurface(floor, nx, ny);
           const patches = compileOpenBoundaryPatches(
             volume,
-            neighborVolume,
+            neighborVolume!,
             boundaryFloorProfile(surface, dir),
             boundaryFloorProfile(
               neighborSurface,
@@ -414,6 +457,40 @@ export function compileMazeGeometry(
             );
           }
           continue;
+        }
+
+        if (edge === "wall" && neighborInterior && neighborVolume) {
+          const overlook = overlookBoundaryForBarredGate(
+            floor,
+            x,
+            y,
+            dir,
+            volume,
+            neighborVolume
+          );
+          if (overlook === "low") continue;
+          if (overlook === "high") {
+            const neighborSurface = resolveFloorSurface(floor, nx, ny);
+            const highFloor = boundaryFloorProfile(surface, dir);
+            const lowFloor = boundaryFloorProfile(
+              neighborSurface,
+              OPPOSITE_SURFACE_DIRECTION[dir]
+            );
+            addBoundaryPatch(
+              batchFor(x, y, `${theme}:wall`, "wall"),
+              x,
+              y,
+              dir,
+              {
+                bottom0: lowFloor.z0,
+                bottom1: lowFloor.z1,
+                top0: Math.min(volume.ceilingZ, highFloor.z0 + OVERLOOK_PARAPET_HEIGHT),
+                top1: Math.min(volume.ceilingZ, highFloor.z1 + OVERLOOK_PARAPET_HEIGHT),
+                kind: "lowerClosure",
+              }
+            );
+            continue;
+          }
         }
 
         if (edge === "door" || edge === "locked" || edge === "barred" || isStairDoor) {

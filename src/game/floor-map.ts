@@ -9,6 +9,7 @@ import type { EdgeType, Grid, TileFeature } from "../types";
 import type {
   BarredGateDef,
   EventDef,
+  ArchitecturalPropDef,
   FloorDef,
   EncounterZoneDef,
   HeightZoneDef,
@@ -79,6 +80,8 @@ export interface DoorFeatureJSON {
   spriteId: string;
 }
 
+export type ArchitecturalPropJSON = ArchitecturalPropDef;
+
 export interface TreasureJSON {
   x: number;
   y: number;
@@ -114,6 +117,7 @@ export interface FloorMapJSON {
   heightZones?: HeightZoneDef[];
   /** Local traversable floor surfaces; dir names the uphill edge. */
   ramps?: RampDef[];
+  architecturalProps?: ArchitecturalPropJSON[];
   grid: CellJSON[][];
   /**
    * @deprecated Ignored by the engine. Combat tables come from
@@ -238,6 +242,7 @@ export function newFloorMapJSON(
     tilesetZones: partial?.tilesetZones,
     heightZones: partial?.heightZones,
     ramps: partial?.ramps,
+    architecturalProps: partial?.architecturalProps,
     grid,
     encounterTable: partial?.encounterTable,
     encounterZones: partial?.encounterZones,
@@ -274,6 +279,7 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
     tilesetZones: floor.tilesetZones?.map((z) => ({ ...z })),
     heightZones: floor.heightZones?.map((z) => ({ ...z })),
     ramps: floor.ramps?.map((r) => ({ ...r })),
+    architecturalProps: floor.architecturalProps?.map((p) => ({ ...p })),
     grid: floor.grid.map((row) =>
       row.map((cell) => ({
         n: cell.n,
@@ -345,6 +351,7 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
     tilesetZones: map.tilesetZones?.map((z) => ({ ...z })),
     heightZones: map.heightZones?.map((z) => ({ ...z })),
     ramps: map.ramps?.map((r) => ({ ...r })),
+    architecturalProps: map.architecturalProps?.map((p) => ({ ...p })),
     encounterTable: map.encounterTable ? [...map.encounterTable] : undefined,
     encounterZones: map.encounterZones?.map((z) => ({ ...z })),
     mapSprites: map.mapSprites?.map((s) => ({ ...s })),
@@ -416,6 +423,7 @@ export function parseFloorMapJSON(raw: unknown): FloorMapJSON {
     tilesetZones: parseOverlayArray(o.tilesetZones, "tilesetZones", parseTilesetZone),
     heightZones: parseOverlayArray(o.heightZones, "heightZones", parseHeightZone),
     ramps: parseOverlayArray(o.ramps, "ramps", parseRamp),
+    architecturalProps: parseOverlayArray(o.architecturalProps, "architecturalProps", parseArchitecturalProp),
     grid,
     encounterTable: optionalStringArray(o.encounterTable),
     encounterZones: parseOverlayArray(o.encounterZones, "encounterZones", parseZone),
@@ -533,6 +541,49 @@ function parseRamp(o: Record<string, unknown>, l: string): RampDef {
     y: requireInt(o.y, `${l}.y`),
     dir: parseDir(o.dir, `${l}.dir`),
     surface,
+  };
+}
+
+function parseArchitecturalProp(
+  o: Record<string, unknown>,
+  l: string
+): ArchitecturalPropJSON {
+  const kind = requireString(o.kind, `${l}.kind`);
+  if (kind !== "plane" && kind !== "box") {
+    throw new Error(`${l}.kind must be plane or box`);
+  }
+  const anchor = o.anchor === undefined ? undefined : requireString(o.anchor, `${l}.anchor`);
+  if (anchor !== undefined && anchor !== "floor" && anchor !== "ceiling") {
+    throw new Error(`${l}.anchor must be floor or ceiling`);
+  }
+  const alphaMode = o.alphaMode === undefined
+    ? undefined
+    : requireString(o.alphaMode, `${l}.alphaMode`);
+  if (alphaMode !== undefined && alphaMode !== "opaque" && alphaMode !== "cutout") {
+    throw new Error(`${l}.alphaMode must be opaque or cutout`);
+  }
+  const width = requireFiniteNumber(o.width, `${l}.width`);
+  const height = requireFiniteNumber(o.height, `${l}.height`);
+  const depth = o.depth === undefined ? undefined : requireFiniteNumber(o.depth, `${l}.depth`);
+  const offsetX = o.offsetX === undefined ? undefined : requireFiniteNumber(o.offsetX, `${l}.offsetX`);
+  const offsetZ = o.offsetZ === undefined ? undefined : requireFiniteNumber(o.offsetZ, `${l}.offsetZ`);
+  if (width <= 0 || height <= 0 || (depth !== undefined && depth <= 0)) {
+    throw new Error(`${l} dimensions must be > 0`);
+  }
+  return {
+    id: requireString(o.id, `${l}.id`),
+    x: requireInt(o.x, `${l}.x`),
+    y: requireInt(o.y, `${l}.y`),
+    ...(offsetX === undefined ? {} : { offsetX }),
+    ...(offsetZ === undefined ? {} : { offsetZ }),
+    kind,
+    facing: parseDir(o.facing, `${l}.facing`),
+    width,
+    height,
+    ...(depth === undefined ? {} : { depth }),
+    texture: requireString(o.texture, `${l}.texture`),
+    ...(anchor === undefined ? {} : { anchor }),
+    ...(alphaMode === undefined ? {} : { alphaMode }),
   };
 }
 

@@ -36,6 +36,8 @@ export const CEILING_SPRITES: readonly CeilingSpriteDef[] = [
   { id: "hotboi-hanging-rack", name: "Hot Boi's Hanging Bar Rack", file: "hotboi-hanging-rack.png", baseSize: 40 },
   { id: "hotboi-lantern", name: "Hot Boi's Lantern", file: "hotboi-lantern.png", baseSize: 30 },
   { id: "isobel-prism-mobile", name: "Iso-Spells Prism Mobile", file: "isobel-prism-mobile.png", baseSize: 26 },
+  { id: "descent-chain-heavy", name: "Heavy Bronze Chain", file: "descent-chain-heavy.png", baseSize: 52 },
+  { id: "descent-counterweight", name: "Great Suspended Counterweight", file: "descent-counterweight.png", baseSize: 72 },
 ];
 
 export const CEILING_SPRITES_BY_ID: Record<string, CeilingSpriteDef> = Object.fromEntries(
