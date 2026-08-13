@@ -12,7 +12,7 @@ are not done yet — see Prerequisites below before starting either.
 
 ## Prerequisites
 
-**Status: `READY FOR VERTICAL GRAYBOX`.**
+**Status: `VERTICAL GRAYBOX IMPLEMENTED`.**
 The code is on `feat/productionize-vertical-traversal` and passes the
 automated gate (`npm run check`) and the manual Gate 4 checks (WebGL/Canvas
 critical path, save/load at elevations, renderer lifecycle, minimum-legal-
@@ -32,7 +32,7 @@ proceed.
    `heightZones` and `ramps`; round-trip save/load and floor export preserve
    them.
 
-## Blocker status: `READY FOR VERTICAL GRAYBOX`
+## Blocker status: `VERTICAL GRAYBOX IMPLEMENTED — npm run check green`
 
 ## Spatial thesis
 
@@ -127,15 +127,25 @@ tying the elevation change to the region's identity rather than to "tall
 rooms look cool." Every other Wound gets its distinct read from
 `ceilingZ`, dressing, and lighting alone.
 
-## Open work (next steps, not done in this document)
+## Implementation snapshot (as of this branch)
 
-1. Resolve the two prerequisites above (merge/rebase Renderer 2 in;
-   teach the validator/exporter about the new fields).
-2. Full content audit of the four expensive regions: name the actual
-   grid cells that become connectors, and confirm each against
-   `raftRoutes`/`chuteDrops`/`teleporters`/`npcs`/`treasures` coordinates
-   already in `floor-1.json` so no existing placement gets orphaned by a
-   floorZ boundary.
-3. Graybox the Z changes on a copy/branch, then run the same
-   continuous-traversal + blind-playtest QA methodology validated on the
-   Level 2 slice — before any new art.
+The vertical graybox has been implemented and `npm run check` passes:
+
+- **Vaulted (ceilingZ-only) zones:** gate-hall, central-hall, chapel-vault,
+  namanda-vault.
+- **Raised Index Stack:** `x1-9, y12-20`, `floorZ: 1`, ramp at `(10,18) w`.
+  Central Hall's western boundary was moved to `x: 10` so the two zones no
+  longer overlap. A dedicated `index-ramp` landing zone at `(10,18)` ensures
+  the camera clears the ramp slope.
+- **Raised Ember Forge:** `x14-22, y2-11`, `floorZ: 1`, ramps at
+  `(13,4) e` and `(13,10) e` for an elevated loop. Forbidden crossing edges
+  at `(13,6) e` and `(13,8) e` are sealed.
+- **Stitchworks Catwalk:** `x23-26, y2-10`, `floorZ: 1`, with its south
+  boundary at `y10` sealed so it sits as an intentional overlook over the
+  unchanged `(24,11)` base-level barred grate.
+- **Regression tests:** `floor1-expansion.test.ts` covers the three
+  connectors, ramp side-wall containment, one forbidden crossing on every
+  elevated perimeter, and the preserved `(24,11)` shortcut.
+
+The original spatial thesis and preserve/do-not lists above remain the
+rationale for these specific geometry choices.
