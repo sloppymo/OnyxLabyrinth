@@ -15,10 +15,9 @@ import {
   KAZEHARU_GUEST_ID,
 } from "./kazeharu";
 import { adjustDisposition } from "./npc";
-import { createDefaultParty } from "./party";
-import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
-import { cloneFloor, type FloorDef, type NPCDef } from "../data/floors";
+import { type FloorDef, type NPCDef } from "../data/floors";
+import { createGameState } from "./state";
 import type { GameState } from "../types";
 
 function makeKazeharu(): NPCDef {
@@ -57,37 +56,16 @@ function makeFloor(npc: NPCDef): FloorDef {
 }
 
 function makeState(npc: NPCDef = makeKazeharu()): GameState {
-  const party = createDefaultParty();
-  return {
-    mode: "dungeon",
-    floor: cloneFloor(makeFloor(npc)),
-    player: { x: npc.x, y: npc.y, facing: 0 },
-    party,
-    equipment: Object.fromEntries(party.map((c) => [c.id, defaultLoadoutForCharacter(c)])),
-    explored: new Set<string>(),
-    exploredByFloor: {},
-    stepsSinceEncounter: 0,
-    dayCount: 1,
-    worldYear: 3847,
-    partyGold: 0,
-    inventory: [],
-    keys: [],
-    unlockedDoors: new Set<string>(),
-    lootTaken: {},
-    pendingTrap: null,
-    persistentBuffs: [],
-    swimSkill: {},
-    talkedToNPCs: [],
-    npcDisposition: {},
-    killedNPCs: [],
-    npcTradesDone: [],
-    inDarkness: false,
-    inAntimagic: false,
-    eventsTriggered: {},
-    deepestFloorReached: 1,
-    hasCompletedEnding: false,
-    lastDungeon: null,
-  };
+  const state = createGameState(makeFloor(npc));
+  state.mode = "dungeon";
+  state.player = { x: npc.x, y: npc.y, facing: 0 };
+  state.stepsSinceEncounter = 0;
+  state.partyGold = 0;
+  state.inventory = [];
+  state.explored = new Set<string>();
+  state.eventsTriggered = {};
+  state.deepestFloorReached = 1;
+  return state;
 }
 
 /** Recover the smith's signet ring — the fused-smith reward event at (14,9). */

@@ -1748,7 +1748,10 @@
         "healing-potion",
         "healing-potion"
       ],
-      "trap": "alarm"
+      "trap": "alarm",
+      "climax": {
+        "id": "floor3-guardian"
+      }
     }
   ],
   "npcs": [
