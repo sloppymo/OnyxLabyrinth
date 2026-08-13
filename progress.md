@@ -20,6 +20,13 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   in `output/playwright/floor2-renderer-regression-canvas/`. Both bridge runs
   blocked void traversal and reported zero browser errors; `npm run check`
   passed.
+- Integration follow-up: preserved original feature commit `4f2c0ea` on local
+  `feat/floor2-abyss-bridge-face-qa-base`, then replayed it byte-for-byte as
+  `b2a08f0` onto canonical Floor 1 PR #37 head `7f89b09`. The replay exposed
+  four stale Floor 2 editor/public exports; regenerated only those artifacts.
+  Fresh `npm run check` passed (118 files / 2,259 tests), and the dedicated
+  nine-shot WebGL + Canvas bridge runs again blocked void traversal with zero
+  browser errors. Deliberate repeat-crossing silence remains unchanged.
 
 ## 2026-08-10 — Maze Renderer 2
 
