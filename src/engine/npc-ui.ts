@@ -274,7 +274,7 @@ export class NPCController {
         case "shop":
           this.phase = "shop";
           this.index = 0;
-          this.dialogue = "Pick one.";
+          this.setDialogue("Pick one.", "narration");
           this.render();
           return;
         case "talk":
@@ -373,7 +373,10 @@ export class NPCController {
       const listing = this.shopListings()[this.index];
       if (listing?.spell) {
         this.phase = "shopConfirm";
-        this.dialogue = `${listing.spell.name}: ${listing.spell.description} Buy for ${listing.listing.price.toLocaleString()}g?`;
+        this.setDialogue(
+          `${listing.spell.name}: ${listing.spell.description} Buy for ${listing.listing.price.toLocaleString()}g?`,
+          "narration"
+        );
         this.render();
       }
       return;
@@ -384,7 +387,7 @@ export class NPCController {
       if (!listing?.spell || !this.npc.shop) return;
       const result = purchaseSpell(this.state, this.npc.shop, listing.spell.id);
       if (result.ok) audio.uiBuySell();
-      this.dialogue = result.message;
+      this.setDialogue(result.message, result.ok ? "transaction" : "warning");
       this.phase = "shop";
       this.render();
     }
