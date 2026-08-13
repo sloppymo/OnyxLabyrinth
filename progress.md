@@ -891,3 +891,9 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Reproducible headed/hardware selection, benchmark/lifecycle evidence and
   generated floor dumps are committed as `61d34b8`. Documentation is the last
   local commit; no push, merge, stash, rebase, reset, or PR action occurred.
+
+## 2026-08-12 — Floor 1 verticality focused visual pass
+
+- Real-browser pass covered the actual Floor 1 spawn and Gate approach, Index ramp `(10,18) w` in both directions, both Ember ramps `(13,4) e` / `(13,10) e` as a loop, rapid/slow ramp traversal, all 12 newly sealed boundaries, and the Stitchworks catwalk overlook.
+- The only genuine regression was the catwalk view: the lower barred gate read as an unexplained full wall. WebGL now renders a low parapet above that gate while retaining the sealed grid boundary and blocked traversal; the post-fix screenshot shows the lower metal gate distinctly below the catwalk.
+- Canvas fallback smoke still renders the architectural scene without disappearing. Browser warnings/errors remained empty, and `npm run check` passed: 116 files / 2,245 tests, app/tools typecheck, build, floor validation, and export parity. Existing Namanda content warnings remain unchanged.

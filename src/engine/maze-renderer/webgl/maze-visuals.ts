@@ -1,4 +1,6 @@
 import {
+  BoxGeometry,
+  BufferGeometry,
   Group,
   Mesh,
   PlaneGeometry,
@@ -27,6 +29,8 @@ import {
   loadCeilingSprites,
 } from "../../ceiling-sprite-cache";
 import { LEGACY_VERTICAL_UNIT, resolveCellVolume } from "../geometry/cell-volume";
+import { resolveArchitecturalPropPose } from "../geometry/architectural-prop";
+import { getArchitecturalPropImage } from "../../architectural-prop-cache";
 import type { MazeMaterialLibrary } from "./maze-materials";
 
 interface BillboardMeta {
@@ -40,17 +44,20 @@ interface BillboardMeta {
 
 export class MazeVisualCollection {
   readonly wallFeatures = new Group();
+  readonly architecturalProps = new Group();
   readonly billboards = new Group();
-  private readonly geometries: PlaneGeometry[] = [];
+  private readonly geometries: BufferGeometry[] = [];
   private readonly billboardMeshes: Mesh<PlaneGeometry, Material>[] = [];
 
   constructor(private readonly materials: MazeMaterialLibrary) {
     this.wallFeatures.name = "maze-wall-features";
+    this.architecturalProps.name = "maze-architectural-props";
     this.billboards.name = "maze-billboards";
   }
 
   loadFloor(floor: FloorDef): void {
     this.clear();
+    this.addArchitecturalProps(floor);
     this.addWallFeatures(floor);
     this.addDecor(floor);
     this.addFeatureProps(floor);
@@ -92,6 +99,30 @@ export class MazeVisualCollection {
     const geometry = new PlaneGeometry(width, height);
     this.geometries.push(geometry);
     return geometry;
+  }
+
+  private addArchitecturalProps(floor: FloorDef): void {
+    for (const prop of floor.architecturalProps ?? []) {
+      const image = getArchitecturalPropImage(prop.texture);
+      if (!image) continue;
+      const volume = resolveCellVolume(floor, prop.x, prop.y);
+      const pose = resolveArchitecturalPropPose(prop, volume.floorZ, volume.ceilingZ);
+      const geometry = prop.kind === "box"
+        ? new BoxGeometry(pose.width, pose.height, pose.depth)
+        : this.plane(pose.width, pose.height);
+      if (prop.kind === "box") this.geometries.push(geometry);
+      const material = this.materials.getImage(
+        `architectural:${prop.texture}:${prop.alphaMode ?? "cutout"}`,
+        image,
+        null,
+        prop.alphaMode ?? "cutout"
+      );
+      const mesh = new Mesh(geometry, material);
+      mesh.position.set(pose.x, pose.y, pose.z);
+      mesh.rotation.y = pose.rotationY;
+      mesh.name = `architectural-prop:${prop.id}`;
+      this.architecturalProps.add(mesh);
+    }
   }
 
   private addWallFeatures(floor: FloorDef): void {
@@ -326,6 +357,7 @@ export class MazeVisualCollection {
 
   clear(): void {
     this.wallFeatures.clear();
+    this.architecturalProps.clear();
     this.billboards.clear();
     for (const geometry of this.geometries) geometry.dispose();
     this.geometries.length = 0;
