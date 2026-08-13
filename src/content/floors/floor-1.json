@@ -8401,6 +8401,54 @@
       "x2": 13,
       "y2": 35,
       "ceilingZ": 3
+    },
+    {
+      "id": "central-hall",
+      "x1": 9,
+      "y1": 12,
+      "x2": 14,
+      "y2": 26,
+      "ceilingZ": 1.5
+    },
+    {
+      "id": "chapel-vault",
+      "x1": 1,
+      "y1": 2,
+      "x2": 10,
+      "y2": 11,
+      "ceilingZ": 2.5
+    },
+    {
+      "id": "namanda-vault",
+      "x1": 8,
+      "y1": 2,
+      "x2": 11,
+      "y2": 9,
+      "ceilingZ": 3
+    },
+    {
+      "id": "index-stack",
+      "x1": 1,
+      "y1": 12,
+      "x2": 9,
+      "y2": 20,
+      "ceilingZ": 2
+    },
+    {
+      "id": "ember-loft",
+      "x1": 11,
+      "y1": 2,
+      "x2": 22,
+      "y2": 11,
+      "ceilingZ": 2.5
+    },
+    {
+      "id": "stitchworks-loft",
+      "x1": 23,
+      "y1": 2,
+      "x2": 26,
+      "y2": 11,
+      "ceilingZ": 2.5
     }
   ],
   "architecturalProps": [
