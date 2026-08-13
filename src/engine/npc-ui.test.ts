@@ -283,9 +283,15 @@ describe("NPCController", () => {
     const mage = state.party.find((c) => c.class === "Mage")!;
     const { controller } = freshController(state, npc);
 
+    controller.handleKey("Enter"); // complete greeting reveal
+    controller.handleKey("Enter"); // acknowledge greeting
     controller.handleKey("b"); // Browse
+    controller.handleKey("Enter"); // complete shop narration reveal
+    controller.handleKey("Enter"); // acknowledge shop narration
     controller.handleKey("Enter"); // Inspect Isovoid
     controller.handleKey("ArrowDown"); // Must not change the confirmation target
+    controller.handleKey("Enter"); // complete confirmation reveal
+    controller.handleKey("Enter"); // acknowledge confirmation
     controller.handleKey("Enter"); // Buy Isovoid
 
     expect(state.partyGold).toBe(57600);
@@ -304,11 +310,15 @@ describe("NPCController", () => {
     const state = makeState(npc);
     const { controller } = freshController(state, npc);
     const text = document.querySelector<HTMLDivElement>("#combat-panel")!.textContent ?? "";
-    expect(text).toContain("Browse Iso-Spells");
-    expect(text).not.toContain("Attack");
-    expect(text).not.toContain("Steal");
-    expect(text).not.toContain("Barter");
-    expect(text).not.toContain("Give");
+    expect(text).not.toContain("Browse Iso-Spells");
+    controller.handleKey("Enter"); // complete greeting reveal
+    controller.handleKey("Enter"); // acknowledge greeting
+    const acknowledgedText = document.querySelector<HTMLDivElement>("#combat-panel")!.textContent ?? "";
+    expect(acknowledgedText).toContain("Browse Iso-Spells");
+    expect(acknowledgedText).not.toContain("Attack");
+    expect(acknowledgedText).not.toContain("Steal");
+    expect(acknowledgedText).not.toContain("Barter");
+    expect(acknowledgedText).not.toContain("Give");
     controller.destroy();
   });
 
