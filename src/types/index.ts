@@ -28,6 +28,10 @@ export interface Cell {
   e: EdgeType;
   s: EdgeType;
   w: EdgeType;
+  /** No walkable surface or ordinary floor/ceiling geometry exists here. */
+  void?: true;
+  /** Walkable cell whose ceiling is open to an exterior/void volume. */
+  noCeiling?: true;
   // Optional tile feature layered on top of the edge grid. Unused at Step 2
   // but locked in here so Step 11 (teleporters, chutes, stairs, darkness,
   // treasure rooms) doesn't force a second refactor of every grid consumer.
@@ -235,5 +239,14 @@ export interface GameState {
   // Returned") already won. A guardian tile whose id is here is inert —
   // never re-triggers combat. See game/features.ts handleStairsGuardian.
   clearedStairsGuardians: string[];
+  /** Persistent state for authored nonmodal environmental encounters. */
+  environmentalEncounters?: Record<string, EnvironmentalEncounterProgress>;
   purchasedSpellIds?: string[];
+}
+
+export interface EnvironmentalEncounterProgress {
+  crossings: number;
+  oneShots: string[];
+  repeatCursor: number;
+  lookCount: number;
 }

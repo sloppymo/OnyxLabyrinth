@@ -170,6 +170,12 @@ export class MazeMaterialLibrary {
     return material;
   }
 
+  /** Notify Three that a cached canvas-backed image changed in place. */
+  markImageDirty(source: HTMLCanvasElement): void {
+    const texture = this.textures.get(source);
+    if (texture) texture.needsUpdate = true;
+  }
+
   getGlow(key: string, color: string, intensity: number): MeshBasicMaterial {
     const materialKey = `glow:${key}`;
     const cached = this.materials.get(materialKey);

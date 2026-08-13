@@ -815,6 +815,7 @@ describe("stair exits (door presentation)", () => {
     const result = handleTileFeature(state);
     expect(result?.changedFloor).toBe(true);
     expect(state.floor.id).toBe(2);
+    expect(state.player).toMatchObject({ x: 2, y: 23, facing: 0 });
     expect(result?.message).toMatch(/pass through the door down/i);
     expect(result?.message).not.toMatch(/stairs/i);
     expect(state.floor.grid[state.player.y][state.player.x].tile).toBe("stairs_up");

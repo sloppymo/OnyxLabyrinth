@@ -429,11 +429,20 @@ export function projectBillboard(
   tileX: number,
   tileY: number
 ): BillboardProjection | null {
+  return projectWorldPoint(cam, tileX + 0.5, tileY + 0.5);
+}
+
+/** Project an exact world-cell coordinate without billboard centre offset. */
+export function projectWorldPoint(
+  cam: RenderCamera,
+  worldX: number,
+  worldY: number
+): BillboardProjection | null {
   const det = cam.planeX * cam.dirY - cam.dirX * cam.planeY;
   if (!Number.isFinite(det) || det === 0) return null;
   const invDet = 1 / det;
-  const dx = tileX + 0.5 - (cam.x + 0.5);
-  const dy = tileY + 0.5 - (cam.y + 0.5);
+  const dx = worldX - (cam.x + 0.5);
+  const dy = worldY - (cam.y + 0.5);
   const lateral = invDet * (cam.dirY * dx - cam.dirX * dy);
   const depth = invDet * (-cam.planeY * dx + cam.planeX * dy);
   if (!Number.isFinite(lateral) || !Number.isFinite(depth)) return null;

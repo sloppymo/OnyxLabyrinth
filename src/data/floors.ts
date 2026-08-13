@@ -113,6 +113,20 @@ export interface ArchitecturalPropDef {
   alphaMode?: ArchitecturalPropAlphaMode;
 }
 
+/** A large animated plane fixed in world space (never camera-facing). */
+export interface EnvironmentalSpriteDef {
+  id: string;
+  spriteId: string;
+  /** World-cell centre. Fractions are intentional for abyss-scale staging. */
+  centerX: number;
+  centerY: number;
+  /** Centre height in legacy floor-height units (0→1 is one corridor). */
+  centerZ: number;
+  facing: ArchitecturalPropFacing;
+  width: number;
+  height: number;
+}
+
 export interface FloorDef {
   id: number;
   name: string;
@@ -138,6 +152,8 @@ export interface FloorDef {
   ramps?: RampDef[];
   /** Fixed-orientation planes/boxes for visual architecture only. */
   architecturalProps?: ArchitecturalPropDef[];
+  /** Large fixed-orientation animated planes for environmental set pieces. */
+  environmentalSprites?: EnvironmentalSpriteDef[];
   /**
    * @deprecated Ignored by the encounter roller — the weighted
    * ENCOUNTER_TABLES in data/enemies.ts (keyed by floor id) are the source
@@ -430,7 +446,7 @@ export interface RaftRouteDef {
 
 function floor2(): FloorDef {
   const width = 14;
-  const height = 14;
+  const height = 26;
   const grid = buildSolidGrid(width, height);
 
   // SW entrance atrium (stairs up; arrivals from floors 1 and 3 land here).
@@ -465,6 +481,48 @@ function floor2(): FloorDef {
   // Atrium-to-hall link (closes the central loop).
   carveHorizontal(grid, 4, 7, 10);
 
+  // Floor 1 entrance extension. The old 14×14 library remains exactly where
+  // it was; rows 13–24 are an authored void volume containing only a narrow
+  // bridge and its masonry landings. The final row is a safety buffer.
+  carveRoom(grid, 0, 13, width - 1, 24);
+  for (let y = 13; y <= 24; y++) {
+    for (let x = 0; x < width; x++) grid[y][x].void = true;
+  }
+
+  // North throat, seven exposed bridge tiles, and the south throat.
+  carveVertical(grid, 2, 12, 24);
+  for (let y = 13; y <= 21; y++) delete grid[y][2].void;
+  for (let y = 14; y <= 20; y++) grid[y][2].noCeiling = true;
+  carveRoom(grid, 1, 22, 3, 24);
+  for (let y = 22; y <= 24; y++) {
+    for (let x = 1; x <= 3; x++) delete grid[y][x].void;
+  }
+
+  const seal = (
+    x: number,
+    y: number,
+    dir: "n" | "e" | "s" | "w",
+    nx: number,
+    ny: number,
+    opposite: "n" | "e" | "s" | "w"
+  ) => {
+    setEdge(grid, x, y, dir, "wall");
+    setEdge(grid, nx, ny, opposite, "wall");
+  };
+  // The exposed bridge deliberately keeps east/west open. Only the short
+  // landings regain side walls.
+  for (const y of [13, 21]) {
+    seal(2, y, "w", 1, y, "e");
+    seal(2, y, "e", 3, y, "w");
+  }
+  for (let y = 22; y <= 24; y++) {
+    seal(1, y, "w", 0, y, "e");
+    seal(3, y, "e", 4, y, "w");
+  }
+  seal(1, 22, "n", 1, 21, "s");
+  seal(3, 22, "n", 3, 21, "s");
+  for (let x = 1; x <= 3; x++) seal(x, 24, "s", x, 25, "n");
+
   // Reading hall north entrance door.
   setEdge(grid, 6, 4, "s", "door");
   setEdge(grid, 6, 5, "n", "door");
@@ -477,7 +535,7 @@ function floor2(): FloorDef {
 
   // Tile features.
   // Stairs up in the atrium (the arrival tile itself, Wizardry-style).
-  setTile(grid, 2, 11, "stairs_up");
+  setTile(grid, 2, 23, "stairs_up");
   // Stairs down in the SE stair room.
   setTile(grid, 11, 12, "stairs_down");
   // Snuffed-candle stretch of the north corridor.
@@ -515,7 +573,7 @@ function floor2(): FloorDef {
     height,
     grid,
     startX: 2,
-    startY: 11,
+    startY: 23,
     encounterRate: 0.10,
     tilesetTheme: "f2",
     // f2b: cold-recolored variant of the shipping f2 tileset (same wood/book
@@ -524,7 +582,21 @@ function floor2(): FloorDef {
     // locked, before the player ever reaches the alarm/climax chest.
     tilesetZones: [
       { id: "forbidden-wing", x1: 11, y1: 6, x2: 12, y2: 9, theme: "f2b" },
+      { id: "abyss-bridge-masonry", x1: 1, y1: 13, x2: 3, y2: 24, theme: "f1" },
     ],
+    environmentalSprites: [
+      {
+        id: "abyss-face",
+        spriteId: "abyss-face",
+        centerX: 4.7,
+        centerY: 16.5,
+        centerZ: 1.65,
+        facing: "w",
+        width: 4.8,
+        height: 4.6,
+      },
+    ],
+    floorRevision: 1,
     lockedDoors: [
       { x: 10, y: 7, dir: "e", keyId: "lexicon-key" },
     ],
@@ -584,6 +656,7 @@ function floor2(): FloorDef {
       { x: 7, y: 9, spriteId: "crate" },
     ],
     encounterZones: [
+      { id: "abyss-bridge-safe", x1: 2, y1: 13, x2: 2, y2: 24, rateMul: 0, safeZone: true },
       { id: "library-loop-safe", x1: 1, y1: 4, x2: 4, y2: 12, rateMul: 0.6 },
       { id: "forbidden-wing-hot", x1: 11, y1: 6, x2: 12, y2: 9, rateMul: 1.6, tableFloorId: 6 },
       { id: "scriptorium-hot", x1: 10, y1: 1, x2: 12, y2: 4, rateMul: 1.4 },
@@ -777,6 +850,8 @@ export function cloneFloor(floor: FloorDef): FloorDef {
         e: cell.e,
         s: cell.s,
         w: cell.w,
+        void: cell.void,
+        noCeiling: cell.noCeiling,
         tile: cell.tile,
       }))
     ),
@@ -793,6 +868,9 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     ramps: floor.ramps ? floor.ramps.map((r) => ({ ...r })) : undefined,
     architecturalProps: floor.architecturalProps
       ? floor.architecturalProps.map((p) => ({ ...p }))
+      : undefined,
+    environmentalSprites: floor.environmentalSprites
+      ? floor.environmentalSprites.map((p) => ({ ...p }))
       : undefined,
     encounterTable: floor.encounterTable ? [...floor.encounterTable] : undefined,
     encounterZones: floor.encounterZones

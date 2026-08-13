@@ -67,6 +67,26 @@ describe("floor-map", () => {
     expect(roundTrip.ramps).toEqual(map.ramps);
   });
 
+  it("parses and round-trips void and open-ceiling cells", () => {
+    const map = newFloorMapJSON(5, 5);
+    map.grid[2][1].void = true;
+    map.grid[2][2].noCeiling = true;
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    const roundTrip = floorDefToMap(mapToFloorDef(parsed));
+    expect(roundTrip.grid[2][1]).toMatchObject({ void: true });
+    expect(roundTrip.grid[2][2]).toMatchObject({ noCeiling: true });
+    expect(cellIsPassable(roundTrip.grid[2][1])).toBe(false);
+  });
+
+  it("rejects false-valued void and noCeiling fields", () => {
+    const raw = JSON.parse(JSON.stringify(newFloorMapJSON(5, 5)));
+    raw.grid[2][1].void = false;
+    expect(() => parseFloorMapJSON(raw)).toThrow(/void must be true/);
+    delete raw.grid[2][1].void;
+    raw.grid[2][1].noCeiling = "yes";
+    expect(() => parseFloorMapJSON(raw)).toThrow(/noCeiling must be true/);
+  });
+
   it("round-trips fixed architectural props", () => {
     const map = newFloorMapJSON(5, 5, {
       architecturalProps: [{
@@ -87,6 +107,25 @@ describe("floor-map", () => {
     expect(parsed.architecturalProps).toEqual(map.architecturalProps);
     expect(floorDefToMap(mapToFloorDef(parsed)).architecturalProps).toEqual(
       map.architecturalProps
+    );
+  });
+
+  it("round-trips fixed animated environmental sprites", () => {
+    const map = newFloorMapJSON(5, 5, {
+      environmentalSprites: [{
+        id: "god-face",
+        spriteId: "abyss-face",
+        centerX: 3.5,
+        centerY: 2,
+        centerZ: 1.5,
+        facing: "w",
+        width: 6,
+        height: 4,
+      }],
+    });
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    expect(floorDefToMap(mapToFloorDef(parsed)).environmentalSprites).toEqual(
+      map.environmentalSprites
     );
   });
 

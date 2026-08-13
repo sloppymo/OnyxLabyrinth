@@ -62,6 +62,7 @@ import {
   isStairExitFeature,
   raycastEdgeStop,
   projectBillboard,
+  projectWorldPoint,
   billboardScreenX,
   featureMarkerSize,
   propBillboardSize,
@@ -76,6 +77,12 @@ import {
   ceilingAnchorY,
   isBillboardOccluded,
 } from "./render-math";
+import {
+  getEnvironmentalSpriteAsset,
+  getEnvironmentalSpriteImage,
+} from "./environmental-sprite-cache";
+import { resolveEnvironmentalFrame } from "./environmental-sprite-animation";
+import { isAmbientSpeakerActive } from "./ambient-bark-state";
 import type { RenderCamera } from "./render-math";
 import {
   resolveTilesetTheme,
@@ -409,6 +416,7 @@ let floorCeilCachePlaneY = NaN;
 let floorCeilCacheBobY = NaN;
 let floorCeilCacheDarkness: boolean | null = null;
 let floorCeilCacheUseSky: boolean | null = null;
+let floorCeilCacheGrid: Grid | null = null;
 let floorCeilCacheTextureGrid: CellTextureGrid | null = null;
 let floorCeilCachePrimaryTextures: TextureSet | null = null;
 let floorCeilCacheWaterCells: boolean[][] | null = null;
@@ -1221,6 +1229,119 @@ function drawMapSprites(
   }
 }
 
+/** Draw enormous fixed planes column-by-column so perspective changes naturally. */
+function drawEnvironmentalSprites(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  cam: RenderCamera,
+  hits: (RayHit | null)[],
+  stripWidth: number,
+  nowMs: number
+): void {
+  const placements = state.floor.environmentalSprites;
+  if (!placements?.length) return;
+  const screenW = ctx.canvas.width;
+  const screenH = ctx.canvas.height;
+
+  for (const placement of placements) {
+    const asset = getEnvironmentalSpriteAsset(placement.spriteId);
+    const sheet = getEnvironmentalSpriteImage(placement.spriteId);
+    if (!asset || !sheet) continue;
+    const frame = resolveEnvironmentalFrame({
+      playerY: state.player.y,
+      spriteCenterY: placement.centerY,
+      nowMs,
+      speaking: isAmbientSpeakerActive(placement.id, nowMs),
+    });
+    const verticalPlane = placement.facing === "e" || placement.facing === "w";
+    const startWorld = verticalPlane
+      ? { x: placement.centerX, y: placement.centerY - placement.width / 2 }
+      : { x: placement.centerX - placement.width / 2, y: placement.centerY };
+    const endWorld = verticalPlane
+      ? { x: placement.centerX, y: placement.centerY + placement.width / 2 }
+      : { x: placement.centerX + placement.width / 2, y: placement.centerY };
+    const startProjection = projectWorldPoint(cam, startWorld.x, startWorld.y);
+    const endProjection = projectWorldPoint(cam, endWorld.x, endWorld.y);
+    // When the party looks squarely at the plane its depth is constant. One
+    // nearest-neighbour blit is both cheaper and perfectly seam-free.
+    if (
+      startProjection && endProjection &&
+      startProjection.depth > 0.05 && endProjection.depth > 0.05 &&
+      Math.abs(startProjection.depth - endProjection.depth) < 0.005
+    ) {
+      const x0 = billboardScreenX(startProjection, screenW);
+      const x1 = billboardScreenX(endProjection, screenW);
+      const depth = (startProjection.depth + endProjection.depth) / 2;
+      const wallHeight = computeLineHeight(screenH, depth);
+      const top = screenH / 2 + (0.5 - (placement.centerZ + placement.height / 2)) * wallHeight;
+      const bottom = screenH / 2 + (0.5 - (placement.centerZ - placement.height / 2)) * wallHeight;
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = Math.max(0.84, opacityForDepth(depth));
+      ctx.drawImage(
+        sheet,
+        frame * asset.frameWidth,
+        0,
+        asset.frameWidth,
+        asset.frameHeight,
+        Math.min(x0, x1),
+        top,
+        Math.abs(x1 - x0),
+        bottom - top
+      );
+      ctx.restore();
+      continue;
+    }
+    const sourceStep = Math.max(1, Math.ceil(asset.frameWidth / 160));
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let sourceX = 0; sourceX < asset.frameWidth; sourceX += sourceStep) {
+      const t0 = sourceX / asset.frameWidth;
+      const t1 = Math.min(1, (sourceX + sourceStep) / asset.frameWidth);
+      let worldX0: number;
+      let worldY0: number;
+      let worldX1: number;
+      let worldY1: number;
+      if (verticalPlane) {
+        worldX0 = worldX1 = placement.centerX;
+        worldY0 = placement.centerY - placement.width / 2 + placement.width * t0;
+        worldY1 = placement.centerY - placement.width / 2 + placement.width * t1;
+      } else {
+        worldY0 = worldY1 = placement.centerY;
+        worldX0 = placement.centerX - placement.width / 2 + placement.width * t0;
+        worldX1 = placement.centerX - placement.width / 2 + placement.width * t1;
+      }
+      const p0 = projectWorldPoint(cam, worldX0, worldY0);
+      const p1 = projectWorldPoint(cam, worldX1, worldY1);
+      if (!p0 || !p1 || p0.depth <= 0.05 || p1.depth <= 0.05) continue;
+      const x0 = billboardScreenX(p0, screenW);
+      const x1 = billboardScreenX(p1, screenW);
+      const depth = (p0.depth + p1.depth) / 2;
+      const wallHeight = computeLineHeight(screenH, depth);
+      const top = screenH / 2 + (0.5 - (placement.centerZ + placement.height / 2)) * wallHeight;
+      const bottom = screenH / 2 + (0.5 - (placement.centerZ - placement.height / 2)) * wallHeight;
+      const left = Math.min(x0, x1);
+      const drawWidth = Math.max(1, Math.abs(x1 - x0) + 1);
+      const stripIndex = Math.floor((left + drawWidth / 2) / stripWidth);
+      const wallHit = hits[stripIndex];
+      if (wallHit && isBillboardOccluded(wallHit.perpWallDist, depth)) continue;
+      ctx.globalAlpha = Math.max(0.84, opacityForDepth(depth));
+      ctx.drawImage(
+        sheet,
+        frame * asset.frameWidth + sourceX,
+        0,
+        Math.min(sourceStep, asset.frameWidth - sourceX),
+        asset.frameHeight,
+        Math.floor(left),
+        Math.floor(top),
+        Math.ceil(drawWidth),
+        Math.max(1, Math.ceil(bottom - top))
+      );
+    }
+    ctx.restore();
+  }
+}
+
 /**
  * Draw interactive tile features as floor-standing billboards.
  *
@@ -1496,6 +1617,7 @@ function fillCampSky(
 function drawFloorCeilingCast(
   ctx: CanvasRenderingContext2D,
   cam: RenderCamera,
+  grid: Grid,
   inDarkness: boolean,
   useSky: boolean,
   sky: HTMLImageElement | null,
@@ -1537,6 +1659,7 @@ function drawFloorCeilingCast(
     bobY === floorCeilCacheBobY &&
     inDarkness === floorCeilCacheDarkness &&
     useSky === floorCeilCacheUseSky &&
+    grid === floorCeilCacheGrid &&
     cellTextures === floorCeilCacheTextureGrid &&
     primaryTextures === floorCeilCachePrimaryTextures &&
     waterCells === floorCeilCacheWaterCells &&
@@ -1592,6 +1715,12 @@ function drawFloorCeilingCast(
     for (let x = 0; x < w; x++) {
       const gx = worldX | 0;
       const gy = worldY | 0;
+      const cell = grid[gy]?.[gx];
+      if (cell?.void || cell?.noCeiling) {
+        worldX += stepX;
+        worldY += stepY;
+        continue;
+      }
       const textures = cellTextures[gy]?.[gx] ?? primaryTextures;
       const ceilImg = textures.ceilingData ?? primaryTextures.ceilingData;
       if (ceilImg) {
@@ -1629,6 +1758,11 @@ function drawFloorCeilingCast(
     for (let x = 0; x < w; x++) {
       const gx = worldX | 0;
       const gy = worldY | 0;
+      if (grid[gy]?.[gx]?.void) {
+        worldX += stepX;
+        worldY += stepY;
+        continue;
+      }
       const textures = cellTextures[gy]?.[gx] ?? primaryTextures;
       const isFloorA = (gx + gy) % 2 === 0;
       const isWater = waterCells[gy]?.[gx] ?? false;
@@ -1670,6 +1804,7 @@ function drawFloorCeilingCast(
   floorCeilCacheBobY = bobY;
   floorCeilCacheDarkness = inDarkness;
   floorCeilCacheUseSky = useSky;
+  floorCeilCacheGrid = grid;
   floorCeilCacheTextureGrid = cellTextures;
   floorCeilCachePrimaryTextures = primaryTextures;
   floorCeilCacheWaterCells = waterCells;
@@ -1741,6 +1876,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     drawFloorCeilingCast(
       ctx,
       cam,
+      state.floor.grid,
       state.inDarkness,
       useSky,
       campSky,
@@ -2030,6 +2166,11 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     }
   }
   ctx.restore();
+
+  // Fixed environmental planes draw against the completed depth buffer.
+  // Their per-column wall test keeps the huge plane out of masonry while
+  // still allowing open pieces to enter the view naturally.
+  drawEnvironmentalSprites(ctx, state, cam, hits, stripWidth, performance.now());
 
   // --- Amber edge-glow pass (batched) ---
   // Group hits by depth bucket so we can batch all lines at the same depth

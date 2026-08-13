@@ -117,6 +117,20 @@ describe("compileMazeGeometry", () => {
     expect(compiled.stats.triangles).toBe(20);
   });
 
+  it("omits void cell surfaces and leaves an open abyss edge unsealed", () => {
+    const floor = twoCellFloor();
+    floor.grid[1][2].void = true;
+    floor.grid[1][1].noCeiling = true;
+    const compiled = compileMazeGeometry(floor);
+    expect(quadsForKind(compiled, "floor")).toHaveLength(1);
+    expect(compiled.batches.filter((batch) => batch.kind === "ceiling")).toHaveLength(0);
+    const sharedWalls = quadsForKind(compiled, "wall").filter((quad) => {
+      const xs = quad.positions.filter((_, index) => index % 3 === 0);
+      return xs.every((x) => x === 2);
+    });
+    expect(sharedWalls).toHaveLength(0);
+  });
+
   it("adds the upper closure at an open 1×→3× transition", () => {
     const compiled = compileMazeGeometry(
       twoCellFloor({

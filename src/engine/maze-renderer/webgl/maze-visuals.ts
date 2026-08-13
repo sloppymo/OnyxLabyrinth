@@ -8,6 +8,7 @@ import {
   type Material,
 } from "three";
 import type { FloorDef } from "../../../data/floors";
+import type { GameState } from "../../../types";
 import { featurePropSpriteIds } from "../../../data/maze-props";
 import { isTreasureLooted } from "../../../game/features";
 import { isCorridorMarkerFeature, PROP_MAX_WALL_FRAC } from "../../render-math";
@@ -32,6 +33,13 @@ import { LEGACY_VERTICAL_UNIT, resolveCellVolume } from "../geometry/cell-volume
 import { resolveArchitecturalPropPose } from "../geometry/architectural-prop";
 import { getArchitecturalPropImage } from "../../architectural-prop-cache";
 import type { MazeMaterialLibrary } from "./maze-materials";
+import {
+  getEnvironmentalSpriteAsset,
+  getEnvironmentalSpriteImage,
+  loadEnvironmentalSprites,
+} from "../../environmental-sprite-cache";
+import { resolveEnvironmentalFrame } from "../../environmental-sprite-animation";
+import { isAmbientSpeakerActive } from "../../ambient-bark-state";
 
 interface BillboardMeta {
   baseX: number;
@@ -42,29 +50,44 @@ interface BillboardMeta {
   featureKind?: "npc" | "treasure-unlooted" | "treasure-looted" | "tile";
 }
 
+interface EnvironmentalMeta {
+  id: string;
+  spriteCenterY: number;
+  sheet: HTMLImageElement;
+  frameCanvas: HTMLCanvasElement;
+  frameWidth: number;
+  frameHeight: number;
+  lastFrame: number;
+}
+
 export class MazeVisualCollection {
   readonly wallFeatures = new Group();
   readonly architecturalProps = new Group();
+  readonly environmentalSprites = new Group();
   readonly billboards = new Group();
   private readonly geometries: BufferGeometry[] = [];
   private readonly billboardMeshes: Mesh<PlaneGeometry, Material>[] = [];
+  private readonly environmentalMeshes: Mesh<PlaneGeometry, Material>[] = [];
 
   constructor(private readonly materials: MazeMaterialLibrary) {
     this.wallFeatures.name = "maze-wall-features";
     this.architecturalProps.name = "maze-architectural-props";
+    this.environmentalSprites.name = "maze-environmental-sprites";
     this.billboards.name = "maze-billboards";
   }
 
   loadFloor(floor: FloorDef): void {
     this.clear();
     this.addArchitecturalProps(floor);
+    this.addEnvironmentalSprites(floor);
     this.addWallFeatures(floor);
     this.addDecor(floor);
     this.addFeatureProps(floor);
     this.addCeilingSprites(floor);
   }
 
-  update(floor: FloorDef, camera: Camera): void {
+  update(state: GameState, camera: Camera, nowMs = performance.now()): void {
+    const floor = state.floor;
     for (const mesh of this.billboardMeshes) {
       const meta = mesh.userData.mazeBillboard as BillboardMeta;
       mesh.quaternion.copy(camera.quaternion);
@@ -86,6 +109,33 @@ export class MazeVisualCollection {
           floor.grid[meta.cellY]?.[meta.cellX]?.tile
         );
       }
+    }
+    for (const mesh of this.environmentalMeshes) {
+      const meta = mesh.userData.mazeEnvironmental as EnvironmentalMeta;
+      const frame = resolveEnvironmentalFrame({
+        playerY: state.player.y,
+        spriteCenterY: meta.spriteCenterY,
+        nowMs,
+        speaking: isAmbientSpeakerActive(meta.id, nowMs),
+      });
+      if (frame === meta.lastFrame) continue;
+      const context = meta.frameCanvas.getContext("2d");
+      if (!context) continue;
+      context.clearRect(0, 0, meta.frameWidth, meta.frameHeight);
+      context.imageSmoothingEnabled = false;
+      context.drawImage(
+        meta.sheet,
+        frame * meta.frameWidth,
+        0,
+        meta.frameWidth,
+        meta.frameHeight,
+        0,
+        0,
+        meta.frameWidth,
+        meta.frameHeight
+      );
+      meta.lastFrame = frame;
+      this.materials.markImageDirty(meta.frameCanvas);
     }
   }
 
@@ -122,6 +172,57 @@ export class MazeVisualCollection {
       mesh.rotation.y = pose.rotationY;
       mesh.name = `architectural-prop:${prop.id}`;
       this.architecturalProps.add(mesh);
+    }
+  }
+
+  private addEnvironmentalSprites(floor: FloorDef): void {
+    for (const placement of floor.environmentalSprites ?? []) {
+      const asset = getEnvironmentalSpriteAsset(placement.spriteId);
+      const sheet = getEnvironmentalSpriteImage(placement.spriteId);
+      if (!asset || !sheet) continue;
+      const frameCanvas = document.createElement("canvas");
+      frameCanvas.width = asset.frameWidth;
+      frameCanvas.height = asset.frameHeight;
+      const context = frameCanvas.getContext("2d");
+      if (!context) continue;
+      context.imageSmoothingEnabled = false;
+      context.drawImage(
+        sheet,
+        asset.frameWidth,
+        0,
+        asset.frameWidth,
+        asset.frameHeight,
+        0,
+        0,
+        asset.frameWidth,
+        asset.frameHeight
+      );
+      const mesh = new Mesh(
+        this.plane(placement.width, placement.height * LEGACY_VERTICAL_UNIT),
+        this.materials.getImage(`environmental:${placement.id}`, frameCanvas)
+      );
+      mesh.position.set(
+        placement.centerX,
+        placement.centerZ * LEGACY_VERTICAL_UNIT,
+        placement.centerY
+      );
+      const rotationY =
+        placement.facing === "e" ? -Math.PI / 2 :
+        placement.facing === "w" ? Math.PI / 2 :
+        placement.facing === "n" ? Math.PI : 0;
+      mesh.rotation.y = rotationY;
+      mesh.name = `environmental-sprite:${placement.id}`;
+      mesh.userData.mazeEnvironmental = {
+        id: placement.id,
+        spriteCenterY: placement.centerY,
+        sheet,
+        frameCanvas,
+        frameWidth: asset.frameWidth,
+        frameHeight: asset.frameHeight,
+        lastFrame: 1,
+      } satisfies EnvironmentalMeta;
+      this.environmentalMeshes.push(mesh);
+      this.environmentalSprites.add(mesh);
     }
   }
 
@@ -358,10 +459,12 @@ export class MazeVisualCollection {
   clear(): void {
     this.wallFeatures.clear();
     this.architecturalProps.clear();
+    this.environmentalSprites.clear();
     this.billboards.clear();
     for (const geometry of this.geometries) geometry.dispose();
     this.geometries.length = 0;
     this.billboardMeshes.length = 0;
+    this.environmentalMeshes.length = 0;
   }
 
   dispose(): void {
@@ -370,7 +473,7 @@ export class MazeVisualCollection {
 }
 
 export function preloadMazeVisuals(): Promise<void> {
-  return Promise.all([loadMapSprites(), loadWallFeatures(), loadCeilingSprites()]).then(
+  return Promise.all([loadMapSprites(), loadWallFeatures(), loadCeilingSprites(), loadEnvironmentalSprites()]).then(
     () => undefined
   );
 }

@@ -56,4 +56,15 @@ describe("vertical traversal", () => {
     state.player = { x: 2, y: 2, facing: 1 };
     expect(resolveTraversal(state, 1).kind).toBe("step");
   });
+
+  it("blocks an open grid edge when the destination has no floor", () => {
+    const floor = verticalFloor();
+    floor.grid[2][2].void = true;
+    const state = createGameState(floor);
+    state.player = { x: 1, y: 2, facing: 1 };
+    expect(resolveTraversal(state, 1)).toEqual({
+      kind: "blocked",
+      message: "There is no floor beyond the edge.",
+    });
+  });
 });

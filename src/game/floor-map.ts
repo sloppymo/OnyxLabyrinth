@@ -10,6 +10,7 @@ import type {
   BarredGateDef,
   EventDef,
   ArchitecturalPropDef,
+  EnvironmentalSpriteDef,
   FloorDef,
   EncounterZoneDef,
   HeightZoneDef,
@@ -44,6 +45,8 @@ export interface CellJSON {
   e: EdgeType;
   s: EdgeType;
   w: EdgeType;
+  void?: true;
+  noCeiling?: true;
   tile?: TileFeature;
 }
 
@@ -82,6 +85,7 @@ export interface DoorFeatureJSON {
 }
 
 export type ArchitecturalPropJSON = ArchitecturalPropDef;
+export type EnvironmentalSpriteJSON = EnvironmentalSpriteDef;
 
 export interface TreasureJSON {
   x: number;
@@ -122,6 +126,7 @@ export interface FloorMapJSON {
   /** Local traversable floor surfaces; dir names the uphill edge. */
   ramps?: RampDef[];
   architecturalProps?: ArchitecturalPropJSON[];
+  environmentalSprites?: EnvironmentalSpriteJSON[];
   grid: CellJSON[][];
   /**
    * @deprecated Ignored by the engine. Combat tables come from
@@ -247,6 +252,7 @@ export function newFloorMapJSON(
     heightZones: partial?.heightZones,
     ramps: partial?.ramps,
     architecturalProps: partial?.architecturalProps,
+    environmentalSprites: partial?.environmentalSprites,
     grid,
     encounterTable: partial?.encounterTable,
     encounterZones: partial?.encounterZones,
@@ -284,12 +290,15 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
     heightZones: floor.heightZones?.map((z) => ({ ...z })),
     ramps: floor.ramps?.map((r) => ({ ...r })),
     architecturalProps: floor.architecturalProps?.map((p) => ({ ...p })),
+    environmentalSprites: floor.environmentalSprites?.map((p) => ({ ...p })),
     grid: floor.grid.map((row) =>
       row.map((cell) => ({
         n: cell.n,
         e: cell.e,
         s: cell.s,
         w: cell.w,
+        ...(cell.void ? { void: true as const } : {}),
+        ...(cell.noCeiling ? { noCeiling: true as const } : {}),
         ...(cell.tile ? { tile: cell.tile } : {}),
       }))
     ),
@@ -337,6 +346,8 @@ export function mapToGrid(map: FloorMapJSON): Grid {
       e: cell.e,
       s: cell.s,
       w: cell.w,
+      void: cell.void,
+      noCeiling: cell.noCeiling,
       tile: cell.tile,
     }))
   );
@@ -357,6 +368,7 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
     heightZones: map.heightZones?.map((z) => ({ ...z })),
     ramps: map.ramps?.map((r) => ({ ...r })),
     architecturalProps: map.architecturalProps?.map((p) => ({ ...p })),
+    environmentalSprites: map.environmentalSprites?.map((p) => ({ ...p })),
     encounterTable: map.encounterTable ? [...map.encounterTable] : undefined,
     encounterZones: map.encounterZones?.map((z) => ({ ...z })),
     mapSprites: map.mapSprites?.map((s) => ({ ...s })),
@@ -430,6 +442,7 @@ export function parseFloorMapJSON(raw: unknown): FloorMapJSON {
     heightZones: parseOverlayArray(o.heightZones, "heightZones", parseHeightZone),
     ramps: parseOverlayArray(o.ramps, "ramps", parseRamp),
     architecturalProps: parseOverlayArray(o.architecturalProps, "architecturalProps", parseArchitecturalProp),
+    environmentalSprites: parseOverlayArray(o.environmentalSprites, "environmentalSprites", parseEnvironmentalSprite),
     grid,
     encounterTable: optionalStringArray(o.encounterTable),
     encounterZones: parseOverlayArray(o.encounterZones, "encounterZones", parseZone),
@@ -590,6 +603,25 @@ function parseArchitecturalProp(
     texture: requireString(o.texture, `${l}.texture`),
     ...(anchor === undefined ? {} : { anchor }),
     ...(alphaMode === undefined ? {} : { alphaMode }),
+  };
+}
+
+function parseEnvironmentalSprite(
+  o: Record<string, unknown>,
+  l: string
+): EnvironmentalSpriteJSON {
+  const width = requireFiniteNumber(o.width, `${l}.width`);
+  const height = requireFiniteNumber(o.height, `${l}.height`);
+  if (width <= 0 || height <= 0) throw new Error(`${l} dimensions must be > 0`);
+  return {
+    id: requireString(o.id, `${l}.id`),
+    spriteId: requireString(o.spriteId, `${l}.spriteId`),
+    centerX: requireFiniteNumber(o.centerX, `${l}.centerX`),
+    centerY: requireFiniteNumber(o.centerY, `${l}.centerY`),
+    centerZ: requireFiniteNumber(o.centerZ, `${l}.centerZ`),
+    facing: parseDir(o.facing, `${l}.facing`),
+    width,
+    height,
   };
 }
 
@@ -922,6 +954,14 @@ function parseCell(raw: unknown, x: number, y: number): CellJSON {
   if (c.tile !== undefined) {
     cell.tile = parseTile(c.tile, x, y);
   }
+  if (c.void !== undefined) {
+    if (c.void !== true) throw new Error(`cell (${x},${y}).void must be true when present`);
+    cell.void = true;
+  }
+  if (c.noCeiling !== undefined) {
+    if (c.noCeiling !== true) throw new Error(`cell (${x},${y}).noCeiling must be true when present`);
+    cell.noCeiling = true;
+  }
   return cell;
 }
 
@@ -998,7 +1038,8 @@ export function parseNpcJSON(raw: unknown): NPCDef {
 
 /** True when the cell has at least one non-wall edge (walkable interior). */
 export function cellIsPassable(cell: CellJSON): boolean {
-  return cell.n !== "wall" || cell.e !== "wall" || cell.s !== "wall" || cell.w !== "wall";
+  return cell.void !== true &&
+    (cell.n !== "wall" || cell.e !== "wall" || cell.s !== "wall" || cell.w !== "wall");
 }
 
 /** Create a blank solid map matching game floors. */

@@ -42,6 +42,20 @@ describe("save serialization", () => {
     expect(restored.unlockedDoors).toEqual(new Set(["1:5:6:N"]));
   });
 
+  it("round-trips bridge position and environmental encounter progress", () => {
+    state = createGameState(findFloor(2)!);
+    state.mode = "dungeon";
+    state.player = { x: 2, y: 17, facing: 1 };
+    state.environmentalEncounters = {
+      "abyss-face": { crossings: 2, oneShots: ["fart"], repeatCursor: 3, lookCount: 7 },
+    };
+    const restored = deserialize(serialize(state));
+    expect(restored?.player).toEqual({ x: 2, y: 17, facing: 1 });
+    expect(restored?.environmentalEncounters?.["abyss-face"]).toEqual(
+      state.environmentalEncounters["abyss-face"]
+    );
+  });
+
   it("migrates v4 saves: string inventory becomes identified entries", () => {
     const json = serialize(state);
     const raw = JSON.parse(json);

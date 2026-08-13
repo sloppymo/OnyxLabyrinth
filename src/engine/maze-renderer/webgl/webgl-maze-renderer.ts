@@ -38,9 +38,11 @@ import { compileMazeGeometry } from "./maze-geometry-compiler";
 import { MazeMaterialLibrary } from "./maze-materials";
 import { MazeVisualCollection, preloadMazeVisuals } from "./maze-visuals";
 import { loadArchitecturalProps } from "../../architectural-prop-cache";
+import { isOnAbyssBridge } from "../../../game/abyss-face";
 
 const HORIZONTAL_FOV_DEGREES = 60;
 const BACKGROUND_COLOR = 0x0e0d0a;
+const ABYSS_BACKGROUND_COLOR = 0x000000;
 
 export function verticalFovForHorizontal(
   horizontalFovDegrees: number,
@@ -97,6 +99,7 @@ export class WebGLMazeRenderer implements MazeRenderer {
     this.scene.add(this.floorGroup);
     this.scene.add(this.visuals.wallFeatures);
     this.scene.add(this.visuals.architecturalProps);
+    this.scene.add(this.visuals.environmentalSprites);
     this.scene.add(this.visuals.billboards);
   }
 
@@ -207,9 +210,14 @@ export class WebGLMazeRenderer implements MazeRenderer {
       display.y + 0.5 + display.dirY
     );
     this.camera.lookAt(this.cameraTarget);
-    this.visuals.update(state.floor, this.camera);
+    this.visuals.update(state, this.camera);
+    const abyssExposed = isOnAbyssBridge(state);
+    if (this.scene.background instanceof Color) {
+      this.scene.background.setHex(abyssExposed ? ABYSS_BACKGROUND_COLOR : BACKGROUND_COLOR);
+    }
     if (this.scene.fog instanceof FogExp2) {
-      this.scene.fog.density = state.inDarkness ? 0.78 : 0.22;
+      this.scene.fog.color.setHex(abyssExposed ? ABYSS_BACKGROUND_COLOR : BACKGROUND_COLOR);
+      this.scene.fog.density = state.inDarkness ? 0.78 : abyssExposed ? 0.09 : 0.22;
     }
     mazeRenderProfiler.endSection("camera", cameraStartedAt);
     const submissionStartedAt = mazeRenderProfiler.beginSection();

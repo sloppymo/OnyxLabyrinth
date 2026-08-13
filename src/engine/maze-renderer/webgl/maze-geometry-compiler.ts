@@ -59,7 +59,7 @@ const DIRECTIONS: readonly {
 ];
 
 function isInterior(cell: Cell | undefined): cell is Cell {
-  return !!cell &&
+  return !!cell && !cell.void &&
     (cell.n !== "wall" || cell.e !== "wall" || cell.s !== "wall" || cell.w !== "wall");
 }
 
@@ -405,29 +405,32 @@ export function compileMazeGeometry(
         );
       }
 
-      const ceilingFeature = floor.ceilingFeatures?.find(
-        (feature) => feature.x === x && feature.y === y
-      )?.spriteId;
-      addHorizontal(
-        batchFor(
+      if (!cell.noCeiling) {
+        const ceilingFeature = floor.ceilingFeatures?.find(
+          (feature) => feature.x === x && feature.y === y
+        )?.spriteId;
+        addHorizontal(
+          batchFor(
+            x,
+            y,
+            ceilingFeature
+              ? `ceilingFeature:${ceilingFeature}@${theme}`
+              : `${theme}:ceiling`,
+            "ceiling"
+          ),
           x,
           y,
-          ceilingFeature
-            ? `ceilingFeature:${ceilingFeature}@${theme}`
-            : `${theme}:ceiling`,
-          "ceiling"
-        ),
-        x,
-        y,
-        volume.ceilingZ,
-        true
-      );
+          volume.ceilingZ,
+          true
+        );
+      }
 
       for (const { dir, dx, dy } of DIRECTIONS) {
         const edge = cell[dir] as EdgeType;
         const nx = x + dx;
         const ny = y + dy;
         const neighbor = floor.grid[ny]?.[nx];
+        if (edge === "open" && neighbor?.void) continue;
         const neighborInterior = isInterior(neighbor);
         const neighborVolume = neighborInterior
           ? resolveCellVolume(floor, nx, ny)
