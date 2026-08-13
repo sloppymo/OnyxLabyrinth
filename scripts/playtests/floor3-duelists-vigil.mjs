@@ -44,6 +44,22 @@ async function typeWord(page, word) {
   }
 }
 
+async function acknowledgeFully(page, max = 10) {
+  // Cinematic NPC dialogue gates actions until the current beat has both
+  // finished revealing and been acknowledged.  Keep this playtest aligned
+  // with that contract instead of letting Enter accidentally activate a
+  // newly rebuilt menu row.
+  for (let i = 0; i < max; i++) {
+    const done = await page.evaluate(() => {
+      const c = window.__onyxDebug.npcController;
+      return !c || (c.textRevealed && c.acknowledged);
+    });
+    if (done) return;
+    await press(page, "Enter");
+    await wait(60);
+  }
+}
+
 /** Poll snap() until route matches (boss-appear intros etc. take longer
  *  than a fixed wait can reliably cover). Returns the settled snapshot. */
 async function waitForRoute(page, expected, timeout = 5000, interval = 100) {
@@ -172,6 +188,8 @@ await wait(400);
 s = await snap(page);
 check("NPC panel opens on Kazeharu's tile", s.route === "npc" || s.mode === "title", `route=${s.route} mode=${s.mode}`);
 
+await acknowledgeFully(page);
+
 await press(page, "t"); // root -> Talk
 await wait(200);
 await press(page, "ArrowDown", 2); // topics (forge, duel) -> "Ask about..."
@@ -184,6 +202,7 @@ await wait(300);
 let toldTruth = await page.evaluate(() => !!window.__onyxDebug.state.kazeharuToldTruth);
 check("asking about his master sets kazeharuToldTruth", toldTruth);
 await shot(page, OUT, "05-kazeharu-master-topic.png");
+await acknowledgeFully(page);
 
 await press(page, "ArrowDown", 2); // back to "Ask about..."
 await wait(150);
@@ -195,6 +214,7 @@ await wait(300);
 let recruited = await page.evaluate(() => !!window.__onyxDebug.state.kazeharuRecruited);
 check("asking to join (with both legs complete) recruits him", recruited);
 await shot(page, OUT, "06-kazeharu-recruited.png");
+await acknowledgeFully(page);
 await closeOverlay(page);
 
 // Save/load round-trip while recruited but before the climax — the flags
@@ -271,6 +291,7 @@ await wait(300);
 await jumpTo(page, { floorId: 3, x: 2, y: 9, facing: 1 });
 await press(page, "ArrowUp");
 await wait(300);
+await acknowledgeFully(page);
 await press(page, "t");
 await wait(150);
 await press(page, "ArrowDown", 2);
@@ -278,11 +299,13 @@ await press(page, "Enter");
 await typeWord(page, "master");
 await press(page, "Enter");
 await wait(150);
+await acknowledgeFully(page);
 await press(page, "ArrowDown", 2);
 await press(page, "Enter");
 await typeWord(page, "join");
 await press(page, "Enter");
 await wait(200);
+await acknowledgeFully(page);
 await closeOverlay(page);
 
 await jumpTo(page, { floorId: 3, x: 10, y: 13, facing: 3 });

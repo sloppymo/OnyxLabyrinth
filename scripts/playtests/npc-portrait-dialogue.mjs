@@ -161,6 +161,10 @@ if (actionEls.length >= 3) {
   check("mouse click on Give opens the give phase", text.includes("Offer what") || text.includes("Your pack is empty"));
   await press(page, "Escape"); // give -> root
   await wait(120);
+  // Clear the pointer from the rebuilt root action row. Otherwise the cursor
+  // remains over the clicked Give button and legitimately hover-selects it
+  // again while the following keyboard-only topic sequence begins.
+  await page.mouse.move(8, 8);
 }
 
 console.log("=== Kazeharu: visible topic + hidden 'master'/'join' ===");
