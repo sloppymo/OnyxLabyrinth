@@ -21,9 +21,41 @@ export interface WallFeatureSpriteDef {
   overlayText?: readonly string[];
   /** East-facing wall samples reverse the source texture horizontally. */
   overlayTextMirrored?: boolean;
+  /** Optional fixed-rate frame sequence. The first file is also the static fallback. */
+  animation?: { files: readonly string[]; fps: number };
+  /** Restrained projected warm light for fixed wall fixtures. */
+  light?: { color: string; radius: number; intensity: number };
 }
 
 export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
+  {
+    id: "descent-sconce",
+    name: "Descent Wall Sconce",
+    file: "descent-sconce-frames/frame-01.png",
+    widthFrac: 0.15,
+    heightFrac: 0.34,
+    anchor: "center",
+    animation: {
+      files: [
+        "descent-sconce-frames/frame-01.png",
+        "descent-sconce-frames/frame-03.png",
+        "descent-sconce-frames/frame-02.png",
+        "descent-sconce-frames/frame-05.png",
+        "descent-sconce-frames/frame-04.png",
+        "descent-sconce-frames/frame-03.png",
+      ],
+      fps: 9,
+    },
+    light: { color: "255, 146, 54", radius: 0.85, intensity: 0.22 },
+  },
+  {
+    id: "descent-sconce-extinguished",
+    name: "Extinguished Descent Wall Sconce",
+    file: "descent-sconce-extinguished-frames/frame-01.png",
+    widthFrac: 0.15,
+    heightFrac: 0.34,
+    anchor: "center",
+  },
   {
     id: "lamp-lock",
     name: "Lamp-shaped Lock",
@@ -262,6 +294,80 @@ export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
     widthFrac: 0.82,
     heightFrac: 0.82,
     anchor: "center",
+  },
+  // The Sunken Processional (Level 2 "descent" kit).
+  {
+    id: "descent-relief-procession",
+    name: "Processional Frieze",
+    file: "descent-relief-procession.png",
+    widthFrac: 0.92,
+    heightFrac: 0.46,
+    anchor: "center",
+  },
+  {
+    id: "descent-relief-procession-subdued",
+    name: "Processional Frieze (subdued)",
+    file: "descent-relief-procession-subdued.png",
+    widthFrac: 0.92,
+    heightFrac: 0.46,
+    anchor: "center",
+  },
+  {
+    id: "descent-structural-band",
+    name: "Descent Structural Band",
+    file: "descent-structural-band.png",
+    widthFrac: 0.98,
+    heightFrac: 0.22,
+    anchor: "center",
+  },
+  {
+    id: "descent-niche-votive",
+    name: "Votive Niche",
+    file: "descent-niche-votive.png",
+    widthFrac: 0.5,
+    heightFrac: 0.72,
+    anchor: "center",
+  },
+  {
+    id: "descent-bronze-grate",
+    name: "Bronze Vent Grate",
+    file: "descent-bronze-grate.png",
+    widthFrac: 0.42,
+    heightFrac: 0.42,
+    anchor: "center",
+  },
+  {
+    id: "descent-repair-plate",
+    name: "Bronze Repair Plate",
+    file: "descent-repair-plate.png",
+    widthFrac: 0.44,
+    heightFrac: 0.5,
+    anchor: "bottom",
+  },
+  {
+    id: "descent-sealed-valve",
+    name: "Sealed Bronze Valve",
+    file: "descent-sealed-valve.png",
+    widthFrac: 0.34,
+    heightFrac: 0.48,
+    anchor: "bottom",
+  },
+  // Hero landmark halves: the sealed processional gate (two adjacent cells).
+  {
+    id: "descent-gate-left",
+    name: "Gate of the Kept (left leaf)",
+    file: "descent-gate-left.png",
+    widthFrac: 1.0,
+    heightFrac: 1.0,
+    anchor: "bottom",
+  },
+  {
+    id: "descent-gate-right",
+    name: "Gate of the Kept (right leaf)",
+    file: "descent-gate-right.png",
+    widthFrac: 1.0,
+    heightFrac: 1.0,
+    anchor: "bottom",
   },
 ];
 
