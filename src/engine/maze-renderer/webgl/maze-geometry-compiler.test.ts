@@ -10,6 +10,7 @@ function twoCellFloor(options?: {
   edge?: "open" | "wall";
   heightZones?: HeightZoneDef[];
   regional?: boolean;
+  barredGate?: boolean;
 }): HeightFloor {
   const grid = buildSolidGrid(4, 3);
   const edge = options?.edge ?? "open";
@@ -37,6 +38,9 @@ function twoCellFloor(options?: {
       ? [{ id: "other", x1: 2, y1: 1, x2: 2, y2: 1, theme: "f2" }]
       : undefined,
     heightZones: options?.heightZones,
+    barredGates: options?.barredGate
+      ? [{ x: 1, y: 1, dir: "w", opensFrom: "w" }]
+      : undefined,
   };
 }
 
@@ -167,6 +171,27 @@ describe("compileMazeGeometry", () => {
     );
     expect(heights).toContain(LEGACY_VERTICAL_UNIT);
     expect(heights).toContain(3 * LEGACY_VERTICAL_UNIT);
+  });
+
+  it("renders a sealed upper overlook above a barred gate", () => {
+    const compiled = compileMazeGeometry(
+      twoCellFloor({
+        edge: "wall",
+        barredGate: true,
+        heightZones: [
+          { id: "grand", x1: 2, y1: 1, x2: 2, y2: 1, floorZ: 1, ceilingZ: 3 },
+        ],
+      })
+    );
+    const shared = quadsForKind(compiled, "wall").filter((quad) => {
+      const xs = quad.positions.filter((_, index) => index % 3 === 0);
+      const zs = quad.positions.filter((_, index) => index % 3 === 2);
+      return xs.every((x) => x === 2) && Math.min(...zs) === 1 && Math.max(...zs) === 2;
+    });
+    expect(shared).toHaveLength(1);
+    const heights = shared[0].positions.filter((_, index) => index % 3 === 1);
+    expect(Math.min(...heights)).toBe(0);
+    expect(Math.max(...heights)).toBe(1.25 * LEGACY_VERTICAL_UNIT);
   });
 
   it("selects regional materials per cell", () => {

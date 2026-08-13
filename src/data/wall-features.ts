@@ -24,6 +24,31 @@ export interface WallFeatureSpriteDef {
 }
 
 export const WALL_FEATURES: readonly WallFeatureSpriteDef[] = [
+  // Kept Gate entrance fixtures.
+  {
+    id: "descent-sconce",
+    name: "Descent Wall Sconce",
+    file: "descent-sconce-frames/frame-01.png",
+    widthFrac: 0.15,
+    heightFrac: 0.34,
+    anchor: "center",
+  },
+  {
+    id: "descent-sconce-extinguished",
+    name: "Extinguished Descent Wall Sconce",
+    file: "descent-sconce-extinguished-frames/frame-01.png",
+    widthFrac: 0.15,
+    heightFrac: 0.34,
+    anchor: "center",
+  },
+  {
+    id: "descent-sealed-valve",
+    name: "Sealed Bronze Valve",
+    file: "descent-sealed-valve.png",
+    widthFrac: 0.34,
+    heightFrac: 0.48,
+    anchor: "bottom",
+  },
   {
     id: "lamp-lock",
     name: "Lamp-shaped Lock",

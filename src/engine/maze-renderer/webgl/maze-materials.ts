@@ -149,16 +149,17 @@ export class MazeMaterialLibrary {
   getImage(
     key: string,
     source: TextureSource,
-    overlay: TextureSource | null = null
+    overlay: TextureSource | null = null,
+    alphaMode: "opaque" | "cutout" = "cutout"
   ): Material {
-    const materialKey = `image:${key}`;
+    const materialKey = `image:${key}:${alphaMode}`;
     const cached = this.materials.get(materialKey);
     if (cached) return cached;
     const composite = this.composite(materialKey, source, overlay);
     const material = new MeshBasicMaterial({
       map: this.textureFor(composite, false),
       color: 0xeeeeee,
-      alphaTest: 0.5,
+      alphaTest: alphaMode === "cutout" ? 0.5 : 0,
       depthTest: true,
       depthWrite: true,
       fog: true,
@@ -169,7 +170,7 @@ export class MazeMaterialLibrary {
     return material;
   }
 
-  getGlow(key: string, color: string, intensity: number): Material {
+  getGlow(key: string, color: string, intensity: number): MeshBasicMaterial {
     const materialKey = `glow:${key}`;
     const cached = this.materials.get(materialKey);
     if (cached) return cached;
