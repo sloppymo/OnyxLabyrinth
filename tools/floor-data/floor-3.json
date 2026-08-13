@@ -1623,6 +1623,15 @@
       "x2": 14,
       "y2": 3,
       "rateMul": 1.3
+    },
+    {
+      "id": "grand-forge-guardian",
+      "x1": 9,
+      "y1": 13,
+      "x2": 9,
+      "y2": 13,
+      "rateMul": 1.5,
+      "tableFloorId": 7
     }
   ],
   "mapSprites": [
@@ -1739,7 +1748,10 @@
         "healing-potion",
         "healing-potion"
       ],
-      "trap": "stunner"
+      "trap": "alarm",
+      "climax": {
+        "id": "floor3-guardian"
+      }
     }
   ],
   "npcs": [
@@ -1764,6 +1776,11 @@
           "key": "master",
           "hidden": true,
           "response": "They were no smith. They came down chasing the deep, same as anyone, and burned trying to reach it. I stayed to guard what they couldn't finish. Put the boy down, and my vigil ends."
+        },
+        {
+          "key": "join",
+          "hidden": true,
+          "response": "You don't know what you're asking yet."
         }
       ],
       "combatEnemyIds": [
@@ -1802,8 +1819,9 @@
     {
       "x": 14,
       "y": 9,
-      "kind": "message",
-      "message": "A smith is fused to the wall, hammer still raised as if warning you back."
+      "kind": "reward",
+      "message": "A smith is fused to the wall, hammer still raised as if warning you back. You ease a signet ring from the warning hand.",
+      "itemId": "smiths-signet-ring"
     },
     {
       "x": 2,

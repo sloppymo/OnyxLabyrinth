@@ -119,6 +119,7 @@ export function createCombatState(
     summonedAllies: [],
     justDied: [],
     justDiedAllies: [],
+    deadAllyIds: [],
     events: [],
     perkState: Object.fromEntries(party.map((c) => [c.id, freshPerkState()])),
     rage: Object.fromEntries(party.map((c) => [c.id, startingRageFor(c)])),

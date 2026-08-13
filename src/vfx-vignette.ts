@@ -193,6 +193,7 @@ const state: CombatState = {
   summonedAllies: [],
   justDied: [],
   justDiedAllies: [],
+  deadAllyIds: [],
   events: [],
   perkState: {},
   rage: {},

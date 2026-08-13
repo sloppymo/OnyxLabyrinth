@@ -380,6 +380,11 @@ interface SerializedState {
   npcDisposition?: Record<string, number>;
   killedNPCs?: string[];
   npcTradesDone?: string[];
+  // Floor 3 "Duelist's Vigil" state. Optional: absent in saves from before
+  // this content existed, defaulting to false/undefined on load.
+  kazeharuToldTruth?: boolean;
+  kazeharuRecruited?: boolean;
+  kazeharuOutcome?: GameState["kazeharuOutcome"];
   // Treasure state: which treasures have been looted, keyed by floor ID.
   // Each value is an array of "x,y" position strings. The floor clone is
   // restored from the immutable FLOORS definition on load.
@@ -472,6 +477,9 @@ export function serialize(state: GameState): string {
     npcDisposition: { ...state.npcDisposition },
     killedNPCs: [...state.killedNPCs],
     npcTradesDone: [...state.npcTradesDone],
+    kazeharuToldTruth: state.kazeharuToldTruth,
+    kazeharuRecruited: state.kazeharuRecruited,
+    kazeharuOutcome: state.kazeharuOutcome,
     lootTaken,
     eventsTriggered,
     deepestFloorReached: state.deepestFloorReached,
@@ -636,6 +644,9 @@ export function deserialize(json: string): GameState | null {
       npcDisposition: ser.npcDisposition ? { ...ser.npcDisposition } : {},
       killedNPCs,
       npcTradesDone: ser.npcTradesDone ? [...ser.npcTradesDone] : [],
+      kazeharuToldTruth: ser.kazeharuToldTruth ?? false,
+      kazeharuRecruited: ser.kazeharuRecruited ?? false,
+      kazeharuOutcome: ser.kazeharuOutcome,
       inDarkness: ser.inDarkness ?? false,
       inAntimagic: ser.inAntimagic ?? false,
       lastDungeon: ser.lastDungeon ?? null,
