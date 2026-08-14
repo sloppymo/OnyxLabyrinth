@@ -173,7 +173,9 @@ The final renderer sweep captured all 50 assets in both Canvas and WebGL: 100 ca
 - Aseprite hero round-trip: PASS, zero changed pixels for F1–F5.
 - Actual renderer sweep: PASS, 100 captures, zero browser errors, zero backend mismatches.
 - Canvas renderer regression audit: PASS, including straight corridor, open side passage, depth-0 front wall, darkness, all Floor 1 regional themes, automap transition, and combat return.
-- `npm run check`: PASS — 120 test files and 2,350 tests, build/typechecks, floor validation, and floor export check.
+- `npm run check`: PASS — 121 test files and 2,354 tests, build/typechecks, floor validation, and floor export check.
+- Deterministic selector tests: PASS — edge normalization, regional fallback, shipped suffixes, and same-plane hero adjacency.
+- Selection smoke: PASS — 10 named Canvas/WebGL captures, zero browser errors, zero active-renderer mismatches.
 - `git diff --check`: PASS before each production commit.
 
 The full check retained the known pre-existing Floor 1 Namanda warnings: missing NPC combat identity, unbundled `namanda` theme, and the documented zone overlaps. Floors 2–5 validated with no issues. Vite also retained its existing unresolved source-font and large-chunk warnings; neither was introduced by this art pass. The lazy preview imports keep ordinary `shell` output at approximately 131 kB / 58 kB gzip; sibling assets live in query-only lazy chunks.
