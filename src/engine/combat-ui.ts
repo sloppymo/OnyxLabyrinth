@@ -1505,6 +1505,18 @@ export class CombatController {
         row: e.row,
         status: [...e.status],
       })),
+      party: this.state.party.map((c) => ({
+        id: c.id,
+        name: c.name,
+        class: c.class,
+        hp: c.hp,
+        maxHp: c.maxHp,
+        sp: c.sp,
+        maxSp: c.maxSp,
+        status: [...c.status],
+        knownSpellIds: [...c.knownSpellIds],
+      })),
+      inventory: { ...this.state.inventory },
       recentLog: visibleCombatLogLines(this.state.log, this.state.events, 10),
       result: this.state.result ?? null,
     };

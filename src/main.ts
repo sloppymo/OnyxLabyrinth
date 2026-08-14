@@ -95,6 +95,7 @@ import { computeIdle } from "./debug/idle";
 import { normalizeLoadedMode } from "./debug/load-normalize";
 import { applyJumpPartyOptions, type JumpToOptions } from "./debug/jump-to";
 import { DebugEventBuffer, type DebugEventKind } from "./debug/event-buffer";
+import { CombatAudit, type CombatAuditContext } from "./debug/combat-audit";
 import { checkInvariants } from "./debug/invariants";
 import { installAudioSpy } from "./debug/audio-spy";
 import { buildDebugCombat } from "./debug/start-combat";
@@ -169,6 +170,11 @@ import {
   type Character,
 } from "./game/party";
 import { levelUpChar, applyLevelUps } from "./game/leveling";
+import {
+  analyzeRecoveryPath,
+  isSafeRecoveryLanding,
+  resolveRecoveryLanding,
+} from "./game/recovery";
 import type { PendingPerkChoice } from "./game/perks";
 import type { GameState, GameMode } from "./types";
 import { parseFloorMapJSON, resolveTilesetTheme } from "./game/floor-map";
@@ -332,6 +338,8 @@ let modeTransitionPending = false;
  * debug block at the bottom of this file.
  */
 let debugEvents: DebugEventBuffer | null = null;
+/** Debug-only natural-campaign combat evidence; never serialized. */
+let combatAudit: CombatAudit | null = null;
 
 function recordDebugEvent(kind: DebugEventKind, data: Record<string, unknown>): void {
   debugEvents?.push(kind, data);
@@ -360,6 +368,29 @@ function markExplored(): void {
   revealAround(explored, floor, player.x, player.y);
 }
 
+/** Record a successful physical step before revealAround expands the map. */
+function noteAuditStep(): void {
+  if (!combatAudit) return;
+  const { player, floor, explored } = state;
+  const cell = floor.grid[player.y]?.[player.x];
+  const walkableCells = floor.grid.reduce(
+    (count, row) => count + row.filter((candidate) => !candidate?.void).length,
+    0
+  );
+  const event = floor.events?.find((candidate) => candidate.x === player.x && candidate.y === player.y);
+  combatAudit.noteStep({
+    floorId: floor.id,
+    x: player.x,
+    y: player.y,
+    exploredBefore: explored.has(`${player.x},${player.y}`),
+    exploredTileCountBefore: explored.size,
+    floorExploredFractionBefore: walkableCells > 0 ? explored.size / walkableCells : 0,
+    safeZone: isSafeZoneAt(floor, player.x, player.y),
+    authoredEventKind: event?.kind,
+    tile: cell?.tile,
+  });
+}
+
 // Reveal the starting area on load.
 markExplored();
 
@@ -367,6 +398,7 @@ markExplored();
 let townController: TownController | null = null;
 
 function openTown(opts?: { showIntroHint?: boolean }): void {
+  combatAudit?.noteRecovery({ kind: "town", floorId: state.floor.id });
   if (mapVisible) toggleMap();
   transitionToMode("town");
   setMessage("");
@@ -403,7 +435,43 @@ function openTown(opts?: { showIntroHint?: boolean }): void {
       const x = last ? last.x : floor.startX;
       const y = last ? last.y : floor.startY;
       const facing = last ? last.facing : 0;
-      transitionToFloor(state, floor, x, y, facing);
+      // A wipe checkpoint is earned location context, not a promise that the
+      // authored cell will remain legal forever. Apply runtime doors/loot/etc.
+      // first, then resolve the landing against the private floor copy so a
+      // stale feature/void/elevation cannot strand the party.
+      transitionToFloor(state, floor, x, y, facing, { autosave: false });
+      const landing = last
+        ? resolveRecoveryLanding(state.floor, x, y)
+        : { x: floor.startX, y: floor.startY, exact: true, distance: 0, reason: "exact" as const };
+      state.player.x = landing.x;
+      state.player.y = landing.y;
+      if (last) {
+        combatAudit?.noteDungeonReentry({
+          actual: {
+            floorId: state.floor.id,
+            x: state.player.x,
+            y: state.player.y,
+            facing: state.player.facing,
+          },
+          legalWalkableTile: isSafeRecoveryLanding(state.floor, state.player.x, state.player.y),
+          tile: state.floor.grid[state.player.y]?.[state.player.x]?.tile,
+          tileFiresEvent: Boolean(
+            state.floor.grid[state.player.y]?.[state.player.x]?.tile ||
+              state.floor.events?.some((event) => event.x === state.player.x && event.y === state.player.y)
+          ),
+          immediateCombatRetrigger: state.mode === "combat",
+          safeLandingExact: landing.exact,
+          safeLandingReason: landing.reason,
+          path: analyzeRecoveryPath(
+            state.floor,
+            { x: state.player.x, y: state.player.y },
+            { x, y }
+          ),
+        });
+      }
+      // Keep the autosave's checkpoint and the actual re-entry coordinate in
+      // sync. This also makes a reload immediately after a wipe deterministic.
+      autoSave(state);
       state.inDarkness = false;
       state.inAntimagic = false;
       markExplored();
@@ -689,7 +757,7 @@ function maybeTriggerEncounter(): boolean {
   setMode(state, "combat");
   state.stepsSinceEncounter = 0;
 
-  startCombat(combat);
+  startCombat(combat, { source: "random", tableId });
   return true;
 }
 
@@ -725,7 +793,19 @@ function withCombatTransition<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-async function startCombat(combat: CombatState): Promise<void> {
+async function startCombat(
+  combat: CombatState,
+  auditContext: CombatAuditContext = { source: "debug", tableId: null }
+): Promise<void> {
+  combatAudit?.beginCombat({
+    combat,
+    context: auditContext,
+    floorId: state.floor.id,
+    x: state.player.x,
+    y: state.player.y,
+    party: state.party,
+    inventory: state.inventory,
+  });
   // Namanda's Blessing (Church of Saint Namanda, game/namanda.ts): a flat
   // party-wide armor bonus while the dungeon buff is active. Applied here,
   // once, so every real fight (dungeon encounters, NPC fights, the stairs
@@ -807,6 +887,7 @@ async function leaveCombat(next: () => void): Promise<void> {
 }
 
 function endCombat(result: CombatState): void {
+  combatAudit?.endCombat(result);
   // Always stop both combat beds so every wipe/flee/victory/arena exit is
   // safe regardless of which kind of encounter created this CombatState.
   audio.stopBattleMusic();
@@ -832,9 +913,20 @@ function endCombat(result: CombatState): void {
   let pendingPerkChoices: PendingPerkChoice[] = [];
 
   if (result.result === "wipe") {
-    // Century cycle §7.3 (supersedes the old design doc §9.1 entrance-retreat
-    // for campaign wipes): the party revives, and openGameOver()'s Continue
-    // sends them to town, not back into the dungeon.
+    // Century cycle §7.3: the party revives and openGameOver()'s Continue
+    // sends them to town, not straight back into combat. Preserve the failed
+    // encounter's location as an earned retry checkpoint so the next attempt
+    // does not require replaying the solved route from the floor entrance.
+    state.lastDungeon = {
+      floorId: state.floor.id,
+      x: state.player.x,
+      y: state.player.y,
+      facing: state.player.facing,
+    };
+    combatAudit?.noteWipeCheckpoint({
+      failed: { ...state.lastDungeon },
+      storedLastDungeon: { ...state.lastDungeon },
+    });
     state.party = reviveKnockedOut(state.party);
     state.player.x = state.floor.startX;
     state.player.y = state.floor.startY;
@@ -1006,15 +1098,8 @@ function openGameOver(): void {
       if (inArena) {
         openArena();
       } else {
-        // §7.3: wipe returns the party to town, not the dungeon entrance.
-        // Keep the deepest floor reached (no soft-reset) but land on that
-        // floor's start tile for a clean next Enter Dungeon.
-        state.lastDungeon = {
-          floorId: state.floor.id,
-          x: state.floor.startX,
-          y: state.floor.startY,
-          facing: 0,
-        };
+        // The wipe handler stored the failed encounter location as the next
+        // dungeon checkpoint. Keep it through the town/Inn recovery flow.
         openTown();
       }
     },
@@ -1043,6 +1128,12 @@ function startCamp(): void {
     setMessage("You can't make camp here — the ground is unstable.");
     return;
   }
+  combatAudit?.noteRecovery({
+    kind: "camp",
+    floorId: state.floor.id,
+    x: state.player.x,
+    y: state.player.y,
+  });
   setMode(state, "camp");
   if (mapVisible) toggleMap();
   showMode("camp", mapVisible);
@@ -1119,9 +1210,10 @@ function onMove(): void {
       });
       if (result.looted) audio.playDungeonSfx("chestOpen");
       if (!state.pendingTrap) {
-        setMessage([...expiry, result.message].join(" "));
+        setMessage([...expiry, result.message].join(" "), { instant: result.looted === true });
       }
       if (result.changedFloor) {
+        combatAudit?.noteRecovery({ kind: "floorStart", floorId: state.floor.id, x: state.player.x, y: state.player.y });
         markExplored();
         resetRenderCamera(state.player.x, state.player.y, state.player.facing);
         syncAbyssExposure();
@@ -1145,6 +1237,7 @@ function onMove(): void {
             if (value === "descend") {
               const dropResult = confirmChuteDrop(state, drop);
               if (dropResult.changedFloor) {
+                combatAudit?.noteRecovery({ kind: "floorStart", floorId: state.floor.id, x: state.player.x, y: state.player.y });
                 markExplored();
                 resetRenderCamera(state.player.x, state.player.y, state.player.facing);
               }
@@ -1207,12 +1300,13 @@ function onMove(): void {
     });
     if (result.looted) audio.playDungeonSfx("chestOpen");
     if (!state.pendingTrap) {
-      setMessage([...expiry, result.message].join(" "));
+      setMessage([...expiry, result.message].join(" "), { instant: result.looted === true });
     }
     if (result.changedFloor) {
       // Floor transition happened — mark explored on the new floor and snap
       // the render camera instantly to the new position (don't slide across
       // floors).
+      combatAudit?.noteRecovery({ kind: "floorStart", floorId: state.floor.id, x: state.player.x, y: state.player.y });
       markExplored();
       resetRenderCamera(state.player.x, state.player.y, state.player.facing);
       syncAbyssExposure();
@@ -1241,6 +1335,7 @@ function onMove(): void {
           if (value === "descend") {
             const dropResult = confirmChuteDrop(state, drop);
             if (dropResult.changedFloor) {
+              combatAudit?.noteRecovery({ kind: "floorStart", floorId: state.floor.id, x: state.player.x, y: state.player.y });
               markExplored();
               resetRenderCamera(state.player.x, state.player.y, state.player.facing);
             }
@@ -1306,6 +1401,7 @@ function handleTraversalResult(result: TraversalResult, dir: Direction): void {
       state.player.y = result.y;
       presentAbyssCue(resolveAbyssFaceStep(state, from, result));
       syncAbyssExposure();
+      noteAuditStep();
       markExplored();
       onMove();
       scheduleFootstep();
@@ -1344,6 +1440,7 @@ function handleTraversalResult(result: TraversalResult, dir: Direction): void {
           state.player.y = stepResult.y;
           presentAbyssCue(resolveAbyssFaceStep(state, from, stepResult));
           syncAbyssExposure();
+          noteAuditStep();
           markExplored();
           onMove();
           scheduleFootstep();
@@ -1582,7 +1679,9 @@ window.addEventListener("keyup", () => {
 function applyChestResult(result: ChestActionResult): void {
   if (!result.message) return;
   if (result.opened && !result.alarm) audio.playDungeonSfx("chestOpen");
-  setMessage(result.message);
+  // Loot is a reward read, not a combat/status ticker: paint it whole so the
+  // player gets the complete item list before the next input can dismiss it.
+  setMessage(result.message, { instant: result.opened });
   if (result.relocated) {
     // Teleporter trap moved the party — snap the camera, no slide.
     markExplored();
@@ -1629,7 +1728,10 @@ function forceEncounter(): void {
   state.combat = combat;
   setMode(state, "combat");
   state.stepsSinceEncounter = 0;
-  startCombat(combat);
+  startCombat(combat, {
+    source: combat.climaxId ? "climax" : "trap",
+    tableId,
+  });
 }
 
 /** Route trap prompt keys (keyboard or adapter) to features.ts chest APIs. */
@@ -2258,7 +2360,7 @@ function startNextArenaFight(): void {
   setMode(state, "combat");
   state.stepsSinceEncounter = 0;
 
-  startCombat(combat);
+  startCombat(combat, { source: "arena", tableId: null });
 }
 
 // Title screen key handler — routes keys to the TitleController.
@@ -2507,7 +2609,7 @@ function startNPCFight(npc: NPCDef): void {
   state.combat = combat;
   setMode(state, "combat");
   state.stepsSinceEncounter = 0;
-  startCombat(combat);
+  startCombat(combat, { source: "npc", tableId: null });
 }
 
 // --- Stairs guardian ("The Party That Returned") -------------------------
@@ -2536,7 +2638,7 @@ function startStairsGuardianFight(guardian: StairsGuardianDef): void {
   state.combat = combat;
   setMode(state, "combat");
   state.stepsSinceEncounter = 0;
-  startCombat(combat);
+  startCombat(combat, { source: "stairsGuardian", tableId: null });
 }
 
 window.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -2853,6 +2955,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
   // failures. Combat is already covered by CombatState.events.
   const events = new DebugEventBuffer();
   debugEvents = events;
+  combatAudit = new CombatAudit();
 
   const audioSpy = installAudioSpy(audio, {
     onCue: (rec) => {
@@ -3123,6 +3226,11 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     /** Audio cue records (id, firedAt, durationMs, endsAt, bufferMissing). */
     sounds: (n?: number) => audioSpy.log.recent(n),
     soundsPlaying: () => audioSpy.log.playingNow(),
+    /** Natural campaign combat evidence; read-only apart from debug clear. */
+    combatAudit: {
+      snapshot: () => combatAudit?.snapshot() ?? null,
+      clear: () => combatAudit?.clear(),
+    },
     jumpTo,
     dumpSave,
     loadSave,
@@ -3132,7 +3240,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       }
       const combat = buildDebugCombat(state, buildLoadoutMap());
       setMode(state, "combat");
-      await startCombat(combat);
+      await startCombat(combat, { source: "debug", tableId: null });
     },
     exitDebugCombat,
     FLOORS: getFloors(),
