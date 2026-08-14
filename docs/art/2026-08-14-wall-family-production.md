@@ -4,7 +4,7 @@
 
 Floors 1–5 now each have a curated ten-wall production family: six quiet/common walls, three character walls, and one rare/hero wall. The library contains 50 accepted assets total. All five canonical walls remain byte-for-byte unchanged from the task-start branch; 45 deterministic siblings were authored or replaced.
 
-No wall-selection logic was implemented. The renderer change in this pass is an explicit `?wallPreview=<asset>` QA hook only. Its asset imports are lazy, so ordinary game startup does not fetch or inflate the initial bundle with unused sibling art.
+The follow-up selection layer is now implemented: ordinary play chooses a stable wall sibling per physical edge, while `?wallPreview=<asset>` remains an exact named QA override. Variant imports are lazy chunks, and ordinary startup only resolves them when the wall renderer initializes.
 
 The accepted filenames, category, provenance, and recommended future weight are machine-readable in [manifest.json](wall-family-production/manifest.json).
 
@@ -186,8 +186,10 @@ The full check retained the known pre-existing Floor 1 Namanda warnings: missing
 
 No accepted common wall has a visible seam, large fixed moss/algae island, centered emblem, face/eye motif, repair rectangle, full-height repeated pilaster, broad baked light gradient, filtered pixel scale, or wrong material.
 
-## Recommendation for deterministic variant selection
+## Deterministic selection implementation
 
-Use a stable hash of floor id plus the canonical physical wall edge—not frame time or traversal order—so both sides of the same edge agree and saves/replays remain stable. Select from category-aware weighted tables in [manifest.json](wall-family-production/manifest.json): quiet walls at ordinary weight, character walls around 0.2–0.35, and heroes around 0.03–0.06. Do not let two hero edges appear in one normal camera view.
+`src/engine/wall-variants.ts` now uses a stable hash of floor/theme plus the canonical physical wall edge—not frame time or traversal order—so both cells bordering an edge agree and saves/replays remain stable. Category-aware weights mirror [manifest.json](wall-family-production/manifest.json): quiet walls at ordinary weight, character walls around 0.2–0.35, and heroes around 0.03–0.06. Same-plane neighboring hero candidates are deterministically downgraded to character tiles.
 
-Prefer explicit map metadata for F4 j and other story-level hero walls. If heroes are allowed in the hashed pool, add deterministic spacing suppression and adjacency rules. Keep the preview hook separate from that system; it should remain an exact named-asset QA path, never selection logic.
+Canvas samples the selected repeated source at each ray hit. WebGL assigns the same suffix to compiled wall-face material keys; doors, stairs, and authored hero panels retain their dedicated textures. `wall-variants.test.ts` covers edge normalization, deterministic output, regional-theme fallback, and hero adjacency. The preview hook remains separate from normal selection and is still an exact named-asset QA path.
+
+Future tuning should adjust only the manifest-aligned weights or explicit hero placement policy after playtest review; the stable edge hash and backend contract should remain unchanged.

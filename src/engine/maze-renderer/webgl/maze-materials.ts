@@ -21,6 +21,7 @@ import {
   getDoorFeatureImage,
   getDoorFeatureTextImage,
 } from "../../door-feature-cache";
+import type { WallVariantSuffix } from "../../wall-variants";
 
 type TextureSource = HTMLImageElement | HTMLCanvasElement;
 
@@ -35,9 +36,10 @@ const FALLBACK_COLORS: Record<string, number> = {
 
 function sourceForSurface(
   tileset: LoadedTileset,
-  surface: string
+  surface: string,
+  variant: WallVariantSuffix | undefined
 ): TextureSource | null {
-  if (surface === "wall") return tileset.repeatedWall;
+  if (surface === "wall") return tileset.wallVariants.get(variant ?? "") ?? tileset.repeatedWall;
   if (surface === "floorA") return tileset.set.floorARepeated;
   if (surface === "floorB") return tileset.set.floorBRepeated;
   if (surface === "ceiling") return tileset.set.ceilingRepeated;
@@ -46,7 +48,12 @@ function sourceForSurface(
   return null;
 }
 
-function parseMaterialKey(materialKey: string): { theme: string; surface: string; featureId?: string } {
+function parseMaterialKey(materialKey: string): {
+  theme: string;
+  surface: string;
+  featureId?: string;
+  variant?: WallVariantSuffix;
+} {
   if (materialKey.startsWith("doorFeature:")) {
     const featureId = materialKey.slice("doorFeature:".length).split("@")[0];
     const theme = materialKey.split("@").at(-1) ?? "f1";
@@ -59,9 +66,16 @@ function parseMaterialKey(materialKey: string): { theme: string; surface: string
   }
   const separator = materialKey.lastIndexOf(":");
   if (separator < 0) return { theme: "f1", surface: "wall" };
+  const surfaceToken = materialKey.slice(separator + 1);
+  const variantSeparator = surfaceToken.indexOf("@");
+  const surface = variantSeparator < 0 ? surfaceToken : surfaceToken.slice(0, variantSeparator);
+  const variant = variantSeparator < 0
+    ? undefined
+    : surfaceToken.slice(variantSeparator + 1) as WallVariantSuffix;
   return {
     theme: materialKey.slice(0, separator),
-    surface: materialKey.slice(separator + 1),
+    surface,
+    variant,
   };
 }
 
@@ -113,9 +127,9 @@ export class MazeMaterialLibrary {
     const cached = this.materials.get(materialKey);
     if (cached) return cached;
 
-    const { theme, surface, featureId } = parseMaterialKey(materialKey);
+    const { theme, surface, featureId, variant } = parseMaterialKey(materialKey);
     const tileset = getTilesetForTheme(theme);
-    let source = tileset ? sourceForSurface(tileset, surface) : null;
+    let source = tileset ? sourceForSurface(tileset, surface, variant) : null;
     let alphaTest = 0;
     if (featureId && materialKey.startsWith("doorFeature:")) {
       const feature = getDoorFeatureImage(featureId);
