@@ -273,12 +273,16 @@ function f1WallVariantA() {
 }
 
 // B — light-crack: fewer, fainter cracks and damp streaks than the shipped
-// base (9 cracks / 6 streaks); moss stays at base density.
+// base (9 cracks / 6 streaks); moss reuses the SHIPPED base's own moss field
+// (seed 103, not a fresh seed) so this variant reads as "same wall, fewer
+// cracks" rather than accidentally rolling a new, more distinctive moss
+// formation — a fresh seed here previously produced a large, recognizable
+// blob that repeats like wallpaper once tiled.
 function f1WallVariantB() {
   const rng = mulberry32(121);
   const px = new Px();
   const mottle = makeFbm(mulberry32(122));
-  const mossN = makeFbm(mulberry32(123), [4, 8, 16]);
+  const mossN = makeFbm(mulberry32(103), [4, 8, 16]);
   const rowH = 16;
   const blockW = 32;
 
@@ -517,26 +521,27 @@ function f3WallVariantB() {
   px.save("f3_wall_b_256.png");
 }
 
-// C — repaired-masonry patch: two adjacent blocks swapped for a distinctly
-// lighter/newer stone color, still shaded by the same mottle/bevel pass so
-// they don't read as flat.
+// C — repaired-masonry patch: two SEPARATE (non-adjacent) single blocks
+// blended toward a modestly lighter/newer stone tone, still driven by the
+// same random per-block color and mottle/bevel pass rather than a flat
+// color swap — two full adjacent blocks in a loud sandy tone read as a
+// rubber-stamped landmark once the wall repeats, so this keeps the patch
+// restrained and grounded in the existing masonry noise.
 function f3WallVariantC() {
   const rng = mulberry32(321);
   const px = new Px();
   const mottle = makeFbm(mulberry32(322));
   const rowH = 16;
   const blockW = 32;
-  const patchStone = hex("#8a7c68"); // sandy new-cut stone, distinct from soot palette
-  const patchKeys = new Set(["2,1", "2,2"]);
+  const patchStone = hex("#6e6155"); // warm-gray repair stone, close in value to the soot palette
+  const patchKeys = new Set(["1,1", "5,3"]);
 
   const blockTone = new Map();
   for (let y = 0; y < L; y++) {
     for (let x = 0; x < L; x++) {
       const { row, col, lx, ly } = courses(x, y, rowH, blockW);
       const key = `${row},${col}`;
-      if (!blockTone.has(key)) {
-        blockTone.set(key, patchKeys.has(key) ? patchStone : F3_STONES[Math.floor(rng() * F3_STONES.length)]);
-      }
+      if (!blockTone.has(key)) blockTone.set(key, F3_STONES[Math.floor(rng() * F3_STONES.length)]);
       if (ly === 0 || lx === 0) {
         px.set(x, y, F3_MORTAR);
         continue;
@@ -547,8 +552,12 @@ function f3WallVariantC() {
       c = shade(c, [0.85, 1.0, 1.1][Math.max(0, Math.min(2, lvl))]);
       if (ly === 1) c = shade(c, 1.15);
       else if (ly === rowH - 1) c = shade(c, 0.78);
-      // patched blocks are freshly cut — no scorch
-      if (!patchKeys.has(key) && mottle(x + 71, y + 23) > 0.6) c = shade(c, 0.82);
+      if (patchKeys.has(key)) {
+        // freshly cut repair stone: blend toward patchStone, no scorch
+        c = mix(c, patchStone, 0.45);
+      } else if (mottle(x + 71, y + 23) > 0.6) {
+        c = shade(c, 0.82);
+      }
       px.set(x, y, c);
     }
   }
@@ -793,28 +802,38 @@ function f4WallVariantD() {
     const y = Math.floor(crackRng() * L);
     px.set(x, y, crackRng() < 0.3 ? F4_RUNE_MID : F4_RUNE_DIM);
   }
-  // vertical pilaster columns instead of the horizontal frieze band
+  // vertical pilaster column instead of the horizontal frieze band — a
+  // SINGLE off-center column, interrupted by two carved-break gaps, rather
+  // than two evenly spaced columns (which formed a regular fence-like grid
+  // once tiled and read as architectural infrastructure, not a masonry
+  // sibling).
   const glyphRng = mulberry32(434);
-  for (const x0 of [30, 98]) {
-    for (let x = x0; x < x0 + 6; x++) {
-      for (let y = 0; y < L; y++) {
-        let c = F4_BAND;
-        if (x === x0) c = F4_BAND_HI;
-        if (x === x0 + 5) c = F4_BAND_SHADOW;
-        if (mottle(x * 2, y * 2) > 0.68) c = shade(c, 0.88);
-        px.set(x, y, c);
-      }
+  const x0 = 44;
+  const gapBands = [
+    [22, 30],
+    [86, 94],
+  ];
+  const inGap = (y) => gapBands.some(([a, b]) => y >= a && y < b);
+  for (let x = x0; x < x0 + 6; x++) {
+    for (let y = 0; y < L; y++) {
+      if (inGap(y)) continue; // leave the stone base showing through the break
+      let c = F4_BAND;
+      if (x === x0) c = F4_BAND_HI;
+      if (x === x0 + 5) c = F4_BAND_SHADOW;
+      if (mottle(x * 2, y * 2) > 0.68) c = shade(c, 0.88);
+      px.set(x, y, c);
     }
-    for (let y = 5; y < L - 4; y += 16) {
-      const tall = glyphRng() < 0.5;
-      px.set(x0 + 1, y, F4_BAND_SHADOW);
-      px.set(x0 + 2, y, F4_BAND_SHADOW);
-      px.set(x0 + 3, y, tall ? F4_BAND_SHADOW : F4_BAND_HI);
-      px.set(x0 + 2, y + 2, F4_BAND_SHADOW);
-      px.set(x0 + 3, y + 2, F4_BAND_SHADOW);
-      if (glyphRng() < 0.6) px.set(x0 + 2, y + 1, F4_RUNE_DIM);
-      if (glyphRng() < 0.35) px.set(x0 + 1, y + 3, F4_BAND_SHADOW);
-    }
+  }
+  for (let y = 5; y < L - 4; y += 16) {
+    if (inGap(y) || inGap(y + 3)) continue;
+    const tall = glyphRng() < 0.5;
+    px.set(x0 + 1, y, F4_BAND_SHADOW);
+    px.set(x0 + 2, y, F4_BAND_SHADOW);
+    px.set(x0 + 3, y, tall ? F4_BAND_SHADOW : F4_BAND_HI);
+    px.set(x0 + 2, y + 2, F4_BAND_SHADOW);
+    px.set(x0 + 3, y + 2, F4_BAND_SHADOW);
+    if (glyphRng() < 0.6) px.set(x0 + 2, y + 1, F4_RUNE_DIM);
+    if (glyphRng() < 0.35) px.set(x0 + 1, y + 3, F4_BAND_SHADOW);
   }
   px.save("f4_wall_d_256.png");
 }
@@ -965,7 +984,10 @@ function f5WallVariantD() {
   const rng = mulberry32(531);
   const px = new Px();
   const mottle = makeFbm(mulberry32(532));
-  const algaeN = makeFbm(mulberry32(533), [4, 8, 16]);
+  // higher-frequency periods than f1's moss field (6/12/24 vs 4/8/16) so
+  // algae patches read as small mottling rather than one large identifiable
+  // blob once tiled
+  const algaeN = makeFbm(mulberry32(533), [6, 12, 24]);
   const rowH = 16;
   const blockW = 32;
   const algae = [hex("#3f7a63"), hex("#2f6350"), hex("#4a8f72")];
@@ -990,15 +1012,17 @@ function f5WallVariantD() {
       px.set(x, y, c);
     }
   }
-  // sparse algae along mortar seams (threshold 0.66: sparser than f1's moss)
+  // sparse algae along mortar seams (threshold 0.78, softer 0.6 blend:
+  // smaller, fainter coverage than the moss-derived first draft, which
+  // produced fairly large, identifiable blobs)
   for (let y = 0; y < L; y++) {
     for (let x = 0; x < L; x++) {
       const { ly } = courses(x, y, rowH, blockW);
       const nearSeam = Math.min(ly, rowH - ly) / rowH;
       const a = algaeN(x, y) - nearSeam * 0.55;
-      if (a > 0.66 + dither(x, y) * 0.08) {
+      if (a > 0.78 + dither(x, y) * 0.08) {
         const g = algae[Math.floor(algaeN(x + 37, y + 61) * algae.length) % algae.length];
-        px.set(x, y, mix(px.get(x, y), g, 0.75));
+        px.set(x, y, mix(px.get(x, y), g, 0.6));
       }
     }
   }
