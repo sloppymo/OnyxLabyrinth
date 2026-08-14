@@ -16,9 +16,11 @@ export interface AmbientBarkCue {
 }
 
 const FIRST_NORTHBOUND: Readonly<Record<number, Omit<AmbientBarkCue, "speakerId" | "speaker"> & { id: string }>> = {
-  19: { id: "arrival", text: "Oh! Oh! Here they come." },
-  18: { id: "hush", text: "Everybody shut up." },
-  17: { id: "assholes", text: "HAHAHA. Look at these assholes.", durationMs: 2500 },
+  // The arrival line is emitted by the first direct look after the silent
+  // exposure beat. The remaining one-shots stay spatial so the bridge still
+  // has its authored rhythm when a player walks straight through.
+  17: { id: "hush", text: "Everybody shut up." },
+  16: { id: "assholes", text: "HAHAHA. Look at these assholes.", durationMs: 2500 },
   15: {
     id: "tragedy",
     text: "Oh boo hoo! I'm a human! My life is so tragic! Waaaaaaa!",
@@ -89,7 +91,24 @@ export function resolveAbyssFaceStep(
   const northbound = to.y < from.y;
 
   if (progress.crossings === 0 && northbound) {
-    if (to.y === 16 && !progress.oneShots.includes("context")) {
+    // Do not spend the first bark while the party is still looking down the
+    // bridge. Arm it at the threshold; resolveAbyssFaceTurn presents it once
+    // the player has had a beat to expose the face itself.
+    if (to.y === 18 && !progress.oneShots.includes("arrival-pending")) {
+      progress.oneShots.push("arrival-pending");
+      return null;
+    }
+    if (progress.oneShots.includes("arrival-pending") && !progress.oneShots.includes("arrival")) {
+      if (to.y === 13) {
+        progress.oneShots.push("arrival");
+        progress.crossings = 1;
+        return cue("Oh! Oh! Here they come.");
+      }
+      // A straight-through player still gets the line at the end of the
+      // crossing; only a player who looks earns it at the reveal beat.
+      return null;
+    }
+    if (to.y === 15 && !progress.oneShots.includes("context")) {
       progress.oneShots.push("context");
       return cue(selectAbyssFaceContext(state) ?? "Four more heroes! Surely THESE are the special ones.");
     }
@@ -126,6 +145,12 @@ export function resolveAbyssFaceTurn(state: GameState): AmbientBarkCue | null {
   // Facing east is 1. Only direct, repeated attention earns acknowledgment.
   if (state.player.facing !== 1) return null;
   const progress = progressFor(state);
+  if (progress.crossings === 0 &&
+      progress.oneShots.includes("arrival-pending") &&
+      !progress.oneShots.includes("arrival")) {
+    progress.oneShots.push("arrival");
+    return cue("Oh! Oh! Here they come.");
+  }
   progress.lookCount += 1;
   if (progress.lookCount === 3) return cue("Yes?");
   if (progress.lookCount === 7) return cue("What?");

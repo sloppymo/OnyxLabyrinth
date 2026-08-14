@@ -7596,6 +7596,12 @@
       "spriteId": "cold-hand"
     },
     {
+      "x": 14,
+      "y": 8,
+      "dir": "n",
+      "spriteId": "writing-plaque"
+    },
+    {
       "x": 18,
       "y": 6,
       "dir": "e",
@@ -8406,6 +8412,9 @@
         ]
       },
       "mapSpriteId": "isobel-npc",
+      "portraitId": "isobel",
+      "portraitSide": "left",
+      "dialogueAccent": "cold",
       "capabilities": {
         "shop": true,
         "talk": true,

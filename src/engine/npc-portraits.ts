@@ -18,10 +18,16 @@ const ASSET_BASE = import.meta.env.BASE_URL ?? "/";
 
 /** Portrait ids with real shipped art. Add an entry here, never a path
  *  literal at a render call site, when wiring a new NPC's portrait. */
-const NPC_PORTRAIT_IDS: readonly string[] = ["kazeharu"];
+const NPC_PORTRAIT_IDS: readonly string[] = ["kazeharu", "isobel"];
 
 export function resolvePortraitUrl(portraitId: string | undefined): string | undefined {
   if (!portraitId || !NPC_PORTRAIT_IDS.includes(portraitId)) return undefined;
+  // Isobel's approved shop sprite is already a crisp production asset. Until
+  // a dedicated head-and-shoulders portrait exists, present it as a compact
+  // merchant card rather than scaling a placeholder initial to cinematic size.
+  if (portraitId === "isobel") {
+    return `${ASSET_BASE}assets/map-sprites/isobel-npc-pixellab.png`;
+  }
   return `${ASSET_BASE}assets/portraits/${portraitId}/portrait.png`;
 }
 

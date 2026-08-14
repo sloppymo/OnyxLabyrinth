@@ -119,19 +119,21 @@ function formatLineText(text: string, kind: NPCMessageKind): string {
 
 export function renderNPCDialogue(vm: DialogueViewModel): DialogueRenderResult {
   const root = document.createElement("div");
+  const portraitUrl = resolvePortraitUrl(vm.portraitId);
   root.className = [
     "npc-dlg",
     `npc-dlg-side-${vm.portraitSide ?? "left"}`,
     `npc-dlg-accent-${vm.dialogueAccent ?? "neutral"}`,
+    portraitUrl ? "npc-dlg-has-portrait" : "npc-dlg-card-only",
     vm.messageKind === "hostile" ? "npc-dlg-hostile-flash" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
-  const portraitUrl = resolvePortraitUrl(vm.portraitId);
   const portrait = document.createElement("div");
   portrait.className = "npc-dlg-portrait";
   if (portraitUrl) {
+    if (vm.portraitId === "isobel") portrait.classList.add("npc-dlg-portrait-sprite-card");
     const img = document.createElement("img");
     img.src = portraitUrl;
     img.alt = vm.npcName;
