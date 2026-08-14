@@ -1,5 +1,57 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+## Attrition/recovery balance pass — 2026-08-13
+
+The active task is a focused Floors 1–3 attrition and recovery validation pass.
+The first implementation step is debug-only, non-persistent combat audit data:
+seeded natural campaigns will record encounters, party condition, route distance,
+damage, KOs, consumables, exploration state, and proximity to authored events.
+Do not broaden this into new content or a general UX audit. Preserve the original
+visual-pass notes below; this section tracks the current task only.
+
+- Complete: debug-only `CombatAudit` plus the natural seeded campaign driver in
+  `scripts/playtests/attrition-recovery-audit.mjs`; baseline coverage used
+  All Trades, Shield Wall, and All Steel across seeds 101 and 202.
+- Finding: ordinary encounter gaps are not the primary global issue; Floor 3
+  damage/duration and capstones are the major pressure points, while the fixed
+  attack-only Auto policy leaves healing/resource use unmeasured.
+- Implemented: campaign wipes preserve the failed combat location in
+  `state.lastDungeon`, still routing through game-over and town/Inn recovery.
+  This reduced observed retry traversal to 1–51 steps and let two after-fix
+  runs reach the Floor 3 guardian within the test budget.
+- Verification: `npm run check`, Floor 2 Library, Floor 3 Duelist's Vigil, and
+  the WebGL/Canvas abyss-bridge browser checks pass. Full results are in
+  `docs/playtests/2026-08-13-attrition-recovery.md`.
+
+### Post-attrition validation and player-experience polish
+
+- Complete: wipe re-entry now validates the saved floor/cell after runtime
+  doors and loot are applied, rejects void/features/events/stairs/invalid
+  elevation, and searches a radius-4 local landing before falling back to the
+  canonical start. The audit records the failed position, actual landing,
+  legality, immediate-event risk, and BFS retry path.
+- Measurement: the attack-first baseline remains the comparison set. A
+  tactical policy was also run through seed 101 for All Trades, Shield Wall,
+  and All Steel, plus Shield Wall seed 202. Shield Wall reached and defeated
+  Grand Forge on seed 101 after two failed attempts; the other failures were
+  at the authored Grand Forge formation after arriving with substantial HP,
+  not ordinary-route wipes. No enemy stats or encounter rates were changed.
+- Complete: Floor 2 now carries one restrained green-masonry threshold cell
+  into the first library mouth. The face's first bark is armed at the bridge
+  threshold and appears on the first direct look, giving the reveal a silent
+  visual beat while preserving repeat-crossing silence and combat-free entry.
+- Complete: lexicon-key and forge-key reward approaches now have authored wall
+  framing, completed trap/reward text is painted instantly, and Isobel's
+  approved shop sprite is used as a contained cinematic portrait. Incidental
+  NPCs retain the compact silhouette/card fallback.
+- Complete: the retired Proving Depths smoke check is replaced by
+  `scripts/playtests/floor1-guardian-current.mjs`, which targets the live
+  28×41 Hall of Five Wounds and verifies the guardian barrier after fleeing.
+- Verification: `npm run check` passes (122 files / 2,357 tests); Floor 1
+  guardian, Floor 2 Library, Floor 3 Duelist's Vigil, reward framing, and
+  WebGL/Canvas bridge runs pass with no browser errors. Detailed metrics and
+  screenshot paths are in `docs/playtests/2026-08-13-post-attrition-polish.md`.
+
 ## 2026-08-13 — Floor 2 abyss bridge entrance
 
 - Current prompt: design, implement, art-finish, test, and production-browser
