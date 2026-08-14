@@ -1,8 +1,9 @@
 #!/usr/bin/env npx tsx
 /**
- * Generates a standalone sprite-preview.html covering every sprite/texture
- * asset the game loads: party classes, enemies, spell/status effect strips,
- * campaign tilesets (+ door panels), and static dungeon-decor map sprites.
+ * Generates a standalone sprite-preview.html covering the game's visual asset
+ * families: runtime sprite manifests, complete on-disk enemy/effect folders,
+ * campaign tilesets, wall/ceiling/door features, architectural props,
+ * environmental set pieces, portraits, symbols, map sprites, and source PNGs.
  *
  * Run with:
  *   npm run sprite-preview:generate
@@ -164,6 +165,80 @@ function staticCard(opts: {
     note: opts.note,
     displaySize: opts.displaySize,
   };
+}
+
+async function pngFilesUnder(absDir: string): Promise<string[]> {
+  const files: string[] = [];
+  async function visit(dir: string): Promise<void> {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const abs = join(dir, entry.name);
+      if (entry.isDirectory()) await visit(abs);
+      else if (entry.isFile() && entry.name.toLowerCase().endsWith(".png")) files.push(abs);
+    }
+  }
+  await visit(absDir);
+  return files.sort();
+}
+
+/** Build a visual contact sheet for a public asset directory that is not a
+ * frame-strip manifest (wall decals, ceilings, portraits, etc.). Grouping by
+ * subdirectory keeps large families browsable without hand-maintained lists. */
+async function buildDirectorySection(opts: {
+  id: string;
+  title: string;
+  directory: string;
+  hint: string;
+  note?: string;
+  displaySize?: number;
+}): Promise<Section> {
+  const absDir = join(root, opts.directory);
+  const files = await pngFilesUnder(absDir);
+  const groups = new Map<string, Card[]>();
+  for (const abs of files) {
+    const relative = abs.slice(absDir.length + 1).replaceAll("\\", "/");
+    const groupName = relative.includes("/") ? relative.slice(0, relative.lastIndexOf("/")) : "";
+    const file = basename(relative);
+    const rel = `${opts.directory}/${relative}`;
+    const info = await pngInfo(abs);
+    const cards = groups.get(groupName) ?? [];
+    cards.push(
+      staticCard({
+        domId: slug(opts.id, relative),
+        label: file,
+        src: rel,
+        info,
+        note: opts.note,
+        displaySize: opts.displaySize ?? 160,
+      })
+    );
+    groups.set(groupName, cards);
+  }
+  const cardGroups: CardGroup[] = [...groups.entries()].map(([name, cards]) => ({
+    id: slug(opts.id, name || "all"),
+    title: name || "",
+    cards,
+  }));
+  if (!cardGroups.length) {
+    cardGroups.push({ id: slug(opts.id, "empty"), title: "", cards: [] });
+  }
+  return { id: opts.id, title: opts.title, hint: opts.hint, groups: cardGroups };
+}
+
+async function buildSourcePngSection(): Promise<Section> {
+  return buildDirectorySection({
+    id: "source-pngs",
+    title: "Source PNGs — bundled and fallback art",
+    directory: "src/assets",
+    hint: "Every PNG under src/assets, including title/combat art and the bundled tiles already shown above. This section is intentionally source-oriented so no visual file is hidden from the audit.",
+    note: "source PNG — compare against the runtime-facing section when applicable",
+    displaySize: 180,
+  });
 }
 
 // --- Party -------------------------------------------------------------
@@ -438,16 +513,123 @@ async function buildMapSpriteSection(server: ViteDevServer): Promise<Section> {
 // --- Assemble + render -----------------------------------------------------
 
 async function collectSnapshot(server: ViteDevServer): Promise<PreviewSnapshot> {
-  const [party, enemies, effects, tilesets, mapSprites] = await Promise.all([
+  const [
+    party,
+    enemies,
+    effects,
+    tilesets,
+    mapSprites,
+    sourcePngs,
+    wallFeatures,
+    ceilingFeatures,
+    ceilingSprites,
+    doorFeatures,
+    architecture,
+    environmental,
+    portraits,
+    symbols,
+    enemyFiles,
+    effectFiles,
+  ] = await Promise.all([
     buildPartySection(server),
     buildEnemySection(server),
     buildEffectsSection(server),
     buildTilesetSection(),
     buildMapSpriteSection(server),
+    buildSourcePngSection(),
+    buildDirectorySection({
+      id: "wall-features",
+      title: "Wall features — embedded decals",
+      directory: "public/assets/wall-features",
+      hint: "All PNGs under public/assets/wall-features, including animated sconce frame folders. These are painted onto wall faces rather than used as base wall tiles.",
+      displaySize: 180,
+    }),
+    buildDirectorySection({
+      id: "ceiling-features",
+      title: "Ceiling features — plane replacements",
+      directory: "public/assets/ceiling-features",
+      hint: "All ceiling-plane feature PNGs. Each replaces one cell's sampled ceiling texture.",
+      displaySize: 180,
+    }),
+    buildDirectorySection({
+      id: "ceiling-sprites",
+      title: "Ceiling sprites — hanging set pieces",
+      directory: "public/assets/ceiling-sprites",
+      hint: "All hanging ceiling billboard PNGs, including assets registered for reserved or special-room content.",
+      displaySize: 180,
+    }),
+    buildDirectorySection({
+      id: "door-features",
+      title: "Door features — hero thresholds",
+      directory: "public/assets/door-features",
+      hint: "Full-face landmark door panels and gates.",
+      displaySize: 220,
+    }),
+    buildDirectorySection({
+      id: "architecture",
+      title: "Architectural props",
+      directory: "public/assets/architectural-props",
+      hint: "Large structural corridor props such as the Kept Gate and basalt supports.",
+      displaySize: 220,
+    }),
+    buildDirectorySection({
+      id: "environmental",
+      title: "Environmental set pieces",
+      directory: "public/assets/environmental-sprites",
+      hint: "Large animated world-space set pieces such as the Floor 2 abyss face.",
+      displaySize: 240,
+    }),
+    buildDirectorySection({
+      id: "portraits",
+      title: "NPC portraits",
+      directory: "public/assets/portraits",
+      hint: "Portrait files used by cinematic NPC dialogue. Missing portrait IDs use the documented silhouette fallback and therefore appear in the runtime audit, not here.",
+      displaySize: 220,
+    }),
+    buildDirectorySection({
+      id: "symbols",
+      title: "Symbols and marks",
+      directory: "public/assets/symbols",
+      hint: "Reusable authored marks and relief symbols.",
+      displaySize: 180,
+    }),
+    buildDirectorySection({
+      id: "enemy-files",
+      title: "Enemy files — complete on-disk audit",
+      directory: "public/assets/enemies",
+      hint: "Every PNG under public/assets/enemies, including strips not currently referenced by ENEMY_SPRITE_DEFS. Use this section to spot unused, duplicate, or inconsistent pack art.",
+      note: "raw on-disk file; runtime mapping is shown in the Enemies section",
+      displaySize: 180,
+    }),
+    buildDirectorySection({
+      id: "effect-files",
+      title: "Effect files — complete on-disk audit",
+      directory: "public/assets/effects",
+      hint: "Every PNG under public/assets/effects, including files not currently referenced by EFFECT_STRIPS.",
+      note: "raw on-disk file; runtime mapping is shown in the Effects section",
+      displaySize: 160,
+    }),
   ]);
   return {
     generatedAt: new Date().toISOString(),
-    sections: [party, enemies, effects, tilesets, mapSprites],
+    sections: [
+      party,
+      enemies,
+      effects,
+      tilesets,
+      mapSprites,
+      wallFeatures,
+      ceilingFeatures,
+      ceilingSprites,
+      doorFeatures,
+      architecture,
+      environmental,
+      portraits,
+      symbols,
+      sourcePngs,
+      enemyFiles,
+      effectFiles,
+    ],
   };
 }
 
@@ -483,6 +665,10 @@ h1 { text-align: center; margin-bottom: 0.25rem; }
 nav.toc { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #3a3025; }
 nav.toc a { color: #f0d080; text-decoration: none; }
 nav.toc a:hover { text-decoration: underline; }
+.controls { position: sticky; top: 0; z-index: 5; display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.75rem; margin: 0 -1rem 1rem; background: rgba(14,13,10,0.96); border-bottom: 1px solid #3a3025; }
+.controls input[type="search"] { width: min(34rem, 90vw); padding: 0.55rem 0.7rem; color: #f0e0c0; background: #1a1612; border: 1px solid #5a4630; border-radius: 3px; font: inherit; }
+.controls label { color: #d0c0a0; padding: 0.5rem 0; }
+.state.hidden, .group.hidden, h1.section.hidden, .section-hint.hidden { display: none; }
 h1.section { margin-top: 2.5rem; color: #f0d080; border-top: 2px solid #3a3025; padding-top: 1.5rem; }
 .section-hint { text-align: center; color: #a09070; margin-bottom: 1.5rem; font-size: 0.85rem; }
 .group { margin-bottom: 2rem; border-bottom: 1px solid #3a3025; padding-bottom: 1.5rem; }
@@ -502,8 +688,9 @@ canvas, img.static-img { image-rendering: pixelated; background: #000; border-ra
 </head>
 <body>
 <h1>OnyxLabyrinth Sprite &amp; Asset Preview</h1>
-<div class="hint">Party, enemy, effect, tileset, and map-sprite art the game actually loads — pulled live from the same source modules combat/rendering use.</div>
+<div class="hint">Shipping and runtime-facing visual assets, pulled from the same source modules and asset directories the game uses. Candidate/rejected art outside public/assets is intentionally excluded.</div>
 <div class="summary">Generated ${snapshot.generatedAt} · <span class="critical">${critical} critical</span> · <span class="warn">${warn} warning${warn === 1 ? "" : "s"}</span></div>
+<div class="controls"><input id="asset-search" type="search" placeholder="Filter by name, path, or note…" autocomplete="off"><label><input id="issues-only" type="checkbox"> issues only</label></div>
 <nav class="toc">${snapshot.sections.map((s) => `<a href="#${s.id}">${s.title}</a>`).join("")}</nav>
 ${snapshot.sections.map(renderSection).join("")}
 <script type="application/json" id="snapshot">${JSON.stringify(snapshot)}</script>
@@ -551,7 +738,7 @@ function renderCard(card: Card): string {
         : "";
   const note = card.note ? `<br><em class="warnmsg">${escapeHtml(card.note)}</em>` : "";
   return `
-<div class="state ${level === "ok" ? "" : level}" data-card="${card.domId}">
+<div class="state ${level === "ok" ? "" : level}" data-card="${card.domId}" data-level="${level}" data-search="${escapeHtml(`${card.label} ${card.src} ${card.note ?? ""}`.toLowerCase())}">
 <canvas id="cv-${card.domId}" width="${size}" height="${size}"></canvas>
 <div class="meta">
 <strong>${escapeHtml(card.label)}</strong><br>
@@ -633,6 +820,21 @@ const CLIENT_SCRIPT = `
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
+
+  const search = document.getElementById('asset-search');
+  const issuesOnly = document.getElementById('issues-only');
+  function applyFilter() {
+    const query = (search?.value ?? '').toLowerCase().trim();
+    const issues = !!issuesOnly?.checked;
+    document.querySelectorAll('.state[data-card]').forEach((node) => {
+      const card = node;
+      const matchesText = !query || (card.dataset.search || '').includes(query);
+      const matchesIssue = !issues || card.dataset.level === 'warn' || card.dataset.level === 'critical';
+      card.classList.toggle('hidden', !matchesText || !matchesIssue);
+    });
+  }
+  search?.addEventListener('input', applyFilter);
+  issuesOnly?.addEventListener('change', applyFilter);
 })();
 `;
 
