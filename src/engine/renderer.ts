@@ -115,6 +115,46 @@ import { renderArenaRoom } from "./arena-renderer";
 import { waterGridFromFloor } from "./water-floor";
 import { mazeRenderProfiler } from "./maze-renderer/performance";
 
+// Art-QA-only asset lookup. `wallPreview` never selects a variant during
+// ordinary play and is intentionally not a randomization/integration system;
+// it gives the production-art harness a way to inspect every approved source
+// through the real Canvas and WebGL corridor renderers before that later
+// engineering pass exists.
+const WALL_PREVIEW_LOADERS = import.meta.glob("../assets/f?_wall*_256.png", {
+  query: "?url",
+  import: "default",
+}) as Record<string, () => Promise<string>>;
+
+const requestedWallPreview = (() => {
+  if (typeof window === "undefined") return null;
+  const requested = new URLSearchParams(window.location.search).get("wallPreview")?.trim();
+  if (!requested) return null;
+  const filename = requested.endsWith(".png") ? requested : `${requested}.png`;
+  return /^f[1-5]_wall(?:_[b-j])?_256\.png$/.test(filename) ? filename : null;
+})();
+
+let requestedWallPreviewUrl: string | null = null;
+let requestedWallPreviewLoad: Promise<void> | null = null;
+
+function loadRequestedWallPreview(): Promise<void> {
+  if (!requestedWallPreview) return Promise.resolve();
+  if (requestedWallPreviewUrl) return Promise.resolve();
+  if (!requestedWallPreviewLoad) {
+    const load = WALL_PREVIEW_LOADERS[`../assets/${requestedWallPreview}`];
+    requestedWallPreviewLoad = load
+      ? load().then((url) => {
+          requestedWallPreviewUrl = url;
+        })
+      : Promise.resolve();
+  }
+  return requestedWallPreviewLoad;
+}
+
+function previewWallUrlForTheme(theme: string): string | null {
+  if (!requestedWallPreview || !requestedWallPreview.startsWith(`${theme}_wall`)) return null;
+  return requestedWallPreviewUrl;
+}
+
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
 export const PALETTE = {
   bg: "#0e0d0a",
@@ -316,7 +356,10 @@ function urlsForTheme(theme: string): {
   ceiling: string;
   door: string;
 } {
-  return BUNDLED_THEME_URLS[theme] ?? publicThemeUrls(theme);
+  const bundled = BUNDLED_THEME_URLS[theme];
+  const previewWall = previewWallUrlForTheme(theme);
+  if (bundled && previewWall) return { ...bundled, wall: previewWall };
+  return bundled ?? publicThemeUrls(theme);
 }
 
 /** Public path only — see `LoadedTileset.stairs` doc comment. */
@@ -585,12 +628,13 @@ function prepareRepeatedTexture(
 /** Load and prepare campaign themes (f1–f5, each with its own door panel)
  *  plus the generic placeholder used as a fallback for themes with no door
  *  of their own (custom/public themes, or a per-theme door that failed to load). */
-export function loadTextures(): Promise<void> {
-  return Promise.all([
+export async function loadTextures(): Promise<void> {
+  await loadRequestedWallPreview();
+  await Promise.all([
     ...Object.keys(BUNDLED_THEME_URLS).map((theme) => ensureThemeLoaded(theme)),
     ensureDoorTextureLoaded(),
     ensureWaterTextureLoaded(),
-  ]).then(() => {});
+  ]);
 }
 
 /** The door texture to draw for a theme: its own palette-matched panel if
