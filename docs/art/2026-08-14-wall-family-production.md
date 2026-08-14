@@ -139,6 +139,27 @@ Accepted: 10 (`f5_wall_256.png`, `f5_wall_b_256.png` through `f5_wall_j_256.png`
 
 The canonical wall was preserved. Older b–e were replaced. The former d/e stain language was too blob-like; the accepted d uses narrow directional channels and no large connected algae island.
 
+## Targeted gameplay-distance refinement
+
+After the first in-engine family review, the base library was frozen and only
+13 character siblings were surgically revised: F1 g–i, F2 g–i, F3 g–i, F4 g/i,
+and F5 g/i. Quiet/common walls, canonical anchors, and all hero walls remain
+unchanged.
+
+- F1 g–h carry stronger edge-entering rust/damp scars; i has a more legible
+  broken moss/wet seam without a connected island.
+- F2 g widens its edge-cropped empty bay; h has a broader broken shelf edge;
+  i carries a taller folio cluster entering from the tile edge.
+- F3 g–i add small ember/slag scars and slightly clearer iron/score contrast;
+  the material remains soot-black rather than lava-orange.
+- F4 g/i use thicker, pale erased scoring and broken rails while retaining the
+  cold violet-gray palette.
+- F5 g/i add directional mineral channels and brighter runoff traces; these
+  are narrow water-history marks, not algae blobs or glowing cracks.
+
+The revisions are still deterministic, toroidal, and repeat-safe. They are
+character-frequency material, not new ordinary wallpaper.
+
 ## Generation statistics
 
 | Source | Images generated/produced | Accepted | Rejected/reworked |
@@ -148,7 +169,7 @@ The canonical wall was preserved. Older b–e were replaced. The former d/e stai
 | Preserved canonical anchors | 5 | 5 | 0 |
 | Final library | 50 | 50 | — |
 
-PixelLab acceptance rate was 0%; this is intentional curation, not a quality shortfall hidden by counting AI output. The 45 accepted siblings were iterated as a family through palette, landmark, and renderer QA before finalization.
+PixelLab acceptance rate was 0%; this is intentional curation, not a quality shortfall hidden by counting AI output. The 45 accepted siblings were iterated as a family through palette, landmark, and renderer QA before finalization. The later gameplay-distance refinement changed only the 13 character siblings listed above.
 
 ## Visual evidence
 
@@ -162,14 +183,17 @@ PixelLab acceptance rate was 0%; this is intentional curation, not a quality sho
 - [Canvas renderer master](wall-family-production/renderer/canvas-master-contact.png)
 - [WebGL renderer master](wall-family-production/renderer/webgl-master-contact.png)
 - [Required renderer regression poses](wall-family-production/renderer/renderer-regression-four-poses.png): straight corridor, open side passage, front wall, and darkness.
+- Targeted character captures and montage: `playtest-screenshots/wall-family-production/strong-variant-qa-final/`
 - Full-resolution local captures and machine report: `playtest-screenshots/wall-family-production/renderer-all/`
 
 The final renderer sweep captured all 50 assets in both Canvas and WebGL: 100 captures, zero browser errors, zero active-renderer mismatches. A first general visual-audit run reproduced the known WebGL harness issue: it sampled the hidden Canvas and reported luminance zero while the WebGL screenshot remained valid. That result is retained under `supporting/hidden-canvas-false-failure/`. The same straight/side/front/darkness audit was rerun with Canvas explicitly active and passed every geometry, visibility, asset, browser, HTTP, regional-theme, and lifecycle check.
 
 ## Verification
 
-- `npm run wall:generate`: deterministic aggregate digest unchanged.
+- `npm run wall:generate`: PASS; targeted refinement output is deterministic across clean reruns.
 - `npm run wall:validate -- --json docs/art/wall-family-production/validation.json`: PASS, 50/50 accepted, no failures, no exact or near duplicates.
+- Targeted character revision QA: PASS — 26 Canvas/WebGL captures, zero browser errors, zero active-renderer mismatches.
+- Latest targeted QA: PASS — 12 Canvas/WebGL captures after the final F1/F2/F5 tuning, zero browser errors, zero active-renderer mismatches.
 - Aseprite hero round-trip: PASS, zero changed pixels for F1–F5.
 - Actual renderer sweep: PASS, 100 captures, zero browser errors, zero backend mismatches.
 - Canvas renderer regression audit: PASS, including straight corridor, open side passage, depth-0 front wall, darkness, all Floor 1 regional themes, automap transition, and combat return.
@@ -185,6 +209,7 @@ The full check retained the known pre-existing Floor 1 Namanda warnings: missing
 - Forced repetition correctly makes all hero tiles recognizable. They are not approved for common selection; F4 j especially should use explicit authored placement or an extremely low deterministic weight.
 - The five canonical anchors are more densely hand-rendered than some quiet siblings. In-engine distance, fog, and material palette unify them, but a future selection pass should avoid placing the canonical at a mechanically regular interval.
 - F2’s canonical wall is much denser than b–j. Its recommended future weight is slightly reduced so it acts as a dense archive bay, not every other wall.
+- The strongest character cues are intentionally still intermittent. Meaningful authored placement around environmental anchors remains the next payoff; the selector should not be made uniformly louder.
 
 No accepted common wall has a visible seam, large fixed moss/algae island, centered emblem, face/eye motif, repair rectangle, full-height repeated pilaster, broad baked light gradient, filtered pixel scale, or wrong material.
 

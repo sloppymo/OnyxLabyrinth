@@ -370,6 +370,35 @@ function drawVerticalSeeps(px, rows, seed, color, options = {}) {
   }
 }
 
+// A slightly wider, edge-entering material channel for the few character
+// variants that need to register at corridor distance. It stays directional
+// and broken rather than becoming a centered stain or decorative blob.
+function drawWideSeeps(px, seed, colors, options = {}) {
+  const rng = mulberry32(seed);
+  for (let i = 0; i < (options.count ?? 1); i++) {
+    const fromRight = options.fromRight ?? rng() < 0.5;
+    const width = options.minWidth ?? 2 + Math.floor(rng() * 2);
+    const x0 = fromRight
+      ? L - 3 - Math.floor(rng() * 8)
+      : 2 + Math.floor(rng() * 8);
+    let x = x0;
+    const y0 = 16 + Math.floor(rng() * 62);
+    const length = (options.minLength ?? 14) + Math.floor(rng() * (options.extraLength ?? 18));
+    for (let y = 0; y < length; y++) {
+      if (y > 0 && rng() < 0.16) x += rng() < 0.5 ? -1 : 1;
+      const fade = 1 - y / (length * 1.25);
+      for (let dx = 0; dx < width; dx++) {
+        const color = colors[(i + dx + y) % colors.length];
+        px.blend(x + (fromRight ? -dx : dx), y0 + y, color, (options.amount ?? 0.34) * fade);
+      }
+      if (rng() < 0.24) {
+        const color = colors[Math.floor(rng() * colors.length)];
+        px.blend(x + (fromRight ? 1 : -1), y0 + y, color, (options.amount ?? 0.34) * fade * 0.45);
+      }
+    }
+  }
+}
+
 function drawEdgeScar(px, seed, colors, options = {}) {
   const rng = mulberry32(seed);
   const fromRight = options.fromRight ?? rng() < 0.5;
@@ -426,6 +455,7 @@ function drawErasedScore(px, seed, palette, options = {}) {
     if ((x - start) % gapEvery < 2) continue;
     const drift = Math.round(Math.sin(x * 0.21) * 1.2);
     px.blend(x, y + drift, palette.light, options.amount ?? 0.48);
+    if (options.thickness === 2) px.blend(x, y + drift + 1, palette.light, (options.amount ?? 0.48) * 0.58);
     if (rng() < 0.55) px.blend(x, y + drift + 1, palette.dark, 0.45);
   }
 }
@@ -462,9 +492,9 @@ const f1Configs = [
   { suffix: "d", seed: 1130, rows: 9, blockCounts: [5, 4, 5, 6], cracks: 8, growth: 3, seeps: 1 },
   { suffix: "e", seed: 1140, rows: 8, blockCounts: [3, 5, 4, 5], cracks: 3, growth: 4, seeps: 3 },
   { suffix: "f", seed: 1150, rows: 7, blockCounts: [5, 4, 4], cracks: 3, growth: 3, seeps: 5 },
-  { suffix: "g", seed: 1160, rows: 8, blockCounts: [4, 5, 3, 5], cracks: 6, growth: 5, seeps: 3, rustScar: 16 },
-  { suffix: "h", seed: 1170, rows: 7, blockCounts: [3, 4, 5], cracks: 7, growth: 3, seeps: 2, rustScar: 23 },
-  { suffix: "i", seed: 1180, rows: 9, blockCounts: [5, 5, 4], cracks: 5, growth: 13, seeps: 4 },
+  { suffix: "g", seed: 1160, rows: 8, blockCounts: [4, 5, 3, 5], cracks: 6, growth: 5, seeps: 3, rustScar: 22, strongSeams: true },
+  { suffix: "h", seed: 1170, rows: 7, blockCounts: [3, 4, 5], cracks: 7, growth: 3, seeps: 2, rustScar: 30, strongSeams: true },
+  { suffix: "i", seed: 1180, rows: 9, blockCounts: [5, 5, 4], cracks: 5, growth: 13, seeps: 4, strongMoss: true },
   { suffix: "j", seed: 1190, rows: 7, blockCounts: [3, 4, 4], cracks: 7, growth: 4, seeps: 4, rustScar: 36 },
 ];
 
@@ -478,6 +508,38 @@ function generateF1(config) {
   const { px, rows } = stoneWall({ ...config, stones: F1.stones, mortar: F1.mortar, baseStain, chips: 3 });
   drawHairlineCracks(px, config.seed + 10, config.cracks, F1.crack, { minLength: 4, extraLength: config.suffix === "j" ? 8 : 5 });
   drawSeamGrowth(px, rows, config.seed + 20, F1.moss, { patches: config.growth, minLength: 2, extraLength: 4, amount: 0.68 });
+  if (config.strongSeams) {
+    drawSeamGrowth(px, rows, config.seed + 70, F1.moss, {
+      patches: 3,
+      minLength: 4,
+      extraLength: 6,
+      amount: 0.8,
+      spread: 0.18,
+    });
+  }
+  if (config.strongMoss) {
+    drawSeamGrowth(px, rows, config.seed + 80, F1.moss, {
+      patches: 6,
+      minLength: 3,
+      extraLength: 7,
+      amount: 0.78,
+      spread: 0.16,
+    });
+    drawWideSeeps(px, config.seed + 90, [F1.moss[1], F1.damp], {
+      count: 2,
+      minLength: 13,
+      extraLength: 14,
+      amount: 0.44,
+    });
+  }
+  if (config.strongSeams) {
+    drawWideSeeps(px, config.seed + 91, [F1.damp, F1.moss[0]], {
+      count: 1,
+      minLength: 16,
+      extraLength: 12,
+      amount: 0.28,
+    });
+  }
   drawVerticalSeeps(px, rows, config.seed + 30, F1.damp, { count: config.seeps, minLength: 7, extraLength: 15, amount: 0.3 });
   if (config.rustScar) drawEdgeScar(px, config.seed + 50, F1.rust, { length: config.rustScar, amount: config.suffix === "j" ? 0.74 : 0.55 });
   px.posterize(4);
@@ -552,9 +614,9 @@ const f2Configs = [
   { suffix: "d", seed: 2130, shelves: 6, density: 0.72, gaps: 0.25, stacks: 0.03 },
   { suffix: "e", seed: 2140, shelves: 5, density: 0.82, gaps: 0.13, stacks: 0.04 },
   { suffix: "f", seed: 2150, shelves: 6, density: 0.78, gaps: 0.17, stacks: 0.02, lean: 0.2 },
-  { suffix: "g", seed: 2160, shelves: 6, density: 0.64, gaps: 0.3, stacks: 0.06, emptyBay: { row: 2, x: 96, width: 23 } },
-  { suffix: "h", seed: 2170, shelves: 6, density: 0.72, gaps: 0.22, stacks: 0.08, brokenEdge: true },
-  { suffix: "i", seed: 2180, shelves: 7, density: 0.68, gaps: 0.25, stacks: 0.04, scrolls: true },
+  { suffix: "g", seed: 2160, shelves: 6, density: 0.64, gaps: 0.3, stacks: 0.06, emptyBay: { row: 2, x: 96, width: 38 } },
+  { suffix: "h", seed: 2170, shelves: 6, density: 0.72, gaps: 0.22, stacks: 0.08, brokenEdge: true, strongBreak: true },
+  { suffix: "i", seed: 2180, shelves: 7, density: 0.68, gaps: 0.25, stacks: 0.04, scrolls: true, folioCluster: true },
   { suffix: "j", seed: 2190, shelves: 6, density: 0.66, gaps: 0.27, stacks: 0.09, collapseEdge: true },
 ];
 
@@ -633,8 +695,9 @@ function generateF2(config) {
     const shelf = shelves[4];
     // Edge-cropped so the scroll mass reads as part of a longer archive bay,
     // never as a small centered emblem when the tile repeats.
-    const x0 = 121;
-    for (let scroll = 0; scroll < 4; scroll++) {
+    const x0 = config.folioCluster ? 104 : 121;
+    const scrollCount = config.folioCluster ? 6 : 4;
+    for (let scroll = 0; scroll < scrollCount; scroll++) {
       const y = shelf.bottom - scroll * 3;
       px.line(x0 + scroll, y, x0 + 12 - scroll, y, shade(F2.paper, 0.75 + scroll * 0.06));
       px.set(x0 + scroll, y - 1, F2.woodDark);
@@ -643,7 +706,7 @@ function generateF2(config) {
 
   if (config.brokenEdge || config.collapseEdge) {
     const shelf = shelves[config.collapseEdge ? 3 : 1];
-    const width = config.collapseEdge ? 32 : 20;
+    const width = config.collapseEdge ? 32 : config.strongBreak ? 28 : 20;
     px.rect(112, shelf.y0, width, 4, F2.background);
     px.line(112, shelf.y0 + 1, 112 + width - 3, shelf.y0 + (config.collapseEdge ? 8 : 5), F2.woodLight);
     px.line(112, shelf.y0 + 2, 112 + width - 3, shelf.y0 + (config.collapseEdge ? 9 : 6), F2.woodDark);
@@ -678,9 +741,9 @@ const f3Configs = [
   { suffix: "d", seed: 3130, rows: 9, blockCounts: [5, 4, 6], cracks: 3, ties: 3, sootThreshold: 0.62, repair: true },
   { suffix: "e", seed: 3140, rows: 8, blockCounts: [4, 4, 5], cracks: 7, ties: 1, sootThreshold: 0.56 },
   { suffix: "f", seed: 3150, rows: 7, blockCounts: [5, 3, 4], cracks: 4, ties: 4, sootThreshold: 0.67 },
-  { suffix: "g", seed: 3160, rows: 8, blockCounts: [4, 5, 3], cracks: 6, ties: 2, sootThreshold: 0.5, slagScar: 18 },
-  { suffix: "h", seed: 3170, rows: 7, blockCounts: [3, 4, 4], cracks: 8, ties: 2, sootThreshold: 0.57, slagScar: 25 },
-  { suffix: "i", seed: 3180, rows: 9, blockCounts: [5, 5, 4], cracks: 5, ties: 1, sootThreshold: 0.54, brokenBand: true },
+  { suffix: "g", seed: 3160, rows: 8, blockCounts: [4, 5, 3], cracks: 6, ties: 2, sootThreshold: 0.5, slagScar: 22, strong: true },
+  { suffix: "h", seed: 3170, rows: 7, blockCounts: [3, 4, 4], cracks: 8, ties: 2, sootThreshold: 0.57, slagScar: 30, strong: true },
+  { suffix: "i", seed: 3180, rows: 9, blockCounts: [5, 5, 4], cracks: 5, ties: 1, sootThreshold: 0.54, brokenBand: true, strong: true },
   { suffix: "j", seed: 3190, rows: 7, blockCounts: [3, 5, 4], cracks: 8, ties: 2, sootThreshold: 0.48, slagScar: 38 },
 ];
 
@@ -692,7 +755,7 @@ function generateF3(config) {
   // Ember punctuation is deliberately sparse; the canonical wall already
   // carries the family's strongest crack network.
   const emberRng = mulberry32(config.seed + 20);
-  const emberCount = config.suffix === "j" ? 5 : config.suffix >= "g" ? 3 : 2;
+  const emberCount = config.suffix === "j" ? 5 : config.strong ? 4 : config.suffix >= "g" ? 3 : 2;
   for (let i = 0; i < emberCount; i++) {
     const x = Math.floor(emberRng() * L);
     const y = Math.floor(emberRng() * L);
@@ -701,7 +764,22 @@ function generateF3(config) {
       px.blend(plotX + 1, plotY, F3.ember[1], 0.45);
     });
   }
-  drawIronTies(px, config.seed + 30, F3.iron, { count: config.ties });
+  if (config.strong) {
+    drawHairlineCracks(px, config.seed + 75, 2, F3.ember[1], {
+      minLength: 5,
+      extraLength: 4,
+      amount: 0.62,
+    });
+    drawEdgeScar(px, config.seed + 76, [F3.ember[1], F3.ember[0]], {
+      length: config.suffix === "i" ? 16 : 13,
+      verticalBias: 0.42,
+      amount: 0.62,
+    });
+  }
+  const tiePalette = config.strong
+    ? { ...F3.iron, light: shade(F3.iron.light, 1.18), mid: shade(F3.iron.mid, 1.08) }
+    : F3.iron;
+  drawIronTies(px, config.seed + 30, tiePalette, { count: config.ties });
   if (config.repair) {
     // Three non-adjacent stones, only slightly lighter than the family mean.
     for (const [x, y, w, h] of [[7, 19, 15, 8], [72, 47, 18, 9], [105, 91, 13, 8]]) {
@@ -732,9 +810,9 @@ const f4Configs = [
   { suffix: "d", seed: 4130, rows: 9, blockCounts: [5, 4, 5], scores: 3 },
   { suffix: "e", seed: 4140, rows: 8, blockCounts: [4, 3, 5], scores: 1, voids: 3 },
   { suffix: "f", seed: 4150, rows: 7, blockCounts: [5, 4, 4], scores: 4 },
-  { suffix: "g", seed: 4160, rows: 8, blockCounts: [4, 5, 3], scores: 2, longScore: true },
+  { suffix: "g", seed: 4160, rows: 8, blockCounts: [4, 5, 3], scores: 2, longScore: true, scoreContrast: true },
   { suffix: "h", seed: 4170, rows: 7, blockCounts: [3, 4, 4], scores: 2, voids: 5, collapsedEdge: true },
-  { suffix: "i", seed: 4180, rows: 9, blockCounts: [5, 5, 4], scores: 2, rail: true, brokenRail: true },
+  { suffix: "i", seed: 4180, rows: 9, blockCounts: [5, 5, 4], scores: 2, rail: true, brokenRail: true, scoreContrast: true },
   { suffix: "j", seed: 4190, rows: 7, blockCounts: [3, 5, 4], scores: 3, erasedRecess: true },
 ];
 
@@ -747,7 +825,10 @@ function generateF4(config) {
   };
   const { px } = stoneWall({ ...config, stones: F4.stones, mortar: F4.mortar, baseStain, chips: 4 });
   for (let score = 0; score < config.scores; score++) {
-    drawErasedScore(px, config.seed + 10 + score * 7, F4.score, { amount: config.suffix <= "f" ? 0.32 : 0.46 });
+    drawErasedScore(px, config.seed + 10 + score * 7, F4.score, {
+      amount: config.scoreContrast ? 0.58 : config.suffix <= "f" ? 0.32 : 0.46,
+      thickness: config.scoreContrast ? 2 : 1,
+    });
   }
   if (config.rail) drawBrokenRail(px, config.seed + 30, F4.rail, config.brokenRail ? { y: 72, segments: [[-9, 16], [23, 13], [48, 27], [98, 14], [122, 7]] } : { y: 56 });
   const voidRng = mulberry32(config.seed + 50);
@@ -805,9 +886,9 @@ const f5Configs = [
   { suffix: "d", seed: 5130, rows: 9, blockCounts: [5, 4, 5], seeps: 5, growth: 2 },
   { suffix: "e", seed: 5140, rows: 8, blockCounts: [4, 3, 5], seeps: 3, growth: 2, eroded: true },
   { suffix: "f", seed: 5150, rows: 7, blockCounts: [5, 4, 4], seeps: 2, growth: 3, mineralFlecks: 18 },
-  { suffix: "g", seed: 5160, rows: 8, blockCounts: [4, 5, 3], seeps: 7, growth: 3 },
+  { suffix: "g", seed: 5160, rows: 8, blockCounts: [4, 5, 3], seeps: 7, growth: 3, lightSeeps: 2 },
   { suffix: "h", seed: 5170, rows: 7, blockCounts: [3, 4, 4], seeps: 4, growth: 4, tide: 0.32 },
-  { suffix: "i", seed: 5180, rows: 9, blockCounts: [5, 5, 4], seeps: 4, growth: 12 },
+  { suffix: "i", seed: 5180, rows: 9, blockCounts: [5, 5, 4], seeps: 4, growth: 12, lightSeeps: 3 },
   { suffix: "j", seed: 5190, rows: 7, blockCounts: [3, 5, 4], seeps: 6, growth: 5, mineralScar: 34 },
 ];
 
@@ -816,6 +897,20 @@ function generateF5(config) {
   const baseStain = { noise: wetNoise, threshold: config.suffix === "b" ? 0.77 : 0.61, color: F5.wet, amount: config.suffix === "b" ? 0.12 : 0.28 };
   const { px, rows } = stoneWall({ ...config, stones: F5.stones, mortar: F5.mortar, baseStain, chips: config.eroded ? 6 : 3 });
   drawVerticalSeeps(px, rows, config.seed + 10, F5.mineral.dark, { count: config.seeps, minLength: 9, extraLength: 20, amount: config.suffix >= "g" ? 0.42 : 0.3 });
+  if (config.lightSeeps) {
+    drawVerticalSeeps(px, rows, config.seed + 70, F5.mineral.light, {
+      count: config.lightSeeps,
+      minLength: 7,
+      extraLength: 16,
+      amount: 0.34,
+    });
+    drawWideSeeps(px, config.seed + 80, [F5.mineral.light, F5.mineral.mid], {
+      count: 1,
+      minLength: 13,
+      extraLength: 15,
+      amount: 0.34,
+    });
+  }
   drawSeamGrowth(px, rows, config.seed + 20, F5.algae, { patches: config.growth, minLength: 2, extraLength: 4, amount: 0.54, spread: 0.22 });
   if (config.tide) drawTideLine(px, config.seed + 30, F5.tide, { amount: config.tide });
   const fleckRng = mulberry32(config.seed + 50);
