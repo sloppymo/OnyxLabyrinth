@@ -1676,6 +1676,20 @@
       "spriteId": "forge-guardian-statue"
     }
   ],
+  "wallFeatures": [
+    {
+      "x": 2,
+      "y": 14,
+      "dir": "s",
+      "spriteId": "sweating-iron"
+    },
+    {
+      "x": 10,
+      "y": 13,
+      "dir": "e",
+      "spriteId": "ember-scorch"
+    }
+  ],
   "teleporters": [
     {
       "x": 9,

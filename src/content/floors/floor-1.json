@@ -7729,6 +7729,9 @@
       "id": "isobel",
       "name": "Isobel",
       "title": "proprietor of ISO-SPELLS",
+      "portraitId": "isobel",
+      "portraitSide": "left",
+      "dialogueAccent": "cold",
       "x": 17,
       "y": 28,
       "greeting": "Welcome to Isobel's. I sell Iso-spells. They're better.",
@@ -7938,6 +7941,12 @@
       "y": 6,
       "dir": "e",
       "spriteId": "cold-hand"
+    },
+    {
+      "x": 14,
+      "y": 8,
+      "dir": "n",
+      "spriteId": "writing-plaque"
     },
     {
       "x": 18,

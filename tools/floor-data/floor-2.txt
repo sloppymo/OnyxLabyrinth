@@ -32,7 +32,7 @@
 
 # Overlays:
 #   tileset-zone forbidden-wing (11,6)-(12,9) theme=f2b
-#   tileset-zone abyss-bridge-masonry (1,13)-(3,24) theme=f1
+#   tileset-zone abyss-bridge-masonry (1,12)-(3,24) theme=f1
 #   lock (10,7) e key=lexicon-key
 #   treasure (12,3) items=[mace+1, chain-mail, cursed-blade, antidote] trap=stunner
 #   treasure (12,8) items=[staff+1, robe+1, ring-of-water-walking, furnace-key] trap=alarm

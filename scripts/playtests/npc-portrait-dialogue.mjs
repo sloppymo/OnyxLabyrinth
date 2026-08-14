@@ -16,7 +16,7 @@
  * Run: node scripts/playtests/npc-portrait-dialogue.mjs
  * Expects: npx vite preview --port 5176 --base /OnyxLabyrinth/
  */
-import { launch, wait, press, snap, ensureOutDir, shot, jumpTo } from "./lib.mjs";
+import { act, launch, wait, press, snap, ensureOutDir, shot, jumpTo } from "./lib.mjs";
 
 const BASE = process.env.ONYX_URL ?? "http://127.0.0.1:5176/OnyxLabyrinth/?debug=1";
 const OUT = ensureOutDir("playtest-screenshots/npc-portrait-dialogue");
@@ -224,6 +224,19 @@ await press(page, "Escape");
 await press(page, "Escape");
 await wait(300);
 
+console.log("=== Isobel: approved shop art used as cinematic portrait ===");
+await jumpTo(page, { floorId: 1, x: 15, y: 28, facing: 1 });
+await act(page, "ArrowUp");
+await act(page, "ArrowUp");
+await wait(400);
+html = await panelHtml(page);
+check("Isobel's cinematic dialogue uses the approved shop sprite", html.includes("isobel-npc-pixellab.png"));
+check("Isobel portrait is presented as a contained sprite card", html.includes("npc-dlg-portrait-sprite-card"));
+check("Isobel greeting is visible", (await panelText(page)).includes("Isobel"));
+await shot(page, OUT, "05-isobel-portrait.png");
+await press(page, "Escape");
+await wait(250);
+
 console.log("=== Vestra: no portrait configured -> silhouette fallback ===");
 await jumpTo(page, { floorId: 2, x: 2, y: 1, facing: 3, items: [{ itemId: "antidote", identified: true }] });
 await press(page, "ArrowUp"); // step onto (1,1) — Vestra's tile
@@ -233,7 +246,7 @@ check("no <img> for Vestra (no portraitId configured)", !html.includes("<img"));
 check("silhouette fallback rendered instead", html.includes("npc-dlg-portrait-silhouette"));
 text = await panelText(page);
 check("Vestra's greeting shown", text.includes("I am Vestra"));
-await shot(page, OUT, "05-vestra-silhouette-fallback.png");
+await shot(page, OUT, "05b-vestra-silhouette-fallback.png");
 
 console.log("=== Vestra: barter (transaction result) ===");
 await acknowledge(page);

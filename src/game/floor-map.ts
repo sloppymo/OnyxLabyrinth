@@ -829,6 +829,24 @@ function parseNpc(o: Record<string, unknown>, l: string): NPCDef {
   if (o.mapSpriteId !== undefined) {
     npc.mapSpriteId = requireString(o.mapSpriteId, `${l}.mapSpriteId`);
   }
+  if (o.portraitId !== undefined) {
+    npc.portraitId = requireString(o.portraitId, `${l}.portraitId`);
+  }
+  if (o.portraitSide !== undefined) {
+    const portraitSide = requireString(o.portraitSide, `${l}.portraitSide`);
+    if (portraitSide !== "left" && portraitSide !== "right") {
+      throw new Error(`${l}.portraitSide must be left or right`);
+    }
+    npc.portraitSide = portraitSide;
+  }
+  if (o.dialogueAccent !== undefined) {
+    const dialogueAccent = requireString(o.dialogueAccent, `${l}.dialogueAccent`);
+    const validAccents = ["neutral", "warm", "cold", "hostile"] as const;
+    if (!validAccents.includes(dialogueAccent as typeof validAccents[number])) {
+      throw new Error(`${l}.dialogueAccent must be neutral, warm, cold, or hostile`);
+    }
+    npc.dialogueAccent = dialogueAccent as typeof validAccents[number];
+  }
   if (o.capabilities !== undefined) {
     if (!o.capabilities || typeof o.capabilities !== "object") {
       throw new Error(`${l}.capabilities must be an object`);
