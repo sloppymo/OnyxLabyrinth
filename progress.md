@@ -1083,3 +1083,45 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   `npm run check` passed (123 files / 2,395 tests), including app/tools
   typechecks, Vite build, floor validation, and export parity. Existing
   Namanda validation warnings remain unchanged.
+
+## Phase 8 — Balance, relief audit, and browser acceptance
+
+- Added the final F1 relief decision from evidence rather than arbitrary
+  percentage gates. `f1-slime-cluster` was removed because 100-seed default,
+  focused, and AoE traces produced no Split or meaningful kill-order decision;
+  `f1-bone-archer-line` was removed because Archer pressure did not resolve
+  before Archer death and Skeletons did not create a durable Archer-versus-line
+  decision. Their six weight points were redistributed among surviving F1
+  entries; no filler replacement was added.
+- Fixed the authored F1 Hunting Pack initiative ordering after browser and
+  simulation evidence showed the Werewolf acting before the leader, making the
+  exact partner reservation ineligible. `crypt-hellhound` now acts before
+  `crypt-werewolf`, with a data regression test.
+- Added stale-queue and party-wipe reconciliation: actor death closes its
+  exact chemistry wind-up once, and a party wipe closes any still-committed
+  queued chemistry use without retargeting. Added tests for both paths.
+- Added `scripts/playtests/formation-chemistry-phase8.ts` and regenerated
+  `docs/playtests/2026-08-15-formation-chemistry-phase8.{json,md}`. The final
+  N=100 run covers 21,600 matrix/lab fights and 1,200 ten-fight expeditions.
+  F1 normal gaps are mean `27.6911`, median `27`, p90 `40`, max `52`.
+  Across the active matrix, each chemistry id reconciles attempted uses as
+  resolved plus broken: Slime Cannon `886 = 1 + 885`, Ogre Toss
+  `902 = 343 + 559`, Living Shield `2,332 = 1,885 + 447`, Hunting Pack
+  `821 = 3 + 818`, Spawn Bomb `1,758 = 1,054 + 704`, and Rune Overload
+  `605 = 1 + 604`.
+- Ten-fight expedition results are recorded in the report. Normal-route
+  chemistry-aware runs completed ten fights `71/100` versus `56/100` for the
+  no-chemistry control; quiet `69/100` versus `61/100`; dead `67/100` versus
+  `68/100`; hot `71/100` versus `62/100`. The harness starts at level 1 with
+  three potions and no intervening healing, so the remaining wipe/pressure
+  signal is an explicit balance risk rather than a hidden acceptance claim.
+- Browser acceptance used the production preview and Playwright in both
+  Canvas (`?phaser=0`) and Phaser backends. Inspected all five S-tier scenes:
+  Slime Cannon, Hunting Pack, Spawn Bomb, Living Shield marker/direct
+  intercept/AoE bypass, and Rune Overload. Also inspected Bone Harvest, Ogre
+  Toss, Pack Leap, and Combo Break. Screenshots are in
+  `output/playwright/formation-chemistry-{canvas,phaser}/`; Canvas and Phaser
+  console checks reported zero errors.
+- Final verification: `npm run check` passed with 123 test files and 2,397
+  tests; floor validation/export parity passed with only the existing Namanda
+  warnings. No experimental branch was cherry-picked and nothing was pushed.
