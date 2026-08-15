@@ -40,17 +40,26 @@ async function runBackend(backend) {
     await boot(page, url, {
       scenario: { floorId: 2, x: 2, y: 23, facing: 0, autosave: false },
     });
+    await page.evaluate(() => window.__onyxDebug.setGameplayRng(() => 0.999));
     await wait(300);
 
     // Clean composition captures first, before the real walk queues barks.
     for (const pose of poses) {
-      await jumpTo(page, { floorId: 2, ...pose, autosave: false });
+      await jumpTo(page, { floorId: 2, ...pose, autosave: false, stepsSinceEncounter: 0 });
       await wait(180);
       captures.push(await shot(page, out, `${pose.name}.png`));
     }
 
+    // The authored handoff is intentionally small: one surviving masonry
+    // threshold cell, then the ordinary library mouth. Capture the real
+    // northbound view so this connective beat is checked in both renderers.
+    await jumpTo(page, { floorId: 2, x: 2, y: 13, facing: 0, autosave: false, stepsSinceEncounter: 0 });
+    captures.push(await shot(page, out, "10-library-threshold.png"));
+    await act(page, "ArrowUp");
+    captures.push(await shot(page, out, "11-first-library-cells.png"));
+
     // Real northbound movement from masonry onto the exposed bridge.
-    await jumpTo(page, { floorId: 2, x: 2, y: 23, facing: 0, autosave: false });
+    await jumpTo(page, { floorId: 2, x: 2, y: 23, facing: 0, autosave: false, stepsSinceEncounter: 0 });
     const walked = [];
     for (let index = 0; index < 6; index++) {
       await act(page, "ArrowUp");

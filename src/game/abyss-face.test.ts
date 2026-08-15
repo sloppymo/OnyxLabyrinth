@@ -12,10 +12,14 @@ function bridgeState() {
 describe("Floor 2 abyss face", () => {
   it("authors the first northbound crossing once, then uses repeat behavior", () => {
     const state = bridgeState();
-    const first = resolveAbyssFaceStep(state, { x: 2, y: 20 }, { x: 2, y: 19 }, () => 0.9);
+    const hush = resolveAbyssFaceStep(state, { x: 2, y: 20 }, { x: 2, y: 19 }, () => 0.9);
+    expect(hush).toBeNull();
+    expect(resolveAbyssFaceStep(state, { x: 2, y: 19 }, { x: 2, y: 18 }, () => 0.9)).toBeNull();
+    expect(resolveAbyssFaceStep(state, { x: 2, y: 18 }, { x: 2, y: 17 }, () => 0.9)).toBeNull();
+    state.player = { x: 2, y: 17, facing: 1 };
+    const first = resolveAbyssFaceTurn(state);
     expect(first?.text).toContain("Here they come");
-    expect(resolveAbyssFaceStep(state, { x: 2, y: 20 }, { x: 2, y: 19 }, () => 0.9)).toBeNull();
-    for (const y of [18, 17, 16, 15, 14, 13]) {
+    for (const y of [16, 15, 14, 13]) {
       resolveAbyssFaceStep(state, { x: 2, y: y + 1 }, { x: 2, y }, () => 0.9);
     }
     expect(state.environmentalEncounters?.["abyss-face"].crossings).toBe(1);

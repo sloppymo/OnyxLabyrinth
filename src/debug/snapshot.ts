@@ -27,8 +27,22 @@ export interface CombatDebugView {
   selection: { title: string; entries: string[]; index: number } | null;
   round: number;
   enemies: CombatDebugEnemy[];
+  party?: CombatDebugParty[];
+  inventory?: Record<string, number>;
   recentLog: string[];
   result: string | null;
+}
+
+export interface CombatDebugParty {
+  id: string;
+  name: string;
+  class: string;
+  hp: number;
+  maxHp: number;
+  sp: number;
+  maxSp: number;
+  status: string[];
+  knownSpellIds: string[];
 }
 
 export interface CombatDebugEnemy {
@@ -225,6 +239,8 @@ function cloneCombatView(view: CombatDebugView): CombatDebugView {
       ? { ...view.selection, entries: [...view.selection.entries] }
       : null,
     enemies: view.enemies.map((e) => ({ ...e, status: [...e.status] })),
+    party: view.party?.map((member) => ({ ...member, status: [...member.status], knownSpellIds: [...member.knownSpellIds] })),
+    inventory: view.inventory ? { ...view.inventory } : undefined,
     recentLog: [...view.recentLog],
   };
 }

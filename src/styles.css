@@ -995,6 +995,39 @@ canvas#map-canvas {
   color: #3a4680;
 }
 
+/* Incidental NPCs without approved portrait art get a deliberate compact
+   identity card instead of a giant initial pretending to be finished art. */
+.npc-dlg-card-only .npc-dlg-portrait {
+  flex-basis: clamp(82px, 13%, 118px);
+  align-self: flex-end;
+  height: 68%;
+  min-height: 100px;
+  background:
+    linear-gradient(145deg, rgba(72, 87, 150, 0.5), rgba(8, 12, 34, 0.95)),
+    repeating-linear-gradient(135deg, rgba(236, 215, 139, 0.08) 0 2px, transparent 2px 8px);
+  border-color: #6877bc;
+}
+
+.npc-dlg-card-only .npc-dlg-portrait-initial {
+  font-size: clamp(28px, 4vw, 44px);
+  color: #c6d0f4;
+  text-shadow: 0 2px 0 #1a2458;
+}
+
+.npc-dlg-portrait-sprite-card {
+  background:
+    radial-gradient(circle at 50% 28%, rgba(91, 173, 255, 0.28), transparent 56%),
+    linear-gradient(160deg, #11183d 0%, #070a20 100%);
+}
+
+.npc-dlg-portrait-sprite-card img {
+  width: 72%;
+  height: 88%;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: drop-shadow(0 0 8px rgba(88, 185, 255, 0.28));
+}
+
 .npc-dlg-body {
   flex: 1 1 auto;
   display: flex;

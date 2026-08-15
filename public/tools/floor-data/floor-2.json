@@ -20,7 +20,7 @@
     {
       "id": "abyss-bridge-masonry",
       "x1": 1,
-      "y1": 13,
+      "y1": 12,
       "x2": 3,
       "y2": 24,
       "theme": "f1"
@@ -2507,6 +2507,14 @@
       "x": 7,
       "y": 9,
       "spriteId": "crate"
+    }
+  ],
+  "wallFeatures": [
+    {
+      "x": 1,
+      "y": 12,
+      "dir": "w",
+      "spriteId": "bookshelf-intrusion"
     }
   ],
   "lockedDoors": [

@@ -589,7 +589,9 @@ function floor2(): FloorDef {
     // locked, before the player ever reaches the alarm/climax chest.
     tilesetZones: [
       { id: "forbidden-wing", x1: 11, y1: 6, x2: 12, y2: 9, theme: "f2b" },
-      { id: "abyss-bridge-masonry", x1: 1, y1: 13, x2: 3, y2: 24, theme: "f1" },
+      // Let one threshold cell of green bridge masonry survive into the
+      // library mouth; it is the visual hinge between the abyss and stacks.
+      { id: "abyss-bridge-masonry", x1: 1, y1: 12, x2: 3, y2: 24, theme: "f1" },
     ],
     environmentalSprites: [
       {
@@ -623,9 +625,9 @@ function floor2(): FloorDef {
         id: "vestra",
         name: "Vestra",
         title: "unbound scribe",
-        // No approved portrait asset yet — this deliberately uses the
-        // silhouette fallback (first-initial placeholder) instead of a broken
-        // image or an unassigned portrait.
+        // No approved portrait asset yet — the dialogue view deliberately
+        // uses a compact identity card instead of a broken image or an
+        // oversized first-initial placeholder.
         portraitId: undefined,
         portraitSide: "left",
         dialogueAccent: "neutral",
@@ -667,6 +669,11 @@ function floor2(): FloorDef {
       { x: 11, y: 2, spriteId: "crate" },
       { x: 11, y: 11, spriteId: "torch" },
       { x: 7, y: 9, spriteId: "crate" },
+    ],
+    wallFeatures: [
+      // A single impossible shelf bites into the surviving green threshold.
+      // It is a connective echo, not another library set piece.
+      { x: 1, y: 12, dir: "w", spriteId: "bookshelf-intrusion" },
     ],
     encounterZones: [
       { id: "abyss-bridge-safe", x1: 2, y1: 13, x2: 2, y2: 24, rateMul: 0, safeZone: true },
@@ -850,6 +857,10 @@ function floor3(): FloorDef {
       { x: 12, y: 7, spriteId: "barrel" },
       { x: 7, y: 7, spriteId: "anvil-altar" },
       { x: 6, y: 11, spriteId: "forge-guardian-statue" },
+    ],
+    wallFeatures: [
+      { x: 2, y: 14, dir: "s", spriteId: "sweating-iron" },
+      { x: 10, y: 13, dir: "e", spriteId: "ember-scorch" },
     ],
     encounterZones: [
       { id: "foundry-crossroads-safe", x1: 6, y1: 6, x2: 9, y2: 9, rateMul: 0.7 },

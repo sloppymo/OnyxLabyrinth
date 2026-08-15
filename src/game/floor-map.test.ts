@@ -271,6 +271,9 @@ describe("floor-map", () => {
         rewardItemId: "long-sword+1",
         combatEnemyIds: ["skeleton"],
         mapSpriteId: "vesper",
+        portraitId: "isobel",
+        portraitSide: "left",
+        dialogueAccent: "cold",
       },
     ];
     const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
@@ -279,6 +282,9 @@ describe("floor-map", () => {
     expect(parsed.npcs?.[0].trades?.[0].once).toBe(true);
     expect(parsed.npcs?.[0].wantsItemId).toBe("holy-symbol");
     expect(parsed.npcs?.[0].mapSpriteId).toBe("vesper");
+    expect(parsed.npcs?.[0].portraitId).toBe("isobel");
+    expect(parsed.npcs?.[0].portraitSide).toBe("left");
+    expect(parsed.npcs?.[0].dialogueAccent).toBe("cold");
   });
 
   it("leaves mapSpriteId undefined when the JSON omits it", () => {
