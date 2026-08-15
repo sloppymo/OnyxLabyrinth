@@ -3087,7 +3087,17 @@ export function playTurn(
           showBanner(label, evt.presentation === "detonateAlly" ? 900 : 1250);
           steps.push(step(t, actorAt));
 
-          if (evt.presentation === "throwAlly" && evt.resourceId && evt.targetId) {
+          if (evt.presentation === "guardAlly" && evt.targetId) {
+            steps.push(
+              step(t + 80, (sc, n) => {
+                const target = findActor(sc, evt.targetId!, w, h);
+                if (!target) return;
+                pushBursts(sc, target.x, target.y, style, n, 420);
+                pushPopup(sc, evt.targetId!, "GUARDED", style.color, n, w, h, true);
+              })
+            );
+            t += 360;
+          } else if (evt.presentation === "throwAlly" && evt.resourceId && evt.targetId) {
             // The resource is pulled into the caster first, then a shared
             // projectile arc carries the same exact committed body to the
             // target. The body remains in the scene until the consume event.
@@ -3218,8 +3228,28 @@ export function playTurn(
           break;
         }
 
-        // Interception gets its own banner/effect path in Phase 4. Keep a
-        // safe shared fallback now so a future event cannot silently vanish.
+        if (evt.phase === "intercept") {
+          showBanner("INTERCEPT", 720);
+          steps.push(
+            step(t, (sc, n) => {
+              const guarder = evt.partnerId
+                ? findActor(sc, evt.partnerId, w, h)
+                : undefined;
+              if (guarder) {
+                pushBursts(sc, guarder.x, guarder.y, style, n, 420);
+                pushPopup(sc, evt.partnerId!, "SHIELD", style.color, n, w, h, true);
+              }
+              if (evt.targetId) {
+                pushPopup(sc, evt.targetId, "INTERCEPT", COLORS.cursor, n, w, h, false);
+              }
+            })
+          );
+          t += 420;
+          break;
+        }
+
+        // Keep a safe fallback so a future chemistry phase cannot silently
+        // vanish from the shared timeline.
         showBanner(label, 700);
         t += 300;
         break;

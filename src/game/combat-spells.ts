@@ -29,6 +29,7 @@ import type {
   Rng,
   SummonedAlly,
 } from "./combat-types";
+import { interceptEnemyGuard } from "./combat-chemistry";
 
 export function applySpell(
   s: CombatState,
@@ -58,7 +59,14 @@ export function applySpell(
       // halberdier-warlord: +20% damage while adjacent to a living Warlord
       // holder — applies to spell damage too, not just melee.
       const warlordMult = warlordDamageMultiplier(s, caster);
-      for (const t of spellTargets(s, spell, action)) {
+      let targets = spellTargets(s, spell, action);
+      if (spell.target === "singleEnemy" && targets.length > 0) {
+        const intendedTarget = targets[0];
+        if (intendedTarget) {
+          targets = [interceptEnemyGuard(s, caster.id, intendedTarget, emit)];
+        }
+      }
+      for (const t of targets) {
         // "undead" element only damages undead enemies (Sacred Flame, Sunburst).
         if (eff.element === "undead" && !t.special.some((sp) => sp.kind === "undead")) {
           emit(

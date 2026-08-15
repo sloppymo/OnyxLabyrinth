@@ -30,6 +30,7 @@ import type {
   PlayerAction,
   Rng,
 } from "./combat-types";
+import { interceptEnemyGuard } from "./combat-chemistry";
 
 // ---------------------------------------------------------------------------
 // Rage
@@ -255,6 +256,26 @@ function techniqueEnemyTargets(
   }
 }
 
+/**
+ * Resolve the bounded guard exactly once for a direct single-enemy action.
+ * Callers reuse the returned target for every hit/status in that action so a
+ * multi-hit technique consumes one guard token, never one token per hit.
+ */
+function guardedTechniqueTargets(
+  s: CombatState,
+  actor: Character,
+  tech: TechniqueDef,
+  action: Extract<PlayerAction, { kind: "technique" }>,
+  emit: (m: string, e: CombatEvent) => void
+): EnemyInstance[] {
+  const targets = techniqueEnemyTargets(s, tech, action);
+  if (tech.target !== "singleEnemy" || targets.length === 0) return targets;
+  const intendedTarget = targets[0];
+  return intendedTarget
+    ? [interceptEnemyGuard(s, actor.id, intendedTarget, emit)]
+    : targets;
+}
+
 /** Resolve a technique that deals damage to one or more enemies. */
 function resolveTechniqueDamage(
   s: CombatState,
@@ -266,7 +287,7 @@ function resolveTechniqueDamage(
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): void {
-  const targets = techniqueEnemyTargets(s, tech, action);
+  const targets = guardedTechniqueTargets(s, actor, tech, action, emit);
   if (targets.length === 0) {
     log(`${actor.name} finds no target for ${tech.name}.`);
     return;
@@ -287,7 +308,7 @@ function resolveTechniqueMultiHit(
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): void {
-  const allTargets = techniqueEnemyTargets(s, tech, action);
+  const allTargets = guardedTechniqueTargets(s, actor, tech, action, emit);
   if (allTargets.length === 0) {
     log(`${actor.name} finds no target for ${tech.name}.`);
     return;
@@ -318,7 +339,7 @@ function resolveTechniqueDamageWithStatus(
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): void {
-  const targets = techniqueEnemyTargets(s, tech, action);
+  const targets = guardedTechniqueTargets(s, actor, tech, action, emit);
   if (targets.length === 0) {
     log(`${actor.name} finds no target for ${tech.name}.`);
     return;
@@ -342,7 +363,7 @@ function resolveTechniqueDamageWithExecute(
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): void {
-  const targets = techniqueEnemyTargets(s, tech, action);
+  const targets = guardedTechniqueTargets(s, actor, tech, action, emit);
   if (targets.length === 0) {
     log(`${actor.name} finds no target for ${tech.name}.`);
     return;
@@ -400,7 +421,9 @@ function resolveTechniqueDebuff(
   eff: Extract<TechniqueEffect, { kind: "debuff" }>,
   emit: (m: string, e: CombatEvent) => void
 ): void {
-  const targets = techniqueEnemyTargets(s, tech, action);
+  const targets = eff.stat === "armor"
+    ? guardedTechniqueTargets(s, actor, tech, action, emit)
+    : techniqueEnemyTargets(s, tech, action);
   for (const t of targets) {
     // Deal the technique's damage if it's a damage-debuff combo (Disarm has 0.5x).
     // Actually Disarm is a pure debuff — but the spec says 0.5x damage.

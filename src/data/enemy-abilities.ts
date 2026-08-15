@@ -247,6 +247,23 @@ const CRYPT_SPAWN_BOMB: EnemyAbilityDef = {
   element: "fire",
 };
 
+const CRYPT_LIVING_SHIELD: EnemyAbilityDef = {
+  id: "crypt-living-shield",
+  name: "Living Shield",
+  description: "Steps an exact armored ally between the party and its chosen ward.",
+  target: "singleAlly",
+  effect: { kind: "guard", charges: 1, duration: 2 },
+  condition: { kind: "always" },
+  weight: 10,
+  cooldown: 5,
+  chemistryId: "chem-living-shield",
+  chemistryChance: 0.9,
+  maxUses: 1,
+  guardTargetIds: ["crypt-warlock", "crypt-demon-mage"],
+  presentation: "guardAlly",
+  element: "physical",
+};
+
 const SPLIT: EnemyAbilityDef = {
   id: "split",
   name: "Split",
@@ -851,6 +868,7 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   CRYPT_SLIME_CANNON,
   CRYPT_BONE_HARVEST,
   CRYPT_SPAWN_BOMB,
+  CRYPT_LIVING_SHIELD,
   SPLIT,
   BONE_SHARD,
   RATTLE,

@@ -14,7 +14,7 @@ import { checkSpotHidden } from "./combat-ai";
 import { tickTechniqueBuffs } from "./combat-techniques";
 import { maybeEmitBark, enemyDefIdFromInstance } from "./combat-barks";
 import type { CombatEvent, CombatState, Rng, Row } from "./combat-types";
-import { markNormalDeath } from "./combat-chemistry";
+import { markNormalDeath, pruneEnemyGuards } from "./combat-chemistry";
 
 /** Remove summoned allies that have been reduced to 0 HP. */
 export function allyDeathCheck(
@@ -96,6 +96,9 @@ export function deathCheck(
     }
     return true;
   });
+  // Guard tokens are tied to living, able guarders and targets. Clear one as
+  // soon as a death/disable has been observed, not only at the next round.
+  pruneEnemyGuards(s);
   checkBossPhases(s, emit);
 }
 

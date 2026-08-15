@@ -660,6 +660,32 @@ function drawMarkers(
 ): void {
   const isCursor = scene.cursor?.kind === kind && scene.cursor.id === id;
   const isActive = kind === "party" && scene.activeActorId === id;
+  const isGuarded = kind === "enemy" && !!scene.state.enemyGuards?.[id];
+  if (!isCursor && !isActive && !isGuarded) return;
+
+  if (isGuarded) {
+    const guardPulse = 0.72 + 0.28 * (0.5 + 0.5 * Math.sin(now / 230));
+    ctx.save();
+    ctx.globalAlpha = guardPulse;
+    ctx.strokeStyle = "#73e7ff";
+    ctx.fillStyle = "rgba(55, 177, 220, 0.18)";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(x, topY + 13, 17, Math.PI * 0.15, Math.PI * 0.85);
+    ctx.lineTo(x + 12, topY + 26);
+    ctx.lineTo(x, topY + 32);
+    ctx.lineTo(x - 12, topY + 26);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = "10px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#d9f8ff";
+    ctx.fillText("GUARDED", x, topY + 45);
+    ctx.restore();
+  }
+
   if (!isCursor && !isActive) return;
 
   // Bounce + soft opacity pulse (never fully off — hard blink was easy to

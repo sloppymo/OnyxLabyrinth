@@ -73,6 +73,7 @@ import {
 } from "./combat-eor";
 import { breakChemistry, resolveEnemyAction, resolveAllyAction } from "./combat-enemy";
 import { resolvePlayerAction, attemptFlee, smokeBombFleeActive } from "./combat-actions";
+import { pruneEnemyGuards } from "./combat-chemistry";
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -240,6 +241,7 @@ export function resolveCombatRound(
   if (s.ended) return s;
 
   s.round += 1;
+  pruneEnemyGuards(s);
   s.log = [...state.log];
   s.silencedThisRound = [];
   s.defendBuff = {};
@@ -403,6 +405,7 @@ export function beginRound(
   if (s.ended) return { state: s, queue: [] };
 
   s.round += 1;
+  pruneEnemyGuards(s);
   s.silencedThisRound = [];
   s.defendBuff = {};
   s.justDied = [];

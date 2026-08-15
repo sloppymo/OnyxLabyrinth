@@ -45,6 +45,7 @@ import {
   markConsumed,
   markChemistryMetric,
   releaseChemistryReservation,
+  setEnemyGuard,
 } from "./combat-chemistry";
 
 /** Result of a single ability hit against a party member, including whether
@@ -109,7 +110,7 @@ export function breakChemistry(
   s: CombatState,
   actor: EnemyInstance,
   ability: EnemyAbilityDef,
-  reason: "actorDead" | "actorDisabled" | "resourceDead" | "partnerDead" | "targetDead",
+  reason: "actorDead" | "actorDisabled" | "resourceDead" | "partnerDead" | "targetDead" | "guardInvalid",
   emit: (m: string, e: CombatEvent) => void,
   resourceId?: string,
   partnerId?: string,
@@ -340,6 +341,30 @@ function resolveEnemyAbility(
     }
     if (ability.target === "singleParty" && !s.party.some((character) => character.id === committedTargetId && character.hp > 0)) {
       breakChemistry(s, actor, ability, "targetDead", emit, resourceId, partnerId, committedTargetId);
+      return;
+    }
+    if (ability.effect.kind === "guard") {
+      const target = findEnemyByInstanceId(s, committedTargetId ?? undefined);
+      if (!target || target.currentHp <= 0) {
+        breakChemistry(s, actor, ability, "targetDead", emit, resourceId, partnerId, committedTargetId);
+        return;
+      }
+      if (!setEnemyGuard(s, actor, target, ability, ability.effect.duration)) {
+        breakChemistry(s, actor, ability, "guardInvalid", emit, resourceId, partnerId, committedTargetId);
+        return;
+      }
+      chemistryEvent(s, emit, `${actor.name} guards ${target.name}!`, {
+        chemistryId: ability.chemistryId!,
+        abilityId: ability.id,
+        name: ability.name,
+        phase: "resolve",
+        actorId: actor.instanceId,
+        targetId: target.instanceId,
+        partnerId: actor.instanceId,
+        presentation: ability.presentation === "meleeGangUp" ? undefined : ability.presentation,
+      });
+      markChemistryMetric(s, "resolved", ability.chemistryId!);
+      releaseChemistryReservation(s, actor.instanceId);
       return;
     }
     if (ability.effect.kind === "consumeAlly" && resourceId) {

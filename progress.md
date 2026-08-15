@@ -999,3 +999,22 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   TypeScript, Vite build, floor validation, and export parity. Browser visual
   forcing is deferred to the deterministic roster/scenario phase because the
   Phase 3 substrate has no active Crypt encounter roster yet.
+
+## Phase 4 — Bounded guard/interception
+
+- Added the separate `guard` token primitive with exact authored target IDs,
+  two-round expiry, one-token consumption, non-stacking/self-guard rejection,
+  and immediate invalidation when a guarder or target dies or is disabled.
+- Routed the same guard lookup through attacks, ambushes, single-target damage
+  spells, single-target techniques (including whole-action multi-hit redirect),
+  previews, target-menu formatting, and the shared Canvas/Phaser choreography.
+  Area and status-only actions bypass it; the intended target remains selected
+  and the event carries the exact guarder/target IDs.
+- Added the Living Shield ability metadata with explicit `crypt-warlock` /
+  `crypt-demon-mage` target IDs, five-round cooldown, one-use cap, and .90
+  chemistry chance. No campaign roster was activated in this phase.
+- Verification: guard primitive tests cover round/per-turn setup, attack,
+  spell, ambush, technique, multi-hit, bypasses, previews, expiry, death,
+  disable, and recursion/stack rejection. Full `npm run check` passed:
+  122 files / 2,376 tests, app/tools typechecks, Vite build, floor validation,
+  and export parity. Existing Namanda validation warnings remain unchanged.

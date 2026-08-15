@@ -32,6 +32,7 @@ import {
   actorDisabled,
   chemistryCapAvailable,
   chemistryResourceCandidates,
+  guardForTarget,
   markChemistryMetric,
   reserveChemistryUse,
   releaseChemistryReservation,
@@ -108,7 +109,8 @@ function abilityConditionMet(
 function pickAbilityTargetId(
   s: CombatState,
   ability: EnemyAbilityDef,
-  rng: Rng
+  rng: Rng,
+  actor?: EnemyInstance
 ): string | null {
   const livingParty = s.party.filter((c) => c.hp > 0 && !c.status.includes("hidden"));
   const party = livingParty.length > 0 ? livingParty : s.party.filter((c) => c.hp > 0);
@@ -128,6 +130,21 @@ function pickAbilityTargetId(
       return t?.id ?? null;
     }
     case "singleAlly": {
+      if (ability.effect.kind === "guard" && ability.guardTargetIds) {
+        const candidates = livingAllies
+          .filter(
+            (ally) =>
+              ability.guardTargetIds!.includes(ally.id) &&
+              ally.instanceId !== actor?.instanceId &&
+              !guardForTarget(s, ally.instanceId)
+          )
+          .sort(
+            (a, b) =>
+              a.currentHp / a.hp - b.currentHp / b.hp ||
+              a.instanceId.localeCompare(b.instanceId)
+          );
+        return candidates[0]?.instanceId ?? null;
+      }
       const wounded = livingAllies.filter((e) => e.currentHp < e.hp);
       const t = wounded.length > 0 ? wounded.sort((a, b) => a.currentHp - b.currentHp)[0] : pickRandom(livingAllies, rng);
       return t?.instanceId ?? null;
@@ -180,6 +197,7 @@ function pickEnemyAbility(
       const candidate = partner[0];
       if (actorDisabled(candidate) || s.enemyActedThisRound?.includes(candidate.instanceId)) continue;
     }
+    if (ab.effect.kind === "guard" && !pickAbilityTargetId(s, ab, rng, enemy)) continue;
     valid.push({ ability: ab, weight: ab.weight });
   }
   if (valid.length === 0) return null;
@@ -188,12 +206,13 @@ function pickEnemyAbility(
   for (const v of valid) {
     roll -= v.weight;
     if (roll <= 0) {
-      const targetId = pickAbilityTargetId(s, v.ability, rng);
+      const targetId = pickAbilityTargetId(s, v.ability, rng, enemy);
+      if (v.ability.effect.kind === "guard" && !targetId) continue;
       return { ability: v.ability, targetId };
     }
   }
   const fallback = valid[0];
-  return { ability: fallback.ability, targetId: pickAbilityTargetId(s, fallback.ability, rng) };
+  return { ability: fallback.ability, targetId: pickAbilityTargetId(s, fallback.ability, rng, enemy) };
 }
 
 export function buildEnemyActions(
@@ -298,7 +317,7 @@ export function decideEnemyAction(
       kind: "ability",
       actor: enemy,
       abilityId: ability.id,
-      targetId: windUp.targetId ?? pickAbilityTargetId(s, ability, rng) ?? "",
+      targetId: windUp.targetId ?? pickAbilityTargetId(s, ability, rng, enemy) ?? "",
     };
   }
 

@@ -245,6 +245,9 @@ export interface EnemyGuard {
   targetId: string;
   expiresRound: number;
   token: true;
+  chemistryId: string;
+  abilityId: string;
+  name: string;
 }
 
 export interface ChemistryTelemetry {

@@ -366,6 +366,58 @@ describe("playTurn choreography", () => {
     expect(scene.popups.some((p) => p.text === "SAFE")).toBe(true);
   });
 
+  it("Living Shield and INTERCEPT use the shared chemistry timeline", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const state = createCombatState(
+      party,
+      { front: [makeEnemy("armor-0"), makeEnemy("warlock-0")] , back: [] },
+      false
+    );
+    const scene = createScene(state);
+    const duration = playTurn(
+      scene,
+      [
+        {
+          type: "chemistry",
+          chemistryId: "chem-living-shield",
+          abilityId: "crypt-living-shield",
+          name: "Living Shield",
+          phase: "resolve",
+          actorId: "armor-0",
+          targetId: "warlock-0",
+          partnerId: "armor-0",
+          presentation: "guardAlly",
+        },
+        {
+          type: "chemistry",
+          chemistryId: "chem-living-shield",
+          abilityId: "crypt-living-shield",
+          name: "Living Shield",
+          phase: "intercept",
+          actorId: "c0",
+          targetId: "warlock-0",
+          partnerId: "armor-0",
+          presentation: "guardAlly",
+        },
+        { type: "attack", actorId: "c0", targetId: "armor-0", damage: 7, range: "close" },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(scene, 10);
+    expect(scene.banner).toBe("LIVING SHIELD");
+    updateScene(scene, 400);
+    expect(scene.banner).toBe("INTERCEPT");
+    expect(scene.popups.some((popup) => popup.text === "INTERCEPT")).toBe(true);
+    expect(scene.effects.some((effect) => effect.effect === "px_shield")).toBe(true);
+    expect(duration).toBeGreaterThan(500);
+  });
+
   it("affinityDiscovered pops WEAK! / RESIST over the target", () => {
     const scene = makeScene();
     playTurn(scene, [{ type: "affinityDiscovered", targetId: "rat-0", element: "fire", kind: "weak" }], spellName, 0, W, H);

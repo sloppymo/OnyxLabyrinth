@@ -16,6 +16,7 @@ import type {
   ChemistryTelemetry,
   CombatState,
   EnemyInstance,
+  EnemyGuard,
 } from "./combat-types";
 
 export function livingEnemies(s: CombatState): EnemyInstance[] {
@@ -175,4 +176,119 @@ export function actorDisabled(enemy: EnemyInstance): boolean {
 
 export function chemistryResourceAlive(s: CombatState, instanceId: string): boolean {
   return livingEnemies(s).some((enemy) => enemy.instanceId === instanceId);
+}
+
+/**
+ * Return a currently valid guard token for an intended enemy target.
+ * Guarding is intentionally bounded: a dead/disabled guarder, a dead target,
+ * an expired token, or a self-targeted token never redirects damage.
+ */
+export function guardForTarget(
+  s: CombatState,
+  targetId: string
+): EnemyGuard | undefined {
+  const guard = s.enemyGuards?.[targetId];
+  if (!guard) return undefined;
+  const target = [...s.enemies.front, ...s.enemies.back].find(
+    (enemy) => enemy.instanceId === targetId
+  );
+  const guarder = [...s.enemies.front, ...s.enemies.back].find(
+    (enemy) => enemy.instanceId === guard.guarderId
+  );
+  if (
+    !target ||
+    target.currentHp <= 0 ||
+    !guarder ||
+    actorDisabled(guarder) ||
+    guard.targetId !== targetId ||
+    guard.guarderId === targetId ||
+    s.round > guard.expiresRound
+  ) {
+    return undefined;
+  }
+  return guard;
+}
+
+/** Drop expired or invalid guards at a round boundary. */
+export function pruneEnemyGuards(s: CombatState): void {
+  if (!s.enemyGuards) return;
+  for (const targetId of Object.keys(s.enemyGuards)) {
+    if (!guardForTarget(s, targetId)) delete s.enemyGuards[targetId];
+  }
+}
+
+/** Install one non-stackable guard token for an exact enemy target. */
+export function setEnemyGuard(
+  s: CombatState,
+  guarder: EnemyInstance,
+  target: EnemyInstance,
+  ability: EnemyAbilityDef,
+  duration: number
+): boolean {
+  if (!s.enemyGuards) s.enemyGuards = {};
+  if (
+    guarder.instanceId === target.instanceId ||
+    guarder.currentHp <= 0 ||
+    actorDisabled(guarder) ||
+    target.currentHp <= 0 ||
+    guardForTarget(s, target.instanceId)
+  ) {
+    return false;
+  }
+  s.enemyGuards[target.instanceId] = {
+    guarderId: guarder.instanceId,
+    targetId: target.instanceId,
+    expiresRound: s.round + Math.max(1, duration) - 1,
+    token: true,
+    chemistryId: ability.chemistryId ?? "",
+    abilityId: ability.id,
+    name: ability.name,
+  };
+  return true;
+}
+
+/** Remove one token, returning it only when it was active and usable. */
+export function consumeEnemyGuard(
+  s: CombatState,
+  targetId: string
+): EnemyGuard | undefined {
+  const guard = guardForTarget(s, targetId);
+  if (!guard || !s.enemyGuards) return undefined;
+  delete s.enemyGuards[targetId];
+  return guard;
+}
+
+/**
+ * Intercept one direct player action. The intended target remains in the
+ * event/log for UI clarity, while the returned target is the exact guarder.
+ * This helper is only called from player damage paths, so enemy-to-enemy
+ * actions cannot accidentally enter the guard system.
+ */
+export function interceptEnemyGuard(
+  s: CombatState,
+  attackerId: string,
+  intendedTarget: EnemyInstance,
+  emit: (message: string, event: ChemistryCombatEvent) => void
+): EnemyInstance {
+  const guard = consumeEnemyGuard(s, intendedTarget.instanceId);
+  if (!guard) return intendedTarget;
+  const guarder = [...s.enemies.front, ...s.enemies.back].find(
+    (enemy) => enemy.instanceId === guard.guarderId
+  );
+  if (!guarder) return intendedTarget;
+  emit(
+    `${guarder.name} intercepts the attack meant for ${intendedTarget.name}!`,
+    {
+      type: "chemistry",
+      chemistryId: guard.chemistryId,
+      abilityId: guard.abilityId,
+      name: guard.name,
+      phase: "intercept",
+      actorId: attackerId,
+      targetId: intendedTarget.instanceId,
+      partnerId: guarder.instanceId,
+      presentation: "guardAlly",
+    }
+  );
+  return guarder;
 }
