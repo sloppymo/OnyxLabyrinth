@@ -39,7 +39,11 @@ import type { PartySpriteState } from "./party-sprite-cache";
 import type { EffectSprite } from "./effect-sprite-cache";
 import { spellById } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
-import { barkDurationMs, barkPriority as policyBarkPriority } from "../data/combat-bark-policy";
+import {
+  barkDurationMs,
+  barkPriority as policyBarkPriority,
+  libraryBarkCanInterrupt,
+} from "../data/combat-bark-policy";
 import type { CombatBarkTrigger } from "../data/combat-bark-library/types";
 import { enemyIsUndead } from "./combat-audio";
 import { warnAsset } from "./asset-warn";
@@ -851,7 +855,7 @@ export function pushBark(
       if (priority <= activeLibrary.priority) return false;
       scene.barks = scene.barks.filter((b) => b.source !== "library");
     }
-    const high = priority >= policyBarkPriority("criticalHit", "library");
+    const high = libraryBarkCanInterrupt(opts.trigger);
     if (!high && now - scene.lastLibraryBarkAt < LIBRARY_BARK_COOLDOWN_MS) return false;
   }
 

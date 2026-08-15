@@ -32,6 +32,22 @@ export const LIBRARY_BARK_PRIORITY: Readonly<Partial<Record<CombatBarkTrigger, n
   rare: 18,
 };
 
+/** Only these authored moments may interrupt the ordinary presentation gap. */
+const IMMEDIATE_LIBRARY_TRIGGERS = new Set<CombatBarkTrigger>([
+  "death",
+  "ko",
+  "bossPhase",
+  "chemistryResolve",
+  "chemistryBreak",
+  "chemistryTelegraph",
+  "guardIntercept",
+  "guardActivated",
+]);
+
+export function libraryBarkCanInterrupt(trigger: CombatBarkTrigger): boolean {
+  return IMMEDIATE_LIBRARY_TRIGGERS.has(trigger);
+}
+
 export function barkPriority(
   trigger: CombatBarkTrigger,
   source: "legacy" | "library" = "legacy"

@@ -42,7 +42,9 @@ export const HEADMASTERS_ECHO_BARKS: CombatBarkProfile = {
       { text: "Don't." },
     ],
     bossPhase: [
-      { text: "More." },
+      // A second identical phase line reads as a UI loop; let the silence
+      // carry the escalation after the first authored beat.
+      { text: "More.", oncePerCombat: true },
     ],
     death: [
       { text: "The ash settles." },
@@ -78,7 +80,7 @@ export const HEADMASTERS_ECHO_REMNANT_BARKS: CombatBarkProfile = {
       { text: "Not the end." },
     ],
     bossPhase: [
-      { text: "More pages." },
+      { text: "More pages.", oncePerCombat: true },
     ],
     death: [
       { text: "The page turns." },
@@ -114,9 +116,9 @@ export const HEADMASTERS_ECHO_ASCENDANT_BARKS: CombatBarkProfile = {
       { text: "Please. Not yet." },
     ],
     bossPhase: [
-      { text: "More." },
-      { text: "Still more." },
-      { text: "There's always more." },
+      { text: "More.", oncePerCombat: true },
+      { text: "Still more.", oncePerCombat: true },
+      { text: "There's always more.", oncePerCombat: true },
     ],
     death: [
       { text: "The crying stops." },

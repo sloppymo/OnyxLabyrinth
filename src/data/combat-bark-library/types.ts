@@ -1,6 +1,7 @@
 /**
- * Typed content model for the (unwired, standalone) combat bark CONTENT
- * LIBRARY — see `src/game/combat-bark-library.ts` for the pure selector.
+ * Typed content model for the data-driven combat bark CONTENT LIBRARY — see
+ * `src/game/combat-bark-library.ts` for the pure selector and
+ * `src/game/combat-bark-runtime.ts` for the additive runtime bridge.
  *
  * NOTE: the repo also ships a small, separate, proven bark MVP at
  * `src/data/combat-barks.ts` / `src/game/combat-barks.ts` (3 triggers, 10

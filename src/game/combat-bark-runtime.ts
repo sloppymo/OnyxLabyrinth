@@ -22,7 +22,11 @@ import {
   selectCombatBark,
   type SelectBarkInput,
 } from "./combat-bark-library";
-import { barkLandmarkForTrigger, barkPriority as policyBarkPriority } from "../data/combat-bark-policy";
+import {
+  barkLandmarkForTrigger,
+  barkPriority as policyBarkPriority,
+  libraryBarkCanInterrupt,
+} from "../data/combat-bark-policy";
 
 const ORDINARY_ROUND_COOLDOWN = 2;
 const SPEAKER_ROUND_COOLDOWN = 3;
@@ -140,8 +144,8 @@ function isBossLegacyLine(entity: ReturnType<typeof findEnemyLike>): boolean {
   return !!entity?.isBoss && entity.id.startsWith("headmasters-echo");
 }
 
-function isHighPriority(priority: number): boolean {
-  return priority >= barkPriority("criticalHit");
+function isHighPriority(trigger: CombatBarkTrigger): boolean {
+  return libraryBarkCanInterrupt(trigger);
 }
 
 function shouldSuppress(
@@ -151,7 +155,7 @@ function shouldSuppress(
   priority: number,
   round: number
 ): string | null {
-  const high = isHighPriority(priority);
+  const high = isHighPriority(trigger);
   if (runtime.lastSelectedRound === round && priority <= runtime.lastSelectedPriority) {
     return "same-round-lower-priority";
   }
