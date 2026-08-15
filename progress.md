@@ -1061,3 +1061,25 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Verification: roster/data, alias, Ogre Toss, and encounter-metadata tests
   passed; full `npm run check` passed (123 files / 2,391 tests), including
   app/tools typechecks, Vite build, floor validation, and export parity.
+
+## Phase 7 — Floor 1 pacing, family anti-repeat, and telemetry
+
+- Applied the Floor 1-only encounter profile: rate `.05`, cooldown `14`, pity
+  start `34`, and forced cap `52`. The exact discrete distribution measures
+  mean gap `27.6911`, median `27`, p90 `40`, and hard maximum `52`; floors 2–5
+  retain the global fallback profile.
+- Added a module-local, session-only three-family buffer. Random dungeon rolls
+  weight the newest family `0`, the second-newest `.25`, the third-newest `.5`,
+  and older families `1`; if all candidates are excluded, authored weights
+  provide a deterministic fallback. Floor changes and explicit fresh loads
+  reset it, and forced/scripted, Arena, NPC, and safe-zone paths do not use it.
+- Separated chemistry telemetry lifecycle metrics: enabled encounters record
+  chemistry presence at formation creation, while eligibility is counted only
+  after authored conditions, exact resources/partners, caps, cooldowns, and
+  guard targets are valid; telegraph, attempt, resolve, and break remain
+  distinct. Anti-repeat history is not serialized.
+- Regenerated the tracked Floor 1 JSON/TXT exports after the pacing change.
+- Verification: focused pacing/family/chemistry tests passed (114 tests); full
+  `npm run check` passed (123 files / 2,395 tests), including app/tools
+  typechecks, Vite build, floor validation, and export parity. Existing
+  Namanda validation warnings remain unchanged.
