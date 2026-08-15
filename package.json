@@ -21,6 +21,7 @@
     "sprite-preview:generate": "tsx scripts/generate-sprite-preview.ts",
     "barks:audit": "tsx scripts/audit-combat-barks.ts",
     "barks:preview": "tsx scripts/generate-combat-bark-preview.ts",
+    "playtest:combat-barks": "tsx scripts/playtests/combat-bark-exposure-2026-08-15.ts",
     "generate:combat-bg": "node scripts/generate-combat-bg.mjs",
     "tileset:gallery": "node scripts/generate-tileset-gallery.mjs",
     "visual:floors": "node scripts/playtests/floor-visual-audit.mjs",
