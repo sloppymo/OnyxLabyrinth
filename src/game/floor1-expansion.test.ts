@@ -99,8 +99,10 @@ describe("Floor 1 revision 9 expansion", () => {
     // gate-threshold beat just past the gate.
     expect(floor.events).toHaveLength(18);
     expect(floor.encounterZones).toHaveLength(11);
+    // +3 for hotboi-bench/hotboi-bar-clutter/hotboi-kitchen-clutter, art
+    // assets that existed but were never placed in the tavern zone.
     // +1 for the votive candle cluster at the Kept Gate breach.
-    expect(floor.mapSprites).toHaveLength(29);
+    expect(floor.mapSprites).toHaveLength(32);
 
     const newNpcIds = new Set(
       floor.npcs

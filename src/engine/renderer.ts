@@ -66,6 +66,7 @@ import {
   billboardScreenX,
   featureMarkerSize,
   propBillboardSize,
+  PROP_MAX_WALL_FRAC,
   isCorridorMarkerFeature,
   BILLBOARD_MIN_DEPTH,
   dirFromFacing,
@@ -115,6 +116,9 @@ import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
 import { waterGridFromFloor } from "./water-floor";
 import { mazeRenderProfiler } from "./maze-renderer/performance";
+import { architecturalPropVisibleFaces } from "./maze-renderer/geometry/architectural-prop";
+import { resolveCellVolume } from "./maze-renderer/geometry/cell-volume";
+import { getArchitecturalPropImage } from "./architectural-prop-cache";
 import {
   WALL_VARIANT_SUFFIXES,
   wallVariantFilename,
@@ -1487,6 +1491,149 @@ function drawEnvironmentalSprites(
   }
 }
 
+function drawFixedWorldPlane(
+  ctx: CanvasRenderingContext2D,
+  cam: RenderCamera,
+  hits: (RayHit | null)[],
+  stripWidth: number,
+  image: CanvasImageSource,
+  verticalPlane: boolean,
+  centerX: number,
+  centerY: number,
+  width: number,
+  centerZ: number,
+  height: number
+): void {
+  const screenW = ctx.canvas.width;
+  const screenH = ctx.canvas.height;
+  const startWorld = verticalPlane
+    ? { x: centerX, y: centerY - width / 2 }
+    : { x: centerX - width / 2, y: centerY };
+  const endWorld = verticalPlane
+    ? { x: centerX, y: centerY + width / 2 }
+    : { x: centerX + width / 2, y: centerY };
+  const startProjection = projectWorldPoint(cam, startWorld.x, startWorld.y);
+  const endProjection = projectWorldPoint(cam, endWorld.x, endWorld.y);
+  const sourceWidth = "width" in image ? Number(image.width) : 0;
+  const sourceHeight = "height" in image ? Number(image.height) : 0;
+  if (!sourceWidth || !sourceHeight) return;
+
+  const blit = (
+    sx: number,
+    sw: number,
+    left: number,
+    top: number,
+    drawWidth: number,
+    drawHeight: number,
+    depth: number
+  ) => {
+    ctx.globalAlpha = Math.max(0.84, opacityForDepth(depth));
+    ctx.drawImage(image, sx, 0, sw, sourceHeight, left, top, drawWidth, drawHeight);
+  };
+
+  if (
+    startProjection && endProjection &&
+    startProjection.depth > 0.05 && endProjection.depth > 0.05 &&
+    Math.abs(startProjection.depth - endProjection.depth) < 0.005
+  ) {
+    const x0 = billboardScreenX(startProjection, screenW);
+    const x1 = billboardScreenX(endProjection, screenW);
+    const depth = (startProjection.depth + endProjection.depth) / 2;
+    const wallHeight = computeLineHeight(screenH, depth);
+    const top = screenH / 2 + (0.5 - (centerZ + height / 2)) * wallHeight;
+    const bottom = screenH / 2 + (0.5 - (centerZ - height / 2)) * wallHeight;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    blit(0, sourceWidth, Math.min(x0, x1), top, Math.abs(x1 - x0), bottom - top, depth);
+    ctx.restore();
+    return;
+  }
+
+  const sourceStep = Math.max(1, Math.ceil(sourceWidth / 160));
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  for (let sourceX = 0; sourceX < sourceWidth; sourceX += sourceStep) {
+    const t0 = sourceX / sourceWidth;
+    const t1 = Math.min(1, (sourceX + sourceStep) / sourceWidth);
+    let worldX0: number;
+    let worldY0: number;
+    let worldX1: number;
+    let worldY1: number;
+    if (verticalPlane) {
+      worldX0 = worldX1 = centerX;
+      worldY0 = centerY - width / 2 + width * t0;
+      worldY1 = centerY - width / 2 + width * t1;
+    } else {
+      worldY0 = worldY1 = centerY;
+      worldX0 = centerX - width / 2 + width * t0;
+      worldX1 = centerX - width / 2 + width * t1;
+    }
+    const p0 = projectWorldPoint(cam, worldX0, worldY0);
+    const p1 = projectWorldPoint(cam, worldX1, worldY1);
+    if (!p0 || !p1 || p0.depth <= 0.05 || p1.depth <= 0.05) continue;
+    const x0 = billboardScreenX(p0, screenW);
+    const x1 = billboardScreenX(p1, screenW);
+    const depth = (p0.depth + p1.depth) / 2;
+    const wallHeight = computeLineHeight(screenH, depth);
+    const top = screenH / 2 + (0.5 - (centerZ + height / 2)) * wallHeight;
+    const bottom = screenH / 2 + (0.5 - (centerZ - height / 2)) * wallHeight;
+    const left = Math.min(x0, x1);
+    const drawWidth = Math.max(1, Math.abs(x1 - x0) + 1);
+    const stripIndex = Math.floor((left + drawWidth / 2) / stripWidth);
+    const wallHit = hits[stripIndex];
+    if (wallHit && isBillboardOccluded(wallHit.perpWallDist, depth)) continue;
+    blit(
+      sourceX,
+      Math.min(sourceStep, sourceWidth - sourceX),
+      Math.floor(left),
+      Math.floor(top),
+      Math.ceil(drawWidth),
+      Math.max(1, Math.ceil(bottom - top)),
+      depth
+    );
+  }
+  ctx.restore();
+}
+
+/** Canvas fallback for WebGL architectural boxes: camera-facing faces only. */
+function drawArchitecturalProps(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  cam: RenderCamera,
+  hits: (RayHit | null)[],
+  stripWidth: number
+): void {
+  const props = state.floor.architecturalProps;
+  if (!props?.length) return;
+  for (const prop of props) {
+    const image = getArchitecturalPropImage(prop.texture);
+    if (!image) continue;
+    const volume = resolveCellVolume(state.floor, prop.x, prop.y);
+    const faces = architecturalPropVisibleFaces(
+      prop,
+      volume.floorZ,
+      volume.ceilingZ,
+      cam.x,
+      cam.y
+    );
+    for (const face of faces) {
+      drawFixedWorldPlane(
+        ctx,
+        cam,
+        hits,
+        stripWidth,
+        image,
+        face.verticalPlane,
+        face.centerX,
+        face.centerY,
+        face.width,
+        face.centerZ,
+        face.height
+      );
+    }
+  }
+}
+
 /**
  * Draw interactive tile features as floor-standing billboards.
  *
@@ -2330,6 +2477,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   // Their per-column wall test keeps the huge plane out of masonry while
   // still allowing open pieces to enter the view naturally.
   drawEnvironmentalSprites(ctx, state, cam, hits, stripWidth, performance.now());
+  drawArchitecturalProps(ctx, state, cam, hits, stripWidth);
 
   // --- Amber edge-glow pass (batched) ---
   // Group hits by depth bucket so we can batch all lines at the same depth

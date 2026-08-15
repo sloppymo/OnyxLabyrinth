@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ArchitecturalPropDef } from "../../../data/floors";
 import { LEGACY_VERTICAL_UNIT } from "./cell-volume";
 import {
+  architecturalPropVisibleFaces,
   resolveArchitecturalPropPose,
   rotationYForArchitecturalFacing,
 } from "./architectural-prop";
@@ -45,5 +46,23 @@ describe("architectural prop geometry", () => {
     expect(pose.y).toBe(3 * LEGACY_VERTICAL_UNIT - LEGACY_VERTICAL_UNIT);
     expect(pose.depth).toBe(0);
     expect(pose.rotationY).toBe(-Math.PI / 2);
+  });
+
+  it("culls box faces the camera is behind", () => {
+    const box = prop({ facing: "n", offsetX: 0, offsetZ: 0 });
+    const fromSouth = architecturalPropVisibleFaces(box, 0, 1, 3.5, 6);
+    expect(fromSouth.some((f) => !f.verticalPlane && f.centerY > 4.5)).toBe(true);
+    expect(fromSouth.every((f) => f.verticalPlane || f.centerY > 4.5)).toBe(true);
+
+    const fromWest = architecturalPropVisibleFaces(box, 0, 1, 2, 4.5);
+    expect(fromWest.some((f) => f.verticalPlane && f.centerX < 3.5)).toBe(true);
+  });
+
+  it("treats a plane as a single camera-facing sheet", () => {
+    const plane = prop({ kind: "plane", facing: "n", depth: undefined });
+    const faces = architecturalPropVisibleFaces(plane, 0, 1, 3.5, 6);
+    expect(faces).toHaveLength(1);
+    expect(faces[0]?.verticalPlane).toBe(false);
+    expect(faces[0]?.centerY).toBe(4.5);
   });
 });
