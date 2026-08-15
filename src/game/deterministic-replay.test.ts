@@ -11,6 +11,7 @@ import type {
   PlayerAction,
 } from "./combat-types";
 import { setBarkRngForTests } from "./combat-barks";
+import { setCombatBarkLibraryRngForTests } from "./combat-bark-runtime";
 import { createDefaultParty, type Character } from "./party";
 import { ALL_SPELLS } from "../data/spells";
 import { ALL_ITEMS } from "../data/items";
@@ -114,17 +115,17 @@ function actionsFor(state: CombatState): PlayerAction[] {
  * returning the snapshot of the final state. A fresh seeded RNG is created
  * per run so both runs start from the same internal LCG state.
  *
- * Barks (combat dialog lines) use a separate module-level RNG that is
+ * Barks (combat dialog lines) use separate module-level RNGs that are
  * intentionally kept off the combat RNG (presentation-only by design), but
- * they are written into state.log. We reset the bark RNG to a fresh seeded
- * instance per run so bark line selection is also deterministic across runs.
+ * they are written into state.log. We reset both bark streams to fresh seeded
+ * instances per run so bark line selection is also deterministic across runs.
  */
 function runReplay(party: Character[], seed: number, maxRounds = 12): ReplaySnapshot {
   let state = makeState(party);
-  // createCombatState() calls resetBarkRngForCombat() (Date.now()-seeded), so
-  // we must re-inject the deterministic bark RNG AFTER state creation, right
-  // before the round loop. This keeps bark line selection reproducible.
+  // createCombatState() seeds both presentation streams for live variety, so
+  // deterministic replay re-injects both test streams after state creation.
   setBarkRngForTests(createSeededRng(seed + 7919));
+  setCombatBarkLibraryRngForTests(createSeededRng(seed + 1543));
   for (let i = 0; i < maxRounds && !state.ended; i++) {
     const rng = createSeededRng(seed);
     state = resolveCombatRound(state, actionsFor(state), rng);
@@ -200,9 +201,9 @@ describe("deterministic replay", () => {
  */
 function runReplayLivePath(party: Character[], seed: number, maxRounds = 12): ReplaySnapshot {
   let state = makeState(party);
-  // createCombatState() calls resetBarkRngForCombat() (Date.now()-seeded), so
-  // re-inject the deterministic bark RNG AFTER state creation.
+  // Re-inject both deterministic presentation streams after state creation.
   setBarkRngForTests(createSeededRng(seed + 7919));
+  setCombatBarkLibraryRngForTests(createSeededRng(seed + 1543));
   // Seed the global gameplay RNG once for the whole run. Each resolveCombatRound
   // call picks up the same seeded function via getGameplayRng() and advances
   // its internal LCG state across rounds — mirroring the live game's one-stream

@@ -52,8 +52,9 @@ describe("impact presentation choreography integration", () => {
       const t0 = 1000;
       playTurn(scene, events, spellName, t0, W, H);
 
-      // Advance past the impact time (IMPACT_AT ≈ 987ms for melee).
-      updateScene(scene, t0 + 2000);
+      // Advance into the target's impact presentation (the normal profile
+      // contacts at roughly t0+368ms).
+      updateScene(scene, t0 + 420);
 
       // The actor flash should have been set on the target.
       expect(scene.impact.actorFlashes.size).toBeGreaterThan(0);
@@ -68,7 +69,7 @@ describe("impact presentation choreography integration", () => {
       ];
       const t0 = 1000;
       playTurn(scene, events, spellName, t0, W, H);
-      updateScene(scene, t0 + 2000);
+      updateScene(scene, t0 + 420);
 
       // Runtime zoom creation is disabled by default; the impulse is not populated.
       expect(scene.impact.zoom).toBeNull();
@@ -88,7 +89,7 @@ describe("impact presentation choreography integration", () => {
       ];
       const t0 = 1000;
       playTurn(scene2, events, spellName, t0, W, H);
-      updateScene(scene2, t0 + 2000);
+      updateScene(scene2, t0 + 420);
 
       // Light hits should not trigger zoom.
       expect(scene2.impact.zoom).toBeNull();
@@ -103,7 +104,7 @@ describe("impact presentation choreography integration", () => {
       ];
       const t0 = 1000;
       playTurn(scene, events, spellName, t0, W, H);
-      updateScene(scene, t0 + 2000);
+      updateScene(scene, t0 + 420);
 
       // freezeUntilWallTime should be set in the future relative to the impact time.
       expect(scene.impact.freezeUntilWallTime).toBeGreaterThan(0);
@@ -165,12 +166,12 @@ describe("impact presentation choreography integration", () => {
       ];
       const t0 = 1000;
       playTurn(scene, events, spellName, t0, W, H);
-      updateScene(scene, t0 + 1000);
+      updateScene(scene, t0 + 420);
 
       // Verify some impact state was set.
       expect(scene.impact.actorFlashes.size).toBeGreaterThan(0);
 
-      skipPlaybackToEnd(scene, t0 + 1000);
+      skipPlaybackToEnd(scene, t0 + 420);
 
       // After skip, all impact state should be cleared.
       expect(scene.impact.freezeUntilWallTime).toBe(0);
@@ -190,7 +191,7 @@ describe("impact presentation choreography integration", () => {
       ];
       const t0 = 1000;
       playTurn(scene, events1, spellName, t0, W, H);
-      updateScene(scene, t0 + 1000);
+      updateScene(scene, t0 + 420);
 
       // Verify state was set.
       expect(scene.impact.actorFlashes.size).toBeGreaterThan(0);

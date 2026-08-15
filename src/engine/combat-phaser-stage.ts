@@ -49,6 +49,7 @@ import {
 import { getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache";
 import { getPartySpriteStrip, loadPartySpriteBundle, PARTY_SPRITE_DIRS } from "./party-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
+import { screenShakeOffset } from "./combat-motion";
 import {
   ART_FOOT_FROM_TOP_FALLBACK,
   artFootFromTopFor,
@@ -116,12 +117,12 @@ const PHASER_FX_SHINE = true;
  *
  * The effect works: `capture-phaser-afterimage-pool.mjs` measures a 3-ghost
  * trail spanning 28.6px, live only during a walk and gone at rest. It just does
- * not *read*. The reference is an FF6 dash across the screen; this game's
- * approach is `approachDelta` — a symbolic 35px step over 525ms (~80px/sec)
- * with ~100px sprites, so the ghosts overlap the body by roughly two thirds and
- * there is no fast motion for a viewer to interpret as a smear. Probed at both
- * 0.28 and 0.6 alpha against the combat backdrop: invisible at the low end,
- * and at the high end it reads as a double-image artifact rather than speed.
+ * not *read*. The reference is an FF6 dash across the screen; after the
+ * target-aware motion pass, ordinary lunges are deliberately short and
+ * silhouette-first, so the ghosts overlap the body by roughly two thirds and
+ * read as a double-image artifact rather than speed. Probed at both 0.28 and
+ * 0.6 alpha against the combat backdrop: invisible at the low end, and noisy
+ * at the high end.
  *
  * Left wired and unit-tested rather than deleted — this is the plan's own
  * documented rollback ("disable afterimage constant; pooling can stay"), and
@@ -730,7 +731,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     // Screen shake via camera scroll.
     if (scene.screenShake.amount > 0) {
       const a = scene.screenShake.amount;
-      this.cameras.main.setScroll((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
+      const shake = screenShakeOffset(a, now);
+      this.cameras.main.setScroll(shake.x, shake.y);
     } else {
       this.cameras.main.setScroll(0, 0);
     }
@@ -1628,7 +1630,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         frame =
           frozen && anim.state === "idle"
             ? 0
-            : frameIndexFor(stripInfo.strip, stateAge);
+            : frameIndexFor(stripInfo.strip, stateAge, anim.frameRateScale);
       }
       entry.sprite.setFrame(frame);
       // Center at ResolvedSlot.centerY (pos.y) — canvas drawStripFrame contract.
@@ -1644,7 +1646,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         texKey,
         opacity: anim.opacity,
         frameFor: (ageMs) =>
-          frameIndexFor(stripInfo.strip, Math.max(0, stateAge - ageMs)),
+          frameIndexFor(stripInfo.strip, Math.max(0, stateAge - ageMs), anim.frameRateScale),
       });
       applyStatusTint(
         entry.sprite,
@@ -1714,7 +1716,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
               stripInfo.strip.frameCount - 1,
               Math.floor((stateAge / 675) * stripInfo.strip.frameCount)
             )
-          : frameIndexFor(stripInfo.strip, stateAge);
+          : frameIndexFor(stripInfo.strip, stateAge, anim.frameRateScale);
       entry.sprite.setFrame(frame);
       // Enemy strips face RIGHT; summons stand with the party side of the
       // stage and must face LEFT toward enemies (canvas drawAlly mirrors too).
@@ -1730,7 +1732,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         texKey,
         opacity: anim.opacity,
         frameFor: (ageMs) =>
-          frameIndexFor(stripInfo.strip, Math.max(0, stateAge - ageMs)),
+          frameIndexFor(stripInfo.strip, Math.max(0, stateAge - ageMs), anim.frameRateScale),
       });
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
       this.applyDeathDissolve(entry, anim, now, x, footY, drawSize);
@@ -1803,7 +1805,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       const frame =
         frozen && anim.state === "idle"
           ? 0
-          : frameIndexFor(stripInfo.strip, stateAge);
+          : frameIndexFor(stripInfo.strip, stateAge, anim.frameRateScale);
       entry.sprite.setFrame(frame);
       entry.sprite.setFlipX(true);
       this.applyAfterimage({
@@ -1819,7 +1821,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
         texKey,
         opacity,
         frameFor: (ageMs) =>
-          frameIndexFor(stripInfo.strip, Math.max(0, stateAge - ageMs)),
+          frameIndexFor(stripInfo.strip, Math.max(0, stateAge - ageMs), anim.frameRateScale),
       });
       applyStatusTint(
         entry.sprite,

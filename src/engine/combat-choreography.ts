@@ -27,13 +27,24 @@
  * procedural silhouettes.
  */
 
-import type { CombatState, CombatEvent, EnemyInstance, SummonedAlly } from "../game/combat-types";
+import type {
+  BarkLandmark,
+  CombatState,
+  CombatEvent,
+  EnemyInstance,
+  SummonedAlly,
+} from "../game/combat-types";
 import { loadEnemySpriteBundle } from "./enemy-sprite-cache";
 import type { PartySpriteState } from "./party-sprite-cache";
 import type { EffectSprite } from "./effect-sprite-cache";
 import { spellById } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
-import { BARK_PRIORITY, type BarkTrigger } from "../data/combat-barks";
+import {
+  barkDurationMs,
+  barkPriority as policyBarkPriority,
+  libraryBarkCanInterrupt,
+} from "../data/combat-bark-policy";
+import type { CombatBarkTrigger } from "../data/combat-bark-library/types";
 import { enemyIsUndead } from "./combat-audio";
 import { warnAsset } from "./asset-warn";
 import type { SpriteStrip } from "./sprite-manifest";
@@ -66,6 +77,15 @@ import {
   type BackdropGeometry,
   type ResolvedSlot,
 } from "./combat-scene-math";
+import {
+  approachOffset,
+  contactTime,
+  deterministicNoise,
+  meleeMotionProfile,
+  motionStyleForActor,
+  type CombatMotionStyle,
+  type MeleeMotionProfile,
+} from "./combat-motion";
 
 // --- Palette -----------------------------------------------------------------
 
@@ -187,6 +207,8 @@ export type ActorSpriteState = PartySpriteState; // idle|walk|attack|attack_rang
 export interface ActorAnim {
   state: ActorSpriteState;
   stateStart: number;
+  /** State-local strip speed multiplier; presentation only. */
+  frameRateScale: number;
   /** Screen-space offset tween from the slot position (walk forward/back). */
   moveFromX: number;
   moveFromY: number;
@@ -205,6 +227,7 @@ export function newActorAnim(now: number): ActorAnim {
   return {
     state: "idle",
     stateStart: now,
+    frameRateScale: 1,
     moveFromX: 0,
     moveFromY: 0,
     moveToX: 0,
@@ -250,6 +273,16 @@ function startMove(
 export function setAnimState(anim: ActorAnim, state: ActorSpriteState, now: number): void {
   anim.state = state;
   anim.stateStart = now;
+  anim.frameRateScale =
+    state === "attack" || state === "attack_ranged"
+      ? 1.18
+      : state === "hurt"
+        ? 1.1
+        : state === "death"
+          ? 1
+          : state === "cast"
+            ? 0.95
+            : 1;
 }
 
 /**
@@ -269,8 +302,8 @@ export const EFFECT_ANIM_SPEED = 0.42;
  * Compute the frame index for a strip given the anim state age.
  * Looping strips cycle; non-looping strips hold their last frame.
  */
-export function frameIndexFor(strip: SpriteStrip, stateAge: number): number {
-  const idx = Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED);
+export function frameIndexFor(strip: SpriteStrip, stateAge: number, frameRateScale = 1): number {
+  const idx = Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED * frameRateScale);
   if (strip.loop) return idx % strip.frameCount;
   return Math.min(strip.frameCount - 1, idx);
 }
@@ -303,6 +336,9 @@ export interface CombatBark {
   start: number;
   color: string;
   priority: number;
+  source: "legacy" | "library";
+  speaker?: string;
+  landmark?: BarkLandmark;
   /** Wall-clock lifetime; already scaled by playbackRate at push. */
   durationMs: number;
 }
@@ -313,6 +349,7 @@ export const BARK_COLOR = "#f0e0c0";
 export const BARK_MAX_WIDTH_PX = 340;
 const BARK_WINDOW_MS = 100;
 const BARK_GLOBAL_CAP = 2;
+const LIBRARY_BARK_COOLDOWN_MS = 2400;
 
 let barksEnabled = true;
 
@@ -379,6 +416,8 @@ export interface CombatScene {
   popups: DamagePopup[];
   /** Dialog barks (sibling channel — not damage popups). */
   barks: CombatBark[];
+  /** Last displayed library bark in wall-clock time. Legacy barks do not use this. */
+  lastLibraryBarkAt: number;
   /**
    * Recent non-death bark pushes for the ~100ms global window
    * ({ start, priority } kept so we can keep top-2 by priority).
@@ -502,6 +541,7 @@ export function createScene(state: CombatState): CombatScene {
     allySlots: new Map(),
     popups: [],
     barks: [],
+    lastLibraryBarkAt: -Infinity,
     barkWindow: [],
     banner: null,
     bannerUntil: 0,
@@ -653,6 +693,25 @@ export function findActor(
   return null;
 }
 
+/** Resolve an actor's live paint position, including an in-flight move tween. */
+function visualActor(
+  scene: CombatScene,
+  id: string,
+  w: number,
+  h: number,
+  now: number
+): ReturnType<typeof findActor> {
+  const actor = findActor(scene, id, w, h);
+  if (!actor) return null;
+  const offset = animOffset(getAnim(scene, actor.kind, id, now), now);
+  return {
+    ...actor,
+    x: actor.x + offset.x,
+    y: actor.y + offset.y,
+    footY: actor.footY + offset.y,
+  };
+}
+
 /** Look up an actor's maximum HP for impact strength classification. */
 function actorMaxHp(scene: CombatScene, id: string): number {
   const s = scene.state;
@@ -673,10 +732,6 @@ function actorMaxHp(scene: CombatScene, id: string): number {
 
 // --- Choreography construction ----------------------------------------------------------
 
-const APPROACH_MS = 525;
-const ATTACK_MS = 840;
-const IMPACT_AT = APPROACH_MS + ATTACK_MS * 0.55;
-const RETURN_MS = 420;
 /** Slightly longer cast window so multishot volleys and charge sprites can breathe. */
 const CAST_MS = 1100;
 const CAST_IMPACT = CAST_MS * 0.65;
@@ -686,20 +741,52 @@ const BURST_MS = 620;
 const FIELD_MS = 920;
 const PROJECTILE_STAGGER_MS = 90;
 
-/** Scale with a small random ±jitter so identical FX don't stamp perfectly. */
-function varyScale(base: number, jitter = 0.16): number {
+/** Scale with a stable ±jitter so repeated seeded presentations are identical. */
+function varyScale(base: number, jitter = 0.16, seed = 0): number {
   if (jitter <= 0) return base;
-  return base * (1 + (Math.random() * 2 - 1) * jitter);
+  return base * (1 + (deterministicNoise(seed) * 2 - 1) * jitter);
 }
 
 function step(at: number, run: (scene: CombatScene, now: number) => void): ChoreoStep {
   return { at, run, fired: false };
 }
 
-/** How far an attacker steps toward the other side (party steps left, enemies right).
- *  Distances multiply by the actor's depth scale so far-row lunges don't overshoot. */
-function approachDelta(kind: SceneCursor["kind"], scale = 1): number {
-  return (kind === "enemy" ? 35 : -35) * scale;
+function actorMotionDescriptor(scene: CombatScene, id: string): {
+  kind: SceneCursor["kind"];
+  className?: string;
+  enemyId?: string;
+} | null {
+  const party = scene.state.party.find((c) => c.id === id);
+  if (party) return { kind: "party", className: party.class };
+  for (const row of ["front", "back"] as const) {
+    const enemy = scene.state.enemies[row].find((e) => e.instanceId === id);
+    if (enemy) return { kind: "enemy", enemyId: enemy.id };
+  }
+  const corpse = scene.enemyCorpses.find((e) => e.instanceId === id);
+  if (corpse) return { kind: "enemy", enemyId: corpse.id };
+  const ally = scene.state.summonedAllies.find((a) => a.id === id);
+  if (ally) return { kind: "ally", enemyId: ally.spriteId };
+  return null;
+}
+
+export function motionStyleForSceneActor(scene: CombatScene, id: string): CombatMotionStyle {
+  const descriptor = actorMotionDescriptor(scene, id);
+  return descriptor ? motionStyleForActor(descriptor) : "stationary";
+}
+
+function profileForAttack(
+  scene: CombatScene,
+  actorId: string,
+  opts: { critical?: boolean; ranged?: boolean; technique?: boolean } = {}
+): MeleeMotionProfile {
+  const style = motionStyleForSceneActor(scene, actorId);
+  return meleeMotionProfile(style, {
+    critical: opts.critical,
+    ranged: opts.ranged,
+    // Techniques are deliberately a little more committed than ordinary
+    // attacks, while their rules/damage remain entirely in the game layer.
+    weight: opts.technique ? "heavy" : undefined,
+  });
 }
 
 /** Push a damage/heal/miss popup over an actor. */
@@ -713,7 +800,7 @@ function pushPopup(
   h: number,
   big = false
 ): void {
-  const actor = findActor(scene, id, w, h);
+  const actor = visualActor(scene, id, w, h, now);
   if (!actor) return;
   // Jitter x slightly so stacked popups (multi-hit) don't overlap exactly.
   const jitter = (scene.popups.length % 3) * 10 - 10;
@@ -734,18 +821,42 @@ function pushPopup(
  */
 export function pushBark(
   scene: CombatScene,
-  opts: { actorId: string; trigger: BarkTrigger; text: string },
+  opts: {
+    actorId: string;
+    trigger: CombatBarkTrigger;
+    text: string;
+    source?: "legacy" | "library";
+    speaker?: string;
+    landmark?: BarkLandmark;
+    priority?: number;
+    durationMs?: number;
+  },
   now: number
 ): boolean {
   if (!barksEnabled) return false;
+  const source = opts.source ?? "legacy";
   // Char-based pathological guard (draw also clamps). ~11px/char at 19px FF36.
   if (opts.text.length * 11 > BARK_MAX_WIDTH_PX + 40) return false;
 
-  const priority = BARK_PRIORITY[opts.trigger];
+  const priority = opts.priority ?? policyBarkPriority(opts.trigger, source);
   const existing = scene.barks.find((b) => b.actorId === opts.actorId);
   if (existing) {
     if (priority <= existing.priority) return false;
     scene.barks = scene.barks.filter((b) => b.actorId !== opts.actorId);
+  }
+
+  if (source === "library") {
+    // The old MVP channel remains authoritative for its three proven lines.
+    // A library line never covers one of those lines, and library lines do
+    // not stack on top of one another in the same combat beat.
+    if (scene.barks.some((b) => b.source === "legacy")) return false;
+    const activeLibrary = scene.barks.find((b) => b.source === "library");
+    if (activeLibrary) {
+      if (priority <= activeLibrary.priority) return false;
+      scene.barks = scene.barks.filter((b) => b.source !== "library");
+    }
+    const high = libraryBarkCanInterrupt(opts.trigger);
+    if (!high && now - scene.lastLibraryBarkAt < LIBRARY_BARK_COOLDOWN_MS) return false;
   }
 
   if (opts.trigger !== "death") {
@@ -768,8 +879,12 @@ export function pushBark(
     start: now,
     color: BARK_COLOR,
     priority,
-    durationMs: BARK_DURATION_BASE / rate,
+    source,
+    speaker: opts.speaker,
+    landmark: opts.landmark,
+    durationMs: (opts.durationMs ?? barkDurationMs(opts.text, source)) / rate,
   });
+  if (source === "library") scene.lastLibraryBarkAt = now;
   return true;
 }
 
@@ -798,7 +913,7 @@ function missImpactSteps(
 ): ChoreoStep[] {
   return [
     step(t, (scene, now) => {
-      const actor = findActor(scene, targetId, w, h);
+      const actor = visualActor(scene, targetId, w, h, now);
       pushPopup(scene, targetId, "MISS", MISS_PRESENTATION.color, now, w, h, false);
       if (!actor) return;
       scene.effects.push({
@@ -819,6 +934,7 @@ function missImpactSteps(
 interface ImpactPresentationOpts {
   actorId?: string;
   crit?: boolean;
+  heavy?: boolean;
   spellId?: string;
   spellTier?: number;
   isBossSignature?: boolean;
@@ -849,7 +965,7 @@ function impactSteps(
 ): ChoreoStep[] {
   return [
     step(t, (scene, now) => {
-      const actor = findActor(scene, targetId, w, h);
+      const actor = visualActor(scene, targetId, w, h, now);
       if (actor && hurt) {
         const anim = getAnim(scene, actor.kind, targetId, now);
         setAnimState(anim, "hurt", now);
@@ -860,8 +976,10 @@ function impactSteps(
         // Distance scales with damage so a heavy hit reads as a stagger and a
         // scratch barely registers.
         const recoilDir = actor.kind === "enemy" ? -1 : 1;
-        const recoilPx = Math.max(5, Math.min(16, 5 + dmg / 25));
-        startMove(anim, recoilDir * recoilPx * actor.scale, 0, 80, now, scene.playbackRate);
+        const strength = impactOpts?.crit ? 1.45 : impactOpts?.heavy ? 1.2 : 1;
+        const recoilPx = Math.max(5, Math.min(22, (5 + dmg / 25) * strength));
+        const recoilMs = impactOpts?.crit ? 120 : impactOpts?.heavy ? 105 : 80;
+        startMove(anim, recoilDir * recoilPx * actor.scale, 0, recoilMs, now, scene.playbackRate);
       }
       pushPopup(scene, targetId, text, color, now, w, h, big);
       if (actor) {
@@ -921,18 +1039,25 @@ function impactSteps(
       }
     }),
     // Ease recoil home, then return to idle after the hurt strip.
-    step(t + 80, (scene, now) => {
+    step(t + (impactOpts?.crit ? 120 : impactOpts?.heavy ? 105 : 80), (scene, now) => {
       const actor = findActor(scene, targetId, w, h);
       if (!actor || !hurt) return;
       const anim = getAnim(scene, actor.kind, targetId, now);
-      startMove(anim, 0, 0, 120, now, scene.playbackRate);
+      const settleMs = impactOpts?.crit ? 165 : impactOpts?.heavy ? 145 : 120;
+      startMove(anim, 0, 0, settleMs, now, scene.playbackRate);
     }),
-    step(t + 450, (scene, now) => {
+    step(
+      t +
+        (impactOpts?.crit ? 120 : impactOpts?.heavy ? 105 : 80) +
+        (impactOpts?.crit ? 165 : impactOpts?.heavy ? 145 : 120) +
+        80,
+      (scene, now) => {
       const actor = findActor(scene, targetId, w, h);
       if (!actor) return;
       const anim = getAnim(scene, actor.kind, targetId, now);
       if (anim.state === "hurt") setAnimState(anim, "idle", now);
-    }),
+      }
+    ),
   ];
 }
 
@@ -997,16 +1122,17 @@ function spawnImpactParticles(
 ): void {
   const count = big ? 14 : 8;
   for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 1.5 + Math.random() * 2.5;
+    const seed = x * 0.11 + y * 0.07 + i * 17.3;
+    const angle = deterministicNoise(seed) * Math.PI * 2;
+    const speed = 1.5 + deterministicNoise(seed + 1.7) * 2.5;
     scene.particles.push({
       x,
       y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed - 0.5,
       life: 0,
-      maxLife: 350 + Math.random() * 250,
-      size: 2 + Math.random() * 2,
+      maxLife: 350 + deterministicNoise(seed + 3.1) * 250,
+      size: 2 + deterministicNoise(seed + 4.4) * 2,
       color,
       gravity: 0.08,
       glow: true,
@@ -1023,16 +1149,17 @@ function spawnSparkleParticles(
   count: number
 ): void {
   for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 1 + Math.random() * 2;
+    const seed = x * 0.13 + y * 0.09 + i * 19.1;
+    const angle = deterministicNoise(seed) * Math.PI * 2;
+    const speed = 1 + deterministicNoise(seed + 1.9) * 2;
     scene.particles.push({
       x,
       y,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       life: 0,
-      maxLife: 400 + Math.random() * 300,
-      size: 2 + Math.random() * 2,
+      maxLife: 400 + deterministicNoise(seed + 3.3) * 300,
+      size: 2 + deterministicNoise(seed + 4.6) * 2,
       color,
       gravity: 0.05,
       glow: true,
@@ -1118,22 +1245,23 @@ function pushBursts(
       y,
       color: style.color,
       effect: style.burstUnderlay,
-      scale: varyScale(style.burstUnderlayScale ?? base * 1.05, 0.08),
+      scale: varyScale(style.burstUnderlayScale ?? base * 1.05, 0.08, now * 0.01 + 1),
       glow: true,
       start: now,
       duration,
     });
   }
   for (let i = 0; i < count; i++) {
-    const ox = count > 1 ? (i - (count - 1) / 2) * 24 + (Math.random() * 12 - 6) : 0;
-    const oy = count > 1 ? Math.random() * 18 - 9 : 0;
+    const seed = now * 0.01 + i * 23.7;
+    const ox = count > 1 ? (i - (count - 1) / 2) * 24 + (deterministicNoise(seed) * 12 - 6) : 0;
+    const oy = count > 1 ? deterministicNoise(seed + 1.4) * 18 - 9 : 0;
     scene.effects.push({
       type: "burst",
       x: x + ox,
       y: y + oy,
       color: style.color,
       effect: style.burst,
-      scale: varyScale(base, count > 1 ? 0.22 : 0.1),
+      scale: varyScale(base, count > 1 ? 0.22 : 0.1, seed + 2.8),
       glow: style.glow,
       start: now + i * 45,
       duration: duration + i * 40,
@@ -1164,7 +1292,7 @@ function pushFieldLayers(
       y: h * 0.42,
       color: style.color,
       effect: style.fieldUnderlay,
-      scale: varyScale((style.fieldUnderlayScale ?? fieldBase) * 0.9, 0.06),
+      scale: varyScale((style.fieldUnderlayScale ?? fieldBase) * 0.9, 0.06, now * 0.01 + 2),
       glow: true,
       start: now,
       duration: fieldDuration,
@@ -1177,7 +1305,7 @@ function pushFieldLayers(
         y: h * 0.44,
         color: style.color,
         effect: "fire_explosion_iso_glow",
-        scale: varyScale(fieldBase * 0.85, 0.08),
+        scale: varyScale(fieldBase * 0.85, 0.08, now * 0.01 + 3),
         glow: true,
         start: now + 40,
         duration: fieldDuration - 40,
@@ -1190,7 +1318,7 @@ function pushFieldLayers(
     y: h * 0.42,
     color: style.color,
     effect: style.field ?? style.burst,
-    scale: varyScale(fieldBase, 0.06),
+    scale: varyScale(fieldBase, 0.06, now * 0.01 + 4),
     glow: style.glow,
     start: now,
     duration: fieldDuration,
@@ -1201,7 +1329,7 @@ function pushFieldLayers(
     y: h * 0.46,
     color: style.color,
     effect: style.field ?? style.burst,
-    scale: varyScale(fieldBase * 0.72, 0.1),
+    scale: varyScale(fieldBase * 0.72, 0.1, now * 0.01 + 5),
     glow: style.glow,
     start: now + 70,
     duration: fieldDuration - 80,
@@ -1236,15 +1364,16 @@ function pushParticleSprinkles(
     });
   }
   for (let i = 0; i < n; i++) {
-    const ox = (i - (n - 1) / 2) * 14 + (Math.random() * 8 - 4);
-    const oy = Math.random() * 12 - 6;
+    const seed = now * 0.01 + i * 29.3;
+    const ox = (i - (n - 1) / 2) * 14 + (deterministicNoise(seed) * 8 - 4);
+    const oy = deterministicNoise(seed + 1.6) * 12 - 6;
     scene.effects.push({
       type: "burst",
       x: x + ox,
       y: y + oy,
       color,
       effect,
-      scale: varyScale(scale, 0.2),
+      scale: varyScale(scale, 0.2, seed + 2.2),
       start: now + i * 35,
       duration: 360 + i * 30,
     });
@@ -1275,7 +1404,8 @@ function pushProjectileVolley(
   for (let i = 0; i < count; i++) {
     const stagger = i * staggerMs;
     const offset = (i - (count - 1) / 2) * 18;
-    const drift = count > 1 ? Math.random() * 14 - 7 : 0;
+    const seed = now * 0.01 + i * 31.1;
+    const drift = count > 1 ? deterministicNoise(seed) * 14 - 7 : 0;
     const startX = fromX;
     const startY = fromY + offset + drift;
     scene.effects.push({
@@ -1291,7 +1421,7 @@ function pushProjectileVolley(
       riseFrac: riseDash ? riseFrac : undefined,
       color: style.color,
       effect: style.projectile,
-      scale: varyScale(base, jitter),
+      scale: varyScale(base, jitter, seed + 2.4),
       start: now + stagger,
       duration: Math.max(riseDash ? 480 : 220, flight - stagger * 0.35),
     });
@@ -1377,10 +1507,11 @@ function pushAreaProjectileRain(
   const base = style.projectileScale ?? style.scale ?? 1;
   const jitter = style.projectileScaleJitter ?? 0.22;
   for (let i = 0; i < count; i++) {
-    const tx = baseX + Math.random() * spanX;
-    const ty = h * 0.28 + Math.random() * h * 0.22;
-    const fx = tx + (Math.random() * 40 - 20);
-    const fy = h * 0.04 + Math.random() * 20;
+    const seed = now * 0.01 + i * 37.9;
+    const tx = baseX + deterministicNoise(seed) * spanX;
+    const ty = h * 0.28 + deterministicNoise(seed + 1.2) * h * 0.22;
+    const fx = tx + (deterministicNoise(seed + 2.4) * 40 - 20);
+    const fy = h * 0.04 + deterministicNoise(seed + 3.6) * 20;
     scene.effects.push({
       type: "projectile",
       x: fx,
@@ -1391,7 +1522,7 @@ function pushAreaProjectileRain(
       toY: ty,
       color: style.color,
       effect: style.projectile,
-      scale: varyScale(base * (0.75 + Math.random() * 0.45), jitter),
+      scale: varyScale(base * (0.75 + deterministicNoise(seed + 4.8) * 0.45), jitter, seed + 6),
       start: now + i * PROJECTILE_STAGGER_MS,
       duration: Math.max(260, duration - i * 35),
     });
@@ -2594,59 +2725,76 @@ export function playTurn(
   // Clear any impact presentation state from the previous turn.
   resetImpactState(scene.impact);
 
-  // Track whether the acting entity walked forward so we only walk back once.
-  let approachedId: string | null = null;
-  let approachedKind: SceneCursor["kind"] | null = null;
+  // Track the one actor currently away from its stable slot so a multi-event
+  // turn can return it exactly once. The resolver remains authoritative; this
+  // is only a visual offset ledger.
+  let approached: { id: string; kind: SceneCursor["kind"]; returnMs: number } | null = null;
 
   // Reserve enough tail time for a killing-blow death bark to actually be
   // read, even when it's the last event of the turn — otherwise playback
   // completes (and the round/turn advances, or the victory screen appears)
   // while the line is still mid-bounce (spec 2026-07-26 §10).
   let lastDeathBarkVisibleUntil = 0;
+  let lastActionTiming: Partial<Record<BarkLandmark, number>> | null = null;
 
-  const approach = (actorId: string): void => {
+  const approach = (
+    actorId: string,
+    targetId: string | undefined,
+    profile: MeleeMotionProfile
+  ): void => {
     const actor = findActor(scene, actorId, w, h);
     if (!actor) return;
-    approachedId = actorId;
-    approachedKind = actor.kind;
-    // Symbolic step forward — just enough to read as committing to the
-    // attack. Party steps left toward enemies, enemies step right.
-    const dx = approachDelta(actor.kind, actor.scale);
-    // Brief backward coil before the lunge, so the approach reads as a
-    // wind-up rather than an instant snap toward the target. Total time
-    // still adds up to APPROACH_MS, so downstream step timing is untouched.
-    const coilMs = Math.min(90, APPROACH_MS * 0.35);
+    const target = targetId ? findActor(scene, targetId, w, h) : null;
+    const offset = approachOffset(
+      {
+        actorX: actor.x,
+        actorY: actor.y,
+        targetX: target?.x ?? actor.x + (actor.kind === "enemy" ? 180 : -180),
+        targetY: target?.y ?? actor.y,
+        actorScale: actor.scale,
+        canvasWidth: w,
+        canvasHeight: h,
+      },
+      profile
+    );
+    approached = { id: actorId, kind: actor.kind, returnMs: profile.returnMs };
+    const coilMs = Math.min(profile.anticipationMs, profile.approachMs * 0.42);
     steps.push(
       step(t, (sc, n) => {
         const a = getAnim(sc, actor.kind, actorId, n);
         setAnimState(a, "walk", n);
-        startMove(a, dx * -0.18, 0, coilMs, n, sc.playbackRate);
+        startMove(a, offset.x * -0.12, offset.y * -0.12, coilMs, n, sc.playbackRate);
       }),
       step(t + coilMs, (sc, n) => {
         const a = getAnim(sc, actor.kind, actorId, n);
-        startMove(a, dx, 0, APPROACH_MS - coilMs, n, sc.playbackRate);
+        startMove(a, offset.x, offset.y, profile.approachMs - coilMs, n, sc.playbackRate);
       })
     );
   };
 
-  const returnHome = (): void => {
-    if (!approachedId || !approachedKind) return;
-    const id = approachedId;
-    const kind = approachedKind;
+  const returnHome = (returnMs = approached?.returnMs ?? 120): void => {
+    if (!approached) return;
+    const { id, kind } = approached;
     steps.push(
       step(t, (sc, n) => {
         const a = getAnim(sc, kind, id, n);
         setAnimState(a, "walk", n);
-        startMove(a, 0, 0, RETURN_MS, n, sc.playbackRate);
+        startMove(a, 0, 0, returnMs, n, sc.playbackRate);
       }),
-      step(t + RETURN_MS, (sc, n) => {
+      step(t + returnMs, (sc, n) => {
         const a = getAnim(sc, kind, id, n);
+        // Snap the canonical neutral offset at the boundary. This makes an
+        // interrupted/large-jump frame safe for both painters.
+        a.moveFromX = 0;
+        a.moveFromY = 0;
+        a.moveToX = 0;
+        a.moveToY = 0;
+        a.moveDuration = 0;
         if (a.state === "walk") setAnimState(a, "idle", n);
       })
     );
-    t += RETURN_MS;
-    approachedId = null;
-    approachedKind = null;
+    t += returnMs;
+    approached = null;
   };
 
   const clearAttackIfPlaying = (a: ActorAnim, n: number): void => {
@@ -2655,30 +2803,30 @@ export function playTurn(
 
   const attackAnim = (
     actorId: string,
-    animState: ActorSpriteState = "attack"
+    animState: ActorSpriteState = "attack",
+    profile: MeleeMotionProfile
   ): void => {
-    // Same coil-then-strike telegraph as approach(), for actors that don't
-    // physically step forward (ranged attackers, the miss path).
-    const coilMs = Math.min(70, ATTACK_MS * 0.3);
+    const coilMs = profile.anticipationMs;
     steps.push(
       step(t, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
         const a = getAnim(sc, actor.kind, actorId, n);
-        const coilDx = -approachDelta(actor.kind, actor.scale) * 0.12;
-        startMove(a, coilDx, 0, coilMs, n, sc.playbackRate);
+        startMove(a, 0, profile.liftPx * 0.25, coilMs, n, sc.playbackRate);
       }),
       step(t + coilMs, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
         const a = getAnim(sc, actor.kind, actorId, n);
         setAnimState(a, animState, n);
-        startMove(a, 0, 0, ATTACK_MS - coilMs, n, sc.playbackRate);
+        startMove(a, 0, profile.liftPx, profile.strikeMs - coilMs, n, sc.playbackRate);
       }),
-      step(t + ATTACK_MS, (sc, n) => {
+      step(t + coilMs + profile.strikeMs, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
-        clearAttackIfPlaying(getAnim(sc, actor.kind, actorId, n), n);
+        const a = getAnim(sc, actor.kind, actorId, n);
+        startMove(a, 0, 0, profile.returnMs, n, sc.playbackRate);
+        clearAttackIfPlaying(a, n);
       })
     );
   };
@@ -2688,12 +2836,24 @@ export function playTurn(
       step(t, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
-        setAnimState(getAnim(sc, actor.kind, actorId, n), "cast", n);
+        const anim = getAnim(sc, actor.kind, actorId, n);
+        setAnimState(anim, "cast", n);
+        // A caster braces and lifts into the spell instead of standing as a
+        // static effect anchor. The release beat gets a small extra lift;
+        // both motions remain bounded and return to the canonical slot.
+        startMove(anim, 0, -8 * actor.scale, 260, n, sc.playbackRate);
+      }),
+      step(t + CAST_IMPACT, (sc, n) => {
+        const actor = findActor(sc, actorId, w, h);
+        if (!actor) return;
+        const anim = getAnim(sc, actor.kind, actorId, n);
+        startMove(anim, 0, -14 * actor.scale, 120, n, sc.playbackRate);
       }),
       step(t + CAST_MS, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
         const a = getAnim(sc, actor.kind, actorId, n);
+        startMove(a, 0, 0, 150, n, sc.playbackRate);
         if (a.state === "cast") setAnimState(a, "idle", n);
       })
     );
@@ -2740,14 +2900,21 @@ export function playTurn(
           crit: evt.crit === true,
           technique: evt.type === "techniqueHit",
         });
+        const profile = profileForAttack(scene, evt.actorId, {
+          critical: evt.crit === true,
+          ranged: isRanged,
+          technique: evt.type === "techniqueHit",
+        });
         if (isRanged) {
           // Ranged: no approach; fire a projectile from attacker to target.
-          attackAnim(evt.actorId, attackState);
-          const impact = t + ATTACK_MS * 0.55;
+          const base = t;
+          attackAnim(evt.actorId, attackState, profile);
+          const releaseAt = base + profile.anticipationMs + profile.strikeMs * 0.2;
+          const impact = base + contactTime(profile);
           steps.push(
-            step(t + ATTACK_MS * 0.1, (sc, n) => {
-              const from = findActor(sc, evt.actorId, w, h);
-              const to = findActor(sc, evt.targetId, w, h);
+            step(releaseAt, (sc, n) => {
+              const from = visualActor(sc, evt.actorId, w, h, n);
+              const to = visualActor(sc, evt.targetId, w, h, n);
               if (!from || !to) return;
               sc.effects.push({
                 type: "projectile",
@@ -2757,7 +2924,7 @@ export function playTurn(
                 color: COLORS.dmg,
                 ...projectileForActor(scene, evt.actorId, attacker?.class),
                 start: n,
-                duration: impact - (t + ATTACK_MS * 0.1),
+                duration: Math.max(80, impact - releaseAt),
               });
             })
           );
@@ -2773,18 +2940,26 @@ export function playTurn(
               evt.crit === true,
               hitEffect.effect,
               hitEffect.scale,
-              evt.damage,
-              hitEffect.underlay,
-              hitEffect.underlayScale,
-              {
-                actorId: evt.actorId,
-                crit: evt.crit === true,
-                isFirstHit: hitSequence.get(evtIndex)?.isFirst,
-                isFinalHit: hitSequence.get(evtIndex)?.isFinal,
-              }
-            )
+                evt.damage,
+                hitEffect.underlay,
+                hitEffect.underlayScale,
+                {
+                  actorId: evt.actorId,
+                  crit: evt.crit === true,
+                  heavy: profile.weight === "heavy",
+                  isFirstHit: hitSequence.get(evtIndex)?.isFirst,
+                  isFinalHit: hitSequence.get(evtIndex)?.isFinal,
+                }
+              )
           );
-          t += ATTACK_MS + 200;
+          t = base + profile.anticipationMs + profile.strikeMs + profile.returnMs;
+          lastActionTiming = {
+            anticipation: base,
+            release: releaseAt,
+            contact: impact,
+            reaction: impact,
+            settle: t,
+          };
         } else {
           // Technique wind-up: a brief charge glow on the attacker before the
           // approach, so techniques read as deliberate power moves rather than
@@ -2810,17 +2985,48 @@ export function playTurn(
               })
             );
           }
-          approach(evt.actorId);
+          // TypeScript cannot see assignments performed by the nested
+          // approach/return helpers while it narrows the local variable.
+          // Read it through an explicit snapshot so chained hits retain the
+          // visual commitment without weakening the runtime invariant.
+          const activeApproach = approached as {
+            id: string;
+            kind: SceneCursor["kind"];
+            returnMs: number;
+          } | null;
+          const continuingMelee = activeApproach !== null && activeApproach.id === evt.actorId;
+          if (!continuingMelee) approach(evt.actorId, evt.targetId, profile);
           const base = t;
           const techniqueCrit = evt.type === "techniqueHit" && evt.crit === true;
           const techniqueTarget = evt.type === "techniqueHit" ? evt.targetId : null;
+          const attackAt = continuingMelee ? base : base + profile.approachMs;
+          lastActionTiming = {
+            anticipation: base,
+            release: attackAt,
+            contact: attackAt + profile.strikeMs * profile.contactFraction,
+            reaction: attackAt + profile.strikeMs * profile.contactFraction,
+            settle: attackAt + profile.strikeMs + profile.returnMs,
+          };
           steps.push(
-            step(base + APPROACH_MS, (sc, n) => {
+            step(attackAt, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
               if (!actor) return;
-              setAnimState(getAnim(sc, actor.kind, evt.actorId, n), attackState, n);
+              const anim = getAnim(sc, actor.kind, evt.actorId, n);
+              setAnimState(anim, attackState, n);
+              const current = animOffset(anim, n);
+              // A chained multi-hit keeps its forward commitment and only
+              // repeats the compact strike/recoil beat. The first hit got the
+              // full approach above; the final hit returns through returnHome.
+              startMove(
+                anim,
+                current.x,
+                profile.liftPx,
+                profile.strikeMs,
+                n,
+                sc.playbackRate
+              );
             }),
-            step(base + APPROACH_MS + ATTACK_MS, (sc, n) => {
+            step(attackAt + profile.strikeMs, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
               if (!actor) return;
               clearAttackIfPlaying(getAnim(sc, actor.kind, evt.actorId, n), n);
@@ -2828,7 +3034,7 @@ export function playTurn(
           );
           steps.push(
             ...impactSteps(
-              base + IMPACT_AT,
+              attackAt + profile.strikeMs * profile.contactFraction,
               evt.targetId,
               `${evt.damage}`,
               evt.crit === true ? COLORS.crit : COLORS.dmg,
@@ -2844,6 +3050,7 @@ export function playTurn(
               {
                 actorId: evt.actorId,
                 crit: evt.crit === true,
+                heavy: profile.weight === "heavy",
                 isFirstHit: hitSequence.get(evtIndex)?.isFirst,
                 isFinalHit: hitSequence.get(evtIndex)?.isFinal,
               }
@@ -2851,8 +3058,8 @@ export function playTurn(
           );
           if (techniqueTarget) {
             steps.push(
-              step(base + IMPACT_AT, (sc, n) => {
-                const to = findActor(sc, techniqueTarget, w, h);
+              step(attackAt + profile.strikeMs * profile.contactFraction, (sc, n) => {
+                const to = visualActor(sc, techniqueTarget, w, h, n);
                 if (!to) return;
                 // Steel sparks — not extra_elemental (that read as low-tier magic).
                 // Techniques get more debris and a wider underlay than basic attacks
@@ -2878,8 +3085,29 @@ export function playTurn(
               })
             );
           }
-          t = base + APPROACH_MS + ATTACK_MS;
-          returnHome();
+          t = attackAt + profile.strikeMs;
+          const next = events[evtIndex + 1];
+          const continues =
+            !!next &&
+            (next.type === "attack" || next.type === "techniqueHit") &&
+            next.actorId === evt.actorId;
+          if (continues) {
+            // Give each hit a short visible reset without replaying the full
+            // travel. This is deliberately below a normal attack's return.
+            const interHitMs = Math.min(90, Math.max(55, Math.round(profile.returnMs * 0.45)));
+            steps.push(
+              step(t, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                if (!actor) return;
+                const anim = getAnim(sc, actor.kind, evt.actorId, n);
+                const current = animOffset(anim, n);
+                startMove(anim, current.x, 0, interHitMs, n, sc.playbackRate);
+              })
+            );
+            t += interHitMs;
+          } else {
+            returnHome();
+          }
         }
         break;
       }
@@ -2887,27 +3115,46 @@ export function playTurn(
       case "miss":
       case "techniqueMiss": {
         if (evt.type === "miss" && evt.reason === "noTarget") break;
-        approach(evt.actorId);
+        const missProfile = profileForAttack(scene, evt.actorId);
+        approach(evt.actorId, evt.targetId, missProfile);
         const base = t;
+        const attackAt = base + missProfile.approachMs;
+        lastActionTiming = {
+          anticipation: base,
+          release: attackAt,
+          contact: attackAt + missProfile.strikeMs * missProfile.contactFraction,
+          reaction: attackAt + missProfile.strikeMs * missProfile.contactFraction,
+          settle: attackAt + missProfile.strikeMs + missProfile.returnMs,
+        };
         steps.push(
-          step(base + APPROACH_MS, (sc, n) => {
+          step(attackAt, (sc, n) => {
             const actor = findActor(sc, evt.actorId, w, h);
             if (!actor) return;
-            setAnimState(getAnim(sc, actor.kind, evt.actorId, n), "attack", n);
+            const anim = getAnim(sc, actor.kind, evt.actorId, n);
+            setAnimState(anim, "attack", n);
+            const current = animOffset(anim, n);
+            startMove(anim, current.x, missProfile.liftPx, missProfile.strikeMs, n, sc.playbackRate);
           })
         );
         if (evt.targetId) {
           // Shared choke for both directions (party→enemy and enemy→party).
-          steps.push(...missImpactSteps(base + IMPACT_AT, evt.targetId, w, h));
+          steps.push(
+            ...missImpactSteps(
+              attackAt + missProfile.strikeMs * missProfile.contactFraction,
+              evt.targetId,
+              w,
+              h
+            )
+          );
         }
         steps.push(
-          step(base + APPROACH_MS + ATTACK_MS, (sc, n) => {
+          step(attackAt + missProfile.strikeMs, (sc, n) => {
             const actor = findActor(sc, evt.actorId, w, h);
             if (!actor) return;
             clearAttackIfPlaying(getAnim(sc, actor.kind, evt.actorId, n), n);
           })
         );
-        t = base + APPROACH_MS + ATTACK_MS;
+        t = attackAt + missProfile.strikeMs;
         returnHome();
         break;
       }
@@ -2916,6 +3163,13 @@ export function playTurn(
         // Show the technique name as a banner (like spell cast banner).
         showBanner(techniqueNameFor(evt.techniqueId), CAST_MS + 600);
         castAnim(evt.actorId);
+        lastActionTiming = {
+          anticipation: t,
+          release: t + CAST_IMPACT * 0.6,
+          contact: t + CAST_IMPACT,
+          reaction: t + CAST_IMPACT,
+          settle: t + CAST_MS,
+        };
         t += CAST_MS * 0.6;
         break;
       }
@@ -3005,6 +3259,13 @@ export function playTurn(
           pendingImpactBase = t + Math.max(CAST_IMPACT, 920);
         }
         const castHold = riseDash ? Math.max(CAST_MS, 1280) : CAST_MS;
+        lastActionTiming = {
+          anticipation: t,
+          release: t + (riseDash ? 40 : 100),
+          contact: pendingImpactBase ?? t,
+          reaction: pendingImpactBase ?? t,
+          settle: t + castHold,
+        };
 
         // Charge sprite gathers above the caster during the cast.
         if (style.charge) {
@@ -3018,7 +3279,7 @@ export function playTurn(
                 x: actor.x, y: actor.y,
                 color: style.color,
                 effect: style.charge,
-                scale: varyScale(style.chargeScale ?? style.scale ?? 0.8, 0.08),
+                scale: varyScale(style.chargeScale ?? style.scale ?? 0.8, 0.08, n * 0.01 + evtIndex),
                 start: n,
                 duration: style.chargeDurationMs ?? defaultDur,
               });
@@ -3285,6 +3546,13 @@ export function playTurn(
 
       case "defeated": {
         const targetId = evt.targetId;
+        lastActionTiming = {
+          anticipation: t,
+          release: t,
+          contact: t,
+          reaction: t,
+          settle: t,
+        };
         // A death bark for this actor (if picked) is always the very next
         // event — combat-eor.ts emits it immediately after "defeated".
         const barkEvt = events[evtIndex + 1];
@@ -3293,6 +3561,10 @@ export function playTurn(
           barkEvt.type === "bark" &&
           barkEvt.trigger === "death" &&
           barkEvt.actorId === targetId;
+        const deathBarkDuration =
+          hasDeathBark && barkEvt.type === "bark"
+            ? barkDurationMs(barkEvt.text, barkEvt.source ?? "legacy")
+            : 0;
         steps.push(
           step(t, (sc, n) => {
             const actor = findActor(sc, targetId, w, h);
@@ -3323,7 +3595,7 @@ export function playTurn(
             // actor holds the fade so the corpse (and its live anchor) stay
             // available until the line has had time to read (spec 2026-07-26).
             if (kind !== "party") {
-              a.fadeOutStart = n + 450 + (hasDeathBark ? BARK_DURATION_BASE : 0);
+              a.fadeOutStart = n + 450 + deathBarkDuration;
             }
           })
         );
@@ -3586,14 +3858,26 @@ export function playTurn(
       }
 
       case "bark": {
-        const delay = evt.trigger === "heavyHit" ? 180 : 0;
         const barkEvt = evt;
-        const startAt = t + delay;
+        const source = barkEvt.source ?? "legacy";
+        const delay = source === "legacy" && evt.trigger === "heavyHit" ? 180 : 0;
+        const landmarkAt = barkEvt.landmark ? lastActionTiming?.[barkEvt.landmark] : undefined;
+        const startAt = landmarkAt ?? t + delay;
+        const durationMs = barkEvt.durationMs ?? barkDurationMs(barkEvt.text, source);
         steps.push(
           step(startAt, (sc, n) => {
             pushBark(
               sc,
-              { actorId: barkEvt.actorId, trigger: barkEvt.trigger, text: barkEvt.text },
+              {
+                actorId: barkEvt.actorId,
+                trigger: barkEvt.trigger,
+                text: barkEvt.text,
+                source,
+                speaker: barkEvt.speaker,
+                landmark: barkEvt.landmark,
+                durationMs,
+                priority: policyBarkPriority(barkEvt.trigger, source),
+              },
               n
             );
           })
@@ -3604,7 +3888,7 @@ export function playTurn(
           // it's the last event of the turn.
           lastDeathBarkVisibleUntil = Math.max(
             lastDeathBarkVisibleUntil,
-            startAt + Math.round(BARK_DURATION_BASE * 0.8)
+            startAt + Math.round(durationMs * 0.8)
           );
         }
         break;
@@ -3614,9 +3898,10 @@ export function playTurn(
 
   returnHome();
 
-  // Give trailing popups a beat to play out. A trailing death bark can push
-  // this further out than the default 260ms tail (see lastDeathBarkVisibleUntil).
-  const duration = Math.max(t + 260, lastDeathBarkVisibleUntil);
+  // Give trailing impact effects a short settle beat. Ordinary attacks must
+  // not spend a quarter-second idling after the attacker has already returned;
+  // a death bark can still push this farther through its explicit ledger.
+  const duration = Math.max(t + 100, lastDeathBarkVisibleUntil);
   scene.choreo = { start: now, duration, steps };
   return duration;
 }

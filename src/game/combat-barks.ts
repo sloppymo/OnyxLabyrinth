@@ -13,6 +13,7 @@ import {
 import type { CharacterClass } from "./party";
 import type { CombatEvent, CombatState, EnemyInstance } from "./combat-types";
 import type { SpellDef } from "../data/spells";
+import { offerLibrarySpellBark } from "./combat-bark-runtime";
 
 export type { BarkTrigger };
 export { BARK_PRIORITY, MAX_BARK_CHARS, COMBAT_BARKS };
@@ -148,14 +149,37 @@ export function maybeEmitBark(
   ctx: BarkPickContext
 ): void {
   const text = pickBark(s, ctx);
-  if (!text) return;
-  const name = speakerDisplayName(s, ctx.actorId);
-  emit(`${name}: "${text}"`, {
-    type: "bark",
-    actorId: ctx.actorId,
-    trigger: ctx.trigger,
-    text,
-  });
+  if (text) {
+    const name = speakerDisplayName(s, ctx.actorId);
+    emit(`${name}: "${text}"`, {
+      type: "bark",
+      actorId: ctx.actorId,
+      trigger: ctx.trigger,
+      text,
+      source: "legacy",
+      landmark:
+        ctx.trigger === "beforeSpell"
+          ? "release"
+          : ctx.trigger === "heavyHit"
+            ? "reaction"
+            : "settle",
+    });
+    return;
+  }
+
+  // Layer the new library only where the shipped MVP has no eligible line.
+  // This preserves the old wording/ledger while letting ordinary classes,
+  // healing, and non-fire spells acquire a voice immediately.
+  if (ctx.trigger === "beforeSpell" && ctx.spell) {
+    offerLibrarySpellBark(
+      s,
+      ctx.actorId,
+      ctx.spell.id,
+      ctx.spell.effect.kind === "heal",
+      undefined,
+      emit
+    );
+  }
 }
 
 export function isHeavyHit(damage: number, maxHp: number): boolean {

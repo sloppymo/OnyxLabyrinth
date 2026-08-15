@@ -66,6 +66,7 @@ import {
   sampleEnvironmentLight,
   sampleActorFlash,
 } from "./combat-impact-fx";
+import { screenShakeOffset } from "./combat-motion";
 
 // Re-export the public choreography API so existing importers keep working.
 export {
@@ -416,7 +417,7 @@ function drawPartyMember(
   const opacity = (hidden ? 0.35 : 1) * anim.opacity;
   if (stripInfo) {
     const stateAge = now - anim.stateStart;
-    const frame = frozen && anim.state === "idle" ? 0 : frameIndexFor(stripInfo.strip, stateAge);
+    const frame = frozen && anim.state === "idle" ? 0 : frameIndexFor(stripInfo.strip, stateAge, anim.frameRateScale);
     drawStripFrame(ctx, stripInfo.img, stripInfo.strip, frame, x, y, drawSize, true, opacity, tint, char.id, scene, now);
   } else {
     if (
@@ -1049,7 +1050,8 @@ export function renderScene(
   // updateScene; ±amount/2 keeps even the max (8) comfortable.
   if (scene.screenShake.amount > 0) {
     const a = scene.screenShake.amount;
-    ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
+    const shake = screenShakeOffset(a, now);
+    ctx.translate(shake.x, shake.y);
   }
 
   // Bounded impact zoom: scale around the impact focus point.

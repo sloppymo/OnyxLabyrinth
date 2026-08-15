@@ -1,0 +1,1768 @@
+{
+  "generatedAt": "2026-08-15T12:02:21.549Z",
+  "baseline": "11573958c9a69875317ef952f660ee01dc707420",
+  "enemyStates": [
+    "idle",
+    "attack",
+    "hurt",
+    "death"
+  ],
+  "partyStates": [
+    "idle",
+    "walk",
+    "attack",
+    "attack_ranged",
+    "cast",
+    "hurt",
+    "death"
+  ],
+  "enemies": [
+    {
+      "id": "acid-puddle",
+      "style": "ooze",
+      "path": "public/assets/enemies/acid-puddle/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "animated-armor",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/animated-armor/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "armored-skeleton",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/armored-skeleton/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "big-titty-ogre",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/big-titty-ogre/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "black-knight",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/black-knight/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 16,
+          "width": 1600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "blood-monster",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/blood-monster/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "blood-wraith",
+      "style": "ghost/wraith",
+      "path": "public/assets/enemies/blood-wraith/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "demon",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/demon/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 7,
+          "width": 700,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "demon-brawler",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/demon-brawler/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "demon-champion",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/demon-champion/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 11,
+          "width": 1100,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "demon-mage",
+      "style": "caster",
+      "path": "public/assets/enemies/demon-mage/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "demon-spawn",
+      "style": "ooze",
+      "path": "public/assets/enemies/demon-spawn/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "demoness",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/demoness/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "displacer-beast",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/displacer-beast/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "elite-orc",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/elite-orc/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 7,
+          "width": 700,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "eyeball-monster",
+      "style": "flying",
+      "path": "public/assets/enemies/eyeball-monster/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "failed-experiment",
+      "style": "humanoid/other",
+      "path": "public/assets/enemies/failed-experiment/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "flame-golem",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/flame-golem/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "ghostfire",
+      "style": "ghost/wraith",
+      "path": "public/assets/enemies/ghostfire/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "headmasters-echo",
+      "style": "humanoid/other",
+      "path": "public/assets/enemies/headmasters-echo/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "hellbat",
+      "style": "flying",
+      "path": "public/assets/enemies/hellbat/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "hellhound",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/hellhound/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "ice-golem",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/ice-golem/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "ironclad-knight",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/ironclad-knight/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 7,
+          "width": 700,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "lab-assistant",
+      "style": "humanoid/other",
+      "path": "public/assets/enemies/lab-assistant/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "lava-slime",
+      "style": "ooze",
+      "path": "public/assets/enemies/lava-slime/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "lesser-construct",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/lesser-construct/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "minotaur",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/minotaur/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "orc",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/orc/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "red-skeleton",
+      "style": "undead humanoid",
+      "path": "public/assets/enemies/red-skeleton/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "rune-knight",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/rune-knight/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 10,
+          "width": 1000,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "skeleton",
+      "style": "undead humanoid",
+      "path": "public/assets/enemies/skeleton/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "skeleton-archer",
+      "style": "undead humanoid",
+      "path": "public/assets/enemies/skeleton-archer/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "slime",
+      "style": "ooze",
+      "path": "public/assets/enemies/slime/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "stone-guardian",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/stone-guardian/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 7,
+          "width": 700,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "succubus",
+      "style": "caster",
+      "path": "public/assets/enemies/succubus/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "summon-celestial",
+      "style": "humanoid/other",
+      "path": "public/assets/enemies/summon-celestial/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "summon-celestial-guardian",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/summon-celestial-guardian/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "summon-eldritch-guardian",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/summon-eldritch-guardian/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 7,
+          "width": 700,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "summon-elemental",
+      "style": "humanoid/other",
+      "path": "public/assets/enemies/summon-elemental/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "summon-fire-elemental",
+      "style": "humanoid/other",
+      "path": "public/assets/enemies/summon-fire-elemental/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "summon-holy-guardian",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/summon-holy-guardian/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "summon-slime",
+      "style": "ooze",
+      "path": "public/assets/enemies/summon-slime/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "training-dummy",
+      "style": "construct/heavy",
+      "path": "public/assets/enemies/training-dummy/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "viper-man",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/viper-man/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 16,
+          "width": 1600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "warlock",
+      "style": "caster",
+      "path": "public/assets/enemies/warlock/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 7,
+          "width": 700,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 11,
+          "width": 1100,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "werewolf",
+      "style": "beast/heavy humanoid",
+      "path": "public/assets/enemies/werewolf/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    }
+  ],
+  "party": [
+    {
+      "id": "crusader",
+      "style": "party:crusader",
+      "path": "public/assets/party/crusader/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "walk": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 7,
+          "width": 700,
+          "height": 100,
+          "valid": true
+        },
+        "attack_ranged": null,
+        "cast": null,
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "duelist",
+      "style": "party:duelist",
+      "path": "public/assets/party/duelist/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "walk": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 7,
+          "width": 700,
+          "height": 100,
+          "valid": true
+        },
+        "attack_ranged": null,
+        "cast": null,
+        "hurt": {
+          "frames": 5,
+          "width": 500,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "fighter",
+      "style": "party:fighter",
+      "path": "public/assets/party/fighter/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "walk": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 7,
+          "width": 700,
+          "height": 100,
+          "valid": true
+        },
+        "attack_ranged": null,
+        "cast": null,
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "halberdier",
+      "style": "party:halberdier",
+      "path": "public/assets/party/halberdier/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "walk": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "attack_ranged": null,
+        "cast": null,
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "mage",
+      "style": "party:mage",
+      "path": "public/assets/party/mage/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "walk": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "attack_ranged": null,
+        "cast": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "priest",
+      "style": "party:priest",
+      "path": "public/assets/party/priest/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "walk": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "attack_ranged": null,
+        "cast": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    },
+    {
+      "id": "thief",
+      "style": "party:thief",
+      "path": "public/assets/party/thief/",
+      "strips": {
+        "idle": {
+          "frames": 6,
+          "width": 600,
+          "height": 100,
+          "valid": true
+        },
+        "walk": {
+          "frames": 8,
+          "width": 800,
+          "height": 100,
+          "valid": true
+        },
+        "attack": {
+          "frames": 12,
+          "width": 1200,
+          "height": 100,
+          "valid": true
+        },
+        "attack_ranged": {
+          "frames": 9,
+          "width": 900,
+          "height": 100,
+          "valid": true
+        },
+        "cast": null,
+        "hurt": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        },
+        "death": {
+          "frames": 4,
+          "width": 400,
+          "height": 100,
+          "valid": true
+        }
+      }
+    }
+  ]
+}

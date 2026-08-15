@@ -34,6 +34,7 @@ import { BARK_PRIORITY } from "../data/combat-barks";
 import type { CombatEvent, EnemyInstance } from "../game/combat-types";
 import { createCharacter } from "../game/party";
 import { ENEMIES_BY_ID, type EnemyDef } from "../data/enemies";
+import { contactTime, meleeMotionProfile } from "./combat-motion";
 
 const W = 768;
 const H = 672;
@@ -83,8 +84,9 @@ describe("playTurn choreography", () => {
     updateScene(scene, t0 + 10);
     expect(scene.partyAnims.get("c0")?.state).toBe("walk");
 
-    // At impact: popup with the damage number, target hurt.
-    updateScene(scene, t0 + 1100); // past IMPACT_AT (~987)
+    // At impact: popup with the damage number, target is still in its brief
+    // hurt/recoil window. The new profile contacts at ~368ms.
+    updateScene(scene, t0 + 420);
     expect(scene.popups.some((p) => p.text === "7")).toBe(true);
     expect(scene.enemyAnims.get("rat-0")?.state).toBe("hurt");
 
@@ -92,6 +94,86 @@ describe("playTurn choreography", () => {
     updateScene(scene, t0 + duration + 50);
     expect(isPlaybackDone(scene, t0 + duration + 50)).toBe(true);
     expect(scene.partyAnims.get("c0")?.state).toBe("idle");
+  });
+
+  it("uses target-aware travel and returns to the exact stable slot", () => {
+    const scene = makeScene();
+    const events: CombatEvent[] = [
+      { type: "attack", actorId: "c0", targetId: "rat-0", damage: 3, range: "close" },
+    ];
+    const t0 = 0;
+    const duration = playTurn(scene, events, spellName, t0, W, H);
+    updateScene(scene, 0);
+    updateScene(scene, 60);
+    updateScene(scene, 200);
+    const inFlight = animOffset(getAnim(scene, "party", "c0", 200), 200);
+    expect(inFlight.x).toBeLessThan(0);
+    expect(Math.abs(inFlight.x)).toBeLessThan(180);
+
+    updateScene(scene, duration + 10);
+    expect(animOffset(getAnim(scene, "party", "c0", duration + 10), duration + 10)).toEqual({
+      x: 0,
+      y: 0,
+    });
+  });
+
+  it("fires the damage presentation at the motion contact beat", () => {
+    const scene = makeScene();
+    const profile = meleeMotionProfile("humanoid", { weight: "normal" });
+    const t0 = 1000;
+    playTurn(
+      scene,
+      [{ type: "attack", actorId: "c0", targetId: "rat-0", damage: 4, range: "close" }],
+      spellName,
+      t0,
+      W,
+      H
+    );
+
+    updateScene(scene, t0 + contactTime(profile) + 1);
+    expect(scene.popups.some((p) => p.text === "4")).toBe(true);
+    expect(scene.enemyAnims.get("rat-0")?.state).toBe("hurt");
+  });
+
+  it("advances once for a multi-hit sequence and returns once", () => {
+    const scene = makeScene();
+    const events: CombatEvent[] = [
+      { type: "attack", actorId: "c0", targetId: "rat-0", damage: 2, range: "close" },
+      { type: "attack", actorId: "c0", targetId: "rat-0", damage: 2, range: "close" },
+    ];
+    const duration = playTurn(scene, events, spellName, 0, W, H);
+    updateScene(scene, 0);
+    updateScene(scene, 200);
+    const firstStrike = animOffset(getAnim(scene, "party", "c0", 200), 200);
+    updateScene(scene, 620);
+    const secondStrike = animOffset(getAnim(scene, "party", "c0", 620), 620);
+    expect(Math.abs(firstStrike.x)).toBeGreaterThan(0);
+    expect(Math.abs(secondStrike.x)).toBeGreaterThan(0);
+    updateScene(scene, duration + 10);
+    expect(animOffset(getAnim(scene, "party", "c0", duration + 10), duration + 10)).toEqual({
+      x: 0,
+      y: 0,
+    });
+  });
+
+  it("does not accumulate presentation drift over repeated attacks", () => {
+    const scene = makeScene();
+    let now = 0;
+    for (let i = 0; i < 100; i++) {
+      const duration = playTurn(
+        scene,
+        [{ type: "attack", actorId: "c0", targetId: "rat-0", damage: 1, range: "close" }],
+        spellName,
+        now,
+        W,
+        H
+      );
+      const end = now + duration + 10;
+      updateScene(scene, now);
+      updateScene(scene, end);
+      expect(animOffset(getAnim(scene, "party", "c0", end), end)).toEqual({ x: 0, y: 0 });
+      now = end + 10;
+    }
   });
 
   it("close/short attacks use melee attack state; long range uses attack_ranged", () => {
@@ -110,8 +192,8 @@ describe("playTurn choreography", () => {
       W,
       H
     );
-    // Past approach (525ms): melee strip.
-    updateScene(scene, 540);
+    // Past the target-aware approach (165ms for a light Thief strike): melee strip.
+    updateScene(scene, 200);
     expect(scene.partyAnims.get("c0")?.state).toBe("attack");
 
     const rangedScene = createScene(state);
@@ -166,6 +248,11 @@ describe("playTurn choreography", () => {
     updateScene(scene, t0 + 10);
     expect(scene.banner).toBe("Spell:mage-fire-bolt");
     expect(scene.partyAnims.get("c1")?.state).toBe("cast");
+
+    // The caster physically braces/lifts during the charge instead of
+    // remaining locked to its home slot.
+    updateScene(scene, t0 + 300);
+    expect(animOffset(getAnim(scene, "party", "c1", t0 + 300), t0 + 300).y).toBeLessThan(0);
 
     updateScene(scene, t0 + 1000); // past rise→dash impact (~920 for fire-bolt)
     expect(scene.effects.some((e) => e.type === "burst")).toBe(true);
@@ -353,6 +440,34 @@ describe("playTurn choreography", () => {
     skipPlaybackToEnd(scene, t0 + 20);
     expect(isPlaybackDone(scene, t0 + 20)).toBe(true);
     expect(scene.popups.some((p) => p.text === "7")).toBe(true);
+  });
+
+  it("interrupting a mid-lunge playback snaps the actor back to its stable slot", () => {
+    const scene = makeScene();
+    const t0 = 0;
+    playTurn(
+      scene,
+      [{ type: "attack", actorId: "c0", targetId: "rat-0", damage: 7, range: "close" }],
+      spellName,
+      t0,
+      W,
+      H
+    );
+
+    updateScene(scene, t0);
+    updateScene(scene, 200);
+    const moving = animOffset(getAnim(scene, "party", "c0", 200), 200);
+    expect(Math.abs(moving.x)).toBeGreaterThan(0);
+
+    // This is the same cosmetic skip used when a battle ends or the UI
+    // abandons the current presentation. It must not leave a stale offset in
+    // the renderer's next frame.
+    skipPlaybackToEnd(scene, 200);
+    expect(animOffset(getAnim(scene, "party", "c0", 200), 200)).toEqual({
+      x: 0,
+      y: 0,
+    });
+    expect(scene.partyAnims.get("c0")?.state).toBe("idle");
   });
 
   it("playbackRate 2 advances choreography twice as fast", () => {
