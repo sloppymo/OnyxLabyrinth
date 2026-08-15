@@ -1125,3 +1125,19 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Final verification: `npm run check` passed with 123 test files and 2,397
   tests; floor validation/export parity passed with only the existing Namanda
   warnings. No experimental branch was cherry-picked and nothing was pushed.
+
+## Adversarial final audit — 2026-08-15
+
+- Re-ran the lab after correcting its seed path: party stat rolls, combat RNG,
+  and bark RNG are now paired and reproducible. The final N=100 artifact covers
+  21,600 matrix/relief fights, 1,200 expeditions, and 33,040 per-fight CSV
+  traces. Balanced aware play completed ten fights more often than default or
+  no-chemistry control on every route, but Guarded Bomb remains a difficulty
+  spike and several resource signatures are usually countered before payoff.
+- Fixed four audit defects: duplicate/stale chemistry reservations, missing
+  AoE guard-bypass telemetry, Arena inheriting the random F1 chemistry roster,
+  and the debug fixture helper ignoring explicit combat states. Softened the
+  F1 Forge variants after the first lab showed magic-heavy naive wipes.
+- Final verdict is `PASS WITH TUNING`: contract tests and shared Canvas/Phaser
+  presentation pass; organic signature frequency, Guarded Bomb attrition, and
+  5th/10th/20th exposure fatigue remain human-playtest questions.

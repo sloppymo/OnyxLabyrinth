@@ -1,6 +1,6 @@
 # Formation Chemistry Phase 8 deterministic lab
 
-Generated 2026-08-15T11:46:43.988Z; N=100. This is evidence, not an automatic balance verdict. Per-fight metrics are in 2026-08-15-formation-chemistry-phase8-traces.csv.
+Generated 2026-08-15T11:53:01.290Z; N=100. This is evidence, not an automatic balance verdict. Per-fight metrics are in 2026-08-15-formation-chemistry-phase8-traces.csv.
 
 ## Encounter gap audit
 

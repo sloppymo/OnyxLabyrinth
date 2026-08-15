@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-15T11:46:43.988Z",
+  "generatedAt": "2026-08-15T11:53:01.290Z",
   "n": 100,
   "roster": [
     {
@@ -7256,6 +7256,6 @@
       }
     }
   },
-  "traceCsv": "/home/sloppymo/OnyxLabyrinth-formation-chemistry-implementation/docs/playtests/2026-08-15-formation-chemistry-phase8-traces.csv",
+  "traceCsv": "2026-08-15-formation-chemistry-phase8-traces.csv",
   "traceCount": 33040
 }
