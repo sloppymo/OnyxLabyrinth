@@ -7,7 +7,7 @@
  */
 
 import {
-  ENCOUNTER_TABLES,
+  ARENA_ENCOUNTER_TABLES,
   ENEMIES_BY_ID,
   type EncounterEntry,
   type Row,
@@ -26,6 +26,59 @@ export const ENCOUNTER_PITY_START = 20;
 
 /** Hard cap on dry spells — encounter on this step if still clear. */
 export const ENCOUNTER_PITY_FORCE = 28;
+
+/**
+ * The encounter clock is floor-local when a floor authors a pacing profile;
+ * otherwise it uses the long-standing global cooldown. Keeping this helper
+ * beside the roll math makes every reset path (new game, floor change, and
+ * return from town) use the same contract.
+ */
+export function encounterCooldownFor(
+  floor: Pick<FloorDef, "encounterPacing">
+): number {
+  return floor.encounterPacing?.cooldown ?? ENCOUNTER_COOLDOWN;
+}
+
+/** Session-only memory for random encounter families. Never put this in
+ * GameState: saves must not carry anti-repeat history across a load. */
+export interface EncounterFamilyMemory {
+  floorId: number;
+  recentFamilies: string[];
+}
+
+export function createEncounterFamilyMemory(floorId: number): EncounterFamilyMemory {
+  return { floorId, recentFamilies: [] };
+}
+
+/** Reset history explicitly, including when a fresh save is loaded on the
+ * same floor. */
+export function resetEncounterFamilyMemory(
+  memory: EncounterFamilyMemory,
+  floorId: number
+): void {
+  memory.floorId = floorId;
+  memory.recentFamilies.length = 0;
+}
+
+/** Floor changes also reset the family buffer. */
+export function syncEncounterFamilyMemory(
+  memory: EncounterFamilyMemory,
+  floorId: number
+): void {
+  if (memory.floorId !== floorId) resetEncounterFamilyMemory(memory, floorId);
+}
+
+/** Remember the newest random encounter family, newest first, with a
+ * three-family rolling window. */
+export function rememberEncounterFamily(
+  memory: EncounterFamilyMemory,
+  family: string,
+  floorId: number
+): void {
+  syncEncounterFamilyMemory(memory, floorId);
+  memory.recentFamilies.unshift(family);
+  memory.recentFamilies.length = Math.min(3, memory.recentFamilies.length);
+}
 
 /**
  * Chance (0..1) that a step triggers an encounter, given steps since the
@@ -155,7 +208,7 @@ function entryHasBoss(entry: EncounterEntry): boolean {
  * it never reaches outside the floor's curated roster.
  */
 function rowPoolForFloor(floor: number, row: Row): string[] {
-  const table = ENCOUNTER_TABLES[floor];
+  const table = ARENA_ENCOUNTER_TABLES[floor];
   if (!table) return [];
   const ids = new Set<string>();
   for (const entry of table) {
@@ -226,7 +279,7 @@ export function rollArenaEncounter(
   wave = 1,
   rng: () => number = getGameplayRng()
 ): EncounterEntry | null {
-  const table = ENCOUNTER_TABLES[floor];
+  const table = ARENA_ENCOUNTER_TABLES[floor];
   if (!table || table.length === 0) return null;
 
   const pool = table.filter((e) => !entryHasBoss(e));

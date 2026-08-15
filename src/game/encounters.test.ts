@@ -4,6 +4,11 @@ import {
   ENCOUNTER_PITY_FORCE,
   ENCOUNTER_PITY_START,
   encounterRollChance,
+  encounterCooldownFor,
+  createEncounterFamilyMemory,
+  rememberEncounterFamily,
+  resetEncounterFamilyMemory,
+  syncEncounterFamilyMemory,
   encounterRateAt,
   encounterTableFloorId,
   zoneHeatAt,
@@ -13,7 +18,12 @@ import {
   rollArenaEncounter,
   adjustArenaEncounterForSmallParty,
 } from "./encounters";
-import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
+import {
+  ARENA_ENCOUNTER_TABLES,
+  ENEMIES_BY_ID,
+  ENCOUNTER_TABLES,
+  weightedEncounterPick,
+} from "../data/enemies";
 import { getFloors } from "./floor-registry";
 
 describe("encounterRollChance", () => {
@@ -37,6 +47,43 @@ describe("encounterRollChance", () => {
   it("forces an encounter at pity force", () => {
     expect(encounterRollChance(0.08, ENCOUNTER_PITY_FORCE)).toBe(1);
     expect(encounterRollChance(0.08, ENCOUNTER_PITY_FORCE + 5)).toBe(1);
+  });
+});
+
+describe("Floor 1 encounter pacing and family memory", () => {
+  it("uses authored cooldowns and global fallback", () => {
+    expect(encounterCooldownFor({ encounterPacing: { cooldown: 14, pityStart: 34, pityForce: 52 } })).toBe(14);
+    expect(encounterCooldownFor({ encounterPacing: undefined })).toBe(ENCOUNTER_COOLDOWN);
+    expect(encounterRollChance(0.05, 13, { cooldown: 14, pityStart: 34, pityForce: 52 })).toBe(0);
+    expect(encounterRollChance(0.05, 14, { cooldown: 14, pityStart: 34, pityForce: 52 })).toBe(0.05);
+    expect(encounterRollChance(0.05, 52, { cooldown: 14, pityStart: 34, pityForce: 52 })).toBe(1);
+  });
+
+  it("keeps the newest three families and resets on floor changes or load", () => {
+    const memory = createEncounterFamilyMemory(1);
+    rememberEncounterFamily(memory, "a", 1);
+    rememberEncounterFamily(memory, "b", 1);
+    rememberEncounterFamily(memory, "c", 1);
+    rememberEncounterFamily(memory, "d", 1);
+    expect(memory.recentFamilies).toEqual(["d", "c", "b"]);
+
+    syncEncounterFamilyMemory(memory, 2);
+    expect(memory.recentFamilies).toEqual([]);
+    rememberEncounterFamily(memory, "floor-2", 2);
+    resetEncounterFamilyMemory(memory, 2);
+    expect(memory.recentFamilies).toEqual([]);
+  });
+
+  it("weights recent families at 0/.25/.5 and falls back deterministically", () => {
+    const entries = [
+      { id: "a", family: "a", weight: 1, spawns: [] },
+      { id: "b", family: "b", weight: 1, spawns: [] },
+      { id: "c", family: "c", weight: 1, spawns: [] },
+      { id: "d", family: "d", weight: 1, spawns: [] },
+    ];
+    expect(weightedEncounterPick(entries, ["a", "b", "c"], () => 0.5)?.id).toBe("d");
+    expect(weightedEncounterPick(entries, ["a", "b", "c"], () => 0.99)?.id).toBe("d");
+    expect(weightedEncounterPick([entries[0]!], ["a", "b", "c"], () => 0)?.id).toBe("a");
   });
 });
 
@@ -90,6 +137,18 @@ describe("rollArenaEncounter", () => {
     for (const floor of [1, 2, 3]) {
       expect(rollArenaEncounter(floor, 1, () => 0)).not.toBeNull();
     }
+  });
+
+  it("keeps the Floor 1 Arena roster separate from chemistry encounters", () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 500; i++) {
+      const entry = rollArenaEncounter(1, 5, () => 0.123)!;
+      for (const spawn of entry.spawns) seen.add(spawn.enemyId);
+    }
+    expect([...seen].every((id) =>
+      ["slime", "skeleton", "skeleton-archer", "acid-puddle", "red-skeleton"].includes(id)
+    )).toBe(true);
+    expect(ARENA_ENCOUNTER_TABLES[1]).not.toBe(ENCOUNTER_TABLES[1]);
   });
 
   it("mixes sprites beyond any single formation's fixed spawns", () => {

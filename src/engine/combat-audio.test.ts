@@ -101,6 +101,20 @@ describe("idsForEvent layering", () => {
     ).toEqual(["silence", "fizzle"]);
   });
 
+  it("maps dedicated chemistry phases without treating them as ordinary casts", () => {
+    const base = {
+      type: "chemistry" as const,
+      chemistryId: "chem-slime-cannon",
+      abilityId: "crypt-slime-cannon",
+      name: "Slime Cannon",
+      actorId: "m",
+      presentation: "throwAlly" as const,
+    };
+    expect(idsForEvent({ ...base, phase: "telegraph" }, bareState()).map((x) => x.id)).toEqual(["bossPhase"]);
+    expect(idsForEvent({ ...base, phase: "resolve" }, bareState()).map((x) => x.id)).toEqual(["statusPoison"]);
+    expect(idsForEvent({ ...base, phase: "break", reason: "resourceDead" }, bareState()).map((x) => x.id)).toEqual(["fizzle"]);
+  });
+
   it("undead defeat layers soft poison under enemyDefeated", () => {
     const ids = idsForEvent(
       { type: "defeated", targetId: "sk-0", wasEnemy: true },

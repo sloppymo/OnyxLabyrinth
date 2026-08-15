@@ -10,7 +10,11 @@ import { charRow } from "./party";
 import type { EnemySpecial } from "../data/enemies";
 import { ENEMIES_BY_ID } from "../data/enemies";
 import { spellByName } from "../data/spells";
-import type { EnemyAbilityDef, AbilityCondition } from "../data/enemy-abilities";
+import type {
+  EnemyAbilityDef,
+  AbilityCondition,
+  ChemistryResourceSelector,
+} from "../data/enemy-abilities";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import { perksForCharacter } from "./perks";
 import { effStatsFor, pickRandom, SUMMON_MELEE_SOAK_CHANCE } from "./combat-shared";
@@ -22,7 +26,17 @@ import type {
   EnemyInstance,
   Rng,
   SummonedAlly,
+  ChemistryWindUp,
 } from "./combat-types";
+import {
+  actorDisabled,
+  chemistryCapAvailable,
+  chemistryResourceCandidates,
+  guardForTarget,
+  markChemistryMetric,
+  reserveChemistryUse,
+  releaseChemistryReservation,
+} from "./combat-chemistry";
 
 /** Derive isCaster from special flags (EnemyDef has no isCaster field). */
 function isCasterEnemy(enemy: EnemyInstance): boolean {
@@ -55,6 +69,13 @@ function partyHasStatus(s: CombatState, status: string): boolean {
   return s.party.some((c) => c.hp > 0 && c.status.includes(status as StatusEffect));
 }
 
+function selectorHasLivingResource(
+  s: CombatState,
+  selector: ChemistryResourceSelector
+): boolean {
+  return chemistryResourceCandidates(s, selector).length > 0;
+}
+
 /** Evaluate an ability condition against the current combat state. */
 function abilityConditionMet(
   s: CombatState,
@@ -77,6 +98,7 @@ function abilityConditionMet(
       return livingAllyCount(s) < cond.count;
     case "partyHasStatus": return partyHasStatus(s, cond.status);
     case "partyMissingStatus": return !partyHasStatus(s, cond.status);
+    case "allyPresent": return selectorHasLivingResource(s, cond.resource);
     case "firstTurn": return !enemy.hasActed;
     case "notFirstTurn": return !!enemy.hasActed;
     default: return false;
@@ -87,7 +109,8 @@ function abilityConditionMet(
 function pickAbilityTargetId(
   s: CombatState,
   ability: EnemyAbilityDef,
-  rng: Rng
+  rng: Rng,
+  actor?: EnemyInstance
 ): string | null {
   const livingParty = s.party.filter((c) => c.hp > 0 && !c.status.includes("hidden"));
   const party = livingParty.length > 0 ? livingParty : s.party.filter((c) => c.hp > 0);
@@ -107,6 +130,21 @@ function pickAbilityTargetId(
       return t?.id ?? null;
     }
     case "singleAlly": {
+      if (ability.effect.kind === "guard" && ability.guardTargetIds) {
+        const candidates = livingAllies
+          .filter(
+            (ally) =>
+              ability.guardTargetIds!.includes(ally.id) &&
+              ally.instanceId !== actor?.instanceId &&
+              !guardForTarget(s, ally.instanceId)
+          )
+          .sort(
+            (a, b) =>
+              a.currentHp / a.hp - b.currentHp / b.hp ||
+              a.instanceId.localeCompare(b.instanceId)
+          );
+        return candidates[0]?.instanceId ?? null;
+      }
       const wounded = livingAllies.filter((e) => e.currentHp < e.hp);
       const t = wounded.length > 0 ? wounded.sort((a, b) => a.currentHp - b.currentHp)[0] : pickRandom(livingAllies, rng);
       return t?.instanceId ?? null;
@@ -115,6 +153,13 @@ function pickAbilityTargetId(
     case "allParty":
     case "groupAlly":
     case "allAlly":
+      if (
+        ability.effect.kind === "consumeAlly" &&
+        ability.effect.payoff.kind === "damage" &&
+        ability.effect.payoff.target !== "singleParty"
+      ) {
+        return null;
+      }
       return party[0]?.id ?? null;
     default:
       return null;
@@ -137,15 +182,30 @@ function pickEnemyAbility(
     const ab = enemyAbilityById(id);
     if (!ab) continue;
     if ((cooldowns[id] ?? 0) > 0) continue;
+    if (ab.chemistryId && !s.chemistryEnabled) continue;
+    if (ab.chemistryId && !chemistryCapAvailable(s, enemy.instanceId, ab)) continue;
+    if (ab.maxUses !== undefined && (enemy.abilityUseCounts?.[ab.id] ?? 0) >= ab.maxUses) continue;
     if (!abilityConditionMet(s, enemy, ab.condition)) continue;
     // Don't pick a summon into a row that's already at the visual slot
     // cap (combat-scene-math ENEMY_*_SLOTS length 3). The resolve path
     // hard-caps too; skipping here avoids wasting the turn on a no-op.
     if (ab.effect.kind === "summon") {
+      if ((s.enemySummonsCreated ?? 0) >= 4) continue;
       const def = ENEMIES_BY_ID[ab.effect.enemyId];
       const row = def?.rowPreference === "back" ? "back" : "front";
-      if (s.enemies[row].length >= 3) continue;
+      if (s.enemies[row].filter((candidate) => candidate.currentHp > 0).length >= 3) continue;
     }
+    if (ab.effect.kind === "consumeAlly") {
+      if (chemistryResourceCandidates(s, ab.effect.resource).length === 0) continue;
+    }
+    if (ab.effect.kind === "packStrike") {
+      const partner = chemistryResourceCandidates(s, { enemyIds: ab.effect.partnerIds });
+      if (partner.length === 0) continue;
+      const candidate = partner[0];
+      if (actorDisabled(candidate) || s.enemyActedThisRound?.includes(candidate.instanceId)) continue;
+    }
+    if (ab.effect.kind === "guard" && !pickAbilityTargetId(s, ab, rng, enemy)) continue;
+    if (ab.chemistryId) markChemistryMetric(s, "eligible", ab.chemistryId);
     valid.push({ ability: ab, weight: ab.weight });
   }
   if (valid.length === 0) return null;
@@ -154,12 +214,13 @@ function pickEnemyAbility(
   for (const v of valid) {
     roll -= v.weight;
     if (roll <= 0) {
-      const targetId = pickAbilityTargetId(s, v.ability, rng);
+      const targetId = pickAbilityTargetId(s, v.ability, rng, enemy);
+      if (v.ability.effect.kind === "guard" && !targetId) continue;
       return { ability: v.ability, targetId };
     }
   }
   const fallback = valid[0];
-  return { ability: fallback.ability, targetId: pickAbilityTargetId(s, fallback.ability, rng) };
+  return { ability: fallback.ability, targetId: pickAbilityTargetId(s, fallback.ability, rng, enemy) };
 }
 
 export function buildEnemyActions(
@@ -199,14 +260,44 @@ export function decideEnemyAction(
   const livingParty = s.party.filter((c) => c.hp > 0);
   if (livingParty.length === 0) return { kind: "doNothing", actor: enemy };
 
+  // A committed pack partner loses its ordinary action for this round. If
+  // the partner already acted before the leader, resolution will instead
+  // break the leader's exact commitment with no retarget.
+  const partnerReservation = Object.values(s.chemistryReservations ?? {}).find(
+    (reservation) => reservation.partnerId === enemy.instanceId && reservation.actorId !== enemy.instanceId
+  );
+  if (partnerReservation) return { kind: "doNothing", actor: enemy };
+
   if (enemy.status.includes("sleep") || enemy.status.includes("paralysis")) {
     // Disable = interrupt: an incapacitated enemy loses its wind-up.
     const broken = s.windUps[enemy.instanceId];
     if (broken) {
       delete s.windUps[enemy.instanceId];
-      emit(`${enemy.name}'s ${broken.name} is broken!`, {
-        type: "telegraphBreak", actorId: enemy.instanceId, abilityId: broken.abilityId,
-      });
+      if ("chemistryId" in broken && broken.chemistryId) {
+        markChemistryMetric(s, "broken", broken.chemistryId);
+        releaseChemistryReservation(s, enemy.instanceId);
+        const brokenAbility = enemyAbilityById(broken.abilityId);
+        emit(`${enemy.name}'s ${broken.name} is broken!`, {
+          type: "chemistry",
+          chemistryId: broken.chemistryId,
+          abilityId: broken.abilityId,
+          name: broken.name,
+          phase: "break",
+          actorId: enemy.instanceId,
+          targetId: broken.targetId,
+          resourceId: broken.resourceId,
+          partnerId: broken.partnerId,
+          reason: "actorDisabled",
+          presentation:
+            brokenAbility?.presentation === "meleeGangUp"
+              ? undefined
+              : brokenAbility?.presentation,
+        });
+      } else {
+        emit(`${enemy.name}'s ${broken.name} is broken!`, {
+          type: "telegraphBreak", actorId: enemy.instanceId, abilityId: broken.abilityId,
+        });
+      }
     }
     return { kind: "doNothing", actor: enemy };
   }
@@ -219,11 +310,22 @@ export function decideEnemyAction(
       delete s.windUps[enemy.instanceId];
       return { kind: "doNothing", actor: enemy };
     }
+    if ("chemistryId" in windUp && windUp.chemistryId) {
+      return {
+        kind: "ability",
+        actor: enemy,
+        abilityId: ability.id,
+        targetId: windUp.targetId ?? "",
+        resourceId: windUp.resourceId,
+        partnerId: windUp.partnerId,
+        chemistryId: windUp.chemistryId,
+      };
+    }
     return {
       kind: "ability",
       actor: enemy,
       abilityId: ability.id,
-      targetId: pickAbilityTargetId(s, ability, rng) ?? "",
+      targetId: windUp.targetId ?? pickAbilityTargetId(s, ability, rng, enemy) ?? "",
     };
   }
 
@@ -255,19 +357,83 @@ export function decideEnemyAction(
   const abilityPick = pickEnemyAbility(s, enemy, rng);
   if (abilityPick) {
     // Weighted mix with basic attacks so scaled melee stays threatening.
-    const useAbility = rng() < abilityPick.ability.weight / (abilityPick.ability.weight + 2);
+    const useAbility = abilityPick.ability.chemistryId
+      ? rng() < (abilityPick.ability.chemistryChance ?? 1)
+      : rng() < abilityPick.ability.weight / (abilityPick.ability.weight + 2);
     if (useAbility) {
+      const chemistry = abilityPick.ability.chemistryId;
+      let resourceId: string | undefined;
+      let partnerId: string | undefined;
+      if (chemistry) {
+        if (abilityPick.ability.effect.kind === "consumeAlly") {
+          resourceId = chemistryResourceCandidates(s, abilityPick.ability.effect.resource)[0]?.instanceId;
+          if (!resourceId) return fallbackEnemyAction(s, enemy, rng);
+        } else if (abilityPick.ability.effect.kind === "packStrike") {
+          const partner = chemistryResourceCandidates(s, { enemyIds: abilityPick.ability.effect.partnerIds })[0];
+          if (!partner || actorDisabled(partner) || s.enemyActedThisRound?.includes(partner.instanceId)) {
+            return fallbackEnemyAction(s, enemy, rng);
+          }
+          partnerId = partner.instanceId;
+        }
+        const reservation = reserveChemistryUse(
+          s,
+          enemy,
+          abilityPick.ability,
+          abilityPick.targetId,
+          resourceId,
+          partnerId
+        );
+        if (!reservation) return fallbackEnemyAction(s, enemy, rng);
+        if (abilityPick.ability.cooldown && abilityPick.ability.cooldown > 0) {
+          if (!enemy.abilityCooldowns) enemy.abilityCooldowns = {};
+          enemy.abilityCooldowns[abilityPick.ability.id] = abilityPick.ability.cooldown;
+        }
+        if (partnerId) {
+          if (!s.enemyActedThisRound) s.enemyActedThisRound = [];
+          // Reservation is checked again at resolution so an earlier partner
+          // turn in the round-based initiative can break without retargeting.
+          if (!s.chemistryReservations) s.chemistryReservations = {};
+        }
+      }
       // Wind-up abilities telegraph instead of resolving: the party gets a
       // full round to answer (disable, Defend, blind, or kill).
       if (abilityPick.ability.windUp) {
-        s.windUps[enemy.instanceId] = {
-          abilityId: abilityPick.ability.id,
-          name: abilityPick.ability.name,
-          targetId: abilityPick.targetId,
-        };
-        emit(`${enemy.name} begins charging ${abilityPick.ability.name}!`, {
-          type: "telegraph", actorId: enemy.instanceId, abilityId: abilityPick.ability.id,
-        });
+        if (chemistry) {
+          const windUp: ChemistryWindUp = {
+            abilityId: abilityPick.ability.id,
+            name: abilityPick.ability.name,
+            targetId: abilityPick.targetId,
+            resourceId,
+            partnerId,
+            chemistryId: chemistry,
+            useReserved: true,
+          };
+          s.windUps[enemy.instanceId] = windUp;
+          markChemistryMetric(s, "telegraphed", chemistry);
+          emit(`${enemy.name} begins charging ${abilityPick.ability.name}!`, {
+            type: "chemistry",
+            chemistryId: chemistry,
+            abilityId: abilityPick.ability.id,
+            name: abilityPick.ability.name,
+            phase: "telegraph",
+            actorId: enemy.instanceId,
+            targetId: abilityPick.targetId,
+            resourceId,
+            partnerId,
+            presentation: abilityPick.ability.presentation === "meleeGangUp"
+              ? undefined
+              : abilityPick.ability.presentation,
+          });
+        } else {
+          s.windUps[enemy.instanceId] = {
+            abilityId: abilityPick.ability.id,
+            name: abilityPick.ability.name,
+            targetId: abilityPick.targetId,
+          };
+          emit(`${enemy.name} begins charging ${abilityPick.ability.name}!`, {
+            type: "telegraph", actorId: enemy.instanceId, abilityId: abilityPick.ability.id,
+          });
+        }
         return { kind: "doNothing", actor: enemy };
       }
       return {
@@ -275,6 +441,9 @@ export function decideEnemyAction(
         actor: enemy,
         abilityId: abilityPick.ability.id,
         targetId: abilityPick.targetId ?? "",
+        resourceId,
+        partnerId,
+        chemistryId: chemistry,
       };
     }
   }
@@ -328,6 +497,13 @@ export function decideEnemyAction(
   const target = pickMeleeTarget(s.party, s.summonedAllies, rng, s.tauntingIds);
   if (target) return { kind: "attack", actor: enemy, target };
   return { kind: "doNothing", actor: enemy };
+}
+
+function fallbackEnemyAction(s: CombatState, enemy: EnemyInstance, rng: Rng): EnemyAction {
+  const target = pickMeleeTarget(s.party, s.summonedAllies, rng, s.tauntingIds);
+  return target
+    ? { kind: "attack", actor: enemy, target }
+    : { kind: "doNothing", actor: enemy };
 }
 
 /**

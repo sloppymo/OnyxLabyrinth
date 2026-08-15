@@ -59,6 +59,13 @@ export interface EncounterZoneDef {
   safeZone?: boolean;
 }
 
+/** Optional within-floor encounter pacing override. */
+export interface EncounterPacing {
+  cooldown: number;
+  pityStart: number;
+  pityForce: number;
+}
+
 /** Rectangular corridor-material override. Later overlapping zones win. */
 export interface TilesetZoneDef {
   id: string;
@@ -135,10 +142,12 @@ export interface FloorDef {
   grid: Grid;
   startX: number;
   startY: number;
-  // Base encounter rate per step after the 8-step cooldown
-  // (~8% / ~10% / ~12% on floors 1–3). Soft pity in game/encounters.ts
-  // caps dry spells without changing combat math.
+  // Base encounter rate per step after the global cooldown, unless this floor
+  // authors an encounterPacing override below. Soft pity in
+  // game/encounters.ts caps dry spells without changing combat math.
   encounterRate: number;
+  /** Optional local pacing; global encounter constants remain the fallback. */
+  encounterPacing?: EncounterPacing;
   /**
    * Texture theme folder under `public/assets/tilesets/<theme>/`
    * (wall.png, floorA.png, floorB.png, ceiling.png). Defaults to `f{id}`.
@@ -899,6 +908,7 @@ export function cloneFloor(floor: FloorDef): FloorDef {
     startX: floor.startX,
     startY: floor.startY,
     encounterRate: floor.encounterRate,
+    encounterPacing: floor.encounterPacing ? { ...floor.encounterPacing } : undefined,
     tilesetTheme: floor.tilesetTheme,
     tilesetZones: floor.tilesetZones
       ? floor.tilesetZones.map((z) => ({ ...z }))

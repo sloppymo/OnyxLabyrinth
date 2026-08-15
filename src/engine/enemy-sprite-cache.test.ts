@@ -44,4 +44,12 @@ describe("enemy-sprite-cache", () => {
     await loadEnemySprites();
     expect(getEnemySprite("unknown-id")).toBeUndefined();
   });
+
+  it("resolves an explicit authored sprite alias", async () => {
+    const { enemySpriteId } = await import("./enemy-sprite-cache");
+    expect(enemySpriteId({ id: "crypt-ogre", spriteId: "big-titty-ogre" })).toBe(
+      "big-titty-ogre"
+    );
+    expect(enemySpriteId({ id: "slime" })).toBe("slime");
+  });
 });

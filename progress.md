@@ -988,3 +988,219 @@ visual-pass notes below; this section tracks the current task only.
 - Real-browser pass covered the actual Floor 1 spawn and Gate approach, Index ramp `(10,18) w` in both directions, both Ember ramps `(13,4) e` / `(13,10) e` as a loop, rapid/slow ramp traversal, all 12 newly sealed boundaries, and the Stitchworks catwalk overlook.
 - The only genuine regression was the catwalk view: the lower barred gate read as an unexplained full wall. WebGL now renders a low parapet above that gate while retaining the sealed grid boundary and blocked traversal; the post-fix screenshot shows the lower metal gate distinctly below the catwalk.
 - Canvas fallback smoke still renders the architectural scene without disappearing. Browser warnings/errors remained empty, and `npm run check` passed: 116 files / 2,245 tests, app/tools typecheck, build, floor validation, and export parity. Existing Namanda content warnings remain unchanged.
+
+## 2026-08-15 — Formation chemistry implementation baseline
+
+- Created isolated worktree `/home/sloppymo/OnyxLabyrinth-formation-chemistry-implementation`
+  on branch `feat/formation-chemistry` from baseline
+  `11573958c9a69875317ef952f660ee01dc707420`.
+- Phase 0 verification passed after installing dependencies from the lockfile:
+  `npm run check` completed app/tools typechecks, Vite build, 120 Vitest files / 2,350
+  tests, floor validation, and floor export parity. The only reported floor issues are
+  the existing Namanda warnings.
+- No formation data or production formation logic has been added. The authoritative
+  synthesis remains pinned to commit `64a4cc50c723bb4b1dd3466ff3659b4b55ffd321`; the
+  implementation handoff corrections treat passive resource disability as non-filtering
+  and use the relief-encounter percentages as investigation heuristics only.
+
+## Phase 1 — Formation metadata and type substrate
+
+- Added narrow authored `ChemistryResourceGroup` membership, explicit enemy
+  sprite alias resolution, stable encounter `id`/`family` metadata, and optional
+  display names.
+- Added chemistry selector/payoff/effect metadata, cooldown/use-cap fields,
+  exact committed wind-up/action identity fields, dedicated chemistry event and
+  telemetry types, and runtime enemy provenance fields for spawn/reward/removal.
+- Added optional floor-local encounter pacing to `FloorDef` and the portable
+  floor-map parser/round-trip path. No pacing behavior is active yet.
+- Both combat painters now resolve `EnemyDef.spriteId` through the shared cache
+  helper, preserving existing IDs and fallback behavior.
+- Verification: targeted metadata/floor/cache tests passed (65 tests); full
+  `npm run check` passed (120 files / 2,353 tests). Existing Namanda validation
+  warnings are unchanged.
+
+## Phase 2 — Resource chemistry and economy
+
+- Implemented the shared `consumeAlly` substrate with exact authored group or
+  ID selectors, oldest `spawnSerial` ordering, reservation, finite use caps,
+  cooldown commitment, exact wind-up/action IDs, and no retargeting.
+- Passive resource sleep/paralysis/disabled status does not disqualify a body;
+  committed actors and active partners still break when dead or disabled.
+- Consumption marks `removalCause: "consumed"` before the shared death sweep,
+  suppresses the consumed body's later action, preserves ordinary rewards for
+  original encounter enemies, and grants zero rewards to summoned bodies.
+- Added fight-wide four-enemy summon budget, live three-per-row enforcement,
+  per-ability max-use tracking, spawn provenance, and next-round enemy summon
+  timing in both round-based and per-turn flows.
+- Added the first inert S-tier ability definition (`crypt-slime-cannon`) so the
+  primitive is exercised before the Floor 1 roster is activated.
+- Verification: formation substrate tests cover exact gating, future untagged
+  enemies, deterministic ordering, duplicate reservation, committed resource /
+  actor / target death, interruption, caps/cooldowns, rewards, summon budget,
+  and both combat APIs. Full `npm run check` passed (121 files / 2,363 tests).
+- Post-gate contract correction: aligned the closed payoff union, exact
+  `resource`/`partnerIds`/presentation fields, explicit Living Shield target
+  metadata, and the authored .70/.65/.75 chemistry chances with the pinned
+  synthesis. The corrective full gate also passed (121 files / 2,363 tests);
+  no renderer or campaign roster behavior changed.
+
+## Phase 3 — Chemistry events and first presentations
+
+- Added a dedicated `chemistry` event lifecycle with explicit telegraph,
+  resolve, consume, and break phases. Resolution now emits resolve before the
+  exact resource is marked consumed; ordinary cast events carry only the
+  per-target damage/heal payload and no longer create duplicate chemistry
+  banners.
+- Added one shared choreography path for Canvas and Phaser: Slime Cannon
+  resource pull/arc/impact/removal, Bone Harvest restorative burst, Spawn Bomb
+  party flash, and Combo Break. Chemistry effect ids are collected by the same
+  asset validation path as ordinary combat effects.
+- Added chemistry phase audio routing and fixed actor-disable wind-up cleanup
+  so chemistry reservations are released when a committed actor is interrupted.
+- Verification: chemistry choreography/audio/event tests passed; full
+  `npm run check` passed (121 files / 2,367 tests), including app/tools
+  TypeScript, Vite build, floor validation, and export parity. Browser visual
+  forcing is deferred to the deterministic roster/scenario phase because the
+  Phase 3 substrate has no active Crypt encounter roster yet.
+
+## Phase 4 — Bounded guard/interception
+
+- Added the separate `guard` token primitive with exact authored target IDs,
+  two-round expiry, one-token consumption, non-stacking/self-guard rejection,
+  and immediate invalidation when a guarder or target dies or is disabled.
+- Routed the same guard lookup through attacks, ambushes, single-target damage
+  spells, single-target techniques (including whole-action multi-hit redirect),
+  previews, target-menu formatting, and the shared Canvas/Phaser choreography.
+  Area and status-only actions bypass it; the intended target remains selected
+  and the event carries the exact guarder/target IDs.
+- Added the Living Shield ability metadata with explicit `crypt-warlock` /
+  `crypt-demon-mage` target IDs, five-round cooldown, one-use cap, and .90
+  chemistry chance. No campaign roster was activated in this phase.
+- Verification: guard primitive tests cover round/per-turn setup, attack,
+  spell, ambush, technique, multi-hit, bypasses, previews, expiry, death,
+  disable, and recursion/stack rejection. Full `npm run check` passed:
+  122 files / 2,376 tests, app/tools typechecks, Vite build, floor validation,
+  and export parity. Existing Namanda validation warnings remain unchanged.
+
+## Phase 5 — Partner and charged signatures
+
+- Added `packStrike` with an exact committed partner and target, per-round
+  partner-action reservation, no retargeting, and Combo Break on invalid actor,
+  partner, or target. Hunting Pack resolves two fixed-power physical hits while
+  both original enemy bodies remain alive and visible.
+- Added Rune Overload on the existing `consumeAlly` substrate. It commits the
+  exact conductive construct, leaves that battery alive and killable during the
+  charge, consumes it after the delayed enemy turn, and discharges lightning to
+  the full party without inventing a party target ID.
+- Added shared pack convergence/recoil and Rune tether/charge/collapse/field
+  choreography for Canvas and Phaser, plus a playback-duration fix so bespoke
+  return steps cannot be clipped by the logical event cursor.
+- Verification: targeted Pack/Rune and choreography tests passed (74 tests);
+  full `npm run check` passed (123 files / 2,385 tests), including app/tools
+  typechecks, Vite build, floor validation, and export parity. Existing Namanda
+  validation warnings remain unchanged.
+
+## Phase 6 — Floor 1 variants and first-test roster
+
+- Added the exact 17 explicit low-power Crypt EnemyDefs referenced by the
+  authoritative Floor 1 roster, each with a player-facing name, explicit
+  reward/kit, and verified `spriteId` alias. Floors 2–5 native EnemyDefs and
+  tables were not altered.
+- Replaced the old Floor 1 encounter table with the specified 18 entries and
+  pre-gate weights totaling 33, including the experimental
+  `f1-slime-cluster` and `f1-bone-archer-line` relief encounters. Their later
+  retention will be judged by trace/manual evidence; no arbitrary percentage
+  gate was added.
+- Added exact-Skeleton `ogre-toss` and a Crypt-specific capped Spawn summon so
+  the F1 roster uses the intended low-power Crypt body without changing the
+  existing later-floor `summon-imp` behavior. Random Floor 1 encounters now
+  carry id/family/display metadata and explicitly enable chemistry; scripted,
+  Arena, NPC, and non-F1 creation paths remain opt-out.
+- Repository evidence required one focused test-contract update: the old
+  generic weighted-pack minimum of 3 conflicts with the authoritative F1 table,
+  whose measured value is exactly `82 / 33 = 2.4848` due to intentional
+  two-body/solo relief and signature entries. The test now asserts that exact
+  F1 value while preserving the existing Floors 2–5 minima.
+- Verification: roster/data, alias, Ogre Toss, and encounter-metadata tests
+  passed; full `npm run check` passed (123 files / 2,391 tests), including
+  app/tools typechecks, Vite build, floor validation, and export parity.
+
+## Phase 7 — Floor 1 pacing, family anti-repeat, and telemetry
+
+- Applied the Floor 1-only encounter profile: rate `.05`, cooldown `14`, pity
+  start `34`, and forced cap `52`. The exact discrete distribution measures
+  mean gap `27.6911`, median `27`, p90 `40`, and hard maximum `52`; floors 2–5
+  retain the global fallback profile.
+- Added a module-local, session-only three-family buffer. Random dungeon rolls
+  weight the newest family `0`, the second-newest `.25`, the third-newest `.5`,
+  and older families `1`; if all candidates are excluded, authored weights
+  provide a deterministic fallback. Floor changes and explicit fresh loads
+  reset it, and forced/scripted, Arena, NPC, and safe-zone paths do not use it.
+- Separated chemistry telemetry lifecycle metrics: enabled encounters record
+  chemistry presence at formation creation, while eligibility is counted only
+  after authored conditions, exact resources/partners, caps, cooldowns, and
+  guard targets are valid; telegraph, attempt, resolve, and break remain
+  distinct. Anti-repeat history is not serialized.
+- Regenerated the tracked Floor 1 JSON/TXT exports after the pacing change.
+- Verification: focused pacing/family/chemistry tests passed (114 tests); full
+  `npm run check` passed (123 files / 2,395 tests), including app/tools
+  typechecks, Vite build, floor validation, and export parity. Existing
+  Namanda validation warnings remain unchanged.
+
+## Phase 8 — Balance, relief audit, and browser acceptance
+
+- Added the final F1 relief decision from evidence rather than arbitrary
+  percentage gates. `f1-slime-cluster` was removed because 100-seed default,
+  focused, and AoE traces produced no Split or meaningful kill-order decision;
+  `f1-bone-archer-line` was removed because Archer pressure did not resolve
+  before Archer death and Skeletons did not create a durable Archer-versus-line
+  decision. Their six weight points were redistributed among surviving F1
+  entries; no filler replacement was added.
+- Fixed the authored F1 Hunting Pack initiative ordering after browser and
+  simulation evidence showed the Werewolf acting before the leader, making the
+  exact partner reservation ineligible. `crypt-hellhound` now acts before
+  `crypt-werewolf`, with a data regression test.
+- Added stale-queue and party-wipe reconciliation: actor death closes its
+  exact chemistry wind-up once, and a party wipe closes any still-committed
+  queued chemistry use without retargeting. Added tests for both paths.
+- Added `scripts/playtests/formation-chemistry-phase8.ts` and regenerated
+  `docs/playtests/2026-08-15-formation-chemistry-phase8.{json,md}`. The final
+  N=100 run covers 21,600 matrix/lab fights and 1,200 ten-fight expeditions.
+  F1 normal gaps are mean `27.6911`, median `27`, p90 `40`, max `52`.
+  Across the active matrix, each chemistry id reconciles attempted uses as
+  resolved plus broken: Slime Cannon `886 = 1 + 885`, Ogre Toss
+  `902 = 343 + 559`, Living Shield `2,332 = 1,885 + 447`, Hunting Pack
+  `821 = 3 + 818`, Spawn Bomb `1,758 = 1,054 + 704`, and Rune Overload
+  `605 = 1 + 604`.
+- Ten-fight expedition results are recorded in the report. Normal-route
+  chemistry-aware runs completed ten fights `71/100` versus `56/100` for the
+  no-chemistry control; quiet `69/100` versus `61/100`; dead `67/100` versus
+  `68/100`; hot `71/100` versus `62/100`. The harness starts at level 1 with
+  three potions and no intervening healing, so the remaining wipe/pressure
+  signal is an explicit balance risk rather than a hidden acceptance claim.
+- Browser acceptance used the production preview and Playwright in both
+  Canvas (`?phaser=0`) and Phaser backends. Inspected all five S-tier scenes:
+  Slime Cannon, Hunting Pack, Spawn Bomb, Living Shield marker/direct
+  intercept/AoE bypass, and Rune Overload. Also inspected Bone Harvest, Ogre
+  Toss, Pack Leap, and Combo Break. Screenshots are in
+  `output/playwright/formation-chemistry-{canvas,phaser}/`; Canvas and Phaser
+  console checks reported zero errors.
+- Final verification: `npm run check` passed with 123 test files and 2,397
+  tests; floor validation/export parity passed with only the existing Namanda
+  warnings. No experimental branch was cherry-picked and nothing was pushed.
+
+## Adversarial final audit — 2026-08-15
+
+- Re-ran the lab after correcting its seed path: party stat rolls, combat RNG,
+  and bark RNG are now paired and reproducible. The final N=100 artifact covers
+  21,600 matrix/relief fights, 1,200 expeditions, and 33,040 per-fight CSV
+  traces. Balanced aware play completed ten fights more often than default or
+  no-chemistry control on every route, but Guarded Bomb remains a difficulty
+  spike and several resource signatures are usually countered before payoff.
+- Fixed four audit defects: duplicate/stale chemistry reservations, missing
+  AoE guard-bypass telemetry, Arena inheriting the random F1 chemistry roster,
+  and the debug fixture helper ignoring explicit combat states. Softened the
+  F1 Forge variants after the first lab showed magic-heavy naive wipes.
+- Final verdict is `PASS WITH TUNING`: contract tests and shared Canvas/Phaser
+  presentation pass; organic signature frequency, Guarded Bomb attrition, and
+  5th/10th/20th exposure fatigue remain human-playtest questions.

@@ -16,6 +16,13 @@ import { getGameplayRng } from "../game/rng";
 
 export type Row = "front" | "back";
 
+/** Narrow, authored resource groups used by formation chemistry. */
+export type ChemistryResourceGroup =
+  | "throwable-slime"
+  | "harvestable-bone"
+  | "volatile-spawn"
+  | "conductive-construct";
+
 export type EnemySpecial =
   | { kind: "flying" }
   | { kind: "resistPhysical"; percent: number }
@@ -33,6 +40,8 @@ export type EnemySpecial =
 export interface EnemyDef {
   id: string;
   name: string;
+  /** Explicit sprite-manifest key when this enemy borrows another strip. */
+  spriteId?: string;
   floors: number[];
   rowPreference: Row | "any";
   hp: number;
@@ -43,6 +52,11 @@ export interface EnemyDef {
   gold: number; // gold dropped on defeat
   special: EnemySpecial[];
   isBoss: boolean;
+  /**
+   * Narrow, authored chemistry membership. Broad bestiary traits never infer
+   * membership here; an enemy is a resource only when this field is authored.
+   */
+  chemistryGroups?: readonly ChemistryResourceGroup[];
   /** Enemy-only ability IDs from data/enemy-abilities.ts. */
   abilityIds?: string[];
   /** Existing spell IDs from data/spells.ts that this enemy can cast. */
@@ -61,6 +75,12 @@ export interface EnemySpawn {
 }
 
 export interface EncounterEntry {
+  /** Stable authored encounter identity. */
+  id: string;
+  /** Authored family used by the session-only anti-repeat buffer. */
+  family: string;
+  /** Optional display name for telemetry/debug/UI surfaces. */
+  displayName?: string;
   weight: number;
   spawns: EnemySpawn[];
 }
@@ -97,6 +117,7 @@ export const SLIME: EnemyDef = {
     { kind: "weakElement", element: "earth" },
   ],
   abilityIds: ["acid-spit", "split"],
+  chemistryGroups: ["throwable-slime"],
   isBoss: false,
 };
 
@@ -113,6 +134,7 @@ export const SKELETON: EnemyDef = {
   gold: 3,
   special: [{ kind: "undead" }],
   abilityIds: ["bone-shard", "rattle"],
+  chemistryGroups: ["harvestable-bone"],
   isBoss: false,
 };
 
@@ -129,6 +151,355 @@ export const RED_SKELETON: EnemyDef = {
   gold: 200,
   special: [{ kind: "undead" }],
   abilityIds: ["bone-shard", "rattle"],
+  chemistryGroups: ["harvestable-bone"],
+  isBoss: false,
+};
+
+// Floor 1 showcase variants. These are explicit low-power Crypt identities,
+// not a general spawn-scale mechanism: each owns its name, kit, reward, and
+// any chemistry contract while borrowing a verified existing sprite strip.
+export const CRYPT_ORC: EnemyDef = {
+  id: "crypt-orc",
+  name: "Crypt Orc",
+  spriteId: "orc",
+  floors: [1],
+  rowPreference: "front",
+  hp: 24,
+  attack: 7,
+  ac: 3,
+  agi: 8,
+  xp: 18,
+  gold: 12,
+  special: [{ kind: "poisonOnHit" }, { kind: "weakElement", element: "wind" }],
+  abilityIds: ["war-cry", "savage-lunge", "pack-leap"],
+  isBoss: false,
+};
+
+export const CRYPT_MINOTAUR: EnemyDef = {
+  id: "crypt-minotaur",
+  name: "Crypt Minotaur",
+  spriteId: "minotaur",
+  floors: [1],
+  rowPreference: "front",
+  hp: 34,
+  attack: 10,
+  ac: 5,
+  agi: 7,
+  xp: 24,
+  gold: 16,
+  special: [{ kind: "weakElement", element: "wind" }],
+  abilityIds: ["crypt-slime-cannon", "charge"],
+  isBoss: false,
+};
+
+export const CRYPT_HILL_OGRE: EnemyDef = {
+  id: "crypt-hill-ogre",
+  name: "Crypt Hill Ogre",
+  spriteId: "big-titty-ogre",
+  floors: [1],
+  rowPreference: "front",
+  hp: 38,
+  attack: 11,
+  ac: 6,
+  agi: 4,
+  xp: 28,
+  gold: 20,
+  special: [{ kind: "weakElement", element: "wind" }],
+  abilityIds: ["ogre-toss", "stone-slam"],
+  isBoss: false,
+};
+
+export const CRYPT_WARLOCK: EnemyDef = {
+  id: "crypt-warlock",
+  name: "Crypt Warlock",
+  spriteId: "warlock",
+  floors: [1],
+  rowPreference: "back",
+  hp: 24,
+  attack: 5,
+  ac: 3,
+  agi: 12,
+  xp: 24,
+  gold: 20,
+  special: [
+    { kind: "caster", element: "fire" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  abilityIds: ["crypt-bone-harvest", "hellfire", "chaos-bolt"],
+  isBoss: false,
+};
+
+export const CRYPT_ANIMATED_ARMOR: EnemyDef = {
+  id: "crypt-animated-armor",
+  name: "Crypt Animated Armor",
+  spriteId: "animated-armor",
+  floors: [1],
+  rowPreference: "front",
+  hp: 36,
+  attack: 9,
+  ac: 10,
+  agi: 5,
+  xp: 26,
+  gold: 18,
+  special: [
+    { kind: "highDefense" },
+    { kind: "weakElement", element: "wind" },
+    { kind: "resistElement", element: "earth" },
+  ],
+  abilityIds: ["crypt-living-shield", "shield-bash"],
+  isBoss: false,
+};
+
+export const CRYPT_HELLHOUND: EnemyDef = {
+  id: "crypt-hellhound",
+  name: "Crypt Hellhound",
+  spriteId: "hellhound",
+  floors: [1],
+  rowPreference: "front",
+  hp: 26,
+  attack: 8,
+  ac: 4,
+  // The pack leader must be able to act before its faster-looking partner;
+  // otherwise the exact partner reservation is ineligible every round.
+  agi: 18,
+  xp: 24,
+  gold: 18,
+  special: [
+    { kind: "demon" },
+    { kind: "evasive" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  abilityIds: ["crypt-pack-hunt", "hunting-pounce"],
+  isBoss: false,
+};
+
+export const CRYPT_WEREWOLF: EnemyDef = {
+  id: "crypt-werewolf",
+  name: "Crypt Werewolf",
+  spriteId: "werewolf",
+  floors: [1],
+  rowPreference: "back",
+  hp: 23,
+  attack: 7,
+  ac: 3,
+  agi: 17,
+  xp: 22,
+  gold: 16,
+  special: [{ kind: "evasive" }],
+  abilityIds: ["hunting-pounce", "rending-claw"],
+  isBoss: false,
+};
+
+export const CRYPT_DEMON_SPAWN: EnemyDef = {
+  id: "crypt-demon-spawn",
+  name: "Crypt Demon Spawn",
+  spriteId: "demon-spawn",
+  floors: [1],
+  rowPreference: "front",
+  hp: 18,
+  attack: 6,
+  ac: 2,
+  agi: 11,
+  xp: 13,
+  gold: 10,
+  special: [
+    { kind: "demon" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  abilityIds: ["hunting-pounce", "rending-claw"],
+  chemistryGroups: ["volatile-spawn"],
+  isBoss: false,
+};
+
+export const CRYPT_DEMON_MAGE: EnemyDef = {
+  id: "crypt-demon-mage",
+  name: "Crypt Demon Mage",
+  spriteId: "demon-mage",
+  floors: [1],
+  rowPreference: "back",
+  hp: 25,
+  attack: 5,
+  ac: 3,
+  agi: 11,
+  xp: 24,
+  gold: 20,
+  special: [
+    { kind: "demon" },
+    { kind: "caster", element: "fire" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  abilityIds: ["crypt-spawn-bomb", "crypt-summon-spawn", "hellfire"],
+  isBoss: false,
+};
+
+export const CRYPT_LESSER_CONSTRUCT: EnemyDef = {
+  id: "crypt-lesser-construct",
+  name: "Crypt Lesser Construct",
+  spriteId: "lesser-construct",
+  floors: [1],
+  rowPreference: "front",
+  hp: 24,
+  attack: 5,
+  ac: 8,
+  agi: 4,
+  xp: 28,
+  gold: 20,
+  special: [
+    { kind: "weakElement", element: "wind" },
+    { kind: "resistElement", element: "earth" },
+  ],
+  abilityIds: ["stone-slam", "repair"],
+  chemistryGroups: ["conductive-construct"],
+  isBoss: false,
+};
+
+export const CRYPT_RUNE_KNIGHT: EnemyDef = {
+  id: "crypt-rune-knight",
+  name: "Crypt Rune Knight",
+  spriteId: "rune-knight",
+  floors: [1],
+  rowPreference: "back",
+  hp: 27,
+  attack: 7,
+  ac: 5,
+  agi: 9,
+  xp: 26,
+  gold: 22,
+  special: [
+    { kind: "caster", element: "lightning" },
+    { kind: "resistElement", element: "lightning" },
+  ],
+  abilityIds: ["crypt-rune-overload", "lightning-strike", "ward"],
+  isBoss: false,
+};
+
+export const CRYPT_BLOOD_MONSTER: EnemyDef = {
+  id: "crypt-blood-monster",
+  name: "Crypt Blood Monster",
+  spriteId: "blood-monster",
+  floors: [1],
+  rowPreference: "front",
+  hp: 28,
+  attack: 8,
+  ac: 4,
+  agi: 9,
+  xp: 23,
+  gold: 17,
+  special: [
+    { kind: "poisonOnHit" },
+    { kind: "weakElement", element: "fire" },
+  ],
+  abilityIds: ["rending-claw", "soul-drain"],
+  isBoss: false,
+};
+
+export const CRYPT_BLOOD_WRAITH: EnemyDef = {
+  id: "crypt-blood-wraith",
+  name: "Crypt Blood Wraith",
+  spriteId: "blood-wraith",
+  floors: [1],
+  rowPreference: "back",
+  hp: 18,
+  attack: 6,
+  ac: 2,
+  agi: 15,
+  xp: 20,
+  gold: 15,
+  special: [
+    { kind: "undead" },
+    { kind: "flying" },
+    { kind: "evasive" },
+    { kind: "poisonOnHit" },
+  ],
+  abilityIds: ["life-tap", "phase-shift", "ghostly-wail"],
+  isBoss: false,
+};
+
+export const CRYPT_GAZE_WRAITH: EnemyDef = {
+  id: "crypt-gaze-wraith",
+  name: "Crypt Gaze Wraith",
+  spriteId: "eyeball-monster",
+  floors: [1],
+  rowPreference: "back",
+  hp: 18,
+  attack: 6,
+  ac: 2,
+  agi: 14,
+  xp: 20,
+  gold: 16,
+  special: [
+    { kind: "undead" },
+    { kind: "flying" },
+    { kind: "silenceRandom", target: "party", duration: "combat" },
+  ],
+  abilityIds: ["blinding-gaze", "curse"],
+  isBoss: false,
+};
+
+export const CRYPT_FLAME_GOLEM: EnemyDef = {
+  id: "crypt-flame-golem",
+  name: "Crypt Flame Golem",
+  spriteId: "flame-golem",
+  floors: [1],
+  rowPreference: "back",
+  hp: 28,
+  attack: 6,
+  ac: 6,
+  agi: 5,
+  xp: 27,
+  gold: 20,
+  special: [
+    { kind: "highDefense" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  abilityIds: ["magma-burst", "forge-bellows", "repair"],
+  isBoss: false,
+};
+
+export const CRYPT_STONE_GUARDIAN: EnemyDef = {
+  id: "crypt-stone-guardian",
+  name: "Crypt Stone Guardian",
+  spriteId: "stone-guardian",
+  floors: [1],
+  rowPreference: "front",
+  hp: 42,
+  attack: 10,
+  ac: 11,
+  agi: 4,
+  xp: 30,
+  gold: 24,
+  special: [
+    { kind: "weakElement", element: "wind" },
+    { kind: "resistElement", element: "earth" },
+  ],
+  abilityIds: ["stone-slam", "iron-fist", "phalanx-guard"],
+  isBoss: false,
+};
+
+export const CRYPT_GHOSTFIRE: EnemyDef = {
+  id: "crypt-ghostfire",
+  name: "Crypt Ghostfire",
+  spriteId: "ghostfire",
+  floors: [1],
+  rowPreference: "back",
+  hp: 15,
+  attack: 5,
+  ac: 0,
+  agi: 16,
+  xp: 18,
+  gold: 14,
+  special: [
+    { kind: "flying" },
+    { kind: "undead" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "cold" },
+  ],
+  abilityIds: ["life-tap", "ghostly-wail", "phase-shift"],
   isBoss: false,
 };
 
@@ -301,6 +672,7 @@ export const LESSER_CONSTRUCT: EnemyDef = {
     { kind: "resistElement", element: "earth" },
   ],
   abilityIds: ["stone-slam", "repair"],
+  chemistryGroups: ["conductive-construct"],
   isBoss: false,
 };
 
@@ -777,6 +1149,7 @@ export const DEMON_SPAWN: EnemyDef = {
     { kind: "weakElement", element: "water" },
   ],
   abilityIds: ["hunting-pounce", "rending-claw"],
+  chemistryGroups: ["volatile-spawn"],
   isBoss: false,
 };
 
@@ -1198,6 +1571,23 @@ export const ALL_ENEMIES: EnemyDef[] = [
   SLIME,
   SKELETON,
   RED_SKELETON,
+  CRYPT_ORC,
+  CRYPT_MINOTAUR,
+  CRYPT_HILL_OGRE,
+  CRYPT_WARLOCK,
+  CRYPT_ANIMATED_ARMOR,
+  CRYPT_HELLHOUND,
+  CRYPT_WEREWOLF,
+  CRYPT_DEMON_SPAWN,
+  CRYPT_DEMON_MAGE,
+  CRYPT_LESSER_CONSTRUCT,
+  CRYPT_RUNE_KNIGHT,
+  CRYPT_BLOOD_MONSTER,
+  CRYPT_BLOOD_WRAITH,
+  CRYPT_GAZE_WRAITH,
+  CRYPT_FLAME_GOLEM,
+  CRYPT_STONE_GUARDIAN,
+  CRYPT_GHOSTFIRE,
   ARMORED_SKELETON,
   SKELETON_ARCHER,
   ORC,
@@ -1263,44 +1653,14 @@ export function enemiesForFloor(floor: number): EnemyDef[] {
 
 /** Weighted encounter table for each floor. Weights do not need to sum to 1. */
 export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
-  // Floor 1: The Flooded Crypt — typical 3–4, cap 4 (party of 6 needs pressure).
+  // Floor 1: The Flooded Crypt — the first-test chemistry showcase. The
+  // The two relief experiments were removed by the Phase 8 audit. Their six
+  // weight points are redistributed across surviving simple-band entries so
+  // the table keeps its authored total while becoming less filler-dense.
   1: [
     {
-      weight: 4,
-      spawns: [
-        { enemyId: "slime", row: "front" },
-        { enemyId: "slime", row: "front" },
-        { enemyId: "slime", row: "front" },
-      ],
-    },
-    {
-      weight: 4,
-      spawns: [
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton-archer", row: "back" },
-      ],
-    },
-    {
-      weight: 3,
-      spawns: [
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton-archer", row: "back" },
-      ],
-    },
-    {
-      weight: 3,
-      spawns: [
-        { enemyId: "slime", row: "front" },
-        { enemyId: "slime", row: "front" },
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton-archer", row: "back" },
-      ],
-    },
-    // Acid puddle with trash escorts — no soft solo.
-    {
+      id: "f1-acid-burrow",
+      family: "acid-anchor",
       weight: 2,
       spawns: [
         { enemyId: "acid-puddle", row: "front" },
@@ -1309,24 +1669,149 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
-      weight: 1,
-      spawns: [
-        { enemyId: "slime", row: "front" },
-        { enemyId: "skeleton", row: "front" },
-      ],
-    },
-    {
-      weight: 1,
+      id: "f1-red-bone-bounty",
+      family: "red-bone",
+      weight: 2,
       spawns: [
         { enemyId: "red-skeleton", row: "front" },
         { enemyId: "skeleton", row: "front" },
         { enemyId: "skeleton-archer", row: "back" },
       ],
     },
+    {
+      id: "f1-orc-leap",
+      family: "orc-pack",
+      weight: 5,
+      spawns: [
+        { enemyId: "crypt-orc", row: "front" },
+        { enemyId: "crypt-orc", row: "front" },
+      ],
+    },
+    {
+      id: "f1-minotaur-slime",
+      family: "slime-cannon",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-minotaur", row: "front" },
+        { enemyId: "slime", row: "front" },
+      ],
+    },
+    {
+      id: "f1-ogre-toss",
+      family: "ogre-toss",
+      weight: 1,
+      spawns: [
+        { enemyId: "crypt-hill-ogre", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+      ],
+    },
+    {
+      id: "f1-warlock-bone-battery",
+      family: "bone-harvest",
+      weight: 2,
+      spawns: [
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "crypt-warlock", row: "back" },
+      ],
+    },
+    {
+      id: "f1-living-shield",
+      family: "living-shield",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-animated-armor", row: "front" },
+        { enemyId: "crypt-warlock", row: "back" },
+      ],
+    },
+    {
+      id: "f1-hunting-pack",
+      family: "hunting-pack",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-hellhound", row: "front" },
+        { enemyId: "crypt-werewolf", row: "back" },
+      ],
+    },
+    {
+      id: "f1-spawn-bomb",
+      family: "spawn-bomb",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-demon-spawn", row: "front" },
+        { enemyId: "crypt-demon-spawn", row: "front" },
+        { enemyId: "crypt-demon-mage", row: "back" },
+      ],
+    },
+    {
+      id: "f1-rune-overload",
+      family: "rune-overload",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-lesser-construct", row: "front" },
+        { enemyId: "crypt-rune-knight", row: "back" },
+      ],
+    },
+    {
+      id: "f1-guarded-bomb",
+      family: "guarded-bomb",
+      weight: 1,
+      spawns: [
+        { enemyId: "crypt-animated-armor", row: "front" },
+        { enemyId: "crypt-demon-spawn", row: "front" },
+        { enemyId: "crypt-demon-mage", row: "back" },
+      ],
+    },
+    {
+      id: "f1-wraith-pincer",
+      family: "wraith-pincer",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-blood-monster", row: "front" },
+        { enemyId: "crypt-blood-wraith", row: "back" },
+      ],
+    },
+    {
+      id: "f1-gaze-slime",
+      family: "gaze-slime",
+      weight: 2,
+      spawns: [
+        { enemyId: "slime", row: "front" },
+        { enemyId: "slime", row: "front" },
+        { enemyId: "crypt-gaze-wraith", row: "back" },
+      ],
+    },
+    {
+      id: "f1-flame-forge",
+      family: "forge-line",
+      weight: 1,
+      spawns: [
+        { enemyId: "crypt-lesser-construct", row: "front" },
+        { enemyId: "crypt-lesser-construct", row: "front" },
+        { enemyId: "crypt-flame-golem", row: "back" },
+      ],
+    },
+    {
+      id: "f1-solo-guardian",
+      family: "solo-guardian",
+      weight: 2,
+      spawns: [{ enemyId: "crypt-stone-guardian", row: "front" }],
+    },
+    {
+      id: "f1-ghostfire-duet",
+      family: "ghostfire-duet",
+      weight: 3,
+      spawns: [
+        { enemyId: "crypt-ghostfire", row: "back" },
+        { enemyId: "crypt-ghostfire", row: "back" },
+      ],
+    },
   ],
   // Floor 2: The Cursed Library — typical 4–5, cap 5.
   2: [
     {
+      id: "f2-armored-archer",
+      family: "armored-line",
       weight: 4,
       spawns: [
         { enemyId: "armored-skeleton", row: "front" },
@@ -1336,6 +1821,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-orc-squad",
+      family: "orc-squad",
       weight: 4,
       spawns: [
         { enemyId: "orc", row: "front" },
@@ -1345,6 +1832,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-lab-keepers",
+      family: "lab-keepers",
       weight: 3,
       spawns: [
         { enemyId: "failed-experiment", row: "front" },
@@ -1354,6 +1843,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-blood-ghostfire",
+      family: "blood-ghostfire",
       weight: 3,
       spawns: [
         { enemyId: "blood-monster", row: "front" },
@@ -1363,6 +1854,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-mixed-lab",
+      family: "mixed-lab",
       weight: 3,
       spawns: [
         { enemyId: "orc", row: "front" },
@@ -1373,6 +1866,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-blood-experiment",
+      family: "blood-experiment",
       weight: 2,
       spawns: [
         { enemyId: "failed-experiment", row: "front" },
@@ -1383,6 +1878,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-armored-orc-archer",
+      family: "armored-line",
       weight: 2,
       spawns: [
         { enemyId: "armored-skeleton", row: "front" },
@@ -1391,6 +1888,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-displacer-lab",
+      family: "displacer-lab",
       weight: 2,
       spawns: [
         { enemyId: "displacer-beast", row: "front" },
@@ -1399,6 +1898,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-lab-duo",
+      family: "lab-keepers",
       weight: 1,
       spawns: [
         { enemyId: "failed-experiment", row: "front" },
@@ -1406,6 +1907,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-red-armored-archer",
+      family: "red-armored-line",
       weight: 1,
       spawns: [
         { enemyId: "red-skeleton", row: "front" },
@@ -1418,6 +1921,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // Floor 3: The Forge of Ashes — typical 4–6, cap 6.
   3: [
     {
+      id: "f3-construct-orc-line",
+      family: "construct-line",
       weight: 4,
       spawns: [
         { enemyId: "lesser-construct", row: "front" },
@@ -1427,6 +1932,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-werewolf-pack",
+      family: "werewolf-pack",
       weight: 4,
       spawns: [
         { enemyId: "werewolf", row: "front" },
@@ -1436,6 +1943,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-flame-lava-warlock",
+      family: "flame-lava",
       weight: 3,
       spawns: [
         { enemyId: "flame-golem", row: "front" },
@@ -1446,6 +1955,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-hellhound-bat",
+      family: "hellhound-bat",
       weight: 3,
       spawns: [
         { enemyId: "hellhound", row: "front" },
@@ -1456,6 +1967,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-ogre-demon-line",
+      family: "ogre-demon",
       weight: 3,
       spawns: [
         { enemyId: "big-titty-ogre", row: "front" },
@@ -1465,6 +1978,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-guardian-rune-line",
+      family: "guardian-rune",
       weight: 3,
       spawns: [
         { enemyId: "stone-guardian", row: "front" },
@@ -1474,6 +1989,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-demon-spawn-mage",
+      family: "demon-spawn",
       weight: 2,
       spawns: [
         { enemyId: "black-knight", row: "front" },
@@ -1484,6 +2001,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-minotaur-spawn-rune",
+      family: "demon-spawn",
       weight: 2,
       spawns: [
         { enemyId: "minotaur", row: "front" },
@@ -1493,6 +2012,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-knight-rune-mage",
+      family: "knight-rune",
       weight: 2,
       spawns: [
         { enemyId: "ironclad-knight", row: "front" },
@@ -1503,6 +2024,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-demon-champion",
+      family: "demon-champion",
       weight: 2,
       spawns: [
         { enemyId: "demon-champion", row: "front" },
@@ -1512,6 +2035,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-construct-orc-duo",
+      family: "construct-line",
       weight: 1,
       spawns: [
         { enemyId: "lesser-construct", row: "front" },
@@ -1519,6 +2044,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-viper-rune",
+      family: "viper-rune",
       weight: 1,
       spawns: [
         { enemyId: "viper-man", row: "front" },
@@ -1535,6 +2062,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // the room already promises is no longer a 1-in-many random-table dilution.
   7: [
     {
+      id: "f3-grand-forge-guardian",
+      family: "grand-forge-guardian",
       weight: 1,
       spawns: [
         { enemyId: "animated-armor", row: "front" },
@@ -1550,6 +2079,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // Acolyte/Chorister/Magus); the rest stay floor-3 remixes as seasoning.
   4: [
     {
+      id: "f4-choir-armor",
+      family: "choir-armor",
       weight: 4,
       spawns: [
         { enemyId: "choir-warden", row: "front" },
@@ -1559,6 +2090,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-guardian-mage",
+      family: "guardian-mage",
       weight: 4,
       spawns: [
         { enemyId: "stone-guardian", row: "front" },
@@ -1569,6 +2102,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-hellbat-choir",
+      family: "hellbat-choir",
       weight: 3,
       spawns: [
         { enemyId: "hellbat", row: "front" },
@@ -1580,6 +2115,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-chorister-demon",
+      family: "chorister-demon",
       weight: 3,
       spawns: [
         { enemyId: "iron-chorister", row: "front" },
@@ -1590,6 +2127,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-champion-rune",
+      family: "champion-rune",
       weight: 3,
       spawns: [
         { enemyId: "demon-champion", row: "front" },
@@ -1599,6 +2138,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-choir-guardian",
+      family: "choir-guardian",
       weight: 2,
       spawns: [
         { enemyId: "choir-warden", row: "front" },
@@ -1610,6 +2151,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-spawn-brawler",
+      family: "demon-spawn",
       weight: 2,
       spawns: [
         { enemyId: "demon-spawn", row: "front" },
@@ -1620,6 +2163,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-chorister-magus",
+      family: "chorister-magus",
       weight: 1,
       spawns: [
         { enemyId: "iron-chorister", row: "front" },
@@ -1628,6 +2173,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-viper-mage",
+      family: "viper-mage",
       weight: 1,
       spawns: [
         { enemyId: "viper-man", row: "front" },
@@ -1637,6 +2184,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     // The climax formation — The Lonely Girl, a genuine escalation over
     // floor 3's Dead Boy, not the same boss reused.
     {
+      id: "f4-lonely-girl",
+      family: "lonely-girl-guardian",
       weight: 1,
       spawns: [
         { enemyId: "animated-armor", row: "front" },
@@ -1653,6 +2202,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // stay floor-3/4 remixes as seasoning.
   5: [
     {
+      id: "f5-flood-brute",
+      family: "flood-brute",
       weight: 4,
       spawns: [
         { enemyId: "flood-brute", row: "front" },
@@ -1663,6 +2214,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-drowned-sentinel",
+      family: "drowned-sentinel",
       weight: 4,
       spawns: [
         { enemyId: "drowned-sentinel", row: "front" },
@@ -1673,6 +2226,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-hellbat-wraith",
+      family: "hellbat-wraith",
       weight: 3,
       spawns: [
         { enemyId: "hellbat", row: "front" },
@@ -1684,6 +2239,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-stone-demon",
+      family: "stone-demon",
       weight: 3,
       spawns: [
         { enemyId: "stone-guardian", row: "front" },
@@ -1694,6 +2251,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-champion-revenant",
+      family: "champion-revenant",
       weight: 3,
       spawns: [
         { enemyId: "demon-champion", row: "front" },
@@ -1704,6 +2263,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-armor-rune",
+      family: "armor-rune",
       weight: 2,
       spawns: [
         { enemyId: "animated-armor", row: "front" },
@@ -1714,6 +2275,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-spawn-flood",
+      family: "demon-spawn",
       weight: 2,
       spawns: [
         { enemyId: "demon-spawn", row: "front" },
@@ -1725,6 +2288,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-golem-cistern",
+      family: "golem-cistern",
       weight: 2,
       spawns: [
         { enemyId: "ice-golem", row: "front" },
@@ -1734,6 +2299,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-minotaur-undertow",
+      family: "minotaur-undertow",
       weight: 1,
       spawns: [
         { enemyId: "minotaur", row: "front" },
@@ -1742,6 +2309,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-viper-succubus",
+      family: "viper-succubus",
       weight: 1,
       spawns: [
         { enemyId: "viper-man", row: "front" },
@@ -1751,6 +2320,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     // The climax formation — The Crying Man, a true four-phase campaign
     // climax escalating over The Lonely Girl on floor 4.
     {
+      id: "f5-crying-man",
+      family: "crying-man-guardian",
       weight: 1,
       spawns: [
         { enemyId: "ironclad-knight", row: "front" },
@@ -1768,6 +2339,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // Wraiths and three Blood Wraiths. No rerolls between attempts.
   6: [
     {
+      id: "f2-forbidden-wing-keepers",
+      family: "forbidden-wing-keepers",
       weight: 1,
       spawns: [
         { enemyId: "eyeball-monster", row: "back" },
@@ -1780,20 +2353,151 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   ],
 };
 
+/**
+ * Arena deliberately keeps the pre-chemistry Floor 1 roster. The dungeon
+ * table is allowed to grow authored chemistry formations, but Arena waves
+ * are a separate mode and must not silently acquire those encounters or
+ * their Crypt-only reshuffle pool.
+ */
+export const ARENA_ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
+  ...ENCOUNTER_TABLES,
+  1: [
+    {
+      id: "arena-f1-slime-trio",
+      family: "arena-f1-slime-trio",
+      weight: 4,
+      spawns: [
+        { enemyId: "slime", row: "front" },
+        { enemyId: "slime", row: "front" },
+        { enemyId: "slime", row: "front" },
+      ],
+    },
+    {
+      id: "arena-f1-skeleton-archer",
+      family: "arena-f1-skeleton-archer",
+      weight: 4,
+      spawns: [
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
+    {
+      id: "arena-f1-skeleton-line",
+      family: "arena-f1-skeleton-line",
+      weight: 3,
+      spawns: [
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
+    {
+      id: "arena-f1-slime-skeleton",
+      family: "arena-f1-slime-skeleton",
+      weight: 3,
+      spawns: [
+        { enemyId: "slime", row: "front" },
+        { enemyId: "slime", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
+    {
+      id: "arena-f1-acid-escorts",
+      family: "arena-f1-acid-escorts",
+      weight: 2,
+      spawns: [
+        { enemyId: "acid-puddle", row: "front" },
+        { enemyId: "slime", row: "front" },
+        { enemyId: "slime", row: "front" },
+      ],
+    },
+    {
+      id: "arena-f1-slime-skeleton-duo",
+      family: "arena-f1-slime-skeleton-duo",
+      weight: 1,
+      spawns: [
+        { enemyId: "slime", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+      ],
+    },
+    {
+      id: "arena-f1-red-bone",
+      family: "arena-f1-red-bone",
+      weight: 1,
+      spawns: [
+        { enemyId: "red-skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
+  ],
+};
+
+export interface EncounterRollOptions {
+  /** Most recent family first; used only by random dungeon rolls. */
+  recentFamilies?: readonly string[];
+  /** Injectable for deterministic tests; production uses the gameplay RNG. */
+  rng?: () => number;
+}
+
+function familyWeightMultiplier(
+  family: string,
+  recentFamilies: readonly string[]
+): number {
+  const recentIndex = recentFamilies.indexOf(family);
+  if (recentIndex === 0) return 0;
+  if (recentIndex === 1) return 0.25;
+  if (recentIndex === 2) return 0.5;
+  return 1;
+}
+
+/**
+ * Pick from an authored encounter list with the session-only family memory.
+ * The fallback deliberately restores authored weights if every candidate is
+ * excluded, so a small table can never deadlock the encounter roller.
+ */
+export function weightedEncounterPick(
+  entries: readonly EncounterEntry[],
+  recentFamilies: readonly string[] = [],
+  rng: () => number = getGameplayRng()
+): EncounterEntry | null {
+  if (entries.length === 0) return null;
+
+  const weighted = entries.map((entry) => ({
+    entry,
+    weight: Math.max(0, entry.weight) * familyWeightMultiplier(entry.family, recentFamilies),
+  }));
+  const weightedTotal = weighted.reduce((sum, item) => sum + item.weight, 0);
+  const pool = weightedTotal > 0
+    ? weighted
+    : entries.map((entry) => ({ entry, weight: Math.max(0, entry.weight) }));
+  const total = pool.reduce((sum, item) => sum + item.weight, 0);
+  if (total <= 0) return entries[entries.length - 1] ?? null;
+
+  let roll = rng() * total;
+  for (const item of pool) {
+    if (item.weight <= 0) continue;
+    roll -= item.weight;
+    if (roll <= 0) return item.entry;
+  }
+  return pool[pool.length - 1]?.entry ?? null;
+}
+
 /** Pick a random encounter for a floor using the weighted table. */
-export function rollEncounter(floor: number): EncounterEntry | null {
+export function rollEncounter(
+  floor: number,
+  options: EncounterRollOptions = {}
+): EncounterEntry | null {
   const table = ENCOUNTER_TABLES[floor];
   if (!table || table.length === 0) return null;
-
-  const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
-  let roll = getGameplayRng()() * totalWeight;
-
-  for (const entry of table) {
-    roll -= entry.weight;
-    if (roll <= 0) return entry;
-  }
-
-  return table[table.length - 1];
+  return weightedEncounterPick(
+    table,
+    options.recentFamilies,
+    options.rng ?? getGameplayRng()
+  );
 }
 
 /** Resolve an encounter entry into concrete EnemyDef instances in formation order. */

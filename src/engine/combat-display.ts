@@ -243,18 +243,19 @@ export function enemyHealthDescriptor(currentHp: number, maxHp: number): string 
  *  reach, kept visually distinct so a player never mistakes "I can't
  *  target this" for "I don't have data on this yet"). */
 export function formatActionPreview(preview: ActionPreview): string {
-  if (preview.unreachable) return "Out of reach";
-  if (preview.noEffect) return "—";
-  if (preview.minDamage <= 0 && preview.maxDamage <= 0) return "—";
+  const guardPrefix = preview.guardedById ? "INTERCEPT " : "";
+  if (preview.unreachable) return `${guardPrefix}Out of reach`;
+  if (preview.noEffect) return `${guardPrefix}—`;
+  if (preview.minDamage <= 0 && preview.maxDamage <= 0) return `${guardPrefix}—`;
   const band =
     preview.minDamage === preview.maxDamage
       ? `${preview.minDamage}`
       : `${preview.minDamage}-${preview.maxDamage}`;
   const withKo = preview.guaranteedKill ? `${band} KO` : band;
   if (preview.hitChance < 1) {
-    return `${Math.round(preview.hitChance * 100)}% ${withKo}`;
+    return `${guardPrefix}${Math.round(preview.hitChance * 100)}% ${withKo}`;
   }
-  return withKo;
+  return `${guardPrefix}${withKo}`;
 }
 
 /** A single, combat-glanceable status word for a party member. */

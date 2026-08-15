@@ -137,6 +137,10 @@ import {
   encounterTableFloorId,
   zoneHeatAt,
   pityPressureFor,
+  createEncounterFamilyMemory,
+  rememberEncounterFamily,
+  resetEncounterFamilyMemory as resetEncounterFamilyMemoryState,
+  syncEncounterFamilyMemory,
   arenaStartFloorForLevel,
   arenaFloorForWave,
   rollArenaEncounter,
@@ -210,6 +214,18 @@ function tryBootVerticalDemo(): ReturnType<typeof registerFloorMap> | null {
 
 const playtestFloor = tryBootPlaytestFloor() ?? tryBootVerticalDemo();
 const state = createGameState(playtestFloor ?? getFloors()[0]!);
+// Random dungeon encounter anti-repeat is deliberately session-only. It is
+// not part of GameState and therefore cannot leak through saves or Arena.
+const encounterFamilyMemory = createEncounterFamilyMemory(state.floor.id);
+
+function resetEncounterFamilyMemory(): void {
+  resetEncounterFamilyMemoryState(encounterFamilyMemory, state.floor.id);
+}
+
+function syncEncounterFamilyMemoryToFloor(): void {
+  syncEncounterFamilyMemory(encounterFamilyMemory, state.floor.id);
+}
+
 let mazeRenderer: MazeRenderer | null = null;
 let mazeRendererSelection: MazeRendererSelection | null = null;
 let mazeRendererFloor: FloorDef | null = null;
@@ -472,6 +488,7 @@ function openTown(opts?: { showIntroHint?: boolean }): void {
       // Keep the autosave's checkpoint and the actual re-entry coordinate in
       // sync. This also makes a reload immediately after a wipe deterministic.
       autoSave(state);
+      syncEncounterFamilyMemoryToFloor();
       state.inDarkness = false;
       state.inAntimagic = false;
       markExplored();
@@ -637,6 +654,7 @@ function applyLoadedGameState(loaded: GameState): void {
   closeMapOverlay();
   mapOverlayRenderer.invalidate();
   Object.assign(state, loaded);
+  resetEncounterFamilyMemory();
   state.mode = normalizeLoadedMode(state.mode);
   if (state.mode === "town") {
     openTown();
@@ -673,6 +691,7 @@ function openTitleScreen(): void {
       closeMapOverlay();
       mapOverlayRenderer.invalidate();
       Object.assign(state, createGameState(getFloors()[0]!));
+      resetEncounterFamilyMemory();
       openPrologue(() => {
         audio.stopTitleMusic();
         openPartyCreation(() => openTown({ showIntroHint: true }));
@@ -720,12 +739,17 @@ function buildLoadoutMap(): Record<string, Loadout> {
 // --- Encounter trigger ---------------------------------------------------
 
 function maybeTriggerEncounter(): boolean {
+  syncEncounterFamilyMemoryToFloor();
   const baseRate = encounterRateAt(
     state.floor,
     state.player.x,
     state.player.y
   );
-  const chance = encounterRollChance(baseRate, state.stepsSinceEncounter);
+  const chance = encounterRollChance(
+    baseRate,
+    state.stepsSinceEncounter,
+    state.floor.encounterPacing
+  );
   if (chance <= 0) return false;
   // Design doc §6.2: treasure rooms are guaranteed empty of enemies.
   const cell = state.floor.grid[state.player.y]?.[state.player.x];
@@ -737,7 +761,9 @@ function maybeTriggerEncounter(): boolean {
     state.player.x,
     state.player.y
   );
-  const entry = rollEncounter(tableId);
+  const entry = rollEncounter(tableId, {
+    recentFamilies: encounterFamilyMemory.recentFamilies,
+  });
   if (!entry) return false;
 
   const resolved = resolveEncounter(entry);
@@ -751,11 +777,18 @@ function maybeTriggerEncounter(): boolean {
     ITEMS_BY_ID,
     loadout,
     state.inventory,
-    state.inAntimagic
+    state.inAntimagic,
+    {
+      id: entry.id,
+      family: entry.family,
+      displayName: entry.displayName,
+      chemistryEnabled: tableId === 1,
+    }
   );
   state.combat = combat;
   setMode(state, "combat");
   state.stepsSinceEncounter = 0;
+  rememberEncounterFamily(encounterFamilyMemory, entry.family, state.floor.id);
 
   startCombat(combat, { source: "random", tableId });
   return true;
@@ -1238,6 +1271,7 @@ function onMove(): void {
               const dropResult = confirmChuteDrop(state, drop);
               if (dropResult.changedFloor) {
                 combatAudit?.noteRecovery({ kind: "floorStart", floorId: state.floor.id, x: state.player.x, y: state.player.y });
+                syncEncounterFamilyMemoryToFloor();
                 markExplored();
                 resetRenderCamera(state.player.x, state.player.y, state.player.facing);
               }
@@ -1303,6 +1337,7 @@ function onMove(): void {
       setMessage([...expiry, result.message].join(" "), { instant: result.looted === true });
     }
     if (result.changedFloor) {
+      syncEncounterFamilyMemoryToFloor();
       // Floor transition happened — mark explored on the new floor and snap
       // the render camera instantly to the new position (don't slide across
       // floors).
@@ -1336,6 +1371,7 @@ function onMove(): void {
             const dropResult = confirmChuteDrop(state, drop);
             if (dropResult.changedFloor) {
               combatAudit?.noteRecovery({ kind: "floorStart", floorId: state.floor.id, x: state.player.x, y: state.player.y });
+              syncEncounterFamilyMemoryToFloor();
               markExplored();
               resetRenderCamera(state.player.x, state.player.y, state.player.facing);
             }
@@ -2277,6 +2313,7 @@ function openArenaSetup(): void {
 function startArena(targetLevel: number): void {
   // Reset to a fresh default party and the first arena wave.
   Object.assign(state, createGameState(getFloors()[0]!));
+  resetEncounterFamilyMemory();
   inArena = true;
   arenaWave = 1;
 
@@ -2460,6 +2497,7 @@ function openSaveMenu(): void {
       // We can't reassign `state` (it's const), so we mutate in place.
       mapOverlayRenderer.invalidate();
       Object.assign(state, loaded);
+      resetEncounterFamilyMemory();
       saveController = null;
       setMazeSurfaceOpacity("1");
       // Return to the mode from the loaded save, or dungeon if it was combat.
@@ -2812,7 +2850,7 @@ function loop() {
       floorLabel,
       {
         heat: zoneHeatAt(state.floor, state.player.x, state.player.y),
-        pressure: pityPressureFor(state.stepsSinceEncounter),
+        pressure: pityPressureFor(state.stepsSinceEncounter, state.floor.encounterPacing),
       }
     );
     const kind = globalInput.getLastInputKind();
@@ -3152,6 +3190,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     transitionToFloor(state, floor, opts.x, opts.y, (opts.facing ?? 0) as 0 | 1 | 2 | 3, {
       autosave: opts.autosave !== false,
     });
+    syncEncounterFamilyMemoryToFloor();
     if (opts.stepsSinceEncounter !== undefined) {
       state.stepsSinceEncounter = opts.stepsSinceEncounter;
     }
@@ -3234,11 +3273,12 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     jumpTo,
     dumpSave,
     loadSave,
-    startCombat: async () => {
+    /** Start a seeded/debug fixture when supplied; otherwise roll the live floor table. */
+    startCombat: async (fixture?: CombatState) => {
       if (combatController) {
         throw new Error("startCombat: combat is already active — use exitDebugCombat first");
       }
-      const combat = buildDebugCombat(state, buildLoadoutMap());
+      const combat = fixture ?? buildDebugCombat(state, buildLoadoutMap());
       setMode(state, "combat");
       await startCombat(combat, { source: "debug", tableId: null });
     },

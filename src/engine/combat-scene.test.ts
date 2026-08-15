@@ -5,6 +5,7 @@
  */
 import { describe, it, expect } from "vitest";
 import {
+  COLORS,
   createScene,
   playTurn,
   updateScene,
@@ -269,6 +270,351 @@ describe("playTurn choreography", () => {
     playTurn(scene2, [{ type: "telegraphBreak", actorId: "rat-0", abilityId: "hellfire" }], spellName, 0, W, H);
     updateScene(scene2, 10);
     expect(scene2.banner).toBe("Interrupted!");
+  });
+
+  it("chemistry events use the shared throw/consume/death path", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const state = createCombatState(
+      party,
+      { front: [makeEnemy("minotaur-0"), makeEnemy("slime-0")], back: [] },
+      false
+    );
+    const scene = createScene(state);
+    const events: CombatEvent[] = [
+      {
+        type: "chemistry",
+        chemistryId: "chem-slime-cannon",
+        abilityId: "crypt-slime-cannon",
+        name: "Slime Cannon",
+        phase: "resolve",
+        actorId: "minotaur-0",
+        targetId: "c0",
+        resourceId: "slime-0",
+        presentation: "throwAlly",
+      },
+      {
+        type: "chemistry",
+        chemistryId: "chem-slime-cannon",
+        abilityId: "crypt-slime-cannon",
+        name: "Slime Cannon",
+        phase: "consume",
+        actorId: "minotaur-0",
+        targetId: "c0",
+        resourceId: "slime-0",
+        presentation: "throwAlly",
+      },
+      {
+        type: "cast",
+        actorId: "minotaur-0",
+        spellId: "crypt-slime-cannon",
+        targetId: "c0",
+        damage: 8,
+        presentation: "throwAlly",
+      },
+      { type: "defeated", targetId: "slime-0", wasEnemy: true },
+    ];
+    const duration = playTurn(scene, events, spellName, 0, W, H);
+
+    updateScene(scene, 10);
+    expect(scene.banner).toBe("SLIME CANNON");
+    expect(scene.enemyAnims.get("slime-0")?.moveToX).not.toBe(0);
+
+    updateScene(scene, 760);
+    expect(scene.popups.some((p) => p.text === "8")).toBe(true);
+    expect(scene.partyAnims.get("c0")?.state).toBe("hurt");
+    expect(scene.effects.some((e) => e.type === "burst")).toBe(true);
+
+    updateScene(scene, duration + 20);
+    expect(scene.enemyAnims.get("slime-0")?.state).toBe("death");
+  });
+
+  it("Bone Harvest and Spawn Bomb keep their payoff-specific shared effects", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const makeChemScene = (resourceId: string) =>
+      createScene(
+        createCombatState(
+          party.map((c) => structuredClone(c)),
+          { front: [makeEnemy("caster-0"), makeEnemy(resourceId)], back: [] },
+          false
+        )
+      );
+
+    const bone = makeChemScene("skeleton-0");
+    playTurn(
+      bone,
+      [
+        {
+          type: "chemistry",
+          chemistryId: "chem-bone-harvest",
+          abilityId: "crypt-bone-harvest",
+          name: "Bone Harvest",
+          phase: "resolve",
+          actorId: "caster-0",
+          resourceId: "skeleton-0",
+          presentation: "consumeAlly",
+        },
+        {
+          type: "chemistry",
+          chemistryId: "chem-bone-harvest",
+          abilityId: "crypt-bone-harvest",
+          name: "Bone Harvest",
+          phase: "consume",
+          actorId: "caster-0",
+          resourceId: "skeleton-0",
+          presentation: "consumeAlly",
+        },
+        {
+          type: "cast",
+          actorId: "caster-0",
+          spellId: "crypt-bone-harvest",
+          targetId: "caster-0",
+          heal: 8,
+          presentation: "consumeAlly",
+        },
+        { type: "defeated", targetId: "skeleton-0", wasEnemy: true },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(bone, 500);
+    expect(bone.banner).toBe("BONE HARVEST");
+    expect(bone.popups.some((p) => p.text === "8" && p.color === COLORS.heal)).toBe(true);
+
+    const bomb = makeChemScene("spawn-0");
+    playTurn(
+      bomb,
+      [
+        {
+          type: "chemistry",
+          chemistryId: "chem-spawn-bomb",
+          abilityId: "crypt-spawn-bomb",
+          name: "Spawn Bomb",
+          phase: "resolve",
+          actorId: "caster-0",
+          resourceId: "spawn-0",
+          presentation: "detonateAlly",
+        },
+        {
+          type: "chemistry",
+          chemistryId: "chem-spawn-bomb",
+          abilityId: "crypt-spawn-bomb",
+          name: "Spawn Bomb",
+          phase: "consume",
+          actorId: "caster-0",
+          resourceId: "spawn-0",
+          presentation: "detonateAlly",
+        },
+        { type: "cast", actorId: "caster-0", spellId: "crypt-spawn-bomb", targetId: "c0", damage: 6, presentation: "detonateAlly" },
+        { type: "cast", actorId: "caster-0", spellId: "crypt-spawn-bomb", targetId: "c1", damage: 6, presentation: "detonateAlly" },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(bomb, 500);
+    expect(bomb.banner).toBe("SPAWN BOMB");
+    expect(bomb.effects.some((e) => e.effect === "fire_explosion")).toBe(true);
+    expect(bomb.popups.filter((p) => p.text === "6")).toHaveLength(2);
+  });
+
+  it("Combo Break is a distinct chemistry event and never becomes ordinary cast text", () => {
+    const scene = makeScene();
+    playTurn(
+      scene,
+      [{
+        type: "chemistry",
+        chemistryId: "chem-slime-cannon",
+        abilityId: "crypt-slime-cannon",
+        name: "Slime Cannon",
+        phase: "break",
+        actorId: "rat-0",
+        targetId: "c0",
+        resourceId: "missing-resource",
+        reason: "resourceDead",
+        presentation: "throwAlly",
+      }],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(scene, 10);
+    expect(scene.banner).toBe("COMBO BREAK");
+    expect(scene.popups.some((p) => p.text === "BREAK")).toBe(true);
+    expect(scene.popups.some((p) => p.text === "SAFE")).toBe(true);
+  });
+
+  it("Living Shield and INTERCEPT use the shared chemistry timeline", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const state = createCombatState(
+      party,
+      { front: [makeEnemy("armor-0"), makeEnemy("warlock-0")] , back: [] },
+      false
+    );
+    const scene = createScene(state);
+    const duration = playTurn(
+      scene,
+      [
+        {
+          type: "chemistry",
+          chemistryId: "chem-living-shield",
+          abilityId: "crypt-living-shield",
+          name: "Living Shield",
+          phase: "resolve",
+          actorId: "armor-0",
+          targetId: "warlock-0",
+          partnerId: "armor-0",
+          presentation: "guardAlly",
+        },
+        {
+          type: "chemistry",
+          chemistryId: "chem-living-shield",
+          abilityId: "crypt-living-shield",
+          name: "Living Shield",
+          phase: "intercept",
+          actorId: "c0",
+          targetId: "warlock-0",
+          partnerId: "armor-0",
+          presentation: "guardAlly",
+        },
+        { type: "attack", actorId: "c0", targetId: "armor-0", damage: 7, range: "close" },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(scene, 10);
+    expect(scene.banner).toBe("LIVING SHIELD");
+    updateScene(scene, 400);
+    expect(scene.banner).toBe("INTERCEPT");
+    expect(scene.popups.some((popup) => popup.text === "INTERCEPT")).toBe(true);
+    expect(scene.effects.some((effect) => effect.effect === "px_shield")).toBe(true);
+    expect(duration).toBeGreaterThan(500);
+  });
+
+  it("Hunting Pack converges both live actors and returns them after the shared hits", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const scene = createScene(
+      createCombatState(
+        party,
+        {
+          front: [makeEnemy("hellhound-0", { id: "crypt-hellhound" })],
+          back: [makeEnemy("werewolf-0", { id: "crypt-werewolf", rowPreference: "back" })],
+        },
+        false
+      )
+    );
+    const duration = playTurn(
+      scene,
+      [
+        {
+          type: "chemistry",
+          chemistryId: "chem-hunting-pack",
+          abilityId: "crypt-pack-hunt",
+          name: "Hunting Pack",
+          phase: "resolve",
+          actorId: "hellhound-0",
+          targetId: "c0",
+          partnerId: "werewolf-0",
+          presentation: "packStrike",
+        },
+        { type: "cast", actorId: "hellhound-0", spellId: "crypt-pack-hunt", targetId: "c0", damage: 5, presentation: "packStrike" },
+        { type: "cast", actorId: "werewolf-0", spellId: "crypt-pack-hunt", targetId: "c0", damage: 5, presentation: "packStrike" },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    expect(scene.choreo?.steps.map((step) => step.at)).toContain(1050);
+    updateScene(scene, 220);
+    expect(scene.banner).toBe("HUNTING PACK");
+    // The first frame fires the shared convergence step; inspect the tween
+    // after a later frame so the offset has had time to advance.
+    updateScene(scene, 420);
+    expect(animOffset(scene.enemyAnims.get("hellhound-0")!, 420).x).toBeGreaterThan(0);
+    expect(animOffset(scene.enemyAnims.get("werewolf-0")!, 420).x).toBeGreaterThan(0);
+    updateScene(scene, 850);
+    expect(scene.popups.filter((popup) => popup.text === "5")).toHaveLength(2);
+    updateScene(scene, 1900);
+    updateScene(scene, 2400);
+    expect(animOffset(scene.enemyAnims.get("hellhound-0")!, 2400)).toEqual({ x: 0, y: 0 });
+    expect(animOffset(scene.enemyAnims.get("werewolf-0")!, 2400)).toEqual({ x: 0, y: 0 });
+    expect(duration).toBeGreaterThan(1200);
+  });
+
+  it("Rune Overload keeps a live battery tethered, then flashes the party on collapse", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const scene = createScene(
+      createCombatState(
+        party,
+        {
+          front: [makeEnemy("construct-0", { id: "crypt-lesser-construct" })],
+          back: [makeEnemy("rune-knight-0", { id: "crypt-rune-knight", rowPreference: "back" })],
+        },
+        false
+      )
+    );
+    playTurn(
+      scene,
+      [
+        {
+          type: "chemistry",
+          chemistryId: "chem-rune-overload",
+          abilityId: "crypt-rune-overload",
+          name: "Rune Overload",
+          phase: "resolve",
+          actorId: "rune-knight-0",
+          resourceId: "construct-0",
+          presentation: "overload",
+        },
+        {
+          type: "chemistry",
+          chemistryId: "chem-rune-overload",
+          abilityId: "crypt-rune-overload",
+          name: "Rune Overload",
+          phase: "consume",
+          actorId: "rune-knight-0",
+          resourceId: "construct-0",
+          presentation: "overload",
+        },
+        { type: "cast", actorId: "rune-knight-0", spellId: "crypt-rune-overload", targetId: "c0", damage: 8, presentation: "overload" },
+        { type: "cast", actorId: "rune-knight-0", spellId: "crypt-rune-overload", targetId: "c1", damage: 8, presentation: "overload" },
+        { type: "defeated", targetId: "construct-0", wasEnemy: true },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(scene, 10);
+    expect(scene.banner).toBe("RUNE OVERLOAD");
+    expect(scene.effects.some((effect) => effect.effect === "rune-beam")).toBe(true);
+    updateScene(scene, 500);
+    expect(scene.popups.some((popup) => popup.text === "CHARGED")).toBe(true);
+    updateScene(scene, 1000);
+    expect(scene.effects.some((effect) => effect.type === "field" && effect.effect === "lightning_blast")).toBe(true);
+    expect(scene.popups.filter((popup) => popup.text === "8")).toHaveLength(2);
+    expect(scene.enemyAnims.get("construct-0")?.state).toBe("death");
   });
 
   it("affinityDiscovered pops WEAK! / RESIST over the target", () => {

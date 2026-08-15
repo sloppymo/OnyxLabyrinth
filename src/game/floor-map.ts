@@ -13,6 +13,7 @@ import type {
   EnvironmentalSpriteDef,
   FloorDef,
   EncounterZoneDef,
+  EncounterPacing,
   HeightZoneDef,
   NPCDef,
   RampDef,
@@ -117,6 +118,8 @@ export interface FloorMapJSON {
   startX: number;
   startY: number;
   encounterRate: number;
+  /** Optional floor-local encounter pacing override. */
+  encounterPacing?: EncounterPacing;
   /** Texture theme under public/assets/tilesets/<theme>/. Defaults to f{id}. */
   tilesetTheme?: string;
   /** Rectangular per-cell theme overrides. Later overlapping zones win. */
@@ -247,6 +250,9 @@ export function newFloorMapJSON(
     startX: partial?.startX ?? Math.floor(width / 2),
     startY: partial?.startY ?? height - 1,
     encounterRate: partial?.encounterRate ?? 0.08,
+    encounterPacing: partial?.encounterPacing
+      ? { ...partial.encounterPacing }
+      : undefined,
     tilesetTheme: partial?.tilesetTheme,
     tilesetZones: partial?.tilesetZones,
     heightZones: partial?.heightZones,
@@ -285,6 +291,7 @@ export function floorDefToMap(floor: FloorDef): FloorMapJSON {
     startX: floor.startX,
     startY: floor.startY,
     encounterRate: floor.encounterRate,
+    encounterPacing: floor.encounterPacing ? { ...floor.encounterPacing } : undefined,
     tilesetTheme: floor.tilesetTheme,
     tilesetZones: floor.tilesetZones?.map((z) => ({ ...z })),
     heightZones: floor.heightZones?.map((z) => ({ ...z })),
@@ -363,6 +370,7 @@ export function mapToFloorDef(map: FloorMapJSON): FloorDef {
     startX: map.startX,
     startY: map.startY,
     encounterRate: map.encounterRate,
+    encounterPacing: map.encounterPacing ? { ...map.encounterPacing } : undefined,
     tilesetTheme: map.tilesetTheme,
     tilesetZones: map.tilesetZones?.map((z) => ({ ...z })),
     heightZones: map.heightZones?.map((z) => ({ ...z })),
@@ -437,6 +445,7 @@ export function parseFloorMapJSON(raw: unknown): FloorMapJSON {
     startX: requireInt(o.startX, "startX"),
     startY: requireInt(o.startY, "startY"),
     encounterRate: requireNumber(o.encounterRate, "encounterRate"),
+    encounterPacing: parseEncounterPacing(o.encounterPacing, "encounterPacing"),
     tilesetTheme: typeof o.tilesetTheme === "string" ? o.tilesetTheme : undefined,
     tilesetZones: parseOverlayArray(o.tilesetZones, "tilesetZones", parseTilesetZone),
     heightZones: parseOverlayArray(o.heightZones, "heightZones", parseHeightZone),
@@ -1010,6 +1019,19 @@ function parseTile(v: unknown, x: number, y: number): TileFeature {
     throw new Error(`Invalid tile at (${x},${y})`);
   }
   return v as TileFeature;
+}
+
+function parseEncounterPacing(v: unknown, label: string): EncounterPacing | undefined {
+  if (v === undefined) return undefined;
+  if (!v || typeof v !== "object") {
+    throw new Error(`${label} must be an object`);
+  }
+  const o = v as Record<string, unknown>;
+  return {
+    cooldown: requireInt(o.cooldown, `${label}.cooldown`),
+    pityStart: requireInt(o.pityStart, `${label}.pityStart`),
+    pityForce: requireInt(o.pityForce, `${label}.pityForce`),
+  };
 }
 
 function requireInt(v: unknown, name: string): number {

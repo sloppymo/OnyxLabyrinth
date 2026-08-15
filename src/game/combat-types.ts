@@ -76,6 +76,9 @@ export interface ActionPreview {
   guaranteedKill: boolean;
   unreachable?: boolean;
   noEffect?: boolean;
+  /** If a bounded guard will redirect this direct single-target action. */
+  guardedById?: string;
+  redirectedTargetId?: string;
 }
 
 /**
@@ -92,8 +95,18 @@ export interface EnemyInstance extends EnemyDef {
   status: StatusEffect[]; // enemies can be slept / blinded / paralyzed too
   /** Per-ability cooldown tracker: ability id → rounds remaining. */
   abilityCooldowns?: Record<string, number>;
+  /** Finite non-chemistry ability uses (e.g. Split / Summon Imp). */
+  abilityUseCounts?: Record<string, number>;
   /** Whether this enemy has acted at least once this combat. */
   hasActed?: boolean;
+  /** Monotonic spawn order used for deterministic chemistry resource selection. */
+  spawnSerial?: number;
+  /** Encounter enemies are reward-bearing; summoned bodies are not. */
+  spawnSource?: "encounter" | "summoned";
+  rewardEligible?: boolean;
+  rewardAwarded?: boolean;
+  /** Why the instance left the living formation. */
+  removalCause?: "combat" | "consumed";
 }
 
 export interface EnemyFormation {
@@ -147,7 +160,22 @@ export type PlayerAction =
 export type CombatEvent =
   | { type: "attack"; actorId: string; targetId: string; damage: number; range?: WeaponRange; crit?: boolean }
   | { type: "miss"; actorId: string; targetId: string; reason: "evade" | "blind" | "noTarget" }
-  | { type: "cast"; actorId: string; spellId: string; targetId: string | null; damage?: number; heal?: number; presentation?: "meleeGangUp" }
+  | {
+      type: "cast";
+      actorId: string;
+      spellId: string;
+      targetId: string | null;
+      damage?: number;
+      heal?: number;
+      presentation?:
+        | "meleeGangUp"
+        | "throwAlly"
+        | "consumeAlly"
+        | "detonateAlly"
+        | "packStrike"
+        | "guardAlly"
+        | "overload";
+    }
   | { type: "spellEffect"; spellId: string; targetId?: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean; isDebuff?: boolean }
   | { type: "defeated"; targetId: string; wasEnemy: boolean }
   | { type: "rowAdvance"; targetId: string }
@@ -169,6 +197,7 @@ export type CombatEvent =
   | { type: "techniqueBuff"; actorId: string; techniqueId: string; targetId: string; isBuff?: boolean }
   | { type: "telegraph"; actorId: string; abilityId: string }
   | { type: "telegraphBreak"; actorId: string; abilityId: string }
+  | ChemistryCombatEvent
   | { type: "affinityDiscovered"; targetId: string; element: string; kind: "weak" | "resist" }
   | { type: "analyze"; actorId: string; targetId: string }
   | { type: "phaseChange"; actorId: string; phase: number; name: string }
@@ -185,6 +214,99 @@ export type CombatEvent =
     }
   | null;
 
+export type ChemistryEventPhase =
+  | "telegraph"
+  | "resolve"
+  | "consume"
+  | "break"
+  | "intercept";
+
+export type ChemistryBreakReason =
+  | "actorDead"
+  | "actorDisabled"
+  | "resourceDead"
+  | "partnerDead"
+  | "targetDead"
+  | "targetInvalid"
+  | "guardInvalid"
+  | "cooldown"
+  | "cap";
+
+/** Dedicated event data consumed by both combat renderers. */
+export interface ChemistryCombatEvent {
+  type: "chemistry";
+  chemistryId: string;
+  abilityId: string;
+  name: string;
+  phase: ChemistryEventPhase;
+  actorId: string;
+  targetId?: string | null;
+  resourceId?: string;
+  partnerId?: string;
+  reason?: ChemistryBreakReason;
+  presentation?:
+    | "throwAlly"
+    | "consumeAlly"
+    | "detonateAlly"
+    | "packStrike"
+    | "guardAlly"
+    | "overload";
+}
+
+/** Exact committed identity carried from telegraph to resolution. */
+export interface ChemistryWindUp {
+  abilityId: string;
+  name: string;
+  targetId: string | null;
+  resourceId?: string;
+  partnerId?: string;
+  chemistryId: string;
+  useReserved: true;
+}
+
+export interface EnemyWindUp {
+  abilityId: string;
+  name: string;
+  targetId: string | null;
+}
+
+export interface ChemistryReservation {
+  actorId: string;
+  abilityId: string;
+  chemistryId: string;
+  targetId: string | null;
+  resourceId?: string;
+  partnerId?: string;
+  committedRound: number;
+}
+
+export interface EnemyGuard {
+  guarderId: string;
+  targetId: string;
+  expiresRound: number;
+  token: true;
+  chemistryId: string;
+  abilityId: string;
+  name: string;
+}
+
+export interface ChemistryTelemetry {
+  present: Record<string, number>;
+  eligible: Record<string, number>;
+  telegraphed: Record<string, number>;
+  attempted: Record<string, number>;
+  resolved: Record<string, number>;
+  broken: Record<string, number>;
+}
+
+export interface CombatEncounterMetadata {
+  id?: string;
+  family?: string;
+  displayName?: string;
+  /** Random F1 encounters opt in; scripted/Arena/NPC fights remain off. */
+  chemistryEnabled?: boolean;
+}
+
 /** Internal: target of an enemy melee attack. */
 export type EnemyAttackTarget = { kind: "party"; id: string } | { kind: "ally"; id: string };
 
@@ -196,7 +318,15 @@ export type EnemyAction =
       target: EnemyAttackTarget;
     }
   | { kind: "cast"; actor: EnemyInstance; spellId: string; targetId: string }
-  | { kind: "ability"; actor: EnemyInstance; abilityId: string; targetId: string }
+  | {
+      kind: "ability";
+      actor: EnemyInstance;
+      abilityId: string;
+      targetId: string;
+      resourceId?: string;
+      partnerId?: string;
+      chemistryId?: string;
+    }
   | { kind: "silence"; actor: EnemyInstance }
   | { kind: "doNothing"; actor: EnemyInstance };
 
@@ -385,7 +515,7 @@ export interface CombatState {
    * Set when the AI picks a windUp-flagged ability; fires on the enemy's next
    * turn; cleared if the enemy is incapacitated (disable = interrupt) or dies.
    */
-  windUps: Record<string, { abilityId: string; name: string; targetId: string | null }>;
+  windUps: Record<string, EnemyWindUp | ChemistryWindUp>;
   /**
    * Species-level elemental affinity the party has discovered this combat
    * (enemy name -> discovered elements). First proc of a (name, element,
@@ -447,6 +577,20 @@ export interface CombatState {
    * Applied at combat end to add +25% gold to the base gold earned from enemies.
    */
   swindlerGoldBonusActive: boolean;
+  /** Authored encounter identity, absent for scripted/Arena/NPC fights. */
+  encounterId?: string;
+  encounterFamily?: string;
+  encounterDisplayName?: string;
+  chemistryEnabled?: boolean;
+  /** Chemistry runtime substrate; initialized even when chemistry is disabled. */
+  chemistryReservations?: Record<string, ChemistryReservation>;
+  chemistryTelemetry?: ChemistryTelemetry;
+  enemyGuards?: Record<string, EnemyGuard>;
+  /** Number of damaging area actions that bypassed an active guard token. */
+  guardBypasses?: number;
+  enemyActedThisRound?: string[];
+  enemySummonsCreated?: number;
+  chemistryUses?: Record<string, number>;
 }
 
 export interface TurnQueueEntry {

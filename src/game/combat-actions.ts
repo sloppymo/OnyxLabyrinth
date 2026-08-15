@@ -33,6 +33,7 @@ import type {
   Rng,
   WeaponRange,
 } from "./combat-types";
+import { interceptEnemyGuard } from "./combat-chemistry";
 
 // ---------------------------------------------------------------------------
 // Player action resolution
@@ -92,8 +93,8 @@ function resolveAttack(
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): void {
-  const target = findEnemy(s, targetInstanceId);
-  if (!target) {
+  const intendedTarget = findEnemy(s, targetInstanceId);
+  if (!intendedTarget) {
     emit(
       `${actor.name} attacks but finds no target.`,
       { type: "miss", actorId: actor.id, targetId: "", reason: "noTarget" }
@@ -104,6 +105,7 @@ function resolveAttack(
     });
     return;
   }
+  const target = interceptEnemyGuard(s, actor.id, intendedTarget, emit);
 
   const loadout = s.loadout[actor.id];
   const weapon = loadout?.weapon;
@@ -576,14 +578,15 @@ function resolveAmbush(
     return;
   }
   
-  const target = findEnemy(s, targetInstanceId);
-  if (!target) {
+  const intendedTarget = findEnemy(s, targetInstanceId);
+  if (!intendedTarget) {
     emit(
       `${actor.name} ambushes but finds no target.`,
       { type: "miss", actorId: actor.id, targetId: "", reason: "noTarget" }
     );
     return;
   }
+  const target = interceptEnemyGuard(s, actor.id, intendedTarget, emit);
   
   // Remove hidden status and add exposed status
   actor.status = actor.status.filter((st) => st !== "hidden");

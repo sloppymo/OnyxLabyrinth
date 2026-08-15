@@ -29,7 +29,7 @@ import { npcAt, applyKilledNPCs } from "./npc";
 import { displayNameFor } from "../data/items";
 import { effectiveStats } from "./effective-stats";
 import { perksForCharacter, perkModifiers } from "./perks";
-import { ENCOUNTER_COOLDOWN } from "./encounters";
+import { encounterCooldownFor } from "./encounters";
 import { getGameplayRng } from "./rng";
 
 type Rng = () => number;
@@ -588,7 +588,7 @@ export function transitionToFloor(
   state.player.facing = facing;
   state.deepestFloorReached = Math.max(state.deepestFloorReached, floorCopy.id);
   // Clear cooldown without triggering pity-force (see game/encounters.ts).
-  state.stepsSinceEncounter = ENCOUNTER_COOLDOWN;
+  state.stepsSinceEncounter = encounterCooldownFor(floorCopy);
   state.inDarkness = false;
   state.inAntimagic = false;
 

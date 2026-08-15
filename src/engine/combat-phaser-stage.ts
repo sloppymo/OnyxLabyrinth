@@ -46,7 +46,7 @@ import {
   type SceneCursor,
   type ActorAnim,
 } from "./combat-choreography";
-import { getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache";
+import { enemySpriteId, getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache";
 import { getPartySpriteStrip, loadPartySpriteBundle, PARTY_SPRITE_DIRS } from "./party-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
 import { screenShakeOffset } from "./combat-motion";
@@ -210,6 +210,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private nameplateBg: Phaser.GameObjects.Graphics | null = null;
   private cursorMark: Phaser.GameObjects.Triangle | null = null;
   private activeMark: Phaser.GameObjects.Triangle | null = null;
+  private guardMarks = new Map<
+    string,
+    { shield: Phaser.GameObjects.Graphics; label: Phaser.GameObjects.Text }
+  >();
   private fastCue: Phaser.GameObjects.Text | null = null;
   private autoCue: Phaser.GameObjects.Text | null = null;
   private pipGfx: Phaser.GameObjects.Graphics | null = null;
@@ -665,18 +669,19 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
 
   private ensureFightTextures(scene: CombatScene): void {
     for (const e of [...scene.state.enemies.front, ...scene.state.enemies.back]) {
-      void loadEnemySpriteBundle(e.id);
+      void loadEnemySpriteBundle(enemySpriteId(e));
     }
     for (const c of scene.state.party) {
       void loadPartySpriteBundle(PARTY_SPRITE_DIRS[c.class]);
     }
     // Add spritesheets from already-decoded cache images when available.
     for (const e of [...scene.state.enemies.front, ...scene.state.enemies.back, ...scene.enemyCorpses]) {
+      const spriteId = enemySpriteId(e);
       for (const st of ["idle", "attacking", "hit", "defeated"] as const) {
-        const info = getEnemySpriteStrip(e.id, st);
+        const info = getEnemySpriteStrip(spriteId, st);
         if (!info?.img || info.img.naturalWidth <= 0) continue;
         this.ensureSpriteSheet(
-          `enemy:${e.id}:${st}`,
+          `enemy:${spriteId}:${st}`,
           info.img,
           info.strip.frameWidth,
           info.strip.frameHeight
@@ -762,6 +767,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     this.syncBanner(scene, now, w);
     this.syncNameplate(scene, now, w);
     this.syncMarkers(scene, now);
+    this.syncGuardMarkers(scene, now);
     this.syncCues(scene);
     this.syncHpPips(scene, now, w, h);
     this.syncSpotlight(scene);
@@ -1577,7 +1583,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     }
     const baseSize = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
     const stripState = enemyStripState(anim.state);
-    const stripInfo = getEnemySpriteStrip(enemy.id, stripState);
+    const spriteId = enemySpriteId(enemy);
+    const stripInfo = getEnemySpriteStrip(spriteId, stripState);
     const hasStrip = !!(stripInfo?.img && stripInfo.img.naturalWidth > 0);
     const artFoot = artFootFromTopFor({
       hasStrip,
@@ -1597,7 +1604,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const footY = pos.footY + off.y;
     const drawSize = baseSize * pos.scale * statusScale;
 
-    const texKey = `enemy:${enemy.id}:${stripState}`;
+    const texKey = `enemy:${spriteId}:${stripState}`;
     let entry =
       hasStrip && stripInfo
         ? this.ensureStripSprite(key, "enemy", texKey)
@@ -2186,6 +2193,67 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       } else {
         this.cursorMark.setVisible(false);
       }
+    }
+  }
+
+  /** Persistent Living Shield marker; the state carries the token, not the painter. */
+  private syncGuardMarkers(scene: CombatScene, now: number): void {
+    const guards = scene.state.enemyGuards ?? {};
+    for (const [targetId, mark] of this.guardMarks) {
+      if (!guards[targetId]) {
+        mark.shield.destroy();
+        mark.label.destroy();
+        this.guardMarks.delete(targetId);
+      }
+    }
+
+    for (const targetId of Object.keys(guards)) {
+      const entry = this.actors.get(this.actorPoolKey("enemy", targetId));
+      if (!entry) continue;
+      let mark = this.guardMarks.get(targetId);
+      if (!mark) {
+        mark = {
+          shield: this.addTo(
+            this.actorOverlayLayer,
+            this.add.graphics().setDepth(805)
+          ),
+          label: this.addTo(
+            this.actorOverlayLayer,
+            this.add
+              .text(0, 0, "GUARDED", {
+                fontFamily: "FF36, monospace",
+                fontSize: "10px",
+                color: "#d9f8ff",
+                stroke: "#101820",
+                strokeThickness: 2,
+              })
+              .setOrigin(0.5)
+              .setDepth(806)
+          ),
+        };
+        this.guardMarks.set(targetId, mark);
+      }
+      const drawH = entry.sprite.displayHeight;
+      const drawY = entry.sprite.y - drawH / 2;
+      const artTop = artTopFromTopFor({ hasStrip: !entry.isFallback });
+      const headY = visualHeadY(drawY, drawH, artTop);
+      const pulse = 0.72 + 0.28 * (0.5 + 0.5 * Math.sin(now / 230));
+      mark.shield.clear();
+      mark.shield.lineStyle(2.5, 0x73e7ff, pulse);
+      mark.shield.fillStyle(0x37b1dc, 0.18 * pulse);
+      mark.shield.beginPath();
+      mark.shield.arc(entry.sprite.x, headY + 13, 17, Math.PI * 0.15, Math.PI * 0.85);
+      mark.shield.lineTo(entry.sprite.x + 12, headY + 26);
+      mark.shield.lineTo(entry.sprite.x, headY + 32);
+      mark.shield.lineTo(entry.sprite.x - 12, headY + 26);
+      mark.shield.closePath();
+      mark.shield.fillPath();
+      mark.shield.strokePath();
+      mark.shield.setVisible(true);
+      mark.label
+        .setPosition(entry.sprite.x, headY + 45)
+        .setAlpha(pulse)
+        .setVisible(true);
     }
   }
 

@@ -9,7 +9,7 @@
 import type { Character } from "../game/party";
 import type { EnemyInstance, SummonedAlly } from "../game/combat-types";
 import { statusDrawScale } from "../game/combat-shared";
-import { getEnemySpriteStrip } from "./enemy-sprite-cache";
+import { enemySpriteId, getEnemySpriteStrip } from "./enemy-sprite-cache";
 import { getPartySpriteStrip } from "./party-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
 import {
@@ -470,7 +470,8 @@ function drawEnemy(
   const anim = getAnim(scene, "enemy", enemy.instanceId, now);
   if (anim.opacity <= 0) return;
   const baseSize = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
-  const stripInfo = getEnemySpriteStrip(enemy.id, enemyStripState(anim.state));
+  const spriteId = enemySpriteId(enemy);
+  const stripInfo = getEnemySpriteStrip(spriteId, enemyStripState(anim.state));
   const hasStrip = !!(stripInfo?.img && stripInfo.img.naturalWidth > 0);
   const artFoot = artFootFromTopFor({
     hasStrip,
@@ -534,13 +535,13 @@ function drawEnemy(
     drawStripFrame(ctx, img!, strip, frame, x, y, drawSize, false, anim.opacity, tint, enemy.instanceId, scene, now);
   } else {
     if (
-      !ENEMY_SPRITE_DEFS[enemy.id] &&
-      !PROCEDURAL_ENEMY_SPRITE_OPT_OUTS[enemy.id] &&
-      !warnedMissingEnemySprites.has(enemy.id)
+      !ENEMY_SPRITE_DEFS[spriteId] &&
+      !PROCEDURAL_ENEMY_SPRITE_OPT_OUTS[spriteId] &&
+      !warnedMissingEnemySprites.has(spriteId)
     ) {
-      warnedMissingEnemySprites.add(enemy.id);
+      warnedMissingEnemySprites.add(spriteId);
       warnAsset(
-        `enemy ${enemy.id} has no sprite manifest entry or procedural opt-out`,
+        `enemy ${spriteId} has no sprite manifest entry or procedural opt-out`,
       );
     }
     drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize, frozen, tint);
@@ -660,6 +661,32 @@ function drawMarkers(
 ): void {
   const isCursor = scene.cursor?.kind === kind && scene.cursor.id === id;
   const isActive = kind === "party" && scene.activeActorId === id;
+  const isGuarded = kind === "enemy" && !!scene.state.enemyGuards?.[id];
+  if (!isCursor && !isActive && !isGuarded) return;
+
+  if (isGuarded) {
+    const guardPulse = 0.72 + 0.28 * (0.5 + 0.5 * Math.sin(now / 230));
+    ctx.save();
+    ctx.globalAlpha = guardPulse;
+    ctx.strokeStyle = "#73e7ff";
+    ctx.fillStyle = "rgba(55, 177, 220, 0.18)";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(x, topY + 13, 17, Math.PI * 0.15, Math.PI * 0.85);
+    ctx.lineTo(x + 12, topY + 26);
+    ctx.lineTo(x, topY + 32);
+    ctx.lineTo(x - 12, topY + 26);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = "10px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#d9f8ff";
+    ctx.fillText("GUARDED", x, topY + 45);
+    ctx.restore();
+  }
+
   if (!isCursor && !isActive) return;
 
   // Bounce + soft opacity pulse (never fully off — hard blink was easy to

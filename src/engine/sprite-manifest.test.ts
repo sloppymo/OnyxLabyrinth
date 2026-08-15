@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ALL_ENEMIES } from "../data/enemies";
 import { ENEMY_SPRITE_DEFS, PROCEDURAL_ENEMY_SPRITE_OPT_OUTS } from "./sprite-manifest";
+import { enemySpriteId } from "./enemy-sprite-cache";
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -80,9 +81,18 @@ describe("sprite-manifest", () => {
   it("every registered enemy either has a sprite strip or an explicit procedural opt-out", () => {
     const missing = ALL_ENEMIES.filter(
       (e) =>
-        !ENEMY_SPRITE_DEFS[e.id] && !PROCEDURAL_ENEMY_SPRITE_OPT_OUTS[e.id],
+        !ENEMY_SPRITE_DEFS[enemySpriteId(e)] &&
+        !PROCEDURAL_ENEMY_SPRITE_OPT_OUTS[enemySpriteId(e)],
     );
     expect(missing.map((e) => e.id)).toEqual([]);
+  });
+
+  it("resolves every explicit enemy sprite alias to the authored manifest", () => {
+    const aliases = ALL_ENEMIES.filter((enemy) => enemy.spriteId);
+    expect(aliases.length).toBeGreaterThan(0);
+    for (const enemy of aliases) {
+      expect(ENEMY_SPRITE_DEFS[enemySpriteId(enemy)], enemy.id).toBeDefined();
+    }
   });
 
   it("procedural opt-outs reference real enemies and are actually missing sprites", () => {

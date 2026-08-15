@@ -13,7 +13,10 @@ import { addStatus, applyPartyDamage, findEnemy, observeAffinity } from "./comba
 import { checkSpotHidden } from "./combat-ai";
 import { tickTechniqueBuffs } from "./combat-techniques";
 import { maybeEmitBark, enemyDefIdFromInstance } from "./combat-barks";
+import { enemyAbilityById } from "../data/enemy-abilities";
 import type { CombatEvent, CombatState, Rng, Row } from "./combat-types";
+import { breakChemistry } from "./combat-enemy";
+import { markNormalDeath, pruneEnemyGuards } from "./combat-chemistry";
 
 /** Remove summoned allies that have been reduced to 0 HP. */
 export function allyDeathCheck(
@@ -55,15 +58,20 @@ export function deathCheck(
   }
   s.enemies.front = s.enemies.front.filter((e) => {
     if (e.currentHp <= 0) {
-      emit(`${e.name} is destroyed.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
+      markNormalDeath(e);
+      const deathVerb = e.removalCause === "consumed" ? "is consumed" : "is destroyed";
+      emit(`${e.name} ${deathVerb}.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
       maybeEmitBark(s, emit, {
         trigger: "death",
         actorId: e.instanceId,
         enemyDefId: enemyDefIdFromInstance(e),
         isParty: false,
       });
-      s.goldEarned += e.gold || 0;
-      s.xpEarned += e.xp || 0;
+      if (e.rewardEligible !== false && !e.rewardAwarded) {
+        s.goldEarned += e.gold || 0;
+        s.xpEarned += e.xp || 0;
+        e.rewardAwarded = true;
+      }
       s.justDied.push({ ...e, status: [...e.status] });
       return false;
     }
@@ -71,21 +79,83 @@ export function deathCheck(
   });
   s.enemies.back = s.enemies.back.filter((e) => {
     if (e.currentHp <= 0) {
-      emit(`${e.name} is destroyed.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
+      markNormalDeath(e);
+      const deathVerb = e.removalCause === "consumed" ? "is consumed" : "is destroyed";
+      emit(`${e.name} ${deathVerb}.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
       maybeEmitBark(s, emit, {
         trigger: "death",
         actorId: e.instanceId,
         enemyDefId: enemyDefIdFromInstance(e),
         isParty: false,
       });
-      s.goldEarned += e.gold || 0;
-      s.xpEarned += e.xp || 0;
+      if (e.rewardEligible !== false && !e.rewardAwarded) {
+        s.goldEarned += e.gold || 0;
+        s.xpEarned += e.xp || 0;
+        e.rewardAwarded = true;
+      }
       s.justDied.push({ ...e, status: [...e.status] });
       return false;
     }
     return true;
   });
+
+  // A player action can kill a chemistry actor before the round's previously
+  // built enemy queue reaches that actor. Resolve the committed wind-up here
+  // so actor death produces the same exact Combo Break as a stale per-turn
+  // action, releases its reservation, and never leaves telemetry hanging.
+  for (const [actorId, windUp] of Object.entries(s.windUps)) {
+    if (!("chemistryId" in windUp) || !windUp.chemistryId) continue;
+    const actor = s.justDied.find((enemy) => enemy.instanceId === actorId);
+    if (!actor) continue;
+    const ability = enemyAbilityById(windUp.abilityId);
+    if (!ability) continue;
+    breakChemistry(
+      s,
+      actor,
+      ability,
+      "actorDead",
+      emit,
+      windUp.resourceId,
+      windUp.partnerId,
+      windUp.targetId
+    );
+  }
+
+  // Guard tokens are tied to living, able guarders and targets. Clear one as
+  // soon as a death/disable has been observed, not only at the next round.
+  pruneEnemyGuards(s);
+  breakChemistryOnPartyWipe(s, emit);
   checkBossPhases(s, emit);
+}
+
+/**
+ * A party wipe can terminate the resolution loop before a queued enemy beat
+ * is visited. Any chemistry reservation committed for that beat is still a
+ * spent use, but it must not remain telemetry-hanging or hold a resource
+ * reservation into a state that can no longer resolve. A missing committed
+ * party target is a target-dead break; an area/untargeted commitment uses the
+ * existing target-invalid reason because no replacement target is allowed.
+ */
+function breakChemistryOnPartyWipe(
+  s: CombatState,
+  emit: (m: string, e: CombatEvent) => void
+): void {
+  if (s.party.some((character) => character.hp > 0)) return;
+  for (const [actorId, reservation] of Object.entries(s.chemistryReservations ?? {})) {
+    const actor = findEnemy(s, actorId) ?? s.justDied.find((enemy) => enemy.instanceId === actorId);
+    const ability = enemyAbilityById(reservation.abilityId);
+    if (!actor || !ability) continue;
+    breakChemistry(
+      s,
+      actor,
+      ability,
+      reservation.targetId ? "targetDead" : "targetInvalid",
+      emit,
+      reservation.resourceId,
+      reservation.partnerId,
+      reservation.targetId
+    );
+  }
 }
 
 /**

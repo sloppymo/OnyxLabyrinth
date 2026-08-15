@@ -58,7 +58,13 @@ export function buildDebugCombat(
     ITEMS_BY_ID,
     loadout,
     state.inventory,
-    state.inAntimagic
+    state.inAntimagic,
+    {
+      id: entry.id,
+      family: entry.family,
+      displayName: entry.displayName,
+      chemistryEnabled: tableId === 1,
+    }
   );
   state.combat = combat;
   state.stepsSinceEncounter = 0;

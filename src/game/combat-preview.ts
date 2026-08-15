@@ -19,6 +19,7 @@ import {
 } from "./combat-shared";
 import { effectiveWeaponRange } from "./combat-reach";
 import type { ActionPreview, CombatState, EnemyInstance, WeaponRange } from "./combat-types";
+import { guardForTarget } from "./combat-chemistry";
 
 function emptyPreview(flags: Partial<ActionPreview> = {}): ActionPreview {
   return {
@@ -28,6 +29,24 @@ function emptyPreview(flags: Partial<ActionPreview> = {}): ActionPreview {
     guaranteedKill: false,
     ...flags,
   };
+}
+
+function guardedDamageTarget(
+  s: CombatState,
+  target: EnemyInstance
+): { target: EnemyInstance; guardedById?: string; redirectedTargetId?: string } {
+  const guard = guardForTarget(s, target.instanceId);
+  if (!guard) return { target };
+  const guarder = [...s.enemies.front, ...s.enemies.back].find(
+    (enemy) => enemy.instanceId === guard.guarderId
+  );
+  return guarder
+    ? {
+        target: guarder,
+        guardedById: guarder.instanceId,
+        redirectedTargetId: guarder.instanceId,
+      }
+    : { target };
 }
 
 /** Physical damage at a fixed variance factor (0.8–1.2), excluding crits/hooks. */
@@ -91,20 +110,29 @@ export function previewAttack(
 
   const nextBonus = s.nextAttackBonuses[actor.id];
   const forcedHit = nextBonus?.hitChance !== undefined && nextBonus.hitChance >= 1;
+  const redirected = guardedDamageTarget(s, target);
+  const damageTarget = redirected.target;
 
   let hitChance = 1;
   if (!forcedHit) {
-    if (target.special.some((sp) => sp.kind === "evasive")) hitChance *= 0.8;
-    if (target.special.some((sp) => sp.kind === "flying") && weaponRange === "close") {
+    if (damageTarget.special.some((sp) => sp.kind === "evasive")) hitChance *= 0.8;
+    if (damageTarget.special.some((sp) => sp.kind === "flying") && weaponRange === "close") {
       hitChance *= 0.85;
     }
     if (actor.status.includes("blind")) hitChance *= 0.5;
   }
 
-  const minDamage = previewPhysicalDamageAtVariance(s, actor, target, 0.8);
-  const maxDamage = previewPhysicalDamageAtVariance(s, actor, target, 1.2);
-  const guaranteedKill = hitChance >= 1 && minDamage >= target.currentHp;
-  return { hitChance, minDamage, maxDamage, guaranteedKill };
+  const minDamage = previewPhysicalDamageAtVariance(s, actor, damageTarget, 0.8);
+  const maxDamage = previewPhysicalDamageAtVariance(s, actor, damageTarget, 1.2);
+  const guaranteedKill = hitChance >= 1 && minDamage >= damageTarget.currentHp;
+  return {
+    hitChance,
+    minDamage,
+    maxDamage,
+    guaranteedKill,
+    guardedById: redirected.guardedById,
+    redirectedTargetId: redirected.redirectedTargetId,
+  };
 }
 
 /** Forecast a single-target damage spell (no crits; fizzle odds in hitChance). */
@@ -118,6 +146,8 @@ export function previewSpellDamage(
     return emptyPreview({ noEffect: true });
   }
   const eff = spell.effect;
+  const redirected = guardedDamageTarget(s, target);
+  const damageTarget = redirected.target;
 
   if (s.inAntimagic) {
     return emptyPreview();
@@ -129,7 +159,7 @@ export function previewSpellDamage(
     hitChance = Math.max(0, 1 - fizzleChance);
   }
 
-  if (eff.element === "undead" && !target.special.some((sp) => sp.kind === "undead")) {
+  if (eff.element === "undead" && !damageTarget.special.some((sp) => sp.kind === "undead")) {
     return emptyPreview({ noEffect: true, hitChance });
   }
 
@@ -143,16 +173,16 @@ export function previewSpellDamage(
   const castingBonus = Math.floor(castingStat / 4);
   const casterMods = perkModifiers(perksForCharacter(caster), effStats);
   const spellMult = casterMods.spellDamageMultiplier;
-  const tagMult = tagDamageMultiplier(casterMods, target);
+  const tagMult = tagDamageMultiplier(casterMods, damageTarget);
   const powerMultiplier = 1; // Arcane Surge not simulated (reactive)
   const warlordMult = warlordDamageMultiplier(s, caster);
   const raw = Math.max(
     1,
     Math.round((eff.power + castingBonus) * powerMultiplier * spellMult * tagMult * warlordMult)
   );
-  let final = Math.max(1, raw - Math.floor(target.ac / 2));
+  let final = Math.max(1, raw - Math.floor(damageTarget.ac / 2));
   if (eff.element) {
-    const affinity = target.special.find(
+    const affinity = damageTarget.special.find(
       (sp) =>
         (sp.kind === "resistElement" || sp.kind === "weakElement") && sp.element === eff.element
     );
@@ -164,12 +194,19 @@ export function previewSpellDamage(
       final = Math.max(1, Math.round(final * affinityMult));
     }
   }
-  if (s.enemyMagicScreens[target.row] > 0) {
+  if (s.enemyMagicScreens[damageTarget.row] > 0) {
     final = Math.max(1, Math.round(final * 0.5));
   }
 
   final = scaleOutgoingDamage(final, caster);
 
-  const guaranteedKill = hitChance >= 1 && final >= target.currentHp;
-  return { hitChance, minDamage: final, maxDamage: final, guaranteedKill };
+  const guaranteedKill = hitChance >= 1 && final >= damageTarget.currentHp;
+  return {
+    hitChance,
+    minDamage: final,
+    maxDamage: final,
+    guaranteedKill,
+    guardedById: redirected.guardedById,
+    redirectedTargetId: redirected.redirectedTargetId,
+  };
 }

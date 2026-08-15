@@ -1214,6 +1214,29 @@ describe("summoning mechanics", () => {
 });
 
 describe("createCombatFromEncounter", () => {
+  it("preserves random encounter identity and the explicit chemistry opt-in", () => {
+    const enemy = ENEMIES_BY_ID["crypt-minotaur"];
+    const combat = createCombatFromEncounter(
+      createDefaultParty(),
+      [{ enemy, row: "front" }],
+      {},
+      {},
+      {},
+      [],
+      false,
+      {
+        id: "f1-minotaur-slime",
+        family: "slime-cannon",
+        displayName: "Minotaur and Slime",
+        chemistryEnabled: true,
+      }
+    );
+    expect(combat.encounterId).toBe("f1-minotaur-slime");
+    expect(combat.encounterFamily).toBe("slime-cannon");
+    expect(combat.encounterDisplayName).toBe("Minotaur and Slime");
+    expect(combat.chemistryEnabled).toBe(true);
+  });
+
   it("always returns a defined isBoss flag", () => {
     const enemies = Object.values(ENEMIES_BY_ID);
     const regular = enemies.find((e) => !e.isBoss) ?? enemies[0];

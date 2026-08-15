@@ -29,6 +29,7 @@
 import type { Character } from "./party";
 import { sortPartyByFormation } from "./party";
 import type { EnemyDef, Row } from "../data/enemies";
+import { enemyAbilityById } from "../data/enemy-abilities";
 import type { SpellDef } from "../data/spells";
 import type { ItemDef } from "../data/items";
 import {
@@ -45,6 +46,8 @@ import type {
   CombatEvent,
   EnemyAction,
   CombatState,
+  CombatEncounterMetadata,
+  ChemistryTelemetry,
   Rng,
   TurnQueueEntry,
 } from "./combat-types";
@@ -74,8 +77,9 @@ import {
   checkTermination,
   runEndOfRound,
 } from "./combat-eor";
-import { resolveEnemyAction, resolveAllyAction } from "./combat-enemy";
+import { breakChemistry, resolveEnemyAction, resolveAllyAction } from "./combat-enemy";
 import { resolvePlayerAction, attemptFlee, smokeBombFleeActive } from "./combat-actions";
+import { markChemistryMetric, pruneEnemyGuards } from "./combat-chemistry";
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -93,11 +97,12 @@ export function createCombatState(
   items: Record<string, ItemDef> = {},
   loadout: Record<string, Loadout> = {},
   inAntimagic = false,
-  inventory: Record<string, number> = {}
+  inventory: Record<string, number> = {},
+  encounterMetadata: CombatEncounterMetadata = {}
 ): CombatState {
   resetBarkRngForCombat();
   resetCombatBarkLibraryRng();
-  return {
+  const state: CombatState = {
     party: party.map(cloneCharacter),
     enemies: {
       front: enemies.front.map(cloneEnemy),
@@ -154,6 +159,47 @@ export function createCombatState(
     barkSaid: {},
     barkRuntime: createCombatBarkRuntimeState(),
     swindlerGoldBonusActive: false,
+    encounterId: encounterMetadata.id,
+    encounterFamily: encounterMetadata.family,
+    encounterDisplayName: encounterMetadata.displayName,
+    chemistryEnabled: encounterMetadata.chemistryEnabled ?? false,
+    chemistryReservations: {},
+    chemistryTelemetry: emptyChemistryTelemetry(),
+    enemyGuards: {},
+    guardBypasses: 0,
+    enemyActedThisRound: [],
+    enemySummonsCreated: 0,
+    chemistryUses: {},
+  };
+
+  // Presence is a formation-level metric: count each authored chemistry
+  // contract once when an enabled random encounter enters combat. Scripted,
+  // Arena, and NPC combats leave chemistryEnabled false and therefore emit no
+  // chemistry lifecycle metrics.
+  if (state.chemistryEnabled) {
+    const present = new Set<string>();
+    for (const enemy of [...state.enemies.front, ...state.enemies.back]) {
+      if (enemy.currentHp <= 0) continue;
+      for (const abilityId of enemy.abilityIds ?? []) {
+        const chemistryId = enemyAbilityById(abilityId)?.chemistryId;
+        if (chemistryId && !present.has(chemistryId)) {
+          present.add(chemistryId);
+          markChemistryMetric(state, "present", chemistryId);
+        }
+      }
+    }
+  }
+  return state;
+}
+
+function emptyChemistryTelemetry(): ChemistryTelemetry {
+  return {
+    present: {},
+    eligible: {},
+    telegraphed: {},
+    attempted: {},
+    resolved: {},
+    broken: {},
   };
 }
 
@@ -169,7 +215,8 @@ export function createCombatFromEncounter(
   items: Record<string, ItemDef>,
   loadout: Record<string, Loadout>,
   inventory: readonly (string | { itemId: string })[] = [],
-  inAntimagic = false
+  inAntimagic = false,
+  encounterMetadata: CombatEncounterMetadata = {}
 ): CombatState {
   const fighters = sortPartyByFormation(party);
   const fighterLoadout = Object.fromEntries(
@@ -186,6 +233,10 @@ export function createCombatFromEncounter(
       currentHp: spawn.enemy.hp,
       row: spawn.row,
       status: [],
+      spawnSerial: idx,
+      spawnSource: "encounter",
+      rewardEligible: true,
+      rewardAwarded: false,
     };
     if (spawn.row === "front") front.push(inst);
     else back.push(inst);
@@ -200,7 +251,8 @@ export function createCombatFromEncounter(
     items,
     fighterLoadout,
     inAntimagic,
-    inventoryToCounts(inventory)
+    inventoryToCounts(inventory),
+    encounterMetadata
   );
 }
 
@@ -217,12 +269,14 @@ export function resolveCombatRound(
   if (s.ended) return s;
 
   s.round += 1;
+  pruneEnemyGuards(s);
   s.log = [...state.log];
   s.silencedThisRound = [];
   s.defendBuff = {};
   s.justDied = [];
   s.justDiedAllies = [];
   s.events = [...state.events];
+  s.enemyActedThisRound = [];
 
   const log = (msg: string): void => {
     s.log.push(msg);
@@ -393,10 +447,12 @@ export function beginRound(
   if (s.ended) return { state: s, queue: [] };
 
   s.round += 1;
+  pruneEnemyGuards(s);
   s.silencedThisRound = [];
   s.defendBuff = {};
   s.justDied = [];
   s.justDiedAllies = [];
+  s.enemyActedThisRound = [];
 
   // First round: run OnCombatStart hooks for living party members (e.g. Shadow).
   if (s.round === 1) {
@@ -518,7 +574,26 @@ export function resolveEnemyTurn(
   const { log, emit, rawEmit } = turnLoggers(s);
 
   const enemy = findEnemy(s, enemyInstanceId);
-  if (!enemy || enemy.currentHp <= 0) return s;
+  if (!enemy || enemy.currentHp <= 0) {
+    const windUp = s.windUps[enemyInstanceId];
+    if (windUp && "chemistryId" in windUp && windUp.chemistryId) {
+      const ability = enemyAbilityById(windUp.abilityId);
+      const corpse = s.justDied.find((dead) => dead.instanceId === enemyInstanceId);
+      if (ability && corpse) {
+        breakChemistry(
+          s,
+          corpse,
+          ability,
+          "actorDead",
+          emit,
+          windUp.resourceId,
+          windUp.partnerId,
+          windUp.targetId
+        );
+      }
+    }
+    return s;
+  }
   ensureCombatStartBark(s, enemy.instanceId, rawEmit);
 
   const action = decideEnemyAction(s, enemy, rng, emit);

@@ -14,6 +14,7 @@
  */
 
 import type { DamageElement } from "./spells";
+import type { ChemistryResourceGroup } from "./enemies";
 import type { StatusEffect } from "../game/party";
 
 // ---------------------------------------------------------------------------
@@ -29,6 +30,36 @@ export type AbilityTarget =
   | "allAlly"        // all allies
   | "self";          // the acting enemy itself
 
+/** Exact authored selector for a chemistry resource or active partner. */
+export type ChemistryResourceSelector =
+  | { group: ChemistryResourceGroup; enemyIds?: never }
+  | { enemyIds: readonly string[]; group?: never };
+
+export type ChemistryDamageTarget = "singleParty" | "groupParty" | "allParty";
+
+/** A resolved payoff for the shared consumeAlly primitive. */
+export type ChemistryPayoff =
+  | {
+      kind: "damage";
+      target: ChemistryDamageTarget;
+      power: number;
+      element?: DamageElement;
+      status?: {
+        status: StatusEffect;
+        chance: number;
+        duration: number;
+      };
+    }
+  | {
+      kind: "healAndBuff";
+      healPower: number;
+      buff: {
+        stat: "attack" | "ac";
+        amount: number;
+        duration: number;
+      };
+    };
+
 export type AbilityEffect =
   | { kind: "damage"; power: number; element?: DamageElement }
   | { kind: "multiHit"; hits: number; powerPerHit: number; element?: DamageElement }
@@ -39,7 +70,19 @@ export type AbilityEffect =
   | { kind: "debuff"; stat: "attack" | "ac"; amount: number; duration: number }
   | { kind: "summon"; enemyId: string; count: number }
   | { kind: "fizzleField"; power: number }   // suppress party spells
-  | { kind: "magicScreen"; power: number };  // suppress party spell damage
+  | { kind: "magicScreen"; power: number }   // suppress party spell damage
+  /** Shared expendable-resource primitive. The exact instance is committed at telegraph time. */
+  | { kind: "consumeAlly"; resource: ChemistryResourceSelector; payoff: ChemistryPayoff }
+  /** Bounded interception primitive; target is selected and committed separately. */
+  | { kind: "guard"; charges: 1; duration: number }
+  /** Two-living-actor cooperation primitive; partner is committed separately. */
+  | {
+      kind: "packStrike";
+      partnerIds: string[];
+      hits: number;
+      powerPerHit: number;
+      element?: DamageElement;
+    };
 
 /** Condition that gates when the AI considers using an ability. */
 export type AbilityCondition =
@@ -54,6 +97,8 @@ export type AbilityCondition =
   | { kind: "minSameKind"; count: number }      // at least N living enemies sharing this enemy's def id (including self)
   | { kind: "partyHasStatus"; status: StatusEffect }
   | { kind: "partyMissingStatus"; status: StatusEffect }
+  /** Chemistry-only exact resource/partner presence check. */
+  | { kind: "allyPresent"; resource: ChemistryResourceSelector }
   | { kind: "firstTurn" }                       // only on the enemy's first action
   | { kind: "notFirstTurn" };                   // not on the first action
 
@@ -75,13 +120,28 @@ export interface EnemyAbilityDef {
   /** If true, using this ability spends one turn charging (telegraph) and it
    *  fires on the enemy's next turn. Paralysis/sleep cancels the wind-up. */
   windUp?: boolean;
+  /** Stable telemetry and contract identity for a chemistry ability. */
+  chemistryId?: string;
+  /** Eligibility roll after all authored conditions pass. */
+  chemistryChance?: number;
+  /** Finite uses per actor per combat. */
+  maxUses?: number;
+  /** Explicit caster IDs eligible for the bounded Living Shield guard. */
+  guardTargetIds?: string[];
   /**
    * Optional bespoke choreography key consumed by combat-choreography.ts's
    * playTurn. When set, the combat scene renders a dedicated animation in
    * place of the default stationary cast (banner + burst). Presentational
    * only — never read by resolution logic.
    */
-  presentation?: "meleeGangUp";
+  presentation?:
+    | "meleeGangUp"
+    | "throwAlly"
+    | "consumeAlly"
+    | "detonateAlly"
+    | "packStrike"
+    | "guardAlly"
+    | "overload";
   /**
    * For "singleParty" target only: pick the lowest-HP% living party member
    * instead of a random one. Mirrors the existing wounded-ally preference
@@ -110,6 +170,166 @@ const ACID_SPIT: EnemyAbilityDef = {
   element: "poison",
 };
 
+/**
+ * S-tier Slime Cannon contract. The Crypt caster that owns this ability is
+ * authored in the Floor-1 roster later; keeping the definition here lets the
+ * shared resource substrate be exercised before roster activation.
+ */
+const CRYPT_SLIME_CANNON: EnemyAbilityDef = {
+  id: "crypt-slime-cannon",
+  name: "Slime Cannon",
+  description: "Loads an exact living Slime and fires it at one party member.",
+  target: "singleParty",
+  effect: {
+    kind: "consumeAlly",
+    resource: { group: "throwable-slime" },
+    payoff: {
+      kind: "damage",
+      target: "singleParty",
+      power: 8,
+      element: "poison",
+      status: { status: "poison", chance: 0.7, duration: 3 },
+    },
+  },
+  condition: { kind: "allyPresent", resource: { group: "throwable-slime" } },
+  weight: 10,
+  cooldown: 4,
+  windUp: true,
+  chemistryId: "chem-slime-cannon",
+  chemistryChance: 0.7,
+  maxUses: 1,
+  presentation: "throwAlly",
+  element: "poison",
+};
+
+const CRYPT_BONE_HARVEST: EnemyAbilityDef = {
+  id: "crypt-bone-harvest",
+  name: "Bone Harvest",
+  description: "Dissolves an exact Skeleton into forbidden fuel.",
+  target: "self",
+  effect: {
+    kind: "consumeAlly",
+    resource: { group: "harvestable-bone" },
+    payoff: {
+      kind: "healAndBuff",
+      healPower: 8,
+      buff: { stat: "attack", amount: 3, duration: 2 },
+    },
+  },
+  condition: { kind: "hpBelow", percent: 70 },
+  weight: 10,
+  cooldown: 4,
+  windUp: true,
+  chemistryId: "chem-bone-harvest",
+  chemistryChance: 0.65,
+  maxUses: 2,
+  presentation: "consumeAlly",
+  element: "undead",
+};
+
+const CRYPT_SPAWN_BOMB: EnemyAbilityDef = {
+  id: "crypt-spawn-bomb",
+  name: "Spawn Bomb",
+  description: "Commands an exact Spawn to detonate across the party.",
+  target: "allParty",
+  effect: {
+    kind: "consumeAlly",
+    resource: { group: "volatile-spawn" },
+    payoff: { kind: "damage", target: "allParty", power: 6, element: "fire" },
+  },
+  condition: { kind: "notFirstTurn" },
+  weight: 10,
+  cooldown: 3,
+  chemistryId: "chem-spawn-bomb",
+  chemistryChance: 0.75,
+  maxUses: 2,
+  presentation: "detonateAlly",
+  element: "fire",
+};
+
+const OGRE_TOSS: EnemyAbilityDef = {
+  id: "ogre-toss",
+  name: "Ogre Toss",
+  description: "Grabs an exact Skeleton and hurls it at one party member.",
+  target: "singleParty",
+  effect: {
+    kind: "consumeAlly",
+    resource: { enemyIds: ["skeleton"] },
+    payoff: { kind: "damage", target: "singleParty", power: 10, element: "physical" },
+  },
+  condition: { kind: "allyPresent", resource: { enemyIds: ["skeleton"] } },
+  weight: 10,
+  cooldown: 4,
+  chemistryId: "chem-ogre-toss",
+  chemistryChance: 0.65,
+  maxUses: 1,
+  presentation: "throwAlly",
+  element: "physical",
+  preferWounded: true,
+};
+
+const CRYPT_LIVING_SHIELD: EnemyAbilityDef = {
+  id: "crypt-living-shield",
+  name: "Living Shield",
+  description: "Steps an exact armored ally between the party and its chosen ward.",
+  target: "singleAlly",
+  effect: { kind: "guard", charges: 1, duration: 2 },
+  condition: { kind: "always" },
+  weight: 10,
+  cooldown: 5,
+  chemistryId: "chem-living-shield",
+  chemistryChance: 0.9,
+  maxUses: 1,
+  guardTargetIds: ["crypt-warlock", "crypt-demon-mage"],
+  presentation: "guardAlly",
+  element: "physical",
+};
+
+const CRYPT_PACK_HUNT: EnemyAbilityDef = {
+  id: "crypt-pack-hunt",
+  name: "Hunting Pack",
+  description: "Commits an exact Werewolf partner to converge on one party member.",
+  target: "singleParty",
+  effect: {
+    kind: "packStrike",
+    partnerIds: ["crypt-werewolf"],
+    hits: 2,
+    powerPerHit: 5,
+    element: "physical",
+  },
+  condition: { kind: "always" },
+  weight: 10,
+  cooldown: 4,
+  windUp: true,
+  chemistryId: "chem-hunting-pack",
+  chemistryChance: 0.65,
+  maxUses: 1,
+  presentation: "packStrike",
+  element: "physical",
+  preferWounded: true,
+};
+
+const CRYPT_RUNE_OVERLOAD: EnemyAbilityDef = {
+  id: "crypt-rune-overload",
+  name: "Rune Overload",
+  description: "Charges an exact conductive construct, then discharges it through the party.",
+  target: "allParty",
+  effect: {
+    kind: "consumeAlly",
+    resource: { group: "conductive-construct" },
+    payoff: { kind: "damage", target: "allParty", power: 8, element: "lightning" },
+  },
+  condition: { kind: "allyPresent", resource: { group: "conductive-construct" } },
+  weight: 10,
+  cooldown: 5,
+  windUp: true,
+  chemistryId: "chem-rune-overload",
+  chemistryChance: 0.65,
+  maxUses: 1,
+  presentation: "overload",
+  element: "lightning",
+};
+
 const SPLIT: EnemyAbilityDef = {
   id: "split",
   name: "Split",
@@ -119,6 +339,7 @@ const SPLIT: EnemyAbilityDef = {
   condition: { kind: "hpBelow", percent: 50 },
   weight: 10,
   cooldown: 3,
+  maxUses: 1,
   element: "poison",
 };
 
@@ -481,6 +702,20 @@ const SUMMON_IMP: EnemyAbilityDef = {
   condition: { kind: "maxAllies", count: 3 },
   weight: 6,
   cooldown: 3,
+  maxUses: 2,
+  element: "fire",
+};
+
+const CRYPT_SUMMON_SPAWN: EnemyAbilityDef = {
+  id: "crypt-summon-spawn",
+  name: "Summon Crypt Spawn",
+  description: "Calls a low-power Crypt Spawn into the front line.",
+  target: "self",
+  effect: { kind: "summon", enemyId: "crypt-demon-spawn", count: 1 },
+  condition: { kind: "maxAllies", count: 3 },
+  weight: 6,
+  cooldown: 3,
+  maxUses: 2,
   element: "fire",
 };
 
@@ -709,6 +944,13 @@ const OPPORTUNIST_STRIKE: EnemyAbilityDef = {
 
 export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   ACID_SPIT,
+  CRYPT_SLIME_CANNON,
+  CRYPT_BONE_HARVEST,
+  CRYPT_SPAWN_BOMB,
+  OGRE_TOSS,
+  CRYPT_LIVING_SHIELD,
+  CRYPT_PACK_HUNT,
+  CRYPT_RUNE_OVERLOAD,
   SPLIT,
   BONE_SHARD,
   RATTLE,
@@ -739,6 +981,7 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   HELLFIRE,
   SOUL_DRAIN,
   SUMMON_IMP,
+  CRYPT_SUMMON_SPAWN,
   CHAOS_BOLT,
   SEDUCTION,
   ECHO_OF_SILENCE,

@@ -2262,6 +2262,84 @@ const STATUS_STYLES: Record<string, EffectStyle> = {
   },
 };
 
+/**
+ * Shared visual language for the authored chemistry verbs. These are kept in
+ * the choreography module so Canvas and Phaser receive the same effect ids,
+ * colors, and timing; neither painter infers chemistry from ordinary damage.
+ */
+const CHEMISTRY_STYLES: Record<string, EffectStyle> = {
+  throwAlly: {
+    color: "#d8ef68",
+    projectile: "red_energy",
+    burst: "red_energy_glow",
+    burstUnderlay: "dispel_sparks",
+    burstScale: 1.35,
+    scale: 1.25,
+    glow: true,
+  },
+  consumeAlly: {
+    color: "#c080ff",
+    burst: "zombie_explosion",
+    burstUnderlay: "red_energy_glow",
+    burstUnderlayScale: 1.1,
+    burstScale: 1.25,
+    scale: 1.2,
+    glow: true,
+  },
+  detonateAlly: {
+    color: "#ff8c42",
+    projectile: "mp_fire_bomb",
+    burst: "fire_explosion",
+    burstUnderlay: "fire_explosion_glow",
+    burstScale: 1.35,
+    scale: 1.35,
+    glow: true,
+  },
+  packStrike: {
+    color: "#f5f0e6",
+    burst: "retro2_crescent_slash",
+    burstUnderlay: "free_stunburst",
+    burstUnderlayScale: 0.9,
+    burstScale: 1.25,
+    scale: 1.2,
+  },
+  guardAlly: {
+    color: "#7fe0e0",
+    burst: "px_shield",
+    burstScale: 1.5,
+    scale: 1.25,
+    glow: true,
+  },
+  overload: {
+    color: "#7fe0e0",
+    projectile: "rune-beam",
+    burst: "lightning_blast",
+    burstUnderlay: "lightning_blast_glow",
+    burstScale: 1.35,
+    scale: 1.25,
+    glow: true,
+  },
+};
+
+function chemistryStyleForEvent(
+  event: Extract<CombatEvent, { type: "chemistry" }>
+): EffectStyle {
+  // Bone Harvest shares the consumeAlly presentation key with the generic
+  // resource verb, but its payoff is restorative and should read as such.
+  if (event.chemistryId === "chem-bone-harvest") {
+    return {
+      color: COLORS.heal,
+      burst: "priest_heal",
+      burstUnderlay: "retro2_solar_ring",
+      burstUnderlayScale: 0.9,
+      burstScale: 1.25,
+      scale: 1.2,
+      glow: true,
+    };
+  }
+  return CHEMISTRY_STYLES[event.presentation ?? "consumeAlly"] ?? CHEMISTRY_STYLES.consumeAlly!;
+}
+
 export function resolveEffectStyle(
   spellId: string | undefined,
   evt?: { isHeal?: boolean; isBuff?: boolean; isDebuff?: boolean; statusInflicted?: string; statusCured?: string; damage?: number; heal?: number },
@@ -2470,6 +2548,9 @@ export function collectReferencedEffectIds(): Set<string> {
   for (const style of Object.values(ELEMENT_STYLES)) addStyle(style);
   for (const style of Object.values(SPELL_OVERRIDES)) addStyle(style);
   for (const style of Object.values(STATUS_STYLES)) addStyle(style);
+  for (const style of Object.values(CHEMISTRY_STYLES)) addStyle(style);
+  // Bone Harvest uses the restorative variant of the consumeAlly key.
+  ids.add("retro2_solar_ring");
   // Iso glow is pushed as a special-case third field layer.
   ids.add("fire_explosion_iso_glow");
   // Melee / projectile / death / particle / analyze hardcodes.
@@ -3215,7 +3296,362 @@ export function playTurn(
         break;
       }
 
+      case "chemistry": {
+        const style = chemistryStyleForEvent(evt);
+        const label = evt.phase === "break" ? "COMBO BREAK" : evt.name.toUpperCase();
+        const actorAt = (sc: CombatScene, n: number): void => {
+          const actor = findActor(sc, evt.actorId, w, h);
+          if (!actor) return;
+          const anim = getAnim(sc, actor.kind, evt.actorId, n);
+          if (evt.phase !== "break") setAnimState(anim, "cast", n);
+          pushLightGlow(sc, actor.x, actor.y + 8, style.color, 95, n, 520);
+        };
+
+        if (evt.phase === "telegraph") {
+          showBanner(label, 1200);
+          steps.push(
+            step(t, (sc, n) => {
+              actorAt(sc, n);
+              if (evt.resourceId) {
+                const resource = findActor(sc, evt.resourceId, w, h);
+                if (resource) {
+                  pushBursts(sc, resource.x, resource.y, style, n, 420);
+                  scene.effects.push({
+                    type: "charge",
+                    x: resource.x,
+                    y: resource.y - 30,
+                    color: style.color,
+                    effect: style.burst,
+                    scale: (style.scale ?? 1) * 0.7,
+                    start: n,
+                    duration: 520,
+                  });
+                }
+              }
+              if (evt.targetId) {
+                pushPopup(sc, evt.targetId, "TARGET", COLORS.cursor, n, w, h, false);
+              }
+            })
+          );
+          t += evt.presentation === "detonateAlly" ? 320 : 560;
+          break;
+        }
+
+        if (evt.phase === "resolve") {
+          showBanner(label, evt.presentation === "detonateAlly" ? 900 : 1250);
+          steps.push(step(t, actorAt));
+
+          if (evt.presentation === "guardAlly" && evt.targetId) {
+            steps.push(
+              step(t + 80, (sc, n) => {
+                const target = findActor(sc, evt.targetId!, w, h);
+                if (!target) return;
+                pushBursts(sc, target.x, target.y, style, n, 420);
+                pushPopup(sc, evt.targetId!, "GUARDED", style.color, n, w, h, true);
+              })
+            );
+            t += 360;
+          } else if (evt.presentation === "packStrike" && evt.partnerId && evt.targetId) {
+            const base = t;
+            steps.push(
+              step(base, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                const partner = findActor(sc, evt.partnerId!, w, h);
+                const target = findActor(sc, evt.targetId!, w, h);
+                if (!actor || !partner || !target) return;
+                startMove(
+                  getAnim(sc, actor.kind, evt.actorId, n),
+                  target.x - actor.x - 58,
+                  target.y - actor.y - 18,
+                  420,
+                  n,
+                  sc.playbackRate
+                );
+                startMove(
+                  getAnim(sc, partner.kind, evt.partnerId!, n),
+                  target.x - partner.x - 92,
+                  target.y - partner.y + 22,
+                  420,
+                  n,
+                  sc.playbackRate
+                );
+                pushPopup(sc, evt.targetId!, "MARKED", COLORS.cursor, n, w, h, false);
+              }),
+              step(base + 300, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                const partner = findActor(sc, evt.partnerId!, w, h);
+                if (actor) setAnimState(getAnim(sc, actor.kind, evt.actorId, n), "attack", n);
+                if (partner) setAnimState(getAnim(sc, partner.kind, evt.partnerId!, n), "attack", n);
+              }),
+              step(base + 1050, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                const partner = findActor(sc, evt.partnerId!, w, h);
+                if (actor) {
+                  const anim = getAnim(sc, actor.kind, evt.actorId, n);
+                  setAnimState(anim, "walk", n);
+                  startMove(anim, 0, 0, 360, n, sc.playbackRate);
+                }
+                if (partner) {
+                  const anim = getAnim(sc, partner.kind, evt.partnerId!, n);
+                  setAnimState(anim, "walk", n);
+                  startMove(anim, 0, 0, 360, n, sc.playbackRate);
+                }
+              }),
+              step(base + 1410, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                const partner = findActor(sc, evt.partnerId!, w, h);
+                if (actor) setAnimState(getAnim(sc, actor.kind, evt.actorId, n), "idle", n);
+                if (partner) setAnimState(getAnim(sc, partner.kind, evt.partnerId!, n), "idle", n);
+              })
+            );
+            t = base + 700;
+          } else if (evt.presentation === "throwAlly" && evt.resourceId && evt.targetId) {
+            // The resource is pulled into the caster first, then a shared
+            // projectile arc carries the same exact committed body to the
+            // target. The body remains in the scene until the consume event.
+            steps.push(
+              step(t, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                const resource = findActor(sc, evt.resourceId!, w, h);
+                if (!actor || !resource) return;
+                const resourceAnim = getAnim(sc, resource.kind, evt.resourceId!, n);
+                startMove(
+                  resourceAnim,
+                  actor.x - resource.x,
+                  actor.y - resource.y - 18,
+                  220,
+                  n,
+                  sc.playbackRate
+                );
+              }),
+              step(t + 180, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                const target = findActor(sc, evt.targetId!, w, h);
+                if (!actor || !target || !style.projectile) return;
+                pushProjectileVolley(
+                  sc,
+                  actor.x,
+                  actor.y - 24,
+                  target.x,
+                  target.y,
+                  style,
+                  n,
+                  340,
+                  1
+                );
+              })
+            );
+            t += 520;
+          } else if (evt.presentation === "detonateAlly") {
+            // Spawn Bomb is immediate: the pulse is the command telegraph,
+            // and the consume beat below owns the flash/removal.
+            steps.push(
+              step(t + 80, (sc, n) => {
+                if (!evt.resourceId) return;
+                const resource = findActor(sc, evt.resourceId, w, h);
+                if (resource) pushBursts(sc, resource.x, resource.y, style, n, 360);
+              })
+            );
+            t += 220;
+          } else {
+            // Bone Harvest and ordinary consumeAlly signatures use the same
+            // resource grab beat; overload keeps its living battery in place
+            // and shows a visible tether/charge instead.
+            if (evt.presentation === "overload" && evt.resourceId) {
+              steps.push(
+                step(t, (sc, n) => {
+                  const actor = findActor(sc, evt.actorId, w, h);
+                  const resource = findActor(sc, evt.resourceId!, w, h);
+                  if (!actor || !resource) return;
+                  if (style.projectile) {
+                    sc.effects.push({
+                      type: "projectile",
+                      fromX: actor.x,
+                      fromY: actor.y - 20,
+                      toX: resource.x,
+                      toY: resource.y,
+                      x: actor.x,
+                      y: actor.y - 20,
+                      color: style.color,
+                      effect: style.projectile,
+                      scale: style.scale ?? 1,
+                      glow: true,
+                      start: n,
+                      duration: 520,
+                    });
+                  }
+                  sc.effects.push({
+                    type: "charge",
+                    x: resource.x,
+                    y: resource.y - 28,
+                    color: style.color,
+                    effect: style.burst,
+                    scale: (style.scale ?? 1) * 0.8,
+                    start: n + 120,
+                    duration: 650,
+                  });
+                  pushPopup(sc, evt.resourceId!, "CHARGED", style.color, n, w, h, true);
+                })
+              );
+              t += 620;
+            } else {
+              steps.push(
+                step(t, (sc, n) => {
+                  if (!evt.resourceId) return;
+                  const actor = findActor(sc, evt.actorId, w, h);
+                  const resource = findActor(sc, evt.resourceId, w, h);
+                  if (!actor || !resource) return;
+                  startMove(
+                    getAnim(sc, resource.kind, evt.resourceId!, n),
+                    actor.x - resource.x,
+                    actor.y - resource.y - 18,
+                    220,
+                    n,
+                    sc.playbackRate
+                  );
+                })
+              );
+              t += 300;
+            }
+          }
+          break;
+        }
+
+        if (evt.phase === "consume") {
+          // Keep the exact body visible through the grab/arc. This flash is
+          // the consumption beat; the following defeated event then runs the
+          // normal shared corpse/death choreography and reward bookkeeping.
+          steps.push(
+            step(t, (sc, n) => {
+              if (evt.resourceId) {
+                const resource = findActor(sc, evt.resourceId, w, h);
+                if (resource) {
+                  const anim = getAnim(sc, resource.kind, evt.resourceId!, n);
+                  const off = animOffset(anim, n);
+                  pushBursts(sc, resource.x + off.x, resource.y + off.y, style, n, 380);
+                  anim.hitFlashIntensity = 0.8;
+                }
+              }
+              if (evt.presentation === "detonateAlly") {
+                pushFieldLayers(sc, w * 0.72, h, style, n, 650, 2.0);
+                addScreenShake(sc, 5, n, 320);
+              }
+              if (evt.presentation === "overload") {
+                pushFieldLayers(sc, w * 0.56, h, style, n, 760, 2.2);
+                addScreenShake(sc, 6, n, 360);
+              }
+              if (evt.chemistryId === "chem-bone-harvest") {
+                const actor = findActor(sc, evt.actorId, w, h);
+                if (actor) {
+                  pushBursts(sc, actor.x, actor.y, style, n, 520);
+                  pushPopup(sc, evt.actorId, "UP", COLORS.heal, n, w, h, true);
+                }
+              }
+            })
+          );
+          t += 90;
+          break;
+        }
+
+        if (evt.phase === "break") {
+          showBanner("COMBO BREAK", 950);
+          steps.push(
+            step(t, (sc, n) => {
+              const actor = findActor(sc, evt.actorId, w, h);
+              if (actor) {
+                pushPopup(sc, evt.actorId, "BREAK", COLORS.miss, n, w, h, true);
+                sc.effects.push({
+                  type: "burst",
+                  x: actor.x,
+                  y: actor.y,
+                  color: COLORS.miss,
+                  effect: "px_black_white_sparks",
+                  scale: 4.5,
+                  start: n,
+                  duration: 420,
+                });
+              }
+              if (evt.targetId) {
+                pushPopup(sc, evt.targetId, "SAFE", COLORS.heal, n, w, h, false);
+              }
+            })
+          );
+          t += 500;
+          break;
+        }
+
+        if (evt.phase === "intercept") {
+          showBanner("INTERCEPT", 720);
+          steps.push(
+            step(t, (sc, n) => {
+              const guarder = evt.partnerId
+                ? findActor(sc, evt.partnerId, w, h)
+                : undefined;
+              if (guarder) {
+                pushBursts(sc, guarder.x, guarder.y, style, n, 420);
+                pushPopup(sc, evt.partnerId!, "SHIELD", style.color, n, w, h, true);
+              }
+              if (evt.targetId) {
+                pushPopup(sc, evt.targetId, "INTERCEPT", COLORS.cursor, n, w, h, false);
+              }
+            })
+          );
+          t += 420;
+          break;
+        }
+
+        // Keep a safe fallback so a future chemistry phase cannot silently
+        // vanish from the shared timeline.
+        showBanner(label, 700);
+        t += 300;
+        break;
+      }
+
       case "cast": {
+        // Chemistry owns its banner, actor motion, and bespoke effects through
+        // the dedicated event above. Ordinary cast events are retained only
+        // as the exact per-target damage/heal payload, so they still produce
+        // one shared impact popup without reintroducing banner spam.
+        if (evt.presentation && evt.presentation !== "meleeGangUp") {
+          const isHeal = evt.heal !== undefined;
+          const style = isHeal
+            ? { color: COLORS.heal, burst: "priest_heal", burstScale: 1.2, scale: 1.2 }
+            : CHEMISTRY_STYLES[evt.presentation] ?? CHEMISTRY_STYLES.consumeAlly!;
+          if (evt.targetId && (evt.damage !== undefined || evt.heal !== undefined)) {
+            const impactAt = t;
+            steps.push(
+              step(impactAt, (sc, n) => {
+                const target = findActor(sc, evt.targetId!, w, h);
+                if (!target) return;
+                pushBursts(sc, target.x, target.y, style, n, 460);
+                if (!isHeal) addScreenShake(sc, 3.5, n, 220);
+              }),
+              ...impactSteps(
+                impactAt,
+                evt.targetId,
+                `${isHeal ? evt.heal : evt.damage}`,
+                isHeal ? COLORS.heal : COLORS.dmg,
+                w,
+                h,
+                !isHeal,
+                false,
+                undefined,
+                undefined,
+                evt.damage,
+                undefined,
+                undefined,
+                {
+                  actorId: evt.actorId,
+                  spellId: evt.spellId,
+                  allowHitStop: !isHeal,
+                  effectColor: style.color,
+                }
+              )
+            );
+            t += 120;
+          }
+          break;
+        }
         if (evt.presentation && evt.presentation !== "meleeGangUp") {
           warnAsset(`unknown cast presentation: ${evt.presentation}`);
         }
@@ -3900,8 +4336,10 @@ export function playTurn(
 
   // Give trailing impact effects a short settle beat. Ordinary attacks must
   // not spend a quarter-second idling after the attacker has already returned;
-  // a death bark can still push this farther through its explicit ledger.
-  const duration = Math.max(t + 100, lastDeathBarkVisibleUntil);
+  // bespoke Chemistry steps may schedule after the logical cursor, while a
+  // death bark can push the ledger farther still.
+  const lastVisualStepAt = steps.reduce((maxAt, choreoStep) => Math.max(maxAt, choreoStep.at), 0);
+  const duration = Math.max(t + 100, lastVisualStepAt + 260, lastDeathBarkVisibleUntil);
   scene.choreo = { start: now, duration, steps };
   return duration;
 }
