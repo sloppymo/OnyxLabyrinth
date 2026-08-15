@@ -18,6 +18,8 @@
     "floor:export-check": "tsx scripts/floor-tool.ts export-check",
     "floor:check": "tsx scripts/floor-tool.ts check",
     "floor:editor": "vite --open /tools/floor-editor.html",
+    "level:3d": "vite --open /tools/level-3d.html",
+    "level:3d:screenshots": "node scripts/playtests/level-3d-screenshots.mjs",
     "sprite-preview:generate": "tsx scripts/generate-sprite-preview.ts",
     "generate:combat-bg": "node scripts/generate-combat-bg.mjs",
     "tileset:gallery": "node scripts/generate-tileset-gallery.mjs",
