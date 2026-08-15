@@ -251,6 +251,9 @@ async function exportVisibleScene(): Promise<void> {
 }
 
 function connectControls(): void {
+  // Ceilings start visible, so transparency must be available immediately;
+  // the HTML disabled state only prevents a pre-script interaction race.
+  transparentCeilings.disabled = !showCeilings.checked;
   floorSelect.addEventListener("change", () => {
     void loadSelectedFloor(Number(floorSelect.value));
   });

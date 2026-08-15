@@ -21,6 +21,15 @@ page.on("requestfailed", (request) => {
 for (const floor of [1, 2, 3, 4, 5]) {
   await page.goto(`${baseUrl}?floor=${floor}`, { waitUntil: "networkidle" });
   await page.locator("#loading-status").waitFor({ state: "hidden", timeout: 30_000 });
+  const transparentCeilings = page.locator("#transparent-ceilings");
+  if (await transparentCeilings.isDisabled()) {
+    throw new Error(`transparent ceilings control is disabled on Floor ${floor}`);
+  }
+  await transparentCeilings.check();
+  if (!(await transparentCeilings.isChecked())) {
+    throw new Error(`transparent ceilings control did not check on Floor ${floor}`);
+  }
+  await transparentCeilings.uncheck();
   await page.locator("#camera-top").click();
   await page.locator("#show-ceilings").uncheck();
   await page.screenshot({ path: join(outputDir, `floor${floor}-top.png`) });
