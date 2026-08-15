@@ -1,6 +1,7 @@
 import type { FloorDef } from "../../../data/floors";
 import { themeAt } from "../../../game/floor-map";
 import type { Cell, EdgeType } from "../../../types";
+import { wallVariantForEdge } from "../../wall-variants";
 import {
   compileOpenBoundaryPatches,
   fullBoundaryPatch,
@@ -376,6 +377,17 @@ function materialForDoor(
   return `${theme}:door`;
 }
 
+function materialForWall(
+  floor: FloorDef,
+  theme: string,
+  x: number,
+  y: number,
+  dir: Direction
+): string {
+  const suffix = wallVariantForEdge(floor.id, theme, x, y, dir);
+  return suffix ? `${theme}:wall@${suffix}` : `${theme}:wall`;
+}
+
 const OVERLOOK_PARAPET_HEIGHT = 0.25;
 
 function hasBarredGate(
@@ -525,7 +537,7 @@ export function compileMazeGeometry(
           ).aClosed;
           for (const patch of patches) {
             addBoundaryPatch(
-              batchFor(x, y, `${theme}:wall`, "wall"),
+              batchFor(x, y, materialForWall(floor, theme, x, y, dir), "wall"),
               x,
               y,
               dir,
@@ -554,7 +566,7 @@ export function compileMazeGeometry(
               OPPOSITE_SURFACE_DIRECTION[dir]
             );
             addBoundaryPatch(
-              batchFor(x, y, `${theme}:wall`, "wall"),
+              batchFor(x, y, materialForWall(floor, theme, x, y, dir), "wall"),
               x,
               y,
               dir,
@@ -603,7 +615,7 @@ export function compileMazeGeometry(
           );
           if (panelTop0 < volume.ceilingZ || panelTop1 < volume.ceilingZ) {
             addBoundaryPatch(
-              batchFor(x, y, `${theme}:wall`, "wall"),
+              batchFor(x, y, materialForWall(floor, theme, x, y, dir), "wall"),
               x,
               y,
               dir,
@@ -627,7 +639,7 @@ export function compileMazeGeometry(
         }
 
         addBoundaryPatch(
-          batchFor(x, y, `${theme}:wall`, "wall"),
+          batchFor(x, y, materialForWall(floor, theme, x, y, dir), "wall"),
           x,
           y,
           dir,
