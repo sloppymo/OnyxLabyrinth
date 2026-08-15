@@ -63,10 +63,42 @@ export const UNDERTOW_CALLER_BARKS: CombatBarkProfile = {
   voiceMode: "articulate",
   voiceSummary: "water-cult priest, intelligent — wants the tide to answer, sounds certain",
   pools: {
-    combatStart: [{ text: "The tide hears." }],
-    abilityUse: [{ text: "Answer.", abilityId: "ice-shards" }],
-    takeHit: [{ text: "Undeterred." }],
-    death: [{ text: "The tide takes me." }],
+    combatStart: [
+      { text: "The tide hears." },
+      { text: "Come, current." },
+    ],
+    basicAttack: [
+      { text: "As the tide wills." },
+    ],
+    attackMiss: [
+      { text: "The current missed." },
+    ],
+    abilityUse: [
+      { text: "Answer.", abilityId: "ice-shards" },
+      { text: "Blind, as the deep is.", abilityId: "blinding-gaze" },
+      { text: "Hexed.", abilityId: "curse" },
+    ],
+    takeHit: [
+      { text: "Undeterred." },
+    ],
+    takeHeavyHit: [
+      { text: "The tide answers back." },
+    ],
+    lowHp: [
+      { text: "The current thins." },
+    ],
+    allyDefeated: [
+      { text: "One voice pulled under." },
+    ],
+    kill: [
+      { text: "Taken by the tide." },
+    ],
+    death: [
+      { text: "The tide takes me." },
+    ],
+    rare: [
+      { text: "The deep does not forgive." },
+    ],
   },
 };
 

@@ -110,6 +110,9 @@ export const ACID_PUDDLE_BARKS: CombatBarkProfile = {
     death: [
       { text: "*fizzles out*" },
     ],
+    chemistryWitness: [
+      { text: "*bubbles louder*", chemistryId: "corrosive-cover" },
+    ],
   },
 };
 
@@ -123,6 +126,13 @@ export const LAB_ASSISTANT_BARKS: CombatBarkProfile = {
     combatStart: [
       { text: "Noted." },
       { text: "Beginning." },
+      { text: "Filing this now." },
+    ],
+    basicAttack: [
+      { text: "Documented." },
+    ],
+    attackMiss: [
+      { text: "Clerical error." },
     ],
     healCast: [
       { text: "Filed.", abilityId: "mass-heal-ability" },
@@ -134,14 +144,24 @@ export const LAB_ASSISTANT_BARKS: CombatBarkProfile = {
     takeHit: [
       { text: "Unfortunate." },
     ],
+    takeHeavyHit: [
+      { text: "That requires a report." },
+    ],
     lowHp: [
       { text: "This is irregular." },
+    ],
+    allyDefeated: [
+      { text: "Amend the roster." },
+    ],
+    kill: [
+      { text: "Closed." },
     ],
     death: [
       { text: "Incomplete." },
     ],
     chemistryWitness: [
       { text: "Noted.", chemistryId: "living-shield" },
+      { text: "Covered, for now.", chemistryId: "corrosive-cover" },
     ],
     rare: [
       { text: "Someone else file this." },

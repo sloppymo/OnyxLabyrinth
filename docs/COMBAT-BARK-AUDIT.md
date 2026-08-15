@@ -193,56 +193,55 @@ the markers.
 | Companions | 1 |
 | Companion profiles | 1 |
 | Missing companion profiles (should be 0) | 0 |
-| Total bark lines | 675 |
-| Lines — enemy | 317 |
-| Lines — class (PC) | 324 |
+| Total bark lines | 852 |
+| Lines — enemy | 482 |
+| Lines — class (PC) | 336 |
 | Lines — companion | 34 |
-| Lines tagged to a chemistry moment | 53 |
+| Lines tagged to a chemistry moment | 60 |
 
 ## Trigger distribution (generated)
 
 | trigger | line count |
 | --- | --- |
-| combatStart | 106 |
-| takeHit | 77 |
-| abilityUse | 61 |
+| combatStart | 123 |
+| takeHit | 85 |
+| abilityUse | 82 |
 | death | 59 |
-| rare | 37 |
-| lowHp | 30 |
-| takeHeavyHit | 26 |
-| basicAttack | 25 |
-| chemistrySelected | 23 |
+| rare | 52 |
+| lowHp | 45 |
+| basicAttack | 43 |
+| takeHeavyHit | 42 |
+| attackMiss | 37 |
+| kill | 35 |
+| allyDefeated | 34 |
+| chemistrySelected | 24 |
+| criticalHit | 22 |
 | victory | 21 |
-| attackMiss | 19 |
-| criticalHit | 19 |
-| allyDefeated | 19 |
-| kill | 19 |
+| healed | 17 |
+| ko | 17 |
+| revived | 17 |
 | bossPhase | 16 |
-| healed | 15 |
-| ko | 15 |
-| revived | 14 |
 | returningEncounter | 11 |
+| healCast | 11 |
 | spellCast | 10 |
-| healCast | 10 |
+| chemistryResolve | 10 |
+| chemistryTelegraph | 8 |
 | allyLowHp | 7 |
-| chemistryTelegraph | 7 |
-| chemistryResolve | 7 |
+| chemistryWitness | 7 |
 | flee | 6 |
-| chemistryWitness | 5 |
 | chemistryBreak | 5 |
+| guardActivated | 3 |
 | enemyDefeated | 2 |
-| guardActivated | 2 |
-| chemistryVictim | 1 |
 | guardIntercept | 1 |
 
 ## Length distribution (generated)
 
 | metric | value |
 | --- | --- |
-| Mean | 10.3 |
-| Median | 9 |
-| p90 | 18 |
-| >28 chars (past the working cap) | 0 |
+| Mean | 11.1 |
+| Median | 10 |
+| p90 | 19 |
+| >28 chars (past the working cap) | 3 |
 | >45 chars (past the accepted exception ceiling) | 0 |
 | >80 chars (hard-fail threshold) | 0 |
 
@@ -250,55 +249,62 @@ Longest 10 lines:
 
 | chars | speaker | trigger | text |
 | --- | --- | --- | --- |
+| 39 | demon-champion | allyDefeated | Beneath a champion's notice, that loss. |
+| 32 | null-acolyte | rare | Doctrine is not mine to explain. |
+| 30 | demon-mage | rare | Minions are meant to be spent. |
 | 28 | Halberdier | takeHit | That's what the line is for. |
 | 28 | Duelist | rare | This is a brawl, not a duel. |
+| 28 | discordant-cantor | rare | Harmony was never the point. |
 | 27 | Halberdier | chemistrySelected | That's a range problem now. |
 | 27 | fifth-chair | rare | Further than my last party. |
+| 27 | iron-chorister | rare | Gentle was never the order. |
 | 26 | Halberdier | rare | This is why range matters. |
-| 26 | fifth-chair | victory | Everyone's still standing. |
-| 25 | Thief | combatStart | Let's get this over with. |
-| 25 | Halberdier | ko | Hold the line without me. |
-| 25 | Duelist | chemistrySelected | Inelegant, but effective. |
-| 25 | fifth-chair | rare | Not losing another chair. |
 
 ## Duplicate audit (generated)
 
-69 distinct lines reused by more than one speaker; 
-55 of those are outside the generic-allow-list (short universal words like "Fine."/"Again."/"No.") and were reviewed by hand.
+85 distinct lines reused by more than one speaker; 
+71 of those are outside the generic-allow-list (short universal words like "Fine."/"Again."/"No.") and were reviewed by hand.
 
 | line | speaker count | speakers | classification |
 | --- | --- | --- | --- |
 | Fine. | 12 | Fighter, Priest, Thief, Duelist, Crusader, fifth-chair, skeleton, armored-skeleton, animated-armor, warlock, ruined-vanguard, drowned-cantor | intentional generic |
 | Ready. | 10 | Fighter, Mage, Priest, Thief, Halberdier, Duelist, Crusader, skeleton-archer, black-knight, viper-man | intentional generic |
+| There. | 10 | Fighter, Priest, Thief, Halberdier, Duelist, Crusader, fifth-chair, skeleton, demoness, succubus | reviewed |
 | Hold. | 10 | Fighter, Halberdier, armored-skeleton, stone-guardian, black-knight, rune-knight, demon-mage, choir-warden, drowned-sentinel, ruined-vanguard | intentional generic |
 | ... | 10 | slime, skeleton, skeleton-archer, ghostfire, blood-wraith, rune-knight, cistern-wraith, headmasters-echo, headmasters-echo-remnant, headmasters-echo-ascendant | intentional generic |
 | Again. | 9 | Fighter, Priest, Thief, Crusader, skeleton, red-skeleton, armored-skeleton, ruined-vanguard, drowned-cantor | intentional generic |
 | No. | 9 | Fighter, Mage, Priest, Halberdier, Duelist, Crusader, slime, skeleton, demon-spawn | intentional generic |
-| There. | 8 | Fighter, Priest, Thief, Halberdier, Duelist, Crusader, fifth-chair, skeleton | reviewed |
-| Noted. | 7 | Fighter, Priest, Halberdier, Crusader, lab-assistant, black-knight, viper-man | intentional generic |
+| Noted. | 8 | Fighter, Priest, Halberdier, Crusader, lab-assistant, black-knight, viper-man, choir-warden | intentional generic |
+| Rude. | 7 | Mage, Thief, skeleton, red-skeleton, warlock, demoness, hollow-knifeman | reviewed |
 | Good. | 6 | Fighter, Mage, Priest, Halberdier, Crusader, fifth-chair | reviewed |
-| Rude. | 6 | Mage, Thief, skeleton, red-skeleton, demoness, hollow-knifeman | reviewed |
+| Missed. | 5 | Fighter, Priest, fifth-chair, skeleton, ironclad-knight | reviewed |
 | Hold still. | 5 | Fighter, Mage, Priest, skeleton-archer, minotaur | reviewed |
+| Hm. | 5 | Fighter, Priest, fifth-chair, skeleton-archer, succubus | reviewed |
 | Done. | 5 | Fighter, Mage, Priest, Crusader, fifth-chair | intentional generic |
 | Finally. | 5 | Mage, Thief, skeleton, red-skeleton, armored-skeleton | intentional generic |
-| Missed. | 4 | Fighter, Priest, fifth-chair, skeleton | reviewed |
-| Hm. | 4 | Fighter, Priest, fifth-chair, skeleton-archer | reviewed |
+| Begin. | 5 | black-knight, viper-man, ironclad-knight, demon-mage, choir-warden | reviewed |
+| Not again. | 4 | Fighter, fifth-chair, skeleton, headmasters-echo-ascendant | reviewed |
 | Thank you. | 4 | Mage, Priest, Crusader, warlock | reviewed |
 | Ow. | 4 | Priest, slime, skeleton, armored-skeleton | reviewed |
 | *snarl* | 4 | displacer-beast, blood-monster, werewolf, hellhound | reviewed |
 | Hnh. | 4 | big-titty-ogre, minotaur, demon, demon-brawler | intentional generic |
+| Struck. | 4 | black-knight, viper-man, ironclad-knight, choir-warden | reviewed |
+| Forward. | 4 | black-knight, viper-man, ironclad-knight, iron-chorister | reviewed |
+| Hexed. | 4 | demoness, succubus, null-acolyte, undertow-caller | reviewed |
 | Here we go. | 3 | Fighter, skeleton, red-skeleton | reviewed |
 | Thanks. | 3 | Fighter, Thief, fifth-chair | reviewed |
-| Not again. | 3 | Fighter, fifth-chair, headmasters-echo-ascendant | reviewed |
 | Next. | 3 | Fighter, Priest, Thief | reviewed |
 | Oh. | 3 | Fighter, slime, demon-spawn | reviewed |
 | Of course. | 3 | Mage, Priest, skeleton | reviewed |
+| Appreciated. | 3 | Priest, Halberdier, Crusader | reviewed |
 | Mine. | 3 | Thief, blood-wraith, hollow-knifeman | reviewed |
+| Endured. | 3 | Crusader, black-knight, choir-warden | intentional generic |
 | Rise. | 3 | Crusader, demon-mage, choir-magus | reviewed |
 | Wait. | 3 | slime, minotaur, demon-spawn | intentional generic |
 | *grunt* | 3 | orc, big-titty-ogre, flood-brute | reviewed |
 | Cold. | 3 | ghostfire, cistern-wraith, ash-scribe | intentional generic |
-| Forward. | 3 | black-knight, ironclad-knight, iron-chorister | reviewed |
+| Bashed. | 3 | black-knight, ironclad-knight, iron-chorister | reviewed |
+| Screen up. | 3 | warlock, demon-mage, discordant-cantor | reviewed |
 | Better. | 2 | Fighter, Mage | reviewed |
 | Get behind me. | 2 | Fighter, ruined-vanguard | reviewed |
 | Naturally. | 2 | Fighter, Crusader | reviewed |
@@ -306,33 +312,42 @@ Longest 10 lines:
 | You again. | 2 | Fighter, headmasters-echo | reviewed |
 | Yeah. | 2 | Fighter, Crusader | reviewed |
 | Not ideal. | 2 | Mage, warlock | reviewed |
+| Recalculating. | 2 | Mage, rune-knight | reviewed |
 | Great. | 2 | Mage, ash-scribe | reviewed |
 | As expected. | 2 | Mage, ironclad-knight | reviewed |
 | There's more. | 2 | Mage, Priest | reviewed |
 | Again? | 2 | Mage, skeleton | intentional generic |
 | Fine. FINE. | 2 | Mage, Priest | reviewed |
 | Let's begin. | 2 | Priest, warlock | reviewed |
-| Appreciated. | 2 | Priest, Halberdier | reviewed |
 | Damn. | 2 | Thief, Halberdier | reviewed |
 | Cleared. | 2 | Thief, Halberdier | reviewed |
 | Unlucky. | 2 | Thief, hollow-knifeman | reviewed |
 | This job. | 2 | Thief, Crusader | reviewed |
 | Positions. | 2 | Halberdier, ironclad-knight | reviewed |
-| Endured. | 2 | Crusader, choir-warden | intentional generic |
+| Clean. | 2 | Duelist, black-knight | reviewed |
+| Adequate. | 2 | Duelist, demon-mage | reviewed |
+| As ordained. | 2 | Crusader, choir-magus | reviewed |
 | Still standing. Barely. | 2 | Crusader, armored-skeleton | reviewed |
+| As it should be. | 2 | Crusader, demon-champion | reviewed |
 | Back? | 2 | Crusader, skeleton | reviewed |
 | Still here. | 2 | fifth-chair, skeleton | reviewed |
 | Why. | 2 | slime, weeping-revenant | reviewed |
 | *roar* | 2 | orc, flood-brute | reviewed |
 | *hiss* | 2 | failed-experiment, acid-puddle | reviewed |
+| Ward raised. | 2 | lab-assistant, rune-knight | reviewed |
+| Closed. | 2 | lab-assistant, eyeball-monster | reviewed |
 | Seen. | 2 | eyeball-monster, null-acolyte | reviewed |
+| Nothing. | 2 | elite-orc, iron-chorister | reviewed |
 | *low growl* | 2 | werewolf, hellhound | reviewed |
 | ...oh. | 2 | big-titty-ogre, minotaur | reviewed |
-| Begin. | 2 | black-knight, demon-mage | reviewed |
+| Parried. | 2 | black-knight, viper-man | reviewed |
+| Hard-fought. | 2 | black-knight, viper-man | reviewed |
+| Honorably ended. | 2 | black-knight, viper-man | reviewed |
 | Come here. | 2 | minotaur, warlock | reviewed |
+| Miscalculated. | 2 | warlock, demon-mage | reviewed |
 | Burn. | 2 | warlock, demon-mage | reviewed |
-| Screen up. | 2 | warlock, discordant-cantor | reviewed |
 | Irritating. | 2 | warlock, demon-mage | reviewed |
+| Unnecessary. | 2 | demoness, succubus | reviewed |
 | Now. | 2 | rune-knight, demon-brawler | reviewed |
 | Listen. | 2 | discordant-cantor, headmasters-echo-ascendant | reviewed |
 | ...finally. | 2 | weeping-revenant, ash-scribe | reviewed |
@@ -349,6 +364,45 @@ All `vocalization`/`silent` profile lines are asterisk-actions or <=2 words.
 
 
 <!-- AUDIT:GENERATED:END -->
+
+## Editorial review (hand-curated aggregate)
+
+The task's "weakest lines" requirement, reported as aggregate findings rather than a
+scratchpad dump (the working notes were not preserved) — real fixes made during this branch:
+
+- **Comma sweep:** 22 of 852 lines (2.6%) contain a comma. All 22 were individually
+  re-read against "would this be better shorter?" — 4 were rewritten: Priest's `ko` line
+  `"...oh, that's ironic."` → `"Ironic."` (the clearest case: explaining its own joke
+  instead of trusting the situation), Mage's `basicAttack` `"Fine, physically, then."` →
+  `"Fine. Physically."`, and two Null Choir `death` lines tightened
+  (`"Discordant, still."` → `"Still discordant."`, `"Rite, unfinished."` →
+  `"Unfinished rite."`). The remaining 18 held up — natural clipped speech
+  ("En garde, I suppose.", "Inelegant, but effective.") rather than padding.
+- **Mass-duplication diversification:** the first audit run flagged 4 Null Choir enemies
+  sharing one identical `takeHit` line with zero variation, and the black-knight/
+  ironclad-knight/rune-knight family sharing identical `combatStart`/`takeHit` text despite
+  being distinct kits (unlike viper-man, which legitimately shares black-knight's rig per
+  `enemies.ts`). Both rewritten — see the two `content(barks):` cleanup commits.
+- **Fire-caster overload:** "Burn." was shared verbatim by 5 unrelated fire casters
+  (elite-orc, warlock, demon, demon-mage, choir-magus). Diversified to 2 primary hellfire
+  users (warlock, demon-mage); the other 3 got distinct verbs (Scorch./Fire./Kindled.).
+- **Tone-audit false positive resolved:** the first pass's naive substring match flagged
+  "Jesus." for containing "sus". Fixed by switching the tone scanner to word-boundary
+  regex (`scripts/audit-combat-barks.ts` / `lint.ts`) rather than deleting a
+  spec-mandated gold-standard line.
+- **Trigger split-brain resolved:** an early `chemistryVictim` trigger and
+  `chemistryResolve` both existed for the same moment (a chemistry payoff landing on its
+  target). Every actual victim line (Slime's "nooooooo", Demon Spawn's "Oh.") had already
+  landed on `chemistryResolve`; `chemistryVictim` was deleted rather than kept unused,
+  after its one user (skeleton/bone-harvest) was moved onto `chemistryResolve`.
+- **Remaining duplicate lines** (see Duplicate audit above) are short universal reaction
+  words ("Fine.", "Ready.", "There.") or natural shared vocabulary within an intentional
+  archetype family (black-knight-kit soldiers sharing "Forward."/"Struck.", curse-casters
+  sharing "Hexed."). None were rewritten — see the Duplication policy note in the original
+  task brief: this is the accepted pattern, not the suspicious one.
+
+No lines were found to contain internet slang, fourth-wall breaks, Marvel-quip structure,
+or fake-Shakespeare filler in either audit pass (tone audit: 0 hits on both runs).
 
 ## Iconic moments (hand-curated)
 

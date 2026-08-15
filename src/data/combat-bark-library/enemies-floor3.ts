@@ -110,6 +110,7 @@ export const ANIMATED_ARMOR_BARKS: CombatBarkProfile = {
     guardActivated: [
       { text: "*steps forward*", chemistryId: "living-shield" },
       { text: "Fine.", chemistryId: "living-shield" },
+      { text: "*steps forward*", chemistryId: "corrosive-cover" },
     ],
     guardIntercept: [{ text: "*clang*", chemistryId: "living-shield" }],
     takeHit: [{ text: "*dent*" }],
@@ -180,22 +181,47 @@ export const BLACK_KNIGHT_BARKS: CombatBarkProfile = {
     combatStart: [
       { text: "Ready." },
       { text: "Begin." },
+      { text: "En garde." },
+    ],
+    basicAttack: [
+      { text: "Struck." },
+      { text: "Held ground." },
+    ],
+    attackMiss: [
+      { text: "Parried." },
+      { text: "Missed my line." },
+    ],
+    criticalHit: [
+      { text: "Clean." },
     ],
     abilityUse: [
       { text: "Hold.", abilityId: "phalanx-guard" },
       { text: "Forward.", abilityId: "charge" },
+      { text: "Bashed.", abilityId: "shield-bash" },
     ],
     takeHit: [
       { text: "Noted." },
+      { text: "Endured." },
     ],
     takeHeavyHit: [
       { text: "Hard-fought." },
+      { text: "That landed." },
+    ],
+    lowHp: [
+      { text: "This grows costly." },
+    ],
+    allyDefeated: [
+      { text: "A fellow blade down." },
+    ],
+    kill: [
+      { text: "Honorably ended." },
     ],
     death: [
       { text: "Well fought." },
     ],
     rare: [
       { text: "You've earned this." },
+      { text: "Rare, this resistance." },
     ],
   },
 };
@@ -209,15 +235,36 @@ export const VIPER_MAN_BARKS: CombatBarkProfile = {
   pools: {
     combatStart: [
       { text: "Ready." },
+      { text: "Begin." },
+    ],
+    basicAttack: [
+      { text: "Struck." },
+    ],
+    attackMiss: [
+      { text: "Parried." },
     ],
     abilityUse: [
       { text: "Venom.", abilityId: "venomous-strike" },
+      { text: "Coiled.", abilityId: "coiled-fury" },
+      { text: "Forward.", abilityId: "charge" },
     ],
     takeHit: [
       { text: "Noted." },
     ],
+    takeHeavyHit: [
+      { text: "Hard-fought." },
+    ],
+    lowHp: [
+      { text: "Costly, this fight." },
+    ],
+    kill: [
+      { text: "Honorably ended." },
+    ],
     death: [
       { text: "Worth it, then." },
+    ],
+    rare: [
+      { text: "Someone overpaid for me." },
     ],
   },
 };
@@ -266,16 +313,38 @@ export const WARLOCK_BARKS: CombatBarkProfile = {
     combatStart: [
       { text: "Let's begin." },
       { text: "Fine." },
+      { text: "Back to work." },
+    ],
+    basicAttack: [
+      { text: "Simple enough." },
+    ],
+    attackMiss: [
+      { text: "Miscalculated." },
+    ],
+    criticalHit: [
+      { text: "Precisely." },
     ],
     abilityUse: [
       { text: "Burn.", abilityId: "hellfire" },
       { text: "Screen up.", abilityId: "anti-magic-field" },
+      { text: "Chaos.", abilityId: "chaos-bolt" },
     ],
     takeHit: [
       { text: "Irritating." },
+      { text: "Rude." },
+    ],
+    takeHeavyHit: [
+      { text: "That was excessive." },
     ],
     lowHp: [
       { text: "Not ideal." },
+      { text: "This wasn't the plan." },
+    ],
+    allyDefeated: [
+      { text: "Inconvenient loss." },
+    ],
+    kill: [
+      { text: "Filed away." },
     ],
     death: [
       { text: "Unfinished business." },
@@ -285,15 +354,18 @@ export const WARLOCK_BARKS: CombatBarkProfile = {
     ],
     chemistryTelegraph: [
       { text: "Need this.", chemistryId: "bone-harvest" },
+      { text: "One more.", chemistryId: "harvest-loop" },
     ],
     chemistryResolve: [
       { text: "Thank you.", chemistryId: "bone-harvest", oncePerCombat: true },
+      { text: "Efficient.", chemistryId: "harvest-loop" },
     ],
     chemistryBreak: [
       { text: "Wasted.", chemistryId: "bone-harvest" },
     ],
     rare: [
       { text: "I've buried better." },
+      { text: "This job ages a man." },
     ],
   },
 };
@@ -321,18 +393,42 @@ export const DEMONESS_BARKS: CombatBarkProfile = {
   pools: {
     combatStart: [
       { text: "Let's be quick." },
+      { text: "Shall we." },
+    ],
+    basicAttack: [
+      { text: "There." },
+    ],
+    attackMiss: [
+      { text: "Hm, missed." },
     ],
     healCast: [
       { text: "Cleaning up.", abilityId: "mass-heal-ability" },
     ],
     abilityUse: [
       { text: "Sit down.", abilityId: "seduction" },
+      { text: "Hexed.", abilityId: "curse" },
     ],
     takeHit: [
       { text: "Rude." },
+      { text: "Unnecessary." },
+    ],
+    takeHeavyHit: [
+      { text: "That was uncalled for." },
+    ],
+    lowHp: [
+      { text: "This is getting tiresome." },
+    ],
+    allyDefeated: [
+      { text: "A waste, that." },
+    ],
+    kill: [
+      { text: "Simple, really." },
     ],
     death: [
       { text: "How tedious." },
+    ],
+    rare: [
+      { text: "You're no fun at all." },
     ],
   },
 };
@@ -344,10 +440,41 @@ export const IRONCLAD_KNIGHT_BARKS: CombatBarkProfile = {
   voiceMode: "articulate",
   voiceSummary: "black-knight family, colder — grim professional, no banter",
   pools: {
-    combatStart: [{ text: "Positions." }],
-    abilityUse: [{ text: "Forward.", abilityId: "charge" }],
-    takeHit: [{ text: "Absorbed." }],
-    death: [{ text: "As expected." }],
+    combatStart: [
+      { text: "Positions." },
+      { text: "Begin." },
+    ],
+    basicAttack: [
+      { text: "Struck." },
+    ],
+    attackMiss: [
+      { text: "Missed." },
+    ],
+    abilityUse: [
+      { text: "Forward.", abilityId: "charge" },
+      { text: "Bashed.", abilityId: "shield-bash" },
+    ],
+    takeHit: [
+      { text: "Absorbed." },
+    ],
+    takeHeavyHit: [
+      { text: "That registered." },
+    ],
+    lowHp: [
+      { text: "Formation, hold." },
+    ],
+    allyDefeated: [
+      { text: "One down." },
+    ],
+    kill: [
+      { text: "As expected." },
+    ],
+    death: [
+      { text: "As expected." },
+    ],
+    rare: [
+      { text: "No banter. Fight." },
+    ],
   },
 };
 
@@ -360,12 +487,32 @@ export const RUNE_KNIGHT_BARKS: CombatBarkProfile = {
   pools: {
     combatStart: [
       { text: "Steady." },
+      { text: "Begin the count." },
+    ],
+    basicAttack: [
+      { text: "Calculated." },
+    ],
+    attackMiss: [
+      { text: "Mischarged." },
     ],
     abilityUse: [
       { text: "Hold.", abilityId: "lightning-strike" },
+      { text: "Ward raised.", abilityId: "ward" },
     ],
     takeHit: [
       { text: "Registered." },
+    ],
+    takeHeavyHit: [
+      { text: "Unplanned." },
+    ],
+    lowHp: [
+      { text: "Recalculating." },
+    ],
+    allyDefeated: [
+      { text: "A variable lost." },
+    ],
+    kill: [
+      { text: "As calculated." },
     ],
     death: [
       { text: "Discharged." },
@@ -374,13 +521,16 @@ export const RUNE_KNIGHT_BARKS: CombatBarkProfile = {
       { text: "Charge.", chemistryId: "rune-overload" },
     ],
     chemistryTelegraph: [
-      { text: "Hold." , chemistryId: "rune-overload" },
+      { text: "Hold.", chemistryId: "rune-overload" },
     ],
     chemistryResolve: [
       { text: "Now.", chemistryId: "rune-overload", oncePerCombat: true },
     ],
     chemistryBreak: [
       { text: "...", chemistryId: "rune-overload" },
+    ],
+    rare: [
+      { text: "Precision, always." },
     ],
   },
 };
@@ -436,15 +586,41 @@ export const DEMON_CHAMPION_BARKS: CombatBarkProfile = {
   pools: {
     combatStart: [
       { text: "At last." },
+      { text: "A real fight, then." },
+    ],
+    basicAttack: [
+      { text: "Beneath me, but fine." },
+    ],
+    attackMiss: [
+      { text: "Lucky." },
+    ],
+    criticalHit: [
+      { text: "As it should be." },
     ],
     abilityUse: [
       { text: "Enough waiting.", abilityId: "berserk" },
+      { text: "Ground, taken.", abilityId: "stone-slam" },
     ],
     takeHit: [
       { text: "Is that all." },
     ],
+    takeHeavyHit: [
+      { text: "You have my attention." },
+    ],
+    lowHp: [
+      { text: "Not yet." },
+    ],
+    allyDefeated: [
+      { text: "Beneath a champion's notice, that loss." },
+    ],
+    kill: [
+      { text: "Beneath me." },
+    ],
     death: [
       { text: "Impressive." },
+    ],
+    rare: [
+      { text: "Finally, a challenge." },
     ],
   },
 };
@@ -458,13 +634,33 @@ export const DEMON_MAGE_BARKS: CombatBarkProfile = {
   pools: {
     combatStart: [
       { text: "Begin." },
+      { text: "Inventory ready." },
+    ],
+    basicAttack: [
+      { text: "Adequate." },
+    ],
+    attackMiss: [
+      { text: "Miscalculated." },
     ],
     abilityUse: [
       { text: "Burn.", abilityId: "hellfire" },
       { text: "Rise.", abilityId: "summon-imp" },
+      { text: "Screen up.", abilityId: "anti-magic-field" },
     ],
     takeHit: [
       { text: "Irritating." },
+    ],
+    takeHeavyHit: [
+      { text: "Unaccounted for." },
+    ],
+    lowHp: [
+      { text: "Recalculating losses." },
+    ],
+    allyDefeated: [
+      { text: "Acceptable losses." },
+    ],
+    kill: [
+      { text: "Logged." },
     ],
     death: [
       { text: "Poorly spent." },
@@ -482,6 +678,9 @@ export const DEMON_MAGE_BARKS: CombatBarkProfile = {
       { text: "Wasteful.", chemistryId: "spawn-bomb" },
       { text: "Wasteful.", chemistryId: "combo-break" },
     ],
+    rare: [
+      { text: "Minions are meant to be spent." },
+    ],
   },
 };
 
@@ -494,16 +693,39 @@ export const SUCCUBUS_BARKS: CombatBarkProfile = {
   pools: {
     combatStart: [
       { text: "Let's make this easy." },
+      { text: "Must we." },
+    ],
+    basicAttack: [
+      { text: "There." },
+    ],
+    attackMiss: [
+      { text: "Hm." },
     ],
     abilityUse: [
       { text: "Relax.", abilityId: "seduction" },
       { text: "Give it here.", abilityId: "soul-drain" },
+      { text: "Hexed.", abilityId: "curse" },
     ],
     takeHit: [
       { text: "Unnecessary." },
     ],
+    takeHeavyHit: [
+      { text: "Rude, actually." },
+    ],
+    lowHp: [
+      { text: "This lost its charm." },
+    ],
+    allyDefeated: [
+      { text: "A shame, that." },
+    ],
+    kill: [
+      { text: "Too easy." },
+    ],
     death: [
       { text: "Pity." },
+    ],
+    rare: [
+      { text: "You're supposed to swoon." },
     ],
   },
 };

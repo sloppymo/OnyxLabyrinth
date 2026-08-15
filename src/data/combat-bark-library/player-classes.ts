@@ -490,6 +490,7 @@ export const HALBERDIER_BARKS: CombatBarkProfile = {
     ],
     revived: [
       { text: "Back in formation." },
+      { text: "Positions again." },
     ],
     victory: [
       { text: "Line held." },
@@ -499,6 +500,7 @@ export const HALBERDIER_BARKS: CombatBarkProfile = {
       { text: "Full extension.", abilityId: "halberdier-impale" },
       { text: "Get back.", abilityId: "halberdier-pike-wall" },
       { text: "Clearing the row.", abilityId: "halberdier-sweep" },
+      { text: "Bracing.", abilityId: "halberdier-brace" },
     ],
     chemistrySelected: [
       { text: "That's a range problem now.", chemistryId: "slime-cannon" },
@@ -555,6 +557,7 @@ export const DUELIST_BARKS: CombatBarkProfile = {
     ],
     healed: [
       { text: "Much better." },
+      { text: "Restored." },
     ],
     allyDefeated: [
       { text: "No." },
@@ -566,9 +569,11 @@ export const DUELIST_BARKS: CombatBarkProfile = {
     ],
     ko: [
       { text: "Poor form on my part." },
+      { text: "Disarmed, apparently." },
     ],
     revived: [
       { text: "Round two." },
+      { text: "Composure regained." },
     ],
     victory: [
       { text: "A clean bout." },
@@ -578,6 +583,7 @@ export const DUELIST_BARKS: CombatBarkProfile = {
       { text: "Riposte.", abilityId: "duelist-riposte" },
       { text: "Perfect line.", abilityId: "duelist-perfect-strike" },
       { text: "Disarmed.", abilityId: "duelist-disarm" },
+      { text: "Flurry.", abilityId: "duelist-flurry" },
     ],
     chemistrySelected: [
       { text: "Inelegant, but effective.", chemistryId: "ogre-toss" },
@@ -614,6 +620,7 @@ export const CRUSADER_BARKS: CombatBarkProfile = {
     ],
     attackMiss: [
       { text: "Not this time." },
+      { text: "Missed. Faith intact." },
     ],
     criticalHit: [
       { text: "Judged." },
@@ -633,9 +640,11 @@ export const CRUSADER_BARKS: CombatBarkProfile = {
     ],
     healed: [
       { text: "Thank you." },
+      { text: "Appreciated." },
     ],
     healCast: [
       { text: "Rest easy.", abilityId: "crusader-lay-on-hands" },
+      { text: "By hand, this time." },
     ],
     allyDefeated: [
       { text: "No." },
@@ -647,9 +656,11 @@ export const CRUSADER_BARKS: CombatBarkProfile = {
     ],
     ko: [
       { text: "Faith holds." },
+      { text: "...not like this." },
     ],
     revived: [
       { text: "Rise." },
+      { text: "Up. Now." },
     ],
     victory: [
       { text: "As it should be." },
@@ -657,6 +668,7 @@ export const CRUSADER_BARKS: CombatBarkProfile = {
     ],
     abilityUse: [
       { text: "Be smitten.", abilityId: "crusader-smite" },
+      { text: "Protected.", abilityId: "crusader-aura-of-protection" },
     ],
     chemistrySelected: [
       { text: "A mercy, technically.", chemistryId: "bone-harvest" },

@@ -86,9 +86,11 @@ export const SKELETON_BARKS: CombatBarkProfile = {
       { text: "No.", chemistryId: "bone-harvest" },
       { text: "Again?", chemistryId: "bone-harvest" },
       { text: "No.", chemistryId: "ogre-toss" },
+      { text: "Not again.", chemistryId: "harvest-loop" },
     ],
-    chemistryVictim: [
+    chemistryResolve: [
       { text: "Come on.", chemistryId: "bone-harvest", oncePerCombat: true },
+      { text: "Of course.", chemistryId: "harvest-loop" },
     ],
     chemistryWitness: [
       { text: "Of course.", chemistryId: "ogre-toss" },

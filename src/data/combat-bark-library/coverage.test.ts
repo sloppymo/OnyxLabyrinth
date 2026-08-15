@@ -97,6 +97,19 @@ describe("referential integrity", () => {
     expect(bad).toEqual([]);
   });
 
+  it("every declared ChemistryId is used by at least one line (no dead ids)", () => {
+    const used = new Set<string>();
+    for (const profile of ALL_BARK_PROFILES) {
+      for (const lines of Object.values(profile.pools)) {
+        for (const line of lines ?? []) {
+          if (line.chemistryId) used.add(line.chemistryId);
+        }
+      }
+    }
+    const unused = [...CHEMISTRY_IDS].filter((id) => !used.has(id));
+    expect(unused, `declared but unused chemistry ids: ${unused.join(", ")}`).toEqual([]);
+  });
+
   it("every enemy-profile abilityId exists in ENEMY_ABILITIES_BY_ID", () => {
     const bad: string[] = [];
     for (const profile of ENEMY_BARKS) {

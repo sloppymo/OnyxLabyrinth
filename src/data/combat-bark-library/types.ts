@@ -68,8 +68,11 @@ export type CombatBarkTrigger =
   | "summonCreated"
   | "chemistrySelected"
   | "chemistryTelegraph"
+  // Victims speak through chemistryResolve too (same moment as the payoff
+  // line) — a separate chemistryVictim trigger existed briefly but every
+  // victim line (Slime's "nooooooo", Demon Spawn's "Oh.") landed on
+  // chemistryResolve anyway, so it was deleted rather than kept unused.
   | "chemistryResolve"
-  | "chemistryVictim"
   | "chemistryBreak"
   | "chemistryWitness"
   | "guardActivated"
