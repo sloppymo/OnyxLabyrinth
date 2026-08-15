@@ -52,6 +52,27 @@ const PRESETS: Record<string, Preset> = {
     enemyId: "skeleton",
     action: "normal",
   },
+  halberdierHeavy: {
+    label: "Halberdier → Skeleton · heavy",
+    actorSide: "party",
+    actorClass: "Halberdier",
+    enemyId: "skeleton",
+    action: "normal",
+  },
+  duelistNormal: {
+    label: "Duelist → Skeleton",
+    actorSide: "party",
+    actorClass: "Duelist",
+    enemyId: "skeleton",
+    action: "normal",
+  },
+  crusaderHeavy: {
+    label: "Crusader → Skeleton · heavy",
+    actorSide: "party",
+    actorClass: "Crusader",
+    enemyId: "skeleton",
+    action: "normal",
+  },
   skeletonAttack: {
     label: "Skeleton → Fighter",
     actorSide: "enemy",
@@ -106,6 +127,13 @@ const PRESETS: Record<string, Preset> = {
     actorSide: "enemy",
     actorClass: "Fighter",
     enemyId: "hellbat",
+    action: "normal",
+  },
+  wraithFloat: {
+    label: "Blood Wraith → Fighter · float",
+    actorSide: "enemy",
+    actorClass: "Fighter",
+    enemyId: "blood-wraith",
     action: "normal",
   },
   golemHeavy: {
