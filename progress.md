@@ -1,5 +1,13 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+## 2026-08-15 — Combat sprite choreography branch
+
+- The choreography pass is isolated in `/home/sloppymo/OnyxLabyrinth-combat-choreography` on `feat/combat-sprite-choreography`, from clean `origin/main` `11573958c9a69875317ef952f660ee01dc707420`.
+- The shared checkout and Formation Chemistry worktree were not modified.
+- Baseline `npm run check` passed after `npm ci` installed from `package-lock.json` (120 files / 2,350 tests).
+- Baseline audit found that the shared choreography boundary is healthy, but common melee still uses a uniform 35px approach and approximately two seconds of presentation time. It needs target-aware motion profiles, deterministic timing, and faster recovery.
+- Added `scripts/audit-combat-sprites.mjs` plus the generated inventory under `docs/combat/2026-08-15-combat-sprite-inventory.{md,json}` and the baseline audit at `docs/combat/2026-08-15-combat-sprite-choreography-audit.md`.
+
 ## 2026-08-13 — Floor 2 abyss bridge entrance
 
 - Current prompt: design, implement, art-finish, test, and production-browser
