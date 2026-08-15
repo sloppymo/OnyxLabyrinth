@@ -99,7 +99,8 @@ describe("Floor 1 revision 9 expansion", () => {
     // gate-threshold beat just past the gate.
     expect(floor.events).toHaveLength(18);
     expect(floor.encounterZones).toHaveLength(11);
-    expect(floor.mapSprites).toHaveLength(28);
+    // +1 for the votive candle cluster at the Kept Gate breach.
+    expect(floor.mapSprites).toHaveLength(29);
 
     const newNpcIds = new Set(
       floor.npcs
@@ -137,15 +138,36 @@ describe("Floor 1 revision 10/11 — the Kept Gate entrance", () => {
     expect(state.player).toMatchObject({ x: 11, y: 39, facing: 0 });
   });
 
-  it("carries the ported architecturalProp gate and its ceiling dressing", () => {
+  it("carries the breached two-leaf gate, its piers, and its ceiling dressing", () => {
     const floor = floor1();
-    const gate = floor.architecturalProps?.find((p) => p.id === "gate-unified");
-    expect(gate).toMatchObject({ x: 11, y: 31, facing: "n", texture: "gate-kept.png" });
+    // The gate is two forced-apart leaves (west/east) with a breach between
+    // their torn inner edges, capped by a basalt header beam.
+    const west = floor.architecturalProps?.find((p) => p.id === "gate-leaf-west");
+    const east = floor.architecturalProps?.find((p) => p.id === "gate-leaf-east");
+    expect(west).toMatchObject({ x: 11, y: 31, facing: "n", texture: "gate-kept-west.png" });
+    expect(east).toMatchObject({ x: 11, y: 31, facing: "n", texture: "gate-kept-east.png" });
+    // Breach: leaves are offset apart, east leaf hangs slightly deeper for parallax.
+    expect((west?.offsetX ?? 0) < 0 && (east?.offsetX ?? 0) > 0).toBe(true);
+    expect(west?.offsetZ).not.toBe(east?.offsetZ);
+    expect(
+      floor.architecturalProps?.find((p) => p.id === "gate-header")
+    ).toMatchObject({ x: 11, y: 31, anchor: "ceiling" });
+    // Six engaged pilasters flank the hall (north/mid/south, west/east).
+    const piers = floor.architecturalProps?.filter((p) => p.id.startsWith("gate-pier-")) ?? [];
+    expect(piers).toHaveLength(6);
+    // Winch dressing: twin chains with anchor plates plus one counterweight.
+    expect(
+      floor.ceilingSprites?.filter((s) => s.spriteId === "descent-chain-heavy")
+    ).toHaveLength(2);
     expect(
       floor.ceilingSprites?.some((s) => s.spriteId === "descent-counterweight")
     ).toBe(true);
     const zone = floor.heightZones?.find((z) => z.id === "gate-hall");
     expect(zone).toMatchObject({ x1: 9, y1: 31, x2: 13, y2: 35, ceilingZ: 3 });
+    // Threshold: the gate row is rethemed to the dark descent tileset.
+    expect(
+      floor.tilesetZones?.find((z) => z.id === "kept-gate-threshold")
+    ).toMatchObject({ theme: "descent", x1: 9, y1: 31, x2: 13, y2: 31 });
   });
 
   it("gives the gate a real approach: a 1-wide corridor outside the vaulted hall", () => {

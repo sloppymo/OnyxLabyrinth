@@ -287,13 +287,15 @@ describe("floor definitions", () => {
     expect(afterCryptRaftAndGuardian.has(`${stairs[0].x},${stairs[0].y}`)).toBe(true);
   });
 
-  it("floor 1 visibly uses all five built-in themes plus Hot Boi's tavern and Namanda's church", () => {
+  it("floor 1 visibly uses all five built-in themes plus its custom zone themes", () => {
     const f1 = findFloor(1)!;
     const themes = new Set<string>([resolveTilesetTheme(f1)]);
     for (let y = 0; y < f1.height; y++) {
       for (let x = 0; x < f1.width; x++) themes.add(themeAt(f1, x, y));
     }
-      expect([...themes].sort()).toEqual(["f1", "f2", "f3", "f4", "f5", "hotboi", "isobel", "namanda"]);
+      // Custom (non-built-in) zone themes: Hot Boi's tavern, Isobel's shop,
+      // Namanda's church, and the dark descent threshold at the Kept Gate.
+      expect([...themes].sort()).toEqual(["descent", "f1", "f2", "f3", "f4", "f5", "hotboi", "isobel", "namanda"]);
   });
 
   it("floor 1 keeps campaign encounter and lore contracts", () => {

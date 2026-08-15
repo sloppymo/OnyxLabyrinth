@@ -101,6 +101,14 @@
       "x2": 17,
       "y2": 29,
       "theme": "isobel"
+    },
+    {
+      "id": "kept-gate-threshold",
+      "x1": 9,
+      "y1": 31,
+      "x2": 13,
+      "y2": 31,
+      "theme": "descent"
     }
   ],
   "heightZones": [
@@ -204,128 +212,127 @@
   ],
   "architecturalProps": [
     {
-      "id": "gate-hall-support-west-north",
-      "x": 9,
-      "y": 35,
-      "offsetX": -0.34,
-      "offsetZ": 0.34,
-      "kind": "box",
-      "facing": "n",
-      "width": 0.22,
-      "height": 2.7,
-      "depth": 0.18,
-      "texture": "support-basalt.png",
-      "alphaMode": "opaque"
-    },
-    {
-      "id": "gate-hall-support-east-north",
-      "x": 13,
-      "y": 35,
-      "offsetX": 0.34,
-      "offsetZ": 0.34,
-      "kind": "box",
-      "facing": "n",
-      "width": 0.22,
-      "height": 2.7,
-      "depth": 0.18,
-      "texture": "support-basalt.png",
-      "alphaMode": "opaque"
-    },
-    {
-      "id": "gate-hall-support-west-south",
-      "x": 9,
-      "y": 33,
-      "offsetX": -0.34,
-      "offsetZ": -0.34,
-      "kind": "box",
-      "facing": "n",
-      "width": 0.22,
-      "height": 2.7,
-      "depth": 0.18,
-      "texture": "support-basalt.png",
-      "alphaMode": "opaque"
-    },
-    {
-      "id": "gate-hall-support-east-south",
-      "x": 13,
-      "y": 33,
-      "offsetX": 0.34,
-      "offsetZ": -0.34,
-      "kind": "box",
-      "facing": "n",
-      "width": 0.22,
-      "height": 2.7,
-      "depth": 0.18,
-      "texture": "support-basalt.png",
-      "alphaMode": "opaque"
-    },
-    {
-      "id": "gate-frame-west",
-      "x": 9,
-      "y": 31,
-      "offsetX": 0.12,
-      "offsetZ": -0.46,
-      "kind": "box",
-      "facing": "n",
-      "width": 0.22,
-      "height": 2.8,
-      "depth": 0.16,
-      "texture": "support-basalt.png",
-      "alphaMode": "opaque"
-    },
-    {
-      "id": "gate-frame-east",
-      "x": 13,
-      "y": 31,
-      "offsetX": -0.12,
-      "offsetZ": -0.46,
-      "kind": "box",
-      "facing": "n",
-      "width": 0.22,
-      "height": 2.8,
-      "depth": 0.16,
-      "texture": "support-basalt.png",
-      "alphaMode": "opaque"
-    },
-    {
-      "id": "gate-frame-lintel",
+      "id": "gate-leaf-west",
       "x": 11,
       "y": 31,
+      "offsetX": -1.0775,
       "offsetZ": -0.46,
       "kind": "box",
       "facing": "n",
-      "width": 4,
-      "height": 0.34,
-      "depth": 0.16,
-      "texture": "support-basalt.png",
-      "anchor": "ceiling",
-      "alphaMode": "opaque"
-    },
-    {
-      "id": "gate-unified",
-      "x": 11,
-      "y": 31,
-      "offsetZ": -0.48,
-      "kind": "box",
-      "facing": "n",
-      "width": 3.55,
+      "width": 1.775,
       "height": 2.45,
       "depth": 0.1,
-      "texture": "gate-kept.png",
+      "texture": "gate-kept-west.png",
+      "alphaMode": "cutout"
+    },
+    {
+      "id": "gate-leaf-east",
+      "x": 11,
+      "y": 31,
+      "offsetX": 1.0775,
+      "offsetZ": -0.38,
+      "kind": "box",
+      "facing": "n",
+      "width": 1.775,
+      "height": 2.45,
+      "depth": 0.1,
+      "texture": "gate-kept-east.png",
+      "alphaMode": "cutout"
+    },
+    {
+      "id": "gate-header",
+      "x": 11,
+      "y": 31,
+      "offsetZ": -0.32,
+      "kind": "box",
+      "facing": "n",
+      "width": 5,
+      "height": 0.62,
+      "depth": 0.3,
+      "texture": "support-basalt.png",
+      "anchor": "ceiling",
       "alphaMode": "opaque"
     },
     {
-      "id": "gate-hall-conduit-stub",
+      "id": "gate-pier-north-west",
+      "x": 9,
+      "y": 31,
+      "offsetX": -0.55,
+      "offsetZ": -0.2,
+      "kind": "box",
+      "facing": "n",
+      "width": 0.5,
+      "height": 3,
+      "depth": 0.75,
+      "texture": "support-basalt.png",
+      "alphaMode": "opaque"
+    },
+    {
+      "id": "gate-pier-north-east",
+      "x": 13,
+      "y": 31,
+      "offsetX": 0.55,
+      "offsetZ": -0.2,
+      "kind": "box",
+      "facing": "n",
+      "width": 0.5,
+      "height": 3,
+      "depth": 0.75,
+      "texture": "support-basalt.png",
+      "alphaMode": "opaque"
+    },
+    {
+      "id": "gate-pier-mid-west",
       "x": 9,
       "y": 33,
-      "offsetX": -0.3,
+      "offsetX": -0.5,
       "kind": "box",
-      "facing": "e",
-      "width": 0.16,
-      "height": 0.9,
-      "depth": 0.14,
+      "facing": "n",
+      "width": 0.54,
+      "height": 3,
+      "depth": 0.42,
       "texture": "support-basalt.png",
-      "anchor": "ceiling",
+      "alphaMode": "opaque"
+    },
+    {
+      "id": "gate-pier-mid-east",
+      "x": 13,
+      "y": 33,
+      "offsetX": 0.5,
+      "kind": "box",
+      "facing": "n",
+      "width": 0.54,
+      "height": 3,
+      "depth": 0.42,
+      "texture": "support-basalt.png",
+      "alphaMode": "opaque"
+    },
+    {
+      "id": "gate-pier-south-west",
+      "x": 9,
+      "y": 35,
+      "offsetX": -0.5,
+      "offsetZ": 0.25,
+      "kind": "box",
+      "facing": "n",
+      "width": 0.55,
+      "height": 3,
+      "depth": 0.55,
+      "texture": "support-basalt.png",
+      "alphaMode": "opaque"
+    },
+    {
+      "id": "gate-pier-south-east",
+      "x": 13,
+      "y": 35,
+      "offsetX": 0.5,
+      "offsetZ": 0.25,
+      "kind": "box",
+      "facing": "n",
+      "width": 0.55,
+      "height": 3,
+      "depth": 0.55,
+      "texture": "support-basalt.png",
       "alphaMode": "opaque"
     }
   ],
@@ -7494,11 +7501,6 @@
       "spriteId": "crate"
     },
     {
-      "x": 20,
-      "y": 23,
-      "spriteId": "hotboi-pillar"
-    },
-    {
       "x": 19,
       "y": 24,
       "spriteId": "hotboi-table"
@@ -7587,6 +7589,16 @@
       "x": 21,
       "y": 20,
       "spriteId": "witchfire-blue"
+    },
+    {
+      "x": 10,
+      "y": 31,
+      "spriteId": "candles-votive"
+    },
+    {
+      "x": 20,
+      "y": 23,
+      "spriteId": "hotboi-pillar"
     }
   ],
   "wallFeatures": [
@@ -7878,16 +7890,22 @@
       "scale": 0.62
     },
     {
-      "x": 11,
-      "y": 32,
-      "spriteId": "descent-chain-heavy",
-      "scale": 0.68
-    },
-    {
       "x": 10,
       "y": 32,
+      "spriteId": "descent-chain-heavy",
+      "scale": 1.2
+    },
+    {
+      "x": 12,
+      "y": 32,
+      "spriteId": "descent-chain-heavy",
+      "scale": 1.15
+    },
+    {
+      "x": 9,
+      "y": 32,
       "spriteId": "descent-counterweight",
-      "scale": 0.3
+      "scale": 0.8
     }
   ],
   "ceilingFeatures": [
@@ -7950,6 +7968,16 @@
       "x": 17,
       "y": 28,
       "spriteId": "isobel-astral-medallion"
+    },
+    {
+      "x": 10,
+      "y": 32,
+      "spriteId": "f1-ceiling-chain-plate"
+    },
+    {
+      "x": 12,
+      "y": 32,
+      "spriteId": "f1-ceiling-chain-plate"
     }
   ],
   "doorFeatures": [
