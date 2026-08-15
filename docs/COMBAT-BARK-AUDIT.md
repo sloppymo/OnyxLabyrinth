@@ -3,6 +3,18 @@
 Status: **content branch, not integrated into combat**. See `docs/COMBAT-BARK-INTEGRATION-CONTRACT.md`
 for what a later integration pass needs to do to actually show these lines in a fight.
 
+**Important discovery, read first:** `origin/main` already ships a small, separate,
+*integrated* bark MVP (`src/data/combat-barks.ts` / `src/game/combat-barks.ts`, 10
+lines across 3 triggers, wired into `combat-actions.ts`/`combat-enemy.ts`/
+`combat-eor.ts`/`combat.ts`) from a 2026-07-26 approved spec
+(`docs/superpowers/specs/2026-07-26-combat-dialog-barks.md`). This content library
+was built to never collide with it (different directory/file names throughout) and
+does not modify anything the shipped system touches. See
+`docs/COMBAT-BARK-INTEGRATION-CONTRACT.md` §0 for the full comparison and §1 for
+how a later pass should reconcile the two. The "Superseded lines" table below
+accounts for the shipped system's existing 10 lines so this audit doesn't silently
+omit them.
+
 This document is written in two passes:
 
 1. **Voice bible** (below) — written *before* any line of bark content, one row per production
@@ -128,9 +140,9 @@ says, hollowed out and wrong.
 
 ## Coverage
 
-See the entity-coverage test (`src/data/combat-barks/coverage.test.ts`) for the machine-checked
-version of this section — it is derived from `ALL_ENEMIES` / `CLASSES` / `COMPANIONS_BY_ID`,
-not hand-maintained, so it cannot silently drift.
+See the entity-coverage test (`src/data/combat-bark-library/coverage.test.ts`) for the
+machine-checked version of this section — it is derived from `ALL_ENEMIES` / `CLASSES` /
+`COMPANIONS_BY_ID`, not hand-maintained, so it cannot silently drift.
 
 - **training-dummy** is the one intentionally-excluded production `EnemyDef`. It has `floors: []`,
   no `abilityIds`, and no reference anywhere in `src/` outside `enemies.ts` and
@@ -140,6 +152,25 @@ not hand-maintained, so it cannot silently drift.
 - `ruined-vanguard` / `hollow-knifeman` / `ash-scribe` / `drowned-cantor` have `floors: []` too,
   but are real production content — the scripted "Party That Returned" fight
   (`game/features.ts` `stairsGuardian`) — and are profiled accordingly.
+- **55 of 56** production `EnemyDef`s profiled + 1 documented exclusion = full accounting.
+  All 7 playable classes profiled. The 1 companion (`fifth-chair` / Vess) profiled.
+
+## Superseded lines (shipped MVP → this library)
+
+The existing `src/data/combat-barks.ts` (10 lines, 3 triggers) is **not modified or
+deleted** by this branch. This table exists so this audit doesn't silently omit it.
+
+| Existing line | Speaker | Old trigger | Status here |
+|---|---|---|---|
+| "Burn, fiend!" | Mage (fire spell) | `beforeSpell` | Not carried forward — violates this library's own tone rules ("Fake Shakespeare" / villain-quip register). Mage's `spellCast` pool has its own fire-flavored lines instead. |
+| "Gyaaah!" / "Nnngh!" | any party (heavyHit) | `heavyHit` | Not carried forward as-is (generic, not class-differentiated). Every class has its own `takeHeavyHit` pool instead. |
+| "Let this be the last time." | any party (death/KO) | `death` | Not carried forward as-is. Every class has its own `ko` pool instead. |
+| "The forge remembers." / "Stay." | headmasters-echo | `beforeSpell` | **Carried forward verbatim** into `spellCast`. |
+| "The ash settles." | headmasters-echo | `death` | **Carried forward verbatim** into `death`. |
+| "Don't leave." / "Read me." | headmasters-echo-remnant | `beforeSpell` | **Carried forward verbatim** into `spellCast`. |
+| "The page turns." | headmasters-echo-remnant | `death` | **Carried forward verbatim** into `death`. |
+| "We were kept." / "Listen." | headmasters-echo-ascendant | `beforeSpell` | **Carried forward verbatim** into `spellCast`. |
+| "The crying stops." | headmasters-echo-ascendant | `death` | **Carried forward verbatim** into `death`. |
 
 (Remaining sections — trigger distribution, length distribution, duplicate audit, tone audit,
 iconic moments — filled in after content generation and the audit script.)
