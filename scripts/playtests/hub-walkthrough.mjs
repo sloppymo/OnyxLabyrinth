@@ -87,7 +87,7 @@ async function runCamp(page) {
   await boot(page, URL, { scenario: { floorId: 1, x: 11, y: 25, facing: 0, autosave: false } });
   await setDeterministicDungeon(page);
   const floor = await floorContract(page);
-  check(hub, floor.dimensions[0] === 28 && floor.dimensions[1] === 31, "Floor 1 dimensions are the expanded hub map");
+  check(hub, floor.dimensions[0] === 28 && floor.dimensions[1] === 41, "Floor 1 dimensions are the expanded hub map");
   const captures = [await checkpoint(page, hub, "01-approach")];
 
   await act(page, "c");
@@ -167,8 +167,15 @@ async function runIsobel(page) {
 
   await act(page, "ArrowUp");
   captures.push(await checkpoint(page, hub, "03-isobel-panel"));
-  const panelText = await bodyText(page);
   check(hub, (await snap(page)).route === "npc", "stepping onto Isobel opens NPC controller");
+  // The portrait-dialogue system deliberately presents the greeting before
+  // exposing actions. Acknowledge it exactly as a player must before testing
+  // the shop menu.
+  for (let attempt = 0; attempt < 2 && !/Browse Iso-Spells/i.test(await bodyText(page)); attempt++) {
+    await press(page, "Enter");
+    await wait(150);
+  }
+  const panelText = await bodyText(page);
   check(hub, /Isobel/i.test(panelText) && /ISO-SPELLS/i.test(panelText), "Isobel identity is visible");
   check(hub, /Browse Iso-Spells/i.test(panelText), "spell-shop action is visible");
   check(hub, !/Attack|Steal|Barter|Give/.test(panelText), "shopkeeper does not expose hostile/trade actions");

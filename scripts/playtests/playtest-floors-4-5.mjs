@@ -19,8 +19,8 @@ import fs from "fs";
 import path from "path";
 import { jumpTo as libJumpTo, waitForIdle } from "./lib.mjs";
 
-const BASE = "http://127.0.0.1:5230/OnyxLabyrinth/?debug=1";
-const OUT = "playtest-screenshots/2026-07-24-floors-4-5";
+const BASE = process.env.ONYX_URL ?? "http://127.0.0.1:5230/OnyxLabyrinth/?debug=1";
+const OUT = process.env.ONYX_OUT ?? "playtest-screenshots/2026-07-24-floors-4-5";
 fs.mkdirSync(OUT, { recursive: true });
 
 const findings = [];
