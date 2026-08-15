@@ -117,12 +117,12 @@ const PHASER_FX_SHINE = true;
  *
  * The effect works: `capture-phaser-afterimage-pool.mjs` measures a 3-ghost
  * trail spanning 28.6px, live only during a walk and gone at rest. It just does
- * not *read*. The reference is an FF6 dash across the screen; this game's
- * approach is `approachDelta` — a symbolic 35px step over 525ms (~80px/sec)
- * with ~100px sprites, so the ghosts overlap the body by roughly two thirds and
- * there is no fast motion for a viewer to interpret as a smear. Probed at both
- * 0.28 and 0.6 alpha against the combat backdrop: invisible at the low end,
- * and at the high end it reads as a double-image artifact rather than speed.
+ * not *read*. The reference is an FF6 dash across the screen; after the
+ * target-aware motion pass, ordinary lunges are deliberately short and
+ * silhouette-first, so the ghosts overlap the body by roughly two thirds and
+ * read as a double-image artifact rather than speed. Probed at both 0.28 and
+ * 0.6 alpha against the combat backdrop: invisible at the low end, and noisy
+ * at the high end.
  *
  * Left wired and unit-tested rather than deleted — this is the plan's own
  * documented rollback ("disable afterimage constant; pooling can stay"), and
