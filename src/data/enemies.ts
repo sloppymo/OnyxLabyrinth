@@ -2353,6 +2353,89 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   ],
 };
 
+/**
+ * Arena deliberately keeps the pre-chemistry Floor 1 roster. The dungeon
+ * table is allowed to grow authored chemistry formations, but Arena waves
+ * are a separate mode and must not silently acquire those encounters or
+ * their Crypt-only reshuffle pool.
+ */
+export const ARENA_ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
+  ...ENCOUNTER_TABLES,
+  1: [
+    {
+      id: "arena-f1-slime-trio",
+      family: "arena-f1-slime-trio",
+      weight: 4,
+      spawns: [
+        { enemyId: "slime", row: "front" },
+        { enemyId: "slime", row: "front" },
+        { enemyId: "slime", row: "front" },
+      ],
+    },
+    {
+      id: "arena-f1-skeleton-archer",
+      family: "arena-f1-skeleton-archer",
+      weight: 4,
+      spawns: [
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
+    {
+      id: "arena-f1-skeleton-line",
+      family: "arena-f1-skeleton-line",
+      weight: 3,
+      spawns: [
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
+    {
+      id: "arena-f1-slime-skeleton",
+      family: "arena-f1-slime-skeleton",
+      weight: 3,
+      spawns: [
+        { enemyId: "slime", row: "front" },
+        { enemyId: "slime", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
+    {
+      id: "arena-f1-acid-escorts",
+      family: "arena-f1-acid-escorts",
+      weight: 2,
+      spawns: [
+        { enemyId: "acid-puddle", row: "front" },
+        { enemyId: "slime", row: "front" },
+        { enemyId: "slime", row: "front" },
+      ],
+    },
+    {
+      id: "arena-f1-slime-skeleton-duo",
+      family: "arena-f1-slime-skeleton-duo",
+      weight: 1,
+      spawns: [
+        { enemyId: "slime", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+      ],
+    },
+    {
+      id: "arena-f1-red-bone",
+      family: "arena-f1-red-bone",
+      weight: 1,
+      spawns: [
+        { enemyId: "red-skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
+  ],
+};
+
 export interface EncounterRollOptions {
   /** Most recent family first; used only by random dungeon rolls. */
   recentFamilies?: readonly string[];

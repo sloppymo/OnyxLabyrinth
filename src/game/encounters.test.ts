@@ -18,7 +18,12 @@ import {
   rollArenaEncounter,
   adjustArenaEncounterForSmallParty,
 } from "./encounters";
-import { ENEMIES_BY_ID, ENCOUNTER_TABLES, weightedEncounterPick } from "../data/enemies";
+import {
+  ARENA_ENCOUNTER_TABLES,
+  ENEMIES_BY_ID,
+  ENCOUNTER_TABLES,
+  weightedEncounterPick,
+} from "../data/enemies";
 import { getFloors } from "./floor-registry";
 
 describe("encounterRollChance", () => {
@@ -132,6 +137,18 @@ describe("rollArenaEncounter", () => {
     for (const floor of [1, 2, 3]) {
       expect(rollArenaEncounter(floor, 1, () => 0)).not.toBeNull();
     }
+  });
+
+  it("keeps the Floor 1 Arena roster separate from chemistry encounters", () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 500; i++) {
+      const entry = rollArenaEncounter(1, 5, () => 0.123)!;
+      for (const spawn of entry.spawns) seen.add(spawn.enemyId);
+    }
+    expect([...seen].every((id) =>
+      ["slime", "skeleton", "skeleton-archer", "acid-puddle", "red-skeleton"].includes(id)
+    )).toBe(true);
+    expect(ARENA_ENCOUNTER_TABLES[1]).not.toBe(ENCOUNTER_TABLES[1]);
   });
 
   it("mixes sprites beyond any single formation's fixed spawns", () => {

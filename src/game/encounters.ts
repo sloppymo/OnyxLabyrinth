@@ -7,7 +7,7 @@
  */
 
 import {
-  ENCOUNTER_TABLES,
+  ARENA_ENCOUNTER_TABLES,
   ENEMIES_BY_ID,
   type EncounterEntry,
   type Row,
@@ -208,7 +208,7 @@ function entryHasBoss(entry: EncounterEntry): boolean {
  * it never reaches outside the floor's curated roster.
  */
 function rowPoolForFloor(floor: number, row: Row): string[] {
-  const table = ENCOUNTER_TABLES[floor];
+  const table = ARENA_ENCOUNTER_TABLES[floor];
   if (!table) return [];
   const ids = new Set<string>();
   for (const entry of table) {
@@ -279,7 +279,7 @@ export function rollArenaEncounter(
   wave = 1,
   rng: () => number = getGameplayRng()
 ): EncounterEntry | null {
-  const table = ENCOUNTER_TABLES[floor];
+  const table = ARENA_ENCOUNTER_TABLES[floor];
   if (!table || table.length === 0) return null;
 
   const pool = table.filter((e) => !entryHasBoss(e));
