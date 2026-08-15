@@ -53,7 +53,7 @@ function materialSource(materialKey: string): string {
   }
   if (!parsed.theme || !parsed.surface) return "game fallback material";
   if (parsed.variant) {
-    return `${parsed.theme}:${parsed.surface}@${parsed.variant} · canonical variant`;
+    return `src/assets/${parsed.theme}_wall${parsed.variant}_256.png · canonical variant`;
   }
   return `public/assets/tilesets/${parsed.theme}/${parsed.surface}.png`;
 }

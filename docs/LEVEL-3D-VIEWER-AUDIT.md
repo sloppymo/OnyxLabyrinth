@@ -61,12 +61,14 @@ the in-game WebGL renderer.
   stairs/door fallbacks, ceiling-feature sources, and the special water floor
   textures. `MazeMaterialLibrary` is the shared Three material bridge and
   preserves nearest-neighbor sampling.
-- The checked-out branch does not contain the wall-family integration from
-  `00161f24a91b1d60cc95a7549d1d1c6268f735cb`; that commit is on the separate
-  `art/wall-tile-variants` branch. The viewer will expose the compiler’s exact
-  material key, so it will automatically show per-edge variant suffixes on a
-  checkout that contains that canonical integration. It will not invent
-  variant assignments on this checkout.
+- The production wall-family integration from
+  `00161f24a91b1d60cc95a7549d1d1c6268f735cb` is present in the finalized
+  checkout. `src/engine/wall-variants.ts` is the deterministic selector used
+  by both the Canvas renderer and the WebGL compiler. Campaign wall batches
+  therefore use exact keys such as `f3:wall@_g`; `MazeMaterialLibrary` resolves
+  those keys to the generated `src/assets/f3_wall_g_256.png` family member.
+  Regional themes without a production family intentionally retain their
+  canonical base wall key.
 
 ## Props and environmental layers
 
@@ -122,8 +124,10 @@ The viewer has four layers:
 - Billboard orientation, prop grounding, wall-face decals, ceiling anchors,
   water height epsilon, nearest filtering, and transparent-ceiling depth order
   all need browser inspection.
-- The current checkout’s missing wall-variant integration must remain visible
-  in the final limitations rather than being silently papered over.
+- The wall-family selector is deterministic but weighted; the viewer does not
+  randomize or reselect variants. Boundary-face provenance and the adapter
+  tests compare emitted keys against `wallVariantForEdge()` and verify that
+  each non-base suffix has a shipped family asset.
 
 ## Validation plan
 

@@ -1,11 +1,14 @@
+import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { FloorDef } from "../../data/floors";
 import { getFloors } from "../../game/floor-registry";
 import { buildSolidGrid, setEdge } from "../../game/dungeon";
+import { wallVariantFilename, wallVariantForEdge } from "../../engine/wall-variants";
 import { resolveCellVolume } from "../../engine/maze-renderer/geometry/cell-volume";
 import { resolveFloorSurface } from "../../engine/maze-renderer/geometry/floor-surface";
 import {
   buildLevel3DModel,
+  formatMaterialKey,
   physicalEdgeForFace,
 } from "./floor-adapter";
 
@@ -56,6 +59,10 @@ function isBoundaryFace(model: ReturnType<typeof buildLevel3DModel>, x: number, 
     face.source.cellY === y &&
     face.source.dir === dir
   );
+}
+
+function isProductionTheme(theme: string): theme is `f${1 | 2 | 3 | 4 | 5}` {
+  return /^f[1-5]$/.test(theme);
 }
 
 describe("canonical level 3D adapter", () => {
@@ -118,8 +125,44 @@ describe("canonical level 3D adapter", () => {
       face.source.kind === "wall" && face.source.cellX === 2 && face.source.cellY === 1
     );
     expect(regionalFloor?.materialKey).toBe("f2:floorB");
-    expect(regionalWall?.materialKey).toBe("f2:wall");
+    expect(regionalWall).toBeDefined();
+    const regionalVariant = wallVariantForEdge(
+      1,
+      "f2",
+      regionalWall!.source.cellX,
+      regionalWall!.source.cellY,
+      regionalWall!.source.dir!
+    );
+    expect(regionalWall?.materialKey).toBe(`f2:wall${regionalVariant ? `@${regionalVariant}` : ""}`);
     expect(model.stats.themes).toContain("f2");
+  });
+
+  it("retains canonical wall-family variants and shipped variant assets", () => {
+    for (const floor of getFloors()) {
+      const model = buildLevel3DModel(floor);
+      const seenVariants = new Set<string>();
+      for (const face of model.faces) {
+        if (face.source.kind !== "wall" || face.source.role !== "boundary" || !face.source.dir) continue;
+        const parsed = formatMaterialKey(face.materialKey);
+        if (!isProductionTheme(face.theme)) {
+          expect(parsed.variant).toBeUndefined();
+          continue;
+        }
+        const expected = wallVariantForEdge(
+          floor.id,
+          face.theme,
+          face.source.cellX,
+          face.source.cellY,
+          face.source.dir
+        );
+        expect(parsed.surface).toBe("wall");
+        expect(parsed.variant ?? "").toBe(expected);
+        if (!expected) continue;
+        seenVariants.add(expected);
+        expect(existsSync(`src/assets/${wallVariantFilename(face.theme, expected)}.png`)).toBe(true);
+      }
+      expect([...seenVariants].some((suffix) => ["_g", "_h", "_i", "_j"].includes(suffix))).toBe(true);
+    }
   });
 
   it("preserves door classification and resolves a face to its shared physical edge", () => {
