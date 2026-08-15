@@ -19,6 +19,8 @@
     "floor:check": "tsx scripts/floor-tool.ts check",
     "floor:editor": "vite --open /tools/floor-editor.html",
     "sprite-preview:generate": "tsx scripts/generate-sprite-preview.ts",
+    "barks:audit": "tsx scripts/audit-combat-barks.ts",
+    "barks:preview": "tsx scripts/generate-combat-bark-preview.ts",
     "generate:combat-bg": "node scripts/generate-combat-bg.mjs",
     "tileset:gallery": "node scripts/generate-tileset-gallery.mjs",
     "visual:floors": "node scripts/playtests/floor-visual-audit.mjs",

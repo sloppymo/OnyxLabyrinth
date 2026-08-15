@@ -172,5 +172,223 @@ deleted** by this branch. This table exists so this audit doesn't silently omit 
 | "We were kept." / "Listen." | headmasters-echo-ascendant | `beforeSpell` | **Carried forward verbatim** into `spellCast`. |
 | "The crying stops." | headmasters-echo-ascendant | `death` | **Carried forward verbatim** into `death`. |
 
-(Remaining sections — trigger distribution, length distribution, duplicate audit, tone audit,
-iconic moments — filled in after content generation and the audit script.)
+The sections below (Coverage/Trigger distribution/Length distribution/Duplicate audit/Tone
+audit/Voice-mode conformance) are machine-generated — regenerate with
+`npx tsx scripts/audit-combat-barks.ts` after any content change. Do not hand-edit between
+the markers.
+
+<!-- AUDIT:GENERATED:START -->
+
+## Coverage (generated)
+
+| metric | value |
+| --- | --- |
+| Production EnemyDefs | 56 |
+| Enemy profiles | 55 |
+| Intentionally-excluded enemies | 1 |
+| Missing enemy profiles (should be 0) | 0 |
+| Playable classes | 7 |
+| Class profiles | 7 |
+| Missing class profiles (should be 0) | 0 |
+| Companions | 1 |
+| Companion profiles | 1 |
+| Missing companion profiles (should be 0) | 0 |
+| Total bark lines | 675 |
+| Lines — enemy | 317 |
+| Lines — class (PC) | 324 |
+| Lines — companion | 34 |
+| Lines tagged to a chemistry moment | 53 |
+
+## Trigger distribution (generated)
+
+| trigger | line count |
+| --- | --- |
+| combatStart | 106 |
+| takeHit | 77 |
+| abilityUse | 61 |
+| death | 59 |
+| rare | 37 |
+| lowHp | 30 |
+| takeHeavyHit | 26 |
+| basicAttack | 25 |
+| chemistrySelected | 23 |
+| victory | 21 |
+| attackMiss | 19 |
+| criticalHit | 19 |
+| allyDefeated | 19 |
+| kill | 19 |
+| bossPhase | 16 |
+| healed | 15 |
+| ko | 15 |
+| revived | 14 |
+| returningEncounter | 11 |
+| spellCast | 10 |
+| healCast | 10 |
+| allyLowHp | 7 |
+| chemistryTelegraph | 7 |
+| chemistryResolve | 7 |
+| flee | 6 |
+| chemistryWitness | 5 |
+| chemistryBreak | 5 |
+| enemyDefeated | 2 |
+| guardActivated | 2 |
+| chemistryVictim | 1 |
+| guardIntercept | 1 |
+
+## Length distribution (generated)
+
+| metric | value |
+| --- | --- |
+| Mean | 10.3 |
+| Median | 9 |
+| p90 | 19 |
+| >28 chars (past the working cap) | 0 |
+| >45 chars (past the accepted exception ceiling) | 0 |
+| >80 chars (hard-fail threshold) | 0 |
+
+Longest 10 lines:
+
+| chars | speaker | trigger | text |
+| --- | --- | --- | --- |
+| 28 | Halberdier | takeHit | That's what the line is for. |
+| 28 | Duelist | rare | This is a brawl, not a duel. |
+| 27 | Halberdier | chemistrySelected | That's a range problem now. |
+| 27 | fifth-chair | rare | Further than my last party. |
+| 26 | Halberdier | rare | This is why range matters. |
+| 26 | fifth-chair | victory | Everyone's still standing. |
+| 25 | Thief | combatStart | Let's get this over with. |
+| 25 | Halberdier | ko | Hold the line without me. |
+| 25 | Duelist | chemistrySelected | Inelegant, but effective. |
+| 25 | fifth-chair | rare | Not losing another chair. |
+
+## Duplicate audit (generated)
+
+69 distinct lines reused by more than one speaker; 
+55 of those are outside the generic-allow-list (short universal words like "Fine."/"Again."/"No.") and were reviewed by hand.
+
+| line | speaker count | speakers | classification |
+| --- | --- | --- | --- |
+| Fine. | 12 | Fighter, Priest, Thief, Duelist, Crusader, fifth-chair, skeleton, armored-skeleton, animated-armor, warlock, ruined-vanguard, drowned-cantor | intentional generic |
+| Ready. | 10 | Fighter, Mage, Priest, Thief, Halberdier, Duelist, Crusader, skeleton-archer, black-knight, viper-man | intentional generic |
+| Hold. | 10 | Fighter, Halberdier, armored-skeleton, stone-guardian, black-knight, rune-knight, demon-mage, choir-warden, drowned-sentinel, ruined-vanguard | intentional generic |
+| ... | 10 | slime, skeleton, skeleton-archer, ghostfire, blood-wraith, rune-knight, cistern-wraith, headmasters-echo, headmasters-echo-remnant, headmasters-echo-ascendant | intentional generic |
+| Again. | 9 | Fighter, Priest, Thief, Crusader, skeleton, red-skeleton, armored-skeleton, ruined-vanguard, drowned-cantor | intentional generic |
+| No. | 9 | Fighter, Mage, Priest, Halberdier, Duelist, Crusader, slime, skeleton, demon-spawn | intentional generic |
+| There. | 8 | Fighter, Priest, Thief, Halberdier, Duelist, Crusader, fifth-chair, skeleton | reviewed |
+| Noted. | 7 | Fighter, Priest, Halberdier, Crusader, lab-assistant, black-knight, viper-man | intentional generic |
+| Good. | 6 | Fighter, Mage, Priest, Halberdier, Crusader, fifth-chair | reviewed |
+| Rude. | 6 | Mage, Thief, skeleton, red-skeleton, demoness, hollow-knifeman | reviewed |
+| Hold still. | 5 | Fighter, Mage, Priest, skeleton-archer, minotaur | reviewed |
+| Done. | 5 | Fighter, Mage, Priest, Crusader, fifth-chair | intentional generic |
+| Finally. | 5 | Mage, Thief, skeleton, red-skeleton, armored-skeleton | intentional generic |
+| Missed. | 4 | Fighter, Priest, fifth-chair, skeleton | reviewed |
+| Hm. | 4 | Fighter, Priest, fifth-chair, skeleton-archer | reviewed |
+| Thank you. | 4 | Mage, Priest, Crusader, warlock | reviewed |
+| Ow. | 4 | Priest, slime, skeleton, armored-skeleton | reviewed |
+| *snarl* | 4 | displacer-beast, blood-monster, werewolf, hellhound | reviewed |
+| Hnh. | 4 | big-titty-ogre, minotaur, demon, demon-brawler | intentional generic |
+| Here we go. | 3 | Fighter, skeleton, red-skeleton | reviewed |
+| Thanks. | 3 | Fighter, Thief, fifth-chair | reviewed |
+| Not again. | 3 | Fighter, fifth-chair, headmasters-echo-ascendant | reviewed |
+| Next. | 3 | Fighter, Priest, Thief | reviewed |
+| Oh. | 3 | Fighter, slime, demon-spawn | reviewed |
+| Of course. | 3 | Mage, Priest, skeleton | reviewed |
+| Mine. | 3 | Thief, blood-wraith, hollow-knifeman | reviewed |
+| Rise. | 3 | Crusader, demon-mage, choir-magus | reviewed |
+| Wait. | 3 | slime, minotaur, demon-spawn | intentional generic |
+| *grunt* | 3 | orc, big-titty-ogre, flood-brute | reviewed |
+| Cold. | 3 | ghostfire, cistern-wraith, ash-scribe | intentional generic |
+| Forward. | 3 | black-knight, ironclad-knight, iron-chorister | reviewed |
+| Better. | 2 | Fighter, Mage | reviewed |
+| Get behind me. | 2 | Fighter, ruined-vanguard | reviewed |
+| Naturally. | 2 | Fighter, Crusader | reviewed |
+| Of course there's more. | 2 | Fighter, fifth-chair | reviewed |
+| You again. | 2 | Fighter, headmasters-echo | reviewed |
+| Yeah. | 2 | Fighter, Crusader | reviewed |
+| Not ideal. | 2 | Mage, warlock | reviewed |
+| Great. | 2 | Mage, ash-scribe | reviewed |
+| As expected. | 2 | Mage, ironclad-knight | reviewed |
+| There's more. | 2 | Mage, Priest | reviewed |
+| Again? | 2 | Mage, skeleton | intentional generic |
+| Fine. FINE. | 2 | Mage, Priest | reviewed |
+| Let's begin. | 2 | Priest, warlock | reviewed |
+| Appreciated. | 2 | Priest, Halberdier | reviewed |
+| Damn. | 2 | Thief, Halberdier | reviewed |
+| Cleared. | 2 | Thief, Halberdier | reviewed |
+| Unlucky. | 2 | Thief, hollow-knifeman | reviewed |
+| This job. | 2 | Thief, Crusader | reviewed |
+| Positions. | 2 | Halberdier, ironclad-knight | reviewed |
+| Endured. | 2 | Crusader, choir-warden | intentional generic |
+| Still standing. Barely. | 2 | Crusader, armored-skeleton | reviewed |
+| Back? | 2 | Crusader, skeleton | reviewed |
+| Still here. | 2 | fifth-chair, skeleton | reviewed |
+| Why. | 2 | slime, weeping-revenant | reviewed |
+| *roar* | 2 | orc, flood-brute | reviewed |
+| *hiss* | 2 | failed-experiment, acid-puddle | reviewed |
+| Seen. | 2 | eyeball-monster, null-acolyte | reviewed |
+| *low growl* | 2 | werewolf, hellhound | reviewed |
+| ...oh. | 2 | big-titty-ogre, minotaur | reviewed |
+| Begin. | 2 | black-knight, demon-mage | reviewed |
+| Come here. | 2 | minotaur, warlock | reviewed |
+| Burn. | 2 | warlock, demon-mage | reviewed |
+| Screen up. | 2 | warlock, discordant-cantor | reviewed |
+| Irritating. | 2 | warlock, demon-mage | reviewed |
+| Now. | 2 | rune-knight, demon-brawler | reviewed |
+| Listen. | 2 | discordant-cantor, headmasters-echo-ascendant | reviewed |
+| ...finally. | 2 | weeping-revenant, ash-scribe | reviewed |
+| More. | 2 | headmasters-echo, headmasters-echo-ascendant | reviewed |
+
+## Tone audit (generated)
+
+No forbidden-phrase matches found in the shipped content.
+
+
+## Voice-mode conformance (generated)
+
+All `vocalization`/`silent` profile lines are asterisk-actions or <=2 words.
+
+
+<!-- AUDIT:GENERATED:END -->
+
+## Iconic moments (hand-curated)
+
+The ~20-30 bark moments most likely to be remembered — chosen for context, not cleverness.
+Not all are jokes; some simply define a voice perfectly.
+
+1. **Slime, thrown (Slime Cannon, `chemistryResolve`):** "nooooooo" — the whole joke is that
+   nothing else needed to be written.
+2. **Skeleton, selected for Bone Harvest:** "No." then "Again?" — undead already tired of dying twice.
+3. **Skeleton, party returns after a wipe (`returningEncounter`):** "Back?"
+4. **Demon Spawn, selected for Spawn Bomb:** "Not me." / "No." — small, scared, correct.
+5. **Demon Spawn, detonating:** "Oh." — no scream, just acceptance.
+6. **Mage, catastrophic hit (`takeHeavyHit`):** "Jesus." — the one composure break in an
+   otherwise clinical voice.
+7. **Minotaur, grabbing the Slime:** "Come here." then "Wait." then "Hah!" — the whole bit told
+   in three one/two-word lines.
+8. **Thief, obvious trap:** "Probably trapped." (`chemistrySelected`, bone-harvest) — genre
+   awareness without saying the word "trope."
+9. **Fighter, boss phase transition:** "Naturally."
+10. **Priest, healing the same mistake again:** "Again." (healCast, `priest-cure-wounds`)
+11. **Vess (companion), ally down:** "No. Not this party too." — the one line where her
+    backstory actually surfaces, exactly once.
+12. **Warlock, Bone Harvest resolves:** "Thank you." — chilling specifically because it's polite.
+13. **Animated Armor, Living Shield activates:** "Fine." — the one word an empty suit of armor
+    is allowed all game.
+14. **The Dead Boy, low HP:** "Don't." — restraint carrying the dread, not volume.
+15. **Ruined Vanguard (dead Fighter-echo), death:** "...still fine." — the exact word the living
+    Fighter says, wrong because it's a corpse saying it.
+16. **Hollow Knifeman, combat start:** "Mine." — a Thief's opportunism with the wit burned out.
+17. **Ash Scribe, take hit:** "Great." — dead Mage sarcasm, same word, no one left to hear it.
+18. **Drowned Cantor, heal cast:** "Rest." — a Priest's reflex firing for someone who can't wake up.
+19. **Duelist, Ogre Toss:** "Inelegant, but effective." — the one class that would actually judge
+    the *form* of a chemistry kill.
+20. **Halberdier, Slime Cannon:** "That's a range problem now." — reach-obsession applied to the
+    dumbest possible scenario.
+21. **Crusader, Bone Harvest:** "A mercy, technically." — dry justification, not a joke.
+22. **Rune Knight, chemistry breaks:** "..." — the disciplined caster has nothing to say when the
+    plan fails, which says everything.
+23. **Demon Mage, chemistry breaks:** "Wasteful." — clinical to the last, doesn't mourn the Spawn.
+24. **Companion Vess, rare:** "Not losing another chair." — the game's one sentimental line,
+    earned by twenty other dry ones.
+25. **The Crying Man, boss phase (3rd threshold):** "There's always more." — the throughline's
+    most fractured moment, still not comedic.
