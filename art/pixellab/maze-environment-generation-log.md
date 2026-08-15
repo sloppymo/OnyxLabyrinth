@@ -298,3 +298,26 @@ the ceiling-hanging sprite primitive the user named as the item after this
 door (billboards currently bottom-anchor per the maze-prop anchoring
 convention in `scripts/generate-maze-props.mjs`'s `ground()` — a ceiling
 sprite needs the opposite anchor, not a variant of the existing one).
+
+## Polish pass (branch `agent/floor1-art-polish`)
+
+Follow-up pass after user review of the shipped gallery (see
+[[floor1-wallfeature-quality-bar]]). Priority order: cold-hand redo →
+upward-water redo → sweating-iron distress → lamp-lock mechanism clarity →
+stairs floor-integration. Ember-scorch deliberately untouched pending a
+floor-decal rendering primitive, per explicit user direction not to spend
+more PixelLab budget on a wall-mounted compromise for a floor-level event.
+
+| Asset | Verdict before | Change | Candidates | Result |
+|---|---|---|---|---|
+| `cold-hand` | B — read as a hand mounted on the wall (mitten/gauntlet silhouette) | Regenerated as a full arched shrine niche, wrist disappearing into the recess, small reliquary ledge below. Geometry bumped `0.28/0.4/center` → `0.35/0.55/center` to give the niche room. | 1 (`f1-coldhand-02.png`, accepted first try) | In-engine, now unambiguously "hand emerging from a niche," not a wall-mounted prop. |
+| `upward-water` | B- — read as a luminous magic shape, not droplets | v3 attempt (texture/pattern wording) produced an abstract repeating crack pattern — rejected outright, worse than the original. v4 switched to explicit "game icon" framing: three discrete round droplets over a small basin, no texture/pattern language. Anchor changed `top` → `bottom` (basin now sits near the floor where a puddle physically would), `heightFrac` 0.35 → 0.45. | 2 (`-03` rejected, `-04` accepted) | In-engine, reads immediately as three separated droplets rising from a basin — the "ascending physics" is now legible at a glance. |
+| `sweating-iron` | B+ — good but too clean/manufactured | v2 (masonry-overlap emphasis) overcorrected: in-engine it read as cracked scorched stone, lost the metal-plate identity entirely — rejected. v3 restored the ember-glow cracks alongside the distressed edge — better, but rivets/plate still under-defined in-engine. v4 explicitly anchored "clearly rectangular... visible metallic grey-black surface... four large prominent rivets at the corners," confining the distress to the plate's outer edge only. Geometry bumped `0.35/0.45` → `0.4/0.5` to show the surrounding masonry chip. | 3 (`-02` rejected, `-03` superseded, `-04` accepted) | In-engine, clear metal plate with corner rivets and glowing seams, chipped stone framing reads as intrusion rather than a hung sign. |
+| `lamp-lock` | A- — strong "what the hell is that" mechanism, but not legible as a *lock* specifically | v2 (circular medallion, diamond aperture) read clearly as a mechanism but lost the lamp-dome silhouette and the multi-metal rim that made v1 distinctive — used only as a stepping stone. v3 explicitly requested "domed oil lamp... five visibly different tarnished metal segments... arched stone frame... dark diamond-shaped keyhole aperture in the center of the dome" — kept the lamp identity and added the unmistakable keyhole. | 2 (`-02` superseded, `-03` accepted) | In-engine, reads as an arched mechanism with a legible keyhole/aperture while keeping the "inscrutable device" character the user liked. |
+| stairs (bottom integration) | A / minor seam at the wall-face boundary | No regeneration — post-processed the existing `stairs.png` in place with `scripts/feather-stairs.mjs` (pngjs): a linear alpha ramp from opaque to fully transparent over the bottom ~10% of rows (26px of 256). Confirmed via `renderer.ts` draw order that `drawFloorCeilingCast` paints the live perspective floor *before* the door/stairs texture is composited over it (`ctx.drawImage` with `source-over`), so transparent source pixels reveal the already-rendered live floor instead of a hard static cutoff. | 0 (asset edit, no new generations) | Bottom edge blends measurably better at 1-tile distance. At 2+ tiles the panel still reads partly as a "picture in a frame" — but that's substantially the pre-existing flanking ivy/vine billboards framing the archway, not the texture's bottom edge; a full fix would mean reworking those billboards or building real floor-decal continuity under the arch. Documented as a partial fix, not closed. |
+
+Total polish-pass PixelLab generations: 7 (1 cold-hand, 2 upward-water, 3
+sweating-iron, 2 lamp-lock — includes rejected candidates, all `1
+generation` cost each per the API's own usage field). Raw candidates for all
+attempts, including the rejected ones, are kept in `art/pixellab-candidates/`
+for the record.
