@@ -153,7 +153,7 @@ export const MAGE_BARKS: CombatBarkProfile = {
     ],
     basicAttack: [
       { text: "This is beneath me." },
-      { text: "Fine, physically, then." },
+      { text: "Fine. Physically." },
       { text: "Ugh." },
     ],
     attackMiss: [
@@ -307,7 +307,7 @@ export const PRIEST_BARKS: CombatBarkProfile = {
     ],
     ko: [
       { text: "Someone else heal." },
-      { text: "...oh, that's ironic." },
+      { text: "Ironic." },
     ],
     revived: [
       { text: "Back with us." },

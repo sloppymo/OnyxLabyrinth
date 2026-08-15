@@ -33,7 +33,7 @@ export const DISCORDANT_CANTOR_BARKS: CombatBarkProfile = {
       { text: "Screen up.", abilityId: "anti-magic-field" },
     ],
     takeHit: [{ text: "Off-key." }],
-    death: [{ text: "Discordant, still." }],
+    death: [{ text: "Still discordant." }],
   },
 };
 
@@ -78,7 +78,7 @@ export const CHOIR_MAGUS_BARKS: CombatBarkProfile = {
       { text: "Rise.", abilityId: "magma-burst" },
     ],
     takeHit: [{ text: "Patience." }],
-    death: [{ text: "Rite, unfinished." }],
+    death: [{ text: "Unfinished rite." }],
   },
 };
 

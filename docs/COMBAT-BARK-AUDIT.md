@@ -241,7 +241,7 @@ the markers.
 | --- | --- |
 | Mean | 10.3 |
 | Median | 9 |
-| p90 | 19 |
+| p90 | 18 |
 | >28 chars (past the working cap) | 0 |
 | >45 chars (past the accepted exception ceiling) | 0 |
 | >80 chars (hard-fail threshold) | 0 |
