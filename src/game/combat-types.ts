@@ -12,6 +12,7 @@ import type { EnemyDef, EnemySpecial, Row } from "../data/enemies";
 import type { SpellDef, SpellEffect, SpellTarget, DamageElement } from "../data/spells";
 import type { ItemDef } from "../data/items";
 import type { TechniqueDef, TechniqueEffect, TechniqueTarget } from "../data/techniques";
+import type { CombatBarkTrigger } from "../data/combat-bark-library/types";
 
 // Re-export Rng for backward compatibility with imports from combat-types
 export type { Rng } from "./rng";
@@ -21,6 +22,34 @@ export type { Character, EnemyDef, SpellDef, ItemDef, Row, StatusEffect };
 
 // Re-export helpers the combat UI needs
 export type { Stats, SpellEffect, SpellTarget, EnemySpecial, TechniqueDef, TechniqueEffect, TechniqueTarget };
+
+/** Semantic point at which a bark should meet the action it comments on. */
+export type BarkLandmark = "anticipation" | "release" | "contact" | "reaction" | "settle";
+
+/** Development-facing exposure counters. These live only in CombatState and
+ * are never serialized into a save or used by gameplay formulas. */
+export interface CombatBarkTelemetryState {
+  opportunities: Partial<Record<CombatBarkTrigger, number>>;
+  eligible: Partial<Record<CombatBarkTrigger, number>>;
+  selected: Partial<Record<CombatBarkTrigger, number>>;
+  suppressed: Partial<Record<CombatBarkTrigger, number>>;
+  suppressionReasons: Record<string, number>;
+  lines: Record<string, number>;
+  uniqueLines: string[];
+}
+
+/** Per-combat library governor state. The legacy bark ledger remains separate
+ * so the shipped MVP can be preserved byte-for-byte in behavior. */
+export interface CombatBarkRuntimeState {
+  combatStartObserved: boolean;
+  lastSelectedRound: number;
+  lastSelectedPriority: number;
+  lastSpeakerRound: Record<string, number>;
+  lastTriggerRound: Partial<Record<CombatBarkTrigger, number>>;
+  usedLineKeys: string[];
+  recentLineKeys: string[];
+  telemetry: CombatBarkTelemetryState;
+}
 
 /**
  * Weapon range types for the Wizardry V targeting system.
@@ -143,7 +172,17 @@ export type CombatEvent =
   | { type: "affinityDiscovered"; targetId: string; element: string; kind: "weak" | "resist" }
   | { type: "analyze"; actorId: string; targetId: string }
   | { type: "phaseChange"; actorId: string; phase: number; name: string }
-  | { type: "bark"; actorId: string; trigger: "beforeSpell" | "heavyHit" | "death"; text: string }
+  | {
+      type: "bark";
+      actorId: string;
+      trigger: CombatBarkTrigger;
+      text: string;
+      /** Existing MVP barks omit this and retain their original policy. */
+      source?: "legacy" | "library";
+      landmark?: BarkLandmark;
+      durationMs?: number;
+      speaker?: string;
+    }
   | null;
 
 /** Internal: target of an enemy melee attack. */
@@ -401,6 +440,8 @@ export interface CombatState {
    * A dropped scene bark still leaves the entry burned (presentation cap).
    */
   barkSaid: Record<string, Partial<Record<"beforeSpell" | "heavyHit" | "death", true>>>;
+  /** New library ledger/governor. Optional for old hand-built test fixtures. */
+  barkRuntime?: CombatBarkRuntimeState;
   /**
    * Swindler gold bonus flag. Set to true when any Swindler lands a critical hit.
    * Applied at combat end to add +25% gold to the base gold earned from enemies.

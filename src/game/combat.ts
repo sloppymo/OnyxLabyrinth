@@ -50,6 +50,12 @@ import type {
 } from "./combat-types";
 import { inventoryToCounts } from "./combat-inventory";
 import { resetBarkRngForCombat } from "./combat-barks";
+import {
+  createCombatBarkRuntimeState,
+  ensureCombatStartBark,
+  observeCombatEvent,
+  resetCombatBarkLibraryRng,
+} from "./combat-bark-runtime";
 import { getGameplayRng } from "./rng";
 import {
   effStatsFor,
@@ -90,6 +96,7 @@ export function createCombatState(
   inventory: Record<string, number> = {}
 ): CombatState {
   resetBarkRngForCombat();
+  resetCombatBarkLibraryRng();
   return {
     party: party.map(cloneCharacter),
     enemies: {
@@ -145,6 +152,7 @@ export function createCombatState(
     summonCounter: 0,
     holyShieldBuffs: {},
     barkSaid: {},
+    barkRuntime: createCombatBarkRuntimeState(),
     swindlerGoldBonusActive: false,
   };
 }
@@ -221,9 +229,13 @@ export function resolveCombatRound(
     s.events.push(null);
   };
   /** Log a message with an associated structured event for animations. */
-  const emit = (msg: string, event: CombatEvent): void => {
+  const rawEmit = (msg: string, event: CombatEvent): void => {
     s.log.push(msg);
     s.events.push(event);
+  };
+  const emit = (msg: string, event: CombatEvent): void => {
+    rawEmit(msg, event);
+    observeCombatEvent(s, event, rawEmit);
   };
 
   // --- Phase 1: sanitize player actions -----------------------------------
@@ -296,6 +308,12 @@ export function resolveCombatRound(
   // Players act in initiative order, then summoned allies, then enemies.
   // Allies act as a group before enemies to represent their role as a
   // temporary front line.
+  const firstEntry = ordered[0];
+  if (firstEntry) {
+    const firstActorId =
+      firstEntry.kind === "player" ? firstEntry.action.actorId : firstEntry.action.actor.instanceId;
+    ensureCombatStartBark(s, firstActorId, rawEmit);
+  }
   for (const entry of ordered) {
     if (s.ended) break;
     if (entry.kind !== "player") continue;
@@ -351,11 +369,15 @@ function turnLoggers(s: CombatState) {
     s.log.push(msg);
     s.events.push(null);
   };
-  const emit = (msg: string, event: CombatEvent): void => {
+  const rawEmit = (msg: string, event: CombatEvent): void => {
     s.log.push(msg);
     s.events.push(event);
   };
-  return { log, emit };
+  const emit = (msg: string, event: CombatEvent): void => {
+    rawEmit(msg, event);
+    observeCombatEvent(s, event, rawEmit);
+  };
+  return { log, emit, rawEmit };
 }
 
 /**
@@ -431,10 +453,11 @@ export function resolvePlayerTurn(
   if (s.ended) return s;
   s.justDied = [];
   s.justDiedAllies = [];
-  const { log, emit } = turnLoggers(s);
+  const { log, emit, rawEmit } = turnLoggers(s);
 
   const actor = s.party.find((c) => c.id === action.actorId);
   if (!actor || actor.hp <= 0) return s;
+  ensureCombatStartBark(s, actor.id, rawEmit);
 
   if (actor.status.includes("sleep") || actor.status.includes("paralysis")) {
     const reason = actor.status.includes("sleep") ? "sleep" : "paralysis";
@@ -492,10 +515,11 @@ export function resolveEnemyTurn(
   if (s.ended) return s;
   s.justDied = [];
   s.justDiedAllies = [];
-  const { log, emit } = turnLoggers(s);
+  const { log, emit, rawEmit } = turnLoggers(s);
 
   const enemy = findEnemy(s, enemyInstanceId);
   if (!enemy || enemy.currentHp <= 0) return s;
+  ensureCombatStartBark(s, enemy.instanceId, rawEmit);
 
   const action = decideEnemyAction(s, enemy, rng, emit);
   resolveEnemyAction(s, action, rng, log, emit);
@@ -515,10 +539,11 @@ export function resolveAllyTurn(
   if (s.ended) return s;
   s.justDied = [];
   s.justDiedAllies = [];
-  const { log, emit } = turnLoggers(s);
+  const { log, emit, rawEmit } = turnLoggers(s);
 
   const ally = s.summonedAllies.find((a) => a.id === allyId);
   if (!ally || ally.hp <= 0) return s;
+  ensureCombatStartBark(s, ally.id, rawEmit);
 
   resolveAllyAction(s, ally, rng, log, emit);
   deathCheck(s, emit);

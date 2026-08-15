@@ -27,13 +27,20 @@
  * procedural silhouettes.
  */
 
-import type { CombatState, CombatEvent, EnemyInstance, SummonedAlly } from "../game/combat-types";
+import type {
+  BarkLandmark,
+  CombatState,
+  CombatEvent,
+  EnemyInstance,
+  SummonedAlly,
+} from "../game/combat-types";
 import { loadEnemySpriteBundle } from "./enemy-sprite-cache";
 import type { PartySpriteState } from "./party-sprite-cache";
 import type { EffectSprite } from "./effect-sprite-cache";
 import { spellById } from "../data/spells";
 import { enemyAbilityById } from "../data/enemy-abilities";
-import { BARK_PRIORITY, type BarkTrigger } from "../data/combat-barks";
+import { barkDurationMs, barkPriority as policyBarkPriority } from "../data/combat-bark-policy";
+import type { CombatBarkTrigger } from "../data/combat-bark-library/types";
 import { enemyIsUndead } from "./combat-audio";
 import { warnAsset } from "./asset-warn";
 import type { SpriteStrip } from "./sprite-manifest";
@@ -325,6 +332,9 @@ export interface CombatBark {
   start: number;
   color: string;
   priority: number;
+  source: "legacy" | "library";
+  speaker?: string;
+  landmark?: BarkLandmark;
   /** Wall-clock lifetime; already scaled by playbackRate at push. */
   durationMs: number;
 }
@@ -335,6 +345,7 @@ export const BARK_COLOR = "#f0e0c0";
 export const BARK_MAX_WIDTH_PX = 340;
 const BARK_WINDOW_MS = 100;
 const BARK_GLOBAL_CAP = 2;
+const LIBRARY_BARK_COOLDOWN_MS = 2400;
 
 let barksEnabled = true;
 
@@ -401,6 +412,8 @@ export interface CombatScene {
   popups: DamagePopup[];
   /** Dialog barks (sibling channel — not damage popups). */
   barks: CombatBark[];
+  /** Last displayed library bark in wall-clock time. Legacy barks do not use this. */
+  lastLibraryBarkAt: number;
   /**
    * Recent non-death bark pushes for the ~100ms global window
    * ({ start, priority } kept so we can keep top-2 by priority).
@@ -524,6 +537,7 @@ export function createScene(state: CombatState): CombatScene {
     allySlots: new Map(),
     popups: [],
     barks: [],
+    lastLibraryBarkAt: -Infinity,
     barkWindow: [],
     banner: null,
     bannerUntil: 0,
@@ -803,18 +817,42 @@ function pushPopup(
  */
 export function pushBark(
   scene: CombatScene,
-  opts: { actorId: string; trigger: BarkTrigger; text: string },
+  opts: {
+    actorId: string;
+    trigger: CombatBarkTrigger;
+    text: string;
+    source?: "legacy" | "library";
+    speaker?: string;
+    landmark?: BarkLandmark;
+    priority?: number;
+    durationMs?: number;
+  },
   now: number
 ): boolean {
   if (!barksEnabled) return false;
+  const source = opts.source ?? "legacy";
   // Char-based pathological guard (draw also clamps). ~11px/char at 19px FF36.
   if (opts.text.length * 11 > BARK_MAX_WIDTH_PX + 40) return false;
 
-  const priority = BARK_PRIORITY[opts.trigger];
+  const priority = opts.priority ?? policyBarkPriority(opts.trigger, source);
   const existing = scene.barks.find((b) => b.actorId === opts.actorId);
   if (existing) {
     if (priority <= existing.priority) return false;
     scene.barks = scene.barks.filter((b) => b.actorId !== opts.actorId);
+  }
+
+  if (source === "library") {
+    // The old MVP channel remains authoritative for its three proven lines.
+    // A library line never covers one of those lines, and library lines do
+    // not stack on top of one another in the same combat beat.
+    if (scene.barks.some((b) => b.source === "legacy")) return false;
+    const activeLibrary = scene.barks.find((b) => b.source === "library");
+    if (activeLibrary) {
+      if (priority <= activeLibrary.priority) return false;
+      scene.barks = scene.barks.filter((b) => b.source !== "library");
+    }
+    const high = priority >= policyBarkPriority("criticalHit", "library");
+    if (!high && now - scene.lastLibraryBarkAt < LIBRARY_BARK_COOLDOWN_MS) return false;
   }
 
   if (opts.trigger !== "death") {
@@ -837,8 +875,12 @@ export function pushBark(
     start: now,
     color: BARK_COLOR,
     priority,
-    durationMs: BARK_DURATION_BASE / rate,
+    source,
+    speaker: opts.speaker,
+    landmark: opts.landmark,
+    durationMs: (opts.durationMs ?? barkDurationMs(opts.text, source)) / rate,
   });
+  if (source === "library") scene.lastLibraryBarkAt = now;
   return true;
 }
 
@@ -2689,6 +2731,7 @@ export function playTurn(
   // completes (and the round/turn advances, or the victory screen appears)
   // while the line is still mid-bounce (spec 2026-07-26 §10).
   let lastDeathBarkVisibleUntil = 0;
+  let lastActionTiming: Partial<Record<BarkLandmark, number>> | null = null;
 
   const approach = (
     actorId: string,
@@ -2904,8 +2947,15 @@ export function playTurn(
                   isFinalHit: hitSequence.get(evtIndex)?.isFinal,
                 }
               )
-            );
+          );
           t = base + profile.anticipationMs + profile.strikeMs + profile.returnMs;
+          lastActionTiming = {
+            anticipation: base,
+            release: releaseAt,
+            contact: impact,
+            reaction: impact,
+            settle: t,
+          };
         } else {
           // Technique wind-up: a brief charge glow on the attacker before the
           // approach, so techniques read as deliberate power moves rather than
@@ -2946,6 +2996,13 @@ export function playTurn(
           const techniqueCrit = evt.type === "techniqueHit" && evt.crit === true;
           const techniqueTarget = evt.type === "techniqueHit" ? evt.targetId : null;
           const attackAt = continuingMelee ? base : base + profile.approachMs;
+          lastActionTiming = {
+            anticipation: base,
+            release: attackAt,
+            contact: attackAt + profile.strikeMs * profile.contactFraction,
+            reaction: attackAt + profile.strikeMs * profile.contactFraction,
+            settle: attackAt + profile.strikeMs + profile.returnMs,
+          };
           steps.push(
             step(attackAt, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
@@ -3058,6 +3115,13 @@ export function playTurn(
         approach(evt.actorId, evt.targetId, missProfile);
         const base = t;
         const attackAt = base + missProfile.approachMs;
+        lastActionTiming = {
+          anticipation: base,
+          release: attackAt,
+          contact: attackAt + missProfile.strikeMs * missProfile.contactFraction,
+          reaction: attackAt + missProfile.strikeMs * missProfile.contactFraction,
+          settle: attackAt + missProfile.strikeMs + missProfile.returnMs,
+        };
         steps.push(
           step(attackAt, (sc, n) => {
             const actor = findActor(sc, evt.actorId, w, h);
@@ -3095,6 +3159,13 @@ export function playTurn(
         // Show the technique name as a banner (like spell cast banner).
         showBanner(techniqueNameFor(evt.techniqueId), CAST_MS + 600);
         castAnim(evt.actorId);
+        lastActionTiming = {
+          anticipation: t,
+          release: t + CAST_IMPACT * 0.6,
+          contact: t + CAST_IMPACT,
+          reaction: t + CAST_IMPACT,
+          settle: t + CAST_MS,
+        };
         t += CAST_MS * 0.6;
         break;
       }
@@ -3184,6 +3255,13 @@ export function playTurn(
           pendingImpactBase = t + Math.max(CAST_IMPACT, 920);
         }
         const castHold = riseDash ? Math.max(CAST_MS, 1280) : CAST_MS;
+        lastActionTiming = {
+          anticipation: t,
+          release: t + (riseDash ? 40 : 100),
+          contact: pendingImpactBase ?? t,
+          reaction: pendingImpactBase ?? t,
+          settle: t + castHold,
+        };
 
         // Charge sprite gathers above the caster during the cast.
         if (style.charge) {
@@ -3464,6 +3542,13 @@ export function playTurn(
 
       case "defeated": {
         const targetId = evt.targetId;
+        lastActionTiming = {
+          anticipation: t,
+          release: t,
+          contact: t,
+          reaction: t,
+          settle: t,
+        };
         // A death bark for this actor (if picked) is always the very next
         // event — combat-eor.ts emits it immediately after "defeated".
         const barkEvt = events[evtIndex + 1];
@@ -3472,6 +3557,10 @@ export function playTurn(
           barkEvt.type === "bark" &&
           barkEvt.trigger === "death" &&
           barkEvt.actorId === targetId;
+        const deathBarkDuration =
+          hasDeathBark && barkEvt.type === "bark"
+            ? barkDurationMs(barkEvt.text, barkEvt.source ?? "legacy")
+            : 0;
         steps.push(
           step(t, (sc, n) => {
             const actor = findActor(sc, targetId, w, h);
@@ -3502,7 +3591,7 @@ export function playTurn(
             // actor holds the fade so the corpse (and its live anchor) stay
             // available until the line has had time to read (spec 2026-07-26).
             if (kind !== "party") {
-              a.fadeOutStart = n + 450 + (hasDeathBark ? BARK_DURATION_BASE : 0);
+              a.fadeOutStart = n + 450 + deathBarkDuration;
             }
           })
         );
@@ -3765,14 +3854,26 @@ export function playTurn(
       }
 
       case "bark": {
-        const delay = evt.trigger === "heavyHit" ? 180 : 0;
         const barkEvt = evt;
-        const startAt = t + delay;
+        const source = barkEvt.source ?? "legacy";
+        const delay = source === "legacy" && evt.trigger === "heavyHit" ? 180 : 0;
+        const landmarkAt = barkEvt.landmark ? lastActionTiming?.[barkEvt.landmark] : undefined;
+        const startAt = landmarkAt ?? t + delay;
+        const durationMs = barkEvt.durationMs ?? barkDurationMs(barkEvt.text, source);
         steps.push(
           step(startAt, (sc, n) => {
             pushBark(
               sc,
-              { actorId: barkEvt.actorId, trigger: barkEvt.trigger, text: barkEvt.text },
+              {
+                actorId: barkEvt.actorId,
+                trigger: barkEvt.trigger,
+                text: barkEvt.text,
+                source,
+                speaker: barkEvt.speaker,
+                landmark: barkEvt.landmark,
+                durationMs,
+                priority: policyBarkPriority(barkEvt.trigger, source),
+              },
               n
             );
           })
@@ -3783,7 +3884,7 @@ export function playTurn(
           // it's the last event of the turn.
           lastDeathBarkVisibleUntil = Math.max(
             lastDeathBarkVisibleUntil,
-            startAt + Math.round(BARK_DURATION_BASE * 0.8)
+            startAt + Math.round(durationMs * 0.8)
           );
         }
         break;

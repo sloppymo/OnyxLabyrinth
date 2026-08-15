@@ -4,11 +4,10 @@
  *
  * Deliberately separate from the repo's existing, already-shipped bark MVP
  * at `src/game/combat-barks.ts` (`pickBark`/`maybeEmitBark`, wired into
- * combat-actions.ts/combat-enemy.ts/combat-eor.ts/combat.ts). This module is
- * NOT wired into combat resolution, combat UI, or timing — see
- * `docs/COMBAT-BARK-INTEGRATION-CONTRACT.md` for how the two relate and
- * what a later integration pass should do. No file this module imports is a
- * forbidden combat-resolution file, and nothing here calls into one.
+ * combat-actions.ts/combat-enemy.ts/combat-eor.ts/combat.ts). The pure
+ * selector remains independent of combat resolution; the presentation bridge
+ * in `combat-bark-runtime.ts` supplies eligibility and frequency policy at the
+ * event boundary. No selector call advances gameplay RNG.
  */
 
 import type {
@@ -42,6 +41,8 @@ export interface SelectBarkInput {
   /** Line keys (see `barkLineKey`) already spoken this combat, for `oncePerCombat`
    *  filtering. Pass an empty set/array if nothing has been said yet. */
   alreadyUsed?: ReadonlySet<string> | readonly string[];
+  /** Recent line keys are blocked even when a line is not once-per-combat. */
+  recentlyUsed?: ReadonlySet<string> | readonly string[];
 }
 
 /** Stable identity for a bark line, for `oncePerCombat` bookkeeping by the caller. */
@@ -57,9 +58,11 @@ function matchesLine(
   line: CombatBarkLine,
   input: SelectBarkInput,
   used: ReadonlySet<string>,
+  recent: ReadonlySet<string>,
   key: string
 ): boolean {
   if (line.oncePerCombat && used.has(key)) return false;
+  if (recent.has(key)) return false;
   if (line.abilityId !== undefined && line.abilityId !== input.abilityId) return false;
   if (line.chemistryId !== undefined && line.chemistryId !== input.chemistryId) return false;
   if (line.status !== undefined && line.status !== input.status) return false;
@@ -90,9 +93,11 @@ export function selectCombatBark(
 
   const used =
     input.alreadyUsed instanceof Set ? input.alreadyUsed : new Set(input.alreadyUsed ?? []);
+  const recent =
+    input.recentlyUsed instanceof Set ? input.recentlyUsed : new Set(input.recentlyUsed ?? []);
 
   const candidates = pool.filter((line) =>
-    matchesLine(line, input, used, barkLineKey(input.speakerId, input.trigger, line))
+    matchesLine(line, input, used, recent, barkLineKey(input.speakerId, input.trigger, line))
   );
   if (candidates.length === 0) return null;
 
@@ -105,4 +110,32 @@ export function selectCombatBark(
     if (roll <= 0) return line;
   }
   return candidates[candidates.length - 1];
+}
+
+/**
+ * Return the currently eligible lines without consuming the injected RNG.
+ * Runtime governors use this to distinguish "no content qualifies" from
+ * "content qualified but the presentation policy chose silence".
+ */
+export function eligibleCombatBarks(
+  input: Omit<SelectBarkInput, "rng">,
+  profiles: ReadonlyMap<string, CombatBarkProfile> = BARK_PROFILES_BY_ID
+): readonly CombatBarkLine[] {
+  const profile = profiles.get(input.speakerId);
+  if (!profile) return [];
+  const pool = profile.pools[input.trigger];
+  if (!pool || pool.length === 0) return [];
+  const used =
+    input.alreadyUsed instanceof Set ? input.alreadyUsed : new Set(input.alreadyUsed ?? []);
+  const recent =
+    input.recentlyUsed instanceof Set ? input.recentlyUsed : new Set(input.recentlyUsed ?? []);
+  return pool.filter((line) =>
+    matchesLine(
+      line,
+      input as SelectBarkInput,
+      used,
+      recent,
+      barkLineKey(input.speakerId, input.trigger, line)
+    )
+  );
 }

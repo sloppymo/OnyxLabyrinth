@@ -2,13 +2,15 @@
  * Typed content model for the (unwired, standalone) combat bark CONTENT
  * LIBRARY — see `src/game/combat-bark-library.ts` for the pure selector.
  *
- * NOTE: the repo already ships a small, separate, integrated bark MVP at
+ * NOTE: the repo also ships a small, separate, proven bark MVP at
  * `src/data/combat-barks.ts` / `src/game/combat-barks.ts` (3 triggers, 10
  * lines, wired into combat-actions.ts/combat-enemy.ts/combat-eor.ts/
- * combat.ts). This library is deliberately named and pathed to never
- * collide with it. It is NOT wired into combat resolution, combat UI, or
- * timing — see `docs/COMBAT-BARK-INTEGRATION-CONTRACT.md` for how the two
- * relate and what a later integration pass should do.
+ * combat.ts). The library is deliberately named and pathed to never collide
+ * with it. The additive presentation bridge in
+ * `src/game/combat-bark-runtime.ts` observes structured combat events and
+ * uses this content without replacing the MVP ledger or combat formulas.
+ * Chemistry-specific pools remain dormant until their mechanics emit the
+ * corresponding events; see `docs/COMBAT-BARK-INTEGRATION-CONTRACT.md`.
  *
  * Deliberately not built: a conversation graph, a dialogue VM, nested
  * predicates, or a branching story system. A bark is one short line keyed
@@ -40,6 +42,10 @@ export type BarkVoiceMode =
  * uneven (see the voice bible in `docs/COMBAT-BARK-AUDIT.md`).
  */
 export type CombatBarkTrigger =
+  // Legacy MVP names remain valid event labels so the shipped path can keep
+  // its public event shape while the library uses the more specific names.
+  | "beforeSpell"
+  | "heavyHit"
   | "combatStart"
   | "firstAction"
   | "basicAttack"

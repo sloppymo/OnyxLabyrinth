@@ -24,6 +24,7 @@
     .value { width: 42px; color: #f5f0e6; text-align: right; font-size: 12px; }
     .hint { color: #6a5f50; font-size: 11px; line-height: 1.4; }
     #status { min-height: 42px; margin-top: 12px; padding: 8px; border: 1px solid #3a3530; color: #b8aa94; font-size: 11px; line-height: 1.4; }
+    #bark-meta { min-height: 132px; margin: 8px 0 0; padding: 8px; border: 1px solid #3a3530; color: #c6b99e; font: 11px/1.45 monospace; white-space: pre-wrap; }
     #stage .game-wrap, #stage #game-wrap { max-width: none; }
     #stage #combat-wrap { display: block !important; width: 100%; aspect-ratio: 768 / 672; }
     #stage #combat-wrap #combat-canvas, #stage #combat-wrap #combat-phaser-canvas { width: 100%; height: 100%; image-rendering: pixelated; }
@@ -45,6 +46,15 @@
     <div class="row"><label for="preset">Preset</label><select id="preset"></select></div>
     <div class="row"><label for="backend">Backend</label><select id="backend"><option value="canvas">Canvas</option><option value="phaser">Phaser</option></select></div>
     <div class="row"><label for="action">Action</label><select id="action"><option value="preset">Preset action</option><option value="normal">Normal hit</option><option value="critical">Critical hit</option><option value="miss">Miss</option><option value="ranged">Ranged release</option><option value="cast">Offensive cast</option><option value="heal">Ally heal</option></select></div>
+
+    <h2>Bark editorial mode</h2>
+    <div class="hint">Forced mode inspects a chosen library line without policy suppression. Governed mode runs the same selector/governor bridge used by combat. The bark remains a choreography event, not a second combat system.</div>
+    <div class="row"><label for="bark-mode">Mode</label><select id="bark-mode"><option value="governed" selected>Production governed</option><option value="forced">Forced editorial</option></select></div>
+    <div class="row"><label for="bark-trigger">Trigger</label><select id="bark-trigger"></select></div>
+    <div class="row"><label for="bark-speaker">Speaker</label><select id="bark-speaker"><option value="actor">Actor profile</option><option value="target">Target profile</option></select></div>
+    <div class="row"><label for="bark-line">Line</label><select id="bark-line"><option value="auto">Automatic selection</option></select></div>
+    <div class="row"><button id="next-bark" type="button">Next eligible line</button></div>
+    <pre id="bark-meta">No bark decision yet.</pre>
 
     <h2>Playback</h2>
     <div class="row"><label for="speed">Speed</label><select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div>
