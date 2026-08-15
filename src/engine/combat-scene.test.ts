@@ -5,6 +5,7 @@
  */
 import { describe, it, expect } from "vitest";
 import {
+  COLORS,
   createScene,
   playTurn,
   updateScene,
@@ -182,6 +183,187 @@ describe("playTurn choreography", () => {
     playTurn(scene2, [{ type: "telegraphBreak", actorId: "rat-0", abilityId: "hellfire" }], spellName, 0, W, H);
     updateScene(scene2, 10);
     expect(scene2.banner).toBe("Interrupted!");
+  });
+
+  it("chemistry events use the shared throw/consume/death path", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const state = createCombatState(
+      party,
+      { front: [makeEnemy("minotaur-0"), makeEnemy("slime-0")], back: [] },
+      false
+    );
+    const scene = createScene(state);
+    const events: CombatEvent[] = [
+      {
+        type: "chemistry",
+        chemistryId: "chem-slime-cannon",
+        abilityId: "crypt-slime-cannon",
+        name: "Slime Cannon",
+        phase: "resolve",
+        actorId: "minotaur-0",
+        targetId: "c0",
+        resourceId: "slime-0",
+        presentation: "throwAlly",
+      },
+      {
+        type: "chemistry",
+        chemistryId: "chem-slime-cannon",
+        abilityId: "crypt-slime-cannon",
+        name: "Slime Cannon",
+        phase: "consume",
+        actorId: "minotaur-0",
+        targetId: "c0",
+        resourceId: "slime-0",
+        presentation: "throwAlly",
+      },
+      {
+        type: "cast",
+        actorId: "minotaur-0",
+        spellId: "crypt-slime-cannon",
+        targetId: "c0",
+        damage: 8,
+        presentation: "throwAlly",
+      },
+      { type: "defeated", targetId: "slime-0", wasEnemy: true },
+    ];
+    const duration = playTurn(scene, events, spellName, 0, W, H);
+
+    updateScene(scene, 10);
+    expect(scene.banner).toBe("SLIME CANNON");
+    expect(scene.enemyAnims.get("slime-0")?.moveToX).not.toBe(0);
+
+    updateScene(scene, 760);
+    expect(scene.popups.some((p) => p.text === "8")).toBe(true);
+    expect(scene.partyAnims.get("c0")?.state).toBe("hurt");
+    expect(scene.effects.some((e) => e.type === "burst")).toBe(true);
+
+    updateScene(scene, duration + 20);
+    expect(scene.enemyAnims.get("slime-0")?.state).toBe("death");
+  });
+
+  it("Bone Harvest and Spawn Bomb keep their payoff-specific shared effects", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const makeChemScene = (resourceId: string) =>
+      createScene(
+        createCombatState(
+          party.map((c) => structuredClone(c)),
+          { front: [makeEnemy("caster-0"), makeEnemy(resourceId)], back: [] },
+          false
+        )
+      );
+
+    const bone = makeChemScene("skeleton-0");
+    playTurn(
+      bone,
+      [
+        {
+          type: "chemistry",
+          chemistryId: "chem-bone-harvest",
+          abilityId: "crypt-bone-harvest",
+          name: "Bone Harvest",
+          phase: "resolve",
+          actorId: "caster-0",
+          resourceId: "skeleton-0",
+          presentation: "consumeAlly",
+        },
+        {
+          type: "chemistry",
+          chemistryId: "chem-bone-harvest",
+          abilityId: "crypt-bone-harvest",
+          name: "Bone Harvest",
+          phase: "consume",
+          actorId: "caster-0",
+          resourceId: "skeleton-0",
+          presentation: "consumeAlly",
+        },
+        {
+          type: "cast",
+          actorId: "caster-0",
+          spellId: "crypt-bone-harvest",
+          targetId: "caster-0",
+          heal: 8,
+          presentation: "consumeAlly",
+        },
+        { type: "defeated", targetId: "skeleton-0", wasEnemy: true },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(bone, 500);
+    expect(bone.banner).toBe("BONE HARVEST");
+    expect(bone.popups.some((p) => p.text === "8" && p.color === COLORS.heal)).toBe(true);
+
+    const bomb = makeChemScene("spawn-0");
+    playTurn(
+      bomb,
+      [
+        {
+          type: "chemistry",
+          chemistryId: "chem-spawn-bomb",
+          abilityId: "crypt-spawn-bomb",
+          name: "Spawn Bomb",
+          phase: "resolve",
+          actorId: "caster-0",
+          resourceId: "spawn-0",
+          presentation: "detonateAlly",
+        },
+        {
+          type: "chemistry",
+          chemistryId: "chem-spawn-bomb",
+          abilityId: "crypt-spawn-bomb",
+          name: "Spawn Bomb",
+          phase: "consume",
+          actorId: "caster-0",
+          resourceId: "spawn-0",
+          presentation: "detonateAlly",
+        },
+        { type: "cast", actorId: "caster-0", spellId: "crypt-spawn-bomb", targetId: "c0", damage: 6, presentation: "detonateAlly" },
+        { type: "cast", actorId: "caster-0", spellId: "crypt-spawn-bomb", targetId: "c1", damage: 6, presentation: "detonateAlly" },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(bomb, 500);
+    expect(bomb.banner).toBe("SPAWN BOMB");
+    expect(bomb.effects.some((e) => e.effect === "fire_explosion")).toBe(true);
+    expect(bomb.popups.filter((p) => p.text === "6")).toHaveLength(2);
+  });
+
+  it("Combo Break is a distinct chemistry event and never becomes ordinary cast text", () => {
+    const scene = makeScene();
+    playTurn(
+      scene,
+      [{
+        type: "chemistry",
+        chemistryId: "chem-slime-cannon",
+        abilityId: "crypt-slime-cannon",
+        name: "Slime Cannon",
+        phase: "break",
+        actorId: "rat-0",
+        targetId: "c0",
+        resourceId: "missing-resource",
+        reason: "resourceDead",
+        presentation: "throwAlly",
+      }],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(scene, 10);
+    expect(scene.banner).toBe("COMBO BREAK");
+    expect(scene.popups.some((p) => p.text === "BREAK")).toBe(true);
+    expect(scene.popups.some((p) => p.text === "SAFE")).toBe(true);
   });
 
   it("affinityDiscovered pops WEAK! / RESIST over the target", () => {

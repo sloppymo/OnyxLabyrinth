@@ -143,7 +143,7 @@ function applyChemistryPayoff(
   actor: EnemyInstance,
   ability: EnemyAbilityDef,
   resourceId: string,
-  targetId: string,
+  targetId: string | null,
   rng: Rng,
   emit: (m: string, e: CombatEvent) => void
 ): boolean {
@@ -151,13 +151,25 @@ function applyChemistryPayoff(
   const resource = findEnemyByInstanceId(s, resourceId);
   if (!resource || resource.currentHp <= 0) return false;
 
-  const target = s.party.find((character) => character.id === targetId && character.hp > 0);
+  const target = targetId
+    ? s.party.find((character) => character.id === targetId && character.hp > 0)
+    : undefined;
   if (!target && ability.effect.payoff.kind === "damage" && ability.effect.payoff.target === "singleParty") {
     return false;
   }
 
   // The resource is visible until this exact beat. Mark it before the normal
   // death sweep so the committed body cannot act later in the round.
+  chemistryEvent(s, emit, `${actor.name} resolves ${ability.name}!`, {
+    chemistryId: ability.chemistryId!,
+    abilityId: ability.id,
+    name: ability.name,
+    phase: "resolve",
+    actorId: actor.instanceId,
+    targetId,
+    resourceId,
+    presentation: ability.presentation === "meleeGangUp" ? undefined : ability.presentation,
+  });
   markConsumed(resource);
   chemistryEvent(s, emit, `${resource.name} is consumed by ${actor.name}!`, {
     chemistryId: ability.chemistryId!,
@@ -306,7 +318,7 @@ function resolveEnemyAbility(
     const reservation = chemistryReservationFor(s, actor.instanceId);
     const resourceId = reservation?.resourceId ?? action.resourceId;
     const partnerId = reservation?.partnerId ?? action.partnerId;
-    const committedTargetId = reservation?.targetId ?? targetId;
+    const committedTargetId = reservation ? reservation.targetId : targetId;
     if (actor.currentHp <= 0) {
       breakChemistry(s, actor, ability, "actorDead", emit, resourceId, partnerId, committedTargetId);
       return;

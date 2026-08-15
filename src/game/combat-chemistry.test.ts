@@ -118,6 +118,18 @@ describe("formation chemistry resource substrate", () => {
 
     state = resolveCombatRound(state, defendActions(state), fixedRng);
     expect(state.events.some((event) => event?.type === "chemistry" && event.phase === "consume")).toBe(true);
+    expect(state.events).toContainEqual(expect.objectContaining({
+      type: "chemistry",
+      phase: "resolve",
+      chemistryId: "chem-slime-cannon",
+      resourceId: "slime-0",
+      targetId: "c1",
+    }));
+    expect(state.events).toContainEqual(expect.objectContaining({
+      type: "cast",
+      spellId: "crypt-slime-cannon",
+      presentation: "throwAlly",
+    }));
     expect(state.justDied.some((enemy) => enemy.instanceId === "slime-0")).toBe(true);
     expect(state.goldEarned).toBe(3);
     expect(state.xpEarned).toBe(5);

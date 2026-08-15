@@ -980,3 +980,22 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   metadata, and the authored .70/.65/.75 chemistry chances with the pinned
   synthesis. The corrective full gate also passed (121 files / 2,363 tests);
   no renderer or campaign roster behavior changed.
+
+## Phase 3 — Chemistry events and first presentations
+
+- Added a dedicated `chemistry` event lifecycle with explicit telegraph,
+  resolve, consume, and break phases. Resolution now emits resolve before the
+  exact resource is marked consumed; ordinary cast events carry only the
+  per-target damage/heal payload and no longer create duplicate chemistry
+  banners.
+- Added one shared choreography path for Canvas and Phaser: Slime Cannon
+  resource pull/arc/impact/removal, Bone Harvest restorative burst, Spawn Bomb
+  party flash, and Combo Break. Chemistry effect ids are collected by the same
+  asset validation path as ordinary combat effects.
+- Added chemistry phase audio routing and fixed actor-disable wind-up cleanup
+  so chemistry reservations are released when a committed actor is interrupted.
+- Verification: chemistry choreography/audio/event tests passed; full
+  `npm run check` passed (121 files / 2,367 tests), including app/tools
+  TypeScript, Vite build, floor validation, and export parity. Browser visual
+  forcing is deferred to the deterministic roster/scenario phase because the
+  Phase 3 substrate has no active Crypt encounter roster yet.

@@ -34,6 +34,7 @@ import {
   chemistryResourceCandidates,
   markChemistryMetric,
   reserveChemistryUse,
+  releaseChemistryReservation,
 } from "./combat-chemistry";
 
 /** Derive isCaster from special flags (EnemyDef has no isCaster field). */
@@ -247,6 +248,8 @@ export function decideEnemyAction(
       delete s.windUps[enemy.instanceId];
       if ("chemistryId" in broken && broken.chemistryId) {
         markChemistryMetric(s, "broken", broken.chemistryId);
+        releaseChemistryReservation(s, enemy.instanceId);
+        const brokenAbility = enemyAbilityById(broken.abilityId);
         emit(`${enemy.name}'s ${broken.name} is broken!`, {
           type: "chemistry",
           chemistryId: broken.chemistryId,
@@ -258,7 +261,10 @@ export function decideEnemyAction(
           resourceId: broken.resourceId,
           partnerId: broken.partnerId,
           reason: "actorDisabled",
-          presentation: undefined,
+          presentation:
+            brokenAbility?.presentation === "meleeGangUp"
+              ? undefined
+              : brokenAbility?.presentation,
         });
       } else {
         emit(`${enemy.name}'s ${broken.name} is broken!`, {

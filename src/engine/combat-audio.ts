@@ -194,6 +194,15 @@ export function idsForEvent(event: CombatEvent, state: CombatState): SfxLayer[] 
       return [{ id: "bossPhase" }];
     case "telegraphBreak":
       return [{ id: "fizzle" }];
+    case "chemistry": {
+      if (event.phase === "break") return [{ id: "fizzle" }];
+      if (event.phase === "telegraph") return [{ id: "bossPhase" }];
+      if (event.chemistryId === "chem-bone-harvest") return [{ id: "healCast" }];
+      if (event.presentation === "detonateAlly") return [{ id: "elementFire" }];
+      if (event.presentation === "overload") return [{ id: "elementLightning" }];
+      if (event.presentation === "throwAlly") return [{ id: "statusPoison" }];
+      return [{ id: "elementPhysical" }];
+    }
     case "affinityDiscovered":
     case "analyze":
       return clampSfxLayers([
