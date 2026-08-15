@@ -213,8 +213,8 @@ describe("compileMazeGeometry", () => {
     const keys = new Set(compiled.batches.map((batch) => batch.materialKey));
     expect(keys).toContain("f1:floorA");
     expect(keys).toContain("f2:floorB");
-    expect(keys).toContain("f1:wall");
-    expect(keys).toContain("f2:wall");
+    expect([...keys].some((key) => /^f1:wall(?:@_[b-j])?$/.test(key))).toBe(true);
+    expect([...keys].some((key) => /^f2:wall(?:@_[b-j])?$/.test(key))).toBe(true);
   });
 
   it("emits a true east-rising floor quad with exact endpoint heights", () => {

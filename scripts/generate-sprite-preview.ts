@@ -333,8 +333,6 @@ async function buildTilesetSection(): Promise<Section> {
     { file: "ceiling_tile_256.png", note: "unused — no import site in src/" },
     { file: "floor_tile_a_256.png", note: "unused — no import site in src/" },
     { file: "floor_tile_b_256.png", note: "unused — no import site in src/" },
-    { file: "wall_tile_amber_256.png", note: "unused — no import site in src/" },
-    { file: "wall_tile_vine_256.png", note: "unused — no import site in src/" },
   ];
   const sharedCards: Card[] = [];
   for (const { file, note } of shared) {

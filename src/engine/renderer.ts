@@ -114,6 +114,100 @@ import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
 import { waterGridFromFloor } from "./water-floor";
 import { mazeRenderProfiler } from "./maze-renderer/performance";
+import {
+  WALL_VARIANT_SUFFIXES,
+  wallVariantFilename,
+  wallVariantForEdge,
+  type WallVariantSuffix,
+} from "./wall-variants";
+
+// Approved wall-family asset lookup. Normal selection is deterministic and
+// lives in wall-variants.ts; `wallPreview` is an exact named override used by
+// the production-art harness to inspect every source through both renderers.
+const WALL_VARIANT_LOADERS = import.meta.glob("../assets/f?_wall*_256.png", {
+  query: "?url",
+  import: "default",
+}) as Record<string, () => Promise<string>>;
+
+const requestedWallPreview = (() => {
+  if (typeof window === "undefined") return null;
+  const requested = new URLSearchParams(window.location.search).get("wallPreview")?.trim();
+  if (!requested) return null;
+  const filename = requested.endsWith(".png") ? requested : `${requested}.png`;
+  return /^f[1-5]_wall(?:_[b-j])?_256\.png$/.test(filename) ? filename : null;
+})();
+
+let requestedWallPreviewUrl: string | null = null;
+let requestedWallPreviewLoad: Promise<void> | null = null;
+let wallVariantUrls: Map<string, string> | null = null;
+let wallVariantUrlsLoad: Promise<Map<string, string>> | null = null;
+
+function loadRequestedWallPreview(): Promise<void> {
+  if (!requestedWallPreview) return Promise.resolve();
+  if (requestedWallPreviewUrl) return Promise.resolve();
+  if (!requestedWallPreviewLoad) {
+    const load = WALL_VARIANT_LOADERS[`../assets/${requestedWallPreview}`];
+    requestedWallPreviewLoad = load
+      ? load().then((url) => {
+          requestedWallPreviewUrl = url;
+        })
+      : Promise.resolve();
+  }
+  return requestedWallPreviewLoad;
+}
+
+function loadWallVariantUrls(): Promise<Map<string, string>> {
+  if (wallVariantUrls) return Promise.resolve(wallVariantUrls);
+  if (wallVariantUrlsLoad) return wallVariantUrlsLoad;
+  wallVariantUrlsLoad = Promise.all(
+    ([1, 2, 3, 4, 5] as const).flatMap((floor) =>
+      WALL_VARIANT_SUFFIXES.map(async (suffix) => {
+        const theme = `f${floor}` as `f${1 | 2 | 3 | 4 | 5}`;
+        const filename = `${wallVariantFilename(theme, suffix)}.png`;
+        const load = WALL_VARIANT_LOADERS[`../assets/${filename}`];
+        if (!load) return null;
+        try {
+          return [filename, await load()] as const;
+        } catch {
+          warnAsset(`failed to resolve wall variant: ${filename}`);
+          return null;
+        }
+      })
+    )
+  ).then((entries) => {
+    wallVariantUrls = new Map(
+      entries.filter((entry): entry is readonly [string, string] => entry !== null)
+    );
+    wallVariantUrlsLoad = null;
+    return wallVariantUrls;
+  });
+  return wallVariantUrlsLoad;
+}
+
+function loadWallVariantImages(
+  theme: string
+): Promise<Map<WallVariantSuffix, HTMLImageElement | null>> {
+  if (!/^f[1-5]$/.test(theme)) return Promise.resolve(new Map());
+  return loadWallVariantUrls().then((urls) =>
+    Promise.all(
+      WALL_VARIANT_SUFFIXES.map(async (suffix) => {
+        const filename = `${theme}_wall${suffix}_256.png`;
+        const url = urls.get(filename);
+        if (!url) return [suffix, null] as const;
+        const image = await loadImage(url).catch(() => {
+          warnAsset(`failed to load wall variant: ${url}`);
+          return null;
+        });
+        return [suffix, image] as const;
+      })
+    ).then((entries) => new Map(entries))
+  );
+}
+
+function previewWallUrlForTheme(theme: string): string | null {
+  if (!requestedWallPreview || !requestedWallPreview.startsWith(`${theme}_wall`)) return null;
+  return requestedWallPreviewUrl;
+}
 
 // --- Palette (Section 12.1 of the design doc: distance-based color shift) ---
 export const PALETTE = {
@@ -259,6 +353,8 @@ export interface TextureSet {
 export interface LoadedTileset {
   set: TextureSet;
   repeatedWall: HTMLCanvasElement | null;
+  /** Repeated wall sources keyed by deterministic family suffix. */
+  wallVariants: Map<WallVariantSuffix, HTMLCanvasElement>;
   /** Palette-matched door panel for this theme, or null if it failed to load
    *  (renderer falls back to the shared placeholder, then to the procedural
    *  fill — see `doorTextureForTheme`). */
@@ -316,7 +412,10 @@ function urlsForTheme(theme: string): {
   ceiling: string;
   door: string;
 } {
-  return BUNDLED_THEME_URLS[theme] ?? publicThemeUrls(theme);
+  const bundled = BUNDLED_THEME_URLS[theme];
+  const previewWall = previewWallUrlForTheme(theme);
+  if (bundled && previewWall) return { ...bundled, wall: previewWall };
+  return bundled ?? publicThemeUrls(theme);
 }
 
 /** Public path only — see `LoadedTileset.stairs` doc comment. */
@@ -585,12 +684,13 @@ function prepareRepeatedTexture(
 /** Load and prepare campaign themes (f1–f5, each with its own door panel)
  *  plus the generic placeholder used as a fallback for themes with no door
  *  of their own (custom/public themes, or a per-theme door that failed to load). */
-export function loadTextures(): Promise<void> {
-  return Promise.all([
+export async function loadTextures(): Promise<void> {
+  await loadRequestedWallPreview();
+  await Promise.all([
     ...Object.keys(BUNDLED_THEME_URLS).map((theme) => ensureThemeLoaded(theme)),
     ensureDoorTextureLoaded(),
     ensureWaterTextureLoaded(),
-  ]).then(() => {});
+  ]);
 }
 
 /** The door texture to draw for a theme: its own palette-matched panel if
@@ -670,6 +770,7 @@ function ensureWaterTextureLoaded(): Promise<void> {
           ceilingData: null,
         },
         repeatedWall: null,
+        wallVariants: new Map(),
         door: null,
         stairs: null,
         sky: null,
@@ -793,7 +894,8 @@ function loadTileset(
     // existed.
     loadImage(stairsUrlForTheme(theme)).catch(() => null),
     skyUrlForTheme(theme) ? loadImage(skyUrlForTheme(theme)!).catch(() => null) : Promise.resolve(null),
-  ]).then(([wall, floorAImg, floorBImg, ceilingImg, doorImg, stairsImg, sky]) => {
+    loadWallVariantImages(theme),
+  ]).then(([wall, floorAImg, floorBImg, ceilingImg, doorImg, stairsImg, sky, wallVariantImages]) => {
     const wallAdjusted = wall
       ? adjustTextureImage(wall, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)
       : null;
@@ -832,6 +934,20 @@ function loadTileset(
     const repeatedWall = wallAdjusted
       ? prepareRepeatedTexture(wallAdjusted, RENDER_CONFIG.wallRepeatsX, RENDER_CONFIG.wallRepeatsY)
       : null;
+    const wallVariants = new Map<WallVariantSuffix, HTMLCanvasElement>();
+    if (repeatedWall) wallVariants.set("", repeatedWall);
+    for (const [suffix, image] of wallVariantImages) {
+      if (!image || suffix === "") continue;
+      const adjusted = adjustTextureImage(
+        image,
+        RENDER_CONFIG.wallBrightnessFactor,
+        RENDER_CONFIG.wallContrastFactor
+      );
+      wallVariants.set(
+        suffix,
+        prepareRepeatedTexture(adjusted, RENDER_CONFIG.wallRepeatsX, RENDER_CONFIG.wallRepeatsY)
+      );
+    }
     // Same mild darkening as the old shared placeholder so the panel sits in
     // the corridor fog like the rest of the wall art (see ensureDoorTextureLoaded).
     const doorAdjusted = doorImg ? adjustTextureImage(doorImg, 0.92, 1.05) : null;
@@ -843,7 +959,7 @@ function loadTileset(
       ? adjustTextureImage(stairsImg, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)
       : null;
     const stairs = stairsAdjusted ? prepareRepeatedTexture(stairsAdjusted, 1, 1) : null;
-    return { set, repeatedWall, door, stairs, sky };
+    return { set, repeatedWall, wallVariants, door, stairs, sky };
   });
 }
 
@@ -1956,7 +2072,21 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
       rayDirY
     );
     const wallTileset = tilesetCache.get(wallTheme) ?? primaryTileset;
-    const repeatedWall = wallTileset?.repeatedWall ?? null;
+    const wallFace = hit.edge === "wall"
+      ? wallFeatureCellForHit(hit.mapX, hit.mapY, hit.side, rayDirX, rayDirY)
+      : null;
+    const wallVariant = wallFace
+      ? wallVariantForEdge(
+          state.floor.id,
+          wallTheme,
+          wallFace.x,
+          wallFace.y,
+          wallFace.dir
+        )
+      : "";
+    const repeatedWall = wallTileset?.wallVariants.get(wallVariant)
+      ?? wallTileset?.repeatedWall
+      ?? null;
 
     if (repeatedWall) {
       let texX = Math.floor(hit.wallX * repeatedWall.width);
