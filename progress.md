@@ -1018,3 +1018,21 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   disable, and recursion/stack rejection. Full `npm run check` passed:
   122 files / 2,376 tests, app/tools typechecks, Vite build, floor validation,
   and export parity. Existing Namanda validation warnings remain unchanged.
+
+## Phase 5 — Partner and charged signatures
+
+- Added `packStrike` with an exact committed partner and target, per-round
+  partner-action reservation, no retargeting, and Combo Break on invalid actor,
+  partner, or target. Hunting Pack resolves two fixed-power physical hits while
+  both original enemy bodies remain alive and visible.
+- Added Rune Overload on the existing `consumeAlly` substrate. It commits the
+  exact conductive construct, leaves that battery alive and killable during the
+  charge, consumes it after the delayed enemy turn, and discharges lightning to
+  the full party without inventing a party target ID.
+- Added shared pack convergence/recoil and Rune tether/charge/collapse/field
+  choreography for Canvas and Phaser, plus a playback-duration fix so bespoke
+  return steps cannot be clipped by the logical event cursor.
+- Verification: targeted Pack/Rune and choreography tests passed (74 tests);
+  full `npm run check` passed (123 files / 2,385 tests), including app/tools
+  typechecks, Vite build, floor validation, and export parity. Existing Namanda
+  validation warnings remain unchanged.

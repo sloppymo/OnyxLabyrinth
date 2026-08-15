@@ -418,6 +418,118 @@ describe("playTurn choreography", () => {
     expect(duration).toBeGreaterThan(500);
   });
 
+  it("Hunting Pack converges both live actors and returns them after the shared hits", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const scene = createScene(
+      createCombatState(
+        party,
+        {
+          front: [makeEnemy("hellhound-0", { id: "crypt-hellhound" })],
+          back: [makeEnemy("werewolf-0", { id: "crypt-werewolf", rowPreference: "back" })],
+        },
+        false
+      )
+    );
+    const duration = playTurn(
+      scene,
+      [
+        {
+          type: "chemistry",
+          chemistryId: "chem-hunting-pack",
+          abilityId: "crypt-pack-hunt",
+          name: "Hunting Pack",
+          phase: "resolve",
+          actorId: "hellhound-0",
+          targetId: "c0",
+          partnerId: "werewolf-0",
+          presentation: "packStrike",
+        },
+        { type: "cast", actorId: "hellhound-0", spellId: "crypt-pack-hunt", targetId: "c0", damage: 5, presentation: "packStrike" },
+        { type: "cast", actorId: "werewolf-0", spellId: "crypt-pack-hunt", targetId: "c0", damage: 5, presentation: "packStrike" },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    expect(scene.choreo?.steps.map((step) => step.at)).toContain(1050);
+    updateScene(scene, 220);
+    expect(scene.banner).toBe("HUNTING PACK");
+    // The first frame fires the shared convergence step; inspect the tween
+    // after a later frame so the offset has had time to advance.
+    updateScene(scene, 420);
+    expect(animOffset(scene.enemyAnims.get("hellhound-0")!, 420).x).toBeGreaterThan(0);
+    expect(animOffset(scene.enemyAnims.get("werewolf-0")!, 420).x).toBeGreaterThan(0);
+    updateScene(scene, 850);
+    expect(scene.popups.filter((popup) => popup.text === "5")).toHaveLength(2);
+    updateScene(scene, 1900);
+    updateScene(scene, 2400);
+    expect(animOffset(scene.enemyAnims.get("hellhound-0")!, 2400)).toEqual({ x: 0, y: 0 });
+    expect(animOffset(scene.enemyAnims.get("werewolf-0")!, 2400)).toEqual({ x: 0, y: 0 });
+    expect(duration).toBeGreaterThan(1200);
+  });
+
+  it("Rune Overload keeps a live battery tethered, then flashes the party on collapse", () => {
+    const party = [
+      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    ];
+    const scene = createScene(
+      createCombatState(
+        party,
+        {
+          front: [makeEnemy("construct-0", { id: "crypt-lesser-construct" })],
+          back: [makeEnemy("rune-knight-0", { id: "crypt-rune-knight", rowPreference: "back" })],
+        },
+        false
+      )
+    );
+    playTurn(
+      scene,
+      [
+        {
+          type: "chemistry",
+          chemistryId: "chem-rune-overload",
+          abilityId: "crypt-rune-overload",
+          name: "Rune Overload",
+          phase: "resolve",
+          actorId: "rune-knight-0",
+          resourceId: "construct-0",
+          presentation: "overload",
+        },
+        {
+          type: "chemistry",
+          chemistryId: "chem-rune-overload",
+          abilityId: "crypt-rune-overload",
+          name: "Rune Overload",
+          phase: "consume",
+          actorId: "rune-knight-0",
+          resourceId: "construct-0",
+          presentation: "overload",
+        },
+        { type: "cast", actorId: "rune-knight-0", spellId: "crypt-rune-overload", targetId: "c0", damage: 8, presentation: "overload" },
+        { type: "cast", actorId: "rune-knight-0", spellId: "crypt-rune-overload", targetId: "c1", damage: 8, presentation: "overload" },
+        { type: "defeated", targetId: "construct-0", wasEnemy: true },
+      ],
+      spellName,
+      0,
+      W,
+      H
+    );
+    updateScene(scene, 10);
+    expect(scene.banner).toBe("RUNE OVERLOAD");
+    expect(scene.effects.some((effect) => effect.effect === "rune-beam")).toBe(true);
+    updateScene(scene, 500);
+    expect(scene.popups.some((popup) => popup.text === "CHARGED")).toBe(true);
+    updateScene(scene, 1000);
+    expect(scene.effects.some((effect) => effect.type === "field" && effect.effect === "lightning_blast")).toBe(true);
+    expect(scene.popups.filter((popup) => popup.text === "8")).toHaveLength(2);
+    expect(scene.enemyAnims.get("construct-0")?.state).toBe("death");
+  });
+
   it("affinityDiscovered pops WEAK! / RESIST over the target", () => {
     const scene = makeScene();
     playTurn(scene, [{ type: "affinityDiscovered", targetId: "rat-0", element: "fire", kind: "weak" }], spellName, 0, W, H);

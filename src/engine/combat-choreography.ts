@@ -2181,7 +2181,7 @@ const CHEMISTRY_STYLES: Record<string, EffectStyle> = {
   },
   overload: {
     color: "#7fe0e0",
-    projectile: "lightning_blast",
+    projectile: "rune-beam",
     burst: "lightning_blast",
     burstUnderlay: "lightning_blast_glow",
     burstScale: 1.35,
@@ -3097,6 +3097,60 @@ export function playTurn(
               })
             );
             t += 360;
+          } else if (evt.presentation === "packStrike" && evt.partnerId && evt.targetId) {
+            const base = t;
+            steps.push(
+              step(base, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                const partner = findActor(sc, evt.partnerId!, w, h);
+                const target = findActor(sc, evt.targetId!, w, h);
+                if (!actor || !partner || !target) return;
+                startMove(
+                  getAnim(sc, actor.kind, evt.actorId, n),
+                  target.x - actor.x - 58,
+                  target.y - actor.y - 18,
+                  420,
+                  n,
+                  sc.playbackRate
+                );
+                startMove(
+                  getAnim(sc, partner.kind, evt.partnerId!, n),
+                  target.x - partner.x - 92,
+                  target.y - partner.y + 22,
+                  420,
+                  n,
+                  sc.playbackRate
+                );
+                pushPopup(sc, evt.targetId!, "MARKED", COLORS.cursor, n, w, h, false);
+              }),
+              step(base + 300, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                const partner = findActor(sc, evt.partnerId!, w, h);
+                if (actor) setAnimState(getAnim(sc, actor.kind, evt.actorId, n), "attack", n);
+                if (partner) setAnimState(getAnim(sc, partner.kind, evt.partnerId!, n), "attack", n);
+              }),
+              step(base + 1050, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                const partner = findActor(sc, evt.partnerId!, w, h);
+                if (actor) {
+                  const anim = getAnim(sc, actor.kind, evt.actorId, n);
+                  setAnimState(anim, "walk", n);
+                  startMove(anim, 0, 0, 360, n, sc.playbackRate);
+                }
+                if (partner) {
+                  const anim = getAnim(sc, partner.kind, evt.partnerId!, n);
+                  setAnimState(anim, "walk", n);
+                  startMove(anim, 0, 0, 360, n, sc.playbackRate);
+                }
+              }),
+              step(base + 1410, (sc, n) => {
+                const actor = findActor(sc, evt.actorId, w, h);
+                const partner = findActor(sc, evt.partnerId!, w, h);
+                if (actor) setAnimState(getAnim(sc, actor.kind, evt.actorId, n), "idle", n);
+                if (partner) setAnimState(getAnim(sc, partner.kind, evt.partnerId!, n), "idle", n);
+              })
+            );
+            t = base + 700;
           } else if (evt.presentation === "throwAlly" && evt.resourceId && evt.targetId) {
             // The resource is pulled into the caster first, then a shared
             // projectile arc carries the same exact committed body to the
@@ -3146,25 +3200,65 @@ export function playTurn(
             );
             t += 220;
           } else {
-            // Bone Harvest and future consumeAlly signatures use the same
-            // resource grab beat; their payoff-specific impact follows.
-            steps.push(
-              step(t, (sc, n) => {
-                if (!evt.resourceId) return;
-                const actor = findActor(sc, evt.actorId, w, h);
-                const resource = findActor(sc, evt.resourceId, w, h);
-                if (!actor || !resource) return;
-                startMove(
-                  getAnim(sc, resource.kind, evt.resourceId!, n),
-                  actor.x - resource.x,
-                  actor.y - resource.y - 18,
-                  220,
-                  n,
-                  sc.playbackRate
-                );
-              })
-            );
-            t += 300;
+            // Bone Harvest and ordinary consumeAlly signatures use the same
+            // resource grab beat; overload keeps its living battery in place
+            // and shows a visible tether/charge instead.
+            if (evt.presentation === "overload" && evt.resourceId) {
+              steps.push(
+                step(t, (sc, n) => {
+                  const actor = findActor(sc, evt.actorId, w, h);
+                  const resource = findActor(sc, evt.resourceId!, w, h);
+                  if (!actor || !resource) return;
+                  if (style.projectile) {
+                    sc.effects.push({
+                      type: "projectile",
+                      fromX: actor.x,
+                      fromY: actor.y - 20,
+                      toX: resource.x,
+                      toY: resource.y,
+                      x: actor.x,
+                      y: actor.y - 20,
+                      color: style.color,
+                      effect: style.projectile,
+                      scale: style.scale ?? 1,
+                      glow: true,
+                      start: n,
+                      duration: 520,
+                    });
+                  }
+                  sc.effects.push({
+                    type: "charge",
+                    x: resource.x,
+                    y: resource.y - 28,
+                    color: style.color,
+                    effect: style.burst,
+                    scale: (style.scale ?? 1) * 0.8,
+                    start: n + 120,
+                    duration: 650,
+                  });
+                  pushPopup(sc, evt.resourceId!, "CHARGED", style.color, n, w, h, true);
+                })
+              );
+              t += 620;
+            } else {
+              steps.push(
+                step(t, (sc, n) => {
+                  if (!evt.resourceId) return;
+                  const actor = findActor(sc, evt.actorId, w, h);
+                  const resource = findActor(sc, evt.resourceId, w, h);
+                  if (!actor || !resource) return;
+                  startMove(
+                    getAnim(sc, resource.kind, evt.resourceId!, n),
+                    actor.x - resource.x,
+                    actor.y - resource.y - 18,
+                    220,
+                    n,
+                    sc.playbackRate
+                  );
+                })
+              );
+              t += 300;
+            }
           }
           break;
         }
@@ -3187,6 +3281,10 @@ export function playTurn(
               if (evt.presentation === "detonateAlly") {
                 pushFieldLayers(sc, w * 0.72, h, style, n, 650, 2.0);
                 addScreenShake(sc, 5, n, 320);
+              }
+              if (evt.presentation === "overload") {
+                pushFieldLayers(sc, w * 0.56, h, style, n, 760, 2.2);
+                addScreenShake(sc, 6, n, 360);
               }
               if (evt.chemistryId === "chem-bone-harvest") {
                 const actor = findActor(sc, evt.actorId, w, h);
@@ -3952,9 +4050,12 @@ export function playTurn(
 
   returnHome();
 
-  // Give trailing popups a beat to play out. A trailing death bark can push
-  // this further out than the default 260ms tail (see lastDeathBarkVisibleUntil).
-  const duration = Math.max(t + 260, lastDeathBarkVisibleUntil);
+  // Give trailing popups a beat to play out. Bespoke chemistry steps can
+  // schedule a return/recoil after the logical event cursor has moved on to
+  // its damage payload, so the duration must cover the furthest visual step,
+  // not only `t`. A trailing death bark can push this further out still.
+  const lastVisualStepAt = steps.reduce((maxAt, choreoStep) => Math.max(maxAt, choreoStep.at), 0);
+  const duration = Math.max(t + 260, lastVisualStepAt + 260, lastDeathBarkVisibleUntil);
   scene.choreo = { start: now, duration, steps };
   return duration;
 }

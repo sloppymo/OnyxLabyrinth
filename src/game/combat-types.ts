@@ -188,6 +188,7 @@ export type ChemistryBreakReason =
   | "resourceDead"
   | "partnerDead"
   | "targetDead"
+  | "targetInvalid"
   | "guardInvalid"
   | "cooldown"
   | "cap";

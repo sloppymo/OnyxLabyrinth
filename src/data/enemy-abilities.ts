@@ -264,6 +264,51 @@ const CRYPT_LIVING_SHIELD: EnemyAbilityDef = {
   element: "physical",
 };
 
+const CRYPT_PACK_HUNT: EnemyAbilityDef = {
+  id: "crypt-pack-hunt",
+  name: "Hunting Pack",
+  description: "Commits an exact Werewolf partner to converge on one party member.",
+  target: "singleParty",
+  effect: {
+    kind: "packStrike",
+    partnerIds: ["crypt-werewolf"],
+    hits: 2,
+    powerPerHit: 5,
+    element: "physical",
+  },
+  condition: { kind: "always" },
+  weight: 10,
+  cooldown: 4,
+  windUp: true,
+  chemistryId: "chem-hunting-pack",
+  chemistryChance: 0.65,
+  maxUses: 1,
+  presentation: "packStrike",
+  element: "physical",
+  preferWounded: true,
+};
+
+const CRYPT_RUNE_OVERLOAD: EnemyAbilityDef = {
+  id: "crypt-rune-overload",
+  name: "Rune Overload",
+  description: "Charges an exact conductive construct, then discharges it through the party.",
+  target: "allParty",
+  effect: {
+    kind: "consumeAlly",
+    resource: { group: "conductive-construct" },
+    payoff: { kind: "damage", target: "allParty", power: 8, element: "lightning" },
+  },
+  condition: { kind: "allyPresent", resource: { group: "conductive-construct" } },
+  weight: 10,
+  cooldown: 5,
+  windUp: true,
+  chemistryId: "chem-rune-overload",
+  chemistryChance: 0.65,
+  maxUses: 1,
+  presentation: "overload",
+  element: "lightning",
+};
+
 const SPLIT: EnemyAbilityDef = {
   id: "split",
   name: "Split",
@@ -869,6 +914,8 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   CRYPT_BONE_HARVEST,
   CRYPT_SPAWN_BOMB,
   CRYPT_LIVING_SHIELD,
+  CRYPT_PACK_HUNT,
+  CRYPT_RUNE_OVERLOAD,
   SPLIT,
   BONE_SHARD,
   RATTLE,

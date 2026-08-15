@@ -153,6 +153,13 @@ function pickAbilityTargetId(
     case "allParty":
     case "groupAlly":
     case "allAlly":
+      if (
+        ability.effect.kind === "consumeAlly" &&
+        ability.effect.payoff.kind === "damage" &&
+        ability.effect.payoff.target !== "singleParty"
+      ) {
+        return null;
+      }
       return party[0]?.id ?? null;
     default:
       return null;

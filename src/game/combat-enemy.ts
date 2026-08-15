@@ -110,7 +110,7 @@ export function breakChemistry(
   s: CombatState,
   actor: EnemyInstance,
   ability: EnemyAbilityDef,
-  reason: "actorDead" | "actorDisabled" | "resourceDead" | "partnerDead" | "targetDead" | "guardInvalid",
+  reason: "actorDead" | "actorDisabled" | "resourceDead" | "partnerDead" | "targetDead" | "targetInvalid" | "guardInvalid",
   emit: (m: string, e: CombatEvent) => void,
   resourceId?: string,
   partnerId?: string,
@@ -240,6 +240,62 @@ function applyChemistryPayoff(
   return true;
 }
 
+function applyPackStrikePayoff(
+  s: CombatState,
+  actor: EnemyInstance,
+  ability: EnemyAbilityDef,
+  partnerId: string,
+  targetId: string | null,
+  rng: Rng,
+  emit: (m: string, e: CombatEvent) => void
+): boolean {
+  if (ability.effect.kind !== "packStrike") return false;
+  const target = targetId
+    ? s.party.find((character) => character.id === targetId && character.hp > 0)
+    : undefined;
+  const partner = findEnemyByInstanceId(s, partnerId);
+  if (!target || !partner || actorDisabled(partner)) return false;
+
+  chemistryEvent(s, emit, `${actor.name} and ${partner.name} unleash ${ability.name}!`, {
+    chemistryId: ability.chemistryId!,
+    abilityId: ability.id,
+    name: ability.name,
+    phase: "resolve",
+    actorId: actor.instanceId,
+    targetId: target.id,
+    partnerId: partner.instanceId,
+    presentation: ability.presentation === "meleeGangUp" ? undefined : ability.presentation,
+  });
+
+  for (let hitIndex = 0; hitIndex < ability.effect.hits; hitIndex++) {
+    if (target.hp <= 0) break;
+    const hit = abilityDamageParty(
+      s,
+      target,
+      scaledAbilityPower(ability.effect.powerPerHit),
+      actor,
+      rng,
+      emit
+    );
+    emit(
+      `${hitIndex === 0 ? actor.name : partner.name} strikes ${target.name} for ${hit.finalDamage} damage!`,
+      {
+        type: "cast",
+        actorId: hitIndex === 0 ? actor.instanceId : partner.instanceId,
+        spellId: ability.id,
+        targetId: target.id,
+        damage: hit.finalDamage,
+        presentation: ability.presentation,
+      }
+    );
+    emitAbilityHeavyHitBarks(s, target, hit, emit);
+    gainRage(s, target.id, 1);
+  }
+  markChemistryMetric(s, "resolved", ability.chemistryId!);
+  releaseChemistryReservation(s, actor.instanceId);
+  return true;
+}
+
 function summonEnemyBodies(
   s: CombatState,
   actor: EnemyInstance,
@@ -339,9 +395,16 @@ function resolveEnemyAbility(
         return;
       }
     }
-    if (ability.target === "singleParty" && !s.party.some((character) => character.id === committedTargetId && character.hp > 0)) {
-      breakChemistry(s, actor, ability, "targetDead", emit, resourceId, partnerId, committedTargetId);
-      return;
+    if (ability.target === "singleParty") {
+      const committedTarget = s.party.find((character) => character.id === committedTargetId);
+      if (!committedTarget || committedTarget.hp <= 0) {
+        breakChemistry(s, actor, ability, "targetDead", emit, resourceId, partnerId, committedTargetId);
+        return;
+      }
+      if (committedTarget.status.includes("hidden")) {
+        breakChemistry(s, actor, ability, "targetInvalid", emit, resourceId, partnerId, committedTargetId);
+        return;
+      }
     }
     if (ability.effect.kind === "guard") {
       const target = findEnemyByInstanceId(s, committedTargetId ?? undefined);
@@ -369,6 +432,12 @@ function resolveEnemyAbility(
     }
     if (ability.effect.kind === "consumeAlly" && resourceId) {
       applyChemistryPayoff(s, actor, ability, resourceId, committedTargetId, rng, emit);
+      return;
+    }
+    if (ability.effect.kind === "packStrike" && partnerId) {
+      if (!applyPackStrikePayoff(s, actor, ability, partnerId, committedTargetId, rng, emit)) {
+        breakChemistry(s, actor, ability, "targetInvalid", emit, resourceId, partnerId, committedTargetId);
+      }
       return;
     }
   }
