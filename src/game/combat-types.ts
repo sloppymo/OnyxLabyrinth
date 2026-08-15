@@ -140,14 +140,12 @@ export type CombatEvent =
       heal?: number;
       presentation?:
         | "meleeGangUp"
-        | "slimeCannon"
-        | "boneHarvest"
-        | "spawnBomb"
-        | "comboBreak"
-        | "livingShield"
+        | "throwAlly"
+        | "consumeAlly"
+        | "detonateAlly"
         | "packStrike"
-        | "runeOverload"
-        | "ogreToss";
+        | "guardAlly"
+        | "overload";
     }
   | { type: "spellEffect"; spellId: string; targetId?: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean; isDebuff?: boolean }
   | { type: "defeated"; targetId: string; wasEnemy: boolean }
@@ -207,14 +205,12 @@ export interface ChemistryCombatEvent {
   partnerId?: string;
   reason?: ChemistryBreakReason;
   presentation?:
-    | "slimeCannon"
-    | "boneHarvest"
-    | "spawnBomb"
-    | "comboBreak"
-    | "livingShield"
+    | "throwAlly"
+    | "consumeAlly"
+    | "detonateAlly"
     | "packStrike"
-    | "runeOverload"
-    | "ogreToss";
+    | "guardAlly"
+    | "overload";
 }
 
 /** Exact committed identity carried from telegraph to resolution. */

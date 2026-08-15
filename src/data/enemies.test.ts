@@ -351,7 +351,15 @@ describe("encounter table integrity", () => {
   });
 
   it("uses only known presentation keys on enemy abilities", () => {
-    const known: string[] = ["meleeGangUp", "slimeCannon"];
+    const known: string[] = [
+      "meleeGangUp",
+      "throwAlly",
+      "consumeAlly",
+      "detonateAlly",
+      "packStrike",
+      "guardAlly",
+      "overload",
+    ];
     for (const ability of ALL_ENEMY_ABILITIES) {
       if (ability.presentation) {
         expect(known, `unknown presentation: ${ability.presentation}`).toContain(

@@ -127,7 +127,7 @@ export function breakChemistry(
     resourceId,
     partnerId,
     reason,
-    presentation: ability.presentation === "meleeGangUp" ? "comboBreak" : ability.presentation,
+    presentation: ability.presentation === "meleeGangUp" ? undefined : ability.presentation,
   });
   releaseChemistryReservation(s, actor.instanceId);
   delete s.windUps[actor.instanceId];
@@ -145,7 +145,6 @@ function applyChemistryPayoff(
   resourceId: string,
   targetId: string,
   rng: Rng,
-  log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): boolean {
   if (ability.effect.kind !== "consumeAlly") return false;
@@ -168,7 +167,7 @@ function applyChemistryPayoff(
     actorId: actor.instanceId,
     targetId,
     resourceId,
-    presentation: ability.presentation === "meleeGangUp" ? "comboBreak" : ability.presentation,
+    presentation: ability.presentation === "meleeGangUp" ? undefined : ability.presentation,
   });
 
   const payoff = ability.effect.payoff;
@@ -194,38 +193,34 @@ function applyChemistryPayoff(
       });
       emitAbilityHeavyHitBarks(s, hitTarget, hit, emit);
       gainRage(s, hitTarget.id, 1);
-      if (payoff.status && rng() < (payoff.statusChance ?? 1) && !hitTarget.status.includes(payoff.status)) {
-        hitTarget.status.push(payoff.status);
-        const duration = payoff.duration ?? 3;
-        if (payoff.status === "paralysis") s.paralysisTimers[hitTarget.id] = duration;
-        if (payoff.status === "sleep") s.sleepTimers[hitTarget.id] = Math.min(3, duration);
-        if (payoff.status === "blind") s.blindTimers[hitTarget.id] = duration;
-        emit(`${hitTarget.name} is ${payoff.status}!`, {
+      const statusEffect = payoff.status;
+      if (statusEffect && rng() < statusEffect.chance && !hitTarget.status.includes(statusEffect.status)) {
+        hitTarget.status.push(statusEffect.status);
+        const duration = statusEffect.duration;
+        if (statusEffect.status === "paralysis") s.paralysisTimers[hitTarget.id] = duration;
+        if (statusEffect.status === "sleep") s.sleepTimers[hitTarget.id] = Math.min(3, duration);
+        if (statusEffect.status === "blind") s.blindTimers[hitTarget.id] = duration;
+        emit(`${hitTarget.name} is ${statusEffect.status}!`, {
           type: "spellEffect",
           spellId: ability.id,
           targetId: hitTarget.id,
-          statusInflicted: payoff.status,
+          statusInflicted: statusEffect.status,
         });
       }
     }
-    if (payoff.summonAfter) {
-      summonEnemyBodies(s, actor, ability, payoff.summonAfter.enemyId, payoff.summonAfter.count, log, emit);
-    }
   } else {
-    const allies = payoff.target === "self" ? [actor] : [...s.enemies.front, ...s.enemies.back].filter((enemy) => enemy.currentHp > 0);
-    for (const ally of allies) {
-      const before = ally.currentHp;
-      ally.currentHp = Math.min(ally.hp, ally.currentHp + payoff.heal);
-      ally.attack += payoff.attackBonus;
-      emit(`${actor.name} resolves ${ability.name}, restoring ${ally.name}.`, {
+    const before = actor.currentHp;
+    actor.currentHp = Math.min(actor.hp, actor.currentHp + payoff.healPower);
+    if (payoff.buff.stat === "attack") actor.attack += payoff.buff.amount;
+    if (payoff.buff.stat === "ac") actor.ac += payoff.buff.amount;
+    emit(`${actor.name} resolves ${ability.name}, restoring ${actor.name}.`, {
         type: "cast",
         actorId: actor.instanceId,
         spellId: ability.id,
-        targetId: ally.instanceId,
-        heal: ally.currentHp - before,
+        targetId: actor.instanceId,
+        heal: actor.currentHp - before,
         presentation: ability.presentation,
       });
-    }
   }
   markChemistryMetric(s, "resolved", ability.chemistryId!);
   releaseChemistryReservation(s, actor.instanceId);
@@ -336,7 +331,7 @@ function resolveEnemyAbility(
       return;
     }
     if (ability.effect.kind === "consumeAlly" && resourceId) {
-      applyChemistryPayoff(s, actor, ability, resourceId, committedTargetId, rng, log, emit);
+      applyChemistryPayoff(s, actor, ability, resourceId, committedTargetId, rng, emit);
       return;
     }
   }

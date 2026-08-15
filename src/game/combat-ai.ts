@@ -96,7 +96,7 @@ function abilityConditionMet(
       return livingAllyCount(s) < cond.count;
     case "partyHasStatus": return partyHasStatus(s, cond.status);
     case "partyMissingStatus": return !partyHasStatus(s, cond.status);
-    case "allyPresent": return selectorHasLivingResource(s, cond.selector);
+    case "allyPresent": return selectorHasLivingResource(s, cond.resource);
     case "firstTurn": return !enemy.hasActed;
     case "notFirstTurn": return !!enemy.hasActed;
     default: return false;
@@ -171,10 +171,10 @@ function pickEnemyAbility(
       if (s.enemies[row].filter((candidate) => candidate.currentHp > 0).length >= 3) continue;
     }
     if (ab.effect.kind === "consumeAlly") {
-      if (chemistryResourceCandidates(s, ab.effect.selector).length === 0) continue;
+      if (chemistryResourceCandidates(s, ab.effect.resource).length === 0) continue;
     }
     if (ab.effect.kind === "packStrike") {
-      const partner = chemistryResourceCandidates(s, ab.effect.partner);
+      const partner = chemistryResourceCandidates(s, { enemyIds: ab.effect.partnerIds });
       if (partner.length === 0) continue;
       const candidate = partner[0];
       if (actorDisabled(candidate) || s.enemyActedThisRound?.includes(candidate.instanceId)) continue;
@@ -258,7 +258,7 @@ export function decideEnemyAction(
           resourceId: broken.resourceId,
           partnerId: broken.partnerId,
           reason: "actorDisabled",
-          presentation: "comboBreak",
+          presentation: undefined,
         });
       } else {
         emit(`${enemy.name}'s ${broken.name} is broken!`, {
@@ -334,10 +334,10 @@ export function decideEnemyAction(
       if (chemistry) {
         markChemistryMetric(s, "eligible", chemistry);
         if (abilityPick.ability.effect.kind === "consumeAlly") {
-          resourceId = chemistryResourceCandidates(s, abilityPick.ability.effect.selector)[0]?.instanceId;
+          resourceId = chemistryResourceCandidates(s, abilityPick.ability.effect.resource)[0]?.instanceId;
           if (!resourceId) return fallbackEnemyAction(s, enemy, rng);
         } else if (abilityPick.ability.effect.kind === "packStrike") {
-          const partner = chemistryResourceCandidates(s, abilityPick.ability.effect.partner)[0];
+          const partner = chemistryResourceCandidates(s, { enemyIds: abilityPick.ability.effect.partnerIds })[0];
           if (!partner || actorDisabled(partner) || s.enemyActedThisRound?.includes(partner.instanceId)) {
             return fallbackEnemyAction(s, enemy, rng);
           }
@@ -389,7 +389,7 @@ export function decideEnemyAction(
             resourceId,
             partnerId,
             presentation: abilityPick.ability.presentation === "meleeGangUp"
-              ? "comboBreak"
+              ? undefined
               : abilityPick.ability.presentation,
           });
         } else {

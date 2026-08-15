@@ -975,3 +975,8 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   enemies, deterministic ordering, duplicate reservation, committed resource /
   actor / target death, interruption, caps/cooldowns, rewards, summon budget,
   and both combat APIs. Full `npm run check` passed (121 files / 2,363 tests).
+- Post-gate contract correction: aligned the closed payoff union, exact
+  `resource`/`partnerIds`/presentation fields, explicit Living Shield target
+  metadata, and the authored .70/.65/.75 chemistry chances with the pinned
+  synthesis. The corrective full gate also passed (121 files / 2,363 tests);
+  no renderer or campaign roster behavior changed.

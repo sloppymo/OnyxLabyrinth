@@ -44,17 +44,20 @@ export type ChemistryPayoff =
       target: ChemistryDamageTarget;
       power: number;
       element?: DamageElement;
-      status?: StatusEffect;
-      statusChance?: number;
-      duration?: number;
-      summonAfter?: { enemyId: string; count: number };
+      status?: {
+        status: StatusEffect;
+        chance: number;
+        duration: number;
+      };
     }
   | {
       kind: "healAndBuff";
-      target: "self" | "allAlly";
-      heal: number;
-      attackBonus: number;
-      duration: number;
+      healPower: number;
+      buff: {
+        stat: "attack" | "ac";
+        amount: number;
+        duration: number;
+      };
     };
 
 export type AbilityEffect =
@@ -69,16 +72,16 @@ export type AbilityEffect =
   | { kind: "fizzleField"; power: number }   // suppress party spells
   | { kind: "magicScreen"; power: number }   // suppress party spell damage
   /** Shared expendable-resource primitive. The exact instance is committed at telegraph time. */
-  | { kind: "consumeAlly"; selector: ChemistryResourceSelector; payoff: ChemistryPayoff }
+  | { kind: "consumeAlly"; resource: ChemistryResourceSelector; payoff: ChemistryPayoff }
   /** Bounded interception primitive; target is selected and committed separately. */
-  | { kind: "guard"; target: "singleParty"; duration: number }
+  | { kind: "guard"; charges: 1; duration: number }
   /** Two-living-actor cooperation primitive; partner is committed separately. */
   | {
       kind: "packStrike";
-      partner: ChemistryResourceSelector;
-      target: "singleParty";
-      power: number;
+      partnerIds: string[];
       hits: number;
+      powerPerHit: number;
+      element?: DamageElement;
     };
 
 /** Condition that gates when the AI considers using an ability. */
@@ -95,7 +98,7 @@ export type AbilityCondition =
   | { kind: "partyHasStatus"; status: StatusEffect }
   | { kind: "partyMissingStatus"; status: StatusEffect }
   /** Chemistry-only exact resource/partner presence check. */
-  | { kind: "allyPresent"; selector: ChemistryResourceSelector }
+  | { kind: "allyPresent"; resource: ChemistryResourceSelector }
   | { kind: "firstTurn" }                       // only on the enemy's first action
   | { kind: "notFirstTurn" };                   // not on the first action
 
@@ -123,6 +126,8 @@ export interface EnemyAbilityDef {
   chemistryChance?: number;
   /** Finite uses per actor per combat. */
   maxUses?: number;
+  /** Explicit caster IDs eligible for the bounded Living Shield guard. */
+  guardTargetIds?: string[];
   /**
    * Optional bespoke choreography key consumed by combat-choreography.ts's
    * playTurn. When set, the combat scene renders a dedicated animation in
@@ -131,14 +136,12 @@ export interface EnemyAbilityDef {
    */
   presentation?:
     | "meleeGangUp"
-    | "slimeCannon"
-    | "boneHarvest"
-    | "spawnBomb"
-    | "comboBreak"
-    | "livingShield"
+    | "throwAlly"
+    | "consumeAlly"
+    | "detonateAlly"
     | "packStrike"
-    | "runeOverload"
-    | "ogreToss";
+    | "guardAlly"
+    | "overload";
   /**
    * For "singleParty" target only: pick the lowest-HP% living party member
    * instead of a random one. Mirrors the existing wounded-ally preference
@@ -179,26 +182,69 @@ const CRYPT_SLIME_CANNON: EnemyAbilityDef = {
   target: "singleParty",
   effect: {
     kind: "consumeAlly",
-    selector: { group: "throwable-slime" },
+    resource: { group: "throwable-slime" },
     payoff: {
       kind: "damage",
       target: "singleParty",
       power: 8,
       element: "poison",
-      status: "poison",
-      statusChance: 0.7,
-      duration: 3,
+      status: { status: "poison", chance: 0.7, duration: 3 },
     },
   },
-  condition: { kind: "allyPresent", selector: { group: "throwable-slime" } },
+  condition: { kind: "allyPresent", resource: { group: "throwable-slime" } },
   weight: 10,
   cooldown: 4,
   windUp: true,
   chemistryId: "chem-slime-cannon",
-  chemistryChance: 1,
+  chemistryChance: 0.7,
   maxUses: 1,
-  presentation: "slimeCannon",
+  presentation: "throwAlly",
   element: "poison",
+};
+
+const CRYPT_BONE_HARVEST: EnemyAbilityDef = {
+  id: "crypt-bone-harvest",
+  name: "Bone Harvest",
+  description: "Dissolves an exact Skeleton into forbidden fuel.",
+  target: "self",
+  effect: {
+    kind: "consumeAlly",
+    resource: { group: "harvestable-bone" },
+    payoff: {
+      kind: "healAndBuff",
+      healPower: 8,
+      buff: { stat: "attack", amount: 3, duration: 2 },
+    },
+  },
+  condition: { kind: "hpBelow", percent: 70 },
+  weight: 10,
+  cooldown: 4,
+  windUp: true,
+  chemistryId: "chem-bone-harvest",
+  chemistryChance: 0.65,
+  maxUses: 2,
+  presentation: "consumeAlly",
+  element: "undead",
+};
+
+const CRYPT_SPAWN_BOMB: EnemyAbilityDef = {
+  id: "crypt-spawn-bomb",
+  name: "Spawn Bomb",
+  description: "Commands an exact Spawn to detonate across the party.",
+  target: "allParty",
+  effect: {
+    kind: "consumeAlly",
+    resource: { group: "volatile-spawn" },
+    payoff: { kind: "damage", target: "allParty", power: 6, element: "fire" },
+  },
+  condition: { kind: "notFirstTurn" },
+  weight: 10,
+  cooldown: 3,
+  chemistryId: "chem-spawn-bomb",
+  chemistryChance: 0.75,
+  maxUses: 2,
+  presentation: "detonateAlly",
+  element: "fire",
 };
 
 const SPLIT: EnemyAbilityDef = {
@@ -803,6 +849,8 @@ const OPPORTUNIST_STRIKE: EnemyAbilityDef = {
 export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   ACID_SPIT,
   CRYPT_SLIME_CANNON,
+  CRYPT_BONE_HARVEST,
+  CRYPT_SPAWN_BOMB,
   SPLIT,
   BONE_SHARD,
   RATTLE,
