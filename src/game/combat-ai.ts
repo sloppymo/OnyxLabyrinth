@@ -205,6 +205,7 @@ function pickEnemyAbility(
       if (actorDisabled(candidate) || s.enemyActedThisRound?.includes(candidate.instanceId)) continue;
     }
     if (ab.effect.kind === "guard" && !pickAbilityTargetId(s, ab, rng, enemy)) continue;
+    if (ab.chemistryId) markChemistryMetric(s, "eligible", ab.chemistryId);
     valid.push({ ability: ab, weight: ab.weight });
   }
   if (valid.length === 0) return null;
@@ -364,7 +365,6 @@ export function decideEnemyAction(
       let resourceId: string | undefined;
       let partnerId: string | undefined;
       if (chemistry) {
-        markChemistryMetric(s, "eligible", chemistry);
         if (abilityPick.ability.effect.kind === "consumeAlly") {
           resourceId = chemistryResourceCandidates(s, abilityPick.ability.effect.resource)[0]?.instanceId;
           if (!resourceId) return fallbackEnemyAction(s, enemy, rng);

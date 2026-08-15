@@ -298,7 +298,8 @@ describe("floor definitions", () => {
 
   it("floor 1 keeps campaign encounter and lore contracts", () => {
     const f1 = findFloor(1)!;
-    expect(f1.encounterRate).toBeCloseTo(0.08);
+    expect(f1.encounterRate).toBeCloseTo(0.05);
+    expect(f1.encounterPacing).toEqual({ cooldown: 14, pityStart: 34, pityForce: 52 });
     expect((f1.encounterZones ?? []).every((zone) => zone.tableFloorId === undefined)).toBe(true);
     expect(f1.npcs).toHaveLength(9);
     expect((f1.events ?? []).every((event) => event.message.length <= 60)).toBe(true);

@@ -52,7 +52,7 @@ function makeEnemy(
   };
 }
 
-function makeChemistryState(resourceCount = 1) {
+function makeChemistryState(resourceCount = 1, metadataChemistry = false) {
   const party = createDefaultParty();
   const caster = makeEnemy("crypt-minotaur", "caster-0", 60, "front", {
     abilityIds: ["crypt-slime-cannon"],
@@ -66,7 +66,17 @@ function makeChemistryState(resourceCount = 1) {
     slime.spawnSerial = index;
   });
   const formation: EnemyFormation = { front: [caster, ...slimes], back: [] };
-  const state = createCombatState(party, formation, false);
+  const state = createCombatState(
+    party,
+    formation,
+    false,
+    {},
+    {},
+    {},
+    false,
+    {},
+    metadataChemistry ? { chemistryEnabled: true } : {}
+  );
   state.chemistryEnabled = true;
   return state;
 }
@@ -89,6 +99,17 @@ function defendActions(state: { party: Array<{ id: string }> }) {
 }
 
 describe("formation chemistry resource substrate", () => {
+  it("records formation presence separately from eligibility and commitment", () => {
+    const state = makeChemistryState(1, true);
+    expect(state.chemistryTelemetry?.present["chem-slime-cannon"]).toBe(1);
+    expect(state.chemistryTelemetry?.eligible["chem-slime-cannon"] ?? 0).toBe(0);
+
+    const result = resolveCombatRound(state, defendActions(state), fixedRng);
+    expect(result.chemistryTelemetry?.eligible["chem-slime-cannon"]).toBeGreaterThan(0);
+    expect(result.chemistryTelemetry?.attempted["chem-slime-cannon"]).toBe(1);
+    expect(result.chemistryTelemetry?.telegraphed["chem-slime-cannon"]).toBe(1);
+  });
+
   it("uses only exact authored groups or explicit IDs and ignores passive resource disability", () => {
     const state = makeChemistryState(2);
     const future = makeEnemy("future-undead", "future-0", 20, "front", {

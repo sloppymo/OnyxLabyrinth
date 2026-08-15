@@ -6,7 +6,12 @@
   "height": 41,
   "startX": 11,
   "startY": 39,
-  "encounterRate": 0.08,
+  "encounterRate": 0.05,
+  "encounterPacing": {
+    "cooldown": 14,
+    "pityStart": 34,
+    "pityForce": 52
+  },
   "tilesetTheme": "f1",
   "tilesetZones": [
     {

@@ -142,9 +142,9 @@ export interface FloorDef {
   grid: Grid;
   startX: number;
   startY: number;
-  // Base encounter rate per step after the 8-step cooldown
-  // (~8% / ~10% / ~12% on floors 1–3). Soft pity in game/encounters.ts
-  // caps dry spells without changing combat math.
+  // Base encounter rate per step after the global cooldown, unless this floor
+  // authors an encounterPacing override below. Soft pity in
+  // game/encounters.ts caps dry spells without changing combat math.
   encounterRate: number;
   /** Optional local pacing; global encounter constants remain the fallback. */
   encounterPacing?: EncounterPacing;

@@ -2370,20 +2370,68 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   ],
 };
 
+export interface EncounterRollOptions {
+  /** Most recent family first; used only by random dungeon rolls. */
+  recentFamilies?: readonly string[];
+  /** Injectable for deterministic tests; production uses the gameplay RNG. */
+  rng?: () => number;
+}
+
+function familyWeightMultiplier(
+  family: string,
+  recentFamilies: readonly string[]
+): number {
+  const recentIndex = recentFamilies.indexOf(family);
+  if (recentIndex === 0) return 0;
+  if (recentIndex === 1) return 0.25;
+  if (recentIndex === 2) return 0.5;
+  return 1;
+}
+
+/**
+ * Pick from an authored encounter list with the session-only family memory.
+ * The fallback deliberately restores authored weights if every candidate is
+ * excluded, so a small table can never deadlock the encounter roller.
+ */
+export function weightedEncounterPick(
+  entries: readonly EncounterEntry[],
+  recentFamilies: readonly string[] = [],
+  rng: () => number = getGameplayRng()
+): EncounterEntry | null {
+  if (entries.length === 0) return null;
+
+  const weighted = entries.map((entry) => ({
+    entry,
+    weight: Math.max(0, entry.weight) * familyWeightMultiplier(entry.family, recentFamilies),
+  }));
+  const weightedTotal = weighted.reduce((sum, item) => sum + item.weight, 0);
+  const pool = weightedTotal > 0
+    ? weighted
+    : entries.map((entry) => ({ entry, weight: Math.max(0, entry.weight) }));
+  const total = pool.reduce((sum, item) => sum + item.weight, 0);
+  if (total <= 0) return entries[entries.length - 1] ?? null;
+
+  let roll = rng() * total;
+  for (const item of pool) {
+    if (item.weight <= 0) continue;
+    roll -= item.weight;
+    if (roll <= 0) return item.entry;
+  }
+  return pool[pool.length - 1]?.entry ?? null;
+}
+
 /** Pick a random encounter for a floor using the weighted table. */
-export function rollEncounter(floor: number): EncounterEntry | null {
+export function rollEncounter(
+  floor: number,
+  options: EncounterRollOptions = {}
+): EncounterEntry | null {
   const table = ENCOUNTER_TABLES[floor];
   if (!table || table.length === 0) return null;
-
-  const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
-  let roll = getGameplayRng()() * totalWeight;
-
-  for (const entry of table) {
-    roll -= entry.weight;
-    if (roll <= 0) return entry;
-  }
-
-  return table[table.length - 1];
+  return weightedEncounterPick(
+    table,
+    options.recentFamilies,
+    options.rng ?? getGameplayRng()
+  );
 }
 
 /** Resolve an encounter entry into concrete EnemyDef instances in formation order. */

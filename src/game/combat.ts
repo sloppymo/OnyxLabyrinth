@@ -73,7 +73,7 @@ import {
 } from "./combat-eor";
 import { breakChemistry, resolveEnemyAction, resolveAllyAction } from "./combat-enemy";
 import { resolvePlayerAction, attemptFlee, smokeBombFleeActive } from "./combat-actions";
-import { pruneEnemyGuards } from "./combat-chemistry";
+import { markChemistryMetric, pruneEnemyGuards } from "./combat-chemistry";
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -95,7 +95,7 @@ export function createCombatState(
   encounterMetadata: CombatEncounterMetadata = {}
 ): CombatState {
   resetBarkRngForCombat();
-  return {
+  const state: CombatState = {
     party: party.map(cloneCharacter),
     enemies: {
       front: enemies.front.map(cloneEnemy),
@@ -162,6 +162,25 @@ export function createCombatState(
     enemySummonsCreated: 0,
     chemistryUses: {},
   };
+
+  // Presence is a formation-level metric: count each authored chemistry
+  // contract once when an enabled random encounter enters combat. Scripted,
+  // Arena, and NPC combats leave chemistryEnabled false and therefore emit no
+  // chemistry lifecycle metrics.
+  if (state.chemistryEnabled) {
+    const present = new Set<string>();
+    for (const enemy of [...state.enemies.front, ...state.enemies.back]) {
+      if (enemy.currentHp <= 0) continue;
+      for (const abilityId of enemy.abilityIds ?? []) {
+        const chemistryId = enemyAbilityById(abilityId)?.chemistryId;
+        if (chemistryId && !present.has(chemistryId)) {
+          present.add(chemistryId);
+          markChemistryMetric(state, "present", chemistryId);
+        }
+      }
+    }
+  }
+  return state;
 }
 
 function emptyChemistryTelemetry(): ChemistryTelemetry {
