@@ -16,11 +16,22 @@ export interface MapSpriteDef {
     color: string;
     radiusScale: number;
     intensity: number;
+    /**
+     * Fraction of the billboard's projected `size` the glow center is
+     * lifted above the floor contact point. Omit (or 0) for a light that
+     * genuinely emits at floor level (a fire pit); a source whose flame
+     * sits partway up the prop (torch, sconce) should lift the glow toward
+     * it so the pool doesn't puddle at the base while the flame reads dark.
+     */
+    yFrac?: number;
   };
 }
 
 export const MAP_SPRITES: readonly MapSpriteDef[] = [
-  { id: "torch", name: "Torch", file: "torch.png", baseSize: 28 },
+  {
+    id: "torch", name: "Torch", file: "torch.png", baseSize: 28,
+    light: { color: "255, 158, 68", radiusScale: 1.7, intensity: 0.22, yFrac: 0.62 },
+  },
   { id: "crate", name: "Crate", file: "crate.png", baseSize: 32 },
   { id: "bones", name: "Bones", file: "bones.png", baseSize: 30 },
   { id: "barrel", name: "Barrel", file: "barrel.png", baseSize: 32 },
@@ -128,6 +139,27 @@ export const MAP_SPRITES: readonly MapSpriteDef[] = [
     file: "isobel-sales-counter-front.png",
     baseSize: 16,
     foreground: true,
+  },
+  // Environmental light-source family (agent/environment-light-sources).
+  // Complements the plain `torch` above: a stronger architectural fixture,
+  // a freestanding landmark, a dim atmospheric one, and a rare cold/magical
+  // one. yFrac values were measured from each sprite's own flame-color pixel
+  // centroid (see `flame_yfrac` in the generation notes), not eyeballed.
+  {
+    id: "cage-sconce", name: "Heavy Cage Sconce", file: "cage-sconce.png", baseSize: 36,
+    light: { color: "255, 150, 60", radiusScale: 2.0, intensity: 0.26, yFrac: 0.67 },
+  },
+  {
+    id: "brazier-floor", name: "Floor Brazier", file: "brazier-floor.png", baseSize: 46,
+    light: { color: "255, 132, 48", radiusScale: 2.6, intensity: 0.3, yFrac: 0.72 },
+  },
+  {
+    id: "candles-votive", name: "Votive Candle Cluster", file: "candles-votive.png", baseSize: 20,
+    light: { color: "255, 180, 100", radiusScale: 1.2, intensity: 0.14, yFrac: 0.6 },
+  },
+  {
+    id: "witchfire-blue", name: "Cold Witchfire", file: "witchfire-blue.png", baseSize: 38,
+    light: { color: "140, 210, 255", radiusScale: 2.0, intensity: 0.2, yFrac: 0.69 },
   },
 ];
 

@@ -285,12 +285,22 @@ export class MazeVisualCollection {
         undefined
       );
       if (def.light) {
+        const floorY = resolveCellVolume(floor, placement.x, placement.y).floorZ * LEGACY_VERTICAL_UNIT;
+        // `height` is the prop's own drawn height (world units) — the same
+        // quantity Canvas calls `size` in `drawMapSprites`. `yFrac` is a
+        // fraction of THAT, not of the glow billboard's own size, so a value
+        // tuned against the Canvas fallback means the same thing here.
+        // Default reproduces the pre-`yFrac` shipped anchor exactly
+        // (glowSize * 0.45 where glowSize = height * radiusScale * 2).
+        const height = def.baseSize / 56;
+        const glowSize = height * def.light.radiusScale * 2;
+        const yFrac = def.light.yFrac ?? def.light.radiusScale * 0.9;
         this.addGlowBillboard(
-          floor,
+          floorY + height * yFrac,
           placement.x,
           placement.y,
           placement.spriteId,
-          (def.baseSize / 56) * def.light.radiusScale * 2,
+          glowSize,
           def.light.color,
           def.light.intensity
         );
@@ -395,7 +405,7 @@ export class MazeVisualCollection {
   }
 
   private addGlowBillboard(
-    floor: FloorDef,
+    originY: number,
     x: number,
     y: number,
     spriteId: string,
@@ -403,14 +413,13 @@ export class MazeVisualCollection {
     color: string,
     intensity: number
   ): void {
-    const floorY = resolveCellVolume(floor, x, y).floorZ * LEGACY_VERTICAL_UNIT;
     const mesh = new Mesh(
       this.plane(size, size),
       this.materials.getGlow(spriteId, color, intensity)
     );
     const baseX = x + 0.5;
     const baseZ = y + 0.5;
-    mesh.position.set(baseX, floorY + size * 0.45, baseZ);
+    mesh.position.set(baseX, originY, baseZ);
     mesh.name = `glow:${spriteId}`;
     mesh.userData.mazeBillboard = {
       baseX,
@@ -453,6 +462,23 @@ export class MazeVisualCollection {
       } satisfies BillboardMeta;
       this.billboardMeshes.push(mesh);
       this.billboards.add(mesh);
+
+      if (def.light) {
+        // Same "fraction of the prop's own drawn height" convention as the
+        // mapSprites glow above and the Canvas fallback — NOT a fraction of
+        // the glow billboard's own size, which would drift with radiusScale.
+        const glowSize = height * def.light.radiusScale * 2;
+        const yFrac = def.light.yFrac ?? 0.5;
+        this.addGlowBillboard(
+          ceilingY - height * yFrac,
+          placement.x,
+          placement.y,
+          placement.spriteId,
+          glowSize,
+          def.light.color,
+          def.light.intensity
+        );
+      }
     }
   }
 

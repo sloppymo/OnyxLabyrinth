@@ -7567,6 +7567,26 @@
       "x": 17,
       "y": 28,
       "spriteId": "isobel-sales-counter-front"
+    },
+    {
+      "x": 20,
+      "y": 3,
+      "spriteId": "cage-sconce"
+    },
+    {
+      "x": 9,
+      "y": 10,
+      "spriteId": "brazier-floor"
+    },
+    {
+      "x": 7,
+      "y": 15,
+      "spriteId": "candles-votive"
+    },
+    {
+      "x": 21,
+      "y": 20,
+      "spriteId": "witchfire-blue"
     }
   ],
   "wallFeatures": [

@@ -17,6 +17,19 @@ export interface CeilingSpriteDef {
   /** Drawn size in world-ish pixels at depth 0 (scaled by distance), same
    *  convention as MapSpriteDef.baseSize. */
   baseSize: number;
+  /**
+   * Optional presentation-only warm light cast around a placed billboard,
+   * same shape as `MapSpriteDef.light`. `yFrac` here is the fraction of the
+   * projected `size` the glow center sits DOWN from the ceiling anchor
+   * (toward the flame partway down a hanging lantern), mirroring how
+   * mapSprites lifts its glow UP from the floor contact point.
+   */
+  light?: {
+    color: string;
+    radiusScale: number;
+    intensity: number;
+    yFrac?: number;
+  };
 }
 
 export const CEILING_SPRITES: readonly CeilingSpriteDef[] = [
@@ -28,7 +41,10 @@ export const CEILING_SPRITES: readonly CeilingSpriteDef[] = [
   { id: "f1-bell-cracked", name: "Cracked Hanging Bell", file: "f1-bell-cracked.png", baseSize: 36 },
   { id: "f1-root-curtain", name: "Root and Vine Curtain", file: "f1-root-curtain.png", baseSize: 46 },
   { id: "f1-root-bundle", name: "Thick Root Bundle", file: "f1-root-bundle.png", baseSize: 40 },
-  { id: "f1-lantern-hanging", name: "Hanging Lantern", file: "f1-lantern-hanging.png", baseSize: 32 },
+  {
+    id: "f1-lantern-hanging", name: "Hanging Lantern", file: "f1-lantern-hanging.png", baseSize: 32,
+    light: { color: "255, 176, 90", radiusScale: 1.6, intensity: 0.18, yFrac: 0.62 },
+  },
   { id: "f1-forge-counterweight", name: "Forge Chain Counterweight", file: "f1-forge-counterweight.png", baseSize: 44 },
   { id: "f4-bell-cracked", name: "Cracked Choir Bell", file: "f4-bell-cracked.png", baseSize: 36 },
   // Hot Boi's Tavern interior. Not yet placed on any floor.

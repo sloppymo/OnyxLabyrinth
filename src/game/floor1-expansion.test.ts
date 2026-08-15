@@ -99,7 +99,7 @@ describe("Floor 1 revision 9 expansion", () => {
     // gate-threshold beat just past the gate.
     expect(floor.events).toHaveLength(18);
     expect(floor.encounterZones).toHaveLength(11);
-    expect(floor.mapSprites).toHaveLength(24);
+    expect(floor.mapSprites).toHaveLength(28);
 
     const newNpcIds = new Set(
       floor.npcs
