@@ -39,6 +39,7 @@ const N = Number(process.env.N ?? 100);
 const OUT_DIR = resolvePath(process.env.OUT_DIR ?? "docs/playtests");
 const OUT_JSON = resolvePath(OUT_DIR, "2026-08-15-formation-chemistry-phase8.json");
 const OUT_MD = resolvePath(OUT_DIR, "2026-08-15-formation-chemistry-phase8.md");
+const OUT_CSV = resolvePath(OUT_DIR, "2026-08-15-formation-chemistry-phase8-traces.csv");
 
 // These two entries remain lab-only scenarios after the active F1 table
 // removed them. Keeping their authored shapes here preserves the evidence
@@ -107,12 +108,17 @@ interface FightResult {
   koCount: number;
   firstKillId: string | null;
   firstKillName: string | null;
+  enemyKillOrder: { id: string; name: string }[];
   chemistry: CombatState["chemistryTelemetry"];
   chemistryUses: Record<string, number>;
   guardsIntercepted: number;
   aoeBypasses: number;
   summonsCreated: number;
   consumedBodies: number;
+  normalEnemiesConsumed: number;
+  summonedBodiesConsumed: number;
+  goldEarned: number;
+  xpEarned: number;
   bespokeEvents: number;
 }
 
@@ -133,6 +139,10 @@ interface Aggregate {
   aoeBypasses: number;
   summonsCreated: number;
   consumedBodies: number;
+  normalEnemiesConsumed: number;
+  summonedBodiesConsumed: number;
+  goldEarned: number;
+  xpEarned: number;
 }
 
 interface CombatRun {
@@ -357,6 +367,7 @@ function runCombat(
   let state = state0;
   let firstKillId: string | null = null;
   let firstKillName: string | null = null;
+  const enemyKillOrder: { id: string; name: string }[] = [];
   for (let step = 0; step < 40 && !state.ended; step++) {
     const actions = state.party
       .filter((character) => character.hp > 0)
@@ -367,6 +378,14 @@ function runCombat(
       if (!event || event.type !== "defeated" || !event.wasEnemy || firstKillId) continue;
       firstKillId = event.targetId;
       firstKillName = enemyNames.get(event.targetId) ?? event.targetId;
+    }
+    for (const event of state.events.slice(previousEventCount)) {
+      if (!event || event.type !== "defeated" || !event.wasEnemy) continue;
+      if (enemyKillOrder.some((kill) => kill.id === event.targetId)) continue;
+      enemyKillOrder.push({
+        id: event.targetId,
+        name: enemyNames.get(event.targetId) ?? event.targetId,
+      });
     }
   }
 
@@ -379,6 +398,9 @@ function runCombat(
     present: {}, eligible: {}, telegraphed: {}, attempted: {}, resolved: {}, broken: {},
   };
   const chemistryEvents = state.events.filter((event): event is Extract<CombatEvent, { type: "chemistry" }> => event?.type === "chemistry");
+  const consumedResourceIds = chemistryEvents
+    .filter((event) => event.phase === "consume" && event.resourceId)
+    .map((event) => event.resourceId!);
   const result = state.result ?? (state.ended ? "stalled" : "stalled");
   const fight: FightResult = {
     entryId: entry.id,
@@ -396,12 +418,17 @@ function runCombat(
     koCount: state.party.filter((character) => character.hp <= 0).length,
     firstKillId,
     firstKillName,
+    enemyKillOrder,
     chemistry,
     chemistryUses: state.chemistryUses ?? {},
     guardsIntercepted: chemistryEvents.filter((event) => event.phase === "intercept").length,
     aoeBypasses: state.guardBypasses ?? 0,
     summonsCreated: state.enemySummonsCreated ?? 0,
     consumedBodies: chemistryEvents.filter((event) => event.phase === "consume").length,
+    normalEnemiesConsumed: consumedResourceIds.filter((id) => enemyIds.has(id)).length,
+    summonedBodiesConsumed: consumedResourceIds.filter((id) => !enemyIds.has(id)).length,
+    goldEarned: state.goldEarned,
+    xpEarned: state.xpEarned,
     bespokeEvents: chemistryEvents.length,
   };
   return { fight, finalState: state };
@@ -432,6 +459,10 @@ function aggregate(fights: FightResult[]): Aggregate {
     aoeBypasses: 0,
     summonsCreated: 0,
     consumedBodies: 0,
+    normalEnemiesConsumed: 0,
+    summonedBodiesConsumed: 0,
+    goldEarned: 0,
+    xpEarned: 0,
   };
   if (fights.length === 0) return result;
   for (const fight of fights) {
@@ -448,6 +479,10 @@ function aggregate(fights: FightResult[]): Aggregate {
     result.aoeBypasses += fight.aoeBypasses;
     result.summonsCreated += fight.summonsCreated;
     result.consumedBodies += fight.consumedBodies;
+    result.normalEnemiesConsumed += fight.normalEnemiesConsumed;
+    result.summonedBodiesConsumed += fight.summonedBodiesConsumed;
+    result.goldEarned += fight.goldEarned;
+    result.xpEarned += fight.xpEarned;
   }
   result.averageRounds /= fights.length;
   result.averageHpLossPct /= fights.length;
@@ -700,6 +735,58 @@ function runGapAudit(): Record<string, { mean: number; median: number; p10: numb
   return output;
 }
 
+function csvCell(value: unknown): string {
+  const text = typeof value === "string" ? value : JSON.stringify(value) ?? "";
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+/** Persist the per-fight evidence separately from the compact aggregate JSON. */
+function traceCsv(fights: readonly FightResult[]): string {
+  const columns = [
+    "formationId", "family", "seed", "party", "policy", "result", "rounds",
+    "enemyActions", "hpLossPct", "hpLossByMember", "spUsed", "consumablesUsed",
+    "koCount", "firstKillId", "firstKillName", "enemyKillOrder", "chemistryPresent",
+    "chemistryEligible", "chemistryTelegraphed", "chemistryAttempted", "chemistryResolved",
+    "chemistryBroken", "chemistryUses", "guardsIntercepted", "aoeGuardBypasses",
+    "summonsCreated", "consumedBodies", "normalEnemiesConsumed", "summonedBodiesConsumed",
+    "goldEarned", "xpEarned",
+  ];
+  const rows = fights.map((fight) => [
+    fight.entryId,
+    fight.family,
+    fight.seed,
+    fight.party,
+    fight.policy,
+    fight.result,
+    fight.rounds,
+    fight.enemyActions,
+    fight.hpLossPct,
+    fight.hpLossByMember,
+    fight.spUsed,
+    fight.consumablesUsed,
+    fight.koCount,
+    fight.firstKillId,
+    fight.firstKillName,
+    fight.enemyKillOrder,
+    fight.chemistry?.present ?? {},
+    fight.chemistry?.eligible ?? {},
+    fight.chemistry?.telegraphed ?? {},
+    fight.chemistry?.attempted ?? {},
+    fight.chemistry?.resolved ?? {},
+    fight.chemistry?.broken ?? {},
+    fight.chemistryUses,
+    fight.guardsIntercepted,
+    fight.aoeBypasses,
+    fight.summonsCreated,
+    fight.consumedBodies,
+    fight.normalEnemiesConsumed,
+    fight.summonedBodiesConsumed,
+    fight.goldEarned,
+    fight.xpEarned,
+  ].map(csvCell).join(","));
+  return `${columns.map(csvCell).join(",")}\n${rows.join("\n")}\n`;
+}
+
 function markdown(report: Record<string, unknown>): string {
   const matrix = report.matrix as { aggregates: Record<string, Aggregate> };
   const relief = report.relief as { aggregates: Record<string, Aggregate> };
@@ -707,7 +794,7 @@ function markdown(report: Record<string, unknown>): string {
   const lines = [
     "# Formation Chemistry Phase 8 deterministic lab",
     "",
-    `Generated ${report.generatedAt}; N=${report.n}. This is evidence, not an automatic balance verdict.`,
+    `Generated ${report.generatedAt}; N=${report.n}. This is evidence, not an automatic balance verdict. Per-fight metrics are in 2026-08-15-formation-chemistry-phase8-traces.csv.`,
     "",
     "## Encounter gap audit",
     "",
@@ -776,9 +863,17 @@ const persistedReport = {
   relief: { fightCount: relief.fights.length, aggregates: relief.aggregates },
   reliefDecisions: report.reliefDecisions,
   expeditions: { expeditionCount: expeditions.results.length, aggregates: expeditions.aggregates },
+  traceCsv: "2026-08-15-formation-chemistry-phase8-traces.csv",
+  traceCount: matrix.fights.length + relief.fights.length + expeditions.results.reduce((count, expedition) => count + expedition.fights.length, 0),
 };
 
 mkdirSync(OUT_DIR, { recursive: true });
 writeFileSync(OUT_JSON, `${JSON.stringify(persistedReport, null, 2)}\n`);
 writeFileSync(OUT_MD, markdown(report));
-console.log(JSON.stringify({ outJson: OUT_JSON, outMarkdown: OUT_MD, fights: matrix.fights.length + relief.fights.length, expeditions: expeditions.results.length }, null, 2));
+const allTraceFights = [
+  ...matrix.fights,
+  ...relief.fights,
+  ...expeditions.results.flatMap((expedition) => expedition.fights),
+];
+writeFileSync(OUT_CSV, traceCsv(allTraceFights));
+console.log(JSON.stringify({ outJson: OUT_JSON, outMarkdown: OUT_MD, outCsv: OUT_CSV, fights: matrix.fights.length + relief.fights.length, traceRows: allTraceFights.length, expeditions: expeditions.results.length }, null, 2));
