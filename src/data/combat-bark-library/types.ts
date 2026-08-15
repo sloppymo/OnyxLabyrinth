@@ -1,10 +1,14 @@
 /**
- * Typed content model for the combat bark system.
+ * Typed content model for the (unwired, standalone) combat bark CONTENT
+ * LIBRARY — see `src/game/combat-bark-library.ts` for the pure selector.
  *
- * This is a pure content library: typed data + a deterministic selector
- * (see `src/game/combat-barks.ts`). It is NOT wired into combat resolution,
- * combat UI, or timing — see `docs/COMBAT-BARK-INTEGRATION-CONTRACT.md` for
- * what a later integration pass needs to do to actually show these lines.
+ * NOTE: the repo already ships a small, separate, integrated bark MVP at
+ * `src/data/combat-barks.ts` / `src/game/combat-barks.ts` (3 triggers, 10
+ * lines, wired into combat-actions.ts/combat-enemy.ts/combat-eor.ts/
+ * combat.ts). This library is deliberately named and pathed to never
+ * collide with it. It is NOT wired into combat resolution, combat UI, or
+ * timing — see `docs/COMBAT-BARK-INTEGRATION-CONTRACT.md` for how the two
+ * relate and what a later integration pass should do.
  *
  * Deliberately not built: a conversation graph, a dialogue VM, nested
  * predicates, or a branching story system. A bark is one short line keyed
@@ -119,7 +123,14 @@ export const ALL_CHEMISTRY_IDS: readonly ChemistryId[] = [
 
 /** One bark line and the (optional) narrow conditions it requires. */
 export interface CombatBarkLine {
-  /** The line itself. Target: 1-8 words, <=45 chars. See length audit for exceptions. */
+  /**
+   * The line itself. Working cap: <=28 chars (matches the real pixel-width
+   * budget already tested for the shipped scene-bark surface, see
+   * MAX_BARK_CHARS in src/data/combat-barks.ts) — the large majority of the
+   * library hits this. Up to <=45 chars is an accepted exception for a
+   * genuinely excellent rare/boss line destined for a wider display surface
+   * (log flavor, banner). >80 chars is a hard-fail (audit script).
+   */
   text: string;
   /** Relative weight in weighted selection. Default 1. */
   weight?: number;
