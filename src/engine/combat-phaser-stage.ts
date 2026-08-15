@@ -46,7 +46,7 @@ import {
   type SceneCursor,
   type ActorAnim,
 } from "./combat-choreography";
-import { getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache";
+import { enemySpriteId, getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache";
 import { getPartySpriteStrip, loadPartySpriteBundle, PARTY_SPRITE_DIRS } from "./party-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
 import {
@@ -664,18 +664,19 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
 
   private ensureFightTextures(scene: CombatScene): void {
     for (const e of [...scene.state.enemies.front, ...scene.state.enemies.back]) {
-      void loadEnemySpriteBundle(e.id);
+      void loadEnemySpriteBundle(enemySpriteId(e));
     }
     for (const c of scene.state.party) {
       void loadPartySpriteBundle(PARTY_SPRITE_DIRS[c.class]);
     }
     // Add spritesheets from already-decoded cache images when available.
     for (const e of [...scene.state.enemies.front, ...scene.state.enemies.back, ...scene.enemyCorpses]) {
+      const spriteId = enemySpriteId(e);
       for (const st of ["idle", "attacking", "hit", "defeated"] as const) {
-        const info = getEnemySpriteStrip(e.id, st);
+        const info = getEnemySpriteStrip(spriteId, st);
         if (!info?.img || info.img.naturalWidth <= 0) continue;
         this.ensureSpriteSheet(
-          `enemy:${e.id}:${st}`,
+          `enemy:${spriteId}:${st}`,
           info.img,
           info.strip.frameWidth,
           info.strip.frameHeight
@@ -1575,7 +1576,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     }
     const baseSize = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
     const stripState = enemyStripState(anim.state);
-    const stripInfo = getEnemySpriteStrip(enemy.id, stripState);
+    const spriteId = enemySpriteId(enemy);
+    const stripInfo = getEnemySpriteStrip(spriteId, stripState);
     const hasStrip = !!(stripInfo?.img && stripInfo.img.naturalWidth > 0);
     const artFoot = artFootFromTopFor({
       hasStrip,
@@ -1595,7 +1597,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const footY = pos.footY + off.y;
     const drawSize = baseSize * pos.scale * statusScale;
 
-    const texKey = `enemy:${enemy.id}:${stripState}`;
+    const texKey = `enemy:${spriteId}:${stripState}`;
     let entry =
       hasStrip && stripInfo
         ? this.ensureStripSprite(key, "enemy", texKey)

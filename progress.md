@@ -939,3 +939,19 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   synthesis remains pinned to commit `64a4cc50c723bb4b1dd3466ff3659b4b55ffd321`; the
   implementation handoff corrections treat passive resource disability as non-filtering
   and use the relief-encounter percentages as investigation heuristics only.
+
+## Phase 1 — Formation metadata and type substrate
+
+- Added narrow authored `ChemistryResourceGroup` membership, explicit enemy
+  sprite alias resolution, stable encounter `id`/`family` metadata, and optional
+  display names.
+- Added chemistry selector/payoff/effect metadata, cooldown/use-cap fields,
+  exact committed wind-up/action identity fields, dedicated chemistry event and
+  telemetry types, and runtime enemy provenance fields for spawn/reward/removal.
+- Added optional floor-local encounter pacing to `FloorDef` and the portable
+  floor-map parser/round-trip path. No pacing behavior is active yet.
+- Both combat painters now resolve `EnemyDef.spriteId` through the shared cache
+  helper, preserving existing IDs and fallback behavior.
+- Verification: targeted metadata/floor/cache tests passed (65 tests); full
+  `npm run check` passed (120 files / 2,353 tests). Existing Namanda validation
+  warnings are unchanged.

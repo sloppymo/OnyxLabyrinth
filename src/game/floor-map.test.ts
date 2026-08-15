@@ -67,6 +67,17 @@ describe("floor-map", () => {
     expect(roundTrip.ramps).toEqual(map.ramps);
   });
 
+  it("round-trips floor-local encounter pacing", () => {
+    const map = newFloorMapJSON(5, 5, {
+      encounterPacing: { cooldown: 14, pityStart: 34, pityForce: 52 },
+    });
+    const parsed = parseFloorMapJSON(JSON.parse(JSON.stringify(map)));
+    expect(parsed.encounterPacing).toEqual(map.encounterPacing);
+    expect(floorDefToMap(mapToFloorDef(parsed)).encounterPacing).toEqual(
+      map.encounterPacing
+    );
+  });
+
   it("parses and round-trips void and open-ceiling cells", () => {
     const map = newFloorMapJSON(5, 5);
     map.grid[2][1].void = true;

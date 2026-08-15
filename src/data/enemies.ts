@@ -16,6 +16,13 @@ import { getGameplayRng } from "../game/rng";
 
 export type Row = "front" | "back";
 
+/** Narrow, authored resource groups used by formation chemistry. */
+export type ChemistryResourceGroup =
+  | "throwable-slime"
+  | "harvestable-bone"
+  | "volatile-spawn"
+  | "conductive-construct";
+
 export type EnemySpecial =
   | { kind: "flying" }
   | { kind: "resistPhysical"; percent: number }
@@ -33,6 +40,8 @@ export type EnemySpecial =
 export interface EnemyDef {
   id: string;
   name: string;
+  /** Explicit sprite-manifest key when this enemy borrows another strip. */
+  spriteId?: string;
   floors: number[];
   rowPreference: Row | "any";
   hp: number;
@@ -43,6 +52,11 @@ export interface EnemyDef {
   gold: number; // gold dropped on defeat
   special: EnemySpecial[];
   isBoss: boolean;
+  /**
+   * Narrow, authored chemistry membership. Broad bestiary traits never infer
+   * membership here; an enemy is a resource only when this field is authored.
+   */
+  chemistryGroups?: readonly ChemistryResourceGroup[];
   /** Enemy-only ability IDs from data/enemy-abilities.ts. */
   abilityIds?: string[];
   /** Existing spell IDs from data/spells.ts that this enemy can cast. */
@@ -61,6 +75,12 @@ export interface EnemySpawn {
 }
 
 export interface EncounterEntry {
+  /** Stable authored encounter identity. */
+  id: string;
+  /** Authored family used by the session-only anti-repeat buffer. */
+  family: string;
+  /** Optional display name for telemetry/debug/UI surfaces. */
+  displayName?: string;
   weight: number;
   spawns: EnemySpawn[];
 }
@@ -1266,6 +1286,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // Floor 1: The Flooded Crypt — typical 3–4, cap 4 (party of 6 needs pressure).
   1: [
     {
+      id: "f1-slime-trio",
+      family: "slime-pack",
       weight: 4,
       spawns: [
         { enemyId: "slime", row: "front" },
@@ -1274,6 +1296,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f1-bone-archer",
+      family: "bone-line",
       weight: 4,
       spawns: [
         { enemyId: "skeleton", row: "front" },
@@ -1282,6 +1306,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f1-bone-archer-line",
+      family: "bone-line",
       weight: 3,
       spawns: [
         { enemyId: "skeleton", row: "front" },
@@ -1291,6 +1317,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f1-slime-bone-line",
+      family: "slime-bone-line",
       weight: 3,
       spawns: [
         { enemyId: "slime", row: "front" },
@@ -1301,6 +1329,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     },
     // Acid puddle with trash escorts — no soft solo.
     {
+      id: "f1-acid-escorts",
+      family: "acid-escorts",
       weight: 2,
       spawns: [
         { enemyId: "acid-puddle", row: "front" },
@@ -1309,6 +1339,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f1-slime-skeleton",
+      family: "slime-bone-line",
       weight: 1,
       spawns: [
         { enemyId: "slime", row: "front" },
@@ -1316,6 +1348,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f1-red-bone-archer",
+      family: "red-bone-line",
       weight: 1,
       spawns: [
         { enemyId: "red-skeleton", row: "front" },
@@ -1327,6 +1361,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // Floor 2: The Cursed Library — typical 4–5, cap 5.
   2: [
     {
+      id: "f2-armored-archer",
+      family: "armored-line",
       weight: 4,
       spawns: [
         { enemyId: "armored-skeleton", row: "front" },
@@ -1336,6 +1372,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-orc-squad",
+      family: "orc-squad",
       weight: 4,
       spawns: [
         { enemyId: "orc", row: "front" },
@@ -1345,6 +1383,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-lab-keepers",
+      family: "lab-keepers",
       weight: 3,
       spawns: [
         { enemyId: "failed-experiment", row: "front" },
@@ -1354,6 +1394,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-blood-ghostfire",
+      family: "blood-ghostfire",
       weight: 3,
       spawns: [
         { enemyId: "blood-monster", row: "front" },
@@ -1363,6 +1405,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-mixed-lab",
+      family: "mixed-lab",
       weight: 3,
       spawns: [
         { enemyId: "orc", row: "front" },
@@ -1373,6 +1417,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-blood-experiment",
+      family: "blood-experiment",
       weight: 2,
       spawns: [
         { enemyId: "failed-experiment", row: "front" },
@@ -1383,6 +1429,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-armored-orc-archer",
+      family: "armored-line",
       weight: 2,
       spawns: [
         { enemyId: "armored-skeleton", row: "front" },
@@ -1391,6 +1439,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-displacer-lab",
+      family: "displacer-lab",
       weight: 2,
       spawns: [
         { enemyId: "displacer-beast", row: "front" },
@@ -1399,6 +1449,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-lab-duo",
+      family: "lab-keepers",
       weight: 1,
       spawns: [
         { enemyId: "failed-experiment", row: "front" },
@@ -1406,6 +1458,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f2-red-armored-archer",
+      family: "red-armored-line",
       weight: 1,
       spawns: [
         { enemyId: "red-skeleton", row: "front" },
@@ -1418,6 +1472,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // Floor 3: The Forge of Ashes — typical 4–6, cap 6.
   3: [
     {
+      id: "f3-construct-orc-line",
+      family: "construct-line",
       weight: 4,
       spawns: [
         { enemyId: "lesser-construct", row: "front" },
@@ -1427,6 +1483,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-werewolf-pack",
+      family: "werewolf-pack",
       weight: 4,
       spawns: [
         { enemyId: "werewolf", row: "front" },
@@ -1436,6 +1494,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-flame-lava-warlock",
+      family: "flame-lava",
       weight: 3,
       spawns: [
         { enemyId: "flame-golem", row: "front" },
@@ -1446,6 +1506,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-hellhound-bat",
+      family: "hellhound-bat",
       weight: 3,
       spawns: [
         { enemyId: "hellhound", row: "front" },
@@ -1456,6 +1518,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-ogre-demon-line",
+      family: "ogre-demon",
       weight: 3,
       spawns: [
         { enemyId: "big-titty-ogre", row: "front" },
@@ -1465,6 +1529,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-guardian-rune-line",
+      family: "guardian-rune",
       weight: 3,
       spawns: [
         { enemyId: "stone-guardian", row: "front" },
@@ -1474,6 +1540,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-demon-spawn-mage",
+      family: "demon-spawn",
       weight: 2,
       spawns: [
         { enemyId: "black-knight", row: "front" },
@@ -1484,6 +1552,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-minotaur-spawn-rune",
+      family: "demon-spawn",
       weight: 2,
       spawns: [
         { enemyId: "minotaur", row: "front" },
@@ -1493,6 +1563,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-knight-rune-mage",
+      family: "knight-rune",
       weight: 2,
       spawns: [
         { enemyId: "ironclad-knight", row: "front" },
@@ -1503,6 +1575,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-demon-champion",
+      family: "demon-champion",
       weight: 2,
       spawns: [
         { enemyId: "demon-champion", row: "front" },
@@ -1512,6 +1586,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-construct-orc-duo",
+      family: "construct-line",
       weight: 1,
       spawns: [
         { enemyId: "lesser-construct", row: "front" },
@@ -1519,6 +1595,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f3-viper-rune",
+      family: "viper-rune",
       weight: 1,
       spawns: [
         { enemyId: "viper-man", row: "front" },
@@ -1535,6 +1613,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // the room already promises is no longer a 1-in-many random-table dilution.
   7: [
     {
+      id: "f3-grand-forge-guardian",
+      family: "grand-forge-guardian",
       weight: 1,
       spawns: [
         { enemyId: "animated-armor", row: "front" },
@@ -1550,6 +1630,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // Acolyte/Chorister/Magus); the rest stay floor-3 remixes as seasoning.
   4: [
     {
+      id: "f4-choir-armor",
+      family: "choir-armor",
       weight: 4,
       spawns: [
         { enemyId: "choir-warden", row: "front" },
@@ -1559,6 +1641,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-guardian-mage",
+      family: "guardian-mage",
       weight: 4,
       spawns: [
         { enemyId: "stone-guardian", row: "front" },
@@ -1569,6 +1653,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-hellbat-choir",
+      family: "hellbat-choir",
       weight: 3,
       spawns: [
         { enemyId: "hellbat", row: "front" },
@@ -1580,6 +1666,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-chorister-demon",
+      family: "chorister-demon",
       weight: 3,
       spawns: [
         { enemyId: "iron-chorister", row: "front" },
@@ -1590,6 +1678,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-champion-rune",
+      family: "champion-rune",
       weight: 3,
       spawns: [
         { enemyId: "demon-champion", row: "front" },
@@ -1599,6 +1689,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-choir-guardian",
+      family: "choir-guardian",
       weight: 2,
       spawns: [
         { enemyId: "choir-warden", row: "front" },
@@ -1610,6 +1702,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-spawn-brawler",
+      family: "demon-spawn",
       weight: 2,
       spawns: [
         { enemyId: "demon-spawn", row: "front" },
@@ -1620,6 +1714,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-chorister-magus",
+      family: "chorister-magus",
       weight: 1,
       spawns: [
         { enemyId: "iron-chorister", row: "front" },
@@ -1628,6 +1724,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f4-viper-mage",
+      family: "viper-mage",
       weight: 1,
       spawns: [
         { enemyId: "viper-man", row: "front" },
@@ -1637,6 +1735,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     // The climax formation — The Lonely Girl, a genuine escalation over
     // floor 3's Dead Boy, not the same boss reused.
     {
+      id: "f4-lonely-girl",
+      family: "lonely-girl-guardian",
       weight: 1,
       spawns: [
         { enemyId: "animated-armor", row: "front" },
@@ -1653,6 +1753,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // stay floor-3/4 remixes as seasoning.
   5: [
     {
+      id: "f5-flood-brute",
+      family: "flood-brute",
       weight: 4,
       spawns: [
         { enemyId: "flood-brute", row: "front" },
@@ -1663,6 +1765,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-drowned-sentinel",
+      family: "drowned-sentinel",
       weight: 4,
       spawns: [
         { enemyId: "drowned-sentinel", row: "front" },
@@ -1673,6 +1777,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-hellbat-wraith",
+      family: "hellbat-wraith",
       weight: 3,
       spawns: [
         { enemyId: "hellbat", row: "front" },
@@ -1684,6 +1790,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-stone-demon",
+      family: "stone-demon",
       weight: 3,
       spawns: [
         { enemyId: "stone-guardian", row: "front" },
@@ -1694,6 +1802,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-champion-revenant",
+      family: "champion-revenant",
       weight: 3,
       spawns: [
         { enemyId: "demon-champion", row: "front" },
@@ -1704,6 +1814,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-armor-rune",
+      family: "armor-rune",
       weight: 2,
       spawns: [
         { enemyId: "animated-armor", row: "front" },
@@ -1714,6 +1826,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-spawn-flood",
+      family: "demon-spawn",
       weight: 2,
       spawns: [
         { enemyId: "demon-spawn", row: "front" },
@@ -1725,6 +1839,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-golem-cistern",
+      family: "golem-cistern",
       weight: 2,
       spawns: [
         { enemyId: "ice-golem", row: "front" },
@@ -1734,6 +1850,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-minotaur-undertow",
+      family: "minotaur-undertow",
       weight: 1,
       spawns: [
         { enemyId: "minotaur", row: "front" },
@@ -1742,6 +1860,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      id: "f5-viper-succubus",
+      family: "viper-succubus",
       weight: 1,
       spawns: [
         { enemyId: "viper-man", row: "front" },
@@ -1751,6 +1871,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     // The climax formation — The Crying Man, a true four-phase campaign
     // climax escalating over The Lonely Girl on floor 4.
     {
+      id: "f5-crying-man",
+      family: "crying-man-guardian",
       weight: 1,
       spawns: [
         { enemyId: "ironclad-knight", row: "front" },
@@ -1768,6 +1890,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // Wraiths and three Blood Wraiths. No rerolls between attempts.
   6: [
     {
+      id: "f2-forbidden-wing-keepers",
+      family: "forbidden-wing-keepers",
       weight: 1,
       spawns: [
         { enemyId: "eyeball-monster", row: "back" },

@@ -7,6 +7,7 @@ import {
   type SpriteStrip,
 } from "./sprite-manifest";
 import { warnAsset } from "./asset-warn";
+import type { EnemyDef } from "../data/enemies";
 
 export type EnemyAnimationState =
   | "idle"
@@ -24,6 +25,11 @@ const bundleCache: Map<string, EnemySpriteBundle | null> = new Map();
 const bundleLoadPromises: Map<string, Promise<EnemySpriteBundle | null>> =
   new Map();
 const warnedMissingEnemies = new Set<string>();
+
+/** Resolve an authored enemy sprite alias without teaching renderers about it. */
+export function enemySpriteId(enemy: Pick<EnemyDef, "id" | "spriteId">): string {
+  return enemy.spriteId ?? enemy.id;
+}
 
 function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {

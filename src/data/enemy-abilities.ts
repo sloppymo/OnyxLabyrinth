@@ -14,6 +14,7 @@
  */
 
 import type { DamageElement } from "./spells";
+import type { ChemistryResourceGroup } from "./enemies";
 import type { StatusEffect } from "../game/party";
 
 // ---------------------------------------------------------------------------
@@ -29,6 +30,33 @@ export type AbilityTarget =
   | "allAlly"        // all allies
   | "self";          // the acting enemy itself
 
+/** Exact authored selector for a chemistry resource or active partner. */
+export type ChemistryResourceSelector =
+  | { group: ChemistryResourceGroup; enemyIds?: never }
+  | { enemyIds: readonly string[]; group?: never };
+
+export type ChemistryDamageTarget = "singleParty" | "groupParty" | "allParty";
+
+/** A resolved payoff for the shared consumeAlly primitive. */
+export type ChemistryPayoff =
+  | {
+      kind: "damage";
+      target: ChemistryDamageTarget;
+      power: number;
+      element?: DamageElement;
+      status?: StatusEffect;
+      statusChance?: number;
+      duration?: number;
+      summonAfter?: { enemyId: string; count: number };
+    }
+  | {
+      kind: "healAndBuff";
+      target: "self" | "allAlly";
+      heal: number;
+      attackBonus: number;
+      duration: number;
+    };
+
 export type AbilityEffect =
   | { kind: "damage"; power: number; element?: DamageElement }
   | { kind: "multiHit"; hits: number; powerPerHit: number; element?: DamageElement }
@@ -39,7 +67,19 @@ export type AbilityEffect =
   | { kind: "debuff"; stat: "attack" | "ac"; amount: number; duration: number }
   | { kind: "summon"; enemyId: string; count: number }
   | { kind: "fizzleField"; power: number }   // suppress party spells
-  | { kind: "magicScreen"; power: number };  // suppress party spell damage
+  | { kind: "magicScreen"; power: number }   // suppress party spell damage
+  /** Shared expendable-resource primitive. The exact instance is committed at telegraph time. */
+  | { kind: "consumeAlly"; selector: ChemistryResourceSelector; payoff: ChemistryPayoff }
+  /** Bounded interception primitive; target is selected and committed separately. */
+  | { kind: "guard"; target: "singleParty"; duration: number }
+  /** Two-living-actor cooperation primitive; partner is committed separately. */
+  | {
+      kind: "packStrike";
+      partner: ChemistryResourceSelector;
+      target: "singleParty";
+      power: number;
+      hits: number;
+    };
 
 /** Condition that gates when the AI considers using an ability. */
 export type AbilityCondition =
@@ -54,6 +94,8 @@ export type AbilityCondition =
   | { kind: "minSameKind"; count: number }      // at least N living enemies sharing this enemy's def id (including self)
   | { kind: "partyHasStatus"; status: StatusEffect }
   | { kind: "partyMissingStatus"; status: StatusEffect }
+  /** Chemistry-only exact resource/partner presence check. */
+  | { kind: "allyPresent"; selector: ChemistryResourceSelector }
   | { kind: "firstTurn" }                       // only on the enemy's first action
   | { kind: "notFirstTurn" };                   // not on the first action
 
@@ -75,13 +117,28 @@ export interface EnemyAbilityDef {
   /** If true, using this ability spends one turn charging (telegraph) and it
    *  fires on the enemy's next turn. Paralysis/sleep cancels the wind-up. */
   windUp?: boolean;
+  /** Stable telemetry and contract identity for a chemistry ability. */
+  chemistryId?: string;
+  /** Eligibility roll after all authored conditions pass. */
+  chemistryChance?: number;
+  /** Finite uses per actor per combat. */
+  maxUses?: number;
   /**
    * Optional bespoke choreography key consumed by combat-choreography.ts's
    * playTurn. When set, the combat scene renders a dedicated animation in
    * place of the default stationary cast (banner + burst). Presentational
    * only — never read by resolution logic.
    */
-  presentation?: "meleeGangUp";
+  presentation?:
+    | "meleeGangUp"
+    | "slimeCannon"
+    | "boneHarvest"
+    | "spawnBomb"
+    | "comboBreak"
+    | "livingShield"
+    | "packStrike"
+    | "runeOverload"
+    | "ogreToss";
   /**
    * For "singleParty" target only: pick the lowest-HP% living party member
    * instead of a random one. Mirrors the existing wounded-ally preference

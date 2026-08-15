@@ -9,7 +9,7 @@
 import type { Character } from "../game/party";
 import type { EnemyInstance, SummonedAlly } from "../game/combat-types";
 import { statusDrawScale } from "../game/combat-shared";
-import { getEnemySpriteStrip } from "./enemy-sprite-cache";
+import { enemySpriteId, getEnemySpriteStrip } from "./enemy-sprite-cache";
 import { getPartySpriteStrip } from "./party-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
 import {
@@ -469,7 +469,8 @@ function drawEnemy(
   const anim = getAnim(scene, "enemy", enemy.instanceId, now);
   if (anim.opacity <= 0) return;
   const baseSize = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
-  const stripInfo = getEnemySpriteStrip(enemy.id, enemyStripState(anim.state));
+  const spriteId = enemySpriteId(enemy);
+  const stripInfo = getEnemySpriteStrip(spriteId, enemyStripState(anim.state));
   const hasStrip = !!(stripInfo?.img && stripInfo.img.naturalWidth > 0);
   const artFoot = artFootFromTopFor({
     hasStrip,
@@ -533,13 +534,13 @@ function drawEnemy(
     drawStripFrame(ctx, img!, strip, frame, x, y, drawSize, false, anim.opacity, tint, enemy.instanceId, scene, now);
   } else {
     if (
-      !ENEMY_SPRITE_DEFS[enemy.id] &&
-      !PROCEDURAL_ENEMY_SPRITE_OPT_OUTS[enemy.id] &&
-      !warnedMissingEnemySprites.has(enemy.id)
+      !ENEMY_SPRITE_DEFS[spriteId] &&
+      !PROCEDURAL_ENEMY_SPRITE_OPT_OUTS[spriteId] &&
+      !warnedMissingEnemySprites.has(spriteId)
     ) {
-      warnedMissingEnemySprites.add(enemy.id);
+      warnedMissingEnemySprites.add(spriteId);
       warnAsset(
-        `enemy ${enemy.id} has no sprite manifest entry or procedural opt-out`,
+        `enemy ${spriteId} has no sprite manifest entry or procedural opt-out`,
       );
     }
     drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize, frozen, tint);

@@ -45,6 +45,8 @@ import type {
   CombatEvent,
   EnemyAction,
   CombatState,
+  CombatEncounterMetadata,
+  ChemistryTelemetry,
   Rng,
   TurnQueueEntry,
 } from "./combat-types";
@@ -87,7 +89,8 @@ export function createCombatState(
   items: Record<string, ItemDef> = {},
   loadout: Record<string, Loadout> = {},
   inAntimagic = false,
-  inventory: Record<string, number> = {}
+  inventory: Record<string, number> = {},
+  encounterMetadata: CombatEncounterMetadata = {}
 ): CombatState {
   resetBarkRngForCombat();
   return {
@@ -146,6 +149,27 @@ export function createCombatState(
     holyShieldBuffs: {},
     barkSaid: {},
     swindlerGoldBonusActive: false,
+    encounterId: encounterMetadata.id,
+    encounterFamily: encounterMetadata.family,
+    encounterDisplayName: encounterMetadata.displayName,
+    chemistryEnabled: encounterMetadata.chemistryEnabled ?? false,
+    chemistryReservations: {},
+    chemistryTelemetry: emptyChemistryTelemetry(),
+    enemyGuards: {},
+    enemyActedThisRound: [],
+    enemySummonsCreated: 0,
+    chemistryUses: {},
+  };
+}
+
+function emptyChemistryTelemetry(): ChemistryTelemetry {
+  return {
+    present: {},
+    eligible: {},
+    telegraphed: {},
+    attempted: {},
+    resolved: {},
+    broken: {},
   };
 }
 
@@ -161,7 +185,8 @@ export function createCombatFromEncounter(
   items: Record<string, ItemDef>,
   loadout: Record<string, Loadout>,
   inventory: readonly (string | { itemId: string })[] = [],
-  inAntimagic = false
+  inAntimagic = false,
+  encounterMetadata: CombatEncounterMetadata = {}
 ): CombatState {
   const fighters = sortPartyByFormation(party);
   const fighterLoadout = Object.fromEntries(
@@ -178,6 +203,10 @@ export function createCombatFromEncounter(
       currentHp: spawn.enemy.hp,
       row: spawn.row,
       status: [],
+      spawnSerial: idx,
+      spawnSource: "encounter",
+      rewardEligible: true,
+      rewardAwarded: false,
     };
     if (spawn.row === "front") front.push(inst);
     else back.push(inst);
@@ -192,7 +221,8 @@ export function createCombatFromEncounter(
     items,
     fighterLoadout,
     inAntimagic,
-    inventoryToCounts(inventory)
+    inventoryToCounts(inventory),
+    encounterMetadata
   );
 }
 

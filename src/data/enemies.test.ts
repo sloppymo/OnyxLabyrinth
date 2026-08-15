@@ -101,6 +101,17 @@ describe("enemy data", () => {
 });
 
 describe("encounter table integrity", () => {
+  it("gives every authored table entry a stable id and family", () => {
+    for (const [floor, entries] of Object.entries(ENCOUNTER_TABLES)) {
+      const ids = entries.map((entry) => entry.id);
+      expect(new Set(ids).size, `duplicate ids on table ${floor}`).toBe(ids.length);
+      for (const entry of entries) {
+        expect(entry.id.length).toBeGreaterThan(0);
+        expect(entry.family.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it("every spawn enemyId in every floor's table resolves to a defined enemy", () => {
     for (const [floor, entries] of Object.entries(ENCOUNTER_TABLES)) {
       for (const entry of entries) {
