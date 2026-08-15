@@ -260,7 +260,9 @@ export const CRYPT_HELLHOUND: EnemyDef = {
   hp: 26,
   attack: 8,
   ac: 4,
-  agi: 16,
+  // The pack leader must be able to act before its faster-looking partner;
+  // otherwise the exact partner reservation is ineligible every round.
+  agi: 18,
   xp: 24,
   gold: 18,
   special: [
@@ -1652,19 +1654,10 @@ export function enemiesForFloor(floor: number): EnemyDef[] {
 /** Weighted encounter table for each floor. Weights do not need to sum to 1. */
 export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // Floor 1: The Flooded Crypt — the first-test chemistry showcase. The
-  // weights intentionally sum to 33; relief entries remain experimental and
-  // are not protected by an 18-entry quota.
+  // The two relief experiments were removed by the Phase 8 audit. Their six
+  // weight points are redistributed across surviving simple-band entries so
+  // the table keeps its authored total while becoming less filler-dense.
   1: [
-    {
-      id: "f1-slime-cluster",
-      family: "slime-board",
-      weight: 3,
-      spawns: [
-        { enemyId: "slime", row: "front" },
-        { enemyId: "slime", row: "front" },
-        { enemyId: "slime", row: "front" },
-      ],
-    },
     {
       id: "f1-acid-burrow",
       family: "acid-anchor",
@@ -1676,19 +1669,9 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
-      id: "f1-bone-archer-line",
-      family: "bone-volley",
-      weight: 3,
-      spawns: [
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton-archer", row: "back" },
-      ],
-    },
-    {
       id: "f1-red-bone-bounty",
       family: "red-bone",
-      weight: 1,
+      weight: 2,
       spawns: [
         { enemyId: "red-skeleton", row: "front" },
         { enemyId: "skeleton", row: "front" },
@@ -1698,7 +1681,7 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     {
       id: "f1-orc-leap",
       family: "orc-pack",
-      weight: 3,
+      weight: 5,
       spawns: [
         { enemyId: "crypt-orc", row: "front" },
         { enemyId: "crypt-orc", row: "front" },
@@ -1811,13 +1794,13 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     {
       id: "f1-solo-guardian",
       family: "solo-guardian",
-      weight: 1,
+      weight: 2,
       spawns: [{ enemyId: "crypt-stone-guardian", row: "front" }],
     },
     {
       id: "f1-ghostfire-duet",
       family: "ghostfire-duet",
-      weight: 1,
+      weight: 3,
       spawns: [
         { enemyId: "crypt-ghostfire", row: "back" },
         { enemyId: "crypt-ghostfire", row: "back" },

@@ -236,6 +236,67 @@ describe("formation chemistry resource substrate", () => {
     expect(targetDead.enemies.front.some((enemy) => enemy.instanceId === "slime-0")).toBe(true);
   });
 
+  it("breaks a committed wind-up when the caster dies before its queued turn", () => {
+    let state = makeChemistryState();
+    state = resolveCombatRound(state, defendActions(state), fixedRng);
+    const caster = state.enemies.front.find((enemy) => enemy.instanceId === "caster-0")!;
+    expect(state.windUps[caster.instanceId]).toBeDefined();
+
+    // Put every party member ahead of the enemy queue and leave the caster at
+    // one HP. The first player hit removes it; the round then reaches the
+    // stale enemy entry with no living actor to resolve. The shared death
+    // sweep must close the wind-up before that stale entry is visited.
+    state.party.forEach((character) => {
+      character.stats.agi = 99;
+    });
+    caster.currentHp = 1;
+    const actions = state.party.map((character) => ({
+      kind: "attack" as const,
+      actorId: character.id,
+      targetInstanceId: caster.instanceId,
+    }));
+    state = resolveCombatRound(state, actions, fixedRng);
+
+    expect(state.events).toContainEqual(expect.objectContaining({
+      type: "chemistry",
+      phase: "break",
+      reason: "actorDead",
+      actorId: "caster-0",
+      resourceId: "slime-0",
+    }));
+    expect(state.events.some((event) => event?.type === "chemistry" && event.phase === "resolve")).toBe(false);
+    expect(state.enemies.front.some((enemy) => enemy.instanceId === "slime-0")).toBe(true);
+    expect(state.chemistryReservations?.["slime-0"]).toBeUndefined();
+    expect(state.windUps["caster-0"]).toBeUndefined();
+    expect(state.chemistryUses?.["caster-0:crypt-slime-cannon"]).toBe(1);
+    expect(state.chemistryTelemetry?.broken["chem-slime-cannon"]).toBe(1);
+  });
+
+  it("closes a pending commitment when a party wipe ends the queued enemy beat", () => {
+    const state = makeChemistryState();
+    const caster = state.enemies.front.find((enemy) => enemy.instanceId === "caster-0")!;
+    const ability = enemyAbilityById("crypt-slime-cannon")!;
+    reserveChemistryUse(state, caster, ability, null, "slime-0");
+    state.party.forEach((character) => {
+      character.hp = 0;
+    });
+
+    deathCheck(state, (message, event) => {
+      state.log.push(message);
+      state.events.push(event);
+    });
+
+    expect(state.events).toContainEqual(expect.objectContaining({
+      type: "chemistry",
+      phase: "break",
+      reason: "targetInvalid",
+      actorId: "caster-0",
+      resourceId: "slime-0",
+    }));
+    expect(state.chemistryReservations?.["caster-0"]).toBeUndefined();
+    expect(state.chemistryTelemetry?.broken["chem-slime-cannon"]).toBe(1);
+  });
+
   it("interrupts a wind-up on actor paralysis or sleep, but not on resource paralysis", () => {
     for (const status of ["paralysis", "sleep"] as const) {
       let state = makeChemistryState();

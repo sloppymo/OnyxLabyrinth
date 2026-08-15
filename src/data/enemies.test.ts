@@ -110,9 +110,7 @@ describe("enemy data", () => {
 describe("encounter table integrity", () => {
   it("uses the authoritative Floor 1 first-test roster and weights", () => {
     const expectedIds = [
-      "f1-slime-cluster",
       "f1-acid-burrow",
-      "f1-bone-archer-line",
       "f1-red-bone-bounty",
       "f1-orc-leap",
       "f1-minotaur-slime",
@@ -132,16 +130,8 @@ describe("encounter table integrity", () => {
     const table = ENCOUNTER_TABLES[1];
     expect(table.map((entry) => entry.id)).toEqual(expectedIds);
     expect(table.reduce((sum, entry) => sum + entry.weight, 0)).toBe(33);
-    expect(table.find((entry) => entry.id === "f1-slime-cluster")?.spawns).toEqual([
-      { enemyId: "slime", row: "front" },
-      { enemyId: "slime", row: "front" },
-      { enemyId: "slime", row: "front" },
-    ]);
-    expect(table.find((entry) => entry.id === "f1-bone-archer-line")?.spawns).toEqual([
-      { enemyId: "skeleton", row: "front" },
-      { enemyId: "skeleton", row: "front" },
-      { enemyId: "skeleton-archer", row: "back" },
-    ]);
+    expect(table.some((entry) => entry.id === "f1-slime-cluster")).toBe(false);
+    expect(table.some((entry) => entry.id === "f1-bone-archer-line")).toBe(false);
   });
 
   it("registers only active Floor 1 Crypt variants with explicit sprite aliases", () => {
@@ -182,6 +172,7 @@ describe("encounter table integrity", () => {
     expect(ENEMIES_BY_ID["crypt-warlock"].abilityIds).toContain("crypt-bone-harvest");
     expect(ENEMIES_BY_ID["crypt-animated-armor"].abilityIds).toContain("crypt-living-shield");
     expect(ENEMIES_BY_ID["crypt-hellhound"].abilityIds).toContain("crypt-pack-hunt");
+    expect(ENEMIES_BY_ID["crypt-hellhound"].agi).toBeGreaterThan(ENEMIES_BY_ID["crypt-werewolf"].agi);
     expect(ENEMIES_BY_ID["crypt-rune-knight"].abilityIds).toContain("crypt-rune-overload");
     expect(enemyAbilityById("ogre-toss")?.effect).toEqual({
       kind: "consumeAlly",
@@ -346,10 +337,11 @@ describe("encounter table integrity", () => {
       const weightedSize =
         entries.reduce((s, e) => s + e.weight * e.spawns.length, 0) / totalWeight;
       if (floor === 1) {
-        // The authoritative 18-entry showcase has a deliberate mix of
-        // two-body and solo relief/signature fights: 82 weighted bodies / 33
-        // weight, rather than the old generic >=3 density invariant.
-        expect(weightedSize).toBeCloseTo(82 / 33, 10);
+        // Phase 8 removed both relief experiments after deterministic traces
+        // showed no Split or Archer pressure before the fights ended. Their
+        // six weight points were redistributed among surviving simple-band
+        // entries: 76 weighted bodies / 33 weight.
+        expect(weightedSize).toBeCloseTo(76 / 33, 10);
         continue;
       }
       expect(

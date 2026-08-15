@@ -1,0 +1,6408 @@
+{
+  "generatedAt": "2026-08-15T10:36:41.438Z",
+  "n": 100,
+  "roster": [
+    {
+      "id": "f1-acid-burrow",
+      "family": "acid-anchor",
+      "weight": 2
+    },
+    {
+      "id": "f1-red-bone-bounty",
+      "family": "red-bone",
+      "weight": 2
+    },
+    {
+      "id": "f1-orc-leap",
+      "family": "orc-pack",
+      "weight": 5
+    },
+    {
+      "id": "f1-minotaur-slime",
+      "family": "slime-cannon",
+      "weight": 2
+    },
+    {
+      "id": "f1-ogre-toss",
+      "family": "ogre-toss",
+      "weight": 1
+    },
+    {
+      "id": "f1-warlock-bone-battery",
+      "family": "bone-harvest",
+      "weight": 2
+    },
+    {
+      "id": "f1-living-shield",
+      "family": "living-shield",
+      "weight": 2
+    },
+    {
+      "id": "f1-hunting-pack",
+      "family": "hunting-pack",
+      "weight": 2
+    },
+    {
+      "id": "f1-spawn-bomb",
+      "family": "spawn-bomb",
+      "weight": 2
+    },
+    {
+      "id": "f1-rune-overload",
+      "family": "rune-overload",
+      "weight": 2
+    },
+    {
+      "id": "f1-guarded-bomb",
+      "family": "guarded-bomb",
+      "weight": 1
+    },
+    {
+      "id": "f1-wraith-pincer",
+      "family": "wraith-pincer",
+      "weight": 2
+    },
+    {
+      "id": "f1-gaze-slime",
+      "family": "gaze-slime",
+      "weight": 2
+    },
+    {
+      "id": "f1-flame-forge",
+      "family": "forge-line",
+      "weight": 1
+    },
+    {
+      "id": "f1-solo-guardian",
+      "family": "solo-guardian",
+      "weight": 2
+    },
+    {
+      "id": "f1-ghostfire-duet",
+      "family": "ghostfire-duet",
+      "weight": 3
+    }
+  ],
+  "gaps": {
+    "normal": {
+      "mean": 27.69113200511364,
+      "median": 27,
+      "p10": 16,
+      "p90": 40,
+      "max": 52
+    },
+    "quiet": {
+      "mean": 29.310882114085263,
+      "median": 30,
+      "p10": 16,
+      "p90": 40,
+      "max": 52
+    },
+    "dead": {
+      "mean": 39.00706309899289,
+      "median": 39,
+      "p10": 36,
+      "p90": 42,
+      "max": 52
+    },
+    "hot": {
+      "mean": 23.80219287500916,
+      "median": 22,
+      "p10": 15,
+      "p90": 37,
+      "max": 52
+    }
+  },
+  "matrix": {
+    "fightCount": 19200,
+    "aggregates": {
+      "f1-acid-burrow|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.16,
+        "averageHpLossPct": 29.869561887391246,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 6.22,
+        "averageKOs": 0.15,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-acid-burrow|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.36,
+        "averageHpLossPct": 17.0557906954258,
+        "averageSpUsed": 3.87,
+        "averageConsumablesUsed": 0.42,
+        "averageEnemyActions": 6.79,
+        "averageKOs": 0.07,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-acid-burrow|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.33,
+        "averageHpLossPct": 16.026486949580264,
+        "averageSpUsed": 3.75,
+        "averageConsumablesUsed": 0.33,
+        "averageEnemyActions": 6.72,
+        "averageKOs": 0.03,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-acid-burrow|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.98,
+        "averageHpLossPct": 22.274569790708792,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 5.77,
+        "averageKOs": 0.03,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-acid-burrow|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.22,
+        "averageHpLossPct": 19.704809675833896,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.75,
+        "averageEnemyActions": 6.13,
+        "averageKOs": 0,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-acid-burrow|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.17,
+        "averageHpLossPct": 20.439693916207535,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.6,
+        "averageEnemyActions": 6.08,
+        "averageKOs": 0,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-acid-burrow|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.09,
+        "averageHpLossPct": 30.37382739367469,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 6.03,
+        "averageKOs": 0.24,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-acid-burrow|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.23,
+        "averageHpLossPct": 17.010374524571482,
+        "averageSpUsed": 4.02,
+        "averageConsumablesUsed": 0.42,
+        "averageEnemyActions": 6.34,
+        "averageKOs": 0.03,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-acid-burrow|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.4,
+        "averageHpLossPct": 17.800481376828614,
+        "averageSpUsed": 3.75,
+        "averageConsumablesUsed": 0.48,
+        "averageEnemyActions": 6.85,
+        "averageKOs": 0.07,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-acid-burrow|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.89,
+        "averageHpLossPct": 20.011431276471093,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 5.53,
+        "averageKOs": 0.02,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-acid-burrow|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.01,
+        "averageHpLossPct": 13.93705812788636,
+        "averageSpUsed": 2.43,
+        "averageConsumablesUsed": 0.12,
+        "averageEnemyActions": 5.89,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-acid-burrow|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.95,
+        "averageHpLossPct": 13.200262957584089,
+        "averageSpUsed": 2.4,
+        "averageConsumablesUsed": 0.12,
+        "averageEnemyActions": 5.67,
+        "averageKOs": 0,
+        "firstKills": {
+          "Acid Puddle": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 10.74370882811742,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.93,
+        "averageKOs": 0,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.02,
+        "averageHpLossPct": 9.396832210281982,
+        "averageSpUsed": 0.48,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 2.99,
+        "averageKOs": 0,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.01,
+        "averageHpLossPct": 8.59765202217127,
+        "averageSpUsed": 0.51,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 2.94,
+        "averageKOs": 0,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 8.50882245462811,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.96,
+        "averageKOs": 0,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 8.696746170068433,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.93,
+        "averageKOs": 0,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 8.84417738436801,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.95,
+        "averageKOs": 0,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 11.862163959249381,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.94,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 9.677012211621655,
+        "averageSpUsed": 0.6,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.9,
+        "averageKOs": 0,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.02,
+        "averageHpLossPct": 9.630652325029699,
+        "averageSpUsed": 0.54,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 2.99,
+        "averageKOs": 0,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 8.506547952245016,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.95,
+        "averageKOs": 0,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 7.534992307074034,
+        "averageSpUsed": 0.36,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.94,
+        "averageKOs": 0,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-red-bone-bounty|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 7.54520242809465,
+        "averageSpUsed": 0.24,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.93,
+        "averageKOs": 0,
+        "firstKills": {
+          "Red Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 4.304636631769091,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1,
+        "averageKOs": 0.04,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.07,
+        "averageHpLossPct": 2.8584190834251695,
+        "averageSpUsed": 0.21,
+        "averageConsumablesUsed": 0.15,
+        "averageEnemyActions": 1.07,
+        "averageKOs": 0.03,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.03,
+        "averageHpLossPct": 3.2128218368421755,
+        "averageSpUsed": 0.33,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 1.03,
+        "averageKOs": 0.04,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 4.461583244111014,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.01,
+        "averageHpLossPct": 3.9836871242787915,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 1.01,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.08,
+        "averageHpLossPct": 3.424260436820559,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.24,
+        "averageEnemyActions": 1.08,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 4.286755274108331,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1,
+        "averageKOs": 0.02,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.05,
+        "averageHpLossPct": 2.3168433867912555,
+        "averageSpUsed": 0.39,
+        "averageConsumablesUsed": 0.15,
+        "averageEnemyActions": 1.05,
+        "averageKOs": 0.03,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.06,
+        "averageHpLossPct": 3.234195141206552,
+        "averageSpUsed": 0.24,
+        "averageConsumablesUsed": 0.15,
+        "averageEnemyActions": 1.05,
+        "averageKOs": 0.04,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 3.9090838373645074,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.02,
+        "averageHpLossPct": 1.9534384933093127,
+        "averageSpUsed": 0.33,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 1.01,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-orc-leap|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.02,
+        "averageHpLossPct": 2.480804265334318,
+        "averageSpUsed": 0.3,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 1.02,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Orc": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-minotaur-slime|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.25,
+        "averageHpLossPct": 5.642196378800436,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.07,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Minotaur": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 109,
+          "telegraphed": 74,
+          "attempted": 74,
+          "resolved": 0,
+          "broken": 74
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-minotaur-slime|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.36,
+        "averageHpLossPct": 5.313904703340894,
+        "averageSpUsed": 0.15,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.19,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Minotaur": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 110,
+          "telegraphed": 75,
+          "attempted": 75,
+          "resolved": 0,
+          "broken": 75
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-minotaur-slime|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.26,
+        "averageHpLossPct": 4.771055403315495,
+        "averageSpUsed": 0.24,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 2.14,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Minotaur": 99,
+          "Slime": 1
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 110,
+          "telegraphed": 78,
+          "attempted": 78,
+          "resolved": 1,
+          "broken": 77
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 1
+      },
+      "f1-minotaur-slime|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.08,
+        "averageHpLossPct": 3.339132403856868,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.81,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Minotaur": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 101,
+          "telegraphed": 72,
+          "attempted": 72,
+          "resolved": 0,
+          "broken": 72
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-minotaur-slime|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.12,
+        "averageHpLossPct": 3.7275454681409905,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.9,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Minotaur": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 105,
+          "telegraphed": 75,
+          "attempted": 75,
+          "resolved": 0,
+          "broken": 75
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-minotaur-slime|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.13,
+        "averageHpLossPct": 4.046370432011474,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.97,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Minotaur": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 108,
+          "telegraphed": 76,
+          "attempted": 76,
+          "resolved": 0,
+          "broken": 76
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-minotaur-slime|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.24,
+        "averageHpLossPct": 5.62596436029606,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.01,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Minotaur": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 108,
+          "telegraphed": 74,
+          "attempted": 74,
+          "resolved": 0,
+          "broken": 74
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-minotaur-slime|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.3,
+        "averageHpLossPct": 5.014081129862018,
+        "averageSpUsed": 0.27,
+        "averageConsumablesUsed": 0.09,
+        "averageEnemyActions": 2.13,
+        "averageKOs": 0.02,
+        "firstKills": {
+          "Crypt Minotaur": 99,
+          "Slime": 1
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 107,
+          "telegraphed": 78,
+          "attempted": 78,
+          "resolved": 1,
+          "broken": 77
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 1
+      },
+      "f1-minotaur-slime|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.25,
+        "averageHpLossPct": 4.853807115797574,
+        "averageSpUsed": 0.18,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 2.04,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Minotaur": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 107,
+          "telegraphed": 76,
+          "attempted": 76,
+          "resolved": 0,
+          "broken": 76
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-minotaur-slime|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.1,
+        "averageHpLossPct": 3.300282224623515,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.84,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Minotaur": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 103,
+          "telegraphed": 72,
+          "attempted": 72,
+          "resolved": 0,
+          "broken": 72
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-minotaur-slime|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.03,
+        "averageHpLossPct": 2.7360836044122108,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.71,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Minotaur": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 100,
+          "telegraphed": 70,
+          "attempted": 70,
+          "resolved": 0,
+          "broken": 70
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-minotaur-slime|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.03,
+        "averageHpLossPct": 3.009451310572864,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.75,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Minotaur": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 101,
+          "telegraphed": 71,
+          "attempted": 71,
+          "resolved": 0,
+          "broken": 71
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ogre-toss|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.21,
+        "averageHpLossPct": 9.9001842970885,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.16,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hill Ogre": 61,
+          "Skeleton": 39
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 121,
+          "telegraphed": 0,
+          "attempted": 76,
+          "resolved": 39,
+          "broken": 37
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 39
+      },
+      "f1-ogre-toss|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.19,
+        "averageHpLossPct": 7.278963036332575,
+        "averageSpUsed": 0.63,
+        "averageConsumablesUsed": 0.12,
+        "averageEnemyActions": 2.19,
+        "averageKOs": 0.02,
+        "firstKills": {
+          "Crypt Hill Ogre": 55,
+          "Skeleton": 45
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 116,
+          "telegraphed": 0,
+          "attempted": 77,
+          "resolved": 45,
+          "broken": 32
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 45
+      },
+      "f1-ogre-toss|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.26,
+        "averageHpLossPct": 6.8525741478529305,
+        "averageSpUsed": 0.72,
+        "averageConsumablesUsed": 0.18,
+        "averageEnemyActions": 2.33,
+        "averageKOs": 0.02,
+        "firstKills": {
+          "Skeleton": 44,
+          "Crypt Hill Ogre": 56
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 122,
+          "telegraphed": 0,
+          "attempted": 81,
+          "resolved": 44,
+          "broken": 37
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 44
+      },
+      "f1-ogre-toss|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.13,
+        "averageHpLossPct": 6.184909578253274,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.85,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hill Ogre": 70,
+          "Skeleton": 30
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 113,
+          "telegraphed": 0,
+          "attempted": 76,
+          "resolved": 30,
+          "broken": 46
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 30
+      },
+      "f1-ogre-toss|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.12,
+        "averageHpLossPct": 5.037491460656895,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.09,
+        "averageEnemyActions": 1.71,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hill Ogre": 74,
+          "Skeleton": 26
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 109,
+          "telegraphed": 0,
+          "attempted": 72,
+          "resolved": 26,
+          "broken": 46
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 26
+      },
+      "f1-ogre-toss|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.2,
+        "averageHpLossPct": 5.753219685966526,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.18,
+        "averageEnemyActions": 1.82,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hill Ogre": 75,
+          "Skeleton": 25
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 115,
+          "telegraphed": 0,
+          "attempted": 75,
+          "resolved": 25,
+          "broken": 50
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 25
+      },
+      "f1-ogre-toss|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.15,
+        "averageHpLossPct": 9.114440004393144,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.98,
+        "averageKOs": 0.09,
+        "firstKills": {
+          "Crypt Hill Ogre": 65,
+          "Skeleton": 35
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 115,
+          "telegraphed": 0,
+          "attempted": 72,
+          "resolved": 35,
+          "broken": 37
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 35
+      },
+      "f1-ogre-toss|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.41,
+        "averageHpLossPct": 6.784690376940244,
+        "averageSpUsed": 0.6,
+        "averageConsumablesUsed": 0.6,
+        "averageEnemyActions": 2.38,
+        "averageKOs": 0.05,
+        "firstKills": {
+          "Crypt Hill Ogre": 62,
+          "Skeleton": 38
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 122,
+          "telegraphed": 0,
+          "attempted": 75,
+          "resolved": 38,
+          "broken": 37
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 38
+      },
+      "f1-ogre-toss|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.33,
+        "averageHpLossPct": 5.707871546214105,
+        "averageSpUsed": 0.57,
+        "averageConsumablesUsed": 0.51,
+        "averageEnemyActions": 2.21,
+        "averageKOs": 0.08,
+        "firstKills": {
+          "Crypt Hill Ogre": 65,
+          "Skeleton": 35
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 119,
+          "telegraphed": 0,
+          "attempted": 76,
+          "resolved": 35,
+          "broken": 41
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 35
+      },
+      "f1-ogre-toss|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.13,
+        "averageHpLossPct": 4.150503642520813,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.54,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton": 15,
+          "Crypt Hill Ogre": 85
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 113,
+          "telegraphed": 0,
+          "attempted": 72,
+          "resolved": 15,
+          "broken": 57
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 15
+      },
+      "f1-ogre-toss|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.13,
+        "averageHpLossPct": 2.848049549258087,
+        "averageSpUsed": 0.27,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 1.49,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hill Ogre": 87,
+          "Skeleton": 13
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 112,
+          "telegraphed": 0,
+          "attempted": 74,
+          "resolved": 13,
+          "broken": 61
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 13
+      },
+      "f1-ogre-toss|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.09,
+        "averageHpLossPct": 3.195475861281587,
+        "averageSpUsed": 0.15,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.46,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hill Ogre": 85,
+          "Skeleton": 15
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 109,
+          "telegraphed": 0,
+          "attempted": 73,
+          "resolved": 15,
+          "broken": 58
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 15
+      },
+      "f1-warlock-bone-battery|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 15.107152901198656,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.62,
+        "averageKOs": 0.09,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-warlock-bone-battery|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.2,
+        "averageHpLossPct": 10.51151573883791,
+        "averageSpUsed": 1.02,
+        "averageConsumablesUsed": 0.57,
+        "averageEnemyActions": 3.78,
+        "averageKOs": 0.06,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-warlock-bone-battery|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 4.732356266012326,
+        "averageSpUsed": 0.06,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.97,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Warlock": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-warlock-bone-battery|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 12.564620739355194,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.61,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-warlock-bone-battery|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.01,
+        "averageHpLossPct": 12.433316370947125,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 3.69,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-warlock-bone-battery|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 4.759142207988145,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.96,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Warlock": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-warlock-bone-battery|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 16.273913745960407,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.58,
+        "averageKOs": 0.04,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-warlock-bone-battery|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.14,
+        "averageHpLossPct": 9.466380197519985,
+        "averageSpUsed": 1.38,
+        "averageConsumablesUsed": 0.33,
+        "averageEnemyActions": 3.67,
+        "averageKOs": 0.05,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-warlock-bone-battery|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.01,
+        "averageHpLossPct": 5.2305249396354405,
+        "averageSpUsed": 0.12,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 2.95,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Warlock": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-warlock-bone-battery|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 12.392125001003713,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.58,
+        "averageKOs": 0.03,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-warlock-bone-battery|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.04,
+        "averageHpLossPct": 9.023818151586827,
+        "averageSpUsed": 0.69,
+        "averageConsumablesUsed": 0.12,
+        "averageEnemyActions": 3.69,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-warlock-bone-battery|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 3.8386681496890542,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.96,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Warlock": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.65,
+        "averageHpLossPct": 17.383802925680676,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 4.29,
+        "averageKOs": 0.11,
+        "firstKills": {
+          "Crypt Animated Armor": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 112,
+          "telegraphed": 0,
+          "attempted": 100,
+          "resolved": 93,
+          "broken": 7
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.9,
+        "averageHpLossPct": 12.580893611157784,
+        "averageSpUsed": 2.13,
+        "averageConsumablesUsed": 0.44,
+        "averageEnemyActions": 4.86,
+        "averageKOs": 0.06,
+        "firstKills": {
+          "Crypt Animated Armor": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 110,
+          "telegraphed": 0,
+          "attempted": 98,
+          "resolved": 95,
+          "broken": 3
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.71,
+        "averageHpLossPct": 6.780658644490299,
+        "averageSpUsed": 0.57,
+        "averageConsumablesUsed": 0.18,
+        "averageEnemyActions": 1.37,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Warlock": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 100,
+          "telegraphed": 0,
+          "attempted": 91,
+          "resolved": 0,
+          "broken": 91
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.51,
+        "averageHpLossPct": 13.982267621653058,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 4.08,
+        "averageKOs": 0.03,
+        "firstKills": {
+          "Crypt Animated Armor": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 109,
+          "telegraphed": 0,
+          "attempted": 98,
+          "resolved": 95,
+          "broken": 3
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.57,
+        "averageHpLossPct": 14.6014747897162,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.3,
+        "averageEnemyActions": 4.34,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Animated Armor": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 110,
+          "telegraphed": 0,
+          "attempted": 97,
+          "resolved": 92,
+          "broken": 5
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.44,
+        "averageHpLossPct": 6.433610434408124,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.12,
+        "averageEnemyActions": 1.25,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Warlock": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 100,
+          "telegraphed": 0,
+          "attempted": 87,
+          "resolved": 0,
+          "broken": 87
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.63,
+        "averageHpLossPct": 18.639095819754917,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 4.26,
+        "averageKOs": 0.13,
+        "firstKills": {
+          "Crypt Animated Armor": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 111,
+          "telegraphed": 0,
+          "attempted": 99,
+          "resolved": 95,
+          "broken": 4
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.89,
+        "averageHpLossPct": 12.348972153972412,
+        "averageSpUsed": 2.67,
+        "averageConsumablesUsed": 0.45,
+        "averageEnemyActions": 4.91,
+        "averageKOs": 0.06,
+        "firstKills": {
+          "Crypt Animated Armor": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 115,
+          "telegraphed": 0,
+          "attempted": 98,
+          "resolved": 93,
+          "broken": 5
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.7,
+        "averageHpLossPct": 6.556486512103046,
+        "averageSpUsed": 0.84,
+        "averageConsumablesUsed": 0.09,
+        "averageEnemyActions": 1.33,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Warlock": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 100,
+          "telegraphed": 0,
+          "attempted": 91,
+          "resolved": 0,
+          "broken": 91
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.29,
+        "averageHpLossPct": 12.787834077850432,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.93,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Animated Armor": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 114,
+          "telegraphed": 0,
+          "attempted": 98,
+          "resolved": 89,
+          "broken": 9
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.39,
+        "averageHpLossPct": 9.942186706247451,
+        "averageSpUsed": 1.11,
+        "averageConsumablesUsed": 0.24,
+        "averageEnemyActions": 4.13,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Animated Armor": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 109,
+          "telegraphed": 0,
+          "attempted": 98,
+          "resolved": 94,
+          "broken": 4
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-living-shield|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.39,
+        "averageHpLossPct": 4.140897860918848,
+        "averageSpUsed": 0.3,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.03,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Warlock": 100
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 100,
+          "telegraphed": 0,
+          "attempted": 91,
+          "resolved": 0,
+          "broken": 91
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.32,
+        "averageHpLossPct": 3.290144668101772,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.28,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 109,
+          "telegraphed": 71,
+          "attempted": 71,
+          "resolved": 0,
+          "broken": 71
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.34,
+        "averageHpLossPct": 1.6493348076528715,
+        "averageSpUsed": 0.12,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 1.18,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 106,
+          "telegraphed": 69,
+          "attempted": 69,
+          "resolved": 0,
+          "broken": 69
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.38,
+        "averageHpLossPct": 2.259696734963748,
+        "averageSpUsed": 0.15,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 1.26,
+        "averageKOs": 0.02,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 109,
+          "telegraphed": 68,
+          "attempted": 68,
+          "resolved": 0,
+          "broken": 68
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.25,
+        "averageHpLossPct": 1.9704349472073985,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.16,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 106,
+          "telegraphed": 68,
+          "attempted": 68,
+          "resolved": 0,
+          "broken": 68
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.23,
+        "averageHpLossPct": 1.8435199594957863,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.14,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 104,
+          "telegraphed": 67,
+          "attempted": 67,
+          "resolved": 0,
+          "broken": 67
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.23,
+        "averageHpLossPct": 1.487407888641686,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.13,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 106,
+          "telegraphed": 73,
+          "attempted": 73,
+          "resolved": 0,
+          "broken": 73
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.39,
+        "averageHpLossPct": 3.8151115526458454,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.3,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 111,
+          "telegraphed": 68,
+          "attempted": 68,
+          "resolved": 0,
+          "broken": 68
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.43,
+        "averageHpLossPct": 1.9154429385588836,
+        "averageSpUsed": 0.15,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.22,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 107,
+          "telegraphed": 74,
+          "attempted": 74,
+          "resolved": 0,
+          "broken": 74
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.34,
+        "averageHpLossPct": 2.1216288455024026,
+        "averageSpUsed": 0.15,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 1.23,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 108,
+          "telegraphed": 68,
+          "attempted": 68,
+          "resolved": 0,
+          "broken": 68
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.2,
+        "averageHpLossPct": 1.8591111861167264,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.17,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 108,
+          "telegraphed": 73,
+          "attempted": 73,
+          "resolved": 0,
+          "broken": 73
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.2,
+        "averageHpLossPct": 1.373322274519545,
+        "averageSpUsed": 0.09,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.08,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 103,
+          "telegraphed": 67,
+          "attempted": 67,
+          "resolved": 0,
+          "broken": 67
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-hunting-pack|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.24,
+        "averageHpLossPct": 2.055082641962225,
+        "averageSpUsed": 0.06,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.16,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Hellhound": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 105,
+          "telegraphed": 65,
+          "attempted": 65,
+          "resolved": 0,
+          "broken": 65
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-spawn-bomb|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.29,
+        "averageHpLossPct": 11.189589308088964,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.79,
+        "averageKOs": 0.03,
+        "firstKills": {
+          "Crypt Demon Spawn": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 129,
+          "telegraphed": 0,
+          "attempted": 60,
+          "resolved": 0,
+          "broken": 60
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 29,
+        "consumedBodies": 0
+      },
+      "f1-spawn-bomb|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.31,
+        "averageHpLossPct": 8.507285532618846,
+        "averageSpUsed": 1.05,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 2.74,
+        "averageKOs": 0.03,
+        "firstKills": {
+          "Crypt Demon Spawn": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 129,
+          "telegraphed": 0,
+          "attempted": 67,
+          "resolved": 2,
+          "broken": 65
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 30,
+        "consumedBodies": 2
+      },
+      "f1-spawn-bomb|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.11,
+        "averageHpLossPct": 11.703902808918066,
+        "averageSpUsed": 0.66,
+        "averageConsumablesUsed": 0.33,
+        "averageEnemyActions": 2.71,
+        "averageKOs": 0.04,
+        "firstKills": {
+          "Crypt Demon Mage": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-spawn-bomb|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.26,
+        "averageHpLossPct": 9.385663558551133,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.65,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Demon Spawn": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 126,
+          "telegraphed": 0,
+          "attempted": 66,
+          "resolved": 0,
+          "broken": 66
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 26,
+        "consumedBodies": 0
+      },
+      "f1-spawn-bomb|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.26,
+        "averageHpLossPct": 9.51089830970404,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 2.72,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Demon Spawn": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 125,
+          "telegraphed": 0,
+          "attempted": 62,
+          "resolved": 0,
+          "broken": 62
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 25,
+        "consumedBodies": 0
+      },
+      "f1-spawn-bomb|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.15,
+        "averageHpLossPct": 12.248298903086361,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.45,
+        "averageEnemyActions": 2.89,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Demon Mage": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-spawn-bomb|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.33,
+        "averageHpLossPct": 11.852971038285396,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.69,
+        "averageKOs": 0.03,
+        "firstKills": {
+          "Crypt Demon Spawn": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 133,
+          "telegraphed": 0,
+          "attempted": 73,
+          "resolved": 0,
+          "broken": 73
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 33,
+        "consumedBodies": 0
+      },
+      "f1-spawn-bomb|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.34,
+        "averageHpLossPct": 9.168648076890372,
+        "averageSpUsed": 0.93,
+        "averageConsumablesUsed": 0.15,
+        "averageEnemyActions": 2.73,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Demon Spawn": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 130,
+          "telegraphed": 0,
+          "attempted": 66,
+          "resolved": 0,
+          "broken": 66
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 28,
+        "consumedBodies": 0
+      },
+      "f1-spawn-bomb|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.13,
+        "averageHpLossPct": 12.219903583025479,
+        "averageSpUsed": 0.81,
+        "averageConsumablesUsed": 0.39,
+        "averageEnemyActions": 2.79,
+        "averageKOs": 0.05,
+        "firstKills": {
+          "Crypt Demon Mage": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-spawn-bomb|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.18,
+        "averageHpLossPct": 8.856645035151415,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.64,
+        "averageKOs": 0.02,
+        "firstKills": {
+          "Crypt Demon Spawn": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 118,
+          "telegraphed": 0,
+          "attempted": 63,
+          "resolved": 0,
+          "broken": 63
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 18,
+        "consumedBodies": 0
+      },
+      "f1-spawn-bomb|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.25,
+        "averageHpLossPct": 7.655762252729008,
+        "averageSpUsed": 0.51,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 2.62,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Demon Spawn": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 124,
+          "telegraphed": 0,
+          "attempted": 64,
+          "resolved": 0,
+          "broken": 64
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 24,
+        "consumedBodies": 0
+      },
+      "f1-spawn-bomb|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.08,
+        "averageHpLossPct": 10.123223845494984,
+        "averageSpUsed": 0.51,
+        "averageConsumablesUsed": 0.24,
+        "averageEnemyActions": 2.79,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Demon Mage": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-rune-overload|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.74,
+        "averageHpLossPct": 9.792375046718954,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.18,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 147,
+          "telegraphed": 60,
+          "attempted": 60,
+          "resolved": 0,
+          "broken": 60
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-rune-overload|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.88,
+        "averageHpLossPct": 7.329970615607076,
+        "averageSpUsed": 0.99,
+        "averageConsumablesUsed": 0.12,
+        "averageEnemyActions": 2.37,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 151,
+          "telegraphed": 57,
+          "attempted": 57,
+          "resolved": 0,
+          "broken": 57
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-rune-overload|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.84,
+        "averageHpLossPct": 10.662774577428422,
+        "averageSpUsed": 1.14,
+        "averageConsumablesUsed": 0.09,
+        "averageEnemyActions": 2.26,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Rune Knight": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 102,
+          "telegraphed": 38,
+          "attempted": 38,
+          "resolved": 0,
+          "broken": 38
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-rune-overload|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.6,
+        "averageHpLossPct": 8.073800216979361,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 141,
+          "telegraphed": 55,
+          "attempted": 55,
+          "resolved": 0,
+          "broken": 55
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-rune-overload|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.77,
+        "averageHpLossPct": 9.067837445215103,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.12,
+        "averageEnemyActions": 2.3,
+        "averageKOs": 0.02,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 149,
+          "telegraphed": 59,
+          "attempted": 59,
+          "resolved": 1,
+          "broken": 58
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 1
+      },
+      "f1-rune-overload|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.64,
+        "averageHpLossPct": 10.86837719491186,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.09,
+        "averageEnemyActions": 2.02,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Rune Knight": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 100,
+          "telegraphed": 36,
+          "attempted": 36,
+          "resolved": 0,
+          "broken": 36
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-rune-overload|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.7,
+        "averageHpLossPct": 9.821156599560393,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.12,
+        "averageKOs": 0.02,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 146,
+          "telegraphed": 57,
+          "attempted": 57,
+          "resolved": 0,
+          "broken": 57
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-rune-overload|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.97,
+        "averageHpLossPct": 7.987204052965029,
+        "averageSpUsed": 1.23,
+        "averageConsumablesUsed": 0.33,
+        "averageEnemyActions": 2.6,
+        "averageKOs": 0.03,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 150,
+          "telegraphed": 59,
+          "attempted": 59,
+          "resolved": 3,
+          "broken": 56
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 3
+      },
+      "f1-rune-overload|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.85,
+        "averageHpLossPct": 9.871356368998658,
+        "averageSpUsed": 1.41,
+        "averageConsumablesUsed": 0.18,
+        "averageEnemyActions": 2.32,
+        "averageKOs": 0.02,
+        "firstKills": {
+          "Crypt Rune Knight": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 101,
+          "telegraphed": 39,
+          "attempted": 39,
+          "resolved": 0,
+          "broken": 39
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-rune-overload|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.55,
+        "averageHpLossPct": 6.956433042121168,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.91,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 137,
+          "telegraphed": 52,
+          "attempted": 52,
+          "resolved": 0,
+          "broken": 52
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-rune-overload|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.64,
+        "averageHpLossPct": 5.900584105454891,
+        "averageSpUsed": 0.63,
+        "averageConsumablesUsed": 0.09,
+        "averageEnemyActions": 2.05,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 141,
+          "telegraphed": 46,
+          "attempted": 46,
+          "resolved": 0,
+          "broken": 46
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-rune-overload|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.59,
+        "averageHpLossPct": 7.640935269922602,
+        "averageSpUsed": 0.66,
+        "averageConsumablesUsed": 0.12,
+        "averageEnemyActions": 1.94,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Rune Knight": 100
+        },
+        "chemistry": {
+          "present": 100,
+          "eligible": 100,
+          "telegraphed": 36,
+          "attempted": 36,
+          "resolved": 0,
+          "broken": 36
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-guarded-bomb|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4,
+        "averageHpLossPct": 55.62584234077708,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 9.65,
+        "averageKOs": 0.72,
+        "firstKills": {
+          "Crypt Animated Armor": 59,
+          "Crypt Demon Spawn": 41
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 238,
+          "telegraphed": 0,
+          "attempted": 195,
+          "resolved": 189,
+          "broken": 6
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 25,
+        "consumedBodies": 93
+      },
+      "f1-guarded-bomb|balanced|default": {
+        "fights": 100,
+        "victories": 99,
+        "wipes": 1,
+        "stalled": 0,
+        "averageRounds": 5.26,
+        "averageHpLossPct": 31.76794916942436,
+        "averageSpUsed": 5.43,
+        "averageConsumablesUsed": 1.79,
+        "averageEnemyActions": 11.16,
+        "averageKOs": 0.56,
+        "firstKills": {
+          "Crypt Demon Spawn": 50,
+          "Crypt Animated Armor": 50
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 285,
+          "telegraphed": 0,
+          "attempted": 219,
+          "resolved": 184,
+          "broken": 35
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 59,
+        "consumedBodies": 89
+      },
+      "f1-guarded-bomb|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 99,
+        "wipes": 1,
+        "stalled": 0,
+        "averageRounds": 5.13,
+        "averageHpLossPct": 38.802924006804844,
+        "averageSpUsed": 4.59,
+        "averageConsumablesUsed": 2.14,
+        "averageEnemyActions": 11.43,
+        "averageKOs": 0.56,
+        "firstKills": {
+          "Crypt Demon Spawn": 45,
+          "Crypt Animated Armor": 55
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 271,
+          "telegraphed": 0,
+          "attempted": 212,
+          "resolved": 192,
+          "broken": 20
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 46,
+        "consumedBodies": 98
+      },
+      "f1-guarded-bomb|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.79,
+        "averageHpLossPct": 43.454937581632336,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 8.94,
+        "averageKOs": 0.17,
+        "firstKills": {
+          "Crypt Animated Armor": 65,
+          "Crypt Demon Spawn": 35
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 242,
+          "telegraphed": 0,
+          "attempted": 190,
+          "resolved": 175,
+          "broken": 15
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 19,
+        "consumedBodies": 84
+      },
+      "f1-guarded-bomb|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.22,
+        "averageHpLossPct": 37.478104398895546,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 1.17,
+        "averageEnemyActions": 9.29,
+        "averageKOs": 0.15,
+        "firstKills": {
+          "Crypt Demon Spawn": 26,
+          "Crypt Animated Armor": 74
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 248,
+          "telegraphed": 0,
+          "attempted": 197,
+          "resolved": 173,
+          "broken": 24
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 29,
+        "consumedBodies": 80
+      },
+      "f1-guarded-bomb|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.39,
+        "averageHpLossPct": 41.58265508374643,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 1.44,
+        "averageEnemyActions": 9.59,
+        "averageKOs": 0.24,
+        "firstKills": {
+          "Crypt Demon Spawn": 37,
+          "Crypt Animated Armor": 63
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 242,
+          "telegraphed": 0,
+          "attempted": 199,
+          "resolved": 182,
+          "broken": 17
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 34,
+        "consumedBodies": 87
+      },
+      "f1-guarded-bomb|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 98,
+        "wipes": 2,
+        "stalled": 0,
+        "averageRounds": 4.33,
+        "averageHpLossPct": 55.83573662056273,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 9.46,
+        "averageKOs": 0.72,
+        "firstKills": {
+          "Crypt Demon Spawn": 47,
+          "Crypt Animated Armor": 53
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 265,
+          "telegraphed": 0,
+          "attempted": 190,
+          "resolved": 172,
+          "broken": 18
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 36,
+        "consumedBodies": 76
+      },
+      "f1-guarded-bomb|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 5.15,
+        "averageHpLossPct": 34.767625174074226,
+        "averageSpUsed": 5.25,
+        "averageConsumablesUsed": 1.95,
+        "averageEnemyActions": 11.35,
+        "averageKOs": 0.55,
+        "firstKills": {
+          "Crypt Demon Spawn": 42,
+          "Crypt Animated Armor": 58
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 286,
+          "telegraphed": 0,
+          "attempted": 211,
+          "resolved": 183,
+          "broken": 28
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 49,
+        "consumedBodies": 87
+      },
+      "f1-guarded-bomb|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 5.42,
+        "averageHpLossPct": 34.20265504209376,
+        "averageSpUsed": 6.06,
+        "averageConsumablesUsed": 2.14,
+        "averageEnemyActions": 11.61,
+        "averageKOs": 0.55,
+        "firstKills": {
+          "Crypt Animated Armor": 49,
+          "Crypt Demon Spawn": 51
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 283,
+          "telegraphed": 0,
+          "attempted": 221,
+          "resolved": 195,
+          "broken": 26
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 61,
+        "consumedBodies": 97
+      },
+      "f1-guarded-bomb|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.65,
+        "averageHpLossPct": 38.11121561301599,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 8.39,
+        "averageKOs": 0.21,
+        "firstKills": {
+          "Crypt Animated Armor": 76,
+          "Crypt Demon Spawn": 24
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 239,
+          "telegraphed": 0,
+          "attempted": 186,
+          "resolved": 173,
+          "broken": 13
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 13,
+        "consumedBodies": 78
+      },
+      "f1-guarded-bomb|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 4.07,
+        "averageHpLossPct": 24.20251677047837,
+        "averageSpUsed": 3.42,
+        "averageConsumablesUsed": 1.14,
+        "averageEnemyActions": 9.31,
+        "averageKOs": 0.1,
+        "firstKills": {
+          "Crypt Animated Armor": 77,
+          "Crypt Demon Spawn": 23
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 244,
+          "telegraphed": 0,
+          "attempted": 203,
+          "resolved": 173,
+          "broken": 30
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 24,
+        "consumedBodies": 81
+      },
+      "f1-guarded-bomb|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.96,
+        "averageHpLossPct": 27.778993819145057,
+        "averageSpUsed": 2.94,
+        "averageConsumablesUsed": 0.96,
+        "averageEnemyActions": 9.26,
+        "averageKOs": 0.18,
+        "firstKills": {
+          "Crypt Animated Armor": 78,
+          "Crypt Demon Spawn": 22
+        },
+        "chemistry": {
+          "present": 200,
+          "eligible": 237,
+          "telegraphed": 0,
+          "attempted": 190,
+          "resolved": 174,
+          "broken": 16
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 17,
+        "consumedBodies": 84
+      },
+      "f1-wraith-pincer|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.03,
+        "averageHpLossPct": 6.929781700642521,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.01,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-wraith-pincer|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.1,
+        "averageHpLossPct": 6.6305103274109864,
+        "averageSpUsed": 0.39,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 1.11,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-wraith-pincer|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.07,
+        "averageHpLossPct": 6.323064733449762,
+        "averageSpUsed": 0.18,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 1.04,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-wraith-pincer|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.02,
+        "averageHpLossPct": 5.548518498112559,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-wraith-pincer|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.04,
+        "averageHpLossPct": 5.9096352285413225,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.04,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-wraith-pincer|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.03,
+        "averageHpLossPct": 5.914313193885774,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.03,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-wraith-pincer|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.03,
+        "averageHpLossPct": 7.27410293005089,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.02,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-wraith-pincer|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.12,
+        "averageHpLossPct": 6.859715725130725,
+        "averageSpUsed": 0.45,
+        "averageConsumablesUsed": 0.09,
+        "averageEnemyActions": 1.16,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-wraith-pincer|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.1,
+        "averageHpLossPct": 6.614575406938443,
+        "averageSpUsed": 0.51,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.11,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-wraith-pincer|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.02,
+        "averageHpLossPct": 5.52507357695465,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.01,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-wraith-pincer|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.03,
+        "averageHpLossPct": 5.186549711034775,
+        "averageSpUsed": 0.15,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.03,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-wraith-pincer|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.03,
+        "averageHpLossPct": 5.377043536801027,
+        "averageSpUsed": 0.12,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1.03,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Blood Monster": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 5.794411236001224,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.11,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 4.514393203096863,
+        "averageSpUsed": 0.27,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.2,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.01,
+        "averageHpLossPct": 5.136963203656624,
+        "averageSpUsed": 0.09,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 3.22,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 4.982660786573676,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.16,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 4.767307825455734,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.19,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.02,
+        "averageHpLossPct": 4.718506121738059,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 3.18,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 5.63707384233893,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.19,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.04,
+        "averageHpLossPct": 5.538445769529119,
+        "averageSpUsed": 0.3,
+        "averageConsumablesUsed": 0.12,
+        "averageEnemyActions": 3.31,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.01,
+        "averageHpLossPct": 4.8327790801107025,
+        "averageSpUsed": 0.33,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 3.26,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 4.526521590500516,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.07,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 4.255541106696367,
+        "averageSpUsed": 0.06,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.07,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-gaze-slime|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 3.995343219619842,
+        "averageSpUsed": 0.15,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3.2,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|balanced|naive": {
+        "fights": 100,
+        "victories": 58,
+        "wipes": 42,
+        "stalled": 0,
+        "averageRounds": 6.48,
+        "averageHpLossPct": 78.58200420938894,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 11.75,
+        "averageKOs": 2.36,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|balanced|default": {
+        "fights": 100,
+        "victories": 78,
+        "wipes": 22,
+        "stalled": 0,
+        "averageRounds": 8.69,
+        "averageHpLossPct": 44.09975045206618,
+        "averageSpUsed": 14.31,
+        "averageConsumablesUsed": 2.56,
+        "averageEnemyActions": 16.39,
+        "averageKOs": 1.33,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 83,
+        "wipes": 17,
+        "stalled": 0,
+        "averageRounds": 7.96,
+        "averageHpLossPct": 40.25080450354405,
+        "averageSpUsed": 12.78,
+        "averageConsumablesUsed": 2.39,
+        "averageEnemyActions": 15.1,
+        "averageKOs": 1.14,
+        "firstKills": {
+          "Crypt Lesser Construct": 98,
+          "none": 2
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 82,
+        "wipes": 18,
+        "stalled": 0,
+        "averageRounds": 6.04,
+        "averageHpLossPct": 60.48350634108089,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 10.27,
+        "averageKOs": 1.35,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|physical-heavy|default": {
+        "fights": 100,
+        "victories": 78,
+        "wipes": 22,
+        "stalled": 0,
+        "averageRounds": 7.11,
+        "averageHpLossPct": 59.64402478974538,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 2.66,
+        "averageEnemyActions": 12.76,
+        "averageKOs": 1.43,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 82,
+        "wipes": 18,
+        "stalled": 0,
+        "averageRounds": 7.04,
+        "averageHpLossPct": 58.38243883135793,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 2.43,
+        "averageEnemyActions": 12.66,
+        "averageKOs": 1.34,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 45,
+        "wipes": 55,
+        "stalled": 0,
+        "averageRounds": 6.21,
+        "averageHpLossPct": 82.3434723073006,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 11.24,
+        "averageKOs": 2.79,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|magic-heavy|default": {
+        "fights": 100,
+        "victories": 73,
+        "wipes": 27,
+        "stalled": 0,
+        "averageRounds": 8.08,
+        "averageHpLossPct": 45.59147056675211,
+        "averageSpUsed": 13.14,
+        "averageConsumablesUsed": 2.61,
+        "averageEnemyActions": 15.12,
+        "averageKOs": 1.47,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 67,
+        "wipes": 33,
+        "stalled": 0,
+        "averageRounds": 8.69,
+        "averageHpLossPct": 57.54590275690644,
+        "averageSpUsed": 12.93,
+        "averageConsumablesUsed": 2.64,
+        "averageEnemyActions": 16.7,
+        "averageKOs": 1.93,
+        "firstKills": {
+          "Crypt Lesser Construct": 98,
+          "none": 2
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|defensive|naive": {
+        "fights": 100,
+        "victories": 87,
+        "wipes": 13,
+        "stalled": 0,
+        "averageRounds": 6.35,
+        "averageHpLossPct": 57.41145859357124,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 10.24,
+        "averageKOs": 1.37,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|defensive|default": {
+        "fights": 100,
+        "victories": 97,
+        "wipes": 3,
+        "stalled": 0,
+        "averageRounds": 6.75,
+        "averageHpLossPct": 23.183313444692864,
+        "averageSpUsed": 10.29,
+        "averageConsumablesUsed": 1.95,
+        "averageEnemyActions": 11.83,
+        "averageKOs": 0.37,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-flame-forge|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 6.63,
+        "averageHpLossPct": 19.25667680258514,
+        "averageSpUsed": 10.62,
+        "averageConsumablesUsed": 1.86,
+        "averageEnemyActions": 11.17,
+        "averageKOs": 0.19,
+        "firstKills": {
+          "Crypt Lesser Construct": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.87,
+        "averageHpLossPct": 1.5753065073730366,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.87,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.89,
+        "averageHpLossPct": 1.2998656042237848,
+        "averageSpUsed": 0.09,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.89,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.84,
+        "averageHpLossPct": 0.9868145668540095,
+        "averageSpUsed": 0.12,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 0.84,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.8,
+        "averageHpLossPct": 1.162207481670193,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.8,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.76,
+        "averageHpLossPct": 1.14072776190607,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.76,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.79,
+        "averageHpLossPct": 1.1250548030899146,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.78,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.89,
+        "averageHpLossPct": 1.5166552508717317,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.89,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.89,
+        "averageHpLossPct": 1.0630719952780445,
+        "averageSpUsed": 0.12,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 0.89,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.89,
+        "averageHpLossPct": 1.6169614724895458,
+        "averageSpUsed": 0.09,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 0.89,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.68,
+        "averageHpLossPct": 1.0180306255783278,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.68,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.74,
+        "averageHpLossPct": 1.2074275284540208,
+        "averageSpUsed": 0.06,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.73,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-solo-guardian|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1.78,
+        "averageHpLossPct": 0.8754945961253453,
+        "averageSpUsed": 0.03,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.77,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Stone Guardian": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|balanced|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 3.5176390909584616,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.97,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 3.5866945011363494,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.98,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|balanced|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2.02,
+        "averageHpLossPct": 3.4586379582376816,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 0.98,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|physical-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 2.9248273156952433,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.98,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 2.9660933130639284,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.99,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|physical-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 2.898152386879183,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.98,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|magic-heavy|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 3.8162282835670918,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 3.8259861250697504,
+        "averageSpUsed": 0.06,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|magic-heavy|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 3.805235965088807,
+        "averageSpUsed": 0.03,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.99,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|defensive|naive": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 2.7807882596809845,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 1,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 2.795935544699455,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.99,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-ghostfire-duet|defensive|chemistry-aware": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 2,
+        "averageHpLossPct": 2.673942584472739,
+        "averageSpUsed": 0.03,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0.99,
+        "averageKOs": 0,
+        "firstKills": {
+          "Crypt Ghostfire": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      }
+    }
+  },
+  "relief": {
+    "fightCount": 2400,
+    "aggregates": {
+      "f1-slime-cluster|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.02,
+        "averageHpLossPct": 10.331661601759839,
+        "averageSpUsed": 0.45,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 2.99,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-slime-cluster|balanced|focused": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 11.118533035965633,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.97,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-slime-cluster|balanced|aoe": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1,
+        "averageHpLossPct": 0,
+        "averageSpUsed": 10,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-slime-cluster|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 9.698227103662992,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 3,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-slime-cluster|physical-heavy|focused": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 9.453611116495189,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.98,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-slime-cluster|physical-heavy|aoe": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.01,
+        "averageHpLossPct": 9.826110981023398,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 3.01,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-slime-cluster|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.03,
+        "averageHpLossPct": 10.797238414910629,
+        "averageSpUsed": 0.48,
+        "averageConsumablesUsed": 0.09,
+        "averageEnemyActions": 2.98,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-slime-cluster|magic-heavy|focused": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.01,
+        "averageHpLossPct": 12.191814875245564,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 2.96,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-slime-cluster|magic-heavy|aoe": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1,
+        "averageHpLossPct": 0,
+        "averageSpUsed": 10,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-slime-cluster|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 8.23062611753161,
+        "averageSpUsed": 0.27,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.95,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-slime-cluster|defensive|focused": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.01,
+        "averageHpLossPct": 8.87281949755966,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 2.99,
+        "averageKOs": 0.01,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-slime-cluster|defensive|aoe": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 8.432193362398182,
+        "averageSpUsed": 0.21,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.98,
+        "averageKOs": 0,
+        "firstKills": {
+          "Slime": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|balanced|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.02,
+        "averageHpLossPct": 9.214886889862766,
+        "averageSpUsed": 0.36,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 2.92,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|balanced|focused": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 4.538090758229027,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.97,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton Archer": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|balanced|aoe": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1,
+        "averageHpLossPct": 0,
+        "averageSpUsed": 10,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton": 38,
+          "Skeleton Archer": 62
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|physical-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 8.871697776133972,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.98,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|physical-heavy|focused": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 3.8506247641325495,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.96,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton Archer": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|physical-heavy|aoe": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 4.169337824811727,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.98,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton Archer": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|magic-heavy|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.01,
+        "averageHpLossPct": 9.906319295704533,
+        "averageSpUsed": 0.48,
+        "averageConsumablesUsed": 0.03,
+        "averageEnemyActions": 2.98,
+        "averageKOs": 0.02,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|magic-heavy|focused": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3.02,
+        "averageHpLossPct": 5.219266300701772,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0.06,
+        "averageEnemyActions": 2.98,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton Archer": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|magic-heavy|aoe": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 1,
+        "averageHpLossPct": 0,
+        "averageSpUsed": 10,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 0,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton Archer": 62,
+          "Skeleton": 38
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|defensive|default": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 7.801634540622025,
+        "averageSpUsed": 0.15,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.99,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|defensive|focused": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 3.844592873697636,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.98,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton Archer": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      },
+      "f1-bone-archer-line|defensive|aoe": {
+        "fights": 100,
+        "victories": 100,
+        "wipes": 0,
+        "stalled": 0,
+        "averageRounds": 3,
+        "averageHpLossPct": 3.7984709931541976,
+        "averageSpUsed": 0,
+        "averageConsumablesUsed": 0,
+        "averageEnemyActions": 2.96,
+        "averageKOs": 0,
+        "firstKills": {
+          "Skeleton Archer": 100
+        },
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "guardsIntercepted": 0,
+        "aoeBypasses": 0,
+        "summonsCreated": 0,
+        "consumedBodies": 0
+      }
+    }
+  },
+  "reliefDecisions": {
+    "f1-slime-cluster": {
+      "status": "removed",
+      "reason": "No Split event, split timing, or kill-order decision appeared in the 100-seed policy traces; the default route was simply three weak Slimes."
+    },
+    "f1-bone-archer-line": {
+      "status": "removed",
+      "reason": "No Archer Volley pressure resolved before Archer death in the 100-seed traces; Skeleton contribution did not create a durable Archer-versus-line decision."
+    }
+  },
+  "expeditions": {
+    "expeditionCount": 1200,
+    "aggregates": {
+      "normal|chemistry-aware": {
+        "expeditions": 100,
+        "completedTen": 63,
+        "wiped": 37,
+        "averageFightsCompleted": 9.13,
+        "averageFinalHpPct": 41.25632204360766,
+        "averageFinalSpPct": 61.84964255893614,
+        "averageRoundsPerFight": 3.0416210295728368,
+        "averageEnemyActionsPerFight": 3.1511500547645124,
+        "averageKOsPerExpedition": 3.79,
+        "averageConsumablesUsed": 2.58,
+        "returnToTownPressure": 61,
+        "gapMean": 28.45345016429354,
+        "gapMedian": 28,
+        "gapP10": 16,
+        "gapP90": 40,
+        "gapMax": 46,
+        "chemistry": {
+          "present": 491,
+          "eligible": 392,
+          "telegraphed": 114,
+          "attempted": 263,
+          "resolved": 84,
+          "broken": 179
+        },
+        "chemistryUses": {
+          "crypt-animated-armor-0:crypt-living-shield": 85,
+          "crypt-hellhound-0:crypt-pack-hunt": 30,
+          "crypt-rune-knight-1:crypt-rune-overload": 35,
+          "crypt-hill-ogre-0:ogre-toss": 25,
+          "crypt-minotaur-0:crypt-slime-cannon": 48,
+          "crypt-demon-mage-2:crypt-spawn-bomb": 39,
+          "crypt-warlock-2:crypt-bone-harvest": 1
+        },
+        "summonsCreated": 21,
+        "consumedBodies": 47
+      },
+      "normal|default": {
+        "expeditions": 100,
+        "completedTen": 65,
+        "wiped": 35,
+        "averageFightsCompleted": 9.16,
+        "averageFinalHpPct": 40.41560314820505,
+        "averageFinalSpPct": 59.3079502816881,
+        "averageRoundsPerFight": 3.052401746724891,
+        "averageEnemyActionsPerFight": 3.435589519650655,
+        "averageKOsPerExpedition": 3.95,
+        "averageConsumablesUsed": 2.52,
+        "returnToTownPressure": 64,
+        "gapMean": 28.517467248908297,
+        "gapMedian": 28,
+        "gapP10": 16,
+        "gapP90": 40,
+        "gapMax": 46,
+        "chemistry": {
+          "present": 491,
+          "eligible": 477,
+          "telegraphed": 118,
+          "attempted": 312,
+          "resolved": 134,
+          "broken": 178
+        },
+        "chemistryUses": {
+          "crypt-animated-armor-0:crypt-living-shield": 93,
+          "crypt-demon-mage-2:crypt-spawn-bomb": 77,
+          "crypt-rune-knight-1:crypt-rune-overload": 42,
+          "crypt-hellhound-0:crypt-pack-hunt": 30,
+          "crypt-hill-ogre-0:ogre-toss": 24,
+          "crypt-minotaur-0:crypt-slime-cannon": 46
+        },
+        "summonsCreated": 37,
+        "consumedBodies": 44
+      },
+      "normal|no-chemistry-control": {
+        "expeditions": 100,
+        "completedTen": 64,
+        "wiped": 36,
+        "averageFightsCompleted": 9.37,
+        "averageFinalHpPct": 39.5510843254307,
+        "averageFinalSpPct": 57.47449761373619,
+        "averageRoundsPerFight": 3.08110992529349,
+        "averageEnemyActionsPerFight": 3.3415154749199574,
+        "averageKOsPerExpedition": 4.24,
+        "averageConsumablesUsed": 2.48,
+        "returnToTownPressure": 65,
+        "gapMean": 28.379935965848453,
+        "gapMedian": 28,
+        "gapP10": 16,
+        "gapP90": 40,
+        "gapMax": 46,
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "chemistryUses": {},
+        "summonsCreated": 61,
+        "consumedBodies": 0
+      },
+      "quiet|chemistry-aware": {
+        "expeditions": 100,
+        "completedTen": 68,
+        "wiped": 32,
+        "averageFightsCompleted": 9.23,
+        "averageFinalHpPct": 44.439243034758334,
+        "averageFinalSpPct": 60.19936617940989,
+        "averageRoundsPerFight": 2.9956663055254604,
+        "averageEnemyActionsPerFight": 3.059588299024919,
+        "averageKOsPerExpedition": 3.63,
+        "averageConsumablesUsed": 2.49,
+        "returnToTownPressure": 54,
+        "gapMean": 29.29902491874323,
+        "gapMedian": 31,
+        "gapP10": 16,
+        "gapP90": 40,
+        "gapMax": 47,
+        "chemistry": {
+          "present": 504,
+          "eligible": 391,
+          "telegraphed": 123,
+          "attempted": 268,
+          "resolved": 79,
+          "broken": 189
+        },
+        "chemistryUses": {
+          "crypt-animated-armor-0:crypt-living-shield": 82,
+          "crypt-demon-mage-2:crypt-spawn-bomb": 36,
+          "crypt-minotaur-0:crypt-slime-cannon": 40,
+          "crypt-hellhound-0:crypt-pack-hunt": 48,
+          "crypt-hill-ogre-0:ogre-toss": 27,
+          "crypt-rune-knight-1:crypt-rune-overload": 35
+        },
+        "summonsCreated": 13,
+        "consumedBodies": 47
+      },
+      "quiet|default": {
+        "expeditions": 100,
+        "completedTen": 62,
+        "wiped": 38,
+        "averageFightsCompleted": 8.85,
+        "averageFinalHpPct": 38.46953206527189,
+        "averageFinalSpPct": 60.97395785908419,
+        "averageRoundsPerFight": 3.0338983050847457,
+        "averageEnemyActionsPerFight": 3.374011299435028,
+        "averageKOsPerExpedition": 4.08,
+        "averageConsumablesUsed": 2.64,
+        "returnToTownPressure": 62,
+        "gapMean": 29.273446327683615,
+        "gapMedian": 31,
+        "gapP10": 16,
+        "gapP90": 40,
+        "gapMax": 47,
+        "chemistry": {
+          "present": 502,
+          "eligible": 482,
+          "telegraphed": 124,
+          "attempted": 314,
+          "resolved": 136,
+          "broken": 178
+        },
+        "chemistryUses": {
+          "crypt-animated-armor-0:crypt-living-shield": 86,
+          "crypt-demon-mage-2:crypt-spawn-bomb": 79,
+          "crypt-minotaur-0:crypt-slime-cannon": 41,
+          "crypt-hellhound-0:crypt-pack-hunt": 42,
+          "crypt-rune-knight-1:crypt-rune-overload": 41,
+          "crypt-hill-ogre-0:ogre-toss": 25
+        },
+        "summonsCreated": 37,
+        "consumedBodies": 50
+      },
+      "quiet|no-chemistry-control": {
+        "expeditions": 100,
+        "completedTen": 56,
+        "wiped": 44,
+        "averageFightsCompleted": 8.57,
+        "averageFinalHpPct": 36.547485028259786,
+        "averageFinalSpPct": 59.17500910964753,
+        "averageRoundsPerFight": 3.1540256709451575,
+        "averageEnemyActionsPerFight": 3.5390898483080515,
+        "averageKOsPerExpedition": 4.08,
+        "averageConsumablesUsed": 2.67,
+        "returnToTownPressure": 65,
+        "gapMean": 29.229871645274212,
+        "gapMedian": 31,
+        "gapP10": 16,
+        "gapP90": 40,
+        "gapMax": 47,
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "chemistryUses": {},
+        "summonsCreated": 64,
+        "consumedBodies": 0
+      },
+      "dead|chemistry-aware": {
+        "expeditions": 100,
+        "completedTen": 75,
+        "wiped": 25,
+        "averageFightsCompleted": 9.23,
+        "averageFinalHpPct": 51.65141882761327,
+        "averageFinalSpPct": 62.552125761107256,
+        "averageRoundsPerFight": 2.9198266522210186,
+        "averageEnemyActionsPerFight": 2.8981581798483207,
+        "averageKOsPerExpedition": 2.45,
+        "averageConsumablesUsed": 2.16,
+        "returnToTownPressure": 44,
+        "gapMean": 39.03900325027086,
+        "gapMedian": 39,
+        "gapP10": 36,
+        "gapP90": 42,
+        "gapMax": 48,
+        "chemistry": {
+          "present": 472,
+          "eligible": 364,
+          "telegraphed": 113,
+          "attempted": 240,
+          "resolved": 64,
+          "broken": 176
+        },
+        "chemistryUses": {
+          "crypt-minotaur-0:crypt-slime-cannon": 44,
+          "crypt-rune-knight-1:crypt-rune-overload": 27,
+          "crypt-animated-armor-0:crypt-living-shield": 76,
+          "crypt-hellhound-0:crypt-pack-hunt": 42,
+          "crypt-demon-mage-2:crypt-spawn-bomb": 30,
+          "crypt-hill-ogre-0:ogre-toss": 21
+        },
+        "summonsCreated": 13,
+        "consumedBodies": 39
+      },
+      "dead|default": {
+        "expeditions": 100,
+        "completedTen": 69,
+        "wiped": 31,
+        "averageFightsCompleted": 9.05,
+        "averageFinalHpPct": 45.43182667598553,
+        "averageFinalSpPct": 60.28864924546646,
+        "averageRoundsPerFight": 2.9823204419889504,
+        "averageEnemyActionsPerFight": 3.2662983425414365,
+        "averageKOsPerExpedition": 3.44,
+        "averageConsumablesUsed": 2.4,
+        "returnToTownPressure": 58,
+        "gapMean": 39.05082872928177,
+        "gapMedian": 39,
+        "gapP10": 36,
+        "gapP90": 42,
+        "gapMax": 48,
+        "chemistry": {
+          "present": 472,
+          "eligible": 460,
+          "telegraphed": 121,
+          "attempted": 285,
+          "resolved": 118,
+          "broken": 167
+        },
+        "chemistryUses": {
+          "crypt-minotaur-0:crypt-slime-cannon": 47,
+          "crypt-demon-mage-2:crypt-spawn-bomb": 64,
+          "crypt-rune-knight-1:crypt-rune-overload": 33,
+          "crypt-animated-armor-0:crypt-living-shield": 80,
+          "crypt-hellhound-0:crypt-pack-hunt": 41,
+          "crypt-hill-ogre-0:ogre-toss": 20
+        },
+        "summonsCreated": 36,
+        "consumedBodies": 41
+      },
+      "dead|no-chemistry-control": {
+        "expeditions": 100,
+        "completedTen": 61,
+        "wiped": 39,
+        "averageFightsCompleted": 8.9,
+        "averageFinalHpPct": 37.898013307131855,
+        "averageFinalSpPct": 59.506866791379956,
+        "averageRoundsPerFight": 3.09438202247191,
+        "averageEnemyActionsPerFight": 3.397752808988764,
+        "averageKOsPerExpedition": 3.76,
+        "averageConsumablesUsed": 2.64,
+        "returnToTownPressure": 61,
+        "gapMean": 39.030337078651684,
+        "gapMedian": 39,
+        "gapP10": 36,
+        "gapP90": 42,
+        "gapMax": 46,
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "chemistryUses": {},
+        "summonsCreated": 61,
+        "consumedBodies": 0
+      },
+      "hot|chemistry-aware": {
+        "expeditions": 100,
+        "completedTen": 69,
+        "wiped": 31,
+        "averageFightsCompleted": 9.24,
+        "averageFinalHpPct": 44.796024187846825,
+        "averageFinalSpPct": 61.184528638415316,
+        "averageRoundsPerFight": 3.0108225108225106,
+        "averageEnemyActionsPerFight": 3.0876623376623376,
+        "averageKOsPerExpedition": 4.12,
+        "averageConsumablesUsed": 2.64,
+        "returnToTownPressure": 60,
+        "gapMean": 23.939393939393938,
+        "gapMedian": 22,
+        "gapP10": 15,
+        "gapP90": 37,
+        "gapMax": 47,
+        "chemistry": {
+          "present": 467,
+          "eligible": 347,
+          "telegraphed": 93,
+          "attempted": 236,
+          "resolved": 77,
+          "broken": 159
+        },
+        "chemistryUses": {
+          "crypt-animated-armor-0:crypt-living-shield": 74,
+          "crypt-hill-ogre-0:ogre-toss": 34,
+          "crypt-hellhound-0:crypt-pack-hunt": 34,
+          "crypt-rune-knight-1:crypt-rune-overload": 16,
+          "crypt-demon-mage-2:crypt-spawn-bomb": 35,
+          "crypt-minotaur-0:crypt-slime-cannon": 43
+        },
+        "summonsCreated": 17,
+        "consumedBodies": 50
+      },
+      "hot|default": {
+        "expeditions": 100,
+        "completedTen": 66,
+        "wiped": 34,
+        "averageFightsCompleted": 8.99,
+        "averageFinalHpPct": 40.935332415973654,
+        "averageFinalSpPct": 58.72570734006033,
+        "averageRoundsPerFight": 3.032258064516129,
+        "averageEnemyActionsPerFight": 3.329254727474972,
+        "averageKOsPerExpedition": 4.03,
+        "averageConsumablesUsed": 2.46,
+        "returnToTownPressure": 62,
+        "gapMean": 24.013348164627363,
+        "gapMedian": 22,
+        "gapP10": 15,
+        "gapP90": 37,
+        "gapMax": 47,
+        "chemistry": {
+          "present": 445,
+          "eligible": 421,
+          "telegraphed": 103,
+          "attempted": 271,
+          "resolved": 120,
+          "broken": 151
+        },
+        "chemistryUses": {
+          "crypt-animated-armor-0:crypt-living-shield": 76,
+          "crypt-hill-ogre-0:ogre-toss": 33,
+          "crypt-hellhound-0:crypt-pack-hunt": 35,
+          "crypt-rune-knight-1:crypt-rune-overload": 31,
+          "crypt-demon-mage-2:crypt-spawn-bomb": 59,
+          "crypt-minotaur-0:crypt-slime-cannon": 37
+        },
+        "summonsCreated": 26,
+        "consumedBodies": 46
+      },
+      "hot|no-chemistry-control": {
+        "expeditions": 100,
+        "completedTen": 58,
+        "wiped": 42,
+        "averageFightsCompleted": 8.7,
+        "averageFinalHpPct": 36.447722892451765,
+        "averageFinalSpPct": 58.562300648461715,
+        "averageRoundsPerFight": 3.106896551724138,
+        "averageEnemyActionsPerFight": 3.452873563218391,
+        "averageKOsPerExpedition": 4.25,
+        "averageConsumablesUsed": 2.55,
+        "returnToTownPressure": 65,
+        "gapMean": 24.02528735632184,
+        "gapMedian": 22,
+        "gapP10": 15,
+        "gapP90": 37,
+        "gapMax": 47,
+        "chemistry": {
+          "present": 0,
+          "eligible": 0,
+          "telegraphed": 0,
+          "attempted": 0,
+          "resolved": 0,
+          "broken": 0
+        },
+        "chemistryUses": {},
+        "summonsCreated": 45,
+        "consumedBodies": 0
+      }
+    }
+  }
+}

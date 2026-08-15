@@ -117,6 +117,16 @@ export function breakChemistry(
   targetId?: string | null
 ): void {
   if (!ability.chemistryId) return;
+  // A round-based queue can still contain a stale action after an earlier
+  // player hit closed the same wind-up in deathCheck. Do not emit a second
+  // break or increment telemetry twice when that stale entry is visited.
+  const windUp = s.windUps[actor.instanceId];
+  const reservation = chemistryReservationFor(s, actor.instanceId);
+  if (!windUp && !reservation) return;
+  if (
+    (windUp && "chemistryId" in windUp && windUp.chemistryId !== ability.chemistryId) ||
+    (reservation && reservation.chemistryId !== ability.chemistryId)
+  ) return;
   markChemistryMetric(s, "broken", ability.chemistryId);
   chemistryEvent(s, emit, `${actor.name}'s ${ability.name} breaks!`, {
     chemistryId: ability.chemistryId,
