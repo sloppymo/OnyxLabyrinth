@@ -294,8 +294,9 @@ describe("floor definitions", () => {
       for (let x = 0; x < f1.width; x++) themes.add(themeAt(f1, x, y));
     }
       // Custom (non-built-in) zone themes: Hot Boi's tavern, Isobel's shop,
-      // Namanda's church, and the dark descent threshold at the Kept Gate.
-      expect([...themes].sort()).toEqual(["descent", "f1", "f2", "f3", "f4", "f5", "hotboi", "isobel", "namanda"]);
+      // Namanda's church, and the Kept Gate approach/threshold (gatehouse
+      // antechamber + the darker descent threshold row).
+      expect([...themes].sort()).toEqual(["descent", "f1", "f2", "f3", "f4", "f5", "gatehouse", "hotboi", "isobel", "namanda"]);
   });
 
   it("floor 1 keeps campaign encounter and lore contracts", () => {

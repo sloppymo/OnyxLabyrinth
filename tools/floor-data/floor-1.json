@@ -109,6 +109,14 @@
       "x2": 13,
       "y2": 31,
       "theme": "descent"
+    },
+    {
+      "id": "kept-gate-approach",
+      "x1": 9,
+      "y1": 32,
+      "x2": 13,
+      "y2": 35,
+      "theme": "gatehouse"
     }
   ],
   "heightZones": [

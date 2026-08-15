@@ -109,6 +109,14 @@
       "y1": 31,
       "x2": 13,
       "y2": 31
+    },
+    {
+      "id": "kept-gate-approach",
+      "theme": "gatehouse",
+      "x1": 9,
+      "y1": 32,
+      "x2": 13,
+      "y2": 35
     }
   ],
   "grid": [
