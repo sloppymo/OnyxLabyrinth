@@ -85,6 +85,7 @@ import {
   type MapSpriteImage,
 } from "./map-sprite-cache";
 import type { MapSpriteDef } from "../data/map-sprites";
+import type { CeilingSpriteDef } from "../data/ceiling-sprites";
 import {
   getWallFeatureDef,
   getWallFeatureImage,
@@ -1117,7 +1118,7 @@ function drawCeilingSprites(
   const sprites = state.floor.ceilingSprites;
   if (!sprites?.length) return;
 
-  type Placed = { spriteId: string; place: BillboardPlacement };
+  type Placed = { spriteId: string; def: CeilingSpriteDef; place: BillboardPlacement };
   const placed: Placed[] = [];
   for (const s of sprites) {
     // Cheap reject before the projection maths — keeps hundreds of
@@ -1129,9 +1130,27 @@ function drawCeilingSprites(
     const place = placeCeilingBillboard(
       ctx, cam, hits, stripWidth, s.x, s.y, decorSpriteSize(def.baseSize * scale), inDarkness
     );
-    if (place) placed.push({ spriteId: s.spriteId, place });
+    if (place) placed.push({ spriteId: s.spriteId, def, place });
   }
   placed.sort((a, b) => b.place.depth - a.place.depth);
+
+  // Same background-pass warm-pool treatment as `drawMapSprites`' light
+  // glow, mirrored for a top-anchored hang instead of a floor contact point.
+  for (const p of placed) {
+    if (!p.def.light) continue;
+    const { screenX, drawY, size, alpha } = p.place;
+    const light = p.def.light;
+    const radius = size * light.radiusScale;
+    const originY = drawY + (light.yFrac ?? 0) * size;
+    const gradient = ctx.createRadialGradient(screenX, originY, 0, screenX, originY, radius);
+    gradient.addColorStop(0, `rgba(${light.color}, ${light.intensity * alpha})`);
+    gradient.addColorStop(0.45, `rgba(${light.color}, ${light.intensity * alpha * 0.34})`);
+    gradient.addColorStop(1, `rgba(${light.color}, 0)`);
+    ctx.save();
+    ctx.fillStyle = gradient;
+    ctx.fillRect(screenX - radius, originY - radius, radius * 2, radius * 2);
+    ctx.restore();
+  }
 
   for (const p of placed) {
     const img = getCeilingSpriteImage(p.spriteId);
@@ -1191,13 +1210,17 @@ function drawMapSprites(
       const { screenX, drawY, size, alpha } = p.place;
       const light = p.def.light;
       const radius = size * light.radiusScale;
-      const gradient = ctx.createRadialGradient(screenX, drawY + size, 0, screenX, drawY + size, radius);
+      // Lifted toward the actual flame/emissive point when the prop carries
+      // one above its floor contact (see `MapSpriteDef.light.yFrac`); a
+      // ground-level source (fire pit) keeps the old floor-contact origin.
+      const originY = drawY + size - (light.yFrac ?? 0) * size;
+      const gradient = ctx.createRadialGradient(screenX, originY, 0, screenX, originY, radius);
       gradient.addColorStop(0, `rgba(${light.color}, ${light.intensity * alpha})`);
       gradient.addColorStop(0.45, `rgba(${light.color}, ${light.intensity * alpha * 0.34})`);
       gradient.addColorStop(1, `rgba(${light.color}, 0)`);
       ctx.save();
       ctx.fillStyle = gradient;
-      ctx.fillRect(screenX - radius, drawY + size - radius, radius * 2, radius * 2);
+      ctx.fillRect(screenX - radius, originY - radius, radius * 2, radius * 2);
       ctx.restore();
     }
   }
