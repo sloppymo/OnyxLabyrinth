@@ -3165,11 +3165,12 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     jumpTo,
     dumpSave,
     loadSave,
-    startCombat: async () => {
+    /** Start a seeded/debug fixture when supplied; otherwise roll the live floor table. */
+    startCombat: async (fixture?: CombatState) => {
       if (combatController) {
         throw new Error("startCombat: combat is already active — use exitDebugCombat first");
       }
-      const combat = buildDebugCombat(state, buildLoadoutMap());
+      const combat = fixture ?? buildDebugCombat(state, buildLoadoutMap());
       setMode(state, "combat");
       await startCombat(combat);
     },
