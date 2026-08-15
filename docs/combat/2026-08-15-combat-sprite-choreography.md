@@ -159,11 +159,12 @@ repeat, and optional Canvas motion guides. It loads the real party/enemy
 strips and the production choreography engine.
 
 Manually inspected preview cases included Fighter normal/contact, critical,
-miss, Thief/light, Skeleton attack, Minotaur/heavy, Slime/ooze, Archer/ranged
-release, Mage cast, Priest heal, Hellbat/flying, Golem/construct, and the same
-contact sequence in Phaser. Production Arena combat was also viewed in Phaser
-and Canvas rollback mode; the browser smoke and freeze checks reported no new
-page errors or frozen render loop.
+miss, Thief/light, Halberdier/heavy, Duelist, Crusader/heavy, Skeleton attack,
+Minotaur/heavy, Slime/ooze, Archer/ranged release, Mage cast, Priest heal,
+Hellhound/beast, Hellbat/flying, Blood Wraith/ghost, and Golem/construct. The
+same contact sequence was inspected in Phaser. Production Arena combat was
+also viewed in Phaser and Canvas rollback mode; the browser smoke and freeze
+checks reported no new page errors or frozen render loop.
 
 ## Asset limitations
 
@@ -211,4 +212,3 @@ runtime error.
   that subjective check.
 - The preview is a developer tool and is not exposed in the production combat
   UI.
-
