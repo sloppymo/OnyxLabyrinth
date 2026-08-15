@@ -2,7 +2,7 @@
 
 Use this list before acting on playtest, balance, combat UX, or perk work. Prefer these over older one-off prompts when they conflict.
 
-**Last refreshed:** 2026-07-26 (prologue; century wipe→town + lore scrub; debug surface PR-1–4; zone-flavor = frequency-only addendum; F1/F2 closed; PR-5 not built; per-floor combat-difficulty probe + F3 L6/L8/L9 matrix; wipe→game-over-screen-skip **fixed**; **boss rename + presentation stack shipped** `7f89fcd`; **wish/ending scene shipped** — the largest remaining narrative gap is now closed)
+**Last refreshed:** 2026-08-15 (friends-and-family candidate, Formation Chemistry, physical combat choreography, governed combat barks, and repository topology audit)
 
 **Health at last refresh:** `npm run build` clean. Run `npm test` for the current test total —
 the previously-flagged `combat-turns.test.ts` order-dependent flake (ice-shards
@@ -12,6 +12,11 @@ leakage within that file, predates the boss-rename work).
 | Doc | Role | Status |
 |-----|------|--------|
 | [`AGENTS.md`](../AGENTS.md) | Hard engine rules, file map, pitfalls | **Authoritative** for code constraints |
+| [`playtests/2026-08-15-friends-family-readiness.md`](playtests/2026-08-15-friends-family-readiness.md) | Exact F&F1 feature matrix, reachability, production-path evidence, deployment gate, and known risks | **Current release-readiness authority** for the candidate branch |
+| [`FRIENDS-AND-FAMILY-CHECKLIST.md`](FRIENDS-AND-FAMILY-CHECKLIST.md) | Short pre-send checklist and tester feedback questions | **Current** for external playtest distribution |
+| [`playtests/2026-08-15-formation-chemistry-final-audit.md`](playtests/2026-08-15-formation-chemistry-final-audit.md) | Canonical 33,040-trace Chemistry audit, pacing, attrition, visual evidence, and remaining balance risks | **Current** for Floor 1 Chemistry; result is PASS WITH TUNING |
+| [`combat/COMBAT-BARK-PRESENTATION-INTEGRATION.md`](combat/COMBAT-BARK-PRESENTATION-INTEGRATION.md) | Governed bark runtime, choreography landmarks, deterministic frequency policy, and migration decision | **Current** for expanded combat barks |
+| [`combat/2026-08-15-combat-sprite-choreography.md`](combat/2026-08-15-combat-sprite-choreography.md) | Shared Canvas/Phaser physical motion vocabulary and timing profiles | **Current** for combat movement/presentation |
 | [`CLAUDE.md`](../CLAUDE.md) | Claude Code orientation pointer; defers to `AGENTS.md` for `src/` rules and `README.md` for commands | Authoritative |
 | [`superpowers/prompts/floor-design-review.md`](superpowers/prompts/floor-design-review.md) | Reusable level-designer prompt: floor-by-floor pacing/gating/climax/theme audit via `scripts/floor-tool.ts dump` | **Current** — added 2026-08-06; not yet run against any floor |
 | [`superpowers/specs/2026-07-25-labyrinth-narrative-design.md`](superpowers/specs/2026-07-25-labyrinth-narrative-design.md) | Canon: gods left / Death left / lamp / the kept / century cycle / **boss names + presentation** / **wish ending** | **Current lore** — supersedes Headmaster/academy framing in `wizardry_v_clone_design_doc.md` and Echo-boss *fiction* (mechanics stay). Has an **Implementation status** table at the top. Every section now describes shipped code, including §6 (wish/ending scene, `ending-ui.ts`, shipped 2026-07-26) |
