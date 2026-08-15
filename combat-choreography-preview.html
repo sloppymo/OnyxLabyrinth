@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:," />
+  <title>OnyxLabyrinth — Combat Choreography Preview</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+  <style>
+    :root { color-scheme: dark; }
+    html, body { margin: 0; min-height: 100%; background: #050505; color: #e8e8f0; }
+    body { display: flex; min-height: 100vh; font-family: monospace; }
+    #stage { flex: 1 1 auto; min-width: 0; display: grid; place-items: center; padding: 18px; box-sizing: border-box; }
+    #app { width: min(768px, 100%); }
+    #controls { flex: 0 0 300px; max-width: 300px; padding: 16px; box-sizing: border-box; background: #14110d; border-left: 1px solid #4a4035; overflow-y: auto; }
+    #controls h1 { margin: 0 0 10px; font-size: 16px; color: #e0a458; }
+    #controls h2 { margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #3a3530; color: #e0a458; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; }
+    .row { display: flex; align-items: center; gap: 7px; margin: 6px 0; }
+    .row label { flex: 0 0 72px; color: #a09080; font-size: 12px; }
+    select, button { width: 100%; padding: 6px 8px; border: 1px solid #4a4035; border-radius: 3px; background: #1a1612; color: #e8e8f0; font: inherit; cursor: pointer; }
+    button { color: #f0c080; }
+    button:hover, select:focus { border-color: #e0a458; }
+    input[type="range"] { flex: 1 1 auto; min-width: 0; }
+    .value { width: 42px; color: #f5f0e6; text-align: right; font-size: 12px; }
+    .hint { color: #6a5f50; font-size: 11px; line-height: 1.4; }
+    #status { min-height: 42px; margin-top: 12px; padding: 8px; border: 1px solid #3a3530; color: #b8aa94; font-size: 11px; line-height: 1.4; }
+    #stage .game-wrap, #stage #game-wrap { max-width: none; }
+    #stage #combat-wrap { display: block !important; width: 100%; aspect-ratio: 768 / 672; }
+    #stage #combat-wrap #combat-canvas, #stage #combat-wrap #combat-phaser-canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+    #stage #combat-panel, #stage #combat-windows, #stage #combat-popup-anchor, #stage #combat-turn-order { display: none !important; }
+    @media (max-width: 820px) {
+      body { display: block; }
+      #controls { max-width: none; border-left: 0; border-top: 1px solid #4a4035; }
+      #stage { min-height: 62vh; }
+    }
+  </style>
+</head>
+<body>
+  <main id="stage"><div id="app"></div></main>
+  <aside id="controls">
+    <h1>Combat Choreography</h1>
+    <div class="hint">Shared production choreography. Select a preset, slow it down, and inspect contact, recoil, return, and paint order. The backend selector uses the same scene model in Canvas and Phaser.</div>
+
+    <h2>Scenario</h2>
+    <div class="row"><label for="preset">Preset</label><select id="preset"></select></div>
+    <div class="row"><label for="backend">Backend</label><select id="backend"><option value="canvas">Canvas</option><option value="phaser">Phaser</option></select></div>
+    <div class="row"><label for="action">Action</label><select id="action"><option value="preset">Preset action</option><option value="normal">Normal hit</option><option value="critical">Critical hit</option><option value="miss">Miss</option><option value="ranged">Ranged release</option><option value="cast">Offensive cast</option><option value="heal">Ally heal</option></select></div>
+
+    <h2>Playback</h2>
+    <div class="row"><label for="speed">Speed</label><select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div>
+    <div class="row"><label for="timeline">Timeline</label><input id="timeline" type="range" min="0" max="2000" value="0" step="1" /><span class="value" id="timeline-value">0ms</span></div>
+    <div class="row"><button id="replay" type="button">Replay</button><button id="repeat" type="button">Repeat: off</button></div>
+    <div class="row"><button id="debug" type="button">Motion guides: off</button></div>
+    <div id="status">Loading production combat assets…</div>
+    <div class="hint" style="margin-top:12px">For a clean screenshot, use Canvas or Phaser, set 0.25×, then capture at the attack contact beat. Motion guides are preview-only.</div>
+  </aside>
+  <script type="module" src="/src/dev/combat-choreography-preview.ts"></script>
+</body>
+</html>

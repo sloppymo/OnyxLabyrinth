@@ -39,6 +39,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
+        combatChoreographyPreview: resolve(__dirname, "combat-choreography-preview.html"),
         vignette: resolve(__dirname, "vfx-vignette.html"),
         dungeonHudPreview: resolve(__dirname, "dungeon-hud-preview.html"),
         floorEditor: resolve(__dirname, "tools/floor-editor.html"),
