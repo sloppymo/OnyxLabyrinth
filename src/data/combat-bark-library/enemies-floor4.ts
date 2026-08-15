@@ -46,7 +46,7 @@ export const NULL_ACOLYTE_BARKS: CombatBarkProfile = {
   pools: {
     combatStart: [{ text: "Quiet, now." }],
     abilityUse: [{ text: "Seen.", abilityId: "blinding-gaze" }],
-    takeHit: [{ text: "Endured." }],
+    takeHit: [{ text: "Unmoved." }],
     death: [{ text: "Silenced." }],
   },
 };
@@ -60,7 +60,7 @@ export const IRON_CHORISTER_BARKS: CombatBarkProfile = {
   pools: {
     combatStart: [{ text: "Blessed charge." }],
     abilityUse: [{ text: "Forward.", abilityId: "charge" }],
-    takeHit: [{ text: "Endured." }],
+    takeHit: [{ text: "Iron holds." }],
     death: [{ text: "Unblessed." }],
   },
 };
@@ -74,10 +74,10 @@ export const CHOIR_MAGUS_BARKS: CombatBarkProfile = {
   pools: {
     combatStart: [{ text: "Begin the rite." }],
     abilityUse: [
-      { text: "Burn.", abilityId: "hellfire" },
+      { text: "Kindled.", abilityId: "hellfire" },
       { text: "Rise.", abilityId: "magma-burst" },
     ],
-    takeHit: [{ text: "Endured." }],
+    takeHit: [{ text: "Patience." }],
     death: [{ text: "Rite, unfinished." }],
   },
 };

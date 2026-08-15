@@ -13,7 +13,7 @@ export const ELITE_ORC_BARKS: CombatBarkProfile = {
       { text: "Move." },
     ],
     abilityUse: [
-      { text: "Burn.", abilityId: "fire-breath" },
+      { text: "Scorch.", abilityId: "fire-breath" },
     ],
     takeHit: [
       { text: "Nothing." },
@@ -306,7 +306,7 @@ export const DEMON_BARKS: CombatBarkProfile = {
   voiceSummary: "blunt lower demon, wants the kill, never philosophizes",
   pools: {
     combatStart: [{ text: "Kill." }],
-    abilityUse: [{ text: "Burn.", abilityId: "hellfire" }],
+    abilityUse: [{ text: "Fire.", abilityId: "hellfire" }],
     takeHit: [{ text: "Hnh." }],
     death: [{ text: "Not... over." }],
   },
@@ -344,9 +344,9 @@ export const IRONCLAD_KNIGHT_BARKS: CombatBarkProfile = {
   voiceMode: "articulate",
   voiceSummary: "black-knight family, colder — grim professional, no banter",
   pools: {
-    combatStart: [{ text: "Ready." }],
+    combatStart: [{ text: "Positions." }],
     abilityUse: [{ text: "Forward.", abilityId: "charge" }],
-    takeHit: [{ text: "Noted." }],
+    takeHit: [{ text: "Absorbed." }],
     death: [{ text: "As expected." }],
   },
 };
@@ -359,13 +359,13 @@ export const RUNE_KNIGHT_BARKS: CombatBarkProfile = {
   voiceSummary: "controlled, deliberate — never rushes the charge",
   pools: {
     combatStart: [
-      { text: "Ready." },
+      { text: "Steady." },
     ],
     abilityUse: [
       { text: "Hold.", abilityId: "lightning-strike" },
     ],
     takeHit: [
-      { text: "Noted." },
+      { text: "Registered." },
     ],
     death: [
       { text: "Discharged." },
