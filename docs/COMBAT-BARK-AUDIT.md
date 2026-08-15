@@ -238,10 +238,10 @@ the markers.
 
 | metric | value |
 | --- | --- |
-| Mean | 11.1 |
+| Mean | 11.0 |
 | Median | 10 |
 | p90 | 19 |
-| >28 chars (past the working cap) | 3 |
+| >28 chars (past the working cap) | 0 |
 | >45 chars (past the accepted exception ceiling) | 0 |
 | >80 chars (hard-fail threshold) | 0 |
 
@@ -249,9 +249,6 @@ Longest 10 lines:
 
 | chars | speaker | trigger | text |
 | --- | --- | --- | --- |
-| 39 | demon-champion | allyDefeated | Beneath a champion's notice, that loss. |
-| 32 | null-acolyte | rare | Doctrine is not mine to explain. |
-| 30 | demon-mage | rare | Minions are meant to be spent. |
 | 28 | Halberdier | takeHit | That's what the line is for. |
 | 28 | Duelist | rare | This is a brawl, not a duel. |
 | 28 | discordant-cantor | rare | Harmony was never the point. |
@@ -259,6 +256,9 @@ Longest 10 lines:
 | 27 | fifth-chair | rare | Further than my last party. |
 | 27 | iron-chorister | rare | Gentle was never the order. |
 | 26 | Halberdier | rare | This is why range matters. |
+| 26 | fifth-chair | victory | Everyone's still standing. |
+| 26 | undertow-caller | rare | The deep does not forgive. |
+| 25 | Thief | combatStart | Let's get this over with. |
 
 ## Duplicate audit (generated)
 
@@ -370,14 +370,24 @@ All `vocalization`/`silent` profile lines are asterisk-actions or <=2 words.
 The task's "weakest lines" requirement, reported as aggregate findings rather than a
 scratchpad dump (the working notes were not preserved) — real fixes made during this branch:
 
-- **Comma sweep:** 22 of 852 lines (2.6%) contain a comma. All 22 were individually
-  re-read against "would this be better shorter?" — 4 were rewritten: Priest's `ko` line
-  `"...oh, that's ironic."` → `"Ironic."` (the clearest case: explaining its own joke
-  instead of trusting the situation), Mage's `basicAttack` `"Fine, physically, then."` →
-  `"Fine. Physically."`, and two Null Choir `death` lines tightened
-  (`"Discordant, still."` → `"Still discordant."`, `"Rite, unfinished."` →
-  `"Unfinished rite."`). The remaining 18 held up — natural clipped speech
+- **Comma sweep:** run twice — once on the initial 675-line library (22 lines, 4
+  rewritten: Priest's `ko` line `"...oh, that's ironic."` → `"Ironic."`, the clearest
+  case of explaining its own joke instead of trusting the situation; Mage's
+  `basicAttack` `"Fine, physically, then."` → `"Fine. Physically."`; two Null Choir
+  `death` lines tightened), and again after the content-depth expansion pass added
+  ~30 more comma-bearing lines (40 of 852 final, 4.7%). The second pass caught several
+  that read as more "written" than their neighbors and cut them to single words in the
+  same register: undertow-caller's `"Blind, as the deep is."` → `"Blinded."`,
+  null-acolyte's `"Ward, kept."` → `"Warded."`, demon-champion's
+  `"Beneath me, but fine."` → `"Beneath me."`. Most held up as natural clipped speech
   ("En garde, I suppose.", "Inelegant, but effective.") rather than padding.
+- **Length-cap regression from the expansion pass, caught and fixed:** the content-depth
+  expansion (17 articulate enemies + 3 PC classes) introduced 3 lines that crept past the
+  28-char working cap (up to 38 chars) — the enforced test ceiling is 45, so these would
+  have shipped silently. Caught by re-running the length audit after expansion, not by a
+  test failure; all 3 shortened (e.g. demon-champion's `allyDefeated` line
+  `"Beneath a champion's notice, that loss."`, 40 chars, → `"A minor loss."`, 13). Final
+  library: 0 lines over 28 characters.
 - **Mass-duplication diversification:** the first audit run flagged 4 Null Choir enemies
   sharing one identical `takeHit` line with zero variation, and the black-knight/
   ironclad-knight/rune-knight family sharing identical `combatStart`/`takeHit` text despite

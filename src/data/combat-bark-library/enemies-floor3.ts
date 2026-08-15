@@ -589,7 +589,7 @@ export const DEMON_CHAMPION_BARKS: CombatBarkProfile = {
       { text: "A real fight, then." },
     ],
     basicAttack: [
-      { text: "Beneath me, but fine." },
+      { text: "Beneath me." },
     ],
     attackMiss: [
       { text: "Lucky." },
@@ -599,7 +599,7 @@ export const DEMON_CHAMPION_BARKS: CombatBarkProfile = {
     ],
     abilityUse: [
       { text: "Enough waiting.", abilityId: "berserk" },
-      { text: "Ground, taken.", abilityId: "stone-slam" },
+      { text: "Kneel.", abilityId: "stone-slam" },
     ],
     takeHit: [
       { text: "Is that all." },
@@ -611,7 +611,7 @@ export const DEMON_CHAMPION_BARKS: CombatBarkProfile = {
       { text: "Not yet." },
     ],
     allyDefeated: [
-      { text: "Beneath a champion's notice, that loss." },
+      { text: "A minor loss." },
     ],
     kill: [
       { text: "Beneath me." },
@@ -679,7 +679,7 @@ export const DEMON_MAGE_BARKS: CombatBarkProfile = {
       { text: "Wasteful.", chemistryId: "combo-break" },
     ],
     rare: [
-      { text: "Minions are meant to be spent." },
+      { text: "Spent, not mourned." },
     ],
   },
 };

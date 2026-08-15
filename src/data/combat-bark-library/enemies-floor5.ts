@@ -75,7 +75,7 @@ export const UNDERTOW_CALLER_BARKS: CombatBarkProfile = {
     ],
     abilityUse: [
       { text: "Answer.", abilityId: "ice-shards" },
-      { text: "Blind, as the deep is.", abilityId: "blinding-gaze" },
+      { text: "Blinded.", abilityId: "blinding-gaze" },
       { text: "Hexed.", abilityId: "curse" },
     ],
     takeHit: [

@@ -120,7 +120,7 @@ export const NULL_ACOLYTE_BARKS: CombatBarkProfile = {
     abilityUse: [
       { text: "Seen.", abilityId: "blinding-gaze" },
       { text: "Hexed.", abilityId: "curse" },
-      { text: "Ward, kept.", abilityId: "ward" },
+      { text: "Warded.", abilityId: "ward" },
     ],
     takeHit: [
       { text: "Unmoved." },
@@ -142,7 +142,7 @@ export const NULL_ACOLYTE_BARKS: CombatBarkProfile = {
       { text: "Silenced." },
     ],
     rare: [
-      { text: "Doctrine is not mine to explain." },
+      { text: "Not mine to explain." },
     ],
   },
 };
@@ -183,7 +183,7 @@ export const IRON_CHORISTER_BARKS: CombatBarkProfile = {
       { text: "One rank down." },
     ],
     kill: [
-      { text: "Blessed, that." },
+      { text: "Blessed." },
     ],
     death: [
       { text: "Unblessed." },
