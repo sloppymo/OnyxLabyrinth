@@ -30,7 +30,7 @@ import type {
   PlayerAction,
   Rng,
 } from "./combat-types";
-import { interceptEnemyGuard } from "./combat-chemistry";
+import { interceptEnemyGuard, noteAreaGuardBypass } from "./combat-chemistry";
 
 // ---------------------------------------------------------------------------
 // Rage
@@ -287,6 +287,7 @@ function resolveTechniqueDamage(
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): void {
+  if (tech.target !== "singleEnemy") noteAreaGuardBypass(s);
   const targets = guardedTechniqueTargets(s, actor, tech, action, emit);
   if (targets.length === 0) {
     log(`${actor.name} finds no target for ${tech.name}.`);
@@ -308,6 +309,7 @@ function resolveTechniqueMultiHit(
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): void {
+  if (tech.target !== "singleEnemy") noteAreaGuardBypass(s);
   const allTargets = guardedTechniqueTargets(s, actor, tech, action, emit);
   if (allTargets.length === 0) {
     log(`${actor.name} finds no target for ${tech.name}.`);
@@ -339,6 +341,7 @@ function resolveTechniqueDamageWithStatus(
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): void {
+  if (tech.target !== "singleEnemy") noteAreaGuardBypass(s);
   const targets = guardedTechniqueTargets(s, actor, tech, action, emit);
   if (targets.length === 0) {
     log(`${actor.name} finds no target for ${tech.name}.`);
@@ -363,6 +366,7 @@ function resolveTechniqueDamageWithExecute(
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
 ): void {
+  if (tech.target !== "singleEnemy") noteAreaGuardBypass(s);
   const targets = guardedTechniqueTargets(s, actor, tech, action, emit);
   if (targets.length === 0) {
     log(`${actor.name} finds no target for ${tech.name}.`);
@@ -421,6 +425,7 @@ function resolveTechniqueDebuff(
   eff: Extract<TechniqueEffect, { kind: "debuff" }>,
   emit: (m: string, e: CombatEvent) => void
 ): void {
+  if (eff.stat === "armor" && tech.target !== "singleEnemy") noteAreaGuardBypass(s);
   const targets = eff.stat === "armor"
     ? guardedTechniqueTargets(s, actor, tech, action, emit)
     : techniqueEnemyTargets(s, tech, action);

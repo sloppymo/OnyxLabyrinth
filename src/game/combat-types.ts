@@ -545,6 +545,8 @@ export interface CombatState {
   chemistryReservations?: Record<string, ChemistryReservation>;
   chemistryTelemetry?: ChemistryTelemetry;
   enemyGuards?: Record<string, EnemyGuard>;
+  /** Number of damaging area actions that bypassed an active guard token. */
+  guardBypasses?: number;
   enemyActedThisRound?: string[];
   enemySummonsCreated?: number;
   chemistryUses?: Record<string, number>;

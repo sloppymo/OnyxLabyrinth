@@ -139,6 +139,14 @@ describe("formation chemistry resource substrate", () => {
     expect(selectChemistryResource(state, { group: "throwable-slime" })?.instanceId).toBe("slime-0");
     expect(selectChemistryResource(state, { group: "throwable-slime" }, ["slime-0"])).toBeUndefined();
     expect(reserveChemistryUse(state, state.enemies.front[0], ability, "p1", "slime-0")).toBeUndefined();
+
+    const secondCaster = makeEnemy("crypt-minotaur", "caster-1", 60, "front", {
+      abilityIds: ["crypt-slime-cannon"],
+    });
+    state.enemies.front.push(secondCaster);
+    expect(
+      reserveChemistryUse(state, secondCaster, ability, "p1", first?.instanceId)
+    ).toBeUndefined();
   });
 
   it("commits the exact resource and successful round-based resolution consumes it once", () => {

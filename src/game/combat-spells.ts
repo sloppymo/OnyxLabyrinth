@@ -29,7 +29,7 @@ import type {
   Rng,
   SummonedAlly,
 } from "./combat-types";
-import { interceptEnemyGuard } from "./combat-chemistry";
+import { interceptEnemyGuard, noteAreaGuardBypass } from "./combat-chemistry";
 
 export function applySpell(
   s: CombatState,
@@ -60,6 +60,7 @@ export function applySpell(
       // holder — applies to spell damage too, not just melee.
       const warlordMult = warlordDamageMultiplier(s, caster);
       let targets = spellTargets(s, spell, action);
+      if (spell.target !== "singleEnemy") noteAreaGuardBypass(s);
       if (spell.target === "singleEnemy" && targets.length > 0) {
         const intendedTarget = targets[0];
         if (intendedTarget) {

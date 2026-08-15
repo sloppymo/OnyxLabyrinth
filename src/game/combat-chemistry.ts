@@ -98,6 +98,29 @@ export function reserveChemistryUse(
   if (!ability.chemistryId || !chemistryCapAvailable(s, actor.instanceId, ability)) {
     return undefined;
   }
+  // Reservation is the authoritative commitment boundary. Keep the
+  // primitive safe even when a caller supplies an exact id directly instead
+  // of going through the AI's candidate lookup first.
+  if (s.chemistryReservations?.[actor.instanceId]) return undefined;
+  if (ability.effect.kind === "consumeAlly") {
+    if (
+      !resourceId ||
+      !chemistryResourceCandidates(s, ability.effect.resource).some(
+        (resource) => resource.instanceId === resourceId
+      )
+    ) {
+      return undefined;
+    }
+  } else if (ability.effect.kind === "packStrike") {
+    if (
+      !partnerId ||
+      !chemistryResourceCandidates(s, { enemyIds: ability.effect.partnerIds }).some(
+        (partner) => partner.instanceId === partnerId
+      )
+    ) {
+      return undefined;
+    }
+  }
   if (!s.chemistryUses) s.chemistryUses = {};
   const key = chemistryUseKey(actor.instanceId, ability.id);
   s.chemistryUses[key] = (s.chemistryUses[key] ?? 0) + 1;
@@ -207,6 +230,17 @@ export function guardForTarget(
     return undefined;
   }
   return guard;
+}
+
+/** Record one damaging area action that had a live guard token to bypass. */
+export function noteAreaGuardBypass(s: CombatState): void {
+  if (
+    !s.enemyGuards ||
+    !Object.keys(s.enemyGuards).some((targetId) => guardForTarget(s, targetId))
+  ) {
+    return;
+  }
+  s.guardBypasses = (s.guardBypasses ?? 0) + 1;
 }
 
 /** Drop expired or invalid guards at a round boundary. */

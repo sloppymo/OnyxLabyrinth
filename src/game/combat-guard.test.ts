@@ -269,6 +269,7 @@ describe("bounded Living Shield interception", () => {
     expect(after.enemyGuards?.["warlock-0"]).toBeDefined();
     expect(after.enemies.front[0]!.currentHp).toBeLessThan(beforeArmor);
     expect(after.enemies.back[0]!.currentHp).toBeLessThan(beforeTarget);
+    expect(after.guardBypasses).toBe(1);
     expect(eventCount(after, "chemistry")).toBe(0);
   });
 

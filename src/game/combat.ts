@@ -158,6 +158,7 @@ export function createCombatState(
     chemistryReservations: {},
     chemistryTelemetry: emptyChemistryTelemetry(),
     enemyGuards: {},
+    guardBypasses: 0,
     enemyActedThisRound: [],
     enemySummonsCreated: 0,
     chemistryUses: {},
