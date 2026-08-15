@@ -141,7 +141,29 @@ possible today, contrary to the probe script's own (stale) header comment.
 same way. Neither is wired as an `npm run` script; both are invoked directly
 with `node scripts/playtests/<file>.mjs`.
 
-### A.6 Save/persistence — one constraint the brief anticipates that turns out not to bind
+### A.6 Weapon range does not gate targeting — added on adversarial re-read
+
+`combat-reach.ts`'s `canReach` is an **always-`true` compatibility shim**:
+"Row-based targeting restrictions have been removed: all visible enemies
+are valid melee targets regardless of the attacker's formation slot or the
+target's row." `resolveAttack` (`combat-actions.ts:110`) computes
+`effectiveWeaponRange` but never gates on it — the value only flows into
+the emitted event as an animation/flavor hint and into one perk check
+(`thief-backstab`). **Any party member can freely target any enemy in any
+row today.** The `WeaponRange` doc comment in `combat-types.ts` describing
+a four-group Wizardry-V-style reach system is stale — it documents a rule
+that was deliberately removed, not current behavior.
+
+This matters beyond one ability: it means "a back-row target is harder to
+reach past a living front row" is **not a real source of tactical tension
+in this codebase**, however intuitive it sounds. I built one S-tier
+counterplay claim on this assumption before catching it (see D, Bone
+Battery) and I'm flagging it here as a standing hazard for the rest of this
+document and for any future formation-chemistry work: **verify targeting
+constraints against the resolver, not the type comments, before writing a
+counterplay claim that depends on them.**
+
+### A.7 Save/persistence — one constraint the brief anticipates that turns out not to bind
 
 `save.ts:13-16` is explicit: combat state is **never** persisted — saving
 mid-fight flips `mode` back to `"dungeon"` and the player reloads at their
@@ -212,7 +234,7 @@ Restricting selection to explicit ids (not tags, not "any weaker ally") is
 deliberate — it keeps "who is throwable" an authored, readable fact ("Slimes
 are ammo") instead of an emergent property of stats, which is what keeps
 this from sliding into "Minotaur throws another Minotaur" absurdity (see
-D, rejected #23).
+D, rejected #15).
 
 **Wiring** (the part that makes counterplay real, not decorative):
 
@@ -352,105 +374,293 @@ where an ally physically leaves the formation.
   brief warns against. Every synergy in this design names its ammo/packmate
   explicitly.
 
+### C.6 Generalization: exact IDs vs. controlled categories (explicit answer, added this pass)
+
+The brief asks directly whether relationships should use exact pairing or a
+compatibility category, and warns that over-generalizing produces
+"simulation soup." My answer, stated explicitly rather than left implicit
+in the id lists scattered through C.1/C.2:
+
+- **`allySelector` (consumeAlly's ammo) uses a short, curated, explicit id
+  list — never a tag.** Slime Hurl's list is `["slime"]` today, and *could*
+  grow to include a future small-ooze id if one ships, but will never match
+  on a broad tag like "ooze" or "small" — because the brief's own example
+  (`Minotaur + Acid Puddle — "can it throw THAT?"`) deserves a real,
+  in-fiction *no*: Acid Puddle is heavy, corrosive, stationary sludge, not
+  a grab-able body, and that's a better answer than silently matching it
+  via a tag no one authored with that intent. Bone Harvest's list
+  (`["skeleton", "red-skeleton"]`) is the positive case — Red Skeleton is a
+  palette-swap variant of the same "body," so including it is a controlled
+  category (2 ids, both genuinely skeleton-shaped), not a tag sweep.
+- **`allyPresent` (packmate/conductor checks) also uses explicit id lists**,
+  for the same reason — Living Lightning Rod's list names the four
+  `highDefense` bodies individually rather than matching the `highDefense`
+  special, so a future `highDefense` addition doesn't silently start
+  conducting lightning without a design decision.
+- **The category is always curated by a human, in the ability definition,
+  not derived from `EnemySpecial` tags at runtime.** This is the one rule
+  that prevents the brief's named failure mode ("every enemy interacts with
+  every tagged creature merely because the type system permits it") — every
+  id list in this design was hand-picked while writing the ability, and
+  every list is short enough to read as an intentional decision (2–4
+  entries), not a filter that happens to match a third of the bestiary.
+
+### C.7 Complexity budget
+
+| Primitive | Great interactions enabled | Complexity | Keep? |
+|---|---:|---:|---|
+| `consumeAlly` effect | Slime Cannon (S), Bone Battery (A) | Medium (target selection + wind-up/windUps threading + death-sweep interaction) | **Yes** — two real interactions, one of them S-tier, and the wind-up/counterplay wiring it forces is exactly the mechanism the brief's "kill the enabler" pattern needs |
+| `allyPresent` condition | Living Lightning Rod (A), Twin Fang/Brimstone Vanguard (B), gates Hunting Pack's convergence trigger (S) | Low (one `switch` case, mirrors existing `minSameKind`) | **Yes** — cheapest primitive in the set, touches the most catalog entries |
+| `powerScale` | Every Floor-1-showcased heavy body (Minotaur, and Hellhound/Werewolf's lighter trims) | Low-medium (spawn-time + resolve-time scaling, no new resolution path) | **Yes** — required for the Floor-1 showcase goal independent of any single ability, see C.3's "6 of ~20 need it" finding |
+| Bespoke `throwAlly`/`consumeAlly` presentation | Slime Cannon, Bone Battery | Medium (new choreography sequences, ~100-150 lines each based on the `pushMeleeGangUpSteps` precedent) | **Yes**, but only for the two abilities where a sprite leaves the formation — everything else stays generic |
+| Reaction system (`onAllyDeath`) | Would enable maybe 1-2 more ideas (Skeleton-Archer-adjacent resurrection was rejected anyway) | High (new resolution phase, ≥4 call sites) | **No** — the complexity isn't earning enough good abilities; see C.5 |
+| Hard-block "Protector" targeting | Would enable "true" protector formations | High (touches player-side target validation + UI picker) | **No** — soft protection via the existing ally-buff effect already covers this at zero cost; see C.5 |
+| Tag-based (not id-based) ally selector | Would make `consumeAlly`/`allyPresent` "generalize for free" | Low engineering cost, **high design cost** | **No** — see C.6; the combinatorial-nonsense risk isn't worth the convenience |
+
+Two primitives survive to implementation (`consumeAlly`, `allyPresent`),
+plus one infrastructure scalar (`powerScale`) that isn't a synergy
+primitive at all but is required for the showcase goal regardless of which
+abilities ship. Nothing here is a general scripting system — the widest
+"reach" primitive (`allyPresent`) is a single new condition-check branch.
+
 ---
 
-## D. Ranked synergy catalog
+## D. Ranked synergy catalog (post-adversarial-review revision)
+
+This section was substantially rewritten after a second, adversarial pass
+against the first draft (full pass in the addendum at the bottom of this
+file). Two findings drove the rewrite: **Hunting Pack as originally
+specified was exactly the "hidden +15% damage modifier" anti-pattern the
+brief names and warns against** — a numeric bonus with no visible
+interaction — and **Bone Battery's counterplay claim depended on
+weapon-range gating that A.6 shows does not exist**, which collapses it to
+the generic "snipe the squishy backline caster" pattern already available
+against half the bestiary. Both are fixed below rather than left as-is.
 
 **S-tier — signature mechanic material (implemented this pass, bespoke choreography)**
+
+Two flagships survive full adversarial scrutiny. I am not padding this to
+three — see the "top five trailer moments" list in the final report for how
+this pass still produces enough visible, show-off-able moments without
+manufacturing a third S-tier entry that wouldn't hold up.
 
 1. **Slime Cannon** — Minotaur + Slime. New ability `slime-hurl`
    (`consumeAlly`, `allySelector: {ids: ["slime"]}`, `allyEffect: damage +
    poison status` on a single party member), `windUp: true`,
-   `presentation: "throwAlly"`. Enabler structure: kill the Slime before the
-   wind-up resolves and the Minotaur's turn fizzles instead. Formation:
-   *Slime Cannon* (Minotaur, `powerScale ~0.45`, + 2 Slime, front row).
-2. **Bone Battery** — Warlock + Skeleton/Red Skeleton. New ability
-   `bone-harvest` (`consumeAlly`, `allySelector: {ids: ["skeleton",
-   "red-skeleton"]}`, `allyEffect: heal` self for a flat chunk + a short
-   attack buff — "spend a body for power"), no wind-up (it's a resource
-   play, not a threat to react to in the same way). Resource structure: burn
-   the Warlock down before it can convert Skeletons into HP, or kill
-   Skeletons fast enough that none are left to harvest. Formation: *Bone
-   Battery* (Warlock, unscaled, + 2 Skeleton).
-3. **Hunting Pack** — Hellhound + Werewolf. New ability `pack-hunt`
-   (`allyPresent: {ids: ["werewolf"]}` gating a bonus multiHit beyond
-   Hellhound's existing Hunting Pounce), no ally consumed — a Payoff
-   structure where killing *either* half removes the bonus. Formation:
-   *Hunting Pack* (Hellhound `powerScale ~0.75` + Werewolf `powerScale
-   ~0.85`, front row duo).
+   `presentation: "throwAlly"`. **Enabler structure, and the trade-off has
+   to be real on both sides**: at the originally-proposed `powerScale 0.45`
+   (~26 HP), a Floor-1 party's full-round melee focus plausibly one-shots
+   the Minotaur before the wind-up ever resolves — that makes "ignore the
+   Slime, alpha the Minotaur" the dominant line and the interaction
+   *never fires* against a focus-fire-capable party, which is worse than a
+   fake counterplay: it's a mechanic that doesn't show up. The constraint
+   this needs, stated explicitly rather than guessed: **the scaled Minotaur
+   must survive one full-party focused round** (so declining to deal with
+   the Slime still costs the party a full turn without ending the fight)
+   **but die within two** (so stalling indefinitely isn't the answer
+   either). That likely means `powerScale` in the 0.6–0.75 range, not 0.45
+   — I'm not committing to an exact number here since it depends on actual
+   Floor-1 party damage output, which the existing
+   `per-floor-combat-difficulty.mjs` probe can measure directly;
+   implementation should tune against that probe, not against a guess.
+   Formation: *Slime Cannon* (Minotaur, `powerScale` TBD-by-probe within
+   [0.6, 0.75], + 2 Slime, front row).
+2. **Hunting Pack** — Hellhound + Werewolf, redesigned. The original
+   version ("bonus multiHit gated on `allyPresent`") was a pure stat
+   modifier with no visible interaction — cut. Replacement: a **synchronized
+   convergence** — when both are alive and both act in the same round, the
+   choreography plays a shared beat (both sprites visibly lunge toward the
+   same target from different angles, reusing the same relative-position
+   math `pushMeleeGangUpSteps` already established, no new engine
+   primitive for the *movement* itself), landing as two ordinary attacks in
+   quick succession with a shared banner ("THE PACK CLOSES IN!"). The
+   *mechanical* kicker, if one is wanted at all, should be a **plain damage
+   bump on the existing ability** — not a new status. (An earlier draft of
+   this redesign reached for a bespoke "exposed" vulnerability status;
+   `exposed` already exists in this codebase as a Thief-only flag from
+   Ambush with no defender-side damage semantics, and reusing it would mean
+   new resolution logic — a third primitive smuggled in under what's
+   supposed to be a presentation fix. Skip it.) This is a **Payoff**
+   structure, but a *live, recurring* one rather than a one-time telegraph:
+   kill either predator before its turn on any given round and that
+   round's convergence doesn't happen — the decision repeats every round
+   both are alive, which is what keeps it from going stale after the tenth
+   viewing (each fight, the question "do I stop the convergence this round
+   or not" is asked fresh, not answered once). Formation: *Hunting Pack*
+   (Hellhound `powerScale ~0.75` + Werewolf `powerScale ~0.85`, front row
+   duo).
 
-**A-tier — definitely worth having (implemented this pass, generic presentation)**
+**A-tier — definitely worth having (implemented this pass, mostly generic presentation)**
 
+3. **Bone Battery** — Warlock + Skeleton/Red Skeleton, demoted from S-tier.
+   Mechanically unchanged (`bone-harvest`: `consumeAlly`, `allySelector:
+   {ids: ["skeleton", "red-skeleton"]}`, `allyEffect: heal` self + short
+   attack buff), and the visual — a Skeleton dissolving into the Warlock —
+   is still a genuinely good trailer moment (see final report). What
+   changed is the **honesty of the counterplay claim**: A.6 shows there is
+   no range-based protection stopping any party member from targeting the
+   Warlock turn one, so "burn the Warlock down before it harvests" is the
+   *generic* squishy-backline-caster answer already available against Elite
+   Orc, Rune Knight, Demon Mage, and most of the bestiary's casters — not a
+   novel decision this ability introduces. That's fine for A-tier ("good
+   texture, not the flagship"), and it's the honest reason it isn't S-tier:
+   it doesn't change *what the player does* relative to how they'd already
+   play against any other backline caster, it only changes *why* — which
+   still earns its keep as flavor and as a genuinely strong single visual
+   beat, just not as a signature decision-changing mechanic.
 4. **Living Lightning Rod** — Rune Knight + any `highDefense`-tagged ally
    (Animated Armor / Black Knight / Ironclad Knight / Stone Guardian). New
    ability `conduct-lightning`: `allyPresent` matched by id list against the
-   `highDefense` roster, boosts Rune Knight's Lightning Strike power.
-   Floor 3+ only (none of the qualifying allies are Floor-1-light).
-5. **Sleepwalker's Fire** — Succubus (Seduction, inflicts sleep) + any
-   caster with a damage ability. Zero new primitives — `partyHasStatus`
-   already exists; this is a new *condition value* on an existing ability
-   shape (bonus-power damage cast gated on `partyHasStatus: {status:
-   "sleep"}`), not a new primitive. Cheap to add, cheap to cut.
+   `highDefense` roster, boosts Rune Knight's Lightning Strike power. On
+   its own this is exactly the "hidden number" pattern the brief warns
+   against, same failure as the original Hunting Pack — the fix that keeps
+   it at A-tier rather than cutting it: **a visible conduit** — a lightning
+   arc effect drawn between the Rune Knight and the conducting ally's
+   screen positions before it hits the party (two-position effect, the same
+   "position math between two live actors" pattern established by
+   Pack Leap/gang-up, applied to an effect-strip instead of an actor
+   sprite this time — cheaper than either). Without that visual this drops
+   to B-tier; with it, the player can *see* which ally is "live" as a
+   conductor, which is the difference between a flavor tag and something
+   that reads on screen. Floor 3+ only (none of the qualifying allies are
+   Floor-1-light).
+
+**Cut entirely (not merely demoted) — status-condition math wearing a
+formation-chemistry costume**
+
+- *Sleepwalker's Fire* (Succubus sleep + bonus-damage caster). On reflection
+  this isn't an enemy-to-enemy interaction at all — it's a party-status
+  condition gating a caster's damage, i.e. exactly the "status-condition
+  mathematics" the brief asked me to make sure the design didn't drift
+  into. There's no visible *relationship between two enemies* here, just a
+  caster reading the party's debuff state, which several existing abilities
+  already do (`partyHasStatus`/`partyMissingStatus` are used throughout the
+  existing kit). Not formation chemistry; cut rather than relabeled.
 
 **B-tier — useful variety (catalog only, not implemented this pass — all express with *existing* primitives)**
 
-6. Twin Fang (2× Werewolf, `minSameKind: 2` bonus pounce — same shape as
+5. Twin Fang (2× Werewolf, `minSameKind: 2` bonus pounce — same shape as
    Pack Leap, different flavor).
-7. Iron Wall (Ironclad Knight + Black Knight — Phalanx Guard reuse, no new
+6. Iron Wall (Ironclad Knight + Black Knight — Phalanx Guard reuse, no new
    ability needed at all, just a curated formation).
-8. Ghost Choir (Ghostfire + Blood Wraith — `partyHasStatus` chaining, both
+7. Ghost Choir (Ghostfire + Blood Wraith — `partyHasStatus` chaining, both
    Floor 2 flying undead).
-9. Choir Resonance (Choir Warden + Discordant Cantor, Floor 4 — Ward +
+8. Choir Resonance (Choir Warden + Discordant Cantor, Floor 4 — Ward +
    silence stacking via existing specials).
-10. Undertow Duet (Undertow Caller + Cistern Wraith, Floor 5 — cold-status
+9. Undertow Duet (Undertow Caller + Cistern Wraith, Floor 5 — cold-status
     stacking via `partyMissingStatus`).
-11. Brimstone Vanguard (Demon Champion + Demon Brawler — `allyPresent`
+10. Brimstone Vanguard (Demon Champion + Demon Brawler — `allyPresent`
     matched against the `demon` special tag's *id members* explicitly
     listed, boosting Berserk).
-12. Corrosion Well (Acid Puddle + Slime — emergent from existing
+11. Corrosion Well (Acid Puddle + Slime — emergent from existing
     `poisonOnHit`/Split, no new ability; a formation note, not a mechanic).
 
 **Rejected — sounded cool, would not improve combat**
 
-13. *Skeleton Archer resurrects fallen Skeletons.* Turns a trash unit into a
+12. *Skeleton Archer resurrects fallen Skeletons.* Turns a trash unit into a
     permanent-threat necromancer loop; contradicts "weak monsters stay weak
     individually," and risks the exact "repeated resurrection" failure mode
     the brief calls out.
-14. *Automatic same-element buff-aura between any two enemies sharing an
+13. *Automatic same-element buff-aura between any two enemies sharing an
     element tag.* This is the brief's own "combinatorial nonsense" warning,
     almost verbatim — a third of the roster shares `fire`/`undead`/`demon`
     tags; an aura keyed off them would fire constantly and mean nothing.
-15. *Full onAllyDeath reaction system for all casters.* Deferred to C.5/H.5,
+14. *Full onAllyDeath reaction system for all casters.* Deferred to C.5/H.5,
     not rejected outright, but out of scope this pass — see the touch-count
     reasoning there.
-16. *Minotaur can throw any ally, weighted toward whoever's expendable
+15. *Minotaur can throw any ally, weighted toward whoever's expendable
     (weight-based, not id-based selection).* Rejected in favor of the
     explicit-id `allySelector` in C.1 — a weight/tag-based "pick whoever's
     cheapest" selector makes "who is throwable" an emergent stat fact
     instead of an authored one, and produces occasionally-absurd throws
     (a Minotaur hurling a wounded Warlock) that read as a bug, not a bit.
-17. *Displacer Beast paired with anything.* Its whole identity (`evasive`,
+16. *Displacer Beast paired with anything.* Its whole identity (`evasive`,
     Blink Strike/Vanish) is a *solo* trickster — forcing a partner onto it
     dilutes the one enemy on the roster whose identity is already legible
     without a pairing. Deliberately left alone.
+17. *(new, this pass)* Sleepwalker's Fire and the original Hunting Pack —
+    see the "cut entirely" note above and the S-tier rewrite. Recorded here
+    too so the rejection trail is in one place across both passes.
+
+### D.1 Target-priority diversity (added this pass)
+
+Classifying every S/A/B entry above by the tactical question it poses,
+because the brief explicitly warns against "kill the back-row caster
+first" becoming the answer to half the game:
+
+| Formation | Structure | Resolves to "kill the caster"? |
+|---|---|---|
+| Slime Cannon | Enabler (kill the marked ammo during wind-up, *or* commit to bursting the launcher instead) | No — the launcher is a front-row melee brute |
+| Hunting Pack | Live recurring Payoff (deny the convergence each round it's available) | No — both participants are front-row |
+| Bone Battery | Resource / generic executioner | **Yes** — this is the honest cost of demoting it in D |
+| Living Lightning Rod | Payoff/aura, conductor is the *ally*, not the caster | Partially — killing the Rune Knight ends it, but so does killing the conductor, which is usually a tankier front-row unit |
+| Twin Fang, Brimstone Vanguard | Same-kind Payoff | No |
+| Ghost Choir, Undertow Duet, Choir Resonance | Sequencing (status setup → payoff) | Mixed — depends which half is the caster |
+| Iron Wall | Protector (via existing ac buff, not a hard block) | No — break the buff-granter, usually front-row |
+
+**Finding**: of the two S-tier and two A-tier entries, only one (Bone
+Battery) resolves to the generic caster-snipe answer, and it's explicitly
+demoted for that reason. The two S-tier flagships are both front-row/melee
+interactions specifically *because* the caster-centric pattern was
+over-represented in the first draft (3 of 5 original S/A picks leaned on a
+backline caster) — worth stating as a deliberate correction, not a
+coincidence: **this pass over-corrected toward casters on the first draft
+and the adversarial review pulled it back toward physical, front-row
+interactions**, which is also what the brief asked me to search harder for.
 
 ---
 
 ## E. Curated Floor 1 formations
 
-Adding to `ENCOUNTER_TABLES[1]` (existing 7 entries untouched):
+### E.1 No-trash test applied to the four new formations
 
-| Formation | Spawns | New code required |
-|---|---|---|
-| **Slime Cannon** | Minotaur (`powerScale: 0.45`, front) + 2× Slime (front) | `slime-hurl` ability, `throwAlly` presentation |
-| **Bone Battery** | Warlock (unscaled, back) + 2× Skeleton (front) | `bone-harvest` ability, `consumeAlly` presentation |
-| **Hunting Pack** | Hellhound (`powerScale: 0.75`, front) + Werewolf (`powerScale: 0.85`, front) | `pack-hunt` ability |
-| **Orc Skirmish** *(free showcase)* | 2× Orc (unscaled, front) | none — Pack Leap/`meleeGangUp` already ships; this is a zero-cost roster-breadth win, proves the pattern already reads well before the new ones ship |
-| **Ash and Bone** *(breadth, no new synergy)* | Skeleton (front) + Skeleton Archer (back) + Ghostfire (`powerScale: ~0.9`, back) | none |
+| Formation | Spawns | New code required | Why this fight exists |
+|---|---|---|---|
+| **Slime Cannon** | Minotaur (`powerScale` TBD ∈ [0.6, 0.75], front) + 2× Slime (front) | `slime-hurl` ability, `throwAlly` presentation | Enabler decision every time it's on screen: burn the marked Slime or commit to bursting the launcher |
+| **Bone Battery** | Warlock (unscaled, back) + 2× Skeleton (front) | `bone-harvest` ability, `consumeAlly` presentation | Resource-denial pressure + a strong visual, honestly labeled A-tier (D) rather than oversold |
+| **Hunting Pack** | Hellhound (`powerScale ~0.75`, front) + Werewolf (`powerScale ~0.85`, front) | `pack-hunt` convergence choreography, `allyPresent` condition | Live recurring decision: deny the convergence this round or don't |
+| **Orc Skirmish** | 2× Orc (unscaled, front) | none — `minSameKind`/`meleeGangUp` already ships | Reuses Pack Leap, already-shipped and tested; a real, if modest, "kill the mount candidate first" premise, stated explicitly rather than just "free showcase" |
 
-Five new entries against the existing seven roughly doubles Floor 1's
-formation variety and pulls in 5 more sprites (Minotaur, Warlock, Hellhound,
-Werewolf, Orc, Ghostfire — 6 actually) without a single new `EnemyDef` id.
+**Cut from the original draft**: *Ash and Bone* (Skeleton + Skeleton Archer
++ Ghostfire, "breadth, no new synergy"). I labeled it "no new synergy" in
+my own first draft, which is itself the no-trash test's failure condition
+— a formation whose only listed justification is sprite variety is exactly
+what the brief asks me to redesign or remove. Removed rather than
+rationalized after the fact. Floor 1 breadth should come from formations
+that also carry a real premise (the four above already add 6 new sprites —
+Minotaur, Warlock, Hellhound, Werewolf, Orc, and Slime/Skeleton reused —
+without needing a fifth, thinner entry).
+
+### E.2 No-trash test applied to the *existing* seven entries — not previously examined
+
+The first draft said "existing 7 entries untouched" without auditing them,
+which is inconsistent with applying the same test to my own additions. Doing
+that now, briefly:
+
+- **Acid Puddle + 2× Slime** (weight 2) — passes outright. The source
+  comment ("no soft solo") states its premise directly: Acid Puddle's
+  50% physical resist + poison makes it a slow grind alone, so the escort
+  Slimes exist to add pressure that stops the party from safely
+  chip-damaging it down. Real, stated tactical reason.
+- **Slime + Skeleton** (weight 1) / **Red Skeleton + Skeleton + Skeleton
+  Archer** (weight 1) — both low-weight (rare) and read as intentional
+  variance: a breather fight and a reward-variance ("shiny") fight
+  respectively, not tactical set pieces. Different, legitimate axis of
+  interest (loot excitement, pacing relief), not a failure of the test.
+- **3× Slime** (weight 4), **2× Skeleton + Skeleton Archer** (weight 4),
+  **3× Skeleton + Skeleton Archer** (weight 3), **2× Slime + Skeleton +
+  Skeleton Archer** (weight 3) — these four are the weakest under scrutiny.
+  They're not *inert* (Split creates real escalation pressure in
+  Slime-heavy packs; Bone Shard/Rattle/Archer Volley are functioning kit,
+  not filler), but their premise is thinner than anything above, and two of
+  the brief's own named bad examples ("three Skeletons," "three Slimes
+  that pose no meaningful threat") describe this shape almost exactly.
+  **Recommendation** (not implemented this pass — I was told not to touch
+  encounter data): once the four new formations ship, reweight these four
+  down rather than leave them at their current weights, and consider
+  folding their same base units (Slime, Skeleton) into synergy-anchored
+  formations over time instead of standalone packs. This is a proposal for
+  a follow-up pass, explicitly flagged rather than silently left alone.
 
 ---
 
@@ -514,13 +724,28 @@ with a built-in falsification test, not a final number.
 - **`consumeAlly` (Bone Battery)** — bespoke but lighter: Skeleton pulled
   toward the Warlock, brief dissolve/glow on contact, again riding the
   natural `defeated` fade for the Skeleton.
-- **Everything else (Hunting Pack, Living Lightning Rod, Sleepwalker's
-  Fire)** — generic banner + impact burst, no bespoke choreography. The
-  "friend is alive so I hit harder" read comes through fine on damage
-  numbers and banner text alone; reserving bespoke animation for the two
-  abilities where a sprite physically leaves the formation matches the
-  brief's own "keep combat fast" instruction — most turns should not cost
-  extra animation time.
+- **Hunting Pack (revised, D)** — a light bespoke beat, not generic: both
+  sprites tween toward the same target from different relative offsets in
+  the same round (reusing gang-up's relative-position math, no new
+  primitive), landing as two ordinary attacks with a shared banner. Cheaper
+  than `throwAlly`/`consumeAlly` (no death-fade handoff needed, both actors
+  survive and return to formation) but not "free" the way the original
+  numeric-only version would have been — this is the direct cost of fixing
+  the hidden-modifier problem in D, and worth paying for the "you can *see*
+  these two are hunting together" read the brief specifically asks for.
+- **Living Lightning Rod (A-tier, revised)** — a small bespoke visual, not
+  fully generic either: a lightning-arc effect strip drawn between the Rune
+  Knight's and the conducting ally's screen positions immediately before
+  the damage hits the party. Cheaper than an actor-sprite tween (it's a
+  named effect strip, not a live sprite, so no `startMove`/slot bookkeeping
+  needed) but still requires the two-position math established by
+  gang-up. Without this the ability is a bare number; see D for why that
+  wasn't acceptable at A-tier either.
+- **Everything else (Twin Fang, Brimstone Vanguard, Ghost Choir, etc. —
+  B-tier, not implemented this pass)** — generic banner + impact burst,
+  no bespoke choreography, consistent with the brief's "keep combat fast"
+  instruction: most turns should not cost extra animation time, and B-tier
+  entries are exactly the ones where the generic read is good enough.
 - **Telegraph text**: `"MINOTAUR SEIZES THE SLIME!"` (wind-up banner, using
   the existing `telegraph` CombatEvent) and `"WARLOCK CALLS THE BONES!"`
   (cast banner). Both ride the existing `showBanner` primitive — no new
@@ -582,7 +807,52 @@ probe; the deferred fix (`abilityIdOverride` on `EnemySpawn`) is scoped but
 not built, to avoid adding a second scaling mechanism before the first one
 (`powerScale`) has been played against.
 
+**H.7 — Weapon range doesn't gate targeting (A.6), and this quietly
+undercut more of the first draft than just Bone Battery.** Any claim in
+this document (or in future formation-chemistry work) that leans on "the
+back row is harder to reach" needs to be re-derived from `combat-reach.ts`
+and the target picker, not from the `WeaponRange` type comment, which
+describes a system that was deliberately removed. Bone Battery's
+counterplay was rewritten because of this (D); nothing else in the revised
+S/A tier depends on row-based reach, but it's worth naming as a general
+hazard rather than a one-off fix, since it's exactly the kind of plausible-
+sounding, unverified mechanical assumption that's easy to keep building on
+once written down.
+
+**H.8 — `powerScale` for Slime Cannon needs to be tuned against real party
+damage output, not guessed.** D.1's Minotaur entry states the constraint
+(survive one full-party round, die within two) rather than a number,
+because the right scalar depends on actual Floor-1 party STR/level/weapon
+distributions that this design-only pass didn't simulate. Implementation
+should pull the answer from `per-floor-combat-difficulty.mjs` (or an
+equivalent seeded scenario test) against the *actual* new ability, not
+estimate it from stat tables — a wrong guess in either direction breaks the
+interaction (too low: the trade-off is fake, "always burst the Minotaur"
+dominates and the ability rarely fires; too high: the Minotaur becomes
+Floor 1's hardest fight incidentally, which isn't this pass's goal).
+
 ---
 
-*Implementation follows this document in the same worktree. See the final
-report for what actually shipped vs. what stayed catalog-only.*
+## Addendum — adversarial design-only review (second pass)
+
+This document was revised after a self-directed adversarial review with no
+access to any other agent's design or implementation. No code was touched
+in either pass; both are design-doc-only commits. The findings that changed
+the catalog: Hunting Pack's original form was the "hidden number" pattern
+the brief explicitly warns against and was redesigned around a visible,
+recurring convergence; Bone Battery's counterplay depended on a weapon-range
+restriction that does not exist in the resolver (`combat-reach.ts`) and was
+demoted from S-tier to A-tier with an honest counterplay description; Slime
+Cannon's `powerScale` guess (0.45) was checked against rough party-damage
+math and found likely to make the trade-off fake in the *other* direction
+(the Minotaur dies before its wind-up resolves), so the entry now states a
+survivability constraint instead of a number; Sleepwalker's Fire was cut
+outright as party-status math wearing a formation-chemistry costume, not an
+enemy-to-enemy interaction; "Ash and Bone" was cut from the curated Floor 1
+formations for failing the same no-trash test the brief applies to the
+existing roster, which the first draft had not itself applied to Floor 1's
+existing seven encounter-table entries — that gap is closed in E.2.
+
+*Implementation follows this document in the same worktree, on explicit
+go-ahead. See the final report for what actually shipped vs. what stayed
+catalog-only.*
