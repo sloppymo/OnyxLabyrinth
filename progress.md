@@ -925,3 +925,17 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Real-browser pass covered the actual Floor 1 spawn and Gate approach, Index ramp `(10,18) w` in both directions, both Ember ramps `(13,4) e` / `(13,10) e` as a loop, rapid/slow ramp traversal, all 12 newly sealed boundaries, and the Stitchworks catwalk overlook.
 - The only genuine regression was the catwalk view: the lower barred gate read as an unexplained full wall. WebGL now renders a low parapet above that gate while retaining the sealed grid boundary and blocked traversal; the post-fix screenshot shows the lower metal gate distinctly below the catwalk.
 - Canvas fallback smoke still renders the architectural scene without disappearing. Browser warnings/errors remained empty, and `npm run check` passed: 116 files / 2,245 tests, app/tools typecheck, build, floor validation, and export parity. Existing Namanda content warnings remain unchanged.
+
+## 2026-08-15 — Formation chemistry implementation baseline
+
+- Created isolated worktree `/home/sloppymo/OnyxLabyrinth-formation-chemistry-implementation`
+  on branch `feat/formation-chemistry` from baseline
+  `11573958c9a69875317ef952f660ee01dc707420`.
+- Phase 0 verification passed after installing dependencies from the lockfile:
+  `npm run check` completed app/tools typechecks, Vite build, 120 Vitest files / 2,350
+  tests, floor validation, and floor export parity. The only reported floor issues are
+  the existing Namanda warnings.
+- No formation data or production formation logic has been added. The authoritative
+  synthesis remains pinned to commit `64a4cc50c723bb4b1dd3466ff3659b4b55ffd321`; the
+  implementation handoff corrections treat passive resource disability as non-filtering
+  and use the relief-encounter percentages as investigation heuristics only.
