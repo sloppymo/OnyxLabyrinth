@@ -124,13 +124,14 @@ describe("governed combat bark runtime", () => {
       speakerId: "Fighter",
       trigger: "basicAttack",
     }, emit)).toBe(false);
-    state.round = 3;
+    state.round = 2;
+    state.barkRuntime!.lastSpeakerRound = {};
     expect(offerLibraryBark(state, {
       actorId: "pc-0",
       speakerId: "Fighter",
       trigger: "basicAttack",
     }, emit)).toBe(true);
-    expect(emitted.filter((event) => event.type === "bark")).toHaveLength(2);
+    expect(emitted.filter((event) => event?.type === "bark")).toHaveLength(2);
     expect(state.barkRuntime?.telemetry.suppressionReasons["same-round-lower-priority"]).toBe(1);
     expect(state.barkRuntime?.telemetry.uniqueLines.length).toBe(2);
   });
@@ -150,6 +151,60 @@ describe("governed combat bark runtime", () => {
       trigger: "death",
     }, emit)).toBe(true);
     expect(emitted.at(-1)).toMatchObject({ type: "bark", trigger: "death" });
+  });
+
+  it("does not let a critical-hit line bypass the ordinary presentation gap", () => {
+    const state = makeState();
+    const emitted: CombatEvent[] = [];
+    const emit = (_message: string, event: CombatEvent) => emitted.push(event);
+    expect(offerLibraryBark(state, {
+      actorId: "pc-0",
+      speakerId: "Fighter",
+      trigger: "basicAttack",
+    }, emit)).toBe(true);
+    expect(offerLibraryBark(state, {
+      actorId: "pc-0",
+      speakerId: "Fighter",
+      trigger: "criticalHit",
+    }, emit)).toBe(false);
+    expect(state.barkRuntime?.telemetry.suppressionReasons["global-round-cooldown"]).toBe(1);
+  });
+
+  it("keeps the same speaker quiet longer than the global gap", () => {
+    const state = makeState();
+    const emit = () => {};
+    expect(offerLibraryBark(state, {
+      actorId: "pc-0",
+      speakerId: "Fighter",
+      trigger: "basicAttack",
+    }, emit)).toBe(true);
+    state.round = 2;
+    expect(offerLibraryBark(state, {
+      actorId: "pc-0",
+      speakerId: "Fighter",
+      trigger: "criticalHit",
+    }, emit)).toBe(false);
+    expect(state.barkRuntime?.telemetry.suppressionReasons["speaker-round-cooldown"]).toBe(1);
+  });
+
+  it("keeps one trigger from monopolizing a later round across speakers", () => {
+    const state = makeState(["Fighter", "Mage"]);
+    const emit = () => {};
+    expect(offerLibraryBark(state, {
+      actorId: "pc-0",
+      speakerId: "Fighter",
+      trigger: "basicAttack",
+    }, emit)).toBe(true);
+    state.round = 3;
+    state.barkRuntime!.lastSelectedRound = -999;
+    state.barkRuntime!.lastSpeakerRound = {};
+    state.barkRuntime!.lastTriggerRound.basicAttack = 2;
+    expect(offerLibraryBark(state, {
+      actorId: "pc-1",
+      speakerId: "Mage",
+      trigger: "basicAttack",
+    }, emit)).toBe(false);
+    expect(state.barkRuntime?.telemetry.suppressionReasons["trigger-round-cooldown"]).toBe(1);
   });
 
   it("recognizes the recruitable companion as a library speaker", () => {
