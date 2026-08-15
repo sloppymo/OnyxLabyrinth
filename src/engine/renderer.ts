@@ -388,13 +388,15 @@ const BUNDLED_THEME_URLS: Record<
 };
 
 const FALLBACK_THEME = "f1";
+const PUBLIC_DOOR_THEMES = new Set(["camp", "isobel"]);
+const STAIRS_PANEL_THEMES = new Set(["f1"]);
 
 function publicThemeUrls(theme: string): {
   wall: string;
   floorA: string;
   floorB: string;
   ceiling: string;
-  door: string;
+  door: string | null;
 } {
   const base = `${import.meta.env.BASE_URL}assets/tilesets/${theme}`;
   return {
@@ -402,7 +404,7 @@ function publicThemeUrls(theme: string): {
     floorA: `${base}/floorA.png`,
     floorB: `${base}/floorB.png`,
     ceiling: `${base}/ceiling.png`,
-    door: `${base}/door.png`,
+    door: PUBLIC_DOOR_THEMES.has(theme) ? `${base}/door.png` : null,
   };
 }
 
@@ -411,7 +413,7 @@ function urlsForTheme(theme: string): {
   floorA: string;
   floorB: string;
   ceiling: string;
-  door: string;
+  door: string | null;
 } {
   const bundled = BUNDLED_THEME_URLS[theme];
   const previewWall = previewWallUrlForTheme(theme);
@@ -420,8 +422,10 @@ function urlsForTheme(theme: string): {
 }
 
 /** Public path only — see `LoadedTileset.stairs` doc comment. */
-function stairsUrlForTheme(theme: string): string {
-  return `${import.meta.env.BASE_URL}assets/tilesets/${theme}/stairs.png`;
+function stairsUrlForTheme(theme: string): string | null {
+  return STAIRS_PANEL_THEMES.has(theme)
+    ? `${import.meta.env.BASE_URL}assets/tilesets/${theme}/stairs.png`
+    : null;
 }
 
 function skyUrlForTheme(theme: string): string | null {
@@ -865,9 +869,10 @@ function loadTileset(
     floorA: string;
     floorB: string;
     ceiling: string;
-    door: string;
+    door: string | null;
   }
 ): Promise<LoadedTileset> {
+  const stairsUrl = stairsUrlForTheme(theme);
   return Promise.all([
     loadImage(urls.wall).catch(() => {
       warnAsset(`failed to load wall texture: ${urls.wall}`);
@@ -885,15 +890,16 @@ function loadTileset(
       warnAsset(`failed to load ceiling texture: ${urls.ceiling}`);
       return null;
     }),
-    loadImage(urls.door).catch(() => {
-      warnAsset(`failed to load door texture: ${urls.door}`);
-      return null;
-    }),
+    urls.door
+      ? loadImage(urls.door).catch(() => {
+          warnAsset(`failed to load door texture: ${urls.door}`);
+          return null;
+        })
+      : Promise.resolve(null),
     // Optional and per-theme — most themes have no stairs.png yet. That's not
-    // a failure, so no warnAsset: a 404 here just means the plain door panel
-    // keeps rendering for this theme's stairs exits, same as before this field
-    // existed.
-    loadImage(stairsUrlForTheme(theme)).catch(() => null),
+    // a failure. Avoid requesting an absent optional file at all: the plain
+    // door panel keeps rendering for themes without an authored stairs panel.
+    stairsUrl ? loadImage(stairsUrl).catch(() => null) : Promise.resolve(null),
     skyUrlForTheme(theme) ? loadImage(skyUrlForTheme(theme)!).catch(() => null) : Promise.resolve(null),
     loadWallVariantImages(theme),
   ]).then(([wall, floorAImg, floorBImg, ceilingImg, doorImg, stairsImg, sky, wallVariantImages]) => {
