@@ -50,8 +50,18 @@ function renderTitleLockup(): HTMLElement {
   tagline.className = "title-tagline";
   tagline.textContent = "DESCEND · ENDURE · RETURN";
 
+  const build = (window as Window & {
+    __onyxBuild?: { sha?: string; branch?: string };
+  }).__onyxBuild;
+  const buildId = document.createElement("div");
+  buildId.className = "title-build-id";
+  const playtest = build?.branch === "playtest/friends-and-family-1";
+  buildId.textContent = playtest
+    ? `FRIENDS & FAMILY PLAYTEST 1 · ${build?.sha ?? "LOCAL"}`
+    : `BUILD ${build?.sha ?? "LOCAL"}`;
+
   wordmark.append(onyx, labyrinth);
-  lockup.append(depthMark, wordmark, tagline);
+  lockup.append(depthMark, wordmark, tagline, buildId);
   return lockup;
 }
 

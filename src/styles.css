@@ -498,6 +498,15 @@ canvas#map-canvas {
   letter-spacing: 0.18em;
 }
 
+.title-build-id {
+  margin-top: 0.55rem;
+  color: rgba(226, 211, 173, 0.58);
+  font-family: var(--font-ui);
+  font-size: clamp(0.5rem, 0.9vw, 0.68rem);
+  letter-spacing: 0.13em;
+  text-align: center;
+}
+
 /* Camp: a low ember at the edge of the same oppressive field, warmer than
    the dungeon but deliberately dimmer than Edgehollow's safe hearth. */
 #combat-panel.bg-camp {
