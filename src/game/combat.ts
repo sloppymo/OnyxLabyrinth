@@ -29,6 +29,7 @@
 import type { Character } from "./party";
 import { sortPartyByFormation } from "./party";
 import type { EnemyDef, Row } from "../data/enemies";
+import { enemyAbilityById } from "../data/enemy-abilities";
 import type { SpellDef } from "../data/spells";
 import type { ItemDef } from "../data/items";
 import {
@@ -70,7 +71,7 @@ import {
   checkTermination,
   runEndOfRound,
 } from "./combat-eor";
-import { resolveEnemyAction, resolveAllyAction } from "./combat-enemy";
+import { breakChemistry, resolveEnemyAction, resolveAllyAction } from "./combat-enemy";
 import { resolvePlayerAction, attemptFlee, smokeBombFleeActive } from "./combat-actions";
 
 // ---------------------------------------------------------------------------
@@ -245,6 +246,7 @@ export function resolveCombatRound(
   s.justDied = [];
   s.justDiedAllies = [];
   s.events = [...state.events];
+  s.enemyActedThisRound = [];
 
   const log = (msg: string): void => {
     s.log.push(msg);
@@ -405,6 +407,7 @@ export function beginRound(
   s.defendBuff = {};
   s.justDied = [];
   s.justDiedAllies = [];
+  s.enemyActedThisRound = [];
 
   // First round: run OnCombatStart hooks for living party members (e.g. Shadow).
   if (s.round === 1) {
@@ -525,7 +528,26 @@ export function resolveEnemyTurn(
   const { log, emit } = turnLoggers(s);
 
   const enemy = findEnemy(s, enemyInstanceId);
-  if (!enemy || enemy.currentHp <= 0) return s;
+  if (!enemy || enemy.currentHp <= 0) {
+    const windUp = s.windUps[enemyInstanceId];
+    if (windUp && "chemistryId" in windUp && windUp.chemistryId) {
+      const ability = enemyAbilityById(windUp.abilityId);
+      const corpse = s.justDied.find((dead) => dead.instanceId === enemyInstanceId);
+      if (ability && corpse) {
+        breakChemistry(
+          s,
+          corpse,
+          ability,
+          "actorDead",
+          emit,
+          windUp.resourceId,
+          windUp.partnerId,
+          windUp.targetId
+        );
+      }
+    }
+    return s;
+  }
 
   const action = decideEnemyAction(s, enemy, rng, emit);
   resolveEnemyAction(s, action, rng, log, emit);

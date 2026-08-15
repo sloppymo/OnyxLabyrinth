@@ -37,6 +37,15 @@ import type {
   SummonedAlly,
   WeaponRange,
 } from "./combat-types";
+import {
+  actorDisabled,
+  chemistryEvent,
+  chemistryReservationFor,
+  chemistryResourceAlive,
+  markConsumed,
+  markChemistryMetric,
+  releaseChemistryReservation,
+} from "./combat-chemistry";
 
 /** Result of a single ability hit against a party member, including whether
  *  it (or a Martyr redirect of it) is eligible for a heavyHit bark — the
@@ -96,10 +105,187 @@ function emitAbilityHeavyHitBarks(
   }
 }
 
+export function breakChemistry(
+  s: CombatState,
+  actor: EnemyInstance,
+  ability: EnemyAbilityDef,
+  reason: "actorDead" | "actorDisabled" | "resourceDead" | "partnerDead" | "targetDead",
+  emit: (m: string, e: CombatEvent) => void,
+  resourceId?: string,
+  partnerId?: string,
+  targetId?: string | null
+): void {
+  if (!ability.chemistryId) return;
+  markChemistryMetric(s, "broken", ability.chemistryId);
+  chemistryEvent(s, emit, `${actor.name}'s ${ability.name} breaks!`, {
+    chemistryId: ability.chemistryId,
+    abilityId: ability.id,
+    name: ability.name,
+    phase: "break",
+    actorId: actor.instanceId,
+    targetId,
+    resourceId,
+    partnerId,
+    reason,
+    presentation: ability.presentation === "meleeGangUp" ? "comboBreak" : ability.presentation,
+  });
+  releaseChemistryReservation(s, actor.instanceId);
+  delete s.windUps[actor.instanceId];
+}
+
+function findEnemyByInstanceId(s: CombatState, instanceId: string | undefined): EnemyInstance | undefined {
+  if (!instanceId) return undefined;
+  return [...s.enemies.front, ...s.enemies.back].find((enemy) => enemy.instanceId === instanceId);
+}
+
+function applyChemistryPayoff(
+  s: CombatState,
+  actor: EnemyInstance,
+  ability: EnemyAbilityDef,
+  resourceId: string,
+  targetId: string,
+  rng: Rng,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): boolean {
+  if (ability.effect.kind !== "consumeAlly") return false;
+  const resource = findEnemyByInstanceId(s, resourceId);
+  if (!resource || resource.currentHp <= 0) return false;
+
+  const target = s.party.find((character) => character.id === targetId && character.hp > 0);
+  if (!target && ability.effect.payoff.kind === "damage" && ability.effect.payoff.target === "singleParty") {
+    return false;
+  }
+
+  // The resource is visible until this exact beat. Mark it before the normal
+  // death sweep so the committed body cannot act later in the round.
+  markConsumed(resource);
+  chemistryEvent(s, emit, `${resource.name} is consumed by ${actor.name}!`, {
+    chemistryId: ability.chemistryId!,
+    abilityId: ability.id,
+    name: ability.name,
+    phase: "consume",
+    actorId: actor.instanceId,
+    targetId,
+    resourceId,
+    presentation: ability.presentation === "meleeGangUp" ? "comboBreak" : ability.presentation,
+  });
+
+  const payoff = ability.effect.payoff;
+  if (payoff.kind === "damage") {
+    const livingParty = s.party.filter((character) => character.hp > 0);
+    const targets = payoff.target === "singleParty"
+      ? (target ? [target] : [])
+      : payoff.target === "groupParty"
+        ? (() => {
+            const front = livingParty.filter((character) => charRow(character) === "front");
+            return front.length > 0 ? front : livingParty;
+          })()
+        : livingParty;
+    for (const hitTarget of targets) {
+      const hit = abilityDamageParty(s, hitTarget, scaledAbilityPower(payoff.power), actor, rng, emit);
+      emit(`${actor.name} resolves ${ability.name} on ${hitTarget.name} for ${hit.finalDamage} damage!`, {
+        type: "cast",
+        actorId: actor.instanceId,
+        spellId: ability.id,
+        targetId: hitTarget.id,
+        damage: hit.finalDamage,
+        presentation: ability.presentation,
+      });
+      emitAbilityHeavyHitBarks(s, hitTarget, hit, emit);
+      gainRage(s, hitTarget.id, 1);
+      if (payoff.status && rng() < (payoff.statusChance ?? 1) && !hitTarget.status.includes(payoff.status)) {
+        hitTarget.status.push(payoff.status);
+        const duration = payoff.duration ?? 3;
+        if (payoff.status === "paralysis") s.paralysisTimers[hitTarget.id] = duration;
+        if (payoff.status === "sleep") s.sleepTimers[hitTarget.id] = Math.min(3, duration);
+        if (payoff.status === "blind") s.blindTimers[hitTarget.id] = duration;
+        emit(`${hitTarget.name} is ${payoff.status}!`, {
+          type: "spellEffect",
+          spellId: ability.id,
+          targetId: hitTarget.id,
+          statusInflicted: payoff.status,
+        });
+      }
+    }
+    if (payoff.summonAfter) {
+      summonEnemyBodies(s, actor, ability, payoff.summonAfter.enemyId, payoff.summonAfter.count, log, emit);
+    }
+  } else {
+    const allies = payoff.target === "self" ? [actor] : [...s.enemies.front, ...s.enemies.back].filter((enemy) => enemy.currentHp > 0);
+    for (const ally of allies) {
+      const before = ally.currentHp;
+      ally.currentHp = Math.min(ally.hp, ally.currentHp + payoff.heal);
+      ally.attack += payoff.attackBonus;
+      emit(`${actor.name} resolves ${ability.name}, restoring ${ally.name}.`, {
+        type: "cast",
+        actorId: actor.instanceId,
+        spellId: ability.id,
+        targetId: ally.instanceId,
+        heal: ally.currentHp - before,
+        presentation: ability.presentation,
+      });
+    }
+  }
+  markChemistryMetric(s, "resolved", ability.chemistryId!);
+  releaseChemistryReservation(s, actor.instanceId);
+  return true;
+}
+
+function summonEnemyBodies(
+  s: CombatState,
+  actor: EnemyInstance,
+  ability: EnemyAbilityDef,
+  enemyId: string,
+  count: number,
+  log: (m: string) => void,
+  emit: (m: string, e: CombatEvent) => void
+): number {
+  const MAX_ENEMIES_PER_ROW = 3;
+  const enemyDef = ENEMIES_BY_ID[enemyId];
+  if (!enemyDef) return 0;
+  let summoned = 0;
+  for (let i = 0; i < count && (s.enemySummonsCreated ?? 0) < 4; i++) {
+    const row: "front" | "back" = enemyDef.rowPreference === "back" ? "back" : "front";
+    if (s.enemies[row].filter((candidate) => candidate.currentHp > 0).length >= MAX_ENEMIES_PER_ROW) continue;
+    s.summonCounter += 1;
+    const inst: EnemyInstance = {
+      ...enemyDef,
+      special: [...enemyDef.special],
+      instanceId: `${enemyDef.id}-summon-${s.summonCounter}`,
+      currentHp: enemyDef.hp,
+      row,
+      status: [],
+      spawnSerial: 1_000_000 + s.summonCounter,
+      spawnSource: "summoned",
+      rewardEligible: false,
+      rewardAwarded: false,
+    };
+    s.enemies[row].push(inst);
+    s.enemySummonsCreated = (s.enemySummonsCreated ?? 0) + 1;
+    summoned += 1;
+    log(`${actor.name} summons ${inst.name}!`);
+  }
+  if (summoned > 0) {
+    emit(`${actor.name} uses ${ability.name}!`, {
+      type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: null,
+    });
+  }
+  return summoned;
+}
+
 /** Resolve an enemy ability action. */
 function resolveEnemyAbility(
   s: CombatState,
-  action: { kind: "ability"; actor: EnemyInstance; abilityId: string; targetId: string },
+  action: {
+    kind: "ability";
+    actor: EnemyInstance;
+    abilityId: string;
+    targetId: string;
+    resourceId?: string;
+    partnerId?: string;
+    chemistryId?: string;
+  },
   rng: Rng,
   log: (m: string) => void,
   emit: (m: string, e: CombatEvent) => void
@@ -107,6 +293,53 @@ function resolveEnemyAbility(
   const { actor, abilityId, targetId } = action;
   const ability = enemyAbilityById(abilityId);
   if (!ability) return;
+
+  if (
+    ability.maxUses !== undefined &&
+    !action.chemistryId &&
+    (actor.abilityUseCounts?.[ability.id] ?? 0) >= ability.maxUses
+  ) {
+    return;
+  }
+
+  if (ability.maxUses !== undefined && !action.chemistryId) {
+    if (!actor.abilityUseCounts) actor.abilityUseCounts = {};
+    actor.abilityUseCounts[ability.id] = (actor.abilityUseCounts[ability.id] ?? 0) + 1;
+  }
+
+  if (action.chemistryId && ability.chemistryId === action.chemistryId) {
+    const reservation = chemistryReservationFor(s, actor.instanceId);
+    const resourceId = reservation?.resourceId ?? action.resourceId;
+    const partnerId = reservation?.partnerId ?? action.partnerId;
+    const committedTargetId = reservation?.targetId ?? targetId;
+    if (actor.currentHp <= 0) {
+      breakChemistry(s, actor, ability, "actorDead", emit, resourceId, partnerId, committedTargetId);
+      return;
+    }
+    if (actorDisabled(actor)) {
+      breakChemistry(s, actor, ability, "actorDisabled", emit, resourceId, partnerId, committedTargetId);
+      return;
+    }
+    if (resourceId && !chemistryResourceAlive(s, resourceId)) {
+      breakChemistry(s, actor, ability, "resourceDead", emit, resourceId, partnerId, committedTargetId);
+      return;
+    }
+    if (partnerId) {
+      const partner = findEnemyByInstanceId(s, partnerId);
+      if (!partner || actorDisabled(partner) || s.enemyActedThisRound?.includes(partnerId)) {
+        breakChemistry(s, actor, ability, "partnerDead", emit, resourceId, partnerId, committedTargetId);
+        return;
+      }
+    }
+    if (ability.target === "singleParty" && !s.party.some((character) => character.id === committedTargetId && character.hp > 0)) {
+      breakChemistry(s, actor, ability, "targetDead", emit, resourceId, partnerId, committedTargetId);
+      return;
+    }
+    if (ability.effect.kind === "consumeAlly" && resourceId) {
+      applyChemistryPayoff(s, actor, ability, resourceId, committedTargetId, rng, log, emit);
+      return;
+    }
+  }
 
   // Set cooldown.
   if (ability.cooldown && ability.cooldown > 0) {
@@ -321,34 +554,8 @@ function resolveEnemyAbility(
       // — both length 3). Uncapped pushes (e.g. slime Split into a full
       // 3-slime front row) used to land a 4th+ living enemy on the same
       // pixels as slot 2 because enemySlot() clamps idx≥3 down to 2.
-      const MAX_ENEMIES_PER_ROW = 3;
-      const enemyDef = ENEMIES_BY_ID[eff.enemyId];
-      if (!enemyDef) break;
-      let summoned = 0;
-      for (let i = 0; i < eff.count; i++) {
-        const row: "front" | "back" =
-          enemyDef.rowPreference === "back" ? "back" : "front";
-        if (s.enemies[row].length >= MAX_ENEMIES_PER_ROW) {
-          continue;
-        }
-        s.summonCounter += 1;
-        const inst: EnemyInstance = {
-          ...enemyDef,
-          special: [...enemyDef.special],
-          instanceId: `${enemyDef.id}-summon-${s.summonCounter}`,
-          currentHp: enemyDef.hp,
-          row,
-          status: [],
-        };
-        s.enemies[row].push(inst);
-        summoned += 1;
-        log(`${actor.name} summons ${inst.name}!`);
-      }
-      if (summoned > 0) {
-        emit(`${actor.name} uses ${ability.name}!`, {
-          type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: null,
-        });
-      } else {
+      const summoned = summonEnemyBodies(s, actor, ability, eff.enemyId, eff.count, log, emit);
+      if (summoned === 0) {
         // Row full — don't pretend the ability landed. Log so the turn
         // still reads as an attempted Split / Summon Imp.
         log(`${actor.name} tries to ${ability.name.toLowerCase()}, but there's no room!`);
@@ -390,8 +597,28 @@ export function resolveEnemyAction(
   emit: (m: string, e: CombatEvent) => void
 ): void {
   if (action.kind === "doNothing" || action.kind === "silence") return;
-  if (action.actor.currentHp <= 0) return;
+  const partnerReservation = Object.values(s.chemistryReservations ?? {}).find(
+    (reservation) => reservation.partnerId === action.actor.instanceId && reservation.actorId !== action.actor.instanceId
+  );
+  if (partnerReservation) {
+    if (!s.enemyActedThisRound) s.enemyActedThisRound = [];
+    if (!s.enemyActedThisRound.includes(action.actor.instanceId)) {
+      s.enemyActedThisRound.push(action.actor.instanceId);
+    }
+    return;
+  }
+  if (action.actor.currentHp <= 0) {
+    if (action.kind === "ability" && action.chemistryId) {
+      const ability = enemyAbilityById(action.abilityId);
+      if (ability) breakChemistry(s, action.actor, ability, "actorDead", emit, action.resourceId, action.partnerId, action.targetId);
+    }
+    return;
+  }
   action.actor.hasActed = true;
+  if (!s.enemyActedThisRound) s.enemyActedThisRound = [];
+  if (!s.enemyActedThisRound.includes(action.actor.instanceId)) {
+    s.enemyActedThisRound.push(action.actor.instanceId);
+  }
 
   // Enemy ability (from data/enemy-abilities.ts).
   if (action.kind === "ability") {
@@ -402,9 +629,25 @@ export function resolveEnemyAction(
     if (windUp && windUp.abilityId === action.abilityId) {
       delete s.windUps[action.actor.instanceId];
       if (action.actor.status.includes("paralysis") || action.actor.status.includes("sleep")) {
-        emit(`${action.actor.name}'s ${windUp.name} is broken!`, {
-          type: "telegraphBreak", actorId: action.actor.instanceId, abilityId: windUp.abilityId,
-        });
+        if ("chemistryId" in windUp && windUp.chemistryId) {
+          const ability = enemyAbilityById(windUp.abilityId);
+          if (ability) {
+            breakChemistry(
+              s,
+              action.actor,
+              ability,
+              "actorDisabled",
+              emit,
+              windUp.resourceId,
+              windUp.partnerId,
+              windUp.targetId
+            );
+          }
+        } else {
+          emit(`${action.actor.name}'s ${windUp.name} is broken!`, {
+            type: "telegraphBreak", actorId: action.actor.instanceId, abilityId: windUp.abilityId,
+          });
+        }
         return;
       }
     }

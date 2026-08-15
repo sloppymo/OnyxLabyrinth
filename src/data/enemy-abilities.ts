@@ -167,6 +167,40 @@ const ACID_SPIT: EnemyAbilityDef = {
   element: "poison",
 };
 
+/**
+ * S-tier Slime Cannon contract. The Crypt caster that owns this ability is
+ * authored in the Floor-1 roster later; keeping the definition here lets the
+ * shared resource substrate be exercised before roster activation.
+ */
+const CRYPT_SLIME_CANNON: EnemyAbilityDef = {
+  id: "crypt-slime-cannon",
+  name: "Slime Cannon",
+  description: "Loads an exact living Slime and fires it at one party member.",
+  target: "singleParty",
+  effect: {
+    kind: "consumeAlly",
+    selector: { group: "throwable-slime" },
+    payoff: {
+      kind: "damage",
+      target: "singleParty",
+      power: 8,
+      element: "poison",
+      status: "poison",
+      statusChance: 0.7,
+      duration: 3,
+    },
+  },
+  condition: { kind: "allyPresent", selector: { group: "throwable-slime" } },
+  weight: 10,
+  cooldown: 4,
+  windUp: true,
+  chemistryId: "chem-slime-cannon",
+  chemistryChance: 1,
+  maxUses: 1,
+  presentation: "slimeCannon",
+  element: "poison",
+};
+
 const SPLIT: EnemyAbilityDef = {
   id: "split",
   name: "Split",
@@ -176,6 +210,7 @@ const SPLIT: EnemyAbilityDef = {
   condition: { kind: "hpBelow", percent: 50 },
   weight: 10,
   cooldown: 3,
+  maxUses: 1,
   element: "poison",
 };
 
@@ -538,6 +573,7 @@ const SUMMON_IMP: EnemyAbilityDef = {
   condition: { kind: "maxAllies", count: 3 },
   weight: 6,
   cooldown: 3,
+  maxUses: 2,
   element: "fire",
 };
 
@@ -766,6 +802,7 @@ const OPPORTUNIST_STRIKE: EnemyAbilityDef = {
 
 export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   ACID_SPIT,
+  CRYPT_SLIME_CANNON,
   SPLIT,
   BONE_SHARD,
   RATTLE,

@@ -955,3 +955,23 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Verification: targeted metadata/floor/cache tests passed (65 tests); full
   `npm run check` passed (120 files / 2,353 tests). Existing Namanda validation
   warnings are unchanged.
+
+## Phase 2 — Resource chemistry and economy
+
+- Implemented the shared `consumeAlly` substrate with exact authored group or
+  ID selectors, oldest `spawnSerial` ordering, reservation, finite use caps,
+  cooldown commitment, exact wind-up/action IDs, and no retargeting.
+- Passive resource sleep/paralysis/disabled status does not disqualify a body;
+  committed actors and active partners still break when dead or disabled.
+- Consumption marks `removalCause: "consumed"` before the shared death sweep,
+  suppresses the consumed body's later action, preserves ordinary rewards for
+  original encounter enemies, and grants zero rewards to summoned bodies.
+- Added fight-wide four-enemy summon budget, live three-per-row enforcement,
+  per-ability max-use tracking, spawn provenance, and next-round enemy summon
+  timing in both round-based and per-turn flows.
+- Added the first inert S-tier ability definition (`crypt-slime-cannon`) so the
+  primitive is exercised before the Floor 1 roster is activated.
+- Verification: formation substrate tests cover exact gating, future untagged
+  enemies, deterministic ordering, duplicate reservation, committed resource /
+  actor / target death, interruption, caps/cooldowns, rewards, summon budget,
+  and both combat APIs. Full `npm run check` passed (121 files / 2,363 tests).

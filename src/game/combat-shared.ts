@@ -623,6 +623,7 @@ export function cloneEnemy(e: EnemyInstance): EnemyInstance {
     special: [...e.special],
     status: [...e.status],
     abilityCooldowns: e.abilityCooldowns ? { ...e.abilityCooldowns } : undefined,
+    abilityUseCounts: e.abilityUseCounts ? { ...e.abilityUseCounts } : undefined,
   };
 }
 

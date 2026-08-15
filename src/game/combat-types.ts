@@ -66,6 +66,8 @@ export interface EnemyInstance extends EnemyDef {
   status: StatusEffect[]; // enemies can be slept / blinded / paralyzed too
   /** Per-ability cooldown tracker: ability id → rounds remaining. */
   abilityCooldowns?: Record<string, number>;
+  /** Finite non-chemistry ability uses (e.g. Split / Summon Imp). */
+  abilityUseCounts?: Record<string, number>;
   /** Whether this enemy has acted at least once this combat. */
   hasActed?: boolean;
   /** Monotonic spawn order used for deterministic chemistry resource selection. */

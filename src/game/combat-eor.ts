@@ -14,6 +14,7 @@ import { checkSpotHidden } from "./combat-ai";
 import { tickTechniqueBuffs } from "./combat-techniques";
 import { maybeEmitBark, enemyDefIdFromInstance } from "./combat-barks";
 import type { CombatEvent, CombatState, Rng, Row } from "./combat-types";
+import { markNormalDeath } from "./combat-chemistry";
 
 /** Remove summoned allies that have been reduced to 0 HP. */
 export function allyDeathCheck(
@@ -55,15 +56,20 @@ export function deathCheck(
   }
   s.enemies.front = s.enemies.front.filter((e) => {
     if (e.currentHp <= 0) {
-      emit(`${e.name} is destroyed.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
+      markNormalDeath(e);
+      const deathVerb = e.removalCause === "consumed" ? "is consumed" : "is destroyed";
+      emit(`${e.name} ${deathVerb}.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
       maybeEmitBark(s, emit, {
         trigger: "death",
         actorId: e.instanceId,
         enemyDefId: enemyDefIdFromInstance(e),
         isParty: false,
       });
-      s.goldEarned += e.gold || 0;
-      s.xpEarned += e.xp || 0;
+      if (e.rewardEligible !== false && !e.rewardAwarded) {
+        s.goldEarned += e.gold || 0;
+        s.xpEarned += e.xp || 0;
+        e.rewardAwarded = true;
+      }
       s.justDied.push({ ...e, status: [...e.status] });
       return false;
     }
@@ -71,15 +77,20 @@ export function deathCheck(
   });
   s.enemies.back = s.enemies.back.filter((e) => {
     if (e.currentHp <= 0) {
-      emit(`${e.name} is destroyed.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
+      markNormalDeath(e);
+      const deathVerb = e.removalCause === "consumed" ? "is consumed" : "is destroyed";
+      emit(`${e.name} ${deathVerb}.`, { type: "defeated", targetId: e.instanceId, wasEnemy: true });
       maybeEmitBark(s, emit, {
         trigger: "death",
         actorId: e.instanceId,
         enemyDefId: enemyDefIdFromInstance(e),
         isParty: false,
       });
-      s.goldEarned += e.gold || 0;
-      s.xpEarned += e.xp || 0;
+      if (e.rewardEligible !== false && !e.rewardAwarded) {
+        s.goldEarned += e.gold || 0;
+        s.xpEarned += e.xp || 0;
+        e.rewardAwarded = true;
+      }
       s.justDied.push({ ...e, status: [...e.status] });
       return false;
     }

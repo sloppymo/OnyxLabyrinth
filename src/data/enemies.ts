@@ -117,6 +117,7 @@ export const SLIME: EnemyDef = {
     { kind: "weakElement", element: "earth" },
   ],
   abilityIds: ["acid-spit", "split"],
+  chemistryGroups: ["throwable-slime"],
   isBoss: false,
 };
 
@@ -133,6 +134,7 @@ export const SKELETON: EnemyDef = {
   gold: 3,
   special: [{ kind: "undead" }],
   abilityIds: ["bone-shard", "rattle"],
+  chemistryGroups: ["harvestable-bone"],
   isBoss: false,
 };
 
@@ -149,6 +151,7 @@ export const RED_SKELETON: EnemyDef = {
   gold: 200,
   special: [{ kind: "undead" }],
   abilityIds: ["bone-shard", "rattle"],
+  chemistryGroups: ["harvestable-bone"],
   isBoss: false,
 };
 
@@ -321,6 +324,7 @@ export const LESSER_CONSTRUCT: EnemyDef = {
     { kind: "resistElement", element: "earth" },
   ],
   abilityIds: ["stone-slam", "repair"],
+  chemistryGroups: ["conductive-construct"],
   isBoss: false,
 };
 
@@ -797,6 +801,7 @@ export const DEMON_SPAWN: EnemyDef = {
     { kind: "weakElement", element: "water" },
   ],
   abilityIds: ["hunting-pounce", "rending-claw"],
+  chemistryGroups: ["volatile-spawn"],
   isBoss: false,
 };
 

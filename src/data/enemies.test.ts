@@ -43,6 +43,13 @@ describe("enemy data", () => {
     );
   });
 
+  it("keeps chemistry membership narrow and authored", () => {
+    expect(ENEMIES_BY_ID["slime"].chemistryGroups).toEqual(["throwable-slime"]);
+    expect(ENEMIES_BY_ID["skeleton"].chemistryGroups).toEqual(["harvestable-bone"]);
+    expect(ENEMIES_BY_ID["skeleton-archer"].chemistryGroups).toBeUndefined();
+    expect(ENEMIES_BY_ID["demon-spawn"].chemistryGroups).toEqual(["volatile-spawn"]);
+  });
+
   it("puts an escalating boss variant on each deep floor's table (not the same boss reused)", () => {
     // Floor 3's boss now lives on its own guaranteed climax table (7), not
     // the ambient floor-3 table — see the "Grand Forge climax table"
@@ -344,7 +351,7 @@ describe("encounter table integrity", () => {
   });
 
   it("uses only known presentation keys on enemy abilities", () => {
-    const known: string[] = ["meleeGangUp"];
+    const known: string[] = ["meleeGangUp", "slimeCannon"];
     for (const ability of ALL_ENEMY_ABILITIES) {
       if (ability.presentation) {
         expect(known, `unknown presentation: ${ability.presentation}`).toContain(
