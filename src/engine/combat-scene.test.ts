@@ -442,6 +442,34 @@ describe("playTurn choreography", () => {
     expect(scene.popups.some((p) => p.text === "7")).toBe(true);
   });
 
+  it("interrupting a mid-lunge playback snaps the actor back to its stable slot", () => {
+    const scene = makeScene();
+    const t0 = 0;
+    playTurn(
+      scene,
+      [{ type: "attack", actorId: "c0", targetId: "rat-0", damage: 7, range: "close" }],
+      spellName,
+      t0,
+      W,
+      H
+    );
+
+    updateScene(scene, t0);
+    updateScene(scene, 200);
+    const moving = animOffset(getAnim(scene, "party", "c0", 200), 200);
+    expect(Math.abs(moving.x)).toBeGreaterThan(0);
+
+    // This is the same cosmetic skip used when a battle ends or the UI
+    // abandons the current presentation. It must not leave a stale offset in
+    // the renderer's next frame.
+    skipPlaybackToEnd(scene, 200);
+    expect(animOffset(getAnim(scene, "party", "c0", 200), 200)).toEqual({
+      x: 0,
+      y: 0,
+    });
+    expect(scene.partyAnims.get("c0")?.state).toBe("idle");
+  });
+
   it("playbackRate 2 advances choreography twice as fast", () => {
     const scene = makeScene();
     const events: CombatEvent[] = [
