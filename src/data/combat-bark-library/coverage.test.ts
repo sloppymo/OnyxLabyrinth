@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_BARK_PROFILES,
+  BARK_PROFILE_ALIASES,
   BARK_PROFILES_BY_ID,
   BARK_SILENT_EXCLUSIONS,
   ENEMY_BARKS,
@@ -25,7 +26,10 @@ const CHEMISTRY_IDS = new Set(ALL_CHEMISTRY_IDS);
 
 describe("entity coverage", () => {
   it("profiles every production EnemyDef or documents it as excluded", () => {
-    const profiledEnemyIds = new Set(ENEMY_BARKS.map((p) => p.id));
+    const profiledEnemyIds = new Set([
+      ...ENEMY_BARKS.map((p) => p.id),
+      ...Object.keys(BARK_PROFILE_ALIASES),
+    ]);
     const excludedIds = new Set(BARK_SILENT_EXCLUSIONS.map((e) => e.id));
     const missing = ALL_ENEMIES.map((e) => e.id).filter(
       (id) => !profiledEnemyIds.has(id) && !excludedIds.has(id)
@@ -74,10 +78,16 @@ describe("entity coverage", () => {
     expect(dupes).toEqual([]);
   });
 
-  it("BARK_PROFILES_BY_ID contains every profile exactly once", () => {
-    expect(BARK_PROFILES_BY_ID.size).toBe(ALL_BARK_PROFILES.length);
+  it("BARK_PROFILES_BY_ID contains every profile and explicit alias", () => {
+    expect(BARK_PROFILES_BY_ID.size).toBe(
+      ALL_BARK_PROFILES.length + Object.keys(BARK_PROFILE_ALIASES).length
+    );
     for (const p of ALL_BARK_PROFILES) {
       expect(BARK_PROFILES_BY_ID.get(p.id)).toBe(p);
+    }
+    for (const [aliasId, profileId] of Object.entries(BARK_PROFILE_ALIASES)) {
+      expect(ENEMIES_BY_ID[aliasId], `${aliasId} is not a real EnemyDef`).toBeDefined();
+      expect(BARK_PROFILES_BY_ID.get(aliasId)).toBe(BARK_PROFILES_BY_ID.get(profileId));
     }
   });
 });

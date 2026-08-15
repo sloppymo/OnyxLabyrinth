@@ -41,9 +41,42 @@ export const ALL_BARK_PROFILES: readonly CombatBarkProfile[] = [
   ...ENEMY_BARKS,
 ];
 
-export const BARK_PROFILES_BY_ID: ReadonlyMap<string, CombatBarkProfile> = new Map(
+/**
+ * Explicit presentation-only voice aliases. Formation Chemistry's low-power
+ * Crypt variants are authored EnemyDefs, but intentionally retain the voice
+ * of the production identity whose sprite and character they reuse. Keeping
+ * this map explicit prevents a sprite alias or broad enemy taxonomy from
+ * silently assigning dialogue to future enemies.
+ */
+export const BARK_PROFILE_ALIASES = {
+  "crypt-orc": "orc",
+  "crypt-minotaur": "minotaur",
+  "crypt-hill-ogre": "big-titty-ogre",
+  "crypt-warlock": "warlock",
+  "crypt-animated-armor": "animated-armor",
+  "crypt-hellhound": "hellhound",
+  "crypt-werewolf": "werewolf",
+  "crypt-demon-spawn": "demon-spawn",
+  "crypt-demon-mage": "demon-mage",
+  "crypt-lesser-construct": "lesser-construct",
+  "crypt-rune-knight": "rune-knight",
+  "crypt-blood-monster": "blood-monster",
+  "crypt-blood-wraith": "blood-wraith",
+  "crypt-gaze-wraith": "eyeball-monster",
+  "crypt-flame-golem": "flame-golem",
+  "crypt-stone-guardian": "stone-guardian",
+  "crypt-ghostfire": "ghostfire",
+} as const satisfies Readonly<Record<string, string>>;
+
+const barkProfilesById = new Map<string, CombatBarkProfile>(
   ALL_BARK_PROFILES.map((p) => [p.id, p])
 );
+for (const [aliasId, profileId] of Object.entries(BARK_PROFILE_ALIASES)) {
+  const profile = barkProfilesById.get(profileId);
+  if (profile) barkProfilesById.set(aliasId, profile);
+}
+
+export const BARK_PROFILES_BY_ID: ReadonlyMap<string, CombatBarkProfile> = barkProfilesById;
 
 /**
  * Production EnemyDef ids with a deliberate, documented, zero-line bark
