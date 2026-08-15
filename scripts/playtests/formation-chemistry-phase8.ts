@@ -21,10 +21,11 @@ import {
 import { ALL_SPELLS } from "../../src/data/spells";
 import { ITEMS_BY_ID } from "../../src/data/items";
 import { createCombatFromEncounter, resolveCombatRound } from "../../src/game/combat";
-import { createSeededRng } from "../../src/game/rng";
+import { createSeededRng, setGameplayRng } from "../../src/game/rng";
 import { defaultLoadoutForCharacter } from "../../src/game/combat-equipment";
 import { createPresetParty, type PresetPartyId } from "../../src/game/preset-parties";
 import { applyCombatPartyResult, type Character } from "../../src/game/party";
+import { resetBarkRngForCombat } from "../../src/game/combat-barks";
 import {
   createEncounterFamilyMemory,
   encounterRollChance,
@@ -185,7 +186,11 @@ function inventoryEntriesFromCounts(counts: Record<string, number>): { itemId: s
   );
 }
 
-function prepareParty(archetype: PartyArchetype, policy: Policy): Character[] {
+function prepareParty(archetype: PartyArchetype, policy: Policy, seed: number): Character[] {
+  // createCharacter rolls its authored 3d6 stats through the global gameplay
+  // RNG. Seed that stream per trace so policy comparisons share the same
+  // party and repeated lab runs are actually reproducible.
+  setGameplayRng(createSeededRng((seed ^ 0x50415254) >>> 0));
   const party = createPresetParty(PARTY_IDS[archetype]);
   if (policy === "aoe") {
     const mage = party.find((character) => character.class === "Mage");
@@ -224,22 +229,21 @@ function focusedTarget(state: CombatState, entryId: string) {
   return enemies[0];
 }
 
-/** Kill the actor that owns a live chemistry contract before its resource. */
-function chemistryTarget(state: CombatState) {
-  const actorPriority = [
-    "crypt-minotaur",
-    "crypt-hill-ogre",
-    "crypt-warlock",
-    "crypt-animated-armor",
-    "crypt-hellhound",
-    "crypt-demon-mage",
-    "crypt-rune-knight",
-  ];
+/** Target the authored resource/protector that a chemistry-aware player would control. */
+function chemistryTarget(state: CombatState, entryId: string) {
+  const targetByEntry: Record<string, string> = {
+    "f1-minotaur-slime": "slime",
+    "f1-ogre-toss": "skeleton",
+    "f1-warlock-bone-battery": "skeleton",
+    "f1-living-shield": "crypt-animated-armor",
+    "f1-hunting-pack": "crypt-werewolf",
+    "f1-spawn-bomb": "crypt-demon-spawn",
+    "f1-rune-overload": "crypt-lesser-construct",
+    "f1-guarded-bomb": "crypt-demon-spawn",
+  };
   const enemies = livingEnemies(state);
-  return actorPriority
-    .map((id) => enemies.find((enemy) => enemy.id === id))
-    .find((enemy): enemy is NonNullable<typeof enemy> => enemy !== undefined)
-    ?? enemies[0];
+  const preferredId = targetByEntry[entryId];
+  return enemies.find((enemy) => enemy.id === preferredId) ?? enemies[0];
 }
 
 function actionFor(
@@ -286,7 +290,7 @@ function actionFor(
 
   const target =
     policy === "chemistry-aware"
-      ? chemistryTarget(state)
+      ? chemistryTarget(state, entryId)
       : policy === "focused" || policy === "aoe"
       ? focusedTarget(state, entryId)
       : frontFirstTarget(state);
@@ -323,6 +327,7 @@ function runCombat(
   rng: Rng,
   inventory: Record<string, number>,
   chemistryEnabled: boolean,
+  combatSeed: number,
 ): CombatRun {
   const initialMaxHp = Object.fromEntries(party.map((character) => [character.id, character.maxHp]));
   const initialSp = Object.fromEntries(party.map((character) => [character.id, character.sp]));
@@ -343,6 +348,10 @@ function runCombat(
       chemistryEnabled,
     }
   );
+  // The production factory resets presentation bark RNG at combat start.
+  // Re-seed that cosmetic stream after the factory so event traces are also
+  // stable without coupling bark selection to combat RNG.
+  resetBarkRngForCombat(combatSeed);
   const enemyNames = new Map(resolved.map(({ enemy }, index) => [`${enemy.id}-${index}`, enemy.name]));
   const enemyIds = new Set([...state0.enemies.front, ...state0.enemies.back].map((enemy) => enemy.instanceId));
   let state = state0;
@@ -390,9 +399,7 @@ function runCombat(
     chemistry,
     chemistryUses: state.chemistryUses ?? {},
     guardsIntercepted: chemistryEvents.filter((event) => event.phase === "intercept").length,
-    aoeBypasses: state.events.filter((event) => event?.type === "chemistry" && event.phase === "intercept").length === 0
-      ? 0
-      : 0,
+    aoeBypasses: state.guardBypasses ?? 0,
     summonsCreated: state.enemySummonsCreated ?? 0,
     consumedBodies: chemistryEvents.filter((event) => event.phase === "consume").length,
     bespokeEvents: chemistryEvents.length,
@@ -401,8 +408,8 @@ function runCombat(
 }
 
 function runFight(entry: EncounterEntry, partyArchetype: PartyArchetype, policy: Policy, seed: number): FightResult {
-  const party = prepareParty(partyArchetype, policy);
-  const run = runCombat(entry, party, partyArchetype, policy, createSeededRng(seed), { "healing-potion": 3 }, true);
+  const party = prepareParty(partyArchetype, policy, seed);
+  const run = runCombat(entry, party, partyArchetype, policy, createSeededRng(seed), { "healing-potion": 3 }, true, seed);
   return { ...run.fight, seed };
 }
 
@@ -456,10 +463,12 @@ function runMatrix(): { fights: FightResult[]; aggregates: Record<string, Aggreg
   const aggregates: Record<string, Aggregate> = {};
   for (const [entryIndex, entry] of F1_ENTRIES.entries()) {
     for (const [partyIndex, party] of (Object.keys(PARTY_IDS) as PartyArchetype[]).entries()) {
-      for (const [policyIndex, policy] of MATRIX_POLICIES.entries()) {
+      for (const policy of MATRIX_POLICIES) {
         const cell: FightResult[] = [];
         for (let i = 0; i < N; i++) {
-          const seed = 0x8f1c0000 + entryIndex * 100000 + partyIndex * 1000 + policyIndex * 100 + i;
+          // Keep policy cells paired: same authored party and combat RNG
+          // seed; only the policy is allowed to differ.
+          const seed = 0x8f1c0000 + entryIndex * 100000 + partyIndex * 1000 + i;
           const fight = runFight(entry, party, policy, seed);
           fights.push(fight);
           cell.push(fight);
@@ -480,7 +489,7 @@ function runRelief(): { fights: FightResult[]; aggregates: Record<string, Aggreg
       for (const policy of RELIEF_POLICIES) {
         const cell: FightResult[] = [];
         for (let i = 0; i < N; i++) {
-          const seed = 0x9a2e0000 + (entryId === "f1-bone-archer-line" ? 500000 : 0) + party.charCodeAt(0) * 1000 + policy.charCodeAt(0) * 100 + i;
+          const seed = 0x9a2e0000 + (entryId === "f1-bone-archer-line" ? 500000 : 0) + party.charCodeAt(0) * 1000 + i;
           const fight = runFight(entry, party, policy, seed);
           fights.push(fight);
           cell.push(fight);
@@ -516,7 +525,7 @@ function runExpedition(
   seed: number,
 ): ExpeditionResult {
   const policy = expeditionPolicy(mode);
-  let party = prepareParty(partyArchetype, policy);
+  let party = prepareParty(partyArchetype, policy, seed);
   let inventory: Record<string, number> = { "healing-potion": 3 };
   const initialMaxHp = party.reduce((sum, character) => sum + character.maxHp, 0);
   const initialSp = party.reduce((sum, character) => sum + character.sp, 0);
@@ -559,6 +568,7 @@ function runExpedition(
       createSeededRng(combatSeed),
       inventory,
       mode !== "no-chemistry-control",
+      combatSeed,
     );
     fights.push({ ...run.fight, seed: combatSeed });
     party = applyCombatPartyResult(run.finalState.party);
