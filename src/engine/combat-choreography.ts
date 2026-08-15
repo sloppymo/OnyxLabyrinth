@@ -2789,12 +2789,24 @@ export function playTurn(
       step(t, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
-        setAnimState(getAnim(sc, actor.kind, actorId, n), "cast", n);
+        const anim = getAnim(sc, actor.kind, actorId, n);
+        setAnimState(anim, "cast", n);
+        // A caster braces and lifts into the spell instead of standing as a
+        // static effect anchor. The release beat gets a small extra lift;
+        // both motions remain bounded and return to the canonical slot.
+        startMove(anim, 0, -8 * actor.scale, 260, n, sc.playbackRate);
+      }),
+      step(t + CAST_IMPACT, (sc, n) => {
+        const actor = findActor(sc, actorId, w, h);
+        if (!actor) return;
+        const anim = getAnim(sc, actor.kind, actorId, n);
+        startMove(anim, 0, -14 * actor.scale, 120, n, sc.playbackRate);
       }),
       step(t + CAST_MS, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
         const a = getAnim(sc, actor.kind, actorId, n);
+        startMove(a, 0, 0, 150, n, sc.playbackRate);
         if (a.state === "cast") setAnimState(a, "idle", n);
       })
     );
