@@ -155,6 +155,352 @@ export const RED_SKELETON: EnemyDef = {
   isBoss: false,
 };
 
+// Floor 1 showcase variants. These are explicit low-power Crypt identities,
+// not a general spawn-scale mechanism: each owns its name, kit, reward, and
+// any chemistry contract while borrowing a verified existing sprite strip.
+export const CRYPT_ORC: EnemyDef = {
+  id: "crypt-orc",
+  name: "Crypt Orc",
+  spriteId: "orc",
+  floors: [1],
+  rowPreference: "front",
+  hp: 24,
+  attack: 7,
+  ac: 3,
+  agi: 8,
+  xp: 18,
+  gold: 12,
+  special: [{ kind: "poisonOnHit" }, { kind: "weakElement", element: "wind" }],
+  abilityIds: ["war-cry", "savage-lunge", "pack-leap"],
+  isBoss: false,
+};
+
+export const CRYPT_MINOTAUR: EnemyDef = {
+  id: "crypt-minotaur",
+  name: "Crypt Minotaur",
+  spriteId: "minotaur",
+  floors: [1],
+  rowPreference: "front",
+  hp: 34,
+  attack: 10,
+  ac: 5,
+  agi: 7,
+  xp: 24,
+  gold: 16,
+  special: [{ kind: "weakElement", element: "wind" }],
+  abilityIds: ["crypt-slime-cannon", "charge"],
+  isBoss: false,
+};
+
+export const CRYPT_HILL_OGRE: EnemyDef = {
+  id: "crypt-hill-ogre",
+  name: "Crypt Hill Ogre",
+  spriteId: "big-titty-ogre",
+  floors: [1],
+  rowPreference: "front",
+  hp: 38,
+  attack: 11,
+  ac: 6,
+  agi: 4,
+  xp: 28,
+  gold: 20,
+  special: [{ kind: "weakElement", element: "wind" }],
+  abilityIds: ["ogre-toss", "stone-slam"],
+  isBoss: false,
+};
+
+export const CRYPT_WARLOCK: EnemyDef = {
+  id: "crypt-warlock",
+  name: "Crypt Warlock",
+  spriteId: "warlock",
+  floors: [1],
+  rowPreference: "back",
+  hp: 24,
+  attack: 5,
+  ac: 3,
+  agi: 12,
+  xp: 24,
+  gold: 20,
+  special: [
+    { kind: "caster", element: "fire" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  abilityIds: ["crypt-bone-harvest", "hellfire", "chaos-bolt"],
+  isBoss: false,
+};
+
+export const CRYPT_ANIMATED_ARMOR: EnemyDef = {
+  id: "crypt-animated-armor",
+  name: "Crypt Animated Armor",
+  spriteId: "animated-armor",
+  floors: [1],
+  rowPreference: "front",
+  hp: 36,
+  attack: 9,
+  ac: 10,
+  agi: 5,
+  xp: 26,
+  gold: 18,
+  special: [
+    { kind: "highDefense" },
+    { kind: "weakElement", element: "wind" },
+    { kind: "resistElement", element: "earth" },
+  ],
+  abilityIds: ["crypt-living-shield", "shield-bash"],
+  isBoss: false,
+};
+
+export const CRYPT_HELLHOUND: EnemyDef = {
+  id: "crypt-hellhound",
+  name: "Crypt Hellhound",
+  spriteId: "hellhound",
+  floors: [1],
+  rowPreference: "front",
+  hp: 26,
+  attack: 8,
+  ac: 4,
+  agi: 16,
+  xp: 24,
+  gold: 18,
+  special: [
+    { kind: "demon" },
+    { kind: "evasive" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  abilityIds: ["crypt-pack-hunt", "hunting-pounce"],
+  isBoss: false,
+};
+
+export const CRYPT_WEREWOLF: EnemyDef = {
+  id: "crypt-werewolf",
+  name: "Crypt Werewolf",
+  spriteId: "werewolf",
+  floors: [1],
+  rowPreference: "back",
+  hp: 23,
+  attack: 7,
+  ac: 3,
+  agi: 17,
+  xp: 22,
+  gold: 16,
+  special: [{ kind: "evasive" }],
+  abilityIds: ["hunting-pounce", "rending-claw"],
+  isBoss: false,
+};
+
+export const CRYPT_DEMON_SPAWN: EnemyDef = {
+  id: "crypt-demon-spawn",
+  name: "Crypt Demon Spawn",
+  spriteId: "demon-spawn",
+  floors: [1],
+  rowPreference: "front",
+  hp: 18,
+  attack: 6,
+  ac: 2,
+  agi: 11,
+  xp: 13,
+  gold: 10,
+  special: [
+    { kind: "demon" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  abilityIds: ["hunting-pounce", "rending-claw"],
+  chemistryGroups: ["volatile-spawn"],
+  isBoss: false,
+};
+
+export const CRYPT_DEMON_MAGE: EnemyDef = {
+  id: "crypt-demon-mage",
+  name: "Crypt Demon Mage",
+  spriteId: "demon-mage",
+  floors: [1],
+  rowPreference: "back",
+  hp: 25,
+  attack: 5,
+  ac: 3,
+  agi: 11,
+  xp: 24,
+  gold: 20,
+  special: [
+    { kind: "demon" },
+    { kind: "caster", element: "fire" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  abilityIds: ["crypt-spawn-bomb", "crypt-summon-spawn", "hellfire"],
+  isBoss: false,
+};
+
+export const CRYPT_LESSER_CONSTRUCT: EnemyDef = {
+  id: "crypt-lesser-construct",
+  name: "Crypt Lesser Construct",
+  spriteId: "lesser-construct",
+  floors: [1],
+  rowPreference: "front",
+  hp: 38,
+  attack: 9,
+  ac: 9,
+  agi: 4,
+  xp: 28,
+  gold: 20,
+  special: [
+    { kind: "weakElement", element: "wind" },
+    { kind: "resistElement", element: "earth" },
+  ],
+  abilityIds: ["stone-slam", "repair"],
+  chemistryGroups: ["conductive-construct"],
+  isBoss: false,
+};
+
+export const CRYPT_RUNE_KNIGHT: EnemyDef = {
+  id: "crypt-rune-knight",
+  name: "Crypt Rune Knight",
+  spriteId: "rune-knight",
+  floors: [1],
+  rowPreference: "back",
+  hp: 27,
+  attack: 7,
+  ac: 5,
+  agi: 9,
+  xp: 26,
+  gold: 22,
+  special: [
+    { kind: "caster", element: "lightning" },
+    { kind: "resistElement", element: "lightning" },
+  ],
+  abilityIds: ["crypt-rune-overload", "lightning-strike", "ward"],
+  isBoss: false,
+};
+
+export const CRYPT_BLOOD_MONSTER: EnemyDef = {
+  id: "crypt-blood-monster",
+  name: "Crypt Blood Monster",
+  spriteId: "blood-monster",
+  floors: [1],
+  rowPreference: "front",
+  hp: 28,
+  attack: 8,
+  ac: 4,
+  agi: 9,
+  xp: 23,
+  gold: 17,
+  special: [
+    { kind: "poisonOnHit" },
+    { kind: "weakElement", element: "fire" },
+  ],
+  abilityIds: ["rending-claw", "soul-drain"],
+  isBoss: false,
+};
+
+export const CRYPT_BLOOD_WRAITH: EnemyDef = {
+  id: "crypt-blood-wraith",
+  name: "Crypt Blood Wraith",
+  spriteId: "blood-wraith",
+  floors: [1],
+  rowPreference: "back",
+  hp: 18,
+  attack: 6,
+  ac: 2,
+  agi: 15,
+  xp: 20,
+  gold: 15,
+  special: [
+    { kind: "undead" },
+    { kind: "flying" },
+    { kind: "evasive" },
+    { kind: "poisonOnHit" },
+  ],
+  abilityIds: ["life-tap", "phase-shift", "ghostly-wail"],
+  isBoss: false,
+};
+
+export const CRYPT_GAZE_WRAITH: EnemyDef = {
+  id: "crypt-gaze-wraith",
+  name: "Crypt Gaze Wraith",
+  spriteId: "eyeball-monster",
+  floors: [1],
+  rowPreference: "back",
+  hp: 18,
+  attack: 6,
+  ac: 2,
+  agi: 14,
+  xp: 20,
+  gold: 16,
+  special: [
+    { kind: "undead" },
+    { kind: "flying" },
+    { kind: "silenceRandom", target: "party", duration: "combat" },
+  ],
+  abilityIds: ["blinding-gaze", "curse"],
+  isBoss: false,
+};
+
+export const CRYPT_FLAME_GOLEM: EnemyDef = {
+  id: "crypt-flame-golem",
+  name: "Crypt Flame Golem",
+  spriteId: "flame-golem",
+  floors: [1],
+  rowPreference: "back",
+  hp: 35,
+  attack: 9,
+  ac: 7,
+  agi: 5,
+  xp: 27,
+  gold: 20,
+  special: [
+    { kind: "highDefense" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "water" },
+  ],
+  abilityIds: ["magma-burst", "forge-bellows", "repair"],
+  isBoss: false,
+};
+
+export const CRYPT_STONE_GUARDIAN: EnemyDef = {
+  id: "crypt-stone-guardian",
+  name: "Crypt Stone Guardian",
+  spriteId: "stone-guardian",
+  floors: [1],
+  rowPreference: "front",
+  hp: 42,
+  attack: 10,
+  ac: 11,
+  agi: 4,
+  xp: 30,
+  gold: 24,
+  special: [
+    { kind: "weakElement", element: "wind" },
+    { kind: "resistElement", element: "earth" },
+  ],
+  abilityIds: ["stone-slam", "iron-fist", "phalanx-guard"],
+  isBoss: false,
+};
+
+export const CRYPT_GHOSTFIRE: EnemyDef = {
+  id: "crypt-ghostfire",
+  name: "Crypt Ghostfire",
+  spriteId: "ghostfire",
+  floors: [1],
+  rowPreference: "back",
+  hp: 15,
+  attack: 5,
+  ac: 0,
+  agi: 16,
+  xp: 18,
+  gold: 14,
+  special: [
+    { kind: "flying" },
+    { kind: "undead" },
+    { kind: "resistElement", element: "fire" },
+    { kind: "weakElement", element: "cold" },
+  ],
+  abilityIds: ["life-tap", "ghostly-wail", "phase-shift"],
+  isBoss: false,
+};
+
 // Floor 2: The Cursed Library — armored dead, orc scavengers, cursed scribes.
 export const ARMORED_SKELETON: EnemyDef = {
   id: "armored-skeleton",
@@ -1223,6 +1569,23 @@ export const ALL_ENEMIES: EnemyDef[] = [
   SLIME,
   SKELETON,
   RED_SKELETON,
+  CRYPT_ORC,
+  CRYPT_MINOTAUR,
+  CRYPT_HILL_OGRE,
+  CRYPT_WARLOCK,
+  CRYPT_ANIMATED_ARMOR,
+  CRYPT_HELLHOUND,
+  CRYPT_WEREWOLF,
+  CRYPT_DEMON_SPAWN,
+  CRYPT_DEMON_MAGE,
+  CRYPT_LESSER_CONSTRUCT,
+  CRYPT_RUNE_KNIGHT,
+  CRYPT_BLOOD_MONSTER,
+  CRYPT_BLOOD_WRAITH,
+  CRYPT_GAZE_WRAITH,
+  CRYPT_FLAME_GOLEM,
+  CRYPT_STONE_GUARDIAN,
+  CRYPT_GHOSTFIRE,
   ARMORED_SKELETON,
   SKELETON_ARCHER,
   ORC,
@@ -1288,54 +1651,23 @@ export function enemiesForFloor(floor: number): EnemyDef[] {
 
 /** Weighted encounter table for each floor. Weights do not need to sum to 1. */
 export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
-  // Floor 1: The Flooded Crypt — typical 3–4, cap 4 (party of 6 needs pressure).
+  // Floor 1: The Flooded Crypt — the first-test chemistry showcase. The
+  // weights intentionally sum to 33; relief entries remain experimental and
+  // are not protected by an 18-entry quota.
   1: [
     {
-      id: "f1-slime-trio",
-      family: "slime-pack",
-      weight: 4,
-      spawns: [
-        { enemyId: "slime", row: "front" },
-        { enemyId: "slime", row: "front" },
-        { enemyId: "slime", row: "front" },
-      ],
-    },
-    {
-      id: "f1-bone-archer",
-      family: "bone-line",
-      weight: 4,
-      spawns: [
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton-archer", row: "back" },
-      ],
-    },
-    {
-      id: "f1-bone-archer-line",
-      family: "bone-line",
-      weight: 3,
-      spawns: [
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton-archer", row: "back" },
-      ],
-    },
-    {
-      id: "f1-slime-bone-line",
-      family: "slime-bone-line",
+      id: "f1-slime-cluster",
+      family: "slime-board",
       weight: 3,
       spawns: [
         { enemyId: "slime", row: "front" },
         { enemyId: "slime", row: "front" },
-        { enemyId: "skeleton", row: "front" },
-        { enemyId: "skeleton-archer", row: "back" },
+        { enemyId: "slime", row: "front" },
       ],
     },
-    // Acid puddle with trash escorts — no soft solo.
     {
-      id: "f1-acid-escorts",
-      family: "acid-escorts",
+      id: "f1-acid-burrow",
+      family: "acid-anchor",
       weight: 2,
       spawns: [
         { enemyId: "acid-puddle", row: "front" },
@@ -1344,22 +1676,151 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
-      id: "f1-slime-skeleton",
-      family: "slime-bone-line",
-      weight: 1,
+      id: "f1-bone-archer-line",
+      family: "bone-volley",
+      weight: 3,
       spawns: [
-        { enemyId: "slime", row: "front" },
         { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton-archer", row: "back" },
       ],
     },
     {
-      id: "f1-red-bone-archer",
-      family: "red-bone-line",
+      id: "f1-red-bone-bounty",
+      family: "red-bone",
       weight: 1,
       spawns: [
         { enemyId: "red-skeleton", row: "front" },
         { enemyId: "skeleton", row: "front" },
         { enemyId: "skeleton-archer", row: "back" },
+      ],
+    },
+    {
+      id: "f1-orc-leap",
+      family: "orc-pack",
+      weight: 3,
+      spawns: [
+        { enemyId: "crypt-orc", row: "front" },
+        { enemyId: "crypt-orc", row: "front" },
+      ],
+    },
+    {
+      id: "f1-minotaur-slime",
+      family: "slime-cannon",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-minotaur", row: "front" },
+        { enemyId: "slime", row: "front" },
+      ],
+    },
+    {
+      id: "f1-ogre-toss",
+      family: "ogre-toss",
+      weight: 1,
+      spawns: [
+        { enemyId: "crypt-hill-ogre", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+      ],
+    },
+    {
+      id: "f1-warlock-bone-battery",
+      family: "bone-harvest",
+      weight: 2,
+      spawns: [
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "skeleton", row: "front" },
+        { enemyId: "crypt-warlock", row: "back" },
+      ],
+    },
+    {
+      id: "f1-living-shield",
+      family: "living-shield",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-animated-armor", row: "front" },
+        { enemyId: "crypt-warlock", row: "back" },
+      ],
+    },
+    {
+      id: "f1-hunting-pack",
+      family: "hunting-pack",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-hellhound", row: "front" },
+        { enemyId: "crypt-werewolf", row: "back" },
+      ],
+    },
+    {
+      id: "f1-spawn-bomb",
+      family: "spawn-bomb",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-demon-spawn", row: "front" },
+        { enemyId: "crypt-demon-spawn", row: "front" },
+        { enemyId: "crypt-demon-mage", row: "back" },
+      ],
+    },
+    {
+      id: "f1-rune-overload",
+      family: "rune-overload",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-lesser-construct", row: "front" },
+        { enemyId: "crypt-rune-knight", row: "back" },
+      ],
+    },
+    {
+      id: "f1-guarded-bomb",
+      family: "guarded-bomb",
+      weight: 1,
+      spawns: [
+        { enemyId: "crypt-animated-armor", row: "front" },
+        { enemyId: "crypt-demon-spawn", row: "front" },
+        { enemyId: "crypt-demon-mage", row: "back" },
+      ],
+    },
+    {
+      id: "f1-wraith-pincer",
+      family: "wraith-pincer",
+      weight: 2,
+      spawns: [
+        { enemyId: "crypt-blood-monster", row: "front" },
+        { enemyId: "crypt-blood-wraith", row: "back" },
+      ],
+    },
+    {
+      id: "f1-gaze-slime",
+      family: "gaze-slime",
+      weight: 2,
+      spawns: [
+        { enemyId: "slime", row: "front" },
+        { enemyId: "slime", row: "front" },
+        { enemyId: "crypt-gaze-wraith", row: "back" },
+      ],
+    },
+    {
+      id: "f1-flame-forge",
+      family: "forge-line",
+      weight: 1,
+      spawns: [
+        { enemyId: "crypt-lesser-construct", row: "front" },
+        { enemyId: "crypt-lesser-construct", row: "front" },
+        { enemyId: "crypt-flame-golem", row: "back" },
+      ],
+    },
+    {
+      id: "f1-solo-guardian",
+      family: "solo-guardian",
+      weight: 1,
+      spawns: [{ enemyId: "crypt-stone-guardian", row: "front" }],
+    },
+    {
+      id: "f1-ghostfire-duet",
+      family: "ghostfire-duet",
+      weight: 1,
+      spawns: [
+        { enemyId: "crypt-ghostfire", row: "back" },
+        { enemyId: "crypt-ghostfire", row: "back" },
       ],
     },
   ],

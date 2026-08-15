@@ -71,6 +71,19 @@ function makeChemistryState(resourceCount = 1) {
   return state;
 }
 
+function makeOgreTossState(resourceId = "skeleton-0", resourceEnemyId = "skeleton") {
+  const party = createDefaultParty();
+  const ogre = makeEnemy("crypt-hill-ogre", "ogre-0", 60, "front", {
+    abilityIds: ["ogre-toss"],
+  });
+  const resource = makeEnemy(resourceEnemyId, resourceId, 10, "front", {
+    chemistryGroups: resourceEnemyId === "skeleton" ? ["harvestable-bone"] : undefined,
+  });
+  const state = createCombatState(party, { front: [ogre, resource], back: [] }, false);
+  state.chemistryEnabled = true;
+  return state;
+}
+
 function defendActions(state: { party: Array<{ id: string }> }) {
   return state.party.map((character) => ({ kind: "defend" as const, actorId: character.id }));
 }
@@ -244,6 +257,23 @@ describe("formation chemistry resource substrate", () => {
       }
     }
     expect(state.events.some((event) => event?.type === "chemistry" && event.phase === "consume")).toBe(true);
+  });
+
+  it("Ogre Toss accepts only the exact authored Skeleton ammunition", () => {
+    let state = makeOgreTossState();
+    state = resolveCombatRound(state, defendActions(state), fixedRng);
+    expect(state.chemistryTelemetry?.resolved["chem-ogre-toss"]).toBe(1);
+    expect(state.events).toContainEqual(expect.objectContaining({
+      type: "chemistry",
+      phase: "consume",
+      resourceId: "skeleton-0",
+      chemistryId: "chem-ogre-toss",
+    }));
+
+    let invalid = makeOgreTossState("slime-0", "slime");
+    invalid = resolveCombatRound(invalid, defendActions(invalid), fixedRng);
+    expect(invalid.windUps["ogre-0"]).toBeUndefined();
+    expect(invalid.chemistryTelemetry?.eligible["chem-ogre-toss"] ?? 0).toBe(0);
   });
 
   it("awards original encounter bodies but not summoned bodies", () => {

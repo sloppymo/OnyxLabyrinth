@@ -108,6 +108,88 @@ describe("enemy data", () => {
 });
 
 describe("encounter table integrity", () => {
+  it("uses the authoritative Floor 1 first-test roster and weights", () => {
+    const expectedIds = [
+      "f1-slime-cluster",
+      "f1-acid-burrow",
+      "f1-bone-archer-line",
+      "f1-red-bone-bounty",
+      "f1-orc-leap",
+      "f1-minotaur-slime",
+      "f1-ogre-toss",
+      "f1-warlock-bone-battery",
+      "f1-living-shield",
+      "f1-hunting-pack",
+      "f1-spawn-bomb",
+      "f1-rune-overload",
+      "f1-guarded-bomb",
+      "f1-wraith-pincer",
+      "f1-gaze-slime",
+      "f1-flame-forge",
+      "f1-solo-guardian",
+      "f1-ghostfire-duet",
+    ];
+    const table = ENCOUNTER_TABLES[1];
+    expect(table.map((entry) => entry.id)).toEqual(expectedIds);
+    expect(table.reduce((sum, entry) => sum + entry.weight, 0)).toBe(33);
+    expect(table.find((entry) => entry.id === "f1-slime-cluster")?.spawns).toEqual([
+      { enemyId: "slime", row: "front" },
+      { enemyId: "slime", row: "front" },
+      { enemyId: "slime", row: "front" },
+    ]);
+    expect(table.find((entry) => entry.id === "f1-bone-archer-line")?.spawns).toEqual([
+      { enemyId: "skeleton", row: "front" },
+      { enemyId: "skeleton", row: "front" },
+      { enemyId: "skeleton-archer", row: "back" },
+    ]);
+  });
+
+  it("registers only active Floor 1 Crypt variants with explicit sprite aliases", () => {
+    const expectedIds = [
+      "crypt-orc",
+      "crypt-minotaur",
+      "crypt-hill-ogre",
+      "crypt-warlock",
+      "crypt-animated-armor",
+      "crypt-hellhound",
+      "crypt-werewolf",
+      "crypt-demon-spawn",
+      "crypt-demon-mage",
+      "crypt-lesser-construct",
+      "crypt-rune-knight",
+      "crypt-blood-monster",
+      "crypt-blood-wraith",
+      "crypt-gaze-wraith",
+      "crypt-flame-golem",
+      "crypt-stone-guardian",
+      "crypt-ghostfire",
+    ];
+    const variants = ALL_ENEMIES.filter((enemy) => enemy.id.startsWith("crypt-"));
+    expect(variants.map((enemy) => enemy.id)).toEqual(expectedIds);
+    for (const enemy of variants) {
+      expect(enemy.floors, enemy.id).toEqual([1]);
+      expect(enemy.name, enemy.id).toMatch(/^Crypt /);
+      expect(enemy.spriteId, enemy.id).toBeDefined();
+      expect(enemy.isBoss, enemy.id).toBe(false);
+    }
+  });
+
+  it("keeps chemistry membership and exact participant kits narrow", () => {
+    expect(ENEMIES_BY_ID["crypt-demon-spawn"].chemistryGroups).toEqual(["volatile-spawn"]);
+    expect(ENEMIES_BY_ID["crypt-lesser-construct"].chemistryGroups).toEqual(["conductive-construct"]);
+    expect(ENEMIES_BY_ID["crypt-minotaur"].abilityIds).toContain("crypt-slime-cannon");
+    expect(ENEMIES_BY_ID["crypt-hill-ogre"].abilityIds).toContain("ogre-toss");
+    expect(ENEMIES_BY_ID["crypt-warlock"].abilityIds).toContain("crypt-bone-harvest");
+    expect(ENEMIES_BY_ID["crypt-animated-armor"].abilityIds).toContain("crypt-living-shield");
+    expect(ENEMIES_BY_ID["crypt-hellhound"].abilityIds).toContain("crypt-pack-hunt");
+    expect(ENEMIES_BY_ID["crypt-rune-knight"].abilityIds).toContain("crypt-rune-overload");
+    expect(enemyAbilityById("ogre-toss")?.effect).toEqual({
+      kind: "consumeAlly",
+      resource: { enemyIds: ["skeleton"] },
+      payoff: { kind: "damage", target: "singleParty", power: 10, element: "physical" },
+    });
+  });
+
   it("gives every authored table entry a stable id and family", () => {
     for (const [floor, entries] of Object.entries(ENCOUNTER_TABLES)) {
       const ids = entries.map((entry) => entry.id);
@@ -253,7 +335,6 @@ describe("encounter table integrity", () => {
 
   it("encounter packs are dense enough that enemies can act", () => {
     const minAvg: Record<number, number> = {
-      1: 3,
       2: 3.5,
       3: 3.5,
       4: 3.5,
@@ -264,6 +345,13 @@ describe("encounter table integrity", () => {
       const totalWeight = entries.reduce((s, e) => s + e.weight, 0);
       const weightedSize =
         entries.reduce((s, e) => s + e.weight * e.spawns.length, 0) / totalWeight;
+      if (floor === 1) {
+        // The authoritative 18-entry showcase has a deliberate mix of
+        // two-body and solo relief/signature fights: 82 weighted bodies / 33
+        // weight, rather than the old generic >=3 density invariant.
+        expect(weightedSize).toBeCloseTo(82 / 33, 10);
+        continue;
+      }
       expect(
         weightedSize,
         `floor ${floor} weighted avg pack size ${weightedSize.toFixed(2)}`

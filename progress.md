@@ -1036,3 +1036,28 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
   full `npm run check` passed (123 files / 2,385 tests), including app/tools
   typechecks, Vite build, floor validation, and export parity. Existing Namanda
   validation warnings remain unchanged.
+
+## Phase 6 — Floor 1 variants and first-test roster
+
+- Added the exact 17 explicit low-power Crypt EnemyDefs referenced by the
+  authoritative Floor 1 roster, each with a player-facing name, explicit
+  reward/kit, and verified `spriteId` alias. Floors 2–5 native EnemyDefs and
+  tables were not altered.
+- Replaced the old Floor 1 encounter table with the specified 18 entries and
+  pre-gate weights totaling 33, including the experimental
+  `f1-slime-cluster` and `f1-bone-archer-line` relief encounters. Their later
+  retention will be judged by trace/manual evidence; no arbitrary percentage
+  gate was added.
+- Added exact-Skeleton `ogre-toss` and a Crypt-specific capped Spawn summon so
+  the F1 roster uses the intended low-power Crypt body without changing the
+  existing later-floor `summon-imp` behavior. Random Floor 1 encounters now
+  carry id/family/display metadata and explicitly enable chemistry; scripted,
+  Arena, NPC, and non-F1 creation paths remain opt-out.
+- Repository evidence required one focused test-contract update: the old
+  generic weighted-pack minimum of 3 conflicts with the authoritative F1 table,
+  whose measured value is exactly `82 / 33 = 2.4848` due to intentional
+  two-body/solo relief and signature entries. The test now asserts that exact
+  F1 value while preserving the existing Floors 2–5 minima.
+- Verification: roster/data, alias, Ogre Toss, and encounter-metadata tests
+  passed; full `npm run check` passed (123 files / 2,391 tests), including
+  app/tools typechecks, Vite build, floor validation, and export parity.

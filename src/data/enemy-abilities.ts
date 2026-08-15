@@ -247,6 +247,27 @@ const CRYPT_SPAWN_BOMB: EnemyAbilityDef = {
   element: "fire",
 };
 
+const OGRE_TOSS: EnemyAbilityDef = {
+  id: "ogre-toss",
+  name: "Ogre Toss",
+  description: "Grabs an exact Skeleton and hurls it at one party member.",
+  target: "singleParty",
+  effect: {
+    kind: "consumeAlly",
+    resource: { enemyIds: ["skeleton"] },
+    payoff: { kind: "damage", target: "singleParty", power: 10, element: "physical" },
+  },
+  condition: { kind: "allyPresent", resource: { enemyIds: ["skeleton"] } },
+  weight: 10,
+  cooldown: 4,
+  chemistryId: "chem-ogre-toss",
+  chemistryChance: 0.65,
+  maxUses: 1,
+  presentation: "throwAlly",
+  element: "physical",
+  preferWounded: true,
+};
+
 const CRYPT_LIVING_SHIELD: EnemyAbilityDef = {
   id: "crypt-living-shield",
   name: "Living Shield",
@@ -685,6 +706,19 @@ const SUMMON_IMP: EnemyAbilityDef = {
   element: "fire",
 };
 
+const CRYPT_SUMMON_SPAWN: EnemyAbilityDef = {
+  id: "crypt-summon-spawn",
+  name: "Summon Crypt Spawn",
+  description: "Calls a low-power Crypt Spawn into the front line.",
+  target: "self",
+  effect: { kind: "summon", enemyId: "crypt-demon-spawn", count: 1 },
+  condition: { kind: "maxAllies", count: 3 },
+  weight: 6,
+  cooldown: 3,
+  maxUses: 2,
+  element: "fire",
+};
+
 const CHAOS_BOLT: EnemyAbilityDef = {
   id: "chaos-bolt",
   name: "Chaos Bolt",
@@ -913,6 +947,7 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   CRYPT_SLIME_CANNON,
   CRYPT_BONE_HARVEST,
   CRYPT_SPAWN_BOMB,
+  OGRE_TOSS,
   CRYPT_LIVING_SHIELD,
   CRYPT_PACK_HUNT,
   CRYPT_RUNE_OVERLOAD,
@@ -946,6 +981,7 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   HELLFIRE,
   SOUL_DRAIN,
   SUMMON_IMP,
+  CRYPT_SUMMON_SPAWN,
   CHAOS_BOLT,
   SEDUCTION,
   ECHO_OF_SILENCE,
