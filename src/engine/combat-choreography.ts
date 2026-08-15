@@ -3793,9 +3793,10 @@ export function playTurn(
 
   returnHome();
 
-  // Give trailing popups a beat to play out. A trailing death bark can push
-  // this further out than the default 260ms tail (see lastDeathBarkVisibleUntil).
-  const duration = Math.max(t + 260, lastDeathBarkVisibleUntil);
+  // Give trailing impact effects a short settle beat. Ordinary attacks must
+  // not spend a quarter-second idling after the attacker has already returned;
+  // a death bark can still push this farther through its explicit ledger.
+  const duration = Math.max(t + 100, lastDeathBarkVisibleUntil);
   scene.choreo = { start: now, duration, steps };
   return duration;
 }
