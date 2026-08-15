@@ -7,6 +7,9 @@ Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass o
 - Baseline `npm run check` passed after `npm ci` installed from `package-lock.json` (120 files / 2,350 tests).
 - Baseline audit found that the shared choreography boundary is healthy, but common melee still uses a uniform 35px approach and approximately two seconds of presentation time. It needs target-aware motion profiles, deterministic timing, and faster recovery.
 - Added `scripts/audit-combat-sprites.mjs` plus the generated inventory under `docs/combat/2026-08-15-combat-sprite-inventory.{md,json}` and the baseline audit at `docs/combat/2026-08-15-combat-sprite-choreography-audit.md`.
+- Implemented explicit presentation-only motion profiles, target-aware bounded lunges, contact-synchronized impact/recoil, ranged release timing, caster lift/release, deterministic visual variation, exact return cleanup, and shared Canvas/Phaser frame timing. Added the real-stage `combat-choreography-preview.html` sandbox with speed control, timeline seek, repeat, motion guides, and both backends.
+- Final browser evidence was visually inspected from `/tmp/onyx-choreo-browser-evidence/`: Canvas and Phaser preview contact frames, ranged release, cast, heal, miss, critical, Slime, Minotaur, and production Phaser Arena combat. Production smoke passed with zero page errors; Canvas rollback passed; the 40-turn freeze audit found no frozen render loop (all sampled turns had 9–10 distinct frames).
+- Final `npm run check` passed: 121 test files / 2,362 tests, app and tools TypeScript, Vite build, floor validation, and floor export consistency. Build retained only the baseline font-resolution and large-Phaser-chunk notices. No Formation Chemistry, bark, audio, or combat-mechanics branch was modified; nothing was pushed or merged.
 
 ## 2026-08-13 — Floor 2 abyss bridge entrance
 
