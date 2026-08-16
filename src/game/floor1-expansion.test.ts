@@ -141,6 +141,12 @@ describe("Floor 1 revision 10/11 — the Kept Gate entrance", () => {
     const floor = floor1();
     const gate = floor.architecturalProps?.find((p) => p.id === "gate-unified");
     expect(gate).toMatchObject({ x: 11, y: 31, facing: "n", texture: "gate-kept.png" });
+    const west = floor.architecturalProps?.find((p) => p.id === "gate-frame-west");
+    const lintel = floor.architecturalProps?.find((p) => p.id === "gate-frame-lintel");
+    expect(west?.depth).toBeGreaterThanOrEqual(0.5);
+    expect(lintel?.depth).toBe(west?.depth);
+    expect(gate?.depth).toBeLessThan(west!.depth!);
+    expect(west!.offsetZ!).toBeGreaterThan(gate!.offsetZ!);
     expect(
       floor.ceilingSprites?.some((s) => s.spriteId === "descent-counterweight")
     ).toBe(true);

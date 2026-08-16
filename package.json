@@ -28,6 +28,7 @@
     "wall:qa": "node scripts/playtests/wall-family-art-qa.mjs",
     "tileset:gallery": "node scripts/generate-tileset-gallery.mjs",
     "visual:floors": "node scripts/playtests/floor-visual-audit.mjs",
+    "test:lighting": "tsx scripts/playtests/lighting-suite.ts",
     "benchmark:maze": "node scripts/playtests/maze-renderer-benchmark.mjs",
     "playtest:maze-heights": "node scripts/playtests/maze-height-demo.mjs",
     "playtest:maze-vertical": "node scripts/playtests/maze-vertical-traversal.mjs",

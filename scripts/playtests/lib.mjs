@@ -133,6 +133,53 @@ export async function shot(page, outDir, name) {
   return p;
 }
 
+/** Decode a PNG in-page and return luma/chroma probes (WebGL-safe). */
+export async function probePngBuffer(page, pngBuffer) {
+  const b64 = pngBuffer.toString("base64");
+  return page.evaluate(async (data) => {
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = `data:image/png;base64,${data}`;
+    });
+    const cv = document.createElement("canvas");
+    cv.width = img.width;
+    cv.height = img.height;
+    const ctx = cv.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    const { data: d } = ctx.getImageData(0, 0, cv.width, cv.height);
+    const luma = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    const hist = new Float64Array(256);
+    let sumL = 0, sumR = 0, sumG = 0, sumB = 0, sumC = 0;
+    const colours = new Set();
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2];
+      const L = luma(r, g, b);
+      sumL += L; sumR += r; sumG += g; sumB += b;
+      sumC += Math.max(r, g, b) - Math.min(r, g, b);
+      hist[Math.min(255, L | 0)]++;
+      colours.add(((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3));
+    }
+    const N = (d.length / 4) | 0;
+    const pct = (p) => {
+      let acc = 0;
+      const want = N * p;
+      for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc >= want) return i; }
+      return 255;
+    };
+    const mR = sumR / N, mG = sumG / N, mB = sumB / N;
+    return {
+      w: cv.width, h: cv.height,
+      meanLuma: +(sumL / N).toFixed(2),
+      p05: pct(0.05), p50: pct(0.5), p95: pct(0.95),
+      meanRGB: [+mR.toFixed(1), +mG.toFixed(1), +mB.toFixed(1)],
+      meanChroma: +(sumC / N).toFixed(2),
+      uniqueColours: colours.size,
+    };
+  }, b64);
+}
+
 const slug = (s) =>
   String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
 

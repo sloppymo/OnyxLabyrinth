@@ -12,6 +12,7 @@ leakage within that file, predates the boss-rename work).
 | Doc | Role | Status |
 |-----|------|--------|
 | [`AGENTS.md`](../AGENTS.md) | Hard engine rules, file map, pitfalls | **Authoritative** for code constraints |
+| [`superpowers/specs/2026-08-15-dungeon-lighting-suite-and-kept-gate.md`](superpowers/specs/2026-08-15-dungeon-lighting-suite-and-kept-gate.md) | Lighting pass/fail suite + Kept Gate box extrusion (WebGL-first) | **Current** for dungeon lighting verification |
 | [`playtests/2026-08-15-friends-family-readiness.md`](playtests/2026-08-15-friends-family-readiness.md) | Exact F&F1 feature matrix, reachability, production-path evidence, deployment gate, and known risks | **Current release-readiness authority** for the candidate branch |
 | [`FRIENDS-AND-FAMILY-CHECKLIST.md`](FRIENDS-AND-FAMILY-CHECKLIST.md) | Short pre-send checklist and tester feedback questions | **Current** for external playtest distribution |
 | [`playtests/2026-08-15-formation-chemistry-final-audit.md`](playtests/2026-08-15-formation-chemistry-final-audit.md) | Canonical 33,040-trace Chemistry audit, pacing, attrition, visual evidence, and remaining balance risks | **Current** for Floor 1 Chemistry; result is PASS WITH TUNING |

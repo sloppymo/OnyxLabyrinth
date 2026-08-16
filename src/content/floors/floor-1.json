@@ -8571,10 +8571,10 @@
       "facing": "n",
       "width": 0.22,
       "height": 2.8,
-      "depth": 0.16,
+      "depth": 0.55,
       "texture": "support-basalt.png",
       "offsetX": 0.12,
-      "offsetZ": -0.46,
+      "offsetZ": -0.225,
       "alphaMode": "opaque"
     },
     {
@@ -8585,10 +8585,10 @@
       "facing": "n",
       "width": 0.22,
       "height": 2.8,
-      "depth": 0.16,
+      "depth": 0.55,
       "texture": "support-basalt.png",
       "offsetX": -0.12,
-      "offsetZ": -0.46,
+      "offsetZ": -0.225,
       "alphaMode": "opaque"
     },
     {
@@ -8599,9 +8599,9 @@
       "facing": "n",
       "width": 4,
       "height": 0.34,
-      "depth": 0.16,
+      "depth": 0.55,
       "texture": "support-basalt.png",
-      "offsetZ": -0.46,
+      "offsetZ": -0.225,
       "anchor": "ceiling",
       "alphaMode": "opaque"
     },
@@ -8613,9 +8613,9 @@
       "facing": "n",
       "width": 3.55,
       "height": 2.45,
-      "depth": 0.1,
+      "depth": 0.14,
       "texture": "gate-kept.png",
-      "offsetZ": -0.48,
+      "offsetZ": -0.43,
       "alphaMode": "opaque"
     },
     {
