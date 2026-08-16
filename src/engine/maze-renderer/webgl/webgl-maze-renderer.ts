@@ -22,7 +22,7 @@ import {
   loadTextures,
 } from "../../renderer";
 import { loadDoorFeatures } from "../../door-feature-cache";
-import { MATH_CONFIG } from "../../render-math";
+import { LIGHTING, MATH_CONFIG } from "../../render-math";
 import { LEGACY_VERTICAL_UNIT, resolveCellVolume } from "../geometry/cell-volume";
 import {
   floorSurfaceZAtDisplayPosition,
@@ -41,8 +41,14 @@ import { loadArchitecturalProps } from "../../architectural-prop-cache";
 import { isOnAbyssBridge } from "../../../game/abyss-face";
 
 const HORIZONTAL_FOV_DEGREES = 60;
-const BACKGROUND_COLOR = 0x0e0d0a;
 const ABYSS_BACKGROUND_COLOR = 0x000000;
+// Fog + clear color converge on the shared far-murk from the lighting model
+// (render-math.ts LIGHTING.fogFar) — cool slate rather than the warm near
+// background, matching the Canvas raycaster's depth-graded fog target. Near
+// surfaces keep their warm texture identity because exponential fog
+// contributes almost nothing at short range.
+const FOG_FAR_COLOR =
+  (LIGHTING.fogFar.r << 16) | (LIGHTING.fogFar.g << 8) | LIGHTING.fogFar.b;
 
 export function verticalFovForHorizontal(
   horizontalFovDegrees: number,
@@ -94,8 +100,8 @@ export class WebGLMazeRenderer implements MazeRenderer {
   };
 
   constructor(private readonly canvas: HTMLCanvasElement) {
-    this.scene.background = new Color(BACKGROUND_COLOR);
-    this.scene.fog = new FogExp2(BACKGROUND_COLOR, 0.22);
+    this.scene.background = new Color(FOG_FAR_COLOR);
+    this.scene.fog = new FogExp2(FOG_FAR_COLOR, 0.22);
     this.scene.add(this.floorGroup);
     this.scene.add(this.visuals.wallFeatures);
     this.scene.add(this.visuals.architecturalProps);
@@ -127,7 +133,7 @@ export class WebGLMazeRenderer implements MazeRenderer {
       preserveDrawingBuffer: false,
     });
     this.renderer.setPixelRatio(1);
-    this.renderer.setClearColor(BACKGROUND_COLOR, 1);
+    this.renderer.setClearColor(FOG_FAR_COLOR, 1);
     this.renderer.sortObjects = true;
     this.canvas.addEventListener("webglcontextlost", this.onContextLost);
     this.canvas.addEventListener("webglcontextrestored", this.onContextRestored);
@@ -158,6 +164,8 @@ export class WebGLMazeRenderer implements MazeRenderer {
       geometry.setAttribute("position", new Float32BufferAttribute(batch.positions, 3));
       geometry.setAttribute("normal", new Float32BufferAttribute(batch.normals, 3));
       geometry.setAttribute("uv", new Float32BufferAttribute(batch.uvs, 2));
+      // Shared light-pool model: per-vertex brightness from render-math.ts.
+      geometry.setAttribute("color", new Float32BufferAttribute(batch.colors, 3));
       geometry.setIndex(new Uint32BufferAttribute(batch.indices, 1));
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
@@ -211,12 +219,13 @@ export class WebGLMazeRenderer implements MazeRenderer {
     );
     this.camera.lookAt(this.cameraTarget);
     this.visuals.update(state, this.camera);
+    this.materials.setInDarkness(state.inDarkness);
     const abyssExposed = isOnAbyssBridge(state);
     if (this.scene.background instanceof Color) {
-      this.scene.background.setHex(abyssExposed ? ABYSS_BACKGROUND_COLOR : BACKGROUND_COLOR);
+      this.scene.background.setHex(abyssExposed ? ABYSS_BACKGROUND_COLOR : FOG_FAR_COLOR);
     }
     if (this.scene.fog instanceof FogExp2) {
-      this.scene.fog.color.setHex(abyssExposed ? ABYSS_BACKGROUND_COLOR : BACKGROUND_COLOR);
+      this.scene.fog.color.setHex(abyssExposed ? ABYSS_BACKGROUND_COLOR : FOG_FAR_COLOR);
       this.scene.fog.density = state.inDarkness ? 0.78 : abyssExposed ? 0.09 : 0.22;
     }
     mazeRenderProfiler.endSection("camera", cameraStartedAt);

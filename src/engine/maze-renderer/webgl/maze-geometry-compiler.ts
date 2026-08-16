@@ -1,6 +1,11 @@
 import type { FloorDef } from "../../../data/floors";
 import { themeAt } from "../../../game/floor-map";
 import type { Cell, EdgeType } from "../../../types";
+import {
+  LIGHTING,
+  poolFactorWithGain,
+  sampleLightPool,
+} from "../../render-math";
 import { wallVariantForEdge } from "../../wall-variants";
 import {
   compileOpenBoundaryPatches,
@@ -29,6 +34,14 @@ export interface CompiledMazeBatch {
   positions: number[];
   normals: number[];
   uvs: number[];
+  /**
+   * Per-vertex grayscale light-pool multipliers (rgb triplets) from the
+   * shared lighting model (`sampleLightPool` in render-math.ts) — the WebGL
+   * half of the Canvas raycaster's pool shading. Sampled at each vertex's
+   * world (x, z), so pools interpolate smoothly across faces. Door/stair
+   * panels stay at 1.0 so landmarks separate from pooled architecture.
+   */
+  colors: number[];
   indices: number[];
 }
 
@@ -64,6 +77,14 @@ function isInterior(cell: Cell | undefined): cell is Cell {
     (cell.n !== "wall" || cell.e !== "wall" || cell.s !== "wall" || cell.w !== "wall");
 }
 
+/** Light-pool gain per surface kind (see CompiledMazeBatch.colors). */
+const POOL_GAIN_BY_KIND: Record<MazeSurfaceKind, number> = {
+  floor: 1,
+  ceiling: LIGHTING.poolCeilingGain,
+  wall: LIGHTING.poolWallGain,
+  door: 0,
+};
+
 function addQuad(
   batch: BatchBuilder,
   vertices: readonly (readonly [number, number, number])[],
@@ -71,10 +92,15 @@ function addQuad(
   uvs: readonly (readonly [number, number])[]
 ): void {
   const base = batch.positions.length / 3;
+  const gain = POOL_GAIN_BY_KIND[batch.kind];
   for (let i = 0; i < 4; i++) {
     batch.positions.push(...vertices[i]);
     batch.normals.push(...normal);
     batch.uvs.push(...uvs[i]);
+    const factor = gain === 0
+      ? 1
+      : poolFactorWithGain(sampleLightPool(vertices[i][0], vertices[i][2]), gain);
+    batch.colors.push(factor, factor, factor);
   }
   batch.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
 }
@@ -386,6 +412,7 @@ export function compileMazeGeometry(
         positions: [],
         normals: [],
         uvs: [],
+        colors: [],
         indices: [],
       };
       builders.set(key, batch);

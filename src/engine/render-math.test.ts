@@ -57,6 +57,12 @@ import {
   PROP_MAX_WALL_FRAC,
   ceilingAnchorY,
   isBillboardOccluded,
+  LIGHTING,
+  lightPoolLattice,
+  sampleLightPool,
+  fogColorForDepth,
+  nearWarmChannelMuls,
+  poolFactorWithGain,
 } from "./render-math";
 import {
   ARENA_CAMERA,
@@ -1354,5 +1360,59 @@ describe("wallFeatureVerticalRect", () => {
     const [top, bottom] = wallFeatureVerticalRect(100, 300, 2, "center");
     expect(top).toBeCloseTo(100);
     expect(bottom).toBeCloseTo(300);
+  });
+});
+
+describe("shared dungeon lighting model", () => {
+  it("returns the warm near fog color at distance 0 and the cool far at fogCoolEnd", () => {
+    expect(fogColorForDepth(0)).toEqual(LIGHTING.fogNear);
+    expect(fogColorForDepth(LIGHTING.fogCoolStart)).toEqual(LIGHTING.fogNear);
+    expect(fogColorForDepth(LIGHTING.fogCoolEnd)).toEqual(LIGHTING.fogFar);
+    expect(fogColorForDepth(LIGHTING.fogCoolEnd + 4)).toEqual(LIGHTING.fogFar);
+  });
+
+  it("is monotonically cooling (red falls, blue rises) between fogCoolStart and fogCoolEnd", () => {
+    const a = fogColorForDepth(LIGHTING.fogCoolStart + 0.5);
+    const b = fogColorForDepth(LIGHTING.fogCoolEnd - 0.5);
+    expect(b.r).toBeLessThan(a.r);
+    expect(b.b).toBeGreaterThan(a.b);
+  });
+
+  it("gives the full warm tint at distance 0 and identity at/beyond the radius", () => {
+    expect(nearWarmChannelMuls(0)).toEqual([
+      LIGHTING.warmTint.r,
+      LIGHTING.warmTint.g,
+      LIGHTING.warmTint.b,
+    ]);
+    expect(nearWarmChannelMuls(LIGHTING.nearWarmRadius)).toEqual([1, 1, 1]);
+    expect(nearWarmChannelMuls(LIGHTING.nearWarmRadius + 3)).toEqual([1, 1, 1]);
+  });
+
+  it("eases the warm lift (not a linear flashlight ramp)", () => {
+    const mid = nearWarmChannelMuls(LIGHTING.nearWarmRadius / 2);
+    const linearR = 1 + (LIGHTING.warmTint.r - 1) * 0.5;
+    // Smoothstep(0.5) is 0.5, so mid equals the linear value at the
+    // midpoint; the *derivative* is what eases. Check a quarter-radius
+    // sample is closer to full tint than a linear interpolation would be.
+    const q = nearWarmChannelMuls(LIGHTING.nearWarmRadius * 0.25);
+    const linearQ = 1 + (LIGHTING.warmTint.r - 1) * 0.75;
+    expect(q[0]).toBeGreaterThan(linearQ);
+    expect(mid[0]).toBeCloseTo(linearR, 8);
+  });
+
+  it("samples a deterministic pool in [1 - amplitude, 1 + amplitude]", () => {
+    const a = sampleLightPool(1.5, 4.2);
+    const b = sampleLightPool(1.5, 4.2);
+    expect(a).toBe(b);
+    expect(a).toBeGreaterThanOrEqual(1 - LIGHTING.poolAmplitude);
+    expect(a).toBeLessThanOrEqual(1 + LIGHTING.poolAmplitude);
+    // Distinct lattice cells hash to distinct values.
+    expect(lightPoolLattice(0, 0)).not.toBe(lightPoolLattice(1, 0));
+  });
+
+  it("lerps a pool factor toward 1 by a per-surface gain", () => {
+    expect(poolFactorWithGain(1.16, 0)).toBe(1);
+    expect(poolFactorWithGain(1.16, 1)).toBeCloseTo(1.16);
+    expect(poolFactorWithGain(1.16, 0.5)).toBeCloseTo(1.08);
   });
 });

@@ -76,6 +76,11 @@ import {
   wallFeatureVerticalRect,
   ceilingAnchorY,
   isBillboardOccluded,
+  LIGHTING,
+  sampleLightPool,
+  fogColorForDepth,
+  nearWarmChannelMuls,
+  poolFactorWithGain,
 } from "./render-math";
 import {
   getEnvironmentalSpriteAsset,
@@ -225,12 +230,9 @@ export const PALETTE = {
   featureDark: "#8a6a38",
 };
 
-// Precomputed PALETTE.bg RGB values for fog blending. Distant surfaces fade
-// toward this warm dark amber instead of pure black, giving the depth fog an
-// atmospheric tint that matches the background.
-const BG_R = parseInt(PALETTE.bg.slice(1, 3), 16);
-const BG_G = parseInt(PALETTE.bg.slice(3, 5), 16);
-const BG_B = parseInt(PALETTE.bg.slice(5, 7), 16);
+// Distant surfaces used to fade toward a precomputed PALETTE.bg constant;
+// the fog target is now depth-graded (warm near → cool far) via
+// `fogColorForDepth` in render-math.ts, shared with the WebGL backend.
 
 // Centralized renderer tuning. Keep magic numbers here so art passes and
 // debugging don't require hunting through the draw loop.
@@ -526,10 +528,13 @@ let floorCeilCachePrimaryTextures: TextureSet | null = null;
 let floorCeilCacheWaterCells: boolean[][] | null = null;
 let floorCeilCacheWaterAData: ImageData | null = null;
 let floorCeilCacheWaterBData: ImageData | null = null;
-// Pre-computed little-endian RGBA packed value for the bg color, used for
-// fast Uint32Array.fill() pre-fill of the buffer.
+// Pre-computed little-endian RGBA packed value for the FAR fog color, used
+// for fast Uint32Array.fill() pre-fill of the buffer. Rows beyond the draw
+// distance and the horizon band represent maximum depth, so they must match
+// the color the depth-graded fog converges to (LIGHTING.fogFar), not the warm
+// near background — otherwise the fog taper lands on a visible seam.
 const BG_RGBA_PACKED =
-  (255 << 24) | (BG_B << 16) | (BG_G << 8) | BG_R;
+  (255 << 24) | (LIGHTING.fogFar.b << 16) | (LIGHTING.fogFar.g << 8) | LIGHTING.fogFar.r;
 
 // --- Smooth movement interpolation -----------------------------------------
 // The render camera lerps from the previous grid position to the new one
@@ -1844,6 +1849,11 @@ function drawFloorCeilingCast(
     u32.set(skyU32, 0);
   }
 
+  // Light pools flatten (but stay faintly present) inside darkness zones.
+  const poolGainCeil =
+    LIGHTING.poolCeilingGain * (inDarkness ? LIGHTING.darknessPoolGain : 1);
+  const poolGainFloor = inDarkness ? LIGHTING.darknessPoolGain : 1;
+
   // --- Ceiling rows (0 .. horizonY - 1) ---
   for (let y = 0; y < horizonY; y++) {
     if (useSky) continue;
@@ -1856,7 +1866,23 @@ function drawFloorCeilingCast(
     let worldY = camY + 0.5 + rowDistance * (dirY - planeY);
     const fog = opacityForDepth(rowDistance);
     const rowOffset = y * w * 4;
+    // Depth-graded fog target + carried-light warm lift, constant per row
+    // (each screen row samples one world distance). Warm lift is suppressed
+    // in darkness zones, same as the torch flicker overlay.
+    const inv = 1 - fog;
+    const fogColor = fogColorForDepth(rowDistance);
+    const fogR = fogColor.r * inv;
+    const fogG = fogColor.g * inv;
+    const fogB = fogColor.b * inv;
+    const warm = inDarkness ? null : nearWarmChannelMuls(rowDistance);
+    const fogWr = fog * (warm ? warm[0] : 1);
+    const fogWg = fog * (warm ? warm[1] : 1);
+    const fogWb = fog * (warm ? warm[2] : 1);
 
+    // Pool brightness is low-frequency (3-cell lattice), so sampling every
+    // 8 pixels and holding is invisible while saving the hot loop ~87% of
+    // the noise evaluations.
+    let pool = 1;
     for (let x = 0; x < w; x++) {
       const gx = worldX | 0;
       const gy = worldY | 0;
@@ -1865,6 +1891,9 @@ function drawFloorCeilingCast(
         worldX += stepX;
         worldY += stepY;
         continue;
+      }
+      if ((x & 7) === 0) {
+        pool = poolFactorWithGain(sampleLightPool(worldX, worldY), poolGainCeil);
       }
       const textures = cellTextures[gy]?.[gx] ?? primaryTextures;
       const ceilImg = textures.ceilingData ?? primaryTextures.ceilingData;
@@ -1875,11 +1904,11 @@ function drawFloorCeilingCast(
         const texY = ((worldY - gy) * texHeight | 0) % texHeight;
         const srcIdx = (texY * texWidth + texX) * 4;
         const dstIdx = rowOffset + x * 4;
-        // Fog: lerp toward bg color instead of fading to black.
-        const inv = 1 - fog;
-        data[dstIdx] = Math.min(255, ceilImg.data[srcIdx] * fog + BG_R * inv);
-        data[dstIdx + 1] = Math.min(255, ceilImg.data[srcIdx + 1] * fog + BG_G * inv);
-        data[dstIdx + 2] = Math.min(255, ceilImg.data[srcIdx + 2] * fog + BG_B * inv);
+        // Fog: lerp toward the depth-graded fog color; the surface term
+        // carries the pool factor and near warm lift.
+        data[dstIdx] = Math.min(255, ceilImg.data[srcIdx] * fogWr * pool + fogR);
+        data[dstIdx + 1] = Math.min(255, ceilImg.data[srcIdx + 1] * fogWg * pool + fogG);
+        data[dstIdx + 2] = Math.min(255, ceilImg.data[srcIdx + 2] * fogWb * pool + fogB);
         // alpha already 255 from pre-fill
       }
 
@@ -1899,7 +1928,18 @@ function drawFloorCeilingCast(
     let worldY = camY + 0.5 + rowDistance * (dirY - planeY);
     const fog = opacityForDepth(rowDistance);
     const rowOffset = y * w * 4;
+    // Same per-row lighting terms as the ceiling loop above.
+    const inv = 1 - fog;
+    const fogColor = fogColorForDepth(rowDistance);
+    const fogR = fogColor.r * inv;
+    const fogG = fogColor.g * inv;
+    const fogB = fogColor.b * inv;
+    const warm = inDarkness ? null : nearWarmChannelMuls(rowDistance);
+    const fogWr = fog * (warm ? warm[0] : 1);
+    const fogWg = fog * (warm ? warm[1] : 1);
+    const fogWb = fog * (warm ? warm[2] : 1);
 
+    let pool = 1;
     for (let x = 0; x < w; x++) {
       const gx = worldX | 0;
       const gy = worldY | 0;
@@ -1907,6 +1947,9 @@ function drawFloorCeilingCast(
         worldX += stepX;
         worldY += stepY;
         continue;
+      }
+      if ((x & 7) === 0) {
+        pool = poolFactorWithGain(sampleLightPool(worldX, worldY), poolGainFloor);
       }
       const textures = cellTextures[gy]?.[gx] ?? primaryTextures;
       const isFloorA = (gx + gy) % 2 === 0;
@@ -1927,11 +1970,11 @@ function drawFloorCeilingCast(
         const texY = ((worldY - gy) * texHeight | 0) % texHeight;
         const srcIdx = (texY * texWidth + texX) * 4;
         const dstIdx = rowOffset + x * 4;
-        // Fog: lerp toward bg color instead of fading to black.
-        const inv = 1 - fog;
-        data[dstIdx] = Math.min(255, tex.data[srcIdx] * fog + BG_R * inv);
-        data[dstIdx + 1] = Math.min(255, tex.data[srcIdx + 1] * fog + BG_G * inv);
-        data[dstIdx + 2] = Math.min(255, tex.data[srcIdx + 2] * fog + BG_B * inv);
+        // Fog: lerp toward the depth-graded fog color; the surface term
+        // carries the pool factor and near warm lift.
+        data[dstIdx] = Math.min(255, tex.data[srcIdx] * fogWr * pool + fogR);
+        data[dstIdx + 1] = Math.min(255, tex.data[srcIdx + 1] * fogWg * pool + fogG);
+        data[dstIdx + 2] = Math.min(255, tex.data[srcIdx + 2] * fogWb * pool + fogB);
         // alpha already 255 from pre-fill
       }
       worldX += stepX;
@@ -2325,6 +2368,89 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
     }
   }
   ctx.restore();
+
+  // --- Localized wall lighting overlay (batched) ---
+  // Two restrained world-depth effects on the raycast wall strips, applied
+  // BEFORE sprites/billboards so gates, props, and NPCs keep separating from
+  // the architecture behind them:
+  //  - carried-light warm lift on walls within LIGHTING.nearWarmRadius
+  //    (suppressed in darkness zones, same as the torch flicker overlay);
+  //  - irregular low-frequency pool shading sampled at each strip's world
+  //    hit point (doors/locked/barred panels are skipped so landmarks stay
+  //    unpooled). Alphas are quantized into a few levels and each level is
+  //    filled once via Path2D, so this adds ~12 fill calls, not ~768.
+  {
+    const LEVELS = 4;
+    const WARM_ALPHA_MAX = 0.06;
+    const warmPaths: (Path2D | null)[] = new Array(LEVELS).fill(null);
+    const darkPaths: (Path2D | null)[] = new Array(LEVELS).fill(null);
+    const brightPaths: (Path2D | null)[] = new Array(LEVELS).fill(null);
+    const poolGainWall =
+      LIGHTING.poolWallGain * (state.inDarkness ? LIGHTING.darknessPoolGain : 1);
+    const quantize = (alpha: number, max: number): number => {
+      if (alpha <= 0.005) return -1;
+      return Math.min(LEVELS - 1, Math.floor((alpha / max) * LEVELS));
+    };
+    for (let i = 0; i < hitCount; i++) {
+      const hit = hits[i];
+      if (!hit) continue;
+      const x = i * stripWidth;
+      const d = hit.perpWallDist;
+      const fog = opacityForDepth(d);
+      if (fog <= 0) continue;
+      const lineHeight = computeLineHeight(h, d);
+      const drawStart = Math.max(0, Math.floor(-lineHeight / 2 + h / 2));
+      const drawEnd = Math.min(h - 1, Math.floor(lineHeight / 2 + h / 2));
+
+      if (!state.inDarkness && d < LIGHTING.nearWarmRadius) {
+        let t = 1 - d / LIGHTING.nearWarmRadius;
+        t = t * t * (3 - 2 * t);
+        const level = quantize(t * WARM_ALPHA_MAX * fog, WARM_ALPHA_MAX);
+        if (level >= 0) {
+          const path = (warmPaths[level] ??= new Path2D());
+          path.rect(x, drawStart, stripWidth, drawEnd - drawStart + 1);
+        }
+      }
+
+      if (hit.edge === "wall") {
+        // Pool sampled at the actual wall hit point in world space.
+        const cameraX = (2 * x) / w - 1;
+        const wx = cam.x + 0.5 + d * (dirX + planeX * cameraX);
+        const wy = cam.y + 0.5 + d * (dirY + planeY * cameraX);
+        const dev = poolFactorWithGain(sampleLightPool(wx, wy), poolGainWall) - 1;
+        if (dev < 0) {
+          const level = quantize(-dev * fog, LIGHTING.poolAmplitude);
+          if (level >= 0) {
+            const path = (darkPaths[level] ??= new Path2D());
+            path.rect(x, drawStart, stripWidth, drawEnd - drawStart + 1);
+          }
+        } else if (dev > 0) {
+          const level = quantize(dev * 0.6 * fog, LIGHTING.poolAmplitude);
+          if (level >= 0) {
+            const path = (brightPaths[level] ??= new Path2D());
+            path.rect(x, drawStart, stripWidth, drawEnd - drawStart + 1);
+          }
+        }
+      }
+    }
+    ctx.save();
+    for (let level = 0; level < LEVELS; level++) {
+      const alphaAt = (max: number) => ((level + 0.5) / LEVELS) * max;
+      if (warmPaths[level]) {
+        ctx.fillStyle = `rgba(255,186,112,${alphaAt(WARM_ALPHA_MAX).toFixed(3)})`;
+        ctx.fill(warmPaths[level]!);
+      }
+      if (darkPaths[level]) {
+        ctx.fillStyle = `rgba(6,8,12,${alphaAt(LIGHTING.poolAmplitude).toFixed(3)})`;
+        ctx.fill(darkPaths[level]!);
+      }
+      if (brightPaths[level]) {
+        ctx.fillStyle = `rgba(236,214,175,${alphaAt(LIGHTING.poolAmplitude).toFixed(3)})`;
+        ctx.fill(brightPaths[level]!);
+      }
+    }
+    ctx.restore();
+  }
 
   // Fixed environmental planes draw against the completed depth buffer.
   // Their per-column wall test keeps the huge plane out of masonry while

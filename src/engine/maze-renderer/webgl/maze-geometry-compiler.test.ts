@@ -217,6 +217,26 @@ describe("compileMazeGeometry", () => {
     expect([...keys].some((key) => /^f2:wall(?:@_[b-j])?$/.test(key))).toBe(true);
   });
 
+  it("emits one light-pool color triplet per vertex, identity on doors", () => {
+    const floor = twoCellFloor();
+    setEdge(floor.grid, 1, 1, "n", "door");
+    setEdge(floor.grid, 1, 0, "s", "door");
+    const compiled = compileMazeGeometry(floor);
+    let doorVertices = 0;
+    for (const batch of compiled.batches) {
+      expect(batch.colors.length).toBe((batch.positions.length / 3) * 3);
+      for (const c of batch.colors) {
+        expect(c).toBeGreaterThanOrEqual(1 - 0.16);
+        expect(c).toBeLessThanOrEqual(1 + 0.16);
+      }
+      if (batch.kind === "door") {
+        doorVertices += batch.colors.length / 3;
+        expect(batch.colors.every((c) => c === 1)).toBe(true);
+      }
+    }
+    expect(doorVertices).toBeGreaterThan(0);
+  });
+
   it("emits a true east-rising floor quad with exact endpoint heights", () => {
     const compiled = compileMazeGeometry(eastConnector());
     const ramp = quadsForKind(compiled, "floor").find((quad) => {

@@ -21,6 +21,7 @@ import {
   getDoorFeatureImage,
   getDoorFeatureTextImage,
 } from "../../door-feature-cache";
+import { LIGHTING } from "../../render-math";
 import type { WallVariantSuffix } from "../../wall-variants";
 
 type TextureSource = HTMLImageElement | HTMLCanvasElement;
@@ -46,6 +47,40 @@ function sourceForSurface(
   if (surface === "stairs") return tileset.stairs ?? tileset.door ?? tileset.repeatedWall;
   if (surface === "door") return tileset.door ?? tileset.repeatedWall;
   return null;
+}
+
+/**
+ * Inject the shared carried-light warm lift into a maze surface material.
+ *
+ * Mirrors the Canvas raycaster's `nearWarmChannelMuls`: surfaces within
+ * `LIGHTING.nearWarmRadius` of the camera pick up the warm tint, easing
+ * (smoothstep) to identity at the radius. Applied just before the fog mix so
+ * the fog's cool far murk still wins at distance. `vFogDepth` is the fog
+ * varying MeshBasicMaterial already computes when `fog: true` — no new
+ * uniforms or varyings, so every maze material shares one program (the cache
+ * key below keeps Three from treating each closure as a distinct shader).
+ */
+function applyNearWarmLift(material: MeshBasicMaterial): void {
+  const { warmTint, nearWarmRadius } = LIGHTING;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uOnyxDarkness = { value: 0 };
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <fog_pars_fragment>",
+      "#include <fog_pars_fragment>\nuniform float uOnyxDarkness;"
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <fog_fragment>",
+      [
+        "#ifdef USE_FOG",
+        `\tfloat onyxWarmT = (1.0 - uOnyxDarkness) * (1.0 - smoothstep(0.0, ${nearWarmRadius.toFixed(3)}, vFogDepth));`,
+        `\tgl_FragColor.rgb *= mix(vec3(1.0), vec3(${warmTint.r.toFixed(3)}, ${warmTint.g.toFixed(3)}, ${warmTint.b.toFixed(3)}), onyxWarmT);`,
+        "#endif",
+        "#include <fog_fragment>",
+      ].join("\n")
+    );
+    material.userData.onyxShader = shader;
+  };
+  material.customProgramCacheKey = () => "onyx-near-warm-v2";
 }
 
 function parseMaterialKey(materialKey: string): {
@@ -155,7 +190,12 @@ export class MazeMaterialLibrary {
       fog: true,
       toneMapped: false,
       alphaTest,
+      // Per-vertex light-pool brightness from the compiled geometry (see
+      // CompiledMazeBatch.colors). Only compiled maze surfaces use `get()`,
+      // and all of them carry the attribute.
+      vertexColors: true,
     });
+    applyNearWarmLift(material);
     this.materials.set(materialKey, material);
     return material;
   }
@@ -188,6 +228,15 @@ export class MazeMaterialLibrary {
   markImageDirty(source: HTMLCanvasElement): void {
     const texture = this.textures.get(source);
     if (texture) texture.needsUpdate = true;
+  }
+
+  /** Suppress the carried-light warm lift inside darkness zones. */
+  setInDarkness(inDarkness: boolean): void {
+    const value = inDarkness ? 1 : 0;
+    for (const material of this.materials.values()) {
+      const shader = material.userData.onyxShader as { uniforms?: { uOnyxDarkness?: { value: number } } } | undefined;
+      if (shader?.uniforms?.uOnyxDarkness) shader.uniforms.uOnyxDarkness.value = value;
+    }
   }
 
   getGlow(key: string, color: string, intensity: number): MeshBasicMaterial {

@@ -178,6 +178,125 @@ export function opacityForDepth(d: number): number {
   return base * fogTaperForDepth(d, CORRIDOR_MAX_DIST);
 }
 
+// --- Dungeon lighting model ---------------------------------------------------
+// Shared by BOTH maze render backends (Canvas raycaster in renderer.ts and the
+// WebGL/Three.js backend in maze-renderer/webgl/). Three layers, all pure math:
+//
+//  1. Depth-graded fog color: surfaces still fade with the existing
+//     `opacityForDepth` curve (unchanged), but the color they fade TOWARD
+//     shifts from the warm near background to a cooler, murkier slate at
+//     draw distance. Near identity is untouched; distance reads colder.
+//  2. Near-player warm lift: a per-channel multiplier that warms surfaces
+//     within a couple of tiles of the party (their carried light), easing to
+//     identity at `nearWarmRadius`. Deliberately not a circular screen-space
+//     flashlight — it is applied in world depth, so it follows geometry.
+//  3. Irregular low-frequency light pools: deterministic value noise on a
+//     coarse world-space lattice (period `poolLatticeCells`), giving each
+//     stretch of corridor slightly brighter and darker pockets. Static,
+//     restrained (±`poolAmplitude`), and gain-scaled per surface so floors
+//     carry the pools, ceilings/walls follow more faintly, and door/stair
+//     panels stay unpooled so landmarks separate from the architecture.
+export const LIGHTING = {
+  /** Fog target at distance 0-`fogCoolStart` — matches PALETTE.bg (#0e0d0a). */
+  fogNear: { r: 14, g: 13, b: 10 },
+  /** Fog target at `fogCoolEnd`+ — cool slate murk. */
+  fogFar: { r: 8, g: 10, b: 14 },
+  /** Grid distance where the fog color starts cooling. */
+  fogCoolStart: 1.0,
+  /** Grid distance where the fog color is fully cool. */
+  fogCoolEnd: 7.0,
+  /** Reach (grid units) of the party's carried warm light. */
+  nearWarmRadius: 2.4,
+  /** Channel multipliers at distance 0 (eases to identity at the radius). */
+  warmTint: { r: 1.10, g: 1.02, b: 0.90 },
+  /** Lattice spacing of the light-pool noise, in grid cells (low frequency). */
+  poolLatticeCells: 3,
+  /** Max brightness deviation of a pool (±16%). */
+  poolAmplitude: 0.16,
+  /** How strongly walls follow the floor pools (lerp toward 1). */
+  poolWallGain: 0.75,
+  /** How strongly ceilings follow the floor pools. */
+  poolCeilingGain: 0.55,
+  /** Pools flatten inside darkness zones (kept faint, not removed). */
+  darknessPoolGain: 0.35,
+} as const;
+
+/** Deterministic integer-lattice hash in [0, 1). Pure, backend-shared. */
+export function lightPoolLattice(ix: number, iy: number): number {
+  let h = (ix * 374761393 + iy * 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+/**
+ * Smooth low-frequency light-pool brightness factor at a world position.
+ * Value noise: hash at `poolLatticeCells`-spaced lattice points, smoothstep-
+ * eased bilinear interpolation between them. Returns a multiplier in
+ * [1 - poolAmplitude, 1 + poolAmplitude]. Deterministic — the same world
+ * position always lights the same way in both backends.
+ */
+export function sampleLightPool(x: number, y: number): number {
+  const s = LIGHTING.poolLatticeCells;
+  const fx = x / s;
+  const fy = y / s;
+  const ix = Math.floor(fx);
+  const iy = Math.floor(fy);
+  let tx = fx - ix;
+  let ty = fy - iy;
+  tx = tx * tx * (3 - 2 * tx);
+  ty = ty * ty * (3 - 2 * ty);
+  const v00 = lightPoolLattice(ix, iy);
+  const v10 = lightPoolLattice(ix + 1, iy);
+  const v01 = lightPoolLattice(ix, iy + 1);
+  const v11 = lightPoolLattice(ix + 1, iy + 1);
+  const top = v00 + (v10 - v00) * tx;
+  const bottom = v01 + (v11 - v01) * tx;
+  const noise = top + (bottom - top) * ty; // [0, 1)
+  return 1 + (noise * 2 - 1) * LIGHTING.poolAmplitude;
+}
+
+/**
+ * Fog target color at a given depth: warm near background easing to the cool
+ * far murk between `fogCoolStart` and `fogCoolEnd` (smoothstep). Distance 0
+ * returns exactly the warm background, preserving the near-field identity.
+ */
+export function fogColorForDepth(d: number): { r: number; g: number; b: number } {
+  const { fogNear, fogFar, fogCoolStart, fogCoolEnd } = LIGHTING;
+  if (!Number.isFinite(d) || d <= fogCoolStart) return fogNear;
+  if (d >= fogCoolEnd) return fogFar;
+  let t = (d - fogCoolStart) / (fogCoolEnd - fogCoolStart);
+  t = t * t * (3 - 2 * t);
+  return {
+    r: fogNear.r + (fogFar.r - fogNear.r) * t,
+    g: fogNear.g + (fogFar.g - fogNear.g) * t,
+    b: fogNear.b + (fogFar.b - fogNear.b) * t,
+  };
+}
+
+/**
+ * Per-channel warm multipliers for a surface at depth `d` — the party's
+ * carried light. Full `warmTint` at distance 0, eased (smoothstep) to
+ * identity at `nearWarmRadius` and beyond.
+ */
+export function nearWarmChannelMuls(d: number): [number, number, number] {
+  const { nearWarmRadius, warmTint } = LIGHTING;
+  if (!Number.isFinite(d) || d >= nearWarmRadius) return [1, 1, 1];
+  if (d < 0) d = 0;
+  let t = 1 - d / nearWarmRadius;
+  t = t * t * (3 - 2 * t);
+  return [
+    1 + (warmTint.r - 1) * t,
+    1 + (warmTint.g - 1) * t,
+    1 + (warmTint.b - 1) * t,
+  ];
+}
+
+/** Lerp a pool factor toward 1 by a per-surface gain. */
+export function poolFactorWithGain(factor: number, gain: number): number {
+  return 1 + (factor - 1) * gain;
+}
+
 /** Edge-glow blur radius for a given distance (near = more blur, far = less). */
 export function glowBlurForDepth(d: number): number {
   return Math.max(
