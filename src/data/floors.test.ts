@@ -388,6 +388,13 @@ describe("floor definitions", () => {
 });
 
 describe("floor 2 (The Cursed Library) redesign regressions", () => {
+  it("vaults the stacks four tiles high and keeps the abyss bridge human-scale", () => {
+    const f2 = findFloor(2)!;
+    const vault = f2.heightZones?.find((z) => z.id === "cursed-library-vault");
+    expect(vault).toMatchObject({ x1: 1, y1: 1, x2: 12, y2: 12, ceilingZ: 4 });
+    expect(vault!.y2).toBeLessThan(f2.startY);
+  });
+
   it("the north-corridor darkness stretch is two real tiles, not clobbered by the event", () => {
     // A `setTile` overwrite bug once put the bookcase event on top of the
     // second darkness tile at (8,2), so the corridor only ever read as dark

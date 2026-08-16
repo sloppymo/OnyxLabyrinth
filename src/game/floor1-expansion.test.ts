@@ -227,18 +227,32 @@ describe("Floor 1 vertical graybox", () => {
     const ember = floor.heightZones?.find((z) => z.id === "ember-elevated");
     const stitchworks = floor.heightZones?.find((z) => z.id === "stitchworks-loft");
 
-    expect(index).toMatchObject({ x1: 1, y1: 12, x2: 9, y2: 20, floorZ: 1, ceilingZ: 2.5 });
+    expect(index).toMatchObject({ x1: 1, y1: 12, x2: 9, y2: 20, floorZ: 1, ceilingZ: 5 });
     expect(ramp).toMatchObject({ x1: 10, y1: 18, x2: 10, y2: 18, floorZ: 0, ceilingZ: 2.5 });
-    expect(central).toMatchObject({ x1: 10, y1: 12, x2: 14, y2: 26, ceilingZ: 1.5 });
-    expect(ember).toMatchObject({ x1: 14, y1: 2, x2: 22, y2: 11, floorZ: 1, ceilingZ: 3 });
+    expect(central).toMatchObject({ x1: 10, y1: 12, x2: 14, y2: 26, ceilingZ: 2 });
+    expect(ember).toMatchObject({ x1: 14, y1: 2, x2: 22, y2: 11, floorZ: 1, ceilingZ: 4.2 });
     expect(stitchworks).toMatchObject({
       x1: 23,
       y1: 2,
       x2: 26,
       y2: 10,
       floorZ: 1,
-      ceilingZ: 3,
+      ceilingZ: 4.8,
     });
+  });
+
+  it("uses ceiling height as Wound orientation, not a single tall crypt", () => {
+    const floor = floor1();
+    const z = (id: string) => floor.heightZones?.find((h) => h.id === id);
+    expect(z("chapel-vault")?.ceilingZ).toBe(4.2);
+    expect(z("namanda-vault")?.ceilingZ).toBe(5.5);
+    expect(z("cistern-channel")?.ceilingZ).toBe(1.2);
+    expect(z("cistern-overflow")?.ceilingZ).toBe(2.6);
+    expect(z("surveyors-rest")?.ceilingZ).toBe(1.15);
+    expect(z("hotboi-tavern")?.ceilingZ).toBe(1.25);
+    expect(z("namanda-vault")!.ceilingZ!).toBeGreaterThan(z("chapel-vault")!.ceilingZ!);
+    expect(z("cistern-channel")!.ceilingZ!).toBeLessThan(z("central-hall")!.ceilingZ!);
+    expect(z("index-stack")!.ceilingZ! - z("index-stack")!.floorZ!).toBe(4);
   });
 
   it("has three ramps at the audited connectors", () => {

@@ -61,7 +61,7 @@ function sourceForSurface(
  * key below keeps Three from treating each closure as a distinct shader).
  */
 function applyNearWarmLift(material: MeshBasicMaterial): void {
-  const { warmTint, nearWarmRadius } = LIGHTING;
+  const { warmTint, nearWarmRadius, webglDarknessAlbedo } = LIGHTING;
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uOnyxDarkness = { value: 0 };
     shader.fragmentShader = shader.fragmentShader.replace(
@@ -74,13 +74,14 @@ function applyNearWarmLift(material: MeshBasicMaterial): void {
         "#ifdef USE_FOG",
         `\tfloat onyxWarmT = (1.0 - uOnyxDarkness) * (1.0 - smoothstep(0.0, ${nearWarmRadius.toFixed(3)}, vFogDepth));`,
         `\tgl_FragColor.rgb *= mix(vec3(1.0), vec3(${warmTint.r.toFixed(3)}, ${warmTint.g.toFixed(3)}, ${warmTint.b.toFixed(3)}), onyxWarmT);`,
+        `\tgl_FragColor.rgb *= mix(1.0, ${webglDarknessAlbedo.toFixed(3)}, uOnyxDarkness);`,
         "#endif",
         "#include <fog_fragment>",
       ].join("\n")
     );
     material.userData.onyxShader = shader;
   };
-  material.customProgramCacheKey = () => "onyx-near-warm-v2";
+  material.customProgramCacheKey = () => "onyx-near-warm-v3";
 }
 
 function parseMaterialKey(materialKey: string): {
@@ -230,7 +231,7 @@ export class MazeMaterialLibrary {
     if (texture) texture.needsUpdate = true;
   }
 
-  /** Suppress the carried-light warm lift inside darkness zones. */
+  /** Suppress the carried-light warm lift and scale albedo inside darkness zones. */
   setInDarkness(inDarkness: boolean): void {
     const value = inDarkness ? 1 : 0;
     for (const material of this.materials.values()) {

@@ -690,6 +690,11 @@ function floor2(): FloorDef {
       { id: "forbidden-wing-hot", x1: 11, y1: 6, x2: 12, y2: 9, rateMul: 1.6, tableFloorId: 6 },
       { id: "scriptorium-hot", x1: 10, y1: 1, x2: 12, y2: 4, rateMul: 1.4 },
     ],
+    // Vault the stacks; leave the abyss-bridge approach at default height 1
+    // so the library mouth is a ceiling reveal, not a tall tube from spawn.
+    heightZones: [
+      { id: "cursed-library-vault", x1: 1, y1: 1, x2: 12, y2: 12, ceilingZ: 4 },
+    ],
   };
 }
 

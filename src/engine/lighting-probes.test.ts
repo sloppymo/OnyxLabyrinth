@@ -93,4 +93,12 @@ describe("evaluateLightingRun", () => {
     expect(checks.some((c) => c.id.includes("chroma<") && !c.ok)).toBe(true);
     expect(lightingRunPassed(checks)).toBe(false);
   });
+
+  it("fails a darkness pose that never engaged the darkness flag", () => {
+    const checks = evaluateLightingRun([
+      pose("webgl", "f1-straight", 22),
+      pose("webgl", "f1-darkness", 12, { inDarkness: false }),
+    ]);
+    expect(checks.some((c) => c.id.includes("in-darkness") && !c.ok)).toBe(true);
+  });
 });

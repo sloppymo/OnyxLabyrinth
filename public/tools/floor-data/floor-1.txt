@@ -58,14 +58,19 @@
 #   tileset-zone surveyors-rest (8,27)-(15,29) theme=f1
 #   tileset-zone isobels-iso-spells (16,27)-(17,29) theme=isobel
 #   height-zone gate-hall (9,31)-(13,35) floorZ=inherit ceilingZ=3
-#   height-zone central-hall (10,12)-(14,26) floorZ=inherit ceilingZ=1.5
+#   height-zone central-hall (10,12)-(14,26) floorZ=inherit ceilingZ=2
 #   height-zone index-ramp (10,18)-(10,18) floorZ=0 ceilingZ=2.5
-#   height-zone chapel-vault (1,2)-(10,11) floorZ=inherit ceilingZ=2.5
-#   height-zone namanda-vault (8,2)-(11,9) floorZ=inherit ceilingZ=3
-#   height-zone index-stack (1,12)-(9,20) floorZ=1 ceilingZ=2.5
-#   height-zone ember-loft (11,2)-(22,11) floorZ=0 ceilingZ=2.5
-#   height-zone ember-elevated (14,2)-(22,11) floorZ=1 ceilingZ=3
-#   height-zone stitchworks-loft (23,2)-(26,10) floorZ=1 ceilingZ=3
+#   height-zone chapel-vault (1,2)-(10,11) floorZ=inherit ceilingZ=4.2
+#   height-zone namanda-vault (8,2)-(11,9) floorZ=inherit ceilingZ=5.5
+#   height-zone index-stack (1,12)-(9,20) floorZ=1 ceilingZ=5
+#   height-zone cistern-channel (15,12)-(22,20) floorZ=inherit ceilingZ=1.2
+#   height-zone cistern-overflow (23,12)-(26,20) floorZ=inherit ceilingZ=2.6
+#   height-zone ember-loft (11,2)-(22,11) floorZ=0 ceilingZ=2.4
+#   height-zone ember-elevated (14,2)-(22,11) floorZ=1 ceilingZ=4.2
+#   height-zone stitchworks-loft (23,2)-(26,10) floorZ=1 ceilingZ=4.8
+#   height-zone surveyors-rest (8,27)-(15,29) floorZ=inherit ceilingZ=1.15
+#   height-zone isobels-nook (16,27)-(17,29) floorZ=inherit ceilingZ=1.15
+#   height-zone hotboi-tavern (19,21)-(23,26) floorZ=inherit ceilingZ=1.25
 #   local-ramp (10,18) uphill=w
 #   local-ramp (13,4) uphill=e
 #   local-ramp (13,10) uphill=e

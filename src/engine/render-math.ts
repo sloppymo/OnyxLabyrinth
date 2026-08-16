@@ -233,6 +233,12 @@ export const LIGHTING = {
   poolDoorGain: 0.25,
   /** Pools flatten inside darkness zones (kept faint, not removed). */
   darknessPoolGain: 0.35,
+  /**
+   * WebGL-only albedo scale inside true darkness. Canvas already darkens via
+   * `darknessMaxDist` + extra vignette — do not brighten Canvas to match.
+   * Normal (non-darkness) WebGL exposure is untouched.
+   */
+  webglDarknessAlbedo: 0.62,
 } as const;
 
 /** Deterministic integer-lattice hash in [0, 1). Pure, backend-shared. */

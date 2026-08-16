@@ -137,6 +137,13 @@ export function evaluateLightingRun(results: LightingPoseResult[]): LightingChec
       ok: p.uniqueColours >= LIGHTING_PROBE_GATES.uniqueColoursMin,
       detail: `uniqueColours=${p.uniqueColours}`,
     });
+    if (r.name.includes("darkness")) {
+      checks.push({
+        id: `${tag}/in-darkness`,
+        ok: r.inDarkness === true,
+        detail: `inDarkness=${r.inDarkness}`,
+      });
+    }
   }
 
   for (const backend of backends) {

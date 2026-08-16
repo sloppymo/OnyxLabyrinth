@@ -66,6 +66,27 @@ export function isTreasureLooted(floor: FloorDef, x: number, y: number): boolean
 }
 
 /**
+ * Apply darkness / antimagic from the cell underfoot without running the
+ * feature (no messages, stairs, loot, water). jumpTo uses this so a warp
+ * onto a darkness tile actually engages the darkness renderer.
+ */
+export function syncVisionZoneFlags(state: GameState): void {
+  const tile = state.floor.grid[state.player.y]?.[state.player.x]?.tile;
+  if (tile === "darkness" && !hasBuff(state, "light")) {
+    state.inDarkness = true;
+    state.inAntimagic = false;
+    return;
+  }
+  if (tile === "antimagic") {
+    state.inAntimagic = true;
+    state.inDarkness = false;
+    return;
+  }
+  state.inDarkness = false;
+  state.inAntimagic = false;
+}
+
+/**
  * Process the tile feature at the player's current position.
  * Returns null if the current tile has no feature.
  */
@@ -80,13 +101,12 @@ export function handleTileFeature(state: GameState, rng: Rng = getGameplayRng())
   const guardianInert = cell?.tile === "guardian" && isStairsGuardianCleared(state, floor, player.x, player.y);
   const inert = treasureInert || guardianInert;
   if (!cell || !cell.tile || inert) {
-    // No feature — clear darkness/antimagic flags
-    state.inDarkness = false;
-    state.inAntimagic = false;
+    syncVisionZoneFlags(state);
     return null;
   }
 
   const feature = cell.tile;
+  syncVisionZoneFlags(state);
   switch (feature) {
     case "stairs_up":
       return handleStairs(state, true);
@@ -98,16 +118,10 @@ export function handleTileFeature(state: GameState, rng: Rng = getGameplayRng())
       return handleChute(state);
     case "darkness":
       if (hasBuff(state, "light")) {
-        state.inDarkness = false;
-        state.inAntimagic = false;
         return { message: "Your magical light holds back the darkness.", changedFloor: false, consumed: false };
       }
-      state.inDarkness = true;
-      state.inAntimagic = false;
       return { message: "You are in a darkness zone. Visibility is reduced.", changedFloor: false, consumed: false };
     case "antimagic":
-      state.inAntimagic = true;
-      state.inDarkness = false;
       return { message: "You are in an anti-magic zone. Spells will fail here.", changedFloor: false, consumed: false };
     case "treasure":
       return handleTreasure(state);

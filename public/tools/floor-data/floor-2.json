@@ -26,6 +26,16 @@
       "theme": "f1"
     }
   ],
+  "heightZones": [
+    {
+      "id": "cursed-library-vault",
+      "x1": 1,
+      "y1": 1,
+      "x2": 12,
+      "y2": 12,
+      "ceilingZ": 4
+    }
+  ],
   "environmentalSprites": [
     {
       "id": "abyss-face",

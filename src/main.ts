@@ -8,6 +8,7 @@ import { DungeonDialogController } from "./engine/dungeon-dialog";
 import {
   handleTileFeature,
   transitionToFloor,
+  syncVisionZoneFlags,
   inspectChest,
   disarmChest,
   openChest,
@@ -3190,6 +3191,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     transitionToFloor(state, floor, opts.x, opts.y, (opts.facing ?? 0) as 0 | 1 | 2 | 3, {
       autosave: opts.autosave !== false,
     });
+    syncVisionZoneFlags(state);
     syncEncounterFamilyMemoryToFloor();
     if (opts.stepsSinceEncounter !== undefined) {
       state.stepsSinceEncounter = opts.stepsSinceEncounter;

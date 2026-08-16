@@ -8442,7 +8442,7 @@
       "y1": 12,
       "x2": 14,
       "y2": 26,
-      "ceilingZ": 1.5
+      "ceilingZ": 2
     },
     {
       "id": "index-ramp",
@@ -8459,7 +8459,7 @@
       "y1": 2,
       "x2": 10,
       "y2": 11,
-      "ceilingZ": 2.5
+      "ceilingZ": 4.2
     },
     {
       "id": "namanda-vault",
@@ -8467,7 +8467,7 @@
       "y1": 2,
       "x2": 11,
       "y2": 9,
-      "ceilingZ": 3
+      "ceilingZ": 5.5
     },
     {
       "id": "index-stack",
@@ -8475,8 +8475,24 @@
       "y1": 12,
       "x2": 9,
       "y2": 20,
-      "ceilingZ": 2.5,
+      "ceilingZ": 5,
       "floorZ": 1
+    },
+    {
+      "id": "cistern-channel",
+      "x1": 15,
+      "y1": 12,
+      "x2": 22,
+      "y2": 20,
+      "ceilingZ": 1.2
+    },
+    {
+      "id": "cistern-overflow",
+      "x1": 23,
+      "y1": 12,
+      "x2": 26,
+      "y2": 20,
+      "ceilingZ": 2.6
     },
     {
       "id": "ember-loft",
@@ -8484,7 +8500,7 @@
       "y1": 2,
       "x2": 22,
       "y2": 11,
-      "ceilingZ": 2.5,
+      "ceilingZ": 2.4,
       "floorZ": 0
     },
     {
@@ -8494,7 +8510,7 @@
       "x2": 22,
       "y2": 11,
       "floorZ": 1,
-      "ceilingZ": 3
+      "ceilingZ": 4.2
     },
     {
       "id": "stitchworks-loft",
@@ -8502,8 +8518,32 @@
       "y1": 2,
       "x2": 26,
       "y2": 10,
-      "ceilingZ": 3,
+      "ceilingZ": 4.8,
       "floorZ": 1
+    },
+    {
+      "id": "surveyors-rest",
+      "x1": 8,
+      "y1": 27,
+      "x2": 15,
+      "y2": 29,
+      "ceilingZ": 1.15
+    },
+    {
+      "id": "isobels-nook",
+      "x1": 16,
+      "y1": 27,
+      "x2": 17,
+      "y2": 29,
+      "ceilingZ": 1.15
+    },
+    {
+      "id": "hotboi-tavern",
+      "x1": 19,
+      "y1": 21,
+      "x2": 23,
+      "y2": 26,
+      "ceilingZ": 1.25
     }
   ],
   "architecturalProps": [

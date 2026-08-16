@@ -15,6 +15,7 @@ import {
   swimChance,
   transitionToFloor,
   isTreasureLooted,
+  syncVisionZoneFlags,
 } from "./features";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
 import { createDefaultParty } from "./party";
@@ -911,5 +912,35 @@ describe("climax chests (guardian-ward treasure)", () => {
       x: 2,
       y: 2,
     });
+  });
+});
+
+describe("syncVisionZoneFlags", () => {
+  it("arms darkness when standing on a darkness tile without a Light buff", () => {
+    const state = makeState();
+    setTile(state.floor.grid, 1, 1, "darkness");
+    state.player = { x: 1, y: 1, facing: 0 };
+    syncVisionZoneFlags(state);
+    expect(state.inDarkness).toBe(true);
+    expect(state.inAntimagic).toBe(false);
+  });
+
+  it("clears darkness on bare floor", () => {
+    const state = makeState();
+    state.inDarkness = true;
+    state.player = { x: 1, y: 1, facing: 0 };
+    syncVisionZoneFlags(state);
+    expect(state.inDarkness).toBe(false);
+  });
+
+  it("clears darkness when stepping from a darkness cell onto a chest", () => {
+    const state = makeState();
+    setTile(state.floor.grid, 1, 1, "darkness");
+    state.player = { x: 1, y: 1, facing: 0 };
+    syncVisionZoneFlags(state);
+    expect(state.inDarkness).toBe(true);
+    state.player = { x: 2, y: 2, facing: 0 };
+    handleTileFeature(state);
+    expect(state.inDarkness).toBe(false);
   });
 });

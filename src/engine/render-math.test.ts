@@ -1378,6 +1378,11 @@ describe("shared dungeon lighting model", () => {
     expect(b.b).toBeGreaterThan(a.b);
   });
 
+  it("webgl darkness albedo only scales the darkness path and stays below identity", () => {
+    expect(LIGHTING.webglDarknessAlbedo).toBeGreaterThan(0.4);
+    expect(LIGHTING.webglDarknessAlbedo).toBeLessThan(1);
+  });
+
   it("gives the full warm tint at distance 0 and identity at/beyond the radius", () => {
     expect(nearWarmChannelMuls(0)).toEqual([
       LIGHTING.warmTint.r,
