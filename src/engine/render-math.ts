@@ -180,22 +180,29 @@ export function opacityForDepth(d: number): number {
 
 // --- Dungeon lighting model ---------------------------------------------------
 // Shared by BOTH maze render backends (Canvas raycaster in renderer.ts and the
-// WebGL/Three.js backend in maze-renderer/webgl/). Three layers, all pure math:
+// WebGL/Three.js backend in maze-renderer/webgl/). Shared *intent* is three
+// layers; fog *implementation* is deliberately not numerically identical:
 //
-//  1. Depth-graded fog color: surfaces still fade with the existing
-//     `opacityForDepth` curve (unchanged), but the color they fade TOWARD
-//     shifts from the warm near background to a cooler, murkier slate at
-//     draw distance. Near identity is untouched; distance reads colder.
+//  1. Cool far murk (`fogFar`) vs warm near (`fogNear`). Canvas applies a
+//     depth-graded fog *target* via `fogColorForDepth` (warm → cool between
+//     `fogCoolStart` and `fogCoolEnd`) on top of the existing
+//     `opacityForDepth` curve. WebGL uses Three `FogExp2` whose color is
+//     simply `fogFar`; near surfaces stay warm because exponential fog is
+//     near-zero at short range. Do not "fix" one backend to match the
+//     other's fog numbers — the shared contract is palette + near lift +
+//     pools, not bit-identical extinction.
 //  2. Near-player warm lift: a per-channel multiplier that warms surfaces
 //     within a couple of tiles of the party (their carried light), easing to
 //     identity at `nearWarmRadius`. Deliberately not a circular screen-space
 //     flashlight — it is applied in world depth, so it follows geometry.
+//     Suppressed in darkness zones on both backends.
 //  3. Irregular low-frequency light pools: deterministic value noise on a
 //     coarse world-space lattice (period `poolLatticeCells`), giving each
 //     stretch of corridor slightly brighter and darker pockets. Static,
 //     restrained (±`poolAmplitude`), and gain-scaled per surface so floors
 //     carry the pools, ceilings/walls follow more faintly, and door/stair
-//     panels stay unpooled so landmarks separate from the architecture.
+//     panels take only `poolDoorGain` so landmarks stay readable without
+//     looking self-lit against a dark wall.
 export const LIGHTING = {
   /** Fog target at distance 0-`fogCoolStart` — matches PALETTE.bg (#0e0d0a). */
   fogNear: { r: 14, g: 13, b: 10 },
@@ -217,6 +224,13 @@ export const LIGHTING = {
   poolWallGain: 0.75,
   /** How strongly ceilings follow the floor pools. */
   poolCeilingGain: 0.55,
+  /**
+   * How strongly door/stair/locked/barred panels follow the pools.
+   * 0 made a door look self-lit when the surrounding wall sat in a low
+   * pocket; 1 drowned landmark contrast. A quarter-gain keeps the panel
+   * tied to the room without losing readability.
+   */
+  poolDoorGain: 0.25,
   /** Pools flatten inside darkness zones (kept faint, not removed). */
   darknessPoolGain: 0.35,
 } as const;

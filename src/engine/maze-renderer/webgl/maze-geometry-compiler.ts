@@ -36,10 +36,10 @@ export interface CompiledMazeBatch {
   uvs: number[];
   /**
    * Per-vertex grayscale light-pool multipliers (rgb triplets) from the
-   * shared lighting model (`sampleLightPool` in render-math.ts) — the WebGL
-   * half of the Canvas raycaster's pool shading. Sampled at each vertex's
-   * world (x, z), so pools interpolate smoothly across faces. Door/stair
-   * panels stay at 1.0 so landmarks separate from pooled architecture.
+   * shared lighting model (`sampleLightPool` in render-math.ts). Each quad
+   * samples once at its centroid and stamps that factor on all four
+   * vertices, so GPU interpolation cannot paint a smooth modern gradient
+   * across a pixel wall. Door/stair panels use `LIGHTING.poolDoorGain`.
    */
   colors: number[];
   indices: number[];
@@ -82,7 +82,7 @@ const POOL_GAIN_BY_KIND: Record<MazeSurfaceKind, number> = {
   floor: 1,
   ceiling: LIGHTING.poolCeilingGain,
   wall: LIGHTING.poolWallGain,
-  door: 0,
+  door: LIGHTING.poolDoorGain,
 };
 
 function addQuad(
@@ -93,13 +93,13 @@ function addQuad(
 ): void {
   const base = batch.positions.length / 3;
   const gain = POOL_GAIN_BY_KIND[batch.kind];
+  const cx = (vertices[0][0] + vertices[1][0] + vertices[2][0] + vertices[3][0]) / 4;
+  const cz = (vertices[0][2] + vertices[1][2] + vertices[2][2] + vertices[3][2]) / 4;
+  const factor = poolFactorWithGain(sampleLightPool(cx, cz), gain);
   for (let i = 0; i < 4; i++) {
     batch.positions.push(...vertices[i]);
     batch.normals.push(...normal);
     batch.uvs.push(...uvs[i]);
-    const factor = gain === 0
-      ? 1
-      : poolFactorWithGain(sampleLightPool(vertices[i][0], vertices[i][2]), gain);
     batch.colors.push(factor, factor, factor);
   }
   batch.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);

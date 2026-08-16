@@ -1414,5 +1414,6 @@ describe("shared dungeon lighting model", () => {
     expect(poolFactorWithGain(1.16, 0)).toBe(1);
     expect(poolFactorWithGain(1.16, 1)).toBeCloseTo(1.16);
     expect(poolFactorWithGain(1.16, 0.5)).toBeCloseTo(1.08);
+    expect(poolFactorWithGain(1.16, LIGHTING.poolDoorGain)).toBeCloseTo(1.04);
   });
 });

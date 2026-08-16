@@ -42,11 +42,11 @@ import { isOnAbyssBridge } from "../../../game/abyss-face";
 
 const HORIZONTAL_FOV_DEGREES = 60;
 const ABYSS_BACKGROUND_COLOR = 0x000000;
-// Fog + clear color converge on the shared far-murk from the lighting model
-// (render-math.ts LIGHTING.fogFar) — cool slate rather than the warm near
-// background, matching the Canvas raycaster's depth-graded fog target. Near
-// surfaces keep their warm texture identity because exponential fog
-// contributes almost nothing at short range.
+// Fog + clear color use LIGHTING.fogFar (cool slate). This is NOT the
+// Canvas depth-graded fog-target lerp (`fogColorForDepth`): Three FogExp2
+// takes one color, so the shared contract is "extinguish toward cool murk"
+// rather than a per-distance target. Near surfaces stay warm because
+// exponential fog is near-zero at short range.
 const FOG_FAR_COLOR =
   (LIGHTING.fogFar.r << 16) | (LIGHTING.fogFar.g << 8) | LIGHTING.fogFar.b;
 

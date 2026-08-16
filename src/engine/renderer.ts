@@ -2376,17 +2376,18 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
   //  - carried-light warm lift on walls within LIGHTING.nearWarmRadius
   //    (suppressed in darkness zones, same as the torch flicker overlay);
   //  - irregular low-frequency pool shading sampled at each strip's world
-  //    hit point (doors/locked/barred panels are skipped so landmarks stay
-  //    unpooled). Alphas are quantized into a few levels and each level is
-  //    filled once via Path2D, so this adds ~12 fill calls, not ~768.
+  //    hit point. Doors/locked/barred/stairs use poolDoorGain so they track
+  //    the room without looking self-lit. Alphas are quantized into a few
+  //    levels and each level is filled once via Path2D (~12 fills, not ~768).
   {
     const LEVELS = 4;
     const WARM_ALPHA_MAX = 0.06;
     const warmPaths: (Path2D | null)[] = new Array(LEVELS).fill(null);
     const darkPaths: (Path2D | null)[] = new Array(LEVELS).fill(null);
     const brightPaths: (Path2D | null)[] = new Array(LEVELS).fill(null);
-    const poolGainWall =
-      LIGHTING.poolWallGain * (state.inDarkness ? LIGHTING.darknessPoolGain : 1);
+    const darknessMul = state.inDarkness ? LIGHTING.darknessPoolGain : 1;
+    const poolGainWall = LIGHTING.poolWallGain * darknessMul;
+    const poolGainDoor = LIGHTING.poolDoorGain * darknessMul;
     const quantize = (alpha: number, max: number): number => {
       if (alpha <= 0.005) return -1;
       return Math.min(LEVELS - 1, Math.floor((alpha / max) * LEVELS));
@@ -2412,12 +2413,13 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState): void {
         }
       }
 
-      if (hit.edge === "wall") {
-        // Pool sampled at the actual wall hit point in world space.
+      if (hit.edge === "wall" || hit.edge === "door" || hit.edge === "locked" || hit.edge === "barred") {
+        // Pool sampled at the actual wall/door hit point in world space.
         const cameraX = (2 * x) / w - 1;
         const wx = cam.x + 0.5 + d * (dirX + planeX * cameraX);
         const wy = cam.y + 0.5 + d * (dirY + planeY * cameraX);
-        const dev = poolFactorWithGain(sampleLightPool(wx, wy), poolGainWall) - 1;
+        const gain = hit.edge === "wall" ? poolGainWall : poolGainDoor;
+        const dev = poolFactorWithGain(sampleLightPool(wx, wy), gain) - 1;
         if (dev < 0) {
           const level = quantize(-dev * fog, LIGHTING.poolAmplitude);
           if (level >= 0) {

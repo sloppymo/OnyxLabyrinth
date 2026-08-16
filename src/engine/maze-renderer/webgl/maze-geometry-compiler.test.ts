@@ -217,7 +217,7 @@ describe("compileMazeGeometry", () => {
     expect([...keys].some((key) => /^f2:wall(?:@_[b-j])?$/.test(key))).toBe(true);
   });
 
-  it("emits one light-pool color triplet per vertex, identity on doors", () => {
+  it("emits one light-pool color triplet per vertex, constant per quad", () => {
     const floor = twoCellFloor();
     setEdge(floor.grid, 1, 1, "n", "door");
     setEdge(floor.grid, 1, 0, "s", "door");
@@ -225,13 +225,20 @@ describe("compileMazeGeometry", () => {
     let doorVertices = 0;
     for (const batch of compiled.batches) {
       expect(batch.colors.length).toBe((batch.positions.length / 3) * 3);
+      for (let offset = 0; offset < batch.colors.length; offset += 12) {
+        const quad = batch.colors.slice(offset, offset + 12);
+        expect(new Set(quad).size).toBe(1);
+      }
       for (const c of batch.colors) {
         expect(c).toBeGreaterThanOrEqual(1 - 0.16);
         expect(c).toBeLessThanOrEqual(1 + 0.16);
       }
       if (batch.kind === "door") {
         doorVertices += batch.colors.length / 3;
-        expect(batch.colors.every((c) => c === 1)).toBe(true);
+        const maxDev = 0.16 * 0.25;
+        for (const c of batch.colors) {
+          expect(Math.abs(c - 1)).toBeLessThanOrEqual(maxDev + 1e-9);
+        }
       }
     }
     expect(doorVertices).toBeGreaterThan(0);
