@@ -101,10 +101,7 @@ import { installAudioSpy } from "./debug/audio-spy";
 import { buildDebugCombat } from "./debug/start-combat";
 import { CombatController } from "./engine/combat-ui";
 import { createCombatStage } from "./engine/combat-stage";
-import {
-  createControllerInput,
-  type ControllerInputEvent,
-} from "./engine/controller-input";
+import { type ControllerInputEvent } from "./engine/controller-input";
 import { controllerEventToMenuKey } from "./engine/menu-controller-adapter";
 import {
   assertUnhandledRoute,
@@ -113,8 +110,7 @@ import {
   type ControllerRouteContext,
   type ControllerRouteKind,
 } from "./engine/controller-route";
-import { UiStack } from "./engine/ui-stack";
-import { OverlayRuntime } from "./engine/overlay-runtime";
+import { createApplication } from "./engine/application";
 import { CampController } from "./engine/camp-ui";
 import { TownController } from "./engine/town-ui";
 import { PartyCreationController } from "./engine/party-ui";
@@ -208,7 +204,72 @@ function tryBootVerticalDemo(): ReturnType<typeof registerFloorMap> | null {
 }
 
 const playtestFloor = tryBootPlaytestFloor() ?? tryBootVerticalDemo();
-const state = createGameState(playtestFloor ?? getFloors()[0]!);
+const app = createApplication({
+  initialFloor: playtestFloor ?? getFloors()[0]!,
+  overlay: {
+    shell: {
+      panel: () => document.querySelector<HTMLDivElement>("#combat-panel")!,
+      presentBlocking: () => {
+        showMode("title", mapVisible);
+        setMazeSurfaceOpacity("0.2");
+      },
+      restore: () => {
+        setMazeSurfaceOpacity("1");
+        showMode(state.mode, mapVisible);
+      },
+      showDialog: () => showMode("dialog", mapVisible),
+      showDungeon: () => showMode("dungeon", mapVisible),
+      showNpcDialogue: () => showNpcDialogueOverlay(),
+      hideNpcDialogue: () => hideNpcDialogueOverlay(),
+      syncMapOverlayTitle: () => syncMapOverlayMode(mapOverlayState, "title"),
+      setMessage: (text, opts) => setMessage(text, opts),
+      closeMapIfOpen: () => {
+        if (mapVisible) toggleMap();
+      },
+    },
+    dungeon: {
+      camp: () => dungeonHandlers.onCamp(),
+      returnToTown: () => dungeonHandlers.onTown(),
+      toggleMap: () => dungeonHandlers.onToggleMap(),
+      unlock: () => dungeonHandlers.onUnlock(),
+      canOpenActionRing: () => !mapVisible && !isRenderCameraAnimating(),
+    },
+    session: {
+      applyLoadedState: (loaded) => applyLoadedGameState(loaded, { message: "Game loaded." }),
+      persist: () => autoSave(state),
+      reopenTown: () => openTown(),
+    },
+    combat: {
+      startNpcFight: (npc) => startNPCFight(npc),
+    },
+    trap: {
+      isPending: () => state.mode === "dungeon" && !!state.pendingTrap,
+      inspected: () => !!state.pendingTrap?.inspected,
+      inspect: () => setMessage(inspectChest(state)),
+      disarm: () => {
+        applyChestResult(disarmChest(state));
+        return { stillPending: !!state.pendingTrap };
+      },
+      open: () => applyChestResult(openChest(state)),
+      leave: () => setMessage(leaveChest(state)),
+    },
+    audio: {
+      stopDungeon: () => audio.stopDungeon(),
+      startTavernMusic: () => audio.startTavernMusic(),
+      stopTavernMusic: () => audio.stopTavernMusic(),
+      startDungeon: () => audio.startDungeon(),
+    },
+    inArena: () => inArena,
+    setMode: (mode) => setMode(state, mode),
+    onDialogClosed: () => {
+      suppressDungeonMovementUntilKeyup = true;
+    },
+  },
+  onInput: (event) => routeControllerEvent(event),
+  onKeyDown: onGameplayKeyDown,
+  onKeyUp: onGameplayKeyUp,
+});
+const { state, uiStack, overlays, input: globalInput } = app;
 // Random dungeon encounter anti-repeat is deliberately session-only. It is
 // not part of GameState and therefore cannot leak through saves or Arena.
 const encounterFamilyMemory = createEncounterFamilyMemory(state.floor.id);
@@ -305,69 +366,6 @@ let shownTownIntro = false;
  * key-repeat cannot open the save menu on the same physical press.
  */
 let suppressDungeonEscUntilKeyup = false;
-
-const uiStack = new UiStack();
-const overlays = new OverlayRuntime({
-  state,
-  uiStack,
-  shell: {
-    panel: () => document.querySelector<HTMLDivElement>("#combat-panel")!,
-    presentBlocking: () => {
-      showMode("title", mapVisible);
-      setMazeSurfaceOpacity("0.2");
-    },
-    restore: () => {
-      setMazeSurfaceOpacity("1");
-      showMode(state.mode, mapVisible);
-    },
-    showDialog: () => showMode("dialog", mapVisible),
-    showDungeon: () => showMode("dungeon", mapVisible),
-    showNpcDialogue: () => showNpcDialogueOverlay(),
-    hideNpcDialogue: () => hideNpcDialogueOverlay(),
-    syncMapOverlayTitle: () => syncMapOverlayMode(mapOverlayState, "title"),
-    setMessage: (text, opts) => setMessage(text, opts),
-    closeMapIfOpen: () => {
-      if (mapVisible) toggleMap();
-    },
-  },
-  dungeon: {
-    camp: () => dungeonHandlers.onCamp(),
-    returnToTown: () => dungeonHandlers.onTown(),
-    toggleMap: () => dungeonHandlers.onToggleMap(),
-    unlock: () => dungeonHandlers.onUnlock(),
-    canOpenActionRing: () => !mapVisible && !isRenderCameraAnimating(),
-  },
-  session: {
-    applyLoadedState: (loaded) => applyLoadedGameState(loaded, { message: "Game loaded." }),
-    persist: () => autoSave(state),
-    reopenTown: () => openTown(),
-  },
-  combat: {
-    startNpcFight: (npc) => startNPCFight(npc),
-  },
-  trap: {
-    isPending: () => state.mode === "dungeon" && !!state.pendingTrap,
-    inspected: () => !!state.pendingTrap?.inspected,
-    inspect: () => setMessage(inspectChest(state)),
-    disarm: () => {
-      applyChestResult(disarmChest(state));
-      return { stillPending: !!state.pendingTrap };
-    },
-    open: () => applyChestResult(openChest(state)),
-    leave: () => setMessage(leaveChest(state)),
-  },
-  audio: {
-    stopDungeon: () => audio.stopDungeon(),
-    startTavernMusic: () => audio.startTavernMusic(),
-    stopTavernMusic: () => audio.stopTavernMusic(),
-    startDungeon: () => audio.startDungeon(),
-  },
-  inArena: () => inArena,
-  setMode: (mode) => setMode(state, mode),
-  onDialogClosed: () => {
-    suppressDungeonMovementUntilKeyup = true;
-  },
-});
 
 function currentRoute(): ControllerRouteKind {
   const overlay = uiStack.top();
@@ -1885,10 +1883,6 @@ function routeControllerEvent(event: ControllerInputEvent): void {
   dispatchControllerRoute(resolveControllerRoute(currentRouteFlags()), event);
 }
 
-const globalInput = createControllerInput((event) => {
-  routeControllerEvent(event);
-}, { attachListeners: false });
-
 function onGameplayKeyDown(e: KeyboardEvent): void {
   audio.resume();
   if (isEditableInputTarget(e.target)) return;
@@ -1904,8 +1898,7 @@ function onGameplayKeyUp(e: KeyboardEvent): void {
   globalInput.handleKeyboardUp(e);
 }
 
-window.addEventListener("keydown", onGameplayKeyDown);
-window.addEventListener("keyup", onGameplayKeyUp);
+app.start();
 
 // Auto-save when the player leaves or reloads the page so the next session
 // can resume where they left off.

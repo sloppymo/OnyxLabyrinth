@@ -12,9 +12,11 @@ function functionBody(name: string): string {
 }
 
 describe("production input ownership", () => {
-  it("registers exactly one gameplay keydown listener in main.ts", () => {
-    const matches = MAIN.match(/addEventListener\(\s*"keydown"/g) ?? [];
-    expect(matches).toHaveLength(1);
+  it("registers exactly one gameplay keydown listener, via app.start()", () => {
+    expect(MAIN).toMatch(/\bapp\.start\s*\(/);
+    expect(MAIN.match(/addEventListener\(\s*"keydown"/g) ?? []).toHaveLength(0);
+    const application = readFileSync(resolve("src/engine/application.ts"), "utf8");
+    expect(application.match(/addEventListener\(\s*"keydown"/g) ?? []).toHaveLength(1);
   });
 
   it("does not bind a second dungeon keyboard path alongside the controller stream", () => {
@@ -48,6 +50,14 @@ describe("production input ownership", () => {
     expect(MAIN).not.toMatch(/\b(let|const) (saveController|spellMenuController|npcController|tavernController|namandaController|actionRingController|perkSelectController|dungeonDialog|trapPrompt)\b/);
     expect(MAIN).not.toMatch(/\buiStack\.push\s*\(/);
     expect(MAIN).not.toMatch(/\bpushHandleKeyLayer\b/);
+  });
+
+  it("constructs GameState, UiStack, OverlayRuntime, and input through createApplication", () => {
+    expect(MAIN).toMatch(/\bcreateApplication\s*\(/);
+    expect(MAIN).toMatch(/\bapp\.start\s*\(/);
+    expect(MAIN).not.toMatch(/\bnew UiStack\s*\(/);
+    expect(MAIN).not.toMatch(/\bnew OverlayRuntime\s*\(/);
+    expect(MAIN).not.toMatch(/\bcreateControllerInput\s*\(/);
   });
 
   it("OverlayRuntime closes layers by id rather than blindly popping", () => {
