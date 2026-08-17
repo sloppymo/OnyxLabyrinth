@@ -1,0 +1,119 @@
+:root {
+  color-scheme: dark;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  background: #0d0f13;
+  color: #e8e1d2;
+}
+
+* { box-sizing: border-box; }
+
+html, body { min-width: 1120px; min-height: 100%; margin: 0; }
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% -20%, rgba(74, 89, 105, 0.2), transparent 42rem),
+    #0d0f13;
+}
+
+button, select, input { font: inherit; }
+
+button, select {
+  color: #eee5d2;
+  background: #1c2028;
+  border: 1px solid #555d69;
+  border-radius: 3px;
+}
+
+button { cursor: pointer; padding: 0.45rem 0.55rem; }
+button:hover, select:hover { border-color: #c7a46c; }
+button:focus-visible, select:focus-visible, input:focus-visible, canvas:focus-visible {
+  outline: 2px solid #c7a46c;
+  outline-offset: 2px;
+}
+
+select { width: 100%; padding: 0.42rem; }
+
+.topbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 4.5rem;
+  padding: 0.8rem 1rem 0.7rem;
+  border-bottom: 1px solid #303641;
+  background: rgba(16, 18, 24, 0.94);
+}
+
+.eyebrow { margin: 0 0 0.25rem; color: #9b8b6c; font-size: 0.68rem; letter-spacing: 0.13em; }
+h1, h2, p { margin-top: 0; }
+h1 { margin-bottom: 0; font-size: 1.05rem; font-weight: 600; letter-spacing: 0.06em; }
+h2 { margin-bottom: 0.65rem; color: #c6ad80; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.build-meta { color: #8993a2; font-size: 0.68rem; text-align: right; white-space: pre-line; }
+
+.workspace {
+  display: grid;
+  grid-template-columns: 260px minmax(560px, 1fr) 280px;
+  height: calc(100vh - 4.5rem);
+  min-height: 620px;
+}
+
+.panel {
+  min-height: 0;
+  overflow: auto;
+  padding: 0.85rem;
+  background: rgba(17, 20, 26, 0.96);
+}
+
+.controls { border-right: 1px solid #303641; }
+.inspector { border-left: 1px solid #303641; }
+.panel section { padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 1px solid #2a2f38; }
+.panel section:last-child { border-bottom: 0; }
+label { display: block; margin-bottom: 0.42rem; color: #b7bdc8; font-size: 0.72rem; }
+.check-row { display: flex; align-items: center; gap: 0.45rem; margin: 0.55rem 0; color: #d1d2cf; cursor: pointer; }
+.check-row input { accent-color: #c7a46c; }
+.button-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+.button-grid button { font-size: 0.71rem; }
+.hint { color: #7e8793; font-size: 0.67rem; line-height: 1.45; }
+.metrics { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.7rem; margin: 0; font-size: 0.68rem; }
+.metrics dt { color: #828c9b; }
+.metrics dd { margin: 0; color: #d8d0c0; text-align: right; }
+.material-list { display: grid; gap: 0.32rem; max-height: 17rem; overflow: auto; }
+.material-entry { padding: 0.3rem 0.4rem; color: #bfc4ca; background: #15181e; border-left: 2px solid #697383; font-size: 0.62rem; line-height: 1.35; overflow-wrap: anywhere; }
+.material-entry.wall { border-left-color: #bd8b58; }
+.material-entry.floor { border-left-color: #758f79; }
+.material-entry.feature { border-left-color: #9c83b6; }
+.tool-actions button { width: 100%; }
+
+.viewport-shell { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #101116; }
+#level-canvas { display: block; width: 100%; height: 100%; cursor: grab; image-rendering: pixelated; }
+#level-canvas:active { cursor: grabbing; }
+.viewport-status, .viewport-error, .viewport-help {
+  position: absolute;
+  left: 0.8rem;
+  right: 0.8rem;
+  pointer-events: none;
+  font-size: 0.7rem;
+}
+.viewport-status { top: 0.75rem; color: #d6bd8a; }
+.viewport-error { top: 0.75rem; padding: 0.6rem; color: #ffb5a9; background: rgba(63, 24, 27, 0.94); border: 1px solid #9d514e; white-space: pre-wrap; }
+.viewport-help { bottom: 0.7rem; color: rgba(220, 215, 202, 0.62); text-align: center; }
+
+pre#inspector {
+  min-height: 15rem;
+  margin: 0;
+  padding: 0.65rem;
+  color: #d8d0c0;
+  background: #15181e;
+  border: 1px solid #2d333d;
+  font: inherit;
+  font-size: 0.68rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1250px) {
+  html, body { min-width: 960px; }
+  .workspace { grid-template-columns: 230px minmax(460px, 1fr) 245px; }
+}

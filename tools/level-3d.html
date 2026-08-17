@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:," />
+  <title>OnyxLabyrinth — Canonical 3D Level Viewer</title>
+  <link rel="stylesheet" href="./level-3d.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">ONYXLABYRINTH / DEBUG TOOL</p>
+      <h1>Canonical 3D Level Viewer</h1>
+    </div>
+    <div class="build-meta" id="build-meta">Loading build identity…</div>
+  </header>
+
+  <div class="workspace">
+    <aside class="controls panel">
+      <section>
+        <h2>Floor</h2>
+        <label for="floor-select">Canonical floor</label>
+        <select id="floor-select"></select>
+      </section>
+
+      <section>
+        <h2>View</h2>
+        <label for="display-mode">Display mode</label>
+        <select id="display-mode">
+          <option value="textured">Textured</option>
+          <option value="geometry">Geometry</option>
+          <option value="wireframe">Wireframe</option>
+          <option value="height">Z / Height</option>
+        </select>
+        <label for="lighting-mode">Lighting</label>
+        <select id="lighting-mode">
+          <option value="inspection">Inspection</option>
+          <option value="atmosphere">Approx. game atmosphere</option>
+        </select>
+        <label class="check-row"><input type="checkbox" id="show-ceilings" checked /> Show ceilings</label>
+        <label class="check-row"><input type="checkbox" id="transparent-ceilings" disabled /> Transparent ceilings</label>
+        <label class="check-row"><input type="checkbox" id="show-floors" checked /> Show floor surfaces</label>
+        <label class="check-row"><input type="checkbox" id="show-props" checked /> Show props / sprites</label>
+        <label class="check-row"><input type="checkbox" id="show-markers" /> Show navigation markers</label>
+        <label class="check-row"><input type="checkbox" id="show-regions" /> Show authored regions</label>
+      </section>
+
+      <section>
+        <h2>Camera</h2>
+        <div class="button-grid">
+          <button type="button" id="camera-orbit">Orbit</button>
+          <button type="button" id="camera-fly">Fly</button>
+          <button type="button" id="camera-top">Top</button>
+          <button type="button" id="camera-iso">Isometric</button>
+          <button type="button" id="camera-reset">Reset</button>
+        </div>
+        <p class="hint">Orbit: drag to rotate, Shift-drag to pan, wheel to zoom. Fly: WASD + QE, drag to look.</p>
+      </section>
+
+      <section>
+        <h2>Coverage</h2>
+        <dl class="metrics" id="coverage"></dl>
+      </section>
+
+      <section>
+        <h2>Canonical materials</h2>
+        <div class="material-list" id="material-list"></div>
+      </section>
+
+      <section class="tool-actions">
+        <button type="button" id="export-glb">Export visible scene (.glb)</button>
+        <p class="hint" id="export-status">Exports the currently loaded scene with visible layers and textures.</p>
+      </section>
+    </aside>
+
+    <main class="viewport-shell">
+      <canvas id="level-canvas" tabindex="0" aria-label="3D canonical level viewer"></canvas>
+      <div class="viewport-status" id="loading-status">Loading canonical floor…</div>
+      <div class="viewport-error" id="viewport-error" hidden></div>
+      <div class="viewport-help">Click or hover a surface for provenance. Right-drag pans in orbit mode.</div>
+    </main>
+
+    <aside class="inspector panel">
+      <section>
+        <h2>Inspector</h2>
+        <pre id="inspector">Hover a face, prop, marker, or water tile.</pre>
+      </section>
+      <section>
+        <h2>Source notes</h2>
+        <p class="hint">Geometry is compiled from the same FloorDef, volume, floor-surface, and WebGL maze compiler used by the game renderer. The viewer does not maintain a second floor layout.</p>
+        <p class="hint">Material keys identify the exact canonical theme/surface choice. Unsupported art falls back through the game’s existing asset loaders.</p>
+      </section>
+    </aside>
+  </div>
+
+  <script type="module" src="../src/debug/level-3d/main.ts"></script>
+</body>
+</html>

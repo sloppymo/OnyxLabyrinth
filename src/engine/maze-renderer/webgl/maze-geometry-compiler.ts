@@ -26,6 +26,23 @@ import {
 
 export type MazeSurfaceKind = "floor" | "ceiling" | "wall" | "door";
 
+export type CompiledMazeFaceRole =
+  | "cell-surface"
+  | "stair-tread"
+  | "stair-riser"
+  | "boundary";
+
+/** Provenance for one emitted quad, retained for debug/inspection tools. */
+export interface CompiledMazeFace {
+  cellX: number;
+  cellY: number;
+  kind: MazeSurfaceKind;
+  role: CompiledMazeFaceRole;
+  dir?: Direction;
+  edge?: EdgeType;
+  patch?: BoundaryPatch;
+}
+
 export interface CompiledMazeBatch {
   chunkX: number;
   chunkY: number;
@@ -43,6 +60,8 @@ export interface CompiledMazeBatch {
    */
   colors: number[];
   indices: number[];
+  /** One entry per quad, in the same order as the four emitted vertices. */
+  faces: CompiledMazeFace[];
 }
 
 export interface CompiledMazeGeometry {
@@ -58,7 +77,7 @@ export interface CompiledMazeGeometry {
 
 interface BatchBuilder extends CompiledMazeBatch {}
 
-type Direction = "n" | "e" | "s" | "w";
+export type Direction = "n" | "e" | "s" | "w";
 
 const DIRECTIONS: readonly {
   dir: Direction;
@@ -89,7 +108,8 @@ function addQuad(
   batch: BatchBuilder,
   vertices: readonly (readonly [number, number, number])[],
   normal: readonly [number, number, number],
-  uvs: readonly (readonly [number, number])[]
+  uvs: readonly (readonly [number, number])[],
+  face: CompiledMazeFace
 ): void {
   const base = batch.positions.length / 3;
   const gain = POOL_GAIN_BY_KIND[batch.kind];
@@ -103,6 +123,7 @@ function addQuad(
     batch.colors.push(factor, factor, factor);
   }
   batch.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  batch.faces.push(face);
 }
 
 function addHorizontal(
@@ -123,7 +144,13 @@ function addHorizontal(
         [x, worldY, y + 1],
       ],
       [0, -1, 0],
-      [[0, 0], [1, 0], [1, 1], [0, 1]]
+      [[0, 0], [1, 0], [1, 1], [0, 1]],
+      {
+        cellX: x,
+        cellY: y,
+        kind: "ceiling",
+        role: "cell-surface",
+      }
     );
   } else {
     addQuad(
@@ -135,7 +162,13 @@ function addHorizontal(
         [x + 1, worldY, y],
       ],
       [0, 1, 0],
-      [[0, 0], [0, 1], [1, 1], [1, 0]]
+      [[0, 0], [0, 1], [1, 1], [1, 0]],
+      {
+        cellX: x,
+        cellY: y,
+        kind: "floor",
+        role: "cell-surface",
+      }
     );
   }
 }
@@ -176,7 +209,12 @@ function addFloorQuad(
     floorSurfaceZAt(surface, lx, ly) * LEGACY_VERTICAL_UNIT,
     y + ly,
   ]) as [number, number, number][];
-  addQuad(batch, vertices, faceNormal(vertices), locals);
+  addQuad(batch, vertices, faceNormal(vertices), locals, {
+    cellX: x,
+    cellY: y,
+    kind: "floor",
+    role: "cell-surface",
+  });
 }
 
 function localForProgress(
@@ -228,7 +266,14 @@ function addStairFloor(
       vertices = [vertices[0], vertices[3], vertices[2], vertices[1]];
       uvs = [uvs[0], uvs[3], uvs[2], uvs[1]];
     }
-    addQuad(floorBatch, vertices, [0, 1, 0], uvs);
+    addQuad(floorBatch, vertices, [0, 1, 0], uvs, {
+      cellX: x,
+      cellY: y,
+      kind: "floor",
+      role: "stair-tread",
+      dir: surface.dir,
+      edge: "open",
+    });
 
     const nextZ = surface.lowZ + rise * p1;
     const a = localForProgress(surface.dir, p1, 0);
@@ -256,7 +301,14 @@ function addStairFloor(
       [1, treadZ],
       [1, nextZ],
       [0, nextZ],
-    ]);
+    ], {
+      cellX: x,
+      cellY: y,
+      kind: "wall",
+      role: "stair-riser",
+      dir: surface.dir,
+      edge: "open",
+    });
   }
 }
 
@@ -281,7 +333,8 @@ function addBoundaryPatch(
   x: number,
   y: number,
   dir: Direction,
-  patch: BoundaryPatch
+  patch: BoundaryPatch,
+  face: CompiledMazeFace
 ): void {
   const b0 = patch.bottom0 * LEGACY_VERTICAL_UNIT;
   const b1 = patch.bottom1 * LEGACY_VERTICAL_UNIT;
@@ -294,14 +347,33 @@ function addBoundaryPatch(
     [0, patch.top0],
   ];
   if (dir === "n") {
-    addQuad(batch, [[x, b0, y], [x + 1, b1, y], [x + 1, t1, y], [x, t0, y]], [0, 0, 1], uvs);
+    addQuad(batch, [[x, b0, y], [x + 1, b1, y], [x + 1, t1, y], [x, t0, y]], [0, 0, 1], uvs, face);
   } else if (dir === "e") {
-    addQuad(batch, [[x + 1, b0, y], [x + 1, b1, y + 1], [x + 1, t1, y + 1], [x + 1, t0, y]], [-1, 0, 0], uvs);
+    addQuad(batch, [[x + 1, b0, y], [x + 1, b1, y + 1], [x + 1, t1, y + 1], [x + 1, t0, y]], [-1, 0, 0], uvs, face);
   } else if (dir === "s") {
-    addQuad(batch, [[x + 1, b1, y + 1], [x, b0, y + 1], [x, t0, y + 1], [x + 1, t1, y + 1]], [0, 0, -1], [[0, patch.bottom1], [1, patch.bottom0], [1, patch.top0], [0, patch.top1]]);
+    addQuad(batch, [[x + 1, b1, y + 1], [x, b0, y + 1], [x, t0, y + 1], [x + 1, t1, y + 1]], [0, 0, -1], [[0, patch.bottom1], [1, patch.bottom0], [1, patch.top0], [0, patch.top1]], face);
   } else {
-    addQuad(batch, [[x, b1, y + 1], [x, b0, y], [x, t0, y], [x, t1, y + 1]], [1, 0, 0], [[0, patch.bottom1], [1, patch.bottom0], [1, patch.top0], [0, patch.top1]]);
+    addQuad(batch, [[x, b1, y + 1], [x, b0, y], [x, t0, y], [x, t1, y + 1]], [1, 0, 0], [[0, patch.bottom1], [1, patch.bottom0], [1, patch.top0], [0, patch.top1]], face);
   }
+}
+
+function boundaryFace(
+  x: number,
+  y: number,
+  dir: Direction,
+  kind: MazeSurfaceKind,
+  edge: EdgeType,
+  patch: BoundaryPatch
+): CompiledMazeFace {
+  return {
+    cellX: x,
+    cellY: y,
+    kind,
+    role: "boundary",
+    dir,
+    edge,
+    patch,
+  };
 }
 
 function doorFeatureAt(
@@ -414,6 +486,7 @@ export function compileMazeGeometry(
         uvs: [],
         colors: [],
         indices: [],
+        faces: [],
       };
       builders.set(key, batch);
       chunks.add(`${chunkX},${chunkY}`);
@@ -495,7 +568,8 @@ export function compileMazeGeometry(
               x,
               y,
               dir,
-              patch
+              patch,
+              boundaryFace(x, y, dir, "wall", edge, patch)
             );
           }
           continue;
@@ -529,7 +603,14 @@ export function compileMazeGeometry(
                 top0: Math.min(volume.ceilingZ, highFloor.z0 + OVERLOOK_PARAPET_HEIGHT),
                 top1: Math.min(volume.ceilingZ, highFloor.z1 + OVERLOOK_PARAPET_HEIGHT),
                 kind: "lowerClosure",
-              }
+              },
+              boundaryFace(x, y, dir, "wall", edge, {
+                bottom0: lowFloor.z0,
+                bottom1: lowFloor.z1,
+                top0: Math.min(volume.ceilingZ, highFloor.z0 + OVERLOOK_PARAPET_HEIGHT),
+                top1: Math.min(volume.ceilingZ, highFloor.z1 + OVERLOOK_PARAPET_HEIGHT),
+                kind: "lowerClosure",
+              })
             );
             continue;
           }
@@ -556,7 +637,8 @@ export function compileMazeGeometry(
             x,
             y,
             dir,
-            panel
+            panel,
+            boundaryFace(x, y, dir, "door", isStairDoor ? "open" : edge, panel)
           );
           if (panelTop0 < volume.ceilingZ || panelTop1 < volume.ceilingZ) {
             addBoundaryPatch(
@@ -570,7 +652,14 @@ export function compileMazeGeometry(
                 top0: volume.ceilingZ,
                 top1: volume.ceilingZ,
                 kind: "upperClosure",
-              }
+              },
+              boundaryFace(x, y, dir, "wall", isStairDoor ? "open" : edge, {
+                bottom0: panelTop0,
+                bottom1: panelTop1,
+                top0: volume.ceilingZ,
+                top1: volume.ceilingZ,
+                kind: "upperClosure",
+              })
             );
           }
           continue;
@@ -581,7 +670,15 @@ export function compileMazeGeometry(
           x,
           y,
           dir,
-          fullBoundaryPatch(volume, boundaryFloorProfile(surface, dir))
+          fullBoundaryPatch(volume, boundaryFloorProfile(surface, dir)),
+          boundaryFace(
+            x,
+            y,
+            dir,
+            "wall",
+            edge,
+            fullBoundaryPatch(volume, boundaryFloorProfile(surface, dir))
+          )
         );
       }
     }
