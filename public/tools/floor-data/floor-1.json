@@ -7850,6 +7850,16 @@
       "spriteId": "f1-lantern-hanging"
     },
     {
+      "x": 5,
+      "y": 15,
+      "spriteId": "index-ledger-cluster"
+    },
+    {
+      "x": 7,
+      "y": 16,
+      "spriteId": "index-cage-small"
+    },
+    {
       "x": 17,
       "y": 13,
       "spriteId": "f1-root-curtain"

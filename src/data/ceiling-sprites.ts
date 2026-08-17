@@ -37,6 +37,8 @@ export const CEILING_SPRITES: readonly CeilingSpriteDef[] = [
   { id: "f1-chain-long", name: "Long Rusted Chain", file: "f1-chain-long.png", baseSize: 46 },
   { id: "f1-chain-broken", name: "Short Broken Chain Pair", file: "f1-chain-broken.png", baseSize: 30 },
   { id: "f1-cage", name: "Hanging Iron Cage", file: "f1-cage.png", baseSize: 48 },
+  { id: "index-cage-small", name: "Index Rusted Small Cage", file: "index-cage-small.png", baseSize: 36 },
+  { id: "index-ledger-cluster", name: "Index Survey Ledger Cluster", file: "index-ledger-cluster.png", baseSize: 34 },
   { id: "f1-censer", name: "Hanging Censer", file: "f1-censer.png", baseSize: 34 },
   { id: "f1-bell-cracked", name: "Cracked Hanging Bell", file: "f1-bell-cracked.png", baseSize: 36 },
   { id: "f1-root-curtain", name: "Root and Vine Curtain", file: "f1-root-curtain.png", baseSize: 46 },

@@ -253,6 +253,11 @@ describe("Floor 1 vertical graybox", () => {
     expect(z("namanda-vault")!.ceilingZ!).toBeGreaterThan(z("chapel-vault")!.ceilingZ!);
     expect(z("cistern-channel")!.ceilingZ!).toBeLessThan(z("central-hall")!.ceilingZ!);
     expect(z("index-stack")!.ceilingZ! - z("index-stack")!.floorZ!).toBe(4);
+    const hangings = (floor.ceilingSprites ?? []).filter(
+      (s) => s.x >= 1 && s.x <= 9 && s.y >= 12 && s.y <= 20
+    );
+    expect(hangings.filter((s) => s.spriteId === "index-ledger-cluster")).toHaveLength(1);
+    expect(hangings.filter((s) => s.spriteId === "index-cage-small")).toHaveLength(1);
   });
 
   it("has three ramps at the audited connectors", () => {
