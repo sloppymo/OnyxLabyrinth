@@ -28,6 +28,7 @@ export const CLASS_ROLE: Record<CharacterClass, PartyRole> = {
   Halberdier: "physDps",
   Duelist: "physDps",
   Crusader: "hybrid",
+  Ninja: "physDps",
 };
 
 /** Hand-authored 1–5 segment counts for the party-select ATK/DEF/SUP bars. */

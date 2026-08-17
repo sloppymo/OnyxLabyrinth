@@ -18,7 +18,8 @@ export type CharacterClass =
   | "Thief"
   | "Halberdier"
   | "Duelist"
-  | "Crusader";
+  | "Crusader"
+  | "Ninja";
 export type StatusEffect =
   | "poison"
   | "sleep"
@@ -179,6 +180,14 @@ export const CLASSES: Record<CharacterClass, ClassDef> = {
     spellClass: "Priest",
     hpBonus: 6,
     description: "Holy warrior who wields steel and casts Priest spells.",
+  },
+  Ninja: {
+    id: "Ninja",
+    name: "Ninja",
+    allowedAlignments: ["Good", "Neutral", "Evil"],
+    spellClass: null,
+    hpBonus: 4,
+    description: "Shadow striker who strikes from the back row and evades harm.",
   },
 };
 
