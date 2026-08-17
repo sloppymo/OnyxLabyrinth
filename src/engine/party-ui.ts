@@ -143,12 +143,6 @@ export class PartyCreationController {
   private choiceHasRendered = false;
   /** Reset panel scroll when advancing slots so the header stays visible. */
   private scrollResetPending = false;
-  /**
-   * Swallow the first key after open. Prologue's final Enter (and key-repeat
-   * from New Game / Reform Party) must not auto-pick a party or cancel.
-   * Same pattern as PerkSelectController / justOpenedSaveMenu.
-   */
-  private justOpened = true;
 
   /** Held carousel direction for local DAS/ARR (−1 left, +1 right, 0 none). */
   private heldDir: -1 | 0 | 1 = 0;
@@ -197,10 +191,6 @@ export class PartyCreationController {
   }
 
   handleKey(key: string): void {
-    if (this.justOpened) {
-      this.justOpened = false;
-      return;
-    }
     const lower = key.toLowerCase();
 
     if (this.phase === "choice") {

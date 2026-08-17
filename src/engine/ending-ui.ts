@@ -6,16 +6,12 @@
  * coincidence of implementation. No fight, no guardian, no menu: this is
  * myth text, not a menu screen.
  *
- * Borrows mode "title" like the prologue/perk/save/NPC overlays, so dungeon/
- * combat input pauses while it plays. `state.hasCompletedEnding` (set by the
- * caller, not this class) is what stops a later re-roll of the same
- * re-rollable boss pack from re-opening this screen — see save.ts v13.
- *
- * The keypress that opens this controller (the confirm on the combat result
- * screen, or the keypress that closed the perk overlay) is re-dispatched once
- * by `routeControllerEvent` onto this route. main.ts swallows it via
- * `justOpenedEnding`. This class assumes every handleKey() call is a real,
- * intentional press.
+ * This is a real title-mode screen, not a UiStack overlay.
+ * `state.hasCompletedEnding` (set by the caller, not this class) is what
+ * stops a later re-roll of the same boss pack from re-opening this screen —
+ * see save.ts v13. The keypress that opens it (combat result confirm, or the
+ * key that closed the perk overlay) is dispatched to that owner, not here.
+ * This class assumes every handleKey() call is a real, intentional press.
  *
  * Esc is two-stage (complete typewriter, then close) so a single Esc cannot
  * dump into dungeon where key-repeat would open Save.

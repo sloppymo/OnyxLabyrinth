@@ -6,8 +6,8 @@
  * Arrow keys select a card, Enter confirms. The overlay consumes the queue and
  * then returns to the dungeon.
  *
- * main.ts borrows "title" mode while the overlay is open (same pattern as the
- * save/grimoire/NPC panels) so dungeon input pauses.
+ * Overlay input lives on `UiStack` in main.ts (id `"perk"`). GameState.mode
+ * stays dungeon or arena underneath.
  */
 
 import type { GameState } from "../types";
@@ -47,10 +47,10 @@ export class PerkSelectController {
 
   private currentIndex = 0;
   private selectedCard = 0;
-  private justOpened = true;
   /** True once the player has moved the card cursor for the CURRENT choice.
-   *  Enter is inert until then, so stray/held/scripted Enter presses left
-   *  over from combat can never silently burn a perk pick. */
+   *  Enter is inert until then, so leftover Enter from combat (if it ever
+   *  reached this overlay) cannot silently burn a perk pick. Snapshot-once
+   *  routing already keeps the combat-confirm key off this layer. */
   private hasInteracted = false;
   /** Hint shown when Enter is pressed before choosing a card. */
   private confirmBlockedHint = false;
@@ -69,13 +69,6 @@ export class PerkSelectController {
   }
 
   handleKey(key: string): void {
-    // Ignore the first keypress after opening so the key that triggered
-    // combat end (or rapid auto-Enter from combat) doesn't instantly
-    // dismiss the overlay before the player can read it.
-    if (this.justOpened) {
-      this.justOpened = false;
-      return;
-    }
     const choice = this.currentChoice();
     if (!choice) return;
 

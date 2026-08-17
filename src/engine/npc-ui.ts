@@ -10,11 +10,10 @@
  * list. Barter/Give mount a full FF6Window list (they genuinely need one)
  * into the same panel, below the still-visible portrait and header.
  *
- * main.ts borrows "title" mode while the panel is open (same pattern as the
- * save and grimoire menus) so dungeon input pauses, but keeps the dungeon
- * corridor visible behind this panel (see shell.ts's
+ * Overlay input lives on `UiStack` in main.ts (id `"npc"`). GameState.mode
+ * stays dungeon; the corridor stays visible behind this panel (see shell.ts's
  * showNpcDialogueOverlay/hideNpcDialogueOverlay) rather than replacing the
- * whole screen the way the other borrowed-title overlays do.
+ * whole screen the way blocking overlays do.
  */
 
 import type { GameState } from "../types";

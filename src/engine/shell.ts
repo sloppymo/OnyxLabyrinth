@@ -610,13 +610,13 @@ export function showMode(
 }
 
 /**
- * NPC dialogue is the one borrowed-"title" overlay that must NOT hide the
- * dungeon behind it (every other one — save, grimoire, perk select, town,
- * camp — intentionally replaces the whole screen via showMode()'s generic
- * `usesDomPanel` path). Keeps #viewport-wrap/#view exactly as dungeon mode
- * left them and positions #combat-panel as a bottom-anchored bar over them
- * instead (`.npc-dialogue-host` in styles.css), so main.ts's openNPCPanel
- * calls this instead of showMode("title", ...).
+ * NPC dialogue is the overlay that must NOT hide the dungeon behind it
+ * (blocking overlays — save, grimoire, perk select, tavern, Namanda —
+ * replace the whole screen via showMode()'s generic `usesDomPanel` path).
+ * Keeps #viewport-wrap/#view exactly as dungeon mode left them and positions
+ * #combat-panel as a bottom-anchored bar over them (`.npc-dialogue-host` in
+ * styles.css). main.ts's openNPCPanel calls this instead of
+ * presentBlockingOverlay().
  */
 export function showNpcDialogueOverlay(): void {
   viewportWrap.style.display = "";

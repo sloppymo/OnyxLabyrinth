@@ -4,8 +4,8 @@
 //
 // The snapshot exists so Playwright-driven playtests can read structured state
 // instead of guessing from pixels. It reports `route` (which overlay actually
-// owns input) alongside `mode`, because four overlays borrow mode "title" —
-// see AGENTS.md's "Borrowed title mode" pitfall.
+// owns input) alongside `mode`, because overlays keep the underlying
+// GameState.mode — see AGENTS.md's UiStack pitfall.
 
 import type { ControllerRouteKind } from "../engine/controller-route";
 import type { FloorDef } from "../data/floors";

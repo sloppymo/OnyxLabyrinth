@@ -1,15 +1,22 @@
 import type { GameMode } from "../types";
 
-/** Priority-ordered controller consumer for gamepad/keyboard routing. */
-export type ControllerRouteKind =
+/**
+ * Overlay ids live on `UiStack`. Base ids come from `resolveControllerRoute`.
+ * A new overlay id must be added here so snapshot/route consumers stay typed.
+ */
+export type OverlayRouteKind =
   | "perk"
-  | "combat"
   | "save"
   | "spell"
   | "npc"
   | "tavern"
   | "namanda"
   | "action_ring"
+  | "trap"
+  | "dialog";
+
+export type BaseRouteKind =
+  | "combat"
   | "town"
   | "camp"
   | "game_over"
@@ -18,21 +25,15 @@ export type ControllerRouteKind =
   | "ending"
   | "title"
   | "arena"
-  | "trap"
-  | "dialog"
   | "dungeon"
   | "none";
 
+export type ControllerRouteKind = OverlayRouteKind | BaseRouteKind;
+
+/** Base-screen flags. Overlay ownership lives on `UiStack`, not here. */
 export interface ControllerRouteContext {
   mode: GameMode;
-  hasPerkSelect: boolean;
   hasCombat: boolean;
-  hasSave: boolean;
-  hasSpellMenu: boolean;
-  hasNpc: boolean;
-  hasTavern: boolean;
-  hasNamanda: boolean;
-  hasActionRing: boolean;
   hasTown: boolean;
   hasCamp: boolean;
   hasGameOver: boolean;
@@ -40,22 +41,12 @@ export interface ControllerRouteContext {
   hasPrologue: boolean;
   hasEnding: boolean;
   hasTitle: boolean;
-  hasPendingTrap: boolean;
-  hasTrapPrompt: boolean;
-  hasDungeonDialog: boolean;
 }
 
-/** Pick the highest-priority input consumer for the current session flags. */
-export function resolveControllerRoute(ctx: ControllerRouteContext): ControllerRouteKind {
-  if (ctx.mode === "title" && ctx.hasPerkSelect) return "perk";
+/** Pick the base-screen input consumer. Overlays are not represented here. */
+export function resolveControllerRoute(ctx: ControllerRouteContext): BaseRouteKind {
   if (ctx.mode === "title" && ctx.hasEnding) return "ending";
   if (ctx.mode === "combat" && ctx.hasCombat) return "combat";
-  if (ctx.mode === "title" && ctx.hasSave) return "save";
-  if (ctx.mode === "title" && ctx.hasSpellMenu) return "spell";
-  if (ctx.mode === "title" && ctx.hasNpc) return "npc";
-  if (ctx.mode === "title" && ctx.hasTavern) return "tavern";
-  if (ctx.mode === "title" && ctx.hasNamanda) return "namanda";
-  if (ctx.mode === "title" && ctx.hasActionRing) return "action_ring";
   if (ctx.mode === "town" && ctx.hasTown) return "town";
   if (ctx.mode === "camp" && ctx.hasCamp) return "camp";
   if (ctx.mode === "game_over" && ctx.hasGameOver) return "game_over";
@@ -63,13 +54,11 @@ export function resolveControllerRoute(ctx: ControllerRouteContext): ControllerR
   if (ctx.mode === "title" && ctx.hasPrologue) return "prologue";
   if (ctx.mode === "title" && ctx.hasTitle) return "title";
   if (ctx.mode === "arena") return "arena";
-  if (ctx.mode === "dialog" && ctx.hasDungeonDialog) return "dialog";
-  if (ctx.mode === "dungeon" && ctx.hasPendingTrap && ctx.hasTrapPrompt) return "trap";
   if (ctx.mode === "dungeon") return "dungeon";
   return "none";
 }
 
-/** Compile-time exhaustiveness for `routeControllerEvent`. Missing cases fail tsc. */
+/** Compile-time exhaustiveness for base-route dispatch. Missing cases fail tsc. */
 export function assertUnhandledRoute(route: never): never {
   throw new Error(`unhandled controller route: ${String(route)}`);
 }

@@ -1,7 +1,7 @@
 /**
  * New Game prologue — SNES-style black-field world narration shown once,
- * before party creation. Borrows mode "title" (same pattern as the perk/
- * save/NPC overlays) so dungeon/title input pauses while it plays.
+ * before party creation. This is a real title-mode screen, not a UiStack
+ * overlay.
  *
  * Presentation follows docs/superpowers/specs/2026-07-25-snes-era-intro-style-guide.md:
  * full black panel, soft white FF36 text, one beat at a time (replace, not
@@ -12,8 +12,7 @@
  * screen; cold typewriter ticks stay as the only *SFX* on this screen.
  *
  * The keypress that opens this controller (e.g. the Enter that selected New
- * Game on the title screen) is re-dispatched once by `routeControllerEvent`
- * onto this route. main.ts swallows it via `justOpenedPrologue`. This class
+ * Game on the title screen) is dispatched to title, not here. This class
  * assumes every handleKey() call is a real, intentional press.
  */
 

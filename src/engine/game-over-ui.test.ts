@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { GameOverController } from "./game-over-ui";
 import { createDefaultParty } from "../game/party";
 
@@ -43,42 +43,22 @@ describe("GameOverController", () => {
     expect(panel.innerHTML).not.toContain("wake in town");
   });
 
-  describe("opening-key arming (wipe result → game over cascade)", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
+  it("continues on the first Enter — the wipe-confirm key never reaches this controller", () => {
+    const panel = makePanel();
+    const party = createDefaultParty().map((c) => ({ ...c, hp: 0 }));
+    let continued = 0;
+    const ctrl = new GameOverController({
+      panel,
+      party,
+      floorName: "The Crypt",
+      worldYear: 3947,
+      onContinue: () => {
+        continued += 1;
+      },
     });
-    afterEach(() => {
-      vi.useRealTimers();
-    });
 
-    it("ignores Enter/Space until the next macrotask so the wipe-confirm key cannot dismiss the screen", () => {
-      const panel = makePanel();
-      const party = createDefaultParty().map((c) => ({ ...c, hp: 0 }));
-      let continued = 0;
-      const ctrl = new GameOverController({
-        panel,
-        party,
-        floorName: "The Crypt",
-        worldYear: 3947,
-        onContinue: () => {
-          continued += 1;
-        },
-      });
-
-      // Same keydown that confirmed the combat wipe result still runs every
-      // window listener in registration order; without arming, this would
-      // call onContinue and skip the Game Over screen entirely.
-      ctrl.handleKey("Enter");
-      expect(continued).toBe(0);
-      expect(panel.style.display).toBe("flex");
-
-      ctrl.handleKey(" ");
-      expect(continued).toBe(0);
-
-      vi.runAllTimers();
-      ctrl.handleKey("Enter");
-      expect(continued).toBe(1);
-      expect(panel.style.display).toBe("none");
-    });
+    ctrl.handleKey("Enter");
+    expect(continued).toBe(1);
+    expect(panel.style.display).toBe("none");
   });
 });

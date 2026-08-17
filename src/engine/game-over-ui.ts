@@ -17,29 +17,14 @@ export interface GameOverControllerOptions {
 export class GameOverController {
   private panel: HTMLElement;
   private onContinue: () => void;
-  /**
-   * Wipe confirm (combat result Enter/Space) opens this screen synchronously
-   * inside the same keydown dispatch. Other window listeners then see
-   * mode === "game_over" and would immediately dismiss it. Stay unarmed until
-   * the next macrotask so that leaked keypress cannot call onContinue.
-   * Note: this only covers the opening keypress (~0ms). The leave-combat
-   * reveal (~160ms) is gated separately by main.ts `combatTransitionActive`
-   * on the game_over keydown listener — do not treat `armed` as a substitute.
-   */
-  private armed = false;
-
   constructor(opts: GameOverControllerOptions) {
     this.panel = opts.panel;
     this.onContinue = opts.onContinue;
     this.panel.style.display = "flex";
     this.render(opts.party, opts.floorName, opts.worldYear, !!opts.inArena);
-    setTimeout(() => {
-      this.armed = true;
-    }, 0);
   }
 
   handleKey(key: string): void {
-    if (!this.armed) return;
     if (key === "Enter" || key === " ") {
       this.dispose();
       this.onContinue();

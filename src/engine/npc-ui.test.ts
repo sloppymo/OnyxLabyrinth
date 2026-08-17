@@ -1,9 +1,8 @@
 /**
  * Tests for the dungeon NPC interaction overlay.
  *
- * These catch input-routing regressions in the "borrowed title mode" overlay,
- * where multiple listeners (save menu, spell menu, NPC panel, perk overlay)
- * guard on their own controller instance.
+ * These catch input-routing regressions in the dungeon NPC overlay
+ * (UiStack id `"npc"`).
  */
 
 import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";

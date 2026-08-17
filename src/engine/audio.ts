@@ -920,9 +920,9 @@ class AudioEngine {
 
   /**
    * Loop the Hot Boi's tavern BGM (Coffin Nails). Call when the tavern panel
-   * opens; stop when it closes. The tavern borrows "title" mode, so the loop's
-   * mode-transition logic won't manage this — it must be started/stopped at
-   * the openTavernPanel / onClose call sites in main.ts.
+   * opens; stop when it closes. Tavern is a UiStack overlay, so GameState.mode
+   * stays dungeon and the render loop will not stop dungeon BGM for you —
+   * start/stop tavern (and dungeon) at the openTavernPanel / onClose sites.
    */
   startTavernMusic(): void {
     this.tavernMusicWanted = true;

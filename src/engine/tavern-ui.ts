@@ -11,10 +11,10 @@
  * input is handled manually per phase and re-renders; FF6Window's own
  * onHover/onConfirm/onBack only serve mouse/touch on top of that).
  *
- * main.ts borrows mode "title" to open this, exactly like the save menu,
- * grimoire, and dungeon NPC panel — see the "Borrowed title mode" pitfall
- * in AGENTS.md. Attack and Steal are structurally absent: they are not in
- * ROOT_ITEMS at all, not filtered out at runtime.
+ * Overlay input lives on `UiStack` in main.ts (id `"tavern"`). GameState.mode
+ * stays dungeon — see the UiStack pitfall in AGENTS.md. Attack and Steal are
+ * structurally absent: they are not in ROOT_ITEMS at all, not filtered out
+ * at runtime.
  */
 
 import type { GameState } from "../types";

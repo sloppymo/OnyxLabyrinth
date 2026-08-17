@@ -4,8 +4,8 @@
  * Lists every (caster, utility spell) pair the party can attempt (Light,
  * Wayfinder, Levitate, …) with SP costs, greying out unaffordable rows. Enter
  * casts via game/persistent-spells.ts and closes; Esc/G closes without
- * casting. main.ts borrows "title" mode while the menu is open (same trick
- * as the save menu) so dungeon input pauses.
+ * casting. Overlay input lives on `UiStack` in main.ts (id `"spell"`);
+ * GameState.mode stays dungeon underneath.
  */
 
 import type { GameState } from "../types";

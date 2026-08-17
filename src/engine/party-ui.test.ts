@@ -13,11 +13,6 @@ function makePanel(): HTMLElement {
   return panel;
 }
 
-/** Clear the post-open key swallow before driving the controller in tests. */
-function clearJustOpened(ctrl: PartyCreationController): void {
-  ctrl.handleKey("ArrowUp");
-}
-
 function cycleRight(ctrl: PartyCreationController): void {
   ctrl.handleKey("ArrowRight");
   vi.advanceTimersByTime(SLIDE_MS);
@@ -32,7 +27,6 @@ function cycleLeft(ctrl: PartyCreationController): void {
 
 /** Choice screen: 4 presets then Custom — move to last stop via Left/Right. */
 function openEditor(ctrl: PartyCreationController): void {
-  clearJustOpened(ctrl);
   for (let i = 0; i < 4; i++) cycleRight(ctrl);
   ctrl.handleKey("Enter");
   // Confirm flash uses a short timeout before enterEditor — advance timers.
@@ -51,8 +45,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("PartyCreationController open guard", () => {
-  it("ignores the first Enter so a prologue confirm cannot auto-pick a party", () => {
+describe("PartyCreationController first input", () => {
+  it("confirms All Trades on the first Enter", () => {
     let confirmed = 0;
     const panel = makePanel();
     const ctrl = new PartyCreationController({
@@ -63,15 +57,12 @@ describe("PartyCreationController open guard", () => {
       onCancel: () => {},
     });
     expect(panel.textContent).toMatch(/All Trades|Assemble Your Party|Custom/i);
-    ctrl.handleKey("Enter"); // swallowed — still on choice
-    expect(confirmed).toBe(0);
-    expect(panel.textContent).not.toContain("Slot 1 of 4");
-    ctrl.handleKey("Enter"); // confirm flash, then All Trades
+    ctrl.handleKey("Enter");
     vi.runAllTimers();
     expect(confirmed).toBe(1);
   });
 
-  it("ignores the first Escape so open cannot instantly cancel", () => {
+  it("cancels on the first Escape", () => {
     let cancelled = 0;
     const panel = makePanel();
     const ctrl = new PartyCreationController({
@@ -81,8 +72,6 @@ describe("PartyCreationController open guard", () => {
         cancelled += 1;
       },
     });
-    ctrl.handleKey("Escape");
-    expect(cancelled).toBe(0);
     ctrl.handleKey("Escape");
     expect(cancelled).toBe(1);
   });
@@ -96,8 +85,6 @@ describe("PartyCreationController choice carousel", () => {
       onConfirm: () => {},
       onCancel: () => {},
     });
-    clearJustOpened(ctrl);
-
     expect(panel.querySelector(".party-carousel-card--focus")?.textContent).toMatch(/All Trades/);
 
     cycleRight(ctrl);
@@ -144,7 +131,6 @@ describe("PartyCreationController choice carousel", () => {
       },
       onCancel: () => {},
     });
-    clearJustOpened(ctrl);
     ctrl.handleKey("2");
     ctrl.handleKey("c");
     expect(confirmed).toBe(0);
@@ -158,7 +144,6 @@ describe("PartyCreationController choice carousel", () => {
       onConfirm: () => {},
       onCancel: () => {},
     });
-    clearJustOpened(ctrl);
     ctrl.handleKey("ArrowDown");
     ctrl.handleKey("ArrowUp");
     expect(panel.querySelector(".party-carousel-card--focus")?.textContent).toMatch(/All Trades/);
@@ -183,7 +168,6 @@ describe("PartyCreationController choice carousel", () => {
       onConfirm: () => {},
       onCancel: () => {},
     });
-    clearJustOpened(ctrl);
     cycleRight(ctrl); // Shield Wall
     ctrl.handleKey("y");
     expect(panel.textContent).toContain("Slot 1 of 4");
@@ -199,7 +183,6 @@ describe("PartyCreationController choice carousel", () => {
       onConfirm: () => {},
       onCancel: () => {},
     });
-    clearJustOpened(ctrl);
     for (let i = 0; i < 4; i++) cycleRight(ctrl);
     ctrl.handleKey("y");
     expect(panel.textContent).toContain("Slot 1 of 4");
@@ -235,7 +218,6 @@ describe("PartyCreationController choice carousel", () => {
       onConfirm: () => {},
       onCancel: () => {},
     });
-    clearJustOpened(ctrl);
     const before = panel.querySelector(".party-carousel-card--focus")!;
     const beforeClass = before.className;
     cycleRight(ctrl);
@@ -253,7 +235,6 @@ describe("PartyCreationController choice carousel", () => {
       onConfirm: () => {},
       onCancel: () => {},
     });
-    clearJustOpened(ctrl);
     ctrl.handleKey("ArrowRight");
     vi.advanceTimersByTime(SLIDE_MS);
     ctrl.releaseDirection(1);

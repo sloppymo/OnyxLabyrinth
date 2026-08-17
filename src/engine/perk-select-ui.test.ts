@@ -53,9 +53,6 @@ describe("PerkSelectController", () => {
     const queue: PendingPerkChoice[] = [{ charId: "c1", tier: 1 }];
 
     const ctrl = new PerkSelectController({ panel, state, queue, onDone: () => {} });
-    // First handleKey is swallowed by the justOpened guard (prevents the
-    // keypress that ended combat from instantly dismissing the overlay).
-    ctrl.handleKey("");
     ctrl.handleKey("ArrowRight");
 
     let cards = panel.querySelectorAll(".perk-select-card");
@@ -83,8 +80,7 @@ describe("PerkSelectController", () => {
       },
     });
 
-    // Clear the justOpened guard, then select right card (Toughness) and confirm.
-    ctrl.handleKey("");
+    // Select right card (Toughness) and confirm.
     ctrl.handleKey("ArrowRight");
     ctrl.handleKey("Enter");
 
@@ -108,8 +104,8 @@ describe("PerkSelectController", () => {
       },
     });
 
-    // Simulate leftover Enter spam from combat: none of these may confirm.
-    ctrl.handleKey("Enter"); // swallowed by justOpened
+    // Simulate leftover Enter spam: none of these may confirm until a card pick.
+    ctrl.handleKey("Enter");
     ctrl.handleKey("Enter");
     ctrl.handleKey("Enter");
     ctrl.handleKey("Enter");
@@ -146,9 +142,6 @@ describe("PerkSelectController", () => {
       },
     });
 
-    // Clear the justOpened guard.
-    ctrl.handleKey("");
-    // Confirm Aria's choice (arrow first — Enter needs a deliberate pick).
     ctrl.handleKey("ArrowLeft");
     ctrl.handleKey("Enter");
     expect(state.party[0].perkIds).toHaveLength(1);

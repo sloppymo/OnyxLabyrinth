@@ -425,9 +425,8 @@ describe("Floor 1 chute choice — decline via real dialog callback", () => {
     });
     dialog.open();
 
-    // Dialog is active, mode is "dialog"
     expect(dialog.isActive()).toBe(true);
-    expect(state.mode).toBe("dialog");
+    expect(state.mode).toBe("dungeon");
 
     // With a single-line dialog, we're already in the choice menu phase
     // (page 0 >= lines.length - 1 = 0). Select "Step away" (index 1).
@@ -435,7 +434,7 @@ describe("Floor 1 chute choice — decline via real dialog callback", () => {
     expect(dialog.selectedIndex).toBe(1);
     dialog.handleKey("Enter");
 
-    // Dialog is closed, mode restored to "dungeon"
+    // Dialog is closed; GameState.mode was never borrowed.
     expect(dialog.isActive()).toBe(false);
     expect(state.mode).toBe("dungeon");
 

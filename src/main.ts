@@ -4,7 +4,6 @@ import { createGameState, setMode } from "./game/state";
 import { turnLeft, turnRight, tryUnlock, resolveTraversal, openBarredGate } from "./engine/camera";
 import { type Direction, type TraversalResult } from "./game/traversal";
 import { RaftAnimationController, isRaftAnimating } from "./engine/raft-animation";
-import { DungeonDialogController } from "./engine/dungeon-dialog";
 import {
   handleTileFeature,
   transitionToFloor,
@@ -110,13 +109,13 @@ import { controllerEventToMenuKey } from "./engine/menu-controller-adapter";
 import {
   assertUnhandledRoute,
   resolveControllerRoute,
+  type BaseRouteKind,
   type ControllerRouteContext,
   type ControllerRouteKind,
 } from "./engine/controller-route";
-import { DungeonActionRingController } from "./engine/dungeon-action-ring-ui";
-import { TrapPromptController } from "./engine/trap-prompt-ui";
+import { UiStack } from "./engine/ui-stack";
+import { OverlayRuntime } from "./engine/overlay-runtime";
 import { CampController } from "./engine/camp-ui";
-import { SaveController } from "./engine/save-ui";
 import { TownController } from "./engine/town-ui";
 import { PartyCreationController } from "./engine/party-ui";
 import { GameOverController } from "./engine/game-over-ui";
@@ -150,12 +149,7 @@ import {
   stepPity,
 } from "./game/encounters";
 import { tickBuffs, clearBuffs } from "./game/persistent-spells";
-import { SpellMenuController } from "./engine/spell-ui";
-import { NPCController } from "./engine/npc-ui";
-import { TavernController } from "./engine/tavern-ui";
-import { NamandaController } from "./engine/namanda-ui";
 import { applyNamandaBlessing } from "./game/namanda";
-import { PerkSelectController } from "./engine/perk-select-ui";
 import { markKilled, adjustDisposition } from "./game/npc";
 import { companionAsSummonedAlly, syncCompanionAfterCombat } from "./game/companion";
 import {
@@ -307,30 +301,82 @@ let shownDungeonKeyboardHint = false;
  *  facing eight menu options with no stated objective. */
 let shownTownIntro = false;
 /**
- * Swallow the first town key after party creation / openTown so the same
- * Enter that confirmed the party cannot also select Inn (AGENTS.md
- * synchronous mode-open mid-keydown / key-repeat).
- */
-let justOpenedTown = false;
-/**
  * After the ending closes on Esc, ignore dungeon Esc→Save until keyup so
  * key-repeat cannot open the save menu on the same physical press.
  */
 let suppressDungeonEscUntilKeyup = false;
 
-// Session-wide gamepad/keyboard poller (combat keyboard path feeds this too).
-let actionRingController: DungeonActionRingController | null = null;
-let trapPrompt: TrapPromptController | null = null;
-/** Swallow the step key that opened the trap so it cannot wrap the cursor. */
-let justOpenedTrapPrompt = false;
-type RingActionId = "camp" | "map" | "grimoire" | "unlock" | "town";
-let pendingRingAction: RingActionId | null = null;
+const uiStack = new UiStack();
+const overlays = new OverlayRuntime({
+  state,
+  uiStack,
+  shell: {
+    panel: () => document.querySelector<HTMLDivElement>("#combat-panel")!,
+    presentBlocking: () => {
+      showMode("title", mapVisible);
+      setMazeSurfaceOpacity("0.2");
+    },
+    restore: () => {
+      setMazeSurfaceOpacity("1");
+      showMode(state.mode, mapVisible);
+    },
+    showDialog: () => showMode("dialog", mapVisible),
+    showDungeon: () => showMode("dungeon", mapVisible),
+    showNpcDialogue: () => showNpcDialogueOverlay(),
+    hideNpcDialogue: () => hideNpcDialogueOverlay(),
+    syncMapOverlayTitle: () => syncMapOverlayMode(mapOverlayState, "title"),
+    setMessage: (text, opts) => setMessage(text, opts),
+    closeMapIfOpen: () => {
+      if (mapVisible) toggleMap();
+    },
+  },
+  dungeon: {
+    camp: () => dungeonHandlers.onCamp(),
+    returnToTown: () => dungeonHandlers.onTown(),
+    toggleMap: () => dungeonHandlers.onToggleMap(),
+    unlock: () => dungeonHandlers.onUnlock(),
+    canOpenActionRing: () => !mapVisible && !isRenderCameraAnimating(),
+  },
+  session: {
+    applyLoadedState: (loaded) => applyLoadedGameState(loaded, { message: "Game loaded." }),
+    persist: () => autoSave(state),
+    reopenTown: () => openTown(),
+  },
+  combat: {
+    startNpcFight: (npc) => startNPCFight(npc),
+  },
+  trap: {
+    isPending: () => state.mode === "dungeon" && !!state.pendingTrap,
+    inspected: () => !!state.pendingTrap?.inspected,
+    inspect: () => setMessage(inspectChest(state)),
+    disarm: () => {
+      applyChestResult(disarmChest(state));
+      return { stillPending: !!state.pendingTrap };
+    },
+    open: () => applyChestResult(openChest(state)),
+    leave: () => setMessage(leaveChest(state)),
+  },
+  audio: {
+    stopDungeon: () => audio.stopDungeon(),
+    startTavernMusic: () => audio.startTavernMusic(),
+    stopTavernMusic: () => audio.stopTavernMusic(),
+    startDungeon: () => audio.startDungeon(),
+  },
+  inArena: () => inArena,
+  setMode: (mode) => setMode(state, mode),
+  onDialogClosed: () => {
+    suppressDungeonMovementUntilKeyup = true;
+  },
+});
 
-// --- Raft animation + dungeon dialog controllers ---
+function currentRoute(): ControllerRouteKind {
+  const overlay = uiStack.top();
+  if (overlay) return overlay.id;
+  return resolveControllerRoute(currentRouteFlags());
+}
+
+// --- Raft animation ------------------------------------------------------
 let raftAnimation: RaftAnimationController | null = null;
-let dungeonDialog: DungeonDialogController | null = null;
-/** Swallow the step key that opened a dungeon dialog so it cannot also move. */
-let justOpenedDungeonDialog = false;
 /** Swallow movement after closing a dialog until the closing key is released. */
 let suppressDungeonMovementUntilKeyup = false;
 
@@ -421,7 +467,6 @@ function openTown(opts?: { showIntroHint?: boolean }): void {
   if (mapVisible) toggleMap();
   transitionToMode("town");
   setMessage("");
-  justOpenedTown = true;
   let introHint = "";
   if (opts?.showIntroHint && !shownTownIntro) {
     shownTownIntro = true;
@@ -429,18 +474,6 @@ function openTown(opts?: { showIntroHint?: boolean }): void {
     // vertical space in the fixed-height FF6Window on narrow viewports.
     introHint = "Ready when you are — [>] Enter Dungeon.";
   }
-  // Most openTown() callers are decoupled from any keydown event (e.g. the
-  // party-creation confirm flash's setTimeout, or the combat return
-  // transition's async dissolve) — for those, no cascaded keydown ever
-  // arrives to clear the flag, so it would otherwise sit armed until the
-  // player's next *genuine* keypress and silently eat that one instead.
-  // A truly cascaded same-event keydown (e.g. game_over's Enter calling
-  // openTown() synchronously) still fires — and clears the flag — well
-  // before this rAF's next-paint callback runs, so that protection is
-  // unaffected; this only forecloses the "wait forever" failure mode.
-  requestAnimationFrame(() => {
-    justOpenedTown = false;
-  });
   townController = new TownController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
@@ -508,7 +541,7 @@ function openTown(opts?: { showIntroHint?: boolean }): void {
     },
     onOpenSave: () => {
       townController = null;
-      openSaveMenu();
+      overlays.openSave();
     },
     onReformParty: () => {
       townController = null;
@@ -568,18 +601,14 @@ function openPartyCreation(onDone: () => void): void {
 // --- New Game prologue -----------------------------------------------------
 // Skippable SNES-style black-field narration shown once, between New Game's
 // state reset and party creation. Never shown by Continue / Arena / Reform
-// Party. Borrows "title" mode like the perk/save/NPC overlays.
+// Party. This is a real title-mode screen, not a UiStack overlay.
 let prologueController: PrologueController | null = null;
-// Opened from title's onNewGame inside the same keydown. `routeControllerEvent`
-// re-dispatches once to the new route so this flag swallows that Enter.
-let justOpenedPrologue = false;
 
 function openPrologue(onDone: () => void): void {
   if (mapVisible) toggleMap();
   setMode(state, "title");
   showMode("title", mapVisible);
   setMessage(""); // critical: empty #message so it cannot cover the black field
-  justOpenedPrologue = true;
   prologueController = new PrologueController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     onDone: () => {
@@ -594,27 +623,21 @@ function openPrologue(onDone: () => void): void {
 // perk queue, once per campaign — see the hasCompletedEnding comment at the
 // call site for why "boss defeated" alone can't gate this (the floor-5 boss
 // is a re-rollable random encounter, not a one-time scripted fight). Never
-// opened from Arena. Borrows "title" mode like the prologue; same
-// Opened from combat result confirm or perk overlay onDone in the same
-// keydown. `routeControllerEvent` re-dispatches so justOpenedEnding swallows it.
+// opened from Arena. This is a real title-mode screen, not a UiStack overlay.
 let endingController: EndingController | null = null;
-let justOpenedEnding = false;
 
 function openEnding(): void {
   if (mapVisible) toggleMap();
-  // Set the flag and try to persist it before the mode flip. autoSave()
-  // refuses to write while state.mode === "title" (overlays aren't
-  // resumable — see its comment), so this only actually reaches disk on
-  // the direct-from-combat path (mode is still "combat" here); the
-  // perk-overlay-chained path already has mode === "title" by the time
-  // this runs. Either way, onDone below is the call that's guaranteed to
-  // persist it, on both paths and both exits (confirm-through or Escape).
+  // Persist before the title-mode flip. autoSave() refuses title (and
+  // party_creation / arena) because those screens are not resumable.
+  // Direct-from-combat still has mode "combat" here; perk-then-ending now
+  // keeps dungeon/arena under the perk layer, so this write can land.
+  // onDone below is still the guaranteed persist for both exits.
   state.hasCompletedEnding = true;
   autoSave(state);
   setMode(state, "title");
   showMode("title", mapVisible);
   setMessage(""); // critical: empty #message so it cannot cover the black field
-  justOpenedEnding = true;
   endingController = new EndingController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     onDone: () => {
@@ -1057,7 +1080,7 @@ function endCombat(result: CombatState): void {
         openArena();
       };
       if (pendingPerkChoices.length > 0) {
-        openPerkSelectOverlay(pendingPerkChoices, onDone);
+        overlays.openPerk(pendingPerkChoices, onDone);
       } else {
         onDone();
       }
@@ -1065,37 +1088,13 @@ function endCombat(result: CombatState): void {
     }
 
     if (pendingPerkChoices.length > 0) {
-      openPerkSelectOverlay(pendingPerkChoices, triggersEnding ? openEnding : undefined);
+      overlays.openPerk(pendingPerkChoices, triggersEnding ? openEnding : undefined);
     } else if (triggersEnding) {
       openEnding();
     } else {
       setMode(state, "dungeon");
       showMode("dungeon", mapVisible);
     }
-  });
-}
-
-// --- Perk selection overlay ----------------------------------------------
-let perkSelectController: PerkSelectController | null = null;
-
-function openPerkSelectOverlay(queue: PendingPerkChoice[], onDone?: () => void): void {
-  setMode(state, "title");
-  showMode("title", mapVisible);
-  setMazeSurfaceOpacity("0.2");
-  perkSelectController = new PerkSelectController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    state,
-    queue,
-    onDone: () => {
-      perkSelectController = null;
-      setMazeSurfaceOpacity("1");
-      if (onDone) {
-        onDone();
-      } else {
-        setMode(state, "dungeon");
-        showMode("dungeon", mapVisible);
-      }
-    },
   });
 }
 
@@ -1244,12 +1243,12 @@ function onMove(): void {
         return;
       }
       if (result.npcId) {
-        openNPCPanel(result.npcId);
+        overlays.openNpc(result.npcId);
         return;
       }
       if (result.pendingChuteDrop) {
         const drop = result.pendingChuteDrop;
-        openDungeonDialog({
+        overlays.openDialog({
           lines: [
             "A steep sluice disappears into darkness. There may be no way back up.",
           ],
@@ -1274,7 +1273,7 @@ function onMove(): void {
       }
       if (result.pendingStairsGuardian) {
         const guardian = result.pendingStairsGuardian;
-        openDungeonDialog({
+        overlays.openDialog({
           // No choices, so this dialog never reaches DungeonDialogController's
           // choice-menu phase — Escape and Enter both just advance/dismiss
           // text pages there, same as any other pure-text dialog. The real
@@ -1342,14 +1341,14 @@ function onMove(): void {
     if (result.npcId) {
       // Stepped onto a living NPC — open the interaction panel instead of
       // rolling an encounter.
-      openNPCPanel(result.npcId);
+      overlays.openNpc(result.npcId);
       return;
     }
     if (result.pendingChuteDrop) {
       // Stepped onto a chute that requires confirmation — show a
       // point-of-no-return dialog instead of dropping immediately.
       const drop = result.pendingChuteDrop;
-      openDungeonDialog({
+      overlays.openDialog({
         lines: [
           "A steep sluice disappears into darkness. There may be no way back up.",
         ],
@@ -1374,7 +1373,7 @@ function onMove(): void {
     }
     if (result.pendingStairsGuardian) {
       const guardian = result.pendingStairsGuardian;
-      openDungeonDialog({
+      overlays.openDialog({
         // No choices, so this dialog never reaches DungeonDialogController's
         // choice-menu phase — Escape and Enter both just advance/dismiss
         // text pages there, same as any other pure-text dialog. The real
@@ -1392,25 +1391,11 @@ function onMove(): void {
   }
 
   if (state.pendingTrap) {
-    // Trap choices own dungeon input without changing GameMode, so they need
-    // the same explicit quick-map cleanup as other blocking overlays.
     closeMapOverlay();
-    if (!trapPrompt) {
-      trapPrompt = new TrapPromptController();
-      // Swallow the opening step key (same keydown may reach the trap
-      // listener and wrap Inspect→Leave). Clear on next macrotask so the
-      // player's first intentional A/B is not also swallowed.
-      justOpenedTrapPrompt = true;
-      setTimeout(() => {
-        justOpenedTrapPrompt = false;
-      }, 0);
-    }
-    setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected), {
-      instant: true,
-    });
+    const prompt = overlays.syncTrap(true);
+    if (prompt) setMessage(prompt, { instant: true });
   } else {
-    trapPrompt = null;
-    justOpenedTrapPrompt = false;
+    overlays.syncTrap(false);
   }
 
   maybeTriggerEncounter();
@@ -1438,7 +1423,7 @@ function handleTraversalResult(result: TraversalResult, dir: Direction): void {
       audio.wallBump();
       if (result.message) {
         // Show blocking dialog for raft-channel messages.
-        openDungeonDialog({
+        overlays.openDialog({
           lines: [result.message],
           cancelable: true,
         });
@@ -1474,7 +1459,7 @@ function handleTraversalResult(result: TraversalResult, dir: Direction): void {
         }
       } else {
         audio.wallBump();
-        openDungeonDialog({
+        overlays.openDialog({
           lines: [result.message ?? "A barred gate blocks the way."],
           cancelable: true,
         });
@@ -1487,7 +1472,7 @@ function handleTraversalResult(result: TraversalResult, dir: Direction): void {
 /** Start a raft route animation. */
 function startRaftAnimation(route: NonNullable<FloorDef["raftRoutes"]>[number], reverse: boolean): void {
   // Show boarding message as a blocking dialog, then start animation.
-  openDungeonDialog({
+  overlays.openDialog({
     lines: ["You step onto the raft. It carries you across the water..."],
     onClose: () => {
       // Start the animation after the boarding message is dismissed.
@@ -1508,37 +1493,6 @@ function startRaftAnimation(route: NonNullable<FloorDef["raftRoutes"]>[number], 
       raftAnimation.start();
     },
   });
-}
-
-/** Open a blocking dungeon dialog. */
-function openDungeonDialog(opts: {
-  lines: string[];
-  choices?: { label: string; value: string }[];
-  title?: string;
-  onSelect?: (value: string) => void;
-  onClose?: () => void;
-  cancelable?: boolean;
-}): void {
-  dungeonDialog = new DungeonDialogController({
-    state: state as { mode: string },
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    lines: opts.lines,
-    choices: opts.choices,
-    title: opts.title,
-    onSelect: opts.onSelect,
-    onClose: () => {
-      dungeonDialog = null;
-      // Swallow the closing keypress so it doesn't also move the player.
-      suppressDungeonMovementUntilKeyup = true;
-      showMode("dungeon", mapVisible);
-      opts.onClose?.();
-    },
-    cancelable: opts.cancelable,
-  });
-  justOpenedDungeonDialog = true;
-  setTimeout(() => { justOpenedDungeonDialog = false; }, 0);
-  dungeonDialog.open();
-  showMode("dialog", mapVisible);
 }
 
 const dungeonHandlers: InputHandlers = {
@@ -1624,7 +1578,7 @@ const dungeonHandlers: InputHandlers = {
       return;
     }
     clearMessageOnPlayerAction();
-    openSaveMenu();
+    overlays.openSave();
   },
   onTown: () => {
     if (combatTransitionActive) return;
@@ -1637,14 +1591,14 @@ const dungeonHandlers: InputHandlers = {
     if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
       clearMessageOnPlayerAction();
-      openSpellMenu();
+      overlays.openSpell();
     }
   },
   onActionRing: () => {
     if (combatTransitionActive) return;
     if (state.mode === "dungeon" && !mapVisible && !state.pendingTrap) {
       clearMessageOnPlayerAction();
-      openActionRing();
+      overlays.openActionRing();
     }
   },
   onUnlock: () => {
@@ -1670,16 +1624,14 @@ const dungeonHandlers: InputHandlers = {
 
 bindMapOverlayButton(dungeonHandlers.onToggleMapOverlay);
 
-// --- Dungeon dialog mode --------------------------------------------------
-// Active while state.mode === "dialog" (blocking dungeon dialogs: raft
-// warnings, boarding messages, gate prompts, chute warnings). All dungeon
-// movement/turning/encounters are suppressed by the shouldHandle guard
-// above (mode !== "dungeon"). These keys drive the dialog controller.
+// --- Dungeon dialog overlay -----------------------------------------------
+// Active while uiStack.top()?.id === "dialog". Raft animation still uses
+// GameState.mode "dialog" separately to lock traversal while the boat moves.
 
 // --- Trapped chest prompt --------------------------------------------------
-// Active while state.pendingTrap is set (the party is standing on a trapped,
-// unopened chest). Movement/camp/town/save inputs are gated off above; these
-// keys drive the chest interaction from game/features.ts.
+// Active while uiStack.top()?.id === "trap" (and state.pendingTrap).
+// Movement/camp/town/save stay on the dungeon route until the stack layer
+// is pushed; then the trap layer owns I/D/O/L (+Esc = leave).
 
 /** Route a chest action result: message, camera snap, forced encounter. */
 function applyChestResult(result: ChestActionResult): void {
@@ -1740,121 +1692,15 @@ function forceEncounter(): void {
   });
 }
 
-/** Route trap prompt keys (keyboard or adapter) to features.ts chest APIs. */
-function handleTrapInput(key: string): boolean {
-  if (state.mode !== "dungeon" || !state.pendingTrap || !trapPrompt) return false;
-  if (justOpenedTrapPrompt) {
-    justOpenedTrapPrompt = false;
-    return true;
-  }
-  const action = trapPrompt.handleKey(key);
-  if (action === null) {
-    // Instant: cursor moves must not restart the typewriter.
-    setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected), {
-      instant: true,
-    });
-    return true;
-  }
-  switch (action) {
-    case "inspect": {
-      const msg = inspectChest(state);
-      setMessage(msg);
-      break;
-    }
-    case "disarm":
-      applyChestResult(disarmChest(state));
-      if (state.pendingTrap && trapPrompt) {
-        setMessage(trapPrompt.renderMessage(state.pendingTrap.inspected), {
-          instant: true,
-        });
-      } else {
-        trapPrompt = null;
-      }
-      break;
-    case "open":
-      applyChestResult(openChest(state));
-      trapPrompt = null;
-      break;
-    case "leave":
-      setMessage(leaveChest(state));
-      trapPrompt = null;
-      break;
-  }
-  return true;
-}
-
-function openActionRing(): void {
-  if (
-    perkSelectController ||
-    saveController ||
-    spellMenuController ||
-    npcController ||
-    tavernController ||
-    namandaController ||
-    actionRingController
-  ) {
-    return;
-  }
-  if (state.mode !== "dungeon" || state.pendingTrap || mapVisible || isRenderCameraAnimating()) {
-    return;
-  }
-  setMode(state, "title");
-  showMode("title", mapVisible);
-  setMazeSurfaceOpacity("0.2");
-  // No justOpened* guard: Start opens the ring on the dungeon route and is
-  // never fed into the ring's handleKey (unlike Esc→save), so the first A/B
-  // must confirm/cancel immediately.
-  pendingRingAction = null;
-  actionRingController = new DungeonActionRingController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    onCamp: () => {
-      pendingRingAction = "camp";
-    },
-    onToggleMap: () => {
-      pendingRingAction = "map";
-    },
-    onCastSpell: () => {
-      pendingRingAction = "grimoire";
-    },
-    onUnlock: () => {
-      pendingRingAction = "unlock";
-    },
-    onTown: () => {
-      pendingRingAction = "town";
-    },
-    onClose: () => {
-      actionRingController = null;
-      setMazeSurfaceOpacity("1");
-      setMode(state, "dungeon");
-      showMode("dungeon", mapVisible);
-      setMessage("");
-      const action = pendingRingAction;
-      pendingRingAction = null;
-      if (action === "camp") dungeonHandlers.onCamp();
-      else if (action === "map") dungeonHandlers.onToggleMap();
-      else if (action === "grimoire") dungeonHandlers.onCastSpell();
-      else if (action === "unlock") dungeonHandlers.onUnlock();
-      else if (action === "town") dungeonHandlers.onTown();
-    },
-  });
-}
-
 /**
- * Live controller flags for `resolveControllerRoute`. Shared by the input
- * router and the ?debug=1 snapshot so the two can never disagree about which
- * overlay actually owns input (four of them borrow mode "title").
+ * Live flags for `resolveControllerRoute` (base screens only). Overlay
+ * ownership is `uiStack.top()`; `currentRoute()` combines the two so the
+ * debug snapshot cannot drift from input routing.
  */
 function currentRouteFlags(): ControllerRouteContext {
   return {
     mode: state.mode,
-    hasPerkSelect: !!perkSelectController,
     hasCombat: !!combatController,
-    hasSave: !!saveController,
-    hasSpellMenu: !!spellMenuController,
-    hasNpc: !!npcController,
-    hasTavern: !!tavernController,
-    hasNamanda: !!namandaController,
-    hasActionRing: !!actionRingController,
     hasTown: !!townController,
     hasCamp: !!campController,
     hasGameOver: !!gameOverController,
@@ -1862,20 +1708,12 @@ function currentRouteFlags(): ControllerRouteContext {
     hasPrologue: !!prologueController,
     hasEnding: !!endingController,
     hasTitle: !!titleController,
-    hasPendingTrap: !!state.pendingTrap,
-    hasTrapPrompt: !!trapPrompt,
-    hasDungeonDialog: !!dungeonDialog,
   };
 }
 
 
-function dispatchControllerRoute(route: ControllerRouteKind, event: ControllerInputEvent): void {
+function dispatchControllerRoute(route: BaseRouteKind, event: ControllerInputEvent): void {
   switch (route) {
-    case "perk": {
-      const key = controllerEventToMenuKey(event);
-      if (key) perkSelectController!.handleKey(key);
-      return;
-    }
     case "combat": {
       const combat = combatController;
       if (!combat) return;
@@ -1901,70 +1739,7 @@ function dispatchControllerRoute(route: ControllerRouteKind, event: ControllerIn
       combat.handleInput(event);
       return;
     }
-    case "save": {
-      if (justOpenedSaveMenu) {
-        if (event.kind === "press") justOpenedSaveMenu = false;
-        return;
-      }
-      const key = controllerEventToMenuKey(event);
-      if (key) saveController!.handleKey(key);
-      return;
-    }
-    case "spell": {
-      if (justOpenedSpellMenu) {
-        if (event.kind === "press") justOpenedSpellMenu = false;
-        return;
-      }
-      const key = controllerEventToMenuKey(event);
-      if (key) spellMenuController!.handleKey(key);
-      return;
-    }
-    case "npc": {
-      if (justOpenedNPCPanel) {
-        if (event.kind === "press") justOpenedNPCPanel = false;
-        return;
-      }
-      const key = controllerEventToMenuKey(event);
-      if (key) npcController!.handleKey(key);
-      return;
-    }
-    case "tavern": {
-      if (justOpenedTavernPanel) {
-        if (event.kind === "press") justOpenedTavernPanel = false;
-        return;
-      }
-      const key = controllerEventToMenuKey(event);
-      if (key) tavernController!.handleKey(key);
-      return;
-    }
-    case "namanda": {
-      if (justOpenedNamandaPanel) {
-        if (event.kind === "press") justOpenedNamandaPanel = false;
-        return;
-      }
-      const key = controllerEventToMenuKey(event);
-      if (key) namandaController!.handleKey(key);
-      return;
-    }
-    case "dialog": {
-      if (justOpenedDungeonDialog) {
-        if (event.kind === "press") justOpenedDungeonDialog = false;
-        return;
-      }
-      const key = controllerEventToMenuKey(event);
-      if (key) dungeonDialog!.handleKey(key);
-      return;
-    }
-    case "action_ring": {
-      const key = controllerEventToMenuKey(event);
-      if (key) actionRingController!.handleKey(key);
-      return;
-    }
     case "town": {
-      if (justOpenedTown) {
-        if (event.kind === "press") justOpenedTown = false;
-        return;
-      }
       const key = controllerEventToMenuKey(event);
       if (key) townController!.handleKey(key);
       return;
@@ -1993,19 +1768,11 @@ function dispatchControllerRoute(route: ControllerRouteKind, event: ControllerIn
       return;
     }
     case "prologue": {
-      if (justOpenedPrologue) {
-        if (event.kind === "press") justOpenedPrologue = false;
-        return;
-      }
       const key = controllerEventToMenuKey(event);
       if (key) prologueController!.handleKey(key);
       return;
     }
     case "ending": {
-      if (justOpenedEnding) {
-        if (event.kind === "press") justOpenedEnding = false;
-        return;
-      }
       const key = controllerEventToMenuKey(event);
       if (key) endingController!.handleKey(key);
       return;
@@ -2016,10 +1783,6 @@ function dispatchControllerRoute(route: ControllerRouteKind, event: ControllerIn
       return;
     }
     case "arena": {
-      if (justOpenedArena) {
-        if (event.kind === "press") justOpenedArena = false;
-        return;
-      }
       const key = controllerEventToMenuKey(event);
       if (!key) return;
       if (arenaSetupController) {
@@ -2029,11 +1792,6 @@ function dispatchControllerRoute(route: ControllerRouteKind, event: ControllerIn
       if (arenaController) {
         arenaController.handleKey(key);
       }
-      return;
-    }
-    case "trap": {
-      const key = controllerEventToMenuKey(event);
-      if (key) handleTrapInput(key);
       return;
     }
     case "dungeon":
@@ -2095,7 +1853,7 @@ function dispatchDungeonInput(event: ControllerInputEvent): void {
         dungeonHandlers.onToggleMap();
       } else if (!isRenderCameraAnimating()) {
         clearMessageOnPlayerAction();
-        openActionRing();
+        overlays.openActionRing();
       }
       break;
     case "y":
@@ -2119,16 +1877,12 @@ function dispatchDungeonInput(event: ControllerInputEvent): void {
 
 function routeControllerEvent(event: ControllerInputEvent): void {
   if (combatTransitionActive) return;
-  const route = resolveControllerRoute(currentRouteFlags());
-  dispatchControllerRoute(route, event);
-  // One owner cannot rely on a later window listener seeing a newly opened
-  // overlay in the same dispatch. If this event opened a controller, feed it
-  // once more so that controller's justOpened* swallow still consumes it.
-  if (combatTransitionActive) return;
-  const next = resolveControllerRoute(currentRouteFlags());
-  if (next !== route) {
-    dispatchControllerRoute(next, event);
+  const overlay = uiStack.top();
+  if (overlay) {
+    overlay.handleInput(event);
+    return;
   }
+  dispatchControllerRoute(resolveControllerRoute(currentRouteFlags()), event);
 }
 
 const globalInput = createControllerInput((event) => {
@@ -2156,12 +1910,12 @@ window.addEventListener("keyup", onGameplayKeyUp);
 // Auto-save when the player leaves or reloads the page so the next session
 // can resume where they left off.
 window.addEventListener("beforeunload", () => {
+  if (uiStack.top()?.id === "perk") return;
   autoSave(state, inArena);
 });
 
 // --- Arena mode ----------------------------------------------------------
 let arenaController: ArenaController | null = null;
-let justOpenedArena = false;
 let inArena = false;
 let arenaWave = 1;
 let arenaFloor = 1;
@@ -2270,7 +2024,6 @@ function openArena(): void {
   setMode(state, "arena");
   showMode("arena", mapVisible);
   setMessage("");
-  justOpenedArena = true;
   arenaController = new ArenaController({
     panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
     state,
@@ -2324,120 +2077,11 @@ function startNextArenaFight(): void {
   startCombat(combat, { source: "arena", tableId: null });
 }
 
-// --- Save/Load menu ------------------------------------------------------
-let saveController: SaveController | null = null;
-let modeBeforeSaveMenu: GameMode = "dungeon";
-
-function openSaveMenu(): void {
-  // Close the map if it's open — the save menu takes over the panel.
-  if (mapVisible) toggleMap();
-  modeBeforeSaveMenu = state.mode;
-  setMode(state, "title"); // borrow "title" mode so dungeon input pauses
-  showMode("title", mapVisible);
-  setMazeSurfaceOpacity("0.2");
-  justOpenedSaveMenu = true;
-  saveController = new SaveController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    state,
-    modeBeforeSave: modeBeforeSaveMenu,
-    onLoaded: (loaded: GameState) => {
-      saveController = null;
-      applyLoadedGameState(loaded, { message: "Game loaded." });
-    },
-    onClose: () => {
-      saveController = null;
-      setMazeSurfaceOpacity("1");
-      if (modeBeforeSaveMenu === "town") {
-        openTown();
-      } else {
-        setMode(state, "dungeon");
-        showMode("dungeon", mapVisible);
-        setMessage("");
-      }
-    },
-  });
-}
-
-// Save menu key handler — routes keys to the SaveController.
-// The `justOpenedSaveMenu` flag prevents the Escape key that opened the menu
-// from being immediately processed by this handler (which would close it).
-let justOpenedSaveMenu = false;
-
-// --- Dungeon spell menu (G — grimoire) -------------------------------------
-// Borrows "title" mode like the save menu so dungeon input pauses. The
-// justOpenedSpellMenu flag keeps the G that opened the menu from closing it.
-let spellMenuController: SpellMenuController | null = null;
-let justOpenedSpellMenu = false;
-
-function openSpellMenu(): void {
-  setMode(state, "title");
-  showMode("title", mapVisible);
-  setMazeSurfaceOpacity("0.2");
-  justOpenedSpellMenu = true;
-  spellMenuController = new SpellMenuController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    state,
-    onClose: (message: string) => {
-      spellMenuController = null;
-      setMazeSurfaceOpacity("1");
-      setMode(state, "dungeon");
-      showMode("dungeon", mapVisible);
-      setMessage(message);
-    },
-  });
-}
-
-// --- Dungeon NPC panel ------------------------------------------------------
-// Borrows "title" mode like the save/grimoire menus. Opened by stepping onto
-// a living NPC's tile; Attack (or a caught theft) hands off to a real fight.
-let npcController: NPCController | null = null;
+// --- Dungeon NPC combat -----------------------------------------------------
+// OverlayRuntime owns the NPC/tavern/Namanda panels. Attack (or a caught theft)
+// hands off here — combat construction stays in main, not OverlayRuntime.
 /** NPC the current combat is against (set for Attack/caught-steal fights). */
 let npcFightId: string | null = null;
-
-let justOpenedNPCPanel = false;
-
-function openNPCPanel(npcId: string): void {
-  // Hot Boi's tavern is a dedicated hub, not a generic dungeon NPC — see
-  // engine/tavern-ui.ts for why it isn't just another NPCController capability
-  // set.
-  if (npcId === "hot-boi") {
-    openTavernPanel();
-    return;
-  }
-  // The Church of Saint Namanda's altar — a physical interaction point, not
-  // a character. See engine/namanda-ui.ts's doc comment.
-  if (npcId === "namanda-altar") {
-    openNamandaPanel();
-    return;
-  }
-  const npc = state.floor.npcs?.find((n) => n.id === npcId);
-  if (!npc) return;
-  setMode(state, "title");
-  // Deliberately not the generic showMode("title", ...): every other
-  // borrowed-"title" overlay (save/grimoire/perk-select/town/camp) replaces
-  // the whole screen, but NPC dialogue keeps the dungeon corridor visible
-  // behind a bottom-anchored panel instead (styles.css .npc-dialogue-host).
-  syncMapOverlayMode(mapOverlayState, "title");
-  showNpcDialogueOverlay();
-  justOpenedNPCPanel = true;
-  npcController = new NPCController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    state,
-    npc,
-    onClose: (message: string) => {
-      npcController = null;
-      if (npcFightId) return; // a fight is taking over the screen
-      setMazeSurfaceOpacity("1");
-      hideNpcDialogueOverlay();
-      setMode(state, "dungeon");
-      showMode("dungeon", mapVisible);
-      setMessage(message);
-    },
-    onFight: (target: NPCDef) => {
-      startNPCFight(target);
-    },
-  });
-}
 
 function startNPCFight(npc: NPCDef): void {
   const spawns = npc.combatEnemyIds
@@ -2490,69 +2134,6 @@ function startStairsGuardianFight(guardian: StairsGuardianDef): void {
   setMode(state, "combat");
   state.stepsSinceEncounter = 0;
   startCombat(combat, { source: "stairsGuardian", tableId: null });
-}
-
-// --- Hot Boi's tavern --------------------------------------------------
-// Borrows "title" mode like the save/grimoire/NPC panels. Opened by stepping
-// onto Hot Boi's tile (see openNPCPanel's dispatch above) instead of the
-// generic NPCController.
-let tavernController: TavernController | null = null;
-let justOpenedTavernPanel = false;
-
-function openTavernPanel(): void {
-  setMode(state, "title");
-  showMode("title", mapVisible);
-  setMazeSurfaceOpacity("0.2");
-  justOpenedTavernPanel = true;
-  audio.startTavernMusic();
-  tavernController = new TavernController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    state,
-    onClose: () => {
-      tavernController = null;
-      setMazeSurfaceOpacity("1");
-      setMode(state, "dungeon");
-      showMode("dungeon", mapVisible);
-      setMessage("");
-      audio.stopTavernMusic();
-    },
-    // A Rest/turn-in/companion transaction has already fully committed to
-    // `state` by the time this fires — never called mid-transaction, so the
-    // autosave can't capture a half-applied gold deduction or reward.
-    onSave: () => {
-      autoSave(state);
-    },
-  });
-}
-
-// --- Church of Saint Namanda ---------------------------------------------
-// Borrows "title" mode like the Tavern. Opened by stepping onto the altar's
-// interaction tile (see openNPCPanel's dispatch above) instead of the
-// generic NPCController — there is no NPC here, just the altar itself.
-let namandaController: NamandaController | null = null;
-let justOpenedNamandaPanel = false;
-
-function openNamandaPanel(): void {
-  setMode(state, "title");
-  showMode("title", mapVisible);
-  setMazeSurfaceOpacity("0.2");
-  justOpenedNamandaPanel = true;
-  namandaController = new NamandaController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    state,
-    onClose: () => {
-      namandaController = null;
-      setMazeSurfaceOpacity("1");
-      setMode(state, "dungeon");
-      showMode("dungeon", mapVisible);
-      setMessage("");
-    },
-    // Same atomicity contract as the Tavern's onSave: a heal/bless/uncurse/
-    // identify transaction has already fully committed to `state`.
-    onSave: () => {
-      autoSave(state);
-    },
-  });
 }
 
 // --- Auto-map toggle -----------------------------------------------------
@@ -2785,7 +2366,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
   // has been dispatched, and on every snapshot read.
   let lastRoute: ControllerRouteKind | null = null;
   const sampleRoute = (trigger: string): ControllerRouteKind => {
-    const route = resolveControllerRoute(currentRouteFlags());
+    const route = currentRoute();
     if (route !== lastRoute) {
       events.push("route", { from: lastRoute, to: route, mode: state.mode, trigger });
       lastRoute = route;
@@ -2916,22 +2497,13 @@ if (new URLSearchParams(window.location.search).has("debug")) {
   /**
    * Teleport via the real transitionToFloor path (applies killed NPCs, loot,
    * unlocked doors, deepestFloorReached, explored-by-floor). Refuses while
-   * combat or a borrowed-title overlay is live.
+   * combat or a UiStack overlay is live.
    */
   const jumpTo = (opts: JumpToOptions): void => {
     if (combatController) {
       throw new Error("jumpTo: refuse while combat is active — exitDebugCombat first");
     }
-    if (
-      saveController ||
-      spellMenuController ||
-      npcController ||
-      tavernController ||
-      namandaController ||
-      perkSelectController ||
-      prologueController ||
-      endingController
-    ) {
+    if (overlays.hasOpenOverlay() || prologueController || endingController) {
       throw new Error("jumpTo: refuse while an overlay controller is open");
     }
     if (campController || gameOverController || arenaController || partyCreationController) {
@@ -2944,10 +2516,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     // Close hub controllers that boot/jump may leave behind; clear their DOM.
     if (titleController) titleController = null;
     if (townController) townController = null;
-    if (actionRingController) {
-      actionRingController.destroy();
-      actionRingController = null;
-    }
+    overlays.closeAll();
     const panel = document.querySelector<HTMLDivElement>("#combat-panel");
     if (panel) {
       panel.innerHTML = "";
@@ -2984,12 +2553,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       throw new Error("loadSave: refuse while combat is active");
     }
     if (
-      saveController ||
-      spellMenuController ||
-      npcController ||
-      tavernController ||
-      namandaController ||
-      perkSelectController ||
+      overlays.hasOpenOverlay() ||
       prologueController ||
       endingController ||
       campController ||
@@ -3018,7 +2582,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     readiness,
     /** Live NPC controller, null when no dialogue panel is open. */
     get npcController() {
-      return npcController;
+      return overlays.npcController;
     },
     /** Recent debug events, oldest-first. `log(50, "audioCue")` to filter. */
     log: (n?: number, kind?: DebugEventKind) => events.log(n, kind),

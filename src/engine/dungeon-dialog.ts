@@ -4,29 +4,21 @@
  * Provides a unified controller for modal dungeon dialogs: raft warnings,
  * raft boarding messages, barred-gate prompts, chute point-of-no-return
  * warnings, keyReward event notifications, and Hot Boi placeholder
- * conversation. Existing NPC (mode "title") and trap (pendingTrap)
- * controllers are NOT replaced — they continue to work unchanged.
+ * conversation. Existing NPC and trap controllers are NOT replaced.
  *
- * Key-swallowing protocol:
- * - open(): sets mode to "dialog", swallows the opening keypress.
- * - close(): restores mode to "dungeon", swallows the closing keypress,
- *   sets suppressDungeonMovementUntilKeyup so movement doesn't fire on
- *   the closing key's keyup.
+ * Input ownership lives on `UiStack` (`id: "dialog"`). This class does not
+ * mutate `GameState.mode` — raft animation is the only remaining `"dialog"`
+ * mode, used to lock traversal while the boat moves.
  *
- * This follows the existing justOpenedTrapPrompt / suppressDungeonEscUntilKeyup
- * patterns in main.ts, generalized into a reusable controller.
+ * Closing still asks the caller to swallow movement until keyup
+ * (`suppressDungeonMovementUntilKeyup` in main.ts).
  *
  * Rendering: this class owns both state and presentation (same pattern as
  * NPCController/TavernController) via the FF6Window library, painted into
- * the caller-supplied `panel` element. Found live 2026-08-06: this class
- * previously had NO renderer at all — it correctly routed keys and flipped
- * `state.mode`, but nothing ever painted to the screen, so every dialog
- * (including the pre-existing chute point-of-no-return warning) was
- * invisible to a real player despite working "correctly" under the hood.
- * main.ts's caller is responsible for showMode("dialog", ...) on open and
- * showMode("dungeon", ...) in its onClose — this class only touches its
- * own panel's contents, not mode-level DOM visibility (mirrors how
- * NPCController leaves showMode to its main.ts call sites).
+ * the caller-supplied `panel` element. main.ts is responsible for
+ * `showMode("dialog", ...)` on open and `showMode("dungeon", ...)` in its
+ * onClose — this class only touches its own panel's contents, not
+ * mode-level DOM visibility.
  */
 
 import { FF6Window } from "./ff6-window-library";
@@ -37,6 +29,7 @@ export interface DialogChoice {
 }
 
 export interface DungeonDialogOptions {
+  /** Kept for call-site compatibility; dialogs no longer mutate GameMode. */
   state: { mode: string };
   /** DOM element to render into (typically #combat-panel). */
   panel: HTMLElement;
@@ -62,7 +55,6 @@ function escapeHtml(text: string): string {
 }
 
 export class DungeonDialogController {
-  private state: { mode: string };
   private panel: HTMLElement;
   private lines: string[];
   private choices: DialogChoice[] | undefined;
@@ -75,7 +67,6 @@ export class DungeonDialogController {
   private active = false;
 
   constructor(opts: DungeonDialogOptions) {
-    this.state = opts.state;
     this.panel = opts.panel;
     this.lines = opts.lines;
     this.choices = opts.choices;
@@ -85,10 +76,9 @@ export class DungeonDialogController {
     this.cancelable = opts.cancelable ?? true;
   }
 
-  /** Open the dialog. Sets mode to "dialog" and paints the first page. */
+  /** Open the dialog and paint the first page. Mode stays with the caller. */
   open(): void {
     this.active = true;
-    this.state.mode = "dialog";
     this.page = 0;
     this.index = 0;
     this.render();
@@ -216,11 +206,10 @@ export class DungeonDialogController {
     return true; // swallow all other keys while dialog is open
   }
 
-  /** Close the dialog. Restores mode to "dungeon" and clears the panel. */
+  /** Close the dialog and clear the panel. */
   close(): void {
     if (!this.active) return;
     this.active = false;
-    this.state.mode = "dungeon";
     this.panel.innerHTML = "";
     this.onClose?.();
   }
