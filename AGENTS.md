@@ -36,7 +36,8 @@ This file exists to help the next LLM/AI IDE get oriented quickly and avoid the 
 | `src/engine/input.ts` | Dungeon WASD/C/M/V/… key map (`dungeonActionForKey`). Production `keydown` lives in `main.ts`. |
 | `src/engine/ui-stack.ts` | Transient overlay input ownership (`UiStack` / `UiLayer`). GameState.mode stays on the underlying screen. |
 | `src/engine/overlay-runtime.ts` | Application owner for overlay construction, lifetime, close/dispose, and `UiStack` registration (Save, Spell, NPC, Tavern, Namanda, Action Ring, Dialog, Perk, Trap). Gameplay consequences stay in `main.ts` via grouped callbacks. |
-| `src/engine/application.ts` | Composition root: constructs GameState, UiStack, OverlayRuntime, and physical input. Does not own combat, dungeon, or base screens. |
+| `src/engine/application.ts` | Composition root: constructs GameState, UiStack, OverlayRuntime, BaseScreenRuntime, and physical input. Does not own combat, dungeon, or save rules. |
+| `src/engine/base-screen-runtime.ts` | Application owner for Title/Town/Camp/Game Over/Party Creation/Arena controller lifetime. Gameplay consequences stay in injected callbacks. |
 | `src/engine/camera.ts` | Movement, turning, collision, door unlock. |
 | `src/engine/automap.ts` | Auto-map rendering. |
 | `src/engine/map-overlay.ts` | Nonmodal `V` quick-map state, fog-safe render model, integer camera geometry, and retained Canvas 2D renderer. Uses `GameState.explored`; the separate `M` full automap remains in `automap.ts`. |

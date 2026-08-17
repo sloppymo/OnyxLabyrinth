@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import { findFloor } from "../game/floor-registry";
 import { createApplication } from "./application";
 import type { OverlayRuntimeDeps } from "./overlay-runtime";
+import type { BaseScreenRuntimeDeps } from "./base-screen-runtime";
 
 function overlayWire(): Omit<OverlayRuntimeDeps, "state" | "uiStack"> {
   const panel = document.createElement("div");
@@ -59,6 +60,54 @@ function overlayWire(): Omit<OverlayRuntimeDeps, "state" | "uiStack"> {
   };
 }
 
+function screensWire(): Omit<BaseScreenRuntimeDeps, "state"> {
+  const panel = document.createElement("div");
+  return {
+    shell: {
+      panel: () => panel,
+      setMode: vi.fn(),
+      show: vi.fn(),
+      fadeTo: vi.fn(),
+      closeMapIfOpen: vi.fn(),
+      setMessage: vi.fn(),
+      focusWindow: vi.fn(),
+    },
+    audio: {
+      startTitleMusic: vi.fn(),
+      stopTitleMusic: vi.fn(),
+      startPartyCreationMusic: vi.fn(),
+      stopPartyCreationMusic: vi.fn(),
+      startTownMusic: vi.fn(),
+    },
+    title: {
+      newGame: vi.fn(),
+      continue: vi.fn(),
+      openArenaSetup: vi.fn(),
+    },
+    town: {
+      enterDungeon: vi.fn(),
+      openSave: vi.fn(),
+      reformParty: vi.fn(),
+    },
+    party: {
+      confirm: vi.fn(),
+      cancel: vi.fn(),
+    },
+    gameOver: {
+      continue: vi.fn(),
+    },
+    camp: {
+      end: vi.fn(),
+    },
+    arena: {
+      nextFight: vi.fn(),
+      exitToTitle: vi.fn(),
+      startAtLevel: vi.fn(),
+    },
+    inArena: () => false,
+  };
+}
+
 describe("createApplication", () => {
   it("constructs GameState, UiStack, OverlayRuntime, and controller input", () => {
     const floor = findFloor(1)!;
@@ -66,6 +115,7 @@ describe("createApplication", () => {
     const app = createApplication({
       initialFloor: floor,
       overlay: overlayWire(),
+      screens: screensWire(),
       onInput,
       onKeyDown: vi.fn(),
       onKeyUp: vi.fn(),
@@ -73,6 +123,7 @@ describe("createApplication", () => {
     expect(app.state.floor.id).toBe(1);
     expect(app.uiStack.top()).toBeNull();
     expect(app.overlays.hasOpenOverlay()).toBe(false);
+    expect(app.screens.hasTitle).toBe(false);
     expect(typeof app.input.handleKeyboardDown).toBe("function");
     expect(typeof app.start).toBe("function");
   });
@@ -83,6 +134,7 @@ describe("createApplication", () => {
     const app = createApplication({
       initialFloor: findFloor(1)!,
       overlay: overlayWire(),
+      screens: screensWire(),
       onInput: vi.fn(),
       onKeyDown,
       onKeyUp,

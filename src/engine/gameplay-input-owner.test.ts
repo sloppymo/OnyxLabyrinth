@@ -52,11 +52,17 @@ describe("production input ownership", () => {
     expect(MAIN).not.toMatch(/\bpushHandleKeyLayer\b/);
   });
 
+  it("does not own base-screen controller instances", () => {
+    expect(MAIN).not.toMatch(/\bnew (TitleController|TownController|CampController|GameOverController|PartyCreationController|ArenaController)\b/);
+    expect(MAIN).not.toMatch(/\b(let|const) (titleController|townController|campController|gameOverController|partyCreationController|arenaController|arenaSetupController)\b/);
+  });
+
   it("constructs GameState, UiStack, OverlayRuntime, and input through createApplication", () => {
     expect(MAIN).toMatch(/\bcreateApplication\s*\(/);
     expect(MAIN).toMatch(/\bapp\.start\s*\(/);
     expect(MAIN).not.toMatch(/\bnew UiStack\s*\(/);
     expect(MAIN).not.toMatch(/\bnew OverlayRuntime\s*\(/);
+    expect(MAIN).not.toMatch(/\bnew BaseScreenRuntime\s*\(/);
     expect(MAIN).not.toMatch(/\bcreateControllerInput\s*\(/);
   });
 

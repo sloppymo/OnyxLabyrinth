@@ -111,15 +111,8 @@ import {
   type ControllerRouteKind,
 } from "./engine/controller-route";
 import { createApplication } from "./engine/application";
-import { CampController } from "./engine/camp-ui";
-import { TownController } from "./engine/town-ui";
-import { PartyCreationController } from "./engine/party-ui";
-import { GameOverController } from "./engine/game-over-ui";
-import { TitleController } from "./engine/title-ui";
 import { PrologueController } from "./engine/prologue-ui";
 import { EndingController } from "./engine/ending-ui";
-import { ArenaController } from "./engine/arena-ui";
-import { FF6Window } from "./engine/ff6-window-library";
 import { autoSave, serialize, deserialize } from "./game/save";
 import { createCombatFromEncounter } from "./game/combat";
 import { getGameplayRng, setGameplayRng, resetGameplayRng, createSeededRng } from "./game/rng";
@@ -162,7 +155,6 @@ import {
   reviveKnockedOut,
   applyCombatPartyResult,
   awardCombatXp,
-  type Character,
 } from "./game/party";
 import { levelUpChar, applyLevelUps } from "./game/leveling";
 import {
@@ -265,11 +257,86 @@ const app = createApplication({
       suppressDungeonMovementUntilKeyup = true;
     },
   },
+  screens: {
+    shell: {
+      panel: () => document.querySelector<HTMLDivElement>("#combat-panel")!,
+      setMode: (mode) => setMode(state, mode),
+      show: (mode) => showMode(mode, mapVisible),
+      fadeTo: (mode) => transitionToMode(mode),
+      closeMapIfOpen: () => {
+        if (mapVisible) toggleMap();
+      },
+      setMessage: (text) => setMessage(text),
+      focusWindow: () => window.focus(),
+    },
+    audio: {
+      startTitleMusic: () => audio.startTitleMusic(),
+      stopTitleMusic: () => audio.stopTitleMusic(),
+      startPartyCreationMusic: () => audio.startPartyCreationMusic(),
+      stopPartyCreationMusic: () => audio.stopPartyCreationMusic(),
+      startTownMusic: () => audio.startTownMusic(),
+    },
+    title: {
+      newGame: () => {
+        closeMapOverlay();
+        mapOverlayRenderer.invalidate();
+        Object.assign(state, createGameState(getFloors()[0]!));
+        resetEncounterFamilyMemory();
+        openPrologue(() => {
+          audio.stopTitleMusic();
+          openPartyCreation(() => openTown({ showIntroHint: true }));
+        });
+      },
+      continue: (loaded) => applyLoadedGameState(loaded),
+      openArenaSetup: () => screens.openArenaSetup(),
+    },
+    town: {
+      enterDungeon: () => enterDungeonFromTown(),
+      openSave: () => overlays.openSave(),
+      reformParty: () => openPartyCreation(() => openTown()),
+    },
+    party: {
+      confirm: (party, onDone) => {
+        state.party = party;
+        state.equipment = Object.fromEntries(
+          party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
+        );
+        onDone();
+      },
+      cancel: (previousMode, onDone) => {
+        if (previousMode === "title") audio.startTitleMusic();
+        else if (previousMode === "town") audio.startTownMusic();
+        onDone();
+      },
+    },
+    gameOver: {
+      continue: () => {
+        if (inArena) openArena();
+        else openTown();
+      },
+    },
+    camp: {
+      end: () => {
+        setMode(state, "dungeon");
+        showMode("dungeon", mapVisible);
+        setMessage(`The party rests. Day ${state.dayCount}. HP and SP restored.`);
+      },
+    },
+    arena: {
+      nextFight: () => startNextArenaFight(),
+      exitToTitle: () => {
+        inArena = false;
+        screens.openTitle();
+      },
+      startAtLevel: (level) => startArena(level),
+    },
+    inArena: () => inArena,
+  },
   onInput: (event) => routeControllerEvent(event),
   onKeyDown: onGameplayKeyDown,
   onKeyUp: onGameplayKeyUp,
 });
-const { state, uiStack, overlays, input: globalInput } = app;
+const { state, uiStack, overlays, screens, input: globalInput } = app;
 // Random dungeon encounter anti-repeat is deliberately session-only. It is
 // not part of GameState and therefore cannot leak through saves or Arena.
 const encounterFamilyMemory = createEncounterFamilyMemory(state.floor.id);
@@ -458,94 +525,72 @@ function noteAuditStep(): void {
 markExplored();
 
 // --- Town mode -----------------------------------------------------------
-let townController: TownController | null = null;
-
 function openTown(opts?: { showIntroHint?: boolean }): void {
   combatAudit?.noteRecovery({ kind: "town", floorId: state.floor.id });
   if (mapVisible) toggleMap();
-  transitionToMode("town");
-  setMessage("");
   let introHint = "";
   if (opts?.showIntroHint && !shownTownIntro) {
     shownTownIntro = true;
-    // Kept short (one line) so it doesn't compete with the menu items for
-    // vertical space in the fixed-height FF6Window on narrow viewports.
     introHint = "Ready when you are — [>] Enter Dungeon.";
   }
-  townController = new TownController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    state,
-    initialFlash: introHint,
-    onEnterDungeon: () => {
-      townController = null;
-      const last = state.lastDungeon;
-      const floor = last
-        ? findFloor(last.floorId) ?? getFloors()[0]!
-        : getFloors()[0]!;
-      const x = last ? last.x : floor.startX;
-      const y = last ? last.y : floor.startY;
-      const facing = last ? last.facing : 0;
-      // A wipe checkpoint is earned location context, not a promise that the
-      // authored cell will remain legal forever. Apply runtime doors/loot/etc.
-      // first, then resolve the landing against the private floor copy so a
-      // stale feature/void/elevation cannot strand the party.
-      transitionToFloor(state, floor, x, y, facing, { autosave: false });
-      const landing = last
-        ? resolveRecoveryLanding(state.floor, x, y)
-        : { x: floor.startX, y: floor.startY, exact: true, distance: 0, reason: "exact" as const };
-      state.player.x = landing.x;
-      state.player.y = landing.y;
-      if (last) {
-        combatAudit?.noteDungeonReentry({
-          actual: {
-            floorId: state.floor.id,
-            x: state.player.x,
-            y: state.player.y,
-            facing: state.player.facing,
-          },
-          legalWalkableTile: isSafeRecoveryLanding(state.floor, state.player.x, state.player.y),
-          tile: state.floor.grid[state.player.y]?.[state.player.x]?.tile,
-          tileFiresEvent: Boolean(
-            state.floor.grid[state.player.y]?.[state.player.x]?.tile ||
-              state.floor.events?.some((event) => event.x === state.player.x && event.y === state.player.y)
-          ),
-          immediateCombatRetrigger: state.mode === "combat",
-          safeLandingExact: landing.exact,
-          safeLandingReason: landing.reason,
-          path: analyzeRecoveryPath(
-            state.floor,
-            { x: state.player.x, y: state.player.y },
-            { x, y }
-          ),
-        });
-      }
-      // Keep the autosave's checkpoint and the actual re-entry coordinate in
-      // sync. This also makes a reload immediately after a wipe deterministic.
-      autoSave(state);
-      syncEncounterFamilyMemoryToFloor();
-      state.inDarkness = false;
-      state.inAntimagic = false;
-      markExplored();
-      transitionToMode("dungeon");
-      const entry = last ? "You return to the dungeon..." : "You enter the dungeon...";
-      if (!shownDungeonKeyboardHint) {
-        shownDungeonKeyboardHint = true;
-        // Line 2 teaches the keyboard *door* (action ring), not every verb —
-        // Esc is Save only; pad Start / Tab opens Camp·Map·Town·Unlock·Grimoire.
-        setMessage(`${entry}\nTab: Actions · Esc: Save`);
-      } else {
-        setMessage(entry);
-      }
-    },
-    onOpenSave: () => {
-      townController = null;
-      overlays.openSave();
-    },
-    onReformParty: () => {
-      townController = null;
-      openPartyCreation(() => openTown());
-    },
-  });
+  screens.openTown({ introHint });
+}
+
+function enterDungeonFromTown(): void {
+  const last = state.lastDungeon;
+  const floor = last
+    ? findFloor(last.floorId) ?? getFloors()[0]!
+    : getFloors()[0]!;
+  const x = last ? last.x : floor.startX;
+  const y = last ? last.y : floor.startY;
+  const facing = last ? last.facing : 0;
+  // A wipe checkpoint is earned location context, not a promise that the
+  // authored cell will remain legal forever. Apply runtime doors/loot/etc.
+  // first, then resolve the landing against the private floor copy so a
+  // stale feature/void/elevation cannot strand the party.
+  transitionToFloor(state, floor, x, y, facing, { autosave: false });
+  const landing = last
+    ? resolveRecoveryLanding(state.floor, x, y)
+    : { x: floor.startX, y: floor.startY, exact: true, distance: 0, reason: "exact" as const };
+  state.player.x = landing.x;
+  state.player.y = landing.y;
+  if (last) {
+    combatAudit?.noteDungeonReentry({
+      actual: {
+        floorId: state.floor.id,
+        x: state.player.x,
+        y: state.player.y,
+        facing: state.player.facing,
+      },
+      legalWalkableTile: isSafeRecoveryLanding(state.floor, state.player.x, state.player.y),
+      tile: state.floor.grid[state.player.y]?.[state.player.x]?.tile,
+      tileFiresEvent: Boolean(
+        state.floor.grid[state.player.y]?.[state.player.x]?.tile ||
+          state.floor.events?.some((event) => event.x === state.player.x && event.y === state.player.y)
+      ),
+      immediateCombatRetrigger: state.mode === "combat",
+      safeLandingExact: landing.exact,
+      safeLandingReason: landing.reason,
+      path: analyzeRecoveryPath(
+        state.floor,
+        { x: state.player.x, y: state.player.y },
+        { x, y }
+      ),
+    });
+  }
+  autoSave(state);
+  syncEncounterFamilyMemoryToFloor();
+  state.inDarkness = false;
+  state.inAntimagic = false;
+  markExplored();
+  transitionToMode("dungeon");
+  const entry = last ? "You return to the dungeon..." : "You enter the dungeon...";
+  if (!shownDungeonKeyboardHint) {
+    shownDungeonKeyboardHint = true;
+    setMessage(`${entry}\nTab: Actions · Esc: Save`);
+  } else {
+    setMessage(entry);
+  }
 }
 
 function returnToTown(): void {
@@ -562,38 +607,8 @@ function returnToTown(): void {
 }
 
 // --- Party creation ------------------------------------------------------
-let partyCreationController: PartyCreationController | null = null;
-
 function openPartyCreation(onDone: () => void): void {
-  if (mapVisible) toggleMap();
-  const previousMode = state.mode;
-  setMode(state, "party_creation");
-  showMode("party_creation", mapVisible);
-  setMessage("");
-  audio.startPartyCreationMusic();
-  partyCreationController = new PartyCreationController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    onConfirm: (party: Character[]) => {
-      partyCreationController = null;
-      state.party = party;
-      state.equipment = Object.fromEntries(
-        party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
-      );
-      audio.stopPartyCreationMusic();
-      onDone();
-    },
-    onCancel: () => {
-      partyCreationController = null;
-      audio.stopPartyCreationMusic();
-      // Restore the music that was playing before party creation
-      if (previousMode === "title") {
-        audio.startTitleMusic();
-      } else if (previousMode === "town") {
-        audio.startTownMusic();
-      }
-      onDone();
-    },
-  });
+  screens.openPartyCreation(onDone);
 }
 
 // --- New Game prologue -----------------------------------------------------
@@ -657,9 +672,6 @@ function openEnding(): void {
   });
 }
 
-// --- Title screen --------------------------------------------------------
-let titleController: TitleController | null = null;
-
 /**
  * Apply a deserialized save into the live session. Title Continue, the
  * in-game Save-menu Load, and debug loadSave must all call this — do not
@@ -694,41 +706,7 @@ function applyLoadedGameState(
 // Start the game: show the title screen so the player can choose
 // "New Game" or "Continue" (if an auto-save exists).
 function openTitleScreen(): void {
-  setMode(state, "title");
-  showMode("title", mapVisible);
-  setMessage("");
-  window.focus();
-  audio.startTitleMusic();
-  titleController = new TitleController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    onNewGame: () => {
-      titleController = null;
-      // Reset the shared state to defaults so a leftover Arena session (or
-      // an abandoned prior campaign) doesn't leak gold/inventory/progress
-      // into the new campaign. Reform Party (townController.onReformParty)
-      // reuses openPartyCreation without this reset, since it's meant to
-      // keep the ongoing campaign's progress.
-      // Title BGM keeps playing through the prologue; stop when it ends.
-      closeMapOverlay();
-      mapOverlayRenderer.invalidate();
-      Object.assign(state, createGameState(getFloors()[0]!));
-      resetEncounterFamilyMemory();
-      openPrologue(() => {
-        audio.stopTitleMusic();
-        openPartyCreation(() => openTown({ showIntroHint: true }));
-      });
-    },
-    onContinue: (loaded) => {
-      titleController = null;
-      audio.stopTitleMusic();
-      applyLoadedGameState(loaded);
-    },
-    onArena: () => {
-      titleController = null;
-      audio.stopTitleMusic();
-      openArenaSetup();
-    },
-  });
+  screens.openTitle();
 }
 
 if (playtestFloor) {
@@ -871,7 +849,7 @@ async function startCombat(
   // simple AI-controlled combatant, not a real party slot — so it never
   // touches PARTY_SIZE/formation/save-schema assumptions. Never follows
   // into Arena, matching how boss music/ending never fire there either.
-  if (!arenaController) {
+  if (!screens.hasArena) {
     const ally = companionAsSummonedAlly(state);
     if (ally) combat.summonedAllies.push(ally);
   }
@@ -1097,34 +1075,14 @@ function endCombat(result: CombatState): void {
 }
 
 // --- Game over mode ------------------------------------------------------
-let gameOverController: GameOverController | null = null;
-
 function openGameOver(): void {
-  setMode(state, "game_over");
-  showMode("game_over", mapVisible);
   setMessage("");
   // §7.1: campaign wipes advance the century cycle before the screen renders
   // so the player reads the *new* year; Arena wipes never advance it.
   if (!inArena) {
     state.worldYear += 100;
   }
-  gameOverController = new GameOverController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    party: state.party,
-    floorName: state.floor.name,
-    worldYear: state.worldYear,
-    inArena,
-    onContinue: () => {
-      gameOverController = null;
-      if (inArena) {
-        openArena();
-      } else {
-        // The wipe handler stored the failed encounter location as the next
-        // dungeon checkpoint. Keep it through the town/Inn recovery flow.
-        openTown();
-      }
-    },
-  });
+  screens.openGameOver();
 }
 
 /** Cleanly exit the current combat for automated visual testing. */
@@ -1138,11 +1096,7 @@ function exitDebugCombat(result: "victory" | "wipe" | "fled"): void {
 }
 
 // --- Camp mode -----------------------------------------------------------
-let campController: CampController | null = null;
-
 function startCamp(): void {
-  // Design doc §5.2: cannot camp on hazard tiles (teleporters, chutes,
-  // stairs — or standing in water).
   const cell = state.floor.grid[state.player.y]?.[state.player.x];
   const tile = cell?.tile;
   if (tile === "teleporter" || tile === "chute" || tile === "stairs_up" || tile === "stairs_down" || tile === "water") {
@@ -1155,27 +1109,9 @@ function startCamp(): void {
     x: state.player.x,
     y: state.player.y,
   });
-  setMode(state, "camp");
-  if (mapVisible) toggleMap();
-  showMode("camp", mapVisible);
-  setMessage("");
-
   state.dayCount++;
-  // A night's rest dispels standing magic (light/levitation) — re-cast after,
-  // from the camp menu or the dungeon G menu.
   clearBuffs(state);
-  campController = new CampController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    party: state.party,
-    dayCount: state.dayCount,
-    state,
-    onEnd: () => {
-      campController = null;
-      setMode(state, "dungeon");
-      showMode("dungeon", mapVisible);
-      setMessage(`The party rests. Day ${state.dayCount}. HP and SP restored.`);
-    },
-  });
+  screens.openCamp();
 }
 
 // --- Input ---------------------------------------------------------------
@@ -1699,13 +1635,13 @@ function currentRouteFlags(): ControllerRouteContext {
   return {
     mode: state.mode,
     hasCombat: !!combatController,
-    hasTown: !!townController,
-    hasCamp: !!campController,
-    hasGameOver: !!gameOverController,
-    hasPartyCreation: !!partyCreationController,
+    hasTown: screens.hasTown,
+    hasCamp: screens.hasCamp,
+    hasGameOver: screens.hasGameOver,
+    hasPartyCreation: screens.hasPartyCreation,
     hasPrologue: !!prologueController,
     hasEnding: !!endingController,
-    hasTitle: !!titleController,
+    hasTitle: screens.hasTitle,
   };
 }
 
@@ -1737,34 +1673,18 @@ function dispatchControllerRoute(route: BaseRouteKind, event: ControllerInputEve
       combat.handleInput(event);
       return;
     }
-    case "town": {
-      const key = controllerEventToMenuKey(event);
-      if (key) townController!.handleKey(key);
+    case "town":
+      screens.handleTown(event);
       return;
-    }
-    case "camp": {
-      const key = controllerEventToMenuKey(event);
-      if (key) campController!.handleKey(key);
+    case "camp":
+      screens.handleCamp(event);
       return;
-    }
-    case "game_over": {
-      const key = controllerEventToMenuKey(event);
-      if (key) gameOverController!.handleKey(key);
+    case "game_over":
+      screens.handleGameOver(event);
       return;
-    }
-    case "party_creation": {
-      // Local DAS/ARR in PartyCreationController needs release to clear held dir.
-      if (
-        event.kind === "release" &&
-        (event.button === "left" || event.button === "right")
-      ) {
-        partyCreationController!.releaseDirection(event.button === "left" ? -1 : 1);
-        return;
-      }
-      const key = controllerEventToMenuKey(event);
-      if (key) partyCreationController!.handleKey(key);
+    case "party_creation":
+      screens.handlePartyCreation(event);
       return;
-    }
     case "prologue": {
       const key = controllerEventToMenuKey(event);
       if (key) prologueController!.handleKey(key);
@@ -1775,23 +1695,12 @@ function dispatchControllerRoute(route: BaseRouteKind, event: ControllerInputEve
       if (key) endingController!.handleKey(key);
       return;
     }
-    case "title": {
-      const key = controllerEventToMenuKey(event);
-      if (key) titleController!.handleKey(key);
+    case "title":
+      screens.handleTitle(event);
       return;
-    }
-    case "arena": {
-      const key = controllerEventToMenuKey(event);
-      if (!key) return;
-      if (arenaSetupController) {
-        arenaSetupController.handleKey(key);
-        return;
-      }
-      if (arenaController) {
-        arenaController.handleKey(key);
-      }
+    case "arena":
+      screens.handleArena(event);
       return;
-    }
     case "dungeon":
       dispatchDungeonInput(event);
       return;
@@ -1908,78 +1817,10 @@ window.addEventListener("beforeunload", () => {
 });
 
 // --- Arena mode ----------------------------------------------------------
-let arenaController: ArenaController | null = null;
 let inArena = false;
 let arenaWave = 1;
 let arenaFloor = 1;
 let arenaStartFloor = 1;
-
-let arenaSetupController: { handleKey: (key: string) => void } | null = null;
-
-function openArenaSetup(): void {
-  setMode(state, "arena");
-  showMode("arena", mapVisible);
-  setMessage("");
-
-  const levels = [1, 3, 6, 9, 12];
-  let selected = 0;
-  let hasRendered = false;
-
-  const render = () => {
-    const panel = document.querySelector<HTMLDivElement>("#combat-panel")!;
-    const animated = !hasRendered;
-    hasRendered = true;
-
-    const win = new FF6Window({
-      title: "Arena Mode",
-      contentHtml: `<div class="ff6-arena-meta">Choose starting party level</div>`,
-      items: levels.map((lv) => ({
-        label: `Level ${lv}`,
-        metadata: lv,
-      })),
-      selectedIndex: selected,
-      mode: "menu",
-      footer: "D-pad navigate · A start · B title",
-      animated,
-      onHover: (i) => {
-        selected = i;
-      },
-      onConfirm: (i) => {
-        selected = i;
-        arenaSetupController = null;
-        startArena(levels[selected]!);
-      },
-      onBack: () => {
-        arenaSetupController = null;
-        openTitleScreen();
-      },
-    });
-    panel.innerHTML = "";
-    panel.appendChild(win.render());
-  };
-
-  arenaSetupController = {
-    handleKey: (key: string) => {
-      audio.uiForMenuKey(key);
-      const lower = key.toLowerCase();
-      if (lower === "arrowup" || lower === "w") {
-        selected = (selected - 1 + levels.length) % levels.length;
-        render();
-      } else if (lower === "arrowdown" || lower === "s") {
-        selected = (selected + 1) % levels.length;
-        render();
-      } else if (key === "Enter" || key === " ") {
-        arenaSetupController = null;
-        startArena(levels[selected]!);
-      } else if (key === "Escape") {
-        arenaSetupController = null;
-        openTitleScreen();
-      }
-    },
-  };
-
-  render();
-}
 
 function startArena(targetLevel: number): void {
   // Reset to a fresh default party and the first arena wave.
@@ -2014,24 +1855,7 @@ function startArena(targetLevel: number): void {
 }
 
 function openArena(): void {
-  setMode(state, "arena");
-  showMode("arena", mapVisible);
-  setMessage("");
-  arenaController = new ArenaController({
-    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
-    state,
-    wave: arenaWave,
-    floor: arenaFloor,
-    onNext: () => {
-      arenaController = null;
-      startNextArenaFight();
-    },
-    onExit: () => {
-      arenaController = null;
-      inArena = false;
-      openTitleScreen();
-    },
-  });
+  screens.openArena(arenaWave, arenaFloor);
 }
 
 function startNextArenaFight(): void {
@@ -2499,7 +2323,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     if (overlays.hasOpenOverlay() || prologueController || endingController) {
       throw new Error("jumpTo: refuse while an overlay controller is open");
     }
-    if (campController || gameOverController || arenaController || partyCreationController) {
+    if (screens.hasCamp || screens.hasGameOver || screens.hasArena || screens.hasPartyCreation) {
       throw new Error("jumpTo: refuse while camp/game-over/arena/party-creation is live");
     }
 
@@ -2507,8 +2331,8 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     if (!floor) throw new Error(`jumpTo: no floor ${opts.floorId}`);
 
     // Close hub controllers that boot/jump may leave behind; clear their DOM.
-    if (titleController) titleController = null;
-    if (townController) townController = null;
+    screens.dismissTitle();
+    screens.dismissTown();
     overlays.closeAll();
     const panel = document.querySelector<HTMLDivElement>("#combat-panel");
     if (panel) {
@@ -2549,17 +2373,17 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       overlays.hasOpenOverlay() ||
       prologueController ||
       endingController ||
-      campController ||
-      gameOverController ||
-      arenaController ||
-      partyCreationController
+      screens.hasCamp ||
+      screens.hasGameOver ||
+      screens.hasArena ||
+      screens.hasPartyCreation
     ) {
       throw new Error("loadSave: refuse while an overlay/hub controller is open");
     }
     const loaded = deserialize(json);
     if (!loaded) throw new Error("loadSave: deserialize failed");
-    if (titleController) titleController = null;
-    if (townController) townController = null;
+    screens.dismissTitle();
+    screens.dismissTown();
     applyLoadedGameState(loaded);
   };
 
