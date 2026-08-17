@@ -24,6 +24,7 @@ function ctx(overrides: Partial<ControllerRouteContext> = {}): ControllerRouteCo
     hasTitle: false,
     hasPendingTrap: false,
     hasTrapPrompt: false,
+    hasDungeonDialog: false,
     ...overrides,
   };
 }
@@ -149,6 +150,21 @@ describe("resolveControllerRoute", () => {
   it("requires title mode for ending", () => {
     expect(
       resolveControllerRoute(ctx({ mode: "dungeon", hasEnding: true })),
+    ).toBe("dungeon");
+  });
+
+  it("routes dungeon dialogs ahead of exploration", () => {
+    expect(
+      resolveControllerRoute(
+        ctx({ mode: "dialog", hasDungeonDialog: true, hasPendingTrap: true }),
+      ),
+    ).toBe("dialog");
+  });
+
+  it("requires dialog mode and a live controller for dungeon dialogs", () => {
+    expect(resolveControllerRoute(ctx({ mode: "dialog" }))).toBe("none");
+    expect(
+      resolveControllerRoute(ctx({ mode: "dungeon", hasDungeonDialog: true })),
     ).toBe("dungeon");
   });
 });

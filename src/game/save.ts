@@ -8,8 +8,8 @@
  * Serialization: GameState is mostly JSON-safe except for `explored` and
  * `lootTaken`/`unlockedDoors` (Sets) which are converted to/from arrays. The
  * floor grid (Cell[][]) and party (Character[]) are plain objects and serialize
- * directly, but the floor itself is cloned from the immutable FLOORS definition
- * on load rather than persisted. Combat
+ * directly, but the floor itself is cloned from the floor registry on load
+ * rather than persisted. Combat
  * state is NOT saved — if the player saves during combat, the mode is
  * converted to "dungeon" and they reload in dungeon mode at their pre-combat
  * position. This satisfies §13's "even in combat" without persisting
@@ -22,6 +22,7 @@ import { findFloor } from "./floor-registry";
 import { ALL_SPELLS } from "../data/spells";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { applyKilledNPCs } from "./npc";
+import { applyLootedTreasures } from "./loot-restore";
 import { cumulativeXpToReachLevel } from "./leveling";
 import { PARTY_SIZE, sortPartyByFormation, type Character } from "./party";
 
@@ -586,17 +587,7 @@ export function deserialize(json: string): GameState | null {
     const killedNPCs = ser.killedNPCs ? [...ser.killedNPCs] : [];
     applyKilledNPCs(floor, killedNPCs);
 
-    const taken = lootTaken[floor.id];
-    if (taken) {
-      for (const pos of taken) {
-        const [xStr, yStr] = pos.split(",");
-        const x = parseInt(xStr);
-        const y = parseInt(yStr);
-        const treasureDef = floor.treasures?.find((t) => t.x === x && t.y === y);
-        if (treasureDef) treasureDef.itemIds = [];
-        if (floor.grid[y]?.[x]) floor.grid[y][x].tile = undefined;
-      }
-    }
+    applyLootedTreasures(floor, lootTaken);
 
     // Clear one-time event tiles that were already triggered.
     const triggered = eventsTriggered[floor.id];

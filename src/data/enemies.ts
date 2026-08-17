@@ -2181,20 +2181,6 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "demon-mage", row: "back" },
       ],
     },
-    // The climax formation — The Lonely Girl, a genuine escalation over
-    // floor 3's Dead Boy, not the same boss reused.
-    {
-      id: "f4-lonely-girl",
-      family: "lonely-girl-guardian",
-      weight: 1,
-      spawns: [
-        { enemyId: "animated-armor", row: "front" },
-        { enemyId: "demon-champion", row: "front" },
-        { enemyId: "ironclad-knight", row: "front" },
-        { enemyId: "headmasters-echo-remnant", row: "back" },
-        { enemyId: "demon-mage", row: "back" },
-      ],
-    },
   ],
   // Floor 5: The Weeping Cistern — typical 4–6, heavy pressure. Roughly half
   // the packs draw from the floor's own elite roster (Drowned Sentinel/
@@ -2317,21 +2303,6 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "succubus", row: "back" },
       ],
     },
-    // The climax formation — The Crying Man, a true four-phase campaign
-    // climax escalating over The Lonely Girl on floor 4.
-    {
-      id: "f5-crying-man",
-      family: "crying-man-guardian",
-      weight: 1,
-      spawns: [
-        { enemyId: "ironclad-knight", row: "front" },
-        { enemyId: "black-knight", row: "front" },
-        { enemyId: "demon-champion", row: "front" },
-        { enemyId: "headmasters-echo-ascendant", row: "back" },
-        { enemyId: "demon-mage", row: "back" },
-        { enemyId: "succubus", row: "back" },
-      ],
-    },
   ],
   // Floor 2 forbidden-wing climax ("the stacks' keepers") — a single,
   // authored guardian formation for the furnace-key chest, referenced via
@@ -2348,6 +2319,41 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "blood-wraith", row: "back" },
         { enemyId: "blood-wraith", row: "back" },
         { enemyId: "blood-wraith", row: "back" },
+      ],
+    },
+  ],
+  // Floor 4 sanctum climax — The Lonely Girl. Reachable only from the
+  // sanctum-guardian zone on the trophy chest (floor-4.json) — never from
+  // the ambient Floor 4 table, so the campaign boss is not a hallway roll.
+  8: [
+    {
+      id: "f4-lonely-girl",
+      family: "lonely-girl-guardian",
+      weight: 1,
+      spawns: [
+        { enemyId: "animated-armor", row: "front" },
+        { enemyId: "demon-champion", row: "front" },
+        { enemyId: "ironclad-knight", row: "front" },
+        { enemyId: "headmasters-echo-remnant", row: "back" },
+        { enemyId: "demon-mage", row: "back" },
+      ],
+    },
+  ],
+  // Floor 5 undersong climax — The Crying Man. Reachable only from the
+  // undersong-guardian zone on the vault trophy chest (floor-5.json).
+  // Winning this fight is what opens the wish ending.
+  9: [
+    {
+      id: "f5-crying-man",
+      family: "crying-man-guardian",
+      weight: 1,
+      spawns: [
+        { enemyId: "ironclad-knight", row: "front" },
+        { enemyId: "black-knight", row: "front" },
+        { enemyId: "demon-champion", row: "front" },
+        { enemyId: "headmasters-echo-ascendant", row: "back" },
+        { enemyId: "demon-mage", row: "back" },
+        { enemyId: "succubus", row: "back" },
       ],
     },
   ],

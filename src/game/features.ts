@@ -11,7 +11,7 @@
  *   chute       → forced descent to a lower floor (one-way)
  *   darkness    → set inDarkness flag (renderer limits visibility to 1 tile)
  *   antimagic   → set inAntimagic flag (spell casting fails in combat)
- *   treasure    → give loot to the party, then clear the tile feature
+ *   treasure    → give loot to the party; the tile stays, itemIds empty
  *
  * The handler returns a FeatureResult describing what happened (for the message
  * bar) and whether a floor transition occurred.
@@ -30,6 +30,7 @@ import { displayNameFor } from "../data/items";
 import { effectiveStats } from "./effective-stats";
 import { perksForCharacter, perkModifiers } from "./perks";
 import { encounterCooldownFor } from "./encounters";
+import { applyLootedTreasures } from "./loot-restore";
 import { getGameplayRng } from "./rng";
 
 type Rng = () => number;
@@ -627,26 +628,6 @@ function applyUnlockedDoors(floor: FloorDef, unlockedDoors: Set<string>): void {
     if (floor.grid[y]?.[x]) {
       floor.grid[y][x][dir] = "door";
     }
-  }
-}
-
-/** Apply previously looted treasures to a floor copy. */
-function applyLootedTreasures(
-  floor: FloorDef,
-  lootTaken: Record<number, Set<string>>
-): void {
-  const taken = lootTaken[floor.id];
-  if (!taken) return;
-  for (const pos of taken) {
-    const [xStr, yStr] = pos.split(",");
-    const x = parseInt(xStr);
-    const y = parseInt(yStr);
-    const treasureDef = floor.treasures?.find((t) => t.x === x && t.y === y);
-    if (treasureDef) {
-      treasureDef.itemIds = [];
-    }
-    // Tile deliberately left in place — an emptied `treasure` tile renders as
-    // an opened chest and is inert (see `handleTileFeature`'s inert guard).
   }
 }
 

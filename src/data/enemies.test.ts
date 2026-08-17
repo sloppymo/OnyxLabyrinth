@@ -50,15 +50,13 @@ describe("enemy data", () => {
     expect(ENEMIES_BY_ID["demon-spawn"].chemistryGroups).toEqual(["volatile-spawn"]);
   });
 
-  it("puts an escalating boss variant on each deep floor's table (not the same boss reused)", () => {
-    // Floor 3's boss now lives on its own guaranteed climax table (7), not
-    // the ambient floor-3 table — see the "Grand Forge climax table"
-    // describe block below. Floors 4/5 are unaffected: their table id
-    // still equals the floor id.
+  it("puts an escalating boss variant on each deep floor's climax table (not the same boss reused)", () => {
+    // Each campaign boss lives on its own guaranteed climax table, not the
+    // ambient floor table — hallway rolls must not be able to start the ending.
     const expectedBossByTable: Record<number, string> = {
       7: "headmasters-echo",
-      4: "headmasters-echo-remnant",
-      5: "headmasters-echo-ascendant",
+      8: "headmasters-echo-remnant",
+      9: "headmasters-echo-ascendant",
     };
     for (const [tableStr, expectedBoss] of Object.entries(expectedBossByTable)) {
       const table = Number(tableStr);
@@ -517,6 +515,82 @@ describe("Floor 2 forbidden-wing climax table (table 6)", () => {
       ).toBeLessThanOrEqual(2);
       for (const spawn of entry.spawns) {
         expect(spawn.row).toBe("back");
+      }
+    }
+  });
+});
+
+describe("Floor 4 sanctum climax table (table 8)", () => {
+  it("is only reachable from the sanctum-guardian zone on floor 4", () => {
+    for (const floor of getFloors()) {
+      const zones = floor.encounterZones ?? [];
+      for (const zone of zones) {
+        if (zone.id === "sanctum-guardian") {
+          expect(zone.tableFloorId).toBe(8);
+        } else {
+          expect(zone.tableFloorId, `${floor.name}/${zone.id}`).not.toBe(8);
+        }
+      }
+    }
+  });
+
+  it("is the sole home of The Lonely Girl — the ambient floor-4 table no longer rolls it", () => {
+    for (const entry of ENCOUNTER_TABLES[4]) {
+      expect(entry.spawns.some((s) => s.enemyId === "headmasters-echo-remnant")).toBe(false);
+    }
+    expect(
+      ENCOUNTER_TABLES[8].some((entry) =>
+        entry.spawns.some((s) => s.enemyId === "headmasters-echo-remnant")
+      )
+    ).toBe(true);
+  });
+
+  it("is a single fixed formation (no reroll between attempts)", () => {
+    expect(ENCOUNTER_TABLES[8].length).toBe(1);
+  });
+
+  it("all referenced ids are registered", () => {
+    for (const entry of ENCOUNTER_TABLES[8]) {
+      for (const spawn of entry.spawns) {
+        expect(ENEMIES_BY_ID[spawn.enemyId], `unknown enemyId "${spawn.enemyId}"`).toBeDefined();
+      }
+    }
+  });
+});
+
+describe("Floor 5 undersong climax table (table 9)", () => {
+  it("is only reachable from the undersong-guardian zone on floor 5", () => {
+    for (const floor of getFloors()) {
+      const zones = floor.encounterZones ?? [];
+      for (const zone of zones) {
+        if (zone.id === "undersong-guardian") {
+          expect(zone.tableFloorId).toBe(9);
+        } else {
+          expect(zone.tableFloorId, `${floor.name}/${zone.id}`).not.toBe(9);
+        }
+      }
+    }
+  });
+
+  it("is the sole home of The Crying Man — the ambient floor-5 table no longer rolls it", () => {
+    for (const entry of ENCOUNTER_TABLES[5]) {
+      expect(entry.spawns.some((s) => s.enemyId === "headmasters-echo-ascendant")).toBe(false);
+    }
+    expect(
+      ENCOUNTER_TABLES[9].some((entry) =>
+        entry.spawns.some((s) => s.enemyId === "headmasters-echo-ascendant")
+      )
+    ).toBe(true);
+  });
+
+  it("is a single fixed formation (no reroll between attempts)", () => {
+    expect(ENCOUNTER_TABLES[9].length).toBe(1);
+  });
+
+  it("all referenced ids are registered", () => {
+    for (const entry of ENCOUNTER_TABLES[9]) {
+      for (const spawn of entry.spawns) {
+        expect(ENEMIES_BY_ID[spawn.enemyId], `unknown enemyId "${spawn.enemyId}"`).toBeDefined();
       }
     }
   });

@@ -2038,6 +2038,15 @@
       "rateMul": 1.6
     },
     {
+      "id": "sanctum-guardian",
+      "x1": 15,
+      "y1": 16,
+      "x2": 15,
+      "y2": 16,
+      "rateMul": 1.5,
+      "tableFloorId": 8
+    },
+    {
       "id": "sanctum-unsung",
       "x1": 11,
       "y1": 14,
@@ -2179,7 +2188,8 @@
         "healing-potion",
         "healing-potion"
       ],
-      "trap": "teleporter"
+      "trap": "alarm",
+      "climax": { "id": "floor4-guardian" }
     },
     {
       "x": 16,

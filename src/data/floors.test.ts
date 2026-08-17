@@ -515,3 +515,41 @@ describe("Floor 3 'Duelist's Vigil' content", () => {
     expect(kazeharu?.topics.some((t) => t.key === "join" && t.hidden)).toBe(true);
   });
 });
+
+describe("Floor 4 'The Null Choir' climax", () => {
+  it("the sanctum trophy chest is the real climax: alarm trap, curated zone table", () => {
+    const f4 = findFloor(4)!;
+    const chest = f4.treasures?.find((t) => t.x === 15 && t.y === 16);
+    expect(chest?.trap).toBe("alarm");
+    expect(chest?.climax?.id).toBe("floor4-guardian");
+    const zone = f4.encounterZones?.find((z) => z.id === "sanctum-guardian");
+    expect(zone?.tableFloorId).toBe(8);
+    expect(zone?.rateMul).toBeGreaterThan(1);
+  });
+
+  it("the sanctum trophy chest is the only floor-4 tile that resolves to the guardian table", () => {
+    const f4 = findFloor(4)!;
+    expect(encounterTableFloorId(f4, 15, 16)).toBe(8);
+    expect(encounterTableFloorId(f4, 8, 12)).toBe(4);
+    expect(f4.encounterZones?.some((z) => z.id !== "sanctum-guardian" && z.tableFloorId === 8)).toBe(false);
+  });
+});
+
+describe("Floor 5 'The Undersong' climax", () => {
+  it("the vault trophy chest is the real climax: alarm trap, curated zone table", () => {
+    const f5 = findFloor(5)!;
+    const chest = f5.treasures?.find((t) => t.x === 14 && t.y === 17);
+    expect(chest?.trap).toBe("alarm");
+    expect(chest?.climax?.id).toBe("floor5-guardian");
+    const zone = f5.encounterZones?.find((z) => z.id === "undersong-guardian");
+    expect(zone?.tableFloorId).toBe(9);
+    expect(zone?.rateMul).toBeGreaterThan(1);
+  });
+
+  it("the vault trophy chest is the only floor-5 tile that resolves to the guardian table", () => {
+    const f5 = findFloor(5)!;
+    expect(encounterTableFloorId(f5, 14, 17)).toBe(9);
+    expect(encounterTableFloorId(f5, 8, 12)).toBe(5);
+    expect(f5.encounterZones?.some((z) => z.id !== "undersong-guardian" && z.tableFloorId === 9)).toBe(false);
+  });
+});

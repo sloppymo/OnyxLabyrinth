@@ -21,8 +21,8 @@
 //   furnace-key (floor 2, forbidden)   → floor 3 slag vault lock
 //   forge-key   (floor 3, open chest)  → floor 3 boss chamber lock
 //
-// "// EVENT:" comments are design annotations for a future scripted-event /
-// trap system — the engine does not run them yet.
+// Tile events (`FloorDef.events`) are live: `handleTileFeature` / `handleEvent`
+// run them. Do not treat `// EVENT:` comments as unimplemented plumbing.
 
 import type { Grid, TrapType } from "../types";
 import {
@@ -223,7 +223,8 @@ export interface FloorDef {
   // a locked door exists, and which key ID unlocks it.
   lockedDoors?: { x: number; y: number; dir: "n" | "e" | "s" | "w"; keyId: string }[];
   // Treasure room definitions: tiles with the "treasure" feature and what
-  // item IDs they contain. Once looted, the tile feature is cleared.
+  // item IDs they contain. Once looted, the tile stays and the def's
+  // `itemIds` are emptied (see `applyLootedTreasures` / `isTreasureLooted`).
   // `trap` marks the chest as trapped (Inspect/Disarm/Open/Leave prompt on
   // step; see game/features.ts). Untrapped chests loot immediately.
   // `climax` locks the treasure in escrow: opening the chest begins combat,

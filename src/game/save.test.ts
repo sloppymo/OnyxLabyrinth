@@ -3,6 +3,7 @@ import { serialize, deserialize, autoSave, loadAutoSave } from "./save";
 import { createGameState } from "./state";
 import { findFloor } from "./floor-registry";
 import { createDefaultParty, createCharacter } from "./party";
+import { isTreasureLooted } from "./features";
 import type { GameState } from "../types";
 
 describe("save serialization", () => {
@@ -347,6 +348,22 @@ describe("save serialization", () => {
     const restored = deserialize(JSON.stringify(raw));
     expect(restored).not.toBeNull();
     expect(restored?.worldYear).toBe(3847);
+  });
+
+  it("keeps a looted chest tile after deserialize (Continue and Save-menu Load share this path)", () => {
+    const chest = state.floor.treasures![0]!;
+    const { x, y } = chest;
+    expect(state.floor.grid[y]![x]!.tile).toBe("treasure");
+
+    chest.itemIds = [];
+    state.lootTaken[state.floor.id] = new Set([`${x},${y}`]);
+    state.mode = "dungeon";
+
+    const restored = deserialize(serialize(state));
+    expect(restored).not.toBeNull();
+    expect(restored!.floor.grid[y]![x]!.tile).toBe("treasure");
+    expect(isTreasureLooted(restored!.floor, x, y)).toBe(true);
+    expect(restored!.lootTaken[state.floor.id]?.has(`${x},${y}`)).toBe(true);
   });
 
   it("round-trips hasCompletedEnding", () => {

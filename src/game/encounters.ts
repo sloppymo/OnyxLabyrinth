@@ -384,7 +384,8 @@ export function stepPity(
  * so the *flat* roll band after cooldown contributes nothing — but
  * {@link encounterRollChance} still forces a fight at the pity step even when
  * baseRate is 0. Safe pockets therefore delay fights; they do not suppress
- * pity. Campaign zones do not set tableFloorId; pack difficulty is per-floor.
+ * pity. Zones may set `tableFloorId` to a dedicated table (F2–F5 climax
+ * chests); otherwise pack difficulty is `ENCOUNTER_TABLES[floor.id]`.
  */
 export function encounterRateAt(
   floor: Pick<FloorDef, "encounterRate" | "encounterZones">,

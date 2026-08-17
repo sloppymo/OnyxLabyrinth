@@ -2030,6 +2030,15 @@
       "rateMul": 1.7
     },
     {
+      "id": "undersong-guardian",
+      "x1": 14,
+      "y1": 17,
+      "x2": 14,
+      "y2": 17,
+      "rateMul": 1.5,
+      "tableFloorId": 9
+    },
+    {
       "id": "undersong-vault",
       "x1": 10,
       "y1": 16,
@@ -2163,7 +2172,8 @@
         "healing-potion",
         "healing-potion"
       ],
-      "trap": "teleporter"
+      "trap": "alarm",
+      "climax": { "id": "floor5-guardian" }
     }
   ],
   "waters": [

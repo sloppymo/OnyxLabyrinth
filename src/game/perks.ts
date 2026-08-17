@@ -14,12 +14,12 @@
  * at fixed points. Per-character/per-combat scratch state for these lives in
  * `CombatState.perkState` (character id -> arbitrary bag), reset each combat.
  *
- * v1.0 — Playtest Values: only the perks registered below have reactive
- * hook behavior (plus a few wired directly in combat.ts: fighter-protector,
+ * v1.0 — Playtest Values: reactive perks are the ones registered below
+ * (plus a few wired directly in combat modules: fighter-protector,
  * thief-backstab, thief-assassin, thief-smoke-bomb, duelist-riposte,
- * priest-saint, mage-spellbreaker, halberdier-warlord); the rest are
- * numeric passives via `perkModifiers()` or, where neither applies,
- * documented no-op stubs (`// TODO(v1.1)`) flagged in their UI description.
+ * priest-saint, mage-spellbreaker, halberdier-warlord). The rest are
+ * numeric passives via `perkModifiers()`. There are no live TODO(v1.1)
+ * stubs — do not reintroduce that marker without an actual unimplemented perk.
  */
 
 import type { Character, CharacterClass, Stats } from "./party";

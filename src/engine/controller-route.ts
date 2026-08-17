@@ -19,6 +19,7 @@ export type ControllerRouteKind =
   | "title"
   | "arena"
   | "trap"
+  | "dialog"
   | "dungeon"
   | "none";
 
@@ -41,6 +42,7 @@ export interface ControllerRouteContext {
   hasTitle: boolean;
   hasPendingTrap: boolean;
   hasTrapPrompt: boolean;
+  hasDungeonDialog: boolean;
 }
 
 /** Pick the highest-priority input consumer for the current session flags. */
@@ -61,7 +63,13 @@ export function resolveControllerRoute(ctx: ControllerRouteContext): ControllerR
   if (ctx.mode === "title" && ctx.hasPrologue) return "prologue";
   if (ctx.mode === "title" && ctx.hasTitle) return "title";
   if (ctx.mode === "arena") return "arena";
+  if (ctx.mode === "dialog" && ctx.hasDungeonDialog) return "dialog";
   if (ctx.mode === "dungeon" && ctx.hasPendingTrap && ctx.hasTrapPrompt) return "trap";
   if (ctx.mode === "dungeon") return "dungeon";
   return "none";
+}
+
+/** Compile-time exhaustiveness for `routeControllerEvent`. Missing cases fail tsc. */
+export function assertUnhandledRoute(route: never): never {
+  throw new Error(`unhandled controller route: ${String(route)}`);
 }

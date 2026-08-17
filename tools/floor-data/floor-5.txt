@@ -30,7 +30,7 @@
 #   treasure (4,6) items=[plate-mail+1, healing-potion]
 #   treasure (15,10) items=[undersong-key, healing-potion] trap=stunner
 #   treasure (7,13) items=[bow+2, focus-ward, healing-potion] trap=poison
-#   treasure (14,17) items=[voidblade+2, dragonscale-mail+2, healing-potion, healing-potion] trap=teleporter
+#   treasure (14,17) items=[voidblade+2, dragonscale-mail+2, healing-potion, healing-potion] trap=alarm
 #   water (8,2) depth=1
 #   water (13,13) depth=2
 #   water (14,13) depth=2

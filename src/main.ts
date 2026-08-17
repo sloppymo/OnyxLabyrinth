@@ -109,6 +109,7 @@ import {
 } from "./engine/controller-input";
 import { controllerEventToMenuKey } from "./engine/menu-controller-adapter";
 import {
+  assertUnhandledRoute,
   resolveControllerRoute,
   type ControllerRouteContext,
   type ControllerRouteKind,
@@ -647,11 +648,17 @@ function openEnding(): void {
 let titleController: TitleController | null = null;
 
 /**
- * Apply a deserialized save into the live session (Continue path + debug
- * loadSave). Overlays / party creation / arena are not resumable — see
+ * Apply a deserialized save into the live session. Title Continue, the
+ * in-game Save-menu Load, and debug loadSave must all call this — do not
+ * reconstruct state with a second Object.assign path.
+ *
+ * Overlays / party creation / arena are not resumable — see
  * normalizeLoadedMode.
  */
-function applyLoadedGameState(loaded: GameState): void {
+function applyLoadedGameState(
+  loaded: GameState,
+  opts: { message?: string } = {}
+): void {
   closeMapOverlay();
   mapOverlayRenderer.invalidate();
   Object.assign(state, loaded);
@@ -663,7 +670,7 @@ function applyLoadedGameState(loaded: GameState): void {
     // Combat is converted to dungeon on save; any other mode resumes directly.
     setMazeSurfaceOpacity("1");
     showMode(state.mode, mapVisible);
-    setMessage("Welcome back to the labyrinth.");
+    setMessage(opts.message ?? "Welcome back to the labyrinth.");
     if (state.mode === "dungeon") {
       markExplored();
       resetRenderCamera(state.player.x, state.player.y, state.player.facing);
@@ -1040,11 +1047,12 @@ function endCombat(result: CombatState): void {
     pendingStairsGuardianFight = null;
   }
 
-  // The wish (§6): floor-5 boss victory, once per campaign. The floor-5 boss
-  // pack is a re-rollable random encounter (data/enemies.ts ENCOUNTER_TABLES,
-  // weight: 1 like any other pack), not a one-time scripted fight — so a
-  // second win is fully possible, and hasCompletedEnding (not "isBoss won"
-  // alone) is what stops it from re-opening this screen.
+  // The wish (§6): floor-5 climax boss victory, once per campaign. The
+  // Crying Man lives on ENCOUNTER_TABLES[9], reached only from the
+  // undersong-guardian chest — not a re-rollable hallway pack. A second
+  // win is still possible if the party re-opens a restored chest, and
+  // hasCompletedEnding (not "isBoss won" alone) is what stops the screen
+  // from re-opening.
   const triggersEnding =
     result.result === "victory" &&
     result.isBoss &&
@@ -1895,6 +1903,7 @@ function currentRouteFlags(): ControllerRouteContext {
     hasTitle: !!titleController,
     hasPendingTrap: !!state.pendingTrap,
     hasTrapPrompt: !!trapPrompt,
+    hasDungeonDialog: !!dungeonDialog,
   };
 }
 
@@ -1946,6 +1955,24 @@ function routeControllerEvent(event: ControllerInputEvent): void {
       }
       const key = controllerEventToMenuKey(event);
       if (key) tavernController!.handleKey(key);
+      return;
+    }
+    case "namanda": {
+      if (justOpenedNamandaPanel) {
+        if (event.kind === "press") justOpenedNamandaPanel = false;
+        return;
+      }
+      const key = controllerEventToMenuKey(event);
+      if (key) namandaController!.handleKey(key);
+      return;
+    }
+    case "dialog": {
+      if (justOpenedDungeonDialog) {
+        if (event.kind === "press") justOpenedDungeonDialog = false;
+        return;
+      }
+      const key = controllerEventToMenuKey(event);
+      if (key) dungeonDialog!.handleKey(key);
       return;
     }
     case "action_ring": {
@@ -2031,8 +2058,10 @@ function routeControllerEvent(event: ControllerInputEvent): void {
     }
     case "dungeon":
       break;
-    default:
+    case "none":
       return;
+    default:
+      return assertUnhandledRoute(route);
   }
 
   // Dungeon exploration (press-only)
@@ -2494,22 +2523,8 @@ function openSaveMenu(): void {
     state,
     modeBeforeSave: modeBeforeSaveMenu,
     onLoaded: (loaded: GameState) => {
-      // Replace the current game state with the loaded one.
-      // We can't reassign `state` (it's const), so we mutate in place.
-      mapOverlayRenderer.invalidate();
-      Object.assign(state, loaded);
-      resetEncounterFamilyMemory();
       saveController = null;
-      setMazeSurfaceOpacity("1");
-      // Return to the mode from the loaded save, or dungeon if it was combat.
-      const targetMode = state.mode === "combat" ? "dungeon" : state.mode;
-      setMode(state, targetMode);
-      if (targetMode === "town") {
-        openTown();
-      } else {
-        showMode(targetMode, mapVisible);
-        setMessage("Game loaded.");
-      }
+      applyLoadedGameState(loaded, { message: "Game loaded." });
     },
     onClose: () => {
       saveController = null;
