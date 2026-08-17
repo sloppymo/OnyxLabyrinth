@@ -81,11 +81,11 @@ describe("createControllerInput", () => {
     });
   });
 
-  it("keyboard keydown emits correct press event", () => {
+  it("keyboard keydown emits correct press event with the raw key", () => {
     const events: ControllerInputEvent[] = [];
     const input = createControllerInput((e) => events.push(e));
     dispatchKeydown("s");
-    expect(events).toEqual([{ kind: "press", button: "x" }]);
+    expect(events).toEqual([{ kind: "press", button: "x", key: "s" }]);
     input.destroy();
   });
 
@@ -93,7 +93,7 @@ describe("createControllerInput", () => {
     const events: ControllerInputEvent[] = [];
     const input = createControllerInput((e) => events.push(e));
     dispatchKeydown("Enter");
-    expect(events).toEqual([{ kind: "press", button: "a" }]);
+    expect(events).toEqual([{ kind: "press", button: "a", key: "Enter" }]);
     input.destroy();
   });
 
@@ -101,7 +101,7 @@ describe("createControllerInput", () => {
     const events: ControllerInputEvent[] = [];
     const input = createControllerInput((e) => events.push(e));
     dispatchKeydown(" ");
-    expect(events).toEqual([{ kind: "press", button: "a" }]);
+    expect(events).toEqual([{ kind: "press", button: "a", key: " " }]);
     input.destroy();
   });
 
@@ -109,7 +109,7 @@ describe("createControllerInput", () => {
     const events: ControllerInputEvent[] = [];
     const input = createControllerInput((e) => events.push(e));
     dispatchKeydown("a");
-    expect(events).toEqual([{ kind: "press", button: "a" }]);
+    expect(events).toEqual([{ kind: "press", button: "a", key: "a" }]);
     input.destroy();
   });
 
@@ -117,7 +117,7 @@ describe("createControllerInput", () => {
     const events: ControllerInputEvent[] = [];
     const input = createControllerInput((e) => events.push(e));
     dispatchKeydown("Escape");
-    expect(events).toEqual([{ kind: "press", button: "b" }]);
+    expect(events).toEqual([{ kind: "press", button: "b", key: "Escape" }]);
     input.destroy();
   });
 
@@ -125,7 +125,7 @@ describe("createControllerInput", () => {
     const events: ControllerInputEvent[] = [];
     const input = createControllerInput((e) => events.push(e));
     dispatchKeydown("Backspace");
-    expect(events).toEqual([{ kind: "press", button: "b" }]);
+    expect(events).toEqual([{ kind: "press", button: "b", key: "Backspace" }]);
     input.destroy();
   });
 
@@ -137,10 +137,10 @@ describe("createControllerInput", () => {
     dispatchKeydown("ArrowLeft");
     dispatchKeydown("ArrowRight");
     expect(events).toEqual([
-      { kind: "press", button: "up" },
-      { kind: "press", button: "down" },
-      { kind: "press", button: "left" },
-      { kind: "press", button: "right" },
+      { kind: "press", button: "up", key: "ArrowUp" },
+      { kind: "press", button: "down", key: "ArrowDown" },
+      { kind: "press", button: "left", key: "ArrowLeft" },
+      { kind: "press", button: "right", key: "ArrowRight" },
     ]);
     input.destroy();
   });
@@ -153,12 +153,42 @@ describe("createControllerInput", () => {
     input.destroy();
   });
 
-  it("unmapped keys do not emit events or preventDefault", () => {
+  it("unmapped keys emit a press carrying the raw key and no face button", () => {
     const events: ControllerInputEvent[] = [];
     const input = createControllerInput((e) => events.push(e));
     const event = dispatchKeydown("h");
-    expect(events).toHaveLength(0);
-    expect(event.defaultPrevented).toBe(false);
+    expect(events).toEqual([{ kind: "press", key: "h" }]);
+    expect(event.defaultPrevented).toBe(true);
+    input.destroy();
+  });
+
+  it("unmapped keyup emits a matching release", () => {
+    const events: ControllerInputEvent[] = [];
+    const input = createControllerInput((e) => events.push(e));
+    dispatchKeydown("Tab");
+    dispatchKeyup("Tab");
+    expect(events).toEqual([
+      { kind: "press", key: "Tab" },
+      { kind: "release", key: "Tab" },
+    ]);
+    input.destroy();
+  });
+
+  it("keyboard auto-repeat emits an extra press marked repeat", () => {
+    const events: ControllerInputEvent[] = [];
+    const input = createControllerInput((e) => events.push(e));
+    dispatchKeydown("ArrowDown");
+    const repeat = new KeyboardEvent("keydown", {
+      key: "ArrowDown",
+      bubbles: true,
+      cancelable: true,
+      repeat: true,
+    });
+    window.dispatchEvent(repeat);
+    expect(events).toEqual([
+      { kind: "press", button: "down", key: "ArrowDown" },
+      { kind: "press", button: "down", key: "ArrowDown", repeat: true },
+    ]);
     input.destroy();
   });
 
@@ -292,7 +322,7 @@ describe("createControllerInput", () => {
     const input = createControllerInput((e) => events.push(e));
 
     dispatchKeydown("Enter");
-    expect(events).toEqual([{ kind: "press", button: "a" }]);
+    expect(events).toEqual([{ kind: "press", button: "a", key: "Enter" }]);
 
     vi.advanceTimersByTime(HOLD_THRESHOLD_MS + 20);
 
@@ -310,8 +340,8 @@ describe("createControllerInput", () => {
     dispatchKeydown("Enter");
     dispatchKeyup("Enter");
     expect(events).toEqual([
-      { kind: "press", button: "a" },
-      { kind: "release", button: "a" },
+      { kind: "press", button: "a", key: "Enter" },
+      { kind: "release", button: "a", key: "Enter" },
     ]);
     input.destroy();
   });
@@ -322,15 +352,15 @@ describe("createControllerInput", () => {
 
     dispatchKeydown("Enter");
     dispatchKeydown(" ");
-    expect(events).toEqual([{ kind: "press", button: "a" }]);
+    expect(events).toEqual([{ kind: "press", button: "a", key: "Enter" }]);
 
     dispatchKeyup("Enter");
-    expect(events).toEqual([{ kind: "press", button: "a" }]);
+    expect(events).toEqual([{ kind: "press", button: "a", key: "Enter" }]);
 
     dispatchKeyup(" ");
     expect(events).toEqual([
-      { kind: "press", button: "a" },
-      { kind: "release", button: "a" },
+      { kind: "press", button: "a", key: "Enter" },
+      { kind: "release", button: "a", key: "Enter" },
     ]);
 
     input.destroy();
@@ -361,8 +391,8 @@ describe("createControllerInput", () => {
     window.dispatchEvent(new Event("blur"));
 
     expect(events).toEqual([
-      { kind: "press", button: "a" },
-      { kind: "release", button: "a" },
+      { kind: "press", button: "a", key: "Enter" },
+      { kind: "release", button: "a", key: "Enter" },
     ]);
 
     input.destroy();

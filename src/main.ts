@@ -47,7 +47,7 @@ import { loadCeilingFeatures } from "./engine/renderer";
 import { loadDoorFeatures } from "./engine/door-feature-cache";
 import { audio } from "./engine/audio";
 import { renderAutoMap } from "./engine/automap";
-import { bindInput, type InputHandlers } from "./engine/input";
+import { dungeonActionForKey, isEditableInputTarget, type InputHandlers } from "./engine/input";
 import {
   MapOverlayRenderer,
   createMapOverlayState,
@@ -101,7 +101,6 @@ import { checkInvariants } from "./debug/invariants";
 import { installAudioSpy } from "./debug/audio-spy";
 import { buildDebugCombat } from "./debug/start-combat";
 import { CombatController } from "./engine/combat-ui";
-import { PALETTE_LETTER_SHORTCUTS } from "./engine/combat-action-palette";
 import { createCombatStage } from "./engine/combat-stage";
 import {
   createControllerInput,
@@ -356,6 +355,8 @@ let modeTransitionPending = false;
  * debug block at the bottom of this file.
  */
 let debugEvents: DebugEventBuffer | null = null;
+/** Debug-only: sample route after the single gameplay keydown owner runs. */
+let debugAfterKeyDown: ((key: string) => void) | null = null;
 /** Debug-only natural-campaign combat evidence; never serialized. */
 let combatAudit: CombatAudit | null = null;
 
@@ -569,15 +570,8 @@ function openPartyCreation(onDone: () => void): void {
 // state reset and party creation. Never shown by Continue / Arena / Reform
 // Party. Borrows "title" mode like the perk/save/NPC overlays.
 let prologueController: PrologueController | null = null;
-// The prologue is opened *from inside* the title screen's own keydown
-// handler (title's onNewGame), not from a separate trigger the way
-// perk-select/save/NPC are. The same "New Game" keydown that constructs
-// prologueController keeps dispatching to every window "keydown" listener
-// in registration order within that one event — so this flag is set
-// unconditionally at open time (mirroring justOpenedSaveMenu) AND the
-// listener below is registered after the title screen's own listener,
-// so it observes prologueController already non-null for that same
-// keydown and correctly swallows it there, not one event later.
+// Opened from title's onNewGame inside the same keydown. `routeControllerEvent`
+// re-dispatches once to the new route so this flag swallows that Enter.
 let justOpenedPrologue = false;
 
 function openPrologue(onDone: () => void): void {
@@ -601,10 +595,8 @@ function openPrologue(onDone: () => void): void {
 // call site for why "boss defeated" alone can't gate this (the floor-5 boss
 // is a re-rollable random encounter, not a one-time scripted fight). Never
 // opened from Arena. Borrows "title" mode like the prologue; same
-// justOpenedX same-keydown-dispatch hazard (see openPrologue's comment) —
-// this one has two possible synchronous-open call sites (the combat result
-// confirm, and the perk overlay's onDone), so the listener below is
-// registered after both.
+// Opened from combat result confirm or perk overlay onDone in the same
+// keydown. `routeControllerEvent` re-dispatches so justOpenedEnding swallows it.
 let endingController: EndingController | null = null;
 let justOpenedEnding = false;
 
@@ -1106,16 +1098,6 @@ function openPerkSelectOverlay(queue: PendingPerkChoice[], onDone?: () => void):
     },
   });
 }
-
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "title" || !perkSelectController) return;
-  if (combatTransitionActive) {
-    e.preventDefault();
-    return;
-  }
-  perkSelectController.handleKey(e.key);
-  e.preventDefault();
-});
 
 // --- Game over mode ------------------------------------------------------
 let gameOverController: GameOverController | null = null;
@@ -1686,10 +1668,6 @@ const dungeonHandlers: InputHandlers = {
   },
 };
 
-bindInput(window, dungeonHandlers, {
-  shouldHandle: () =>
-    state.mode === "dungeon" && !state.pendingTrap && !isRaftAnimating(raftAnimation),
-});
 bindMapOverlayButton(dungeonHandlers.onToggleMapOverlay);
 
 // --- Dungeon dialog mode --------------------------------------------------
@@ -1697,23 +1675,6 @@ bindMapOverlayButton(dungeonHandlers.onToggleMapOverlay);
 // warnings, boarding messages, gate prompts, chute warnings). All dungeon
 // movement/turning/encounters are suppressed by the shouldHandle guard
 // above (mode !== "dungeon"). These keys drive the dialog controller.
-
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "dialog") return;
-  if (!dungeonDialog) return;
-  if (justOpenedDungeonDialog) {
-    e.preventDefault();
-    return;
-  }
-  dungeonDialog.handleKey(e.key);
-  e.preventDefault();
-});
-
-window.addEventListener("keyup", () => {
-  if (suppressDungeonMovementUntilKeyup) {
-    suppressDungeonMovementUntilKeyup = false;
-  }
-});
 
 // --- Trapped chest prompt --------------------------------------------------
 // Active while state.pendingTrap is set (the party is standing on a trapped,
@@ -1908,19 +1869,38 @@ function currentRouteFlags(): ControllerRouteContext {
 }
 
 
-function routeControllerEvent(event: ControllerInputEvent): void {
-  if (combatTransitionActive) return;
-  const route = resolveControllerRoute(currentRouteFlags());
-
+function dispatchControllerRoute(route: ControllerRouteKind, event: ControllerInputEvent): void {
   switch (route) {
     case "perk": {
       const key = controllerEventToMenuKey(event);
       if (key) perkSelectController!.handleKey(key);
       return;
     }
-    case "combat":
-      combatController!.handleInput(event);
+    case "combat": {
+      const combat = combatController;
+      if (!combat) return;
+      if (event.key !== undefined) {
+        if (event.kind === "release") {
+          combat.handleKeyUp(event.key);
+          if (event.button) combat.handleInput(event);
+          return;
+        }
+        if (event.kind === "hold") {
+          combat.handleInput(event);
+          return;
+        }
+        if (event.kind === "press") {
+          // Mapped keys already auto-repeat via native keydown; the first
+          // press is enough. Unmapped letters (palette / magic tabs) keep
+          // native repeat, matching the old dedicated combat listener.
+          if (event.repeat && event.button) return;
+          combat.handleKey(event.key);
+        }
+        return;
+      }
+      combat.handleInput(event);
       return;
+    }
     case "save": {
       if (justOpenedSaveMenu) {
         if (event.kind === "press") justOpenedSaveMenu = false;
@@ -2057,15 +2037,25 @@ function routeControllerEvent(event: ControllerInputEvent): void {
       return;
     }
     case "dungeon":
-      break;
+      dispatchDungeonInput(event);
+      return;
     case "none":
       return;
     default:
       return assertUnhandledRoute(route);
   }
+}
 
-  // Dungeon exploration (press-only)
+function dispatchDungeonInput(event: ControllerInputEvent): void {
   if (event.kind !== "press") return;
+
+  // Keyboard keeps the dungeon WASD/C/M/V/… map. Gamepad keeps face-button
+  // semantics (A = contextual unlock, not turn left). Do not fall through.
+  if (event.key !== undefined) {
+    const action = dungeonActionForKey(event.key, { repeat: event.repeat });
+    if (action) dungeonHandlers[action]();
+    return;
+  }
 
   switch (event.button) {
     case "up":
@@ -2127,142 +2117,46 @@ function routeControllerEvent(event: ControllerInputEvent): void {
   }
 }
 
+function routeControllerEvent(event: ControllerInputEvent): void {
+  if (combatTransitionActive) return;
+  const route = resolveControllerRoute(currentRouteFlags());
+  dispatchControllerRoute(route, event);
+  // One owner cannot rely on a later window listener seeing a newly opened
+  // overlay in the same dispatch. If this event opened a controller, feed it
+  // once more so that controller's justOpened* swallow still consumes it.
+  if (combatTransitionActive) return;
+  const next = resolveControllerRoute(currentRouteFlags());
+  if (next !== route) {
+    dispatchControllerRoute(next, event);
+  }
+}
+
 const globalInput = createControllerInput((event) => {
   routeControllerEvent(event);
 }, { attachListeners: false });
 
-// handleTrapInput returns false when no trap is active — let other listeners run.
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (!handleTrapInput(e.key)) return;
-  e.preventDefault();
-});
-
-// One-shot listener: resume the AudioContext on the first keydown anywhere.
-// Browser autoplay policies require a user gesture before audio can start.
-// This fires once, resumes audio, then removes itself.
-const resumeAudioOnce = () => {
+function onGameplayKeyDown(e: KeyboardEvent): void {
   audio.resume();
-  window.removeEventListener("keydown", resumeAudioOnce);
-};
-window.addEventListener("keydown", resumeAudioOnce);
+  if (isEditableInputTarget(e.target)) return;
+  globalInput.handleKeyboardDown(e);
+  debugAfterKeyDown?.(e.key);
+}
 
-// Clear the post-ending Esc swallow once the physical key is released so a
-// later intentional Esc can open Save.
-window.addEventListener("keyup", (e: KeyboardEvent) => {
+function onGameplayKeyUp(e: KeyboardEvent): void {
   if (e.key === "Escape") suppressDungeonEscUntilKeyup = false;
-});
+  if (suppressDungeonMovementUntilKeyup) {
+    suppressDungeonMovementUntilKeyup = false;
+  }
+  globalInput.handleKeyboardUp(e);
+}
+
+window.addEventListener("keydown", onGameplayKeyDown);
+window.addEventListener("keyup", onGameplayKeyUp);
 
 // Auto-save when the player leaves or reloads the page so the next session
 // can resume where they left off.
 window.addEventListener("beforeunload", () => {
   autoSave(state, inArena);
-});
-
-// Combat key handler — separate listener that only fires in combat mode.
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "combat" || !combatController) return;
-  if (combatTransitionActive) {
-    e.preventDefault();
-    return;
-  }
-
-  // Playback/meta keys and Repeat (not face-button mapped).
-  const phase = combatController.getPhase();
-  if (
-    phase === "playback" &&
-    (e.key === "Shift" || e.key === "Tab" || e.key === "Escape")
-  ) {
-    combatController.handleKey(e.key, e);
-    e.preventDefault();
-    return;
-  }
-  if (e.key === "q" || e.key === "Q" || e.key === "z" || e.key === ".") {
-    combatController.handleKey(e.key, e);
-    e.preventDefault();
-    return;
-  }
-  // Magic-sheet number tabs are controller-owned shortcuts, not normalized
-  // face-button input. Route them directly just like the palette letters.
-  if (phase === "selectSpell" && /^[1-5]$/.test(e.key)) {
-    combatController.handleKey(e.key, e);
-    e.preventDefault();
-    return;
-  }
-  if (phase === "palette") {
-    const lower = e.key.toLowerCase();
-    if (lower in PALETTE_LETTER_SHORTCUTS) {
-      combatController.handleKey(e.key, e);
-      e.preventDefault();
-      return;
-    }
-  }
-  if (phase === "result" && (e.key === "Enter" || e.key === " ")) {
-    combatController.handleKey(e.key, e);
-    e.preventDefault();
-    return;
-  }
-
-  globalInput.handleKeyboardDown(e);
-  e.preventDefault();
-});
-
-window.addEventListener("keyup", (e: KeyboardEvent) => {
-  if (state.mode !== "combat" || !combatController) return;
-  if (combatTransitionActive) return;
-  if (e.key === "Shift") {
-    combatController.handleKeyUp(e.key);
-  }
-  globalInput.handleKeyboardUp(e);
-});
-
-// Camp key handler — dismisses the camp screen after the animation finishes.
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "camp" || !campController) return;
-  campController.handleKey(e.key);
-  e.preventDefault();
-});
-
-// Game-over key handler — dismisses the screen and revives the party.
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "game_over" || !gameOverController) return;
-  if (combatTransitionActive) {
-    e.preventDefault();
-    return;
-  }
-  gameOverController.handleKey(e.key);
-  e.preventDefault();
-});
-
-// Town key handler — routes keys to the TownController.
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "town" || !townController) return;
-  if (justOpenedTown) {
-    justOpenedTown = false;
-    e.preventDefault();
-    return;
-  }
-  townController.handleKey(e.key);
-  e.preventDefault();
-});
-
-// Party-creation key handler — routes keys to the PartyCreationController.
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "party_creation" || !partyCreationController) return;
-  partyCreationController.handleKey(e.key);
-  e.preventDefault();
-});
-
-// Clear held Left/Right so local DAS/ARR stops (mirrors gamepad release).
-window.addEventListener("keyup", (e: KeyboardEvent) => {
-  if (state.mode !== "party_creation" || !partyCreationController) return;
-  const lower = e.key.toLowerCase();
-  if (lower === "arrowleft") {
-    partyCreationController.releaseDirection(-1);
-    e.preventDefault();
-  } else if (lower === "arrowright") {
-    partyCreationController.releaseDirection(1);
-    e.preventDefault();
-  }
 });
 
 // --- Arena mode ----------------------------------------------------------
@@ -2430,82 +2324,6 @@ function startNextArenaFight(): void {
   startCombat(combat, { source: "arena", tableId: null });
 }
 
-// Title screen key handler — routes keys to the TitleController.
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "title" || !titleController) return;
-  // First gesture unlocks AudioContext + title BGM (autoplay policy).
-  audio.resume();
-  if (titleController.handleKey(e.key)) {
-    e.preventDefault();
-  }
-});
-
-// Prologue key handler — routes keys to the PrologueController. Registered
-// after the title screen's own listener above (load-bearing — see the
-// justOpenedPrologue comment near openPrologue): title's onNewGame can
-// construct prologueController synchronously from within its own keydown
-// listener, and this listener must run afterward, in the same dispatch, to
-// see it and correctly swallow that keypress.
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "title" || !prologueController) return;
-  if (justOpenedPrologue) {
-    justOpenedPrologue = false;
-    e.preventDefault();
-    return;
-  }
-  prologueController.handleKey(e.key);
-  e.preventDefault();
-});
-
-// Ending key handler — routes keys to the EndingController. Registered after
-// both of this controller's possible synchronous-open sources (the combat
-// key handler above, and the perk-select listener further up), so it always
-// observes endingController already non-null within the same dispatch and
-// correctly swallows that keypress via justOpenedEnding — see openEnding's
-// comment.
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "title" || !endingController) return;
-  if (combatTransitionActive) {
-    e.preventDefault();
-    return;
-  }
-  if (justOpenedEnding) {
-    justOpenedEnding = false;
-    e.preventDefault();
-    return;
-  }
-  endingController.handleKey(e.key);
-  e.preventDefault();
-});
-
-// Arena key handler — routes keys to the ArenaController.
-// The `justOpenedArena` flag prevents the same keydown that opened the arena
-// (e.g. the Enter that exits a combat result) from also selecting a menu item.
-// combatTransitionActive covers the full leave-reveal window (much longer
-// than justOpenedArena's single swallow) so "Next Fight" can't start a second
-// startCombat under an in-flight reveal.
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "arena") return;
-  if (combatTransitionActive) {
-    e.preventDefault();
-    return;
-  }
-  if (justOpenedArena) {
-    justOpenedArena = false;
-    e.preventDefault();
-    return;
-  }
-  if (arenaSetupController) {
-    arenaSetupController.handleKey(e.key);
-    e.preventDefault();
-    return;
-  }
-  if (arenaController) {
-    arenaController.handleKey(e.key);
-    e.preventDefault();
-  }
-});
-
 // --- Save/Load menu ------------------------------------------------------
 let saveController: SaveController | null = null;
 let modeBeforeSaveMenu: GameMode = "dungeon";
@@ -2544,16 +2362,6 @@ function openSaveMenu(): void {
 // The `justOpenedSaveMenu` flag prevents the Escape key that opened the menu
 // from being immediately processed by this handler (which would close it).
 let justOpenedSaveMenu = false;
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "title" || !saveController) return;
-  if (justOpenedSaveMenu) {
-    justOpenedSaveMenu = false;
-    e.preventDefault();
-    return;
-  }
-  saveController.handleKey(e.key);
-  e.preventDefault();
-});
 
 // --- Dungeon spell menu (G — grimoire) -------------------------------------
 // Borrows "title" mode like the save menu so dungeon input pauses. The
@@ -2578,17 +2386,6 @@ function openSpellMenu(): void {
     },
   });
 }
-
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "title" || !spellMenuController) return;
-  if (justOpenedSpellMenu) {
-    justOpenedSpellMenu = false;
-    e.preventDefault();
-    return;
-  }
-  spellMenuController.handleKey(e.key);
-  e.preventDefault();
-});
 
 // --- Dungeon NPC panel ------------------------------------------------------
 // Borrows "title" mode like the save/grimoire menus. Opened by stepping onto
@@ -2695,19 +2492,6 @@ function startStairsGuardianFight(guardian: StairsGuardianDef): void {
   startCombat(combat, { source: "stairsGuardian", tableId: null });
 }
 
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "title" || !npcController) return;
-  if (justOpenedNPCPanel) {
-    // The movement key that stepped onto the NPC must not also drive the menu.
-    justOpenedNPCPanel = false;
-    e.preventDefault();
-    return;
-  }
-  if (npcController.handleKey(e.key)) {
-    e.preventDefault();
-  }
-});
-
 // --- Hot Boi's tavern --------------------------------------------------
 // Borrows "title" mode like the save/grimoire/NPC panels. Opened by stepping
 // onto Hot Boi's tile (see openNPCPanel's dispatch above) instead of the
@@ -2741,19 +2525,6 @@ function openTavernPanel(): void {
   });
 }
 
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "title" || !tavernController) return;
-  if (justOpenedTavernPanel) {
-    // The movement key that stepped onto Hot Boi must not also drive the menu.
-    justOpenedTavernPanel = false;
-    e.preventDefault();
-    return;
-  }
-  if (tavernController.handleKey(e.key)) {
-    e.preventDefault();
-  }
-});
-
 // --- Church of Saint Namanda ---------------------------------------------
 // Borrows "title" mode like the Tavern. Opened by stepping onto the altar's
 // interaction tile (see openNPCPanel's dispatch above) instead of the
@@ -2783,19 +2554,6 @@ function openNamandaPanel(): void {
     },
   });
 }
-
-window.addEventListener("keydown", (e: KeyboardEvent) => {
-  if (state.mode !== "title" || !namandaController) return;
-  if (justOpenedNamandaPanel) {
-    // The movement key that stepped onto the altar must not also drive the menu.
-    justOpenedNamandaPanel = false;
-    e.preventDefault();
-    return;
-  }
-  if (namandaController.handleKey(e.key)) {
-    e.preventDefault();
-  }
-});
 
 // --- Auto-map toggle -----------------------------------------------------
 function toggleMap(): void {
@@ -3034,11 +2792,9 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     }
     return route;
   };
-  // Registered last, so it runs after every controller's own listener in the
-  // same dispatch and observes the post-key route.
-  window.addEventListener("keydown", (e: KeyboardEvent) => {
-    sampleRoute(`key:${e.key}`);
-  });
+  debugAfterKeyDown = (key: string) => {
+    sampleRoute(`key:${key}`);
+  };
 
   window.addEventListener("error", (e: ErrorEvent) => {
     events.push("error", {

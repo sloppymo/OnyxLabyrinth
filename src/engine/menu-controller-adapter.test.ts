@@ -24,4 +24,10 @@ describe("controllerEventToMenuKey", () => {
     expect(controllerEventToMenuKey(press("start"))).toBeNull();
     expect(controllerEventToMenuKey(press("x"))).toBeNull();
   });
+
+  it("passes the raw keyboard key through so letter shortcuts survive WASD face-button mapping", () => {
+    expect(controllerEventToMenuKey({ kind: "press", button: "y", key: "d" })).toBe("d");
+    expect(controllerEventToMenuKey({ kind: "press", button: "a", key: "a" })).toBe("a");
+    expect(controllerEventToMenuKey({ kind: "press", key: "i" })).toBe("i");
+  });
 });

@@ -12,13 +12,9 @@
  * screen; cold typewriter ticks stay as the only *SFX* on this screen.
  *
  * The keypress that opens this controller (e.g. the Enter that selected New
- * Game on the title screen) is dispatched to *every* window "keydown"
- * listener in registration order within the same event — including this
- * controller's, if it were registered before the title screen's own
- * listener finishes creating it. Because of that ordering hazard, the
- * "swallow the opening keypress" responsibility lives in main.ts as an
- * external flag (mirroring justOpenedSaveMenu/justOpenedNPCPanel), not here
- * — this class assumes every handleKey() call is a real, intentional press.
+ * Game on the title screen) is re-dispatched once by `routeControllerEvent`
+ * onto this route. main.ts swallows it via `justOpenedPrologue`. This class
+ * assumes every handleKey() call is a real, intentional press.
  */
 
 import { audio } from "./audio";

@@ -87,14 +87,15 @@ export function buildPalette(
  * Letter shortcuts accepted during the palette phase, none of which are on the
  * face-button map in `controller-input.ts`.
  *
- * `main.ts`'s combat keydown listener must forward exactly these keys before
- * falling through to `globalInput`; it used to hardcode `"tcmifr"`, which
- * silently dropped `h`/`n`/`v` (Hide / Analyze / Move) — `combat-ui.ts` defined
- * handlers for them, but the keys reached no listener at all and were dead.
- * Both sides import this now so they cannot drift apart again.
+ * CombatController.handleKey reads this table for palette letters. Those keys
+ * arrive on the shared `ControllerInputEvent.key` field (unmapped letters are
+ * not rewritten into SNES face buttons). It used to live as a hardcoded
+ * `"tcmifr"` string in a dedicated combat keydown listener, which silently
+ * dropped `h`/`n`/`v` (Hide / Analyze / Move). Keep this table as the single
+ * source of palette letters so combat-ui and tests cannot drift apart.
  *
- * Lives here rather than in `combat-ui.ts` so `main.ts` and tests can read it
- * without pulling in `shell.ts` and its DOM shell.
+ * Lives here rather than in `combat-ui.ts` so tests can read it without
+ * pulling in `shell.ts` and its DOM shell.
  */
 export const PALETTE_LETTER_SHORTCUTS: Readonly<Record<string, PaletteActionKind>> = {
   t: "technique",

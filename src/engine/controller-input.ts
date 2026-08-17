@@ -21,7 +21,19 @@ export type ControllerButton =
 
 export interface ControllerInputEvent {
   kind: "press" | "hold" | "release" | "axis";
-  button: ControllerButton;
+  /**
+   * Logical face/D-pad button. Absent on unmapped keyboard keys (letter
+   * shortcuts, Tab, Shift, trap I/D/O/L, …) — those carry `key` only.
+   */
+  button?: ControllerButton;
+  /**
+   * `KeyboardEvent.key` for keyboard-originated events. Gamepad events omit
+   * this so menu routing can tell "keyboard D (disarm / turn right)" from
+   * "gamepad Y".
+   */
+  key?: string;
+  /** Keyboard auto-repeat. Gamepad events never set this. */
+  repeat?: boolean;
   /** Seconds this button has been held (only for `hold` events). */
   holdSeconds?: number;
   /** For axis events: -1..1. */
@@ -85,6 +97,8 @@ interface ButtonTracking {
   physicalIds: Set<string>;
   /** Whether the single `hold` event has already been emitted for this press. */
   holdEmitted: boolean;
+  /** First keyboard key that activated this logical button, if any. */
+  key?: string;
 }
 
 function sourceKey(source: InputSource, button: ControllerButton): string {
@@ -94,7 +108,7 @@ function sourceKey(source: InputSource, button: ControllerButton): string {
 export interface CreateControllerInputOptions {
   deadzone?: number;
   holdThresholdSeconds?: number;
-  /** When false, callers must invoke handleKeyboardDown/Up themselves (combat mode). */
+  /** When false, callers must invoke handleKeyboardDown/Up themselves. Production uses this so `main.ts` owns the single gameplay keydown listener. */
   attachListeners?: boolean;
 }
 
@@ -151,6 +165,7 @@ export function createControllerInput(
     source: InputSource,
     now: number,
     physicalId: string,
+    keyboardKey?: string,
   ): void {
     const key = sourceKey(source, button);
     const existing = held.get(key);
@@ -165,8 +180,13 @@ export function createControllerInput(
       pressTime: now,
       physicalIds: new Set([physicalId]),
       holdEmitted: false,
+      key: keyboardKey,
     });
-    emit({ kind: "press", button });
+    emit({
+      kind: "press",
+      button,
+      ...(keyboardKey !== undefined ? { key: keyboardKey } : {}),
+    });
   }
 
   function release(
@@ -180,22 +200,66 @@ export function createControllerInput(
     existing.physicalIds.delete(physicalId);
     if (existing.physicalIds.size === 0) {
       held.delete(key);
-      emit({ kind: "release", button });
+      emit({
+        kind: "release",
+        button,
+        ...(existing.key !== undefined ? { key: existing.key } : {}),
+      });
     }
+  }
+
+  const unmappedHeld = new Set<string>();
+
+  function isEmittedUnmappedKey(key: string): boolean {
+    return key.length === 1 || key === "Tab" || key === "Shift";
+  }
+
+  function emitUnmapped(kind: "press" | "release", key: string, repeat?: boolean): void {
+    emit({
+      kind,
+      key,
+      ...(repeat ? { repeat: true } : {}),
+    });
   }
 
   function onKeyDown(event: KeyboardEvent): void {
     const button = KEYBOARD_MAP[event.key];
-    if (!button) return;
+    if (event.repeat) {
+      if (button) {
+        event.preventDefault();
+        emit({ kind: "press", button, key: event.key, repeat: true });
+        return;
+      }
+      if (isEmittedUnmappedKey(event.key)) {
+        event.preventDefault();
+        emitUnmapped("press", event.key, true);
+      }
+      return;
+    }
+    if (button) {
+      event.preventDefault();
+      press(button, "keyboard", performance.now(), event.key, event.key);
+      return;
+    }
+    if (!isEmittedUnmappedKey(event.key)) return;
     event.preventDefault();
-    press(button, "keyboard", performance.now(), event.key);
+    if (unmappedHeld.has(event.key)) return;
+    unmappedHeld.add(event.key);
+    lastInputKind = "keyboard";
+    emitUnmapped("press", event.key);
   }
 
   function onKeyUp(event: KeyboardEvent): void {
     const button = KEYBOARD_MAP[event.key];
-    if (!button) return;
+    if (button) {
+      event.preventDefault();
+      release(button, "keyboard", event.key);
+      return;
+    }
+    if (!unmappedHeld.has(event.key)) return;
     event.preventDefault();
-    release(button, "keyboard", event.key);
+    unmappedHeld.delete(event.key);
+    emitUnmapped("release", event.key);
   }
 
   function releaseAllKeyboard(): void {
@@ -210,6 +274,10 @@ export function createControllerInput(
     for (const { button, physicalId } of toRelease) {
       release(button, "keyboard", physicalId);
     }
+    for (const key of unmappedHeld) {
+      emitUnmapped("release", key);
+    }
+    unmappedHeld.clear();
   }
 
   function updateAxisPair(
@@ -280,7 +348,12 @@ export function createControllerInput(
       const holdSeconds = (now - tracking.pressTime) / 1000;
       if (holdSeconds >= holdThresholdSeconds) {
         tracking.holdEmitted = true;
-        emit({ kind: "hold", button: tracking.button, holdSeconds });
+        emit({
+          kind: "hold",
+          button: tracking.button,
+          holdSeconds,
+          ...(tracking.key !== undefined ? { key: tracking.key } : {}),
+        });
       }
     }
   }

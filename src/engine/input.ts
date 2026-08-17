@@ -1,5 +1,6 @@
-// Keyboard input handler. Maps keys to game actions and is the single place
-// key bindings live — game logic never touches window.addEventListener.
+// Dungeon keyboard map. Production input ownership is a single `keydown` in
+// `main.ts` feeding `createControllerInput`; this module maps dungeon keys
+// (WASD = movement, not SNES face buttons) via `dungeonActionForKey`.
 //
 // Dungeon bindings (reconciled per RECONCILIATION_CHECKLIST §9.1):
 //   ArrowUp / W      step forward
@@ -16,11 +17,11 @@
 //   Tab              action ring (Camp / Map / Town / Unlock / Grimoire) — keyboard
 //                    door matching pad Start after legend removal
 //
-// While a trapped chest prompt is up (GameState.pendingTrap), main.ts gates
-// all of these off and a dedicated listener owns I/D/O/L (+Esc = leave).
+// While a trapped chest prompt is up (GameState.pendingTrap), controller
+// routing selects `"trap"` (I/D/O/L + Esc = leave) instead of `"dungeon"`.
 //
-// Combat/town/camp/save/creation modes have their own key handlers in their
-// respective UI controllers. The spec's proposed Cast/Drop/Search/Turn-party
+// Combat/town/camp/save/creation modes receive the same stream through
+// `routeControllerEvent`. The spec's proposed Cast/Drop/Search/Turn-party
 // /Use-item dungeon keys were cut from MVP per design doc §7.2 (5 combat
 // actions only) and §2 (4 MVP classes).
 
@@ -71,6 +72,22 @@ const KEY_MAP: Record<string, keyof InputHandlers> = {
 
 export type InputAction = keyof InputHandlers;
 
+export interface DungeonActionForKeyOptions {
+  /** KeyboardEvent.repeat — held V must not flicker the overlay. */
+  repeat?: boolean;
+}
+
+/** Dungeon keyboard map. WASD here is movement, not SNES face buttons. */
+export function dungeonActionForKey(
+  key: string,
+  options: DungeonActionForKeyOptions = {},
+): InputAction | null {
+  const action = KEY_MAP[key];
+  if (!action) return null;
+  if (action === "onToggleMapOverlay" && options.repeat) return null;
+  return action;
+}
+
 export interface BindInputOptions {
   /** The shell uses this to claim keys only while dungeon input owns focus. */
   shouldHandle?: (action: InputAction, event: KeyboardEvent) => boolean;
@@ -87,12 +104,9 @@ export function bindInput(
   options: BindInputOptions = {},
 ): () => void {
   const onKeyDown = (e: KeyboardEvent) => {
-    const action = KEY_MAP[e.key];
+    const action = dungeonActionForKey(e.key, { repeat: e.repeat });
     if (!action) return;
     if (isEditableInputTarget(e.target)) return;
-    // The quick overlay is a state toggle, never a held action. Keep movement
-    // key-repeat intact while preventing a held V from rapidly flickering it.
-    if (action === "onToggleMapOverlay" && e.repeat) return;
     if (options.shouldHandle && !options.shouldHandle(action, e)) return;
     handlers[action]();
     e.preventDefault();

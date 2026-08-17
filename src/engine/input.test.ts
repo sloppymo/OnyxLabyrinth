@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi } from "vitest";
-import { bindInput, type InputHandlers } from "./input";
+import { bindInput, dungeonActionForKey, type InputHandlers } from "./input";
 
 function handlers(overrides: Partial<InputHandlers> = {}): InputHandlers {
   const noop = vi.fn();
@@ -36,6 +36,31 @@ function keydown(
   target.dispatchEvent(event);
   return event;
 }
+
+describe("dungeonActionForKey", () => {
+  it("keeps WASD as movement even though the controller map treats A/S/D as face buttons", () => {
+    expect(dungeonActionForKey("a")).toBe("onTurnLeft");
+    expect(dungeonActionForKey("s")).toBe("onBackward");
+    expect(dungeonActionForKey("d")).toBe("onTurnRight");
+    expect(dungeonActionForKey("w")).toBe("onForward");
+  });
+
+  it("preserves keyboard-only dungeon shortcuts", () => {
+    expect(dungeonActionForKey("c")).toBe("onCamp");
+    expect(dungeonActionForKey("m")).toBe("onToggleMap");
+    expect(dungeonActionForKey("v")).toBe("onToggleMapOverlay");
+    expect(dungeonActionForKey("t")).toBe("onTown");
+    expect(dungeonActionForKey("u")).toBe("onUnlock");
+    expect(dungeonActionForKey("g")).toBe("onCastSpell");
+    expect(dungeonActionForKey("Tab")).toBe("onActionRing");
+    expect(dungeonActionForKey("Escape")).toBe("onSystemMenu");
+  });
+
+  it("ignores a held V so the overlay cannot flicker", () => {
+    expect(dungeonActionForKey("v", { repeat: true })).toBeNull();
+    expect(dungeonActionForKey("w", { repeat: true })).toBe("onForward");
+  });
+});
 
 describe("dungeon input binding", () => {
   it("maps V to the named map-overlay action and owns the event", () => {
