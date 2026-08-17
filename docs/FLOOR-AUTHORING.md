@@ -11,6 +11,15 @@ npm run floor:editor       # WYSIWYG editor (vite dev server)
 
 A complete example floor ships in `src/content/floors/floor-4-demo.json` ("The Practice Halls") — it exercises every overlay type and is the fastest way to learn the format. Import it into the editor to poke around. Note it is a **format example only** and no longer registered: floor id 4 belongs to the campaign floor "The Null Choir" (`src/content/floors/floor-4.json`), an antimagic chapel beneath the forge. Floor id 5 belongs to the campaign floor "The Weeping Cistern" (`src/content/floors/floor-5.json`), the flooded undercroft below — water/currents (not antimagic) is the floor's mechanical identity. Lore framing: the gods left / century cycle / the kept (see `docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md`). Do not reintroduce Headmaster/academy copy, and do not use "Echo" or "the First Descent" as player-facing vocabulary — both were retired 2026-07-25. Floor bosses are **The Dead Boy** (F3), **The Lonely Girl** (F4), **The Crying Man** (F5); NPC copy refers to them lowercase and in present tense.
 
+## Campaign floor authoring split
+
+The campaign floors are maintained in two different authoring modes. Do not convert them without an explicit cleanup task:
+
+- **Floors 2 and 3** are authored as imperative TypeScript in `src/data/floors.ts` (`floor2()` and `floor3()`). They predate the JSON pack workflow and still rely on runtime tile/feature mutation.
+- **Floors 1, 4, and 5** are authored as JSON packs in `src/content/floors/floor-1.json`, `floor-4.json`, and `floor-5.json` and registered through `src/content/floors/index.ts`.
+
+New floors should be JSON packs. Only edit `src/data/floors.ts` if you are specifically changing Floors 2 or 3.
+
 ## Engine constraints you MUST know
 
 These are how the engine actually behaves. The validator flags most of them, but read this once before authoring:

@@ -1136,7 +1136,7 @@ function validateStairsTargets(
 function validateEncounterConfig(map: FloorMapJSON, issues: ValidationIssue[]): void {
   if (map.encounterTable?.length) {
     issues.push({
-      severity: "info",
+      severity: "warning",
       code: "encounter_table_unused",
       message:
         "encounterTable is deprecated and ignored by the engine — combat tables come from ENCOUNTER_TABLES in src/data/enemies.ts, keyed by floor id (or a zone's tableFloorId)",

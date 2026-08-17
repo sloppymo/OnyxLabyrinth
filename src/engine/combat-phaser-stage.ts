@@ -35,7 +35,7 @@ import {
   enemySlotIndex,
   allySlotIndex,
   COLORS,
-  PARTY_SIZE,
+  PARTY_SPRITE_SIZE,
   ENEMY_SIZE,
   BOSS_SIZE,
   POPUP_DURATION,
@@ -1771,7 +1771,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const statusScale = statusDrawScale(char.status);
     const pos = toScreenFromResolve(
       resolveSlot(partySlot(index), geometryForBackdrop(scene.backdropId), {
-        spriteHeight: PARTY_SIZE * statusScale,
+        spriteHeight: PARTY_SPRITE_SIZE * statusScale,
         canvasWidth: w,
         artFootFromTop: artFoot,
       })
@@ -1780,7 +1780,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const x = pos.x + off.x;
     const y = pos.y + off.y;
     const footY = pos.footY + off.y;
-    const drawSize = PARTY_SIZE * pos.scale * statusScale;
+    const drawSize = PARTY_SPRITE_SIZE * pos.scale * statusScale;
     const texKey = `party:${char.class}:${anim.state}`;
     let entry = hasStrip ? this.ensureStripSprite(key, "party", texKey) : null;
     if (!entry) {

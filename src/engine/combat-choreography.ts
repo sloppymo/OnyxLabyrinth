@@ -116,8 +116,8 @@ export const COLORS = {
 
 /** Party sprite draw size at scale 1.0 (near row). Frames are 100×100 but
  *  character art only fills ~40% of the frame, so draw large. */
-export const PARTY_SIZE = 300;
-/** Enemy sprite draw size at scale 1.0. Matched to PARTY_SIZE so dense
+export const PARTY_SPRITE_SIZE = 300;
+/** Enemy sprite draw size at scale 1.0. Matched to PARTY_SPRITE_SIZE so dense
  *  packs overlap less in the left cascade (visual-design-pass follow-up). */
 export const ENEMY_SIZE = 300;
 /** Boss sprites still tower over trash (~33% larger), but smaller than the
@@ -157,7 +157,7 @@ export function partyPos(
 ): ActorScreenPos {
   return toScreenPos(
     resolveSlot(partySlot(i), geoFor(backdropId), {
-      spriteHeight: PARTY_SIZE,
+      spriteHeight: PARTY_SPRITE_SIZE,
       canvasWidth: w,
       artFootFromTop: ART_FOOT_FROM_TOP,
     })

@@ -124,7 +124,7 @@ export const COMBAT_WINDOW_OVERLAP_PX = 150;
 /** Extra gap between last foot baseline and the window top. */
 export const FLOOR_BOTTOM_SAFE_MARGIN_PX = 8;
 /**
- * Near-row party draw size (must match `PARTY_SIZE` in combat-scene.ts).
+ * Near-row party draw size (must match `PARTY_SPRITE_SIZE` in combat-scene.ts).
  * Used by x-bounds checks and contact-shadow extent.
  */
 export const COMBAT_NEAR_SPRITE_SIZE = 300;
