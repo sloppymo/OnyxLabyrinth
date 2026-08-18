@@ -64,6 +64,22 @@ node scripts/playtests/map-overlay-verify.mjs
 
 Gameplay RNG is seedable: call `window.__onyxDebug.setGameplayRng(window.__onyxDebug.createSeededRng(seed))` before a playtest run to make individual RNG-influenced systems (combat resolution, encounter selection, stat rolls, chest traps, NPC theft) reproducible in isolation. Reset with `resetGameplayRng()` (or a page reload) to return to `Math.random`. Unit tests in `src/game/deterministic-replay.test.ts` and `src/game/rng-wiring.test.ts` prove same-seed determinism for each system's default-parameter path. Full end-to-end playthrough replay (same inputs → same complete game state) is not yet implemented — it requires transcript replay on top of the seeded RNG.
 
+### Embodied AI player (Mythos / Fable)
+
+A blind model can play the real game through Playwright (one key per decision) and receive only player-visible observations plus screenshots. Omniscient debug state stays on disk for a later Director pass. This does **not** replace the Playwright QA scripts above.
+
+```bash
+# Serve a current build with debug hooks:
+npx vite preview --host 127.0.0.1 --port 5173 --base /OnyxLabyrinth/
+export ONYX_URL="http://127.0.0.1:5173/OnyxLabyrinth/?debug=1"
+export ONYX_PLAYTEST_CHANNEL=chrome   # if bundled Playwright Chromium is missing
+
+npm run playtest:ai -- demo title-to-dungeon
+npm run playtest:ai:mcp               # stdio MCP for Cursor / Devin Desktop / Fable
+```
+
+Setup, tool list, Cursor vs Devin config, and Player/Director prompts: [docs/playtesting/AI-PLAYER-HARNESS.md](docs/playtesting/AI-PLAYER-HARNESS.md). Paste [docs/playtesting/prompts/mythos-player-kickoff.md](docs/playtesting/prompts/mythos-player-kickoff.md) into a **fresh** player context that has the `onyx-player` MCP and **does not** have this repository open.
+
 ### All-floor corridor visual audit
 
 Use the production bundle for a current gallery of every campaign floor. The
@@ -154,6 +170,7 @@ The live game is available at:
 - `src/content/floors/` — floor JSON content packs.
 - `src/styles.css` — all UI styling.
 - `scripts/playtests/` — Playwright playtest scripts driving the `?debug=1` surface.
+- `scripts/ai-player/` — Embodied LLM player harness (MCP + stdio). Docs in `docs/playtesting/`.
 - `docs/` — **design docs, specs, and playtest reports (markdown only).** Start at
   [docs/README.md](docs/README.md) for the current index, then
   [docs/AGENT-READING-LIST.md](docs/AGENT-READING-LIST.md) for product status. This directory

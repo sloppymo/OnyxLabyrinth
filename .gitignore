@@ -49,5 +49,14 @@ dev-party-creation.html
 # PixelLab API test/scratch output
 /scripts/pixellab-out/
 
+# AI player harness run artifacts
+/.tmp-ai-player/
+
 # Ephemeral venv for one-off music tooling (not part of the build)
 .venv-music/
+
+# Local Devin MCP (machine paths)
+.devin/mcp_config.local.json
+
+# Local Cursor MCP (absolute launcher path)
+.cursor/mcp.json

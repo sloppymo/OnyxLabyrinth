@@ -38,7 +38,10 @@
     "sprite-preview:serve": "python3 -m http.server 8080",
     "sprite-preview": "npm run sprite-preview:generate && echo 'Open sprite-preview.html in your browser (or run npm run sprite-preview:serve).'",
     "replay": "node scripts/replays/replay.mjs",
-    "replay:record": "node scripts/replays/record.mjs"
+    "replay:record": "node scripts/replays/record.mjs",
+    "playtest:ai": "tsx scripts/ai-player/cli.ts",
+    "playtest:ai:replay": "node scripts/replays/replay.mjs",
+    "playtest:ai:mcp": "tsx scripts/ai-player/mcp.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

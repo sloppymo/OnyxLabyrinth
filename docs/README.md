@@ -9,6 +9,7 @@ These are the first places to read before changing anything.
 - [`AGENTS.md`](../AGENTS.md) — Primary agent/LLM operating manual: repository invariants, file map, verification checklists, common pitfalls, and source-of-truth rules.
 - [`CLAUDE.md`](../CLAUDE.md) — Claude Code orientation; defers to `AGENTS.md` for `src/` rules.
 - [`docs/AGENT-READING-LIST.md`](AGENT-READING-LIST.md) — Which product docs, specs, and playtest reports are current versus stale.
+- [`docs/playtesting/AI-PLAYER-HARNESS.md`](playtesting/AI-PLAYER-HARNESS.md) — Embodied Mythos/Fable player: blind observations, MCP tools, Cursor vs Devin, Player/Director split.
 - [`README.md`](../README.md) — Human-facing install, run, build, and verification guide.
 
 ## Subsystem and workflow guides
@@ -33,7 +34,7 @@ The following directories contain session prompts, handoffs, plans, and dated pl
 - `docs/FOLLOWUP-*.md` — Session handoff/followup prompts.
 - `docs/superpowers/plans/` — Dated implementation plans and probes.
 - `docs/superpowers/specs/` — Design specs; some shipped, some partial. Check `docs/AGENT-READING-LIST.md` for status.
-- `docs/playtests/` — Playtest reports.
+- `docs/playtests/` — Dated Playwright / human playtest reports. Do not confuse with `docs/playtesting/` (embodied AI harness, listed above).
 - `docs/superpowers/playtests/` — Additional playtest artifacts.
 
 ## Verification commands

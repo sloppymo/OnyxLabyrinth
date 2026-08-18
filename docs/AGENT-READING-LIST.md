@@ -2,7 +2,7 @@
 
 Use this list before acting on playtest, balance, combat UX, or perk work. Prefer these over older one-off prompts when they conflict.
 
-**Last refreshed:** 2026-08-15 (friends-and-family candidate, Formation Chemistry, physical combat choreography, governed combat barks, and repository topology audit)
+**Last refreshed:** 2026-08-15 (friends-and-family candidate, Formation Chemistry, physical combat choreography, governed combat barks, and repository topology audit). **2026-08-17 addendum:** embodied AI player harness docs under `docs/playtesting/` (this branch). Other rows below are unchanged from the 2026-08-15 refresh.
 
 **Health at last refresh:** `npm run build` clean. Run `npm test` for the current test total —
 the previously-flagged `combat-turns.test.ts` order-dependent flake (ice-shards
@@ -12,6 +12,7 @@ leakage within that file, predates the boss-rename work).
 | Doc | Role | Status |
 |-----|------|--------|
 | [`AGENTS.md`](../AGENTS.md) | Hard engine rules, file map, pitfalls | **Authoritative** for code constraints |
+| [`playtesting/AI-PLAYER-HARNESS.md`](playtesting/AI-PLAYER-HARNESS.md) | Embodied LLM playtester (blind `playerView()`, Playwright keys, MCP + stdio, forensic Director split) | **Current** (2026-08-17, `feat/ai-player-harness`). Prompts: `playtesting/prompts/mythos-player.md`, `mythos-player-kickoff.md`, `mythos-director.md` |
 | [`superpowers/specs/2026-08-15-dungeon-lighting-suite-and-kept-gate.md`](superpowers/specs/2026-08-15-dungeon-lighting-suite-and-kept-gate.md) | Lighting pass/fail suite + Kept Gate box extrusion (WebGL-first) | **Current** for dungeon lighting verification |
 | [`playtests/2026-08-15-friends-family-readiness.md`](playtests/2026-08-15-friends-family-readiness.md) | Exact F&F1 feature matrix, reachability, production-path evidence, deployment gate, and known risks | **Current release-readiness authority** for the candidate branch |
 | [`FRIENDS-AND-FAMILY-CHECKLIST.md`](FRIENDS-AND-FAMILY-CHECKLIST.md) | Short pre-send checklist and tester feedback questions | **Current** for external playtest distribution |

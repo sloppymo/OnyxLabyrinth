@@ -92,6 +92,7 @@ const messageEl = document.querySelector<HTMLDivElement>("#message")!;
 const hudChromeEl = document.querySelector<HTMLDivElement>("#hud-chrome")!;
 const hudLocationEl = document.querySelector<HTMLSpanElement>("#hud-location")!;
 const hudDangerEl = document.querySelector<HTMLSpanElement>("#hud-danger")!;
+const hudControlsEl = document.querySelector<HTMLSpanElement>("#hud-controls")!;
 const contextPromptEl = document.querySelector<HTMLDivElement>("#context-prompt")!;
 const partyStripEl = document.querySelector<HTMLDivElement>("#party-strip")!;
 const ambientBarkEl = document.querySelector<HTMLDivElement>("#ambient-bark")!;
@@ -368,6 +369,67 @@ export function getMessageText(): { text: string; visible: boolean } {
   // payload; snapshot() is a description of the rendered state right now.
   const text = messageEl.textContent ?? "";
   return { text: text.trim(), visible: messageBandEl.classList.contains("has-message") };
+}
+
+/** Dungeon HUD chrome currently painted for the player. */
+export function getHudChrome(): {
+  location: string;
+  danger: string;
+  controls: string;
+  visible: boolean;
+} {
+  return {
+    location: hudLocationEl.textContent ?? "",
+    danger: hudDangerEl.textContent ?? "",
+    controls: hudControlsEl.textContent ?? "",
+    visible: !hudChromeEl.hidden,
+  };
+}
+
+export interface PartyStripRow {
+  name: string;
+  hpText: string;
+  row: "Front" | "Back";
+  visibleStatus: string[];
+}
+
+/** Party overlay as currently rendered (name, HP numerals, status notches). */
+export function getPartyStripPresentation(): PartyStripRow[] {
+  const chars = [...partyStripEl.querySelectorAll<HTMLElement>(".ps-char")];
+  return chars.map((el) => {
+    const name = el.querySelector(".ps-name")?.textContent?.trim() ?? "";
+    const hpText = el.querySelector(".ps-num")?.textContent?.trim() ?? "";
+    const visibleStatus = [...el.querySelectorAll(".ps-notch")]
+      .map((n) => n.getAttribute("title") ?? "")
+      .filter((s) => s.length > 0);
+    const row: "Front" | "Back" = /Front/i.test(el.getAttribute("title") ?? "")
+      ? "Front"
+      : "Back";
+    return { name, hpText, row, visibleStatus };
+  });
+}
+
+export function getContextualPromptText(): string | null {
+  if (contextPromptEl.hidden) return null;
+  const text = contextPromptEl.textContent?.trim() ?? "";
+  return text.length > 0 ? text : null;
+}
+
+export function getAmbientBarkPresentation(): { speaker: string; text: string } | null {
+  if (ambientBarkEl.hidden) return null;
+  const speaker = ambientBarkSpeakerEl.textContent?.trim() ?? "";
+  const text = ambientBarkTextEl.textContent?.trim() ?? "";
+  if (!speaker && !text) return null;
+  return { speaker, text };
+}
+
+export function isMapOverlayOpen(): boolean {
+  return !mapOverlayEl.hidden;
+}
+
+/** Game stage element for screenshot cropping (the actual playfield). */
+export function getGameStageElement(): HTMLElement {
+  return gameWrap;
 }
 
 /**

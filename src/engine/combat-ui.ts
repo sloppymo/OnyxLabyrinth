@@ -54,6 +54,8 @@ import {
 import {
   renderCombatWindows,
   playbackHintText,
+  paletteHintText,
+  ACTION_LABELS,
   type CombatWindowsView,
   type CombatWindowsHandlers,
   type MenuEntry,
@@ -62,6 +64,7 @@ import {
   type MagicSheetView,
 } from "./combat-select-action-view";
 import type { CombatDebugView } from "../debug/snapshot";
+import { buildCombatPlayerView, type CombatPlayerView } from "../debug/combat-player-view";
 import { renderTurnOrderStrip } from "./combat-turn-order-view";
 import { remainingTurnOrder } from "../game/combat-turn-order";
 import {
@@ -1520,6 +1523,120 @@ export class CombatController {
       recentLog: visibleCombatLogLines(this.state.log, this.state.events, 10),
       result: this.state.result ?? null,
     };
+  }
+
+  /**
+   * Player-visible combat chrome for the AI playtest harness.
+   * Constructed from the same labels/descriptors the windows render — never
+   * a stripped debugView().
+   */
+  playerView(): CombatPlayerView {
+    const acting = this.currentChar();
+    const inputKind = this.getLastInputKind();
+    const living = [...this.state.enemies.front, ...this.state.enemies.back].filter(
+      (e) => e.currentHp > 0
+    );
+    const groups = new Map<
+      string,
+      { count: number; statuses: string[]; currentHp: number; maxHp: number }
+    >();
+    for (const enemy of living) {
+      const group = groups.get(enemy.name) ?? {
+        count: 0,
+        statuses: [],
+        currentHp: enemy.currentHp,
+        maxHp: enemy.hp,
+      };
+      group.count += 1;
+      for (const st of enemy.status) {
+        if (!group.statuses.includes(st)) group.statuses.push(st);
+      }
+      groups.set(enemy.name, group);
+    }
+
+    const targetingEnemy = this.phase === "selectTarget" && this.targetKind === "enemy";
+    const selectedName = targetingEnemy
+      ? this.selectionEntries[this.selectionIndex]?.label
+      : undefined;
+
+    const enemyGroups = [...groups.entries()].map(([displayName, group]) => ({
+      displayName,
+      count: group.count,
+      statuses: group.statuses,
+      currentHp: group.currentHp,
+      maxHp: group.maxHp,
+      showHealthDescriptor: targetingEnemy && displayName === selectedName,
+    }));
+
+    const party = this.state.party.map((c) => ({
+      name: c.name,
+      hp: c.hp,
+      maxHp: c.maxHp,
+      sp: c.sp,
+      maxSp: c.maxSp,
+      rage: this.state.rage[c.id] ?? 0,
+      maxRage: maxRageForLevel(c.level),
+      hasTechniques: classHasTechniques(c.class),
+      status: [...c.status, ...(this.state.regenBuffs[c.id] ? ["regen"] : [])],
+      acting: acting?.id === c.id,
+      row: charRow(c) === "front" ? ("Front" as const) : ("Back" as const),
+    }));
+
+    let menuTitle = this.selectionTitle || acting?.name;
+    let menuEntries = this.selectionEntries.map((entry) => ({
+      label: entry.label,
+      ...(entry.detail ? { detail: entry.detail } : {}),
+      ...(entry.disabled ? { disabled: true } : {}),
+    }));
+    let selectedIndex = this.selectionIndex;
+    let footer: string | undefined = this.selectionEntries[this.selectionIndex]?.detail;
+
+    if (this.phase === "palette" && this.palette) {
+      const glyphs = ["A", "B", "X", "Y"];
+      menuTitle = acting ? `▼ ${acting.name}` : "Command";
+      menuEntries = this.palette.slots.map((slot, i) => {
+        let label = ACTION_LABELS[slot.kind === "cast" ? "cast" : slot.kind === "skill" ? "technique" : slot.kind] ?? slot.kind;
+        if (slot.kind === "skill" && acting?.class === "Thief") {
+          label = acting.status.includes("hidden") ? "Ambush" : "Hide";
+        }
+        if (slot.kind === "attack") label = "Atk";
+        if (slot.kind === "defend") label = "Def";
+        if (slot.kind === "skill" && acting?.class !== "Thief") label = "Tech";
+        return {
+          label: `${glyphs[i] ?? "?"} ${label}`,
+          ...("disabled" in slot && slot.disabled ? { disabled: true } : {}),
+        };
+      });
+      selectedIndex = 0;
+      footer = paletteHintText(this.palette, this.partyAuto, inputKind);
+    } else if (this.phase === "playback") {
+      footer = playbackHintText(inputKind);
+    } else if (this.phase === "result" && this.result) {
+      menuTitle = this.result.title;
+      menuEntries = this.result.lines.map((line) => ({ label: line }));
+      selectedIndex = 0;
+    }
+
+    return buildCombatPlayerView({
+      actingName: acting?.name ?? null,
+      party,
+      enemyGroups,
+      menu:
+        menuEntries.length > 0 || menuTitle || footer
+          ? {
+              ...(menuTitle ? { title: menuTitle } : {}),
+              entries: menuEntries,
+              selectedIndex,
+              ...(footer ? { footer } : {}),
+            }
+          : undefined,
+      combatLog: visibleCombatLogLines(this.state.log, this.state.events, 8),
+      result: this.phase === "result" && this.result
+        ? { title: this.result.title, lines: [...this.result.lines] }
+        : undefined,
+      playbackHint: this.phase === "playback" ? playbackHintText(inputKind) : undefined,
+      flash: this.flash ?? undefined,
+    });
   }
 
   /**
