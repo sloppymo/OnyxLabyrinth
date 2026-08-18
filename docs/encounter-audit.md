@@ -189,13 +189,63 @@ The result drives the next phase cleanly:
 
 This decision is not prejudged. The audit's job was to show the problem is real and measurable. It is. The cure is not assumed.
 
-## Longer-term roadmap (not Phase 1b, captured here for context)
+## The choreography finding (discovered during Phase 1b.1)
 
-- **Floor 3 chemistry activation:** `lesser-construct` and `demon-spawn` already carry tags. Giving `rune-knight`/`demon-mage` Floor-3 equivalents of `rune-overload`/`spawn-bomb` is the cheapest chemistry expansion (the `consumeAlly` primitive is generic).
-- **`f3-werewolf-pack` pack behavior:** extend `packStrike` — mark prey, enrage on kill, `howl` behavior shift. A homogeneous pack should earn the word *pack*.
-- **Floor 4 Null Choir synchronization:** the floor that most deserves enemy-side combinatorics. Cantor/Chorister/Magus/Acolyte/Warden interaction is a Phase 2 chemistry design surface.
-- **Floor 5 native-cast rebalance:** reduce generic-demon padding, increase cistern-native combinations. Composition work, not vignette work.
-- **Family vignettes:** `VIGNETTES_BY_FAMILY` exists but is empty. `armored-line` (F2 archer wall variants) is the first test case. Avoids content explosion where variations on "frontline screen + ranged threat" each get bespoke strings that all say "kill the guy in back."
+The audit originally measured two gaps: mechanical depth (T0–T3) and identity (vignettes). A third gap was discovered while inspecting the combat choreography engine (`src/engine/combat-choreography.ts`): **visual choreography**.
+
+Floor 1 doesn't just behave more interestingly — it *looks* like its enemies are aware of each other. The choreography engine routes a `presentation` field on each `CombatEvent` to bespoke multi-actor animation sequences with dedicated timing, movement tweens, VFX sprites, and screen shake. The existing vocabulary:
+
+| Presentation | What the player sees | Used by |
+|-------------|----------------------|---------|
+| `throwAlly` | Resource pulled to caster → projectile arc to target → body removed on impact | Ogre Toss, Slime Cannon |
+| `consumeAlly` | Resource grabbed in place → burst VFX on resource → caster flash | Bone Harvest |
+| `detonateAlly` | Command pulse from mage → large fire explosion + screen shake on spawn | Spawn Bomb |
+| `guardAlly` | Shield burst on guarded ally → guard marker persists | Living Shield |
+| `packStrike` | Partner moves into strike position → shared slash burst → both recoil | Hunting Pack |
+| `overload` | Tether/charge between knight and construct → lightning discharge + shake | Rune Overload |
+| `meleeGangUp` | Attacker mounts ally → leaps past front line → strikes → leaps back (1.4s) | Orc Pack Leap |
+
+**Floors 2–5 use none of this.** Every F2–F5 fight uses generic cast/melee animations. The enemies look like independent actors standing beside one another. This is the third leg of the "pile of dudes" problem: mechanical depth drops, enemy identity drops, *and* visual choreography drops — all at the Floor 1→2 boundary.
+
+**This makes chemistry propagation vastly higher leverage than the audit originally estimated.** The expensive visual vocabulary already exists. New chemistry does not mean new rendering architecture — it means authoring new combat events and mapping them onto existing choreography vocabulary (with bespoke presentation only when a new relationship genuinely deserves it). The `presentation` field is the extension point; the choreography engine, both render backends, and the VFX sprite library are already built.
+
+### Revised north star
+
+> **Enemy formations should behave like small machines.** Each actor has a role. Remove one part and the machine changes. And when the machine does something, the animation should show the relationship — not merely show four individual attacks.
+
+Design rule going forward:
+
+> **If two enemies are supposed to be cooperating, the player should be able to see them cooperate.** Not just a stat buff, a combat log line, or an HP change. One actor moves, gestures, feeds, protects, mounts, sacrifices, channels, throws, or otherwise affects the other.
+
+### What this means for Phase 1b.2
+
+The expected playtest result is now sharper: the vignettes will help the player *understand* the F2 formations, but the formations will still feel visually and tactically flatter than Floor 1 — because the enemies don't visibly interact. That's the experiment working as designed.
+
+After that result, Phase 1b.2 is **chemistry propagation, not more dialogue**. The target: make 3 Floor 2 formations achieve the same complete stack as good Floor 1 formations:
+
+> authored composition → readable pre-fight clue (vignette) → actual enemy interaction (chemistry) → multi-actor choreography (existing or new presentation) → tactical consequence
+
+Not ten formations. Three. The three F2 chemistry targets:
+
+1. **`f2-lab-keepers`** — assistant actively stabilizes/augments the failed experiment. The player sees the assistant physically interact with it (move to experiment → treatment VFX → experiment visibly changes). Uses a new `treatAlly` or reused `consumeAlly`-style presentation. The vignette already names the relationship; the combat now proves it.
+
+2. **`f2-armored-archer`** (armored-line family) — front line visibly protects or enables the archers. A guard/intercept relationship (reuses `guardAlly` presentation). The player decides whether to break protection, bypass it, or endure ranged pressure.
+
+3. **`f2-displacer-lab`** — the contrast case: a strongly authored *individual enemy behavior* encounter, not ally chemistry. The Displacer Beast's vanish/blink changes targeting while the eyeball creates a competing priority. Tests whether the choreography vocabulary extends to solo-enemy identity, not just cooperation.
+
+Those three tell whether the Floor 1 formula scales. If yes, the roadmap below propagates it floor by floor.
+
+## Longer-term roadmap (revised after choreography finding)
+
+The campaign's tactical escalation curve, now that the choreography vocabulary is understood as reusable:
+
+- **Floor 1** teaches chemistry (grab, throw, detonate, guard, pack, overload — all with bespoke animation).
+- **Floor 2** introduces mixed priority + the first non-F1 chemistry (lab-keepers treatment, armored-line guard, displacer solo behavior).
+- **Floor 3** introduces chained/industrial interactions. `lesser-construct` and `demon-spawn` already carry chemistry tags but lack the matching casters — giving `rune-knight` a `rune-overload`-equivalent and `demon-mage` a `spawn-bomb`-equivalent reuses the existing `overload`/`detonateAlly` choreography directly. The `f3-werewolf-pack` extends `packStrike` (mark prey, enrage on kill, `howl` behavior shift) — a homogeneous pack should earn the word *pack*.
+- **Floor 4** becomes coordinated enemy "composition." The Null Choir is the floor that most deserves enemy-side combinatorics: Cantor begins a phrase → Choristers strengthen it; kill the Cantor → Choir loses coordination; Acolyte applies a condition → Magus cashes it out; Wardens protect whichever singer is "leading." New `choirPhrase`/`crescendo` presentations may be needed, but the choreography extension point is the same `presentation` field.
+- **Floor 5** weaponizes all of it under attrition pressure, leaning on its native cast (Drowned Sentinel, Cistern Wraith, Weeping Revenant, Flood Brute, Undertow Caller) rather than generic-demon padding. Composition work + chemistry, not vignettes.
+
+Family vignettes remain useful for identity coverage (`VIGNETTES_BY_FAMILY["armored-line"]` is now populated), but the depth work is chemistry + choreography, not more dialogue.
 
 ## Notes for Phase 1b.1 execution
 
