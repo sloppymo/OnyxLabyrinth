@@ -235,15 +235,56 @@ Not ten formations. Three. The three F2 chemistry targets:
 
 Those three tell whether the Floor 1 formula scales. If yes, the roadmap below propagates it floor by floor.
 
-## Longer-term roadmap (revised after choreography finding)
+### Phase 1b.2 — implemented (commit `aeb6e67`)
 
-The campaign's tactical escalation curve, now that the choreography vocabulary is understood as reusable:
+The three experimental conditions shipped with a deliberate scope correction: **author content on the existing language, don't enlarge it.**
 
-- **Floor 1** teaches chemistry (grab, throw, detonate, guard, pack, overload — all with bespoke animation).
-- **Floor 2** introduces mixed priority + the first non-F1 chemistry (lab-keepers treatment, armored-line guard, displacer solo behavior).
-- **Floor 3** introduces chained/industrial interactions. `lesser-construct` and `demon-spawn` already carry chemistry tags but lack the matching casters — giving `rune-knight` a `rune-overload`-equivalent and `demon-mage` a `spawn-bomb`-equivalent reuses the existing `overload`/`detonateAlly` choreography directly. The `f3-werewolf-pack` extends `packStrike` (mark prey, enrage on kill, `howl` behavior shift) — a homogeneous pack should earn the word *pack*.
-- **Floor 4** becomes coordinated enemy "composition." The Null Choir is the floor that most deserves enemy-side combinatorics: Cantor begins a phrase → Choristers strengthen it; kill the Cantor → Choir loses coordination; Acolyte applies a condition → Magus cashes it out; Wardens protect whichever singer is "leading." New `choirPhrase`/`crescendo` presentations may be needed, but the choreography extension point is the same `presentation` field.
-- **Floor 5** weaponizes all of it under attrition pressure, leaning on its native cast (Drowned Sentinel, Cistern Wraith, Weeping Revenant, Flood Brute, Undertow Caller) rather than generic-demon padding. Composition work + chemistry, not vignettes.
+**A. Chemistry gate decoupled.** `chemistryEnabled: tableId === 1` → `chemistryEnabled: true` for all random roaming encounters. The `chemistryId` on individual abilities is the real gate. NPC/Arena/scripted/debug combats still default to `false`. No table-number list to maintain.
+
+**B. `f2-armored-archer` — full chemistry via guard reuse.** New `ARCHER_GUARD` ability (`effect: guard`, `presentation: guardAlly`, `guardTargetIds: ["skeleton-archer"]`). Reuses the complete guard pipeline — AI targeting, resolution, choreography, VFX. Zero new choreography. The `guardTargetIds` check makes it inert in formations without a skeleton-archer.
+
+**C. `f2-lab-keepers` — minimal preferential heal (no new primitive).** Added optional `preferTargetIds` to the `healer` `EnemySpecial`. The healer AI sorts wounded allies with preferred IDs first, then by `currentHp`. Lab Assistant gets `preferTargetIds: ["failed-experiment"]`. No new effect kind, no new presentation, no new choreography. Tests whether a minimal behavioral relationship reads without new engine machinery.
+
+**D. `f2-displacer-lab` — control case, no changes.** Vignette + existing `vanish`/`blink-strike`. Tests whether strong individual enemy identity + vignette is enough without any chemistry.
+
+### The composability finding (discovered during 1b.2 implementation)
+
+Both changes are attached at the **enemy-definition level**, not the formation level. `ARCHER_GUARD` is on `armored-skeleton`, so any formation containing both an armored skeleton and a skeleton archer can express the protection relationship — not just `f2-armored-archer`, but also `f2-armored-orc-archer` and `f2-red-armored-archer`. Likewise, `lab-assistant.preferTargetIds` affects every formation containing both a lab assistant and a failed experiment — `f2-lab-keepers`, `f2-mixed-lab`, `f2-lab-duo`.
+
+This is **better design** than one-off formation scripts. The system is now defining **composable enemy relationships**:
+
+> Armored Skeleton + Archer = protection behavior.
+> Lab Assistant + Failed Experiment = caretaker behavior.
+
+A formation becomes interesting because its parts interact according to reusable rules, not because it has a bespoke scripted mechanic. The player can learn these rules through play and arrive at later formations with expectations — "that armor is probably going to cover the archer" — which is **enemy literacy**. This is a far stronger content model than authoring 30 special encounter mechanics.
+
+The most scalable design principle discovered: **two individually understandable T2 relationships can combine into a T3 formation without inventing another mechanic.** If a later formation has both an armored-skeleton/archer guard pair AND a lab-assistant/experiment caretaker pair, the player faces a real dilemma — armor? archer? assistant? experiment? — built entirely from composable species-level rules.
+
+This changes the future chemistry pass from "author 30 special encounter mechanics" to "give enemy species a small vocabulary of composable relationships, then build formations by combining them."
+
+### Playtest protocol (Floor 2)
+
+Run Floor 2. For each of the three encounters, answer:
+
+1. **What did I notice first?**
+2. **What did I want to kill first?**
+3. **Did anything make me change that plan?** (This is the killer — T3 isn't just listing three strategies, it's when battle state makes you reconsider the strategy you came in with.)
+4. **Can I describe what these enemies were doing together afterward?**
+5. **Did I learn a reusable rule about these enemies?** (After seeing armored-skeleton + archer once, do you automatically expect the armor to cover the archer next time? If yes, that's enemy literacy — the composable-relationships model is working.)
+
+**T2 is already good combat content.** Not every random encounter needs to be a chess puzzle. A healthy deck contains: straightforward learned relationships (T2) + occasionally conflicting relationships (T3 dilemmas). The target is not "every fight is T3" — it's "enough fights are T3 that the player doesn't settle into autopilot."
+
+## Longer-term roadmap (revised after choreography + composability findings)
+
+The campaign's tactical escalation curve, now that both the choreography vocabulary and the composable-relationships model are understood:
+
+- **Floor 1** teaches chemistry (grab, throw, detonate, guard, pack, overload — all with bespoke animation). Species-level relationships: crypt-minotaur + slime, crypt-warlock + skeleton, crypt-demon-mage + demon-spawn, etc.
+- **Floor 2** introduces mixed priority + the first non-F1 composable relationships (armored-skeleton → archer guard, lab-assistant → failed-experiment caretaker). The playtest determines whether these read and whether the composability model scales.
+- **Floor 3** introduces chained/industrial interactions. `lesser-construct` and `demon-spawn` already carry chemistry tags but lack the matching casters — giving `rune-knight` a `rune-overload`-equivalent and `demon-mage` a `spawn-bomb`-equivalent reuses the existing `overload`/`detonateAlly` choreography directly. The `f3-werewolf-pack` extends `packStrike` (mark prey, enrage on kill, `howl` behavior shift) — a homogeneous pack should earn the word *pack*. New species relationships: rune-knight + lesser-construct, demon-mage + demon-spawn, hellhound + werewolf.
+- **Floor 4** becomes coordinated enemy "composition." The Null Choir is the floor that most deserves enemy-side combinatorics: Cantor begins a phrase → Choristers strengthen it; kill the Cantor → Choir loses coordination; Acolyte applies a condition → Magus cashes it out; Wardens protect whichever singer is "leading." New `choirPhrase`/`crescendo` presentations may be needed, but the choreography extension point is the same `presentation` field. Species relationships: choir-warden → cantor/magus guard, cantor → chorister buff, acolyte → magus condition setup.
+- **Floor 5** weaponizes all of it under attrition pressure, leaning on its native cast (Drowned Sentinel, Cistern Wraith, Weeping Revenant, Flood Brute, Undertow Caller) rather than generic-demon padding. Species relationships: undertow-caller → cistern-wraith condition setup, flood-brute → drowned-sentinel guard. Composition work + chemistry, not vignettes.
+
+The future chemistry pass is now understood as: **give enemy species a small vocabulary of composable relationships, then build formations by combining them.** Not 30 bespoke formation scripts. The formations become interesting because their parts interact according to reusable rules the player has learned.
 
 Family vignettes remain useful for identity coverage (`VIGNETTES_BY_FAMILY["armored-line"]` is now populated), but the depth work is chemistry + choreography, not more dialogue.
 
