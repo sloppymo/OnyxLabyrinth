@@ -1822,7 +1822,7 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
     },
     {
       id: "f2-orc-squad",
-      family: "orc-squad",
+      family: "armored-line",
       weight: 4,
       spawns: [
         { enemyId: "orc", row: "front" },
