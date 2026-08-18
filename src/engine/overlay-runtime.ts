@@ -272,7 +272,8 @@ export class OverlayRuntime {
     lines: string[];
     choices?: { label: string; value: string }[];
     title?: string;
-    onSelect?: (value: string) => void;
+    choiceTimerMs?: number;
+    onSelect?: (value: string, meta?: { elapsedMs: number }) => void;
     onClose?: () => void;
     cancelable?: boolean;
   }): void {
@@ -282,6 +283,7 @@ export class OverlayRuntime {
       lines: opts.lines,
       choices: opts.choices,
       title: opts.title,
+      choiceTimerMs: opts.choiceTimerMs,
       onSelect: opts.onSelect,
       onClose: () => {
         this.dialog = null;

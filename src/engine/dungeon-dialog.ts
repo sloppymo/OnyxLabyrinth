@@ -39,8 +39,14 @@ export interface DungeonDialogOptions {
   choices?: DialogChoice[];
   /** Title shown above the dialog (e.g. NPC name, "Warning"). */
   title?: string;
+  /**
+   * Optional countdown for the choice phase (encounter-vignette timed outs).
+   * Starts when the choice menu first renders; on expiry the dialog closes
+   * with value `"timeout"`. `meta.elapsedMs` reports time spent choosing.
+   */
+  choiceTimerMs?: number;
   /** Callback when a choice is selected or the text dialog is dismissed. */
-  onSelect?: (value: string) => void;
+  onSelect?: (value: string, meta?: { elapsedMs: number }) => void;
   /** Callback when the dialog is closed (after onSelect, if any). */
   onClose?: () => void;
   /** If true, Esc closes the dialog with value "cancel". Default true. */
@@ -59,9 +65,12 @@ export class DungeonDialogController {
   private lines: string[];
   private choices: DialogChoice[] | undefined;
   private title: string | undefined;
-  private onSelect: ((value: string) => void) | undefined;
+  private onSelect: ((value: string, meta?: { elapsedMs: number }) => void) | undefined;
   private onClose: (() => void) | undefined;
   private cancelable: boolean;
+  private choiceTimerMs: number | undefined;
+  private choiceStartedAt: number | null = null;
+  private timerHandle: ReturnType<typeof setInterval> | null = null;
   private page = 0;
   private index = 0;
   private active = false;
@@ -71,6 +80,7 @@ export class DungeonDialogController {
     this.lines = opts.lines;
     this.choices = opts.choices;
     this.title = opts.title;
+    this.choiceTimerMs = opts.choiceTimerMs;
     this.onSelect = opts.onSelect;
     this.onClose = opts.onClose;
     this.cancelable = opts.cancelable ?? true;
@@ -97,13 +107,21 @@ export class DungeonDialogController {
     const contentHtml = `<div class="dungeon-dialog-text">${escapeHtml(text)}</div>`;
 
     if (this.inChoicePhase() && this.choices) {
+      this.ensureChoiceTimer();
+      let footer = this.cancelable
+        ? "[↑/↓] select · [Enter] confirm · [Esc] cancel"
+        : "[↑/↓] select · [Enter] confirm";
+      if (this.choiceTimerMs != null && this.choiceStartedAt != null) {
+        const remaining = Math.max(0, this.choiceTimerMs - this.choiceElapsedMs());
+        footer = `${Math.ceil(remaining / 1000)}s · ${footer}`;
+      }
       const win = new FF6Window({
         title: this.title,
         contentHtml,
         items: this.choices.map((c) => ({ label: c.label })),
         selectedIndex: this.index,
         mode: "menu",
-        footer: this.cancelable ? "[↑/↓] select · [Enter] confirm · [Esc] cancel" : "[↑/↓] select · [Enter] confirm",
+        footer,
         onHover: (i) => {
           this.index = i;
         },
@@ -111,7 +129,7 @@ export class DungeonDialogController {
           this.index = i;
           const choice = this.choices?.[i];
           if (choice) {
-            this.onSelect?.(choice.value);
+            this.onSelect?.(choice.value, { elapsedMs: this.choiceElapsedMs() });
             this.close();
           }
         },
@@ -129,6 +147,27 @@ export class DungeonDialogController {
         mode: "description",
       })
     );
+  }
+
+  /** Ms spent in the choice phase so far (0 before the menu first renders). */
+  private choiceElapsedMs(): number {
+    return this.choiceStartedAt == null ? 0 : Date.now() - this.choiceStartedAt;
+  }
+
+  /** Start the choice-phase countdown (once) when a timer is configured. */
+  private ensureChoiceTimer(): void {
+    if (this.choiceTimerMs == null || this.choiceStartedAt != null) return;
+    this.choiceStartedAt = Date.now();
+    this.timerHandle = setInterval(() => {
+      if (!this.active) return;
+      if (this.choiceElapsedMs() >= (this.choiceTimerMs ?? 0)) {
+        this.onSelect?.("timeout", { elapsedMs: this.choiceElapsedMs() });
+        this.close();
+        return;
+      }
+      // Repaint so the footer countdown ticks down.
+      this.render();
+    }, 250);
   }
 
   /** True if the dialog is currently active. */
@@ -172,13 +211,13 @@ export class DungeonDialogController {
       if (key === "Enter" || key === " ") {
         const choice = this.choices[this.index];
         if (choice) {
-          this.onSelect?.(choice.value);
+          this.onSelect?.(choice.value, { elapsedMs: this.choiceElapsedMs() });
           this.close();
         }
         return true;
       }
       if (lower === "escape" && this.cancelable) {
-        this.onSelect?.("cancel");
+        this.onSelect?.("cancel", { elapsedMs: this.choiceElapsedMs() });
         this.close();
         return true;
       }
@@ -210,6 +249,10 @@ export class DungeonDialogController {
   close(): void {
     if (!this.active) return;
     this.active = false;
+    if (this.timerHandle != null) {
+      clearInterval(this.timerHandle);
+      this.timerHandle = null;
+    }
     this.panel.innerHTML = "";
     this.onClose?.();
   }
