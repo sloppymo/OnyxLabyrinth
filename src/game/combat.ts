@@ -174,8 +174,8 @@ export function createCombatState(
 
   // Presence is a formation-level metric: count each authored chemistry
   // contract once when an enabled random encounter enters combat. Scripted,
-  // Arena, and NPC combats leave chemistryEnabled false and therefore emit no
-  // chemistry lifecycle metrics.
+  // Arena, and NPC combats leave chemistryEnabled false (they don't pass
+  // encounterMetadata) and therefore emit no chemistry lifecycle metrics.
   if (state.chemistryEnabled) {
     const present = new Set<string>();
     for (const enemy of [...state.enemies.front, ...state.enemies.back]) {

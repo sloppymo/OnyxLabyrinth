@@ -70,6 +70,11 @@ import {
   compassForFacing,
   setContextualPrompt,
   getMessageText,
+  getHudChrome,
+  getPartyStripPresentation,
+  getContextualPromptText,
+  getAmbientBarkPresentation,
+  isMapOverlayOpen,
   setDebugMessageHook,
   getMazeRendererSurface,
   setMazeRendererSurface,
@@ -91,6 +96,8 @@ import {
 } from "./engine/battle-transition";
 import { resolveContextualPrompt } from "./engine/contextual-prompt";
 import { buildSnapshot } from "./debug/snapshot";
+import { gatherPlayerPresentation } from "./debug/gather-player-presentation";
+import { playerMenuFromElement, contentTextFromElement } from "./debug/visible-menu";
 import { computeIdle } from "./debug/idle";
 import { normalizeLoadedMode } from "./debug/load-normalize";
 import { applyJumpPartyOptions, type JumpToOptions } from "./debug/jump-to";
@@ -123,6 +130,7 @@ import { rollEncounter, resolveEncounter } from "./data/enemies";
 import {
   encounterRollChance,
   encounterRateAt,
+  encounterCooldownFor,
   encounterTableFloorId,
   zoneHeatAt,
   pityPressureFor,
@@ -137,6 +145,13 @@ import {
   isSafeZoneAt,
   stepPity,
 } from "./game/encounters";
+import {
+  createVignetteMemory,
+  resetVignetteMemory,
+  selectVignette,
+  markVignetteShown,
+  resolveTimedOut,
+} from "./game/encounter-vignettes";
 import { tickBuffs, clearBuffs } from "./game/persistent-spells";
 import { applyNamandaBlessing } from "./game/namanda";
 import { markKilled, adjustDisposition } from "./game/npc";
@@ -340,9 +355,12 @@ const { state, uiStack, overlays, screens, input: globalInput } = app;
 // Random dungeon encounter anti-repeat is deliberately session-only. It is
 // not part of GameState and therefore cannot leak through saves or Arena.
 const encounterFamilyMemory = createEncounterFamilyMemory(state.floor.id);
+// First-time/repeat vignette bookkeeping follows the same session-only rule.
+const vignetteMemory = createVignetteMemory();
 
 function resetEncounterFamilyMemory(): void {
   resetEncounterFamilyMemoryState(encounterFamilyMemory, state.floor.id);
+  resetVignetteMemory(vignetteMemory);
 }
 
 function syncEncounterFamilyMemoryToFloor(): void {
@@ -768,28 +786,102 @@ function maybeTriggerEncounter(): boolean {
   const resolved = resolveEncounter(entry);
   if (resolved.length === 0) return false;
 
-  const loadout = buildLoadoutMap();
-  const combat = createCombatFromEncounter(
-    state.party,
-    resolved,
-    SPELLS_BY_ID,
-    ITEMS_BY_ID,
-    loadout,
-    state.inventory,
-    state.inAntimagic,
-    {
-      id: entry.id,
-      family: entry.family,
-      displayName: entry.displayName,
-      chemistryEnabled: tableId === 1,
-    }
-  );
-  state.combat = combat;
-  setMode(state, "combat");
-  state.stepsSinceEncounter = 0;
-  rememberEncounterFamily(encounterFamilyMemory, entry.family, state.floor.id);
+  const beginFight = (): void => {
+    const loadout = buildLoadoutMap();
+    const combat = createCombatFromEncounter(
+      state.party,
+      resolved,
+      SPELLS_BY_ID,
+      ITEMS_BY_ID,
+      loadout,
+      state.inventory,
+      state.inAntimagic,
+      {
+        id: entry.id,
+        family: entry.family,
+        displayName: entry.displayName,
+        chemistryEnabled: true,
+      }
+    );
+    state.combat = combat;
+    setMode(state, "combat");
+    state.stepsSinceEncounter = 0;
+    rememberEncounterFamily(encounterFamilyMemory, entry.family, state.floor.id);
 
-  startCombat(combat, { source: "random", tableId });
+    startCombat(combat, { source: "random", tableId });
+  };
+
+  // Party-banter vignette before the encounter swirl. Selection/resolution
+  // is pure (game/encounter-vignettes.ts): authored formations always show
+  // their first-meeting scene (and their timed out, when they have one),
+  // while repeats and generic-pool encounters roll against show-frequency
+  // dials and often go straight to combat — the popup must stay surprising,
+  // not become a tollbooth. A timed out can avoid the fight, or out-reward
+  // it on a perfect answer. Combat state is only created when the fight
+  // actually starts; until then the dungeon stays painted under the dialog.
+  const vignette = selectVignette(entry, state.party, vignetteMemory, getGameplayRng());
+  if (!vignette) {
+    beginFight();
+    return true;
+  }
+  markVignetteShown(vignetteMemory, entry);
+  const out = vignette.out;
+  let outcome: ReturnType<typeof resolveTimedOut> | null = null;
+  closeMapOverlay();
+  overlays.openDialog({
+    title: entry.displayName,
+    lines: vignette.pages,
+    choices: out
+      ? out.options.map((o, i) => ({ label: o.label, value: String(i) }))
+      : undefined,
+    choiceTimerMs: out?.timerMs,
+    cancelable: false,
+    onSelect: (value, meta) => {
+      if (out) {
+        outcome = resolveTimedOut(
+          out,
+          value,
+          meta?.elapsedMs ?? Number.MAX_SAFE_INTEGER,
+          state.party,
+          getGameplayRng()
+        );
+      }
+    },
+    // Follow-up dialogs are opened from onClose (never from onSelect):
+    // OverlayRuntime nulls its dialog reference during close, so a dialog
+    // opened mid-onSelect would be torn down by the old dialog's cleanup —
+    // same deferred-action pattern as the action ring's pendingRingAction.
+    onClose: () => {
+      if (!out) {
+        beginFight();
+        return;
+      }
+      const o =
+        outcome ?? resolveTimedOut(out, "timeout", 0, state.party, getGameplayRng());
+      overlays.openDialog({
+        lines: o.pages,
+        cancelable: false,
+        onClose: () => {
+          if (o.fight) {
+            beginFight();
+            return;
+          }
+          // Avoided: grant the payoff and keep anti-repeat memory honest.
+          // The encounter clock hands back only the cooldown — no fresh
+          // pity grace — so talking your way out never makes the dungeon
+          // safer than fighting through it.
+          if (o.gold > 0) state.partyGold += o.gold;
+          rememberEncounterFamily(encounterFamilyMemory, entry.family, state.floor.id);
+          state.stepsSinceEncounter = encounterCooldownFor(state.floor);
+          setMessage(
+            o.gold > 0
+              ? `No blood spilled. The party pockets ${o.gold} gold.`
+              : "No blood spilled."
+          );
+        },
+      });
+    },
+  });
   return true;
 }
 
@@ -2311,6 +2403,31 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     });
   };
 
+  const debugPlayerView = () => {
+    const route = sampleRoute("playerView");
+    const panel = document.querySelector("#combat-panel");
+    const menu = playerMenuFromElement(panel);
+    const bodyFromContent = contentTextFromElement(panel);
+    const tagline = document.querySelector(".title-tagline")?.textContent?.trim();
+    const prologue = document.querySelector(".prologue-root")?.textContent?.replace(/\s+/g, " ").trim();
+    const bodyText =
+      bodyFromContent ||
+      tagline ||
+      (prologue && prologue.length > 0 ? prologue.slice(0, 800) : undefined);
+    return gatherPlayerPresentation({
+      route,
+      message: getMessageText(),
+      hud: getHudChrome(),
+      partyStrip: getPartyStripPresentation(),
+      prompt: getContextualPromptText(),
+      bark: getAmbientBarkPresentation(),
+      mapOpen: isMapOverlayOpen(),
+      menu,
+      bodyText: bodyText ?? null,
+      combat: combatController ? combatController.playerView() : null,
+    });
+  };
+
   /**
    * Teleport via the real transitionToFloor path (applies killed NPCs, loot,
    * unlocked doors, deepestFloorReached, explored-by-floor). Refuses while
@@ -2395,6 +2512,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
   (window as any).__onyxDebug = {
     state,
     snapshot: debugSnapshot,
+    playerView: debugPlayerView,
     isIdle,
     readiness,
     /** Live NPC controller, null when no dialogue panel is open. */

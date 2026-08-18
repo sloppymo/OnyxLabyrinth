@@ -63,7 +63,7 @@ export function buildDebugCombat(
       id: entry.id,
       family: entry.family,
       displayName: entry.displayName,
-      chemistryEnabled: tableId === 1,
+      chemistryEnabled: true,
     }
   );
   state.combat = combat;

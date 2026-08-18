@@ -26,7 +26,7 @@ export type ChemistryResourceGroup =
 export type EnemySpecial =
   | { kind: "flying" }
   | { kind: "resistPhysical"; percent: number }
-  | { kind: "healer"; spellName: string }
+  | { kind: "healer"; spellName: string; preferTargetIds?: string[] }
   | { kind: "caster"; element: DamageElement }
   | { kind: "undead" }
   | { kind: "demon" }
@@ -516,7 +516,7 @@ export const ARMORED_SKELETON: EnemyDef = {
   xp: 16,
   gold: 13,
   special: [{ kind: "undead" }],
-  abilityIds: ["shield-bash", "iron-fist"],
+  abilityIds: ["shield-bash", "iron-fist", "archer-guard"],
   isBoss: false,
 };
 
@@ -611,7 +611,7 @@ export const LAB_ASSISTANT: EnemyDef = {
   agi: 8,
   xp: 26,
   gold: 22,
-  special: [{ kind: "healer", spellName: "Cure Wounds" }],
+  special: [{ kind: "healer", spellName: "Cure Wounds", preferTargetIds: ["failed-experiment"] }],
   abilityIds: ["mass-heal-ability", "ward"],
   isBoss: false,
 };

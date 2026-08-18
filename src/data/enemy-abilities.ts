@@ -285,6 +285,27 @@ const CRYPT_LIVING_SHIELD: EnemyAbilityDef = {
   element: "physical",
 };
 
+// Floor 2: Armored Skeleton guards Skeleton Archers behind the line.
+// Reuses the complete guard pipeline (effect, AI targeting, guardAlly
+// presentation, CHEMISTRY_STYLES) — no new choreography. The guardTargetIds
+// check ensures this is inert in any formation without a skeleton-archer.
+const ARCHER_GUARD: EnemyAbilityDef = {
+  id: "archer-guard",
+  name: "Shield Wall",
+  description: "Plants itself between the party and the archers behind the line.",
+  target: "singleAlly",
+  effect: { kind: "guard", charges: 1, duration: 2 },
+  condition: { kind: "always" },
+  weight: 10,
+  cooldown: 4,
+  chemistryId: "chem-archer-guard",
+  chemistryChance: 0.75,
+  maxUses: 2,
+  guardTargetIds: ["skeleton-archer"],
+  presentation: "guardAlly",
+  element: "physical",
+};
+
 const CRYPT_PACK_HUNT: EnemyAbilityDef = {
   id: "crypt-pack-hunt",
   name: "Hunting Pack",
@@ -949,6 +970,7 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   CRYPT_SPAWN_BOMB,
   OGRE_TOSS,
   CRYPT_LIVING_SHIELD,
+  ARCHER_GUARD,
   CRYPT_PACK_HUNT,
   CRYPT_RUNE_OVERLOAD,
   SPLIT,

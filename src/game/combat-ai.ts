@@ -457,11 +457,20 @@ export function decideEnemyAction(
     );
 
     // Healer: cast a heal on the most-wounded living ally (if any).
+    // When preferTargetIds is authored, wounded preferred allies are healed
+    // first — this expresses a authored relationship (e.g. the Cursed Scribe
+    // stabilizing the Feral Scrivener) without new chemistry infrastructure.
     if (healerSpecial) {
       const wounded = [...s.enemies.front, ...s.enemies.back].filter(
         (e) => e.currentHp > 0 && e.currentHp < e.hp
       );
-      const target = wounded.sort((a, b) => a.currentHp - b.currentHp)[0];
+      const preferred = healerSpecial.preferTargetIds;
+      const target = wounded.sort((a, b) => {
+        const aPref = preferred?.includes(a.id) ? 0 : 1;
+        const bPref = preferred?.includes(b.id) ? 0 : 1;
+        if (aPref !== bPref) return aPref - bPref;
+        return a.currentHp - b.currentHp;
+      })[0];
       if (target) {
         const spell = spellByName(healerSpecial.spellName);
         return {
