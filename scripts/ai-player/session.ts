@@ -432,6 +432,9 @@ export class AiPlayerSession {
     this.checkpointId = def.id;
     this.mode = "checkpoint";
     if (def.setup.jumpTo) {
+      await this.page.evaluate(() => {
+        if (window.__onyxDebug.hasOpenOverlay()) window.__onyxDebug.closeAllOverlays();
+      });
       await this.page.evaluate((o) => window.__onyxDebug.jumpTo(o), { ...def.setup.jumpTo, autosave: false });
       await waitForIdle(this.page, 8000);
     }

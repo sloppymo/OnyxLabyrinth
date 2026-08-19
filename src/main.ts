@@ -2543,6 +2543,10 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       clear: () => combatAudit?.clear(),
     },
     jumpTo,
+    /** True while a UiStack overlay (dialog/spell/save/npc/etc.) is open. */
+    hasOpenOverlay: () => overlays.hasOpenOverlay(),
+    /** Force-close any open overlay controllers. Harness cleanup only — not a player action. */
+    closeAllOverlays: () => overlays.closeAll(),
     dumpSave,
     loadSave,
     /** Start a seeded/debug fixture when supplied; otherwise roll the live floor table. */

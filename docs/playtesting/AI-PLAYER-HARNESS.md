@@ -201,6 +201,8 @@ A 10-minute run at ~3 s/decision is on the order of 200 actions. Image-heavy seg
 
 Edit `scripts/ai-player/checkpoints.ts`. Keep `setup` (jumpTo / forceCombat / damage) separate from `playerMemory`. Add a test that the player-facing packet still has no coordinates. Use `jumpTo` / `dumpSave` rather than mutating grid cells.
 
+`window.__onyxDebug.hasOpenOverlay()` / `closeAllOverlays()` exist for harness cleanup only (not a player action) — `session.ts` already calls them before every `jumpTo`, so checkpoint authors normally don't need to touch this directly.
+
 ## 13. How to add a new screen
 
 1. Map the route in `playerScreenForRoute`.
@@ -255,6 +257,7 @@ npm run playtest:ai -- demo checkpoint --checkpoint f2-abyss-bridge
 - **Do not skip combat playback** (`b`) during subjective play. Contact sheets exist so Mythos can judge animation.
 - **Checkpoint setup coordinates must never appear in `playerView()`.** If a leak test fails, stop and fix the builder — do not strip fields after the fact.
 - **Parallel git sessions:** this harness writes `.tmp-ai-player/` (gitignored). Do not stage unrelated art/assets.
+- **`jumpTo` refuses while any overlay controller is open** (`src/main.ts` guard, `overlays.hasOpenOverlay()`), not just during combat. `AiPlayerSession.applyCheckpoint` (`scripts/ai-player/session.ts`) calls `window.__onyxDebug.closeAllOverlays()` before every `jumpTo`, so checkpoints are safe even mid-menu. If you call `jumpTo` directly from a new script, do the same — do not rely on guessing an Escape/Tab key sequence to close whatever's open (that's what broke `demo coverage` until 2026-08-18: fixed by adding `hasOpenOverlay`/`closeAllOverlays` to `__onyxDebug` and calling them unconditionally before `jumpTo`, `session.ts`).
 
 ## Commands
 
