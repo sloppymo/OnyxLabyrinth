@@ -1068,7 +1068,15 @@ export const RUNE_KNIGHT: EnemyDef = {
     { kind: "caster", element: "lightning" },
     { kind: "resistElement", element: "lightning" },
   ],
-  abilityIds: ["lightning-strike", "ward"],
+  // Rune Overload is the same relationship the Floor 1 Crypt Rune Knight
+  // teaches, reused verbatim so the learned rule transfers: "Rune Knights
+  // explode constructs." The ability is inert without a living
+  // conductive-construct (combat-ai.ts drops consumeAlly abilities with no
+  // resource candidate), and lesser-construct is floors:[3] only — so
+  // although this Knight also appears on floors 4-5, the relationship can
+  // currently only fire on Floor 3. That inertness is a data consequence,
+  // not a guard; adding a construct to an F4/F5 formation would activate it.
+  abilityIds: ["lightning-strike", "ward", "crypt-rune-overload"],
   isBoss: false,
 };
 
@@ -1237,7 +1245,7 @@ export const CHOIR_WARDEN: EnemyDef = {
     { kind: "highDefense" },
     { kind: "resistElement", element: "lightning" },
   ],
-  abilityIds: ["shield-bash", "phalanx-guard", "ward"],
+  abilityIds: ["shield-bash", "phalanx-guard", "ward", "choir-guard"],
   isBoss: false,
 };
 
@@ -1339,7 +1347,7 @@ export const DROWNED_SENTINEL: EnemyDef = {
     { kind: "resistPhysical", percent: 30 },
     { kind: "weakElement", element: "fire" },
   ],
-  abilityIds: ["shield-bash", "phalanx-guard", "charge"],
+  abilityIds: ["shield-bash", "phalanx-guard", "charge", "sentinel-guard"],
   isBoss: false,
 };
 
@@ -1978,11 +1986,17 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      // The Knight's battery. stone-guardian -> lesser-construct is a
+      // composition replacement, not a pack-size increase: both are
+      // front-row walls, and the construct is the only conductive-construct
+      // on Floor 3. This is the single formation that activates the Rune
+      // Knight's Overload relationship — the wall the player wants to ignore
+      // is the ammunition the Knight wants to spend.
       id: "f3-guardian-rune-line",
       family: "guardian-rune",
       weight: 3,
       spawns: [
-        { enemyId: "stone-guardian", row: "front" },
+        { enemyId: "lesser-construct", row: "front" },
         { enemyId: "animated-armor", row: "front" },
         { enemyId: "rune-knight", row: "back" },
         { enemyId: "warlock", row: "back" },

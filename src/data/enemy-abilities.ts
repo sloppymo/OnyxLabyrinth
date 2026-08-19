@@ -306,6 +306,56 @@ const ARCHER_GUARD: EnemyAbilityDef = {
   element: "physical",
 };
 
+// Floor 4: the Choir Warden shields the Choir's fragile casters. Same guard
+// pipeline as ARCHER_GUARD, deliberately tuned DOWN rather than across.
+// A guard token always absorbs exactly one attack (`charges` is a typed
+// constant; consumeEnemyGuard deletes the token on first intercept), so the
+// real cost to the player is maxUses x one attack absorbed by the guarder.
+// The Warden is hp 75 / ac 20 / highDefense against the Armored Skeleton's
+// hp 19 / ac 5 — an identical maxUses:2 would mean two attacks swallowed by
+// a brick, which is tedious rather than tactical. One charge, longer
+// cooldown. guardTargetIds covers the Magus too, but no current formation
+// pairs Warden with Magus, so that path is intentionally inert.
+const CHOIR_GUARD: EnemyAbilityDef = {
+  id: "choir-guard",
+  name: "Antiphon Wall",
+  description: "Steps between the party and the Choir's singing casters.",
+  target: "singleAlly",
+  effect: { kind: "guard", charges: 1, duration: 2 },
+  condition: { kind: "always" },
+  weight: 10,
+  cooldown: 5,
+  chemistryId: "chem-choir-guard",
+  chemistryChance: 0.7,
+  maxUses: 1,
+  guardTargetIds: ["discordant-cantor", "choir-magus"],
+  presentation: "guardAlly",
+  element: "physical",
+};
+
+// Floor 5: the Drowned Sentinel covers the Cistern's fragile drowners.
+// The most conservative guard in the game by design — the Sentinel is
+// hp 120 / ac 21 / 30% physical resistance, so every intercepted attack is
+// close to a wasted turn for a physical attacker. maxUses:1 keeps the
+// relationship legible ("the Sentinel protects the drowners") without
+// turning the fight into six rounds of hitting the brick.
+const SENTINEL_GUARD: EnemyAbilityDef = {
+  id: "sentinel-guard",
+  name: "Drowning Bulwark",
+  description: "Wades between the party and the cistern's callers.",
+  target: "singleAlly",
+  effect: { kind: "guard", charges: 1, duration: 2 },
+  condition: { kind: "always" },
+  weight: 8,
+  cooldown: 6,
+  chemistryId: "chem-sentinel-guard",
+  chemistryChance: 0.65,
+  maxUses: 1,
+  guardTargetIds: ["undertow-caller", "cistern-wraith"],
+  presentation: "guardAlly",
+  element: "physical",
+};
+
 const CRYPT_PACK_HUNT: EnemyAbilityDef = {
   id: "crypt-pack-hunt",
   name: "Hunting Pack",
@@ -971,6 +1021,8 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   OGRE_TOSS,
   CRYPT_LIVING_SHIELD,
   ARCHER_GUARD,
+  CHOIR_GUARD,
+  SENTINEL_GUARD,
   CRYPT_PACK_HUNT,
   CRYPT_RUNE_OVERLOAD,
   SPLIT,
