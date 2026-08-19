@@ -443,7 +443,7 @@ export class AiPlayerSession {
       }, ratio);
     }
     if (def.setup.forceCombat) {
-      await this.forceCombat();
+      await this.forceCombat(def.setup.forceFormationId);
     }
     await this.page.evaluate((sd: number) => {
       window.__onyxDebug.setGameplayRng(window.__onyxDebug.createSeededRng(sd));
@@ -458,11 +458,33 @@ export class AiPlayerSession {
     return result;
   }
 
-  private async forceCombat(): Promise<void> {
+  private async forceCombat(formationId?: string): Promise<void> {
     if (!this.page) return;
-    const info = await this.page.evaluate(async () => {
+    const info = await this.page.evaluate(async (fid: string | undefined) => {
       const d = window.__onyxDebug;
       const st = d.state;
+      // When a specific formation is requested, look it up directly instead
+      // of rolling randomly. This enables targeted chemistry verification.
+      if (fid) {
+        const table = d.ENCOUNTER_TABLES[st.floor.id];
+        if (!table) return { ok: false, reason: `no encounter table for floor ${st.floor.id}` };
+        const entry = table.find((e: { id: string }) => e.id === fid);
+        if (!entry) return { ok: false, reason: `formation ${fid} not found on floor ${st.floor.id}` };
+        const r = d.resolveEncounter(entry);
+        if (r.length === 0) return { ok: false, reason: `formation ${fid} resolved to no spawns` };
+        const combat = d.createCombatFromEncounter(
+          st.party,
+          r,
+          d.SPELLS_BY_ID,
+          d.ITEMS_BY_ID,
+          st.equipment,
+          st.inventory,
+          st.inAntimagic,
+          st.activeCharIds
+        );
+        await d.startCombat(combat);
+        return { ok: true };
+      }
       for (let attempts = 0; attempts < 400; attempts++) {
         const entry = d.rollEncounter(st.floor.id);
         if (!entry) return { ok: false, reason: "no encounter rolled" };
@@ -482,7 +504,7 @@ export class AiPlayerSession {
         return { ok: true };
       }
       return { ok: false, reason: "no valid encounter" };
-    });
+    }, formationId);
     if (!info.ok) throw new Error(`forceCombat failed: ${info.reason}`);
     await waitForIdle(this.page, 8000);
   }

@@ -162,7 +162,7 @@ import {
   FLOOR3_GUARDIAN_CLIMAX_ID,
   KAZEHARU_GUEST_ID,
 } from "./game/kazeharu";
-import { ENEMIES_BY_ID } from "./data/enemies";
+import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "./data/enemies";
 import type { NPCDef, FloorDef, StairsGuardianDef } from "./data/floors";
 import { ALL_SPELLS } from "./data/spells";
 import { ITEMS_BY_ID } from "./data/items";
@@ -2562,6 +2562,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     createCombatFromEncounter,
     resolveEncounter,
     rollEncounter,
+    ENCOUNTER_TABLES,
     SPELLS_BY_ID,
     ITEMS_BY_ID,
     defaultLoadoutForCharacter,

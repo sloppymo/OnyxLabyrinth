@@ -18,6 +18,8 @@ export interface CheckpointSetup {
     stepsSinceEncounter?: number;
   };
   forceCombat?: boolean;
+  /** When set with forceCombat, stage this specific formation instead of rolling. */
+  forceFormationId?: string;
   damagePartyRatio?: number;
   seed?: number;
 }
@@ -191,6 +193,73 @@ export const CHECKPOINTS: CheckpointDef[] = [
       knownMechanics: EARLY_MECHANICS,
       namedNpcs: [],
       discoveries: ["Fighting wears the party down."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
+  // --- Phase 1b.2 targeted chemistry verification (Floor 2) ---
+  {
+    id: "f2-armored-archer",
+    label: "F2 armored-archer (guard chemistry)",
+    tags: ["combat", "chemistry", "f2"],
+    recommendedActions: 25,
+    setup: {
+      jumpTo: { floorId: 2, x: 7, y: 5, facing: 0, partyLevel: 4, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f2-armored-archer",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 2 — a cursed library."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
+  {
+    id: "f2-lab-keepers",
+    label: "F2 lab-keepers (preferential heal)",
+    tags: ["combat", "chemistry", "f2"],
+    recommendedActions: 25,
+    setup: {
+      jumpTo: { floorId: 2, x: 7, y: 5, facing: 0, partyLevel: 4, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f2-lab-keepers",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 2 — a cursed library."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
+  {
+    id: "f2-displacer-lab",
+    label: "F2 displacer-lab (solo identity control)",
+    tags: ["combat", "chemistry", "f2"],
+    recommendedActions: 25,
+    setup: {
+      jumpTo: { floorId: 2, x: 7, y: 5, facing: 0, partyLevel: 4, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f2-displacer-lab",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 2 — a cursed library."],
     },
     playerIntro: "Continue playing naturally.",
   },
