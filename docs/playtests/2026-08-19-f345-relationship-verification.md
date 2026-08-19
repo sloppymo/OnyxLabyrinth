@@ -2,8 +2,10 @@
 
 Date: 2026-08-19
 Baseline: `774c87d`
-Scope: the three Phase A reuse relationships that shipped. The fourth
-(Demon Mage → Spawn Bomb) is blocked and was not implemented — see
+Scope: all four Phase A reuse relationships. Three shipped first; the fourth
+(Demon Mage → Spawn Bomb) was blocked on the boss-escort surface, and shipped
+after the coordinator ruled that the climax fights stay self-contained
+set-pieces — see § A1 below and
 `docs/combat-relationship-vocabulary.md` § Source verification, Correction 2.
 
 Verification was done by staging each formation headlessly and reading the
@@ -139,6 +141,117 @@ This cannot be resolved headlessly. Flagged for embodied play, not changed.
   there and stays inert only because `lesser-construct` is `floors: [3]`.
   Adding a construct to any F4/F5 formation would activate it — that is a data
   consequence, not a guard.
+
+## A1 — Demon Mage → Demon Spawn (added after the boss decision)
+
+The coordinator ruled that the climax fights stay self-contained set-pieces.
+The boss surfaces were closed **by composition**, then Spawn Bomb was
+propagated globally as originally scoped.
+
+### Boss closure
+
+`f4-lonely-girl` and `f5-crying-man` now escort a **Warlock** instead of a
+Demon Mage. Warlock is the closest body in the roster:
+
+| | Demon Mage | Warlock |
+|---|---|---|
+| hp / atk / ac / agi | 26 / 5 / 3 / 11 | 29 / 6 / 3 / 10 |
+| row | back | back |
+| special | caster-fire, resistFire, weakWater, demon | caster-fire, resistFire, weakWater |
+| abilities | hellfire, **summon-imp**, anti-magic-field | hellfire, **chaos-bolt**, anti-magic-field |
+
+The swap trades the summon for direct damage and drops the `demon` tag (both
+fights retain other demon bodies, so anti-demon gear keeps targets). Both
+bosses already carry `anti-magic-field` themselves, so the escort's antimagic
+was redundant regardless. Warlock has no `chemistryGroups` and is an actor in
+no planned relationship, so it cannot re-open this surface during Phase B or C.
+
+Re-audited after the change: both boss tables report **CLOSED** — zero
+bombers, zero `summon-imp` carriers, zero `volatile-spawn` bodies. A test now
+fails if any boss escort ever gains a chemistry ability at all.
+
+### Resulting surface
+
+12 non-boss formations (plus the 2 pre-existing Floor 1 crypt ones):
+
+- **Pre-placed ammunition (4):** `f3-demon-spawn-mage` (w2),
+  `f4-spawn-brawler` (w2), `f5-flood-brute` (w4), `f5-spawn-flood` (w2)
+- **Summon-gated (8):** `f3-knight-rune-mage` (w2), `f4-choir-armor` (w4),
+  `f4-guardian-mage` (w4), `f4-champion-rune` (w3), `f4-choir-guardian` (w2),
+  `f4-viper-mage` (w1), `f5-stone-demon` (w3), `f5-armor-rune` (w2)
+
+### The prompt's tuning questions, answered with numbers
+
+300 seeded trials per formation, 8 rounds.
+
+| Formation | Bombs/fight | Max | Fires at all |
+|---|---:|---:|---:|
+| `f3-demon-spawn-mage` | 0.78 | 1 | 78% |
+| `f5-flood-brute` | 0.64 | 1 | 64% |
+| `f4-spawn-brawler` | 0.17 | 1 | 17% |
+| `f5-spawn-flood` | 0.14 | 1 | 14% |
+| `f4-guardian-mage` (**two** Mages) | 0.00 | 1 | 0% |
+| `f4-viper-mage` (2 bodies, w1) | 0.99 | 2 | 88% |
+
+- **Does more than one Demon Mage spam?** No. `f4-guardian-mage` fields two
+  bombers and produced 0.00 bombs/fight, max 1 across 300 trials —
+  `maxAllies: 3` rarely opens in a 5-body formation.
+- **Are the two F5 formations overcrowded, as the spec claimed?** No. Both
+  sit under one bomb per fight with a max of 1. **No retune needed** — the
+  spec's "NEEDS RETUNE" flag was unfounded.
+- **Can the Mage enter an annoying summon→bomb→summon loop?** Only in small
+  formations, where `maxAllies` opens immediately. `f4-viper-mage` (two
+  bodies, weight 1 — the rarest entry on its table) fires 88% with 1.36
+  summons. That is the species fantasy working where it should.
+- **Does the counter work?** Yes, and measurably. Switching the party from
+  defending to fighting drops `f4-spawn-brawler` from 1.14 bombs/fight to
+  0.17, and `f5-spawn-flood` from 0.95 to 0.14 — the party kills the
+  ammunition before it can be spent. "Kill the spawn" is a real counter, not
+  a theoretical one.
+
+**Measurement caveat worth keeping:** a defending party never kills anything,
+so `maxAllies` never opens and the summon-gated surface looks inert. The
+first pass of this measurement was wrong for that reason. Tempo questions
+need a party that actually fights.
+
+### Cross-floor literacy — verified
+
+Everything the player perceives is **identical** between the Floor 1 fight
+that teaches the rule and the Floor 3/4/5 fights that should trigger
+recognition:
+
+| Perceived channel | Floor 1 | Floor 3+ |
+|---|---|---|
+| Ability name | "Spawn Bomb" | "Spawn Bomb" |
+| Presentation key | `detonateAlly` | `detonateAlly` |
+| Element / VFX | fire | fire |
+| Log wording | "X resolves Spawn Bomb!" / "Y is consumed by X!" | identical |
+| `resourceId` on burst | populated | populated |
+
+The only difference is the enemy display name (`Crypt Demon Mage` vs `Demon
+Mage`) — the deliberate Floor 1 low-power variant naming, whose voice is
+already aliased to the production profile. Same ability, same animation, same
+wording, same-named species family.
+
+The summon→bomb loop reads cleanly in the log on its own:
+
+```
+Demon Mage summons Demon Spawn!
+Demon Mage resolves Spawn Bomb!
+Demon Spawn is consumed by Demon Mage!
+Demon Mage resolves Spawn Bomb on Aria for 4 damage!   (x4 party)
+```
+
+This is the strongest cross-floor literacy case of the four relationships,
+because the ability is reused *verbatim* rather than re-implemented.
+
+### Tuning note
+
+Spawn Bomb lands **4 damage per party member** after defense (power 6), and
+Rune Overload lands 6 (power 8). Both are light for wind-up /
+resource-consuming abilities that destroy one of the enemy's own bodies. The
+relationships read correctly; whether they *threaten* enough is a balance
+question flagged for the human, deliberately not tuned here.
 
 ## Open question for the human
 

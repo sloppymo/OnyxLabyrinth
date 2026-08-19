@@ -315,9 +315,19 @@ Activation surface:
                     have high chemical density.
 ```
 
-**STATUS: BLOCKED.** Not implemented. The boss-escort activation
-(Correction 2) is a balance change to authored climax content and must be
-decided by the dedicated boss audit, not absorbed silently here.
+**STATUS: RESOLVED AND SHIPPED.** The boss-escort activation (Correction 2)
+was escalated rather than absorbed. Decision: the climax fights stay
+self-contained set-pieces — no Formation Chemistry relationship may fire in
+them. Closed **by composition**, not by a resolver special case:
+`f4-lonely-girl` and `f5-crying-man` now escort a Warlock, the closest body
+in the roster to the Demon Mage it replaces, and one that is an actor in no
+planned relationship so it cannot re-open the surface in Phase B or C.
+
+Spawn Bomb then shipped globally. Post-change audit confirms both boss tables
+CLOSED and the intended 12 non-boss formations active. The spec's
+"NEEDS RETUNE" flag on the two F5 formations was measured and found
+unfounded — both sit under one bomb per fight. See
+`docs/playtests/2026-08-19-f345-relationship-verification.md` § A1.
 
 **Implementation effort:** ~1 line change. Same pattern as F3-R1.
 
