@@ -444,6 +444,20 @@ export class AiPlayerSession {
     }
     if (def.setup.forceCombat) {
       await this.forceCombat(def.setup.forceFormationId);
+      if (def.setup.woundEnemies) {
+        await this.page.evaluate((wounds: Record<string, number>) => {
+          const st = window.__onyxDebug.state;
+          const combat = st.combat;
+          if (!combat) return;
+          for (const row of [combat.enemies.front, combat.enemies.back]) {
+            for (const enemy of row) {
+              const pct = wounds[enemy.id];
+              if (pct === undefined) continue;
+              enemy.currentHp = Math.max(1, Math.floor(enemy.hp * pct / 100));
+            }
+          }
+        }, def.setup.woundEnemies);
+      }
     }
     await this.page.evaluate((sd: number) => {
       window.__onyxDebug.setGameplayRng(window.__onyxDebug.createSeededRng(sd));

@@ -20,6 +20,8 @@ export interface CheckpointSetup {
   forceCombat?: boolean;
   /** When set with forceCombat, stage this specific formation instead of rolling. */
   forceFormationId?: string;
+  /** Pre-wound enemies after forceCombat: map of enemyId → hp percentage (0-100). */
+  woundEnemies?: Record<string, number>;
   damagePartyRatio?: number;
   seed?: number;
 }
@@ -250,6 +252,35 @@ export const CHECKPOINTS: CheckpointDef[] = [
       jumpTo: { floorId: 2, x: 7, y: 5, facing: 0, partyLevel: 4, autosave: false, stepsSinceEncounter: 0 },
       forceCombat: true,
       forceFormationId: "f2-displacer-lab",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 2 — a cursed library."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
+  // --- Phase 1b.2 targeted verification: preferential heal (two wounded) ---
+  {
+    id: "f2-lab-keepers-preferential",
+    label: "F2 lab-keepers (preferential heal — two wounded)",
+    tags: ["combat", "chemistry", "f2"],
+    recommendedActions: 15,
+    setup: {
+      jumpTo: { floorId: 2, x: 7, y: 5, facing: 0, partyLevel: 4, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f2-lab-keepers",
+      // Feral Scrivener (failed-experiment) at 30% HP — lightly wounded.
+      // Armored Skeleton at 15% HP — severely wounded (more urgent by default).
+      // If the Cursed Scribe heals the Scrivener instead of the Armor,
+      // preferTargetIds is proven: the healer prefers the experiment
+      // over a more-wounded non-experiment ally.
+      woundEnemies: { "failed-experiment": 30, "armored-skeleton": 15 },
     },
     playerMemory: {
       party: STARTER_PARTY,

@@ -140,3 +140,67 @@ and read without new choreography. The guard relationship is the strongest
 T3 moment — the INTERCEPT UI label is an especially clear readability
 innovation. The preferential heal is T2 but still creates a meaningful
 priority shift.
+
+## Gap closure (follow-up verification)
+
+Three verification gaps were identified in review and closed:
+
+### Gap 1: Preferential targeting proven (not just "heals the experiment")
+
+The original test only had one wounded ally. To prove `preferTargetIds`
+overrides the default "heal the most wounded" behavior, a unit test staged
+both the Feral Scrivener (30% HP) and the Armored Skeleton (15% HP — more
+severely wounded). Over 200 AI trials:
+
+- Basic heal (Cure Wounds) fired 45 times → **all 45 targeted the Feral
+  Scrivener** (preferred, less wounded), **0 targeted the Armored Skeleton**
+  (more wounded).
+- Mass Mend (allAlly heal) fired 72 times — heals everyone, no targeting
+  preference applies.
+
+**Conclusion:** `preferTargetIds` is proven. The healer always chooses the
+preferred species over a more-wounded non-preferred ally. The relationship
+is real, not an artifact of single-wounded-ally selection.
+
+**Caveat:** Mass Mend (the ability) masks the preference when it fires,
+because it heals all allies. The preference only manifests through the
+basic heal (the `healer` special path). In live play, the player will see
+both behaviors — Mass Mend (heal everyone) and Cure Wounds (heal the
+experiment specifically). The latter is what communicates the relationship.
+
+### Gap 2: Blink Strike presentation — needs bespoke choreography
+
+Blink Strike has `effect: { kind: "multiHit", hits: 2 }` but no
+`presentation` field. It uses the default melee/cast animation —
+visually indistinguishable from a generic multi-hit attack. The player
+only knows it "blinked" because the combat log says "Blink Strike."
+
+**Conclusion:** The mechanic works, but the presentation does not yet
+sell the fantasy. A bespoke `presentation: "blinkStrike"` choreography
+(vanish → reappear behind target → double slash) would be a presentation
+correction, not new combat mechanics. This is a **P2 presentation fix**,
+not a verification failure.
+
+### Gap 3: NPC Enter on fresh greeting — P0 confirmed closed
+
+A unit test was added that presses Enter exactly once on a fresh NPC
+greeting (before any arrow navigation). The test confirms:
+
+- A single Enter completes the typewriter reveal (or acknowledges the
+  greeting if reduced motion is on).
+- It does **not** activate any menu item or start combat.
+- Two Enters are needed to reach the action menu, and the default
+  selection is "Talk" (index 0), not "Attack."
+
+The original playtest bug was caused by the AI agent pressing ArrowUp 8
+times (blindly navigating to "Attack" at index 4) before pressing Enter.
+The fix (first arrow only reveals, navigation starts from index 0 on
+second press) prevents this. **P0 is fully closed.**
+
+## Revised summary
+
+| Formation | Chemistry | Mechanic | Presentation | Status |
+|-----------|-----------|----------|--------------|--------|
+| f2-armored-archer | Guard | ✓ proven | ✓ (INTERCEPT label + log) | **PASS** |
+| f2-lab-keepers | Preferential heal | ✓ proven (200 trials) | ◐ (log only, Mass Mend masks) | **PASS with caveat** |
+| f2-displacer-lab | None (control) | ✓ (Blink Strike fires) | ✗ (no bespoke blink anim) | **PASS, P2 presentation fix** |

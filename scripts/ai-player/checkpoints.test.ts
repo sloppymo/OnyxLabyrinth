@@ -11,6 +11,7 @@ describe("checkpoints", () => {
       expect(json).not.toContain("floorId");
       expect(json).not.toContain("forceCombat");
       expect(json).not.toContain("forceFormationId");
+      expect(json).not.toContain("woundEnemies");
       expect(json).not.toContain("damagePartyRatio");
       expect(json).not.toMatch(/"x"\s*:\s*\d+/);
       expect(json).not.toMatch(/"y"\s*:\s*\d+/);

@@ -2563,6 +2563,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     resolveEncounter,
     rollEncounter,
     ENCOUNTER_TABLES,
+    ENEMIES_BY_ID,
     SPELLS_BY_ID,
     ITEMS_BY_ID,
     defaultLoadoutForCharacter,

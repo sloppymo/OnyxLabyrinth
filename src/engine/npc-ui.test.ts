@@ -144,6 +144,25 @@ describe("NPCController", () => {
     controller.destroy();
   });
 
+  it("a single Enter on a fresh greeting does not start combat (regression: P0 NPC Enter→attack)", () => {
+    const npc = makeNPC();
+    const state = makeState(npc);
+    const { controller, fightNpc, fightCount } = freshController(state, npc);
+
+    // Press Enter exactly once on the fresh greeting. This should complete
+    // the typewriter reveal, NOT activate any menu item. The original
+    // playtest report said "Enter on the NPC greeting initiated combat."
+    // This test verifies that a single Enter cannot reach the confirm() path.
+    // playtest report said "Enter on the NPC greeting initiated combat."
+    // This test verifies that a single Enter cannot reach the confirm() path.
+    controller.handleKey("Enter");
+
+    expect(fightNpc()).toBeNull();
+    expect(fightCount()).toBe(0);
+
+    controller.destroy();
+  });
+
   it("first arrow on greeting reveals action bar but does not move selection (regression: blind navigation to Attack)", () => {
     const npc = makeNPC();
     const state = makeState(npc);
