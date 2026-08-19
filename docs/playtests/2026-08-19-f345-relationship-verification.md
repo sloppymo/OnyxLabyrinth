@@ -89,6 +89,44 @@ silently crowd the relationship out of the fight.
 *that* a mechanic resolves, and wrong for measuring *when* or *how often*.
 Timing claims need a varied seeded stream.
 
+## Difficulty delta of the composition swap
+
+`f3-guardian-rune-line` swapped `stone-guardian` (hp72/atk19/ac16) for
+`lesser-construct` (hp56/atk14/ac13) — a weaker body — while the formation
+simultaneously gained a party-wide lightning payoff. Measured over 400 seeded
+trials, party defending, 6 rounds:
+
+| Composition | Avg party damage taken | Formation total HP |
+|---|---:|---:|
+| Before (stone-guardian) | 89.0 | 210 |
+| After (lesser-construct) | 88.5 | 194 |
+
+**Threat delta: −0.5% — sideways.** The formation gains a relationship at
+essentially no cost to its damage output. Its total HP drops 7.6%, so it dies
+slightly faster; the Overload payoff offsets the weaker wall almost exactly.
+This is the intended shape — the formation became *more interesting* without
+becoming harder or softer in a way that would need rebalancing around it.
+
+## Two protection behaviors on the same actor — flagged, unresolved
+
+Both new guard carriers **already had** `phalanx-guard`, and in staged play it
+fires on the same allies a round before the intercept:
+
+```
+r1  Choir Warden uses Phalanx Guard, boosting Discordant Cantor's ac!
+r3  Choir Warden guards Discordant Cantor!
+```
+
+So the same actor now expresses protection toward the same ally through two
+mechanics with **different counters** — the AC buff is unavoidable and just
+makes the target tanky, while the intercept is consumable and eats exactly one
+attack. The legibility measurement above proves the intercept *appears*; it
+does not prove a human can tell the two apart.
+
+If they read as the same thing, the learned rule ("Wardens protect the Choir's
+casters") is delivered muddily and the intercept's distinct counter is lost.
+This cannot be resolved headlessly. Flagged for embodied play, not changed.
+
 ## Tuning notes (not acted on)
 
 - Rune Overload lands **6 damage per party member** after defense at power 8.
