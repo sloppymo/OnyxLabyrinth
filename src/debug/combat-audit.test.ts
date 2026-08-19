@@ -49,6 +49,7 @@ function combat(party: ReturnType<typeof createCharacter>[]): CombatState {
     attackDebuffs: {},
     sleepTimers: {},
     blindTimers: {},
+    undertowTimers: {},
     giantStrengthTimers: {},
     poisonState: {},
     windUps: {},

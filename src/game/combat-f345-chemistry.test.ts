@@ -17,7 +17,9 @@ import { createCombatState, resolveCombatRound } from "./combat";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import { ENCOUNTER_TABLES, ENEMIES_BY_ID } from "../data/enemies";
 import type { CombatState, EnemyFormation, EnemyInstance } from "./combat-types";
-import { createDefaultParty } from "./party";
+import { applyCombatPartyResult, createDefaultParty } from "./party";
+import { partyStatusText } from "../engine/combat-display";
+import { COMBAT_VISIBLE_STATUSES } from "../debug/combat-player-view";
 
 function makeEnemy(
   id: string,
@@ -603,6 +605,102 @@ describe("f4 Conduct (generic livingAllies scaling)", () => {
     expect(entry.spawns.filter((s) => s.row === "front").every((s) => s.enemyId === "iron-chorister")).toBe(true);
     // ...and the conductor is behind them, so naive play cannot cancel by accident.
     expect(entry.spawns.find((s) => s.enemyId === "discordant-cantor")!.row).toBe("back");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F5 — Undertow Caller -> Flood Brute (Setup -> Payoff, party state)
+// ---------------------------------------------------------------------------
+
+describe("f5 Undertow (setup -> payoff on party state)", () => {
+  it("the setup marks without damaging — it is not a countdown to death", () => {
+    const drag = enemyAbilityById("undertow-drag")!;
+    expect(drag.effect).toMatchObject({ kind: "status", status: "undertow" });
+    // No damage, no doom timer: all the danger is what the Brute does about it.
+    expect(drag.effect.kind).toBe("status");
+    expect(ENEMIES_BY_ID["undertow-caller"]!.abilityIds).toContain("undertow-drag");
+  });
+
+  it("the Caller will not mark when no Brute is present to act on it", () => {
+    // A mark with no predator does nothing at all, so an ungated Caller would
+    // spend turns teaching the player the status is harmless.
+    const drag = enemyAbilityById("undertow-drag")!;
+    expect(drag.condition).toEqual({
+      kind: "allyPresent",
+      resource: { enemyIds: ["flood-brute"] },
+    });
+  });
+
+  it("the payoff is a distinct named ability gated on the mark existing", () => {
+    const lunge = enemyAbilityById("undertow-lunge")!;
+    expect(lunge.condition).toEqual({ kind: "partyHasStatus", status: "undertow" });
+    expect(lunge.preferStatus).toBe("undertow");
+    expect(ENEMIES_BY_ID["flood-brute"]!.abilityIds).toContain("undertow-lunge");
+  });
+
+  it("damage amplification is conservative — the threat is target pressure", () => {
+    const lunge = enemyAbilityById("undertow-lunge")!;
+    const effect = lunge.effect as Extract<typeof lunge.effect, { kind: "damage" }>;
+    // Deliberately in the same band as the Brute's ordinary output rather than
+    // a multiplier. Verified in play before any tuning is considered.
+    expect(effect.power).toBeLessThanOrEqual(16);
+  });
+
+  it("the Brute hunts the marked character over a more wounded unmarked one", () => {
+    const brute = makeEnemy("flood-brute", "brute-0", 400, "front", {
+      abilityIds: ["undertow-lunge"],
+      agi: 20,
+    });
+    let state = createCombatState(createDefaultParty(), { front: [brute], back: [] }, false);
+    state.chemistryEnabled = true;
+    // Mark a HEALTHY character; wound a different one badly. Target preference
+    // must beat the generic "finish the weakest" instinct.
+    const markedChar = state.party[0]!;
+    const woundedChar = state.party[1]!;
+    markedChar.status.push("undertow");
+    state.undertowTimers[markedChar.id] = 3;
+    woundedChar.hp = 1;
+    const markedBefore = markedChar.hp;
+    state = resolveCombatRound(state, defendActions(state), () => 0.1);
+    const marked = state.party.find((c) => c.id === markedChar.id)!;
+    expect(marked.hp).toBeLessThan(markedBefore);
+    expect(state.log.some((l) => l.includes("Drowning Lunge") && l.includes(marked.name))).toBe(true);
+  });
+
+  it("the mark expires on its own — enduring it is a real counter", () => {
+    const brute = makeEnemy("flood-brute", "brute-0", 400, "front", { abilityIds: [] });
+    let state = createCombatState(createDefaultParty(), { front: [brute], back: [] }, false);
+    state.chemistryEnabled = true;
+    const victim = state.party[0]!;
+    victim.status.push("undertow");
+    state.undertowTimers[victim.id] = 2;
+    for (let i = 0; i < 4; i++) state = resolveCombatRound(state, defendActions(state), () => 0.1);
+    expect(state.party[0]!.status).not.toContain("undertow");
+    expect(state.log.some((l) => l.includes("free of the undertow"))).toBe(true);
+  });
+
+  it("does not follow the party out of combat", () => {
+    // Combat-only: an undertow mark must never walk the dungeon into the next
+    // fight, or the Brute's preference would fire before its Caller ever acts.
+    const party = createDefaultParty();
+    party[0]!.status.push("undertow");
+    expect(applyCombatPartyResult(party)[0]!.status).not.toContain("undertow");
+  });
+
+  it("is visible to the player, not just present in state", () => {
+    const marked = { ...createDefaultParty()[0]!, status: ["undertow" as const] };
+    expect(partyStatusText(marked)).toBe("Undertow");
+    expect((COMBAT_VISIBLE_STATUSES as readonly string[])).toContain("undertow");
+  });
+
+  it("activates on exactly the one formation, with the Brute screened", () => {
+    expect(formationsContaining("undertow-caller", "flood-brute")).toEqual([
+      "5:f5-flood-brute",
+    ]);
+    // The payoff actor must not be the default target, or naive play deletes
+    // it before it can exploit (29% -> 53% exploitation when screened).
+    const entry = ENCOUNTER_TABLES[5]!.find((e) => e.id === "f5-flood-brute")!;
+    expect(entry.spawns.filter((s) => s.row === "front")[0]!.enemyId).not.toBe("flood-brute");
   });
 });
 

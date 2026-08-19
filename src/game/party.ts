@@ -29,7 +29,14 @@ export type StatusEffect =
   | "exposed"
   | "wet"
   | "shrunk"
-  | "giantStrength";
+  | "giantStrength"
+  /**
+   * Dragged into the undertow: a Cistern mark that makes its bearer the
+   * Flood Brute's preferred prey. Deliberately NOT a countdown-to-death —
+   * it expires on its own and inflicts no damage by itself. All it does is
+   * redirect and sharpen another enemy's attention.
+   */
+  | "undertow";
 
 /** Fixed party size — no bench. Formation slots are densely 0..PARTY_SIZE-1. */
 export const PARTY_SIZE = 4;
@@ -388,6 +395,7 @@ const COMBAT_ONLY_STATUSES: ReadonlySet<StatusEffect> = new Set([
   "wet",
   "shrunk",
   "giantStrength",
+  "undertow",
 ]);
 
 /** Deep-clone the post-combat CombatState party back into persisted GameState

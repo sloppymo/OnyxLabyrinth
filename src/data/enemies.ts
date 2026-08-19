@@ -1432,7 +1432,7 @@ export const FLOOD_BRUTE: EnemyDef = {
     { kind: "weakElement", element: "fire" },
     { kind: "resistElement", element: "cold" },
   ],
-  abilityIds: ["savage-lunge", "berserk", "charge"],
+  abilityIds: ["savage-lunge", "berserk", "charge", "undertow-lunge"],
   isBoss: false,
 };
 
@@ -1452,7 +1452,7 @@ export const UNDERTOW_CALLER: EnemyDef = {
     { kind: "resistElement", element: "cold" },
     { kind: "weakElement", element: "fire" },
   ],
-  abilityIds: ["ice-shards", "blinding-gaze", "curse"],
+  abilityIds: ["ice-shards", "blinding-gaze", "curse", "undertow-drag"],
   isBoss: false,
 };
 
@@ -2254,12 +2254,25 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
   // stay floor-3/4 remixes as seasoning.
   5: [
     {
+      // The Brute is screened, and spawn order is what does it.
+      //
+      // Setup -> Payoff needs BOTH halves alive across >=2 enemy turns: the
+      // Caller marks, then the Brute exploits. With the Brute listed first it
+      // was the body the combat UI opens on, and naive play deleted it on
+      // round 2 — the mark landed 82% of the time but was exploited only 29%.
+      // Putting the brawler in front of it takes exploitation to ~70% at
+      // constant pack size and constant composition.
+      //
+      // Note this is the same positional rule that fixed Rune Overload, in a
+      // third shape: whichever body the relationship cannot afford to lose
+      // must not be the default target. For Consume that was the resource;
+      // here it is the payoff actor.
       id: "f5-flood-brute",
       family: "flood-brute",
       weight: 4,
       spawns: [
-        { enemyId: "flood-brute", row: "front" },
         { enemyId: "demon-brawler", row: "front" },
+        { enemyId: "flood-brute", row: "front" },
         { enemyId: "demon-spawn", row: "front" },
         { enemyId: "undertow-caller", row: "back" },
         { enemyId: "demon-mage", row: "back" },

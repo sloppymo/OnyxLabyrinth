@@ -121,6 +121,17 @@ function pickAbilityTargetId(
     case "self":
       return null;
     case "singleParty": {
+      // Payoff half of Setup -> Payoff: hunt whoever already carries the
+      // mark. Checked before preferWounded so the relationship beats the
+      // generic "finish the weakest" instinct — the point is that the Brute
+      // wants the marked target specifically, not the easiest one.
+      if (ability.preferStatus) {
+        const marked = party.filter((c) => c.status.includes(ability.preferStatus!));
+        if (marked.length > 0) {
+          const t = [...marked].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+          if (t) return t.id;
+        }
+      }
       if (ability.preferWounded) {
         const wounded = party.filter((c) => c.hp < c.maxHp);
         const pool = wounded.length > 0 ? wounded : party;

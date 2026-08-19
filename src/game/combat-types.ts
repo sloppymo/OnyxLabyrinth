@@ -507,6 +507,8 @@ export interface CombatState {
   sleepTimers: Record<string, number>;
   /** Blind countdown for party members (char id -> rounds left). */
   blindTimers: Record<string, number>;
+  /** Rounds remaining on the Cistern's undertow mark, keyed by character id. */
+  undertowTimers: Record<string, number>;
   /**
    * Giant Strength countdown (char id -> rounds left). Shrink has no timer
    * (rest of combat until Dispel / death).

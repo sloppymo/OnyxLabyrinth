@@ -265,7 +265,11 @@ export function partyStatusText(c: Character): string {
   // Priority order for status display
   if (c.status.includes("hidden")) return "Hidden";
   if (c.status.includes("exposed")) return "Exposed";
-  
+  // Ranked above the generic fall-through: while the mark is up it is the
+  // most decision-relevant thing about this character, because it is what the
+  // Flood Brute is steering toward.
+  if (c.status.includes("undertow")) return "Undertow";
+
   const active = c.status.filter((s) => s !== "knockedOut" && s !== "hidden" && s !== "exposed");
   if (active.length === 0) return "OK";
   return active[0];

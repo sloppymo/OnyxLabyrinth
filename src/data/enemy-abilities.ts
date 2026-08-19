@@ -168,6 +168,13 @@ export interface EnemyAbilityDef {
    * already used for singleAlly heal targeting in pickAbilityTargetId.
    */
   preferWounded?: boolean;
+  /**
+   * For "singleParty" only: prefer a party member already carrying this
+   * status. This is the payoff half of a Setup→Payoff relationship — one
+   * enemy puts state on the party, another recognises and hunts it.
+   * Falls back to normal selection when nobody is marked.
+   */
+  preferStatus?: StatusEffect;
 }
 
 // ---------------------------------------------------------------------------
@@ -424,6 +431,56 @@ const DISCORDANT_PHRASE: EnemyAbilityDef = {
   maxUses: 2,
   presentation: "conduct",
   element: "lightning",
+};
+
+// Floor 5 Setup -> Payoff. The Cistern's first relationship that reaches into
+// PARTY state rather than arranging enemies among themselves.
+//
+// The setup half. Undertow is deliberately not a countdown and not damage —
+// it only marks. All the danger comes from what the Brute does about it, so
+// the Caller alone is an annoyance rather than a threat, and the pair is the
+// threat. That is the whole point of Setup -> Payoff.
+const UNDERTOW_DRAG: EnemyAbilityDef = {
+  id: "undertow-drag",
+  name: "Undertow",
+  description: "Drags one of the party under the current, marking them as prey.",
+  target: "singleParty",
+  effect: { kind: "status", status: "undertow", chance: 0.85, duration: 3 },
+  // Only mark when something in the water can act on it. Without a Brute the
+  // mark does literally nothing (it deals no damage and imposes no penalty by
+  // itself), so an ungated Caller would spend turns teaching the player that
+  // the status is harmless — which is the exact opposite of the lesson. The
+  // Caller keeps ice-shards/gaze/curse for formations with no Brute.
+  condition: { kind: "allyPresent", resource: { enemyIds: ["flood-brute"] } },
+  weight: 9,
+  cooldown: 3,
+  chemistryId: "chem-undertow",
+  chemistryChance: 0.85,
+  maxUses: 2,
+  element: "water",
+};
+
+// The payoff half. A dedicated named ability rather than a damage modifier on
+// the Brute's ordinary attacks, so the exploit is visible as its own event
+// with its own log line naming the marked character. Gated on the mark
+// existing, and it hunts the marked body via preferStatus.
+//
+// Damage is deliberately conservative: power 14 against Savage Lunge's 2x7.
+// The threat is meant to be target pressure — the Brute ignoring your front
+// line to reach the marked character — not a multiplier.
+const UNDERTOW_LUNGE: EnemyAbilityDef = {
+  id: "undertow-lunge",
+  name: "Drowning Lunge",
+  description: "Surges at whoever the current has already taken.",
+  target: "singleParty",
+  effect: { kind: "damage", power: 14, element: "water" },
+  condition: { kind: "partyHasStatus", status: "undertow" },
+  weight: 12,
+  cooldown: 2,
+  chemistryId: "chem-undertow-payoff",
+  chemistryChance: 0.9,
+  preferStatus: "undertow",
+  element: "water",
 };
 
 const CRYPT_PACK_HUNT: EnemyAbilityDef = {
@@ -1094,6 +1151,8 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   CHOIR_GUARD,
   SENTINEL_GUARD,
   DISCORDANT_PHRASE,
+  UNDERTOW_DRAG,
+  UNDERTOW_LUNGE,
   CRYPT_PACK_HUNT,
   CRYPT_RUNE_OVERLOAD,
   SPLIT,

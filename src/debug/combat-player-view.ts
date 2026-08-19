@@ -18,6 +18,7 @@ export const COMBAT_VISIBLE_STATUSES = [
   "giantStrength",
   "burn",
   "regen",
+  "undertow",
 ] as const;
 
 export interface CombatPlayerPartyRow {

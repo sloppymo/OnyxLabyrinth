@@ -226,6 +226,8 @@ const BURN_FILTER = "sepia(0.22) hue-rotate(-30deg) saturate(1.35)";
 /** Fallback-shape washes (procedural ellipses/rects — same geometry, safe). */
 const POISON_TINT = "rgba(60, 190, 80, 0.28)";
 const BURN_TINT = "rgba(255, 130, 40, 0.28)";
+/** Cistern undertow mark — deep water pulled over the character. */
+const UNDERTOW_TINT = "rgba(40, 110, 190, 0.34)";
 
 /**
  * Draw one frame of a sprite strip centered at (x, y-baseline), optionally
@@ -412,7 +414,13 @@ function drawPartyMember(
 
   const frozen = char.status.includes("sleep") || char.status.includes("paralysis");
   const poisoned = char.status.includes("poison");
-  const tint = poisoned ? POISON_TINT : undefined;
+  // Undertow outranks poison on the sprite: while the mark is up it is the
+  // thing steering an enemy's targeting, so it has to be the readable one.
+  const tint = char.status.includes("undertow")
+    ? UNDERTOW_TINT
+    : poisoned
+      ? POISON_TINT
+      : undefined;
 
   const opacity = (hidden ? 0.35 : 1) * anim.opacity;
   if (stripInfo) {

@@ -644,6 +644,8 @@ function resolveEnemyAbility(
             s.sleepTimers[t.id] = Math.min(3, duration);
           } else if (eff.status === "blind") {
             s.blindTimers[t.id] = duration;
+          } else if (eff.status === "undertow") {
+            s.undertowTimers[t.id] = duration;
           }
           emit(`${actor.name} uses ${ability.name}, inflicting ${eff.status} on ${t.name}!`, {
             type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id,

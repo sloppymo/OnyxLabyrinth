@@ -354,6 +354,18 @@ function tickStatuses(
         s.sleepTimers[c.id] = remaining;
       }
     }
+    if (c.status.includes("undertow")) {
+      // Expiry is the "endure it" counter. The mark does no damage on its
+      // own — letting it run out is a real, if costly, answer.
+      const remaining = (s.undertowTimers[c.id] ?? 3) - 1;
+      if (remaining <= 0) {
+        c.status = c.status.filter((st) => st !== "undertow");
+        delete s.undertowTimers[c.id];
+        log(`${c.name} is free of the undertow.`);
+      } else {
+        s.undertowTimers[c.id] = remaining;
+      }
+    }
     if (c.status.includes("blind")) {
       const remaining = (s.blindTimers[c.id] ?? 3) - 1;
       if (remaining <= 0) {
