@@ -302,7 +302,7 @@ built":
    defending party and should be read as "the ability is reachable", not "the
    player will see it". That caveat should be attached to those tests.
 
-## Summary
+## Summary (first pass, before the fixes below)
 
 | Relationship | Fires? | Reads when it fires? | Natural play sees it? | Tier delivered |
 |---|---|---|---|---|
@@ -314,3 +314,170 @@ built":
 The guard/Protect pattern is validated and should be the template for future
 propagation. The consume/Detonate pattern needs composition support before it
 can carry a floor.
+
+---
+
+# Re-verification after the two tempo fixes
+
+Both weak relationships were fixed and re-verified by embodied play. **Both
+now fire in fully naive play.** One of the two fixes was not the one
+originally hypothesised, and the reason is the most reusable finding here.
+
+## Fix 1 — Spawn Bomb: the condition was locking itself out
+
+Root cause, from source rather than guesswork:
+
+| Ability | Condition | Weight | Wind-up |
+|---|---|---|---|
+| `anti-magic-field` | **`firstTurn`** | 10 | yes |
+| `crypt-spawn-bomb` | **`notFirstTurn`** | 10 | no |
+
+The two gates are exactly complementary. A Demon Mage barred from bombing on
+turn 1 almost always opened with Anti-Magic Field, whose wind-up then consumed
+turn 2 as well. The bomb could not even be *considered* until turn 3 — by
+which time focus-fire had destroyed the fragile spawn. The 0-for-3 embodied
+result was structural, not unlucky.
+
+**Change:** `notFirstTurn` → `allyPresent { group: "volatile-spawn" }`.
+
+This is the condition the design spec always documented, and it matches the
+sibling `CRYPT_RUNE_OVERLOAD`. It is not itself a behaviour change —
+`combat-ai.ts` already hard-drops any `consumeAlly` ability with no available
+resource — the real effect is that the bomb now competes on turn 1 instead of
+being locked out of it.
+
+**Measured, party at floor-appropriate level, 400 seeded trials, naive
+front-focus play:**
+
+| Formation | Before | After |
+|---|---:|---:|
+| `f3-demon-spawn-mage` | 0% | **95%** |
+| `f5-flood-brute` | 0% | **90%** |
+| `f4-viper-mage` | 0% | 55% |
+| `f4-spawn-brawler` | 0% | 0% (party deletes both spawns first — the counter) |
+
+## Fix 2 — Rune Overload: screening beat redundancy
+
+The hypothesis was to mirror `f1-spawn-bomb`'s two-body redundancy. **Tested,
+and it does not work** — 0% under naive play even with two constructs.
+
+The reason is a collision the redundancy cannot break: `combat-ai.ts` reserves
+the **lowest-`spawnSerial`** matching resource, and the combat UI opens its
+target list on the **front-most** body. When those are the same body — which
+they are whenever the resource is listed first — the player's very first
+keypress destroys the exact construct the Knight reserved. Adding a second
+construct just adds a body neither side picks.
+
+The fix is **positional, not numerical**: put a non-consumable body first in
+spawn order so the player's default target and the AI's reserved resource are
+different bodies.
+
+**Four variants, party level 8, 400 trials each:**
+
+| Front row | Naive front-focus | Spread | Party damage |
+|---|---:|---:|---:|
+| construct, construct (hypothesised) | **0%** | 56% | 113.3 |
+| **armour, construct (shipped)** | **86%** | 66% | 116.3 |
+| armour, construct, construct | 91% | 67% | **167.8** (+48%, pack 5) |
+| stone-guardian, construct | 64% | 67% | 94.9 |
+
+Shipped the second: pack size stays 4, difficulty is sideways (+2.6%), and the
+relationship goes from never firing to firing in ~6 of 7 naive fights. The
+three-body variant buys 5 more percentage points for a 48% difficulty increase
+and pack-size growth — not worth it.
+
+Killing the construct is still the counter. It just has to be *chosen* now,
+rather than happening by accident on the first keypress.
+
+> **Generalisable rule:** a Consume relationship must not place its consumable
+> resource in the default target slot. The AI reserves the lowest-serial
+> resource and the UI defaults to the front-most body; if those coincide, the
+> relationship deletes itself before it can be seen.
+
+## Embodied re-verification
+
+**F3 Rune Overload — naive play, no special effort:**
+
+```
+[t0] targets: >Animated Armor(5-7)  Lesser Construct(9-15)
+              Rune Knight(10-20)  Warlock(15-25)   -> Animated Armor
+     Rune Knight begins charging Rune Overload!
+     Rune Knight resolves Rune Overload!
+     Lesser Construct is consumed by Rune Knight!
+     Rune Knight resolves Rune Overload on Aria for 12 damage!   (x4)
+     Lesser Construct is consumed.
+```
+
+**F1 Spawn Bomb — naive play, the teaching fight now teaches:**
+
+```
+[t0] targets: >Crypt Demon Spawn(9-15)  Crypt Demon Spawn(9-15)
+              Crypt Demon Mage(8-14)
+     Crypt Demon Mage resolves Spawn Bomb!
+     Crypt Demon Spawn is consumed by Crypt Demon Mage!
+     Crypt Demon Mage resolves Spawn Bomb on Aria for 8 damage!  (6/11/12)
+```
+
+**F3 Spawn Bomb — naive play, fired.** `f4-viper-mage` did not fire in two
+level-11 episodes: it is a two-body formation with no pre-placed ammunition,
+so the Mage must summon first, and the party kills both bodies before the loop
+closes. It is the rarest entry on its table (w1) and the relationship fires
+reliably in the pre-placed formations, so this is acceptable rather than a
+second failure.
+
+### An unexpected bonus: the break line teaches too
+
+Before the composition fix, the intermediate state produced this in naive play:
+
+```
+Rune Knight begins charging Rune Overload!
+Rune Knight's Rune Overload breaks!
+```
+
+That is worth keeping in mind as a design asset. A telegraph followed by a
+visible *break* tells the player they disrupted something — negative-space
+teaching. It is weaker than seeing the payoff, but it is far better than
+silence, and it is what the player will now see whenever they *deliberately*
+kill the battery.
+
+## Cross-floor literacy — now testable, and it holds
+
+The blocked test from the first pass now runs. Floor 1 teaches the rule; the
+same wording, ability name, presentation and consumption beat recur on Floor 3
+with the production species:
+
+| | Floor 1 (teaching) | Floor 3 (transfer) |
+|---|---|---|
+| Log | `Crypt Demon Mage resolves Spawn Bomb!` | `Demon Mage resolves Spawn Bomb!` |
+| Consumption | `Crypt Demon Spawn is consumed by Crypt Demon Mage!` | `Demon Spawn is consumed.` |
+| Payoff | party-wide fire, 8/6/11/12 | party-wide fire, 6/9/10 |
+
+Everything the player keys on is identical apart from the deliberate `Crypt`
+display-name prefix. A player who saw the Floor 1 fight has every cue needed
+to anticipate the Floor 3 one on sight of Demon Mage + Demon Spawn.
+
+**Honest limit:** I verified the *cues are identical and both fights now fire*.
+I cannot claim to have measured a human's subjective recognition — that needs
+a blind player who meets Floor 1 and Floor 3 in sequence without being told
+what to look for.
+
+## Re-verified tiers
+
+| Relationship | Natural play sees it? | Tier |
+|---|---|---|
+| Rune Knight → Construct | **✓** (86% naive) | **T2**, with a T3 beat when the telegraph lands early enough to act on |
+| Choir Warden → Cantor | ✓ | **T2** |
+| Drowned Sentinel → Caller/Wraith | ◐ (late, buried in attrition) | T1–T2 |
+| Demon Mage → Spawn Bomb | **✓** (90–95% in pre-placed formations) | **T2** |
+
+Rune Overload is argued as T2 rather than T3: the telegraph does create a
+genuine "change the plan" moment, but with a single construct there is one
+clearly correct response (kill the battery), and nothing in the fight forces a
+second reconsideration. It becomes T3 only when paired with a competing
+priority — which is the Floor 3 combination work, not this pass.
+
+Spawn Bomb is T2 and not more: "kill the little one or kill the mage" is a
+real choice, but the payoff is small enough (see the anticlimax note above,
+still unaddressed by design) that enduring it is usually fine.
+
+The damage-anticlimax finding is unchanged and remains open, per instruction.

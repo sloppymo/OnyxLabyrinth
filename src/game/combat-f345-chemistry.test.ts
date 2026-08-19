@@ -91,6 +91,19 @@ describe("f3 Rune Overload (consumeAlly reuse)", () => {
     ]);
   });
 
+  it("the construct is screened — it must not be the default target", () => {
+    // Embodied play: combat-ai reserves the lowest-spawnSerial resource and
+    // the combat UI opens its target list on the front-most body. If the
+    // consumable resource is listed first, the player's very first keypress
+    // destroys the exact construct the Knight reserved, and the relationship
+    // fires 0% of the time. Screening it behind a non-consumable body takes
+    // that to 86%. Order in `spawns` is load-bearing, not cosmetic.
+    const entry = ENCOUNTER_TABLES[3]!.find((e) => e.id === "f3-guardian-rune-line")!;
+    const front = entry.spawns.filter((s) => s.row === "front");
+    expect(front[0]!.enemyId).not.toBe("lesser-construct");
+    expect(front.some((s) => s.enemyId === "lesser-construct")).toBe(true);
+  });
+
   it("the Knight overloads the construct, consuming it for party-wide lightning", () => {
     const construct = makeEnemy("lesser-construct", "construct-0", 60, "front", {
       chemistryGroups: ["conductive-construct"],
@@ -448,6 +461,18 @@ describe("f3 Spawn Bomb (detonate reuse)", () => {
     );
     expect(survivingSpawn).toBeUndefined();
     expect(state.party.reduce((sum, c) => sum + c.hp, 0)).toBeLessThan(before);
+  });
+
+  it("is gated on the resource, not on the turn number", () => {
+    // Was `notFirstTurn`, which combined with anti-magic-field's `firstTurn`
+    // (weight 10, windUp) to lock the bomb out until turn 3 — by which point
+    // focus-fire had killed the spawn. Embodied play saw 0 detonations across
+    // 3 formations and 3 floors. See the 2026-08-19 embodied playtest doc.
+    const bomb = enemyAbilityById("crypt-spawn-bomb")!;
+    expect(bomb.condition).toEqual({
+      kind: "allyPresent",
+      resource: { group: "volatile-spawn" },
+    });
   });
 
   it("is inert with no Spawn present — the Mage never wastes the turn", () => {

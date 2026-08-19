@@ -2001,18 +2001,31 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
-      // The Knight's battery. stone-guardian -> lesser-construct is a
-      // composition replacement, not a pack-size increase: both are
-      // front-row walls, and the construct is the only conductive-construct
-      // on Floor 3. This is the single formation that activates the Rune
-      // Knight's Overload relationship — the wall the player wants to ignore
-      // is the ammunition the Knight wants to spend.
+      // The armour SCREENS the battery, and spawn order is what does it.
+      //
+      // Embodied play found the Overload never fired: the construct is both
+      // the ammunition and the body the combat UI opens its target list on,
+      // so a player attacking normally always destroyed the exact resource
+      // the Knight had reserved. Duplicating the construct does not fix this
+      // — the AI reserves the lowest-spawnSerial match and the UI defaults to
+      // the front-most body, so both sides keep picking the *same* one.
+      // Measured at a floor-appropriate party level, 400 trials, naive
+      // front-focus play:
+      //
+      //   construct, construct          ->  0% fired
+      //   armour, construct (this)      -> 86% fired, difficulty sideways
+      //   armour, construct, construct  -> 91% fired, but +48% party damage
+      //
+      // Putting a non-consumable body first decouples the player's default
+      // target from the AI's reserved resource. Killing the construct is
+      // still the counter — it just has to be chosen now, rather than
+      // happening by accident on the first keypress.
       id: "f3-guardian-rune-line",
       family: "guardian-rune",
       weight: 3,
       spawns: [
-        { enemyId: "lesser-construct", row: "front" },
         { enemyId: "animated-armor", row: "front" },
+        { enemyId: "lesser-construct", row: "front" },
         { enemyId: "rune-knight", row: "back" },
         { enemyId: "warlock", row: "back" },
       ],

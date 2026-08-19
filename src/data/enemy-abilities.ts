@@ -237,7 +237,19 @@ const CRYPT_SPAWN_BOMB: EnemyAbilityDef = {
     resource: { group: "volatile-spawn" },
     payoff: { kind: "damage", target: "allParty", power: 6, element: "fire" },
   },
-  condition: { kind: "notFirstTurn" },
+  // Was `notFirstTurn`, which deterministically prevented this from ever being
+  // seen. Anti-Magic Field is `condition: firstTurn`, weight 10, windUp — so a
+  // Demon Mage blocked from bombing on turn 1 almost always opened with AMF,
+  // whose wind-up also consumed turn 2. The bomb could not be considered until
+  // turn 3, and embodied play showed focus-fire destroys the fragile spawn
+  // well before that (0 detonations across 3 formations and 3 floors).
+  //
+  // `allyPresent` is the condition the design spec always documented, and it
+  // matches the sibling CRYPT_RUNE_OVERLOAD. It is also belt-and-braces rather
+  // than a behaviour change in itself: combat-ai.ts already hard-drops any
+  // consumeAlly ability whose resource list is empty. The real effect is that
+  // the bomb now competes on turn 1 instead of being locked out of it.
+  condition: { kind: "allyPresent", resource: { group: "volatile-spawn" } },
   weight: 10,
   cooldown: 3,
   chemistryId: "chem-spawn-bomb",
