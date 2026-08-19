@@ -2319,6 +2319,19 @@ const CHEMISTRY_STYLES: Record<string, EffectStyle> = {
     scale: 1.25,
     glow: true,
   },
+  // The Choir's phrase. Styles key on `presentation`, so without this entry
+  // Conduct would silently inherit consumeAlly's purple explosion instead of
+  // reading as a lightning chord.
+  conduct: {
+    color: "#cfa8ff",
+    projectile: "rune-beam",
+    burst: "lightning_blast",
+    burstUnderlay: "retro2_solar_ring",
+    burstUnderlayScale: 1.15,
+    burstScale: 1.45,
+    scale: 1.2,
+    glow: true,
+  },
 };
 
 function chemistryStyleForEvent(
@@ -3442,6 +3455,46 @@ export function playTurn(
               })
             );
             t += 520;
+          } else if (evt.presentation === "conduct") {
+            // The Choir's phrase: the Cantor calls, and a tether reaches each
+            // living Chorister in turn before the chord lands. Reuses the
+            // overload tether construction rather than adding a renderer
+            // primitive — the fan-out and the stagger are what sell it, and
+            // the number of beams IS the damage number, so the player can
+            // literally count what killing a singer took away.
+            const amplifiers = evt.amplifierIds ?? [];
+            amplifiers.forEach((amplifierId, index) => {
+              steps.push(
+                step(t + index * 140, (sc, n) => {
+                  const cantor = findActor(sc, evt.actorId, w, h);
+                  const singer = findActor(sc, amplifierId, w, h);
+                  if (!cantor || !singer) return;
+                  if (style.projectile) {
+                    sc.effects.push({
+                      type: "projectile",
+                      fromX: cantor.x,
+                      fromY: cantor.y - 20,
+                      toX: singer.x,
+                      toY: singer.y,
+                      x: cantor.x,
+                      y: cantor.y - 20,
+                      color: style.color,
+                      effect: style.projectile,
+                      scale: style.scale ?? 1,
+                      glow: true,
+                      start: n,
+                      duration: 420,
+                    });
+                  }
+                  // The singer answers: a pulse on the body that is adding to
+                  // the chord.
+                  pushBursts(sc, singer.x, singer.y, style, n + 380, 320);
+                  const anim = getAnim(sc, singer.kind, amplifierId, n);
+                  anim.hitFlashIntensity = 0.5;
+                })
+              );
+            });
+            t += amplifiers.length * 140 + 460;
           } else if (evt.presentation === "detonateAlly") {
             // Spawn Bomb is immediate: the pulse is the command telegraph,
             // and the consume beat below owns the flash/removal.

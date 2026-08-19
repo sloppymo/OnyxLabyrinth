@@ -10,6 +10,7 @@ import type {
   ChemistryResourceSelector,
   EnemyAbilityDef,
 } from "../data/enemy-abilities";
+import type { ChemistryResourceGroup } from "../data/enemies";
 import type {
   ChemistryCombatEvent,
   ChemistryReservation,
@@ -63,6 +64,41 @@ export function selectChemistryResource(
   extraReserved: readonly string[] = []
 ): EnemyInstance | undefined {
   return chemistryResourceCandidates(s, selector, extraReserved)[0];
+}
+
+/**
+ * Living allies (excluding the actor) carrying a scaling tag. Unlike
+ * `chemistryResourceCandidates` this ignores reservations entirely: an
+ * amplifier is not consumed, so nothing needs to be committed to it, and two
+ * different scaled abilities may count the same body.
+ */
+export function livingScalingAllies(
+  s: CombatState,
+  actor: EnemyInstance,
+  scaling: { group: ChemistryResourceGroup; maxAllies?: number }
+): EnemyInstance[] {
+  const matches = livingEnemies(s).filter(
+    (enemy) =>
+      enemy.instanceId !== actor.instanceId &&
+      (enemy.chemistryGroups?.includes(scaling.group) ?? false)
+  );
+  return scaling.maxAllies === undefined ? matches : matches.slice(0, scaling.maxAllies);
+}
+
+export function countLivingScalingAllies(
+  s: CombatState,
+  actor: EnemyInstance,
+  scaling: { group: ChemistryResourceGroup; maxAllies?: number }
+): number {
+  return livingScalingAllies(s, actor, scaling).length;
+}
+
+export function livingScalingAllyIds(
+  s: CombatState,
+  actor: EnemyInstance,
+  scaling: { group: ChemistryResourceGroup; maxAllies?: number }
+): string[] {
+  return livingScalingAllies(s, actor, scaling).map((enemy) => enemy.instanceId);
 }
 
 export function chemistryUseKey(actorId: string, abilityId: string): string {

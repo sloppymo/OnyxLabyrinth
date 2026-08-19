@@ -42,6 +42,8 @@ import {
   chemistryEvent,
   chemistryReservationFor,
   chemistryResourceAlive,
+  countLivingScalingAllies,
+  livingScalingAllyIds,
   markConsumed,
   markChemistryMetric,
   releaseChemistryReservation,
@@ -516,8 +518,38 @@ function resolveEnemyAbility(
   // Resolve effect.
   switch (eff.kind) {
     case "damage": {
+      // Generic payoff scaling, counted at RESOLVE time so that killing a
+      // tagged ally during the wind-up actually weakens the result. The
+      // resolver stays fiction-free — it counts tagged living allies and adds
+      // power; whether they are a choir, a battery bank or a swarm is the
+      // ability's presentation problem, not this switch's.
+      const amplifiers = eff.scaling
+        ? countLivingScalingAllies(s, actor, eff.scaling)
+        : 0;
+      const power = eff.scaling
+        ? eff.power + amplifiers * eff.scaling.perAlly
+        : eff.power;
+      if (eff.scaling) {
+        // Parity with the other chemistry verbs so telemetry, tests and the
+        // playtest tooling can all see a scaled payoff land.
+        if (ability.chemistryId) markChemistryMetric(s, "resolved", ability.chemistryId);
+        emit(
+          `${actor.name}'s ${ability.name} swells — ${amplifiers} ${amplifiers === 1 ? "voice joins" : "voices join"}!`,
+          {
+            type: "chemistry",
+            chemistryId: ability.chemistryId ?? "",
+            abilityId: ability.id,
+            name: ability.name,
+            phase: "resolve",
+            actorId: actor.instanceId,
+            targetId: null,
+            amplifierIds: livingScalingAllyIds(s, actor, eff.scaling),
+            presentation: ability.presentation === "conduct" ? "conduct" : undefined,
+          }
+        );
+      }
       for (const t of partyTargets) {
-        const hit = abilityDamageParty(s, t, scaledAbilityPower(eff.power), actor, rng, emit);
+        const hit = abilityDamageParty(s, t, scaledAbilityPower(power), actor, rng, emit);
         emit(`${actor.name} uses ${ability.name} on ${t.name} for ${hit.finalDamage} damage!`, {
           type: "cast", actorId: actor.instanceId, spellId: ability.id, targetId: t.id, damage: hit.finalDamage,
           presentation: ability.presentation,

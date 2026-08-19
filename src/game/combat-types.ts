@@ -174,7 +174,8 @@ export type CombatEvent =
         | "detonateAlly"
         | "packStrike"
         | "guardAlly"
-        | "overload";
+        | "overload"
+        | "conduct";
     }
   | { type: "spellEffect"; spellId: string; targetId?: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean; isDebuff?: boolean }
   | { type: "defeated"; targetId: string; wasEnemy: boolean }
@@ -243,6 +244,13 @@ export interface ChemistryCombatEvent {
   targetId?: string | null;
   resourceId?: string;
   partnerId?: string;
+  /**
+   * Bodies whose survival scaled this payoff. Distinct from `resourceId`
+   * (one committed, destroyed body) — these are counted, not consumed, and
+   * there may be several. Presentation-only: the choreography fans a tether
+   * to each one.
+   */
+  amplifierIds?: string[];
   reason?: ChemistryBreakReason;
   presentation?:
     | "throwAlly"
@@ -250,7 +258,8 @@ export interface ChemistryCombatEvent {
     | "detonateAlly"
     | "packStrike"
     | "guardAlly"
-    | "overload";
+    | "overload"
+    | "conduct";
 }
 
 /** Exact committed identity carried from telegraph to resolution. */

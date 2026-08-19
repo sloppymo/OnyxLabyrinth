@@ -60,8 +60,27 @@ export type ChemistryPayoff =
       };
     };
 
+/**
+ * Generic payoff scaling. Deliberately mechanical and fiction-free: the
+ * resolver only knows "count living allies carrying this tag and add
+ * `perAlly` power each". The choir fiction lives entirely in the ability's
+ * name and `presentation`, so the same primitive can later scale a payoff off
+ * living skeletons, crystals, or swarm members without touching the resolver.
+ *
+ * Counted at RESOLVE time, not at telegraph time — that is what makes killing
+ * an amplifier during the wind-up meaningfully weaken the payoff.
+ */
+export type AbilityScaling = {
+  kind: "livingAllies";
+  group: ChemistryResourceGroup;
+  /** Power added per living tagged ally. */
+  perAlly: number;
+  /** Optional cap on how many allies can contribute. */
+  maxAllies?: number;
+};
+
 export type AbilityEffect =
-  | { kind: "damage"; power: number; element?: DamageElement }
+  | { kind: "damage"; power: number; element?: DamageElement; scaling?: AbilityScaling }
   | { kind: "multiHit"; hits: number; powerPerHit: number; element?: DamageElement }
   | { kind: "heal"; power: number }
   | { kind: "drain"; power: number; element?: DamageElement }   // damage party, heal self
@@ -141,7 +160,8 @@ export interface EnemyAbilityDef {
     | "detonateAlly"
     | "packStrike"
     | "guardAlly"
-    | "overload";
+    | "overload"
+    | "conduct";
   /**
    * For "singleParty" target only: pick the lowest-HP% living party member
    * instead of a random one. Mirrors the existing wounded-ally preference
@@ -371,6 +391,39 @@ const SENTINEL_GUARD: EnemyAbilityDef = {
   guardTargetIds: ["undertow-caller", "cistern-wraith"],
   presentation: "guardAlly",
   element: "physical",
+};
+
+// Floor 4: the Null Choir's signature. The Cantor opens a phrase and every
+// living Iron Chorister amplifies it. Mechanically this is an ordinary
+// wind-up allParty damage ability plus the generic `livingAllies` scaling —
+// there is no "conduct" effect kind, because the resolver should not know
+// about choirs. The fiction is entirely in the name and the presentation.
+//
+// Unlike Consume, nothing is reserved and nothing is destroyed, so the
+// relationship degrades instead of breaking: killing a Chorister lowers the
+// payoff, killing the Cantor cancels it. That is why the amplifiers are
+// allowed to sit in the default front target slot — naive play thins the
+// choir, which is the intended counter rather than an accidental cancel.
+const DISCORDANT_PHRASE: EnemyAbilityDef = {
+  id: "discordant-phrase",
+  name: "Discordant Phrase",
+  description: "Opens a phrase the Choir's iron singers swell into a killing chord.",
+  target: "allParty",
+  effect: {
+    kind: "damage",
+    power: 5,
+    element: "lightning",
+    scaling: { kind: "livingAllies", group: "choir-chorister", perAlly: 5, maxAllies: 3 },
+  },
+  condition: { kind: "allyPresent", resource: { group: "choir-chorister" } },
+  weight: 10,
+  cooldown: 4,
+  windUp: true,
+  chemistryId: "chem-conduct",
+  chemistryChance: 0.8,
+  maxUses: 2,
+  presentation: "conduct",
+  element: "lightning",
 };
 
 const CRYPT_PACK_HUNT: EnemyAbilityDef = {
@@ -1040,6 +1093,7 @@ export const ALL_ENEMY_ABILITIES: EnemyAbilityDef[] = [
   ARCHER_GUARD,
   CHOIR_GUARD,
   SENTINEL_GUARD,
+  DISCORDANT_PHRASE,
   CRYPT_PACK_HUNT,
   CRYPT_RUNE_OVERLOAD,
   SPLIT,

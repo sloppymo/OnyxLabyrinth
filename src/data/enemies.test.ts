@@ -437,6 +437,7 @@ describe("encounter table integrity", () => {
       "packStrike",
       "guardAlly",
       "overload",
+      "conduct",
     ];
     for (const ability of ALL_ENEMY_ABILITIES) {
       if (ability.presentation) {

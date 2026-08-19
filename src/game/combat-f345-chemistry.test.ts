@@ -493,6 +493,120 @@ describe("f3 Spawn Bomb (detonate reuse)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// F4 — Discordant Cantor -> Iron Choristers (Conduct / livingAllies scaling)
+// ---------------------------------------------------------------------------
+
+function makeConductState(choristers: number): CombatState {
+  const cantor = makeEnemy("discordant-cantor", "cantor-0", 300, "back", {
+    abilityIds: ["discordant-phrase"],
+    agi: 20,
+  });
+  const front: EnemyInstance[] = [];
+  for (let i = 0; i < choristers; i++) {
+    front.push(
+      makeEnemy("iron-chorister", `chorister-${i}`, 400, "front", {
+        abilityIds: [],
+        chemistryGroups: ["choir-chorister"],
+      })
+    );
+  }
+  // Always keep one non-amplifier body so "no choristers" is still a fight.
+  front.push(makeEnemy("animated-armor", "armor-0", 400, "front", { abilityIds: [] }));
+  const state = createCombatState(createDefaultParty(), { front, back: [cantor] }, false);
+  state.chemistryEnabled = true;
+  return state;
+}
+
+function runConduct(state: CombatState, rounds = 6): CombatState {
+  let s = state;
+  for (let i = 0; i < rounds; i++) s = resolveCombatRound(s, defendActions(s), () => 0.1);
+  return s;
+}
+
+describe("f4 Conduct (generic livingAllies scaling)", () => {
+  it("is an ordinary damage ability with generic scaling — not a bespoke effect kind", () => {
+    const ability = enemyAbilityById("discordant-phrase")!;
+    expect(ability.effect.kind).toBe("damage");
+    // The resolver must stay fiction-free; the choir lives in the presentation.
+    expect(ability.presentation).toBe("conduct");
+    expect(ability.windUp).toBe(true);
+    const effect = ability.effect as Extract<typeof ability.effect, { kind: "damage" }>;
+    expect(effect.scaling).toEqual({
+      kind: "livingAllies",
+      group: "choir-chorister",
+      perAlly: 5,
+      maxAllies: 3,
+    });
+  });
+
+  it("the Iron Chorister is tagged as an amplifier", () => {
+    expect(ENEMIES_BY_ID["iron-chorister"]!.chemistryGroups).toContain("choir-chorister");
+    expect(ENEMIES_BY_ID["discordant-cantor"]!.abilityIds).toContain("discordant-phrase");
+  });
+
+  it("scales the payoff by the number of living Choristers", () => {
+    const withTwo = runConduct(makeConductState(2));
+    const withOne = runConduct(makeConductState(1));
+    const damage = (s: CombatState) =>
+      s.party.reduce((sum, c) => sum + (c.maxHp - c.hp), 0);
+    expect(withTwo.chemistryTelemetry?.resolved["chem-conduct"]).toBeGreaterThan(0);
+    expect(withOne.chemistryTelemetry?.resolved["chem-conduct"]).toBeGreaterThan(0);
+    // More singers, bigger chord. This is the whole relationship.
+    expect(damage(withTwo)).toBeGreaterThan(damage(withOne));
+  });
+
+  it("counts amplifiers at RESOLVE time, so killing a singer mid-phrase weakens it", () => {
+    // The count must not be frozen at telegraph, or "thin the choir" would be
+    // a counter the player cannot actually execute once the phrase has begun.
+    let s = makeConductState(2);
+    s = resolveCombatRound(s, defendActions(s), () => 0.1); // telegraph
+    expect(s.log.some((l) => l.includes("begins charging Discordant Phrase"))).toBe(true);
+    // Kill one singer during the wind-up.
+    const singer = s.enemies.front.find((e) => e.id === "iron-chorister")!;
+    singer.currentHp = 0;
+    s = runConduct(s, 4);
+    const swell = s.log.find((l) => l.includes("swells"));
+    expect(swell).toBeDefined();
+    expect(swell).toContain("1 voice joins");
+  });
+
+  it("announces the amplifier count at telegraph, while the player can still act", () => {
+    const s = resolveCombatRound(makeConductState(2), defendActions(makeConductState(2)), () => 0.1);
+    const telegraph = s.log.find((l) => l.includes("begins charging Discordant Phrase"));
+    expect(telegraph).toBeDefined();
+    expect(telegraph).toContain("2 voices answering");
+  });
+
+  it("does not count the Cantor itself as one of its own voices", () => {
+    const s = runConduct(makeConductState(1));
+    const swell = s.log.find((l) => l.includes("swells"));
+    expect(swell).toContain("1 voice joins");
+  });
+
+  it("is inert with no Chorister present", () => {
+    const s = runConduct(makeConductState(0));
+    expect(s.chemistryTelemetry?.resolved["chem-conduct"]).toBeUndefined();
+    expect(s.log.some((l) => l.includes("Discordant Phrase"))).toBe(false);
+  });
+
+  it("activates on exactly the one authored formation", () => {
+    expect(formationsContaining("discordant-cantor", "iron-chorister")).toEqual([
+      "4:f4-chorister-demon",
+    ]);
+  });
+
+  it("keeps the amplifiers in the default target slot on purpose", () => {
+    // Conduct degrades rather than breaking, so unlike a Consume relationship
+    // the consumable-adjacent bodies SHOULD sit where naive play hits them:
+    // chipping a Chorister is the intended "thin the choir" counter.
+    const entry = ENCOUNTER_TABLES[4]!.find((e) => e.id === "f4-chorister-demon")!;
+    expect(entry.spawns.filter((s) => s.row === "front").every((s) => s.enemyId === "iron-chorister")).toBe(true);
+    // ...and the conductor is behind them, so naive play cannot cancel by accident.
+    expect(entry.spawns.find((s) => s.enemyId === "discordant-cantor")!.row).toBe("back");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // The climax fights are self-contained set-pieces — no chemistry may fire
 // ---------------------------------------------------------------------------
 

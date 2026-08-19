@@ -33,6 +33,7 @@ import {
   chemistryCapAvailable,
   chemistryResourceCandidates,
   guardForTarget,
+  livingScalingAllyIds,
   markChemistryMetric,
   reserveChemistryUse,
   releaseChemistryReservation,
@@ -410,7 +411,22 @@ export function decideEnemyAction(
           };
           s.windUps[enemy.instanceId] = windUp;
           markChemistryMetric(s, "telegraphed", chemistry);
-          emit(`${enemy.name} begins charging ${abilityPick.ability.name}!`, {
+          // A scaled payoff must announce its current strength AT TELEGRAPH,
+          // not only on resolution — the wind-up round is the only point where
+          // the player can still act on the number. Without this the scaling
+          // is invisible and the ability reads as a flat nuke with a fancy
+          // animation.
+          const scaling =
+            abilityPick.ability.effect.kind === "damage"
+              ? abilityPick.ability.effect.scaling
+              : undefined;
+          const amplifierIds = scaling
+            ? livingScalingAllyIds(s, enemy, scaling)
+            : undefined;
+          const chorus = amplifierIds
+            ? ` (${amplifierIds.length} ${amplifierIds.length === 1 ? "voice" : "voices"} answering)`
+            : "";
+          emit(`${enemy.name} begins charging ${abilityPick.ability.name}!${chorus}`, {
             type: "chemistry",
             chemistryId: chemistry,
             abilityId: abilityPick.ability.id,
@@ -420,6 +436,7 @@ export function decideEnemyAction(
             targetId: abilityPick.targetId,
             resourceId,
             partnerId,
+            amplifierIds,
             presentation: abilityPick.ability.presentation === "meleeGangUp"
               ? undefined
               : abilityPick.ability.presentation,

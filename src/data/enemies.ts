@@ -21,7 +21,13 @@ export type ChemistryResourceGroup =
   | "throwable-slime"
   | "harvestable-bone"
   | "volatile-spawn"
-  | "conductive-construct";
+  | "conductive-construct"
+  /**
+   * Not a consumable resource — an amplifier. Read by `livingAllies` scaling
+   * rather than by the consumeAlly selector, so members are counted at resolve
+   * time instead of being reserved and destroyed.
+   */
+  | "choir-chorister";
 
 export type EnemySpecial =
   | { kind: "flying" }
@@ -1280,7 +1286,7 @@ export const DISCORDANT_CANTOR: EnemyDef = {
     { kind: "resistElement", element: "lightning" },
     { kind: "weakElement", element: "earth" },
   ],
-  abilityIds: ["lightning-strike", "chaos-bolt", "anti-magic-field"],
+  abilityIds: ["lightning-strike", "chaos-bolt", "anti-magic-field", "discordant-phrase"],
   isBoss: false,
 };
 
@@ -1319,6 +1325,11 @@ export const IRON_CHORISTER: EnemyDef = {
     { kind: "resistPhysical", percent: 15 },
   ],
   abilityIds: ["charge", "savage-lunge", "shield-bash"],
+  // Amplifier for the Cantor's phrase. Deliberately front-row and beefy: a
+  // Conduct payoff degrades gracefully rather than breaking, so the player
+  // chipping the default front target is the intended "thin the choir"
+  // counter, not an accidental cancel.
+  chemistryGroups: ["choir-chorister"],
   isBoss: false,
 };
 
@@ -2157,13 +2168,26 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
       ],
     },
     {
+      // The Choir as a machine. No formation paired a Cantor with Choristers,
+      // so this one is revised rather than a new entry added: black-knight and
+      // demon-spawn (generic padding on a floor with its own cast) become a
+      // second Chorister and the Cantor who conducts them. Pack size stays 5.
+      //
+      // Deliberately NO Choir Warden here. f4-choir-armor and
+      // f4-choir-guardian already carry Warden+Cantor; a third would make the
+      // guard feel mandatory rather than characterful. Conduct also does not
+      // need the protection that Rune Overload did — the Cantor is back-row,
+      // so naive front-target play thins the choir (the intended counter,
+      // which only weakens the phrase) instead of cancelling it outright.
+      // Hunting the Cantor still cancels; that is an earned counter, not an
+      // accident of where the UI cursor starts.
       id: "f4-chorister-demon",
       family: "chorister-demon",
       weight: 3,
       spawns: [
         { enemyId: "iron-chorister", row: "front" },
-        { enemyId: "black-knight", row: "front" },
-        { enemyId: "demon-spawn", row: "front" },
+        { enemyId: "iron-chorister", row: "front" },
+        { enemyId: "discordant-cantor", row: "back" },
         { enemyId: "demoness", row: "back" },
         { enemyId: "succubus", row: "back" },
       ],
