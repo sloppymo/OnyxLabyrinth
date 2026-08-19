@@ -480,7 +480,7 @@ export class AiPlayerSession {
           st.equipment,
           st.inventory,
           st.inAntimagic,
-          st.activeCharIds
+          { id: entry.id, family: entry.family, displayName: entry.displayName, chemistryEnabled: true }
         );
         await d.startCombat(combat);
         return { ok: true };
@@ -498,7 +498,7 @@ export class AiPlayerSession {
           st.equipment,
           st.inventory,
           st.inAntimagic,
-          st.activeCharIds
+          { id: entry.id, family: entry.family, displayName: entry.displayName, chemistryEnabled: true }
         );
         await d.startCombat(combat);
         return { ok: true };
