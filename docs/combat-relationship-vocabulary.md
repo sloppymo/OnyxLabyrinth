@@ -1,9 +1,113 @@
 # Combat Relationship Vocabulary — Floors 3–5 Design Spec
 
-Status: **Design phase — not yet implemented**
+Status: **Design phase — partially implemented (see § Source verification)**
 Date: 2026-08-19
 Authority: `docs/encounter-audit.md` § "Longer-term roadmap"
 Validation: `docs/playtests/2026-08-18-f2-targeted-chemistry-verification.md`
+
+## Source verification (2026-08-19, baseline `774c87d`)
+
+Every activation-surface and trigger claim below was re-derived from source
+before implementation, per the authoring contract's requirement that the
+audit be re-run rather than trusted. Five claims were wrong. **The first
+two block F3-R2 (Demon Mage → Spawn Bomb).**
+
+Surfaces were computed by enumerating `ENCOUNTER_TABLES` in
+`src/data/enemies.ts` programmatically, not by reading the table by eye.
+
+### Confirmed correct
+
+| Claim | Verified surface |
+|---|---|
+| `rune-knight` + `lesser-construct` | 0 formations — needs authoring |
+| `choir-warden` + `discordant-cantor` | 2 — `f4-choir-armor` (w4), `f4-choir-guardian` (w2) |
+| `choir-warden` + `choir-magus` | 0 — Magus guard path stays inert |
+| `discordant-cantor` + `iron-chorister` | 0 — Conduct needs authoring |
+| `drowned-sentinel` + Caller/Wraith | 1 — `f5-golem-cistern` (w2) contains **both** |
+| `undertow-caller` + `flood-brute` | 1 — `f5-flood-brute` (w4) |
+
+### Correction 1 — Spawn Bomb's surface is 14 formations, not 4
+
+The spec counted only formations with a **pre-placed** `demon-spawn`. But
+`demon-mage` carries `summon-imp`, whose effect is
+`{ kind: "summon", enemyId: "demon-spawn" }` (`enemy-abilities.ts:722`).
+`summonEnemyBodies` builds the instance with `{ ...enemyDef }`
+(`combat-enemy.ts:326`), which **spreads `chemistryGroups`** — so a summoned
+spawn is a fully valid `volatile-spawn` chemistry resource.
+
+**The Demon Mage manufactures its own ammunition.** Every formation
+containing a Demon Mage is therefore an activation surface, not just those
+with a spawn already placed.
+
+- **Pre-placed (4):** `f3-demon-spawn-mage` (w2), `f4-spawn-brawler` (w2),
+  `f5-flood-brute` (w4), `f5-spawn-flood` (w2)
+- **Summon-gated (10):** `f3-knight-rune-mage` (w2), `f4-choir-armor` (w4),
+  `f4-guardian-mage` (w4), `f4-champion-rune` (w3), `f4-choir-guardian` (w2),
+  `f4-viper-mage` (w1), `f5-stone-demon` (w3), `f5-armor-rune` (w2),
+  **`f4-lonely-girl`**, **`f5-crying-man`**
+
+### Correction 2 — the two climax boss fights are activation surfaces
+
+The spec recorded "UNINTENDED: None." That is wrong, and it is the most
+consequential error in the document.
+
+`demon-mage` is a back-row escort in **both** named climax fights:
+`f4-lonely-girl` (table 8) and `f5-crying-man` (table 9).
+
+Those tables are **not** scripted combats. They are reached through
+`encounterZones` entries carrying `tableFloorId: 8` / `9`
+(`src/content/floors/floor-4.json:2047`, `floor-5.json:2039`), which flow
+through `encounterTableFloorId` into the ordinary roaming-encounter path in
+`main.ts:776` — the path that hardcodes **`chemistryEnabled: true`**
+(`main.ts:803`). The stairs-guardian and NPC paths pass no metadata and
+correctly default to `false`; these two do not.
+
+Each guardian zone is a **single cell** whose table holds exactly one
+weight-1 entry, so this is not a rare roll: it is *every* Lonely Girl and
+*every* Crying Man fight.
+
+Attaching `crypt-spawn-bomb` to `demon-mage` would therefore add an
+untuned party-wide fire nuke (`allParty`, power 6, `maxUses: 2`) to both
+climax fights, self-fuelled by the escort's own summon. Combined with
+Correction 5 below, it arrives specifically in the fight's final phase.
+
+**This is a STOP condition** — an activation surface creating an
+unexpected balance problem in authored content the prompt defers to a
+later dedicated boss audit. F3-R2 is not implemented pending a decision.
+
+### Correction 3 — Spawn Bomb's real trigger differs from the spec
+
+| Field | Spec claimed | Source (`enemy-abilities.ts:230`) |
+|---|---|---|
+| condition | `allyPresent { volatile-spawn }` | `notFirstTurn` |
+| cooldown | 4 | 3 |
+| maxUses | 1 | 2 |
+| chemistryChance | — | 0.75 |
+
+Gating is nonetheless **correct**: `combat-ai.ts:198–200` hard-drops any
+`consumeAlly` ability whose `chemistryResourceCandidates` list is empty, so
+the missing `allyPresent` is belt-and-braces rather than a bug. But the
+spec's tempo reasoning was built on half the uses and a longer cooldown
+than the ability actually has.
+
+### Correction 4 — guard target priority is not array order
+
+The spec worried that `pickAbilityTargetId` "selects the first valid target
+from `guardTargetIds`" and might protect a silly target. It does not.
+`combat-ai.ts:141–145` sorts eligible guard targets by `currentHp / hp`
+ascending, tie-broken by `instanceId`, and excludes allies already guarded.
+
+The Warden protects the **most-wounded** eligible caster. The concern is
+unfounded and needs no tuning decision.
+
+### Correction 5 — `maxAllies: 3` gates the summon loop to late fight
+
+`maxAllies` resolves as `livingAllyCount(s) < cond.count`
+(`combat-ai.ts:95–98`), i.e. *fewer than* 3 living allies. In a 5–6 body
+formation the Mage cannot begin manufacturing spawns until the party has
+already cleared most of the escort. The summon→bomb loop is therefore a
+**late-fight** behavior in large formations, not an opening-turn one —
+which is why it lands hardest exactly when the party is most attrited.
 
 ## Purpose
 
@@ -187,6 +291,11 @@ Machinery:        REUSE. CRYPT_SPAWN_BOMB ability already exists with
                   has chemistryGroups: ["volatile-spawn"]. The only work is
                   adding "crypt-spawn-bomb" to demon-mage.abilityIds.
 Activation surface:
+                  [SUPERSEDED — see § Source verification, Corrections 1–2.
+                  The real surface is 14 formations, not 4, because
+                  summon-imp manufactures volatile-spawn ammunition. Two of
+                  the 14 are the climax boss fights. The list below is
+                  retained only to show what the original audit missed.]
                   INTENDED: f3-demon-spawn-mage (F3 — the obvious target)
                   INTENDED: f4-spawn-brawler (F4 — Spawn + Mage, valid
                     cross-floor activation of a learned rule)
@@ -196,13 +305,19 @@ Activation surface:
                   NEEDS RETUNE: f5-spawn-flood (F5 — 2x demon-spawn + mage
                     + brute. Two Spawn Bomb targets plus Brute is a lot.
                     Consider removing demon-mage.)
-                  UNINTENDED: None — all other demon-mage formations lack
-                    demon-spawn.
+                  UNINTENDED: WRONG — f4-lonely-girl and f5-crying-man both
+                    carry a demon-mage escort and run with chemistry
+                    enabled. Eight further summon-gated roaming formations
+                    also activate.
                   Cross-floor note: This is a feature. "Demon Mages explode
                     Spawn" should be true on every floor where both appear.
                     The F5 formations need retuning because they already
                     have high chemical density.
 ```
+
+**STATUS: BLOCKED.** Not implemented. The boss-escort activation
+(Correction 2) is a balance change to authored climax content and must be
+decided by the dedicated boss audit, not absorbed silently here.
 
 **Implementation effort:** ~1 line change. Same pattern as F3-R1.
 
@@ -278,15 +393,13 @@ Activation surface:
                     choir-magus. The Magus guard path is inert until a
                     formation is authored with both. Consider adding a
                     Warden to f4-chorister-magus or f4-hellbat-choir.
-                  Guard target priority: When both Cantor and Magus are
-                    alive, the guard AI picks one. The existing
-                    pickAbilityTargetId logic selects the first valid
-                    target from guardTargetIds. If both are present,
-                    consider whether the Warden should prioritize the
-                    Cantor (the conductor, more valuable to the Choir
-                    system) or the Magus (the caster, more immediate
-                    damage). This is a tuning decision, not a bug — but
-                    it should be deliberate.
+                  Guard target priority: [CORRECTED — see Correction 4.
+                    pickAbilityTargetId sorts eligible targets by
+                    currentHp/hp ascending, tie-broken by instanceId, and
+                    skips allies already guarded (combat-ai.ts:141-145).
+                    The Warden protects the most-wounded eligible caster.
+                    No array-ordering problem exists and no tuning
+                    decision is required.]
 ```
 
 **Implementation effort:** ~15 lines (new ability def + add to abilityIds).
