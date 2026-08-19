@@ -1199,7 +1199,22 @@ export const DEMON_MAGE: EnemyDef = {
     { kind: "resistElement", element: "fire" },
     { kind: "weakElement", element: "water" },
   ],
-  abilityIds: ["hellfire", "summon-imp", "anti-magic-field"],
+  // Spawn Bomb is the same relationship the Floor 1 Crypt Demon Mage
+  // teaches, reused verbatim so the learned rule transfers: "Demon Mages
+  // explode Spawn. The little one is a bomb."
+  //
+  // This species keeps summon-imp alongside it deliberately. summon-imp
+  // summons demon-spawn, which carries volatile-spawn, so the Mage can
+  // manufacture its own ammunition — "leave a Demon Mage alone and it builds
+  // bombs." That loop is bounded by real caps, not by hope: summon-imp is
+  // maxUses 2 / cooldown 3 and gated on maxAllies:3 (strictly fewer than 3
+  // living allies), the combat-wide summon cap is 4, rows hold 3, and Spawn
+  // Bomb itself is maxUses 2 / cooldown 3 / chemistryChance 0.75.
+  //
+  // The climax fights are excluded by composition, not by a special case:
+  // f4-lonely-girl and f5-crying-man now escort a Warlock instead. See the
+  // comments on those formations.
+  abilityIds: ["hellfire", "summon-imp", "anti-magic-field", "crypt-spawn-bomb"],
   isBoss: false,
 };
 
@@ -2349,7 +2364,20 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "demon-champion", row: "front" },
         { enemyId: "ironclad-knight", row: "front" },
         { enemyId: "headmasters-echo-remnant", row: "back" },
-        { enemyId: "demon-mage", row: "back" },
+        // Warlock, not Demon Mage. The climax fights are deliberately
+        // self-contained set-pieces: no Formation Chemistry relationship may
+        // fire here. A Demon Mage's summon-imp manufactures demon-spawn,
+        // which carries volatile-spawn, so once Spawn Bomb exists on the
+        // species the escort would self-fuel a party-wide nuke in the boss
+        // fight (and maxAllies:3 gates it to the final phase, when the party
+        // is most attrited). Warlock is the closest body in the roster —
+        // hp29/atk6/ac3/agi10 against hp26/atk5/ac3/agi11, the same
+        // caster-fire/resistFire/weakWater special block, and it shares
+        // hellfire and anti-magic-field. The only kit difference is
+        // summon-imp -> chaos-bolt: the summon becomes direct damage. It
+        // carries no chemistryGroups and is an actor in no planned
+        // relationship, so it cannot re-open this surface in a later phase.
+        { enemyId: "warlock", row: "back" },
       ],
     },
   ],
@@ -2366,7 +2394,8 @@ export const ENCOUNTER_TABLES: Record<number, EncounterEntry[]> = {
         { enemyId: "black-knight", row: "front" },
         { enemyId: "demon-champion", row: "front" },
         { enemyId: "headmasters-echo-ascendant", row: "back" },
-        { enemyId: "demon-mage", row: "back" },
+        // Warlock, not Demon Mage — same reasoning as f4-lonely-girl above.
+        { enemyId: "warlock", row: "back" },
         { enemyId: "succubus", row: "back" },
       ],
     },

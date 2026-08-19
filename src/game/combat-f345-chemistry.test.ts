@@ -399,23 +399,115 @@ describe("Phase A relationships are visible inside a normal fight", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Absence guard for the blocked relationship
+// F3 — Demon Mage -> Demon Spawn (Detonate / detonateAlly)
 // ---------------------------------------------------------------------------
 
-describe("f3 Spawn Bomb is deliberately NOT wired to the generic Demon Mage", () => {
-  it("demon-mage does not carry spawn bomb", () => {
-    // Blocked: demon-mage escorts f4-lonely-girl (table 8) and f5-crying-man
-    // (table 9), both of which run with chemistryEnabled, and its summon-imp
-    // manufactures its own volatile-spawn ammunition. Wiring this silently
-    // adds an untuned party-wide nuke to both climax fights.
-    expect(ENEMIES_BY_ID["demon-mage"]!.abilityIds).not.toContain("crypt-spawn-bomb");
+describe("f3 Spawn Bomb (detonate reuse)", () => {
+  it("the generic Demon Mage carries the same ability the Floor 1 Mage teaches", () => {
+    expect(ENEMIES_BY_ID["demon-mage"]!.abilityIds).toContain("crypt-spawn-bomb");
+    expect(ENEMIES_BY_ID["crypt-demon-mage"]!.abilityIds).toContain("crypt-spawn-bomb");
   });
 
-  it("the boss escort surface that blocks it still exists", () => {
-    const bossTables = [...ENCOUNTER_TABLES[8]!, ...ENCOUNTER_TABLES[9]!];
-    const escortsAMage = bossTables.filter((e) =>
-      e.spawns.some((s) => s.enemyId === "demon-mage")
+  it("keeps summon-imp, so the Mage can manufacture its own ammunition", () => {
+    const mage = ENEMIES_BY_ID["demon-mage"]!;
+    expect(mage.abilityIds).toContain("summon-imp");
+    const summon = enemyAbilityById("summon-imp")!;
+    expect(summon.effect).toMatchObject({ kind: "summon", enemyId: "demon-spawn" });
+    // The summoned body must actually be valid ammunition, or the loop is
+    // fiction: summonEnemyBodies spreads the def, including chemistryGroups.
+    expect(ENEMIES_BY_ID["demon-spawn"]!.chemistryGroups).toContain("volatile-spawn");
+  });
+
+  it("detonates a pre-placed Spawn for party-wide fire damage", () => {
+    const spawn = live("demon-spawn", "spawn-0", "front");
+    const mage = makeEnemy("demon-mage", "mage-0", 200, "back", {
+      abilityIds: ["crypt-spawn-bomb"],
+      agi: 20,
+    });
+    let state = createCombatState(
+      createDefaultParty(),
+      { front: [spawn], back: [mage] },
+      false
     );
-    expect(escortsAMage).toHaveLength(2);
+    state.chemistryEnabled = true;
+    const before = state.party.reduce((sum, c) => sum + c.hp, 0);
+    for (let i = 0; i < 4; i++) state = resolveCombatRound(state, defendActions(state), () => 0.1);
+
+    expect(state.chemistryTelemetry?.resolved["chem-spawn-bomb"]).toBeGreaterThan(0);
+    const survivingSpawn = [...state.enemies.front, ...state.enemies.back].find(
+      (e) => e.instanceId === "spawn-0" && e.currentHp > 0
+    );
+    expect(survivingSpawn).toBeUndefined();
+    expect(state.party.reduce((sum, c) => sum + c.hp, 0)).toBeLessThan(before);
+  });
+
+  it("is inert with no Spawn present — the Mage never wastes the turn", () => {
+    const mage = makeEnemy("demon-mage", "mage-0", 200, "back", {
+      abilityIds: ["crypt-spawn-bomb"],
+      agi: 20,
+    });
+    const filler = makeEnemy("animated-armor", "armor-0", 60, "front", { abilityIds: [] });
+    let state = createCombatState(
+      createDefaultParty(),
+      { front: [filler], back: [mage] },
+      false
+    );
+    state.chemistryEnabled = true;
+    for (let i = 0; i < 4; i++) state = resolveCombatRound(state, defendActions(state), () => 0.1);
+    expect(state.chemistryTelemetry?.resolved["chem-spawn-bomb"]).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The climax fights are self-contained set-pieces — no chemistry may fire
+// ---------------------------------------------------------------------------
+
+describe("boss tables are closed to Formation Chemistry", () => {
+  const BOSS_TABLES = [8, 9] as const;
+
+  it("no boss escort can detonate: no bomber and no spawn-summoner", () => {
+    // Closed by composition, not by a special case in the resolver. Both
+    // climax formations escort a Warlock instead of a Demon Mage. If someone
+    // re-adds a Demon Mage (or any summon-imp carrier) here, this fails.
+    for (const table of BOSS_TABLES) {
+      for (const entry of ENCOUNTER_TABLES[table]!) {
+        for (const spawn of entry.spawns) {
+          const def = ENEMIES_BY_ID[spawn.enemyId]!;
+          expect(def.abilityIds ?? []).not.toContain("crypt-spawn-bomb");
+          expect(def.abilityIds ?? []).not.toContain("summon-imp");
+          expect(def.chemistryGroups ?? []).not.toContain("volatile-spawn");
+        }
+      }
+    }
+  });
+
+  it("no boss escort carries any chemistry ability at all", () => {
+    for (const table of BOSS_TABLES) {
+      for (const entry of ENCOUNTER_TABLES[table]!) {
+        for (const spawn of entry.spawns) {
+          const def = ENEMIES_BY_ID[spawn.enemyId]!;
+          for (const abilityId of def.abilityIds ?? []) {
+            expect(enemyAbilityById(abilityId)?.chemistryId).toBeUndefined();
+          }
+        }
+      }
+    }
+  });
+
+  it("the replacement preserves the escort's role", () => {
+    // Warlock is the closest body in the roster to the Demon Mage it replaced:
+    // same row, same caster-fire/resistFire/weakWater profile, and it shares
+    // hellfire and anti-magic-field. The swap trades summon-imp for chaos-bolt.
+    const warlock = ENEMIES_BY_ID["warlock"]!;
+    const mage = ENEMIES_BY_ID["demon-mage"]!;
+    expect(warlock.rowPreference).toBe(mage.rowPreference);
+    expect(warlock.abilityIds).toContain("hellfire");
+    expect(warlock.abilityIds).toContain("anti-magic-field");
+    expect(warlock.chemistryGroups ?? []).toEqual([]);
+    for (const table of BOSS_TABLES) {
+      const ids = ENCOUNTER_TABLES[table]!.flatMap((e) => e.spawns.map((s) => s.enemyId));
+      expect(ids).toContain("warlock");
+      expect(ids).not.toContain("demon-mage");
+    }
   });
 });
