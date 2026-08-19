@@ -432,6 +432,28 @@ export const CHECKPOINTS: CheckpointDef[] = [
     playerIntro: "Continue playing naturally.",
   },
   {
+    id: "f5-undertow",
+    label: "F5 flood-brute (Caller marks, Brute hunts the mark)",
+    tags: ["combat", "chemistry", "f5", "undertow"],
+    recommendedActions: 30,
+    setup: {
+      jumpTo: { floorId: 5, x: 2, y: 2, facing: 0, partyLevel: 13, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f5-flood-brute",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 5 — the weeping cistern."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
+  {
     id: "f5-sentinel-guard",
     label: "F5 golem-cistern (Drowned Sentinel intercepts for the drowners)",
     tags: ["combat", "chemistry", "f5"],
