@@ -169,8 +169,16 @@ export class NPCController {
     }
     const len = this.listLength();
     if (lower === "arrowup" || lower === "arrowdown") {
+      // The first arrow press on an unacknowledged greeting only reveals the
+      // action bar — it must NOT move the selection. Without this guard the
+      // player can blindly navigate to "Attack" before the menu is visible,
+      // and a subsequent Enter starts combat unintentionally.
+      if (this.phase === "root" && !this.acknowledged) {
+        this.acknowledged = true;
+        this.render();
+        return true;
+      }
       if (len > 0) this.index = (this.index + (lower === "arrowdown" ? 1 : -1) + len) % len;
-      if (this.phase === "root" && !this.acknowledged) this.acknowledged = true;
       this.render();
       return true;
     }

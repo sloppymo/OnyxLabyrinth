@@ -144,6 +144,24 @@ describe("NPCController", () => {
     controller.destroy();
   });
 
+  it("first arrow on greeting reveals action bar but does not move selection (regression: blind navigation to Attack)", () => {
+    const npc = makeNPC();
+    const state = makeState(npc);
+    const { controller, fightNpc } = freshController(state, npc);
+
+    // Press ArrowUp 8 times on the unacknowledged greeting. Before the fix,
+    // each ArrowUp moved the index, wrapping to "Attack" (index 4 of 6).
+    // After the fix, the first ArrowUp only acknowledges; subsequent ones
+    // navigate from index 0.
+    for (let i = 0; i < 8; i++) controller.handleKey("ArrowUp");
+    controller.handleKey("Enter"); // confirm current selection
+
+    // Should NOT start combat — index should be at a safe item, not "Attack".
+    expect(fightNpc()).toBeNull();
+
+    controller.destroy();
+  });
+
   it("opens the Talk phase with the 't' hotkey", () => {
     const npc = makeNPC();
     const state = makeState(npc);
