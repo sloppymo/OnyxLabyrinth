@@ -688,8 +688,36 @@ const F2_DISPLACER_LAB: VignetteDef = {
 };
 
 // ---------------------------------------------------------------------------
-// Phase 1b.1 — Floor 2 family vignette (armored-line: frontline + ranged)
+// Phase 1b.1 — Floor 2 family vignettes (armored-line: guard + ranged;
+// orc-warband: War Cry escalation + ranged)
 // ---------------------------------------------------------------------------
+
+const F2_ORC_WARBAND: VignetteDef = {
+  intros: [
+    [
+      {
+        text: "Orcs. A pack of them, stamping and snorting in the corridor, and behind them a skeleton with a bow — the dead thing is smarter than its living shield. One of the orcs is already beating its chest. They're not here to hold a line. They're here to get loud.",
+      },
+      {
+        speaker: ["Fighter", "Halberdier", "Crusader"],
+        text: '"War Cry. Every second we leave them alive, they hit harder. Drop them fast or they\'ll outscale us — but that archer is going to be plinking us the whole time."',
+      },
+      {
+        speaker: ["Thief", "Duelist"],
+        text: '"Two problems, one solution: go through the orcs before they wind up, or go around them and gut the archer first. Pick fast — they won\'t wait."',
+      },
+    ],
+  ],
+  repeats: [
+    [{ text: "Orc warband again — the chest-thumpers and their skeletal archer. Same pattern: they get worse the longer you let them live." }],
+    [
+      {
+        speaker: ["Mage", "Priest"],
+        text: '"Orcs and a bow. Kill the orcs before War Cry stacks — or silence the archer if you can\'t close."',
+      },
+    ],
+  ],
+};
 
 const F2_ARMORED_LINE: VignetteDef = {
   intros: [
@@ -798,7 +826,15 @@ export const VIGNETTES_BY_FORMATION: Record<string, VignetteDef> = {
 
 /** Family-level fallbacks (checked after formation id, before the default). */
 export const VIGNETTES_BY_FAMILY: Record<string, VignetteDef> = {
-  // Phase 1b.1 — frontline screen + ranged threat (covers f2-armored-archer,
-  // f2-armored-orc-archer, and f2-orc-squad, which now shares this family)
+  // Phase 1b.1 — armored-skeleton guard + skeleton-archer (covers
+  // f2-armored-archer and f2-armored-orc-archer). The guard relationship
+  // (ARCHER_GUARD on armored-skeleton) is the authored chemistry this
+  // vignette describes. f2-orc-squad was moved to "orc-warband" because
+  // orcs lack ARCHER_GUARD — the old vignette's "front line holds still"
+  // framing contradicted the orcs' actual War Cry behavior.
   "armored-line": F2_ARMORED_LINE,
+  // Orc pack + skeleton archer. The orcs escalate with War Cry; the
+  // archer adds ranged pressure. The tactical dilemma: burn down orcs
+  // before War Cry stacks, or rush the archer first.
+  "orc-warband": F2_ORC_WARBAND,
 };

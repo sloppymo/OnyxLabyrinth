@@ -314,17 +314,17 @@ describe("Phase 1b.1 — family vignette fallback", () => {
     expect(picked.pages.length).toBe(intro.length);
   });
 
-  it("f2-orc-squad inherits the armored-line family vignette", () => {
+  it("f2-orc-squad inherits the orc-warband family vignette (not armored-line)", () => {
     const memory = createVignetteMemory();
     const picked = selectVignette(
-      { id: "f2-orc-squad", family: "armored-line" },
+      { id: "f2-orc-squad", family: "orc-warband" },
       party,
       memory,
       rngZero
     )!;
     expect(picked.firstTime).toBe(true);
-    // Same intro beats as the family def
-    const familyIntro = VIGNETTES_BY_FAMILY["armored-line"]!.intros[0]!;
+    // Same intro beats as the orc-warband family def
+    const familyIntro = VIGNETTES_BY_FAMILY["orc-warband"]!.intros[0]!;
     expect(picked.pages.length).toBe(familyIntro.length);
   });
 
