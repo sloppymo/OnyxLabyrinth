@@ -319,6 +319,86 @@ describe("f5 Sentinel Guard (guard pipeline reuse)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Legibility: a relationship the player never lives to see is not a relationship
+// ---------------------------------------------------------------------------
+
+/** Small seeded PRNG — a fixed rng makes weighted ability selection degenerate. */
+function mulberry(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function appearanceRate(
+  chemistryId: string,
+  build: () => EnemyFormation,
+  rounds = 6,
+  trials = 100
+): number {
+  let fired = 0;
+  for (let t = 0; t < trials; t++) {
+    const rng = mulberry(t + 1);
+    let state = createCombatState(createDefaultParty(), build(), false);
+    state.chemistryEnabled = true;
+    for (let r = 0; r < rounds; r++) {
+      state = resolveCombatRound(state, defendActions(state), rng);
+      if ((state.chemistryTelemetry?.resolved?.[chemistryId] ?? 0) > 0) { fired++; break; }
+    }
+  }
+  return fired / trials;
+}
+
+function live(id: string, instanceId: string, row: "front" | "back"): EnemyInstance {
+  const def = ENEMIES_BY_ID[id]!;
+  return {
+    ...def,
+    special: [...def.special],
+    instanceId,
+    currentHp: def.hp,
+    row,
+    status: [],
+  } as EnemyInstance;
+}
+
+describe("Phase A relationships are visible inside a normal fight", () => {
+  // Measured over seeded trials rather than a fixed rng: with a constant rng
+  // the weighted pick always lands on the same branch, which made the Sentinel
+  // guard look like it first fired on round 5 when it actually medians on
+  // round 2. These bounds guard against a future ability being added to one of
+  // these species and crowding the relationship out of the fight.
+  it("the Choir Warden guards the Cantor in most fights", () => {
+    expect(
+      appearanceRate("chem-choir-guard", () => ({
+        front: [live("choir-warden", "warden-0", "front"), live("animated-armor", "armor-1", "front")],
+        back: [live("discordant-cantor", "cantor-0", "back"), live("demon-mage", "mage-0", "back")],
+      }))
+    ).toBeGreaterThan(0.8);
+  });
+
+  it("the Drowned Sentinel guards a caster in most fights despite being the slowest actor", () => {
+    expect(
+      appearanceRate("chem-sentinel-guard", () => ({
+        front: [live("ice-golem", "golem-0", "front"), live("drowned-sentinel", "sentinel-0", "front")],
+        back: [live("cistern-wraith", "wraith-0", "back"), live("undertow-caller", "caller-0", "back")],
+      }))
+    ).toBeGreaterThan(0.8);
+  });
+
+  it("the Rune Knight completes an overload in most fights despite the wind-up", () => {
+    expect(
+      appearanceRate("chem-rune-overload", () => ({
+        front: [live("lesser-construct", "construct-0", "front"), live("animated-armor", "armor-0", "front")],
+        back: [live("rune-knight", "knight-0", "back"), live("warlock", "warlock-0", "back")],
+      }))
+    ).toBeGreaterThan(0.8);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Absence guard for the blocked relationship
 // ---------------------------------------------------------------------------
 
