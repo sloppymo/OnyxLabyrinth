@@ -274,6 +274,40 @@ Run Floor 2. For each of the three encounters, answer:
 
 **T2 is already good combat content.** Not every random encounter needs to be a chess puzzle. A healthy deck contains: straightforward learned relationships (T2) + occasionally conflicting relationships (T3 dilemmas). The target is not "every fight is T3" — it's "enough fights are T3 that the player doesn't settle into autopilot."
 
+## Combat north star: fights inherit consequences from exploration
+
+Discovered during the 2026-08-18 embodied AI playtest. The most tactically
+engaging sequence in 75 minutes of organic play was not a formation chemistry
+moment — it was:
+
+> trap → paralysis + cursed equipment → subsequent combat under compromised conditions
+
+The dungeon state changed the combat problem. Two party members were paralyzed
+for 2 rounds, and the cursed Bloodthirsty Blade auto-equipped on Dell. The
+player had to win a formation combat with half the party disabled and a cursed
+weapon in play. This was more memorable and more tactically demanding than any
+of the random encounters.
+
+This is the principle:
+
+> **The best fights should often inherit consequences from exploration.**
+
+Poison, curses, missing SP, darkness, antimagic, injuries, bad equipment,
+environmental hazards — those make an otherwise familiar formation play
+differently. This is potentially as important as Formation Chemistry because
+it creates T3 moments (battle state forces strategy reconsideration) without
+requiring new enemy mechanics at all.
+
+The dungeon already has the infrastructure: traps, poison zones, antimagic
+zones, water/swim checks, darkness, cursed items. The design work is ensuring
+these consequences flow *into* combat frequently enough that the player
+learns to fear exploration mistakes, not just encounter rolls.
+
+This does not replace Formation Chemistry — it complements it. Chemistry
+makes formations interesting by design; exploration consequences make the
+*same* formation play differently depending on what happened before the fight.
+Together they prevent autopilot.
+
 ## Longer-term roadmap (revised after choreography + composability findings)
 
 The campaign's tactical escalation curve, now that both the choreography vocabulary and the composable-relationships model are understood:
