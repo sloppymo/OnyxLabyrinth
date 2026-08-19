@@ -170,6 +170,31 @@ Re-audited after the change: both boss tables report **CLOSED** — zero
 bombers, zero `summon-imp` carriers, zero `volatile-spawn` bodies. A test now
 fails if any boss escort ever gains a chemistry ability at all.
 
+### Difficulty delta of the boss escort swap
+
+Changing authored climax composition needs a number, not an assurance. 300
+seeded trials per fight, party focus-firing, 10 rounds:
+
+| Fight | Escort | Party damage taken / 10r | Formation HP |
+|---|---|---:|---:|
+| `f4-lonely-girl` | demon-mage (before) | 94.2 | 450 |
+| `f4-lonely-girl` | warlock (after) | 93.3 | 453 |
+| `f5-crying-man` | demon-mage (before) | 93.3 | 526 |
+| `f5-crying-man` | warlock (after) | 94.0 | 529 |
+
+**−0.9% and +0.8% — both sideways.** Neither climax fight got measurably
+easier or harder.
+
+**Caveat, stated plainly:** `summons/fight` measured 0.00 in both fights,
+because the default measurement party cannot kill escorts fast enough to
+bring a 5–6 body formation under the `maxAllies: 3` threshold. So this
+measurement confirms the *direct* swap (stat line, hellfire, antimagic,
+chaos-bolt vs summon-imp) is difficulty-neutral, but it does **not** exercise
+the summon→bomb loop — which is exactly the behaviour that made the surface
+dangerous. A real endgame party *does* thin the escort, which is when the
+loop would have opened. The swap's value is therefore not visible in this
+number; the number only establishes it cost nothing.
+
 ### Resulting surface
 
 12 non-boss formations (plus the 2 pre-existing Floor 1 crypt ones):
