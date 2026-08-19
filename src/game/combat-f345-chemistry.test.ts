@@ -364,7 +364,16 @@ function live(id: string, instanceId: string, row: "front" | "back"): EnemyInsta
   } as EnemyInstance;
 }
 
-describe("Phase A relationships are visible inside a normal fight", () => {
+describe("Phase A relationships are reachable inside a normal fight", () => {
+  // IMPORTANT CAVEAT (embodied playtest, 2026-08-19): these rates are measured
+  // with a DEFENDING party, so nothing ever dies and both ends of every
+  // relationship survive. They prove the ability is *reachable* — not that a
+  // player will see it. Embodied play found the opposite for two of them:
+  // f4-viper-mage measures 88% here and fired 0 of 1 against a party that
+  // actually fights, because focus-fire destroys the fragile resource first.
+  // Read these as regression guards against an ability being crowded out of
+  // the AI's option list, nothing more.
+  // See docs/playtests/2026-08-19-f345-embodied-relationship-playtest.md.
   // Measured over seeded trials rather than a fixed rng: with a constant rng
   // the weighted pick always lands on the same branch, which made the Sentinel
   // guard look like it first fired on round 5 when it actually medians on

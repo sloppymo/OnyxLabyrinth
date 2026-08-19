@@ -294,6 +294,143 @@ export const CHECKPOINTS: CheckpointDef[] = [
     },
     playerIntro: "Continue playing naturally.",
   },
+  // --- Phase A targeted verification: relationship propagation (Floors 3-5) ---
+  // Each stages exactly one formation so the relationship is observed rather
+  // than waited for. The Floor 1 entry is the control: it is where Spawn Bomb
+  // is taught, and it runs first so the later-floor runs can be judged for
+  // recognition rather than first contact.
+  {
+    id: "f1-spawn-bomb",
+    label: "F1 spawn-bomb (where the detonate rule is taught)",
+    tags: ["combat", "chemistry", "f1", "literacy-control"],
+    recommendedActions: 25,
+    setup: {
+      jumpTo: { floorId: 1, x: 11, y: 39, facing: 0, partyLevel: 3, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f1-spawn-bomb",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 1 — a flooded crypt."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
+  {
+    id: "f3-rune-overload",
+    label: "F3 guardian-rune-line (Rune Knight consumes Lesser Construct)",
+    tags: ["combat", "chemistry", "f3"],
+    recommendedActions: 30,
+    setup: {
+      jumpTo: { floorId: 3, x: 2, y: 2, facing: 0, partyLevel: 8, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f3-guardian-rune-line",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 3 — a forge of ashes."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
+  {
+    id: "f3-spawn-bomb",
+    label: "F3 demon-spawn-mage (detonate, pre-placed ammunition)",
+    tags: ["combat", "chemistry", "f3", "literacy-transfer"],
+    recommendedActions: 30,
+    setup: {
+      jumpTo: { floorId: 3, x: 2, y: 2, facing: 0, partyLevel: 8, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f3-demon-spawn-mage",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 3 — a forge of ashes."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
+  {
+    id: "f4-choir-guard",
+    label: "F4 choir-armor (Choir Warden intercepts for the Cantor)",
+    tags: ["combat", "chemistry", "f4"],
+    recommendedActions: 30,
+    setup: {
+      jumpTo: { floorId: 4, x: 2, y: 2, facing: 0, partyLevel: 11, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f4-choir-armor",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 4 — the Null Choir."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
+  {
+    id: "f4-spawn-loop",
+    label: "F4 viper-mage (summon-gated: the Mage builds its own bomb)",
+    tags: ["combat", "chemistry", "f4", "literacy-transfer"],
+    recommendedActions: 30,
+    setup: {
+      jumpTo: { floorId: 4, x: 2, y: 2, facing: 0, partyLevel: 11, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f4-viper-mage",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 4 — the Null Choir."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
+  {
+    id: "f5-sentinel-guard",
+    label: "F5 golem-cistern (Drowned Sentinel intercepts for the drowners)",
+    tags: ["combat", "chemistry", "f5"],
+    recommendedActions: 30,
+    setup: {
+      jumpTo: { floorId: 5, x: 2, y: 2, facing: 0, partyLevel: 13, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f5-golem-cistern",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 5 — the weeping cistern."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
 ];
 
 export function checkpointById(id: string): CheckpointDef {
