@@ -410,6 +410,28 @@ export const CHECKPOINTS: CheckpointDef[] = [
     playerIntro: "Continue playing naturally.",
   },
   {
+    id: "f4-conduct",
+    label: "F4 chorister-demon (Cantor conducts the Iron Choristers)",
+    tags: ["combat", "chemistry", "f4", "conduct"],
+    recommendedActions: 30,
+    setup: {
+      jumpTo: { floorId: 4, x: 2, y: 2, facing: 0, partyLevel: 11, autosave: false, stepsSinceEncounter: 0 },
+      forceCombat: true,
+      forceFormationId: "f4-chorister-demon",
+    },
+    playerMemory: {
+      party: STARTER_PARTY,
+      knownObjective: "Keep descending.",
+      knownMechanics: [
+        ...EARLY_MECHANICS,
+        "Combat is turn-based. Each character acts when their turn comes up.",
+      ],
+      namedNpcs: [],
+      discoveries: ["You are on Floor 4 — the Null Choir."],
+    },
+    playerIntro: "Continue playing naturally.",
+  },
+  {
     id: "f5-sentinel-guard",
     label: "F5 golem-cistern (Drowned Sentinel intercepts for the drowners)",
     tags: ["combat", "chemistry", "f5"],
