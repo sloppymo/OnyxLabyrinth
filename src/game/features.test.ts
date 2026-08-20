@@ -657,6 +657,30 @@ describe("handleEvent", () => {
     expect(state.floor.grid[2][2].tile).toBeUndefined();
   });
 
+  it("returns an authored dialogue id while preserving the message fallback", () => {
+    const state = makeEventState({
+      kind: "message",
+      message: "Two figures are arguing in the dark.",
+      dialogueId: "rat-king-old-man-thesis",
+    });
+    const result = handleEvent(state);
+    expect(result?.message).toBe("Two figures are arguing in the dark.");
+    expect(result?.pendingDialogueId).toBe("rat-king-old-man-thesis");
+    expect(state.floor.grid[2][2].tile).toBeUndefined();
+  });
+
+  it("keeps the Great Gate dialogue event one-shot after returning its id", () => {
+    const state = makeEventState({
+      kind: "message",
+      message: "The Kept Gate.",
+      dialogueId: "great-gate-old-man-rat-king",
+    });
+    const first = handleEvent(state);
+    expect(first?.pendingDialogueId).toBe("great-gate-old-man-rat-king");
+    expect(state.eventsTriggered[1]).toEqual(new Set(["2,2"]));
+    expect(handleEvent(state)).toBeNull();
+  });
+
   it("damage events hurt every living party member but floor at 1 HP", () => {
     const state = makeEventState({ kind: "damage", message: "Darts fire from the wall.", power: 5 });
     state.party[0].hp = 3;

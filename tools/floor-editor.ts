@@ -580,6 +580,7 @@ function updateCellPanel(): void {
           .join("")}
       </select></label>
       <label>Message <textarea id="ev-msg">${ev.message ?? ""}</textarea></label>
+      <label>Dialogue id <input id="ev-dialogue" value="${ev.dialogueId ?? ""}" placeholder="optional registry id" /></label>
       <label>Power <input type="number" id="ev-power" value="${ev.power ?? 0}" /></label>
       <label>Item ${itemSelectHtml([ev.itemId ?? "healing-potion"], { id: "ev-item" })}</label>
       <label><input type="checkbox" id="ev-once" ${ev.once !== false ? "checked" : ""}/> Once</label>
@@ -725,6 +726,7 @@ function wirePanelHandlers(x: number, y: number): void {
       pushHistory();
       const kind = (document.getElementById("ev-kind") as HTMLSelectElement).value as EventDef["kind"];
       const message = (document.getElementById("ev-msg") as HTMLTextAreaElement).value;
+      const dialogueId = (document.getElementById("ev-dialogue") as HTMLInputElement).value.trim();
       const power = Number((document.getElementById("ev-power") as HTMLInputElement).value);
       const itemId = (document.getElementById("ev-item") as HTMLSelectElement)?.value;
       const once = (document.getElementById("ev-once") as HTMLInputElement).checked;
@@ -732,6 +734,7 @@ function wirePanelHandlers(x: number, y: number): void {
       if (!map.events) map.events = [];
       map.events = map.events.filter((e) => !(e.x === x && e.y === y));
       const row: EventDef = { x, y, kind, message, once };
+      if (dialogueId) row.dialogueId = dialogueId;
       if (kind === "damage" || kind === "heal") row.power = power;
       if (kind === "reward") row.itemId = itemId;
       map.events.push(row);

@@ -1,7 +1,11 @@
 # Labyrinth Narrative Rewrite — Design
 
 **Date:** 2026-07-25 (revised same day after the boss-naming pass)
-**Status:** **Current lore canon.** Mostly shipped — see the status table below.
+**Status:** Shipped implementation history. Superseded as current lore on
+2026-08-20 by `docs/design/death-and-birth-worldbuilding.md`, specifically for
+the missing laws, the Old Man / Rat King conflict, and the final wish. The
+century cycle, Edgehollow, the kept, boss identities, and other shipped details
+remain valid where the newer document does not conflict.
 **Supersedes:** all Headmaster / academy lore, including the framing in
 `docs/wizardry_v_clone_design_doc.md` and the boss fiction in
 `docs/superpowers/specs/2026-07-16-echo-boss-phases-design.md`

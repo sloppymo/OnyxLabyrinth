@@ -1269,6 +1269,40 @@ canvas#map-canvas {
     align-self: flex-start;
   }
 
+  /* Story conversations only need line advance / a compact choice list, so
+     keep their speaker card beside the copy on narrow screens. The full NPC
+     interaction panel retains the column layout above for its larger menus. */
+  .npc-dlg.dialogue-event-dlg {
+    flex-direction: row;
+    gap: 9px;
+    height: 100%;
+    padding: 9px 10px;
+  }
+
+  .npc-dlg.dialogue-event-dlg.npc-dlg-side-right {
+    flex-direction: row-reverse;
+  }
+
+  .dialogue-event-dlg .npc-dlg-portrait,
+  .dialogue-event-dlg.npc-dlg-card-only .npc-dlg-portrait {
+    flex: 0 0 100px;
+    align-self: stretch;
+    width: 100px;
+    height: auto;
+    min-height: 0;
+  }
+
+  /* The approved story portraits are intentionally vertical canvases. Keep
+     the full crown/ears and hat silhouette visible in the compact card; the
+     card width grows, but the fixed narrow dialogue panel height does not. */
+  .dialogue-event-dlg .npc-dlg-portrait img {
+    object-fit: contain;
+  }
+
+  .dialogue-event-dlg .npc-dlg-portrait-initial {
+    font-size: 22px;
+  }
+
   .npc-dlg-action-bar {
     gap: 4px 10px;
   }

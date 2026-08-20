@@ -239,6 +239,21 @@ describe("floor-validate content checks", () => {
     expect(codes(floor)).toContain("event_no_power");
   });
 
+  it("flags floor events that reference an unknown dialogue id", () => {
+    const floor = testFloor();
+    setTile(floor.grid, 2, 3, "event");
+    floor.events = [
+      {
+        x: 2,
+        y: 3,
+        kind: "message",
+        message: "Fallback.",
+        dialogueId: "not-a-dialogue",
+      },
+    ];
+    expect(codes(floor)).toContain("dialogue_unknown");
+  });
+
   it("flags NPC combatEnemyIds that are not real enemies", () => {
     const floor = testFloor();
     setTile(floor.grid, 3, 2, "npc");

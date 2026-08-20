@@ -1,5 +1,13 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+## 2026-08-20 — New Game Great Gate opening
+
+- New Game now keeps party creation, then lands the finished party at the
+  canonical Floor 1 Great Gate approach event and opens the existing
+  `great-gate-old-man-rat-king` conversation immediately.
+- The normal event handler marks the one-shot event in `eventsTriggered`, so
+  the physical Great Gate trigger cannot replay it after the opening scene.
+
 ## Attrition/recovery balance pass — 2026-08-13
 
 The active task is a focused Floors 1–3 attrition and recovery validation pass.
@@ -1332,3 +1340,96 @@ visual-pass notes below; this section tracks the current task only.
   Namanda-related floor warnings.
 - Updated `docs/MAZE-EVENT-SPRITE-PROMPT.md` prompt #23 and the running
   progress log.
+
+## 2026-08-20 — Rat King vs. Old Man battle vignette
+
+- Current prompt: create a non-shipping fight vignette to compare the approved
+  Rat King against the eight-frame 40×44 Old Man wizard set at battle scale.
+- Built an animated 768×672 Canvas preview under
+  `playtest-screenshots/rat-king-vignette/` using the current combat backdrop,
+  FF6 window treatment, 4× boss scale, 3× party scale, and nearest-neighbor
+  rendering. No game logic or shipping assets were changed.
+- Captured and visually inspected Rat King attack and Old Man cast beats. Both
+  face inward, remain grounded and unobscured, and the browser reported no
+  console/page errors. Final stills are `rat-king-vs-old-man.png` and
+  `rat-king-vs-old-man-cast.png`; `index.html` loops both attack beats.
+
+## 2026-08-20 — Death/Birth worldbuilding and dialogue events
+
+- Current prompt: establish the Old Man's Death wish and the Rat King's Birth
+  wish as the campaign conflict; write the worldbuilding bible; add labyrinth
+  conversations while keeping combat speech as actor-anchored barks.
+- Portrait art is explicitly deferred. Rat King / Old Man speaker records use
+  stable future portrait ids and currently render the intentional fallback
+  identity cards. The supplied GIFs are not used as portraits.
+- Added a DOM-free, validated dialogue graph/session model; corridor-preserving
+  multi-speaker presenter; OverlayRuntime/UiStack ownership; optional
+  `EventDef.dialogueId` floor trigger references; floor parser/editor/linter
+  support; and the first unplaced Rat King/Old Man thesis conversation.
+- Added `docs/design/death-and-birth-worldbuilding.md` as current canon and
+  marked the old fixed wish document as partially superseded.
+- Verification complete: focused dialogue/floor suites passed; `npm run check`
+  passed (154 files / 2,694 tests, app/tools TypeScript, Vite build, floor
+  validation, and export consistency). Production-preview browser runs covered
+  alternating left/right speakers, the complete eleven-line event, distinct
+  RK/OM placeholder cards, and the 390px compact layout with no page/console
+  errors. The temporary preview harness was removed.
+- TODO: campaign coordinates, final portrait assets, and the replacement
+  Birth/Death ending remain deliberate later content passes.
+
+## 2026-08-20 — Great Gate Old Man / Rat King conversation
+
+- Added the distinct linear `great-gate-old-man-rat-king` conversation. The
+  existing unplaced `rat-king-old-man-thesis` scene remains unchanged.
+- Bound it to Floor 1's canonical Kept Gate south-approach event at `(11,34)`;
+  the monumental gate prop itself is centered at `(11,31)`. The existing
+  one-time event lifecycle records `1:11,34` in `eventsTriggered`, persists it
+  in saves, clears the tile, and returns movement input after completion.
+- Preserved the supplied dialogue closely, using `sowed` and changing only the
+  rough-draft `Did you forget?` beat to `Why not?` so the following answer is
+  conversationally coherent. The longest Rat King line uses the presenter’s
+  built-in pagination.
+- Added graph traversal/pagination, Great Gate floor binding, parser, and
+  one-shot runtime tests. Regenerated the Floor 1 editor exports.
+- Verification complete: `npm run check` passed (154 files / 2,698 tests,
+  app/tools TypeScript, Vite build, floor validation, and export consistency).
+  Production-preview WebGL browser runs completed the full scene on desktop
+  and at 390px wide; RK/OM cards alternated sides, the corridor stayed visible,
+  the long line paginated, no text overflow or horizontal scroll appeared,
+  the overlay closed cleanly, re-entry did not retrigger, and console/page
+  errors were empty. The required web-game Playwright client also captured
+  `render_game_to_text` state with no reported client errors.
+- TODO: final Rat King / Old Man portrait art and any later physical replay or
+  history affordance remain deliberate future content; this trigger is once per
+  saved campaign event as established by the current floor-event system.
+
+## 2026-08-20 — Great Gate dialogue portraits
+
+- Generated one Rat King and one Old Man vertical head-and-shoulders portrait
+  through the repository's PixelLab PixFlux REST script, using the supplied
+  animated GIF frames as identity and palette references only.
+- Finished both candidates through Aseprite 1.3.18.1 with deterministic binary
+  alpha hardening and nearest-neighbour PNG export. The production assets are
+  `public/assets/portraits/rat-king/portrait.png` and
+  `public/assets/portraits/old-man/portrait.png`; raw candidates, editable
+  `.aseprite` files, and the repeatable build script remain under
+  `art/pixellab-candidates/dialogue-portraits/`.
+- Added both ids to the portrait manifest and updated the dialogue UI test to
+  assert the real speaker image paths. Updated the worldbuilding portrait
+  contract and generation log; combat GIFs remain references, not substitutes.
+- Browser verification on the production preview covered the Great Gate RK and
+  OM sides, real image loading, long-line pagination, 390px layout bounds with
+  no horizontal overflow, clean completion/no retrigger, and empty console/page
+  error capture. Full `npm run check` remains green (154 files / 2,698 tests).
+
+## 2026-08-20 — Supplied final dialogue portraits
+
+- Replaced the first-pass generated portraits with the author-provided 16-bit
+  transparent portraits: the hooded Old Man and crowned Rat King.
+- Preserved the supplied pixels exactly and packaged each on a 256×320
+  transparent Aseprite canvas so the vertical dialogue frame does not crop the
+  hat, crown, ears, or silhouette. The final assets remain at the same stable
+  portrait paths and IDs.
+- Added the repeatable `build-supplied-portraits.lua` packaging pass and updated
+  the portrait contract/log to distinguish the supplied final art from the
+  retained PixelLab candidates.

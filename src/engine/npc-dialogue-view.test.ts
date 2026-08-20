@@ -96,6 +96,13 @@ describe("renderNPCDialogue", () => {
     expect(silhouette!.textContent).toBe("K"); // first letter of "Kazeharu"
   });
 
+  it("uses an explicit fallback label for future story portraits", () => {
+    const { root } = renderNPCDialogue(
+      baseVm({ npcName: "The Rat King", portraitFallbackLabel: "RK" }),
+    );
+    expect(root.querySelector(".npc-dlg-portrait-initial")?.textContent).toBe("RK");
+  });
+
   it("renders name, title/mood, and the spoken line with quotes for 'speech'", () => {
     const { root } = renderNPCDialogue(baseVm());
     expect(root.querySelector(".npc-dlg-name")!.textContent).toBe("Kazeharu");

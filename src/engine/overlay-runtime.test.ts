@@ -109,6 +109,24 @@ describe("OverlayRuntime", () => {
     expect(dungeon.camp).not.toHaveBeenCalled();
   });
 
+  it("opens an authored dialogue event over the corridor and keeps dungeon mode", () => {
+    const { state, uiStack, deps, shell } = makeDeps();
+    const overlays = new OverlayRuntime(deps);
+    expect(overlays.openDialogueEvent("rat-king-old-man-thesis")).toBe(true);
+    expect(state.mode).toBe("dungeon");
+    expect(uiStack.top()?.id).toBe("dialog");
+    expect(shell.showNpcDialogue).toHaveBeenCalledOnce();
+    expect(shell.showDialog).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unknown dialogue id without taking input ownership", () => {
+    const { uiStack, deps, shell } = makeDeps();
+    const overlays = new OverlayRuntime(deps);
+    expect(overlays.openDialogueEvent("missing-dialogue")).toBe(false);
+    expect(uiStack.top()).toBeNull();
+    expect(shell.showNpcDialogue).not.toHaveBeenCalled();
+  });
+
   it("syncTrap opens and closes the trap layer by id", () => {
     const { state, uiStack, deps } = makeDeps();
     state.pendingTrap = {

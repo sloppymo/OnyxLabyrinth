@@ -190,6 +190,16 @@ describe("Floor 1 revision 10/11 — the Kept Gate entrance", () => {
     const rest = floor.encounterZones?.find((z) => z.id === "surveyors-rest-safe");
     expect(rest).toMatchObject({ safeZone: true, rateMul: 0 });
   });
+
+  it("starts the Great Gate conversation on the one-time south approach event", () => {
+    const floor = floor1();
+    const gateEvent = floor.events?.find((event) => event.x === 11 && event.y === 34);
+    expect(gateEvent).toMatchObject({
+      kind: "message",
+      once: true,
+      dialogueId: "great-gate-old-man-rat-king",
+    });
+  });
 });
 
 describe("Floor 1 Stitchworks return gate", () => {

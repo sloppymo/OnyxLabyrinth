@@ -299,7 +299,7 @@ const app = createApplication({
         resetEncounterFamilyMemory();
         openPrologue(() => {
           audio.stopTitleMusic();
-          openPartyCreation(() => openTown({ showIntroHint: true }));
+          openPartyCreation(() => openNewGameGreatGate());
         });
       },
       continue: (loaded) => applyLoadedGameState(loaded),
@@ -609,6 +609,48 @@ function enterDungeonFromTown(): void {
   } else {
     setMessage(entry);
   }
+}
+
+/**
+ * First campaign scene after New Game's prologue and party setup. The Great
+ * Gate event remains authored as a normal one-shot floor event; starting a
+ * new campaign simply lands on that canonical approach tile and runs the
+ * same event path the player would otherwise discover by walking there.
+ */
+function openNewGameGreatGate(): void {
+  const floor = getFloors()[0]!;
+  const gateEvent = floor.events?.find(
+    (event) => event.dialogueId === "great-gate-old-man-rat-king",
+  );
+
+  // Campaign data validation guarantees this event. Keep a safe fallback for
+  // a malformed local playtest floor so New Game still reaches the town.
+  if (!gateEvent) {
+    openTown({ showIntroHint: true });
+    return;
+  }
+
+  transitionToFloor(state, floor, gateEvent.x, gateEvent.y, 0, { autosave: false });
+  syncVisionZoneFlags(state);
+  markExplored();
+  resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+  setMode(state, "dungeon");
+  showMode("dungeon", mapVisible);
+  setMazeSurfaceOpacity("1");
+  setMessage("");
+
+  // Process the authored event instead of opening the graph by id directly:
+  // this marks the existing once-only event in eventsTriggered, removes its
+  // trigger tile on the private floor copy, and keeps the normal fallback
+  // behavior if the dialogue registry is unavailable.
+  const result = handleTileFeature(state);
+  if (result?.pendingDialogueId && overlays.openDialogueEvent(result.pendingDialogueId)) {
+    autoSave(state);
+    return;
+  }
+
+  autoSave(state);
+  setMessage(result?.message ?? "You enter the dungeon...");
 }
 
 function returnToTown(): void {
@@ -1272,6 +1314,9 @@ function onMove(): void {
         overlays.openNpc(result.npcId);
         return;
       }
+      if (result.pendingDialogueId && overlays.openDialogueEvent(result.pendingDialogueId)) {
+        return;
+      }
       if (result.pendingChuteDrop) {
         const drop = result.pendingChuteDrop;
         overlays.openDialog({
@@ -1368,6 +1413,11 @@ function onMove(): void {
       // Stepped onto a living NPC — open the interaction panel instead of
       // rolling an encounter.
       overlays.openNpc(result.npcId);
+      return;
+    }
+    if (result.pendingDialogueId && overlays.openDialogueEvent(result.pendingDialogueId)) {
+      // Authored conversations replace the random-encounter roll for the step
+      // that opened them. Combat speech itself remains actor-anchored barks.
       return;
     }
     if (result.pendingChuteDrop) {

@@ -52,6 +52,8 @@ export interface FeatureResult {
   /** Set when the party stepped onto an unresolved stairsGuardian tile.
    *  main.ts shows the intro dialog then starts the scripted fight. */
   pendingStairsGuardian?: StairsGuardianDef;
+  /** Authored multi-speaker conversation to open over the live corridor. */
+  pendingDialogueId?: string;
 }
 
 /**
@@ -796,7 +798,11 @@ function describePerMemberAmounts(
 }
 
 function applyEvent(state: GameState, event: EventDef): FeatureResult {
-  const noEvent = { changedFloor: false, consumed: event.once ?? true };
+  const noEvent = {
+    changedFloor: false,
+    consumed: event.once ?? true,
+    pendingDialogueId: event.dialogueId,
+  };
   switch (event.kind) {
     case "message":
       return { message: event.message, ...noEvent };

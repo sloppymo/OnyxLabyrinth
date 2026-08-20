@@ -17,6 +17,7 @@ import { getEnvironmentalSpriteAsset } from "../data/environmental-sprites";
 import { ITEMS_BY_ID } from "../data/items";
 import { ENEMIES_BY_ID, ENCOUNTER_TABLES } from "../data/enemies";
 import { spellById } from "../data/spells";
+import { DIALOGUE_EVENTS_BY_ID } from "../data/dialogue-events";
 import type { FloorMapJSON, CellJSON } from "./floor-map";
 import {
   BUILT_IN_TILESET_THEMES,
@@ -935,6 +936,14 @@ function validateItemRefs(map: FloorMapJSON, issues: ValidationIssue[]): void {
     }
   }
   for (const e of map.events ?? []) {
+    if (e.dialogueId && !DIALOGUE_EVENTS_BY_ID[e.dialogueId]) {
+      issues.push({
+        severity: "error",
+        code: "dialogue_unknown",
+        message: `Event at (${e.x},${e.y}) references unknown dialogue \"${e.dialogueId}\"`,
+        at: { x: e.x, y: e.y },
+      });
+    }
     if (e.kind === "reward") {
       if (!e.itemId) {
         issues.push({

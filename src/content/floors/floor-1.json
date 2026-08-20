@@ -7926,6 +7926,7 @@
       "y": 34,
       "kind": "message",
       "once": true,
+      "dialogueId": "great-gate-old-man-rat-king",
       "message": "The Kept Gate. Forced open — someone got here first."
     },
     {

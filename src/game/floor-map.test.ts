@@ -236,6 +236,35 @@ describe("floor-map", () => {
     expect(() => parseFloorMapJSON(raw)).toThrow(/events\[0\]\.kind/);
 
     raw = base();
+    raw.events = [{ x: 1, y: 1, kind: "message", message: "talk", dialogueId: 7 }];
+    expect(() => parseFloorMapJSON(raw)).toThrow(/events\[0\]\.dialogueId/);
+
+    raw = base();
+    raw.events = [
+      {
+        x: 1,
+        y: 1,
+        kind: "message",
+        message: "Two figures argue.",
+        dialogueId: "rat-king-old-man-thesis",
+      },
+    ];
+    expect(parseFloorMapJSON(raw).events?.[0]?.dialogueId).toBe("rat-king-old-man-thesis");
+
+    raw.events = [
+      {
+        x: 1,
+        y: 1,
+        kind: "message",
+        message: "The Kept Gate.",
+        dialogueId: "great-gate-old-man-rat-king",
+      },
+    ];
+    expect(parseFloorMapJSON(raw).events?.[0]?.dialogueId).toBe(
+      "great-gate-old-man-rat-king",
+    );
+
+    raw = base();
     raw.npcs = [{ id: "a", name: "A", title: "t", x: 1, y: 1, greeting: "g", returnGreeting: "r", topics: "nope", combatEnemyIds: [] }];
     expect(() => parseFloorMapJSON(raw)).toThrow(/npcs\[0\]\.topics/);
 
