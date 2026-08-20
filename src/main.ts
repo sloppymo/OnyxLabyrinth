@@ -269,7 +269,12 @@ const app = createApplication({
     inArena: () => inArena,
     setMode: (mode) => setMode(state, mode),
     onDialogClosed: () => {
-      suppressDungeonMovementUntilKeyup = true;
+      // Keyboard confirmation can otherwise repeat into dungeon movement on
+      // the same physical key, so wait for its keyup. Gamepad releases are
+      // normalized separately and never pass through onGameplayKeyUp; if we
+      // armed this latch for them, the maze would stay permanently stuck
+      // until the player touched the keyboard.
+      suppressDungeonMovementUntilKeyup = globalInput.getLastInputKind() === "keyboard";
     },
   },
   screens: {
