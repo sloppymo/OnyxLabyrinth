@@ -951,6 +951,13 @@ canvas#map-canvas {
   animation: npc-dlg-rise 160ms ease-out;
 }
 
+/* Authored conversations re-render this card for every line/page. Replaying
+   the entrance animation on each render produces a brief opacity flash that
+   makes the dialogue feel unstable, especially during rapid advancement. */
+.npc-dlg.dialogue-event-dlg {
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .npc-dlg {
     animation: none;
