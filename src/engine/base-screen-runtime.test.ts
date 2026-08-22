@@ -61,6 +61,7 @@ function makeDeps(state = createGameState(findFloor(1)!)): {
       nextFight: vi.fn(),
       exitToTitle: vi.fn(),
       startAtLevel: vi.fn(),
+      openCardTrial: vi.fn(),
     },
     inArena: () => false,
   };

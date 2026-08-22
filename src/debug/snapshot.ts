@@ -167,6 +167,13 @@ export function availableActionsFor(
       if (combat.phase === "result") return ["confirm"];
       return [...MENU_ACTIONS];
     }
+    case "card_trial": {
+      if (!combat) return [...MENU_ACTIONS];
+      if (combat.phase === "playback") return [];
+      if (combat.phase === "result") return ["confirm"];
+      if (combat.phase === "target" || combat.phase === "target2") return [...MENU_ACTIONS];
+      return [...MENU_ACTIONS, "move", "pass"];
+    }
     case "none":
       return [];
     default:

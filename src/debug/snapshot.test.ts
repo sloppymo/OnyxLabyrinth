@@ -338,6 +338,24 @@ describe("availableActionsFor", () => {
 
     expect(actions).toEqual([]);
   });
+
+  it("lists Card Trial hand verbs including move and pass", () => {
+    const state = stateOnTestFloor();
+    const actions = availableActionsFor("card_trial", state, {
+      phase: "hand",
+      actingCharId: "rat-king",
+      roundEnding: false,
+      playbackDone: true,
+      selection: { title: "Hand", entries: ["Nip"], index: 0 },
+      round: 1,
+      enemies: [],
+      recentLog: [],
+      result: null,
+    });
+    expect(actions).toContain("move");
+    expect(actions).toContain("pass");
+    expect(actions).toContain("confirm");
+  });
 });
 
 describe("asciiMap", () => {

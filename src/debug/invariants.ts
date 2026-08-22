@@ -37,7 +37,7 @@ export function checkInvariants(input: InvariantInput): string[] {
     warnings.push(`pendingTrap set while mode is "${state.mode}", not "dungeon"`);
   }
 
-  if (combat && route !== "combat") {
+  if (combat && route !== "combat" && route !== "card_trial") {
     warnings.push(`combat view present while route is "${route}"`);
   }
   if (!combat && route === "combat") {

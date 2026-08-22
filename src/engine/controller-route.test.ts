@@ -8,6 +8,7 @@ function ctx(overrides: Partial<ControllerRouteContext> = {}): ControllerRouteCo
   return {
     mode: "dungeon",
     hasCombat: false,
+    hasCardTrial: false,
     hasTown: false,
     hasCamp: false,
     hasGameOver: false,
@@ -76,5 +77,14 @@ describe("resolveControllerRoute", () => {
     expect(
       resolveControllerRoute(ctx({ mode: "dungeon", hasEnding: true })),
     ).toBe("dungeon");
+  });
+
+  it("routes Card Trial before Classic combat and Arena", () => {
+    expect(
+      resolveControllerRoute(ctx({ mode: "combat", hasCombat: true, hasCardTrial: true })),
+    ).toBe("card_trial");
+    expect(
+      resolveControllerRoute(ctx({ mode: "arena", hasCardTrial: true })),
+    ).toBe("card_trial");
   });
 });

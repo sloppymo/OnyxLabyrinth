@@ -17,6 +17,7 @@ import { CampController } from "./camp-ui";
 import { GameOverController } from "./game-over-ui";
 import { PartyCreationController } from "./party-ui";
 import { ArenaController } from "./arena-ui";
+import { CardTrialLobbyController } from "./card-trial-lobby";
 import { FF6Window } from "./ff6-window-library";
 import { audio } from "./audio";
 
@@ -67,6 +68,7 @@ export interface ArenaScreenActions {
   nextFight(): void;
   exitToTitle(): void;
   startAtLevel(level: number): void;
+  openCardTrial(): void;
 }
 
 export interface BaseScreenRuntimeDeps {
@@ -92,6 +94,7 @@ export class BaseScreenRuntime {
   private partyCreation: PartyCreationController | null = null;
   private arena: ArenaController | null = null;
   private arenaSetup: { handleKey: (key: string) => void } | null = null;
+  private cardTrialLobby: CardTrialLobbyController | null = null;
 
   constructor(private readonly deps: BaseScreenRuntimeDeps) {}
 
@@ -111,7 +114,11 @@ export class BaseScreenRuntime {
     return this.partyCreation !== null;
   }
   get hasArena(): boolean {
-    return this.arena !== null || this.arenaSetup !== null;
+    return this.arena !== null || this.arenaSetup !== null || this.cardTrialLobby !== null;
+  }
+
+  get hasCardTrialLobby(): boolean {
+    return this.cardTrialLobby !== null;
   }
 
   dismissTitle(): void {
@@ -248,18 +255,28 @@ export class BaseScreenRuntime {
     this.deps.shell.setMode("arena");
     this.deps.shell.show("arena");
     this.deps.shell.setMessage("");
+    type SetupItem = { kind: "level"; level: number } | { kind: "card-trial" };
+    const items: SetupItem[] = [
+      ...ARENA_LEVELS.map((level) => ({ kind: "level" as const, level })),
+      { kind: "card-trial" },
+    ];
     let selected = 0;
     let hasRendered = false;
+    const choose = (index: number) => {
+      const item = items[index]!;
+      this.arenaSetup = null;
+      if (item.kind === "card-trial") this.deps.arena.openCardTrial();
+      else this.deps.arena.startAtLevel(item.level);
+    };
     const render = () => {
       const panel = this.deps.shell.panel();
       const animated = !hasRendered;
       hasRendered = true;
       const win = new FF6Window({
         title: "Arena Mode",
-        contentHtml: `<div class="ff6-arena-meta">Choose starting party level</div>`,
-        items: ARENA_LEVELS.map((lv) => ({
-          label: `Level ${lv}`,
-          metadata: lv,
+        contentHtml: `<div class="ff6-arena-meta">Classic Arena or Card Trial</div>`,
+        items: items.map((item) => ({
+          label: item.kind === "level" ? `Level ${item.level}` : "Card Trial",
         })),
         selectedIndex: selected,
         mode: "menu",
@@ -270,8 +287,7 @@ export class BaseScreenRuntime {
         },
         onConfirm: (i) => {
           selected = i;
-          this.arenaSetup = null;
-          this.deps.arena.startAtLevel(ARENA_LEVELS[selected]!);
+          choose(selected);
         },
         onBack: () => {
           this.arenaSetup = null;
@@ -286,14 +302,13 @@ export class BaseScreenRuntime {
         audio.uiForMenuKey(key);
         const lower = key.toLowerCase();
         if (lower === "arrowup" || lower === "w") {
-          selected = (selected - 1 + ARENA_LEVELS.length) % ARENA_LEVELS.length;
+          selected = (selected - 1 + items.length) % items.length;
           render();
         } else if (lower === "arrowdown" || lower === "s") {
-          selected = (selected + 1) % ARENA_LEVELS.length;
+          selected = (selected + 1) % items.length;
           render();
         } else if (key === "Enter" || key === " ") {
-          this.arenaSetup = null;
-          this.deps.arena.startAtLevel(ARENA_LEVELS[selected]!);
+          choose(selected);
         } else if (key === "Escape") {
           this.arenaSetup = null;
           this.openTitle();
@@ -301,6 +316,28 @@ export class BaseScreenRuntime {
       },
     };
     render();
+  }
+
+  openCardTrialLobby(opts: {
+    onFight: (fightId: number, sequential: boolean) => void;
+    onTriangle: () => void;
+    onExit: () => void;
+    debug: boolean;
+    summary?: string | null;
+  }): void {
+    this.arena = null;
+    this.arenaSetup = null;
+    this.deps.shell.setMode("arena");
+    this.deps.shell.show("arena");
+    this.deps.shell.setMessage("");
+    this.cardTrialLobby = new CardTrialLobbyController({
+      panel: this.deps.shell.panel(),
+      ...opts,
+    });
+  }
+
+  dismissCardTrialLobby(): void {
+    this.cardTrialLobby = null;
   }
 
   handleTown(event: ControllerInputEvent): void {
@@ -338,6 +375,10 @@ export class BaseScreenRuntime {
   handleArena(event: ControllerInputEvent): void {
     const key = controllerEventToMenuKey(event);
     if (!key) return;
+    if (this.cardTrialLobby) {
+      this.cardTrialLobby.handleKey(key);
+      return;
+    }
     if (this.arenaSetup) {
       this.arenaSetup.handleKey(key);
       return;

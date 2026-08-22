@@ -103,6 +103,7 @@ function screensWire(): Omit<BaseScreenRuntimeDeps, "state"> {
       nextFight: vi.fn(),
       exitToTitle: vi.fn(),
       startAtLevel: vi.fn(),
+      openCardTrial: vi.fn(),
     },
     inArena: () => false,
   };

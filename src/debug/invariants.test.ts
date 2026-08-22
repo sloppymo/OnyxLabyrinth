@@ -95,4 +95,11 @@ describe("checkInvariants", () => {
     });
     expect(checkInvariants({ state, route: "combat", combat })).toEqual([]);
   });
+
+  it("accepts a combat-shaped view on the Card Trial route", () => {
+    const state = baseState();
+    state.mode = "combat";
+    const combat = combatView({ phase: "hand" });
+    expect(checkInvariants({ state, route: "card_trial", combat })).toEqual([]);
+  });
 });

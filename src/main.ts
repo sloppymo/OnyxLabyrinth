@@ -100,6 +100,8 @@ import { checkInvariants } from "./debug/invariants";
 import { installAudioSpy } from "./debug/audio-spy";
 import { buildDebugCombat } from "./debug/start-combat";
 import { CombatController } from "./engine/combat-ui";
+import { CardTrialController } from "./engine/card-trial-controller";
+import { toCombatState as cardTrialToCombatState } from "./engine/card-trial-presentation";
 import { createCombatStage } from "./engine/combat-stage";
 import { type ControllerInputEvent } from "./engine/controller-input";
 import { controllerEventToMenuKey } from "./engine/menu-controller-adapter";
@@ -111,6 +113,14 @@ import {
   type ControllerRouteKind,
 } from "./engine/controller-route";
 import { createApplication } from "./engine/application";
+import {
+  createAdversarialTriangle,
+  createFight,
+  nextFight,
+  playerView,
+  summarizeTelemetry,
+  type CardTrialState,
+} from "./game/card-trial";
 import { PrologueController } from "./engine/prologue-ui";
 import { EndingController } from "./engine/ending-ui";
 import { autoSave, serialize, deserialize } from "./game/save";
@@ -329,6 +339,7 @@ const app = createApplication({
         screens.openTitle();
       },
       startAtLevel: (level) => startArena(level),
+      openCardTrial: () => openCardTrialLobby(),
     },
     inArena: () => inArena,
   },
@@ -795,6 +806,10 @@ function maybeTriggerEncounter(): boolean {
 
 // --- Combat mode ---------------------------------------------------------
 let combatController: CombatController | null = null;
+let cardTrialController: CardTrialController | null = null;
+let inCardTrial = false;
+let cardTrialSequential = false;
+let cardTrialSummary: string | null = null;
 
 // True for the whole encounter swirl / leave dissolve (including reveal).
 // Key + controller handlers no-op while set — duration tracks boss / reduced-
@@ -1635,6 +1650,7 @@ function currentRouteFlags(): ControllerRouteContext {
   return {
     mode: state.mode,
     hasCombat: !!combatController,
+    hasCardTrial: !!cardTrialController || screens.hasCardTrialLobby,
     hasTown: screens.hasTown,
     hasCamp: screens.hasCamp,
     hasGameOver: screens.hasGameOver,
@@ -1671,6 +1687,26 @@ function dispatchControllerRoute(route: BaseRouteKind, event: ControllerInputEve
         return;
       }
       combat.handleInput(event);
+      return;
+    }
+    case "card_trial": {
+      const trial = cardTrialController;
+      if (!trial) {
+        screens.handleArena(event);
+        return;
+      }
+      if (event.key !== undefined) {
+        if (event.kind === "release") {
+          trial.handleKeyUp(event.key);
+          return;
+        }
+        if (event.kind === "press") {
+          if (event.repeat && event.button) return;
+          trial.handleKey(event.key);
+        }
+        return;
+      }
+      trial.handleInput(event);
       return;
     }
     case "town":
@@ -1813,7 +1849,7 @@ app.start();
 // can resume where they left off.
 window.addEventListener("beforeunload", () => {
   if (uiStack.top()?.id === "perk") return;
-  autoSave(state, inArena);
+  autoSave(state, inArena || inCardTrial);
 });
 
 // --- Arena mode ----------------------------------------------------------
@@ -1892,6 +1928,109 @@ function startNextArenaFight(): void {
   state.stepsSinceEncounter = 0;
 
   startCombat(combat, { source: "arena", tableId: null });
+}
+
+function isCardTrialDebug(): boolean {
+  return new URLSearchParams(window.location.search).has("debug");
+}
+
+function openCardTrialLobby(): void {
+  inCardTrial = true;
+  inArena = false;
+  screens.openCardTrialLobby({
+    debug: isCardTrialDebug(),
+    summary: cardTrialSummary,
+    onFight: (fightId, sequential) => {
+      startCardTrialFight({ fightId, sequential });
+    },
+    onTriangle: () => {
+      startCardTrialFight({ triangle: true });
+    },
+    onExit: () => exitCardTrialToTitle(),
+  });
+}
+
+function exitCardTrialToTitle(): void {
+  inCardTrial = false;
+  cardTrialSequential = false;
+  cardTrialController?.destroy();
+  cardTrialController = null;
+  screens.dismissCardTrialLobby();
+  screens.openTitle();
+}
+
+function leaveCardTrial(next: () => void): Promise<void> {
+  return withCombatTransition(async () => {
+    const snap = cardTrialController?.snapshotCanvas() ?? null;
+    const source = snap && snap.width >= 16 && snap.height >= 16 ? snap : null;
+    await playReturnTransition({ source });
+    cardTrialController?.destroy();
+    cardTrialController = null;
+    audio.stopBattleMusic();
+    audio.stopBossCombat();
+    next();
+    await revealAfterTransition();
+  });
+}
+
+function onCardTrialFightEnd(trial: CardTrialState): void {
+  cardTrialSummary = summarizeTelemetry(trial.telemetry);
+  void leaveCardTrial(() => {
+    if (cardTrialSequential && trial.result === "victory" && trial.fightId < 10) {
+      startCardTrialFight({
+        fightId: trial.fightId + 1,
+        sequential: true,
+        previous: trial,
+      });
+      return;
+    }
+    cardTrialSequential = false;
+    openCardTrialLobby();
+  });
+}
+
+function startCardTrialFight(opts: {
+  fightId?: number;
+  sequential?: boolean;
+  triangle?: boolean;
+  previous?: CardTrialState;
+}): void {
+  if (combatController) return;
+  screens.dismissCardTrialLobby();
+  inCardTrial = true;
+  cardTrialSequential = !!opts.sequential;
+  const trial = opts.triangle
+    ? createAdversarialTriangle()
+    : opts.previous && opts.fightId
+      ? nextFight(opts.previous, opts.fightId)
+      : createFight(opts.fightId ?? 1, {
+          seed: 1,
+          telemetry: opts.previous?.telemetry,
+        });
+
+  void withCombatTransition(async () => {
+    audio.stopTitleMusic();
+    // Presentation-only: never assign trial heroes onto GameState.party or
+    // state.combat. Campaign HP/gold/XP/saves stay untouched.
+    setMode(state, "combat");
+    audio.startBattleMusic();
+    await playEncounterTransition({ source: getMazeRendererSurface(), isBoss: false });
+    showMode("combat", mapVisible);
+    await loadTextures();
+    const bd = renderBattleArena(state, 768, 672);
+    const theme = resolveTilesetTheme(state.floor);
+    const backdropId = `theme:${theme}`;
+    const stage = await createCombatStage({
+      state: cardTrialToCombatState(trial),
+      backdrop: bd,
+      backdropId,
+    });
+    cardTrialController = new CardTrialController(trial, {
+      stage,
+      onEnd: onCardTrialFightEnd,
+    });
+    await revealAfterTransition();
+  });
 }
 
 // --- Dungeon NPC combat -----------------------------------------------------
@@ -2244,7 +2383,12 @@ if (new URLSearchParams(window.location.search).has("debug")) {
             phase: combatController.getPhase(),
             playbackDone: combatController.isChoreographyDone(),
           }
-        : null,
+        : cardTrialController
+          ? {
+              phase: cardTrialController.getPhase(),
+              playbackDone: cardTrialController.isChoreographyDone(),
+            }
+          : null,
     });
 
   /**
@@ -2294,7 +2438,11 @@ if (new URLSearchParams(window.location.search).has("debug")) {
   const debugSnapshot = (opts?: { map?: boolean; mapRadius?: number }) => {
     const route = sampleRoute("snapshot");
     syncAssetFailures([...failedAssets, ...audio.getSampleLoadStatus().failed]);
-    const combat = combatController ? combatController.debugView() : null;
+    const combat = combatController
+      ? combatController.debugView()
+      : cardTrialController
+        ? cardTrialController.debugView()
+        : null;
     return buildSnapshot({
       state,
       route,
@@ -2319,6 +2467,9 @@ if (new URLSearchParams(window.location.search).has("debug")) {
   const jumpTo = (opts: JumpToOptions): void => {
     if (combatController) {
       throw new Error("jumpTo: refuse while combat is active — exitDebugCombat first");
+    }
+    if (cardTrialController || inCardTrial) {
+      throw new Error("jumpTo: refuse while Card Trial is live");
     }
     if (overlays.hasOpenOverlay() || prologueController || endingController) {
       throw new Error("jumpTo: refuse while an overlay controller is open");
@@ -2368,6 +2519,9 @@ if (new URLSearchParams(window.location.search).has("debug")) {
   const loadSave = (json: string): void => {
     if (combatController) {
       throw new Error("loadSave: refuse while combat is active");
+    }
+    if (cardTrialController || inCardTrial) {
+      throw new Error("loadSave: refuse while Card Trial is live");
     }
     if (
       overlays.hasOpenOverlay() ||
@@ -2432,11 +2586,23 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       if (combatController) {
         throw new Error("startCombat: combat is already active — use exitDebugCombat first");
       }
+      if (cardTrialController || inCardTrial) {
+        throw new Error("startCombat: refuse while Card Trial is live");
+      }
       const combat = fixture ?? buildDebugCombat(state, buildLoadoutMap());
       setMode(state, "combat");
       await startCombat(combat, { source: "debug", tableId: null });
     },
     exitDebugCombat,
+    cardTrial: {
+      startFight: (fightId: number) => startCardTrialFight({ fightId }),
+      forceTriangle: () => startCardTrialFight({ triangle: true }),
+      view: () => (cardTrialController ? playerView(cardTrialController.state) : null),
+      telemetry: () => cardTrialController?.state.telemetry ?? null,
+      summarize: () =>
+        cardTrialSummary ??
+        (cardTrialController ? summarizeTelemetry(cardTrialController.state.telemetry) : null),
+    },
     FLOORS: getFloors(),
     findFloor,
     registerFloorMap,

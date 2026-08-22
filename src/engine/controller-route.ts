@@ -17,6 +17,7 @@ export type OverlayRouteKind =
 
 export type BaseRouteKind =
   | "combat"
+  | "card_trial"
   | "town"
   | "camp"
   | "game_over"
@@ -34,6 +35,7 @@ export type ControllerRouteKind = OverlayRouteKind | BaseRouteKind;
 export interface ControllerRouteContext {
   mode: GameMode;
   hasCombat: boolean;
+  hasCardTrial: boolean;
   hasTown: boolean;
   hasCamp: boolean;
   hasGameOver: boolean;
@@ -46,6 +48,9 @@ export interface ControllerRouteContext {
 /** Pick the base-screen input consumer. Overlays are not represented here. */
 export function resolveControllerRoute(ctx: ControllerRouteContext): BaseRouteKind {
   if (ctx.mode === "title" && ctx.hasEnding) return "ending";
+  // Card Trial may paint with mode "combat" (stage) or "arena" (lobby).
+  // It must own input before Classic combat/Arena.
+  if (ctx.hasCardTrial) return "card_trial";
   if (ctx.mode === "combat" && ctx.hasCombat) return "combat";
   if (ctx.mode === "town" && ctx.hasTown) return "town";
   if (ctx.mode === "camp" && ctx.hasCamp) return "camp";
