@@ -111,13 +111,28 @@ export function toCombatState(s: CardTrialState): CombatState {
     living.some((e) => e.isBoss)
   );
   combat.round = s.round;
+  combat.partyFormation = {
+    kind: "card-trial-rows",
+    rowsByActorId: Object.fromEntries(
+      (["rat-king", "old-man"] as const).map((id) => [
+        id,
+        {
+          row: s.heroes[id].row,
+          rowEnteredAt: s.heroes[id].rowEnteredAt,
+        },
+      ])
+    ),
+  };
   combat.justDied = dead.map(enemyInstance);
   combat.ended = !!s.result;
   combat.result = s.result === "victory" ? "victory" : s.result === "wipe" ? "wipe" : undefined;
   return combat;
 }
 
-export function toCombatEvents(events: CardTrialEvent[]): CombatEvent[] {
+export function toCombatEvents(
+  events: CardTrialEvent[],
+  state: CardTrialState
+): CombatEvent[] {
   const out: CombatEvent[] = [];
   for (const e of events) {
     if (e.type === "attack" || e.type === "rat-bite") {
@@ -136,10 +151,10 @@ export function toCombatEvents(events: CardTrialEvent[]): CombatEvent[] {
       });
     } else if (e.type === "hero-move") {
       out.push({
-        type: "cast",
+        type: "partyRowMove",
         actorId: e.actorId,
-        spellId: e.via === "paid" ? "Move" : "Reposition",
-        targetId: null,
+        row: e.row,
+        rowEnteredAt: state.heroes[e.actorId].rowEnteredAt,
       });
     } else if (e.type === "spawn-rat" || e.type === "rat-move") {
       out.push({

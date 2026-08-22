@@ -13,6 +13,13 @@ describe("Card Trial presentation adapter", () => {
     const combat = toCombatState(trial);
     expect(combat.party).toHaveLength(2);
     expect(combat.party.map((c) => c.id).sort()).toEqual(["old-man", "rat-king"]);
+    expect(combat.partyFormation).toEqual({
+      kind: "card-trial-rows",
+      rowsByActorId: {
+        "rat-king": { row: "front", rowEnteredAt: 1 },
+        "old-man": { row: "back", rowEnteredAt: 2 },
+      },
+    });
     expect(state.party).toHaveLength(PARTY_SIZE);
     expect(state.party.map((c) => c.id)).toEqual(before);
     expect(state.combat).toBeUndefined();
@@ -22,13 +29,39 @@ describe("Card Trial presentation adapter", () => {
     const trial = createAdversarialTriangle();
     const combat = toCombatState(trial);
     expect(combat.enemies.front.some((e) => e.id === "cleaver" || e.instanceId === "cleaver")).toBe(true);
-    const events = toCombatEvents([
-      { type: "banner", text: "Nip", actorId: "rat-king" },
-      { type: "attack", actorId: "rat-king", targetId: "ash", damage: 5 },
-      { type: "open", targetId: "ash" },
-    ]);
+    const events = toCombatEvents(
+      [
+        { type: "banner", text: "Nip", actorId: "rat-king" },
+        { type: "attack", actorId: "rat-king", targetId: "ash", damage: 5 },
+        { type: "open", targetId: "ash" },
+      ],
+      trial
+    );
     expect(events[0]).toMatchObject({ type: "cast", actorId: "rat-king", spellId: "Nip" });
     expect(events[1]).toMatchObject({ type: "attack", actorId: "rat-king", targetId: "ash", damage: 5 });
     expect(events[2]).toMatchObject({ type: "spellEffect", spellId: "Opened", targetId: "ash" });
+  });
+
+  it("maps paid and card-driven hero moves to identical row presentation", () => {
+    const trial = createFight(1, { seed: 7 });
+    trial.heroes["rat-king"].row = "back";
+    trial.heroes["rat-king"].rowEnteredAt = 3;
+    const paid = toCombatEvents(
+      [{ type: "hero-move", actorId: "rat-king", row: "back", via: "paid" }],
+      trial
+    );
+    const card = toCombatEvents(
+      [{ type: "hero-move", actorId: "rat-king", row: "back", via: "card" }],
+      trial
+    );
+    expect(paid).toEqual(card);
+    expect(paid).toEqual([
+      {
+        type: "partyRowMove",
+        actorId: "rat-king",
+        row: "back",
+        rowEnteredAt: 3,
+      },
+    ]);
   });
 });

@@ -44,6 +44,11 @@ describe("Card Trial windows", () => {
     expect(html).toContain("Move 1");
     expect(html).toContain("RAT —");
     expect(html).toContain("ct-opened-mark");
+    expect(host.querySelector(".ct-hero-row")).toBeNull();
+    expect(host.querySelector(".ct-hand .ff6-menu-title")?.textContent).toBe(
+      "Rat King · 3 energy"
+    );
+    expect(host.querySelector(".ct-rat")?.textContent).toContain("Front");
   });
 
   it("shows why a disabled card cannot be played", () => {

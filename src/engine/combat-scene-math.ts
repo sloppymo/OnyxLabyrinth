@@ -313,6 +313,47 @@ export const PARTY_FORMATION_SLOTS: FormationSlot[] = [
 ];
 
 /**
+ * Card Trial's two mechanical hero rows reuse the campaign formation's two
+ * mid-field slots. Both anchors therefore stay on the same 0.875 sprite-scale
+ * tier while footY alone gives Front the nearer paint depth.
+ *
+ * These are presentation anchors only. Card Trial's authoritative row and
+ * entry clock remain in its rules state and are copied into the narrow
+ * `CombatState.partyFormation` hint by card-trial-presentation.ts.
+ */
+export const CARD_TRIAL_BACK_HERO_ANCHOR: FormationSlot = {
+  x: 500,
+  footYFrac: 0.4,
+};
+export const CARD_TRIAL_FRONT_HERO_ANCHOR: FormationSlot = {
+  x: 555,
+  footYFrac: 0.62,
+};
+
+/**
+ * Card Trial permits both heroes to occupy one row. A small, actor-stable
+ * lateral lane keeps both sprites visible in that case without making x a
+ * second row signal. Because the same nudge follows an actor in both rows,
+ * it cancels out of that actor's Front/Back transition delta.
+ */
+export const CARD_TRIAL_HERO_LATERAL_NUDGE_PX = 16;
+
+export function cardTrialHeroSlot(
+  row: "front" | "back",
+  actorId: string
+): FormationSlot {
+  const anchor =
+    row === "front"
+      ? CARD_TRIAL_FRONT_HERO_ANCHOR
+      : CARD_TRIAL_BACK_HERO_ANCHOR;
+  const lane = actorId === "rat-king" ? 1 : actorId === "old-man" ? -1 : 0;
+  return {
+    x: anchor.x + lane * CARD_TRIAL_HERO_LATERAL_NUDGE_PX,
+    footYFrac: anchor.footYFrac,
+  };
+}
+
+/**
  * Enemies: one left-side diagonal column mirroring the party (party goes
  * down-right; enemies go down-left). Mechanical front/back rows still exist
  * for reach/targeting, but the two slot tables ZIPPER into a single cascade

@@ -15,12 +15,14 @@ import { statusDrawScale } from "../game/combat-shared";
 import combatBgUrl from "../assets/combat-bg.png";
 import {
   createScene,
+  setCombatSceneState,
   updateScene,
   playTurn,
   isPlaybackDone,
   absorbDeaths,
   skipPlaybackToEnd,
   setBossIntroNameplate,
+  partyActorPos,
   enemyPos,
   allyPos,
   animOffset,
@@ -60,7 +62,6 @@ import {
   COMBAT_DESIGN_H,
   resolveSlot,
   enemySlot,
-  partySlot,
   geometryForBackdrop,
   type ResolvedSlot,
 } from "./combat-scene-math";
@@ -1412,7 +1413,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       const c = s.party[i]!;
       const key = this.actorPoolKey("party", c.id);
       seen.add(key);
-      this.upsertParty(key, c, i, scene, now, w);
+      this.upsertParty(key, c, i, scene, now, w, h);
     }
 
     for (const [key, entry] of this.actors) {
@@ -1755,7 +1756,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     index: number,
     scene: CombatScene,
     now: number,
-    w: number
+    w: number,
+    h: number
   ): void {
     const anim = getAnim(scene, "party", char.id, now);
     const isDead = char.hp <= 0 || char.status.includes("knockedOut");
@@ -1769,12 +1771,17 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     // Fold statusDrawScale into spriteHeight so centreY foot-anchors (Shrink /
     // Giant Strength); multiplying drawSize alone after resolve floats/sinks.
     const statusScale = statusDrawScale(char.status);
-    const pos = toScreenFromResolve(
-      resolveSlot(partySlot(index), geometryForBackdrop(scene.backdropId), {
+    const pos = partyActorPos(
+      scene.state,
+      index,
+      char.id,
+      w,
+      h,
+      scene.backdropId,
+      {
         spriteHeight: PARTY_SIZE * statusScale,
-        canvasWidth: w,
         artFootFromTop: artFoot,
-      })
+      }
     );
     const off = animOffset(anim, now);
     const x = pos.x + off.x;
@@ -2410,7 +2417,7 @@ export async function createPhaserCombatStage(
   const stage: CombatStage = {
     scene: sceneModel,
     setState(s: CombatState) {
-      sceneModel.state = s;
+      setCombatSceneState(sceneModel, s);
     },
     absorbDeaths(s: CombatState) {
       absorbDeaths(sceneModel, s);

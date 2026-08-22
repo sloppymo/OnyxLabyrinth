@@ -9,6 +9,7 @@
 import type { CombatEvent, CombatState } from "../game/combat-types";
 import {
   createScene,
+  setCombatSceneState,
   updateScene,
   playTurn,
   isPlaybackDone,
@@ -101,7 +102,7 @@ export function createCanvasCombatStage(
   return {
     scene,
     setState(s) {
-      scene.state = s;
+      setCombatSceneState(scene, s);
     },
     absorbDeaths(s) {
       absorbDeaths(scene, s);

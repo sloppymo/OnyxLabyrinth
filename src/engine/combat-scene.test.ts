@@ -7,6 +7,7 @@ import { describe, it, expect } from "vitest";
 import {
   COLORS,
   createScene,
+  setCombatSceneState,
   playTurn,
   updateScene,
   isPlaybackDone,
@@ -14,6 +15,7 @@ import {
   skipPlaybackToEnd,
   findActor,
   partyPos,
+  partyActorPos,
   enemyPos,
   resolveEffectStyle,
   sampleProjectilePose,
@@ -27,7 +29,9 @@ import {
   enemyIsUndead,
   animOffset,
   paintOrderFootY,
+  comparePaintOrder,
   getAnim,
+  PARTY_ROW_MOVE_MS,
 } from "./combat-scene";
 import { createCombatState, resolveEnemyTurn } from "../game/combat";
 import { pickBark, resetBarkRngForCombat, setBarkRngForTests } from "../game/combat-barks";
@@ -1404,6 +1408,88 @@ describe("actor positioning", () => {
     expect(findActor(scene, "rat-9", W, H)?.kind).toBe("enemy");
   });
 
+  it("keeps ordinary 1–4 member campaign positions on the exact legacy path", () => {
+    for (let count = 1; count <= 4; count++) {
+      const party = Array.from({ length: count }, (_, i) =>
+        createCharacter(`campaign-${i}`, `Hero ${i}`, "Human", "Neutral", "Fighter", i)
+      );
+      const state = createCombatState(
+        party,
+        { front: [makeEnemy(`rat-${count}`)], back: [] },
+        false
+      );
+      expect(state.partyFormation).toBeUndefined();
+      for (const backdropId of ["arena", "theme:f2", "theme:f5", "corridor"]) {
+        for (let i = 0; i < party.length; i++) {
+          expect(
+            partyActorPos(state, i, party[i]!.id, W, H, backdropId)
+          ).toEqual(partyPos(i, W, H, backdropId));
+        }
+      }
+    }
+  });
+
+  it("resolves Card Trial heroes by authoritative row, independent of array order", () => {
+    const party = [
+      createCharacter("old-man", "Old Man", "Human", "Neutral", "Priest", 2),
+      createCharacter("rat-king", "Rat King", "Human", "Neutral", "Thief", 0),
+    ];
+    const state = createCombatState(party, { front: [], back: [] }, false);
+    state.partyFormation = {
+      kind: "card-trial-rows",
+      rowsByActorId: {
+        "rat-king": { row: "front", rowEnteredAt: 1 },
+        "old-man": { row: "back", rowEnteredAt: 2 },
+      },
+    };
+    const scene = createScene(state);
+    const front = findActor(scene, "rat-king", W, H)!;
+    const back = findActor(scene, "old-man", W, H)!;
+    expect(front.footY).toBeGreaterThan(back.footY);
+    expect(front.scale).toBe(back.scale);
+  });
+
+  it("uses the production footY sort to paint Card Trial Front after Back", () => {
+    const party = [
+      createCharacter("rat-king", "Rat King", "Human", "Neutral", "Thief", 0),
+      createCharacter("old-man", "Old Man", "Human", "Neutral", "Priest", 2),
+    ];
+    const state = createCombatState(party, { front: [], back: [] }, false);
+    state.partyFormation = {
+      kind: "card-trial-rows",
+      rowsByActorId: {
+        "rat-king": { row: "front", rowEnteredAt: 1 },
+        "old-man": { row: "back", rowEnteredAt: 2 },
+      },
+    };
+    const scene = createScene(state);
+    const drawOrder = ["rat-king", "old-man"]
+      .map((id) => ({ id, footY: findActor(scene, id, W, H)!.footY }))
+      .sort(comparePaintOrder)
+      .map(({ id }) => id);
+    expect(drawOrder).toEqual(["old-man", "rat-king"]);
+  });
+
+  it("keeps two heroes in one Card Trial row separately visible", () => {
+    const party = [
+      createCharacter("rat-king", "Rat King", "Human", "Neutral", "Thief", 2),
+      createCharacter("old-man", "Old Man", "Human", "Neutral", "Priest", 3),
+    ];
+    const state = createCombatState(party, { front: [], back: [] }, false);
+    state.partyFormation = {
+      kind: "card-trial-rows",
+      rowsByActorId: {
+        "rat-king": { row: "back", rowEnteredAt: 3 },
+        "old-man": { row: "back", rowEnteredAt: 2 },
+      },
+    };
+    const scene = createScene(state);
+    const ratKing = findActor(scene, "rat-king", W, H)!;
+    const oldMan = findActor(scene, "old-man", W, H)!;
+    expect(ratKing.x).not.toBe(oldMan.x);
+    expect(ratKing.footY).toBe(oldMan.footY);
+  });
+
   it("a mid-row death does not teleport its surviving row-mate or misplace the corpse", () => {
     const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
     const a = makeEnemy("a");
@@ -1502,6 +1588,177 @@ describe("actor positioning", () => {
     const aPos = findActor(scene, "a", W, H)!;
     const corpsePos = findActor(scene, "b", W, H)!;
     expect(aPos.x).not.toBe(corpsePos.x);
+  });
+});
+
+describe("Card Trial party-row transition", () => {
+  function rowState(
+    ratRow: "front" | "back",
+    ratEnteredAt: number
+  ) {
+    const party = [
+      createCharacter("rat-king", "Rat King", "Human", "Neutral", "Thief", 0),
+      createCharacter("old-man", "Old Man", "Human", "Neutral", "Priest", 2),
+    ];
+    const state = createCombatState(
+      party,
+      { front: [makeEnemy("row-target")], back: [] },
+      false
+    );
+    state.partyFormation = {
+      kind: "card-trial-rows",
+      rowsByActorId: {
+        "rat-king": { row: ratRow, rowEnteredAt: ratEnteredAt },
+        "old-man": { row: "back", rowEnteredAt: 2 },
+      },
+    };
+    return state;
+  }
+
+  it("derives the destination from row/entry clock and slides old anchor to new in 200ms", () => {
+    const oldState = rowState("front", 1);
+    const scene = createScene(oldState);
+    const oldPos = findActor(scene, "rat-king", W, H)!;
+
+    const nextState = rowState("back", 3);
+    setCombatSceneState(scene, nextState);
+    expect(scene.partyFormationTransitions.get("rat-king")).toEqual({
+      fromRow: "front",
+      toRow: "back",
+      rowEnteredAt: 3,
+    });
+    const newPos = findActor(scene, "rat-king", W, H)!;
+
+    const start = 1_000;
+    playTurn(
+      scene,
+      [
+        {
+          type: "partyRowMove",
+          actorId: "rat-king",
+          row: "back",
+          rowEnteredAt: 3,
+        },
+      ],
+      (id) => id,
+      start,
+      W,
+      H
+    );
+    const anim = getAnim(scene, "party", "rat-king", start);
+    const initial = animOffset(anim, start);
+    expect(newPos.x + initial.x).toBeCloseTo(oldPos.x);
+    expect(newPos.footY + initial.y).toBeCloseTo(oldPos.footY);
+
+    updateScene(scene, start);
+    expect(anim.moveDuration).toBe(PARTY_ROW_MOVE_MS);
+    expect(PARTY_ROW_MOVE_MS).toBeGreaterThanOrEqual(150);
+    expect(PARTY_ROW_MOVE_MS).toBeLessThanOrEqual(250);
+    expect(anim.state).toBe("walk");
+
+    updateScene(scene, start + PARTY_ROW_MOVE_MS / 2);
+    const halfway = animOffset(anim, start + PARTY_ROW_MOVE_MS / 2);
+    expect(newPos.x + halfway.x).toBeCloseTo((oldPos.x + newPos.x) / 2);
+    expect(newPos.footY + halfway.y).toBeCloseTo(
+      (oldPos.footY + newPos.footY) / 2
+    );
+
+    updateScene(scene, start + PARTY_ROW_MOVE_MS);
+    expect(animOffset(anim, start + PARTY_ROW_MOVE_MS)).toEqual({ x: 0, y: 0 });
+    expect(anim.state).toBe("idle");
+    expect(scene.partyFormationTransitions.has("rat-king")).toBe(false);
+  });
+
+  it("does not animate a card move event when rowEnteredAt says no row change occurred", () => {
+    const state = rowState("front", 1);
+    const scene = createScene(state);
+    setCombatSceneState(scene, rowState("front", 1));
+    playTurn(
+      scene,
+      [
+        {
+          type: "partyRowMove",
+          actorId: "rat-king",
+          row: "front",
+          rowEnteredAt: 1,
+        },
+      ],
+      (id) => id,
+      0,
+      W,
+      H
+    );
+    updateScene(scene, 0);
+    expect(scene.partyFormationTransitions.size).toBe(0);
+    expect(animOffset(getAnim(scene, "party", "rat-king", 0), 100)).toEqual({
+      x: 0,
+      y: 0,
+    });
+  });
+
+  it("keeps a card banner and attack based at the old anchor until their move beat", () => {
+    const scene = createScene(rowState("front", 1));
+    const oldPos = findActor(scene, "rat-king", W, H)!;
+    setCombatSceneState(scene, rowState("back", 3));
+    const newPos = findActor(scene, "rat-king", W, H)!;
+    const start = 2_000;
+    const duration = playTurn(
+      scene,
+      [
+        {
+          type: "cast",
+          actorId: "rat-king",
+          spellId: "Parting Blow",
+          targetId: null,
+        },
+        {
+          type: "attack",
+          actorId: "rat-king",
+          targetId: "row-target",
+          damage: 4,
+        },
+        {
+          type: "partyRowMove",
+          actorId: "rat-king",
+          row: "back",
+          rowEnteredAt: 3,
+        },
+      ],
+      (id) => id,
+      start,
+      W,
+      H
+    );
+    const anim = getAnim(scene, "party", "rat-king", start);
+    const seeded = animOffset(anim, start);
+    expect(newPos.x + seeded.x).toBeCloseTo(oldPos.x);
+    expect(newPos.footY + seeded.y).toBeCloseTo(oldPos.footY);
+
+    updateScene(scene, start);
+    updateScene(scene, start + 130);
+    const duringBanner = animOffset(anim, start + 130);
+    expect(newPos.x + duringBanner.x).toBeCloseTo(oldPos.x);
+    expect(
+      Math.abs(newPos.footY + duringBanner.y - oldPos.footY)
+    ).toBeLessThan(10);
+
+    let rowMoveStartedAt: number | null = null;
+    for (let elapsed = 140; elapsed <= duration; elapsed += 10) {
+      updateScene(scene, start + elapsed);
+      if (
+        anim.moveDuration === PARTY_ROW_MOVE_MS &&
+        anim.moveToX === 0 &&
+        anim.moveToY === 0
+      ) {
+        rowMoveStartedAt = elapsed;
+        break;
+      }
+    }
+    expect(rowMoveStartedAt).not.toBeNull();
+    expect(rowMoveStartedAt!).toBeGreaterThan(PARTY_ROW_MOVE_MS);
+    const atMoveStart = animOffset(anim, start + rowMoveStartedAt!);
+    expect(newPos.x + atMoveStart.x).toBeCloseTo(oldPos.x, 0);
+    expect(newPos.footY + atMoveStart.y).toBeCloseTo(oldPos.footY, 0);
   });
 });
 

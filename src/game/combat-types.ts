@@ -179,6 +179,13 @@ export type CombatEvent =
   | { type: "spellEffect"; spellId: string; targetId?: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean; isDebuff?: boolean }
   | { type: "defeated"; targetId: string; wasEnemy: boolean }
   | { type: "rowAdvance"; targetId: string }
+  | {
+      /** Presentation-only Card Trial hero formation transition. */
+      type: "partyRowMove";
+      actorId: string;
+      row: Row;
+      rowEnteredAt: number;
+    }
   | { type: "revived"; targetId: string }
   | { type: "defend"; actorId: string }
   | { type: "statusTick"; targetId: string; damage: number; status: string }
@@ -358,8 +365,27 @@ export interface SummonedAlly {
   finishingStrikeUsed?: boolean;
 }
 
+/**
+ * Optional, presentation-only party placement profile. The sole producer is
+ * Card Trial's adapter; ordinary campaign combat leaves it absent and keeps
+ * the existing dense index-based party formation exactly.
+ */
+export interface PartyFormationPresentation {
+  kind: "card-trial-rows";
+  rowsByActorId: Record<
+    string,
+    {
+      row: Row;
+      /** Authoritative Card Trial entry clock for this destination row. */
+      rowEnteredAt: number;
+    }
+  >;
+}
+
 export interface CombatState {
   party: Character[];
+  /** Narrow opt-in visual placement; absent in every campaign combat. */
+  partyFormation?: PartyFormationPresentation;
   enemies: EnemyFormation;
   round: number;
   isBoss: boolean;

@@ -25,7 +25,6 @@ import {
   visualHeadY,
   MARKER_TIP_GAP_PX,
   resolveSlot,
-  partySlot,
   enemySlot,
 } from "./combat-scene-math";
 import {
@@ -53,7 +52,7 @@ import {
   setAnimState,
   enemySlotIndex,
   allySlotIndex,
-  partyPos,
+  partyActorPos,
   enemyPos,
   allyPos,
   type CombatScene,
@@ -72,9 +71,11 @@ import { screenShakeOffset } from "./combat-motion";
 export {
   enemyIsUndead,
   partyPos,
+  partyActorPos,
   enemyPos,
   allyPos,
   createScene,
+  setCombatSceneState,
   playTurn,
   updateScene,
   isPlaybackDone,
@@ -96,6 +97,7 @@ export {
   PARTY_SIZE,
   ENEMY_SIZE,
   BOSS_SIZE,
+  PARTY_ROW_MOVE_MS,
   ANIM_SPEED,
   EFFECT_ANIM_SPEED,
   POPUP_DURATION,
@@ -125,6 +127,7 @@ export type {
   EffectStyle,
   ChoreoStep,
   Choreography,
+  PartyFormationTransition,
 } from "./combat-choreography";
 
 /**
@@ -137,6 +140,14 @@ export type {
  */
 export function paintOrderFootY(baseFootY: number, anim: ActorAnim | undefined, now: number): number {
   return anim ? baseFootY + animOffset(anim, now).y : baseFootY;
+}
+
+/** Shared comparator used by the production canvas draw list and its tests. */
+export function comparePaintOrder(
+  a: { footY: number },
+  b: { footY: number }
+): number {
+  return a.footY - b.footY;
 }
 
 // --- Background (painter-owned; DOM Image) ------------------------------------
@@ -389,12 +400,17 @@ function drawPartyMember(
     stripArtTopFromTop: stripInfo?.strip.artTopFromTop,
   });
   const statusScale = statusDrawScale(char.status);
-  const slot = toScreenPos(
-    resolveSlot(partySlot(index), geoFor(scene.backdropId), {
+  const slot = partyActorPos(
+    scene.state,
+    index,
+    char.id,
+    w,
+    _h,
+    scene.backdropId,
+    {
       spriteHeight: PARTY_SIZE * statusScale,
-      canvasWidth: w,
       artFootFromTop: artFoot,
-    })
+    }
   );
   const off = animOffset(anim, now);
   const x = slot.x + off.x;
@@ -1232,17 +1248,17 @@ export function renderScene(
   });
   for (let i = 0; i < s.party.length; i++) {
     const char = s.party[i]!;
-    // Visual stand position keys off the dense in-combat rank (i), not the
-    // roster's formationSlot (0-3, front 0-1 / back 2-3) — matches
-    // findActor's convention.
-    const pos = partyPos(i, w, h, scene.backdropId);
+    // Campaign visual stands key off dense in-combat rank (i), not the
+    // roster's formationSlot. Card Trial alone opts into row anchors through
+    // state.partyFormation. partyActorPos is the same seam findActor uses.
+    const pos = partyActorPos(scene.state, i, char.id, w, h, scene.backdropId);
     cmds.push({
       footY: paintOrderFootY(pos.footY, scene.partyAnims.get(char.id), now),
       draw: () => drawPartyMember(ctx, char, i, scene, now, w, h),
     });
   }
 
-  cmds.sort((a, b) => a.footY - b.footY);
+  cmds.sort(comparePaintOrder);
   for (const c of cmds) c.draw();
 
   // Overlay VFX (effects, particles, popups, banners) stay above combatants.

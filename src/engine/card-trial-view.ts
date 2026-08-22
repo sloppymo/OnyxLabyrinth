@@ -118,7 +118,7 @@ export function renderCardTrialWindows(
   const handPane =
     phase === "hand"
       ? `<div class="ff6-window ct-hand">
-          <div class="ff6-menu-title">${esc(acting?.name ?? "—")} · ${view.energy} energy · ${acting?.row === "front" ? "FRONT" : "BACK"}</div>
+          <div class="ff6-menu-title">${esc(acting?.name ?? "—")} · ${view.energy} energy</div>
           <div class="ct-hand-row">
             ${view.hand.map((c, i) => cardHtml(c, i === cursor)).join("")}
           </div>
@@ -160,7 +160,6 @@ export function renderCardTrialWindows(
         const actingMark = h.id === view.actingHero ? " acting" : "";
         return `<div class="ct-hero${actingMark}${h.dead ? " dead" : ""}">
           <div class="ct-hero-name">${esc(h.name)}</div>
-          <div class="ct-hero-row">${h.row === "front" ? "FRONT" : "BACK"}</div>
           <div class="ct-hero-hp">${h.hp}/${h.maxHp}${h.guard ? ` · G${h.guard}` : ""}</div>
         </div>`;
       })

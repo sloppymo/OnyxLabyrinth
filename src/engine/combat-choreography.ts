@@ -70,6 +70,7 @@ export { enemyIsUndead } from "./combat-audio";
 import {
   geometryForBackdrop,
   partySlot,
+  cardTrialHeroSlot,
   enemySlot,
   allySlot,
   resolveSlot,
@@ -123,6 +124,8 @@ export const ENEMY_SIZE = 300;
 /** Boss sprites still tower over trash (~33% larger), but smaller than the
  *  old 480 so a zipper neighbor remains readable. */
 export const BOSS_SIZE = 400;
+/** Card Trial hero row slide; deliberately inside the 150–250ms brief. */
+export const PARTY_ROW_MOVE_MS = 200;
 
 export type ActorScreenPos = {
   x: number;
@@ -161,6 +164,55 @@ export function partyPos(
       canvasWidth: w,
       artFootFromTop: ART_FOOT_FROM_TOP,
     })
+  );
+}
+
+/**
+ * Single row-aware party-slot seam. With no Card Trial profile (the campaign
+ * path), this returns the same dense index slot partyPos has always used.
+ */
+export function partySlotForActor(
+  state: Pick<CombatState, "partyFormation">,
+  index: number,
+  actorId: string,
+  rowOverride?: "front" | "back"
+): ReturnType<typeof partySlot> {
+  const formation = state.partyFormation;
+  if (formation?.kind !== "card-trial-rows") return partySlot(index);
+  const actor = formation.rowsByActorId[actorId];
+  if (!actor) return partySlot(index);
+  return cardTrialHeroSlot(rowOverride ?? actor.row, actorId);
+}
+
+/**
+ * Resolve a party actor through the active backdrop. Sprite painters may
+ * supply strip/status-specific foot geometry; choreography/findActor use the
+ * pack default. All callers share partySlotForActor, so sprites and VFX cannot
+ * disagree about which formation anchor an actor owns.
+ */
+export function partyActorPos(
+  state: Pick<CombatState, "partyFormation">,
+  index: number,
+  actorId: string,
+  w: number,
+  _h: number,
+  backdropId?: string | null,
+  opts: {
+    rowOverride?: "front" | "back";
+    spriteHeight?: number;
+    artFootFromTop?: number;
+  } = {}
+): ActorScreenPos {
+  return toScreenPos(
+    resolveSlot(
+      partySlotForActor(state, index, actorId, opts.rowOverride),
+      geoFor(backdropId),
+      {
+        spriteHeight: opts.spriteHeight ?? PARTY_SIZE,
+        canvasWidth: w,
+        artFootFromTop: opts.artFootFromTop ?? ART_FOOT_FROM_TOP,
+      }
+    )
   );
 }
 
@@ -394,11 +446,20 @@ export interface SceneCursor {
   kill?: boolean;
 }
 
+/** Transient, row-clock-derived presentation data for one pending hero move. */
+export interface PartyFormationTransition {
+  fromRow: "front" | "back";
+  toRow: "front" | "back";
+  rowEnteredAt: number;
+}
+
 export interface CombatScene {
   state: CombatState;
   partyAnims: Map<string, ActorAnim>;
   enemyAnims: Map<string, ActorAnim>;
   allyAnims: Map<string, ActorAnim>;
+  /** Derived on state sync; consumed by a matching partyRowMove event. */
+  partyFormationTransitions: Map<string, PartyFormationTransition>;
   /** Enemies removed from the living arrays but still animating death. */
   enemyCorpses: EnemyInstance[];
   allyCorpses: SummonedAlly[];
@@ -535,6 +596,7 @@ export function createScene(state: CombatState): CombatScene {
     partyAnims: new Map(),
     enemyAnims: new Map(),
     allyAnims: new Map(),
+    partyFormationTransitions: new Map(),
     enemyCorpses: [],
     allyCorpses: [],
     enemySlots: new Map(),
@@ -577,6 +639,43 @@ export function createScene(state: CombatState): CombatScene {
     allySlotIndex(scene, a.id);
   }
   return scene;
+}
+
+/**
+ * Swap authoritative combat state while deriving any Card Trial row change
+ * from its row + monotonic entry clock. ActorAnim remains the only owner of
+ * in-flight interpolation; this map merely bridges one state swap to its
+ * matching presentation event.
+ */
+export function setCombatSceneState(
+  scene: CombatScene,
+  state: CombatState
+): void {
+  const previous = scene.state.partyFormation;
+  const next = state.partyFormation;
+  scene.partyFormationTransitions.clear();
+  if (
+    previous?.kind === "card-trial-rows" &&
+    next?.kind === "card-trial-rows"
+  ) {
+    for (const [actorId, destination] of Object.entries(
+      next.rowsByActorId
+    )) {
+      const origin = previous.rowsByActorId[actorId];
+      if (
+        origin &&
+        origin.row !== destination.row &&
+        destination.rowEnteredAt > origin.rowEnteredAt
+      ) {
+        scene.partyFormationTransitions.set(actorId, {
+          fromRow: origin.row,
+          toRow: destination.row,
+          rowEnteredAt: destination.rowEnteredAt,
+        });
+      }
+    }
+  }
+  scene.state = state;
 }
 
 // --- Actor lookup helpers -------------------------------------------------------------
@@ -656,7 +755,7 @@ export function findActor(
   const bd = scene.backdropId;
   const pi = s.party.findIndex((c) => c.id === id);
   if (pi >= 0) {
-    const p = partyPos(pi, w, h, bd);
+    const p = partyActorPos(s, pi, id, w, h, bd);
     return { kind: "party", ...p, class: s.party[pi].class };
   }
   for (const row of ["front", "back"] as const) {
@@ -2806,6 +2905,74 @@ export function playTurn(
   // Clear any impact presentation state from the previous turn.
   resetImpactState(scene.impact);
 
+  // Card Trial swaps the authoritative formation profile before presenting
+  // the resolved events. Seed each matching actor at its old row as an offset
+  // from the new-row base, following the established rowAdvance convention.
+  // Keeping this pre-scan separate is important for Parting Blow: its attack
+  // event precedes hero-move, so the actor must remain at the old anchor until
+  // the later move beat begins instead of teleporting before the strike.
+  const pendingPartyMoves = new Map<
+    string,
+    {
+      eventIndex: number;
+      rowEnteredAt: number;
+      offset: { x: number; y: number };
+    }
+  >();
+  for (let i = 0; i < events.length; i++) {
+    const evt = events[i];
+    if (!evt || evt.type !== "partyRowMove") continue;
+    const transition = scene.partyFormationTransitions.get(evt.actorId);
+    if (
+      !transition ||
+      transition.toRow !== evt.row ||
+      transition.rowEnteredAt !== evt.rowEnteredAt
+    ) {
+      continue;
+    }
+    const partyIndex = scene.state.party.findIndex((c) => c.id === evt.actorId);
+    if (partyIndex < 0) continue;
+    const oldPos = partyActorPos(
+      scene.state,
+      partyIndex,
+      evt.actorId,
+      w,
+      h,
+      scene.backdropId,
+      { rowOverride: transition.fromRow }
+    );
+    const newPos = partyActorPos(
+      scene.state,
+      partyIndex,
+      evt.actorId,
+      w,
+      h,
+      scene.backdropId,
+      { rowOverride: transition.toRow }
+    );
+    const offset = { x: oldPos.x - newPos.x, y: oldPos.y - newPos.y };
+    pendingPartyMoves.set(evt.actorId, {
+      eventIndex: i,
+      rowEnteredAt: evt.rowEnteredAt,
+      offset,
+    });
+    const anim = getAnim(scene, "party", evt.actorId, now);
+    anim.moveFromX = offset.x;
+    anim.moveFromY = offset.y;
+    anim.moveToX = offset.x;
+    anim.moveToY = offset.y;
+    anim.moveStart = now;
+    anim.moveDuration = 0;
+  }
+
+  let buildingEventIndex = -1;
+  const formationHomeOffset = (actorId: string): { x: number; y: number } => {
+    const pending = pendingPartyMoves.get(actorId);
+    return pending && pending.eventIndex > buildingEventIndex
+      ? pending.offset
+      : { x: 0, y: 0 };
+  };
+
   // Track the one actor currently away from its stable slot so a multi-event
   // turn can return it exactly once. The resolver remains authoritative; this
   // is only a visual offset ledger.
@@ -2826,12 +2993,19 @@ export function playTurn(
     const actor = findActor(scene, actorId, w, h);
     if (!actor) return;
     const target = targetId ? findActor(scene, targetId, w, h) : null;
+    const actorHome = formationHomeOffset(actorId);
+    const targetHome = targetId
+      ? formationHomeOffset(targetId)
+      : { x: 0, y: 0 };
     const offset = approachOffset(
       {
-        actorX: actor.x,
-        actorY: actor.y,
-        targetX: target?.x ?? actor.x + (actor.kind === "enemy" ? 180 : -180),
-        targetY: target?.y ?? actor.y,
+        actorX: actor.x + actorHome.x,
+        actorY: actor.y + actorHome.y,
+        targetX:
+          target === null
+            ? actor.x + actorHome.x + (actor.kind === "enemy" ? 180 : -180)
+            : target.x + targetHome.x,
+        targetY: target === null ? actor.y + actorHome.y : target.y + targetHome.y,
         actorScale: actor.scale,
         canvasWidth: w,
         canvasHeight: h,
@@ -2844,11 +3018,25 @@ export function playTurn(
       step(t, (sc, n) => {
         const a = getAnim(sc, actor.kind, actorId, n);
         setAnimState(a, "walk", n);
-        startMove(a, offset.x * -0.12, offset.y * -0.12, coilMs, n, sc.playbackRate);
+        startMove(
+          a,
+          actorHome.x + offset.x * -0.12,
+          actorHome.y + offset.y * -0.12,
+          coilMs,
+          n,
+          sc.playbackRate
+        );
       }),
       step(t + coilMs, (sc, n) => {
         const a = getAnim(sc, actor.kind, actorId, n);
-        startMove(a, offset.x, offset.y, profile.approachMs - coilMs, n, sc.playbackRate);
+        startMove(
+          a,
+          actorHome.x + offset.x,
+          actorHome.y + offset.y,
+          profile.approachMs - coilMs,
+          n,
+          sc.playbackRate
+        );
       })
     );
   };
@@ -2856,20 +3044,21 @@ export function playTurn(
   const returnHome = (returnMs = approached?.returnMs ?? 120): void => {
     if (!approached) return;
     const { id, kind } = approached;
+    const home = formationHomeOffset(id);
     steps.push(
       step(t, (sc, n) => {
         const a = getAnim(sc, kind, id, n);
         setAnimState(a, "walk", n);
-        startMove(a, 0, 0, returnMs, n, sc.playbackRate);
+        startMove(a, home.x, home.y, returnMs, n, sc.playbackRate);
       }),
       step(t + returnMs, (sc, n) => {
         const a = getAnim(sc, kind, id, n);
         // Snap the canonical neutral offset at the boundary. This makes an
         // interrupted/large-jump frame safe for both painters.
-        a.moveFromX = 0;
-        a.moveFromY = 0;
-        a.moveToX = 0;
-        a.moveToY = 0;
+        a.moveFromX = home.x;
+        a.moveFromY = home.y;
+        a.moveToX = home.x;
+        a.moveToY = home.y;
         a.moveDuration = 0;
         if (a.state === "walk") setAnimState(a, "idle", n);
       })
@@ -2913,6 +3102,11 @@ export function playTurn(
   };
 
   const castAnim = (actorId: string): void => {
+    // A Card Trial movement card's ordinary name-banner/cast beat can precede
+    // its partyRowMove event. Keep that actor braced around the derived old
+    // row until the actual move beat instead of snapping it to the new base.
+    // Outside that narrow pending-transition window this is exactly {0, 0}.
+    const home = formationHomeOffset(actorId);
     steps.push(
       step(t, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
@@ -2922,19 +3116,33 @@ export function playTurn(
         // A caster braces and lifts into the spell instead of standing as a
         // static effect anchor. The release beat gets a small extra lift;
         // both motions remain bounded and return to the canonical slot.
-        startMove(anim, 0, -8 * actor.scale, 260, n, sc.playbackRate);
+        startMove(
+          anim,
+          home.x,
+          home.y - 8 * actor.scale,
+          260,
+          n,
+          sc.playbackRate
+        );
       }),
       step(t + CAST_IMPACT, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
         const anim = getAnim(sc, actor.kind, actorId, n);
-        startMove(anim, 0, -14 * actor.scale, 120, n, sc.playbackRate);
+        startMove(
+          anim,
+          home.x,
+          home.y - 14 * actor.scale,
+          120,
+          n,
+          sc.playbackRate
+        );
       }),
       step(t + CAST_MS, (sc, n) => {
         const actor = findActor(sc, actorId, w, h);
         if (!actor) return;
         const a = getAnim(sc, actor.kind, actorId, n);
-        startMove(a, 0, 0, 150, n, sc.playbackRate);
+        startMove(a, home.x, home.y, 150, n, sc.playbackRate);
         if (a.state === "cast") setAnimState(a, "idle", n);
       })
     );
@@ -2963,6 +3171,7 @@ export function playTurn(
   const hitSequence = classifyHitSequence(damageInfos);
 
   for (let evtIndex = 0; evtIndex < events.length; evtIndex++) {
+    buildingEventIndex = evtIndex;
     const evt = events[evtIndex];
     if (!evt) continue;
 
@@ -4051,6 +4260,51 @@ export function playTurn(
         break;
       }
 
+      case "partyRowMove": {
+        const pending = pendingPartyMoves.get(evt.actorId);
+        if (!pending || pending.rowEnteredAt !== evt.rowEnteredAt) break;
+        const moveStart = t;
+        steps.push(
+          step(moveStart, (sc, n) => {
+            const anim = getAnim(sc, "party", evt.actorId, n);
+            setAnimState(anim, "walk", n);
+            startMove(
+              anim,
+              0,
+              0,
+              PARTY_ROW_MOVE_MS,
+              n,
+              sc.playbackRate
+            );
+          }),
+          step(moveStart + PARTY_ROW_MOVE_MS, (sc, n) => {
+            const anim = getAnim(sc, "party", evt.actorId, n);
+            // Exact resting convention: the new authoritative anchor is now
+            // the base, so neutral presentation offset is zero.
+            anim.moveFromX = 0;
+            anim.moveFromY = 0;
+            anim.moveToX = 0;
+            anim.moveToY = 0;
+            anim.moveStart = n;
+            anim.moveDuration = 0;
+            if (anim.state === "walk") setAnimState(anim, "idle", n);
+            const transition = sc.partyFormationTransitions.get(evt.actorId);
+            if (transition?.rowEnteredAt === evt.rowEnteredAt) {
+              sc.partyFormationTransitions.delete(evt.actorId);
+            }
+          })
+        );
+        lastActionTiming = {
+          anticipation: moveStart,
+          release: moveStart,
+          contact: moveStart + PARTY_ROW_MOVE_MS,
+          reaction: moveStart + PARTY_ROW_MOVE_MS,
+          settle: moveStart + PARTY_ROW_MOVE_MS,
+        };
+        t += PARTY_ROW_MOVE_MS;
+        break;
+      }
+
       case "rowAdvance": {
         // Back-row survivors slide into front-row stands after the front is
         // wiped (combat-eor promoteEnemyBackRow). Clear the cached back-row
@@ -4376,7 +4630,7 @@ export function skipPlaybackToEnd(scene: CombatScene, now: number): void {
  * even though they're gone from the living arrays.
  */
 export function absorbDeaths(scene: CombatScene, state: CombatState): void {
-  scene.state = state;
+  setCombatSceneState(scene, state);
   for (const e of state.justDied) {
     if (!scene.enemyCorpses.some((c) => c.instanceId === e.instanceId)) {
       // Push first so same-turn multi-kills see each other as occupants

@@ -351,7 +351,7 @@ export class CardTrialController {
 
   private playEvents(events: Parameters<typeof toCombatEvents>[0]): void {
     this.syncStage();
-    const combatEvents = toCombatEvents(events);
+    const combatEvents = toCombatEvents(events, this.trial);
     if (combatEvents.length === 0) {
       this.afterPlayback();
       return;

@@ -8,6 +8,9 @@ import {
   type FormationSlot,
   BACKDROP_GEOMETRY,
   PARTY_FORMATION_SLOTS,
+  CARD_TRIAL_BACK_HERO_ANCHOR,
+  CARD_TRIAL_FRONT_HERO_ANCHOR,
+  cardTrialHeroSlot,
   ENEMY_FRONT_SLOTS,
   ENEMY_BACK_SLOTS,
   ENEMY_FORMATION_SLOTS,
@@ -250,6 +253,57 @@ describe("formation floor invariant (all backdrops × full formation)", () => {
     }
     for (const s of ENEMY_FORMATION_SLOTS) {
       expect(s.x).toBeLessThan(LOGICAL_W / 2);
+    }
+  });
+});
+
+describe("Card Trial hero-row anchors", () => {
+  const anchors = [
+    CARD_TRIAL_BACK_HERO_ANCHOR,
+    CARD_TRIAL_FRONT_HERO_ANCHOR,
+  ];
+  const liveHeroSlots = [
+    cardTrialHeroSlot("back", "rat-king"),
+    cardTrialHeroSlot("back", "old-man"),
+    cardTrialHeroSlot("front", "rat-king"),
+    cardTrialHeroSlot("front", "old-man"),
+  ];
+
+  it("keeps both anchors legal on every backdrop and on one scale tier", () => {
+    for (const id of allBackdropIds()) {
+      const geo = BACKDROP_GEOMETRY[id]!;
+      expect(() => assertFormationOnFloor(anchors, geo)).not.toThrow();
+      expect(() => assertFormationOnFloor(liveHeroSlots, geo)).not.toThrow();
+      expect(() =>
+        assertSlotsInXBounds(liveHeroSlots, geo, {
+          spriteWidth: COMBAT_NEAR_SPRITE_SIZE,
+        })
+      ).not.toThrow();
+      const scales = anchors.map((slot) =>
+        resolveSlot(slot, geo, { spriteHeight: COMBAT_NEAR_SPRITE_SIZE }).scale
+      );
+      expect(scales).toEqual([0.875, 0.875]);
+    }
+  });
+
+  it("makes Front strictly nearer and preserves the center aisle", () => {
+    expect(CARD_TRIAL_FRONT_HERO_ANCHOR.footYFrac).toBeGreaterThan(
+      CARD_TRIAL_BACK_HERO_ANCHOR.footYFrac
+    );
+    expect(() =>
+      assertCenterAisle(ENEMY_FORMATION_SLOTS, anchors)
+    ).not.toThrow();
+    expect(() =>
+      assertCenterAisle(ENEMY_FORMATION_SLOTS, liveHeroSlots)
+    ).not.toThrow();
+  });
+
+  it("keeps same-row heroes distinct without changing their depth", () => {
+    for (const row of ["front", "back"] as const) {
+      const ratKing = cardTrialHeroSlot(row, "rat-king");
+      const oldMan = cardTrialHeroSlot(row, "old-man");
+      expect(ratKing.x).not.toBe(oldMan.x);
+      expect(ratKing.footYFrac).toBe(oldMan.footYFrac);
     }
   });
 });
