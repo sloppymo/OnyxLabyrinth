@@ -42,15 +42,21 @@ function cardHtml(card: HandCardView, selected: boolean): string {
     card.disabled ? "disabled" : "",
     card.opens ? "ct-opens" : "",
     card.consume !== "none" ? "ct-has-consume" : "",
-    card.consumeArmed ? "ct-consume-armed" : "",
     card.consumeDimmed ? "ct-consume-dim" : "",
   ]
     .filter(Boolean)
     .join(" ");
   const openMark = card.opens ? `<span class="ct-opened-mark" title="Opens">◉</span>` : "";
+  const consumeCls = [
+    "ct-consume",
+    card.consumeArmed ? "armed" : "",
+    card.consumeDimmed ? "dim" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const consume = card.consume === "none"
     ? ""
-    : `<div class="ct-consume${card.consumeDimmed ? " dim" : ""}"><span class="ct-opened-mark">◉</span> CONSUME OPENED</div>`;
+    : `<div class="${consumeCls}"><span class="ct-opened-mark" title="Consume">◉</span> Consume</div>`;
   const why = card.disabled && card.disabledReason
     ? `<div class="ct-why">${esc(card.disabledReason)}</div>`
     : "";

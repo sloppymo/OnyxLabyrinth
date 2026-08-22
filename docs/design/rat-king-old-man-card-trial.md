@@ -1,7 +1,8 @@
 # Rat King / Old Man Card Trial
 
 **Status:** Experimental — Arena prototype only. Not campaign authority.  
-**Date:** 2026-08-21
+**Date:** 2026-08-21  
+**Decision record (2026-08-22):** [`docs/superpowers/specs/2026-08-22-card-trial-human-test-decision.md`](../superpowers/specs/2026-08-22-card-trial-human-test-decision.md) — mechanical/reference-agent validation passed; **no balance iteration** until the naive-human batch. Canonical mechanics stay in the spec below.
 
 The sixteen-ability wrapper (Revision 3 / Arena-plan kit, Court, Red Eye, retain-1 tactical decks) is **withdrawn**. It is not this prototype.
 

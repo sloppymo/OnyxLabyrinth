@@ -293,6 +293,8 @@ export interface CardTrialState {
   openedAtTurnStart: string | null;
   consumeCardsAtTurnStart: CardId[];
   consumedThisTurn: boolean;
+  /** True if a Consume-legal play was aimed at the Opened enemy this turn. */
+  consumeAttemptedThisTurn: boolean;
   lastHeroToAct: HeroId | null;
   hpAtHeroTurnEnd: Record<HeroId, number>;
 }

@@ -298,7 +298,8 @@ function closeOpenTurn(s: CardTrialState, discarded: CardId[], energyRemaining: 
     s.openedAtTurnStart &&
     rec.hero &&
     s.consumeCardsAtTurnStart.length > 0 &&
-    !s.consumedThisTurn
+    !s.consumedThisTurn &&
+    !s.consumeAttemptedThisTurn
   ) {
     rec.actions.push(
       `openedAvailableButDeclined:${s.consumeCardsAtTurnStart.join(",")}`
@@ -325,6 +326,7 @@ export function startHeroCardTurn(s: CardTrialState, heroId: HeroId): void {
   s.openedAtTurnStart = s.opened?.enemyId ?? null;
   s.consumeCardsAtTurnStart = consumeCardsInHand(s, hero);
   s.consumedThisTurn = false;
+  s.consumeAttemptedThisTurn = false;
   const partner = s.heroes[otherHero(heroId)];
   s.openTurn = {
     fightId: s.fightId,
@@ -551,6 +553,7 @@ export function createFight(
     openedAtTurnStart: null,
     consumeCardsAtTurnStart: [],
     consumedThisTurn: false,
+    consumeAttemptedThisTurn: false,
     lastHeroToAct: null,
     hpAtHeroTurnEnd: { "rat-king": HERO_MAX_HP, "old-man": HERO_MAX_HP },
   };
@@ -633,6 +636,7 @@ export function createAdversarialTriangle(opts?: { seed?: number }): CardTrialSt
   s.openedAtTurnStart = "ash";
   s.consumeCardsAtTurnStart = consumeCardsInHand(s, rk);
   s.consumedThisTurn = false;
+  s.consumeAttemptedThisTurn = false;
   s.phase = "hero-turn";
   s.queueIndex = 0;
   return s;
@@ -722,6 +726,12 @@ export function playCard(s: CardTrialState, uid: string, targets: CardPlayTarget
 
   const events: CardTrialEvent[] = [{ type: "banner", text: def.name, actorId: hero.id }];
   resolveCardEffect(s, hero, def.id, targets, consumeNow, events);
+  if (consumeNow) {
+    s.consumeAttemptedThisTurn = true;
+    if (!s.consumedThisTurn) {
+      s.openTurn?.actions.push(`consumeCardPlayedBaseKilledTarget:${def.id}`);
+    }
+  }
   s.events.push(...events);
   checkEnd(s);
   return { ok: true, events };
@@ -1081,6 +1091,14 @@ export function summarizeTelemetry(t: CardTrialTelemetry): string {
   lines.push(`openedAvailableButDeclined turns: ${declined.length}`);
   for (const x of declined) {
     const action = x.actions.find((a) => a.startsWith("openedAvailableButDeclined"));
+    lines.push(`  ${x.hero} fight ${x.fightId} r${x.round}: ${action}`);
+  }
+  const baseKilled = turns.filter((x) =>
+    x.actions.some((a) => a.startsWith("consumeCardPlayedBaseKilledTarget"))
+  );
+  lines.push(`consumeCardPlayedBaseKilledTarget turns: ${baseKilled.length}`);
+  for (const x of baseKilled) {
+    const action = x.actions.find((a) => a.startsWith("consumeCardPlayedBaseKilledTarget"));
     lines.push(`  ${x.hero} fight ${x.fightId} r${x.round}: ${action}`);
   }
   lines.push(`Died unconsumed: ${t.opened.filter((o) => o.diedUnconsumed).length}`);

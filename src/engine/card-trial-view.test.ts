@@ -34,7 +34,9 @@ describe("Card Trial windows", () => {
     expect(html).toContain("energy");
     expect(html).toContain("King of the Heap");
     expect(html).toContain("Swarm the Wound");
-    expect(html).toContain("CONSUME OPENED");
+    expect(html).not.toContain("CONSUME OPENED");
+    expect(html).toMatch(/<div class="ct-consume armed">/);
+    expect(host.querySelector(".ct-card.ct-consume-armed")).toBeNull();
     expect(html).toContain("Opened");
     expect(html).toContain("CLEAVER");
     expect(html).toContain("ASH");

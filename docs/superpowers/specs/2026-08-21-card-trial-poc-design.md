@@ -4,6 +4,8 @@
 **Date:** 2026-08-21  
 **Authority:** This document is the Card Trial spec. It replaces the earlier sixteen-ability wrapper (`Revision 3` / Arena-plan kit). That kit is not in this prototype.
 
+**2026-08-22 freeze:** [`2026-08-22-card-trial-human-test-decision.md`](2026-08-22-card-trial-human-test-decision.md). Reference-agent 1→10 is mechanical evidence only. Do not retune cards, energy, Move, Guard, Opened, Rat, or encounter HP until the naive-human batch. The only authorized freeze-break is measurement (true Consume decline vs base-kill) and Consume presentation (available clause, not recommendation).
+
 Campaign combat, saves, party creation, perks, shops, dialogue, and the ending do not change. Rat King and Old Man remain rival claimants in the campaign; this mode does not make them the player party.
 
 ---

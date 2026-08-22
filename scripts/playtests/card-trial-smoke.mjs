@@ -76,7 +76,7 @@ try {
   check("campaign party still 4 in fight", s.party.length === 4);
   const windows = await page.evaluate(() => document.querySelector("#combat-windows")?.innerText ?? "");
   check("intent rail shows Cleaver Front 11", /CLEAVER/.test(windows) && /Front/.test(windows));
-  check("Consume Opened visible", /CONSUME OPENED/.test(windows));
+  check("Consume clause visible", /\bConsume\b/.test(windows));
   check("fifth card Swarm visible", /Swarm the Wound/.test(windows));
   check("Move utility visible", /Move 1/.test(windows));
   await shot(page, OUT, "03-triangle-hand.png");

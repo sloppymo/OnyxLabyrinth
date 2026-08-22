@@ -4663,18 +4663,26 @@ canvas#map-canvas {
 .ct-consume {
   margin-top: 3px;
   font-size: 10px;
-  letter-spacing: 0.04em;
-  color: #e8a84a;
-  font-weight: 700;
+  letter-spacing: 0;
+  color: inherit;
+  font-weight: 400;
+  opacity: 0.5;
 }
 
 .ct-card.ct-consume-dim .ct-consume,
 .ct-consume.dim {
-  opacity: 0.4;
+  opacity: 0.38;
 }
 
-.ct-card.ct-consume-armed .ct-consume {
+.ct-consume.armed {
+  opacity: 0.82;
+  font-weight: 500;
+}
+
+.ct-card.selected .ct-consume.armed {
   opacity: 1;
+  color: #e8a84a;
+  font-weight: 600;
 }
 
 .ct-why {

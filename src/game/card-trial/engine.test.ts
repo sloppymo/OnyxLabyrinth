@@ -324,6 +324,43 @@ describe("Rat token", () => {
   });
 });
 
+describe("Opened consume telemetry", () => {
+  it("records a true decline when a Consume card is in hand and never played", () => {
+    const s = createAdversarialTriangle();
+    play(s, "king-of-the-heap", "cleaver");
+    play(s, "nip", "cleaver");
+    finishRatKing(s);
+    const rec = s.telemetry.turns.at(-1)!;
+    expect(rec.actions.some((a) => a.startsWith("openedAvailableButDeclined"))).toBe(true);
+    expect(rec.actions.some((a) => a.startsWith("consumeCardPlayedBaseKilledTarget"))).toBe(false);
+    expect(s.opened?.enemyId).toBe("ash");
+  });
+
+  it("does not call a base-lethal Consume play a decline", () => {
+    const s = createAdversarialTriangle();
+    const ash = s.enemies.find((e) => e.id === "ash")!;
+    ash.hp = 4;
+    play(s, "swarm-the-wound", "ash");
+    finishRatKing(s);
+    const rec = s.telemetry.turns.at(-1)!;
+    expect(rec.actions.some((a) => a.startsWith("consumeCardPlayedBaseKilledTarget:swarm-the-wound"))).toBe(
+      true,
+    );
+    expect(rec.actions.some((a) => a.startsWith("openedAvailableButDeclined"))).toBe(false);
+    expect(s.opened).toBeNull();
+  });
+
+  it("does not flag a successful Consume as declined or base-killed", () => {
+    const s = createAdversarialTriangle();
+    play(s, "swarm-the-wound", "ash");
+    finishRatKing(s);
+    const rec = s.telemetry.turns.at(-1)!;
+    expect(s.opened).toBeNull();
+    expect(rec.actions.some((a) => a.startsWith("openedAvailableButDeclined"))).toBe(false);
+    expect(rec.actions.some((a) => a.startsWith("consumeCardPlayedBaseKilledTarget"))).toBe(false);
+  });
+});
+
 describe("locked Cleaver/Ash triangle", () => {
   it("Leave: Move + Swarm + Nip", () => {
     const s = createAdversarialTriangle();
