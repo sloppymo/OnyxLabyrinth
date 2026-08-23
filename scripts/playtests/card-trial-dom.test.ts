@@ -1,3 +1,4 @@
+// @ts-nocheck — lib.mjs is untyped (see scripts/playtests/lighting-suite.ts)
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
