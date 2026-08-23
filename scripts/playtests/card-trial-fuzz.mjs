@@ -184,7 +184,9 @@ try {
         seed,
         message: String(error?.stack || error),
         trace,
-        minimizedTrace: trace.slice(-32),
+        // Keep a compact tail for quick repro triage; the full trace remains
+        // available in the same artifact. This is not delta-debugging.
+        reproTail: trace.slice(-32),
         session: await page.evaluate(() => window.__onyxDebug.cardTrial.session()).catch(() => null),
       };
       fs.writeFileSync(path.join(outDir, `seed-${seed}-failure.json`), JSON.stringify(failure, null, 2));
