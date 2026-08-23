@@ -253,7 +253,7 @@ describe("CardTrialHandPresentation", () => {
     expect(host.querySelectorAll(".ct2-card.focused").length).toBe(0);
   });
 
-  it("wires production art by id and a deterministic fallback otherwise", () => {
+  it("wires production art by id for both heroes", () => {
     const presentation = new CardTrialHandPresentation(host);
     presentation.sync(
       input([
@@ -265,8 +265,8 @@ describe("CardTrialHandPresentation", () => {
     const nip = host.querySelector('[data-uid="art"]') as HTMLElement;
     const brace = host.querySelector('[data-uid="fb"]') as HTMLElement;
     expect(nip.querySelector("img")?.getAttribute("src")).toContain("nip.png");
-    expect(brace.querySelector(".ct2-card-art")?.classList.contains("fallback")).toBe(true);
-    expect(brace.querySelector(".ct2-card-art")?.textContent).toBe("RK");
+    expect(brace.querySelector("img")?.getAttribute("src")).toContain("brace.png");
+    expect(brace.querySelector(".ct2-card-art")?.classList.contains("fallback")).toBe(false);
   });
 
   it("keeps full rules text visible at rest", () => {

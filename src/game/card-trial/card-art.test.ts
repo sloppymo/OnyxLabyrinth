@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CARD_DEFS } from "./cards";
@@ -30,7 +30,7 @@ function readUint32BE(buf: Uint8Array, offset: number): number {
   );
 }
 
-function pngSize(file: string): { width: number; height: number } {
+function pngInfo(file: string): { width: number; height: number; colorType: number } {
   const buf = new Uint8Array(readFileSync(file));
   for (let i = 0; i < 8; i++) {
     if (buf[i] !== PNG_SIGNATURE[i]) throw new Error(`${file}: not a PNG`);
@@ -48,6 +48,7 @@ function pngSize(file: string): { width: number; height: number } {
       return {
         width: readUint32BE(buf, offset + 8),
         height: readUint32BE(buf, offset + 12),
+        colorType: buf[offset + 17],
       };
     }
     offset += 12 + length;
@@ -56,22 +57,17 @@ function pngSize(file: string): { width: number; height: number } {
 }
 
 describe("Card Trial art manifest", () => {
-  it("maps only the five shipped illustration fields", () => {
-    expect([...CARD_ART_IDS].sort()).toEqual(
-      ["king-of-the-heap", "nip", "staff", "swarm-the-wound", "tide"].sort()
-    );
-    for (const id of Object.keys(CARD_DEFS) as CardId[]) {
-      if ((CARD_ART_IDS as readonly string[]).includes(id)) {
-        expect(cardArtRelPath(id)).toBe(`assets/card-trial/cards/${id}.png`);
-        expect(cardArtUrl(id)).toBe(expectedArtUrl(id));
-      } else {
-        expect(cardArtRelPath(id), id).toBeNull();
-        expect(cardArtUrl(id), id).toBeNull();
-      }
+  it("maps exactly one deterministic illustration field for every live card", () => {
+    const liveIds = Object.keys(CARD_DEFS).sort();
+    expect([...CARD_ART_IDS].sort()).toEqual(liveIds);
+    expect(new Set(CARD_ART_IDS).size).toBe(liveIds.length);
+    for (const id of liveIds as CardId[]) {
+      expect(cardArtRelPath(id)).toBe(`assets/card-trial/cards/${id}.png`);
+      expect(cardArtUrl(id)).toBe(expectedArtUrl(id));
     }
   });
 
-  it("points at existing 128×96 production PNGs", () => {
+  it("points at existing opaque 128×96 production PNGs", () => {
     expect(CARD_ART_NATIVE_WIDTH).toBe(128);
     expect(CARD_ART_NATIVE_HEIGHT).toBe(96);
     for (const id of CARD_ART_IDS) {
@@ -79,13 +75,17 @@ describe("Card Trial art manifest", () => {
       expect(rel).toBeTruthy();
       const file = resolve(process.cwd(), "public", rel!);
       expect(existsSync(file), file).toBe(true);
-      expect(pngSize(file)).toEqual({ width: 128, height: 96 });
+      expect(pngInfo(file)).toEqual({ width: 128, height: 96, colorType: 6 });
     }
   });
 
-  it("does not invent art for unshipped cards", () => {
-    expect(cardArtRelPath("brace")).toBeNull();
-    expect(cardArtRelPath("ward")).toBeNull();
-    expect(cardArtUrl("stand-and-die")).toBeNull();
+  it("has exactly one shipped PNG filename per live card and no extras", () => {
+    const dir = resolve(process.cwd(), "public/assets/card-trial/cards");
+    const files = readFileNames(dir);
+    expect(files).toEqual([...CARD_ART_IDS].map((id) => `${id}.png`).sort());
   });
 });
+
+function readFileNames(dir: string): string[] {
+  return readdirSync(dir).filter((name) => name.endsWith(".png")).sort();
+}
