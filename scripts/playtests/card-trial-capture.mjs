@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { launch, ensureAudioResumed, wait } from "./lib.mjs";
+import { launch, ensureAudioResumed, wait, clickCard, selectTarget, clickAct } from "./lib.mjs";
 
 const { values } = parseArgs({
   options: {
@@ -52,21 +52,21 @@ async function act(page) {
     const targets = await page.locator('.ct-sparse .ct-actor-chip[data-actor^="enemy:"]').evaluateAll((nodes) => nodes.filter((node) => !node.classList.contains("dead")).map((node) => node.dataset.actor?.slice(6)).filter(Boolean));
     const id = targets[0];
     if (!id) throw new Error("target phase had no target chips");
-    await page.locator(`.ct-sparse .ct-actor-chip[data-actor="enemy:${id}"]`).click({ force: true });
+    await selectTarget(page, id);
     return true;
   }
   const cards = await page.locator(".ct-sparse .ct2-card").evaluateAll((nodes) => nodes.map((node) => ({ uid: node.dataset.uid, disabled: node.classList.contains("disabled") })));
   const card = cards.find((candidate) => candidate.uid && !candidate.disabled);
   if (card) {
-    await page.locator(`.ct-sparse .ct2-card[data-uid="${card.uid}"]`).click({ force: true });
+    await clickCard(page, card.uid);
     return true;
   }
   const move = page.locator('.ct-sparse [data-act="move"]');
   if (await move.count() && !(await move.isDisabled())) {
-    await move.click({ force: true });
+    await clickAct(page, "move");
     return true;
   }
-  await page.locator('.ct-sparse [data-act="pass"]').click({ force: true });
+  await clickAct(page, "pass");
   return true;
 }
 
