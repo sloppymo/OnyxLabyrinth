@@ -43,11 +43,11 @@ describe("checkInvariants", () => {
     expect(checkInvariants({ state, route: "dungeon" }).some((w) => w.includes("sp"))).toBe(true);
   });
 
-  it("flags a party that isn't exactly 4 members", () => {
+  it("flags a party that isn't exactly 2 members", () => {
     const state = baseState();
-    state.party = state.party.slice(0, 3);
+    state.party = state.party.slice(0, 1);
     expect(
-      checkInvariants({ state, route: "dungeon" }).some((w) => /expected 4/i.test(w))
+      checkInvariants({ state, route: "dungeon" }).some((w) => /expected 2/i.test(w))
     ).toBe(true);
   });
 

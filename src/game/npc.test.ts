@@ -23,7 +23,7 @@ import {
 } from "./npc";
 import { handleTileFeature } from "./features";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
-import { createDefaultParty } from "./party";
+import { createLegacyParty } from "./party";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { cloneFloor, type FloorDef, type NPCDef } from "../data/floors";
 import type { GameState } from "../types";
@@ -74,7 +74,7 @@ function makeFloor(npc: NPCDef): FloorDef {
 }
 
 function makeState(npc: NPCDef = makeNPC()): GameState {
-  const party = createDefaultParty();
+  const party = createLegacyParty();
   return {
     mode: "dungeon",
     floor: makeFloor(npc),

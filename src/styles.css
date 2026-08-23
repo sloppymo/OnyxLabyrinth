@@ -2079,39 +2079,6 @@ canvas#map-canvas {
   color: #a8b0d8;
 }
 
-/* --- Party Creation (Section 4) ---------------------------------------- */
-
-/* Top-align and tighten padding — safe center clips tall editor content.
-   Choice phase uses a scoped 1:1 stage (intentional deviation from the
-   shared 8:7 ff6-menu-host rule); other menus keep 8:7. */
-#combat-panel.ff6-menu-host.party-create-host {
-  justify-content: flex-start;
-  align-items: stretch;
-  padding: 16px 20px;
-  gap: 0;
-  aspect-ratio: 1 / 1;
-}
-
-/* Sprites are the whole point of this screen — let the window use the full
-   width/height #game-wrap allows instead of the shared 640px standalone cap
-   (other menus stay narrower on purpose; this one shouldn't). */
-#combat-panel.party-create-host .ff6-window.standalone {
-  max-width: min(100%, 760px);
-  max-height: min(92vh, 860px);
-}
-
-/* Role colors for party-select composition pips (presentation only). */
-#combat-panel.party-create-host {
-  --role-tank: #6ec8ff;
-  --role-healer: #7dffa0;
-  --role-phys-dps: #ffb060;
-  --role-magic-dps: #d0a0ff;
-  --role-support: #ffe066;
-  --role-hybrid: #a0e0d0;
-  --party-pro: #9ec8ff;
-  --party-con: #ffb0a0;
-}
-
 /* --- Party assembly carousel (choice phase) --------------------------- */
 
 .party-carousel {
@@ -2540,8 +2507,8 @@ canvas#map-canvas {
 }
 
 /* Fills the tile 1:1; carousel context scales this layer (not the img the
-   idle-anim RAF loop drives) so frame-stepping math in party-ui.ts stays
-   untouched — the zoom is a pure paint-time magnification/crop. */
+   idle-anim RAF loop drives) so frame-stepping math in party-idle-anim.ts
+   stays untouched — the zoom is a pure paint-time magnification/crop. */
 .party-sprite-zoom {
   width: 100%;
   height: 100%;
@@ -2831,42 +2798,6 @@ canvas#map-canvas {
 .ps-num.wounded { color: #e8a060; }
 .ps-num.critical { color: #f07070; }
 
-
-/* --- Quick Start card (party creation) --------------------------------- */
-
-.quick-start-card {
-  margin: 12px auto;
-  max-width: 800px;
-  padding: 16px 20px;
-  border: 1px solid var(--border-default);
-  background: #1a1612;
-  font-size: var(--fs-small);
-  color: var(--warm-white);
-}
-
-.quick-start-card .qs-title {
-  color: var(--amber);
-  font-size: var(--fs-body);
-  margin-bottom: 8px;
-}
-
-.quick-start-card .qs-roster {
-  color: var(--text-dim);
-  font-size: var(--fs-small);
-  line-height: 1.6;
-}
-
-/* Opening choice screen: the selected card glows amber. */
-.quick-start-card.party-choice {
-  cursor: default;
-  opacity: 0.6;
-}
-
-.quick-start-card.party-choice.selected {
-  opacity: 1;
-  border-color: var(--amber);
-  box-shadow: 0 0 12px rgba(232, 168, 48, 0.15);
-}
 
 /* --- Character sheet (camp / guild) ------------------------------------ */
 

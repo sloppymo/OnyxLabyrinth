@@ -25,7 +25,7 @@ import type {
   Loadout,
   PlayerAction,
 } from "./combat-types";
-import { createDefaultParty, type Character, type CharacterClass } from "./party";
+import { createDefaultParty, createLegacyParty, type Character, type CharacterClass } from "./party";
 import { ALL_SPELLS } from "../data/spells";
 import { ALL_ITEMS, ITEMS_BY_ID } from "../data/items";
 import { ENEMIES_BY_ID, type EnemyDef } from "../data/enemies";
@@ -70,7 +70,7 @@ function makeCombatState(
   enemies: EnemyInstance[] = [],
   opts: { isBoss?: boolean } = {}
 ): CombatState {
-  const party = createDefaultParty();
+  const party = createLegacyParty();
   const spells: Record<string, typeof ALL_SPELLS[number]> = {};
   for (const s of ALL_SPELLS) spells[s.id] = s;
   const items: Record<string, typeof ALL_ITEMS[number]> = {};

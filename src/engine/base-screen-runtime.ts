@@ -1,6 +1,6 @@
 /**
  * Application owner for base-screen controller lifetime: Title, Town, Camp,
- * Game Over, Party Creation, and Arena (including the level-setup pane).
+ * Game Over, and Arena (including the level-setup pane).
  *
  * GameState.mode still names the live screen. This class owns the controller
  * instances and construction. Gameplay consequences stay in injected callbacks.
@@ -8,14 +8,12 @@
  */
 
 import type { GameMode, GameState } from "../types";
-import type { Character } from "../game/party";
 import type { ControllerInputEvent } from "./controller-input";
 import { controllerEventToMenuKey } from "./menu-controller-adapter";
 import { TitleController } from "./title-ui";
 import { TownController } from "./town-ui";
 import { CampController } from "./camp-ui";
 import { GameOverController } from "./game-over-ui";
-import { PartyCreationController } from "./party-ui";
 import { ArenaController } from "./arena-ui";
 import { CardTrialLobbyController } from "./card-trial-lobby";
 import { FF6Window } from "./ff6-window-library";
@@ -34,8 +32,6 @@ export interface BaseScreenShell {
 export interface BaseScreenAudio {
   startTitleMusic(): void;
   stopTitleMusic(): void;
-  startPartyCreationMusic(): void;
-  stopPartyCreationMusic(): void;
   startTownMusic(): void;
 }
 
@@ -48,12 +44,6 @@ export interface TitleScreenActions {
 export interface TownScreenActions {
   enterDungeon(): void;
   openSave(): void;
-  reformParty(): void;
-}
-
-export interface PartyScreenActions {
-  confirm(party: Character[], onDone: () => void): void;
-  cancel(previousMode: GameMode, onDone: () => void): void;
 }
 
 export interface GameOverScreenActions {
@@ -77,7 +67,6 @@ export interface BaseScreenRuntimeDeps {
   audio: BaseScreenAudio;
   title: TitleScreenActions;
   town: TownScreenActions;
-  party: PartyScreenActions;
   gameOver: GameOverScreenActions;
   camp: CampScreenActions;
   arena: ArenaScreenActions;
@@ -91,7 +80,6 @@ export class BaseScreenRuntime {
   private town: TownController | null = null;
   private camp: CampController | null = null;
   private gameOver: GameOverController | null = null;
-  private partyCreation: PartyCreationController | null = null;
   private arena: ArenaController | null = null;
   private arenaSetup: { handleKey: (key: string) => void } | null = null;
   private cardTrialLobby: CardTrialLobbyController | null = null;
@@ -109,9 +97,6 @@ export class BaseScreenRuntime {
   }
   get hasGameOver(): boolean {
     return this.gameOver !== null;
-  }
-  get hasPartyCreation(): boolean {
-    return this.partyCreation !== null;
   }
   get hasArena(): boolean {
     return this.arena !== null || this.arenaSetup !== null || this.cardTrialLobby !== null;
@@ -167,32 +152,6 @@ export class BaseScreenRuntime {
       onOpenSave: () => {
         this.town = null;
         this.deps.town.openSave();
-      },
-      onReformParty: () => {
-        this.town = null;
-        this.deps.town.reformParty();
-      },
-    });
-  }
-
-  openPartyCreation(onDone: () => void): void {
-    this.deps.shell.closeMapIfOpen();
-    const previousMode = this.deps.state.mode;
-    this.deps.shell.setMode("party_creation");
-    this.deps.shell.show("party_creation");
-    this.deps.shell.setMessage("");
-    this.deps.audio.startPartyCreationMusic();
-    this.partyCreation = new PartyCreationController({
-      panel: this.deps.shell.panel(),
-      onConfirm: (party) => {
-        this.partyCreation = null;
-        this.deps.audio.stopPartyCreationMusic();
-        this.deps.party.confirm(party, onDone);
-      },
-      onCancel: () => {
-        this.partyCreation = null;
-        this.deps.audio.stopPartyCreationMusic();
-        this.deps.party.cancel(previousMode, onDone);
       },
     });
   }
@@ -353,18 +312,6 @@ export class BaseScreenRuntime {
   handleGameOver(event: ControllerInputEvent): void {
     const key = controllerEventToMenuKey(event);
     if (key) this.gameOver?.handleKey(key);
-  }
-
-  handlePartyCreation(event: ControllerInputEvent): void {
-    if (
-      event.kind === "release" &&
-      (event.button === "left" || event.button === "right")
-    ) {
-      this.partyCreation?.releaseDirection(event.button === "left" ? -1 : 1);
-      return;
-    }
-    const key = controllerEventToMenuKey(event);
-    if (key) this.partyCreation?.handleKey(key);
   }
 
   handleTitle(event: ControllerInputEvent): void {

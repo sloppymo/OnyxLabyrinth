@@ -118,12 +118,12 @@ describe("createCharacter", () => {
 });
 
 describe("createDefaultParty", () => {
-  it("creates a party of PARTY_SIZE role-distinct characters", () => {
+  it("creates the fixed duo of Old Man and Rat King", () => {
     const party = createDefaultParty();
     expect(party).toHaveLength(PARTY_SIZE);
-    expect(party.map((c) => c.class)).toEqual(["Fighter", "Thief", "Mage", "Priest"]);
-    expect(party[2]!.knownSpellIds.length).toBeGreaterThan(0);
-    expect(party[3]!.knownSpellIds.length).toBeGreaterThan(0);
+    expect(party.map((c) => c.class)).toEqual(["Old Man", "Rat King"]);
+    expect(party[0]!.knownSpellIds.length).toBeGreaterThan(0);
+    expect(party[1]!.knownSpellIds.length).toBeGreaterThan(0);
   });
 
   it("assigns formation slots 0..PARTY_SIZE-1", () => {
@@ -132,12 +132,10 @@ describe("createDefaultParty", () => {
     expect(slots).toEqual(Array.from({ length: PARTY_SIZE }, (_, i) => i));
   });
 
-  it("places casters in the back row", () => {
+  it("places both protagonists in the front row", () => {
     const party = createDefaultParty();
     expect(isFrontRow(party[0]!)).toBe(true);
     expect(isFrontRow(party[1]!)).toBe(true);
-    expect(isFrontRow(party[2]!)).toBe(false);
-    expect(isFrontRow(party[3]!)).toBe(false);
   });
 });
 
@@ -146,14 +144,12 @@ describe("formation helpers", () => {
     const party = createDefaultParty();
     expect(isFrontRow(party[0])).toBe(true);
     expect(isFrontRow(party[1])).toBe(true);
-    expect(isFrontRow(party[2])).toBe(false);
-    expect(isFrontRow(party[3])).toBe(false);
   });
 
   it("charRow returns 'front' or 'back'", () => {
     const party = createDefaultParty();
     expect(charRow(party[0])).toBe("front");
-    expect(charRow(party[2])).toBe("back");
+    expect(charRow(party[1])).toBe("front");
   });
 });
 
@@ -173,15 +169,13 @@ describe("isPartyAlignmentValid", () => {
 });
 
 describe("suggestFormationSlot", () => {
-  it("fills front row first (0, 1, 2)", () => {
+  it("fills the two slots in order", () => {
     const party: ReturnType<typeof createDefaultParty> = [];
     expect(suggestFormationSlot(party)).toBe(0);
     party.push(createCharacter("c1", "A", "Human", "Neutral", "Fighter", 0));
     expect(suggestFormationSlot(party)).toBe(1);
     party.push(createCharacter("c2", "B", "Human", "Neutral", "Fighter", 1));
-    expect(suggestFormationSlot(party)).toBe(2);
-    party.push(createCharacter("c3", "C", "Human", "Neutral", "Fighter", 2));
-    expect(suggestFormationSlot(party)).toBe(3);
+    expect(suggestFormationSlot(party)).toBe(-1);
   });
 });
 
@@ -190,8 +184,8 @@ describe("RACES and CLASSES", () => {
     expect(Object.keys(RACES).length).toBe(5);
   });
 
-  it("has 7 classes", () => {
-    expect(Object.keys(CLASSES).length).toBe(7);
+  it("has 9 classes (legacy 7 plus the two protagonists)", () => {
+    expect(Object.keys(CLASSES).length).toBe(9);
   });
 
   it("all races have modifiers defined", () => {

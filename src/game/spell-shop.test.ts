@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { ALL_SPELLS, spellsForClass } from "../data/spells";
 import { purchaseSpell } from "./spell-shop";
 import { createGameState } from "./state";
+import { createLegacyParty } from "./party";
 import { loadExtraFloors } from "../content/floors";
 
 function stateWithGold(gold: number) {
-  const state = createGameState(loadExtraFloors().find((f) => f.id === 1)!);
+  const state = createGameState(loadExtraFloors().find((f) => f.id === 1)!, createLegacyParty());
   state.partyGold = gold;
   return state;
 }

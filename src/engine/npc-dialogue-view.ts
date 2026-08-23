@@ -38,6 +38,9 @@ export interface DialogueViewModel {
   npcTitle: string;
   mood: string;
   portraitId?: string;
+  /** Optional compact identity used by story speakers whose names share an
+   * article ("The Rat King" / "The Old Man") while portrait art is pending. */
+  portraitFallbackLabel?: string;
   portraitSide?: "left" | "right";
   dialogueAccent?: "neutral" | "warm" | "cold" | "hostile";
   /** Current page's text (already paginated by the caller). */
@@ -143,7 +146,7 @@ export function renderNPCDialogue(vm: DialogueViewModel): DialogueRenderResult {
     portrait.classList.add("npc-dlg-portrait-silhouette");
     const initial = document.createElement("span");
     initial.className = "npc-dlg-portrait-initial";
-    initial.textContent = vm.npcName.charAt(0).toUpperCase();
+    initial.textContent = vm.portraitFallbackLabel ?? vm.npcName.charAt(0).toUpperCase();
     portrait.appendChild(initial);
   }
 

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createGameState } from "./state";
+import { createLegacyParty } from "./party";
 import { buildSolidGrid, carveRoom, setEdge } from "./dungeon";
 import { FLOORS } from "../data/floors";
 import { tryUnlock, facingLock } from "./doors";
@@ -8,7 +9,7 @@ import type { GameState } from "../types";
 
 /** Tiny floor with a locked door facing east from (1,1). */
 function makeLockedState(opts?: { withThief?: boolean; withMageOnly?: boolean }): GameState {
-  const state = createGameState(FLOORS[0]);
+  const state = createGameState(FLOORS[0], createLegacyParty());
   const grid = buildSolidGrid(6, 6);
   carveRoom(grid, 1, 1, 4, 4);
   setEdge(grid, 1, 1, "e", "locked");

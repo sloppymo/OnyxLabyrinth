@@ -106,13 +106,11 @@ export interface PlayerState {
 }
 
 // --- Game state machine ------------------------------------------------------
-// Only one mode is active at a time. title / party_creation / game_over are
-// not driven by anything yet at Step 2 but are part of the union so future
-// steps don't have to widen it.
+// Only one mode is active at a time. title / game_over are placeholders;
+// future steps can widen the union when those screens are implemented.
 
 export type GameMode =
   | "title"
-  | "party_creation"
   | "town"
   | "dungeon"
   | "combat"

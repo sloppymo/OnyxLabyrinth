@@ -73,15 +73,15 @@ describe("CampController reorder (controller-friendly)", () => {
     expect(party[1]!.name).toBe(first);
   });
 
-  it("still supports digit hotkeys 1-4", () => {
+  it("still supports digit hotkeys 1-2", () => {
     const { ctrl, party } = openCamp();
     openReorder(ctrl);
     const a = party[0]!.name;
-    const c = party[2]!.name;
+    const b = party[1]!.name;
     ctrl.handleKey("1");
-    ctrl.handleKey("3");
-    expect(party[0]!.name).toBe(c);
-    expect(party[2]!.name).toBe(a);
+    ctrl.handleKey("2");
+    expect(party[0]!.name).toBe(b);
+    expect(party[1]!.name).toBe(a);
   });
 
   it("Escape returns to the camp menu", () => {

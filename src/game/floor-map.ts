@@ -782,6 +782,9 @@ function parseEvent(o: Record<string, unknown>, l: string): EventDef {
   };
   if (o.power !== undefined) ev.power = requireNumber(o.power, `${l}.power`);
   if (o.itemId !== undefined) ev.itemId = requireString(o.itemId, `${l}.itemId`);
+  if (o.dialogueId !== undefined) {
+    ev.dialogueId = requireString(o.dialogueId, `${l}.dialogueId`);
+  }
   const once = optionalBool(o.once, `${l}.once`);
   if (once !== undefined) ev.once = once;
   return ev;

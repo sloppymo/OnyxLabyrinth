@@ -420,9 +420,9 @@ describe("locked Cleaver/Ash triangle", () => {
 
 describe("isolation", () => {
   it("does not change campaign PARTY_SIZE", () => {
-    expect(PARTY_SIZE).toBe(4);
+    expect(PARTY_SIZE).toBe(2);
     createFight(1, { seed: 1 });
-    expect(PARTY_SIZE).toBe(4);
+    expect(PARTY_SIZE).toBe(2);
   });
 
   it("does not consume gameplay RNG for shuffling", () => {

@@ -7,6 +7,8 @@
  * using existing effect kinds only (no DoT / armor-pen / double-action yet).
  */
 
+import type { CharacterClass } from "../game/party";
+
 export type SpellcasterClass = "Mage" | "Priest";
 
 export type SpellTarget =
@@ -40,8 +42,28 @@ export type SpellFollowup =
   | { kind: "regen"; power: number; duration: number };
 
 export type SpellEffect =
-  | { kind: "damage"; element: DamageElement; power: number; followup?: SpellFollowup }
-  | { kind: "heal"; power: number; followup?: SpellFollowup }
+  | {
+      kind: "damage";
+      element: DamageElement;
+      power: number;
+      followup?: SpellFollowup;
+      /**
+       * If the target survives the hit with less than this fraction of max HP,
+       * it is finished outright (Old Man "Enough"/"Last Mercy"). Never
+       * triggers on bosses — boss fights end on their own terms.
+       */
+      executeThreshold?: number;
+    }
+  | {
+      kind: "heal";
+      power: number;
+      followup?: SpellFollowup;
+      /**
+       * Caster pays this fraction of their own max HP to cast (Old Man
+       * "Share the Burden"). Floors at 1 HP — the spell cannot kill its caster.
+       */
+      selfHpCostPercent?: number;
+    }
   | { kind: "buff"; stat: "armor"; power?: number }
   | { kind: "cure"; status: "poison" | "sleep" | "paralysis" | "blind" }
   | { kind: "disable"; status: "sleep" | "paralysis" }
@@ -797,7 +819,168 @@ export const PRIEST_SPELLS: SpellDef[] = [
   },
 ];
 
-export const ALL_SPELLS: SpellDef[] = [...MAGE_SPELLS, ...PRIEST_SPELLS];
+/**
+ * The Old Man's kit — Death's pilgrim. Attrition, control, and endings:
+ * decay damage-over-time, finishing blows against faltering enemies, enforced
+ * rest, and healing paid for out of his own endurance. `class: "Mage"` keys
+ * INT spell-power scaling only; these are protagonist spells, never granted
+ * to Mages (spellsForClass reads the OLD_MAN_SPELLS list, not the class field).
+ * Voice: short, concrete, unadorned (worldbuilding bible §4).
+ */
+export const OLD_MAN_SPELLS: SpellDef[] = [
+  {
+    id: "old-man-rest-now",
+    name: "Rest Now",
+    class: "Mage",
+    tier: 1,
+    spCost: 3,
+    target: "singleEnemy",
+    effect: {
+      kind: "damage",
+      element: "cold",
+      power: 6,
+      followup: { kind: "dot", element: "cold", power: 3, duration: 3 },
+    },
+    description: "A quiet chill that keeps working. It is already over; the body just hasn't noticed.",
+  },
+  {
+    id: "old-man-enough",
+    name: "Enough",
+    class: "Mage",
+    tier: 1,
+    spCost: 4,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "physical", power: 7, executeThreshold: 0.2 },
+    description: "A plain, final blow. Finishes any faltering enemy left under a fifth of its strength.",
+  },
+  {
+    id: "old-man-quiet",
+    name: "Quiet",
+    class: "Mage",
+    tier: 2,
+    spCost: 5,
+    target: "singleEnemy",
+    effect: { kind: "disable", status: "sleep" },
+    description: "Stop. Rest. One enemy is granted the sleep everything here has been denied.",
+  },
+  {
+    id: "old-man-share-the-burden",
+    name: "Share the Burden",
+    class: "Mage",
+    tier: 2,
+    spCost: 3,
+    target: "singleAlly",
+    effect: { kind: "heal", power: 14, selfHpCostPercent: 0.12 },
+    description: "He gives an ally some of what keeps him going. It costs him part of his own endurance.",
+  },
+  {
+    id: "old-man-no-further",
+    name: "No Further",
+    class: "Mage",
+    tier: 3,
+    spCost: 9,
+    target: "allAllies",
+    effect: { kind: "buff", stat: "armor", power: 3 },
+    description: "He plants his staff. Whatever is coming will have to get through him first.",
+  },
+  {
+    id: "old-man-last-mercy",
+    name: "Last Mercy",
+    class: "Mage",
+    tier: 4,
+    spCost: 14,
+    target: "singleEnemy",
+    effect: { kind: "damage", element: "cold", power: 18, executeThreshold: 0.3 },
+    description: "The ending he wants for everyone, given early to one enemy. Finishes anything left under a third.",
+  },
+];
+
+/**
+ * The Rat King's kit — Sovereign of Vermin. Multiplication, swarms, and the
+ * hoard: rat summons, gnawing poison, shared food, and carpets of teeth.
+ * `class: "Priest"` keys PIE spell-power scaling only; these are protagonist
+ * spells, never granted to Priests.
+ * Voice: quick, sensuous, self-interested (worldbuilding bible §5).
+ */
+export const RAT_KING_SPELLS: SpellDef[] = [
+  {
+    id: "rat-king-gnaw",
+    name: "Gnaw",
+    class: "Priest",
+    tier: 1,
+    spCost: 2,
+    target: "singleEnemy",
+    effect: {
+      kind: "damage",
+      element: "physical",
+      power: 5,
+      followup: { kind: "dot", element: "poison", power: 2, duration: 2 },
+    },
+    description: "A dozen filthy bites in the time one sword swings. The wounds keep festering.",
+  },
+  {
+    id: "rat-king-call-the-court",
+    name: "Call the Court",
+    class: "Priest",
+    tier: 1,
+    spCost: 5,
+    target: "self",
+    effect: { kind: "summon", power: 2, spriteId: "rat-king", allyName: "Rat Court" },
+    description: "His subjects arrive. There are always more where they came from.",
+  },
+  {
+    id: "rat-king-feast-of-crumbs",
+    name: "Feast of Crumbs",
+    class: "Priest",
+    tier: 2,
+    spCost: 9,
+    target: "allAllies",
+    effect: { kind: "heal", power: 14 },
+    description: "He opens the royal larder and shares it out. He counts every crumb he gives.",
+  },
+  {
+    id: "rat-king-tide-of-teeth",
+    name: "Tide of Teeth",
+    class: "Priest",
+    tier: 2,
+    spCost: 7,
+    target: "allEnemies",
+    effect: { kind: "damage", element: "physical", power: 6 },
+    description: "The floor moves. A living carpet washes over every enemy at once.",
+  },
+  {
+    id: "rat-king-swarm-crown",
+    name: "Swarm Crown",
+    class: "Priest",
+    tier: 3,
+    spCost: 13,
+    target: "self",
+    effect: { kind: "summon", power: 4, spriteId: "rat-king", allyName: "Rat Knight" },
+    description: "A knight of the court, dubbed on the spot. More is a policy, not a preference.",
+  },
+  {
+    id: "rat-king-kingdom-come",
+    name: "Kingdom Come",
+    class: "Priest",
+    tier: 4,
+    spCost: 16,
+    target: "allEnemies",
+    effect: {
+      kind: "damage",
+      element: "physical",
+      power: 14,
+      followup: { kind: "dot", element: "poison", power: 4, duration: 2 },
+    },
+    description: "The whole warren rises at once, and what it bites, it keeps.",
+  },
+];
+
+export const ALL_SPELLS: SpellDef[] = [
+  ...MAGE_SPELLS,
+  ...PRIEST_SPELLS,
+  ...OLD_MAN_SPELLS,
+  ...RAT_KING_SPELLS,
+];
 
 /** Look up a spell by its exact name. */
 export function spellByName(name: string): SpellDef | undefined {
@@ -809,31 +992,26 @@ export function spellById(id: string): SpellDef | undefined {
   return ALL_SPELLS.find((s) => s.id === id);
 }
 
-/** Return every spell a character class can learn at their current tier range. */
-export function spellsForClass(
-  cls:
-    | "Fighter"
-    | "Mage"
-    | "Priest"
-    | "Thief"
-    | "Halberdier"
-    | "Duelist"
-    | "Crusader",
-  maxTier: 1 | 2 | 3 | 4 | 5 | 6 | 7
-): SpellDef[] {
-  if (cls === "Mage") return MAGE_SPELLS.filter((s) => s.tier <= maxTier && !s.acquisition);
-  if (cls === "Priest" || cls === "Crusader") {
-    return PRIEST_SPELLS.filter((s) => s.tier <= maxTier && !s.acquisition);
-  }
+/** The learnable spell pool for a class ([] for non-casters). */
+function spellPoolForClass(cls: CharacterClass): SpellDef[] {
+  if (cls === "Mage") return MAGE_SPELLS;
+  if (cls === "Priest" || cls === "Crusader") return PRIEST_SPELLS;
+  if (cls === "Old Man") return OLD_MAN_SPELLS;
+  if (cls === "Rat King") return RAT_KING_SPELLS;
   return [];
 }
 
+/** Return every spell a character class can learn at their current tier range. */
+export function spellsForClass(
+  cls: CharacterClass,
+  maxTier: 1 | 2 | 3 | 4 | 5 | 6 | 7
+): SpellDef[] {
+  return spellPoolForClass(cls).filter((s) => s.tier <= maxTier && !s.acquisition);
+}
+
 /** Highest tier that has real spell definitions for a casting class (or 0). */
-export function maxContentSpellTier(
-  cls: "Mage" | "Priest" | "Crusader" | "Fighter" | "Thief" | "Halberdier" | "Duelist"
-): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 {
-  const pool =
-    cls === "Mage" ? MAGE_SPELLS : cls === "Priest" || cls === "Crusader" ? PRIEST_SPELLS : [];
+export function maxContentSpellTier(cls: CharacterClass): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 {
+  const pool = spellPoolForClass(cls);
   if (pool.length === 0) return 0;
   return Math.max(...pool.map((s) => s.tier)) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
 }

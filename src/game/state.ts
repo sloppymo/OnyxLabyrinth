@@ -3,9 +3,8 @@
 // data lives in game/dungeon.ts + data/floors.ts.
 //
 // At Step 2 only the "dungeon" mode is actually rendered. The other modes
-// (title, party_creation, town, combat, camp, game_over) are part of the
-// GameMode union so future steps can transition into them without widening
-// the type.
+// (title, town, combat, camp, game_over) are part of the GameMode union so
+// future steps can transition into them without widening the type.
 
 import type { FloorDef, GameMode, GameState } from "../types";
 import { cloneFloor } from "../data/floors";
@@ -15,8 +14,8 @@ import { encounterCooldownFor } from "./encounters";
 
 export type { GameMode, GameState } from "../types";
 
-export function createGameState(floor: FloorDef): GameState {
-  const party = createDefaultParty();
+export function createGameState(floor: FloorDef, party?: import("./party").Character[]): GameState {
+  party ??= createDefaultParty();
   return {
     mode: "town", // start in town; player chooses to enter the dungeon
     floor: cloneFloor(floor),

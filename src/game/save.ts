@@ -741,10 +741,10 @@ export function isSlotEmpty(slot: number): boolean {
 }
 
 export function autoSave(state: GameState, inArenaSession = false): void {
-  // Title / party creation / arena cannot be resumed safely: no controller is
-  // reconstructed for them on boot. Keep the previous auto-save instead.
-  // Overlays no longer flip GameState.mode to "title"; perk selection is
-  // skipped at the beforeunload call site because that queue is not persisted.
+  // Title / arena cannot be resumed safely: no controller is reconstructed for
+  // them on boot. Keep the previous auto-save instead. Overlays no longer flip
+  // GameState.mode to "title"; perk selection is skipped at the beforeunload
+  // call site because that queue is not persisted.
   // `inArenaSession` covers the whole Arena session, not just `state.mode
   // === "arena"`: Arena mutates the shared GameState in place and switches
   // it to mode "combat" for each wave fight, which the mode check alone
@@ -754,7 +754,6 @@ export function autoSave(state: GameState, inArenaSession = false): void {
   if (
     inArenaSession ||
     state.mode === "title" ||
-    state.mode === "party_creation" ||
     state.mode === "arena"
   ) {
     return;

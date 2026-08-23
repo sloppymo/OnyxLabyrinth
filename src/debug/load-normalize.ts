@@ -5,7 +5,7 @@ import type { GameMode } from "../types";
  * Shared by the title-screen Continue path and debug `loadSave()`.
  */
 export function normalizeLoadedMode(mode: GameMode): GameMode {
-  if (mode === "title" || mode === "party_creation" || mode === "arena") {
+  if (mode === "title" || mode === "arena") {
     return "town";
   }
   return mode;

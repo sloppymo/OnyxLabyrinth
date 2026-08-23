@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
-import { createDefaultParty } from "../game/party";
+import { createLegacyParty } from "../game/party";
 import { defaultLoadoutForCharacter } from "../game/combat-equipment";
 import { setGameplayRng, resetGameplayRng } from "../game/rng";
 import type { GameState } from "../types";
@@ -44,7 +44,7 @@ function makeNPC(overrides: Partial<NPCDef> = {}): NPCDef {
 }
 
 function makeState(npc: NPCDef = makeNPC()): GameState {
-  const party = createDefaultParty();
+  const party = createLegacyParty();
   return {
     mode: "dungeon",
     floor: {

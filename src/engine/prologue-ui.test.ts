@@ -133,7 +133,7 @@ describe("PrologueController", () => {
     c.tickForTests(time);
   }
 
-  /** Drive past the terminal fade before party creation. */
+  /** Drive past the terminal fade before the Great Gate intro. */
   function tickPastFinish(c: PrologueController): void {
     time += INTRO_STYLE.fadeMs + 50;
     c.tickForTests(time);

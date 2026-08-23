@@ -294,6 +294,10 @@ export interface EventDef {
   y: number;
   kind: "message" | "damage" | "heal" | "reward" | "keyReward";
   message: string;
+  /** Optional authored conversation shown over the corridor after this
+   * event resolves. References src/data/dialogue-events.ts; `message` remains
+   * the safe plain-text fallback if the id cannot be resolved. */
+  dialogueId?: string;
   /** For "damage"/"heal" kinds: HP applied to every living party member. */
   power?: number;
   /** For "reward" kind: item id added to the party's inventory. */

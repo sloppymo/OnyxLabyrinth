@@ -37,19 +37,12 @@ function makeDeps(state = createGameState(findFloor(1)!)): {
     audio: {
       startTitleMusic: vi.fn(),
       stopTitleMusic: vi.fn(),
-      startPartyCreationMusic: vi.fn(),
-      stopPartyCreationMusic: vi.fn(),
       startTownMusic: vi.fn(),
     },
     title,
     town: {
       enterDungeon: vi.fn(),
       openSave: vi.fn(),
-      reformParty: vi.fn(),
-    },
-    party: {
-      confirm: vi.fn(),
-      cancel: vi.fn(),
     },
     gameOver: {
       continue: vi.fn(),

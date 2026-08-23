@@ -48,6 +48,8 @@ export const PARTY_SPRITE_DIRS: Record<CharacterClass, string> = {
   Halberdier: "halberdier",
   Duelist: "duelist",
   Crusader: "crusader",
+  "Old Man": "old-man",
+  "Rat King": "rat-king",
 };
 
 /** Per-state playback config. Frame counts come from the loaded image. */

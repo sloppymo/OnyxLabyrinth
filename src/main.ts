@@ -283,8 +283,6 @@ const app = createApplication({
     audio: {
       startTitleMusic: () => audio.startTitleMusic(),
       stopTitleMusic: () => audio.stopTitleMusic(),
-      startPartyCreationMusic: () => audio.startPartyCreationMusic(),
-      stopPartyCreationMusic: () => audio.stopPartyCreationMusic(),
       startTownMusic: () => audio.startTownMusic(),
     },
     title: {
@@ -295,7 +293,7 @@ const app = createApplication({
         resetEncounterFamilyMemory();
         openPrologue(() => {
           audio.stopTitleMusic();
-          openPartyCreation(() => openTown({ showIntroHint: true }));
+          openNewGameGreatGate();
         });
       },
       continue: (loaded) => applyLoadedGameState(loaded),
@@ -304,21 +302,6 @@ const app = createApplication({
     town: {
       enterDungeon: () => enterDungeonFromTown(),
       openSave: () => overlays.openSave(),
-      reformParty: () => openPartyCreation(() => openTown()),
-    },
-    party: {
-      confirm: (party, onDone) => {
-        state.party = party;
-        state.equipment = Object.fromEntries(
-          party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
-        );
-        onDone();
-      },
-      cancel: (previousMode, onDone) => {
-        if (previousMode === "title") audio.startTitleMusic();
-        else if (previousMode === "town") audio.startTownMusic();
-        onDone();
-      },
     },
     gameOver: {
       continue: () => {
@@ -605,6 +588,53 @@ function enterDungeonFromTown(): void {
   }
 }
 
+/**
+ * First campaign scene after New Game's prologue and party setup. The Great
+ * Gate event remains authored as a normal one-shot floor event; starting a
+ * new campaign simply lands on that canonical approach tile and runs the
+ * same event path the player would otherwise discover by walking there.
+ */
+function openNewGameGreatGate(): void {
+  const floor = getFloors()[0]!;
+  const gateEvent = floor.events?.find(
+    (event) => event.dialogueId === "great-gate-old-man-rat-king",
+  );
+
+  // Campaign data validation guarantees this event. Keep a safe fallback for
+  // a malformed local playtest floor so New Game still reaches the town.
+  if (!gateEvent) {
+    openTown({ showIntroHint: true });
+    return;
+  }
+
+  transitionToFloor(state, floor, gateEvent.x, gateEvent.y, 0, { autosave: false });
+  syncVisionZoneFlags(state);
+  markExplored();
+  resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+  setMode(state, "dungeon");
+  showMode("dungeon", mapVisible);
+  setMazeSurfaceOpacity("1");
+  setMessage("");
+
+  // Process the authored event instead of opening the graph by id directly:
+  // this marks the existing once-only event in eventsTriggered, removes its
+  // trigger tile on the private floor copy, and keeps the normal fallback
+  // behavior if the dialogue registry is unavailable.
+  const result = handleTileFeature(state);
+  if (result?.pendingDialogueId && overlays.openDialogueEvent(result.pendingDialogueId)) {
+    autoSave(state);
+    return;
+  }
+
+  autoSave(state);
+  setMessage(result?.message ?? "You enter the dungeon...");
+}
+
+// --- New Game prologue -----------------------------------------------------
+// Skippable SNES-style black-field narration shown once, between New Game's
+// state reset and the Great Gate intro. Never shown by Continue / Arena.
+// This is a real title-mode screen, not a UiStack overlay.
+
 function returnToTown(): void {
   // Remember where the player was so re-entering the dungeon resumes here
   // instead of resetting to Floor 1.
@@ -618,15 +648,10 @@ function returnToTown(): void {
   openTown();
 }
 
-// --- Party creation ------------------------------------------------------
-function openPartyCreation(onDone: () => void): void {
-  screens.openPartyCreation(onDone);
-}
-
 // --- New Game prologue -----------------------------------------------------
 // Skippable SNES-style black-field narration shown once, between New Game's
-// state reset and party creation. Never shown by Continue / Arena / Reform
-// Party. This is a real title-mode screen, not a UiStack overlay.
+// state reset and the Great Gate intro. Never shown by Continue / Arena.
+// This is a real title-mode screen, not a UiStack overlay.
 let prologueController: PrologueController | null = null;
 
 function openPrologue(onDone: () => void): void {
@@ -653,11 +678,11 @@ let endingController: EndingController | null = null;
 
 function openEnding(): void {
   if (mapVisible) toggleMap();
-  // Persist before the title-mode flip. autoSave() refuses title (and
-  // party_creation / arena) because those screens are not resumable.
-  // Direct-from-combat still has mode "combat" here; perk-then-ending now
-  // keeps dungeon/arena under the perk layer, so this write can land.
-  // onDone below is still the guaranteed persist for both exits.
+  // Persist before the title-mode flip. autoSave() refuses title / arena
+  // because those screens are not resumable. Direct-from-combat still has
+  // mode "combat" here; perk-then-ending now keeps dungeon/arena under the
+  // perk layer, so this write can land. onDone below is still the guaranteed
+  // persist for both exits.
   state.hasCompletedEnding = true;
   autoSave(state);
   setMode(state, "title");
@@ -1656,7 +1681,6 @@ function currentRouteFlags(): ControllerRouteContext {
     hasTown: screens.hasTown,
     hasCamp: screens.hasCamp,
     hasGameOver: screens.hasGameOver,
-    hasPartyCreation: screens.hasPartyCreation,
     hasPrologue: !!prologueController,
     hasEnding: !!endingController,
     hasTitle: screens.hasTitle,
@@ -1719,9 +1743,6 @@ function dispatchControllerRoute(route: BaseRouteKind, event: ControllerInputEve
       return;
     case "game_over":
       screens.handleGameOver(event);
-      return;
-    case "party_creation":
-      screens.handlePartyCreation(event);
       return;
     case "prologue": {
       const key = controllerEventToMenuKey(event);
@@ -2120,7 +2141,7 @@ function toggleMap(): void {
 let prevMode: GameMode | null = null;
 
 function loop() {
-  // Manage BGM beds on mode transitions (maze / town / party_creation).
+  // Manage BGM beds on mode transitions (maze / town).
   if (state.mode !== prevMode) {
     if (state.mode === "dungeon") {
       audio.startDungeon();
@@ -2134,13 +2155,6 @@ function loop() {
       audio.startTownMusic();
     } else if (prevMode === "town") {
       audio.stopTownMusic();
-    }
-    if (state.mode === "party_creation") {
-      // Party creation music is started by openPartyCreation()
-      // Don't start it here to avoid double-starting
-    } else if (prevMode === "party_creation") {
-      // Party creation music is stopped by the controller callbacks
-      // Don't stop it here to avoid double-stopping
     }
     prevMode = state.mode;
   }
@@ -2485,8 +2499,8 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     if (overlays.hasOpenOverlay() || prologueController || endingController) {
       throw new Error("jumpTo: refuse while an overlay controller is open");
     }
-    if (screens.hasCamp || screens.hasGameOver || screens.hasArena || screens.hasPartyCreation) {
-      throw new Error("jumpTo: refuse while camp/game-over/arena/party-creation is live");
+    if (screens.hasCamp || screens.hasGameOver || screens.hasArena) {
+      throw new Error("jumpTo: refuse while camp/game-over/arena is live");
     }
 
     const floor = findFloor(opts.floorId);
@@ -2540,8 +2554,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       endingController ||
       screens.hasCamp ||
       screens.hasGameOver ||
-      screens.hasArena ||
-      screens.hasPartyCreation
+      screens.hasArena
     ) {
       throw new Error("loadSave: refuse while an overlay/hub controller is open");
     }

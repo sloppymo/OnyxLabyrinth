@@ -75,8 +75,6 @@ function screensWire(): Omit<BaseScreenRuntimeDeps, "state"> {
     audio: {
       startTitleMusic: vi.fn(),
       stopTitleMusic: vi.fn(),
-      startPartyCreationMusic: vi.fn(),
-      stopPartyCreationMusic: vi.fn(),
       startTownMusic: vi.fn(),
     },
     title: {
@@ -87,11 +85,6 @@ function screensWire(): Omit<BaseScreenRuntimeDeps, "state"> {
     town: {
       enterDungeon: vi.fn(),
       openSave: vi.fn(),
-      reformParty: vi.fn(),
-    },
-    party: {
-      confirm: vi.fn(),
-      cancel: vi.fn(),
     },
     gameOver: {
       continue: vi.fn(),

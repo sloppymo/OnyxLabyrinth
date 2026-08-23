@@ -687,6 +687,40 @@ export const CRUSADER_BARKS: CombatBarkProfile = {
   },
 };
 
+export const OLD_MAN_BARKS: CombatBarkProfile = {
+  id: "Old Man",
+  displayName: "Old Man",
+  kind: "class",
+  voiceMode: "articulate",
+  voiceSummary: "ancient, patient, speaks as though the outcome is already certain",
+  pools: {
+    combatStart: [{ text: "So it comes." }, { text: "Again." }],
+    basicAttack: [{ text: "There." }, { text: "Quietly." }],
+    attackMiss: [{ text: "Not yet." }, { text: "Soon." }],
+    criticalHit: [{ text: "As expected." }, { text: "Done." }],
+    takeHit: [{ text: "Old pain." }, { text: "It passes." }],
+    lowHp: [{ text: "Still here." }, { text: "One more step." }],
+    victory: [{ text: "Finished." }, { text: "Rest." }],
+  },
+};
+
+export const RAT_KING_BARKS: CombatBarkProfile = {
+  id: "Rat King",
+  displayName: "Rat King",
+  kind: "class",
+  voiceMode: "articulate",
+  voiceSummary: "quick, proud, speaks for the whole warren at once",
+  pools: {
+    combatStart: [{ text: "Mine, mine." }, { text: "Feeding time." }],
+    basicAttack: [{ text: "Bite." }, { text: "Many teeth." }],
+    attackMiss: [{ text: "Slippery." }, { text: "Next." }],
+    criticalHit: [{ text: "A clean kill!" }, { text: "Gnawed through." }],
+    takeHit: [{ text: "Oof." }, { text: "I'll remember." }],
+    lowHp: [{ text: "Not the king." }, { text: "Crown still heavy." }],
+    victory: [{ text: "Hoard grows." }, { text: "All crumbs are mine." }],
+  },
+};
+
 export const PLAYER_CLASS_BARKS: readonly CombatBarkProfile[] = [
   FIGHTER_BARKS,
   MAGE_BARKS,
@@ -695,4 +729,6 @@ export const PLAYER_CLASS_BARKS: readonly CombatBarkProfile[] = [
   HALBERDIER_BARKS,
   DUELIST_BARKS,
   CRUSADER_BARKS,
+  OLD_MAN_BARKS,
+  RAT_KING_BARKS,
 ];

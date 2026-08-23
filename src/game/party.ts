@@ -8,6 +8,7 @@
  */
 
 import { getGameplayRng } from "./rng";
+import { spellsForClass } from "../data/spells";
 
 export type Race = "Human" | "Elf" | "Dwarf" | "Gnome" | "Hobbit";
 export type Alignment = "Good" | "Neutral" | "Evil";
@@ -18,7 +19,14 @@ export type CharacterClass =
   | "Thief"
   | "Halberdier"
   | "Duelist"
-  | "Crusader";
+  | "Crusader"
+  // The two fixed campaign protagonists. Their "class" doubles as their
+  // player-facing identity label; see src/data/protagonists.ts.
+  | "Old Man"
+  | "Rat King";
+
+/** Stable ids for the two fixed campaign protagonists. */
+export type ProtagonistId = "old-man" | "rat-king";
 export type StatusEffect =
   | "poison"
   | "sleep"
@@ -32,7 +40,7 @@ export type StatusEffect =
   | "giantStrength";
 
 /** Fixed party size — no bench. Formation slots are densely 0..PARTY_SIZE-1. */
-export const PARTY_SIZE = 4;
+export const PARTY_SIZE = 2;
 
 /**
  * Core attributes.
@@ -66,10 +74,12 @@ export interface Character {
   sp: number;
   maxHp: number;
   maxSp: number;
-  formationSlot: number; // 0-3, where 0-1 are front row and 2-3 are back row
+  formationSlot: number; // 0..PARTY_SIZE-1, where 0-1 are front row and 2-3 are back row
   status: StatusEffect[];
   knownSpellIds: string[]; // spell IDs this character can cast
-  perkIds: string[]; // class perks chosen at levels 3/6/9/12 (see game/perks.ts)
+  perkIds: string[]; // perks chosen at levels 3/6/9/12 (see game/perks.ts)
+  /** Set for the two fixed campaign protagonists; undefined on legacy characters. */
+  protagonistId?: ProtagonistId;
 }
 
 export interface RaceDef {
@@ -179,6 +189,25 @@ export const CLASSES: Record<CharacterClass, ClassDef> = {
     spellClass: "Priest",
     hpBonus: 6,
     description: "Holy warrior who wields steel and casts Priest spells.",
+  },
+  // The two fixed protagonists. spellClass drives SP pool/growth math only
+  // (INT for the Old Man, PIE for the Rat King); their actual spell lists are
+  // their own (see data/spells.ts OLD_MAN_SPELLS / RAT_KING_SPELLS).
+  "Old Man": {
+    id: "Old Man",
+    name: "Old Man",
+    allowedAlignments: ["Good", "Neutral", "Evil"],
+    spellClass: "Mage",
+    hpBonus: 4,
+    description: "Death's pilgrim. Attrition, control, and endings.",
+  },
+  "Rat King": {
+    id: "Rat King",
+    name: "Rat King",
+    allowedAlignments: ["Good", "Neutral", "Evil"],
+    spellClass: "Priest",
+    hpBonus: 6,
+    description: "Sovereign of vermin. Swarms, scavenging, and more.",
   },
 };
 
@@ -359,11 +388,28 @@ export function charRow(c: Character): "front" | "back" {
 }
 
 /**
- * Create the balanced default level-1 party of 4 for the merged game.
- * Same roster as preset `"balanced"` (Aria / Coda / Dell / Eve).
- * Re-exported from preset-parties to avoid a party ↔ preset import cycle.
+ * Create the fixed two-protagonist campaign party (Old Man + Rat King).
+ * Re-exported from preset-parties to avoid a party ↔ builder import cycle.
  */
 export { createDefaultParty } from "./preset-parties";
+
+/**
+ * Legacy test helper: the old four-person balanced party used by hundreds of
+ * engine tests. Keep it for test-only use; the live campaign always uses
+ * createDefaultParty().
+ */
+export function createLegacyParty(): Character[] {
+  const party = [
+    createCharacter("aria", "Aria", "Human", "Good", "Fighter", 0),
+    createCharacter("bram", "Bram", "Hobbit", "Neutral", "Thief", 1),
+    createCharacter("coda", "Coda", "Elf", "Neutral", "Mage", 2),
+    createCharacter("dell", "Dell", "Dwarf", "Good", "Priest", 3),
+  ];
+  for (const c of party) {
+    c.knownSpellIds = spellsForClass(c.class, 1).map((s) => s.id);
+  }
+  return party;
+}
 
 /** Split victory XP evenly across every living party member (no bench). */
 export function awardCombatXp(party: Character[], xpEarned: number): void {

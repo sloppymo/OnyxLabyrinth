@@ -12,12 +12,12 @@ import { ENCOUNTERS } from "./encounters";
 describe("Card Trial campaign isolation", () => {
   it("does not change campaign PARTY_SIZE or in-memory party when a fight is created", () => {
     const state = createGameState(findFloor(1)!);
-    expect(PARTY_SIZE).toBe(4);
-    expect(state.party).toHaveLength(4);
+    expect(PARTY_SIZE).toBe(2);
+    expect(state.party).toHaveLength(2);
     const ids = state.party.map((c) => c.id);
     createFight(2, { seed: 1 });
-    expect(PARTY_SIZE).toBe(4);
-    expect(state.party).toHaveLength(4);
+    expect(PARTY_SIZE).toBe(2);
+    expect(state.party).toHaveLength(2);
     expect(state.party.map((c) => c.id)).toEqual(ids);
   });
 
@@ -27,7 +27,7 @@ describe("Card Trial campaign isolation", () => {
     const raw = JSON.parse(serialize(state)) as Record<string, unknown>;
     expect(raw.version).toBe(18);
     expect(raw).not.toHaveProperty("cardTrial");
-    expect(Array.isArray(raw.party) ? (raw.party as unknown[]).length : 0).toBe(4);
+    expect(Array.isArray(raw.party) ? (raw.party as unknown[]).length : 0).toBe(2);
   });
 
   it("does not register Card Trial enemies on campaign tables", () => {

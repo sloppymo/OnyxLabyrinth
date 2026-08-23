@@ -1,6 +1,6 @@
 /**
- * New Game prologue — SNES-style black-field world narration shown once,
- * before party creation. This is a real title-mode screen, not a UiStack
+ * New Game prologue — SNES-style black-field world narration shown once
+ * after selecting New Game. This is a real title-mode screen, not a UiStack
  * overlay.
  *
  * Presentation follows docs/superpowers/specs/2026-07-25-snes-era-intro-style-guide.md:

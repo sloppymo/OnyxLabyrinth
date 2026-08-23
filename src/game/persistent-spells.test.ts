@@ -12,13 +12,14 @@ import {
 } from "./persistent-spells";
 import { handleTileFeature } from "./features";
 import { createGameState } from "./state";
+import { createLegacyParty } from "./party";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
 import { FLOORS } from "../data/floors";
 import type { GameState } from "../types";
 
 /** A state on a tiny synthetic floor with darkness at (3,2), chute at (1,2). */
 function makeState(): GameState {
-  const state = createGameState(FLOORS[0]);
+  const state = createGameState(FLOORS[0], createLegacyParty());
   const grid = buildSolidGrid(6, 6);
   carveRoom(grid, 1, 1, 4, 4);
   setTile(grid, 3, 2, "darkness");

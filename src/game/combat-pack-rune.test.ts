@@ -9,7 +9,7 @@ import {
 } from "./combat";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import type { CombatState, EnemyInstance } from "./combat-types";
-import { createDefaultParty } from "./party";
+import { createLegacyParty } from "./party";
 
 function makeEnemy(
   id: string,
@@ -55,7 +55,7 @@ function makePackState(leaderAgi = 20, partnerAgi = 1): CombatState {
     agi: partnerAgi,
   });
   const state = createCombatState(
-    createDefaultParty(),
+    createLegacyParty(),
     { front: [leader], back: [partner] },
     false
   );
@@ -72,7 +72,7 @@ function makeRuneState(): CombatState {
     agi: 20,
   });
   const state = createCombatState(
-    createDefaultParty(),
+    createLegacyParty(),
     { front: [construct], back: [knight] },
     false
   );
@@ -84,17 +84,18 @@ describe("packStrike and Rune Overload chemistry", () => {
   it("commits an exact Hunting Pack partner, suppresses its ordinary action, and resolves two hits", () => {
     let state = makePackState();
     state = resolveCombatRound(state, defendActions(state), () => 0.1);
-    expect(state.windUps["hellhound-0"]).toMatchObject({
+    const windUp = state.windUps["hellhound-0"];
+    expect(windUp).toMatchObject({
       chemistryId: "chem-hunting-pack",
       partnerId: "werewolf-0",
-      targetId: "c1",
     });
+    const targetId = (windUp as { targetId?: string }).targetId;
 
-    const before = state.party.find((character) => character.id === "c1")!.hp;
+    const before = state.party.find((character) => character.id === targetId)!.hp;
     state = resolveCombatRound(state, defendActions(state), () => 0.1);
     expect(state.chemistryTelemetry?.resolved["chem-hunting-pack"]).toBe(1);
     expect(state.chemistryReservations?.["hellhound-0"]).toBeUndefined();
-    expect(state.party.find((character) => character.id === "c1")!.hp).toBeLessThan(before);
+    expect(state.party.find((character) => character.id === targetId)!.hp).toBeLessThan(before);
     expect(
       state.events.filter((event) => event?.type === "cast" && event.presentation === "packStrike")
     ).toHaveLength(2);

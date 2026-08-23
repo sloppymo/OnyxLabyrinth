@@ -59,10 +59,9 @@ export interface TownControllerOptions {
   state: GameState;
   onEnterDungeon: () => void;
   onOpenSave: () => void;
-  onReformParty: () => void;
-  /** One-time orientation line shown under the main menu on open (e.g. the
-   *  first town visit after party creation). Cleared on the first menu
-   *  navigation/selection, same as any other transient flash message. */
+  /** One-time orientation line shown under the main menu on open. Cleared
+   *  on the first menu navigation/selection, same as any other transient
+   *  flash message. */
   initialFlash?: string;
 }
 
@@ -72,7 +71,6 @@ const MAIN_MENU_ITEMS = [
   { key: "shop", label: "Shop — Buy and sell equipment", icon: "[$]" },
   { key: "roster", label: "Guild — Party roster", icon: "[G]" },
   { key: "equip", label: "Equip — Outfit party members", icon: "[E]" },
-  { key: "reform", label: "Reform Party — Create a new party", icon: "[R]" },
   { key: "dungeon", label: "Enter Dungeon", icon: "[>]" },
   { key: "save", label: "Save / Load", icon: "[S]" },
 ] as const;
@@ -90,7 +88,6 @@ export class TownController {
   private state: GameState;
   private onEnterDungeon: () => void;
   private onOpenSave: () => void;
-  private onReformParty: () => void;
   private screen: TownScreen = "main";
   private selectedIndex = 0;
   private flash = "";
@@ -129,7 +126,6 @@ export class TownController {
     this.state = opts.state;
     this.onEnterDungeon = opts.onEnterDungeon;
     this.onOpenSave = opts.onOpenSave;
-    this.onReformParty = opts.onReformParty;
     this.flash = opts.initialFlash ?? "";
     this.panel.style.display = "flex";
     this.render();
@@ -333,11 +329,6 @@ export class TownController {
         break;
       case "equip":
         this.openEquipScreen();
-        break;
-      case "reform":
-        this.panel.style.display = "none";
-        this.panel.innerHTML = "";
-        this.onReformParty();
         break;
       case "dungeon":
         this.panel.style.display = "none";

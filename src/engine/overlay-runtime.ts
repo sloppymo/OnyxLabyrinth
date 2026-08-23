@@ -18,7 +18,13 @@ import { NamandaController } from "./namanda-ui";
 import { DungeonActionRingController } from "./dungeon-action-ring-ui";
 import { PerkSelectController } from "./perk-select-ui";
 import { DungeonDialogController } from "./dungeon-dialog";
+import {
+  DialogueEventController,
+  type DialogueEventCloseReason,
+} from "./dialogue-event-ui";
 import { TrapPromptController } from "./trap-prompt-ui";
+import { dialogueEventById } from "../data/dialogue-events";
+import type { DialogueSession } from "../game/dialogue-event";
 
 export interface OverlayShell {
   panel(): HTMLElement;
@@ -91,6 +97,7 @@ export class OverlayRuntime {
   private namanda: NamandaController | null = null;
   private actionRing: DungeonActionRingController | null = null;
   private dialog: DungeonDialogController | null = null;
+  private dialogueEvent: DialogueEventController | null = null;
   private perk: PerkSelectController | null = null;
   private trapPrompt: TrapPromptController | null = null;
   private pendingRingAction: RingActionId | null = null;
@@ -297,6 +304,40 @@ export class OverlayRuntime {
     this.deps.shell.showDialog();
   }
 
+  /**
+   * Open a data-authored, multi-speaker labyrinth conversation over the live
+   * corridor. Returns false when the id is unknown so the caller can retain a
+   * plain-message fallback instead of opening an empty overlay.
+   */
+  openDialogueEvent(
+    dialogueId: string,
+    opts?: {
+      onChoice?: (choiceId: string, session: DialogueSession) => void;
+      onClose?: (reason: DialogueEventCloseReason, session: DialogueSession) => void;
+    },
+  ): boolean {
+    const event = dialogueEventById(dialogueId);
+    if (!event) return false;
+    this.deps.shell.syncMapOverlayTitle();
+    this.deps.shell.showNpcDialogue();
+    this.dialogueEvent = new DialogueEventController({
+      panel: this.deps.shell.panel(),
+      event,
+      onChoice: opts?.onChoice,
+      onClose: (reason, session) => {
+        this.dialogueEvent = null;
+        this.dismiss("dialog");
+        this.deps.onDialogClosed();
+        this.deps.shell.hideNpcDialogue();
+        this.deps.shell.restore();
+        this.deps.shell.setMessage("");
+        opts?.onClose?.(reason, session);
+      },
+    });
+    this.register("dialog", (key) => this.dialogueEvent?.handleKey(key));
+    return true;
+  }
+
   openPerk(queue: PendingPerkChoice[], onDone?: () => void): void {
     this.deps.setMode(this.deps.inArena() ? "arena" : "dungeon");
     this.deps.shell.presentBlocking();
@@ -367,6 +408,7 @@ export class OverlayRuntime {
 
   closeAll(): void {
     this.actionRing?.destroy();
+    this.dialogueEvent?.destroy();
     this.actionRing = null;
     this.save = null;
     this.spell = null;
@@ -374,6 +416,7 @@ export class OverlayRuntime {
     this.tavern = null;
     this.namanda = null;
     this.dialog = null;
+    this.dialogueEvent = null;
     this.perk = null;
     this.trapPrompt = null;
     this.pendingRingAction = null;

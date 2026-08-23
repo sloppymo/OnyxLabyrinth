@@ -58,6 +58,8 @@ const CLASS_INITIAL: Record<CharacterClass, string> = {
   Halberdier: "Ha",
   Duelist: "Du",
   Crusader: "Cr",
+  "Old Man": "OM",
+  "Rat King": "RK",
 };
 
 function escapeHtml(text: string): string {

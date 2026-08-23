@@ -41,9 +41,9 @@ export interface SaveControllerOptions {
   state: GameState;
   onLoaded: (state: GameState) => void;
   onClose: () => void;
-  /** Mode to write into a save when the controller is running in an overlay
-   *  (title / party_creation). Saves from the save menu should resume the
-   *  mode that was active before the menu opened, not the overlay mode. */
+  /** Mode to write into a save when the controller is running in the title
+   *  overlay. Saves from the save menu should resume the mode that was active
+   *  before the menu opened, not the overlay mode. */
   modeBeforeSave?: GameMode;
 }
 
@@ -206,12 +206,10 @@ export class SaveController {
   }
 
   private doSave(): void {
-    // When saving from an overlay mode, write the actual underlying mode so
+    // When saving from the title overlay, write the actual underlying mode so
     // the save can be resumed later.
     const saveMode =
-      this.state.mode === "title" || this.state.mode === "party_creation"
-        ? this.modeBeforeSave
-        : this.state.mode;
+      this.state.mode === "title" ? this.modeBeforeSave : this.state.mode;
     const saveState = { ...this.state, mode: saveMode };
     const ok = saveToSlot(saveState, this.selectedIndex);
     if (ok) {

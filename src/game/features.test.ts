@@ -18,7 +18,7 @@ import {
   syncVisionZoneFlags,
 } from "./features";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
-import { createDefaultParty } from "./party";
+import { createLegacyParty } from "./party";
 import {
   defaultLoadoutForCharacter,
   equipItem,
@@ -28,8 +28,10 @@ import { reconcileInventoryAfterCombat } from "./combat-inventory";
 import { ITEMS_BY_ID } from "../data/items";
 import { FLOORS } from "../data/floors";
 import { getFloors, findFloor } from "./floor-registry";
-import { createGameState } from "./state";
+import { createGameState as _createGameState } from "./state";
 import { loadAutoSave } from "./save";
+
+const createGameState = (floor: FloorDef) => _createGameState(floor, createLegacyParty());
 import type { FloorDef, EventDef } from "../data/floors";
 import type { GameState, TrapType } from "../types";
 
@@ -58,7 +60,7 @@ function makeFloor(trap?: TrapType): FloorDef {
 }
 
 function makeState(trap?: TrapType): GameState {
-  const party = createDefaultParty();
+  const party = createLegacyParty();
   return {
     mode: "dungeon",
     floor: makeFloor(trap),
@@ -98,7 +100,7 @@ function makeState(trap?: TrapType): GameState {
 }
 
 function makePerkFreeState(trap?: TrapType): GameState {
-  const party = createDefaultParty();
+  const party = createLegacyParty();
   // Remove Thief's Trap Sense perk to test base trap behavior
   party[1].perkIds = party[1].perkIds.filter((id) => id !== "thief-trap-sense");
   return {
@@ -158,7 +160,7 @@ function makeEventFloor(event: Omit<EventDef, "x" | "y">): FloorDef {
 }
 
 function makeEventState(event: Omit<EventDef, "x" | "y">): GameState {
-  const party = createDefaultParty();
+  const party = createLegacyParty();
   return {
     mode: "dungeon",
     floor: makeEventFloor(event),

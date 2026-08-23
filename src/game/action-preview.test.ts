@@ -5,7 +5,7 @@ import {
 } from "./combat";
 import { previewAttack, previewSpellDamage } from "./combat-preview";
 import type { CombatState, EnemyInstance, EnemyFormation, ActionPreview } from "./combat-types";
-import { createDefaultParty } from "./party";
+import { createLegacyParty } from "./party";
 import { ALL_SPELLS } from "../data/spells";
 import { ALL_ITEMS } from "../data/items";
 import { formatActionPreview } from "../engine/combat-display";
@@ -42,7 +42,7 @@ function makeEnemy(
 }
 
 function makeCombatState(enemies: EnemyInstance[]): CombatState {
-  const party = createDefaultParty();
+  const party = createLegacyParty();
   // Zero LUK so critChance is 0 — parity tests can pin variance with a fixed rng.
   for (const c of party) c.stats.luk = 0;
   const spells: Record<string, (typeof ALL_SPELLS)[number]> = {};
