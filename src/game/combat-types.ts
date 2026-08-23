@@ -158,7 +158,16 @@ export type PlayerAction =
  * CombatEvent. Events are 1:1 with log entries (null if no event).
  */
 export type CombatEvent =
-  | { type: "attack"; actorId: string; targetId: string; damage: number; range?: WeaponRange; crit?: boolean }
+  | {
+      type: "attack";
+      actorId: string;
+      targetId: string;
+      damage: number;
+      range?: WeaponRange;
+      crit?: boolean;
+      /** Presentation-only amount absorbed by Card Trial Guard. */
+      absorbed?: number;
+    }
   | { type: "miss"; actorId: string; targetId: string; reason: "evade" | "blind" | "noTarget" }
   | {
       type: "cast";
@@ -175,8 +184,24 @@ export type CombatEvent =
         | "packStrike"
         | "guardAlly"
         | "overload";
+      /** Presentation-only Card Trial verb. Never affects combat state. */
+      cardPresentation?: "rat";
     }
-  | { type: "spellEffect"; spellId: string; targetId?: string; damage?: number; heal?: number; statusInflicted?: string; statusCured?: string; isBuff?: boolean; isDebuff?: boolean }
+  | {
+      type: "spellEffect";
+      spellId: string;
+      targetId?: string;
+      damage?: number;
+      heal?: number;
+      statusInflicted?: string;
+      statusCured?: string;
+      isBuff?: boolean;
+      isDebuff?: boolean;
+      /** Presentation-only Card Trial verb. Never affects combat state. */
+      cardPresentation?: "opened" | "consume-opened";
+      /** Previous global Opened target, when this is a transfer. */
+      cardPresentationSourceId?: string;
+    }
   | { type: "defeated"; targetId: string; wasEnemy: boolean }
   | { type: "rowAdvance"; targetId: string }
   | {
@@ -187,7 +212,7 @@ export type CombatEvent =
       rowEnteredAt: number;
     }
   | { type: "revived"; targetId: string }
-  | { type: "defend"; actorId: string }
+  | { type: "defend"; actorId: string; amount?: number }
   | { type: "statusTick"; targetId: string; damage: number; status: string }
   | { type: "statusEnd"; targetId: string; status: string }
   | { type: "flee"; success: boolean }

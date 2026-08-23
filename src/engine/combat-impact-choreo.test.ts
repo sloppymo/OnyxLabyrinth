@@ -306,6 +306,80 @@ describe("impact presentation choreography integration", () => {
     });
   });
 
+  describe("Card Trial presentation verbs", () => {
+    it("gives Guard its own effect and amount popup", () => {
+      const scene = makeScene();
+      const t0 = 1000;
+      playTurn(scene, [{ type: "defend", actorId: "c0", amount: 6 }], spellName, t0, W, H);
+      updateScene(scene, t0 + 1);
+
+      expect(scene.effects.some((effect) => effect.type === "burst" && effect.effect === "px_shield")).toBe(true);
+      expect(scene.popups.some((popup) => popup.text === "+6 GUARD" && popup.actorId === "c0")).toBe(true);
+    });
+
+    it("distinguishes Opened, Consume payoff, and Rat cues", () => {
+      const opened = makeScene();
+      const t0 = 1000;
+      playTurn(
+        opened,
+        [{ type: "spellEffect", spellId: "Opened", targetId: "rat-0", cardPresentation: "opened" }],
+        spellName,
+        t0,
+        W,
+        H
+      );
+      updateScene(opened, t0 + 1);
+      expect(opened.banner).toBe("OPENED");
+      expect(opened.effects.some((effect) => effect.type === "burst" && effect.effect === "retro2_crescent_slash")).toBe(true);
+      expect(opened.popups.some((popup) => popup.text === "OPENED")).toBe(true);
+
+      const consume = makeScene();
+      playTurn(
+        consume,
+        [{ type: "spellEffect", spellId: "Consume Opened", targetId: "rat-0", cardPresentation: "consume-opened" }],
+        spellName,
+        t0,
+        W,
+        H
+      );
+      updateScene(consume, t0 + 1);
+      expect(consume.banner).toBe("EXPLOIT");
+      expect(consume.effects.some((effect) => effect.type === "burst" && effect.effect === "retro_starburst")).toBe(true);
+      expect(consume.popups.some((popup) => popup.text === "EXPLOIT")).toBe(true);
+
+      const rat = makeScene();
+      playTurn(
+        rat,
+        [{ type: "cast", actorId: "c0", spellId: "Rat", targetId: null, cardPresentation: "rat" }],
+        spellName,
+        t0,
+        W,
+        H
+      );
+      updateScene(rat, t0 + 800);
+      expect(rat.banner).toBe("Spell:Rat");
+      expect(rat.popups.some((popup) => popup.text === "RAT")).toBe(true);
+    });
+
+    it("shows a block instead of a fake zero-damage hit when Guard absorbs everything", () => {
+      const scene = makeScene();
+      const t0 = 1000;
+      playTurn(
+        scene,
+        [{ type: "attack", actorId: "c0", targetId: "rat-0", damage: 0, absorbed: 8 }],
+        spellName,
+        t0,
+        W,
+        H
+      );
+      updateScene(scene, t0 + 420);
+
+      expect(scene.popups.some((popup) => popup.text === "BLOCK" && popup.color === "#7fb8f0")).toBe(true);
+      expect(scene.popups.some((popup) => popup.text === "0")).toBe(false);
+      expect(scene.effects.some((effect) => effect.type === "burst" && effect.effect === "px_shield")).toBe(true);
+    });
+  });
+
   describe("AOE throttling", () => {
     it("grants at most one full hit-stop for multi-target spell effects", () => {
       const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Mage", 0)];

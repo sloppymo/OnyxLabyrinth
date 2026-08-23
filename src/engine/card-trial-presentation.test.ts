@@ -39,7 +39,42 @@ describe("Card Trial presentation adapter", () => {
     );
     expect(events[0]).toMatchObject({ type: "cast", actorId: "rat-king", spellId: "Nip" });
     expect(events[1]).toMatchObject({ type: "attack", actorId: "rat-king", targetId: "ash", damage: 5 });
-    expect(events[2]).toMatchObject({ type: "spellEffect", spellId: "Opened", targetId: "ash" });
+    expect(events[2]).toMatchObject({
+      type: "spellEffect",
+      spellId: "Opened",
+      targetId: "ash",
+      cardPresentation: "opened",
+    });
+  });
+
+  it("preserves Guard absorption for the presentation layer", () => {
+    const trial = createAdversarialTriangle();
+    const events = toCombatEvents(
+      [{ type: "intent-hit", enemyId: "cleaver", targetId: "rat-king", damage: 2, absorbed: 9 }],
+      trial
+    );
+    expect(events).toEqual([
+      { type: "attack", actorId: "cleaver", targetId: "rat-king", damage: 2, absorbed: 9 },
+    ]);
+  });
+
+  it("carries Card Trial-only verbs without changing the shared rules events", () => {
+    const trial = createFight(1, { seed: 7 });
+    const events = toCombatEvents(
+      [
+        { type: "guard", actorId: "rat-king", amount: 6 },
+        { type: "spawn-rat", row: "front" },
+        { type: "open", targetId: "cleaver" },
+        { type: "consume", targetId: "cleaver" },
+      ],
+      trial,
+      { openedBefore: "ash" }
+    );
+    expect(events[0]).toEqual({ type: "defend", actorId: "rat-king", amount: 6 });
+    expect(events[1]).toMatchObject({ type: "cast", cardPresentation: "rat" });
+    expect(events[2]).toMatchObject({ type: "spellEffect", cardPresentation: "opened" });
+    expect(events[2]).toMatchObject({ cardPresentationSourceId: "ash" });
+    expect(events[3]).toMatchObject({ type: "spellEffect", cardPresentation: "consume-opened" });
   });
 
   it("maps paid and card-driven hero moves to identical row presentation", () => {

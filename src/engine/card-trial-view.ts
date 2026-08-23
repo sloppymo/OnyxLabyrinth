@@ -29,6 +29,8 @@ export interface CardTrialWindowsInput {
   detailsHeld?: boolean;
   /** Sparse battlefield UI: skip the legacy FF6 hand/intents/party panes. */
   hideLegacyPanes?: boolean;
+  /** Compact action cue while the resolved event choreography is running. */
+  playbackLabel?: string | null;
 }
 
 function esc(text: string): string {

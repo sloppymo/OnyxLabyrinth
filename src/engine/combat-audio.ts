@@ -127,6 +127,7 @@ export function idsForEvent(event: CombatEvent, state: CombatState): SfxLayer[] 
     case "techniqueMiss":
       return [{ id: "miss" }];
     case "cast": {
+      if (event.cardPresentation === "rat") return [{ id: "summonCast" }];
       const primary = idForCast(event.spellId, state);
       if (!primary) return [];
       const layers: SfxLayer[] = [{ id: primary }];
@@ -145,6 +146,8 @@ export function idsForEvent(event: CombatEvent, state: CombatState): SfxLayer[] 
       return clampSfxLayers(layers);
     }
     case "spellEffect": {
+      if (event.cardPresentation === "opened") return [{ id: "debuffCast" }];
+      if (event.cardPresentation === "consume-opened") return [{ id: "technique" }];
       if (event.statusInflicted) {
         const id = STATUS_SFX[event.statusInflicted];
         return id ? [{ id }] : [];

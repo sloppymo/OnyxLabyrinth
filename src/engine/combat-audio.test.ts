@@ -88,6 +88,27 @@ describe("idsForEvent layering", () => {
     expect(ids).toEqual([]);
   });
 
+  it("routes Card Trial presentation verbs to the existing SFX vocabulary", () => {
+    expect(
+      idsForEvent(
+        { type: "cast", actorId: "rat-king", spellId: "Rat", targetId: null, cardPresentation: "rat" },
+        bareState()
+      )
+    ).toEqual([{ id: "summonCast" }]);
+    expect(
+      idsForEvent(
+        { type: "spellEffect", spellId: "Opened", targetId: "e", cardPresentation: "opened" },
+        bareState()
+      )
+    ).toEqual([{ id: "debuffCast" }]);
+    expect(
+      idsForEvent(
+        { type: "spellEffect", spellId: "Consume Opened", targetId: "e", cardPresentation: "consume-opened" },
+        bareState()
+      )
+    ).toEqual([{ id: "technique" }]);
+  });
+
   it("analyze / silence add soft fizzle layer", () => {
     expect(
       idsForEvent({ type: "analyze", actorId: "m", targetId: "e" }, bareState()).map(

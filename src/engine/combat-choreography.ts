@@ -1040,6 +1040,8 @@ interface ImpactPresentationOpts {
   isArea?: boolean;
   isFirstHit?: boolean;
   isFinalHit?: boolean;
+  /** Presentation-only Card Trial Guard amount absorbed at this impact. */
+  guardAbsorbed?: number;
   allowHitStop?: boolean;
   illumination?: IlluminationProfile;
   effectColor?: string;
@@ -1065,7 +1067,9 @@ function impactSteps(
   return [
     step(t, (scene, now) => {
       const actor = visualActor(scene, targetId, w, h, now);
-      if (actor && hurt) {
+      const guardAbsorbed = impactOpts?.guardAbsorbed ?? 0;
+      const fullyBlocked = guardAbsorbed > 0 && (damageAmount ?? 0) <= 0;
+      if (actor && hurt && !fullyBlocked) {
         const anim = getAnim(scene, actor.kind, targetId, now);
         setAnimState(anim, "hurt", now);
         // Scale flash intensity by damage: 0.25 at small hits → 0.65 at big hits.
@@ -1080,8 +1084,28 @@ function impactSteps(
         const recoilMs = impactOpts?.crit ? 120 : impactOpts?.heavy ? 105 : 80;
         startMove(anim, recoilDir * recoilPx * actor.scale, 0, recoilMs, now, scene.playbackRate);
       }
-      pushPopup(scene, targetId, text, color, now, w, h, big);
+      if (fullyBlocked) {
+        pushPopup(scene, targetId, "BLOCK", COLORS.sp, now, w, h, true);
+      } else {
+        pushPopup(scene, targetId, text, color, now, w, h, big);
+      }
       if (actor) {
+        if (guardAbsorbed > 0) {
+          scene.effects.push({
+            type: "burst",
+            x: actor.x,
+            y: actor.y,
+            color: COLORS.sp,
+            effect: "px_shield",
+            scale: fullyBlocked ? 1.0 : 0.78,
+            glow: true,
+            start: now,
+            duration: 360,
+          });
+          if (!fullyBlocked) {
+            pushPopup(scene, targetId, `-${guardAbsorbed} G`, COLORS.sp, now, w, h, false);
+          }
+        }
         if (underlay) {
           scene.effects.push({
             type: "burst",
@@ -1116,7 +1140,7 @@ function impactSteps(
       }
       // Trigger shared impact presentation (hit-stop, zoom, flash, env light).
       // Called after all visual effects are pushed so the held frame is complete.
-      if (impactOpts && hurt && (damageAmount ?? 0) > 0) {
+      if (impactOpts && hurt && (damageAmount ?? 0) > 0 && !fullyBlocked) {
         triggerImpactPresentation(scene.impact, {
           actorId: impactOpts.actorId ?? targetId,
           targetId,
@@ -3237,6 +3261,7 @@ export function playTurn(
                   actorId: evt.actorId,
                   crit: evt.crit === true,
                   heavy: profile.weight === "heavy",
+                  guardAbsorbed: evt.type === "attack" ? evt.absorbed : undefined,
                   isFirstHit: hitSequence.get(evtIndex)?.isFirst,
                   isFinalHit: hitSequence.get(evtIndex)?.isFinal,
                 }
@@ -3341,6 +3366,7 @@ export function playTurn(
                 actorId: evt.actorId,
                 crit: evt.crit === true,
                 heavy: profile.weight === "heavy",
+                guardAbsorbed: evt.type === "attack" ? evt.absorbed : undefined,
                 isFirstHit: hitSequence.get(evtIndex)?.isFirst,
                 isFinalHit: hitSequence.get(evtIndex)?.isFinal,
               }
@@ -3817,6 +3843,26 @@ export function playTurn(
       }
 
       case "cast": {
+        if (evt.cardPresentation === "rat") {
+          showBanner(spellNameFor(evt.spellId), 720);
+          castAnim(evt.actorId);
+          steps.push(
+            step(t + CAST_IMPACT, (sc, n) => {
+              const actor = findActor(sc, evt.actorId, w, h);
+              if (!actor) return;
+              const style: EffectStyle = {
+                color: "#b67a52",
+                burst: "retro2_crescent_slash",
+                burstScale: 1.1,
+                scale: 1.1,
+              };
+              pushBursts(sc, actor.x, actor.y + 10, style, n, 360);
+              pushPopup(sc, evt.actorId, "RAT", "#d8c4a0", n, w, h, false);
+            })
+          );
+          t += 420;
+          break;
+        }
         // Chemistry owns its banner, actor motion, and bespoke effects through
         // the dedicated event above. Ordinary cast events are retained only
         // as the exact per-target damage/heal payload, so they still produce
@@ -4062,6 +4108,39 @@ export function playTurn(
       }
 
       case "spellEffect": {
+        if (evt.cardPresentation === "opened" || evt.cardPresentation === "consume-opened") {
+          const consume = evt.cardPresentation === "consume-opened";
+          const style: EffectStyle = consume
+            ? {
+                color: COLORS.crit,
+                burst: "retro_starburst",
+                burstUnderlay: "retro2_crescent_slash",
+                burstUnderlayScale: 0.8,
+                burstScale: 1.1,
+                scale: 1.1,
+              }
+            : {
+                color: "#e8a84a",
+                burst: "retro2_crescent_slash",
+                burstScale: 1.0,
+                scale: 1.0,
+              };
+          showBanner(consume ? "EXPLOIT" : "OPENED", consume ? 720 : 650);
+          steps.push(
+            step(t, (sc, n) => {
+              const target = findActor(sc, evt.targetId ?? "", w, h);
+              if (evt.cardPresentationSourceId) {
+                pushPopup(sc, evt.cardPresentationSourceId, "CLOSED", COLORS.miss, n, w, h, false);
+              }
+              if (!target) return;
+              pushBursts(sc, target.x, target.y, style, n, consume ? 420 : 360);
+              pushPopup(sc, evt.targetId!, consume ? "EXPLOIT" : "OPENED", style.color, n, w, h, true);
+              if (consume) addScreenShake(sc, 3, n, 220);
+            })
+          );
+          t += consume ? 180 : 240;
+          break;
+        }
         // Lands at the pending cast's impact time (staggered per target),
         // or immediately if there was no cast event (item use etc.).
         const impactAt =
@@ -4388,7 +4467,30 @@ export function playTurn(
 
       case "defend": {
         steps.push(
-          step(t, (sc, n) => pushPopup(sc, evt.actorId, "GUARD", COLORS.sp, n, w, h))
+          step(t, (sc, n) => {
+            const actor = findActor(sc, evt.actorId, w, h);
+            if (actor) {
+              const style: EffectStyle = {
+                color: COLORS.sp,
+                burst: "px_shield",
+                burstScale: 1.35,
+                scale: 1.1,
+                glow: true,
+              };
+              pushBursts(sc, actor.x, actor.y, style, n, 420);
+              pushLightGlow(sc, actor.x, actor.y + 10, style.color, 80, n, 360);
+            }
+            pushPopup(
+              sc,
+              evt.actorId,
+              evt.amount ? `+${evt.amount} GUARD` : "GUARD",
+              COLORS.sp,
+              n,
+              w,
+              h,
+              true
+            );
+          })
         );
         t += 350;
         break;

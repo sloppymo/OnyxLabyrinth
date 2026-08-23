@@ -5251,6 +5251,12 @@ canvas#map-canvas {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6), 0 0 0 2px #ffe08a;
 }
 
+.ct2-card.playing {
+  border-color: #ffe08a;
+  filter: brightness(1.08) saturate(1.12);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.65), 0 0 0 2px rgba(255, 224, 138, 0.72);
+}
+
 .ct2-card.disabled {
   opacity: 0.5;
 }

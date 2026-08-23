@@ -29,7 +29,9 @@ import {
   techniqueNameFor,
   toCombatEvents,
   toCombatState,
+  type CardTrialPresentationContext,
 } from "./card-trial-presentation";
+import { playCombatEventSounds } from "./combat-audio";
 import { CARD_DEFS } from "../game/card-trial/cards";
 
 export interface CardTrialControllerOptions {
@@ -53,6 +55,8 @@ export class CardTrialController {
   private windowsDirty = true;
   private stopped = false;
   private detailsHeld = false;
+  private playbackLabel: string | null = null;
+  private decisionStartedAt = performance.now();
   private sparse: CardTrialSparseUi | null = null;
 
   constructor(trial: CardTrialState, opts: CardTrialControllerOptions) {
@@ -170,6 +174,7 @@ export class CardTrialController {
     if (lower === "i") {
       if (!this.detailsHeld) {
         this.detailsHeld = true;
+        this.trial.telemetry.presentation.detailHolds += 1;
         this.windowsDirty = true;
       }
       return;
@@ -213,15 +218,18 @@ export class CardTrialController {
       if (n === 0) return;
       if (lower === "arrowleft" || lower === "arrowup" || lower === "w") {
         this.targetCursor = (this.targetCursor - 1 + n) % n;
+        this.trial.telemetry.presentation.targetChanges += 1;
         this.windowsDirty = true;
         return;
       }
       if (lower === "arrowright" || lower === "arrowdown" || lower === "s") {
         this.targetCursor = (this.targetCursor + 1) % n;
+        this.trial.telemetry.presentation.targetChanges += 1;
         this.windowsDirty = true;
         return;
       }
       if (key === "Escape") {
+        this.trial.telemetry.presentation.targetCancels += 1;
         this.phase = "hand";
         this.pendingUid = null;
         this.pendingTarget = null;
@@ -285,6 +293,7 @@ export class CardTrialController {
     const card = view.hand[this.cursor];
     if (!card) return;
     if (card.disabled) {
+      this.trial.telemetry.presentation.disabledAttempts += 1;
       this.flash = card.disabledReason;
       audio.uiCancel();
       this.windowsDirty = true;
@@ -313,6 +322,7 @@ export class CardTrialController {
       this.resolvePlay(this.pendingUid, { targetId: this.pendingTarget ?? undefined, secondTargetId: id });
       return;
     }
+    const openedBefore = this.trial.opened?.enemyId ?? null;
     const result = playCard(this.trial, this.pendingUid, { targetId: id });
     if (result.needsSecondTarget) {
       this.pendingTarget = id;
@@ -324,15 +334,21 @@ export class CardTrialController {
       this.windowsDirty = true;
       return;
     }
-    this.afterPlay(result.ok, result.reason, result.events);
+    this.afterPlay(result.ok, result.reason, result.events, openedBefore);
   }
 
   private resolvePlay(uid: string, targets: { targetId?: string; secondTargetId?: string }): void {
+    const openedBefore = this.trial.opened?.enemyId ?? null;
     const result = playCard(this.trial, uid, targets);
-    this.afterPlay(result.ok, result.reason, result.events);
+    this.afterPlay(result.ok, result.reason, result.events, openedBefore);
   }
 
-  private afterPlay(ok: boolean, reason: string | undefined, events: Parameters<typeof toCombatEvents>[0]): void {
+  private afterPlay(
+    ok: boolean,
+    reason: string | undefined,
+    events: Parameters<typeof toCombatEvents>[0],
+    openedBefore: string | null = null
+  ): void {
     this.pendingUid = null;
     this.pendingTarget = null;
     if (!ok) {
@@ -342,9 +358,12 @@ export class CardTrialController {
       this.windowsDirty = true;
       return;
     }
+    this.recordDecision();
     audio.uiConfirm();
     this.queueAutoEnd();
-    this.playEvents(events);
+    const card = events.find((event) => event.type === "banner");
+    this.playbackLabel = card?.type === "banner" ? card.text : null;
+    this.playEvents(events, { openedBefore });
   }
 
   private tryMove(): void {
@@ -355,15 +374,19 @@ export class CardTrialController {
       this.windowsDirty = true;
       return;
     }
+    this.recordDecision();
     const result = paidMove(this.trial);
     audio.uiConfirm();
     this.queueAutoEnd();
+    this.playbackLabel = "MOVE";
     this.playEvents(result.events);
   }
 
   private tryPass(): void {
+    this.recordDecision();
     audio.uiConfirm();
     const events = endHeroTurn(this.trial);
+    this.playbackLabel = "PASS";
     this.playEvents(events);
   }
 
@@ -377,13 +400,20 @@ export class CardTrialController {
     if (hero.energy <= 0 || (!canCard && !canMove)) this.pendingEnd = true;
   }
 
-  private playEvents(events: Parameters<typeof toCombatEvents>[0]): void {
+  private playEvents(
+    events: Parameters<typeof toCombatEvents>[0],
+    context: CardTrialPresentationContext = {}
+  ): void {
     this.syncStage();
-    const combatEvents = toCombatEvents(events, this.trial);
+    const combatEvents = toCombatEvents(events, this.trial, context);
     if (combatEvents.length === 0) {
       this.afterPlayback();
       return;
     }
+    if (events.some((event) => event.type === "intent-hit" || event.type === "intent-miss")) {
+      this.playbackLabel = "ENEMY TURN";
+    }
+    playCombatEventSounds(combatEvents, toCombatState(this.trial));
     this.phase = "playback";
     this.windowsDirty = true;
     this.stage.playTurn(combatEvents, spellNameFor, techniqueNameFor, performance.now());
@@ -394,6 +424,7 @@ export class CardTrialController {
     this.stage.clearBanner();
     this.stage.setCues({ fast: false, auto: false });
     this.stage.setPlaybackRate(1);
+    this.playbackLabel = null;
     if (this.trial.result) {
       this.phase = "result";
       this.windowsDirty = true;
@@ -407,7 +438,14 @@ export class CardTrialController {
     }
     this.phase = "hand";
     this.cursor = 0;
+    this.decisionStartedAt = performance.now();
     this.windowsDirty = true;
+  }
+
+  private recordDecision(): void {
+    this.trial.telemetry.presentation.decisionMs.push(
+      Math.max(0, performance.now() - this.decisionStartedAt)
+    );
   }
 
   private finish(): void {
@@ -474,6 +512,7 @@ export class CardTrialController {
       flash: this.flash,
       result,
       detailsHeld: this.detailsHeld,
+      playbackLabel: this.playbackLabel,
       hideLegacyPanes: !!this.sparse,
     };
     if (this.sparse) {

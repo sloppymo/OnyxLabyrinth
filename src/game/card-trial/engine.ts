@@ -73,7 +73,22 @@ function emptyTelemetry(): CardTrialTelemetry {
   for (const id of Object.keys(CARD_DEFS) as CardId[]) {
     cardStats[id] = { drawn: 0, played: 0, discarded: 0 };
   }
-  return { turns: [], opened: [], intents: [], cardStats, moveOpportunityCost: 0, guardAbsorbed: 0, fights: [] };
+  return {
+    turns: [],
+    opened: [],
+    intents: [],
+    cardStats,
+    moveOpportunityCost: 0,
+    guardAbsorbed: 0,
+    presentation: {
+      decisionMs: [],
+      targetChanges: 0,
+      targetCancels: 0,
+      detailHolds: 0,
+      disabledAttempts: 0,
+    },
+    fights: [],
+  };
 }
 
 function intentRecord(s: CardTrialState, enemy: EnemyState) {
@@ -1092,6 +1107,15 @@ export function summarizeTelemetry(t: CardTrialTelemetry): string {
   lines.push(`Guard gained: ${guardGained}`);
   lines.push(`Damage absorbed by Guard: ${t.guardAbsorbed}`);
   lines.push(`Stay-in-Front turns with leftover Guard next turn: ${turns.filter((x) => x.endingRow === "front" && x.guardGained > 0).length}`);
+  lines.push("");
+  lines.push("## Presentation signals");
+  const decisions = t.presentation.decisionMs;
+  const averageDecision = decisions.length === 0
+    ? 0
+    : decisions.reduce((sum, ms) => sum + ms, 0) / decisions.length;
+  lines.push(`Decision samples: ${decisions.length} · average ${(averageDecision / 1000).toFixed(1)}s · longest ${(Math.max(0, ...decisions) / 1000).toFixed(1)}s`);
+  lines.push(`Target changes: ${t.presentation.targetChanges} · target cancels: ${t.presentation.targetCancels}`);
+  lines.push(`Details held: ${t.presentation.detailHolds} · disabled attempts: ${t.presentation.disabledAttempts}`);
   lines.push("");
   lines.push("## Energy");
   lines.push(`Hero turns: ${turns.length}`);

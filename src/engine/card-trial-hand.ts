@@ -356,6 +356,7 @@ export class CardTrialHandPresentation {
     body.focused = false;
     body.armed = false;
     body.el.classList.remove("focused", "armed", "selected");
+    body.el.classList.remove("playing");
   }
 
   sync(input: CardTrialWindowsInput, handlers: CardTrialViewHandlers): void {
@@ -417,6 +418,7 @@ export class CardTrialHandPresentation {
       body.el.style.pointerEvents = showHand ? "auto" : "none";
       body.el.classList.toggle("focused", body.focused);
       body.el.classList.toggle("armed", body.armed);
+      body.el.classList.toggle("playing", body.state === "playing");
     });
   }
 
@@ -455,6 +457,7 @@ export class CardTrialHandPresentation {
 
       body.spring = updatePoseSpring(body.spring, target, this.tuning, dtSeconds);
       const pose = poseFrom(body.spring);
+      body.el.classList.toggle("playing", body.state === "playing");
       body.el.style.transform = `translate(${pose.x}px, ${pose.y}px) translate(-50%, -50%) rotate(${pose.rotation}deg) scale(${pose.scale})`;
     }
 

@@ -9,6 +9,11 @@ import type { Character } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
 import type { CardTrialEvent, CardTrialState, HeroId, PlayerRow } from "../game/card-trial/types";
 
+export interface CardTrialPresentationContext {
+  /** The global Opened target immediately before the resolved action. */
+  openedBefore?: string | null;
+}
+
 const STATS = { str: 10, int: 10, pie: 10, vit: 10, agi: 10, luk: 10 };
 
 function heroCharacter(
@@ -131,7 +136,8 @@ export function toCombatState(s: CardTrialState): CombatState {
 
 export function toCombatEvents(
   events: CardTrialEvent[],
-  state: CardTrialState
+  state: CardTrialState,
+  context: CardTrialPresentationContext = {}
 ): CombatEvent[] {
   const out: CombatEvent[] = [];
   for (const e of events) {
@@ -139,7 +145,7 @@ export function toCombatEvents(
       const actorId = e.type === "rat-bite" ? "rat-king" : e.actorId;
       out.push({ type: "attack", actorId, targetId: e.targetId, damage: e.damage });
     } else if (e.type === "guard") {
-      out.push({ type: "defend", actorId: e.actorId });
+      out.push({ type: "defend", actorId: e.actorId, amount: e.amount });
     } else if (e.type === "defeated") {
       out.push({ type: "defeated", targetId: e.targetId, wasEnemy: e.wasEnemy });
     } else if (e.type === "banner") {
@@ -162,6 +168,7 @@ export function toCombatEvents(
         actorId: "rat-king",
         spellId: e.type === "spawn-rat" ? "Rat" : "Send the Rat",
         targetId: null,
+        cardPresentation: "rat",
       });
     } else if (e.type === "intent-hit") {
       out.push({
@@ -169,6 +176,7 @@ export function toCombatEvents(
         actorId: e.enemyId,
         targetId: e.targetId,
         damage: e.damage,
+        absorbed: e.absorbed,
       });
     } else if (e.type === "intent-miss") {
       out.push({ type: "miss", actorId: e.enemyId, targetId: e.enemyId, reason: "noTarget" });
@@ -178,6 +186,11 @@ export function toCombatEvents(
         spellId: e.type === "open" ? "Opened" : "Consume Opened",
         targetId: e.targetId,
         isDebuff: e.type === "open",
+        cardPresentation: e.type === "open" ? "opened" : "consume-opened",
+        cardPresentationSourceId:
+          e.type === "open" && context.openedBefore && context.openedBefore !== e.targetId
+            ? context.openedBefore
+            : undefined,
       });
     }
   }

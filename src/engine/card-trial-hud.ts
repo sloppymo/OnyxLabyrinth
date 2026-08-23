@@ -58,7 +58,6 @@ export class CardTrialHudPresentation {
     this.flashEl = el("div", "ct-sparse-flash");
     this.targetHint = el("div", "ct-sparse-target-hint");
     this.playbackEl = el("div", "ct-sparse-playback");
-    this.playbackEl.textContent = "Shift fast · Esc skip";
     stage.append(
       this.fade,
       this.meters,
@@ -131,6 +130,9 @@ export class CardTrialHudPresentation {
     this.targetHint.textContent = phase === "target2" ? "Select a second enemy" : "Select a target";
 
     this.playbackEl.hidden = phase !== "playback";
+    this.playbackEl.textContent = input.playbackLabel
+      ? `${input.playbackLabel} · Shift fast · Esc skip`
+      : "Shift fast · Esc skip";
 
     this.syncDetails(input, !!detailsHeld && (showUtils || targeting));
     this.syncBanner(view.fightId, view.fightName);

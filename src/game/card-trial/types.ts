@@ -269,6 +269,14 @@ export interface CardTrialTelemetry {
   cardStats: Record<CardId, { drawn: number; played: number; discarded: number }>;
   moveOpportunityCost: number;
   guardAbsorbed: number;
+  /** Session-local presentation signals; never used by Card Trial rules. */
+  presentation: {
+    decisionMs: number[];
+    targetChanges: number;
+    targetCancels: number;
+    detailHolds: number;
+    disabledAttempts: number;
+  };
   fights: Array<{
     fightId: number;
     result: CardTrialResult;

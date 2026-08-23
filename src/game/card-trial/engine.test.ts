@@ -14,6 +14,7 @@ import {
   playerView,
   singleTargetInRow,
   startHeroCardTurn,
+  summarizeTelemetry,
 } from "./engine";
 import { resetGameplayRng, setGameplayRng } from "../rng";
 import type { CardId, CardTrialState } from "./types";
@@ -83,6 +84,16 @@ describe("Card Trial decks", () => {
     expect(omAll.some((c) => rkUids.has(c.uid))).toBe(false);
     expect(actingHero(s)?.id).toBe("old-man");
     expect(s.heroes["old-man"].hand).toHaveLength(5);
+  });
+});
+
+describe("Card Trial presentation telemetry", () => {
+  it("reports decision durations in seconds", () => {
+    const s = createFight(1, { seed: 2 });
+    s.telemetry.presentation.decisionMs = [125, 275];
+    const summary = summarizeTelemetry(s.telemetry);
+    expect(summary).toContain("Decision samples: 2 · average 0.2s · longest 0.3s");
+    expect(summary).toContain("Target changes: 0 · target cancels: 0");
   });
 });
 
