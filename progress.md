@@ -1350,3 +1350,22 @@ visual-pass notes below; this section tracks the current task only.
   Namanda-related floor warnings.
 - Updated `docs/MAZE-EVENT-SPRITE-PROMPT.md` prompt #23 and the running
   progress log.
+
+## 2026-08-23 — Card Trial production-feel pass
+
+- Played real Card Trial fights before editing. The highest-value gaps were
+  weak card commitment, quiet Guard/Opened/Consume state changes, missing
+  enemy-turn punctuation, and no presentation-level decision telemetry.
+- Added a reusable presentation vocabulary on the existing combat choreography:
+  physical card commit/reflow, Guard gain and Guard absorption (`-G`/`BLOCK`),
+  Opened exposure, Consume payoff, Rat cue, and explicit `ENEMY TURN` hand
+  transition. Card Trial now routes these structured events through the
+  existing combat SFX mapper without adding new audio assets.
+- Added the debug-only live review fixture
+  `scripts/playtests/card-trial-feel-review.mjs` for motion frames, five
+  viewport states, sound snapshots, and Phaser/Canvas review. Added the
+  presentation telemetry fields and corrected its decision-time summary to
+  report milliseconds as seconds.
+- Updated the same-session Card Trial exit fixture to navigate through the
+  current Arena → Card Trial route. It passed with zero residue and a campaign
+  party of four after exit.

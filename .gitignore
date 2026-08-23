@@ -27,6 +27,8 @@ dev-party-creation.html
 # Repo-hygiene purge (2026-07-19): large local-only dirs — never track
 /assets/
 /playtest-screenshots/
+/output/playwright/card-trial-feel*/
+/output/web-game/
 /vfx-audit/
 
 # Generated preview HTML (outputs of scripts/generate-*.mjs / .ts — regenerated on demand)

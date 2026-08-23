@@ -5,8 +5,7 @@
  * `cardTrialController` / `inCardTrial` / combat-wrap CSS classes) that a
  * fresh page load would trivially reset and hide.
  *
- * Sequence: boot to title -> press "t" (title menu's new Card Trial item,
- * feat/card-trial-sparse-combat-ui's title/URL boot convenience) -> lobby ->
+ * Sequence: boot to title -> open Arena, move down to the Card Trial row -> lobby ->
  * start Fight 1 -> play one real card action then pass every turn (fastest
  * deterministic way to reach a natural win/wipe without editing source or
  * hacking private fields) -> fight ends, back in lobby -> Escape to exit to
@@ -125,15 +124,22 @@ async function main() {
     }
     await shot(page, outDir, "01-title.png");
 
-    // --- 2. Enter Card Trial via the "t" title shortcut ---------------------
-    await press(page, "t", 1, 200);
+    // --- 2. Enter Card Trial through the live Arena setup -------------------
+    await press(page, "a", 1, 200);
+    await waitForIdle(page, 4000);
+    st = await snap(page);
+    if (st.route !== "arena") {
+      findings.find("P0", 0, "Arena setup did not open from title", `route=${st.route}`);
+    }
+    await press(page, "ArrowDown", 5, 80);
+    await press(page, "Enter", 1, 200);
     await waitForIdle(page, 3000);
     st = await snap(page);
     evidence.lobbyRoute = st.route;
     if (st.route !== "card_trial") {
       findings.find("P0", 0, "'t' at title did not open Card Trial lobby", `route=${st.route}`);
     } else {
-      console.log("  OK: title 't' -> card_trial lobby");
+      console.log("  OK: Arena setup -> card_trial lobby");
     }
     await shot(page, outDir, "02-lobby.png");
 
