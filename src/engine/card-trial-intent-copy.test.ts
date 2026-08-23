@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createAdversarialTriangle, playerView } from "../game/card-trial/engine";
-import { compactIntentValue, intentDetailLines, intentHpLines } from "./card-trial-intent-copy";
+import type { IntentPreview } from "../game/card-trial/types";
+import {
+  compactIntentTarget,
+  compactIntentValue,
+  intentDetailLines,
+  intentHpLines,
+} from "./card-trial-intent-copy";
 
 describe("intent presentation copy", () => {
   it("uses post-Guard HP loss, not raw incoming, in detail lines", () => {
@@ -27,5 +33,32 @@ describe("intent presentation copy", () => {
     const hit = view.intents.find((i) => !i.wouldMiss);
     expect(hit).toBeTruthy();
     expect(compactIntentValue(hit!)).toBe(String(hit!.rawDamage));
+  });
+
+  it("formats a compact target token for every intent kind", () => {
+    const base = (target: IntentPreview["target"]): IntentPreview => ({
+      enemyId: "x",
+      enemyName: "X",
+      label: "",
+      target,
+      rawDamage: 5,
+      consequences: [],
+      missIfEmpty: false,
+      wouldMiss: false,
+    });
+    expect(compactIntentTarget(base({ kind: "row", row: "front" }))).toBe("FRONT");
+    expect(compactIntentTarget(base({ kind: "row", row: "back" }))).toBe("BACK");
+    expect(compactIntentTarget(base({ kind: "both-rows" }))).toBe("BOTH");
+    expect(compactIntentTarget(base({ kind: "hero", heroId: "rat-king", row: "front" }))).toBe("RK");
+    expect(compactIntentTarget(base({ kind: "hero", heroId: "old-man", row: "back" }))).toBe("OM");
+  });
+
+  it("populates a structured target on live engine previews", () => {
+    const trial = createAdversarialTriangle();
+    const view = playerView(trial);
+    for (const intent of view.intents) {
+      expect(["row", "both-rows", "hero"]).toContain(intent.target.kind);
+      expect(compactIntentTarget(intent)).toMatch(/^(FRONT|BACK|BOTH|RK|OM)$/);
+    }
   });
 });

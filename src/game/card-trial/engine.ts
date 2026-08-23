@@ -919,6 +919,12 @@ export function intentPreviews(s: CardTrialState): IntentPreview[] {
 function previewIntent(s: CardTrialState, e: EnemyState): IntentPreview {
   const intent = currentIntent(e);
   const label = formatIntentLabel(e);
+  const target: IntentPreview["target"] =
+    intent.kind === "row"
+      ? { kind: "row", row: intent.row }
+      : intent.kind === "both-rows"
+        ? { kind: "both-rows" }
+        : { kind: "hero", heroId: intent.heroId, row: intent.row };
   const consequences: IntentPreview["consequences"] = [];
   let wouldMiss = false;
   let missIfEmpty = false;
@@ -966,6 +972,7 @@ function previewIntent(s: CardTrialState, e: EnemyState): IntentPreview {
     enemyId: e.id,
     enemyName: e.name,
     label,
+    target,
     rawDamage,
     consequences,
     missIfEmpty,

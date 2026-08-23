@@ -4953,6 +4953,13 @@ canvas#map-canvas {
   color: #c0b8a8;
 }
 
+.ct-atk-target {
+  margin-left: 4px;
+  color: #d8b46a;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 .ct-chip-hp {
   width: 48px;
   height: 4px;

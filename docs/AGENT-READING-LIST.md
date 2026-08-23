@@ -2,7 +2,7 @@
 
 Use this list before acting on playtest, balance, combat UX, or perk work. Prefer these over older one-off prompts when they conflict.
 
-**Last refreshed:** 2026-08-15 (friends-and-family candidate, Formation Chemistry, physical combat choreography, governed combat barks, and repository topology audit)
+**Last refreshed:** 2026-08-23 (canonical Card Trial branch pinned to `feat/card-trial-production-feel`)
 
 **Health at last refresh:** `npm run build` clean. Run `npm test` for the current test total —
 the previously-flagged `combat-turns.test.ts` order-dependent flake (ice-shards
@@ -12,7 +12,7 @@ leakage within that file, predates the boss-rename work).
 | Doc | Role | Status |
 |-----|------|--------|
 | [`AGENTS.md`](../AGENTS.md) | Hard engine rules, file map, pitfalls | **Authoritative** for code constraints |
-| [`design/rat-king-old-man-card-trial.md`](design/rat-king-old-man-card-trial.md) | Pointer to the Card Trial PoC | **Experimental / Arena prototype only** (2026-08-21). Canonical spec: [`superpowers/specs/2026-08-21-card-trial-poc-design.md`](superpowers/specs/2026-08-21-card-trial-poc-design.md). **Decision record:** [`superpowers/specs/2026-08-22-card-trial-human-test-decision.md`](superpowers/specs/2026-08-22-card-trial-human-test-decision.md) — reference-agent validation passed; no balance iteration until naive-human batch. Not campaign authority. Review brief: [`PROMPT-rat-old-man-card-system-skeptical-review.md`](PROMPT-rat-old-man-card-system-skeptical-review.md) |
+| [`design/rat-king-old-man-card-trial.md`](design/rat-king-old-man-card-trial.md) | Pointer to the Card Trial PoC | **Legacy pointer** (2026-08-21). **Canonical implementation branch:** `feat/card-trial-production-feel` — sparse UI, illustrated cards, production-feel pass. **Canonical spec:** [`superpowers/specs/2026-08-21-card-trial-poc-design.md`](superpowers/specs/2026-08-21-card-trial-poc-design.md). **Decision record:** [`superpowers/specs/2026-08-22-card-trial-human-test-decision.md`](superpowers/specs/2026-08-22-card-trial-human-test-decision.md) — reference-agent validation passed; no balance iteration until naive-human batch. Not campaign authority. Review brief: [`PROMPT-rat-old-man-card-system-skeptical-review.md`](PROMPT-rat-old-man-card-system-skeptical-review.md) |
 | [`superpowers/specs/2026-08-15-dungeon-lighting-suite-and-kept-gate.md`](superpowers/specs/2026-08-15-dungeon-lighting-suite-and-kept-gate.md) | Lighting pass/fail suite + Kept Gate box extrusion (WebGL-first) | **Current** for dungeon lighting verification |
 | [`playtests/2026-08-15-friends-family-readiness.md`](playtests/2026-08-15-friends-family-readiness.md) | Exact F&F1 feature matrix, reachability, production-path evidence, deployment gate, and known risks | **Current release-readiness authority** for the candidate branch |
 | [`FRIENDS-AND-FAMILY-CHECKLIST.md`](FRIENDS-AND-FAMILY-CHECKLIST.md) | Short pre-send checklist and tester feedback questions | **Current** for external playtest distribution |

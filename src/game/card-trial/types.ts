@@ -139,6 +139,11 @@ export interface IntentPreview {
   enemyId: string;
   enemyName: string;
   label: string;
+  /** Compact structured target for actor-local chips. */
+  target:
+    | { kind: "row"; row: PlayerRow }
+    | { kind: "both-rows" }
+    | { kind: "hero"; heroId: HeroId; row: PlayerRow };
   rawDamage: number;
   /** Per targeted hero, after Guard. Empty if the intent would miss. */
   consequences: Array<{

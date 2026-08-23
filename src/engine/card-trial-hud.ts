@@ -6,6 +6,7 @@
 import { ENERGY_PER_TURN, MOVE_COST } from "../game/card-trial/types";
 import type { CardTrialViewHandlers, CardTrialWindowsInput } from "./card-trial-view";
 import {
+  compactIntentTarget,
   compactIntentValue,
   intentDetailLines,
   INTENT_ATK_LABEL,
@@ -189,7 +190,7 @@ export class CardTrialHudPresentation {
       place(chip, anchor.x, anchor.y);
       const intent = view.intents.find((i) => i.enemyId === enemy.id);
       const atk = intent
-        ? `<div class="ct-chip-atk${intent.wouldMiss ? " miss" : ""}"><span class="ct-atk-label">${INTENT_ATK_LABEL}</span> ${compactIntentValue(intent)}</div>`
+        ? `<div class="ct-chip-atk${intent.wouldMiss ? " miss" : ""}"><span class="ct-atk-label">${INTENT_ATK_LABEL}</span> ${compactIntentValue(intent)}<span class="ct-atk-target">→ ${compactIntentTarget(intent)}</span></div>`
         : "";
       const opened = enemy.opened ? `<span class="ct-opened-mark" title="Opened">◉</span>` : "";
       chip.innerHTML = `${atk}<div class="ct-chip-nums">${opened}${enemy.hp}/${enemy.maxHp}</div>`;
@@ -241,7 +242,7 @@ export class CardTrialHudPresentation {
     for (const intent of input.view.intents) {
       const block = el("div", "ct-detail-intent");
       const title = el("div", "ct-detail-title");
-      title.textContent = `${intent.enemyName.toUpperCase()}   ${INTENT_ATK_LABEL} ${compactIntentValue(intent)}`;
+      title.textContent = `${intent.enemyName.toUpperCase()}   ${INTENT_ATK_LABEL} ${compactIntentValue(intent)} → ${compactIntentTarget(intent)}`;
       block.appendChild(title);
       for (const line of intentDetailLines(intent, input.view.heroes)) {
         const p = el("div", "ct-detail-line");

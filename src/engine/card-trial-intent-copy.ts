@@ -12,6 +12,14 @@ export function compactIntentValue(intent: IntentPreview): string {
   return intent.wouldMiss ? "—" : String(intent.rawDamage);
 }
 
+/** Compact target token for the actor-local chip, e.g. "FRONT", "BOTH", "RK". */
+export function compactIntentTarget(intent: IntentPreview): string {
+  const t = intent.target;
+  if (t.kind === "both-rows") return "BOTH";
+  if (t.kind === "row") return t.row === "front" ? "FRONT" : "BACK";
+  return t.heroId === "rat-king" ? "RK" : "OM";
+}
+
 export interface IntentHpLine {
   heroName: string;
   rawDamage: number;
