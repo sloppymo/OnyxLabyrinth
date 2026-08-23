@@ -7,7 +7,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { launch, ensureAudioResumed, shot, wait, assertRendererAlive } from "./lib.mjs";
+import {
+  launch,
+  ensureAudioResumed,
+  shot,
+  wait,
+  assertRendererAlive,
+  clickCard,
+  selectTarget,
+  clickAct,
+} from "./lib.mjs";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -84,23 +93,6 @@ async function waitForDecision(page) {
   }, "Card Trial decision phase");
 }
 
-async function clickCard(page, uid) {
-  const selector = `button[data-uid="${uid}"]`;
-  await page.locator(`.ct-sparse ${selector}`).evaluate((element) => element.click());
-}
-
-async function selectTarget(page, id) {
-  const target = page.locator(`.ct-sparse .ct-actor-chip[data-actor="enemy:${id}"]`);
-  await waitFor(
-    page,
-    async () => await target.evaluate((element) =>
-      element.classList.contains("targetable") && element.style.pointerEvents === "auto"
-    ),
-    `target ${id} ready`
-  );
-  await target.evaluate((element) => element.click());
-}
-
 async function replayAction(page, action) {
   if (action.kind === "card") {
     await clickCard(page, action.cardUid);
@@ -116,7 +108,7 @@ async function replayAction(page, action) {
       }
     }
   } else {
-    await page.locator(`.ct-sparse [data-act="${action.kind}"]`).click({ timeout: 5000, force: true });
+    await clickAct(page, action.kind);
   }
   await waitForDecision(page);
 }

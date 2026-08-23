@@ -4,7 +4,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { launch, ensureAudioResumed, wait, assertRendererAlive } from "./lib.mjs";
+import {
+  launch,
+  ensureAudioResumed,
+  wait,
+  assertRendererAlive,
+  clickCard,
+  selectTarget,
+  clickAct,
+  pressCancel,
+} from "./lib.mjs";
 
 const { values } = parseArgs({
   options: {
@@ -96,7 +105,7 @@ async function randomInput(page, random, trace) {
     const choice = random();
     if (choice < 0.2) {
       trace.push({ type: "key", key: "Escape", phase });
-      await page.keyboard.press("Escape");
+      await pressCancel(page);
     } else if (choice < 0.42) {
       const key = random() < 0.5 ? "ArrowLeft" : "ArrowRight";
       trace.push({ type: "key", key, phase });
@@ -109,7 +118,7 @@ async function randomInput(page, random, trace) {
       if (targets.length) {
         const id = targets[Math.floor(random() * targets.length)];
         trace.push({ type: "target", id, phase });
-        await page.locator(`.ct-sparse .ct-actor-chip[data-actor="enemy:${id}"]`).click({ force: true });
+        await selectTarget(page, id).catch(() => {});
       }
     }
     return;
@@ -124,15 +133,15 @@ async function randomInput(page, random, trace) {
     if (cards.length) {
       const card = cards[Math.floor(random() * cards.length)];
       trace.push({ type: "card", uid: card.uid, disabled: card.disabled, phase });
-      await page.locator(`.ct-sparse .ct2-card[data-uid="${card.uid}"]`).click({ force: true }).catch(() => {});
-      if (random() < 0.5) await page.locator(`.ct-sparse .ct2-card[data-uid="${card.uid}"]`).click({ force: true }).catch(() => {});
+      await clickCard(page, card.uid).catch(() => {});
+      if (random() < 0.5) await clickCard(page, card.uid).catch(() => {});
     }
   } else if (choice < 0.46) {
     trace.push({ type: "move", phase });
-    await page.locator('.ct-sparse [data-act="move"]').click({ force: true }).catch(() => {});
+    await clickAct(page, "move").catch(() => {});
   } else if (choice < 0.58) {
     trace.push({ type: "pass", phase });
-    await page.locator('.ct-sparse [data-act="pass"]').click({ force: true }).catch(() => {});
+    await clickAct(page, "pass").catch(() => {});
   } else if (choice < 0.72) {
     const key = random() < 0.5 ? "Enter" : "Escape";
     trace.push({ type: "key", key, phase });

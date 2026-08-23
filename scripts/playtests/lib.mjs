@@ -23,6 +23,76 @@ import path from "path";
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** Sparse-hand card button. Identity is uid, never a screen coordinate. */
+export function cardTrialCardSelector(uid) {
+  return `.ct-sparse button[data-uid="${uid}"]`;
+}
+
+/** Enemy chip. Identity is the actor id after `enemy:`. */
+export function cardTrialTargetSelector(id) {
+  return `.ct-sparse .ct-actor-chip[data-actor="enemy:${id}"]`;
+}
+
+/** Move / Pass utility buttons. Those are the only `data-act` controls. */
+export function cardTrialActSelector(kind) {
+  return `.ct-sparse [data-act="${kind}"]`;
+}
+
+/**
+ * Escape is target-cancel only while a card is armed. In `hand` it is Pass;
+ * during `playback` it skips choreography.
+ */
+export function cardTrialCancelApplies(phase) {
+  return phase === "target" || phase === "target2";
+}
+
+/** Poll until `predicate` is truthy. Shared by Card Trial click helpers. */
+export async function waitUntil(page, predicate, label, timeout = 10000) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    if (await predicate()) return;
+    await wait(40);
+  }
+  throw new Error(`Timed out waiting for ${label}`);
+}
+
+/** Click a hand card by uid through the production sparse DOM. */
+export async function clickCard(page, uid) {
+  recordAction(page, "card-trial-click-card", { uid });
+  await page.locator(cardTrialCardSelector(uid)).evaluate((element) => element.click());
+}
+
+/** Click a living enemy chip once the HUD marks it targetable. */
+export async function selectTarget(page, id) {
+  recordAction(page, "card-trial-select-target", { id });
+  const target = page.locator(cardTrialTargetSelector(id));
+  await waitUntil(
+    page,
+    async () =>
+      target.evaluate(
+        (element) =>
+          element.classList.contains("targetable") && element.style.pointerEvents === "auto"
+      ),
+    `target ${id} ready`
+  );
+  await target.evaluate((element) => element.click());
+}
+
+/** Click Move or Pass. */
+export async function clickAct(page, kind) {
+  recordAction(page, "card-trial-click-act", { kind });
+  await page.locator(cardTrialActSelector(kind)).click({ timeout: 5000, force: true });
+}
+
+/**
+ * Synthesize Escape. Callers that mean "cancel targeting" must first check
+ * `cardTrialCancelApplies(phase)` — in hand this key is Pass.
+ */
+export async function pressCancel(page) {
+  recordAction(page, "card-trial-press-cancel", { key: "Escape" });
+  await page.keyboard.press("Escape");
+}
+
 /**
  * Verify that the browser is visible and its animation loop is advancing
  * before a visual/DOM assertion. A suspended tab is inconclusive, not a game
