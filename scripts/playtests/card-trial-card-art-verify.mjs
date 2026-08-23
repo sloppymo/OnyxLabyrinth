@@ -170,6 +170,8 @@ const ratHand = await runtime.evaluate(() => {
   const view = window.__onyxDebug.cardTrial.view();
   return { hero: view?.actingHero, cards: view?.hand?.map((card) => card.defId) ?? [] };
 });
+const ratFallbackCount = await runtime.locator("#card-trial-overlay .ct2-card-art.fallback").count();
+if (ratFallbackCount !== 0) throw new Error(`Rat King production hand used ${ratFallbackCount} art fallback(s)`);
 await runtime.screenshot({ path: path.join(OUT, "real-hand-rat-king.png"), fullPage: true });
 
 await runtime.keyboard.press("b");
@@ -179,13 +181,15 @@ const oldManHand = await runtime.evaluate(() => {
   const view = window.__onyxDebug.cardTrial.view();
   return { hero: view?.actingHero, cards: view?.hand?.map((card) => card.defId) ?? [] };
 });
+const oldManFallbackCount = await runtime.locator("#card-trial-overlay .ct2-card-art.fallback").count();
+if (oldManFallbackCount !== 0) throw new Error(`Old Man production hand used ${oldManFallbackCount} art fallback(s)`);
 await runtime.screenshot({ path: path.join(OUT, "real-hand-old-man.png"), fullPage: true });
 
 fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify({
   sourceCards: cards,
   assetIds,
   imageFacts,
-  realHands: { ratHand, oldManHand },
+  realHands: { ratHand, oldManHand, ratFallbackCount, oldManFallbackCount },
   cardDimensions: { width: 132, height: 184 },
   nativeArt: { width: 128, height: 96 },
   pageErrors: errors,
