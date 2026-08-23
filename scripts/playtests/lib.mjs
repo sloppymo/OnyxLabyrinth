@@ -23,6 +23,27 @@ import path from "path";
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Verify that the browser is visible and its animation loop is advancing
+ * before a visual/DOM assertion. A suspended tab is inconclusive, not a game
+ * failure. This is intentionally shared by Card Trial replay/fuzz fixtures.
+ */
+export async function assertRendererAlive(page, durationMs = 180) {
+  return page.evaluate((duration) => new Promise((resolve) => {
+    const start = performance.now();
+    let count = 0;
+    const tick = () => {
+      count += 1;
+      if (performance.now() - start >= duration) {
+        resolve({ count, visibility: document.visibilityState, hasFocus: document.hasFocus() });
+      } else {
+        requestAnimationFrame(tick);
+      }
+    };
+    requestAnimationFrame(tick);
+  }), durationMs);
+}
+
 // --- Action transcript -------------------------------------------------------
 // Every input this library drives is recorded per page, so a failure bundle can
 // answer "what did the script actually do before this broke?" without the

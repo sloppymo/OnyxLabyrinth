@@ -231,6 +231,7 @@ export class CardTrialHandPresentation {
     const el = document.createElement("button");
     el.type = "button";
     el.className = "ct2-card";
+    el.dataset.state = "dealing";
     el.dataset.uid = card.uid;
     const costEl = document.createElement("div");
     costEl.className = "ct2-card-cost";
@@ -257,11 +258,13 @@ export class CardTrialHandPresentation {
 
     el.addEventListener("pointerenter", () => {
       const idx = this.bodies.get(card.uid)?.slotIndex;
-      if (idx !== undefined) this.handlers?.onHoverCard(idx);
+      if (this.handlers?.onHoverCardUid) this.handlers.onHoverCardUid(card.uid);
+      else if (idx !== undefined) this.handlers?.onHoverCard(idx);
     });
     el.addEventListener("click", () => {
       const idx = this.bodies.get(card.uid)?.slotIndex;
-      if (idx !== undefined) this.handlers?.onConfirmCard(idx);
+      if (this.handlers?.onConfirmCardUid) this.handlers.onConfirmCardUid(card.uid);
+      else if (idx !== undefined) this.handlers?.onConfirmCard(idx);
     });
 
     const spawn = deckPilePose(this.tuning);
@@ -343,6 +346,7 @@ export class CardTrialHandPresentation {
   private enterDiscarding(body: CardBody, now: number, delayMs: number): void {
     const cur = poseFrom(body.spring);
     body.state = "discarding";
+    body.el.dataset.state = body.state;
     body.stateEnteredAt = now;
     body.enterDelayMs = delayMs;
     body.exitPose = {
@@ -375,6 +379,7 @@ export class CardTrialHandPresentation {
     if (removedUids.length === 1) {
       const body = this.bodies.get(removedUids[0])!;
       body.state = "playing";
+      body.el.dataset.state = body.state;
       body.stateEnteredAt = now;
       body.el.style.pointerEvents = "none";
       body.el.style.zIndex = String(Z_BASE.playing);
@@ -401,12 +406,26 @@ export class CardTrialHandPresentation {
       body.model = card;
       this.applyModel(body);
       body.slotIndex = index;
+      // A card can be reshuffled back into the next hand before its previous
+      // discard animation has finished. The rules engine owns the UID's
+      // existence; if it is present again, it must re-enter the hand rather
+      // than remain hidden in the old discard pose.
+      if (body.state === "playing" || body.state === "discarding") {
+        body.state = "dealing";
+        body.el.dataset.state = body.state;
+        body.stateEnteredAt = now;
+        body.enterDelayMs = 0;
+        body.exitPose = null;
+        body.spring = initPoseSpring(deckPilePose(this.tuning));
+        body.el.classList.remove("playing", "focused", "armed", "selected");
+      }
       body.target = computeCardTarget(index, hand.length, focusedIndex, armedIndex, card.disabled, this.tuning);
       body.focused = index === focusedIndex;
       body.armed = index === armedIndex;
-      if (body.state !== "dealing" && body.state !== "playing" && body.state !== "discarding") {
+      if (body.state !== "dealing") {
         body.state = "resting";
       }
+      body.el.dataset.state = body.state;
       const z = body.armed
         ? Z_ARMED
         : body.focused
@@ -418,7 +437,7 @@ export class CardTrialHandPresentation {
       body.el.style.pointerEvents = showHand ? "auto" : "none";
       body.el.classList.toggle("focused", body.focused);
       body.el.classList.toggle("armed", body.armed);
-      body.el.classList.toggle("playing", body.state === "playing");
+      body.el.classList.remove("playing");
     });
   }
 
@@ -442,6 +461,8 @@ export class CardTrialHandPresentation {
           continue;
         }
       }
+
+      body.el.dataset.state = body.state;
 
       let target: Pose;
       if (body.state === "dealing" && now - body.stateEnteredAt < body.enterDelayMs) {

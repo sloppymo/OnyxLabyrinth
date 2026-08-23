@@ -367,4 +367,32 @@ describe("CardTrialHandPresentation", () => {
     el.dispatchEvent(new Event("click", { bubbles: true }));
     expect(confirmed).toBe(0);
   });
+
+  it("routes sparse card clicks by UID when a hand is reflowing", () => {
+    const presentation = new CardTrialHandPresentation(host);
+    let confirmedUid = "";
+    const handlers: CardTrialViewHandlers = {
+      ...noopHandlers,
+      onConfirmCardUid: (uid) => {
+        confirmedUid = uid;
+      },
+    };
+    presentation.sync(input([card("old")]), handlers);
+    presentation.sync(input([card("new"), card("target")]), handlers);
+    (host.querySelector('[data-uid="target"]') as HTMLButtonElement).dispatchEvent(
+      new Event("click", { bubbles: true })
+    );
+    expect(confirmedUid).toBe("target");
+  });
+
+  it("revives a UID that returns before its discard animation finishes", () => {
+    const presentation = new CardTrialHandPresentation(host);
+    presentation.sync(input([card("reuse"), card("other")]), noopHandlers);
+    presentation.update(clock);
+    presentation.sync(input([]), noopHandlers);
+    expect((host.querySelector('[data-uid="reuse"]') as HTMLElement).dataset.state).toBe("discarding");
+
+    presentation.sync(input([card("reuse")]), noopHandlers);
+    expect((host.querySelector('[data-uid="reuse"]') as HTMLElement).dataset.state).toBe("dealing");
+  });
 });

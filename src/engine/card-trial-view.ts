@@ -7,7 +7,11 @@ import type { CardTrialPlayerView, HandCardView } from "../game/card-trial/types
 
 export interface CardTrialViewHandlers {
   onHoverCard: (index: number) => void;
+  /** Sparse hand cards prefer stable UID routing while a hand is reflowing. */
+  onHoverCardUid?: (uid: string) => void;
   onConfirmCard: (index: number) => void;
+  /** Sparse hand cards prefer stable UID routing while a hand is reflowing. */
+  onConfirmCardUid?: (uid: string) => void;
   onMove: () => void;
   onPass: () => void;
   onHoverTarget: (index: number) => void;

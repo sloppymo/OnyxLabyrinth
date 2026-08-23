@@ -29,6 +29,7 @@ dev-party-creation.html
 /playtest-screenshots/
 /output/playwright/card-trial-feel*/
 /output/web-game/
+/output/playtest-artifacts/
 /vfx-audit/
 
 # Generated preview HTML (outputs of scripts/generate-*.mjs / .ts — regenerated on demand)

@@ -121,6 +121,7 @@ import {
   summarizeTelemetry,
   type CardTrialState,
 } from "./game/card-trial";
+import { CardTrialPlaytestRecorder } from "./game/card-trial/playtest";
 import { PrologueController } from "./engine/prologue-ui";
 import { EndingController } from "./engine/ending-ui";
 import { autoSave, serialize, deserialize } from "./game/save";
@@ -810,6 +811,7 @@ let cardTrialController: CardTrialController | null = null;
 let inCardTrial = false;
 let cardTrialSequential = false;
 let cardTrialSummary: string | null = null;
+let cardTrialPlaytestRecorder: CardTrialPlaytestRecorder | null = null;
 
 // True for the whole encounter swirl / leave dissolve (including reveal).
 // Key + controller handlers no-op while set — duration tracks boss / reduced-
@@ -1951,6 +1953,7 @@ function openCardTrialLobby(): void {
 }
 
 function exitCardTrialToTitle(): void {
+  cardTrialPlaytestRecorder?.endSession(cardTrialController?.state);
   inCardTrial = false;
   cardTrialSequential = false;
   cardTrialController?.destroy();
@@ -1974,6 +1977,7 @@ function leaveCardTrial(next: () => void): Promise<void> {
 }
 
 function onCardTrialFightEnd(trial: CardTrialState): void {
+  cardTrialPlaytestRecorder?.finishFight(trial);
   cardTrialSummary = summarizeTelemetry(trial.telemetry);
   void leaveCardTrial(() => {
     if (cardTrialSequential && trial.result === "victory" && trial.fightId < 10) {
@@ -1993,6 +1997,7 @@ function startCardTrialFight(opts: {
   fightId?: number;
   sequential?: boolean;
   triangle?: boolean;
+  seed?: number;
   previous?: CardTrialState;
 }): void {
   if (combatController) return;
@@ -2000,13 +2005,18 @@ function startCardTrialFight(opts: {
   inCardTrial = true;
   cardTrialSequential = !!opts.sequential;
   const trial = opts.triangle
-    ? createAdversarialTriangle()
+    ? createAdversarialTriangle({ seed: opts.seed })
     : opts.previous && opts.fightId
       ? nextFight(opts.previous, opts.fightId)
       : createFight(opts.fightId ?? 1, {
-          seed: 1,
+          seed: opts.seed ?? 1,
           telemetry: opts.previous?.telemetry,
         });
+
+  cardTrialPlaytestRecorder?.beginFight(
+    trial,
+    opts.triangle ? "triangle" : opts.previous ? "sequential" : "fight"
+  );
 
   void withCombatTransition(async () => {
     audio.stopTitleMusic();
@@ -2028,6 +2038,7 @@ function startCardTrialFight(opts: {
     cardTrialController = new CardTrialController(trial, {
       stage,
       onEnd: onCardTrialFightEnd,
+      playtest: cardTrialPlaytestRecorder ?? undefined,
     });
     await revealAfterTransition();
   });
@@ -2545,6 +2556,13 @@ if (new URLSearchParams(window.location.search).has("debug")) {
 
   // @ts-expect-error Vite `define` replaces this global at build/dev time.
   (window as any).__onyxBuild = __ONYX_BUILD__;
+  cardTrialPlaytestRecorder = new CardTrialPlaytestRecorder({
+    build: {
+      commit: (window as typeof window & { __onyxBuild?: { sha?: string } }).__onyxBuild?.sha,
+      branch: (window as typeof window & { __onyxBuild?: { branch?: string } }).__onyxBuild?.branch,
+      builtAt: (window as typeof window & { __onyxBuild?: { builtAt?: string } }).__onyxBuild?.builtAt,
+    },
+  });
 
   (window as any).__onyxDebug = {
     state,
@@ -2595,10 +2613,19 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     },
     exitDebugCombat,
     cardTrial: {
-      startFight: (fightId: number) => startCardTrialFight({ fightId }),
-      forceTriangle: () => startCardTrialFight({ triangle: true }),
+      startFight: (fightId: number, options?: { seed?: number }) =>
+        startCardTrialFight({ fightId, seed: options?.seed }),
+      forceTriangle: (options?: { seed?: number }) =>
+        startCardTrialFight({ triangle: true, seed: options?.seed }),
       view: () => (cardTrialController ? playerView(cardTrialController.state) : null),
       telemetry: () => cardTrialController?.state.telemetry ?? null,
+      playtestSnapshot: () => cardTrialController?.playtestSnapshot() ?? null,
+      session: () => cardTrialPlaytestRecorder?.snapshot() ?? null,
+      exportSession: () => {
+        const session = cardTrialPlaytestRecorder?.snapshot();
+        return session ? JSON.stringify(session, null, 2) : null;
+      },
+      endSession: () => cardTrialPlaytestRecorder?.endSession(cardTrialController?.state) ?? null,
       summarize: () =>
         cardTrialSummary ??
         (cardTrialController ? summarizeTelemetry(cardTrialController.state.telemetry) : null),

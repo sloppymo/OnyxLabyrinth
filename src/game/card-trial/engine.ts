@@ -520,6 +520,7 @@ export function createFight(
   const s: CardTrialState = {
     fightId,
     fightName: enc.name,
+    seed,
     round: 1,
     heroes: {
       "rat-king": {

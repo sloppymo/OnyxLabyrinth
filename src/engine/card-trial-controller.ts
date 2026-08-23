@@ -33,10 +33,17 @@ import {
 } from "./card-trial-presentation";
 import { playCombatEventSounds } from "./combat-audio";
 import { CARD_DEFS } from "../game/card-trial/cards";
+import {
+  cardTrialActionContext,
+  cardTrialStateFingerprint,
+  cardTrialStateHash,
+  type CardTrialPlaytestRecorder,
+} from "../game/card-trial/playtest";
 
 export interface CardTrialControllerOptions {
   stage: CombatStage;
   onEnd: (state: CardTrialState) => void;
+  playtest?: CardTrialPlaytestRecorder;
 }
 
 export class CardTrialController {
@@ -58,11 +65,13 @@ export class CardTrialController {
   private playbackLabel: string | null = null;
   private decisionStartedAt = performance.now();
   private sparse: CardTrialSparseUi | null = null;
+  private playtest: CardTrialPlaytestRecorder | undefined;
 
   constructor(trial: CardTrialState, opts: CardTrialControllerOptions) {
     this.trial = trial;
     this.stage = opts.stage;
     this.onEnd = opts.onEnd;
+    this.playtest = opts.playtest;
     if (isSparseCardTrialUi()) {
       setCardTrialSparseChrome(true);
       this.sparse = new CardTrialSparseUi(combatCardTrialOverlay);
@@ -85,6 +94,11 @@ export class CardTrialController {
 
   snapshotCanvas(): HTMLCanvasElement | null {
     return this.stage.snapshotCanvas();
+  }
+
+  playtestSnapshot(): { hash: string; state: ReturnType<typeof cardTrialStateFingerprint> } {
+    const state = cardTrialStateFingerprint(this.trial);
+    return { hash: cardTrialStateHash(state), state };
   }
 
   stop(): void {
@@ -175,6 +189,7 @@ export class CardTrialController {
       if (!this.detailsHeld) {
         this.detailsHeld = true;
         this.trial.telemetry.presentation.detailHolds += 1;
+        this.playtest?.recordInteraction("details-open", this.trial, {});
         this.windowsDirty = true;
       }
       return;
@@ -185,12 +200,14 @@ export class CardTrialController {
       if (lower === "arrowleft" || lower === "arrowup" || lower === "w") {
         this.cursor = (this.cursor - 1 + n) % n;
         audio.uiCursor();
+        this.recordFocusInteraction();
         this.windowsDirty = true;
         return;
       }
       if (lower === "arrowright" || lower === "arrowdown" || lower === "s") {
         this.cursor = (this.cursor + 1) % n;
         audio.uiCursor();
+        this.recordFocusInteraction();
         this.windowsDirty = true;
         return;
       }
@@ -219,17 +236,23 @@ export class CardTrialController {
       if (lower === "arrowleft" || lower === "arrowup" || lower === "w") {
         this.targetCursor = (this.targetCursor - 1 + n) % n;
         this.trial.telemetry.presentation.targetChanges += 1;
+        this.recordTargetChangeInteraction();
         this.windowsDirty = true;
         return;
       }
       if (lower === "arrowright" || lower === "arrowdown" || lower === "s") {
         this.targetCursor = (this.targetCursor + 1) % n;
         this.trial.telemetry.presentation.targetChanges += 1;
+        this.recordTargetChangeInteraction();
         this.windowsDirty = true;
         return;
       }
       if (key === "Escape") {
         this.trial.telemetry.presentation.targetCancels += 1;
+        this.playtest?.recordInteraction("target-cancel", this.trial, {
+          cardUid: this.pendingUid ?? undefined,
+          cardId: this.pendingUid ? this.cardIdForUid(this.pendingUid) : undefined,
+        });
         this.phase = "hand";
         this.pendingUid = null;
         this.pendingTarget = null;
@@ -249,6 +272,7 @@ export class CardTrialController {
     }
     if (key.toLowerCase() === "i" && this.detailsHeld) {
       this.detailsHeld = false;
+      this.playtest?.recordInteraction("details-close", this.trial, {});
       this.windowsDirty = true;
     }
   }
@@ -257,16 +281,31 @@ export class CardTrialController {
     return {
       onHoverCard: (i) => {
         this.cursor = i;
+        this.recordFocusInteraction();
+        this.windowsDirty = true;
+      },
+      onHoverCardUid: (uid) => {
+        const index = playerView(this.trial).hand.findIndex((card) => card.uid === uid);
+        if (index < 0) return;
+        this.cursor = index;
+        this.recordFocusInteraction();
         this.windowsDirty = true;
       },
       onConfirmCard: (i) => {
         this.cursor = i;
         this.confirmHand();
       },
+      onConfirmCardUid: (uid) => {
+        const index = playerView(this.trial).hand.findIndex((card) => card.uid === uid);
+        if (index < 0) return;
+        this.cursor = index;
+        this.confirmHand();
+      },
       onMove: () => this.tryMove(),
       onPass: () => this.tryPass(),
       onHoverTarget: (i) => {
         this.targetCursor = i;
+        this.recordTargetChangeInteraction();
         this.windowsDirty = true;
       },
       onConfirmTarget: (i) => {
@@ -294,6 +333,11 @@ export class CardTrialController {
     if (!card) return;
     if (card.disabled) {
       this.trial.telemetry.presentation.disabledAttempts += 1;
+      this.playtest?.recordInteraction("disabled-attempt", this.trial, {
+        cardUid: card.uid,
+        cardId: card.defId,
+        decisionMs: Math.max(0, performance.now() - this.decisionStartedAt),
+      });
       this.flash = card.disabledReason;
       audio.uiCancel();
       this.windowsDirty = true;
@@ -312,6 +356,11 @@ export class CardTrialController {
     this.targetIds = view.enemies.filter((e) => !e.dead).map((e) => e.id);
     this.targetCursor = Math.max(0, this.targetIds.findIndex((id) => id === view.openedEnemyId));
     this.phase = "target";
+    this.playtest?.recordInteraction("arm", this.trial, {
+      cardUid: card.uid,
+      cardId: card.defId,
+      targetId: this.targetIds[this.targetCursor],
+    });
     this.windowsDirty = true;
   }
 
@@ -323,6 +372,9 @@ export class CardTrialController {
       return;
     }
     const openedBefore = this.trial.opened?.enemyId ?? null;
+    const card = playerView(this.trial).hand.find((candidate) => candidate.uid === this.pendingUid);
+    const stateBefore = cardTrialStateFingerprint(this.trial);
+    const context = cardTrialActionContext(this.trial);
     const result = playCard(this.trial, this.pendingUid, { targetId: id });
     if (result.needsSecondTarget) {
       this.pendingTarget = id;
@@ -334,12 +386,46 @@ export class CardTrialController {
       this.windowsDirty = true;
       return;
     }
+    if (result.ok && card) {
+      this.beginRecordedAction({
+        kind: "card",
+        stateBefore,
+        decisionMs: this.recordDecision(),
+        heroId: stateBefore.actingHero ?? "rat-king",
+        cardUid: card.uid,
+        cardId: card.defId,
+        targetId: id,
+        rowBefore: context.heroRowBefore,
+        rowAfter: this.trial.heroes[stateBefore.actingHero ?? "rat-king"].row,
+        context,
+      });
+    }
     this.afterPlay(result.ok, result.reason, result.events, openedBefore);
   }
 
   private resolvePlay(uid: string, targets: { targetId?: string; secondTargetId?: string }): void {
+    const view = playerView(this.trial);
+    const card = view.hand.find((candidate) => candidate.uid === uid);
+    if (!card) return;
+    const stateBefore = cardTrialStateFingerprint(this.trial);
+    const context = cardTrialActionContext(this.trial);
     const openedBefore = this.trial.opened?.enemyId ?? null;
     const result = playCard(this.trial, uid, targets);
+    if (result.ok) {
+      this.beginRecordedAction({
+        kind: "card",
+        stateBefore,
+        decisionMs: this.recordDecision(),
+        heroId: stateBefore.actingHero ?? "rat-king",
+        cardUid: card.uid,
+        cardId: card.defId,
+        targetId: targets.targetId,
+        secondTargetId: targets.secondTargetId,
+        rowBefore: context.heroRowBefore,
+        rowAfter: this.trial.heroes[stateBefore.actingHero ?? "rat-king"].row,
+        context,
+      });
+    }
     this.afterPlay(result.ok, result.reason, result.events, openedBefore);
   }
 
@@ -358,7 +444,6 @@ export class CardTrialController {
       this.windowsDirty = true;
       return;
     }
-    this.recordDecision();
     audio.uiConfirm();
     this.queueAutoEnd();
     const card = events.find((event) => event.type === "banner");
@@ -374,8 +459,18 @@ export class CardTrialController {
       this.windowsDirty = true;
       return;
     }
-    this.recordDecision();
+    const stateBefore = cardTrialStateFingerprint(this.trial);
+    const context = cardTrialActionContext(this.trial);
     const result = paidMove(this.trial);
+    this.beginRecordedAction({
+      kind: "move",
+      stateBefore,
+      decisionMs: this.recordDecision(),
+      heroId: stateBefore.actingHero ?? "rat-king",
+      rowBefore: context.heroRowBefore,
+      rowAfter: this.trial.heroes[stateBefore.actingHero ?? "rat-king"].row,
+      context,
+    });
     audio.uiConfirm();
     this.queueAutoEnd();
     this.playbackLabel = "MOVE";
@@ -383,7 +478,17 @@ export class CardTrialController {
   }
 
   private tryPass(): void {
-    this.recordDecision();
+    const stateBefore = cardTrialStateFingerprint(this.trial);
+    const context = cardTrialActionContext(this.trial);
+    this.beginRecordedAction({
+      kind: "pass",
+      stateBefore,
+      decisionMs: this.recordDecision(),
+      heroId: stateBefore.actingHero ?? "rat-king",
+      rowBefore: context.heroRowBefore,
+      rowAfter: context.heroRowBefore,
+      context,
+    });
     audio.uiConfirm();
     const events = endHeroTurn(this.trial);
     this.playbackLabel = "PASS";
@@ -426,6 +531,7 @@ export class CardTrialController {
     this.stage.setPlaybackRate(1);
     this.playbackLabel = null;
     if (this.trial.result) {
+      this.playtest?.finishAction(this.trial);
       this.phase = "result";
       this.windowsDirty = true;
       return;
@@ -436,16 +542,39 @@ export class CardTrialController {
       this.playEvents(events);
       return;
     }
+    this.playtest?.finishAction(this.trial);
     this.phase = "hand";
     this.cursor = 0;
     this.decisionStartedAt = performance.now();
     this.windowsDirty = true;
   }
 
-  private recordDecision(): void {
-    this.trial.telemetry.presentation.decisionMs.push(
-      Math.max(0, performance.now() - this.decisionStartedAt)
-    );
+  private recordDecision(): number {
+    const duration = Math.max(0, performance.now() - this.decisionStartedAt);
+    this.trial.telemetry.presentation.decisionMs.push(duration);
+    return duration;
+  }
+
+  private beginRecordedAction(action: Parameters<CardTrialPlaytestRecorder["beginAction"]>[0]): void {
+    this.playtest?.beginAction(action);
+  }
+
+  private cardIdForUid(uid: string): CardId | undefined {
+    return playerView(this.trial).hand.find((card) => card.uid === uid)?.defId;
+  }
+
+  private recordFocusInteraction(): void {
+    const card = playerView(this.trial).hand[this.cursor];
+    if (!card) return;
+    this.playtest?.recordInteraction("focus", this.trial, {
+      cardUid: card.uid,
+      cardId: card.defId,
+    });
+  }
+
+  private recordTargetChangeInteraction(): void {
+    const targetId = this.targetIds[this.targetCursor];
+    this.playtest?.recordInteraction("target-change", this.trial, { targetId });
   }
 
   private finish(): void {
@@ -493,6 +622,7 @@ export class CardTrialController {
 
   private renderWindows(): void {
     const view = playerView(this.trial);
+    this.playtest?.observe(this.trial, this.phase, this.cursor, view.hand);
     const result =
       this.phase === "result" && this.trial.result
         ? {

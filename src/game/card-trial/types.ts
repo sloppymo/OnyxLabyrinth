@@ -290,6 +290,8 @@ export interface CardTrialTelemetry {
 export interface CardTrialState {
   fightId: number;
   fightName: string;
+  /** Seed used to build this fight's deterministic deck streams. */
+  seed: number;
   round: number;
   heroes: Record<HeroId, HeroState>;
   enemies: EnemyState[];

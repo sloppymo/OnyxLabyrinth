@@ -12,6 +12,7 @@ import path from "path";
 import { launch, wait, press, snap, waitForIdle, shot, ensureOutDir } from "./lib.mjs";
 
 const BASE = process.env.ONYX_URL ?? "http://127.0.0.1:5193/OnyxLabyrinth/?debug=1";
+const MAX_FIGHT = Number(process.env.CARD_TRIAL_MAX_FIGHT ?? 10);
 const OUT = ensureOutDir("playtest-screenshots/card-trial-reference-agent-run");
 const LOG = [];
 const log = (...a) => {
@@ -422,7 +423,7 @@ try {
   await press(page, "ArrowDown", 5, 70);
   await press(page, "Enter");
   await waitForIdle(page, 5000);
-  await press(page, "ArrowDown", 10, 70);
+  if (MAX_FIGHT > 1) await press(page, "ArrowDown", 10, 70);
   await press(page, "Enter");
   await waitHandOrResult(page, 20000);
 
@@ -469,6 +470,7 @@ try {
       await press(page, "Enter");
       await waitForIdle(page, 18000);
       await wait(400);
+      if (fightId >= MAX_FIGHT) break;
       continue;
     }
 
@@ -544,6 +546,12 @@ try {
 
   const summary = await summaryOf(page);
   const telemetry = await telemetryOf(page);
+  const playtestSession = await page.evaluate(() => window.__onyxDebug.cardTrial.session());
+  fs.mkdirSync("output/playtest-artifacts/sessions", { recursive: true });
+  fs.writeFileSync(
+    path.join("output/playtest-artifacts/sessions", "card-trial-reference-session.json"),
+    JSON.stringify(playtestSession, null, 2)
+  );
   fs.writeFileSync(path.join(OUT, "summary.txt"), summary ?? "(no summary)");
   fs.writeFileSync(path.join(OUT, "telemetry.json"), JSON.stringify(telemetry, null, 2));
   fs.writeFileSync(path.join(OUT, "decisions.log"), LOG.join("\n"));
