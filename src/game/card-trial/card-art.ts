@@ -3,36 +3,23 @@
  * Unmapped ids keep the reserved aperture and fall back to the card fill.
  */
 
+import { CARD_DEFS } from "./cards";
 import type { CardId } from "./types";
 
 export const CARD_ART_NATIVE_WIDTH = 128;
 export const CARD_ART_NATIVE_HEIGHT = 96;
 
-export const CARD_ART_IDS = [
-  "nip",
-  "king-of-the-heap",
-  "tide",
-  "swarm-the-wound",
-  "staff",
-] as const satisfies readonly CardId[];
+export const CARD_ART_IDS = Object.keys(CARD_DEFS) as CardId[];
 
 export type CardArtId = (typeof CARD_ART_IDS)[number];
 
-const CARD_ART_FILES: Record<CardArtId, string> = {
-  nip: "nip.png",
-  "king-of-the-heap": "king-of-the-heap.png",
-  tide: "tide.png",
-  "swarm-the-wound": "swarm-the-wound.png",
-  staff: "staff.png",
-};
-
 function isCardArtId(id: CardId): id is CardArtId {
-  return Object.prototype.hasOwnProperty.call(CARD_ART_FILES, id);
+  return Object.prototype.hasOwnProperty.call(CARD_DEFS, id);
 }
 
 export function cardArtRelPath(id: CardId): string | null {
   if (!isCardArtId(id)) return null;
-  return `assets/card-trial/cards/${CARD_ART_FILES[id]}`;
+  return `assets/card-trial/cards/${id}.png`;
 }
 
 export function cardArtUrl(id: CardId, base = import.meta.env.BASE_URL ?? "/"): string | null {

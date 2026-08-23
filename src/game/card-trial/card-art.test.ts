@@ -56,18 +56,11 @@ function pngSize(file: string): { width: number; height: number } {
 }
 
 describe("Card Trial art manifest", () => {
-  it("maps only the five shipped illustration fields", () => {
-    expect([...CARD_ART_IDS].sort()).toEqual(
-      ["king-of-the-heap", "nip", "staff", "swarm-the-wound", "tide"].sort()
-    );
+  it("maps every unique card id to a production illustration field", () => {
+    expect([...CARD_ART_IDS].sort()).toEqual((Object.keys(CARD_DEFS) as CardId[]).sort());
     for (const id of Object.keys(CARD_DEFS) as CardId[]) {
-      if ((CARD_ART_IDS as readonly string[]).includes(id)) {
-        expect(cardArtRelPath(id)).toBe(`assets/card-trial/cards/${id}.png`);
-        expect(cardArtUrl(id)).toBe(expectedArtUrl(id));
-      } else {
-        expect(cardArtRelPath(id), id).toBeNull();
-        expect(cardArtUrl(id), id).toBeNull();
-      }
+      expect(cardArtRelPath(id)).toBe(`assets/card-trial/cards/${id}.png`);
+      expect(cardArtUrl(id)).toBe(expectedArtUrl(id));
     }
   });
 
@@ -83,9 +76,8 @@ describe("Card Trial art manifest", () => {
     }
   });
 
-  it("does not invent art for unshipped cards", () => {
-    expect(cardArtRelPath("brace")).toBeNull();
-    expect(cardArtRelPath("ward")).toBeNull();
-    expect(cardArtUrl("stand-and-die")).toBeNull();
+  it("does not invent art for unknown ids", () => {
+    expect(cardArtRelPath("__none__" as CardId)).toBeNull();
+    expect(cardArtUrl("__none__" as CardId)).toBeNull();
   });
 });

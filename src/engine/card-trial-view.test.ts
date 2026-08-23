@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cardArtUrl } from "../game/card-trial/card-art";
 import { createAdversarialTriangle, playerView } from "../game/card-trial/engine";
-import type { HandCardView } from "../game/card-trial/types";
+import type { CardId, HandCardView } from "../game/card-trial/types";
 import { renderCardTrialWindows } from "./card-trial-view";
 
 const noop = {
@@ -94,12 +94,12 @@ describe("Card Trial windows", () => {
   it("keeps a same-size fallback aperture for cards without art", () => {
     const trial = createAdversarialTriangle();
     const view = playerView(trial);
-    const brace: HandCardView = {
-      uid: "brace#test",
-      defId: "brace",
-      name: "Brace",
+    const unmapped: HandCardView = {
+      uid: "unmapped#test",
+      defId: "__none__" as CardId,
+      name: "Unmapped",
       cost: 1,
-      text: "Gain 6 Guard.",
+      text: "Fallback aperture.",
       opens: false,
       consume: "none",
       disabled: false,
@@ -107,7 +107,7 @@ describe("Card Trial windows", () => {
       consumeArmed: false,
       consumeDimmed: false,
     };
-    view.hand[2] = brace;
+    view.hand[2] = unmapped;
     const host = document.createElement("div");
     renderCardTrialWindows(
       host,
@@ -124,7 +124,7 @@ describe("Card Trial windows", () => {
     );
     const cards = [...host.querySelectorAll(".ct-card")];
     const fallback = cards[2]?.querySelector(".ct-card-art");
-    expect(cards[2]?.querySelector(".ct-card-name")?.textContent).toBe("Brace");
+    expect(cards[2]?.querySelector(".ct-card-name")?.textContent).toBe("Unmapped");
     expect(fallback?.classList.contains("ct-card-art-fallback")).toBe(true);
     expect(cards[2]?.querySelector("img.ct-card-art-img")).toBeNull();
     expect(cards.every((c) => c.querySelector(".ct-card-art"))).toBe(true);
