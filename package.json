@@ -38,7 +38,13 @@
     "sprite-preview:serve": "python3 -m http.server 8080",
     "sprite-preview": "npm run sprite-preview:generate && echo 'Open sprite-preview.html in your browser (or run npm run sprite-preview:serve).'",
     "replay": "node scripts/replays/replay.mjs",
-    "replay:record": "node scripts/replays/record.mjs"
+    "replay:record": "node scripts/replays/record.mjs",
+    "card-trial:playtest": "node scripts/playtests/card-trial-playtest-server.mjs",
+    "card-trial:summary": "node scripts/playtests/card-trial-session-summary.mjs",
+    "card-trial:aggregate": "node scripts/playtests/card-trial-aggregate.mjs",
+    "card-trial:bundle": "node scripts/playtests/card-trial-bundle.mjs",
+    "card-trial:replay": "node scripts/playtests/card-trial-replay.mjs",
+    "card-trial:fuzz": "node scripts/playtests/card-trial-fuzz.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
