@@ -4610,6 +4610,9 @@ canvas#map-canvas {
 
 .ct-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   flex: 1 0 70px;
   min-width: 70px;
   max-width: 118px;
@@ -4645,6 +4648,29 @@ canvas#map-canvas {
   font-weight: 700;
   padding-right: 12px;
   font-size: 12px;
+}
+
+.ct-card-art {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  margin-top: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: #12162a;
+  flex: 0 0 auto;
+}
+
+.ct-card-art-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+.ct-card-art-fallback {
+  background: linear-gradient(180deg, #2a3c88 0%, #15204f 100%);
 }
 
 .ct-card-text {

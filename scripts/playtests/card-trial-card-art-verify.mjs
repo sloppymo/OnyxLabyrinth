@@ -1,9 +1,10 @@
 /**
- * Isolated native-scale review fixture for the first five Card Trial art fields.
+ * Isolated native-scale review fixture for Card Trial illustration fields.
  *
- * The fixture does not alter Card Trial's hand implementation. Its 132×184
- * cards and five-card fan copy the closest-current Gate A geometry solely for
- * visual validation. Expects a built production preview, for example:
+ * The five-card fan copies the closest-current Gate A geometry solely for
+ * visual validation and does not alter Card Trial's live hand implementation.
+ * A separate 1× family grid covers every unique production PNG. Expects a
+ * built production preview, for example:
  *
  *   npm run build
  *   npx vite preview --host 127.0.0.1 --port 5208 --strictPort --base /OnyxLabyrinth/
@@ -40,6 +41,21 @@ const cards = [
   src: new URL(`assets/card-trial/cards/${card.id}.png`, ROOT).href,
 }));
 
+const ART_DIR = path.resolve("public/assets/card-trial/cards");
+const family = fs
+  .readdirSync(ART_DIR)
+  .filter((name) => name.endsWith(".png"))
+  .map((name) => name.slice(0, -4))
+  .sort()
+  .map((id) => ({
+    id,
+    name: id,
+    src: new URL(`assets/card-trial/cards/${id}.png`, ROOT).href,
+  }));
+if (family.length !== 22) {
+  throw new Error(`Expected 22 unique card art files, got ${family.length}`);
+}
+
 function cardMarkup(card, index, className = "") {
   return `<article class="card ${className}" data-card-id="${card.id}" data-index="${index}">
     <img class="art" src="${card.src}" alt="${card.name} illustration">
@@ -73,7 +89,7 @@ const fanCards = cards
   .join("");
 
 const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 1280, height: 1240 }, deviceScaleFactor: 1 });
+const page = await browser.newPage({ viewport: { width: 1280, height: 1800 }, deviceScaleFactor: 1 });
 const errors = [];
 page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
 page.on("console", (message) => {
@@ -88,7 +104,7 @@ try {
   <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>Card Trial five-card art validation</title>
+    <title>Card Trial card art validation</title>
     <style>
       * { box-sizing: border-box; }
       html, body { margin: 0; background: #090b12; color: #eee8d5; font-family: monospace; }
@@ -99,6 +115,7 @@ try {
       p { color: #aeb4c5; font-size: 12px; }
       .panel { width: max-content; max-width: 100%; padding: 14px; border: 1px solid #34394a; background: #111521; }
       .native-fields { display: flex; gap: 8px; }
+      .family-fields { display: flex; flex-wrap: wrap; gap: 8px; width: 720px; }
       .native-field { width: 128px; }
       .native-field img { display: block; width: 128px; height: 96px; image-rendering: pixelated; }
       .native-field span { display: block; margin-top: 5px; font-size: 10px; color: #c8cad3; }
@@ -127,11 +144,15 @@ try {
     </style>
   </head>
   <body>
-    <h1>Card Trial — five-card illustration validation</h1>
+    <h1>Card Trial — illustration validation</h1>
     <p>128×96 native art; 132×184 cards; browser scale and device pixel ratio both 1.</p>
-    <h2>Native art fields at 1×</h2>
+    <h2>Native art fields at 1× — original five</h2>
     <section class="panel native-fields">
       ${cards.map((card) => `<div class="native-field"><img src="${card.src}" alt="${card.name}"><span>${card.name}</span></div>`).join("")}
+    </section>
+    <h2>Full unique deck at 1×</h2>
+    <section class="panel family-fields">
+      ${family.map((card) => `<div class="native-field family-field"><img src="${card.src}" alt="${card.name}"><span>${card.name}</span></div>`).join("")}
     </section>
     <h2>Full cards at gameplay dimensions</h2>
     <section class="panel flat-cards">${flatCards}</section>
@@ -141,7 +162,14 @@ try {
   </html>`, { waitUntil: "load" });
 
   await page.waitForFunction(() => [...document.images].every((image) => image.complete));
-  const imageFacts = await page.evaluate(() => [...document.querySelectorAll(".native-field img")].map((image) => ({
+  const imageFacts = await page.evaluate(() => [...document.querySelectorAll(".native-fields img")].map((image) => ({
+    alt: image.alt,
+    naturalWidth: image.naturalWidth,
+    naturalHeight: image.naturalHeight,
+    renderedWidth: image.getBoundingClientRect().width,
+    renderedHeight: image.getBoundingClientRect().height,
+  })));
+  const familyFacts = await page.evaluate(() => [...document.querySelectorAll(".family-field img")].map((image) => ({
     alt: image.alt,
     naturalWidth: image.naturalWidth,
     naturalHeight: image.naturalHeight,
@@ -149,7 +177,8 @@ try {
     renderedHeight: image.getBoundingClientRect().height,
   })));
   if (imageFacts.length !== 5) throw new Error(`Expected five native fields, got ${imageFacts.length}`);
-  for (const fact of imageFacts) {
+  if (familyFacts.length !== 22) throw new Error(`Expected 22 family fields, got ${familyFacts.length}`);
+  for (const fact of [...imageFacts, ...familyFacts]) {
     if (fact.naturalWidth !== 128 || fact.naturalHeight !== 96) {
       throw new Error(`${fact.alt}: expected 128×96 source, got ${fact.naturalWidth}×${fact.naturalHeight}`);
     }
@@ -160,12 +189,14 @@ try {
 
   await page.screenshot({ path: path.join(OUT, "five-card-review.png"), fullPage: true });
   await page.locator(".native-fields").screenshot({ path: path.join(OUT, "native-fields-1x.png") });
+  await page.locator(".family-fields").screenshot({ path: path.join(OUT, "family-fields-1x.png") });
   await page.locator(".flat-cards").screenshot({ path: path.join(OUT, "cards-132x184.png") });
   await page.locator(".game-stage").screenshot({ path: path.join(OUT, "five-card-hand.png") });
   fs.writeFileSync(path.join(OUT, "report.json"), JSON.stringify({
     capturedAt: new Date().toISOString(),
     baseUrl: ROOT,
     imageFacts,
+    familyFacts,
     cardDimensions: { width: 132, height: 184 },
     designStage: { width: 768, height: 672 },
     errors,

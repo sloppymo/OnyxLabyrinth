@@ -12,3 +12,6 @@
 The cleaned production King of the Heap PNG is the rendering-density/style
 master for this batch. Keep new illustrations native and chunky; do not create
 large paintings and downsample them.
+
+All 22 unique CardIds now have a master and a runtime PNG. Import new PixelLab
+candidates with `aseprite -b pick.png --script scripts/art/aseprite-card-trial-finish.lua`.

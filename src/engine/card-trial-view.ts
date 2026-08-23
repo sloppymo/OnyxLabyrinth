@@ -3,6 +3,7 @@
  * empty during playback so existing sprite choreography can play.
  */
 
+import { cardArtUrl } from "../game/card-trial/card-art";
 import type { CardTrialPlayerView, HandCardView } from "../game/card-trial/types";
 
 export interface CardTrialViewHandlers {
@@ -60,9 +61,14 @@ function cardHtml(card: HandCardView, selected: boolean): string {
   const why = card.disabled && card.disabledReason
     ? `<div class="ct-why">${esc(card.disabledReason)}</div>`
     : "";
+  const artUrl = cardArtUrl(card.defId);
+  const art = artUrl
+    ? `<div class="ct-card-art"><img class="ct-card-art-img" src="${esc(artUrl)}" alt="" draggable="false"></div>`
+    : `<div class="ct-card-art ct-card-art-fallback" aria-hidden="true"></div>`;
   return `<button type="button" class="${cls}" data-uid="${esc(card.uid)}" ${card.disabled ? "disabled" : ""}>
     <div class="ct-card-cost">${card.cost}</div>
     <div class="ct-card-name">${openMark}${esc(card.name)}</div>
+    ${art}
     <div class="ct-card-text">${esc(card.text)}</div>
     ${consume}${why}
   </button>`;
