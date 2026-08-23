@@ -12,7 +12,9 @@ import {
   playerView,
 } from "../game/card-trial/engine";
 import type { CombatStage } from "./combat-stage";
-import { combatWindows } from "./shell";
+import { combatCardTrialOverlay, combatWindows, setCardTrialSparseChrome } from "./shell";
+import { isSparseCardTrialUi } from "./card-trial-hand";
+import { CardTrialSparseUi } from "./card-trial-sparse";
 import type { CombatDebugView } from "../debug/snapshot";
 import type { ControllerInputEvent } from "./controller-input";
 import { controllerEventToMenuKey } from "./menu-controller-adapter";
@@ -50,11 +52,17 @@ export class CardTrialController {
   private rafId: number | null = null;
   private windowsDirty = true;
   private stopped = false;
+  private detailsHeld = false;
+  private sparse: CardTrialSparseUi | null = null;
 
   constructor(trial: CardTrialState, opts: CardTrialControllerOptions) {
     this.trial = trial;
     this.stage = opts.stage;
     this.onEnd = opts.onEnd;
+    if (isSparseCardTrialUi()) {
+      setCardTrialSparseChrome(true);
+      this.sparse = new CardTrialSparseUi(combatCardTrialOverlay);
+    }
     this.syncStage();
     this.startRenderLoop();
   }
@@ -81,6 +89,9 @@ export class CardTrialController {
       this.rafId = null;
     }
     combatWindows.innerHTML = "";
+    this.sparse?.destroy();
+    this.sparse = null;
+    setCardTrialSparseChrome(false);
   }
 
   destroy(): void {
@@ -102,7 +113,13 @@ export class CardTrialController {
               entries: v.hand.map((c) => c.name),
               index: this.cursor,
             }
-          : null,
+          : this.phase === "target" || this.phase === "target2"
+            ? {
+                title: this.phase === "target2" ? "Second enemy" : "Target",
+                entries: this.targetIds,
+                index: this.targetCursor,
+              }
+            : null,
       round: this.trial.round,
       enemies: v.enemies.map((e) => ({
         id: e.id,
@@ -150,6 +167,13 @@ export class CardTrialController {
       return;
     }
     const lower = key.toLowerCase();
+    if (lower === "i") {
+      if (!this.detailsHeld) {
+        this.detailsHeld = true;
+        this.windowsDirty = true;
+      }
+      return;
+    }
     if (this.phase === "hand") {
       const utilCount = 2;
       const n = playerView(this.trial).hand.length + utilCount;
@@ -214,6 +238,10 @@ export class CardTrialController {
     if (key === "Shift") {
       this.stage.setPlaybackRate(1);
       this.stage.setCues({ fast: false, auto: false });
+    }
+    if (key.toLowerCase() === "i" && this.detailsHeld) {
+      this.detailsHeld = false;
+      this.windowsDirty = true;
     }
   }
 
@@ -416,6 +444,7 @@ export class CardTrialController {
     if (this.phase === "playback" && this.stage.isPlaybackDone(now)) {
       this.afterPlayback();
     }
+    this.sparse?.update(now);
     if (this.windowsDirty) {
       this.syncCursor();
       this.renderWindows();
@@ -436,18 +465,22 @@ export class CardTrialController {
             ],
           }
         : null;
-    renderCardTrialWindows(
-      combatWindows,
-      {
-        view,
-        phase: this.phase,
-        cursor: this.cursor,
-        targetIds: this.targetIds,
-        targetCursor: this.targetCursor,
-        flash: this.flash,
-        result,
-      },
-      this.handlers()
-    );
+    const input = {
+      view,
+      phase: this.phase,
+      cursor: this.cursor,
+      targetIds: this.targetIds,
+      targetCursor: this.targetCursor,
+      flash: this.flash,
+      result,
+      detailsHeld: this.detailsHeld,
+      hideLegacyPanes: !!this.sparse,
+    };
+    if (this.sparse) {
+      combatWindows.innerHTML = "";
+      this.sparse.sync(input, this.handlers());
+      return;
+    }
+    renderCardTrialWindows(combatWindows, input, this.handlers());
   }
 }

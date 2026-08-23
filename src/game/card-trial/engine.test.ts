@@ -432,3 +432,15 @@ describe("isolation", () => {
     expect(ENCOUNTERS.find((e) => e.id === 2)!.enemies.map((x) => x.maxHp)).toEqual([40, 22]);
   });
 });
+
+describe("playerView presentation fields", () => {
+  it("exposes enemy visual rows and the initiative queue without changing combat math", () => {
+    const s = createAdversarialTriangle();
+    const view = playerView(s);
+    expect(view.enemies.map((e) => e.id)).toEqual(s.enemies.map((e) => e.id));
+    expect(view.enemies.every((e) => e.visualRow === "front" || e.visualRow === "back")).toBe(true);
+    expect(view.queue[0]).toMatchObject({ id: "rat-king", kind: "hero", acting: true });
+    expect(view.queue.some((q) => q.id === "old-man" && q.kind === "hero")).toBe(true);
+    expect(view.queue.some((q) => q.kind === "enemy")).toBe(true);
+  });
+});

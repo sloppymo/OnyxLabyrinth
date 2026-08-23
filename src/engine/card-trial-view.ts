@@ -25,6 +25,10 @@ export interface CardTrialWindowsInput {
   targetCursor: number;
   flash: string | null;
   result: { title: string; lines: string[] } | null;
+  /** Hold-to-inspect intents. Presentation only. */
+  detailsHeld?: boolean;
+  /** Sparse battlefield UI: skip the legacy FF6 hand/intents/party panes. */
+  hideLegacyPanes?: boolean;
 }
 
 function esc(text: string): string {
@@ -95,6 +99,10 @@ export function renderCardTrialWindows(
   input: CardTrialWindowsInput,
   handlers: CardTrialViewHandlers
 ): void {
+  if (input.hideLegacyPanes) {
+    host.innerHTML = "";
+    return;
+  }
   const { view, phase, cursor, flash, result } = input;
   if (result) {
     host.innerHTML = `<div class="ff6-windows ct-windows">

@@ -347,9 +347,17 @@ function decide(view) {
 
 async function selectTargetByKey(page, enemyId) {
   for (let i = 0; i < 10; i++) {
-    const selected = await page.evaluate(() =>
-      document.querySelector(".ct-target.selected")?.getAttribute("data-eid")
-    );
+    const selected = await page.evaluate(() => {
+      const snap = window.__onyxDebug.snapshot();
+      const sel = snap.combat?.selection;
+      if (sel && (sel.title === "Target" || sel.title === "Second enemy")) {
+        return sel.entries?.[sel.index] ?? null;
+      }
+      const chip = document.querySelector(".ct-actor-chip.enemy.targeted");
+      const fromChip = chip?.getAttribute("data-actor")?.replace(/^enemy:/, "") ?? null;
+      const legacy = document.querySelector(".ct-target.selected")?.getAttribute("data-eid") ?? null;
+      return fromChip ?? legacy;
+    });
     if (!enemyId || selected === enemyId) break;
     await page.keyboard.press("ArrowDown");
     await wait(40);

@@ -69,6 +69,7 @@ app.innerHTML = `
       <div id="combat-popup-anchor"></div>
       <div id="combat-turn-order"></div>
       <div id="combat-windows"></div>
+      <div id="card-trial-overlay"></div>
     </div>
   </div>
 `;
@@ -115,6 +116,20 @@ export const combatPopupAnchor = document.querySelector<HTMLDivElement>(
 export const combatTurnOrder = document.querySelector<HTMLDivElement>(
   "#combat-turn-order"
 )!;
+/**
+ * Full-canvas sibling of `#combat-windows` for Card Trial's sparse HUD and
+ * physical hand. Containing block is the 768×672 combat wrap, not the footer
+ * band. Empty when Card Trial is not live.
+ */
+export const combatCardTrialOverlay = document.querySelector<HTMLDivElement>(
+  "#card-trial-overlay"
+)!;
+
+export function setCardTrialSparseChrome(on: boolean): void {
+  combatWrap.classList.toggle("ct-sparse-active", on);
+  if (!on) combatCardTrialOverlay.replaceChildren();
+}
+
 export const combatCanvas = document.querySelector<HTMLCanvasElement>("#combat-canvas")!;
 export const combatCtx = combatCanvas.getContext("2d")!;
 /** Sibling stage canvas for Phaser — never reuse #combat-canvas (sticky 2d context). */

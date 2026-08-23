@@ -1012,7 +1012,30 @@ export function playerView(s: CardTrialState): CardTrialPlayerView {
       maxHp: e.maxHp,
       opened: s.opened?.enemyId === e.id,
       dead: e.hp <= 0,
+      visualRow: e.visualRow,
     })),
+    queue: s.queue.map((q, i) => {
+      if (q.kind === "hero") {
+        const h = s.heroes[q.id as typeof RAT_KING | typeof OLD_MAN];
+        return {
+          id: h.id,
+          kind: "hero" as const,
+          name: h.name,
+          acting: i === s.queueIndex,
+          done: i < s.queueIndex,
+          dead: h.hp <= 0,
+        };
+      }
+      const e = s.enemies.find((en) => en.id === q.id);
+      return {
+        id: q.id,
+        kind: "enemy" as const,
+        name: e?.name ?? q.id,
+        acting: i === s.queueIndex,
+        done: i < s.queueIndex,
+        dead: !e || e.hp <= 0,
+      };
+    }),
     openedEnemyId: s.opened?.enemyId ?? null,
     ratRow: s.rat?.row ?? null,
     intents: intentPreviews(s),

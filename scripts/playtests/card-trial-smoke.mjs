@@ -74,11 +74,28 @@ try {
   check("Ash Opened", view?.openedEnemyId === "ash", `got ${view?.openedEnemyId}`);
   check("Rat Front", view?.ratRow === "front");
   check("campaign party still 4 in fight", s.party.length === 4);
-  const windows = await page.evaluate(() => document.querySelector("#combat-windows")?.innerText ?? "");
-  check("intent rail shows Cleaver Front 11", /CLEAVER/.test(windows) && /Front/.test(windows));
-  check("Consume clause visible", /\bConsume\b/.test(windows));
-  check("fifth card Swarm visible", /Swarm the Wound/.test(windows));
-  check("Move utility visible", /Move 1/.test(windows));
+  const ui = await page.evaluate(() => {
+    const overlay = document.querySelector("#card-trial-overlay");
+    const windows = document.querySelector("#combat-windows");
+    return {
+      overlay: overlay?.innerText ?? "",
+      windows: windows?.innerText ?? "",
+      cards: overlay?.querySelectorAll(".ct2-card").length ?? 0,
+      intentsPane: !!document.querySelector(".ct-intents"),
+      handPane: !!document.querySelector(".ct-hand"),
+      partyPane: !!document.querySelector(".ct-party"),
+      move: document.querySelector("[data-act=move]")?.textContent ?? "",
+    };
+  });
+  check("legacy intents pane gone", !ui.intentsPane);
+  check("legacy hand pane gone", !ui.handPane);
+  check("legacy party pane gone", !ui.partyPane);
+  check("five physical cards", ui.cards === 5, `got ${ui.cards}`);
+  check("Consume clause visible on a card", /\bConsume\b/.test(ui.overlay));
+  check("fifth card Swarm visible", /Swarm the Wound/.test(ui.overlay));
+  check("Move utility visible", /MOVE/.test(ui.move));
+  check("energy meter visible", /◆\s*3\/3/.test(ui.overlay));
+  check("actor-local ATK visible", /ATK/.test(ui.overlay));
   await shot(page, OUT, "03-triangle-hand.png");
 
   log("=== Line B stay (Heap + Nip Cleaver) via UI ===");

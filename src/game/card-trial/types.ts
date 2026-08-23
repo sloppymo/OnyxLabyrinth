@@ -195,6 +195,16 @@ export interface CardTrialPlayerView {
     maxHp: number;
     opened: boolean;
     dead: boolean;
+    visualRow: EnemyVisualRow;
+  }>;
+  /** Presentation-only initiative rail. Combat math still uses `queue` on state. */
+  queue: Array<{
+    id: string;
+    kind: ActorKind;
+    name: string;
+    acting: boolean;
+    done: boolean;
+    dead: boolean;
   }>;
   openedEnemyId: string | null;
   ratRow: PlayerRow | null;

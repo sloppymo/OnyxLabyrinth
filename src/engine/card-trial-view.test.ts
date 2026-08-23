@@ -71,4 +71,27 @@ describe("Card Trial windows", () => {
     expect(host.querySelectorAll(".ct-card.disabled").length).toBeGreaterThan(0);
     expect(host.innerHTML).toContain("Not enough energy");
   });
+
+  it("suppresses every legacy pane when hideLegacyPanes is set", () => {
+    const trial = createAdversarialTriangle();
+    const host = document.createElement("div");
+    renderCardTrialWindows(
+      host,
+      {
+        view: playerView(trial),
+        phase: "hand",
+        cursor: 0,
+        targetIds: [],
+        targetCursor: 0,
+        flash: null,
+        result: null,
+        hideLegacyPanes: true,
+      },
+      noop
+    );
+    expect(host.innerHTML).toBe("");
+    expect(host.querySelector(".ct-windows")).toBeNull();
+    expect(host.querySelector(".ct-intents")).toBeNull();
+    expect(host.querySelector(".ct-hand")).toBeNull();
+  });
 });
