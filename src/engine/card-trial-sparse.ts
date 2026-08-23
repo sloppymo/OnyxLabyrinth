@@ -2,7 +2,7 @@
  * Card Trial sparse presentation: one 768×672 design stage holding HUD + hand.
  */
 
-import { DESIGN_W } from "./card-trial-layout";
+import { DESIGN_H, DESIGN_W } from "./card-trial-layout";
 import { CardTrialHandPresentation } from "./card-trial-hand";
 import { CardTrialHudPresentation } from "./card-trial-hud";
 import type { CardTrialViewHandlers, CardTrialWindowsInput } from "./card-trial-view";
@@ -31,9 +31,28 @@ export class CardTrialSparseUi {
     this.applyStageScale();
   }
 
+  /**
+   * Fit the 768×672 design stage into whatever box the host currently has,
+   * uniformly on both axes, and letterbox (center) rather than crop —
+   * `.ct-design-stage` is `position:absolute; left:0; top:0` with
+   * `transform-origin: top left`, so `left`/`top` place the scale anchor and
+   * `scale()` grows/shrinks the stage from that anchor.
+   *
+   * Uses `clientWidth`/`clientHeight` (local layout size), not
+   * `getBoundingClientRect()` (final, post-transform screen size). `host`
+   * can itself sit inside an ancestor that's already CSS-`transform:scale`d
+   * (the app's own UI-scale-to-fit wrapper) — `getBoundingClientRect()`
+   * would report that ancestor scale baked in, and applying it again via
+   * this element's own `transform: scale()` double-counts it.
+   */
   private applyStageScale(): void {
-    const rect = this.host.getBoundingClientRect();
-    const scale = rect.width > 0 ? rect.width / DESIGN_W : 1;
+    const w = this.host.clientWidth;
+    const h = this.host.clientHeight;
+    const scale = w > 0 && h > 0 ? Math.min(w / DESIGN_W, h / DESIGN_H) : 1;
+    const offsetX = Math.max(0, (w - DESIGN_W * scale) / 2);
+    const offsetY = Math.max(0, (h - DESIGN_H * scale) / 2);
+    this.stage.style.left = `${offsetX}px`;
+    this.stage.style.top = `${offsetY}px`;
     this.stage.style.transform = `scale(${scale})`;
   }
 
