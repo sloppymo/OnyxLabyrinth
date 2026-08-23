@@ -1369,3 +1369,26 @@ visual-pass notes below; this section tracks the current task only.
 - Updated the same-session Card Trial exit fixture to navigate through the
   current Arena → Card Trial route. It passed with zero residue and a campaign
   party of four after exit.
+
+## 2026-08-23 — Card Trial playtest operations
+
+- Added a debug-only, versioned Card Trial session recorder with anonymous
+  session/build metadata, seeded fight setup, semantic card/Move/Pass actions,
+  interaction events, per-card exposure, context, and normalized state hashes.
+- Added browser replay through production sparse DOM controls, first-difference
+  reporting, renderer-health checks, and screenshot evidence. Added session
+  summary/aggregate scripts, a deterministic state-aware input fuzzer, a local
+  playtest build command, human observer protocol, and session-note template.
+- Fixed recorder coverage for single-target cards confirmed through the target
+  phase; direct engine state and presentation remain unchanged.
+- Added the stable-UID hand re-entry fix found by Canvas fuzzing: a card that
+  returns from discard during a reshuffle now re-enters from the deck pose
+  instead of remaining hidden in its old discard animation.
+- Verification completed against the production preview on port 5222:
+  `npm run check` passed (148 files / 2,646 tests); the frozen reference policy
+  completed 10/10 fights with no page errors; the same recorded session replayed
+  with 136 matching action hashes on Phaser and a representative 18/18 Canvas
+  fight; corrected fuzz runs passed 5 Canvas seeds × 100 steps and 3 Phaser
+  seeds × 80 steps; sparse UI, art, target cycling, Front/Back, exit lifecycle,
+  and feel-review fixtures passed with zero page errors. Generated
+  session/fuzz/replay files are ignored under `output/playtest-artifacts/`.
