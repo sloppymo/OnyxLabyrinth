@@ -1,5 +1,21 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+## 2026-08-24 — Compact combat sprite scale pass
+
+- User requested a fix for enemy strips whose 100×100 cells contain unusually
+  small opaque figures. Initial measurement found common packs at 11–24 source
+  pixels tall while the renderer draws the full cell at `ENEMY_SIZE = 300`.
+- Complete: added per-source-pack `visualScale` metadata, preserved the fixed
+  strip contract and foot anchors, applied the scale to Canvas/Phaser enemies
+  and summoned allies, and made the sprite preview show the runtime multiplier.
+- Verification: focused sprite tests (345), full Vitest (151 files / 2,674
+  tests), production build, regenerated preview, and Phaser + Canvas combat
+  smoke all pass with zero browser/page errors. `npm run check` reaches its
+  existing unrelated test-typecheck failure in
+  `src/game/card-trial/turn-model-compare.test.ts` (`rows` inferred as
+  `any[]`); this pass did not modify that file. No art files or combat rules
+  were changed by this pass.
+
 ## 2026-08-22 — Card Trial five-card art validation batch
 
 - Phase 1 is frozen at commit `28e16c0` (`feat: present Card Trial front/back spatially`). The exact staged build passed `npm run check` (141 files / 2,579 tests), the frozen ten-fight gameplay/DOM oracle, and Canvas/Phaser visual fixtures. The shared dirty worktree also passed at 143 files / 2,608 tests; its additional Gate A files remain unrelated and untouched.
@@ -1369,3 +1385,21 @@ visual-pass notes below; this section tracks the current task only.
 - Updated the same-session Card Trial exit fixture to navigate through the
   current Arena → Card Trial route. It passed with zero residue and a campaign
   party of four after exit.
+
+## 2026-08-24 — Complete compact combat-sprite scale audit
+
+- Audited every shipped enemy/summon strip across idle, attack, hurt, and
+  death frames. The remaining undersized source packs were Black Knight and
+  Ghostfire; both now use the capped `render ×1.5` compensation already used
+  by the other compact packs.
+- Propagated the scale through Canvas, Phaser, choreography actor positions,
+  paint-order inputs, summoned allies, HP-pip placement, and the generated
+  sprite preview. Formation spacing, feet, source PNGs, and combat rules stay
+  unchanged.
+- Verification: focused sprite/combat tests (345), full Vitest (151 files /
+  2,674 tests), production build, regenerated preview, and production-preview
+  Phaser + Canvas smoke all pass with zero page errors. `npm run check` still
+  stops at the pre-existing `src/game/card-trial/turn-model-compare.test.ts`
+  `rows` implicit-`any` errors; this sprite pass did not modify that file.
+  The remaining floor validation and export checks pass independently, with
+  the repository's existing Namanda warnings.

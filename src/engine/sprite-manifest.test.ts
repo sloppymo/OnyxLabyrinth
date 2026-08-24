@@ -2,7 +2,12 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ALL_ENEMIES } from "../data/enemies";
-import { ENEMY_SPRITE_DEFS, PROCEDURAL_ENEMY_SPRITE_OPT_OUTS } from "./sprite-manifest";
+import {
+  ENEMY_SPRITE_DEFS,
+  ENEMY_SPRITE_VISUAL_SCALES,
+  PROCEDURAL_ENEMY_SPRITE_OPT_OUTS,
+  visualScaleForSpriteId,
+} from "./sprite-manifest";
 import { enemySpriteId } from "./enemy-sprite-cache";
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -62,6 +67,29 @@ describe("sprite-manifest", () => {
       const foot = ENEMY_SPRITE_DEFS[id]?.idle.artFootFromTop;
       expect(foot, id).toBeDefined();
       expect(foot!, id).toBeLessThan(0.57);
+    }
+  });
+
+  it("applies compact-pack visual scales consistently across every animation state", () => {
+    expect(ENEMY_SPRITE_VISUAL_SCALES.skeleton).toBe(1.5);
+    expect(ENEMY_SPRITE_VISUAL_SCALES["black-knight"]).toBe(1.5);
+    expect(ENEMY_SPRITE_VISUAL_SCALES.ghostfire).toBe(1.5);
+    expect(ENEMY_SPRITE_VISUAL_SCALES["headmasters-echo"]).toBeUndefined();
+    expect(visualScaleForSpriteId("skeleton")).toBe(1.5);
+    expect(visualScaleForSpriteId("headmasters-echo-remnant")).toBe(1.3);
+    expect(visualScaleForSpriteId("missing-pack")).toBe(1);
+
+    for (const [enemyId, def] of Object.entries(ENEMY_SPRITE_DEFS)) {
+      const scales = new Set(
+        Object.values(def)
+          .map((strip) => strip.visualScale)
+          .filter((scale): scale is number => scale !== undefined)
+      );
+      expect(scales.size, `${enemyId} should have one pack scale`).toBeLessThanOrEqual(1);
+      for (const scale of scales) {
+        expect(scale, `${enemyId} scale`).toBeGreaterThanOrEqual(1);
+        expect(scale, `${enemyId} scale`).toBeLessThanOrEqual(1.5);
+      }
     }
   });
 

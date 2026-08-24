@@ -51,6 +51,7 @@ import {
 import { enemySpriteId, getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache";
 import { getPartySpriteStripFor, loadPartySpriteBundle, partySpriteDirFor } from "./party-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
+import { visualScaleForSpriteId } from "./sprite-manifest";
 import { screenShakeOffset } from "./combat-motion";
 import {
   ART_FOOT_FROM_TOP_FALLBACK,
@@ -1585,6 +1586,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const baseSize = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
     const stripState = enemyStripState(anim.state);
     const spriteId = enemySpriteId(enemy);
+    const visualScale = visualScaleForSpriteId(spriteId);
     const stripInfo = getEnemySpriteStrip(spriteId, stripState);
     const hasStrip = !!(stripInfo?.img && stripInfo.img.naturalWidth > 0);
     const artFoot = artFootFromTopFor({
@@ -1594,7 +1596,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const statusScale = statusDrawScale(enemy.status);
     const pos = toScreenFromResolve(
       resolveSlot(enemySlot(idxInRow, enemy.row), geometryForBackdrop(scene.backdropId), {
-        spriteHeight: baseSize * statusScale,
+        spriteHeight: baseSize * visualScale * statusScale,
         canvasWidth: w,
         artFootFromTop: artFoot,
       })
@@ -1603,7 +1605,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const x = pos.x + off.x;
     const y = pos.y + off.y;
     const footY = pos.footY + off.y;
-    const drawSize = baseSize * pos.scale * statusScale;
+    const drawSize = baseSize * visualScale * pos.scale * statusScale;
 
     const texKey = `enemy:${spriteId}:${stripState}`;
     let entry =
@@ -1689,16 +1691,20 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       }
       return;
     }
-    const pos = allyPos(index, w, h, scene.backdropId);
-    const off = animOffset(anim, now);
-    const x = pos.x + off.x;
-    const y = pos.y + off.y;
-    const footY = pos.footY + off.y;
-    const drawSize = ENEMY_SIZE * pos.scale;
     const stripState = enemyStripState(anim.state);
     const stripInfo = ally.spriteId
       ? getEnemySpriteStrip(ally.spriteId, stripState)
       : null;
+    const visualScale = ally.spriteId ? visualScaleForSpriteId(ally.spriteId) : 1;
+    const pos = allyPos(index, w, h, scene.backdropId, {
+      spriteHeight: ENEMY_SIZE * visualScale,
+      artFootFromTop: stripInfo?.strip.artFootFromTop,
+    });
+    const off = animOffset(anim, now);
+    const x = pos.x + off.x;
+    const y = pos.y + off.y;
+    const footY = pos.footY + off.y;
+    const drawSize = ENEMY_SIZE * visualScale * pos.scale;
     const hasStrip = !!(stripInfo?.img && stripInfo.img.naturalWidth > 0);
     const texKey = ally.spriteId ? `enemy:${ally.spriteId}:${stripState}` : "";
     let entry =
@@ -2282,12 +2288,20 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       const lit = enemyHpPipsLit(e);
       if (lit === null) return;
       const baseSize = e.isBoss ? BOSS_SIZE : ENEMY_SIZE;
-      const pos = enemyPos(slot, e.row, w, h, scene.backdropId, baseSize);
+      const pos = enemyPos(
+        slot,
+        e.row,
+        w,
+        h,
+        scene.backdropId,
+        baseSize,
+        visualScaleForSpriteId(enemySpriteId(e))
+      );
       const anim = getAnim(scene, "enemy", e.instanceId, now);
       const off = animOffset(anim, now);
       const footX = pos.x + off.x;
       const footY = pos.footY + off.y;
-      const spriteWidth = baseSize * pos.scale;
+      const spriteWidth = baseSize * visualScaleForSpriteId(enemySpriteId(e)) * pos.scale;
       const pipW = 6;
       const gap = 2;
       const totalW = HP_PIP_COUNT * pipW + (HP_PIP_COUNT - 1) * gap;

@@ -48,6 +48,8 @@ export interface StripCard {
   note?: string;
   /** Canvas draw box size in px; defaults client-side if omitted. */
   displaySize?: number;
+  /** Runtime whole-frame visual scale for compact enemy packs. */
+  visualScale?: number;
 }
 
 export interface StaticCard {

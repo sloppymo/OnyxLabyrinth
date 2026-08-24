@@ -104,6 +104,7 @@ function stripCard(opts: {
   info: PngInfo;
   note?: string;
   displaySize?: number;
+  visualScale?: number;
 }): StripCard {
   const { info } = opts;
   const mismatch = classifyStripMismatch({
@@ -141,6 +142,7 @@ function stripCard(opts: {
     mismatch,
     note: opts.note,
     displaySize: opts.displaySize,
+    visualScale: opts.visualScale,
   };
 }
 
@@ -179,10 +181,18 @@ const PARTY_STATE_ORDER: PartySpriteState[] = ["idle", "walk", "attack", "attack
 async function buildPartySection(server: ViteDevServer): Promise<Section> {
   const mod = await server.ssrLoadModule("/src/engine/party-sprite-cache.ts");
   const dirs: Record<string, string> = mod.PARTY_SPRITE_DIRS;
+  const extraDirs: readonly string[] = mod.EXTRA_PARTY_SPRITE_DIRS;
   const stateConfig: Record<PartySpriteState, { fps: number; loop: boolean }> = mod.PARTY_SPRITE_STATE_CONFIG;
 
   const groups: CardGroup[] = [];
-  for (const [cls, dir] of Object.entries(dirs)) {
+  const packs = [
+    ...Object.entries(dirs).map(([label, dir]) => ({ label, dir })),
+    ...extraDirs.map((dir) => ({
+      dir,
+      label: dir === "rat-king" ? "Rat King (Card Trial)" : dir === "old-man" ? "Old Man (Card Trial)" : dir,
+    })),
+  ];
+  for (const { label, dir } of packs) {
     const cards: Card[] = [];
     for (const state of PARTY_STATE_ORDER) {
       const rel = `assets/party/${dir}/${state}.png`;
@@ -193,7 +203,7 @@ async function buildPartySection(server: ViteDevServer): Promise<Section> {
       const declaredFrameCount = info.exists ? Math.max(1, Math.floor(info.width / 100)) : 1;
       cards.push(
         stripCard({
-          domId: slug("party", cls, state),
+          domId: slug("party", dir, state),
           label: state,
           src: `public/${rel}`,
           frameWidth: 100,
@@ -207,12 +217,12 @@ async function buildPartySection(server: ViteDevServer): Promise<Section> {
         })
       );
     }
-    groups.push({ id: slug("party", cls), title: cls, cards });
+    groups.push({ id: slug("party", dir), title: label, cards });
   }
   return {
     id: "party",
     title: "Party — combat classes",
-    hint: "Every state a class actually loads (cast/attack_ranged only where the class ships one). Drawn at 240×240; strips face right and are mirrored in combat.",
+    hint: "Every state a campaign class or Card Trial hero actually loads (cast/attack_ranged only where the pack ships one). Drawn at 240×240; strips face right and are mirrored in combat.",
     groups,
   };
 }
@@ -221,7 +231,7 @@ async function buildPartySection(server: ViteDevServer): Promise<Section> {
 
 async function buildEnemySection(server: ViteDevServer): Promise<Section> {
   const mod = await server.ssrLoadModule("/src/engine/sprite-manifest.ts");
-  const defs: Record<string, Record<string, { url: string; frameWidth: number; frameHeight: number; frameCount: number; fps: number; loop: boolean }>> =
+  const defs: Record<string, Record<string, { url: string; frameWidth: number; frameHeight: number; frameCount: number; fps: number; loop: boolean; visualScale?: number }>> =
     mod.ENEMY_SPRITE_DEFS;
 
   const groups: CardGroup[] = [];
@@ -254,6 +264,7 @@ async function buildEnemySection(server: ViteDevServer): Promise<Section> {
           layout: "single-row",
           info,
           displaySize: 240,
+          visualScale: strip.visualScale,
         })
       );
     }
@@ -519,7 +530,7 @@ ${section.groups.map(renderGroup).join("")}`;
 
 function renderGroup(group: CardGroup): string {
   return `
-<div class="group">
+<div class="group" id="${escapeHtml(group.id)}">
 ${group.title ? `<h2>${escapeHtml(group.title)}</h2>` : ""}
 ${group.note ? `<div class="group-note">${escapeHtml(group.note)}</div>` : ""}
 <div class="states">
@@ -539,7 +550,7 @@ function renderCard(card: Card): string {
   const dims = card.exists ? `${card.width}x${card.height}` : "missing";
   const extra =
     card.kind === "strip"
-      ? `${card.playbackFrameCount} frame${card.playbackFrameCount === 1 ? "" : "s"} · ${card.fps}fps${card.loop ? " · loops" : ""}`
+      ? `${card.playbackFrameCount} frame${card.playbackFrameCount === 1 ? "" : "s"} · ${card.fps}fps${card.loop ? " · loops" : ""}${card.visualScale && card.visualScale !== 1 ? ` · render ×${card.visualScale}` : ""}`
       : "";
   const msg =
     card.kind === "strip" && card.mismatch.message
@@ -619,7 +630,7 @@ const CLIENT_SCRIPT = `
       const col = a.frame % a.card.cols;
       const row = Math.floor(a.frame / a.card.cols);
       const cw = a.canvas.width, ch = a.canvas.height;
-      const scale = Math.min(cw / a.card.frameWidth, ch / a.card.frameHeight, 8);
+      const scale = Math.min(cw / a.card.frameWidth, ch / a.card.frameHeight, 8) * (a.card.visualScale || 1);
       const dw = a.card.frameWidth * scale, dh = a.card.frameHeight * scale;
       a.ctx.clearRect(0, 0, cw, ch);
       a.ctx.drawImage(

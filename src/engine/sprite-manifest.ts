@@ -42,8 +42,15 @@ export interface SpriteStrip {
    * Optional head-top inset (0–1 from top of frame). Defaults to pack norm
    * 0.38 in the marker/cursor anchor; set when art heads aren't at the pack
    * locus (tall knights, floaters, squat blobs).
-   */
+  */
   artTopFromTop?: number;
+  /**
+   * Optional whole-frame draw multiplier for compact source art. The 100×100
+   * strip contract stays unchanged; renderers enlarge the transparent frame
+   * around the existing foot anchor so undersized packs read beside their
+   * neighbors without changing formation spacing.
+   */
+  visualScale?: number;
 }
 
 export interface EnemySpriteDef {
@@ -65,6 +72,7 @@ function strip(
   loop = false,
   artFootFromTop?: number
 ): SpriteStrip {
+  const visualScale = ENEMY_SPRITE_VISUAL_SCALES[enemyId];
   return {
     url: `${ASSET_BASE}assets/enemies/${enemyId}/${state}.png`,
     frameWidth: 100,
@@ -73,7 +81,57 @@ function strip(
     fps,
     loop,
     ...(artFootFromTop !== undefined ? { artFootFromTop } : {}),
+    ...(visualScale !== undefined ? { visualScale } : {}),
   };
+}
+
+/**
+ * Per-source-pack compensation for art whose opaque footprint is unusually
+ * small inside its 100×100 cells. Values are deliberately capped at 1.5 and
+ * keyed by the actual asset directory, so aliases inherit the same treatment
+ * without duplicating presentation data.
+ */
+export const ENEMY_SPRITE_VISUAL_SCALES: Readonly<Record<string, number>> = {
+  "acid-puddle": 1.5,
+  "armored-skeleton": 1.4,
+  "big-titty-ogre": 1.5,
+  "black-knight": 1.5,
+  "blood-monster": 1.5,
+  "blood-wraith": 1.5,
+  demon: 1.5,
+  "demon-brawler": 1.5,
+  "demon-champion": 1.35,
+  "demoness": 1.2,
+  "demon-spawn": 1.3,
+  "elite-orc": 1.4,
+  "eyeball-monster": 1.5,
+  "failed-experiment": 1.5,
+  ghostfire: 1.5,
+  hellbat: 1.5,
+  hellhound: 1.35,
+  "ironclad-knight": 1.5,
+  "lab-assistant": 1.5,
+  "lava-slime": 1.5,
+  "lesser-construct": 1.5,
+  minotaur: 1.35,
+  orc: 1.5,
+  "red-skeleton": 1.5,
+  skeleton: 1.5,
+  "skeleton-archer": 1.5,
+  slime: 1.5,
+  "stone-guardian": 1.5,
+  succubus: 1.3,
+  "summon-eldritch-guardian": 1.5,
+  "summon-elemental": 1.5,
+  "summon-fire-elemental": 1.5,
+  "summon-slime": 1.5,
+  "training-dummy": 1.5,
+  warlock: 1.3,
+  werewolf: 1.5,
+};
+
+export function visualScaleForSpriteId(spriteId: string): number {
+  return ENEMY_SPRITE_DEFS[spriteId]?.idle.visualScale ?? ENEMY_SPRITE_VISUAL_SCALES[spriteId] ?? 1;
 }
 
 /** Apply the same foot inset to every state strip (squat / floater packs). */

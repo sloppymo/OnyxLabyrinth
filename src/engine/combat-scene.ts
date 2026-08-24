@@ -15,6 +15,7 @@ import { getEffectSprite } from "./effect-sprite-cache";
 import {
   ENEMY_SPRITE_DEFS,
   PROCEDURAL_ENEMY_SPRITE_OPT_OUTS,
+  visualScaleForSpriteId,
   type SpriteStrip,
 } from "./sprite-manifest";
 import { warnAsset } from "./asset-warn";
@@ -487,6 +488,7 @@ function drawEnemy(
   if (anim.opacity <= 0) return;
   const baseSize = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
   const spriteId = enemySpriteId(enemy);
+  const visualScale = visualScaleForSpriteId(spriteId);
   const stripInfo = getEnemySpriteStrip(spriteId, enemyStripState(anim.state));
   const hasStrip = !!(stripInfo?.img && stripInfo.img.naturalWidth > 0);
   const artFoot = artFootFromTopFor({
@@ -500,7 +502,7 @@ function drawEnemy(
   const statusScale = statusDrawScale(enemy.status);
   const slot = toScreenPos(
     resolveSlot(enemySlot(idxInRow, enemy.row), geoFor(scene.backdropId), {
-      spriteHeight: baseSize * statusScale,
+      spriteHeight: baseSize * visualScale * statusScale,
       canvasWidth: w,
       artFootFromTop: artFoot,
     })
@@ -509,7 +511,7 @@ function drawEnemy(
   const x = slot.x + off.x;
   const y = slot.y + off.y;
   const footY = slot.footY + off.y;
-  const drawSize = baseSize * slot.scale * statusScale;
+  const drawSize = baseSize * visualScale * slot.scale * statusScale;
 
   const frozen = enemy.status.includes("sleep") || enemy.status.includes("paralysis");
   const burning = (scene.state.enemyDots[enemy.instanceId]?.length ?? 0) > 0;
@@ -588,15 +590,21 @@ function drawAlly(
 ): void {
   const anim = getAnim(scene, "ally", ally.id, now);
   if (anim.opacity <= 0) return;
-  const slot = allyPos(index, w, h, scene.backdropId);
+  const stripInfo = ally.spriteId
+    ? getEnemySpriteStrip(ally.spriteId, enemyStripState(anim.state))
+    : null;
+  const visualScale = ally.spriteId ? visualScaleForSpriteId(ally.spriteId) : 1;
+  const slot = allyPos(index, w, h, scene.backdropId, {
+    spriteHeight: ENEMY_SIZE * visualScale,
+    artFootFromTop: stripInfo?.strip.artFootFromTop,
+  });
   const off = animOffset(anim, now);
   const x = slot.x + off.x;
   const y = slot.y + off.y;
   const footY = slot.footY + off.y;
-  const drawSize = ENEMY_SIZE * slot.scale;
+  const drawSize = ENEMY_SIZE * visualScale * slot.scale;
 
   if (ally.spriteId) {
-    const stripInfo = getEnemySpriteStrip(ally.spriteId, enemyStripState(anim.state));
     if (stripInfo?.img && stripInfo.img.naturalWidth > 0) {
       drawContactShadow(ctx, x, footY, drawSize * 0.45);
       const { strip, img } = stripInfo;
@@ -1208,7 +1216,15 @@ export function renderScene(
 
   s.enemies.back.forEach((e) => {
     const slot = enemySlotIndex(scene, "back", e.instanceId);
-    const pos = enemyPos(slot, "back", w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
+    const pos = enemyPos(
+      slot,
+      "back",
+      w,
+      h,
+      scene.backdropId,
+      e.isBoss ? BOSS_SIZE : ENEMY_SIZE,
+      visualScaleForSpriteId(enemySpriteId(e))
+    );
     cmds.push({
       footY: paintOrderFootY(pos.footY, scene.enemyAnims.get(e.instanceId), now),
       draw: () => drawEnemy(ctx, e, slot, scene, now, w, h),
@@ -1216,7 +1232,15 @@ export function renderScene(
   });
   s.enemies.front.forEach((e) => {
     const slot = enemySlotIndex(scene, "front", e.instanceId);
-    const pos = enemyPos(slot, "front", w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
+    const pos = enemyPos(
+      slot,
+      "front",
+      w,
+      h,
+      scene.backdropId,
+      e.isBoss ? BOSS_SIZE : ENEMY_SIZE,
+      visualScaleForSpriteId(enemySpriteId(e))
+    );
     cmds.push({
       footY: paintOrderFootY(pos.footY, scene.enemyAnims.get(e.instanceId), now),
       draw: () => drawEnemy(ctx, e, slot, scene, now, w, h),
@@ -1224,7 +1248,15 @@ export function renderScene(
   });
   scene.enemyCorpses.forEach((e) => {
     const slot = scene.enemySlots.get(e.instanceId) ?? enemySlotIndex(scene, e.row, e.instanceId);
-    const pos = enemyPos(slot, e.row, w, h, scene.backdropId, e.isBoss ? BOSS_SIZE : ENEMY_SIZE);
+    const pos = enemyPos(
+      slot,
+      e.row,
+      w,
+      h,
+      scene.backdropId,
+      e.isBoss ? BOSS_SIZE : ENEMY_SIZE,
+      visualScaleForSpriteId(enemySpriteId(e))
+    );
     cmds.push({
       footY: paintOrderFootY(pos.footY, scene.enemyAnims.get(e.instanceId), now),
       draw: () => drawEnemy(ctx, e, slot, scene, now, w, h),
@@ -1232,7 +1264,9 @@ export function renderScene(
   });
   s.summonedAllies.forEach((a) => {
     const slot = allySlotIndex(scene, a.id);
-    const pos = allyPos(slot, w, h, scene.backdropId);
+    const pos = allyPos(slot, w, h, scene.backdropId, {
+      spriteHeight: ENEMY_SIZE * (a.spriteId ? visualScaleForSpriteId(a.spriteId) : 1),
+    });
     cmds.push({
       footY: paintOrderFootY(pos.footY, scene.allyAnims.get(a.id), now),
       draw: () => drawAlly(ctx, a, slot, scene, now, w, h),
@@ -1240,7 +1274,9 @@ export function renderScene(
   });
   scene.allyCorpses.forEach((a) => {
     const idx = scene.allySlots.get(a.id) ?? allySlotIndex(scene, a.id);
-    const pos = allyPos(idx, w, h, scene.backdropId);
+    const pos = allyPos(idx, w, h, scene.backdropId, {
+      spriteHeight: ENEMY_SIZE * (a.spriteId ? visualScaleForSpriteId(a.spriteId) : 1),
+    });
     cmds.push({
       footY: paintOrderFootY(pos.footY, scene.allyAnims.get(a.id), now),
       draw: () => drawAlly(ctx, a, idx, scene, now, w, h),

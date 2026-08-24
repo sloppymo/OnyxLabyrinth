@@ -34,7 +34,7 @@ import type {
   EnemyInstance,
   SummonedAlly,
 } from "../game/combat-types";
-import { loadEnemySpriteBundle } from "./enemy-sprite-cache";
+import { enemySpriteId, loadEnemySpriteBundle } from "./enemy-sprite-cache";
 import type { PartySpriteState } from "./party-sprite-cache";
 import type { EffectSprite } from "./effect-sprite-cache";
 import { spellById } from "../data/spells";
@@ -47,6 +47,7 @@ import {
 import type { CombatBarkTrigger } from "../data/combat-bark-library/types";
 import { enemyIsUndead } from "./combat-audio";
 import { warnAsset } from "./asset-warn";
+import { ENEMY_SPRITE_DEFS, visualScaleForSpriteId } from "./sprite-manifest";
 import type { SpriteStrip } from "./sprite-manifest";
 import {
   type CombatImpactState,
@@ -223,11 +224,12 @@ export function enemyPos(
   w: number,
   _h: number,
   backdropId?: string | null,
-  baseSize: number = ENEMY_SIZE
+  baseSize: number = ENEMY_SIZE,
+  visualScale = 1
 ): ActorScreenPos {
   return toScreenPos(
     resolveSlot(enemySlot(idxInRow, row), geoFor(backdropId), {
-      spriteHeight: baseSize,
+      spriteHeight: baseSize * visualScale,
       canvasWidth: w,
       artFootFromTop: ART_FOOT_FROM_TOP,
     })
@@ -239,15 +241,28 @@ export function allyPos(
   i: number,
   w: number,
   _h: number,
-  backdropId?: string | null
+  backdropId?: string | null,
+  opts: { spriteHeight?: number; artFootFromTop?: number } = {}
 ): ActorScreenPos {
   return toScreenPos(
     resolveSlot(allySlot(i), geoFor(backdropId), {
-      spriteHeight: ENEMY_SIZE,
+      spriteHeight: opts.spriteHeight ?? ENEMY_SIZE,
       canvasWidth: w,
-      artFootFromTop: ART_FOOT_FROM_TOP,
+      artFootFromTop: opts.artFootFromTop ?? ART_FOOT_FROM_TOP,
     })
   );
+}
+
+function visualScaleForEnemy(enemy: Pick<EnemyInstance, "id" | "spriteId">): number {
+  return visualScaleForSpriteId(enemySpriteId(enemy));
+}
+
+function visualScaleForAlly(ally: Pick<SummonedAlly, "spriteId">): number {
+  return ally.spriteId ? visualScaleForSpriteId(ally.spriteId) : 1;
+}
+
+function artFootForAlly(ally: Pick<SummonedAlly, "spriteId">): number | undefined {
+  return ally.spriteId ? ENEMY_SPRITE_DEFS[ally.spriteId]?.idle.artFootFromTop : undefined;
 }
 
 
@@ -762,9 +777,10 @@ export function findActor(
     const list = s.enemies[row];
     const idx = list.findIndex((e) => e.instanceId === id);
     if (idx >= 0) {
-      const base = list[idx]!.isBoss ? BOSS_SIZE : ENEMY_SIZE;
+      const enemy = list[idx]!;
+      const base = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
       const slot = enemySlotIndex(scene, row, id);
-      const p = enemyPos(slot, row, w, h, bd, base);
+      const p = enemyPos(slot, row, w, h, bd, base, visualScaleForEnemy(enemy));
       return { kind: "enemy", ...p };
     }
   }
@@ -773,20 +789,27 @@ export function findActor(
     const e = scene.enemyCorpses[corpseIdx];
     const base = e.isBoss ? BOSS_SIZE : ENEMY_SIZE;
     const slot = scene.enemySlots.get(id) ?? enemySlotIndex(scene, e.row, id);
-    const p = enemyPos(slot, e.row, w, h, bd, base);
+    const p = enemyPos(slot, e.row, w, h, bd, base, visualScaleForEnemy(e));
     return { kind: "enemy", ...p };
   }
   const ai = s.summonedAllies.findIndex((a) => a.id === id);
   if (ai >= 0) {
     const slot = allySlotIndex(scene, id);
-    const p = allyPos(slot, w, h, bd);
+    const ally = s.summonedAllies[ai]!;
+    const p = allyPos(slot, w, h, bd, {
+      spriteHeight: ENEMY_SIZE * visualScaleForAlly(ally),
+      artFootFromTop: artFootForAlly(ally),
+    });
     return { kind: "ally", ...p };
   }
   const allyCorpseIdx = scene.allyCorpses.findIndex((a) => a.id === id);
   if (allyCorpseIdx >= 0) {
     const a = scene.allyCorpses[allyCorpseIdx]!;
     const slot = scene.allySlots.get(id) ?? allySlotIndex(scene, a.id);
-    const p = allyPos(slot, w, h, bd);
+    const p = allyPos(slot, w, h, bd, {
+      spriteHeight: ENEMY_SIZE * visualScaleForAlly(a),
+      artFootFromTop: artFootForAlly(a),
+    });
     return { kind: "ally", ...p };
   }
   return null;
@@ -4401,11 +4424,27 @@ export function playTurn(
             const size = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
             const oldPos =
               oldSlot !== undefined
-                ? enemyPos(oldSlot, "back", w, h, sc.backdropId, size)
+                ? enemyPos(
+                    oldSlot,
+                    "back",
+                    w,
+                    h,
+                    sc.backdropId,
+                    size,
+                    visualScaleForEnemy(enemy)
+                  )
                 : null;
             sc.enemySlots.delete(advanceId);
             const newSlot = enemySlotIndex(sc, "front", advanceId);
-            const newPos = enemyPos(newSlot, "front", w, h, sc.backdropId, size);
+            const newPos = enemyPos(
+              newSlot,
+              "front",
+              w,
+              h,
+              sc.backdropId,
+              size,
+              visualScaleForEnemy(enemy)
+            );
             if (!oldPos) return;
             const a = getAnim(sc, "enemy", advanceId, n);
             // Base draw pos has jumped to newPos; seed offset so the sprite
