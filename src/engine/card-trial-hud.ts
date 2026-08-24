@@ -114,7 +114,7 @@ export class CardTrialHudPresentation {
       view.moveDisabledReason ?? "Move to Front or Back"
     }</span>`;
     this.passBtn.classList.toggle("selected", showUtils && cursor === handLen + 1);
-    this.passBtn.innerHTML = `<span class="ct-pass-name">PASS</span><span class="ct-pass-sub">End this actor's turn</span>`;
+    this.passBtn.innerHTML = `<span class="ct-pass-name">${view.passLabel}</span><span class="ct-pass-sub">${view.passHint}</span>`;
     this.discardEl.innerHTML = `<span class="ct-discard-count">${view.discardCount}</span><span class="ct-discard-label">DISCARD</span>`;
     if (view.ratRow) {
       this.ratEl.classList.remove("dim");
@@ -173,7 +173,11 @@ export class CardTrialHudPresentation {
       chip.classList.toggle("acting", view.actingHero === hero.id);
       chip.classList.toggle("dead", hero.dead);
       chip.classList.remove("targeted", "targetable");
-      chip.style.pointerEvents = "none";
+      const canSwitch =
+        view.canSwitchHero && !hero.dead && hero.id !== view.actingHero && input.phase === "hand";
+      chip.classList.toggle("targetable", canSwitch);
+      chip.style.pointerEvents = canSwitch ? "auto" : "none";
+      chip.onclick = canSwitch ? () => this.handlers?.onSwitchHero?.() : null;
       const anchor = heroHudAnchor(hero.id, hero.row);
       place(chip, anchor.x, anchor.y);
       const guard = hero.guard > 0 ? `<div class="ct-chip-guard">G ${hero.guard}</div>` : "";

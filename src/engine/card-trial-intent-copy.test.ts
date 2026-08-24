@@ -49,8 +49,8 @@ describe("intent presentation copy", () => {
     expect(compactIntentTarget(base({ kind: "row", row: "front" }))).toBe("FRONT");
     expect(compactIntentTarget(base({ kind: "row", row: "back" }))).toBe("BACK");
     expect(compactIntentTarget(base({ kind: "both-rows" }))).toBe("BOTH");
-    expect(compactIntentTarget(base({ kind: "hero", heroId: "rat-king", row: "front" }))).toBe("RK");
-    expect(compactIntentTarget(base({ kind: "hero", heroId: "old-man", row: "back" }))).toBe("OM");
+    expect(compactIntentTarget(base({ kind: "hero", heroId: "rat-king", row: "front" }))).toBe("RK · FRONT");
+    expect(compactIntentTarget(base({ kind: "hero", heroId: "old-man", row: "back" }))).toBe("OM · BACK");
   });
 
   it("populates a structured target on live engine previews", () => {
@@ -58,7 +58,7 @@ describe("intent presentation copy", () => {
     const view = playerView(trial);
     for (const intent of view.intents) {
       expect(["row", "both-rows", "hero"]).toContain(intent.target.kind);
-      expect(compactIntentTarget(intent)).toMatch(/^(FRONT|BACK|BOTH|RK|OM)$/);
+      expect(compactIntentTarget(intent)).toMatch(/^(FRONT|BACK|BOTH|RK · FRONT|RK · BACK|OM · FRONT|OM · BACK)$/);
     }
   });
 });

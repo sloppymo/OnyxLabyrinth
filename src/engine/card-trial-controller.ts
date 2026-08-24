@@ -10,6 +10,7 @@ import {
   paidMove,
   playCard,
   playerView,
+  switchActingHero,
 } from "../game/card-trial/engine";
 import type { CombatStage } from "./combat-stage";
 import { combatCardTrialOverlay, combatWindows, setCardTrialSparseChrome } from "./shell";
@@ -198,6 +199,10 @@ export class CardTrialController {
         this.tryMove();
         return;
       }
+      if (lower === "tab") {
+        this.trySwitch();
+        return;
+      }
       if (key === "Escape" || lower === "b") {
         this.tryPass();
         return;
@@ -265,6 +270,7 @@ export class CardTrialController {
       },
       onMove: () => this.tryMove(),
       onPass: () => this.tryPass(),
+      onSwitchHero: () => this.trySwitch(),
       onHoverTarget: (i) => {
         this.targetCursor = i;
         this.windowsDirty = true;
@@ -380,6 +386,28 @@ export class CardTrialController {
     this.queueAutoEnd();
     this.playbackLabel = "MOVE";
     this.playEvents(result.events);
+  }
+
+  private trySwitch(): void {
+    const hero = actingHero(this.trial);
+    const view = playerView(this.trial);
+    if (!hero || !view.canSwitchHero || !view.partner) {
+      this.flash = view.partner?.finished ? "That hero already finished" : "Cannot switch";
+      audio.uiCancel();
+      this.windowsDirty = true;
+      return;
+    }
+    const result = switchActingHero(this.trial, view.partner.id);
+    if (!result.ok) {
+      this.flash = result.reason ?? "Cannot switch";
+      audio.uiCancel();
+      this.windowsDirty = true;
+      return;
+    }
+    this.cursor = 0;
+    this.phase = "hand";
+    audio.uiConfirm();
+    this.windowsDirty = true;
   }
 
   private tryPass(): void {

@@ -17,7 +17,9 @@ export function compactIntentTarget(intent: IntentPreview): string {
   const t = intent.target;
   if (t.kind === "both-rows") return "BOTH";
   if (t.kind === "row") return t.row === "front" ? "FRONT" : "BACK";
-  return t.heroId === "rat-king" ? "RK" : "OM";
+  return t.heroId === "rat-king"
+    ? `RK · ${t.row === "front" ? "FRONT" : "BACK"}`
+    : `OM · ${t.row === "front" ? "FRONT" : "BACK"}`;
 }
 
 export interface IntentHpLine {
