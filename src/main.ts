@@ -1939,7 +1939,7 @@ function openCardTrialLobby(): void {
   inArena = false;
   screens.openCardTrialLobby({
     debug: isCardTrialDebug(),
-    summary: cardTrialSummary,
+    summary: isCardTrialDebug() ? cardTrialSummary : null,
     onFight: (fightId, sequential) => {
       startCardTrialFight({ fightId, sequential });
     },

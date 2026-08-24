@@ -208,8 +208,11 @@ export class CardTrialController {
       }
       const digit = Number(key);
       if (digit >= 1 && digit <= 5) {
-        this.cursor = digit - 1;
-        this.confirmHand();
+        const index = digit - 1;
+        if (index < playerView(this.trial).hand.length) {
+          this.cursor = index;
+          this.confirmHand();
+        }
       }
       return;
     }
