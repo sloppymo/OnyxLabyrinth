@@ -22,6 +22,7 @@ import {
 import { renderScene } from "./combat-scene";
 import { combatCanvas, combatCtx } from "./shell";
 import { COMBAT_DESIGN_W, COMBAT_DESIGN_H } from "./combat-scene-math";
+import { preloadPartySpritesFor } from "./party-sprite-cache";
 
 export interface CombatStage {
   /** Shared scene model — groundPlaneProbe / debug read this. */
@@ -177,6 +178,7 @@ export function createCanvasCombatStage(
 export async function createCombatStage(
   opts: CreateCombatStageOpts
 ): Promise<CombatStage> {
+  await preloadPartySpritesFor(opts.state.party);
   const kind = opts.kind ?? resolveCombatStageKind();
   if (kind === "phaser") {
     try {

@@ -87,6 +87,11 @@ const HERO_PARTY_SPRITE_DIRS: Readonly<Record<string, string>> = {
   "old-man": "old-man",
 };
 
+const HERO_PARTY_SPRITE_BY_NAME: Readonly<Record<string, string>> = {
+  "Rat King": "rat-king",
+  "Old Man": "old-man",
+};
+
 const HERO_REQUIRED_STATES = ["idle", "attack", "hurt", "death"] as const satisfies readonly PartySpriteState[];
 
 function statesForDir(dir: string): readonly PartySpriteState[] {
@@ -96,8 +101,24 @@ function statesForDir(dir: string): readonly PartySpriteState[] {
   return [...REQUIRED_STATES, ...(OPTIONAL_STATES_BY_DIR[dir] ?? [])];
 }
 
-export function partySpriteDirFor(actor: { id: string; class: CharacterClass }): string {
-  return HERO_PARTY_SPRITE_DIRS[actor.id] ?? PARTY_SPRITE_DIRS[actor.class];
+export function partySpriteDirFor(actor: {
+  id: string;
+  class: CharacterClass;
+  name?: string;
+}): string {
+  return (
+    HERO_PARTY_SPRITE_DIRS[actor.id] ??
+    (actor.name ? HERO_PARTY_SPRITE_BY_NAME[actor.name] : undefined) ??
+    PARTY_SPRITE_DIRS[actor.class]
+  );
+}
+
+/** Load the packs for these combatants — Card Trial heroes use rat-king/old-man, not class folders. */
+export function preloadPartySpritesFor(
+  actors: Array<{ id: string; class: CharacterClass; name?: string }>
+): Promise<PartySpriteBundle[]> {
+  const dirs = [...new Set(actors.map((actor) => partySpriteDirFor(actor)))];
+  return Promise.all(dirs.map((dir) => loadPartySpriteBundle(dir)));
 }
 
 export interface PartySpriteBundle {
@@ -217,7 +238,7 @@ export function getPartySpriteStrip(
 
 /** Resolve a combat actor's strip, including Card Trial hero packs. */
 export function getPartySpriteStripFor(
-  actor: { id: string; class: CharacterClass },
+  actor: { id: string; class: CharacterClass; name?: string },
   state: PartySpriteState
 ): { strip: SpriteStrip; img: HTMLImageElement } | null {
   return getPartySpriteStripFromDir(partySpriteDirFor(actor), state);
