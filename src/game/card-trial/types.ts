@@ -9,6 +9,9 @@ export const DRAW_PER_TURN = 5;
 export const MOVE_COST = 1;
 
 export type HeroId = "rat-king" | "old-man";
+/** Explicit Card Trial architecture. Never combine these as booleans. */
+export type CardTrialTurnModel = "interleaved" | "shared" | "handoff";
+export type PassAction = "pass" | "handoff" | "done";
 export type PlayerRow = "front" | "back";
 export type EnemyVisualRow = "front" | "back";
 
@@ -107,6 +110,7 @@ export interface OpenedMeta {
   createdBy: HeroId;
   createdAtSlot: number;
   movedBeforeConsume: boolean;
+  playerPhaseId: number;
 }
 
 export interface CardPlayTargets {
@@ -215,6 +219,21 @@ export interface CardTrialPlayerView {
   ratRow: PlayerRow | null;
   intents: IntentPreview[];
   pileCountsOnly: true;
+  turnModel: CardTrialTurnModel;
+  passAction: PassAction;
+  passLabel: string;
+  passHint: string;
+  canSwitchHero: boolean;
+  partner: {
+    id: HeroId;
+    name: string;
+    energy: number;
+    handCount: number;
+    guard: number;
+    finished: boolean;
+    dead: boolean;
+  } | null;
+  heroesFinishedThisPhase: HeroId[];
 }
 
 export interface ShuffleStream {
@@ -246,6 +265,8 @@ export interface HeroTurnRecord {
   damageDealt: number;
   guardGained: number;
   hpLostAfter: number;
+  playerPhaseId: number;
+  turnModel: CardTrialTurnModel;
 }
 
 export interface OpenedRecord {
@@ -254,6 +275,8 @@ export interface OpenedRecord {
   lifetimeSlots: number;
   movedBeforeConsume: boolean;
   diedUnconsumed: boolean;
+  partnerConsume: boolean;
+  samePlayerPhaseConsume: boolean;
 }
 
 export interface IntentEnemyRecord {
@@ -274,6 +297,13 @@ export interface CardTrialTelemetry {
   cardStats: Record<CardId, { drawn: number; played: number; discarded: number }>;
   moveOpportunityCost: number;
   guardAbsorbed: number;
+  turnModel: CardTrialTurnModel;
+  heroSwitchCount: number;
+  handoffCount: number;
+  openedPartnerConsumes: number;
+  openedSamePhaseConsumes: number;
+  openedLeftAtPhaseEnd: number;
+  enemiesKilledDuringPlayerPhase: number;
   /** Session-local presentation signals; never used by Card Trial rules. */
   presentation: {
     decisionMs: number[];
@@ -292,10 +322,24 @@ export interface CardTrialTelemetry {
   }>;
 }
 
+export interface ParkedHeroTurn {
+  record: HeroTurnRecord;
+  openedAtTurnStart: string | null;
+  consumeCardsAtTurnStart: CardId[];
+  consumedThisTurn: boolean;
+  consumeAttemptedThisTurn: boolean;
+}
+
 export interface CardTrialState {
   fightId: number;
   fightName: string;
   round: number;
+  turnModel: CardTrialTurnModel;
+  actingHeroId: HeroId | null;
+  playerPhaseId: number;
+  heroesFinishedThisPhase: HeroId[];
+  handoffCompleted: boolean;
+  parkedTurns: Partial<Record<HeroId, ParkedHeroTurn>>;
   heroes: Record<HeroId, HeroState>;
   enemies: EnemyState[];
   opened: OpenedMeta | null;

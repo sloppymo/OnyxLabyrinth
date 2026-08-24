@@ -15,7 +15,9 @@ import type {
   CardTrialResult,
   CardTrialState,
   CardTrialTelemetry,
+  CardTrialTurnModel,
   ConsumeKind,
+  PassAction,
   EnemyState,
   HandCardView,
   HeroId,
@@ -80,6 +82,13 @@ function emptyTelemetry(): CardTrialTelemetry {
     cardStats,
     moveOpportunityCost: 0,
     guardAbsorbed: 0,
+    turnModel: "interleaved",
+    heroSwitchCount: 0,
+    handoffCount: 0,
+    openedPartnerConsumes: 0,
+    openedSamePhaseConsumes: 0,
+    openedLeftAtPhaseEnd: 0,
+    enemiesKilledDuringPlayerPhase: 0,
     presentation: {
       decisionMs: [],
       targetChanges: 0,
@@ -89,6 +98,11 @@ function emptyTelemetry(): CardTrialTelemetry {
     },
     fights: [],
   };
+}
+
+export function parseTurnModel(raw: unknown): CardTrialTurnModel {
+  if (raw === "shared" || raw === "handoff" || raw === "interleaved") return raw;
+  return "interleaved";
 }
 
 function intentRecord(s: CardTrialState, enemy: EnemyState) {
@@ -199,6 +213,7 @@ function dealToEnemy(
   if (s.openTurn) s.openTurn.damageDealt += dealt;
   if (enemy.hp <= 0) {
     events.push({ type: "defeated", targetId: enemy.id, wasEnemy: true });
+    if (s.phase === "hero-turn") s.telemetry.enemiesKilledDuringPlayerPhase += 1;
     if (s.opened?.enemyId === enemy.id) {
       finishOpened(s, { diedUnconsumed: s.opened.createdBy !== undefined && true, consumedBy: null });
     }
@@ -211,13 +226,19 @@ function finishOpened(
   opts: { diedUnconsumed: boolean; consumedBy: HeroId | null }
 ): void {
   if (!s.opened) return;
+  const partnerConsume = !!opts.consumedBy && opts.consumedBy !== s.opened.createdBy;
+  const samePlayerPhaseConsume = !!opts.consumedBy && s.opened.playerPhaseId === s.playerPhaseId;
   const rec: OpenedRecord = {
     openedCreatedBy: s.opened.createdBy,
     openedConsumedBy: opts.consumedBy,
     lifetimeSlots: s.slotCounter - s.opened.createdAtSlot,
     movedBeforeConsume: s.opened.movedBeforeConsume,
     diedUnconsumed: opts.diedUnconsumed && !opts.consumedBy,
+    partnerConsume,
+    samePlayerPhaseConsume,
   };
+  if (partnerConsume) s.telemetry.openedPartnerConsumes += 1;
+  if (samePlayerPhaseConsume) s.telemetry.openedSamePhaseConsumes += 1;
   s.telemetry.opened.push(rec);
   s.opened = null;
 }
@@ -234,6 +255,7 @@ function applyOpened(s: CardTrialState, enemy: EnemyState, by: HeroId, events: C
       createdBy: by,
       createdAtSlot: s.slotCounter,
       movedBeforeConsume: false,
+      playerPhaseId: s.playerPhaseId,
     };
   }
   events.push({ type: "open", targetId: enemy.id });
@@ -326,18 +348,28 @@ function closeOpenTurn(s: CardTrialState, discarded: CardId[], energyRemaining: 
   s.openTurn = null;
 }
 
-export function startHeroCardTurn(s: CardTrialState, heroId: HeroId): void {
+export function startHeroCardTurn(
+  s: CardTrialState,
+  heroId: HeroId,
+  opts?: { clearGuard?: boolean; draw?: boolean }
+): void {
   const hero = s.heroes[heroId];
   const leftoverGuard = hero.guard;
-  hero.guard = 0;
-  hero.energy = ENERGY_PER_TURN;
-  hero.paidMoveUsed = false;
-  hero.hand = [];
-  for (let i = 0; i < DRAW_PER_TURN; i++) {
-    const card = drawOne(s, hero);
-    if (card) hero.hand.push(card);
+  const clearGuard = opts?.clearGuard ?? s.turnModel === "interleaved";
+  const draw = opts?.draw ?? true;
+  if (clearGuard) hero.guard = 0;
+  if (draw) {
+    hero.energy = ENERGY_PER_TURN;
+    hero.paidMoveUsed = false;
+    hero.hand = [];
+    for (let i = 0; i < DRAW_PER_TURN; i++) {
+      const card = drawOne(s, hero);
+      if (card) hero.hand.push(card);
+    }
   }
   s.phase = "hero-turn";
+  s.actingHeroId = heroId;
+  if (s.turnModel === "interleaved") s.playerPhaseId += 1;
   s.openedAtTurnStart = s.opened?.enemyId ?? null;
   s.consumeCardsAtTurnStart = consumeCardsInHand(s, hero);
   s.consumedThisTurn = false;
@@ -367,7 +399,139 @@ export function startHeroCardTurn(s: CardTrialState, heroId: HeroId): void {
     damageDealt: 0,
     guardGained: 0,
     hpLostAfter: 0,
+    playerPhaseId: s.playerPhaseId,
+    turnModel: s.turnModel,
   };
+}
+
+function livingHeroIds(s: CardTrialState): HeroId[] {
+  return ([RAT_KING, OLD_MAN] as const).filter((id) => s.heroes[id].hp > 0);
+}
+
+function parkActingTurn(s: CardTrialState): void {
+  const hero = actingHero(s);
+  if (!hero || !s.openTurn) return;
+  s.parkedTurns[hero.id] = {
+    record: s.openTurn,
+    openedAtTurnStart: s.openedAtTurnStart,
+    consumeCardsAtTurnStart: s.consumeCardsAtTurnStart,
+    consumedThisTurn: s.consumedThisTurn,
+    consumeAttemptedThisTurn: s.consumeAttemptedThisTurn,
+  };
+  s.openTurn = null;
+}
+
+function resumeOrBeginHero(s: CardTrialState, heroId: HeroId, draw: boolean): void {
+  const parked = s.parkedTurns[heroId];
+  if (parked) {
+    s.actingHeroId = heroId;
+    s.phase = "hero-turn";
+    s.openTurn = parked.record;
+    s.openedAtTurnStart = parked.openedAtTurnStart;
+    s.consumeCardsAtTurnStart = parked.consumeCardsAtTurnStart;
+    s.consumedThisTurn = parked.consumedThisTurn;
+    s.consumeAttemptedThisTurn = parked.consumeAttemptedThisTurn;
+    delete s.parkedTurns[heroId];
+    return;
+  }
+  s.slotCounter += 1;
+  attributePostHeroDamage(s);
+  startHeroCardTurn(s, heroId, { clearGuard: false, draw });
+}
+
+function noteOpenedLeftAtPhaseEnd(s: CardTrialState): void {
+  if (s.playerPhaseId > 0 && s.opened) s.telemetry.openedLeftAtPhaseEnd += 1;
+}
+
+function startPlayerPhase(s: CardTrialState): CardTrialEvent[] {
+  if (s.result) return [];
+  noteOpenedLeftAtPhaseEnd(s);
+  s.playerPhaseId += 1;
+  s.heroesFinishedThisPhase = [];
+  s.handoffCompleted = false;
+  s.parkedTurns = {};
+  s.actingHeroId = null;
+  for (const id of [RAT_KING, OLD_MAN] as const) {
+    if (s.heroes[id].hp > 0) s.heroes[id].guard = 0;
+  }
+  const living = livingHeroIds(s);
+  if (living.length === 0) {
+    checkEnd(s);
+    return [];
+  }
+  if (s.turnModel === "shared") {
+    for (const id of living) {
+      const hero = s.heroes[id];
+      hero.energy = ENERGY_PER_TURN;
+      hero.paidMoveUsed = false;
+      hero.hand = [];
+      for (let i = 0; i < DRAW_PER_TURN; i++) {
+        const card = drawOne(s, hero);
+        if (card) hero.hand.push(card);
+      }
+    }
+    attributePostHeroDamage(s);
+    s.slotCounter += 1;
+    startHeroCardTurn(s, living[0]!, { clearGuard: false, draw: false });
+    return [];
+  }
+  const opener = living.includes(RAT_KING) ? RAT_KING : living[0]!;
+  attributePostHeroDamage(s);
+  s.slotCounter += 1;
+  startHeroCardTurn(s, opener, { clearGuard: false, draw: true });
+  return [];
+}
+
+function runEnemyPhase(s: CardTrialState): CardTrialEvent[] {
+  const events: CardTrialEvent[] = [];
+  s.phase = "enemy-turn";
+  s.actingHeroId = null;
+  for (const actor of s.queue) {
+    if (s.result) break;
+    if (actor.kind !== "enemy") continue;
+    if (!actorAlive(s, actor)) {
+      const e = enemyById(s, actor.id);
+      if (e) intentRecord(s, e).canceledDead += 1;
+      continue;
+    }
+    s.slotCounter += 1;
+    events.push(...resolveEnemyIntent(s, actor.id));
+    if (checkEnd(s)) return events;
+  }
+  s.round += 1;
+  markIntentShown(s);
+  events.push(...startPlayerPhase(s));
+  return events;
+}
+
+export function switchActingHero(
+  s: CardTrialState,
+  heroId: HeroId
+): { ok: boolean; reason?: string } {
+  if (s.turnModel !== "shared") return { ok: false, reason: "Switching is only legal in Shared" };
+  if (s.phase !== "hero-turn" || s.result) return { ok: false, reason: "Not your turn" };
+  const current = actingHero(s);
+  if (!current) return { ok: false, reason: "Not your turn" };
+  if (current.id === heroId) return { ok: true };
+  if (s.heroes[heroId].hp <= 0) return { ok: false, reason: "That hero is down" };
+  if (s.heroesFinishedThisPhase.includes(heroId)) {
+    return { ok: false, reason: "That hero already finished" };
+  }
+  parkActingTurn(s);
+  s.telemetry.heroSwitchCount += 1;
+  resumeOrBeginHero(s, heroId, false);
+  return { ok: true };
+}
+
+function passActionFor(s: CardTrialState): PassAction {
+  if (s.turnModel === "interleaved") return "pass";
+  if (s.turnModel === "handoff") return s.handoffCompleted ? "done" : "handoff";
+  const current = actingHero(s);
+  if (!current) return "done";
+  const partnerId = otherHero(current.id);
+  const partnerDone =
+    s.heroes[partnerId].hp <= 0 || s.heroesFinishedThisPhase.includes(partnerId);
+  return partnerDone ? "done" : "pass";
 }
 
 function formatIntentLabel(e: EnemyState): string {
@@ -429,6 +593,7 @@ function attributePostHeroDamage(s: CardTrialState): void {
 }
 
 export function continueInitiative(s: CardTrialState): CardTrialEvent[] {
+  if (s.turnModel !== "interleaved") return startPlayerPhase(s);
   const events: CardTrialEvent[] = [];
   if (s.result) return events;
   while (!s.result) {
@@ -454,6 +619,7 @@ export function continueInitiative(s: CardTrialState): CardTrialEvent[] {
       return events;
     }
     s.phase = "enemy-turn";
+    s.actingHeroId = null;
     events.push(...resolveEnemyIntent(s, actor.id));
     if (checkEnd(s)) return events;
   }
@@ -509,7 +675,7 @@ function resolveEnemyIntent(s: CardTrialState, enemyId: string): CardTrialEvent[
 
 export function createFight(
   fightId: number,
-  opts?: { seed?: number; telemetry?: CardTrialTelemetry }
+  opts?: { seed?: number; telemetry?: CardTrialTelemetry; turnModel?: CardTrialTurnModel }
 ): CardTrialState {
   const enc = encounterById(fightId);
   const seed = opts?.seed ?? 1;
@@ -517,10 +683,19 @@ export function createFight(
     "rat-king": createShuffleStream(seed * 17 + fightId * 31 + 3),
     "old-man": createShuffleStream(seed * 19 + fightId * 37 + 7),
   };
+  const turnModel = opts?.turnModel ?? "interleaved";
+  const telemetry = opts?.telemetry ?? emptyTelemetry();
+  telemetry.turnModel = turnModel;
   const s: CardTrialState = {
     fightId,
     fightName: enc.name,
     round: 1,
+    turnModel,
+    actingHeroId: null,
+    playerPhaseId: 0,
+    heroesFinishedThisPhase: [],
+    handoffCompleted: false,
+    parkedTurns: {},
     heroes: {
       "rat-king": {
         id: RAT_KING,
@@ -563,7 +738,7 @@ export function createFight(
     slotCounter: 0,
     uidSeq: 0,
     events: [],
-    telemetry: opts?.telemetry ?? emptyTelemetry(),
+    telemetry,
     openTurn: null,
     openedAtTurnStart: null,
     consumeCardsAtTurnStart: [],
@@ -579,12 +754,17 @@ export function createFight(
     s.heroes[heroId].draw = deck;
   }
   markIntentShown(s);
-  continueInitiative(s);
+  if (turnModel === "interleaved") continueInitiative(s);
+  else startPlayerPhase(s);
   return s;
 }
 
 export function nextFight(prev: CardTrialState, fightId: number): CardTrialState {
-  return createFight(fightId, { seed: prev.streams["rat-king"].getState(), telemetry: prev.telemetry });
+  return createFight(fightId, {
+    seed: prev.streams["rat-king"].getState(),
+    telemetry: prev.telemetry,
+    turnModel: prev.turnModel,
+  });
 }
 
 function pullFromPiles(hero: HeroState, defId: CardId): CardInstance | null {
@@ -640,6 +820,7 @@ export function createAdversarialTriangle(opts?: { seed?: number }): CardTrialSt
     createdBy: RAT_KING,
     createdAtSlot: s.slotCounter,
     movedBeforeConsume: false,
+    playerPhaseId: s.playerPhaseId,
   };
   for (const e of s.enemies) e.intentIndex = 0;
   if (s.openTurn) {
@@ -654,6 +835,7 @@ export function createAdversarialTriangle(opts?: { seed?: number }): CardTrialSt
   s.consumeAttemptedThisTurn = false;
   s.phase = "hero-turn";
   s.queueIndex = 0;
+  s.actingHeroId = RAT_KING;
   return s;
 }
 
@@ -667,7 +849,8 @@ export function canPaidMove(s: CardTrialState): { ok: boolean; reason: string | 
 }
 
 export function actingHero(s: CardTrialState): HeroState | null {
-  if (s.phase !== "hero-turn") return null;
+  if (s.phase !== "hero-turn" || s.result) return null;
+  if (s.actingHeroId) return s.heroes[s.actingHeroId];
   const actor = s.queue[s.queueIndex];
   if (!actor || actor.kind !== "hero") return null;
   return s.heroes[actor.id as HeroId];
@@ -909,7 +1092,23 @@ export function endHeroTurn(s: CardTrialState): CardTrialEvent[] {
   hero.energy = 0;
   closeOpenTurn(s, discarded, leftover);
   if (checkEnd(s)) return [];
-  return continueInitiative(s);
+  if (s.turnModel === "interleaved") return continueInitiative(s);
+
+  s.heroesFinishedThisPhase.push(hero.id);
+  delete s.parkedTurns[hero.id];
+  const remaining = livingHeroIds(s).filter((id) => !s.heroesFinishedThisPhase.includes(id));
+  if (remaining.length > 0) {
+    const next = remaining[0]!;
+    if (s.turnModel === "handoff") {
+      s.handoffCompleted = true;
+      s.telemetry.handoffCount += 1;
+      resumeOrBeginHero(s, next, true);
+    } else {
+      resumeOrBeginHero(s, next, false);
+    }
+    return [];
+  }
+  return runEnemyPhase(s);
 }
 
 export function intentPreviews(s: CardTrialState): IntentPreview[] {
@@ -1039,12 +1238,13 @@ export function playerView(s: CardTrialState): CardTrialPlayerView {
     queue: s.queue.map((q, i) => {
       if (q.kind === "hero") {
         const h = s.heroes[q.id as typeof RAT_KING | typeof OLD_MAN];
+        const finished = s.heroesFinishedThisPhase.includes(h.id);
         return {
           id: h.id,
           kind: "hero" as const,
           name: h.name,
-          acting: i === s.queueIndex,
-          done: i < s.queueIndex,
+          acting: s.phase === "hero-turn" && s.actingHeroId === h.id,
+          done: s.turnModel === "interleaved" ? i < s.queueIndex : finished,
           dead: h.hp <= 0,
         };
       }
@@ -1053,8 +1253,8 @@ export function playerView(s: CardTrialState): CardTrialPlayerView {
         id: q.id,
         kind: "enemy" as const,
         name: e?.name ?? q.id,
-        acting: i === s.queueIndex,
-        done: i < s.queueIndex,
+        acting: s.phase === "enemy-turn" && i === s.queueIndex,
+        done: s.turnModel === "interleaved" && i < s.queueIndex,
         dead: !e || e.hp <= 0,
       };
     }),
@@ -1062,6 +1262,36 @@ export function playerView(s: CardTrialState): CardTrialPlayerView {
     ratRow: s.rat?.row ?? null,
     intents: intentPreviews(s),
     pileCountsOnly: true,
+    turnModel: s.turnModel,
+    passAction: passActionFor(s),
+    passLabel:
+      passActionFor(s) === "handoff" ? "HAND OFF" : passActionFor(s) === "done" ? "DONE" : "PASS",
+    passHint:
+      passActionFor(s) === "handoff"
+        ? `${s.heroes[otherHero(hero?.id ?? RAT_KING)].name} plays next`
+        : passActionFor(s) === "done"
+          ? "Enemies act next"
+          : "End this actor's turn",
+    canSwitchHero:
+      s.turnModel === "shared" &&
+      s.phase === "hero-turn" &&
+      !s.result &&
+      !!hero &&
+      livingHeroIds(s).some(
+        (id) => id !== hero.id && !s.heroesFinishedThisPhase.includes(id)
+      ),
+    partner: hero
+      ? {
+          id: otherHero(hero.id),
+          name: s.heroes[otherHero(hero.id)].name,
+          energy: s.heroes[otherHero(hero.id)].energy,
+          handCount: s.heroes[otherHero(hero.id)].hand.length,
+          guard: s.heroes[otherHero(hero.id)].guard,
+          finished: s.heroesFinishedThisPhase.includes(otherHero(hero.id)),
+          dead: s.heroes[otherHero(hero.id)].hp <= 0,
+        }
+      : null,
+    heroesFinishedThisPhase: [...s.heroesFinishedThisPhase],
   };
 }
 
@@ -1072,6 +1302,7 @@ export function handCard(s: CardTrialState, defId: CardId): CardInstance | undef
 
 export function summarizeTelemetry(t: CardTrialTelemetry): string {
   const lines: string[] = ["# Card Trial run"];
+  lines.push(`Turn model: ${t.turnModel}`);
   lines.push(`Fights: ${t.fights.length}`);
   for (const f of t.fights) {
     lines.push(
@@ -1156,6 +1387,8 @@ export function summarizeTelemetry(t: CardTrialTelemetry): string {
     lines.push(`  ${x.hero} fight ${x.fightId} r${x.round}: ${action}`);
   }
   lines.push(`Died unconsumed: ${t.opened.filter((o) => o.diedUnconsumed).length}`);
+  lines.push(`Partner consumes: ${t.openedPartnerConsumes} · same-phase consumes: ${t.openedSamePhaseConsumes}`);
+  lines.push(`Opened left at player-phase end: ${t.openedLeftAtPhaseEnd}`);
   lines.push(`Moved before consumption: ${t.opened.filter((o) => o.movedBeforeConsume).length}`);
   for (const o of t.opened) {
     lines.push(
@@ -1181,6 +1414,7 @@ export function summarizeTelemetry(t: CardTrialTelemetry): string {
 }
 
 export function currentActorId(s: CardTrialState): string | null {
+  if (s.phase === "hero-turn") return s.actingHeroId ?? s.queue[s.queueIndex]?.id ?? null;
   return s.queue[s.queueIndex]?.id ?? null;
 }
 

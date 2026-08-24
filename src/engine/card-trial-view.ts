@@ -10,6 +10,7 @@ export interface CardTrialViewHandlers {
   onConfirmCard: (index: number) => void;
   onMove: () => void;
   onPass: () => void;
+  onSwitchHero?: () => void;
   onHoverTarget: (index: number) => void;
   onConfirmTarget: (index: number) => void;
   onCancel: () => void;

@@ -117,9 +117,11 @@ import {
   createAdversarialTriangle,
   createFight,
   nextFight,
+  parseTurnModel,
   playerView,
   summarizeTelemetry,
   type CardTrialState,
+  type CardTrialTurnModel,
 } from "./game/card-trial";
 import { PrologueController } from "./engine/prologue-ui";
 import { EndingController } from "./engine/ending-ui";
@@ -1989,16 +1991,22 @@ function onCardTrialFightEnd(trial: CardTrialState): void {
   });
 }
 
+function cardTrialTurnModelFromQuery(): CardTrialTurnModel {
+  return parseTurnModel(new URLSearchParams(window.location.search).get("turnModel"));
+}
+
 function startCardTrialFight(opts: {
   fightId?: number;
   sequential?: boolean;
   triangle?: boolean;
   previous?: CardTrialState;
+  turnModel?: CardTrialTurnModel;
 }): void {
   if (combatController) return;
   screens.dismissCardTrialLobby();
   inCardTrial = true;
   cardTrialSequential = !!opts.sequential;
+  const turnModel = opts.turnModel ?? cardTrialTurnModelFromQuery();
   const trial = opts.triangle
     ? createAdversarialTriangle()
     : opts.previous && opts.fightId
@@ -2006,6 +2014,7 @@ function startCardTrialFight(opts: {
       : createFight(opts.fightId ?? 1, {
           seed: 1,
           telemetry: opts.previous?.telemetry,
+          turnModel,
         });
 
   void withCombatTransition(async () => {
@@ -2595,7 +2604,8 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     },
     exitDebugCombat,
     cardTrial: {
-      startFight: (fightId: number) => startCardTrialFight({ fightId }),
+      startFight: (fightId: number, opts?: { turnModel?: CardTrialTurnModel }) =>
+        startCardTrialFight({ fightId, turnModel: opts?.turnModel }),
       forceTriangle: () => startCardTrialFight({ triangle: true }),
       view: () => (cardTrialController ? playerView(cardTrialController.state) : null),
       telemetry: () => cardTrialController?.state.telemetry ?? null,

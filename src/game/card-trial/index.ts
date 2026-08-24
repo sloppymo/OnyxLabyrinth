@@ -24,6 +24,8 @@ export {
   startHeroCardTurn,
   summarizeTelemetry,
   currentActorId,
+  parseTurnModel,
+  switchActingHero,
   RAT_KING,
   OLD_MAN,
 } from "./engine";
@@ -39,7 +41,9 @@ export type {
   CardTrialState,
   CardTrialPlayerView,
   CardTrialTelemetry,
+  CardTrialTurnModel,
   HeroId,
   PlayerRow,
   CardPlayTargets,
+  PassAction,
 } from "./types";
