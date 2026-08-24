@@ -7,6 +7,7 @@ import {
   cardTextLayoutTier,
   enemyHudAnchor,
   heroHudAnchor,
+  heroRowBandRect,
   neighborShiftPx,
   queueInitials,
 } from "./card-trial-layout";
@@ -60,5 +61,16 @@ describe("queueInitials", () => {
     expect(queueInitials("Rat King", "rat-king")).toBe("RK");
     expect(queueInitials("Old Man", "old-man")).toBe("OM");
     expect(queueInitials("Cleaver", "cleaver")).toBe("CL");
+  });
+});
+
+describe("heroRowBandRect", () => {
+  it("places Front below Back in design space without overlapping", () => {
+    const front = heroRowBandRect("front");
+    const back = heroRowBandRect("back");
+    expect(front.y).toBeGreaterThan(back.y + back.height);
+    expect(front.x).toBeGreaterThan(DESIGN_W / 2);
+    expect(front.width).toBeGreaterThan(200);
+    expect(front.height).toBeGreaterThan(40);
   });
 });

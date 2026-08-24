@@ -4,6 +4,8 @@
  */
 
 import {
+  CARD_TRIAL_BACK_HERO_ANCHOR,
+  CARD_TRIAL_FRONT_HERO_ANCHOR,
   cardTrialHeroSlot,
   enemySlot,
 } from "./combat-scene-math";
@@ -67,4 +69,18 @@ export function queueInitials(name: string, id: string): string {
   const letters = name.replace(/[^A-Za-z]/g, "");
   if (letters.length >= 2) return letters.slice(0, 2).toUpperCase();
   return id.slice(0, 2).toUpperCase();
+}
+
+/** Hero-side floor band for a threatened Front/Back. */
+export function heroRowBandRect(row: PlayerRow): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+} {
+  const footY =
+    (row === "front" ? CARD_TRIAL_FRONT_HERO_ANCHOR : CARD_TRIAL_BACK_HERO_ANCHOR).footYFrac *
+    DESIGN_H;
+  const height = 56;
+  return { x: 430, y: footY - height / 2, width: 310, height };
 }

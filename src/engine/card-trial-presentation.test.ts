@@ -3,6 +3,7 @@ import { createGameState } from "../game/state";
 import { findFloor } from "../game/floor-registry";
 import { PARTY_SIZE } from "../game/party";
 import { createAdversarialTriangle, createFight } from "../game/card-trial/engine";
+import { partySpriteDirFor } from "./party-sprite-cache";
 import { toCombatEvents, toCombatState } from "./card-trial-presentation";
 
 describe("Card Trial presentation adapter", () => {
@@ -23,6 +24,12 @@ describe("Card Trial presentation adapter", () => {
     expect(state.party).toHaveLength(PARTY_SIZE);
     expect(state.party.map((c) => c.id)).toEqual(before);
     expect(state.combat).toBeUndefined();
+    const ratKing = combat.party.find((c) => c.id === "rat-king");
+    const oldMan = combat.party.find((c) => c.id === "old-man");
+    expect(ratKing).toBeDefined();
+    expect(oldMan).toBeDefined();
+    expect(partySpriteDirFor(ratKing!)).toBe("rat-king");
+    expect(partySpriteDirFor(oldMan!)).toBe("old-man");
   });
 
   it("maps triangle attacks onto existing CombatEvents without inventing campaign enemies", () => {

@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
@@ -132,9 +133,11 @@ describe("party-sprite-cache", () => {
         expect.stringContaining("/mage/cast.png"),
         expect.stringContaining("/priest/cast.png"),
         expect.stringContaining("/thief/attack_ranged.png"),
+        expect.stringContaining("/rat-king/cast.png"),
+        expect.stringContaining("/old-man/cast.png"),
       ])
     );
-    expect(optionalUrls).toHaveLength(3);
+    expect(optionalUrls).toHaveLength(5);
   });
 
   it("returns null for a state whose image failed to load", async () => {
@@ -164,6 +167,46 @@ describe("party-sprite-cache", () => {
       keyof typeof PARTY_SPRITE_DIRS
     >) {
       expect(getPartySpriteStrip(cls, "idle")).not.toBeNull();
+    }
+  });
+
+  it("maps Card Trial heroes to their own sprite folders, not class packs", async () => {
+    const { partySpriteDirFor } = await import("./party-sprite-cache");
+    expect(partySpriteDirFor({ id: "rat-king", class: "Thief" })).toBe("rat-king");
+    expect(partySpriteDirFor({ id: "old-man", class: "Priest" })).toBe("old-man");
+    expect(partySpriteDirFor({ id: "scout-1", class: "Thief" })).toBe("thief");
+    expect(partySpriteDirFor({ id: "cleric-1", class: "Priest" })).toBe("priest");
+  });
+
+  it("preloads Rat King and Old Man strips with class packs", async () => {
+    const { loadPartySprites, getPartySpriteStripFor } = await import(
+      "./party-sprite-cache"
+    );
+    await loadPartySprites();
+    expect(requestedUrls.some((url) => url.includes("party/rat-king/idle.png"))).toBe(
+      true
+    );
+    expect(requestedUrls.some((url) => url.includes("party/old-man/idle.png"))).toBe(
+      true
+    );
+    expect(
+      getPartySpriteStripFor({ id: "rat-king", class: "Thief" }, "idle")
+    ).not.toBeNull();
+    expect(
+      getPartySpriteStripFor({ id: "old-man", class: "Priest" }, "idle")
+    ).not.toBeNull();
+    expect(
+      getPartySpriteStripFor({ id: "rat-king", class: "Thief" }, "walk")?.strip.url
+    ).toContain("/idle.png");
+  });
+});
+
+describe("Card Trial hero party strips on disk", () => {
+  it("ships idle/attack/hurt/death for both heroes", () => {
+    for (const dir of ["rat-king", "old-man"] as const) {
+      for (const state of ["idle", "attack", "hurt", "death"] as const) {
+        expect(existsSync(`public/assets/party/${dir}/${state}.png`)).toBe(true);
+      }
     }
   });
 });

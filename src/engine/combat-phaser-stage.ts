@@ -49,7 +49,7 @@ import {
   type ActorAnim,
 } from "./combat-choreography";
 import { enemySpriteId, getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache";
-import { getPartySpriteStrip, loadPartySpriteBundle, PARTY_SPRITE_DIRS } from "./party-sprite-cache";
+import { getPartySpriteStripFor, loadPartySpriteBundle, partySpriteDirFor } from "./party-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
 import { screenShakeOffset } from "./combat-motion";
 import {
@@ -673,7 +673,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       void loadEnemySpriteBundle(enemySpriteId(e));
     }
     for (const c of scene.state.party) {
-      void loadPartySpriteBundle(PARTY_SPRITE_DIRS[c.class]);
+      void loadPartySpriteBundle(partySpriteDirFor(c));
     }
     // Add spritesheets from already-decoded cache images when available.
     for (const e of [...scene.state.enemies.front, ...scene.state.enemies.back, ...scene.enemyCorpses]) {
@@ -691,10 +691,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     }
     for (const c of scene.state.party) {
       for (const st of ["idle", "walk", "attack", "attack_ranged", "cast", "hurt", "death"] as const) {
-        const info = getPartySpriteStrip(c.class, st);
+        const info = getPartySpriteStripFor(c, st);
         if (!info?.img || info.img.naturalWidth <= 0) continue;
         this.ensureSpriteSheet(
-          `party:${c.class}:${st}`,
+          `party:${partySpriteDirFor(c)}:${st}`,
           info.img,
           info.strip.frameWidth,
           info.strip.frameHeight
@@ -1761,7 +1761,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   ): void {
     const anim = getAnim(scene, "party", char.id, now);
     const isDead = char.hp <= 0 || char.status.includes("knockedOut");
-    const stripInfo = getPartySpriteStrip(char.class, anim.state);
+    const stripInfo = getPartySpriteStripFor(char, anim.state);
     const hasStrip = !!(stripInfo?.img && stripInfo.img.naturalWidth > 0);
     const artFoot = artFootFromTopFor({
       hasStrip,
@@ -1788,7 +1788,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const y = pos.y + off.y;
     const footY = pos.footY + off.y;
     const drawSize = PARTY_SIZE * pos.scale * statusScale;
-    const texKey = `party:${char.class}:${anim.state}`;
+    const texKey = `party:${partySpriteDirFor(char)}:${anim.state}`;
     let entry = hasStrip ? this.ensureStripSprite(key, "party", texKey) : null;
     if (!entry) {
       const classColors: Record<string, number> = {

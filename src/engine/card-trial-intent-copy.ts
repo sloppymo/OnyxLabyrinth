@@ -12,12 +12,37 @@ export function compactIntentValue(intent: IntentPreview): string {
   return intent.wouldMiss ? "—" : String(intent.rawDamage);
 }
 
-/** Compact target token for the actor-local chip, e.g. "FRONT", "BOTH", "RK". */
+/**
+ * Compact target token. Named (hero) intents MUST include the required row —
+ * that row is the evade condition. Never shorten them to RK/OM alone.
+ */
 export function compactIntentTarget(intent: IntentPreview): string {
   const t = intent.target;
   if (t.kind === "both-rows") return "BOTH";
   if (t.kind === "row") return t.row === "front" ? "FRONT" : "BACK";
-  return t.heroId === "rat-king" ? "RK" : "OM";
+  const who = t.heroId === "rat-king" ? "RK" : "OM";
+  const row = t.row === "front" ? "FRONT" : "BACK";
+  return `${who} · ${row}`;
+}
+
+/** Enemy-chip suffix. Row/both-rows are spatial; only named intents stay on the chip. */
+export function chipIntentSuffix(intent: IntentPreview): string | null {
+  return intent.target.kind === "hero" ? compactIntentTarget(intent) : null;
+}
+
+/** Rows the floor cue should mark. Named misses still threaten their required row. */
+export function threatenedRows(intents: IntentPreview[]): Array<"front" | "back"> {
+  const rows = new Set<"front" | "back">();
+  for (const intent of intents) {
+    const t = intent.target;
+    if (t.kind === "both-rows") {
+      rows.add("front");
+      rows.add("back");
+    } else {
+      rows.add(t.row);
+    }
+  }
+  return [...rows];
 }
 
 export interface IntentHpLine {

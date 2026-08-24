@@ -6,18 +6,26 @@
 import { ENERGY_PER_TURN, MOVE_COST } from "../game/card-trial/types";
 import type { CardTrialViewHandlers, CardTrialWindowsInput } from "./card-trial-view";
 import {
+  chipIntentSuffix,
   compactIntentTarget,
   compactIntentValue,
   intentDetailLines,
   INTENT_ATK_LABEL,
+  threatenedRows,
 } from "./card-trial-intent-copy";
-import { enemyHudAnchor, heroHudAnchor, queueInitials } from "./card-trial-layout";
+import {
+  enemyHudAnchor,
+  heroHudAnchor,
+  heroRowBandRect,
+  queueInitials,
+} from "./card-trial-layout";
 
 export class CardTrialHudPresentation {
   private fade: HTMLDivElement;
   private meters: HTMLDivElement;
   private initiative: HTMLDivElement;
   private hint: HTMLDivElement;
+  private rowCues: HTMLDivElement;
   private actors: HTMLDivElement;
   private utils: HTMLDivElement;
   private moveBtn: HTMLButtonElement;
@@ -40,6 +48,7 @@ export class CardTrialHudPresentation {
     this.initiative = el("div", "ct-sparse-init");
     this.hint = el("div", "ct-sparse-hold");
     this.hint.textContent = "Hold I for details";
+    this.rowCues = el("div", "ct-row-cues");
     this.actors = el("div", "ct-sparse-actors");
     this.utils = el("div", "ct-sparse-utils");
     this.moveBtn = document.createElement("button");
@@ -64,6 +73,7 @@ export class CardTrialHudPresentation {
       this.meters,
       this.initiative,
       this.hint,
+      this.rowCues,
       this.actors,
       this.utils,
       this.details,
@@ -83,6 +93,7 @@ export class CardTrialHudPresentation {
     this.meters.remove();
     this.initiative.remove();
     this.hint.remove();
+    this.rowCues.remove();
     this.actors.remove();
     this.utils.remove();
     this.details.remove();
@@ -103,6 +114,7 @@ export class CardTrialHudPresentation {
 
     this.meters.innerHTML = `<span class="ct-draw">Draw ${view.drawCount}</span><span class="ct-energy">◆ ${view.energy}/${ENERGY_PER_TURN}</span>`;
     this.syncInitiative(view);
+    this.syncRowCues(view);
     this.syncActors(input);
     this.hint.hidden = !showUtils && !targeting;
 
@@ -155,6 +167,21 @@ export class CardTrialHudPresentation {
     }
   }
 
+  private syncRowCues(view: CardTrialWindowsInput["view"]): void {
+    const on = new Set(threatenedRows(view.intents));
+    this.rowCues.replaceChildren();
+    for (const row of ["front", "back"] as const) {
+      const band = el("div", `ct-row-band ${row}`);
+      band.classList.toggle("on", on.has(row));
+      const rect = heroRowBandRect(row);
+      band.style.left = `${rect.x}px`;
+      band.style.top = `${rect.y}px`;
+      band.style.width = `${rect.width}px`;
+      band.style.height = `${rect.height}px`;
+      this.rowCues.appendChild(band);
+    }
+  }
+
   private syncActors(input: CardTrialWindowsInput): void {
     const { view, phase, targetIds, targetCursor } = input;
     const targeting = phase === "target" || phase === "target2";
@@ -189,8 +216,11 @@ export class CardTrialHudPresentation {
       const anchor = enemyHudAnchor(enemy.visualRow, Math.max(0, rowIndex));
       place(chip, anchor.x, anchor.y);
       const intent = view.intents.find((i) => i.enemyId === enemy.id);
+      const suffix = intent ? chipIntentSuffix(intent) : null;
       const atk = intent
-        ? `<div class="ct-chip-atk${intent.wouldMiss ? " miss" : ""}"><span class="ct-atk-label">${INTENT_ATK_LABEL}</span> ${compactIntentValue(intent)}<span class="ct-atk-target">→ ${compactIntentTarget(intent)}</span></div>`
+        ? `<div class="ct-chip-atk${intent.wouldMiss ? " miss" : ""}"><span class="ct-atk-label">${INTENT_ATK_LABEL}</span> ${compactIntentValue(intent)}${
+            suffix ? `<span class="ct-atk-target">${suffix}</span>` : ""
+          }</div>`
         : "";
       const opened = enemy.opened ? `<span class="ct-opened-mark" title="Opened">◉</span>` : "";
       chip.innerHTML = `${atk}<div class="ct-chip-nums">${opened}${enemy.hp}/${enemy.maxHp}</div>`;

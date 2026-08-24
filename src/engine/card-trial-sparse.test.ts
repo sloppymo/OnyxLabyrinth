@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAdversarialTriangle, playerView } from "../game/card-trial/engine";
+import { createAdversarialTriangle, createFight, playerView } from "../game/card-trial/engine";
 import { CardTrialSparseUi } from "./card-trial-sparse";
 import type { CardTrialViewHandlers } from "./card-trial-view";
 
@@ -144,6 +144,60 @@ describe("CardTrialSparseUi", () => {
       noop
     );
     expect(host.querySelector('[data-act="pass"]')?.classList.contains("selected")).toBe(true);
+    ui.destroy();
+  });
+
+  it("keeps row-intent chips to ATK and paints the threatened hero row on the floor", () => {
+    const host = document.createElement("div");
+    const ui = new CardTrialSparseUi(host);
+    const view = playerView(createAdversarialTriangle());
+    ui.sync(
+      {
+        view,
+        phase: "hand",
+        cursor: 0,
+        targetIds: [],
+        targetCursor: 0,
+        flash: null,
+        result: null,
+      },
+      noop
+    );
+    for (const chip of host.querySelectorAll(".ct-chip-atk")) {
+      expect(chip.textContent).toMatch(/ATK/);
+      expect(chip.textContent).not.toMatch(/FRONT|BACK|BOTH|→/);
+    }
+    const threatened = view.intents.flatMap((intent) =>
+      intent.target.kind === "both-rows" ? ["front", "back"] : [intent.target.row]
+    );
+    expect(threatened.length).toBeGreaterThan(0);
+    for (const row of new Set(threatened)) {
+      expect(host.querySelector(`.ct-row-band.${row}.on`)).toBeTruthy();
+    }
+    ui.destroy();
+  });
+
+  it("keeps Hunter's required row on the named-intent chip", () => {
+    const host = document.createElement("div");
+    const ui = new CardTrialSparseUi(host);
+    const view = playerView(createFight(9));
+    ui.sync(
+      {
+        view,
+        phase: "hand",
+        cursor: 0,
+        targetIds: [],
+        targetCursor: 0,
+        flash: null,
+        result: null,
+      },
+      noop
+    );
+    const hunterChip = [...host.querySelectorAll(".ct-actor-chip.enemy")].find((chip) =>
+      chip.textContent?.includes("RK")
+    );
+    expect(hunterChip?.textContent).toMatch(/RK · FRONT/);
+    expect(host.querySelector(".ct-row-band.front.on")).toBeTruthy();
     ui.destroy();
   });
 });

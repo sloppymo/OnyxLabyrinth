@@ -75,10 +75,29 @@ const OPTIONAL_STATES_BY_DIR: Readonly<Record<string, readonly PartySpriteState[
   mage: ["cast"],
   priest: ["cast"],
   thief: ["attack_ranged"],
+  "rat-king": ["cast"],
+  "old-man": ["cast"],
 };
 
+/** Card Trial heroes ship their own packs instead of Thief/Priest class art. */
+export const EXTRA_PARTY_SPRITE_DIRS = ["rat-king", "old-man"] as const;
+
+const HERO_PARTY_SPRITE_DIRS: Readonly<Record<string, string>> = {
+  "rat-king": "rat-king",
+  "old-man": "old-man",
+};
+
+const HERO_REQUIRED_STATES = ["idle", "attack", "hurt", "death"] as const satisfies readonly PartySpriteState[];
+
 function statesForDir(dir: string): readonly PartySpriteState[] {
+  if ((EXTRA_PARTY_SPRITE_DIRS as readonly string[]).includes(dir)) {
+    return [...HERO_REQUIRED_STATES, ...(OPTIONAL_STATES_BY_DIR[dir] ?? [])];
+  }
   return [...REQUIRED_STATES, ...(OPTIONAL_STATES_BY_DIR[dir] ?? [])];
+}
+
+export function partySpriteDirFor(actor: { id: string; class: CharacterClass }): string {
+  return HERO_PARTY_SPRITE_DIRS[actor.id] ?? PARTY_SPRITE_DIRS[actor.class];
 }
 
 export interface PartySpriteBundle {
@@ -138,7 +157,8 @@ async function loadBundle(dir: string): Promise<PartySpriteBundle> {
 
 /** Preload sprites for every class. Call at boot alongside loadEnemySprites. */
 export function loadPartySprites(): Promise<Map<string, PartySpriteBundle>> {
-  const promises = Object.values(PARTY_SPRITE_DIRS).map(async (dir) => {
+  const dirs = [...Object.values(PARTY_SPRITE_DIRS), ...EXTRA_PARTY_SPRITE_DIRS];
+  const promises = dirs.map(async (dir) => {
     const bundle = await loadPartySpriteBundle(dir);
     return [dir, bundle] as const;
   });
@@ -162,16 +182,10 @@ export function loadPartySpriteBundle(dir: string): Promise<PartySpriteBundle> {
   return promise;
 }
 
-/**
- * Return the strip + image for a class and state, if loaded.
- * `cast` and `attack_ranged` fall back to `attack`; anything else missing
- * returns null so the renderer can fall back to the procedural silhouette.
- */
-export function getPartySpriteStrip(
-  cls: CharacterClass,
+function getPartySpriteStripFromDir(
+  dir: string,
   state: PartySpriteState
 ): { strip: SpriteStrip; img: HTMLImageElement } | null {
-  const dir = PARTY_SPRITE_DIRS[cls];
   const bundle = bundleCache.get(dir);
   if (!bundle) return null;
 
@@ -183,8 +197,30 @@ export function getPartySpriteStrip(
 
   return (
     tryState(state) ??
-    (state === "cast" || state === "attack_ranged" ? tryState("attack") : null)
+    (state === "cast" || state === "attack_ranged" ? tryState("attack") : null) ??
+    (state === "walk" ? tryState("idle") : null)
   );
+}
+
+/**
+ * Return the strip + image for a class and state, if loaded.
+ * `cast` and `attack_ranged` fall back to `attack`; missing `walk` falls
+ * back to `idle`; anything else missing returns null so the renderer can
+ * fall back to the procedural silhouette.
+ */
+export function getPartySpriteStrip(
+  cls: CharacterClass,
+  state: PartySpriteState
+): { strip: SpriteStrip; img: HTMLImageElement } | null {
+  return getPartySpriteStripFromDir(PARTY_SPRITE_DIRS[cls], state);
+}
+
+/** Resolve a combat actor's strip, including Card Trial hero packs. */
+export function getPartySpriteStripFor(
+  actor: { id: string; class: CharacterClass },
+  state: PartySpriteState
+): { strip: SpriteStrip; img: HTMLImageElement } | null {
+  return getPartySpriteStripFromDir(partySpriteDirFor(actor), state);
 }
 
 /** Test hook: clear all caches. */

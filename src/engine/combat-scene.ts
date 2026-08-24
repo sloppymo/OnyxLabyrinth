@@ -10,7 +10,7 @@ import type { Character } from "../game/party";
 import type { EnemyInstance, SummonedAlly } from "../game/combat-types";
 import { statusDrawScale } from "../game/combat-shared";
 import { enemySpriteId, getEnemySpriteStrip } from "./enemy-sprite-cache";
-import { getPartySpriteStrip } from "./party-sprite-cache";
+import { getPartySpriteStripFor } from "./party-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
 import {
   ENEMY_SPRITE_DEFS,
@@ -390,7 +390,7 @@ function drawPartyMember(
   _h: number
 ): void {
   const anim = getAnim(scene, "party", char.id, now);
-  const stripInfo = getPartySpriteStrip(char.class, anim.state);
+  const stripInfo = getPartySpriteStripFor(char, anim.state);
   const artFoot = artFootFromTopFor({
     hasStrip: !!stripInfo,
     stripArtFootFromTop: stripInfo?.strip.artFootFromTop,
@@ -438,7 +438,7 @@ function drawPartyMember(
   } else {
     if (
       !warnedMissingPartySprites.has(char.class) &&
-      !getPartySpriteStrip(char.class, "idle")
+      !getPartySpriteStripFor(char, "idle")
     ) {
       warnedMissingPartySprites.add(char.class);
       warnAsset(
