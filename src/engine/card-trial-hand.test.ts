@@ -55,6 +55,13 @@ function baseView(hand: HandCardView[]): CardTrialPlayerView {
     openedEnemyId: null,
     ratRow: null,
     pileCountsOnly: true,
+    turnModel: "interleaved",
+    passAction: "pass",
+    passLabel: "PASS",
+    passHint: "End this actor's turn",
+    canSwitchHero: false,
+    partner: null,
+    heroesFinishedThisPhase: [],
   };
 }
 

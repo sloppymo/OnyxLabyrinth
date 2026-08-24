@@ -70,7 +70,7 @@ export class CardTrialLobbyController {
     const win = new FF6Window({
       title: "Card Trial",
       contentHtml: `<div class="ff6-arena-meta">Arena prototype · 40/40 restore · no rewards</div>${
-        this.opts.summary ? `<pre class="ct-summary">${this.opts.summary}</pre>` : ""
+        this.opts.debug && this.opts.summary ? `<pre class="ct-summary">${this.opts.summary}</pre>` : ""
       }`,
       items: this.items.map((it) => ({ label: it.label })),
       selectedIndex: this.selected,

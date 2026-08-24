@@ -34,6 +34,7 @@ import {
 } from "./card-trial-presentation";
 import { playCombatEventSounds } from "./combat-audio";
 import { CARD_DEFS } from "../game/card-trial/cards";
+import { handDigitAction } from "./card-trial-hotkeys";
 
 export interface CardTrialControllerOptions {
   stage: CombatStage;
@@ -211,13 +212,10 @@ export class CardTrialController {
         this.confirmHand();
         return;
       }
-      const digit = Number(key);
-      if (digit >= 1 && digit <= 5) {
-        const index = digit - 1;
-        if (index < playerView(this.trial).hand.length) {
-          this.cursor = index;
-          this.confirmHand();
-        }
+      const hotkey = handDigitAction(Number(key), playerView(this.trial).hand.length);
+      if (hotkey.kind === "card") {
+        this.cursor = hotkey.index;
+        this.confirmHand();
       }
       return;
     }

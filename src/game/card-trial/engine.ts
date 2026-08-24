@@ -101,7 +101,8 @@ function emptyTelemetry(): CardTrialTelemetry {
 }
 
 export function parseTurnModel(raw: unknown): CardTrialTurnModel {
-  if (raw === "shared" || raw === "handoff" || raw === "interleaved") return raw;
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : raw;
+  if (value === "shared" || value === "handoff" || value === "interleaved") return value;
   return "interleaved";
 }
 

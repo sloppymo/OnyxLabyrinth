@@ -4,11 +4,12 @@ import {
   createFight,
   endHeroTurn,
   handCard,
+  parseTurnModel,
   playCard,
   playerView,
   switchActingHero,
 } from "./engine";
-import type { CardId, CardTrialState } from "./types";
+import type { CardId, CardTrialEvent, CardTrialState } from "./types";
 
 function takeFromPiles(s: CardTrialState, heroId: "rat-king" | "old-man", id: CardId) {
   const hero = s.heroes[heroId];
@@ -272,6 +273,45 @@ describe("Card Trial turn model — transition fuzz", () => {
         }
         expect(s.telemetry.turnModel).toBe(turnModel);
       }
+    }
+  });
+});
+
+function banners(events: CardTrialEvent[]): string[] {
+  return events.filter((e): e is Extract<CardTrialEvent, { type: "banner" }> => e.type === "banner").map((e) => e.text);
+}
+
+describe("parseTurnModel", () => {
+  it("accepts the three explicit models and defaults everything else to interleaved", () => {
+    expect(parseTurnModel("interleaved")).toBe("interleaved");
+    expect(parseTurnModel("shared")).toBe("shared");
+    expect(parseTurnModel("handoff")).toBe("handoff");
+    expect(parseTurnModel("Handoff")).toBe("handoff");
+    expect(parseTurnModel(" SHARED ")).toBe("shared");
+    expect(parseTurnModel("nope")).toBe("interleaved");
+    expect(parseTurnModel(null)).toBe("interleaved");
+    expect(parseTurnModel(undefined)).toBe("interleaved");
+  });
+});
+
+describe("Fight 4 turn-model discriminator", () => {
+  it("inserts Hook between heroes only under interleaved", () => {
+    const interleaved = createFight(4, { seed: 1, turnModel: "interleaved" });
+    const afterRk = banners(endHeroTurn(interleaved));
+    expect(afterRk.some((t) => t.includes("HOOK"))).toBe(true);
+    expect(afterRk.some((t) => t.includes("BRUTE"))).toBe(false);
+    expect(actingHero(interleaved)?.id).toBe("old-man");
+    const afterOm = banners(endHeroTurn(interleaved));
+    expect(afterOm.some((t) => t.includes("BRUTE"))).toBe(true);
+
+    for (const turnModel of ["handoff", "shared"] as const) {
+      const s = createFight(4, { seed: 1, turnModel });
+      const first = banners(endHeroTurn(s));
+      expect(first.some((t) => t.includes("HOOK") || t.includes("BRUTE")), turnModel).toBe(false);
+      expect(actingHero(s)?.id).toBe("old-man");
+      const second = banners(endHeroTurn(s));
+      expect(second.some((t) => t.includes("HOOK")), turnModel).toBe(true);
+      expect(second.some((t) => t.includes("BRUTE")), turnModel).toBe(true);
     }
   });
 });
