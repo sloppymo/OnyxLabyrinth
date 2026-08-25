@@ -44,6 +44,7 @@ import f5FloorAUrl from "../assets/f5_floor_a_256.png";
 import f5FloorBUrl from "../assets/f5_floor_b_256.png";
 import f5CeilingUrl from "../assets/f5_ceiling_256.png";
 import f1DoorUrl from "../assets/f1_door_256.png";
+import f1ArenaBackdropUrl from "../assets/f1_arena_backdrop.jpg";
 import f2DoorUrl from "../assets/f2_door_256.png";
 import f2bDoorUrl from "../assets/f2b_door_256.png";
 import f3DoorUrl from "../assets/f3_door_256.png";
@@ -118,7 +119,6 @@ import { featurePropSpriteIds } from "../data/maze-props";
 import { npcAt } from "../game/npc";
 import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
-import { combatBackdropRecipeForTheme } from "../data/combat-backdrops";
 import { waterGridFromFloor } from "./water-floor";
 import { mazeRenderProfiler } from "./maze-renderer/performance";
 import {
@@ -375,6 +375,8 @@ export interface LoadedTileset {
   stairs: HTMLCanvasElement | null;
   /** Optional non-repeating, heading-aware panorama used by outdoor themes. */
   sky: HTMLImageElement | null;
+  /** Authored fixed-camera combat plate, when a theme has one. */
+  arenaBackdrop: HTMLImageElement | null;
 }
 
 /** Bundled Vite-import fallbacks for campaign themes (also mirrored in public/). */
@@ -785,6 +787,7 @@ function ensureWaterTextureLoaded(): Promise<void> {
         door: null,
         stairs: null,
         sky: null,
+        arenaBackdrop: null,
       };
       tilesetGeneration++;
     })
@@ -907,8 +910,14 @@ function loadTileset(
     // door panel keeps rendering for themes without an authored stairs panel.
     stairsUrl ? loadImage(stairsUrl).catch(() => null) : Promise.resolve(null),
     skyUrlForTheme(theme) ? loadImage(skyUrlForTheme(theme)!).catch(() => null) : Promise.resolve(null),
+    theme === "f1"
+      ? loadImage(f1ArenaBackdropUrl).catch(() => {
+          warnAsset(`failed to load combat backdrop: ${f1ArenaBackdropUrl}`);
+          return null;
+        })
+      : Promise.resolve(null),
     loadWallVariantImages(theme),
-  ]).then(([wall, floorAImg, floorBImg, ceilingImg, doorImg, stairsImg, sky, wallVariantImages]) => {
+  ]).then(([wall, floorAImg, floorBImg, ceilingImg, doorImg, stairsImg, sky, arenaBackdrop, wallVariantImages]) => {
     const wallAdjusted = wall
       ? adjustTextureImage(wall, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)
       : null;
@@ -972,7 +981,7 @@ function loadTileset(
       ? adjustTextureImage(stairsImg, RENDER_CONFIG.wallBrightnessFactor, RENDER_CONFIG.wallContrastFactor)
       : null;
     const stairs = stairsAdjusted ? prepareRepeatedTexture(stairsAdjusted, 1, 1) : null;
-    return { set, repeatedWall, wallVariants, door, stairs, sky };
+    return { set, repeatedWall, wallVariants, door, stairs, sky, arenaBackdrop };
   });
 }
 
@@ -2762,36 +2771,31 @@ export function renderBattleArena(
   w: number,
   h: number
 ): HTMLCanvasElement {
-  const result = document.createElement("canvas");
-  result.width = w;
-  result.height = h;
-  const resultCtx = result.getContext("2d")!;
+  const off = document.createElement("canvas");
+  off.width = w;
+  off.height = h;
+  const ctx = off.getContext("2d")!;
 
   const theme = resolveTilesetTheme(state.floor);
   const tileset = getTilesetForTheme(theme);
-  const recipe = combatBackdropRecipeForTheme(theme);
-  if (tileset) {
-    const native = document.createElement("canvas");
-    native.width = recipe.nativeWidth;
-    native.height = recipe.nativeHeight;
-    const nativeCtx = native.getContext("2d")!;
-    renderArenaRoom(nativeCtx, native.width, native.height, {
+  if (theme === "f1" && tileset?.arenaBackdrop?.complete && tileset.arenaBackdrop.naturalWidth > 0) {
+    // F1's combat camera is a fixed composition. Use the authored plate
+    // directly so its masonry rhythm, vaulted ceiling, drain, and puddle
+    // silhouettes stay coherent instead of being fabricated per-pixel from
+    // corridor tiles.
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(tileset.arenaBackdrop, 0, 0, w, h);
+  } else if (tileset) {
+    renderArenaRoom(ctx, w, h, {
       tileset,
       voidColor: PALETTE.bg,
-      depthBands: recipe.depthBands,
-      water: recipe.water,
-      neutralizeBakedWater: recipe.neutralizeBakedWater,
-      landmark: recipe.landmark,
-      lighting: recipe.lighting,
-      palette: recipe.palette,
+      floorPuddles: theme === "f1",
     });
-    resultCtx.imageSmoothingEnabled = false;
-    resultCtx.drawImage(native, 0, 0, native.width, native.height, 0, 0, w, h);
   } else {
     // Fallback when no tileset is loaded (debug floors).
-    resultCtx.fillStyle = PALETTE.bg;
-    resultCtx.fillRect(0, 0, w, h);
+    ctx.fillStyle = PALETTE.bg;
+    ctx.fillRect(0, 0, w, h);
   }
 
-  return result;
+  return off;
 }

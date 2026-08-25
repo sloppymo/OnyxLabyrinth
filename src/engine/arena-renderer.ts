@@ -22,11 +22,6 @@ import {
   arenaSideWallWorldAt,
 } from "./render-math";
 import { ARENA_CAMERA, buildArenaCamera } from "./arena-camera";
-import type {
-  ArenaLandmarkStyle,
-  ArenaLightingStyle,
-  ArenaWaterStyle,
-} from "../data/combat-backdrops";
 
 export interface ArenaRenderOptions {
   tileset: LoadedTileset;
@@ -50,18 +45,6 @@ export interface ArenaRenderOptions {
   floorNearDepth?: number;
   /** Draw a world-space-continuous stagnant-puddle overlay (Flooded Crypt theme only). */
   floorPuddles?: boolean;
-  /** Quantize the existing depth-fog result into large, console-era value bands. */
-  depthBands?: number;
-  /** Authored water composition; supersedes the legacy random puddle carpet. */
-  water?: ArenaWaterStyle;
-  /** Remove the large puddles baked into the source tiles before composing water. */
-  neutralizeBakedWater?: boolean;
-  /** Screen-space architectural focal point painted over the projected room. */
-  landmark?: ArenaLandmarkStyle;
-  /** Theme-specific static light composition. */
-  lighting?: ArenaLightingStyle;
-  /** Optional fixed output palette applied after the complete room is painted. */
-  palette?: readonly string[] | null;
 }
 
 const DEFAULTS = {
@@ -89,11 +72,6 @@ interface ArenaParams {
   voidColor: string;
   floorNearDepth: number;
   floorPuddles: boolean;
-  depthBands: number;
-  water: ArenaWaterStyle;
-  neutralizeBakedWater: boolean;
-  landmark: ArenaLandmarkStyle;
-  lighting: ArenaLightingStyle;
 }
 
 /** Render a 3/4 top-down arena room into the provided canvas context. */
@@ -114,11 +92,6 @@ export function renderArenaRoom(
     voidColor: options.voidColor ?? DEFAULTS.voidColor,
     floorNearDepth: options.floorNearDepth ?? DEFAULTS.floorNearDepth,
     floorPuddles: options.floorPuddles ?? false,
-    depthBands: Math.max(0, Math.floor(options.depthBands ?? 0)),
-    water: options.water ?? (options.floorPuddles ? "sluice" : "none"),
-    neutralizeBakedWater: options.neutralizeBakedWater ?? false,
-    landmark: options.landmark ?? "none",
-    lighting: options.lighting ?? "none",
   };
   const camera = buildArenaCamera(h, params);
   const bg = parseBg(params.voidColor);
@@ -136,9 +109,6 @@ export function renderArenaRoom(
     drawSideWalls(buf, w, h, camera, params, wallData, bg);
   }
   ctx.putImageData(buf, 0, 0);
-  drawArenaLandmark(ctx, w, h, params.landmark);
-  drawArenaLighting(ctx, w, h, params.lighting);
-  if (options.palette?.length) quantizeCanvasToPalette(ctx, w, h, options.palette);
 }
 
 function parseBg(hex: string): Rgb {
@@ -192,10 +162,9 @@ function writeFoggedTexel(
   srcIdx: number,
   fog: number,
   bg: Rgb,
-  shade = 1,
-  depthBands = 0
+  shade = 1
 ): void {
-  writeFoggedColor(buf, dstIdx, tex.data[srcIdx], tex.data[srcIdx + 1], tex.data[srcIdx + 2], fog, bg, shade, depthBands);
+  writeFoggedColor(buf, dstIdx, tex.data[srcIdx], tex.data[srcIdx + 1], tex.data[srcIdx + 2], fog, bg, shade);
 }
 
 function writeFoggedColor(
@@ -206,76 +175,73 @@ function writeFoggedColor(
   b: number,
   fog: number,
   bg: Rgb,
-  shade = 1,
-  depthBands = 0
+  shade = 1
 ): void {
-  const bandedFog = quantizeArenaUnit(fog, depthBands);
-  const bandedShade = quantizeArenaUnit(Math.min(1, shade), depthBands);
-  const inv = 1 - bandedFog;
-  buf.data[dstIdx] = Math.min(255, r * bandedShade * bandedFog + bg.r * inv);
-  buf.data[dstIdx + 1] = Math.min(255, g * bandedShade * bandedFog + bg.g * inv);
-  buf.data[dstIdx + 2] = Math.min(255, b * bandedShade * bandedFog + bg.b * inv);
+  const inv = 1 - fog;
+  buf.data[dstIdx] = Math.min(255, r * shade * fog + bg.r * inv);
+  buf.data[dstIdx + 1] = Math.min(255, g * shade * fog + bg.g * inv);
+  buf.data[dstIdx + 2] = Math.min(255, b * shade * fog + bg.b * inv);
   buf.data[dstIdx + 3] = 255;
 }
 
-// --- World-space authored water ---------------------------------------------
+// --- World-space puddle overlay ---------------------------------------------
+//
+// Baked floor tiles alternate two independently-seeded 256px textures in a
+// checkerboard, each wrapped only within itself — any decorative feature
+// baked into those textures resets at every grid-cell boundary, which reads
+// as a hard, obviously-repeating stamp for large features like puddles.
+// Puddles are instead evaluated directly on continuous (worldX, worldY), so
+// they span cell boundaries the same way real terrain would.
 
-export function quantizeArenaUnit(value: number, bands: number): number {
-  const clamped = Math.min(1, Math.max(0, value));
-  if (bands < 2) return clamped;
-  return Math.round(clamped * (bands - 1)) / (bands - 1);
+function hash2(ix: number, iy: number): number {
+  let h = ix * 374761393 + iy * 668265263;
+  h = (h ^ (h >>> 13)) * 1274126177;
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967295;
 }
 
 function smoothstep(t: number): number {
-  const clamped = Math.min(1, Math.max(0, t));
-  return clamped * clamped * (3 - 2 * clamped);
+  return t * t * (3 - 2 * t);
 }
 
-/**
- * A deliberate drainage channel flowing from the far-wall sluice toward the
- * player, plus two restrained side pools. This gives the floor one readable
- * gesture instead of repeating a large puddle stamp in every grid cell.
- */
-export function sluiceWaterCoverage(
-  worldX: number,
-  worldY: number,
-  roomDepth: number = DEFAULTS.roomDepth,
-  nearDepth: number = DEFAULTS.floorNearDepth
-): number {
-  const progress = Math.min(1, Math.max(0, (roomDepth - worldY) / (roomDepth - nearDepth)));
-  const center = -0.65 + progress * 1.25 + Math.sin(worldY * 0.62) * 0.18;
-  const halfWidth = 0.72 + progress * 1.15;
-  const channel = 1 - smoothstep((Math.abs(worldX - center) - halfWidth * 0.76) / (halfWidth * 0.24));
-
-  const basin = (cx: number, cy: number, rx: number, ry: number) => {
-    const dx = (worldX - cx) / rx;
-    const dy = (worldY - cy) / ry;
-    return 1 - smoothstep((Math.hypot(dx, dy) - 0.72) / 0.28);
-  };
-  const leftPool = basin(-5.25, 6.8, 2.15, 1.45) * 0.92;
-  const rightPool = basin(4.75, 11.7, 1.55, 1.05) * 0.72;
-  return Math.min(1, Math.max(channel, leftPool, rightPool));
+function valueNoise2D(x: number, y: number): number {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const sx = smoothstep(x - x0);
+  const sy = smoothstep(y - y0);
+  const n00 = hash2(x0, y0);
+  const n10 = hash2(x0 + 1, y0);
+  const n01 = hash2(x0, y0 + 1);
+  const n11 = hash2(x0 + 1, y0 + 1);
+  const ix0 = n00 + (n10 - n00) * sx;
+  const ix1 = n01 + (n11 - n01) * sx;
+  return ix0 + (ix1 - ix0) * sy;
 }
 
+/** Two-octave organic blob field so puddle edges aren't perfect circles. */
+function puddleField(worldX: number, worldY: number): number {
+  return (
+    valueNoise2D(worldX * 0.55, worldY * 0.55) * 0.7 +
+    valueNoise2D(worldX * 1.4 + 19.3, worldY * 1.4 + 7.1) * 0.3
+  );
+}
+
+const PUDDLE_THRESHOLD = 0.58;
+const PUDDLE_EDGE_BAND = 0.05;
+const PUDDLE_DEEP_BAND = 0.16;
 const PUDDLE_SHALLOW: Rgb = { r: 0x3f, g: 0x60, b: 0x44 };
 const PUDDLE_DEEP: Rgb = { r: 0x2c, g: 0x4a, b: 0x34 };
 
-export function neutralizeBakedWaterColor(r: number, g: number, b: number): [number, number, number] {
-  if (g - r < 10 || g - b < 5) return [r, g, b];
-  const value = r * 0.25 + g * 0.58 + b * 0.17;
-  return [value * 0.86, value * 0.92, value * 0.82];
-}
-
-/** Blend the authored channel into a dry base color at world (x, y). */
-function applySluiceTint(worldX: number, worldY: number, coverage: number, r: number, g: number, b: number): [number, number, number] {
-  if (coverage <= 0) return [r, g, b];
-  const glint = Math.sin(worldX * 5.2 + worldY * 2.1) > 0.88 ? 0.12 : 0;
-  const depthT = 0.42 + 0.34 * Math.min(1, worldY / DEFAULTS.roomDepth);
-  const pr = PUDDLE_SHALLOW.r + (PUDDLE_DEEP.r - PUDDLE_SHALLOW.r) * depthT + glint * 35;
-  const pg = PUDDLE_SHALLOW.g + (PUDDLE_DEEP.g - PUDDLE_SHALLOW.g) * depthT + glint * 42;
-  const pb = PUDDLE_SHALLOW.b + (PUDDLE_DEEP.b - PUDDLE_SHALLOW.b) * depthT + glint * 24;
-  const blend = 0.58 + coverage * 0.34;
-  return [r + (pr - r) * blend, g + (pg - g) * blend, b + (pb - b) * blend];
+/** Blend a stagnant-puddle tint into a base floor color at world (x, y). */
+function applyPuddleTint(worldX: number, worldY: number, r: number, g: number, b: number): [number, number, number] {
+  const n = puddleField(worldX, worldY);
+  if (n <= PUDDLE_THRESHOLD) return [r, g, b];
+  const edgeT = smoothstep(Math.min(1, (n - PUDDLE_THRESHOLD) / PUDDLE_EDGE_BAND));
+  const depthT = Math.min(1, Math.max(0, (n - PUDDLE_THRESHOLD - PUDDLE_EDGE_BAND) / PUDDLE_DEEP_BAND));
+  const pr = PUDDLE_SHALLOW.r + (PUDDLE_DEEP.r - PUDDLE_SHALLOW.r) * depthT;
+  const pg = PUDDLE_SHALLOW.g + (PUDDLE_DEEP.g - PUDDLE_SHALLOW.g) * depthT;
+  const pb = PUDDLE_SHALLOW.b + (PUDDLE_DEEP.b - PUDDLE_SHALLOW.b) * depthT;
+  return [r + (pr - r) * edgeT, g + (pg - g) * edgeT, b + (pb - b) * edgeT];
 }
 
 function getWallData(tileset: LoadedTileset): ImageData | null {
@@ -383,15 +349,12 @@ function drawFloor(
         distToWall < FLOOR_AO_RANGE
           ? 0.55 + 0.45 * Math.max(0, distToWall / FLOOR_AO_RANGE)
           : 1;
-      let r = tex.data[srcIdx];
-      let g = tex.data[srcIdx + 1];
-      let b = tex.data[srcIdx + 2];
-      if (params.neutralizeBakedWater) [r, g, b] = neutralizeBakedWaterColor(r, g, b);
-      if (params.water === "sluice") {
-        const coverage = sluiceWaterCoverage(worldX, worldY, params.roomDepth, params.floorNearDepth);
-        [r, g, b] = applySluiceTint(worldX, worldY, coverage, r, g, b);
+      if (params.floorPuddles) {
+        const [r, g, b] = applyPuddleTint(worldX, worldY, tex.data[srcIdx], tex.data[srcIdx + 1], tex.data[srcIdx + 2]);
+        writeFoggedColor(buf, rowOffset + x * 4, r, g, b, fog, bg, shade);
+      } else {
+        writeFoggedTexel(buf, rowOffset + x * 4, tex, srcIdx, fog, bg, shade);
       }
-      writeFoggedColor(buf, rowOffset + x * 4, r, g, b, fog, bg, shade, params.depthBands);
     }
   }
 }
@@ -464,7 +427,7 @@ function drawBackWall(
         Math.floor(((worldX + halfW) / params.wallHeight) * texSize) % texSize;
       if (texX < 0) texX += texSize;
       const srcIdx = (texY * texSize + texX) * 4;
-      writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg, shade, params.depthBands);
+      writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg, shade);
     }
   }
 }
@@ -516,7 +479,7 @@ function extendBackWallIntoVoid(
         Math.floor(((worldX + halfW) / params.wallHeight) * texSize) % texSize;
       if (texX < 0) texX += texSize;
       const srcIdx = (texY * texSize + texX) * 4;
-      writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg, shade, params.depthBands);
+      writeFoggedTexel(buf, rowOffset + x * 4, wallData, srcIdx, fog, bg, shade);
     }
   }
 }
@@ -610,8 +573,7 @@ function drawSideWalls(
             srcIdx,
             fog,
             bg,
-            shade,
-            params.depthBands
+            shade
           );
         } else {
           // Corner wedge: the ray reaches Y = roomDepth while still inside
@@ -642,8 +604,7 @@ function drawSideWalls(
             srcIdx,
             backFog,
             bg,
-            shade,
-            params.depthBands
+            shade
           );
         }
       }
@@ -654,135 +615,4 @@ function drawSideWalls(
     paintStrip(0, Math.min(w, Math.ceil(left)), -halfW);
     paintStrip(Math.max(0, Math.floor(right) + 1), w, halfW);
   }
-}
-
-// --- Native-raster set dressing ---------------------------------------------
-
-function drawArenaLandmark(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  landmark: ArenaLandmarkStyle
-): void {
-  if (landmark !== "f1-sluice") return;
-  ctx.save();
-  ctx.scale(w / 256, h / 224);
-
-  // Damp halo and shadow make the landmark read before its individual stones.
-  ctx.fillStyle = "rgba(12,19,14,0.52)";
-  ctx.fillRect(91, 20, 72, 67);
-  ctx.fillStyle = "#080806";
-  ctx.fillRect(107, 35, 42, 44);
-  ctx.fillRect(102, 43, 52, 36);
-
-  // Chunky cracked arch — deliberately asymmetric, with 2–4px native pixels.
-  ctx.fillStyle = "#596954";
-  ctx.fillRect(103, 30, 50, 6);
-  ctx.fillRect(98, 36, 10, 38);
-  ctx.fillRect(149, 36, 10, 38);
-  ctx.fillStyle = "#354132";
-  ctx.fillRect(108, 35, 7, 7);
-  ctx.fillRect(122, 30, 5, 8);
-  ctx.fillRect(141, 33, 8, 5);
-  ctx.fillRect(98, 50, 9, 5);
-  ctx.fillRect(151, 61, 8, 7);
-  ctx.fillStyle = "#171a14";
-  ctx.fillRect(116, 31, 3, 9);
-  ctx.fillRect(135, 32, 3, 7);
-  ctx.fillRect(101, 57, 7, 3);
-
-  // Rusted bars and a sharp water lip.
-  ctx.fillStyle = "#3f2e1d";
-  for (let x = 112; x <= 144; x += 8) ctx.fillRect(x, 40, 3, 36);
-  ctx.fillRect(108, 49, 42, 3);
-  ctx.fillRect(108, 67, 42, 3);
-  ctx.fillStyle = "#263e2d";
-  ctx.fillRect(111, 73, 36, 6);
-  ctx.fillStyle = "#4d8258";
-  ctx.fillRect(116, 76, 27, 3);
-  ctx.fillRect(121, 79, 18, 3);
-
-  // One practical light bracket gives the composition a warm/cool dialogue.
-  ctx.fillStyle = "#20170f";
-  ctx.fillRect(78, 43, 14, 3);
-  ctx.fillRect(80, 46, 3, 11);
-  ctx.fillStyle = "#d59b3c";
-  ctx.fillRect(75, 35, 8, 10);
-  ctx.fillStyle = "#ffe48a";
-  ctx.fillRect(78, 34, 4, 7);
-  ctx.fillStyle = "#8c3030";
-  ctx.fillRect(76, 43, 6, 3);
-  ctx.restore();
-}
-
-function drawArenaLighting(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  lighting: ArenaLightingStyle
-): void {
-  if (lighting !== "f1-flooded") return;
-  ctx.save();
-  ctx.globalCompositeOperation = "screen";
-
-  const warm = ctx.createRadialGradient(w * 0.31, h * 0.19, 1, w * 0.31, h * 0.19, w * 0.32);
-  warm.addColorStop(0, "rgba(213,155,60,0.32)");
-  warm.addColorStop(0.45, "rgba(116,80,42,0.16)");
-  warm.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = warm;
-  ctx.fillRect(0, 0, w, h * 0.7);
-
-  const cold = ctx.createRadialGradient(w * 0.51, h * 0.56, 2, w * 0.51, h * 0.56, w * 0.42);
-  cold.addColorStop(0, "rgba(77,130,88,0.22)");
-  cold.addColorStop(0.58, "rgba(41,75,52,0.10)");
-  cold.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = cold;
-  ctx.fillRect(0, h * 0.25, w, h * 0.75);
-  ctx.restore();
-
-  // Heavy corner shapes preserve silhouette and keep the center playable.
-  ctx.save();
-  ctx.globalCompositeOperation = "multiply";
-  ctx.fillStyle = "rgba(7,8,6,0.22)";
-  ctx.fillRect(0, 0, Math.round(w * 0.09), h);
-  ctx.fillRect(Math.round(w * 0.91), 0, Math.ceil(w * 0.09), h);
-  ctx.fillStyle = "rgba(7,8,6,0.14)";
-  ctx.fillRect(0, Math.round(h * 0.91), w, Math.ceil(h * 0.09));
-  ctx.restore();
-}
-
-function quantizeCanvasToPalette(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  palette: readonly string[]
-): void {
-  const colors = palette.map(parseBg);
-  const image = ctx.getImageData(0, 0, w, h);
-  const data = image.data;
-  const cache = new Map<number, Rgb>();
-  for (let i = 0; i < data.length; i += 4) {
-    const key = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
-    let closest = cache.get(key);
-    if (!closest) {
-      let best = colors[0];
-      let bestDist = Number.POSITIVE_INFINITY;
-      for (const color of colors) {
-        const dr = data[i] - color.r;
-        const dg = data[i + 1] - color.g;
-        const db = data[i + 2] - color.b;
-        const dist = dr * dr * 0.26 + dg * dg * 0.55 + db * db * 0.19;
-        if (dist < bestDist) {
-          bestDist = dist;
-          best = color;
-        }
-      }
-      closest = best;
-      cache.set(key, closest);
-    }
-    data[i] = closest.r;
-    data[i + 1] = closest.g;
-    data[i + 2] = closest.b;
-  }
-  ctx.putImageData(image, 0, 0);
 }

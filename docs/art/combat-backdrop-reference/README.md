@@ -6,6 +6,11 @@ This is the approved visual target for the first combat battlefield backdrop.
 It is a composition and art-direction reference, not literal production UI
 art: preserve the game's real HUD, card text, actors, and interaction states.
 
+The runtime F1 combat scene uses the authored environment-only plate at
+`src/assets/f1_arena_backdrop.jpg`. It is drawn as one fixed-camera backdrop;
+the existing procedural arena renderer remains the fallback for themes without
+an authored plate.
+
 ## Target qualities
 
 - Late-1990s high-color pre-rendered RPG atmosphere.
