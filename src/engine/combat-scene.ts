@@ -66,6 +66,7 @@ import {
   sampleActorFlash,
 } from "./combat-impact-fx";
 import { screenShakeOffset } from "./combat-motion";
+import { sampleCombatBackdropEnvironment } from "./combat-backdrop-environment";
 
 // Re-export the public choreography API so existing importers keep working.
 export {
@@ -163,6 +164,66 @@ function getCombatBg(): HTMLImageElement | null {
     combatBgImage.src = combatBgUrl;
   }
   return combatBgImage;
+}
+
+function drawCombatBackdropEnvironment(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  scene: CombatScene,
+  now: number
+): void {
+  const ambient = sampleCombatBackdropEnvironment(scene.backdropId, now, w, h);
+  if (!ambient.active) return;
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+
+  // Slow mist, kept below actor feet and intentionally only a few native pixels high.
+  ctx.fillStyle = "#75866a";
+  for (const band of ambient.mist) {
+    ctx.globalAlpha = band.alpha;
+    ctx.fillRect(Math.round(band.x), Math.round(band.y), Math.round(band.width), 6);
+    ctx.fillRect(Math.round(band.x + 18), Math.round(band.y + 6), Math.round(band.width * 0.68), 3);
+  }
+
+  // Drips and ripples share the cool water palette of the baked scene.
+  ctx.fillStyle = "#4d8258";
+  for (const drop of ambient.droplets) {
+    ctx.globalAlpha = drop.alpha;
+    ctx.fillRect(Math.round(drop.x / 3) * 3, Math.round(drop.y / 3) * 3, 3, drop.length);
+  }
+  for (const ripple of ambient.ripples) {
+    ctx.globalAlpha = ripple.alpha;
+    ctx.fillRect(Math.round(ripple.x - ripple.width / 2), Math.round(ripple.y), Math.round(ripple.width), 3);
+    ctx.fillRect(Math.round(ripple.x - ripple.width * 0.3), Math.round(ripple.y + 6), Math.round(ripple.width * 0.6), 3);
+  }
+
+  // Four-frame, blocky flame flicker over the static bracket.
+  const torchX = w * (78 / 256);
+  const torchY = h * (36 / 224);
+  const sway = (ambient.torchFrame - 1.5) * 2;
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = 0.42;
+  ctx.fillStyle = "#d59b3c";
+  ctx.fillRect(Math.round(torchX + sway), Math.round(torchY - 10), 12, 21);
+  ctx.globalAlpha = 0.76;
+  ctx.fillStyle = "#ffe48a";
+  ctx.fillRect(Math.round(torchX + 3 - sway * 0.5), Math.round(torchY - 7), 6, 12);
+
+  // Existing impact glows fracture across the wet floor as horizontal bands.
+  for (const glow of scene.lightGlows) {
+    const p = (now - glow.start) / glow.duration;
+    if (p < 0 || p >= 1) continue;
+    const floorY = Math.max(h * 0.52, glow.y + 18);
+    ctx.globalAlpha = (1 - p) * 0.24;
+    ctx.fillStyle = glow.color;
+    for (let i = 0; i < 4; i++) {
+      const width = glow.radius * (0.9 - i * 0.14) * (0.65 + p * 0.45);
+      ctx.fillRect(Math.round(glow.x - width / 2 + (i & 1 ? 6 : -3)), Math.round(floorY + i * 6), Math.round(width), 3);
+    }
+  }
+  ctx.restore();
 }
 
 const warnedMissingEnemySprites = new Set<string>();
@@ -1125,6 +1186,8 @@ export function renderScene(
       ctx.fillRect(0, 0, w, h);
     }
   }
+
+  drawCombatBackdropEnvironment(ctx, w, h, scene, now);
 
   // Elemental environmental lighting: dim the backdrop during prelude,
   // then flash + floor/rim glow on impact.  Drawn after background but

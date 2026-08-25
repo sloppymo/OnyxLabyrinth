@@ -92,6 +92,7 @@ import {
   sampleEnvironmentLight,
   sampleActorFlash,
 } from "./combat-impact-fx";
+import { sampleCombatBackdropEnvironment } from "./combat-backdrop-environment";
 
 /** GameObject "destroy" event name — see `clearShine`'s tidyup unhook. */
 const DESTROY_EVENT = Phaser.GameObjects.Events.DESTROY;
@@ -195,6 +196,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   );
   private glowGraphics: Phaser.GameObjects.Graphics | null = null;
   private bgImage: Phaser.GameObjects.Image | null = null;
+  /** Deterministic theme ambience drawn between the baked background and actors. */
+  private ambientGraphics: Phaser.GameObjects.Graphics | null = null;
   /** Environmental lighting dim overlay (normal blend, black). */
   private envDimRect: Phaser.GameObjects.Rectangle | null = null;
   /** Environmental lighting flash overlay (additive blend, element color). */
@@ -758,6 +761,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     }
 
     this.syncBackground(scene);
+    this.syncBackdropEnvironment(scene, now, w, h);
     this.syncEnvLight(scene, now, w, h);
     this.syncGlows(scene, now);
     this.syncActors(scene, now, w, h);
@@ -786,6 +790,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const byDepth = (a: Phaser.GameObjects.GameObject, b: Phaser.GameObjects.GameObject) =>
       ((a as unknown as { depth: number }).depth - (b as unknown as { depth: number }).depth);
     this.actorLayer.list.sort(byDepth);
+    this.bgLayer.list.sort(byDepth);
     this.effectsLayer.list.sort(byDepth);
     this.fgLightingLayer.list.sort(byDepth);
   }
@@ -1303,6 +1308,65 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     } else if (this.bgImage.texture.key !== key) {
       this.bgImage.setTexture(key);
       this.bgImage.setDisplaySize(COMBAT_DESIGN_W, COMBAT_DESIGN_H);
+    }
+  }
+
+  private syncBackdropEnvironment(scene: CombatScene, now: number, w: number, h: number): void {
+    const ambient = sampleCombatBackdropEnvironment(scene.backdropId, now, w, h);
+    if (!ambient.active) {
+      if (this.ambientGraphics) this.ambientGraphics.setVisible(false);
+      return;
+    }
+    if (!this.ambientGraphics) {
+      this.ambientGraphics = this.addTo(
+        this.bgLayer,
+        this.add.graphics().setDepth(-990)
+      );
+    }
+    const g = this.ambientGraphics;
+    g.setVisible(true);
+    g.clear();
+
+    for (const band of ambient.mist) {
+      g.fillStyle(0x75866a, band.alpha);
+      g.fillRect(Math.round(band.x), Math.round(band.y), Math.round(band.width), 6);
+      g.fillRect(Math.round(band.x + 18), Math.round(band.y + 6), Math.round(band.width * 0.68), 3);
+    }
+    for (const drop of ambient.droplets) {
+      g.fillStyle(0x4d8258, drop.alpha);
+      g.fillRect(Math.round(drop.x / 3) * 3, Math.round(drop.y / 3) * 3, 3, drop.length);
+    }
+    for (const ripple of ambient.ripples) {
+      g.fillStyle(0x4d8258, ripple.alpha);
+      g.fillRect(Math.round(ripple.x - ripple.width / 2), Math.round(ripple.y), Math.round(ripple.width), 3);
+      g.fillRect(Math.round(ripple.x - ripple.width * 0.3), Math.round(ripple.y + 6), Math.round(ripple.width * 0.6), 3);
+    }
+
+    const torchX = w * (78 / 256);
+    const torchY = h * (36 / 224);
+    const sway = (ambient.torchFrame - 1.5) * 2;
+    g.fillStyle(0xd59b3c, 0.42);
+    g.fillRect(Math.round(torchX + sway), Math.round(torchY - 10), 12, 21);
+    g.fillStyle(0xffe48a, 0.76);
+    g.fillRect(Math.round(torchX + 3 - sway * 0.5), Math.round(torchY - 7), 6, 12);
+
+    for (const glow of scene.lightGlows) {
+      const p = (now - glow.start) / glow.duration;
+      if (p < 0 || p >= 1) continue;
+      const color = Phaser.Display.Color.HexStringToColor(
+        glow.color.startsWith("#") ? glow.color : "#ffffff"
+      ).color;
+      const floorY = Math.max(h * 0.52, glow.y + 18);
+      g.fillStyle(color, (1 - p) * 0.24);
+      for (let i = 0; i < 4; i++) {
+        const width = glow.radius * (0.9 - i * 0.14) * (0.65 + p * 0.45);
+        g.fillRect(
+          Math.round(glow.x - width / 2 + (i & 1 ? 6 : -3)),
+          Math.round(floorY + i * 6),
+          Math.round(width),
+          3
+        );
+      }
     }
   }
 

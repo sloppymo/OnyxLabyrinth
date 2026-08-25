@@ -118,6 +118,7 @@ import { featurePropSpriteIds } from "../data/maze-props";
 import { npcAt } from "../game/npc";
 import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
+import { combatBackdropRecipeForTheme } from "../data/combat-backdrops";
 import { waterGridFromFloor } from "./water-floor";
 import { mazeRenderProfiler } from "./maze-renderer/performance";
 import {
@@ -2761,24 +2762,36 @@ export function renderBattleArena(
   w: number,
   h: number
 ): HTMLCanvasElement {
-  const off = document.createElement("canvas");
-  off.width = w;
-  off.height = h;
-  const ctx = off.getContext("2d")!;
+  const result = document.createElement("canvas");
+  result.width = w;
+  result.height = h;
+  const resultCtx = result.getContext("2d")!;
 
   const theme = resolveTilesetTheme(state.floor);
   const tileset = getTilesetForTheme(theme);
+  const recipe = combatBackdropRecipeForTheme(theme);
   if (tileset) {
-    renderArenaRoom(ctx, w, h, {
+    const native = document.createElement("canvas");
+    native.width = recipe.nativeWidth;
+    native.height = recipe.nativeHeight;
+    const nativeCtx = native.getContext("2d")!;
+    renderArenaRoom(nativeCtx, native.width, native.height, {
       tileset,
       voidColor: PALETTE.bg,
-      floorPuddles: theme === "f1",
+      depthBands: recipe.depthBands,
+      water: recipe.water,
+      neutralizeBakedWater: recipe.neutralizeBakedWater,
+      landmark: recipe.landmark,
+      lighting: recipe.lighting,
+      palette: recipe.palette,
     });
+    resultCtx.imageSmoothingEnabled = false;
+    resultCtx.drawImage(native, 0, 0, native.width, native.height, 0, 0, w, h);
   } else {
     // Fallback when no tileset is loaded (debug floors).
-    ctx.fillStyle = PALETTE.bg;
-    ctx.fillRect(0, 0, w, h);
+    resultCtx.fillStyle = PALETTE.bg;
+    resultCtx.fillRect(0, 0, w, h);
   }
 
-  return off;
+  return result;
 }
