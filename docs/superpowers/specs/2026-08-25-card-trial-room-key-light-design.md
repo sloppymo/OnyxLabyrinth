@@ -1,6 +1,6 @@
 # Card Trial room key-light (actor occupancy pass)
 
-**Status:** Design — approved 2026-08-25. Not implemented.  
+**Status:** Design — revised 2026-08-25 (kill-switch plumbing, masked Canvas flash, Shine risk, sconce-X-only). Not implemented.  
 **Scope:** Card Trial combat presentation only.  
 **Does not** change campaign combat, Classic Arena, Card Trial rules, saves, or juice overlays.
 
@@ -22,19 +22,23 @@ The characters must look like they occupy the torchlit room. They must not look 
 - Campaign Arena or dungeon combat
 - Changing `combat-floor-light.ts`
 - A second contact-shadow object
+- Restructuring every actor into a Phaser `Container` hierarchy
+- Vertical / vector lighting from a sconce Y
 
 ## 3. Gates
 
 Room light draws if and only if **both** are true:
 
 1. `scene.state.partyFormation?.kind === "card-trial-rows"`
-2. `roomLightEnabled === true`
+2. `scene.roomLightEnabled === true`
 
 Campaign combat leaves `partyFormation` absent, so it cannot light. Tests construct Card Trial state through the existing adapter (`toCombatState` / `createFight`) rather than stuffing the flag onto campaign fights.
 
+`shouldApplyRoomLight(state, enabled)` is the shared boolean both painters call. It does not parse URLs.
+
 ## 4. Kill switch
 
-Parsed **once**, outside the DOM-free recipe module, and passed into both painters so they cannot disagree.
+Parsed **once**, outside the DOM-free recipe module, and stamped onto the shared scene so Phaser, Canvas, and Phaser-fallback-to-Canvas cannot disagree.
 
 ```ts
 export function resolveRoomLightEnabled(
@@ -47,10 +51,21 @@ export function resolveRoomLightEnabled(
 
 - Missing query param → enabled.
 - `?roomLight=0` → disabled on **both** Phaser and Canvas.
-- Live on `CreateCombatStageOpts.roomLightEnabled` (default: `resolveRoomLightEnabled()`). Each painter reads the option; it does not re-parse `location.search`.
-- Tests pass the boolean explicitly.
+- Tests pass the boolean explicitly (do not read `location` in unit tests).
 
-Place `resolveRoomLightEnabled` next to `resolveCombatStageKind` in `combat-stage.ts`. Do not import `location` from `combat-room-light.ts`.
+### 4.1 Normalize once in `createCombatStage`
+
+`CreateCombatStageOpts.roomLightEnabled` is **not** visible to `renderScene()` by itself. `createCanvasCombatStage` currently calls `renderScene(combatCtx, w, h, scene, now)` with no extra argument.
+
+Required plumbing:
+
+1. `resolveRoomLightEnabled` lives next to `resolveCombatStageKind` in `combat-stage.ts`.
+2. `createCombatStage` assigns `opts.roomLightEnabled ?? resolveRoomLightEnabled()` **before** choosing Phaser or Canvas, then passes that same `opts` into `createPhaserCombatStage` and `createCanvasCombatStage`. Phaser’s catch-path fallback must reuse that already-normalized `opts`, not re-parse the URL.
+3. Both factories copy the boolean onto **`CombatScene.roomLightEnabled`** (new field, default `true` only in tests that set it; production always copies from opts).
+4. `renderScene` reads `scene.roomLightEnabled`. It does not take a parallel argument and does not call `resolveRoomLightEnabled`.
+5. `combat-room-light.ts` does not import `location`.
+
+Do not add a second Phaser-only `PHASER_FX_ROOM_LIGHT` parser.
 
 ## 5. Pure recipe module
 
@@ -65,15 +80,16 @@ export type TorchSide = "left" | "right";
 
 export const CARD_TRIAL_TORCH_SIDE: TorchSide = "left";
 
-/** Design-pixel sconce on the Card Trial plate. Used for shadow direction only. */
-export const CARD_TRIAL_SCONCE = {
-  x: Math.round(0.14 * 768),
-  y: Math.round(0.42 * 672),
-} as const;
+/**
+ * Design-pixel sconce X on the Card Trial plate.
+ * Shadow direction only. There is no sconce Y in this pass.
+ */
+export const CARD_TRIAL_SCONCE_X = Math.round(0.14 * 768);
 ```
 
 - **`torchSide` owns warm/cool orientation.** Screen-left of each actor quad is warm when `torchSide === "left"`. Never derive this from `flipX`, strip facing, or party vs enemy.
-- **Sconce owns shadow direction:** `sign(actor.x - sconce.x)`. An actor left of the torch throws left; everyone else throws right. Typical Card Trial layout has the sconce on the far left, so shadows go right.
+- **`sconceX` owns shadow direction:** `sign(actor.x - sconceX)`. An actor left of the torch throws left; everyone else throws right. Typical Card Trial layout has the sconce on the far left, so shadows go right.
+- Do **not** add `CARD_TRIAL_SCONCE.y`. Vertical falloff is a future vector-light pass, not implied unused state.
 - Mirrored party strips (`flipX === true` / Canvas `scale(-1, 1)`) still have their **screen-left** edge warmed.
 
 ### 5.2 Input / output
@@ -162,7 +178,7 @@ Lighting is screen-space. If the sprite is mirrored into the scratch **after** t
 1. Clear scratch.
 2. Draw the strip (or fallback) into the scratch **already mirrored** when the actor faces left. Status CSS `filter` (poison / burn) applies on this draw, same as today.
 3. `source-atop` the warm/cool rects and the 1px rim in **scratch space**, where scratch-left is screen-left.
-4. Hit flash on the scratch **after** room light (see §8).
+4. Hit flash on the scratch **after** room light, **masked to actor alpha** (see §8.3).
 5. `drawImage` the scratch onto the live canvas with **no additional flip**.
 
 ### 7.3 Live-canvas blit
@@ -171,43 +187,59 @@ The live canvas only receives the composited sprite quad (plus the existing unli
 
 ## 8. Layer order
 
-Room light is masked and persistent. Hit flash and Shine render **above** it. A multiply overlay drawn after the flash would mute the hit.
+Room light is masked and persistent. Hit flash renders **above** the multiply. Heal Shine stays on the existing sprite lifecycle unless a probe says otherwise (§8.2).
 
 ### 8.1 Per-actor stack, back to front
 
 1. Floor bounce (`combat-floor-light.ts`, unchanged).
 2. Contact shadow (existing ellipse + `shadowDx` / `shadowScaleX`).
-3. Sprite body, with **status tint only** (poison / burn). Do **not** put hit flash on the sprite via `setTint` when room light is on — that flash would sit under the multiply.
+3. Sprite body, with **status tint only** (poison / burn). When room light is on, do **not** put hit flash on the sprite via `setTint` — that flash would sit under the multiply.
 4. Room-light overlays (warm multiply, cool multiply, rim add), masked to the opaque body.
 5. Hit-flash additive overlay, masked to the same body, only while `sampleActorFlash` strength > 0.01.
-6. Heal Shine above the lit body.
+6. Heal Shine: remains `AddEffectShine` on the **pooled sprite** (see §8.2).
 
-### 8.2 Phaser
+### 8.2 Phaser — overlays, not a new body hierarchy
 
-Today Shine is `AddEffectShine` on the sprite and flash is `sprite.setTint` after `applyStatusTint`. Both would lose to sibling multiply rects.
+Today Shine is `AddEffectShine` on the pooled sprite and flash is `sprite.setTint` after `applyStatusTint`. Sibling multiply rects would mute a `setTint` flash. `AddEffectShine` is **not** known to support a `Container` host.
 
-Required wrap when room light is on:
+**Required for this pass (low risk):**
 
-- Per-actor `body` Container holds: sprite, warm rect, cool rect, rim, flash overlay.
-- Room rects and flash overlay use one `BitmapMask` created from the actor sprite (fallback ellipses: no mask, no rim; clip the split to the ellipse bounds).
-- Hit flash: additive rect (or copy sprite with ADD), **not** `setTint` on the body sprite. Status tint stays `applyStatusTint` on the sprite.
-- Shine: attach `AddEffectShine` to the **`body` Container** so the sweep reads on sprite + room light together. Keep the existing destroy tidyup contract (`DESTROY_EVENT` listener diff, unhook before disposing DynamicTexture). If a Container cannot take `AddEffectShine`, stamp the lit body to a DynamicTexture child and Shine that — do not leave Shine under the multiply.
-- Depth: container at live `footY`; shadow stays a sibling at `footY - 0.5` (not inside `body`, so the mask cannot clip the ellipse).
+- Keep the pooled sprite, its `ensureStripSprite` / `ensureFallback` / `syncActors` lifecycle, and the existing Shine tidyup (`DESTROY_EVENT` listener diff, unhook before disposing DynamicTexture).
+- Add **sibling** overlay GameObjects (warm, cool, rim, flash) in `actorLayer`, BitmapMasked from the actor sprite. Fallback ellipses: no mask, no rim; clip the split to the ellipse bounds.
+- Hit flash: masked additive overlay, **not** `setTint` on the sprite, when room light is on. Status tint stays `applyStatusTint` on the sprite.
+- Shadow stays a sibling at `footY - 0.5` so a sprite mask cannot clip the ellipse.
+- Overlay GOs are created with the pooled sprite and destroyed in the same prune path. Do not leak masks across pool reuse. If a mask registers `sprite.on("destroy", …)`, unhook it before manual dispose (same rule as Shine).
 
-Mask and overlay GameObjects are created with the pooled sprite and destroyed in the same prune path (`ensureStripSprite` / `ensureFallback` / `syncActors`). Do not leak masks across pool reuse. Follow the Shine destroy rule: if a mask or filter registers `sprite.on("destroy", …)`, unhook it before manual dispose.
+**Shine vs multiply (known risk, not a requirement to restructure):**
 
-### 8.3 Canvas
+Shine on the sprite composites as part of the sprite, so a multiply overlay above it may mute the sweep. That is acceptable for this pass. Do **not** wrap every actor in a `body` Container to chase Shine-on-top.
 
-On the scratch, after the sprite + room `source-atop` pass, apply the existing flash (`lighter` + flash color). Then blit. Canvas has no Shine; no extra work.
+A **small runtime probe** may later test whether `AddEffectShine` can attach to a Container (or another host) without changing destroy tidyup. Only if that probe passes may Shine move. The probe is not in this pass’s implementation plan.
+
+Campaign combat: no overlays; flash-on-sprite and Shine-on-sprite stay exactly as they are.
+
+### 8.3 Canvas flash must be silhouette-masked
+
+The current Canvas flash `fillRect`s the dest square with `lighter` on the live canvas. Transparent padding then flashes as a square. On the scratch that is still forbidden.
+
+After sprite + room `source-atop` on the scratch, apply flash **only where the actor has alpha**. Allowed:
+
+- `source-atop` + `fillRect` of the flash color on the **scratch** (destination alpha already holds the silhouette), or
+- redraw the same sprite frame into the scratch as a solid-color silhouette, then composite with `lighter`.
+
+Forbidden: unmasked `fillRect` / `lighter` over the quad, on scratch or live canvas, such that empty padding lights up.
+
+Canvas has no Shine; no extra work.
 
 ## 9. Painter wiring
 
 | File | Change |
 | --- | --- |
-| `combat-room-light.ts` | New pure recipe. |
-| `combat-stage.ts` | `resolveRoomLightEnabled`; `CreateCombatStageOpts.roomLightEnabled`; pass into both stage factories. |
-| `combat-scene.ts` | Scratch composite inside strip/fallback draw when gated; shadow offset; do not touch floor bounce. |
-| `combat-phaser-stage.ts` | Body container, overlays, mask, shadow adjustments, flash/Shine reorder when gated. Kill-switch constant is **not** a second parser — use the opts boolean. |
+| `combat-room-light.ts` | New pure recipe (`CARD_TRIAL_SCONCE_X` only). |
+| `combat-choreography.ts` / `CombatScene` | New `roomLightEnabled: boolean` field. |
+| `combat-stage.ts` | `resolveRoomLightEnabled`; normalize `opts.roomLightEnabled` in `createCombatStage` before either factory; copy onto `scene`. |
+| `combat-scene.ts` | `renderScene` reads `scene.roomLightEnabled`; scratch composite; masked flash; shadow offset; do not touch floor bounce. |
+| `combat-phaser-stage.ts` | Sibling overlays + mask; shadow adjustments; flash overlay when gated. Shine lifecycle unchanged. Reads `scene.roomLightEnabled`, does not parse the URL. |
 | `combat-floor-light.ts` | Unchanged. |
 | `combat-phaser-fx.ts` | Status tint helpers unchanged. Flash-on-sprite remains the campaign path. |
 
@@ -221,8 +253,8 @@ Do not import `combat-phaser-stage.ts` from tests.
 - `torchSide: "left"` → warm rect is the left half, cool the right, rim on the left edge.
 - `torchSide: "right"` flips those three; included so the field is real, even though Card Trial only passes `"left"`.
 - Output does not depend on a `flipX` argument (the type has none).
-- Actor to the right of the sconce: `shadowDx > 0`. Actor to the left: `shadowDx < 0`.
-- `shadowScaleX === 1.25`. No `shadowDy` / `shadowScaleY`.
+- Actor to the right of `sconceX`: `shadowDx > 0`. Actor to the left: `shadowDx < 0`.
+- `shadowScaleX === 1.25`. No `shadowDy` / `shadowScaleY` / `sconceY`.
 - `visible: false` or `opacity: 0` → overlay alphas 0 and/or `visible: false`.
 - Opacity 0.5 halves overlay alphas.
 
@@ -230,28 +262,40 @@ Do not import `combat-phaser-stage.ts` from tests.
 
 - `resolveRoomLightEnabled("")` and `resolveRoomLightEnabled("?debug=1")` are `true`.
 - `resolveRoomLightEnabled("?roomLight=0")` is `false`.
-- Campaign `CombatState` without `partyFormation` → painters do not request overlays (assert via a thin wrapper or by testing a `shouldApplyRoomLight(state, enabled)` helper used by both painters).
-- Card Trial state (`kind: "card-trial-rows"`) + enabled → applies.
-- Card Trial + `enabled: false` → does not apply (shadows stay unshifted).
+- `createCombatStage` / factory tests: the boolean written to `scene.roomLightEnabled` is the normalized opts value, including on the Phaser→Canvas fallback path.
+- `renderScene` with `scene.roomLightEnabled === false` does not apply overlays even when `partyFormation.kind === "card-trial-rows"`.
+- Campaign `CombatState` without `partyFormation` → `shouldApplyRoomLight` is false.
+- Card Trial state + enabled → applies.
+- Card Trial + `enabled: false` → shadows stay unshifted.
 
-### 10.3 Acceptance matrix (must exist as unit recipes; visual for the idle row)
+### 10.3 Actor-state matrix (unit recipes; visual for idle)
 
 | Case | Expect |
 | --- | --- |
 | Idle | Warm-left, cool-right, shadow away from sconce, bounce pool unmoved. |
 | Poisoned | Status green/filter still reads; warm/cool split still present. |
 | Burned | Status orange/filter still reads; split still present. |
-| Hit-flashing | Flash is brighter than the multiply; silhouette reads as a flash, not a muddy multiply. |
+| Hit-flashing | Flash is brighter than the multiply; **silhouette only** — no square padding flash. |
 | Dead | Party: no sprite, no overlay, no shadow (existing hide). Enemy corpses follow existing corpse paint; overlays track opacity. |
 | Mirrored (party) | Screen-left edge is still the warm edge. |
 
-Idle Card Trial screenshot (Phaser **and** `?phaser=0`): all living actors share that warm-left / cool-right relationship; center floor remains readable; `?roomLight=0` restores today’s look.
+### 10.4 Painter × kill-switch screenshots
+
+Capture an idle Card Trial fight in four conditions:
+
+| | Room light on (default) | `?roomLight=0` |
+| --- | --- | --- |
+| Phaser (default) | Warm-left / cool-right on every living actor | Pixel-identical to the pre-change baseline |
+| Canvas (`?phaser=0`) | Same warm-left / cool-right relationship as Phaser | Pixel-identical to the pre-change Canvas baseline |
+
+Disabled screenshots are a regression gate against the current look, not against each other. Enabled Phaser vs enabled Canvas need not be pixel-identical; they must share the same torch relationship (warm screen-left, cool screen-right, shadows away from `CARD_TRIAL_SCONCE_X`). Center floor stays readable in the enabled shots.
 
 ## 11. Constraints
 
 - Graphic and restrained: two or three value/color treatments, crisp pixel edges.
 - No plastic bilinear `setTint(tl,tr,bl,br)` for this pass.
 - No LightsManager, ImageLight, puddle reflection, juice-system, or plate relight.
+- No required actor `Container` wrap; Shine stays on the pooled sprite unless a later probe proves a new host.
 - BitmapMask lifecycle follows the pooled sprite exactly.
 - Hidden/dead alpha and overlay visibility mirror the actor.
 - `CONTACT_SHADOW_BELOW_FOOT_PX` / floor-bottom occlusion math unchanged (`ry` unchanged).
@@ -262,4 +306,6 @@ Idle Card Trial screenshot (Phaser **and** `?phaser=0`): all living actors share
 
 **Spike:** gated LightsManager on the plate plus one actor or boss, kill-switch, never roster-wide.
 
-**Reflections:** deferred. Easy to make noisy; more expensive than this torch/shadow pass.
+**Shine host probe:** optional later check that `AddEffectShine` can attach to a Container without breaking destroy tidyup. Not required to ship room light.
+
+**Reflections / sconce Y:** deferred. Vertical vector lighting is not part of the active contract.
