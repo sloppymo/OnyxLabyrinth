@@ -7,7 +7,12 @@
  */
 
 import { CARD_DEFS } from "../game/card-trial/cards";
-import { cardPrimaryDamage } from "../game/card-trial/engine";
+import {
+  cardConsumeRiderDamage,
+  cardGuardGain,
+  cardPrimaryDamage,
+  legalSecondTargetIds,
+} from "../game/card-trial/engine";
 import type {
   CardTrialPlayerView,
   HandCardView,
@@ -138,15 +143,18 @@ export function cardOutcomeSummary(
   const row = actingHeroRow(view);
   const id = card.defId;
   const damage = cardPrimaryDamage(id, row, !!view.ratRow);
+  const rider = cardConsumeRiderDamage(id);
+  const guard = cardGuardGain(id, row);
   const targetIsOpened = !!target && view.openedEnemyId === target.id;
   const survivesBase = !!target && damage !== null && target.hp > damage;
+  const hasSecondEnemy =
+    !!target && legalSecondTargetIds(view.enemies, target.id).length > 0;
   const parts: string[] = [];
 
-  if (id === "brace") return "Gain 6 Guard";
-  if (id === "ward") return "Gain 7 Guard";
-  if (id === "extinguish") return "Deal 4 to all enemies";
+  if (id === "brace" || id === "ward") return `Gain ${guard} Guard`;
+  if (id === "extinguish") return `Deal ${damage} to all enemies`;
   if (id === "send-the-rat" && view.ratRow) {
-    return "Rat changes row · Deal 5";
+    return `Rat changes row · Deal ${damage}`;
   }
   if (damage !== null) parts.push(`Deal ${damage}`);
 
@@ -155,28 +163,21 @@ export function cardOutcomeSummary(
     if (row === "back" && view.ratRow && survivesBase) parts.push("Rat +3");
   } else if (id === "open-the-rank" || id === "crack" || id === "split-bone") {
     parts.push("Open");
-  } else if (id === "swarm-the-wound" && targetIsOpened && survivesBase) {
-    parts[0] = "Deal 9";
-    parts.push("Consume Opened");
-  } else if (id === "full-stop" && targetIsOpened && survivesBase) {
-    parts[0] = "Deal 16";
+  } else if ((id === "swarm-the-wound" || id === "full-stop") && targetIsOpened && survivesBase) {
+    parts[0] = `Deal ${(damage ?? 0) + (rider ?? 0)}`;
     parts.push("Consume Opened");
   } else if (id === "burst-the-nest" && targetIsOpened) {
-    parts.push("4 to other enemies", "Consume Opened");
-  } else if (id === "cut-the-line" && targetIsOpened) {
-    parts.push("Second enemy 5", "Consume Opened");
+    parts.push(`${rider} to other enemies`, "Consume Opened");
+  } else if (id === "cut-the-line" && targetIsOpened && hasSecondEnemy) {
+    parts.push(`Second enemy ${rider}`, "Consume Opened");
   } else if (id === "litter" && !view.ratRow) {
     parts.push(`Spawn Rat ${row === "front" ? "Front" : "Back"}`);
   } else if (id === "lunge") {
     parts.unshift("Move Front");
   } else if (id === "parting-blow") {
     parts.push("Move Back");
-  } else if (id === "king-of-the-heap") {
-    parts.push("Gain 8 Guard");
-  } else if (id === "stand-and-die") {
-    parts.push("Gain 9 Guard");
-  } else if (id === "from-afar" && row === "back") {
-    parts.push("Gain 3 Guard");
+  } else if (guard !== null) {
+    parts.push(`Gain ${guard} Guard`);
   }
   return parts.join(" · ") || CARD_DEFS[id].text;
 }

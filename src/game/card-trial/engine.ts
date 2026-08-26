@@ -714,6 +714,54 @@ export function cardPrimaryDamage(
   }
 }
 
+/**
+ * Guard printed on a card given the hero's current row. Rules-layer source of
+ * truth (like cardPrimaryDamage) so presentation cannot grow a second Guard
+ * table that drifts away from resolveCardEffect().
+ */
+export function cardGuardGain(id: CardId, row: PlayerRow): number | null {
+  switch (id) {
+    case "brace": return 6;
+    case "ward": return 7;
+    case "king-of-the-heap": return 8;
+    case "stand-and-die": return 9;
+    case "from-afar": return row === "back" ? 3 : null;
+    default: return null;
+  }
+}
+
+/**
+ * Extra damage a card's Consume Opened rider prints. Same-target riders add
+ * to the primary target, splash riders hit every other enemy, and the
+ * second-enemy rider hits the chosen second target. Rules-layer source of
+ * truth for the same drift reason as cardGuardGain().
+ */
+export function cardConsumeRiderDamage(id: CardId): number | null {
+  switch (id) {
+    case "swarm-the-wound": return 4;
+    case "full-stop": return 8;
+    case "burst-the-nest": return 4;
+    case "cut-the-line": return 5;
+    default: return null;
+  }
+}
+
+/**
+ * Returns the ids of all living enemies other than the primary target. This is
+ * the single source of truth for both the engine's second-target validation and
+ * the UI's outcome preview, preventing the two from drifting apart if future
+ * targeting restrictions change.
+ */
+export function legalSecondTargetIds(
+  enemies: ReadonlyArray<{ id: string; hp: number }>,
+  primaryTargetId?: string
+): string[] {
+  if (!primaryTargetId) return [];
+  return enemies
+    .filter((e) => e.hp > 0 && e.id !== primaryTargetId)
+    .map((e) => e.id);
+}
+
 export function paidMove(s: CardTrialState): PlayCardResult {
   const gate = canPaidMove(s);
   if (!gate.ok) return { ok: false, reason: gate.reason ?? "Cannot move", events: [] };
@@ -757,15 +805,15 @@ export function playCard(s: CardTrialState, uid: string, targets: CardPlayTarget
   }
 
   const consumeNow = legalConsume(s, def.id, targets.targetId);
-  if (def.consume === "second-enemy" && consumeNow && !targets.secondTargetId) {
-    return { ok: false, reason: "Choose a second enemy", events: [], needsSecondTarget: true };
-  }
-  if (def.consume === "second-enemy" && consumeNow && targets.secondTargetId === targets.targetId) {
-    return { ok: false, reason: "Second enemy must be different", events: [], needsSecondTarget: true };
-  }
   if (def.consume === "second-enemy" && consumeNow) {
-    const second = enemyById(s, targets.secondTargetId!);
-    if (!second || second.hp <= 0) {
+    if (!targets.secondTargetId) {
+      return { ok: false, reason: "Choose a second enemy", events: [], needsSecondTarget: true };
+    }
+    if (targets.secondTargetId === targets.targetId) {
+      return { ok: false, reason: "Second enemy must be different", events: [], needsSecondTarget: true };
+    }
+    const legalSeconds = legalSecondTargetIds(s.enemies, targets.targetId);
+    if (!legalSeconds.includes(targets.secondTargetId)) {
       return { ok: false, reason: "Invalid second target", events: [], needsSecondTarget: true };
     }
   }
@@ -804,6 +852,11 @@ function resolveCardEffect(
   const target = targets.targetId ? enemyById(s, targets.targetId) : undefined;
   const hit = (enemy: EnemyState, n: number) => dealToEnemy(s, enemy, n, hero.id, events);
   const primaryDamage = cardPrimaryDamage(id, hero.row, !!s.rat);
+  const riderDamage = cardConsumeRiderDamage(id) ?? 0;
+  const printedGuard = cardGuardGain(id, hero.row);
+  const gainPrintedGuard = () => {
+    if (printedGuard !== null) gainGuard(s, hero, printedGuard, events);
+  };
   const hitPrimary = (enemy: EnemyState) => {
     if (primaryDamage !== null) hit(enemy, primaryDamage);
   };
@@ -817,7 +870,7 @@ function resolveCardEffect(
       if (target) hitPrimary(target);
       break;
     case "brace":
-      gainGuard(s, hero, 6, events);
+      gainPrintedGuard();
       break;
     case "open-the-rank":
       if (target) {
@@ -837,7 +890,7 @@ function resolveCardEffect(
         hitPrimary(target);
         if (consumeNow && target.hp > 0) {
           consumeOpened(s, target, hero.id, events);
-          hit(target, 4);
+          hit(target, riderDamage);
         }
       }
       break;
@@ -848,7 +901,7 @@ function resolveCardEffect(
         if (consumeNow) {
           if (s.opened?.enemyId === primaryId) consumeOpened(s, target, hero.id, events);
           for (const other of livingEnemies(s).filter((e) => e.id !== primaryId)) {
-            hit(other, 4);
+            hit(other, riderDamage);
           }
         }
       }
@@ -881,13 +934,13 @@ function resolveCardEffect(
     }
     case "king-of-the-heap":
       if (target) hitPrimary(target);
-      gainGuard(s, hero, 8, events);
+      gainPrintedGuard();
       break;
     case "staff":
       if (target) hitPrimary(target);
       break;
     case "ward":
-      gainGuard(s, hero, 7, events);
+      gainPrintedGuard();
       break;
     case "crack":
       if (target) {
@@ -906,7 +959,7 @@ function resolveCardEffect(
         hitPrimary(target);
         if (consumeNow && target.hp > 0) {
           consumeOpened(s, target, hero.id, events);
-          hit(target, 8);
+          hit(target, riderDamage);
         }
       }
       break;
@@ -915,7 +968,7 @@ function resolveCardEffect(
       if (consumeNow && target) {
         consumeOpened(s, target, hero.id, events);
         const second = enemyById(s, targets.secondTargetId!);
-        if (second) hit(second, 5);
+        if (second) hit(second, riderDamage);
       }
       break;
     case "threshold":
@@ -923,7 +976,7 @@ function resolveCardEffect(
       break;
     case "from-afar":
       if (target) hitPrimary(target);
-      if (hero.row === "back") gainGuard(s, hero, 3, events);
+      gainPrintedGuard();
       break;
     case "parting-blow":
       if (target) hitPrimary(target);
@@ -936,7 +989,7 @@ function resolveCardEffect(
       break;
     case "stand-and-die":
       if (target) hitPrimary(target);
-      gainGuard(s, hero, 9, events);
+      gainPrintedGuard();
       break;
   }
 }

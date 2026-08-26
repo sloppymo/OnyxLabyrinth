@@ -5,7 +5,10 @@ import { ENCOUNTERS } from "./encounters";
 import {
   actingHero,
   canPaidMove,
+  cardConsumeRiderDamage,
+  cardGuardGain,
   cardPrimaryDamage,
+  legalSecondTargetIds,
   createAdversarialTriangle,
   createFight,
   endHeroTurn,
@@ -85,6 +88,83 @@ describe("Card Trial decks", () => {
     expect(omAll.some((c) => rkUids.has(c.uid))).toBe(false);
     expect(actingHero(s)?.id).toBe("old-man");
     expect(s.heroes["old-man"].hand).toHaveLength(5);
+  });
+});
+
+describe("rules-layer card constants", () => {
+  it("keeps cardGuardGain in lockstep with resolved guard events", () => {
+    const cases: Array<{ hero: "rat-king" | "old-man"; id: CardId; row: "front" | "back" }> = [
+      { hero: "rat-king", id: "brace", row: "front" },
+      { hero: "rat-king", id: "king-of-the-heap", row: "front" },
+      { hero: "old-man", id: "ward", row: "back" },
+      { hero: "old-man", id: "stand-and-die", row: "front" },
+      { hero: "old-man", id: "from-afar", row: "back" },
+      { hero: "old-man", id: "from-afar", row: "front" },
+    ];
+    for (const c of cases) {
+      const s = createFight(2, { seed: 3 });
+      if (c.hero === "old-man") finishRatKing(s);
+      s.heroes[c.hero].row = c.row;
+      dealHand(s, c.hero, [c.id]);
+      const target = CARD_DEFS[c.id].target === "none" ? undefined : s.enemies[0]!.id;
+      const result = play(s, c.id, target);
+      const guardEvent = result.events.find((e) => e.type === "guard");
+      const expected = cardGuardGain(c.id, c.row);
+      if (expected === null) expect(guardEvent, `${c.id} in ${c.row}`).toBeUndefined();
+      else expect(guardEvent, `${c.id} in ${c.row}`).toMatchObject({ amount: expected });
+    }
+  });
+
+  it("keeps same-target consume riders in lockstep with cardConsumeRiderDamage", () => {
+    const cases = [
+      { hero: "rat-king", openId: "open-the-rank", consumeId: "swarm-the-wound" },
+      { hero: "old-man", openId: "crack", consumeId: "full-stop" },
+    ] as const;
+    for (const c of cases) {
+      const s = createFight(2, { seed: 7 });
+      if (c.hero === "old-man") finishRatKing(s);
+      dealHand(s, c.hero, [c.openId, c.consumeId]);
+      play(s, c.openId, "cleaver");
+      const result = play(s, c.consumeId, "cleaver");
+      const dealt = result.events
+        .filter((e) => e.type === "attack")
+        .reduce((n, e) => n + (e.type === "attack" ? e.damage : 0), 0);
+      expect(result.events.some((e) => e.type === "consume")).toBe(true);
+      expect(dealt).toBe(
+        cardPrimaryDamage(c.consumeId, s.heroes[c.hero].row)! +
+          cardConsumeRiderDamage(c.consumeId)!
+      );
+    }
+  });
+
+  it("keeps splash and second-enemy consume riders in lockstep with cardConsumeRiderDamage", () => {
+    const splash = createFight(2, { seed: 9 });
+    dealHand(splash, "rat-king", ["open-the-rank", "burst-the-nest"]);
+    play(splash, "open-the-rank", "cleaver");
+    const ashBeforeSplash = splash.enemies.find((e) => e.id === "ash")!.hp;
+    play(splash, "burst-the-nest", "cleaver");
+    expect(ashBeforeSplash - splash.enemies.find((e) => e.id === "ash")!.hp).toBe(
+      cardConsumeRiderDamage("burst-the-nest")
+    );
+
+    const second = createFight(2, { seed: 9 });
+    finishRatKing(second);
+    dealHand(second, "old-man", ["crack", "cut-the-line"]);
+    play(second, "crack", "cleaver");
+    const ashBeforeCut = second.enemies.find((e) => e.id === "ash")!.hp;
+    play(second, "cut-the-line", "cleaver", "ash");
+    expect(ashBeforeCut - second.enemies.find((e) => e.id === "ash")!.hp).toBe(
+      cardConsumeRiderDamage("cut-the-line")
+    );
+  });
+
+  it("shares legalSecondTargetIds between engine and preview", () => {
+    const s = createFight(2, { seed: 9 });
+    expect(legalSecondTargetIds(s.enemies, "cleaver")).toContain("ash");
+    s.enemies.find((e) => e.id === "ash")!.hp = 0;
+    expect(legalSecondTargetIds(s.enemies, "cleaver")).toEqual([]);
+    expect(legalSecondTargetIds(s.enemies, "ash")).toContain("cleaver");
+    expect(legalSecondTargetIds(s.enemies, undefined)).toEqual([]);
   });
 });
 

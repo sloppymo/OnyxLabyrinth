@@ -131,6 +131,47 @@ describe("buildCardTrialUiRecipe", () => {
 });
 
 describe("cardOutcomeSummary", () => {
+  it("omits Cut the Line's consume clause when no second living enemy exists", () => {
+    const trial = createAdversarialTriangle();
+    const cleaver = trial.enemies.find((enemy) => enemy.id === "cleaver")!;
+    cleaver.hp = 0;
+    trial.opened = {
+      enemyId: "ash",
+      createdBy: "old-man",
+      createdAtSlot: 0,
+      movedBeforeConsume: false,
+    };
+    const view = playerView(trial);
+    const ash = view.enemies.find((enemy) => enemy.id === "ash")!;
+    const cut = { ...view.hand[0]!, defId: "cut-the-line" as const, name: "Cut the Line" };
+    expect(cardOutcomeSummary(cut, view, ash)).toBe("Deal 5");
+  });
+
+  it("shows Cut the Line's consume clause only with a legal second enemy", () => {
+    const trial = createAdversarialTriangle();
+    const view = playerView(trial);
+    view.openedEnemyId = "cleaver";
+    const cleaver = view.enemies.find((enemy) => enemy.id === "cleaver")!;
+    const cut = { ...view.hand[0]!, defId: "cut-the-line" as const, name: "Cut the Line" };
+    expect(cardOutcomeSummary(cut, view, cleaver)).toBe(
+      "Deal 5 · Second enemy 5 · Consume Opened"
+    );
+  });
+
+  it("derives guard and rider numbers from the rules layer", () => {
+    const trial = createAdversarialTriangle();
+    trial.heroes["rat-king"].row = "front";
+    const view = playerView(trial);
+    const cleaver = view.enemies.find((enemy) => enemy.id === "cleaver")!;
+    const brace = { ...view.hand[0]!, defId: "brace" as const, name: "Brace" };
+    expect(cardOutcomeSummary(brace, view, null)).toBe("Gain 6 Guard");
+    const heap = { ...view.hand[0]!, defId: "king-of-the-heap" as const, name: "King of the Heap" };
+    expect(cardOutcomeSummary(heap, view, cleaver)).toBe("Deal 10 · Gain 8 Guard");
+    view.openedEnemyId = cleaver.id;
+    const fullStop = { ...view.hand[0]!, defId: "full-stop" as const, name: "Full Stop" };
+    expect(cardOutcomeSummary(fullStop, view, cleaver)).toBe("Deal 16 · Consume Opened");
+  });
+
   it("uses the selected card, live row, and target Opened state", () => {
     const trial = createAdversarialTriangle();
     trial.heroes["rat-king"].row = "front";
