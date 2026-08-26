@@ -5,6 +5,7 @@ import { ENCOUNTERS } from "./encounters";
 import {
   actingHero,
   canPaidMove,
+  cardPrimaryDamage,
   createAdversarialTriangle,
   createFight,
   endHeroTurn,
@@ -98,6 +99,14 @@ describe("Card Trial presentation telemetry", () => {
 });
 
 describe("Card Trial turn", () => {
+  it("exposes primary card damage from the rules layer", () => {
+    expect(cardPrimaryDamage("tide", "front")).toBe(8);
+    expect(cardPrimaryDamage("tide", "back")).toBe(5);
+    expect(cardPrimaryDamage("send-the-rat", "front", false)).toBe(4);
+    expect(cardPrimaryDamage("send-the-rat", "front", true)).toBe(5);
+    expect(cardPrimaryDamage("brace", "front")).toBeNull();
+  });
+
   it("draws 5, sets energy to 3, and discards the remainder on pass", () => {
     const s = createFight(1, { seed: 2 });
     const rk = s.heroes["rat-king"];

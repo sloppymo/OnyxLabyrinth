@@ -1,4 +1,5 @@
 import "./styles.css";
+import "./card-trial-ui.css";
 import { getFloors, findFloor, registerFloorMap } from "./game/floor-registry";
 import { createGameState, setMode } from "./game/state";
 import { turnLeft, turnRight, tryUnlock, resolveTraversal, openBarredGate } from "./engine/camera";
@@ -26,6 +27,7 @@ import {
   renderBattleArena,
   renderCorridorBackdrop,
   setRaftVisualOverride,
+  getArenaBackdropReadiness,
 } from "./engine/renderer";
 import { mazeRenderProfiler } from "./engine/maze-renderer/performance";
 import { createMazeRenderer } from "./engine/maze-renderer/renderer-factory";
@@ -2439,6 +2441,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       ceilingSprites: ceilingSpritesReady,
       ceilingFeatures: ceilingFeaturesReady,
       doorFeatures: doorFeaturesReady,
+      f1ArenaBackdrop: getArenaBackdropReadiness("f1"),
       audioUi: audioStatus.ui,
       audioCombat: audioStatus.combat,
       audioDungeon: audioStatus.dungeon,

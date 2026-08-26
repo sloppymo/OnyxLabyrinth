@@ -119,6 +119,13 @@ import { featurePropSpriteIds } from "../data/maze-props";
 import { npcAt } from "../game/npc";
 import { isTreasureLooted } from "../game/features";
 import { renderArenaRoom } from "./arena-renderer";
+import {
+  arenaBackdropSource,
+  AUTHORED_ARENA_BACKDROP_SIZE,
+  AUTHORED_ARENA_BACKDROP_THEME,
+  hasValidAuthoredArenaBackdrop,
+  type ArenaBackdropSource,
+} from "./arena-backdrop";
 import { waterGridFromFloor } from "./water-floor";
 import { mazeRenderProfiler } from "./maze-renderer/performance";
 import {
@@ -449,6 +456,25 @@ const WATER_FLOOR_B_URL = `${import.meta.env.BASE_URL}assets/tilesets/water/floo
 const tilesetCache = new Map<string, LoadedTileset>();
 const themeLoadPromises = new Map<string, Promise<LoadedTileset>>();
 let tilesetGeneration = 0;
+
+export type ArenaBackdropLoadState =
+  | "not-requested"
+  | "loading"
+  | "loaded"
+  | "failed"
+  | "not-applicable";
+
+export interface ArenaBackdropReadiness {
+  theme: string;
+  state: ArenaBackdropLoadState;
+  source: ArenaBackdropSource;
+  assetUrl: string | null;
+  expectedSize: typeof AUTHORED_ARENA_BACKDROP_SIZE | null;
+  actualSize: { width: number; height: number } | null;
+}
+
+/** Live state for the optional authored combat plate (debug/readiness only). */
+const arenaBackdropLoadStates = new Map<string, ArenaBackdropLoadState>();
 
 type CellTextureGrid = (TextureSet | null)[][];
 
@@ -860,8 +886,17 @@ export function ensureThemeLoaded(theme: string): Promise<LoadedTileset> {
   if (cached) return Promise.resolve(cached);
   let pending = themeLoadPromises.get(theme);
   if (!pending) {
+    if (theme === AUTHORED_ARENA_BACKDROP_THEME) {
+      arenaBackdropLoadStates.set(theme, "loading");
+    }
     pending = loadTileset(theme, urlsForTheme(theme)).then((tileset) => {
       tilesetCache.set(theme, tileset);
+      if (theme === AUTHORED_ARENA_BACKDROP_THEME) {
+        arenaBackdropLoadStates.set(
+          theme,
+          hasValidAuthoredArenaBackdrop(theme, tileset.arenaBackdrop) ? "loaded" : "failed"
+        );
+      }
       tilesetGeneration++;
       themeLoadPromises.delete(theme);
       return tileset;
@@ -869,6 +904,40 @@ export function ensureThemeLoaded(theme: string): Promise<LoadedTileset> {
     themeLoadPromises.set(theme, pending);
   }
   return pending;
+}
+
+/**
+ * Read-only combat backdrop telemetry for debug probes and visual fixtures.
+ * `source` is the actual selection contract used by renderBattleArena; it is
+ * therefore useful for catching a silently stretched or failed replacement.
+ */
+export function getArenaBackdropReadiness(theme: string): ArenaBackdropReadiness {
+  if (theme !== AUTHORED_ARENA_BACKDROP_THEME) {
+    return {
+      theme,
+      state: "not-applicable",
+      source: "procedural",
+      assetUrl: null,
+      expectedSize: null,
+      actualSize: null,
+    };
+  }
+
+  const image = tilesetCache.get(theme)?.arenaBackdrop ?? null;
+  const state =
+    arenaBackdropLoadStates.get(theme) ??
+    (themeLoadPromises.has(theme) ? "loading" : "not-requested");
+  return {
+    theme,
+    state,
+    source: arenaBackdropSource(theme, image),
+    assetUrl: f1ArenaBackdropUrl,
+    expectedSize: AUTHORED_ARENA_BACKDROP_SIZE,
+    actualSize:
+      image && image.naturalWidth > 0 && image.naturalHeight > 0
+        ? { width: image.naturalWidth, height: image.naturalHeight }
+        : null,
+  };
 }
 
 function loadTileset(
@@ -2778,7 +2847,8 @@ export function renderBattleArena(
 
   const theme = resolveTilesetTheme(state.floor);
   const tileset = getTilesetForTheme(theme);
-  if (theme === "f1" && tileset?.arenaBackdrop?.complete && tileset.arenaBackdrop.naturalWidth > 0) {
+  const backdropSource = arenaBackdropSource(theme, tileset?.arenaBackdrop);
+  if (backdropSource === "authored" && tileset?.arenaBackdrop) {
     // F1's combat camera is a fixed composition. Use the authored plate
     // directly so its masonry rhythm, vaulted ceiling, drain, and puddle
     // silhouettes stay coherent instead of being fabricated per-pixel from

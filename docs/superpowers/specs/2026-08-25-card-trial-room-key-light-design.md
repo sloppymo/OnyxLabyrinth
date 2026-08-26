@@ -134,13 +134,15 @@ export interface RoomKeyLight {
 | --- | --- |
 | Quad | Existing strip dest square: origin `(x - drawSize/2, y - drawSize/2)`, size `drawSize`. Same contract as `drawStripFrame` / Phaser `setPosition(pos.x, pos.y)`. Not a footY-derived box. |
 | Split | Hard vertical cut at the quad’s screen-space mid X (`x`). No gradient stops. |
-| `warmRect` | Torch-facing half. Color `#f0d2a8`, multiply, alpha `0.20 * opacity`. |
-| `coolRect` | Opposite half. Color `#a8b8c8`, multiply, alpha `0.14 * opacity`. |
-| `rimEdge` | 1px-wide strip on the torch-facing edge of the quad. Color `#ffe8c0`, add, alpha `0.30 * opacity`. Height = `drawSize`. Recipe always returns it; **fallback ellipse painters skip drawing the rim**. |
+| `warmRect` | Torch-facing half. Color `#f0d2a8`, multiply, alpha **`0.20` when visible, else `0`**. Not multiplied by actor opacity. |
+| `coolRect` | Opposite half. Color `#a8b8c8`, multiply, alpha **`0.14` when visible, else `0`**. |
+| `rimEdge` | 1px-wide strip on the torch-facing edge of the quad. Color `#ffe8c0`, add, alpha **`0.30` when visible, else `0`**. Height = `drawSize`. Recipe always returns it; **fallback ellipse painters skip drawing the rim**. |
 | `shadowDx` | `sign(x - sconceX) * 0.08 * drawSize`. Zero if `x === sconceX`. |
 | `shadowScaleX` | `1.25`. **Do not** change shadow `ry`. `CONTACT_SHADOW_BELOW_FOOT_PX` stays valid. |
 | `visible` | `false` when the actor is hidden, dead (party death already hides the ellipse), or `opacity <= 0`. Painters also AND with the existing shadow visibility. |
-| `alpha` | `opacity`, so overlays fade with the sprite. |
+| `alpha` | Actor opacity, **documentation for the single fade point**. Overlay rects do not include this factor. |
+
+**One fade point:** actor body opacity. Canvas draws the sprite + overlays onto the scratch at full strength, then blits the scratch with `globalAlpha = recipe.alpha`. Phaser keeps `sprite.setAlpha(opacity)` as today and sets overlay rects to the constant 0.20 / 0.14 / 0.30 (the BitmapMask already follows sprite alpha). Do **not** also multiply overlay alphas by opacity — hidden/dead actors would fade twice.
 
 Dead / hidden: overlays follow the sprite. If the sprite is not drawn, do not draw room light.
 
@@ -177,9 +179,19 @@ Lighting is screen-space. If the sprite is mirrored into the scratch **after** t
 
 1. Clear scratch.
 2. Draw the strip (or fallback) into the scratch **already mirrored** when the actor faces left. Status CSS `filter` (poison / burn) applies on this draw, same as today.
-3. `source-atop` the warm/cool rects and the 1px rim in **scratch space**, where scratch-left is screen-left.
-4. Hit flash on the scratch **after** room light, **masked to actor alpha** (see §8.3).
-5. `drawImage` the scratch onto the live canvas with **no additional flip**.
+3. Reset scratch drawing state, then light:
+
+   ```ts
+   ctx.filter = "none";
+   ctx.globalAlpha = 1;
+   ctx.globalCompositeOperation = "source-over";
+   ```
+
+   Then set each blend (`multiply` for warm/cool, `source-atop` for rim/flash) deliberately. This prevents poison/burn `filter` or leftover `globalAlpha` from contaminating the room-light pass.
+
+4. `source-atop` / `multiply` the warm/cool rects and the 1px rim in **scratch space**, where scratch-left is screen-left.
+5. Hit flash on the scratch **after** room light, **masked to actor alpha** (see §8.3).
+6. `drawImage` the scratch onto the live canvas with **no additional flip**, at `globalAlpha = recipe.alpha` (the single fade).
 
 ### 7.3 Live-canvas blit
 
@@ -187,7 +199,7 @@ The live canvas only receives the composited sprite quad (plus the existing unli
 
 ## 8. Layer order
 
-Room light is masked and persistent. Hit flash renders **above** the multiply. Heal Shine stays on the existing sprite lifecycle unless a probe says otherwise (§8.2).
+Room light is masked and persistent. Hit flash renders **above** the multiply. Heal Shine stays on the pooled sprite; overlay-vs-Shine order is not an acceptance criterion (§8.2).
 
 ### 8.1 Per-actor stack, back to front
 
@@ -196,7 +208,7 @@ Room light is masked and persistent. Hit flash renders **above** the multiply. H
 3. Sprite body, with **status tint only** (poison / burn). When room light is on, do **not** put hit flash on the sprite via `setTint` — that flash would sit under the multiply.
 4. Room-light overlays (warm multiply, cool multiply, rim add), masked to the opaque body.
 5. Hit-flash additive overlay, masked to the same body, only while `sampleActorFlash` strength > 0.01.
-6. Heal Shine: remains `AddEffectShine` on the **pooled sprite** (see §8.2).
+6. Heal Shine: remains `AddEffectShine` on the **pooled sprite**. **Not an acceptance criterion** for this pass (see §8.2).
 
 ### 8.2 Phaser — overlays, not a new body hierarchy
 
@@ -205,16 +217,16 @@ Today Shine is `AddEffectShine` on the pooled sprite and flash is `sprite.setTin
 **Required for this pass (low risk):**
 
 - Keep the pooled sprite, its `ensureStripSprite` / `ensureFallback` / `syncActors` lifecycle, and the existing Shine tidyup (`DESTROY_EVENT` listener diff, unhook before disposing DynamicTexture).
-- Add **sibling** overlay GameObjects (warm, cool, rim, flash) in `actorLayer`, BitmapMasked from the actor sprite. Fallback ellipses: no mask, no rim; clip the split to the ellipse bounds.
+- Add **sibling** overlay GameObjects (warm, cool, rim, flash) in `actorLayer` for **both** strip sprites **and** fallback ellipses. Strip sprites: BitmapMasked from the actor sprite. Fallback ellipses: `mask: null`, no rim; clip the split to the ellipse bounds. Type: `mask: Phaser.Display.Masks.BitmapMask | null`.
 - Hit flash: masked additive overlay, **not** `setTint` on the sprite, when room light is on. Status tint stays `applyStatusTint` on the sprite.
 - Shadow stays a sibling at `footY - 0.5` so a sprite mask cannot clip the ellipse.
 - Overlay GOs are created with the pooled sprite and destroyed in the same prune path. Do not leak masks across pool reuse. If a mask registers `sprite.on("destroy", …)`, unhook it before manual dispose (same rule as Shine).
 
-**Shine vs multiply (known risk, not a requirement to restructure):**
+**Shine is intentionally not part of this pass.**
 
-Shine on the sprite composites as part of the sprite, so a multiply overlay above it may mute the sweep. That is acceptable for this pass. Do **not** wrap every actor in a `body` Container to chase Shine-on-top.
+`AddEffectShine` stays on the pooled sprite. Sibling overlays may render above it and mute the sweep. That is **not** a ship blocker and **not** an acceptance test. Do not wrap actors in a Container or stamp a DynamicTexture to reorder Shine — that would expand this beyond a room-light pass.
 
-A **small runtime probe** may later test whether `AddEffectShine` can attach to a Container (or another host) without changing destroy tidyup. Only if that probe passes may Shine move. The probe is not in this pass’s implementation plan.
+A later probe may test a new Shine host. Not this spec.
 
 Campaign combat: no overlays; flash-on-sprite and Shine-on-sprite stay exactly as they are.
 
@@ -256,7 +268,7 @@ Do not import `combat-phaser-stage.ts` from tests.
 - Actor to the right of `sconceX`: `shadowDx > 0`. Actor to the left: `shadowDx < 0`.
 - `shadowScaleX === 1.25`. No `shadowDy` / `shadowScaleY` / `sconceY`.
 - `visible: false` or `opacity: 0` → overlay alphas 0 and/or `visible: false`.
-- Opacity 0.5 halves overlay alphas.
+- Opacity 0.5: `recipe.alpha === 0.5`, overlay rect alphas stay `0.20` / `0.14` / `0.30` (single fade is the painter, not the recipe).
 
 ### 10.2 Gate and kill switch
 
@@ -295,7 +307,7 @@ Disabled screenshots are a regression gate against the current look, not against
 - Graphic and restrained: two or three value/color treatments, crisp pixel edges.
 - No plastic bilinear `setTint(tl,tr,bl,br)` for this pass.
 - No LightsManager, ImageLight, puddle reflection, juice-system, or plate relight.
-- No required actor `Container` wrap; Shine stays on the pooled sprite unless a later probe proves a new host.
+- No required actor `Container` wrap. Shine stays on the pooled sprite. Shine-vs-overlay order is **not** an acceptance criterion.
 - BitmapMask lifecycle follows the pooled sprite exactly.
 - Hidden/dead alpha and overlay visibility mirror the actor.
 - `CONTACT_SHADOW_BELOW_FOOT_PX` / floor-bottom occlusion math unchanged (`ry` unchanged).

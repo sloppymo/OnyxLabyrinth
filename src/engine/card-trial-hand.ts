@@ -25,6 +25,7 @@ import {
   updatePoseSpring,
 } from "./card-trial-motion";
 import { getReducedMotion } from "./combat-impact-fx";
+import { cardTrialUiAssetUrl, conciseUnavailableReason } from "./card-trial-ui-model";
 
 export interface CardHandTuning extends PoseSpringTuning {
   cardWidth: number;
@@ -47,17 +48,17 @@ export interface CardHandTuning extends PoseSpringTuning {
 }
 
 export const DEFAULT_HAND_TUNING: CardHandTuning = {
-  cardWidth: 132,
-  cardHeight: 184,
-  fanSpacing: 92,
+  cardWidth: 136,
+  cardHeight: 190,
+  fanSpacing: 115,
   fanOuterAngleDeg: 6.5,
   fanOuterDrop: 11,
   restingCenterX: DESIGN_W / 2,
-  restingCenterY: 536,
-  focusLift: 12,
-  focusScale: 1.045,
-  focusRotationKeep: 0.28,
-  armedLift: 22,
+  restingCenterY: 534,
+  focusLift: 0,
+  focusScale: 1,
+  focusRotationKeep: 1,
+  armedLift: 32,
   armedScale: 1.08,
   neighborSeparation: 22,
   neighborFalloff: 0.35,
@@ -181,6 +182,7 @@ interface CardBody {
   textEl: HTMLDivElement;
   consumeEl: HTMLDivElement;
   whyEl: HTMLDivElement;
+  focusEl: HTMLImageElement;
   model: HandCardView;
   spring: PoseSpringState;
   target: Pose;
@@ -252,7 +254,12 @@ export class CardTrialHandPresentation {
     consumeEl.className = "ct2-card-consume";
     const whyEl = document.createElement("div");
     whyEl.className = "ct2-card-why";
-    el.append(costEl, nameEl, artEl, textEl, consumeEl, whyEl);
+    const focusEl = document.createElement("img");
+    focusEl.className = "ct2-focus-brackets";
+    focusEl.alt = "";
+    focusEl.draggable = false;
+    focusEl.src = cardTrialUiAssetUrl("brackets-focus");
+    el.append(costEl, nameEl, artEl, textEl, consumeEl, whyEl, focusEl);
     this.applyCardDimensions(el);
     this.stage.appendChild(el);
 
@@ -279,6 +286,7 @@ export class CardTrialHandPresentation {
       textEl,
       consumeEl,
       whyEl,
+      focusEl,
       model: card,
       spring: initPoseSpring(spawn),
       target: spawn,
@@ -324,7 +332,7 @@ export class CardTrialHandPresentation {
     body.costEl.textContent = String(c.cost);
     body.openMarkEl.hidden = !c.opens;
     body.nameTextEl.textContent = c.name;
-    body.textEl.textContent = c.text;
+    body.textEl.innerHTML = cardRulesHtml(c.text);
     this.applyArt(body);
     if (c.consume === "none") {
       body.consumeEl.textContent = "";
@@ -339,7 +347,9 @@ export class CardTrialHandPresentation {
         .filter(Boolean)
         .join(" ");
     }
-    body.whyEl.textContent = c.disabled && c.disabledReason ? c.disabledReason : "";
+    body.whyEl.textContent = c.disabled
+      ? conciseUnavailableReason(c.disabledReason, c.cost) ?? "Unavailable"
+      : "";
     body.el.classList.toggle("disabled", c.disabled);
   }
 
@@ -437,6 +447,10 @@ export class CardTrialHandPresentation {
       body.el.style.pointerEvents = showHand ? "auto" : "none";
       body.el.classList.toggle("focused", body.focused);
       body.el.classList.toggle("armed", body.armed);
+      body.el.classList.toggle(
+        "deemphasized",
+        (focusedIndex !== null || armedIndex !== null) && !body.focused && !body.armed
+      );
       body.el.classList.remove("playing");
     });
   }
@@ -489,4 +503,16 @@ export class CardTrialHandPresentation {
       this.bodies.delete(uid);
     }
   }
+}
+
+function cardRulesHtml(text: string): string {
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;");
+  return escaped.replace(
+    /\b(?:Deal|Gain|Move|Front|Back|Open|Opened|Consume|Rat)\b(?:\s+\d+)?(?:\s+Guard)?|[+]\d+/g,
+    (match) => `<span class="ct2-emphasis">${match}</span>`
+  );
 }

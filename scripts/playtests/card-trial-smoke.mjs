@@ -92,10 +92,14 @@ try {
   check("legacy party pane gone", !ui.partyPane);
   check("five physical cards", ui.cards === 5, `got ${ui.cards}`);
   check("Consume clause visible on a card", /\bConsume\b/.test(ui.overlay));
-  check("fifth card Swarm visible", /Swarm the Wound/.test(ui.overlay));
+  check("fifth card Swarm visible", /Swarm the Wound/i.test(ui.overlay));
   check("Move utility visible", /MOVE/.test(ui.move));
-  check("energy meter visible", /◆\s*3\/3/.test(ui.overlay));
-  check("actor-local ATK visible", /ATK/.test(ui.overlay));
+  check("labeled energy chip visible", /ENERGY\s*3\/3/i.test(ui.overlay));
+  check(
+    "actor-local name and HP visible",
+    /RAT KING[\s\S]*40\/40/i.test(ui.overlay) && /OLD MAN[\s\S]*40\/40/i.test(ui.overlay),
+  );
+  check("default plates omit secondary ATK detail", !/\bATK\b/i.test(ui.overlay));
   await shot(page, OUT, "03-triangle-hand.png");
 
   log("=== Line B stay (Heap + Nip Cleaver) via UI ===");

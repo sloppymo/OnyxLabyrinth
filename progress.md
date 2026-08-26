@@ -1,5 +1,25 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+## 2026-08-25 — Card Trial combat UI redesign
+
+- Current task: implement the approved Card Trial-only combat UI mockup with a shared 768×672 semantic/layout recipe, clear gold current-actor and card states, red target states, anchored actor plates, readable hand/action rails, Canvas/Phaser parity, and no campaign or lighting regressions.
+- Safety baseline: branch `feat/f1-battlefield-wow-pass` is three commits ahead of upstream and already dirty. Pre-existing edits include `combat-phaser-stage.ts`, `combat-scene.ts`, `renderer.ts`, `main.ts`, room/floor-light work, docs, generated output, and new sprite assets. Preserve all of them; do not reset, clean, or blanket-stage.
+- Baseline `npm run check` passed before implementation: app/test/tools TypeScript, Vite production build, 151 Vitest files / 2,661 tests, floor validation with only the established Floor 1 warnings, and floor-export consistency.
+- Implemented the first shared recipe pass: `card-trial-ui-model.ts` owns initiative/current actor/focus-versus-armed/legal target/details/unavailable/outcome text; `card-trial-layout.ts` owns live choreography anchors, footY/draw-size indicators, and deterministic plate offsets. The shared DOM stage consumes it over both Canvas and Phaser; Card Trial alone suppresses the two legacy yellow triangles.
+- Generated and selected one supporting pixel-art set after inspecting two candidates: Rat King and Old Man portrait tiles, gold ring, red reticle/arrow/legal marker, ivory focus brackets, bronze separator, and small resource/action/row icons under `public/assets/card-trial/ui/`. Enemy initiative tiles deliberately use their existing live strips; no lab-assistant or other bespoke portrait was added.
+- First production-stage browser capture found Card Trial was still rendering generic Thief/Priest bodies. Added a Card-Trial-only sprite cache and wired the existing authored Rat King and broad-hatted blue Old Man strips into both painters without changing campaign class sprites. The standard develop-web-game client then confirmed both real protagonists in the live fight.
+- Focus now stays geometrically still and is identified only by the static ivory bracket. The committed targeting card alone gets the 32px rise, straight pose, 1.08× scale, and gold edge. Five-card spacing increased so every neighboring title remains legible.
+- Final verification: the focused UI/model/layout/hero-cache suites pass (54
+  tests), and `npm run check` passes with 153 files / 2,677 tests plus app,
+  tools, and test TypeScript, production build, floor validation, and export
+  consistency. The new Canvas/Phaser state matrix passes idle, armed card,
+  legal/selected target, Details, unavailable card, paid row move, enemy
+  handoff, Old Man turn, `?roomLight=0`, and campaign baseline captures with
+  no page errors. Existing sparse, smoke, card-art, target-cycle, Front/Back,
+  exit-lifecycle, and 10-fight frozen-oracle fixtures also pass; the independent
+  28-pose Canvas/WebGL lighting suite remains green. Final reviewed evidence is
+  under `output/card-trial-ui-redesign/evidence/`.
+
 ## 2026-08-22 — Card Trial five-card art validation batch
 
 - Phase 1 is frozen at commit `28e16c0` (`feat: present Card Trial front/back spatially`). The exact staged build passed `npm run check` (141 files / 2,579 tests), the frozen ten-fight gameplay/DOM oracle, and Canvas/Phaser visual fixtures. The shared dirty worktree also passed at 143 files / 2,608 tests; its additional Gate A files remain unrelated and untouched.
@@ -1392,3 +1412,19 @@ visual-pass notes below; this section tracks the current task only.
   seeds × 80 steps; sparse UI, art, target cycling, Front/Back, exit lifecycle,
   and feel-review fixtures passed with zero page errors. Generated
   session/fuzz/replay files are ignored under `output/playtest-artifacts/`.
+
+## 2026-08-25 — F1 backdrop observability and floor bounce
+
+- Added a pure authored-plate selection contract and asset regression: only a
+  complete 768×672 F1 image can replace the procedural arena fallback.
+- Exposed `__onyxDebug.readiness().f1ArenaBackdrop` with live load state,
+  selected source, expected dimensions, and actual dimensions.
+- Added one shared, static green-gray floor-bounce light parameter path. Canvas
+  paints a radial gradient and Phaser paints matching quiet bands from the same
+  live actor foot positions; no camera, gameplay, HUD, or backdrop geometry
+  changed.
+- Verification: `npm run check` passed (151 files / 2,661 tests). The standard
+  web-game client, Card Trial sparse UI fixture, and fresh Phaser + Canvas F1
+  captures passed with empty page-error lists. Both runtime probes reported
+  `f1ArenaBackdrop.state = loaded`, `source = authored`, and 768×672 actual
+  dimensions.

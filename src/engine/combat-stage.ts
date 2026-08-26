@@ -22,6 +22,16 @@ import {
 import { renderScene } from "./combat-scene";
 import { combatCanvas, combatCtx } from "./shell";
 import { COMBAT_DESIGN_W, COMBAT_DESIGN_H } from "./combat-scene-math";
+import {
+  normalizeCombatStageOpts,
+  resolveRoomLightEnabled,
+} from "./combat-room-light";
+import { loadCardTrialHeroSprites } from "./card-trial-hero-sprite-cache";
+
+export {
+  normalizeCombatStageOpts,
+  resolveRoomLightEnabled,
+} from "./combat-room-light";
 
 export interface CombatStage {
   /** Shared scene model — groundPlaneProbe / debug read this. */
@@ -86,6 +96,12 @@ export interface CreateCombatStageOpts {
   backdrop?: HTMLCanvasElement | null;
   backdropId?: string | null;
   kind?: CombatStageKind;
+  /** Filled from `?roomLight=0` when omitted. */
+  roomLightEnabled?: boolean;
+}
+
+function currentSearch(): string {
+  return typeof location !== "undefined" ? location.search : "";
 }
 
 /** Sync canvas stage — always available (tests + default path). */
@@ -96,6 +112,7 @@ export function createCanvasCombatStage(
   scene.backdrop = opts.backdrop ?? null;
   scene.backdropId =
     opts.backdropId ?? (opts.backdrop ? "arena" : "combat-bg");
+  scene.roomLightEnabled = opts.roomLightEnabled ?? resolveRoomLightEnabled(currentSearch());
 
   let destroyed = false;
 
@@ -177,7 +194,14 @@ export function createCanvasCombatStage(
 export async function createCombatStage(
   opts: CreateCombatStageOpts
 ): Promise<CombatStage> {
-  const kind = opts.kind ?? resolveCombatStageKind();
+  const normalized = normalizeCombatStageOpts(opts, currentSearch());
+  // The dedicated Card Trial hero cache is the one source for both painters.
+  // Preload here so Canvas fallback and Phaser see the same authored strips;
+  // campaign fights never touch this bundle.
+  if (normalized.state.partyFormation?.kind === "card-trial-rows") {
+    await loadCardTrialHeroSprites();
+  }
+  const kind = normalized.kind ?? resolveCombatStageKind();
   if (kind === "phaser") {
     try {
       // Flip CSS before the heavy dynamic import so the sticky 2d canvas
@@ -185,15 +209,15 @@ export async function createCombatStage(
       const wrap = document.querySelector("#combat-wrap");
       wrap?.classList.add("phaser-stage");
       const mod = await import("./combat-phaser-stage");
-      return await mod.createPhaserCombatStage(opts);
+      return await mod.createPhaserCombatStage(normalized);
     } catch (err) {
       console.warn(
         "[combat] Phaser stage failed; falling back to canvas",
         err
       );
       document.querySelector("#combat-wrap")?.classList.remove("phaser-stage");
-      return createCanvasCombatStage(opts);
+      return createCanvasCombatStage(normalized);
     }
   }
-  return createCanvasCombatStage(opts);
+  return createCanvasCombatStage(normalized);
 }

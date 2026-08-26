@@ -13,6 +13,10 @@ const noop: CardTrialViewHandlers = {
   onCancel: () => {},
 };
 
+function visiblePlates(host: HTMLElement): HTMLButtonElement[] {
+  return [...host.querySelectorAll<HTMLButtonElement>(".ct-actor-chip")].filter((plate) => !plate.hidden);
+}
+
 describe("CardTrialSparseUi", () => {
   it("renders a physical hand and actor HUD without the legacy blue panes", () => {
     const host = document.createElement("div");
@@ -37,12 +41,21 @@ describe("CardTrialSparseUi", () => {
     expect(host.querySelectorAll(".ct2-card").length).toBe(5);
     expect(host.querySelector('[data-act="move"]')?.textContent).toContain("MOVE");
     expect(host.querySelector('[data-act="pass"]')?.textContent).toContain("PASS");
-    expect(host.querySelector(".ct-energy")?.textContent).toMatch(/◆\s*3\/3/);
-    expect(host.querySelector(".ct-draw")?.textContent).toMatch(/Draw/);
-    expect(host.querySelector(".ct-sparse-rat")?.textContent).toMatch(/RAT Front/);
-    expect(host.querySelectorAll(".ct-actor-chip.hero").length).toBe(2);
-    expect(host.querySelectorAll(".ct-actor-chip.enemy").length).toBeGreaterThan(0);
-    expect(host.querySelector(".ct-chip-atk")?.textContent).toMatch(/ATK/);
+    expect(host.querySelector(".ct-energy")?.textContent).toMatch(/Energy\s*3\/3/i);
+    expect(host.querySelector(".ct-deck")?.textContent).toMatch(
+      new RegExp(`Deck\\s*${view.drawCount}`, "i")
+    );
+    expect(host.querySelector(".ct-sparse-rat")?.textContent).toMatch(/Rat\s*Front/i);
+    const plates = visiblePlates(host);
+    expect(plates).toHaveLength(1);
+    expect(plates[0]?.textContent).toContain("Rat King");
+    expect([...host.querySelectorAll<HTMLButtonElement>(".ct-actor-chip")].filter((plate) => plate.hidden).map((plate) => plate.textContent)).toEqual(
+      expect.arrayContaining([expect.stringContaining("Old Man"), expect.stringContaining("Cleaver")])
+    );
+    expect(host.querySelector(".ct-chip-intent")).toBeNull();
+    expect(host.querySelector<HTMLDivElement>(".ct-instruction-strip")?.hidden).toBe(true);
+    expect([...host.querySelectorAll<HTMLImageElement>(".ct-legal-marker")].filter((marker) => !marker.hidden)).toHaveLength(0);
+    expect(host.querySelector<HTMLImageElement>('[data-actor="rat-king"] .ct-current-ring')?.hidden).toBe(false);
     expect(host.textContent).not.toMatch(/\bEND TURN\b/);
     expect([...host.querySelectorAll(".ct2-card")].some((c) => c.textContent?.includes("Swarm the Wound"))).toBe(
       true
@@ -67,11 +80,22 @@ describe("CardTrialSparseUi", () => {
     };
     ui.sync(base, noop);
     expect((host.querySelector(".ct-sparse-details") as HTMLElement).hidden).toBe(true);
+    const ratPlate = [...host.querySelectorAll<HTMLButtonElement>(".ct-actor-chip.hero")]
+      .find((plate) => plate.textContent?.includes("Rat King"));
+    expect(ratPlate?.textContent).not.toContain("Guard 5");
     ui.sync({ ...base, detailsHeld: true }, noop);
     const details = host.querySelector(".ct-sparse-details") as HTMLElement;
     expect(details.hidden).toBe(false);
+    expect(details.textContent).toContain("FIGHT 2");
+    expect(details.textContent).toMatch(/Cleaver\s*·\s*Front/i);
+    expect(details.textContent).toMatch(/Ash\s*·\s*Back\s*·\s*Opened/i);
+    expect(details.textContent).toMatch(/CLEAVER.*our Front.*11/i);
+    expect(details.textContent).toMatch(/ASH.*our Back.*8/i);
     expect(details.textContent).toContain("Guard 5");
     expect(details.textContent).toMatch(/\d+\s*→\s*\d+\s*HP/);
+    expect(ratPlate?.textContent).not.toContain("Guard 5");
+    expect([...host.querySelectorAll<HTMLButtonElement>(".ct-actor-chip")].every((plate) => !plate.textContent?.includes("our Front"))).toBe(true);
+    expect(host.querySelector(".ct-chip-intent")).toBeNull();
     ui.destroy();
   });
 
@@ -104,10 +128,25 @@ describe("CardTrialSparseUi", () => {
     );
     expect(host.querySelector(".ct-target")).toBeNull();
     expect(host.querySelector(".ct-sparse-target-hint")?.textContent).toMatch(/target/i);
-    const chip = host.querySelector(".ct-actor-chip.enemy.targetable") as HTMLButtonElement;
-    expect(chip).toBeTruthy();
-    chip.dispatchEvent(new Event("pointerenter", { bubbles: true }));
-    chip.click();
+    const plates = visiblePlates(host);
+    expect(plates).toHaveLength(2);
+    expect(plates.map((plate) => plate.textContent)).toEqual(
+      expect.arrayContaining([expect.stringContaining("Rat King")])
+    );
+    const selected = host.querySelector(".ct-actor-chip.enemy.targetable.targeted") as HTMLButtonElement;
+    expect(selected).toBeTruthy();
+    selected.dispatchEvent(new Event("pointerenter", { bubbles: true }));
+    selected.click();
+    expect(hovered).toBeGreaterThanOrEqual(0);
+    expect(confirmed).toBeGreaterThanOrEqual(0);
+    const hiddenLegalPlate = [...host.querySelectorAll<HTMLButtonElement>(".ct-actor-chip.enemy.targetable")]
+      .find((plate) => plate.hidden);
+    expect(hiddenLegalPlate).toBeTruthy();
+    const hiddenLegalRoot = hiddenLegalPlate?.closest(".ct-actor-indicator") as HTMLElement;
+    const edgeCue = hiddenLegalRoot.querySelector(".ct-target-edge") as HTMLDivElement;
+    expect(edgeCue.hidden).toBe(false);
+    edgeCue.dispatchEvent(new Event("pointerenter", { bubbles: true }));
+    edgeCue.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(hovered).toBeGreaterThanOrEqual(0);
     expect(confirmed).toBeGreaterThanOrEqual(0);
     ui.destroy();

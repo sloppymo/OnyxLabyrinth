@@ -674,6 +674,46 @@ export function actingHero(s: CardTrialState): HeroState | null {
   return s.heroes[actor.id as HeroId];
 }
 
+/**
+ * Resolve the primary damage printed by a Card Trial card.
+ *
+ * This is part of the rules layer so presentation code cannot grow a second
+ * damage table that drifts away from resolveCardEffect(). `ratExists` is only
+ * relevant to Send the Rat, whose fallback attack is weaker when the token is
+ * absent.
+ */
+export function cardPrimaryDamage(
+  id: CardId,
+  row: PlayerRow,
+  ratExists = false
+): number | null {
+  switch (id) {
+    case "nip": return 5;
+    case "open-the-rank": return 4;
+    case "from-the-dark": return 4;
+    case "swarm-the-wound": return 5;
+    case "burst-the-nest": return 8;
+    case "litter": return 4;
+    case "send-the-rat": return ratExists ? 5 : 4;
+    case "tide": return 5 + (row === "front" ? 3 : 0);
+    case "lunge": return 5;
+    case "king-of-the-heap": return 7 + (row === "front" ? 3 : 0);
+    case "staff": return 6;
+    case "crack": return 5;
+    case "split-bone": return 4;
+    case "full-stop": return 8;
+    case "cut-the-line": return 5;
+    case "threshold": return 5 + (row === "front" ? 4 : 0);
+    case "from-afar": return 5;
+    case "parting-blow": return 4;
+    case "extinguish": return 4;
+    case "stand-and-die": return 8 + (row === "front" ? 3 : 0);
+    case "brace":
+    case "ward":
+      return null;
+  }
+}
+
 export function paidMove(s: CardTrialState): PlayCardResult {
   const gate = canPaidMove(s);
   if (!gate.ok) return { ok: false, reason: gate.reason ?? "Cannot move", events: [] };
@@ -763,6 +803,10 @@ function resolveCardEffect(
 ): void {
   const target = targets.targetId ? enemyById(s, targets.targetId) : undefined;
   const hit = (enemy: EnemyState, n: number) => dealToEnemy(s, enemy, n, hero.id, events);
+  const primaryDamage = cardPrimaryDamage(id, hero.row, !!s.rat);
+  const hitPrimary = (enemy: EnemyState) => {
+    if (primaryDamage !== null) hit(enemy, primaryDamage);
+  };
   const bite = (enemy: EnemyState, n: number) => {
     events.push({ type: "rat-bite", targetId: enemy.id, damage: n });
     dealToEnemy(s, enemy, n, "rat", events);
@@ -770,27 +814,27 @@ function resolveCardEffect(
 
   switch (id) {
     case "nip":
-      if (target) hit(target, 5);
+      if (target) hitPrimary(target);
       break;
     case "brace":
       gainGuard(s, hero, 6, events);
       break;
     case "open-the-rank":
       if (target) {
-        hit(target, 4);
+        hitPrimary(target);
         if (target.hp > 0) applyOpened(s, target, hero.id, events);
       }
       break;
     case "from-the-dark":
       if (target) {
-        hit(target, 4);
+        hitPrimary(target);
         if (target.hp > 0) applyOpened(s, target, hero.id, events);
         if (hero.row === "back" && s.rat && target.hp > 0) bite(target, 3);
       }
       break;
     case "swarm-the-wound":
       if (target) {
-        hit(target, 5);
+        hitPrimary(target);
         if (consumeNow && target.hp > 0) {
           consumeOpened(s, target, hero.id, events);
           hit(target, 4);
@@ -800,7 +844,7 @@ function resolveCardEffect(
     case "burst-the-nest":
       if (target) {
         const primaryId = target.id;
-        hit(target, 8);
+        hitPrimary(target);
         if (consumeNow) {
           if (s.opened?.enemyId === primaryId) consumeOpened(s, target, hero.id, events);
           for (const other of livingEnemies(s).filter((e) => e.id !== primaryId)) {
@@ -810,7 +854,7 @@ function resolveCardEffect(
       }
       break;
     case "litter":
-      if (target) hit(target, 4);
+      if (target) hitPrimary(target);
       if (!s.rat) {
         s.rat = { row: hero.row };
         events.push({ type: "spawn-rat", row: hero.row });
@@ -822,44 +866,44 @@ function resolveCardEffect(
         events.push({ type: "rat-move", row: s.rat.row });
         bite(target, 5);
       } else if (target) {
-        hit(target, 4);
+        hitPrimary(target);
       }
       break;
     case "tide":
-      if (target) hit(target, 5 + (hero.row === "front" ? 3 : 0));
+      if (target) hitPrimary(target);
       break;
     case "lunge": {
       enterRow(s, hero, "front");
       events.push({ type: "hero-move", actorId: hero.id, row: "front", via: "card" });
       if (s.openTurn) s.openTurn.cardPrintedMovement = true;
-      if (target) hit(target, 5);
+      if (target) hitPrimary(target);
       break;
     }
     case "king-of-the-heap":
-      if (target) hit(target, 7 + (hero.row === "front" ? 3 : 0));
+      if (target) hitPrimary(target);
       gainGuard(s, hero, 8, events);
       break;
     case "staff":
-      if (target) hit(target, 6);
+      if (target) hitPrimary(target);
       break;
     case "ward":
       gainGuard(s, hero, 7, events);
       break;
     case "crack":
       if (target) {
-        hit(target, 5);
+        hitPrimary(target);
         if (target.hp > 0) applyOpened(s, target, hero.id, events);
       }
       break;
     case "split-bone":
       if (target) {
-        hit(target, 4);
+        hitPrimary(target);
         if (target.hp > 0) applyOpened(s, target, hero.id, events);
       }
       break;
     case "full-stop":
       if (target) {
-        hit(target, 8);
+        hitPrimary(target);
         if (consumeNow && target.hp > 0) {
           consumeOpened(s, target, hero.id, events);
           hit(target, 8);
@@ -867,7 +911,7 @@ function resolveCardEffect(
       }
       break;
     case "cut-the-line":
-      if (target) hit(target, 5);
+      if (target) hitPrimary(target);
       if (consumeNow && target) {
         consumeOpened(s, target, hero.id, events);
         const second = enemyById(s, targets.secondTargetId!);
@@ -875,23 +919,23 @@ function resolveCardEffect(
       }
       break;
     case "threshold":
-      if (target) hit(target, 5 + (hero.row === "front" ? 4 : 0));
+      if (target) hitPrimary(target);
       break;
     case "from-afar":
-      if (target) hit(target, 5);
+      if (target) hitPrimary(target);
       if (hero.row === "back") gainGuard(s, hero, 3, events);
       break;
     case "parting-blow":
-      if (target) hit(target, 4);
+      if (target) hitPrimary(target);
       enterRow(s, hero, "back");
       events.push({ type: "hero-move", actorId: hero.id, row: "back", via: "card" });
       if (s.openTurn) s.openTurn.cardPrintedMovement = true;
       break;
     case "extinguish":
-      for (const e of livingEnemies(s)) hit(e, 4);
+      for (const e of livingEnemies(s)) hitPrimary(e);
       break;
     case "stand-and-die":
-      if (target) hit(target, 8 + (hero.row === "front" ? 3 : 0));
+      if (target) hitPrimary(target);
       gainGuard(s, hero, 9, events);
       break;
   }
@@ -1024,6 +1068,7 @@ export function playerView(s: CardTrialState): CardTrialPlayerView {
     enemies: s.enemies.map((e) => ({
       id: e.id,
       name: e.name,
+      spriteId: e.spriteId,
       hp: e.hp,
       maxHp: e.maxHp,
       opened: s.opened?.enemyId === e.id,

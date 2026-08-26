@@ -191,6 +191,8 @@ export interface CardTrialPlayerView {
   enemies: Array<{
     id: string;
     name: string;
+    /** Presentation-only sprite key used by the Card Trial initiative rail. */
+    spriteId: string;
     hp: number;
     maxHp: number;
     opened: boolean;

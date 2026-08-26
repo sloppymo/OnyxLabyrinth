@@ -11,9 +11,10 @@
 ## Global Constraints
 
 - Card Trial only: `scene.state.partyFormation?.kind === "card-trial-rows"` AND `scene.roomLightEnabled === true`.
+- Overlay rect alphas are constants (0.20 / 0.14 / 0.30 when visible, else 0). Actor fade is `recipe.alpha` applied once by the painter (Canvas blit / Phaser `sprite.setAlpha`). Do not multiply overlay alphas by opacity.
 - Do not change `src/engine/combat-floor-light.ts`.
 - Do not use Phaser `setTint(tl,tr,bl,br)` for room light. Do not enable LightsManager / ImageLight / normal maps.
-- Do not wrap actors in a Phaser `Container`. Shine stays `AddEffectShine` on the pooled sprite.
+- Do not wrap actors in a Phaser `Container`. Shine stays `AddEffectShine` on the pooled sprite. Shine-vs-overlay order is **not** an acceptance criterion.
 - Never `source-atop` + `fillRect` on the live combat canvas.
 - Canvas hit flash must be silhouette-masked (scratch destination alpha or redrawn solid silhouette). Unmasked square flash is forbidden.
 - `torchSide` owns warm/cool. No `flipX` on the recipe. Sconce contract is `CARD_TRIAL_SCONCE_X` only — no `sconceY`.
@@ -161,12 +162,12 @@ describe("roomKeyLightForActor", () => {
     expect(r.alpha).toBe(0);
   });
 
-  it("scales overlay alphas with opacity", () => {
+  it("keeps overlay alphas constant; recipe.alpha is the single fade", () => {
     const r = roomKeyLightForActor(base({ opacity: 0.5 }));
     expect(r.alpha).toBe(0.5);
-    expect(r.warmRect.alpha).toBeCloseTo(0.1);
-    expect(r.coolRect.alpha).toBeCloseTo(0.07);
-    expect(r.rimEdge.alpha).toBeCloseTo(0.15);
+    expect(r.warmRect.alpha).toBeCloseTo(0.2);
+    expect(r.coolRect.alpha).toBeCloseTo(0.14);
+    expect(r.rimEdge.alpha).toBeCloseTo(0.3);
   });
 });
 
@@ -273,7 +274,7 @@ export function roomKeyLightForActor(input: RoomKeyLightInput): RoomKeyLight {
   const originY = input.y - size / 2;
   const half = size / 2;
   const shown = input.visible && input.opacity > 0;
-  const alpha = shown ? clamp01(input.opacity) : 0;
+  const bodyAlpha = shown ? clamp01(input.opacity) : 0;
   const leftIsWarm = input.torchSide === "left";
   const warmX = leftIsWarm ? originX : originX + half;
   const coolX = leftIsWarm ? originX + half : originX;
@@ -286,7 +287,7 @@ export function roomKeyLightForActor(input: RoomKeyLightInput): RoomKeyLight {
       width: half,
       height: size,
       color: "#f0d2a8",
-      alpha: 0.2 * alpha,
+      alpha: shown ? 0.2 : 0,
       blend: "multiply",
     },
     coolRect: {
@@ -295,7 +296,7 @@ export function roomKeyLightForActor(input: RoomKeyLightInput): RoomKeyLight {
       width: half,
       height: size,
       color: "#a8b8c8",
-      alpha: 0.14 * alpha,
+      alpha: shown ? 0.14 : 0,
       blend: "multiply",
     },
     rimEdge: {
@@ -304,13 +305,13 @@ export function roomKeyLightForActor(input: RoomKeyLightInput): RoomKeyLight {
       width: 1,
       height: size,
       color: "#ffe8c0",
-      alpha: 0.3 * alpha,
+      alpha: shown ? 0.3 : 0,
       blend: "add",
     },
     shadowDx: sign(input.x - input.sconceX) * 0.08 * size,
     shadowScaleX: 1.25,
     visible: shown,
-    alpha,
+    alpha: bodyAlpha,
   };
 }
 
@@ -582,22 +583,28 @@ function roomLightScratchContext(size: number): CanvasRenderingContext2D {
 Replace `drawStripFrame` so that when `shouldApplyRoomLight(scene.state, scene.roomLightEnabled)`:
 
 1. Get scratch ctx; `clearRect(0, 0, drawSize, drawSize)`.
-2. Draw the strip into the scratch **already mirrored** (`translate(size/2, size/2); scale(-1,1)` when `mirror`), with poison/burn `filter` on that draw.
-3. `globalCompositeOperation = "source-atop"`; fill `warmRect` / `coolRect` in **scratch space** (subtract `originX`/`originY` from recipe rects, because recipe rects are screen-space). Fill rim the same way with `"lighter"` (add) **after** resetting to `source-atop` is wrong for add — sequence:
+2. Draw the strip into the scratch **already mirrored** (`translate(size/2, size/2); scale(-1,1)` when `mirror`), with poison/burn `filter` on that draw, at **full strength** (`globalAlpha = 1`).
+3. Reset scratch drawing state so poison/burn `filter` cannot leak into lighting:
 
-```
-// after sprite pixels exist on scratch:
-scratch.globalCompositeOperation = "source-atop";
-fill warm, fill cool  (multiply look: use fillStyle with alpha; Canvas has no true multiply of a rect over dest except:
-  "multiply" composite)
-scratch.globalCompositeOperation = "multiply"; // only if dest has pixels — multiply with transparent dest stays transparent
-```
+   ```
+   scratch.filter = "none";
+   scratch.globalAlpha = 1;
+   scratch.globalCompositeOperation = "source-over";
+   ```
 
-Use `"multiply"` for warm/cool fills on the scratch (destination alpha already holds the silhouette). Then `"source-atop"` or `"lighter"` for the 1px rim: `"lighter"` on a 1px rect would glow padding; **clip rim with `source-atop`** as well (spec allows source-atop fill on scratch).
+4. Fill `warmRect` / `coolRect` in **scratch space** (subtract `originX`/`originY` from recipe rects, because recipe rects are screen-space):
 
-4. Flash: if `sampleActorFlash` strength > 0.01, `globalCompositeOperation = "source-atop"`; `globalAlpha = flash.strength`; `fillStyle = flash.color`; `fillRect(0,0,size,size)` on the **scratch only**. Do **not** use `"lighter"` `fillRect` on the live canvas.
+   ```
+   scratch.globalCompositeOperation = "multiply";
+   scratch.globalAlpha = recipe.warmRect.alpha; // 0.20 / 0.14 constants, not * opacity
+   fill warm, fill cool
+   ```
 
-5. `ctx.drawImage(scratchCanvas, 0, 0, size, size, x - size/2, y - size/2, size, size)` on the live canvas with **no flip**. Live `ctx.globalAlpha = 1` (opacity already in the scratch pixels).
+   Use `"multiply"` for warm/cool fills on the scratch (destination alpha already holds the silhouette). Then `"source-atop"` for the 1px rim: `"lighter"` on a 1px rect would glow padding; **clip rim with `source-atop`** as well (spec allows source-atop fill on scratch). Overlay alphas are constants; do **not** multiply them by `recipe.alpha`.
+
+5. Flash: if `sampleActorFlash` strength > 0.01, `globalCompositeOperation = "source-atop"`; `globalAlpha = flash.strength`; `fillStyle = flash.color`; `fillRect(0,0,size,size)` on the **scratch only**. Do **not** use `"lighter"` `fillRect` on the live canvas.
+
+6. Blit the scratch onto the live canvas with **no flip**, at `ctx.globalAlpha = recipe.alpha` (the **single** fade). Scratch pixels stay at full strength.
 
 When room light is **off**, keep today’s live-canvas `drawImage` path, including the existing live flash `fillRect` (campaign square flash is unchanged).
 
@@ -683,7 +690,7 @@ interface RoomLightOverlays {
   cool: Phaser.GameObjects.Rectangle;
   rim: Phaser.GameObjects.Rectangle;
   flash: Phaser.GameObjects.Rectangle;
-  mask: Phaser.Display.Masks.BitmapMask;
+  mask: Phaser.Display.Masks.BitmapMask | null;
 }
 
 interface ActorSpriteEntry {
@@ -694,13 +701,15 @@ interface ActorSpriteEntry {
 
 - [ ] **Step 2: Allocate / destroy overlays with the sprite**
 
-When creating a strip sprite (`ensureStripSprite`), after `this.actors.set`:
+When creating a strip sprite (`ensureStripSprite`) **or** a fallback ellipse (`ensureFallback`), after `this.actors.set`:
 
 ```ts
-entry.roomLight = this.createRoomLightOverlays(entry.sprite);
+entry.roomLight = this.createRoomLightOverlays(entry.sprite, { masked: !isFallback });
 ```
 
-`createRoomLightOverlays(sprite)`:
+Allocate overlays for fallback entries too. Fallback: `mask: null`, no BitmapMask, rim stays hidden.
+
+`createRoomLightOverlays(sprite, { masked })`:
 
 ```ts
   const warm = this.addTo(this.actorLayer, this.add.rectangle(0, 0, 1, 1, 0xf0d2a8, 1).setOrigin(0, 0));
@@ -711,12 +720,14 @@ entry.roomLight = this.createRoomLightOverlays(entry.sprite);
   cool.setBlendMode(Phaser.BlendModes.MULTIPLY);
   rim.setBlendMode(Phaser.BlendModes.ADD);
   flash.setBlendMode(Phaser.BlendModes.ADD);
-  const mask = sprite.createBitmapMask();
-  for (const g of [warm, cool, rim, flash]) g.setMask(mask);
+  const mask = masked ? sprite.createBitmapMask() : null;
+  if (mask) {
+    for (const g of [warm, cool, rim, flash]) g.setMask(mask);
+  }
   return { warm, cool, rim, flash, mask };
 ```
 
-Fallback entries: create warm/cool/flash **without** mask and **without** rim (`rim` hidden). Clip overlay size to the ellipse display size in `syncRoomLight`.
+Fallback: overlays exist, `mask` is null, rim hidden in `syncRoomLight`. Clip overlay size to the ellipse display size.
 
 On every `entry.shadow.destroy()` / sprite destroy path, also:
 
@@ -772,12 +783,12 @@ After computing `x, y, footY, drawSize, opacity` (same as today), before `applyA
 In `applyActorFlash`, if `shouldApplyRoomLight(scene.state, scene.roomLightEnabled)` and `entry.roomLight`:
 
 - Do **not** call `sprite.setTint` for the flash.
-- Set `entry.roomLight.flash` fill to `flash.color`, alpha to `flash.strength * opacity`, visible iff strength > 0.01.
+- Set `entry.roomLight.flash` fill to `flash.color`, alpha to `flash.strength` (do **not** multiply by actor opacity — sprite alpha is the single fade), visible iff strength > 0.01.
 - After flash expires, leave status tint via existing `applyStatusTint` (still called before flash).
 
 If room light is off, keep today’s `setTint` flash.
 
-Do **not** change `syncHealShine` / `clearShine`.
+Do **not** change `syncHealShine` / `clearShine`. Shine-vs-overlay order is **not** an acceptance criterion for this pass.
 
 - [ ] **Step 5: Typecheck**
 
@@ -873,7 +884,7 @@ EOF
 | §6 Shadow adjustments only | 3, 4 |
 | §7 Scratch isolation, mirror-then-light | 3 |
 | §8.1 Stack / flash above multiply | 3, 4 |
-| §8.2 No Container, Shine unchanged | 4 |
+| §8.2 No Container; Shine on pooled sprite; Shine order not an acceptance test | 4 |
 | §8.3 Masked Canvas flash | 3 |
 | §9 Wiring table | 2–4 |
 | §10.1–10.3 Tests | 1, 2, 5 |
@@ -881,4 +892,4 @@ EOF
 | §11 Constraints | Global + all tasks |
 | §12 Later passes | Not in this plan |
 
-No LightsManager, no floor-light edits, no juice pass, no Shine host probe.
+No LightsManager, no floor-light edits, no juice pass, no Shine host probe. Overlay fade is once (body), not again on rect alphas. Scratch `filter`/`globalAlpha`/`globalCompositeOperation` reset after status-filtered sprite draw. Fallback overlays are allocated with `mask: null`.

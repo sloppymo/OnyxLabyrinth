@@ -524,6 +524,8 @@ export interface CombatScene {
   backdrop: HTMLCanvasElement | null;
   /** Ground-plane geometry key (arena | theme:fN | combat-bg | corridor). */
   backdropId: string;
+  /** Kill switch for the Card Trial room key-light painter. */
+  roomLightEnabled: boolean;
   /** Shared impact presentation state (hit-stop, zoom, env light, actor flash). */
   impact: CombatImpactState;
 }
@@ -624,6 +626,7 @@ export function createScene(state: CombatState): CombatScene {
     lightGlows: [],
     backdrop: null,
     backdropId: "arena",
+    roomLightEnabled: true,
     impact: createImpactState(),
   };
   // Pre-seed slots in encounter / array order so the leftmost sprite matches

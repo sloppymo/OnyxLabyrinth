@@ -162,9 +162,9 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
         hurt: strip("animated-armor", "hurt", 4, 8),
         death: strip("animated-armor", "death", 4, 6),
       },
-      0.72
+      0.65
     ),
-    0.27
+    0.17
   ),
   // Floor 5 elite (campaign progression sprint) — reuses Animated Armor's strip.
   "flood-brute": withTop(
@@ -175,9 +175,9 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
         hurt: strip("animated-armor", "hurt", 4, 8),
         death: strip("animated-armor", "death", 4, 6),
       },
-      0.72
+      0.65
     ),
-    0.27
+    0.17
   ),
   "acid-puddle": withFoot(
     {

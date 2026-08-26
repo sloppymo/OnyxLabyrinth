@@ -50,6 +50,11 @@ import {
 } from "./combat-choreography";
 import { enemySpriteId, getEnemySpriteStrip, loadEnemySpriteBundle } from "./enemy-sprite-cache";
 import { getPartySpriteStrip, loadPartySpriteBundle, PARTY_SPRITE_DIRS } from "./party-sprite-cache";
+import {
+  cardTrialHeroTextureKey,
+  getCardTrialHeroSpriteStrip,
+  isCardTrialHeroId,
+} from "./card-trial-hero-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
 import { screenShakeOffset } from "./combat-motion";
 import {
@@ -92,6 +97,15 @@ import {
   sampleEnvironmentLight,
   sampleActorFlash,
 } from "./combat-impact-fx";
+import { floorBounceLightForActor, type CombatFloorBounceLight } from "./combat-floor-light";
+import {
+  CARD_TRIAL_SCONCE_X,
+  CARD_TRIAL_TORCH_SIDE,
+  contactShadowPlacement,
+  roomLightRecipeOrNull,
+  shouldApplyRoomLight,
+  type RoomKeyLight,
+} from "./combat-room-light";
 
 /** GameObject "destroy" event name — see `clearShine`'s tidyup unhook. */
 const DESTROY_EVENT = Phaser.GameObjects.Events.DESTROY;
@@ -144,12 +158,23 @@ const SCENE_KEY = "onyx-combat";
 
 type ActorKind = SceneCursor["kind"];
 
+interface RoomLightOverlays {
+  warm: Phaser.GameObjects.Rectangle;
+  cool: Phaser.GameObjects.Rectangle;
+  rim: Phaser.GameObjects.Rectangle;
+  flash: Phaser.GameObjects.Rectangle;
+  holder: Phaser.GameObjects.Container;
+  /** Phaser 4 silhouette mask (Filters.Mask). Null for fallback shapes. */
+  mask: Phaser.Filters.Mask | null;
+}
+
 interface ActorSpriteEntry {
   key: string;
   kind: ActorKind;
   sprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Ellipse;
   shadow: Phaser.GameObjects.Ellipse;
   isFallback: boolean;
+  roomLight?: RoomLightOverlays | null;
   /**
    * Per-sprite palette-crumble controllers, allocated lazily on first death
    * frame. Kept on the entry rather than looked up from the sprite because
@@ -194,6 +219,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     this.addTo(this.effectsLayer, this.add.sprite(0, 0, "__DEFAULT").setOrigin(0.5, 0.5))
   );
   private glowGraphics: Phaser.GameObjects.Graphics | null = null;
+  /** Shared floor-bounce pools populated from the same live actor positions as sprites. */
+  private bounceLights = new Map<string, CombatFloorBounceLight>();
   private bgImage: Phaser.GameObjects.Image | null = null;
   /** Environmental lighting dim overlay (normal blend, black). */
   private envDimRect: Phaser.GameObjects.Rectangle | null = null;
@@ -673,7 +700,11 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       void loadEnemySpriteBundle(enemySpriteId(e));
     }
     for (const c of scene.state.party) {
-      void loadPartySpriteBundle(PARTY_SPRITE_DIRS[c.class]);
+      // createCombatStage preloads the dedicated Card Trial bundle before
+      // constructing either painter. Campaign remains class-pack driven.
+      if (!(scene.state.partyFormation?.kind === "card-trial-rows" && isCardTrialHeroId(c.id))) {
+        void loadPartySpriteBundle(PARTY_SPRITE_DIRS[c.class]);
+      }
     }
     // Add spritesheets from already-decoded cache images when available.
     for (const e of [...scene.state.enemies.front, ...scene.state.enemies.back, ...scene.enemyCorpses]) {
@@ -691,10 +722,15 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     }
     for (const c of scene.state.party) {
       for (const st of ["idle", "walk", "attack", "attack_ranged", "cast", "hurt", "death"] as const) {
-        const info = getPartySpriteStrip(c.class, st);
+        const custom = scene.state.partyFormation?.kind === "card-trial-rows"
+          ? getCardTrialHeroSpriteStrip(c.id, st)
+          : null;
+        const info = custom ?? getPartySpriteStrip(c.class, st);
         if (!info?.img || info.img.naturalWidth <= 0) continue;
         this.ensureSpriteSheet(
-          `party:${c.class}:${st}`,
+          custom && isCardTrialHeroId(c.id)
+            ? cardTrialHeroTextureKey(c.id, st)
+            : `party:${c.class}:${st}`,
           info.img,
           info.strip.frameWidth,
           info.strip.frameHeight
@@ -759,8 +795,8 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
 
     this.syncBackground(scene);
     this.syncEnvLight(scene, now, w, h);
-    this.syncGlows(scene, now);
     this.syncActors(scene, now, w, h);
+    this.syncGlows(scene, now);
     this.syncEffects(scene, now);
     this.syncParticles(scene);
     this.syncPopups(scene, now);
@@ -1204,6 +1240,19 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     now: number
   ): void {
     const flash = sampleActorFlash(scene.impact.actorFlashes.get(actorId) ?? null, now);
+    const roomLight = entry.roomLight;
+    if (shouldApplyRoomLight(scene.state, scene.roomLightEnabled) && roomLight) {
+      if (flash.strength > 0.01) {
+        const colorNum = parseInt(flash.color.replace("#", ""), 16) || 0xffffff;
+        roomLight.flash.setFillStyle(colorNum, 1);
+        roomLight.flash.setAlpha(flash.strength);
+        roomLight.flash.setVisible(true);
+      } else {
+        roomLight.flash.setVisible(false);
+        roomLight.flash.setAlpha(0);
+      }
+      return;
+    }
     if (flash.strength > 0.01 && !entry.isFallback) {
       const colorHex = flash.color.replace("#", "0x");
       const colorNum = parseInt(colorHex, 16) || 0xffffff;
@@ -1211,6 +1260,180 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       const sprite = entry.sprite as Phaser.GameObjects.Sprite;
       sprite.setTint(colorNum);
     }
+  }
+
+  private createRoomLightOverlays(
+    sprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Ellipse,
+    masked: boolean
+  ): RoomLightOverlays {
+    const holder = this.addTo(this.actorOverlayLayer, this.add.container(0, 0));
+    const warm = this.add.rectangle(0, 0, 1, 1, 0xf0d2a8, 1).setOrigin(0, 0);
+    const cool = this.add.rectangle(0, 0, 1, 1, 0xa8b8c8, 1).setOrigin(0, 0);
+    const rim = this.add.rectangle(0, 0, 1, 1, 0xffe8c0, 1).setOrigin(0, 0);
+    const flash = this.add.rectangle(0, 0, 1, 1, 0xffffff, 0).setOrigin(0, 0);
+    holder.add([warm, cool, rim, flash]);
+    warm.setBlendMode(Phaser.BlendModes.MULTIPLY);
+    cool.setBlendMode(Phaser.BlendModes.MULTIPLY);
+    rim.setBlendMode(Phaser.BlendModes.ADD);
+    flash.setBlendMode(Phaser.BlendModes.ADD);
+    rim.setVisible(false);
+    flash.setVisible(false);
+    let mask: Phaser.Filters.Mask | null = null;
+    if (masked) {
+      // Phaser 4 uses Filters.Mask for WebGL; BitmapMask is not a Phaser 4
+      // path. Any GameObject can be the live alpha source, including the
+      // procedural Ellipse fallback; frames and fades therefore stay masked.
+      holder.enableFilters();
+      mask = holder.filters!.internal.addMask(sprite, false, this.cameras.main, "world");
+    }
+    return { warm, cool, rim, flash, holder, mask };
+  }
+
+  private destroyRoomLight(entry: ActorSpriteEntry): void {
+    const roomLight = entry.roomLight;
+    if (!roomLight) return;
+    if (roomLight.mask && roomLight.holder.filters?.internal) {
+      roomLight.holder.filters.internal.remove(roomLight.mask, true);
+    }
+    roomLight.holder.destroy(true);
+    entry.roomLight = null;
+  }
+
+  private destroyActorVisuals(entry: ActorSpriteEntry): void {
+    this.destroyRoomLight(entry);
+    entry.sprite.destroy();
+    entry.shadow.destroy();
+  }
+
+  private hideActorEntry(entry: ActorSpriteEntry): void {
+    entry.sprite.setVisible(false);
+    entry.shadow.setVisible(false);
+    entry.roomLight?.holder.setVisible(false);
+  }
+
+  private placeContactShadow(
+    entry: ActorSpriteEntry,
+    x: number,
+    footY: number,
+    drawSize: number,
+    recipe: RoomKeyLight | null
+  ): void {
+    const shadowRx = Math.max(8, drawSize * 0.45 * 0.28);
+    const placed = contactShadowPlacement(x, shadowRx * 2, recipe);
+    entry.shadow.setPosition(placed.x, footY - shadowRx * 0.28 * 0.35);
+    entry.shadow.setDisplaySize(placed.width, shadowRx * 0.56);
+    entry.shadow.setDepth(footY - 0.5);
+  }
+
+  private placeOverlayRect(
+    rect: Phaser.GameObjects.Rectangle,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    alpha: number,
+    visible: boolean,
+    depth: number
+  ): void {
+    rect.setPosition(x, y);
+    rect.setSize(width, height);
+    rect.setDisplaySize(width, height);
+    rect.setAlpha(alpha);
+    rect.setVisible(visible);
+    rect.setDepth(depth);
+  }
+
+  private syncRoomLight(
+    entry: ActorSpriteEntry,
+    recipe: RoomKeyLight | null,
+    footY: number
+  ): void {
+    const roomLight = entry.roomLight;
+    if (!roomLight) return;
+    if (!recipe) {
+      roomLight.holder.setVisible(false);
+      roomLight.holder.setAlpha(1);
+      return;
+    }
+    roomLight.holder.setVisible(recipe.visible);
+    // Unmasked fallback ellipses have no sprite alpha to carry their fade.
+    // Masked sprite entries stay at 1 so the live sprite alpha is applied once.
+    roomLight.holder.setAlpha(roomLight.mask ? 1 : recipe.alpha);
+    roomLight.holder.setDepth(footY + 0.05);
+    const overlayDepth = 0;
+    const flashDepth = 0.03;
+    if (entry.isFallback) {
+      const displayW = entry.sprite.displayWidth;
+      const displayH = entry.sprite.displayHeight;
+      const originX = entry.sprite.x - displayW / 2;
+      const originY = entry.sprite.y - displayH / 2;
+      const half = displayW / 2;
+      const shown = recipe.visible;
+      this.placeOverlayRect(roomLight.warm, originX, originY, half, displayH, recipe.warmRect.alpha, shown, overlayDepth);
+      this.placeOverlayRect(roomLight.cool, originX + half, originY, half, displayH, recipe.coolRect.alpha, shown, overlayDepth);
+      roomLight.rim.setVisible(false);
+      this.placeOverlayRect(
+        roomLight.flash,
+        originX,
+        originY,
+        displayW,
+        displayH,
+        roomLight.flash.alpha,
+        roomLight.flash.visible,
+        flashDepth
+      );
+      return;
+    }
+    const shown = recipe.visible;
+    this.placeOverlayRect(roomLight.warm, recipe.warmRect.x, recipe.warmRect.y, recipe.warmRect.width, recipe.warmRect.height, recipe.warmRect.alpha, shown, overlayDepth);
+    this.placeOverlayRect(roomLight.cool, recipe.coolRect.x, recipe.coolRect.y, recipe.coolRect.width, recipe.coolRect.height, recipe.coolRect.alpha, shown, overlayDepth);
+    this.placeOverlayRect(roomLight.rim, recipe.rimEdge.x, recipe.rimEdge.y, recipe.rimEdge.width, recipe.rimEdge.height, recipe.rimEdge.alpha, shown, overlayDepth);
+    this.placeOverlayRect(
+      roomLight.flash,
+      recipe.warmRect.x,
+      recipe.warmRect.y,
+      recipe.warmRect.width + recipe.coolRect.width,
+      recipe.warmRect.height,
+      roomLight.flash.alpha,
+      roomLight.flash.visible,
+      flashDepth
+    );
+  }
+
+  private finishActorLighting(
+    entry: ActorSpriteEntry,
+    scene: CombatScene,
+    now: number,
+    actorId: string,
+    x: number,
+    y: number,
+    footY: number,
+    drawSize: number,
+    opacity: number,
+    overlayVisible: boolean
+  ): void {
+    const wantsRoomLight = shouldApplyRoomLight(scene.state, scene.roomLightEnabled);
+    if (wantsRoomLight && !entry.roomLight) {
+      entry.roomLight = this.createRoomLightOverlays(
+        entry.sprite,
+        true
+      );
+    } else if (!wantsRoomLight && entry.roomLight) {
+      this.destroyRoomLight(entry);
+    }
+    const recipe = roomLightRecipeOrNull(scene.state, scene.roomLightEnabled, {
+      x,
+      y,
+      drawSize,
+      opacity,
+      visible: overlayVisible,
+      torchSide: CARD_TRIAL_TORCH_SIDE,
+      sconceX: CARD_TRIAL_SCONCE_X,
+    });
+    this.placeContactShadow(entry, x, footY, drawSize, recipe);
+    // Update the flash before layout so the same frame paints all four rects.
+    this.applyActorFlash(entry, actorId, scene, now);
+    this.syncRoomLight(entry, recipe, footY);
   }
 
   clearSpotlightFilters(): void {
@@ -1310,6 +1533,22 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const g = this.glowGraphics;
     if (!g) return;
     g.clear();
+
+    // Match Canvas' radial floor tint with a few quiet concentric bands. The
+    // light parameters come from combat-floor-light.ts and are populated from
+    // the same live actor positions that drive sprite depth/grounding.
+    for (const light of this.bounceLights.values()) {
+      const color = Phaser.Display.Color.HexStringToColor(light.color).color;
+      for (let i = 5; i >= 0; i--) {
+        const t = i / 5;
+        const radius = light.radius * (0.34 + t * 0.66);
+        const alpha = light.alpha * (1 - t) * 0.65;
+        if (alpha <= 0) continue;
+        g.fillStyle(color, alpha);
+        g.fillCircle(light.x, light.y, radius);
+      }
+    }
+
     for (const glow of scene.lightGlows) {
       const p = (now - glow.start) / glow.duration;
       if (p < 0 || p >= 1) continue;
@@ -1377,6 +1616,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   private syncActors(scene: CombatScene, now: number, w: number, h: number): void {
     const seen = new Set<string>();
     const s = scene.state;
+    this.bounceLights.clear();
     this.ghostPool.begin();
 
     const placeEnemy = (e: EnemyInstance, slot: number) => {
@@ -1418,8 +1658,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
 
     for (const [key, entry] of this.actors) {
       if (!seen.has(key)) {
-        entry.sprite.destroy();
-        entry.shadow.destroy();
+        this.destroyActorVisuals(entry);
         this.actors.delete(key);
       }
     }
@@ -1446,8 +1685,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       return entry;
     }
     if (entry) {
-      entry.sprite.destroy();
-      entry.shadow.destroy();
+      this.destroyActorVisuals(entry);
     }
 
     if (!this.textures.exists(textureKey)) {
@@ -1552,8 +1790,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       return entry;
     }
     if (entry) {
-      entry.sprite.destroy();
-      entry.shadow.destroy();
+      this.destroyActorVisuals(entry);
     }
     const shadow = this.addTo(this.actorLayer, this.add.ellipse(0, 0, 40, 12, 0x000000, 0.4).setDepth(0));
     // Origin (0.5, 0.5): position at ResolvedSlot.centerY — same contract as
@@ -1576,10 +1813,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const anim = getAnim(scene, "enemy", enemy.instanceId, now);
     if (anim.opacity <= 0) {
       const existing = this.actors.get(key);
-      if (existing) {
-        existing.sprite.setVisible(false);
-        existing.shadow.setVisible(false);
-      }
+      if (existing) this.hideActorEntry(existing);
       return;
     }
     const baseSize = enemy.isBoss ? BOSS_SIZE : ENEMY_SIZE;
@@ -1604,6 +1838,15 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const y = pos.y + off.y;
     const footY = pos.footY + off.y;
     const drawSize = baseSize * pos.scale * statusScale;
+    this.bounceLights.set(
+      key,
+      floorBounceLightForActor({
+        x,
+        footY,
+        drawSize,
+        opacity: anim.opacity,
+      })
+    );
 
     const texKey = `enemy:${spriteId}:${stripState}`;
     let entry =
@@ -1665,10 +1908,21 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       );
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
       this.applyDeathDissolve(entry, anim, now, x, footY, drawSize);
-      this.applyActorFlash(entry, enemy.instanceId, scene, now);
     } else {
       this.placeFallback(entry, x, footY, drawSize);
     }
+    this.finishActorLighting(
+      entry,
+      scene,
+      now,
+      enemy.instanceId,
+      x,
+      y,
+      footY,
+      drawSize,
+      anim.opacity,
+      anim.opacity > 0
+    );
   }
 
   private upsertAlly(
@@ -1683,10 +1937,7 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const anim = getAnim(scene, "ally", ally.id, now);
     if (anim.opacity <= 0) {
       const existing = this.actors.get(key);
-      if (existing) {
-        existing.sprite.setVisible(false);
-        existing.shadow.setVisible(false);
-      }
+      if (existing) this.hideActorEntry(existing);
       return;
     }
     const pos = allyPos(index, w, h, scene.backdropId);
@@ -1695,6 +1946,15 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const y = pos.y + off.y;
     const footY = pos.footY + off.y;
     const drawSize = ENEMY_SIZE * pos.scale;
+    this.bounceLights.set(
+      key,
+      floorBounceLightForActor({
+        x,
+        footY,
+        drawSize,
+        opacity: anim.opacity,
+      })
+    );
     const stripState = enemyStripState(anim.state);
     const stripInfo = ally.spriteId
       ? getEnemySpriteStrip(ally.spriteId, stripState)
@@ -1744,10 +2004,21 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       });
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
       this.applyDeathDissolve(entry, anim, now, x, footY, drawSize);
-      this.applyActorFlash(entry, ally.id, scene, now);
     } else {
       this.placeFallback(entry, x, footY, drawSize);
     }
+    this.finishActorLighting(
+      entry,
+      scene,
+      now,
+      ally.id,
+      x,
+      y,
+      footY,
+      drawSize,
+      anim.opacity,
+      anim.opacity > 0
+    );
   }
 
   private upsertParty(
@@ -1761,7 +2032,10 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   ): void {
     const anim = getAnim(scene, "party", char.id, now);
     const isDead = char.hp <= 0 || char.status.includes("knockedOut");
-    const stripInfo = getPartySpriteStrip(char.class, anim.state);
+    const customStrip = scene.state.partyFormation?.kind === "card-trial-rows"
+      ? getCardTrialHeroSpriteStrip(char.id, anim.state)
+      : null;
+    const stripInfo = customStrip ?? getPartySpriteStrip(char.class, anim.state);
     const hasStrip = !!(stripInfo?.img && stripInfo.img.naturalWidth > 0);
     const artFoot = artFootFromTopFor({
       hasStrip,
@@ -1788,7 +2062,9 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     const y = pos.y + off.y;
     const footY = pos.footY + off.y;
     const drawSize = PARTY_SIZE * pos.scale * statusScale;
-    const texKey = `party:${char.class}:${anim.state}`;
+    const texKey = customStrip && isCardTrialHeroId(char.id)
+      ? cardTrialHeroTextureKey(char.id, anim.state)
+      : `party:${char.class}:${anim.state}`;
     let entry = hasStrip ? this.ensureStripSprite(key, "party", texKey) : null;
     if (!entry) {
       const classColors: Record<string, number> = {
@@ -1804,6 +2080,15 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
     }
     const hidden = char.status.includes("hidden");
     const opacity = (hidden ? 0.35 : 1) * anim.opacity * (isDead ? 0.85 : 1);
+    this.bounceLights.set(
+      key,
+      floorBounceLightForActor({
+        x,
+        footY,
+        drawSize,
+        opacity,
+      })
+    );
     entry.sprite.setVisible(true);
     entry.shadow.setVisible(!isDead);
     const shadowRx = Math.max(8, drawSize * 0.45 * 0.28);
@@ -1843,10 +2128,21 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
       );
       this.applyHitSquash(entry, anim, now, drawSize, x, y);
       this.applyDeathDissolve(entry, anim, now, x, footY, drawSize);
-      this.applyActorFlash(entry, char.id, scene, now);
     } else {
       this.placeFallback(entry, x, footY, drawSize);
     }
+    this.finishActorLighting(
+      entry,
+      scene,
+      now,
+      char.id,
+      x,
+      y,
+      footY,
+      drawSize,
+      opacity,
+      !isDead && !hidden && opacity > 0
+    );
   }
 
   /**
@@ -2169,6 +2465,13 @@ class OnyxCombatPhaserScene extends Phaser.Scene {
   }
 
   private syncMarkers(scene: CombatScene, now: number): void {
+    // The shared Card Trial overlay supplies its gold actor ring and red
+    // targeting language. Phaser's yellow triangles remain campaign-only.
+    if (scene.state.partyFormation?.kind === "card-trial-rows") {
+      this.activeMark?.setVisible(false);
+      this.cursorMark?.setVisible(false);
+      return;
+    }
     const bounce = Math.sin(now / 120) * 3;
     if (this.activeMark) {
       if (scene.activeActorId) {
@@ -2396,6 +2699,7 @@ export async function createPhaserCombatStage(
   sceneModel.backdrop = opts.backdrop ?? null;
   sceneModel.backdropId =
     opts.backdropId ?? (opts.backdrop ? "arena" : "combat-bg");
+  sceneModel.roomLightEnabled = opts.roomLightEnabled ?? true;
 
   setPhaserStageActive(true);
   combatPhaserCanvas.style.width = "100%";

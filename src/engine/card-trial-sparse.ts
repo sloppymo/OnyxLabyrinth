@@ -6,6 +6,7 @@ import { DESIGN_H, DESIGN_W } from "./card-trial-layout";
 import { CardTrialHandPresentation } from "./card-trial-hand";
 import { CardTrialHudPresentation } from "./card-trial-hud";
 import type { CardTrialViewHandlers, CardTrialWindowsInput } from "./card-trial-view";
+import type { CombatScene } from "./combat-choreography";
 
 export class CardTrialSparseUi {
   private layer: HTMLDivElement;
@@ -61,7 +62,8 @@ export class CardTrialSparseUi {
     this.hand.sync(input, handlers);
   }
 
-  update(now: number): void {
+  update(now: number, scene: CombatScene): void {
+    this.hud.update(scene, now);
     this.hand.update(now);
   }
 

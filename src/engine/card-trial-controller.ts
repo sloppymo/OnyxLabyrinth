@@ -611,7 +611,7 @@ export class CardTrialController {
     if (this.phase === "playback" && this.stage.isPlaybackDone(now)) {
       this.afterPlayback();
     }
-    this.sparse?.update(now);
+    this.sparse?.update(now, this.stage.scene);
     if (this.windowsDirty) {
       this.syncCursor();
       this.renderWindows();

@@ -11,6 +11,7 @@ import type { EnemyInstance, SummonedAlly } from "../game/combat-types";
 import { statusDrawScale } from "../game/combat-shared";
 import { enemySpriteId, getEnemySpriteStrip } from "./enemy-sprite-cache";
 import { getPartySpriteStrip } from "./party-sprite-cache";
+import { getCardTrialHeroSpriteStrip } from "./card-trial-hero-sprite-cache";
 import { getEffectSprite } from "./effect-sprite-cache";
 import {
   ENEMY_SPRITE_DEFS,
@@ -66,6 +67,15 @@ import {
   sampleActorFlash,
 } from "./combat-impact-fx";
 import { screenShakeOffset } from "./combat-motion";
+import { floorBounceLightForActor, floorBounceRgba } from "./combat-floor-light";
+import {
+  CARD_TRIAL_SCONCE_X,
+  CARD_TRIAL_TORCH_SIDE,
+  contactShadowPlacement,
+  roomLightRecipeOrNull,
+  type RoomKeyLight,
+  type RoomLightRect,
+} from "./combat-room-light";
 
 // Re-export the public choreography API so existing importers keep working.
 export {
@@ -168,6 +178,147 @@ function getCombatBg(): HTMLImageElement | null {
 const warnedMissingEnemySprites = new Set<string>();
 const warnedMissingPartySprites = new Set<string>();
 
+let roomLightScratch: HTMLCanvasElement | null = null;
+let roomLightScratchCtx: CanvasRenderingContext2D | null = null;
+let roomLightOverlay: HTMLCanvasElement | null = null;
+let roomLightOverlayCtx: CanvasRenderingContext2D | null = null;
+let roomLightMask: HTMLCanvasElement | null = null;
+let roomLightMaskCtx: CanvasRenderingContext2D | null = null;
+
+function roomLightScratchContext(size: number): {
+  body: CanvasRenderingContext2D;
+  overlay: CanvasRenderingContext2D;
+  mask: CanvasRenderingContext2D;
+} {
+  const need = Math.max(1, Math.ceil(size));
+  if (!roomLightScratch) {
+    roomLightScratch = document.createElement("canvas");
+    roomLightScratchCtx = roomLightScratch.getContext("2d");
+    roomLightOverlay = document.createElement("canvas");
+    roomLightOverlayCtx = roomLightOverlay.getContext("2d");
+    roomLightMask = document.createElement("canvas");
+    roomLightMaskCtx = roomLightMask.getContext("2d");
+  }
+  const body = roomLightScratchCtx;
+  const overlay = roomLightOverlayCtx;
+  const mask = roomLightMaskCtx;
+  if (!roomLightScratch || !roomLightOverlay || !roomLightMask || !body || !overlay || !mask) {
+    throw new Error("room-light scratch: 2d context missing");
+  }
+  for (const canvas of [roomLightScratch, roomLightOverlay, roomLightMask]) {
+    if (canvas.width < need || canvas.height < need) {
+      canvas.width = need;
+      canvas.height = need;
+    }
+  }
+  return { body, overlay, mask };
+}
+
+function actorRoomLight(
+  scene: CombatScene,
+  x: number,
+  y: number,
+  drawSize: number,
+  opacity: number,
+  visible: boolean
+): RoomKeyLight | null {
+  return roomLightRecipeOrNull(scene.state, scene.roomLightEnabled, {
+    x,
+    y,
+    drawSize,
+    opacity,
+    visible,
+    torchSide: CARD_TRIAL_TORCH_SIDE,
+    sconceX: CARD_TRIAL_SCONCE_X,
+  });
+}
+
+function scratchRect(rect: RoomLightRect, originX: number, originY: number): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
+  return { x: rect.x - originX, y: rect.y - originY, w: rect.width, h: rect.height };
+}
+
+/** Composite a room key-light onto an already-painted actor without leaking
+ * the multiply rectangles into transparent sprite padding. */
+function compositeRoomLitActor(
+  live: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  recipe: RoomKeyLight,
+  blitAlpha: number,
+  paintBody: (scratch: CanvasRenderingContext2D) => void,
+  opts: { rim: boolean; flash: { strength: number; color: string } | null }
+): void {
+  const scratch = roomLightScratchContext(size);
+  const bodyCanvas = roomLightScratch!;
+  const overlayCanvas = roomLightOverlay!;
+  scratch.body.setTransform(1, 0, 0, 1, 0, 0);
+  scratch.body.clearRect(0, 0, size, size);
+  scratch.body.globalAlpha = 1;
+  scratch.body.globalCompositeOperation = "source-over";
+  scratch.body.filter = "none";
+  paintBody(scratch.body);
+
+  // Keep a copy of the actor alpha before painting any multiply layer. A
+  // multiply source on a transparent canvas otherwise creates opaque-looking
+  // half-rectangles over the whole draw square.
+  scratch.mask.setTransform(1, 0, 0, 1, 0, 0);
+  scratch.mask.clearRect(0, 0, size, size);
+  scratch.mask.drawImage(bodyCanvas, 0, 0, size, size);
+
+  const originX = x - size / 2;
+  const originY = y - size / 2;
+  if (recipe.visible) {
+    scratch.overlay.setTransform(1, 0, 0, 1, 0, 0);
+    scratch.overlay.clearRect(0, 0, size, size);
+    scratch.overlay.globalCompositeOperation = "source-over";
+    for (const rect of [recipe.warmRect, recipe.coolRect]) {
+      const r = scratchRect(rect, originX, originY);
+      scratch.overlay.globalAlpha = rect.alpha;
+      scratch.overlay.fillStyle = rect.color;
+      scratch.overlay.fillRect(r.x, r.y, r.w, r.h);
+    }
+    // Clip both multiply fields to the actor's original alpha. This is a
+    // separate canvas because the body must remain intact for the final blit.
+    scratch.overlay.globalCompositeOperation = "destination-in";
+    scratch.overlay.globalAlpha = 1;
+    scratch.overlay.drawImage(scratch.mask.canvas, 0, 0, size, size);
+
+    scratch.body.globalCompositeOperation = "multiply";
+    scratch.body.globalAlpha = 1;
+    scratch.body.drawImage(overlayCanvas, 0, 0, size, size);
+
+    if (opts.rim) {
+      scratch.body.globalCompositeOperation = "source-atop";
+      const r = scratchRect(recipe.rimEdge, originX, originY);
+      scratch.body.globalAlpha = recipe.rimEdge.alpha;
+      scratch.body.fillStyle = recipe.rimEdge.color;
+      scratch.body.fillRect(r.x, r.y, r.w, r.h);
+    }
+  }
+
+  if (opts.flash && opts.flash.strength > 0.01) {
+    scratch.body.globalCompositeOperation = "source-atop";
+    scratch.body.globalAlpha = opts.flash.strength;
+    scratch.body.fillStyle = opts.flash.color;
+    scratch.body.fillRect(0, 0, size, size);
+  }
+
+  scratch.body.globalCompositeOperation = "source-over";
+  scratch.body.globalAlpha = 1;
+  scratch.body.filter = "none";
+  live.save();
+  live.globalAlpha = blitAlpha;
+  live.imageSmoothingEnabled = false;
+  live.drawImage(bodyCanvas, 0, 0, size, size, x - size / 2, y - size / 2, size, size);
+  live.restore();
+}
+
 // --- Drawing ---------------------------------------------------------------------------
 
 /** Soft contact shadow at the foot baseline — plants the sprite on the floor.
@@ -177,16 +328,58 @@ function drawContactShadow(
   ctx: CanvasRenderingContext2D,
   footX: number,
   footY: number,
-  spriteWidth: number
+  spriteWidth: number,
+  recipe: RoomKeyLight | null = null
 ): void {
   const rx = Math.max(8, spriteWidth * 0.28);
   const ry = rx * 0.28;
+  const placed = contactShadowPlacement(footX, rx * 2, recipe);
   ctx.save();
   ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
   ctx.beginPath();
   // Bias the ellipse slightly upward so the dark core sits under the foot
   // plant (half-below centering left squat blobs floating over daylight).
-  ctx.ellipse(footX, footY - ry * 0.35, rx, ry, 0, 0, Math.PI * 2);
+  ctx.ellipse(placed.x, footY - ry * 0.35, placed.width / 2, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * Subtle green-gray bounce from the flooded floor. This is deliberately
+ * behind the contact shadow and sprite, with a radial edge rather than a
+ * screen-space rectangle, so it supports grounding without competing with
+ * the authored plate.
+ */
+function drawFloorBounceLight(
+  ctx: CanvasRenderingContext2D,
+  footX: number,
+  footY: number,
+  drawSize: number,
+  opacity: number
+): void {
+  const light = floorBounceLightForActor({
+    x: footX,
+    footY,
+    drawSize,
+    opacity,
+  });
+  if (light.alpha <= 0) return;
+  const gradient = ctx.createRadialGradient(
+    light.x,
+    light.y,
+    0,
+    light.x,
+    light.y,
+    light.radius
+  );
+  gradient.addColorStop(0, floorBounceRgba(light));
+  gradient.addColorStop(0.42, floorBounceRgba(light, light.alpha * 0.52));
+  gradient.addColorStop(1, floorBounceRgba(light, 0));
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(light.x, light.y, light.radius, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -257,39 +450,68 @@ function drawStripFrame(
   actorId?: string,
   scene?: CombatScene,
   now?: number,
+  recipe: RoomKeyLight | null = null,
 ): void {
-  ctx.save();
-  ctx.globalAlpha = opacity;
-  ctx.imageSmoothingEnabled = false;
-  ctx.translate(x, y);
-  if (mirror) ctx.scale(-1, 1);
-  if (tint === POISON_TINT) ctx.filter = POISON_FILTER;
-  else if (tint === BURN_TINT) ctx.filter = BURN_FILTER;
-  ctx.drawImage(
-    img,
-    frame * strip.frameWidth,
-    0,
-    strip.frameWidth,
-    strip.frameHeight,
-    -size / 2,
-    -size / 2,
-    size,
-    size
-  );
-  // Actor silhouette flash: additive white/elemental overlay on strong hits.
-  if (actorId && scene && now !== undefined) {
-    const flash = sampleActorFlash(scene.impact.actorFlashes.get(actorId) ?? null, now);
-    if (flash.strength > 0.01) {
-      ctx.globalCompositeOperation = "lighter";
-      ctx.globalAlpha = flash.strength * opacity;
-      ctx.fillStyle = flash.color;
-      // Draw the same sprite frame again as a solid tinted silhouette:
-      // we can't easily tint a sprite, so we draw a filled rect over the
-      // sprite bounds as a flash glow.
-      ctx.fillRect(-size / 2, -size / 2, size, size);
-    }
+  const flash =
+    actorId && scene && now !== undefined
+      ? sampleActorFlash(scene.impact.actorFlashes.get(actorId) ?? null, now)
+      : null;
+  const paintSprite = (
+    target: CanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    alpha: number
+  ) => {
+    target.save();
+    target.globalAlpha = alpha;
+    target.imageSmoothingEnabled = false;
+    target.translate(cx, cy);
+    if (mirror) target.scale(-1, 1);
+    if (tint === POISON_TINT) target.filter = POISON_FILTER;
+    else if (tint === BURN_TINT) target.filter = BURN_FILTER;
+    target.drawImage(
+      img,
+      frame * strip.frameWidth,
+      0,
+      strip.frameWidth,
+      strip.frameHeight,
+      -size / 2,
+      -size / 2,
+      size,
+      size
+    );
+    target.restore();
+  };
+
+  if (recipe) {
+    compositeRoomLitActor(
+      ctx,
+      x,
+      y,
+      size,
+      recipe,
+      opacity,
+      (scratch) => paintSprite(scratch, size / 2, size / 2, 1),
+      {
+        rim: true,
+        flash: flash && flash.strength > 0.01
+          ? { strength: flash.strength, color: flash.color }
+          : null,
+      }
+    );
+    return;
   }
-  ctx.restore();
+
+  paintSprite(ctx, x, y, opacity);
+  // Actor silhouette flash: additive white/elemental overlay on strong hits.
+  if (flash && flash.strength > 0.01) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = flash.strength * opacity;
+    ctx.fillStyle = flash.color;
+    ctx.fillRect(x - size / 2, y - size / 2, size, size);
+    ctx.restore();
+  }
 }
 
 /** Procedural fallback for enemies with no image strip. */
@@ -302,44 +524,67 @@ function drawEnemyFallback(
   now: number,
   size: number = ENEMY_SIZE,
   frozen = false,
-  tint?: string
+  tint?: string,
+  recipe: RoomKeyLight | null = null,
+  blitAlpha = anim.opacity
 ): void {
-  const scale = size / ENEMY_SIZE;
-  const w = 104 * scale;
-  const h = 122 * scale;
-  ctx.save();
-  ctx.globalAlpha = anim.opacity;
-  const bob = anim.state === "idle" && !frozen ? Math.sin(now / 700 + x * 0.02) * 2 : 0;
-  const py = y + bob;
-  if (anim.state === "death") {
-    ctx.translate(x, py);
-    ctx.rotate(-Math.PI / 2);
-    ctx.translate(-x, -py);
+  const paint = (target: CanvasRenderingContext2D, bodyAlpha: number) => {
+    const scale = size / ENEMY_SIZE;
+    const w = 104 * scale;
+    const h = 122 * scale;
+    target.save();
+    target.globalAlpha = bodyAlpha;
+    const bob = anim.state === "idle" && !frozen ? Math.sin(now / 700 + x * 0.02) * 2 : 0;
+    const py = y + bob;
+    if (anim.state === "death") {
+      target.translate(x, py);
+      target.rotate(-Math.PI / 2);
+      target.translate(-x, -py);
+    }
+    target.fillStyle = enemy.isBoss ? "#a44" : COLORS.enemyFallback;
+    target.beginPath();
+    target.ellipse(x, py - h * 0.25, w / 2.4, h / 3, 0, 0, Math.PI * 2);
+    target.fill();
+    target.fillStyle = "#14110d";
+    target.fillRect(x + 6 * scale, py - h * 0.32, 5 * scale, 5 * scale);
+    target.fillRect(x + 18 * scale, py - h * 0.32, 5 * scale, 5 * scale);
+    if (tint) {
+      target.fillStyle = tint;
+      target.beginPath();
+      target.ellipse(x, py - h * 0.25, w / 2.4, h / 3, 0, 0, Math.PI * 2);
+      target.fill();
+    }
+    if (anim.state === "hurt") {
+      const intensity = anim.hitFlashIntensity || 0.3;
+      const sz = 1 + intensity * 0.3;
+      target.globalAlpha = intensity * 0.5;
+      target.fillStyle = "#ff4040";
+      target.beginPath();
+      target.ellipse(x, py - h * 0.25, (w / 2.2) * sz, (h / 2.8) * sz, 0, 0, Math.PI * 2);
+      target.fill();
+    }
+    target.restore();
+  };
+
+  if (recipe) {
+    compositeRoomLitActor(
+      ctx,
+      x,
+      y,
+      size,
+      recipe,
+      blitAlpha,
+      (scratch) => {
+        scratch.save();
+        scratch.translate(size / 2 - x, size / 2 - y);
+        paint(scratch, 1);
+        scratch.restore();
+      },
+      { rim: false, flash: null }
+    );
+    return;
   }
-  ctx.fillStyle = enemy.isBoss ? "#a44" : COLORS.enemyFallback;
-  ctx.beginPath();
-  ctx.ellipse(x, py - h * 0.25, w / 2.4, h / 3, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Eyes face the party (right).
-  ctx.fillStyle = "#14110d";
-  ctx.fillRect(x + 6 * scale, py - h * 0.32, 5 * scale, 5 * scale);
-  ctx.fillRect(x + 18 * scale, py - h * 0.32, 5 * scale, 5 * scale);
-  if (tint) {
-    ctx.fillStyle = tint;
-    ctx.beginPath();
-    ctx.ellipse(x, py - h * 0.25, w / 2.4, h / 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  if (anim.state === "hurt") {
-    const intensity = anim.hitFlashIntensity || 0.3;
-    const sz = 1 + intensity * 0.3;
-    ctx.globalAlpha = intensity * 0.5;
-    ctx.fillStyle = "#ff4040";
-    ctx.beginPath();
-    ctx.ellipse(x, py - h * 0.25, (w / 2.2) * sz, (h / 2.8) * sz, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
+  paint(ctx, anim.opacity);
 }
 
 /** Procedural fallback for party members while sprites are loading. */
@@ -350,33 +595,57 @@ function drawPartyFallback(
   char: Character,
   anim: ActorAnim,
   size: number = PARTY_SIZE,
-  tint?: string
+  tint?: string,
+  recipe: RoomKeyLight | null = null,
+  blitAlpha = anim.opacity
 ): void {
-  const scale = size / PARTY_SIZE;
-  ctx.save();
-  ctx.globalAlpha = anim.opacity;
-  const colors: Record<string, string> = {
-    Fighter: COLORS.classFighter,
-    Mage: COLORS.classMage,
-    Priest: COLORS.classPriest,
-    Thief: COLORS.classThief,
-    Halberdier: COLORS.classHalberdier,
-    Duelist: COLORS.classDuelist,
-    Crusader: COLORS.classCrusader,
+  const paint = (target: CanvasRenderingContext2D, bodyAlpha: number) => {
+    const scale = size / PARTY_SIZE;
+    target.save();
+    target.globalAlpha = bodyAlpha;
+    const colors: Record<string, string> = {
+      Fighter: COLORS.classFighter,
+      Mage: COLORS.classMage,
+      Priest: COLORS.classPriest,
+      Thief: COLORS.classThief,
+      Halberdier: COLORS.classHalberdier,
+      Duelist: COLORS.classDuelist,
+      Crusader: COLORS.classCrusader,
+    };
+    target.fillStyle = colors[char.class] ?? "#ccc";
+    target.fillRect(x - 12 * scale, y - 44 * scale, 24 * scale, 36 * scale);
+    target.beginPath();
+    target.arc(x, y - 52 * scale, 9 * scale, 0, Math.PI * 2);
+    target.fill();
+    if (tint) {
+      target.fillStyle = tint;
+      target.fillRect(x - 12 * scale, y - 44 * scale, 24 * scale, 36 * scale);
+      target.beginPath();
+      target.arc(x, y - 52 * scale, 9 * scale, 0, Math.PI * 2);
+      target.fill();
+    }
+    target.restore();
   };
-  ctx.fillStyle = colors[char.class] ?? "#ccc";
-  ctx.fillRect(x - 12 * scale, y - 44 * scale, 24 * scale, 36 * scale);
-  ctx.beginPath();
-  ctx.arc(x, y - 52 * scale, 9 * scale, 0, Math.PI * 2);
-  ctx.fill();
-  if (tint) {
-    ctx.fillStyle = tint;
-    ctx.fillRect(x - 12 * scale, y - 44 * scale, 24 * scale, 36 * scale);
-    ctx.beginPath();
-    ctx.arc(x, y - 52 * scale, 9 * scale, 0, Math.PI * 2);
-    ctx.fill();
+
+  if (recipe) {
+    compositeRoomLitActor(
+      ctx,
+      x,
+      y,
+      size,
+      recipe,
+      blitAlpha,
+      (scratch) => {
+        scratch.save();
+        scratch.translate(size / 2 - x, size / 2 - y);
+        paint(scratch, 1);
+        scratch.restore();
+      },
+      { rim: false, flash: null }
+    );
+    return;
   }
-  ctx.restore();
+  paint(ctx, anim.opacity);
 }
 
 /** Draw one party member. */
@@ -390,7 +659,10 @@ function drawPartyMember(
   _h: number
 ): void {
   const anim = getAnim(scene, "party", char.id, now);
-  const stripInfo = getPartySpriteStrip(char.class, anim.state);
+  const stripInfo =
+    (scene.state.partyFormation?.kind === "card-trial-rows"
+      ? getCardTrialHeroSpriteStrip(char.id, anim.state)
+      : null) ?? getPartySpriteStrip(char.class, anim.state);
   const artFoot = artFootFromTopFor({
     hasStrip: !!stripInfo,
     stripArtFootFromTop: stripInfo?.strip.artFootFromTop,
@@ -423,18 +695,42 @@ function drawPartyMember(
   if (!isDead && anim.state === "death") setAnimState(anim, "idle", now);
 
   const hidden = char.status.includes("hidden");
+  const opacity = (hidden ? 0.35 : 1) * anim.opacity;
+  const recipe = actorRoomLight(
+    scene,
+    x,
+    y,
+    drawSize,
+    opacity,
+    !isDead && !hidden && opacity > 0
+  );
 
-  drawContactShadow(ctx, x, footY, drawSize * 0.45);
+  drawFloorBounceLight(ctx, x, footY, drawSize, opacity);
+  drawContactShadow(ctx, x, footY, drawSize * 0.45, recipe);
 
   const frozen = char.status.includes("sleep") || char.status.includes("paralysis");
   const poisoned = char.status.includes("poison");
   const tint = poisoned ? POISON_TINT : undefined;
 
-  const opacity = (hidden ? 0.35 : 1) * anim.opacity;
   if (stripInfo) {
     const stateAge = now - anim.stateStart;
     const frame = frozen && anim.state === "idle" ? 0 : frameIndexFor(stripInfo.strip, stateAge, anim.frameRateScale);
-    drawStripFrame(ctx, stripInfo.img, stripInfo.strip, frame, x, y, drawSize, true, opacity, tint, char.id, scene, now);
+    drawStripFrame(
+      ctx,
+      stripInfo.img,
+      stripInfo.strip,
+      frame,
+      x,
+      y,
+      drawSize,
+      true,
+      opacity,
+      tint,
+      char.id,
+      scene,
+      now,
+      recipe
+    );
   } else {
     if (
       !warnedMissingPartySprites.has(char.class) &&
@@ -445,8 +741,8 @@ function drawPartyMember(
         `party sprite missing for class ${char.class} — using procedural fallback`,
       );
     }
-    drawPartyFallback(ctx, x, y, char, anim, drawSize, tint);
-    if (anim.state === "hurt" && now - anim.stateStart < 200) {
+    drawPartyFallback(ctx, x, y, char, anim, drawSize, tint, recipe, opacity);
+    if (!recipe && anim.state === "hurt" && now - anim.stateStart < 200) {
       const intensity = anim.hitFlashIntensity || 0.3;
       const sz = 1 + intensity * 0.3;
       ctx.save();
@@ -514,8 +810,10 @@ function drawEnemy(
   const frozen = enemy.status.includes("sleep") || enemy.status.includes("paralysis");
   const burning = (scene.state.enemyDots[enemy.instanceId]?.length ?? 0) > 0;
   const tint = burning ? BURN_TINT : enemy.status.includes("poison") ? POISON_TINT : undefined;
+  const recipe = actorRoomLight(scene, x, y, drawSize, anim.opacity, anim.opacity > 0);
 
-  drawContactShadow(ctx, x, footY, drawSize * 0.45);
+  drawFloorBounceLight(ctx, x, footY, drawSize, anim.opacity);
+  drawContactShadow(ctx, x, footY, drawSize * 0.45, recipe);
 
   // Boss silhouette aura — cheap per-id tint so borrowed trash sprites still
   // read as gatekeepers (Dead Boy / Lonely Girl / Crying Man).
@@ -548,7 +846,22 @@ function drawEnemy(
     } else {
       frame = Math.min(strip.frameCount - 1, Math.floor((stateAge / 1000) * strip.fps * ANIM_SPEED));
     }
-    drawStripFrame(ctx, img!, strip, frame, x, y, drawSize, false, anim.opacity, tint, enemy.instanceId, scene, now);
+    drawStripFrame(
+      ctx,
+      img!,
+      strip,
+      frame,
+      x,
+      y,
+      drawSize,
+      false,
+      anim.opacity,
+      tint,
+      enemy.instanceId,
+      scene,
+      now,
+      recipe
+    );
   } else {
     if (
       !ENEMY_SPRITE_DEFS[spriteId] &&
@@ -560,7 +873,7 @@ function drawEnemy(
         `enemy ${spriteId} has no sprite manifest entry or procedural opt-out`,
       );
     }
-    drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize, frozen, tint);
+    drawEnemyFallback(ctx, x, y, enemy, anim, now, drawSize, frozen, tint, recipe, anim.opacity);
   }
 
   drawEnemyHpPips(ctx, enemy, x, footY, drawSize);
@@ -594,11 +907,13 @@ function drawAlly(
   const y = slot.y + off.y;
   const footY = slot.footY + off.y;
   const drawSize = ENEMY_SIZE * slot.scale;
+  const recipe = actorRoomLight(scene, x, y, drawSize, anim.opacity, anim.opacity > 0);
 
+  drawFloorBounceLight(ctx, x, footY, drawSize, anim.opacity);
   if (ally.spriteId) {
     const stripInfo = getEnemySpriteStrip(ally.spriteId, enemyStripState(anim.state));
     if (stripInfo?.img && stripInfo.img.naturalWidth > 0) {
-      drawContactShadow(ctx, x, footY, drawSize * 0.45);
+      drawContactShadow(ctx, x, footY, drawSize * 0.45, recipe);
       const { strip, img } = stripInfo;
       const stateAge = now - anim.stateStart;
       let frame: number;
@@ -612,7 +927,22 @@ function drawAlly(
       // Enemy-pack strips face RIGHT; summons fight for the party (center/right
       // of the stage) so mirror them to face LEFT toward the enemy line —
       // same contract as drawPartyMember.
-      drawStripFrame(ctx, img, strip, frame, x, y, drawSize, true, anim.opacity, undefined, ally.id, scene, now);
+      drawStripFrame(
+        ctx,
+        img,
+        strip,
+        frame,
+        x,
+        y,
+        drawSize,
+        true,
+        anim.opacity,
+        undefined,
+        ally.id,
+        scene,
+        now,
+        recipe
+      );
       const artTop = artTopFromTopFor({
         hasStrip: true,
         stripArtTopFromTop: strip.artTopFromTop,
@@ -641,23 +971,46 @@ function drawAlly(
     }
   }
 
-  drawContactShadow(ctx, x, footY, drawSize * 0.35);
-  ctx.save();
-  ctx.globalAlpha = anim.opacity;
-  const bob = Math.sin(now / 500 + index) * 3 * slot.scale;
-  ctx.fillStyle = COLORS.spellBurst;
-  ctx.beginPath();
-  ctx.arc(x, y + bob, 16 * slot.scale, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = COLORS.spellBurst;
-  ctx.lineWidth = 2;
-  for (let i = -1; i <= 1; i += 2) {
-    ctx.beginPath();
-    ctx.moveTo(x + i * 9 * slot.scale, y + bob);
-    ctx.lineTo(x + i * 20 * slot.scale, y + bob - 14 * slot.scale);
-    ctx.stroke();
+  drawContactShadow(ctx, x, footY, drawSize * 0.35, recipe);
+  const paintOrb = (target: CanvasRenderingContext2D, alpha: number) => {
+    target.save();
+    target.globalAlpha = alpha;
+    const bob = Math.sin(now / 500 + index) * 3 * slot.scale;
+    target.fillStyle = COLORS.spellBurst;
+    target.beginPath();
+    target.arc(x, y + bob, 16 * slot.scale, 0, Math.PI * 2);
+    target.fill();
+    target.strokeStyle = COLORS.spellBurst;
+    target.lineWidth = 2;
+    for (let i = -1; i <= 1; i += 2) {
+      target.beginPath();
+      target.moveTo(x + i * 9 * slot.scale, y + bob);
+      target.lineTo(x + i * 20 * slot.scale, y + bob - 14 * slot.scale);
+      target.stroke();
+    }
+    target.restore();
+  };
+  if (recipe) {
+    compositeRoomLitActor(
+      ctx,
+      x,
+      y,
+      drawSize,
+      recipe,
+      anim.opacity,
+      (scratch) => {
+        scratch.save();
+        scratch.translate(drawSize / 2 - x, drawSize / 2 - y);
+        paintOrb(scratch, 1);
+        scratch.restore();
+      },
+      { rim: false, flash: null }
+    );
+  } else {
+    ctx.save();
+    paintOrb(ctx, anim.opacity);
+    ctx.restore();
   }
-  ctx.restore();
   drawMarkers(ctx, scene, "ally", ally.id, x, y - 16 * slot.scale, now);
 }
 
@@ -675,8 +1028,12 @@ function drawMarkers(
   topY: number,
   now: number
 ): void {
-  const isCursor = scene.cursor?.kind === kind && scene.cursor.id === id;
-  const isActive = kind === "party" && scene.activeActorId === id;
+  // Card Trial owns its semantic actor/target treatment in the shared
+  // 768×672 overlay. Keep this painter's legacy yellow triangles for every
+  // other combat flow, and keep Guard markers in either mode.
+  const cardTrialRows = scene.state.partyFormation?.kind === "card-trial-rows";
+  const isCursor = !cardTrialRows && scene.cursor?.kind === kind && scene.cursor.id === id;
+  const isActive = !cardTrialRows && kind === "party" && scene.activeActorId === id;
   const isGuarded = kind === "enemy" && !!scene.state.enemyGuards?.[id];
   if (!isCursor && !isActive && !isGuarded) return;
 

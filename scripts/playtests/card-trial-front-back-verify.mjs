@@ -86,17 +86,15 @@ async function evidence(page) {
     const wrap = document.querySelector("#combat-wrap");
     const phaser = document.querySelector("#combat-phaser-canvas");
     const canvas = document.querySelector("#combat-canvas");
-    const heroText = [...document.querySelectorAll(".ct-hero")].map((node) => node.textContent?.trim() ?? "");
-    const handTitle = document.querySelector(".ct-hand .ff6-menu-title")?.textContent?.trim() ?? null;
+    const heroRows = [...document.querySelectorAll(".ct-actor-chip.hero .ct-chip-row")]
+      .map((node) => node.textContent?.trim().toLowerCase() ?? "");
     return {
       fightId: view?.fightId ?? null,
       heroes: view?.heroes.map((hero) => ({ id: hero.id, row: hero.row, hp: hero.hp })) ?? [],
       actingHero: view?.actingHero ?? null,
       hand: view?.hand.map((card) => card.defId) ?? [],
-      heroLabelCount: document.querySelectorAll(".ct-hero-row").length,
-      heroText,
-      handTitle,
-      ratText: document.querySelector(".ct-rat")?.textContent?.trim() ?? null,
+      heroRows,
+      ratText: document.querySelector(".ct-sparse-rat")?.textContent?.trim() ?? null,
       renderer: wrap?.classList.contains("phaser-stage") ? "phaser" : "canvas",
       canvasVisible: canvas ? getComputedStyle(canvas).display !== "none" : false,
       phaserVisible: phaser ? getComputedStyle(phaser).display !== "none" : false,
@@ -110,9 +108,15 @@ async function capture(page, renderer, name, bucket) {
   await page.screenshot({ path: path.join(OUT, filename), fullPage: false });
   const state = await evidence(page);
   bucket.push({ name, screenshot: filename, ...state });
-  if (state.heroLabelCount !== 0) throw new Error(`${renderer}/${name}: hero row label survived`);
-  if (state.heroText.some((line) => /\b(?:FRONT|BACK)\b/i.test(line))) {
-    throw new Error(`${renderer}/${name}: hero status text still names a row`);
+  if (state.heroRows.length !== state.heroes.length) {
+    throw new Error(`${renderer}/${name}: missing actor-local Front/Back labels`);
+  }
+  for (let index = 0; index < state.heroes.length; index += 1) {
+    if (state.heroRows[index] !== state.heroes[index].row) {
+      throw new Error(
+        `${renderer}/${name}: row label ${state.heroRows[index]} disagrees with ${state.heroes[index].id}=${state.heroes[index].row}`,
+      );
+    }
   }
   return state;
 }

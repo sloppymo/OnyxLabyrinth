@@ -140,12 +140,13 @@ describe("fanSlotPose", () => {
 });
 
 describe("computeCardTarget", () => {
-  it("gives ordinary focus a small lift, not a 96px leap", () => {
+  it("keeps ordinary focus geometrically still; ivory brackets carry focus", () => {
     const pose = computeCardTarget(0, 5, 0, null, false, DEFAULT_HAND_TUNING);
     expect(pose.scale).toBe(DEFAULT_HAND_TUNING.focusScale);
     expect(pose.y).toBeCloseTo(DEFAULT_HAND_TUNING.restingCenterY - DEFAULT_HAND_TUNING.focusLift, 5);
-    expect(DEFAULT_HAND_TUNING.focusLift).toBeLessThan(20);
-    expect(pose.y).toBeGreaterThan(DEFAULT_HAND_TUNING.restingCenterY - 20);
+    expect(DEFAULT_HAND_TUNING.focusLift).toBe(0);
+    expect(DEFAULT_HAND_TUNING.focusScale).toBe(1);
+    expect(DEFAULT_HAND_TUNING.focusRotationKeep).toBe(1);
   });
 
   it("straightens and lifts the armed card more than focus", () => {
@@ -155,6 +156,8 @@ describe("computeCardTarget", () => {
     expect(armed.scale).toBe(DEFAULT_HAND_TUNING.armedScale);
     expect(armed.y).toBeLessThan(focused.y);
     expect(armed.scale).toBeGreaterThan(focused.scale);
+    expect(DEFAULT_HAND_TUNING.armedLift).toBeGreaterThanOrEqual(28);
+    expect(DEFAULT_HAND_TUNING.armedLift).toBeLessThanOrEqual(36);
   });
 
   it("opens a local neighbor gap that decays with distance", () => {
@@ -338,7 +341,7 @@ describe("CardTrialHandPresentation", () => {
     presentation.sync(input([card("a", { disabled: true, disabledReason: "Not enough energy" })]), noopHandlers);
     const el = host.querySelector('[data-uid="a"]') as HTMLElement;
     expect(el.classList.contains("disabled")).toBe(true);
-    expect(el.querySelector(".ct2-card-why")?.textContent).toBe("Not enough energy");
+    expect(el.querySelector(".ct2-card-why")?.textContent).toBe("Need 1 energy");
   });
 
   it("snaps immediately to the small focus pose under reduced motion", () => {
