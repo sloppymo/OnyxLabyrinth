@@ -581,9 +581,9 @@ export const ENEMY_SPRITE_DEFS: Record<string, EnemySpriteDef> = {
         hurt: strip("summon-celestial-guardian", "hurt", 4, 8),
         death: strip("summon-celestial-guardian", "death", 4, 6),
       },
-      0.72
+      0.60
     ),
-    0.27
+    0.24
   ),
   "summon-celestial": withTop(
     withFoot(

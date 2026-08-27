@@ -140,8 +140,8 @@ const RECOLORS = {
 
   // Priest summons
   "summon-holy-guardian":       { base: "animated-armor",    hueShift: 50,  satMult: 1.3, lightAdd: 0.1 },   // gold/white
-  "summon-celestial-guardian":  { base: "animated-armor",    hueShift: 200, satMult: 1.2, lightAdd: 0.1 },   // blue/white
-  // summon-celestial has original ophanim art; do not replace it with a recolor.
+  // summon-celestial and summon-celestial-guardian use original art; do not
+  // replace either with a recolor.
 };
 
 const STATES = ["idle", "attack", "hurt", "death"];
