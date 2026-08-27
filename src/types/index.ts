@@ -255,6 +255,8 @@ export interface GameState {
   /** Persistent state for authored nonmodal environmental encounters. */
   environmentalEncounters?: Record<string, EnvironmentalEncounterProgress>;
   purchasedSpellIds?: string[];
+  /** Card Trial rewards found in the campaign; optional for legacy saves. */
+  cardCollection?: string[];
 }
 
 export interface EnvironmentalEncounterProgress {

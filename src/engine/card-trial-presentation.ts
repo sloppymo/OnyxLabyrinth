@@ -86,7 +86,7 @@ export function toCombatState(s: CardTrialState): CombatState {
       heroCharacter(
         h.id,
         h.name,
-        h.id === "rat-king" ? "Thief" : "Priest",
+        h.id === "rat-king" ? "Thief" : "Mage",
         slotFor("front", i),
         h.hp,
         h.maxHp
@@ -98,7 +98,7 @@ export function toCombatState(s: CardTrialState): CombatState {
       heroCharacter(
         h.id,
         h.name,
-        h.id === "rat-king" ? "Thief" : "Priest",
+        h.id === "rat-king" ? "Thief" : "Mage",
         slotFor("back", i),
         h.hp,
         h.maxHp

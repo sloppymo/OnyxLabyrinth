@@ -1530,3 +1530,24 @@ visual-pass notes below; this section tracks the current task only.
 - No campaign math, floor data, renderer/choreography code, global
   `src/styles.css`, or Card Trial source/art was changed by this pass. No commit
   or push was made.
+
+### 2026-08-27 — Campaign Card Trial integration slice
+
+- Added a pure campaign adapter that translates real authored encounter-table
+  entries into the existing frozen Card Trial rules: the fixed Old Man + Rat
+  King decks, real enemy names/sprites/HP, authored rows, and visible intents.
+- Dungeon encounters now enter that Card Trial path while classic combat remains
+  available for legacy NPC/stairs/alarm/Arena paths pending the next removal
+  pass. Victory returns to the same dungeon coordinate and adds one persistent
+  card reward; wipe returns to the same location without changing campaign HP or
+  progression.
+- Added save version 19 card-collection persistence, legacy v18 migration,
+  debug snapshot visibility, and focused adapter/save tests. Updated the
+  verification driver to follow the production sparse targeting UI.
+- Verification: `npm run build` passed; focused campaign/save/isolation/
+  presentation tests passed (44/44); production browser vertical slice passed
+  with no failures or page errors, including exact-position return and
+  save/load reward persistence. The full check still has the unrelated frozen
+  Card Trial art failure caused by parallel RGB Old Man card PNG changes.
+- Scoped files are ready to checkpoint; parallel Card Trial engine/types/art,
+  six-school documents, simulations, and generated output remain uncommitted.

@@ -31,7 +31,7 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 18;
+const SAVE_VERSION = 19;
 
 /** v9 → v10 historical helper: first legacy-roster characters by formation order —
  *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
@@ -335,6 +335,12 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     ser.environmentalEncounters = {};
     version = 18;
   }
+  if (version === 18) {
+    // v18 → v19: campaign Card Trial rewards. Existing campaigns have not
+    // won any card fights yet, so the collection starts empty.
+    ser.cardCollection = [];
+    version = 19;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -415,6 +421,8 @@ interface SerializedState {
   /** Iso-spells bought from Isobel's; optional for pre-v17 saves. */
   purchasedSpellIds?: string[];
   environmentalEncounters?: NonNullable<GameState["environmentalEncounters"]>;
+  /** Campaign Card Trial rewards; optional for pre-integration saves. */
+  cardCollection?: string[];
   savedAt: string;
 }
 
@@ -504,6 +512,7 @@ export function serialize(state: GameState): string {
         { ...progress, oneShots: [...progress.oneShots] },
       ])
     ),
+    cardCollection: [...(state.cardCollection ?? [])],
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -688,6 +697,7 @@ export function deserialize(json: string): GameState | null {
             ])
           )
         : {},
+      cardCollection: ser.cardCollection ? [...ser.cardCollection] : [],
     };
   } catch {
     return null;

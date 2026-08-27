@@ -61,6 +61,10 @@ export function createGameState(floor: FloorDef): GameState {
     clearedStairsGuardians: [],
     environmentalEncounters: {},
     purchasedSpellIds: [],
+    // Campaign Card Trial rewards are intentionally just a persistent
+    // collection for this integration slice. Deck construction will consume
+    // this collection once campaign card acquisition is designed.
+    cardCollection: [],
   };
 }
 

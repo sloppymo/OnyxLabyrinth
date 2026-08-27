@@ -108,6 +108,7 @@ export interface Snapshot {
   party: SnapshotParty[];
   gold: number;
   keys: string[];
+  cards: string[];
   inventory: { itemId: string; identified: boolean }[];
   buffs: { kind: string; remainingSteps: number }[];
   explored: string[];
@@ -223,6 +224,7 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
     })),
     gold: state.partyGold,
     keys: [...state.keys],
+    cards: [...(state.cardCollection ?? [])],
     inventory: state.inventory.map((e) => ({ ...e })),
     buffs: state.persistentBuffs.map((b) => ({ ...b })),
     explored: [...state.explored],

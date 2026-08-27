@@ -43,6 +43,17 @@ describe("save serialization", () => {
     expect(restored.unlockedDoors).toEqual(new Set(["1:5:6:N"]));
   });
 
+  it("round-trips campaign Card Trial rewards", () => {
+    state.cardCollection = ["crack", "from-the-dark"];
+    const restored = deserialize(serialize(state));
+    expect(restored?.cardCollection).toEqual(["crack", "from-the-dark"]);
+
+    const legacy = JSON.parse(serialize(state));
+    legacy.version = 18;
+    delete legacy.cardCollection;
+    expect(deserialize(JSON.stringify(legacy))?.cardCollection).toEqual([]);
+  });
+
   it("round-trips bridge position and environmental encounter progress", () => {
     state = createGameState(findFloor(2)!);
     state.mode = "dungeon";

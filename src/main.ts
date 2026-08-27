@@ -123,6 +123,13 @@ import {
   summarizeTelemetry,
   type CardTrialState,
 } from "./game/card-trial";
+import { cardDef } from "./game/card-trial";
+import {
+  campaignCardReward,
+  createCampaignCardTrialFight,
+  type CampaignResolvedEnemy,
+} from "./game/campaign-card-trial";
+import type { CardId } from "./game/card-trial/types";
 import { CardTrialPlaytestRecorder } from "./game/card-trial/playtest";
 import { PrologueController } from "./engine/prologue-ui";
 import { EndingController } from "./engine/ending-ui";
@@ -132,7 +139,7 @@ import { getGameplayRng, setGameplayRng, resetGameplayRng, createSeededRng } fro
 import { defaultLoadoutForCharacter } from "./game/combat-equipment";
 import { reconcileInventoryAfterCombat } from "./game/combat-inventory";
 import type { CombatState, Loadout } from "./game/combat-types";
-import { rollEncounter, resolveEncounter } from "./data/enemies";
+import { ENCOUNTER_TABLES, rollEncounter, resolveEncounter, type EncounterEntry } from "./data/enemies";
 import {
   encounterRollChance,
   encounterRateAt,
@@ -759,28 +766,13 @@ function maybeTriggerEncounter(): boolean {
   const resolved = resolveEncounter(entry);
   if (resolved.length === 0) return false;
 
-  const loadout = buildLoadoutMap();
-  const combat = createCombatFromEncounter(
-    state.party,
-    resolved,
-    SPELLS_BY_ID,
-    ITEMS_BY_ID,
-    loadout,
-    state.inventory,
-    state.inAntimagic,
-    {
-      id: entry.id,
-      family: entry.family,
-      displayName: entry.displayName,
-      chemistryEnabled: tableId === 1,
-    }
-  );
-  state.combat = combat;
-  setMode(state, "combat");
   state.stepsSinceEncounter = 0;
   rememberEncounterFamily(encounterFamilyMemory, entry.family, state.floor.id);
 
-  startCombat(combat, { source: "random", tableId });
+  // Campaign exploration now hands authored random encounters to the same
+  // Card Trial engine used by Arena. The old CombatState path remains below
+  // for NPC/guardian/alarm migrations until this lifecycle is proven.
+  startCampaignCardTrialFight({ floorId: state.floor.id, entry, resolved, tableId });
   return true;
 }
 
@@ -791,6 +783,14 @@ let inCardTrial = false;
 let cardTrialSequential = false;
 let cardTrialSummary: string | null = null;
 let cardTrialPlaytestRecorder: CardTrialPlaytestRecorder | null = null;
+let activeCampaignCardTrial: {
+  floorId: number;
+  entry: EncounterEntry;
+  resolved: CampaignResolvedEnemy[];
+  tableId: number;
+  rewardCardId: CardId;
+  position: { floorId: number; x: number; y: number; facing: number };
+} | null = null;
 
 // True for the whole encounter swirl / leave dissolve (including reveal).
 // Key + controller handlers no-op while set — duration tracks boss / reduced-
@@ -1631,7 +1631,7 @@ function currentRouteFlags(): ControllerRouteContext {
   return {
     mode: state.mode,
     hasCombat: !!combatController,
-    hasCardTrial: !!cardTrialController || screens.hasCardTrialLobby,
+    hasCardTrial: !!cardTrialController || screens.hasCardTrialLobby || inCardTrial,
     hasTown: screens.hasTown,
     hasCamp: screens.hasCamp,
     hasGameOver: screens.hasGameOver,
@@ -1931,6 +1931,7 @@ function exitCardTrialToTitle(): void {
   cardTrialPlaytestRecorder?.endSession(cardTrialController?.state);
   inCardTrial = false;
   cardTrialSequential = false;
+  activeCampaignCardTrial = null;
   cardTrialController?.destroy();
   cardTrialController = null;
   screens.dismissCardTrialLobby();
@@ -1968,6 +1969,65 @@ function onCardTrialFightEnd(trial: CardTrialState): void {
   });
 }
 
+function onCampaignCardTrialEnd(trial: CardTrialState): void {
+  const encounter = activeCampaignCardTrial;
+  void leaveCardTrial(() => {
+    activeCampaignCardTrial = null;
+    inCardTrial = false;
+
+    // Card Trial owns its own fixed 40 HP session state. The campaign duo's
+    // location, HP, inventory, and legacy progression are deliberately left
+    // untouched in this first integration slice. The one durable outcome is
+    // the card reward, which proves campaign persistence without pretending
+    // deck construction is finished.
+    setMode(state, "dungeon");
+    showMode("dungeon", mapVisible);
+    if (trial.result === "victory" && encounter) {
+      const cards = (state.cardCollection ??= []);
+      cards.push(encounter.rewardCardId);
+      const rewardName = cardDef(encounter.rewardCardId).name;
+      setMessage(`The ${encounter.entry.displayName ?? "encounter"} breaks. Card found: ${rewardName}.`);
+    } else {
+      setMessage("The encounter re-forms in the dark. The duo holds its ground.");
+    }
+    // Save while the return transition is still covering the screen. On the
+    // next load, the player is back at the exact same floor coordinate with
+    // the card collection intact.
+    autoSave(state);
+  });
+}
+
+async function launchCardTrialFight(
+  trial: CardTrialState,
+  onEnd: (state: CardTrialState) => void,
+  playtest = false
+): Promise<void> {
+  await withCombatTransition(async () => {
+    audio.stopTitleMusic();
+    // Presentation-only: Card Trial has its own session heroes. It never
+    // overwrites GameState.party or GameState.combat.
+    setMode(state, "combat");
+    audio.startBattleMusic();
+    await playEncounterTransition({ source: getMazeRendererSurface(), isBoss: false });
+    showMode("combat", mapVisible);
+    await loadTextures();
+    const bd = renderBattleArena(state, 768, 672);
+    const theme = resolveTilesetTheme(state.floor);
+    const backdropId = `theme:${theme}`;
+    const stage = await createCombatStage({
+      state: cardTrialToCombatState(trial),
+      backdrop: bd,
+      backdropId,
+    });
+    cardTrialController = new CardTrialController(trial, {
+      stage,
+      onEnd,
+      playtest: playtest ? cardTrialPlaytestRecorder ?? undefined : undefined,
+    });
+    await revealAfterTransition();
+  });
+}
+
 function startCardTrialFight(opts: {
   fightId?: number;
   sequential?: boolean;
@@ -1992,31 +2052,57 @@ function startCardTrialFight(opts: {
     trial,
     opts.triangle ? "triangle" : opts.previous ? "sequential" : "fight"
   );
+  void launchCardTrialFight(trial, onCardTrialFightEnd, true);
+}
 
-  void withCombatTransition(async () => {
-    audio.stopTitleMusic();
-    // Presentation-only: never assign trial heroes onto GameState.party or
-    // state.combat. Campaign HP/gold/XP/saves stay untouched.
-    setMode(state, "combat");
-    audio.startBattleMusic();
-    await playEncounterTransition({ source: getMazeRendererSurface(), isBoss: false });
-    showMode("combat", mapVisible);
-    await loadTextures();
-    const bd = renderBattleArena(state, 768, 672);
-    const theme = resolveTilesetTheme(state.floor);
-    const backdropId = `theme:${theme}`;
-    const stage = await createCombatStage({
-      state: cardTrialToCombatState(trial),
-      backdrop: bd,
-      backdropId,
-    });
-    cardTrialController = new CardTrialController(trial, {
-      stage,
-      onEnd: onCardTrialFightEnd,
-      playtest: cardTrialPlaytestRecorder ?? undefined,
-    });
-    await revealAfterTransition();
+/** Start one real authored dungeon encounter in the campaign Card Trial path. */
+function startCampaignCardTrialFight(opts: {
+  floorId: number;
+  entry: EncounterEntry;
+  resolved: CampaignResolvedEnemy[];
+  tableId: number;
+  seed?: number;
+}): void {
+  if (combatController || cardTrialController || inCardTrial) return;
+  screens.dismissCardTrialLobby();
+  inCardTrial = true;
+  cardTrialSequential = false;
+  activeCampaignCardTrial = {
+    floorId: opts.floorId,
+    entry: opts.entry,
+    resolved: opts.resolved,
+    tableId: opts.tableId,
+    rewardCardId: campaignCardReward(opts.floorId, opts.entry.id),
+    position: {
+      floorId: state.floor.id,
+      x: state.player.x,
+      y: state.player.y,
+      facing: state.player.facing,
+    },
+  };
+  const trial = createCampaignCardTrialFight({
+    floorId: opts.floorId,
+    entry: opts.entry,
+    resolved: opts.resolved,
+    seed: opts.seed ?? (getGameplayRng()() * 0xffffffff) >>> 0,
   });
+  void launchCardTrialFight(trial, onCampaignCardTrialEnd);
+}
+
+/** Debug-only entry point that still resolves a real floor encounter table. */
+function debugStartCampaignEncounter(entryId?: string, seed = 1): void {
+  if (combatController || cardTrialController || inCardTrial) {
+    throw new Error("startCampaignEncounter: combat is already active");
+  }
+  const tableId = encounterTableFloorId(state.floor, state.player.x, state.player.y);
+  const table = ENCOUNTER_TABLES[tableId] ?? [];
+  const entry = entryId ? table.find((candidate) => candidate.id === entryId) : rollEncounter(tableId);
+  if (!entry) throw new Error(`startCampaignEncounter: no entry for table ${tableId}`);
+  const resolved = resolveEncounter(entry);
+  if (resolved.length === 0) throw new Error(`startCampaignEncounter: ${entry.id} has no enemies`);
+  state.stepsSinceEncounter = 0;
+  rememberEncounterFamily(encounterFamilyMemory, entry.family, state.floor.id);
+  startCampaignCardTrialFight({ floorId: state.floor.id, entry, resolved, tableId, seed });
 }
 
 // --- Dungeon NPC combat -----------------------------------------------------
@@ -2580,6 +2666,9 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       await startCombat(combat, { source: "debug", tableId: null });
     },
     exitDebugCombat,
+    /** Start an authored campaign encounter through the Card Trial path. */
+    startCampaignEncounter: (entryId?: string, options?: { seed?: number }) =>
+      debugStartCampaignEncounter(entryId, options?.seed ?? 1),
     cardTrial: {
       startFight: (fightId: number, options?: { seed?: number }) =>
         startCardTrialFight({ fightId, seed: options?.seed }),
