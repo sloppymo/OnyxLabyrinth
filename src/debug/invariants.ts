@@ -7,7 +7,7 @@
 
 import type { ControllerRouteKind } from "../engine/controller-route";
 import type { GameState } from "../types";
-import { PARTY_SIZE } from "../game/party";
+import { isPlayableDuo } from "../game/playable-duo";
 import type { CombatDebugView } from "./snapshot";
 
 export interface InvariantInput {
@@ -27,8 +27,8 @@ export function checkInvariants(input: InvariantInput): string[] {
     if (c.sp < 0) warnings.push(`${c.name}: sp ${c.sp} is negative`);
   }
 
-  if (state.party.length !== PARTY_SIZE) {
-    warnings.push(`party has ${state.party.length} members; expected ${PARTY_SIZE}`);
+  if (!isPlayableDuo(state.party)) {
+    warnings.push("protagonist roster is not the fixed Old Man + Rat King duo");
   }
 
   // pendingTrap gates every dungeon input handler; it is meaningless (and a

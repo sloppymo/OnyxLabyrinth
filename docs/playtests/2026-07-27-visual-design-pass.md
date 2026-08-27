@@ -1,5 +1,10 @@
 # Visual design pass — 2026-07-27
 
+> **Historical roster note (2026-08-27):** This report remains useful for
+> visual direction, but its party-choice screenshots and default-roster flow
+> predate the fixed Old Man + Rat King campaign contract. See
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](../CURRENT-PRODUCT-CONTRACT.md).
+
 Art-director-style visual review. Not a code review, not a balance pass — a
 look at how OnyxLabyrinth *reads* as a visual product, backed by screenshots
 actually captured from a running build.

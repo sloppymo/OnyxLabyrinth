@@ -15,7 +15,7 @@ import {
 import { buildPalette } from "./combat-action-palette";
 import { createCombatState } from "../game/combat";
 import type { CombatState, EnemyInstance } from "../game/combat-types";
-import { createCharacter, type Character } from "../game/party";
+import { createCharacterRecord, type Character } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
 import { MAGE_SPELLS } from "../data/spells";
 import { HEALING_POTION } from "../data/items";
@@ -40,8 +40,8 @@ function makeEnemy(instanceId: string, name = "Test Rat"): EnemyInstance {
 
 function makeState(enemies: EnemyInstance[]): CombatState {
   const party = [
-    createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-    createCharacter("c1", "Bob", "Human", "Neutral", "Thief", 1),
+    createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+    createCharacterRecord("c1", "Bob", "Human", "Neutral", "Thief", 1),
   ];
   return createCombatState(party, { front: enemies, back: [] }, false);
 }
@@ -74,18 +74,18 @@ function baseView(state: CombatState): CombatWindowsView {
 
 describe("menuEntriesForCharacter", () => {
   it("gives base FF6 actions + Technique to a Fighter", () => {
-    const c = createCharacter("x", "X", "Human", "Neutral", "Fighter", 0);
+    const c = createCharacterRecord("x", "X", "Human", "Neutral", "Fighter", 0);
     const kinds = menuEntriesForCharacter(c).map((e) => e.kind);
     expect(kinds).toEqual(["attack", "technique", "cast", "defend", "item", "analyze", "move", "flee"]);
   });
 
   it("gives every class Analyze", () => {
-    const mage = createCharacter("m", "M", "Elf", "Neutral", "Mage", 0);
+    const mage = createCharacterRecord("m", "M", "Elf", "Neutral", "Mage", 0);
     expect(menuEntriesForCharacter(mage).map((e) => e.kind)).toContain("analyze");
   });
 
   it("adds Technique for Thief alongside Hide/Ambush", () => {
-    const c = createCharacter("x", "X", "Human", "Neutral", "Thief", 0);
+    const c = createCharacterRecord("x", "X", "Human", "Neutral", "Thief", 0);
     const kinds = menuEntriesForCharacter(c).map((e) => e.kind);
     expect(kinds).toContain("technique");
     expect(kinds).toContain("hide");
@@ -96,21 +96,21 @@ describe("menuEntriesForCharacter", () => {
   });
 
   it("does not give Technique to Mage or Priest", () => {
-    const mage = createCharacter("m", "M", "Elf", "Neutral", "Mage", 0);
+    const mage = createCharacterRecord("m", "M", "Elf", "Neutral", "Mage", 0);
     expect(menuEntriesForCharacter(mage).map((e) => e.kind)).not.toContain("technique");
-    const priest = createCharacter("p", "P", "Gnome", "Good", "Priest", 0);
+    const priest = createCharacterRecord("p", "P", "Gnome", "Good", "Priest", 0);
     expect(menuEntriesForCharacter(priest).map((e) => e.kind)).not.toContain("technique");
   });
 
   it("gives Crusader both Technique and Magic", () => {
-    const c = createCharacter("c", "C", "Human", "Good", "Crusader", 0);
+    const c = createCharacterRecord("c", "C", "Human", "Good", "Crusader", 0);
     const kinds = menuEntriesForCharacter(c).map((e) => e.kind);
     expect(kinds).toContain("technique");
     expect(kinds).toContain("cast");
   });
 
   it("inserts Repeat after Attack when requested", () => {
-    const c = createCharacter("x", "X", "Human", "Neutral", "Fighter", 0);
+    const c = createCharacterRecord("x", "X", "Human", "Neutral", "Fighter", 0);
     const kinds = menuEntriesForCharacter(c, true).map((e) => e.kind);
     expect(kinds[0]).toBe("attack");
     expect(kinds[1]).toBe("repeat");
@@ -120,17 +120,17 @@ describe("menuEntriesForCharacter", () => {
 
 describe("menuHintText", () => {
   it("includes T for technique users", () => {
-    const c = createCharacter("x", "X", "Human", "Neutral", "Fighter", 0);
+    const c = createCharacterRecord("x", "X", "Human", "Neutral", "Fighter", 0);
     expect(menuHintText(menuEntriesForCharacter(c))).toBe("Enter · A/T/M/D/I/N/V/R · ↑↓");
   });
 
   it("omits T for pure casters", () => {
-    const c = createCharacter("m", "M", "Elf", "Neutral", "Mage", 0);
+    const c = createCharacterRecord("m", "M", "Elf", "Neutral", "Mage", 0);
     expect(menuHintText(menuEntriesForCharacter(c))).toBe("Enter · A/M/D/I/N/V/R · ↑↓");
   });
 
   it("includes H for an unhidden Thief", () => {
-    const c = createCharacter("t", "T", "Human", "Neutral", "Thief", 0);
+    const c = createCharacterRecord("t", "T", "Human", "Neutral", "Thief", 0);
     expect(menuHintText(menuEntriesForCharacter(c))).toContain("/H/");
   });
 });
@@ -582,8 +582,8 @@ describe("renderCombatWindows", () => {
 
   it("formats the party resource column as SP/RG cur/max with a positional dash", () => {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
     state.rage[party[0].id] = 3;

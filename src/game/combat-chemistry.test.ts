@@ -14,7 +14,7 @@ import {
   reserveChemistryUse,
   selectChemistryResource,
 } from "./combat-chemistry";
-import { createDefaultParty } from "./party";
+import { createCombatTestRoster } from "./test-roster";
 import type { EnemyInstance, EnemyFormation, Rng } from "./combat-types";
 import type { EnemyDef } from "../data/enemies";
 import { enemyAbilityById } from "../data/enemy-abilities";
@@ -53,7 +53,7 @@ function makeEnemy(
 }
 
 function makeChemistryState(resourceCount = 1, metadataChemistry = false) {
-  const party = createDefaultParty();
+  const party = createCombatTestRoster();
   const caster = makeEnemy("crypt-minotaur", "caster-0", 60, "front", {
     abilityIds: ["crypt-slime-cannon"],
   });
@@ -82,7 +82,7 @@ function makeChemistryState(resourceCount = 1, metadataChemistry = false) {
 }
 
 function makeOgreTossState(resourceId = "skeleton-0", resourceEnemyId = "skeleton") {
-  const party = createDefaultParty();
+  const party = createCombatTestRoster();
   const ogre = makeEnemy("crypt-hill-ogre", "ogre-0", 60, "front", {
     abilityIds: ["ogre-toss"],
   });
@@ -374,7 +374,7 @@ describe("formation chemistry resource substrate", () => {
     summoned.currentHp = 0;
     summoned.spawnSource = "summoned";
     summoned.rewardEligible = false;
-    const state = createCombatState(createDefaultParty(), { front: [original, summoned], back: [] }, false);
+    const state = createCombatState(createCombatTestRoster(), { front: [original, summoned], back: [] }, false);
     deathCheck(state, (message, event) => {
       state.log.push(message);
       state.events.push(event);
@@ -388,7 +388,7 @@ describe("formation chemistry resource substrate", () => {
     const actor = makeEnemy("demon-mage", "mage-0", 40, "back", {
       abilityIds: ["summon-imp"],
     });
-    const state = createCombatState(createDefaultParty(), { front: [], back: [actor] }, false);
+    const state = createCombatState(createCombatTestRoster(), { front: [], back: [actor] }, false);
     state.enemySummonsCreated = 3;
     const round = beginRound(state, fixedRng);
     const beforeIds = new Set(round.queue.filter((entry) => entry.kind === "enemy").map((entry) => entry.id));
@@ -414,7 +414,7 @@ describe("formation chemistry resource substrate", () => {
     const roundActor = makeEnemy("demon-mage", "round-mage", 40, "back", {
       abilityIds: ["summon-imp"],
     });
-    const roundState = createCombatState(createDefaultParty(), { front: [], back: [roundActor] }, false);
+    const roundState = createCombatState(createCombatTestRoster(), { front: [], back: [roundActor] }, false);
     roundState.enemySummonsCreated = 3;
     const roundResult = resolveCombatRound(roundState, defendActions(roundState), () => 0);
     expect(roundResult.enemySummonsCreated).toBe(4);

@@ -1,5 +1,10 @@
 # Spell Expansion — Design Spec v1.0
 
+> **Historical roster note (2026-08-27):** The spell design remains useful as
+> a spell-system reference, but its old default-party/loadout language is not
+> a current player choice. The campaign protagonists are fixed Old Man + Rat
+> King; see [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 ## 1. Overview
 
 Expand the spellbook from 36 spells (many of which are interchangeable 1-SP VFX
@@ -516,4 +521,3 @@ if (version === 8) {
 Consult `src/data/spells.ts` for the live corpus. Combat spells now ship through **tier 7** (T6–T7 are a small endgame set: Meteor Swarm, Disintegrate, Freezing Sphere / Mass Regenerate, Holy Aura). Unlock via `ceil(level/2)` is also capped by `maxContentSpellTier()` so empty tiers cannot silently reopen.
 
 **§5.3 DoT/regen is now live** as an optional `followup` field on `damage`/`heal` effects (rather than standalone `dot`/`regen` kinds): `mage-meteor-swarm` applies its design burn (10/round ×3, respects elemental resist/weakness), `priest-mass-regenerate` its regen (8/round ×3), and single-target `priest-regenerate` (T3, heal 20 + 5/round ×3) shipped as the one extra design spell. Ticks run in end-of-round status processing on `CombatState.enemyDots`/`regenBuffs` and emit structured events. Incinerate, §5.4 cantrip procs, and §5.6 Time Stop remain deferred. Index: [`docs/AGENT-READING-LIST.md`](../AGENT-READING-LIST.md).
-

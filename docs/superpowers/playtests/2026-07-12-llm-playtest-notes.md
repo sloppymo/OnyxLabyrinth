@@ -1,5 +1,10 @@
 # Playtest Notes — OnyxLabyrinth
 
+> **Historical roster note (2026-08-27):** This playtest predates the fixed
+> Old Man + Rat King campaign duo. Its party-creation observations are retained
+> as history only; current playtests must use
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 **Tester:** LLM (Claude, autonomous playtest via Chrome automation)
 **Date:** 2026-07-12
 **Build command used:** `npm run build` + `npx vite preview --port 5176 --base /OnyxLabyrinth/` (production build; dev server hit an `EMFILE: too many open files` watcher limit and was not used)

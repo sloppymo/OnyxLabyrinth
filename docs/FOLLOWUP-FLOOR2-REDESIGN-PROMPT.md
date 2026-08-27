@@ -1,5 +1,10 @@
 # Prompt: Floor 2 ("The Cursed Library") Redesign — Mechanic Arc + Climax
 
+> **Historical roster note (2026-08-27):** This prompt predates the fixed Old
+> Man + Rat King campaign duo. Any `Default Party` setup reference is for the
+> build tested at the time, not a current screen or implementation step. See
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md).
+
 **Progress (2026-08-05/06): Phases A-E are implemented and unit-tested.** A fresh browser playthrough is still required before this pass can be called fully verified —
 see each phase's section below for exactly what landed.
 

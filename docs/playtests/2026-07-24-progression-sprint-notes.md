@@ -1,5 +1,10 @@
 # Campaign progression sprint — playtest notes (2026-07-24)
 
+> **Historical roster note (2026-08-27):** The progression measurements below
+> were recorded before the campaign moved to the fixed Old Man + Rat King duo.
+> They do not describe a selectable roster or a current entry screen. See
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](../CURRENT-PRODUCT-CONTRACT.md).
+
 > **Naming (2026-07-25):** the F4/F5 bosses are recorded here by id-derived
 > labels ("Headmaster's Echo Remnant/Ascendant"). Their display names are now
 > **The Lonely Girl** (F4) and **The Crying Man** (F5); F3 is **The Dead Boy**.

@@ -11,7 +11,7 @@ import {
 } from "./combat-barks";
 import { createCombatState, resolvePlayerTurn, beginRound } from "./combat";
 import { resolveEnemyAction } from "./combat-enemy";
-import { createCharacter } from "./party";
+import { createCharacterRecord } from "./party";
 import type { CombatEvent, CombatState, EnemyInstance } from "./combat-types";
 import { ALL_SPELLS, spellById } from "../data/spells";
 
@@ -40,7 +40,7 @@ function makeEnemy(instanceId: string, hp = 40): EnemyInstance {
 }
 
 function mageParty() {
-  const c = createCharacter("m1", "Dell", "Human", "Neutral", "Mage", 0);
+  const c = createCharacterRecord("m1", "Dell", "Human", "Neutral", "Mage", 0);
   c.knownSpellIds = ["mage-fire-bolt", "mage-spark"];
   c.sp = 50;
   c.maxSp = 50;
@@ -171,7 +171,7 @@ describe("RNG isolation", () => {
 
   it("same combat RNG sequence yields identical HP regardless of bark RNG", () => {
     const baseParty = mageParty();
-    // Freeze stats — createCharacter rolls with Math.random otherwise.
+    // Freeze stats — createCharacterRecord rolls with Math.random otherwise.
     baseParty[0]!.stats = { str: 5, vit: 8, agi: 10, int: 16, pie: 8, luk: 8 };
     baseParty[0]!.maxHp = 40;
     baseParty[0]!.hp = 40;
@@ -361,10 +361,10 @@ describe("Martyr redirect heavyHit bark", () => {
   // the Priest — formationSlot 0/1 are adjacent front row (combat-shared.ts
   // isAdjacentFrontRowAlly).
   function martyrParty() {
-    const target = createCharacter("t1", "Frontliner", "Human", "Neutral", "Fighter", 0);
+    const target = createCharacterRecord("t1", "Frontliner", "Human", "Neutral", "Fighter", 0);
     target.maxHp = 100;
     target.hp = 100;
-    const martyr = createCharacter("m2", "Martyr", "Human", "Neutral", "Priest", 1);
+    const martyr = createCharacterRecord("m2", "Martyr", "Human", "Neutral", "Priest", 1);
     martyr.perkIds = ["priest-martyr"];
     return [target, martyr];
   }

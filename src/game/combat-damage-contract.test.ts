@@ -6,7 +6,7 @@
  * universally — not just to enemy melee.
  */
 import { describe, it, expect } from "vitest";
-import { createCharacter, type Character } from "./party";
+import { createCharacterRecord, type Character } from "./party";
 import { createCombatState, resolveCombatRound } from "./combat";
 import { ALL_SPELLS, type SpellDef } from "../data/spells";
 import { ALL_ITEMS } from "../data/items";
@@ -40,7 +40,7 @@ function makeEnemy(instanceId: string, opts: Partial<EnemyInstance> = {}): Enemy
 }
 
 function makeChar(id: string, classId: string, perks: string[] = []): Character {
-  const c = createCharacter(
+  const c = createCharacterRecord(
     id, id, "Human", "Neutral",
     classId as Character["class"], 10
   );

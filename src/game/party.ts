@@ -1,10 +1,9 @@
 /**
- * Party creation and character data model.
+ * Character data model and combat-facing helpers.
  *
- * Defines races, alignments, classes, stats, and the Character type,
- * plus pure helper functions for rolling attributes and assembling a
- * 4-character party. Status-effect functions are left as comments for
- * the combat system to wire up later.
+ * The campaign roster is created by `playable-duo.ts`; this module keeps the
+ * historical Character shape and stat rules shared by combat, equipment, and
+ * save migration. There is no player-facing character builder here.
  */
 
 import { getGameplayRng } from "./rng";
@@ -31,8 +30,12 @@ export type StatusEffect =
   | "shrunk"
   | "giantStrength";
 
-/** Fixed party size — no bench. Formation slots are densely 0..PARTY_SIZE-1. */
-export const PARTY_SIZE = 4;
+/**
+ * Historical save-migration cap from the retired four-member campaign.
+ * Current campaigns use the fixed Old Man + Rat King duo; do not use this for
+ * gameplay layout or player-facing roster decisions.
+ */
+export const LEGACY_PARTY_SIZE = 4;
 
 /**
  * Core attributes.
@@ -245,8 +248,9 @@ export function computeMaxSp(stats: Stats, cls: CharacterClass): number {
   return 0;
 }
 
-/** Build a level 1 character from the chosen race, alignment, class, and name. */
-export function createCharacter(
+/** Build a level-1 Character record for fixed protagonists, tests, or legacy-save normalization.
+ * This is not a player-facing character-creation API. */
+export function createCharacterRecord(
   id: string,
   name: string,
   race: Race,
@@ -276,47 +280,6 @@ export function createCharacter(
     knownSpellIds: [],
     perkIds: [],
   };
-}
-
-/** Evil characters cannot share a party with Good characters. */
-export function isPartyAlignmentValid(party: Character[]): boolean {
-  if (party.length === 0) return true;
-  const hasGood = party.some((c) => c.alignment === "Good");
-  const hasEvil = party.some((c) => c.alignment === "Evil");
-  return !(hasGood && hasEvil);
-}
-
-/** Return the first empty formation slot, preferring front row then back row. */
-export function suggestFormationSlot(party: Character[]): number {
-  const used = new Set(party.map((c) => c.formationSlot));
-  for (let slot = 0; slot < PARTY_SIZE; slot++) {
-    if (!used.has(slot)) return slot;
-  }
-  return -1;
-}
-
-/** Assign a new character to the next available slot and add them to the party. */
-export function addCharacterToParty(
-  party: Character[],
-  id: string,
-  name: string,
-  race: Race,
-  alignment: Alignment,
-  cls: CharacterClass
-): { party: Character[]; error: string | null } {
-  if (party.length >= PARTY_SIZE) {
-    return { party, error: "Party is already full." };
-  }
-
-  const nextSlot = suggestFormationSlot(party);
-  const candidate = createCharacter(id, name, race, alignment, cls, nextSlot);
-  const updated = [...party, candidate];
-
-  if (!isPartyAlignmentValid(updated)) {
-    return { party, error: "Evil characters cannot join a Good party." };
-  }
-
-  return { party: updated, error: null };
 }
 
 /** Return a shallow copy of the party with characters sorted by formation slot. */
@@ -357,13 +320,6 @@ export function reviveKnockedOut(party: Character[]): Character[] {
 export function charRow(c: Character): "front" | "back" {
   return c.formationSlot <= 1 ? "front" : "back";
 }
-
-/**
- * Create the balanced default level-1 party of 4 for the merged game.
- * Same roster as preset `"balanced"` (Aria / Coda / Dell / Eve).
- * Re-exported from preset-parties to avoid a party ↔ preset import cycle.
- */
-export { createDefaultParty } from "./preset-parties";
 
 /** Split victory XP evenly across every living party member (no bench). */
 export function awardCombatXp(party: Character[], xpEarned: number): void {

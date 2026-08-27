@@ -21,7 +21,6 @@ export type BaseRouteKind =
   | "town"
   | "camp"
   | "game_over"
-  | "party_creation"
   | "prologue"
   | "ending"
   | "title"
@@ -39,7 +38,6 @@ export interface ControllerRouteContext {
   hasTown: boolean;
   hasCamp: boolean;
   hasGameOver: boolean;
-  hasPartyCreation: boolean;
   hasPrologue: boolean;
   hasEnding: boolean;
   hasTitle: boolean;
@@ -55,7 +53,6 @@ export function resolveControllerRoute(ctx: ControllerRouteContext): BaseRouteKi
   if (ctx.mode === "town" && ctx.hasTown) return "town";
   if (ctx.mode === "camp" && ctx.hasCamp) return "camp";
   if (ctx.mode === "game_over" && ctx.hasGameOver) return "game_over";
-  if (ctx.mode === "party_creation" && ctx.hasPartyCreation) return "party_creation";
   if (ctx.mode === "title" && ctx.hasPrologue) return "prologue";
   if (ctx.mode === "title" && ctx.hasTitle) return "title";
   if (ctx.mode === "arena") return "arena";

@@ -6,18 +6,16 @@ import {
   rollStatsForRace,
   computeMaxHp,
   computeMaxSp,
-  createCharacter,
-  createDefaultParty,
+  createCharacterRecord,
   isFrontRow,
   charRow,
-  isPartyAlignmentValid,
-  suggestFormationSlot,
-  PARTY_SIZE,
   RACES,
   CLASSES,
   type Race,
   type CharacterClass,
 } from "./party";
+import { createPlayableDuo } from "./playable-duo";
+import { createCombatTestRoster } from "./test-roster";
 
 describe("roll3d6", () => {
   it("produces a value between 3 and 18", () => {
@@ -97,9 +95,9 @@ describe("computeMaxSp", () => {
   });
 });
 
-describe("createCharacter", () => {
+describe("createCharacterRecord", () => {
   it("creates a character with full HP and SP", () => {
-    const char = createCharacter("char1", "Test", "Human", "Neutral", "Fighter", 0);
+    const char = createCharacterRecord("char1", "Test", "Human", "Neutral", "Fighter", 0);
     expect(char.name).toBe("Test");
     expect(char.race).toBe("Human");
     expect(char.class).toBe("Fighter");
@@ -110,40 +108,27 @@ describe("createCharacter", () => {
   });
 
   it("assigns the given id", () => {
-    const a = createCharacter("char-a", "A", "Human", "Neutral", "Fighter", 0);
-    const b = createCharacter("char-b", "B", "Human", "Neutral", "Fighter", 1);
+    const a = createCharacterRecord("char-a", "A", "Human", "Neutral", "Fighter", 0);
+    const b = createCharacterRecord("char-b", "B", "Human", "Neutral", "Fighter", 1);
     expect(a.id).toBe("char-a");
     expect(b.id).toBe("char-b");
   });
 });
 
-describe("createDefaultParty", () => {
-  it("creates a party of PARTY_SIZE role-distinct characters", () => {
-    const party = createDefaultParty();
-    expect(party).toHaveLength(PARTY_SIZE);
-    expect(party.map((c) => c.class)).toEqual(["Fighter", "Thief", "Mage", "Priest"]);
-    expect(party[2]!.knownSpellIds.length).toBeGreaterThan(0);
-    expect(party[3]!.knownSpellIds.length).toBeGreaterThan(0);
-  });
-
-  it("assigns formation slots 0..PARTY_SIZE-1", () => {
-    const party = createDefaultParty();
-    const slots = party.map((c) => c.formationSlot).sort((a, b) => a - b);
-    expect(slots).toEqual(Array.from({ length: PARTY_SIZE }, (_, i) => i));
-  });
-
-  it("places casters in the back row", () => {
-    const party = createDefaultParty();
-    expect(isFrontRow(party[0]!)).toBe(true);
-    expect(isFrontRow(party[1]!)).toBe(true);
-    expect(isFrontRow(party[2]!)).toBe(false);
-    expect(isFrontRow(party[3]!)).toBe(false);
+describe("createPlayableDuo", () => {
+  it("creates exactly the fixed Old Man + Rat King protagonists", () => {
+    const duo = createPlayableDuo();
+    expect(duo.map((c) => c.id)).toEqual(["old-man", "rat-king"]);
+    expect(duo.map((c) => c.name)).toEqual(["Old Man", "Rat King"]);
+    expect(duo.map((c) => c.class)).toEqual(["Mage", "Thief"]);
+    expect(duo[0]!.knownSpellIds).toContain("priest-light");
+    expect(duo[0]!.knownSpellIds).toContain("priest-unseal");
   });
 });
 
 describe("formation helpers", () => {
   it("isFrontRow returns true for slots 0-1", () => {
-    const party = createDefaultParty();
+    const party = createCombatTestRoster();
     expect(isFrontRow(party[0])).toBe(true);
     expect(isFrontRow(party[1])).toBe(true);
     expect(isFrontRow(party[2])).toBe(false);
@@ -151,37 +136,9 @@ describe("formation helpers", () => {
   });
 
   it("charRow returns 'front' or 'back'", () => {
-    const party = createDefaultParty();
+    const party = createCombatTestRoster();
     expect(charRow(party[0])).toBe("front");
     expect(charRow(party[2])).toBe("back");
-  });
-});
-
-describe("isPartyAlignmentValid", () => {
-  it("rejects Good + Evil mix", () => {
-    const party = createDefaultParty();
-    party[0].alignment = "Good";
-    party[1].alignment = "Evil";
-    expect(isPartyAlignmentValid(party)).toBe(false);
-  });
-
-  it("accepts all Neutral", () => {
-    const party = createDefaultParty();
-    for (const c of party) c.alignment = "Neutral";
-    expect(isPartyAlignmentValid(party)).toBe(true);
-  });
-});
-
-describe("suggestFormationSlot", () => {
-  it("fills front row first (0, 1, 2)", () => {
-    const party: ReturnType<typeof createDefaultParty> = [];
-    expect(suggestFormationSlot(party)).toBe(0);
-    party.push(createCharacter("c1", "A", "Human", "Neutral", "Fighter", 0));
-    expect(suggestFormationSlot(party)).toBe(1);
-    party.push(createCharacter("c2", "B", "Human", "Neutral", "Fighter", 1));
-    expect(suggestFormationSlot(party)).toBe(2);
-    party.push(createCharacter("c3", "C", "Human", "Neutral", "Fighter", 2));
-    expect(suggestFormationSlot(party)).toBe(3);
   });
 });
 

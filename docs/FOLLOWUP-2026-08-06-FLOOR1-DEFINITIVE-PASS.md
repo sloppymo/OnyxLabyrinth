@@ -1,5 +1,9 @@
 # Floor 1 Definitive Pass — session report (2026-08-06)
 
+> **Historical entry-flow note (2026-08-27):** This report predates the fixed
+> Old Man + Rat King campaign duo. Replace its default-party confirmation step
+> with direct prologue → Edgehollow when replaying the pass.
+
 Scope: the "OnyxLabyrinth Floor 1 Definitive Pass" implementation prompt (10 phases, A–J).
 This document is the honest state of one session's work against that prompt, per its own
 §9 deliverable requirements. Read this before continuing the work or claiming any phase

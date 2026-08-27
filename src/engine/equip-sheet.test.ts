@@ -11,11 +11,11 @@ import {
   STAT_ORDER,
   STAT_PAIRS,
 } from "./equip-sheet";
-import { createCharacter } from "../game/party";
+import { createCharacterRecord } from "../game/party";
 import { CURSED_BLADE, ITEMS_BY_ID } from "../data/items";
 
 describe("resolveEquipPreview", () => {
-  const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+  const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
   const shortSword = ITEMS_BY_ID["short-sword"]!;
   const longSword = ITEMS_BY_ID["long-sword"]!;
 
@@ -92,7 +92,7 @@ describe("summarizeLoadout / STAT_ORDER", () => {
   });
 
   it("includes weapon attack in ATK", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.level = 1;
     const sword = ITEMS_BY_ID["short-sword"]!;
     const s = summarizeLoadout(c, { weapon: sword, armor: [] });
@@ -102,7 +102,7 @@ describe("summarizeLoadout / STAT_ORDER", () => {
 
 describe("gearModsForLoadout", () => {
   it("marks ATK + when a weapon is equipped vs bare", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.level = 1;
     const sword = ITEMS_BY_ID["short-sword"]!;
     const mods = gearModsForLoadout(c, { weapon: sword, armor: [] });
@@ -110,14 +110,14 @@ describe("gearModsForLoadout", () => {
   });
 
   it("marks ATK - for cursed blade vs bare", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.level = 1;
     const mods = gearModsForLoadout(c, { weapon: CURSED_BLADE, armor: [] });
     expect(mods.atk).toBe("-");
   });
 
   it("leaves mods empty when bare", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     const mods = gearModsForLoadout(c, { armor: [] });
     expect(mods.atk).toBe("");
     expect(mods.def).toBe("");
@@ -126,7 +126,7 @@ describe("gearModsForLoadout", () => {
 
 describe("equipSheetHtml v4", () => {
   it("renders decorative Equip/Optimum/Empty tabs and upper band", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.level = 1;
     const sword = ITEMS_BY_ID["short-sword"]!;
     const html = equipSheetHtml({
@@ -154,7 +154,7 @@ describe("equipSheetHtml v4", () => {
   });
 
   it("hides SP when maxSp is 0", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.maxSp = 0;
     c.sp = 0;
     const html = equipSheetHtml({
@@ -213,7 +213,7 @@ describe("equip description panel", () => {
   });
 
   it("sheet with descHtml mounts lower split band", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     const html = equipSheetHtml({
       character: c,
       loadout: { armor: [] },

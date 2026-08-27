@@ -67,21 +67,13 @@ async function snap(page) {
   });
 }
 
-/** Enter dungeon with default party via title → New Game → town → Enter Dungeon. */
+/** Enter dungeon with the fixed duo via title → New Game → town → Enter Dungeon. */
 async function bootToDungeon(page) {
   await page.goto(BASE, { waitUntil: "networkidle" });
   await wait(400);
   await press(page, "n");
-  await wait(350);
-  // Party choice: [D] Default Party
-  await press(page, "d");
-  await wait(500);
+  await waitForIdle(page);
   let st = await snap(page);
-  if (st.mode === "party_creation") {
-    await press(page, "Enter");
-    await wait(400);
-    st = await snap(page);
-  }
   // Town hub: select Enter Dungeon (bracket jump or arrow)
   if (st.mode === "town") {
     await press(page, ">"); // icon jump if supported

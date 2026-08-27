@@ -5,7 +5,7 @@
  *   - Inn: Full heal + clear status (free)
  *   - Temple: Same as Inn (free)
  *   - Shop: Buy/sell equipment and consumables
- *   - Guild: View party roster
+ *   - Roster: Inspect the Old Man and Rat King
  *   - Training: Process level-ups (free)
  *   - Enter Dungeon: Transition to dungeon exploration
  *
@@ -48,20 +48,36 @@ import {
   startPartyIdleAnim,
   type PartyIdleAnimHandle,
 } from "./party-idle-anim";
+import "./town-map.css";
 
 type TownScreen = "main" | "inn" | "temple" | "shop" | "roster" | "equip";
 type EquipPhase = "char" | "slot" | "item";
 type ShopTab = "buy" | "sell" | "appraise" | "buyConfirm";
 type RosterTab = "status" | "progress";
+type TownScene = "square" | "inn" | "temple" | "outfitter" | "guild";
+
+function sceneForTownScreen(screen: TownScreen): TownScene {
+  switch (screen) {
+    case "inn":
+      return "inn";
+    case "temple":
+      return "temple";
+    case "shop":
+    case "equip":
+      return "outfitter";
+    case "roster":
+      return "guild";
+    case "main":
+      return "square";
+  }
+}
 
 export interface TownControllerOptions {
   panel: HTMLElement;
   state: GameState;
   onEnterDungeon: () => void;
   onOpenSave: () => void;
-  onReformParty: () => void;
-  /** One-time orientation line shown under the main menu on open (e.g. the
-   *  first town visit after party creation). Cleared on the first menu
+  /** One-time orientation line shown under the main menu on open. Cleared on the first menu
    *  navigation/selection, same as any other transient flash message. */
   initialFlash?: string;
 }
@@ -70,9 +86,8 @@ const MAIN_MENU_ITEMS = [
   { key: "inn", label: "Inn — Rest and heal (Free)", icon: "[I]" },
   { key: "temple", label: "Temple — Healing and cleansing (Free)", icon: "[+]" },
   { key: "shop", label: "Shop — Buy and sell equipment", icon: "[$]" },
-  { key: "roster", label: "Guild — Party roster", icon: "[G]" },
-  { key: "equip", label: "Equip — Outfit party members", icon: "[E]" },
-  { key: "reform", label: "Reform Party — Create a new party", icon: "[R]" },
+  { key: "roster", label: "Roster — Old Man & Rat King", icon: "[G]" },
+  { key: "equip", label: "Equip — Old Man & Rat King", icon: "[E]" },
   { key: "dungeon", label: "Enter Dungeon", icon: "[>]" },
   { key: "save", label: "Save / Load", icon: "[S]" },
 ] as const;
@@ -90,7 +105,6 @@ export class TownController {
   private state: GameState;
   private onEnterDungeon: () => void;
   private onOpenSave: () => void;
-  private onReformParty: () => void;
   private screen: TownScreen = "main";
   private selectedIndex = 0;
   private flash = "";
@@ -129,7 +143,6 @@ export class TownController {
     this.state = opts.state;
     this.onEnterDungeon = opts.onEnterDungeon;
     this.onOpenSave = opts.onOpenSave;
-    this.onReformParty = opts.onReformParty;
     this.flash = opts.initialFlash ?? "";
     this.panel.style.display = "flex";
     this.render();
@@ -334,11 +347,6 @@ export class TownController {
       case "equip":
         this.openEquipScreen();
         break;
-      case "reform":
-        this.panel.style.display = "none";
-        this.panel.innerHTML = "";
-        this.onReformParty();
-        break;
       case "dungeon":
         this.panel.style.display = "none";
         this.panel.innerHTML = "";
@@ -358,7 +366,7 @@ export class TownController {
     audio.uiCureMenu();
     this.state.party = restoreParty(this.state.party);
     this.screen = "inn";
-    this.flash = "The party rests at the Inn. HP and SP fully restored!";
+    this.flash = "The Old Man and Rat King rest at the Inn. HP and SP fully restored!";
     this.render();
   }
 
@@ -367,7 +375,7 @@ export class TownController {
     this.state.party = restoreParty(this.state.party);
     this.screen = "temple";
     this.templeIndex = 0;
-    this.flash = "The Temple's blessing restores the party. HP and SP fully restored!";
+    this.flash = "The Temple's blessing restores the duo. HP and SP fully restored!";
     this.render();
   }
 
@@ -652,6 +660,10 @@ export class TownController {
   private render(): void {
     this.equipIdle?.stop();
     this.equipIdle = null;
+    // Presentation-only scene framing. One authored Edgehollow map is treated
+    // as a connected place: each facility cuts the camera toward its own
+    // material landmark while the controller and town rules remain unchanged.
+    this.panel.dataset.townScene = sceneForTownScreen(this.screen);
     const screenKey =
       this.screen === "shop"
         ? `shop:${this.shopTab}`
@@ -711,7 +723,7 @@ export class TownController {
       mode: "menu",
       flash: this.flash || null,
       footer: "D-pad navigate · A select · Select save",
-      footer2: `Party: ${aliveCount}/${this.state.party.length} alive · Avg Lv${avgLevel} · Gold: ${this.state.partyGold}g${scorchboardNote}`,
+      footer2: `Duo: ${aliveCount}/${this.state.party.length} alive · Avg Lv${avgLevel} · Gold: ${this.state.partyGold}g${scorchboardNote}`,
       animated,
       onHover: (i) => {
         this.selectedIndex = i;
@@ -1113,7 +1125,7 @@ export class TownController {
     lines.push(`</div>`);
     this.panel.appendChild(
       FF6Window.frame({
-        title: "Guild — Party Roster",
+        title: "Roster — Old Man & Rat King",
         contentHtml: lines.join(""),
         flash: this.flash || null,
         footer: "←→ tabs · E equip · B back",

@@ -126,7 +126,7 @@ The validation panel shows every issue (errors block Playtest/shipping; warnings
 
 1. Author in the editor, then click **Playtest Floor**.
 2. The editor writes the map to `localStorage` key `onyx-floor-playtest` and opens `/?playtestFloor=1`.
-3. The game boots straight into the dungeon on that floor with the default party (no title screen). Same-origin only: the editor dev server and the game share the origin, so this works out of the box with `npm run floor:editor`.
+3. The game boots straight into the dungeon on that floor with the fixed Old Man + Rat King duo (no title screen). Same-origin only: the editor dev server and the game share the origin, so this works out of the box with `npm run floor:editor`.
 4. Export JSON + register via `src/content/floors/` when you want it permanent.
 
 `?debug=1` exposes `window.__onyxDebug.registerFloorMap(json)` for live hot-register.

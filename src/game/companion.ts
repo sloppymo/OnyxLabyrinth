@@ -1,10 +1,8 @@
 /**
- * Temporary fifth-party-member companions, recruited at Hot Boi's tavern.
+ * Temporary guest companions, recruited at Hot Boi's tavern.
  *
- * Architecture note: the combat/party systems are hard-built around
- * PARTY_SIZE = 4 (formation slots, save schema, the FF6 windows). Rather
- * than widen `state.party` to 5 (which save v13->v14 deliberately moved
- * *away* from — see save.ts), a companion rides the existing
+ * Architecture note: the two-protagonist combat roster is fixed. Rather
+ * than widen `state.party` with a third protagonist, a companion rides the existing
  * `CombatState.summonedAllies` channel that the Priest's BAMORDI/SOCORDI
  * summon spells already use: a simple, AI-controlled, attack-only
  * combatant that acts before enemies and renders as its own row in the
@@ -36,7 +34,7 @@ export interface CompanionState {
   /** Stable id into COMPANIONS_BY_ID. */
   defId: string;
   hp: number;
-  /** True while traveling with the party (fights in combat, shown in the
+/** True while traveling with the duo (fights in combat, shown in the
    *  Companions screen as "with you"). False while resting at the tavern —
    *  recruited but not currently along, e.g. after a combat death sends
    *  them back, or the player dismisses them. */
@@ -77,7 +75,7 @@ export function dismissCompanion(state: GameState): void {
 }
 
 /** Bring a resting, living companion back along. No-op if none recruited,
- *  already with the party, or fallen (fallen companions recover fully at
+ *  already with the duo, or fallen (fallen companions recover fully at
  *  the tavern instead — see reviveCompanionAtTavern). */
 export function inviteCompanion(state: GameState): boolean {
   const c = state.companion;
@@ -86,7 +84,7 @@ export function inviteCompanion(state: GameState): boolean {
   return true;
 }
 
-/** Hot Boi patches up a fallen companion whenever the party is back at the
+/** Hot Boi patches up a fallen companion whenever the duo is back at the
  *  tavern — mirrors the free full-restore Camp already gives the party
  *  outside combat; a companion who dropped to 0 HP is never permanently
  *  lost. Called on every TavernController open. */

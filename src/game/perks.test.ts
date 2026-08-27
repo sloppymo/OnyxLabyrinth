@@ -17,7 +17,7 @@ import {
   type CombatHook,
   type PerkDef,
 } from "./perks";
-import { createCharacter, type Character } from "./party";
+import { createCharacterRecord, type Character } from "./party";
 import {
   createCombatState,
   resolvePlayerTurn,
@@ -31,7 +31,7 @@ import type { SpellDef } from "../data/spells";
 const BASE_STATS = { str: 10, int: 10, pie: 10, vit: 10, agi: 10, luk: 10 };
 
 function makeCharacter(cls: Character["class"], perks: string[] = []): Character {
-  const c = createCharacter("c1", "Test", "Human", "Neutral", cls, 0);
+  const c = createCharacterRecord("c1", "Test", "Human", "Neutral", cls, 0);
   c.stats = { ...BASE_STATS };
   c.perkIds = perks;
   c.hp = c.maxHp;
@@ -463,7 +463,7 @@ describe("perk combat integration", () => {
 
   it("priest-saint regenerates 5% max HP for the party at end of round", () => {
     const priest = makeCharacter("Priest", ["priest-saint"]);
-    // Pin maxHp: createCharacter rolls HP on a d6, and a 10 roll would put
+    // Pin maxHp: createCharacterRecord rolls HP on a d6, and a 10 roll would put
     // the priest at 0 HP here (knockedOut -> regen skips -> flaky failure).
     priest.maxHp = 30;
     priest.hp = priest.maxHp - 10;
@@ -493,7 +493,7 @@ function makeNamedCharacter(
   cls: Character["class"],
   perks: string[] = []
 ): Character {
-  const c = createCharacter(id, id, "Human", "Neutral", cls, 0);
+  const c = createCharacterRecord(id, id, "Human", "Neutral", cls, 0);
   c.stats = { ...BASE_STATS };
   c.perkIds = perks;
   c.hp = c.maxHp;

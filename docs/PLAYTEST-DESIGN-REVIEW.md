@@ -1,5 +1,10 @@
 # OnyxLabyrinth — Design Review
 
+> **Historical roster note (2026-08-27):** This review predates the fixed Old
+> Man + Rat King campaign contract. Its party-creation screenshots and roster
+> recommendations are archaeological evidence only; they are not current UI.
+> See [`CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md).
+
 **Playtester:** AI agent (Playwright browser automation)  
 **Date:** 2026-07-13  
 **Build:** `main` branch, built locally and served at `http://localhost:5178/OnyxLabyrinth/`  
@@ -207,7 +212,7 @@ _None observed._
 - **Spell/technique detail panels:** The level 1 spell description panel (`13-arena-combat-l1-spell-menu.png`) and the Thief technique panel (`38-arena-l9-tech-list.png`) are excellent. They explain class, level, cost, target, and effect clearly.
 - **Shop buy comparison:** The trade-in UX (`54-town-shop-buy-character-select.png`) is standout work. It shows current vs. new weapon, net price, and target character in one clean screen.
 - **First-person dungeon atmosphere:** The corridor renderer, fog, water puddles, and tile textures create a credible Wizardry-style environment (`46-first-dungeon-view.png`).
-- **Town hub structure:** Starting in town with Inn, Temple, Shop, Guild, and Reform Party options gives the player a clear home base before descending.
+- **Town hub structure (historical):** Starting in town with Inn, Temple, Shop, and Guild options gives the fixed duo a clear home base before descending. The retired Reform Party option is not part of the current UI.
 - **System stability:** No console errors, no softlocks, and the game recovered cleanly from every menu transition tested.
 
 ---

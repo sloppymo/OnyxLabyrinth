@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { effectiveStats } from "./effective-stats";
-import { createCharacter } from "./party";
+import { createCharacterRecord } from "./party";
 import type { Loadout } from "./combat-types";
 import type { ItemDef } from "../data/items";
 import type { PerkDef } from "./perks";
@@ -36,13 +36,13 @@ function mockPerk(statModifiers: Partial<Record<"str" | "int" | "pie" | "vit" | 
 
 describe("effectiveStats", () => {
   it("returns base stats when no loadout or perks are provided", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     const result = effectiveStats(c);
     expect(result).toEqual(c.stats);
   });
 
   it("adds weapon stat bonuses", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     const loadout: Loadout = {
       weapon: mockItem({ statBonuses: { str: 2, agi: 1 } }),
       armor: [],
@@ -53,7 +53,7 @@ describe("effectiveStats", () => {
   });
 
   it("adds armor stat bonuses from multiple pieces", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     const loadout: Loadout = {
       armor: [
         mockItem({ type: "armor", slot: "body", statBonuses: { vit: 2 } }),
@@ -66,7 +66,7 @@ describe("effectiveStats", () => {
   });
 
   it("adds perk stat modifiers", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     const perks = [mockPerk({ str: 3, luk: -1 })];
     const result = effectiveStats(c, undefined, perks);
     expect(result.str).toBe(c.stats.str + 3);
@@ -74,7 +74,7 @@ describe("effectiveStats", () => {
   });
 
   it("combines base + equipment + perk modifiers", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     const loadout: Loadout = {
       weapon: mockItem({ statBonuses: { str: 2 } }),
       armor: [mockItem({ type: "armor", slot: "body", statBonuses: { str: 1, vit: 1 } })],
@@ -86,7 +86,7 @@ describe("effectiveStats", () => {
   });
 
   it("floors each stat at 1 even with heavy penalties", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     const perks = [mockPerk({ str: -50, agi: -50 })];
     const result = effectiveStats(c, undefined, perks);
     expect(result.str).toBe(1);
@@ -94,7 +94,7 @@ describe("effectiveStats", () => {
   });
 
   it("does not clamp stats back to the creation 3-18 ceiling", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     const perks = [mockPerk({ str: 50 })];
     const result = effectiveStats(c, undefined, perks);
     expect(result.str).toBe(c.stats.str + 50);

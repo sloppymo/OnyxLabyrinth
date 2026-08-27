@@ -7,6 +7,7 @@ Start here for the current state of the repository.
 These are the first places to read before changing anything.
 
 - [`AGENTS.md`](../AGENTS.md) — Primary agent/LLM operating manual: repository invariants, file map, verification checklists, common pitfalls, and source-of-truth rules.
+- [`CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md) — Current campaign entry flow and fixed Old Man + Rat King protagonist contract; overrides older dated roster plans.
 - [`CLAUDE.md`](../CLAUDE.md) — Claude Code orientation; defers to `AGENTS.md` for `src/` rules.
 - [`docs/AGENT-READING-LIST.md`](AGENT-READING-LIST.md) — Which product docs, specs, and playtest reports are current versus stale.
 - [`README.md`](../README.md) — Human-facing install, run, build, and verification guide.
@@ -51,7 +52,7 @@ For renderer, combat, audio, and visual verification checklists, see [`AGENTS.md
 
 ## Constraints and gotchas
 
-- Party size is four characters, not six. Source of truth: `src/game/party.ts` (`PARTY_SIZE`).
+- The campaign roster is fixed to Old Man + Rat King. The historical `Character[]` / `GameState.party` shape remains for combat and save compatibility; see [`CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md).
 - Phaser 4 is the primary combat painter; `?phaser=0` is the Canvas 2D rollback backend.
 - Seeded gameplay RNG lives in `src/game/rng.ts`; gameplay code should not use `Math.random()`.
 - Do not casually rename enemy, item, perk, NPC, or floor IDs — they may be save-compatible identifiers.

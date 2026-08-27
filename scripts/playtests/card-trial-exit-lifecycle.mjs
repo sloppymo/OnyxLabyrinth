@@ -9,7 +9,7 @@
  * start Fight 1 -> play one real card action then pass every turn (fastest
  * deterministic way to reach a natural win/wipe without editing source or
  * hacking private fields) -> fight ends, back in lobby -> Escape to exit to
- * title -> drive title -> New Game -> party creation -> town -> dungeon
+ * title -> drive title -> New Game -> prologue -> town -> dungeon
  * (manually, NOT via lib.mjs bootToDungeon, since that does page.goto and
  * would defeat the "one session" point) -> `__onyxDebug.startCombat()` for
  * real campaign combat -> assert no Card Trial residue.
@@ -80,10 +80,6 @@ async function driveToDungeonInPlace(page, { maxSteps = 40 } = {}) {
       case "prologue":
         await press(page, "Escape");
         await waitForIdle(page, 500);
-        break;
-      case "party_creation":
-        await press(page, "Enter");
-        await waitForIdle(page);
         break;
       case "town": {
         const body = await page.evaluate(() => document.body.innerText);

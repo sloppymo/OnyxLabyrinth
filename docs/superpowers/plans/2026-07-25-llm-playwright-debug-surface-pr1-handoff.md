@@ -1,5 +1,10 @@
 # OnyxLabyrinth — PR-1 Implementation Handoff: Snapshot Core
 
+> **Current roster note (2026-08-27):** This handoff is historical. Its
+> debug-flow examples mention the retired party-creation/roster-selection
+> surface; current browser scripts start with the fixed Old Man + Rat King duo.
+> See [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 Copy everything below the line into the implementation agent's session (or open this file
 directly — it's checked into the repo). You have full repo access. **Implement only what §A
 below scopes.** The rest of this doc is context, not a to-do list for this pass.

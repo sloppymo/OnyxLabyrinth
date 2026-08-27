@@ -24,7 +24,8 @@ import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { applyKilledNPCs } from "./npc";
 import { applyLootedTreasures } from "./loot-restore";
 import { cumulativeXpToReachLevel } from "./leveling";
-import { PARTY_SIZE, sortPartyByFormation, type Character } from "./party";
+import { LEGACY_PARTY_SIZE, sortPartyByFormation, type Character } from "./party";
+import { normalizeLoadedDuo } from "./playable-duo";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
@@ -32,11 +33,11 @@ const SLOT_COUNT = 10;
 /** Current save format version. Bump when the serialized shape changes. */
 const SAVE_VERSION = 18;
 
-/** v9 → v10 historical helper: first PARTY_SIZE characters by formation order —
+/** v9 → v10 historical helper: first legacy-roster characters by formation order —
  *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
 function firstFourIdsByFormation(party: Character[]): string[] {
   return sortPartyByFormation(party)
-    .slice(0, Math.min(PARTY_SIZE, party.length))
+    .slice(0, Math.min(LEGACY_PARTY_SIZE, party.length))
     .map((c) => c.id);
 }
 
@@ -246,22 +247,22 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     version = 13;
   }
   if (version === 13) {
-    // v13 → v14: the party is capped at PARTY_SIZE — no 6-person roster, no bench.
+    // v13 → v14: the retired roster was capped at four — no 6-person roster.
     // Every save reaching this step already has activeCharIds (set natively
     // in v10+ saves, or backfilled by the v9→v10 step above), so trim the
     // roster down to those members. The other characters' equipped gear comes
     // back to inventory rather than vanishing; their formationSlot is
-    // renumbered densely (0..PARTY_SIZE-1) in their prior formation order.
+    // renumbered densely (0..3) in their prior formation order.
     const oldParty = (ser.party as Character[] | undefined) ?? [];
-    if (oldParty.length > PARTY_SIZE) {
+    if (oldParty.length > LEGACY_PARTY_SIZE) {
       const partyIds = new Set(oldParty.map((c) => c.id));
       const rawActive = ((ser.activeCharIds as string[] | undefined) ?? []).filter((id) =>
         partyIds.has(id)
       );
-      const keepIds = new Set(rawActive.slice(0, PARTY_SIZE));
-      if (keepIds.size < PARTY_SIZE) {
+      const keepIds = new Set(rawActive.slice(0, LEGACY_PARTY_SIZE));
+      if (keepIds.size < LEGACY_PARTY_SIZE) {
         for (const c of sortPartyByFormation(oldParty)) {
-          if (keepIds.size >= PARTY_SIZE) break;
+          if (keepIds.size >= LEGACY_PARTY_SIZE) break;
           keepIds.add(c.id);
         }
       }
@@ -601,17 +602,38 @@ export function deserialize(json: string): GameState | null {
       }
     }
 
+    const savedParty = ser.party.map((c) => ({
+      ...c,
+      stats: { ...c.stats },
+      status: [...c.status],
+      knownSpellIds: [...c.knownSpellIds],
+      perkIds: [...c.perkIds],
+    }));
+    const loadedDuo = normalizeLoadedDuo(savedParty);
+    if (!loadedDuo) return null;
+
+    const savedEquipment = ser.equipment ?? {};
+    const equipment = Object.fromEntries(
+      loadedDuo.party.map((character) => {
+        const sourceId = loadedDuo.sourceIdByDuoId[character.id as "old-man" | "rat-king"];
+        const sourceLoadout = sourceId ? savedEquipment[sourceId] : undefined;
+        return [character.id, sourceLoadout ?? defaultLoadoutForCharacter(character)];
+      })
+    );
+    const savedSwimSkill = ser.swimSkill ?? {};
+    const swimSkill = Object.fromEntries(
+      loadedDuo.party.flatMap((character) => {
+        const sourceId = loadedDuo.sourceIdByDuoId[character.id as "old-man" | "rat-king"];
+        const value = sourceId ? savedSwimSkill[sourceId] : undefined;
+        return value === undefined ? [] : [[character.id, value]];
+      })
+    );
+
     return {
       mode: ser.mode,
       floor,
       player: { ...ser.player },
-      party: ser.party.map((c) => ({
-        ...c,
-        stats: { ...c.stats },
-        status: [...c.status],
-        knownSpellIds: [...c.knownSpellIds],
-        perkIds: [...c.perkIds],
-      })),
+      party: loadedDuo.party,
       explored: stale ? new Set() : new Set(ser.explored),
       exploredByFloor,
       stepsSinceEncounter: ser.stepsSinceEncounter,
@@ -630,7 +652,7 @@ export function deserialize(json: string): GameState | null {
       pendingTrap: null,
       persistentBuffs: ser.persistentBuffs?.map((b) => ({ ...b })) ?? [],
       pendingClimax: ser.pendingClimax,
-      swimSkill: ser.swimSkill ? { ...ser.swimSkill } : {},
+      swimSkill,
       talkedToNPCs: ser.talkedToNPCs ? [...ser.talkedToNPCs] : [],
       npcDisposition: ser.npcDisposition ? { ...ser.npcDisposition } : {},
       killedNPCs,
@@ -641,11 +663,7 @@ export function deserialize(json: string): GameState | null {
       inDarkness: ser.inDarkness ?? false,
       inAntimagic: ser.inAntimagic ?? false,
       lastDungeon: ser.lastDungeon ?? null,
-      equipment:
-        ser.equipment ??
-        Object.fromEntries(
-          ser.party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
-        ),
+      equipment,
       deepestFloorReached: ser.deepestFloorReached ?? floor.id,
       hasCompletedEnding: ser.hasCompletedEnding ?? false,
       keyItems: ser.keyItems ? [...ser.keyItems] : [],
@@ -694,7 +712,9 @@ function getSlotMeta(slot: number): SaveSlotMeta {
       floorId: ser.floorId,
       floorName: floor?.name ?? `Floor ${ser.floorId}`,
       dayCount: ser.dayCount,
-      partySummary: `${livingCount}/${ser.party.length} alive`,
+      // Slot metadata is read before deserialize. Keep legacy saves from
+      // leaking their retired roster names into the current UI.
+      partySummary: `Old Man + Rat King (${Math.min(livingCount, 2)}/2 alive)`,
       gold: ser.partyGold ?? 0,
       worldYear: ser.worldYear ?? 3847,
       savedAt: ser.savedAt,
@@ -741,7 +761,7 @@ export function isSlotEmpty(slot: number): boolean {
 }
 
 export function autoSave(state: GameState, inArenaSession = false): void {
-  // Title / party creation / arena cannot be resumed safely: no controller is
+  // Title / arena cannot be resumed safely: no controller is
   // reconstructed for them on boot. Keep the previous auto-save instead.
   // Overlays no longer flip GameState.mode to "title"; perk selection is
   // skipped at the beforeunload call site because that queue is not persisted.
@@ -754,7 +774,6 @@ export function autoSave(state: GameState, inArenaSession = false): void {
   if (
     inArenaSession ||
     state.mode === "title" ||
-    state.mode === "party_creation" ||
     state.mode === "arena"
   ) {
     return;

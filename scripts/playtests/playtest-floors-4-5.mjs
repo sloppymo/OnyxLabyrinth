@@ -77,7 +77,7 @@ async function snap(page) {
 async function bootToTown(page) {
   await page.goto(BASE, { waitUntil: "networkidle" });
   await wait(400);
-  // Route-driven: prologue (Escape), party_creation (Enter default), stop at town.
+  // Route-driven: prologue (Escape), then stop at town with the fixed duo.
   for (let i = 0; i < 40; i++) {
     const route = await page.evaluate(() => window.__onyxDebug.snapshot().route);
     if (route === "town") break;
@@ -87,9 +87,6 @@ async function bootToTown(page) {
     } else if (route === "prologue") {
       await press(page, "Escape");
       await wait(220);
-    } else if (route === "party_creation") {
-      await press(page, "Enter");
-      await waitForIdle(page);
     } else {
       await press(page, "Enter");
       await wait(300);
@@ -279,7 +276,7 @@ const timings = {};
 // ============================================================================
 // BOOT + SHOP DEPTH UNLOCK (Workstream C)
 // ============================================================================
-log("=== BOOT: title -> New Game -> Default Party -> town ===");
+log("=== BOOT: title -> New Game -> fixed duo -> town ===");
 let st = await bootToTown(page);
 await shot(page, "00-boot-town.png");
 log("boot", JSON.stringify({ ...st, body: undefined }));

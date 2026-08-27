@@ -1,5 +1,10 @@
 # OnyxLabyrinth Playtest Report
 
+> **Historical roster note (2026-08-27):** This earlier report tested the now
+> retired character-creation/default-roster flow. Its screenshots and checklist
+> are preserved for history, but current work must follow the fixed Old Man + Rat
+> King contract in [`CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md).
+
 > **Doc hygiene (2026-07-13):** This is the earlier polish-focused E2E report. For design priority and stale-finding callouts, prefer [`PLAYTEST-DESIGN-REVIEW.md`](PLAYTEST-DESIGN-REVIEW.md) and [`docs/AGENT-READING-LIST.md`](docs/AGENT-READING-LIST.md). Re-run `npm test` for current counts (historically ~498 here; tree later reported 585+). Footer / Tech shortcut / mobile map issues below were **still present** in code as of the 2026-07-13 revalidation (`combat-select-action-view.ts` still shows `A/M/D/I/R`; `combat-ui.ts` `handleMenuKey` still has no `t` → technique).
 
 ## Executive Summary

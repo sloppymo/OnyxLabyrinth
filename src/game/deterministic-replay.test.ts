@@ -12,7 +12,8 @@ import type {
 } from "./combat-types";
 import { setBarkRngForTests } from "./combat-barks";
 import { setCombatBarkLibraryRngForTests } from "./combat-bark-runtime";
-import { createDefaultParty, type Character } from "./party";
+import { type Character } from "./party";
+import { createCombatTestRoster } from "./test-roster";
 import { ALL_SPELLS } from "../data/spells";
 import { ALL_ITEMS } from "../data/items";
 import type { EnemyDef } from "../data/enemies";
@@ -80,7 +81,7 @@ function makeToughEnemy(id: string, name: string): EnemyInstance {
 
 /**
  * Build a combat state from a fixed party. The party is created ONCE per
- * test (outside runReplay) and reused across runs, because createDefaultParty
+ * test (outside runReplay) and reused across runs, because the test roster
  * rolls stats with unseeded Math.random() — building it inside each run would
  * inject non-determinism from outside the seeded RNG and defeat the test.
  * createCombatState deep-clones the party, so reusing the same source array
@@ -136,10 +137,10 @@ function runReplay(party: Character[], seed: number, maxRounds = 12): ReplaySnap
 // --- Tests ------------------------------------------------------------------
 
 describe("deterministic replay", () => {
-  // One fixed party for the whole suite. createDefaultParty() rolls stats
+  // One fixed roster for the whole suite. The test roster rolls stats
   // with unseeded Math.random(), so we build it once and reuse the snapshot;
   // createCombatState deep-clones it into each run.
-  const party = createDefaultParty();
+  const party = createCombatTestRoster();
 
   it("same seed produces identical combat outcomes", () => {
     const a = runReplay(party, 12345);
@@ -225,7 +226,7 @@ describe("deterministic replay (live path via getGameplayRng default)", () => {
   // finally block.
   afterEach(() => resetGameplayRng());
 
-  const party = createDefaultParty();
+  const party = createCombatTestRoster();
 
   it("same seed produces identical combat outcomes through the default-rng path", () => {
     const a = runReplayLivePath(party, 12345);

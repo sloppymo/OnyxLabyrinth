@@ -110,7 +110,7 @@ function section(name) {
 
 try {
   // =========================================================================
-  section("1. Cold open — title / prologue / party creation");
+  section("1. Cold open — title / prologue / fixed duo entry");
   await freshBoot();
   let st = await snap(page);
   await shot("01-title.png", "boot title screen");
@@ -124,30 +124,20 @@ try {
   // Two-stage skip: Escape may only advance one beat.
   for (let i = 0; i < 6; i++) {
     st = await snap(page);
-    if (st.route === "party_creation") break;
+    if (st.route === "town") break;
     await press(page, "Escape");
     await wait(400);
   }
   st = await snap(page);
-  await shot("04-party-choice.png", "party creation choice screen");
-
-  // First key after open is swallowed by justOpened — burn it, then open the editor.
-  await press(page, "ArrowDown");
-  await wait(150);
-  await press(page, "c"); // custom editor
-  await wait(300);
-  await shot("05-party-editor.png", "six-slot custom party editor");
-  await press(page, "Escape"); // back to choice
-  await wait(300);
-  await press(page, "d"); // default party -> town
+  await shot("04-town-entry.png", "fixed Old Man and Rat King town entry");
   await waitForIdle(page, 3000);
   st = await snap(page);
-  await shot("06-town-main.png", `town hub main menu (route=${st.route})`);
+  await shot("05-town-main.png", `town hub main menu (route=${st.route})`);
 
   // One sub-screen: Shop.
   await press(page, "$");
   await wait(400);
-  await shot("07-town-shop.png", "town shop screen");
+  await shot("06-town-shop.png", "town shop screen");
   await press(page, "Escape");
   await wait(300);
 } catch (e) {

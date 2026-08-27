@@ -2,7 +2,7 @@
  * Save/Load menu UI controller — design doc Section 13.
  *
  * Opens on Esc from dungeon mode. Shows 10 save slots with metadata
- * (floor, day, party status, timestamp). The player can:
+ * (floor, day, duo status, timestamp). The player can:
  *   - Save to a slot (overwrites)
  *   - Load from a slot (replaces current game state)
  *   - Delete a slot
@@ -42,7 +42,7 @@ export interface SaveControllerOptions {
   onLoaded: (state: GameState) => void;
   onClose: () => void;
   /** Mode to write into a save when the controller is running in an overlay
-   *  (title / party_creation). Saves from the save menu should resume the
+   *  (title). Saves from the save menu should resume the
    *  mode that was active before the menu opened, not the overlay mode. */
   modeBeforeSave?: GameMode;
 }
@@ -209,7 +209,7 @@ export class SaveController {
     // When saving from an overlay mode, write the actual underlying mode so
     // the save can be resumed later.
     const saveMode =
-      this.state.mode === "title" || this.state.mode === "party_creation"
+      this.state.mode === "title"
         ? this.modeBeforeSave
         : this.state.mode;
     const saveState = { ...this.state, mode: saveMode };
@@ -341,7 +341,7 @@ export class SaveController {
     const classSummary = this.state.party.map((c) => c.class[0]).join("");
     lines.push(
       `<div class="save-current">` +
-      `Current: F${this.state.floor.id} ${this.state.floor.name} · ${aliveCount}/${this.state.party.length} alive [${classSummary}] · ${this.state.partyGold}g` +
+      `Current: F${this.state.floor.id} ${this.state.floor.name} · Old Man + Rat King ${aliveCount}/${this.state.party.length} alive [${classSummary}] · ${this.state.partyGold}g` +
       `</div>`
     );
 

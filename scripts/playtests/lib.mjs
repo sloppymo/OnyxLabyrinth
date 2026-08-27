@@ -5,7 +5,7 @@
  * The important change is `snap()`: instead of hand-assembling a state dump in
  * `page.evaluate`, it calls the game's own `__onyxDebug.snapshot()` (see
  * src/debug/snapshot.ts), so every script sees the same fields — including
- * `route`, which distinguishes the four overlays that all borrow game mode
+ * `route`, which distinguishes the overlays that borrow game mode
  * "title", and `availableActions`, which lists the legal verbs right now.
  *
  * Requires the page to be loaded with `?debug=1`.
@@ -375,7 +375,9 @@ export function writeReport(outDir, report) {
 }
 
 /**
- * Boot from the title screen into the dungeon along the real key path.
+ * Boot from the title screen through the prologue and into the dungeon along
+ * the real key path. The campaign roster is created before the town screen;
+ * there is no character-selection step.
  *
  * Route-driven rather than a fixed key sequence: each iteration reads
  * `snapshot().route` and presses whatever that screen needs. That makes it
@@ -406,12 +408,6 @@ export async function bootToDungeon(page, url, { maxSteps = 40 } = {}) {
         // loop iteration's Escape instead of stalling here for 3s.
         await press(page, "Escape");
         await waitForIdle(page, 500);
-        break;
-      case "party_creation":
-        // Confirms the default party -> openTown(), which uses the real
-        // transitionToMode fade tracked by modeTransitionPending.
-        await press(page, "Enter");
-        await waitForIdle(page);
         break;
       case "town": {
         const body = await page.evaluate(() => document.body.innerText);

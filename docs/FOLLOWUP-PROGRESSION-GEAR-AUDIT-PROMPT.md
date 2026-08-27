@@ -1,5 +1,8 @@
 # Prompt: Progression/Scaling/Perk/Gear Audit + FF6-Style Equip Screen
 
+> The campaign roster is now fixed to Old Man + Rat King. Any character-
+> creation language in this historical prompt refers to the retired build.
+
 > **⚠ Completed 2026-07-18 — historical prompt.** Both parts were delivered
 > (report: [`PROGRESSION-GEAR-AUDIT.md`](PROGRESSION-GEAR-AUDIT.md); Equip screen
 > shipped). Most of its findings were then fixed by the 2026-07-24 campaign

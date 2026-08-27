@@ -54,6 +54,7 @@ async function snap(page) {
     const d = window.__onyxDebug;
     if (!d?.state) return { hasDebug: false };
     const s = d.state;
+    const route = d.snapshot?.().route ?? null;
     const msg = document.querySelector("#message");
     const msgText = (msg?.textContent || "").replace(/\s+/g, " ").trim();
     const panel = document.querySelector("#combat-panel");
@@ -63,6 +64,7 @@ async function snap(page) {
     return {
       hasDebug: true,
       mode: s.mode,
+      route,
       x: s.player?.x,
       y: s.player?.y,
       facing: s.player?.facing,
@@ -192,29 +194,29 @@ async function main() {
   await padBtn(page, BTN.a);
   await wait(300);
   st = await snap(page);
-  log(`after title A: mode=${st.mode}`);
+  log(`after title A: mode=${st.mode} route=${st.route}`);
   await shot(page, "02-after-title-a");
-  if (st.mode !== "party_creation" && !/Default Party|Assemble/i.test(st.body + st.panel)) {
-    // Try New Game hotkey fallback then pad again
+  if (st.route === "title") {
+    // Try New Game hotkey fallback if the first gamepad edge was missed.
     await pressKey(page, "n");
     await wait(300);
     st = await snap(page);
   }
 
-  // --- Party choice: ensure Default Party selected, A confirm ---
-  // Choice screen has Default (top) and Create — pad A confirms selection
-  await padBtn(page, BTN.a);
-  await wait(400);
-  st = await snap(page);
-  log(`after party A: mode=${st.mode}`);
-  await shot(page, "03-town-or-party");
-
-  if (st.mode === "party_creation") {
-    // Still on choice or editor — push D via keyboard if pad didn't hit Default
-    await pressKey(page, "d");
-    await wait(400);
+  // --- Prologue: skip to the fixed duo's town entry ---
+  for (let i = 0; i < 20 && st.route !== "town"; i++) {
+    if (st.route === "prologue") {
+      await pressKey(page, "Escape");
+    } else if (st.route === "title") {
+      await pressKey(page, "n");
+    } else {
+      await pressKey(page, "Enter");
+    }
+    await wait(250);
     st = await snap(page);
   }
+  log(`after prologue: mode=${st.mode} route=${st.route}`);
+  await shot(page, "03-town");
 
   if (st.mode !== "town") {
     find("P0", "Failed to reach town via pad", `mode=${st.mode} body=${st.body.slice(0, 200)}`);

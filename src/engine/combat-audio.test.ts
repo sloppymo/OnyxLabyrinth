@@ -6,7 +6,7 @@ import {
   idsForEvent,
 } from "./combat-audio";
 import type { CombatState } from "../game/combat-types";
-import { createCharacter } from "../game/party";
+import { createCharacterRecord } from "../game/party";
 
 function bareState(partial: Partial<CombatState> = {}): CombatState {
   return {
@@ -21,7 +21,7 @@ function bareState(partial: Partial<CombatState> = {}): CombatState {
 
 describe("idsForEvent layering", () => {
   it("physical hit stays single-layer for non-caster classes", () => {
-    const fighter = createCharacter("a", "Bram", "Human", "Neutral", "Fighter", 0);
+    const fighter = createCharacterRecord("a", "Bram", "Human", "Neutral", "Fighter", 0);
     const ids = idsForEvent(
       { type: "attack", actorId: "a", targetId: "e", damage: 5, crit: false, range: "short" },
       bareState({ party: [fighter] })
@@ -30,7 +30,7 @@ describe("idsForEvent layering", () => {
   });
 
   it("Mage melee layers attackHit with soft physical; crit uses criticalHit", () => {
-    const mage = createCharacter("m", "Aria", "Human", "Neutral", "Mage", 0);
+    const mage = createCharacterRecord("m", "Aria", "Human", "Neutral", "Mage", 0);
     const normal = idsForEvent(
       { type: "attack", actorId: "m", targetId: "e", damage: 5, crit: false, range: "short" },
       bareState({ party: [mage] })
@@ -44,7 +44,7 @@ describe("idsForEvent layering", () => {
   });
 
   it("Priest melee layers divine under attackHit", () => {
-    const priest = createCharacter("p", "Coda", "Human", "Neutral", "Priest", 0);
+    const priest = createCharacterRecord("p", "Coda", "Human", "Neutral", "Priest", 0);
     const ids = idsForEvent(
       { type: "attack", actorId: "p", targetId: "e", damage: 4, crit: false, range: "short" },
       bareState({ party: [priest] })

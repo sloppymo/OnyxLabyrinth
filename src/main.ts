@@ -285,8 +285,6 @@ const app = createApplication({
     audio: {
       startTitleMusic: () => audio.startTitleMusic(),
       stopTitleMusic: () => audio.stopTitleMusic(),
-      startPartyCreationMusic: () => audio.startPartyCreationMusic(),
-      stopPartyCreationMusic: () => audio.stopPartyCreationMusic(),
       startTownMusic: () => audio.startTownMusic(),
     },
     title: {
@@ -297,7 +295,7 @@ const app = createApplication({
         resetEncounterFamilyMemory();
         openPrologue(() => {
           audio.stopTitleMusic();
-          openPartyCreation(() => openTown({ showIntroHint: true }));
+          openTown({ showIntroHint: true });
         });
       },
       continue: (loaded) => applyLoadedGameState(loaded),
@@ -306,21 +304,6 @@ const app = createApplication({
     town: {
       enterDungeon: () => enterDungeonFromTown(),
       openSave: () => overlays.openSave(),
-      reformParty: () => openPartyCreation(() => openTown()),
-    },
-    party: {
-      confirm: (party, onDone) => {
-        state.party = party;
-        state.equipment = Object.fromEntries(
-          party.map((c) => [c.id, defaultLoadoutForCharacter(c)])
-        );
-        onDone();
-      },
-      cancel: (previousMode, onDone) => {
-        if (previousMode === "title") audio.startTitleMusic();
-        else if (previousMode === "town") audio.startTownMusic();
-        onDone();
-      },
     },
     gameOver: {
       continue: () => {
@@ -332,7 +315,7 @@ const app = createApplication({
       end: () => {
         setMode(state, "dungeon");
         showMode("dungeon", mapVisible);
-        setMessage(`The party rests. Day ${state.dayCount}. HP and SP restored.`);
+        setMessage(`Old Man and Rat King rest. Day ${state.dayCount}. HP and SP restored.`);
       },
     },
     arena: {
@@ -438,8 +421,8 @@ function showMode(mode: GameMode, fullMapVisible = mapVisible): void {
 
 /** First dungeon entry this page session — keyboard discoverability door hint. */
 let shownDungeonKeyboardHint = false;
-/** First-ever town visit this session (right after party creation) —
- *  orientation hint pointing at Enter Dungeon so a new player isn't left
+/** First-ever town visit this session — orientation hint pointing at Enter
+ *  Dungeon so a new player isn't left
  *  facing eight menu options with no stated objective. */
 let shownTownIntro = false;
 /**
@@ -620,15 +603,9 @@ function returnToTown(): void {
   openTown();
 }
 
-// --- Party creation ------------------------------------------------------
-function openPartyCreation(onDone: () => void): void {
-  screens.openPartyCreation(onDone);
-}
-
 // --- New Game prologue -----------------------------------------------------
-// Skippable SNES-style black-field narration shown once, between New Game's
-// state reset and party creation. Never shown by Continue / Arena / Reform
-// Party. This is a real title-mode screen, not a UiStack overlay.
+// Skippable SNES-style black-field narration shown once after New Game's
+// state reset. This is a real title-mode screen, not a UiStack overlay.
 let prologueController: PrologueController | null = null;
 
 function openPrologue(onDone: () => void): void {
@@ -655,8 +632,8 @@ let endingController: EndingController | null = null;
 
 function openEnding(): void {
   if (mapVisible) toggleMap();
-  // Persist before the title-mode flip. autoSave() refuses title (and
-  // party_creation / arena) because those screens are not resumable.
+  // Persist before the title-mode flip. autoSave() refuses title and arena
+  // because those screens are not resumable.
   // Direct-from-combat still has mode "combat" here; perk-then-ending now
   // keeps dungeon/arena under the perk layer, so this write can land.
   // onDone below is still the guaranteed persist for both exits.
@@ -691,7 +668,7 @@ function openEnding(): void {
  * in-game Save-menu Load, and debug loadSave must all call this — do not
  * reconstruct state with a second Object.assign path.
  *
- * Overlays / party creation / arena are not resumable — see
+ * Overlays / arena are not resumable — see
  * normalizeLoadedMode.
  */
 function applyLoadedGameState(
@@ -858,15 +835,15 @@ async function startCombat(
     inventory: state.inventory,
   });
   // Namanda's Blessing (Church of Saint Namanda, game/namanda.ts): a flat
-  // party-wide armor bonus while the dungeon buff is active. Applied here,
+  // duo-wide armor bonus while the dungeon buff is active. Applied here,
   // once, so every real fight (dungeon encounters, NPC fights, the stairs
   // guardian, Arena) picks it up uniformly instead of threading a flag
   // through each of their individual createCombatFromEncounter call sites.
   applyNamandaBlessing(state, combat);
   // The one authored temporary companion (game/companion.ts) rides the same
-  // summonedAllies channel as the Priest's BAMORDI/SOCORDI summons — a
-  // simple AI-controlled combatant, not a real party slot — so it never
-  // touches PARTY_SIZE/formation/save-schema assumptions. Never follows
+  // summonedAllies channel as the old summon spells — a simple AI-controlled
+  // combatant, not one of the two protagonists — so it never changes the
+  // fixed duo's formation or save schema. Never follows
   // into Arena, matching how boss music/ending never fire there either.
   if (!screens.hasArena) {
     const ally = companionAsSummonedAlly(state);
@@ -1658,7 +1635,6 @@ function currentRouteFlags(): ControllerRouteContext {
     hasTown: screens.hasTown,
     hasCamp: screens.hasCamp,
     hasGameOver: screens.hasGameOver,
-    hasPartyCreation: screens.hasPartyCreation,
     hasPrologue: !!prologueController,
     hasEnding: !!endingController,
     hasTitle: screens.hasTitle,
@@ -1721,9 +1697,6 @@ function dispatchControllerRoute(route: BaseRouteKind, event: ControllerInputEve
       return;
     case "game_over":
       screens.handleGameOver(event);
-      return;
-    case "party_creation":
-      screens.handlePartyCreation(event);
       return;
     case "prologue": {
       const key = controllerEventToMenuKey(event);
@@ -1863,7 +1836,7 @@ let arenaFloor = 1;
 let arenaStartFloor = 1;
 
 function startArena(targetLevel: number): void {
-  // Reset to a fresh default party and the first arena wave.
+  // Reset to the fixed protagonist duo and the first arena wave.
   Object.assign(state, createGameState(getFloors()[0]!));
   resetEncounterFamilyMemory();
   inArena = true;
@@ -2122,7 +2095,7 @@ function toggleMap(): void {
 let prevMode: GameMode | null = null;
 
 function loop() {
-  // Manage BGM beds on mode transitions (maze / town / party_creation).
+  // Manage BGM beds on mode transitions (maze / town).
   if (state.mode !== prevMode) {
     if (state.mode === "dungeon") {
       audio.startDungeon();
@@ -2136,13 +2109,6 @@ function loop() {
       audio.startTownMusic();
     } else if (prevMode === "town") {
       audio.stopTownMusic();
-    }
-    if (state.mode === "party_creation") {
-      // Party creation music is started by openPartyCreation()
-      // Don't start it here to avoid double-starting
-    } else if (prevMode === "party_creation") {
-      // Party creation music is stopped by the controller callbacks
-      // Don't stop it here to avoid double-stopping
     }
     prevMode = state.mode;
   }
@@ -2488,8 +2454,8 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     if (overlays.hasOpenOverlay() || prologueController || endingController) {
       throw new Error("jumpTo: refuse while an overlay controller is open");
     }
-    if (screens.hasCamp || screens.hasGameOver || screens.hasArena || screens.hasPartyCreation) {
-      throw new Error("jumpTo: refuse while camp/game-over/arena/party-creation is live");
+    if (screens.hasCamp || screens.hasGameOver || screens.hasArena) {
+      throw new Error("jumpTo: refuse while camp/game-over/arena is live");
     }
 
     const floor = findFloor(opts.floorId);
@@ -2543,8 +2509,7 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       endingController ||
       screens.hasCamp ||
       screens.hasGameOver ||
-      screens.hasArena ||
-      screens.hasPartyCreation
+      screens.hasArena
     ) {
       throw new Error("loadSave: refuse while an overlay/hub controller is open");
     }

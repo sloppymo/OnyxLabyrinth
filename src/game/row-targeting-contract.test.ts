@@ -11,7 +11,7 @@ import {
   createCombatState,
 } from "./combat";
 import type { CombatState, EnemyInstance, Rng } from "./combat-types";
-import { createCharacter } from "./party";
+import { createCharacterRecord } from "./party";
 import { ALL_SPELLS } from "../data/spells";
 import { ITEMS_BY_ID } from "../data/items";
 import type { EnemyDef } from "../data/enemies";
@@ -43,7 +43,7 @@ function makeEnemy(instanceId: string, row: "front" | "back", hp: number): Enemy
 }
 
 function makeFighter(formationSlot: number): CombatState["party"][number] {
-  const fighter = createCharacter("char-0", "Fighter", "Human", "Neutral", "Fighter", formationSlot);
+  const fighter = createCharacterRecord("char-0", "Fighter", "Human", "Neutral", "Fighter", formationSlot);
   fighter.level = 5;
   fighter.stats.str = 14;
   fighter.maxHp = 40;
@@ -55,7 +55,7 @@ function makeCombatWithLoadout(
   fighter: CombatState["party"][number],
   enemies: { front: EnemyInstance[]; back: EnemyInstance[] }
 ): CombatState {
-  const priest = createCharacter("char-1", "Priest", "Human", "Neutral", "Priest", 1);
+  const priest = createCharacterRecord("char-1", "Priest", "Human", "Neutral", "Priest", 1);
   priest.level = 5; priest.stats.pie = 12; priest.maxHp = 30; priest.hp = 30; priest.maxSp = 24; priest.sp = 24;
   return createCombatState(
     [fighter, priest],

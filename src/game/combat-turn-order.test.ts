@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { remainingTurnOrder } from "./combat-turn-order";
 import { beginRound, createCombatState } from "./combat";
 import type { CombatState, EnemyInstance, Rng, TurnQueueEntry } from "./combat-types";
-import { createCharacter, type CharacterClass } from "./party";
+import { createCharacterRecord, type CharacterClass } from "./party";
 import type { EnemyDef } from "../data/enemies";
 import { ALL_SPELLS } from "../data/spells";
 
@@ -45,7 +45,7 @@ function makeParty(count = 2, classes?: CharacterClass[]) {
   const party = [];
   for (let i = 0; i < count; i++) {
     party.push(
-      createCharacter(
+      createCharacterRecord(
         `char-${i}`,
         i === 0 ? "Aria" : "Dell",
         "Human",

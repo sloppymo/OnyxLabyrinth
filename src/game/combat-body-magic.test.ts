@@ -2,7 +2,7 @@
  * Shrink + Giant Strength body-magic spells.
  */
 import { describe, expect, it } from "vitest";
-import { createCharacter, applyCombatPartyResult } from "./party";
+import { createCharacterRecord, applyCombatPartyResult } from "./party";
 import { createCombatState, resolvePlayerTurn, endRound } from "./combat";
 import { resolveEnemyAction } from "./combat-enemy";
 import { spellById, ALL_SPELLS } from "../data/spells";
@@ -71,7 +71,7 @@ describe("Shrink + Giant Strength spells", () => {
   });
 
   it("Shrink applies shrunk for the rest of combat", () => {
-    const mage = createCharacter("m0", "Mage", "Human", "Neutral", "Mage", 0);
+    const mage = createCharacterRecord("m0", "Mage", "Human", "Neutral", "Mage", 0);
     mage.sp = 99;
     mage.maxSp = 99;
     mage.knownSpellIds = ["mage-shrink"];
@@ -92,8 +92,8 @@ describe("Shrink + Giant Strength spells", () => {
   });
 
   it("Giant Strength lasts 3 rounds", () => {
-    const priest = createCharacter("p0", "Priest", "Human", "Neutral", "Priest", 0);
-    const fighter = createCharacter("f0", "Fighter", "Human", "Neutral", "Fighter", 1);
+    const priest = createCharacterRecord("p0", "Priest", "Human", "Neutral", "Priest", 0);
+    const fighter = createCharacterRecord("f0", "Fighter", "Human", "Neutral", "Fighter", 1);
     priest.sp = 99;
     priest.maxSp = 99;
     priest.knownSpellIds = ["priest-giant-strength"];
@@ -126,7 +126,7 @@ describe("Shrink + Giant Strength spells", () => {
   });
 
   it("Giant Strength boosts outgoing and incoming damage", () => {
-    const fighter = createCharacter("f0", "Fighter", "Human", "Neutral", "Fighter", 0);
+    const fighter = createCharacterRecord("f0", "Fighter", "Human", "Neutral", "Fighter", 0);
     fighter.status = ["giantStrength"];
     const s = createCombatState(
       [fighter],
@@ -141,8 +141,8 @@ describe("Shrink + Giant Strength spells", () => {
   });
 
   it("Dispel Magic clears Shrink and Giant Strength", () => {
-    const mage = createCharacter("m0", "Mage", "Human", "Neutral", "Mage", 0);
-    const fighter = createCharacter("f0", "Fighter", "Human", "Neutral", "Fighter", 1);
+    const mage = createCharacterRecord("m0", "Mage", "Human", "Neutral", "Mage", 0);
+    const fighter = createCharacterRecord("f0", "Fighter", "Human", "Neutral", "Fighter", 1);
     mage.sp = 99;
     mage.maxSp = 99;
     mage.knownSpellIds = ["mage-dispel-magic"];
@@ -167,8 +167,8 @@ describe("Shrink + Giant Strength spells", () => {
   });
 
   it("does not carry Giant Strength into the next fight", () => {
-    const priest = createCharacter("p0", "Priest", "Human", "Neutral", "Priest", 0);
-    const fighter = createCharacter("f0", "Fighter", "Human", "Neutral", "Fighter", 1);
+    const priest = createCharacterRecord("p0", "Priest", "Human", "Neutral", "Priest", 0);
+    const fighter = createCharacterRecord("f0", "Fighter", "Human", "Neutral", "Fighter", 1);
     priest.sp = 99;
     priest.maxSp = 99;
     priest.knownSpellIds = ["priest-giant-strength"];
@@ -218,7 +218,7 @@ describe("Shrink + Giant Strength spells", () => {
   });
 
   it("scales Shrink when a shrunk enemy hits a summoned ally", () => {
-    const mage = createCharacter("m0", "Mage", "Human", "Neutral", "Mage", 0);
+    const mage = createCharacterRecord("m0", "Mage", "Human", "Neutral", "Mage", 0);
     const s = createCombatState(
       [mage],
       { front: [makeEnemy("rat-0", { attack: 8, ac: 0 })], back: [] },
@@ -255,7 +255,7 @@ describe("Shrink + Giant Strength spells", () => {
   });
 
   it("scales Giant Strength through plainHitDamage (counters / riposte)", () => {
-    const fighter = createCharacter("f0", "Fighter", "Human", "Neutral", "Fighter", 0);
+    const fighter = createCharacterRecord("f0", "Fighter", "Human", "Neutral", "Fighter", 0);
     fighter.status = ["giantStrength"];
     const s = createCombatState(
       [fighter],

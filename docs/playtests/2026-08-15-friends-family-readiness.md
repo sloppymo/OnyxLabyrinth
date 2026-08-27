@@ -6,12 +6,17 @@ Integration baseline: `origin/main` at `11573958c9a69875317ef952f660ee01dc707420
 Candidate checkpoint before this report: `178cd170f724c0071ec17166484fd077a16cb992`  
 Deployment target: GitHub Pages at `https://sloppymo.github.io/OnyxLabyrinth/`
 
+> **Historical roster note (2026-08-27):** This report predates the fixed
+> Old Man + Rat King campaign entry flow. References below to selecting a
+> default party or to party creation describe the build tested at the time,
+> not the current product. See [`docs/CURRENT-PRODUCT-CONTRACT.md`](../CURRENT-PRODUCT-CONTRACT.md).
+
 ## Executive result
 
 **NEARLY READY — FIX LIST PROVIDED**
 
 The candidate is a coherent production build and no P0 blocker was found. A
-fresh browser can start a game, take the default party through the prologue and
+fresh browser can start a game, take the fixed Old Man + Rat King duo through the prologue and
 town into Floor 1, fight, save, reload, and Continue without debug tools. The
 five-floor campaign, ending, hubs, companion, Iso-Spells, floor-specific
 content, new combat choreography, governed combat barks, and Formation
@@ -109,7 +114,7 @@ fixture:
 2. loaded the production-base-path preview;
 3. selected New Game;
 4. advanced the prologue;
-5. selected the default party;
+5. continued with the fixed Old Man + Rat King duo;
 6. entered town;
 7. entered Floor 1;
 8. opened Save/Load and saved slot 1;
@@ -133,7 +138,7 @@ This exercises the GitHub Pages repository subpath rather than localhost `/`.
 Verified:
 
 - initial HTML and Vite chunks load under `/OnyxLabyrinth/`;
-- title, prologue, party creation, town, dungeon, save and Continue;
+- title, prologue, fixed-duo town entry, dungeon, save and Continue;
 - Phaser combat and `?phaser=0` Canvas rollback;
 - Floor 1 guardian barrier and flee behavior;
 - Camp, Namanda, Hot Boi, and Isobel controllers;

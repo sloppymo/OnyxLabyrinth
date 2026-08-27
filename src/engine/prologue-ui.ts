@@ -1,6 +1,6 @@
 /**
  * New Game prologue — SNES-style black-field world narration shown once,
- * before party creation. This is a real title-mode screen, not a UiStack
+ * before the first town visit. This is a real title-mode screen, not a UiStack
  * overlay.
  *
  * Presentation follows docs/superpowers/specs/2026-07-25-snes-era-intro-style-guide.md:
@@ -250,7 +250,7 @@ export class PrologueController {
     this.onDone();
   }
 
-  /** Confirm on last beat — fade out before handing off to party creation. */
+  /** Confirm on last beat — fade out before handing off to town. */
   private finishWithFade(): void {
     this.phase = "finishing";
     this.caretEl.classList.remove("is-visible");

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGameState } from "../game/state";
 import { findFloor } from "../game/floor-registry";
-import { PARTY_SIZE } from "../game/party";
 import { createAdversarialTriangle, createFight } from "../game/card-trial/engine";
 import { toCombatEvents, toCombatState } from "./card-trial-presentation";
 
@@ -20,7 +19,8 @@ describe("Card Trial presentation adapter", () => {
         "old-man": { row: "back", rowEnteredAt: 2 },
       },
     });
-    expect(state.party).toHaveLength(PARTY_SIZE);
+    expect(state.party).toHaveLength(2);
+    expect(state.party.map((c) => c.id).sort()).toEqual(["old-man", "rat-king"]);
     expect(state.party.map((c) => c.id)).toEqual(before);
     expect(state.combat).toBeUndefined();
   });

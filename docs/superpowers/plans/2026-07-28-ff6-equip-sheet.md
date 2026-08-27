@@ -1,5 +1,10 @@
 # FF6 Equip Character Sheet Implementation Plan
 
+> **Current roster note (2026-08-27):** Equip is now a sheet for the fixed
+> Old Man + Rat King duo. This plan's old `PartyCreationController` reference
+> is historical implementation context; that controller and the character
+> editor were deleted. Follow [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Restyle town Equip `slot`/`item` phases into one FF6-style character sheet (idle sprite, cyan/white hierarchy, live stats comparison) per [`docs/superpowers/specs/2026-07-28-ff6-equip-sheet-design.md`](../specs/2026-07-28-ff6-equip-sheet-design.md), with no equip math changes.

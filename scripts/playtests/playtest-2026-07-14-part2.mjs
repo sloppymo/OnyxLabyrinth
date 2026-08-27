@@ -210,18 +210,12 @@ await page.goto(BASE, { waitUntil: "networkidle" });
 await wait(400);
 await press(page, "n");
 await wait(500);
-await shot(page, "80-party-choice.png");
-await press(page, "d"); // default party
-await wait(600);
-await shot(page, "81-after-default.png");
-log(`after D: ${JSON.stringify(await dbg(page))}`);
-// if still choice, Enter
-if ((await dbg(page)).mode === "party_creation") {
-  await press(page, "Enter");
-  await wait(500);
-}
+await press(page, "Escape");
+await wait(700);
+await shot(page, "80-after-prologue.png");
+log(`after prologue: ${JSON.stringify(await dbg(page))}`);
 log(`mode now ${JSON.stringify(await dbg(page))}`);
-await shot(page, "82-town.png");
+await shot(page, "81-town.png");
 
 // Town: first item Enter Dungeon at index 0?
 const townText = await body(page);

@@ -1,5 +1,9 @@
 # Prompt — OnyxLabyrinth visual improvement plan (tuned for GPT-5.6 Sol)
 
+> **Historical planning prompt.** Its older party-creation and roster language
+> is not current. Use the fixed Old Man + Rat King contract in
+> [`CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md).
+
 **How to run this:** paste everything below the line into a GPT-5.6 Sol session
 (ChatGPT, API, or Codex). Set `reasoning_effort: high` — this is a one-shot,
 quality-first planning task, not latency-sensitive, so it's worth the spend; try

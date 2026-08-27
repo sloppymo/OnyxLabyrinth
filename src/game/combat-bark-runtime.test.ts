@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { ALL_SPELLS } from "../data/spells";
 import { ENEMIES_BY_ID } from "../data/enemies";
-import { createCharacter } from "./party";
+import { createCharacterRecord } from "./party";
 import {
   beginRound,
   createCombatState,
@@ -34,9 +34,9 @@ function makeEnemy(id = "skeleton-0", hp = 100): EnemyInstance {
   };
 }
 
-function makeParty(classes: ("Fighter" | "Mage" | "Priest")[] = ["Fighter"]): ReturnType<typeof createCharacter>[] {
+function makeParty(classes: ("Fighter" | "Mage" | "Priest")[] = ["Fighter"]): ReturnType<typeof createCharacterRecord>[] {
   return classes.map((cls, i) => {
-    const c = createCharacter(`pc-${i}`, cls, "Human", "Neutral", cls, i);
+    const c = createCharacterRecord(`pc-${i}`, cls, "Human", "Neutral", cls, i);
     c.stats = { str: 12, vit: 12, agi: 12, int: 14, pie: 14, luk: 12 };
     c.maxHp = 100;
     c.hp = 100;

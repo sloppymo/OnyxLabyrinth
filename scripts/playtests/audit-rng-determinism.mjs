@@ -300,9 +300,6 @@ try {
     } else if (st.route === "prologue") {
       await page.keyboard.press("Escape");
       await wait(300);
-    } else if (st.route === "party_creation" || st.route === "party_creation_choice") {
-      await page.keyboard.press("Enter");
-      await waitForIdle(page);
     } else {
       await page.keyboard.press("Enter");
       await waitForIdle(page);

@@ -9,8 +9,8 @@ plane ends. Before they went they buried a labyrinth, and at the bottom of it a 
 last wish in existence. The labyrinth is the lock they put on it. Edgehollow is the town at the
 mouth of the hole, full of people who have been going down for longer than anyone can count.
 
-Five floors, party-based turn-based combat, permanent-ish consequences that aren't death: a party
-wipe advances the world year by 100 and wakes you back in town. Three floor bosses — **The Dead
+Five floors, two-protagonist turn-based combat, permanent-ish consequences that aren't death: a
+duo wipe advances the world year by 100 and wakes you back in town. Three floor bosses — **The Dead
 Boy**, **The Lonely Girl**, and **The Crying Man** — and the game never tells you who they were.
 
 Canon lives in
@@ -104,7 +104,7 @@ The corridor renderer is the most fragile part of the project. After any change 
 
 1. Run `npm run build` (must pass with zero TypeScript errors).
 2. Start the production preview on `http://localhost:5176/OnyxLabyrinth/`.
-3. Use the default party (`D` in party creation) and enter the dungeon.
+3. New Game creates the fixed Old Man + Rat King duo; after the prologue, enter the dungeon from Edgehollow.
 4. Check: straight corridor, open side passages, a front wall at depth 0, and the floor A/B checkerboard are all visible and not black.
 5. Trigger a combat, then flee or win, and confirm the dungeon view still renders textures correctly.
 

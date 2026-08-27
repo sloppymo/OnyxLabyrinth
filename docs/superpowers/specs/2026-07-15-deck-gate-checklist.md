@@ -1,8 +1,13 @@
 # Deck hardware gate — one-page checklist (fill by hand, on device)
 
+> **Current flow (2026-08-27):** Start from **New Game → Prologue →
+> Edgehollow**, then use Arena or the dungeon for combat. The old
+> `Default Party` step is retired; the campaign always uses Old Man + Rat King.
+> See [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 **Setup:** Steam Deck (OLED or LCD), native 1280×800, game at 1× letterbox (no forced fullscreen stretch). Hold at normal arm's length (~40–50 cm). Load https://sloppymo.github.io/OnyxLabyrinth/ or local `npx vite preview --port 5176 --base /OnyxLabyrinth/`.
 
-**Surfaces:** New Game → Default Party → Arena/dungeon combat with 2+ enemy rows; dungeon bottom HP overlay.
+**Surfaces:** New Game → Prologue → Edgehollow → Arena/dungeon combat with 2+ enemy rows; dungeon bottom duo overlay.
 
 | # | Question | Your answer |
 |---|----------|-------------|

@@ -12,7 +12,6 @@ function ctx(overrides: Partial<ControllerRouteContext> = {}): ControllerRouteCo
     hasTown: false,
     hasCamp: false,
     hasGameOver: false,
-    hasPartyCreation: false,
     hasPrologue: false,
     hasEnding: false,
     hasTitle: false,
@@ -33,9 +32,6 @@ describe("resolveControllerRoute", () => {
     expect(resolveControllerRoute(ctx({ mode: "game_over", hasGameOver: true }))).toBe(
       "game_over",
     );
-    expect(
-      resolveControllerRoute(ctx({ mode: "party_creation", hasPartyCreation: true })),
-    ).toBe("party_creation");
     expect(resolveControllerRoute(ctx({ mode: "title", hasTitle: true }))).toBe("title");
     expect(resolveControllerRoute(ctx({ mode: "arena" }))).toBe("arena");
     expect(resolveControllerRoute(ctx({ mode: "dungeon" }))).toBe("dungeon");

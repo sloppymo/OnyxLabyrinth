@@ -4,8 +4,8 @@
  *
  * Walks the game to each distinct input route and asserts that
  * `__onyxDebug.snapshot()` reports the right `route` and `availableActions` —
- * in particular that the overlays which borrow game mode "title" (save menu,
- * grimoire, NPC panel, perk select) are told apart from the title screen.
+ * in particular that transient overlays (save menu, grimoire, NPC panel, perk
+ * select) are told apart from the underlying screen.
  * Also exercises `isIdle()`/`readiness()` around a dungeon move, the
  * town<->dungeon mode fade, and combat playback — the exhaustive truth table
  * for the idle predicate itself lives in src/debug/idle.test.ts (Vitest);
@@ -77,35 +77,22 @@ log("=== new game -> prologue ===");
 await press(page, "n");
 await wait(400);
 s = await snap(page);
-check("prologue distinguished from title", s.route === "prologue" || s.route === "party_creation", `got ${s.route}`);
+check("prologue distinguished from title", s.route === "prologue", `got ${s.route}`);
 for (let i = 0; i < 14 && s.route === "prologue"; i++) {
   await press(page, "Escape");
   await wait(220);
   s = await snap(page);
 }
 
-log("=== party creation ===");
-if (s.route === "party_creation") {
-  check("party_creation route", true);
-  await press(page, "Enter");
-  // openTown() -> transitionToMode("town"): a real mode-fade, tracked by
-  // modeTransitionPending. Race-prone same as the dungeon-move check above —
-  // informational only; the hard assertion is that it settles afterward.
-  const midFadeIdle = await page.evaluate(() => window.__onyxDebug.isIdle());
-  log(`  info: isIdle() immediately after confirming the party = ${midFadeIdle}`);
-  await wait(500);
-  s = await snap(page);
-  check("idle once the town fade settles", s.idle === true, `got ${s.idle}`);
-}
-
-log("=== town ===");
+log("=== prologue -> town (fixed duo) ===");
 for (let i = 0; i < 10 && s.route !== "town"; i++) {
   await press(page, "Enter");
   await wait(300);
   s = await snap(page);
 }
 check("town route", s.route === "town", `got ${s.route}`);
-check("town party present", s.party.length > 0);
+check("fixed duo present", s.party.length === 2 &&
+  s.party.map((c) => c.id).sort().join(",") === "old-man,rat-king");
 check("town gold is a number", typeof s.gold === "number");
 await shot(page, OUT, "02-town.png");
 
@@ -131,6 +118,8 @@ check("dungeon exposes movement verbs", s.availableActions.includes("forward"));
 check("dungeon reports floor id", typeof s.floor.id === "number");
 check("position has compass", typeof s.pos.compass === "string");
 check("map omitted by default", s.map === null);
+await waitForIdle(page, 5000);
+s = await snap(page);
 check("idle at rest in the dungeon", s.idle === true, `got ${s.idle}`);
 await shot(page, OUT, "03-dungeon.png");
 
@@ -175,7 +164,7 @@ await press(page, "Escape");
 await wait(350);
 s = await snap(page);
 check("save route, not title", s.route === "save", `got ${s.route} (mode ${s.mode})`);
-check("save mode really is title", s.mode === "title", `got ${s.mode}`);
+check("save keeps the underlying dungeon mode", s.mode === "dungeon", `got ${s.mode}`);
 await shot(page, OUT, "04-save-overlay.png");
 await press(page, "Escape");
 await wait(350);
@@ -188,7 +177,7 @@ await wait(350);
 s = await snap(page);
 check("spell route, not title", s.route === "spell" || s.route === "dungeon", `got ${s.route}`);
 if (s.route === "spell") {
-  check("spell mode really is title", s.mode === "title");
+  check("spell keeps the underlying dungeon mode", s.mode === "dungeon");
   await press(page, "Escape");
   await wait(300);
 }
@@ -340,7 +329,7 @@ check(
 log("=== event log records mode/route/message history ===");
 await page.goto(BASE, { waitUntil: "networkidle" });
 await wait(400);
-await jumpTo(page, { floorId: 1, x: 5, y: 8, facing: 0 });
+await jumpTo(page, { floorId: 1, x: 11, y: 39, facing: 0 });
 const bootLog = await debugLog(page, 300);
 check("log() returns events", Array.isArray(bootLog) && bootLog.length > 0, `len ${bootLog?.length}`);
 check(

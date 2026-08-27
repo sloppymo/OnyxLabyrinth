@@ -3,8 +3,8 @@
  * title screen to first dungeon expedition, capturing screenshots at
  * each transition point. Evaluates the player experience for friction.
  *
- * Note: several controllers (PartyCreationController, SaveController,
- * PerkSelectController, ...) set a `justOpened` flag that swallows the
+ * Note: several controllers (SaveController, PerkSelectController, ...) set a
+ * `justOpened` flag that swallows the
  * very first keydown after they're constructed. This exists because a
  * single physical keypress that triggers a mode transition (e.g. Escape
  * during the prologue) can cascade through *both* the outgoing and
@@ -108,31 +108,16 @@ try {
   await waitForIdle(page, 5000);
   await wait(800);
 
-  // === 3. Party creation ===
-  log("\n=== 3. Party creation ===");
-  const partySnap = await waitForRoute(page, "party_creation", 5000);
-  await wait(500);
-  await capture(page, "03-party-creation");
-
-  // Confirm the default (first) preset party — robust against the
-  // justOpened swallow from the Escape-cascade above.
-  await pressConfirmRobust(page, "Enter");
-  await waitForIdle(page, 5000);
-  await wait(500);
-  const afterParty = await snap(page);
-  log(`  After party confirm: route=${afterParty.route}`);
-  await capture(page, "04-party-confirmed");
-
-  // === 4. Town ===
-  log("\n=== 4. Town ===");
+  // === 3. Town ===
+  log("\n=== 3. Town (fixed Old Man + Rat King duo) ===");
   const townSnap = await waitForRoute(page, "town", 5000);
   await wait(500);
   await capture(page, "05-town");
   log(`  Town: actions=${JSON.stringify(townSnap.availableActions)}`);
   log(`  Message: "${townSnap.message?.text ?? ""}"`);
 
-  // === 5. Enter Dungeon ===
-  log("\n=== 5. Enter Dungeon ===");
+  // === 4. Enter Dungeon ===
+  log("\n=== 4. Enter Dungeon ===");
   // Town's main menu has a bracketed hotkey per row (e.g. "[>]" for Enter
   // Dungeon) — use it directly instead of counting ArrowDown presses,
   // which is fragile against the justOpenedTown swallow timing.
@@ -143,15 +128,9 @@ try {
   let dungeonSnap = await capture(page, "07-dungeon-entry");
 
   // Fallback: if the hotkey didn't register for some reason, navigate by
-  // arrow keys (menu order: Inn, Temple, Shop, Guild, Equip, Reform,
-  // Enter Dungeon, Save/Load — index 6) and retry.
+  // arrow keys and retry.
   if (dungeonSnap.route !== "dungeon") {
     log(`  Hotkey ">" didn't reach dungeon (route=${dungeonSnap.route}) — retrying via arrows.`);
-    if (dungeonSnap.route === "party_creation") {
-      await page.keyboard.press("Escape");
-      await waitForIdle(page, 5000);
-      await wait(500);
-    }
     await waitForRoute(page, "town", 5000);
     await wait(500);
     for (let i = 0; i < 6; i++) {

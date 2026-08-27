@@ -1,5 +1,10 @@
 # Comprehensive Prompt: Plan a Full Autonomous Dungeon-Crawler Test Suite
 
+> **Historical roster note (2026-08-27):** This planning prompt predates the
+> fixed Old Man + Rat King campaign duo. Do not restore its party-creation or
+> roster-selection steps; current automation follows
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 > Pass this entire prompt to an advanced coding/QA LLM. It is self-contained and points to the relevant source files. The desired output is a **detailed implementation plan**, not code.
 
 ---

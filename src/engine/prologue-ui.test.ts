@@ -133,7 +133,7 @@ describe("PrologueController", () => {
     c.tickForTests(time);
   }
 
-  /** Drive past the terminal fade before party creation. */
+  /** Drive past the terminal fade before town. */
   function tickPastFinish(c: PrologueController): void {
     time += INTRO_STYLE.fadeMs + 50;
     c.tickForTests(time);

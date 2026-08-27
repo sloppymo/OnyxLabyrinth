@@ -25,7 +25,8 @@ import type {
   Loadout,
   PlayerAction,
 } from "./combat-types";
-import { createDefaultParty, type Character, type CharacterClass } from "./party";
+import { type Character, type CharacterClass } from "./party";
+import { createCombatTestRoster } from "./test-roster";
 import { ALL_SPELLS } from "../data/spells";
 import { ALL_ITEMS, ITEMS_BY_ID } from "../data/items";
 import { ENEMIES_BY_ID, type EnemyDef } from "../data/enemies";
@@ -65,12 +66,12 @@ function makeEnemy(
   };
 }
 
-/** Build a CombatState with the default party and specified enemies. */
+/** Build a CombatState with the test roster and specified enemies. */
 function makeCombatState(
   enemies: EnemyInstance[] = [],
   opts: { isBoss?: boolean } = {}
 ): CombatState {
-  const party = createDefaultParty();
+  const party = createCombatTestRoster();
   const spells: Record<string, typeof ALL_SPELLS[number]> = {};
   for (const s of ALL_SPELLS) spells[s.id] = s;
   const items: Record<string, typeof ALL_ITEMS[number]> = {};
@@ -92,7 +93,7 @@ function makeCombatState(
 
 describe("createCombatState", () => {
   it("clones party and enemies (no shared references)", () => {
-    const party = createDefaultParty();
+    const party = createCombatTestRoster();
     const enemy = makeEnemy("e1", "Rat", 10);
     const state = createCombatState(
       party,
@@ -183,7 +184,7 @@ describe("resolveCombatRound", () => {
     const enemy = makeEnemy("e1", "Rat", 100);
     const state = makeCombatState([enemy]);
     // Fix the fleer's AGI so the deterministic RNG reliably crosses the
-    // non-boss flee threshold independent of createDefaultParty() rolls.
+    // non-boss flee threshold independent of the test roster's rolls.
     state.party[0].stats.agi = 15;
     const actions: PlayerAction[] = state.party.map((c) => ({
       kind: "flee" as const,
@@ -306,7 +307,7 @@ describe("equipment helpers", () => {
 
   describe("findBestEquipTarget", () => {
     it("picks the party member with the weakest gear in that slot", () => {
-      const party = createDefaultParty();
+      const party = createCombatTestRoster();
       const equipment: Record<string, Loadout> = {};
       for (const c of party) equipment[c.id] = defaultLoadoutForCharacter(c);
 
@@ -322,7 +323,7 @@ describe("equipment helpers", () => {
     });
 
     it("returns undefined for consumables", () => {
-      const party = createDefaultParty();
+      const party = createCombatTestRoster();
       const equipment: Record<string, Loadout> = {};
       for (const c of party) equipment[c.id] = defaultLoadoutForCharacter(c);
       const potion = ITEMS_BY_ID["healing-potion"];
@@ -1217,7 +1218,7 @@ describe("createCombatFromEncounter", () => {
   it("preserves random encounter identity and the explicit chemistry opt-in", () => {
     const enemy = ENEMIES_BY_ID["crypt-minotaur"];
     const combat = createCombatFromEncounter(
-      createDefaultParty(),
+      createCombatTestRoster(),
       [{ enemy, row: "front" }],
       {},
       {},
@@ -1245,7 +1246,7 @@ describe("createCombatFromEncounter", () => {
     for (const s of ALL_SPELLS) spells[s.id] = s;
     const items: Record<string, typeof ALL_ITEMS[number]> = {};
     for (const it of ALL_ITEMS) items[it.id] = it;
-    const party = createDefaultParty();
+    const party = createCombatTestRoster();
     const loadout: Record<string, Loadout> = {};
 
     const regularEncounter = [{ enemy: regular, row: "front" as const }];

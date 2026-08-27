@@ -9,7 +9,7 @@ import {
 import { enemyAbilityById } from "../data/enemy-abilities";
 import type { SpellDef } from "../data/spells";
 import type { CombatState, EnemyFormation, EnemyInstance } from "./combat-types";
-import { createDefaultParty } from "./party";
+import { createCombatTestRoster } from "./test-roster";
 import {
   guardForTarget,
   setEnemyGuard,
@@ -52,7 +52,7 @@ function makeGuardState(): CombatState {
   });
   const warlock = makeEnemy("crypt-warlock", "warlock-0", 500, "back");
   const formation: EnemyFormation = { front: [armor], back: [warlock] };
-  const state = createCombatState(createDefaultParty(), formation, false);
+  const state = createCombatState(createCombatTestRoster(), formation, false);
   state.chemistryEnabled = true;
   return state;
 }

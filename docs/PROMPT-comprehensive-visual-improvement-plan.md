@@ -1,5 +1,9 @@
 # Prompt — Comprehensive whole-game visual improvement plan
 
+> **Historical planning prompt.** Its older party-creation and roster language
+> is not current. Visual work must use the fixed Old Man + Rat King entry flow
+> documented in [`CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md).
+
 **Paste everything below the line into a fresh session with an advanced multimodal
 model (e.g. GPT-5.6 "Sol" or equivalent).** This is an **analysis + planning** session —
 ask explicitly for a **plan only, no code**. If your session has live repository/file

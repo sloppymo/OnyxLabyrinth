@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { CombatAudit } from "./combat-audit";
-import { createCharacter } from "../game/party";
+import { createCharacterRecord } from "../game/party";
 import type { CombatState } from "../game/combat-types";
 
-function combat(party: ReturnType<typeof createCharacter>[]): CombatState {
+function combat(party: ReturnType<typeof createCharacterRecord>[]): CombatState {
   return {
     party,
     enemies: { front: [], back: [] },
@@ -67,8 +67,8 @@ function combat(party: ReturnType<typeof createCharacter>[]): CombatState {
 
 describe("CombatAudit", () => {
   it("records route distance, incoming damage, KOs, and inventory use", () => {
-    const first = createCharacter("a", "A", "Human", "Good", "Fighter", 0);
-    const second = createCharacter("b", "B", "Human", "Good", "Priest", 1);
+    const first = createCharacterRecord("a", "A", "Human", "Good", "Fighter", 0);
+    const second = createCharacterRecord("b", "B", "Human", "Good", "Priest", 1);
     const audit = new CombatAudit();
     audit.noteStep({
       floorId: 1,
@@ -125,8 +125,8 @@ describe("CombatAudit", () => {
   });
 
   it("records deterministic retry distance after a wipe", () => {
-    const first = createCharacter("a", "A", "Human", "Good", "Fighter", 0);
-    const second = createCharacter("b", "B", "Human", "Good", "Priest", 1);
+    const first = createCharacterRecord("a", "A", "Human", "Good", "Fighter", 0);
+    const second = createCharacterRecord("b", "B", "Human", "Good", "Priest", 1);
     const audit = new CombatAudit();
     const start = {
       combat: combat([first, second]),

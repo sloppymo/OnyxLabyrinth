@@ -23,7 +23,7 @@ import {
 } from "./npc";
 import { handleTileFeature } from "./features";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
-import { createDefaultParty } from "./party";
+import { createCombatTestRoster } from "./test-roster";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { cloneFloor, type FloorDef, type NPCDef } from "../data/floors";
 import type { GameState } from "../types";
@@ -74,7 +74,7 @@ function makeFloor(npc: NPCDef): FloorDef {
 }
 
 function makeState(npc: NPCDef = makeNPC()): GameState {
-  const party = createDefaultParty();
+  const party = createCombatTestRoster();
   return {
     mode: "dungeon",
     floor: makeFloor(npc),
@@ -277,7 +277,7 @@ describe("stealFrom", () => {
     const state = makeState();
     const npc = state.floor.npcs![0];
     const thief = state.party.find((c) => c.class === "Thief")!;
-    // Pin AGI so the test is deterministic regardless of random default party rolls.
+    // Pin AGI so the test is deterministic regardless of random test-roster rolls.
     thief.stats.agi = 10;
     // A roll that fails for a bare Thief but succeeds with a big AGI boost.
     const roll = 0.3;

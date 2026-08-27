@@ -106,13 +106,12 @@ export interface PlayerState {
 }
 
 // --- Game state machine ------------------------------------------------------
-// Only one mode is active at a time. title / party_creation / game_over are
+// Only one mode is active at a time. title / game_over are
 // not driven by anything yet at Step 2 but are part of the union so future
 // steps don't have to widen it.
 
 export type GameMode =
   | "title"
-  | "party_creation"
   | "town"
   | "dungeon"
   | "combat"
@@ -125,9 +124,9 @@ export interface GameState {
   mode: GameMode;
   floor: FloorDef;
   player: PlayerState;
-  // The party of 4 characters (no bench). Created at game start (Step 3) and
-  // persisted across combat/camp/dungeon transitions. Combat mutates a clone
-  // inside `combat`; post-combat, the result is applied back here.
+  // The fixed Old Man + Rat King protagonist duo. The historical Character[]
+  // shape is retained so campaign combat, equipment, and save migration share
+  // one data model; no player-facing roster editing is supported.
   party: Character[];
   // Active combat state. Present only when mode === "combat".
   combat?: CombatState;
@@ -148,22 +147,21 @@ export interface GameState {
   // Flavor only (design doc §5.1); no mechanical penalty.
   dayCount: number;
   // Century cycle (docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md
-  // §7.2). New Game starts at 3847; a campaign party wipe advances it by 100.
+  // §7.2). New Game starts at 3847; a campaign wipe advances it by 100.
   // Arena wipes never touch it.
   worldYear: number;
-  // Party gold. Earned from combat, spent at the town shop.
-  // Design doc §8.1: "Carried gold. All gold earned in dungeon is carried
-  // by the party." No banking in the MVP.
+  // Shared gold. Earned from combat, spent at the town shop. No banking in
+  // the MVP.
   partyGold: number;
-  // Party inventory. Duplicates allowed. Shop purchases arrive identified;
+  // Shared inventory. Duplicates allowed. Shop purchases arrive identified;
   // chest weapons/armor arrive unidentified ("Unknown Weapon") until
   // appraised at the shop. Cursed gear reveals itself by clamping on.
   inventory: InventoryEntry[];
-  // Keys collected by the party. Each key ID corresponds to a locked door.
+  // Keys collected by the duo. Each key ID corresponds to a locked door.
   // When the party attempts to pass a locked door, the key is consumed.
   // Design doc §6.2: "Require keys (found on floor) or Thief lockpick."
   keys: string[];
-  // Permanent party-level key items (e.g. "raft"). Unlike `keys`, these are
+  // Permanent shared key items (e.g. "raft"). Unlike `keys`, these are
   // never consumed by door unlocks and cannot be sold or dropped. Used for
   // progression gating (raft channels, etc.). Serialized in saves.
   keyItems: string[];
@@ -176,11 +174,11 @@ export interface GameState {
   // One-time floor events already triggered, keyed by floor ID. Each value is a
   // Set of "x,y" position strings. Keeps the global FLOORS definitions immutable.
   eventsTriggered: Record<number, Set<string>>;
-  // Active party-wide spell buffs (light, levitation). Ticked per step,
+  // Active duo-wide spell buffs (light, levitation). Ticked per step,
   // cleared by camping. Serialized in saves.
   persistentBuffs: PersistentBuff[];
-  // Per-character swim skill (0-100), learned by doing: stepping through
-  // water tiles raises it. Keyed by character id; absent means 0.
+  // Per-hero swim skill (0-100), learned by doing: stepping through water
+  // tiles raises it. Keyed by character id; absent means 0.
   swimSkill: Record<string, number>;
   // --- NPC state (all keyed by NPC id; see game/npc.ts) ---
   // NPCs already greeted (first-time vs. return greeting).
@@ -188,17 +186,17 @@ export interface GameState {
   // Disposition 0-100 (absent = 50). Gifts raise it; theft and fleeing
   // a fight lower it.
   npcDisposition: Record<string, number>;
-  // NPCs killed by the party. Their tiles are cleared on floor load.
+  // NPCs killed by the protagonists. Their tiles are cleared on floor load.
   killedNPCs: string[];
   // One-time barters already consumed ("npcId:giveId>receiveId").
   npcTradesDone: string[];
-  // Floor 3: whether Kazeharu has told the party the truth about his master
+  // Floor 3: whether Kazeharu has told the protagonists the truth about his master
   // (asked via the hidden "master" topic). Part of the "Duelist's Vigil"
   // recruitment gate — see game/kazeharu.ts. Optional/undefined is treated
   // as false everywhere it's read, so legacy saves and test fixtures that
   // predate this field need no migration.
   kazeharuToldTruth?: boolean;
-  // Floor 3: whether Kazeharu has agreed to escort the party into the Grand
+  // Floor 3: whether Kazeharu has agreed to escort the protagonists into the Grand
   // Forge. Combat-scoped (see kazeharuGuestAlly in game/kazeharu.ts) — this
   // flag only gates whether he's added to a fight, never party size/save
   // schema. Optional/undefined == false, same reasoning as above.
@@ -222,16 +220,16 @@ export interface GameState {
   // Last dungeon position before returning to town, so re-entering the dungeon
   // resumes where the player left off instead of resetting to Floor 1.
   lastDungeon: { floorId: number; x: number; y: number; facing: Facing } | null;
-  // Per-character equipped gear. Keyed by character id. Initialized from the
-  // default loadout at party creation and updated by shop purchases / treasure
+  // Per-hero equipped gear. Keyed by character id. Initialized from the
+  // fixed duo loadout and updated by shop purchases / treasure
   // finds / post-combat persistence.
   equipment: Record<string, Loadout>;
-  // Highest floor id the party has ever reached (never decreases, even after
+  // Highest floor id the duo has ever reached (never decreases, even after
   // backtracking to a shallower floor). Gates shop stock by campaign depth
   // (town-ui.ts getShopBuyList) — deliberately independent of `floor.id`,
   // which tracks only the *current* floor.
   deepestFloorReached: number;
-  // Whether the party has played the wish/ending sequence (design doc §6).
+  // Whether the duo has played the wish/ending sequence (design doc §6).
   // The floor-5 boss is a re-rollable random encounter, not a one-time
   // scripted fight, so this flag — not "boss defeated" — is what gates a
   // repeat victory from re-triggering EndingController.

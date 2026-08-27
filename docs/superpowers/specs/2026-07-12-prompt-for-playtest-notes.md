@@ -1,5 +1,11 @@
 # Prompt for another LLM: Playtest OnyxLabyrinth and take notes
 
+> **Historical roster note (2026-08-27):** This playtest prompt was written
+> before the campaign moved to the fixed Old Man + Rat King duo. Ignore any
+> party-creation/default-party instructions below; begin with the current
+> Title → Prologue → Edgehollow flow in
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 ## Project context
 
 You are playtesting **OnyxLabyrinth**, a Wizardry-style first-person dungeon crawler. It is a TypeScript + Vite game with hand-built DOM UI and a 2D canvas corridor renderer. The repo is at `/home/sloppymo/OnyxLabyrinth/`.

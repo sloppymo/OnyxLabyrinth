@@ -5,6 +5,7 @@
 **Companion docs:**
 - Narrative: `docs/superpowers/specs/2026-07-25-labyrinth-narrative-design.md` §5
 - Plan: `docs/superpowers/plans/2026-07-25-prologue-intro-sequence.md`
+- Current entry-flow contract: `docs/CURRENT-PRODUCT-CONTRACT.md`
 
 This is not nostalgia cosplay. It is a checklist of techniques that repeatedly produce readable, skippable, atmospheric openings in 16-bit RPGs — translated into numbers and patterns that work in this repo (vanilla TypeScript + DOM + procedural audio).
 
@@ -127,7 +128,7 @@ Industry consensus (TMP `maxVisibleCharacters`, Godot `visible_characters` / `vi
 | Beat hold after reveal | **1.2–2.0 s** then auto-advance | Subtitle rule of thumb: ~2–2.5 s per line for timed media; interactive games can be shorter if confirm is available |
 | Extra hold on pivot | **+1.4 s** | Pivot line: “It has one left.” (beat index 4 after the 3a/3b split) |
 | Inter-beat gap | **150–250 ms** | Black frame between beats |
-| Fade duration | **180 ms** | Keep total sequence under ~45 s if the player never presses; terminal fade also runs before party creation (Esc stays instant) |
+| Fade duration | **180 ms** | Keep total sequence under ~45 s if the player never presses; terminal fade hands off to Edgehollow (Esc stays instant) |
 
 ### Pseudocode (DOM / rAF)
 
@@ -226,7 +227,7 @@ PrologueController
   ├─ state machine: idle → revealing → holding → fading → next | done
   ├─ rAF / timer for reveal + hold + caret blink
   ├─ handleKey: justOpened → two-stage confirm → Esc skip
-  └─ onDone → party creation
+  └─ onDone → Edgehollow town
 
 Pure helpers (unit-testable, no DOM):
   advanceReveal(state, now, cfg) → new state
@@ -247,11 +248,11 @@ Pure helpers (unit-testable, no DOM):
 - [ ] Typewriter at ~30–35 cps with pauses on `.?!`
 - [ ] Confirm while typing → full beat, stays on same beat
 - [ ] Confirm while holding → next beat
-- [ ] Esc after open → party creation
+- [ ] Esc after open → Edgehollow town
 - [ ] Pivot beat (“It has one left.”, index 4) held longer than others
 - [ ] Full unattended run finishes in ≤ ~45 s
 - [ ] Readable at 1× / 1.5× / 2× `pixelScaleToFit`
-- [ ] New Game only — Continue / Arena / Reform Party never enter this screen
+- [ ] New Game only — Continue / Arena never enter this screen
 - [ ] `PROLOGUE_BEATS` test asserts exact locked copy
 
 ---

@@ -326,9 +326,8 @@ for (let waveIdx = 0; waveIdx < verbPlan.length; waveIdx++) {
     });
 
     // Advance to next arena wave if still in arena hub. First keydown after
-    // the hub (re)opens is swallowed by justOpenedArena (same pattern as the
-    // party-choice screen's justOpened swallow) — burn it, then send the
-    // real select.
+    // the hub (re)opens is swallowed by justOpenedArena — burn it, then send
+    // the real select.
     if (st.route === "arena") {
       await press(page, "Enter"); // swallowed
       await wait(300);

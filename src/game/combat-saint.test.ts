@@ -5,7 +5,7 @@
  * through the spell resolver directly or through the per-turn API.
  */
 import { describe, it, expect } from "vitest";
-import { createCharacter, type Character } from "./party";
+import { createCharacterRecord, type Character } from "./party";
 import { createCombatState, resolvePlayerTurn } from "./combat";
 import { applySpell } from "./combat-spells";
 import { ALL_SPELLS, type SpellDef } from "../data/spells";
@@ -45,7 +45,7 @@ function makeEnemy(instanceId: string): EnemyInstance {
 }
 
 function makeCaster(classId: string, withSaint: boolean): Character {
-  const c = createCharacter(
+  const c = createCharacterRecord(
     "caster",
     "Caster",
     "Human",
@@ -66,7 +66,7 @@ function makeCaster(classId: string, withSaint: boolean): Character {
 }
 
 function makeKoAlly(): Character {
-  const a = createCharacter(
+  const a = createCharacterRecord(
     "ko-ally",
     "KO'd Ally",
     "Human",
@@ -81,7 +81,7 @@ function makeKoAlly(): Character {
 }
 
 function makeState(caster: Character, koAlly: Character): CombatState {
-  const living = createCharacter(
+  const living = createCharacterRecord(
     "living",
     "Living",
     "Human",

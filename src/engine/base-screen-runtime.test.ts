@@ -1,5 +1,5 @@
 /**
- * BaseScreenRuntime owns Title/Town/Camp/Game Over/Party Creation/Arena
+ * BaseScreenRuntime owns Title/Town/Camp/Game Over/Arena
  * controller instances. Gameplay consequences stay in injected callbacks.
  */
 import { describe, expect, it, vi } from "vitest";
@@ -37,19 +37,12 @@ function makeDeps(state = createGameState(findFloor(1)!)): {
     audio: {
       startTitleMusic: vi.fn(),
       stopTitleMusic: vi.fn(),
-      startPartyCreationMusic: vi.fn(),
-      stopPartyCreationMusic: vi.fn(),
       startTownMusic: vi.fn(),
     },
     title,
     town: {
       enterDungeon: vi.fn(),
       openSave: vi.fn(),
-      reformParty: vi.fn(),
-    },
-    party: {
-      confirm: vi.fn(),
-      cancel: vi.fn(),
     },
     gameOver: {
       continue: vi.fn(),

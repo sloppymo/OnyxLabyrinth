@@ -7,6 +7,9 @@ Reference: Wizardry V: Heart of the Maelstrom (SNES) — Relaxed Party Crawl
 >
 > Kept for the feel target, the MVP scoping, and the systems reasoning, which
 > are still useful. **Do not take any narrative content from this file.**
+> Its old character-creation and multi-member roster model is also retired;
+> the current campaign uses the fixed Old Man + Rat King duo. See
+> [`CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md).
 >
 > - There is no Headmaster, no academy, and no "Headmaster's Sanctum" (§10.2,
 >   floor-5 table in §9). The campaign floor 5 is **The Weeping Cistern**, and

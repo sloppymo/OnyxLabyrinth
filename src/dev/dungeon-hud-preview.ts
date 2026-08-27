@@ -1,8 +1,8 @@
 /**
  * Dungeon HUD Preview — a standalone test page for iterating on the dungeon
- * shell chrome (viewport frame, party status strip, hint bar, message
- * overlay, map toggle) without playing through title → party creation →
- * town → dungeon every time.
+ * shell chrome (viewport frame, duo status strip, hint bar, message overlay,
+ * map toggle) without playing through title → prologue → town → dungeon every
+ * time.
  *
  * Uses the real shell.ts + renderer.ts + a real GameState/floor, so what you
  * see here is exactly what ships — just reachable in one click with sliders
@@ -13,14 +13,15 @@
 import { createGameState } from "../game/state";
 import { getFloors } from "../game/floor-registry";
 import { zoneHeatAt, pityPressureFor } from "../game/encounters";
-import { createDefaultParty, type Character, type StatusEffect } from "../game/party";
+import { type Character, type StatusEffect } from "../game/party";
+import { createPlayableDuo } from "../game/playable-duo";
 import { loadTextures, render } from "../engine/renderer";
 import { renderPartyStrip, setMessage, showMode, compassForFacing, ctx } from "../engine/shell";
 import type { GameState, Facing } from "../types";
 
 const floor = getFloors()[0]!;
 const state: GameState = createGameState(floor);
-state.party = createDefaultParty();
+state.party = createPlayableDuo();
 state.mode = "dungeon";
 
 const STATUS_OPTIONS: StatusEffect[] = ["poison", "sleep", "paralysis", "blind", "wet", "knockedOut"];

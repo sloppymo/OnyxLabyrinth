@@ -17,7 +17,7 @@ import {
   createCombatState,
 } from "./combat";
 import type { CombatState, EnemyInstance, Rng } from "./combat-types";
-import { createCharacter } from "./party";
+import { createCharacterRecord } from "./party";
 import { ALL_SPELLS } from "../data/spells";
 import { ENEMIES_BY_ID } from "../data/enemies";
 import { effectiveStats } from "./effective-stats";
@@ -37,19 +37,19 @@ function makeEnemyFromDef(enemyId: string, instanceId: string, row: "front" | "b
 }
 
 function makeLevel7Party(): CombatState["party"] {
-  const fighter = createCharacter("char-0", "Aria", "Human", "Neutral", "Fighter", 0);
+  const fighter = createCharacterRecord("char-0", "Aria", "Human", "Neutral", "Fighter", 0);
   fighter.level = 7; fighter.stats.str = 16; fighter.stats.vit = 14; fighter.stats.agi = 10;
   fighter.maxHp = 60; fighter.hp = 60;
 
-  const mage = createCharacter("char-1", "Coda", "Human", "Neutral", "Mage", 2);
+  const mage = createCharacterRecord("char-1", "Coda", "Human", "Neutral", "Mage", 2);
   mage.level = 7; mage.stats.int = 16; mage.maxSp = 32; mage.sp = 32; mage.maxHp = 28; mage.hp = 28;
   mage.knownSpellIds = ["mage-fireball", "mage-burning-hands", "mage-ice-storm"];
 
-  const priest = createCharacter("char-2", "Dell", "Human", "Neutral", "Priest", 1);
+  const priest = createCharacterRecord("char-2", "Dell", "Human", "Neutral", "Priest", 1);
   priest.level = 7; priest.stats.pie = 15; priest.maxSp = 30; priest.sp = 30; priest.maxHp = 32; priest.hp = 32;
   priest.knownSpellIds = ["priest-smite", "priest-cure-moderate"];
 
-  const thief = createCharacter("char-3", "Eve", "Human", "Neutral", "Thief", 3);
+  const thief = createCharacterRecord("char-3", "Eve", "Human", "Neutral", "Thief", 3);
   thief.level = 7; thief.stats.str = 13; thief.stats.agi = 14; thief.maxHp = 40; thief.hp = 40;
 
   return [fighter, mage, priest, thief];

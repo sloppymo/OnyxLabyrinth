@@ -1,5 +1,11 @@
 Original prompt: Execute the full phased OnyxLabyrinth visual-improvement pass on a dedicated branch: diagnose screens with rendered evidence and read-only subagents, implement serialized visual phases, verify each with build/tests and actual browser renders, commit each phase independently, then stop unpushed with a complete disposition report.
 
+Current product contract (2026-08-27): the campaign opens Title → Prologue →
+Edgehollow with the fixed Old Man + Rat King duo. Character creation, roster
+selection, default/custom roster choices, Reform Party, and roster reorder are
+retired. Older entries below are historical session notes; see
+`docs/CURRENT-PRODUCT-CONTRACT.md` before using them as instructions.
+
 ## 2026-08-25 — Card Trial combat UI redesign
 
 - Current task: implement the approved Card Trial-only combat UI mockup with a shared 768×672 semantic/layout recipe, clear gold current-actor and card states, red target states, anchored actor plates, readable hand/action rails, Canvas/Phaser parity, and no campaign or lighting regressions.
@@ -1428,3 +1434,99 @@ visual-pass notes below; this section tracks the current task only.
   captures passed with empty page-error lists. Both runtime probes reported
   `f1ArenaBackdrop.state = loaded`, `source = authored`, and 768×672 actual
   dimensions.
+
+## 2026-08-27 — Wow / fun / professional continuation audit
+
+- Current directive: audit prior presentation claims against the live production
+  path, then ship at most three complete, verified set-pieces. Presentation only;
+  campaign rules, floor geometry, Card Trial rules/numbers, and the future
+  six-school proposal remain locked.
+- Shared-worktree boundary: current unstaged source/art work is Card Trial owned by
+  another session (`src/game/card-trial/`, `src/engine/card-trial-hand.test.ts`,
+  Old Man card PNGs, plus related metadata/docs). Do not edit, restore, stage, or
+  otherwise disturb those paths.
+- Baseline branch is `feat/f1-battlefield-wow-pass` at `d2a49e2`, nine commits
+  ahead of `origin/main`. Fresh production build and live scorecard are next;
+  no presentation stream has been selected from historical reports alone.
+
+### Set-piece 1 — Edgehollow as one physical town
+
+- Live audit overturned the 2026-07-27 title/combat findings: title, boss
+  nameplate/swirl/audio, formation lanes, and disabled Magic are already strong.
+  The clearest remaining gap was Town/Inn/Temple/Shop sharing one flat brown
+  field.
+- Added one connected 768×672 Edgehollow square and facility camera cuts. The
+  image-generation output was not shipped raw: it was reduced to hard 2× pixels,
+  24 opaque RGB colors, and validated at the exact stage size before being
+  placed in `src/assets/edgehollow_town_map.png`.
+- `TownController` now emits presentation-only `data-town-scene` state for the
+  square, inn, temple, outfitter/equip, and guild. `town-map.css` supplies the
+  authored map, scene crops, material-tinted outer chrome, a stepped lamp pulse,
+  and a reduced-motion freeze. No town rule, price, healing, inventory, or save
+  behavior changed.
+- Browser verification followed the real title → prologue → party → town →
+  facility → save → dungeon path at 1280×800 and 390×844. Scene state matched
+  every screen, title/dungeon neighbors were clean, reduced motion disabled the
+  pulse, page errors were empty, readiness failures were empty, and confirm /
+  cure samples all reported `bufferMissing: false`.
+- Focused town tests pass 36/36; app/tools/test typechecks and production build
+  pass. Full `npm run check` reached 2,731 passing tests but stopped on the one
+  pre-existing Card Trial art failure: modified Old Man card PNGs are RGB
+  (`colorType: 2`) while the frozen test expects RGBA (`colorType: 6`). Those
+  other-session assets remain untouched, so floor gates did not run in that
+  chained command.
+
+### Set-piece 2 — A real camp inside the labyrinth
+
+- Real-path capture confirmed Camp was still a blue status window on an empty
+  gradient. The older forest-map captures were a debug-jump artifact, not a
+  shipping-path background leak.
+- Added `labyrinth_camp_scene.png`, a 768×672 occupied stone alcove with four
+  resting bodies and one low brazier. The image-generation result was retained
+  only as source evidence under ignored output; the shipping asset was reduced
+  to 384×336 source pixels, nearest-neighbor doubled, and quantized to 32 opaque
+  colors.
+- `camp-scene.css` gives the existing Camp mode that physical room and one
+  stepped firelight breath, with a static reduced-motion treatment. Camp phase
+  state is presentation-only and is removed when the shared panel closes. The
+  placeholder tilde-flame inside the FF6 window was removed; healing duration,
+  restoration, menus, and all game rules are unchanged.
+- Focused Camp tests pass 5/5 and production build passes. Real title → party →
+  dungeon → Camp captures passed at 1280×800 and 390×844; the latter reported
+  `animation-name: none` under reduced motion. Rest still fired the authored
+  `ui:cureMenu` sample with `bufferMissing: false`; readiness failures and page
+  errors were empty. The standard develop-web-game client also completed with
+  no error artifact and the title neighbor remained clean.
+
+### Set-piece 3 — The century-wipe returns to a waiting town
+
+- Settled real-path capture confirmed Game Over preserved excellent copy but
+  presented it on the same generic field as ordinary menus.
+- Campaign Game Over now reuses the authored Edgehollow square under a heavy
+  century-dark veil. One stepped reveal leaves the town silhouette and tiny
+  lamps visible behind the unchanged lines; Enter removes all defeat-scene
+  state and restores the same map at full town brightness. Reduced motion lands
+  directly on the final dark composition.
+- Arena wipes retain a separate neutral black-umber field and never show the
+  century/town treatment. The shared panel's class and context data are removed
+  on Continue in both paths.
+- Focused Game Over tests pass 3/3 and production build passes. Desktop and
+  390×844 captures verified campaign wipe → town, with no clipping or page
+  errors; mobile reported no reveal animation under reduced motion. Arena wipe
+  → Arena also passed with the neutral backdrop and no leaked context. The
+  standard develop-web-game client completed again with no error artifact.
+
+### Final verification and handoff
+
+- `git diff --check` passes. The two shipping backdrops are indexed 768×672
+  PNGs: Edgehollow uses 25 palette entries and Camp uses 33.
+- Focused presentation suite passes 44/44 across Town, Camp, and Game Over.
+  `npm run build`, `npm run floor:validate`, and `npm run floor:export-check`
+  pass; floor validation reports only the existing Floor 1 content warnings.
+- `npm run check` reaches 2,732 passing tests and one unrelated failure in
+  `src/game/card-trial/card-art.test.ts`: the other session's modified Old Man
+  card PNGs are RGB (`colorType: 2`) while the test requires RGBA
+  (`colorType: 6`). The frozen Card Trial files and assets were left untouched.
+- No campaign math, floor data, renderer/choreography code, global
+  `src/styles.css`, or Card Trial source/art was changed by this pass. No commit
+  or push was made.

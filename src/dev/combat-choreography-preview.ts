@@ -5,7 +5,7 @@
  * Canvas and Phaser selectors therefore exercise the same scene, event
  * timeline, sprite caches, and backend renderers used by production combat.
  */
-import { createCharacter, type CharacterClass } from "../game/party";
+import { createCharacterRecord, type CharacterClass } from "../game/party";
 import { createCombatState } from "../game/combat";
 import { ENEMIES_BY_ID } from "../data/enemies";
 import type { EnemyInstance } from "../game/combat-types";
@@ -434,8 +434,8 @@ function makeState(preset: Preset): CombatState {
   const secondClass: CharacterClass =
     preset.action === "heal" ? "Mage" : preset.actorClass === "Mage" ? "Priest" : "Mage";
   const party = [
-    createCharacter("pc-0", "Hero", "Human", "Neutral", partyClass, 0),
-    createCharacter("pc-1", "Ally", "Human", "Neutral", secondClass, 1),
+    createCharacterRecord("pc-0", "Hero", "Human", "Neutral", partyClass, 0),
+    createCharacterRecord("pc-1", "Ally", "Human", "Neutral", secondClass, 1),
   ];
   const def = ENEMIES_BY_ID[preset.enemyId];
   if (!def) throw new Error(`Preview enemy missing: ${preset.enemyId}`);

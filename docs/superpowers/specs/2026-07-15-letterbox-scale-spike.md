@@ -1,5 +1,11 @@
 # Letterbox / scale decision spike (C)
 
+> **Historical roster note (2026-08-27):** The display measurements below
+> were recorded before the campaign moved to the fixed Old Man + Rat King duo.
+> Any reference to a selectable roster is historical; do not reintroduce a
+> party-creation screen. Current product contract:
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 **Date:** 2026-07-15  
 **Status:** **Provisionally decided — Option 1** (2026-07-15 evening)  
 **Blocks:** Tranche B only if we later flip to option 3 after a real Deck check
@@ -74,4 +80,3 @@ Record answers in a reply; do not start the lighting pass until this returns.
 
 `Deck check → (pass) lighting → town hierarchy → C provisional→decided`  
 `Deck check → (fail) type bump and/or reopen C Opt 3 — stop before lighting`
-

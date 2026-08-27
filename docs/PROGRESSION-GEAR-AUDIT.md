@@ -1,5 +1,9 @@
 # Progression / Scaling / Perk / Gear Audit
 
+> **Historical roster note (2026-08-27):** This audit includes measurements
+> from the retired selectable-roster build. Current campaign entry and roster
+> rules live in [`CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md).
+
 **Date:** 2026-07-18 · **Scope:** analysis + recommendations only — **no balance numbers or combat math were changed in this pass.** Every recommendation below is *proposed, not implemented*.
 
 Companion deliverable: the FF6-style Equip screen (Part B of `FOLLOWUP-PROGRESSION-GEAR-AUDIT-PROMPT.md`) shipped alongside this audit; finding **A7** motivates it directly.

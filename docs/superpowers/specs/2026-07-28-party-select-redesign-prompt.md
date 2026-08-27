@@ -1,5 +1,10 @@
 # Party Assembly Screen Redesign — Implementation Prompt
 
+> **Retired 2026-08-27 — do not implement.** The campaign no longer has a
+> party-assembly screen, selectable presets, or a custom character editor. The
+> controller and preset data described here were deleted. Follow
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 **Audience:** an LLM engineer picking this up cold, with repo access. Read this whole document before writing any code. It is the product of a multi-round design conversation; every decision below was argued through, not guessed — the "why" is included so you can make good judgment calls on anything left open, and so you don't relitigate settled questions.
 
 **Your mandate:** you are a meticulous, experienced software engineer and game developer. Match the codebase's existing conventions exactly (naming, file layout, CSS patterns, comment style). Do not introduce a parallel styling system, a parallel input system, or a parallel animation system where a shared one already exists — this repo has real infrastructure for input and sprite playback; find it and reuse it before you build anything new. Where you must make a judgment call not fully specified here, make it, document your reasoning briefly in a code comment or commit message, and move on — don't stall on it.

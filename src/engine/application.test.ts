@@ -75,8 +75,6 @@ function screensWire(): Omit<BaseScreenRuntimeDeps, "state"> {
     audio: {
       startTitleMusic: vi.fn(),
       stopTitleMusic: vi.fn(),
-      startPartyCreationMusic: vi.fn(),
-      stopPartyCreationMusic: vi.fn(),
       startTownMusic: vi.fn(),
     },
     title: {
@@ -87,11 +85,6 @@ function screensWire(): Omit<BaseScreenRuntimeDeps, "state"> {
     town: {
       enterDungeon: vi.fn(),
       openSave: vi.fn(),
-      reformParty: vi.fn(),
-    },
-    party: {
-      confirm: vi.fn(),
-      cancel: vi.fn(),
     },
     gameOver: {
       continue: vi.fn(),
@@ -151,7 +144,7 @@ describe("createApplication", () => {
 
   it("does not import screen, combat, or dungeon gameplay owners", () => {
     const source = readFileSync(resolve("src/engine/application.ts"), "utf8");
-    expect(source).not.toMatch(/from "\.\/(combat-ui|town-ui|camp-ui|game-over-ui|party-ui|arena-ui|title-ui|prologue-ui|ending-ui)"/);
+    expect(source).not.toMatch(/from "\.\/(combat-ui|town-ui|camp-ui|game-over-ui|arena-ui|title-ui|prologue-ui|ending-ui)"/);
     expect(source).not.toMatch(/from "\.\.\/game\/(features|combat|save)"/);
   });
 });

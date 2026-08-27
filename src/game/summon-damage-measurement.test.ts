@@ -15,7 +15,7 @@ import {
   createCombatState,
 } from "./combat";
 import type { CombatState, EnemyInstance, Rng } from "./combat-types";
-import { createCharacter } from "./party";
+import { createCharacterRecord } from "./party";
 import type { EnemyDef } from "../data/enemies";
 import { ALL_SPELLS } from "../data/spells";
 
@@ -45,7 +45,7 @@ function makeEnemy(instanceId: string, ac: number, hp: number): EnemyInstance {
 }
 
 function makeMageState(level: number, int: number, enemies: EnemyInstance[]): CombatState {
-  const mage = createCharacter("char-0", "Mage", "Human", "Neutral", "Mage", 0);
+  const mage = createCharacterRecord("char-0", "Mage", "Human", "Neutral", "Mage", 0);
   mage.level = level;
   mage.stats.int = int;
   mage.maxSp = int * 2;
@@ -53,7 +53,7 @@ function makeMageState(level: number, int: number, enemies: EnemyInstance[]): Co
   mage.maxHp = 30;
   mage.hp = 30;
   mage.knownSpellIds = ["mage-burning-hands", "mage-lesser-summon", "mage-summon-fire-elemental", "mage-fireball"];
-  const fighter = createCharacter("char-1", "Fighter", "Human", "Neutral", "Fighter", 1);
+  const fighter = createCharacterRecord("char-1", "Fighter", "Human", "Neutral", "Fighter", 1);
   return createCombatState([mage, fighter], { front: enemies, back: [] }, false, SPELLS_BY_ID);
 }
 

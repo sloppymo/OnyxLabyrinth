@@ -1,5 +1,10 @@
 # OnyxLabyrinth — LLM-Native Maintainability Audit (Synthesis)
 
+> **Current roster note (2026-08-27):** This point-in-time audit predates the
+> fixed Old Man + Rat King campaign duo. Any character-creation or selectable-
+> roster language below is historical. Use [`CURRENT-PRODUCT-CONTRACT.md`](../CURRENT-PRODUCT-CONTRACT.md)
+> for the live entry flow.
+
 > Status: Point-in-time audit. Synthesis of 3 parallel independent audits (broad, adversarial, testing/CI-DX) conducted on the same commit.
 > This report records the repository state at commit `be6131c1dcdf5a06922a3b6cb6fac4f9447f5415`.
 > Revalidate recommendations against current `main` before implementation.

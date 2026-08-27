@@ -1,10 +1,15 @@
 # Prologue Intro Sequence — Implementation Plan
 
+> **Historical plan — shipped and superseded at the roster handoff.** The
+> current prologue ends at Edgehollow with the fixed Old Man + Rat King duo;
+> the Party Creation step described below no longer exists. See
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** On New Game, play a skippable SNES-style narration intro (locked prologue copy, typewriter reveal, black field) then hand off to party creation.
+**Goal:** On New Game, play a skippable SNES-style narration intro (locked prologue copy, typewriter reveal, black field) then hand off to Edgehollow with the fixed Old Man + Rat King duo.
 
-**Architecture:** A `PrologueController` borrows mode `"title"` (same pattern as perk/save overlays). It does **not** use `FF6Window` — world narration is white text on black, one beat at a time, with a visible-character typewriter and two-stage confirm. Pure timing helpers live beside the controller so Vitest can lock pacing without flaky animation. `main.ts` inserts the sequence between title New Game and `openPartyCreation`.
+**Architecture:** A `PrologueController` borrows mode `"title"` (same pattern as perk/save overlays). It does **not** use `FF6Window` — world narration is white text on black, one beat at a time, with a visible-character typewriter and two-stage confirm. Pure timing helpers live beside the controller so Vitest can lock pacing without flaky animation. `main.ts` inserts the sequence between title New Game and `openTown`.
 
 **Tech Stack:** TypeScript, Vite, Vitest, existing shell modes, existing **FF36** bitmap font (`src/assets/final-fantasy-36.ttf` → `@font-face "FF36"` → `--game-font`). No new fonts, no new dependencies.
 

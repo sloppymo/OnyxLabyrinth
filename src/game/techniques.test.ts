@@ -11,7 +11,7 @@ import {
   createCombatState,
 } from "./combat";
 import type { CombatState, EnemyInstance, Rng, TurnQueueEntry } from "./combat-types";
-import { createCharacter, type CharacterClass } from "./party";
+import { createCharacterRecord, type CharacterClass } from "./party";
 import type { EnemyDef } from "../data/enemies";
 import { ALL_SPELLS } from "../data/spells";
 import {
@@ -64,7 +64,7 @@ function makeEnemy(
 
 function makeParty(classes: CharacterClass[]) {
   return classes.map((cls, i) =>
-    createCharacter(`char-${i}`, `Char${i}`, "Human", "Neutral", cls, i)
+    createCharacterRecord(`char-${i}`, `Char${i}`, "Human", "Neutral", cls, i)
   );
 }
 

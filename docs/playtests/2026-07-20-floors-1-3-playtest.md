@@ -1,5 +1,10 @@
 # Floors 1–3 playtest report
 
+> **Historical roster note (2026-08-27):** This run used the retired
+> selectable-roster entry flow. The floor findings remain useful, but any
+> `Default Party` setup text is not a current step. Use the fixed duo contract
+> in [`docs/CURRENT-PRODUCT-CONTRACT.md`](../CURRENT-PRODUCT-CONTRACT.md).
+
 **Date:** 2026-07-20
 **Build:** `d60db8c` — "feat(floors): landmark rooms and forced tutorial pacing on floors 1-3" (branch `main`, working tree clean at time of test)
 **URL:** http://127.0.0.1:5230/OnyxLabyrinth/?debug=1 (production preview build, `vite preview`)

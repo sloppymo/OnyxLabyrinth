@@ -18,7 +18,7 @@ import {
   syncVisionZoneFlags,
 } from "./features";
 import { buildSolidGrid, carveRoom, setTile } from "./dungeon";
-import { createDefaultParty } from "./party";
+import { createCombatTestRoster } from "./test-roster";
 import {
   defaultLoadoutForCharacter,
   equipItem,
@@ -58,7 +58,7 @@ function makeFloor(trap?: TrapType): FloorDef {
 }
 
 function makeState(trap?: TrapType): GameState {
-  const party = createDefaultParty();
+  const party = createCombatTestRoster();
   return {
     mode: "dungeon",
     floor: makeFloor(trap),
@@ -98,7 +98,7 @@ function makeState(trap?: TrapType): GameState {
 }
 
 function makePerkFreeState(trap?: TrapType): GameState {
-  const party = createDefaultParty();
+  const party = createCombatTestRoster();
   // Remove Thief's Trap Sense perk to test base trap behavior
   party[1].perkIds = party[1].perkIds.filter((id) => id !== "thief-trap-sense");
   return {
@@ -158,7 +158,7 @@ function makeEventFloor(event: Omit<EventDef, "x" | "y">): FloorDef {
 }
 
 function makeEventState(event: Omit<EventDef, "x" | "y">): GameState {
-  const party = createDefaultParty();
+  const party = createCombatTestRoster();
   return {
     mode: "dungeon",
     floor: makeEventFloor(event),
@@ -587,7 +587,7 @@ describe("water tiles", () => {
   it("failed swimmers take depth-scaled damage, floored at 1 HP", () => {
     const state = makeWaterState(4);
     state.party[0].hp = 2;
-    // Pin the second swimmer's pool. `createCharacter` rolls stats with
+    // Pin the second swimmer's pool. `createCharacterRecord` rolls stats with
     // Math.random (party.ts:188), so maxHp varies run to run — and whenever it
     // rolled <= 12 the damage floored at 1 HP and `maxHp - 12` went <= 0,
     // failing this assertion at random. Pinning makes the damage exact rather

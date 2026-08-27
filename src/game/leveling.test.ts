@@ -8,7 +8,7 @@ import {
   cumulativeXpToReachLevel,
   applyLevelUps,
 } from "./leveling";
-import { createCharacter } from "./party";
+import { createCharacterRecord } from "./party";
 import type { Loadout } from "./combat-types";
 import type { ItemDef } from "../data/items";
 
@@ -44,7 +44,7 @@ describe("cumulativeXpToReachLevel", () => {
 
 describe("applyLevelUps", () => {
   it("spends xp on level-up instead of leaving it as a lifetime total", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.xp = xpForNextLevel(1); // exactly enough for one level
     const { character } = applyLevelUps(c);
     expect(character.level).toBe(2);
@@ -52,7 +52,7 @@ describe("applyLevelUps", () => {
   });
 
   it("carries the remainder forward after spending a level's cost", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.xp = xpForNextLevel(1) + 50;
     const { character } = applyLevelUps(c);
     expect(character.level).toBe(2);
@@ -65,7 +65,7 @@ describe("applyLevelUps", () => {
     // level 3. Under the triangular curve, L2 costs 120 and L3 costs a
     // further 240 (360 cumulative) — 320 total XP covers L2 with 200 left
     // over, short of L3.
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.xp = 320;
     const { character } = applyLevelUps(c);
     expect(character.level).toBe(2);
@@ -73,7 +73,7 @@ describe("applyLevelUps", () => {
   });
 
   it("chains multiple level-ups in one call when banked xp covers several", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.xp = cumulativeXpToReachLevel(4) + 10; // enough for L2, L3, and L4
     const { character } = applyLevelUps(c);
     expect(character.level).toBe(4);
@@ -81,7 +81,7 @@ describe("applyLevelUps", () => {
   });
 
   it("collects perk-tier choices crossed during the level-ups", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.xp = cumulativeXpToReachLevel(3); // exactly enough to hit level 3, a perk tier
     const { character, tiersCrossed } = applyLevelUps(c);
     expect(character.level).toBe(3);
@@ -89,7 +89,7 @@ describe("applyLevelUps", () => {
   });
 
   it("is a no-op when banked xp is short of the next level's cost", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.xp = xpForNextLevel(1) - 1;
     const { character, tiersCrossed } = applyLevelUps(c);
     expect(character.level).toBe(1);
@@ -100,7 +100,7 @@ describe("applyLevelUps", () => {
 
 describe("levelUpChar", () => {
   it("increments level and fully restores HP/SP", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.hp = 1;
     c.sp = 1;
     const result = levelUpChar(c);
@@ -110,7 +110,7 @@ describe("levelUpChar", () => {
   });
 
   it("uses effective VIT for HP growth", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.stats.vit = 10;
     const without = levelUpChar(c);
 
@@ -124,7 +124,7 @@ describe("levelUpChar", () => {
   });
 
   it("uses effective INT for Mage SP growth", () => {
-    const c = createCharacter("c1", "Dell", "Elf", "Neutral", "Mage", 0);
+    const c = createCharacterRecord("c1", "Dell", "Elf", "Neutral", "Mage", 0);
     c.stats.int = 10;
     const without = levelUpChar(c);
 
@@ -136,7 +136,7 @@ describe("levelUpChar", () => {
   });
 
   it("uses effective PIE for Priest SP growth", () => {
-    const c = createCharacter("c1", "Eve", "Gnome", "Good", "Priest", 0);
+    const c = createCharacterRecord("c1", "Eve", "Gnome", "Good", "Priest", 0);
     c.stats.pie = 10;
     const without = levelUpChar(c);
 
@@ -148,7 +148,7 @@ describe("levelUpChar", () => {
   });
 
   it("grants new spells when crossing a tier threshold", () => {
-    const c = createCharacter("c1", "Dell", "Elf", "Neutral", "Mage", 0);
+    const c = createCharacterRecord("c1", "Dell", "Elf", "Neutral", "Mage", 0);
     c.level = 2;
     c.xp = 100;
     const result = levelUpChar(c);
@@ -157,7 +157,7 @@ describe("levelUpChar", () => {
   });
 
   it("grants T6 spells at level 11 (Meteor Swarm / Disintegrate)", () => {
-    const c = createCharacter("c1", "Dell", "Elf", "Neutral", "Mage", 0);
+    const c = createCharacterRecord("c1", "Dell", "Elf", "Neutral", "Mage", 0);
     c.level = 10;
     const result = levelUpChar(c);
     expect(result.level).toBe(11);
@@ -166,7 +166,7 @@ describe("levelUpChar", () => {
   });
 
   it("grants T7 Freezing Sphere at level 13", () => {
-    const c = createCharacter("c1", "Dell", "Elf", "Neutral", "Mage", 0);
+    const c = createCharacterRecord("c1", "Dell", "Elf", "Neutral", "Mage", 0);
     c.level = 12;
     const result = levelUpChar(c);
     expect(result.level).toBe(13);
@@ -174,7 +174,7 @@ describe("levelUpChar", () => {
   });
 
   it("grants Priest Mass Regenerate at level 11 and Holy Aura at 13", () => {
-    const p = createCharacter("c2", "Eve", "Gnome", "Good", "Priest", 0);
+    const p = createCharacterRecord("c2", "Eve", "Gnome", "Good", "Priest", 0);
     p.level = 10;
     const at11 = levelUpChar(p);
     expect(at11.knownSpellIds).toContain("priest-mass-regenerate");

@@ -1,5 +1,10 @@
 # Prompt: Restyle Town / Hub Menus to Match FF6 Combat Windows
 
+> **Historical prompt — completed and superseded (2026-08-27).** The campaign
+> now enters Edgehollow with the fixed Old Man + Rat King duo. There is no
+> character-creation, preset-selection, or Reform Party flow; ignore those
+> references below and follow [`CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md).
+
 You are a senior frontend / UI engineer on **OnyxLabyrinth** (`/home/sloppymo/OnyxLabyrinth`).
 
 Two reference screenshots are attached:

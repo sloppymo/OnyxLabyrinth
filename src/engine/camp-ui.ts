@@ -3,12 +3,12 @@
  *
  * When the player presses C in dungeon mode, main.ts switches to "camp" mode
  * and creates a CampController. The controller renders a static camp screen
- * (party silhouettes around a campfire) and runs a ~3 second healing
+ * (the two protagonists around a campfire) and runs a ~3 second healing
  * animation where each character's HP/SP ticks up from their current value
- * to maximum. When the animation completes, the party is fully restored
+ * to maximum. When the animation completes, the duo is fully restored
  * (HP/SP to max, poison/paralysis cleared, KO'd characters revived to 1 HP)
- * and a post-camp menu appears with options to view character sheets,
- * reorder the party, or continue.
+ * and a post-camp menu appears with options to view character sheets or
+ * continue. The protagonist order is fixed; there is no roster editor.
  *
  * Restrictions (§5.2): no camping on hazard tiles or with enemies within 3
  * tiles. Neither system exists yet (no hazard tiles, no on-map enemies), so
@@ -27,6 +27,7 @@ import {
 } from "../game/persistent-spells";
 import { FF6Window } from "./ff6-window-library";
 import { audio } from "./audio";
+import "./camp-scene.css";
 
 const SPELL_NAME_BY_ID: Record<string, string> = Object.fromEntries(
   ALL_SPELLS.map((s) => [s.id, s.name])
@@ -43,7 +44,7 @@ export interface CampControllerOptions {
 
 const CAMP_DURATION_MS = 3000;
 
-type CampPhase = "animating" | "menu" | "charSheet" | "reorder" | "castSpell";
+type CampPhase = "animating" | "menu" | "charSheet" | "castSpell";
 
 interface CharAnim {
   char: Character;
@@ -59,7 +60,6 @@ const CAMP_MENU_ITEMS = [
   { key: "continue", label: "Continue exploring" },
   { key: "cast", label: "Cast a spell" },
   { key: "sheet", label: "View character sheets" },
-  { key: "reorder", label: "Reorder party" },
 ] as const;
 
 export class CampController {
@@ -75,8 +75,6 @@ export class CampController {
   private phase: CampPhase = "animating";
   private menuIndex = 0;
   private sheetIndex = 0;
-  private reorderFirst = -1;
-  private reorderCursor = 0;
   private castIndex = 0;
   private castOptions: UtilityCastOption[] = [];
   private castFlash = "";
@@ -164,8 +162,6 @@ export class CampController {
         this.sheetIndex = (this.sheetIndex + 1) % this.party.length;
         this.renderCharSheet();
       }
-    } else if (this.phase === "reorder") {
-      this.handleReorderKey(lower, key);
     } else if (this.phase === "castSpell") {
       this.handleCastKey(lower, key);
     }
@@ -193,7 +189,7 @@ export class CampController {
       }
       this.castFlash = castUtilitySpell(this.state, opt.casterId, opt.spell.id);
       // Refresh SP-affordability after the cast; stay in the menu so the
-      // party can layer several utility spells before breaking camp.
+      // The duo can layer several utility spells before breaking camp.
       this.castOptions = utilityCastOptions(this.state);
       this.castIndex = Math.min(this.castIndex, Math.max(0, this.castOptions.length - 1));
       this.renderCastSpell();
@@ -244,59 +240,7 @@ export class CampController {
         this.sheetIndex = 0;
         this.renderCharSheet();
         break;
-      case "reorder":
-        this.phase = "reorder";
-        this.reorderFirst = -1;
-        this.reorderCursor = 0;
-        this.renderReorder();
-        break;
     }
-  }
-
-  private handleReorderKey(lower: string, key: string): void {
-    if (lower === "escape") {
-      this.phase = "menu";
-      this.renderMenu();
-      return;
-    }
-    if (lower === "arrowup" || lower === "w") {
-      this.reorderCursor =
-        (this.reorderCursor - 1 + this.party.length) % this.party.length;
-      this.renderReorder();
-      return;
-    }
-    if (lower === "arrowdown" || lower === "s") {
-      this.reorderCursor = (this.reorderCursor + 1) % this.party.length;
-      this.renderReorder();
-      return;
-    }
-    if (key === "Enter" || key === " ") {
-      this.selectReorderSlot(this.reorderCursor);
-      return;
-    }
-    const idx = parseInt(key, 10);
-    if (isNaN(idx) || idx < 1 || idx > this.party.length) return;
-    this.reorderCursor = idx - 1;
-    this.selectReorderSlot(this.reorderCursor);
-  }
-
-  /** Two-step swap: first Enter marks a slot, second Enter swaps with it. */
-  private selectReorderSlot(slotIdx: number): void {
-    if (this.reorderFirst === -1) {
-      this.reorderFirst = slotIdx;
-      this.renderReorder();
-      return;
-    }
-    // Swap formation slots and array positions.
-    const a = this.party[this.reorderFirst]!;
-    const b = this.party[slotIdx]!;
-    const tmpSlot = a.formationSlot;
-    a.formationSlot = b.formationSlot;
-    b.formationSlot = tmpSlot;
-    this.party[this.reorderFirst] = b;
-    this.party[slotIdx] = a;
-    this.reorderFirst = -1;
-    this.renderReorder();
   }
 
   private dispose(): void {
@@ -306,30 +250,21 @@ export class CampController {
     }
     this.panel.style.display = "none";
     this.panel.innerHTML = "";
+    delete this.panel.dataset.campPhase;
   }
 
   // --- Rendering ----------------------------------------------------------
 
   private render(progress: number): void {
     if (this.phase !== "animating") return;
+    this.panel.dataset.campPhase = this.phase;
     this.lastPhaseKey = "animating";
     // Eased progress so healing starts fast and slows near max — feels cozy.
     const eased = 1 - Math.pow(1 - progress, 2);
 
     const lines: string[] = [];
 
-    // Campfire visual: flickering orange lines. The flicker is driven by
-    // progress so it animates during the camp.
-    const flicker = Math.sin(this.elapsed * 0.012) * 0.5 + 0.5;
-    lines.push(
-      `<div class="campfire">` +
-        `<span class="flame" style="opacity:${0.6 + flicker * 0.4}">~</span>` +
-        `<span class="flame" style="opacity:${0.4 + flicker * 0.5};font-size:22px">~</span>` +
-        `<span class="flame" style="opacity:${0.5 + flicker * 0.3};font-size:16px">~</span>` +
-        `</div>`
-    );
-
-    // Party silhouettes with ticking HP/SP.
+    // Protagonist silhouettes with ticking HP/SP.
     const partyLines = this.anims.map((a, i) => {
       const rowLabel = charRow(a.char) === "front" ? "F" : "B";
       const curHp = Math.round(a.startHp + (a.targetHp - a.startHp) * eased);
@@ -363,6 +298,7 @@ export class CampController {
   }
 
   private renderMenu(): void {
+    this.panel.dataset.campPhase = this.phase;
     const animated = this.lastPhaseKey !== "menu";
     this.lastPhaseKey = "menu";
     const win = new FF6Window({
@@ -389,6 +325,7 @@ export class CampController {
   }
 
   private renderCharSheet(): void {
+    this.panel.dataset.campPhase = this.phase;
     const animated = this.lastPhaseKey !== "charSheet";
     this.lastPhaseKey = "charSheet";
     const c = this.party[this.sheetIndex];
@@ -417,6 +354,7 @@ export class CampController {
   }
 
   private renderCastSpell(): void {
+    this.panel.dataset.campPhase = this.phase;
     const animated = this.lastPhaseKey !== "castSpell";
     this.lastPhaseKey = "castSpell";
     const win = new FF6Window({
@@ -453,38 +391,4 @@ export class CampController {
     this.panel.appendChild(win.render());
   }
 
-  private renderReorder(): void {
-    const animated = this.lastPhaseKey !== "reorder";
-    this.lastPhaseKey = "reorder";
-    const lines: string[] = [];
-    lines.push(`<div class="camp-party">`);
-    for (let i = 0; i < this.party.length; i++) {
-      const c = this.party[i]!;
-      const rowLabel = charRow(c) === "front" ? "F" : "B";
-      const isFirst = this.reorderFirst === i;
-      const isCursor = this.reorderCursor === i;
-      const marker = isCursor ? "▶" : isFirst ? "★" : `${i + 1}.`;
-      const sel = isCursor ? " selected" : "";
-      lines.push(
-        `<div class="camp-char${sel}">` +
-          `<span class="cc-name">${marker} [${rowLabel}] ${c.name} (${c.class})${isFirst && !isCursor ? " — marked" : ""}</span>` +
-          `</div>`
-      );
-    }
-    lines.push(`</div>`);
-    const footer =
-      this.reorderFirst === -1
-        ? "D-pad select · A mark first · B back · or 1-4"
-        : `D-pad select · A swap with ${this.party[this.reorderFirst]!.name} · B cancel · or 1-4`;
-    this.panel.innerHTML = "";
-    this.panel.appendChild(
-      FF6Window.frame({
-        title: "Reorder Party",
-        contentHtml: lines.join(""),
-        footer,
-        mode: "status",
-        animated,
-      })
-    );
-  }
 }

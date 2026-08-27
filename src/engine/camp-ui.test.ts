@@ -1,11 +1,8 @@
-/**
- * Camp reorder: controller (D-pad + A) must work — the old screen only
- * accepted digit keys, which gamepads never send.
- */
+/** Camp screen tests for the fixed Old Man + Rat King roster. */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CampController } from "./camp-ui";
 import { createGameState } from "../game/state";
-import { createDefaultParty } from "../game/party";
+import { createPlayableDuo } from "../game/playable-duo";
 import { FLOORS } from "../data/floors";
 import { audio } from "./audio";
 
@@ -21,11 +18,11 @@ function flushCampAnim(): void {
 
 function openCamp(): {
   ctrl: CampController;
-  party: ReturnType<typeof createDefaultParty>;
+  party: ReturnType<typeof createPlayableDuo>;
   panel: HTMLElement;
 } {
   flushCampAnim();
-  const party = createDefaultParty();
+  const party = createPlayableDuo();
   const state = createGameState(FLOORS[0]);
   state.party = party;
   const panel = document.createElement("div");
@@ -39,15 +36,7 @@ function openCamp(): {
   return { ctrl, party, panel };
 }
 
-/** From post-camp menu: open Reorder Party (3rd item after continue, cast). */
-function openReorder(ctrl: CampController): void {
-  ctrl.handleKey("ArrowDown"); // cast
-  ctrl.handleKey("ArrowDown"); // sheet
-  ctrl.handleKey("ArrowDown"); // reorder
-  ctrl.handleKey("Enter");
-}
-
-describe("CampController reorder (controller-friendly)", () => {
+describe("CampController fixed roster", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -55,40 +44,10 @@ describe("CampController reorder (controller-friendly)", () => {
     vi.restoreAllMocks();
   });
 
-  it("swaps two characters with ArrowDown + Enter (pad → synthetic keys)", () => {
-    const { ctrl, party, panel } = openCamp();
-    const first = party[0]!.name;
-    const second = party[1]!.name;
-    openReorder(ctrl);
-
-    expect(panel.textContent).toMatch(/Reorder Party/);
-    expect(panel.textContent).toMatch(/D-pad select/);
-
-    // Cursor starts on slot 0 — mark Aria, then move to Bram and swap.
-    ctrl.handleKey("Enter");
-    ctrl.handleKey("ArrowDown");
-    ctrl.handleKey("Enter");
-
-    expect(party[0]!.name).toBe(second);
-    expect(party[1]!.name).toBe(first);
-  });
-
-  it("still supports digit hotkeys 1-4", () => {
-    const { ctrl, party } = openCamp();
-    openReorder(ctrl);
-    const a = party[0]!.name;
-    const c = party[2]!.name;
-    ctrl.handleKey("1");
-    ctrl.handleKey("3");
-    expect(party[0]!.name).toBe(c);
-    expect(party[2]!.name).toBe(a);
-  });
-
-  it("Escape returns to the camp menu", () => {
-    const { ctrl, panel } = openCamp();
-    openReorder(ctrl);
-    ctrl.handleKey("Escape");
-    expect(panel.textContent).toMatch(/Continue exploring/);
+  it("does not expose a roster reorder action for the fixed duo", () => {
+    const { panel } = openCamp();
+    expect(panel.textContent).toContain("View character sheets");
+    expect(panel.textContent).not.toMatch(/Reorder/);
   });
 });
 
@@ -97,5 +56,13 @@ describe("CampController rest audio", () => {
     const cue = vi.spyOn(audio, "uiCureMenu").mockImplementation(() => {});
     openCamp();
     expect(cue).toHaveBeenCalledTimes(1);
+  });
+
+  it("owns and releases the shared panel's camp-scene phase", () => {
+    const { ctrl, panel } = openCamp();
+    expect(panel.dataset.campPhase).toBe("menu");
+
+    ctrl.handleKey("Escape");
+    expect(panel.dataset.campPhase).toBeUndefined();
   });
 });

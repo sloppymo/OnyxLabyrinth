@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { deathCheck } from "./combat-eor";
 import { createCombatState } from "./combat";
-import { createDefaultParty } from "./party";
+import { createCombatTestRoster } from "./test-roster";
 import type { CombatEvent, EnemyInstance } from "./combat-types";
 import type { EnemyDef } from "../data/enemies";
 
@@ -33,7 +33,7 @@ function makeEnemy(
 }
 
 function makeState(front: EnemyInstance[], back: EnemyInstance[]) {
-  return createCombatState(createDefaultParty(), { front, back }, false);
+  return createCombatState(createCombatTestRoster(), { front, back }, false);
 }
 
 describe("deathCheck (row promotion removed)", () => {

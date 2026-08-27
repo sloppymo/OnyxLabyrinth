@@ -17,7 +17,8 @@
  */
 import { describe, it, expect, afterEach } from "vitest";
 import { createSeededRng, setGameplayRng, resetGameplayRng } from "./rng";
-import { rollD6, roll3d6, rollBaseStats, createDefaultParty } from "./party";
+import { rollD6, roll3d6, rollBaseStats } from "./party";
+import { createCombatTestRoster } from "./test-roster";
 import { rollEncounter } from "../data/enemies";
 import { rollArenaEncounter } from "./encounters";
 import { disarmChest, openChest } from "./features";
@@ -51,7 +52,7 @@ function makeTrapFloor(trap: TrapType): FloorDef {
 }
 
 function makeTrapState(trap: TrapType): GameState {
-  const party = createDefaultParty();
+  const party = createCombatTestRoster();
   // Remove Thief's Trap Sense perk so disarm rolls use the base chance
   party[1].perkIds = party[1].perkIds.filter((id) => id !== "thief-trap-sense");
   return {
@@ -120,7 +121,7 @@ function makeNpcState(): GameState {
     encounterTable: [],
     npcs: [npc],
   };
-  const party = createDefaultParty();
+  const party = createCombatTestRoster();
   return {
     mode: "dungeon",
     floor,
@@ -301,7 +302,7 @@ describe("seeded gameplay RNG: chest open (default path)", () => {
 
 describe("seeded gameplay RNG: NPC steal (default path)", () => {
   // Build the party ONCE with unseeded RNG, then clone the state per run so
-  // only the stealFrom rolls consume the seeded RNG — not createDefaultParty's
+  // only the stealFrom rolls consume the seeded RNG — not the test roster's
   // stat rolls. Boost the thief's level so the steal chance is high enough
   // that some seeds succeed (producing a gold amount) and some fail (producing
   // a fight) — at level 1 with AGI 7 the chance is only 0.19, so nearly all

@@ -593,7 +593,6 @@ export function showMode(
     mode === "town" ||
     mode === "camp" ||
     mode === "title" ||
-    mode === "party_creation" ||
     mode === "game_over" ||
     mode === "arena" ||
     mode === "dialog";
@@ -605,7 +604,6 @@ export function showMode(
   messageBandEl.style.display = isDungeon && !mapVisible ? "" : "none";
   combatPanel.style.display = usesDomPanel ? "flex" : "none";
   combatPanel.classList.toggle("ff6-menu-host", usesDomPanel);
-  combatPanel.classList.toggle("party-create-host", mode === "party_creation");
   combatPanel.classList.toggle("bg-town", mode === "town");
   combatPanel.classList.toggle("bg-camp", mode === "camp");
   combatPanel.classList.toggle("bg-arena", mode === "arena");

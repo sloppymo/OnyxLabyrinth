@@ -2,6 +2,9 @@
 
 **Date:** 2026-07-25 (revised same day after the boss-naming pass)
 **Status:** **Current lore canon.** Mostly shipped — see the status table below.
+**Roster note:** The campaign now uses a fixed Old Man + Rat King duo. There is no
+character-creation or roster-selection step between this prologue and Edgehollow;
+see [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
 **Supersedes:** all Headmaster / academy lore, including the framing in
 `docs/wizardry_v_clone_design_doc.md` and the boss fiction in
 `docs/superpowers/specs/2026-07-16-echo-boss-phases-design.md`
@@ -244,7 +247,7 @@ nameplate. Keep that split — it is why the nameplate lands.
 
 ## 5. New screen: the prologue
 
-Shown on New Game, **before** party creation. Presentation follows the SNES-era
+Shown on New Game, **before** Edgehollow. Presentation follows the SNES-era
 intro style guide: black field, FF36 (`--game-font` / `final-fantasy-36.ttf`),
 typewriter, one beat at a time — **not** an `FF6Window` menu chrome. See the
 intro plan for wiring.
@@ -387,7 +390,8 @@ No shop/inn/temple **mechanics** change.
 ## 9. Verification
 
 - `npm run build` clean; save migrate + wipe-year tests; string assertion updates.
-- Manual: prologue (New Game only), skippable, FF36 on black, → party creation.
+- Manual: prologue (New Game only), skippable, FF36 on black, → Edgehollow with
+  the fixed Old Man + Rat King duo.
 - Manual: wipe shows joke + **new year** + Edgehollow beat → **town**; Arena
   wipe does not advance year; town header shows year after.
 - Manual: floor-5 boss → wish scene → closing beat.

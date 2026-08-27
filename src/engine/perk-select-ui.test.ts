@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { PerkSelectController } from "./perk-select-ui";
 import { createGameState } from "../game/state";
-import { createCharacter } from "../game/party";
+import { createCharacterRecord } from "../game/party";
 import { FLOORS } from "../data/floors";
 import type { PendingPerkChoice } from "../game/perks";
 
@@ -16,7 +16,7 @@ function makePanel(): HTMLElement {
 
 function makeStateWithLevel3Fighter(): ReturnType<typeof createGameState> {
   const state = createGameState(FLOORS[0]);
-  state.party = [createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0)];
+  state.party = [createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0)];
   state.party[0].level = 3;
   state.party[0].xp = 60;
   return state;
@@ -124,7 +124,7 @@ describe("PerkSelectController", () => {
   it("handles multiple queued characters one at a time", () => {
     const panel = makePanel();
     const state = makeStateWithLevel3Fighter();
-    state.party.push(createCharacter("c2", "Bram", "Human", "Good", "Fighter", 1));
+    state.party.push(createCharacterRecord("c2", "Bram", "Human", "Good", "Fighter", 1));
     state.party[1].level = 3;
     state.party[1].xp = 60;
     const queue: PendingPerkChoice[] = [

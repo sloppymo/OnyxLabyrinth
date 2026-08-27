@@ -1,5 +1,10 @@
 # Full-Game Controller Support Design
 
+> **Historical design note:** This predates the fixed Old Man + Rat King
+> campaign contract. Its controller coverage references a retired character
+> creation/roster-selection screen; current routes are listed in
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 **Date:** 2026-07-14  
 **Status:** Approved for planning  
 **Related:** `2026-07-14-controller-first-combat-design.md` (done — combat palette + `controller-input`)

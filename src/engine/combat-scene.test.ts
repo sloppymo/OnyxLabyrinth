@@ -37,7 +37,7 @@ import { createCombatState, resolveEnemyTurn } from "../game/combat";
 import { pickBark, resetBarkRngForCombat, setBarkRngForTests } from "../game/combat-barks";
 import { BARK_PRIORITY } from "../data/combat-barks";
 import type { CombatEvent, EnemyInstance } from "../game/combat-types";
-import { createCharacter } from "../game/party";
+import { createCharacterRecord } from "../game/party";
 import { ENEMIES_BY_ID, type EnemyDef } from "../data/enemies";
 import { contactTime, meleeMotionProfile } from "./combat-motion";
 
@@ -64,8 +64,8 @@ function makeEnemy(instanceId: string, overrides: Partial<EnemyDef> = {}): Enemy
 
 function makeScene() {
   const party = [
-    createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-    createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+    createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+    createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
   ];
   const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
   return createScene(state);
@@ -183,8 +183,8 @@ describe("playTurn choreography", () => {
 
   it("close/short attacks use melee attack state; long range uses attack_ranged", () => {
     const party = [
-      createCharacter("c0", "Coda", "Hobbit", "Neutral", "Thief", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Coda", "Hobbit", "Neutral", "Thief", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
     const scene = createScene(state);
@@ -217,8 +217,8 @@ describe("playTurn choreography", () => {
 
   it("techniqueHit uses melee attack state even for a thief", () => {
     const party = [
-      createCharacter("c0", "Coda", "Hobbit", "Neutral", "Thief", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Coda", "Hobbit", "Neutral", "Thief", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
     const scene = createScene(state);
@@ -278,8 +278,8 @@ describe("playTurn choreography", () => {
 
   it("chemistry events use the shared throw/consume/death path", () => {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const state = createCombatState(
       party,
@@ -337,8 +337,8 @@ describe("playTurn choreography", () => {
 
   it("Bone Harvest and Spawn Bomb keep their payoff-specific shared effects", () => {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const makeChemScene = (resourceId: string) =>
       createScene(
@@ -459,8 +459,8 @@ describe("playTurn choreography", () => {
 
   it("Living Shield and INTERCEPT use the shared chemistry timeline", () => {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const state = createCombatState(
       party,
@@ -511,8 +511,8 @@ describe("playTurn choreography", () => {
 
   it("Hunting Pack converges both live actors and returns them after the shared hits", () => {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const scene = createScene(
       createCombatState(
@@ -565,8 +565,8 @@ describe("playTurn choreography", () => {
 
   it("Rune Overload keeps a live battery tethered, then flashes the party on collapse", () => {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const scene = createScene(
       createCombatState(
@@ -837,8 +837,8 @@ describe("playTurn choreography", () => {
 
   it("meleeGangUp cast presentation (Orc's Pack Leap) mounts an ally, leaps to the target, and returns home", () => {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const state = createCombatState(
       party,
@@ -894,8 +894,8 @@ describe("playTurn choreography", () => {
 
   it("meleeGangUp falls back to a solo hop (no crash) when no ally shares the attacker's kind", () => {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
     const scene = createScene(state);
@@ -1195,8 +1195,8 @@ describe("resolveEffectStyle impact-pack wiring", () => {
 
   it("plays Hold Person bind and Power Word Stun impact on one body", () => {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const enemies = { front: [makeEnemy("rat-0")], back: [] };
 
@@ -1280,9 +1280,9 @@ describe("resolveEffectStyle impact-pack wiring", () => {
 
   it("plays Shield of Faith on one body and Bless over the whole party", () => {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
-      createCharacter("c2", "Cleo", "Human", "Neutral", "Priest", 2),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c2", "Cleo", "Human", "Neutral", "Priest", 2),
     ];
     const enemies = { front: [makeEnemy("rat-0")], back: [] };
 
@@ -1411,7 +1411,7 @@ describe("actor positioning", () => {
   it("keeps ordinary 1–4 member campaign positions on the exact legacy path", () => {
     for (let count = 1; count <= 4; count++) {
       const party = Array.from({ length: count }, (_, i) =>
-        createCharacter(`campaign-${i}`, `Hero ${i}`, "Human", "Neutral", "Fighter", i)
+        createCharacterRecord(`campaign-${i}`, `Hero ${i}`, "Human", "Neutral", "Fighter", i)
       );
       const state = createCombatState(
         party,
@@ -1431,8 +1431,8 @@ describe("actor positioning", () => {
 
   it("resolves Card Trial heroes by authoritative row, independent of array order", () => {
     const party = [
-      createCharacter("old-man", "Old Man", "Human", "Neutral", "Priest", 2),
-      createCharacter("rat-king", "Rat King", "Human", "Neutral", "Thief", 0),
+      createCharacterRecord("old-man", "Old Man", "Human", "Neutral", "Priest", 2),
+      createCharacterRecord("rat-king", "Rat King", "Human", "Neutral", "Thief", 0),
     ];
     const state = createCombatState(party, { front: [], back: [] }, false);
     state.partyFormation = {
@@ -1451,8 +1451,8 @@ describe("actor positioning", () => {
 
   it("uses the production footY sort to paint Card Trial Front after Back", () => {
     const party = [
-      createCharacter("rat-king", "Rat King", "Human", "Neutral", "Thief", 0),
-      createCharacter("old-man", "Old Man", "Human", "Neutral", "Priest", 2),
+      createCharacterRecord("rat-king", "Rat King", "Human", "Neutral", "Thief", 0),
+      createCharacterRecord("old-man", "Old Man", "Human", "Neutral", "Priest", 2),
     ];
     const state = createCombatState(party, { front: [], back: [] }, false);
     state.partyFormation = {
@@ -1472,8 +1472,8 @@ describe("actor positioning", () => {
 
   it("keeps two heroes in one Card Trial row separately visible", () => {
     const party = [
-      createCharacter("rat-king", "Rat King", "Human", "Neutral", "Thief", 2),
-      createCharacter("old-man", "Old Man", "Human", "Neutral", "Priest", 3),
+      createCharacterRecord("rat-king", "Rat King", "Human", "Neutral", "Thief", 2),
+      createCharacterRecord("old-man", "Old Man", "Human", "Neutral", "Priest", 3),
     ];
     const state = createCombatState(party, { front: [], back: [] }, false);
     state.partyFormation = {
@@ -1491,7 +1491,7 @@ describe("actor positioning", () => {
   });
 
   it("a mid-row death does not teleport its surviving row-mate or misplace the corpse", () => {
-    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const party = [createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
     const a = makeEnemy("a");
     const b = makeEnemy("b");
     const c = makeEnemy("c");
@@ -1524,7 +1524,7 @@ describe("actor positioning", () => {
   });
 
   it("createScene preseeds slots in encounter-array order (not first-touched order)", () => {
-    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const party = [createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
     const state = createCombatState(
       party,
       { front: [makeEnemy("first"), makeEnemy("second"), makeEnemy("third")], back: [] },
@@ -1542,7 +1542,7 @@ describe("actor positioning", () => {
   });
 
   it("a same-row summon does not claim a fading corpse's slot", () => {
-    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const party = [createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
     const a = makeEnemy("a");
     const b = makeEnemy("b");
     const state = createCombatState(party, { front: [a, b], back: [] }, false);
@@ -1569,7 +1569,7 @@ describe("actor positioning", () => {
   });
 
   it("a never-rendered turn-1 death still claims a distinct slot from survivors", () => {
-    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const party = [createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
     const a = makeEnemy("a");
     const b = makeEnemy("b");
     const state = createCombatState(party, { front: [a, b], back: [] }, false);
@@ -1597,8 +1597,8 @@ describe("Card Trial party-row transition", () => {
     ratEnteredAt: number
   ) {
     const party = [
-      createCharacter("rat-king", "Rat King", "Human", "Neutral", "Thief", 0),
-      createCharacter("old-man", "Old Man", "Human", "Neutral", "Priest", 2),
+      createCharacterRecord("rat-king", "Rat King", "Human", "Neutral", "Thief", 0),
+      createCharacterRecord("old-man", "Old Man", "Human", "Neutral", "Priest", 2),
     ];
     const state = createCombatState(
       party,
@@ -2058,7 +2058,7 @@ describe("bark ledger survives a scene-level drop (spec §5.1)", () => {
   it("keeps barkSaid true even when the engine-level window drops the push", () => {
     resetBarkRngForCombat(1);
     setBarkRngForTests(() => 0);
-    const party = [createCharacter("m1", "Dell", "Human", "Neutral", "Mage", 0)];
+    const party = [createCharacterRecord("m1", "Dell", "Human", "Neutral", "Mage", 0)];
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
 
     const text = pickBark(state, {
@@ -2108,8 +2108,8 @@ describe("paintOrderFootY (canvas z-order tracks live move offset)", () => {
       return () => values[i++ % values.length];
     };
     const party = [
-      createCharacter("c0", "Aria", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bram", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Aria", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bram", "Human", "Neutral", "Mage", 1),
     ];
     const orcDef = ENEMIES_BY_ID["orc"];
     const enemies: EnemyInstance[] = [

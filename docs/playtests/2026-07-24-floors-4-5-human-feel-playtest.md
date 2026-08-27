@@ -1,5 +1,10 @@
 # Floors 4-5 human-feel playtest (2026-07-24)
 
+> **Historical roster note (2026-08-27):** This run predates the fixed Old Man
+> + Rat King campaign duo. Its measurements are retained for floor history;
+> do not reproduce its default-party setup or add roster selection. See
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](../CURRENT-PRODUCT-CONTRACT.md).
+
 > **Naming (2026-07-25):** log excerpts below quote the boss display names in
 > use that day. "The Choir's Echo" is the **floor-4 boss, now The Lonely Girl**;
 > "The Drowned Echo" is the **floor-5 boss, now The Crying Man**. Ids

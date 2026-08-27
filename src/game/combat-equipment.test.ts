@@ -16,7 +16,7 @@ import {
   losesBackRowReach,
   weaponIsReachable,
 } from "./combat-equipment";
-import { createCharacter } from "./party";
+import { createCharacterRecord } from "./party";
 import type { Loadout } from "./combat-types";
 import { ITEMS_BY_ID } from "../data/items";
 
@@ -27,12 +27,12 @@ const LONG_SWORD = ITEMS_BY_ID["long-sword"]!; // medium range, attackBonus 5
 const VOIDBLADE = ITEMS_BY_ID["voidblade"]!; // close range, attackBonus 11
 const BOW = ITEMS_BY_ID["bow"]!; // long range, attackBonus 3
 
-function backRowMage(): ReturnType<typeof createCharacter> {
-  return createCharacter("c1", "Dell", "Elf", "Neutral", "Mage", 2);
+function backRowMage(): ReturnType<typeof createCharacterRecord> {
+  return createCharacterRecord("c1", "Dell", "Elf", "Neutral", "Mage", 2);
 }
 
-function frontRowFighter(slot = 0): ReturnType<typeof createCharacter> {
-  return createCharacter("c2", "Bram", "Human", "Good", "Fighter", slot);
+function frontRowFighter(slot = 0): ReturnType<typeof createCharacterRecord> {
+  return createCharacterRecord("c2", "Bram", "Human", "Good", "Fighter", slot);
 }
 
 describe("weaponIsReachable (row restrictions removed)", () => {

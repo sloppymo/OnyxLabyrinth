@@ -2,6 +2,10 @@
 
 Date: 2026-08-13
 
+> **Historical roster note (2026-08-27):** This balance report predates the
+> fixed Old Man + Rat King campaign duo. Its multi-roster measurements are
+> retained as historical evidence and are not a current selection path.
+
 This pass measured the natural campaign loop before changing combat balance. The
 browser driver used normal party creation, BFS movement through the authored
 map, real locks/chests/chutes/rafts/stairs, and the real combat UI. It did not

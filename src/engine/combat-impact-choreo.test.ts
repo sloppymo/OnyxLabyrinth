@@ -15,7 +15,7 @@ import {
 import { setReducedMotion, getReducedMotion, sampleEnvironmentLight } from "./combat-impact-fx";
 import { createCombatState } from "../game/combat";
 import type { CombatEvent, EnemyInstance } from "../game/combat-types";
-import { createCharacter } from "../game/party";
+import { createCharacterRecord } from "../game/party";
 import { ENEMIES_BY_ID, type EnemyDef } from "../data/enemies";
 
 const W = 768;
@@ -31,7 +31,7 @@ function makeEnemy(instanceId: string, hp = 10): EnemyInstance {
 
 function makeScene() {
   const party = [
-    createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+    createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
   ];
   const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
   return createScene(state);
@@ -79,7 +79,7 @@ describe("impact presentation choreography integration", () => {
       const scene = makeScene();
       // damage 1 on a 100 HP enemy = 1% ratio = light
       const state = createCombatState(
-        [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)],
+        [createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0)],
         { front: [makeEnemy("rat-0", 100)], back: [] },
         false,
       );
@@ -382,7 +382,7 @@ describe("impact presentation choreography integration", () => {
 
   describe("AOE throttling", () => {
     it("grants at most one full hit-stop for multi-target spell effects", () => {
-      const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Mage", 0)];
+      const party = [createCharacterRecord("c0", "Alice", "Human", "Neutral", "Mage", 0)];
       const enemies = {
         front: [makeEnemy("rat-0"), makeEnemy("rat-1"), makeEnemy("rat-2")],
         back: [] as EnemyInstance[],

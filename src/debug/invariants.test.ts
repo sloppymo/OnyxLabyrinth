@@ -43,11 +43,11 @@ describe("checkInvariants", () => {
     expect(checkInvariants({ state, route: "dungeon" }).some((w) => w.includes("sp"))).toBe(true);
   });
 
-  it("flags a party that isn't exactly 4 members", () => {
+  it("flags a roster that is not the fixed protagonist duo", () => {
     const state = baseState();
-    state.party = state.party.slice(0, 3);
+    state.party = state.party.slice(0, 1);
     expect(
-      checkInvariants({ state, route: "dungeon" }).some((w) => /expected 4/i.test(w))
+      checkInvariants({ state, route: "dungeon" }).some((w) => /fixed Old Man \+ Rat King duo/i.test(w))
     ).toBe(true);
   });
 

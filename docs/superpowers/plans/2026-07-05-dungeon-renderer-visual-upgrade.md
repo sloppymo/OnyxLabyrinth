@@ -1,5 +1,10 @@
 # Dungeon Renderer Visual Upgrade — Implementation Plan
 
+> **Historical roster note (2026-08-27):** This renderer plan predates the
+> fixed Old Man + Rat King campaign duo. Its HUD references to a generic party
+> are implementation terminology only; do not add character creation or roster
+> selection while revisiting it. See [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Upgrade the first-person corridor renderer, top-left minimap, and optional HUD bars to a moody, atmospheric CRT-era style without changing any game logic.

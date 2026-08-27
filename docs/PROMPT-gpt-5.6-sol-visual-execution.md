@@ -1,5 +1,9 @@
 # Prompt — OnyxLabyrinth visual improvement: full execution (GPT-5.6 Sol + Codex subagents)
 
+> **Historical execution prompt.** Its older party-creation and roster language
+> is not current. Use the fixed Old Man + Rat King contract in
+> [`CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md).
+
 **How to run this:** paste everything below the line into a GPT-5.6 Sol **Codex**
 session (or any GPT-5.6 Sol session with real file/code-execution access and
 subagent support) at the repo root, on a fresh branch. Root agent

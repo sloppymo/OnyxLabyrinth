@@ -190,7 +190,7 @@ const timings = {};
 // ============================================================================
 // BOOT
 // ============================================================================
-log("=== BOOT: title -> New Game -> Default Party -> town -> dungeon ===");
+log("=== BOOT: title -> New Game -> fixed duo -> town -> dungeon ===");
 let st = await bootToDungeon(page);
 await shot(page, "00-boot-f1-start.png");
 log("boot", JSON.stringify({ ...st, body: undefined }));

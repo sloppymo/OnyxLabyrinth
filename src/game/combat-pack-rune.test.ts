@@ -9,7 +9,7 @@ import {
 } from "./combat";
 import { enemyAbilityById } from "../data/enemy-abilities";
 import type { CombatState, EnemyInstance } from "./combat-types";
-import { createDefaultParty } from "./party";
+import { createCombatTestRoster } from "./test-roster";
 
 function makeEnemy(
   id: string,
@@ -55,7 +55,7 @@ function makePackState(leaderAgi = 20, partnerAgi = 1): CombatState {
     agi: partnerAgi,
   });
   const state = createCombatState(
-    createDefaultParty(),
+    createCombatTestRoster(),
     { front: [leader], back: [partner] },
     false
   );
@@ -72,7 +72,7 @@ function makeRuneState(): CombatState {
     agi: 20,
   });
   const state = createCombatState(
-    createDefaultParty(),
+    createCombatTestRoster(),
     { front: [construct], back: [knight] },
     false
   );

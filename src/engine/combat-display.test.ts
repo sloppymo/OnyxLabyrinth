@@ -8,7 +8,7 @@ import {
   spellElementLabel,
   type SpellMagicCategory,
 } from "./combat-display";
-import { createCharacter } from "../game/party";
+import { createCharacterRecord } from "../game/party";
 import type { SpellEffect } from "../data/spells";
 
 describe("enemyHealthDescriptor", () => {
@@ -39,18 +39,18 @@ describe("enemyHealthDescriptor", () => {
 
 describe("partyStatusText", () => {
   it("returns OK for a healthy character", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     expect(partyStatusText(c)).toBe("OK");
   });
 
   it("returns the first active status", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.status.push("poison");
     expect(partyStatusText(c)).toBe("poison");
   });
 
   it("returns Fallen for a knocked-out character", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.hp = 0;
     c.status.push("knockedOut");
     expect(partyStatusText(c)).toBe("Fallen");
@@ -59,7 +59,7 @@ describe("partyStatusText", () => {
 
 describe("hp helpers", () => {
   it("computes HP ratio", () => {
-    const c = createCharacter("c1", "Aria", "Human", "Good", "Fighter", 0);
+    const c = createCharacterRecord("c1", "Aria", "Human", "Good", "Fighter", 0);
     c.hp = 14;
     c.maxHp = 28;
     expect(hpRatio(c)).toBe(0.5);

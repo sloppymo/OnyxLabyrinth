@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { serialize, deserialize, autoSave, loadAutoSave } from "./save";
 import { createGameState } from "./state";
 import { findFloor } from "./floor-registry";
-import { createDefaultParty, createCharacter } from "./party";
+import { createCharacterRecord } from "./party";
+import { createCombatTestRoster } from "./test-roster";
 import { isTreasureLooted } from "./features";
 import type { GameState } from "../types";
 
@@ -11,7 +12,6 @@ describe("save serialization", () => {
 
   beforeEach(() => {
     state = createGameState(findFloor(1)!);
-    state.party = createDefaultParty();
     state.partyGold = 100;
     state.dayCount = 3;
     state.inventory = [
@@ -197,7 +197,7 @@ describe("save serialization", () => {
     raw.version = 7;
     // Simulate a v7 save with pseudo-Latin spell ids.
     raw.party[0].knownSpellIds = ["mage-zornyx", "mage-wyrshel", "mage-pathrend"];
-    raw.party[1].knownSpellIds = ["priest-aethel", "priest-lucenis"];
+    raw.party[1].knownSpellIds = [];
     const restored = deserialize(JSON.stringify(raw));
     expect(restored).not.toBeNull();
     if (!restored) return;
@@ -206,10 +206,7 @@ describe("save serialization", () => {
       "mage-arcane-ward",
       "mage-wayfinder",
     ]);
-    expect(restored.party[1].knownSpellIds).toEqual([
-      "priest-cure-wounds",
-      "priest-light",
-    ]);
+    expect(restored.party[1].knownSpellIds).toEqual([]);
   });
 
   it("migrates v6 saves: classic Wizardry spell ids remap through both steps to D&D names", () => {
@@ -218,14 +215,14 @@ describe("save serialization", () => {
     raw.version = 6;
     // Simulate a v6 save with classic Wizardry spell ids.
     raw.party[0].knownSpellIds = ["mage-halito", "mage-dumapic"];
-    raw.party[1].knownSpellIds = ["priest-dios", "priest-milwa"];
+    raw.party[1].knownSpellIds = [];
     const restored = deserialize(JSON.stringify(raw));
     expect(restored).not.toBeNull();
     if (!restored) return;
     // v6→v7 maps halito→zornyx, then v7→v8 maps zornyx→fire-bolt,
     // then v8→v9 keeps fire-bolt (it survived the cantrip consolidation).
     expect(restored.party[0].knownSpellIds).toEqual(["mage-fire-bolt", "mage-wayfinder"]);
-    expect(restored.party[1].knownSpellIds).toEqual(["priest-cure-wounds", "priest-light"]);
+    expect(restored.party[1].knownSpellIds).toEqual([]);
   });
 
   it("migrates v8 saves: removed cantrip ids remap to consolidated equivalents", () => {
@@ -268,21 +265,22 @@ describe("save serialization", () => {
   });
 
   it("round-trips chosen perk ids", () => {
-    state.party[0].perkIds = ["fighter-cleave"];
+    state.party[0].perkIds = ["mage-spell-echo"];
     state.party[1].perkIds = ["thief-ambusher", "thief-shadow"];
     const json = serialize(state);
     const restored = deserialize(json);
     expect(restored).not.toBeNull();
     if (!restored) return;
-    expect(restored.party[0].perkIds).toEqual(["fighter-cleave"]);
+    expect(restored.party[0].perkIds).toEqual(["mage-spell-echo"]);
     expect(restored.party[1].perkIds).toEqual(["thief-ambusher", "thief-shadow"]);
     // perkIds should be a copy, not a reference.
     expect(restored.party[0].perkIds).not.toBe(state.party[0].perkIds);
   });
 
-  it("migrates v13 saves: trims a 6-person roster to the 4 active members and densifies formationSlot", () => {
-    const extra1 = createCharacter("c5", "Extra1", "Human", "Neutral", "Fighter", 4);
-    const extra2 = createCharacter("c6", "Extra2", "Human", "Neutral", "Mage", 5);
+  it("migrates a legacy six-member save to the fixed protagonist duo", () => {
+    const extra1 = createCharacterRecord("c5", "Extra1", "Human", "Neutral", "Fighter", 4);
+    const extra2 = createCharacterRecord("c6", "Extra2", "Human", "Neutral", "Mage", 5);
+    state.party = createCombatTestRoster();
     const json = serialize(state);
     const raw = JSON.parse(json) as Record<string, unknown>;
     raw.version = 13;
@@ -300,8 +298,8 @@ describe("save serialization", () => {
     expect(restored).not.toBeNull();
     if (!restored) return;
 
-    expect(restored.party.map((c) => c.id)).toEqual(["c1", "c2", "c3", "c4"]);
-    expect(restored.party.map((c) => c.formationSlot)).toEqual([0, 1, 2, 3]);
+    expect(restored.party.map((c) => c.id)).toEqual(["old-man", "rat-king"]);
+    expect(restored.party.map((c) => c.formationSlot)).toEqual([1, 0]);
     expect(restored.equipment.c5).toBeUndefined();
     expect(restored.equipment.c6).toBeUndefined();
     const inventoryIds = restored.inventory.map((e) => e.itemId);
@@ -310,7 +308,8 @@ describe("save serialization", () => {
     expect(inventoryIds).toContain("robe");
   });
 
-  it("keeps a party of 4 unchanged when migrating through v13→v14", () => {
+  it("migrates a legacy four-member save to the fixed protagonist duo", () => {
+    state.party = createCombatTestRoster();
     const json = serialize(state);
     const raw = JSON.parse(json) as Record<string, unknown>;
     raw.version = 13;
@@ -318,10 +317,8 @@ describe("save serialization", () => {
     const restored = deserialize(JSON.stringify(raw));
     expect(restored).not.toBeNull();
     if (!restored) return;
-    expect(restored.party.map((c) => c.id)).toEqual(state.party.map((c) => c.id));
-    expect(restored.party.map((c) => c.formationSlot)).toEqual(
-      state.party.map((c) => c.formationSlot)
-    );
+    expect(restored.party.map((c) => c.id)).toEqual(["old-man", "rat-king"]);
+    expect(restored.party.map((c) => c.formationSlot)).toEqual([1, 0]);
   });
 
   it("round-trips deepestFloorReached", () => {
@@ -438,7 +435,6 @@ describe("autoSave", () => {
   beforeEach(() => {
     localStorage.clear();
     state = createGameState(findFloor(1)!);
-    state.party = createDefaultParty();
     state.partyGold = 42;
   });
 

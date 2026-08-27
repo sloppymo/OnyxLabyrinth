@@ -16,7 +16,7 @@ import {
   enqueueNewAllies,
 } from "./combat";
 import type { CombatState, EnemyInstance, PlayerAction, Rng, TurnQueueEntry } from "./combat-types";
-import { createCharacter, type CharacterClass } from "./party";
+import { createCharacterRecord, type CharacterClass } from "./party";
 import { ENEMIES_BY_ID, type EnemyDef } from "../data/enemies";
 import { ALL_SPELLS } from "../data/spells";
 import { ITEMS_BY_ID, shopInventory } from "../data/items";
@@ -67,7 +67,7 @@ function makeEnemy(
 function makeParty(count = 2, classes?: CharacterClass[]) {
   const party = [];
   for (let i = 0; i < count; i++) {
-    const c = createCharacter(
+    const c = createCharacterRecord(
       `char-${i}`,
       `Char${i}`,
       "Human",

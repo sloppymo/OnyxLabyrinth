@@ -23,7 +23,6 @@ function makeTown(state = createGameState(FLOORS[0])): TownController {
     state,
     onEnterDungeon: () => {},
     onOpenSave: () => {},
-    onReformParty: () => {},
   });
 }
 
@@ -40,6 +39,30 @@ function activeRosterTab(ctrl: TownController): string {
 function screenOf(ctrl: TownController): string {
   return (ctrl as unknown as { screen: string }).screen;
 }
+
+describe("TownController scene framing", () => {
+  it("keeps the connected Edgehollow backdrop in sync with each facility", () => {
+    const ctrl = makeTown();
+    const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
+
+    expect(panel.dataset.townScene).toBe("square");
+
+    ctrl.handleKey("i");
+    expect(panel.dataset.townScene).toBe("inn");
+    ctrl.handleKey("Escape");
+
+    ctrl.handleKey("+");
+    expect(panel.dataset.townScene).toBe("temple");
+    ctrl.handleKey("Escape");
+
+    ctrl.handleKey("$");
+    expect(panel.dataset.townScene).toBe("outfitter");
+    ctrl.handleKey("Escape");
+
+    ctrl.handleKey("g");
+    expect(panel.dataset.townScene).toBe("guild");
+  });
+});
 
 describe("TownController shop tabs", () => {
   it("cycles buy → sell → appraise with ArrowRight", () => {
@@ -159,24 +182,23 @@ describe("TownController roster tabs", () => {
   });
 });
 
-describe("TownController main footer party count", () => {
-  it("shows alive/total from actual party length, not a hardcoded 6", () => {
+describe("TownController main footer duo count", () => {
+  it("shows alive/total from the fixed duo roster", () => {
     const state = createGameState(FLOORS[0]);
-    expect(state.party).toHaveLength(4);
+    expect(state.party.map((c) => c.id)).toEqual(["old-man", "rat-king"]);
     const ctrl = makeTown(state);
     const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
     const footer2 = panel.querySelector(".ff6-footer2")?.textContent ?? "";
-    expect(footer2).toMatch(/^Party: 4\/4 alive/);
-    expect(footer2).not.toMatch(/6\/6/);
+    expect(footer2).toMatch(/^Duo: 2\/2 alive/);
   });
 
   it("reflects a smaller party if one is somehow present", () => {
     const state = createGameState(FLOORS[0]);
-    state.party = state.party.slice(0, 3);
+    state.party = state.party.slice(0, 1);
     state.party[0]!.hp = 0;
     const ctrl = makeTown(state);
     const panel = (ctrl as unknown as { panel: HTMLElement }).panel;
-    expect(panel.querySelector(".ff6-footer2")?.textContent).toMatch(/^Party: 2\/3 alive/);
+    expect(panel.querySelector(".ff6-footer2")?.textContent).toMatch(/^Duo: 0\/1 alive/);
   });
 });
 

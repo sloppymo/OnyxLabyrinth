@@ -56,7 +56,7 @@ HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
 
 import { CombatController } from "./combat-ui";
 import { createCombatState } from "../game/combat";
-import { createCharacter } from "../game/party";
+import { createCharacterRecord } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
 import type { EnemyInstance } from "../game/combat-types";
 import { ALL_SPELLS } from "../data/spells";
@@ -91,8 +91,8 @@ describe("CombatController input routing", () => {
 
   function freshController() {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
     return new CombatControllerCtor(state, { onEnd: () => {} });
@@ -187,10 +187,10 @@ describe("CombatController input routing", () => {
     // party, so Move can never slide into an empty slot — it always offers
     // a swap with a living ally in the opposite row.
     const party = [
-      createCharacter("c0", "A", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "B", "Human", "Neutral", "Mage", 1),
-      createCharacter("c2", "C", "Human", "Neutral", "Thief", 2),
-      createCharacter("c3", "D", "Human", "Neutral", "Priest", 3),
+      createCharacterRecord("c0", "A", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "B", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c2", "C", "Human", "Neutral", "Thief", 2),
+      createCharacterRecord("c3", "D", "Human", "Neutral", "Priest", 3),
     ];
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
     const controller = new CombatControllerCtor(state, { onEnd: () => {} });
@@ -230,7 +230,7 @@ describe("CombatController input routing", () => {
 
   it("Move offers every living back-row ally as a swap target in a larger party", () => {
     const party = Array.from({ length: 6 }, (_, i) =>
-      createCharacter(`c${i}`, `P${i}`, "Human", "Neutral", i < 3 ? "Fighter" : "Mage", i)
+      createCharacterRecord(`c${i}`, `P${i}`, "Human", "Neutral", i < 3 ? "Fighter" : "Mage", i)
     );
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
     const controller = new CombatControllerCtor(state, { onEnd: () => {} });
@@ -258,10 +258,10 @@ describe("CombatController input routing", () => {
 
   it("the v shortcut fires Move", () => {
     const party = [
-      createCharacter("c0", "A", "Human", "Neutral", "Fighter", 0),
-      createCharacter("c1", "B", "Human", "Neutral", "Mage", 1),
-      createCharacter("c2", "C", "Human", "Neutral", "Thief", 2),
-      createCharacter("c3", "D", "Human", "Neutral", "Priest", 3),
+      createCharacterRecord("c0", "A", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c1", "B", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c2", "C", "Human", "Neutral", "Thief", 2),
+      createCharacterRecord("c3", "D", "Human", "Neutral", "Priest", 3),
     ];
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
     const controller = new CombatControllerCtor(state, { onEnd: () => {} });
@@ -401,7 +401,7 @@ describe("CombatController input routing", () => {
 
   it("prefocuses last-hit enemy in target select", () => {
     const party = [
-      createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0),
+      createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0),
     ];
     const state = createCombatState(
       party,
@@ -499,7 +499,7 @@ describe("CombatController input routing", () => {
       range: "close",
       price: 0,
     } as any;
-    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const party = [createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
     const backEnemy: EnemyInstance = { ...makeEnemy("boss-0"), row: "back" };
     const state = createCombatState(
       party,
@@ -533,7 +533,7 @@ describe("CombatController input routing", () => {
       range: "close",
       price: 0,
     } as any;
-    const party = [createCharacter("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
+    const party = [createCharacterRecord("c0", "Alice", "Human", "Neutral", "Fighter", 0)];
     const backEnemy: EnemyInstance = { ...makeEnemy("boss-0"), row: "back" };
     const frontEnemy = makeEnemy("grunt-0");
     const state = createCombatState(
@@ -587,7 +587,7 @@ describe("CombatController input routing", () => {
 
   it("Mage palette disables Magic when silenced", () => {
     const party = [
-      createCharacter("c0", "Bob", "Human", "Neutral", "Mage", 1),
+      createCharacterRecord("c0", "Bob", "Human", "Neutral", "Mage", 1),
     ];
     party[0].knownSpellIds = ["mage-spark"];
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
@@ -620,7 +620,7 @@ describe("CombatController input routing", () => {
     // Regression: `h` was unreachable until the palette whitelist was fixed.
     // resolveHide fizzles for non-Thieves but still spends the turn, so the
     // controller must reject it at the palette the way "cast" does.
-    const party = [createCharacter("c0", "Bob", "Human", "Neutral", "Fighter", 1)];
+    const party = [createCharacterRecord("c0", "Bob", "Human", "Neutral", "Fighter", 1)];
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
     const controller = new CombatControllerCtor(state, { onEnd: () => {} });
     const c = controller as any;
@@ -635,7 +635,7 @@ describe("CombatController input routing", () => {
   });
 
   it("the `h` shortcut hides a Thief and refuses to re-hide", () => {
-    const party = [createCharacter("c0", "Sly", "Human", "Neutral", "Thief", 1)];
+    const party = [createCharacterRecord("c0", "Sly", "Human", "Neutral", "Thief", 1)];
     const state = createCombatState(party, { front: [makeEnemy("rat-0")], back: [] }, false);
     const controller = new CombatControllerCtor(state, { onEnd: () => {} });
     const c = controller as any;
@@ -656,7 +656,7 @@ describe("CombatController input routing", () => {
   });
 
   it("Magic opens selectSpell with All tab and cycles categories with ←→ / 1–5", () => {
-    const party = [createCharacter("c0", "Bob", "Human", "Neutral", "Mage", 0)];
+    const party = [createCharacterRecord("c0", "Bob", "Human", "Neutral", "Mage", 0)];
     // Give a mixed book so tabs filter differently.
     party[0].knownSpellIds = [
       "mage-fire-bolt",
@@ -711,7 +711,7 @@ describe("CombatController input routing", () => {
   });
 
   it("empty Magic category stays on the sheet instead of backing out", () => {
-    const party = [createCharacter("c0", "Bob", "Human", "Neutral", "Mage", 0)];
+    const party = [createCharacterRecord("c0", "Bob", "Human", "Neutral", "Mage", 0)];
     party[0].knownSpellIds = ["mage-fire-bolt"];
     party[0].sp = 40;
     const state = createCombatState(

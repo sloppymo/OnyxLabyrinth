@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { ENEMIES_BY_ID } from "../../data/enemies";
-import { PARTY_SIZE } from "../party";
 import { serialize } from "../save";
 import { createGameState } from "../state";
 import { findFloor } from "../floor-registry";
@@ -10,14 +9,13 @@ import { createFight } from "./engine";
 import { ENCOUNTERS } from "./encounters";
 
 describe("Card Trial campaign isolation", () => {
-  it("does not change campaign PARTY_SIZE or in-memory party when a fight is created", () => {
+  it("does not change the campaign protagonist duo when a fight is created", () => {
     const state = createGameState(findFloor(1)!);
-    expect(PARTY_SIZE).toBe(4);
-    expect(state.party).toHaveLength(4);
+    expect(state.party).toHaveLength(2);
+    expect(state.party.map((c) => c.id).sort()).toEqual(["old-man", "rat-king"]);
     const ids = state.party.map((c) => c.id);
     createFight(2, { seed: 1 });
-    expect(PARTY_SIZE).toBe(4);
-    expect(state.party).toHaveLength(4);
+    expect(state.party).toHaveLength(2);
     expect(state.party.map((c) => c.id)).toEqual(ids);
   });
 
@@ -27,7 +25,7 @@ describe("Card Trial campaign isolation", () => {
     const raw = JSON.parse(serialize(state)) as Record<string, unknown>;
     expect(raw.version).toBe(18);
     expect(raw).not.toHaveProperty("cardTrial");
-    expect(Array.isArray(raw.party) ? (raw.party as unknown[]).length : 0).toBe(4);
+    expect(Array.isArray(raw.party) ? (raw.party as unknown[]).length : 0).toBe(2);
   });
 
   it("does not register Card Trial enemies on campaign tables", () => {

@@ -23,7 +23,7 @@
 import { describe, it } from "vitest";
 import { createScene, playTurn, updateScene, animOffset } from "../src/engine/combat-choreography";
 import { createCombatState, resolveEnemyTurn } from "../src/game/combat";
-import { createCharacter } from "../src/game/party";
+import { createCharacterRecord } from "../src/game/party";
 import { ENEMIES_BY_ID, type EnemyDef } from "../src/data/enemies";
 import { enemyAbilityById } from "../src/data/enemy-abilities";
 import type { CombatState, CombatEvent, EnemyInstance, Rng } from "../src/game/combat-types";
@@ -46,8 +46,8 @@ function spawnEnemy(defId: string, instanceId: string, overrides: Partial<EnemyD
 
 function makeParty() {
   return [
-    createCharacter("c0", "Aria", "Human", "Neutral", "Fighter", 0),
-    createCharacter("c1", "Bram", "Human", "Neutral", "Mage", 1),
+    createCharacterRecord("c0", "Aria", "Human", "Neutral", "Fighter", 0),
+    createCharacterRecord("c1", "Bram", "Human", "Neutral", "Mage", 1),
   ];
 }
 

@@ -1,8 +1,8 @@
 /**
  * Natural Floors 1–3 attrition/recovery measurement.
  *
- * This driver deliberately uses normal party selection, movement, doors,
- * traps, stairs, and combat. It does not call jumpTo(), mutate state, inject
+ * This driver deliberately uses the fixed Old Man + Rat King duo, movement,
+ * doors, traps, stairs, and combat. It does not call jumpTo(), mutate state, inject
  * inventory, or force combat outcomes. Set POLICY=tactical for the competent
  * player pass; the default POLICY=auto uses attack-first Auto.
  *
@@ -29,11 +29,9 @@ const OUT = ensureOutDir("playtest-screenshots/2026-08-13-attrition-recovery");
 const TRACE = process.env.TRACE === "1";
 const POLICY = process.env.POLICY ?? "auto";
 
-const PARTIES = [
-  { id: "all-trades", presetIndex: 0 },
-  { id: "shield-wall", presetIndex: 1 },
-  { id: "all-steel", presetIndex: 3 },
-].filter((party) => !process.env.ONLY || process.env.ONLY.split(",").includes(party.id));
+const RUNS = [{ id: "fixed-duo" }].filter(
+  (run) => !process.env.ONLY || process.env.ONLY.split(",").includes(run.id),
+);
 
 const DIRS = [
   { dx: 0, dy: -1, edge: "n", key: "ArrowUp", turn: "ArrowUp" },
@@ -535,7 +533,7 @@ async function unlockAt(page, target, direction, runState) {
   }
 }
 
-async function bootNatural(page, presetIndex, seed) {
+async function bootNatural(page, seed) {
   await page.goto(URL, { waitUntil: "networkidle" });
   await wait(400);
   await page.evaluate((value) => {
@@ -550,22 +548,13 @@ async function bootNatural(page, presetIndex, seed) {
       await press(page, "n", 1, 250);
     } else if (current.route === "prologue") {
       await press(page, "Escape", 1, 250);
-    } else if (current.route === "party_creation") {
-      await wait(500);
-      if (presetIndex > 0) {
-        // The first carousel key can be swallowed by the opening guard.
-        await press(page, "ArrowRight", presetIndex + 1, 500);
-        await wait(500);
-      }
-      await press(page, "Enter", 1, 200);
-      if ((await snap(page)).route === "party_creation") await press(page, "Enter", 1, 200);
     } else if (current.route === "town") {
       await townToDungeon(page);
     } else {
       await handleRoute(page);
     }
   }
-  throw new Error(`Natural boot failed for preset ${presetIndex}`);
+  throw new Error("Natural boot failed for fixed duo");
 }
 
 async function captureCapstone(page, runId, floorId) {
@@ -574,13 +563,13 @@ async function captureCapstone(page, runId, floorId) {
   return file;
 }
 
-async function runCampaign(party, seed) {
-  const runId = `${party.id}-seed-${seed}`;
+async function runCampaign(run, seed) {
+  const runId = `${run.id}-seed-${seed}`;
   const runState = { wipes: 0 };
   const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 800 } });
   const result = {
     runId,
-    party: party.id,
+    run: run.id,
     seed,
     completed: false,
     wipes: 0,
@@ -592,7 +581,7 @@ async function runCampaign(party, seed) {
     audit: null,
   };
   try {
-    await bootNatural(page, party.presetIndex, seed);
+    await bootNatural(page, seed);
     if (TRACE) console.log("  F1 start");
 
     // Floor 1: crypt key → reliquary lock → lexicon chest → chute → raft →
@@ -668,10 +657,10 @@ async function runCampaign(party, seed) {
 }
 
 const results = [];
-for (const party of PARTIES) {
+for (const run of RUNS) {
   for (const seed of SEEDS) {
-    console.log(`=== ${party.id} seed ${seed} ===`);
-    const result = await runCampaign(party, seed);
+    console.log(`=== ${run.id} seed ${seed} ===`);
+    const result = await runCampaign(run, seed);
     results.push(result);
     const records = result.audit?.records ?? [];
     const fights = records.length;
@@ -685,7 +674,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   url: URL,
   seeds: SEEDS,
-  parties: PARTIES,
+  runs: RUNS,
   measurementPolicy: POLICY === "tactical"
     ? "Natural movement and progression; competent tactical policy heals material damage, uses one defensive layer on large fights, conserves SP, uses critical potions, and flees only from a collapsing ordinary fight; Tab/B only accelerate presentation."
     : "Natural movement and progression; Q attack-first Auto; Tab/B only accelerate combat presentation.",

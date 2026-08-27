@@ -1,5 +1,9 @@
 # LLM Playwright Debug Surface — Review & Implementation Plan
 
+> **Historical route note (2026-08-27):** The debug surface remains useful, but
+> the character-creation/default-roster steps documented in this plan are gone.
+> Use the fixed-duo entry flow in [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 **Date:** 2026-07-25 · **Status:** PR-1–4 **SHIPPED**; PR-5 (seeded RNG + transcript replay) **not started**
 **Scope:** Debug-only observability/setup seams for Playwright-driven LLM playtesting. No gameplay changes.
 **Revision note (2026-07-25, post-review):** corrected an audio-loading claim in §2.4/§2.6/triage

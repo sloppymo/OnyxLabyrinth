@@ -1,6 +1,6 @@
 /**
- * Shared idle strip frame-stepper for party sprites (party-select carousel,
- * equip sheet, etc.). Mirror stays on CSS scaleX(-1); this only translates
+ * Shared idle strip frame-stepper for protagonist sprites (roster/equip sheet,
+ * combat previews, etc.). Mirror stays on CSS scaleX(-1); this only translates
  * the strip horizontally.
  */
 

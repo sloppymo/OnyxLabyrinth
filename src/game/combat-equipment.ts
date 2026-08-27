@@ -1,7 +1,7 @@
 /**
  * Equipment / loadout helpers. Pure functions over Character + Loadout — no
- * CombatState knowledge. Used by the town Equip screen, dungeon auto-equip,
- * party creation, and combat factory. Cursed-gear rules live here: cursed
+ * CombatState knowledge. Used by the town Equip screen, fixed-duo
+ * initialization, dungeon auto-equip, and combat factory. Cursed-gear rules live here: cursed
  * items already in a slot can never be displaced (Remove Curse at the Temple).
  */
 

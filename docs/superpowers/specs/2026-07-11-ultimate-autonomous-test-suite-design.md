@@ -1,5 +1,10 @@
 # Ultimate Autonomous Test Suite Design: OnyxLabyrinth
 
+> **Historical test-design document.** Its old character-creation and roster
+> assumptions are retained for archaeology only. Current automation must start
+> with the fixed Old Man + Rat King duo; see
+> [`docs/CURRENT-PRODUCT-CONTRACT.md`](../../CURRENT-PRODUCT-CONTRACT.md).
+
 > A comprehensive QA automation architecture for the OnyxLabyrinth browser-based dungeon crawler. This document covers testing philosophy, the full testing pyramid, autonomous playtesting AI, property/fuzz/snapshot/rendering/save/balance testing, AI-agent integration, and a phased implementation roadmap.
 
 ---

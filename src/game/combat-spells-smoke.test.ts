@@ -11,7 +11,7 @@ import {
   type SpellTarget,
 } from "../data/spells";
 import { ALL_ITEMS } from "../data/items";
-import { createCharacter, applyCombatPartyResult, type Character } from "./party";
+import { createCharacterRecord, applyCombatPartyResult, type Character } from "./party";
 import {
   createCombatState,
   resolvePlayerTurn,
@@ -58,7 +58,7 @@ function makeEnemy(
 }
 
 function prepCaster(spell: SpellDef): Character {
-  const c = createCharacter(
+  const c = createCharacterRecord(
     "caster",
     spell.class,
     "Human",
@@ -76,7 +76,7 @@ function prepCaster(spell: SpellDef): Character {
 }
 
 function prepAlly(): Character {
-  const a = createCharacter("ally", "Ally", "Human", "Neutral", "Fighter", 1);
+  const a = createCharacterRecord("ally", "Ally", "Human", "Neutral", "Fighter", 1);
   a.maxHp = 200;
   a.hp = 100; // wounded so heals have room
   a.sp = 50;
@@ -249,7 +249,7 @@ describe("combat spell smoke (every non-utility spell)", () => {
     (_id, spell) => {
       const caster = prepCaster(spell);
       const ally = prepAlly();
-      const ko = createCharacter("ko", "Dead", "Human", "Neutral", "Fighter", 2);
+      const ko = createCharacterRecord("ko", "Dead", "Human", "Neutral", "Fighter", 2);
       ko.hp = 0;
       ko.maxHp = 80;
       ko.status = ["knockedOut"];
@@ -357,7 +357,7 @@ describe("utility spell smoke (every utility spell)", () => {
       const cls = spell.class;
       let caster = state.party.find((c) => c.class === cls);
       if (!caster) {
-        caster = createCharacter("u0", cls, "Human", "Neutral", cls, 0);
+        caster = createCharacterRecord("u0", cls, "Human", "Neutral", cls, 0);
         state.party.push(caster);
       }
       caster.hp = Math.max(1, caster.hp);
@@ -467,7 +467,7 @@ describe("Shrink hits summoned allies", () => {
 
 describe("Giant Strength does not leak between fights", () => {
   it("applyCombatPartyResult strips giantStrength", () => {
-    const fighter = createCharacter("f0", "Fighter", "Human", "Neutral", "Fighter", 0);
+    const fighter = createCharacterRecord("f0", "Fighter", "Human", "Neutral", "Fighter", 0);
     fighter.status = ["giantStrength", "poison", "knockedOut"];
     fighter.hp = 0;
     const out = applyCombatPartyResult([fighter]);

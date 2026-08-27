@@ -4,7 +4,6 @@ import { normalizeLoadedMode } from "./load-normalize";
 describe("normalizeLoadedMode", () => {
   it("maps non-resumable modes to town", () => {
     expect(normalizeLoadedMode("title")).toBe("town");
-    expect(normalizeLoadedMode("party_creation")).toBe("town");
     expect(normalizeLoadedMode("arena")).toBe("town");
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PARTY_SIZE } from "../party";
+import { createPlayableDuo } from "../playable-duo";
 import { CARD_DEFS, OLD_MAN_LIST, RAT_KING_LIST } from "./cards";
 import { ENCOUNTERS } from "./encounters";
 import {
@@ -508,10 +508,13 @@ describe("locked Cleaver/Ash triangle", () => {
 });
 
 describe("isolation", () => {
-  it("does not change campaign PARTY_SIZE", () => {
-    expect(PARTY_SIZE).toBe(4);
+  it("does not change the campaign's fixed protagonist duo", () => {
+    expect(createPlayableDuo().map((character) => character.id)).toEqual([
+      "old-man",
+      "rat-king",
+    ]);
     createFight(1, { seed: 1 });
-    expect(PARTY_SIZE).toBe(4);
+    expect(createPlayableDuo()).toHaveLength(2);
   });
 
   it("does not consume gameplay RNG for shuffling", () => {

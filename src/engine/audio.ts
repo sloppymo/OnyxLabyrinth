@@ -28,8 +28,6 @@
 //   audio.stopTownMusic();   // end town BGM
 //   audio.startTavernMusic(); // loop Hot Boi's tavern BGM (Coffin Nails)
 //   audio.stopTavernMusic();  // end tavern BGM
-//   audio.startPartyCreationMusic(); // loop character creation BGM
-//   audio.stopPartyCreationMusic();  // end character creation BGM
 //   audio.startBattleMusic(); // loop authored normal-encounter BGM
 //   audio.stopBattleMusic();  // stop and rewind normal-encounter BGM
 //   audio.startBossCombat(); // loop boss encounter BGM
@@ -258,10 +256,6 @@ const TOWN_MUSIC_VOLUME = 0.4;
 const TAVERN_MUSIC_FILE = "coffin-nails.mp3";
 const TAVERN_MUSIC_VOLUME = 0.4;
 
-/** Character creation looping BGM. */
-const PARTY_CREATION_MUSIC_FILE = "torchlight-beneath-stone.mp3";
-const PARTY_CREATION_MUSIC_VOLUME = 0.4;
-
 /** Normal encounter BGM. */
 const BATTLE_MUSIC_FILE = "battle-theme-v3.mp3";
 const BATTLE_MUSIC_VOLUME = 0.46;
@@ -314,10 +308,6 @@ class AudioEngine {
   /** Hot Boi's tavern BGM. */
   private tavernMusic: HTMLAudioElement | null = null;
   private tavernMusicWanted = false;
-
-  /** Character creation BGM. */
-  private partyCreationMusic: HTMLAudioElement | null = null;
-  private partyCreationMusicWanted = false;
 
   /** Authored BGM for non-boss combat. */
   private battleMusic: HTMLAudioElement | null = null;
@@ -401,7 +391,6 @@ class AudioEngine {
       this.tryPlayDungeonMusic();
       this.tryPlayTownMusic();
       this.tryPlayTavernMusic();
-      this.tryPlayPartyCreationMusicGuarded();
       this.tryPlayBattleMusic();
       this.tryPlayBossMusic();
       return;
@@ -952,41 +941,6 @@ class AudioEngine {
     });
   }
 
-  /** Start the character creation BGM. */
-  startPartyCreationMusic(): void {
-    this.partyCreationMusicWanted = true;
-    if (!this.partyCreationMusic) {
-      const el = new Audio(musicAssetUrl(PARTY_CREATION_MUSIC_FILE));
-      el.loop = true;
-      el.preload = "auto";
-      el.volume = PARTY_CREATION_MUSIC_VOLUME;
-      this.partyCreationMusic = el;
-    }
-    this.tryPlayPartyCreationMusic();
-  }
-
-  /** Stop and rewind the character creation BGM. */
-  stopPartyCreationMusic(): void {
-    this.partyCreationMusicWanted = false;
-    if (!this.partyCreationMusic) return;
-    this.partyCreationMusic.pause();
-    this.partyCreationMusic.currentTime = 0;
-  }
-
-  private tryPlayPartyCreationMusic(): void {
-    if (!this.partyCreationMusicWanted || !this.partyCreationMusic) return;
-    if (!this.partyCreationMusic.paused && !this.partyCreationMusic.ended) return;
-    void this.partyCreationMusic.play().catch(() => {
-      // Autoplay policy — retry from resume().
-    });
-  }
-
-  /** Guarded party creation music play for resume() — only plays if actively wanted. */
-  private tryPlayPartyCreationMusicGuarded(): void {
-    if (!this.partyCreationMusicWanted) return;
-    this.tryPlayPartyCreationMusic();
-  }
-
   /** Start the authored normal-combat loop. Boss fights use startBossCombat. */
   startBattleMusic(): void {
     this.battleMusicWanted = true;
@@ -1037,8 +991,8 @@ class AudioEngine {
    * Loop the title / prologue BGM. Safe before the first user gesture —
    * play may be blocked until `resume()`; we keep wanting it until
    * `stopTitleMusic()`. Continues seamlessly from title into the New Game
-   * prologue; callers stop it when leaving for party creation / Continue /
-   * Arena / dungeon.
+   * prologue; callers stop it when leaving for town / Continue / Arena /
+   * dungeon.
    */
   startTitleMusic(): void {
     this.titleMusicWanted = true;

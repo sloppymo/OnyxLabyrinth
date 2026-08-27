@@ -535,29 +535,12 @@ await page.goto(BASE, { waitUntil: "networkidle" });
 await wait(400);
 await press(page, "n");
 await wait(400);
-await shot(page, "40-party-choice.png");
-const partyText = await bodyText(page);
-log(`Party creation:\n${partyText.slice(0, 600)}`);
-// Default party — look for Enter / D
-if (/default|ready-made|enter/i.test(partyText)) {
-  await press(page, "Enter");
-} else {
-  await press(page, "Enter");
-}
-await wait(500);
-await shot(page, "41-after-party.png");
+await press(page, "Escape");
+await wait(700);
+await shot(page, "40-town-entry.png");
 st = await dbg(page);
-log(`After party: ${JSON.stringify(st)}`);
-
-// Might be in party editor choice — try keys
-for (let i = 0; i < 6; i++) {
-  st = await dbg(page);
-  if (st.mode === "town" || st.mode === "dungeon") break;
-  await press(page, "Enter");
-  await wait(200);
-}
-await shot(page, "42-town-or-dungeon.png");
-st = await dbg(page);
+log(`After prologue: ${JSON.stringify(st)}`);
+await shot(page, "41-town-or-dungeon.png");
 log(`Town/dungeon state ${JSON.stringify(st)}`);
 coverage.town = st.mode === "town" || st.mode === "dungeon" ? "Pass" : "Partial";
 
@@ -632,7 +615,7 @@ if ((await dbg(page)).mode === "dungeon") {
   await shot(page, "51-dungeon-after-walk.png");
 } else {
   coverage.dungeon = "Fail";
-  find("P1", "Could not reach dungeon from New Game → Default Party → Town", JSON.stringify(await dbg(page)));
+  find("P1", "Could not reach dungeon from New Game → fixed duo → Town", JSON.stringify(await dbg(page)));
 }
 
 // Console summary

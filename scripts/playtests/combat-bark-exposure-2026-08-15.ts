@@ -17,7 +17,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { ENEMIES_BY_ID } from "../../src/data/enemies";
 import { ALL_SPELLS } from "../../src/data/spells";
-import { createCharacter, type CharacterClass } from "../../src/game/party";
+import { createCharacterRecord, type CharacterClass } from "../../src/game/party";
 import {
   createCombatState,
   resolveCombatRound,
@@ -155,7 +155,7 @@ const PARTIES: readonly PartyStyle[] = ["balanced", "physical-heavy", "magic-hea
 
 function partyFor(style: PartyStyle) {
   return PARTY_CLASSES[style].map((cls, index) => {
-    const c = createCharacter(`pc-${index}`, `${cls} ${index + 1}`, "Human", "Neutral", cls, index);
+    const c = createCharacterRecord(`pc-${index}`, `${cls} ${index + 1}`, "Human", "Neutral", cls, index);
     const caster = cls === "Mage" || cls === "Priest";
     c.stats = {
       str: style === "physical-heavy" ? 15 : 12,
