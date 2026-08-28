@@ -8,8 +8,15 @@
  */
 
 import { rollEncounter, resolveEncounter, type EncounterEntry, type EnemyDef, type Row } from "../data/enemies";
-import { createFight } from "./card-trial";
+import {
+  DRAW_PER_TURN,
+  ENERGY_PER_TURN,
+  createFight,
+  createShuffleStream,
+  shuffleInPlace,
+} from "./card-trial";
 import type { CardId, CardTrialState, EnemyState, Intent } from "./card-trial/types";
+import { activeCampaignDeck, type CampaignCardProgress } from "./campaign-cards";
 
 export type CampaignResolvedEnemy = ReturnType<typeof resolveEncounter>[number];
 
@@ -18,6 +25,8 @@ export interface CampaignCardTrialMetadata {
   entry: EncounterEntry;
   resolved: readonly CampaignResolvedEnemy[];
   seed: number;
+  /** Omit only for Arena/adapter fixtures that intentionally use PoC decks. */
+  cardProgress?: CampaignCardProgress;
 }
 
 /** Card rewards are deliberately drawn from the current locked card pool. */
@@ -94,6 +103,42 @@ function campaignFightName(entry: EncounterEntry, resolved: readonly CampaignRes
   return names.length > 0 ? names.join(" + ") : "A Presence in the Dark";
 }
 
+function installCampaignDecks(trial: CardTrialState, progress: CampaignCardProgress): void {
+  const formulas = {
+    "rat-king": trial.seed * 17 + trial.fightId * 31 + 3,
+    "old-man": trial.seed * 19 + trial.fightId * 37 + 7,
+  } as const;
+
+  for (const heroId of ["rat-king", "old-man"] as const) {
+    const cards = activeCampaignDeck(progress, heroId);
+    if (cards.length !== 12) {
+      throw new Error(`Campaign ${heroId} deck must contain exactly 12 cards`);
+    }
+    const stream = createShuffleStream(formulas[heroId]);
+    const deck = cards.map((card) => ({ uid: card.instanceId, defId: card.cardId }));
+    shuffleInPlace(deck, stream);
+    trial.streams[heroId] = stream;
+    trial.heroes[heroId].draw = deck;
+    trial.heroes[heroId].discard = [];
+    trial.heroes[heroId].hand = [];
+    trial.heroes[heroId].energy = 0;
+    trial.heroes[heroId].paidMoveUsed = false;
+  }
+
+  // createFight has already opened Rat King's turn. Replace that prototype
+  // opening hand with the persistent physical instances before presentation.
+  const ratKing = trial.heroes["rat-king"];
+  ratKing.hand = ratKing.draw.splice(0, DRAW_PER_TURN);
+  ratKing.energy = ENERGY_PER_TURN;
+  for (const stats of Object.values(trial.telemetry.cardStats)) {
+    stats.drawn = 0;
+    stats.played = 0;
+    stats.discarded = 0;
+  }
+  for (const card of ratKing.hand) trial.telemetry.cardStats[card.defId].drawn += 1;
+  if (trial.openTurn) trial.openTurn.startingHand = ratKing.hand.map((card) => card.defId);
+}
+
 /**
  * Translate one real campaign encounter into the existing Card Trial state.
  * `createFight(1)` supplies the locked protagonist decks and opening hand;
@@ -105,6 +150,7 @@ export function createCampaignCardTrialFight(metadata: CampaignCardTrialMetadata
   }
 
   const trial = createFight(1, { seed: metadata.seed });
+  if (metadata.cardProgress) installCampaignDecks(trial, metadata.cardProgress);
   const enemies = metadata.resolved.map(({ enemy, row }, index) => enemyState(enemy, row, index));
   const fast = enemies
     .filter((enemy) => enemy.slot === "fast")

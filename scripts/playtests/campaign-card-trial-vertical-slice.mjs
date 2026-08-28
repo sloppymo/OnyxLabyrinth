@@ -80,11 +80,9 @@ try {
   console.log("=== boot real campaign path ===");
   let state = await bootToDungeon(page, BASE);
   check("title → prologue → town → dungeon", state.route === "dungeon", `got ${state.route}`);
-  await page.evaluate(() => {
-    window.__onyxDebug.state.cardCollection = [];
-  });
   const before = await snap(page);
   const startingPosition = { ...before.pos };
+  const startingCards = [...before.cards];
   check("fixed duo is present", before.party.length === 2 &&
     before.party.map((member) => member.id).sort().join(",") === "old-man,rat-king");
   await shot(page, OUT, "01-dungeon-before.png");
@@ -159,18 +157,26 @@ try {
   }
 
   state = await snap(page);
-  const rewardId = state.cards[0] ?? null;
+  const rewardId = state.cards.find((cardId) =>
+    state.cards.filter((id) => id === cardId).length > startingCards.filter((id) => id === cardId).length
+  ) ?? null;
   check("Card Trial ends in campaign dungeon", state.route === "dungeon", `got ${state.route}`);
   check("return preserves exact floor position",
     state.floor.id === before.floor.id && state.pos.x === startingPosition.x &&
     state.pos.y === startingPosition.y && state.pos.facing === startingPosition.facing,
   JSON.stringify({ before: startingPosition, after: state.pos }));
-  check("victory grants a persistent card", state.cards.length === 1 && rewardId !== null, JSON.stringify(state.cards));
+  check("victory grants one persistent card", state.cards.length === startingCards.length + 1 && rewardId !== null, JSON.stringify(state.cards));
   await shot(page, OUT, "04-dungeon-after-card-reward.png");
 
   console.log("=== save/load reward persistence ===");
   const saved = await page.evaluate(() => window.__onyxDebug.dumpSave());
-  check("campaign save contains card collection", JSON.parse(saved).cardCollection?.length === 1);
+  const savedState = JSON.parse(saved);
+  const savedCardCount = Object.values(savedState.campaignCards ?? {}).reduce(
+    (sum, hero) => sum + (hero.collection?.length ?? 0),
+    0
+  );
+  check("campaign save contains physical card collections", savedCardCount === startingCards.length + 1);
+  check("victory atomically clears the pending encounter", savedState.pendingCampaignEncounter === null);
   await page.evaluate(() => {
     window.__onyxDebug.jumpTo({ floorId: 2, x: 2, y: 11, facing: 0, autosave: false });
   });
@@ -182,8 +188,9 @@ try {
   check("load restores exact position", state.floor.id === before.floor.id &&
     state.pos.x === startingPosition.x && state.pos.y === startingPosition.y &&
     state.pos.facing === startingPosition.facing);
-  check("load restores card reward", state.cards.length === 1 && state.cards[0] === rewardId,
-    JSON.stringify({ expected: rewardId, actual: state.cards }));
+  check("load restores card reward", state.cards.length === startingCards.length + 1 &&
+    state.cards.filter((id) => id === rewardId).length > startingCards.filter((id) => id === rewardId).length,
+    JSON.stringify({ expectedExtra: rewardId, actual: state.cards }));
   await shot(page, OUT, "05-dungeon-after-load.png");
 } catch (error) {
   failures.push(String(error));

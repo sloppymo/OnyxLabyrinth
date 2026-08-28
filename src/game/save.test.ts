@@ -6,6 +6,11 @@ import { createCharacterRecord } from "./party";
 import { createCombatTestRoster } from "./test-roster";
 import { isTreasureLooted } from "./features";
 import type { GameState } from "../types";
+import {
+  encounterRewardInstance,
+  grantCampaignCard,
+  unusedCampaignCards,
+} from "./campaign-cards";
 
 describe("save serialization", () => {
   let state: GameState;
@@ -43,15 +48,40 @@ describe("save serialization", () => {
     expect(restored.unlockedDoors).toEqual(new Set(["1:5:6:N"]));
   });
 
-  it("round-trips campaign Card Trial rewards", () => {
-    state.cardCollection = ["crack", "from-the-dark"];
+  it("round-trips campaign card instances, decks, and a pending encounter", () => {
+    grantCampaignCard(state.campaignCards!, encounterRewardInstance(1, "red-bones", "crack"));
+    state.campaignCards!["old-man"].collection[0]!.mastery = 3;
+    state.pendingCampaignEncounter = {
+      encounterKey: "1:red-bones",
+      floorId: 1,
+      tableId: 1,
+      entryId: "red-bones",
+      seed: 99,
+      checkpoint: { floorId: 1, x: 3, y: 4, facing: 2 },
+      reward: encounterRewardInstance(1, "red-bones", "crack"),
+    };
     const restored = deserialize(serialize(state));
-    expect(restored?.cardCollection).toEqual(["crack", "from-the-dark"]);
+    expect(restored?.campaignCards?.["old-man"].collection[0]?.mastery).toBe(3);
+    expect(unusedCampaignCards(restored!.campaignCards!, "old-man").map((card) => card.cardId)).toEqual([
+      "crack",
+    ]);
+    expect(restored?.pendingCampaignEncounter).toEqual(state.pendingCampaignEncounter);
+  });
 
+  it("migrates v19 flat campaign rewards into physical hero collections", () => {
     const legacy = JSON.parse(serialize(state));
-    legacy.version = 18;
-    delete legacy.cardCollection;
-    expect(deserialize(JSON.stringify(legacy))?.cardCollection).toEqual([]);
+    legacy.version = 19;
+    legacy.cardCollection = ["crack", "from-the-dark"];
+    delete legacy.campaignCards;
+    delete legacy.pendingCampaignEncounter;
+    const restored = deserialize(JSON.stringify(legacy));
+    expect(unusedCampaignCards(restored!.campaignCards!, "old-man").map((card) => card.cardId)).toEqual([
+      "crack",
+    ]);
+    expect(unusedCampaignCards(restored!.campaignCards!, "rat-king").map((card) => card.cardId)).toEqual([
+      "from-the-dark",
+    ]);
+    expect(restored?.pendingCampaignEncounter).toBeNull();
   });
 
   it("round-trips bridge position and environmental encounter progress", () => {

@@ -129,7 +129,18 @@ import {
   createCampaignCardTrialFight,
   type CampaignResolvedEnemy,
 } from "./game/campaign-card-trial";
-import type { CardId } from "./game/card-trial/types";
+import type { HeroId } from "./game/card-trial/types";
+import {
+  activeCampaignDeck,
+  canSwapCampaignDeckCard,
+  createCampaignCardProgress,
+  encounterRewardInstance,
+  grantCampaignCard,
+  swapCampaignDeckCard,
+  unusedCampaignCards,
+  type CampaignCardProgress,
+  type PendingCampaignEncounter,
+} from "./game/campaign-cards";
 import { CardTrialPlaytestRecorder } from "./game/card-trial/playtest";
 import { PrologueController } from "./engine/prologue-ui";
 import { EndingController } from "./engine/ending-ui";
@@ -697,6 +708,16 @@ function applyLoadedGameState(
     if (state.mode === "dungeon") {
       markExplored();
       resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+      const pending = state.pendingCampaignEncounter;
+      if (pending) {
+        if (restoreCampaignEncounterCheckpoint(pending)) {
+          openCampaignDefeatMenu(pending, true);
+        } else {
+          clearPendingCampaignEncounter(pending);
+          setMessage("An unfinished encounter was discarded because its checkpoint is no longer valid.");
+          autoSave(state);
+        }
+      }
     }
   }
 }
@@ -784,12 +805,9 @@ let cardTrialSequential = false;
 let cardTrialSummary: string | null = null;
 let cardTrialPlaytestRecorder: CardTrialPlaytestRecorder | null = null;
 let activeCampaignCardTrial: {
-  floorId: number;
+  pending: PendingCampaignEncounter;
   entry: EncounterEntry;
   resolved: CampaignResolvedEnemy[];
-  tableId: number;
-  rewardCardId: CardId;
-  position: { floorId: number; x: number; y: number; facing: number };
 } | null = null;
 
 // True for the whole encounter swirl / leave dissolve (including reveal).
@@ -1969,31 +1987,260 @@ function onCardTrialFightEnd(trial: CardTrialState): void {
   });
 }
 
+function ensureCampaignCards(): CampaignCardProgress {
+  return (state.campaignCards ??= createCampaignCardProgress());
+}
+
+function restoreCampaignDuo(): void {
+  for (const character of state.party) {
+    character.hp = character.maxHp;
+    character.sp = character.maxSp;
+    character.status = [];
+  }
+  renderPartyStrip(
+    state.party,
+    compassForFacing(state.player.facing),
+    `F${state.floor.id}`
+  );
+}
+
+function restoreCampaignEncounterCheckpoint(pending: PendingCampaignEncounter): boolean {
+  const { checkpoint } = pending;
+  const cell = state.floor.id === checkpoint.floorId
+    ? state.floor.grid[checkpoint.y]?.[checkpoint.x]
+    : undefined;
+  if (!cell || cell.void) return false;
+  state.player = {
+    x: checkpoint.x,
+    y: checkpoint.y,
+    facing: checkpoint.facing,
+  };
+  restoreCampaignDuo();
+  setMode(state, "dungeon");
+  setMazeSurfaceOpacity("1");
+  showMode("dungeon", mapVisible);
+  syncVisionZoneFlags(state);
+  markExplored();
+  resetRenderCamera(state.player.x, state.player.y, state.player.facing);
+  return true;
+}
+
+function clearPendingCampaignEncounter(pending: PendingCampaignEncounter): void {
+  if (state.pendingCampaignEncounter?.encounterKey === pending.encounterKey) {
+    state.pendingCampaignEncounter = null;
+  }
+}
+
+function campaignEntryForPending(pending: PendingCampaignEncounter): EncounterEntry | null {
+  return (ENCOUNTER_TABLES[pending.tableId] ?? []).find((entry) => entry.id === pending.entryId) ?? null;
+}
+
+function leavePendingCampaignEncounter(pending: PendingCampaignEncounter): void {
+  clearPendingCampaignEncounter(pending);
+  setMessage("The encounter remains undefeated. The duo turns aside.");
+  autoSave(state);
+}
+
+function retryPendingCampaignEncounter(pending: PendingCampaignEncounter): void {
+  const current = state.pendingCampaignEncounter;
+  const entry = campaignEntryForPending(pending);
+  if (!current || current.encounterKey !== pending.encounterKey || !entry) {
+    clearPendingCampaignEncounter(pending);
+    setMessage("The unfinished encounter can no longer be reconstructed.");
+    autoSave(state);
+    return;
+  }
+  const resolved = resolveEncounter(entry);
+  if (resolved.length === 0 || !restoreCampaignEncounterCheckpoint(pending)) {
+    clearPendingCampaignEncounter(pending);
+    setMessage("The unfinished encounter has lost its place in the Labyrinth.");
+    autoSave(state);
+    return;
+  }
+  startCampaignCardTrialFight({
+    floorId: pending.floorId,
+    entry,
+    resolved,
+    tableId: pending.tableId,
+    seed: pending.seed,
+    pending,
+  });
+}
+
+function openCampaignDefeatMenu(
+  pending: PendingCampaignEncounter,
+  resumed = false
+): void {
+  let choice: string | null = null;
+  overlays.openDialog({
+    title: "The Encounter Holds",
+    lines: [
+      resumed
+        ? "The game closed during this encounter. The duo has returned to its exact pre-fight position."
+        : "The duo falls back to its exact pre-fight position, restored and ready to reconsider the fight.",
+    ],
+    choices: [
+      { label: "Retry", value: "retry" },
+      { label: "Edit Decks and Retry", value: "edit" },
+      { label: "Leave", value: "leave" },
+    ],
+    cancelable: false,
+    onSelect: (value) => {
+      choice = value;
+    },
+    onClose: () => {
+      if (choice === "retry") retryPendingCampaignEncounter(pending);
+      else if (choice === "edit") openCampaignDeckEditor(pending);
+      else leavePendingCampaignEncounter(pending);
+    },
+  });
+}
+
+function openCampaignDeckEditor(
+  pending: PendingCampaignEncounter,
+  note = "Choose a deck to change, or retry when ready."
+): void {
+  const progress = ensureCampaignCards();
+  let choice: string | null = null;
+  overlays.openDialog({
+    title: "Edit Decks",
+    lines: [
+      `${note} Rat King reserves: ${unusedCampaignCards(progress, "rat-king").length} · Old Man reserves: ${unusedCampaignCards(progress, "old-man").length}.`,
+    ],
+    choices: [
+      { label: "Rat King", value: "rat-king" },
+      { label: "Old Man", value: "old-man" },
+      { label: "Retry Now", value: "retry" },
+      { label: "Leave", value: "leave" },
+    ],
+    cancelable: false,
+    onSelect: (value) => {
+      choice = value;
+    },
+    onClose: () => {
+      if (choice === "rat-king" || choice === "old-man") {
+        openCampaignReservePicker(pending, choice);
+      } else if (choice === "retry") {
+        retryPendingCampaignEncounter(pending);
+      } else {
+        leavePendingCampaignEncounter(pending);
+      }
+    },
+  });
+}
+
+function openCampaignReservePicker(
+  pending: PendingCampaignEncounter,
+  heroId: HeroId
+): void {
+  const progress = ensureCampaignCards();
+  const candidates = unusedCampaignCards(progress, heroId).filter((incoming) =>
+    progress[heroId].activeDeck.some((outgoingId) =>
+      canSwapCampaignDeckCard(progress, heroId, outgoingId, incoming.instanceId)
+    )
+  );
+  let choice: string | null = null;
+  overlays.openDialog({
+    title: heroId === "rat-king" ? "Rat King Reserves" : "Old Man Reserves",
+    lines: [candidates.length > 0 ? "Choose a card to put into the deck." : "No legal reserve swap is available."],
+    choices: [
+      ...candidates.map((card) => ({
+        label: `${cardDef(card.cardId).name} · M${card.mastery}`,
+        value: card.instanceId,
+      })),
+      { label: "Back", value: "back" },
+    ],
+    cancelable: false,
+    onSelect: (value) => {
+      choice = value;
+    },
+    onClose: () => {
+      if (!choice || choice === "back") openCampaignDeckEditor(pending);
+      else openCampaignDeckOutgoingPicker(pending, heroId, choice);
+    },
+  });
+}
+
+function openCampaignDeckOutgoingPicker(
+  pending: PendingCampaignEncounter,
+  heroId: HeroId,
+  incomingInstanceId: string
+): void {
+  const progress = ensureCampaignCards();
+  const incoming = unusedCampaignCards(progress, heroId).find(
+    (card) => card.instanceId === incomingInstanceId
+  );
+  if (!incoming) {
+    openCampaignDeckEditor(pending, "That reserve card is no longer available.");
+    return;
+  }
+  const active = activeCampaignDeck(progress, heroId).filter((card) =>
+    canSwapCampaignDeckCard(progress, heroId, card.instanceId, incomingInstanceId)
+  );
+  let choice: string | null = null;
+  overlays.openDialog({
+    title: "Replace Which Card?",
+    lines: [`Add ${cardDef(incoming.cardId).name}.`],
+    choices: [
+      ...active.map((card, index) => ({
+        label: `${index + 1}. ${cardDef(card.cardId).name}`,
+        value: card.instanceId,
+      })),
+      { label: "Back", value: "back" },
+    ],
+    cancelable: false,
+    onSelect: (value) => {
+      choice = value;
+    },
+    onClose: () => {
+      if (!choice || choice === "back") {
+        openCampaignReservePicker(pending, heroId);
+        return;
+      }
+      const outgoing = active.find((card) => card.instanceId === choice);
+      const changed = swapCampaignDeckCard(progress, heroId, choice, incomingInstanceId);
+      if (changed) autoSave(state);
+      openCampaignDeckEditor(
+        pending,
+        changed && incoming && outgoing
+          ? `${cardDef(incoming.cardId).name} replaces ${cardDef(outgoing.cardId).name}.`
+          : "That swap is no longer legal."
+      );
+    },
+  });
+}
+
 function onCampaignCardTrialEnd(trial: CardTrialState): void {
   const encounter = activeCampaignCardTrial;
   void leaveCardTrial(() => {
     activeCampaignCardTrial = null;
     inCardTrial = false;
-
-    // Card Trial owns its own fixed 40 HP session state. The campaign duo's
-    // location, HP, inventory, and legacy progression are deliberately left
-    // untouched in this first integration slice. The one durable outcome is
-    // the card reward, which proves campaign persistence without pretending
-    // deck construction is finished.
-    setMode(state, "dungeon");
-    showMode("dungeon", mapVisible);
-    if (trial.result === "victory" && encounter) {
-      const cards = (state.cardCollection ??= []);
-      cards.push(encounter.rewardCardId);
-      const rewardName = cardDef(encounter.rewardCardId).name;
-      setMessage(`The ${encounter.entry.displayName ?? "encounter"} breaks. Card found: ${rewardName}.`);
-    } else {
-      setMessage("The encounter re-forms in the dark. The duo holds its ground.");
+    if (!encounter || !restoreCampaignEncounterCheckpoint(encounter.pending)) {
+      if (encounter) clearPendingCampaignEncounter(encounter.pending);
+      setMode(state, "dungeon");
+      showMode("dungeon", mapVisible);
+      setMessage("The encounter ended, but its checkpoint was no longer valid.");
+      autoSave(state);
+      return;
     }
-    // Save while the return transition is still covering the screen. On the
-    // next load, the player is back at the exact same floor coordinate with
-    // the card collection intact.
+
+    if (trial.result === "victory") {
+      const granted = grantCampaignCard(ensureCampaignCards(), encounter.pending.reward);
+      clearPendingCampaignEncounter(encounter.pending);
+      const rewardName = cardDef(encounter.pending.reward.cardId).name;
+      setMessage(
+        granted
+          ? `The ${encounter.entry.displayName ?? "encounter"} breaks. Card found: ${rewardName}.`
+          : `The ${encounter.entry.displayName ?? "encounter"} breaks. Its card was already claimed.`
+      );
+      autoSave(state);
+      return;
+    }
+
+    // The checkpoint and reward transaction stay persisted until Retry wins
+    // or Leave explicitly abandons the encounter.
     autoSave(state);
+    openCampaignDefeatMenu(encounter.pending);
   });
 }
 
@@ -2062,29 +2309,47 @@ function startCampaignCardTrialFight(opts: {
   resolved: CampaignResolvedEnemy[];
   tableId: number;
   seed?: number;
+  pending?: PendingCampaignEncounter;
 }): void {
   if (combatController || cardTrialController || inCardTrial) return;
   screens.dismissCardTrialLobby();
-  inCardTrial = true;
-  cardTrialSequential = false;
-  activeCampaignCardTrial = {
+  const seed = opts.pending?.seed ?? opts.seed ?? (getGameplayRng()() * 0xffffffff) >>> 0;
+  const pending = opts.pending ?? {
+    encounterKey: `${opts.floorId}:${opts.entry.id}`,
     floorId: opts.floorId,
-    entry: opts.entry,
-    resolved: opts.resolved,
     tableId: opts.tableId,
-    rewardCardId: campaignCardReward(opts.floorId, opts.entry.id),
-    position: {
+    entryId: opts.entry.id,
+    seed,
+    checkpoint: {
       floorId: state.floor.id,
       x: state.player.x,
       y: state.player.y,
       facing: state.player.facing,
     },
+    reward: encounterRewardInstance(
+      opts.floorId,
+      opts.entry.id,
+      campaignCardReward(opts.floorId, opts.entry.id)
+    ),
+  } satisfies PendingCampaignEncounter;
+  // Commit the exact checkpoint, combat seed, and reward before presentation.
+  // A close or reload during combat therefore resumes this decision rather
+  // than rolling a different fight or reward.
+  state.pendingCampaignEncounter = pending;
+  autoSave(state);
+  inCardTrial = true;
+  cardTrialSequential = false;
+  activeCampaignCardTrial = {
+    pending,
+    entry: opts.entry,
+    resolved: opts.resolved,
   };
   const trial = createCampaignCardTrialFight({
     floorId: opts.floorId,
     entry: opts.entry,
     resolved: opts.resolved,
-    seed: opts.seed ?? (getGameplayRng()() * 0xffffffff) >>> 0,
+    seed,
+    cardProgress: ensureCampaignCards(),
   });
   void launchCardTrialFight(trial, onCampaignCardTrialEnd);
 }

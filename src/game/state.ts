@@ -12,6 +12,7 @@ import { cloneFloor } from "../data/floors";
 import { createPlayableDuo } from "./playable-duo";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { encounterCooldownFor } from "./encounters";
+import { createCampaignCardProgress } from "./campaign-cards";
 
 export type { GameMode, GameState } from "../types";
 
@@ -61,10 +62,8 @@ export function createGameState(floor: FloorDef): GameState {
     clearedStairsGuardians: [],
     environmentalEncounters: {},
     purchasedSpellIds: [],
-    // Campaign Card Trial rewards are intentionally just a persistent
-    // collection for this integration slice. Deck construction will consume
-    // this collection once campaign card acquisition is designed.
-    cardCollection: [],
+    campaignCards: createCampaignCardProgress(),
+    pendingCampaignEncounter: null,
   };
 }
 

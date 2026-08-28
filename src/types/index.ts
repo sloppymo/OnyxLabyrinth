@@ -8,12 +8,17 @@ import type { Character } from "../game/party";
 import type { CombatState, Loadout } from "../game/combat-types";
 import type { QuestProgress } from "../game/quests";
 import type { CompanionState } from "../game/companion";
+import type {
+  CampaignCardProgress,
+  PendingCampaignEncounter,
+} from "../game/campaign-cards";
 export type { FloorDef };
 export type { Character };
 export type { CombatState };
 export type { Loadout };
 export type { QuestProgress };
 export type { CompanionState };
+export type { CampaignCardProgress, PendingCampaignEncounter };
 
 // --- Edge-based grid model ---------------------------------------------------
 // Each cell has four edges (N/E/S/W). An edge is open, a wall, or a door.
@@ -255,8 +260,10 @@ export interface GameState {
   /** Persistent state for authored nonmodal environmental encounters. */
   environmentalEncounters?: Record<string, EnvironmentalEncounterProgress>;
   purchasedSpellIds?: string[];
-  /** Card Trial rewards found in the campaign; optional for legacy saves. */
-  cardCollection?: string[];
+  /** Permanent per-hero card instances and exact twelve-card active decks. */
+  campaignCards?: CampaignCardProgress;
+  /** Durable pre-fight state used by retry, Leave, and close-mid-combat resume. */
+  pendingCampaignEncounter?: PendingCampaignEncounter | null;
 }
 
 export interface EnvironmentalEncounterProgress {

@@ -17,6 +17,7 @@ import type {
   PlayerState,
   TileFeature,
 } from "../types";
+import { campaignCardCollectionIds, createCampaignCardProgress } from "../game/campaign-cards";
 
 /** Read-only view of the live combat controller, supplied by combat-ui. */
 export interface CombatDebugView {
@@ -224,7 +225,7 @@ export function buildSnapshot(input: SnapshotInput): Snapshot {
     })),
     gold: state.partyGold,
     keys: [...state.keys],
-    cards: [...(state.cardCollection ?? [])],
+    cards: campaignCardCollectionIds(state.campaignCards ?? createCampaignCardProgress()),
     inventory: state.inventory.map((e) => ({ ...e })),
     buffs: state.persistentBuffs.map((b) => ({ ...b })),
     explored: [...state.explored],

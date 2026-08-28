@@ -26,12 +26,19 @@ import { applyLootedTreasures } from "./loot-restore";
 import { cumulativeXpToReachLevel } from "./leveling";
 import { LEGACY_PARTY_SIZE, sortPartyByFormation, type Character } from "./party";
 import { normalizeLoadedDuo } from "./playable-duo";
+import {
+  cloneCampaignCardProgress,
+  clonePendingCampaignEncounter,
+  createCampaignCardProgress,
+  normalizeCampaignCardProgress,
+  normalizePendingCampaignEncounter,
+} from "./campaign-cards";
 
 const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 19;
+const SAVE_VERSION = 20;
 
 /** v9 → v10 historical helper: first legacy-roster characters by formation order —
  *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
@@ -341,6 +348,16 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     ser.cardCollection = [];
     version = 19;
   }
+  if (version === 19) {
+    // v19 → v20: flat reward ids become permanent physical instances in
+    // per-hero collections. Both starter decks are minted deterministically.
+    ser.campaignCards = createCampaignCardProgress(
+      (ser.cardCollection as unknown[] | undefined) ?? []
+    );
+    ser.pendingCampaignEncounter = null;
+    delete ser.cardCollection;
+    version = 20;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -421,8 +438,12 @@ interface SerializedState {
   /** Iso-spells bought from Isobel's; optional for pre-v17 saves. */
   purchasedSpellIds?: string[];
   environmentalEncounters?: NonNullable<GameState["environmentalEncounters"]>;
-  /** Campaign Card Trial rewards; optional for pre-integration saves. */
+  /** v19 migration source only. Never written by v20+. */
   cardCollection?: string[];
+  /** Permanent campaign card instances and active decks. v20+. */
+  campaignCards?: GameState["campaignCards"];
+  /** Pre-fight retry/close-resume transaction. v20+. */
+  pendingCampaignEncounter?: GameState["pendingCampaignEncounter"];
   savedAt: string;
 }
 
@@ -512,7 +533,10 @@ export function serialize(state: GameState): string {
         { ...progress, oneShots: [...progress.oneShots] },
       ])
     ),
-    cardCollection: [...(state.cardCollection ?? [])],
+    campaignCards: cloneCampaignCardProgress(
+      state.campaignCards ?? createCampaignCardProgress()
+    ),
+    pendingCampaignEncounter: clonePendingCampaignEncounter(state.pendingCampaignEncounter),
     savedAt: new Date().toISOString(),
   };
   return JSON.stringify(ser);
@@ -697,7 +721,8 @@ export function deserialize(json: string): GameState | null {
             ])
           )
         : {},
-      cardCollection: ser.cardCollection ? [...ser.cardCollection] : [],
+      campaignCards: normalizeCampaignCardProgress(ser.campaignCards, ser.cardCollection ?? []),
+      pendingCampaignEncounter: normalizePendingCampaignEncounter(ser.pendingCampaignEncounter),
     };
   } catch {
     return null;

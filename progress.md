@@ -1551,3 +1551,50 @@ visual-pass notes below; this section tracks the current task only.
   Card Trial art failure caused by parallel RGB Old Man card PNG changes.
 - Scoped files are ready to checkpoint; parallel Card Trial engine/types/art,
   six-school documents, simulations, and generated output remain uncommitted.
+
+### 2026-08-27 — Durable campaign card-combat lifecycle
+
+- Current request: canonize the new product contract, then turn the committed
+  campaign Card Trial adapter into a durable seam with persistent per-hero
+  decks/card instances, a pre-fight checkpoint, atomic rewards, exact dungeon
+  restoration, and Retry / Edit Decks and Retry / Leave defeat choices.
+- Preserve all unrelated dirty Card Trial simulation, effects, UI-art, and
+  generated-output work. Stage and commit only explicit files owned by this
+  task.
+- Audit complete: commits `f2100d9` and `1cf4560` already supply the fixed duo
+  and campaign encounter adapter. The adapter currently uses locked prototype
+  decks, appends one reward only after victory, and automatically returns on a
+  wipe; save format 19 stores only a flat `cardCollection`.
+- Next: land the three canonical docs after the required check, then introduce
+  a versioned campaign card-progress model and focused lifecycle tests before
+  changing the result UI.
+- Canonical docs committed as `496bef3` after a clean isolated `npm run check`
+  (153 files / 2,665 tests plus build/floor gates). The shared checkout still
+  has the known unrelated RGB card-art failure, so those PNGs remain untouched.
+- Added the pure campaign-card state foundation: permanent instance ids,
+  separate per-hero collections, exact 12-card active decks, a two-copy limit,
+  idempotent deterministic rewards, save-data normalization, and validated
+  physical-card swaps. Focused tests pass 6/6.
+- Save format is now v20: v19 flat reward ids migrate into the correct hero
+  collections, active decks and Mastery data round-trip, and an unresolved
+  encounter transaction stores its checkpoint, seed, and exact reward.
+- Runtime campaign fights now deal the saved physical deck instances. Victory
+  fully restores the legacy-facing duo state, commits the reward idempotently,
+  clears the transaction, and returns to the exact tile/facing. Defeat restores
+  the same checkpoint and opens Retry / Edit Decks and Retry / Leave; the
+  dialogue-based editor performs real collection-to-deck swaps and enforces
+  exact size/two-copy rules. Continue after close-mid-combat reopens that menu.
+- Focused progression/adapter/save/snapshot/input tests pass 71/71; app/tools
+  TypeScript and the production Vite build pass.
+- Hardened pending-encounter save normalization against malformed coordinates,
+  ids, and non-integer values; focused coverage now passes 73/73.
+- Production browser verification is green with no console/page errors:
+  the victory slice grants one physical card, atomically clears the pending
+  transaction, and reloads at the exact tile; the durable lifecycle separately
+  proves wipe restoration, same-seed/same-reward Retry, a legal reserve swap,
+  Leave persistence, and close-mid-combat Continue. All six lifecycle captures
+  were inspected, including the fully rendered Floor 5 checkpoint after Leave.
+- Exact staged-patch verification in a clean detached worktree passes the full
+  `npm run check` gate: TypeScript/build, 154 test files and 2,675 tests, floor
+  validation, and floor export consistency. In the shared checkout, all 2,708
+  tests outside the unrelated in-flight RGB card-art assertion also pass.
