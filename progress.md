@@ -1598,3 +1598,34 @@ visual-pass notes below; this section tracks the current task only.
   `npm run check` gate: TypeScript/build, 154 test files and 2,675 tests, floor
   validation, and floor export consistency. In the shared checkout, all 2,708
   tests outside the unrelated in-flight RGB card-art assertion also pass.
+
+### 2026-08-27 — Six-school campaign card corpus
+
+- Added `src/game/card-trial/six-school-cards.ts`, a resolver-independent,
+  typed source-of-truth catalogue for the canonical six schools: 36 unique
+  cards, six per school, with Old Man/Rat King ownership, visible rule tags,
+  cross-school bridges, two functional upgrade branches, and a 12-slot
+  two-copy school slice fixture for future campaign/Arena rules work.
+- The content schema explicitly represents the shared vocabulary and future
+  compiler seams: Barrier, Break/Crack, Opened, Hush/Seal, Rats, Crowned and
+  Decrees, Omens, Resonance/Magnitude/Overchannel, recoverable Blood Price,
+  Devour, movement, conditional effects, Hush conversion, barrier theft, and
+  Omen resolution. It is deliberately not wired to the other session's dirty
+  Card Trial resolver experiment yet.
+- Added focused catalogue tests covering cardinality, hero/school ownership,
+  branch and bridge invariants, school-slice duplication, and representative
+  interaction coverage. Focused suite passes 4/4; app TypeScript and the full
+  production build pass.
+- `npm test` reaches 2,714 passing tests with one known unrelated failure in
+  `src/game/card-trial/card-art.test.ts`: parallel modified Old Man card PNGs
+  are RGB (`colorType: 2`) while that existing assertion requires RGBA
+  (`colorType: 6`). No parallel Card Trial art/engine files were staged.
+- Production browser smoke (`smoke-debug-surface.mjs`) passes all checks with
+  no page/console errors beyond the existing expected aborted music request;
+  the rendered combat capture was inspected. The generic web-game client was
+  also run and its prologue capture was inspected, but its virtual-time action
+  loop stalled in this existing app shell before it could write state output.
+- Next implementation step: compile this declarative corpus into the campaign
+  resolver only after the parallel resolver/types/effects work is checkpointed;
+  then prove one real encounter with card play, reward, retry, and exact
+  dungeon return before retiring classic combat.
