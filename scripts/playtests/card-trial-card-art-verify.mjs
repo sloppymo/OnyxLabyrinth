@@ -41,7 +41,7 @@ function readSourceCards() {
     }
     cards.push({ id, name, hero, text, cost, consume });
   }
-  if (cards.length !== 22) throw new Error(`Expected 22 live unique CardDefs, got ${cards.length}`);
+  if (cards.length !== 24) throw new Error(`Expected 24 live unique CardDefs, got ${cards.length}`);
   return cards;
 }
 
@@ -116,7 +116,7 @@ h1,h2,p{margin:0 0 12px}h1{font-size:22px;color:#ffe08a}h2{font-size:16px;color:
 .label{font-size:11px;color:#c8cad3;margin:0 0 7px}.section{margin-top:15px}
 </style></head><body>
 <h1>Card Trial — complete production art gate</h1>
-<p>Source-derived 22-card gallery · native 128×96 masters · gameplay cards 132×184 · image-rendering pixelated.</p>
+<p>Source-derived 24-card gallery · native 128×96 masters · gameplay cards 132×184 · image-rendering pixelated.</p>
 <h2>RAT KING</h2><section class="panel grid">${byHero["rat-king"].map((card) => cardMarkup(card)).join("")}</section>
 <h2>OLD MAN</h2><section class="panel grid">${byHero["old-man"].map((card) => cardMarkup(card)).join("")}</section>
 <h2>Representative mixed sheets</h2>
@@ -132,7 +132,7 @@ const imageFacts = await gallery.evaluate(() => [...document.querySelectorAll(".
   naturalWidth: image.naturalWidth,
   naturalHeight: image.naturalHeight,
 })));
-if (imageFacts.length !== 22 + 5 + 5 + 5) throw new Error(`Expected gallery instances, got ${imageFacts.length}`);
+if (imageFacts.length !== 24 + 5 + 5 + 5) throw new Error(`Expected gallery instances, got ${imageFacts.length}`);
 if (imageFacts.some((fact) => fact.naturalWidth !== 128 || fact.naturalHeight !== 96)) {
   throw new Error(`One or more gallery images are not native 128×96: ${JSON.stringify(imageFacts.filter((fact) => fact.naturalWidth !== 128 || fact.naturalHeight !== 96))}`);
 }

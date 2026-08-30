@@ -20,6 +20,8 @@ export interface MismatchResult {
   message: string | null;
 }
 
+export type AlphaMode = "opaque" | "alpha-channel" | "unknown";
+
 export interface StripCard {
   kind: "strip";
   domId: string;
@@ -44,10 +46,14 @@ export interface StripCard {
   height: number;
   exists: boolean;
   mismatch: MismatchResult;
+  /** Basic PNG channel diagnostic; this does not replace native-scale review. */
+  alphaMode?: AlphaMode;
   /** e.g. "shares art with: flame-golem" for boss/elite reuse mappings. */
   note?: string;
   /** Canvas draw box size in px; defaults client-side if omitted. */
   displaySize?: number;
+  /** Render the un-cropped source sheet below the animator for review. */
+  sourceSheet?: boolean;
 }
 
 export interface StaticCard {
@@ -59,6 +65,8 @@ export interface StaticCard {
   height: number;
   fileSize: number;
   exists: boolean;
+  /** Basic PNG channel diagnostic; this does not replace native-scale review. */
+  alphaMode?: AlphaMode;
   note?: string;
   displaySize?: number;
 }

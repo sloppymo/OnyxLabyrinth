@@ -1,0 +1,32 @@
+{
+  "assets": [
+    {
+      "id": "fx-barrier-cast",
+      "label": "fx-barrier-cast · spherical forcefield · 4×2 source storyboard",
+      "file": "docs/art/candidates/fx-barrier-sphere-cast-centered-storyboard.png",
+      "frameWidth": 384,
+      "frameHeight": 512,
+      "frameCount": 8,
+      "fps": 6,
+      "loop": false,
+      "layout": "grid",
+      "displaySize": 320,
+      "sourceSheet": true,
+      "note": "Current replacement direction for Old Man: one translucent spherical forcefield with an anchored 1–2px breathing/wobble and restrained surface shimmer. Per-frame content has been normalized to the cell center; source art still needs palette reduction, binary-alpha cleanup, native-scale redraw, and in-engine anchoring before promotion."
+    },
+    {
+      "id": "fx-barrier-cast-legacy-shield",
+      "label": "fx-barrier-cast-legacy-shield · 4×2 source storyboard",
+      "file": "docs/art/candidates/fx-barrier-cast-storyboard.png",
+      "frameWidth": 384,
+      "frameHeight": 512,
+      "frameCount": 8,
+      "fps": 6,
+      "loop": false,
+      "layout": "grid",
+      "displaySize": 320,
+      "sourceSheet": true,
+      "note": "Previous faceted-shield direction retained for comparison only; do not promote."
+    }
+  ]
+}

@@ -25,7 +25,7 @@ import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { resolve, join, basename } from "node:path";
 import { createServer, type ViteDevServer } from "vite";
 import { classifyStripMismatch, severityLevel } from "./sprite-preview/classify";
-import type { Card, CardGroup, PreviewSnapshot, Section, StaticCard, StripCard } from "./sprite-preview/types";
+import type { AlphaMode, Card, CardGroup, PreviewSnapshot, Section, StaticCard, StripCard } from "./sprite-preview/types";
 import type { EffectStrip } from "../src/engine/effect-sprite-cache";
 import type { PartySpriteState } from "../src/engine/party-sprite-cache";
 
@@ -39,6 +39,7 @@ interface PngInfo {
   width: number;
   height: number;
   fileSize: number;
+  alphaMode: AlphaMode;
 }
 
 function slug(...parts: string[]): string {
@@ -67,15 +68,40 @@ function getPngDimensions(buffer: Buffer): { width: number; height: number } {
   throw new Error("IHDR not found");
 }
 
+/**
+ * Reads the PNG colour type without decoding the image. This deliberately
+ * reports only channel presence (not whether every edge pixel is binary): the
+ * latter still needs native-scale inspection and the art cleanup pipeline.
+ */
+function getPngAlphaMode(buffer: Buffer): AlphaMode {
+  if (!buffer.subarray(0, 8).equals(PNG_SIGNATURE)) return "unknown";
+  let offset = 8;
+  let hasTransparencyChunk = false;
+  while (offset + 8 <= buffer.length) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.toString("ascii", offset + 4, offset + 8);
+    // IHDR data begins eight bytes into the chunk: width(4), height(4),
+    // bitDepth(1), then colourType(1).
+    if (type === "IHDR" && offset + 17 < buffer.length) {
+      const colorType = buffer[offset + 17];
+      if (colorType === 4 || colorType === 6) return "alpha-channel";
+    }
+    if (type === "tRNS") hasTransparencyChunk = true;
+    if (type === "IEND") break;
+    offset += 8 + length + 4;
+  }
+  return hasTransparencyChunk ? "alpha-channel" : "opaque";
+}
+
 /** Reads a PNG's dimensions/size off disk. `absPath` must be a real filesystem path. */
 async function pngInfo(absPath: string): Promise<PngInfo> {
   try {
     const buf = await readFile(absPath);
     const { width, height } = getPngDimensions(buf);
     const { size } = await stat(absPath);
-    return { exists: true, width, height, fileSize: size };
+    return { exists: true, width, height, fileSize: size, alphaMode: getPngAlphaMode(buf) };
   } catch {
-    return { exists: false, width: 0, height: 0, fileSize: 0 };
+    return { exists: false, width: 0, height: 0, fileSize: 0, alphaMode: "unknown" };
   }
 }
 
@@ -104,6 +130,7 @@ function stripCard(opts: {
   info: PngInfo;
   note?: string;
   displaySize?: number;
+  sourceSheet?: boolean;
 }): StripCard {
   const { info } = opts;
   const mismatch = classifyStripMismatch({
@@ -139,8 +166,10 @@ function stripCard(opts: {
     height: info.height,
     exists: info.exists,
     mismatch,
+    alphaMode: info.alphaMode,
     note: opts.note,
     displaySize: opts.displaySize,
+    sourceSheet: opts.sourceSheet,
   };
 }
 
@@ -161,8 +190,91 @@ function staticCard(opts: {
     height: opts.info.height,
     fileSize: opts.info.fileSize,
     exists: opts.info.exists,
+    alphaMode: opts.info.alphaMode,
     note: opts.note,
     displaySize: opts.displaySize,
+  };
+}
+
+// --- Art workbench candidates --------------------------------------------
+
+interface CandidateDef {
+  id: string;
+  label?: string;
+  file: string;
+  frameWidth: number;
+  frameHeight: number;
+  frameCount: number;
+  fps?: number;
+  loop?: boolean;
+  layout?: "single-row" | "grid";
+  displaySize?: number;
+  sourceSheet?: boolean;
+  note?: string;
+}
+
+interface CandidateManifest {
+  assets: CandidateDef[];
+}
+
+/**
+ * Candidate art is intentionally kept outside public/assets and outside the
+ * runtime registries. The preview can still animate it using the same sheet
+ * contract, so a generated source plate can be reviewed before cleanup and
+ * promotion to a shipping asset.
+ */
+async function buildCandidateSection(): Promise<Section | null> {
+  const manifestFile = join(root, "docs", "art", "candidates", "manifest.json");
+  let manifest: CandidateManifest;
+  try {
+    manifest = JSON.parse(await readFile(manifestFile, "utf-8")) as CandidateManifest;
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(manifest.assets) || manifest.assets.length === 0) return null;
+
+  const cards: Card[] = [];
+  for (const candidate of manifest.assets) {
+    if (
+      !candidate ||
+      typeof candidate.id !== "string" ||
+      typeof candidate.file !== "string" ||
+      !Number.isFinite(candidate.frameWidth) ||
+      !Number.isFinite(candidate.frameHeight) ||
+      !Number.isFinite(candidate.frameCount)
+    ) {
+      throw new Error(`Invalid sprite candidate in ${manifestFile}`);
+    }
+    const info = await pngInfo(join(root, candidate.file));
+    const sourceNote = [
+      "SOURCE ONLY — not registered in runtime",
+      candidate.note,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    cards.push(
+      stripCard({
+        domId: slug("candidate", candidate.id),
+        label: candidate.label ? `${candidate.label} · candidate` : `${candidate.id} · candidate`,
+        src: candidate.file,
+        frameWidth: candidate.frameWidth,
+        frameHeight: candidate.frameHeight,
+        declaredFrameCount: Math.max(1, Math.floor(candidate.frameCount)),
+        fps: Math.max(0, candidate.fps ?? 8),
+        loop: candidate.loop ?? false,
+        layout: candidate.layout ?? "grid",
+        info,
+        note: sourceNote,
+        displaySize: candidate.displaySize ?? 320,
+        sourceSheet: candidate.sourceSheet ?? true,
+      })
+    );
+  }
+  return {
+    id: "candidates",
+    title: "Workbench — candidate art (review only)",
+    hint: "Raw/generated source plates live here before palette cleanup, framing, anchor checks, and promotion to public/assets. Use the controls on each strip to pause, step, or change playback speed.",
+    groups: [{ id: "candidate-art", title: "Unapproved source", cards }],
   };
 }
 
@@ -436,16 +548,20 @@ async function buildMapSpriteSection(server: ViteDevServer): Promise<Section> {
 // --- Assemble + render -----------------------------------------------------
 
 async function collectSnapshot(server: ViteDevServer): Promise<PreviewSnapshot> {
-  const [party, enemies, effects, tilesets, mapSprites] = await Promise.all([
+  const [candidates, party, enemies, effects, tilesets, mapSprites] = await Promise.all([
+    buildCandidateSection(),
     buildPartySection(server),
     buildEnemySection(server),
     buildEffectsSection(server),
     buildTilesetSection(),
     buildMapSpriteSection(server),
   ]);
+  const sections = [candidates, party, enemies, effects, tilesets, mapSprites].filter(
+    (section): section is Section => section !== null
+  );
   return {
     generatedAt: new Date().toISOString(),
-    sections: [party, enemies, effects, tilesets, mapSprites],
+    sections,
   };
 }
 
@@ -481,28 +597,50 @@ h1 { text-align: center; margin-bottom: 0.25rem; }
 nav.toc { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #3a3025; }
 nav.toc a { color: #f0d080; text-decoration: none; }
 nav.toc a:hover { text-decoration: underline; }
-h1.section { margin-top: 2.5rem; color: #f0d080; border-top: 2px solid #3a3025; padding-top: 1.5rem; }
+.section-actions { display: flex; justify-content: center; gap: 0.6rem; flex-wrap: wrap; margin: 0.75rem 0 1.5rem; }
+.section-actions button { border: 1px solid #5b4933; background: #241d16; color: #f0d080; border-radius: 3px; padding: 0.4rem 0.7rem; font: inherit; font-size: 0.75rem; cursor: pointer; }
+.section-actions button:hover, .section-actions button:focus-visible { background: #3a2d20; outline: 1px solid #f0d080; }
+.asset-section { margin-top: 1.25rem; border-top: 2px solid #3a3025; padding-top: 1rem; }
+.asset-section > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; color: #f0d080; }
+.asset-section > summary::-webkit-details-marker { display: none; }
+.asset-section > summary::before { content: "▸"; color: #a09070; margin-right: 0.45rem; }
+.asset-section[open] > summary::before { content: "▾"; }
+.section-title { font-size: 1.55rem; font-weight: 700; }
+.section-count { color: #8a7a5c; font-size: 0.75rem; white-space: nowrap; }
+.section-body { padding-top: 0.75rem; }
 .section-hint { text-align: center; color: #a09070; margin-bottom: 1.5rem; font-size: 0.85rem; }
 .group { margin-bottom: 2rem; border-bottom: 1px solid #3a3025; padding-bottom: 1.5rem; }
 .group h2 { margin: 0 0 0.25rem; color: #f0d080; }
 .group .group-note { color: #e0a458; font-size: 0.8rem; margin-bottom: 0.75rem; }
 .states { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
-.state { background: #1a1612; border: 1px solid #3a3025; border-radius: 4px; padding: 0.75rem; text-align: center; }
+.state { background: #1a1612; border: 1px solid #3a3025; border-radius: 4px; padding: 0.75rem; text-align: center; min-width: 0; overflow: hidden; }
 .state.warn { border-color: #e0a458; }
 .state.critical { border-color: #c44; }
-canvas, img.static-img { image-rendering: pixelated; background: #000; border-radius: 2px; display: block; margin: 0 auto; }
+canvas, img.static-img { image-rendering: pixelated; background: #000; border-radius: 2px; display: block; margin: 0 auto; max-width: 100%; height: auto; }
+details.source-sheet { margin-top: 0.7rem; text-align: left; }
+details.source-sheet summary { color: #c6a86a; cursor: pointer; font-size: 0.75rem; }
+details.source-sheet img { image-rendering: pixelated; max-width: 100%; height: auto; margin: 0.5rem auto 0; background: #000; }
 .meta { margin-top: 0.5rem; font-size: 0.8rem; color: #b0a080; }
 .meta strong { color: #f0d080; }
+.sprite-controls { display: flex; justify-content: center; align-items: center; gap: 0.35rem; margin-top: 0.55rem; }
+.sprite-controls button { border: 1px solid #5b4933; background: #241d16; color: #f0d080; border-radius: 3px; min-width: 2rem; min-height: 1.65rem; font: inherit; font-size: 0.72rem; cursor: pointer; }
+.sprite-controls button:hover, .sprite-controls button:focus-visible { background: #3a2d20; outline: 1px solid #f0d080; }
+.sprite-controls .frame-readout { min-width: 4.4rem; color: #b0a080; font-size: 0.72rem; }
 .err { color: #f66; }
 .warnmsg { color: #e0a458; }
 .path { color: #8a7a5c; word-break: break-all; }
+.alpha { color: #8eb8c6; }
 </style>
 </head>
 <body>
 <h1>OnyxLabyrinth Sprite &amp; Asset Preview</h1>
-<div class="hint">Party, enemy, effect, tileset, and map-sprite art the game actually loads — pulled live from the same source modules combat/rendering use.</div>
+<div class="hint">Party, enemy, effect, tileset, and map-sprite art the game actually loads — pulled live from the same source modules combat/rendering use. Sections stay collapsed and lazy until you open them.</div>
 <div class="summary">Generated ${snapshot.generatedAt} · <span class="critical">${critical} critical</span> · <span class="warn">${warn} warning${warn === 1 ? "" : "s"}</span></div>
-<nav class="toc">${snapshot.sections.map((s) => `<a href="#${s.id}">${s.title}</a>`).join("")}</nav>
+<nav class="toc">${snapshot.sections.map((s) => `<a href="#${s.id}" data-section-link="${s.id}">${s.title}</a>`).join("")}</nav>
+<div class="section-actions">
+<button type="button" data-section-action="collapse">Collapse all sections</button>
+<button type="button" data-section-action="open-candidates">Open candidate workbench</button>
+</div>
 ${snapshot.sections.map(renderSection).join("")}
 <script type="application/json" id="snapshot">${JSON.stringify(snapshot)}</script>
 <script>${CLIENT_SCRIPT}</script>
@@ -511,10 +649,16 @@ ${snapshot.sections.map(renderSection).join("")}
 }
 
 function renderSection(section: Section): string {
+  const cardCount = section.groups.reduce((count, group) => count + group.cards.length, 0);
+  const open = section.id === "candidates" ? " open" : "";
   return `
-<h1 class="section" id="${section.id}">${section.title}</h1>
+<details class="asset-section" id="${section.id}" data-section-id="${section.id}"${open}>
+<summary><span class="section-title">${escapeHtml(section.title)}</span><span class="section-count">${cardCount} card${cardCount === 1 ? "" : "s"} · open to load</span></summary>
+<div class="section-body">
 ${section.hint ? `<div class="section-hint">${escapeHtml(section.hint)}</div>` : ""}
-${section.groups.map(renderGroup).join("")}`;
+${section.groups.map(renderGroup).join("")}
+</div>
+</details>`;
 }
 
 function renderGroup(group: CardGroup): string {
@@ -541,6 +685,23 @@ function renderCard(card: Card): string {
     card.kind === "strip"
       ? `${card.playbackFrameCount} frame${card.playbackFrameCount === 1 ? "" : "s"} · ${card.fps}fps${card.loop ? " · loops" : ""}`
       : "";
+  const alpha = card.alphaMode
+    ? `<span class="alpha">${card.alphaMode === "alpha-channel" ? "alpha channel" : card.alphaMode}</span>`
+    : "";
+  const controls =
+    card.kind === "strip" && card.exists && card.playbackFrameCount > 0
+      ? `<div class="sprite-controls" aria-label="Animation controls for ${escapeHtml(card.label)}">
+<button type="button" data-control="prev" title="Previous frame">◀</button>
+<button type="button" data-control="toggle" title="Pause or play">Pause</button>
+<button type="button" data-control="next" title="Next frame">▶</button>
+<button type="button" data-control="speed" title="Change playback speed">1×</button>
+<span class="frame-readout" data-frame-readout>1 / ${card.playbackFrameCount}</span>
+</div>`
+      : "";
+  const sourceSheet =
+    card.kind === "strip" && card.sourceSheet && card.exists
+      ? `<details class="source-sheet"><summary>Show full source sheet</summary><img src="${escapeHtml(card.src)}" alt="Full source sheet for ${escapeHtml(card.label)}"></details>`
+      : "";
   const msg =
     card.kind === "strip" && card.mismatch.message
       ? `<br><em class="${level === "critical" ? "err" : "warnmsg"}">${escapeHtml(card.mismatch.message)}</em>`
@@ -551,9 +712,11 @@ function renderCard(card: Card): string {
   return `
 <div class="state ${level === "ok" ? "" : level}" data-card="${card.domId}">
 <canvas id="cv-${card.domId}" width="${size}" height="${size}"></canvas>
+${controls}
+${sourceSheet}
 <div class="meta">
 <strong>${escapeHtml(card.label)}</strong><br>
-${dims}${extra ? " · " + extra : ""} · ${card.fileSize} bytes<br>
+${dims}${extra ? " · " + extra : ""}${alpha ? " · " + alpha : ""} · ${card.fileSize} bytes<br>
 <span class="path">${escapeHtml(card.src)}</span>
 ${msg}${note}
 </div>
@@ -574,7 +737,30 @@ const CLIENT_SCRIPT = `
 (function () {
   const snapshot = JSON.parse(document.getElementById('snapshot').textContent);
   const anims = [];
-  for (const section of snapshot.sections) {
+  const initializedSections = new Set();
+
+  function drawContain(ctx, img, cw, ch, sw, sh) {
+    const scale = Math.min(cw / sw, ch / sh);
+    const dw = sw * scale, dh = sh * scale;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.drawImage(img, 0, 0, sw, sh, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+  }
+
+  function setPlaybackButton(a) {
+    if (a.toggleButton) a.toggleButton.textContent = a.playing ? 'Pause' : 'Play';
+  }
+
+  function initializeSection(section) {
+    if (initializedSections.has(section.id)) {
+      for (const a of anims) {
+        if (a.sectionId !== section.id) continue;
+        a.playing = true;
+        a.last = performance.now();
+        setPlaybackButton(a);
+      }
+      return;
+    }
+    initializedSections.add(section.id);
     for (const group of section.groups) {
       for (const card of group.cards) {
         const canvas = document.getElementById('cv-' + card.domId);
@@ -590,46 +776,147 @@ const CLIENT_SCRIPT = `
         }
         if (!card.exists || card.playbackFrameCount < 1) continue;
         const img = new Image();
+        const a = {
+          sectionId: section.id,
+          ctx, img, canvas, card, frame: 0, last: 0, playing: true, speed: 1,
+          readout: canvas.parentElement && canvas.parentElement.querySelector('[data-frame-readout]'),
+          toggleButton: canvas.parentElement && canvas.parentElement.querySelector('[data-control="toggle"]'),
+          speedButton: canvas.parentElement && canvas.parentElement.querySelector('[data-control="speed"]')
+        };
+        img.onload = () => {
+          a.last = performance.now();
+          drawFrame(a);
+        };
         img.src = card.src;
-        anims.push({ ctx, img, canvas, card, frame: 0, last: 0 });
+        anims.push(a);
+        wireControls(a);
       }
     }
   }
 
-  function drawContain(ctx, img, cw, ch, sw, sh) {
-    const scale = Math.min(cw / sw, ch / sh);
-    const dw = sw * scale, dh = sh * scale;
-    ctx.clearRect(0, 0, cw, ch);
-    ctx.drawImage(img, 0, 0, sw, sh, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+  function pauseSection(sectionId) {
+    for (const a of anims) {
+      if (a.sectionId !== sectionId) continue;
+      a.playing = false;
+      setPlaybackButton(a);
+    }
+  }
+
+  function setReadout(a) {
+    if (a.readout) a.readout.textContent = String(a.frame + 1) + ' / ' + a.card.playbackFrameCount;
+  }
+
+  function drawFrame(a) {
+    if (!a.img.complete || !a.img.naturalWidth) return;
+    const col = a.frame % a.card.cols;
+    const row = Math.floor(a.frame / a.card.cols);
+    const cw = a.canvas.width, ch = a.canvas.height;
+    const scale = Math.min(cw / a.card.frameWidth, ch / a.card.frameHeight, 8);
+    const dw = a.card.frameWidth * scale, dh = a.card.frameHeight * scale;
+    a.ctx.clearRect(0, 0, cw, ch);
+    a.ctx.drawImage(
+      a.img,
+      col * a.card.frameWidth, row * a.card.frameHeight, a.card.frameWidth, a.card.frameHeight,
+      (cw - dw) / 2, (ch - dh) / 2, dw, dh
+    );
+    setReadout(a);
+  }
+
+  function wireControls(a) {
+    const root = a.canvas.parentElement;
+    if (!root) return;
+    root.querySelectorAll('[data-control]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        const action = button.getAttribute('data-control');
+        if (action === 'prev' || action === 'next') {
+          const direction = action === 'next' ? 1 : -1;
+          a.frame = (a.frame + direction + a.card.playbackFrameCount) % a.card.playbackFrameCount;
+          a.last = performance.now();
+          drawFrame(a);
+          return;
+        }
+        if (action === 'toggle') {
+          if (!a.playing && !a.card.loop && a.frame >= a.card.playbackFrameCount - 1) a.frame = 0;
+          a.playing = !a.playing;
+          a.last = performance.now();
+          if (a.toggleButton) a.toggleButton.textContent = a.playing ? 'Pause' : 'Play';
+          drawFrame(a);
+          return;
+        }
+        if (action === 'speed') {
+          const speeds = [0.5, 1, 2, 4];
+          const index = speeds.indexOf(a.speed);
+          a.speed = speeds[(index + 1) % speeds.length];
+          if (a.speedButton) a.speedButton.textContent = String(a.speed) + '×';
+          a.last = performance.now();
+        }
+      });
+    });
   }
 
   function loop(now) {
     for (const a of anims) {
       if (!a.img.complete || !a.img.naturalWidth) continue;
       const fps = a.card.fps > 0 ? a.card.fps : 0;
-      if (fps > 0) {
-        const interval = 1000 / fps;
+      if (a.playing && fps > 0) {
+        const interval = 1000 / (fps * a.speed);
         const elapsed = now - a.last;
         if (elapsed >= interval) {
           const advance = Math.max(1, Math.floor(elapsed / interval));
-          a.frame = (a.frame + advance) % a.card.playbackFrameCount;
+          const nextFrame = a.frame + advance;
+          if (a.card.loop) {
+            a.frame = nextFrame % a.card.playbackFrameCount;
+          } else {
+            a.frame = Math.min(nextFrame, a.card.playbackFrameCount - 1);
+            if (a.frame >= a.card.playbackFrameCount - 1) {
+              a.playing = false;
+              if (a.toggleButton) a.toggleButton.textContent = 'Play';
+            }
+          }
           a.last = now;
         }
       }
-      const col = a.frame % a.card.cols;
-      const row = Math.floor(a.frame / a.card.cols);
-      const cw = a.canvas.width, ch = a.canvas.height;
-      const scale = Math.min(cw / a.card.frameWidth, ch / a.card.frameHeight, 8);
-      const dw = a.card.frameWidth * scale, dh = a.card.frameHeight * scale;
-      a.ctx.clearRect(0, 0, cw, ch);
-      a.ctx.drawImage(
-        a.img,
-        col * a.card.frameWidth, row * a.card.frameHeight, a.card.frameWidth, a.card.frameHeight,
-        (cw - dw) / 2, (ch - dh) / 2, dw, dh
-      );
+      drawFrame(a);
     }
     requestAnimationFrame(loop);
   }
+
+  for (const section of snapshot.sections) {
+    const sectionNode = document.getElementById(section.id);
+    if (!sectionNode) continue;
+    sectionNode.addEventListener('toggle', function () {
+      if (sectionNode.open) initializeSection(section);
+      else pauseSection(section.id);
+    });
+    if (sectionNode.open) initializeSection(section);
+  }
+
+  document.querySelectorAll('[data-section-link]').forEach(function (link) {
+    link.addEventListener('click', function () {
+      const sectionNode = document.getElementById(link.getAttribute('data-section-link'));
+      if (sectionNode) sectionNode.open = true;
+    });
+  });
+
+  const collapseButton = document.querySelector('[data-section-action="collapse"]');
+  if (collapseButton) {
+    collapseButton.addEventListener('click', function () {
+      document.querySelectorAll('.asset-section').forEach(function (sectionNode) {
+        sectionNode.open = false;
+      });
+    });
+  }
+
+  const candidateButton = document.querySelector('[data-section-action="open-candidates"]');
+  if (candidateButton) {
+    candidateButton.addEventListener('click', function () {
+      const sectionNode = document.getElementById('candidates');
+      if (!sectionNode) return;
+      sectionNode.open = true;
+      sectionNode.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
   requestAnimationFrame(loop);
 })();
 `;
