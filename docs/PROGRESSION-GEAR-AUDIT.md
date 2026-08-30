@@ -6,7 +6,7 @@
 
 **Date:** 2026-07-18 · **Scope:** analysis + recommendations only — **no balance numbers or combat math were changed in this pass.** Every recommendation below is *proposed, not implemented*.
 
-Companion deliverable: the FF6-style Equip screen (Part B of `FOLLOWUP-PROGRESSION-GEAR-AUDIT-PROMPT.md`) shipped alongside this audit; finding **A7** motivates it directly.
+Companion deliverable: the FF6-style Equip screen shipped alongside this audit; finding **A7** motivates it directly. The original one-off implementation prompt is no longer retained in the working tree.
 
 > **⚠️ Findings table superseded 2026-07-24.** The campaign progression sprint fixed A1, A4, A5, A6, and A7 below (status column updated accordingly) — see [`docs/superpowers/specs/2026-07-24-campaign-progression-design.md`](superpowers/specs/2026-07-24-campaign-progression-design.md) for the re-derived numbers (§5 for A6's gold-sink sizing check) and [`docs/playtests/2026-07-24-progression-sprint-notes.md`](playtests/2026-07-24-progression-sprint-notes.md) for measured (not estimated) floor 4-5 pacing data. A2 and A3 remain open — this sprint did not touch perk-tier cadence or the stat-inflation ceiling. Kept below as historical record; do not re-cite A1/A4/A5/A6/A7 as current defects.
 >

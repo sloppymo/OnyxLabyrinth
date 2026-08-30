@@ -6,7 +6,7 @@
 
 **2026-08-22 freeze:** [`2026-08-22-card-trial-human-test-decision.md`](2026-08-22-card-trial-human-test-decision.md). Reference-agent 1→10 is mechanical evidence only. Do not retune cards, energy, Move, Guard, Opened, Rat, or encounter HP until the naive-human batch. The only authorized freeze-break is measurement (true Consume decline vs base-kill) and Consume presentation (available clause, not recommendation).
 
-Campaign combat, saves, party creation, perks, shops, dialogue, and the ending do not change. Rat King and Old Man remain rival claimants in the campaign; this mode does not make them the player party.
+Campaign combat, saves, perks, shops, dialogue, and the ending do not change. The campaign uses a fixed Old Man + Rat King duo; there is no character-creation or roster-selection flow. Card Trial is Arena-only and reuses those two protagonist identities in trial-local state.
 
 ---
 
@@ -283,7 +283,7 @@ After ten fights, ask only:
 
 - Separate **Card Trial** row under Arena. Classic Arena unchanged.
 - Trial-local state only. Nothing serialized. No save migration.
-- `PARTY_SIZE` stays 4 in campaign. Two-person roster only while the session variant is Card Trial.
+- The campaign uses the fixed two-person protagonist roster. The historical `Character[]` / `GameState.party` shape and legacy four-member save cap remain outside Card Trial for compatibility only.
 - `playerView()` shows: acting hero’s hand, energy, rows, Guard, Opened target, Rat row if any, exact intents **with post-Guard HP and a lethal mark when the hit would kill**, pile **counts** not order. Never draw order or RNG internals.
 - Controller, keyboard, mouse, touch: select card, targets, Move, confirm, cancel. Disabled cards show why.
 
@@ -299,7 +299,7 @@ Art: use existing Rat King / Old Man strips when the checkout includes `feat/ai-
 - One hero is a battery (Opened only exists to feed the other).
 - The Rat (even without intercept) is a second game.
 - Hands are unreadable.
-- Supporting this requires campaign, save, or `PARTY_SIZE` changes.
+- Supporting this requires campaign save or fixed-duo identity changes.
 
 If the loop fails, keep the best card art as a **fixed menu** of these same actions. Do not treat frames as proof that energy turns should survive.
 

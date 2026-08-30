@@ -6,6 +6,45 @@ selection, default/custom roster choices, Reform Party, and roster reorder are
 retired. Older entries below are historical session notes; see
 `docs/CURRENT-PRODUCT-CONTRACT.md` before using them as instructions.
 
+## 2026-08-29 — bounded tactical draft cards
+
+- Added the two live gamble cards: Rat King's `Fight Dirty` and Old Man's
+  `Improvised Theorem`. Each spends 1 Energy to reveal three curated temporary
+  answers, lets the player choose one, and discards the other two without
+  expanding the deck or introducing recursive generated-card rules.
+- Added deterministic, domain-specific draft resolution and UI support across
+  the legacy and sparse Card Trial render paths. Draft choices reuse the live
+  Barrier, Hush, Crowned, Opened, Rats, Omen, targeting, and row vocabulary.
+- Replaced the duplicate starter-card slots with those two source cards, keeping
+  both hero decks at exactly 12 cards and the live catalogue at 24 unique cards.
+- Generated native 128×96 pilot art for both cards and wired it into the card
+  art cache and reward pool:
+  `public/assets/card-trial/cards/fight-dirty.png` and
+  `public/assets/card-trial/cards/improvised-theorem.png`.
+- Verification: focused draft/card-art tests, `npm run build`, and a live
+  production-browser pass showing the three-choice overlay all pass. The
+  complete `npm run check` gate remains the final handoff step for this work.
+
+## 2026-08-27 — Two-hero campaign card-pool decision
+
+- The first campaign card architecture is now explicitly one evolving,
+  hero-owned collection and active deck for Old Man and one for Rat King.
+  “One set of cards per character” means an editable collection with an exact
+  12-card first-slice deck, not a fixed immutable list and not a return to the
+  legacy spell catalogue.
+- Player-facing school selection, school-bound legality, cross-deck movement,
+  Regalia, Mastery/card XP, Resonance/SPENT, Magnitude/Overchannel,
+  recoverable Blood Price, Ready/Spent Rats, and other advanced six-school
+  mechanics are deferred until the two-pool combat lifecycle passes human
+  testing.
+- Added `docs/design/2026-08-27-two-hero-card-pools.md` as the interim card
+  authority; marked the six-school design and TypeScript catalogue as deferred
+  experimental material; updated the reading list and historical product
+  definition so future agents do not treat the six-school corpus as current
+  campaign scope.
+- Documentation-only transition. No live combat, save, encounter, or map
+  logic was changed in this pass.
+
 ## 2026-08-25 — Card Trial combat UI redesign
 
 - Current task: implement the approved Card Trial-only combat UI mockup with a shared 768×672 semantic/layout recipe, clear gold current-actor and card states, red target states, anchored actor plates, readable hand/action rails, Canvas/Phaser parity, and no campaign or lighting regressions.
@@ -1629,3 +1668,23 @@ visual-pass notes below; this section tracks the current task only.
   resolver only after the parallel resolver/types/effects work is checkpointed;
   then prove one real encounter with card play, reward, retry, and exact
   dungeon return before retiring classic combat.
+
+### 2026-08-27 — Semantic six-school reconciliation
+
+- Declared the six-school design document the canonical authority for names,
+  costs, text, states, and upgrade branches; the TypeScript catalogue is its
+  phase-one transcription, not a competing design source or live resolver.
+- Reconciled all 36 phase-one definitions and both upgrade branches per card.
+  Complex rules now use bounded domain-specific effects for Hush conversion,
+  Rat readiness/commands, Crown/Decree intent checks, Omens, Resonance,
+  Overchannel, Blood Price, Devour, barrier theft, optional choices, and
+  movement.
+- Added recursive effect flattening and catalogue validation so nested branch,
+  fallback, rider, Omen, and resource-payoff content is visible to lint.
+- Added exact phase-one ID/header/branch tests plus focused proof coverage for
+  Cut the Chant and The King Points. No campaign resolver or reward wiring was
+  changed; the next gate is compiling those two cards into shared forecast and
+  resolution before scaling to the remaining 34.
+- Verification: app/tools TypeScript, production build, focused seven-test
+  catalogue suite, and the standard web-game client title capture pass. The
+  known unrelated RGB card-art assertion remains in the shared dirty worktree.

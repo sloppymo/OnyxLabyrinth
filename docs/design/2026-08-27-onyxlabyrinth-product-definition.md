@@ -2,17 +2,19 @@
 
 **Date:** 2026-08-27
 
-**Status:** Canonical target product definition
+**Status:** Historical target product definition; superseded for current campaign card architecture
 
 **Short authority:** [`../CURRENT-PRODUCT-CONTRACT.md`](../CURRENT-PRODUCT-CONTRACT.md)
 
-**Combat corpus:** [`2026-08-26-card-trial-six-school-system.md`](2026-08-26-card-trial-six-school-system.md)
+**Deferred combat corpus:** [`2026-08-26-card-trial-six-school-system.md`](2026-08-26-card-trial-six-school-system.md)
+
+> **Current campaign card decision (2026-08-27):** The first campaign slice uses one evolving, hero-owned card pool for Old Man and one for Rat King. The six-school model, school-bound legality, cross-deck movement, Mastery/card XP, Resonance/SPENT, and recoverable Blood Price are deferred experiments. Use [`2026-08-27-two-hero-card-pools.md`](2026-08-27-two-hero-card-pools.md) together with [`../CURRENT-PRODUCT-CONTRACT.md`](../CURRENT-PRODUCT-CONTRACT.md) for current card work. This document remains valuable as product/world rationale and as a source of deferred ideas; its older card-specific sections are not implementation authority.
 
 This document defines the game OnyxLabyrinth is becoming. It supersedes older product assumptions about selectable parties, the external Town loop, classic campaign combat, XP, levels, perks, equipment, gold, consumables, punitive recovery, and random-encounter attrition. Those systems may remain in transitional code until their replacements are proven, but they are no longer product requirements and must not shape new content.
 
 The existing gods/Death/lamp/kept narrative remains canon unless this document explicitly retires a gameplay expression of it. In particular, the century-wipe mechanic is retired even though the deathless world remains canon. A combat retry is a checkpoint abstraction, not another century in the story.
 
-Numbers in this document are the canonical first implementation targets. Normal balance iteration may tune damage, Barrier, enemy HP, Mastery thresholds, and timing without reopening the product. Changing the core loops, progression layers, failure model, fixed protagonists, six schools, or retired-system list requires an explicit contract revision.
+Numbers in this document were the canonical first implementation targets for the larger product definition. Normal balance iteration may tune damage, Barrier, enemy HP, and timing without reopening the product. Changing the core loops, progression layers, failure model, fixed protagonists, current two-pool card boundary, or retired-system list requires an explicit contract revision. Reintroducing the deferred six-school architecture also requires an explicit contract revision after the two-pool slice has been human-tested.
 
 ---
 

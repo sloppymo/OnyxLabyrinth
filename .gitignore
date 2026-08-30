@@ -27,9 +27,7 @@ dev-party-creation.html
 # Repo-hygiene purge (2026-07-19): large local-only dirs — never track
 /assets/
 /playtest-screenshots/
-/output/playwright/card-trial-feel*/
-/output/web-game/
-/output/playtest-artifacts/
+/output/
 /vfx-audit/
 
 # Generated preview HTML (outputs of scripts/generate-*.mjs / .ts — regenerated on demand)
@@ -44,6 +42,10 @@ dev-party-creation.html
 # Local research/tool scratch (kept on disk, never tracked)
 .firecrawl/
 .playwright-cli/
+
+# Local coding-agent state and MCP configuration
+/.claude/
+/.devin/
 
 # Local secrets — API keys for sprite-gen tooling etc, never tracked
 .env

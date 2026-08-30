@@ -6,8 +6,9 @@
 
 **Related:**
 
-- Planning prompt: [`docs/PROMPT-phaser-combat-port-plan.md`](../../PROMPT-phaser-combat-port-plan.md)
-- Earlier shorter draft (superseded): [`2026-07-29-phaser-combat-renderer-design.md`](./2026-07-29-phaser-combat-renderer-design.md)
+- Planning prompt: the one-off planning prompt is no longer retained; this design
+  document is the surviving authority for the port.
+- Earlier shorter draft: superseded and no longer retained.
 - Implementation plan (may lag this doc): [`../plans/2026-07-29-phaser-combat-renderer.md`](../plans/2026-07-29-phaser-combat-renderer.md) — **this design is source of truth** for interface naming (`CombatStage`), Phaser.AUTO, sibling canvas, and Phase 0→5 sequencing when the plan conflicts
 - Parity baseline: [AGENTS.md](../../../AGENTS.md) “Combat (FF6) verification checklist”
 - Boss display names only; internal ids `headmasters-echo` / `-remnant` / `-ascendant` stay frozen. Do **not** restore retired player-facing *Headmaster* / *Echo* vocabulary.
@@ -503,7 +504,7 @@ These are why the shared engine matters — a Phaser-native tween rewrite would 
 | Doc | Role after this write |
 |-----|------------------------|
 | This file | **Authoritative** design for the port |
-| `2026-07-29-phaser-combat-renderer-design.md` | Shorter draft; superseded (keep for history; pointer at top) |
+| `2026-07-29-phaser-combat-renderer-design.md` | Shorter draft; superseded and pruned from the working tree |
 | `2026-07-29-phaser-combat-renderer.md` (plan) | May still say `CombatRenderer` / `WEBGL`-preferred / host `div` — **defer rewriting the whole plan**; implementers follow **this** design for `CombatStage`, `Phaser.AUTO`, sibling `#combat-phaser-canvas`, Phase 0 dependency-direction split, and timing hazards |
 
 ### Naming note

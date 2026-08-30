@@ -11,8 +11,8 @@
 **Tech Stack:** TypeScript, Vite 8, **Phaser 4.2.1** (pin exact; not 3.x), Vitest, existing strip assets under `public/assets/{enemies,party,effects}/`. Phaser 4 import style: `import * as Phaser from "phaser"` (default import is broken in v4). Use **`Phaser.AUTO`** (WebGL when available; Canvas renderer still exists in 4.2.1 as fallback — do **not** require WebGL-only or a bespoke no-WebGL path).
 
 **Design (authoritative):** [`docs/superpowers/specs/2026-07-29-phaser-combat-port-design.md`](../specs/2026-07-29-phaser-combat-port-design.md)  
-**Earlier shorter draft (superseded):** [`docs/superpowers/specs/2026-07-29-phaser-combat-renderer-design.md`](../specs/2026-07-29-phaser-combat-renderer-design.md)  
-**Prompt:** [`docs/PROMPT-phaser-combat-port-plan.md`](../../PROMPT-phaser-combat-port-plan.md)
+**Earlier shorter draft:** superseded and no longer retained.
+**Prompt:** the one-off planning prompt is no longer retained; use the design source above.
 
 ## Global Constraints
 

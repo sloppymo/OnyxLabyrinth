@@ -422,7 +422,7 @@ floor rows sample depth continuously — a linear taper's derivative discontinui
 knots (d=4, d=8) print as visible Mach-band creases in the gradient; smoothstep is C¹ at both.
 Full derivation, the rejected alternatives (reduce `fogMidtoneLift` instead; taper only the lift
 term; taper only floor/ceiling), and the measurement methodology are in
-`docs/PROMPT-corridor-phase2-plan-review.md`.
+the archived corridor fog-taper review.
 
 Darkness zones (`state.inDarkness`, clipped separately at `darknessMaxDist` = 1.5) never reach
 the taper start (4), so darkness rendering stays bit-identical — this is a **structural

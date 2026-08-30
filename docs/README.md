@@ -10,6 +10,7 @@ These are the first places to read before changing anything.
 - [`CURRENT-PRODUCT-CONTRACT.md`](CURRENT-PRODUCT-CONTRACT.md) — Current campaign entry flow and fixed Old Man + Rat King protagonist contract; overrides older dated roster plans.
 - [`CLAUDE.md`](../CLAUDE.md) — Claude Code orientation; defers to `AGENTS.md` for `src/` rules.
 - [`docs/AGENT-READING-LIST.md`](AGENT-READING-LIST.md) — Which product docs, specs, and playtest reports are current versus stale.
+- [`docs/WORKTREE-HANDOFF.md`](WORKTREE-HANDOFF.md) — Safe workflow for parallel checkouts, dirty trees, scoped commits, and agent handoffs.
 - [`README.md`](../README.md) — Human-facing install, run, build, and verification guide.
 
 ## Subsystem and workflow guides

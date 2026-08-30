@@ -380,13 +380,13 @@ to:
 In `docs/AGENT-READING-LIST.md`, change the audit row (line 21) from:
 
 ```markdown
-| [`COMBAT-ENGAGEMENT-AUDIT.md`](../COMBAT-ENGAGEMENT-AUDIT.md) | Combat depth audit: placebo verbs, disable/summon/counter-magic gaps | **Current** (2026-07-16); Direction A truth pass underway |
+| [`COMBAT-ENGAGEMENT-AUDIT.md`](../../COMBAT-ENGAGEMENT-AUDIT.md) | Combat depth audit: placebo verbs, disable/summon/counter-magic gaps | **Current** (2026-07-16); Direction A truth pass underway |
 ```
 
 to:
 
 ```markdown
-| [`COMBAT-ENGAGEMENT-AUDIT.md`](../COMBAT-ENGAGEMENT-AUDIT.md) | Combat depth audit: placebo verbs, disable/summon/counter-magic gaps | **Current** (2026-07-16); Direction A truth pass **shipped** (`0dd91ee`); Direction B rage economy retune **shipped** (start at half pool, Defend keeps rage, L12 capstones usable) |
+| [`COMBAT-ENGAGEMENT-AUDIT.md`](../../COMBAT-ENGAGEMENT-AUDIT.md) | Combat depth audit: placebo verbs, disable/summon/counter-magic gaps | **Current** (2026-07-16); Direction A truth pass **shipped** (`0dd91ee`); Direction B rage economy retune **shipped** (start at half pool, Defend keeps rage, L12 capstones usable) |
 ```
 
 Add a row to the specs table in the same file (after the `2026-07-14-arena-renderer-design.md` row):

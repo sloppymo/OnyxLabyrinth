@@ -35,7 +35,7 @@
 
 Scope: the first-person corridor view (`src/engine/renderer.ts`, `render-math.ts`, the
 `f1`–`f5` tilesets, the shared door panel). Measured against the design bar in
-`docs/PROMPT-maze-art-direction-pass.md` and the constraints in `AGENTS.md` and
+the executed corridor art-direction pass and the constraints in `AGENTS.md` and
 `docs/TILESET-ART-STYLE-GUIDE.md`.
 
 **Headline:** the corridor is in good shape and its art pipeline is unusually disciplined —
@@ -441,7 +441,7 @@ it. E3b's bands are the ones to gate on.
 **Phase 2 — A: taper the fog to the clip boundary.**
 
 *The band-ratio criterion below (0.37/0.40 → ≥0.85) was retired after an adversarial review
-(`docs/PROMPT-corridor-phase2-plan-review.md`) showed it is unreachable by construction: "band"
+the adversarial corridor fog-taper review showed it is unreachable by construction: "band"
 and "surroundings" are defined as depths >8 and 4→8 respectively, and the taper's whole job is
 to darken 4→8 while the ≤10% mid-range cap forces depth 4 to stay bright — so the ratio can only
 approach 1 if the surroundings collapse to background, which the mid-range constraint forbids.

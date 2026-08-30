@@ -392,5 +392,4 @@ After combat, if any characters reached a perk tier, a modal overlay appears ove
 | Data stubs | **10 `TODO(v1.1)`** comments in `src/data/perks.ts` — all need genuinely new systems (resistance/reflect/silence immunity/steal economy/party-wide auras); UI copy says so |
 | Final balance numbers | **Not done** — sheet % now mostly live, but no balance pass has tuned them |
 
-Authoritative navigation: [`docs/AGENT-READING-LIST.md`](../AGENT-READING-LIST.md).
-
+Authoritative navigation: [`AGENT-READING-LIST.md`](../../AGENT-READING-LIST.md).

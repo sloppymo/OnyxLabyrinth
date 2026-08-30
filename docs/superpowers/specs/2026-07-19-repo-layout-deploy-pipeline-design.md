@@ -73,8 +73,6 @@ Link maintenance (reference sweep already done):
   `docs/AGENT-READING-LIST.md` (rows for ARENA-REVIEW, PLAYTEST-DESIGN-REVIEW,
   PLAYTEST-REPORT — `../X.md` → `X.md`; also fix the already-broken
   `../COMBAT-ENGAGEMENT-AUDIT.md` link → `COMBAT-ENGAGEMENT-AUDIT.md`),
-  `docs/FOLLOWUP-COMBAT-UX-PERKS-PROMPT.md`,
-  `docs/FOLLOWUP-COMBAT-FLOW-PROMPT.md`,
   `docs/superpowers/specs/2026-07-14-arena-renderer-design.md`,
   `PLAYTEST-DESIGN-REVIEW.md` itself (its `POLISH-ISSUES-PROMPT.md` link →
   note as removed-from-tree; `PLAYTEST-REPORT.md` link → same-dir), and the
@@ -83,10 +81,9 @@ Link maintenance (reference sweep already done):
 - `AGENT-READING-LIST.md`: drop the POLISH-ISSUES-PROMPT row (file deleted;
   its one live item — mobile map lower priority — is already recorded in the
   same file), bump the "Last refreshed" stamp.
-- Links pointing at **deleted** files inside historical prompt docs
-  (`HANDOFF-PROMPT.md`, `docs/FOLLOWUP-COMBAT-DEPTH-PROMPT.md`) are left
-  as-is — those docs are historical records, and the targets remain in git
-  history.
+- Completed one-off implementation prompts are pruned after their shipped
+  work is summarized in `docs/AGENT-READING-LIST.md`; historical specs and
+  playtest reports remain available when they explain migration constraints.
 
 ### C. Tooling consolidation
 
