@@ -1,0 +1,64 @@
+{
+  "id": "production-encounters",
+  "name": "Production Card Trial encounters",
+  "notes": "Locked production decks and the ten Arena-only encounter definitions.",
+  "configPath": "scripts/playtests/card-trial-experiments/production.ts",
+  "policy": "threat-aware",
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "maxRounds": 20,
+  "maxActions": 400,
+  "measureRowValue": false,
+  "scenarios": [
+    {
+      "id": "production-encounter-1",
+      "name": "Two Lights"
+    },
+    {
+      "id": "production-encounter-2",
+      "name": "Cleaver and Ash"
+    },
+    {
+      "id": "production-encounter-3",
+      "name": "Mixed Medium"
+    },
+    {
+      "id": "production-encounter-4",
+      "name": "Slow Brute"
+    },
+    {
+      "id": "production-encounter-5",
+      "name": "Busy Three"
+    },
+    {
+      "id": "production-encounter-6",
+      "name": "Hard Pair"
+    },
+    {
+      "id": "production-encounter-7",
+      "name": "Many Intents"
+    },
+    {
+      "id": "production-encounter-8",
+      "name": "Both Rows"
+    },
+    {
+      "id": "production-encounter-9",
+      "name": "Named Mark"
+    },
+    {
+      "id": "production-encounter-10",
+      "name": "The Heap"
+    }
+  ]
+}

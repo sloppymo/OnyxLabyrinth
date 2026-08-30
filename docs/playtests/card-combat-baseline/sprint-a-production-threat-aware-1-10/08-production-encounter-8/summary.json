@@ -1,0 +1,30 @@
+{
+  "baseline": {
+    "wins": 10,
+    "wipes": 0,
+    "timeouts": 0,
+    "meanRounds": 3,
+    "meanDamageDealt": 60.9,
+    "meanPaidMoves": 0,
+    "actionDiversity": 12,
+    "meanDiscardedPlayable": 0,
+    "meanHeroTurns": 5.6,
+    "meanGuardGained": 10.6,
+    "meanGuardAbsorbed": 2.2,
+    "meanEnergyLeft": 0,
+    "meanRowChanges": 0.2,
+    "meanCardPrintedMoves": 1.8,
+    "meanEmptyRowMisses": 0.5,
+    "meanOpenedCreated": 1.5,
+    "meanOpenedConsumed": 0.3,
+    "meanOpenedPartner": 0.3,
+    "meanOpenedMoved": 0.6,
+    "meanOpenedDiedUnconsumed": 1.2,
+    "rowSensitiveActionRate": 0,
+    "rowSensitiveTurnRate": 0,
+    "meanMaxRowTacticalDelta": 0,
+    "partnerDeadFights": 0,
+    "fights": 10
+  },
+  "variant": null
+}

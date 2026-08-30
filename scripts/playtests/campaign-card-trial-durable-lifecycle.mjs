@@ -96,8 +96,8 @@ try {
       autosave: false,
     });
     window.__onyxDebug.state.campaignCards["old-man"].collection.push({
-      instanceId: "browser-reserve:old-man:crack",
-      cardId: "crack",
+      instanceId: "browser-reserve:old-man:faultline",
+      cardId: "faultline",
       mastery: 0,
       branch: null,
     });
@@ -146,13 +146,13 @@ try {
   await clickDialogChoice(page, "Old Man");
   await waitUntil(page, async () => (await page.locator("body").innerText()).includes("Old Man Reserves"), "Old Man reserves");
   await shot(page, OUT, "03-old-man-reserves.png");
-  await clickDialogChoice(page, "Crack · M0");
+  await clickDialogChoice(page, "Faultline · M0");
   await waitUntil(page, async () => (await page.locator("body").innerText()).includes("Replace Which Card?"), "outgoing card picker");
   await page.locator(".ff6-menu-item").first().click();
   await waitUntil(page, async () => (await page.locator("body").innerText()).includes("replaces"), "swap confirmation");
   const edited = await page.evaluate(() => window.__onyxDebug.state.campaignCards["old-man"]);
   check("deck edit keeps exactly twelve cards", edited.activeDeck.length === 12);
-  check("deck edit installs the physical reserve", edited.activeDeck.includes("browser-reserve:old-man:crack"));
+  check("deck edit installs the physical reserve", edited.activeDeck.includes("browser-reserve:old-man:faultline"));
   await shot(page, OUT, "04-deck-swap-confirmed.png");
   await clickDialogChoice(page, "Retry Now");
   await waitForRoute(page, "card_trial", 12000);
@@ -165,7 +165,7 @@ try {
   check("Leave clears pending encounter", left.pendingCampaignEncounter === null);
   check(
     "Leave preserves deck edit",
-    left.campaignCards["old-man"].activeDeck.includes("browser-reserve:old-man:crack")
+    left.campaignCards["old-man"].activeDeck.includes("browser-reserve:old-man:faultline")
   );
   check("Leave remains at checkpoint", state.pos.x === checkpoint.x && state.pos.y === checkpoint.y);
   await waitForIdle(page, 10000);

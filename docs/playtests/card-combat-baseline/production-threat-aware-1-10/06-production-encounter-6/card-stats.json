@@ -1,0 +1,146 @@
+{
+  "nip": {
+    "drawn": 6,
+    "played": 2,
+    "discarded": 3,
+    "discardedPlayable": 0
+  },
+  "fight-dirty": {
+    "drawn": 8,
+    "played": 5,
+    "discarded": 3,
+    "discardedPlayable": 0
+  },
+  "brace": {
+    "drawn": 4,
+    "played": 0,
+    "discarded": 3,
+    "discardedPlayable": 0
+  },
+  "open-the-rank": {
+    "drawn": 8,
+    "played": 2,
+    "discarded": 3,
+    "discardedPlayable": 0
+  },
+  "from-the-dark": {
+    "drawn": 2,
+    "played": 2,
+    "discarded": 0,
+    "discardedPlayable": 0
+  },
+  "swarm-the-wound": {
+    "drawn": 2,
+    "played": 1,
+    "discarded": 0,
+    "discardedPlayable": 0
+  },
+  "burst-the-nest": {
+    "drawn": 7,
+    "played": 2,
+    "discarded": 1,
+    "discardedPlayable": 0
+  },
+  "litter": {
+    "drawn": 5,
+    "played": 0,
+    "discarded": 3,
+    "discardedPlayable": 0
+  },
+  "send-the-rat": {
+    "drawn": 8,
+    "played": 6,
+    "discarded": 0,
+    "discardedPlayable": 0
+  },
+  "tide": {
+    "drawn": 7,
+    "played": 3,
+    "discarded": 2,
+    "discardedPlayable": 0
+  },
+  "lunge": {
+    "drawn": 7,
+    "played": 6,
+    "discarded": 0,
+    "discardedPlayable": 0
+  },
+  "king-of-the-heap": {
+    "drawn": 6,
+    "played": 3,
+    "discarded": 1,
+    "discardedPlayable": 0
+  },
+  "the-staff-speaks": {
+    "drawn": 3,
+    "played": 2,
+    "discarded": 0,
+    "discardedPlayable": 0
+  },
+  "pale-ward": {
+    "drawn": 3,
+    "played": 0,
+    "discarded": 2,
+    "discardedPlayable": 0
+  },
+  "faultline": {
+    "drawn": 5,
+    "played": 4,
+    "discarded": 0,
+    "discardedPlayable": 0
+  },
+  "marrow-divide": {
+    "drawn": 4,
+    "played": 1,
+    "discarded": 1,
+    "discardedPlayable": 0
+  },
+  "full-stop": {
+    "drawn": 4,
+    "played": 1,
+    "discarded": 2,
+    "discardedPlayable": 0
+  },
+  "sever-the-thread": {
+    "drawn": 3,
+    "played": 3,
+    "discarded": 0,
+    "discardedPlayable": 0
+  },
+  "the-threshold": {
+    "drawn": 4,
+    "played": 2,
+    "discarded": 1,
+    "discardedPlayable": 0
+  },
+  "distant-hand": {
+    "drawn": 4,
+    "played": 0,
+    "discarded": 1,
+    "discardedPlayable": 0
+  },
+  "parting-word": {
+    "drawn": 1,
+    "played": 0,
+    "discarded": 0,
+    "discardedPlayable": 0
+  },
+  "unlight": {
+    "drawn": 2,
+    "played": 0,
+    "discarded": 1,
+    "discardedPlayable": 0
+  },
+  "last-bastion": {
+    "drawn": 2,
+    "played": 1,
+    "discarded": 1,
+    "discardedPlayable": 0
+  },
+  "improvised-theorem": {
+    "drawn": 5,
+    "played": 4,
+    "discarded": 1,
+    "discardedPlayable": 0
+  }
+}

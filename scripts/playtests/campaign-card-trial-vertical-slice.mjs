@@ -41,24 +41,24 @@ function cardPriority(card, view) {
     "swarm-the-wound": opened ? 96 : 14,
     "burst-the-nest": 90,
     "king-of-the-heap": 88,
-    "stand-and-die": 86,
-    "extinguish": 80,
+    "last-bastion": 86,
+    "unlight": 80,
     "from-the-dark": 78,
     "open-the-rank": opened ? 42 : 76,
-    crack: opened ? 42 : 75,
-    "split-bone": opened ? 42 : 74,
+    faultline: opened ? 42 : 75,
+    "marrow-divide": opened ? 42 : 74,
     tide: 72,
-    threshold: 70,
+    "the-threshold": 70,
     nip: 68,
-    staff: 67,
+    "the-staff-speaks": 67,
     "send-the-rat": 65,
     litter: 64,
-    "cut-the-line": 60,
-    "from-afar": 58,
+    "sever-the-thread": 60,
+    "distant-hand": 58,
     lunge: 56,
-    "parting-blow": 54,
+    "parting-word": 54,
     brace: 20,
-    ward: 19,
+    "pale-ward": 19,
   };
   return priority[card.defId] ?? 1;
 }
@@ -82,7 +82,6 @@ try {
   check("title → prologue → town → dungeon", state.route === "dungeon", `got ${state.route}`);
   const before = await snap(page);
   const startingPosition = { ...before.pos };
-  const startingCards = [...before.cards];
   check("fixed duo is present", before.party.length === 2 &&
     before.party.map((member) => member.id).sort().join(",") === "old-man,rat-king");
   await shot(page, OUT, "01-dungeon-before.png");
@@ -92,6 +91,8 @@ try {
     window.__onyxDebug.startCampaignEncounter("f1-red-bone-bounty", { seed: 7 })
   );
   await waitForIdle(page, 10000);
+  const pendingBounty = JSON.parse(await page.evaluate(() => window.__onyxDebug.dumpSave()));
+  check("routine pending reward is null", pendingBounty.pendingCampaignEncounter?.reward == null);
   state = await snap(page);
   check("campaign encounter enters Card Trial", state.route === "card_trial", `got ${state.route}`);
   check("campaign encounter uses real formation", state.combat?.enemies.length === 3,
@@ -126,6 +127,12 @@ try {
       await waitForIdle(page, 10000);
       continue;
     }
+    if (uiPhase === "draft") {
+      const freeIdx = Math.max(0, (view.draft?.choices ?? []).findIndex((c) => c.cost === 0 && !c.disabled));
+      await page.locator(".ct-sparse .ct-draft-choice").nth(freeIdx).click({ timeout: 5000 });
+      await waitForIdle(page, 8000);
+      continue;
+    }
     if (uiPhase === "target" || uiPhase === "target2") {
       const target = view.enemies.find((enemy) => !enemy.dead);
       if (!target) break;
@@ -157,15 +164,22 @@ try {
   }
 
   state = await snap(page);
-  const rewardId = state.cards.find((cardId) =>
-    state.cards.filter((id) => id === cardId).length > startingCards.filter((id) => id === cardId).length
-  ) ?? null;
   check("Card Trial ends in campaign dungeon", state.route === "dungeon", `got ${state.route}`);
   check("return preserves exact floor position",
     state.floor.id === before.floor.id && state.pos.x === startingPosition.x &&
     state.pos.y === startingPosition.y && state.pos.facing === startingPosition.facing,
   JSON.stringify({ before: startingPosition, after: state.pos }));
-  check("victory grants one persistent card", state.cards.length === startingCards.length + 1 && rewardId !== null, JSON.stringify(state.cards));
+  const afterSave = JSON.parse(await page.evaluate(() => window.__onyxDebug.dumpSave()));
+  check(
+    "routine bounty grants no campaign card",
+    afterSave.campaignCards["rat-king"].collection.length === 12 &&
+      afterSave.campaignCards["old-man"].collection.length === 12 &&
+      afterSave.pendingCampaignEncounter === null,
+    JSON.stringify({
+      rat: afterSave.campaignCards["rat-king"].collection.length,
+      old: afterSave.campaignCards["old-man"].collection.length,
+    })
+  );
   await shot(page, OUT, "04-dungeon-after-card-reward.png");
 
   console.log("=== save/load reward persistence ===");
@@ -175,7 +189,7 @@ try {
     (sum, hero) => sum + (hero.collection?.length ?? 0),
     0
   );
-  check("campaign save contains physical card collections", savedCardCount === startingCards.length + 1);
+  check("campaign save still has only the twelve-per-hero starters", savedCardCount === 24);
   check("victory atomically clears the pending encounter", savedState.pendingCampaignEncounter === null);
   await page.evaluate(() => {
     window.__onyxDebug.jumpTo({ floorId: 2, x: 2, y: 11, facing: 0, autosave: false });
@@ -188,9 +202,12 @@ try {
   check("load restores exact position", state.floor.id === before.floor.id &&
     state.pos.x === startingPosition.x && state.pos.y === startingPosition.y &&
     state.pos.facing === startingPosition.facing);
-  check("load restores card reward", state.cards.length === startingCards.length + 1 &&
-    state.cards.filter((id) => id === rewardId).length > startingCards.filter((id) => id === rewardId).length,
-    JSON.stringify({ expectedExtra: rewardId, actual: state.cards }));
+  const loadedSave = JSON.parse(await page.evaluate(() => window.__onyxDebug.dumpSave()));
+  check(
+    "load restores starter collections",
+    loadedSave.campaignCards["rat-king"].collection.length === 12 &&
+      loadedSave.campaignCards["old-man"].collection.length === 12
+  );
   await shot(page, OUT, "05-dungeon-after-load.png");
 } catch (error) {
   failures.push(String(error));

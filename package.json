@@ -44,7 +44,8 @@
     "card-trial:aggregate": "node scripts/playtests/card-trial-aggregate.mjs",
     "card-trial:bundle": "node scripts/playtests/card-trial-bundle.mjs",
     "card-trial:replay": "node scripts/playtests/card-trial-replay.mjs",
-    "card-trial:fuzz": "node scripts/playtests/card-trial-fuzz.mjs"
+    "card-trial:fuzz": "node scripts/playtests/card-trial-fuzz.mjs",
+    "card-trial:sim": "tsx scripts/playtests/card-trial-sim.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

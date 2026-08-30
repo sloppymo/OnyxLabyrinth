@@ -1,0 +1,23 @@
+{
+  "id": "production-encounter-9",
+  "name": "Named Mark",
+  "policy": "threat-aware",
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "configPath": "scripts/playtests/card-trial-experiments/production.ts",
+  "maxRounds": 20,
+  "maxActions": 400,
+  "measureRowValue": false,
+  "baselineRowMode": "full",
+  "variantRowMode": null
+}

@@ -1,0 +1,114 @@
+
+ RUN  v4.1.10 /home/sloppymo/OnyxLabyrinth
+
+ ✓ src/game/campaign-cards.test.ts > campaign card progression > starts both heroes with persistent exact twelve-card decks 3ms
+ ✓ src/game/campaign-cards.test.ts > campaign card progression > migrates flat legacy rewards into the correct hero collections 1ms
+ ✓ src/game/campaign-cards.test.ts > campaign card progression > commits an encounter reward exactly once 1ms
+ ✓ src/game/campaign-cards.test.ts > campaign card progression > swaps physical instances without changing deck size 1ms
+ ✓ src/game/campaign-cards.test.ts > campaign card progression > rejects a swap that would exceed the two-copy limit 0ms
+ ✓ src/game/campaign-cards.test.ts > campaign card progression > repairs invalid active decks while retaining valid discoveries 1ms
+ ✓ src/game/campaign-cards.test.ts > campaign card progression > normalizes a durable encounter transaction without changing its identity 0ms
+ ✓ src/game/campaign-cards.test.ts > campaign card progression > rejects malformed encounter checkpoints instead of loading unsafe coordinates 0ms
+ ✓ src/game/card-trial/sim/production.test.ts > production simulator suites > mirrors all ten locked encounters without mutating production content 4ms
+ ✓ src/game/card-trial/sim/production.test.ts > production simulator suites > builds a paired full-versus-no-row scenario for every encounter 2ms
+ ✓ src/game/card-trial/sim/production.test.ts > production simulator suites > also exposes a production-only suite for policy baselines 1ms
+ ✓ src/game/card-trial/sim/factory.test.ts > createFightFromDefinition > builds a fight from custom decks and a custom enemy without changing production lists 6ms
+ ✓ src/game/card-trial/sim/factory.test.ts > createFightFromDefinition > applies fixed rows, HP, Opened, Rat, and enemy HP after the opening draw 1ms
+ ✓ src/game/card-trial/sim/factory.test.ts > createFightFromDefinition > is deterministic for the same seed and definition 1ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial decks > gives each hero exactly 12 cards with one bounded draft card 4ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial decks > keeps hero decks independent after a Rat King turn 3ms
+ ✓ src/game/card-trial/engine.test.ts > rules-layer card constants > keeps cardGuardGain in lockstep with resolved guard events 4ms
+ ✓ src/game/card-trial/engine.test.ts > rules-layer card constants > keeps same-target consume riders in lockstep with cardConsumeRiderDamage 1ms
+ ✓ src/game/card-trial/engine.test.ts > rules-layer card constants > keeps splash and second-enemy consume riders in lockstep with cardConsumeRiderDamage 1ms
+ ✓ src/game/card-trial/engine.test.ts > rules-layer card constants > shares legalSecondTargetIds between engine and preview 1ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial presentation telemetry > reports decision durations in seconds 1ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial turn > exposes primary card damage from the rules layer 0ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial turn > draws 5, sets energy to 3, and discards the remainder on pass 1ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial turn > reshuffles the discard into the draw pile when drawing past empty 1ms
+ ✓ src/game/card-trial/engine.test.ts > bounded tactical drafts > reveals three distinct temporary Dirty Tricks and keeps the source card out of the hand 2ms
+ ✓ src/game/card-trial/engine.test.ts > bounded tactical drafts > uses the same seed to reveal the same choices 1ms
+ ✓ src/game/card-trial/engine.test.ts > bounded tactical drafts > lets Old Man choose a free arcane response and resolves it as a spell 1ms
+ ✓ src/game/card-trial/engine.test.ts > bounded tactical drafts > does not allow ordinary actions or recursive drafts while a choice is open 0ms
+ ✓ src/game/card-trial/engine.test.ts > Old Man spell states > Hush halves the marked enemy's next intent and then clears 1ms
+ ✓ src/game/card-trial/engine.test.ts > Old Man spell states > The Threshold arms one Omen that strikes before a slow enemy acts 1ms
+ ✓ src/game/card-trial/engine.test.ts > Old Man spell states > clears an armed Omen when another card kills its target 0ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial Move > charges 1 energy once per turn and does not consume it for Lunge or Parting Word 0ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial Move > lets Parting Word move to Back without spending the Move utility 0ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial Guard > absorbs damage and expires at that hero's next card-turn start 0ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial rows > hits the only hero in the row and misses an empty row 0ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial rows > breaks HP ties by most recent row entrant, including combat-start placement 0ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial rows > updates entry order for card-printed movement 0ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial intents > uses exact deterministic cycles and advances on empty-row miss 0ms
+ ✓ src/game/card-trial/engine.test.ts > Card Trial intents > cancels a dead enemy's future action 1ms
+ ✓ src/game/card-trial/engine.test.ts > Opened > moves the tag, does not stack, and ignores ordinary attacks 0ms
+ ✓ src/game/card-trial/engine.test.ts > Opened > lets Burst consume on a lone enemy with zero splash 0ms
+ ✓ src/game/card-trial/engine.test.ts > Opened > refuses Sever the Thread consume without a legal second enemy 0ms
+ ✓ src/game/card-trial/engine.test.ts > Rat token > spawns at most one on Rat King's row and never intercepts 0ms
+ ✓ src/game/card-trial/engine.test.ts > Rat token > lets Send the Rat deal 4 when no Rat exists 0ms
+ ✓ src/game/card-trial/engine.test.ts > Crowned > makes King of the Heap name and designate a single subject 1ms
+ ✓ src/game/card-trial/engine.test.ts > Crowned > redirects a Crowned row intent to Rat King regardless of row 0ms
+ ✓ src/game/card-trial/engine.test.ts > Crowned > pays Barrier tribute instead of redirecting wide Crowned intents 1ms
+ ✓ src/game/card-trial/engine.test.ts > Crowned > clears the crown when its subject dies 0ms
+ ✓ src/game/card-trial/engine.test.ts > Opened consume telemetry > records a true decline when a Consume card is in hand and never played 1ms
+ ✓ src/game/card-trial/engine.test.ts > Opened consume telemetry > does not call a base-lethal Consume play a decline 0ms
+ ✓ src/game/card-trial/engine.test.ts > Opened consume telemetry > does not flag a successful Consume as declined or base-killed 0ms
+ ✓ src/game/card-trial/engine.test.ts > locked Cleaver/Ash triangle > Leave: Move + Swarm + Nip 1ms
+ ✓ src/game/card-trial/engine.test.ts > locked Cleaver/Ash triangle > Stay: Heap + Nip Cleaver 0ms
+ ✓ src/game/card-trial/engine.test.ts > locked Cleaver/Ash triangle > Race: Tide + Swarm + Nip Ash 0ms
+ ✓ src/game/card-trial/engine.test.ts > isolation > does not change the campaign's fixed protagonist duo 1ms
+ ✓ src/game/card-trial/engine.test.ts > isolation > does not consume gameplay RNG for shuffling 0ms
+ ✓ src/game/card-trial/engine.test.ts > isolation > lists ten fights and does not register them on campaign floors 0ms
+ ✓ src/game/card-trial/engine.test.ts > playerView presentation fields > exposes enemy visual rows and the initiative queue without changing combat math 0ms
+ ✓ src/game/card-trial/sim/clone.test.ts > cloneFight > copies rules state so a play on the clone does not mutate the original 6ms
+ ✓ src/game/card-trial/sim/effects.test.ts > declarative extra cards > resolves a ruleset-only card without adding it to CARD_DEFS 6ms
+ ✓ src/game/card-trial/sim/effects.test.ts > declarative extra cards > enumerates extra cards as legal headless actions 1ms
+ ✓ src/game/card-trial/sim/effects.test.ts > declarative extra cards > refuses extraCards that override a production id 1ms
+ ✓ src/game/card-trial/sim/effects.test.ts > declarative extra cards > applies a Consume rider only when the primary target is Opened 1ms
+ ✓ src/game/card-trial/sim/legal-actions.test.ts > legalActions > enumerates pass, move, untargeted cards, and one action per living enemy for single-target cards 7ms
+ ✓ src/game/card-trial/sim/legal-actions.test.ts > legalActions > omits disabled 2-costs when only 1 energy remains 1ms
+ ✓ src/game/card-trial/sim/legal-actions.test.ts > legalActions > requires a distinct second target only when Cut the Line would consume Opened 1ms
+ ✓ src/game/campaign-card-trial.test.ts > campaign Card Trial adapter > translates an authored campaign formation without changing its identity 7ms
+ ✓ src/game/campaign-card-trial.test.ts > campaign Card Trial adapter > selects a stable card reward for each authored encounter 1ms
+ ✓ src/game/campaign-card-trial.test.ts > campaign Card Trial adapter > deals from the campaign's persistent physical decks 2ms
+ ✓ src/engine/card-trial-ui-model.test.ts > buildCardTrialUiRecipe > maps the exact initiative queue and current actor without a second order 6ms
+ ✓ src/engine/card-trial-ui-model.test.ts > buildCardTrialUiRecipe > uses bespoke portraits only for Rat King and Old Man 2ms
+ ✓ src/engine/card-trial-ui-model.test.ts > buildCardTrialUiRecipe > keeps hand cursor focus distinct from an armed card 2ms
+ ✓ src/engine/card-trial-ui-model.test.ts > buildCardTrialUiRecipe > marks only live legal targets and the cursor target as selected 1ms
+ ✓ src/engine/card-trial-ui-model.test.ts > buildCardTrialUiRecipe > shows only the acting decision actor's plate while idle 1ms
+ ✓ src/engine/card-trial-ui-model.test.ts > buildCardTrialUiRecipe > retains dead/row semantics while presentation can hide dead anchors 1ms
+ ✓ src/engine/card-trial-ui-model.test.ts > buildCardTrialUiRecipe > exposes Details-held state without changing the initiative or target model 1ms
+ ✓ src/engine/card-trial-ui-model.test.ts > buildCardTrialUiRecipe > makes 0-energy state explicit and reports concise unavailable reasons 1ms
+ ✓ src/engine/card-trial-ui-model.test.ts > buildCardTrialUiRecipe > keeps the default decision cue distinct from the hand cue 1ms
+ ✓ src/engine/card-trial-ui-model.test.ts > cardOutcomeSummary > omits Sever the Thread's consume clause when no second living enemy exists 0ms
+ ✓ src/engine/card-trial-ui-model.test.ts > cardOutcomeSummary > shows Sever the Thread's consume clause only with a legal second enemy 0ms
+ ✓ src/engine/card-trial-ui-model.test.ts > cardOutcomeSummary > derives guard and rider numbers from the rules layer 0ms
+ ✓ src/engine/card-trial-ui-model.test.ts > cardOutcomeSummary > uses the selected card, live row, and target Opened state 0ms
+ ✓ src/engine/card-trial-ui-model.test.ts > cardOutcomeSummary > describes Old Man's Hush and Omen cards without inventing damage 0ms
+ ✓ src/game/card-trial/sim/metrics.test.ts > collectMetrics > records discarded-while-playable cards and Opened partner vs same-hero splits 8ms
+ ✓ src/game/card-trial/sim/compare.test.ts > comparePaired > uses the same seeds for baseline and variant and reports a win-rate drop with no damage 17ms
+ ✓ src/game/card-trial/sim/compare.test.ts > comparePaired > keeps paired shuffle streams identical when only the definition id differs 1ms
+ ✓ src/game/card-trial/sim/runner.test.ts > applyAction > plays a legal card, Move, and Pass through the production engine 8ms
+ ✓ src/game/card-trial/sim/runner.test.ts > applyAction > rejects an illegal Move without mutating energy 1ms
+ ✓ src/game/card-trial/sim/runner.test.ts > runFight > wins a 12 HP dummy when both heroes always spend on damage 4ms
+ ✓ src/game/card-trial/sim/runner.test.ts > runFight > times out rather than looping when the policy only passes 1ms
+ ✓ src/game/card-trial/sim/runner.test.ts > runFight > is paired-seed deterministic for randomLegal 1ms
+ ✓ src/game/card-trial/sim/runner.test.ts > runFight > exposes only the player view to the policy 1ms
+ ✓ src/game/card-trial/sim/runner.test.ts > legalActions during a run > never offers an action the engine rejects on the fodder fight 1ms
+ ✓ src/game/card-trial/sim/experiment.test.ts > runExperiment > parses seed ranges and paired configs 15ms
+ ✓ src/game/card-trial/sim/row-ablation.test.ts > row-ablation simulator mode > aliases row cards, disables Move, and removes Front damage riders 6ms
+ ✓ src/game/card-trial/sim/row-ablation.test.ts > row-ablation simulator mode > maps row intents to the configured deterministic target 1ms
+ ✓ src/game/card-trial/sim/row-ablation.test.ts > row-ablation simulator mode > supports the deliberately harsher both-heroes row-intent mapping 1ms
+ ✓ src/game/card-trial/sim/row-ablation.test.ts > row-ablation simulator mode > ignores the row field for named intents in no-row mode 1ms
+ ✓ src/game/card-trial/sim/row-ablation.test.ts > row-ablation simulator mode > keeps Rat creation and biting meaningful without a Rat position 1ms
+ ✓ src/game/card-trial/sim/row-ablation.test.ts > row-ablation simulator mode > measures row-sensitive alternatives only in full row mode 12ms
+ ✓ src/game/card-trial/sim/policies.test.ts > headless policies > threatFirst prefers to hit the enemy aiming at the acting hero's row 5ms
+ ✓ src/game/card-trial/sim/policies.test.ts > headless policies > openedAware consumes Opened when a Consume card is legal 1ms
+ ✓ src/game/card-trial/sim/policies.test.ts > headless policies > frontAware keeps Tide in Front instead of moving away first 2ms
+ ✓ src/game/card-trial/sim/policies.test.ts > headless policies > guardAware prefers Brace when the next hit exceeds current Guard 1ms
+ ✓ src/game/card-trial/sim/policies.test.ts > headless policies > beamSearch finds a one-turn kill on a 5 HP dummy 26ms
+
+ Test Files  15 passed (15)
+      Tests  105 passed (105)
+   Start at  11:16:16
+   Duration  2.04s (transform 3.68s, setup 795ms, import 4.45s, tests 244ms, environment 19.98s)
+

@@ -10,18 +10,28 @@ const LCG_A = 1664525;
 const LCG_C = 1013904223;
 const LCG_MODULUS = 4294967296;
 
+function streamFromState(state: number): ShuffleStream {
+  let current = state >>> 0;
+  return {
+    nextUnit() {
+      current = (Math.imul(LCG_A, current) + LCG_C) >>> 0;
+      return current / LCG_MODULUS;
+    },
+    getState() {
+      return current;
+    },
+  };
+}
+
 export function createShuffleStream(seed: number): ShuffleStream {
   let state = Number.isFinite(seed) ? Math.trunc(seed) >>> 0 : 1;
   if (state === 0) state = 1;
-  return {
-    nextUnit() {
-      state = (Math.imul(LCG_A, state) + LCG_C) >>> 0;
-      return state / LCG_MODULUS;
-    },
-    getState() {
-      return state;
-    },
-  };
+  return streamFromState(state);
+}
+
+/** Resume a stream from `getState()` without the zero-to-one seed remap. */
+export function resumeShuffleStream(state: number): ShuffleStream {
+  return streamFromState(state >>> 0);
 }
 
 export function shuffleInPlace<T>(items: T[], stream: ShuffleStream): void {
