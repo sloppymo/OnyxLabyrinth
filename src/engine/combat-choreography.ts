@@ -2466,11 +2466,138 @@ function chemistryStyleForEvent(
   return CHEMISTRY_STYLES[event.presentation ?? "consumeAlly"] ?? CHEMISTRY_STYLES.consumeAlly!;
 }
 
+/**
+ * Card Trial's Old Man cards are spells, even when their rules event is a
+ * plain damage event. Keeping this table beside the shared effect resolver
+ * lets the campaign card presenter use real projectiles and occult bursts
+ * without pretending those cards are legacy weapon attacks.
+ */
+const CARD_TRIAL_SPELL_STYLES: Record<string, EffectStyle> = {
+  "the-staff-speaks": {
+    color: "#b9a7ff",
+    projectile: "px_arcane_bolt",
+    projectileScale: 1.15,
+    burst: "retro2_arcane_sigil",
+    burstUnderlay: "px_black_white_sparks",
+    burstUnderlayScale: 2.5,
+    burstScale: 1.15,
+    charge: "retro3_sigil_charge",
+    chargeScale: 0.65,
+    scale: 1.05,
+  },
+  faultline: {
+    color: "#d6b2ff",
+    projectile: "px_rock_sling",
+    projectileScale: 1.15,
+    burst: "retro2_earth_swirl",
+    burstUnderlay: "retro2_arcane_sigil",
+    burstUnderlayScale: 0.8,
+    burstScale: 1.15,
+    charge: "retro2_arcane_sigil",
+    chargeScale: 0.7,
+    scale: 1.05,
+  },
+  "marrow-divide": {
+    color: "#e9b2ff",
+    projectile: "px_black_white_ray",
+    projectileScale: 1.05,
+    burst: "retro2_arcane_sigil",
+    burstUnderlay: "retro2_crescent_slash",
+    burstUnderlayScale: 0.8,
+    burstScale: 1.25,
+    charge: "retro3_sigil_charge",
+    chargeScale: 0.6,
+    scale: 1.08,
+  },
+  "full-stop": {
+    color: "#d8d0ff",
+    projectile: "px_black_white_ray",
+    projectileScale: 1.25,
+    burst: "retro3_arcane_bloom",
+    burstUnderlay: "retro3_sigil_charge",
+    burstUnderlayScale: 0.9,
+    burstScale: 1.35,
+    charge: "retro3_sigil_charge",
+    chargeScale: 0.85,
+    scale: 1.2,
+    glow: true,
+  },
+  "sever-the-thread": {
+    color: "#c79bff",
+    projectile: "px_arcane_bolt",
+    projectileScale: 1.05,
+    burst: "retro2_arcane_sigil",
+    burstUnderlay: "px_black_white_sparks",
+    burstUnderlayScale: 2.2,
+    burstScale: 1.1,
+    charge: "retro2_arcane_sigil",
+    chargeScale: 0.6,
+    scale: 1.05,
+  },
+  "distant-hand": {
+    color: "#b8c2ff",
+    projectile: "px_magic_orb",
+    projectileScale: 1.15,
+    burst: "retro2_ward_square",
+    burstUnderlay: "free_wardring",
+    burstUnderlayScale: 0.75,
+    burstScale: 1.1,
+    charge: "free_wardring",
+    chargeScale: 0.55,
+    scale: 1.05,
+  },
+  "parting-word": {
+    color: "#a79dff",
+    projectile: "px_darkness_bolt",
+    projectileScale: 1.1,
+    burst: "free_moon",
+    burstUnderlay: "px_darkness_orb",
+    burstUnderlayScale: 2.2,
+    burstScale: 1.1,
+    charge: "free_moon",
+    chargeScale: 0.65,
+    scale: 1.05,
+  },
+  unlight: {
+    color: "#8f8cff",
+    projectile: "px_darkness_bolt",
+    projectileScale: 1.1,
+    projectileCount: 2,
+    burst: "retro3_arcane_bloom",
+    burstUnderlay: "free_moon",
+    burstUnderlayScale: 0.9,
+    burstScale: 1.15,
+    field: "free_moon",
+    fieldScale: 1.0,
+    charge: "free_moon",
+    chargeScale: 0.75,
+    scale: 1.1,
+    glow: true,
+  },
+  "last-bastion": {
+    color: "#e5d6ff",
+    projectile: "px_black_white_ray",
+    projectileScale: 1.3,
+    burst: "retro3_arcane_bloom",
+    burstUnderlay: "free_wardring",
+    burstUnderlayScale: 0.9,
+    burstScale: 1.35,
+    charge: "retro3_sigil_charge",
+    chargeScale: 0.9,
+    scale: 1.2,
+    glow: true,
+  },
+};
+
 export function resolveEffectStyle(
   spellId: string | undefined,
-  evt?: { isHeal?: boolean; isBuff?: boolean; isDebuff?: boolean; statusInflicted?: string; statusCured?: string; damage?: number; heal?: number },
+  evt?: { isHeal?: boolean; isBuff?: boolean; isDebuff?: boolean; statusInflicted?: string; statusCured?: string; damage?: number; heal?: number; cardPresentation?: string },
   casterEnemyId?: string
 ): EffectStyle {
+  if (evt?.cardPresentation === "card-spell" && spellId) {
+    const cardStyle = CARD_TRIAL_SPELL_STYLES[spellId];
+    if (cardStyle) return cardStyle;
+  }
   // Enemy-specific spell projectiles from Tiny RPG Asset Pack 02.
   if (casterEnemyId) {
     switch (casterEnemyId) {
@@ -3847,23 +3974,28 @@ export function playTurn(
 
       case "cast": {
         if (evt.cardPresentation === "rat") {
-          showBanner(spellNameFor(evt.spellId), 720);
+          const commanding = evt.spellId === "Send the Rat";
+          showBanner(commanding ? "SEND THE RAT" : "BROOD", 720);
           castAnim(evt.actorId);
           steps.push(
             step(t + CAST_IMPACT, (sc, n) => {
               const actor = findActor(sc, evt.actorId, w, h);
               if (!actor) return;
               const style: EffectStyle = {
-                color: "#b67a52",
-                burst: "retro2_crescent_slash",
-                burstScale: 1.1,
-                scale: 1.1,
+                color: commanding ? "#f0c777" : "#b67a52",
+                burst: commanding ? "free_tangle" : "fz_portal",
+                burstUnderlay: commanding ? "retro2_solar_ring" : "retro2_crescent_slash",
+                burstUnderlayScale: commanding ? 0.7 : 0.86,
+                burstScale: commanding ? 0.95 : 1.1,
+                scale: commanding ? 0.95 : 1.1,
+                glow: commanding,
               };
-              pushBursts(sc, actor.x, actor.y + 10, style, n, 360);
-              pushPopup(sc, evt.actorId, "RAT", "#d8c4a0", n, w, h, false);
+              pushBursts(sc, actor.x, actor.y + 10, style, n, commanding ? 440 : 420);
+              pushLightGlow(sc, actor.x, actor.y + 8, style.color, commanding ? 88 : 68, n, commanding ? 420 : 360);
+              pushPopup(sc, evt.actorId, commanding ? "COMMAND" : "BROOD", style.color, n, w, h, commanding);
             })
           );
-          t += 420;
+          t += commanding ? 480 : 440;
           break;
         }
         // Chemistry owns its banner, actor motion, and bespoke effects through
@@ -4142,6 +4274,289 @@ export function playTurn(
             })
           );
           t += consume ? 180 : 240;
+          break;
+        }
+
+        // Card Trial's first Old Man status verbs have their own visual
+        // language. Keep these semantic effects explicit instead of routing
+        // them through the generic spell catalogue (which would make Hush
+        // look like an arbitrary damage spell and Omen lose its delayed
+        // promise). The art is intentionally composed from existing strips;
+        // dedicated Hush/Omen sheets can replace these IDs later without
+        // changing the event contract.
+        if (
+          evt.cardPresentation === "hush" ||
+          evt.cardPresentation === "hush-trigger" ||
+          evt.cardPresentation === "omen" ||
+          evt.cardPresentation === "omen-trigger" ||
+          evt.cardPresentation === "omen-fizzle" ||
+          evt.cardPresentation === "crowned" ||
+          evt.cardPresentation === "crown-cleared" ||
+          evt.cardPresentation === "crown-tribute"
+        ) {
+          const semantic = evt.cardPresentation;
+          const impactAt =
+            pendingImpactBase !== null
+              ? pendingImpactBase + pendingImpactCount * MULTI_TARGET_STAGGER
+              : t;
+          pendingImpactCount++;
+          const targetId = evt.targetId;
+          if (!targetId) {
+            t = Math.max(t, impactAt + 260);
+            break;
+          }
+
+          const style: EffectStyle =
+            semantic === "hush" || semantic === "hush-trigger"
+              ? {
+                  color: semantic === "hush" ? "#a997ff" : "#c5b9ff",
+                  burst: semantic === "hush" ? "px_black_white_sparks" : "free_wardring",
+                  burstUnderlay: semantic === "hush" ? "free_wardring" : undefined,
+                  burstUnderlayScale: 0.72,
+                  burstScale: semantic === "hush" ? 1.25 : 0.82,
+                  scale: 1,
+                  burstDurationMs: semantic === "hush" ? 520 : 420,
+                }
+              : semantic === "omen"
+                ? {
+                    color: "#f0c777",
+                    burst: "retro3_sigil_charge",
+                    burstUnderlay: "free_wardring",
+                    burstUnderlayScale: 0.78,
+                    burstScale: 1.12,
+                    scale: 1,
+                    burstDurationMs: 700,
+                  }
+                : semantic === "omen-trigger"
+                  ? {
+                      color: "#e1adff",
+                      burst: "retro3_arcane_bloom",
+                      burstUnderlay: "retro3_sigil_charge",
+                      burstUnderlayScale: 0.9,
+                      burstScale: 1.35,
+                      scale: 1.1,
+                      burstDurationMs: 620,
+                    }
+                  : semantic === "omen-fizzle"
+                    ? {
+                        color: "#b9a7d4",
+                        burst: "dispel_sparks",
+                        burstScale: 0.9,
+                        scale: 0.9,
+                        burstDurationMs: 360,
+                      }
+                    : semantic === "crowned"
+                      ? {
+                          color: "#ffd36b",
+                          burst: "retro2_solar_ring",
+                          burstUnderlay: "retro3_sigil_charge",
+                          burstUnderlayScale: 0.78,
+                          burstScale: 1.25,
+                          scale: 1.08,
+                          burstDurationMs: 720,
+                          glow: true,
+                        }
+                      : semantic === "crown-tribute"
+                        ? {
+                            color: "#e7b8ff",
+                            burst: "free_wardring",
+                            burstUnderlay: "retro2_solar_ring",
+                            burstUnderlayScale: 0.6,
+                            burstScale: 0.9,
+                            scale: 0.9,
+                            burstDurationMs: 480,
+                            glow: true,
+                          }
+                        : {
+                            color: "#a997b8",
+                            burst: "dispel_sparks",
+                            burstScale: 0.9,
+                            scale: 0.9,
+                            burstDurationMs: 360,
+                          };
+
+          if (semantic === "omen-trigger" && evt.damage !== undefined) {
+            steps.push(
+              step(impactAt, (sc, n) => {
+                const target = findActor(sc, targetId, w, h);
+                if (target) {
+                  pushLightGlow(sc, target.x, target.y, style.color, 130, n, 460);
+                  addScreenShake(sc, 4.5, n, 280);
+                }
+              }),
+              ...impactSteps(
+                impactAt,
+                targetId,
+                `${evt.damage}`,
+                style.color,
+                w,
+                h,
+                true,
+                true,
+                style.burst,
+                style.burstScale,
+                evt.damage,
+                style.burstUnderlay,
+                style.burstUnderlayScale,
+                {
+                  spellId: evt.spellId,
+                  allowHitStop: true,
+                  effectColor: style.color,
+                }
+              )
+            );
+            showBanner("THE HOUR", 760);
+            t = Math.max(t, impactAt + 420);
+          } else {
+            const popup =
+              semantic === "hush"
+                ? "HUSH"
+                : semantic === "hush-trigger"
+                  ? "HUSHED"
+                  : semantic === "omen"
+                    ? "FORETOLD"
+                    : semantic === "crowned"
+                      ? "CROWNED"
+                      : semantic === "crown-tribute"
+                        ? "+2 BARRIER"
+                        : semantic === "crown-cleared"
+                          ? "CROWN ENDS"
+                          : "FADES";
+            const banner =
+              semantic === "hush" || semantic === "hush-trigger"
+                ? "HUSH"
+                : semantic === "omen"
+                ? "OMEN"
+                : semantic === "crowned"
+                  ? "THE KING POINTS"
+                  : semantic === "crown-tribute"
+                    ? "ROYAL TRIBUTE"
+                    : semantic === "crown-cleared"
+                      ? "CROWN BROKEN"
+                      : "OMEN FADES";
+            showBanner(
+              banner,
+              semantic === "omen" || semantic === "crowned" ? 900 : 620
+            );
+            steps.push(
+              step(impactAt, (sc, n) => {
+                const target = findActor(sc, targetId, w, h);
+                if (!target) return;
+                pushBursts(sc, target.x, target.y, style, n, style.burstDurationMs);
+                pushPopup(
+                  sc,
+                  targetId,
+                  popup,
+                  style.color,
+                  n,
+                  w,
+                  h,
+                  semantic === "omen" || semantic === "crowned"
+                );
+                pushLightGlow(
+                  sc,
+                  target.x,
+                  target.y + 6,
+                  style.color,
+                  semantic === "omen" || semantic === "crowned" ? 110 : 72,
+                  n,
+                  semantic === "omen" || semantic === "crowned" ? 720 : 320
+                );
+              })
+            );
+            t = Math.max(
+              t,
+              impactAt + (semantic === "omen" || semantic === "crowned" ? 360 : 260)
+            );
+          }
+          break;
+        }
+
+        if (evt.cardPresentation === "card-spell") {
+          const impactAt =
+            pendingImpactBase !== null
+              ? pendingImpactBase + pendingImpactCount * MULTI_TARGET_STAGGER
+              : t;
+          pendingImpactCount++;
+          const style = resolveEffectStyle(evt.spellId, evt);
+          const targetId = evt.targetId;
+          const casterId = evt.actorId ?? "old-man";
+
+          // Unlight is the one area card in the current Old Man pool. Give it
+          // a single side-wide field while each enemy still receives an
+          // individually readable projectile and impact.
+          if (style.field && !fieldPushed) {
+            fieldPushed = true;
+            steps.push(
+              step(impactAt, (sc, n) => {
+                pushFieldLayers(
+                  sc,
+                  w * 0.26,
+                  h,
+                  style,
+                  n,
+                  style.fieldDurationMs ?? FIELD_MS,
+                  (style.fieldScale ?? style.scale ?? 1) * 2
+                );
+                addScreenShake(sc, 3.5, n, 260);
+              })
+            );
+          }
+
+          if (!targetId) {
+            t = Math.max(t, impactAt + 320);
+            break;
+          }
+
+          if (style.projectile) {
+            const launchAt = Math.max(0, impactAt - (style.projectilePath === "riseDash" ? 620 : 260));
+            steps.push(
+              step(launchAt, (sc, n) => {
+                const from = findActor(sc, casterId, w, h);
+                const to = findActor(sc, targetId, w, h);
+                if (!from || !to) return;
+                pushProjectileVolley(
+                  sc,
+                  from.x,
+                  from.y - 12 * from.scale,
+                  to.x,
+                  to.y - 8 * to.scale,
+                  style,
+                  n,
+                  Math.max(220, impactAt - launchAt),
+                  Math.max(1, style.projectileCount ?? 1)
+                );
+              })
+            );
+          }
+
+          if (evt.damage !== undefined) {
+            steps.push(
+              ...impactSteps(
+                impactAt,
+                targetId,
+                `${evt.damage}`,
+                style.color,
+                w,
+                h,
+                true,
+                false,
+                style.burst,
+                style.burstScale ?? style.scale,
+                evt.damage,
+                style.burstUnderlay,
+                style.burstUnderlayScale,
+                {
+                  actorId: casterId,
+                  spellId: evt.spellId,
+                  isArea: evt.spellId === "unlight",
+                  allowHitStop: true,
+                  effectColor: style.color,
+                }
+              )
+            );
+          }
+          t = Math.max(t, impactAt + 360);
           break;
         }
         // Lands at the pending cast's impact time (staggered per target),

@@ -185,11 +185,13 @@ export type CombatEvent =
         | "guardAlly"
         | "overload";
       /** Presentation-only Card Trial verb. Never affects combat state. */
-      cardPresentation?: "rat";
+      cardPresentation?: "rat" | "card-spell";
     }
   | {
       type: "spellEffect";
       spellId: string;
+      /** Caster identity for presentation-only Card Trial spell effects. */
+      actorId?: string;
       targetId?: string;
       damage?: number;
       heal?: number;
@@ -198,7 +200,18 @@ export type CombatEvent =
       isBuff?: boolean;
       isDebuff?: boolean;
       /** Presentation-only Card Trial verb. Never affects combat state. */
-      cardPresentation?: "opened" | "consume-opened";
+      cardPresentation?:
+        | "opened"
+        | "consume-opened"
+        | "hush"
+        | "hush-trigger"
+        | "omen"
+        | "omen-trigger"
+        | "omen-fizzle"
+        | "crowned"
+        | "crown-cleared"
+        | "crown-tribute"
+        | "card-spell";
       /** Previous global Opened target, when this is a transfer. */
       cardPresentationSourceId?: string;
     }

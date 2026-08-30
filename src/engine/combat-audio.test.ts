@@ -107,6 +107,24 @@ describe("idsForEvent layering", () => {
         bareState()
       )
     ).toEqual([{ id: "technique" }]);
+    expect(
+      idsForEvent(
+        { type: "spellEffect", spellId: "Hush", targetId: "e", cardPresentation: "hush" },
+        bareState()
+      )
+    ).toEqual([{ id: "silence" }]);
+    expect(
+      idsForEvent(
+        { type: "cast", actorId: "old-man", spellId: "the-staff-speaks", targetId: null, cardPresentation: "card-spell" },
+        bareState()
+      )
+    ).toEqual([{ id: "elementDivine", gainMul: 0.72 }]);
+    expect(
+      idsForEvent(
+        { type: "spellEffect", spellId: "Omen", targetId: "e", cardPresentation: "omen-trigger", damage: 7 },
+        bareState()
+      ).map((layer) => layer.id)
+    ).toEqual(["bossPhase", "debuffCast"]);
   });
 
   it("analyze / silence add soft fizzle layer", () => {

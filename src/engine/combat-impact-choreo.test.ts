@@ -357,8 +357,39 @@ describe("impact presentation choreography integration", () => {
         H
       );
       updateScene(rat, t0 + 800);
-      expect(rat.banner).toBe("Spell:Rat");
-      expect(rat.popups.some((popup) => popup.text === "RAT")).toBe(true);
+      expect(rat.banner).toBe("BROOD");
+      expect(rat.popups.some((popup) => popup.text === "BROOD")).toBe(true);
+      expect(rat.effects.some((effect) => effect.type === "burst" && effect.effect === "fz_portal")).toBe(true);
+    });
+
+    it("gives Crown application and tribute their own royal visual language", () => {
+      const crown = makeScene();
+      const t0 = 1000;
+      playTurn(
+        crown,
+        [{ type: "spellEffect", spellId: "Crown", actorId: "c0", targetId: "rat-0", cardPresentation: "crowned" }],
+        spellName,
+        t0,
+        W,
+        H
+      );
+      updateScene(crown, t0 + 1);
+      expect(crown.banner).toBe("THE KING POINTS");
+      expect(crown.effects.some((effect) => effect.type === "burst" && effect.effect === "retro2_solar_ring")).toBe(true);
+      expect(crown.popups.some((popup) => popup.text === "CROWNED")).toBe(true);
+
+      const tribute = makeScene();
+      playTurn(
+        tribute,
+        [{ type: "spellEffect", spellId: "Crown Tribute", actorId: "c0", targetId: "c0", damage: 2, cardPresentation: "crown-tribute" }],
+        spellName,
+        t0,
+        W,
+        H
+      );
+      updateScene(tribute, t0 + 1);
+      expect(tribute.banner).toBe("ROYAL TRIBUTE");
+      expect(tribute.popups.some((popup) => popup.text === "+2 BARRIER")).toBe(true);
     });
 
     it("shows a block instead of a fake zero-damage hit when Guard absorbs everything", () => {

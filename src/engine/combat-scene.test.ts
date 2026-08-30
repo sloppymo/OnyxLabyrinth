@@ -74,6 +74,36 @@ function makeScene() {
 const spellName = (id: string) => `Spell:${id}`;
 
 describe("playTurn choreography", () => {
+  it("presents Old Man card damage as a magical projectile, not a melee swing", () => {
+    const scene = makeScene();
+    const events: CombatEvent[] = [
+      {
+        type: "cast",
+        actorId: "c1",
+        spellId: "the-staff-speaks",
+        targetId: null,
+        cardPresentation: "card-spell",
+      },
+      {
+        type: "spellEffect",
+        spellId: "the-staff-speaks",
+        actorId: "c1",
+        targetId: "rat-0",
+        damage: 6,
+        cardPresentation: "card-spell",
+      },
+    ];
+    const t0 = 1000;
+    const duration = playTurn(scene, events, spellName, t0, W, H);
+    updateScene(scene, t0 + 200);
+    expect(scene.partyAnims.get("c1")?.state).toBe("cast");
+    updateScene(scene, t0 + 600);
+    expect(scene.effects.some((effect) => effect.type === "projectile" && effect.effect === "px_arcane_bolt")).toBe(true);
+    updateScene(scene, t0 + 800);
+    expect(scene.effects.some((effect) => effect.type === "burst" && effect.effect === "retro2_arcane_sigil")).toBe(true);
+    expect(duration).toBeGreaterThan(500);
+  });
+
   it("melee attack schedules approach, impact popup, and return", () => {
     const scene = makeScene();
     const events: CombatEvent[] = [
@@ -1014,6 +1044,15 @@ describe("sampleProjectilePose rise→dash", () => {
 });
 
 describe("resolveEffectStyle impact-pack wiring", () => {
+  it("gives Old Man campaign cards magical projectile language", () => {
+    const staff = resolveEffectStyle("the-staff-speaks", { cardPresentation: "card-spell", damage: 6 });
+    const unlight = resolveEffectStyle("unlight", { cardPresentation: "card-spell", damage: 4 });
+    expect(staff.projectile).toBe("px_arcane_bolt");
+    expect(staff.burst).toBe("retro2_arcane_sigil");
+    expect(unlight.projectile).toBe("px_darkness_bolt");
+    expect(unlight.field).toBe("free_moon");
+  });
+
   it("differentiates the tier-2 priest healing cluster", () => {
     const serious = resolveEffectStyle("priest-cure-serious");
     expect(serious.projectile).toBe("heal_sparks");

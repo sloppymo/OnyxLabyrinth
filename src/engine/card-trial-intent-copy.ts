@@ -1,12 +1,12 @@
 /**
  * Presentation-only copy for Card Trial intents.
- * Does not change damage, Guard, or targeting rules.
+ * Does not change damage, Barrier, or targeting rules.
  */
 
 import type { CardTrialPlayerView, IntentPreview } from "../game/card-trial/types";
 
 export const INTENT_ATK_LABEL = "ATK";
-export const GUARD_LABEL = "Guard";
+export const BARRIER_LABEL = "Barrier";
 
 export function compactIntentValue(intent: IntentPreview): string {
   return intent.wouldMiss ? "—" : String(intent.rawDamage);
@@ -52,12 +52,16 @@ export function intentDetailLines(
     if (row.miss) continue;
     lines.push(row.heroName);
     if (row.guard > 0) {
-      lines.push(`${GUARD_LABEL} ${row.guard}`);
+      lines.push(`${BARRIER_LABEL} ${row.guard}`);
       lines.push(`${row.rawDamage} → ${row.hpLoss} HP`);
     } else {
       lines.push(`${row.hpLoss} HP`);
     }
     if (row.lethal) lines.push(`Lethal to ${row.heroName}.`);
+  }
+  if (intent.tribute) {
+    const hero = heroes.find((candidate) => candidate.id === intent.tribute?.heroId);
+    lines.push(`${hero?.name ?? "Rat King"} gains ${intent.tribute.amount} Barrier as Crown tribute.`);
   }
   return lines;
 }

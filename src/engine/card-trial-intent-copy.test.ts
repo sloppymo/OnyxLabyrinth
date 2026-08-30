@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createAdversarialTriangle, playerView } from "../game/card-trial/engine";
+import { createAdversarialTriangle, createFight, playerView } from "../game/card-trial/engine";
 import { compactIntentValue, intentDetailLines, intentHpLines } from "./card-trial-intent-copy";
 
 describe("intent presentation copy", () => {
-  it("uses post-Guard HP loss, not raw incoming, in detail lines", () => {
+  it("uses post-Barrier HP loss, not raw incoming, in detail lines", () => {
     const trial = createAdversarialTriangle();
     trial.heroes["rat-king"].guard = 5;
     const view = playerView(trial);
@@ -14,7 +14,7 @@ describe("intent presentation copy", () => {
     expect(rk!.rawDamage).toBeGreaterThan(rk!.hpLoss);
     expect(rk!.hpLoss).toBe(Math.max(0, rk!.rawDamage - 5));
     const lines = intentDetailLines(cleaver!, view.heroes).join("\n");
-    expect(lines).toContain("Guard 5");
+    expect(lines).toContain("Barrier 5");
     expect(lines).toContain(`${rk!.rawDamage} → ${rk!.hpLoss} HP`);
     expect(lines).not.toMatch(new RegExp(`loses ${rk!.rawDamage} HP`));
   });
@@ -27,5 +27,16 @@ describe("intent presentation copy", () => {
     const hit = view.intents.find((i) => !i.wouldMiss);
     expect(hit).toBeTruthy();
     expect(compactIntentValue(hit!)).toBe(String(hit!.rawDamage));
+  });
+
+  it("explains Crown tribute separately from incoming damage", () => {
+    const trial = createFight(8, { seed: 7 });
+    trial.crownedEnemyId = "twinblade";
+    const view = playerView(trial);
+    const intent = view.intents.find((candidate) => candidate.enemyId === "twinblade");
+    expect(intent?.tribute).toEqual({ heroId: "rat-king", amount: 2 });
+    expect(intentDetailLines(intent!, view.heroes).join("\n")).toContain(
+      "Rat King gains 2 Barrier as Crown tribute."
+    );
   });
 });

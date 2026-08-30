@@ -128,6 +128,9 @@ export function idsForEvent(event: CombatEvent, state: CombatState): SfxLayer[] 
       return [{ id: "miss" }];
     case "cast": {
       if (event.cardPresentation === "rat") return [{ id: "summonCast" }];
+      if (event.cardPresentation === "card-spell") {
+        return [{ id: "elementDivine", gainMul: 0.72 }];
+      }
       const primary = idForCast(event.spellId, state);
       if (!primary) return [];
       const layers: SfxLayer[] = [{ id: primary }];
@@ -148,6 +151,16 @@ export function idsForEvent(event: CombatEvent, state: CombatState): SfxLayer[] 
     case "spellEffect": {
       if (event.cardPresentation === "opened") return [{ id: "debuffCast" }];
       if (event.cardPresentation === "consume-opened") return [{ id: "technique" }];
+      if (event.cardPresentation === "hush") return [{ id: "silence" }];
+      if (event.cardPresentation === "hush-trigger") return [{ id: "fizzle" }];
+      if (event.cardPresentation === "omen") return [{ id: "bossPhase", gainMul: 0.55 }];
+      if (event.cardPresentation === "omen-trigger") {
+        return clampSfxLayers([
+          { id: "bossPhase", gainMul: 0.7 },
+          { id: "debuffCast", gainMul: 0.65 },
+        ]);
+      }
+      if (event.cardPresentation === "omen-fizzle") return [{ id: "fizzle" }];
       if (event.statusInflicted) {
         const id = STATUS_SFX[event.statusInflicted];
         return id ? [{ id }] : [];

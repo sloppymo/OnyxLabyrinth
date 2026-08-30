@@ -47,6 +47,31 @@ describe("Card Trial presentation adapter", () => {
     });
   });
 
+  it("routes Old Man card damage through the magical spell presentation", () => {
+    const trial = createFight(4, { seed: 2 });
+    const events = toCombatEvents(
+      [
+        { type: "banner", text: "The Staff Speaks", actorId: "old-man", cardId: "the-staff-speaks" },
+        { type: "attack", actorId: "old-man", targetId: "brute", damage: 6 },
+      ],
+      trial
+    );
+    expect(events[0]).toMatchObject({
+      type: "cast",
+      actorId: "old-man",
+      spellId: "the-staff-speaks",
+      cardPresentation: "card-spell",
+    });
+    expect(events[1]).toEqual({
+      type: "spellEffect",
+      spellId: "the-staff-speaks",
+      actorId: "old-man",
+      targetId: "brute",
+      damage: 6,
+      cardPresentation: "card-spell",
+    });
+  });
+
   it("preserves Guard absorption for the presentation layer", () => {
     const trial = createAdversarialTriangle();
     const events = toCombatEvents(
@@ -75,6 +100,45 @@ describe("Card Trial presentation adapter", () => {
     expect(events[2]).toMatchObject({ type: "spellEffect", cardPresentation: "opened" });
     expect(events[2]).toMatchObject({ cardPresentationSourceId: "ash" });
     expect(events[3]).toMatchObject({ type: "spellEffect", cardPresentation: "consume-opened" });
+  });
+
+  it("maps Hush and Omen state transitions to semantic spell effects", () => {
+    const trial = createFight(4, { seed: 8 });
+    const events = toCombatEvents(
+      [
+        { type: "hush-applied", targetId: "brute" },
+        { type: "hush-triggered", targetId: "brute", rawDamage: 12, damage: 6 },
+        { type: "omen-armed", targetId: "brute", damage: 7 },
+        { type: "omen-triggered", targetId: "brute", damage: 7 },
+        { type: "omen-fizzled", targetId: "brute" },
+      ],
+      trial
+    );
+    expect(events).toEqual([
+      expect.objectContaining({ type: "spellEffect", spellId: "Hush", cardPresentation: "hush", targetId: "brute" }),
+      expect.objectContaining({ type: "spellEffect", spellId: "Hush", cardPresentation: "hush-trigger", targetId: "brute" }),
+      expect.objectContaining({ type: "spellEffect", spellId: "Omen", cardPresentation: "omen", targetId: "brute" }),
+      expect.objectContaining({ type: "spellEffect", spellId: "Omen", cardPresentation: "omen-trigger", damage: 7, targetId: "brute" }),
+      expect.objectContaining({ type: "spellEffect", spellId: "Omen", cardPresentation: "omen-fizzle", targetId: "brute" }),
+    ]);
+  });
+
+  it("maps Crown application, replacement, and tribute to semantic effects", () => {
+    const trial = createFight(8, { seed: 9 });
+    const events = toCombatEvents(
+      [
+        { type: "crowned", targetId: "twinblade" },
+        { type: "crown-cleared", targetId: "twinblade", reason: "replaced" },
+        { type: "crowned", targetId: "partner" },
+        { type: "crown-tribute", targetId: "rat-king", amount: 2, sourceId: "partner" },
+      ],
+      trial
+    );
+    expect(events).toHaveLength(4);
+    expect(events[0]).toMatchObject({ type: "spellEffect", spellId: "Crown", targetId: "twinblade", cardPresentation: "crowned" });
+    expect(events[1]).toMatchObject({ type: "spellEffect", spellId: "Crown", targetId: "twinblade", cardPresentation: "crown-cleared" });
+    expect(events[2]).toMatchObject({ type: "spellEffect", spellId: "Crown", targetId: "partner", cardPresentation: "crowned" });
+    expect(events[3]).toMatchObject({ type: "spellEffect", spellId: "Crown Tribute", targetId: "rat-king", damage: 2, cardPresentation: "crown-tribute" });
   });
 
   it("maps paid and card-driven hero moves to identical row presentation", () => {

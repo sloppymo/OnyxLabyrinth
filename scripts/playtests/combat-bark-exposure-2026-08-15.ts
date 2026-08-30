@@ -272,7 +272,7 @@ function runFight(spec: FormationSpec, partyStyle: PartyStyle, policy: Policy, s
     const events = eventSlice(next, cursor);
     cursor = next.events.length;
     for (const event of events) {
-      const actorIsEnemy = initialEnemyIds.has(event.type === "defeated" ? event.targetId : "actorId" in event ? event.actorId : "");
+      const actorIsEnemy = initialEnemyIds.has(event.type === "defeated" ? event.targetId : "actorId" in event ? event.actorId ?? "" : "");
       if ((event.type === "attack" || event.type === "ambush" || event.type === "cast") && actorIsEnemy) enemyActions++;
       if ((event.type === "attack" || event.type === "ambush" || event.type === "cast" || event.type === "technique" || event.type === "techniqueHit") && !actorIsEnemy) playerActions++;
       if (event.type === "cast" || event.type === "technique" || event.type === "techniqueHit") incrementRecord(signatureAbilityUsage, event.type);
