@@ -145,6 +145,8 @@ import { CardTrialPlaytestRecorder } from "./game/card-trial/playtest";
 import { PrologueController } from "./engine/prologue-ui";
 import { OldManBuildSelectController } from "./engine/old-man-build-select-ui";
 import type { OldManBuildId } from "./game/old-man-builds";
+import { RatKingBuildSelectController } from "./engine/rat-king-build-select-ui";
+import type { RatKingBuildId } from "./game/rat-king-builds";
 import { EndingController } from "./engine/ending-ui";
 import { autoSave, serialize, deserialize } from "./game/save";
 import { createCombatFromEncounter } from "./game/combat";
@@ -309,16 +311,27 @@ const app = createApplication({
     },
     title: {
       newGame: () => {
-        openOldManBuildSelect((oldManBuildId) => {
-          closeMapOverlay();
-          mapOverlayRenderer.invalidate();
-          Object.assign(state, createGameState(getFloors()[0]!, oldManBuildId));
-          resetEncounterFamilyMemory();
-          openPrologue(() => {
-            audio.stopTitleMusic();
-            openTown({ showIntroHint: true });
+        const chooseOldMan = (): void => {
+          openOldManBuildSelect((oldManBuildId) => {
+            openRatKingBuildSelect(
+              (ratKingBuildId) => {
+                closeMapOverlay();
+                mapOverlayRenderer.invalidate();
+                Object.assign(
+                  state,
+                  createGameState(getFloors()[0]!, oldManBuildId, ratKingBuildId)
+                );
+                resetEncounterFamilyMemory();
+                openPrologue(() => {
+                  audio.stopTitleMusic();
+                  openTown({ showIntroHint: true });
+                });
+              },
+              chooseOldMan
+            );
           });
-        });
+        };
+        chooseOldMan();
       },
       continue: (loaded) => applyLoadedGameState(loaded),
       openArenaSetup: () => screens.openArenaSetup(),
@@ -648,6 +661,7 @@ function openPrologue(onDone: () => void): void {
 // Shown once, immediately after "New Game" is clicked and before
 // createGameState() runs, so canceling out of it leaves no state to undo.
 let oldManBuildSelectController: OldManBuildSelectController | null = null;
+let ratKingBuildSelectController: RatKingBuildSelectController | null = null;
 
 function openOldManBuildSelect(onChosen: (buildId: OldManBuildId) => void): void {
   if (mapVisible) toggleMap();
@@ -665,6 +679,29 @@ function openOldManBuildSelect(onChosen: (buildId: OldManBuildId) => void): void
       oldManBuildSelectController?.destroy();
       oldManBuildSelectController = null;
       screens.openTitle();
+    },
+  });
+}
+
+function openRatKingBuildSelect(
+  onChosen: (buildId: RatKingBuildId) => void,
+  onCancel: () => void
+): void {
+  if (mapVisible) toggleMap();
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  setMessage("");
+  ratKingBuildSelectController = new RatKingBuildSelectController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    onChosen: (buildId) => {
+      ratKingBuildSelectController?.destroy();
+      ratKingBuildSelectController = null;
+      onChosen(buildId);
+    },
+    onCancel: () => {
+      ratKingBuildSelectController?.destroy();
+      ratKingBuildSelectController = null;
+      onCancel();
     },
   });
 }
@@ -1685,6 +1722,7 @@ function currentRouteFlags(): ControllerRouteContext {
     hasPrologue: !!prologueController,
     hasEnding: !!endingController,
     hasOldManBuildSelect: !!oldManBuildSelectController,
+    hasRatKingBuildSelect: !!ratKingBuildSelectController,
     hasTitle: screens.hasTitle,
   };
 }
@@ -1754,6 +1792,11 @@ function dispatchControllerRoute(route: BaseRouteKind, event: ControllerInputEve
     case "old_man_build_select": {
       const key = controllerEventToMenuKey(event);
       if (key) oldManBuildSelectController!.handleKey(key);
+      return;
+    }
+    case "rat_king_build_select": {
+      const key = controllerEventToMenuKey(event);
+      if (key) ratKingBuildSelectController!.handleKey(key);
       return;
     }
     case "ending": {
@@ -2842,7 +2885,13 @@ if (new URLSearchParams(window.location.search).has("debug")) {
     if (cardTrialController || inCardTrial) {
       throw new Error("jumpTo: refuse while Card Trial is live");
     }
-    if (overlays.hasOpenOverlay() || prologueController || endingController) {
+    if (
+      overlays.hasOpenOverlay() ||
+      prologueController ||
+      endingController ||
+      oldManBuildSelectController ||
+      ratKingBuildSelectController
+    ) {
       throw new Error("jumpTo: refuse while an overlay controller is open");
     }
     if (screens.hasCamp || screens.hasGameOver || screens.hasArena) {
@@ -2898,6 +2947,8 @@ if (new URLSearchParams(window.location.search).has("debug")) {
       overlays.hasOpenOverlay() ||
       prologueController ||
       endingController ||
+      oldManBuildSelectController ||
+      ratKingBuildSelectController ||
       screens.hasCamp ||
       screens.hasGameOver ||
       screens.hasArena

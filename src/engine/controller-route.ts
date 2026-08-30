@@ -24,6 +24,7 @@ export type BaseRouteKind =
   | "prologue"
   | "ending"
   | "old_man_build_select"
+  | "rat_king_build_select"
   | "title"
   | "arena"
   | "dungeon"
@@ -42,6 +43,7 @@ export interface ControllerRouteContext {
   hasPrologue: boolean;
   hasEnding: boolean;
   hasOldManBuildSelect: boolean;
+  hasRatKingBuildSelect: boolean;
   hasTitle: boolean;
 }
 
@@ -57,6 +59,7 @@ export function resolveControllerRoute(ctx: ControllerRouteContext): BaseRouteKi
   if (ctx.mode === "game_over" && ctx.hasGameOver) return "game_over";
   if (ctx.mode === "title" && ctx.hasPrologue) return "prologue";
   if (ctx.mode === "title" && ctx.hasOldManBuildSelect) return "old_man_build_select";
+  if (ctx.mode === "title" && ctx.hasRatKingBuildSelect) return "rat_king_build_select";
   if (ctx.mode === "title" && ctx.hasTitle) return "title";
   if (ctx.mode === "arena") return "arena";
   if (ctx.mode === "dungeon") return "dungeon";

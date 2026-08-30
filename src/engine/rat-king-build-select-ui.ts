@@ -1,27 +1,20 @@
-/**
- * Old Man character-build selection.
- *
- * Shown once, right after "New Game" is clicked and before any campaign
- * state exists. Presents the three OLD_MAN_BUILDS so the player commits to
- * a complete, understandable playstyle instead of learning one generalist
- * teaching deck. Rat King's equivalent selection follows this screen.
- *
- * Mirrors PrologueController's ownership pattern: a real title-mode screen
- * (not a UiStack overlay) that owns the shared #combat-panel until it
- * reports a choice.
- */
+/** Rat King's campaign starter-build selection screen. */
 
 import { CARD_DEFS } from "../game/card-trial/cards";
 import { cardArtUrl } from "../game/card-trial/card-art";
 import type { CardId } from "../game/card-trial/types";
-import { OLD_MAN_BUILDS, type OldManBuildDef, type OldManBuildId } from "../game/old-man-builds";
+import {
+  RAT_KING_BUILDS,
+  type RatKingBuildDef,
+  type RatKingBuildId,
+} from "../game/rat-king-builds";
 import { FF6Window } from "./ff6-window-library";
 import { audio } from "./audio";
 import "./old-man-build-select.css";
 
-export interface OldManBuildSelectOptions {
+export interface RatKingBuildSelectOptions {
   panel: HTMLElement;
-  onChosen: (buildId: OldManBuildId) => void;
+  onChosen: (buildId: RatKingBuildId) => void;
   onCancel: () => void;
 }
 
@@ -33,14 +26,13 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Physical copies of one definition collapse into one row with a ×count. */
 function summarizeCards(cardIds: readonly CardId[]): Array<{ id: CardId; count: number }> {
   const counts = new Map<CardId, number>();
   for (const id of cardIds) counts.set(id, (counts.get(id) ?? 0) + 1);
   return [...counts.entries()].map(([id, count]) => ({ id, count }));
 }
 
-function renderBuildDetail(build: OldManBuildDef): string {
+function renderBuildDetail(build: RatKingBuildDef): string {
   const rows = summarizeCards(build.cards)
     .map(({ id, count }) => {
       const def = CARD_DEFS[id];
@@ -66,14 +58,14 @@ function renderBuildDetail(build: OldManBuildDef): string {
   `;
 }
 
-export class OldManBuildSelectController {
+export class RatKingBuildSelectController {
   private panel: HTMLElement;
-  private onChosen: (buildId: OldManBuildId) => void;
+  private onChosen: (buildId: RatKingBuildId) => void;
   private onCancel: () => void;
   private selectedIndex = 0;
   private hasRendered = false;
 
-  constructor(opts: OldManBuildSelectOptions) {
+  constructor(opts: RatKingBuildSelectOptions) {
     this.panel = opts.panel;
     this.onChosen = opts.onChosen;
     this.onCancel = opts.onCancel;
@@ -88,7 +80,7 @@ export class OldManBuildSelectController {
 
   handleKey(key: string): void {
     const lower = key.toLowerCase();
-    const count = OLD_MAN_BUILDS.length;
+    const count = RAT_KING_BUILDS.length;
     if (lower === "arrowup" || lower === "w") {
       this.selectedIndex = (this.selectedIndex - 1 + count) % count;
       audio.uiCursor();
@@ -106,22 +98,18 @@ export class OldManBuildSelectController {
   }
 
   private confirm(): void {
-    const build = OLD_MAN_BUILDS[this.selectedIndex];
+    const build = RAT_KING_BUILDS[this.selectedIndex];
     if (build) this.onChosen(build.id);
   }
 
   private render(): void {
     const animated = !this.hasRendered;
     this.hasRendered = true;
-    const focused = OLD_MAN_BUILDS[this.selectedIndex]!;
-
+    const focused = RAT_KING_BUILDS[this.selectedIndex]!;
     const win = new FF6Window({
-      title: "Choose Old Man's Path",
+      title: "Choose Rat King's Path",
       contentHtml: renderBuildDetail(focused),
-      items: OLD_MAN_BUILDS.map((build) => ({
-        label: build.name,
-        metadata: build.id,
-      })),
+      items: RAT_KING_BUILDS.map((build) => ({ label: build.name, metadata: build.id })),
       selectedIndex: this.selectedIndex,
       mode: "selection",
       width: "full",

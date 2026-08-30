@@ -3,8 +3,8 @@
  *
  * The 24 entries through `improvised-theorem` are the locked Card Trial
  * decks (`RAT_KING_LIST` / `OLD_MAN_LIST`) that Arena's PoC lobby still
- * fights with unchanged. The entries after that are Old Man build-exclusive
- * signature cards added for character build selection (see
+ * fights with unchanged. The entries after that are build-exclusive signature
+ * cards added for character build selection (see
  * `../old-man-builds.ts`) — they are never added to `OLD_MAN_LIST` and never
  * appear in Arena. `reckoning-ward` is Reckoning Strike's defensive twin
  * (same-target consume, but banks Barrier and retreats to Back instead of
@@ -15,10 +15,9 @@
  * `brace-for-it` implemented and tested but currently unreachable — not in
  * any build starter and not an authored floor reward (see
  * `../campaign-card-rewards.ts`). The next three (`last-litter`,
- * `feed-the-king`, `one-more-rat`) are Rat King
- * sacrifice-mechanic cards built around consuming the singleton Rat;
- * implemented and tested but not yet wired into any deck, pending Rat
- * King's own build-selection screen. The separate six-school catalogue in
+ * `feed-the-king`, `one-more-rat`) are Rat King sacrifice-mechanic cards
+ * built around consuming the singleton Rat. `king's-due` is the Crown
+ * payoff used by King of the Heap. The separate six-school catalogue in
  * `six-school-cards.ts` remains deferred experimental material, not
  * campaign authority.
  */
@@ -125,7 +124,7 @@ export const CARD_DEFS: Record<CardId, CardDef> = {
     target: "single-enemy",
     consume: "none",
     opens: false,
-    text: "Deal 5. Front: +3.",
+    text: "Deal 4. Gain 2 Barrier. Front: +2 damage.",
   },
   lunge: {
     id: "lunge",
@@ -381,6 +380,16 @@ export const CARD_DEFS: Record<CardId, CardDef> = {
     consume: "none",
     opens: false,
     text: "Deal 6. If Rat exists, consume it: deal 6 more and spawn a new Rat on your row.",
+  },
+  "king's-due": {
+    id: "king's-due",
+    name: "King's Due",
+    cost: 1,
+    hero: "rat-king",
+    target: "single-enemy",
+    consume: "none",
+    opens: false,
+    text: "Deal 4. Crowned target: deal 8 instead.",
   },
 };
 

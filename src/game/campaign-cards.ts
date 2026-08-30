@@ -6,6 +6,12 @@ import {
   isOldManBuildId,
   type OldManBuildId,
 } from "./old-man-builds";
+import {
+  DEFAULT_RAT_KING_BUILD_ID,
+  RAT_KING_BUILD_STARTERS,
+  isRatKingBuildId,
+  type RatKingBuildId,
+} from "./rat-king-builds";
 
 export const CAMPAIGN_DECK_SIZE = 12;
 export const CAMPAIGN_CARD_DUPLICATE_LIMIT = 2;
@@ -33,6 +39,8 @@ export interface CampaignCardProgress {
   "old-man": CampaignHeroCards;
   /** Which starter deck Old Man began this campaign with. See old-man-builds.ts. */
   oldManBuildId: OldManBuildId;
+  /** Which starter deck Rat King began this campaign with. See rat-king-builds.ts. */
+  ratKingBuildId: RatKingBuildId;
 }
 
 export interface PendingCampaignEncounter {
@@ -53,11 +61,10 @@ export interface PendingCampaignEncounter {
 const HERO_IDS: readonly HeroId[] = ["rat-king", "old-man"];
 
 /**
- * Rat King's twelve physical cards, eight unique definitions. Rat King has
- * no build selection yet — this is his only starter. Old Man's starter
- * depends on the chosen build; see OLD_MAN_BUILD_STARTERS in
- * old-man-builds.ts (its "legacy" entry is the exact list this file used
- * to hold before build selection existed).
+ * Rat King's pre-build-selection twelve physical cards, eight unique
+ * definitions. Keep this legacy entry verbatim so old saves can be repaired
+ * without silently changing their deck. New campaigns use the selected
+ * starter in RAT_KING_BUILD_STARTERS below.
  */
 export const CAMPAIGN_STARTER_DECKS: Record<"rat-king", readonly CardId[]> = {
   "rat-king": [
@@ -76,10 +83,16 @@ export const CAMPAIGN_STARTER_DECKS: Record<"rat-king", readonly CardId[]> = {
   ],
 };
 
-function starterDeckFor(heroId: HeroId, oldManBuildId: OldManBuildId): readonly CardId[] {
+function starterDeckFor(
+  heroId: HeroId,
+  oldManBuildId: OldManBuildId,
+  ratKingBuildId: RatKingBuildId
+): readonly CardId[] {
   return heroId === "old-man"
     ? OLD_MAN_BUILD_STARTERS[oldManBuildId]
-    : CAMPAIGN_STARTER_DECKS["rat-king"];
+    : ratKingBuildId === DEFAULT_RAT_KING_BUILD_ID
+      ? CAMPAIGN_STARTER_DECKS["rat-king"]
+      : RAT_KING_BUILD_STARTERS[ratKingBuildId];
 }
 
 const POSITIONAL_STARTER = /^starter:(rat-king|old-man):(\d+):([a-z0-9-]+)$/;
@@ -99,10 +112,11 @@ function starterInstance(heroId: HeroId, cardId: CardId, ordinal: number): Campa
 
 function starterHeroCards(
   heroId: HeroId,
-  oldManBuildId: OldManBuildId = DEFAULT_OLD_MAN_BUILD_ID
+  oldManBuildId: OldManBuildId = DEFAULT_OLD_MAN_BUILD_ID,
+  ratKingBuildId: RatKingBuildId = DEFAULT_RAT_KING_BUILD_ID
 ): CampaignHeroCards {
   const ordinals = new Map<CardId, number>();
-  const collection = starterDeckFor(heroId, oldManBuildId).map((cardId) => {
+  const collection = starterDeckFor(heroId, oldManBuildId, ratKingBuildId).map((cardId) => {
     const next = ordinals.get(cardId) ?? 0;
     ordinals.set(cardId, next + 1);
     return starterInstance(heroId, cardId, next);
@@ -167,26 +181,31 @@ function deckIsValid(hero: CampaignHeroCards): boolean {
   return true;
 }
 
-function emptyProgress(oldManBuildId: OldManBuildId): CampaignCardProgress {
+function emptyProgress(
+  oldManBuildId: OldManBuildId,
+  ratKingBuildId: RatKingBuildId
+): CampaignCardProgress {
   return {
     schemaVersion: CAMPAIGN_CARD_SCHEMA_VERSION,
-    "rat-king": starterHeroCards("rat-king"),
+    "rat-king": starterHeroCards("rat-king", oldManBuildId, ratKingBuildId),
     "old-man": starterHeroCards("old-man", oldManBuildId),
     oldManBuildId,
+    ratKingBuildId,
   };
 }
 
 /**
  * New campaigns start with eight unique definitions as twelve physical
- * cards. `oldManBuildId` defaults to the pre-build-selection deck so every
+ * cards. Both build ids default to the pre-build-selection decks so every
  * existing call site (tests, Arena reset, legacy migration) is unaffected;
- * only the New Game build-select screen passes a real build id.
+ * only the New Game build-select screen passes real build ids.
  */
 export function createCampaignCardProgress(
   legacyRewards: readonly unknown[] = [],
-  oldManBuildId: OldManBuildId = DEFAULT_OLD_MAN_BUILD_ID
+  oldManBuildId: OldManBuildId = DEFAULT_OLD_MAN_BUILD_ID,
+  ratKingBuildId: RatKingBuildId = DEFAULT_RAT_KING_BUILD_ID
 ): CampaignCardProgress {
-  const progress = emptyProgress(oldManBuildId);
+  const progress = emptyProgress(oldManBuildId, ratKingBuildId);
   legacyRewards.forEach((value, index) => {
     if (!isCardId(value)) return;
     const heroId = CARD_DEFS[value].hero;
@@ -220,13 +239,16 @@ export function normalizeCampaignCardProgress(
   const oldManBuildId = isOldManBuildId(raw?.oldManBuildId)
     ? raw.oldManBuildId
     : DEFAULT_OLD_MAN_BUILD_ID;
-  const fallback = createCampaignCardProgress(legacyRewards, oldManBuildId);
+  const ratKingBuildId = isRatKingBuildId(raw?.ratKingBuildId)
+    ? raw.ratKingBuildId
+    : DEFAULT_RAT_KING_BUILD_ID;
+  const fallback = createCampaignCardProgress(legacyRewards, oldManBuildId, ratKingBuildId);
   if (!raw) return fallback;
 
   for (const heroId of HERO_IDS) {
     const source = raw[heroId];
     if (!source || !Array.isArray(source.collection)) continue;
-    const starter = starterHeroCards(heroId, oldManBuildId);
+    const starter = starterHeroCards(heroId, oldManBuildId, ratKingBuildId);
     const ordinals = new Map<string, number>();
     const migrated: CampaignCardInstance[] = [];
     const idMap = new Map<string, string>();

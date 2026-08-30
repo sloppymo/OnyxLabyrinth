@@ -63,7 +63,25 @@ await page.screenshot({ path: `${SHOTS}/04-build-select-third-hover.png` });
 await page.keyboard.press("Enter");
 await page.waitForTimeout(600);
 
-await page.screenshot({ path: `${SHOTS}/05-after-confirm.png` });
+await page.screenshot({ path: `${SHOTS}/05-rat-king-build-select.png` });
+
+const ratKingTitle = await page.locator(".ff6-menu-title").first().textContent();
+assert(ratKingTitle?.includes("Choose Rat King's Path"), `screen title reads "${ratKingTitle}"`);
+const ratKingBuildNames = await page.locator(".ff6-selection-list .ff6-menu-item").allTextContents();
+console.log("Rat King build rows:", ratKingBuildNames);
+assert(ratKingBuildNames.some((t) => t.includes("Nest")), "The Nest row visible");
+assert(ratKingBuildNames.some((t) => t.includes("Open the Rank")), "Open the Rank row visible");
+assert(ratKingBuildNames.some((t) => t.includes("King of the Heap")), "King of the Heap row visible");
+assert(await page.locator(".omb-card-row").count() >= 7, "Rat King card rows shown");
+
+// Choose the second Rat King build so the persisted value proves this screen
+// is not merely decorative.
+await page.keyboard.press("ArrowDown");
+await page.waitForTimeout(150);
+await page.keyboard.press("Enter");
+await page.waitForTimeout(600);
+
+await page.screenshot({ path: `${SHOTS}/06-after-confirm.png` });
 
 // Should now be in the prologue (black field) or already through it into town.
 const modeAfterConfirm = await page.evaluate(() => window.__onyxDebug.state.mode);
@@ -75,7 +93,7 @@ await page.keyboard.press("Escape");
 await page.waitForTimeout(600);
 
 await page.waitForTimeout(500);
-await page.screenshot({ path: `${SHOTS}/06-after-prologue.png` });
+await page.screenshot({ path: `${SHOTS}/07-after-prologue.png` });
 
 const finalMode = await page.evaluate(() => window.__onyxDebug.state.mode);
 console.log("Final mode:", finalMode);
@@ -84,6 +102,7 @@ assert(finalMode === "town" || finalMode === "dungeon", `landed in town/dungeon,
 const progress = await page.evaluate(() => window.__onyxDebug.state.campaignCards);
 console.log("oldManBuildId:", progress.oldManBuildId);
 assert(progress.oldManBuildId === "reckoning", `chosen build persisted as "reckoning", got "${progress.oldManBuildId}"`);
+assert(progress.ratKingBuildId === "open-rank", `chosen Rat King build persisted as "open-rank", got "${progress.ratKingBuildId}"`);
 
 const oldManDeckIds = await page.evaluate(() => {
   const s = window.__onyxDebug.state;
@@ -95,9 +114,22 @@ const oldManDeckIds = await page.evaluate(() => {
 });
 console.log("Old Man deck:", oldManDeckIds);
 assert(oldManDeckIds.includes("reckoning-strike"), "reckoning-strike is in the active deck");
-assert(oldManDeckIds.includes("brace-for-it"), "brace-for-it is in the active deck");
+assert(oldManDeckIds.includes("reckoning-ward"), "reckoning-ward is in the active deck");
 assert(!oldManDeckIds.includes("veil-of-quiet"), "Silent Ward's veil-of-quiet is NOT in the deck");
 assert(oldManDeckIds.length === 12, `active deck has exactly 12 physical cards (${oldManDeckIds.length})`);
+
+const ratKingDeckIds = await page.evaluate(() => {
+  const s = window.__onyxDebug.state;
+  const active = new Set(s.campaignCards["rat-king"].activeDeck);
+  return s.campaignCards["rat-king"].collection
+    .filter((c) => active.has(c.instanceId))
+    .map((c) => c.cardId)
+    .sort();
+});
+console.log("Rat King deck:", ratKingDeckIds);
+assert(ratKingDeckIds.includes("burst-the-nest"), "Open the Rank's Burst the Nest is in the active deck");
+assert(ratKingDeckIds.includes("from-the-dark"), "Open the Rank's From the Dark is in the active deck");
+assert(ratKingDeckIds.length === 12, `Rat King active deck has exactly 12 physical cards (${ratKingDeckIds.length})`);
 
 console.log("\n=== Console/page errors captured ===");
 console.log(errors.length === 0 ? "(none)" : errors.join("\n"));

@@ -189,7 +189,12 @@ describe("cardOutcomeSummary", () => {
     trial.heroes["rat-king"].row = "front";
     const view = playerView(trial);
     const tide = { ...view.hand[0]!, defId: "tide" as const, name: "Tide" };
-    expect(cardOutcomeSummary(tide, view, view.enemies[0]!)).toBe("Deal 8");
+    expect(cardOutcomeSummary(tide, view, view.enemies[0]!)).toBe("Deal 6 · Gain 2 Barrier");
+
+    const due = { ...view.hand[0]!, defId: "king's-due" as const, name: "King's Due" };
+    expect(cardOutcomeSummary(due, view, view.enemies[0]!)).toBe("Deal 4");
+    view.crownedEnemyId = view.enemies[0]!.id;
+    expect(cardOutcomeSummary(due, view, view.enemies[0]!)).toBe("Deal 8");
 
     view.openedEnemyId = view.enemies[0]!.id;
     const consume = {

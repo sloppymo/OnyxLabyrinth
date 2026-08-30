@@ -150,7 +150,13 @@ export function cardOutcomeSummary(
   const row = actingHeroRow(view);
   const ignoreRow = planIgnoreRow(view.rowMode);
   const id = card.defId;
-  const damage = cardPrimaryDamage(id, row, !!view.ratRow, ignoreRow);
+  const damage = cardPrimaryDamage(
+    id,
+    row,
+    !!view.ratRow,
+    ignoreRow,
+    !!target && view.crownedEnemyId === target.id
+  );
   const rider = cardConsumeRiderDamage(id);
   const guard = cardGuardGain(id, row, ignoreRow);
   const targetIsOpened = !!target && view.openedEnemyId === target.id;
@@ -167,6 +173,9 @@ export function cardOutcomeSummary(
   if (id === "the-threshold") return "Arm Omen · strike before target's next intent";
   if (id === "king-of-the-heap") {
     return `Deal ${damage} · Gain ${guard} Barrier · Crown target`;
+  }
+  if (id === "king's-due") {
+    return `Deal ${damage}`;
   }
   if (id === "unlight") return `Deal ${damage} to all enemies`;
   if (id === "send-the-rat" && view.ratRow) {

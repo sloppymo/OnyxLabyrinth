@@ -1,10 +1,9 @@
 /**
- * Rat King sacrifice-mechanic cards (Consume the Rat). See cards.ts's header
- * comment: implemented and tested, not yet wired into RAT_KING_LIST/a deck.
- * `assembleFight`'s explicit `decks` lets a test give a hero any CardId.
+ * Rat King build-exclusive cards. `assembleFight`'s explicit `decks` lets a
+ * test give a hero any CardId, including cards not in the locked Arena list.
  */
 import { describe, expect, it } from "vitest";
-import { assembleFight, handCard, playCard } from "./engine";
+import { assembleFight, cardPrimaryDamage, handCard, playCard } from "./engine";
 import type { CardId, CardTrialState } from "./types";
 
 function takeFromPiles(s: CardTrialState, heroId: "rat-king" | "old-man", id: CardId) {
@@ -35,7 +34,12 @@ function play(s: CardTrialState, id: CardId, targetId?: string, secondTargetId?:
   return result;
 }
 
-const SACRIFICE_CARD_IDS: CardId[] = ["last-litter", "feed-the-king", "one-more-rat"];
+const SACRIFICE_CARD_IDS: CardId[] = [
+  "last-litter",
+  "feed-the-king",
+  "one-more-rat",
+  "king's-due",
+];
 
 function fightWith(ratKingHand: CardId[]): CardTrialState {
   const s = assembleFight({
@@ -129,5 +133,17 @@ describe("Rat King sacrifice-mechanic cards", () => {
     play(s, "last-litter", "dummy");
     expect(s.enemies.find((e) => e.id === "dummy")!.hp).toBe(0);
     expect(s.rat).toEqual({ row: "front" }); // target died to the base 5, bonus never triggers
+  });
+
+  it("King's Due deals 4 normally and 8 to its Crowned target", () => {
+    const s = fightWith(["king's-due", "king's-due"]);
+    expect(cardPrimaryDamage("king's-due", "front")).toBe(4);
+    play(s, "king's-due", "dummy");
+    expect(s.enemies.find((e) => e.id === "dummy")!.hp).toBe(36);
+
+    s.crownedEnemyId = "dummy2";
+    expect(cardPrimaryDamage("king's-due", "front", false, false, true)).toBe(8);
+    play(s, "king's-due", "dummy2");
+    expect(s.enemies.find((e) => e.id === "dummy2")!.hp).toBe(32);
   });
 });

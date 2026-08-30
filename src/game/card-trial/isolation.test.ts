@@ -23,7 +23,7 @@ describe("Card Trial campaign isolation", () => {
     const state = createGameState(findFloor(1)!);
     createFight(1, { seed: 1 });
     const raw = JSON.parse(serialize(state)) as Record<string, unknown>;
-    expect(raw.version).toBe(20);
+    expect(raw.version).toBe(21);
     expect(raw).not.toHaveProperty("cardTrial");
     expect(Array.isArray(raw.party) ? (raw.party as unknown[]).length : 0).toBe(2);
   });

@@ -2,9 +2,8 @@
  * Old Man character-build selection.
  *
  * A deliberate, contract-level reversal of "no character creation" / "no
- * player-facing school selection" for Old Man only (Rat King is unaffected
- * and keeps his single fixed starter — see CAMPAIGN_STARTER_DECKS in
- * campaign-cards.ts). New Game presents these three builds so the player
+ * player-facing school selection" for the fixed duo. New Game presents these
+ * three Old Man builds followed by Rat King's equivalent choices so the player
  * picks a complete, understandable playstyle instead of learning a
  * generalist twelve-card teaching deck.
  *

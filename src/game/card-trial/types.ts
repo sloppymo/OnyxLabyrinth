@@ -58,11 +58,12 @@ export type CardId =
   | "reckoning-ward"
   | "brace-for-it"
   // Rat King sacrifice-mechanic cards (Consume the Rat). Implemented and
-  // tested, not yet wired into RAT_KING_LIST/a deck — awaiting Rat King's
-  // equivalent of the Old Man build-selection screen above.
+  // tested, and used by The Nest build.
   | "last-litter"
   | "feed-the-king"
-  | "one-more-rat";
+  | "one-more-rat"
+  // Rat King Crown payoff used by the King of the Heap build.
+  | "king's-due";
 
 /** A bounded, temporary three-choice draft created by a card in the live pool. */
 export type DraftPoolId = "dirty-tricks" | "arcane-responses";

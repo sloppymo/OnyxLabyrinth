@@ -42,8 +42,8 @@ export const NO_ROW_CARDS: Readonly<Record<string, ExtraCardDef>> = {
     target: "single-enemy",
     consume: "none",
     opens: false,
-    text: "Deal 5.",
-    effects: [{ kind: "damage", amount: 5 }],
+    text: "Deal 4. Gain 2 Guard.",
+    effects: [{ kind: "damage", amount: 4 }, { kind: "guard", amount: 2 }],
   }),
   "lunge": noRowCard("lunge", {
     name: "Lunge (No Rows)",

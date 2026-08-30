@@ -82,6 +82,14 @@ describe("save serialization", () => {
     expect(restored?.pendingCampaignEncounter).toBeNull();
   });
 
+  it("migrates v20 campaign cards without a Rat King build id to legacy", () => {
+    const legacy = JSON.parse(serialize(state));
+    legacy.version = 20;
+    delete legacy.campaignCards.ratKingBuildId;
+    const restored = deserialize(JSON.stringify(legacy));
+    expect(restored?.campaignCards?.ratKingBuildId).toBe("legacy");
+  });
+
   it("round-trips bridge position and environmental encounter progress", () => {
     state = createGameState(findFloor(2)!);
     state.mode = "dungeon";

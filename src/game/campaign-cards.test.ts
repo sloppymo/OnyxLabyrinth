@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CARD_DEFS, RAT_KING_LIST } from "./card-trial/cards";
 import type { CardId } from "./card-trial/types";
 import { OLD_MAN_BUILD_STARTERS } from "./old-man-builds";
+import { RAT_KING_BUILD_STARTERS } from "./rat-king-builds";
 import {
   CAMPAIGN_CARD_DUPLICATE_LIMIT,
   CAMPAIGN_CARD_SCHEMA_VERSION,
@@ -262,5 +263,55 @@ describe("Old Man build selection", () => {
     const raw = { ...built, oldManBuildId: "not-a-real-build" };
     const repaired = normalizeCampaignCardProgress(raw);
     expect(repaired.oldManBuildId).toBe("legacy");
+  });
+});
+
+describe("Rat King build selection", () => {
+  it("builds the selected Rat King starter and preserves the exact twelve-card shape", () => {
+    const progress = createCampaignCardProgress([], "reckoning", "nest");
+    expect(progress.ratKingBuildId).toBe("nest");
+    expect(activeCampaignDeck(progress, "rat-king").map((card) => card.cardId)).toEqual([
+      ...RAT_KING_BUILD_STARTERS.nest,
+    ]);
+    expect(activeCampaignDeck(progress, "rat-king")).toHaveLength(CAMPAIGN_DECK_SIZE);
+    expect(new Set(activeCampaignDeck(progress, "rat-king").map((card) => card.cardId)).size).toBe(8);
+    expect(progress.oldManBuildId).toBe("reckoning");
+  });
+
+  it("round-trips each offered Rat King build through normalization", () => {
+    for (const id of ["nest", "open-rank", "king-of-heap"] as const) {
+      const progress = createCampaignCardProgress([], "legacy", id);
+      const cloned = normalizeCampaignCardProgress(progress);
+      expect(cloned.ratKingBuildId).toBe(id);
+      expect(activeCampaignDeck(cloned, "rat-king").map((card) => card.cardId)).toEqual([
+        ...RAT_KING_BUILD_STARTERS[id],
+      ]);
+    }
+  });
+
+  it("repairs a legacy save with no ratKingBuildId to the exact old Rat King deck", () => {
+    const raw = JSON.parse(JSON.stringify(createCampaignCardProgress()));
+    delete raw.ratKingBuildId;
+    const repaired = normalizeCampaignCardProgress(raw);
+    expect(repaired.ratKingBuildId).toBe("legacy");
+    expect(activeCampaignDeck(repaired, "rat-king").map((card) => card.cardId)).toEqual([
+      ...CAMPAIGN_STARTER_DECKS["rat-king"],
+    ]);
+  });
+
+  it("repairs an invalid active deck to the selected Rat King build, not legacy", () => {
+    const built = createCampaignCardProgress([], "legacy", "open-rank");
+    const corrupted = { ...built, "rat-king": { ...built["rat-king"], activeDeck: ["bogus"] } };
+    const repaired = normalizeCampaignCardProgress(corrupted);
+    expect(repaired.ratKingBuildId).toBe("open-rank");
+    expect(activeCampaignDeck(repaired, "rat-king").map((card) => card.cardId)).toEqual([
+      ...RAT_KING_BUILD_STARTERS["open-rank"],
+    ]);
+  });
+
+  it("rejects a garbage Rat King build id and falls back to legacy", () => {
+    const built = createCampaignCardProgress();
+    const repaired = normalizeCampaignCardProgress({ ...built, ratKingBuildId: "not-a-real-build" });
+    expect(repaired.ratKingBuildId).toBe("legacy");
   });
 });

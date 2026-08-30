@@ -85,7 +85,7 @@ export function threatFirstPolicy(): CardTrialPolicy {
   };
 }
 
-const GUARD_CARDS: CardId[] = ["brace", "pale-ward", "king-of-the-heap", "last-bastion"];
+const GUARD_CARDS: CardId[] = ["brace", "pale-ward", "king-of-the-heap", "last-bastion", "tide"];
 
 /** Prefer Guard over raw damage when the next hit exceeds current Guard. */
 export function guardAwarePolicy(): CardTrialPolicy {

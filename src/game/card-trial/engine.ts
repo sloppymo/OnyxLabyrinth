@@ -1270,13 +1270,15 @@ export function actingHero(s: CardTrialState): HeroState | null {
  * This is part of the rules layer so presentation code cannot grow a second
  * damage table that drifts away from resolveCardEffect(). `ratExists` is only
  * relevant to Send the Rat, whose fallback attack is weaker when the token is
- * absent.
+ * absent. `targetCrowned` is used only by King's Due; callers that do not
+ * have a target keep the uncrowned value.
  */
 export function cardPrimaryDamage(
   id: CardId,
   row: PlayerRow,
   ratExists = false,
-  ignoreRow = false
+  ignoreRow = false,
+  targetCrowned = false
 ): number | null {
   const front = !ignoreRow && row === "front";
   switch (id) {
@@ -1288,7 +1290,7 @@ export function cardPrimaryDamage(
     case "burst-the-nest": return 8;
     case "litter": return 4;
     case "send-the-rat": return ratExists ? 5 : 4;
-    case "tide": return 5 + (front ? 3 : 0);
+    case "tide": return 4 + (front ? 2 : 0);
     case "lunge": return 5;
     case "king-of-the-heap": return 7 + (front ? 3 : 0);
     case "the-staff-speaks": return 6;
@@ -1316,6 +1318,7 @@ export function cardPrimaryDamage(
     case "last-litter": return 5;
     case "feed-the-king": return null;
     case "one-more-rat": return 6;
+    case "king's-due": return targetCrowned ? 8 : 4;
   }
 }
 
@@ -1335,6 +1338,7 @@ export function cardGuardGain(id: CardId, row: PlayerRow, ignoreRow = false): nu
     case "brace-for-it": return 12;
     case "reckoning-ward": return 4;
     case "feed-the-king": return 4;
+    case "tide": return 2;
     default: return null;
   }
 }
@@ -1593,7 +1597,13 @@ function resolveCardEffect(
   const ignoreRow = rowMode(s) === "none";
   const target = targets.targetId ? enemyById(s, targets.targetId) : undefined;
   const hit = (enemy: EnemyState, n: number) => dealToEnemy(s, enemy, n, hero.id, events);
-  const primaryDamage = cardPrimaryDamage(id, hero.row, !!s.rat, ignoreRow);
+  const primaryDamage = cardPrimaryDamage(
+    id,
+    hero.row,
+    !!s.rat,
+    ignoreRow,
+    !!target && s.crownedEnemyId === target.id
+  );
   const riderDamage = cardConsumeRiderDamage(id) ?? 0;
   const printedGuard = cardGuardGain(id, hero.row, ignoreRow);
   const gainPrintedGuard = () => {
@@ -1667,6 +1677,7 @@ function resolveCardEffect(
       break;
     case "tide":
       if (target) hitPrimary(target);
+      gainPrintedGuard();
       break;
     case "lunge": {
       if (rowMode(s) !== "none") {
@@ -1820,6 +1831,9 @@ function resolveCardEffect(
           events.push({ type: "spawn-rat", row: hero.row });
         }
       }
+      break;
+    case "king's-due":
+      if (target) hitPrimary(target);
       break;
   }
 }

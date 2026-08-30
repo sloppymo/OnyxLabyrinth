@@ -4,7 +4,8 @@
 
 **Status:** Canonical, additive to the two-hero card-pool architecture. Not a reopening of the deferred six-school system.
 
-**Scope:** Old Man only. Rat King is unaffected and keeps his single fixed starter deck.
+**Scope:** Old Man's half of the paired starting-build flow. Rat King's
+parallel choices are documented in [`2026-08-30-rat-king-build-selection.md`](2026-08-30-rat-king-build-selection.md).
 
 ## Decision
 
@@ -114,5 +115,6 @@ This id is never offered on the selection screen — it exists only so `normaliz
 ## Open items
 
 - **Art.** The 7 build-exclusive cards have no production illustration. They are playable and forecast-correct with the placeholder fill; a future pass should commission art matching the existing card-art style guide.
-- **Rat King.** No build choice yet, as scoped. A follow-up should design his three builds the same way once Old Man's are validated in play.
+- **Rat King.** His parallel three-build choice is now shipped in
+  [`2026-08-30-rat-king-build-selection.md`](2026-08-30-rat-king-build-selection.md).
 - **Balance.** These dominance checks are static analysis, the same caveat that applies to every other un-playtested card in this project — they are not a substitute for the human sessions the broader combat-revision review is waiting on.

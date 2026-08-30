@@ -258,9 +258,10 @@ describe("rules-layer card constants", () => {
       setup: { hands: { "rat-king": ["tide"] } },
     });
     s.heroes["rat-king"].row = "front";
-    expect(cardPrimaryDamage("tide", "front", false, true)).toBe(5);
+    expect(cardPrimaryDamage("tide", "front", false, true)).toBe(4);
     play(s, "tide", "dummy");
-    expect(s.enemies[0]!.hp).toBe(25);
+    expect(s.enemies[0]!.hp).toBe(26);
+    expect(s.heroes["rat-king"].guard).toBe(2);
     expect(s.heroes["rat-king"].row).toBe("front");
     expect(canPaidMove(s).ok).toBe(false);
   });
@@ -278,12 +279,13 @@ describe("Card Trial presentation telemetry", () => {
 
 describe("Card Trial turn", () => {
   it("exposes primary card damage from the rules layer", () => {
-    expect(cardPrimaryDamage("tide", "front")).toBe(8);
-    expect(cardPrimaryDamage("tide", "back")).toBe(5);
+    expect(cardPrimaryDamage("tide", "front")).toBe(6);
+    expect(cardPrimaryDamage("tide", "back")).toBe(4);
     expect(cardPrimaryDamage("send-the-rat", "front", false)).toBe(4);
     expect(cardPrimaryDamage("send-the-rat", "front", true)).toBe(5);
     expect(cardPrimaryDamage("brace", "front")).toBeNull();
-    expect(cardPrimaryDamage("tide", "front", false, true)).toBe(5);
+    expect(cardPrimaryDamage("tide", "front", false, true)).toBe(4);
+    expect(cardGuardGain("tide", "front")).toBe(2);
   });
 
   it("draws 5, sets energy to 3, and discards the remainder on pass", () => {
@@ -652,6 +654,7 @@ describe("Card Trial intents", () => {
 
   it("cancels a dead enemy's future action", () => {
     const s = createAdversarialTriangle();
+    s.enemies.find((e) => e.id === "ash")!.hp = 20;
     play(s, "tide", "ash");
     play(s, "swarm-the-wound", "ash");
     play(s, "nip", "ash");
@@ -871,6 +874,7 @@ describe("locked Cleaver/Ash triangle", () => {
 
   it("Race: Tide + Swarm + Nip Ash", () => {
     const s = createAdversarialTriangle();
+    s.enemies.find((e) => e.id === "ash")!.hp = 20;
     play(s, "tide", "ash");
     play(s, "swarm-the-wound", "ash");
     play(s, "nip", "ash");
@@ -878,7 +882,7 @@ describe("locked Cleaver/Ash triangle", () => {
     expect(s.opened).toBeNull();
     finishRatKing(s);
     expect(s.heroes["rat-king"].row).toBe("front");
-    expect(s.heroes["rat-king"].hp).toBe(29);
+    expect(s.heroes["rat-king"].hp).toBe(31);
     expect(s.heroes["old-man"].hp).toBe(40);
   });
 });

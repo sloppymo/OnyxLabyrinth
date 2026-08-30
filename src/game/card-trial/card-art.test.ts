@@ -67,13 +67,14 @@ describe("Card Trial art manifest", () => {
     }
   });
 
-  it("Old Man build-exclusive and Rat King sacrifice-mechanic cards fall back to the reserved aperture until art exists", () => {
+  it("build-exclusive cards fall back to the reserved aperture until art exists", () => {
     const liveIds = Object.keys(CARD_DEFS) as CardId[];
     const unmapped = liveIds.filter((id) => !CARD_ART_IDS.includes(id as (typeof CARD_ART_IDS)[number]));
     expect(unmapped.sort()).toEqual([
       "brace-for-it",
       "feed-the-king",
       "hasten-the-hour",
+      "king's-due",
       "last-litter",
       "one-more-rat",
       "reckoning-strike",

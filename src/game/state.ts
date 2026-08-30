@@ -14,12 +14,14 @@ import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { encounterCooldownFor } from "./encounters";
 import { createCampaignCardProgress } from "./campaign-cards";
 import { DEFAULT_OLD_MAN_BUILD_ID, type OldManBuildId } from "./old-man-builds";
+import { DEFAULT_RAT_KING_BUILD_ID, type RatKingBuildId } from "./rat-king-builds";
 
 export type { GameMode, GameState } from "../types";
 
 export function createGameState(
   floor: FloorDef,
-  oldManBuildId: OldManBuildId = DEFAULT_OLD_MAN_BUILD_ID
+  oldManBuildId: OldManBuildId = DEFAULT_OLD_MAN_BUILD_ID,
+  ratKingBuildId: RatKingBuildId = DEFAULT_RAT_KING_BUILD_ID
 ): GameState {
   const party = createPlayableDuo();
   return {
@@ -66,7 +68,7 @@ export function createGameState(
     clearedStairsGuardians: [],
     environmentalEncounters: {},
     purchasedSpellIds: [],
-    campaignCards: createCampaignCardProgress([], oldManBuildId),
+    campaignCards: createCampaignCardProgress([], oldManBuildId, ratKingBuildId),
     pendingCampaignEncounter: null,
   };
 }

@@ -38,7 +38,7 @@ const STORAGE_PREFIX = "wizardry-clone-save-";
 const SLOT_COUNT = 10;
 
 /** Current save format version. Bump when the serialized shape changes. */
-const SAVE_VERSION = 20;
+const SAVE_VERSION = 21;
 
 /** v9 → v10 historical helper: first legacy-roster characters by formation order —
  *  mirrors the now-deleted active-roster.ts's defaultActiveCharIds(). */
@@ -358,6 +358,19 @@ function migrate(ser: Record<string, unknown>): SerializedState | null {
     delete ser.cardCollection;
     version = 20;
   }
+  if (version === 20) {
+    // v20 → v21: Rat King's starter build id joins the existing campaign-card
+    // progress record. A v20 save predates Rat King build selection, so its
+    // missing field must resolve to the verbatim legacy starter.
+    const campaign = ser.campaignCards;
+    if (campaign && typeof campaign === "object") {
+      const rawCampaign = campaign as Record<string, unknown>;
+      if (!("ratKingBuildId" in rawCampaign)) {
+        ser.campaignCards = { ...rawCampaign, ratKingBuildId: "legacy" };
+      }
+    }
+    version = 21;
+  }
   if (version !== SAVE_VERSION) return null;
   return ser as unknown as SerializedState;
 }
@@ -440,7 +453,7 @@ interface SerializedState {
   environmentalEncounters?: NonNullable<GameState["environmentalEncounters"]>;
   /** v19 migration source only. Never written by v20+. */
   cardCollection?: string[];
-  /** Permanent campaign card instances and active decks. v20+. */
+  /** Permanent campaign card instances and active decks. v20+; v21 adds Rat King's build id. */
   campaignCards?: GameState["campaignCards"];
   /** Pre-fight retry/close-resume transaction. v20+. */
   pendingCampaignEncounter?: GameState["pendingCampaignEncounter"];

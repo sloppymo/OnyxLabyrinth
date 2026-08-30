@@ -44,7 +44,7 @@ describe("row-ablation simulator mode", () => {
     const card = s.heroes["rat-king"].hand[0]!;
     const result = playCard(s, card.uid, { targetId: "target" });
     expect(result.ok).toBe(true);
-    expect(s.enemies[0]!.hp).toBe(25);
+    expect(s.enemies[0]!.hp).toBe(26);
   });
 
   it("maps row intents to the configured deterministic target", () => {

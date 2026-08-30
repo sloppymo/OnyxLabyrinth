@@ -10,10 +10,10 @@ export const CARD_ART_NATIVE_HEIGHT = 96;
 
 /**
  * Production illustration for each CardId that has one. Old Man
- * build-exclusive signature cards (see ../old-man-builds.ts), including
- * reckoning-ward, and Rat King's sacrifice-mechanic cards (last-litter,
- * feed-the-king, one-more-rat) have no art yet and fall back to the
- * reserved-aperture card fill below.
+ * build-exclusive signature cards (see ../old-man-builds.ts and
+ * ../rat-king-builds.ts), including reckoning-ward, last-litter,
+ * feed-the-king, one-more-rat, and king's-due, have no art yet and fall back
+ * to the reserved-aperture card fill below.
  */
 const CARD_ART_FILES: Partial<Record<CardId, string>> = {
   nip: "nip.png",

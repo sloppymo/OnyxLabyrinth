@@ -15,6 +15,7 @@ function ctx(overrides: Partial<ControllerRouteContext> = {}): ControllerRouteCo
     hasPrologue: false,
     hasEnding: false,
     hasOldManBuildSelect: false,
+    hasRatKingBuildSelect: false,
     hasTitle: false,
     ...overrides,
   };
@@ -97,6 +98,24 @@ describe("resolveControllerRoute", () => {
   it("requires title mode for Old Man build select", () => {
     expect(
       resolveControllerRoute(ctx({ mode: "dungeon", hasOldManBuildSelect: true })),
+    ).toBe("dungeon");
+  });
+
+  it("routes Rat King build select over the title menu, but not over prologue/ending", () => {
+    expect(
+      resolveControllerRoute(ctx({ mode: "title", hasRatKingBuildSelect: true, hasTitle: true })),
+    ).toBe("rat_king_build_select");
+    expect(
+      resolveControllerRoute(ctx({ mode: "title", hasRatKingBuildSelect: true, hasPrologue: true })),
+    ).toBe("prologue");
+    expect(
+      resolveControllerRoute(ctx({ mode: "title", hasRatKingBuildSelect: true, hasEnding: true })),
+    ).toBe("ending");
+  });
+
+  it("requires title mode for Rat King build select", () => {
+    expect(
+      resolveControllerRoute(ctx({ mode: "dungeon", hasRatKingBuildSelect: true })),
     ).toBe("dungeon");
   });
 
