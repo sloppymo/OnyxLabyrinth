@@ -1,0 +1,124 @@
+/* A campaign wipe is a century passing, not another menu. Edgehollow itself
+   waits behind the inscription, almost extinguished; confirming restores the
+   same map at town brightness. Arena defeats remain deliberately placeless. */
+
+#combat-panel.ff6-menu-host.game-over-host {
+  position: relative;
+  isolation: isolate;
+  justify-content: center;
+  overflow: hidden;
+  border-color: #8b8795;
+  background-color: #070606;
+  background-image:
+    radial-gradient(ellipse 70% 52% at 50% 48%, rgba(38, 24, 20, 0.3), transparent 72%),
+    linear-gradient(180deg, #100d0c 0%, #080707 58%, #030303 100%);
+  animation: none;
+  box-shadow:
+    inset 0 0 0 1px #302c38,
+    inset 0 0 0 2px #17141b,
+    inset 0 0 76px 28px rgba(0, 0, 0, 0.72),
+    0 14px 32px rgba(0, 0, 0, 0.72);
+}
+
+#combat-panel.ff6-menu-host.game-over-host[data-game-over-context="campaign"] {
+  background-image:
+    linear-gradient(180deg, rgba(3, 3, 4, 0.72), rgba(4, 2, 2, 0.82)),
+    url("../assets/edgehollow_town_map.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+}
+
+/* One motion beat: the century-black veil lifts in hard steps and leaves only
+   the town's lamps and silhouette. The copy itself stays still. */
+#combat-panel.ff6-menu-host.game-over-host[data-game-over-context="campaign"]::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 41% 18%, rgba(218, 130, 50, 0.1), transparent 5%),
+    radial-gradient(circle at 59% 18%, rgba(218, 130, 50, 0.1), transparent 5%),
+    #020202;
+  mix-blend-mode: multiply;
+  animation: century-darkness-lifts 0.9s steps(7, end) both;
+}
+
+.game-over-rite {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(88%, 620px);
+  min-height: min(72%, 470px);
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 3.1vh, 28px);
+  padding: clamp(30px, 6vh, 54px) clamp(22px, 5vw, 48px);
+  background: radial-gradient(
+    ellipse 72% 62% at 50% 50%,
+    rgba(3, 3, 4, 0.94),
+    rgba(3, 3, 4, 0.76) 56%,
+    transparent 100%
+  );
+  text-align: center;
+  text-shadow: 0 2px 0 #000, 2px 0 0 #000, -2px 0 0 #000;
+}
+
+.game-over-rite .town-header,
+.game-over-rite .town-gold,
+.game-over-rite .town-help {
+  margin: 0;
+}
+
+.game-over-title {
+  color: #cc6767;
+  font-size: clamp(1.5rem, 5vw, 2.45rem);
+  letter-spacing: 0.12em;
+}
+
+.game-over-fall {
+  color: var(--warm-white);
+  font-size: clamp(0.84rem, 2.1vw, 1.15rem);
+}
+
+.game-over-standing {
+  color: #b9a98d;
+  font-size: clamp(0.72rem, 1.7vw, 0.95rem);
+}
+
+.game-over-law {
+  color: #f2e7cf;
+  font-size: clamp(0.9rem, 2.35vw, 1.26rem);
+}
+
+.game-over-century {
+  max-width: 34rem;
+  color: #c7b796;
+  font-size: clamp(0.74rem, 1.85vw, 1rem);
+  line-height: 1.65;
+}
+
+.game-over-prompt {
+  color: var(--amber);
+  font-size: clamp(0.76rem, 1.85vw, 1rem);
+}
+
+@keyframes century-darkness-lifts {
+  from {
+    opacity: 0.94;
+  }
+  to {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #combat-panel.ff6-menu-host.game-over-host[data-game-over-context="campaign"]::before {
+    animation: none;
+    opacity: 0.2;
+  }
+}

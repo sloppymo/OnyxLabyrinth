@@ -1,0 +1,80 @@
+/* Camp is a physical pause inside the labyrinth. The rules and FF6 window
+   remain unchanged; this backdrop gives the existing three-second heal a
+   room, a light source, and resting bodies the player can read at a glance. */
+
+#combat-panel.ff6-menu-host.bg-camp {
+  position: relative;
+  isolation: isolate;
+  background-color: #080a09;
+  background-image:
+    linear-gradient(rgba(2, 4, 4, 0.04), rgba(3, 2, 1, 0.25)),
+    url("../assets/labyrinth_camp_scene.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+  animation: none;
+  box-shadow:
+    inset 0 0 0 1px #5068c8,
+    inset 0 0 0 2px #1a2458,
+    inset 0 0 62px 22px rgba(0, 0, 0, 0.54),
+    0 0 0 1px rgba(80, 104, 200, 0.25),
+    0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+/* The generated still owns every prop. One stepped radial breath makes its
+   existing brazier feel alive without laying particle sludge over the UI. */
+#combat-panel.ff6-menu-host.bg-camp::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 24% 15% at 50% 86%,
+      rgba(248, 139, 48, 0.2),
+      rgba(173, 75, 24, 0.08) 44%,
+      transparent 72%
+    );
+  mix-blend-mode: screen;
+  animation: labyrinth-campfire-breath 2.4s steps(4, end) infinite;
+}
+
+#combat-panel.ff6-menu-host.bg-camp[data-camp-phase="menu"]::before,
+#combat-panel.ff6-menu-host.bg-camp[data-camp-phase="charSheet"]::before,
+#combat-panel.ff6-menu-host.bg-camp[data-camp-phase="castSpell"]::before,
+#combat-panel.ff6-menu-host.bg-camp[data-camp-phase="reorder"]::before {
+  opacity: 0.7;
+}
+
+#combat-panel.ff6-menu-host.bg-camp > * {
+  position: relative;
+  z-index: 1;
+}
+
+#combat-panel.ff6-menu-host.bg-camp .ff6-window.standalone {
+  box-shadow:
+    0 0 0 2px rgba(116, 69, 35, 0.7),
+    0 14px 26px rgba(0, 0, 0, 0.68);
+}
+
+@keyframes labyrinth-campfire-breath {
+  0%,
+  100% {
+    opacity: 0.48;
+  }
+  38% {
+    opacity: 0.82;
+  }
+  68% {
+    opacity: 0.62;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #combat-panel.ff6-menu-host.bg-camp::before {
+    animation: none;
+    opacity: 0.62;
+  }
+}

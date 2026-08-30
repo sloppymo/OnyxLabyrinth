@@ -1,0 +1,109 @@
+/* Edgehollow is one physical place, not a family of floating blue windows.
+   The same authored square sits behind every town screen; facility states
+   move the crop toward the inn, chapel, outfitter, or old guild court. */
+
+#combat-panel.ff6-menu-host.bg-town[data-town-scene] {
+  --town-scene-size: 100% 100%;
+  --town-scene-position: center;
+  position: relative;
+  isolation: isolate;
+  background-color: #11100f;
+  background-image:
+    linear-gradient(rgba(5, 4, 3, 0.1), rgba(5, 4, 3, 0.27)),
+    url("../assets/edgehollow_town_map.png");
+  background-position:
+    center,
+    var(--town-scene-position);
+  background-repeat: no-repeat;
+  background-size:
+    100% 100%,
+    var(--town-scene-size);
+  image-rendering: pixelated;
+  animation: none;
+  box-shadow:
+    inset 0 0 0 1px #5068c8,
+    inset 0 0 0 2px #1a2458,
+    inset 0 0 58px 18px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(80, 104, 200, 0.25),
+    0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+/* Lamp pools pulse in stepped values so the picture stays pixel-still. The
+   light sources already exist in the map; this only lets their warmth breathe. */
+#combat-panel.ff6-menu-host.bg-town[data-town-scene="square"]::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 38% 18%, rgba(236, 166, 74, 0.12), transparent 5%),
+    radial-gradient(circle at 63% 18%, rgba(236, 166, 74, 0.12), transparent 5%),
+    radial-gradient(circle at 31% 84%, rgba(224, 140, 58, 0.08), transparent 6%),
+    radial-gradient(circle at 69% 84%, rgba(224, 140, 58, 0.08), transparent 6%);
+  mix-blend-mode: screen;
+  animation: edgehollow-lamp-breath 3.2s steps(3, end) infinite;
+}
+
+#combat-panel.ff6-menu-host.bg-town[data-town-scene] > * {
+  position: relative;
+  z-index: 1;
+}
+
+#combat-panel.ff6-menu-host.bg-town[data-town-scene="inn"] {
+  --town-scene-size: 145% 145%;
+  --town-scene-position: left 62%;
+}
+
+#combat-panel.ff6-menu-host.bg-town[data-town-scene="temple"] {
+  --town-scene-size: 138% 138%;
+  --town-scene-position: right 18%;
+}
+
+#combat-panel.ff6-menu-host.bg-town[data-town-scene="outfitter"] {
+  --town-scene-size: 148% 148%;
+  --town-scene-position: right bottom;
+}
+
+#combat-panel.ff6-menu-host.bg-town[data-town-scene="guild"] {
+  --town-scene-size: 126% 126%;
+  --town-scene-position: center bottom;
+}
+
+/* The shared FF6 chrome stays blue, but its outer edge picks up the material
+   of the room around it. Combat windows are not descendants of bg-town. */
+#combat-panel.bg-town[data-town-scene="inn"] .ff6-window.standalone {
+  box-shadow: 0 0 0 2px rgba(104, 65, 36, 0.72), 0 12px 22px rgba(0, 0, 0, 0.58);
+}
+
+#combat-panel.bg-town[data-town-scene="temple"] .ff6-window.standalone {
+  box-shadow: 0 0 0 2px rgba(194, 183, 144, 0.68), 0 12px 22px rgba(0, 0, 0, 0.58);
+}
+
+#combat-panel.bg-town[data-town-scene="outfitter"] .ff6-window.standalone {
+  box-shadow: 0 0 0 2px rgba(105, 58, 35, 0.78), 0 12px 22px rgba(0, 0, 0, 0.62);
+}
+
+#combat-panel.bg-town[data-town-scene="guild"] .ff6-window.standalone {
+  box-shadow: 0 0 0 2px rgba(92, 96, 104, 0.72), 0 12px 22px rgba(0, 0, 0, 0.6);
+}
+
+@keyframes edgehollow-lamp-breath {
+  0%,
+  100% {
+    opacity: 0.52;
+  }
+  45% {
+    opacity: 0.78;
+  }
+  70% {
+    opacity: 0.62;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #combat-panel.ff6-menu-host.bg-town[data-town-scene="square"]::before {
+    animation: none;
+    opacity: 0.62;
+  }
+}
