@@ -1,5 +1,26 @@
 /**
- * Locked 24-card Card Trial decks. Do not add a 25th card.
+ * Canonical campaign catalogue for the current two-hero card slice.
+ *
+ * The 24 entries through `improvised-theorem` are the locked Card Trial
+ * decks (`RAT_KING_LIST` / `OLD_MAN_LIST`) that Arena's PoC lobby still
+ * fights with unchanged. The entries after that are Old Man build-exclusive
+ * signature cards added for character build selection (see
+ * `../old-man-builds.ts`) — they are never added to `OLD_MAN_LIST` and never
+ * appear in Arena. `reckoning-ward` is Reckoning Strike's defensive twin
+ * (same-target consume, but banks Barrier and retreats to Back instead of
+ * dealing damage and advancing to Front) — it replaced the Reckoning
+ * build's single `brace-for-it` copy (2026-08-29) so consuming Opened is a
+ * real choice, not the deck's only line of play; see
+ * `docs/design/2026-08-29-old-man-build-selection.md`. That leaves
+ * `brace-for-it` implemented and tested but currently unreachable — not in
+ * any build starter and not an authored floor reward (see
+ * `../campaign-card-rewards.ts`). The next three (`last-litter`,
+ * `feed-the-king`, `one-more-rat`) are Rat King
+ * sacrifice-mechanic cards built around consuming the singleton Rat;
+ * implemented and tested but not yet wired into any deck, pending Rat
+ * King's own build-selection screen. The separate six-school catalogue in
+ * `six-school-cards.ts` remains deferred experimental material, not
+ * campaign authority.
  */
 
 import type { CardDef, CardId, HeroId } from "./types";
@@ -15,6 +36,17 @@ export const CARD_DEFS: Record<CardId, CardDef> = {
     opens: false,
     text: "Deal 5.",
   },
+  "fight-dirty": {
+    id: "fight-dirty",
+    name: "Fight Dirty",
+    cost: 1,
+    hero: "rat-king",
+    target: "single-enemy",
+    consume: "none",
+    opens: false,
+    draft: "dirty-tricks",
+    text: "Reveal 3 Dirty Tricks for the target. Choose 1 and pay its printed cost.",
+  },
   brace: {
     id: "brace",
     name: "Brace",
@@ -23,7 +55,7 @@ export const CARD_DEFS: Record<CardId, CardDef> = {
     target: "none",
     consume: "none",
     opens: false,
-    text: "Gain 6 Guard.",
+    text: "Gain 6 Barrier.",
   },
   "open-the-rank": {
     id: "open-the-rank",
@@ -113,31 +145,31 @@ export const CARD_DEFS: Record<CardId, CardDef> = {
     target: "single-enemy",
     consume: "none",
     opens: false,
-    text: "Deal 7 and gain 8 Guard. Front: +3 damage.",
+    text: "Deal 7 +3 Front. Gain 8 Barrier. Crown target.",
   },
-  staff: {
-    id: "staff",
-    name: "Staff",
+  "the-staff-speaks": {
+    id: "the-staff-speaks",
+    name: "The Staff Speaks",
     cost: 1,
     hero: "old-man",
     target: "single-enemy",
     consume: "none",
     opens: false,
-    text: "Deal 6.",
+    text: "Deal 6. Hush next intent.",
   },
-  ward: {
-    id: "ward",
-    name: "Ward",
+  "pale-ward": {
+    id: "pale-ward",
+    name: "Pale Ward",
     cost: 1,
     hero: "old-man",
     target: "none",
     consume: "none",
     opens: false,
-    text: "Gain 7 Guard.",
+    text: "Gain 7 Barrier.",
   },
-  crack: {
-    id: "crack",
-    name: "Crack",
+  faultline: {
+    id: "faultline",
+    name: "Faultline",
     cost: 1,
     hero: "old-man",
     target: "single-enemy",
@@ -145,9 +177,9 @@ export const CARD_DEFS: Record<CardId, CardDef> = {
     opens: true,
     text: "Deal 5. Open the target.",
   },
-  "split-bone": {
-    id: "split-bone",
-    name: "Split Bone",
+  "marrow-divide": {
+    id: "marrow-divide",
+    name: "Marrow Divide",
     cost: 1,
     hero: "old-man",
     target: "single-enemy",
@@ -165,9 +197,9 @@ export const CARD_DEFS: Record<CardId, CardDef> = {
     opens: false,
     text: "Deal 8. Consume Opened: deal 8 more to that enemy.",
   },
-  "cut-the-line": {
-    id: "cut-the-line",
-    name: "Cut the Line",
+  "sever-the-thread": {
+    id: "sever-the-thread",
+    name: "Sever the Thread",
     cost: 1,
     hero: "old-man",
     target: "single-enemy",
@@ -175,29 +207,29 @@ export const CARD_DEFS: Record<CardId, CardDef> = {
     opens: false,
     text: "Deal 5. Consume Opened: deal 5 to a second enemy.",
   },
-  threshold: {
-    id: "threshold",
-    name: "Threshold",
+  "the-threshold": {
+    id: "the-threshold",
+    name: "The Threshold",
     cost: 1,
     hero: "old-man",
     target: "single-enemy",
     consume: "none",
     opens: false,
-    text: "Deal 5. Front: +4.",
+    text: "Arm an Omen: when the target acts, deal 7 before its intent.",
   },
-  "from-afar": {
-    id: "from-afar",
-    name: "From Afar",
+  "distant-hand": {
+    id: "distant-hand",
+    name: "Distant Hand",
     cost: 1,
     hero: "old-man",
     target: "single-enemy",
     consume: "none",
     opens: false,
-    text: "Deal 5. Back: gain 3 Guard.",
+    text: "Deal 5. Back: gain 3 Barrier.",
   },
-  "parting-blow": {
-    id: "parting-blow",
-    name: "Parting Blow",
+  "parting-word": {
+    id: "parting-word",
+    name: "Parting Word",
     cost: 1,
     hero: "old-man",
     target: "single-enemy",
@@ -205,9 +237,9 @@ export const CARD_DEFS: Record<CardId, CardDef> = {
     opens: false,
     text: "Deal 4, then move to Back.",
   },
-  extinguish: {
-    id: "extinguish",
-    name: "Extinguish",
+  unlight: {
+    id: "unlight",
+    name: "Unlight",
     cost: 2,
     hero: "old-man",
     target: "all-enemies",
@@ -215,21 +247,146 @@ export const CARD_DEFS: Record<CardId, CardDef> = {
     opens: false,
     text: "Deal 4 to every enemy.",
   },
-  "stand-and-die": {
-    id: "stand-and-die",
-    name: "Stand and Die",
+  "last-bastion": {
+    id: "last-bastion",
+    name: "Last Bastion",
     cost: 2,
     hero: "old-man",
     target: "single-enemy",
     consume: "none",
     opens: false,
-    text: "Deal 8 and gain 9 Guard. Front: +3 damage.",
+    text: "Deal 8 and gain 9 Barrier. Front: +3 damage.",
+  },
+  "improvised-theorem": {
+    id: "improvised-theorem",
+    name: "Improvised Theorem",
+    cost: 1,
+    hero: "old-man",
+    target: "single-enemy",
+    consume: "none",
+    opens: false,
+    draft: "arcane-responses",
+    text: "Reveal 3 Arcane Responses for the target. Choose 1 and pay its printed cost.",
+  },
+
+  // --- Old Man build-exclusive signature cards ----------------------------
+  // Not part of OLD_MAN_LIST / Arena. Owned only by a campaign save whose
+  // Old Man build includes them (see ../old-man-builds.ts).
+  "veil-of-quiet": {
+    id: "veil-of-quiet",
+    name: "Veil of Quiet",
+    cost: 1,
+    hero: "old-man",
+    target: "single-enemy",
+    consume: "none",
+    opens: false,
+    text: "Hush the target's next intent. Gain 3 Barrier.",
+  },
+  "the-quiet-after": {
+    id: "the-quiet-after",
+    name: "The Quiet After",
+    cost: 1,
+    hero: "old-man",
+    target: "single-enemy",
+    consume: "none",
+    opens: false,
+    text: "Deal 3. Already Hushed: deal 5 more instead.",
+  },
+  "silence-the-hall": {
+    id: "silence-the-hall",
+    name: "Silence the Hall",
+    cost: 2,
+    hero: "old-man",
+    target: "all-enemies",
+    consume: "none",
+    opens: false,
+    text: "Hush every enemy's next intent.",
+  },
+  "hasten-the-hour": {
+    id: "hasten-the-hour",
+    name: "Hasten the Hour",
+    cost: 1,
+    hero: "old-man",
+    target: "single-enemy",
+    consume: "none",
+    opens: false,
+    text: "Armed Omen on the target: trigger it, then deal 3. Otherwise, deal 5.",
+  },
+  "the-final-word": {
+    id: "the-final-word",
+    name: "The Final Word",
+    cost: 2,
+    hero: "old-man",
+    target: "none",
+    consume: "none",
+    opens: false,
+    text: "Gain 5 Barrier. Armed Omen: gain 5 more.",
+  },
+  "reckoning-strike": {
+    id: "reckoning-strike",
+    name: "Reckoning Strike",
+    cost: 1,
+    hero: "old-man",
+    target: "single-enemy",
+    consume: "same-target",
+    opens: false,
+    text: "Deal 5. Consume Opened: move to Front and deal 5 more.",
+  },
+  "reckoning-ward": {
+    id: "reckoning-ward",
+    name: "Reckoning Ward",
+    cost: 1,
+    hero: "old-man",
+    target: "single-enemy",
+    consume: "same-target",
+    opens: false,
+    text: "Gain 4 Barrier. Consume Opened: move to Back and gain 6 more.",
+  },
+  "brace-for-it": {
+    id: "brace-for-it",
+    name: "Brace for It",
+    cost: 2,
+    hero: "old-man",
+    target: "none",
+    consume: "none",
+    opens: false,
+    text: "Gain 12 Barrier.",
+  },
+  "last-litter": {
+    id: "last-litter",
+    name: "Last Litter",
+    cost: 1,
+    hero: "rat-king",
+    target: "single-enemy",
+    consume: "none",
+    opens: false,
+    text: "Deal 5. If Rat exists, consume it: deal 8 more.",
+  },
+  "feed-the-king": {
+    id: "feed-the-king",
+    name: "Feed the King",
+    cost: 1,
+    hero: "rat-king",
+    target: "single-enemy",
+    consume: "none",
+    opens: false,
+    text: "Crown the target. Gain 4 Barrier. If Rat exists, consume it: gain 10 Barrier instead.",
+  },
+  "one-more-rat": {
+    id: "one-more-rat",
+    name: "One More Rat",
+    cost: 2,
+    hero: "rat-king",
+    target: "single-enemy",
+    consume: "none",
+    opens: false,
+    text: "Deal 6. If Rat exists, consume it: deal 6 more and spawn a new Rat on your row.",
   },
 };
 
 export const RAT_KING_LIST: CardId[] = [
   "nip",
-  "nip",
+  "fight-dirty",
   "brace",
   "open-the-rank",
   "from-the-dark",
@@ -243,18 +400,18 @@ export const RAT_KING_LIST: CardId[] = [
 ];
 
 export const OLD_MAN_LIST: CardId[] = [
-  "staff",
-  "staff",
-  "ward",
-  "crack",
-  "split-bone",
+  "the-staff-speaks",
+  "improvised-theorem",
+  "pale-ward",
+  "faultline",
+  "marrow-divide",
   "full-stop",
-  "cut-the-line",
-  "threshold",
-  "from-afar",
-  "parting-blow",
-  "extinguish",
-  "stand-and-die",
+  "sever-the-thread",
+  "the-threshold",
+  "distant-hand",
+  "parting-word",
+  "unlight",
+  "last-bastion",
 ];
 
 export function deckListFor(hero: HeroId): CardId[] {

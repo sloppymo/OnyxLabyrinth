@@ -4,15 +4,22 @@
  */
 
 import { CARD_DEFS, deckListFor } from "./cards";
+import { applyDeclarativeEffects } from "./effects";
 import { encounterById } from "./encounters";
-import { createShuffleStream, shuffleInPlace } from "./rng";
+import { createShuffleStream, resumeShuffleStream, shuffleInPlace } from "./rng";
+import { drawDraftChoices } from "./drafts";
+import { hushHalves } from "./plan";
 import type {
+  CardDef,
   CardId,
   CardInstance,
   CardPlayTargets,
+  CardTrialDeckEntry,
+  CardTrialRowMode,
   CardTrialEvent,
   CardTrialPlayerView,
   CardTrialResult,
+  CardTrialRuleset,
   CardTrialState,
   CardTrialTelemetry,
   ConsumeKind,
@@ -24,10 +31,13 @@ import type {
   Intent,
   IntentPreview,
   OpenedRecord,
+  NoRowIntentTargeting,
   PlayCardResult,
   PlayerRow,
   QueueActor,
   ShuffleStream,
+  DraftChoiceId,
+  DraftView,
 } from "./types";
 import { DRAW_PER_TURN, ENERGY_PER_TURN, HERO_MAX_HP, MOVE_COST } from "./types";
 
@@ -55,17 +65,74 @@ function otherHero(id: HeroId): HeroId {
   return id === RAT_KING ? OLD_MAN : RAT_KING;
 }
 
+function rowMode(s: CardTrialState): CardTrialRowMode {
+  return s.ruleset?.rowMode ?? "full";
+}
+
+function noRowIntentTargeting(s: CardTrialState): NoRowIntentTargeting {
+  return s.ruleset?.noRowIntentTargeting ?? "lowest-hp";
+}
+
 function oppositeRow(row: PlayerRow): PlayerRow {
   return row === "front" ? "back" : "front";
 }
 
-function mintUid(s: CardTrialState, defId: CardId): string {
+function mintUid(s: CardTrialState, defId: string): string {
   s.uidSeq += 1;
   return `${defId}#${s.uidSeq}`;
 }
 
-function buildDeck(s: CardTrialState, hero: HeroId): CardInstance[] {
-  return deckListFor(hero).map((defId) => ({ uid: mintUid(s, defId), defId }));
+export function resolveCardDef(s: CardTrialState, id: string): CardDef {
+  const production = (CARD_DEFS as Record<string, CardDef | undefined>)[id];
+  if (production) return production;
+  const extra = s.ruleset?.cards[id];
+  if (extra) {
+    return {
+      id: extra.id as CardId,
+      name: extra.name,
+      cost: extra.cost,
+      hero: extra.hero,
+      target: extra.target,
+      consume: extra.consume,
+      opens: extra.opens,
+      text: extra.text,
+    };
+  }
+  throw new Error(`Unknown Card Trial card "${id}"`);
+}
+
+function isKnownCard(s: CardTrialState, id: string): boolean {
+  return Object.prototype.hasOwnProperty.call(CARD_DEFS, id) || !!s.ruleset?.cards[id];
+}
+
+function ensureCardStat(
+  s: CardTrialState,
+  id: string
+): { drawn: number; played: number; discarded: number } {
+  const stats = s.telemetry.cardStats as Record<string, { drawn: number; played: number; discarded: number }>;
+  if (!stats[id]) stats[id] = { drawn: 0, played: 0, discarded: 0 };
+  return stats[id];
+}
+
+function bumpCardStat(
+  s: CardTrialState,
+  id: string,
+  field: "drawn" | "played" | "discarded"
+): void {
+  ensureCardStat(s, id)[field] += 1;
+}
+
+function deckDefId(entry: CardTrialDeckEntry): string {
+  return typeof entry === "string" ? entry : entry.defId;
+}
+
+function buildDeck(s: CardTrialState, list: readonly CardTrialDeckEntry[]): CardInstance[] {
+  return list.map((entry) => {
+    const defId = deckDefId(entry);
+    if (!isKnownCard(s, defId)) throw new Error(`Unknown Card Trial card "${defId}"`);
+    const uid = typeof entry === "string" ? mintUid(s, defId) : entry.uid;
+    return { uid, defId: defId as CardId };
+  });
 }
 
 function emptyTelemetry(): CardTrialTelemetry {
@@ -128,6 +195,7 @@ function buildQueue(enemies: EnemyState[]): QueueActor[] {
 }
 
 function enterRow(s: CardTrialState, hero: HeroState, row: PlayerRow): void {
+  if (rowMode(s) === "none") return;
   if (hero.row === row) return;
   s.entryClock += 1;
   hero.row = row;
@@ -136,6 +204,20 @@ function enterRow(s: CardTrialState, hero: HeroState, row: PlayerRow): void {
 
 function currentIntent(enemy: EnemyState): Intent {
   return enemy.cycle[enemy.intentIndex % enemy.cycle.length]!;
+}
+
+/** Hush is a one-shot intent modifier, not a damage-over-time stack. */
+function effectiveIntentDamage(enemy: EnemyState): number {
+  const raw = currentIntent(enemy).damage;
+  return enemy.hushed ? hushHalves(raw) : raw;
+}
+
+function crownRedirects(s: CardTrialState, enemy: EnemyState, intent = currentIntent(enemy)): boolean {
+  return s.crownedEnemyId === enemy.id && intent.kind === "row" && s.heroes[RAT_KING].hp > 0;
+}
+
+function crownPaysTribute(s: CardTrialState, enemy: EnemyState, intent = currentIntent(enemy)): boolean {
+  return s.crownedEnemyId === enemy.id && intent.kind !== "row" && s.heroes[RAT_KING].hp > 0;
 }
 
 function advanceIntent(s: CardTrialState, enemy: EnemyState): void {
@@ -159,6 +241,17 @@ export function singleTargetInRow(s: CardTrialState, row: PlayerRow): HeroState 
     return b.rowEnteredAt - a.rowEnteredAt;
   });
   return here[0]!;
+}
+
+/** Deterministic replacement for a row-targeted single hit in the no-row arm. */
+function singleTargetWithoutRows(s: CardTrialState): HeroState | null {
+  const living = livingHeroes(s);
+  if (living.length === 0) return null;
+  let target = living[0]!;
+  for (const candidate of living.slice(1)) {
+    if (candidate.hp < target.hp) target = candidate;
+  }
+  return target;
 }
 
 function applyDamageToHero(
@@ -202,6 +295,11 @@ function dealToEnemy(
     if (s.opened?.enemyId === enemy.id) {
       finishOpened(s, { diedUnconsumed: s.opened.createdBy !== undefined && true, consumedBy: null });
     }
+    if (s.omen?.targetId === enemy.id) {
+      events.push({ type: "omen-fizzled", targetId: enemy.id });
+      s.omen = null;
+    }
+    clearCrown(s, enemy.id, "defeated", events);
   }
   return dealt;
 }
@@ -239,11 +337,228 @@ function applyOpened(s: CardTrialState, enemy: EnemyState, by: HeroId, events: C
   events.push({ type: "open", targetId: enemy.id });
 }
 
+/**
+ * Rat King's single public subject. Keeping the id on the fight (rather than
+ * sprinkling booleans over enemies) makes replacement and defeat explicit and
+ * guarantees that the forecast can never show two crowns at once.
+ */
+function applyCrown(s: CardTrialState, enemy: EnemyState, events: CardTrialEvent[]): void {
+  if (enemy.hp <= 0 || s.crownedEnemyId === enemy.id) return;
+  if (s.crownedEnemyId) {
+    events.push({ type: "crown-cleared", targetId: s.crownedEnemyId, reason: "replaced" });
+  }
+  s.crownedEnemyId = enemy.id;
+  events.push({ type: "crowned", targetId: enemy.id });
+}
+
+function clearCrown(
+  s: CardTrialState,
+  enemyId: string,
+  reason: "replaced" | "defeated",
+  events: CardTrialEvent[]
+): void {
+  if (s.crownedEnemyId !== enemyId) return;
+  s.crownedEnemyId = null;
+  events.push({ type: "crown-cleared", targetId: enemyId, reason });
+}
+
+function applyHush(enemy: EnemyState, events: CardTrialEvent[]): void {
+  enemy.hushed = true;
+  events.push({ type: "hush-applied", targetId: enemy.id });
+}
+
+function armOmen(
+  s: CardTrialState,
+  enemy: EnemyState,
+  by: HeroId,
+  events: CardTrialEvent[]
+): void {
+  s.omen = { targetId: enemy.id, createdBy: by, damage: 7 };
+  events.push({ type: "omen-armed", targetId: enemy.id, damage: 7 });
+}
+
+/**
+ * Consumes and resolves the Omen armed on `enemy`, if any. Shared by the
+ * automatic pre-intent trigger and any card (e.g. `hasten-the-hour`) that
+ * manually triggers it. Returns whether an Omen actually fired.
+ */
+function triggerOmenOn(
+  s: CardTrialState,
+  enemy: EnemyState,
+  events: CardTrialEvent[]
+): boolean {
+  const armed = s.omen?.targetId === enemy.id ? s.omen : null;
+  if (!armed) return false;
+  s.omen = null;
+  events.push({ type: "omen-triggered", targetId: enemy.id, damage: armed.damage });
+  dealToEnemy(s, enemy, armed.damage, "omen", events);
+  return true;
+}
+
+function openDraft(
+  s: CardTrialState,
+  hero: HeroState,
+  sourceCard: CardInstance,
+  pool: NonNullable<CardDef["draft"]>,
+  target: EnemyState,
+  events: CardTrialEvent[]
+): void {
+  const draftStreamState = s.draftStream.getState();
+  const choices = drawDraftChoices(pool, s.draftStream);
+  s.draftRollback = {
+    sourceCard,
+    energy: hero.energy,
+    draftStreamState,
+  };
+  s.draft = {
+    heroId: hero.id,
+    sourceId: sourceCard.defId,
+    pool,
+    targetId: target.id,
+    choices,
+  };
+  events.push({
+    type: "draft-opened",
+    actorId: hero.id,
+    sourceId: sourceCard.defId,
+    targetId: target.id,
+    choices: s.draft.choices.map((choice) => ({ ...choice })),
+  });
+}
+
+function restoreDraftOfferLost(
+  s: CardTrialState,
+  hero: HeroState,
+  draft: NonNullable<CardTrialState["draft"]>
+): PlayCardResult {
+  const rollback = s.draftRollback;
+  const events: CardTrialEvent[] = [
+    {
+      type: "offer-lost",
+      actorId: hero.id,
+      sourceId: draft.sourceId,
+      targetId: draft.targetId,
+    },
+  ];
+  if (rollback) {
+    s.draftStream = resumeShuffleStream(rollback.draftStreamState);
+    hero.energy = rollback.energy + CARD_DEFS[draft.sourceId].cost;
+    const discardIdx = hero.discard.findIndex((card) => card.uid === rollback.sourceCard.uid);
+    if (discardIdx >= 0) hero.discard.splice(discardIdx, 1);
+    if (!hero.hand.some((card) => card.uid === rollback.sourceCard.uid)) {
+      hero.hand.push(rollback.sourceCard);
+    }
+    const stats = s.telemetry.cardStats[draft.sourceId];
+    if (stats && stats.played > 0) stats.played -= 1;
+  }
+  s.draft = null;
+  s.draftRollback = null;
+  s.events.push(...events);
+  return { ok: false, reason: "OFFER LOST", events };
+}
+
+function biteWithRat(
+  s: CardTrialState,
+  target: EnemyState,
+  amount: number,
+  events: CardTrialEvent[]
+): void {
+  if (!s.rat || target.hp <= 0) return;
+  events.push({ type: "rat-bite", targetId: target.id, damage: amount });
+  dealToEnemy(s, target, amount, RAT_KING, events);
+}
+
+function resolveDraftChoiceEffect(
+  s: CardTrialState,
+  hero: HeroState,
+  choiceId: DraftChoiceId,
+  target: EnemyState,
+  events: CardTrialEvent[]
+): void {
+  const hit = (amount: number) => dealToEnemy(s, target, amount, hero.id, events);
+  switch (choiceId) {
+    case "low-blow": {
+      const locked = s.opened?.enemyId === target.id;
+      if (locked) consumeOpened(s, target, hero.id, events);
+      hit(5 + (locked ? 4 : 0));
+      break;
+    }
+    case "pocket-sand":
+      if (target.hp > 0) applyHush(target, events);
+      if (rowMode(s) !== "none") {
+        enterRow(s, hero, "back");
+        events.push({ type: "hero-move", actorId: hero.id, row: "back", via: "card" });
+        if (s.openTurn) s.openTurn.cardPrintedMovement = true;
+      }
+      break;
+    case "rat-in-the-sleeve":
+      if (s.rat) biteWithRat(s, target, 4, events);
+      else {
+        s.rat = { row: hero.row };
+        events.push({ type: "spawn-rat", row: hero.row });
+      }
+      break;
+    case "royal-ambush":
+      if (target.hp > 0) applyCrown(s, target, events);
+      if (target.hp > 0 && s.rat) biteWithRat(s, target, 3, events);
+      break;
+    case "feast-on-the-fallen": {
+      const locked = target.hp > 0 && s.opened?.enemyId === target.id;
+      if (locked) consumeOpened(s, target, hero.id, events);
+      gainGuard(s, hero, locked ? 5 : 2, events);
+      break;
+    }
+    case "silence-the-room":
+      if (target.hp > 0) applyHush(target, events);
+      break;
+    case "distant-judgment":
+      hit(4);
+      gainGuard(s, hero, 4, events);
+      break;
+    case "fracture-script":
+      if (target.hp > 0) applyOpened(s, target, hero.id, events);
+      break;
+    case "late-verdict":
+      if (target.hp > 0) {
+        if (s.omen) applyHush(target, events);
+        else armOmen(s, target, hero.id, events);
+      }
+      break;
+    case "unmake-the-threat": {
+      const locked = s.opened?.enemyId === target.id;
+      if (locked) consumeOpened(s, target, hero.id, events);
+      hit(6);
+      break;
+    }
+  }
+}
+
 function consumeOpened(s: CardTrialState, enemy: EnemyState, by: HeroId, events: CardTrialEvent[]): void {
   if (!s.opened || s.opened.enemyId !== enemy.id) return;
   events.push({ type: "consume", targetId: enemy.id });
   s.consumedThisTurn = true;
   finishOpened(s, { diedUnconsumed: false, consumedBy: by });
+}
+
+/** Lock Opened before any damage so a lethal base hit cannot drop the rider. */
+function lockConsumeIfArmed(
+  s: CardTrialState,
+  enemy: EnemyState,
+  by: HeroId,
+  consumeNow: boolean,
+  events: CardTrialEvent[]
+): boolean {
+  if (!consumeNow) return false;
+  if (!s.opened || s.opened.enemyId !== enemy.id) return false;
+  consumeOpened(s, enemy, by, events);
+  return true;
+}
+
+/** Consume the singleton Rat. Currently the only way it can ever leave the field. */
+function consumeRat(s: CardTrialState, events: CardTrialEvent[]): void {
+  if (!s.rat) return;
+  s.rat = null;
+  events.push({ type: "rat-consumed" });
 }
 
 function gainGuard(s: CardTrialState, hero: HeroState, amount: number, events: CardTrialEvent[]): void {
@@ -261,16 +576,16 @@ function drawOne(s: CardTrialState, hero: HeroState): CardInstance | null {
   }
   const card = hero.draw.shift();
   if (!card) return null;
-  s.telemetry.cardStats[card.defId].drawn += 1;
+  bumpCardStat(s, card.defId, "drawn");
   return card;
 }
 
 function legalConsume(
   s: CardTrialState,
-  defId: CardId,
+  defId: string,
   targetId: string | undefined
 ): boolean {
-  const def = CARD_DEFS[defId];
+  const def = resolveCardDef(s, defId);
   if (def.consume === "none") return false;
   if (!s.opened) return false;
   if (def.consume === "second-enemy") {
@@ -284,7 +599,7 @@ function legalConsume(
 function consumeCardsInHand(s: CardTrialState, hero: HeroState): CardId[] {
   const out: CardId[] = [];
   for (const c of hero.hand) {
-    const def = CARD_DEFS[c.defId];
+    const def = resolveCardDef(s, c.defId);
     if (def.consume === "none") continue;
     if (!s.opened) continue;
     if (def.consume === "second-enemy") {
@@ -305,7 +620,7 @@ function closeOpenTurn(s: CardTrialState, discarded: CardId[], energyRemaining: 
   rec.hpLostAfter = 0;
   if (
     rec.paidMove &&
-    discarded.some((id) => CARD_DEFS[id].cost === 1)
+    discarded.some((id) => resolveCardDef(s, id).cost === 1)
   ) {
     s.telemetry.moveOpportunityCost += 1;
   }
@@ -327,6 +642,7 @@ function closeOpenTurn(s: CardTrialState, discarded: CardId[], energyRemaining: 
 }
 
 export function startHeroCardTurn(s: CardTrialState, heroId: HeroId): void {
+  s.draft = null;
   const hero = s.heroes[heroId];
   const leftoverGuard = hero.guard;
   hero.guard = 0;
@@ -356,7 +672,7 @@ export function startHeroCardTurn(s: CardTrialState, heroId: HeroId): void {
     enemyHp: Object.fromEntries(s.enemies.map((e) => [e.id, e.hp])),
     openedTarget: s.opened?.enemyId ?? null,
     ratRow: s.rat?.row ?? null,
-    pendingIntents: livingEnemies(s).map((e) => formatIntentLabel(e)),
+    pendingIntents: livingEnemies(s).map((e) => formatIntentLabel(e, s)),
     actions: [],
     cardsPlayed: [],
     paidMove: false,
@@ -370,16 +686,34 @@ export function startHeroCardTurn(s: CardTrialState, heroId: HeroId): void {
   };
 }
 
-function formatIntentLabel(e: EnemyState): string {
+function formatIntentLabel(e: EnemyState, s?: CardTrialState): string {
   const intent = currentIntent(e);
+  const damage = effectiveIntentDamage(e);
+  const redirected = !!s && crownRedirects(s, e, intent);
+  const tribute = !!s && crownPaysTribute(s, e, intent);
+  const suffix = tribute ? " · tribute +2 Barrier" : "";
+  if (s && rowMode(s) === "none") {
+    if (intent.kind === "row") {
+      return redirected
+        ? `${e.name.toUpperCase()} — Rat King (CROWN) — ${damage}`
+        : `${e.name.toUpperCase()} — one hero — ${damage}`;
+    }
+    if (intent.kind === "both-rows") {
+      return `${e.name.toUpperCase()} — both heroes — ${damage}${suffix}`;
+    }
+    const who = intent.heroId === RAT_KING ? "Rat King" : "Old Man";
+    return `${e.name.toUpperCase()} — ${who} — ${damage}${suffix}`;
+  }
   if (intent.kind === "row") {
-    return `${e.name.toUpperCase()} — our ${intent.row === "front" ? "Front" : "Back"} — ${intent.damage}`;
+    return redirected
+      ? `${e.name.toUpperCase()} — Rat King (CROWN) — ${damage}`
+      : `${e.name.toUpperCase()} — our ${intent.row === "front" ? "Front" : "Back"} — ${damage}`;
   }
   if (intent.kind === "both-rows") {
-    return `${e.name.toUpperCase()} — both rows — ${intent.damage} each`;
+    return `${e.name.toUpperCase()} — both rows — ${damage} each${suffix}`;
   }
   const who = intent.heroId === RAT_KING ? "Rat King" : "Old Man";
-  return `${e.name.toUpperCase()} — ${who} in ${intent.row === "front" ? "Front" : "Back"} — ${intent.damage}`;
+  return `${e.name.toUpperCase()} — ${who} in ${intent.row === "front" ? "Front" : "Back"} — ${damage}${suffix}`;
 }
 
 function checkEnd(s: CardTrialState): boolean {
@@ -467,10 +801,44 @@ function resolveEnemyIntent(s: CardTrialState, enemyId: string): CardTrialEvent[
     if (enemy) intentRecord(s, enemy).canceledDead += 1;
     return events;
   }
+
+  // An Omen resolves before the marked enemy's next intent. If the prophecy
+  // kills its target, that intent never happens; this is the payoff for
+  // committing a turn and occupying the single visible Omen slot.
+  if (triggerOmenOn(s, enemy, events)) {
+    if (enemy.hp <= 0) {
+      advanceIntent(s, enemy);
+      s.events.push(...events);
+      return events;
+    }
+  }
+
   const rec = intentRecord(s, enemy);
   rec.resolved += 1;
   const intent = currentIntent(enemy);
-  events.push({ type: "banner", text: formatIntentLabel(enemy), actorId: enemy.id });
+  const intentDamage = effectiveIntentDamage(enemy);
+  const hushActive = !!enemy.hushed;
+  if (hushActive) {
+    events.push({
+      type: "hush-triggered",
+      targetId: enemy.id,
+      rawDamage: intent.damage,
+      damage: intentDamage,
+    });
+  }
+  events.push({ type: "banner", text: formatIntentLabel(enemy, s), actorId: enemy.id });
+  if (hushActive) enemy.hushed = false;
+
+  // A Crowned enemy's ordinary row strike is redirected to the King. Other
+  // intent shapes keep their authored target geometry, but the sovereign pays
+  // the King a small visible tribute in Barrier when they resolve.
+  const redirectsToKing = crownRedirects(s, enemy, intent);
+  if (crownPaysTribute(s, enemy, intent)) {
+    const king = s.heroes[RAT_KING];
+    king.guard += 2;
+    events.push({ type: "guard", actorId: RAT_KING, amount: 2 });
+    events.push({ type: "crown-tribute", targetId: RAT_KING, amount: 2, sourceId: enemy.id });
+  }
 
   const hitRow = (row: PlayerRow, damage: number, wide: boolean) => {
     const here = heroesInRow(s, row);
@@ -487,18 +855,60 @@ function resolveEnemyIntent(s: CardTrialState, enemyId: string): CardTrialEvent[
     if (target) applyDamageToHero(s, target, damage, events, enemy.id);
   };
 
-  if (intent.kind === "row") {
-    hitRow(intent.row, intent.damage, false);
+  if (rowMode(s) === "none") {
+    if (intent.kind === "row") {
+      if (redirectsToKing) {
+        applyDamageToHero(s, s.heroes[RAT_KING], intentDamage, events, enemy.id);
+      } else if (noRowIntentTargeting(s) === "both-heroes") {
+        const living = livingHeroes(s);
+        if (living.length === 0) {
+          events.push({ type: "intent-miss", enemyId: enemy.id });
+          rec.missedEmpty += 1;
+        } else {
+          for (const h of living) applyDamageToHero(s, h, intentDamage, events, enemy.id);
+        }
+      } else {
+        const target = singleTargetWithoutRows(s);
+        if (!target) {
+          events.push({ type: "intent-miss", enemyId: enemy.id });
+          rec.missedEmpty += 1;
+        } else {
+          applyDamageToHero(s, target, intentDamage, events, enemy.id);
+        }
+      }
+    } else if (intent.kind === "both-rows") {
+      const living = livingHeroes(s);
+      if (living.length === 0) {
+        events.push({ type: "intent-miss", enemyId: enemy.id });
+        rec.missedEmpty += 1;
+      } else {
+        for (const h of living) applyDamageToHero(s, h, intentDamage, events, enemy.id);
+      }
+    } else {
+      const hero = s.heroes[intent.heroId];
+      if (hero.hp <= 0) {
+        events.push({ type: "intent-miss", enemyId: enemy.id });
+        rec.missedEmpty += 1;
+      } else {
+        applyDamageToHero(s, hero, intentDamage, events, enemy.id);
+      }
+    }
+  } else if (intent.kind === "row") {
+    if (redirectsToKing) {
+      applyDamageToHero(s, s.heroes[RAT_KING], intentDamage, events, enemy.id);
+    } else {
+    hitRow(intent.row, intentDamage, false);
+    }
   } else if (intent.kind === "both-rows") {
-    hitRow("front", intent.damage, true);
-    hitRow("back", intent.damage, true);
+    hitRow("front", intentDamage, true);
+    hitRow("back", intentDamage, true);
   } else {
     const hero = s.heroes[intent.heroId];
     if (hero.hp <= 0 || hero.row !== intent.row) {
       events.push({ type: "intent-miss", enemyId: enemy.id });
       rec.missedEmpty += 1;
     } else {
-      applyDamageToHero(s, hero, intent.damage, events, enemy.id);
+      applyDamageToHero(s, hero, intentDamage, events, enemy.id);
     }
   }
 
@@ -507,19 +917,141 @@ function resolveEnemyIntent(s: CardTrialState, enemyId: string): CardTrialEvent[
   return events;
 }
 
-export function createFight(
-  fightId: number,
-  opts?: { seed?: number; telemetry?: CardTrialTelemetry }
-): CardTrialState {
-  const enc = encounterById(fightId);
-  const seed = opts?.seed ?? 1;
+export interface AssembleFightInput {
+  fightId: number;
+  fightName: string;
+  seed: number;
+  enemies: ReadonlyArray<Omit<EnemyState, "hp" | "intentIndex">>;
+  decks: Record<HeroId, readonly CardTrialDeckEntry[]>;
+  telemetry?: CardTrialTelemetry;
+  setup?: FightSetup;
+  ruleset?: CardTrialRuleset | null;
+}
+
+export interface FightSetup {
+  rows?: Partial<Record<HeroId, PlayerRow>>;
+  hp?: Partial<Record<HeroId, number>>;
+  rat?: { row: PlayerRow } | null;
+  opened?: { enemyId: string; createdBy: HeroId } | null;
+  crowned?: string | null;
+  hushed?: Record<string, boolean>;
+  omen?: { targetId: string; createdBy: HeroId; damage?: number } | null;
+  enemyHp?: Record<string, number>;
+  intentIndex?: Record<string, number>;
+  hands?: Partial<Record<HeroId, readonly string[]>>;
+}
+
+function applyFightSetup(s: CardTrialState, setup: FightSetup): void {
+  if (setup.rows) {
+    for (const id of [RAT_KING, OLD_MAN] as const) {
+      const row = setup.rows[id];
+      if (row) enterRow(s, s.heroes[id], row);
+    }
+  }
+  if (setup.hp) {
+    for (const id of [RAT_KING, OLD_MAN] as const) {
+      const hp = setup.hp[id];
+      if (hp !== undefined) {
+        s.heroes[id].hp = Math.max(0, Math.min(s.heroes[id].maxHp, hp));
+        s.hpAtHeroTurnEnd[id] = s.heroes[id].hp;
+      }
+    }
+  }
+  if (setup.rat !== undefined) {
+    s.rat = setup.rat
+      ? { row: rowMode(s) === "none" ? "front" : setup.rat.row }
+      : null;
+  }
+  if (setup.enemyHp) {
+    for (const e of s.enemies) {
+      const hp = setup.enemyHp[e.id];
+      if (hp !== undefined) e.hp = Math.max(0, Math.min(e.maxHp, hp));
+    }
+  }
+  if (setup.intentIndex) {
+    for (const e of s.enemies) {
+      const idx = setup.intentIndex[e.id];
+      if (idx !== undefined) e.intentIndex = idx;
+    }
+  }
+  if (setup.opened !== undefined) {
+    if (!setup.opened) s.opened = null;
+    else {
+      const target = enemyById(s, setup.opened.enemyId);
+      if (!target || target.hp <= 0) {
+        throw new Error(`Opened setup target "${setup.opened.enemyId}" is missing or dead`);
+      }
+      s.opened = {
+        enemyId: setup.opened.enemyId,
+        createdBy: setup.opened.createdBy,
+        createdAtSlot: s.slotCounter,
+        movedBeforeConsume: false,
+      };
+    }
+  }
+  if (setup.crowned !== undefined) {
+    if (!setup.crowned) s.crownedEnemyId = null;
+    else {
+      const target = enemyById(s, setup.crowned);
+      if (!target || target.hp <= 0) {
+        throw new Error(`Crowned setup target "${setup.crowned}" is missing or dead`);
+      }
+      s.crownedEnemyId = target.id;
+    }
+  }
+  if (setup.hushed) {
+    for (const e of s.enemies) {
+      if (setup.hushed[e.id] !== undefined) e.hushed = !!setup.hushed[e.id];
+    }
+  }
+  if (setup.omen !== undefined) {
+    if (!setup.omen) s.omen = null;
+    else {
+      const target = enemyById(s, setup.omen.targetId);
+      if (!target || target.hp <= 0) {
+        throw new Error(`Omen setup target "${setup.omen.targetId}" is missing or dead`);
+      }
+      s.omen = {
+        targetId: target.id,
+        createdBy: setup.omen.createdBy,
+        damage: setup.omen.damage ?? 7,
+      };
+    }
+  }
+}
+
+function applyForcedHands(s: CardTrialState, hands: NonNullable<FightSetup["hands"]>): void {
+  for (const id of [RAT_KING, OLD_MAN] as const) {
+    const wanted = hands[id];
+    if (!wanted) continue;
+    const hero = s.heroes[id];
+    hero.discard.push(...hero.hand);
+    hero.hand = [];
+    for (const defId of wanted) {
+      const card = pullFromPiles(hero, defId);
+      if (!card) throw new Error(`Forced hand missing ${defId} for ${id}`);
+      hero.hand.push(card);
+    }
+    if (s.openTurn && s.openTurn.hero === id) {
+      s.openTurn.startingHand = hero.hand.map((c) => c.defId);
+    }
+  }
+}
+
+/**
+ * Shared fight assembler. Production `createFight` and the headless sim factory
+ * both go through here so custom decks cannot drift off the locked init path.
+ */
+export function assembleFight(input: AssembleFightInput): CardTrialState {
+  const seed = input.seed;
+  const fightId = input.fightId;
   const streams: Record<HeroId, ShuffleStream> = {
     "rat-king": createShuffleStream(seed * 17 + fightId * 31 + 3),
     "old-man": createShuffleStream(seed * 19 + fightId * 37 + 7),
   };
   const s: CardTrialState = {
     fightId,
-    fightName: enc.name,
+    fightName: input.fightName,
     seed,
     round: 1,
     heroes: {
@@ -552,19 +1084,29 @@ export function createFight(
         paidMoveUsed: false,
       },
     },
-    enemies: enc.enemies.map((e) => ({ ...e, hp: e.maxHp, intentIndex: 0 })),
+    enemies: input.enemies.map((e) => ({
+      ...e,
+      spriteId: e.spriteId || "training-dummy",
+      hp: e.maxHp,
+      intentIndex: 0,
+    })),
     opened: null,
+    omen: null,
+    draft: null,
+    crownedEnemyId: null,
     rat: null,
     queue: [],
     queueIndex: -1,
     phase: "hero-turn",
     result: null,
     streams,
+    draftStream: createShuffleStream(seed * 41 + fightId * 59 + 13),
+    draftRollback: null,
     entryClock: 2,
     slotCounter: 0,
     uidSeq: 0,
     events: [],
-    telemetry: opts?.telemetry ?? emptyTelemetry(),
+    telemetry: input.telemetry ?? emptyTelemetry(),
     openTurn: null,
     openedAtTurnStart: null,
     consumeCardsAtTurnStart: [],
@@ -572,23 +1114,63 @@ export function createFight(
     consumeAttemptedThisTurn: false,
     lastHeroToAct: null,
     hpAtHeroTurnEnd: { "rat-king": HERO_MAX_HP, "old-man": HERO_MAX_HP },
+    ruleset: input.ruleset ?? null,
   };
+  if (s.ruleset) {
+    for (const id of Object.keys(s.ruleset.cards)) ensureCardStat(s, id);
+  }
+  if (rowMode(s) === "none") {
+    // Keep the legacy row fields populated for structural compatibility, but
+    // expose one inert location to policies and ignore all row transitions.
+    s.heroes[RAT_KING].row = "front";
+    s.heroes[OLD_MAN].row = "front";
+    s.heroes[RAT_KING].rowEnteredAt = 1;
+    s.heroes[OLD_MAN].rowEnteredAt = 1;
+  }
   s.queue = buildQueue(s.enemies);
   for (const heroId of [RAT_KING, OLD_MAN] as const) {
-    const deck = buildDeck(s, heroId);
+    const deck = buildDeck(s, input.decks[heroId]);
     shuffleInPlace(deck, s.streams[heroId]);
     s.heroes[heroId].draw = deck;
   }
+  if (input.setup) applyFightSetup(s, input.setup);
   markIntentShown(s);
   continueInitiative(s);
+  if (input.setup?.hands) applyForcedHands(s, input.setup.hands);
+  if (s.openTurn) {
+    s.openTurn.hp = s.heroes[s.openTurn.hero].hp;
+    s.openTurn.partnerHp = s.heroes[otherHero(s.openTurn.hero)].hp;
+    s.openTurn.row = s.heroes[s.openTurn.hero].row;
+    s.openTurn.openedTarget = s.opened?.enemyId ?? null;
+    s.openTurn.ratRow = s.rat?.row ?? null;
+    s.openTurn.enemyHp = Object.fromEntries(s.enemies.map((e) => [e.id, e.hp]));
+  }
   return s;
+}
+
+export function createFight(
+  fightId: number,
+  opts?: { seed?: number; telemetry?: CardTrialTelemetry }
+): CardTrialState {
+  const enc = encounterById(fightId);
+  return assembleFight({
+    fightId,
+    fightName: enc.name,
+    seed: opts?.seed ?? 1,
+    enemies: enc.enemies,
+    decks: {
+      "rat-king": deckListFor("rat-king"),
+      "old-man": deckListFor("old-man"),
+    },
+    telemetry: opts?.telemetry,
+  });
 }
 
 export function nextFight(prev: CardTrialState, fightId: number): CardTrialState {
   return createFight(fightId, { seed: prev.streams["rat-king"].getState(), telemetry: prev.telemetry });
 }
 
-function pullFromPiles(hero: HeroState, defId: CardId): CardInstance | null {
+function pullFromPiles(hero: HeroState, defId: string): CardInstance | null {
   const fromDraw = hero.draw.findIndex((c) => c.defId === defId);
   if (fromDraw >= 0) {
     const [card] = hero.draw.splice(fromDraw, 1);
@@ -620,7 +1202,13 @@ export function createAdversarialTriangle(opts?: { seed?: number }): CardTrialSt
     "swarm-the-wound",
   ];
   for (const id of wanted) {
-    const card = pullFromPiles(rk, id);
+    // This authored adversarial fixture predates the duplicate-trimming
+    // starter deck and intentionally asks for two Nips to isolate row math.
+    // Keep the fixture's hand stable without putting a second Nip back into
+    // the live 12-card campaign deck.
+    const card = pullFromPiles(rk, id) ?? (
+      id === "nip" ? { uid: mintUid(s, id), defId: id } : null
+    );
     if (!card) throw new Error(`triangle: missing ${id}`);
     rk.hand.push(card);
   }
@@ -660,6 +1248,8 @@ export function createAdversarialTriangle(opts?: { seed?: number }): CardTrialSt
 
 export function canPaidMove(s: CardTrialState): { ok: boolean; reason: string | null } {
   if (s.phase !== "hero-turn" || s.result) return { ok: false, reason: "Not your turn" };
+  if (s.draft) return { ok: false, reason: "Choose a draft card" };
+  if (rowMode(s) === "none") return { ok: false, reason: "Rows disabled in this simulation" };
   const hero = actingHero(s);
   if (!hero) return { ok: false, reason: "Not your turn" };
   if (hero.paidMoveUsed) return { ok: false, reason: "Move already used" };
@@ -685,32 +1275,47 @@ export function actingHero(s: CardTrialState): HeroState | null {
 export function cardPrimaryDamage(
   id: CardId,
   row: PlayerRow,
-  ratExists = false
+  ratExists = false,
+  ignoreRow = false
 ): number | null {
+  const front = !ignoreRow && row === "front";
   switch (id) {
     case "nip": return 5;
+    case "fight-dirty": return null;
     case "open-the-rank": return 4;
     case "from-the-dark": return 4;
     case "swarm-the-wound": return 5;
     case "burst-the-nest": return 8;
     case "litter": return 4;
     case "send-the-rat": return ratExists ? 5 : 4;
-    case "tide": return 5 + (row === "front" ? 3 : 0);
+    case "tide": return 5 + (front ? 3 : 0);
     case "lunge": return 5;
-    case "king-of-the-heap": return 7 + (row === "front" ? 3 : 0);
-    case "staff": return 6;
-    case "crack": return 5;
-    case "split-bone": return 4;
+    case "king-of-the-heap": return 7 + (front ? 3 : 0);
+    case "the-staff-speaks": return 6;
+    case "faultline": return 5;
+    case "marrow-divide": return 4;
     case "full-stop": return 8;
-    case "cut-the-line": return 5;
-    case "threshold": return 5 + (row === "front" ? 4 : 0);
-    case "from-afar": return 5;
-    case "parting-blow": return 4;
-    case "extinguish": return 4;
-    case "stand-and-die": return 8 + (row === "front" ? 3 : 0);
+    case "sever-the-thread": return 5;
+    case "the-threshold": return null;
+    case "distant-hand": return 5;
+    case "parting-word": return 4;
+    case "unlight": return 4;
+    case "last-bastion": return 8 + (front ? 3 : 0);
+    case "improvised-theorem": return null;
     case "brace":
-    case "ward":
+    case "pale-ward":
       return null;
+    case "veil-of-quiet": return null;
+    case "the-quiet-after": return 3;
+    case "silence-the-hall": return null;
+    case "hasten-the-hour": return 5;
+    case "the-final-word": return null;
+    case "reckoning-strike": return 5;
+    case "reckoning-ward": return null;
+    case "brace-for-it": return null;
+    case "last-litter": return 5;
+    case "feed-the-king": return null;
+    case "one-more-rat": return 6;
   }
 }
 
@@ -719,13 +1324,17 @@ export function cardPrimaryDamage(
  * truth (like cardPrimaryDamage) so presentation cannot grow a second Guard
  * table that drifts away from resolveCardEffect().
  */
-export function cardGuardGain(id: CardId, row: PlayerRow): number | null {
+export function cardGuardGain(id: CardId, row: PlayerRow, ignoreRow = false): number | null {
   switch (id) {
     case "brace": return 6;
-    case "ward": return 7;
+    case "pale-ward": return 7;
     case "king-of-the-heap": return 8;
-    case "stand-and-die": return 9;
-    case "from-afar": return row === "back" ? 3 : null;
+    case "last-bastion": return 9;
+    case "distant-hand": return !ignoreRow && row === "back" ? 3 : null;
+    case "veil-of-quiet": return 3;
+    case "brace-for-it": return 12;
+    case "reckoning-ward": return 4;
+    case "feed-the-king": return 4;
     default: return null;
   }
 }
@@ -741,7 +1350,8 @@ export function cardConsumeRiderDamage(id: CardId): number | null {
     case "swarm-the-wound": return 4;
     case "full-stop": return 8;
     case "burst-the-nest": return 4;
-    case "cut-the-line": return 5;
+    case "sever-the-thread": return 5;
+    case "reckoning-strike": return 5;
     default: return null;
   }
 }
@@ -782,19 +1392,22 @@ export function paidMove(s: CardTrialState): PlayCardResult {
 }
 
 function cardDisabledReason(s: CardTrialState, hero: HeroState, card: CardInstance): string | null {
-  const def = CARD_DEFS[card.defId];
+  if (s.draft) return "Choose a draft card";
+  const def = resolveCardDef(s, card.defId);
   if (hero.energy < def.cost) return `Not enough energy (costs ${def.cost})`;
   if (def.target === "single-enemy" && livingEnemies(s).length === 0) return "No enemy";
+  if (def.id === "the-threshold" && s.omen) return "Omen slot occupied";
   return null;
 }
 
 export function playCard(s: CardTrialState, uid: string, targets: CardPlayTargets = {}): PlayCardResult {
+  if (s.draft) return { ok: false, reason: "Choose a draft card", events: [] };
   const hero = actingHero(s);
   if (!hero) return { ok: false, reason: "Not your turn", events: [] };
   const idx = hero.hand.findIndex((c) => c.uid === uid);
   if (idx < 0) return { ok: false, reason: "Card not in hand", events: [] };
   const card = hero.hand[idx]!;
-  const def = CARD_DEFS[card.defId];
+  const def = resolveCardDef(s, card.defId);
   const why = cardDisabledReason(s, hero, card);
   if (why) return { ok: false, reason: why, events: [] };
 
@@ -821,15 +1434,22 @@ export function playCard(s: CardTrialState, uid: string, targets: CardPlayTarget
   hero.energy -= def.cost;
   hero.hand.splice(idx, 1);
   hero.discard.push(card);
-  s.telemetry.cardStats[def.id].played += 1;
+  bumpCardStat(s, def.id, "played");
   if (s.openTurn) {
     s.openTurn.cardsPlayed.push(def.id);
     s.openTurn.actions.push(`play:${def.id}`);
     s.openTurn.energyRemaining = hero.energy;
   }
 
-  const events: CardTrialEvent[] = [{ type: "banner", text: def.name, actorId: hero.id }];
-  resolveCardEffect(s, hero, def.id, targets, consumeNow, events);
+  const events: CardTrialEvent[] = [{ type: "banner", text: def.name, actorId: hero.id, cardId: def.id }];
+  const extra = s.ruleset?.cards[card.defId];
+  if (def.draft && targets.targetId) {
+    openDraft(s, hero, card, def.draft, enemyById(s, targets.targetId)!, events);
+  } else if (extra) {
+    applyDeclarativeEffects(extra.effects, declarativeApi(s, hero, targets, events));
+  } else {
+    resolveCardEffect(s, hero, def.id, targets, consumeNow, events);
+  }
   if (consumeNow) {
     s.consumeAttemptedThisTurn = true;
     if (!s.consumedThisTurn) {
@@ -841,6 +1461,127 @@ export function playCard(s: CardTrialState, uid: string, targets: CardPlayTarget
   return { ok: true, events };
 }
 
+/** Resolve the player's pick from the one visible temporary draft. */
+export function resolveDraftChoice(
+  s: CardTrialState,
+  choiceId: DraftChoiceId
+): PlayCardResult {
+  const hero = actingHero(s);
+  const draft = s.draft;
+  if (!hero || !draft || draft.heroId !== hero.id) {
+    return { ok: false, reason: "No draft to choose from", events: [] };
+  }
+  const choice = draft.choices.find((candidate) => candidate.id === choiceId);
+  if (!choice) return { ok: false, reason: "That draft card is gone", events: [] };
+  if (hero.energy < choice.cost) {
+    return { ok: false, reason: `Not enough energy (costs ${choice.cost})`, events: [] };
+  }
+  const target = enemyById(s, draft.targetId);
+  if (!target || target.hp <= 0) {
+    return restoreDraftOfferLost(s, hero, draft);
+  }
+
+  hero.energy -= choice.cost;
+  if (s.openTurn) {
+    s.openTurn.actions.push(`draft:${choice.id}`);
+    s.openTurn.energyRemaining = hero.energy;
+  }
+  s.draft = null;
+  s.draftRollback = null;
+  const events: CardTrialEvent[] = [
+    // Keep the source card id on the presentation banner so a generated Old
+    // Man response still receives magical card-spell choreography.
+    { type: "banner", text: choice.name, actorId: hero.id, cardId: draft.sourceId },
+    {
+      type: "draft-picked",
+      actorId: hero.id,
+      sourceId: draft.sourceId,
+      choiceId: choice.id,
+      targetId: target.id,
+    },
+  ];
+  resolveDraftChoiceEffect(s, hero, choice.id, target, events);
+  s.events.push(...events);
+  checkEnd(s);
+  return { ok: true, events };
+}
+
+function declarativeApi(
+  s: CardTrialState,
+  hero: HeroState,
+  targets: CardPlayTargets,
+  events: CardTrialEvent[]
+) {
+  const enemy = (id: string | undefined) => (id ? enemyById(s, id) : undefined);
+  const hit = (id: string, n: number) => {
+    const e = enemyById(s, id);
+    if (e) dealToEnemy(s, e, n, hero.id, events);
+  };
+  return {
+    heroRow: () => hero.row,
+    primary: () => {
+      const e = enemy(targets.targetId);
+      return e ? { id: e.id, hp: e.hp } : undefined;
+    },
+    second: () => {
+      const e = enemy(targets.secondTargetId);
+      return e ? { id: e.id, hp: e.hp } : undefined;
+    },
+    living: () => livingEnemies(s).map((e) => ({ id: e.id, hp: e.hp })),
+    openedPrimary: () => !!targets.targetId && s.opened?.enemyId === targets.targetId,
+    ratExists: () => !!s.rat,
+    intentAimsAtHeroRow: () =>
+      livingEnemies(s).some((e) => {
+        const intent = currentIntent(e);
+        if (rowMode(s) === "none") {
+          if (intent.kind === "row") {
+            return noRowIntentTargeting(s) === "both-heroes" || singleTargetWithoutRows(s)?.id === hero.id;
+          }
+          if (intent.kind === "both-rows") return true;
+          return intent.heroId === hero.id;
+        }
+        if (intent.kind === "row") return intent.row === hero.row;
+        if (intent.kind === "both-rows") return true;
+        return intent.heroId === hero.id && intent.row === hero.row;
+      }),
+    hit,
+    bite: (id: string, n: number) => {
+      const e = enemyById(s, id);
+      if (!e || !s.rat) return;
+      events.push({ type: "rat-bite", targetId: e.id, damage: n });
+      dealToEnemy(s, e, n, "rat", events);
+    },
+    open: (id: string) => {
+      const e = enemyById(s, id);
+      if (e && e.hp > 0) applyOpened(s, e, hero.id, events);
+    },
+    consume: (id: string) => {
+      const e = enemyById(s, id);
+      if (e) consumeOpened(s, e, hero.id, events);
+    },
+    guard: (amount: number) => gainGuard(s, hero, amount, events),
+    moveHero: (row: PlayerRow | "other") => {
+      if (rowMode(s) === "none") return;
+      const dest = row === "other" ? oppositeRow(hero.row) : row;
+      enterRow(s, hero, dest);
+      events.push({ type: "hero-move", actorId: hero.id, row: dest, via: "card" });
+      if (s.openTurn) s.openTurn.cardPrintedMovement = true;
+    },
+    spawnRat: () => {
+      if (!s.rat) {
+        s.rat = { row: hero.row };
+        events.push({ type: "spawn-rat", row: hero.row });
+      }
+    },
+    moveRat: () => {
+      if (rowMode(s) === "none") return;
+      if (!s.rat) return;
+      s.rat.row = oppositeRow(s.rat.row);
+      events.push({ type: "rat-move", row: s.rat.row });
+    },
+  };
+}
+
 function resolveCardEffect(
   s: CardTrialState,
   hero: HeroState,
@@ -849,11 +1590,12 @@ function resolveCardEffect(
   consumeNow: boolean,
   events: CardTrialEvent[]
 ): void {
+  const ignoreRow = rowMode(s) === "none";
   const target = targets.targetId ? enemyById(s, targets.targetId) : undefined;
   const hit = (enemy: EnemyState, n: number) => dealToEnemy(s, enemy, n, hero.id, events);
-  const primaryDamage = cardPrimaryDamage(id, hero.row, !!s.rat);
+  const primaryDamage = cardPrimaryDamage(id, hero.row, !!s.rat, ignoreRow);
   const riderDamage = cardConsumeRiderDamage(id) ?? 0;
-  const printedGuard = cardGuardGain(id, hero.row);
+  const printedGuard = cardGuardGain(id, hero.row, ignoreRow);
   const gainPrintedGuard = () => {
     if (printedGuard !== null) gainGuard(s, hero, printedGuard, events);
   };
@@ -869,6 +1611,10 @@ function resolveCardEffect(
     case "nip":
       if (target) hitPrimary(target);
       break;
+    case "fight-dirty":
+    case "improvised-theorem":
+      // Draft cards are intercepted by playCard before the base resolver.
+      break;
     case "brace":
       gainPrintedGuard();
       break;
@@ -882,24 +1628,21 @@ function resolveCardEffect(
       if (target) {
         hitPrimary(target);
         if (target.hp > 0) applyOpened(s, target, hero.id, events);
-        if (hero.row === "back" && s.rat && target.hp > 0) bite(target, 3);
+        if (!ignoreRow && hero.row === "back" && s.rat && target.hp > 0) bite(target, 3);
       }
       break;
     case "swarm-the-wound":
       if (target) {
-        hitPrimary(target);
-        if (consumeNow && target.hp > 0) {
-          consumeOpened(s, target, hero.id, events);
-          hit(target, riderDamage);
-        }
+        const locked = lockConsumeIfArmed(s, target, hero.id, consumeNow, events);
+        hit(target, (primaryDamage ?? 0) + (locked ? riderDamage : 0));
       }
       break;
     case "burst-the-nest":
       if (target) {
         const primaryId = target.id;
+        const locked = lockConsumeIfArmed(s, target, hero.id, consumeNow, events);
         hitPrimary(target);
-        if (consumeNow) {
-          if (s.opened?.enemyId === primaryId) consumeOpened(s, target, hero.id, events);
+        if (locked) {
           for (const other of livingEnemies(s).filter((e) => e.id !== primaryId)) {
             hit(other, riderDamage);
           }
@@ -926,29 +1669,35 @@ function resolveCardEffect(
       if (target) hitPrimary(target);
       break;
     case "lunge": {
-      enterRow(s, hero, "front");
-      events.push({ type: "hero-move", actorId: hero.id, row: "front", via: "card" });
-      if (s.openTurn) s.openTurn.cardPrintedMovement = true;
+      if (rowMode(s) !== "none") {
+        enterRow(s, hero, "front");
+        events.push({ type: "hero-move", actorId: hero.id, row: "front", via: "card" });
+        if (s.openTurn) s.openTurn.cardPrintedMovement = true;
+      }
       if (target) hitPrimary(target);
       break;
     }
     case "king-of-the-heap":
       if (target) hitPrimary(target);
       gainPrintedGuard();
+      if (target && target.hp > 0) applyCrown(s, target, events);
       break;
-    case "staff":
-      if (target) hitPrimary(target);
+    case "the-staff-speaks":
+      if (target) {
+        hitPrimary(target);
+        if (target.hp > 0) applyHush(target, events);
+      }
       break;
-    case "ward":
+    case "pale-ward":
       gainPrintedGuard();
       break;
-    case "crack":
+    case "faultline":
       if (target) {
         hitPrimary(target);
         if (target.hp > 0) applyOpened(s, target, hero.id, events);
       }
       break;
-    case "split-bone":
+    case "marrow-divide":
       if (target) {
         hitPrimary(target);
         if (target.hp > 0) applyOpened(s, target, hero.id, events);
@@ -956,50 +1705,132 @@ function resolveCardEffect(
       break;
     case "full-stop":
       if (target) {
+        const locked = lockConsumeIfArmed(s, target, hero.id, consumeNow, events);
+        hit(target, (primaryDamage ?? 0) + (locked ? riderDamage : 0));
+      }
+      break;
+    case "sever-the-thread":
+      if (target) {
+        const locked = lockConsumeIfArmed(s, target, hero.id, consumeNow, events);
         hitPrimary(target);
-        if (consumeNow && target.hp > 0) {
-          consumeOpened(s, target, hero.id, events);
-          hit(target, riderDamage);
+        if (locked) {
+          const second = enemyById(s, targets.secondTargetId!);
+          if (second) hit(second, riderDamage);
         }
       }
       break;
-    case "cut-the-line":
+    case "the-threshold":
+      if (target && !s.omen) armOmen(s, target, hero.id, events);
+      break;
+    case "distant-hand":
       if (target) hitPrimary(target);
-      if (consumeNow && target) {
-        consumeOpened(s, target, hero.id, events);
-        const second = enemyById(s, targets.secondTargetId!);
-        if (second) hit(second, riderDamage);
+      gainPrintedGuard();
+      break;
+    case "parting-word":
+      if (target) hitPrimary(target);
+      if (rowMode(s) !== "none") {
+        enterRow(s, hero, "back");
+        events.push({ type: "hero-move", actorId: hero.id, row: "back", via: "card" });
+        if (s.openTurn) s.openTurn.cardPrintedMovement = true;
       }
       break;
-    case "threshold":
-      if (target) hitPrimary(target);
-      break;
-    case "from-afar":
-      if (target) hitPrimary(target);
-      gainPrintedGuard();
-      break;
-    case "parting-blow":
-      if (target) hitPrimary(target);
-      enterRow(s, hero, "back");
-      events.push({ type: "hero-move", actorId: hero.id, row: "back", via: "card" });
-      if (s.openTurn) s.openTurn.cardPrintedMovement = true;
-      break;
-    case "extinguish":
+    case "unlight":
       for (const e of livingEnemies(s)) hitPrimary(e);
       break;
-    case "stand-and-die":
+    case "last-bastion":
       if (target) hitPrimary(target);
       gainPrintedGuard();
+      break;
+
+    // --- Old Man build-exclusive signature cards ------------------------
+    case "veil-of-quiet":
+      if (target) applyHush(target, events);
+      gainPrintedGuard();
+      break;
+    case "the-quiet-after":
+      if (target) hit(target, target.hushed ? 8 : 3);
+      break;
+    case "silence-the-hall":
+      for (const e of livingEnemies(s)) applyHush(e, events);
+      break;
+    case "hasten-the-hour":
+      if (target) {
+        if (triggerOmenOn(s, target, events)) {
+          if (target.hp > 0) hit(target, 3);
+        } else {
+          hitPrimary(target);
+        }
+      }
+      break;
+    case "the-final-word":
+      gainGuard(s, hero, s.omen ? 10 : 5, events);
+      break;
+    case "reckoning-strike": {
+      if (target) {
+        const locked = lockConsumeIfArmed(s, target, hero.id, consumeNow, events);
+        if (locked) {
+          enterRow(s, hero, "front");
+          events.push({ type: "hero-move", actorId: hero.id, row: "front", via: "card" });
+          if (s.openTurn) s.openTurn.cardPrintedMovement = true;
+        }
+        hit(target, (primaryDamage ?? 0) + (locked ? riderDamage : 0));
+      }
+      break;
+    }
+    case "reckoning-ward": {
+      if (target) {
+        const locked = lockConsumeIfArmed(s, target, hero.id, consumeNow, events);
+        if (locked) {
+          enterRow(s, hero, "back");
+          events.push({ type: "hero-move", actorId: hero.id, row: "back", via: "card" });
+          if (s.openTurn) s.openTurn.cardPrintedMovement = true;
+        }
+        gainGuard(s, hero, (printedGuard ?? 0) + (locked ? 6 : 0), events);
+      }
+      break;
+    }
+    case "brace-for-it":
+      gainPrintedGuard();
+      break;
+    case "last-litter":
+      if (target) {
+        hitPrimary(target);
+        if (target.hp > 0 && s.rat) {
+          consumeRat(s, events);
+          hit(target, 8);
+        }
+      }
+      break;
+    case "feed-the-king":
+      if (target && target.hp > 0) applyCrown(s, target, events);
+      if (s.rat) {
+        consumeRat(s, events);
+        gainGuard(s, hero, 10, events);
+      } else {
+        gainGuard(s, hero, 4, events);
+      }
+      break;
+    case "one-more-rat":
+      if (target) {
+        hitPrimary(target);
+        if (target.hp > 0 && s.rat) {
+          consumeRat(s, events);
+          hit(target, 6);
+          s.rat = { row: hero.row };
+          events.push({ type: "spawn-rat", row: hero.row });
+        }
+      }
       break;
   }
 }
 
 export function endHeroTurn(s: CardTrialState): CardTrialEvent[] {
+  if (s.draft) return [];
   const hero = actingHero(s);
   if (!hero) return [];
   const discarded = hero.hand.map((c) => c.defId);
   for (const c of hero.hand) {
-    s.telemetry.cardStats[c.defId].discarded += 1;
+    bumpCardStat(s, c.defId, "discarded");
     hero.discard.push(c);
   }
   hero.hand = [];
@@ -1016,7 +1847,10 @@ export function intentPreviews(s: CardTrialState): IntentPreview[] {
 
 function previewIntent(s: CardTrialState, e: EnemyState): IntentPreview {
   const intent = currentIntent(e);
-  const label = formatIntentLabel(e);
+  const intentDamage = effectiveIntentDamage(e);
+  const label = formatIntentLabel(e, s);
+  const redirectsToKing = crownRedirects(s, e, intent);
+  const paysTribute = crownPaysTribute(s, e, intent);
   const consequences: IntentPreview["consequences"] = [];
   let wouldMiss = false;
   let missIfEmpty = false;
@@ -1033,31 +1867,67 @@ function previewIntent(s: CardTrialState, e: EnemyState): IntentPreview {
     });
   };
 
-  if (intent.kind === "row") {
-    rawDamage = intent.damage;
-    missIfEmpty = true;
-    const t = singleTargetInRow(s, intent.row);
-    wouldMiss = !t;
-    if (t) pushHero(t, intent.damage, false);
-    else {
-      for (const h of livingHeroes(s)) pushHero(h, intent.damage, true);
+  if (rowMode(s) === "none") {
+    if (intent.kind === "row") {
+      rawDamage = intentDamage;
+      if (redirectsToKing) {
+        wouldMiss = false;
+        pushHero(s.heroes[RAT_KING], intentDamage, false);
+      } else if (noRowIntentTargeting(s) === "both-heroes") {
+        const living = livingHeroes(s);
+        wouldMiss = living.length === 0;
+        if (living.length === 0) {
+          for (const h of livingHeroes(s)) pushHero(h, intent.damage, true);
+        } else {
+          for (const h of living) pushHero(h, intentDamage, false);
+        }
+      } else {
+        const target = singleTargetWithoutRows(s);
+        wouldMiss = !target;
+        if (target) pushHero(target, intentDamage, false);
+        else for (const h of livingHeroes(s)) pushHero(h, intentDamage, true);
+      }
+    } else if (intent.kind === "both-rows") {
+      rawDamage = intentDamage;
+      const living = livingHeroes(s);
+      wouldMiss = living.length === 0;
+      for (const h of living) pushHero(h, intentDamage, false);
+    } else {
+      rawDamage = intentDamage;
+      const hero = s.heroes[intent.heroId];
+      const miss = hero.hp <= 0;
+      wouldMiss = miss;
+      pushHero(hero, intentDamage, miss);
+    }
+  } else if (intent.kind === "row") {
+    rawDamage = intentDamage;
+    if (redirectsToKing) {
+      pushHero(s.heroes[RAT_KING], intentDamage, false);
+    } else {
+      missIfEmpty = true;
+      const t = singleTargetInRow(s, intent.row);
+      wouldMiss = !t;
+      if (t) pushHero(t, intentDamage, false);
+      else {
+        for (const h of livingHeroes(s)) pushHero(h, intent.damage, true);
+      }
     }
   } else if (intent.kind === "both-rows") {
-    rawDamage = intent.damage;
+    rawDamage = intentDamage;
     missIfEmpty = heroesInRow(s, "front").length === 0 || heroesInRow(s, "back").length === 0;
     wouldMiss = heroesInRow(s, "front").length === 0 && heroesInRow(s, "back").length === 0;
     for (const row of ["front", "back"] as const) {
       const here = heroesInRow(s, row);
       if (here.length === 0) continue;
-      for (const h of here) pushHero(h, intent.damage, false);
+      for (const h of here) pushHero(h, intentDamage, false);
     }
   } else {
-    rawDamage = intent.damage;
+    rawDamage = intentDamage;
     const hero = s.heroes[intent.heroId];
     const miss = hero.hp <= 0 || hero.row !== intent.row;
     wouldMiss = miss;
     missIfEmpty = miss;
-    pushHero(hero, intent.damage, miss);
+    pushHero(hero, intentDamage, miss);
   }
 
   return {
@@ -1068,6 +1938,7 @@ function previewIntent(s: CardTrialState, e: EnemyState): IntentPreview {
     consequences,
     missIfEmpty,
     wouldMiss,
+    ...(paysTribute ? { tribute: { heroId: RAT_KING, amount: 2 } } : {}),
   };
 }
 
@@ -1075,7 +1946,7 @@ export function playerView(s: CardTrialState): CardTrialPlayerView {
   const hero = actingHero(s);
   const move = hero ? canPaidMove(s) : { ok: false, reason: "Not your turn" as string | null };
   const hand: HandCardView[] = (hero?.hand ?? []).map((c) => {
-    const def = CARD_DEFS[c.defId];
+    const def = resolveCardDef(s, c.defId);
     const reason = hero ? cardDisabledReason(s, hero, c) : "Not your turn";
     const consumeArmed = !!(hero && legalConsume(s, def.id, s.opened?.enemyId));
     const consumeDimmed = def.consume !== "none" && !consumeArmed;
@@ -1087,12 +1958,29 @@ export function playerView(s: CardTrialState): CardTrialPlayerView {
       text: def.text,
       opens: def.opens,
       consume: def.consume,
+      target: def.target,
       disabled: !!reason,
       disabledReason: reason,
       consumeArmed,
       consumeDimmed,
     };
   });
+  const draft: DraftView | null = s.draft
+    ? {
+        heroId: s.draft.heroId,
+        sourceId: s.draft.sourceId,
+        sourceName: CARD_DEFS[s.draft.sourceId].name,
+        targetId: s.draft.targetId,
+        targetName: enemyById(s, s.draft.targetId)?.name ?? s.draft.targetId,
+        choices: s.draft.choices.map((choice) => ({
+          ...choice,
+          disabled: !!hero && hero.energy < choice.cost,
+          disabledReason: hero && hero.energy < choice.cost
+            ? `Not enough energy (costs ${choice.cost})`
+            : null,
+        })),
+      }
+    : null;
   return {
     fightId: s.fightId,
     fightName: s.fightName,
@@ -1100,6 +1988,7 @@ export function playerView(s: CardTrialState): CardTrialPlayerView {
     actingHero: hero?.id ?? null,
     phase: s.phase,
     result: s.result,
+    rowMode: rowMode(s),
     energy: hero?.energy ?? 0,
     hand,
     moveAvailable: move.ok,
@@ -1125,6 +2014,8 @@ export function playerView(s: CardTrialState): CardTrialPlayerView {
       hp: e.hp,
       maxHp: e.maxHp,
       opened: s.opened?.enemyId === e.id,
+      hushed: !!e.hushed,
+      crowned: s.crownedEnemyId === e.id,
       dead: e.hp <= 0,
       visualRow: e.visualRow,
     })),
@@ -1151,13 +2042,22 @@ export function playerView(s: CardTrialState): CardTrialPlayerView {
       };
     }),
     openedEnemyId: s.opened?.enemyId ?? null,
+    crownedEnemyId: s.crownedEnemyId,
+    omen: s.omen
+      ? {
+          targetId: s.omen.targetId,
+          targetName: enemyById(s, s.omen.targetId)?.name ?? s.omen.targetId,
+          damage: s.omen.damage,
+        }
+      : null,
+    draft,
     ratRow: s.rat?.row ?? null,
     intents: intentPreviews(s),
     pileCountsOnly: true,
   };
 }
 
-export function handCard(s: CardTrialState, defId: CardId): CardInstance | undefined {
+export function handCard(s: CardTrialState, defId: string): CardInstance | undefined {
   const hero = actingHero(s);
   return hero?.hand.find((c) => c.defId === defId);
 }
@@ -1191,15 +2091,15 @@ export function summarizeTelemetry(t: CardTrialTelemetry): string {
   lines.push(`Turns remaining in threatened Front: ${stayedFront}`);
   lines.push(`Empty-row misses: ${emptyMisses}`);
   const heap = t.cardStats["king-of-the-heap"];
-  const stand = t.cardStats["stand-and-die"];
+  const stand = t.cardStats["last-bastion"];
   lines.push(`King of the Heap drawn ${heap.drawn} played ${heap.played} discarded ${heap.discarded}`);
-  lines.push(`Stand and Die drawn ${stand.drawn} played ${stand.played} discarded ${stand.discarded}`);
+  lines.push(`Last Bastion drawn ${stand.drawn} played ${stand.played} discarded ${stand.discarded}`);
   const endingFront = turns.filter((x) => x.endingRow === "front").length;
   const endingBack = turns.filter((x) => x.endingRow === "back").length;
   lines.push(`Turn endings Front ${endingFront} / Back ${endingBack}`);
   lines.push("");
   lines.push("## Guard");
-  const guardCards = ["brace", "ward", "king-of-the-heap", "stand-and-die", "from-afar"] as const;
+  const guardCards = ["brace", "pale-ward", "king-of-the-heap", "last-bastion", "distant-hand"] as const;
   const guardPlayed = guardCards.reduce((n, id) => n + t.cardStats[id].played, 0);
   const guardGained = turns.reduce((n, x) => n + x.guardGained, 0);
   lines.push(`Guard cards played: ${guardPlayed}`);

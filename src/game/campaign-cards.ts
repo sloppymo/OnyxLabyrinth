@@ -1,8 +1,15 @@
-import { CARD_DEFS, deckListFor } from "./card-trial/cards";
+import { CARD_DEFS } from "./card-trial/cards";
 import type { CardId, HeroId } from "./card-trial/types";
+import {
+  DEFAULT_OLD_MAN_BUILD_ID,
+  OLD_MAN_BUILD_STARTERS,
+  isOldManBuildId,
+  type OldManBuildId,
+} from "./old-man-builds";
 
 export const CAMPAIGN_DECK_SIZE = 12;
 export const CAMPAIGN_CARD_DUPLICATE_LIMIT = 2;
+export const CAMPAIGN_CARD_SCHEMA_VERSION = 1;
 
 export type CampaignCardBranch = "a" | "b" | null;
 
@@ -20,7 +27,13 @@ export interface CampaignHeroCards {
   activeDeck: string[];
 }
 
-export type CampaignCardProgress = Record<HeroId, CampaignHeroCards>;
+export interface CampaignCardProgress {
+  schemaVersion: number;
+  "rat-king": CampaignHeroCards;
+  "old-man": CampaignHeroCards;
+  /** Which starter deck Old Man began this campaign with. See old-man-builds.ts. */
+  oldManBuildId: OldManBuildId;
+}
 
 export interface PendingCampaignEncounter {
   encounterKey: string;
@@ -34,28 +47,66 @@ export interface PendingCampaignEncounter {
     y: number;
     facing: 0 | 1 | 2 | 3;
   };
-  reward: CampaignCardInstance;
+  reward: CampaignCardInstance | null;
 }
 
 const HERO_IDS: readonly HeroId[] = ["rat-king", "old-man"];
+
+/**
+ * Rat King's twelve physical cards, eight unique definitions. Rat King has
+ * no build selection yet — this is his only starter. Old Man's starter
+ * depends on the chosen build; see OLD_MAN_BUILD_STARTERS in
+ * old-man-builds.ts (its "legacy" entry is the exact list this file used
+ * to hold before build selection existed).
+ */
+export const CAMPAIGN_STARTER_DECKS: Record<"rat-king", readonly CardId[]> = {
+  "rat-king": [
+    "nip",
+    "nip",
+    "brace",
+    "brace",
+    "open-the-rank",
+    "open-the-rank",
+    "litter",
+    "litter",
+    "fight-dirty",
+    "swarm-the-wound",
+    "tide",
+    "lunge",
+  ],
+};
+
+function starterDeckFor(heroId: HeroId, oldManBuildId: OldManBuildId): readonly CardId[] {
+  return heroId === "old-man"
+    ? OLD_MAN_BUILD_STARTERS[oldManBuildId]
+    : CAMPAIGN_STARTER_DECKS["rat-king"];
+}
+
+const POSITIONAL_STARTER = /^starter:(rat-king|old-man):(\d+):([a-z0-9-]+)$/;
 
 function isCardId(value: unknown): value is CardId {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(CARD_DEFS, value);
 }
 
-function starterInstance(heroId: HeroId, cardId: CardId, index: number): CampaignCardInstance {
+function starterInstance(heroId: HeroId, cardId: CardId, ordinal: number): CampaignCardInstance {
   return {
-    instanceId: `starter:${heroId}:${index}:${cardId}`,
+    instanceId: `starter:${heroId}:${cardId}:${ordinal}`,
     cardId,
     mastery: 0,
     branch: null,
   };
 }
 
-function starterHeroCards(heroId: HeroId): CampaignHeroCards {
-  const collection = deckListFor(heroId).map((cardId, index) =>
-    starterInstance(heroId, cardId, index)
-  );
+function starterHeroCards(
+  heroId: HeroId,
+  oldManBuildId: OldManBuildId = DEFAULT_OLD_MAN_BUILD_ID
+): CampaignHeroCards {
+  const ordinals = new Map<CardId, number>();
+  const collection = starterDeckFor(heroId, oldManBuildId).map((cardId) => {
+    const next = ordinals.get(cardId) ?? 0;
+    ordinals.set(cardId, next + 1);
+    return starterInstance(heroId, cardId, next);
+  });
   return { collection, activeDeck: collection.map((card) => card.instanceId) };
 }
 
@@ -82,6 +133,25 @@ function normalizeInstance(value: unknown, heroId: HeroId): CampaignCardInstance
   };
 }
 
+function migratePositionalStarterId(
+  instance: CampaignCardInstance,
+  heroId: HeroId,
+  ordinals: Map<string, number>
+): CampaignCardInstance {
+  const match = instance.instanceId.match(POSITIONAL_STARTER);
+  if (!match || match[1] !== heroId) return instance;
+  const parsedId = match[3];
+  if (!isCardId(parsedId) || parsedId !== instance.cardId) return instance;
+  const key = `${heroId}:${instance.cardId}`;
+  const ordinal = ordinals.get(key) ?? 0;
+  ordinals.set(key, ordinal + 1);
+  return { ...instance, instanceId: `starter:${heroId}:${instance.cardId}:${ordinal}` };
+}
+
+function ownedCopies(hero: CampaignHeroCards, cardId: CardId): number {
+  return hero.collection.filter((card) => card.cardId === cardId).length;
+}
+
 function deckIsValid(hero: CampaignHeroCards): boolean {
   if (hero.activeDeck.length !== CAMPAIGN_DECK_SIZE) return false;
   if (new Set(hero.activeDeck).size !== hero.activeDeck.length) return false;
@@ -97,17 +167,30 @@ function deckIsValid(hero: CampaignHeroCards): boolean {
   return true;
 }
 
-/** New campaigns start with both locked twelve-card prototype decks as instances. */
-export function createCampaignCardProgress(
-  legacyRewards: readonly unknown[] = []
-): CampaignCardProgress {
-  const progress: CampaignCardProgress = {
+function emptyProgress(oldManBuildId: OldManBuildId): CampaignCardProgress {
+  return {
+    schemaVersion: CAMPAIGN_CARD_SCHEMA_VERSION,
     "rat-king": starterHeroCards("rat-king"),
-    "old-man": starterHeroCards("old-man"),
+    "old-man": starterHeroCards("old-man", oldManBuildId),
+    oldManBuildId,
   };
+}
+
+/**
+ * New campaigns start with eight unique definitions as twelve physical
+ * cards. `oldManBuildId` defaults to the pre-build-selection deck so every
+ * existing call site (tests, Arena reset, legacy migration) is unaffected;
+ * only the New Game build-select screen passes a real build id.
+ */
+export function createCampaignCardProgress(
+  legacyRewards: readonly unknown[] = [],
+  oldManBuildId: OldManBuildId = DEFAULT_OLD_MAN_BUILD_ID
+): CampaignCardProgress {
+  const progress = emptyProgress(oldManBuildId);
   legacyRewards.forEach((value, index) => {
     if (!isCardId(value)) return;
     const heroId = CARD_DEFS[value].hero;
+    if (ownedCopies(progress[heroId], value) >= CAMPAIGN_CARD_DUPLICATE_LIMIT) return;
     progress[heroId].collection.push({
       instanceId: `legacy-reward:${index}:${value}`,
       cardId: value,
@@ -127,30 +210,49 @@ export function normalizeCampaignCardProgress(
   value: unknown,
   legacyRewards: readonly unknown[] = []
 ): CampaignCardProgress {
-  const fallback = createCampaignCardProgress(legacyRewards);
-  if (!value || typeof value !== "object") return fallback;
-  const raw = value as Partial<Record<HeroId, Partial<CampaignHeroCards>>>;
-  const seen = new Set<string>();
+  const raw =
+    value && typeof value === "object"
+      ? (value as Partial<CampaignCardProgress> & Partial<Record<HeroId, Partial<CampaignHeroCards>>>)
+      : null;
+  // A save's Old Man build id is fixed at creation. Reading it before
+  // building the fallback means an invalid-deck repair falls back to the
+  // exact build that save was created with, never a different one.
+  const oldManBuildId = isOldManBuildId(raw?.oldManBuildId)
+    ? raw.oldManBuildId
+    : DEFAULT_OLD_MAN_BUILD_ID;
+  const fallback = createCampaignCardProgress(legacyRewards, oldManBuildId);
+  if (!raw) return fallback;
 
   for (const heroId of HERO_IDS) {
     const source = raw[heroId];
     if (!source || !Array.isArray(source.collection)) continue;
-    const starter = starterHeroCards(heroId);
-    const collection: CampaignCardInstance[] = [];
-    // Saved instances win on matching ids so earned Mastery/branches survive;
-    // pristine starters are appended only when a save omitted them.
-    for (const card of [...source.collection, ...starter.collection]) {
+    const starter = starterHeroCards(heroId, oldManBuildId);
+    const ordinals = new Map<string, number>();
+    const migrated: CampaignCardInstance[] = [];
+    const idMap = new Map<string, string>();
+    for (const card of source.collection) {
       const normalized = normalizeInstance(card, heroId);
-      if (!normalized || seen.has(normalized.instanceId)) continue;
-      seen.add(normalized.instanceId);
-      collection.push(normalized);
+      if (!normalized) continue;
+      const next = migratePositionalStarterId(normalized, heroId, ordinals);
+      idMap.set(normalized.instanceId, next.instanceId);
+      migrated.push(next);
+    }
+    const seen = new Set<string>();
+    const collection: CampaignCardInstance[] = [];
+    for (const card of [...migrated, ...starter.collection]) {
+      if (seen.has(card.instanceId)) continue;
+      seen.add(card.instanceId);
+      collection.push(card);
     }
     const activeDeck = Array.isArray(source.activeDeck)
-      ? source.activeDeck.filter((id): id is string => typeof id === "string")
+      ? source.activeDeck
+          .filter((id): id is string => typeof id === "string")
+          .map((id) => idMap.get(id) ?? id)
       : [];
     const candidate = { collection, activeDeck };
     fallback[heroId] = deckIsValid(candidate) ? candidate : { collection, activeDeck: starter.activeDeck };
   }
+  fallback.schemaVersion = CAMPAIGN_CARD_SCHEMA_VERSION;
   return fallback;
 }
 
@@ -175,6 +277,15 @@ export function unusedCampaignCards(
   return progress[heroId].collection.filter((card) => !active.has(card.instanceId));
 }
 
+export function ownedCampaignCopies(
+  progress: CampaignCardProgress,
+  cardId: CardId
+): number {
+  if (!isCardId(cardId)) return 0;
+  const heroId = CARD_DEFS[cardId].hero;
+  return ownedCopies(progress[heroId], cardId);
+}
+
 /** Idempotent: replaying the same committed encounter reward cannot duplicate it. */
 export function grantCampaignCard(
   progress: CampaignCardProgress,
@@ -185,6 +296,9 @@ export function grantCampaignCard(
     return false;
   }
   const heroId = CARD_DEFS[reward.cardId].hero;
+  if (ownedCopies(progress[heroId], reward.cardId) >= CAMPAIGN_CARD_DUPLICATE_LIMIT) {
+    return false;
+  }
   progress[heroId].collection.push({
     instanceId: reward.instanceId,
     cardId: reward.cardId,
@@ -248,7 +362,7 @@ export function clonePendingCampaignEncounter(
   return {
     ...pending,
     checkpoint: { ...pending.checkpoint },
-    reward: { ...pending.reward },
+    reward: pending.reward ? { ...pending.reward } : null,
   };
 }
 
@@ -256,7 +370,7 @@ export function normalizePendingCampaignEncounter(value: unknown): PendingCampai
   if (!value || typeof value !== "object") return null;
   const raw = value as Partial<PendingCampaignEncounter>;
   const checkpoint = raw.checkpoint as Partial<PendingCampaignEncounter["checkpoint"]> | undefined;
-  const reward = raw.reward as Partial<CampaignCardInstance> | undefined;
+  const reward = raw.reward as Partial<CampaignCardInstance> | null | undefined;
   if (
     typeof raw.encounterKey !== "string" ||
     raw.encounterKey.length === 0 ||
@@ -280,14 +394,27 @@ export function normalizePendingCampaignEncounter(value: unknown): PendingCampai
     !Number.isSafeInteger(checkpoint.y) ||
     checkpoint.y < 0 ||
     ![0, 1, 2, 3].includes(checkpoint.facing as number) ||
-    checkpoint.floorId !== raw.floorId ||
-    !reward ||
-    typeof reward.instanceId !== "string" ||
-    reward.instanceId.length === 0 ||
-    !isCardId(reward.cardId)
+    checkpoint.floorId !== raw.floorId
   ) {
     return null;
   }
+  if (reward != null) {
+    if (
+      typeof reward.instanceId !== "string" ||
+      reward.instanceId.length === 0 ||
+      !isCardId(reward.cardId)
+    ) {
+      return null;
+    }
+  }
+  const normalizedReward = reward
+    ? {
+        instanceId: reward.instanceId as string,
+        cardId: reward.cardId as CardId,
+        mastery: normalizedMastery(reward.mastery),
+        branch: validBranch(reward.branch),
+      }
+    : null;
   return {
     encounterKey: raw.encounterKey,
     floorId: raw.floorId,
@@ -300,12 +427,7 @@ export function normalizePendingCampaignEncounter(value: unknown): PendingCampai
       y: checkpoint.y,
       facing: checkpoint.facing as 0 | 1 | 2 | 3,
     },
-    reward: {
-      instanceId: reward.instanceId,
-      cardId: reward.cardId,
-      mastery: normalizedMastery(reward.mastery),
-      branch: validBranch(reward.branch),
-    },
+    reward: normalizedReward,
   };
 }
 

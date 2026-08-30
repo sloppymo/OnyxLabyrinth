@@ -5,6 +5,7 @@ import {
   campaignCardTrialFightId,
   createCampaignCardTrialFight,
 } from "./campaign-card-trial";
+import { AUTHORED_CARD_REWARDS } from "./campaign-card-rewards";
 import { actingHero } from "./card-trial";
 import {
   activeCampaignDeck,
@@ -42,21 +43,25 @@ describe("campaign Card Trial adapter", () => {
     expect(trial.telemetry.intents).toEqual([]);
   });
 
-  it("selects a stable card reward for each authored encounter", () => {
-    expect(campaignCardReward(1, "f1-red-bone-bounty")).toBe(
-      campaignCardReward(1, "f1-red-bone-bounty")
-    );
-    expect(["open-the-rank", "crack", "from-the-dark", "split-bone"]).toContain(
-      campaignCardReward(1, "f1-red-bone-bounty")
-    );
+  it("selects authored rewards and grants nothing for routine encounters", () => {
+    expect(campaignCardReward(1, "f1-red-bone-bounty")).toBeNull();
+    expect(campaignCardReward(1, "f1-ogre-toss")).toBe("king-of-the-heap");
+    expect(campaignCardReward(1, "f1-ogre-toss")).toBe(campaignCardReward(1, "f1-ogre-toss"));
+    expect(Object.keys(AUTHORED_CARD_REWARDS).length).toBeGreaterThan(0);
+  });
+
+  it("honors mutually exclusive authored rewards", () => {
+    const progress = createCampaignCardProgress();
+    grantCampaignCard(progress, encounterRewardInstance(1, "ogre", "king-of-the-heap"));
+    expect(campaignCardReward(1, "f1-hunting-pack", progress)).toBeNull();
   });
 
   it("deals from the campaign's persistent physical decks", () => {
     const entry = ENCOUNTER_TABLES[1]!.find((candidate) => candidate.id === "f1-red-bone-bounty")!;
     const progress = createCampaignCardProgress();
-    grantCampaignCard(progress, encounterRewardInstance(1, entry.id, "crack"));
+    grantCampaignCard(progress, encounterRewardInstance(1, entry.id, "marrow-divide"));
     const incoming = unusedCampaignCards(progress, "old-man")[0]!;
-    const outgoing = progress["old-man"].activeDeck.find((id) => id.endsWith(":staff"))!;
+    const outgoing = progress["old-man"].activeDeck.find((id) => id.includes(":the-staff-speaks:"))!;
     expect(swapCampaignDeckCard(progress, "old-man", outgoing, incoming.instanceId)).toBe(true);
 
     const trial = createCampaignCardTrialFight({

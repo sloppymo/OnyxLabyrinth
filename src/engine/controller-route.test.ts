@@ -14,6 +14,7 @@ function ctx(overrides: Partial<ControllerRouteContext> = {}): ControllerRouteCo
     hasGameOver: false,
     hasPrologue: false,
     hasEnding: false,
+    hasOldManBuildSelect: false,
     hasTitle: false,
     ...overrides,
   };
@@ -72,6 +73,30 @@ describe("resolveControllerRoute", () => {
   it("requires title mode for ending", () => {
     expect(
       resolveControllerRoute(ctx({ mode: "dungeon", hasEnding: true })),
+    ).toBe("dungeon");
+  });
+
+  it("prefers Old Man build select over the title menu, but not over prologue/ending", () => {
+    expect(
+      resolveControllerRoute(
+        ctx({ mode: "title", hasOldManBuildSelect: true, hasTitle: true }),
+      ),
+    ).toBe("old_man_build_select");
+    expect(
+      resolveControllerRoute(
+        ctx({ mode: "title", hasOldManBuildSelect: true, hasPrologue: true }),
+      ),
+    ).toBe("prologue");
+    expect(
+      resolveControllerRoute(
+        ctx({ mode: "title", hasOldManBuildSelect: true, hasEnding: true }),
+      ),
+    ).toBe("ending");
+  });
+
+  it("requires title mode for Old Man build select", () => {
+    expect(
+      resolveControllerRoute(ctx({ mode: "dungeon", hasOldManBuildSelect: true })),
     ).toBe("dungeon");
   });
 

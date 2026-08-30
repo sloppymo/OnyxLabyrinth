@@ -8,9 +8,16 @@ import type { CardId } from "./types";
 export const CARD_ART_NATIVE_WIDTH = 128;
 export const CARD_ART_NATIVE_HEIGHT = 96;
 
-/** Every live CardId has a deterministic production illustration field. */
-const CARD_ART_FILES: Record<CardId, string> = {
+/**
+ * Production illustration for each CardId that has one. Old Man
+ * build-exclusive signature cards (see ../old-man-builds.ts), including
+ * reckoning-ward, and Rat King's sacrifice-mechanic cards (last-litter,
+ * feed-the-king, one-more-rat) have no art yet and fall back to the
+ * reserved-aperture card fill below.
+ */
+const CARD_ART_FILES: Partial<Record<CardId, string>> = {
   nip: "nip.png",
+  "fight-dirty": "fight-dirty.png",
   brace: "brace.png",
   "open-the-rank": "open-the-rank.png",
   "from-the-dark": "from-the-dark.png",
@@ -21,17 +28,18 @@ const CARD_ART_FILES: Record<CardId, string> = {
   tide: "tide.png",
   lunge: "lunge.png",
   "king-of-the-heap": "king-of-the-heap.png",
-  staff: "staff.png",
-  ward: "ward.png",
-  crack: "crack.png",
-  "split-bone": "split-bone.png",
+  "the-staff-speaks": "the-staff-speaks.png",
+  "pale-ward": "pale-ward.png",
+  faultline: "faultline.png",
+  "marrow-divide": "marrow-divide.png",
   "full-stop": "full-stop.png",
-  "cut-the-line": "cut-the-line.png",
-  threshold: "threshold.png",
-  "from-afar": "from-afar.png",
-  "parting-blow": "parting-blow.png",
-  extinguish: "extinguish.png",
-  "stand-and-die": "stand-and-die.png",
+  "sever-the-thread": "sever-the-thread.png",
+  "the-threshold": "the-threshold.png",
+  "distant-hand": "distant-hand.png",
+  "parting-word": "parting-word.png",
+  unlight: "unlight.png",
+  "last-bastion": "last-bastion.png",
+  "improvised-theorem": "improvised-theorem.png",
 };
 
 export const CARD_ART_IDS = Object.keys(CARD_ART_FILES) as CardId[];

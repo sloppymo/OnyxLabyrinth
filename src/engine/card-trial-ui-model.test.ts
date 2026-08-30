@@ -131,7 +131,7 @@ describe("buildCardTrialUiRecipe", () => {
 });
 
 describe("cardOutcomeSummary", () => {
-  it("omits Cut the Line's consume clause when no second living enemy exists", () => {
+  it("omits Sever the Thread's consume clause when no second living enemy exists", () => {
     const trial = createAdversarialTriangle();
     const cleaver = trial.enemies.find((enemy) => enemy.id === "cleaver")!;
     cleaver.hp = 0;
@@ -143,16 +143,16 @@ describe("cardOutcomeSummary", () => {
     };
     const view = playerView(trial);
     const ash = view.enemies.find((enemy) => enemy.id === "ash")!;
-    const cut = { ...view.hand[0]!, defId: "cut-the-line" as const, name: "Cut the Line" };
+    const cut = { ...view.hand[0]!, defId: "sever-the-thread" as const, name: "Sever the Thread" };
     expect(cardOutcomeSummary(cut, view, ash)).toBe("Deal 5");
   });
 
-  it("shows Cut the Line's consume clause only with a legal second enemy", () => {
+  it("shows Sever the Thread's consume clause only with a legal second enemy", () => {
     const trial = createAdversarialTriangle();
     const view = playerView(trial);
     view.openedEnemyId = "cleaver";
     const cleaver = view.enemies.find((enemy) => enemy.id === "cleaver")!;
-    const cut = { ...view.hand[0]!, defId: "cut-the-line" as const, name: "Cut the Line" };
+    const cut = { ...view.hand[0]!, defId: "sever-the-thread" as const, name: "Sever the Thread" };
     expect(cardOutcomeSummary(cut, view, cleaver)).toBe(
       "Deal 5 · Second enemy 5 · Consume Opened"
     );
@@ -164,12 +164,24 @@ describe("cardOutcomeSummary", () => {
     const view = playerView(trial);
     const cleaver = view.enemies.find((enemy) => enemy.id === "cleaver")!;
     const brace = { ...view.hand[0]!, defId: "brace" as const, name: "Brace" };
-    expect(cardOutcomeSummary(brace, view, null)).toBe("Gain 6 Guard");
+    expect(cardOutcomeSummary(brace, view, null)).toBe("Gain 6 Barrier");
     const heap = { ...view.hand[0]!, defId: "king-of-the-heap" as const, name: "King of the Heap" };
-    expect(cardOutcomeSummary(heap, view, cleaver)).toBe("Deal 10 · Gain 8 Guard");
+    expect(cardOutcomeSummary(heap, view, cleaver)).toBe("Deal 10 · Gain 8 Barrier · Crown target");
     view.openedEnemyId = cleaver.id;
     const fullStop = { ...view.hand[0]!, defId: "full-stop" as const, name: "Full Stop" };
     expect(cardOutcomeSummary(fullStop, view, cleaver)).toBe("Deal 16 · Consume Opened");
+  });
+
+  it("derives Reckoning Ward's consumed Barrier from the rules layer", () => {
+    const trial = createAdversarialTriangle();
+    const view = playerView(trial);
+    const cleaver = view.enemies.find((enemy) => enemy.id === "cleaver")!;
+    const ward = { ...view.hand[0]!, defId: "reckoning-ward" as const, name: "Reckoning Ward" };
+    expect(cardOutcomeSummary(ward, view, cleaver)).toBe("Gain 4 Barrier");
+    view.openedEnemyId = cleaver.id;
+    expect(cardOutcomeSummary(ward, view, cleaver)).toBe(
+      "Gain 10 Barrier · Move Back · Consume Opened"
+    );
   });
 
   it("uses the selected card, live row, and target Opened state", () => {
@@ -187,5 +199,33 @@ describe("cardOutcomeSummary", () => {
     };
     expect(cardOutcomeSummary(consume, view, view.enemies[0]!)).toContain("Deal 9");
     expect(cardOutcomeSummary(consume, view, view.enemies[0]!)).toContain("Consume Opened");
+  });
+
+  it("describes Old Man's Hush and Omen cards without inventing damage", () => {
+    const trial = createAdversarialTriangle();
+    const view = playerView(trial);
+    const target = view.enemies.find((enemy) => enemy.id === "cleaver")!;
+    const hush = { ...view.hand[0]!, defId: "the-staff-speaks" as const, name: "The Staff Speaks" };
+    const omen = { ...view.hand[0]!, defId: "the-threshold" as const, name: "The Threshold" };
+    expect(cardOutcomeSummary(hush, view, target)).toBe("Deal 6 · Hush next intent");
+    expect(cardOutcomeSummary(omen, view, target)).toBe("Arm Omen · strike before target's next intent");
+  });
+
+  it("forecasts Kill · no Open when an opener's base hit would kill", () => {
+    const trial = createAdversarialTriangle();
+    const view = playerView(trial);
+    const target = { ...view.enemies.find((enemy) => enemy.id === "cleaver")!, hp: 4 };
+    const open = { ...view.hand[0]!, defId: "open-the-rank" as const, name: "Open the Rank", opens: true };
+    expect(cardOutcomeSummary(open, view, target)).toBe("Deal 4 · Kill · no Open");
+  });
+
+  it("forecasts Consume even when the base hit would kill", () => {
+    const trial = createAdversarialTriangle();
+    const view = playerView(trial);
+    const target = { ...view.enemies.find((enemy) => enemy.id === "cleaver")!, hp: 4 };
+    view.openedEnemyId = target.id;
+    const swarm = { ...view.hand[0]!, defId: "swarm-the-wound" as const, name: "Swarm the Wound" };
+    expect(cardOutcomeSummary(swarm, view, target)).toContain("Consume Opened");
+    expect(cardOutcomeSummary(swarm, view, target)).toContain("Deal 9");
   });
 });

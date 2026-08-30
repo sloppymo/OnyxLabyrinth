@@ -1,0 +1,95 @@
+/* Old Man character-build selection. Layout only — .ff6-window owns the
+   frame, palette, and selection-list chrome. */
+
+.omb-name {
+  font-family: var(--game-font);
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffe9a8;
+  margin: 0 0 6px;
+}
+
+.omb-tagline {
+  font-family: var(--game-font);
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 0 0 8px;
+  color: #f4e9c8;
+}
+
+.omb-mechanics {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0 0 12px;
+  opacity: 0.85;
+}
+
+.omb-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: 4px;
+}
+
+.omb-card-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.omb-card-row:first-child {
+  border-top: none;
+}
+
+.omb-thumb {
+  flex: none;
+  width: 32px;
+  height: 24px;
+  object-fit: cover;
+  image-rendering: pixelated;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: #14121c;
+}
+
+.omb-thumb-blank {
+  display: inline-block;
+}
+
+.omb-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.omb-card-name {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.omb-cost {
+  font-size: 10px;
+  opacity: 0.75;
+  font-weight: 400;
+}
+
+.omb-count {
+  font-size: 10px;
+  opacity: 0.75;
+  font-weight: 400;
+}
+
+.omb-card-text {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.85;
+}

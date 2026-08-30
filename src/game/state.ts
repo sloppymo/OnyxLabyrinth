@@ -13,10 +13,14 @@ import { createPlayableDuo } from "./playable-duo";
 import { defaultLoadoutForCharacter } from "./combat-equipment";
 import { encounterCooldownFor } from "./encounters";
 import { createCampaignCardProgress } from "./campaign-cards";
+import { DEFAULT_OLD_MAN_BUILD_ID, type OldManBuildId } from "./old-man-builds";
 
 export type { GameMode, GameState } from "../types";
 
-export function createGameState(floor: FloorDef): GameState {
+export function createGameState(
+  floor: FloorDef,
+  oldManBuildId: OldManBuildId = DEFAULT_OLD_MAN_BUILD_ID
+): GameState {
   const party = createPlayableDuo();
   return {
     mode: "town", // start in town; player chooses to enter the dungeon
@@ -62,7 +66,7 @@ export function createGameState(floor: FloorDef): GameState {
     clearedStairsGuardians: [],
     environmentalEncounters: {},
     purchasedSpellIds: [],
-    campaignCards: createCampaignCardProgress(),
+    campaignCards: createCampaignCardProgress([], oldManBuildId),
     pendingCampaignEncounter: null,
   };
 }

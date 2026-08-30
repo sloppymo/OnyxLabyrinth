@@ -4,10 +4,11 @@
  */
 
 import { createCombatState } from "../game/combat";
+import { CARD_DEFS } from "../game/card-trial/cards";
 import type { CombatEvent, CombatState, EnemyInstance } from "../game/combat-types";
 import type { Character } from "../game/party";
 import type { EnemyDef } from "../data/enemies";
-import type { CardTrialEvent, CardTrialState, HeroId, PlayerRow } from "../game/card-trial/types";
+import type { CardId, CardTrialEvent, CardTrialState, HeroId, PlayerRow } from "../game/card-trial/types";
 
 export interface CardTrialPresentationContext {
   /** The global Opened target immediately before the resolved action. */
@@ -140,10 +141,25 @@ export function toCombatEvents(
   context: CardTrialPresentationContext = {}
 ): CombatEvent[] {
   const out: CombatEvent[] = [];
+  // A card banner is emitted immediately before that card's damage/support
+  // events. Remember the id only for this adapter pass so Old Man damage can
+  // become a spell presentation without changing Card Trial's rules events.
+  let activeCardId: CardId | null = null;
   for (const e of events) {
     if (e.type === "attack" || e.type === "rat-bite") {
       const actorId = e.type === "rat-bite" ? "rat-king" : e.actorId;
-      out.push({ type: "attack", actorId, targetId: e.targetId, damage: e.damage });
+      if (e.type === "attack" && actorId === "old-man" && activeCardId) {
+        out.push({
+          type: "spellEffect",
+          spellId: activeCardId,
+          actorId,
+          targetId: e.targetId,
+          damage: e.damage,
+          cardPresentation: "card-spell",
+        });
+      } else {
+        out.push({ type: "attack", actorId, targetId: e.targetId, damage: e.damage });
+      }
     } else if (e.type === "guard") {
       out.push({ type: "defend", actorId: e.actorId, amount: e.amount });
     } else if (e.type === "defeated") {
@@ -152,9 +168,12 @@ export function toCombatEvents(
       out.push({
         type: "cast",
         actorId: e.actorId ?? "rat-king",
-        spellId: e.text,
+        spellId: e.cardId ?? e.text,
         targetId: null,
+        cardPresentation:
+          e.actorId === "old-man" && e.cardId ? "card-spell" : undefined,
       });
+      activeCardId = e.cardId ?? null;
     } else if (e.type === "hero-move") {
       out.push({
         type: "partyRowMove",
@@ -162,11 +181,12 @@ export function toCombatEvents(
         row: e.row,
         rowEnteredAt: state.heroes[e.actorId].rowEnteredAt,
       });
-    } else if (e.type === "spawn-rat" || e.type === "rat-move") {
+    } else if (e.type === "spawn-rat" || e.type === "rat-move" || e.type === "rat-consumed") {
       out.push({
         type: "cast",
         actorId: "rat-king",
-        spellId: e.type === "spawn-rat" ? "Rat" : "Send the Rat",
+        spellId:
+          e.type === "spawn-rat" ? "Rat" : e.type === "rat-move" ? "Send the Rat" : "Consume the Rat",
         targetId: null,
         cardPresentation: "rat",
       });
@@ -192,13 +212,59 @@ export function toCombatEvents(
             ? context.openedBefore
             : undefined,
       });
+    } else if (
+      e.type === "hush-applied" ||
+      e.type === "hush-triggered" ||
+      e.type === "omen-armed" ||
+      e.type === "omen-triggered" ||
+      e.type === "omen-fizzled" ||
+      e.type === "crowned" ||
+      e.type === "crown-cleared" ||
+      e.type === "crown-tribute"
+    ) {
+      const cardPresentation =
+        e.type === "hush-applied"
+          ? "hush"
+          : e.type === "hush-triggered"
+            ? "hush-trigger"
+            : e.type === "omen-armed"
+              ? "omen"
+            : e.type === "omen-triggered"
+              ? "omen-trigger"
+              : e.type === "omen-fizzled"
+                ? "omen-fizzle"
+                : e.type === "crowned"
+                  ? "crowned"
+                  : e.type === "crown-cleared"
+                    ? "crown-cleared"
+                    : "crown-tribute";
+      out.push({
+        type: "spellEffect",
+        spellId: e.type.startsWith("hush")
+          ? "Hush"
+          : e.type.startsWith("omen")
+            ? "Omen"
+            : e.type === "crown-tribute"
+              ? "Crown Tribute"
+              : "Crown",
+        actorId: e.type === "crown-tribute" ? "rat-king" : "rat-king",
+        targetId: e.targetId,
+        damage: e.type === "omen-triggered"
+          ? e.damage
+          : e.type === "crown-tribute"
+            ? e.amount
+            : undefined,
+        isBuff: e.type === "crown-tribute",
+        isDebuff: e.type === "crown-cleared",
+        cardPresentation,
+      });
     }
   }
   return out;
 }
 
 export function spellNameFor(id: string): string {
-  return id;
+  return CARD_DEFS[id as CardId]?.name ?? id;
 }
 
 export function techniqueNameFor(): string {

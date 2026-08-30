@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CARD_DEFS } from "./cards";
+import { CARD_DEFS, OLD_MAN_LIST, RAT_KING_LIST } from "./cards";
 import {
   CARD_ART_IDS,
   CARD_ART_NATIVE_HEIGHT,
@@ -57,13 +57,35 @@ function pngInfo(file: string): { width: number; height: number; colorType: numb
 }
 
 describe("Card Trial art manifest", () => {
-  it("maps exactly one deterministic illustration field for every live card", () => {
-    const liveIds = Object.keys(CARD_DEFS).sort();
-    expect([...CARD_ART_IDS].sort()).toEqual(liveIds);
-    expect(new Set(CARD_ART_IDS).size).toBe(liveIds.length);
-    for (const id of liveIds as CardId[]) {
+  it("maps exactly one deterministic illustration field for every locked 24-card definition", () => {
+    const lockedIds = [...RAT_KING_LIST, ...OLD_MAN_LIST].sort();
+    expect([...CARD_ART_IDS].sort()).toEqual(lockedIds);
+    expect(new Set(CARD_ART_IDS).size).toBe(lockedIds.length);
+    for (const id of lockedIds as CardId[]) {
       expect(cardArtRelPath(id)).toBe(`assets/card-trial/cards/${id}.png`);
       expect(cardArtUrl(id)).toBe(expectedArtUrl(id));
+    }
+  });
+
+  it("Old Man build-exclusive and Rat King sacrifice-mechanic cards fall back to the reserved aperture until art exists", () => {
+    const liveIds = Object.keys(CARD_DEFS) as CardId[];
+    const unmapped = liveIds.filter((id) => !CARD_ART_IDS.includes(id as (typeof CARD_ART_IDS)[number]));
+    expect(unmapped.sort()).toEqual([
+      "brace-for-it",
+      "feed-the-king",
+      "hasten-the-hour",
+      "last-litter",
+      "one-more-rat",
+      "reckoning-strike",
+      "reckoning-ward",
+      "silence-the-hall",
+      "the-final-word",
+      "the-quiet-after",
+      "veil-of-quiet",
+    ]);
+    for (const id of unmapped) {
+      expect(cardArtRelPath(id)).toBeNull();
+      expect(cardArtUrl(id)).toBeNull();
     }
   });
 

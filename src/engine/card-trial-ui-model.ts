@@ -13,6 +13,7 @@ import {
   cardPrimaryDamage,
   legalSecondTargetIds,
 } from "../game/card-trial/engine";
+import { plannedOpenerLabel, planIgnoreRow } from "../game/card-trial/plan";
 import type {
   CardTrialPlayerView,
   HandCardView,
@@ -56,6 +57,12 @@ export interface CardTrialActorUiState {
   legalTarget: boolean;
   selectedTarget: boolean;
   opened: boolean;
+  /** Enemy-only Rat King's current public subject. */
+  crowned?: boolean;
+  /** Enemy-only one-shot intent reduction from Old Man's Hush. */
+  hushed?: boolean;
+  /** Enemy-only face-up delayed strike from Old Man's Omen. */
+  omened?: boolean;
   intentLabel: string | null;
   intentDamage: number | null;
   intentWouldMiss: boolean;
@@ -141,43 +148,89 @@ export function cardOutcomeSummary(
   target: CardTrialPlayerView["enemies"][number] | null
 ): string {
   const row = actingHeroRow(view);
+  const ignoreRow = planIgnoreRow(view.rowMode);
   const id = card.defId;
-  const damage = cardPrimaryDamage(id, row, !!view.ratRow);
+  const damage = cardPrimaryDamage(id, row, !!view.ratRow, ignoreRow);
   const rider = cardConsumeRiderDamage(id);
-  const guard = cardGuardGain(id, row);
+  const guard = cardGuardGain(id, row, ignoreRow);
   const targetIsOpened = !!target && view.openedEnemyId === target.id;
   const survivesBase = !!target && damage !== null && target.hp > damage;
   const hasSecondEnemy =
     !!target && legalSecondTargetIds(view.enemies, target.id).length > 0;
   const parts: string[] = [];
 
-  if (id === "brace" || id === "ward") return `Gain ${guard} Guard`;
-  if (id === "extinguish") return `Deal ${damage} to all enemies`;
+  if (id === "fight-dirty" || id === "improvised-theorem") {
+    return CARD_DEFS[id].text;
+  }
+  if (id === "brace" || id === "pale-ward") return `Gain ${guard} Barrier`;
+  if (id === "the-staff-speaks") return `Deal ${damage} · Hush next intent`;
+  if (id === "the-threshold") return "Arm Omen · strike before target's next intent";
+  if (id === "king-of-the-heap") {
+    return `Deal ${damage} · Gain ${guard} Barrier · Crown target`;
+  }
+  if (id === "unlight") return `Deal ${damage} to all enemies`;
   if (id === "send-the-rat" && view.ratRow) {
     return `Rat changes row · Deal ${damage}`;
   }
+  if (id === "veil-of-quiet") return `Hush next intent · Gain ${guard} Barrier`;
+  if (id === "the-quiet-after") return `Deal ${target?.hushed ? 8 : 3}`;
+  if (id === "silence-the-hall") return "Hush every enemy's next intent";
+  if (id === "hasten-the-hour") {
+    if (target && view.omen?.targetId === target.id) {
+      return `Trigger Omen (${view.omen.damage}) · Deal 3`;
+    }
+    return `Deal ${damage}`;
+  }
+  if (id === "the-final-word") return `Gain ${(guard ?? 5) + (view.omen ? 5 : 0)} Barrier`;
+  if (id === "reckoning-strike") {
+    if (targetIsOpened) {
+      return `Deal ${(damage ?? 0) + (rider ?? 0)} · Move Front · Consume Opened`;
+    }
+    return `Deal ${damage}`;
+  }
+  if (id === "reckoning-ward") {
+    if (targetIsOpened) {
+      return `Gain ${(guard ?? 0) + 6} Barrier · Move Back · Consume Opened`;
+    }
+    return `Gain ${guard} Barrier`;
+  }
+  if (id === "brace-for-it") return `Gain ${guard} Barrier`;
+  if (id === "last-litter") {
+    return view.ratRow ? `Deal ${(damage ?? 0) + 8} · Consume Rat` : `Deal ${damage}`;
+  }
+  if (id === "feed-the-king") {
+    return view.ratRow
+      ? "Crown target · Gain 10 Barrier · Consume Rat"
+      : "Crown target · Gain 4 Barrier";
+  }
+  if (id === "one-more-rat") {
+    return view.ratRow
+      ? `Deal ${(damage ?? 0) + 6} · Consume Rat · Spawn Rat`
+      : `Deal ${damage}`;
+  }
   if (damage !== null) parts.push(`Deal ${damage}`);
 
+  const opener = plannedOpenerLabel(id, target?.hp, damage);
   if (id === "from-the-dark") {
-    parts.push("Open");
-    if (row === "back" && view.ratRow && survivesBase) parts.push("Rat +3");
-  } else if (id === "open-the-rank" || id === "crack" || id === "split-bone") {
-    parts.push("Open");
-  } else if ((id === "swarm-the-wound" || id === "full-stop") && targetIsOpened && survivesBase) {
+    if (opener) parts.push(opener);
+    if (!ignoreRow && row === "back" && view.ratRow && survivesBase) parts.push("Rat +3");
+  } else if (opener) {
+    parts.push(opener);
+  } else if ((id === "swarm-the-wound" || id === "full-stop") && targetIsOpened) {
     parts[0] = `Deal ${(damage ?? 0) + (rider ?? 0)}`;
     parts.push("Consume Opened");
   } else if (id === "burst-the-nest" && targetIsOpened) {
     parts.push(`${rider} to other enemies`, "Consume Opened");
-  } else if (id === "cut-the-line" && targetIsOpened && hasSecondEnemy) {
+  } else if (id === "sever-the-thread" && targetIsOpened && hasSecondEnemy) {
     parts.push(`Second enemy ${rider}`, "Consume Opened");
   } else if (id === "litter" && !view.ratRow) {
     parts.push(`Spawn Rat ${row === "front" ? "Front" : "Back"}`);
   } else if (id === "lunge") {
-    parts.unshift("Move Front");
-  } else if (id === "parting-blow") {
-    parts.push("Move Back");
+    if (!ignoreRow) parts.unshift("Move Front");
+  } else if (id === "parting-word") {
+    if (!ignoreRow) parts.push("Move Back");
   } else if (guard !== null) {
-    parts.push(`Gain ${guard} Guard`);
+    parts.push(`Gain ${guard} Barrier`);
   }
   return parts.join(" · ") || CARD_DEFS[id].text;
 }
@@ -213,6 +266,13 @@ function instructionFor(
   if (input.phase === "playback") {
     const label = input.playbackLabel ? `Resolving ${input.playbackLabel}` : "Resolving action";
     return { decision: label, hand: label };
+  }
+  if (input.phase === "draft") {
+    const draft = input.view.draft;
+    return {
+      decision: "Choose an improvised card",
+      hand: draft ? `${draft.sourceName} · choose one temporary answer` : "Choose an answer",
+    };
   }
   if (input.phase === "result") return { decision: "Fight complete", hand: "Fight complete" };
   if (input.view.energy <= 0) return { decision: "Ending turn", hand: "No energy remaining" };
@@ -276,6 +336,9 @@ export function buildCardTrialUiRecipe(input: CardTrialWindowsInput): CardTrialU
         legalTarget: false,
         selectedTarget: false,
         opened: false,
+        crowned: false,
+        hushed: false,
+        omened: false,
         intentLabel: null,
         intentDamage: null,
         intentWouldMiss: false,
@@ -299,6 +362,9 @@ export function buildCardTrialUiRecipe(input: CardTrialWindowsInput): CardTrialU
         legalTarget: legalTargets.includes(enemy.id),
         selectedTarget,
         opened: enemy.opened,
+        crowned: enemy.crowned,
+        hushed: !!enemy.hushed,
+        omened: input.view.omen?.targetId === enemy.id,
         intentLabel: intent?.label ?? null,
         intentDamage: intent?.rawDamage ?? null,
         intentWouldMiss: intent?.wouldMiss ?? false,

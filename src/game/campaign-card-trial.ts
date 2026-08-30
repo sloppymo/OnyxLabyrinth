@@ -17,6 +17,7 @@ import {
 } from "./card-trial";
 import type { CardId, CardTrialState, EnemyState, Intent } from "./card-trial/types";
 import { activeCampaignDeck, type CampaignCardProgress } from "./campaign-cards";
+import { campaignCardReward as authoredCampaignCardReward } from "./campaign-card-rewards";
 
 export type CampaignResolvedEnemy = ReturnType<typeof resolveEncounter>[number];
 
@@ -29,14 +30,7 @@ export interface CampaignCardTrialMetadata {
   cardProgress?: CampaignCardProgress;
 }
 
-/** Card rewards are deliberately drawn from the current locked card pool. */
-const REWARD_POOL_BY_FLOOR: Record<number, readonly CardId[]> = {
-  1: ["open-the-rank", "crack", "from-the-dark", "split-bone"],
-  2: ["swarm-the-wound", "full-stop", "send-the-rat", "cut-the-line"],
-  3: ["burst-the-nest", "threshold", "king-of-the-heap", "stand-and-die"],
-  4: ["litter", "extinguish", "tide", "from-afar"],
-  5: ["lunge", "parting-blow", "brace", "ward"],
-};
+/** Card rewards are authored place-bound records, not a floor pool. */
 
 function stableHash(text: string): number {
   let hash = 2166136261;
@@ -178,6 +172,9 @@ export function createCampaignCardTrialFight(metadata: CampaignCardTrialMetadata
   trial.phase = "hero-turn";
   trial.result = null;
   trial.opened = null;
+  trial.omen = null;
+  trial.draft = null;
+  trial.draftRollback = null;
   trial.rat = null;
   trial.events = [];
   trial.telemetry.intents = [];
@@ -193,10 +190,13 @@ export function createCampaignCardTrialFight(metadata: CampaignCardTrialMetadata
   return trial;
 }
 
-/** Pick a deterministic persistent card reward from the current card pool. */
-export function campaignCardReward(floorId: number, entryId: string): CardId {
-  const pool = REWARD_POOL_BY_FLOOR[floorId] ?? REWARD_POOL_BY_FLOOR[5]!;
-  return pool[stableHash(`${floorId}:${entryId}:reward`) % pool.length]!;
+/** Pick an authored place-bound card, or null for routine encounters. */
+export function campaignCardReward(
+  _floorId: number,
+  entryId: string,
+  progress?: CampaignCardProgress
+): CardId | null {
+  return authoredCampaignCardReward(entryId, progress);
 }
 
 /** Resolve a real authored encounter for debug evidence without bypassing its table. */

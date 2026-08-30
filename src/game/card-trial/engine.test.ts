@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createPlayableDuo } from "../playable-duo";
 import { CARD_DEFS, OLD_MAN_LIST, RAT_KING_LIST } from "./cards";
+import { DRAFT_CHOICES } from "./drafts";
 import { ENCOUNTERS } from "./encounters";
+import { createShuffleStream, shuffleInPlace } from "./rng";
 import {
   actingHero,
+  assembleFight,
   canPaidMove,
   cardConsumeRiderDamage,
   cardGuardGain,
@@ -16,10 +19,12 @@ import {
   paidMove,
   playCard,
   playerView,
+  resolveDraftChoice,
   singleTargetInRow,
   startHeroCardTurn,
   summarizeTelemetry,
 } from "./engine";
+import { legalActions } from "./sim/legal-actions";
 import { resetGameplayRng, setGameplayRng } from "../rng";
 import type { CardId, CardTrialState } from "./types";
 
@@ -57,11 +62,13 @@ function finishRatKing(s: CardTrialState) {
 }
 
 describe("Card Trial decks", () => {
-  it("gives each hero exactly 12 cards with the locked duplicates and curves", () => {
+  it("gives each hero exactly 12 cards with one bounded draft card", () => {
     expect(RAT_KING_LIST).toHaveLength(12);
     expect(OLD_MAN_LIST).toHaveLength(12);
-    expect(RAT_KING_LIST.filter((id) => id === "nip")).toHaveLength(2);
-    expect(OLD_MAN_LIST.filter((id) => id === "staff")).toHaveLength(2);
+    expect(RAT_KING_LIST.filter((id) => id === "fight-dirty")).toHaveLength(1);
+    expect(OLD_MAN_LIST.filter((id) => id === "improvised-theorem")).toHaveLength(1);
+    expect(new Set(RAT_KING_LIST).size).toBe(12);
+    expect(new Set(OLD_MAN_LIST).size).toBe(12);
     const rkCosts = RAT_KING_LIST.map((id) => CARD_DEFS[id].cost);
     const omCosts = OLD_MAN_LIST.map((id) => CARD_DEFS[id].cost);
     expect(rkCosts.filter((c) => c === 1)).toHaveLength(10);
@@ -96,10 +103,10 @@ describe("rules-layer card constants", () => {
     const cases: Array<{ hero: "rat-king" | "old-man"; id: CardId; row: "front" | "back" }> = [
       { hero: "rat-king", id: "brace", row: "front" },
       { hero: "rat-king", id: "king-of-the-heap", row: "front" },
-      { hero: "old-man", id: "ward", row: "back" },
-      { hero: "old-man", id: "stand-and-die", row: "front" },
-      { hero: "old-man", id: "from-afar", row: "back" },
-      { hero: "old-man", id: "from-afar", row: "front" },
+      { hero: "old-man", id: "pale-ward", row: "back" },
+      { hero: "old-man", id: "last-bastion", row: "front" },
+      { hero: "old-man", id: "distant-hand", row: "back" },
+      { hero: "old-man", id: "distant-hand", row: "front" },
     ];
     for (const c of cases) {
       const s = createFight(2, { seed: 3 });
@@ -118,7 +125,7 @@ describe("rules-layer card constants", () => {
   it("keeps same-target consume riders in lockstep with cardConsumeRiderDamage", () => {
     const cases = [
       { hero: "rat-king", openId: "open-the-rank", consumeId: "swarm-the-wound" },
-      { hero: "old-man", openId: "crack", consumeId: "full-stop" },
+      { hero: "old-man", openId: "faultline", consumeId: "full-stop" },
     ] as const;
     for (const c of cases) {
       const s = createFight(2, { seed: 7 });
@@ -149,12 +156,12 @@ describe("rules-layer card constants", () => {
 
     const second = createFight(2, { seed: 9 });
     finishRatKing(second);
-    dealHand(second, "old-man", ["crack", "cut-the-line"]);
-    play(second, "crack", "cleaver");
+    dealHand(second, "old-man", ["faultline", "sever-the-thread"]);
+    play(second, "faultline", "cleaver");
     const ashBeforeCut = second.enemies.find((e) => e.id === "ash")!.hp;
-    play(second, "cut-the-line", "cleaver", "ash");
+    play(second, "sever-the-thread", "cleaver", "ash");
     expect(ashBeforeCut - second.enemies.find((e) => e.id === "ash")!.hp).toBe(
-      cardConsumeRiderDamage("cut-the-line")
+      cardConsumeRiderDamage("sever-the-thread")
     );
   });
 
@@ -165,6 +172,97 @@ describe("rules-layer card constants", () => {
     expect(legalSecondTargetIds(s.enemies, "cleaver")).toEqual([]);
     expect(legalSecondTargetIds(s.enemies, "ash")).toContain("cleaver");
     expect(legalSecondTargetIds(s.enemies, undefined)).toEqual([]);
+  });
+
+  it("does not Open when the base hit would kill", () => {
+    const openers = [
+      { hero: "rat-king" as const, id: "open-the-rank" as const },
+      { hero: "rat-king" as const, id: "from-the-dark" as const },
+      { hero: "old-man" as const, id: "faultline" as const },
+      { hero: "old-man" as const, id: "marrow-divide" as const },
+    ];
+    for (const c of openers) {
+      const s = createFight(2, { seed: 11 });
+      if (c.hero === "old-man") finishRatKing(s);
+      const target = s.enemies.find((e) => e.id === "cleaver")!;
+      target.hp = cardPrimaryDamage(c.id, s.heroes[c.hero].row)!;
+      dealHand(s, c.hero, [c.id]);
+      play(s, c.id, "cleaver");
+      expect(s.opened, c.id).toBeNull();
+      expect(target.hp).toBe(0);
+    }
+  });
+
+  it("locks Consume before a lethal base hit so the rider still applies", () => {
+    const swarm = createFight(2, { seed: 12 });
+    dealHand(swarm, "rat-king", ["open-the-rank", "swarm-the-wound"]);
+    play(swarm, "open-the-rank", "cleaver");
+    const cleaver = swarm.enemies.find((e) => e.id === "cleaver")!;
+    cleaver.hp = 5;
+    play(swarm, "swarm-the-wound", "cleaver");
+    expect(cleaver.hp).toBe(0);
+    expect(swarm.opened).toBeNull();
+    expect(swarm.events.some((e) => e.type === "consume")).toBe(true);
+
+    const burst = createFight(2, { seed: 13 });
+    dealHand(burst, "rat-king", ["open-the-rank", "burst-the-nest"]);
+    play(burst, "open-the-rank", "cleaver");
+    burst.enemies.find((e) => e.id === "cleaver")!.hp = 8;
+    const ashHp = burst.enemies.find((e) => e.id === "ash")!.hp;
+    play(burst, "burst-the-nest", "cleaver");
+    expect(burst.enemies.find((e) => e.id === "cleaver")!.hp).toBe(0);
+    expect(ashHp - burst.enemies.find((e) => e.id === "ash")!.hp).toBe(4);
+
+    const stop = createFight(2, { seed: 14 });
+    finishRatKing(stop);
+    dealHand(stop, "old-man", ["faultline", "full-stop"]);
+    play(stop, "faultline", "cleaver");
+    stop.enemies.find((e) => e.id === "cleaver")!.hp = 8;
+    play(stop, "full-stop", "cleaver");
+    expect(stop.enemies.find((e) => e.id === "cleaver")!.hp).toBe(0);
+    expect(stop.opened).toBeNull();
+
+    const cut = createFight(2, { seed: 15 });
+    finishRatKing(cut);
+    dealHand(cut, "old-man", ["faultline", "sever-the-thread"]);
+    play(cut, "faultline", "cleaver");
+    cut.enemies.find((e) => e.id === "cleaver")!.hp = 5;
+    const ashBefore = cut.enemies.find((e) => e.id === "ash")!.hp;
+    play(cut, "sever-the-thread", "cleaver", "ash");
+    expect(cut.enemies.find((e) => e.id === "cleaver")!.hp).toBe(0);
+    expect(ashBefore - cut.enemies.find((e) => e.id === "ash")!.hp).toBe(5);
+  });
+
+  it("ignores Front damage riders when rowMode is none", () => {
+    const s = assembleFight({
+      fightId: 1,
+      fightName: "No row tide",
+      seed: 1,
+      enemies: [
+        {
+          id: "dummy",
+          name: "Dummy",
+          maxHp: 30,
+          visualRow: "front",
+          spriteId: "training-dummy",
+          cycle: [{ kind: "row", row: "front", damage: 5 }],
+          slot: "slow",
+          order: 0,
+        },
+      ],
+      decks: {
+        "rat-king": ["tide", "nip", "brace", "lunge", "litter"],
+        "old-man": ["the-staff-speaks", "pale-ward", "faultline", "distant-hand", "full-stop"],
+      },
+      ruleset: { cards: {}, rowMode: "none" },
+      setup: { hands: { "rat-king": ["tide"] } },
+    });
+    s.heroes["rat-king"].row = "front";
+    expect(cardPrimaryDamage("tide", "front", false, true)).toBe(5);
+    play(s, "tide", "dummy");
+    expect(s.enemies[0]!.hp).toBe(25);
+    expect(s.heroes["rat-king"].row).toBe("front");
+    expect(canPaidMove(s).ok).toBe(false);
   });
 });
 
@@ -185,6 +283,7 @@ describe("Card Trial turn", () => {
     expect(cardPrimaryDamage("send-the-rat", "front", false)).toBe(4);
     expect(cardPrimaryDamage("send-the-rat", "front", true)).toBe(5);
     expect(cardPrimaryDamage("brace", "front")).toBeNull();
+    expect(cardPrimaryDamage("tide", "front", false, true)).toBe(5);
   });
 
   it("draws 5, sets energy to 3, and discards the remainder on pass", () => {
@@ -217,8 +316,231 @@ describe("Card Trial turn", () => {
   });
 });
 
+describe("bounded tactical drafts", () => {
+  it("reveals three distinct temporary Dirty Tricks and keeps the source card out of the hand", () => {
+    const s = createFight(2, { seed: 101 });
+    dealHand(s, "rat-king", ["fight-dirty"]);
+    const source = handCard(s, "fight-dirty")!;
+    const result = playCard(s, source.uid, { targetId: "cleaver" });
+    expect(result.ok).toBe(true);
+    expect(result.events).toContainEqual(expect.objectContaining({ type: "draft-opened", sourceId: "fight-dirty" }));
+    expect(s.draft?.heroId).toBe("rat-king");
+    expect(s.draft?.pool).toBe("dirty-tricks");
+    expect(s.draft?.choices).toHaveLength(3);
+    expect(new Set(s.draft?.choices.map((choice) => choice.id)).size).toBe(3);
+    expect(s.heroes["rat-king"].hand.some((card) => card.defId === "fight-dirty")).toBe(false);
+    expect(playerView(s).draft?.sourceName).toBe("Fight Dirty");
+  });
+
+  it("uses the same seed to reveal the same choices", () => {
+    const a = createFight(2, { seed: 202 });
+    const b = createFight(2, { seed: 202 });
+    dealHand(a, "rat-king", ["fight-dirty"]);
+    dealHand(b, "rat-king", ["fight-dirty"]);
+    play(a, "fight-dirty", "cleaver");
+    play(b, "fight-dirty", "cleaver");
+    expect(a.draft?.choices.map((choice) => choice.id)).toEqual(b.draft?.choices.map((choice) => choice.id));
+  });
+
+  it("lets Old Man choose a free arcane response and resolves it as a spell", () => {
+    const s = createFight(2, { seed: 303 });
+    finishRatKing(s);
+    dealHand(s, "old-man", ["improvised-theorem"]);
+    play(s, "improvised-theorem", "cleaver");
+    const draft = s.draft!;
+    const free = draft.choices.find((choice) => choice.cost === 0)!;
+    const beforeEnergy = s.heroes["old-man"].energy;
+    const picked = resolveDraftChoice(s, free.id);
+    expect(picked.ok).toBe(true);
+    expect(s.draft).toBeNull();
+    expect(s.heroes["old-man"].energy).toBe(beforeEnergy);
+    expect(picked.events).toContainEqual(expect.objectContaining({
+      type: "draft-picked",
+      sourceId: "improvised-theorem",
+      choiceId: free.id,
+    }));
+  });
+
+  it("does not allow ordinary actions or recursive drafts while a choice is open", () => {
+    const s = createFight(2, { seed: 404 });
+    dealHand(s, "rat-king", ["fight-dirty", "nip"]);
+    play(s, "fight-dirty", "cleaver");
+    expect(playCard(s, handCard(s, "nip")!.uid, { targetId: "cleaver" })).toMatchObject({
+      ok: false,
+      reason: "Choose a draft card",
+    });
+    expect(endHeroTurn(s)).toEqual([]);
+    expect(canPaidMove(s)).toMatchObject({ ok: false, reason: "Choose a draft card" });
+    expect(legalActions(s).every((a) => a.kind === "draft")).toBe(true);
+    expect(legalActions(s).some((a) => a.kind === "pass")).toBe(false);
+  });
+
+  it("lets the source be the last Energy and still offers an affordable Safe option", () => {
+    const s = createFight(2, { seed: 505 });
+    dealHand(s, "rat-king", ["fight-dirty"]);
+    s.heroes["rat-king"].energy = 1;
+    play(s, "fight-dirty", "cleaver");
+    expect(s.heroes["rat-king"].energy).toBe(0);
+    const legal = legalActions(s);
+    expect(legal.length).toBeGreaterThan(0);
+    expect(legal.every((a) => a.kind === "draft")).toBe(true);
+    expect(s.draft?.choices.some((choice) => choice.cost === 0)).toBe(true);
+    const free = s.draft!.choices.find((choice) => choice.cost === 0)!;
+    expect(legal.some((a) => a.kind === "draft" && a.choiceId === free.id)).toBe(true);
+    const greedy = s.draft!.choices.find((choice) => choice.cost === 1);
+    if (greedy) {
+      expect(legal.some((a) => a.kind === "draft" && a.choiceId === greedy.id)).toBe(false);
+      expect(resolveDraftChoice(s, greedy.id).ok).toBe(false);
+    }
+    expect(resolveDraftChoice(s, free.id).ok).toBe(true);
+  });
+
+  it("does not change the offer when the hero deck stream is burned", () => {
+    const a = createFight(2, { seed: 606 });
+    const b = createFight(2, { seed: 606 });
+    shuffleInPlace(a.heroes["rat-king"].draw, a.streams["rat-king"]);
+    shuffleInPlace(a.heroes["rat-king"].discard, createShuffleStream(1));
+    dealHand(a, "rat-king", ["fight-dirty"]);
+    dealHand(b, "rat-king", ["fight-dirty"]);
+    play(a, "fight-dirty", "cleaver");
+    play(b, "fight-dirty", "cleaver");
+    expect(a.draft?.choices.map((c) => c.id)).toEqual(b.draft?.choices.map((choice) => choice.id));
+  });
+
+  it("locks the target before reveal and rolls back on an invalid pick", () => {
+    const s = createFight(2, { seed: 707 });
+    dealHand(s, "rat-king", ["fight-dirty"]);
+    const energy = s.heroes["rat-king"].energy;
+    const streamBefore = s.draftStream.getState();
+    play(s, "fight-dirty", "cleaver");
+    expect(s.draft?.targetId).toBe("cleaver");
+    const afterOpen = s.draftStream.getState();
+    expect(afterOpen).not.toBe(streamBefore);
+    s.enemies.find((e) => e.id === "cleaver")!.hp = 0;
+    const lost = resolveDraftChoice(s, s.draft!.choices[0]!.id);
+    expect(lost.ok).toBe(false);
+    expect(lost.events).toContainEqual(expect.objectContaining({ type: "offer-lost", targetId: "cleaver" }));
+    expect(s.draft).toBeNull();
+    expect(s.heroes["rat-king"].hand.some((c) => c.defId === "fight-dirty")).toBe(true);
+    expect(s.heroes["rat-king"].energy).toBe(energy);
+    expect(s.draftStream.getState()).toBe(streamBefore);
+  });
+
+  it("resolves no-Rat, occupied Omen, no-Opened, and partner-Down fallbacks", () => {
+    const sleeve = createFight(2, { seed: 808 });
+    dealHand(sleeve, "rat-king", ["fight-dirty"]);
+    play(sleeve, "fight-dirty", "cleaver");
+    sleeve.draft!.choices = [
+      DRAFT_CHOICES["rat-in-the-sleeve"],
+      DRAFT_CHOICES["pocket-sand"],
+      DRAFT_CHOICES["royal-ambush"],
+    ];
+    expect(sleeve.rat).toBeNull();
+    expect(resolveDraftChoice(sleeve, "rat-in-the-sleeve").ok).toBe(true);
+    expect(sleeve.rat?.row).toBe("front");
+
+    const omen = createFight(2, { seed: 809 });
+    finishRatKing(omen);
+    omen.omen = { targetId: "cleaver", createdBy: "old-man", damage: 7 };
+    dealHand(omen, "old-man", ["improvised-theorem"]);
+    play(omen, "improvised-theorem", "ash");
+    omen.draft!.choices = [
+      DRAFT_CHOICES["late-verdict"],
+      DRAFT_CHOICES["silence-the-room"],
+      DRAFT_CHOICES["fracture-script"],
+    ];
+    omen.heroes["old-man"].energy = 1;
+    const ash = omen.enemies.find((e) => e.id === "ash")!;
+    expect(resolveDraftChoice(omen, "late-verdict").ok).toBe(true);
+    expect(omen.omen?.targetId).toBe("cleaver");
+    expect(ash.hushed).toBe(true);
+
+    const feast = createFight(2, { seed: 810 });
+    dealHand(feast, "rat-king", ["fight-dirty"]);
+    play(feast, "fight-dirty", "cleaver");
+    feast.draft!.choices = [
+      DRAFT_CHOICES["feast-on-the-fallen"],
+      DRAFT_CHOICES["pocket-sand"],
+      DRAFT_CHOICES["royal-ambush"],
+    ];
+    feast.heroes["rat-king"].energy = 1;
+    expect(feast.opened).toBeNull();
+    resolveDraftChoice(feast, "feast-on-the-fallen");
+    expect(feast.heroes["rat-king"].guard).toBe(2);
+
+    const down = createFight(2, { seed: 811 });
+    down.heroes["old-man"].hp = 0;
+    dealHand(down, "rat-king", ["fight-dirty"]);
+    play(down, "fight-dirty", "cleaver");
+    expect(down.draft?.choices.some((c) => c.cost === 0)).toBe(true);
+    const free = down.draft!.choices.find((c) => c.cost === 0)!;
+    expect(resolveDraftChoice(down, free.id).ok).toBe(true);
+  });
+});
+
+describe("Old Man spell states", () => {
+  it("Hush halves the marked enemy's next intent and then clears", () => {
+    const s = createFight(4, { seed: 17 });
+    finishRatKing(s);
+    dealHand(s, "old-man", ["the-staff-speaks"]);
+    const brute = s.enemies.find((enemy) => enemy.id === "brute")!;
+
+    const cast = play(s, "the-staff-speaks", brute.id);
+    expect(cast.events).toEqual(
+      expect.arrayContaining([
+        { type: "attack", actorId: "old-man", targetId: "brute", damage: 6 },
+        { type: "hush-applied", targetId: "brute" },
+      ])
+    );
+    expect(brute.hushed).toBe(true);
+    expect(playerView(s).intents.find((intent) => intent.enemyId === brute.id)?.rawDamage).toBe(6);
+
+    const before = s.heroes["rat-king"].hp;
+    const end = endHeroTurn(s);
+    expect(end).toEqual(
+      expect.arrayContaining([
+        { type: "hush-triggered", targetId: "brute", rawDamage: 12, damage: 6 },
+      ])
+    );
+    expect(s.heroes["rat-king"].hp).toBe(before - 6);
+    expect(brute.hushed).toBe(false);
+    expect(playerView(s).intents.find((intent) => intent.enemyId === brute.id)?.rawDamage).toBe(10);
+  });
+
+  it("The Threshold arms one Omen that strikes before a slow enemy acts", () => {
+    const s = createFight(4, { seed: 18 });
+    finishRatKing(s);
+    dealHand(s, "old-man", ["the-threshold"]);
+    const brute = s.enemies.find((enemy) => enemy.id === "brute")!;
+
+    const cast = play(s, "the-threshold", brute.id);
+    expect(cast.events).toContainEqual({ type: "omen-armed", targetId: brute.id, damage: 7 });
+    expect(s.omen).toEqual({ targetId: brute.id, createdBy: "old-man", damage: 7 });
+    expect(brute.hp).toBe(40);
+
+    const end = endHeroTurn(s);
+    expect(end).toEqual(
+      expect.arrayContaining([{ type: "omen-triggered", targetId: brute.id, damage: 7 }])
+    );
+    expect(brute.hp).toBe(33);
+    expect(s.omen).toBeNull();
+  });
+
+  it("clears an armed Omen when another card kills its target", () => {
+    const s = createFight(2, { seed: 19 });
+    const cleaver = s.enemies.find((enemy) => enemy.id === "cleaver")!;
+    cleaver.hp = 5;
+    s.omen = { targetId: cleaver.id, createdBy: "old-man", damage: 7 };
+    dealHand(s, "rat-king", ["tide"]);
+
+    const result = play(s, "tide", cleaver.id);
+    expect(result.events).toContainEqual({ type: "omen-fizzled", targetId: cleaver.id });
+    expect(s.omen).toBeNull();
+  });
+});
+
 describe("Card Trial Move", () => {
-  it("charges 1 energy once per turn and does not consume it for Lunge or Parting Blow", () => {
+  it("charges 1 energy once per turn and does not consume it for Lunge or Parting Word", () => {
     const s = createFight(1, { seed: 8 });
     const rk = s.heroes["rat-king"];
     dealHand(s, "rat-king", ["lunge", "nip"]);
@@ -242,13 +564,13 @@ describe("Card Trial Move", () => {
     expect(again.ok).toBe(false);
   });
 
-  it("lets Parting Blow move to Back without spending the Move utility", () => {
+  it("lets Parting Word move to Back without spending the Move utility", () => {
     const s = createFight(3, { seed: 5 });
     finishRatKing(s);
     const om = s.heroes["old-man"];
-    dealHand(s, "old-man", ["parting-blow"]);
+    dealHand(s, "old-man", ["parting-word"]);
     om.row = "front";
-    play(s, "parting-blow", s.enemies[0]!.id);
+    play(s, "parting-word", s.enemies[0]!.id);
     expect(om.row).toBe("back");
     expect(om.paidMoveUsed).toBe(false);
     expect(canPaidMove(s).ok).toBe(true);
@@ -369,18 +691,18 @@ describe("Opened", () => {
     expect(s.enemies[0]!.hp).toBe(96 - 4 - 8);
   });
 
-  it("refuses Cut the Line consume without a legal second enemy", () => {
+  it("refuses Sever the Thread consume without a legal second enemy", () => {
     const s = createFight(10, { seed: 2 });
     finishRatKing(s);
     const om = s.heroes["old-man"];
     om.discard.push(...om.hand, ...om.draw);
     om.draw = [];
-    const crack = om.discard.find((c) => c.defId === "crack")!;
-    const cut = om.discard.find((c) => c.defId === "cut-the-line")!;
+    const crack = om.discard.find((c) => c.defId === "faultline")!;
+    const cut = om.discard.find((c) => c.defId === "sever-the-thread")!;
     om.hand = [crack, cut];
     om.energy = 3;
-    play(s, "crack", "the-heap");
-    const cutCard = handCard(s, "cut-the-line")!;
+    play(s, "faultline", "the-heap");
+    const cutCard = handCard(s, "sever-the-thread")!;
     const view = playerView(s).hand.find((c) => c.uid === cutCard.uid)!;
     expect(view.consumeArmed).toBe(false);
     const result = playCard(s, cutCard.uid, { targetId: "the-heap", secondTargetId: "the-heap" });
@@ -424,6 +746,62 @@ describe("Rat token", () => {
   });
 });
 
+describe("Crowned", () => {
+  it("makes King of the Heap name and designate a single subject", () => {
+    const s = createFight(2, { seed: 21 });
+    s.heroes["rat-king"].row = "back";
+    dealHand(s, "rat-king", ["king-of-the-heap"]);
+    const result = play(s, "king-of-the-heap", "cleaver");
+    expect(result.events).toContainEqual({ type: "crowned", targetId: "cleaver" });
+    expect(s.crownedEnemyId).toBe("cleaver");
+    const view = playerView(s);
+    expect(view.crownedEnemyId).toBe("cleaver");
+    expect(view.enemies.find((e) => e.id === "cleaver")?.crowned).toBe(true);
+    expect(view.intents.find((i) => i.enemyId === "cleaver")?.label).toContain("Rat King (CROWN)");
+  });
+
+  it("redirects a Crowned row intent to Rat King regardless of row", () => {
+    const s = createFight(2, { seed: 22 });
+    s.heroes["rat-king"].row = "back";
+    s.crownedEnemyId = "cleaver";
+    const events = endHeroTurn(s);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: "intent-hit", enemyId: "cleaver", targetId: "rat-king" })
+    );
+    expect(events.some((e) => e.type === "intent-hit" && e.enemyId === "cleaver" && e.targetId === "old-man")).toBe(false);
+  });
+
+  it("pays Barrier tribute instead of redirecting wide Crowned intents", () => {
+    const s = createFight(8, { seed: 23 });
+    s.crownedEnemyId = "twinblade";
+    const before = s.heroes["rat-king"].guard;
+    const events = endHeroTurn(s);
+    expect(events).toContainEqual({ type: "guard", actorId: "rat-king", amount: 2 });
+    expect(events).toContainEqual({
+      type: "crown-tribute",
+      targetId: "rat-king",
+      amount: 2,
+      sourceId: "twinblade",
+    });
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: "intent-hit", enemyId: "twinblade", targetId: "rat-king", absorbed: 2 })
+    );
+    expect(s.heroes["rat-king"].guard).toBe(before);
+    expect(events.filter((e) => e.type === "intent-hit" && e.enemyId === "twinblade")).toHaveLength(2);
+  });
+
+  it("clears the crown when its subject dies", () => {
+    const s = createFight(2, { seed: 24 });
+    s.crownedEnemyId = "cleaver";
+    const cleaver = s.enemies.find((enemy) => enemy.id === "cleaver")!;
+    cleaver.hp = 5;
+    dealHand(s, "rat-king", ["nip"]);
+    const result = play(s, "nip", cleaver.id);
+    expect(result.events).toContainEqual({ type: "crown-cleared", targetId: "cleaver", reason: "defeated" });
+    expect(s.crownedEnemyId).toBeNull();
+  });
+});
+
 describe("Opened consume telemetry", () => {
   it("records a true decline when a Consume card is in hand and never played", () => {
     const s = createAdversarialTriangle();
@@ -443,11 +821,9 @@ describe("Opened consume telemetry", () => {
     play(s, "swarm-the-wound", "ash");
     finishRatKing(s);
     const rec = s.telemetry.turns.at(-1)!;
-    expect(rec.actions.some((a) => a.startsWith("consumeCardPlayedBaseKilledTarget:swarm-the-wound"))).toBe(
-      true,
-    );
-    expect(rec.actions.some((a) => a.startsWith("openedAvailableButDeclined"))).toBe(false);
     expect(s.opened).toBeNull();
+    expect(rec.actions.some((a) => a.startsWith("consumeCardPlayedBaseKilledTarget"))).toBe(false);
+    expect(rec.actions.some((a) => a.startsWith("openedAvailableButDeclined"))).toBe(false);
   });
 
   it("does not flag a successful Consume as declined or base-killed", () => {

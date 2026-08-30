@@ -143,6 +143,8 @@ import {
 } from "./game/campaign-cards";
 import { CardTrialPlaytestRecorder } from "./game/card-trial/playtest";
 import { PrologueController } from "./engine/prologue-ui";
+import { OldManBuildSelectController } from "./engine/old-man-build-select-ui";
+import type { OldManBuildId } from "./game/old-man-builds";
 import { EndingController } from "./engine/ending-ui";
 import { autoSave, serialize, deserialize } from "./game/save";
 import { createCombatFromEncounter } from "./game/combat";
@@ -307,13 +309,15 @@ const app = createApplication({
     },
     title: {
       newGame: () => {
-        closeMapOverlay();
-        mapOverlayRenderer.invalidate();
-        Object.assign(state, createGameState(getFloors()[0]!));
-        resetEncounterFamilyMemory();
-        openPrologue(() => {
-          audio.stopTitleMusic();
-          openTown({ showIntroHint: true });
+        openOldManBuildSelect((oldManBuildId) => {
+          closeMapOverlay();
+          mapOverlayRenderer.invalidate();
+          Object.assign(state, createGameState(getFloors()[0]!, oldManBuildId));
+          resetEncounterFamilyMemory();
+          openPrologue(() => {
+            audio.stopTitleMusic();
+            openTown({ showIntroHint: true });
+          });
         });
       },
       continue: (loaded) => applyLoadedGameState(loaded),
@@ -636,6 +640,31 @@ function openPrologue(onDone: () => void): void {
     onDone: () => {
       prologueController = null;
       onDone();
+    },
+  });
+}
+
+// --- Old Man character-build selection --------------------------------
+// Shown once, immediately after "New Game" is clicked and before
+// createGameState() runs, so canceling out of it leaves no state to undo.
+let oldManBuildSelectController: OldManBuildSelectController | null = null;
+
+function openOldManBuildSelect(onChosen: (buildId: OldManBuildId) => void): void {
+  if (mapVisible) toggleMap();
+  setMode(state, "title");
+  showMode("title", mapVisible);
+  setMessage("");
+  oldManBuildSelectController = new OldManBuildSelectController({
+    panel: document.querySelector<HTMLDivElement>("#combat-panel")!,
+    onChosen: (buildId) => {
+      oldManBuildSelectController?.destroy();
+      oldManBuildSelectController = null;
+      onChosen(buildId);
+    },
+    onCancel: () => {
+      oldManBuildSelectController?.destroy();
+      oldManBuildSelectController = null;
+      screens.openTitle();
     },
   });
 }
@@ -1655,6 +1684,7 @@ function currentRouteFlags(): ControllerRouteContext {
     hasGameOver: screens.hasGameOver,
     hasPrologue: !!prologueController,
     hasEnding: !!endingController,
+    hasOldManBuildSelect: !!oldManBuildSelectController,
     hasTitle: screens.hasTitle,
   };
 }
@@ -1719,6 +1749,11 @@ function dispatchControllerRoute(route: BaseRouteKind, event: ControllerInputEve
     case "prologue": {
       const key = controllerEventToMenuKey(event);
       if (key) prologueController!.handleKey(key);
+      return;
+    }
+    case "old_man_build_select": {
+      const key = controllerEventToMenuKey(event);
+      if (key) oldManBuildSelectController!.handleKey(key);
       return;
     }
     case "ending": {
@@ -2225,14 +2260,20 @@ function onCampaignCardTrialEnd(trial: CardTrialState): void {
     }
 
     if (trial.result === "victory") {
-      const granted = grantCampaignCard(ensureCampaignCards(), encounter.pending.reward);
-      clearPendingCampaignEncounter(encounter.pending);
-      const rewardName = cardDef(encounter.pending.reward.cardId).name;
-      setMessage(
-        granted
-          ? `The ${encounter.entry.displayName ?? "encounter"} breaks. Card found: ${rewardName}.`
-          : `The ${encounter.entry.displayName ?? "encounter"} breaks. Its card was already claimed.`
-      );
+      const reward = encounter.pending.reward;
+      if (reward) {
+        const granted = grantCampaignCard(ensureCampaignCards(), reward);
+        clearPendingCampaignEncounter(encounter.pending);
+        const rewardName = cardDef(reward.cardId).name;
+        setMessage(
+          granted
+            ? `The ${encounter.entry.displayName ?? "encounter"} breaks. Card found: ${rewardName}.`
+            : `The ${encounter.entry.displayName ?? "encounter"} breaks. Its card was already claimed.`
+        );
+      } else {
+        clearPendingCampaignEncounter(encounter.pending);
+        setMessage(`The ${encounter.entry.displayName ?? "encounter"} breaks.`);
+      }
       autoSave(state);
       return;
     }
@@ -2326,11 +2367,10 @@ function startCampaignCardTrialFight(opts: {
       y: state.player.y,
       facing: state.player.facing,
     },
-    reward: encounterRewardInstance(
-      opts.floorId,
-      opts.entry.id,
-      campaignCardReward(opts.floorId, opts.entry.id)
-    ),
+    reward: (() => {
+      const cardId = campaignCardReward(opts.floorId, opts.entry.id, ensureCampaignCards());
+      return cardId ? encounterRewardInstance(opts.floorId, opts.entry.id, cardId) : null;
+    })(),
   } satisfies PendingCampaignEncounter;
   // Commit the exact checkpoint, combat seed, and reward before presentation.
   // A close or reload during combat therefore resumes this decision rather

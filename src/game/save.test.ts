@@ -49,7 +49,7 @@ describe("save serialization", () => {
   });
 
   it("round-trips campaign card instances, decks, and a pending encounter", () => {
-    grantCampaignCard(state.campaignCards!, encounterRewardInstance(1, "red-bones", "crack"));
+    grantCampaignCard(state.campaignCards!, encounterRewardInstance(1, "red-bones", "marrow-divide"));
     state.campaignCards!["old-man"].collection[0]!.mastery = 3;
     state.pendingCampaignEncounter = {
       encounterKey: "1:red-bones",
@@ -58,12 +58,12 @@ describe("save serialization", () => {
       entryId: "red-bones",
       seed: 99,
       checkpoint: { floorId: 1, x: 3, y: 4, facing: 2 },
-      reward: encounterRewardInstance(1, "red-bones", "crack"),
+      reward: encounterRewardInstance(1, "red-bones", "marrow-divide"),
     };
     const restored = deserialize(serialize(state));
     expect(restored?.campaignCards?.["old-man"].collection[0]?.mastery).toBe(3);
     expect(unusedCampaignCards(restored!.campaignCards!, "old-man").map((card) => card.cardId)).toEqual([
-      "crack",
+      "marrow-divide",
     ]);
     expect(restored?.pendingCampaignEncounter).toEqual(state.pendingCampaignEncounter);
   });
@@ -71,13 +71,11 @@ describe("save serialization", () => {
   it("migrates v19 flat campaign rewards into physical hero collections", () => {
     const legacy = JSON.parse(serialize(state));
     legacy.version = 19;
-    legacy.cardCollection = ["crack", "from-the-dark"];
+    legacy.cardCollection = ["faultline", "from-the-dark"];
     delete legacy.campaignCards;
     delete legacy.pendingCampaignEncounter;
     const restored = deserialize(JSON.stringify(legacy));
-    expect(unusedCampaignCards(restored!.campaignCards!, "old-man").map((card) => card.cardId)).toEqual([
-      "crack",
-    ]);
+    expect(unusedCampaignCards(restored!.campaignCards!, "old-man").map((card) => card.cardId)).toEqual([]);
     expect(unusedCampaignCards(restored!.campaignCards!, "rat-king").map((card) => card.cardId)).toEqual([
       "from-the-dark",
     ]);
