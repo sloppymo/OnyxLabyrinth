@@ -132,14 +132,14 @@ try {
   for (let fightId = 1; fightId <= 10 && !openedPairFound; fightId++) {
     await boot(page, { fightId });
     const opening = await page.evaluate(() => window.__onyxDebug.cardTrial.view()?.hand?.map((card) => card.defId) ?? []);
-    const hasOpener = opening.some((id) => ["open-the-rank", "crack", "split-bone", "from-the-dark"].includes(id));
+    const hasOpener = opening.some((id) => ["open-the-rank", "faultline", "marrow-divide", "from-the-dark"].includes(id));
     const hasConsume = opening.some((id) => ["swarm-the-wound", "full-stop", "burst-the-nest"].includes(id));
     if (!hasOpener || !hasConsume) continue;
     openedPairFound = true;
     await capture(page, `06-opened-hand-fight-${fightId}`);
     const opener = await page.evaluate(() => {
       const hand = window.__onyxDebug.cardTrial.view()?.hand ?? [];
-      return ["open-the-rank", "crack", "split-bone", "from-the-dark"].find((id) => hand.some((card) => card.defId === id && !card.disabled)) ?? null;
+      return ["open-the-rank", "faultline", "marrow-divide", "from-the-dark"].find((id) => hand.some((card) => card.defId === id && !card.disabled)) ?? null;
     });
     if (opener && await playCard(page, opener)) {
       await capturePlayback(page, "06-opened");

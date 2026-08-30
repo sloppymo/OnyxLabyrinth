@@ -512,7 +512,7 @@ function cardRulesHtml(text: string): string {
     .replace(/>/g, "&gt;")
     .replace(/\"/g, "&quot;");
   return escaped.replace(
-    /\b(?:Deal|Gain|Move|Front|Back|Open|Opened|Consume|Rat)\b(?:\s+\d+)?(?:\s+Guard)?|[+]\d+/g,
+    /\b(?:Deal|Gain|Move|Front|Back|Open|Opened|Consume|Rat|Barrier)\b(?:\s+\d+)?|[+]\d+/g,
     (match) => `<span class="ct2-emphasis">${match}</span>`
   );
 }

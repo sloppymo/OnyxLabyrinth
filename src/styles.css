@@ -4082,6 +4082,28 @@ canvas#map-canvas {
   font-size: 12px;
 }
 
+.ct-hush-mark,
+.ct-omen-mark,
+.ct-crowned-mark {
+  display: inline-block;
+  margin-right: 3px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ct-hush-mark {
+  color: #a997ff;
+}
+
+.ct-omen-mark {
+  color: #f0c777;
+}
+
+.ct-crowned-mark {
+  color: #ffd36b;
+  text-shadow: 0 0 6px rgba(255, 186, 66, 0.7);
+}
+
 .ct-consume {
   margin-top: 3px;
   font-size: 10px;
@@ -4175,7 +4197,21 @@ canvas#map-canvas {
   font-size: 12px;
 }
 
+.ct-omen-line {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #f0c777;
+}
+
+.ct-crowned-line {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #ffd36b;
+}
+
 .ct-opened-line.dim,
+.ct-omen-line.dim,
+.ct-crowned-line.dim,
 .ct-rat.dim {
   opacity: 0.5;
 }
@@ -4218,6 +4254,152 @@ canvas#map-canvas {
   white-space: pre-wrap;
   margin: 8px 12px 0;
   color: #d8dce8;
+}
+
+.ct-draft-windows {
+  justify-content: center;
+}
+
+.ct-draft-pane {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-color: #c4a056;
+}
+
+.ct-draft-subtitle {
+  color: #c8c0b0;
+  font-size: 11px;
+  margin: 2px 12px 8px;
+}
+
+.ct-draft-row {
+  display: flex;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.ct-draft-choice {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 118px;
+  padding: 18px 8px 8px;
+  border: 2px solid #827449;
+  background: linear-gradient(180deg, #332b1e 0%, #17130f 100%);
+  color: var(--warm-white);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ct-draft-choice.selected {
+  border-color: #ffe08a;
+  box-shadow: 0 0 0 1px #ffe08a, 0 0 14px rgba(255, 224, 138, 0.18);
+}
+
+.ct-draft-choice.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ct-draft-cost {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  color: #ffe08a;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.ct-draft-name {
+  display: block;
+  color: #f0d58d;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.ct-draft-text {
+  display: block;
+  margin-top: 8px;
+  color: #ded6c8;
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.ct-draft-overlay {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 720px;
+  transform: translate(-50%, -50%);
+  padding: 14px 16px 10px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(17, 14, 11, 0.97), rgba(9, 8, 7, 0.95));
+  border: 2px solid #c4a056;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 28px rgba(160, 113, 38, 0.14);
+  color: var(--warm-white);
+  z-index: 540;
+  pointer-events: auto;
+}
+
+.ct-draft-source {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.ct-draft-source strong {
+  color: #f0d58d;
+  font-size: 16px;
+}
+
+.ct-draft-source span:last-child {
+  color: #c8c0b0;
+  font-size: 10px;
+}
+
+.ct-draft-kicker {
+  color: #ffe08a;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.ct-draft-choice-row {
+  display: flex;
+  gap: 10px;
+}
+
+.ct-draft-overlay .ct-draft-choice {
+  min-height: 134px;
+}
+
+.ct-draft-overlay .ct-draft-choice strong,
+.ct-draft-overlay .ct-draft-choice span:last-child {
+  display: block;
+}
+
+.ct-draft-overlay .ct-draft-choice strong {
+  color: #f0d58d;
+  font-size: 14px;
+  line-height: 1.1;
+}
+
+.ct-draft-overlay .ct-draft-choice span:last-child {
+  margin-top: 8px;
+  color: #ded6c8;
+  font-size: 10px;
+  line-height: 1.28;
+}
+
+.ct-draft-hint {
+  margin-top: 10px;
+  color: #a8a092;
+  font-size: 9px;
+  text-align: center;
+  letter-spacing: 0.04em;
 }
 
 /* Sparse battlefield HUD + physical hand (default Card Trial presentation) */

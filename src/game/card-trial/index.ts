@@ -13,6 +13,7 @@ export {
   paidMove,
   playCard,
   endHeroTurn,
+  resolveDraftChoice,
   continueInitiative,
   playerView,
   intentPreviews,
@@ -28,6 +29,7 @@ export {
   OLD_MAN,
 } from "./engine";
 export { createShuffleStream, shuffleInPlace } from "./rng";
+export { drawDraftChoices, draftChoice, DRAFT_CHOICES } from "./drafts";
 export {
   HERO_MAX_HP,
   ENERGY_PER_TURN,
@@ -42,4 +44,10 @@ export type {
   HeroId,
   PlayerRow,
   CardPlayTargets,
+  DraftChoiceId,
+  DraftChoiceDef,
+  DraftChoiceView,
+  DraftPoolId,
+  DraftState,
+  DraftView,
 } from "./types";

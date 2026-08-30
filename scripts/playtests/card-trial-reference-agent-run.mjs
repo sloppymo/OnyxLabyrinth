@@ -102,25 +102,25 @@ function cardDmg(id, row, opened, liveCount, hasRat, ratRow) {
       return 5;
     case "king-of-the-heap":
       return 7 + (row === "front" ? 3 : 0);
-    case "staff":
+    case "the-staff-speaks":
       return 6;
-    case "crack":
+    case "faultline":
       return 5;
-    case "split-bone":
+    case "marrow-divide":
       return 4;
     case "full-stop":
       return 8 + (opened ? 8 : 0);
-    case "cut-the-line":
+    case "sever-the-thread":
       return 5 + (opened && liveCount > 1 ? 5 : 0);
-    case "threshold":
+    case "the-threshold":
       return 5 + (row === "front" ? 4 : 0);
-    case "from-afar":
+    case "distant-hand":
       return 5;
-    case "parting-blow":
+    case "parting-word":
       return 4;
-    case "extinguish":
+    case "unlight":
       return 4 * liveCount;
-    case "stand-and-die":
+    case "last-bastion":
       return 8 + (row === "front" ? 3 : 0);
     default:
       return 0;
@@ -206,7 +206,7 @@ function decide(view) {
     hereHeavy &&
     otherSafer &&
     !has("king-of-the-heap") &&
-    !has("stand-and-die") &&
+    !has("last-bastion") &&
     !bothRowsOnMe
   ) {
     return { kind: "move", why: `${hero.row} taxed ~${myMaxHit} and I have no stay 2-cost` };
@@ -215,7 +215,7 @@ function decide(view) {
   // 2. Stay 2-costs only if Front is a real tax and we're already Front (or Stand/Heap in Front).
   if (hero.row === "front" && hereHeavy && view.energy >= 2) {
     const stay = play("king-of-the-heap", { why: "stay in threatened Front with Heap Guard" })
-      || play("stand-and-die", { why: "stay in threatened Front with Stand and Die" });
+      || play("last-bastion", { why: "stay in threatened Front with Last Bastion" });
     if (stay) return stay;
   }
 
@@ -234,8 +234,8 @@ function decide(view) {
         kind: "play",
         defId: c.defId,
         uid: c.uid,
-        targetId: c.defId === "extinguish" || c.defId === "brace" || c.defId === "ward" ? undefined : raceTarget.id,
-        secondTargetId: c.defId === "cut-the-line" && c.consumeArmed ? pickSecond(view, raceTarget.id) : undefined,
+        targetId: c.defId === "unlight" || c.defId === "brace" || c.defId === "pale-ward" ? undefined : raceTarget.id,
+        secondTargetId: c.defId === "sever-the-thread" && c.consumeArmed ? pickSecond(view, raceTarget.id) : undefined,
         why: `race ${raceTarget.name} at ${raceTarget.hp} HP with ${c.name}`,
       };
     }
@@ -247,7 +247,7 @@ function decide(view) {
     if (burst && liveCount === 1 && view.energy >= 2) {
       // fall through — declined on purpose
     } else {
-      const consume = ["full-stop", "swarm-the-wound", "cut-the-line", "burst-the-nest"]
+      const consume = ["full-stop", "swarm-the-wound", "sever-the-thread", "burst-the-nest"]
         .map((id) => has(id))
         .filter((c) => c && c.consumeArmed && c.cost <= view.energy);
       if (consume[0]) {
@@ -258,7 +258,7 @@ function decide(view) {
             defId: c.defId,
             uid: c.uid,
             targetId: openedEnemy.id,
-            secondTargetId: c.defId === "cut-the-line" ? pickSecond(view, openedEnemy.id) : undefined,
+            secondTargetId: c.defId === "sever-the-thread" ? pickSecond(view, openedEnemy.id) : undefined,
             why: `consume Opened on ${openedEnemy.name} with ${c.name}`,
           };
         }
@@ -270,14 +270,14 @@ function decide(view) {
   if (!opened) {
     const opener = play("open-the-rank", { why: "Open someone for the party" })
       || play("from-the-dark", { why: "Open (and maybe Rat bite from Back)" })
-      || play("crack", { why: "Open with Crack" })
-      || play("split-bone", { why: "Open with Split Bone" });
+      || play("faultline", { why: "Open with Faultline" })
+      || play("marrow-divide", { why: "Open with Marrow Divide" });
     if (opener && opener.targetId) return opener;
   }
 
   // 6. Cheap Front payoff if already Front and not diving into a tax we refused to stay for.
   if (hero.row === "front") {
-    const bonus = play("tide", { why: "Front Tide" }) || play("threshold", { why: "Front Threshold" });
+    const bonus = play("tide", { why: "Front Tide" }) || play("the-threshold", { why: "The Threshold from Front" });
     if (bonus) return bonus;
   }
 
@@ -290,26 +290,26 @@ function decide(view) {
   }
 
   // 8. Ordinary 1-cost contact / small Guard if staying in a mild tax.
-  if (hereTax && view.energy === 1 && (has("brace") || has("ward") || has("from-afar") && hero.row === "back")) {
+  if (hereTax && view.energy === 1 && (has("brace") || has("pale-ward") || has("distant-hand") && hero.row === "back")) {
     return (
       play("brace", { none: true, why: "1 energy Brace to stay through a tax" }) ||
-      play("ward", { none: true, why: "1 energy Ward to stay through a tax" }) ||
-      play("from-afar", { why: "From Afar chip + Back Guard" })
+      play("pale-ward", { none: true, why: "1 energy Pale Ward to stay through a tax" }) ||
+      play("distant-hand", { why: "Distant Hand chip + Back Barrier" })
     );
   }
 
   const cheap = [
     "nip",
-    "staff",
-    "from-afar",
+    "the-staff-speaks",
+    "distant-hand",
     "open-the-rank",
     "from-the-dark",
-    "crack",
-    "split-bone",
-    "parting-blow",
+    "faultline",
+    "marrow-divide",
+    "parting-word",
     "lunge",
     "brace",
-    "ward",
+    "pale-ward",
   ]
     .map((id) => has(id))
     .filter(Boolean);
@@ -317,7 +317,7 @@ function decide(view) {
   const filtered = cheap.filter((c) => !(c.defId === "lunge" && frontThreats.some((t) => t.maxPost >= 10)));
   if (filtered[0]) {
     const c = filtered[0];
-    const none = c.defId === "brace" || c.defId === "ward";
+    const none = c.defId === "brace" || c.defId === "pale-ward";
     return {
       kind: "play",
       defId: c.defId,
@@ -327,15 +327,15 @@ function decide(view) {
     };
   }
 
-  // 9. Extinguish as a 2-cost beat vs 2+ bodies, not as a default.
-  if (liveCount >= 2 && has("extinguish") && view.energy >= 2) {
-    return play("extinguish", { none: true, why: "Extinguish hits everyone" });
+  // 9. Unlight as a 2-cost beat vs 2+ bodies, not as a default.
+  if (liveCount >= 2 && has("unlight") && view.energy >= 2) {
+    return play("unlight", { none: true, why: "Unlight hits everyone" });
   }
 
   // 10. Heap/Stand in a quiet Front is a possible 2-cost beat, but I prefer passing
   //     the 2-cost if I already spent 1-costs — if they're still in hand at 3 energy
   //     and Front is quiet, playing them is the "automatic" trap. Discard instead.
-  if (hero.row === "front" && !hereTax && view.energy >= 2 && (has("king-of-the-heap") || has("stand-and-die"))) {
+  if (hero.row === "front" && !hereTax && view.energy >= 2 && (has("king-of-the-heap") || has("last-bastion"))) {
     return { kind: "pass", why: "quiet Front: not auto-firing Heap/Stand; discarding the 2-cost is the test" };
   }
 

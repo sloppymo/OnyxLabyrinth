@@ -16,10 +16,13 @@ export interface CardTrialViewHandlers {
   onPass: () => void;
   onHoverTarget: (index: number) => void;
   onConfirmTarget: (index: number) => void;
+  /** Temporary three-choice tactical draft. */
+  onHoverDraftChoice?: (index: number) => void;
+  onConfirmDraftChoice?: (index: number) => void;
   onCancel: () => void;
 }
 
-export type CardTrialUiPhase = "hand" | "target" | "target2" | "playback" | "result";
+export type CardTrialUiPhase = "hand" | "target" | "target2" | "draft" | "playback" | "result";
 
 export interface CardTrialWindowsInput {
   view: CardTrialPlayerView;
@@ -27,6 +30,7 @@ export interface CardTrialWindowsInput {
   cursor: number;
   targetIds: string[];
   targetCursor: number;
+  draftCursor?: number;
   flash: string | null;
   result: { title: string; lines: string[] } | null;
   /** Hold-to-inspect intents. Presentation only. */
@@ -92,8 +96,18 @@ function intentHtml(view: CardTrialPlayerView): string {
       const opened = view.openedEnemyId === intent.enemyId
         ? `<span class="ct-opened-mark" title="Opened">◉</span> `
         : "";
+      const enemy = view.enemies.find((candidate) => candidate.id === intent.enemyId);
+      const crowned = enemy?.crowned
+        ? `<span class="ct-crowned-mark" title="Crowned">♛</span> `
+        : "";
+      const hush = enemy?.hushed
+        ? `<span class="ct-hush-mark" title="Hush">∿</span> `
+        : "";
+      const omen = view.omen?.targetId === intent.enemyId
+        ? `<span class="ct-omen-mark" title="Omen">✦</span> `
+        : "";
       return `<div class="ct-intent${intent.wouldMiss ? " miss" : ""}">
-        <div class="ct-intent-raw">${opened}${esc(intent.label)}</div>
+        <div class="ct-intent-raw">${opened}${crowned}${hush}${omen}${esc(intent.label)}</div>
         ${cons}${miss}
       </div>`;
     })
@@ -128,6 +142,32 @@ export function renderCardTrialWindows(
     return;
   }
 
+  if (phase === "draft") {
+    const draft = view.draft;
+    const choices = draft?.choices ?? [];
+    host.innerHTML = `<div class="ff6-windows ct-windows ct-draft-windows">
+      <div class="ff6-window ct-draft-pane">
+        <div class="ff6-menu-title">${esc(draft?.sourceName ?? "Improvisation")} · Choose one</div>
+        <div class="ct-draft-subtitle">${esc(draft ? `A temporary answer for ${draft.targetName}` : "The moment has passed")}</div>
+        <div class="ct-draft-row">
+          ${choices.map((choice, i) => `<button type="button" class="ct-draft-choice ${i === (input.draftCursor ?? 0) ? "selected" : ""} ${choice.disabled ? "disabled" : ""}" data-draft-index="${i}" ${choice.disabled ? "disabled" : ""}>
+            <span class="ct-draft-cost">${choice.cost === 0 ? "FREE" : `${choice.cost} ENERGY`}</span>
+            <span class="ct-draft-name">${esc(choice.name)}</span>
+            <span class="ct-draft-text">${esc(choice.text)}</span>
+            ${choice.disabledReason ? `<span class="ct-why">${esc(choice.disabledReason)}</span>` : ""}
+          </button>`).join("")}
+        </div>
+        <div class="ff6-hint-row">D-pad · A choose · options vanish after the pick</div>
+      </div>
+    </div>`;
+    host.querySelectorAll<HTMLButtonElement>(".ct-draft-choice").forEach((button) => {
+      const index = Number(button.dataset.draftIndex);
+      button.addEventListener("pointerenter", () => handlers.onHoverDraftChoice?.(index));
+      button.addEventListener("click", () => handlers.onConfirmDraftChoice?.(index));
+    });
+    return;
+  }
+
   const acting = view.heroes.find((h) => h.id === view.actingHero);
   const handPane =
     phase === "hand"
@@ -152,7 +192,10 @@ export function renderCardTrialWindows(
             .filter((e): e is NonNullable<typeof e> => !!e && !e.dead)
             .map((e, i) => {
               const opened = e.opened ? `<span class="ct-opened-mark" title="Opened">◉</span>` : "";
-              return `<button type="button" class="ct-target ${i === input.targetCursor ? "selected" : ""}" data-eid="${esc(e.id)}">${opened}${esc(e.name)} · ${e.hp}/${e.maxHp}</button>`;
+              const crowned = e.crowned ? `<span class="ct-crowned-mark" title="Crowned">♛</span>` : "";
+              const hush = e.hushed ? `<span class="ct-hush-mark" title="Hush">∿</span>` : "";
+              const omen = view.omen?.targetId === e.id ? `<span class="ct-omen-mark" title="Omen">✦</span>` : "";
+              return `<button type="button" class="ct-target ${i === input.targetCursor ? "selected" : ""}" data-eid="${esc(e.id)}">${opened}${crowned}${hush}${omen}${esc(e.name)} · ${e.hp}/${e.maxHp}</button>`;
             })
             .join("")}
           <div class="ff6-hint-row">A confirm · B cancel</div>
@@ -162,6 +205,8 @@ export function renderCardTrialWindows(
     <div class="ff6-menu-title">Intents</div>
     ${intentHtml(view)}
     ${view.openedEnemyId ? `<div class="ct-opened-line"><span class="ct-opened-mark">◉</span> Opened: ${esc(view.enemies.find((e) => e.id === view.openedEnemyId)?.name ?? view.openedEnemyId)}</div>` : `<div class="ct-opened-line dim">No Opened</div>`}
+    ${view.crownedEnemyId ? `<div class="ct-crowned-line"><span class="ct-crowned-mark">♛</span> Crowned: ${esc(view.enemies.find((e) => e.id === view.crownedEnemyId)?.name ?? view.crownedEnemyId)}</div>` : `<div class="ct-crowned-line dim">No Crown</div>`}
+    ${view.omen ? `<div class="ct-omen-line"><span class="ct-omen-mark">✦</span> Omen: ${esc(view.omen.targetName)} · ${view.omen.damage} before intent</div>` : `<div class="ct-omen-line dim">No Omen</div>`}
   </div>`;
 
   const rat = view.ratRow
@@ -174,7 +219,7 @@ export function renderCardTrialWindows(
         const actingMark = h.id === view.actingHero ? " acting" : "";
         return `<div class="ct-hero${actingMark}${h.dead ? " dead" : ""}">
           <div class="ct-hero-name">${esc(h.name)}</div>
-          <div class="ct-hero-hp">${h.hp}/${h.maxHp}${h.guard ? ` · G${h.guard}` : ""}</div>
+          <div class="ct-hero-hp">${h.hp}/${h.maxHp}${h.guard ? ` · B${h.guard}` : ""}</div>
         </div>`;
       })
       .join("")}

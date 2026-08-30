@@ -21,6 +21,7 @@ function card(uid: string, overrides: Partial<HandCardView> = {}): HandCardView 
     text: "text",
     opens: false,
     consume: "none",
+    target: "single-enemy",
     disabled: false,
     disabledReason: null,
     consumeArmed: false,
@@ -53,7 +54,9 @@ function baseView(hand: HandCardView[]): CardTrialPlayerView {
     ],
     intents: [],
     openedEnemyId: null,
+    crownedEnemyId: null,
     ratRow: null,
+    rowMode: "full",
     pileCountsOnly: true,
   };
 }
@@ -261,7 +264,7 @@ describe("CardTrialHandPresentation", () => {
     presentation.sync(
       input([
         card("art", { defId: "nip", name: "Nip", text: "Deal 5." }),
-        card("fb", { defId: "brace", name: "Brace", text: "Gain 6 Guard." }),
+      card("fb", { defId: "brace", name: "Brace", text: "Gain 6 Barrier." }),
       ]),
       noopHandlers
     );

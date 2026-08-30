@@ -10,6 +10,7 @@ import {
   paidMove,
   playCard,
   playerView,
+  resolveDraftChoice,
 } from "../game/card-trial/engine";
 import type { CombatStage } from "./combat-stage";
 import { combatCardTrialOverlay, combatWindows, setCardTrialSparseChrome } from "./shell";
@@ -54,6 +55,7 @@ export class CardTrialController {
   private cursor = 0;
   private targetIds: string[] = [];
   private targetCursor = 0;
+  private draftCursor = 0;
   private pendingUid: string | null = null;
   private pendingTarget: string | null = null;
   private pendingEnd = false;
@@ -137,6 +139,12 @@ export class CardTrialController {
                 entries: this.targetIds,
                 index: this.targetCursor,
               }
+            : this.phase === "draft"
+              ? {
+                  title: "Improvisation",
+                  entries: v.draft?.choices.map((choice) => choice.name) ?? [],
+                  index: this.draftCursor,
+                }
             : null,
       round: this.trial.round,
       enemies: v.enemies.map((e) => ({
@@ -182,6 +190,26 @@ export class CardTrialController {
       if (key === "Enter" || key === " ") {
         this.finish();
       }
+      return;
+    }
+    if (this.phase === "draft") {
+      const choices = playerView(this.trial).draft?.choices ?? [];
+      const n = choices.length;
+      if (n === 0) return;
+      const lowerDraft = key.toLowerCase();
+      if (lowerDraft === "arrowleft" || lowerDraft === "arrowup" || lowerDraft === "w") {
+        this.draftCursor = (this.draftCursor - 1 + n) % n;
+        audio.uiCursor();
+        this.windowsDirty = true;
+        return;
+      }
+      if (lowerDraft === "arrowright" || lowerDraft === "arrowdown" || lowerDraft === "s") {
+        this.draftCursor = (this.draftCursor + 1) % n;
+        audio.uiCursor();
+        this.windowsDirty = true;
+        return;
+      }
+      if (key === "Enter" || key === " ") this.confirmDraftChoice();
       return;
     }
     const lower = key.toLowerCase();
@@ -311,6 +339,14 @@ export class CardTrialController {
       onConfirmTarget: (i) => {
         this.targetCursor = i;
         this.confirmTarget();
+      },
+      onHoverDraftChoice: (i) => {
+        this.draftCursor = i;
+        this.windowsDirty = true;
+      },
+      onConfirmDraftChoice: (i) => {
+        this.draftCursor = i;
+        this.confirmDraftChoice();
       },
       onCancel: () => {
         this.phase = "hand";
@@ -445,10 +481,35 @@ export class CardTrialController {
       return;
     }
     audio.uiConfirm();
-    this.queueAutoEnd();
+    if (!this.trial.draft) this.queueAutoEnd();
     const card = events.find((event) => event.type === "banner");
     this.playbackLabel = card?.type === "banner" ? card.text : null;
     this.playEvents(events, { openedBefore });
+  }
+
+  private confirmDraftChoice(): void {
+    const draft = playerView(this.trial).draft;
+    const choice = draft?.choices[this.draftCursor];
+    if (!choice) return;
+    if (choice.disabled) {
+      this.flash = choice.disabledReason ?? "That answer costs more energy than remains";
+      audio.uiCancel();
+      this.windowsDirty = true;
+      return;
+    }
+    const result = resolveDraftChoice(this.trial, choice.id);
+    if (!result.ok) {
+      this.flash = result.reason ?? "That answer is unavailable";
+      audio.uiCancel();
+      this.windowsDirty = true;
+      return;
+    }
+    this.flash = null;
+    this.pendingEnd = false;
+    this.queueAutoEnd();
+    audio.uiConfirm();
+    this.playbackLabel = choice.name;
+    this.playEvents(result.events);
   }
 
   private tryMove(): void {
@@ -533,6 +594,12 @@ export class CardTrialController {
     if (this.trial.result) {
       this.playtest?.finishAction(this.trial);
       this.phase = "result";
+      this.windowsDirty = true;
+      return;
+    }
+    if (this.trial.draft) {
+      this.phase = "draft";
+      this.draftCursor = 0;
       this.windowsDirty = true;
       return;
     }
@@ -639,6 +706,7 @@ export class CardTrialController {
       cursor: this.cursor,
       targetIds: this.targetIds,
       targetCursor: this.targetCursor,
+      draftCursor: this.draftCursor,
       flash: this.flash,
       result,
       detailsHeld: this.detailsHeld,

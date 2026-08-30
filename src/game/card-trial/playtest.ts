@@ -14,6 +14,7 @@ import type {
   CardTrialState,
   HeroId,
   PlayerRow,
+  DraftChoiceId,
 } from "./types";
 
 export const CARD_TRIAL_PLAYTEST_SCHEMA_VERSION = 1 as const;
@@ -64,8 +65,22 @@ export interface CardTrialStateFingerprint {
     maxHp: number;
     visualRow: string;
     intentIndex: number;
+    hushed: boolean;
   }>;
   opened: CardTrialState["opened"];
+  crownedEnemyId: string | null;
+  omen: CardTrialState["omen"];
+  draft: CardTrialState["draft"] extends infer T
+    ? T extends null
+      ? null
+      : {
+          heroId: HeroId;
+          sourceId: CardId;
+          pool: "dirty-tricks" | "arcane-responses";
+          targetId: string;
+          choices: Array<{ id: DraftChoiceId; cost: 0 | 1 }>;
+        }
+    : never;
   rat: CardTrialState["rat"];
   queue: CardTrialState["queue"];
   streams: Record<HeroId, number>;
@@ -232,8 +247,20 @@ export function cardTrialStateFingerprint(s: CardTrialState): CardTrialStateFing
       maxHp: enemy.maxHp,
       visualRow: enemy.visualRow,
       intentIndex: enemy.intentIndex,
+      hushed: !!enemy.hushed,
     })),
     opened: s.opened ? { ...s.opened } : null,
+    crownedEnemyId: s.crownedEnemyId,
+    omen: s.omen ? { ...s.omen } : null,
+    draft: s.draft
+      ? {
+          heroId: s.draft.heroId,
+          sourceId: s.draft.sourceId,
+          pool: s.draft.pool,
+          targetId: s.draft.targetId,
+          choices: s.draft.choices.map((choice) => ({ id: choice.id, cost: choice.cost })),
+        }
+      : null,
     rat: s.rat ? { ...s.rat } : null,
     queue: s.queue.map((actor) => ({ ...actor })),
     streams: {

@@ -63,7 +63,7 @@ describe("CardTrialSparseUi", () => {
     ui.destroy();
   });
 
-  it("shows Guard-aware intent details only while held", () => {
+  it("shows Barrier-aware intent details only while held", () => {
     const host = document.createElement("div");
     const ui = new CardTrialSparseUi(host);
     const trial = createAdversarialTriangle();
@@ -82,7 +82,7 @@ describe("CardTrialSparseUi", () => {
     expect((host.querySelector(".ct-sparse-details") as HTMLElement).hidden).toBe(true);
     const ratPlate = [...host.querySelectorAll<HTMLButtonElement>(".ct-actor-chip.hero")]
       .find((plate) => plate.textContent?.includes("Rat King"));
-    expect(ratPlate?.textContent).not.toContain("Guard 5");
+    expect(ratPlate?.textContent).not.toContain("Barrier 5");
     ui.sync({ ...base, detailsHeld: true }, noop);
     const details = host.querySelector(".ct-sparse-details") as HTMLElement;
     expect(details.hidden).toBe(false);
@@ -91,9 +91,9 @@ describe("CardTrialSparseUi", () => {
     expect(details.textContent).toMatch(/Ash\s*·\s*Back\s*·\s*Opened/i);
     expect(details.textContent).toMatch(/CLEAVER.*our Front.*11/i);
     expect(details.textContent).toMatch(/ASH.*our Back.*8/i);
-    expect(details.textContent).toContain("Guard 5");
+    expect(details.textContent).toContain("Barrier 5");
     expect(details.textContent).toMatch(/\d+\s*→\s*\d+\s*HP/);
-    expect(ratPlate?.textContent).not.toContain("Guard 5");
+    expect(ratPlate?.textContent).not.toContain("Barrier 5");
     expect([...host.querySelectorAll<HTMLButtonElement>(".ct-actor-chip")].every((plate) => !plate.textContent?.includes("our Front"))).toBe(true);
     expect(host.querySelector(".ct-chip-intent")).toBeNull();
     ui.destroy();

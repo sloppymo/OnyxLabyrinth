@@ -13,6 +13,7 @@ export class CardTrialSparseUi {
   private stage: HTMLDivElement;
   private hud: CardTrialHudPresentation;
   private hand: CardTrialHandPresentation;
+  private draft: HTMLDivElement;
   private resizeObserver: ResizeObserver | null = null;
 
   constructor(private host: HTMLElement) {
@@ -25,6 +26,9 @@ export class CardTrialSparseUi {
     host.appendChild(this.layer);
     this.hud = new CardTrialHudPresentation(this.stage);
     this.hand = new CardTrialHandPresentation(this.stage);
+    this.draft = document.createElement("div");
+    this.draft.className = "ct-draft-overlay";
+    this.stage.appendChild(this.draft);
     if (typeof ResizeObserver !== "undefined") {
       this.resizeObserver = new ResizeObserver(() => this.applyStageScale());
       this.resizeObserver.observe(host);
@@ -60,6 +64,35 @@ export class CardTrialSparseUi {
   sync(input: CardTrialWindowsInput, handlers: CardTrialViewHandlers): void {
     this.hud.sync(input, handlers);
     this.hand.sync(input, handlers);
+    this.syncDraft(input, handlers);
+  }
+
+  private syncDraft(input: CardTrialWindowsInput, handlers: CardTrialViewHandlers): void {
+    const draft = input.view.draft;
+    this.draft.hidden = input.phase !== "draft" || !draft;
+    if (this.draft.hidden || !draft) {
+      this.draft.replaceChildren();
+      return;
+    }
+    const source = document.createElement("div");
+    source.className = "ct-draft-source";
+    source.innerHTML = `<span class="ct-draft-kicker">IMPROVISE</span><strong>${escapeText(draft.sourceName)}</strong><span>Choose one answer for ${escapeText(draft.targetName)}</span>`;
+    const row = document.createElement("div");
+    row.className = "ct-draft-choice-row";
+    draft.choices.forEach((choice, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `ct-draft-choice${index === (input.draftCursor ?? 0) ? " selected" : ""}`;
+      button.disabled = choice.disabled;
+      button.innerHTML = `<span class="ct-draft-cost">${choice.cost === 0 ? "FREE" : `${choice.cost} ENERGY`}</span><strong>${escapeText(choice.name)}</strong><span>${escapeText(choice.text)}</span>`;
+      button.addEventListener("pointerenter", () => handlers.onHoverDraftChoice?.(index));
+      button.addEventListener("click", () => handlers.onConfirmDraftChoice?.(index));
+      row.appendChild(button);
+    });
+    const hint = document.createElement("div");
+    hint.className = "ct-draft-hint";
+    hint.textContent = "D-pad · A choose · the other two vanish";
+    this.draft.replaceChildren(source, row, hint);
   }
 
   update(now: number, scene: CombatScene): void {
@@ -71,6 +104,15 @@ export class CardTrialSparseUi {
     this.resizeObserver?.disconnect();
     this.hand.destroy();
     this.hud.destroy();
+    this.draft.remove();
     this.layer.remove();
   }
+}
+
+function escapeText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

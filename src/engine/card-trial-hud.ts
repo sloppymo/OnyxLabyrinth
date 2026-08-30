@@ -173,7 +173,7 @@ export class CardTrialHudPresentation {
     this.decision.hidden = phase === "result";
     this.hint.hidden = phase === "result";
 
-    this.instructionStrip.hidden = phase === "playback" || phase === "result" || !recipe.handInstruction;
+    this.instructionStrip.hidden = phase === "playback" || phase === "result" || phase === "draft" || !recipe.handInstruction;
     this.instructionText.textContent = recipe.handInstruction;
 
     this.utils.style.visibility = showActions ? "visible" : "hidden";
@@ -394,9 +394,12 @@ export class CardTrialHudPresentation {
       ) continue;
       const block = el("div", "ct-detail-actor");
       const row = actor.row === "front" ? "Front" : "Back";
-      const guard = actor.kind === "hero" && actor.guard > 0 ? ` · Guard ${actor.guard}` : "";
+      const barrier = actor.kind === "hero" && actor.guard > 0 ? ` · Barrier ${actor.guard}` : "";
       const opened = actor.kind === "enemy" && actor.opened ? " · Opened" : "";
-      block.textContent = `${actor.name} · ${row}${guard}${opened}`;
+      const crowned = actor.kind === "enemy" && actor.crowned ? " · Crowned" : "";
+      const hush = actor.kind === "enemy" && actor.hushed ? " · Hush" : "";
+      const omen = actor.kind === "enemy" && actor.omened ? " · Omen" : "";
+      block.textContent = `${actor.name} · ${row}${barrier}${opened}${crowned}${hush}${omen}`;
       this.details.appendChild(block);
     }
     for (const intent of input.view.intents) {
@@ -446,7 +449,10 @@ function actorPlateHtml(actor: CardTrialActorUiState): string {
   const rowIcon = actor.row === "front" ? "icon-front" : "icon-back";
   const row = `<span class="ct-chip-row"><img src="${cardTrialUiAssetUrl(rowIcon)}" alt="">${actor.row}</span>`;
   const opened = actor.opened ? `<span class="ct-opened-mark" title="Opened">◉</span>` : "";
-  return `<div class="ct-chip-heading"><span>${opened}${escapeText(actor.name)}</span>${row}</div>
+  const crowned = actor.crowned ? `<span class="ct-crowned-mark" title="Crowned">♛</span>` : "";
+  const hush = actor.hushed ? `<span class="ct-hush-mark" title="Hush">∿</span>` : "";
+  const omen = actor.omened ? `<span class="ct-omen-mark" title="Omen">✦</span>` : "";
+  return `<div class="ct-chip-heading"><span>${opened}${crowned}${hush}${omen}${escapeText(actor.name)}</span>${row}</div>
     <div class="ct-chip-hp"><span class="ct-chip-bar" style="width:${hpPct}%"></span></div>
     <div class="ct-chip-footer"><span>${actor.hp}/${actor.maxHp}</span></div>`;
 }

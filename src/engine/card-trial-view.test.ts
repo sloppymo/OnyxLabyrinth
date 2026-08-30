@@ -13,7 +13,7 @@ const noop = {
 };
 
 describe("Card Trial windows", () => {
-  it("shows the acting hero hand, Opened mark, post-Guard intent, and Move utility", () => {
+  it("shows the acting hero hand, Opened mark, post-Barrier intent, and Move utility", () => {
     const trial = createAdversarialTriangle();
     const host = document.createElement("div");
     renderCardTrialWindows(

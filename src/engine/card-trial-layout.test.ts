@@ -17,7 +17,7 @@ import type { CardTrialActorUiState } from "./card-trial-ui-model";
 describe("cardTextLayoutTier", () => {
   it("keeps short rules on the native 128×96 art aperture", () => {
     expect(cardTextLayoutTier(CARD_DEFS.nip.text)).toBe("short");
-    expect(cardTextLayoutTier(CARD_DEFS.staff.text)).toBe("short");
+    expect(cardTextLayoutTier(CARD_DEFS["the-staff-speaks"].text)).toBe("short");
     expect(CARD_ART_HEIGHT.short).toBe(96);
   });
 
